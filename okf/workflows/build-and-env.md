@@ -120,6 +120,53 @@ git clone https://github.com/Fluorescence-Tools/tttrlib.git ../tttrlib
 The task fails loudly if that source is missing, since there is no package to
 fall back on. See [compiled modules](/subsystems/compiled-modules.md).
 
+# Conda recipe: what it builds, and what it must not grow back
+
+`rattler-recipe/recipe.yaml` packages **chisurf and nothing else**. The whole
+build is the inline `script:` — one `pip install . --no-deps
+--no-build-isolation` — because ChiSurf compiles nothing: no `.pyx`, no `.i`, no
+`Extension`, and `setup.py` stopped building the burbulator C++ library when
+that simulator was retired. Everything else in a runnable installation (the TTTR
+library, the label library, the metadata store, the IMP mixin, the local
+`modules/*`) is layered on top of this package by the installer builder below.
+
+Two consequences worth stating, because both were violated for months:
+
+- **`host:` carries no toolchain.** Compilers, cmake, ninja, swig, cython,
+  pythran, pybind11, eigen, boost-cpp, doxygen and hdf5 were all inherited from
+  builds that no longer happen; only python, pip, setuptools, wheel, numpy (for
+  `--no-build-isolation`) and git (the version fallback) remain. Whatever still
+  compiles does so elsewhere — tttrlib in `build_tools/build_tttrlib.py`,
+  labellib and the local modules in `build_tools/build_installer.py`.
+- **An inline `script:` makes a `build.sh`/`build.bat` beside it dead.**
+  rattler-build runs one or the other, and the inline script wins. Two such
+  scripts sat in `rattler-recipe/` from April to August 2026 being actively
+  maintained — a step to install the metadata store was added to both in July,
+  described as closing a packaging gap it could not close — while rattler-build
+  had not read either since April. They are gone; extend the `script:`.
+
+**The entry-point list is generated, and drifts silently.**
+`rattler-recipe/collect_entry_points.py` regenerates the block between the
+`BEGIN_ENTRY_POINTS`/`END_ENTRY_POINTS` sentinels from
+`pyproject.toml`'s `[project.scripts]` / `[project.gui-scripts]` plus each
+plugin's `cli_entrypoint` assignment. Nothing imports those targets at build
+time, so a moved module leaves a command that only fails once installed: six
+`csg_*` launchers named pre-reorganisation paths and `csc` pointed at
+`chisurf.cli` long after it became `chisurf.core.cli`.
+`test/test_rattler_recipe.py` now resolves every entry point against the tree
+(parsing, not importing — importing a plugin pulls in Qt), checks the generated
+block is current, and checks the recipe's own tests stay headless: the recipe
+used to test `chisurf --version`, an entry point that ignores argv and enters
+the Qt event loop, which would have hung the build had the driver not been
+passing `--test skip`. That flag is gone from
+`build_tools/run_rattler_build.py`; `import chisurf` is now a real gate on the
+`run:` list, and `CHISURF_SKIP_PACKAGE_TEST=1` opts a local build out.
+
+A plugin that ships a `cli.py` but no `cli_entrypoint` assignment is invisible
+to the generator — it ships in the package with no command to reach it. About
+twenty plugins are in that state; `burst-background` is the one that had a
+console script and lost it.
+
 # Installer bundles
 
 `build_tools/build_installer.py` assembles a slimmed runtime env under `dist/`

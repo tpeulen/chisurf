@@ -1998,3 +1998,41 @@ baseline for this suite: `modules/` holds symlinks to sibling checkouts and is
 gitignored, so a fresh worktree collects two import errors before it runs a
 single test. Compare by classifying the failures' root causes instead, which is
 what established that the mdtraj port added none of them.
+
+## packaging: the release installs the tttrlib that development refuses (2026-08-05)
+
+`pixi.toml` states the case against the published TTTR library plainly — conda
+and PyPI are both capped at `0.26.2`, which predates the photon-simulation
+engine and still carries the `compute_ics` defect that segfaults any image
+correlation using frame lags — and `build_tools/build_tttrlib.py` is therefore
+its *only* provider in a development environment, building `0.27.0` from the
+sibling checkout.
+
+`build_tools/build_installer.py` does the opposite. It passes `tttrlib` in
+`conda_extras` for the macOS and Linux runtimes (resolved from bioconda) and in
+`pip_nodeps` for Windows, so every shipped installer contains the version the
+project has documented as wrong. A user's ICS correlation crashes where a
+developer's works, and nothing in CI distinguishes the two — the installer smoke
+test only asserts the main window appears.
+
+Fixing it means building the library from source inside the installer, the way
+`_install_imp_tricks` already clones and installs its sibling: the runtime env
+would need `swig`, `ninja` and a compiler alongside the `cmake` it already
+installs for labellib, and the build tools are stripped afterwards anyway. Left
+undone here because it cannot be verified without a full installer run on each
+platform.
+
+## packaging: about twenty plugin CLIs ship with no command to reach them
+
+`rattler-recipe/collect_entry_points.py` discovers a plugin's command only
+through a `cli_entrypoint = "<name>=<module>:<func>"` assignment in the plugin's
+`__init__.py`. A plugin that grows a `cli.py` without one is packaged with its
+CLI unreachable — `python -m` still works from a checkout, which is why this
+goes unnoticed. Current count: 29 plugins declare one, roughly twenty more have
+a `cli.py`/`cli/` and do not, among them `accurate_fret`, `burst_2cde`,
+`burst_bva`, `burst_h2mm`, `flc_2d`, `irf_estimator` and `batch_analysis`.
+
+`burst_background` was the visible case: it *had* a console script, lost the
+assignment when the plugin was rewritten as an AutoForm tool, and silently
+dropped out of the recipe. That one is restored. The rest need a name each —
+that is the only real work — and one line per plugin.

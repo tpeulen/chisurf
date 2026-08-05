@@ -195,7 +195,12 @@ def make_runtime(prefix: Path, *, conda_extras: list[str], pip_nodeps: list[str]
 
     py = prefix / ("python.exe" if IS_WIN else "bin/python")
 
-    # Env so modules/* (ndxplorer compiles C++/Eigen) and pip find the prefix.
+    # Env so the pip installs below find the prefix and its toolchain. The
+    # CMake/Eigen bits are for `labellib`, which pip builds from source here --
+    # they are also the reason `cmake<3.27` is in conda_extras, since LabelLib's
+    # CMakeLists still declares a cmake_minimum_required that 3.27 dropped. The
+    # local modules/* no longer need any of it: ndxplorer, quest and chinet are
+    # plain setuptools packages now, whatever this comment used to claim.
     env = dict(os.environ)
     env["PATH"] = str(prefix / ("Scripts" if IS_WIN else "bin")) + os.pathsep + env.get("PATH", "")
     env["CMAKE_PREFIX_PATH"] = str(prefix)

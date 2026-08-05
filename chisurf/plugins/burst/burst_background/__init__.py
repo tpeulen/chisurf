@@ -22,6 +22,12 @@ from .view_model import BackgroundViewModel
 icon = "🌑"
 name = "Spectroscopy:Single-Molecule:Burst Background Estimation"
 
+# The packaged console script. rattler-recipe/collect_entry_points.py discovers
+# a plugin CLI only through this assignment, so a `cli.py` without it ships in
+# the package but is reachable by no command -- which is how `burst-background`
+# silently left the recipe when this module was rewritten as an AutoForm tool.
+cli_entrypoint = "burst-background=chisurf.plugins.burst.burst_background.cli:cli"
+
 logger = logging.getLogger(__name__)
 
 

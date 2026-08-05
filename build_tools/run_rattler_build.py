@@ -113,10 +113,13 @@ def main() -> int:
         if platform.system() != "Windows":
             cmd.extend(["--channel", "bioconda"])
 
-        cmd.extend([
-            "--test",
-            "skip",
-        ])
+        # The recipe's tests run. They used to be skipped with `--test skip`,
+        # which cost nothing at the time because the only script test launched
+        # the GUI and would have hung; the surviving `import chisurf` test is
+        # headless, takes a second, and is the one check that the `run:` list is
+        # complete. Set CHISURF_SKIP_PACKAGE_TEST=1 to opt out for a local build.
+        if os.environ.get("CHISURF_SKIP_PACKAGE_TEST"):
+            cmd.extend(["--test", "skip"])
 
         env = os.environ.copy()
         env["PATH"] = _slim_path()
