@@ -188,7 +188,8 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         self._shininess_uniform = -1
         self._rim_strength_uniform = -1
         self._rim_power_uniform = -1
-        self._fog_density_uniform = -1
+        self._fog_end_uniform = -1
+        self._fog_scale_uniform = -1
         self._fog_color_uniform = -1
         self._glyph_mode_uniform = -1
         self._two_sided_uniform = -1
@@ -236,7 +237,6 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         self._shininess = float(lighting_cfg.get("shininess", 38.0))
         self._rim_strength = float(lighting_cfg.get("rim_strength", 0.18))
         self._rim_power = float(lighting_cfg.get("rim_power", 2.4))
-        self._fog_density = 0.0
         self._grid_visible = False
         self._grid_size = 20.0
         self._grid_spacing = 1.0
@@ -1212,7 +1212,9 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         self._program.setUniformValue(self._shininess_uniform, float(self._shininess))
         self._program.setUniformValue(self._rim_strength_uniform, float(self._rim_strength))
         self._program.setUniformValue(self._rim_power_uniform, float(self._rim_power))
-        self._program.setUniformValue(self._fog_density_uniform, float(self._fog_density))
+        fog_end, fog_scale = self._fog_planes()
+        self._program.setUniformValue(self._fog_end_uniform, float(fog_end))
+        self._program.setUniformValue(self._fog_scale_uniform, float(fog_scale))
         fog_color = QtGui.QVector3D(float(r), float(g_col), float(b))
         self._program.setUniformValue(self._fog_color_uniform, fog_color)
 
@@ -1503,7 +1505,14 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         uniform float shininess;
         uniform float rimStrength;
         uniform float rimPower;
-        uniform float fogDensity;
+        // PyMOL's fog is *linear between two planes*, not exponential in
+        // distance: `fog = (g_Fog_end + eye_pos.z) * g_Fog_scale` in its
+        // `default.vs`, where the value is a **visibility** (1 = unfogged) and
+        // `g_Fog_scale` is 1/(end - start). Expressed that way so the same
+        // `fog_start` means the same thing here as it does in the ray tracer
+        // and in PyMOL.
+        uniform float fogEnd;
+        uniform float fogScale;
         uniform vec3 fogColor;
         uniform int glyphMode;
         uniform int twoSided;
@@ -1639,9 +1648,15 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
             // Point-source specular highlight
             finalColor += spec * exposure * sheet * vec3(1.0);
             
-            // 4. Fog
-            float fogFactor = clamp(1.0 - exp(-fogDensity * length(v_viewPos)), 0.0, 1.0);
-            finalColor = mix(finalColor, fogColor, fogFactor);
+            // 4. Depth cue. `v_viewPos.z` is negative in front of the camera,
+            // so `fogEnd + z` is how far short of the back plane this fragment
+            // is; scaled by 1/(end - start) that is PyMOL's visibility factor.
+            // `fogScale <= 0` means the cue is off and everything is unfogged.
+            float vis = 1.0;
+            if (fogScale > 0.0) {
+                vis = clamp((fogEnd + v_viewPos.z) * fogScale, 0.0, 1.0);
+            }
+            finalColor = mix(fogColor, finalColor, vis);
 
             // 5. Transparency with Fresnel
             float finalAlpha = v_color.a;
@@ -1695,7 +1710,8 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         self._shininess_uniform = program.uniformLocation("shininess")
         self._rim_strength_uniform = program.uniformLocation("rimStrength")
         self._rim_power_uniform = program.uniformLocation("rimPower")
-        self._fog_density_uniform = program.uniformLocation("fogDensity")
+        self._fog_end_uniform = program.uniformLocation("fogEnd")
+        self._fog_scale_uniform = program.uniformLocation("fogScale")
         self._fog_color_uniform = program.uniformLocation("fogColor")
         self._glyph_mode_uniform = program.uniformLocation("glyphMode")
         self._two_sided_uniform = program.uniformLocation("twoSided")
@@ -1838,6 +1854,58 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         height = max(1.0, float(self.height()) * ratio)
         half_fov = math.radians(max(1e-3, float(self._fov)) * 0.5)
         return 0.5 * height / max(math.tan(half_fov), 1e-6)
+
+    def _fog_planes(self) -> tuple[float, float]:
+        """Return ``(fog_end, fog_scale)`` for the depth cue, PyMOL's way.
+
+        Transcribed from ``SceneSetFog`` (``layer1/Scene.cpp``)::
+
+            FogStart = (back - front) * fog_start + front
+            FogEnd   = fog in (0, 1) ? FogStart + (back - FogStart) / fog : back
+            active   = depth_cue and fog != 0
+
+        and the shader then reads a *visibility*, ``(FogEnd - depth) /
+        (FogEnd - FogStart)``.
+
+        The planes are the ones fitted **around the scene** -- the camera
+        distance either side of the target radius -- not the camera's far plane.
+        That distinction is the whole of this feature: the ray tracer was once
+        normalised over an unfitted far plane and fogged every pixel of the
+        molecule 24-69 %, which reads as a dimmer rather than a depth cue. The
+        two renderers now measure the cue over the same span.
+
+        Returns
+        -------
+        tuple of float
+            ``fog_end`` in view units, and ``1 / (end - start)``. A scale of
+            ``0`` means the cue is off, which is what the shader tests.
+        """
+        cfg = _DISPLAY_CONFIG.get("ray", {}) or {}
+        # PyMOL's `depth_cue`, `fog` and `fog_start` are global: they govern the
+        # viewport, and the tracer follows them unless `ray_trace_fog` overrides.
+        # chimol has only ever applied them to the tracer, so the viewport had
+        # no depth cue at all -- `fogDensity` was initialised to 0.0 and never
+        # assigned from anywhere.
+        if not bool(cfg.get("depth_cue", True)):
+            return 0.0, 0.0
+        density = float(cfg.get("fog_intensity", 1.0))
+        if density == 0.0:
+            return 0.0, 0.0
+
+        radius = max(float(self._target_radius), 1e-6)
+        front = max(float(self._distance) - radius, 1e-6)
+        back = float(self._distance) + radius
+        if back <= front:
+            return 0.0, 0.0
+
+        start = (back - front) * float(cfg.get("fog_start", 0.45)) + front
+        if 0.0 < density < 1.0:
+            end = start + (back - start) / density
+        else:
+            end = back
+        if end <= start:
+            return 0.0, 0.0
+        return end, 1.0 / (end - start)
 
     def _build_matrices(self) -> tuple[QtGui.QMatrix4x4, QtGui.QMatrix4x4]:
         # The width the *scene* has, not the widget's: the panel takes a column

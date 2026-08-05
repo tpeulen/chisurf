@@ -522,3 +522,85 @@ def test_the_sequence_strip_survives_an_effect_pass(qapp):
         ).max() < 40, "the strip band changed visibly, not just in antialiasing"
     finally:
         window.close()
+
+
+# --------------------------------------------------------------------------- #
+# The viewport depth cue
+# --------------------------------------------------------------------------- #
+def test_the_viewport_depth_cue_grades_instead_of_dimming(qapp):
+    """`depth_cue` must fade the far side and leave the near side alone.
+
+    PyMOL's `depth_cue`, `fog` and `fog_start` are **global**: `SceneSetFog`
+    applies them to the viewport, and the tracer follows unless
+    `ray_trace_fog` overrides. chimol had only ever applied them to the tracer
+    -- the shader's `fogDensity` uniform was initialised to 0.0 and assigned
+    from nowhere -- so the interactive view had no depth cue at all while `ray`
+    did, and the two pictures disagreed.
+
+    The assertion is a pair, not a single number, and that is the point. The
+    tracer's own fog was once normalised over a plane fitted to nothing and
+    fogged *every* pixel 24-69 %: brightness fell, every naive check passed, and
+    what it produced was a dimmer. So this asserts both that something is fogged
+    **and** that something is not.
+    """
+    window = _window_with_molecule(qapp)
+    try:
+        from chisurf.plugins.chimol.chimol.cmd.command import Cmd
+
+        cmd = Cmd(window)
+        cmd.set_message_callback(lambda _m: None)
+        cmd.set_error_callback(lambda _m: None)
+        cmd.do("as spheres")   # a solid body, so near and far both have pixels
+
+        cmd.do("set depth_cue, off")
+        off = _frame(window, qapp).astype(float)
+        cmd.do("set depth_cue, on")
+        on = _frame(window, qapp).astype(float)
+
+        lit = off.sum(axis=2) > 40
+        assert lit.sum() > 10_000, "the molecule is not on screen"
+
+        ratio = np.ones(off.shape[:2])
+        np.divide(on.sum(axis=2), off.sum(axis=2), out=ratio, where=lit)
+        values = ratio[lit]
+
+        unfogged = float((values > 0.99).mean())
+        fogged = float((values < 0.90).mean())
+        assert fogged > 0.005, (
+            "nothing was fogged; `depth_cue` reached the viewport but changed "
+            "nothing"
+        )
+        assert unfogged > 0.20, (
+            f"only {unfogged:.1%} of the molecule came out unfogged -- the cue "
+            "is being normalised over a range the molecule occupies a slice of, "
+            "which is a dimmer and not a depth cue"
+        )
+    finally:
+        window.close()
+
+
+def test_turning_the_depth_cue_off_reaches_the_viewport(qapp):
+    """One store, read where it is used.
+
+    `_fog_planes` reads the config on every frame rather than caching it onto
+    the renderer, so there is no second copy for `set` to leave stale -- the
+    failure mode the silhouette settings still have.
+    """
+    window = _window_with_molecule(qapp)
+    try:
+        from chisurf.plugins.chimol.chimol.cmd.command import Cmd
+
+        cmd = Cmd(window)
+        cmd.set_message_callback(lambda _m: None)
+        cmd.set_error_callback(lambda _m: None)
+        renderer = window.viewer._renderer
+
+        cmd.do("set depth_cue, on")
+        _end_on, scale_on = renderer._fog_planes()
+        cmd.do("set depth_cue, off")
+        _end_off, scale_off = renderer._fog_planes()
+
+        assert scale_on > 0.0, "the cue reports itself off while it is on"
+        assert scale_off == 0.0, "`set depth_cue, off` did not reach the renderer"
+    finally:
+        window.close()

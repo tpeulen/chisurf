@@ -1534,6 +1534,58 @@ expensive.
 **This must be verified in a real window.** Offscreen Qt creates no GL context, so
 none of it is exercised by the offscreen suite; see the capture notes above.
 
+## The viewport had no depth cue, and the settings for it were pointed at the tracer
+
+`depth_cue`, `fog` and `fog_start` are **global** settings in PyMOL:
+`SceneSetFog` (`layer1/Scene.cpp`) applies them to the *viewport*, and the ray
+tracer follows unless `ray_trace_fog` / `ray_trace_fog_start` override — which
+is why PyMOL has those two as separate names at all. chimol registered all three
+against `ray.*` and applied them only to the tracer, so the interactive view had
+**no depth cue at all** and the traced image disagreed with the viewport it was
+supposed to reproduce.
+
+The shader was already written for it. `fogDensity`, `fogColor`, the uniform
+lookup and a `mix` in the fragment shader were all in place, and
+`self._fog_density = 0.0` in `__init__` was **the only assignment anywhere in
+the tree**. A complete feature held off by one initialiser — the fourth thing
+this session that was built and unreachable, after the tracer's refusal, the
+scaffolding, and the silhouette composite.
+
+Two things had to be right, and both are transcribed rather than invented:
+
+* **The shape.** PyMOL's fog is *linear between two planes*, not exponential in
+  distance. `fog = (g_Fog_end + eye_pos.z) * g_Fog_scale` (`data/shaders/default.vs`)
+  is a **visibility** — 1 unfogged — with `g_Fog_scale = 1/(end − start)`.
+  chimol's shader had `1 − exp(−density · |viewPos|)`, which is a different
+  curve and makes `fog_start` mean nothing.
+* **The planes.** `FogStart = (back − front) · fog_start + front`, and
+  `FogEnd = FogStart + (back − FogStart)/fog` when `fog` is in (0, 1), else
+  `back`. Front and back are the planes fitted **around the scene** — camera
+  distance either side of the target radius — not the camera's far plane. That
+  is the identical distinction the tracer's fog fix turned on, and getting it
+  wrong there had fogged every pixel 24–69 % with none left unfogged.
+
+Measured on 148L as spheres, cue off against cue on: **91.6 % of lit pixels come
+back unfogged** and the recessed ones fall to 0.48 of their brightness. The
+guardrail asserts *both halves of that pair* — something fogged **and** something
+not — because a dimmer passes either one alone. That is what the tracer's fog
+failure looked like from inside a single-number check.
+
+Defaults are PyMOL's: `depth_cue` **on**, `fog` 1.0, `fog_start` 0.45
+(`SettingInfo.h` 84, 88, 192).
+
+**One store, read where it is used.** `_fog_planes` reads the config on every
+frame instead of caching onto the renderer, so `set depth_cue, off` cannot leave
+a stale copy behind — which is exactly the failure the silhouette settings still
+have, one section down.
+
+Still open: the config path is `ray.depth_cue` / `ray.fog_start` /
+`ray.fog_intensity`, which now reads wrong for settings that govern both
+renderers. Moving them to a section of their own is a **key move**, and the
+migration table only knows how to update a *default* — so it needs a small
+extension to the loader rather than a table entry, and is worth doing with
+`silhouette`'s two-store problem in the same change.
+
 ## The FBO scaffolding was built, and switching it on broke the window
 
 The "what chimol lacks" list below said there was **no** render-to-texture
