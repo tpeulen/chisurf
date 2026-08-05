@@ -378,6 +378,10 @@ few percent without anything raising.
 
 - [x] DCD reader/writer, with cross-tool parity tests both directions
 - [x] XTC reader (the `xdr3dfcoord` bit-packing, in numba)
+- [x] Atom-selection parser, checked against the reference on 45 expressions
+- [x] `Topology` over ChiSurf's atom array
+- [ ] A `Trajectory` of our own: `superpose`, `rmsd`, `join`, `slice`, `iterload`
+- [ ] Port the 17 runtime import sites; resolve the 2 test ones
 - [ ] XTC writer — only needed to hand files to other tools; ChiSurf writes DCD
 - [ ] TRR reader/writer — no call site needs it yet; add on demand
 - [ ] `TrajectoryFile` no longer subclasses `mdtraj.Trajectory`
@@ -435,31 +439,50 @@ there.
 
 # Where to pick this up
 
-The codecs are done and the loader uses them. What remains is the port.
+**The foundations are done.** Coordinates, selections and topology are all
+ChiSurf's own now, each checked against the library being replaced and each
+with committed fixtures that outlive it:
 
-1. **Stage 2 — take `mdtraj.Trajectory` out of the base classes.** This is the
-   one thing everything else waits on, and it is not gated on the IMP question
-   below: coordinates no longer need mdtraj at all. `TrajectoryFile` becomes a
-   class over `(xyz, topology, time)`. Its consumers reach mdtraj methods
-   *through inheritance* (`superpose`, slicing, `join`, `.xyz`, `.topology`),
-   so they break together the moment the base class goes — expect to port the
-   eight `traj` plugins in the same change rather than after it.
-   Read the centring trap above first.
-2. **Stage 3 — topology without `mdtraj.Topology`.** *This* is what the IMP
-   question gates. `chisurf.core.structure.Structure` already reads PDB without
-   mdtraj (it uses it only in the `find_best` RMSD helper), so the topology may
-   be closer to hand than it looks — check what `Structure` can already supply
-   before reaching for IMP.
-3. **Then the FRET modelling plugin** (`rmsd` matrices, `compute_distances`)
-   and the `mdconvert` shell-out in `traj_convert`.
-4. **Then drop the three dependencies** and extend the guardrail.
+| Piece | Where | Checked against the reference |
+|---|---|---|
+| DCD read/write | `core/fio/trajectory/dcd.py` | byte-identical records; 1.1–3.4× faster |
+| XTC read | `core/fio/trajectory/xtc.py` | bit-exact, every branch; 1.8–2.2× faster |
+| Selections | `core/structure/selection.py` | 45 expressions, identical indices |
+| Topology | `core/structure/topology.py` | atoms/residues/chains/elements identical |
 
-**Settle before stage 3, not before stage 2:** IMP is imported 34 times but
-declared in no manifest — allowlisted as a sibling project, with one
-*module-level* `IMP.cgmol` import in `potentials.py`. If a packaged install
-cannot assume IMP, topology cannot depend on it.
+What is left is the port itself, in this order:
 
-Do not remove mdtraj until the equal-to-mdtraj tests exist and pass; they are
-the only evidence that the coordinates did not move. The committed fixtures
-under `test/data/atomic_coordinates/trajectory/{dcd,xtc}/` already cover the
-codecs and need no mdtraj — it is the *operations* that still lack that cover.
+1. **A `Trajectory` class of our own.** The last missing *capability*, and small
+   compared with what is already done — the operations in use are `superpose`,
+   `rmsd`, `join`, `slice`/indexing, `iterload` and `compute_distances`. Kabsch
+   superposition already exists in `chimol/analysis/metrics.py`. Build it over
+   `(xyz, Topology, time)` and test each operation against the reference **while
+   it is still installed**; those tests are the evidence and cannot be written
+   afterwards.
+2. **Take `mdtraj.Trajectory` out of `TrajectoryFile`'s bases** and port the
+   eight `traj` plugins in the same change. They reach mdtraj methods *through
+   inheritance*, so they break together the moment the base class goes. Read the
+   centring trap above before starting.
+3. **The FRET modelling plugin** (`rmsd` matrices, `compute_distances`), chimol's
+   `io/structure.py`, `structure.py`'s `find_best`, and the `mdconvert`
+   shell-out in `traj_convert`.
+4. **The six `import tables` sites.** Four are the `traj` plugins writing `.h5`
+   trajectories, which stage 2 removes outright; `av/dynamic.py`'s `save()` is
+   the same; only `maxent_decay/core/sampling.py` needs a real decision (`.npz`
+   is the obvious answer).
+5. **Then drop `mdtraj`, `pytables` and `numexpr`** from the three manifests and
+   add them to `test/test_no_retired_dependency_imports.py`.
+
+**Two test sites, not runtime**: `chimol/test/test_ss_vs_mdtraj.py` uses
+`compute_dssp` as an oracle for chimol's own secondary structure — it needs a
+recorded fixture, not a DSSP implementation — and
+`fret/test/test_pair_selection.py` builds a `Topology`.
+
+**The IMP question is now smaller than it looked.** It gated topology, and
+topology no longer needs IMP: it is built on `Structure`, which reads PDB and
+mmCIF without any MD library. IMP is still imported 34 times and declared in no
+manifest, and that is worth settling — but it no longer blocks this PRD.
+
+Do not remove mdtraj until the equal-to-mdtraj tests for the *operations* exist
+and pass. The formats, selections and topology already have that cover; the
+operations do not.
