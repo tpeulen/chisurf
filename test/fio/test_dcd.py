@@ -16,6 +16,7 @@ mdtraj itself.
 from __future__ import annotations
 
 import pathlib
+import tempfile
 
 import numpy as np
 import pytest
@@ -41,6 +42,38 @@ def test_reads_a_dcd_written_by_another_implementation():
     assert xyz.shape == expected.shape
     np.testing.assert_allclose(xyz, expected, rtol=0, atol=1e-4)
     assert lengths is None and angles is None      # this trajectory has no cell
+
+
+def test_our_writer_reproduces_the_foreign_file_byte_for_byte():
+    """The strongest parity statement available, and it needs no other library.
+
+    Read the coordinates out of a DCD written by the reference implementation,
+    write them back out with ours, and compare the coordinate records as bytes.
+    Equality here means the reader and the writer are exact inverses of the
+    other implementation's — not merely close to it, which is all a tolerance
+    comparison can say.
+    """
+    expected = np.load(DATA / "hgbp1_transition_expected.npz")["xyz_angstrom"]
+
+    def coordinate_records(raw: bytes, n_atoms: int) -> list[bytes]:
+        out, pos = [], 0
+        while pos < len(raw):
+            n = int(np.frombuffer(raw, dtype="<i4", count=1, offset=pos)[0])
+            if n == 4 * n_atoms:
+                out.append(raw[pos + 4: pos + 4 + n])
+            pos += 4 + n + 4
+        return out
+
+    xyz, _, _ = read_dcd(REAL)
+    with tempfile.TemporaryDirectory() as tmp:
+        mine = pathlib.Path(tmp) / "mine.dcd"
+        write_dcd(mine, xyz)
+        theirs = coordinate_records(REAL.read_bytes(), 5235)
+        ours = coordinate_records(mine.read_bytes(), 5235)
+    assert len(ours) == len(theirs) == 3 * 3          # 3 frames x X/Y/Z
+    assert ours == theirs
+    # ...and the values are the ones the other implementation itself reported.
+    np.testing.assert_allclose(xyz, expected, rtol=0, atol=1e-4)
 
 
 def test_reads_the_header_of_a_foreign_file():

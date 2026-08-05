@@ -38,9 +38,51 @@ from __future__ import annotations
 import dataclasses
 import pathlib
 
+import numba as nb
 import numpy as np
 
 __all__ = ["DCDHeader", "read_dcd", "write_dcd", "dcd_info"]
+
+
+@nb.njit(cache=True, parallel=True)
+def _gather_frames(flat, frames, atoms, frame_stride, x_offset, gap, out):
+    """De-interleave DCD's separate X, Y and Z blocks into ``(frame, atom, 3)``.
+
+    A DCD frame stores all the X values, then all the Y, then all the Z, each
+    in its own record. Turning that into the interleaved array everything else
+    wants is a gather with a stride, and doing it a frame at a time in Python
+    is what the read used to cost -- the decoding itself is free, because the
+    payload is already ``float32``.
+
+    Parameters
+    ----------
+    flat : numpy.ndarray
+        The whole post-header payload viewed as ``float32``, record markers
+        included. Native byte order.
+    frames : numpy.ndarray
+        Indices of the frames to gather, in output order.
+    atoms : numpy.ndarray
+        Indices of the atoms to keep, in output order.
+    frame_stride : int
+        Distance between frames, in ``float32`` slots.
+    x_offset : int
+        Slot of the first X value within a frame.
+    gap : int
+        Slots between the end of one coordinate block and the start of the
+        next -- the two record markers that separate them.
+    out : numpy.ndarray
+        ``(len(frames), len(atoms), 3)`` destination.
+    """
+    n_atoms_file = (frame_stride - x_offset - 2 * gap) // 3
+    for i in nb.prange(frames.shape[0]):
+        base = frames[i] * frame_stride + x_offset
+        y_base = base + n_atoms_file + gap
+        z_base = y_base + n_atoms_file + gap
+        for j in range(atoms.shape[0]):
+            a = atoms[j]
+            out[i, j, 0] = flat[base + a]
+            out[i, j, 1] = flat[y_base + a]
+            out[i, j, 2] = flat[z_base + a]
 
 #: Header record length, and the magic that follows it.
 _HEADER_BYTES = 84
@@ -263,35 +305,43 @@ def read_dcd(path, *, stride: int | None = None, atom_indices=None):
     path = pathlib.Path(path)
     with open(path, "rb") as handle:
         header, marker_bytes, offset = _read_header(handle)
-        i4, f4, f8, marker = _dtypes(header.big_endian, marker_bytes)
+        _, f4, f8, _ = _dtypes(header.big_endian, marker_bytes)
         per_frame = _frame_bytes(header, marker_bytes)
+        if per_frame % 4:
+            raise OSError("malformed DCD: frame size is not a whole number of floats")
         n_frames = (path.stat().st_size - offset) // per_frame
 
-        keep = range(0, int(n_frames), int(stride) if stride else 1)
-        indices = None if atom_indices is None else np.asarray(atom_indices, dtype=np.intp)
-        n_out = header.n_atoms if indices is None else indices.size
+        keep = np.arange(0, int(n_frames), int(stride) if stride else 1, dtype=np.int64)
+        atoms = (np.arange(header.n_atoms, dtype=np.int64) if atom_indices is None
+                 else np.asarray(atom_indices, dtype=np.int64))
+        if atoms.size and (atoms.min() < 0 or atoms.max() >= header.n_atoms):
+            raise IndexError(f"atom index out of range for {header.n_atoms} atoms")
 
-        xyz = np.empty((len(keep), n_out, 3), dtype=np.float32)
-        cells = np.empty((len(keep), 6), dtype=np.float64) if header.has_unitcell else None
+        handle.seek(offset)
+        payload = handle.read(int(n_frames) * per_frame)
 
-        for out, frame in enumerate(keep):
-            handle.seek(offset + frame * per_frame)
-            block = handle.read(per_frame)
-            if len(block) < per_frame:
-                raise OSError(f"truncated DCD: frame {frame} is incomplete")
-            pos = 0
-            if header.has_unitcell:
-                pos += marker_bytes
-                cells[out] = np.frombuffer(block, dtype=f8, count=6, offset=pos)
-                pos += 48 + marker_bytes
-            for axis in range(3):
-                pos += marker_bytes
-                values = np.frombuffer(block, dtype=f4, count=header.n_atoms, offset=pos)
-                xyz[out, :, axis] = values if indices is None else values[indices]
-                pos += 4 * header.n_atoms + marker_bytes
+    # One buffer, one pass. Reading frame by frame meant a seek, a read and
+    # three strided assignments per frame in Python, which is where the time
+    # went -- the bytes themselves are already float32 and need no decoding.
+    flat = np.frombuffer(payload, dtype=f4)
+    if header.big_endian:
+        # numba works in native byte order only, and a big-endian DCD is rare
+        # enough that the one extra pass costs nothing worth avoiding.
+        flat = flat.byteswap().view(np.float32)
+    flat = np.ascontiguousarray(flat, dtype=np.float32)
 
-    if cells is None:
+    slots = marker_bytes // 4                      # markers, in float32 slots
+    cell_slots = (2 * slots + 12) if header.has_unitcell else 0
+    xyz = np.empty((keep.size, atoms.size, 3), dtype=np.float32)
+    _gather_frames(flat, keep, atoms, per_frame // 4,
+                   cell_slots + slots, 2 * slots, xyz)
+
+    if not header.has_unitcell:
         return xyz, None, None
+    cells = np.empty((keep.size, 6), dtype=np.float64)
+    for out, frame in enumerate(keep):
+        start = frame * per_frame + marker_bytes
+        cells[out] = np.frombuffer(payload, dtype=f8, count=6, offset=int(start))
     lengths, angles = _angles_from_cell(cells)
     return xyz, lengths, angles
 

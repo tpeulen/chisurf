@@ -227,15 +227,26 @@ mdtraj's LGPL `.pyx` wrapper, to NumPy rather than a compiled extension: a
 frame is three contiguous `float32` blocks, so reading one is a
 `np.frombuffer` and no C is needed to be fast.
 
-**It is faster than the C plugin it replaces.** On 2500 atoms × 200 frames,
-against the numbers that chose the format:
+**Read speed against the C plugin it replaces** — medians of 7 alternating
+runs, after a warm-up, because a single shot cannot tell a speed difference
+from noise:
 
-| | write | read |
-|---|---|---|
-| mdtraj (C molfile plugin) | 34 ms | 14 ms |
-| **this codec (NumPy)** | **22 ms** | **5 ms** |
+| Shape | ours | mdtraj | ratio |
+|---|---|---|---|
+| 200 frames × 2500 atoms | 4.2 ms | 4.6 ms | 1.10× |
+| 464 frames × 5235 atoms | 12.9 ms | 21.9 ms | 1.69× |
+| 2000 frames × 500 atoms | 5.5 ms | 18.4 ms | 3.37× |
+| 50 frames × 20000 atoms | 5.2 ms | 5.6 ms | 1.08× |
 
-One read plus a `frombuffer` per frame beats a `fread` per record.
+**This took two goes, and the first answer was wrong.** The initial version read
+frame by frame — a seek, a read and three strided assignments per frame in
+Python — and a single unrepeated measurement flattered it into looking 3×
+faster than mdtraj. Repeated properly it was **0.79–1.04×**, i.e. slightly
+*slower*, and worst exactly where the per-frame Python cost dominates: many
+frames of few atoms. The fix is to read the whole payload once and de-interleave
+it in a single `numba` pass (`_gather_frames`, `prange` over frames). The
+decoding itself was never the cost — the payload is already `float32` — the
+per-frame Python was.
 
 Handled because real files use them: 64-bit record markers (CHARMM `-i8`),
 opposite-endian files, the X-PLOR header variant (timestep as a double), and
@@ -258,7 +269,17 @@ because an orthogonal cell hides an ordering mistake.
 
 The subtle decodings were **mutation-tested**: swapping alpha/gamma, reading
 the lengths as values 0–2 instead of 0/2/5, and skipping the cosine branch are
-each caught by the suite.
+each caught by the suite. (A fourth mutation — `arccos` for `90 − asin` — is
+*not* caught, and should not be: the two are the same identity.)
+
+The strongest parity result is byte-level and needs no other library at test
+time: reading the coordinates out of the reference file and writing them back
+reproduces its coordinate records **byte for byte** — on the full 464-frame
+trajectory, 1392 of 1392 records identical, same md5. That says the reader and
+writer are exact *inverses* of the other implementation's, which no tolerance
+comparison can. It also explains the only apparent discrepancy: comparing
+against mdtraj's array shows ~7.6e-06, and that is mdtraj's own Å→nm→Å
+conversion, not our error.
 
 # Migration
 
