@@ -281,6 +281,56 @@ comparison can. It also explains the only apparent discrepancy: comparing
 against mdtraj's array shows ~7.6e-06, and that is mdtraj's own Å→nm→Å
 conversion, not our error.
 
+# Landed: the XTC decoder
+
+`chisurf/core/fio/trajectory/xtc.py` — `read_xtc`, `xtc_info`. Ported from
+GROMACS' `xdrfile` (BSD-2), again from the C rather than the LGPL wrapper.
+
+Unlike DCD, this is a real decode: coordinates are quantised to a stated
+precision, stored as integers relative to a per-frame bounding box, and
+bit-packed. The bit-level routines are numba kernels because there is no
+vectorised way to walk a bit stream.
+
+**Faster than the reference C, by decoding frames in parallel** — medians of 5,
+against mdtraj's vendored `xdrfile`:
+
+| Frames × atoms | ours | mdtraj | ratio |
+|---|---|---|---|
+| 50 × 5235 | 6.5 ms | 12.4 ms | 1.91× |
+| 200 × 5235 | 26.2 ms | 47.3 ms | 1.81× |
+| 464 × 5235 | 61.4 ms | 133.5 ms | 2.17× |
+
+Unpacking one frame is strictly serial, but each frame is a self-contained
+compressed block — the bit stream never crosses a frame boundary — so the
+frames are embarrassingly parallel. That is the entire source of the win; the
+reference decodes them one after another.
+
+**Bit-exact** against the reference on every branch: 1, 4, 9 (uncompressed),
+10, 100 and 5235 atoms.
+
+Three things cost real time to get right, all of them silent failures:
+
+1. **`run` persists across atoms.** When the flag bit is 0 the reference does
+   *not* reset the run length — a second water molecule of the same length
+   costs that single bit. Resetting it decodes the first molecule and then
+   walks off the stream.
+2. **The ≤9-atom branch has a different frame layout.** The coordinates sit
+   behind the atom-count field that only the compressed branch otherwise reads,
+   so the frame walker desynchronises four bytes in and reports "not an XTC
+   file" at the *second* frame.
+3. **`lastbyte` is a 32-bit unsigned in C** and the shift discards the high
+   bits. Letting it grow in 64-bit changes what the next shift reads.
+
+**The oracle must be what the reference reads back, not what it was given.**
+XTC is lossy; storing the pre-write coordinates as "expected" fails by
+0.0005 nm against a perfectly correct decoder, and invites loosening the
+tolerance until real bugs fit through. That mistake was made and corrected
+here.
+
+XTC stays **read-only**: ChiSurf writes DCD, which is lossless, so an encoder
+would exist only to hand files to other tools, and it would have to reproduce
+the quantisation ladder exactly to be worth having.
+
 # Migration
 
 **`.h5` trajectories are not supported and not converted.** They were an
@@ -325,8 +375,9 @@ few percent without anything raising.
 # Definition of Done
 
 - [x] DCD reader/writer, with cross-tool parity tests both directions
-- [ ] XTC reader/writer (the `xdr3dfcoord` bit-packing; numba for the inner loop)
-- [ ] TRR reader/writer
+- [x] XTC reader (the `xdr3dfcoord` bit-packing, in numba)
+- [ ] XTC writer — only needed to hand files to other tools; ChiSurf writes DCD
+- [ ] TRR reader/writer — no call site needs it yet; add on demand
 - [ ] `TrajectoryFile` no longer subclasses `mdtraj.Trajectory`
 - [ ] All 17 runtime import sites ported; 2 test sites resolved (DSSP fixture)
 - [ ] `csc` converter for existing `.h5` trajectories, shipped and documented
