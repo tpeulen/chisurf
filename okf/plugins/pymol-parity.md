@@ -1510,10 +1510,16 @@ Defaults: `thickness = 1` px, `color` black, `depth_jump = 0.03`.
 
 ## What chimol lacks
 
-`qtgl.py` renders straight to the default framebuffer: there is **no
+**Superseded — read the section above first.** The scaffolding described here as
+missing exists (`renderer/postprocess.py`), and silhouettes are built on it. What
+was missing was that switching it on broke the window; that is fixed. The
+remaining items are multishadow occlusion and depth cue, which reuse the same
+target. Kept for the design it records:
+
+`qtgl.py` rendered straight to the default framebuffer: no
 framebuffer-object scaffolding, no depth texture, no full-screen-quad pass and no
-second shader program**. Silhouettes, multishadow occlusion and depth cue all
-need that scaffolding, so it is the real first task and it is shared:
+second shader program. Silhouettes, multishadow occlusion and depth cue all
+need that scaffolding, so it was the first task and it is shared:
 
 1. an FBO with a colour **and depth texture**, sized to the viewport and rebuilt
    on resize;
@@ -1527,6 +1533,60 @@ expensive.
 
 **This must be verified in a real window.** Offscreen Qt creates no GL context, so
 none of it is exercised by the offscreen suite; see the capture notes above.
+
+## The FBO scaffolding was built, and switching it on broke the window
+
+The "what chimol lacks" list below said there was **no** render-to-texture
+scaffolding and named it the next task. It has been there for some time, with
+silhouettes on top of it — the entry was a claim with a shelf life, like the
+tracer's refusal. What was true is that **nobody could have used it**: turning
+silhouettes on took the sequence strip off the screen and jumped the molecule
+half an inch up the window.
+
+Three defects, all in how the offscreen pass meets the rest of the frame, and
+all invisible to the suite because nothing rendered a *window* with an effect on.
+
+* **The overlay was painted before the composite.** `_render_overlay` draws with
+  QPainter, which targets the **widget's** framebuffer rather than the bound
+  one, so the chrome went down first and the composite blit then erased it. The
+  strip lost **53 %** of its ink. The two early-return paths in `paintGL`
+  already ran `end()` first; only the path that draws a molecule did not.
+* **The offscreen buffer was the window's full height** while the direct path
+  reserves a band for the strip, so the scene was rendered centred in a taller
+  frame than the one it is shown in and visibly shifted — and the blit, sized to
+  that buffer, covered the band as well.
+* **A window that has not been laid out built a 1-pixel-wide framebuffer.** The
+  same `scene_width` floor that once told the camera the window was thirty times
+  taller than wide: the scene renders into it, `end` blits a one-pixel column
+  back, and **the molecule disappears**. The effect passes now decline below
+  `_MIN_MEASURABLE_SCENE`, which is what they already do when no effect is on.
+
+**The metric lied before the picture did, again.** The first measurement said
+"10.28 % of pixels changed — the setting works". It did change the picture: it
+was deleting the strip and moving the molecule. A real outline moves **0.15 %**.
+That ratio is now the assertion, because *more* change is the failure here, not
+less — and it is the same lesson the two-sided lighting work recorded one
+section down, arrived at from the opposite direction.
+
+Guardrails in `test_lighting.py`, which already renders real framebuffers. The
+strip one asserts **ink coverage**, not pixel equality: painting after a
+composite leaves QPainter different GL state and moves glyph antialiasing by up
+to 12/255 (mean 0.38) with the two crops indistinguishable side by side, while
+erasure takes the ink to nearly nothing. Both were checked against the old code
+and do fail there.
+
+The third defect also caught the *test* out before the code: a window restored
+from a persisted dock layout handed the 3-D widget 109×350 — less than the
+panel's own 220-pixel column — so the helper forces a viewport and **asserts**
+it got one rather than skipping. A guardrail that quietly stands down is what
+this file exists to avoid.
+
+Still open here: `set silhouette, on` is not a registered setting, so the feature
+is reachable only through the ChimeraX-style `lighting silhouette=on`. And
+`set_lighting` writes `_post` directly while `_DISPLAY_CONFIG["silhouette"]` is
+read only at construction — two stores for one state, so the config is a startup
+default that a live change never reaches. Registering the name means fixing that
+first, or it is one more setting that stores and does nothing.
 
 ## Every frame rebuilt the whole scene, through a colour query
 

@@ -366,3 +366,159 @@ def test_set_lighting_rejects_an_unknown_name(session):
     viewer, _shared, _do, _messages, _errors = session
     with pytest.raises(ValueError, match="unknown parameter 'nosuchparam'"):
         viewer._renderer.set_lighting(nosuchparam=1)
+
+
+# --------------------------------------------------------------------------- #
+# Switching an effect on must not move or erase anything else
+# --------------------------------------------------------------------------- #
+def _window_with_molecule(qapp):
+    """A real window showing 148L, or a skip when GL is unavailable."""
+    if os.environ.get("QT_QPA_PLATFORM", "").lower() == "offscreen":
+        pytest.skip("a GL context cannot be created on the offscreen platform")
+    from qtpy import QtCore
+
+    from chisurf.plugins.chimol.chimol.app.molview_main_window import (
+        MolViewPluginWindow,
+    )
+
+    pdb = (
+        pathlib.Path(__file__).resolve().parents[4]
+        / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+    )
+    window = MolViewPluginWindow()
+    window.setAttribute(QtCore.Qt.WA_DontShowOnScreen, True)
+    window.resize(1100, 780)
+    window.show()
+    for _ in range(10):
+        qapp.processEvents()
+    window._load_structure_from_path(pdb, name="148l")
+    for _ in range(20):
+        qapp.processEvents()
+
+    # Force a viewport worth measuring. A window restored from a persisted dock
+    # layout can hand the 3-D widget 109x350 -- less than the panel's own 220
+    # pixel column -- and `scene_width` then clamps to 1. Everything still
+    # "works": the effect passes decline, no outline is drawn, and a test that
+    # only asked whether pixels moved would report the feature broken. Measured
+    # rather than hoped: the assertion below fails instead of skipping, because
+    # a guardrail that quietly stands down is the thing this file exists to
+    # avoid.
+    window.viewer.setMinimumWidth(760)
+    window.resize(1100, 780)
+    for _ in range(20):
+        qapp.processEvents()
+    widget = window.viewer._renderer.widget()
+    assert widget.scene_width() >= 200, (
+        f"the 3-D viewport is {widget.scene_width()} px wide; the window was "
+        "never laid out, so nothing below would be measuring the renderer"
+    )
+    return window
+
+
+def _frame(window, qapp) -> np.ndarray:
+    """Repaint and read the framebuffer back as ``(H, W, 3)`` uint8."""
+    widget = window.viewer._renderer.widget()
+    for _ in range(8):
+        qapp.processEvents()
+    widget.makeCurrent()
+    widget.paintGL()
+    image = widget.grabFramebuffer()
+    widget.doneCurrent()
+    width, height = image.width(), image.height()
+    bits = image.constBits()
+    bits.setsize(image.sizeInBytes())
+    arr = np.frombuffer(bits, np.uint8).reshape(height, image.bytesPerLine() // 4, 4)
+    return arr[:, :width, :3].copy()
+
+
+def test_an_effect_pass_leaves_the_rest_of_the_frame_alone(qapp):
+    """Turning silhouettes on must change edges, not the whole window.
+
+    Two defects, both invisible to every existing test and both obvious in a
+    screenshot. `_render_overlay` paints with QPainter, which targets the
+    *widget's* framebuffer rather than the bound one, so running it before the
+    composite meant the blit erased it -- the sequence strip vanished the moment
+    any effect was switched on. And the offscreen buffer was given the window's
+    full height while the direct path reserves a band for that strip, so the
+    molecule was rendered centred in a taller frame and visibly jumped.
+
+    Together they moved **10.28 %** of the pixels. A real outline moves 0.15 %.
+    That ratio is the assertion: an effect pass is a local change, and anything
+    that repaints most of the window is not an outline.
+    """
+    window = _window_with_molecule(qapp)
+    try:
+        from chisurf.plugins.chimol.chimol.cmd.command import Cmd
+
+        cmd = Cmd(window)
+        cmd.set_message_callback(lambda _m: None)
+        cmd.set_error_callback(lambda _m: None)
+        cmd.do("as cartoon")
+
+        before = _frame(window, qapp)
+        cmd.do("lighting silhouette=on")
+        assert window.viewer._renderer._post.silhouette is True
+        after = _frame(window, qapp)
+
+        assert after.shape == before.shape
+        moved = int((np.abs(after.astype(int) - before.astype(int)).max(axis=2) > 8).sum())
+        fraction = moved / before[..., 0].size
+
+        assert moved > 0, "the silhouette pass drew nothing at all"
+        assert fraction < 0.02, (
+            f"switching silhouettes on repainted {fraction:.2%} of the window; "
+            "an outline is a local change, so this is the overlay being erased "
+            "or the scene being shifted"
+        )
+    finally:
+        window.close()
+
+
+def test_the_sequence_strip_survives_an_effect_pass(qapp):
+    """The strip is drawn by QPainter and was blitted over.
+
+    Checked where the strip actually is -- the band above the 3-D viewport --
+    rather than over the whole frame, because the molecule legitimately changes
+    underneath it and a whole-frame comparison could not tell the two apart.
+    """
+    window = _window_with_molecule(qapp)
+    try:
+        from chisurf.plugins.chimol.chimol.cmd.command import Cmd
+
+        cmd = Cmd(window)
+        cmd.set_message_callback(lambda _m: None)
+        cmd.set_error_callback(lambda _m: None)
+        cmd.do("as cartoon")
+
+        widget = window.viewer._renderer.widget()
+        strip_logical = widget._internal_gui.sequence_height()
+        if strip_logical <= 0:
+            pytest.skip("this window shows no sequence strip")
+
+        before = _frame(window, qapp)
+        ratio = before.shape[0] / max(widget.height(), 1)
+        band = max(1, int(strip_logical * ratio))
+
+        cmd.do("lighting silhouette=on")
+        after = _frame(window, qapp)
+
+        # Ink coverage, not pixel equality. The strip is *there* or it is not,
+        # and erasure takes this to nearly zero; exact equality would fail on a
+        # difference nobody can see -- painting after a composite leaves QPainter
+        # different GL state, which moves glyph antialiasing by at most 12/255
+        # (mean 0.38) while the two crops are indistinguishable side by side.
+        def ink(frame_band):
+            return int((frame_band.max(axis=2) > 32).sum())
+
+        ink_before, ink_after = ink(before[:band]), ink(after[:band])
+        assert ink_before > 1000, "the strip band was already blank before the effect"
+        assert ink_after / ink_before > 0.95, (
+            f"the sequence strip lost {100 * (1 - ink_after / ink_before):.0f} % of "
+            "its ink when an effect was switched on; the composite blit is "
+            "covering the band it is drawn in"
+        )
+        assert np.abs(
+            after[:band].astype(int) - before[:band].astype(int)
+        ).max() < 40, "the strip band changed visibly, not just in antialiasing"
+    finally:
+        window.close()

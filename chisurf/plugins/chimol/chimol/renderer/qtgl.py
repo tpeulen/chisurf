@@ -1133,14 +1133,31 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         # widget exactly as before, so the scaffolding costs nothing unused.
         ratio = float(self.devicePixelRatioF()) if hasattr(self, "devicePixelRatioF") else 1.0
         buffer_w = max(1, int(self.scene_width() * ratio))
-        buffer_h = max(1, int(self.height() * ratio))
+        # The *same* height the viewport above was given -- the sequence strip's
+        # band excluded. A full-height buffer renders the molecule centred in a
+        # taller frame than the one it is shown in, so switching an effect on
+        # visibly shifted the scene; and because `end` blits a quad over the
+        # buffer's own extent, a full-height one also painted over the band the
+        # strip lives in and took the strip off the screen.
+        buffer_h = max(1, int((self.height() - strip) * ratio))
+        # A widget that has not been laid out is not a viewport, and the same
+        # 1-pixel floor that once told the camera the window was thirty times
+        # taller than wide (see `_aspect`) would here build a 1-pixel-wide
+        # framebuffer: the scene renders into it, `end` blits a one-pixel column
+        # back, and the molecule is *gone*. Below the measurable threshold the
+        # effect passes decline and the scene draws straight to the widget,
+        # which is the same thing they do when no effect is switched on.
+        measurable = (
+            buffer_w >= self._MIN_MEASURABLE_SCENE
+            and buffer_h >= self._MIN_MEASURABLE_SCENE
+        )
         # The depth-linearisation factor needs the near/far ratio, and collapses
         # to 1 under an orthographic projection.
         self._post.near_far_ratio = (
             1.0 if self._orthoscopic
             else float(self._near_clip) / max(float(self._far_clip), 1e-6)
         )
-        offscreen = self._post.begin(buffer_w, buffer_h)
+        offscreen = measurable and self._post.begin(buffer_w, buffer_h)
 
         r, g_col, b, a = self._background
         gl.glClearColor(r, g_col, b, a)
@@ -1399,13 +1416,20 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         self._program.setUniformValue(self._rim_power_uniform, float(self._rim_power))
 
         self._program.release()
-        self._render_overlay()
 
         # Back to the widget, then the effect passes. `defaultFramebufferObject`,
         # not 0: QOpenGLWidget composites through its own framebuffer, so binding
         # 0 here draws into nothing visible.
+        #
+        # Before the overlay, not after. `_render_overlay` paints with QPainter,
+        # which targets the *widget's* framebuffer rather than the bound one, so
+        # running it first put the chrome on screen and then had the composite
+        # blit erase it -- the sequence strip disappeared the moment any effect
+        # was switched on. The two early-return paths above already had this
+        # order; only the one that draws a molecule did not.
         if offscreen:
             self._post.end(self.defaultFramebufferObject())
+        self._render_overlay()
 
     # ------------------------------------------------------------------
     # Internal helpers
