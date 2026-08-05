@@ -1,249 +1,58 @@
+"""Compatibility shim for the console's old name.
+
+The console used to be ``QIPythonWidget``, a ``qtconsole.RichJupyterWidget``
+driving an in-process Jupyter kernel. It is now
+:class:`chisurf.gui.chinsole.Chinsole`, which needs no Jupyter, no IPython and
+no ZeroMQ.
+
+This module exists so the rename is not also a rewrite of every call site. New
+code should import from :mod:`chisurf.gui.chinsole` directly; this shim is a
+migration aid and will be removed once the last caller is gone.
+"""
+
 from __future__ import annotations
 
-import qtconsole
-import qtconsole.inprocess
-import qtconsole.manager
-import qtconsole.qtconsoleapp
-import qtconsole.styles
-from qtpy import QtCore, QtGui
+from qtpy import QtGui
 
-import chisurf.core.fio as io
-import chisurf.core.settings
-import chisurf.gui
-from chisurf import typing
-from chisurf.gui import QtWidgets
+from chisurf.gui.chinsole import Chinsole, ConsoleConfig, ConsoleRole
+from chisurf.gui.chinsole.settings import editor_font
+
+__all__ = ["QIPythonWidget", "make_editor_font_from_settings"]
 
 
 def make_editor_font_from_settings() -> QtGui.QFont:
-    """Create a font matching the code editor settings."""
-    editor_font = QtGui.QFont()
-    editor_font.setFamily(chisurf.core.settings.gui['editor']['font_family'])
-    editor_font.setPointSize(int(chisurf.core.settings.gui['editor']['font_size']))
-    return editor_font
+    """Return the console font from the ChiSurf settings.
+
+    Returns
+    -------
+    qtpy.QtGui.QFont
+    """
+    return editor_font()
 
 
-class QIPythonWidget(
-    qtconsole.qtconsoleapp.RichJupyterWidget
-    # qtconsole.qtconsoleapp.JupyterWidget
-):
+class QIPythonWidget(Chinsole):
+    """The ChiSurf console, under its historic name.
 
-    codeRequested = QtCore.Signal(str)
-    logRequested = QtCore.Signal(str)
-
-    def start_recording(self):
-        self._macro = ""
-        self.recording = True
-
-    def stop_recording(self):
-        self.recording = False
-
-    def run_macro(self, filename: str = None):
-        if filename is None:
-            filename = chisurf.gui.widgets.get_filename(
-                "Python macros",
-                file_type="Python file (*.py)"
-            )
-        with io.zipped.open_maybe_zipped(
-                filename=filename,
-                mode='r'
-        ) as fp:
-            text = fp.read()
-            self.execute(text, hidden=False)
-
-    def save_macro(self, filename: str = None):
-        self.stop_recording()
-        if filename is None:
-            filename = chisurf.gui.widgets.save_file(
-                "Python macros",
-                file_type="Python file (*.cm.py)"
-            )
-        with io.zipped.open_maybe_zipped(
-                filename=filename,
-                mode='w'
-        ) as fp:
-            fp.write(self._macro)
-
-    def do_execute(self, *args, **kwargs):
-        super().do_execute(*args, **kwargs)
-        # Record changes to history and file log
-        new_text = self._history[-1] + '\n'
-        with open(self.session_file, 'a+') as fp:
-            fp.write(new_text)
-        if self.recording:
-            self._macro += new_text
-        if isinstance(self.history_widget, QtWidgets.QPlainTextEdit):
-            self.history_widget.insertPlainText(new_text)
+    Parameters
+    ----------
+    history_widget : QtWidgets.QPlainTextEdit, optional
+        Mirrors every executed cell.
+    recording : bool, optional
+        Start the macro recorder immediately.
+    """
 
     def __init__(
             self,
-            history_widget: QtWidgets.QPlainTextEdit = None,
+            history_widget=None,
             recording: bool = False,
             *args,
-            **kwargs
+            **kwargs,
     ) -> None:
-        super().__init__(*args, **kwargs)
+        config = kwargs.pop("config", None) or ConsoleConfig(
+            role=ConsoleRole.INTERACTIVE,
+            init_source=None,
+        )
+        super().__init__(config)
         self.history_widget = history_widget
-        kernel_manager = qtconsole.inprocess.QtInProcessKernelManager()
-        kernel_manager.start_kernel()
-        kernel_client = kernel_manager.client()
-        kernel_client.start_channels()
-
-        self.kernel_manager = kernel_manager
-        self.kernel_client = kernel_client
-
-        def stop():
-            self.kernel_client.stop_channels()
-            self.kernel_manager.shutdown_kernel()
-
-        self.exit_requested.connect(stop)
-        self.width = kwargs.get('width', chisurf.core.settings.gui['console_width'])
-        self._macro = ""
-        self.recording = recording
-
-        # Connect signal used for cross-thread execution of code
-        try:
-            self.codeRequested.connect(self._execute_from_signal)
-        except Exception:
-            pass
-
-        try:
-            self.logRequested.connect(self._log_from_signal)
-        except Exception:
-            pass
-
-        # save nevertheless every input into a session file
-        self.session_file = chisurf.core.settings.session_file
-        self.set_default_style(chisurf.core.settings.gui['console_style'])
-        self.style_sheet = qtconsole.styles.default_light_style_sheet
-
-        # Use the same font as the code editor for visual consistency
-        self.set_editor_font(make_editor_font_from_settings())
-
-    def set_editor_font(self, font: QtGui.QFont) -> None:
-        """Apply the code editor font to the console widgets."""
-        self.setFont(font)
-        if hasattr(self, '_control'):
-            self._control.setFont(font)
-
-    def pushVariables(self, variableDict: typing.Dict[str, object]) -> None:
-        """ Given a dictionary containing name / value pairs, push those
-        variables to the IPython console widget """
-        self.kernel_manager.kernel.shell.push(variableDict)
-
-    def clearTerminal(self):
-        """ Clears the terminal """
-        self._control.clear()
-
-    def printText(self, text: str):
-        """ Prints some plain name to the console """
-        self._append_plain_text(text)
-
-    @QtCore.Slot(str)
-    def _execute_from_signal(self, code: str) -> None:
-        """Internal slot to execute code; runs on this widget's thread."""
-        try:
-            self.execute(code)
-        except Exception:
-            pass
-
-    def _log_code(self, code: str) -> None:
-        try:
-            code_str = str(code)
-        except Exception:
-            return
-        if not code_str:
-            return
-        if not code_str.endswith("\n"):
-            code_str += "\n"
-        try:
-            with open(self.session_file, 'a+', encoding='utf-8', errors='ignore') as fp:
-                fp.write(code_str)
-        except Exception:
-            pass
-        try:
-            if self.recording:
-                self._macro += code_str
-        except Exception:
-            pass
-        try:
-            if isinstance(self.history_widget, QtWidgets.QPlainTextEdit):
-                self.history_widget.insertPlainText(code_str)
-        except Exception:
-            pass
-
-    @QtCore.Slot(str)
-    def _log_from_signal(self, code: str) -> None:
-        try:
-            self._log_code(code)
-        except Exception:
-            pass
-
-    def execute_on_gui_thread(self, code: str = None):
-        """Execute code via the IPython console on this widget's thread.
-
-        This allows chisurf.run(...) to be called safely from any thread.
-        """
-        if code is None:
-            return None
-        try:
-            code_str = str(code)
-        except Exception:
-            return None
-
-        # If already on this widget's thread (typically the GUI thread), execute directly
-        try:
-            if QtCore.QThread.currentThread() is self.thread():
-                return self.execute(code_str)
-        except Exception:
-            # If thread affinity check fails, fall back to direct execution
-            try:
-                return self.execute(code_str)
-            except Exception:
-                return None
-
-        # Called from a non-GUI thread: emit signal; Qt will deliver it
-        # to this widget on its own thread (queued connection).
-        try:
-            self.codeRequested.emit(code_str)
-            return None
-        except Exception:
-            pass
-
-        # Fallback: execute directly rather than silently dropping the command
-        try:
-            return self.execute(code_str)
-        except Exception:
-            return None
-
-    def log_on_gui_thread(self, code: str = None):
-        if code is None:
-            return None
-        try:
-            code_str = str(code)
-        except Exception:
-            return None
-        if not code_str:
-            return None
-
-        try:
-            if QtCore.QThread.currentThread() is self.thread():
-                self._log_code(code_str)
-                return None
-        except Exception:
-            try:
-                self._log_code(code_str)
-                return None
-            except Exception:
-                return None
-
-        try:
-            self.logRequested.emit(code_str)
-            return None
-        except Exception:
-            pass
-
-        try:
-            self._log_code(code_str)
-        except Exception:
-            pass
-        return None
+        if recording:
+            self.start_recording()

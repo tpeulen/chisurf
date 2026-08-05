@@ -135,7 +135,6 @@ requirements:
     # ported to pyqtgraph, and guidata's DataFrameEditor was replaced by the
     # in-tree chitable widget family. No third-party GUI toolkit remains.
     - python-docx
-    - qtconsole
     - scikit-learn
     - hdbscan
     - ${{ "libcxx" if osx }}

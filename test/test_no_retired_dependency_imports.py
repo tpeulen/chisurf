@@ -76,6 +76,10 @@ RETIRED = {
         "emcee",
         "use chisurf.core.fitting.ensemble",
     ),
+    "qtconsole": (
+        "qtconsole",
+        "use chisurf.gui.chinsole",
+    ),
 }
 
 #: Further distribution names that install the same retired module, checked by

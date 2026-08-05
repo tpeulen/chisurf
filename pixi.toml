@@ -52,7 +52,6 @@ notebook = "<7"
 pyopengl = "*"
 pytables = "*"
 python-docx = "*"
-qtconsole = "*"
 # scikit-learn: k-means and GMM for burst selection and ndXplorer clustering,
 # PCA for the parameter decomposition, and the H2MM surrogate. (hmmlearn was
 # dropped: chisurf.core.math.hmm now provides the Gaussian HMM in-tree.)

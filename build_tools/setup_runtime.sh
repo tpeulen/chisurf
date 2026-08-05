@@ -53,7 +53,6 @@ DEPS=(
     "pyopengl"
     "pytables"
     "python-docx"
-    "qtconsole"
     "latexify-py"
     "pygments"
 )

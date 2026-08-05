@@ -43,7 +43,6 @@ dependencies = [
     "qtpy",
     "sip",
     "pyqtgraph",
-    "qtconsole",
     "numba",
     "numpy",
     "scipy",
