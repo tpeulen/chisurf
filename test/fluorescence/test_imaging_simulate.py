@@ -132,7 +132,8 @@ def test_load_image_map_npy_and_tif(tmp_path):
     np.save(npy, arr)
     np.testing.assert_allclose(load_image_map(str(npy)), arr)
 
-    tif = pytest.importorskip("tifffile")
+    from chisurf.core.fio.image import imwrite
+
     p = tmp_path / "map.tif"
-    tif.imwrite(str(p), arr.astype(np.float32))
+    imwrite(p, arr.astype(np.float32))
     np.testing.assert_allclose(load_image_map(str(p)), arr, rtol=1e-5)

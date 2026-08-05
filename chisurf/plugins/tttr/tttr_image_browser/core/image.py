@@ -526,19 +526,17 @@ def save_tiff_stacks(
                     continue
                 safe_name = "".join(ch if ch.isalnum() or ch in ("-", "_") else "_" for ch in str(combo_name))
                 dest = out / f"{p.stem}_{safe_name}.tiff"
-                ok = False
                 try:
-                    import tifffile as tiff
-                    tiff.imwrite(str(dest), stack.astype(np.uint32, copy=False))
-                    ok = True
+                    from chisurf.core.fio.image import imwrite
+
+                    imwrite(
+                        dest,
+                        stack.astype(np.uint32, copy=False),
+                        axes="TYX" if stack.ndim == 3 else None,
+                    )
                 except Exception:
-                    try:
-                        import imageio
-                        imageio.mimwrite(str(dest), [frame for frame in stack.astype(np.uint16, copy=False)], format="TIFF")
-                        ok = True
-                    except Exception:
-                        pass
-                if ok:
+                    _log.warning(f"Failed to write TIFF {dest}", exc_info=True)
+                else:
                     saved.append(str(dest))
         except Exception as e:
             _log.warning(f"Failed to save TIFF for {p}: {e}")

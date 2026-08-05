@@ -170,13 +170,13 @@ def test_a_plain_regions_file_loads_as_a_union(tmp_path):
 
 def test_a_label_image_loads_as_one_entry_per_object(tmp_path):
     """A segmentation is many regions, not one merged blob."""
-    import tifffile
+    from chisurf.core.fio.image import imread, imwrite
 
     labels = np.zeros((16, 16), dtype=np.uint16)
     labels[2:5, 2:5] = 1
     labels[9:13, 9:13] = 2
     path = tmp_path / "seg.tif"
-    tifffile.imwrite(str(path), labels)
+    imwrite(str(path), labels)
 
     back = RegionCollection.load(str(path))
     assert len(back) == 2

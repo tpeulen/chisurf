@@ -178,9 +178,9 @@ def rois_from_label_image(path: str, crop: bool = True) -> List[ROI]:
     if p.suffix.lower() in (".npy",):
         labels = np.load(str(p))
     else:
-        import tifffile
+        from chisurf.core.fio.image import imread
 
-        labels = np.asarray(tifffile.imread(str(p)))
+        labels = np.asarray(imread(p))
     if labels.ndim != 2:
         raise ValueError(f"expected a 2-D label image; got shape {labels.shape}")
     return labels_to_rois(labels.astype(int), crop=crop)
@@ -224,9 +224,9 @@ def load_regions(path: str, crop: bool = True) -> List[ROI]:
     if suffix == ".npy":
         arr = np.asarray(np.load(str(p)))
     else:
-        import tifffile
+        from chisurf.core.fio.image import imread
 
-        arr = np.asarray(tifffile.imread(str(p)))
+        arr = np.asarray(imread(p))
     if arr.ndim != 2:
         raise ValueError(f"expected a 2-D image; got shape {arr.shape}")
 
@@ -303,9 +303,9 @@ def save_label_image(
     if out.suffix.lower() == ".npy":
         np.save(str(out), labels)
     else:
-        import tifffile
+        from chisurf.core.fio.image import imwrite
 
-        tifffile.imwrite(str(out), labels.astype(np.uint16))
+        imwrite(out, labels.astype(np.uint16))
     return str(out)
 
 
@@ -331,9 +331,9 @@ def roi_from_mask_file(path: str, name: str = "") -> MaskROI:
     if p.suffix.lower() == ".npy":
         arr = np.load(str(p))
     else:
-        import tifffile
+        from chisurf.core.fio.image import imread
 
-        arr = np.asarray(tifffile.imread(str(p)))
+        arr = np.asarray(imread(p))
     if arr.ndim != 2:
         raise ValueError(f"expected a 2-D mask; got shape {arr.shape}")
     return MaskROI(arr != 0, name=name or p.stem)

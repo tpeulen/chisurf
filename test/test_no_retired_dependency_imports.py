@@ -2,8 +2,9 @@
 
 Each package listed in :data:`RETIRED` was a runtime dependency that either had
 an in-tree replacement written for it -- because the whole package was a few
-lines of code -- or was declared without anything ever importing it. This test
-fails if an import or a packaging declaration brings one back.
+lines of code -- was superseded by something an existing dependency already
+does, or was declared without anything ever importing it. This test fails if an
+import or a packaging declaration brings one back.
 
 Notes
 -----
@@ -43,6 +44,18 @@ RETIRED = {
     ),
     "pytools": ("pytools", "it was never imported"),
     "jsonschema": ("jsonschema", "it was never imported"),
+    "tifffile": (
+        "tifffile",
+        "use chisurf.core.fio.image (tttrlib's bundled libtiff)",
+    ),
+    "imageio": (
+        "imageio",
+        "use chisurf.core.fio.image; note skimage.io routes through imageio too",
+    ),
+    "imagecodecs": (
+        "imagecodecs",
+        "it only ever existed to let tifffile decode compressed TIFFs",
+    ),
     "requests": (
         "requests",
         "use chisurf.core.http",
@@ -126,6 +139,30 @@ def test_no_module_imports_retired_package(module):
             offenders.append(rel)
     assert not offenders, (
         f"{packaging_name} is no longer a dependency ({hint}). Importing modules: {offenders}"
+    )
+
+
+def test_no_module_imports_skimage_io():
+    """``skimage.io`` is imageio wearing a different name.
+
+    scikit-image stays a dependency, but its ``io`` subpackage reads and writes
+    through an imageio plugin, so importing it undoes the removal without ever
+    naming the package -- and it is the reader people reach for out of habit.
+    Everything it was used for goes through :mod:`chisurf.core.fio.image`.
+    """
+    pattern = re.compile(
+        r"^\s*(?:import\s+skimage\.io\b|from\s+skimage\.io\s|from\s+skimage\s+import\s+io\b)",
+        re.MULTILINE,
+    )
+    offenders = [
+        str(path.relative_to(REPO_ROOT))
+        for path in _python_sources()
+        if str(path.relative_to(REPO_ROOT)) not in _ALLOWED
+        and pattern.search(path.read_text(encoding="utf-8", errors="ignore"))
+    ]
+    assert not offenders, (
+        "skimage.io reads through imageio, a retired dependency; "
+        f"use chisurf.core.fio.image instead. Importing modules: {offenders}"
     )
 
 

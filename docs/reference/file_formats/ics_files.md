@@ -33,7 +33,7 @@ Then load either:
 The reader will:
 
 1. For TIFF stacks
-   - Read the image data (`tifffile`, falling back to Pillow).
+   - Read the image data through `chisurf.core.fio.image`.
    - Normalize the stack to shape `(n_frames, ny, nx)`.
    - Optionally select a single colour channel for multi-channel images.
 2. For TTTR files

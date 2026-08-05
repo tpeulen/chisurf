@@ -220,12 +220,12 @@ def test_label_image_round_trips_through_a_tiff(tmp_path):
 
 def test_binary_mask_file_imports_as_one_region(tmp_path):
     """The reference implementation's export shape: a single boolean mask."""
-    import tifffile
+    from chisurf.core.fio.image import imread, imwrite
 
     mask = np.zeros((10, 10), dtype=np.uint8)
     mask[3:7, 3:7] = 1
     path = tmp_path / "exported_mask.tif"
-    tifffile.imwrite(path, mask)
+    imwrite(path, mask)
 
     roi = roi_from_mask_file(str(path))
     assert roi.name == "exported_mask"
@@ -260,7 +260,7 @@ def test_load_regions_reads_each_kind_by_what_the_file_holds(tmp_path):
     silently, because a label image is also a valid mask. Consumers were each
     re-implementing that dispatch — and each getting the same case wrong.
     """
-    tifffile = pytest.importorskip("tifffile")
+    from chisurf.core.fio.image import imread, imwrite
     from chisurf.core.roi import RectangleROI
     from chisurf.core.roi.io import load_region, load_regions
 
@@ -268,7 +268,7 @@ def test_load_regions_reads_each_kind_by_what_the_file_holds(tmp_path):
     labels[1:4, 1:4] = 1
     labels[7:10, 7:10] = 2
     label_path = tmp_path / "cells.tif"
-    tifffile.imwrite(str(label_path), labels)
+    imwrite(str(label_path), labels)
 
     regions = load_regions(str(label_path))
     assert len(regions) == 2, "a label image is one region per object"
@@ -279,7 +279,7 @@ def test_load_regions_reads_each_kind_by_what_the_file_holds(tmp_path):
 
     # A binary mask stays a single region.
     mask_path = tmp_path / "cell.tif"
-    tifffile.imwrite(str(mask_path), (labels > 0).astype(np.uint8))
+    imwrite(str(mask_path), (labels > 0).astype(np.uint8))
     assert len(load_regions(str(mask_path))) == 1
 
     # The native format round-trips whatever it holds, shapes included.

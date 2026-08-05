@@ -1,6 +1,6 @@
 """Two-channel image colocalization plugin (TIFF stacks and photon-stream images).
 
-Importing this package stays light: nothing here pulls in Qt, ``tifffile`` or
+Importing this package stays light: nothing here pulls in Qt, image readers or
 ``tttrlib``, so the CLI and headless use stay fast. The GUI is loaded only when
 the plugin is launched (``__name__ == "plugin"``), run as a script, or resolved
 through the manifest ``gui`` entrypoint.

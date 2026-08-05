@@ -162,7 +162,7 @@ class ClsmGeneratorViewModel:
     def save(self, path: str) -> str:
         """Save the generated photon stream (``.npz`` arrays, else a TTTR file).
 
-        Also writes ``<stem>_intensity.tif`` next to it when tifffile is present.
+        Also writes ``<stem>_intensity.tif`` next to it.
         Returns the written path (empty when there is nothing to save).
         """
         if self._sim is None:
@@ -196,10 +196,10 @@ class ClsmGeneratorViewModel:
 
     def _save_intensity_tif(self, path: pathlib.Path) -> None:
         try:
-            import tifffile
+            from chisurf.core.fio.image import imwrite
 
-            tifffile.imwrite(
-                str(path.with_name(f"{path.stem}_intensity.tif")),
+            imwrite(
+                path.with_name(f"{path.stem}_intensity.tif"),
                 np.asarray(self._sim.intensity, dtype=np.float32),
             )
         except Exception:

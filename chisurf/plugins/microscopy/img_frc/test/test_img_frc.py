@@ -36,9 +36,9 @@ def _band_limited_stack(n_frames=8, size=128, cutoff=0.15, noise=1.0, seed=3, ob
 @pytest.fixture()
 def tiff_stack(tmp_path):
     """Write a band-limited stack to a multi-page TIFF and return its path."""
-    tifffile = pytest.importorskip("tifffile")
+    from chisurf.core.fio.image import imread, imwrite
     path = tmp_path / "bandlimited.tif"
-    tifffile.imwrite(str(path), _band_limited_stack().astype(np.float32))
+    imwrite(str(path), _band_limited_stack().astype(np.float32))
     return path
 
 
@@ -77,9 +77,9 @@ def test_the_first_second_half_split_also_works(tiff_stack):
 
 def test_a_single_frame_cannot_be_split_by_frame(tmp_path):
     """One frame holds no second measurement; saying so beats returning 1.0."""
-    tifffile = pytest.importorskip("tifffile")
+    from chisurf.core.fio.image import imread, imwrite
     path = tmp_path / "single.tif"
-    tifffile.imwrite(str(path), _band_limited_stack(n_frames=1)[0].astype(np.float32))
+    imwrite(str(path), _band_limited_stack(n_frames=1)[0].astype(np.float32))
     with pytest.raises(ValueError, match="at least two frames"):
         core.analyse(str(path))
 
@@ -96,9 +96,9 @@ def test_unknown_splits_and_missing_second_files_are_rejected(tiff_stack):
 
 def test_two_files_correlates_two_acquisitions(tiff_stack, tmp_path):
     """The two-file split reads a second stack and correlates the two sums."""
-    tifffile = pytest.importorskip("tifffile")
+    from chisurf.core.fio.image import imread, imwrite
     second = tmp_path / "second.tif"
-    tifffile.imwrite(str(second), _band_limited_stack(seed=99).astype(np.float32))  # same object, new noise
+    imwrite(str(second), _band_limited_stack(seed=99).astype(np.float32))  # same object, new noise
     result = core.analyse(str(tiff_stack), split="two_files", second_filename=str(second))
     assert result.crossed
     # Independent noise realisations of the same object: it still resolves the
@@ -128,14 +128,16 @@ def test_csv_export_writes_every_ring(tiff_stack, tmp_path):
 def test_a_short_stack_can_be_forced_to_be_frames(tmp_path):
     """A four-frame TIFF is guessed to be four channels; the override fixes it.
 
-    ``tifffile.imwrite`` labels a ``(4, y, x)`` float array ``"SYX"`` — sample
-    planes, i.e. an RGB-like image — so the reader delivers one frame with four
-    channels and a frame split has nothing to split. This is the ordinary case
-    of a short time series, not a corner case.
+    A plain TIFF stack carries no metadata saying what its pages are, and four
+    or fewer of them look far more like a two/three-colour image than like a
+    time series — so the reader delivers one frame with four channels and a
+    frame split has nothing to split. This is the ordinary case of a short time
+    series, not a corner case. Labelling the axes on write settles it for good;
+    the override is for the files already on disk that did not.
     """
-    tifffile = pytest.importorskip("tifffile")
+    from chisurf.core.fio.image import imread, imwrite
     path = tmp_path / "short.tif"
-    tifffile.imwrite(str(path), _band_limited_stack(n_frames=4).astype(np.float32))
+    imwrite(str(path), _band_limited_stack(n_frames=4).astype(np.float32))
 
     with pytest.raises(ValueError, match="at least two frames"):
         core.analyse(str(path))
@@ -277,13 +279,13 @@ def test_the_cli_fails_loudly_when_nothing_crosses(tmp_path):
 
     from chisurf.plugins.microscopy.img_frc.cli import cli
 
-    tifffile = pytest.importorskip("tifffile")
+    from chisurf.core.fio.image import imread, imwrite
     path = tmp_path / "noiseless.tif"
     # Eight identical frames: both halves are the same image, so the FRC is 1 at
     # every frequency and there is nothing to cross.
     stack = np.zeros((8, 32, 32), dtype=np.float32)
     stack[:, 8:24, 8:24] = 1.0
-    tifffile.imwrite(str(path), stack)
+    imwrite(str(path), stack)
     result = CliRunner().invoke(cli, [str(path)])
     assert result.exit_code != 0
     assert "never crosses" in result.output

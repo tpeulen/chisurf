@@ -15,6 +15,7 @@ import numpy as np
 import tttrlib
 
 import chisurf.core.data
+import chisurf.core.fio.image
 from chisurf.core.experiments.core.reader import ExperimentReader
 from chisurf.core.fluorescence.imaging.drift import correct_drift
 from chisurf.core.roi import ROI, as_roi
@@ -32,24 +33,8 @@ from .tttr_loader import load_clsm_from_tttr
 
 _VIEW_JSON = pathlib.Path(__file__).parent / "ics.view.json"
 
-try:
-    import imageio.v2 as imageio  # type: ignore[import]
-except Exception:  # pragma: no cover - optional dependency
-    try:
-        import imageio  # type: ignore[import]
-    except Exception:  # pragma: no cover - optional dependency
-        imageio = None
-
-
 def _load_tiff_stack(path: str) -> "np.ndarray":
     """Load a (possibly multi-frame, compressed) TIFF into a NumPy array.
-
-    Image-correlation TIFF stacks are frequently LZW-compressed and multi-page.
-    ``tifffile`` (used by ``imageio``) needs the optional ``imagecodecs``
-    package to decode LZW and reads a single frame via ``imageio.imread``;
-    Pillow decodes LZW natively and iterates every page. This helper prefers
-    ``tifffile`` (full stack, all dtypes) and falls back to Pillow, so stacks
-    load regardless of ``imagecodecs`` availability.
 
     Parameters
     ----------
@@ -62,22 +47,7 @@ def _load_tiff_stack(path: str) -> "np.ndarray":
         Array of shape ``(n_frames, ny, nx)`` for a stack, or ``(ny, nx)`` /
         ``(ny, nx, channels)`` for a single frame.
     """
-    # 1) tifffile reads the entire stack and preserves dtype/bit-depth. It only
-    #    fails for compressions (e.g. LZW) when imagecodecs is missing.
-    try:
-        import tifffile
-
-        return np.asarray(tifffile.imread(path))
-    except Exception:
-        pass
-    # 2) Pillow fallback: decodes LZW natively and iterates all pages.
-    from PIL import Image, ImageSequence
-
-    with Image.open(path) as im:
-        frames = [np.asarray(frame) for frame in ImageSequence.Iterator(im)]
-    if not frames:
-        raise ValueError(f"No frames could be read from TIFF: {path}")
-    return np.asarray(frames[0]) if len(frames) == 1 else np.asarray(frames)
+    return np.asarray(chisurf.core.fio.image.imread(path))
 
 
 class ICSReader(ExperimentReader):

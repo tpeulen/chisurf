@@ -93,18 +93,20 @@ def test_save_npy_round_trips(computed, tmp_path):
 
 def test_save_tiff_carries_the_voxel_size(computed, tmp_path):
     """ImageJ must find the voxel size, or the stack opens unscaled."""
-    tifffile = pytest.importorskip("tifffile")
+    from chisurf.core.fio import image
+
     path = computed.save(tmp_path / "psf.tif")
-    with tifffile.TiffFile(path) as handle:
-        data = handle.asarray()
-        meta = handle.imagej_metadata
-        num, den = handle.pages[0].tags["XResolution"].value
+    data, axes = image.read_labelled(path)
+    assert axes == "ZYX"
     assert data.shape == computed.volume.shape
     assert np.allclose(data, computed.volume.astype(np.float32))
-    assert meta["unit"] == "um"
-    assert meta["spacing"] == pytest.approx(computed.z_step_nm / 1000.0)
-    # XResolution is pixels per unit, so its reciprocal is the pixel size.
-    assert den / num * 1000.0 == pytest.approx(computed.pixel_size_nm)
+
+    meta = image.metadata(path)
+    assert meta["imagej"]["unit"] == "um"
+    assert float(meta["imagej"]["spacing"]) == pytest.approx(computed.z_step_nm / 1000.0)
+    # The resolution is in pixels per unit, so its reciprocal is the pixel size.
+    x_resolution, _ = meta["resolution"]
+    assert 1.0 / x_resolution * 1000.0 == pytest.approx(computed.pixel_size_nm)
 
 
 def test_save_defaults_to_npy_without_a_suffix(computed, tmp_path):

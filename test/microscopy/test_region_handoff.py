@@ -56,7 +56,7 @@ def test_a_segmentation_arrives_as_objects_not_as_one_blob(tmp_path):
     because a label image is also a valid mask — and the per-object numbers
     downstream would then describe the whole field.
     """
-    tifffile = pytest.importorskip("tifffile")
+    from chisurf.core.fio.image import imread, imwrite
     from chisurf.core.roi import RegionCollection, regionprops
     from chisurf.plugins.microscopy.clsm.gui.view_model import ClsmViewModel
 
@@ -65,7 +65,7 @@ def test_a_segmentation_arrives_as_objects_not_as_one_blob(tmp_path):
     labels[10:16, 10:16] = 2
     labels[18:22, 4:8] = 3
     path = tmp_path / "cells.tif"
-    tifffile.imwrite(str(path), labels)
+    imwrite(str(path), labels)
 
     vm = ClsmViewModel()
     vm.current_image = np.ones((24, 24)) * 5.0

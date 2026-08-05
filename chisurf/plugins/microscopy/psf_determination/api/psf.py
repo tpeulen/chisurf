@@ -19,57 +19,35 @@ if TYPE_CHECKING:
 def load_stack(path: str) -> np.ndarray:
     """Read an image stack from *path* into a ``(z, y, x)`` ``float32`` array.
 
-    Reads multi-page TIFFs as a 3-D volume (``imread`` returns only the first
-    page, so a z-stack would otherwise collapse to a single slice). A 2-D image
-    becomes a 1-slice stack; an RGB(A) image is reduced to its first channel.
+    Reads multi-page TIFFs as a 3-D volume (the usual bead-scan format). A 2-D
+    image becomes a 1-slice stack; an RGB(A) image is reduced to its first
+    colour channel.
 
     Parameters
     ----------
     path:
-        Path to a TIFF (or other imageio-readable) image/volume.
+        Path to a TIFF or other image/volume readable by
+        :mod:`chisurf.core.fio.image`.
 
     Returns
     -------
     numpy.ndarray
         3-D array with axes ``(z, y, x)``.
     """
-    try:
-        import imageio.v2 as imageio  # type: ignore[import]
-    except ImportError:  # pragma: no cover - optional dependency
-        import imageio  # type: ignore[import, no-redef]
+    from chisurf.core.fio.image import read_labelled
 
-    # Multi-page TIFFs (the usual bead-scan format) only stack correctly through
-    # ``mimread``; ``imread``/``volread`` return just the first page. ``mimread``
-    # also wraps a single 2-D image as a 1-frame list, so it covers both. Fall
-    # back to ``volread``/``imread`` for formats ``mimread`` cannot handle.
-    arr = None
-    for reader, kwargs in (
-        (getattr(imageio, "mimread", None), {"memtest": False}),
-        (getattr(imageio, "volread", None), {}),
-        (imageio.imread, {}),
-    ):
-        if reader is None:
-            continue
-        try:
-            arr = np.asarray(reader(path, **kwargs))
-            break
-        except Exception:
-            arr = None
-    if arr is None:
-        raise OSError(f"Could not read image stack: {path}")
-
-    arr = arr.astype(np.float32)
+    arr, axes = read_labelled(path)
+    arr = np.asarray(arr, dtype=np.float32)
+    # Which axis holds colour samples is read off the labels rather than
+    # guessed from a length of 3 or 4 -- a four-slice bead scan has the same
+    # shape as one RGBA image.
+    if "S" in axes:
+        arr = np.take(arr, 0, axis=axes.index("S"))
     if arr.ndim == 2:
         arr = arr[np.newaxis, ...]
-    elif arr.ndim == 4 and arr.shape[-1] in (3, 4):
-        # (z, y, x, c) stack of RGB(A) frames → first channel.
-        arr = arr[..., 0]
-    elif arr.ndim == 3 and arr.shape[-1] in (3, 4) and arr.shape[0] not in (3, 4):
-        # A single 2-D RGB(A) image read as (y, x, c) → first channel, 1 slice.
-        arr = arr[..., 0][np.newaxis, ...]
-    elif arr.ndim != 3:
+    if arr.ndim != 3:
         raise ValueError(f"Expected a 2D or 3D image stack, got shape {arr.shape}.")
-    return arr
+    return np.ascontiguousarray(arr)
 
 
 def gaussian_3d(coords: np.ndarray, params: np.ndarray | list) -> np.ndarray:

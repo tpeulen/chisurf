@@ -1838,3 +1838,41 @@ The fix is to intercept at the new seam — patch `chisurf.core.http` (or inject
 transport) rather than hand a module in — which is a change to how these tests
 are built, not a one-line signature edit. Until then the `TypeError` is the safer
 failure: it is loud, fast, and offline.
+
+## `img_flow`'s demo PTU reconstructs 29 of its 30 frames
+
+**Found 2026-08-05** while running the microscopy plugin suites during the
+`tifffile`/`imageio` removal. Unrelated to that change — nothing on this path
+touches image files — but worth writing down, because the default suite cannot
+see it: `test_the_demo_is_a_readable_ptu_whose_flow_comes_back` is marked
+`slow`, and the `test` task runs `-m 'not slow'`.
+
+**The measurement.** Deterministic, not flaky (three runs, same number):
+
+```
+python -m pytest -q chisurf/plugins/microscopy/img_flow/test/test_img_flow.py \
+    ::test_the_demo_is_a_readable_ptu_whose_flow_comes_back
+# assert 29 == 30
+```
+
+The written stream is not short of markers — that is the first thing to check
+and it rules out the obvious explanation. `create_demo(..., n_frames=30)`
+produces 423 058 events carrying **30 frame markers** (routing channel 4) and
+1920 line-start / 1920 line-stop markers, i.e. exactly 64 lines for each of the
+30 frames. `tttrlib.CLSMImage(t, fill=False)` then reports `29 x 64 x 64`.
+
+**Where the frame goes.** `CLSMImage::get_frame_edges` turns N frame markers
+into N−1 intervals; the last frame is closed only by the `n_events` edge that
+`skip_after_last_frame_marker == false` appends. Thirty markers giving
+twenty-nine frames means both skip flags are effectively true for this file, so
+the final frame — which has no *following* frame marker, only the end of the
+stream — is discarded with its photons. Establish which code path sets those
+flags for a PQ PTU before changing anything: the defaults in `CLSMImage.h` are
+`false` for both, so they are being set somewhere along the PQ header route.
+
+**Not the recent CLSM commit.** The suspicion falls naturally on tttrlib
+`37dedfc4` ("reconstruct images from a line clock that has no stop marker"),
+which reworked frame edges the same day. It is not the cause: its only
+default-routine change is `walk_back_over_simultaneous_markers`, which moves an
+edge earlier within one macro-time tick and cannot change how many edges there
+are. Do not spend the rebuild on that A/B.

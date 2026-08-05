@@ -9,7 +9,8 @@ from chisurf.plugins.microscopy.psf_determination.api import psf
 
 
 def _write_bead_tiff(path, nz=21, ny=50, nx=50, sxy=2.0, sz=4.0):
-    imageio = pytest.importorskip("imageio.v2")
+    from chisurf.core.fio.image import imwrite
+
     z, y, x = np.meshgrid(np.arange(nz), np.arange(ny), np.arange(nx), indexing="ij")
     bead = (
         5.0
@@ -19,7 +20,7 @@ def _write_bead_tiff(path, nz=21, ny=50, nx=50, sxy=2.0, sz=4.0):
             * (((x - nx / 2) / sxy) ** 2 + ((y - ny / 2) / sxy) ** 2 + ((z - nz / 2) / sz) ** 2)
         )
     ).astype(np.float32)
-    imageio.mimwrite(path, [s for s in bead])
+    imwrite(path, bead, axes="ZYX")
 
 
 def test_load_stack_reads_all_pages(tmp_path):
@@ -34,7 +35,6 @@ def test_load_stack_reads_all_pages(tmp_path):
 
 def test_cli_fit_stack(tmp_path):
     """The CLI detects and fits the bead in a multi-page TIFF."""
-    pytest.importorskip("imageio.v2")
     from click.testing import CliRunner
 
     from chisurf.plugins.microscopy.psf_determination.cli import cli

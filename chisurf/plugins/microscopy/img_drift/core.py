@@ -318,12 +318,14 @@ def write_stack_tiff(data: np.ndarray, path: str) -> str:
     str
         The path written.
     """
-    import tifffile
+    from chisurf.core.fio.image import imwrite
 
     arr = np.asarray(data)
     if arr.ndim == 4 and arr.shape[1] == 1:
         arr = arr[:, 0]
     out = pathlib.Path(path)
     out.parent.mkdir(parents=True, exist_ok=True)
-    tifffile.imwrite(str(out), arr.astype(np.float32))
+    # Label the axes: a drift-corrected movie read back without them is guessed
+    # into channels whenever it is four frames or fewer.
+    imwrite(out, arr.astype(np.float32), axes="TCYX" if arr.ndim == 4 else "TYX")
     return str(out)

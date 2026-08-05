@@ -72,9 +72,8 @@ dependencies = [
     "pyarrow",
     "ruff>=0.4",
     "sqlalchemy>=2.0",
-    "imageio",
-    "tifffile",
-    "imagecodecs",
+    # TIFF I/O is tttrlib's bundled libtiff, behind chisurf.core.fio.image;
+    # Pillow reads the formats it does not (PNG, JPEG, RGB TIFFs).
     "Pillow",
     "mmfdb==0.1.0",
 ]

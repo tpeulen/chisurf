@@ -160,13 +160,13 @@ def test_a_region_gates_the_scatter_plane_like_the_rectangle_does():
 @pytest.fixture
 def two_channel_tiff(tmp_path):
     """Write a 2-frame, 2-channel TIFF stack and return ``(path, channel_a, channel_b)``."""
-    tifffile = pytest.importorskip("tifffile")
+    from chisurf.core.fio.image import imread, imwrite
     signal = _blob_image()
     a = np.stack([signal, signal])
     b = np.stack([0.7 * signal, 0.7 * signal])
     stack = np.stack([a, b], axis=1).astype(np.float32)  # (T, C, Y, X)
     path = tmp_path / "coloc.tif"
-    tifffile.imwrite(str(path), stack, imagej=True, metadata={"axes": "TCYX"})
+    imwrite(path, stack, axes="TCYX")
     return path, signal, 0.7 * signal
 
 
@@ -183,9 +183,9 @@ def test_load_image_stack_reads_tcyx(two_channel_tiff):
 
 def test_load_image_stack_single_plane(tmp_path):
     """A plain 2-D image becomes a one-frame, one-channel stack."""
-    tifffile = pytest.importorskip("tifffile")
+    from chisurf.core.fio.image import imread, imwrite
     path = tmp_path / "single.tif"
-    tifffile.imwrite(str(path), _blob_image().astype(np.float32))
+    imwrite(str(path), _blob_image().astype(np.float32))
     stack = load_image_stack(path)
     assert stack.data.shape == (1, 1, 64, 64)
 
@@ -202,9 +202,9 @@ def test_compute_colocalization_on_tiff(two_channel_tiff):
 
 def test_compute_colocalization_needs_two_channels(tmp_path):
     """A single-channel image is rejected with a clear error."""
-    tifffile = pytest.importorskip("tifffile")
+    from chisurf.core.fio.image import imread, imwrite
     path = tmp_path / "one.tif"
-    tifffile.imwrite(str(path), _blob_image().astype(np.float32))
+    imwrite(str(path), _blob_image().astype(np.float32))
     with pytest.raises(ValueError, match="needs two"):
         plugin_core.compute_colocalization(path, 0, 1)
 
@@ -590,7 +590,7 @@ def test_object_analysis_respects_the_roi():
 
 def test_view_model_exposes_the_object_views():
     """The object map and the distance histogram reach the tool."""
-    import tifffile
+    from chisurf.core.fio.image import imread, imwrite
 
     from chisurf.plugins.microscopy.img_coloc.gui.view_model import ColocViewModel
 
@@ -600,9 +600,7 @@ def test_view_model_exposes_the_object_views():
 
     with tempfile.TemporaryDirectory() as tmp:
         path = f"{tmp}/puncta.tif"
-        tifffile.imwrite(
-            path, np.stack([a, b]).astype(np.float32), imagej=True, metadata={"axes": "CYX"}
-        )
+        imwrite(path, np.stack([a, b]).astype(np.float32), axes="CYX")
         vm = ColocViewModel()
         vm.object_analysis = True
         vm.object_distance = 3.0
@@ -671,15 +669,13 @@ def test_cli_exposes_every_analysis(cli_runner, tmp_path):
     """Costes, the shift profile, the 2-D plane, profiles and objects are all reachable."""
     import json
 
-    tifffile = pytest.importorskip("tifffile")
+    from chisurf.core.fio.image import imread, imwrite
     from chisurf.plugins.microscopy.img_coloc.cli import cli
 
     a = _puncta_image([(30, 30), (70, 70), (100, 40)])
     b = _puncta_image([(30, 31), (70, 71)])
     path = tmp_path / "puncta.tif"
-    tifffile.imwrite(
-        str(path), np.stack([a, b]).astype(np.float32), imagej=True, metadata={"axes": "CYX"}
-    )
+    imwrite(path, np.stack([a, b]).astype(np.float32), axes="CYX")
 
     result = cli_runner.invoke(
         cli,
@@ -714,11 +710,11 @@ def test_cli_exposes_every_analysis(cli_runner, tmp_path):
 
 def test_cli_rejects_a_single_channel_image(cli_runner, tmp_path):
     """A one-channel file fails loudly instead of reporting nonsense."""
-    tifffile = pytest.importorskip("tifffile")
+    from chisurf.core.fio.image import imread, imwrite
     from chisurf.plugins.microscopy.img_coloc.cli import cli
 
     path = tmp_path / "one.tif"
-    tifffile.imwrite(str(path), _blob_image().astype(np.float32))
+    imwrite(str(path), _blob_image().astype(np.float32))
     result = cli_runner.invoke(cli, [str(path)])
     assert result.exit_code != 0
     assert isinstance(result.exception, ValueError)

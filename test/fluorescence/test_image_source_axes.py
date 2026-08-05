@@ -43,11 +43,11 @@ def test_the_guess_can_be_overridden_towards_channels():
 def test_a_file_can_declare_that_it_has_no_channel_axis():
     """``"none"`` is the case the index override cannot express.
 
-    ``tifffile.imwrite`` labels a ``(4, y, x)`` float array ``"SYX"`` — sample
-    planes — so a four-frame time series arrives as one four-channel frame and
-    any frame-wise analysis (FRC, drift, N&B) rejects it for having one frame.
-    There is no integer that means "there is no channel axis", hence the
-    sentinel.
+    A four-plane image can arrive labelled ``"SYX"`` — colour samples, the way
+    Pillow reports an RGBA frame — so a four-frame time series read from such a
+    file becomes one four-channel frame, and any frame-wise analysis (FRC,
+    drift, N&B) rejects it for having one frame. There is no integer that means
+    "there is no channel axis", hence the sentinel.
     """
     data, _ = _stack_from_axes(np.zeros((4, 16, 32)), "SYX", None)
     assert data.shape == (1, 4, 16, 32)  # the guess, which is wrong here

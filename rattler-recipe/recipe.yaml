@@ -108,8 +108,6 @@ requirements:
     - mdtraj
     - ipython
     - notebook <7
-    # emcee removed: the affine-invariant ensemble sampler it provided now lives
-    # in chisurf.core.fitting.ensemble, alongside an ensemble slice sampler.
     - pyopengl
     - pytables
     # guidata/guiqwt removed: guiqwt's users (global_tcspc, surfaceplot) were
@@ -135,10 +133,8 @@ requirements:
     - sqlalchemy >=2.0      # the MMFDB ORM backend
     - numexpr               # dynamic accessible-volume quenching
     - packaging             # version comparisons in the startup shim
-    - imageio               # RICS/ICS image stacks
-    - tifffile              # TIFF reader/writer (ROI, CLSM, simulation)
-    - imagecodecs           # tifffile's decoder for compressed TIFFs
-    - pillow                # multi-frame image fallback
+    - pillow                # PNG/JPEG/RGB-TIFF reader; TIFF stacks go through
+                            # tttrlib's bundled libtiff instead
     # Deliberately NOT declared: pdb2pqr (+14 packages, including an HTTP stack)
     # is needed only to prepare structures for ProteinMC, which says so and
     # points at the conda package; and latexify-py, whose conda build stops at

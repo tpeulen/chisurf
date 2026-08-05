@@ -97,10 +97,10 @@ def test_calibration_changes_the_units_not_the_physics(movie):
 
 def test_loading_a_missing_channel_is_refused(tmp_path):
     """A channel index past the end must say so, not silently take channel 0."""
-    import tifffile
+    from chisurf.core.fio.image import imread, imwrite
 
     path = tmp_path / "stack.tif"
-    tifffile.imwrite(str(path), np.zeros((4, 32, 32), dtype=np.uint16))
+    imwrite(str(path), np.zeros((4, 32, 32), dtype=np.uint16))
     with pytest.raises(ValueError, match="does not exist"):
         core.load_frames(path, channel=7)
 

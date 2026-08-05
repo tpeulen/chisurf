@@ -575,8 +575,8 @@ def load_image_map(path: str) -> np.ndarray:
     """Load a 2-D intensity or lifetime map from ``.npy``/``.npz`` or an image.
 
     ``.npy``/``.npz`` load with numpy (first array of an ``.npz``); ``.tif`` and
-    other image formats load with ``tifffile`` (falling back to ``skimage.io``).
-    A 3-D stack is collapsed to 2-D by summing over the leading axis.
+    other image formats load through :mod:`chisurf.core.fio.image`. A 3-D stack
+    is collapsed to 2-D by summing over the leading axis.
     """
     p = str(path)
     low = p.lower()
@@ -586,14 +586,9 @@ def load_image_map(path: str) -> np.ndarray:
         with np.load(p) as data:
             arr = data[list(data.keys())[0]]
     else:
-        try:
-            import tifffile
+        from chisurf.core.fio.image import imread
 
-            arr = tifffile.imread(p)
-        except Exception:
-            from skimage import io as skio
-
-            arr = skio.imread(p)
+        arr = imread(p)
     arr = np.asarray(arr, dtype=float)
     if arr.ndim == 3:
         arr = arr.sum(axis=0) if arr.shape[0] <= arr.shape[-1] else arr[..., 0]

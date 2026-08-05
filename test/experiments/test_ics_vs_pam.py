@@ -67,11 +67,11 @@ def test_ics_reader_reads_lzw_stack():
 
 def test_ics_correlation_matches_pam():
     """ChiSurf's RICS correlation decay matches PAM's on the same 200x200 ROI."""
-    import tifffile
+    from chisurf.core.fio.image import imread, imwrite
 
     from chisurf.core.experiments.ics.ics_core import compute_ics_carpet
 
-    stack = np.asarray(tifffile.imread(str(_TIF)), dtype=float)
+    stack = np.asarray(imread(str(_TIF)), dtype=float)
     cs = np.asarray(
         compute_ics_carpet(stack[:, :200, :200], use_fftshift=True).rics_map(),
         dtype=float,

@@ -53,12 +53,14 @@ Under *Estimator* sit three things you will rarely touch: the **ring width**
 (zero means one Fourier pixel, the finest the sampling supports), the
 **smoothing** applied before the crossing is read, and the **TIFF axis order**.
 
-The last one has a real trap behind it. `tifffile` labels a `(4, y, x)` float
-array as *sample planes* — an RGB-like image — so a four-frame time series
+The last one has a real trap behind it. A plain TIFF stack carries no metadata
+saying what its pages are, and four or fewer of them look far more like a
+two/three-colour image than like a time series — so a four-frame acquisition
 arrives as one frame with four channels, and a frame split then has nothing to
 split. If a short stack reports one frame, set **TIFF axis order** to *All
-planes are frames*. Photon streams are unaffected: their frames and detector
-channels are declared in the file.
+planes are frames*. A stack written by ChiSurf with labelled axes (`TYX`) says
+so in the file and needs no override, and photon streams are unaffected: their
+frames and detector channels are declared in the file.
 
 ## Read the result
 

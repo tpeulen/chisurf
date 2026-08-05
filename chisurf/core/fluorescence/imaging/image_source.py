@@ -4,9 +4,9 @@ Colocalization — and any other multi-channel pixel analysis — needs the same
 thing from very different files: a ``(frame, channel, y, x)`` intensity stack
 with named channels. This module is that single seam.
 
-* **Camera / TIFF images** (``.tif``, ``.tiff``, and anything imageio reads) are
-  read with their axis order taken from the file (ImageJ hyperstack metadata or
-  the TIFF series axes) rather than guessed.
+* **Camera / TIFF images** (``.tif``, ``.tiff``, and the other formats
+  :mod:`chisurf.core.fio.image` reads) are read with their axis order taken from
+  the file's ImageJ hyperstack metadata rather than guessed.
 * **Photon streams** (``.ptu``, ``.ht3``, …) are turned into images by filling a
   confocal-scan image from the marker records, one channel per detector routing
   channel (or per named detector window when a setup provides them).
@@ -119,67 +119,27 @@ def is_photon_stream(path) -> bool:
 # --- TIFF / camera images ----------------------------------------------------
 
 
-def _axes_from_tifffile(path: str) -> tuple[np.ndarray, str] | None:
-    """Return ``(array, axes)`` from tifffile, or ``None`` when unreadable."""
-    try:
-        import tifffile
-    except ImportError:  # pragma: no cover - optional dependency
-        return None
-    try:
-        with tifffile.TiffFile(str(path)) as tif:
-            series = tif.series[0]
-            return np.asarray(series.asarray()), str(series.axes)
-    except Exception:
-        return None
-
-
 def _read_image_array(path: str) -> tuple[np.ndarray, str]:
-    """Read an image file into ``(array, axes)``; falls back to imageio."""
-    result = _axes_from_tifffile(path)
-    if result is not None:
-        return result
-    try:
-        import imageio.v2 as imageio
-    except ImportError:  # pragma: no cover - optional dependency
-        import imageio  # type: ignore[no-redef]
-    arr = None
-    for reader, kwargs in (
-        (getattr(imageio, "mimread", None), {"memtest": False}),
-        (getattr(imageio, "volread", None), {}),
-        (imageio.imread, {}),
-    ):
-        if reader is None:
-            continue
-        try:
-            arr = np.asarray(reader(str(path), **kwargs))
-            break
-        except Exception:
-            arr = None
-    if arr is None:
-        raise OSError(f"Could not read image: {path}")
-    # imageio gives no axis labels: label the trailing two as Y/X and treat a
-    # 3-channel trailing axis as RGB samples, everything else as a leading index.
-    if arr.ndim == 2:
-        return arr, "YX"
-    if arr.ndim == 3 and arr.shape[-1] in (3, 4):
-        return arr, "YXS"
-    if arr.ndim == 3:
-        return arr, "QYX"
-    return arr, "Q" * (arr.ndim - 2) + "YX"
+    """Read an image file into ``(array, axes)``."""
+    from chisurf.core.fio.image import read_labelled
+
+    arr, axes = read_labelled(path)
+    return np.asarray(arr), axes
 
 
 def _stack_from_axes(arr: np.ndarray, axes: str, channel_axis) -> tuple[np.ndarray, dict]:
     """Reshape a labelled array to ``(frame, channel, y, x)``.
 
-    ``axes`` is a tifffile-style label string (``"TCYX"``, ``"ZYX"``, ``"YXS"``,
-    ``"Q…"`` for unlabelled). ``C``/``S`` axes become channels, ``T``/``Z``/``I``
-    frames. A single unlabelled axis is ambiguous — it is taken as channels when
-    it is short (≤ 4 planes, the usual two/three-colour image) and as frames
+    ``axes`` is a label string (``"TCYX"``, ``"ZYX"``, ``"YXS"``, ``"I"``/``"Q"``
+    for unlabelled). ``C``/``S`` axes become channels, ``T``/``Z`` frames. A
+    single unlabelled axis is ambiguous — it is taken as channels when it is
+    short (≤ 4 planes, the usual two/three-colour image) and as frames
     otherwise; *channel_axis* overrides that guess, and ``"none"`` says there is
     no channel axis at all, so every non-YX axis is a frame. That last case is
-    not exotic: a four-frame time series written by a plain ``imwrite`` is
-    labelled ``"SYX"`` and would otherwise arrive as a four-channel single frame,
-    which any frame-wise analysis then rejects for having one frame.
+    not exotic: a plain TIFF stack carries no ImageJ metadata, so a four-frame
+    time series arrives unlabelled and would otherwise be guessed into a
+    four-channel single frame, which any frame-wise analysis then rejects for
+    having one frame. Writing the stack with ``axes="TYX"`` settles it.
     """
     axes = axes.upper()
     if len(axes) != arr.ndim:

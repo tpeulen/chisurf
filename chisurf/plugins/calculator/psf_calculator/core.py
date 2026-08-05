@@ -160,19 +160,19 @@ class PSFModel:
 
     def _save_tiff(self, path: pathlib.Path) -> pathlib.Path:
         """Write an ImageJ hyperstack with the voxel size in its metadata."""
-        import tifffile
+        from chisurf.core.fio.image import imwrite
 
         # ImageJ reads x/y spacing from the TIFF resolution tags (in
         # ``unit`` per pixel, hence the reciprocal) and z from the
         # description. Micrometres, because that is what ImageJ calls "micron".
         px_um = float(self.pixel_size_nm) / 1000.0
         z_um = float(self.z_step_nm) / 1000.0
-        tifffile.imwrite(
+        imwrite(
             path,
             np.asarray(self._volume, dtype=np.float32),
-            imagej=True,
+            axes="ZYX",
             resolution=(1.0 / px_um, 1.0 / px_um),
-            metadata={"spacing": z_um, "unit": "um", "axes": "ZYX"},
+            metadata={"spacing": z_um, "unit": "um"},
         )
         return path
 

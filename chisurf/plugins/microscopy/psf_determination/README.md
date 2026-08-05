@@ -83,7 +83,7 @@ GUI layers:
 - `numpy`
 - `scipy` (for `least_squares` fitting)
 - `pyqtgraph` (for 3D visualization)
-- `imageio` (for TIFF loading)
+- `tttrlib` (TIFF loading, via `chisurf.core.fio.image`)
 - `qtpy` (Qt bindings)
 
 ## Planned Features

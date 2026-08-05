@@ -20,7 +20,7 @@ _CLSM = pathlib.Path(__file__).resolve().parents[5] / "test" / "data" / "clsm" /
 @pytest.fixture
 def drifting_tiff(tmp_path):
     """Write a TIFF stack with a known linear drift and return its path."""
-    import tifffile
+    from chisurf.core.fio.image import imread, imwrite
 
     rng = np.random.default_rng(0)
     base = rng.random((40, 40)) * 100.0
@@ -28,7 +28,7 @@ def drifting_tiff(tmp_path):
         [np.roll(base, (2 * k, -k), axis=(0, 1)) for k in range(5)]
     ).astype(np.float32)
     path = tmp_path / "drift.tif"
-    tifffile.imwrite(path, stack)
+    imwrite(path, stack)
     return path
 
 
@@ -67,7 +67,7 @@ def test_corrected_stack_covers_every_channel(drifting_tiff):
 
 def test_exports_are_written(drifting_tiff, tmp_path):
     """Both export paths produce readable files."""
-    import tifffile
+    from chisurf.core.fio.image import imread, imwrite
 
     result = core.measure_drift(str(drifting_tiff))
     csv = core.write_shifts_csv(result.shifts, str(tmp_path / "s.csv"))
@@ -77,15 +77,15 @@ def test_exports_are_written(drifting_tiff, tmp_path):
 
     data, _ = core.corrected_stack(str(drifting_tiff), shifts=result.shifts)
     tif = core.write_stack_tiff(data, str(tmp_path / "c.tif"))
-    assert np.asarray(tifffile.imread(tif)).shape[0] == 5
+    assert np.asarray(imread(tif)).shape[0] == 5
 
 
 def test_a_single_frame_is_rejected(tmp_path):
     """One frame gives nothing to align, and says so rather than returning zeros."""
-    import tifffile
+    from chisurf.core.fio.image import imread, imwrite
 
     path = tmp_path / "one.tif"
-    tifffile.imwrite(path, np.zeros((8, 8), dtype=np.float32))
+    imwrite(path, np.zeros((8, 8), dtype=np.float32))
     with pytest.raises(ValueError, match="at least two"):
         core.measure_drift(str(path))
 

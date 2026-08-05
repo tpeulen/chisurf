@@ -248,10 +248,10 @@ def test_the_demo_reports_its_own_ground_truth(tmp_path):
 # ──────────────────────────────────────────────────────────────────────────────
 def test_the_rpc_payload_is_plain_json(tmp_path):
     """Every layer above core has to survive a JSON round trip."""
-    import tifffile
+    from chisurf.core.fio.image import imread, imwrite
 
     path = tmp_path / "drift.tif"
-    tifffile.imwrite(path, drifting_stack(0.5, n=32, n_frames=40).astype(np.float32))
+    imwrite(path, drifting_stack(0.5, n=32, n_frames=40).astype(np.float32))
 
     payload = flow_api.compute_map(
         str(path), tile=16, n_lags=4, pixel_duration_us=10.0, pixel_size_nm=100.0
@@ -267,10 +267,10 @@ def test_the_rpc_payload_is_plain_json(tmp_path):
 
 def test_the_client_speaks_the_contract(tmp_path):
     """The in-process client reaches every registered method."""
-    import tifffile
+    from chisurf.core.fio.image import imread, imwrite
 
     path = tmp_path / "drift.tif"
-    tifffile.imwrite(path, drifting_stack(0.5, n=32, n_frames=40).astype(np.float32))
+    imwrite(path, drifting_stack(0.5, n=32, n_frames=40).astype(np.float32))
 
     client = FlowClient()
     described = client.describe()
@@ -298,12 +298,12 @@ def test_a_failing_call_comes_back_as_an_error_not_an_exception():
 
 def test_the_view_model_exposes_what_the_view_spec_names(tmp_path):
     """Every source the view.json names must exist and be callable Qt-free."""
-    import tifffile
+    from chisurf.core.fio.image import imread, imwrite
 
     from chisurf.plugins.microscopy.img_flow.gui.view_model import FlowViewModel
 
     path = tmp_path / "drift.tif"
-    tifffile.imwrite(path, drifting_stack(0.5, n=32, n_frames=40).astype(np.float32))
+    imwrite(path, drifting_stack(0.5, n=32, n_frames=40).astype(np.float32))
 
     model = FlowViewModel()
     seen: list[str] = []

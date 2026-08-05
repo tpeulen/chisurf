@@ -293,8 +293,7 @@ def _grab_drift_tool():
     confocal test image is a stable acquisition with sub-pixel drift, which
     would make an honest but entirely uninformative screenshot.
     """
-    import tifffile
-
+    from chisurf.core.fio.image import imwrite
     from chisurf.gui.autoform.sections.builtin import ImageMapWidget
     from chisurf.plugins.microscopy.img_drift.gui.tool import ImgDriftTool
 
@@ -309,7 +308,7 @@ def _grab_drift_tool():
     ).astype(np.float32)
 
     tmp = pathlib.Path(tempfile.mkdtemp()) / "drift_demo.tif"
-    tifffile.imwrite(tmp, stack)
+    imwrite(tmp, stack, axes="TYX")
 
     tool = ImgDriftTool()
     tool.model.set_filename(str(tmp))
@@ -504,8 +503,7 @@ def _grab_coloc_objects(tool):
     """Grab the object map + distance histogram on synthetic puncta (guide 38)."""
     import tempfile
 
-    import tifffile
-
+    from chisurf.core.fio.image import imwrite
     from chisurf.gui.autoform.sections.builtin import ImageMapWidget, PlotWidget
 
     shape = (160, 160)
@@ -527,9 +525,7 @@ def _grab_coloc_objects(tool):
 
     with tempfile.TemporaryDirectory() as tmp:
         path = pathlib.Path(tmp) / "puncta.tif"
-        tifffile.imwrite(
-            str(path), np.stack([a, b]).astype(np.float32), imagej=True, metadata={"axes": "CYX"}
-        )
+        imwrite(path, np.stack([a, b]).astype(np.float32), axes="CYX")
         tool.model.object_analysis = True
         tool.model.object_distance = 3.0
         tool.model.filename = str(path)
