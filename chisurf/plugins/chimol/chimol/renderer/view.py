@@ -2397,7 +2397,12 @@ class MolView(QtWidgets.QWidget):
                 0,
                 2 if full_height else 1,
                 1,
-                alignment=QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop,
+                # Bottom left, not top left: the top left of the viewport is
+                # where the sequence strip and the object panel already put
+                # text, and the molecule is framed centre-high, so an info block
+                # anchored to the top competes with both. The bottom left is the
+                # emptiest corner of a framed structure.
+                alignment=QtCore.Qt.AlignLeft | QtCore.Qt.AlignBottom,
             )
             self._info_overlay.raise_()
             layout.addWidget(container, 1)

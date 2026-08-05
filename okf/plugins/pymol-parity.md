@@ -1528,6 +1528,43 @@ expensive.
 **This must be verified in a real window.** Offscreen Qt creates no GL context, so
 none of it is exercised by the offscreen suite; see the capture notes above.
 
+## Shader techniques worth taking, read from a WebGL viewer
+
+Surveyed 2026-08-05 in `junk/ngl/src/shader/`, which is a small, complete and
+readable set — the opposite of PyMOL's, and the reason to read it for *how* while
+reading PyMOL for *what*. Not started; listed by what each would buy.
+
+**1. Impostor sticks and cylinders — the big one.** ChiMOL already draws spheres
+as impostors, but only past `impostor_min_atoms` (20 000), so an ordinary
+molecule gets tessellated geometry: 148L's sticks are **33 216 triangles** for
+what is mathematically a few hundred capped cylinders. `CylinderImpostor.vert`
++ `.frag` (130 + 356 lines) ray-cast the cylinder in the fragment shader from one
+quad, which is both faster and *exact* — no facets at any zoom.
+`HyperballStickImpostor.frag` goes further and renders the smooth hyperboloid
+join PyMOL cannot draw at all. The same geometry feeds the ray tracer, so this
+would cut the traced triangle count as much as the drawn one.
+
+**2. `interior_fragment.glsl` — 8 lines, and it fixes clipping.** When a clip
+plane cuts a surface, the shell reads as hollow because the camera sees the
+*inside* of far-side triangles lit as if they were outside. NGL colours any
+back-facing fragment with an interior colour and darkens it, so a cut surface
+reads as solid material. This is the same `gl_FrontFacing` test the
+`two_sided_lighting` work already put in the shader, so the hook exists. Related
+to the interior-cull item in the integrative-model notes.
+
+**3. `opaque_back_fragment.glsl` — the cheap half of order-independent
+transparency.** Forcing back faces opaque makes a translucent closed surface
+depth-sort correctly without sorting anything, which is the defect that makes
+GL transparency disagree with the (now correct) traced transparency.
+
+**4. `SDFFont.vert`/`.frag` — labels that stay crisp.** Signed-distance-field
+glyphs scale to any zoom from one small atlas, where rasterised glyphs blur.
+Worth noting this does *not* help `ray`, which has no glyph and says so.
+
+**5. `matrix_scale.glsl` — four lines.** Recovers the scale from a model matrix
+so an impostor's radius survives a scaled transform. Cheap insurance the moment
+item 1 lands, and exactly the class of bug the two-coordinate-array finding was.
+
 # The window, not the commands
 
 Measured 2026-08-03 by photographing the window in a realistic state and reading

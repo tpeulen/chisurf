@@ -52,7 +52,13 @@ _BUTTON_DEFAULTS: dict[str, dict[str, Any]] = {
         "text": "\u2139\ufe0f Info",
         "tool_tip": "Toggle system info panel",
         "checkable": True,
-        "checked": True,
+        # Off by default. The panel covers a corner of the viewport with what
+        # is mostly already on screen -- the object panel names the structure
+        # and the sequence strip shows its residues -- so it earns its space
+        # only when asked for. PyMOL shows nothing over the scene by default
+        # either. `MolView._info_visible` already started False; this button
+        # was overriding it at startup.
+        "checked": False,
     },
 }
 

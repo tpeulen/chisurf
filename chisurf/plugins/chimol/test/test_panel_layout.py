@@ -248,3 +248,46 @@ def test_a_gap_is_not_coloured_like_a_residue(window):
     gap_bg, _ = SequenceDock.gap_palette()
     coil_bg, _ = SequenceDock.default_sequence_palette("C")
     assert gap_bg != coil_bg
+
+
+# --------------------------------------------------------------------------- #
+# The system-info overlay
+# --------------------------------------------------------------------------- #
+def test_the_info_overlay_is_off_until_it_is_asked_for(window):
+    """It covers a corner of the viewport with what is mostly already on screen.
+
+    The object panel names the structure and the sequence strip shows its
+    residues, so the overlay earns its space only when asked for. `MolView`
+    already started it hidden; the toolbar button was checked at construction and
+    switched it back on at startup, which is why the default was the opposite of
+    the one the viewer declared.
+    """
+    win, _ = window
+    assert not win.button_info.isChecked()
+    assert not win.viewer._info_visible
+    assert not win.viewer._info_overlay.isVisible()
+
+
+def test_the_info_overlay_sits_in_the_bottom_left(window):
+    """Anchored to the bottom, not the top.
+
+    The top left is where the sequence strip and the object panel already put
+    text, and a framed structure sits centre-high, so an overlay anchored to the
+    top competes with both. Measured rather than eyeballed: a widget aligned to
+    the wrong edge is invisible to a test that only asks whether it exists.
+    """
+    win, qapp = window
+    win.button_info.setChecked(True)
+    _settle(win.viewer._container, 900, 600, qapp)
+
+    overlay = win.viewer._info_overlay
+    container = win.viewer._container
+    assert overlay.isVisible()
+
+    geom = overlay.geometry()
+    assert geom.left() <= 1, f"expected the left edge, got x={geom.left()}"
+    below = container.height() - geom.bottom()
+    assert below <= 2, f"expected the bottom edge, {below}px of gap below it"
+    assert geom.top() > container.height() // 2, (
+        "the overlay should hang from the bottom, not fill the viewport"
+    )
