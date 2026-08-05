@@ -85,11 +85,36 @@ setting produces**, not whether it stores.
 the settings table exists to prevent, and it is why the three cartoon settings
 above are absent rather than accepted-and-ignored.
 
-**2. Rendering.** Two measured defects left in the ray tracer.
+**1a. Do this before registering anything else — two settings have two stores,
+and that is what makes a name "registered but dead".** This is not a separate
+errand from the worklist above; it is the thing that would make the next twenty
+entries silently useless, so it comes first.
+
+* `silhouette` / `silhouette_thickness` / `depth_jump` live on the renderer's
+  `_post` object *and* in `_DISPLAY_CONFIG["silhouette"]`, which is read **only
+  in `QtGLRenderer.__init__`**. So `lighting silhouette=on` moves the picture and
+  never touches the config, while the config is a startup default a live change
+  cannot reach. `set silhouette, on` is not registered at all, and registering it
+  against a store the renderer re-reads only at construction is exactly the
+  failure `surface_quality` was. Collapse onto the config first — the pattern to
+  copy is `_fog_planes`, which reads the config where it is *used*, so there is
+  no second copy to leave stale.
+* `depth_cue` / `fog` / `fog_start` are registered against `ray.depth_cue`,
+  `ray.fog_start`, `ray.fog_intensity` and now drive **both** renderers, so the
+  `ray.` prefix reads wrong. Moving them is a **key move**, and
+  `DISPLAY_CONFIG_MIGRATIONS` only knows how to update a *default* — so this
+  needs a small loader extension (copy the old key's value when it is not the
+  old default, then drop it), not a table entry. Worth doing in the same change
+  as the bullet above, since both are one question: where does this setting live.
+
+**2. Rendering.** One measured defect left in the ray tracer.
 
 *Meshes are double-shaded* — occlusion and cast shadow are baked into the vertex
 colours and then shaded again, costing 44 % of the colour. Described under
-*`ray` renders the scene, not the molecule*.
+*`ray` renders the scene, not the molecule*. **This is the last known wrong thing
+in the traced picture**: speed, transparency, the depth cue, and mesh shadows are
+all closed, so the tracer's remaining gap is one of shading rather than of
+capability.
 
 *Nothing but a sphere casts a shadow.* **Done** — see *a cartoon casts a shadow
 now* below.
