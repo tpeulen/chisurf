@@ -10,6 +10,8 @@ kept as a backwards-compatible alias.
 
 from __future__ import annotations
 
+import inspect
+
 from qtpy import QtCore, QtWidgets
 
 import chisurf as cs
@@ -1103,6 +1105,9 @@ class AutoForm(QtWidgets.QWidget):
                 params=_row_params(),
                 width=max(1, int(section.row_width)),
                 on_change=self._dispatch_fit_update,
+                section=section,
+                slot_labels=tuple(getattr(section, "slot_labels", ()) or ()) or None,
+                remote=bool(getattr(section, "remote", True)),
             )
             self._param_widgets.append(table)
             outer.addWidget(table)
@@ -1119,10 +1124,31 @@ class AutoForm(QtWidgets.QWidget):
                 if len(_row_params()) // max(1, section.row_width) > section.min_rows:
                     del_fn = getattr(group, section.remove_method, None)
                     if callable(del_fn):
-                        del_fn()
+                        # The selected component, when the group's remove method
+                        # takes an index and a row is picked — deleting the
+                        # second of four lifetimes is otherwise impossible, and
+                        # "del" silently taking the last one is a surprise.
+                        row = _selected_component_row()
+                        if row is None or not _remove_takes_index(del_fn):
+                            del_fn()
+                        else:
+                            del_fn(row)
                         self._dispatch_fit_update()
                         table.set_params(_row_params())
                         self.refresh_plots()
+
+            def _selected_component_row():
+                selection = table.table_view.selectionModel()
+                if selection is None:
+                    return None
+                rows = {index.row() for index in selection.selectedIndexes()}
+                return rows.pop() if len(rows) == 1 else None
+
+            def _remove_takes_index(fn) -> bool:
+                try:
+                    return bool(inspect.signature(fn).parameters)
+                except (TypeError, ValueError):  # pragma: no cover - builtins
+                    return False
 
             add_btn.clicked.connect(on_add_table)
             del_btn.clicked.connect(on_del_table)

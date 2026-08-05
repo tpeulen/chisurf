@@ -189,6 +189,20 @@ class DynamicGroupSection(Section):
     #: sharing the compact Value/Fixed/Lo/Hi/Bounds/Error columns of the other
     #: parameter tables. Ignored when ``component_title`` is set.
     style: str = "grid"
+    #: ``style:"table"`` only. Visible per-slot column subset, from the same
+    #: identifiers :class:`ParameterGroupTableSection` uses (``value``,
+    #: ``fixed``, ``bounds_lo``, ``bounds_hi``, ``bounds_on``, ``error``); empty
+    #: shows all of them. A host whose parameters no fit optimises leaves out
+    #: ``error`` rather than carrying one empty column per slot.
+    columns: typing.Tuple[str, ...] = ()
+    #: ``style:"table"`` only. Column titles for the slots. A slot is otherwise
+    #: named after its parameter in the first component, which a group that
+    #: starts empty does not have.
+    slot_labels: typing.Tuple[str, ...] = ()
+    #: Whether an edit is also sent to the fitting backend. ``False`` for a group
+    #: that is not part of any fit (nDXplorer's constants and Gaussians), whose
+    #: edits the backend could only answer "fit not found".
+    remote: bool = True
 
 
 @dataclasses.dataclass(frozen=True)

@@ -1391,6 +1391,12 @@ class PairedParameterTableWidget(QtWidgets.QWidget):
     parent : QWidget or None
     on_change : callable or None
         Invoked (no args) after every user edit; wired to a fit recompute.
+    section : chisurf.core.dataspec.DynamicGroupSection or None
+        Section descriptor.  Its ``columns`` whitelist selects which of the
+        per-slot columns are shown, exactly as it does for the sibling
+        :class:`ParameterGroupTableWidget` — a host whose parameters no fit
+        optimises whitelists away the Error column rather than carrying six
+        empty ones.
     slot_labels : sequence of str or None
         Column titles for the slots.  Without them a slot is named after the
         parameter in row 0, which an empty table does not have.
@@ -1398,10 +1404,6 @@ class PairedParameterTableWidget(QtWidgets.QWidget):
         Whether an edit is also sent to the fitting backend.  A host whose
         parameters belong to no fit — nDXplorer's Gaussians, say — passes
         ``False``, or every edit is answered with "fit not found".
-    context_menu_hook : callable or None
-        ``hook(menu, index)``, called while the right-click menu is being
-        built, so the host can add its own entries (remove this component, …)
-        without reimplementing link / details / copy / paste.
     """
 
     #: Opt into :meth:`AutoForm.sync_fields` / ``refresh_plots`` (see the sibling
@@ -1414,16 +1416,14 @@ class PairedParameterTableWidget(QtWidgets.QWidget):
         width: int = 2,
         parent: typing.Optional[QtWidgets.QWidget] = None,
         on_change: typing.Optional[Callable[[], None]] = None,
+        section: typing.Any = None,
         slot_labels: typing.Optional[typing.Sequence[str]] = None,
         remote: bool = True,
-        context_menu_hook: typing.Optional[
-            Callable[[QtWidgets.QMenu, QtCore.QModelIndex], None]
-        ] = None,
     ):
         super().__init__(parent)
         self._on_change = on_change
+        self._section = section
         self._remote = bool(remote)
-        self._context_menu_hook = context_menu_hook
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -1487,11 +1487,14 @@ class PairedParameterTableWidget(QtWidgets.QWidget):
             sc.setContext(QtCore.Qt.WidgetWithChildrenShortcut)
             sc.activated.connect(slot)
 
-        #: Whether the per-slot Lo / Hi / Bounds and Error columns are shown.
-        #: Tracked so an add/remove rebuild keeps the host's choice.
+        #: Whether the per-slot Lo / Hi / Bounds columns are shown. Tracked so an
+        #: add/remove rebuild keeps the host's choice.
         self._bounds_visible = True
-        self._error_visible = True
+        #: Rows to keep visible in a bounded host; see :meth:`set_scrollable`.
+        #: ``None`` sizes the table to all of its content.
+        self._min_visible_rows = None
 
+        self._apply_column_visibility()
         self._install_controllers()
         layout.addWidget(self._table)
         self._size_to_content()
@@ -1511,38 +1514,51 @@ class PairedParameterTableWidget(QtWidgets.QWidget):
             self._table.setItemDelegateForColumn(col, self._toggle_delegate)
         for col in self._float_columns():
             self._table.setItemDelegateForColumn(col, self._float_delegate)
+        self._apply_column_visibility()
         self.set_bounds_visible(self._bounds_visible)
-        self.set_error_visible(self._error_visible)
         self._install_controllers()
         self._size_to_content()
 
     # -- bounds column visibility -------------------------------------------
+    def _allowed_columns(self) -> typing.Optional[set]:
+        """Return the section's column whitelist as a set, or ``None`` (all allowed)."""
+        cols = getattr(self._section, "columns", None) if self._section else None
+        return set(cols) if cols else None
+
     def has_bounds_columns(self) -> bool:
-        """Paired tables always carry per-slot Lo / Hi / Bounds columns."""
-        return True
+        """Return True when this table can show any per-slot Lo / Hi / Bounds column."""
+        allowed = self._allowed_columns()
+        return allowed is None or bool({"bounds_lo", "bounds_hi", "bounds_on"} & allowed)
 
     def _bounds_columns(self) -> list:
         """Global column indices of every per-slot Lo / Hi / Bounds cell."""
         return self._slot_columns("bounds_lo", "bounds_hi", "bounds_on")
 
     def set_bounds_visible(self, visible: bool) -> None:
-        """Show or hide the per-slot Lo / Hi / Bounds columns (still editable in the details popup)."""
-        self._bounds_visible = bool(visible)
-        for col in self._bounds_columns():
-            self._table.setColumnHidden(col, not visible)
-        self._size_to_content()
+        """Show or hide the per-slot Lo / Hi / Bounds columns.
 
-    def set_error_visible(self, visible: bool) -> None:
-        """Show or hide the per-slot Error columns.
-
-        A host whose parameters are not optimised by a chisurf fit has no error
-        estimate to show, and six empty columns are six columns of width taken
-        from the values.
+        They stay editable in the details popup either way, and columns the
+        section's whitelist leaves out stay hidden regardless — as in the
+        sibling table.
         """
-        self._error_visible = bool(visible)
-        for col in self._slot_columns("error"):
-            self._table.setColumnHidden(col, not visible)
+        self._bounds_visible = bool(visible)
+        allowed = self._allowed_columns()
+        for cid in ("bounds_lo", "bounds_hi", "bounds_on"):
+            permitted = allowed is None or cid in allowed
+            for col in self._slot_columns(cid):
+                self._table.setColumnHidden(col, not (visible and permitted))
         self._size_to_content()
+
+    def _apply_column_visibility(self) -> None:
+        """Hide every per-slot column the section's whitelist leaves out."""
+        allowed = self._allowed_columns()
+        if allowed is None:
+            return
+        for cid, _label, _editable, _kind in SLOT_COLUMN_META:
+            if cid in ("bounds_lo", "bounds_hi", "bounds_on"):
+                continue  # owned by set_bounds_visible, which honours the whitelist
+            for col in self._slot_columns(cid):
+                self._table.setColumnHidden(col, cid not in allowed)
 
     def _slot_columns(self, *ids: str) -> list:
         """Global column indices of every per-slot cell with one of ``ids``."""
@@ -1592,23 +1608,97 @@ class PairedParameterTableWidget(QtWidgets.QWidget):
         _resize(0, QtWidgets.QHeaderView.ResizeToContents)
         for col in range(1, self._model.columnCount()):
             s = self._model._slot(col)
-            # The value columns (sub == 0) absorb spare width; flag/bound columns
-            # hug their contents so the paired blocks line up compactly.
-            mode = (
-                QtWidgets.QHeaderView.Stretch
-                if s is not None and s[1] == 0
-                else QtWidgets.QHeaderView.ResizeToContents
-            )
-            _resize(col, mode)
+            # Flag/bound columns always hug their contents so the paired blocks
+            # line up compactly; the value columns are decided by width (below).
+            if s is not None and s[1] == 0:
+                continue
+            _resize(col, QtWidgets.QHeaderView.ResizeToContents)
+        self._value_mode = None
+        self._fit_value_columns()
+
+    def _value_columns(self) -> list:
+        """Global column indices of the per-slot value cells."""
+        return self._slot_columns("value")
+
+    def _fit_value_columns(self) -> None:
+        """Let the value columns share spare width — or hug their numbers.
+
+        Stretch is right for a two-slot table in a wide editor and wrong for a
+        six-slot one in a dock: stretched past their content the value columns
+        render ``0…``, which is not a value anyone can check. So the natural
+        width is measured against the viewport and the policy follows it; when
+        the content does not fit, the table scrolls horizontally instead of
+        hiding its numbers.
+        """
+        table, model = self._table, self._model
+        value_columns = [c for c in self._value_columns() if not table.isColumnHidden(c)]
+        if not value_columns:
+            return
+        other = sum(
+            table.sizeHintForColumn(col)
+            for col in range(model.columnCount())
+            if not table.isColumnHidden(col) and col not in value_columns
+        )
+        width = table.viewport().width()
+        # Stretch shares the spare width *equally*, so it is only right when the
+        # share is enough for every value: a column of "0.00738019" squeezed to
+        # the width of one holding "0.5" elides its number, which is exactly the
+        # information the column exists to show.
+        share = (width - other) / len(value_columns) if width > 0 else 0
+        fits = share >= max(table.sizeHintForColumn(col) for col in value_columns)
+        mode = (
+            QtWidgets.QHeaderView.Stretch if fits else QtWidgets.QHeaderView.ResizeToContents
+        )
+        if mode == getattr(self, "_value_mode", None):
+            return
+        self._value_mode = mode
+        header = table.horizontalHeader()
+        # When the values hug their content, whatever is left over goes to the
+        # last column rather than showing as a gap at the right edge.
+        header.setStretchLastSection(not fits)
+        for col in value_columns:
+            try:
+                header.setSectionResizeMode(col, mode)
+            except Exception:  # pragma: no cover - Qt4 fallback
+                header.setResizeMode(col, mode)
+
+    def set_scrollable(self, min_visible_rows: typing.Optional[int]) -> None:
+        """Let the table scroll itself when its host cannot grow.
+
+        A component table sizes itself to *all* its rows, which is right inside
+        a scrolled model editor and wrong in a dock of fixed height: the host
+        simply loses the last components off the bottom, and that reads as "that
+        component is gone", not as "scroll down". A host that knows its height
+        is bounded says so here. The table then asks for room for
+        ``min_visible_rows`` and accepts anything up to its full content, with
+        an ordinary vertical scrollbar for the rest — so enlarging the host
+        shows more rows rather than blank space. ``None`` restores the
+        size-to-content behaviour.
+        """
+        self._min_visible_rows = None if min_visible_rows is None else max(1, int(min_visible_rows))
+        self._size_to_content()
 
     def _size_to_content(self) -> None:
-        """Fix the table height to header + visible rows so it wastes no space."""
-        self._table.setFixedHeight(_content_height(self._table, self._model,
-                                                   self._header_h, self._row_h))
+        """Size the table to its rows — or, in a bounded host, to what it is given."""
+        content = _content_height(self._table, self._model, self._header_h, self._row_h)
+        rows = getattr(self, "_min_visible_rows", None)
+        if rows is None:
+            self._table.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+            self._table.setFixedHeight(content)
+            self.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
+            return
+        row_h = self._table.rowHeight(0) or self._row_h
+        header = self._table.horizontalHeader().height() or self._header_h
+        floor = header + min(self._model.rowCount() or 1, rows) * row_h + 2 * self._table.frameWidth()
+        self._table.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
+        self._table.setMaximumHeight(max(content, floor))
+        self._table.setMinimumHeight(min(floor, content))
+        self.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
 
     def resizeEvent(self, event):  # noqa: N802 (Qt override)
         """Re-measure: a narrower table needs a scrollbar, which needs height."""
         super().resizeEvent(event)
+        self._fit_value_columns()
         self._size_to_content()
 
     # -- controllers --------------------------------------------------------
@@ -1692,12 +1782,6 @@ class PairedParameterTableWidget(QtWidgets.QWidget):
         act_copy.triggered.connect(self._copy_selection)
         act_paste.triggered.connect(self._paste_selection)
         act_paste.setEnabled(bool(QtWidgets.QApplication.clipboard().text().strip()))
-        if self._context_menu_hook is not None:
-            menu.addSeparator()
-            try:
-                self._context_menu_hook(menu, index)
-            except Exception:
-                pass
         menu.exec_(self._table.viewport().mapToGlobal(pos))
 
     def _add_link_actions(self, menu: QtWidgets.QMenu, param: FittingParameter) -> None:

@@ -118,21 +118,33 @@ small checkable "bounds" button in its fold header (`bounds_toggle` defaults to
 *every* table in the panel at once (columns start hidden; bounds stay editable
 in the parameter details popup) — this is the default specifically so a
 `dynamic_group` table's paired Lo/Hi/Bounds/Error columns (doubled per slot)
-don't force horizontal scrolling in a narrow dock. `set_error_visible` is the
-same knob for the Error columns, for a host whose parameters no chisurf fit
-optimises and which therefore has no error estimate to show. Three properties of
-the paired table are set by its host rather than assumed, because a component
-table outside a model editor needs them: `slot_labels` names the columns
-independently of row 0 (a table with no components yet would otherwise show bare
-column numbers), `remote=False` says the parameters belong to no backend fit so an
-edit is not answered with "fit not found", and `context_menu_hook(menu, index)`
-lets the host add its own entries — "remove this component" — without
-reimplementing link / details / copy / paste. Sizing the table to its content has
-to allow for the **horizontal** scrollbar a table wider than its dock grows,
-which is drawn inside that height and otherwise eats the last row exactly as a
-bad row-height estimate would; and `RichTextHeaderView` measures the *rendered*
-title, not the markup, or a column headed `&sigma;<sub>x</sub>` reserves the
-width of nineteen characters to paint two glyphs. The
+don't force horizontal scrolling in a narrow dock. The paired table takes the
+**same `columns` whitelist** as `parameter_group_table` (`section.columns`), so
+"which columns this table shows" is declared one way for both — a host whose
+parameters no fit optimises leaves out `error` rather than carrying one empty
+column per slot, and the bounds toggle honours the whitelist instead of bringing
+back what it excluded. Two more section fields exist because a component table
+outside a model editor needs them: `slot_labels` names the columns independently
+of row 0 (a group that starts empty would otherwise show bare column numbers) and
+`remote: false` says the parameters belong to no backend fit, so an edit is not
+answered with "fit not found". The section's `del` button removes the **selected**
+component when the group's remove method takes an index (deleting the second of
+four lifetimes was otherwise impossible, and taking the last one silently is a
+surprise), falling back to the last one.
+
+Three sizing rules the tables learned from being put in a dock rather than a
+scrolled editor. Sizing to content has to allow for the **horizontal** scrollbar
+a table wider than its host grows, which is drawn inside that height and
+otherwise eats the last row exactly as a bad row-height estimate would.
+`RichTextHeaderView` measures the *rendered* title, not the markup, or a column
+headed `&sigma;<sub>x</sub>` reserves the width of nineteen characters to paint
+two glyphs. And the per-slot value columns only **stretch** when the equal share
+is wide enough for every value — squeezed below its content a column elides the
+number it exists to show, so the alternative is to hug the contents and give the
+slack to the last column. `set_scrollable(min_visible_rows)` is how a host that
+cannot grow (a dock) says so: the table then asks for that many rows, accepts
+anything up to its full content, and scrolls the rest, so enlarging the host
+shows more rows instead of blank space. The
 `CollapsibleBox` header gained `add_header_widget` to host such per-section
 controls with no extra vertical space), `help` (a `?` modal button),
 `progress` (the one inline progress bar — see below), and

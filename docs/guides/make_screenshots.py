@@ -903,9 +903,7 @@ def _grab_ndx_gaussian_panel():
         panel._append_gaussian_row((cx + 0.04, cy - 0.04), np.diag([sx ** 2, sy ** 2]))
     # The second population's centre is held, to show what a held parameter
     # looks like (greyed, not editable) beside the fitted ones.
-    from ndxplorer.core import gaussian_parameters as gp
-
-    gp.parameters_of(panel.group, 1)["x"].fixed = True
+    panel.group.parameters_of(1)["x"].fixed = True
     panel._redraw_gaussian_overlays_from_table()
     settle(100)
     panel.on_fit_2d_gaussian()
@@ -913,7 +911,7 @@ def _grab_ndx_gaussian_panel():
 
     dock = win.dockWidget_Fit
     dock.setFloating(True)
-    dock.resize(760, 240)
+    dock.resize(780, 300)
     settle(120)
     _grab(dock, "ndxplorer_gaussian_panel.png")
     win.close()
