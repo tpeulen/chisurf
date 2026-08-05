@@ -175,7 +175,8 @@ class TrajectoryFile(
             center: bool = False,
             verbose: bool = False,
             atom_indices: typing.List[int] = None,
-            mode: str = 'r'
+            mode: str = 'r',
+            topology: str = None
     ):
         """
 
@@ -189,6 +190,9 @@ class TrajectoryFile(
         :param verbose:
         :param atom_indices:
         :param mode:
+        :param topology: path to a PDB supplying the topology. Required for
+            ``.dcd`` and ``.xtc``, which store coordinates only -- the atom
+            names, elements and connectivity are simply not in those files.
         :param args:
         :param kwargs:
         """
@@ -227,8 +231,15 @@ class TrajectoryFile(
                 )
                 self._mdtraj[0].save_pdb(pdb_tmp)
                 structure = chisurf.core.structure.Structure(pdb_tmp)
+            elif p_object.lower().endswith(('.dcd', '.xtc')):
+                structure, self._mdtraj = self._load_coordinate_trajectory(
+                    p_object, topology
+                )
+                self._filename = p_object
             else:
-                structure = chisurf.core.structure.Structure(pdb_tmp)
+                raise ValueError(
+                    f"cannot read {p_object!r}: expected .pdb, .dcd or .xtc"
+                )
         elif isinstance(
                 p_object,
                 mdtraj.Trajectory
@@ -260,6 +271,53 @@ class TrajectoryFile(
         self.energy = list()
         self.chi2r = list()
         self.offset = 0
+
+    def _load_coordinate_trajectory(self, filename: str, topology: str):
+        """Read a DCD or XTC and pair it with a topology from a PDB.
+
+        These formats hold coordinates and nothing else, so the topology has to
+        come from somewhere; there is no way to guess atom names from a
+        coordinate block. Decoding is ChiSurf's own
+        (:mod:`chisurf.core.fio.trajectory`).
+
+        Parameters
+        ----------
+        filename : str
+            Path to the ``.dcd`` or ``.xtc``.
+        topology : str
+            Path to a PDB with the matching atoms.
+
+        Returns
+        -------
+        tuple
+            ``(Structure, mdtraj.Trajectory)``.
+        """
+        from chisurf.core.fio.trajectory import read_dcd, read_xtc
+
+        if topology is None:
+            raise ValueError(
+                f"{filename!r} stores coordinates only; pass topology=<pdb path>"
+            )
+        indices = self.atom_indices
+        if filename.lower().endswith('.dcd'):
+            # DCD is Angstrom; mdtraj works in nanometres.
+            xyz, _, _ = read_dcd(filename, stride=self.stride, atom_indices=indices)
+            xyz = xyz / 10.0
+        else:
+            xyz, _, _, _ = read_xtc(filename, stride=self.stride, atom_indices=indices)
+
+        top = mdtraj.load_topology(topology)
+        if indices is not None:
+            top = top.subset(indices)
+        if top.n_atoms != xyz.shape[1]:
+            # Silently trusting a mismatched topology renames every atom, which
+            # then travels into distances and FRET pairs without an error.
+            raise ValueError(
+                f"topology {topology!r} has {top.n_atoms} atoms but "
+                f"{filename!r} has {xyz.shape[1]}"
+            )
+        return (chisurf.core.structure.Structure(topology),
+                mdtraj.Trajectory(xyz, top))
 
     def clear(self):
         """Clear all recorded RMSD, dRMSD, energy, and chi2 values."""

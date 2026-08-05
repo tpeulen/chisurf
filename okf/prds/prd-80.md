@@ -186,9 +186,11 @@ trajectories.
 1. ~~**DCD reader/writer**~~ — **done**, see below. Standalone; nothing else
    depended on it.
 2. **A trajectory abstraction that is not an mdtraj subclass.** `TrajectoryFile`
-   currently inherits `mdtraj.Trajectory`; it becomes a class of its own over
-   `(xyz, topology, time)` with DCD and RMF3 backends. This is the change
-   everything else waits on.
+   still inherits `mdtraj.Trajectory`; it becomes a class of its own over
+   `(xyz, topology, time)` with DCD and XTC backends. This is the change
+   everything else waits on. *Partly done*: the loader now **opens `.dcd` and
+   `.xtc` through ChiSurf's own codecs* — only the container object and the
+   topology still come from mdtraj.
 3. **Topology without `mdtraj.Topology`** — IMP hierarchies for structures read
    from PDB/mmCIF, and the element table (`element.{carbon,…}`) replaced by
    IMP's.
@@ -409,20 +411,55 @@ few percent without anything raising.
   measurement is cheap to repeat — the script is three dozen lines — but the
   per-node key model is structural, so expect it to still lose.
 
+# Landed: the loader reaches the new codecs
+
+`TrajectoryFile(path, topology=<pdb>)` now opens `.dcd` and `.xtc`, decoding
+with `chisurf.core.fio.trajectory`. Only the container and the topology are
+still mdtraj's. Both formats store coordinates and nothing else, so a topology
+argument is **required** and a mismatched atom count is refused — accepting one
+silently renames every atom, and that travels into distances and FRET pairs
+without an error.
+
+An unknown suffix is now refused too. It used to fall through to a branch that
+never set `_mdtraj` and failed later with an `AttributeError` far from the
+cause.
+
+**A trap for whoever does stage 2.** `TrajectoryFile` computes an RMSD in its
+constructor, and `mdtraj.rmsd` **centres its inputs in place** — so every
+trajectory this class loads comes back recentred, by 5.5 nm on the test file.
+That is long-standing behaviour for every format, not something the new path
+introduced, but it is invisible in the code and a reimplementation will either
+reproduce it by accident or drop it by accident. Decide deliberately. The tests
+put the reference through the same centring rather than pretending it is not
+there.
+
 # Where to pick this up
 
-1. **Answer the IMP-declaration question first** — it decides whether this PRD
-   is viable at all. If a packaged install cannot assume IMP, the trajectory
-   layer cannot depend on it and this becomes an in-tree-reader PRD instead.
-2. **Write the DCD codec** (stage 1). It is independent, self-contained, and the
-   only genuinely new code; everything else is porting. Do not start it by
-   round-tripping against itself — write the fixtures with mdtraj's
-   `save_dcd` *first*, while it is still installed, or the endianness bug will
-   survive the whole test suite.
+The codecs are done and the loader uses them. What remains is the port.
 
-   The container question is **settled and measured** — DCD for frames, RMF3 for
-   hierarchies. Do not reopen it without repeating the benchmark.
-3. **Then stage 2**, the `TrajectoryFile` reshape, which unblocks the rest.
+1. **Stage 2 — take `mdtraj.Trajectory` out of the base classes.** This is the
+   one thing everything else waits on, and it is not gated on the IMP question
+   below: coordinates no longer need mdtraj at all. `TrajectoryFile` becomes a
+   class over `(xyz, topology, time)`. Its consumers reach mdtraj methods
+   *through inheritance* (`superpose`, slicing, `join`, `.xyz`, `.topology`),
+   so they break together the moment the base class goes — expect to port the
+   eight `traj` plugins in the same change rather than after it.
+   Read the centring trap above first.
+2. **Stage 3 — topology without `mdtraj.Topology`.** *This* is what the IMP
+   question gates. `chisurf.core.structure.Structure` already reads PDB without
+   mdtraj (it uses it only in the `find_best` RMSD helper), so the topology may
+   be closer to hand than it looks — check what `Structure` can already supply
+   before reaching for IMP.
+3. **Then the FRET modelling plugin** (`rmsd` matrices, `compute_distances`)
+   and the `mdconvert` shell-out in `traj_convert`.
+4. **Then drop the three dependencies** and extend the guardrail.
+
+**Settle before stage 3, not before stage 2:** IMP is imported 34 times but
+declared in no manifest — allowlisted as a sibling project, with one
+*module-level* `IMP.cgmol` import in `potentials.py`. If a packaged install
+cannot assume IMP, topology cannot depend on it.
 
 Do not remove mdtraj until the equal-to-mdtraj tests exist and pass; they are
-the only evidence that the coordinates did not move.
+the only evidence that the coordinates did not move. The committed fixtures
+under `test/data/atomic_coordinates/trajectory/{dcd,xtc}/` already cover the
+codecs and need no mdtraj — it is the *operations* that still lack that cover.
