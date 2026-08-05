@@ -382,7 +382,8 @@ few percent without anything raising.
 - [x] `Topology` over ChiSurf's atom array
 - [x] A `Trajectory` of our own: `superpose`, `rmsd`, `join`, `slice`, `iterload`
 - [x] 4 of the 17 runtime import sites ported (`structure.py` + the FRET core)
-- [ ] The 8 `traj` plugins, together with `TrajectoryFile`'s base class
+- [x] `traj_align` — the template: `DCDWriter`, topology field, RF-708 preserved
+- [ ] The other 7 `traj` plugins, then `TrajectoryFile`'s base class
 - [ ] chimol's `io/structure.py` (`.gro`/`.g96` only — needs a GRO reader)
 - [ ] Resolve the 2 test import sites (`md.element.*`, `Topology.add_atom`)
 - [ ] XTC writer — only needed to hand files to other tools; ChiSurf writes DCD
@@ -463,22 +464,29 @@ because the new API deliberately copies the old names and signatures.
 
 Remaining, in this order:
 
-1. **The 8 `traj` plugins together with `TrajectoryFile`'s base class.** They
-   must move as one change: the plugins reach mdtraj methods *through*
-   `TrajectoryFile`'s inheritance, so they break the moment it goes. Their
-   tests build topologies programmatically (`topology.add_atom(name,
-   md.element.carbon, residue)`), so `Topology` needs **construction methods**
-   and an `element` namespace — that is the one API gap left, and it is small.
-   Read the centring trap above before starting.
-2. **chimol's `io/structure.py`.** It reaches for mdtraj only for `.gro`,
+1. **The other 7 `traj` plugins.** `traj_align` is done and is the template —
+   copy it. The pattern in `traj_join`, `traj_rotate_translate` and
+   `traj_remove_clashes` is identical: swap `import mdtraj as md` +
+   `import tables` for `DCDWriter` and `trajectory_data as md`, add a
+   `topology_filename` field (DCD stores no atom names), open the writer **on
+   the first chunk** so the frame spacing comes from the data, and move the
+   tests from `.h5` to `.dcd` + a `.pdb`.
+   `traj_convert` needs its `mdconvert` shell-out replaced by the same loop;
+   `traj_save_topology`, `fret_trajectory` and `potential_energy` only read.
+   The GUI still needs a topology picker on each — the view models take the
+   field, nothing sets it yet.
+2. **Then `TrajectoryFile`'s base class**, once no plugin depends on the
+   inheritance. Read the centring trap above before starting.
+3. **chimol's `io/structure.py`.** It reaches for mdtraj only for `.gro`,
    `.g96` and `.h5`, already behind a clear "not available" error. `.h5`
    trajectories are being dropped anyway; GRO is a fixed-width text format and
    a page of code. Add `.dcd`/`.xtc` there while you are in it — chimol cannot
    open either today.
-3. **The six `import tables` sites.** Four are `traj` plugins writing `.h5`
-   trajectories and vanish with step 1; `av/dynamic.py`'s `save()` is the same;
-   only `maxent_decay/core/sampling.py` needs a decision (`.npz`).
-4. **Drop `mdtraj`, `pytables` and `numexpr`** and extend the guardrail.
+4. **The remaining five `import tables` sites.** Three are `traj` plugins and
+   vanish with step 1 (`traj_align`'s is already gone); `av/dynamic.py`'s
+   `save()` is the same shape; only `maxent_decay/core/sampling.py` needs a
+   decision (`.npz`).
+5. **Drop `mdtraj`, `pytables` and `numexpr`** and extend the guardrail.
 
 **Two test sites, not runtime**: `chimol/test/test_ss_vs_mdtraj.py` uses
 `compute_dssp` as an oracle for chimol's own secondary structure — it needs a
