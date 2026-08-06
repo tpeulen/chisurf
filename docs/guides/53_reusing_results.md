@@ -1,4 +1,4 @@
-# 53 — Reusing results: when a step recomputes, and when it does not
+# Reusing results: when a step recomputes, and when it does not
 
 The burst workflow asks each step to run more often than you press its Run
 button. Pressing **Next** runs the current step; walking back to look at a plot

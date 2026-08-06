@@ -37,7 +37,7 @@ def is_rst(path) -> bool:
     return pathlib.Path(path).suffix.lower() in RST_SUFFIXES
 
 
-def render_document(text: str, path) -> str | None:
+def render_document(text: str, path, *, theme=None, math=None) -> str | None:
     """Render *text* to HTML according to the format implied by *path*.
 
     Parameters
@@ -46,6 +46,10 @@ def render_document(text: str, path) -> str | None:
         Document source.
     path : str or pathlib.Path
         Document path; only its suffix is used.
+    theme : Theme, optional
+        Colours for the page; the light theme when omitted.
+    math : MathRenderer, optional
+        Shared renderer for LaTeX, so its cache survives across pages.
 
     Returns
     -------
@@ -53,7 +57,9 @@ def render_document(text: str, path) -> str | None:
         Rendered HTML, or *None* when the format has no renderer available.
 
     """
-    return render_rst(text) if is_rst(path) else render_markdown(text)
+    if is_rst(path):
+        return render_rst(text, theme=theme, math=math)
+    return render_markdown(text, theme=theme, math=math)
 
 
 def document_title(text: str, path) -> str | None:

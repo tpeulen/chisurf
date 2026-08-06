@@ -1,4 +1,4 @@
-# 40 — The AI assistant: operating ChiSurf in plain language
+# The AI assistant: operating ChiSurf in plain language
 
 ChiSurf ships an assistant that operates the program for you. You describe
 what you want in ordinary words — *"fit the decay in this folder and tell me

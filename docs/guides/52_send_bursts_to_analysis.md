@@ -1,4 +1,4 @@
-# 52 — Sending a gated burst population to FCS, TCSPC, PDA or PCH
+# Sending a gated burst population to FCS, TCSPC, PDA or PCH
 
 Exploring a burst parameter space in ndX tells you *where* the populations are.
 It does not, on its own, give you a shot-noise-limited distance distribution, a

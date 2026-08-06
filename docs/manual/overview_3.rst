@@ -1,5 +1,5 @@
-Overview
-~~~~~~~~
+Global view: overview
+~~~~~~~~~~~~~~~~~~~~~
 
 In ChiSurf dependencies between parameters can be introduced by linking and visualized in graphs (:strong:`Fig.31`). The :emphasis:`Global view` plugin (:emphasis:`i`) visualizes parameter dependencies in directed graphs, (:emphasis:`ii`) saves parameter dependencies, and (:emphasis:`iii`) restores dependencies from files.
 

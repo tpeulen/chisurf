@@ -1,5 +1,5 @@
-Fit of FCS curve
-^^^^^^^^^^^^^^^^
+Fit of the red-excitation FCS curve
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. image:: _images/image_rId74.png
   :align: center

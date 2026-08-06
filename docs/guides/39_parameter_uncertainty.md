@@ -1,4 +1,4 @@
-# 39 — Parameter uncertainty: priors, sampling and convergence
+# Parameter uncertainty: priors, sampling and convergence
 
 **Theory:** [Parameter uncertainty](../concepts/parameter_uncertainty.md) ·
 **Code:** `chisurf.core.fitting.priors`, `chisurf.core.fitting.sample`,

@@ -1,5 +1,5 @@
-Overview
-~~~~~~~~
+Correlator: overview
+~~~~~~~~~~~~~~~~~~~~
 
 .. image:: _images/image_rId38.png
   :align: center

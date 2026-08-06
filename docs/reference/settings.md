@@ -131,7 +131,7 @@ Used by: `chisurf.core.base.Data` for embedding raw files into YAML/JSON save fi
 
 > **Removed:** `n_threads` governed the `numexpr` thread pool and had no other
 > reader. `numexpr` is gone — the one expression it evaluated is a Numba kernel
-> now — so thread counts come from the [`threads`](#threads) section, which
+> now — so thread counts come from the {ref}`threads <settings-threads>` section, which
 > sets `NUMBA_NUM_THREADS` before Numba is imported.
 
 ---
@@ -408,6 +408,7 @@ protein MC plots, etc.).
 
 ---
 
+(settings-threads)=
 ### 1.9 `threads` (numeric backend threading)
 
 Applied very early at startup by `env_bootstrap._apply_thread_env_from_settings`.

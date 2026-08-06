@@ -262,8 +262,7 @@ a channel and a delay.
 
 It was built to be measured against known ground truth, it was, and it lost —
 faster where exchange is slow, both slower and more biased where it is fast — so
-it is gone. What it proved is worth more than what it computed, and is written up
-in [the alternatives that were tried](../../okf/references/mfd-forward-model-alternatives.md):
+it is gone. What it proved is worth more than what it computed:
 it carried the **same** window bias as the closed-form path, and it was the two
 agreeing that showed the error lived in an assumption they *shared* rather than
 in either implementation.
@@ -374,8 +373,7 @@ because a shorter window needs fewer transfer-matrix slices.
 This was shared by chisurf's closed-form path and by a transcribed Sim2D Monte
 Carlo built to check it — the reason those two agreed with each other while both
 were wrong. That Monte Carlo, and two other alternatives that were measured and
-lost, are recorded in
-[the alternatives that were tried](../../okf/references/mfd-forward-model-alternatives.md).
+lost, are recorded in the project's design notes.
 
 ## Further reading
 

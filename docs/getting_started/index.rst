@@ -81,3 +81,26 @@ The fastest way to see ChiSurf work end-to-end is one of the guides:
 
 Each guide links back to the matching :doc:`concept </concepts/index>` page that
 explains the underlying theory.
+
+Finding help inside ChiSurf
+---------------------------
+
+All of this documentation ships with the application: :menuselection:`Help -->
+Documentation` opens it in a browser window, with the same structure as this
+site — getting started, the concepts, the guides, the fitting manual, the
+reference, and one entry per plugin.
+
+Three things are worth knowing about that window:
+
+* **Search covers the full text of every page** (:kbd:`Ctrl+F`). Results are
+  ranked, each with the passage that matched, and the tree narrows to them.
+* **Cross-references are links.** A concept page's pointer to its guide, a
+  DOI in a *Further reading* list, a manual page's *See also* box — all of them
+  go somewhere; :kbd:`Alt+Left` walks back, and every page carries previous /
+  next along the reading order.
+* **Every plugin's** :guilabel:`?` **button opens its page here**, and its
+  :guilabel:`Guide` button walks you through the tool's own controls.
+
+Maintainers can turn on the *Authoring* toolbar in that window to edit a page in
+place, list the developer documentation, and record the human review that gates
+a release.

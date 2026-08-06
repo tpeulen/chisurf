@@ -310,8 +310,8 @@ subsampled for display, so a big map opens and a contour change stays quick;
 :class: warning
 `volume` is registered but declines, and says to use `isosurface` or `isomesh`
 instead. Ray-cast volume rendering — the mode that suits microscopy and diffuse
-probability densities, where no single threshold is meaningful — is tracked in
-PRD-57 along with the histogram panel for dragging levels.
+probability densities, where no single threshold is meaningful — is planned, as
+is a histogram panel for dragging contour levels.
 :::
 
 ### Playing a trajectory

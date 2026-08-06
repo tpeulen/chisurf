@@ -1,6 +1,15 @@
-"""Tests for the Help plugin widgets."""
+"""Tests for the Help plugin widgets.
+
+The browser navigates by the documentation's own table of contents and opens on
+a start page, so the checks here are about *structure* — that the sections are
+there, in order, with a page behind each row — rather than about a directory
+listing, which is what it used to show.
+"""
+
+import pathlib
 
 from qtpy import QtWidgets
+from qtpy.QtCore import Qt
 
 
 def test_help_widget_creation(qapp, qtbot):
@@ -17,126 +26,234 @@ def test_help_widget_creation(qapp, qtbot):
 
 
 def test_help_widget_toolbar(qapp, qtbot):
+    """The reader's toolbar navigates; the authoring one is a second row."""
     from chisurf.plugins.core.help.gui.tool import HelpWidget
     widget = HelpWidget()
     qtbot.addWidget(widget)
-    toolbars = widget.findChildren(QtWidgets.QToolBar)
-    assert len(toolbars) >= 1
-    toolbar = toolbars[0]
-    actions = toolbar.actions()
-    assert len(actions) >= 5
-    labels = [a.text() for a in actions]
-    assert any("Edit" in label or "👁️" in label or "✏️" in label for label in labels)
-    assert any("Save" in label or "💾" in label for label in labels)
+    toolbars = {bar.windowTitle(): bar for bar in widget.findChildren(QtWidgets.QToolBar)}
+    assert "Help" in toolbars
+    labels = [action.text() for action in toolbars["Help"].actions()]
+    assert "⌂" in labels and "◀" in labels and "▶" in labels
+    # Editing is not a reading tool, and is not offered until asked for.
+    assert not any("Edit" in label for label in labels)
+    assert widget.authoring_toolbar.isHidden() or not widget.authoring_btn.isChecked()
+    authoring = [action.text() for action in widget.authoring_toolbar.actions()]
+    assert any("Edit" in label for label in authoring)
+    assert any("Save" in label for label in authoring)
 
 
-def test_help_widget_has_review_controls(qapp, qtbot):
-    """The browser exposes human-review sign-off and filtering."""
+def test_tree_follows_the_documentation_structure(qapp, qtbot):
+    """Sections come from the docs' toctrees, grouped and in reading order."""
     from chisurf.plugins.core.help.gui.tool import HelpWidget
+
+    widget = HelpWidget()
+    qtbot.addWidget(widget)
+
+    titles = [
+        widget.tree.topLevelItem(index).text(0)
+        for index in range(widget.tree.topLevelItemCount())
+    ]
+    for expected in ("Getting started", "Concepts", "Guides", "Reference", "Plugins"):
+        assert any(expected in title for title in titles), titles
+
+    concepts = next(
+        widget.tree.topLevelItem(index)
+        for index in range(widget.tree.topLevelItemCount())
+        if "Concepts" in widget.tree.topLevelItem(index).text(0)
+    )
+    # Grouped, not a flat alphabetical run: the first level holds the rubrics.
+    groups = [concepts.child(i).text(0) for i in range(concepts.childCount())]
+    assert "Fundamentals" in groups
+    assert concepts.child(0).childCount() >= 3
+
+
+def test_every_tree_leaf_has_a_document(qapp, qtbot):
+    """A row a reader can click has to lead somewhere."""
+    from chisurf.plugins.core.help.gui.tool import HelpWidget
+
+    widget = HelpWidget()
+    qtbot.addWidget(widget)
+
+    def walk(item):
+        for index in range(item.childCount()):
+            child = item.child(index)
+            path = child.data(0, Qt.UserRole)
+            if child.childCount() == 0:
+                assert path, f"leaf without a document: {child.text(0)}"
+                assert pathlib.Path(path).is_file(), path
+            walk(child)
+
+    for index in range(widget.tree.topLevelItemCount()):
+        walk(widget.tree.topLevelItem(index))
+
+
+def test_manual_pages_have_distinct_titles(qapp, qtbot):
+    """Three rows called "Overview" tell the reader nothing about which to open."""
+    from chisurf.plugins.core.help.gui.tool import HelpWidget
+
+    widget = HelpWidget()
+    qtbot.addWidget(widget)
+
+    manual = None
+    for index in range(widget.tree.topLevelItemCount()):
+        item = widget.tree.topLevelItem(index)
+        if "Fitting interface" in item.text(0):
+            manual = item
+    assert manual is not None
+
+    titles = []
+
+    def collect(item):
+        for index in range(item.childCount()):
+            child = item.child(index)
+            if child.data(0, Qt.UserRole):
+                titles.append(child.text(0))
+            collect(child)
+
+    collect(manual)
+    duplicates = {title for title in titles if titles.count(title) > 1}
+    assert not duplicates, duplicates
+
+
+def test_start_page_offers_a_way_in(qapp, qtbot):
+    """The browser opens on something to read, not on an empty pane."""
+    from chisurf.plugins.core.help.gui.tool import HelpWidget
+
+    widget = HelpWidget()
+    qtbot.addWidget(widget)
+    text = widget.viewer.toPlainText()
+    assert "ChiSurf documentation" in text
+    assert "Start here" in text
+
+
+def test_search_ranks_pages_and_filters_the_tree(qapp, qtbot):
+    """A multi-word query must rank pages, and leave the tree showing them."""
+    from chisurf.plugins.core.help.gui.tool import HelpWidget
+
+    widget = HelpWidget()
+    qtbot.addWidget(widget)
+
+    hits = widget.search("anisotropy g-factor")
+    assert hits
+    assert "anisotropy" in hits[0]["node"].title.lower()
+    assert hits[0]["excerpt"]
+    # The excerpt is prose, not markup.
+    assert ")=" not in hits[0]["excerpt"]
+
+    widget.search_edit.setText("anisotropy g-factor")
+    widget._run_search()
+    visible = [item for key, item in widget._items.items() if not item.isHidden()]
+    assert visible, "the tree emptied itself while the search found pages"
+
+    widget.search_edit.setText("")
+    widget._run_search()
+    assert not widget._items[list(widget._items)[0]].isHidden()
+
+
+def test_pages_carry_previous_and_next(qapp, qtbot):
+    """A manual is read in order; the page has to offer the next one."""
+    from chisurf.plugins.core.help.gui.tool import HelpWidget
+    from chisurf.plugins.core.help.api.toc import repository_root
+
+    widget = HelpWidget()
+    qtbot.addWidget(widget)
+    page = repository_root() / "docs" / "concepts" / "tcspc_lifetime.md"
+    if not page.is_file():
+        import pytest
+
+        pytest.skip("documentation not present in this checkout")
+    widget.navigate(page)
+    html = widget.viewer.toHtml()
+    assert "◀" in html and "▶" in html
+
+
+def test_history_and_breadcrumb(qapp, qtbot):
+    """Back returns to where the reader was, and the trail says where that is."""
+    from chisurf.plugins.core.help.gui.tool import HelpWidget
+    from chisurf.plugins.core.help.api.toc import repository_root
+
+    widget = HelpWidget()
+    qtbot.addWidget(widget)
+    root = repository_root() / "docs" / "concepts"
+    first, second = root / "fret.md", root / "anisotropy.md"
+    if not (first.is_file() and second.is_file()):
+        import pytest
+
+        pytest.skip("documentation not present in this checkout")
+    widget.navigate(first)
+    assert "Concepts" in widget.breadcrumb_label.text()
+    widget.navigate(second)
+    widget.go_back()
+    assert widget.current_path == first
+
+
+def test_review_controls_live_behind_authoring(qapp, qtbot):
+    """The release gate is a maintainer's tool, not part of reading a page."""
+    from chisurf.plugins.core.help.gui.tool import HelpWidget
+
     widget = HelpWidget()
     qtbot.addWidget(widget)
     assert hasattr(widget, "review_btn")
     assert hasattr(widget, "review_filter")
-    assert hasattr(widget, "review_label")
-    assert hasattr(widget, "review_summary_label")
-    # Nothing open yet, so signing off must be impossible.
     assert not widget.review_btn.isEnabled()
+    assert not widget.authoring_btn.isChecked()
 
-
-def test_manual_branch_is_badged_with_review_status(qapp, qtbot):
-    """The user-manual branch lists reStructuredText pages with status badges."""
-    from qtpy.QtCore import Qt
-
-    from chisurf.plugins.core.help.api import review
-    from chisurf.plugins.core.help.gui.tool import REVIEW_BADGES, HelpWidget
-
-    widget = HelpWidget()
-    qtbot.addWidget(widget)
-    widget.populate_docs()
-
-    root = widget.tree.topLevelItem(0)
-    assert "User manual" in root.text(0)
-    if root.childCount() == 0:
-        import pytest
-
-        pytest.skip("no user manual in this checkout")
-
-    # Every child carries a known status badge and a real path.
-    for i in range(root.childCount()):
-        item = root.child(i)
-        status = item.data(0, Qt.UserRole + 1)
-        assert status in REVIEW_BADGES
-        assert item.data(0, Qt.UserRole)
-    # The manual is reStructuredText, which the browser could not read before.
-    assert any(
-        str(root.child(i).data(0, Qt.UserRole)).endswith(".rst")
-        for i in range(root.childCount())
-    )
-    assert review.STATUS_UNREVIEWED in REVIEW_BADGES
+    widget.authoring_btn.setChecked(True)
+    assert widget.authoring_toolbar.isVisibleTo(widget)
 
 
 def test_review_filter_hides_non_matching_pages(qapp, qtbot):
-    """Filtering by a status hides manual pages that do not have it."""
-    from qtpy.QtCore import Qt
-
+    """Filtering by a status hides review-tracked pages without it."""
     from chisurf.plugins.core.help.gui.tool import HelpWidget
+    from chisurf.plugins.core.help.api import review
 
     widget = HelpWidget()
     qtbot.addWidget(widget)
-    widget.populate_docs()
-    root = widget.tree.topLevelItem(0)
-    if root.childCount() == 0:
+    widget.authoring_btn.setChecked(True)
+
+    tracked = {
+        key: item
+        for key, item in widget._items.items()
+        if item.data(0, Qt.UserRole + 1)
+    }
+    if not tracked:
         import pytest
 
-        pytest.skip("no user manual in this checkout")
+        pytest.skip("no review-tracked pages in this checkout")
 
-    index = widget.review_filter.findData("reviewed")
+    index = widget.review_filter.findData(review.STATUS_REVIEWED)
     widget.review_filter.setCurrentIndex(index)
-    for i in range(root.childCount()):
-        item = root.child(i)
-        if item.data(0, Qt.UserRole + 1) != "reviewed":
-            assert item.isHidden()
+    for key, item in tracked.items():
+        if item.data(0, Qt.UserRole + 1) != review.STATUS_REVIEWED:
+            assert item.isHidden(), key
 
     widget.review_filter.setCurrentIndex(widget.review_filter.findData("all"))
-    assert not any(root.child(i).isHidden() for i in range(root.childCount()))
+    assert not any(item.isHidden() for item in tracked.values())
 
 
-def test_core_branch_shows_only_project_documentation(qapp, qtbot):
-    """The tree's project branch must not list scratch or knowledge-bundle files."""
-    import pathlib
-
-    from qtpy.QtCore import Qt
-
+def test_developer_documentation_is_off_by_default(qapp, qtbot):
+    """Architecture notes are not what a scientist opened the help for."""
     from chisurf.plugins.core.help.gui.tool import HelpWidget
 
     widget = HelpWidget()
     qtbot.addWidget(widget)
-    widget.populate_docs()
+    titles = [
+        widget.tree.topLevelItem(index).text(0)
+        for index in range(widget.tree.topLevelItemCount())
+    ]
+    assert not any("Developing" in title for title in titles)
 
-    branch = None
-    for i in range(widget.tree.topLevelItemCount()):
-        item = widget.tree.topLevelItem(i)
-        if "Core" in item.text(0) or "Project" in item.text(0):
-            branch = item
-            break
-    assert branch is not None
-    assert branch.childCount()
-
-    import chisurf as cs
-
-    root = pathlib.Path(cs.__file__).resolve().parent.parent
-    excluded = {"junk", "okf", "AGENT", "scratch", "build_tools", "test", "docs"}
-    for i in range(branch.childCount()):
-        path = pathlib.Path(str(branch.child(i).data(0, Qt.UserRole)))
-        parts = path.relative_to(root).parts
-        assert parts[0] not in excluded, path
-        assert not any(part.startswith(".") for part in parts), path
+    widget.authoring_btn.setChecked(True)
+    widget.developer_btn.setChecked(True)
+    titles = [
+        widget.tree.topLevelItem(index).text(0)
+        for index in range(widget.tree.topLevelItemCount())
+    ]
+    assert any("Developing" in title for title in titles)
 
 
 def test_oversized_images_are_scaled_and_centred():
     """Manual screenshots must not blow up the layout."""
-    import pathlib
-
     from chisurf.plugins.core.help.gui.tool import _constrain_image_widths
 
     html = '<p>text</p>\n<img alt="x" class="align-center" src="wide.png" />\n<p>more</p>'
@@ -147,10 +264,18 @@ def test_oversized_images_are_scaled_and_centred():
 
 
 def test_inline_images_are_not_wrapped():
-    import pathlib
-
     from chisurf.plugins.core.help.gui.tool import _constrain_image_widths
 
     html = '<p>text <img alt="x" src="i.png" /> more</p>'
     out = _constrain_image_widths(html, pathlib.Path("."), 400)
     assert '<p align="center">' not in out
+
+
+def test_text_column_is_bounded_in_a_wide_window():
+    """A thousand-pixel line is not readable, whatever the window is doing."""
+    from chisurf.plugins.core.help.gui.tool import _apply_measure
+
+    html = "<html><head></head><body><p>x</p></body></html>"
+    assert "margin-left" not in _apply_measure(html, 700, 860)
+    wide = _apply_measure(html, 1600, 860)
+    assert "margin-left: 370px" in wide

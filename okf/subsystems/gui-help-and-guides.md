@@ -7,6 +7,9 @@ tags: [gui, qt, help, documentation, onboarding, plugins, conventions]
 timestamp: '2026-08-04T00:00:00Z'
 ---
 
+The window those links open into is a subsystem of its own:
+[the documentation browser](documentation-browser.md).
+
 # Where to pick this up
 
 **The measurement.** `pytest test/test_plugin_help_guide_seam.py` — the number

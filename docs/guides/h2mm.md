@@ -78,7 +78,7 @@ Because the H2MM generative model is a fast, exact simulator, a small network ca
 be trained once to map a dataset's summary features directly to
 $(\pi, A, B)$ — replacing the iterative EM with a single forward pass. It ships
 disabled with no pretrained model; train one for your `(n_states, n_streams)` and
-Δt regime and pass it via `--surrogate`. See the design note *PRD-60* for the
+Δt regime and pass it via `--surrogate`. See the surrogate-model notes for the
 rationale (notably: seeding EM near the optimum does **not** speed it up, because
 EM's cost is the finite-sample last mile to the dataset-specific MLE — so the
 network must *replace* EM, not initialise it).

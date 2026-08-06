@@ -1,4 +1,4 @@
-# 56 — FCS saturation and focal-volume expansion
+# FCS saturation and focal-volume expansion
 
 **Tool:** Calculators → FCS Saturation · **CLI:** `csg_fcs_saturation` /
 `python -m chisurf.plugins.calculator.fcs_saturation_calc.cli.main` ·

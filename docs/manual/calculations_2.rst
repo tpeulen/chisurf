@@ -1,5 +1,5 @@
-Calculations
-^^^^^^^^^^^^
+Calculation of the overlap volume and co-diffusion amplitude
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 From our double-labeled DNA measurements, we need to derive two important parameter:
 

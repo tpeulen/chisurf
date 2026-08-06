@@ -25,10 +25,17 @@ from __future__ import annotations
 
 import logging
 import pathlib
-import re
 import webbrowser
 
 from qtpy import QtCore
+
+from chisurf.plugins.core.help.api.xref import (
+    expand_roles,
+    ref_index,
+    repository_root,
+    resolve_document,
+    resolve_ref,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -44,53 +51,6 @@ __all__ = [
 
 #: URL schemes handed to the system browser.
 WEB_SCHEMES = ("http", "https", "ftp", "mailto")
-
-
-def repository_root() -> pathlib.Path:
-    """Return the directory that holds ``docs/`` — the repo or install root."""
-    here = pathlib.Path(__file__).resolve()
-    for parent in here.parents:
-        if (parent / "docs").is_dir():
-            return parent
-    return here.parents[-1]
-
-
-def resolve_document(target: str, base: pathlib.Path | None = None) -> pathlib.Path | None:
-    """Resolve a link target to a documentation file.
-
-    Parameters
-    ----------
-    target : str
-        Path from the link, e.g. ``docs/concepts/pair_correlation.md``,
-        ``concepts/pair_correlation.md``, or one relative to *base*.
-    base : pathlib.Path, optional
-        Directory the help text itself lives in, tried first so a plugin can
-        link to a file beside its own ``help.md``.
-
-    Returns
-    -------
-    pathlib.Path or None
-        The existing file, or ``None`` when nothing matches.
-    """
-    text = str(target or "").strip()
-    if not text:
-        return None
-    path = pathlib.Path(text)
-    if path.is_absolute():
-        return path if path.is_file() else None
-
-    root = repository_root()
-    candidates: list[pathlib.Path] = []
-    if base is not None:
-        candidates.append(base / path)
-    candidates.append(root / path)
-    # A link may name the page without the ``docs/`` prefix, which is how the
-    # docs cross-reference each other.
-    candidates.append(root / "docs" / path)
-    for candidate in candidates:
-        if candidate.is_file():
-            return candidate.resolve()
-    return None
 
 
 def open_link(url, base: pathlib.Path | None = None) -> bool:
@@ -214,88 +174,6 @@ def wire_text_browser(browser, base: pathlib.Path | None = None) -> None:
 # ──────────────────────────────────────────────────────────────────────────────
 # MyST cross-reference roles
 # ──────────────────────────────────────────────────────────────────────────────
-#: ``{ref}`label``` / ``{ref}`text <label>``` and the same for ``{doc}``.
-_ROLE = re.compile(r"\{(ref|doc)\}`([^`]+)`")
-#: A MyST target at the top of a page: ``(concept-image-correlation)=``.
-_TARGET = re.compile(r"^\((?P<label>[A-Za-z0-9_.:-]+)\)=\s*$", re.M)
-
-_REF_CACHE: dict[str, pathlib.Path] | None = None
-
-
-def ref_index(refresh: bool = False) -> dict[str, pathlib.Path]:
-    """Return every ``(label)=`` target in the docs, mapped to its page.
-
-    Parameters
-    ----------
-    refresh : bool
-        Rebuild the index instead of using the cached one.
-
-    Returns
-    -------
-    dict
-        ``{label: path}``. Empty when there is no ``docs/`` tree.
-    """
-    global _REF_CACHE
-    if _REF_CACHE is not None and not refresh:
-        return _REF_CACHE
-    index: dict[str, pathlib.Path] = {}
-    docs = repository_root() / "docs"
-    if docs.is_dir():
-        for page in docs.rglob("*.md"):
-            try:
-                text = page.read_text(encoding="utf-8")
-            except Exception:
-                continue
-            for match in _TARGET.finditer(text):
-                index.setdefault(match.group("label"), page)
-    _REF_CACHE = index
-    return index
-
-
-def resolve_ref(label: str) -> pathlib.Path | None:
-    """Return the page that defines ``(label)=``, or ``None``."""
-    return ref_index().get(str(label).strip())
-
-
-def expand_roles(text: str, base: pathlib.Path | None = None) -> str:
-    """Turn MyST ``{ref}``/``{doc}`` roles into ordinary Markdown links.
-
-    The documentation is written in MyST, whose cross-references are roles
-    rather than links. A plain Markdown viewer renders them as literal text --
-    ``{ref}`concept-fcs-correlation``` -- so the pages that cross-reference each
-    other most are exactly the ones that cannot be navigated. Rewriting them to
-    ``[text](path)`` before rendering makes them clickable without touching the
-    sources, which still have to build under Sphinx.
-
-    Parameters
-    ----------
-    text : str
-        Markdown source.
-    base : pathlib.Path, optional
-        Directory of the page, for resolving a relative ``{doc}`` target.
-
-    Returns
-    -------
-    str
-        The same text with resolvable roles rewritten as links; an unresolvable
-        role is left as it was rather than turned into a dead link.
-    """
-    def _replace(match: "re.Match[str]") -> str:
-        role, body = match.group(1), match.group(2).strip()
-        label, caption = body, ""
-        if "<" in body and body.endswith(">"):
-            caption, label = body[: body.index("<")].strip(), body[body.index("<") + 1 : -1]
-        target = (
-            resolve_ref(label) if role == "ref"
-            else resolve_document(label.lstrip("/") + ".md", base)
-            or resolve_document(label.lstrip("/"), base)
-        )
-        if target is None:
-            return match.group(0)
-        try:
-            href = target.relative_to(repository_root()).as_posix()
-        except ValueError:
-            href = str(target)
-        return f"[{caption or label}]({href})"
-
-    return _ROLE.sub(_replace, str(text))
+# Resolution itself lives in the Qt-free help API, because the manual's
+# reStructuredText renderer needs exactly the same answers and cannot import a
+# widget module. These names stay here as the GUI-side entry points.

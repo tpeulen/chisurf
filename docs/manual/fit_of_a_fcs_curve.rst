@@ -1,5 +1,5 @@
-Fit of a FCS curve
-^^^^^^^^^^^^^^^^^^
+Fit of the green-excitation FCS curve
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. seealso::
 
@@ -7,15 +7,15 @@ Fit of a FCS curve
    :ref:`concept-fcs-correlation`. A shorter task-focused version:
    :doc:`/guides/09_diffusion_fcs`.
 
-Open Chisurf2016
+Start ChiSurf. The first start can take a few seconds while the analysis
+plugins are discovered.
 
-It might take a while to open – be patient!
+The window has two panels:
 
-It has got two panels:
+Left: data is loaded here and the analysis method / model is selected. The
+integrated Python console below it runs scripts against the running session.
 
-Left / white: Here, the data is loaded and the analysis method / model is selected. Additionally, you can use the integrated Python-console to run little scripts.
-
-Right / grey: Here, each data set opens in its own window.
+Right: each data set opens in its own window.
 
 .. image:: _images/image_rId53.png
   :align: center

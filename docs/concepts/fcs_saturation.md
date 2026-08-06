@@ -68,7 +68,7 @@ Two details matter more than they look:
 * **`ε` must be the value at the excitation wavelength**, not the catalogued
   peak. Exciting a dye 70 nm off its maximum can mean a factor of hundreds.
   ChiSurf reads `ε(λ)` off the stored absorption spectrum when a dye is picked
-  from the [MMFDB](../../okf/architecture/mmfdb.md) repository (the chooser is
+  from the [MMFDB](../reference/plugins/mmfdb_admin.md) metadata store (the chooser is
   type-to-search over ~700 entries, matching any part of the name). Because that
   value is read rather than typed, it is *not* floored at a "sensible" minimum:
   off-maximum excitation legitimately gives a few hundred M⁻¹cm⁻¹ or less, and

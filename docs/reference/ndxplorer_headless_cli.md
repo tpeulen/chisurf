@@ -1,4 +1,4 @@
-# ndX headless CLI recipes (PRD-31)
+# ndX headless CLI recipes
 
 ndX's two core workflows — **burst filtering** and **imaging** — run without
 a window. Each prints JSON to stdout so pipelines can chain on it. There are two
@@ -37,13 +37,13 @@ never copied.
 ### MMFDB round trip
 
 ```bash
-# 1) raw + sample -> Burst Selection (PRD-28)
+# 1) raw + sample -> Burst Selection
 csc burst-selection analyze m000.spc m001.spc \
     --filetype SPC-130 --detectors-json det.json \
     --mmfdb --db mmfdb.sqlite --sample-name "DNA burst sample"
 #   => prints the output-folder artifact id.
 
-# 2) Burst Selection -> ndX filter (PRD-31)
+# 2) Burst Selection -> ndX filter
 csc ndxplorer filter --from-mmfdb <output_folder_artifact_id> --db mmfdb.sqlite \
     --select "proximity_ratio:0.30-0.70" --select "n_photons:50-" \
     --to-mmfdb --sample-id <sample_id>
