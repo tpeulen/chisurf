@@ -197,6 +197,57 @@ so is **speed**: `ray` was 143–651× slower than it needed to be.
 box is what exposed that `symexp` had never worked: see *the mates were all in
 the same place* below.
 
+# What has been mined, and how to tell
+
+**The question this answers:** ChiMOL is built by reading PyMOL's source and
+transcribing it, so the useful thing to know is *which parts have already been
+read* -- otherwise the same file is re-read by the next session and "is the
+source exhausted?" has no answer. As of 2026-08-06 it is **14 files of 461**
+(3.0 %) across the layers that matter. Nowhere near exhausted.
+
+**Editing the reference checkouts is sanctioned, for the header only.** A marker
+goes at the top of each file that has been read, so it is found by whoever opens
+the file rather than by whoever thinks to search here:
+
+```c
+/*
+ * CHIMOL-REVIEWED: 2026-08-06
+ * CHIMOL-TAKEN: cSetting_stick_color -> renderer/view.py::_representation_color
+ * CHIMOL-SKIPPED: cSetting_valence -- chimol has no bond orders
+ * CHIMOL-RECORD: okf/plugins/pymol-parity.md
+ * Header added by ChiSurf; the code below is untouched.
+ */
+```
+
+The same applies to the ChimeraX checkout. **Never touch the code** -- only the
+header -- so that `git diff` inside the checkout stays readable (it should show
+insertions and *zero deletions*) and the file keeps saying what the reference
+does.
+
+**`SKIPPED` matters as much as `TAKEN`.** "Read and deliberately not taken, for
+this reason" is the expensive knowledge: without it the next session re-reads
+the file, reaches the same conclusion, and pays again -- which is exactly what
+happened with `valence`.
+
+**This concept is the record; the markers are an index.** `junk/` is gitignored
+and re-clonable, so a re-clone loses every marker and loses nothing else. That
+is why each marker points back here, and why the coverage tool reports a fresh
+checkout as 0 % -- which is the honest reading of "nobody has looked at this
+one".
+
+Measure it with:
+
+```bash
+python chisurf/plugins/chimol/chimol/analysis/reference_coverage.py junk/pymol-open-source
+python .../reference_coverage.py junk/pymol-open-source --unreviewed layer2
+python .../reference_coverage.py junk/ChimeraX --chimerax
+```
+
+The denominator is the directories the parity work actually reads (`layer0`-`layer5`,
+`modules/pymol`) rather than the whole tree: PyMOL is ~3000 files, most of them
+build glue and bundled dependencies, and counting those would hold coverage near
+zero for ever and tell nobody anything.
+
 **A note for whoever needs PyMOL's source:** `junk/pymol-open-source` is the
 authority on behaviour and **is present**. A 2026-08-06 session briefly found it
 missing and recorded that it had been deleted -- it had not; the directory was

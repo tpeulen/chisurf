@@ -2,6 +2,16 @@
 
 ## 2026-08-06
 
+* **Which parts of the reference sources have been mined, and when they are exhausted** ([pymol parity](plugins/pymol-parity.md)).
+
+  ChiMOL is built by reading PyMOL's source and transcribing it -- the rule that has been right every time it was followed -- but nothing in the tree could say *which parts had already been read*. So the same file gets re-read by the next session, and "is the source exhausted?" had no answer. It does now: **14 files of 461** (3.0 %) across the layers the parity work actually reads. Nowhere near.
+
+  **Editing the reference checkouts is now sanctioned, for the header only.** A `CHIMOL-REVIEWED` / `CHIMOL-TAKEN` / `CHIMOL-SKIPPED` / `CHIMOL-RECORD` block goes at the top of each file that has been read, so it is found by whoever opens the file rather than by whoever thinks to search the knowledge base. Never the code: a `git diff` inside the checkout must show insertions and **zero deletions**, which is what the 14 PyMOL files and 2 ChimeraX files stamped here do (87 insertions, 0 deletions).
+
+  **`SKIPPED` is the half that pays.** "Read and deliberately not taken, for this reason" is the expensive knowledge -- without it the next session re-reads the file, reaches the same conclusion and pays again, which is exactly what `valence` cost. The markers carry, among others: `RepValence` blocked on bond orders, `ribbon_color` having no separate representation here, ChimeraX's shadow maps unbuilt, and its GL abstraction rejected in favour of driving PyOpenGL directly.
+
+  **The markers are an index; this concept is the record.** `junk/` is gitignored and re-clonable, so a re-clone loses every marker and nothing else -- which is why each one points back at the OKF concept, and why the tool reports a fresh checkout as 0 %. `analysis/reference_coverage.py` measures it, with the denominator restricted to the directories that matter (PyMOL is ~3000 files, mostly build glue). 6 tests, which build their own miniature checkout so they run without the 132 MB one.
+
 * **Correction, and why `valence` is not next** ([pymol parity](plugins/pymol-parity.md)).
 
   **The PyMOL checkout was never deleted.** The previous entry recorded that `junk/pymol-open-source` -- the tracker's stated authority on behaviour -- had been removed during this session. It had not: the directory was unreadable for a few minutes (most likely while another instance re-cloned it, and `clone.sh` skips what is already there) and is present and complete, `layer2/`, `modules/pymol/util.py` and all 819 records of `SettingInfo.h`. Corrected in the tracker, because a false statement in the durable layer is worse than no statement: the next session would have re-cloned 132 MB or, worse, transcribed from memory.
