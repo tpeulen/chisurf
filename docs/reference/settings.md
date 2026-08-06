@@ -245,7 +245,7 @@ plot defaults. Many of these are read via `chisurf.settings.gui`.
 
 - **`language`**  
   UI language as a two-letter locale code. `en` (default) is the canonical
-  source language and needs no catalogue; `de`, `fr` and `ru` load
+  source language and needs no catalogue; `de`, `es`, `fr`, `pt` and `ru` load
   `chisurf/gui/i18n/chisurf_<code>.qm` at startup. Picking a language in the
   Settings dialog or the ribbon flag dropdown writes it here, so the choice
   **persists across sessions**; tools and dialogs opened after the switch render

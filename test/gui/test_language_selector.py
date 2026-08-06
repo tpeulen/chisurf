@@ -34,10 +34,14 @@ def test_available_languages_and_display_names(qapp):
     assert "de" in langs  # shipped German catalogue discovered
     assert "fr" in langs  # shipped French catalogue discovered (second locale)
     assert "ru" in langs  # shipped Russian catalogue discovered (third locale)
+    assert "es" in langs  # shipped Spanish catalogue
+    assert "pt" in langs  # shipped Portuguese catalogue
     assert gi18n.language_display_name("en") == "English"
     assert gi18n.language_display_name("de") == "Deutsch"
     assert gi18n.language_display_name("fr") == "Français"
     assert gi18n.language_display_name("ru") == "Русский"
+    assert gi18n.language_display_name("es") == "Español"
+    assert gi18n.language_display_name("pt") == "Português"
     assert gi18n.language_display_name("xx") == "xx"  # unknown → bare code
 
 
@@ -51,6 +55,10 @@ def test_live_apply_and_remove(qapp):
         # a second switch replaces the catalogue rather than stacking on it
         assert gi18n.apply_language("ru") == "ru"
         assert ci18n.tr("Convolution") == "Свёртка"
+        assert gi18n.apply_language("es") == "es"
+        assert ci18n.tr("Convolution") == "Convolución"
+        assert gi18n.apply_language("pt") == "pt"
+        assert ci18n.tr("Convolution") == "Convolução"
         # switching back to English removes the catalogue (no stale translation)
         assert gi18n.apply_language("en") == "en"
         assert ci18n.tr("Convolution") == "Convolution"
