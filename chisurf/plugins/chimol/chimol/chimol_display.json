@@ -60,7 +60,7 @@
     "ring_rim_radius": 0.08,
     "ring_rim_quality": 8,
     "backbone_quality": 18,
-    "backbone_smooth_cycles": 2,
+    "nucleic_smooth_cycles": 0,
     "backbone_smooth_window": 1,
     "nucleic_trace_atoms": [
       "C4'",

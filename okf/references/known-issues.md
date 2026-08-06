@@ -1,33 +1,34 @@
-## chimol: the nucleic-acid cartoon has artifacts (2026-08-06)
+## chimol: the nucleic-acid cartoon has artifacts — RESOLVED 2026-08-06
 
-Reported with a screenshot of `1rtd`'s DNA drawn as `cartoon`: the base rings
-are there and are recognisably the right idea, but
+Kept for the mechanism, which generalises past this one representation.
 
-* rings sit **detached** from the backbone ribbon rather than joined to it by a
-  glycosidic connector;
-* thin **spokes** stick out of the ribbon at angles that match nothing;
-* neighbouring rings **overlap and disagree in orientation**, where a duplex
-  should show a regular ladder of parallel plates.
+Reported as "the backbone of the nucleic acid is offset, thus it looks like
+there are sticks sticking out of the backbone". The sticks were the base
+connectors, drawn correctly to the real sugar atoms while the tube ran
+somewhere else -- so the three symptoms it presented as (offset backbone,
+detached rings, stray spokes) were **one** fault.
 
-**Diagnosed by the reporter, which narrows it a long way: the nucleic backbone
-ribbon is drawn OFFSET from the atoms it should follow.** The "spokes" are then
-not stray geometry at all -- they are the connectors from each base to its
-sugar, drawn correctly to the real backbone position while the ribbon runs
-somewhere else, so they appear to stick out of it. That also explains the rings
-looking detached, and it means there is probably **one** fault rather than
-three.
+The fault is a category error, not arithmetic. The nucleic trace was passed
+through PyMOL-style `RepCartoonSmoothLoops` control-point averaging, which
+PyMOL applies to **loops** -- because a moving average over points on a HELIX
+is not a smoothing but a **contraction toward the helix axis**. A duplex C4'
+trace is a helix of radius ~9 A; the shipped two 3-point passes moved it a
+measured 1.68 A (max 2.43 A) off the atoms, against a tube radius of 0.4. It is
+also sharply window-sensitive: `window=3` on the same structure reaches 8.3 A,
+so a half-width that reads like a quality knob is a displacement knob.
 
-Where to look, in that light: which atom the nucleic guide path is splined
-through. A protein cartoon follows CA; a nucleic one should follow P (or C4'),
-and a guide built from the wrong atom -- or from the protein rule applied to a
-residue that has no CA -- lands beside the chain by exactly the offset seen.
-`geometry/cartoon.py`, and `test_nucleic_cartoon_render.py` passes, so whatever
-is wrong is not asserted there: the first job is a test that fails on the
-picture, comparing the guide points against the P/C4' positions.
+Two changes, because the default was only half of it: nucleic smoothing is off
+by default (`nucleic_smooth_cycles`, and the spline already smooths *and*
+passes through its control points), and each base connector is now anchored to
+the same array the tube is swept along instead of to the raw atom -- so no
+smoothing setting can separate them again.
 
-Not attempted in the session that found it: the wheel fix beside it was
-finished and verified, and starting a geometry investigation on the same commit
-would have shipped two half-things.
+**Why the render test did not catch it:** it pinned `backbone_smooth_cycles` to
+0 in its own config while the shipped default was 2. It rendered, and asserted
+on, a configuration nobody ran. That is the second instance this week of a test
+asserting a non-shipped environment into existence (the first was mouse picking),
+and it is worth treating as a pattern: a test that supplies its own config is
+testing the code, not the product.
 
 ## ndX: the mask event filter reads a deleted check box during start-up (2026-08-06)
 

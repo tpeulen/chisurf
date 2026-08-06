@@ -2156,6 +2156,26 @@ def _generate_cartoon_tube_arrays(
                 all_cols.append(c)
             vert_offset += v.shape[0]
 
+    # Rungs last, anchored to the trace as it is actually drawn. ``anchors`` is
+    # the smoothed array when a tube was built and the raw one otherwise (a
+    # single-residue chain has no tube but still has a base to connect).
+    if rungs:
+        anchors = (
+            bb_coords
+            if len(backbone_coords) >= 2
+            else np.asarray(backbone_coords, dtype=float)
+        )
+        for index, c1_coord, base_anchor_coord, res_color in rungs:
+            start = anchors[index]
+            for seg_a, seg_b in (
+                (start, c1_coord),
+                (c1_coord, base_anchor_coord),
+            ):
+                cyl = _generate_cylinder(seg_a, seg_b, ladder_radius, res_color)
+                if cyl is not None:
+                    add_mesh(*cyl)
+            add_mesh(*_uv_sphere(c1_coord, ladder_radius, res_color))
+
     if not all_verts:
         return None
 
@@ -2696,7 +2716,17 @@ def _generate_nucleic_cartoon_arrays(
     # (``base * scale**2``), bloating the DNA/RNA backbone tube.
     backbone_radius = float(cfg.get("backbone_radius", 0.4))
     backbone_quality = int(cfg.get("backbone_quality", 18))
-    smooth_cycles = int(cfg.get("backbone_smooth_cycles", 2))
+    # Laplacian smoothing defaults OFF for nucleic acids, unlike the protein
+    # path. PyMOL applies ``RepCartoonSmoothLoops`` to *loops*, and the reason
+    # is geometric: a moving average over points on a HELIX is not a smoothing
+    # but a contraction toward the helix axis. A duplex C4' trace is a helix of
+    # radius ~9 A, so the shipped two 3-point passes pulled the tube a measured
+    # 1.68 A (max 2.43 A) off the atoms it traces, against a tube radius of 0.4
+    # -- roughly four radii, which is a tube in a different place rather than a
+    # mis-registered one. It is also sharply window-sensitive: at window=3 the
+    # same structure reaches 8.3 A. The spline below already smooths, and unlike
+    # an average it passes THROUGH its control points.
+    smooth_cycles = int(cfg.get("nucleic_smooth_cycles", 0))
     smooth_window = int(cfg.get("backbone_smooth_window", 1))
     tension = float(cfg.get("spline_tension", 0.3))
     trace_atoms = list(
@@ -2771,6 +2801,9 @@ def _generate_nucleic_cartoon_arrays(
     pur_ring5_names = ["C4", "C5", "N7", "C8", "N9"]
     
     # Collect backbone coordinates (C4' or P) for backbone trace
+    # (index into backbone_coords, C1', base anchor, colour) -- drawn after the
+    # trace is smoothed, so a rung starts on the curve rather than at the atom.
+    rungs: list = []
     backbone_coords = []
     backbone_colors = []
     backbone_chains = []
@@ -2886,16 +2919,23 @@ def _generate_nucleic_cartoon_arrays(
 
         # Rung: backbone trace point -> C1' (sugar) -> base anchor. C1' sits far
         # off the tube centerline, so a rung that starts at C1' alone looks
-        # detached; starting at the backbone trace atom keeps the base visually
+        # detached; starting at the backbone trace point keeps the base visually
         # attached to the tube, and routing through C1' follows the real sugar.
-        for seg_a, seg_b in (
-            (backbone_coord, c1_coord),
-            (c1_coord, base_anchor_coord),
-        ):
-            cyl = _generate_cylinder(seg_a, seg_b, ladder_radius, res_color)
-            if cyl is not None:
-                add_mesh(*cyl)
-        add_mesh(*_uv_sphere(np.asarray(c1_coord, dtype=float), ladder_radius, res_color))
+        #
+        # Deferred rather than drawn here, because "the backbone trace point" is
+        # not the raw atom: the tube is built from SMOOTHED control points, and
+        # a rung starting at the atom while the tube runs elsewhere is precisely
+        # the reported artifact -- connectors that look like sticks poking out
+        # of the backbone. The start is taken from the same array the tube is
+        # swept along, below, so the two cannot disagree whatever the smoothing.
+        rungs.append(
+            (
+                len(backbone_coords) - 1,
+                np.asarray(c1_coord, dtype=float),
+                np.asarray(base_anchor_coord, dtype=float),
+                np.asarray(res_color, dtype=float).copy(),
+            )
+        )
 
         if is_purine:
             if all(n in atom_to_coord for n in pur_ring6_names):
@@ -2935,6 +2975,8 @@ def _generate_nucleic_cartoon_arrays(
             seg_coords = _smooth_backbone_points(
                 seg_coords, cycles=smooth_cycles, window=smooth_window
             )
+            # The rungs start here, not at the raw atom.
+            bb_coords[s:e] = seg_coords
             bb_smooth, bb_colors_smooth = _sample_path(
                 seg_coords, seg_colors, subdivisions=subdivisions, tension=tension
             )

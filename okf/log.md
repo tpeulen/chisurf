@@ -2,6 +2,39 @@
 
 ## 2026-08-06
 
+* **The nucleic cartoon traced a helix by averaging it, which is a contraction**
+  ([chimol](plugins/chimol.md), [known issues](references/known-issues.md)).
+
+  "The backbone of the nucleic acid is offset, thus it looks like there are
+  sticks sticking out of the backbone." The sticks were the base connectors,
+  drawn correctly to the real sugar while the tube ran somewhere else -- so the
+  three symptoms (offset backbone, detached rings, stray spokes) were one fault.
+
+  A category error rather than an arithmetic one: the trace went through
+  PyMOL-style `RepCartoonSmoothLoops` control-point averaging, which PyMOL
+  applies to **loops**, because a moving average over points on a HELIX is not a
+  smoothing but a contraction toward the helix axis. Measured on 1RTD's duplex,
+  the shipped two 3-point passes moved the tube **1.68 A (max 2.43 A)** off the
+  C4' atoms against a tube radius of 0.4 -- about four radii, a tube in a
+  different place rather than a mis-registered one. Sharply window-sensitive:
+  `window=3` reaches 8.3 A on the same structure.
+
+  Fixed at both ends. Nucleic smoothing defaults off (`nucleic_smooth_cycles`;
+  the spline already smooths, and unlike an average it passes *through* its
+  control points), and each base connector is anchored to the same array the
+  tube is swept along rather than to the raw atom -- so no smoothing setting can
+  separate them again. Verified by rendering the ten mid-chain residues with the
+  C4' atoms overlaid: at the old default the atoms visibly float clear of the
+  tube through the bend, at the new one every atom sits on it.
+
+  **The render test could not have caught it**: it pinned
+  `backbone_smooth_cycles` to 0 in its own config while the shipped default was
+  2, so it rendered and asserted a configuration nobody ran. That is the second
+  case this week of a test asserting a non-shipped environment into existence --
+  the first was mouse picking -- and it is the same shape as the console finding
+  above. New `test_nucleic_trace_offset.py` reads the default out of
+  `chimol_display.json` instead of supplying one.
+
 * **A burst measurement had a time axis and no way to look at it** ([ndX](plugins/ndxplorer.md)).
 
   Every burst carries `Mean Macro Time (s)`, monotonic across all the `.bur` files of a measurement, and ndX drew the whole acquisition as one static 2-D histogram — which is an integral over time, so a photobleaching sample and a stable one with broader populations produce the same picture. The machinery to fix that was already in the file, wired to the wrong thing: the `Image` group box held a spin box, five transport buttons and a `QTimer` bound to an image **frame index**, and `axis_helpers` explicitly rejected any column whose name contains "time". For burst data the whole box was hidden — taking the `weight` checkbox and combo, which happened to live inside it, with it, so histogram weighting was unreachable for bursts.

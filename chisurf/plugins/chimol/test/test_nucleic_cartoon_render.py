@@ -99,7 +99,7 @@ def _build_inputs(scale: float = 10.0):
 _BEFORE_CFG = {
     "backbone_radius": 1.0,  # -> 10 scene units, the historical bloated tube
     "nucleic_trace_atoms": ["P", "O5'", "C5'", "C4'", "C3'", "O3'", "C1'", "C1*"],
-    "backbone_smooth_cycles": 0,
+    "nucleic_smooth_cycles": 0,  # the historical look had no smoothing
     "spline_tension": 0.0,
     "nucleic_ao_strength": 0.0,
     "ring_style": "filled",  # old flat plates (no rounded rim)
