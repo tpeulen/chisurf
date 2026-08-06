@@ -724,14 +724,19 @@ def _load_display_config() -> dict:
                 "default": [0.8, 0.8, 0.8, 1.0],
             },
         },
+        # PyMOL's selection indicator, name for name: `selection_width` (3),
+        # `selection_width_max` (10) and `selection_width_scale` (2.0) from its
+        # `SettingInfo.h`, and the pink its indicator pass hard-codes. The
+        # reference radius is PyMOL's `stick_radius`, which is what its width
+        # rule scales -- kept separate here because chimol's stick radius is a
+        # representation setting and this must not follow it.
         "selection": {
-            "color": [1.0, 1.0, 0.0, 1.0],
-            "size_scale": 0.08,
-            "min_size": 6.0,
-            "max_size": 24.0,
-            "alpha": 0.4,
+            "color": [1.0, 0.2, 0.6, 1.0],
+            "width": 3.0,
+            "width_max": 10.0,
+            "width_scale": 2.0,
+            "width_reference_radius": 0.25,
             "click_radius_px": 8.0,
-            "px_mode": False,
         },
         "layout": {
             "root_margins": [4, 4, 4, 4],
