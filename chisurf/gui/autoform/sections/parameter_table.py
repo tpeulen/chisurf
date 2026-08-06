@@ -440,6 +440,13 @@ class ParameterGroupTableModel(QtCore.QAbstractTableModel):
         super().__init__(parent)
         self._params: typing.List[FittingParameter] = list(params)
 
+    # -- structural updates -------------------------------------------------
+    def set_params(self, params: typing.List[FittingParameter]) -> None:
+        """Replace the backing parameter list (used on add/remove of a component)."""
+        self.beginResetModel()
+        self._params = list(params)
+        self.endResetModel()
+
     # -- row / column count -------------------------------------------------
     def rowCount(self, parent: QtCore.QModelIndex = QtCore.QModelIndex()) -> int:
         return len(self._params) if not parent.isValid() else 0
@@ -737,7 +744,51 @@ def _content_height(table, model, header_fallback: int, row_fallback: int) -> in
     return height
 
 
-class ParameterGroupTableWidget(QtWidgets.QWidget):
+class _ContentSizedTable:
+    """Height policy shared by both parameter tables.
+
+    A parameter table sizes itself to *all* of its rows, which is right inside a
+    scrolled model editor and wrong in a host of fixed height: the host simply
+    loses the last rows off the bottom, and that reads as "that parameter is
+    gone", not as "scroll down". :meth:`set_scrollable` is how a host that knows
+    its height is bounded says so.
+    """
+
+    #: Rows to keep visible in a bounded host. ``None`` sizes to all content.
+    _min_visible_rows: typing.Optional[int] = None
+
+    def set_scrollable(self, min_visible_rows: typing.Optional[int]) -> None:
+        """Ask for ``min_visible_rows`` rows and scroll whatever does not fit.
+
+        The table accepts anything between that and its full content, so
+        enlarging the host shows more rows rather than blank space. ``None``
+        restores the size-to-content behaviour.
+        """
+        self._min_visible_rows = (
+            None if min_visible_rows is None else max(1, int(min_visible_rows))
+        )
+        self._size_to_content()
+
+    def _size_to_content(self) -> None:
+        """Size the table to its rows — or, in a bounded host, to what it is given."""
+        content = _content_height(self._table, self._model, self._header_h, self._row_h)
+        rows = self._min_visible_rows
+        if rows is None:
+            self._table.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+            self._table.setFixedHeight(content)
+            self.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
+            return
+        row_h = self._table.rowHeight(0) or self._row_h
+        header = self._table.horizontalHeader().height() or self._header_h
+        floor = header + min(self._model.rowCount() or 1, rows) * row_h
+        floor += 2 * self._table.frameWidth()
+        self._table.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
+        self._table.setMaximumHeight(max(content, floor))
+        self._table.setMinimumHeight(min(floor, content))
+        self.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
+
+
+class ParameterGroupTableWidget(_ContentSizedTable, QtWidgets.QWidget):
     """A ``QTableView`` that edits a list of :class:`FittingParameter` objects.
 
     Parameters
@@ -866,6 +917,9 @@ class ParameterGroupTableWidget(QtWidgets.QWidget):
         #: Set while :meth:`sync` repaints, so a programmatic refresh is not
         #: mistaken for a user edit (see :meth:`_on_data_changed`).
         self._suppress_change = False
+        #: Whether the Lo / Hi / Bounds columns are shown. Tracked so an
+        #: add/remove rebuild keeps the host's choice.
+        self._bounds_visible = True
         for seq, slot in (("Ctrl+C", self._copy_selection), ("Ctrl+V", self._paste_selection)):
             sc = QtWidgets.QShortcut(QtGui.QKeySequence(seq), self._table)
             sc.setContext(QtCore.Qt.WidgetWithChildrenShortcut)
@@ -880,6 +934,20 @@ class ParameterGroupTableWidget(QtWidgets.QWidget):
         # space above it. Fixed makes the host lay it out at the top and give
         # the slack to whatever follows.
         self.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
+
+    # -- structural ---------------------------------------------------------
+    def set_params(self, params: typing.List[FittingParameter]) -> None:
+        """Rebuild the table for a new parameter list (after an add/remove).
+
+        The same entry point the paired table has, so a ``dynamic_group`` drives
+        either layout through one call.
+        """
+        self._params = params
+        self._model.set_params(params)
+        self._apply_column_visibility()
+        self.set_bounds_visible(self._bounds_visible)
+        self._install_controllers()
+        self._size_to_content()
 
     # -- parameter controllers ---------------------------------------------
     def claim_controllers(self) -> None:
@@ -920,11 +988,6 @@ class ParameterGroupTableWidget(QtWidgets.QWidget):
         # The parameters outlive this widget, so drop the back-reference when the
         # table goes away rather than leaving a deleted proxy behind.
         _release_controllers_when_destroyed(self, owned)
-
-    def _size_to_content(self) -> None:
-        """Fix the table height to header + visible rows so it wastes no space."""
-        self._table.setFixedHeight(_content_height(self._table, self._model,
-                                                   self._header_h, self._row_h))
 
     # -- per-parameter controller ------------------------------------------
     def _controller(self, row: int):
@@ -1125,9 +1188,12 @@ class ParameterGroupTableWidget(QtWidgets.QWidget):
         )
 
     def set_bounds_visible(self, visible: bool) -> None:
-        """Show or hide the Lo / Hi / Bounds columns (bounds stay editable in the
-        parameter details popup). Columns excluded by the section's whitelist stay
-        hidden regardless."""
+        """Show or hide the Lo / Hi / Bounds columns.
+
+        They stay editable in the parameter details popup either way, and
+        columns the section's whitelist leaves out stay hidden regardless.
+        """
+        self._bounds_visible = bool(visible)
         allowed = self._allowed_columns()
         for cid, col in (
             ("bounds_lo", COL_BOUNDS_LO),
@@ -1379,7 +1445,7 @@ class PairedParameterTableModel(QtCore.QAbstractTableModel):
         return True
 
 
-class PairedParameterTableWidget(QtWidgets.QWidget):
+class PairedParameterTableWidget(_ContentSizedTable, QtWidgets.QWidget):
     """A ``QTableView`` editing paired-parameter components (one row each).
 
     Parameters
@@ -1490,10 +1556,6 @@ class PairedParameterTableWidget(QtWidgets.QWidget):
         #: Whether the per-slot Lo / Hi / Bounds columns are shown. Tracked so an
         #: add/remove rebuild keeps the host's choice.
         self._bounds_visible = True
-        #: Rows to keep visible in a bounded host; see :meth:`set_scrollable`.
-        #: ``None`` sizes the table to all of its content.
-        self._min_visible_rows = None
-
         self._apply_column_visibility()
         self._install_controllers()
         layout.addWidget(self._table)
@@ -1662,38 +1724,6 @@ class PairedParameterTableWidget(QtWidgets.QWidget):
             except Exception:  # pragma: no cover - Qt4 fallback
                 header.setResizeMode(col, mode)
 
-    def set_scrollable(self, min_visible_rows: typing.Optional[int]) -> None:
-        """Let the table scroll itself when its host cannot grow.
-
-        A component table sizes itself to *all* its rows, which is right inside
-        a scrolled model editor and wrong in a dock of fixed height: the host
-        simply loses the last components off the bottom, and that reads as "that
-        component is gone", not as "scroll down". A host that knows its height
-        is bounded says so here. The table then asks for room for
-        ``min_visible_rows`` and accepts anything up to its full content, with
-        an ordinary vertical scrollbar for the rest — so enlarging the host
-        shows more rows rather than blank space. ``None`` restores the
-        size-to-content behaviour.
-        """
-        self._min_visible_rows = None if min_visible_rows is None else max(1, int(min_visible_rows))
-        self._size_to_content()
-
-    def _size_to_content(self) -> None:
-        """Size the table to its rows — or, in a bounded host, to what it is given."""
-        content = _content_height(self._table, self._model, self._header_h, self._row_h)
-        rows = getattr(self, "_min_visible_rows", None)
-        if rows is None:
-            self._table.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
-            self._table.setFixedHeight(content)
-            self.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
-            return
-        row_h = self._table.rowHeight(0) or self._row_h
-        header = self._table.horizontalHeader().height() or self._header_h
-        floor = header + min(self._model.rowCount() or 1, rows) * row_h + 2 * self._table.frameWidth()
-        self._table.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
-        self._table.setMaximumHeight(max(content, floor))
-        self._table.setMinimumHeight(min(floor, content))
-        self.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
 
     def resizeEvent(self, event):  # noqa: N802 (Qt override)
         """Re-measure: a narrower table needs a scrollbar, which needs height."""

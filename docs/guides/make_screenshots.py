@@ -911,7 +911,7 @@ def _grab_ndx_gaussian_panel():
 
     dock = win.dockWidget_Fit
     dock.setFloating(True)
-    dock.resize(780, 300)
+    dock.resize(430, 420)
     settle(120)
     _grab(dock, "ndxplorer_gaussian_panel.png")
     win.close()

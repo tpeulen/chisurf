@@ -187,7 +187,12 @@ class DynamicGroupSection(Section):
     #: parameters is one row and its columns repeat side by side (an amplitude
     #: block then a lifetime block), so paired parameters stay adjacent while
     #: sharing the compact Value/Fixed/Lo/Hi/Bounds/Error columns of the other
-    #: parameter tables. Ignored when ``component_title`` is set.
+    #: parameter tables. ``"list"`` renders the same parameters **one per row**
+    #: in a :class:`ParameterGroupTableSection`-style table — the vertical
+    #: alternative for a narrow host, where a wide component (six numbers for a
+    #: 2-D Gaussian) would otherwise need a dozen columns; the row still knows
+    #: which component it belongs to, ``row_width`` rows at a time. Ignored when
+    #: ``component_title`` is set.
     style: str = "grid"
     #: ``style:"table"`` only. Visible per-slot column subset, from the same
     #: identifiers :class:`ParameterGroupTableSection` uses (``value``,

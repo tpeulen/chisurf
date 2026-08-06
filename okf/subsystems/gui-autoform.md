@@ -74,7 +74,11 @@ anisotropy groups), `dynamic_group` (a variable-length list of parameter
 components with add/remove controls driven by the model's own
 `append`/`pop` methods; `row_width` parameters form one component. Its default
 `style:"grid"` lays each parameter out as a standalone spin-box row, while
-`style:"table"` renders the components as one **paired** `QTableView` — each
+`style:"list"` renders the same parameters **one per row** in the
+`parameter_group_table` widget — the vertical layout for a narrow host, where a
+six-parameter component would otherwise need a dozen columns; the section still
+knows which component a row belongs to (`row // row_width`), so "del" removes the
+selected *component*. `style:"table"` renders the components as one **paired** `QTableView` — each
 component is a single row: a `#` index column then the compact
 `value`/`fixed`/`bounds_lo`/`bounds_hi`/`bounds_on`/`error` columns repeated once
 per parameter slot, so an amplitude block sits beside its lifetime block. A

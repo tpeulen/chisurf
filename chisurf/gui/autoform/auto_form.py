@@ -1092,23 +1092,36 @@ class AutoForm(QtWidgets.QWidget):
                 return list(fn()) if callable(fn) else []
             return list(getattr(group, "parameters_all", []))
 
-        # ``style: "table"`` renders the components as one paired QTableView (each
-        # ``row_width`` group is a row with its columns side by side) instead of the
-        # standalone spin-box grid. component_title (per-item fold boxes) keeps the
-        # grid path since it is a fundamentally different layout.
-        if getattr(section, "style", "grid") == "table" and not section.component_title:
+        # Two table layouts of the same components. ``style: "table"`` puts one
+        # component per row with its parameters side by side (an amplitude block
+        # beside its lifetime block); ``style: "list"`` puts one *parameter* per
+        # row, which is what a narrow host wants — six numbers side by side is a
+        # dozen columns, and a dock does not have them. component_title
+        # (per-item fold boxes) keeps the spin-box grid path below, since that
+        # is a fundamentally different layout.
+        style = getattr(section, "style", "grid")
+        if style in ("table", "list") and not section.component_title:
             from chisurf.gui.autoform.sections.parameter_table import (
                 PairedParameterTableWidget,
+                ParameterGroupTableWidget,
             )
 
-            table = PairedParameterTableWidget(
-                params=_row_params(),
-                width=max(1, int(section.row_width)),
-                on_change=self._dispatch_fit_update,
-                section=section,
-                slot_labels=tuple(getattr(section, "slot_labels", ()) or ()) or None,
-                remote=bool(getattr(section, "remote", True)),
-            )
+            if style == "list":
+                table = ParameterGroupTableWidget(
+                    params=_row_params(),
+                    section=section,
+                    on_change=self._dispatch_fit_update,
+                    remote=bool(getattr(section, "remote", True)),
+                )
+            else:
+                table = PairedParameterTableWidget(
+                    params=_row_params(),
+                    width=max(1, int(section.row_width)),
+                    on_change=self._dispatch_fit_update,
+                    section=section,
+                    slot_labels=tuple(getattr(section, "slot_labels", ()) or ()) or None,
+                    remote=bool(getattr(section, "remote", True)),
+                )
             self._param_widgets.append(table)
             outer.addWidget(table)
 
@@ -1138,10 +1151,17 @@ class AutoForm(QtWidgets.QWidget):
                         self.refresh_plots()
 
             def _selected_component_row():
+                """Which *component* the selection is in, or None if ambiguous.
+
+                A ``list``-style table shows one parameter per row, so the
+                component is the row divided by the parameters per component;
+                a ``table``-style row already is one.
+                """
                 selection = table.table_view.selectionModel()
                 if selection is None:
                     return None
-                rows = {index.row() for index in selection.selectedIndexes()}
+                per_row = max(1, int(section.row_width)) if style == "list" else 1
+                rows = {index.row() // per_row for index in selection.selectedIndexes()}
                 return rows.pop() if len(rows) == 1 else None
 
             def _remove_takes_index(fn) -> bool:

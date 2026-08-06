@@ -4,8 +4,9 @@ A ``PairedParameterTableWidget`` sizes itself to *all* its rows and shares out
 spare width between its value columns. Both are right inside a scrolled model
 editor and wrong in a dock of fixed height and modest width, which is where
 nDXplorer's Gaussians put it: rows fall off the bottom, and stretched value
-columns elide the numbers they exist to show. These are the guards for the two
-answers — ``set_scrollable`` and the measured column policy.
+columns elide the numbers they exist to show. These are the guards for the
+answers — ``set_scrollable``, the measured column policy, and the ``list``
+style, which stacks a wide component's parameters instead of spreading them.
 """
 
 from __future__ import annotations
@@ -99,3 +100,62 @@ def test_slot_titles_can_be_declared_for_a_table_that_starts_empty(qtbot):
         for c in range(model.columnCount())
     ]
     assert "A" in titles and "B" in titles
+
+
+def test_both_layouts_offer_the_same_row_budget(qtbot):
+    """``set_scrollable`` is the shared height policy, not the paired table's."""
+    from chisurf.gui.autoform.sections.parameter_table import ParameterGroupTableWidget
+
+    w = ParameterGroupTableWidget(_params(4))
+    qtbot.addWidget(w)
+    w.set_scrollable(3)
+    view = w.table_view
+    assert view.verticalScrollBarPolicy() == QtCore.Qt.ScrollBarAsNeeded
+    assert view.maximumHeight() >= 8 * view.rowHeight(0)
+
+
+def test_the_list_style_stacks_a_wide_component(qtbot):
+    """A six-parameter component is six rows, not a dozen columns."""
+    from chisurf.core.dataspec import DynamicGroupSection, ModelView
+    from chisurf.gui.autoform.auto_form import AutoForm
+    from chisurf.gui.autoform.sections.parameter_table import ParameterGroupTableWidget
+
+    class _Group:
+        def __init__(self):
+            self._params = _params(2)  # two components of two parameters
+
+        def rows(self):
+            return list(self._params)
+
+        def append(self):
+            self._params.extend(_params(1))
+
+        def pop(self, index=None):
+            index = len(self._params) // WIDTH - 1 if index is None else index
+            del self._params[index * WIDTH : (index + 1) * WIDTH]
+
+    class _View:
+        def __init__(self, group):
+            self.group = group
+
+        def view_spec(self):
+            return ModelView(sections=(DynamicGroupSection(
+                target="group", rows_source="rows", row_width=WIDTH,
+                style="list", remote=False, min_rows=0, collapsible=False,
+            ),))
+
+    group = _Group()
+    form = AutoForm(_View(group))
+    qtbot.addWidget(form)
+    table = form.findChild(ParameterGroupTableWidget)
+    assert table is not None, "the list style must render the one-per-row table"
+    assert table.table_model.rowCount() == 2 * WIDTH
+
+    # The section's add/del still drive the group, and del takes the selected
+    # component — which a stacked row names by division.
+    table.table_view.selectRow(0)
+    for button in form.findChildren(QtWidgets.QPushButton):
+        if button.text() == "del":
+            button.click()
+            break
+    assert table.table_model.rowCount() == WIDTH

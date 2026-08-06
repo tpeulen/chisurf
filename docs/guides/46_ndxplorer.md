@@ -307,10 +307,12 @@ they are actually separated in. Theory: {ref}`concept-md-2d-gaussians`.
    σ** box sets $n$), which is how a fitted population becomes a gate a
    [bridge](#from-marginal-to-full-model-bridges) can hand on.
 
-Each Gaussian is one **row** of the same component table a model editor uses for
-its lifetimes, with the same fitting parameters as everywhere else in ChiSurf:
-centre $x$, $y$, widths $\sigma_x$, $\sigma_y$, correlation $\rho$ and weight
-$w$, each with a **Fixed** box.
+Each Gaussian is six **rows** of the same parameter table used everywhere else in
+ChiSurf — centre $x$, $y$, widths $\sigma_x$, $\sigma_y$, correlation $\rho$ and
+weight $w$, each with its own value and **Fixed** box. They are stacked rather
+than spread across the panel, because six numbers side by side is a dozen columns
+and the dock does not have them; a row names the Gaussian it belongs to
+($x_1$, $\sigma_{x,1}$, …), and selecting one selects that Gaussian.
 
 - **Hold what you know.** Tick *Fixed* on a centre you placed deliberately — the
   donor-only corner, say — and it is held *inside* the fit, while that
@@ -332,7 +334,7 @@ $w$, each with a **Fixed** box.
 :width: 100%
 
 The Gaussian-fit panel after fitting two simulated populations — ChiSurf's
-component table, the same one a model editor uses. One row per Gaussian; the
+parameter table, stacked one parameter per row so the panel stays narrow. The
 second component's centre was held (ticked *Fixed*, greyed out, and returned
 unchanged at 0.74) while everything else was optimised onto the data.
 ```
