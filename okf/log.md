@@ -2,6 +2,12 @@
 
 ## 2026-08-06
 
+* **Inline formulas are text again, and the navigation icons are back** ([documentation browser](subsystems/documentation-browser.md)).
+
+  **A picture in the middle of a sentence is the thing to avoid.** A rasterised inline formula sits at its own baseline, in its own font, at a size that stops matching the moment anything around it changes — and a tall one (a fraction, a sum with limits) shoves the line apart and floats above the words, which is what "the equations look horrible" was a photograph of: `x_i = a_i/\sum_j a_j` set as an image twice the height of the line it interrupted. Inline mathematics now converts to **HTML text** wherever it possibly can: slashed fractions that keep precedence (`(a+b)/c`, never `a+b/c`), big operators with their limits as ordinary sub- and superscripts, combining accents for `\hat`/`\bar`/`\vec`, script letters, upright function names, roots. Across `docs/` that is **102 rasterised inline formulas down to 5** — all matrices, genuinely two-dimensional, and those now carry `vertical-align: middle` so they at least sit on the line rather than hanging off it. Display mathematics is unchanged: it *should* be a picture, and it is a transparent one. A test holds the count.
+
+  **The icons were removed for the wrong reason.** They had to leave the row's *text* — an emoji there makes Qt fall back to a colour font for the whole item and the fallback's metrics restyle the row — but that was an argument about where they live, not about whether they should exist. They are painted into a pixmap and set as the item's **icon** now: the sections have their glyphs back, the review badge rides in the same slot on a page row while authoring, and the label is still the application's own font.
+
 * **The settings blocker is cleared: a key can change section now, and three settings stopped having two stores** ([pymol parity](plugins/pymol-parity.md)).
 
   The tracker's item 1a said *do this before registering anything else*, because a name registered against a store the renderer re-reads only at construction is accepted, echoed and **inert** -- which is what `surface_quality` turned out to be, four times over. It was three settings, not two.

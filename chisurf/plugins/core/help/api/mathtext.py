@@ -242,6 +242,36 @@ _HTML_SYMBOLS = {
     "leftrightarrows": "⇄", "rightleftharpoons": "⇌", "propto2": "∝",
 }
 
+#: Big operators. Their limits become ordinary sub-/superscripts, which is what
+#: an *inline* formula wants anyway — a sum with stacked limits inside a
+#: sentence is a tall image that pushes the line apart.
+_HTML_OPERATORS = {
+    "sum": "Σ", "prod": "∏", "coprod": "∐", "int": "∫", "iint": "∬",
+    "oint": "∮", "bigcup": "⋃", "bigcap": "⋂", "bigoplus": "⨁",
+}
+
+#: Upright function names, as TeX sets them.
+_HTML_FUNCTIONS = (
+    "exp", "ln", "log", "sin", "cos", "tan", "sinh", "cosh", "tanh", "arg",
+    "max", "min", "det", "dim", "lim", "sup", "inf", "erf", "erfc", "Tr",
+    "arcsin", "arccos", "arctan", "Pr", "deg", "gcd", "mod", "Var", "Cov",
+)
+
+#: Script and blackboard letters that have a character of their own.
+_HTML_SCRIPT = {
+    "L": "ℒ", "N": "ℕ", "R": "ℝ", "Z": "ℤ", "Q": "ℚ", "C": "ℂ", "P": "𝒫",
+    "H": "ℋ", "F": "ℱ", "E": "ℰ", "D": "𝒟", "O": "𝒪", "I": "ℐ", "B": "ℬ",
+}
+
+#: Accents, as combining marks placed after the letter they sit on.
+_HTML_ACCENTS = {
+    "hat": "\u0302", "widehat": "\u0302", "bar": "\u0304",
+    "overline": "\u0304", "tilde": "\u0303", "widetilde": "\u0303",
+    "vec": "\u20d7", "dot": "\u0307", "ddot": "\u0308",
+    "check": "\u030c", "breve": "\u0306", "acute": "\u0301",
+    "grave": "\u0300", "mathring": "\u030a",
+}
+
 #: Spacing commands and their HTML equivalents.
 _HTML_SPACES = {
     ",": "&#8201;", ";": "&#8201;", ":": "&#8201;", "!": "", " ": " ",
@@ -371,6 +401,36 @@ def _inline_command(text: str, index: int) -> tuple[str, int]:
         if symbol in _SPACED_SYMBOLS:
             return f"&#8201;{symbol}&#8201;", index
         return symbol, index
+    if name in _HTML_OPERATORS:
+        return _HTML_OPERATORS[name], index
+    if name in _HTML_FUNCTIONS:
+        return name, index
+    if name in ("frac", "tfrac", "dfrac", "cfrac"):
+        numerator, index = _inline_atom(text, index)
+        denominator, index = _inline_atom(text, index)
+        return f"{_bracket(numerator)}/{_bracket(denominator)}", index
+    if name == "sqrt":
+        # ``\sqrt[3]{x}`` -- the index is shown before the radical.
+        degree = ""
+        if index < len(text) and text[index] == "[":
+            close = text.find("]", index)
+            if close < 0:
+                raise _UnsupportedInline("unterminated root index")
+            degree, _ = _inline_group(text[index + 1: close], 0, False)
+            degree = f"<sup>{degree}</sup>"
+            index = close + 1
+        radicand, index = _inline_atom(text, index)
+        return f"{degree}&radic;{_bracket(radicand, always=True)}", index
+    if name in _HTML_ACCENTS:
+        base, index = _inline_atom(text, index)
+        return base + _HTML_ACCENTS[name], index
+    if name in ("mathcal", "mathscr"):
+        inner, index = _inline_atom(text, index)
+        letter = re.sub(r"<[^>]+>", "", inner)
+        return _HTML_SCRIPT.get(letter, f"<i>{letter}</i>"), index
+    if name in ("boldsymbol", "pmb"):
+        inner, index = _inline_atom(text, index)
+        return f"<b>{inner}</b>", index
     if name in _HTML_FONTS:
         while index < len(text) and text[index] == " ":
             index += 1
@@ -389,6 +449,26 @@ def _inline_command(text: str, index: int) -> tuple[str, int]:
     if name in ("left", "right", "big", "bigl", "bigr", "Big", "Bigl", "Bigr"):
         return "", index
     raise _UnsupportedInline(f"command {name!r}")
+
+
+def _bracket(html: str, always: bool = False) -> str:
+    """Parenthesise a fraction part when leaving it bare would change what it says.
+
+    An inline fraction is written with a slash — ``a/b`` — because a stacked one
+    is a picture in the middle of a sentence. The slash binds tighter than a sum
+    or a difference, so ``(a+b)/c`` has to keep its parentheses.
+    """
+    plain = re.sub(r"<[^>]+>", "", html)
+    plain = plain.replace("&#8201;", " ").replace("&nbsp;", " ").strip()
+    if plain.startswith("(") and plain.endswith(")"):
+        return html
+    if always:
+        return html if len(plain) <= 1 else f"({html})"
+    if len(plain) <= 1:
+        return html
+    if re.search(r"[+\-−±×⋅·/ ]", plain):
+        return f"({html})"
+    return html
 
 
 def _inline_char(char: str) -> str:
@@ -546,7 +626,11 @@ class MathRenderer:
                 f' height="{max(1, round(height / self._SCALE))}"'
             )
         alt = source.replace('"', "&quot;")
-        return f'<img src="data:image/png;base64,{encoded}"{attrs} alt="{alt}">'
+        # A tall inline image bottom-aligned on the baseline shoves the line
+        # apart and floats above the words; centring it on the line is the
+        # closest Qt gets to a baseline-aware inline formula.
+        style = "" if display else ' style="vertical-align: middle"'
+        return f'<img src="data:image/png;base64,{encoded}"{attrs}{style} alt="{alt}">'
 
 
 def _png_size(data: bytes) -> tuple[int, int]:

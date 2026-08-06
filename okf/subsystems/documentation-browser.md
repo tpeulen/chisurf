@@ -15,9 +15,11 @@ component whose defects are invisible to assertions and obvious in an image
 it through a concept page, a manual page, a guide, a plugin README, the start
 page and a search). Three automated numbers back that up:
 
-* `pytest chisurf/plugins/core/help/test` — 81 tests. Two are the real
-  guardrails: **every formula in `docs/` typesets** (`test_render.py`) and **no
-  page leaks markup** — no `:::{`, no ` ```{ `, no `$$` reaching the reader.
+* `pytest chisurf/plugins/core/help/test` — 318 tests. Three are the real
+  guardrails, all in `test_render.py`: **every formula in `docs/` typesets**,
+  **no page leaks markup** (no `:::{`, no ` ```{ `, no `$$` reaching the
+  reader), and **inline mathematics stays text** — at most a handful of
+  genuinely two-dimensional formulas may become images.
 * `pytest chisurf/plugins/core/help/test/test_docs_crosslinks.py` — 188 tests:
   every concept points at a guide, every guide at a concept, and every
   `{doc}`/`{ref}`/`[…](….md)` resolves to a page that is there.
@@ -116,13 +118,19 @@ affected: each opened on its own `(concept-fret)=` anchor, its formulas read as
 `{ref}`concept-x``. The renderer's contract is that none of those four ever
 appear, and two tests hold it over the whole shipped tree.
 
-**Inline mathematics is text; display mathematics is a picture.** `\tau_D` as an
-image sits on its own baseline, in its own font, at a size that stops matching
-the moment anything around it changes — so simple formulas are converted to
-HTML (`τ<sub>D</sub>`) and only genuinely two-dimensional ones (fractions,
-roots, sums with limits) are rasterised. Those are drawn onto a *transparent*
-figure: `mathtext.math_to_image` bakes in a white background, which on a dark
-theme is a bright card behind every equation.
+**Inline mathematics is text; display mathematics is a picture.** An image in
+the middle of a sentence sits at its own baseline, in its own font, at a size
+that stops matching the moment anything around it changes — and a tall one (a
+fraction, a sum with limits) shoves the line apart and floats above the words.
+So inline formulas are converted to **HTML text**: `τ<sub>D</sub>`, slashed
+fractions with precedence-preserving brackets (`(a+b)/c`), big operators with
+their limits as ordinary sub/superscripts, combining accents for `\hat`/`\bar`,
+upright function names. That takes the documentation from **102 rasterised
+inline formulas to 5** — matrices, which are genuinely two-dimensional and get
+`vertical-align: middle` so they at least sit on the line. Display mathematics
+*is* rasterised, onto a **transparent** figure: `mathtext.math_to_image` bakes in
+a white background, which on a dark theme is a bright card behind every
+equation.
 
 **Qt paints a block background behind that block's own lines only.** An
 admonition rendered as a `<div>` shows a coloured stripe behind its title and
@@ -161,8 +169,10 @@ not resolve, the reader sees the caption, not `{ref}`something``.
   picks up.
 * **An emoji in a tree row restyles the row.** Qt falls back to a colour font
   for the whole item, with different metrics, so the navigation was set in a
-  different face and size from the rest of the application. Sections are told
-  apart by weight, not by icon.
+  different face and size from the rest of the application. The icons are worth
+  keeping — they are how the parts are told apart at a glance — so they live in
+  the item's **icon role**, painted into a pixmap by `emoji_icon`, never in its
+  text. The same trick carries the review badge on a page row.
 * **Zoom has to re-render, not scale the widget.** Every size in the stylesheet
   is in points, so `QTextBrowser.zoomIn` moves the body text and leaves the
   headings, tables and formulas where they were. Ctrl+± re-renders the page at a

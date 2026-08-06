@@ -91,6 +91,48 @@ def test_inline_maths_is_text_not_a_picture():
     assert "τ" in out and "<sub>" in out
 
 
+def test_inline_maths_almost_never_becomes_an_image():
+    """A picture in the middle of a sentence is what "horrible" looked like.
+
+    An inline image sits at its own baseline, at its own size, and a tall one
+    (a fraction, a sum with limits) shoves the line apart and floats above the
+    words around it. Inline mathematics is therefore converted to HTML text —
+    slashed fractions, sub/superscript limits, combining accents — and only
+    genuinely two-dimensional constructs (matrices) may fall through.
+    """
+    import re
+
+    from chisurf.plugins.core.help.api.toc import docs_root
+
+    rasterised = []
+    for page in sorted(docs_root().rglob("*.md")):
+        text = re.sub(r"```.*?```", " ", page.read_text(encoding="utf-8"), flags=re.DOTALL)
+        text = re.sub(r"`[^`\n]*`", " ", text)
+        for kind, payload in split_math(text):
+            if kind != "inline":
+                continue
+            if html_math(payload.strip()) is None:
+                rasterised.append((page.name, payload.strip()[:60]))
+    assert len(rasterised) <= 6, rasterised
+
+
+def test_a_fraction_in_a_sentence_is_slashed_not_stacked():
+    assert html_math(r"x_i = a_i/\sum_j a_j") is not None
+    assert html_math(r"\frac{\tau_{DA}}{\tau_D}") == (
+        "τ<sub><i>D</i><i>A</i></sub>/τ<sub><i>D</i></sub>"
+    )
+    # ...and precedence is kept when the slash would otherwise change the sense.
+    assert html_math(r"\frac{a+b}{c}") == "(<i>a</i>+<i>b</i>)/<i>c</i>"
+
+
+def test_an_inline_image_is_centred_on_the_line():
+    """The few that remain must not hang below the baseline."""
+    renderer = MathRenderer()
+    out = renderer.to_html(r"\begin{pmatrix}a & b\\ c & d\end{pmatrix}", display=False)
+    if "<img" in out:
+        assert "vertical-align: middle" in out
+
+
 def test_display_maths_is_typeset():
     renderer = MathRenderer()
     out = renderer.to_html(r"E = \frac{1}{1 + (R/R_0)^6}", display=True)

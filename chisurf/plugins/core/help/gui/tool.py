@@ -32,7 +32,17 @@ import webbrowser
 from typing import Optional
 
 from qtpy.QtCore import QEvent, Qt, QTimer, QUrl
-from qtpy.QtGui import QBrush, QColor, QFont, QImage, QKeySequence, QTextDocument
+from qtpy.QtGui import (
+    QBrush,
+    QColor,
+    QFont,
+    QIcon,
+    QImage,
+    QKeySequence,
+    QPainter,
+    QPixmap,
+    QTextDocument,
+)
 from qtpy.QtWidgets import (
     QApplication,
     QComboBox,
@@ -222,6 +232,59 @@ def _apply_measure(html: str, available: int, maximum: int) -> str:
     if "</head>" in html:
         return html.replace("</head>", f"{style}</head>", 1)
     return style + html
+
+
+#: Emoji rendered to pixmaps, keyed by (character, pixel size).
+_EMOJI_ICONS: dict = {}
+
+
+def emoji_icon(character: str, size: int = 16):
+    """Return *character* drawn into an icon.
+
+    An emoji is the clearest label a section row can carry, and it is also the
+    one thing that must not appear in the row's *text*: Qt falls back to a
+    colour font for the whole item and the fallback's metrics restyle the row.
+    Painting it into a pixmap keeps the picture and leaves the type alone.
+
+    Parameters
+    ----------
+    character : str
+        One or two emoji.
+    size : int, optional
+        Icon edge length in logical pixels; use the row height.
+
+    Returns
+    -------
+    QtGui.QIcon
+        The rendered icon, cached; a null icon if it cannot be drawn.
+
+    """
+    key = (character, size)
+    cached = _EMOJI_ICONS.get(key)
+    if cached is not None:
+        return cached
+    icon = QIcon()
+    try:
+        ratio = QApplication.instance().devicePixelRatio() if QApplication.instance() else 1.0
+        ratio = max(1.0, float(ratio))
+        pixmap = QPixmap(int(size * ratio), int(size * ratio))
+        pixmap.setDevicePixelRatio(ratio)
+        pixmap.fill(Qt.transparent)
+        painter = QPainter(pixmap)
+        try:
+            font = QFont(painter.font())
+            font.setPixelSize(int(size * 0.86))
+            painter.setFont(font)
+            painter.drawText(
+                pixmap.rect(), Qt.AlignCenter, character
+            )
+        finally:
+            painter.end()
+        icon = QIcon(pixmap)
+    except Exception:
+        logger.debug("could not draw the icon %r", character, exc_info=True)
+    _EMOJI_ICONS[key] = icon
+    return icon
 
 
 class HelpTextBrowser(QTextBrowser):
@@ -625,14 +688,22 @@ class HelpWidget(QMainWindow):
             self._add_node(item, child, statuses, trail + [node.title])
         return item
 
-    def _label(self, node) -> str:
-        """The row's text.
+    def _icon_size(self) -> int:
+        """Icon edge length that matches the tree's own row height."""
+        try:
+            return max(12, self.tree.fontMetrics().height())
+        except Exception:
+            return 16
 
-        No emoji: an emoji in a tree row forces Qt to fall back to a colour
-        font for that item, and the fallback has different metrics — the whole
-        row is then set in a different face and size from the rest of the
-        application, which is what "the fonts in the navigation look weird"
-        was. Sections are told apart by weight and position instead.
+    def _label(self, node) -> str:
+        """The row's text — the title alone.
+
+        The icons live in the item's *icon* role, not in this string. An emoji
+        inside the text makes Qt fall back to a colour font for the whole item,
+        and the fallback has different metrics, so the row ends up in a
+        different face and size from the rest of the application. Painted into
+        a pixmap by :func:`emoji_icon` it is just a picture beside a label, and
+        the label keeps the application's font.
         """
         return node.title
 
@@ -643,6 +714,9 @@ class HelpWidget(QMainWindow):
             font = item.font(0)
             font.setBold(True)
             item.setFont(0, font)
+            icon = SECTION_ICONS.get(node.title)
+            if icon:
+                item.setIcon(0, emoji_icon(icon, self._icon_size()))
         if node.path is None:
             item.setData(0, _ROLE_PATH, None)
             return
@@ -1414,6 +1488,12 @@ class HelpWidget(QMainWindow):
                 item.setData(0, Qt.ForegroundRole, None)
             else:
                 item.setForeground(0, QBrush(QColor(colour)))
+            # The badge is an icon, never text: as text it would restyle the row.
+            if showing and item.data(0, _ROLE_KIND) != "section":
+                badge = REVIEW_BADGES.get(status, "")
+                item.setIcon(0, emoji_icon(badge, self._icon_size()) if badge else QIcon())
+            elif item.data(0, _ROLE_KIND) != "section":
+                item.setIcon(0, QIcon())
             tip = item.toolTip(0).split("\n\n")[0]
             hint = REVIEW_TOOLTIPS.get(status, "")
             item.setToolTip(0, f"{tip}\n\n{hint}" if hint else tip)
