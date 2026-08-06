@@ -139,6 +139,4 @@ folder's `Info/fusion.json`.
 * [Fusing recurring bursts](docs/guides/58_burst_fusion.md) — the worked workflow.
 * [Photon bursts in smFRET](docs/concepts/smfret_bursts.md) — the burst folder and
   its companions.
-* Why a fragment's FRET histogram is broader than the passage's — shot noise in
-  burst-wise efficiencies: Nir, E. *et al.* (2006), *J. Phys. Chem. B* **110**,
-  22103. [10.1021/jp063483n](https://doi.org/10.1021/jp063483n)
+* {cite}`nir2006`

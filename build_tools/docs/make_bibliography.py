@@ -44,6 +44,11 @@ TOPIC_TITLES = [
     ("polymer", "Polymer models"),
     ("tcspc", "Time-resolved fluorescence"),
     ("anisotropy", "Anisotropy"),
+    ("saturation", "Optical saturation and focal volumes"),
+    ("photophysics", "Photophysics"),
+    ("optics", "Optics and point-spread functions"),
+    ("flim", "Fluorescence-lifetime imaging"),
+    ("mle", "Maximum-likelihood estimation"),
     ("statistics", "Statistics, sampling and convergence"),
     ("exploration", "Dimensionality reduction and clustering"),
 ]

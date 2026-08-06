@@ -320,3 +320,70 @@ def test_a_heading_with_maths_keeps_a_usable_id():
     # ...and nothing of the attribute leaked into the words the reader sees.
     visible = re.sub(r"<[^>]+>", "", html.split("</h2>")[0])
     assert visible.strip() == "Where the reference D comes from"
+
+
+def test_no_page_writes_a_reference_by_hand():
+    """A citation is a key, or the same paper gets said two different ways.
+
+    A bullet whose whole content is a DOI link is a reference written out in
+    place; it belongs in the bibliography with a key, so that the wording, the
+    link and the entry on the Literature page cannot drift apart.
+    """
+    import re
+
+    from chisurf.plugins.core.help.api.toc import docs_root, repository_root
+
+    pattern = re.compile(r"^\s*[-*]\s.*\[10\.\d{4,9}/[^\]]+\]\(https?://[^)]*doi\.org[^)]*\)\s*$", re.M)
+    offenders = []
+    roots = [docs_root(), repository_root() / "chisurf" / "plugins"]
+    for root in roots:
+        for page in root.rglob("*.md"):
+            if "_build" in page.parts or page.parent.name == "references":
+                continue
+            if pattern.search(page.read_text(encoding="utf-8")):
+                offenders.append(str(page.relative_to(repository_root())))
+    assert not offenders, offenders
+
+
+def test_every_recorded_doi_looks_like_one():
+    """A malformed identifier resolves to nothing and is silently a dead link."""
+    import re
+
+    from chisurf.plugins.core.help.api import bibliography as bib
+
+    wrong = [
+        (key, entry.doi)
+        for key, entry in bib.bibliography().items()
+        if entry.doi and not re.fullmatch(r"10\.\d{4,9}/\S+", entry.doi)
+    ]
+    assert not wrong, wrong
+    # Supplementary-material identifiers point at the SI, not at the paper.
+    supplementary = [
+        (key, entry.doi)
+        for key, entry in bib.bibliography().items()
+        if re.search(r"\.s\d+$", entry.doi or "")
+    ]
+    assert not supplementary, supplementary
+
+
+def test_the_help_modal_renders_like_the_browser(qapp=None):
+    """A plugin's `?` shows the same dialect the browser does.
+
+    The modal used Qt's own Markdown, which knows nothing of MyST: a plugin's
+    help page showed `:::{note}`, `{cite}` and raw LaTeX as literal text —
+    exactly the defects fixed in the browser, in the window most readers open.
+    """
+    from chisurf.gui.widgets.tools.help_render import render_help
+    from chisurf.plugins.core.help.api.toc import repository_root
+
+    page = (
+        repository_root()
+        / "chisurf/plugins/calculator/fcs_saturation_calc/gui/help.md"
+    )
+    if not page.is_file():
+        pytest.skip("plugin not present in this checkout")
+    html = render_help(page.read_text(encoding="utf-8"), page)
+    assert html is not None
+    for marker in ("{cite}", ":::{", "```{"):
+        assert marker not in html, marker
+    assert "doi.org" in html, "citations must resolve to links"

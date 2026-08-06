@@ -41,6 +41,7 @@ lee2005:
   year: 2005
   volume: 88
   pages: 2939-2953
+  doi: 10.1529/biophysj.104.054114
   note: The ALEX correction scheme and the 1/S-vs-E construction.
   topics: [fret, smfret]
 
@@ -62,6 +63,7 @@ sisamakis2010:
   year: 2010
   volume: 475
   pages: 455-514
+  doi: 10.1016/s0076-6879(10)75018-7
   note: The multiparameter detection scheme and its correction factors.
   topics: [smfret, mfd]
 
@@ -72,6 +74,7 @@ eggeling2001:
   year: 2001
   volume: 86
   pages: 163-180
+  doi: 10.1016/s0168-1656(00)00412-0
   note: Burst selection and multi-parameter detection.
   topics: [smfret, mfd]
 
@@ -82,6 +85,7 @@ peulen2017:
   year: 2017
   volume: 121
   pages: 8211-8241
+  doi: 10.1021/acs.jpcb.7b03441
   note: FRET lines, and what they say about dynamics.
   topics: [fret, dynamics]
 
@@ -92,6 +96,7 @@ barth2022:
   year: 2022
   volume: 156
   pages: "141501"
+  doi: 10.1063/5.0089134
   topics: [fret, dynamics]
 
 # ── Photon distribution analysis ────────────────────────────────────
@@ -102,6 +107,7 @@ antonik2006:
   year: 2006
   volume: 110
   pages: "6970"
+  doi: 10.1021/jp057257+
   note: Two-colour PDA, the foundation.
   topics: [pda]
 
@@ -112,6 +118,7 @@ kalinin2008:
   year: 2008
   volume: 112
   pages: "8361"
+  doi: 10.1021/jp711942q
   note: Dynamic PDA.
   topics: [pda]
 
@@ -122,6 +129,7 @@ kalinin2010:
   year: 2010
   volume: 114
   pages: 7983-7995
+  doi: 10.1021/jp102156t
   topics: [pda, dynamics]
 
 barth2019:
@@ -131,6 +139,7 @@ barth2019:
   year: 2019
   volume: 123
   pages: "6901"
+  doi: 10.1021/acs.jpcb.9b02967
   note: Three-colour PDA.
   topics: [pda]
 
@@ -152,6 +161,7 @@ gopich2006:
   year: 2006
   volume: 124
   pages: "154712"
+  doi: 10.1063/1.2180770
   topics: [dynamics]
 
 gopich2009:
@@ -161,6 +171,7 @@ gopich2009:
   year: 2009
   volume: 113
   pages: 10965-10973
+  doi: 10.1021/jp903671p
   topics: [dynamics]
 
 gopich2010:
@@ -170,6 +181,7 @@ gopich2010:
   year: 2010
   volume: 114
   pages: "15221"
+  doi: 10.1021/jp105359z
   note: The multistate time-averaging approximation used for dynamics.
   topics: [dynamics, pda]
 
@@ -180,6 +192,7 @@ pirchi2016:
   year: 2016
   volume: 120
   pages: 13065-13075
+  doi: 10.1021/acs.jpcb.6b10726
   note: H2MM.
   topics: [dynamics, hmm]
 
@@ -190,6 +203,7 @@ chung2012:
   year: 2012
   volume: 335
   pages: 981-984
+  doi: 10.1126/science.1215768
   topics: [dynamics]
 
 hoffmann2011:
@@ -243,6 +257,7 @@ widengren1995:
   year: 1995
   volume: 99
   pages: 13368-13379
+  doi: 10.1021/j100036a009
   note: The triplet / bunching factor.
   topics: [fcs]
 
@@ -253,6 +268,7 @@ schwille1999:
   year: 1999
   volume: 36
   pages: 176-182
+  doi: 10.1002/(sici)1097-0320(19990701)36:3<176::aid-cyto5>3.0.co;2-f
   note: Two-dimensional membrane diffusion.
   topics: [fcs]
 
@@ -263,6 +279,7 @@ haustein2007:
   year: 2007
   volume: 36
   pages: 151-169
+  doi: 10.1146/annurev.biophys.36.040306.132612
   note: A readable survey of the model variants.
   topics: [fcs]
 
@@ -273,6 +290,7 @@ boehmer2002:
   year: 2002
   volume: 353
   pages: 439-445
+  doi: 10.1016/s0009-2614(02)00044-1
   topics: [fcs, filtered-fcs]
 
 felekyan2012:
@@ -282,6 +300,7 @@ felekyan2012:
   year: 2012
   volume: 13
   pages: 1036-1053
+  doi: 10.1002/cphc.201100897
   topics: [fcs, filtered-fcs]
 
 petrasek2008:
@@ -291,6 +310,7 @@ petrasek2008:
   year: 2008
   volume: 94
   pages: 1437-1448
+  doi: 10.1529/biophysj.107.108811
   topics: [fcs]
 
 siegel2013:
@@ -300,6 +320,7 @@ siegel2013:
   year: 2013
   volume: 14
   pages: 20340-20358
+  doi: 10.3390/ijms141020340
   topics: [fcs]
 
 sanguigno2010:
@@ -309,6 +330,7 @@ sanguigno2010:
   year: 2010
   volume: 82
   pages: 9663-9670
+  doi: 10.1021/ac102084m
   topics: [fcs, imaging]
 
 # ── Image correlation and imaging ───────────────────────────────────
@@ -319,6 +341,7 @@ digman2005:
   year: 2005
   volume: 89
   pages: 1317-1327
+  doi: 10.1529/biophysj.105.062836
   topics: [imaging]
 
 digman2009:
@@ -338,6 +361,7 @@ digman2012:
   year: 2012
   volume: 34
   pages: 377-385
+  doi: 10.1002/bies.201100118
   topics: [imaging]
 
 hebert2005:
@@ -357,6 +381,7 @@ cardarelli2010:
   year: 2010
   volume: 5
   pages: e10475
+  doi: 10.1016/j.bpj.2009.12.4114
   topics: [imaging]
 
 # ── Resolution, tracking, colocalisation ────────────────────────────
@@ -387,6 +412,7 @@ banterle2013:
   year: 2013
   volume: 183
   pages: 363-367
+  doi: 10.1016/j.jsb.2013.05.004
   topics: [imaging, resolution]
 
 crocker1996:
@@ -406,6 +432,7 @@ olivomarin2002:
   year: 2002
   volume: 35
   pages: 1989-1996
+  doi: 10.1016/s0031-3203(01)00127-3
   topics: [tracking]
 
 jaqaman2008:
@@ -446,6 +473,7 @@ dunn2011:
   year: 2011
   volume: 300
   pages: C723-C742
+  doi: 10.1152/ajpcell.00462.2010
   topics: [colocalisation]
 
 manders1993:
@@ -455,6 +483,7 @@ manders1993:
   year: 1993
   volume: 169
   pages: 375-382
+  doi: 10.1111/j.1365-2818.1993.tb03313.x
   topics: [colocalisation]
 
 costes2004:
@@ -464,6 +493,7 @@ costes2004:
   year: 2004
   volume: 86
   pages: 3993-4003
+  doi: 10.1529/biophysj.103.038422
   topics: [colocalisation]
 
 li2004:
@@ -482,6 +512,7 @@ bolte2006:
   year: 2006
   volume: 224
   pages: 213-232
+  doi: 10.1111/j.1365-2818.2006.01706.x
   topics: [colocalisation]
 
 vansteensel1996:
@@ -491,6 +522,7 @@ vansteensel1996:
   year: 1996
   volume: 109
   pages: 787-792
+  doi: 10.1242/jcs.109.4.787
   topics: [colocalisation]
 
 # ── Structure: surfaces and accessibility ───────────────────────────
@@ -534,6 +566,7 @@ vanoosterom1983:
   year: 1983
   volume: 30
   pages: 125-126
+  doi: 10.1109/tbme.1983.325207
   note: The spherical-excess formula used for the point weights.
   topics: [structure]
 
@@ -555,7 +588,7 @@ kalinin2004:
   year: 2004
   volume: 108
   pages: 3092-3097
-  doi: 10.1021/jp038041q
+  doi: 10.1021/jp031096x
   note: The PDDEM model.
   topics: [tcspc, fret]
 
@@ -597,6 +630,7 @@ haario2001:
   year: 2001
   volume: 7
   pages: 223-242
+  doi: 10.2307/3318737
   topics: [statistics]
 
 goodman2010:
@@ -626,6 +660,7 @@ karamanis2021:
   year: 2021
   volume: 31
   pages: "61"
+  doi: 10.1007/s11222-021-10038-2
   topics: [statistics]
 
 neal2003:
@@ -654,6 +689,7 @@ zhang2009:
   year: 2009
   volume: 51
   pages: 316-325
+  doi: 10.1198/tech.2009.08017
   topics: [statistics]
 
 mcinnes2018:
@@ -672,6 +708,7 @@ campello2013:
   year: 2013
   volume: 7819
   pages: 160-172
+  doi: 10.1007/978-3-642-37456-2_14
   topics: [statistics, exploration]
 
 koshioka1995:
@@ -694,3 +731,256 @@ erdelyi2014:
   pages: e100526
   doi: 10.1371/journal.pone.0100526
   topics: [anisotropy]
+
+# ── Harvested from the code and plugin help that already cited them ─
+
+richards1959:
+  authors: B. Richards, E. Wolf
+  title: Electromagnetic diffraction in optical systems, II. Structure of the image field in an aplanatic system
+  journal: Proceedings of the Royal Society of London. Series A. Mathematical and Physical Sciences
+  year: 1959
+  volume: 253
+  pages: 358-379
+  doi: 10.1098/rspa.1959.0200
+  note: The vectorial focal field a high-NA objective produces — the basis of the PSF calculator.
+  topics: [imaging, optics]
+
+rabiner1989:
+  authors: L.R. Rabiner
+  title: A tutorial on hidden Markov models and selected applications in speech recognition
+  journal: Proceedings of the IEEE
+  year: 1989
+  volume: 77
+  pages: 257-286
+  doi: 10.1109/5.18626
+  note: The tutorial the forward-backward and Baum-Welch implementations follow.
+  topics: [hmm, statistics]
+
+widengren2000:
+  authors: Jerker Widengren, Petra Schwille
+  title: Characterization of Photoinduced Isomerization and Back-Isomerization of the Cyanine Dye Cy5 by Fluorescence Correlation Spectroscopy
+  journal: The Journal of Physical Chemistry A
+  year: 2000
+  volume: 104
+  pages: 6416-6428
+  doi: 10.1021/jp000059s
+  note: Photoinduced isomerisation, one of the processes a bunching term absorbs.
+  topics: [fcs, photophysics]
+
+maus2001:
+  authors: Michael Maus, Mircea Cotlet, Johan Hofkens, Thomas Gensch, Frans C. De Schryver, J. Schaffer, C. A. M. Seidel
+  title: An Experimental Comparison of the Maximum Likelihood Estimation and Nonlinear Least-Squares Fluorescence Lifetime Analysis of Single Molecules
+  journal: Analytical Chemistry
+  year: 2001
+  volume: 73
+  pages: 2078-2086
+  doi: 10.1021/ac000877g
+  note: Maximum likelihood against least squares for photon-limited decays — the 2I* statistic used for burst-wise lifetimes.
+  topics: [tcspc, mle]
+
+gregor2005:
+  authors: Ingo Gregor, Digambara Patra, Jörg Enderlein
+  title: Optical Saturation in Fluorescence Correlation Spectroscopy under Continuous‐Wave and Pulsed Excitation
+  journal: ChemPhysChem
+  year: 2005
+  volume: 6
+  pages: 164-170
+  doi: 10.1002/cphc.200400319
+  note: Optical saturation in FCS, and how it inflates the apparent focal volume.
+  topics: [fcs, saturation]
+
+enderlein2005:
+  authors: Jörg Enderlein, Ingo Gregor, Digambara Patra, Thomas Dertinger, U. Benjamin Kaupp
+  title: Performance of Fluorescence Correlation Spectroscopy for Measuring Diffusion and Concentration
+  journal: ChemPhysChem
+  year: 2005
+  volume: 6
+  pages: 2324-2336
+  doi: 10.1002/cphc.200500414
+  note: Why a Gaussian detection profile biases absolute FCS numbers.
+  topics: [fcs, saturation]
+
+nagy2005:
+  authors: Attila Nagy, Jianrong Wu, Keith M. Berland
+  title: Observation Volumes and γ-Factors in Two-Photon Fluorescence Fluctuation Spectroscopy
+  journal: Biophysical Journal
+  year: 2005
+  volume: 89
+  pages: 2077-2090
+  doi: 10.1529/biophysj.104.052779
+  note: Observation volumes and gamma-factors in fluorescence fluctuation experiments.
+  topics: [fcs]
+
+terbraak2006:
+  authors: Cajo J. F. Ter Braak
+  title: "A Markov Chain Monte Carlo version of the genetic algorithm Differential Evolution: easy Bayesian computing for real parameter spaces"
+  journal: Statistics and Computing
+  year: 2006
+  volume: 16
+  pages: 239-249
+  doi: 10.1007/s11222-006-8769-1
+  note: Differential-evolution MCMC — the proposal behind the `de` sampler.
+  topics: [statistics]
+
+dertinger2007:
+  authors: Thomas Dertinger, Victor Pacheco, Iris von der Hocht, Rudolf Hartmann, Ingo Gregor, Jörg Enderlein
+  title: "Two‐Focus Fluorescence Correlation Spectroscopy: A New Tool for Accurate and Absolute Diffusion Measurements"
+  journal: ChemPhysChem
+  year: 2007
+  volume: 8
+  pages: 433-443
+  doi: 10.1002/cphc.200600638
+  note: "Two-focus FCS: an external length scale, so a diffusion coefficient needs no calibration dye."
+  topics: [fcs]
+
+terbraak2008:
+  authors: Cajo J. F. ter Braak, Jasper A. Vrugt
+  title: Differential Evolution Markov Chain with snooker updater and fewer chains
+  journal: Statistics and Computing
+  year: 2008
+  volume: 18
+  pages: 435-446
+  doi: 10.1007/s11222-008-9104-9
+  note: DE-MC with a snooker update and fewer chains.
+  topics: [statistics]
+
+varadhan2008:
+  authors: RAVI VARADHAN, CHRISTOPHE ROLAND
+  title: Simple and Globally Convergent Methods for Accelerating the Convergence of Any EM Algorithm
+  journal: Scandinavian Journal of Statistics
+  year: 2008
+  volume: 35
+  pages: 335-353
+  doi: 10.1111/j.1467-9469.2007.00585.x
+  note: SQUAREM — the acceleration applied to the EM iterations.
+  topics: [statistics, hmm]
+
+digman2008:
+  authors: Michelle A. Digman, Valeria R. Caiolfa, Moreno Zamai, Enrico Gratton
+  title: The Phasor Approach to Fluorescence Lifetime Imaging Analysis
+  journal: Biophysical Journal
+  year: 2008
+  volume: 94
+  pages: L14-L16
+  doi: 10.1529/biophysj.107.120154
+  note: "The phasor approach to lifetime imaging: a fit-free representation of a decay."
+  topics: [imaging, flim]
+
+torella2011:
+  authors: Joseph P. Torella, Seamus J. Holden, Yusdi Santoso, Johannes Hohlbein, Achillefs N. Kapanidis
+  title: Identifying Molecular Dynamics in Single-Molecule FRET Experiments with Burst Variance Analysis
+  journal: Biophysical Journal
+  year: 2011
+  volume: 100
+  pages: 1568-1577
+  doi: 10.1016/j.bpj.2011.01.066
+  note: Burst variance analysis — dynamics as excess variance above shot noise.
+  topics: [dynamics, smfret]
+
+baugh2011:
+  authors: Evan H. Baugh, Sergey Lyskov, Brian D. Weitzner, Jeffrey J. Gray
+  title: Real-Time PyMOL Visualization for Rosetta and PyRosetta
+  journal: PLoS ONE
+  year: 2011
+  volume: 6
+  pages: e21931
+  doi: 10.1371/journal.pone.0021931
+  note: The PyMOL visualisation protocol the molecular viewer's remote interface follows.
+  topics: [structure]
+
+tomov2012:
+  authors: Toma E. Tomov, Roman Tsukanov, Rula Masoud, Miran Liber, Noa Plavner, Eyal Nir
+  title: Disentangling Subpopulations in Single-Molecule FRET and ALEX Experiments with Photon Distribution Analysis
+  journal: Biophysical Journal
+  year: 2012
+  volume: 102
+  pages: 1163-1173
+  doi: 10.1016/j.bpj.2011.11.4025
+  note: "FRET-2CDE and ALEX-2CDE: kernel-density filters that separate static from dynamic bursts."
+  topics: [smfret, dynamics]
+
+ishii2013:
+  authors: Kunihiko Ishii, Tahei Tahara
+  title: Two-Dimensional Fluorescence Lifetime Correlation Spectroscopy. 1. Principle
+  journal: The Journal of Physical Chemistry B
+  year: 2013
+  volume: 117
+  pages: 11414-11422
+  doi: 10.1021/jp406861u
+  note: Two-dimensional fluorescence lifetime correlation spectroscopy.
+  topics: [filtered-fcs, fcs]
+
+tittel2015:
+  authors: Janine Tittel, Tobias Welz, Aleksander Czogalla, Susanne Dietrich, Annette Samol-Wolf, Markos Schulte, Petra Schwille, Thomas Weidemann, Eugen Kerkhoff
+  title: Membrane Targeting of the Spir·Formin Actin Nucleator Complex Requires a Sequential Handshake of Polar Interactions
+  journal: Journal of Biological Chemistry
+  year: 2015
+  volume: 290
+  pages: 6428-6444
+  doi: 10.1074/jbc.m114.602672
+  note: The published analysis of the Confocor-3 FCCS test data shipped with ChiSurf.
+  topics: [fcs]
+
+dimura2016:
+  authors: Mykola Dimura, Thomas O Peulen, Christian A Hanke, Aiswaria Prakash, Holger Gohlke, Claus AM Seidel
+  title: Quantitative FRET studies and integrative modeling unravel the structure and dynamics of biomolecular systems
+  journal: Current Opinion in Structural Biology
+  year: 2016
+  volume: 40
+  pages: 163-185
+  doi: 10.1016/j.sbi.2016.11.012
+  note: Quantitative FRET and integrative modelling — where accessible volumes fit in.
+  topics: [structure, fret]
+
+dimura2020:
+  authors: Mykola Dimura, Thomas-Otavio Peulen, Hugo Sanabria, Dmitro Rodnin, Katherina Hemmen, Christian A. Hanke, Claus A. M. Seidel, Holger Gohlke
+  title: Automated and optimally FRET-assisted structural modeling
+  journal: Nature Communications
+  year: 2020
+  volume: 11
+  doi: 10.1038/s41467-020-19023-1
+  note: FRET-assisted structural modelling, and how labelling positions are chosen.
+  topics: [structure, fret]
+
+sroda2020:
+  authors: Aleksandra Sroda, Adrian Makowski, Ron Tenne, Uri Rossman, Gur Lubin, Dan Oron, Radek Lapkiewicz
+  title: "SOFISM: Super-resolution optical fluctuation image scanning microscopy"
+  journal: Optica
+  year: 2020
+  volume: 7
+  pages: 1308
+  doi: 10.1364/optica.399600
+  note: Super-resolution optical fluctuation image scanning microscopy.
+  topics: [imaging, optics]
+
+harris2022:
+  authors: Paul David Harris, Alessandra Narducci, Christian Gebhardt, Thorben Cordes, Shimon Weiss, Eitan Lerner
+  title: Multi-parameter photon-by-photon hidden Markov modeling
+  journal: Nature Communications
+  year: 2022
+  volume: 13
+  doi: 10.1038/s41467-022-28632-x
+  note: Multi-parameter photon-by-photon hidden Markov modelling.
+  topics: [dynamics, hmm]
+
+gomezsanchez2024:
+  authors: Adrián Gómez-Sánchez, Olivier Devos, Raffaele Vitale, Michel Sliwa, Damir Sakhapov, Jörg Enderlein, Anna de Juan, Cyril Ruckebusch
+  title: Blind instrument response function identification from fluorescence decays
+  journal: Biophysical Reports
+  year: 2024
+  volume: 4
+  pages: 100155
+  doi: 10.1016/j.bpr.2024.100155
+  note: Recovering an instrument response function from the decay itself.
+  topics: [tcspc]
+
+zunino2025:
+  authors: Alessandro Zunino, Giacomo Garrè, Eleonora Perego, Sabrina Zappone, Mattia Donato, Nadine Vastenhouw, Giuseppe Vicidomini
+  title: Structured detection for simultaneous super-resolution and optical sectioning in laser scanning microscopy
+  journal: Nature Photonics
+  year: 2025
+  volume: 19
+  pages: 888-897
+  doi: 10.1038/s41566-025-01695-0
+  note: Structured detection for simultaneous super-resolution and optical sectioning.
+  topics: [imaging, optics]

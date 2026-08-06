@@ -98,5 +98,4 @@ many of the bursts were valid; those rows must be dropped, not read as zeros.
 - [Photon-by-photon HMM](docs/concepts/h2mm.md) — what to do with the bursts 2CDE
   flags.
 - [Single-molecule FRET bursts](docs/concepts/smfret_bursts.md)
-- Tomov, Best, Doose *et al.*, *Biophys. J.* **102**, 1163–1173 (2012),
-  [10.1016/j.bpj.2011.11.4025](https://doi.org/10.1016/j.bpj.2011.11.4025)
+- {cite}`tomov2012`

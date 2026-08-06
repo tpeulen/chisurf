@@ -269,16 +269,7 @@ brightnesses.
 * [Correlation and FCS basics](fcs_correlation.md)
 * [Photophysics simulation](photophysics_simulation.md)
 * [Guide: FCS saturation and focal-volume expansion](../guides/56_fcs_saturation.md)
-* Widengren, Mets & Rigler, *Fluorescence correlation spectroscopy of triplet
-  states in solution*, J. Phys. Chem. **99** (1995) 13368.
-  [10.1021/j100036a009](https://doi.org/10.1021/j100036a009)
-* Widengren & Schwille, *Characterization of photoinduced isomerization and
-  back-isomerization of the cyanine dye Cy5 by fluorescence correlation
-  spectroscopy*, J. Phys. Chem. A **104** (2000) 6416.
-  [10.1021/jp000059s](https://doi.org/10.1021/jp000059s)
-* Nagy, Wu & Berland, *Observation volumes and γ-factors in two-photon
-  fluorescence fluctuation spectroscopy*, Biophys. J. **89** (2005) 2077.
-  [10.1529/biophysj.104.052779](https://doi.org/10.1529/biophysj.104.052779)
-* Gregor, Patra & Enderlein, *Optical saturation in fluorescence correlation
-  spectroscopy under continuous-wave and pulsed excitation*, ChemPhysChem **6**
-  (2005) 164. [10.1002/cphc.200400319](https://doi.org/10.1002/cphc.200400319)
+* {cite}`widengren1995`
+* {cite}`widengren2000`
+* {cite}`nagy2005`
+* {cite}`gregor2005`

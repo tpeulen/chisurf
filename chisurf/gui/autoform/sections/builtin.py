@@ -335,8 +335,18 @@ class _BoundControlMixin:
             return ""
 
     def _group(self):
+        """Return the object this control reads and writes.
+
+        A ``target`` names a parameter group on the model. **Omitting it means the
+        model itself**, which is what a model-level flag needs (the worm-like
+        chain's dye-linker switch is an attribute of the model, not of any
+        group). Before that, a section without a target bound to nothing: the
+        control rendered, accepted clicks, and wrote them nowhere.
+        """
         target = getattr(self._section, "target", None)
-        return getattr(self._model, target, None) if target else None
+        if not target:
+            return self._model
+        return getattr(self._model, target, None)
 
     def _refresh_host_form(self) -> None:
         """Walk up to the hosting AutoForm and refresh its dependent widgets.
@@ -1023,7 +1033,11 @@ class InfoWidget(QtWidgets.QTextBrowser):
         """Re-read the content (static or from ``source``) and re-render it."""
         content = self._content()
         if getattr(self._section, "is_markdown", False):
-            self.setMarkdown(content)
+            # Rendered like every other help page, so an `info` section written
+            # in MyST does not show its own markup.
+            from chisurf.gui.widgets.tools.help_render import show_in_browser
+
+            show_in_browser(self, content)
         else:
             self.setHtml(content)
 
@@ -1048,6 +1062,9 @@ class ValueWidget(_BoundControlMixin, QtWidgets.QWidget):
 
     Supported ``kind`` values: ``int`` / ``float`` (spin boxes), ``str`` (line
     edit), ``text`` (multi-line plain-text edit) and ``date`` (date edit).
+
+    ``style="slider"`` pairs the spin box with a slider and applies to ``int``
+    and ``float`` alike.
     """
 
     is_form_field = True
@@ -1066,23 +1083,16 @@ class ValueWidget(_BoundControlMixin, QtWidgets.QWidget):
         # A read-only field must never write back — its value (which may be a
         # non-editable object such as a callable) is displayed but left untouched.
         read_only = bool(getattr(section, "read_only", False))
-        if section.kind == "int":
-            self.editor = QtWidgets.QSpinBox()
-            self.editor.setMinimum(
-                int(section.minimum) if section.minimum is not None else -2_147_483_648
-            )
-            self.editor.setMaximum(
-                int(section.maximum) if section.maximum is not None else 2_147_483_647
-            )
-            if section.step:
-                self.editor.setSingleStep(int(section.step))
-            if section.suffix:
-                self.editor.setSuffix(section.suffix)
-            if current is not None:
-                self.editor.setValue(int(current))
-            if not read_only:
-                self.editor.valueChanged.connect(lambda v: self._commit(int(v)))
-        elif section.kind in ("float", "int") and (getattr(section, "style", "") == "slider" or getattr(section, "slider", False)):
+        # The slider branch is tested FIRST. It handles both kinds, so a plain
+        # ``kind == "int"`` test ahead of it swallows every integer slider and
+        # renders a bare spin box -- no error, no warning, just a control the
+        # spec asked for and did not get.
+        wants_slider = (
+            section.kind in ("float", "int")
+            and (getattr(section, "style", "") == "slider"
+                 or getattr(section, "slider", False))
+        )
+        if wants_slider:
             min_val = float(section.minimum) if section.minimum is not None else 0.0
             max_val = float(section.maximum) if section.maximum is not None else 100.0
             is_float = (section.kind == "float")
@@ -1146,8 +1156,30 @@ class ValueWidget(_BoundControlMixin, QtWidgets.QWidget):
                 self.editor.valueChanged.connect(lambda v: (spin_to_slider(float(v)), self._commit(float(v) if is_float else int(v))))
                 slider.valueChanged.connect(slider_to_spin)
 
+            # Kept so :meth:`sync` can move the handle. Without it a value the
+            # MODEL changed -- a playback tick, a fit result -- updates the spin
+            # box and leaves the slider sitting where the user last dragged it,
+            # and the two then disagree about the same number.
+            self.slider = slider
+            self._sync_slider = spin_to_slider
+
             layout.addWidget(slider, 1)
-            layout.addWidget(self.editor)
+        elif section.kind == "int":
+            self.editor = QtWidgets.QSpinBox()
+            self.editor.setMinimum(
+                int(section.minimum) if section.minimum is not None else -2_147_483_648
+            )
+            self.editor.setMaximum(
+                int(section.maximum) if section.maximum is not None else 2_147_483_647
+            )
+            if section.step:
+                self.editor.setSingleStep(int(section.step))
+            if section.suffix:
+                self.editor.setSuffix(section.suffix)
+            if current is not None:
+                self.editor.setValue(int(current))
+            if not read_only:
+                self.editor.valueChanged.connect(lambda v: self._commit(int(v)))
         elif section.kind == "float":
             use_scientific = (getattr(section, "style", "") == "scientific" or getattr(section, "scientific", False))
             if use_scientific:
@@ -1303,6 +1335,9 @@ class ValueWidget(_BoundControlMixin, QtWidgets.QWidget):
         elif isinstance(self.editor, QtWidgets.QLineEdit):
             self.editor.setText(str(cur))
         self.editor.blockSignals(False)
+        sync_slider = getattr(self, "_sync_slider", None)
+        if sync_slider is not None:
+            sync_slider(float(cur))
 
 
 # --- custom sections -------------------------------------------------------
@@ -2748,3 +2783,44 @@ class FitMixerWidget(QtWidgets.QWidget):
         for row, (frac, name) in enumerate(zip(fractions, model_names), start=1):
             layout.addWidget(make_fitting_parameter_widget(frac, label_text=""), row, 0)
             layout.addWidget(QtWidgets.QLabel(name), row, 1)
+
+
+@register_section("kappa2_controls")
+class Kappa2Controls(QtWidgets.QWidget):
+    """The orientation-factor (κ²) mode row for a FRET model's editor.
+
+    Dynamic/static κ² radios, the fast-convolution toggle, and the three
+    dialog buttons (show κ², compute κ², calc R0). This is a bespoke
+    escape-hatch section rather than declarative vocabulary because the buttons
+    open interactive dialogs and the radios drive
+    ``model.orientation_parameter.mode`` -- neither is a parameter a table cell
+    can hold.
+
+    The controls themselves are the *same* implementation the hand-written FRET
+    widgets use (``kappa2_helpers.setup_kappa2_controls``), so the two paths
+    cannot drift apart; this widget only supplies the Qt parent while the model
+    stays the single source of truth.
+    """
+
+    def __init__(self, model=None, target: str = "", parent=None, **options):
+        """Build the κ² control row for `model`.
+
+        Parameters
+        ----------
+        model : optional
+            The FRET model whose orientation parameter the controls edit.
+        target : str
+            Unused; accepted because every section receives it.
+        parent : optional
+            Qt parent widget.
+        **options
+            Unused view-spec options.
+        """
+        super().__init__(parent)
+        self._model = model
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(2)
+        from chisurf.gui.widgets.models.tcspc import kappa2_helpers
+
+        kappa2_helpers.setup_kappa2_controls(self, layout, fret_model=model)

@@ -129,10 +129,13 @@ class HelpButton(QtWidgets.QWidget):
         is_html = self._resource.lower().endswith((".html", ".htm"))
         if is_html:
             browser.setHtml(content)
-        elif hasattr(browser, "setMarkdown"):
-            browser.setMarkdown(content)
-        else:  # very old Qt — show the Markdown source as plain text
-            browser.setPlainText(content)
+        else:
+            # The same renderer the documentation browser uses: a plugin's
+            # help.md is MyST, and Qt's own Markdown shows its admonitions,
+            # citations and formulas as literal text.
+            from chisurf.gui.widgets.tools.help_render import show_in_browser
+
+            show_in_browser(browser, content, resource)
         layout.addWidget(browser, 1)
         buttons = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Close)
         buttons.rejected.connect(dialog.reject)

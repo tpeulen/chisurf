@@ -127,7 +127,5 @@ states.
 - [Burst variance analysis](docs/concepts/bva.md) and
   [FRET-2CDE](docs/concepts/burst_2cde.md) — the model-free screens that say
   *whether* to run this.
-- Pirchi, Tsukanov *et al.*, *J. Phys. Chem. B* **120**, 13065 (2016),
-  [10.1021/acs.jpcb.6b10726](https://doi.org/10.1021/acs.jpcb.6b10726)
-- Harris *et al.*, *Nat. Commun.* **13**, 1000 (2022),
-  [10.1038/s41467-022-28632-x](https://doi.org/10.1038/s41467-022-28632-x)
+- {cite}`pirchi2016`
+- {cite}`harris2022`

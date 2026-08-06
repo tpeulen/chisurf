@@ -126,9 +126,6 @@ so each gets full width.
 * [Optical saturation in FCS](docs/concepts/fcs_saturation.md)
 * [FCS saturation and focal-volume expansion (guide)](docs/guides/56_fcs_saturation.md)
 * [Correlation and FCS basics](docs/concepts/fcs_correlation.md)
-* Widengren, Mets & Rigler, J. Phys. Chem. **99** (1995) 13368.
-  [10.1021/j100036a009](https://doi.org/10.1021/j100036a009)
-* Widengren & Schwille, J. Phys. Chem. A **104** (2000) 6416.
-  [10.1021/jp000059s](https://doi.org/10.1021/jp000059s)
-* Gregor, Patra & Enderlein, ChemPhysChem **6** (2005) 164.
-  [10.1002/cphc.200400319](https://doi.org/10.1002/cphc.200400319)
+* {cite}`widengren1995`
+* {cite}`widengren2000`
+* {cite}`gregor2005`

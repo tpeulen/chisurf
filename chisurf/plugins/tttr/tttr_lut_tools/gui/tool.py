@@ -37,10 +37,10 @@ class _HelpDialog(QtWidgets.QDialog):
             text = _README.read_text(encoding="utf-8")
         except Exception:
             text = "Help unavailable."
-        if hasattr(browser, "setMarkdown"):
-            browser.setMarkdown(text)
-        else:  # pragma: no cover - very old Qt
-            browser.setPlainText(text)
+        # The shared renderer, so this README reads like every other help page.
+        from chisurf.gui.widgets.tools.help_render import show_in_browser
+
+        show_in_browser(browser, text, _README)
         layout.addWidget(browser, 1)
         buttons = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Close)
         buttons.rejected.connect(self.reject)

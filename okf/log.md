@@ -2,6 +2,16 @@
 
 ## 2026-08-06
 
+* **The literature was already in the repository; it just was not gathered** ([documentation browser](subsystems/documentation-browser.md)).
+
+  61 distinct DOIs were scattered through module docstrings, plugin help pages, PRDs and prose — cited where they were needed and nowhere else. They are now **92 entries in one bibliography**, and the way they got there matters more than the count: every one was checked against **Crossref** rather than written from memory. Of the 29 DOIs recorded by hand, **one resolved to nothing** (`kalinin2004`, the PDDEM paper — the real identifier is `10.1021/jp031096x`), 37 entries that carried no identifier got one at a title match of 1.00, and two were **supplementary-material** DOIs (`…s001`) pointing at the SI rather than at the article. That is exactly the class of error a bibliography cannot self-detect, and it is why the check is worth running: `docs/references/bibliography.yaml` now has 89 of 92 works with a resolvable DOI, and the three without link to a title search rather than to a guess.
+
+  **23 works the code already cited joined the documentation**: Rabiner's HMM tutorial (which the forward-backward implementation follows), SQUAREM (the EM acceleration), ter Braak's DE-MC (the `de` sampler's proposal), the phasor paper, 2D-FLCS, FRET-2CDE, multi-parameter H2MM, FRET-assisted structural modelling, blind IRF recovery, and the optics behind the PSF calculator. A reader of the *documentation* could not previously reach any of them; they existed only in a docstring.
+
+  **16 citations across nine pages were rewritten to keys**, so the same paper is no longer said three different ways in three plugin help pages. A test fails on any reference bullet that is still a hand-written DOI link, and another on a malformed or supplementary DOI in the bibliography.
+
+  **The `?` modal now renders like the browser.** It used Qt's own `setMarkdown`, which knows no MyST — so a plugin's help page showed `:::{note}`, `` {cite}`key` `` and raw LaTeX as literal text: precisely the defects fixed in the browser, in the window most readers actually open. One entry point (`chisurf/gui/widgets/tools/help_render.py`) now serves every widget that displays a help page — the `?` modal, AutoForm `info` sections, the LUT tool's README dialog — and falls back to Qt's Markdown only when rendering genuinely fails. Found by putting citations into the plugin help pages and then checking what the modal did with them, which is the only way this kind of gap surfaces.
+
 * **Which parts of the reference sources have been mined, and when they are exhausted** ([pymol parity](plugins/pymol-parity.md)).
 
   ChiMOL is built by reading PyMOL's source and transcribing it -- the rule that has been right every time it was followed -- but nothing in the tree could say *which parts had already been read*. So the same file gets re-read by the next session, and "is the source exhausted?" had no answer. It does now: **14 files of 461** (3.0 %) across the layers the parity work actually reads. Nowhere near.

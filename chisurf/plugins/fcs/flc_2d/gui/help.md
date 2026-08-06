@@ -111,8 +111,6 @@ on data whose answer you do not.
 - [Filtered FCS, step by step](docs/guides/17_filtered_fcs.md)
 - [FCS correlation](docs/concepts/fcs_correlation.md) — what the lag axis means.
 - [TCSPC and fluorescence lifetimes](docs/concepts/tcspc_lifetime.md) — why the IRF matters.
-- Ishii & Tahara, *Two-dimensional fluorescence lifetime correlation
-  spectroscopy* (parts 1 & 2), *J. Phys. Chem. B* **117**, 11414 & 11423 (2013),
-  [10.1021/jp406861u](https://doi.org/10.1021/jp406861u)
+- {cite}`ishii2013`
 - Böhmer, Wahl, Rahn, Erdmann & Enderlein, *Chem. Phys. Lett.* **353**, 439
   (2002), [10.1016/S0009-2614(01)01470-X](https://doi.org/10.1016/S0009-2614(01)01470-X)

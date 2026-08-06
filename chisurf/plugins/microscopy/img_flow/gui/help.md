@@ -106,7 +106,5 @@ open in your web browser.
 * [Image correlation: RICS, STICS, TICS and iMSD](docs/concepts/image_correlation.md)
 * [Pair correlation and flow maps — the workflow](docs/guides/55_pair_correlation.md)
 * [Planning a scan: which dwell time measures D best?](docs/guides/45_scan_precision.md)
-* Hebert, Costantino & Wiseman, *Biophys. J.* **88**, 3601 (2005) — STICS.
-  [10.1529/biophysj.104.054874](https://doi.org/10.1529/biophysj.104.054874)
-* Digman & Gratton, *Biophys. J.* **97**, 665 (2009) — pair correlation.
-  [10.1016/j.bpj.2009.04.048](https://doi.org/10.1016/j.bpj.2009.04.048)
+* {cite}`hebert2005`
+* {cite}`digman2009`

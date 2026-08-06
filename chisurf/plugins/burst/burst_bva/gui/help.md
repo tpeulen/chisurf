@@ -104,7 +104,4 @@ is accepted.
 - [Photon-by-photon HMM](docs/concepts/h2mm.md) — what quantifies the dynamics
   BVA only flags.
 - [Single-molecule FRET bursts](docs/concepts/smfret_bursts.md)
-- Torella, Holden, Santoso, Hohlbein, Kapanidis, *Identifying molecular dynamics
-  in single-molecule FRET experiments with burst variance analysis*,
-  Biophys. J. **100**, 1568–1577 (2011),
-  [10.1016/j.bpj.2011.01.066](https://doi.org/10.1016/j.bpj.2011.01.066)
+- {cite}`torella2011`

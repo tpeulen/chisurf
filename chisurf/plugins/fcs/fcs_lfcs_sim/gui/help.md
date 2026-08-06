@@ -91,6 +91,4 @@ measurement hard on real samples.
 - Böhmer, Wahl, Rahn, Erdmann & Enderlein, *Time-resolved fluorescence
   correlation spectroscopy*, *Chem. Phys. Lett.* **353**, 439 (2002),
   [10.1016/S0009-2614(01)01470-X](https://doi.org/10.1016/S0009-2614(01)01470-X)
-- Felekyan, Kalinin, Sanabria, Valeri & Seidel, *Filtered FCS*,
-  *ChemPhysChem* **13**, 1036 (2012),
-  [10.1002/cphc.201100897](https://doi.org/10.1002/cphc.201100897)
+- {cite}`felekyan2012`

@@ -137,8 +137,22 @@ identically on the website and in the application, and there is one place to
 correct it. Each entry links to its **DOI**, or, when no identifier is recorded,
 to a literature search for the title: a reader who wants the paper wants a way
 to *get* it, and sending them to the wrong DOI is worse than sending them to a
-search. `build_tools/docs/make_bibliography.py` writes the page;
-`--check` fails when it is stale.
+search. `build_tools/docs/make_bibliography.py` writes the page; `--check` fails when it
+is stale. The entries were **verified against Crossref**, not written from
+memory: of 29 DOIs recorded by hand one resolved to nothing (`kalinin2004`) and
+was corrected, 37 entries that had no identifier got one at a title match of
+1.00, and two supplementary-material DOIs (`…s001`) were reduced to their
+article. 23 further works were harvested from the code and plugin help that
+already cited them — Rabiner's HMM tutorial, SQUAREM, DE-MC, the phasor paper,
+2D-FLCS, the IRF-from-decay method — bringing the bibliography to **92 works**.
+
+**The `?` modal renders like the browser.** It used Qt's own
+`setMarkdown`, which knows no MyST, so a plugin's help page showed
+`:::{note}`, `` {cite}`key` `` and raw LaTeX as literal text — the same defects
+that had been fixed in the browser, in the window most readers actually open.
+`chisurf/gui/widgets/tools/help_render.py` is the one entry point every widget
+that displays a help page now goes through, and it degrades to Qt's Markdown
+only if rendering genuinely fails.
 
 **Markup that reaches the reader is a defect, not a cosmetic issue.** The
 concept pages are the most information-dense in the project and were the worst
