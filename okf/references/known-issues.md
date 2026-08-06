@@ -1,3 +1,44 @@
+## packaging: five pandas HDF5 writers outlived the `pytables` removal
+
+**2026-08-06.** `pytables` was dropped on the grounds that its "only remaining
+use" was the MEM sampler's posterior (commit `ffeab9f0c`). It was not: pandas
+reaches for it too, and **five live call sites still do**, none of them guarded
+by a `try` —
+
+- `chisurf/plugins/burst/burst_h2mm/core/export.py:279` — `write_hdf5`, the
+  **ndX-openable** export (`key="results"`, `format="table"`)
+- `chisurf/plugins/burst/bid_to_analysis/__init__.py:317,322,331` — `pd.HDFStore`
+- `chisurf/core/fluorescence/imaging/pixel_maps.py:699,703,713,753` — the pixel-map
+  store and `add_maps_to_hdf5`
+- `chisurf/core/fio/fluorescence/burst_states.py:88` — `pd.read_hdf`
+- `chisurf/core/fitting/fit.py:2363` — `save_chain_to_hdf5`
+
+**Why nobody has hit it yet, and the trap in re-deriving it.** The developer
+`arm64` env still carries `pytables 3.7.0` from before the removal, so every one
+of these paths works locally and every test covering them passes; the failure
+appears only in an environment solved from the current manifest. Reproduce
+without rebuilding anything by hiding the module from the import machinery:
+
+```python
+import builtins; real = builtins.__import__
+builtins.__import__ = lambda n, *a, **k: (_ for _ in ()).throw(ImportError(n)) if n.split('.')[0] == 'tables' else real(n, *a, **k)
+import pandas as pd
+pd.DataFrame({"a": [1]}).to_hdf("p.h5", key="results", format="table", mode="w")
+# ImportError: Missing optional dependency 'pytables'.
+```
+
+**What it blocks, and why the fix is a scope call rather than an oversight.**
+The h2mm export is not an internal cache — the pandas `format="table"` layout
+*is* the interchange contract with ndX, so the two repairs are not equivalent:
+re-declaring `pytables` restores the contract and costs the dependency back
+(measured 0 packages while `mdtraj` was present — that is now stale and needs
+re-solving, since `mdtraj` went too), whereas moving the writers to `.npz`/plain
+HDF5 keeps the dependency out and **changes a file format another tool reads**,
+which needs ndX checked against it first. Whichever is chosen, the guardrail is
+the same shape as the one `pyarrow` needed: a test that fails when a
+module-level *or* in-function `pd.to_hdf`/`pd.read_hdf`/`pd.HDFStore` exists
+without `pytables` declared.
+
 ## `test/server` — three real defects fixed, 43 tests still red
 
 **The RPC server could not build a fit at all.** ``fit_create`` resolves a model
