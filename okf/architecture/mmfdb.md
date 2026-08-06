@@ -180,6 +180,56 @@ this on loopback `:8080` with a persistent data volume and a read-only rootfs.
 The SQL backend is SQLite by default or PostgreSQL when a `MMFDB_DATABASE_URL` /
 `database.url` is configured (runtime-only: no bootstrap/migration on Postgres).
 
+## Staying loginable — the desktop accounts
+
+MMFDB is **fail-closed**: a database with no administrator stays locked, and no
+credential is ever created implicitly. ChiSurf's embedded desktop deployment is
+the documented exception — it needs a known first-run login, so
+`chisurf/core/mmfdb_services.py` seeds two accounts: `admin`/`admin` (the
+one-shot administrator, weak password allowed) and `user`/`user`, the
+unprivileged identity everyday work is attributed to and the one
+`mmfdb.default_user_id` ships as. Both are offered by the login dialog and both
+satisfy the embedded autologin (`DESKTOP_CREDENTIALS`), so the login screen never
+interrupts local use whichever identity a workspace is configured for.
+
+Creating those accounts once is not enough, because the curated seed
+(`mmfdb/data/sample_management.db`) ships **no accounts at all**. Copying it over
+the user database — which is exactly what the admin **Reset** action does — used
+to leave a workspace nobody could authenticate against. Two pieces close that:
+
+- `prepare_embedded_mmfdb` / `ensure_default_desktop_admin` register the
+  credentials with `mmfdb.config.set_admin_bootstrap_resolver` and
+  `set_default_accounts_resolver`, the host-resolver pattern already used for the
+  default user id and the auth config. Two resolvers because the two carry
+  different rules: the administrator is a privileged one-shot claim, ordinary
+  accounts are plain identities. MMFDB stays standalone: with no resolver and no
+  `MMFDB_BOOTSTRAP_ADMIN_*` environment variables nothing is created and a
+  database is left locked.
+- Every reset goes through the one implementation,
+  `database_resolver.reset_user_database_from_source` — backup, copy, drop the
+  replaced database's `-wal`/`-shm` sidecars (they describe pages of a file that
+  no longer exists), then `ensure_default_accounts`. Both the `mmfdb.admin`
+  RPC handler and ChiSurf's `database_connector` plugin call it; neither
+  hand-rolls the copy any more.
+
+A second trap sits behind the same door, and it is the same trap twice. Ordinary
+provenance writes auto-create a plain, passwordless row for
+`mmfdb.default_user_id`, whatever it is set to.
+
+- When that name is the **administrator** (ChiSurf installs shipped
+  `default_user_id: admin`), the bootstrap refused to claim it — a security
+  property — turning the stub into a permanent lockout *and* an exception at GUI
+  startup. The promotable set is therefore not the single hard-coded service
+  identity but **whatever MMFDB itself auto-creates for the acting user**
+  (`SERVICE_USER_ID` plus `configured_default_user_id()`).
+- When it is the **working account**, the stub is created without a password, and
+  a seeding pass that only inserted-if-missing would walk past it forever. So
+  `ensure_local_account` *completes* a stub rather than skipping it.
+
+Both claims are narrow in the same way: only while the row is still a bare stub.
+A password, admin rights or passwordless login make it somebody's account, and
+it is left untouched.
+
 ChiSurf's `MMFDBClient` (in the `mmfdb_admin` plugin) picks a transport from the
 `mmfdb.client.mode` setting: `embedded` (local ZMQ / in-process) or
 `remote` (HTTP JSON-RPC to a standalone `base_url`). Remote URLs must be HTTPS

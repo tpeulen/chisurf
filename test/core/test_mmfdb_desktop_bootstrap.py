@@ -32,6 +32,25 @@ def test_local_desktop_database_gets_default_admin(tmp_path: Path) -> None:
     assert authenticated["user"]["is_admin"] is True
 
 
+def test_local_desktop_database_gets_an_unprivileged_working_account(tmp_path: Path) -> None:
+    """Everyday work should not have to be done as the administrator."""
+    database = tmp_path / "desktop.db"
+
+    ensure_default_desktop_admin(database)
+
+    with MFDatabase(database) as db:
+        authenticated = login(db.conn, user_id="user", password="user")
+    assert authenticated["authenticated"] is True
+    assert authenticated["user"]["is_admin"] is False
+
+
+def test_both_desktop_accounts_are_offered_to_autologin() -> None:
+    """The login screen must not interrupt local use for either identity."""
+    from chisurf.core.mmfdb_services import DESKTOP_CREDENTIALS
+
+    assert DESKTOP_CREDENTIALS == {"user": "user", "admin": "admin"}
+
+
 def test_local_desktop_bootstrap_preserves_an_existing_admin(tmp_path: Path) -> None:
     database = tmp_path / "managed.db"
     with MFDatabase(database) as db:
@@ -115,6 +134,36 @@ def test_embedded_yaml_controls_storage_and_admin_bootstrap(tmp_path: Path) -> N
             authenticated = login(db.conn, user_id="admin", password="admin")
         assert authenticated["authenticated"] is True
         assert configured_object_store_root() == objects.resolve()
+    finally:
+        reset_runtime_config()
+
+
+def test_desktop_workspace_stays_loginable_after_a_database_reset(tmp_path: Path) -> None:
+    """The seed ships no accounts, so a reset used to lock the desktop out."""
+    from mmfdb.config import configure_runtime, reset_runtime_config
+    from mmfdb.store.database_resolver import reset_user_database_from_source
+
+    source = tmp_path / "seed" / "sample_management.db"
+    user = tmp_path / "flr" / "sample_management.db"
+    source.parent.mkdir(parents=True)
+    user.parent.mkdir(parents=True)
+    MFDatabase(source).close()
+
+    try:
+        configure_runtime(database_path=user, source_database_path=source)
+        assert prepare_embedded_mmfdb() is True
+
+        result = reset_user_database_from_source()
+        assert result["admin_user"] == "admin"
+        assert result["accounts"] == ["user"]
+
+        with MFDatabase(user) as db:
+            as_admin = login(db.conn, user_id="admin", password="admin")
+            as_user = login(db.conn, user_id="user", password="user")
+        assert as_admin["authenticated"] is True
+        assert as_admin["user"]["is_admin"] is True
+        assert as_user["authenticated"] is True
+        assert as_user["user"]["is_admin"] is False
     finally:
         reset_runtime_config()
 

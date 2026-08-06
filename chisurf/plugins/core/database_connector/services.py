@@ -2,18 +2,17 @@
 
 from __future__ import annotations
 
-import shutil
 from pathlib import Path
 from typing import Any
 
+from mmfdb.repository import MFDatabase
+from mmfdb.samples.importer import import_structure_file
 from mmfdb.store.database_resolver import (
     backup_database,
+    reset_user_database_from_source,
     resolve_database_path,
     source_database_path,
-    user_database_path,
 )
-from mmfdb.samples.importer import import_structure_file
-from mmfdb.repository import MFDatabase
 
 
 class DatabaseConnector:
@@ -95,27 +94,19 @@ class DatabaseConnector:
     def reset_from_source(self) -> dict[str, Any]:
         """Replace the user database with the curated source database.
 
+        The seed carries no accounts, so the shared reset also restores the
+        configured administrator; otherwise the reset workspace cannot be
+        logged into.
+
         Returns
         -------
         dict
-            Reset status and optional backup path.
+            Reset status, optional backup path and the restored admin user.
         """
-        user_path = user_database_path()
-        source_path = source_database_path()
-        if not source_path.exists():
-            raise FileNotFoundError(source_path)
-        backup_path = backup_database(user_path) if user_path.exists() else None
-        tmp_path = user_path.with_suffix(user_path.suffix + ".tmp")
-        try:
-            shutil.copy2(source_path, tmp_path)
-            tmp_path.replace(user_path)
-        finally:
-            if tmp_path.exists():
-                tmp_path.unlink()
         if self._db is not None:
             self._db.close()
             self._db = None
-        return {"ok": True, "backup_path": str(backup_path) if backup_path else None}
+        return dict(reset_user_database_from_source())
 
     def repository(self, include_counts: bool = True) -> dict[str, Any]:
         """Return repository metadata for the active database.

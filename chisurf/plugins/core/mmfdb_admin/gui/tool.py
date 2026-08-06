@@ -5339,12 +5339,23 @@ class MMFDBWidget(NavigationPanelTool):
 
     def reset_from_source(self) -> None:
         answer = dialogs.question(
-            self, "Reset database", "Replace the user database with the curated source database?"
+            self,
+            "Reset database",
+            "Replace the user database with the curated source database?",
+            informative=(
+                "Samples, projects and user accounts are replaced. A backup is "
+                "written first, and the default administrator is restored so the "
+                "workspace stays loginable."
+            ),
         )
         if answer != QtWidgets.QMessageBox.Yes:
             return
         result = self.client.reset_from_source()
-        self.status_label.setText(f"Reset complete. Backup: {result.get('backup_path')}")
+        admin_user = result.get("admin_user")
+        login_hint = f" Log in as {admin_user}." if admin_user else ""
+        self.status_label.setText(
+            f"Reset complete. Backup: {result.get('backup_path')}.{login_hint}"
+        )
         self.refresh()
 
     def projects_tab(self) -> QtWidgets.QWidget:

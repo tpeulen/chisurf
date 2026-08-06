@@ -1828,18 +1828,20 @@ def _ensure_chisurf_rpc_server(*, bootstrap_mmfdb: bool = True) -> None:
     # external endpoint or a configured server database.
     if bootstrap_mmfdb:
         from chisurf.core.mmfdb_services import (
-            DEFAULT_DESKTOP_ADMIN_USER,
+            DEFAULT_DESKTOP_USER,
             prepare_embedded_mmfdb,
         )
 
         mmfdb_settings = chisurf.core.settings.cs_settings.get("mmfdb", {}) or {}
         if prepare_embedded_mmfdb(mmfdb_settings):
             mmfdb_cfg = chisurf.core.settings.cs_settings.setdefault("mmfdb", {})
-            mmfdb_cfg["default_user_id"] = DEFAULT_DESKTOP_ADMIN_USER
+            # Everyday work belongs to the unprivileged account; `admin` stays
+            # selectable in the login dialog for administering the database.
+            mmfdb_cfg["default_user_id"] = DEFAULT_DESKTOP_USER
             client_cfg = mmfdb_cfg.setdefault("client", {})
-            client_cfg["username"] = DEFAULT_DESKTOP_ADMIN_USER
-            # Embedded local server has a known desktop admin: default autologin ON
-            # so the login screen never interrupts local single-user use.
+            client_cfg["username"] = DEFAULT_DESKTOP_USER
+            # Embedded local server has known desktop credentials: default
+            # autologin ON so the login screen never interrupts local use.
             mmfdb_cfg["autologin"] = True
             try:
                 from chisurf.core.settings.settings_utils import set_mmfdb_login_settings
@@ -2012,9 +2014,17 @@ class LoginDialog(QtWidgets.QDialog):
         
         # Authentication must not depend on unauthenticated user enumeration.
         # Seed an editable username with the configured local identity instead.
+        # An embedded desktop database ships known accounts, so offer those too
+        # rather than making the operator recall the working account's name.
         self.users = []
         default_user = self._mmfdb_client_config["username"]
-        self.user_combo.addItem(default_user, default_user)
+        offered = [default_user]
+        if self._mmfdb_client_config["mode"] == "embedded":
+            from chisurf.core.mmfdb_services import DESKTOP_CREDENTIALS
+
+            offered += [u for u in DESKTOP_CREDENTIALS if u != default_user]
+        for user_id in offered:
+            self.user_combo.addItem(user_id, user_id)
         self.load_users_from_server()
         self.save_login_check.setChecked(bool(mmfdb_settings.get("save_login", True)))
         self.auto_login_check.setChecked(bool(mmfdb_settings.get("autologin", False)))
@@ -2375,31 +2385,35 @@ def get_app():
                     except Exception as exc:
                         logging.info(f"MMFDB passwordless autologin declined for {default_user}: {exc}")
 
-                # Embedded local server: fall back to the known desktop admin
+                # Embedded local server: fall back to the known desktop
                 # credentials so the login screen never interrupts local use.
+                # Both the working account and the administrator qualify — which
+                # one is used follows the configured identity.
                 if trigger_login and is_embedded:
                     from chisurf.core.mmfdb_services import (
-                        DEFAULT_DESKTOP_ADMIN_PASSWORD,
-                        DEFAULT_DESKTOP_ADMIN_USER,
+                        DEFAULT_DESKTOP_USER,
+                        DESKTOP_CREDENTIALS,
                     )
 
-                    user = default_user or DEFAULT_DESKTOP_ADMIN_USER
-                    try:
-                        result = client.login(
-                            user_id=user, password=DEFAULT_DESKTOP_ADMIN_PASSWORD
-                        )
-                        ok = result.get("ok") or result.get("authenticated")
-                        trigger_login = not ok
-                        if not trigger_login:
-                            token = result.get("token", "")
-                            store_runtime_session_token(
-                                credential_host, credential_port, user, token
+                    user = default_user or DEFAULT_DESKTOP_USER
+                    password = DESKTOP_CREDENTIALS.get(user)
+                    if password is not None:
+                        try:
+                            result = client.login(user_id=user, password=password)
+                            ok = result.get("ok") or result.get("authenticated")
+                            trigger_login = not ok
+                            if not trigger_login:
+                                token = result.get("token", "")
+                                store_runtime_session_token(
+                                    credential_host, credential_port, user, token
+                                )
+                                store_session_token(
+                                    credential_host, credential_port, user, token
+                                )
+                        except Exception as exc:
+                            logging.info(
+                                f"MMFDB embedded desktop autologin declined for {user}: {exc}"
                             )
-                            store_session_token(
-                                credential_host, credential_port, user, token
-                            )
-                    except Exception as exc:
-                        logging.info(f"MMFDB embedded default-admin autologin declined: {exc}")
 
             if trigger_login:
                 login_dialog = LoginDialog()

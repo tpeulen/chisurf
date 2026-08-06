@@ -722,13 +722,34 @@ Used by: `chisurf.core.experiments.tcspc.TCSPCReader` and its GUI controller via
 Used by: Measurement File Database APIs and repository code.
 
 - **`default_user_id`**  
-  The default `user_id` used to attribute database operations and entities when no explicit user is provided. Defaults to `"user_default"`.
-  **Must not be the name of the database's bootstrap administrator.** The first
-  write auto-creates this user as a plain row, and the one-shot bootstrap then
-  refuses to claim a name that already exists — deliberately, so a configured
-  secret can never take over an existing identity. Setting both to `admin` left
-  a fresh install able to register data and then never obtain an administrator,
-  with every embedded MMFDB client failing to start.
+  The `user_id` that database operations and entities are attributed to when no
+  explicit user is given, and the account the login dialog offers first. Ships as
+  `"user"`, the unprivileged desktop account; set it to `"admin"` only to work as
+  the administrator.
+  It **may** carry the same name as the bootstrap administrator. The first write
+  auto-creates this user as a plain row, and the bootstrap is allowed to claim
+  that row precisely because the database created it from this setting rather
+  than a person registering it. The claim is narrow: once the row has a password,
+  admin rights or passwordless login it is somebody's account and the bootstrap
+  refuses it, so a configured secret can never take over an existing identity.
+
+**Workspace login.** The embedded desktop database is created with two local
+accounts: `user` / `user` for everyday work, and `admin` / `admin` for
+administering the database. Both are offered in the login dialog and both can
+sign in without a prompt — autologin is on, so the dialog normally stays out of
+the way.
+
+The curated source database that **MMFDB Admin → Reset** restores contains no
+accounts at all, so the reset re-creates both after copying: a reset workspace is
+always loginable as `user` / `user` or `admin` / `admin`, whatever accounts
+existed before it. A backup of the replaced database is written to
+`<settings dir>/flr/backups/` first.
+
+Server and standalone deployments are unaffected: they stay fail-closed and
+create no account unless `admin.user`/`admin.password` are configured (or the
+`MMFDB_BOOTSTRAP_ADMIN_USER`/`MMFDB_BOOTSTRAP_ADMIN_PASSWORD` environment
+variables are set), and a reset there restores exactly that configured
+administrator.
 
 ---
 

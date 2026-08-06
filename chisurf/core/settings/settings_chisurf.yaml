@@ -256,14 +256,17 @@ mmfdb:
   # For a non-loopback host the base_url must be https:// (or set
   # allow_insecure_http: true on an isolated development network).
   client: {}
-  # The identity in-process writes stamp ownership with. It must NOT be the name
-  # of the database's bootstrap administrator: the first write auto-creates this
-  # user as a plain row, and the one-shot bootstrap then refuses to claim a name
-  # that already exists (deliberately — a configured secret must never be able
-  # to take over an existing identity). Shipping `admin` for both meant a fresh
-  # install could register data and then never obtain an administrator, with
-  # every embedded MMFDB client failing to start from then on.
-  default_user_id: user_default
+  # The identity in-process writes stamp ownership with, and the account the
+  # login screen offers first. The embedded desktop database is created with two
+  # local accounts — `user`/`user` for everyday work and `admin`/`admin` for
+  # administration — and either can sign in without a prompt. Prefer the
+  # unprivileged one; switch to `admin` only to administer the database.
+  #
+  # It may share a name with the bootstrap administrator: the plain row an
+  # ordinary write auto-creates for this identity is completed rather than
+  # refused, because the database made it from this setting. Once the account
+  # has a password of its own it is nobody's to claim.
+  default_user_id: user
   save_login: true
   autologin: false
   object_store:

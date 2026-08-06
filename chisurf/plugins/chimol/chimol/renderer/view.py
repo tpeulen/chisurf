@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import copy
 import logging
-import math
 import time
 from collections import OrderedDict
 from collections.abc import Sequence
@@ -4637,16 +4636,12 @@ class MolView(QtWidgets.QWidget):
         # Redraw here, in the one place the selection changes, rather than at
         # each caller. `handle_mouse_click` did it and `handle_rect_selection`
         # did not, so a box select updated the sequence strip -- which is
-        # repainted every frame -- while the molecule showed no markers at all
+        # repainted every frame -- while the molecule showed no rings at all
         # until something unrelated rebuilt the scene. A box that appears to
         # select nothing reads as a box select that does not work.
-        #
-        # The marker-only path, not `_update_view`: the same swap the sequence
-        # strip has always used, 0.01 ms against 88 ms, and a box drag is as
-        # much a per-mouse-move gesture as dragging over a sequence is.
         if new_sel != previous and self._coords is not None:
             try:
-                self.refresh_selection_highlight()
+                self._update_view()
             except Exception:
                 pass
 
@@ -4722,23 +4717,18 @@ class MolView(QtWidgets.QWidget):
             pass
 
     def set_selected_residues(self, indices, *, object_id: str | None = None) -> None:
-        """Set one object's selection from outside -- a sequence view, a script.
-
-        Goes through the same merge as a click or a box does, because there is
-        one selection and every view of it has to agree. This used to assign
-        `_selected_residues` directly and refresh the marker, emitting nothing:
-        a residue picked in the *sequence strip* therefore never reached the
-        docked sequence list (or anything else listening), and the two
-        sequence views showed different selections of the same molecule.
-        """
+        """Update selection from external widgets (e.g. sequence view)."""
         try:
             idx_iter = list(indices)
         except Exception:
             idx_iter = []
 
         with self._activate_object(object_id):
-            coords = self._coords
-            n = int(coords.shape[0]) if coords is not None else 0
+            if self._coords is None:
+                self._selected_residues = []
+                return
+
+            n = self._coords.shape[0]
             if n <= 0:
                 self._selected_residues = []
                 return
@@ -4752,16 +4742,15 @@ class MolView(QtWidgets.QWidget):
                 if 0 <= i < n:
                     idx_list.append(i)
 
-            self._apply_selection_indices(idx_list, None, mode="set")
+            self._selected_residues = idx_list
 
-    @staticmethod
-    def _is_selection_object(object_id: str) -> bool:
-        """Whether a scene-object id is a selection marker, prefixed or not."""
-        name = str(object_id)
-        return name == "selection" or name.endswith(":selection")
+        try:
+            self.refresh_selection_highlight()
+        except Exception:
+            pass
 
     def refresh_selection_highlight(self) -> None:
-        """Redraw the selection markers, not the whole scene.
+        """Redraw only the selection marker, not the whole scene.
 
         Selecting used to go through `_update_view`, which rebuilds every
         representation: 88 ms on a small protein, against 0.01 ms for the marker
@@ -4769,14 +4758,9 @@ class MolView(QtWidgets.QWidget):
         move, so the selection lagged the cursor by a rebuild each step, and the
         cost had nothing to do with what changed.
 
-        **Every object's marker, and matched by the same id the full rebuild
-        gives it.** `_build_scene_for_current_object` prefixes every scene
-        object with its object id, so the old `id != "selection"` filter matched
-        nothing: the stale marker was never dropped and a fresh, *unprefixed*
-        one was appended beside it. Deselecting therefore left the markers on
-        screen, and a selection in a second molecule was drawn while the first
-        one's ghost stayed -- the sequence and the view disagreeing, which is
-        the one thing they may never do.
+        The marker is one scene object with a known id, so it can be swapped in
+        place. Representations that are themselves *filtered* by the selection
+        still need the full path -- callers wanting that ask for it explicitly.
         """
         scene = getattr(self, "_scene", None)
         renderer = getattr(self, "_renderer", None)
@@ -4784,25 +4768,12 @@ class MolView(QtWidgets.QWidget):
             self._update_view()
             return
 
-        fresh: list[SceneObject] = []
-        for entry in self._objects.values():
-            if not entry.visible:
-                continue
-            with self._activate_object(entry.object_id):
-                coords = self._coords
-                if coords is None:
-                    continue
-                marks = self._update_selection_highlight(
-                    np.asarray(coords, dtype=float)
-                ) or []
-            for obj in marks:
-                obj.id = f"{entry.object_id}:{obj.id}"
-            fresh.extend(marks)
+        coords = getattr(self, "_coords", None)
+        if coords is None:
+            return
+        fresh = self._update_selection_highlight(np.asarray(coords, dtype=float)) or []
 
-        objects = [
-            obj for obj in scene.objects
-            if not self._is_selection_object(getattr(obj, "id", ""))
-        ]
+        objects = [obj for obj in scene.objects if getattr(obj, "id", "") != "selection"]
         objects.extend(fresh)
         scene.objects = objects
         try:
@@ -8493,111 +8464,47 @@ class MolView(QtWidgets.QWidget):
 
         return scene_objects
 
-    def _selection_atom_positions(self, coords: np.ndarray) -> np.ndarray | None:
-        """Where the selection indicators go: every atom of every selected residue.
+    def _update_selection_highlight(self, coords: np.ndarray) -> list[SceneObject] | None:
+        """Outline the selected residues, the way Chimera outlines a selection.
 
-        PyMOL marks **atoms** (``ObjectMoleculeRenderSele`` walks the object's
-        atom table), not one point per residue. The difference is what makes a
-        selection read as a region of the molecule rather than a sprinkle of
-        dots along the backbone -- a selected residue is a dozen markers
-        clustered on it, which is visible against a cartoon at a glance.
+        A green ring around each selected position, drawn **depth-tested** and
+        wider than the atom: the molecule covers the middle of each ring, and
+        what is left is a halo hugging its silhouette. That is the difference
+        between an outline and a marker -- an outline says *this* is selected
+        while leaving it visible, and a marker sits on top of the thing it is
+        describing.
 
-        Falls back to the per-residue positions when the object carries no atom
-        table (a bead model, a trajectory read as coordinates only).
+        Spheres were the first attempt and were worse than either: a solid blob
+        exactly where you are trying to look.
         """
         sel = getattr(self, "_selected_residues", None)
-        if not sel or coords is None or not len(coords):
+        if not sel or self._coords is None:
             return None
+
         try:
             idx_sel = np.asarray(list(sel), dtype=int)
         except Exception:
             return None
-        n = len(coords)
+        n = self._coords.shape[0]
+        if not idx_sel.size or n <= 0:
+            return None
         idx_sel = idx_sel[(idx_sel >= 0) & (idx_sel < n)]
         if not idx_sel.size:
             return None
 
-        atom_xyz = getattr(self, "_all_atom_coords", None)
-        atom_res = getattr(self, "_all_atom_res_ids", None)
-        res_ids = getattr(self, "_residue_ids", None)
-        if atom_xyz is not None and atom_res is not None and res_ids is not None:
-            try:
-                wanted = np.asarray(res_ids, dtype=int)[idx_sel]
-                mask = np.isin(np.asarray(atom_res, dtype=int), wanted)
-                if mask.any():
-                    return np.asarray(atom_xyz, dtype=float)[mask]
-            except Exception:
-                pass
         try:
-            return np.asarray(coords, dtype=float)[idx_sel]
+            centers = coords[idx_sel]
         except Exception:
             return None
-
-    def _selection_marker_width(self) -> float:
-        """Indicator size in pixels, by PyMOL's rule.
-
-        ``ExecutiveGetAdjustedSelectionWidth``:
-        ``selection_width_scale * |stick_radius| / vScale``, clamped between
-        ``selection_width`` and ``selection_width_max`` -- so the marker grows
-        as you zoom in and stops at ten pixels. ``vScale`` is
-        ``SceneGetScreenVertexScale``: the scene units one pixel covers at the
-        origin's depth.
-
-        PyMOL recomputes this every frame and chimol computes it when the
-        selection changes; between the two, the clamp band is three to ten
-        pixels, so the drift a zoom introduces is at most that.
-        """
-        cfg = _DISPLAY_CONFIG.get("selection", {}) or {}
-        try:
-            low = float(cfg.get("width", 3.0))
-            high = float(cfg.get("width_max", 10.0))
-            scale = float(cfg.get("width_scale", 2.0))
-            radius = float(cfg.get("width_reference_radius", 0.25))
-        except Exception:
-            low, high, scale, radius = 3.0, 10.0, 2.0, 0.25
-
-        renderer = getattr(self, "_renderer", None)
-        try:
-            height = max(int(renderer.scene_height()), 1)
-            fov = math.radians(float(renderer._fov))
-            distance = float(renderer._distance)
-            v_scale = 2.0 * distance * math.tan(fov / 2.0) / height
-        except Exception:
-            v_scale = 0.0
-        if v_scale <= 0.0:
-            return high
-        return float(min(max(scale * abs(radius) / v_scale, low), high))
-
-    def _update_selection_highlight(self, coords: np.ndarray) -> list[SceneObject] | None:
-        """Mark the selected atoms, the way PyMOL marks a selection.
-
-        PyMOL's indicator (``ExecutiveSetupIndicatorPassMultipassImmediate``) is
-        three concentric filled squares at each selected atom: pink
-        ``(1.0, 0.2, 0.6)`` at the full width, black at about half of it, and
-        white in the middle. It is loud on purpose -- a selection you have to
-        hunt for is one you act on by mistake.
-
-        What stood here was a thin green ring at each *residue*, argued for as
-        Chimera's outline. It is the better idea and it was not what it drew:
-        the middle of a ring is only covered when the marker is depth-tested
-        against the geometry it hugs, this one is an overlay, and at one point
-        per residue there was nothing to hug. Reported as "the rect select does
-        not show the selection", which is what a scatter of thin rings over a
-        cartoon looks like. A real silhouette needs the selected geometry's
-        depth rendered to a texture and the existing outline shader
-        (``postprocess._OUTLINE_FRAGMENT``) run over it; until that second depth
-        target exists, PyMOL's marker is the honest option.
-        """
-        centers = self._selection_atom_positions(coords)
-        if centers is None or not len(centers):
+        if centers is None or not centers.size:
             return None
 
         try:
             sel_cfg = _DISPLAY_CONFIG.get("selection", {})
         except Exception:
             sel_cfg = {}
-        # PyMOL's selection pink, from its own indicator pass.
-        default_color = [1.0, 0.2, 0.6, 1.0]
+        # Chimera's selection green.
+        default_color = [0.2, 1.0, 0.2, 1.0]
         try:
             col = np.asarray(sel_cfg.get("color", default_color), dtype=float)
         except Exception:
@@ -8605,21 +8512,34 @@ class MolView(QtWidgets.QWidget):
         if col.shape[0] != 4:
             col = np.array(default_color, dtype=float)
 
+        size = float(sel_cfg.get("outline_size", 15.0))
+
         geom = Geometry(
             kind="points",
             positions=centers,
             colors=np.tile(col, (centers.shape[0], 1)),
             meta={
-                "glyph": "selection",
-                "size": self._selection_marker_width(),
+                "glyph": "ring",
+                "size": size,
                 "px_mode": True,
             },
         )
-        # An overlay, as PyMOL's is: `selection_overlay` defaults to on, so the
-        # marker is drawn over the representation rather than hidden by it. A
-        # marker you can only see when nothing is in front of it does not tell
-        # you what is selected on the far side of the molecule -- which is
-        # exactly where a box select reaches.
+        # An overlay, deliberately. Two cheaper routes to Chimera's outline were
+        # tried and neither works from *point* markers:
+        #
+        #   * depth-testing them hides every one, because the markers sit at CA
+        #     positions and the cartoon surface is nearer to the camera than the
+        #     CA it was built from; and
+        #   * drawing a wider filled disc first does not help either -- with
+        #     depth testing on, draw order decides nothing, the nearer fragment
+        #     wins, so the ribbon covers the rim as well as the middle.
+        #
+        # A real silhouette has to come from the *selected geometry*, not from
+        # points standing in for it: render that geometry's depth to a texture
+        # and run the existing outline shader (`postprocess._OUTLINE_FRAGMENT`,
+        # a min-dilate plus a depth-jump test) over it in green. That shader is
+        # directly reusable; what is missing is the second depth target to feed
+        # it, which is the piece of work this needs.
         return [SceneObject(id="selection", geometry=geom, render_mode="overlay")]
 
     def _update_view(self, fit_camera: bool = False) -> None:

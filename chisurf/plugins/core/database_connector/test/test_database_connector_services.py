@@ -7,9 +7,13 @@ import pytest
 
 @pytest.fixture
 def seeded_db(tmp_path, monkeypatch):
+    from mmfdb.config import configure_runtime, reset_runtime_config
     from mmfdb.repository import MFDatabase
     from chisurf.plugins.core.database_connector import services
 
+    # Clear any host-registered resolver so the reset behaviour under test does
+    # not depend on which other test ran first.
+    reset_runtime_config()
     db_path = tmp_path / "mmfdb.db"
     source_path = tmp_path / "source.db"
     object_root = tmp_path / "objects"
@@ -38,9 +42,8 @@ def seeded_db(tmp_path, monkeypatch):
         )
     source_path.write_bytes(db_path.read_bytes())
 
+    configure_runtime(database_path=db_path, source_database_path=source_path)
     monkeypatch.setattr(services, "resolve_database_path", lambda: db_path)
-    monkeypatch.setattr(services, "source_database_path", lambda: source_path)
-    monkeypatch.setattr(services, "user_database_path", lambda: db_path)
     monkeypatch.setattr(
         "mmfdb.store.database_resolver.resolve_database_path",
         lambda: db_path,
@@ -52,6 +55,7 @@ def seeded_db(tmp_path, monkeypatch):
     services.close_handler()
     yield db_path
     services.close_handler()
+    reset_runtime_config()
 
 
 def test_repository_reports_seeded_mmfdb_counts(seeded_db):
