@@ -95,6 +95,23 @@ it, so it is installed either way, and the gain is that no ChiSurf code reaches
 for it (the kernel that replaced it is also 22× faster). `pyarrow-core` was
 worth a real **37**.
 
+`pandas` is the same story and is **not a removal candidate**, measured
+2026-08-06: taking it out of the recipe's `run:` list moves the closure 256 →
+255 — it is worth exactly **itself**. Its usual companions stay behind for other
+owners (`python-dateutil` for matplotlib and the Jupyter client, `pytz` and
+`python-tzdata` for `arrow`), and in the **dev env it would not leave at all**,
+because `pdb2pqr` requires `pandas >=1.0`. Against that single package stands
+the port: 69 importing files, 31 of them at module scope, 202 `DataFrame`
+constructions, and an API surface — `groupby`, `merge`, `query`, `describe`,
+`quantile`, `Categorical`, `read_csv`/`to_csv`, `HDFStore` — that is not the
+page of code the reimplementation rule is about. Two of those uses are
+**contracts rather than conveniences**: the `chitable` widget family is
+DataFrame-backed by design ([PRD-66](../prds/prd-66.md)), and the burst
+exports' pandas HDF5 `format="table"` layout is what ndX opens, so replacing it
+changes a file format another tool reads. The rule is *reimplement what is
+trivial*, and the trigger for it is the size of the package's job here, not the
+size of the package.
+
 The mirror image of an undeclared *dependency* is an undeclared *import*, and it
 fails the same way: on a developer machine the package is there transitively, in
 a packaged install the plugin does not load. `test/test_declared_dependencies.py`
