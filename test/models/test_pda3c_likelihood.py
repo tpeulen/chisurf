@@ -142,11 +142,12 @@ def test_zero_background_is_exactly_the_multinomial():
 
 
 def test_the_two_internal_background_paths_agree():
-    """The vectorised GEMM path must equal the per-burst convolution it replaces.
+    """tttrlib's truncated path must equal chisurf's untruncated per-burst one.
 
     They are separately tested against the nested sum, but only on inputs small
     enough for the nested sum to run. This compares them to each other on inputs
-    where it cannot, which is where the fast path actually gets used.
+    where it cannot, which is where the fast path actually gets used -- and it
+    is a genuine cross-implementation check, one side C++ and one side NumPy.
     """
     from chisurf.core.fluorescence.pda3c import (
         burst_log_likelihood,
@@ -168,8 +169,14 @@ def test_the_two_internal_background_paths_agree():
             assert fast[i, j] == pytest.approx(slow, rel=1e-9)
 
 
-def test_chunking_does_not_change_the_result(monkeypatch):
-    """Peak memory is bounded by chunking bursts; the answer must not notice."""
+def test_burst_count_does_not_change_the_per_burst_answer():
+    """A burst's likelihood must not depend on which other bursts came with it.
+
+    Replaces a test that monkeypatched ``_KERNEL_ELEMENT_BUDGET`` to force the
+    NumPy path to chunk. tttrlib does not build the background box, so there is
+    no chunking left to poke -- but the invariant that motivated that test is
+    real and survives the change of implementation.
+    """
     from chisurf.core.fluorescence.pda3c import likelihood as lk
 
     rng = np.random.default_rng(23)
@@ -178,9 +185,9 @@ def test_chunking_does_not_change_the_result(monkeypatch):
     background = np.array([0.5, 0.5, 0.5])
 
     whole = lk.burst_log_likelihood(counts, p, background)
-    monkeypatch.setattr(lk, "_KERNEL_ELEMENT_BUDGET", 32)
-    chunked = lk.burst_log_likelihood(counts, p, background)
-    assert np.allclose(whole, chunked)
+    for j in (0, 5, 36):
+        one = lk.burst_log_likelihood(counts[j: j + 1], p, background)
+        np.testing.assert_allclose(one[:, 0], whole[:, j], rtol=1e-10, atol=1e-10)
 
 
 def test_background_series_starts_at_one():
@@ -458,3 +465,59 @@ def test_two_channel_case_reproduces_the_pda_engine_s1s2():
     assert engine_sum > 0.9, "engine matrix is not normalised as expected"
     total_variation = 0.5 * np.abs(ours / ours.sum() - engine / engine_sum).sum()
     assert total_variation < 1e-6, f"total variation {total_variation:.2e} too large"
+
+
+def test_burst_log_likelihood_uses_tttrlib():
+    """The evaluation is tttrlib's; there is no NumPy implementation left."""
+    from chisurf.core.fluorescence.pda3c import likelihood as L
+
+    counts = np.array([[4, 3, 2], [7, 1, 1]])
+    obj = L._tttrlib_likelihood(counts.astype(float), np.array([1.0, 1.0, 1.0]),
+                                None, L.DEFAULT_TOLERANCE)
+    assert obj is not None, "tttrlib is not being used"
+    assert obj.get_n_bursts() == 2 and obj.get_n_channels() == 3
+
+
+def test_fast_path_agrees_with_the_untruncated_reference():
+    """The oracle is the nested sum, which shares no cutoff with the fast path."""
+    from chisurf.core.fluorescence.pda3c import likelihood as L
+
+    rng = np.random.default_rng(11)
+    counts = rng.integers(0, 12, size=(15, 3)).astype(float)
+    p = rng.dirichlet([3, 2, 2], size=3)
+    for background in (None, np.array([1.5, 0.8, 0.4]), np.array([4.0, 4.0, 4.0])):
+        fast = L.burst_log_likelihood(counts, p, background)
+        slow = L.burst_log_likelihood_reference(counts, p, background)
+        np.testing.assert_allclose(fast, slow, rtol=1e-9, atol=1e-9)
+
+
+def test_the_numpy_implementation_is_gone():
+    """It was 14-920x slower and wrong on a p_c == 0 channel; tttrlib owns this."""
+    from chisurf.core.fluorescence.pda3c import likelihood as L
+
+    for name in ("_burst_log_likelihood_numpy", "_channel_boxes",
+                 "_background_factors", "_tail_cutoff",
+                 "_KERNEL_ELEMENT_BUDGET"):
+        assert not hasattr(L, name), f"{name} should have been removed"
+
+
+def test_zero_probability_channel_with_background_is_not_impossible():
+    """A channel the model calls impossible can still collect background.
+
+    The removed NumPy path evaluated L = Multinom(F;p) x correction and
+    returned -inf here, because the leading term is zero. The reference and
+    tttrlib agree the burst is perfectly possible with those photons as
+    background.
+    """
+    from chisurf.core.fluorescence.pda3c import likelihood as L
+
+    counts = np.array([[1, 0, 2]], dtype=float)
+    p = np.array([[0.5, 0.5, 0.0]])
+    background = np.array([0.0, 0.0, 1.0])
+
+    reference = L.burst_log_likelihood_reference(counts, p, background)[0, 0]
+    assert np.isfinite(reference)
+    assert L.burst_log_likelihood(counts, p, background)[0, 0] == pytest.approx(
+        reference, rel=1e-12
+    )
+    assert np.isfinite(L.burst_log_likelihood(counts, p, background)[0, 0])

@@ -45,35 +45,43 @@ $c_m$ is the $m$-th coefficient of the product of the per-channel polynomials �
 i.e. the **discrete convolution** of the $u_c$ sequences, which is how
 :func:`log_background_correction` evaluates one burst.
 
-It goes one step further than that. Write $u_c(b)$ as a burst-determined factor
-times $p_c^{-b}$: the burst part and the model part separate, so summing over
-the whole background box is a **matrix product** between a
-$(\text{bursts} \times \text{box})$ array and a
-$(\text{points} \times \text{box})$ one. That is what
-:func:`burst_log_likelihood` does, and it is why the background costs the same
-kind of operation as the zero-background term rather than a different one.
+Where the evaluation lives
+--------------------------
+:func:`burst_log_likelihood` is a thin adapter over
+``tttrlib.PdaBurstLikelihood``, which carries the factorisation above in C++.
+The NumPy implementation that used to live here — the background box, its GEMM
+and its chunking — was removed once tttrlib matched it: it was 14-920x slower,
+and it returned ``-inf`` where a channel has $p_c = 0$ but collected photons,
+because the leading $\mathrm{Multinom}(F;p)$ is then zero and no finite
+correction recovers the (perfectly possible) all-background answer. tttrlib
+evaluates such bursts without factoring that term out, and agrees with
+:func:`burst_log_likelihood_reference`.
 
-Two things fall out of writing it this way:
+tttrlib also does not form the box at all: grouping by $m$ makes the
+coefficients the convolution above, which is $O(K b m_{max})$ rather than
+$O(\prod_c b_c)$ and needs no chunking.
 
-- the zero-background limit is the leading factor exactly, so the fast
-  no-background path (:func:`log_multinomial_pmf`, one matrix product over all
-  bursts and model points) and the background correction **compose** instead of
-  being separate code paths;
-- near the optimum every term is an $O(1)$ ratio rather than a factorial,
-  because $F_c \approx N p_c$ makes $w_m u_c(b) \sim (F_c/(N p_c))^b$.
+What is still evaluated here
+----------------------------
+Only things tttrlib does not provide in the same shape:
 
-That last point has a sharp edge, and it is the reason
-:func:`_channel_boxes` exists: **the series may not be truncated on Poisson tail
-mass.** Where a channel collected far more photons than the model allows,
-$F_c/(N p_c) \gg 1$ and the terms *grow* for many steps before the Poisson
-factor turns them over — and there the background explanation is the entire
-likelihood. Truncating on $\mathrm{Pois}(b; B_c)$ alone silently discards the
-dominant terms and deforms the likelihood surface away from the optimum, which
-is exactly the region a sampler or a support-plane scan explores.
+- :func:`log_multinomial_pmf` — broadcasting, so a caller gets the whole
+  (points × bursts) grid from one matrix product;
+- :func:`burst_log_likelihood_reference` — the nested sum written out, the
+  independent oracle for everything above;
+- :func:`log_background_correction`, :func:`background_series` and
+  :func:`log_background_series` — the untruncated per-burst path, deliberately
+  sharing no cutoff heuristic with the fast one;
+- :func:`collapse_bursts` — data munging.
 
-:func:`burst_log_likelihood_reference` implements the nested sum directly and
-:func:`background_series` is deliberately untruncated, so both stay independent
-of the fast path's cutoff heuristic; see ``test/models/test_pda3c_likelihood.py``.
+**The series may not be truncated on Poisson tail mass.** Where a channel
+collected far more photons than the model allows, $F_c/(N p_c) \gg 1$ and the
+terms *grow* for many steps before the Poisson factor turns them over — and
+there the background explanation is the entire likelihood. Truncating on
+$\mathrm{Pois}(b; B_c)$ alone silently discards the dominant terms and deforms
+the likelihood surface away from the optimum, which is exactly the region a
+sampler or a support-plane scan explores. tttrlib cuts at an effective rate
+instead; see ``test/models/test_pda3c_likelihood.py``.
 
 Conventions
 -----------
@@ -102,11 +110,6 @@ __all__ = [
 
 #: Smallest probability mass left in a truncated Poisson background tail.
 DEFAULT_TOLERANCE = 1e-12
-
-#: Peak elements allowed in one background-factor chunk (~64 MB of doubles).
-#: The burst chunk is derived from this and the box size, so a wide box shrinks
-#: the chunk instead of exhausting memory.
-_KERNEL_ELEMENT_BUDGET = 8_000_000
 
 
 def log_multinomial_pmf(counts, p) -> np.ndarray:
@@ -157,77 +160,6 @@ def log_multinomial_pmf(counts, p) -> np.ndarray:
     if np.any(invalid):
         out = np.where(invalid, -np.inf, out)
     return out
-
-
-#: Hard ceiling for :func:`_tail_cutoff`, so a pathological rate cannot spin.
-_MAX_CUTOFF = 10_000
-
-
-def _tail_cutoff(rate: float, tolerance: float) -> int:
-    """Return the smallest ``k`` with Poisson survival ``P(X > k) <= tolerance``.
-
-    ``scipy``'s inverse survival function returns ``nan`` once the tolerance
-    drops below what it can resolve, so an explicit walk past the mode is kept
-    as a fallback.
-    """
-    if rate <= 0.0:
-        return 0
-    k = poisson.isf(tolerance, rate)
-    if np.isfinite(k):
-        return max(int(k), 0)
-    log_tol = np.log(max(tolerance, 1e-300))
-    k = int(rate) + 1
-    while k < _MAX_CUTOFF and poisson.logpmf(k, rate) > log_tol:
-        k += 1
-    return k
-
-
-def _channel_boxes(counts, background, p, tolerance):
-    """Return the per-channel background box sizes the GEMM path must cover.
-
-    Truncating each channel's series on **Poisson tail mass alone is wrong**.
-    The summand is ``Pois(b;B_c) * falling(F_c,b) / p_c**b``, and once the
-    reciprocal falling factorial of the total is folded in it behaves like
-    ``Pois(b; B_c) * (F_c / (N p_c))**b``. That ratio is ~1 near the optimum —
-    which is why the naive cutoff looks fine on well-fitting data — but it blows
-    up wherever a channel collected far more photons than the model allows, and
-    there the *background* explanation is the whole likelihood. Truncating early
-    then discards the dominant terms and distorts the likelihood surface exactly
-    where a sampler or a support-plane scan needs it to be right.
-
-    So the cutoff is taken at an **effective rate** ``B_c * max(F_c/(N p_c))``
-    over the bursts and model points in play, capped at the largest count the
-    channel actually saw (no burst can hold more background than photons).
-
-    Parameters
-    ----------
-    counts : numpy.ndarray
-        Per-burst photon counts, shape ``(n_bursts, K)``.
-    background : numpy.ndarray
-        Per-channel mean background counts, shape ``(K,)``.
-    p : numpy.ndarray
-        Channel probabilities, shape ``(n_points, K)``.
-    tolerance : float
-        Tail mass to discard per channel.
-
-    Returns
-    -------
-    list of int
-        Number of background terms to keep per channel (at least 1).
-    """
-    totals = np.maximum(counts.sum(axis=1), 1.0)
-    boxes = []
-    for c in range(counts.shape[1]):
-        max_count = int(counts[:, c].max(initial=0))
-        if background[c] <= 0.0 or max_count == 0:
-            boxes.append(1)
-            continue
-        p_c = p[:, c]
-        p_min = float(np.min(p_c[p_c > 0.0])) if np.any(p_c > 0.0) else 1.0
-        ratio = float(np.max(counts[:, c] / totals)) / max(p_min, 1e-300)
-        effective = float(background[c]) * max(ratio, 1.0)
-        boxes.append(min(max_count, _tail_cutoff(effective, tolerance)) + 1)
-    return boxes
 
 
 def log_background_series(count: int, rate: float, p: float):
@@ -289,7 +221,8 @@ def background_series(count: int, rate: float, p: float):
 
     This backs the per-burst reference path and deliberately does **not**
     truncate: a reference that shares the fast path's cutoff heuristic cannot
-    catch a mistake in it, and this one did not (see :func:`_channel_boxes`).
+    catch a mistake in it, and this one did not. (The cutoff now lives in
+    tttrlib, which is a second reason to keep this side of it independent.)
     Summing to ``count`` is exact and cheap enough for one burst at a time.
 
     Parameters
@@ -414,92 +347,57 @@ def log_background_correction(
     return float(log_offset + peak + np.log(np.exp(terms[kept] - peak).sum()))
 
 
-def _background_factors(counts, background, photon_number_pmf, boxes):
-    r"""Return the burst-only part of the background correction.
 
-    Separates the correction's summand into a burst-determined factor and a
-    model-determined one, which is what lets :func:`burst_log_likelihood`
-    evaluate it as a matrix product. From the module docstring,
+#: tttrlib's PdaBurstLikelihood, keyed on the burst-side inputs. The constructor
+#: precomputes everything that does not depend on the model point -- the falling
+#: factorials, the Poisson series, the multinomial constant -- and a fit calls
+#: this with the same bursts and a new `p` on every iteration, so the object has
+#: to outlive the call for that precompute to be worth anything.
+_LIKELIHOOD_CACHE: dict = {}
+_LIKELIHOOD_CACHE_MAX = 8
 
-    .. math::
 
-        \sum_m w_m c_m = \sum_{b} \Big[\prod_c \mathrm{Pois}(b_c;B_c)
-        \tfrac{F_c!}{(F_c-b_c)!}\Big] w_{\sum_c b_c}
-        \;\times\; \prod_c p_c^{-b_c},
-
-    and the bracket together with :math:`w` depends only on the burst while
-    :math:`\prod_c p_c^{-b_c}` depends only on the model point.
-
-    The burst factor is returned **in log space**. Its two halves fight each
-    other — the falling factorials grow like :math:`F_c^{b_c}` while
-    :math:`w_{\sum_c b_c}` falls like :math:`N^{-m}` — so a bright burst
-    overflows a float64 between them even though their product is small.
-
-    Parameters
-    ----------
-    counts : numpy.ndarray
-        Per-burst photon counts, shape ``(n_bursts, K)``.
-    background : numpy.ndarray
-        Per-channel mean background counts, shape ``(K,)``.
-    photon_number_pmf : array_like or None
-        ``P(n)`` for the signal photon number.
-    boxes : sequence of int
-        Number of background terms to keep per channel, from
-        :func:`_channel_boxes`.
-
-    Returns
-    -------
-    log_kernel : numpy.ndarray
-        Shape ``(n_bursts, prod(boxes))`` — the log of the burst factor over the
-        flattened background box; ``-inf`` where the burst cannot supply that
-        many background photons.
-    exponents : numpy.ndarray
-        Shape ``(prod(boxes), K)`` — the background counts each column stands
-        for.
-    """
-    n_bursts, n_ch = counts.shape
-
-    # log_a[j, c, b] = log[Pois(b; B_c) * falling_factorial(F_jc, b)], padded to
-    # the widest channel box; a burst that cannot supply b photons gets -inf.
-    width = max(boxes)
-    b = np.arange(width, dtype=float)
-    with np.errstate(divide="ignore", invalid="ignore"):
-        log_a = (
-            poisson.logpmf(b[None, None, :], background[None, :, None])
-            + gammaln(counts[:, :, None] + 1.0)
-            - gammaln(counts[:, :, None] - b[None, None, :] + 1.0)
+def _tttrlib_likelihood(counts, background, photon_number_pmf, tolerance):
+    """Return a cached tttrlib evaluator for these bursts."""
+    try:
+        import tttrlib
+    except ImportError as exc:                            # pragma: no cover
+        raise ImportError(
+            "PDA3c requires tttrlib. The NumPy implementation it used to fall "
+            "back to was removed once tttrlib carried the same factorisation."
+        ) from exc
+    if not hasattr(tttrlib, "PdaBurstLikelihood"):        # pragma: no cover
+        raise ImportError(
+            "PDA3c requires a tttrlib with PdaBurstLikelihood; the installed "
+            f"tttrlib {getattr(tttrlib, '__version__', '?')} predates it."
         )
-    log_a = np.where(b[None, None, :] <= counts[:, :, None], log_a, -np.inf)
+    counts = np.asarray(counts)
+    if not np.all(np.isfinite(counts)) or np.any(counts < 0):
+        raise ValueError("photon counts must be finite and non-negative")
+    if np.any(counts != np.rint(counts)):
+        raise ValueError("photon counts must be integral")
+    ci = np.ascontiguousarray(np.rint(counts), dtype=np.int32)
+    bg = None if background is None else np.asarray(background, dtype=float)
+    pn = None if photon_number_pmf is None else np.asarray(photon_number_pmf, dtype=float)
 
-    # Outer sum over channels -> the (b_1, ..., b_K) box, per burst.
-    log_kernel = log_a[:, 0, : boxes[0]]
-    for c in range(1, n_ch):
-        slab = log_a[:, c, : boxes[c]].reshape((n_bursts,) + (1,) * c + (boxes[c],))
-        log_kernel = log_kernel[..., None] + slab
-    log_kernel = log_kernel.reshape(n_bursts, -1)
-
-    # Exponent bookkeeping for the box, and its total m per column.
-    grids = np.meshgrid(*[np.arange(n) for n in boxes], indexing="ij")
-    exponents = np.stack([g.ravel() for g in grids], axis=1)
-    m = exponents.sum(axis=1)
-
-    # w_m = P(N - m) (N - m)! / N!, impossible where the burst has fewer photons.
-    total = counts.sum(axis=1)
-    valid = m[None, :] <= total[:, None]
-    with np.errstate(invalid="ignore"):
-        log_w = gammaln(total[:, None] - m[None, :] + 1.0) - gammaln(total[:, None] + 1.0)
-    log_kernel = log_kernel + np.where(valid, log_w, -np.inf)
-
-    if photon_number_pmf is not None:
-        pn = np.asarray(photon_number_pmf, dtype=float)
-        n_signal = (total[:, None] - m[None, :]).astype(int)
-        in_range = valid & (n_signal < pn.size)
-        with np.errstate(divide="ignore"):
-            log_kernel = log_kernel + np.log(
-                np.where(in_range, pn[np.clip(n_signal, 0, pn.size - 1)], 0.0)
-            )
-
-    return log_kernel, exponents
+    key = (
+        ci.shape, ci.tobytes(),
+        None if bg is None else bg.tobytes(),
+        None if pn is None else pn.tobytes(),
+        float(tolerance),
+    )
+    obj = _LIKELIHOOD_CACHE.get(key)
+    if obj is None:
+        obj = tttrlib.PdaBurstLikelihood(
+            ci,
+            [] if bg is None else list(bg),
+            [] if pn is None else list(pn),
+            float(tolerance),
+        )
+        if len(_LIKELIHOOD_CACHE) >= _LIKELIHOOD_CACHE_MAX:
+            _LIKELIHOOD_CACHE.clear()
+        _LIKELIHOOD_CACHE[key] = obj
+    return obj
 
 
 def burst_log_likelihood(
@@ -511,18 +409,13 @@ def burst_log_likelihood(
 ) -> np.ndarray:
     r"""Log likelihood of every burst under every set of channel probabilities.
 
-    Both halves are matrix products. The zero-background term is
-    :func:`log_multinomial_pmf` broadcast over the whole
-    ``(model points × bursts)`` grid. The background correction separates the
-    same way — the summand splits into a burst-determined factor and a
-    :math:`\prod_c p_c^{-b_c}` that depends only on the model point (see
-    :func:`_background_factors`) — so it is a second GEMM over the small
-    background box rather than a sum evaluated per cell.
+    Evaluated by ``tttrlib.PdaBurstLikelihood``. The burst-side tables live on
+    that object and survive between calls, so a fit pays for them once.
 
     Parameters
     ----------
     counts : array_like
-        Per-burst photon counts, shape ``(n_bursts, K)``.
+        Per-burst photon counts, shape ``(n_bursts, K)``. Must be integral.
     p : array_like
         Channel probabilities, shape ``(n_points, K)`` (or ``(K,)`` for one).
     background : array_like, optional
@@ -537,90 +430,16 @@ def burst_log_likelihood(
     -------
     numpy.ndarray
         Shape ``(n_points, n_bursts)``.
+
+    Raises
+    ------
+    ImportError
+        If tttrlib is missing or predates ``PdaBurstLikelihood``.
     """
     counts = np.atleast_2d(np.asarray(counts, dtype=float))
     p = np.atleast_2d(np.asarray(p, dtype=float))
-
-    # The result is (points x bursts), but the broadcast that builds it is
-    # (points x bursts x channels) and carries several temporaries of that size
-    # inside log_multinomial_pmf. Chunk over bursts under the same element
-    # budget as the background path: the peak then depends on the budget rather
-    # than on the caller's point count, which is what a dynamic model varies
-    # (occupancy nodes) without any sense of how much memory that asks for.
-    out = np.empty((p.shape[0], counts.shape[0]), dtype=float)
-    chunk = max(1, _KERNEL_ELEMENT_BUDGET // max(p.shape[0] * p.shape[1], 1))
-    for start in range(0, counts.shape[0], chunk):
-        stop = min(start + chunk, counts.shape[0])
-        out[:, start:stop] = log_multinomial_pmf(
-            counts[None, start:stop, :], p[:, None, :]
-        )
-
-    if background is None:
-        background = np.zeros(counts.shape[1], dtype=float)
-    background = np.asarray(background, dtype=float)
-
-    if not np.any(background > 0.0) and photon_number_pmf is None:
-        return out
-
-    if np.any(p <= 0.0):
-        # p^-b is undefined; that channel's photons must all be background. Rare
-        # and cheap enough to hand to the per-burst reference path.
-        for i in range(p.shape[0]):
-            for j in range(counts.shape[0]):
-                out[i, j] += log_background_correction(
-                    counts[j], background, p[i], photon_number_pmf
-                )
-        return out
-
-    boxes = _channel_boxes(counts, background, p, tolerance)
-    # log model[i, col] = -sum_c exponents[col, c] log p[i, c]; built once, since
-    # the box is fixed for the whole call.
-    _, exponents = _background_factors(counts[:1], background, photon_number_pmf, boxes)
-    log_model = -(np.log(p) @ exponents.T)
-
-    # Neither half may be exponentiated as it stands: the model half is the
-    # *unscaled* product prod_c p_c**-b_c, which is cancelled only later by the
-    # burst factor's falling factorials, so it overflows to `inf` — and `out +
-    # log(inf)` is a `+inf` log-likelihood, a "perfect" fit — as soon as
-    # b·log(1/p_c) > 709. That is reachable in an ordinary fit: a Gauss-Hermite
-    # node at a short distance gives p ~ 1e-17 and a handful of photons in that
-    # channel is enough. So each half is peak-shifted onto (0, 1] first and the
-    # two shifts are added back in log space afterwards; the GEMM itself is
-    # unchanged, and the identity is exact because the shifts are per row.
-    model_shift = log_model.max(axis=1)
-    model = np.exp(log_model - model_shift[:, None])
-
-    # The burst factor is (n_bursts x prod(boxes)) and the box grows as the K-th
-    # power of the cutoff, so chunk under a fixed element budget rather than a
-    # fixed burst count — one of the two places this can exhaust memory (the
-    # other is the multinomial broadcast above, chunked the same way).
-    chunk = max(1, _KERNEL_ELEMENT_BUDGET // max(exponents.shape[0], 1))
-    log_correction = np.empty(out.shape, dtype=float)
-    for start in range(0, counts.shape[0], chunk):
-        stop = min(start + chunk, counts.shape[0])
-        log_kernel, _ = _background_factors(
-            counts[start:stop], background, photon_number_pmf, boxes
-        )
-        kernel_shift = log_kernel.max(axis=1)
-        # An all-impossible burst shifts by nothing; its row stays zero and the
-        # exact path below owns the answer.
-        kernel_shift = np.where(np.isfinite(kernel_shift), kernel_shift, 0.0)
-        kernel = np.exp(log_kernel - kernel_shift[:, None])
-        with np.errstate(divide="ignore"):
-            log_correction[:, start:stop] = (
-                model_shift[:, None] + kernel_shift[None, :] + np.log(model @ kernel.T)
-            )
-
-    # A shifted sum can still underflow to zero where the two peaks sit in
-    # different corners of the box. That is not evidence the correction vanishes
-    # — recompute those cells on the untruncated per-burst path, which is exact
-    # in log space (and returns -inf where -inf is genuinely the answer).
-    for i, j in zip(*np.nonzero(~np.isfinite(log_correction))):
-        log_correction[i, j] = log_background_correction(
-            counts[j], background, p[i], photon_number_pmf
-        )
-
-    return out + log_correction
+    obj = _tttrlib_likelihood(counts, background, photon_number_pmf, tolerance)
+    return obj.log_likelihood_grid(np.ascontiguousarray(p, dtype=float))
 
 
 def burst_log_likelihood_reference(

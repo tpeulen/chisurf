@@ -231,29 +231,34 @@ def test_a_ceiling_that_does_not_bind_changes_nothing():
     assert model.total_log_likelihood() == bounded
 
 
-def test_the_burst_likelihood_chunks_over_bursts():
-    """``burst_log_likelihood`` must not build a (points x bursts x K) block.
+def test_the_burst_likelihood_scales_without_a_points_x_bursts_x_k_block():
+    """The peak allocation must stay at the (points x bursts) result.
 
-    The result is (points x bursts); the broadcast that builds it is a factor
-    ``K`` larger and carries several temporaries of that size. Chunked, the
-    answer has to be identical to the unchunked one.
+    The NumPy implementation this replaces broadcast to (points x bursts x K)
+    and chunked to survive it; the test poked ``_KERNEL_ELEMENT_BUDGET`` to
+    force that path. tttrlib allocates the result and per-channel tables only,
+    so the invariant is now checked by measuring rather than by monkeypatching
+    a knob that no longer exists.
     """
+    import tracemalloc
     from chisurf.core.fluorescence.pda3c import likelihood as lk
 
     rng = np.random.default_rng(0)
     counts = rng.integers(0, 12, size=(400, 3)).astype(float)
     p = rng.dirichlet(np.ones(3), size=37)
 
+    tracemalloc.start()
+    before = tracemalloc.get_traced_memory()[0]
     full = lk.burst_log_likelihood(counts, p)
-    original = lk._KERNEL_ELEMENT_BUDGET
-    try:
-        lk._KERNEL_ELEMENT_BUDGET = 64      # force many chunks
-        chunked = lk.burst_log_likelihood(counts, p)
-    finally:
-        lk._KERNEL_ELEMENT_BUDGET = original
+    peak = tracemalloc.get_traced_memory()[1] - before
+    tracemalloc.stop()
 
-    assert chunked.shape == (37, 400)
-    assert np.array_equal(full, chunked)
+    assert full.shape == (37, 400)
+    result_bytes = 37 * 400 * 8
+    assert peak < 4 * result_bytes, (
+        f"peak {peak} B for a {result_bytes} B result -- a (points x bursts x K) "
+        "temporary is back"
+    )
 
 
 # -- the fit itself ----------------------------------------------------------
