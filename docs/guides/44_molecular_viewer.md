@@ -965,6 +965,27 @@ has one column and no more — so `save` truncates the ids to their first
 character and warns, naming the chains that become indistinguishable. Save as
 mmCIF to keep them.
 
+### Selecting with the mouse
+
+The mouse-mode block at the bottom right is the reference: it lists what every
+button does under every modifier, and clicking the mode line at its top cycles
+through PyMOL's modes. In the default *3-Button Viewing* mode:
+
+| Gesture | Action | Effect |
+| --- | --- | --- |
+| click an atom | `+/-` | its residue joins or leaves the selection |
+| shift-drag | `+Box` | every residue in the box joins the selection |
+| shift-middle-drag | `-Box` | every residue in the box leaves it |
+| ctrl-shift-click | `Sele` | the clicked residue becomes the selection |
+
+A drag paints a dashed rectangle while the button is down. Selected residues get
+a ring in the 3-D view and a pink block in the sequence strip; clicking empty
+space clears the selection. What the mouse builds is the `sele` selection, so
+`show sticks, sele` or `color red, sele` continue from it, and the `sele` row of
+the object list carries the same five menus pointed at it.
+
+Mask a region — `mask resi 1-40` — to stop the mouse reaching it.
+
 ## Drawing
 
 ```text

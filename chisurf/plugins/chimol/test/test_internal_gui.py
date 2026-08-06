@@ -168,6 +168,161 @@ def test_a_submenu_opens_beside_its_parent(gui):
 
 
 # --------------------------------------------------------------------------- #
+# Submenus: where they go, and when they go away
+# --------------------------------------------------------------------------- #
+def _overlap(a, b) -> bool:
+    """Whether two rectangles share any area."""
+    return (
+        a.x < b.x + b.w and b.x < a.x + a.w
+        and a.y < b.y + b.h and b.y < a.y + a.h
+    )
+
+
+def _first_submenu(menu):
+    """The first row of *menu* that opens a submenu, and its rectangle."""
+    return next((r, e) for r, e in menu.item_rects if e.is_submenu)
+
+
+def test_a_submenu_never_covers_the_menu_it_came_from(gui):
+    """It did, which is what made the C menu unreadable.
+
+    The panel is docked against the right edge of the viewport, so a submenu
+    placed to the right of its parent does not fit -- and the layout *clamped*
+    it back on screen instead of flipping it, which put it squarely on top of
+    the entries either side of the one being hovered.
+    """
+    gui.mouse_press(*_centre(gui._button_rects[1]["C"]))
+    parent = gui._menus[-1]
+    rect, entry = _first_submenu(parent)
+
+    gui.mouse_move(*_centre(rect))
+
+    child = gui._menus[-1]
+    assert child.owner is entry
+    assert not _overlap(parent.rect, child.rect), "the submenu is on its parent"
+    assert child.rect.x >= 0
+    assert child.rect.x + child.rect.w <= WIDTH + 1e-6
+    assert child.affinity == -1, "against the right edge it has to open left"
+
+
+def test_a_submenu_opens_to_the_right_when_there_is_room(gui):
+    """PyMOL's preferred side, and the one a chain keeps until it must flip."""
+    from chisurf.plugins.chimol.chimol.object_menus import COLOR_MENU
+
+    gui._open_menu("Color:", "148l", COLOR_MENU, 40.0, 40.0)
+    parent = gui._menus[-1]
+    rect, _entry = _first_submenu(parent)
+
+    gui.mouse_move(*_centre(rect))
+
+    child = gui._menus[-1]
+    assert child.rect.x >= parent.rect.x + parent.rect.w
+    assert child.affinity == 1
+    assert not _overlap(parent.rect, child.rect)
+
+
+def test_a_grandchild_keeps_the_side_its_parent_flipped_to(gui):
+    """PyMOL's ``PlacementAffinity``: a chain that went left stays left.
+
+    Without it a deep chain zig-zags -- each level flips back across the menu it
+    came from as soon as it happens to fit there.
+    """
+    gui.mouse_press(*_centre(gui._button_rects[1]["A"]))
+    rect, entry = next(
+        (r, e) for r, e in gui._menus[-1].item_rects if e.label == "find"
+    )
+    gui.mouse_move(*_centre(rect))
+    child = gui._menus[-1]
+    assert child.affinity == -1
+
+    grand_rect, _grand = _first_submenu(child)
+    gui.mouse_move(*_centre(grand_rect))
+
+    grandchild = gui._menus[-1]
+    assert grandchild.affinity == -1
+    assert not _overlap(child.rect, grandchild.rect)
+
+
+def test_moving_to_another_row_collapses_the_submenu(gui):
+    """PyMOL's ``PopUp`` frees the child the moment the cursor leaves its row.
+
+    Ours only ever opened them, so every submenu the cursor passed over stayed
+    on screen and the menu became a stack of boxes.
+    """
+    gui.mouse_press(*_centre(gui._button_rects[1]["C"]))
+    parent = gui._menus[-1]
+    rect, _entry = _first_submenu(parent)
+    gui.mouse_move(*_centre(rect))
+    assert len(gui._menus) == 2
+
+    plain = next(
+        r for r, e in parent.item_rects
+        if not e.is_submenu and not e.is_separator
+    )
+    gui.mouse_move(*_centre(plain))
+
+    assert len(gui._menus) == 1
+
+
+def test_hovering_a_second_submenu_replaces_the_first(gui):
+    gui.mouse_press(*_centre(gui._button_rects[1]["C"]))
+    parent = gui._menus[-1]
+    submenus = [(r, e) for r, e in parent.item_rects if e.is_submenu]
+    gui.mouse_move(*_centre(submenus[0][0]))
+    gui.mouse_move(*_centre(submenus[1][0]))
+
+    assert len(gui._menus) == 2
+    assert gui._menus[-1].owner is submenus[1][1]
+
+
+def test_the_submenu_stays_while_the_cursor_is_inside_it(gui):
+    """Otherwise it could not be used: crossing the gap would close it."""
+    gui.mouse_press(*_centre(gui._button_rects[1]["C"]))
+    rect, _entry = _first_submenu(gui._menus[-1])
+    gui.mouse_move(*_centre(rect))
+    child = gui._menus[-1]
+
+    for item_rect, _e in child.item_rects:
+        gui.mouse_move(*_centre(item_rect))
+        assert gui._menus[-1] is child
+
+
+def test_leaving_the_menus_collapses_the_branch_but_keeps_the_menu(gui):
+    """A click dismisses the menu, as in PyMOL; the cursor drifting off does not.
+
+    What the cursor leaving *does* close is the branch it walked into, which is
+    the half that was missing.
+    """
+    gui.mouse_press(*_centre(gui._button_rects[1]["C"]))
+    rect, _entry = _first_submenu(gui._menus[-1])
+    gui.mouse_move(*_centre(rect))
+    assert len(gui._menus) == 2
+
+    gui.mouse_move(20, HEIGHT - 20)
+
+    assert len(gui._menus) == 1, "the submenu outlived the cursor"
+    assert gui.has_menu() is True
+
+
+def test_two_submenus_sharing_a_label_are_told_apart(gui):
+    """`by element` opens a menu whose only entry is also called `by element`.
+
+    The open-submenu guard used to match on the *label*, so hovering the second
+    one found the first still open and left it there.
+    """
+    gui.mouse_press(*_centre(gui._button_rects[1]["C"]))
+    parent = gui._menus[-1]
+    rect, entry = next(
+        (r, e) for r, e in parent.item_rects if e.label == "by element"
+    )
+    gui.mouse_move(*_centre(rect))
+
+    child = gui._menus[-1]
+    assert child.owner is entry
+    assert child.parent is parent
+
+
+# --------------------------------------------------------------------------- #
 # Long menus
 # --------------------------------------------------------------------------- #
 def test_a_long_menu_stays_inside_the_viewport(gui):

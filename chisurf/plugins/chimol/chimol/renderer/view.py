@@ -4568,15 +4568,10 @@ class MolView(QtWidgets.QWidget):
             "-box": "subtract",
         }.get(action, "toggle")
         try:
+            # Redraws itself when the selection actually changed.
             self._apply_selection_indices(residue_indices, mods, mode=mode)
         except Exception:
             pass
-
-        if self._coords is not None:
-            try:
-                self._update_view()
-            except Exception:
-                pass
 
     def _apply_selection_indices(self, indices, modifiers=None, mode=None) -> None:
         """Merge ``indices`` into the selection the way PyMOL's mouse does.
@@ -4627,6 +4622,7 @@ class MolView(QtWidgets.QWidget):
             # with no indices clears too.
             new_sel = []
 
+        previous = sorted(current)
         self._selected_residues = new_sel
         selection = list(self._selected_residues)
         try:
@@ -4637,6 +4633,17 @@ class MolView(QtWidgets.QWidget):
             self.objectResidueSelectionChanged.emit(self.get_active_object_id(), selection)
         except Exception:
             pass
+        # Redraw here, in the one place the selection changes, rather than at
+        # each caller. `handle_mouse_click` did it and `handle_rect_selection`
+        # did not, so a box select updated the sequence strip -- which is
+        # repainted every frame -- while the molecule showed no rings at all
+        # until something unrelated rebuilt the scene. A box that appears to
+        # select nothing reads as a box select that does not work.
+        if new_sel != previous and self._coords is not None:
+            try:
+                self._update_view()
+            except Exception:
+                pass
 
 
     def handle_rect_selection(self, rect, modifiers=None, action: str | None = None) -> None:

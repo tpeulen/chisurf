@@ -161,7 +161,21 @@ class Hit:
 
 @dataclass
 class _OpenMenu:
-    """A menu currently on screen."""
+    """A menu currently on screen.
+
+    Attributes
+    ----------
+    owner : MenuEntry or None
+        The parent's entry this menu hangs off. Held by identity rather than by
+        label: two submenus at different depths share a label -- ``by element``
+        opens a menu whose one entry is also ``by element`` -- and matching on
+        the text kept the wrong one open.
+    affinity : int
+        Which side of its parent the menu was placed on: ``+1`` right, ``-1``
+        left. PyMOL's ``PlacementAffinity``, and inherited for the same reason:
+        once a chain has flipped left against the window edge, its own children
+        keep going left rather than zig-zagging back across the parent.
+    """
 
     title: str
     target: str
@@ -171,6 +185,8 @@ class _OpenMenu:
     parent: _OpenMenu | None = None
     item_rects: list[tuple[Rect, MenuEntry]] = field(default_factory=list)
     rect: Rect = Rect(0, 0, 0, 0)
+    owner: MenuEntry | None = None
+    affinity: int = 1
 
 
 class InternalGui:
@@ -189,6 +205,8 @@ class InternalGui:
     FONT_PT = 10
     MENU_ITEM_H = 18
     MENU_PAD = 6
+    #: Gap between a submenu and the parent it hangs off, on either side.
+    CHILD_GAP = 3
     #: Residue numbers every this many columns -- PyMOL's
     #: ``seq_view_label_spacing``, whose default is 5.
     LABEL_SPACING = 5
@@ -654,12 +672,11 @@ class InternalGui:
         is simply front-to-back: an open menu is drawn over everything, so it
         must also receive the click that lands on it.
         """
-        for menu in reversed(self._menus):
-            for rect, entry in menu.item_rects:
-                if rect.contains(x, y):
-                    return Hit("menu", entry=entry, submenu=entry.is_submenu)
-            if menu.rect.contains(x, y):
+        depth, entry = self._menu_at(x, y)
+        if depth is not None:
+            if entry is None:
                 return Hit("menu")
+            return Hit("menu", entry=entry, submenu=entry.is_submenu)
 
         if not self.visible:
             return Hit("")
@@ -698,6 +715,23 @@ class InternalGui:
                     return Hit("button", row=index, key=key)
             return Hit("name", row=index)
         return Hit("")
+
+    def _menu_at(self, x: float, y: float) -> tuple[int | None, MenuEntry | None]:
+        """Return ``(depth, entry)`` for the deepest open menu under the cursor.
+
+        Deepest first, because a child is drawn over its parent and, on a window
+        too narrow to hold the chain, may still be sitting on top of it.
+        ``entry`` is ``None`` when the cursor is on the menu but not on a row --
+        the title, the padding, or the gap a separator leaves.
+        """
+        for depth in range(len(self._menus) - 1, -1, -1):
+            menu = self._menus[depth]
+            for rect, entry in menu.item_rects:
+                if rect.contains(x, y):
+                    return depth, entry
+            if menu.rect.contains(x, y):
+                return depth, None
+        return None, None
 
     def wants(self, x: float, y: float) -> bool:
         """Whether the panel would take a click here, rather than the camera.
@@ -754,15 +788,47 @@ class InternalGui:
         )
 
     def mouse_move(self, x: float, y: float) -> bool:
-        """Track hover. Returns whether a redraw is needed."""
+        """Track hover, opening and collapsing submenus. Returns whether to redraw."""
         hit = self.hit_test(x, y)
         changed = hit != self._hover
         self._hover = hit
-        # Hovering a submenu opens it, the way a menu behaves everywhere.
-        if hit.kind == "menu" and hit.entry is not None and hit.entry.is_submenu:
-            self._open_submenu(hit.entry)
-            changed = True
+        if self._menus:
+            changed = self._track_menu_hover(x, y) or changed
         return changed
+
+    def _track_menu_hover(self, x: float, y: float) -> bool:
+        """Open the submenu under the cursor and close the branch it left.
+
+        A submenu opening on hover is only half of the behaviour; PyMOL's
+        ``PopUp`` drag also *frees the child* the moment the cursor moves to
+        another row of the parent, and walks back up when the cursor re-enters
+        it. Without that half, every submenu passed over stayed on screen and
+        the menu became a pile of overlapping boxes.
+
+        Returns whether anything opened or closed.
+        """
+        depth, entry = self._menu_at(x, y)
+        if depth is None:
+            # Off the menus entirely. The branch the cursor wandered into is
+            # done with, but the menu the button opened stays: it is dismissed
+            # by a click, as PyMOL's is, not by the cursor drifting over the
+            # scene on the way to it.
+            return self._collapse_to(1)
+        if entry is not None and entry.is_submenu:
+            child = self._menus[depth + 1] if len(self._menus) > depth + 1 else None
+            if child is not None and child.owner is entry:
+                return self._collapse_to(depth + 2)   # its own children, though
+            self._collapse_to(depth + 1)
+            self._open_submenu(entry)
+            return True
+        return self._collapse_to(depth + 1)
+
+    def _collapse_to(self, depth: int) -> bool:
+        """Close every menu deeper than *depth*. Returns whether any was open."""
+        if len(self._menus) <= depth:
+            return False
+        del self._menus[depth:]
+        return True
 
     def mouse_press(
         self,
@@ -945,25 +1011,61 @@ class InternalGui:
                 pass
 
     # ── menus ────────────────────────────────────────────────────────────
-    def _open_menu(self, title, target, entries, x, y, parent=None) -> None:
+    def _open_menu(self, title, target, entries, x, y, parent=None,
+                   owner=None) -> None:
         menu = _OpenMenu(title=title, target=target, entries=list(entries), x=x, y=y,
-                         parent=parent)
+                         parent=parent, owner=owner,
+                         affinity=parent.affinity if parent is not None else 1)
         self._layout_menu(menu)
         self._menus.append(menu)
 
     def _open_submenu(self, entry: MenuEntry) -> None:
-        if not self._menus:
-            return
-        # Already open under this parent? Then leave it be.
-        for menu in self._menus:
-            if menu.title == entry.label:
+        """Open *entry*'s children beside the row they hang off."""
+        if self._menus and self._menus[-1].owner is entry:
+            return                       # already open, and on the right row
+        for depth in range(len(self._menus) - 1, -1, -1):
+            parent = self._menus[depth]
+            for rect, candidate in parent.item_rects:
+                if candidate is not entry:
+                    continue
+                del self._menus[depth + 1:]
+                # Beside the row, with the child's first *entry* on it rather
+                # than the child's title -- PyMOL's `target_y` correction. The
+                # x here is a starting point only; `_layout_menu` decides the
+                # side, because it is the only place the width is known.
+                self._open_menu(
+                    entry.label, parent.target, entry.children,
+                    parent.rect.x + parent.rect.w + self.CHILD_GAP,
+                    rect.y - self.MENU_PAD - self.MENU_ITEM_H,
+                    parent, owner=entry,
+                )
                 return
-        parent = self._menus[-1]
-        for rect, candidate in parent.item_rects:
-            if candidate is entry:
-                self._open_menu(entry.label, parent.target, entry.children,
-                                parent.rect.x + parent.rect.w - 4, rect.y, parent)
-                return
+
+    def _place_child(
+        self, parent: Rect, width: float, affinity: int
+    ) -> tuple[float, int]:
+        """Return ``(x, affinity)`` for a submenu *width* wide beside *parent*.
+
+        PyMOL's ``PopPlaceChild``: try the preferred side, and if the menu had
+        to be shoved back on screen to fit there, flip to the other side and try
+        again. That flip is the whole point -- the panel is docked against the
+        right edge, so a submenu opened to the right never fits, and clamping it
+        into the window instead of flipping is what drew it *on top of its own
+        parent*.
+        """
+        sides = {
+            1: parent.x + parent.w + self.CHILD_GAP,
+            -1: parent.x - width - self.CHILD_GAP,
+        }
+        limit = max(self._width - width, 0.0)
+        preferred = 1 if affinity >= 0 else -1
+        for side in (preferred, -preferred):
+            if 0.0 <= sides[side] <= limit:
+                return sides[side], side
+        # Neither side fits: take the one with more room and clamp into it, so
+        # what is lost is at the window edge rather than over the parent.
+        side = -1 if parent.x >= self._width - (parent.x + parent.w) else 1
+        return min(max(sides[side], 0.0), limit), side
 
     def _layout_menu(self, menu: _OpenMenu) -> None:
         """Size a menu from its entries and keep every item on screen.
@@ -999,7 +1101,13 @@ class InternalGui:
             height = title_h + 2 * self.MENU_PAD + per_column * self.MENU_ITEM_H
 
         width = col_w * columns
-        x = min(max(menu.x, 0.0), max(self._width - width, 0.0))
+        if menu.parent is None:
+            x = min(max(menu.x, 0.0), max(self._width - width, 0.0))
+        else:
+            # A submenu is placed *beside* its parent, never clamped into it.
+            x, menu.affinity = self._place_child(
+                menu.parent.rect, width, menu.affinity
+            )
         y = min(max(menu.y, 0.0), max(self._height - height, 0.0))
         menu.rect = Rect(x, y, width, height)
 

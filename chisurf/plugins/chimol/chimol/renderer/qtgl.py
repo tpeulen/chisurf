@@ -275,13 +275,30 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         self._orthoscopic = bool(cam_cfg.get("orthoscopic", False))
         self._drag_selecting = False
         self._drag_start: Optional[QtCore.QPoint] = None
-        self._rubber_band = QtWidgets.QRubberBand(QtWidgets.QRubberBand.Rectangle, self)
+        #: The selection box while it is being dragged, in widget pixels. Drawn
+        #: by the overlay painter rather than by a `QRubberBand` child: the box
+        #: is scene chrome like the panel and the labels, it has to appear in a
+        #: `grab()` of the viewport for a screenshot to show what was selected,
+        #: and one painter pass already exists to draw it in.
+        self._select_rect: Optional[QtCore.QRect] = None
         self._drag_modifiers = QtCore.Qt.NoModifier
         self._drag_action: Optional[str] = None
+        #: The button that started the box, so the release that ends it is the
+        #: matching one. Only the left button used to end a box, and `-Box` is
+        #: bound to shift-*middle* in every three-button mode -- so that drag
+        #: never completed, and `_drag_selecting` stayed set for the rest of the
+        #: session, swallowing every later drag into a box that never closed.
+        self._drag_button: Optional[QtCore.Qt.MouseButton] = None
         self._press_pos: Optional[QtCore.QPoint] = None
         self._press_mods = QtCore.Qt.NoModifier
         self._press_button: Optional[QtCore.Qt.MouseButton] = None
         self.setFocusPolicy(QtCore.Qt.StrongFocus)
+        # Without this Qt delivers a move only while a button is down, so every
+        # *passive* gesture the in-viewport panel has was dead: no hover
+        # highlight on a row or a menu entry, and -- the visible one -- submenus
+        # that could only be opened by clicking and were never told the cursor
+        # had moved on, so they piled up on top of each other.
+        self.setMouseTracking(True)
         self._panning = False
         self._right_dragged = False
         self._pan_offset = np.zeros(3, dtype=float)
@@ -1784,10 +1801,16 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         per frame is twice the stall for no reason.
         """
         gui = self._internal_gui
+        # Gated on the panel being *visible*, not on it having rows. `scene_width`
+        # already gives the column away to a visible panel whether or not
+        # anything is loaded, so skipping the paint on an empty object list did
+        # not save the space -- it left a black stripe down the right of an empty
+        # window, with the mouse-mode block and the splitter missing too.
         if (
             not self._labels
-            and not (gui.visible and gui.rows)
+            and not gui.visible
             and not gui.has_menu()
+            and self._select_rect is None
             and self._ray_image is None
         ):
             return
@@ -1830,6 +1853,7 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         self._refresh_gui_state(gui)
         gui.layout(self.width(), self.height())
         gui.paint(painter)
+        self._paint_selection_box(painter)
 
     def show_ray_image(self, image) -> bool:
         """Show a traced image in place of the live scene.
@@ -1918,6 +1942,22 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         # live scene it replaced.
         painter.fillRect(target, QtGui.QColor(0, 0, 0))
         painter.drawImage(where, image)
+
+    def _paint_selection_box(self, painter) -> None:
+        """Outline the selection box being dragged, PyMOL-style.
+
+        A thin dashed rectangle over the scene, with no fill: the box exists to
+        say which atoms it is about to take, and a tinted fill hides them.
+        """
+        rect = self._select_rect
+        if rect is None or rect.isNull():
+            return
+        pen = QtGui.QPen(QtGui.QColor(255, 255, 255, 220))
+        pen.setWidth(1)
+        pen.setStyle(QtCore.Qt.DashLine)
+        painter.setPen(pen)
+        painter.setBrush(QtCore.Qt.NoBrush)
+        painter.drawRect(QtCore.QRectF(rect))
 
     def _refresh_gui_state(self, gui) -> None:
         """Read the movie position into the panel before it is drawn.
@@ -2497,8 +2537,13 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         # first click after `ray` do nothing.
         self.clear_ray_image()
 
-
         if event.button() == QtCore.Qt.RightButton:
+            # The right button carries a box too -- `-Box` is shift-right in the
+            # two-button modes -- so the table is asked before the press is
+            # deferred, or that cell of the block on screen names a gesture the
+            # widget never starts.
+            if self._start_box_drag(event, event.modifiers()):
+                return
             # Defer: a right *drag* dollies (see mouseMoveEvent); a right *click*
             # opens the context menu on release.
             self._last_mouse_pos = event.pos()
@@ -2528,15 +2573,7 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
                 self._last_mouse_pos = event.pos()
                 event.accept()
                 return
-            if action in ("+box", "-box", "sele"):
-                self._drag_selecting = True
-                self._drag_start = event.pos()
-                self._drag_modifiers = mods
-                self._drag_action = action
-                rect = QtCore.QRect(self._drag_start, QtCore.QSize(0, 0))
-                self._rubber_band.setGeometry(rect)
-                self._rubber_band.show()
-                event.accept()
+            if self._start_box_drag(event, mods):
                 return
             # A non-box press is a candidate click (or the start of a drag --
             # left drags rotate via the trackball in mouseMoveEvent). PyMOL
@@ -2553,6 +2590,62 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
 
         self._last_mouse_pos = event.pos()
         super().mousePressEvent(event)
+
+    #: The mode-table actions that drag a selection box. `box` is Maestro's
+    #: plain-left cell, and it was the one action of the four the press did not
+    #: recognise -- the block drew `Box` and the drag rotated the camera.
+    _BOX_ACTIONS = ("+box", "-box", "sele", "box")
+
+    def _start_box_drag(self, event, modifiers) -> bool:
+        """Begin a selection box if this press is bound to one.
+
+        Returns whether the press was taken. Shared by every button, because
+        which button carries a box is the mode table's business, not the
+        handler's: `+Box` is shift-left, `-Box` is shift-middle in the
+        three-button modes and shift-right in the two-button ones.
+        """
+        try:
+            action = mouse_action_of(
+                self._internal_gui.mouse_mode, event.button(), modifiers
+            )
+        except Exception:
+            return False
+        if action not in self._BOX_ACTIONS:
+            return False
+        self._drag_selecting = True
+        self._drag_start = event.pos()
+        self._drag_modifiers = modifiers
+        self._drag_action = action
+        self._drag_button = event.button()
+        self._select_rect = QtCore.QRect(self._drag_start, QtCore.QSize(0, 0))
+        self.update()
+        event.accept()
+        return True
+
+    def _end_box_drag(self, event) -> None:
+        """Apply the dragged box and clear it, whatever it ended up enclosing."""
+        rect = self._select_rect or QtCore.QRect()
+        self._select_rect = None
+        self._drag_selecting = False
+        self._drag_start = None
+        self._drag_button = None
+        self.update()
+        if self._controller is None:
+            self._drag_action = None
+            return
+        if rect.width() > 2 and rect.height() > 2:
+            self._controller.handle_rect_selection(
+                rect, self._drag_modifiers, self._drag_action
+            )
+        elif self._drag_action is not None:
+            # A box that was never dragged is a **click**, and it has to act
+            # like one: ctrl-shift-left is `Sele`, so the press claims it as a
+            # rubber band, and a plain ctrl-shift *click* -- which is how anyone
+            # coming from PyMOL selects a residue -- then fell through a
+            # zero-size rectangle and did nothing at all. Each box action
+            # degenerates to the same operation on the atom under the cursor.
+            self._controller.handle_mouse_click(event, self._drag_action)
+        self._drag_action = None
 
     def mouseMoveEvent(self, event: QtGui.QMouseEvent) -> None:
         # Hover feedback, and the same precedence as the press: while the
@@ -2575,8 +2668,10 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
 
 
         if self._drag_selecting and self._drag_start is not None:
-            rect = QtCore.QRect(self._drag_start, event.pos()).normalized()
-            self._rubber_band.setGeometry(rect)
+            self._select_rect = QtCore.QRect(
+                self._drag_start, event.pos()
+            ).normalized()
+            self.update()
             event.accept()
             return
 
@@ -2778,6 +2873,11 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
             event.accept()
             return
 
+        if self._drag_selecting and event.button() == self._drag_button:
+            self._end_box_drag(event)
+            event.accept()
+            return
+
         if event.button() == QtCore.Qt.RightButton:
             if not getattr(self, "_right_dragged", False):
                 menu = QtWidgets.QMenu(self)
@@ -2789,32 +2889,6 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
                     except Exception:
                         pass
             self._right_dragged = False
-            event.accept()
-            return
-
-        if (
-            event.button() == QtCore.Qt.LeftButton
-            and self._drag_selecting
-            and self._controller is not None
-        ):
-            rect = self._rubber_band.geometry()
-            self._rubber_band.hide()
-            self._drag_selecting = False
-            self._drag_start = None
-            if rect.width() > 2 and rect.height() > 2:
-                self._controller.handle_rect_selection(
-                    rect, self._drag_modifiers, self._drag_action
-                )
-            elif self._drag_action is not None:
-                # A box that was never dragged is a **click**, and it has to act
-                # like one: ctrl-shift-left is `Sele`, so the press claims it as
-                # a rubber band, and a plain ctrl-shift *click* -- which is how
-                # anyone coming from PyMOL selects a residue -- then fell
-                # through a zero-size rectangle and did nothing at all. Each box
-                # action degenerates to the same operation on the atom under the
-                # cursor.
-                self._controller.handle_mouse_click(event, self._drag_action)
-            self._drag_action = None
             event.accept()
             return
 

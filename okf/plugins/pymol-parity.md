@@ -83,6 +83,17 @@ names (`state.cartoon_mask.sum()` against the residues the selection should
 cover) — a mesh count cannot distinguish "the selection" from "everything", and
 a mask is where the two differ.
 
+**0b-bis. A unit test that calls the widget's handler directly cannot see a
+dead event path.** Standing correction, from 2026-08-06 and the same family as
+0a. `InternalGui.mouse_move` was covered and correct, and *nothing called it*:
+the GL widget had no `setMouseTracking(True)`, so Qt delivered a move only while
+a button was down and every hover behaviour of the in-viewport panel was dead in
+the app while green in the suite. Where a behaviour depends on Qt choosing to
+deliver an event — mouse tracking, focus policy, wheel phase, drag thresholds —
+the test has to **send the event to the widget**, as
+`test_mouse_selection.py`'s viewport tests do, not call the handler. Two of the
+three box-select faults found the same day were of this shape.
+
 **0c. `ray` does not frame like the viewport.** Unresolved, seen again on
 2026-08-06: `orient` then `ray` puts the molecule off-centre and small in the
 traced image while the viewport is framed correctly. Not chased — noted here
@@ -429,6 +440,76 @@ now picks a value that suits the slot. The lesson is the file's recurring one:
 waters and no ions, so nothing could exercise the entries that act on them. Added
 `solvated_fragment.pdb` — six residues, a zinc, eight waters — small enough that
 150 window loads run in 23 seconds.
+
+## One missing line made every passive gesture dead
+
+Reported against the viewport panel as "submenus overlap and never collapse".
+Three faults, and the root of two of them was that **the GL widget never called
+`setMouseTracking(True)`**. Qt delivers a mouse move to a widget without
+tracking *only while a button is down*, so nothing the panel does on hover ran:
+no row or menu-entry highlight, and no hover-open of a submenu. A submenu could
+therefore only be opened by clicking it — and, since nothing ever told the panel
+the cursor had moved on, it then stayed open until a command closed the menu.
+The pile of overlapping boxes in the report is that: several submenus opened by
+click, none of them closed. **A handler that is written and never invoked looks
+exactly like a handler that is wrong**; the panel's `mouse_move` was correct and
+untested through the widget, because the unit tests call it directly.
+
+The other two are transcribed from `layer4/PopUp.cpp` and `layer1/Pop.cpp`:
+
+* **placement.** PyMOL's `PopPlaceChild` tries the preferred side, and if the
+  child had to be *shoved back on screen* to fit there, flips to the other side
+  and tries again; the side it settled on (`PlacementAffinity`) is inherited by
+  its own children so a chain that went left keeps going left. Ours clamped the
+  child into the window instead of flipping — and the panel is docked against
+  the right edge, so a submenu opened rightward never fits and was clamped
+  straight on top of the parent it came from. The child's first *entry*, not its
+  title, lines up with the row it hangs off, which is PyMOL's `target_y`
+  correction.
+* **collapse.** PyMOL's `CPopUp::drag` frees the child as soon as the cursor is
+  on a different row of the parent, and walks back up to the parent when the
+  cursor re-enters it. One deliberate difference: PyMOL delays that by
+  `cChildDelay` (0.25 s) so sloppy diagonal mousing does not lose the submenu,
+  and chimol closes immediately, as Qt menus do. It is affordable here because
+  the child is placed *adjacent* to the row, so the diagonal is a few pixels;
+  add the delay if that changes.
+
+A submenu is now identified by the parent **entry** it hangs off, held by
+identity, rather than by its label: `by element` opens a menu whose only entry
+is also `by element`, and the label match kept the wrong one open.
+
+**The panel is also drawn from startup now**, `all` and `sele` in it and nothing
+loaded, as PyMOL's is. Two things kept it away: the overlay pass was gated on the
+panel having *rows*, while `scene_width` gives the column away to a merely
+*visible* panel — so an empty window had a black stripe down its right-hand side
+rather than a saved column — and `sync_internal_gui` was called only when an
+object arrived, so the panel had not been handed its `run_command` either.
+
+## Rectangle selection: three ways to not work
+
+Same report, same session. The box select worked in the tests and not in the
+app, three times over:
+
+* **the release only ever ended a box for the left button.** `-Box` is
+  shift-*middle* in every three-button mode and shift-*right* in the two-button
+  ones, so that drag never completed: nothing was subtracted, the band stayed on
+  the glass and `_drag_selecting` stayed set — which swallowed every later drag
+  of the session into a box that could not be finished either. One stuck flag,
+  and from the user's side *every* mouse gesture stops working. The press now
+  records which button started the box and the matching release ends it, and the
+  right button consults the mode table before its dolly-vs-menu deferral.
+* **the selection was applied and never drawn.** `handle_mouse_click` called
+  `_update_view()` after merging; `handle_rect_selection` did not. The sequence
+  strip is repainted every frame so it showed the new selection, and the
+  molecule — where the rings are — did not, until something unrelated rebuilt
+  the scene. The redraw now lives in `_apply_selection_indices`, the one place
+  the selection changes, and only when it actually changed.
+* **the band was a `QRubberBand` child of the GL widget**, which `grab()` cannot
+  see, so no screenshot of a box select ever contained a box. It is drawn in the
+  overlay painter now, beside the panel and the labels.
+
+`box` — Maestro's plain-left cell — was also the one box action the press did
+not recognise, so the block on screen named a gesture the widget did not start.
 
 ## The element field was one character wide
 

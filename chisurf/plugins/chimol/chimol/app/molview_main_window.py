@@ -492,6 +492,12 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
 
         self._update_sequence_view()
         self._update_system_info()
+        # PyMOL's object panel is there from startup, with `all` and `sele` in
+        # it and nothing loaded. Ours was only filled when an object arrived, so
+        # a fresh window showed an empty column -- and, worse, one that had not
+        # been handed its `run_command` yet, so the panel that did appear on the
+        # first load ran nothing until something refreshed it.
+        self.sync_internal_gui()
 
     # ── View menu ─────────────────────────────────────────────────────
 

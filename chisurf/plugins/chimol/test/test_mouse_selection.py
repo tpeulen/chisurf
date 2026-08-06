@@ -323,12 +323,12 @@ def _click(widget, qapp, point, modifiers=None, button=None):
     _pump(qapp)
 
 
-def _drag(widget, qapp, start, end, modifiers):
+def _drag(widget, qapp, start, end, modifiers, button=None):
     from qtpy import QtCore
 
+    button = QtCore.Qt.LeftButton if button is None else button
     _send(
-        widget, QtCore.QEvent.MouseButtonPress, start,
-        QtCore.Qt.LeftButton, QtCore.Qt.LeftButton, modifiers,
+        widget, QtCore.QEvent.MouseButtonPress, start, button, button, modifiers,
     )
     for fraction in (0.34, 0.67, 1.0):
         step = QtCore.QPoint(
@@ -337,13 +337,29 @@ def _drag(widget, qapp, start, end, modifiers):
         )
         _send(
             widget, QtCore.QEvent.MouseMove, step,
-            QtCore.Qt.NoButton, QtCore.Qt.LeftButton, modifiers,
+            QtCore.Qt.NoButton, button, modifiers,
         )
     _send(
         widget, QtCore.QEvent.MouseButtonRelease, end,
-        QtCore.Qt.LeftButton, QtCore.Qt.NoButton, modifiers,
+        button, QtCore.Qt.NoButton, modifiers,
     )
     _pump(qapp)
+
+
+def _box_around(view, widget, half=60):
+    """A box of *half* pixels either side of the residues' centre on screen."""
+    from qtpy import QtCore
+
+    rx, ry, visible = widget.project_to_screen(view._coords)
+    on = np.nonzero(visible)[0]
+    cx, cy = float(np.median(rx[on])), float(np.median(ry[on]))
+    start = QtCore.QPoint(int(cx - half), int(cy - half))
+    end = QtCore.QPoint(int(cx + half), int(cy + half))
+    inside = sorted(
+        int(i) for i in on
+        if start.x() <= rx[i] <= end.x() and start.y() <= ry[i] <= end.y()
+    )
+    return start, end, inside
 
 
 def test_atoms_project_inside_the_scene_column(viewport):
@@ -431,6 +447,64 @@ def test_shift_drag_selects_every_residue_in_the_box(viewport):
     assert len(expected) > 3, "the box caught too little to be a test"
     _drag(widget, qapp, start, end, QtCore.Qt.ShiftModifier)
     assert _selection(view) == expected
+
+
+def test_the_box_is_drawn_while_it_is_dragged(viewport):
+    """The band is overlay chrome now, not a `QRubberBand` child.
+
+    A child widget over the GL surface is invisible to `grab()`, so a
+    screenshot of a box select showed no box -- and the one thing a box select
+    has to do while the button is down is say what it is about to take.
+    """
+    from qtpy import QtCore
+
+    view, widget, qapp = viewport
+    start, end, _inside = _box_around(view, widget)
+    _send(
+        widget, QtCore.QEvent.MouseButtonPress, start,
+        QtCore.Qt.LeftButton, QtCore.Qt.LeftButton, QtCore.Qt.ShiftModifier,
+    )
+    _send(
+        widget, QtCore.QEvent.MouseMove, end,
+        QtCore.Qt.NoButton, QtCore.Qt.LeftButton, QtCore.Qt.ShiftModifier,
+    )
+    _pump(qapp, 2)
+    assert widget._select_rect is not None
+    assert widget._select_rect.width() > 100
+
+    _send(
+        widget, QtCore.QEvent.MouseButtonRelease, end,
+        QtCore.Qt.LeftButton, QtCore.Qt.NoButton, QtCore.Qt.ShiftModifier,
+    )
+    _pump(qapp, 2)
+    assert widget._select_rect is None, "the box outlived the drag"
+
+
+def test_the_middle_button_box_subtracts_and_finishes(viewport):
+    """`Shft M` is `-Box`, and only a *left* release used to end a box.
+
+    So the shift-middle drag never completed: nothing was subtracted, the band
+    stayed on the glass, and `_drag_selecting` stayed set -- which swallowed
+    every later drag of the session into a box that could not be finished
+    either. It reads as "rectangle selection does not work", and after the
+    first middle-drag that is exactly true of every gesture.
+    """
+    from qtpy import QtCore
+
+    view, widget, qapp = viewport
+    start, end, inside = _box_around(view, widget)
+    assert len(inside) > 3, "the box caught too little to be a test"
+
+    _drag(widget, qapp, start, end, QtCore.Qt.ShiftModifier)
+    assert _selection(view) == inside
+
+    _drag(
+        widget, qapp, start, end, QtCore.Qt.ShiftModifier,
+        button=QtCore.Qt.MiddleButton,
+    )
+    assert _selection(view) == [], "`-Box` subtracted nothing"
+    assert widget._drag_selecting is False, "the box never closed"
+    assert widget._select_rect is None
 
 
 def test_the_middle_button_stops_panning_when_released(viewport):
