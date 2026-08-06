@@ -155,13 +155,13 @@ def test_the_console_runs_what_is_typed_and_shows_the_answer(window, qapp):
     for _ in range(10):
         qapp.processEvents()
 
-    line = window.command_panel._input
+    line = window.command_panel.input_line
     line.setText("count_atoms polymer")
     QtTest.QTest.keyClick(line, QtCore.Qt.Key_Return)
     for _ in range(10):
         qapp.processEvents()
 
-    text = window.command_panel._output.toPlainText()
+    text = window.command_panel.view.toPlainText()
     assert "> count_atoms polymer" in text, text
     assert "1314" in text, text
     assert line.text() == "", "the prompt kept the command after running it"
@@ -206,7 +206,7 @@ def test_a_menu_entry_that_needs_a_value_reaches_the_command_line(window, qapp):
     for _ in range(5):
         qapp.processEvents()
 
-    line = window.command_panel._input
+    line = window.command_panel.input_line
     assert line.text() == "group <group name>, lig", line.text()
     assert line.selectedText() == "<group name>", (
         "the placeholder is not selected, so typing appends instead of replacing"

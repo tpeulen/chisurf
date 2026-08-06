@@ -61,7 +61,6 @@ from ..analysis import (
     assign_ss_c3_from_atoms,
     assign_ss_c3_from_file,
 )
-from .command_dock import CommandDock
 from .controls_panel import ControlsToolbar
 from .objects_panel import ObjectsDock
 from .sequence_dock import SequenceDock
@@ -308,11 +307,26 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
         self._sequence_number_bold_font = self.sequence.sequence_number_bold_font
         self._sequence_font = self.sequence.sequence_font
 
-        self.command_panel = CommandDock(
-            self,
-            margins=dock_margins,
-            spacing=spacing,
+        # A COMMAND-role chinsole, not a bespoke dock. It takes chimol's own
+        # commands *and* Python at one prompt -- the command line had no Python
+        # at all before -- and brings completion, calltips and persistent
+        # history that the hand-rolled panel did not have.
+        from chisurf.gui.chinsole import Chinsole, ConsoleConfig, ConsoleRole
+
+        from .command_dispatch import ChimolDispatcher
+        from .command_history import resolve_history_path
+
+        self.command_panel = Chinsole(
+            ConsoleConfig(
+                role=ConsoleRole.COMMAND,
+                history_path=resolve_history_path(),
+                session_log=None,
+                banner="",
+                namespace={"cmd": _cmd, "do": _cmd.do, "window": self},
+            ),
+            parent=self,
         )
+        self.command_panel.set_dispatcher(ChimolDispatcher(_cmd))
 
         # Build central widget with single DockArea
         central = QtWidgets.QWidget(self)
@@ -335,7 +349,7 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
             self.dock_area.addTab(self.hierarchy, "Hierarchy", close_mode="hide")
             self.dock_area.addTab(self.rmf_panel.widget, "RMF", close_mode="hide")
             self.dock_area.addTab(self.volume_panel, "Map", close_mode="hide")
-            self.dock_area.addTab(self.command_panel.widget, "Command", close_mode="hide")
+            self.dock_area.addTab(self.command_panel, "Command", close_mode="hide")
             try:
                 self.dock_area.set_layout_state(
                     dict(_DEFAULT_DOCK_AREA_STATE), emit_change=False,
@@ -455,7 +469,9 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
             _cmd.set_window(self)
             _cmd.set_message_callback(self.command_panel.append_message)
             _cmd.set_error_callback(self.command_panel.append_error)
-            self.command_panel.commandEntered.connect(self._on_command_entered)
+            # commandEntered is *not* connected to an executor any more: the
+            # console's dispatcher runs the command and then emits it. Wiring
+            # both would run every command twice.
         except Exception:
             pass
 
@@ -798,10 +814,19 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
 
 
     def _on_command_entered(self, line: str) -> None:
-        try:
-            _cmd.do(line)
-        except Exception:
-            pass
+        """Note that *line* has been run by the console.
+
+        Parameters
+        ----------
+        line : str
+
+        Notes
+        -----
+        Execution moved to the console's command dispatcher, which reports what
+        fails instead of swallowing it -- this used to be a bare
+        ``except: pass``, so a mistyped command did nothing and said nothing.
+        """
+        logging.getLogger(__name__).debug("command executed: %s", line)
 
     def on_open_structure(self):
         """Open a structure file and display it in the viewer."""

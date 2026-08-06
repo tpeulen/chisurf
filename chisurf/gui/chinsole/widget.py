@@ -133,7 +133,10 @@ class Chinsole(QtWidgets.QWidget):
         self.theme = resolve_theme(self.config.theme) if self.config.theme else theme_from_settings()
 
         self.view = ConsoleView(self, self.theme)
-        self.view.shows_prompt = self.config.role is not ConsoleRole.OUTPUT
+        # Only the inline role draws prompts. COMMAND types into its own
+        # line edit, so an "In [n]:" in the output pane above it is a
+        # prompt for something that is not entered there.
+        self.view.shows_prompt = self.config.role is ConsoleRole.INTERACTIVE
         self.view._prompt_text = self.config.prompt
         self.view._continuation_text = self.config.continuation
         self.view.set_max_blocks(int(self._settings["max_blocks"]))
@@ -201,6 +204,7 @@ class Chinsole(QtWidgets.QWidget):
                 self.view.append_output(self._default_banner())
             elif self.config.banner:
                 self.view.append_output(self.config.banner)
+        if self.view.shows_prompt:
             self.view.show_prompt(self.shell.execution_count, newline=False)
 
         if self.config.init_source:
@@ -374,7 +378,11 @@ class Chinsole(QtWidgets.QWidget):
         self.view.set_executing(True)
         self.executionStateChanged.emit(True)
         self.pump.begin_cell()
-        self.view.append_output("\n")
+        # Separates the typed line from its output -- but only where the
+        # input *is* the line above. A COMMAND console echoes "> line"
+        # itself, so a second newline just doubles the panel's height.
+        if self.view.shows_prompt:
+            self.view.append_output("\n")
 
         try:
             result = self.shell.run_cell(source, store_history=not hidden, silent=hidden)
@@ -391,7 +399,7 @@ class Chinsole(QtWidgets.QWidget):
             self.exit_requested.emit()
 
         self._history_index = None
-        if self.config.role is not ConsoleRole.OUTPUT:
+        if self.view.shows_prompt:
             self.view.show_prompt(self.shell.execution_count)
         self._apply_next_input()
         return result
@@ -424,16 +432,27 @@ class Chinsole(QtWidgets.QWidget):
         """
         if self.dispatcher is None or not line.strip():
             return False
-        if not self.dispatcher.handles(line):
-            return False
+
+        compiles = False
         for mode in ("eval", "exec"):
             try:
                 compile(line, "<input>", mode)
             except SyntaxError:
                 continue
             else:
-                return False
-        return True
+                compiles = True
+                break
+
+        if self.dispatcher.handles(line):
+            # A known command that is *also* valid Python goes to Python:
+            # chimol has a `set` command and `set()` is a builtin.
+            return not compiles
+
+        # Neither valid Python nor a name the dispatcher claims. At a command
+        # prompt that is far more likely to be a mistyped command than a
+        # mistyped expression, so let the command layer say "unknown command"
+        # rather than reporting a Python SyntaxError for `fetchh 1crn`.
+        return not compiles
 
     def _run_dispatcher(self, line: str) -> None:
         """Run *line* through the command dispatcher.
@@ -442,14 +461,18 @@ class Chinsole(QtWidgets.QWidget):
         ----------
         line : str
         """
-        self.view.append_output("\n")
+        # Separates the typed line from its output -- but only where the
+        # input *is* the line above. A COMMAND console echoes "> line"
+        # itself, so a second newline just doubles the panel's height.
+        if self.view.shows_prompt:
+            self.view.append_output("\n")
         try:
             self.dispatcher.execute(line)
         except Exception as exc:  # noqa: BLE001
             self.view.append_output(f"{exc}\n", kind="stderr")
         self.commandEntered.emit(line)
         self._log_code(line)
-        if self.config.role is not ConsoleRole.OUTPUT:
+        if self.view.shows_prompt:
             self.view.show_prompt(self.shell.execution_count)
 
     def interrupt(self) -> None:

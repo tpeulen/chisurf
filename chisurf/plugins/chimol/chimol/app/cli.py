@@ -22,6 +22,7 @@ Usage::
 from __future__ import annotations
 
 import argparse
+import re as _re
 import sys
 from pathlib import Path
 from typing import Any
@@ -63,99 +64,60 @@ def _make_cmd():
 # ---------------------------------------------------------------------------
 
 def _build_chimol_completer(cmd_instance):
-    """Return a prompt-toolkit ``Completer`` that knows chimol commands."""
-    import re
+    """Return a prompt-toolkit ``Completer`` that knows chimol commands.
 
+    Parameters
+    ----------
+    cmd_instance : Cmd
+
+    Returns
+    -------
+    prompt_toolkit.completion.Completer
+
+    Notes
+    -----
+    The vocabulary comes from :mod:`chisurf.plugins.chimol.chimol.cmd.completion`,
+    shared with the Qt console. It used to be a second copy here, and the copies
+    had drifted: this one's setting list was missing the six ``metaball_*``
+    entries, so which settings could be completed depended on which prompt you
+    were typing at.
+    """
     from prompt_toolkit.completion import Completer, Completion
 
+    from ..app.command_dispatch import ChimolDispatcher
+
+    dispatcher = ChimolDispatcher(cmd_instance)
+
     class ChimolCompleter(Completer):
-        _REP_NAMES = [
-            "cartoon", "sticks", "atoms", "dots", "surface",
-            "ca_trace", "lines", "spheres", "metaball", "plane", "all",
-        ]
-        _COLOR_NAMES = [
-            "red", "green", "blue", "yellow", "cyan", "magenta",
-            "white", "black", "gray", "orange",
-            "single", "by_residue", "by_ss", "by_sequence",
-            "byelement", "bychain", "spectrum",
-        ]
-        _SETTING_NAMES = [
-            "bg_color", "color_mode", "line_width", "stick_radius",
-            "sphere_scale", "cartoon_transparency", "surface_type",
-        ]
+        """Completes chimol commands and their arguments."""
 
         def get_completions(self, document, complete_event):
-            text = document.text_before_cursor.lstrip()
-            if not text:
+            """Yield completions for the text before the cursor.
+
+            Parameters
+            ----------
+            document : prompt_toolkit.document.Document
+            complete_event : prompt_toolkit.completion.CompleteEvent
+
+            Yields
+            ------
+            prompt_toolkit.completion.Completion
+            """
+            text = document.text_before_cursor
+            head = text.lstrip()
+            if not head:
                 return
-
-            # Split the line into tokens, respecting spaces and commas
-            # We want to find the "active" token being typed
-            parts = re.split(r"[\s,]+", text)
-
-            # 1. Complete command name (first token)
-            if len(parts) <= 1 and not text.endswith((" ", ",")):
-                word = parts[0].lower()
-                for name in cmd_instance.command_names():
-                    if name.startswith(word):
-                        yield Completion(name, start_position=-len(word), display_meta="cmd")
+            matches = dispatcher.completions(text, len(text))
+            if not matches:
                 return
-
-            # 2. Argument completions
-            cmd_name = parts[0].lower()
-            if cmd_name not in cmd_instance.command_names():
-                return
-
-            # Determine what pool to use based on command and position
-            pool = []
-
-            # Current word being typed (if cursor is at the end of a token)
-            # or empty string (if cursor is after a separator)
-            if text.endswith((" ", ",")):
-                current_word = ""
-            else:
-                current_word = parts[-1].lower()
-
-            # Representation completions
-            if cmd_name in {"show", "hide", "as"}:
-                pool.extend(self._REP_NAMES)
-
-            # Color completions
-            if cmd_name in {"color", "bg_color", "bg_colour"}:
-                pool.extend(self._COLOR_NAMES)
-
-            # Settings completions
-            if cmd_name in {"set", "get"}:
-                pool.extend(self._SETTING_NAMES)
-                pool.extend([
-                    "metaball_alpha", "metaball_shininess", "metaball_threshold",
-                    "metaball_resolution", "metaball_radius", "metaball_padding"
-                ])
-
-            # Object name completions (dynamic)
-            if cmd_name in {"select", "delete", "enable", "disable", "show", "hide", "color", "center", "zoom"}:
-                try:
-                    _, viewer = cmd_instance._require_window_and_viewer()
-                    if viewer is not None:
-                        for obj in viewer.list_objects():
-                            if "name" in obj:
-                                pool.append(obj["name"])
-                except Exception:
-                    pass
-
-            # Yield matches from the pool
-            seen = set()
-            for item in sorted(pool):
-                if item.lower() in seen:
-                    continue
-                seen.add(item.lower())
-
-                if item.lower().startswith(current_word):
-                    yield Completion(
-                        item,
-                        start_position=-len(current_word),
-                        display_meta="arg"
-                    )
+            word = "" if head.endswith((" ", ",")) else _re.split(r"[\s,]+", head)[-1]
+            is_command = len(_re.split(r"[\s,]+", head)) <= 1 and not head.endswith((" ", ","))
+            for item in matches:
+                yield Completion(
+                    item,
+                    start_position=-len(word),
+                    display_meta="cmd" if is_command else "arg",
+                )
 
     return ChimolCompleter()
 
