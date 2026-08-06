@@ -2,6 +2,22 @@
 
 ## 2026-08-06
 
+* **Three theory gaps filled from the reference text, with generated figures** ([documentation browser](subsystems/documentation-browser.md)).
+
+  Second pass over the Lakowicz mining. Three things ChiSurf implements had no theory page at all: the orientation factor (a `kappa2_dist` plugin, five functions in `fluorescence/anisotropy/kappa2.py`, and one paragraph in `concepts/fret.md`), distance distributions from the donor decay (four TCSPC models — Gaussian, worm-like chain, SAW-ν, Ising — whose guide pointed at the *accessible-volume* concept for want of a right one), and the symbol conventions. Now `docs/concepts/kappa2_orientation.md` and `docs/concepts/distance_distributions.md`, plus `docs/guides/61_kappa2_distribution.md`.
+
+  **Figures are generated, never drawn.** Six new functions in `docs/guides/make_figures.py` and one screenshot in `make_screenshots.py`, all registered in `docs/references/figures.yaml`. Each computes from the shipped code, so the numbers in the prose come out of the generator rather than being asserted beside it: the 2.25 / 3.61 ns lifetime averages, E = 0.985 at 0.5·R₀ and 0.0154 at 2·R₀, and the κ² distance errors of 2% / 15% / 24%. The last is the figure worth having — all three distributions have a mean of exactly 2/3, which is the whole argument that **a correct mean is not a safe assumption**.
+
+  Two figure defects that only reading the PNG catches: the energy-transfer panel drew a flat plateau where E < ΔE, which is a clipping artefact that reads as physics (now left blank and labelled *distance unbounded*), and two labels sat under a legend and over a set of vibrational levels.
+
+  **`SECTIONS` in `build_tools/docs/make_registers.py` did not include `fundamentals`**, so five of its figures registered as used-nowhere while looking correct on the page. A new documentation directory must be added there as well as to the toctree.
+
+  **kappa2_dist renovated.** Its hand-written `Kappa2DistHelpDialog` (120 lines of HTML in a `QDialog`) is replaced by the shared `?` modal reading `gui/help.md`, so its documentation links are live; a `gui/guide.json` adds the **Guide** button with no code. Struck from `test/plugin_help_guide_allowlist.txt` (87 → 86). The seam guard then failed where the runtime did not: `manifest.json` named the legacy `k2dgui` shim while the tool lives in `gui/tool.py`, so the guard looked for the files in the plugin root and the runtime found them in `gui/`. The manifest now names the canonical module.
+
+  **A pre-existing test failure, fixed.** `test_kappa2_calculation_1/2` in both `test/gui/test_gui_tools.py` and `test/gui/test_gui_tool_kappa2dist.py` asserted `round(RappSD, 1) == 0.0`. The compute path returns ~0.051 — a real 5% distance uncertainty — and `round(0.051, 1)` is 0.1, so four assertions had been failing. Confirmed independent of this change by calling `compute_kappa2_dist` directly (untouched by it) five times: 0.0509–0.0518 every run. Replaced with tolerances against the values the stochastic cone model actually produces. `test_histogram_load_data` in the same file is a different tool and already recorded in [known issues](references/known-issues.md).
+
+  Verified: `docs-html` warning-free; `test_docs_crosslinks` 194→211 with the plugin suite; `test_render` 41 passed; `test_plugin_help_guide_seam` 84 passed.
+
 * **A section on the website was missing from the help browser, and could be again** ([documentation browser](subsystems/documentation-browser.md)).
 
   The concept says the tree *is* the documentation's own table of contents, and the sub-levels always were — but the **top level was a hard-coded tuple** in `api/toc.py`. So `docs/fundamentals/` was published on the website and simply absent from the application: silently, with nothing failing, for as long as nobody happened to open both.

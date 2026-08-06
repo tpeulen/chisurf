@@ -18,6 +18,8 @@ alternatives are collected in :doc:`/fundamentals/conventions`.
    :maxdepth: 1
 
    fret
+   kappa2_orientation
+   distance_distributions
    tcspc_lifetime
    anisotropy
    fcs_correlation

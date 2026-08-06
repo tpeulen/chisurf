@@ -62,6 +62,16 @@ A fluorescence lifetime sits between rotation and translation. Rotation, solvent
 reorganization and energy transfer all occur during it and leave a mark;
 diffusion does not.
 
+```{figure} /guides/figures/jablonski.png
+:alt: Jablonski diagram with the timescale of each process
+:width: 100%
+
+The states and the routes between them. The four timescales are what make the
+methods possible: internal conversion finishes about four orders of magnitude
+before emission, so emission is always from a relaxed $S_1$; the triplet empties
+so slowly that a molecule reaching it is simply dark.
+```
+
 ## Stokes shift
 
 Emission is red-shifted relative to absorption, because the molecule relaxes

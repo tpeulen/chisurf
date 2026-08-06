@@ -73,6 +73,16 @@ are routinely about twice the value calculated for an anhydrous sphere, because
 proteins are neither anhydrous nor spherical. Treat a volume derived this way as
 an order-of-magnitude statement.
 
+```{figure} /guides/figures/perrin.png
+:alt: anisotropy decays and the Perrin sensitivity curve
+:width: 100%
+
+Left: $r(t)$ for three correlation times and one restricted case that plateaus at
+$r_\infty$. Right: the Perrin steady-state anisotropy against $\tau/\rho$.
+Anisotropy only reports on motion in the shaded decade either side of the
+lifetime — outside it the measurement saturates at $r_0$ or at zero.
+```
+
 ## What else depolarizes
 
 Rotation is the intended mechanism. Several others contribute, and each has a

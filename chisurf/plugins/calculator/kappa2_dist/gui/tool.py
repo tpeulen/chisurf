@@ -18,8 +18,8 @@ from chisurf.core.dataspec import load_view_spec
 from chisurf.core.fluorescence.anisotropy.kappa2 import s2delta
 
 from .client import Kappa2DistClient
-from .help_dialog import Kappa2DistHelpDialog
 from chisurf.gui import dialogs
+from chisurf.gui.widgets.tools.help_guide import attach_help_and_guide
 
 _GUI_DIR = pathlib.Path(__file__).parent
 
@@ -165,16 +165,27 @@ class Kappa2Dist(QtWidgets.QWidget):
         self._form = AutoForm(self._model, parent=self)
 
         button_layout = QtWidgets.QHBoxLayout()
-        self.helpButton = QtWidgets.QPushButton("?")
-        self.helpButton.setFixedWidth(28)
-        self.helpButton.setToolTip("Theory and background on κ²")
         self.pushButton = QtWidgets.QPushButton("Compute")
         self.saveButton = QtWidgets.QPushButton("Save")
         self.saveButton.setEnabled(False)
-        button_layout.addWidget(self.helpButton)
-        button_layout.addStretch()
+        # Weighted, because `attach_help_and_guide` adds a stretch of its own
+        # before the ?/Guide pair: two equal stretches would split the slack and
+        # push Compute/Save to the middle-left, away from where they have always
+        # been. 20:1 keeps the actions on the right and the help pair further
+        # right still.
+        button_layout.addStretch(20)
         button_layout.addWidget(self.pushButton)
         button_layout.addWidget(self.saveButton)
+        # The shared ? modal and the guided tour, from `help.md` and
+        # `guide.json` beside this file -- not a hand-written dialog, so the
+        # documentation links inside the help are live.
+        attach_help_and_guide(
+            self,
+            button_layout,
+            title="κ² distribution — help",
+            model=self._model,
+            owner=self,
+        )
 
         layout.addWidget(self._form)
         layout.addLayout(button_layout)
@@ -229,7 +240,6 @@ class Kappa2Dist(QtWidgets.QWidget):
 
         self.pushButton.clicked.connect(self._do_compute)
         self.saveButton.clicked.connect(self._on_save)
-        self.helpButton.clicked.connect(self._on_help)
 
     def _schedule_compute(self) -> None:
         self._compute_timer.start(50)
@@ -265,12 +275,6 @@ class Kappa2Dist(QtWidgets.QWidget):
     @k2_mean.setter
     def k2_mean(self, v: float) -> None:
         self._model.k2_mean = v
-
-    # ── help ─────────────────────────────────────────────────────────
-
-    def _on_help(self) -> None:
-        dlg = Kappa2DistHelpDialog(self)
-        dlg.exec_()
 
     # ── save ─────────────────────────────────────────────────────────
 

@@ -39,7 +39,15 @@ DOCS = REPO_ROOT / "docs"
 PROVENANCE = DOCS / "references" / "figures.yaml"
 
 #: Directories whose pages are user documentation.
-SECTIONS = ("getting_started", "concepts", "guides", "manual", "reference", "references")
+SECTIONS = (
+    "getting_started",
+    "fundamentals",
+    "concepts",
+    "guides",
+    "manual",
+    "reference",
+    "references",
+)
 
 _MYST_FIGURE = re.compile(
     r"^```\{figure\}\s*(?P<src>\S+)\s*\n(?P<options>(?::\w[\w-]*:.*\n)*)\s*\n?"

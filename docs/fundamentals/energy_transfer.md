@@ -51,6 +51,16 @@ the fluorescence lifetime, because donor and acceptor are the same species, but
 it does depolarize the emission — which is how it is usually detected
 ({ref}`fundamentals-polarization`).
 
+```{figure} /guides/figures/energy_transfer_window.png
+:alt: FRET efficiency against R/R0 and the distance error it implies
+:width: 100%
+
+Left: $E(R)$, with the usable window shaded — 98.5% at $0.5R_0$ and 1.5% at
+$2R_0$. Right: the distance error a fixed $\Delta E = 0.01$ produces. It is
+minimal at $R_0$ and rises steeply either side, which is why choosing a dye pair
+is choosing the window the experiment can see.
+```
+
 ## The Förster radius
 
 $R_0$ is the distance at which transfer and all other de-excitation routes are

@@ -970,6 +970,21 @@ def _grab_ndx_gaussian_panel():
     win.close()
 
 
+def _grab_kappa2_tool():
+    """Grab the k2 distribution calculator in the restricted-dye state (guide 61)."""
+    from chisurf.plugins.calculator.kappa2_dist import Kappa2Dist
+
+    tool = Kappa2Dist()
+    # Not the defaults: a visibly restricted donor, so the panel shows a real
+    # distance penalty rather than the near-zero one a mobile dye gives.
+    tool._model.r_Dinf = 0.15
+    tool._model.r_Ainf = 0.20
+    tool._form.sync_fields()
+    tool._do_compute()
+    tool.resize(560, 820)
+    _grab(tool, "kappa2_tool.png")
+
+
 def main():
     """Generate all guide screenshots."""
     app = QApplication.instance() or QApplication([])  # keep a ref alive  # noqa: F841
@@ -990,6 +1005,7 @@ def main():
         _grab_frc_tool,
         _grab_tracking_tool,
         _grab_accurate_fret_tool,
+        _grab_kappa2_tool,
         _grab_hmm_tool,
         _grab_chimol_viewer,
         _grab_chimol_biofilm,

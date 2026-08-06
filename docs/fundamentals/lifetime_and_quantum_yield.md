@@ -83,6 +83,16 @@ The species fraction is $x_i = a_i/\sum_j a_j$, the fraction of *molecules*. The
 intensity fraction is $f_i = a_i\tau_i/\sum_j a_j\tau_j$, the fraction of
 *photons* — different, because a longer-lived species emits for longer.
 
+```{figure} /guides/figures/lifetime_averages.png
+:alt: a two-exponential decay and the two ways of averaging it
+:width: 100%
+
+Two species in equal numbers, $\tau_1 = 0.5$ ns and $\tau_2 = 4.0$ ns. Half the
+*molecules* are short-lived, but they contribute only 11% of the *photons* — so
+the two averages differ by 60%. Substituting one for the other in
+$E = 1 - \tau_{DA}/\tau_{D(0)}$ biases the distance.
+```
+
 That distinction produces two averages that are not interchangeable:
 
 $$

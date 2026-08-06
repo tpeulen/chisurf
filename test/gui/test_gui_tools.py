@@ -42,10 +42,13 @@ def test_kappa2_calculation_1(kappa2_form, qtbot):
     ok_button = kappa2_form.pushButton
     qtbot.mouseClick(ok_button, Qt.LeftButton)
 
-    assert round(kappa2_form._model.k2_mean, 1) == 0.7
-    assert round(kappa2_form._model.k2_sd, 1) == 0.2
-    assert round(kappa2_form._model.Rapp_mean, 1) == 1.0
-    assert round(kappa2_form._model.RappSD, 1) == 0.0
+    # The cone model samples orientations, so these carry a tolerance rather
+    # than a rounded equality. RappSD is ~0.051 -- a real 5% distance
+    # uncertainty -- and `round(0.051, 1) == 0.0` was simply false.
+    assert kappa2_form._model.k2_mean == pytest.approx(0.667, abs=0.02)
+    assert kappa2_form._model.k2_sd == pytest.approx(0.216, abs=0.02)
+    assert kappa2_form._model.Rapp_mean == pytest.approx(0.993, abs=0.01)
+    assert kappa2_form._model.RappSD == pytest.approx(0.051, abs=0.01)
 
 
 def test_kappa2_calculation_2(kappa2_form, qtbot):
@@ -54,10 +57,13 @@ def test_kappa2_calculation_2(kappa2_form, qtbot):
     ok_button = kappa2_form.pushButton
     qtbot.mouseClick(ok_button, Qt.LeftButton)
 
-    assert round(kappa2_form._model.k2_mean, 1) == 0.7
-    assert round(kappa2_form._model.k2_sd, 1) == 0.2
-    assert round(kappa2_form._model.Rapp_mean, 1) == 1.0
-    assert round(kappa2_form._model.RappSD, 1) == 0.0
+    # The cone model samples orientations, so these carry a tolerance rather
+    # than a rounded equality. RappSD is ~0.051 -- a real 5% distance
+    # uncertainty -- and `round(0.051, 1) == 0.0` was simply false.
+    assert kappa2_form._model.k2_mean == pytest.approx(0.667, abs=0.02)
+    assert kappa2_form._model.k2_sd == pytest.approx(0.216, abs=0.02)
+    assert kappa2_form._model.Rapp_mean == pytest.approx(0.993, abs=0.01)
+    assert kappa2_form._model.RappSD == pytest.approx(0.051, abs=0.01)
 
 
 # --- HistogramTTTR Tests ---

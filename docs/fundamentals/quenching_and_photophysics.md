@@ -43,6 +43,17 @@ water for small molecules. Interpret a measured $k_q$ against that number:
 - $k_q > k_0$ — not possible for a diffusive mechanism. This indicates binding,
   a static component, or a wrong $\tau_0$.
 
+```{figure} /guides/figures/stern_volmer.png
+:alt: Stern-Volmer plots for dynamic, static and combined quenching
+:width: 100%
+
+With $K_D = K_S$ the two mechanisms are indistinguishable in intensity (left);
+only the lifetime separates them (right), because static quenching removes
+molecules from the observed population rather than shortening their decay. When
+both act, the intensity plot curves upward while the lifetime plot stays
+straight.
+```
+
 ## Static quenching, and telling the two apart
 
 If the quencher forms a non-fluorescent ground-state complex, the complexed

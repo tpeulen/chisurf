@@ -33,20 +33,41 @@ not apply.
   - scipy
   - matplotlib (for plotting)
 
+## Documentation
+
+- **In the tool:** press **?** for the models and what to measure, and
+  **Guide** for a six-step walk through the controls. Both come from
+  `gui/help.md` and `gui/guide.json`; there is no hand-written help dialog.
+- **Theory:** [The orientation factor κ² and what it costs](../../../../docs/concepts/kappa2_orientation.md)
+- **Workflow:** [Guide 61](../../../../docs/guides/61_kappa2_distribution.md)
+
 ## Usage
 
-1. Launch the plugin from the ChiSurf menu: Tools > Kappa2 Distribution
-2. Select the model for κ² distribution calculation:
-   - Wobbling-in-Cone model
-   - Diffusion-during-Lifetime model
-3. Input parameters:
-   - Steady-state anisotropy values for donor and acceptor
-   - Fundamental anisotropy values
-   - Fluorescence lifetimes
-   - Rotational correlation times (if known)
-4. Calculate and visualize the κ² distribution
-5. Analyze the effect on FRET distance measurements
-6. Export results for further analysis or publication
+1. Launch from *Tools ▸ Calculators ▸ Kappa2 Distribution*, or run
+   `csg_kappa2_dist`.
+2. Choose the model:
+   - **WIC (Cone)** — each dye wobbles in a cone set by its order parameter.
+   - **DWT (Diffusion)** — a trapped fraction plus a freely reorienting one.
+     Needs the **FRET E** field, because it averages efficiencies rather than
+     rates.
+   - **Isotropic** — random but frozen dipoles; the worst-case reference.
+3. Enter the anisotropies: `r₀`, `r_D∞`, `r_A∞`, and — only if you measured it —
+   `r_AD∞` with **r_AD known** ticked. Without it the tool returns the wider,
+   honest bound.
+4. **Compute**, then read **SD R_app/R_DA**: the relative systematic
+   uncertainty κ² puts on the distance. That, not the mean κ², is the output.
+5. **Save** writes the histogram as CSV with the model and order parameters in
+   the header.
+
+Headless:
+
+```python
+from chisurf.plugins.calculator.kappa2_dist.core.algorithms import compute_kappa2_dist
+
+result = compute_kappa2_dist(model_type="cone", r_0=0.38,
+                             r_Dinf=0.15, r_Ainf=0.20, r_ADinf=0.005)
+print(result["k2_mean"], result["RappSD"])
+```
 
 ## Theory
 

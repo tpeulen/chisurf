@@ -1596,3 +1596,72 @@ manual/_images/image_rId99.png:
   - docs/manual/speciesfiltered_fcs_to_recover_dynamics.rst
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
+guides/figures/jablonski.png:
+  caption: The states and the routes between them, with the timescale of each process.
+  kind: diagram
+  origin: docs/guides/make_figures.py::fig_jablonski
+  pages:
+  - docs/fundamentals/absorption_and_emission.md
+  recipe: Run `python docs/guides/make_figures.py` from the repository root; drawn by `fig_jablonski()`.
+    Pure matplotlib, no data.
+guides/figures/lifetime_averages.png:
+  caption: A two-exponential decay and the two inequivalent averages, showing why half the molecules
+    can be 11% of the photons.
+  kind: plot
+  origin: docs/guides/make_figures.py::fig_lifetime_averages
+  pages:
+  - docs/fundamentals/lifetime_and_quantum_yield.md
+  recipe: Run `python docs/guides/make_figures.py`; `fig_lifetime_averages()` uses amplitudes (0.5, 0.5)
+    with lifetimes (0.5, 4.0) ns and calls `species_averaged_lifetime` / `fluorescence_averaged_lifetime`,
+    so the printed 2.25 / 3.61 ns come from the shipped functions and not from the caption.
+guides/figures/stern_volmer.png:
+  caption: Dynamic, static and combined quenching -- indistinguishable in intensity, separated by the
+    lifetime.
+  kind: plot
+  origin: docs/guides/make_figures.py::fig_stern_volmer
+  pages:
+  - docs/fundamentals/quenching_and_photophysics.md
+  recipe: Run `python docs/guides/make_figures.py`; `fig_stern_volmer()` plots the analytic
+    Stern-Volmer forms with K_D = K_S = 8 /M.
+guides/figures/energy_transfer_window.png:
+  caption: FRET efficiency against R/R0 with the usable window shaded, and the distance error a fixed
+    0.01 error in E produces.
+  kind: plot
+  origin: docs/guides/make_figures.py::fig_energy_transfer_window
+  pages:
+  - docs/fundamentals/energy_transfer.md
+  recipe: Run `python docs/guides/make_figures.py`; `fig_energy_transfer_window()` calls
+    `distance_to_fret_efficiency`, so the quoted 0.985 and 0.0154 are computed. The right panel is left
+    blank where E < dE, because there the distance is unbounded rather than merely imprecise -- clipping
+    it draws a flat plateau that looks physical and is not.
+guides/figures/perrin.png:
+  caption: Anisotropy decays for three rotational correlation times and one restricted case, with the
+    Perrin sensitivity curve.
+  kind: plot
+  origin: docs/guides/make_figures.py::fig_perrin
+  pages:
+  - docs/fundamentals/polarization_and_rotation.md
+  recipe: Run `python docs/guides/make_figures.py`; `fig_perrin()` evaluates the interleaved
+    (beta, rho) rotation spectrum directly and the Perrin form r/r0 = 1/(1 + tau/rho), with r0 = 0.38.
+guides/figures/kappa2_models.png:
+  caption: Three orientation models with the same mean kappa-squared of 2/3 and distance errors of 2%,
+    15% and 24%.
+  kind: plot
+  origin: docs/guides/make_figures.py::fig_kappa2_models
+  pages:
+  - docs/concepts/kappa2_orientation.md
+  recipe: Run `python docs/guides/make_figures.py`; `fig_kappa2_models()` calls the plugin's own
+    `compute_kappa2_dist` for the isotropic case and for WIC at (r_Dinf, r_Ainf) = (0.01, 0.02) and
+    (0.15, 0.20), with r_0 = 0.38 and seed 20260806. The cone model samples orientations, so the seed
+    is what makes the figure reproducible.
+guides/figures/kappa2_tool.png:
+  caption: The kappa-squared calculator with a restricted dye pair -- mean kappa-squared still 0.66,
+    but a 15% systematic range on the distance.
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_kappa2_tool
+  pages:
+  - docs/guides/61_kappa2_distribution.md
+  recipe: 'QT_QPA_PLATFORM=offscreen PYTHONPATH=. python docs/guides/make_screenshots.py. The tool is
+    opened with defaults, then r_Dinf is set to 0.15 and r_Ainf to 0.20 -- deliberately restricted, so
+    the panel shows a real distance penalty instead of the near-zero one a mobile pair gives -- and
+    Compute is pressed.'

@@ -1596,4 +1596,243 @@ if __name__ == "__main__":
     fig_ndxplorer()
     fig_regions()
     fig_pcf_flow_arrows(); fig_pcf_barrier()
+    # Fundamentals / theory pages
+    fig_jablonski(); fig_lifetime_averages(); fig_stern_volmer()
+    fig_energy_transfer_window(); fig_perrin(); fig_kappa2_models()
     print("all figures written to", FIG)
+
+
+# ==========================================================================
+# Fundamentals and theory figures.
+#
+# These illustrate the physics pages rather than a workflow, so they are drawn
+# from ChiSurf's own functions wherever one exists -- a figure computed by the
+# same code the reader will run cannot drift away from it.
+# ==========================================================================
+
+def fig_jablonski():
+    """The state diagram, its timescales, and where each method looks."""
+    fig, ax = plt.subplots(figsize=(7.2, 4.4))
+    ax.set_axis_off(); ax.grid(False)
+
+    levels = {"S0": 0.0, "S1": 3.0, "S2": 4.6, "T1": 2.0}
+    xs = {"S0": (0.15, 0.55), "S1": (0.15, 0.55), "S2": (0.15, 0.55), "T1": (0.62, 0.92)}
+    for name, y in levels.items():
+        x0, x1 = xs[name]
+        ax.plot([x0, x1], [y, y], color="k", lw=2.4)
+        for v in range(1, 4):                      # vibrational sub-levels
+            ax.plot([x0, x1], [y + 0.22 * v, y + 0.22 * v], color="0.55", lw=0.9)
+        ax.text(x0 - 0.02, y, name, ha="right", va="center", fontsize=11)
+
+    # absorption, emission, and the non-radiative routes
+    ax.annotate("", xy=(0.22, levels["S2"] + 0.22), xytext=(0.22, levels["S0"]),
+                arrowprops=dict(arrowstyle="-|>", color="#3b5bdb", lw=2.0))
+    ax.annotate("", xy=(0.28, levels["S1"] + 0.44), xytext=(0.28, levels["S0"]),
+                arrowprops=dict(arrowstyle="-|>", color="#3b5bdb", lw=2.0))
+    ax.text(0.245, 1.45, "absorption\n$10^{-15}$ s", color="#3b5bdb",
+            ha="center", va="center", fontsize=8.5)
+
+    ax.annotate("", xy=(0.44, levels["S0"] + 0.44), xytext=(0.44, levels["S1"]),
+                arrowprops=dict(arrowstyle="-|>", color="#2b8a3e", lw=2.4))
+    ax.text(0.475, 1.6, "fluorescence\n$10^{-10}$–$10^{-7}$ s", color="#2b8a3e",
+            ha="left", va="center", fontsize=8.5)
+
+    ax.annotate("", xy=(0.35, levels["S1"]), xytext=(0.35, levels["S2"]),
+                arrowprops=dict(arrowstyle="-|>", color="0.35", lw=1.6,
+                                linestyle=(0, (3, 2))))
+    ax.text(0.575, 3.85, "internal conversion\n$\\sim10^{-12}$ s", color="0.35",
+            ha="left", va="center", fontsize=8.5)
+
+    ax.annotate("", xy=(0.62, levels["T1"] + 0.44), xytext=(0.55, levels["S1"]),
+                arrowprops=dict(arrowstyle="-|>", color="#e8590c", lw=1.6,
+                                linestyle=(0, (3, 2))))
+    ax.text(0.585, 2.85, "ISC", color="#e8590c", ha="center", fontsize=8.5)
+    ax.annotate("", xy=(0.75, levels["S0"] + 0.44), xytext=(0.75, levels["T1"]),
+                arrowprops=dict(arrowstyle="-|>", color="#e8590c", lw=2.0))
+    ax.text(0.78, 1.2, "phosphorescence\n$10^{-6}$–$10^{0}$ s\n(dark on the\nfluorescence scale)",
+            color="#e8590c", ha="left", va="center", fontsize=8.5)
+
+    ax.set_xlim(0.02, 1.16); ax.set_ylim(-0.5, 5.6)
+    save(fig, "jablonski.png")
+    print("  jablonski.png: S0/S1/S2/T1 with the four timescales")
+
+
+def fig_lifetime_averages():
+    """Why the two averages differ, and how much."""
+    a = np.array([0.5, 0.5]); tau = np.array([0.5, 4.0])
+    t = np.linspace(0, 16, 800)
+    decay = (a[:, None] * np.exp(-t[None, :] / tau[:, None]))
+
+    from chisurf.core.fluorescence.general import (
+        fluorescence_averaged_lifetime, species_averaged_lifetime,
+    )
+    spectrum = np.array([a[0], tau[0], a[1], tau[1]])
+    tx = species_averaged_lifetime(spectrum)
+    tf = fluorescence_averaged_lifetime(spectrum)
+
+    fig, (ax, ax2) = plt.subplots(1, 2, figsize=(8.6, 3.4))
+    ax.semilogy(t, decay[0], lw=1.4, color="#e8590c", label=r"$\tau_1=0.5$ ns")
+    ax.semilogy(t, decay[1], lw=1.4, color="#3b5bdb", label=r"$\tau_2=4.0$ ns")
+    ax.semilogy(t, decay.sum(0), lw=2.2, color="k", label="sum")
+    ax.set_xlabel("time / ns"); ax.set_ylabel("intensity"); ax.set_ylim(1e-4, 1.2)
+    ax.legend(fontsize=8); ax.set_title("equal amplitudes", fontsize=10)
+
+    x = np.array([0, 1]); species = a / a.sum(); photons = a * tau / (a * tau).sum()
+    ax2.bar(x - 0.18, species, 0.34, color="#adb5bd", label="species fraction $x_i$")
+    ax2.bar(x + 0.18, photons, 0.34, color="#495057", label="photon fraction $f_i$")
+    ax2.set_xticks(x); ax2.set_xticklabels([r"$\tau_1$", r"$\tau_2$"])
+    ax2.set_ylabel("fraction"); ax2.set_ylim(0, 1)
+    ax2.legend(fontsize=8, loc="upper left")
+    ax2.set_title(rf"$\langle\tau\rangle_x$ = {tx:.2f} ns    "
+                  rf"$\langle\tau\rangle_f$ = {tf:.2f} ns", fontsize=10)
+    save(fig, "lifetime_averages.png")
+    print(f"  lifetime_averages.png: <t>x={tx:.3f} ns, <t>f={tf:.3f} ns, "
+          f"ratio {tf / tx:.2f}")
+
+
+def fig_stern_volmer():
+    """Dynamic, static and combined quenching -- and what tells them apart."""
+    q = np.linspace(0, 0.5, 200)
+    KD, KS = 8.0, 8.0
+    fig, (ax, ax2) = plt.subplots(1, 2, figsize=(8.6, 3.4))
+
+    ax.plot(q, 1 + KD * q, lw=2.0, color="#3b5bdb", label="dynamic")
+    ax.plot(q, 1 + KS * q, lw=2.0, color="#2b8a3e", ls="--", label="static")
+    ax.plot(q, (1 + KD * q) * (1 + KS * q), lw=2.0, color="#e8590c", label="both")
+    ax.set_xlabel("[Q] / M"); ax.set_ylabel(r"$F_0/F$")
+    ax.legend(fontsize=8); ax.set_title("intensity: static and dynamic agree", fontsize=10)
+
+    ax2.plot(q, 1 + KD * q, lw=2.0, color="#3b5bdb", label="dynamic")
+    ax2.plot(q, np.ones_like(q), lw=2.0, color="#2b8a3e", ls="--", label="static")
+    ax2.plot(q, 1 + KD * q, lw=2.0, color="#e8590c", ls=":", label="both")
+    ax2.set_xlabel("[Q] / M"); ax2.set_ylabel(r"$\tau_0/\tau$")
+    ax2.set_ylim(0.9, ax.get_ylim()[1])
+    ax2.legend(fontsize=8)
+    ax2.set_title("lifetime: only the dynamic part shows", fontsize=10)
+    save(fig, "stern_volmer.png")
+    print("  stern_volmer.png: K_D = K_S = 8 /M; lifetime separates the mechanisms")
+
+
+def fig_energy_transfer_window():
+    """E(R) and why distances outside 0.5-2 R0 are not determined."""
+    from chisurf.core.fluorescence.general import distance_to_fret_efficiency
+    r0 = 5.0
+    r = np.linspace(0.2 * r0, 3.0 * r0, 600)
+    e = np.array([distance_to_fret_efficiency(x, r0) for x in r])
+
+    fig, (ax, ax2) = plt.subplots(1, 2, figsize=(8.6, 3.4))
+    ax.plot(r / r0, e, lw=2.2, color="#3b5bdb")
+    ax.axvspan(0.5, 2.0, color="#3b5bdb", alpha=0.12)
+    ax.axhline(0.5, color="0.6", lw=0.8, ls=":")
+    ax.set_xlabel(r"$R/R_0$"); ax.set_ylabel("$E$")
+    ax.annotate(f"$E$ = {distance_to_fret_efficiency(0.5 * r0, r0):.3f}",
+                xy=(0.5, distance_to_fret_efficiency(0.5 * r0, r0)),
+                xytext=(0.75, 0.82), fontsize=8,
+                arrowprops=dict(arrowstyle="->", color="0.4"))
+    ax.annotate(f"$E$ = {distance_to_fret_efficiency(2.0 * r0, r0):.4f}",
+                xy=(2.0, distance_to_fret_efficiency(2.0 * r0, r0)),
+                xytext=(1.9, 0.28), fontsize=8,
+                arrowprops=dict(arrowstyle="->", color="0.4"))
+    ax.set_title("the usable window is shaded", fontsize=10)
+
+    # sensitivity: how far the distance moves for a 0.01 error in E
+    de = 0.01
+    e_mid = np.clip(e, 1e-6, 1 - 1e-6)
+    # Below E = de the shifted efficiency is not positive, so the distance is
+    # not merely imprecise -- it is unbounded. Leave that region blank rather
+    # than clipping it, which would draw a flat plateau that looks physical.
+    ok = e_mid > de
+    dr = np.full_like(e_mid, np.nan)
+    dr[ok] = np.abs(r0 * ((1 / (e_mid[ok] - de) - 1) ** (1 / 6))
+                    - r0 * ((1 / e_mid[ok] - 1) ** (1 / 6)))
+    ax2.semilogy(r / r0, dr / r0 * 100, lw=2.0, color="#e8590c")
+    ax2.axvspan(0.5, 2.0, color="#3b5bdb", alpha=0.12)
+    cut = (r / r0)[ok][-1]
+    ax2.axvspan(cut, 3.0, color="0.85", alpha=0.7)
+    ax2.text(cut + 0.06, 3.0, "$E < \\Delta E$:\ndistance\nunbounded",
+             fontsize=7.5, va="center", color="0.35")
+    ax2.set_xlabel(r"$R/R_0$")
+    ax2.set_ylabel(r"$|\Delta R|/R_0$ / %  for $\Delta E = 0.01$")
+    ax2.set_title("the same $E$ error costs more far from $R_0$", fontsize=10)
+    save(fig, "energy_transfer_window.png")
+    print("  energy_transfer_window.png: E(0.5 R0) = "
+          f"{distance_to_fret_efficiency(0.5 * r0, r0):.4f}, "
+          f"E(2 R0) = {distance_to_fret_efficiency(2.0 * r0, r0):.5f}")
+
+
+def fig_perrin():
+    """Anisotropy only sees rotation on the lifetime timescale."""
+    t = np.linspace(0, 20, 500)
+    r0v = 0.38
+
+    def r_of_t(spectrum, r_inf=0.0):
+        """r(t) from an interleaved (beta, rho, ...) rotation spectrum."""
+        s = np.asarray(spectrum, float).reshape(-1, 2)
+        return sum(b * np.exp(-t / rho) for b, rho in s) + r_inf
+
+    fig, (ax, ax2) = plt.subplots(1, 2, figsize=(8.6, 3.4))
+
+    for rho, c in zip((0.3, 2.0, 20.0), ("#e8590c", "#2b8a3e", "#3b5bdb")):
+        ax.plot(t, r_of_t([r0v, rho]), lw=1.9, color=c,
+                label=rf"$\rho$ = {rho:g} ns")
+    ax.plot(t, r_of_t([r0v - 0.12, 1.0], r_inf=0.12), lw=1.9, color="k", ls="--",
+            label=r"restricted, $r_\infty$ = 0.12")
+    ax.axhline(r0v, color="0.6", lw=0.8, ls=":")
+    ax.text(0.3, r0v + 0.012, "$r_0$", ha="left", fontsize=8, color="0.4")
+    ax.set_xlabel("time / ns"); ax.set_ylabel("$r(t)$"); ax.set_ylim(0, 0.42)
+    ax.legend(fontsize=8)
+
+    ratio = np.logspace(-2, 2, 400)               # tau / rho
+    ax2.semilogx(ratio, 1.0 / (1.0 + ratio), lw=2.2, color="#3b5bdb")
+    ax2.axvspan(0.1, 10, color="#3b5bdb", alpha=0.12)
+    ax2.set_xlabel(r"$\tau/\rho$"); ax2.set_ylabel("$r/r_0$  (Perrin)")
+    ax2.set_ylim(0, 1.05)
+    ax2.set_title("sensitive only where the shading is", fontsize=10)
+    save(fig, "perrin.png")
+    print("  perrin.png: Perrin r/r0 = 1/(1+tau/rho); r0 = 0.38")
+
+
+def fig_kappa2_models():
+    """The three orientation models, and the distance error each implies."""
+    from chisurf.plugins.calculator.kappa2_dist.core.algorithms import (
+        compute_kappa2_dist,
+    )
+    np.random.seed(20260806)
+    cases = [
+        ("isotropic", dict(model_type="isotropic", r_0=0.38), "#868e96"),
+        ("WIC, mobile\n$r_{D\\infty}$=0.01, $r_{A\\infty}$=0.02",
+         dict(model_type="cone", r_0=0.38, r_Dinf=0.01, r_Ainf=0.02,
+              r_ADinf=0.005), "#2b8a3e"),
+        ("WIC, restricted\n$r_{D\\infty}$=0.15, $r_{A\\infty}$=0.20",
+         dict(model_type="cone", r_0=0.38, r_Dinf=0.15, r_Ainf=0.20,
+              r_ADinf=0.005), "#e8590c"),
+    ]
+    fig, (ax, ax2) = plt.subplots(1, 2, figsize=(8.8, 3.5))
+    rows = []
+    for label, kw, colour in cases:
+        res = compute_kappa2_dist(**kw)
+        scale = np.asarray(res["k2_scale"], float)
+        hist = np.asarray(res["k2_hist"], float)
+        centres = 0.5 * (scale[:-1] + scale[1:])
+        area = np.trapz(hist, centres)
+        ax.plot(centres, hist / (area if area > 0 else 1.0), lw=1.9,
+                color=colour, label=label)
+        rows.append((label.split("\n")[0], res["k2_mean"], res["k2_sd"],
+                     res["Rapp_mean"], res["RappSD"], colour))
+    ax.axvline(2 / 3, color="k", lw=0.9, ls=":")
+    ax.text(2 / 3 + 0.05, ax.get_ylim()[1] * 0.92, r"$\kappa^2 = 2/3$", fontsize=8)
+    ax.set_xlabel(r"$\kappa^2$"); ax.set_ylabel(r"$p(\kappa^2)$")
+    ax.set_xlim(0, 4); ax.legend(fontsize=7.5)
+
+    y = np.arange(len(rows))
+    ax2.barh(y, [r[4] for r in rows], color=[r[5] for r in rows], height=0.55)
+    ax2.set_yticks(y); ax2.set_yticklabels([r[0] for r in rows], fontsize=8)
+    ax2.set_xlabel(r"SD of $R_{\rm app}/R_{DA}$   (relative distance error)")
+    ax2.invert_yaxis()
+    for i, r in enumerate(rows):
+        ax2.text(r[4] + 0.004, i, f"{r[4]:.3f}", va="center", fontsize=8)
+    ax2.set_xlim(0, max(r[4] for r in rows) * 1.35)
+    save(fig, "kappa2_models.png")
+    for name, m, sd, ram, rasd, _ in rows:
+        print(f"  kappa2_models.png: {name:<16s} <k2>={m:.3f} SD={sd:.3f} "
+              f"<Rapp/RDA>={ram:.4f} SD={rasd:.4f}")

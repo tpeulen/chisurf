@@ -142,6 +142,31 @@ ChiSurf's spellings. Seven primary papers the book cites were added to
 `docs/references/bibliography.yaml`; DOIs were recorded only for the three that
 are certain, per that file's own rule.
 
+**Figures are generated, and their provenance is a file.** No image in the
+documentation is drawn by hand or pasted in. A plot is a function in
+`docs/guides/make_figures.py`, a screenshot is a function in
+`docs/guides/make_screenshots.py`, and both write into `docs/guides/figures/` —
+concept and fundamentals pages use that one directory too, rather than each
+growing its own. `docs/references/figures.yaml` records, per image, the caption,
+the `script::function` that produced it, and the *recipe*; the register at
+`docs/reference/figures.md` is generated from that file plus a scan of the
+pages, so an image used without an entry is listed as **unrecorded** and that
+list is the worklist.
+
+Two things this catches that a hand-made figure cannot. A figure computed by the
+same functions the reader will call cannot drift away from the prose: the
+worked lifetime averages, the FRET efficiencies at $0.5R_0$ and $2R_0$, and the
+$\kappa^2$ distance errors are all printed by the generator and quoted from it.
+And a stochastic figure needs its seed recorded or it is not reproducible — the
+cone model samples orientations, so `fig_kappa2_models` fixes the seed and
+`figures.yaml` says so.
+
+The scan is driven by `SECTIONS` in `build_tools/docs/make_registers.py`. It did
+not include `fundamentals` when that layer was added, so five of its figures
+registered as used-nowhere while looking fine on the page — **a new
+documentation directory has to be added there as well as to the toctree**, or
+its figures silently leave the provenance system.
+
 **Symbols are ChiSurf's, and the alternatives are recorded rather than
 harmonized.** `docs/fundamentals/conventions.md` is a translation table, not a
 standard: it says ChiSurf writes `ρ` where the classical literature writes `θ`,
