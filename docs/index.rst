@@ -7,6 +7,8 @@ single-molecule fluorescence data — time-correlated single-photon counting
 (smFRET). This documentation is organized in four layers:
 
 * **Getting started** — install ChiSurf, launch it, and run a first analysis.
+* **Fundamentals** — the photophysics, instrumentation and counting statistics
+  the analyses assume, independent of any one method.
 * **Concepts** — the theory behind each technique (what the models mean and why),
   self-contained and cited.
 * **Guides** — step-by-step, *how to do it in ChiSurf*, with real screenshots of
@@ -21,6 +23,12 @@ single-molecule fluorescence data — time-correlated single-photon counting
    :caption: Getting started
 
    getting_started/index
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Fundamentals (photophysics)
+
+   fundamentals/index
 
 .. toctree::
    :maxdepth: 2

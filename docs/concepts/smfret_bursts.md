@@ -230,6 +230,9 @@ dye artefacts above.
 
 ## See also
 
+- Fundamentals: {ref}`fundamentals-photon-statistics` (the shot-noise width of a
+  per-burst efficiency) · {ref}`fundamentals-quenching` (bleaching and blinking
+  inside a burst).
 - Guides: {doc}`/guides/13_burst_identification` · {doc}`/guides/14_multiparameter_es`
   · {doc}`/guides/15_background_rates` · {doc}`/guides/27_alex_smfret_workflow`.
 - Implementation: per-burst E/S {src}`chisurf/core/fluorescence/burst/es.py`;

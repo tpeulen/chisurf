@@ -5,9 +5,14 @@ These pages explain the **theory** behind each analysis ChiSurf performs — wha
 the models mean, which assumptions they make, and how their parameters map onto
 physical quantities. They are self-contained and cited, and each links to the
 :doc:`guide </guides/index>` that shows how to run the analysis in ChiSurf. The
-ordering below runs from the physical fundamentals to the specific methods.
+ordering below runs from the core methods to the specialized ones.
 
-.. rubric:: Fundamentals
+The photophysics these pages assume — the excited state, orientation and
+transfer, the instrument, the counting statistics — is one layer down, in
+:doc:`Fundamentals </fundamentals/index>`. Symbols and the common literature
+alternatives are collected in :doc:`/fundamentals/conventions`.
+
+.. rubric:: Core methods
 
 .. toctree::
    :maxdepth: 1
@@ -16,7 +21,12 @@ ordering below runs from the physical fundamentals to the specific methods.
    tcspc_lifetime
    anisotropy
    fcs_correlation
-   fcs_saturation
+
+.. rubric:: Fitting and inference
+
+.. toctree::
+   :maxdepth: 1
+
    parameter_uncertainty
 
 .. rubric:: Correlation methods
@@ -24,6 +34,7 @@ ordering below runs from the physical fundamentals to the specific methods.
 .. toctree::
    :maxdepth: 1
 
+   fcs_saturation
    filtered_fcs
    image_correlation
    pair_correlation

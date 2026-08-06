@@ -177,6 +177,10 @@ FRET distance distributions and anisotropy decays are resolved; see
 
 ## See also
 
+- Fundamentals: {ref}`fundamentals-photon-counting` (the measurement and its
+  limits) · {ref}`fundamentals-photon-statistics` (weighting, $\chi^2_r$,
+  residuals) · {ref}`fundamentals-lifetime-quantum-yield` (the rate picture and
+  the two averages).
 - Guides: {doc}`/guides/10_lifetime_anisotropy_fitting` ·
   {doc}`/guides/21_lifetime_from_bursts` · {doc}`/guides/32_nsalex_lifetime`.
 - Implementation: convolution kernels

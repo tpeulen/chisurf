@@ -204,6 +204,10 @@ with the flexible dye-linker cloud handled by accessible volumes
 
 ## See also
 
+- Fundamentals: {ref}`fundamentals-energy-transfer` (mechanism, the overlap
+  integral, the $\kappa^2$ averaging regimes) ·
+  {ref}`fundamentals-lifetime-quantum-yield` (where $E = 1-\tau_{DA}/\tau_{D(0)}$
+  comes from).
 - Guides: {doc}`/guides/14_multiparameter_es` (accurate $E$/$S$ from bursts) ·
   {doc}`/guides/10_lifetime_anisotropy_fitting` ($\tau_{DA}$ and the $\kappa^2$
   check).

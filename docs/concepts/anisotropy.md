@@ -229,6 +229,8 @@ difference between the channels. ChiSurf supports both a single stacked
 
 ## See also
 
+- Fundamentals: {ref}`fundamentals-polarization` (photoselection, the 0.4
+  ceiling, what depolarizes besides rotation).
 - Guide: {doc}`/guides/10_lifetime_anisotropy_fitting`; the intensity decay it
   rides on: {ref}`concept-tcspc-lifetime`.
 - Implementation: polarized-decay kernels

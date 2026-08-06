@@ -234,6 +234,8 @@ $\chi^2$.
 
 ## See also
 
+- Fundamentals: {ref}`fundamentals-quenching` (the triplet term) ·
+  {ref}`fundamentals-instrumentation` (afterpulsing, and why two detectors).
 - Guide: {doc}`/guides/09_diffusion_fcs` · two-focus & absolute volume:
   {doc}`/guides/05_enderlein_mdf_two_focus_fcs` · filtered FCS:
   {doc}`/guides/17_filtered_fcs`.

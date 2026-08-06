@@ -65,6 +65,7 @@ REGISTRY_NAME = "review_status.json"
 #: the product. Add a directory here to bring it under review gating.
 TRACKED_DIRS: tuple[str, ...] = (
     "manual",
+    "fundamentals",
     "concepts",
     "guides",
     "getting_started",

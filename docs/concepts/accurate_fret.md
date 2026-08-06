@@ -306,6 +306,14 @@ does not know.
 * **Backgrounds must be subtracted first** — they bias the low-efficiency
   populations most.
 
+## See also
+
+- Fundamentals: {ref}`fundamentals-energy-transfer` (why a tabulated $R_0$ is not
+  a constant of the dye pair) · {ref}`fundamentals-conventions` (the
+  correction-factor letters, and how other papers assign them) ·
+  {ref}`fundamentals-fluorophores` (the donor-only controls the corrections
+  assume).
+
 ## References
 
 - {cite}`hellenkamp2018` — a multi-laboratory benchmark study.* Nat Methods 15:669–676.

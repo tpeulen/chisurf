@@ -534,6 +534,11 @@ Two rules keep the report honest:
 - A quantity that does not vary across the posterior is reported as *constant*,
   not as a failure to compute. Zero width is an answer.
 
+## See also
+
+- Fundamentals: {ref}`fundamentals-photon-statistics` (Poisson noise, choosing
+  the statistic, and how to read $\chi^2_r$ and the residuals).
+
 ## References
 
 - {cite}`gelman1992` — the multiple-chain idea behind R-hat: one chain cannot tell you it has converged.

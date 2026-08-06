@@ -49,8 +49,15 @@ page and a search). Three automated numbers back that up:
    `parameter_optimization`, `adding_the_membranediffusion_models`,
    `introduction`, `fit_models`.
 2. **The rest of the documentation has not had its first pass.** Review tracking
-   now covers `concepts`, `guides`, `getting_started`, `reference` and
-   `references` as well as `manual`. **15 of the 36 concept pages are done**;
+   now covers `fundamentals`, `concepts`, `guides`, `getting_started`,
+   `reference` and `references` as well as `manual`; `csc help review-list`
+   reports `0 reviewed, 92 AI-reviewed, 6 stale, 241 unreviewed (339 tracked)`.
+   **The 11 `fundamentals` pages have had no pass at all** — they were written
+   in one sitting against the source text (see the mining record below) and
+   nobody, human or agent, has since read them for correctness. They are the
+   cheapest pages to check, because each states a standard result that can be
+   verified against the cited primary paper rather than against the running
+   application. **15 of the 36 concept pages are done**;
    the pass is worth continuing in that order (concepts, then the 63 guides,
    then `reference`) because a concept page is where the physics that a guide
    only applies is actually stated. What the finished ones needed, and therefore
@@ -103,6 +110,50 @@ documentation link anywhere in the application.
 | Window | `gui/tool.py` | Address bar, tree, start page, search, history, previous/next, authoring tools. |
 
 # Decisions worth keeping
+
+**Five layers, and "Fundamentals" is one of them.** The tree is
+*Getting started → Fundamentals → Concepts → Guides → Reference → Literature*,
+answering in order: how do I run it, why does the signal behave like this, which
+model and what do its parameters mean, which control in which order, and what is
+the exact name. `docs/fundamentals/` was added on 2026-08-06 and holds 11 pages
+in four groups — the excited state, orientation and transfer, probe and
+environment, measuring photons — plus `conventions.md`.
+
+The layer exists because `docs/concepts/index.rst` had a rubric *called*
+"Fundamentals" that contained method pages (`fret`, `fcs_saturation`,
+`parameter_uncertainty`), so the physics every concept assumed was stated
+nowhere and was being partially restated in each concept that needed it. The
+rubric is now "Core methods" and the physics sits one layer below it. A concept
+page links **down** to a fundamentals page for grounding; a fundamentals page
+links **up** to the concepts that rest on it, and does not duplicate their
+model or their fitting detail.
+
+The physics was mined from one source — Lakowicz, *Principles of Fluorescence
+Spectroscopy*, 3rd ed. (bibliography key `lakowicz2006`), sitting in the
+gitignored `junk/` as `doc-800.pdf`. What was taken, chapter by chapter, and
+what was read and deliberately **not** taken, is recorded in
+`junk/doc-800.pdf.CHISURF.md` — a sidecar rather than an in-file header, because
+the reference is a 960-page PDF and cannot carry one. The `SKIPPED` half is the
+half that pays: it records that the frequency-domain, metal-enhanced and
+surface-plasmon chapters were checked and are out of scope, that the 2006
+instrumentation detail is superseded by diode lasers and SPADs, and that the
+book's `θ` and its Å-based Förster prefactor were seen and rejected in favour of
+ChiSurf's spellings. Seven primary papers the book cites were added to
+`docs/references/bibliography.yaml`; DOIs were recorded only for the three that
+are certain, per that file's own rule.
+
+**Symbols are ChiSurf's, and the alternatives are recorded rather than
+harmonized.** `docs/fundamentals/conventions.md` is a translation table, not a
+standard: it says ChiSurf writes `ρ` where the classical literature writes `θ`,
+`a_i` where papers write `α_i`, `Q_D` where they write `Φ_D`, and it names the
+collisions that a multiparameter experiment makes ambiguous — `γ` is both the
+FRET detection factor and the FCS structure parameter, `α` is both leakage and
+the anomalous exponent, `r_0` is both the fundamental anisotropy and (elsewhere)
+a beam waist. The point of the page is that a number which fails to reproduce is
+usually a convention mismatch and not an error, and that the pages must
+therefore agree with the *code's* spelling rather than with any one textbook's.
+It also records where ChiSurf is internally inconsistent: the Förster prefactor
+`0.02108` yields nm, and `forster_radius()` returns Å.
 
 **The tree is the documentation's own table of contents.** It is parsed from the
 `toctree` directives that build the published HTML, not from a directory walk.

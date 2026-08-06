@@ -985,6 +985,83 @@ zunino2025:
   note: Structured detection for simultaneous super-resolution and optical sectioning.
   topics: [imaging, optics]
 
+# ── Classical photophysics: the primary results ─────────────────────
+# Cited by the Fundamentals pages. Several predate DOIs; a `doi` is recorded
+# only where it is certain, per the rule at the top of this file.
+
+sternvolmer1919:
+  authors: O. Stern, M. Volmer
+  title: Über die Abklingzeit der Fluoreszenz
+  journal: Physikalische Zeitschrift
+  year: 1919
+  volume: 20
+  pages: 183-188
+  note: The linear quenching relation, and the observation that it applies to the lifetime.
+  topics: [photophysics]
+
+perrin1926:
+  authors: F. Perrin
+  title: Polarisation de la lumière de fluorescence. Vie moyenne des molécules dans l'état excité
+  journal: Journal de Physique et le Radium
+  year: 1926
+  volume: 7
+  pages: 390-401
+  note: Depolarization by rotational diffusion; the equation relating anisotropy, lifetime and correlation time.
+  topics: [anisotropy]
+
+kasha1950:
+  authors: M. Kasha
+  title: Characterization of electronic transitions in complex molecules
+  journal: Discussions of the Faraday Society
+  year: 1950
+  volume: 9
+  pages: 14-19
+  doi: 10.1039/df9500900014
+  note: Emission is from the lowest excited state of a given multiplicity, hence independent of excitation wavelength.
+  topics: [photophysics]
+
+strickler1962:
+  authors: S. J. Strickler, R. A. Berg
+  title: Relationship between absorption intensity and fluorescence lifetime of molecules
+  journal: The Journal of Chemical Physics
+  year: 1962
+  volume: 37
+  pages: 814-822
+  doi: 10.1063/1.1733166
+  note: The radiative rate from the absorption spectrum - why the natural lifetime is a property of the transition.
+  topics: [photophysics]
+
+lippert1955:
+  authors: E. Lippert
+  title: Dipolmoment und Elektronenstruktur von angeregten Molekülen
+  journal: Zeitschrift für Naturforschung A
+  year: 1955
+  volume: 10
+  pages: 541-545
+  note: General solvent effects; the orientation-polarizability form of the Stokes shift.
+  topics: [photophysics]
+
+mataga1956:
+  authors: N. Mataga, Y. Kaifu, M. Koizumi
+  title: Solvent effects upon fluorescence spectra and the dipole moments of excited molecules
+  journal: Bulletin of the Chemical Society of Japan
+  year: 1956
+  volume: 29
+  pages: 465-470
+  note: The independent derivation usually cited together with Lippert.
+  topics: [photophysics]
+
+dale1979:
+  authors: R. E. Dale, J. Eisinger, W. E. Blumberg
+  title: The orientational freedom of molecular probes - the orientation factor in intramolecular energy transfer
+  journal: Biophysical Journal
+  year: 1979
+  volume: 26
+  pages: 161-193
+  doi: 10.1016/S0006-3495(79)85271-6
+  note: How measured depolarization bounds kappa-squared, and hence the systematic distance error.
+  topics: [fret, anisotropy]
+
 # ── Reference works, textbooks and monographs ───────────────────────
 
 lakowicz2006:
