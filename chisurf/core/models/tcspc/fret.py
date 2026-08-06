@@ -382,6 +382,48 @@ class Gaussians(FittingParameterGroup):
         for i, g in enumerate(self._gaussianAmplitudes):
             g.value = a[i]
 
+    def clear(self) -> None:
+        """Remove every component.
+
+        For a caller that defines the whole distribution itself: the model seeds
+        one component so it can compute before anything is configured, and a
+        caller appending on top of that would silently get one extra.
+        """
+        for container in (self._gaussianMeans, self._gaussianSigma, self._gaussianAmplitudes, self._gaussianShape,):
+            container.clear()
+
+    def _gaussian_parameter_rows(self) -> list:
+        """Return the parameters grouped as one (mean, sigma, shape, amplitude) row per component.
+
+        Consumed by the data-described editor's dynamic group, so each Gaussian
+        occupies one table row -- the same contract as
+        `Lifetime._lifetime_parameter_rows`. The order matches the hand-written
+        editor's column order (R, w, k, x).
+
+        Returns
+        -------
+        list
+            Parameters flattened row-major, four per component.
+        """
+        rows = []
+        for mean, sigma, shape, amplitude in zip(
+            self._gaussianMeans,
+            self._gaussianSigma,
+            self._gaussianShape,
+            self._gaussianAmplitudes,
+        ):
+            rows.extend((mean, sigma, shape, amplitude))
+        return rows
+
+    def append_gaussian(self) -> None:
+        """Append a Gaussian with the editor's default shape.
+
+        The `dynamic_group` add button calls a no-argument method; `append`
+        requires mean/sigma/x. Defaults match what the hand-written editor
+        inserted (50 A, 6 A width, unit amplitude).
+        """
+        self.append(mean=50.0, sigma=6.0, x=1.0)
+
     def pop(self):
         """
         Removes the last appended Gaussian/normal-distribution
@@ -412,21 +454,28 @@ class Gaussians(FittingParameterGroup):
 
         """
         n = len(self)
+        # ``label_text`` is what the editor shows: the parameter-table derives a
+        # column header from it, so a parameter without one renders a nameless
+        # "Value / Fixed / Error" column group.
         m = FittingParameter(
             name='R(%s,%i)' % (self.short, n + 1),
+            label_text='R<sub>DA,%i</sub>' % (n + 1),
             value=mean
         )
         x = FittingParameter(
             name='x(%s,%i)' % (self.short, n + 1),
+            label_text='x<sub>%i</sub>' % (n + 1),
             value=x
         )
         s = FittingParameter(
             name='s(%s,%i)' % (self.short, n + 1),
+            label_text='w<sub>%i</sub>' % (n + 1),
             value=sigma,
             fixed=True
         )
         shape = FittingParameter(
             name='k(%s,%i)' % (self.short, n + 1),
+            label_text='k<sub>%i</sub>' % (n + 1),
             value=shape,
             fixed=True
         )
@@ -521,6 +570,41 @@ class DiscreteDistance(FittingParameterGroup):
         for i, g in enumerate(self._amplitudes):
             g.value = a[i]
 
+    def clear(self) -> None:
+        """Remove every component.
+
+        For a caller that defines the whole distribution itself: the model seeds
+        one component so it can compute before anything is configured, and a
+        caller appending on top of that would silently get one extra.
+        """
+        for container in (self._distances, self._amplitudes,):
+            container.clear()
+
+    def _distance_parameter_rows(self) -> list:
+        """Return the parameters grouped as one (distance, amplitude) row per component.
+
+        Consumed by the data-described editor's dynamic group, so each discrete
+        distance occupies one table row -- the same contract as
+        `Lifetime._lifetime_parameter_rows`.
+
+        Returns
+        -------
+        list
+            Parameters flattened row-major, two per component.
+        """
+        rows = []
+        for distance, amplitude in zip(self._distances, self._amplitudes):
+            rows.extend((distance, amplitude))
+        return rows
+
+    def append_distance(self) -> None:
+        """Append a discrete distance with the editor's defaults.
+
+        The `dynamic_group` add button calls a no-argument method; `append`
+        requires mean/x.
+        """
+        self.append(mean=50.0, x=1.0)
+
     # TODO: needs docstring
     def append(self, mean: float, x: float):
         """Add a new component."""
@@ -528,12 +612,14 @@ class DiscreteDistance(FittingParameterGroup):
         self._distances.append(
             FittingParameter(
                 name='R(%s,%i)' % (self.short, n + 1),
+                label_text='R<sub>DA,%i</sub>' % (n + 1),
                 value=mean
             )
         )
         self._amplitudes.append(
             FittingParameter(
                 name='x(%s,%i)' % (self.short, n + 1),
+                label_text='x<sub>%i</sub>' % (n + 1),
                 value=x
             )
         )
@@ -841,6 +927,7 @@ class FRETModel(LifetimeModel):
 class GaussianModel(FRETModel):
 
     name = "FRET: FD (Gaussian)"
+    view_spec_file = "fret_gaussian.view.json"
 
     @property
     def distance_distribution(self) -> np.array:
@@ -870,6 +957,11 @@ class GaussianModel(FRETModel):
         """Initialize the instance."""
         super().__init__(fit, **kwargs)
         self.gaussians = kwargs.get('gaussians', Gaussians(**kwargs))
+        # Seed one distance, as the Lifetime model seeds one lifetime: a
+        # zero-component distance distribution has nothing to convolve, so the
+        # model cannot compute and the editor opens on an empty table.
+        if len(self.gaussians) == 0:
+            self.gaussians.append_gaussian()
 
     # TODO: needs docstring
     def get_state(self) -> dict:
@@ -927,6 +1019,7 @@ class GaussianModel(FRETModel):
 class FRETrateModel(FRETModel):
 
     name = "FRET: FD (Discrete)"
+    view_spec_file = "fret_rate.view.json"
 
     @property
     def fret_rate_spectrum(self) -> np.array:
@@ -975,11 +1068,15 @@ class FRETrateModel(FRETModel):
         if fret_rates is None:
             fret_rates = DiscreteDistance(**kwargs)
         self.fret_rates = fret_rates
+        # Seed one distance, for the same reason GaussianModel does.
+        if len(self.fret_rates) == 0:
+            self.fret_rates.append_distance()
 
 
 class WormLikeChainModel(FRETModel):
 
     name = "FRET: FD (Worm-like chain)"
+    view_spec_file = "worm_like_chain.view.json"
 
     @property
     def distance_distribution(self):
@@ -1033,6 +1130,16 @@ class WormLikeChainModel(FRETModel):
         self._use_dye_linker = v
 
     # TODO: needs docstring
+    def _chain_parameter_rows(self) -> list:
+        """Return the chain geometry parameters for the editor's table.
+
+        Returns
+        -------
+        list
+            The model's own parameters, in display order.
+        """
+        return [self._chain_length, self._persistence_length, self._sigma_linker]
+
     def __init__(
             self,
             fit: cs.core.fitting.fit.FitGroup,
@@ -1080,6 +1187,7 @@ class SawNuModel(FRETModel):
     """
 
     name = "FRET: FD (SAW-ν polymer)"
+    view_spec_file = "saw_nu.view.json"
 
     @property
     def distance_distribution(self):
@@ -1110,6 +1218,16 @@ class SawNuModel(FRETModel):
     def nu(self, v: float) -> None:
         self._nu.value = v
 
+    def _chain_parameter_rows(self) -> list:
+        """Return the SAW-nu chain parameters for the editor's table.
+
+        Returns
+        -------
+        list
+            The model's own parameters, in display order.
+        """
+        return [self._r_rms, self._nu]
+
     def __init__(self, fit: cs.core.fitting.fit.FitGroup, **kwargs):
         """Initialize the SAW-ν FRET model."""
         super().__init__(fit, **kwargs)
@@ -1134,6 +1252,7 @@ class IsingChainModel(FRETModel):
     """
 
     name = "FRET: FD (Ising two-state chain)"
+    view_spec_file = "ising_chain.view.json"
 
     @property
     def distance_distribution(self):
@@ -1149,6 +1268,16 @@ class IsingChainModel(FRETModel):
         return np.array([prob, rda_axis]).reshape(
             [1, 2, cs.core.settings.fret['rda_resolution']]
         )
+
+    def _chain_parameter_rows(self) -> list:
+        """Return the Ising chain parameters for the editor's table.
+
+        Returns
+        -------
+        list
+            The model's own parameters, in display order.
+        """
+        return [self._n_residues, self._b_structured, self._b_unstructured, self._coupling, self._field]
 
     def __init__(self, fit: cs.core.fitting.fit.FitGroup, **kwargs):
         """Initialize the Ising two-state chain FRET model."""

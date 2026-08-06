@@ -91,6 +91,24 @@ class ParameterGroupTableSection(Section):
     #: Optional group method returning parameters to *exclude* from this table
     #: (same semantics as :attr:`ParameterGroupSection.exclude_source`).
     exclude_source: typing.Optional[str] = None
+    #: Optional method returning the parameters to show, in order, instead of
+    #: taking ``parameters_all``.
+    #:
+    #: For a model that carries its own parameters rather than delegating to a
+    #: nested group -- a chain model's contour and persistence lengths, a
+    #: maximum-entropy model's grid settings -- ``parameters_all`` is everything
+    #: including the nuisance groups, so there is no target that means "just
+    #: these". Naming them explicitly is what lets such a set be a table instead
+    #: of a column of standalone parameter rows.
+    parameters_source: typing.Optional[str] = None
+    #: Parameters packed side by side per row (``1`` = one per row).
+    #:
+    #: For a group whose parameters come in fixed tuples -- PDDEM's per-fluorophore
+    #: A/B pairs -- a flat one-per-row list hides the pairing that is the whole
+    #: structure of the group. With ``row_width: 2`` the ordering supplied by
+    #: :attr:`parameters_source` is read row-major, so A and B sit next to each
+    #: other.
+    row_width: int = 1
     #: Whether the section header can fold/unfold the table.
     collapsible: bool = True
     #: Initial fold state (``True`` = start collapsed).
@@ -99,6 +117,14 @@ class ParameterGroupTableSection(Section):
     collapsed_when: typing.Optional[typing.Mapping[str, typing.Any]] = None
     #: Visible column subset. When empty all columns are shown.
     columns: typing.Tuple[str, ...] = ()
+    #: Column captions for each slot when :attr:`row_width` exceeds one.
+    slot_labels: typing.Tuple[str, ...] = ()
+    #: Row captions when :attr:`row_width` exceeds one. Without them the first
+    #: column numbers the rows, which names nothing when the rows are *quantities*
+    #: rather than interchangeable components.
+    row_labels: typing.Tuple[str, ...] = ()
+    #: Method on the target returning the row captions, for labels the model owns.
+    row_labels_source: typing.Optional[str] = None
 
 
 @dataclasses.dataclass(frozen=True)
@@ -280,13 +306,6 @@ class PanelSection(Section):
     #: (value/choice/toggle). ``None`` uses the renderer default; ``1`` gives a
     #: single-column form layout that saves horizontal space in narrow docks.
     n_col: typing.Optional[int] = None
-    #: When ``True`` (the default), the panel header carries a small checkable
-    #: toggle that shows/hides the Lo / Hi / Bounds columns of *every* parameter
-    #: table in the panel. The columns start **hidden** (bounds remain editable
-    #: in the parameter details popup) so the tables stay narrow by default; set
-    #: ``False`` to opt a panel out. See :class:`ParameterGroupTableSection` and
-    #: the paired ``dynamic_group`` table.
-    bounds_toggle: bool = True
     #: Ordered child sections rendered inside the panel.
     sections: typing.Tuple[Section, ...] = ()
 

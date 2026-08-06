@@ -13,12 +13,13 @@ import chisurf.core.models
 
 from chisurf.core.curve import Curve
 from chisurf.core.models import model
+from chisurf.core.models.catalogue import EquationCatalogueMixin
 
 if TYPE_CHECKING:
     from chisurf.core.fitting.fit import Fit
 
 
-class ParameterTransformModel(model.Model):
+class ParameterTransformModel(EquationCatalogueMixin, model.Model):
     """A model that wraps an arbitrary Python function as a parameter transform.
 
     The function is provided as a string, compiled, and used to define input
@@ -27,6 +28,13 @@ class ParameterTransformModel(model.Model):
     """
 
     name = "Parameter Transform"
+
+    #: Its catalogue entries hold a Python ``code:`` block assigned to
+    #: :attr:`function`, where a parse model holds an ``equation:`` for ``func``.
+    catalogue_file = "models.yaml"
+    catalogue_source_key = "code"
+    catalogue_target_attr = "function"
+    view_spec_file = "parameter_transform.view.json"
 
     def finalize(self):
         """Evaluate the model and finalize all parameter controllers."""
@@ -164,9 +172,15 @@ class ParameterTransformModel(model.Model):
         function : str, optional
             Python function definition string. Defaults to ``'def f(x): return x'``.
         """
-        if function is None:
-            function = 'def f(x): return x'
         self.fit = fit
+        if function is None:
+            # Open on a real transform: the catalogue's first entry, as the
+            # hand-written editor's combo box did. The identity function is only the
+            # fallback when no catalogue ships.
+            self.function = 'def f(x): return x'
+            super().__init__(fit, *args, **kwargs)
+            self.select_first_catalogue_entry()
+            return
         self.function = function
         super().__init__(fit, *args, **kwargs)
 

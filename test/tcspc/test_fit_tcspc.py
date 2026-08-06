@@ -75,9 +75,10 @@ class FitTests(unittest.TestCase):
         )
         model_da = fit_da.model
 
-        # By default there will be already a lifetime
-        # model_da.donors.append()
-
+        # The model seeds one distance itself (a zero-component distribution has
+        # nothing to convolve), so define the ensemble rather than appending onto
+        # whatever it started with -- appending blindly gave two components.
+        model_da.gaussians.clear()
         model_da.append(
             mean=50,
             sigma=6,

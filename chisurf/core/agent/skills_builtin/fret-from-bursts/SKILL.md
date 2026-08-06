@@ -98,7 +98,7 @@ Two more traps seen in the same run:
 
 * If a fit needs an extra component, add it and let both lifetimes float; a
   second component is not an excuse to pin the first.
-* Stay in the decay models (`Lifetime (new)`). Photon-distribution (PDA) and
+* Stay in the decay models (`Lifetime`). Photon-distribution (PDA) and
   correlation models answer different questions and do not take a
   sub-ensemble decay as input.
 

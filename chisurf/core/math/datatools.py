@@ -447,6 +447,41 @@ def smooth(
     return (cumulative[hi] - cumulative[lo]) / (hi - lo)
 
 
+def first_distribution_pair(
+        d: np.ndarray,
+        sort: bool = False
+) -> typing.Tuple[np.ndarray, np.ndarray]:
+    """Return the (density, axis) pair of the first entry of a distribution array.
+
+    A model's `distance_distribution` is shaped ``(n_distributions, 2, n_bins)``
+    -- density first, axis second. Distribution plots draw the first entry, so
+    this is the named, JSON-referenceable form of what a view spec would
+    otherwise need a lambda for.
+
+    Parameters
+    ----------
+    d : numpy.ndarray
+        Distribution array; only ``d[0]`` is read.
+    sort : bool
+        Accepted and ignored. Distribution axes are already ordered, and every
+        accessor is called with the same keyword arguments.
+
+    Returns
+    -------
+    tuple of numpy.ndarray
+        ``(density, axis)``.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> d = np.array([[[0.1, 0.9], [40.0, 60.0]]])
+    >>> density, axis = first_distribution_pair(d)
+    >>> axis.tolist()
+    [40.0, 60.0]
+    """
+    return d[0][0], d[0][1]
+
+
 def interleaved_to_two_columns(
         ls: np.ndarray,
         sort: bool = False

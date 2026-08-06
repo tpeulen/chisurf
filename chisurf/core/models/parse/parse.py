@@ -1,16 +1,22 @@
 from __future__ import annotations
 
+import pathlib
+
 from numpy import *
 from re import Scanner
+
+import chisurf.logging
+from chisurf import typing
 
 import chisurf.core.fio
 import chisurf.core.decorators
 import chisurf.core.parameter
 from chisurf.core.fitting.parameter import FittingParameter, FittingParameterGroup
+from chisurf.core.models.catalogue import EquationCatalogueMixin
 from chisurf.core.models.model import ModelCurve
 
 
-class ParseModel(ModelCurve, FittingParameterGroup):
+class ParseModel(EquationCatalogueMixin, ModelCurve, FittingParameterGroup):
 
     name = "Parse-Model"
 
@@ -78,10 +84,26 @@ class ParseModel(ModelCurve, FittingParameterGroup):
             raise Exception('parsed: %s, rubbish %s' % (parsed, rubbish))
         self.code = parsed
 
-        # Define parameters
+        # Define parameters. A name the selected catalogue entry has an
+        # ``initial:`` value for starts there rather than at 1.0.
+        #
+        # Seeded here rather than assigned afterwards because *any* re-parse
+        # rebuilds these objects -- and the editor triggers one while it builds, so
+        # values applied after selection were silently replaced by 1.0 and the
+        # table opened on defaults the catalogue had overridden. Doing it at
+        # creation makes the result independent of who re-parses, and when.
+        initial = (self.catalogue.get(self.model_name) or {}).get("initial") or {}
         self._parameters_equation.clear()
         for key in self._keys:
-            p = FittingParameter(name=key, value=1.0)
+            value = 1.0
+            if key in initial:
+                try:
+                    value = float(initial[key])
+                except (TypeError, ValueError):
+                    chisurf.logging.warning(
+                        f"ParseModel: initial value {initial[key]!r} for {key!r} is not a number"
+                    )
+            p = FittingParameter(name=key, value=value)
             self._parameters_equation.append(p)
         self.find_parameters()
 
@@ -100,12 +122,17 @@ class ParseModel(ModelCurve, FittingParameterGroup):
         """
         super().__init__(fit,*args, **kwargs)
         self._keys = list()
-        self._models = dict()
         self._count = 0
         self._func = "x*0"
         self._parameters_equation = list()
         self._func_listeners = []
         self.code = self._func
+        # Open on a real equation. The default ``x*0`` has no free names, so an
+        # unselected parse model computes a flat zero and its parameter table is
+        # empty -- the hand-written editor never showed that because its combo box
+        # applied entry 0 on construction. Selecting here means a script gets the
+        # same starting point as the GUI.
+        self.select_first_catalogue_entry()
 
     def update_model(self, **kwargs):
         """Evaluate the parsed equation and update the model curve."""

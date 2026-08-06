@@ -523,6 +523,44 @@
   extraction, an `expression` field (validity badge + LaTeX), a catalogue API for
   Python `code:` rather than equations, and a reaction-scheme section.
 
+  **Then the hand-written TCSPC widget layer was deleted outright.**
+  `gui/widgets/models/tcspc/` went from ~5k LOC to an alias module plus the two
+  κ²/Förster helpers the `kappa2_controls` section calls: once every TCSPC model was
+  data-described, `LifetimeModelWidgetBase` and the convolve/corrections/generic/
+  anisotropy/gaussian/discrete-distance widgets were reachable only from each other.
+  Three `.ui` files went with them, and `parameter_transform.ui` with the parameter
+  transform — whose catalogue holds a Python `code:` block rather than an
+  `equation:`, which turned out to be **two class attributes** on a shared catalogue
+  mixin rather than a second implementation. **Two `.ui` files remain under
+  `models/`**, each with one named blocker.
+
+  Three registered models turned out to be **abstract** — `EtModelFreeWidget`,
+  `ReactionWidget`, and the old stopped-flow parse model — so each could only raise
+  when chosen from the menu. Nothing constructs a model widget in the test suite,
+  which is why none of it surfaced. The ET fit is now deprecated by decision rather
+  than ported.
+
+  Two costs of the deletion, both paid rather than deferred: a contract test that
+  AST-inspected `ConvolveWidget` for button handlers is gone (its subject is gone;
+  the macro/action contracts that outlive it are kept), and the **r(t) diagnostics
+  panel** — still the one un-ported control of the FRET/Lifetime editors — now
+  exists only in git history, with the recovery SHA written down in known-issues.
+  A third caller was also found appending onto a component list the model now seeds,
+  the same defect already fixed twice; the fix is to *define* the ensemble rather
+  than append onto whatever the constructor left.
+
+  **The r(t) diagnostics panel is back, as a section.** Deleting it with the widget
+  layer was a mistake — it was the one un-ported control of every FRET/Lifetime
+  editor and its only implementation. It is now `anisotropy_diagnostics`, declared in
+  all ten specs that have an Anisotropy panel, with every control the dialog had. The
+  port changed three things rather than copying them: the window is **modeless**
+  (`exec_()` blocks the event loop, and offscreen it blocks with nobody able to close
+  it — which is why the old panel could never be screenshotted); the anisotropy
+  algebra moved into core as `Anisotropy.rt_from_channels`, so the numbers the plot
+  draws can be asserted without a display; and the CSV export pads rather than
+  interpolating, because data and model have independent time axes and resampling
+  would write numbers the fit never computed.
+
   Also: `LifetimeModel.name` was `"Lifetime "` with a trailing space, which stopped being cosmetic the moment the primary entry is matched *by name* against an `==` comparison; name fixed and the match made whitespace-tolerant. `"Lifetime (new)"` had become a de-facto API string in 13 test files. 45 tests green; the 5 stray `.ui` files inside the Qt-free `core/models/**` are gone.
 
 * **`build-tttrlib` now leaves every environment able to import what it built** ([build and env](workflows/build-and-env.md), [known issues](references/known-issues.md)).

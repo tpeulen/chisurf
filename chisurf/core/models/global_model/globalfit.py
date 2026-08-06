@@ -19,6 +19,7 @@ if TYPE_CHECKING:
 class GlobalFitModel(model.Model, Curve):
 
     name = "Global fit"
+    view_spec_file = "globalfit.view.json"
 
     @property
     def weighted_residuals(self) -> np.ndarray:
@@ -56,6 +57,62 @@ class GlobalFitModel(model.Model, Curve):
         self.__dict__["_residual_cache"] = (token, pieces)
         self._residual_dirty = set()
         return np.concatenate(pieces)
+
+    #: Name typed for the next global parameter. Bound by a ``value`` section, so
+    #: the editor holds no state of its own -- the button below reads it from here.
+    new_global_parameter_name: str = ""
+
+    #: Row selected in the local-fit table, written by the table's ``selected_attr``.
+    selected_local_fit: int = -1
+
+    #: Fit chosen to be added next, written by the ``choice`` of candidates.
+    selected_candidate_fit: str = ""
+
+    @property
+    def candidate_fit_names(self) -> typing.List[str]:
+        """Names of fits that could be added to this global fit.
+
+        Every fit except this one and those already included -- the list the
+        hand-written editor filled a combo box with.
+        """
+        included = set(self.fit_names)
+        out = []
+        for f in getattr(cs, "fits", []) or []:
+            name = str(getattr(f, "name", "") or "")
+            if not name or name in included or f is self.fit:
+                continue
+            out.append(name)
+        return out
+
+    def add_selected_fit(self) -> None:
+        """Add the fit named by :attr:`selected_candidate_fit` to the global fit."""
+        name = str(self.selected_candidate_fit or "")
+        for i, f in enumerate(getattr(cs, "fits", []) or []):
+            if str(getattr(f, "name", "") or "") == name:
+                self.fit.append_fit(i)
+                return
+        cs.logging.warning(f"GlobalFitModel: no fit named {name!r} to add")
+
+    def remove_selected_local_fit(self) -> None:
+        """Remove the row named by :attr:`selected_local_fit`."""
+        row = int(self.selected_local_fit)
+        if row < 0:
+            cs.logging.warning("GlobalFitModel: no local fit selected to remove")
+            return
+        self.fit.remove_local_fit(row)
+
+    def clear_local_fits(self) -> None:
+        """Remove every local fit from the global fit."""
+        self.fit.clear_local_fits()
+
+    def add_global_parameter(self) -> None:
+        """Create a global parameter named by :attr:`new_global_parameter_name`."""
+        name = str(self.new_global_parameter_name or "").strip()
+        if not name:
+            cs.logging.warning("GlobalFitModel: type a name before adding a global parameter")
+            return
+        self.fit.append_global_parameter(name)
+        self.new_global_parameter_name = ""
 
     @property
     def fit_names(self) -> typing.List[str]:

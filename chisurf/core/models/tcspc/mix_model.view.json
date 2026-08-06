@@ -1,5 +1,5 @@
 {
-  "_comment": "Editor layout for LifetimeMixtureNewModel (AutoForm/PRD-40). The standard TCSPC nuisance groups are inherited; the Mixture panel drives the fit-selection and fraction controls via the custom fit_mixer section.",
+  "_comment": "Editor layout for LifetimeMixtureModel. The standard TCSPC nuisance groups are inherited; the Mixture panel drives the fit-selection and fraction controls via the custom fit_mixer section. Keep the Convolution/Generic/Corrections panels in step with lifetime.view.json -- they describe the same nuisance groups, and a control added to only one of them is a parity gap between two editors a user reads as the same.",
   "sections": [
     {
       "type": "panel",
@@ -15,7 +15,10 @@
       "type": "panel",
       "title": "Generic",
       "sections": [
-        {"type": "parameter_group_table", "target": "generic", "collapsible": false}
+        {"type": "curve_input", "target": "generic", "label": "Background", "select_action": "model.set_background_curve", "unload_action": "model.unload_background_curve", "index_key": "idx", "name_key": "curve_name", "name_attr": "background_curve"},
+        {"type": "parameter_group_table", "target": "generic", "collapsible": false},
+        {"type": "value", "target": "generic", "attr": "n_ph_bg", "kind": "float", "read_only": true, "label": "#PhB", "decimals": 0},
+        {"type": "value", "target": "generic", "attr": "n_ph_fl", "kind": "float", "read_only": true, "label": "#PhF", "decimals": 0}
       ]
     },
     {

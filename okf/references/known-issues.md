@@ -1,7 +1,25 @@
+## models: `ReactionWidget` (stopped flow) is registered and cannot be instantiated
+
+**2026-08-06.** Same defect as the ET model-free fit below:
+`ReactionWidget.__abstractmethods__` is `frozenset({'update_model'})`, so choosing
+"Reaction" in the stopped-flow model menu raises `TypeError`. **All three**
+stopped-flow / ET entries were in this state — the parse one has since been fixed
+by giving it a core model.
+
+It is the last `.ui` consumer under `models/` (`stopped_flow/reaction.ui`), and the
+replacement is designed in [PRD-38](../prds/prd-38.md) ("Designing the reaction
+editor"): a core `ReactionModel(ReactionSystem, Model)` that implements
+`update_model`, plus a `state_table` for the species and a `table` +
+`button_row` for the reactions. Core `ReactionSystem` already has
+`add_reaction` / `pop` / `clear` / `reaction_string` / `initial_concentrations`, so
+this is wiring rather than new science.
+
 ## models: `EtModelFreeWidget` is registered and cannot be instantiated
 
-**2026-08-06.** The TCSPC model menu offers "ET model free", and choosing it can
-only fail:
+**2026-08-06. Resolved by deprecation** — the fit is deregistered and the module
+deleted; `EtModelFreeWidget` resolves to `None` so an old config drops the entry
+instead of crashing. Kept here because the *reason* matters: it had never worked.
+Choosing it failed with
 
 ```
 TypeError: Can't instantiate abstract class EtModelFreeWidget

@@ -1,0 +1,51 @@
+{
+  "_comment": "Editor layout for ParameterTransformModel. Its catalogue entries hold a Python code: block rather than an equation:, which is two class attributes on the shared catalogue mixin rather than a second implementation -- so the picker is the same generic choice the parse models use. See okf/subsystems/gui-autoform.md.",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Transform",
+      "sections": [
+        {
+          "type": "choice",
+          "attr": "model_name",
+          "label": "Transform",
+          "options_source": "catalogue_names",
+          "rebuild_on_change": true,
+          "description": "Pick a transform; its code and initial parameter values are applied together."
+        },
+        {
+          "type": "info",
+          "source": "description",
+          "max_height": 160,
+          "description": "What the selected transform computes."
+        },
+        {
+          "type": "value",
+          "attr": "function",
+          "kind": "text",
+          "label": "code",
+          "expand": true,
+          "description": "The Python function. Its arguments become input parameters and its returns become outputs, which other fits can link to."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Parameters",
+      "sections": [
+        {
+          "type": "parameter_group_table",
+          "parameters_source": "_parameters",
+          "collapsible": false,
+          "description": "Inputs are editable; outputs are computed and stay fixed so other fits can link to them. Read from `_parameters` because this model holds them on its transform node rather than in `parameters_all`."
+        }
+      ]
+    }
+  ],
+  "plots": [
+    {
+      "key": "fit_info",
+      "options": {}
+    }
+  ]
+}

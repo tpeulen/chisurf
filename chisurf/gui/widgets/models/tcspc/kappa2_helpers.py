@@ -29,13 +29,27 @@ def _plotting_available() -> bool:
 def setup_kappa2_controls(
     owner: QtWidgets.QWidget,
     parent_layout: QtWidgets.QLayout,
+    fret_model=None,
 ) -> None:
     """Attach shared κ² mode controls to *owner* using *parent_layout*.
 
     This creates Dynamic/Static radio buttons and two tool buttons
     (distribution plot and experimental κ²), wires them to the shared
     helper functions, and stores references on *owner* for later use.
+
+    Parameters
+    ----------
+    owner : QtWidgets.QWidget
+        Widget that parents the controls and the dialogs they open.
+    parent_layout : QtWidgets.QLayout
+        Layout the control row is added to.
+    fret_model : optional
+        The FRET model the controls read and write. Defaults to `owner`, which
+        is correct for a legacy widget that *is* its own model. A generated
+        editor must pass the model explicitly, because there the owner is the
+        section widget and holds no parameters of its own.
     """
+    model = fret_model if fret_model is not None else owner
 
     mode_layout = QtWidgets.QHBoxLayout()
     dyn_radio = QtWidgets.QRadioButton("dynamic κ²")
@@ -68,7 +82,7 @@ def setup_kappa2_controls(
     calc_r0_btn.setText("calc R0")
     calc_r0_btn.setToolTip("Open the Förster radius calculator to compute R₀ from MMFDB spectra")
     mode_layout.addWidget(calc_r0_btn)
-    calc_r0_btn.clicked.connect(lambda: open_forster_calculator(owner))
+    calc_r0_btn.clicked.connect(lambda: open_forster_calculator(model))
 
     parent_layout.addLayout(mode_layout)
 
@@ -77,7 +91,7 @@ def setup_kappa2_controls(
     group.addButton(stat_radio)
     group.setExclusive(True)
 
-    orientation_param = getattr(owner, "orientation_parameter", None)
+    orientation_param = getattr(model, "orientation_parameter", None)
     current_mode = getattr(orientation_param, "mode", "fast") if orientation_param is not None else "fast"
     if current_mode == "slow":
         stat_radio.setChecked(True)
@@ -87,12 +101,12 @@ def setup_kappa2_controls(
     # TODO: needs docstring
     def on_mode_changed() -> None:
         """Handle dynamic/static radio button change."""
-        op = getattr(owner, "orientation_parameter", None)
+        op = getattr(model, "orientation_parameter", None)
         if op is None:
             return
         op.mode = "slow" if stat_radio.isChecked() else "fast"
         try:
-            owner.update()
+            model.update()
         except Exception:
             pass
 
@@ -102,7 +116,7 @@ def setup_kappa2_controls(
     def on_fft_changed() -> None:
         """Trigger model update when FFT checkbox state changes."""
         try:
-            owner.update()
+            model.update()
         except Exception:
             pass
     
@@ -113,14 +127,14 @@ def setup_kappa2_controls(
         """Handle show kappa2 distribution button."""
         show_rapp_rda_distribution_plot(
             parent=owner,
-            orientation_parameter=getattr(owner, "orientation_parameter", None),
-            fret_model=owner,
+            orientation_parameter=getattr(model, "orientation_parameter", None),
+            fret_model=model,
         )
 
     # TODO: needs docstring
     def on_open_experimental() -> None:
         """Handle experimental kappa2 button."""
-        open_experimental_k2_dialog(parent=owner, fret_model=owner)
+        open_experimental_k2_dialog(parent=owner, fret_model=model)
 
     show_btn.clicked.connect(on_show_combined)
     exp_btn.clicked.connect(on_open_experimental)

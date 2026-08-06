@@ -80,6 +80,14 @@ def _fitting_parameter_section_factory(model, target: str, **opts):
     the view spec is applied to the parameter before the widget is built, so a
     single-parameter section can ship a default prior just like a
     ``parameter_group`` section's ``priors`` map.
+
+    ``label`` is accepted as the spelling of the caption, because that is what
+    :class:`~chisurf.core.dataspec.FittingParameterSection` declares and
+    therefore what a view spec author writes; the widget's own keyword is
+    ``label_text``. Passing the declared name through unmapped raised
+    ``unexpected keyword argument 'label'``, which the renderer logged and then
+    skipped the section -- an editor missing one control and otherwise looking
+    correct.
     """
     from chisurf.gui.widgets.fitting.parameter_widgets import FittingParameterWidget
 
@@ -92,4 +100,6 @@ def _fitting_parameter_section_factory(model, target: str, **opts):
         except Exception:
             import chisurf.logging
             chisurf.logging.warning("fitting_parameter: invalid prior spec for %r ignored", target)
+    if "label" in opts:
+        opts.setdefault("label_text", opts.pop("label"))
     return FittingParameterWidget(fitting_parameter=fp, **opts)

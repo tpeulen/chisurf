@@ -46,7 +46,6 @@ chisurf/core/models/pda3c/__init__.py
 chisurf/core/models/pda3c/pda3c.py
 chisurf/core/models/pda3c/pda3c.view.json
 chisurf/core/models/tcspc/anisotropy.py
-chisurf/core/models/tcspc/lifetime.py
 chisurf/core/models/view_spec.py
 chisurf/core/pipeline/__init__.py
 chisurf/core/pipeline/model.py
@@ -63,7 +62,6 @@ chisurf/gui/chiplot/_passthrough.py
 chisurf/gui/devtools/source_jump.py
 chisurf/gui/widgets/fitting/fit_subwindow.py
 chisurf/gui/widgets/models/auto_model_widget.py
-chisurf/gui/widgets/models/tcspc/__init__.py
 chisurf/gui/widgets/sample_picker.py
 chisurf/gui/widgets/tools/__init__.py
 chisurf/gui/widgets/tools/chisurf_dock_tool.py

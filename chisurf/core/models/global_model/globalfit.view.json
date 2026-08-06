@@ -1,0 +1,92 @@
+{
+  "_comment": "Editor layout for GlobalFitModel. The local-fit list and the global parameters are both generic sections -- global_parameter_table already spans every fit and every registered out-of-fit group, which is strictly more than the hand-written table showed. Actions come from core/actions/model_actions.py, so nothing here needs GUI code.",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Local fits",
+      "description": "The fits whose residuals this global fit minimises together.",
+      "sections": [
+        {
+          "type": "table",
+          "source": "fit_names",
+          "columns": [
+            {
+              "key": "name",
+              "label": "Fit"
+            }
+          ],
+          "height": 140,
+          "selected_attr": "selected_local_fit",
+          "description": "Fits whose residuals are minimised together. Select a row to remove it."
+        },
+        {
+          "type": "choice",
+          "attr": "selected_candidate_fit",
+          "label": "Add",
+          "options_source": "candidate_fit_names",
+          "description": "A fit not yet included in this global fit."
+        },
+        {
+          "type": "button_row",
+          "buttons": [
+            {
+              "label": "➕ Add",
+              "action": "add_selected_fit",
+              "description": "Include the fit chosen above."
+            },
+            {
+              "label": "➖ Remove",
+              "action": "remove_selected_local_fit",
+              "description": "Drop the selected row from the global fit."
+            },
+            {
+              "label": "🗑 Clear",
+              "action": "clear_local_fits",
+              "description": "Remove every fit from the global fit."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Global parameters",
+      "description": "Parameters shared across the local fits; link a local parameter to one of these to tie it across fits.",
+      "sections": [
+        {
+          "type": "value",
+          "attr": "new_global_parameter_name",
+          "kind": "str",
+          "label": "New",
+          "placeholder": "name of a new global parameter",
+          "description": "Type a name, then press Add."
+        },
+        {
+          "type": "button_row",
+          "buttons": [
+            {
+              "label": "➕ Add",
+              "action": "add_global_parameter",
+              "description": "Create a global parameter with the name above."
+            }
+          ]
+        },
+        {
+          "type": "custom",
+          "key": "global_parameter_table",
+          "description": "Every parameter of every fit plus the registered out-of-fit groups, with its owner and its link."
+        }
+      ]
+    }
+  ],
+  "plots": [
+    {
+      "key": "fit_info",
+      "options": {}
+    },
+    {
+      "key": "fit_table",
+      "options": {}
+    }
+  ]
+}

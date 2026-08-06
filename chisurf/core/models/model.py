@@ -93,9 +93,12 @@ class Model(FittingParameterGroup, metaclass=abc.ABCMeta):
         1. If :attr:`view_spec_file` is set, load that user-editable
            ``.view.json`` (resolved next to the module defining the class).
         2. Otherwise auto-derive one
-           :class:`~chisurf.core.models.view_spec.ParameterGroupSection` per
+           :class:`~chisurf.core.models.view_spec.ParameterGroupTableSection` per
            nested :class:`~chisurf.core.fitting.parameter.FittingParameterGroup`
-           attribute plus a standard plot set.
+           attribute plus a standard plot set. The *table* rendering is the
+           derived default because it is what every authored spec in the tree
+           uses; deriving the verbose one instead handed an unauthored model the
+           one layout no hand-written spec had chosen.
 
         Never import a GUI toolkit here: the result is plain data the GUI
         renderer consumes, and the JSON file is meant to be hand-edited.
@@ -141,7 +144,7 @@ class Model(FittingParameterGroup, metaclass=abc.ABCMeta):
             if isinstance(value, FittingParameterGroup) and id(value) not in seen:
                 seen.add(id(value))
                 sections.append(
-                    _vs.ParameterGroupSection(
+                    _vs.ParameterGroupTableSection(
                         target=attr_name,
                         title=getattr(value, "name", attr_name),
                     )

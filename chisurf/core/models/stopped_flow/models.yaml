@@ -1,0 +1,25 @@
+---
+# Equation catalogue for stopped-flow traces. The hand-written editor referenced
+# ``settings/stopped_flow.models.json``, which is not in the tree, so this model
+# shipped with no catalogue at all (and in fact could not be opened). These are
+# the standard relaxation forms; add entries as needed -- the file is read by
+# ParseModel.load_catalogue and needs no code change.
+Single exponential:
+  equation: a1*exp(-x*k1)+c
+  initial:
+    a1: 1
+    k1: 1
+    c: 0
+  description: >
+    Single-exponential relaxation towards a plateau: one observable rate k1.
+Double exponential:
+  equation: a1*exp(-x*k1)+a2*exp(-x*k2)+c
+  initial:
+    a1: 1
+    k1: 1
+    a2: 1
+    k2: 0.1
+    c: 0
+  description: >
+    Two parallel relaxation processes, e.g. a fast binding step followed by a
+    slower conformational change.

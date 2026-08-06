@@ -247,7 +247,7 @@ def get_fit(context: AgentContext, fit: Any = None) -> dict[str, Any]:
         "properties": {
             "model_name": {
                 "type": "string",
-                "description": "Exact model name, e.g. 'Lifetime' or 'Lifetime (new)'.",
+                "description": "Exact model name, e.g. 'Lifetime' or 'Lifetime mixer'.",
             },
             "datasets": {
                 "type": "array",

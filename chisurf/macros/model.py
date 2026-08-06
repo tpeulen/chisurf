@@ -158,6 +158,64 @@ def remove_component(
             continue
 
 
+def _resolve_selected_curve(
+        dataset_idx: int,
+        curve_name: str,
+        selector: typing.Any = None
+) -> typing.Optional['cs.core.curve.Curve']:
+    """Resolve the curve a data-selector picked, by index then by name.
+
+    The index refers to the selector's own dataset list when there is one (a
+    legacy widget carries its `ExperimentalDataSelector`); a pure, Qt-free model
+    has no selector, so the same index is interpreted against the global imported
+    datasets instead. The name is tried before that fallback because indices go
+    stale as soon as the dataset list is re-sorted or filtered, while the name
+    survives -- and a wrong-but-valid index silently attaches the wrong curve
+    rather than failing.
+
+    Parameters
+    ----------
+    dataset_idx : int
+        Position of the curve in `selector.datasets`, else in the imported
+        datasets.
+    curve_name : str
+        Name of the curve; matched exactly, then by suffix, then by basename so a
+        path-like name still resolves.
+    selector : typing.Any, optional
+        Widget exposing a `datasets` sequence. Absent for pure models.
+
+    Returns
+    -------
+    chisurf.core.curve.Curve or None
+        The resolved curve, or None when neither index nor name matches.
+    """
+    try:
+        selector_datasets = list(getattr(selector, "datasets", []) or [])
+    except Exception:
+        selector_datasets = []
+
+    if 0 <= int(dataset_idx) < len(selector_datasets):
+        return selector_datasets[int(dataset_idx)]
+
+    try:
+        imported = list(getattr(cs, "imported_datasets", []) or [])
+    except Exception:
+        imported = []
+
+    name = str(curve_name or "").strip()
+    if name:
+        basename = name.replace("\\", "/").split("/")[-1]
+        for ds in imported:
+            ds_name = str(getattr(ds, "name", "") or "")
+            if ds_name == name or ds_name.endswith(name) or ds_name.endswith(basename):
+                return ds
+
+    if 0 <= int(dataset_idx) < len(imported):
+        return imported[int(dataset_idx)]
+
+    return None
+
+
 def change_irf(
         dataset_idx: int,
         irf_name: str,
@@ -167,33 +225,11 @@ def change_irf(
         gui = cs.cs
         fit = gui.current_fit
 
-    irf_curve = None
-
-    try:
-        selector_datasets = list(getattr(fit.model.convolve.irf_select, "datasets", []) or [])
-    except Exception:
-        selector_datasets = []
-
-    if 0 <= int(dataset_idx) < len(selector_datasets):
-        irf_curve = selector_datasets[int(dataset_idx)]
-
-    if irf_curve is None:
-        try:
-            imported = list(getattr(cs, "imported_datasets", []) or [])
-        except Exception:
-            imported = []
-
-        name = str(irf_name or "").strip()
-        if name:
-            basename = name.replace("\\", "/").split("/")[-1]
-            for ds in imported:
-                ds_name = str(getattr(ds, "name", "") or "")
-                if ds_name == name or ds_name.endswith(name) or ds_name.endswith(basename):
-                    irf_curve = ds
-                    break
-
-        if irf_curve is None and 0 <= int(dataset_idx) < len(imported):
-            irf_curve = imported[int(dataset_idx)]
+    irf_curve = _resolve_selected_curve(
+        dataset_idx,
+        irf_name,
+        selector=getattr(getattr(fit.model, "convolve", None), "irf_select", None),
+    )
 
     if irf_curve is None:
         return
@@ -236,6 +272,47 @@ def unload_irf(
         pass
 
 
+def set_background_curve(
+        dataset_idx: int,
+        curve_name: str,
+        fit: 'cs.core.fitting.fit.FitGroup' = None
+) -> None:
+    """Attach a measured background decay to the model's `generic` group.
+
+    The counterpart of `unload_background_curve`, and the action a
+    `curve_input` view-spec section dispatches. A copy is stored rather than the
+    imported dataset itself, so re-scaling the background for one fit cannot
+    mutate the dataset other fits share.
+
+    Parameters
+    ----------
+    dataset_idx : int
+        Position of the curve in the selector's dataset list, else in the
+        imported datasets.
+    curve_name : str
+        Name of the curve to attach; see `_resolve_selected_curve`.
+    fit : chisurf.core.fitting.fit.FitGroup, optional
+        Target fit group; the current fit when omitted.
+    """
+    if fit is None:
+        gui = cs.cs
+        fit = gui.current_fit
+
+    if fit is None:
+        return
+
+    curve = _resolve_selected_curve(dataset_idx, curve_name)
+    if curve is None:
+        return
+
+    for f in fit[fit.selected_fit_index:]:
+        f.model.generic.background_curve = cs.core.data.DataCurve(
+            x=curve.x, y=curve.y
+        )
+
+    fit.update()
+
+
 def unload_background_curve(
         fit: 'cs.core.fitting.fit.FitGroup' = None
 ) -> None:
@@ -247,10 +324,10 @@ def unload_background_curve(
         return
 
     for f in fit[fit.selected_fit_index:]:
-        try:
-            f.model.nuisance.unload_background_curve()
-        except Exception:
-            pass
+        # The group is ``generic`` -- this read ``f.model.nuisance`` for as long
+        # as the action existed, so the AttributeError was swallowed by the bare
+        # ``except`` below and unloading silently did nothing.
+        f.model.generic.unload_background_curve()
     fit.update()
 
 

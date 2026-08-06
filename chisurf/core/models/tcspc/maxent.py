@@ -83,11 +83,13 @@ class MaxEntLifetimeModel(LifetimeModel):
     """Lifetime model backed by a MaxEnt lifetime distribution."""
 
     name = "MaxEnt Lifetime MEM"
+    view_spec_file = "maxent_lifetime.view.json"
 
     def __init__(self, fit: Fit, **kwargs):
         """Initialize the MaxEnt lifetime MEM model."""
         self._nu_log10 = FittingParameter(
             name="mem_nu_log10",
+            label_text="log&#8321;&#8320;(&nu;)",
             value=-3.0,
             lb=-8.0,
             ub=3.0,
@@ -96,6 +98,7 @@ class MaxEntLifetimeModel(LifetimeModel):
         )
         self._tau_min = FittingParameter(
             name="mem_tau_min",
+            label_text="&tau;<sub>min</sub>",
             value=0.01,
             lb=1e-6,
             ub=float("inf"),
@@ -104,6 +107,7 @@ class MaxEntLifetimeModel(LifetimeModel):
         )
         self._tau_max = FittingParameter(
             name="mem_tau_max",
+            label_text="&tau;<sub>max</sub>",
             value=6.0,
             lb=1e-6,
             ub=float("inf"),
@@ -112,6 +116,7 @@ class MaxEntLifetimeModel(LifetimeModel):
         )
         self._tau_bins = FittingParameter(
             name="mem_tau_bins",
+            label_text="&tau; bins",
             value=192,
             lb=2,
             ub=10000,
@@ -146,6 +151,47 @@ class MaxEntLifetimeModel(LifetimeModel):
     def lifetime_spectrum(self) -> np.ndarray:
         """Interleaved MaxEnt amplitude/lifetime spectrum."""
         return self._cached_lifetime_spectrum
+
+    def _mem_parameter_rows(self) -> list:
+        """Return the maximum-entropy settings for the editor's table.
+
+        Returns
+        -------
+        list
+            The entropy weight followed by the inversion grid parameters.
+        """
+        return [self._nu_log10, self._tau_min, self._tau_max, self._tau_bins]
+
+    @property
+    def l_curve(self) -> "cs.core.math.regularization.LCurveData | None":
+        """The cached regularization sweep as the shared L-curve data model.
+
+        `compute_l_curve` caches the sweep in private arrays; this exposes them in
+        the form every L-curve view consumes, so the corner the model already
+        detected is visible instead of only being used internally. Returns None
+        until a sweep has been run.
+
+        Returns
+        -------
+        chisurf.core.math.regularization.LCurveData or None
+            Weights, misfit norm, solution norm and the detected corner.
+        """
+        chi2 = getattr(self, "_l_curve_chi2", None)
+        sol = getattr(self, "_l_curve_sol_norm", None)
+        if chi2 is None or sol is None or len(chi2) == 0:
+            return None
+        log10_nu = getattr(self, "_l_curve_log10_nu", None)
+        reg = (
+            10.0 ** np.asarray(log10_nu, dtype=float)
+            if log10_nu is not None and len(log10_nu) == len(chi2)
+            else np.arange(len(chi2), dtype=float)
+        )
+        return cs.core.math.regularization.LCurveData(
+            reg=reg,
+            residual_norm=np.asarray(chi2, dtype=float),
+            solution_norm=np.asarray(sol, dtype=float),
+            corner_index=getattr(self, "_l_curve_corner_index", None),
+        )
 
     def compute_l_curve(
         self,
@@ -250,11 +296,13 @@ class MaxEntFRETModel(FRETModel):
     """FRET model backed by a MaxEnt distance distribution."""
 
     name = "MaxEnt FRET Distance MEM"
+    view_spec_file = "maxent_fret.view.json"
 
     def __init__(self, fit: Fit, **kwargs):
         """Initialize the MaxEnt FRET MEM model."""
         self._nu_log10 = FittingParameter(
             name="mem_fret_nu_log10",
+            label_text="log&#8321;&#8320;(&nu;)",
             value=-3.0,
             lb=-8.0,
             ub=3.0,
@@ -263,6 +311,7 @@ class MaxEntFRETModel(FRETModel):
         )
         self._r_min_frac = FittingParameter(
             name="mem_r_min_frac",
+            label_text="r<sub>min</sub>/R<sub>0</sub>",
             value=0.1,
             lb=1e-6,
             ub=10.0,
@@ -271,6 +320,7 @@ class MaxEntFRETModel(FRETModel):
         )
         self._r_max_frac = FittingParameter(
             name="mem_r_max_frac",
+            label_text="r<sub>max</sub>/R<sub>0</sub>",
             value=3.0,
             lb=1e-6,
             ub=10.0,
@@ -279,6 +329,7 @@ class MaxEntFRETModel(FRETModel):
         )
         self._r_bins = FittingParameter(
             name="mem_r_bins",
+            label_text="r bins",
             value=96,
             lb=2,
             ub=10000,
@@ -320,6 +371,47 @@ class MaxEntFRETModel(FRETModel):
                 p = np.ones_like(self.distance_grid, dtype=float)
         p = p / np.sum(p) if np.sum(p) > 0.0 else p
         return np.array([p, self.distance_grid], dtype=float).reshape(1, 2, p.size)
+
+    def _mem_parameter_rows(self) -> list:
+        """Return the maximum-entropy settings for the editor's table.
+
+        Returns
+        -------
+        list
+            The entropy weight followed by the inversion grid parameters.
+        """
+        return [self._nu_log10, self._r_min_frac, self._r_max_frac, self._r_bins]
+
+    @property
+    def l_curve(self) -> "cs.core.math.regularization.LCurveData | None":
+        """The cached regularization sweep as the shared L-curve data model.
+
+        `compute_l_curve` caches the sweep in private arrays; this exposes them in
+        the form every L-curve view consumes, so the corner the model already
+        detected is visible instead of only being used internally. Returns None
+        until a sweep has been run.
+
+        Returns
+        -------
+        chisurf.core.math.regularization.LCurveData or None
+            Weights, misfit norm, solution norm and the detected corner.
+        """
+        chi2 = getattr(self, "_l_curve_chi2", None)
+        sol = getattr(self, "_l_curve_sol_norm", None)
+        if chi2 is None or sol is None or len(chi2) == 0:
+            return None
+        log10_nu = getattr(self, "_l_curve_log10_nu", None)
+        reg = (
+            10.0 ** np.asarray(log10_nu, dtype=float)
+            if log10_nu is not None and len(log10_nu) == len(chi2)
+            else np.arange(len(chi2), dtype=float)
+        )
+        return cs.core.math.regularization.LCurveData(
+            reg=reg,
+            residual_norm=np.asarray(chi2, dtype=float),
+            solution_norm=np.asarray(sol, dtype=float),
+            corner_index=getattr(self, "_l_curve_corner_index", None),
+        )
 
     def compute_l_curve(
         self,

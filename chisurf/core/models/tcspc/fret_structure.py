@@ -18,6 +18,7 @@ class FRETStructure(fret.FRETModel):
     """
 
     name = "FRET: Structure fit"
+    view_spec_file = "fret_structure.view.json"
 
     x = fret.rda_axis
 
@@ -85,7 +86,12 @@ class FRETStructure(fret.FRETModel):
             atom_name=atom_name_1,
             linker_length=linker_length_1,
             linker_width=linker_width_1,
-            radius1=radius1_1
+            radius1=radius1_1,
+            radius2=kwargs.get('radius2_1', self.radius2_1),
+            radius3=kwargs.get('radius3_1', self.radius3_1),
+            simulation_grid_resolution=kwargs.get(
+                'simulation_grid_resolution', self.simulation_grid_resolution
+            ),
         )
         av2 = ACV(
             structure=structure,
@@ -93,7 +99,12 @@ class FRETStructure(fret.FRETModel):
             atom_name=atom_name_2,
             linker_length=linker_length_2,
             linker_width=linker_width_2,
-            radius1=radius1_2
+            radius1=radius1_2,
+            radius2=kwargs.get('radius2_2', self.radius2_2),
+            radius3=kwargs.get('radius3_2', self.radius3_2),
+            simulation_grid_resolution=kwargs.get(
+                'simulation_grid_resolution', self.simulation_grid_resolution
+            ),
         )
         
         p, _ = av1.pRDA(av2, rda_axis=self.x, same_size=False)
@@ -133,6 +144,68 @@ class FRETStructure(fret.FRETModel):
             self.filenames.pop()
             if getattr(self, "_parameters", None) is not None:
                 self._parameters = [p for p in self._parameters if p is not amplitude]
+
+    @property
+    def structure_files(self) -> list:
+        """PDB files whose accessible volumes make up the ensemble.
+
+        Assigning to this rebuilds the ensemble, which is what makes the
+        structure list authorable as a declarative ``path_list`` section: that
+        section writes the attribute and calls ``update()``, so loading needs no
+        GUI code of its own.
+
+        Returns
+        -------
+        list of str
+            The currently loaded PDB paths, in load order.
+        """
+        return list(self._structure_files)
+
+    @structure_files.setter
+    def structure_files(self, paths) -> None:
+        """Replace the ensemble with the accessible volumes of `paths`."""
+        wanted = [str(p) for p in (paths or [])]
+        if wanted == list(self._structure_files):
+            return
+        self.load_structures(wanted)
+
+    def load_structures(self, paths) -> None:
+        """Clear the ensemble and rebuild it from `paths`.
+
+        A file that cannot be read is skipped and logged rather than aborting the
+        load: one unreadable PDB in a folder of twenty should not lose the other
+        nineteen.
+
+        Parameters
+        ----------
+        paths : iterable of str
+            PDB files to load.
+        """
+        self.clear()
+        self._structure_files = []
+        for path in (paths or []):
+            path = str(path)
+            try:
+                self.append(Structure(path))
+            except Exception as exc:
+                cs.logging.warning(
+                    f"FRETStructure: could not load {path!r} ({exc}); skipped"
+                )
+                continue
+            self._structure_files.append(path)
+
+    def _fraction_parameter_rows(self) -> list:
+        """Return the per-structure fraction parameters, one per row.
+
+        The ensemble's structures define how many there are, so this group has no
+        add/remove of its own -- the row count follows the loaded file list.
+
+        Returns
+        -------
+        list
+            The amplitude parameters, in structure order.
+        """
+        return list(self._amplitudes)
 
     def get_state(self) -> dict:
         """Return a JSON-serializable state snapshot of the model, including ensemble structures."""
@@ -229,6 +302,7 @@ class FRETStructure(fret.FRETModel):
         self.filenames = list()
         self.ps = list()
         self._amplitudes = list()
+        self._structure_files = list()
         self.p = np.zeros_like(self.x)
 
         self.res_1 = kwargs.get('res_1', 0)
@@ -242,6 +316,15 @@ class FRETStructure(fret.FRETModel):
 
         self.radius1_1 = kwargs.get('radius1_1', 4.0)
         self.radius1_2 = kwargs.get('radius1_2', 4.0)
+
+        # AV3 outer radii and the simulation grid. The hand-written editor
+        # exposed all three and ``append`` never passed them on, so setting them
+        # did nothing -- they now reach the accessible-volume calculation.
+        self.radius2_1 = kwargs.get('radius2_1', 4.5)
+        self.radius2_2 = kwargs.get('radius2_2', 4.5)
+        self.radius3_1 = kwargs.get('radius3_1', 3.5)
+        self.radius3_2 = kwargs.get('radius3_2', 3.5)
+        self.simulation_grid_resolution = kwargs.get('simulation_grid_resolution', 0.5)
 
         self.linker_width_1 = kwargs.get('linker_width_1', 4.5)
         self.linker_width_2 = kwargs.get('linker_width_2', 4.5)

@@ -71,7 +71,7 @@ class TestFRETStructure(unittest.TestCase):
         )
 
         # 2. Import and instantiate widget
-        from chisurf.gui.widgets.models.tcspc.fret_structure import FRETStructureWidget
+        from chisurf.gui.widgets.models.tcspc import FRETStructureWidget
         widget = FRETStructureWidget(fit=fit_group)
         self.assertIsNotNone(widget)
         self.assertEqual(widget.res_1, 0)
@@ -82,8 +82,6 @@ class TestFRETStructure(unittest.TestCase):
         widget.res_2 = 577
         self.assertEqual(widget.res_1, 18)
         self.assertEqual(widget.res_2, 577)
-        self.assertEqual(widget.donor_res.value(), 18)
-        self.assertEqual(widget.acceptor_res.value(), 577)
 
     def test_fret_structure_serialization(self):
         # 1. Setup FitGroup
@@ -135,12 +133,13 @@ class TestFRETStructure(unittest.TestCase):
         app = QApplication.instance()
         if app is None:
             app = QApplication([])
-        from chisurf.gui.widgets.models.tcspc.fret_structure import FRETStructureWidget
+        from chisurf.gui.widgets.models.tcspc import FRETStructureWidget
         widget = FRETStructureWidget(fit=fit_group)
         widget.set_state(state)
 
         # Assert widget synchronized all UI components and reloaded structure
         self.assertEqual(widget.res_1, 18)
-        self.assertEqual(widget.donor_res.value(), 18)
-        self.assertEqual(widget.acceptor_res.value(), 577)
-        self.assertEqual(widget.pdb_line_widget.toPlainText().strip(), pdb_path)
+        self.assertEqual(widget.res_2, 577)
+        # the PDB ensemble is model state now (a declarative path_list binds to
+        # it), not text in a widget
+        self.assertEqual(widget.filenames[0], pdb_path)

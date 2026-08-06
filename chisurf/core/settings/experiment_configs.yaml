@@ -57,29 +57,21 @@ tcspc:
         name: Simulator
       controller_class: chisurf.gui.widgets.experiments.tcspc.controller.TCSPCSimulatorSetupWidget
   models:
-    # Proven hand-written Lifetime editor (unchanged, daily driver).
-    - chisurf.gui.widgets.models.tcspc.LifetimeModelWidget
-    # PRD-38/PRD-40: additive prototype. Pure compute model whose editor is
-    # auto-generated from lifetime.view.json by AutoModelWidget. Lives ALONGSIDE
-    # the proven widget above as the "Lifetime (new)" entry to exercise the new
-    # typed-widget framework without risking the working Lifetime fit.
-    - chisurf.core.models.tcspc.lifetime.LifetimeNewModel
-    - chisurf.gui.widgets.models.tcspc.FRETrateModelWidget
-    - chisurf.gui.widgets.models.tcspc.GaussianModelWidget
-    - chisurf.gui.widgets.models.tcspc.PDDEMModelWidget
-    - chisurf.gui.widgets.models.tcspc.WormLikeChainModelWidget
-    - chisurf.gui.widgets.models.tcspc.SawNuChainModelWidget
-    - chisurf.gui.widgets.models.tcspc.IsingChainModelWidget
-    - chisurf.gui.widgets.models.tcspc.ParseDecayModelWidget
-    - chisurf.gui.widgets.models.tcspc.LifetimeMixtureModelWidget
-    # PRD-40: additive AutoForm prototype for the mixer. Pure compute model whose
-    # editor is auto-generated from mix_model.view.json by AutoModelWidget. Lives
-    # ALONGSIDE the proven widget above as the "Lifetime mixer (new)" entry.
-    - chisurf.core.models.tcspc.lifetime.LifetimeMixtureNewModel
-    - chisurf.gui.widgets.models.tcspc.EtModelFreeWidget
-    - chisurf.gui.widgets.models.tcspc.FRETStructureWidget
-    - chisurf.gui.widgets.models.tcspc.MaxEntLifetimeModelWidget
-    - chisurf.gui.widgets.models.tcspc.MaxEntFRETModelWidget
+    # Pure compute model; its editor is generated from lifetime.view.json.
+    # See okf/subsystems/gui-autoform.md.
+    - chisurf.core.models.tcspc.lifetime.LifetimeModel
+    - chisurf.core.models.tcspc.fret.FRETrateModel
+    - chisurf.core.models.tcspc.fret.GaussianModel
+    - chisurf.core.models.tcspc.pddem.PDDEMModel
+    - chisurf.core.models.tcspc.fret.WormLikeChainModel
+    - chisurf.core.models.tcspc.fret.SawNuModel
+    - chisurf.core.models.tcspc.fret.IsingChainModel
+    - chisurf.core.models.tcspc.parse.tcspc_parse.ParseDecayModel
+    # Pure compute model; its editor is generated from mix_model.view.json.
+    - chisurf.core.models.tcspc.lifetime.LifetimeMixtureModel
+    - chisurf.core.models.tcspc.fret_structure.FRETStructure
+    - chisurf.core.models.tcspc.maxent.MaxEntLifetimeModel
+    - chisurf.core.models.tcspc.maxent.MaxEntFRETModel
 
 
 stopped_flow:
@@ -97,7 +89,7 @@ stopped_flow:
       controller_class: chisurf.gui.widgets.experiments.tcspc.controller.TCSPCTTTRReaderControlWidget
       settings_key: tcspc_csv
   models:
-    - chisurf.gui.widgets.models.stopped_flow.ParseStoppedFlowWidget
+    - chisurf.core.models.stopped_flow.parse.ParseStoppedFlowModel
     - chisurf.gui.widgets.models.stopped_flow.ReactionWidget
 
 # One PDA experiment for both colour counts. Three-colour PDA is not a separate
@@ -132,8 +124,8 @@ pda:
         name: Simulator (3-colour)
       controller_class: null
   models:
-    # AutoForm-rendered pure models (PRD-38 model/view-spec split). The
-    # build_model_editor seam wraps these via view_spec() -> *.view.json.
+    # AutoForm-rendered pure models; the build_model_editor seam wraps these via
+    # view_spec() -> *.view.json. See okf/subsystems/gui-autoform.md.
     - chisurf.core.models.pda2c.simple.Pda2cSimpleModel
     - chisurf.core.models.pda2c.pdagauss.Pda2cGaussianDistanceModel
     - chisurf.core.models.pda2c.saw_nu.Pda2cSawNuModel
@@ -151,7 +143,7 @@ deer:
       controller_params:
         name: DEER (BES3T/CSV)
   models:
-    # Native DEER models (self-contained, numpy/scipy only); AutoForm-rendered (PRD-38).
+    # Native DEER models (self-contained, numpy/scipy only); AutoForm-rendered.
     - chisurf.core.models.deer.deer.DeerGaussianModel
     - chisurf.core.models.deer.deer.DeerRiceModel
     - chisurf.core.models.deer.deer.DeerTikhonovModel
@@ -216,7 +208,7 @@ fcs:
       controller_params:
         file_type: Correlator.com SIN files (*.sin)
   models:
-    - chisurf.gui.widgets.models.fcs.ParseFCSWidget
+    - chisurf.core.models.fcs.parse.ParseFCSModel
     - chisurf.gui.widgets.models.fcs.DyeShapeFCSWidget
     - chisurf.core.models.fcs.mdf.MdfFCSModel
     - chisurf.core.models.fcs.general.GeneralFCSModel
@@ -237,7 +229,7 @@ pcf:
       controller_params:
         file_type: PCF curves (*.csv *.txt *.dat)
   models:
-    - chisurf.gui.widgets.models.pcf.ParsePCFWidget
+    - chisurf.core.models.pcf.parse.ParsePCFModel
 
 ics:
   readers:
@@ -304,5 +296,5 @@ global:
       reader_params:
         name: Global-Fit
   models:
-    - chisurf.gui.widgets.models.global_model.GlobalFitModelWidget
-    - chisurf.gui.widgets.models.global_model.ParameterTransformWidget
+    - chisurf.core.models.global_model.globalfit.GlobalFitModel
+    - chisurf.core.models.parameter_transform.model.ParameterTransformModel

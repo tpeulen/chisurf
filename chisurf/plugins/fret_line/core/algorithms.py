@@ -49,9 +49,9 @@ MODEL_REGISTRY: dict[str, dict[str, Any]] = {
         "append_attr": None,
         "append_args": None,
     },
-    "Lifetime (new)": {
+    "Lifetime": {
         "module": "chisurf.core.models.tcspc.lifetime",
-        "class": "LifetimeNewModel",
+        "class": "LifetimeModel",
         "append_attr": None,
         "append_args": None,
     },
@@ -97,7 +97,15 @@ def _build_component(model_name: str, n_components: int = 1):
     if append_attr is not None:
         container = getattr(model, append_attr, None)
         if container is not None:
-            for _ in range(max(1, int(n_components))):
+            # Drive the container to *exactly* n_components rather than appending
+            # blindly. A model may seed a component in its constructor (a
+            # zero-component distance distribution cannot compute), and appending
+            # on top of that silently produced n+1 components -- with the caller's
+            # values landing on the second one.
+            wanted = max(1, int(n_components))
+            while len(container) > wanted:
+                container.pop()
+            while len(container) < wanted:
                 container.append(*append_args)
 
     model.find_parameters()

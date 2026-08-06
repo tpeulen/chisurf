@@ -5,7 +5,7 @@ import os
 
 import numpy as np
 from qtpy import QtWidgets, uic
-from chisurf.gui.widgets.models.parse.widget import ParseModelWidget
+from chisurf.core.models.stopped_flow.parse import ParseStoppedFlowModel
 
 import chisurf.core.settings
 import chisurf.gui.widgets.fitting.widgets
@@ -16,34 +16,11 @@ from chisurf.gui.widgets.fitting.widgets import FittingParameterWidget
 from chisurf.gui.widgets.models.model_widget import _ModelWidgetMeta
 
 
-class ParseStoppedFlowWidget(ParseModelWidget):
-    """Stopped-flow model widget using a parse-based equation from a JSON file."""
-
-    plot_classes = [
-        (
-            plots.LinePlot, {
-                'd_scalex': 'lin',
-                'd_scaley': 'lin',
-                'r_scalex': 'lin',
-                'r_scaley': 'lin',
-            }
-        )
-        # ,(plots.SurfacePlot, {})
-    ]
-
-    def __init__(self, fit):
-        """Initialize the stopped-flow parse widget.
-
-        Parameters
-        ----------
-        fit : chisurf.core.fitting.fit.Fit
-            Fit object this widget belongs to.
-        """
-        fn = os.path.join(
-            chisurf.core.settings.package_directory,
-            'settings', 'stopped_flow.models.json'
-        )
-        ParseModelWidget.__init__(self, fit, model_file=fn)
+#: Deprecated alias -- ``ParseStoppedFlowModel`` carries ``parse.view.json``.
+#: The hand-written widget could never be constructed: it passed a ``str`` where a
+#: ``pathlib.Path`` was expected and pointed at a catalogue file that is not in the
+#: tree, so opening it raised ``AttributeError``.
+ParseStoppedFlowWidget = ParseStoppedFlowModel
 
 
 class ReactionWidget(QtWidgets.QWidget, ReactionSystem, Model, metaclass=_ModelWidgetMeta):

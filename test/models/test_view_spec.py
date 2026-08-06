@@ -261,25 +261,25 @@ def test_parameter_group_table_section_hashable():
 
 
 def _make_mixture_model():
-    """Build a LifetimeMixtureNewModel against a tiny in-memory fit, or skip."""
+    """Build a LifetimeMixtureModel against a tiny in-memory fit, or skip."""
     import pytest
     try:
         import chisurf.core.fitting.fit as fit_mod
         from chisurf.core.data import DataCurve
-        from chisurf.core.models.tcspc.lifetime import LifetimeMixtureNewModel
+        from chisurf.core.models.tcspc.lifetime import LifetimeMixtureModel
     except Exception as exc:
         pytest.skip(f"mixture model import failed: {exc}")
     x = np.linspace(0, 25, 256)
     data = DataCurve(x=x, y=np.ones_like(x))
     try:
-        fit = fit_mod.Fit(model_class=LifetimeMixtureNewModel, data=data)
+        fit = fit_mod.Fit(model_class=LifetimeMixtureModel, data=data)
         return fit.model
     except Exception as exc:
         pytest.skip(f"mixture model construction failed: {exc}")
 
 
 def test_mix_model_view_spec_structure():
-    """LifetimeMixtureNewModel exposes a pure-data view spec from mix_model.view.json."""
+    """LifetimeMixtureModel exposes a pure-data view spec from mix_model.view.json."""
     model = _make_mixture_model()
     spec = model.view_spec()
 
@@ -314,9 +314,9 @@ def test_mix_model_view_spec_file_exists():
     """mix_model.view.json is on disk next to lifetime.py."""
     import pathlib
     import inspect
-    from chisurf.core.models.tcspc.lifetime import LifetimeMixtureNewModel
+    from chisurf.core.models.tcspc.lifetime import LifetimeMixtureModel
 
-    src = inspect.getfile(LifetimeMixtureNewModel)
+    src = inspect.getfile(LifetimeMixtureModel)
     json_path = pathlib.Path(src).parent / "mix_model.view.json"
     assert json_path.exists(), f"mix_model.view.json not found at {json_path}"
 

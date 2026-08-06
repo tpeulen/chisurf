@@ -1021,9 +1021,14 @@ def add_fit(
     model_names = exp.model_names
     model_class = None
 
-    # Try to find the model by name in the experiment type
+    # Try to find the model by name in the experiment type. Compared stripped:
+    # a model whose ``name`` carries stray whitespace ("Lifetime ") would
+    # otherwise never match the string a caller reasonably passes, fall through
+    # to the global subclass scan below, and resolve by luck rather than by
+    # registration.
+    wanted = str(model_name or "").strip()
     for model_idx, mn in enumerate(model_names):
-        if mn == model_name:
+        if str(mn or "").strip() == wanted:
             model_class = exp.model_classes[model_idx]
             break
 

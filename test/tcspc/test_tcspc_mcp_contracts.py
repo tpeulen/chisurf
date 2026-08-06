@@ -14,9 +14,7 @@ def test_model_actions_irf_handlers_use_fit_object_contract():
     assert "return model_macros.unload_irf(fit=fit)" in src
 
 
-def test_convolve_widget_change_irf_does_not_immediately_unload_contract():
-    src = Path("chisurf/gui/widgets/models/tcspc/convolve.py").read_text(encoding="utf-8")
-    assert "name=\"model.change_irf\"" in src
-    assert "name=\"model.unload_irf\"" in src
-    assert "def _resolve_fit_group_index" in src
-    assert "payload[\"fit_index\"]" in src
+# The widget-side counterpart of these contracts is gone: the IRF is now a
+# declarative ``curve_input`` dispatching ``model.change_irf`` /
+# ``model.unload_irf``, so the handlers it used to assert on no longer exist. The
+# macro and action contracts above are the durable half and still hold.

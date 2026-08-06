@@ -757,6 +757,30 @@ class _ContentSizedTable:
     #: Rows to keep visible in a bounded host. ``None`` sizes to all content.
     _min_visible_rows: typing.Optional[int] = None
 
+    #: Column groups dropped when the table is too narrow, **least useful first**.
+    #:
+    #: A parameter table is asked to fit anything from a wide fit window to a
+    #: docked side panel, and its columns are not equally worth the room: a value
+    #: you cannot see is the table failing at its job, while a bound you cannot see
+    #: is still one click away in the parameter details popup. So the bounds go
+    #: first, then the error estimate, then the fixed flag -- which the same popup
+    #: also carries. The **name and the value are never dropped**.
+    #:
+    #: The fixed flag has to be droppable because two tiers are not enough for a
+    #: table packing several parameters per row: four slots of value+fixed still
+    #: overflow a docked panel once bounds and errors are already gone, and the
+    #: table then just clipped its last slot off the right edge.
+    RESPONSIVE_TIERS = ("bounds", "error", "fixed")
+
+    #: Viewport width below which no column decision is made -- narrower than any
+    #: real panel, so it means "not laid out yet" rather than "very narrow".
+    _RESPONSIVE_MIN_VIEWPORT = 120
+
+    #: Slack allowed before a tier is dropped, in pixels -- Qt's per-column size
+    #: hints are a few pixels optimistic against the painted grid, and dropping a
+    #: whole tier over one pixel makes the table flicker as a dock is dragged.
+    _RESPONSIVE_SLACK = 8
+
     def set_scrollable(self, min_visible_rows: typing.Optional[int]) -> None:
         """Ask for ``min_visible_rows`` rows and scroll whatever does not fit.
 
@@ -786,6 +810,83 @@ class _ContentSizedTable:
         self._table.setMaximumHeight(max(content, floor))
         self._table.setMinimumHeight(min(floor, content))
         self.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
+
+
+    def _tier_columns(self, tier: str) -> typing.List[int]:
+        """Return the column indices belonging to `tier`.
+
+        Overridden per table because the paired table repeats the numeric columns
+        once per parameter slot.
+
+        Parameters
+        ----------
+        tier : str
+            One of :attr:`RESPONSIVE_TIERS`.
+
+        Returns
+        -------
+        list of int
+            Column indices, possibly empty.
+        """
+        return []
+
+    def _wanted_column_hidden(self, col: int) -> bool:
+        """Whether `col` is hidden for a reason other than not fitting.
+
+        The section's column whitelist and the panel's bounds toggle are
+        *intent*; the width check may only hide further, never reveal something
+        the author or the user asked to keep hidden.
+        """
+        return False
+
+
+    def _apply_responsive_columns(self) -> None:
+        """Hide low-priority columns that do not fit the current width.
+
+        Re-run whenever the table is resized or first shown. Tiers are dropped in
+        :attr:`RESPONSIVE_TIERS` order until the columns fit, and the widest set
+        that fits is kept -- so widening the host brings the error column back
+        before the bounds.
+
+        The decision is made by **applying a candidate set and asking the header
+        how wide it turned out**, not by adding up column size hints. Hints are
+        not the widths Qt lays out: a stretch column is given more than its hint,
+        every section is floored at ``minimumSectionSize``, and the paired table's
+        value columns switch between stretching and hugging their content. Summing
+        hints was wrong in both directions -- it dropped every optional column of
+        a wide table, and kept the flags on a narrow one that then scrolled.
+        """
+        table = getattr(self, "_table", None)
+        if table is None:
+            return
+        viewport = table.viewport().width()
+        # A table that has not been laid out yet reports a small placeholder width,
+        # not a real constraint. Deciding on that dropped every optional column of
+        # a freshly built editor and left it that way until something resized it.
+        if viewport < self._RESPONSIVE_MIN_VIEWPORT:
+            return
+
+        tiers = [
+            (tier, [c for c in self._tier_columns(tier) if not self._wanted_column_hidden(c)])
+            for tier in self.RESPONSIVE_TIERS
+        ]
+        tiers = [(tier, cols) for tier, cols in tiers if cols]
+        if not tiers:
+            return
+
+        header = table.horizontalHeader()
+
+        def _apply(dropped: int) -> None:
+            hidden = {c for _, cols in tiers[:dropped] for c in cols}
+            for _, cols in tiers:
+                for col in cols:
+                    table.setColumnHidden(col, col in hidden)
+
+        for dropped in range(len(tiers) + 1):
+            _apply(dropped)
+            if header.length() <= viewport + self._RESPONSIVE_SLACK:
+                return
+        # Nothing optional left: the table scrolls rather than hide a value.
 
 
 class ParameterGroupTableWidget(_ContentSizedTable, QtWidgets.QWidget):
@@ -1174,6 +1275,42 @@ class ParameterGroupTableWidget(_ContentSizedTable, QtWidgets.QWidget):
     #: :meth:`AutoForm.refresh_plots` calls ``refresh`` on AUTOFORM_REFRESH widgets.
     refresh = sync
 
+    # -- responsive columns --------------------------------------------------
+    def _tier_columns(self, tier: str) -> typing.List[int]:
+        """Column indices for a responsive tier (see :attr:`RESPONSIVE_TIERS`)."""
+        if tier == "bounds":
+            return [COL_BOUNDS_LO, COL_BOUNDS_HI, COL_BOUNDS_ON]
+        if tier == "error":
+            return [COL_ERROR]
+        if tier == "fixed":
+            return [COL_FIXED]
+        return []
+
+    def _wanted_column_hidden(self, col: int) -> bool:
+        """Whether the whitelist or the bounds toggle already hides `col`."""
+        allowed = self._allowed_columns()
+        if allowed is not None and COLUMN_IDS[col] not in allowed:
+            return True
+        if col in (COL_BOUNDS_LO, COL_BOUNDS_HI, COL_BOUNDS_ON):
+            return not getattr(self, "_bounds_visible", True)
+        return False
+
+    def showEvent(self, event):  # noqa: N802 (Qt override)
+        """Decide the columns when the table first gets a real width.
+
+        A table inside a *collapsed* panel is never resized while hidden, so the
+        width check had only ever run against a placeholder: expanding the panel
+        revealed a table still showing every column and scrolling sideways.
+        """
+        super().showEvent(event)
+        self._apply_responsive_columns()
+
+    def resizeEvent(self, event):  # noqa: N802 (Qt override)
+        """Re-decide which low-priority columns still fit."""
+        super().resizeEvent(event)
+        self._apply_responsive_columns()
+        self._size_to_content()
+
     # -- bounds column visibility -------------------------------------------
     def _allowed_columns(self) -> typing.Optional[set]:
         """Return the section's column whitelist as a set, or ``None`` (all allowed)."""
@@ -1202,6 +1339,9 @@ class ParameterGroupTableWidget(_ContentSizedTable, QtWidgets.QWidget):
         ):
             permitted = allowed is None or cid in allowed
             self._table.setColumnHidden(col, not (visible and permitted))
+        # Intent is a ceiling, not a command: what actually shows is still bounded
+        # by what fits.
+        self._apply_responsive_columns()
 
     # -- accessors ----------------------------------------------------------
     @property
@@ -1296,6 +1436,22 @@ class PairedParameterTableModel(QtCore.QAbstractTableModel):
         #: while the table is empty — a component table the user has yet to add
         #: a component to would show bare column numbers.
         self._slot_labels = None if slot_labels is None else [str(s) for s in slot_labels]
+        #: Captions for the first column. Without them it numbers the rows, which
+        #: is right for interchangeable components (lifetime 1, 2, 3) and wrong
+        #: for a group whose rows are *named* quantities: a matrix-shaped group
+        #: read "1..5" beside its A/B columns, with nothing saying which row was
+        #: the transfer rate and which the excitation probability.
+        self._row_labels: typing.Optional[typing.List[str]] = None
+
+    def set_row_labels(self, labels: typing.Optional[typing.Sequence[str]]) -> None:
+        """Name the rows instead of numbering them.
+
+        Parameters
+        ----------
+        labels : sequence of str or None
+            One caption per row; ``None`` restores the 1-based index.
+        """
+        self._row_labels = None if labels is None else [str(x) for x in labels]
 
     # -- structural updates -------------------------------------------------
     def set_params(self, params: typing.List[FittingParameter]) -> None:
@@ -1355,7 +1511,10 @@ class PairedParameterTableModel(QtCore.QAbstractTableModel):
         if orientation != QtCore.Qt.Horizontal or role != QtCore.Qt.DisplayRole:
             return None
         if section == 0:
-            return "#"
+            # "#" numbers interchangeable components; when the rows are named
+            # quantities there is nothing to number, and the caption would sit
+            # above a column of words.
+            return "" if self._row_labels is not None else "#"
         s = self._slot(section)
         if s is None:
             return None
@@ -1377,8 +1536,13 @@ class PairedParameterTableModel(QtCore.QAbstractTableModel):
             return None
         if index.column() == 0:
             if role == QtCore.Qt.DisplayRole:
+                labels = self._row_labels
+                if labels is not None and index.row() < len(labels):
+                    return labels[index.row()]
                 return str(index.row() + 1)
             if role == QtCore.Qt.TextAlignmentRole:
+                if self._row_labels is not None:
+                    return int(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
                 return int(QtCore.Qt.AlignCenter)
             return None
         s = self._slot(index.column())
@@ -1484,18 +1648,21 @@ class PairedParameterTableWidget(_ContentSizedTable, QtWidgets.QWidget):
         on_change: typing.Optional[Callable[[], None]] = None,
         section: typing.Any = None,
         slot_labels: typing.Optional[typing.Sequence[str]] = None,
+        row_labels: typing.Optional[typing.Sequence[str]] = None,
         remote: bool = True,
     ):
         super().__init__(parent)
         self._on_change = on_change
         self._section = section
         self._remote = bool(remote)
+        self._row_labels = None if row_labels is None else [str(x) for x in row_labels]
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
         self._model = PairedParameterTableModel(params, width, slot_labels=slot_labels)
+        self._model.set_row_labels(self._row_labels)
         self._table = WheelEditTableView()
         self._table.setModel(self._model)
         self._table.setHorizontalHeader(_RichTextHeaderView(self._table))
@@ -1581,6 +1748,41 @@ class PairedParameterTableWidget(_ContentSizedTable, QtWidgets.QWidget):
         self._install_controllers()
         self._size_to_content()
 
+    # -- responsive columns --------------------------------------------------
+    def _tier_columns(self, tier: str) -> typing.List[int]:
+        """Column indices for a responsive tier, across **every** parameter slot."""
+        wanted = {
+            "bounds": ("bounds_lo", "bounds_hi", "bounds_on"),
+            "error": ("error",),
+            "fixed": ("fixed",),
+        }.get(tier)
+        if not wanted:
+            return []
+        cols = []
+        for col in range(1, self._model.columnCount()):
+            slot = self._model._slot(col)
+            if slot is None:
+                continue
+            cid = SLOT_COLUMN_META[slot[1]][0]
+            if cid in wanted:
+                cols.append(col)
+        return cols
+
+    def _wanted_column_hidden(self, col: int) -> bool:
+        """Whether the whitelist or the bounds toggle already hides `col`."""
+        if col == 0:
+            return False
+        slot = self._model._slot(col)
+        if slot is None:
+            return False
+        cid = SLOT_COLUMN_META[slot[1]][0]
+        allowed = self._allowed_columns()
+        if allowed is not None and cid not in allowed:
+            return True
+        if cid in ("bounds_lo", "bounds_hi", "bounds_on"):
+            return not getattr(self, "_bounds_visible", True)
+        return False
+
     # -- bounds column visibility -------------------------------------------
     def _allowed_columns(self) -> typing.Optional[set]:
         """Return the section's column whitelist as a set, or ``None`` (all allowed)."""
@@ -1609,6 +1811,8 @@ class PairedParameterTableWidget(_ContentSizedTable, QtWidgets.QWidget):
             permitted = allowed is None or cid in allowed
             for col in self._slot_columns(cid):
                 self._table.setColumnHidden(col, not (visible and permitted))
+        # As in the sibling table: intent is a ceiling bounded by what fits.
+        self._apply_responsive_columns()
         self._size_to_content()
 
     def _apply_column_visibility(self) -> None:
@@ -1725,9 +1929,30 @@ class PairedParameterTableWidget(_ContentSizedTable, QtWidgets.QWidget):
                 header.setResizeMode(col, mode)
 
 
+    def showEvent(self, event):  # noqa: N802 (Qt override)
+        """Decide the columns when the table first gets a real width.
+
+        A table inside a *collapsed* panel is never resized while hidden, so the
+        width check had only ever run against a placeholder: expanding the panel
+        revealed a table still showing every column and scrolling sideways.
+        """
+        super().showEvent(event)
+        self._fit_value_columns()
+        self._apply_responsive_columns()
+        self._fit_value_columns()
+
     def resizeEvent(self, event):  # noqa: N802 (Qt override)
-        """Re-measure: a narrower table needs a scrollbar, which needs height."""
+        """Re-measure: a narrower table drops columns, and needs height for a scrollbar."""
         super().resizeEvent(event)
+        # These two decisions depend on each other: which columns are visible sets
+        # the width left for the value columns, and whether those stretch or hug
+        # their content sets how much room the visible columns need. Deciding the
+        # columns first used size hints that the value policy then invalidated, so
+        # the table kept its flags and scrolled. Settle the value policy, choose
+        # the columns against the widths that result, then settle it again for the
+        # set that survived.
+        self._fit_value_columns()
+        self._apply_responsive_columns()
         self._fit_value_columns()
         self._size_to_content()
 

@@ -6,6 +6,9 @@ from chisurf.core.models.parse import parse
 
 class ParseDecayModel(parse.ParseModel):
 
+    catalogue_file = "tcspc_model.yaml"
+    view_spec_file = "parse_decay.view.json"
+
     # TODO: needs docstring
     def __init__(self, fit, **kwargs):
         """Initialize the instance."""

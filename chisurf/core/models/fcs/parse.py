@@ -4,6 +4,9 @@ import chisurf.core.models.parse as parse_module
 
 
 class ParseFCSModel(parse_module.ParseModel):
+
+    catalogue_file = "models.yaml"
+    view_spec_file = "parse.view.json"
     """Parse model for FCS correlation functions.
 
     Extends the generic ParseModel with FCS-specific parameter handling.

@@ -2,7 +2,7 @@
 
 Run one request and exit::
 
-    python -m chisurf.core.agent "fit every decay in ./data with Lifetime (new)"
+    python -m chisurf.core.agent "fit every decay in ./data with Lifetime"
 
 or hold a conversation::
 

@@ -56,31 +56,47 @@ plot_cls_dist_default = [
     )
 ]
 
-from chisurf.gui.widgets.models.tcspc.convolve import ConvolveWidget
-from chisurf.gui.widgets.models.tcspc.corrections import CorrectionsWidget
-from chisurf.gui.widgets.models.tcspc.generic import GenericWidget
-from chisurf.gui.widgets.models.tcspc.anisotropy import AnisotropyWidget
-from chisurf.gui.widgets.models.tcspc.pddem import PDDEMWidget, PDDEMModelWidget
-from chisurf.gui.widgets.models.tcspc.lifetime import (
-    LifetimeWidget,
-    LifetimeModelWidgetBase,
-    LifetimeModelWidget,  # back-compat alias of the pure LifetimeModel (PRD-38)
-    LifetimeMixtureModelWidget
+# Deprecated model-class aliases. Every TCSPC model is a pure compute model whose
+# editor comes from a ``*.view.json``; these names stay importable because user
+# copies of ``experiment_configs.yaml`` *replace* the bundled model list and
+# pickled projects pin class paths, so a path that no longer resolves drops the
+# entry from the model menu without saying so.
+#
+# The hand-written widget layer they used to name is gone: ``LifetimeWidget``,
+# ``LifetimeModelWidgetBase``, ``ConvolveWidget``, ``CorrectionsWidget``,
+# ``GenericWidget``, ``AnisotropyWidget``, ``GaussianWidget`` and
+# ``DiscreteDistanceWidget`` were reachable only from each other once every model
+# became data-described.
+from chisurf.core.models.tcspc.fret import (
+    FRETrateModel,
+    GaussianModel,
+    IsingChainModel,
+    SawNuModel,
+    WormLikeChainModel,
 )
-from chisurf.gui.widgets.models.tcspc.gaussian import GaussianWidget, GaussianModelWidget
-from chisurf.gui.widgets.models.tcspc.discrete_distance import DiscreteDistanceWidget
-from chisurf.gui.widgets.models.tcspc.fret_rate import FRETrateModelWidget
-from chisurf.gui.widgets.models.tcspc.worm_like_chain import WormLikeChainModelWidget
-from chisurf.gui.widgets.models.tcspc.saw_nu import SawNuChainModelWidget
-from chisurf.gui.widgets.models.tcspc.ising_chain import IsingChainModelWidget
-from chisurf.gui.widgets.models.tcspc.parse_decay import ParseDecayModelWidget
-from chisurf.gui.widgets.models.tcspc.lifetime_mix import LifetimeMixModelWidget
-try:
-    from chisurf.gui.widgets.models.tcspc.et import EtModelFreeWidget
-except Exception:
-    EtModelFreeWidget = None
-from chisurf.gui.widgets.models.tcspc.fret_structure import FRETStructureWidget
-from chisurf.gui.widgets.models.tcspc.maxent import (
-    MaxEntLifetimeModelWidget,
-    MaxEntFRETModelWidget,
-)
+from chisurf.core.models.tcspc.fret_structure import FRETStructure
+from chisurf.core.models.tcspc.lifetime import LifetimeMixtureModel, LifetimeModel
+from chisurf.core.models.tcspc.maxent import MaxEntFRETModel, MaxEntLifetimeModel
+from chisurf.core.models.tcspc.parse.tcspc_parse import ParseDecayModel
+from chisurf.core.models.tcspc.pddem import PDDEM, PDDEMModel
+
+LifetimeModelWidget = LifetimeModel
+LifetimeMixtureModelWidget = LifetimeMixtureModel
+LifetimeMixModelWidget = LifetimeMixtureModel
+GaussianModelWidget = GaussianModel
+FRETrateModelWidget = FRETrateModel
+WormLikeChainModelWidget = WormLikeChainModel
+SawNuChainModelWidget = SawNuModel
+IsingChainModelWidget = IsingChainModel
+ParseDecayModelWidget = ParseDecayModel
+FRETStructureWidget = FRETStructure
+MaxEntLifetimeModelWidget = MaxEntLifetimeModel
+MaxEntFRETModelWidget = MaxEntFRETModel
+PDDEMModelWidget = PDDEMModel
+PDDEMWidget = PDDEM
+
+#: Deprecated and **unopenable**: ``EtModelFreeWidget`` was abstract (no
+#: ``update_model``), so selecting it in the model menu raised ``TypeError``. Its
+#: compute never left the GUI file. Resolves to ``None`` so an old config drops the
+#: entry rather than crashing when it is chosen.
+EtModelFreeWidget = None

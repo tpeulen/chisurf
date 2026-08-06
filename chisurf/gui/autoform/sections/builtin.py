@@ -1018,12 +1018,24 @@ class InfoWidget(QtWidgets.QTextBrowser):
         self.refresh()
 
     def _content(self) -> str:
+        """Resolve the text to show: the section's ``source``, else its ``text``.
+
+        A ``source`` may name a **method or a plain attribute/property**. Requiring
+        a method was a standing trap: naming a property rendered an empty box with
+        no error, which reads as "there is nothing to say" rather than "this was
+        wired wrong". A name that resolves to nothing at all is now logged.
+        """
         source = getattr(self._section, "source", "")
         if source:
-            fn = getattr(self._model, source, None)
-            if callable(fn):
+            value = getattr(self._model, source, None)
+            if value is None and not hasattr(self._model, source):
+                logging.warning(
+                    f"InfoWidget: source {source!r} not found on "
+                    f"{type(self._model).__name__}"
+                )
+            else:
                 try:
-                    return str(fn() or "")
+                    return str((value() if callable(value) else value) or "")
                 except Exception:  # pragma: no cover - defensive
                     logging.warning(f"InfoWidget: source {source!r} failed", exc_info=True)
                     return ""

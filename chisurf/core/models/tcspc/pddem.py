@@ -72,6 +72,27 @@ class PDDEM(FittingParameterGroup):
         """Energy transfer efficiency B->A."""
         return self._alpha_B.value
 
+    def _pddem_parameter_rows(self) -> list:
+        """Return the parameters row-major as (A, B) pairs.
+
+        The group *is* a matrix: every quantity exists once for fluorophore A and
+        once for B. Flattened one-per-row that pairing -- the whole structure of
+        the group -- is invisible, and the reader has to match names up by eye.
+        Consumed by a ``parameter_group_table`` with ``row_width: 2``.
+
+        Returns
+        -------
+        list
+            Ten parameters, as five A/B pairs.
+        """
+        return [
+            self._fAB, self._fBA,
+            self._pA, self._pB,
+            self._pxA, self._pxB,
+            self._pmA, self._pmB,
+            self._alpha_A, self._alpha_B,
+        ]
+
     # TODO: needs docstring
     def update(self):
         """Update the state and emit signals."""
@@ -144,21 +165,22 @@ class PDDEM(FittingParameterGroup):
         """Initialize the instance."""
         super().__init__(**kwargs)
 
-        self._fAB = FittingParameter(name='AtB', value=1.0, model=self.model, decimals=2, fixed=True)
-        self._fBA = FittingParameter(name='BtA', value=0.0, model=self.model, decimals=2, fixed=True)
+        self._fAB = FittingParameter(name='AtB', label_text='A&rarr;B', value=1.0, model=self.model, decimals=2, fixed=True)
+        self._fBA = FittingParameter(name='BtA', label_text='B&rarr;A', value=0.0, model=self.model, decimals=2, fixed=True)
 
-        self._pA = FittingParameter(value=0.0, name='pureA', model=self.model, decimals=2, fixed=True)
-        self._pB = FittingParameter(value=0.0, name='pureB', model=self.model, decimals=2, fixed=True)
+        self._pA = FittingParameter(value=0.0, name='pureA', label_text='pure<sub>A</sub>', model=self.model, decimals=2, fixed=True)
+        self._pB = FittingParameter(value=0.0, name='pureB', label_text='pure<sub>B</sub>', model=self.model, decimals=2, fixed=True)
 
-        self._pxA = FittingParameter(value=0.98, name='xA', model=self.model, decimals=2, fixed=True)
-        self._pxB = FittingParameter(value=0.02, name='xB', model=self.model, decimals=2, fixed=True)
+        self._pxA = FittingParameter(value=0.98, name='xA', label_text='Ex<sub>A</sub>', model=self.model, decimals=2, fixed=True)
+        self._pxB = FittingParameter(value=0.02, name='xB', label_text='Ex<sub>B</sub>', model=self.model, decimals=2, fixed=True)
 
-        self._pmA = FittingParameter(value=0.02, name='mA', model=self.model, decimals=2, fixed=True)
-        self._pmB = FittingParameter(value=0.98, name='mB', model=self.model, decimals=2, fixed=True)
+        self._pmA = FittingParameter(value=0.02, name='mA', label_text='Em<sub>A</sub>', model=self.model, decimals=2, fixed=True)
+        self._pmB = FittingParameter(value=0.98, name='mB', label_text='Em<sub>B</sub>', model=self.model, decimals=2, fixed=True)
 
         self._alpha_A = FittingParameter(
             value=float('nan'),
             name='alpha_A',
+            label_text='&alpha;<sub>A&rarr;B</sub>',
             model=self.model,
             fixed=True,
             is_output=True
@@ -166,6 +188,7 @@ class PDDEM(FittingParameterGroup):
         self._alpha_B = FittingParameter(
             value=float('nan'),
             name='alpha_B',
+            label_text='&alpha;<sub>B&rarr;A</sub>',
             model=self.model,
             fixed=True,
             is_output=True
@@ -184,16 +207,26 @@ class PDDEMModel(FRETModel):
     """
 
     name = "FRET: PDDEM"
+    view_spec_file = "pddem.view.json"
 
     # TODO: needs docstring
     def __init__(self, fit, **kwargs):
         """Initialize the instance."""
         self.fa = Lifetime(name='fa', **kwargs)
         self.fb = Lifetime(name='fb', **kwargs)
+        # ``fb`` is also the donor and is seeded by the FRET/lifetime base, but
+        # ``fa`` is this model's own group: unseeded it has no components, so the
+        # decay of fluorophore A is empty and its editor table has no rows.
+        if len(self.fa) == 0:
+            self.fa.append()
         self.donor = self.fb
         FRETModel.__init__(self, fit, **kwargs)
         self.pddem = PDDEM(name='pddem', **kwargs)
         self.gaussians = Gaussians(name='gaussians', **kwargs)
+        # Seed one distance, as GaussianModel does: a zero-component
+        # distribution has nothing to convolve and its editor table is empty.
+        if len(self.gaussians) == 0:
+            self.gaussians.append_gaussian()
 
     @property
     def distance_distribution(self):

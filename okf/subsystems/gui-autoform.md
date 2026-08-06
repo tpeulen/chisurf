@@ -485,6 +485,85 @@ word in the JSON.
 the same reason: a model with no authored spec should get the rendering every
 authored spec chose, not the one none of them did.
 
+## A fixed parameter set is still a table
+
+`parameter_group_table` originally rendered exactly `target.parameters_all`, one
+per row. Two knobs cover the cases that were otherwise written as columns of
+standalone parameter rows:
+
+- **`parameters_source`** — a method returning the parameters to show, in order. A
+  model that carries its own parameters (a chain model's contour and persistence
+  lengths, a maximum-entropy model's grid settings) has no group to target, and
+  `parameters_all` on the *model* is every nuisance group as well.
+- **`row_width`** (+ `slot_labels`, `row_labels` / `row_labels_source`) — packs
+  parameters side by side, reusing the paired widget the component tables use over
+  a *fixed* list. For a group that is really a **matrix** — PDDEM's quantities ×
+  fluorophore A/B — a flat one-per-row list hides the pairing that is the entire
+  structure of the group.
+
+  Rows must be **named** when they are quantities rather than interchangeable
+  components: the first column otherwise numbers them, and `1..5` beside `A`/`B`
+  says nothing about which row is the transfer rate. `row_labels` are drawn in a
+  table **cell**, so unlike the slot/column headers they are *not* rich text — use
+  the literal character (`α`), not an HTML entity.
+
+Both also mean a section can omit `target`: **no target means the model itself**,
+consistently across bound controls (`_BoundControlMixin._group`) and group
+resolution (`AutoForm._resolve_group`). Before, one honoured it and the other did
+not, so whether a section could address the model depended on its type.
+
+## Columns are dropped by priority as the table narrows
+
+A parameter table is asked to fit anything from a wide fit window to a docked side
+panel, and its columns are **not equally worth the room**. Rather than squeezing
+every column equally (or scrolling the value out of sight), the table drops whole
+groups in priority order, defined by `_ContentSizedTable.RESPONSIVE_TIERS`:
+
+1. **Lo / Hi / Bounds** first — a bound you cannot see is still one click away in
+   the parameter details popup.
+2. **Error** next.
+3. **Fixed** last, for the same reason: the popup carries it too. Two tiers were
+   not enough — a table packing four parameters per row still overflowed a dock
+   once bounds and errors were gone, and clipped its last slot off the edge.
+
+**Name and Value are never dropped.** A value you cannot read is the table failing
+at the one thing it is for.
+
+**Bounds are always wanted; only space hides them.** There is no toggle any more —
+the width check made it redundant, so the `bounds_toggle` spec field and the
+per-panel button are gone. The `columns` whitelist is still honoured as intent, and
+the width check is a *ceiling* on it: it may hide further, never reveal something
+the author hid.
+
+Re-decided on **resize and on show**. The show hook matters because a table inside a
+*collapsed* panel is never resized while hidden, so expanding one revealed a table
+still showing every column and scrolling sideways.
+
+### The measurement is apply-then-ask, not a sum of hints
+
+The tier is chosen by **applying a candidate set and asking the header how wide it
+came out** (`header.length()`). Size hints are not the widths Qt lays out, and
+summing them was wrong in *both* directions:
+
+- a **stretch** column is given more than its hint (its hint is just its longest
+  label), so summing made wide tables look overfull and dropped every optional
+  column at any width;
+- every section is floored at `minimumSectionSize`, and the paired table's value
+  columns switch between stretching and hugging their content, so a narrow table
+  measured as fitting and then scrolled anyway.
+
+In the paired table the column choice and the value-column policy
+(`_fit_value_columns`) **depend on each other** — which columns show sets the width
+left for values, and whether values stretch sets how much room is needed. It is
+settled, chosen, then settled again.
+
+A paired table may still scroll rather than squeeze a number until it elides (`0…`
+is not a value anyone can check), but only once nothing optional is left to drop.
+
+*Testing note:* a headless test must `show()` the editor and use `setFixedWidth` —
+`resize()` alone is refused below a layout's minimum, so the editor never narrows
+and such a test asserts nothing.
+
 ## Runtime `.ui` forms are prototyping-only (migration target: removal)
 
 The ~43 Qt Designer `.ui` files still loaded at runtime via `uic.loadUi`

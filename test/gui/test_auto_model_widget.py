@@ -142,10 +142,10 @@ def test_registered_auto_lifetime_model_wires_live(qapp):
     from chisurf.gui.widgets.models.model_editor import build_model_editor, model_plot_specs
 
     # resolve exactly as main_helper._resolve_class would from the yaml entry
-    path = "chisurf.core.models.tcspc.lifetime.LifetimeNewModel"
+    path = "chisurf.core.models.tcspc.lifetime.LifetimeModel"
     mod, cls = path.rsplit(".", 1)
     model_class = getattr(importlib.import_module(mod), cls)
-    assert model_class.name == "Lifetime (new)"
+    assert model_class.name == "Lifetime"
 
     data = DataCurve(x=np.linspace(0, 25, 256), y=np.ones(256))
     fit = fit_mod.Fit(model_class=model_class, data=data)
@@ -177,38 +177,89 @@ def test_code_view_resolves_model_view_json(qapp, lifetime_model):
     assert resolve_model_view_spec_path(Bare()) is None
 
 
+def _a_still_legacy_widget_model():
+    """Return a registered model class that is still a hand-written Qt widget.
+
+    Discovered from the config rather than named, because the point of the tests
+    below is the MRO walk itself, not any one model: naming a model means
+    repointing the test every time that model is migrated, which is how these
+    two ended up asserting against classes that had become aliases. When the
+    last legacy widget is gone the walk is moot and the tests skip themselves.
+    """
+    import importlib
+    import pathlib
+
+    import yaml
+    from qtpy import QtWidgets
+
+    import chisurf.core.settings as settings
+
+    cfg = pathlib.Path(settings.__file__).parent / "experiment_configs.yaml"
+    data = yaml.safe_load(cfg.read_text())
+    for path in data.get("tcspc", {}).get("models", []):
+        module_name, class_name = path.rsplit(".", 1)
+        try:
+            cls = getattr(importlib.import_module(module_name), class_name)
+        except Exception:
+            continue
+        if not (isinstance(cls, type) and issubclass(cls, QtWidgets.QWidget)):
+            continue
+        # It must be *constructible*: ``EtModelFreeWidget`` is registered and
+        # abstract (no ``update_model``), so picking it in the menu can only fail.
+        # A test that instantiated it would report that pre-existing breakage as a
+        # failure of the MRO walk it is actually checking.
+        if getattr(cls, "__abstractmethods__", None):
+            continue
+        return cls
+    return None
+
+
 def test_code_view_legacy_widget_resolves_to_compute_model(qapp):
     """The "Code" button on a *legacy* model-widget must open the pure compute
-    model source + its view.json, not the GUI widget wrapper (PRD-38 screenshot
-    bug). Verifies the MRO walk used by FitSubWindow.show_code_view/save."""
+    model source + its view.json, not the GUI widget wrapper. Verifies the MRO
+    walk used by FitSubWindow.show_code_view/save.
+
+    The widget is discovered from the config (see
+    :func:`_a_still_legacy_widget_model`) rather than named.
+    """
     import inspect
     import pathlib
 
     import numpy as np
+    from qtpy import QtWidgets
 
     import chisurf.core.fitting.fit as fit_mod
     from chisurf.core.data import DataCurve
-    from chisurf.core.models.tcspc.lifetime import LifetimeMixtureModel
+    from chisurf.core.models.model import Model
     from chisurf.gui.devtools.source_jump import (
         resolve_compute_model_class,
         resolve_model_view_spec_path,
     )
-    from chisurf.gui.widgets.models.tcspc.lifetime import LifetimeMixtureModelWidget
+
+    widget_cls = _a_still_legacy_widget_model()
+    if widget_cls is None:
+        pytest.skip("no hand-written model widgets remain — the MRO walk is moot")
 
     data = DataCurve(x=np.linspace(0, 25, 256), y=np.ones(256))
-    fit = fit_mod.Fit(model_class=LifetimeMixtureModelWidget, data=data)
+    fit = fit_mod.Fit(model_class=widget_cls, data=data)
     m = fit.model
-    assert type(m).__name__ == "LifetimeMixtureModelWidget"
+    assert isinstance(m, QtWidgets.QWidget)
 
     # the most-derived *non-Qt* Model in the MRO is the pure compute model
     compute = resolve_compute_model_class(m)
-    assert compute is LifetimeMixtureModel
+    assert compute is not None
+    assert issubclass(compute, Model)
+    assert not issubclass(compute, QtWidgets.QWidget)
     src = inspect.getsourcefile(compute)
-    assert pathlib.Path(src).match("core/models/tcspc/lifetime.py")
+    assert "core/models" in pathlib.Path(src).as_posix()
 
+    # the view.json path must resolve against the *declaring* class's directory,
+    # not the widget's — an inherited view_spec_file used to look for the file
+    # next to the widget and fail
     target = resolve_model_view_spec_path(m)
-    assert target is not None
-    assert pathlib.Path(target[0]).name == "lifetime.view.json"
+    if target is not None:
+        assert pathlib.Path(target[0]).name.endswith(".view.json")
+        assert pathlib.Path(target[0]).exists()
 
 
 def test_parameter_group_sections_populate(qapp, lifetime_model):
@@ -346,23 +397,45 @@ def test_add_fit_display_path_wires_pure_model(qapp, lifetime_model):
     assert model_editor_widget(Bare()) is None
 
 
-def test_old_lifetime_widget_restored_and_new_is_additive(qapp):
-    """The proven hand-written LifetimeModelWidget is the primary "Lifetime"
-    entry; the framework prototype LifetimeNewModel is a *separate*, additive
-    pure model ("Lifetime (new)") — the old fit is never replaced."""
+def test_retired_lifetime_class_paths_still_resolve_to_the_pure_model(qapp):
+    """The hand-written Lifetime editors are gone; their names remain importable.
+
+    Deleting a registered model class is what broke the model combobox the last
+    time this flip was attempted: a user copy of ``experiment_configs.yaml``
+    *replaces* the bundled model list rather than merging with it, and a pinned
+    class path that no longer resolves drops the entry silently instead of
+    failing. Pickled projects pin paths the same way. So every retired name must
+    still import and must land on the pure model that replaced it.
+    """
     from qtpy import QtWidgets
 
     import chisurf.gui.widgets.models.tcspc as tcspc
-    from chisurf.core.models.tcspc.lifetime import LifetimeModel, LifetimeNewModel
+    from chisurf.core.models.tcspc.lifetime import (
+        LifetimeMixtureModel,
+        LifetimeMixtureNewModel,
+        LifetimeModel,
+        LifetimeNewModel,
+    )
 
-    # old widget is a real Qt widget model, not the pure model
-    assert issubclass(tcspc.LifetimeModelWidget, QtWidgets.QWidget)
-    assert tcspc.LifetimeModelWidget is not LifetimeModel
-    assert tcspc.LifetimeModelWidget.name.strip() == "Lifetime"
+    # the retired widget names are aliases of the pure models now
+    assert tcspc.LifetimeModelWidget is LifetimeModel
+    assert tcspc.LifetimeMixtureModelWidget is LifetimeMixtureModel
 
-    # new prototype is a pure (Qt-free) model with a distinct menu name
-    assert not issubclass(LifetimeNewModel, QtWidgets.QWidget)
-    assert LifetimeNewModel.name == "Lifetime (new)"
+    # so are the retired "(new)" prototype names
+    assert LifetimeNewModel is LifetimeModel
+    assert LifetimeMixtureNewModel is LifetimeMixtureModel
+
+    # and what they resolve to is Qt-free, so AutoForm renders the editor
+    assert not issubclass(LifetimeModel, QtWidgets.QWidget)
+    assert not issubclass(LifetimeMixtureModel, QtWidgets.QWidget)
+
+    # the menu names carry no stray whitespace: add_fit matches them as strings
+    assert LifetimeModel.name == "Lifetime"
+    assert LifetimeMixtureModel.name == "Lifetime mixer"
+
+    # both editors are described by JSON, not by Python
+    assert LifetimeModel.view_spec_file == "lifetime.view.json"
+    assert LifetimeMixtureModel.view_spec_file == "mix_model.view.json"
 
 
 def test_legacy_widget_does_not_inherit_lifetime_plots(qapp):
@@ -375,10 +448,12 @@ def test_legacy_widget_does_not_inherit_lifetime_plots(qapp):
     import chisurf.core.fitting.fit as fit_mod
     from chisurf.core.data import DataCurve
     from chisurf.gui.widgets.models.model_editor import model_plot_specs
-    from chisurf.gui.widgets.models.tcspc import FRETrateModelWidget
+    widget_cls = _a_still_legacy_widget_model()
+    if widget_cls is None:
+        pytest.skip("no hand-written model widgets remain")
 
     data = DataCurve(x=np.linspace(0, 25, 256), y=np.ones(256))
-    fit = fit_mod.Fit(model_class=FRETrateModelWidget, data=data)
+    fit = fit_mod.Fit(model_class=widget_cls, data=data)
     m = fit.model
     assert isinstance(m, QtWidgets.QWidget)
 
@@ -521,35 +596,35 @@ def test_field_tooltip_falls_back_to_parameter_registry(qtbot):
     assert expected[:20] in w.editor.toolTip()
 
 
-# ---- LifetimeMixtureNewModel (AutoForm-based lifetime mixer) ---------------
+# ---- LifetimeMixtureModel (AutoForm-based lifetime mixer) ---------------
 
 @pytest.fixture
 def mixture_model():
-    """Build a LifetimeMixtureNewModel for AutoForm tests."""
+    """Build a LifetimeMixtureModel for AutoForm tests."""
     try:
         import chisurf.core.fitting.fit as fit_mod
         from chisurf.core.data import DataCurve
-        from chisurf.core.models.tcspc.lifetime import LifetimeMixtureNewModel
+        from chisurf.core.models.tcspc.lifetime import LifetimeMixtureModel
     except Exception as exc:
         pytest.skip(f"mixture model import failed: {exc}")
     x = np.linspace(0, 25, 256)
     data = DataCurve(x=x, y=np.ones_like(x))
-    fit = fit_mod.Fit(model_class=LifetimeMixtureNewModel, data=data)
+    fit = fit_mod.Fit(model_class=LifetimeMixtureModel, data=data)
     return fit.model
 
 
 def test_mixture_new_model_is_pure(qapp, mixture_model):
-    """LifetimeMixtureNewModel is Qt-free — AutoForm builds its editor.
+    """LifetimeMixtureModel is Qt-free — AutoForm builds its editor.
 
     The class-level ``name`` is the menu label; the instance's ``name`` is set
-    to the class name by Base.__init__ (same convention as LifetimeNewModel).
+    to the class name by Base.__init__ (same convention as LifetimeModel).
     """
     from qtpy import QtWidgets
 
-    from chisurf.core.models.tcspc.lifetime import LifetimeMixtureNewModel
+    from chisurf.core.models.tcspc.lifetime import LifetimeMixtureModel
     assert not isinstance(mixture_model, QtWidgets.QWidget)
     # class attribute is the menu/registry label
-    assert LifetimeMixtureNewModel.name == "Lifetime mixer (new)"
+    assert LifetimeMixtureModel.name == "Lifetime mixer"
 
 
 def test_mixture_new_model_view_spec_has_fit_mixer(qapp, mixture_model):

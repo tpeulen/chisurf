@@ -193,6 +193,59 @@ looking.
 Screenshots that end up in `docs/guides/` are produced the same way from the real
 widget — see `docs/guides/make_screenshots.py` — never as mockups.
 
+# A migration is proven by a before/after pair
+
+Rendering the *new* widget answers "does this look right". Replacing a
+hand-written widget asks a different question: **was anything lost?** A panel can
+look immaculate and be missing the one control the fit needed. So a migration —
+porting a legacy widget to AutoForm, or any like-for-like replacement — is
+verified as a **pair**.
+
+The loop:
+
+1. **Grab the legacy widget first, before touching the code.** Once it is deleted
+   or aliased away the baseline is unrecoverable. Settle the comparison format
+   first as well: changing what you record invalidates baselines already taken.
+2. Grab the replacement in the **same state**, at the same render width — a
+   different width reflows the layout and confounds the comparison.
+3. Diff the control inventories, read both PNGs, and accept only on parity.
+
+`test/gui/migration_parity.py` provides the pieces: `capture(widget, name, phase)`
+writes `<name>.{before,after}.png`; `control_inventory` extracts the comparable
+content; `compare_inventories` reports what was lost or gained; `layout_tripwire`
+catches gross failures.
+
+**Parity is control inventory, not pixels.** An AutoForm port *deliberately*
+changes layout — a `parameter_group_table` replaces stacked labelled rows,
+because that is the improvement. Any pixel-similarity or SSIM gate is therefore
+either red on every migration or tuned so loose it proves nothing. Compare *what
+controls exist*:
+
+- Enumerate every control in the before-image — each parameter, its fixed/bounds
+  toggles, every button, picker and toggle.
+- Confirm each is present and reachable in the after-image, and that values
+  round-trip identically for the same loaded data.
+- Record deliberate differences ("6 stacked rows → 1 table"). A **missing**
+  control is a blocker.
+
+**Two traps that make a naive diff useless.** Both were hit on the Lifetime
+migration:
+
+- *A name that moved into a table cell reads as lost.* `findChildren(QLabel)`
+  cannot see cell text, so porting to a parameter table reports every parameter
+  as missing. `control_inventory` walks item-view models for exactly this reason —
+  a comparison blind to table content is red on every migration.
+- *Renames masquerade as losses.* `r[MHz]`→`rep`, `Linearize`→`DNL` (the same
+  `correct_dnl` flag, relabelled by an old `.ui`), `curve`→`full`, `...`→`…`,
+  `update`→`🔄`. Text is normalized (rich-text tags, disclosure glyphs, case,
+  whitespace) before diffing, and the remainder still needs reading by a human
+  who knows which control is which.
+
+Keep the mechanical **tripwire** alongside the human read — `layout_tripwire`
+checks non-empty render size, enough visible children, and nothing positioned
+outside its parent. That catches the blank-panel and collapsed-layout class the
+eye skims past; the inventory diff catches the semantic loss.
+
 # Citations
 
 [1] [Project instructions (CLAUDE.md)](/references/claude-md.md)

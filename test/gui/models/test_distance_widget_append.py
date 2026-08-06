@@ -39,7 +39,7 @@ def build_model(qapp):
 
 def test_gaussian_widget_append_keeps_requested_values(build_model):
     """``gaussians.append(mean=..., sigma=..., x=...)`` reaches the parameters."""
-    from chisurf.gui.widgets.models.tcspc.gaussian import GaussianModelWidget
+    from chisurf.gui.widgets.models.tcspc import GaussianModelWidget
 
     model = build_model(GaussianModelWidget)
     while len(model.gaussians) > 0:
@@ -54,13 +54,19 @@ def test_gaussian_widget_append_keeps_requested_values(build_model):
 
 
 def test_gaussian_widget_append_defaults_unchanged(build_model):
-    """The argument-free call the "add component" button makes still adds 50 A / 6 A."""
-    from chisurf.gui.widgets.models.tcspc.gaussian import GaussianModelWidget
+    """The argument-free call the "add component" button makes still adds 50 A / 6 A.
+
+    That entry point is ``append_gaussian()`` on the core group. It used to be an
+    ``append()`` override on the Qt wrapper, which is why the editor's defaults
+    could drift from the model's -- they now live in one place, and the
+    generated editor's add button calls this method by name from the view spec.
+    """
+    from chisurf.gui.widgets.models.tcspc import GaussianModelWidget
 
     model = build_model(GaussianModelWidget)
     while len(model.gaussians) > 0:
         model.gaussians.pop()
-    model.gaussians.append()
+    model.gaussians.append_gaussian()
 
     assert float(model.gaussians.mean[0]) == pytest.approx(50.0)
     assert float(model.gaussians.sigma[0]) == pytest.approx(6.0)
@@ -73,8 +79,8 @@ def test_freshly_built_widgets_carry_the_default_component(build_model):
     order into an ``append`` that ignored every argument, so the scrambled order
     was invisible.
     """
-    from chisurf.gui.widgets.models.tcspc.fret_rate import FRETrateModelWidget
-    from chisurf.gui.widgets.models.tcspc.gaussian import GaussianModelWidget
+    from chisurf.gui.widgets.models.tcspc import FRETrateModelWidget
+    from chisurf.gui.widgets.models.tcspc import GaussianModelWidget
 
     gaussian = build_model(GaussianModelWidget)
     assert float(gaussian.gaussians.mean[0]) == pytest.approx(50.0)
@@ -87,7 +93,7 @@ def test_freshly_built_widgets_carry_the_default_component(build_model):
 def test_gaussian_widget_matches_core_model(build_model):
     """The widget and the core model give the same lifetime spectrum."""
     from chisurf.core.models.tcspc.fret import GaussianModel
-    from chisurf.gui.widgets.models.tcspc.gaussian import GaussianModelWidget
+    from chisurf.gui.widgets.models.tcspc import GaussianModelWidget
 
     def build(model_class):
         model = build_model(model_class)
@@ -106,7 +112,7 @@ def test_gaussian_widget_matches_core_model(build_model):
 
 def test_discrete_distance_widget_append_keeps_requested_values(build_model):
     """``fret_rates.append(mean=..., x=...)`` reaches the parameters."""
-    from chisurf.gui.widgets.models.tcspc.fret_rate import FRETrateModelWidget
+    from chisurf.gui.widgets.models.tcspc import FRETrateModelWidget
 
     model = build_model(FRETrateModelWidget)
     while len(model.fret_rates) > 0:

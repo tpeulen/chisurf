@@ -7,6 +7,7 @@ resolve a model's :class:`~chisurf.core.models.view_spec.ModelView`.
 
 from __future__ import annotations
 
+from . import anisotropy_diagnostics_section  # noqa: F401
 from . import (
     builtin,  # noqa: F401  (side effect: populate the registry)
     chimol_section,  # noqa: F401  (registers the "chimol" section)

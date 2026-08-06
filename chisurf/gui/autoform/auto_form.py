@@ -25,15 +25,26 @@ from .sections.registry import get_section_factory
 #: How many label/field pairs are packed onto one row of the compact field grid.
 FIELDS_PER_ROW = 2
 
+#: Add/remove buttons for a component group.
+#:
+#: Muted rather than saturated, and sized to their text rather than stretched:
+#: these sit above every component table, so a full-width block of strong green
+#: and red repeated down a panel reads as a warning strip and pulls the eye away
+#: from the values, which are what the panel is actually for. The tint is enough
+#: to tell them apart and to say which one destroys something.
 ADD_BUTTON_STYLE = (
-    "QPushButton { background-color: #1f7a1f; color: white; border: 1px solid #166016; "
-    "border-radius: 3px; padding: 2px 8px; }"
-    "QPushButton:hover { background-color: #249124; }"
+    "QToolButton { background-color: #3d5c40; color: #e6efe6; border: 1px solid #4a6b4d; "
+    "border-radius: 3px; padding: 1px 10px; }"
+    "QToolButton:hover { background-color: #496e4d; }"
+    "QToolButton:pressed { background-color: #334d36; }"
+    "QToolButton:disabled { background-color: #444; color: #888; border-color: #555; }"
 )
 REMOVE_BUTTON_STYLE = (
-    "QPushButton { background-color: #a82020; color: white; border: 1px solid #7d1717; "
-    "border-radius: 3px; padding: 2px 8px; }"
-    "QPushButton:hover { background-color: #bf2626; }"
+    "QToolButton { background-color: #5c3d3d; color: #efe6e6; border: 1px solid #6b4a4a; "
+    "border-radius: 3px; padding: 1px 10px; }"
+    "QToolButton:hover { background-color: #6e4949; }"
+    "QToolButton:pressed { background-color: #4d3333; }"
+    "QToolButton:disabled { background-color: #444; color: #888; border-color: #555; }"
 )
 
 
@@ -532,7 +543,16 @@ class AutoForm(QtWidgets.QWidget):
         return None
 
     def _resolve_group(self, target):
+        """Resolve a section's ``target`` to the object it edits.
+
+        A dotted path is walked from the model. **An omitted target means the
+        model itself**, matching the bound-control sections: a model that holds
+        its own parameters (rather than delegating to a nested group) is then
+        addressable without inventing a self-referencing attribute.
+        """
         obj = self.model
+        if not target:
+            return obj
         for part in str(target).split("."):
             if obj is None:
                 break
@@ -650,7 +670,30 @@ class AutoForm(QtWidgets.QWidget):
         if group is None:
             return None
 
-        if section.exclude_source:
+        params_source = getattr(section, "parameters_source", None)
+        if params_source:
+            # An explicit, ordered list. Used where the parameters belong to the
+            # model itself, so ``parameters_all`` would also drag in every
+            # nuisance group.
+            # A method *or* a plain attribute: a parameter list is a natural thing
+            # to hold as a list, and demanding a method meant naming one dropped
+            # the whole table with only a warning to say so.
+            source = getattr(group, params_source, None)
+            if source is None and not hasattr(group, params_source):
+                logging.warning(
+                    f"AutoModelWidget: parameters_source {params_source!r} not found "
+                    f"on {type(group).__name__}"
+                )
+                return None
+            try:
+                params = list(source() if callable(source) else source)
+            except Exception:
+                logging.warning(
+                    f"AutoModelWidget: parameters_source {params_source!r} failed",
+                    exc_info=True,
+                )
+                return None
+        elif section.exclude_source:
             try:
                 excluded = {id(p) for p in getattr(group, section.exclude_source)()}
             except Exception:
@@ -662,13 +705,36 @@ class AutoForm(QtWidgets.QWidget):
         if not params:
             return None
 
-        from chisurf.gui.autoform.sections.parameter_table import ParameterGroupTableWidget
-
-        table = ParameterGroupTableWidget(
-            params=params,
-            section=section,
-            on_change=self._dispatch_fit_update,
+        from chisurf.gui.autoform.sections.parameter_table import (
+            PairedParameterTableWidget,
+            ParameterGroupTableWidget,
         )
+
+        row_width = max(1, int(getattr(section, "row_width", 1) or 1))
+        if row_width > 1:
+            # Same widget the component tables use, over a *fixed* parameter list:
+            # a group whose parameters pair up gets that pairing shown, without the
+            # add/remove buttons a dynamic group would bring to a fixed set.
+            row_labels = list(getattr(section, "row_labels", ()) or ()) or None
+            if row_labels is None:
+                src = getattr(section, "row_labels_source", None)
+                fn = getattr(group, src, None) if src else None
+                if callable(fn):
+                    row_labels = [str(x) for x in fn()]
+            table = PairedParameterTableWidget(
+                params=params,
+                width=row_width,
+                slot_labels=list(getattr(section, "slot_labels", ()) or ()) or None,
+                row_labels=row_labels,
+                section=section,
+                on_change=self._dispatch_fit_update,
+            )
+        else:
+            table = ParameterGroupTableWidget(
+                params=params,
+                section=section,
+                on_change=self._dispatch_fit_update,
+            )
 
         if not getattr(section, "collapsible", True):
             return table
@@ -700,45 +766,6 @@ class AutoForm(QtWidgets.QWidget):
         # format exists to avoid, and it is invisible in a construction test.
         box._section = section
         return box
-
-    def _add_bounds_toggle(self, box):
-        """Add a header toggle for the bounds columns of the panel's tables.
-
-        Shows/hides the Lo / Hi / Bounds columns of every parameter table in
-        ``box``; the columns start hidden to keep the tables narrow (bounds stay
-        editable in the parameter details popup).
-        """
-        from chisurf.gui.autoform.sections.parameter_table import (
-            PairedParameterTableWidget,
-            ParameterGroupTableWidget,
-        )
-
-        tables = box.findChildren(ParameterGroupTableWidget) + box.findChildren(
-            PairedParameterTableWidget
-        )
-        tables = [t for t in tables if t.has_bounds_columns()]
-        if not tables:
-            return
-
-        btn = QtWidgets.QToolButton()
-        btn.setCheckable(True)
-        btn.setChecked(False)
-        btn.setText("bounds")
-        btn.setToolTip(
-            "Show the Lo / Hi / Bounds columns\n"
-            "(bounds are also editable in the parameter details popup)"
-        )
-        btn.setAutoRaise(True)
-        btn.setFocusPolicy(QtCore.Qt.NoFocus)
-        btn.setStyleSheet("QToolButton { font-size: 10px; padding: 0 4px; }")
-
-        def _apply(checked: bool) -> None:
-            for t in tables:
-                t.set_bounds_visible(checked)
-
-        btn.toggled.connect(_apply)
-        _apply(False)  # start hidden
-        box.add_header_widget(btn)
 
     def _build_dock_area(self, section: vs.DockAreaSection):
         """Render a declarative dock area: each child section becomes a dock tab.
@@ -1086,11 +1113,23 @@ class AutoForm(QtWidgets.QWidget):
         # header: add/del + any registered header widgets
         header = QtWidgets.QHBoxLayout()
         header.setContentsMargins(0, 0, 0, 0)
-        header.setSpacing(0)
-        add_btn = QtWidgets.QPushButton(section.add_label)
+        header.setSpacing(4)
+        # Sized to their text and pushed together on the left by the trailing
+        # stretch below. Added to a layout with no stretch they took half the
+        # panel width each, so every component group carried a full-width
+        # green/red bar above its values.
+        add_btn = QtWidgets.QToolButton()
+        add_btn.setText(section.add_label)
+        add_btn.setToolTip("Add a component")
         add_btn.setStyleSheet(ADD_BUTTON_STYLE)
-        del_btn = QtWidgets.QPushButton(section.remove_label)
+        del_btn = QtWidgets.QToolButton()
+        del_btn.setText(section.remove_label)
+        del_btn.setToolTip("Remove the last component")
         del_btn.setStyleSheet(REMOVE_BUTTON_STYLE)
+        for btn in (add_btn, del_btn):
+            btn.setSizePolicy(
+                QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed
+            )
         header.addWidget(add_btn)
         header.addWidget(del_btn)
         for key in section.header_keys:
@@ -1100,6 +1139,7 @@ class AutoForm(QtWidgets.QWidget):
                     header.addWidget(factory(model=self.model, target=section.target))
                 except Exception as exc:  # pragma: no cover - defensive
                     logging.warning(f"AutoModelWidget: header {key!r} failed: {exc}")
+        header.addStretch(1)
         outer.addLayout(header)
 
         def _row_params():

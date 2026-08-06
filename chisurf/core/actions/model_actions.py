@@ -169,6 +169,17 @@ def update_model(fit_index: typing.Optional[int] = None):
         return {}
     return model_macros.update_model(fit=fit)
 
+@action("model.set_background_curve", schema={"idx": int, "curve_name": str})
+def set_model_background_curve(
+    idx: int, curve_name: str, fit_index: typing.Optional[int] = None
+):
+    """Attach a measured background decay to the model."""
+    from chisurf.macros import model as model_macros
+    fit = _resolve_fit(fit_index)
+    if fit is None:
+        return {}
+    return model_macros.set_background_curve(int(idx), str(curve_name), fit=fit)
+
 @action("model.unload_background_curve")
 def unload_model_background_curve(fit_index: typing.Optional[int] = None):
     """Unload the model background curve."""

@@ -321,6 +321,51 @@ class Anisotropy(FittingParameterGroup):
     # --- diagnostics helpers (relocated from AnisotropyWidget, PRD-38 4c) ---
 
     @staticmethod
+    def rt_from_channels(t, vv, vh, g: float, l1: float, l2: float):
+        """Anisotropy decay r(t) from VV/VH channels, uncorrected and corrected.
+
+        The uncorrected form takes the channels as measured; the corrected one first
+        un-mixes them with the depolarisation factors `l1`/`l2` before forming the
+        same ratio, which is what makes the two curves comparable on one plot.
+
+        Pure algebra with no Qt, so the same numbers back the interactive
+        diagnostics view and any headless check of it.
+
+        Parameters
+        ----------
+        t : numpy.ndarray
+            Time axis.
+        vv, vh : numpy.ndarray
+            Parallel and perpendicular channels, background already subtracted.
+        g : float
+            Detection-efficiency ratio of the two channels.
+        l1, l2 : float
+            Depolarisation (mixing) factors of the two channels.
+
+        Returns
+        -------
+        tuple of numpy.ndarray
+            ``(t, r_uncorrected, r_corrected)`` restricted to finite points. The
+            anisotropies are ``None`` when the mixing matrix is singular -- there is
+            no un-mixing to do then, and returning zeros would look like data.
+        """
+        det = (1.0 - l1) * (1.0 - l2) - l1 * l2
+        if abs(det) < 1e-12:
+            return t, None, None
+        den_unc = g * vv + 2.0 * vh
+        with np.errstate(divide='ignore', invalid='ignore'):
+            r_unc = np.where(np.abs(den_unc) > 1e-12, (vv - vh) / den_unc, np.nan)
+        vv_u = ((1.0 - l2) * vv - l1 * vh) / det
+        vh_u = (-l2 * vv + (1.0 - l1) * vh) / det
+        den_cor = g * vv_u + 2.0 * vh_u
+        with np.errstate(divide='ignore', invalid='ignore'):
+            r_cor = np.where(np.abs(den_cor) > 1e-12, (vv_u - vh_u) / den_cor, np.nan)
+        finite = np.isfinite(t) & np.isfinite(r_unc) & np.isfinite(r_cor)
+        if np.any(finite):
+            return t[finite], r_unc[finite], r_cor[finite]
+        return t, r_unc, r_cor
+
+    @staticmethod
     def _shift_trace_to_reference(t: np.ndarray, y: np.ndarray, delta_t: float) -> np.ndarray:
         """Return y shifted by delta_t on axis t using linear interpolation.
 

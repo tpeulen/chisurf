@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 
 import chisurf.core.plot_transforms as plot_transforms
-from chisurf.gui.widgets.models.tcspc.lifetime import LifetimeModelWidgetBase
+from chisurf.core.models.tcspc.lifetime import LifetimeModel
 
 
 class _Curve:
@@ -75,7 +75,7 @@ def _context(model, y, parameters=None, curve_key="data"):
 
 def test_tcspc_total_photon_mode_uses_fit_range_parameter():
     """TCSPC total-photon mode should use optional fit-range denominator."""
-    model = LifetimeModelWidgetBase.__new__(LifetimeModelWidgetBase)
+    model = LifetimeModel.__new__(LifetimeModel)
     context = _context(model, [1.0, 2.0, 3.0, 4.0], {"fit_range_only": True})
 
     result = model._tcspc_total_photons_mode(context)
@@ -85,7 +85,7 @@ def test_tcspc_total_photon_mode_uses_fit_range_parameter():
 
 def test_tcspc_peak_photon_mode_uses_peak_denominator():
     """TCSPC peak-photon mode should divide by the selected peak."""
-    model = LifetimeModelWidgetBase.__new__(LifetimeModelWidgetBase)
+    model = LifetimeModel.__new__(LifetimeModel)
     context = _context(model, [1.0, 2.0, 3.0, 4.0], {"fit_range_only": False})
 
     result = model._tcspc_peak_photons_mode(context)
@@ -95,7 +95,7 @@ def test_tcspc_peak_photon_mode_uses_peak_denominator():
 
 def test_tcspc_donor_reference_mode_supports_scaling_parameter():
     """Donor-reference mode should use the plot-controller scaling option."""
-    model = LifetimeModelWidgetBase.__new__(LifetimeModelWidgetBase)
+    model = LifetimeModel.__new__(LifetimeModel)
 
     class _Reference:
         """Reference model stub."""
@@ -115,7 +115,7 @@ def test_tcspc_donor_reference_mode_supports_scaling_parameter():
 
 def test_tcspc_anisotropy_rt_uses_plot_parameters():
     """Anisotropy r(t) mode should use plot-only correction parameters."""
-    model = LifetimeModelWidgetBase.__new__(LifetimeModelWidgetBase)
+    model = LifetimeModel.__new__(LifetimeModel)
 
     class _Anisotropy:
         """Anisotropy component stub."""

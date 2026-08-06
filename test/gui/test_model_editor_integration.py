@@ -99,7 +99,10 @@ def _make_fit(model_class):
     import chisurf.core.fitting.fit as fit_mod
     from chisurf.core.data import DataCurve
 
-    x = np.linspace(0, 25, 256)
+    # Strictly positive: these are time / lag axes, and an equation containing
+    # log(x) or 1/x is legitimately non-finite at zero -- a fixture starting at 0
+    # made a correct model look broken.
+    x = np.linspace(0.05, 25, 256)
     data = DataCurve(x=x, y=np.exp(-x / 4.0) + 1.0)
     return fit_mod.Fit(model_class=model_class, data=data)
 
@@ -147,24 +150,65 @@ def test_lifetime_pure_model_editor_is_populated_and_computes(qapp):
     # the lifetime components table starts populated (at least one component row)
     assert any(t.table_model.rowCount() >= 1 for t in paired), "no paired component rows"
 
-    # (b3) each bounds_toggle panel puts a "bounds" toggle in its header; the
-    # Lo/Hi/Bounds columns start hidden (to save width) and the toggle reveals them.
+    # (b3) bounds columns are always wanted and hidden only for want of room --
+    # there is no toggle to find them behind. A one-parameter-per-row table shows
+    # them when given the width; squeezed, columns are dropped by priority.
     from qtpy import QtWidgets
 
     from chisurf.gui.autoform.sections.parameter_table import COL_BOUNDS_ON
 
-    toggles = [b for b in editor.findChildren(QtWidgets.QToolButton) if b.text() == "bounds"]
-    assert toggles, "no 'bounds' toggle rendered in panel headers"
     gen = next(
         (t for t in editor.findChildren(ParameterGroupTableWidget) if t.has_bounds_columns()),
         None,
     )
     assert gen is not None, "no bounds-capable parameter table found"
-    assert gen.table_view.isColumnHidden(COL_BOUNDS_ON), "bounds column not hidden by default"
-    gen.set_bounds_visible(True)
-    assert not gen.table_view.isColumnHidden(COL_BOUNDS_ON), "bounds column not shown after toggle"
-    gen.set_bounds_visible(False)
-    assert gen.table_view.isColumnHidden(COL_BOUNDS_ON), "bounds column not re-hidden"
+
+    from chisurf.gui.autoform.sections.parameter_table import COL_ERROR, COL_VALUE
+
+    def _at_width(width: int):
+        """Render the editor at `width` and return the sample table's view.
+
+        The editor is shown (offscreen): a table's viewport has no width until the
+        widget is laid out, so an unshown editor reports nothing to fit columns
+        into and drops them all.
+        """
+        editor.show()
+        editor.setFixedWidth(width)   # resize() is refused below the layout minimum
+        qapp.processEvents()
+        editor.resize(width, max(editor.sizeHint().height(), 600))
+        qapp.processEvents()
+        return gen.table_view
+
+    # Given the room, a one-parameter-per-row table shows its bounds columns...
+    view = _at_width(560)
+    assert not view.isColumnHidden(COL_BOUNDS_ON), (
+        "a single-column table should show the bounds columns when they fit"
+    )
+    # ...and so does a table packing two parameters per row, when it has the room:
+    # nothing hides bounds on principle any more, only for want of space.
+    for paired in editor.findChildren(PairedParameterTableWidget):
+        pv, pm = paired.table_view, paired.table_model
+        if not paired.has_bounds_columns() or pm.rowCount() == 0:
+            continue
+        if pv.horizontalScrollBar().maximum() == 0 and not pv.isColumnHidden(COL_BOUNDS_ON):
+            break   # at least one wide component table shows them: the rule holds
+    # (a narrow one may still have dropped them -- that is the width check, below)
+
+    # Squeezed, the table drops columns by priority rather than truncating
+    # everything equally: bounds first, then the error estimate, and the value is
+    # kept longest because a value you cannot read is the table failing.
+    view = _at_width(210)
+    assert view.isColumnHidden(COL_BOUNDS_ON), "bounds not dropped on a narrow table"
+    assert not view.isColumnHidden(COL_VALUE), "the value column must survive"
+    view = _at_width(150)
+    assert view.isColumnHidden(COL_ERROR), "error not dropped on a very narrow table"
+    assert not view.isColumnHidden(COL_VALUE), "the value column must survive"
+
+    # Widening brings them back, in reverse priority order.
+    view = _at_width(560)
+    assert not view.isColumnHidden(COL_ERROR), "error not restored when it fits again"
+    assert not view.isColumnHidden(COL_BOUNDS_ON), "bounds not restored when they fit again"
+    editor.setMaximumWidth(16777215)  # undo setFixedWidth for later assertions
 
     # (c) every parameter-group section resolves to a group that actually has params
     spec = model.view_spec()
@@ -204,7 +248,7 @@ def test_lifetime_pure_model_editor_is_populated_and_computes(qapp):
 
 
 # --------------------------------------------------------------------------
-# 3. LifetimeMixtureNewModel (AutoForm-based lifetime mixer) — end-to-end
+# 3. LifetimeMixtureModel (AutoForm-based lifetime mixer) — end-to-end
 # --------------------------------------------------------------------------
 def test_lifetime_mixture_new_model_editor_renders_and_fit_mixer_section_exists(qapp):
     """Walk the full add-fit path for the AutoForm-based Lifetime mixer and
@@ -217,8 +261,8 @@ def test_lifetime_mixture_new_model_editor_renders_and_fit_mixer_section_exists(
     from chisurf.gui.autoform.sections.builtin import FitMixerWidget
     from chisurf.gui.widgets.models.model_editor import build_model_editor, model_plot_specs
 
-    model_class = _resolve("chisurf.core.models.tcspc.lifetime.LifetimeMixtureNewModel")
-    assert model_class.name == "Lifetime mixer (new)"
+    model_class = _resolve("chisurf.core.models.tcspc.lifetime.LifetimeMixtureModel")
+    assert model_class.name == "Lifetime mixer"
     fit = _make_fit(model_class)
     model = fit.model
 
@@ -248,3 +292,195 @@ def test_lifetime_mixture_new_model_editor_renders_and_fit_mixer_section_exists(
     model.update()
     y = np.asarray(model.y)
     assert y.size > 0 and np.all(np.isfinite(y)), "model did not compute a finite fallback decay"
+
+
+# --------------------------------------------------------------------------
+# 4. Every JSON-described TCSPC model builds a populated editor and computes
+# --------------------------------------------------------------------------
+#: The TCSPC models whose editors are generated from a co-located view spec.
+#: Extend this when a model is migrated -- it is the cheapest guard against the
+#: whole class of defects the migration kept producing: a section silently
+#: dropped because its factory rejected an option, and a component table that
+#: renders with no rows because nothing seeded a component.
+JSON_DESCRIBED_TCSPC_MODELS = [
+    "chisurf.core.models.tcspc.lifetime.LifetimeModel",
+    "chisurf.core.models.tcspc.lifetime.LifetimeMixtureModel",
+    "chisurf.core.models.tcspc.fret.FRETrateModel",
+    "chisurf.core.models.tcspc.fret.GaussianModel",
+    "chisurf.core.models.tcspc.fret.WormLikeChainModel",
+    "chisurf.core.models.tcspc.fret.SawNuModel",
+    "chisurf.core.models.tcspc.fret.IsingChainModel",
+    "chisurf.core.models.tcspc.pddem.PDDEMModel",
+    "chisurf.core.models.tcspc.maxent.MaxEntLifetimeModel",
+    "chisurf.core.models.tcspc.maxent.MaxEntFRETModel",
+    "chisurf.core.models.tcspc.fret_structure.FRETStructure",
+    "chisurf.core.models.tcspc.parse.tcspc_parse.ParseDecayModel",
+    "chisurf.core.models.fcs.parse.ParseFCSModel",
+    "chisurf.core.models.pcf.parse.ParsePCFModel",
+    "chisurf.core.models.stopped_flow.parse.ParseStoppedFlowModel",
+    "chisurf.core.models.global_model.globalfit.GlobalFitModel",
+    "chisurf.core.models.parameter_transform.model.ParameterTransformModel",
+]
+
+
+@pytest.mark.parametrize("path", JSON_DESCRIBED_TCSPC_MODELS)
+def test_json_described_model_editor_builds_every_section(qapp, path, caplog):
+    """The editor builds with *no* section skipped, and the model computes.
+
+    ``AutoForm`` logs a failure and carries on when a section cannot be built,
+    so a mistyped option leaves an editor that looks right and is missing one
+    control. Three of those shipped during this migration (a ``label`` the
+    parameter factory did not accept, and two component tables with no rows), and
+    all three were invisible to construction tests. This asserts the log is clean
+    and that every declared component group actually has a component.
+    """
+    import logging
+
+    from qtpy import QtWidgets
+
+    from chisurf.core.models import view_spec as vs
+    from chisurf.gui.autoform.sections.parameter_table import COL_VALUE
+    from chisurf.gui.widgets.models.model_editor import (
+        build_model_editor,
+        model_plot_specs,
+    )
+
+    model_class = _resolve(path)
+    assert model_class.view_spec_file, f"{path} declares no view_spec_file"
+
+    fit = _make_fit(model_class)
+    model = fit.model
+    assert not isinstance(model, QtWidgets.QWidget), "expected a Qt-free model"
+
+    with caplog.at_level(logging.ERROR):
+        editor = build_model_editor(model)
+    skipped = [r.message for r in caplog.records if "failed to build section" in r.message]
+    assert not skipped, "sections were silently dropped:\n" + "\n".join(skipped)
+
+    assert editor is not None
+    QtWidgets.QVBoxLayout().addWidget(editor)  # must not raise
+
+    spec = model.view_spec()
+
+    # every parameter-group target resolves to something with parameters to show.
+    # An omitted target means the model itself (the renderer's convention), and a
+    # `parameters_source` names the parameters explicitly instead of taking
+    # `parameters_all` -- which is what a model carrying its own parameters needs,
+    # since `parameters_all` there is every nuisance group too.
+    for section in spec.flat_sections():
+        if isinstance(section, (vs.ParameterGroupSection, vs.ParameterGroupTableSection)):
+            group = model if not section.target else getattr(model, section.target, None)
+            assert group is not None, f"{path}: no group {section.target!r}"
+            source = getattr(section, "parameters_source", None)
+            if source:
+                # A method *or* a plain attribute: a parameter list is a natural
+                # thing to hold as a list, and the renderer accepts either.
+                value = getattr(group, source, None)
+                assert value is not None or hasattr(group, source), (
+                    f"{path}: parameters_source {source!r} not found on "
+                    f"{type(group).__name__}"
+                )
+                resolved = list(value() if callable(value) else value)
+                assert resolved, f"{path}: parameters_source {source!r} is empty"
+                continue
+            if hasattr(group, "find_parameters") and not list(group.parameters_all):
+                group.find_parameters()
+            assert list(group.parameters_all), f"{path}: group {section.target!r} is empty"
+
+    # every dynamic (component) group starts with at least one component, or its
+    # table renders as bare "Value / Fixed / Error" columns with no rows
+    for section in spec.flat_sections():
+        if isinstance(section, vs.DynamicGroupSection) and section.min_rows:
+            group = getattr(model, section.target, None)
+            assert group is not None, f"{path}: no group {section.target!r}"
+            assert len(group) >= section.min_rows, (
+                f"{path}: {section.target!r} has {len(group)} components, "
+                f"min_rows={section.min_rows} — the editor table will be empty"
+            )
+
+    assert model_plot_specs(model), f"{path}: no plot specs resolved"
+    model.update()
+    if not hasattr(model, "y"):
+        # Not every fitting model is a *curve*: a parameter transform maps
+        # parameters to parameters and has no y at all. It still has to build an
+        # editor and update without raising, which is what was checked above.
+        return
+    y = np.asarray(model.y)
+    assert np.all(np.isfinite(y)), f"{path}: computed a non-finite curve"
+    # A *container* model (a global fit) has nothing of its own to compute until
+    # member fits are added, so an empty curve is correct there and only there.
+    if y.size == 0:
+        assert not list(getattr(model, "fits", []) or []), (
+            f"{path}: has member fits but computed nothing"
+        )
+    else:
+        assert y.size > 0
+
+    # Squeezed into a docked panel, every table must still fit by dropping columns
+    # in priority order -- and every *value* column has to survive, because a value
+    # you cannot read is the table failing at the one thing it is for. This is
+    # checked here rather than against one model because the tables that overflow
+    # are the wide ones (PDDEM's A/B pairs, the Gaussian distances' four slots),
+    # and no single model has them all.
+    from chisurf.gui.autoform.sections.parameter_table import (
+        SLOT_COLUMN_META,
+        PairedParameterTableWidget,
+        ParameterGroupTableWidget,
+    )
+
+    editor.show()
+    editor.setFixedWidth(230)  # resize() alone is refused below the layout minimum
+    qapp.processEvents()
+    editor.resize(230, max(editor.sizeHint().height(), 600))
+    qapp.processEvents()
+
+    def _scrolls(view) -> bool:
+        """Whether columns overflow the viewport.
+
+        The visible outcome, not a sum of size hints: a *stretch* column is
+        squeezed below its hint by design, so adding hints up reports an overflow
+        the user never sees. A horizontal scrollbar with something to scroll is
+        the honest signal that columns did not fit.
+        """
+        return view.horizontalScrollBar().maximum() > 0
+
+    for table in editor.findChildren(ParameterGroupTableWidget):
+        view = table.table_view
+        if view.viewport().width() < 120 or table.table_model.rowCount() == 0:
+            continue  # not laid out (a collapsed panel), so nothing was decided
+        assert not view.isColumnHidden(COL_VALUE), f"{path}: value column dropped"
+        assert not _scrolls(view), (
+            f"{path}: a single-column table overflows its "
+            f"{view.viewport().width()}px viewport"
+        )
+
+    for table in editor.findChildren(PairedParameterTableWidget):
+        pm, view = table.table_model, table.table_view
+        if view.viewport().width() < 120 or pm.rowCount() == 0:
+            continue
+        slots_with_value = {
+            pm._slot(c)[0]
+            for c in range(pm.columnCount())
+            if not view.isColumnHidden(c)
+            and pm._slot(c) is not None
+            and SLOT_COLUMN_META[pm._slot(c)[1]][0] == "value"
+        }
+        assert len(slots_with_value) == pm.width, (
+            f"{path}: a {pm.width}-slot table dropped a value column "
+            f"(kept {sorted(slots_with_value)})"
+        )
+        # A paired table may scroll rather than squeeze a number until it elides
+        # (see ``_fit_value_columns``) -- showing "0…" instead of a value defeats
+        # the column. But it must only reach for the scrollbar once it has nothing
+        # optional left to drop, so an overflowing table has no low-priority
+        # column still taking room.
+        if _scrolls(view):
+            leftovers = {
+                SLOT_COLUMN_META[pm._slot(c)[1]][0]
+                for c in range(pm.columnCount())
+                if not view.isColumnHidden(c) and pm._slot(c) is not None
+            } & {"bounds_lo", "bounds_hi", "bounds_on", "error", "fixed"}
+            assert not leftovers, (
+                f"{path}: a {pm.width}-slot table scrolls while still showing "
+                f"{sorted(leftovers)} — those should have been dropped first"
+            )

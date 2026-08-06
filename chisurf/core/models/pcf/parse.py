@@ -4,6 +4,9 @@ import chisurf.core.models.parse as parse_module
 
 
 class ParsePCFModel(parse_module.ParseModel):
+
+    catalogue_file = "models.yaml"
+    view_spec_file = "parse.view.json"
     """Parse model for pair-correlation-function (PCF) distribution fits.
 
     Extends the generic :class:`~chisurf.core.models.parse.ParseModel` for the

@@ -364,6 +364,7 @@ class StaticFRETLine(
         """
         super().__init__(**kwargs)
         self.model = chisurf.core.models.tcspc.fret.GaussianModel
+        self.model.gaussians.clear()
         self.model.gaussians.append(55.0, 10, 1.0)
         self.model.find_parameters()
         self.model.parameter_dict['xDOnly'].value = 0.0
@@ -514,6 +515,7 @@ class DynamicFRETLine(FRETLineGenerator):
             **kwargs
         )
         self.model = chisurf.core.models.tcspc.fret.GaussianModel
+        self.model.gaussians.clear()
         self.model.gaussians.append(distance_1, sigma_1, 1.0)
         self.model.gaussians.append(distance_2, sigma_2, 1.0)
         self.model.find_parameters()
