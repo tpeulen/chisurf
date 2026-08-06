@@ -6,7 +6,6 @@
       "title": "Distance populations",
       "collapsible": true,
       "collapsed": false,
-      "bounds_toggle": true,
       "description": "Trivariate-Gaussian species over the three dye-pair distances. One row per species: amplitude, then mean and width for each pair.",
       "sections": [
         {
@@ -27,7 +26,6 @@
       "title": "Distance correlations",
       "collapsible": true,
       "collapsed": false,
-      "bounds_toggle": true,
       "description": "Correlation between the three distances within a species — the quantity three-colour FRET exists to measure. Free these to ask whether the distances move together; fixed at zero they are three independent widths.",
       "sections": [
         {
@@ -107,7 +105,6 @@
       "title": "Instrument / corrections",
       "collapsible": true,
       "collapsed": true,
-      "bounds_toggle": true,
       "description": "Foerster radii, spectral crosstalk, relative detection efficiencies, direct excitation and per-channel background. These become the excitation and emission probability matrices the model composes.",
       "sections": [
         {
