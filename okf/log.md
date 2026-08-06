@@ -2,6 +2,12 @@
 
 ## 2026-08-06
 
+* **The five `traj` tools have a topology picker, so a DCD can be driven from the window** ([PRD-80](prds/prd-80.md)). The ported view models took a `topology_filename` but nothing set it — the tools worked from a script and from tests, and were unusable interactively with the formats they had just been moved onto. `traj_align`, `traj_join`, `traj_rotate_translate`, `traj_remove_clashes` and `traj_save_topology` now each carry a **Topology** row beside the trajectory one: browse, drag-drop, and a placeholder that says why it is needed. The file dialogs offer `.dcd`/`.xtc` rather than `.h5`, and the save dialogs write DCD.
+  **Two defects the tests could not see, and the screenshots did.** The suite was green both times. (1) In four of the five, `set_topology` updated the log but **not the field** — the model-event handler refreshed only the trajectory edit, so the path appeared in the log while the box still showed its placeholder. (2) In `traj_join` the row was inserted into `_build_row`, which runs **once per trajectory**, so the panel grew *two* Topology rows — the first stale, the second live. Neither is the kind of thing an assertion catches; both are obvious in an image.
+  That is the whole argument for the screenshot rule, and this is the second time this session it has paid: the widget renders, the tests pass, and the thing is still wrong.
+
+## 2026-08-06
+
 * **`pytables` is gone: the MEM sampler's posterior is a `.npz`** ([PRD-80](prds/prd-80.md)). Its only remaining use was writing seven float arrays and eight scalars, which is exactly what a compressed `.npz` is for — nothing read those files incrementally, and the whole posterior is loaded at once anyway, so HDF5 bought a dependency and nothing else. The GUI's output is `sampling.npz` now rather than `sampling.h5`.
   Dropped from `pixi.toml`, `pyproject.toml`, the recipe, the py314 settings manifest and `setup_runtime.sh`, and added to the guardrail — with `pytables` registered as an alias of the `tables` import name, the same trap `pyarrow`/`pyarrow-core` sprang earlier.
   **That closes the dependency work: eight removed this session** — `tifffile`, `imageio`, `imagecodecs`, `pyarrow`, `boost-histogram`, `numexpr`, `mdtraj`, `pytables`. Each replacement was checked against the thing it replaced *before* the removal, with committed fixtures so the comparisons outlive it, and the four that had a performance story are all faster: DCD 1.1–3.4×, XTC 1.8–2.2×, the quenching kernel 22×, histograms via the TTTR library.

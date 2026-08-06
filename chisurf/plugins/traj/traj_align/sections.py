@@ -1,6 +1,6 @@
 """Custom AutoForm section for the Align-Trajectory tool.
 
-The trajectory picker (``…`` browse + drag-drop, H5 filter) and the
+The trajectory and topology pickers (``…`` browse + drag-drop) and the
 ``💾 Save aligned…`` action button are a bespoke Qt widget registered here; the
 atom selection, stride and log are plain built-in sections in
 ``align_trajectory.view.json``. The widget owns only Qt concerns and drives the
@@ -46,32 +46,59 @@ class _IoSection(QtWidgets.QWidget):
         row.addWidget(QtWidgets.QLabel("Trajectory"))
         self._edit = QtWidgets.QLineEdit()
         self._edit.setReadOnly(True)
-        self._edit.setPlaceholderText("Drop an H5 trajectory here or browse…")
+        self._edit.setPlaceholderText("Drop a DCD or XTC trajectory here or browse…")
         self._edit.setText(self._model.trajectory_filename)
         row.addWidget(self._edit, 1)
         browse = QtWidgets.QToolButton()
         browse.setText("…")
-        browse.setToolTip("Open an H5 trajectory file.")
+        browse.setToolTip("Open a DCD or XTC trajectory.")
         browse.clicked.connect(self._browse_trajectory)
         row.addWidget(browse)
         layout.addLayout(row)
 
+        # DCD and XTC hold coordinates and nothing else, so the atom names have
+        # to come from a structure file. Without this row the tool could be
+        # driven from a script but not from the window.
+        top_row = QtWidgets.QHBoxLayout()
+        top_row.setContentsMargins(0, 0, 0, 0)
+        top_row.setSpacing(2)
+        top_row.addWidget(QtWidgets.QLabel("Topology"))
+        self._top_edit = QtWidgets.QLineEdit()
+        self._top_edit.setReadOnly(True)
+        self._top_edit.setPlaceholderText("PDB naming the atoms — required for DCD/XTC")
+        self._top_edit.setText(self._model.topology_filename)
+        top_row.addWidget(self._top_edit, 1)
+        top_browse = QtWidgets.QToolButton()
+        top_browse.setText("…")
+        top_browse.setToolTip(
+            "Open the PDB that names the atoms. DCD and XTC store coordinates "
+            "only, so this is required for them."
+        )
+        top_browse.clicked.connect(self._browse_topology)
+        top_row.addWidget(top_browse)
+        layout.addLayout(top_row)
+
         self._save_btn = QtWidgets.QToolButton()
         self._save_btn.setText(f"{Glyphs.SAVE} Save aligned…")
         self._save_btn.setToolTip(
-            "Superpose every frame onto the first frame and write a new H5 trajectory."
+            "Superpose every frame onto the first frame and write a new DCD."
         )
         self._save_btn.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
         self._save_btn.clicked.connect(self._save_aligned)
         layout.addWidget(self._save_btn)
 
         self._enable_file_drop(self._edit, self._load_trajectory)
+        self._enable_file_drop(self._top_edit, self._load_topology)
         self._model.add_observer(self._on_model_event)
 
     # ── model wiring ────────────────────────────────────────────────────
     def _on_model_event(self, event: str) -> None:
-        if event == "loaded" and self._edit.text() != self._model.trajectory_filename:
+        if event != "loaded":
+            return
+        if self._edit.text() != self._model.trajectory_filename:
             self._edit.setText(self._model.trajectory_filename)
+        if self._top_edit.text() != self._model.topology_filename:
+            self._top_edit.setText(self._model.topology_filename)
 
     def _refresh_host_form(self) -> None:
         """Walk up to the hosting AutoForm and refresh its widgets (log panel)."""
@@ -90,9 +117,26 @@ class _IoSection(QtWidgets.QWidget):
     def _browse_trajectory(self) -> None:
         import chisurf.gui.widgets
 
-        filename = chisurf.gui.widgets.get_filename("Open H5-Model file", "H5-files (*.h5)")
+        filename = chisurf.gui.widgets.get_filename(
+            "Open trajectory", "Trajectories (*.dcd *.xtc)"
+        )
         if filename:
             self._load_trajectory(filename)
+
+    def _browse_topology(self) -> None:
+        import chisurf.gui.widgets
+
+        filename = chisurf.gui.widgets.get_filename(
+            "Open topology", "Structures (*.pdb *.cif *.ent)"
+        )
+        if filename:
+            self._load_topology(filename)
+
+    def _load_topology(self, path: str) -> None:
+        if not path or not pathlib.Path(path).is_file():
+            return
+        self._model.set_topology(path)
+        self._refresh_host_form()
 
     def _load_trajectory(self, path: str) -> None:
         if not path or not pathlib.Path(path).is_file():
@@ -105,7 +149,7 @@ class _IoSection(QtWidgets.QWidget):
             dialogs.information(self, "No trajectory", "Open a trajectory first.")
             return
         target, _ = QtWidgets.QFileDialog.getSaveFileName(
-            self, "Save H5-Model file", "", "H5-files (*.h5)"
+            self, "Save aligned trajectory", "", "DCD trajectory (*.dcd)"
         )
         if not target:
             self._model.append_log("Save cancelled")

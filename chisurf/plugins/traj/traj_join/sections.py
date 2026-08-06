@@ -55,6 +55,28 @@ class _IoSection(QtWidgets.QWidget):
             self._load_trajectory_2,
         )
 
+        # DCD and XTC hold coordinates and nothing else, so the atom names have
+        # to come from a structure file. Without this row the tool could be
+        # driven from a script but not from the window.
+        _top_row = QtWidgets.QHBoxLayout()
+        _top_row.setContentsMargins(0, 0, 0, 0)
+        _top_row.setSpacing(2)
+        _top_row.addWidget(QtWidgets.QLabel("Topology"))
+        self._top_edit = QtWidgets.QLineEdit()
+        self._top_edit.setReadOnly(True)
+        self._top_edit.setPlaceholderText("PDB naming the atoms — required for DCD/XTC")
+        self._top_edit.setText(self._model.topology_filename)
+        _top_row.addWidget(self._top_edit, 1)
+        _top_browse = QtWidgets.QToolButton()
+        _top_browse.setText("…")
+        _top_browse.setToolTip(
+            "Open the PDB that names the atoms. DCD and XTC store coordinates "
+            "only, so this is required for them."
+        )
+        _top_browse.clicked.connect(self._browse_topology)
+        _top_row.addWidget(_top_browse)
+        layout.addLayout(_top_row)
+
         self._save_btn = QtWidgets.QToolButton()
         self._save_btn.setText(f"{Glyphs.SAVE} Save joined…")
         self._save_btn.setToolTip(
@@ -74,7 +96,7 @@ class _IoSection(QtWidgets.QWidget):
         row.addWidget(QtWidgets.QLabel(label))
         edit = QtWidgets.QLineEdit()
         edit.setReadOnly(True)
-        edit.setPlaceholderText("Drop an H5 trajectory here or browse…")
+        edit.setPlaceholderText("Drop a DCD or XTC trajectory here or browse…")
         edit.setText(initial)
         row.addWidget(edit, 1)
         browse = QtWidgets.QToolButton()
@@ -83,6 +105,7 @@ class _IoSection(QtWidgets.QWidget):
         browse.clicked.connect(on_browse)
         row.addWidget(browse)
         layout.addLayout(row)
+
         self._enable_file_drop(edit, on_drop)
         return edit
 
@@ -95,6 +118,8 @@ class _IoSection(QtWidgets.QWidget):
         if self._edit_2.text() != self._model.trajectory_filename_2:
             self._edit_2.setText(self._model.trajectory_filename_2)
 
+        if event == "loaded" and self._top_edit.text() != self._model.topology_filename:
+            self._top_edit.setText(self._model.topology_filename)
     def _refresh_host_form(self) -> None:
         """Walk up to the hosting AutoForm and refresh its widgets (log panel)."""
         widget = self.parentWidget()
@@ -112,14 +137,18 @@ class _IoSection(QtWidgets.QWidget):
     def _browse_trajectory_1(self) -> None:
         import chisurf.gui.widgets
 
-        filename = chisurf.gui.widgets.get_filename("Open H5-Model file", "H5-files (*.h5)")
+        filename = chisurf.gui.widgets.get_filename(
+            "Open trajectory", "Trajectories (*.dcd *.xtc)"
+        )
         if filename:
             self._load_trajectory_1(filename)
 
     def _browse_trajectory_2(self) -> None:
         import chisurf.gui.widgets
 
-        filename = chisurf.gui.widgets.get_filename("Open H5-Model file", "H5-files (*.h5)")
+        filename = chisurf.gui.widgets.get_filename(
+            "Open trajectory", "Trajectories (*.dcd *.xtc)"
+        )
         if filename:
             self._load_trajectory_2(filename)
 
@@ -142,7 +171,7 @@ class _IoSection(QtWidgets.QWidget):
             )
             return
         target, _ = QtWidgets.QFileDialog.getSaveFileName(
-            self, "Save H5-Model file", "", "H5-files (*.h5)"
+            self, "Save trajectory", "", "DCD trajectory (*.dcd)"
         )
         if not target:
             self._model.append_log("Join cancelled")
@@ -155,6 +184,24 @@ class _IoSection(QtWidgets.QWidget):
         self._refresh_host_form()
 
     # ── drag-drop ───────────────────────────────────────────────────────
+
+    def _browse_topology(self) -> None:
+        import chisurf.gui.widgets
+
+        filename = chisurf.gui.widgets.get_filename(
+            "Open topology", "Structures (*.pdb *.cif *.ent)"
+        )
+        if filename:
+            self._load_topology(filename)
+
+    def _load_topology(self, path: str) -> None:
+        import pathlib as _pathlib
+
+        if not path or not _pathlib.Path(path).is_file():
+            return
+        self._model.set_topology(path)
+        self._refresh_host_form()
+
     @staticmethod
     def _enable_file_drop(line_edit: QtWidgets.QLineEdit, on_file) -> None:
         """Enable dropping a single existing file onto *line_edit* → ``on_file(path)``."""
