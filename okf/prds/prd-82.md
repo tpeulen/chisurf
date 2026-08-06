@@ -96,14 +96,28 @@ invisible while the frame writer was in the way:
   in this tree ever read*, so ndX showed `Source File` and `First File` as
   integers. A dictionary column carries its labels, so they are file names now.
 
-One measurement to re-derive rather than trust, and the trap in it:
+**Removing pandas from the code is now an explicit goal, and it is tracked.**
+`test/pandas_import_allowlist.txt` is a shrinking list of the non-test files that
+still import it — **46 when the tracker was written**, 40 after the first pass —
+and `test/test_pandas_seam.py` fails on a new importer *and* on a stale entry.
+Tests are excluded on purpose: a test building a fixture frame is interop, and
+counting those would mean the number could never honestly reach zero.
 
-* **The dependency saving is one package, not a stack.** Solve it, do not assume
-  it: `conda create --dry-run --json -c conda-forge -n probe <recipe run: list>`
-  with and without `pandas` is 256 → 255. The trap is measuring in the dev env,
-  where `pdb2pqr` requires `pandas >=1.0` and it never leaves at all. **Removing
-  pandas remains a non-goal**; what stage 2 achieved is that the *optional HDF5*
-  package is genuinely unnecessary for anything this writes.
+What that does **not** do, stated because it is easy to measure wrong: it does
+not remove the package from a solved environment. The *conda* `pdb2pqr` requires
+`pandas >=1.0` outright, and `seaborn-base` and `statsmodels` require it too. Its
+*PyPI* metadata has pandas only as a `test` extra, which is the trap — an
+earlier version of this note said "it does not leave at all" without recording
+which metadata it had read. Re-derive with
+`conda create --dry-run --json -c conda-forge -n probe <recipe run: list>` with
+and without `pandas` (256 → 255 when last measured). What the migration wins is
+that **ChiSurf's own tables stop being frames**, which is where the memory, the
+dtypes and the missing values are, and which is worth having whether or not the
+package is installed.
+
+`store_from_rows` was added for the shape that makes a frame appear in the first
+place — a sequence of row mappings, as an API returns. First-seen column order,
+and a key some rows lack is masked rather than filled.
 
 # Summary
 
