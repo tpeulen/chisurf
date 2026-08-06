@@ -114,6 +114,24 @@ finding generalises: a registered setting with a live config path and a passing
 test still had no effect at all. Before registering more names, **count what the
 setting produces**, not whether it stores.
 
+**`valence` is blocked, and on data rather than on drawing.** It is high on the
+ranking and the algorithm is straightforward -- `RepValence` in
+`layer2/RepWireBond.cpp` builds a local frame from the bond direction and a
+*prioritized third atom* for planarity, then draws the centre line plus one
+inset parallel line (`valence_mode 1`, "fancy"), or two symmetric lines when
+that mode is off; a triple doubles the offset and keeps the centre. All
+transcribable. What stops it is that **chimol has no bond orders**:
+`MolView.bond_order` returns 1 for everything except a bond made by hand with
+the `bond` command, because bonds are inferred from distance and a distance
+carries no order. So `set valence, on` would leave every deposited structure
+looking exactly as it does now, which is the "accepted and inert" failure this
+table exists to prevent.
+
+Unblocking it means reading orders from somewhere: mmCIF's `chem_comp_bond` has
+them for ligands (which is where a double bond is actually wanted), a PDB's
+`CONECT` does not, and perception from geometry is the third option. That is a
+reader change, not a settings change -- do it first, then `valence` is small.
+
 **Register a name only if code reads it** — a setting that reads nothing is what
 the settings table exists to prevent, and it is why the three cartoon settings
 above are absent rather than accepted-and-ignored.
@@ -179,10 +197,13 @@ so is **speed**: `ray` was 143–651× slower than it needed to be.
 box is what exposed that `symexp` had never worked: see *the mates were all in
 the same place* below.
 
-**A note for whoever needs PyMOL's source:** the `junk/pymol-open-source`
-checkout -- this file's stated authority on behaviour -- was removed during the
-2026-08-06 session. `junk/clone.sh` restores it. Nothing here should be
-transcribed from memory; the entries that were, were wrong.
+**A note for whoever needs PyMOL's source:** `junk/pymol-open-source` is the
+authority on behaviour and **is present**. A 2026-08-06 session briefly found it
+missing and recorded that it had been deleted -- it had not; the directory was
+unreadable for a few minutes, most likely while another instance re-cloned it,
+and `clone.sh` skips what is already there. `junk/clone.sh` restores it if it
+ever really goes. Nothing here should be transcribed from memory; the entries
+that were, were wrong.
 
 **4. The other `distance` modes.** 0–4 are done; 5–7 (π–π, π–cation), 9
 (halogen bonds) and 10 (salt bridges) are not, and the **A ▸ find** submenu

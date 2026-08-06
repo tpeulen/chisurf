@@ -2,6 +2,12 @@
 
 ## 2026-08-06
 
+* **Correction, and why `valence` is not next** ([pymol parity](plugins/pymol-parity.md)).
+
+  **The PyMOL checkout was never deleted.** The previous entry recorded that `junk/pymol-open-source` -- the tracker's stated authority on behaviour -- had been removed during this session. It had not: the directory was unreadable for a few minutes (most likely while another instance re-cloned it, and `clone.sh` skips what is already there) and is present and complete, `layer2/`, `modules/pymol/util.py` and all 819 records of `SettingInfo.h`. Corrected in the tracker, because a false statement in the durable layer is worse than no statement: the next session would have re-cloned 132 MB or, worse, transcribed from memory.
+
+  **`valence` is blocked on data, not on drawing.** It is high on the appearance ranking and the algorithm transcribes cleanly -- `RepValence` builds a local frame from the bond direction and a *prioritized third atom* for planarity, then draws the centre line plus one inset parallel line (`valence_mode 1`), or two symmetric lines when that mode is off, with a triple doubling the offset. What stops it is that **chimol has no bond orders**: `bond_order` returns 1 for everything except a bond made by hand with the `bond` command, because bonds are inferred from distance and a distance carries no order. `set valence, on` would therefore leave every deposited structure looking exactly as it does -- the accepted-and-inert failure the settings table exists to prevent. Unblocking it is a *reader* change: mmCIF's `chem_comp_bond` carries orders for ligands, a PDB's `CONECT` does not, and perception from geometry is the third option.
+
 * **Literature: one bibliography, one page, every citation a link** ([documentation browser](subsystems/documentation-browser.md)).
 
   A paper was written out wherever it was needed — sometimes with a DOI, usually without, in a different order each time, and never in a form a reader could click. Two pages citing the same work said it differently, and nothing could list what the documentation rests on. Now **`docs/references/bibliography.yaml` is the single source** for all 69 works, a page cites one with `` {cite}`key` ``, and a **Literature** section (in the help tree and in the published site) lists every entry. The role is expanded by the *same module* in both renderers — a Sphinx role in `docs/_ext/cite_role.py`, `api/bibliography.py` in the browser — so a reference reads and links identically in the application and on the website, and there is one place to correct it.
