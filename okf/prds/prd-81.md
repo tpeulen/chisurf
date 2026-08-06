@@ -4,7 +4,7 @@ prd: "81"
 title: "PRD-81: chinsole — one console seam, and the end of qtconsole"
 description: ChiSurf had three hand-rolled consoles and a Jupyter kernel running inside the GUI process to provide a text box that runs Python. chinsole is the in-tree replacement — a Qt-free interpreter under a Qt widget — and the seam every console in the application goes through.
 status: in-progress
-phase: "cutover done; chimol and code-editor ports open"
+phase: "all three consoles ported; pager and user guide open"
 resource: chisurf/gui/chinsole/
 tags: [prd, gui, console, chinsole, dependencies, qtconsole, chimol, code-editor]
 timestamp: '2026-08-06T00:00:00Z'
@@ -13,8 +13,8 @@ timestamp: '2026-08-06T00:00:00Z'
 # Where to pick this up
 
 1. **The parity bar, and how to re-derive it.** `pytest test/console/ -q` is the
-   definition of "at least as good as qtconsole" — 71 tests, no `QApplication`
-   involved. *Trap*: a console suite that only checks `execute("1+1")` passes on
+   definition of "at least as good as qtconsole" — 98 tests; the engine half
+   needs no `QApplication` at all. *Trap*: a console suite that only checks `execute("1+1")` passes on
    a badly broken engine. The load-bearing cases are the compound-statement rule
    in `check_complete` (without it, Enter after the first line of a `for` body
    *runs* the loop instead of continuing it) and the traceback frame trimming.
@@ -27,25 +27,20 @@ timestamp: '2026-08-06T00:00:00Z'
    the Notebooks ribbon tab, `~/notebooks`), which is a **user-visible feature
    removal** and was deliberately out of scope. `pygments` is now imported by
    nothing in the tree, so its declaration goes with that same change.
-3. **chimol's `CommandDock` and the code editor's output panel are not yet
-   ported.** The widget supports them today — `ConsoleRole.COMMAND` and
-   `ConsoleRole.OUTPUT` exist and the `CommandDispatcher` protocol is defined —
-   but `chisurf/plugins/chimol/chimol/app/command_dock.py` (453 lines) is still
-   live and the editor still has its own `_Tee`. Two things to know before
-   starting: chimol's completion tables exist **twice** (`command_dock.py:64-116`
-   and `cli.py:63-155`) and have already drifted — `cli.py` is missing six
-   `metaball_*` entries — so they must converge into one Qt-free
-   `chimol/cmd/completion.py` first; and `command_dock.py`'s
-   `_resolve_history_path` carries a legacy fallback
-   (`molview_cmd_history.txt` → `chimol_cmd_history.txt`) which must move with
-   it or users silently lose their command history.
-4. **The code-editor port is gated on a defect.** `run_endpoint` is missing from
-   `EDITOR_SETTINGS_KEYS` (`chisurf/plugins/core/code_editor/settings.py`), so
-   the endpoint dropdown is inert and the "IPython" path *has never actually
-   run*. Fix that first or the port cannot be verified. While there: the panel's
-   `_exec_on_main_thread` only emits captured output from its `finally` block, so
-   a long script shows nothing until it finishes — routing it through an
-   `OUTPUT`-role console fixes that by construction.
+3. **All three consoles are ported** (2026-08-06). `command_dock.py` is
+   deleted, the editor's `_Tee` is gone, and both `run_endpoint` and
+   *Macro ▸ Record* are fixed. What is worth knowing if you touch them: the
+   **role decides the chrome**, and getting that wrong is invisible to
+   assertions — `clear_screen` redrew a prompt unconditionally (a stray
+   `In []:` at the head of the editor's output panel on every run) and the
+   `COMMAND` role prompted in the output pane *above* the line edit where you
+   actually type. Both were found by reading a screenshot, not by a test.
+4. **The command-vs-Python rule is the subtle part**, in
+   `Chinsole._is_command`. A known command that is also valid Python goes to
+   Python (chimol has a `set` command; `set()` is a builtin). Input that is
+   *neither* goes to the command layer, so `fetchh 1crn` gets chimol's own
+   "not implemented" rather than a Python `SyntaxError`. Change either half and
+   one of those two cases breaks silently.
 5. **Do not rename `dockWidget_console`.** The saved
    `QSettings("ChiSurf","MainWindow")` layout keys off the object name, and
    `_LAYOUT_VERSION` does not cover a rename — every existing user would lose the
@@ -59,8 +54,8 @@ timestamp: '2026-08-06T00:00:00Z'
    stderr.
 7. **Still to do:** `%debug` is wired but unexercised; the pager
    (`gui.console.paging`) is a setting with no widget behind it yet, so `obj?`
-   output goes to the scrollback; and `Macro ▸ Record` still cannot be stopped
-   (see [known issues](/references/known-issues.md)).
+   output goes to the scrollback rather than a pane; and there is no user guide
+   page for the console.
 
 # Why
 
@@ -118,9 +113,9 @@ difference.
 - [x] Shipped `console_init` runs verbatim, no settings migration
 - [x] `qtconsole` retired from every manifest and banned by the guardrail
 - [x] Two duplicate syntax highlighters converged into one
-- [ ] chimol's `CommandDock` ported onto `ConsoleRole.COMMAND`
-- [ ] Code editor's output panel ported onto `ConsoleRole.OUTPUT`
-- [ ] `Macro ▸ Record` made stoppable
+- [x] chimol's `CommandDock` ported onto `ConsoleRole.COMMAND` (and gained Python)
+- [x] Code editor's output panel ported onto `ConsoleRole.OUTPUT` (and gained streaming)
+- [x] `Macro ▸ Record` made stoppable
 - [ ] Pager widget behind `gui.console.paging`
 - [ ] User guide page
 

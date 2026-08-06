@@ -80,9 +80,10 @@ thread through a queued signal.
 
 **Macro recording**: `start_recording` / `stop_recording` accumulate executed
 code, which `save_macro` / `run_file` write and replay — the manual counterpart
-to history-based replay. Note `save_macro` and `stop_recording` currently have
-**no caller**, so *Macro ▸ Record* starts a recording that cannot be stopped;
-see [known issues](/references/known-issues.md).
+to history-based replay. *Macro ▸ Record* is a **toggle**: untoggling stops the
+recording and offers to save it. It was a one-shot wired only to
+`start_recording` until 2026-08-06, with nothing in the tree calling
+`stop_recording` or `save_macro`, so the recording could never be written out.
 
 **What existing installations keep.** ChiSurf merges packaged defaults
 *underneath* a user's settings file and never overwrites it, so

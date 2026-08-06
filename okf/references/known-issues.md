@@ -1,18 +1,3 @@
-## Macro ▸ Record cannot be stopped
-
-**Where to pick this up.** `chisurf/gui/main.py:1376` wires the *Macro ▸ Record*
-action to `console.start_recording`, and **nothing anywhere calls
-`stop_recording` or `save_macro`** — verified by grepping the whole tree
-including `test/` and `examples/`. So the one feature the console dock exists
-for records into a buffer that can never be written out. It predates chinsole
-(the qtconsole widget had the same three methods and the same missing callers)
-and chinsole keeps all three, so the fix is GUI wiring, not console work: make
-the action checkable, and on untoggle call `stop_recording()` then
-`save_macro()`, which already opens the save dialog itself.
-
-**What it blocks**: macro recording end-to-end, which is the manual counterpart
-to history-based replay and the reason the dock has a Record button at all.
-
 ## `test/server` — three real defects fixed, 43 tests still red
 
 **The RPC server could not build a fit at all.** ``fit_create`` resolves a model
