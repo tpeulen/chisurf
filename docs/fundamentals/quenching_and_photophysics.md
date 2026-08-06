@@ -99,9 +99,22 @@ $$
 \frac{F_0}{F} = \left(1 + K_D[Q]\right)\exp\!\left(\frac{V N_A [Q]}{1000}\right),
 $$
 
-with $V$ in cm³ and $[Q]$ in molar. Fitted volumes correspond to radii of a few
-ångström — a contact shell rather than a binding site — which is the check on
-whether the number is physical.
+with $V$ in cm³ and $[Q]$ in molar. Fitted volumes correspond to radii of a
+few ångström — a contact shell rather than a binding site — which is the check
+on whether the number is physical.
+
+```{figure} /guides/figures/static_quenching_mechanisms.png
+:alt: intensity and lifetime Stern-Volmer plots for dynamic, sphere-of-action and complex quenching
+:width: 100%
+
+Three mechanisms, one lifetime. The intensity plots differ (left), but
+$\tau_0/\tau$ is the same line for all three (right) because the lifetime
+reports only the **dynamic** part — so it separates dynamic from static and then
+cannot tell a sphere of action from a ground-state complex. The 7 Å contact
+shell shown contributes $VN_A/1000 = 0.87\ \mathrm{M^{-1}}$; reproducing the
+plotted $K_S = 5\ \mathrm{M^{-1}}$ with a sphere instead would need a radius of
+12.6 Å, which is not contact — that arithmetic is the check.
+```
 
 :::{warning}
 **The lifetime does not distinguish these two.** Both a real complex and a
@@ -156,12 +169,25 @@ $1/(f_a K_a)$ as the slope. The intercept has a direct meaning: it is the
 extrapolation to infinite quencher, where only the inaccessible fraction still
 emits.
 
+```{figure} /guides/figures/quenching_mixtures.png
+:alt: downward-curving Stern-Volmer plot for a two-population sample and the modified plot
+:width: 100%
+
+Left: two populations at $f_a = 0.5$ curve **downward**, away from the straight
+line a single species would give. Right: the modified plot straightens the
+$K_b = 0$ case and its intercept returns $f_a = 0.50$ exactly. The other curve is
+the same sample with the "inaccessible" fraction quenched at one tenth the rate
+— it still looks straight over a normal range, and a line fitted to it returns
+$f_a = 0.74$ for a truth of 0.50.
+```
+
 Three cautions, in increasing order of how often they are ignored:
 
 - **The "inaccessible" fraction is rarely inaccessible.** If the buried
   population is quenched with even $K_b \approx 0.1\,K_a$, the modified plot
   still looks straight over a normal concentration range, and the extrapolated
-  $f_a$ comes out too large. The two-class resolution is *useful but arbitrary*;
+  $f_a$ comes out too large — **0.74 against a true 0.50** in the figure above,
+  a 48 % overestimate from a plot that looks perfectly linear. The two-class resolution is *useful but arbitrary*;
   it is a parameterization, not a count of populations.
 - **Two classes is a choice.** Nothing in the data says there are two rather
   than three, and a two-term fit will describe a continuum of accessibilities

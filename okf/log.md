@@ -2,6 +2,18 @@
 
 ## 2026-08-06
 
+* **Two plots for the quenching page, and a pass over the ones already there** ([documentation browser](subsystems/documentation-browser.md)).
+
+  `fig_static_quenching_mechanisms` puts the point of the new section on one axis pair: three mechanisms give three different `F0/F` curves and **one identical** `tau0/tau` line, because the lifetime reports the dynamic part and nothing else. The arithmetic that separates a sphere of action from a complex is computed rather than quoted — a 7 A contact shell contributes 0.865 /M, and reproducing the plotted `K_S` = 5 /M with a sphere instead would need a radius of **12.6 A**, which is not contact.
+
+  `fig_quenching_mixtures` shows the downward curvature and the modified plot beside it, and produces the number the prose needed: fitting a straight line to the "inaccessible-at-one-tenth" case over an ordinary window returns **f_a = 0.74 against a truth of 0.50**, from a plot that looks perfectly linear. Fitted, not asserted — the recipe records the window, because changing it changes that number and that is the point being made.
+
+  **A figure whose title names a quantity has to show it.** The first render of the modified plot started at 1/[Q] = 1 and so never showed the intercept the panel is titled after; the fits are now extrapolated to the axis with both intercepts marked. Two label placements also had to move — a line ran through its own annotation.
+
+  **The pass over the earlier figures found three defects, all invisible to any test.** `stern_volmer` used K = 8, so the product curve reached 25 and squashed the two straight lines the left panel is *about* into the axis — and the right panel inherited that range, putting its content in the bottom tenth. Now K = 3 with one deliberate shared y-range. `lifetime_averages` and `kappa2_models` drew the grid **across** their bars (`set_axisbelow`), and the first now labels its bars, which is where the 50 % / 11 % contrast actually lives.
+
+  `docs-html` warning-free; render + crosslinks 251 passed. One real catch from `test_render`: a `figure` directive spliced into the middle of a sentence leaks its fence to the reader, which the markup-leak guard caught and nothing else would have.
+
 * **Quenching and blinking: the two cases the page had skipped** ([documentation browser](subsystems/documentation-browser.md)).
 
   `docs/fundamentals/quenching_and_photophysics.md` had the textbook dichotomy — dynamic quenching shortens the lifetime, static does not — and stopped there. Two things it got wrong by omission, both researched against the current literature rather than the 2006 text.

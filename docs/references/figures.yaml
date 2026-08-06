@@ -1802,3 +1802,25 @@ guides/figures/distributed_acceptors.png:
     tau_D(0) = 4 ns at C = C0. The left panel is deliberately log-log -- the distinguishing feature is
     the short-time behaviour, and a linear time axis compresses the crossing into the first pixel
     column. The marked efficiencies (0.724, 0.672, 0.642) are computed, not quoted.
+guides/figures/static_quenching_mechanisms.png:
+  caption: Dynamic, sphere-of-action and complex quenching give three different intensity plots and one
+    identical lifetime plot.
+  kind: plot
+  origin: docs/guides/make_figures.py::fig_static_quenching_mechanisms
+  pages:
+  - docs/fundamentals/quenching_and_photophysics.md
+  recipe: Run `python docs/guides/make_figures.py`; analytic curves at K_D = 8 /M, a 7 A sphere of action
+    (V*N_A/1000 = 0.865 /M) and K_S = 5 /M. All three share K_D deliberately -- that is what makes the
+    right panel's point that the lifetime reports the dynamic part and nothing else. The printed radius
+    needed to mimic K_S = 5 /M with a sphere (12.6 A) is computed, not quoted.
+guides/figures/quenching_mixtures.png:
+  caption: A two-population sample curves downward, and the modified Stern-Volmer plot returns an inflated
+    accessible fraction when the buried population is not truly inaccessible.
+  kind: plot
+  origin: docs/guides/make_figures.py::fig_quenching_mixtures
+  pages:
+  - docs/fundamentals/quenching_and_photophysics.md
+  recipe: 'Run `python docs/guides/make_figures.py`; f_a = 0.5, K_a = 5 /M, with K_b = 0 and K_b = 0.1 K_a.
+    The quoted intercepts are least-squares fits over 1 < 1/[Q] < 8 -- a deliberately ordinary window --
+    and give f_a = 0.50 and 0.74 against a truth of 0.50. Changing that window changes the second number,
+    which is the point being made, so it is fitted rather than asserted.'

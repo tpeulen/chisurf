@@ -1600,6 +1600,7 @@ if __name__ == "__main__":
     fig_jablonski(); fig_lifetime_averages(); fig_stern_volmer()
     fig_energy_transfer_window(); fig_perrin(); fig_kappa2_models()
     fig_maxent_nu(); fig_distributed_acceptors()
+    fig_static_quenching_mechanisms(); fig_quenching_mixtures()
     print("all figures written to", FIG)
 
 
@@ -1679,10 +1680,15 @@ def fig_lifetime_averages():
     ax.legend(fontsize=8); ax.set_title("equal amplitudes", fontsize=10)
 
     x = np.array([0, 1]); species = a / a.sum(); photons = a * tau / (a * tau).sum()
-    ax2.bar(x - 0.18, species, 0.34, color="#adb5bd", label="species fraction $x_i$")
-    ax2.bar(x + 0.18, photons, 0.34, color="#495057", label="photon fraction $f_i$")
-    ax2.set_xticks(x); ax2.set_xticklabels([r"$\tau_1$", r"$\tau_2$"])
-    ax2.set_ylabel("fraction"); ax2.set_ylim(0, 1)
+    ax2.set_axisbelow(True)          # or the grid is drawn across the bars
+    b1 = ax2.bar(x - 0.18, species, 0.34, color="#adb5bd", label="species fraction $x_i$")
+    b2 = ax2.bar(x + 0.18, photons, 0.34, color="#495057", label="photon fraction $f_i$")
+    for bars in (b1, b2):
+        for rect in bars:
+            ax2.text(rect.get_x() + rect.get_width() / 2, rect.get_height() + 0.02,
+                     f"{rect.get_height():.0%}", ha="center", fontsize=8)
+    ax2.set_xticks(x); ax2.set_xticklabels([r"$\tau_1$ = 0.5 ns", r"$\tau_2$ = 4.0 ns"])
+    ax2.set_ylabel("fraction"); ax2.set_ylim(0, 1.12)
     ax2.legend(fontsize=8, loc="upper left")
     ax2.set_title(rf"$\langle\tau\rangle_x$ = {tx:.2f} ns    "
                   rf"$\langle\tau\rangle_f$ = {tf:.2f} ns", fontsize=10)
@@ -1694,24 +1700,30 @@ def fig_lifetime_averages():
 def fig_stern_volmer():
     """Dynamic, static and combined quenching -- and what tells them apart."""
     q = np.linspace(0, 0.5, 200)
-    KD, KS = 8.0, 8.0
+    # Deliberately modest constants: at K = 8 the product curve reaches 25 and
+    # squashes the two straight lines this panel is about into the axis.
+    KD, KS = 3.0, 3.0
     fig, (ax, ax2) = plt.subplots(1, 2, figsize=(8.6, 3.4))
 
-    ax.plot(q, 1 + KD * q, lw=2.0, color="#3b5bdb", label="dynamic")
-    ax.plot(q, 1 + KS * q, lw=2.0, color="#2b8a3e", ls="--", label="static")
+    ax.plot(q, 1 + KD * q, lw=2.6, color="#3b5bdb", label="dynamic")
+    ax.plot(q, 1 + KS * q, lw=1.6, color="#2b8a3e", ls="--", label="static")
     ax.plot(q, (1 + KD * q) * (1 + KS * q), lw=2.0, color="#e8590c", label="both")
     ax.set_xlabel("[Q] / M"); ax.set_ylabel(r"$F_0/F$")
-    ax.legend(fontsize=8); ax.set_title("intensity: static and dynamic agree", fontsize=10)
+    ax.legend(fontsize=8, loc="upper left")
+    ax.set_title("intensity: static and dynamic agree", fontsize=10)
 
-    ax2.plot(q, 1 + KD * q, lw=2.0, color="#3b5bdb", label="dynamic")
+    ax2.plot(q, 1 + KD * q, lw=2.6, color="#3b5bdb", label="dynamic")
     ax2.plot(q, np.ones_like(q), lw=2.0, color="#2b8a3e", ls="--", label="static")
-    ax2.plot(q, 1 + KD * q, lw=2.0, color="#e8590c", ls=":", label="both")
+    ax2.plot(q, 1 + KD * q, lw=1.4, color="#e8590c", ls=":", label="both")
     ax2.set_xlabel("[Q] / M"); ax2.set_ylabel(r"$\tau_0/\tau$")
-    ax2.set_ylim(0.9, ax.get_ylim()[1])
-    ax2.legend(fontsize=8)
+    ax2.legend(fontsize=8, loc="upper left")
     ax2.set_title("lifetime: only the dynamic part shows", fontsize=10)
+    # One y-range for both panels so the eye can compare them, chosen from the
+    # linear curves rather than from the product.
+    for a in (ax, ax2):
+        a.set_ylim(0.85, 2.9)
     save(fig, "stern_volmer.png")
-    print("  stern_volmer.png: K_D = K_S = 8 /M; lifetime separates the mechanisms")
+    print(f"  stern_volmer.png: K_D = K_S = {KD:g} /M; lifetime separates the mechanisms")
 
 
 def fig_energy_transfer_window():
@@ -1821,11 +1833,13 @@ def fig_kappa2_models():
         rows.append((label.split("\n")[0], res["k2_mean"], res["k2_sd"],
                      res["Rapp_mean"], res["RappSD"], colour))
     ax.axvline(2 / 3, color="k", lw=0.9, ls=":")
-    ax.text(2 / 3 + 0.05, ax.get_ylim()[1] * 0.92, r"$\kappa^2 = 2/3$", fontsize=8)
+    # Clear of both the legend (top right) and the mobile-dye spike (x ~ 0.6)
+    ax.text(0.80, ax.get_ylim()[1] * 0.62, r"$\kappa^2 = 2/3$", fontsize=8)
     ax.set_xlabel(r"$\kappa^2$"); ax.set_ylabel(r"$p(\kappa^2)$")
     ax.set_xlim(0, 4); ax.legend(fontsize=7.5)
 
     y = np.arange(len(rows))
+    ax2.set_axisbelow(True)          # or the grid is drawn across the bars
     ax2.barh(y, [r[4] for r in rows], color=[r[5] for r in rows], height=0.55)
     ax2.set_yticks(y); ax2.set_yticklabels([r[0] for r in rows], fontsize=8)
     ax2.set_xlabel(r"SD of $R_{\rm app}/R_{DA}$   (relative distance error)")
@@ -1929,3 +1943,91 @@ def fig_distributed_acceptors():
     ax2.set_ylim(0, 1); ax2.legend(fontsize=8, loc="lower right")
     ax2.set_title("more directions to approach from, more transfer", fontsize=10)
     save(fig, "distributed_acceptors.png")
+
+
+def fig_static_quenching_mechanisms():
+    """Why the lifetime does not separate a complex from a sphere of action."""
+    N_A = 6.02214076e23
+    q = np.linspace(0.0, 0.35, 400)                 # quencher, M
+    K_D = 8.0                                        # dynamic, 1/M
+
+    r_sphere = 7.0e-8                                # 7 A, a contact shell
+    V = 4.0 / 3.0 * np.pi * r_sphere**3              # cm^3
+    v_term = V * N_A / 1000.0                        # 1/M
+    K_S = 5.0                                        # ground-state complex, 1/M
+
+    dynamic = 1 + K_D * q
+    sphere = (1 + K_D * q) * np.exp(v_term * q)
+    complexed = (1 + K_D * q) * (1 + K_S * q)
+
+    fig, (ax, ax2) = plt.subplots(1, 2, figsize=(8.8, 3.4))
+    ax.plot(q, dynamic, lw=2.0, color="#3b5bdb", label="dynamic only")
+    ax.plot(q, sphere, lw=2.0, color="#2b8a3e",
+            label=rf"+ sphere of action ($r$ = 7 Å)")
+    ax.plot(q, complexed, lw=2.0, color="#e8590c",
+            label=rf"+ complex ($K_S$ = {K_S:g} M$^{{-1}}$)")
+    ax.set_xlabel("[Q] / M"); ax.set_ylabel(r"$F_0/F$")
+    ax.legend(fontsize=8)
+    ax.set_title("intensity: three different curves", fontsize=10)
+
+    ax2.plot(q, dynamic, lw=2.6, color="#3b5bdb", label="dynamic only")
+    ax2.plot(q, dynamic, lw=2.0, color="#2b8a3e", ls="--", label="+ sphere of action")
+    ax2.plot(q, dynamic, lw=1.4, color="#e8590c", ls=":", label="+ complex")
+    ax2.set_xlabel("[Q] / M"); ax2.set_ylabel(r"$\tau_0/\tau$")
+    ax2.set_ylim(ax.get_ylim()); ax2.legend(fontsize=8)
+    ax2.set_title("lifetime: sees only the dynamic part", fontsize=10)
+    save(fig, "static_quenching_mechanisms.png")
+    print(f"  static_quenching_mechanisms.png: 7 A sphere -> V*N/1000 = {v_term:.3f} /M; "
+          f"matching K_S = {K_S:g} /M would need r = "
+          f"{(3 * K_S * 1000 / (4 * np.pi * N_A)) ** (1 / 3) * 1e8:.1f} A")
+
+
+def fig_quenching_mixtures():
+    """Downward curvature, the modified plot, and the f_a it inflates."""
+    q = np.linspace(0.02, 1.0, 400)
+    f_a, K_a = 0.5, 5.0
+
+    def intensity(K_b):
+        return f_a / (1 + K_a * q) + (1 - f_a) / (1 + K_b * q)
+
+    strict = intensity(0.0)                 # a truly inaccessible fraction
+    leaky = intensity(0.1 * K_a)            # "inaccessible" at one tenth the rate
+
+    fig, (ax, ax2) = plt.subplots(1, 2, figsize=(8.8, 3.4))
+    ax.plot(q, 1 + K_a * q, lw=1.6, color="0.6", ls="--",
+            label=rf"one species, $K$ = {K_a:g} M$^{{-1}}$")
+    ax.plot(q, 1 / strict, lw=2.0, color="#3b5bdb",
+            label=rf"$f_a$ = {f_a:g}, $K_b$ = 0")
+    ax.plot(q, 1 / leaky, lw=2.0, color="#e8590c",
+            label=rf"$f_a$ = {f_a:g}, $K_b$ = 0.1$K_a$")
+    ax.set_xlabel("[Q] / M"); ax.set_ylabel(r"$F_0/F$")
+    ax.legend(fontsize=8); ax.set_title("a mixture curves downward", fontsize=10)
+
+    # Modified (Lehrer) plot: F0/dF against 1/[Q]
+    inv_q = 1.0 / q
+    for y, colour, label in ((strict, "#3b5bdb", r"$K_b$ = 0"),
+                             (leaky, "#e8590c", r"$K_b$ = 0.1$K_a$")):
+        ax2.plot(inv_q, 1.0 / (1.0 - y), lw=2.0, color=colour, label=label)
+    # What a straight-line fit over a realistic window returns for each
+    # Extrapolate the straight-line fits to the axis: the intercept IS the
+    # answer, and a panel titled after it has to show it.
+    window = (inv_q > 1.0) & (inv_q < 8.0)
+    x_ext = np.linspace(0.0, 10.0, 50)
+    # Labels go in the two empty corners: the blue line sweeps up through
+    # the middle, so anything placed near it is crossed by it.
+    for y, colour, dx, dy in ((strict, "#3b5bdb", 1.4, 3.6), (leaky, "#e8590c", 1.3, -0.85)):
+        slope, intercept = np.polyfit(inv_q[window], (1.0 / (1.0 - y))[window], 1)
+        ax2.plot(x_ext, slope * x_ext + intercept, lw=0.9, color=colour, ls=":")
+        ax2.plot([0.0], [intercept], "o", color=colour, ms=6)
+        ax2.annotate(f"{intercept:.2f}  →  $f_a$ = {1 / intercept:.2f}",
+                     xy=(0.0, intercept), xytext=(dx, intercept + dy),
+                     fontsize=8, color=colour,
+                     arrowprops=dict(arrowstyle="->", color=colour, lw=0.8))
+        print(f"  quenching_mixtures.png: fitted intercept {intercept:.3f} "
+              f"-> apparent f_a = {1 / intercept:.3f} (true {f_a})")
+    ax2.axhline(1 / f_a, color="0.6", lw=0.8, ls="--")
+    ax2.set_xlim(0, 10); ax2.set_ylim(0, 8)
+    ax2.set_xlabel(r"$1/[Q]$ / M$^{-1}$"); ax2.set_ylabel(r"$F_0/\Delta F$")
+    ax2.legend(fontsize=8, loc="lower right")
+    ax2.set_title("modified plot: the intercept is $1/f_a$", fontsize=10)
+    save(fig, "quenching_mixtures.png")
