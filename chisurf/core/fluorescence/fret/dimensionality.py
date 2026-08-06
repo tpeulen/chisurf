@@ -47,6 +47,8 @@ __all__ = [
     "reduced_density",
     "donor_decay",
     "transfer_efficiency",
+    "quenching_factor",
+    "quench_decay",
 ]
 
 #: Allowed dimensionalities, and the gamma-function argument each uses.
@@ -264,3 +266,135 @@ def transfer_efficiency(
     quenched = donor_decay(t, 1.0, c_over_c0, d)
     reference = np.exp(-t)
     return float(1.0 - np.trapz(quenched, t) / np.trapz(reference, t))
+
+
+def quenching_factor(
+    time: np.ndarray,
+    tau_d0: float,
+    c_over_c0: float,
+    dimension: int,
+) -> np.ndarray:
+    """The distributed-acceptor quenching factor, separable from the donor decay.
+
+    The transfer rate to an acceptor at distance *r* is
+    :math:`k_T = \\tau_{D(0)}^{-1}(R_0/r)^6`, and since
+    :math:`R_0^6 \\propto Q_D = \\tau_{D(0)}/\\tau_n` this is
+    :math:`\\propto \\tau_n^{-1} r^{-6}` — it depends on the donor's
+    **radiative** rate, not on its total lifetime. So a donor whose decay is
+    multi-exponential because different molecules are differently *quenched*
+    presents one and the same transfer-rate field to the acceptors, and the
+    quenching factor multiplies the whole donor decay rather than acting on each
+    species separately:
+
+    .. math::
+
+        I_{DA}(t) = I_{D}(t)\\,
+                    \\exp\\!\\left[-2\\eta_d
+                    \\left(\\frac{t}{\\tau_{D(0)}}\\right)^{d/6}\\right]
+
+    :math:`\\tau_{D(0)}` here is the reference lifetime that :math:`R_0` — and
+    therefore :math:`C_0` — was computed with, not a property of any one species.
+
+    Parameters
+    ----------
+    time : numpy.ndarray
+        Time axis, non-negative.
+    tau_d0 : float
+        The reference donor lifetime :math:`R_0` was defined against.
+    c_over_c0 : float
+        Acceptor density in units of :func:`characteristic_density`.
+    dimension : int
+        1, 2 or 3.
+
+    Returns
+    -------
+    numpy.ndarray
+        The factor, 1 at ``t = 0`` and falling monotonically.
+
+    Examples
+    --------
+    Multiplying a single-exponential donor by it reproduces
+    :func:`donor_decay`:
+
+    >>> import numpy as np
+    >>> from chisurf.core.fluorescence.fret.dimensionality import (
+    ...     donor_decay, quenching_factor)
+    >>> t = np.linspace(0.0, 8.0, 5)
+    >>> both = np.exp(-t / 4.0) * quenching_factor(t, 4.0, 0.8, 2)
+    >>> bool(np.allclose(both, donor_decay(t, 4.0, 0.8, 2)))
+    True
+    """
+    d = _check_dimension(dimension)
+    t = np.asarray(time, dtype=float)
+    tau = float(tau_d0)
+    if not tau > 0:
+        raise ValueError(f"tau_d0 must be positive, got {tau_d0!r}")
+    if np.any(t < 0):
+        raise ValueError("time must be non-negative")
+    eta = reduced_density(c_over_c0, d)
+    return np.exp(-2.0 * eta * np.power(t / tau, d / 6.0))
+
+
+def quench_decay(
+    donor_decay_curve: np.ndarray,
+    time: np.ndarray,
+    tau_d0: float,
+    c_over_c0: float,
+    dimension: int,
+) -> np.ndarray:
+    """Apply distributed-acceptor quenching to a donor-only **decay**.
+
+    The donor decay is whatever it is — measured, simulated, single- or
+    multi-exponential — and this multiplies it by the common
+    :func:`quenching_factor`. Nothing here needs to know how the donor decay was
+    parameterized, which is the point: the quenching is a property of the
+    acceptor field, not of the donor's decay law.
+
+    Apply it to the **unconvolved** decay: the quenching is photophysics and
+    happens before the instrument sees anything.
+
+    Parameters
+    ----------
+    donor_decay_curve : numpy.ndarray
+        Donor-only decay, sampled on *time*.
+    time : numpy.ndarray
+        Time axis, non-negative, same length as *donor_decay_curve*.
+    tau_d0 : float
+        Reference donor lifetime that :math:`R_0` — and hence :math:`C_0` — was
+        computed with.
+    c_over_c0 : float
+        Acceptor density in units of :func:`characteristic_density`.
+    dimension : int
+        1, 2 or 3.
+
+    Returns
+    -------
+    numpy.ndarray
+        The quenched decay, on the same scale as the input.
+
+    Raises
+    ------
+    ValueError
+        If the two arrays differ in length, or the other inputs are out of range.
+
+    Examples
+    --------
+    Quenching a single-exponential donor reproduces :func:`donor_decay`:
+
+    >>> import numpy as np
+    >>> from chisurf.core.fluorescence.fret.dimensionality import (
+    ...     donor_decay, quench_decay)
+    >>> t = np.linspace(0.0, 8.0, 5)
+    >>> got = quench_decay(np.exp(-t / 4.0), t, 4.0, 0.8, 2)
+    >>> bool(np.allclose(got, donor_decay(t, 4.0, 0.8, 2)))
+    True
+    """
+    d = _check_dimension(dimension)
+    y = np.asarray(donor_decay_curve, dtype=float)
+    t = np.asarray(time, dtype=float)
+    if y.shape != t.shape:
+        raise ValueError(
+            f"donor_decay_curve and time must have the same shape, "
+            f"got {y.shape} and {t.shape}"
+        )
+    return y * quenching_factor(t, tau_d0, c_over_c0, d)

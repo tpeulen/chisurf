@@ -111,7 +111,32 @@ ask whether probes are confined to a plane or leaking into the volume.
   which requires the donor concentration to be low even when the acceptor
   concentration is high ({ref}`concept-energy-migration`).
 
-## Using it
+## Fitting it
+
+The model is **FRET: distributed acceptors** in the model selector. It releases
+the density `C/C0` and the donor lifetimes, and the dimensionality is a radio
+button rather than a fitted parameter — the three laws are distinguishable, so
+the right way to choose is to fit each and compare, not to let an optimizer
+wander between them.
+
+Two things about it are deliberate and worth knowing before you reach for a
+control that is not there:
+
+- **There is no anisotropy panel.** The polarized channels are built from a
+  lifetime spectrum, and this decay is a stretched exponential rather than a
+  finite mixture, so there is nothing to hand the anisotropy mixing. Fit
+  magic-angle or total decays.
+- **There is no distance.** The fitted quantity is a density; $R_0$ and
+  $\tau_{D(0)}$ are *inputs* that define $C_0$, so changing them rescales the
+  reported density rather than improving the fit. They are fixed by default for
+  that reason.
+
+The panel reports the implied transfer efficiency and the absolute density
+alongside `C/C0`. Both are computed from the fitted density, so neither carries
+an error bar of its own — propagate the uncertainty on `C/C0` instead
+({ref}`concept-parameter-uncertainty`).
+
+## Using it headlessly
 
 The functions are Qt-free and usable directly:
 
@@ -143,7 +168,10 @@ argument these take, divide by $C_0$: `c_over_c0 = sigma / c0`.
   {ref}`concept-kappa2-orientation` · {ref}`concept-maximum-entropy`.
 - Guide: {doc}`/guides/03_polymer_distance_distributions` — the linked-pair
   alternative, for when the acceptor is attached rather than dissolved.
-- Implementation:
+- Implementation: the fittable model
+  `chisurf/core/models/tcspc/distributed_acceptor.py`
+  (`DistributedAcceptorModel`) with its editor layout
+  `distributed_acceptor.view.json`; the physics in
   {src}`chisurf/core/fluorescence/fret/dimensionality.py#donor_decay` ·
   {src}`chisurf/core/fluorescence/fret/dimensionality.py#characteristic_density`
   · {src}`chisurf/core/fluorescence/fret/dimensionality.py#transfer_efficiency`;

@@ -92,11 +92,21 @@ page and a search). Three automated numbers back that up:
    trapezoid rule, with the gamma constants asserted exactly. The docs quote
    the computed values and say so.
 
-   What the module does *not* do, and would be the next real work rather than
-   the next page: it is a set of functions, not a fittable `Model`, so a
-   membrane donor decay cannot yet be fitted through the GUI. Adding a TCSPC
-   model that releases `C/C0` and the dimensionality is the step that would make
-   the concept page describe a workflow instead of an API.
+   It is now a **fittable model** as well:
+   `chisurf/core/models/tcspc/distributed_acceptor.py` releases `C/C0` against a
+   donor lifetime spectrum, with the dimensionality as a radio button. Two
+   design points that a later change could undo by accident — both are asserted
+   in `test/models/test_view_spec.py`: the editor has **no Anisotropy panel**
+   (the polarized channels are built from a lifetime spectrum and this decay is
+   not a finite mixture, so a panel there would render controls that silently do
+   nothing), and the model reports **no distance** (the fitted quantity is a
+   density; `R0`/`tauD0` are inputs defining `C0`).
+
+   Its `update_model` mirrors `LifetimeModel.update_model` from the convolution
+   onwards and **must be kept in step with it** — it cannot call the parent,
+   because the parent hands a lifetime *spectrum* to the convolution and this
+   model has a decay *curve*. A nuisance term added to one and not the other is
+   a silent parity gap between two editors a user reads as the same.
 
 4. **58 plugins ship without a README** and **80 GUI plugins have no `?` page or
    guided tour** (`test/plugin_help_guide_allowlist.txt` is the shrinking

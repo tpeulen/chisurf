@@ -2,6 +2,20 @@
 
 ## 2026-08-06
 
+* **The distributed-acceptor decay is now a fittable model** ([models](subsystems/models.md)).
+
+  `chisurf/core/models/tcspc/distributed_acceptor.py` — `FRET: distributed acceptors` in the model selector. It releases `C/C0` against a donor lifetime spectrum, with the dimensionality as a radio button rather than a fitted parameter: the three laws are distinguishable, so the right way to choose is to fit each and compare rather than let an optimizer wander between them.
+
+  **Why it cannot call `LifetimeModel.update_model`.** The parent hands a lifetime *spectrum* to `Convolve.convolve`, and the `per`/`exp` branches interpret it as one. This decay is a stretched exponential — not a finite mixture — so it is built on the time axis, quenched, and convolved as a *curve* through the `full` branch. Periodicity is folded into the decay beforehand (eight preceding pulses), which keeps the stretched term exact where folding a spectrum could not. Everything from the convolution onwards is copied from the parent and **must be kept in step with it**.
+
+  **Two corrections during the work, both from the user, both real.** The first draft applied the stretched term per donor species, against each species' own lifetime. That is wrong: `k_T = τ_D⁻¹(R₀/r)⁶` and `R₀⁶ ∝ Q_D = τ_D/τ_n`, so the transfer rate depends on the **radiative** rate, not the total lifetime — a donor that is multi-exponential because its molecules are differently *quenched* presents one and the same transfer field, and the quenching factor multiplies the whole donor decay. The second: the helper API took a lifetime spectrum where it should take a decay. `quench_decay(decay, t, τ_D(0), C/C0, d)` is the shape it should have had from the start — nothing about the quenching needs to know how the donor decay was parameterized.
+
+  **Two defects only the screenshot showed.** `parameter_group_table` takes `parameters_source`, not `source`; with the wrong key it silently falls back to **every parameter of the model**, so the panel listed thirty-odd rows (`tDead`, `l1`, `IRF_w`, …) after the three that belong there. And an `info` section renders whatever string its source returns, so two numeric properties printed as bare full-precision floats with no label — replaced by one `derived_html()` method returning `E = 0.779   density = 1.648e-04 Å⁻²`.
+
+  **The round trip is the test that matters.** 12 tests in `test/fitting/test_distributed_acceptor_model.py`: simulate at a known `C/C0`, start the optimizer at 0.3, recover the truth within 5 % at all three dimensionalities — and a discrimination test asserting a 1-D law fits 3-D data *at least ten times worse*, because if it did not, the decay shape would carry no information about geometry and the reported density would be against an arbitrary choice.
+
+  Verified through the model-editor path: view-spec + boundary 15, integration + renderer 47 (own process, offscreen), compute regression 3, new suites 12 + 31; `docs-html` warning-free; the editor grabbed offscreen and read.
+
 * **`fetch` was not the fault: a rung-drawing block had been pasted into the protein cartoon builder** ([PyMOL parity](plugins/pymol-parity.md)).
 
   Reported as `fetch 1f5n` failing with *"the cached 1f5n would not load (name 'rungs' is not defined); delete it and try again"*, and the reporter's reading was that the command bar must be dispatching to Python before checking its own commands. It is not — `fetch` was dispatched correctly, loaded the cached file correctly, and then **the cartoon builder raised**, with the loader's `except` turning a rendering bug into a message about the cache. Advice to delete a file that was never the problem.
