@@ -27,3 +27,4 @@
 * [Regions of interest](roi.md) - One ROI geometry for gating and imaging alike: point membership plus pixel rasterisation, boolean composition, JSON persistence, and the segmentation bridge.
 * [Pipelines](pipeline.md) - Typed DAGs of transformer invocations persisted and replayed through MMFDB provenance.
 * [Compiled Modules](compiled-modules.md) - The C++ extensions in `modules/` that must be built before tests.
+* [The photon container](photon-container.md) - One measurement as one `.pto`: the instrument file verbatim and immutable, results as artifacts beside it, provenance from the mmCIF dictionaries.

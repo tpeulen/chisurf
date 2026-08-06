@@ -49,6 +49,8 @@ __all__ = [
     "staged_source",
     "open_tttr",
     "format_rate",
+    "split_container_spec",
+    "CONTAINER_SELECTOR",
 ]
 
 # --- Tunables ---------------------------------------------------------------
@@ -296,6 +298,36 @@ def staged_source(
             shutil.rmtree(local.parent, ignore_errors=True)
 
 
+#: Separates a container path from the member inside it, as ``tttrlib`` spells
+#: it: ``"run.pto|m001.ptu"``.
+CONTAINER_SELECTOR = "|"
+
+
+def split_container_spec(src) -> tuple[Path, str]:
+    """Split ``"<path>|<member>"`` into the path and the member.
+
+    A photon container holds several objects, so a caller may name which one to
+    read. Everything that touches the filesystem — staging, existence checks,
+    size probes — must use the path alone; only the reader understands the
+    selector.
+
+    Parameters
+    ----------
+    src : str or pathlib.Path
+        A path, or a path followed by a member name.
+
+    Returns
+    -------
+    tuple of (pathlib.Path, str)
+        The path, and the member name (``""`` when none was given).
+    """
+    text = str(src)
+    if CONTAINER_SELECTOR not in text:
+        return Path(text), ""
+    path, _, selector = text.partition(CONTAINER_SELECTOR)
+    return Path(path), selector
+
+
 #: Default RNG seed for LUT dithering. tttrlib's ``apply_luts_and_shifts``
 #: distributes fractional micro-time bins stochastically (Felekyan dithering,
 #: which avoids the binning artifacts of deterministic rounding). Seed ``-1``
@@ -380,11 +412,19 @@ def open_tttr(
     # to auto-detection, before it gets that far.
     container = resolve_container_type(routine)
 
-    with staged_source(src, progress_cb=progress_cb, cancel_cb=cancel_cb, **stage_kwargs) as local:
+    # A photon container may name the member to read -- "run.pto|m001.ptu".
+    # Only the part before the separator is a path, so staging must not see the
+    # selector or it stages a file that does not exist.
+    path, selector = split_container_spec(src)
+
+    with staged_source(
+        path, progress_cb=progress_cb, cancel_cb=cancel_cb, **stage_kwargs
+    ) as local:
+        spec = f"{local}|{selector}" if selector else str(local)
         if container is None:
-            tttr = tttrlib.TTTR(str(local))
+            tttr = tttrlib.TTTR(spec)
         else:
-            tttr = tttrlib.TTTR(str(local), container)
+            tttr = tttrlib.TTTR(spec, container)
 
     apply_setup_lut(
         tttr, channel_luts, channel_shifts, apply_lut=bool(apply_lut), lut_seed=lut_seed
