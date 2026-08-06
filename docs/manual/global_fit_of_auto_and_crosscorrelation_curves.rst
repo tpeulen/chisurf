@@ -1,7 +1,7 @@
 Global fit of auto- and cross-correlation curves
 """"""""""""""""""""""""""""""""""""""""""""""""
 
-Before starting ChiSurf, add the fit model for the cross-correlation curve to your JSON-file as described above:
+Before starting ChiSurf, add the cross-correlation fit model to the model catalogue as described in :doc:`adding_the_membranediffusion_models`:
 
 where :emphasis:`aR` and :emphasis:`tR` describe the amplitude and relaxation time of the anticorrelation.
 

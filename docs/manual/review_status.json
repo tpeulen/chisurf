@@ -1,0 +1,555 @@
+{
+  "adding_the_membranediffusion_models.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "3d13cd49cbd8756398b320913f758f3ab64f29e28a31dc339cacc50dd66ea249",
+    "status": "ai-reviewed"
+  },
+  "analysis_dock.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "07f1c9f25b4795042b8dd2d59b84faf83045c664efc77881ce4539e0776f24ad",
+    "status": "ai-reviewed"
+  },
+  "analysis_of_live_cell_experiments.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "6444b3222a36ec82938d0b97774e89accb6e012abe0832a0cbb14af653e86f01",
+    "status": "ai-reviewed"
+  },
+  "anisotropy_wizard.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "b21bdb19b820c0a544fbb8b4f69b6bf4ff3048a2ad3ee1032d9f781b1303c417",
+    "status": "ai-reviewed"
+  },
+  "calculation_of_codiffusing_molecules.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "65297774e7767b6156c91d13a77108d3e85e7c800df00941399c5c4567ecc8b2",
+    "status": "ai-reviewed"
+  },
+  "calculation_of_confocal_volume.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "f9d72c6161adf51be6e294b7da66a8b9915873c3b52b77bdc473e1b705c51d48",
+    "status": "ai-reviewed"
+  },
+  "calculations.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "098e7540b41c1e67f6645cb4c83232094ed61393c3ff0fc851bd575edf5845d7",
+    "status": "ai-reviewed"
+  },
+  "calculations_2.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "2c956d70eb4ff2471bb40ebbc69aea0b4f3692718f10084bdd6e7129096a691f",
+    "status": "ai-reviewed"
+  },
+  "calibration_of_detection_volume__green_excitation.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "a28d797d28e80e53e2edb1a42bab3001a3037d20435f40a7a2304525c23e99dd",
+    "status": "ai-reviewed"
+  },
+  "calibration_of_detection_volume__red_excitation.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "69a9b2b6e6785d25429b7c51b3ca016cda5589877ef55baca9f83eede0763e8f",
+    "status": "ai-reviewed"
+  },
+  "changing_visualizations.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "df9a5dcdf438c088c95fc34a0b6105c07a8e5b0f66885e00f7b13489f0684a17",
+    "status": "ai-reviewed"
+  },
+  "computing_fluorescence_correlation_spectroscopy_curves.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "d2054c08024c5f03bc216f6b522f8c92fb5363188d77ec24e06d839440d058be",
+    "status": "ai-reviewed"
+  },
+  "correction_factors_for_spectral_crosstalk__direct_acceptor_excitation.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "0f1e8539e6b559a0df69677c3328ba70ec04b784ab3a7ef281d48e3c5533f914",
+    "status": "ai-reviewed"
+  },
+  "correlation_merging.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "cf8c1be640698eb94451d057aafa1d0ac47cdd45979d87bc0723eec81bf3b578",
+    "status": "ai-reviewed"
+  },
+  "correlator.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "8b954cdfcf958db50a87d7f1b3a66c34d3ab1ae6a68ff22563d8ec324e23a9c5",
+    "status": "ai-reviewed"
+  },
+  "creating_fits.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "ccdf146b098a285cf8c1a57c741beba65387e31a8c5388edfe7903db67396ea0",
+    "status": "ai-reviewed"
+  },
+  "crosstalkinduced_correlations.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "df597086ada26a1aa3407e2595ac3c2b61d9920da1c722d3e5a52e2a3425ec96",
+    "status": "ai-reviewed"
+  },
+  "data_format.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "70d154e7858a196cde92da66e89eb05cccd229334c951226a4831e402d87bb77",
+    "status": "ai-reviewed"
+  },
+  "data_import.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "1da8708665fdbcb5d8a973fb80241d19e10a25fb4c37c86d9e3ee4341a9d9012",
+    "status": "ai-reviewed"
+  },
+  "data_input_and_file_format.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "0b2268efc4fd51eb2ee897832c51209a7917ff3a4f21caaa3c45b6d399248f6f",
+    "status": "ai-reviewed"
+  },
+  "determination_of_background___dark_count_rate.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "568bc224750ee849a1da867ec37027ef6b88a7753c1dab984f9762a16aa720ed",
+    "status": "ai-reviewed"
+  },
+  "determination_of_direct_excitation_of_red_fluorophore_by_green_excitation.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "f4823aa95138758023d2e2ed053eaf5448140d065238932d535a62c486e384c5",
+    "status": "ai-reviewed"
+  },
+  "determination_of_gfactor_and_depolarization_factors_using_chisurf.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "5b6490ff7dd0a4cb36bc9bfdf962daa5fc5794cbacf0e218360af97a2eef2cf2",
+    "status": "ai-reviewed"
+  },
+  "determination_of_molecular_brightness.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "62839374012267504726ee4a1be67abf29b59b75bc5eedb31694deea208425b9",
+    "status": "ai-reviewed"
+  },
+  "determination_of_overlap_of_green__red_detection_volume.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "407bbfc24a86701fc6f5e8d1dc49f5e82316b2a16c97a2832f50c7dfe618de72",
+    "status": "ai-reviewed"
+  },
+  "discrete_fret_rate_constants.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "153f18eecf7788376b7a3f6ff9a03b62e628eef9041de147bc0afa7ebf66d185",
+    "status": "ai-reviewed"
+  },
+  "equation_parsing.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "8e946a15d8b7140bff373f7bb2764dcf813e6016699e68aac27de0d471e648bc",
+    "status": "ai-reviewed"
+  },
+  "estimation_of_the_fluorophore_concentration.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "3347018d3edfdb7ec42f9c7cf9b5eeb65d3365076d9a8a83f5ff3be140bea326",
+    "status": "ai-reviewed"
+  },
+  "fcalculator.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "c8c7433fda0c49e9638468b0232fd78e1cb263dd920e6d5695a355bfdf0b5a6a",
+    "status": "ai-reviewed"
+  },
+  "fit_interface.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "26e15917e5098255c3197cafb22ed2aaf6359037429e97ce35c95f7376811ec7",
+    "status": "ai-reviewed"
+  },
+  "fit_models.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "7930a31493c29c337e0c9031e06a4d82c3170ae096995d5fd01dfd9a49920983",
+    "status": "ai-reviewed"
+  },
+  "fit_of_a_fcs_curve.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "a29dfbcca9b01da55d24ee6db7fb2fbeab9bc13adde1fd54075f8c6b26436c94",
+    "status": "ai-reviewed"
+  },
+  "fit_of_auto_and_crosscorrelation_curves.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "0d856564e28466fd27418247b9981bb85ea8cfb0d433bf2d340b0c3f19b0fd4d",
+    "status": "ai-reviewed"
+  },
+  "fit_of_autocorrelation_curves.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "aeb667a5c59c86571147d49c37ed9bc1e51deac6a89426151e193a3bd8d60bfa",
+    "status": "ai-reviewed"
+  },
+  "fit_of_fcs_curve.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "a36874dce2170d3f58c3a209c892edf1522af58e6ad08e32021c482cd0c6233c",
+    "status": "ai-reviewed"
+  },
+  "fit_plots.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "7c39dd3bd489cddb1161544d2c5a721ec520406dfd89cb01205355b0250eff6e",
+    "status": "ai-reviewed"
+  },
+  "fluorescence_lifetime.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "76498468a5c4c4d76b1283f7faae56ea32af778e9dbf7fb5d4d5d0a043d14073",
+    "status": "ai-reviewed"
+  },
+  "fret_lines.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "2e658832c052bc0aa5c2739bb6a6b56e7489d7e6e8186db4a3c5134e601202ec",
+    "status": "ai-reviewed"
+  },
+  "global_fit_of_auto_and_crosscorrelation_curves.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "fc0a05365a55333c6e7875ee97a5f7ea47f1d3415b6ea30c1b2f356c5a175f92",
+    "status": "ai-reviewed"
+  },
+  "global_fit_of_fcs_curves.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "38c669f243fef2e7366022338abcbbf8c97836cd0e04183e2a1d791f76341545",
+    "status": "ai-reviewed"
+  },
+  "index.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "b14a8f6baa55fbee3ba371531ccea2747a9ba2e767d8f85a4a24fe9e4603f458",
+    "status": "ai-reviewed"
+  },
+  "influence_of_fret_efficiency.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "8f69a1e4e5ce270d8333427a7769c810f133fbde2146d0ec88417958524dc102",
+    "status": "ai-reviewed"
+  },
+  "influence_of_triplet_blinking.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "58d413ef406844cf94afbec20618c1c06f8c79fa21343c1b1ede9459198cf98d",
+    "status": "ai-reviewed"
+  },
+  "introduction.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "5cecb04b14549681bc107374e2792bc9c5d037dee588a8dbd26c2ab0629a3325",
+    "status": "ai-reviewed"
+  },
+  "linking_parameters.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "dd953e5b261fe87c7d22235af78bdb9ca39161a3e4adc09ac5c972d8776ccab4",
+    "status": "ai-reviewed"
+  },
+  "loading__plotting_data.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "cb303310e46f7cd94b32413ecc0bcd792441c4db5bc3a9baccc25f5fe9186407",
+    "status": "ai-reviewed"
+  },
+  "loading_and_setting_up_the_egfp_data_set.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "bf11f03de9270622bcd7f55dc1e76c94976dea3da1b4f51b824008a6405e6c19",
+    "status": "ai-reviewed"
+  },
+  "loading_the_alexa488_data_into_the_anisotropy_plugin.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "24670330bc414dc570b5dfe97f611b80f230680c660dde019faf7e12902886c3",
+    "status": "ai-reviewed"
+  },
+  "loading_the_data_defining_the_reading_parameter.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "1ac4b9bbf7738e03bb3d25e084208db7e036539a16f4da360ce425c386a87873",
+    "status": "ai-reviewed"
+  },
+  "model_scores.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "6b3bbca3dda02ec951ed31181a4d0c220dca9600fd9140960c12285432950e0a",
+    "status": "ai-reviewed"
+  },
+  "model_scoring_range.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "5d8e157887a4c96475d5de6db0233993159327b7943def7291b3198b207c876a",
+    "status": "ai-reviewed"
+  },
+  "multiple_document_interface.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "dc94e71831e650f351d88d213f0ee89e4b057d98529404ee42666942995b11ed",
+    "status": "ai-reviewed"
+  },
+  "nuisances.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "49183bd2a9d8bd9399152d75b1f30907d3425872cb6bc14b71c6d0ee9923b1a2",
+    "status": "ai-reviewed"
+  },
+  "overview.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "95b460f5144d46630bbff47b6e60b5e858c0267e1d7d2bdcce48b58c68dedbf1",
+    "status": "ai-reviewed"
+  },
+  "overview_2.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "10c7e9989883b549fc20a05ab29e3ce2938bd28c1a2f654f92ae0e3a82125a68",
+    "status": "ai-reviewed"
+  },
+  "overview_3.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "10d940bb71f7c375ab202ddfe159bd14c1188551cc1a3c76175a52b7f1ab7afc",
+    "status": "ai-reviewed"
+  },
+  "parameter_optimization.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "12a681f99aedb3b5375d2f44d1e570a8b265bbf7f73a730ca28db2ceb22c8630",
+    "status": "ai-reviewed"
+  },
+  "parameter_sampling.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "c84243bbd9dea242993c690a6891d26f935e79992d94faf9c7f013cc41d220ae",
+    "status": "ai-reviewed"
+  },
+  "parameter_scan.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "a7a0fa927fde5ab10834925d785a76ee25c3064f6b27218cd15b9f5407a4d258",
+    "status": "ai-reviewed"
+  },
+  "parameters.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "09856bfe924fdd3aacb0fdb0f6b71dbebf5a37d8e7e94bbc765ecdad109eab61",
+    "status": "ai-reviewed"
+  },
+  "partial_donordonor_energy_migration.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "81b379995c8e1d29c16dac115a4164d83d03f9f5cbfdbcf411081a45bdea1d6a",
+    "status": "ai-reviewed"
+  },
+  "photon_filter.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "07c2822b609257421a9f87826d71b9e662817b304d1f5f1ab479d01e118cb011",
+    "status": "ai-reviewed"
+  },
+  "provided_test_data__calibration.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "eb1c1123a28e9088a0fbb3ff6f1580aeb6c3cebd3da30de3e259c1d31fb2497e",
+    "status": "ai-reviewed"
+  },
+  "provided_test_data__live_cell_experiments.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "0ff28ae31a09bba14685c6a429cb03d9f174f64b06ee1d0cc232c4fcb38e1b31",
+    "status": "ai-reviewed"
+  },
+  "provided_test_data__simulation.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "ada20c00ec244e574b7f7da32d0006162592a14eb1d24557aa46f9c02654afdb",
+    "status": "ai-reviewed"
+  },
+  "reference_curves.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "4a3d38e18f74fed5dad0b9adf16344dbdfaac29ceb7e5eca35d3124e374448f0",
+    "status": "ai-reviewed"
+  },
+  "references.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "a1b619617ee0d627ddeaa46a3a4cf204c2f32fa237ef0acb547554ad200d81ba",
+    "status": "ai-reviewed"
+  },
+  "reusing_the_parameter_to_analyse_the_actual_samples.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "f59660dd4a382cfdc14f808b2fb52286160f7b32f4fcbd4da9e516cba6da0c47",
+    "status": "ai-reviewed"
+  },
+  "saving__exporting_the_results.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "79851d3bd263a68385c4677841b0213258d3caaccc57198f87bfd630a526f7b7",
+    "status": "ai-reviewed"
+  },
+  "saving_and_loading_networks.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "3b565e2c32f23581e1bbab2ebb27a772ac637918e6ad231b870e5e698d025bbb",
+    "status": "ai-reviewed"
+  },
+  "setting_up_the_joint_global_fit_of_a488__egfp.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "ed63c749b2ec49991e2eb2f2059c8dd3ad147bc6e36367c6e5cf68f2e0f57d9f",
+    "status": "ai-reviewed"
+  },
+  "simulation_details.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "c9d19367e9bf69f70e9d2000d691e13c5e6757542289476e9bddd9783569ea89",
+    "status": "ai-reviewed"
+  },
+  "speciesfiltered_fcs_to_recover_dynamics.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "5d293376a72dd4605aa261b6c6181eddafc94da191e6b507dd2e05a645476c46",
+    "status": "ai-reviewed"
+  },
+  "spectral_crosstalk_of_green_fluorescence_into_red_detection_channel.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "dbaf151ba930ce565ed3543522858dd6b63f34aab119408f17310857c8645e07",
+    "status": "ai-reviewed"
+  },
+  "step_1_approximating_gfactor_with_small_fluorophore.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "1ac39db3cc9b7c49b5ebb61125cff15a29039353d95e346ef66e276c35723760",
+    "status": "ai-reviewed"
+  },
+  "step_2_joint_analysis_to_determine_gfactor_ls_and_lp.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "b569565df7365b285094bc73aeaea46ca97403667c76264edd13b684efa20e7b",
+    "status": "ai-reviewed"
+  },
+  "two_single_files.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "e80b352ca25479b9d89ef29a4f792ccb821f07d09511a983761d71a9a661869d",
+    "status": "ai-reviewed"
+  },
+  "vv_vh_format.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "3cfbb4e7336e80548b3fc6cb329843c3d7dd730670e3f917c31d28829c599519",
+    "status": "ai-reviewed"
+  },
+  "wormlike_chain.rst": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "7771e80e2a8ae6027d36cedd59691ce1be07cdf2e9afd692f6cf72603f088947",
+    "status": "ai-reviewed"
+  }
+}

@@ -1,20 +1,34 @@
 """Review-status tracking for documentation pages.
 
 Large parts of the user manual were drafted by a language model. Such a page is
-useful for orientation but must not reach a release before a human has read it,
-so every tracked page carries one of three states:
+useful for orientation but must not reach a release before a human has read it.
+Between "nobody has looked at this" and "a human vouches for it" there is a
+third, real state — **an agent has read the page end to end, corrected what it
+could verify against the source code, and left nothing it knows to be wrong** —
+and collapsing that into "unreviewed" throws away the only signal that says
+which pages still need the *first* pass. So a tracked page carries one of four
+states:
 
 ``reviewed``
     A human signed the page off *and* the file still has the content they saw.
+``ai-reviewed``
+    An agent read and corrected it. Worth more than nothing and less than a
+    human: it cannot open the application, so it cannot tell whether a
+    screenshot still matches the interface or a procedure still works. **Does
+    not clear the release gate.**
 ``stale``
-    The page was signed off, but has been edited since. The sign-off no longer
-    applies and the page counts as unreviewed for gating purposes.
+    The page was signed off at some level, but has been edited since. The
+    sign-off no longer applies and the page counts as unreviewed for gating.
 ``unreviewed``
     Never signed off (the default for anything absent from the registry).
 
-The distinction between ``reviewed`` and ``stale`` is why the registry stores a
-content hash: without it a page could be approved once and then silently
+The distinction between a signed state and ``stale`` is why the registry stores
+a content hash: without it a page could be approved once and then silently
 rewritten, which is exactly the failure this module exists to prevent.
+
+The levels form a ladder. A human sign-off replaces an agent's; an agent's never
+replaces a human's, because an automated pass must not be able to quietly
+downgrade what somebody actually checked.
 
 Status lives in a per-directory sidecar ``review_status.json`` rather than in the
 pages themselves, so the manual's reStructuredText stays clean and the whole
@@ -31,8 +45,16 @@ import pathlib
 
 #: Status values.
 STATUS_REVIEWED = "reviewed"
+STATUS_AI_REVIEWED = "ai-reviewed"
 STATUS_STALE = "stale"
 STATUS_UNREVIEWED = "unreviewed"
+
+#: The sign-off ladder, weakest first. A page may only be moved *up* it by an
+#: automated reviewer; a human may set any level.
+REVIEW_LEVELS: tuple[str, ...] = (STATUS_UNREVIEWED, STATUS_AI_REVIEWED, STATUS_REVIEWED)
+
+#: Statuses that record a sign-off (as opposed to its absence or expiry).
+SIGNED_STATUSES: tuple[str, ...] = (STATUS_AI_REVIEWED, STATUS_REVIEWED)
 
 #: Name of the per-directory sidecar registry.
 REGISTRY_NAME = "review_status.json"
@@ -53,12 +75,16 @@ class ReviewRecord:
     reviewer: str = ""
     date: str = ""
     sha256: str = ""
+    #: What produced the sign-off: ``"human"`` or ``"ai"``. Stored explicitly
+    #: rather than inferred from *reviewer*, because a name says nothing.
+    reviewer_kind: str = "human"
 
     def as_dict(self) -> dict[str, str]:
         """Return the record as a plain JSON-serialisable dict."""
         return {
             "status": self.status,
             "reviewer": self.reviewer,
+            "reviewer_kind": self.reviewer_kind,
             "date": self.date,
             "sha256": self.sha256,
         }
@@ -73,10 +99,18 @@ class PageStatus:
     status: str
     reviewer: str = ""
     date: str = ""
+    reviewer_kind: str = ""
+    #: The level the page held before it went stale, when it did.
+    previous_status: str = ""
 
     @property
     def is_blocking(self) -> bool:
-        """Whether this page would block a release."""
+        """Whether this page would block a release.
+
+        Only a *human* sign-off clears the gate: an agent cannot open the
+        application, so it cannot confirm that a screenshot still matches the
+        interface or that a procedure still works.
+        """
         return self.status != STATUS_REVIEWED
 
 
@@ -97,8 +131,13 @@ class ReviewReport:
         return [p for p in self.pages if p.status == STATUS_STALE]
 
     @property
+    def ai_reviewed(self) -> list[PageStatus]:
+        """Pages an agent has read and corrected, awaiting a human."""
+        return [p for p in self.pages if p.status == STATUS_AI_REVIEWED]
+
+    @property
     def unreviewed(self) -> list[PageStatus]:
-        """Pages never signed off."""
+        """Pages nobody and nothing has been through."""
         return [p for p in self.pages if p.status == STATUS_UNREVIEWED]
 
     @property
@@ -115,6 +154,7 @@ class ReviewReport:
         """Return a one-line human-readable tally."""
         return (
             f"{len(self.reviewed)} reviewed, "
+            f"{len(self.ai_reviewed)} AI-reviewed, "
             f"{len(self.stale)} stale, "
             f"{len(self.unreviewed)} unreviewed "
             f"({len(self.pages)} tracked)"
@@ -233,9 +273,18 @@ def load_registry(directory) -> dict[str, ReviewRecord]:
     out: dict[str, ReviewRecord] = {}
     for key, value in raw.items():
         if isinstance(value, dict):
+            status = str(value.get("status", STATUS_UNREVIEWED))
             out[key] = ReviewRecord(
-                status=str(value.get("status", STATUS_UNREVIEWED)),
+                status=status,
                 reviewer=str(value.get("reviewer", "")),
+                # Registries written before the AI level existed hold human
+                # sign-offs only, so an absent kind means "human".
+                reviewer_kind=str(
+                    value.get(
+                        "reviewer_kind",
+                        "ai" if status == STATUS_AI_REVIEWED else "human",
+                    )
+                ),
                 date=str(value.get("date", "")),
                 sha256=str(value.get("sha256", "")),
             )
@@ -293,42 +342,54 @@ def status_of(path) -> PageStatus:
 
     rel = p.relative_to(directory).as_posix()
     record = load_registry(directory).get(rel)
-    if record is None or record.status != STATUS_REVIEWED:
+    if record is None or record.status not in SIGNED_STATUSES:
         return PageStatus(path=str(p), rel_path=rel, status=STATUS_UNREVIEWED)
 
     try:
         current = content_hash(p.read_text(encoding="utf-8"))
     except Exception:
         current = ""
-    status = STATUS_REVIEWED if current and current == record.sha256 else STATUS_STALE
+    intact = bool(current) and current == record.sha256
     return PageStatus(
         path=str(p),
         rel_path=rel,
-        status=status,
+        status=record.status if intact else STATUS_STALE,
         reviewer=record.reviewer,
         date=record.date,
+        reviewer_kind=record.reviewer_kind,
+        previous_status="" if intact else record.status,
     )
 
 
-def set_status(path, status: str, reviewer: str = "") -> bool:
+def set_status(path, status: str, reviewer: str = "", reviewer_kind: str = "") -> bool:
     """Record *status* for a page and persist the registry.
 
-    Marking a page reviewed stores the hash of its current content, so any later
-    edit turns the page stale automatically.
+    Signing a page off stores the hash of its current content, so any later edit
+    turns the page stale automatically.
 
     Parameters
     ----------
     path : str or pathlib.Path
         Documentation page.
     status : str
-        :data:`STATUS_REVIEWED` or :data:`STATUS_UNREVIEWED`.
+        :data:`STATUS_REVIEWED`, :data:`STATUS_AI_REVIEWED` or
+        :data:`STATUS_UNREVIEWED` (which clears the record).
     reviewer : str, optional
         Name recorded alongside the sign-off.
+    reviewer_kind : str, optional
+        ``"human"`` or ``"ai"``; inferred from *status* when omitted.
 
     Returns
     -------
     bool
         *True* on success; *False* when the page is untracked or unreadable.
+
+    Notes
+    -----
+    An **agent may not downgrade a human sign-off**. Recording
+    :data:`STATUS_AI_REVIEWED` over an intact human ``reviewed`` record leaves
+    the record alone and reports success: an automated pass over the whole
+    manual must not quietly erase the pages somebody actually checked.
 
     """
     p = pathlib.Path(path).resolve()
@@ -339,20 +400,33 @@ def set_status(path, status: str, reviewer: str = "") -> bool:
     rel = p.relative_to(directory).as_posix()
     records = load_registry(directory)
 
-    if status == STATUS_REVIEWED:
-        try:
-            digest = content_hash(p.read_text(encoding="utf-8"))
-        except Exception:
-            return False
-        records[rel] = ReviewRecord(
-            status=STATUS_REVIEWED,
-            reviewer=reviewer,
-            date=datetime.date.today().isoformat(),
-            sha256=digest,
-        )
-    else:
+    if status not in SIGNED_STATUSES:
         records.pop(rel, None)
+        return save_registry(directory, records)
 
+    try:
+        digest = content_hash(p.read_text(encoding="utf-8"))
+    except Exception:
+        return False
+
+    existing = records.get(rel)
+    if (
+        status == STATUS_AI_REVIEWED
+        and existing is not None
+        and existing.status == STATUS_REVIEWED
+        and existing.sha256 == digest
+    ):
+        return True
+
+    if not reviewer_kind:
+        reviewer_kind = "ai" if status == STATUS_AI_REVIEWED else "human"
+    records[rel] = ReviewRecord(
+        status=status,
+        reviewer=reviewer,
+        reviewer_kind=reviewer_kind,
+        date=datetime.date.today().isoformat(),
+        sha256=digest,
+    )
     return save_registry(directory, records)
 
 

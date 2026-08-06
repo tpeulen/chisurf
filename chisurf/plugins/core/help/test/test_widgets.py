@@ -348,3 +348,45 @@ def test_tree_rows_carry_no_emoji(qapp, qtbot):
         for item in walk(widget.tree.topLevelItem(index)):
             offending = [c for c in item.text(0) if is_emoji(c)]
             assert not offending, (item.text(0), offending)
+
+
+def test_review_state_is_colour_not_a_badge(qapp, qtbot):
+    """Reviewing must not restyle the navigation.
+
+    A badge character in a row is an emoji, and an emoji makes Qt fall back to
+    a colour font for the whole item — the manual would be set in a different
+    face from everything above it exactly while somebody works through it.
+    """
+    from qtpy.QtCore import Qt
+
+    from chisurf.plugins.core.help.gui.tool import HelpWidget, REVIEW_BADGES
+
+    widget = HelpWidget()
+    qtbot.addWidget(widget)
+    widget.authoring_btn.setChecked(True)
+
+    tracked = [
+        item for item in widget._items.values() if item.data(0, Qt.UserRole + 1)
+    ]
+    if not tracked:
+        import pytest
+
+        pytest.skip("no review-tracked pages in this checkout")
+    for item in tracked:
+        for badge in REVIEW_BADGES.values():
+            assert badge not in item.text(0), item.text(0)
+    # The state is still visible: a tracked, not-human-reviewed row is coloured.
+    assert any(item.foreground(0).color().isValid() for item in tracked)
+
+
+def test_both_sign_off_levels_are_offered(qapp, qtbot):
+    """A maintainer can record either a human or an agent review."""
+    from chisurf.plugins.core.help.gui.tool import HelpWidget
+    from chisurf.plugins.core.help.api import review
+
+    widget = HelpWidget()
+    qtbot.addWidget(widget)
+    labels = [action.text() for action in widget.authoring_toolbar.actions()]
+    assert any("Mark reviewed" in label for label in labels)
+    assert any("AI-reviewed" in label for label in labels)
+    assert widget.review_filter.findData(review.STATUS_AI_REVIEWED) >= 0

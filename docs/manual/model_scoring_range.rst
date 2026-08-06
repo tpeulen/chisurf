@@ -1,7 +1,7 @@
 Model scoring range
 -------------------
 
-The value of the score depends on the data that is used for scoring. Often, the model is scored in a particular data range. In cases where the data are curves, the scoring range is defined by an upper and lower value (fit range). In the graphical user interface, the scoring range can be adjusted in the 'Data optimization & sampling interface' of in a plot of the data and the model (:strong:`Fig.12`).
+The value of the score depends on the data that is used for scoring. Often, the model is scored in a particular data range. In cases where the data are curves, the scoring range is defined by an upper and lower value (fit range). In the graphical user interface, the scoring range is adjusted either in the 'Data optimization & sampling interface' or directly in a plot of the data and the model (:strong:`Fig.12`).
 
 .. image:: _images/image_rId21.png
   :align: center

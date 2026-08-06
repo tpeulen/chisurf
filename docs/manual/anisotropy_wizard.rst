@@ -10,7 +10,7 @@ This wizard helps in setting up analysis by linking relevant anisotropy paramete
 
 :strong:`Fig.26 Data loading screen of Anisotropy Wizard`. The text field on the left shows information on the current step of the wizard. The lines on the right accept files via drag-and-drop.
 
-The first step in the analysis is reading data, which includes IRF and measurement data. The instrument response function (IRF) must be independently provided for VV and VH channels. Both IRFs are used to correct time-resolved signals and extract precise anisotropy parameters. The files are provided via drag-and-drop. Note, make sure, that the settings of the reading routine are adjusted before dropping files into 
+The first step in the analysis is reading data, which includes IRF and measurement data. The instrument response function (IRF) must be independently provided for VV and VH channels. Both IRFs are used to correct time-resolved signals and extract precise anisotropy parameters. The files are provided via drag-and-drop. Make sure the reading routine is configured before dropping the files in — the wizard reads them with the settings that are active at that moment.
 
 .. image:: _images/image_rId34.png
   :align: center

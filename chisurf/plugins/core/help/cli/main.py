@@ -65,7 +65,9 @@ def review_check(quiet: bool):
     """Fail if any review-tracked page is unreviewed or stale.
 
     This is the release gate: exit code 1 means human-unchecked documentation
-    would ship. Pages become *stale* when edited after sign-off.
+    would ship. An *ai-reviewed* page has been read and corrected by an agent
+    but still counts as blocking — an agent cannot check a screenshot against
+    the running interface. Pages become *stale* when edited after sign-off.
     """
     from chisurf.plugins.core.help.api import review
 
@@ -85,13 +87,18 @@ def review_check(quiet: bool):
             err=True,
         )
         click.echo("  csc help review-set <path> --reviewer <name>", err=True)
+        click.echo(
+            "An agent that has read and corrected a page records that with:",
+            err=True,
+        )
+        click.echo("  csc help review-set <path> --ai", err=True)
     raise SystemExit(1)
 
 
 @cli.command("review-list")
 @click.option(
     "--status",
-    type=click.Choice(["reviewed", "stale", "unreviewed", "all"]),
+    type=click.Choice(["reviewed", "ai-reviewed", "stale", "unreviewed", "all"]),
     default="all",
     help="Only show pages with this status.",
 )
@@ -108,48 +115,53 @@ def review_list(status: str):
         return
     for page in sorted(pages, key=lambda p: p.rel_path):
         who = f"  ({page.reviewer} {page.date})" if page.reviewer else ""
-        click.echo(f"  [{page.status:<10}] {page.rel_path}{who}")
+        click.echo(f"  [{page.status:<11}] {page.rel_path}{who}")
     click.echo("")
     click.echo(report.summary())
 
 
 @cli.command("review-set")
-@click.argument("path", type=str)
+@click.argument("path", type=str, nargs=-1, required=True)
 @click.option("--reviewer", default="", help="Name to record with the sign-off.")
+@click.option(
+    "--ai",
+    is_flag=True,
+    help=(
+        "Record an agent's review instead of a human's. Weaker: it says the "
+        "page was read and corrected, not that it was checked against the "
+        "running application, and it does not clear the release gate."
+    ),
+)
 @click.option(
     "--unreview", is_flag=True, help="Clear the sign-off instead of granting it."
 )
-def review_set(path: str, reviewer: str, unreview: bool):
-    """Record that a human has checked PATH (or clear that record)."""
+def review_set(path: tuple, reviewer: str, ai: bool, unreview: bool):
+    """Record that PATH has been reviewed (or clear that record).
+
+    Several paths may be given, which is how an agent records a pass over a
+    whole directory. A human sign-off is never overwritten by ``--ai``.
+    """
     from chisurf.plugins.core.help.api import review
 
-    if not review.is_tracked(path):
-        click.echo(f"Error: {path} is not review-tracked", err=True)
+    if unreview:
+        target = review.STATUS_UNREVIEWED
+    elif ai:
+        target = review.STATUS_AI_REVIEWED
+    else:
+        target = review.STATUS_REVIEWED
+    if ai and not reviewer:
+        reviewer = "agent"
+
+    failed = False
+    for one in path:
+        if not review.is_tracked(one):
+            click.echo(f"Error: {one} is not review-tracked", err=True)
+            failed = True
+            continue
+        if not review.set_status(one, target, reviewer):
+            click.echo(f"Error: cannot record status for {one}", err=True)
+            failed = True
+            continue
+        click.echo(f"{review.status_of(one).status}: {one}")
+    if failed:
         raise SystemExit(1)
-    target = review.STATUS_UNREVIEWED if unreview else review.STATUS_REVIEWED
-    if not review.set_status(path, target, reviewer):
-        click.echo(f"Error: cannot record status for {path}", err=True)
-        raise SystemExit(1)
-    click.echo(f"{review.status_of(path).status}: {path}")
-
-
-@cli.command("search")
-@click.argument("query", type=str)
-def search(query: str):
-    """Search documentation files for a query string."""
-    from chisurf.plugins.core.help.api.io import search_docs
-
-    results = search_docs(query)
-    if not results:
-        click.echo("No results found.")
-        return
-    click.echo(f"Found {len(results)} result(s):")
-    click.echo("")
-    for r in results:
-        click.echo(f"  [{r['match_type']}] {r['title']}")
-        click.echo(f"         {r['path']}")
-
-
-if __name__ == "__main__":
-    cli()
-

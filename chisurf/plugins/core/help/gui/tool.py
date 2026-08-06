@@ -32,7 +32,7 @@ import webbrowser
 from typing import Optional
 
 from qtpy.QtCore import QEvent, Qt, QTimer, QUrl
-from qtpy.QtGui import QFont, QImage, QKeySequence, QTextDocument
+from qtpy.QtGui import QBrush, QColor, QFont, QImage, QKeySequence, QTextDocument
 from qtpy.QtWidgets import (
     QApplication,
     QComboBox,
@@ -64,6 +64,7 @@ logger = logging.getLogger(__name__)
 #: Badge shown next to a page for each review status.
 REVIEW_BADGES = {
     review.STATUS_REVIEWED: "✅",
+    review.STATUS_AI_REVIEWED: "🤖",
     review.STATUS_STALE: "⚠️",
     review.STATUS_UNREVIEWED: "⬜",
 }
@@ -75,9 +76,22 @@ REVIEW_TOOLTIPS = {
         "Was checked, but the page has been edited since — it needs "
         "re-checking and counts as unreviewed."
     ),
-    review.STATUS_UNREVIEWED: (
-        "Not checked by a human. Largely machine-drafted; blocks release."
+    review.STATUS_AI_REVIEWED: (
+        "Read and corrected by an agent, but not yet confirmed against the "
+        "running application by a human. Still blocks a release."
     ),
+    review.STATUS_UNREVIEWED: (
+        "Nobody and nothing has been through this page. Largely "
+        "machine-drafted; blocks release."
+    ),
+}
+
+#: Row colour per review status, shown only while authoring. A colour says the
+#: same thing as a badge character without changing the row's font.
+REVIEW_COLOURS = {
+    review.STATUS_AI_REVIEWED: "#6cb6ff",
+    review.STATUS_STALE: "#e0a458",
+    review.STATUS_UNREVIEWED: "#e0736d",
 }
 
 #: Icon per top-level section, so the parts are told apart at a glance.
@@ -440,15 +454,28 @@ class HelpWidget(QMainWindow):
         self.review_btn.setCheckable(True)
         self.review_btn.setEnabled(False)
         self.review_btn.setToolTip(
-            "Record that a human has checked this manual page.\n"
+            "Record that a *human* has checked this manual page against the "
+            "running application.\n"
             "Editing the page afterwards makes the sign-off stale automatically."
         )
         self.review_btn.toggled.connect(self._on_review_toggled)
+
+        self.ai_review_btn = bar.addAction("🤖  AI-reviewed")
+        self.ai_review_btn.setCheckable(True)
+        self.ai_review_btn.setEnabled(False)
+        self.ai_review_btn.setToolTip(
+            "Record that an agent has read and corrected this page.\n"
+            "Weaker than a human sign-off — an agent cannot check a screenshot "
+            "against the interface — so it does not clear the release gate, and "
+            "it never overwrites a human sign-off."
+        )
+        self.ai_review_btn.toggled.connect(self._on_ai_review_toggled)
 
         bar.addWidget(QLabel(" Show: "))
         self.review_filter = QComboBox()
         self.review_filter.addItem("All pages", "all")
         self.review_filter.addItem("⬜ Unreviewed", review.STATUS_UNREVIEWED)
+        self.review_filter.addItem("🤖 AI-reviewed", review.STATUS_AI_REVIEWED)
         self.review_filter.addItem("⚠️ Stale", review.STATUS_STALE)
         self.review_filter.addItem("✅ Reviewed", review.STATUS_REVIEWED)
         self.review_filter.setToolTip("Filter the user manual by human-review status.")
@@ -623,11 +650,7 @@ class HelpWidget(QMainWindow):
         item.setData(0, _ROLE_PATH, key)
         status = statuses.get(key, "")
         item.setData(0, _ROLE_REVIEW, status)
-        if status and status != review.STATUS_REVIEWED:
-            item.setText(0, f"{REVIEW_BADGES.get(status, '')} {item.text(0)}".strip())
         tip = node.summary or ""
-        if status:
-            tip = f"{tip}\n{REVIEW_TOOLTIPS.get(status, '')}".strip()
         if tip:
             item.setToolTip(0, self._wrap_tooltip(tip))
         self._items[key] = item
@@ -1288,22 +1311,27 @@ class HelpWidget(QMainWindow):
     # ── human review ────────────────────────────────────────────────
 
     def _refresh_review_state(self, file_path: Optional[pathlib.Path]):
-        """Update the review banner and the sign-off button for *file_path*."""
+        """Update the review banner and both sign-off buttons for *file_path*."""
         if not hasattr(self, "review_btn"):
             return
         if file_path is None or not self.authoring_btn.isChecked():
             self.review_label.setVisible(False)
             self.review_btn.setEnabled(False)
+            self.ai_review_btn.setEnabled(False)
             return
 
         info = self.client.review_status(str(file_path))
         tracked = bool(info.get("tracked"))
         status = info.get("status", "")
 
-        self.review_btn.blockSignals(True)
-        self.review_btn.setEnabled(tracked)
-        self.review_btn.setChecked(tracked and status == review.STATUS_REVIEWED)
-        self.review_btn.blockSignals(False)
+        for button, level in (
+            (self.review_btn, review.STATUS_REVIEWED),
+            (self.ai_review_btn, review.STATUS_AI_REVIEWED),
+        ):
+            button.blockSignals(True)
+            button.setEnabled(tracked)
+            button.setChecked(tracked and status == level)
+            button.blockSignals(False)
 
         if not tracked:
             self.review_label.setVisible(False)
@@ -1312,10 +1340,14 @@ class HelpWidget(QMainWindow):
         badge = REVIEW_BADGES.get(status, "")
         tip = REVIEW_TOOLTIPS.get(status, "")
         who = ""
-        if status == review.STATUS_REVIEWED and info.get("reviewer"):
-            who = f" — {info['reviewer']}, {info.get('date', '')}"
+        if status in review.SIGNED_STATUSES and info.get("reviewer"):
+            kind = "agent" if info.get("reviewer_kind") == "ai" else info["reviewer"]
+            who = f" — {kind}, {info.get('date', '')}"
+        elif status == review.STATUS_STALE and info.get("previous_status"):
+            who = f" — was {info['previous_status']}"
         colours = {
             review.STATUS_REVIEWED: ("#1b5e20", "#e8f5e9"),
+            review.STATUS_AI_REVIEWED: ("#0d47a1", "#e3f2fd"),
             review.STATUS_STALE: ("#e65100", "#fff3e0"),
             review.STATUS_UNREVIEWED: ("#b71c1c", "#ffebee"),
         }
@@ -1328,14 +1360,28 @@ class HelpWidget(QMainWindow):
         self.review_label.setVisible(True)
 
     def _on_review_toggled(self, checked: bool):
-        """Record or clear the sign-off for the current page."""
+        """Record or clear the *human* sign-off for the current page."""
+        self._record_review(
+            review.STATUS_REVIEWED if checked else review.STATUS_UNREVIEWED
+        )
+
+    def _on_ai_review_toggled(self, checked: bool):
+        """Record or clear the *agent* sign-off for the current page."""
+        self._record_review(
+            review.STATUS_AI_REVIEWED if checked else review.STATUS_UNREVIEWED
+        )
+
+    def _record_review(self, status: str):
+        """Write *status* for the open page and refresh what shows it."""
         if self.current_path is None:
             return
-        try:
-            reviewer = getpass.getuser()
-        except Exception:
-            reviewer = ""
-        status = review.STATUS_REVIEWED if checked else review.STATUS_UNREVIEWED
+        if status == review.STATUS_AI_REVIEWED:
+            reviewer = "agent"
+        else:
+            try:
+                reviewer = getpass.getuser()
+            except Exception:
+                reviewer = ""
         result = self.client.set_review_status(str(self.current_path), status, reviewer)
         if not result:
             dialogs.warning(
@@ -1348,13 +1394,13 @@ class HelpWidget(QMainWindow):
         self._update_review_summary()
 
     def _refresh_tree_badges(self):
-        """Re-read review status, and badge the tree while authoring.
+        """Re-read review status and colour the tree while authoring.
 
-        The badge answers "has a human checked this page yet" — a release
-        question. Shown to a reader it is a column of empty check boxes down
-        the manual, saying nothing about which page to open, so it appears only
-        with the authoring tools. The status is still recorded on every row, so
-        the filter works the moment they are switched on.
+        Colour, not a badge character: an emoji in a row makes Qt fall back to
+        a colour font for the whole item, with different metrics, so a badged
+        manual was set in a different face from everything above it. The state
+        still has to be visible at a glance while reviewing, and a foreground
+        colour does that without touching the type.
         """
         statuses = self._review_statuses()
         showing = bool(getattr(self, "authoring_btn", None) and self.authoring_btn.isChecked())
@@ -1362,13 +1408,15 @@ class HelpWidget(QMainWindow):
             status = statuses.get(key)
             if status is None:
                 continue
-            label = item.text(0)
-            for badge in REVIEW_BADGES.values():
-                label = label.replace(badge, "").strip()
-            if showing and status and status != review.STATUS_REVIEWED:
-                label = f"{REVIEW_BADGES.get(status, '')} {label}".strip()
-            item.setText(0, label)
             item.setData(0, _ROLE_REVIEW, status)
+            colour = REVIEW_COLOURS.get(status) if showing else None
+            if colour is None:
+                item.setData(0, Qt.ForegroundRole, None)
+            else:
+                item.setForeground(0, QBrush(QColor(colour)))
+            tip = item.toolTip(0).split("\n\n")[0]
+            hint = REVIEW_TOOLTIPS.get(status, "")
+            item.setToolTip(0, f"{tip}\n\n{hint}" if hint else tip)
         self._apply_review_filter()
 
     def _apply_review_filter(self):

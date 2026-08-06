@@ -100,7 +100,14 @@ Three things are worth knowing about that window:
   next along the reading order.
 * **Every plugin's** :guilabel:`?` **button opens its page here**, and its
   :guilabel:`Guide` button walks you through the tool's own controls.
+* **The text scales** with :kbd:`Ctrl++` / :kbd:`Ctrl+-` (:kbd:`Ctrl+0` resets),
+  or :kbd:`Ctrl` and the scroll wheel. Headings, tables and formulas scale with
+  it, because the page is re-rendered rather than magnified.
 
 Maintainers can turn on the *Authoring* toolbar in that window to edit a page in
-place, list the developer documentation, and record the human review that gates
-a release.
+place, list the developer documentation, and record reviews. Two levels are
+tracked: **AI-reviewed** means an agent has read the page and corrected what it
+could verify against the source code, and **reviewed** means a human has
+confirmed it against the running application. Only the second clears the release
+gate (``csc help review-check``), and either lapses automatically when the page
+is edited.

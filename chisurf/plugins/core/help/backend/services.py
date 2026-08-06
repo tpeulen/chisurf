@@ -117,6 +117,8 @@ def _review_status_handler(params: dict) -> dict:
                 "rel_path": status.rel_path,
                 "status": status.status,
                 "reviewer": status.reviewer,
+                "reviewer_kind": status.reviewer_kind,
+                "previous_status": status.previous_status,
                 "date": status.date,
                 "tracked": review.is_tracked(path),
             }
@@ -130,15 +132,21 @@ def _review_set_handler(params: dict) -> dict:
     path = params.get("path", "")
     status = params.get("status", "")
     reviewer = params.get("reviewer", "")
-    if not path or status not in (review.STATUS_REVIEWED, review.STATUS_UNREVIEWED):
+    reviewer_kind = params.get("reviewer_kind", "")
+    allowed = (
+        review.STATUS_REVIEWED,
+        review.STATUS_AI_REVIEWED,
+        review.STATUS_UNREVIEWED,
+    )
+    if not path or status not in allowed:
         return service_error(
-            "path and status ('reviewed' or 'unreviewed') are required",
+            "path and status ('reviewed', 'ai-reviewed' or 'unreviewed') are required",
             "INVALID_PARAMS",
         )
     try:
         if not review.is_tracked(path):
             return service_error(f"{path} is not review-tracked", "NOT_TRACKED")
-        if not review.set_status(path, status, reviewer):
+        if not review.set_status(path, status, reviewer, reviewer_kind):
             return service_error(f"cannot record status for {path}", "REVIEW_FAILED")
         new_status = review.status_of(path)
         return service_success(
@@ -146,6 +154,7 @@ def _review_set_handler(params: dict) -> dict:
                 "path": new_status.path,
                 "status": new_status.status,
                 "reviewer": new_status.reviewer,
+                "reviewer_kind": new_status.reviewer_kind,
                 "date": new_status.date,
             }
         )
@@ -161,6 +170,13 @@ def _review_check_handler() -> dict:
             {
                 "passed": report.ok,
                 "summary": report.summary(),
+                "counts": {
+                    "reviewed": len(report.reviewed),
+                    "ai_reviewed": len(report.ai_reviewed),
+                    "stale": len(report.stale),
+                    "unreviewed": len(report.unreviewed),
+                    "tracked": len(report.pages),
+                },
                 "blocking": [
                     {"rel_path": p.rel_path, "status": p.status, "path": p.path}
                     for p in report.blocking

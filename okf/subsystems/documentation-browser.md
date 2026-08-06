@@ -27,17 +27,17 @@ page and a search). Three automated numbers back that up:
 
 **What is open.**
 
-1. **The manual is corrected but not yet signed off** — 79 pages, `0 reviewed`
-   in the authoring toolbar's tally. Everything a machine can find has been
-   fixed and is now guarded (`test_manual_snippets.py`): no stub pages, no
-   conversion holes, every ``chisurf.…`` name in a snippet resolves. What is
-   left needs a human with the application open — checking that each screenshot
-   still matches the interface and that each procedure still works, then
-   pressing **Mark reviewed**. The sign-off goes stale automatically if the page
-   is edited afterwards, so it is worth doing per page rather than in a batch.
-   Pages already rewritten from the source code rather than merely tidied:
+1. **The manual is AI-reviewed and awaits a human** — `csc help review-list`
+   reports `0 reviewed, 79 AI-reviewed, 0 stale, 0 unreviewed`. All 79 pages
+   have been read end to end and corrected against the source code; what remains
+   needs somebody with the application open, checking that each screenshot still
+   matches the interface and that each procedure still works, then pressing
+   **Mark reviewed** (or `csc help review-set <path> --reviewer <name>`). Do it
+   per page: the sign-off stores a content hash, so editing the page afterwards
+   makes it stale. Pages rewritten from the source rather than merely tidied:
    `partial_donordonor_energy_migration`, `wormlike_chain`, `fcalculator`,
-   `fluorescence_lifetime`, `parameter_sampling`, `parameter_optimization`,
+   `fluorescence_lifetime`, `discrete_fret_rate_constants`, `parameter_sampling`,
+   `parameter_optimization`, `adding_the_membranediffusion_models`,
    `introduction`, `fit_models`.
 2. **The RST manual has no `docs/manual/_images` scaling policy.** Screenshots
    are full-resolution and arrive as big blocks with a lot of air around them;
@@ -88,6 +88,26 @@ one title.
 migration plans and the bundled modules' READMEs appear only behind the
 *Authoring → Developer docs* toggle. So does the review sign-off: a release gate
 is a maintainer's tool and was taking a third of the toolbar.
+
+**"An agent read it" is a real state, and it is tracked.** The sign-off ladder is
+`unreviewed → ai-reviewed → reviewed` (`api/review.py`). An agent can read a page
+end to end and correct what it can verify against the source code; it cannot open
+the application, so it cannot tell whether a screenshot still matches the
+interface. Collapsing that into *unreviewed* throws away the only signal that
+says which pages still need the **first** pass — which of 79 pages nobody and
+nothing has been through. Three properties make the distinction safe, each with
+a test in `test_review_levels.py`:
+
+* an agent's sign-off **does not clear the release gate** — `review-check` still
+  exits non-zero, and `report.ok` is still human-only;
+* an agent **never overwrites a human's** sign-off, so a sweep over the whole
+  manual cannot quietly erase what somebody actually checked;
+* either level goes **stale** the moment the page is edited, and the record
+  remembers which level expired.
+
+Recorded from the GUI (*Authoring → 🤖 AI-reviewed*), over RPC
+(`help.review.set` with `status: "ai-reviewed"`), or in bulk from the shell:
+`csc help review-set docs/manual/*.rst --ai`.
 
 **Markup that reaches the reader is a defect, not a cosmetic issue.** The
 concept pages are the most information-dense in the project and were the worst

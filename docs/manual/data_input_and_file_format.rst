@@ -1,7 +1,7 @@
 Data input and file format
 """"""""""""""""""""""""""
 
-ChiSurf can read a variety of text files and formats. For time-resolved fluorescence intensities in polarization-resolved experiments, we usually use two different file formats: (ii) two-columns/two files or (ii) single-column/single file ("VV/VH-format").
+ChiSurf can read a variety of text files and formats. For time-resolved fluorescence intensities in polarization-resolved experiments, we usually use two different file formats: (i) two files of two columns each, or (ii) a single file of one column (the "VV/VH format").
 
 In the first case, two files are required, one containing the parallel channel and one the perpendicular channel data. Both files contain two columns; the first column is the time in nanoseconds, while the second column contains the actual data (photon counts in this respective time bin).
 

@@ -2,6 +2,16 @@
 
 ## 2026-08-06
 
+* **"An agent read this page" is now a tracked state, and the whole manual is in it** ([documentation browser](subsystems/documentation-browser.md)).
+
+  The sign-off ladder is `unreviewed → ai-reviewed → reviewed`. The middle rung exists because it is real: an agent can read a page end to end and correct what it can verify against the source code, but it cannot open the application, so it cannot tell whether a screenshot still matches the interface or whether a procedure still works. Collapsing that into *unreviewed* throws away the only signal that says which pages still need the **first** pass — and with 79 pages that was the difference between "nobody knows" and "one specific kind of check is missing".
+
+  **Three properties keep the weaker level from being mistaken for the stronger one**, each with a test: an agent's sign-off does not clear the release gate (`review-check` still exits non-zero and `report.ok` stays human-only); an agent never overwrites a human's record, so a sweep over a directory cannot quietly erase what somebody actually checked; and either level goes stale the moment the page is edited, with the record remembering which level expired. `reviewer_kind` is stored explicitly rather than inferred from the reviewer's name, and registries written before the level existed read back as human sign-offs.
+
+  Recorded from the GUI (*Authoring → 🤖 AI-reviewed*), over RPC, or in bulk with `csc help review-set docs/manual/*.rst --ai`. In the tree the state is a **row colour, not a badge character** — an emoji makes Qt fall back to a colour font for the whole item, so a badged manual was set in a different face from everything above it, exactly while somebody worked through it.
+
+  **The pass itself covered all 79 pages**, and the second half turned up what the first had not: a JSON model file that is YAML and lives elsewhere (`fcs.model.json` → `chisurf/core/models/fcs/models.yaml`), with the wrong advice to overwrite it inside the installation rather than override it from the user folder; a simulated data set described with its slow species 1000× too fast, contradicting the page that generated it; a discrete-FRET page that claimed each donor-acceptor pair has its own rate and then that all of them share one; a sentence that stopped mid-clause; "(ii)" twice in a two-item list. `csc help review-list` now reports **0 reviewed, 79 AI-reviewed, 0 stale, 0 unreviewed** — the gate still fails, correctly, and it now says what kind of check is missing.
+
 * **Data groups specified: a store becomes a tree, and the file becomes the serialisation of it** ([PRD-82](prds/prd-82.md), [columnar store](subsystems/columnar-store.md)).
 
   Written up as a requirements spec for the library to implement (its PRD-019, local to that checkout). The scope grew in the writing, and the growth is the point: the first draft was "let the HDF5 writer stop truncating", which is a file-format patch for a **container** that cannot express the shape either. A `DataStore` gains named child groups — each a full store with its own columns, row count, validity masks and selection — and an HDF5 group *is* a store group, so writing a file is writing the tree and a store with no children serialises exactly as it does today.

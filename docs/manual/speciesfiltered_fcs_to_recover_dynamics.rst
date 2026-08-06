@@ -1,7 +1,7 @@
 Species-filtered FCS to recover dynamics
 """"""""""""""""""""""""""""""""""""""""
 
-A method to recover the triplet-masked anticorrelations in the FRET-CCF is to make use of the microtimes (i.e. the fluorescence decay histograms) encoded in the data. Here, instead of direct photon traces, an additional weighting function is introduced based on the fluorescence decay shape of the (i) IRF, (ii) the LF state, and (iii) the HF state. More details on how to generate these weighting functions can be found e.g. in the following literature 6,7.
+A method to recover the triplet-masked anticorrelations in the FRET-CCF is to make use of the microtimes (i.e. the fluorescence decay histograms) encoded in the data. Here, instead of direct photon traces, an additional weighting function is introduced based on the fluorescence decay shape of the (i) IRF, (ii) the LF state, and (iii) the HF state. The theory of the weighting functions and what the filtered curves mean is in :ref:`concept-filtered-fcs`; entries 6 and 7 of :doc:`references` are the original papers.
 
 In this species-specific or filtered FCS approach, four different correlation pattern are generated:
 

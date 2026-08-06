@@ -1,12 +1,12 @@
 Nuisances
 ~~~~~~~~~
 
-:emphasis:`Convolution.` In time-resolved fluorescence experiments, usually, the model function is convolved with an instrument response function before comparing the model to the recorded data (iterative (re)convolution). Depending on the experimental conditions and the used model function IRF convolution settings need to be adapted (
+:emphasis:`Convolution.` In time-resolved fluorescence experiments, usually, the model function is convolved with an instrument response function before comparing the model to the recorded data (iterative (re)convolution). Depending on the experimental conditions and the used model function IRF convolution settings need to be adapted (:strong:`Fig.20`).
 
 .. image:: _images/image_rId27.png
   :align: center
 
-:strong:`Fig.20`). Certain convolution settings could be optimized during fitting or varied during sampling. However, usually, the convolution parameters are fixed. Nevertheless, convolution settings can be treated as a variable model parameter.
+Certain convolution settings can be optimized during fitting or varied during sampling. However, usually, the convolution parameters are fixed. Nevertheless, convolution settings can be treated as a variable model parameter.
 
 .. image:: _images/image_rId27.png
   :align: center
