@@ -10,6 +10,16 @@
 
   Also corrected in H2MM: the accessible rate window was quoted as reaching $10^5\ \mathrm{s^{-1}}$ where the stated 20 µs photon spacing gives $5\times10^{4}$.
 
+* **The literature standardised, and every mention of code made clickable** ([documentation browser](subsystems/documentation-browser.md)).
+
+  **Twenty works were being cited in prose rather than by key.** Six concept pages ended in a hand-written *Key literature* paragraph — a different format each time, no link, and nothing that could put them on the Literature page. Each one is now a `{cite}` key against a Crossref-verified DOI (109 of 112 works now carry one), and the citation reads the way a person writes one: one author is named, two are both named, three or more become "et al." — "O'Connor & Phillips (1984)", not "O'Connor et al." for a two-author book, which is the kind of thing a reader notices and stops trusting the page over.
+
+  **A reference now says why it is there.** Forty-four bullets across twelve pages were a bare key — "Geyer (1992)" and nothing else, which leaves a reader who has not read it no way to decide whether to find it. Each carries a clause of *why*, and a test fails on a bullet that does not.
+
+  **361 mentions of a source file across 170 pages became links.** They were code spans: a path the reader had to go and find. They now open the code editor at the file, and where a symbol is named, at its definition. The label is the path as written, in both renderers, because a "See also" naming five files from four directories is unreadable as five bare basenames. A link into the source takes the link colour while keeping the code font — without that it is indistinguishable from the code spans around it and nobody discovers it is clickable. The plugin-catalogue generator emits the same role, so all 112 plugin pages link their manifest and view spec.
+
+  **`:src:` was reaching the reader raw.** The role was registered for Markdown and forgotten for reStructuredText, so the manual's sampling page showed `` :src:`sample_fit <...>` `` as its own source text — visible to any reader and to no assertion, because the leak test only looked at the pages it already knew about. Both `src` and `cite` are now registered for the manual too, and the guardrail runs over **every** page in the tree in both languages, checking for any surviving role or fence rather than three known markers.
+
 * **A burst measurement had a time axis and no way to look at it** ([ndX](plugins/ndxplorer.md)).
 
   Every burst carries `Mean Macro Time (s)`, monotonic across all the `.bur` files of a measurement, and ndX drew the whole acquisition as one static 2-D histogram — which is an integral over time, so a photobleaching sample and a stable one with broader populations produce the same picture. The machinery to fix that was already in the file, wired to the wrong thing: the `Image` group box held a spin box, five transport buttons and a `QTimer` bound to an image **frame index**, and `axis_helpers` explicitly rejected any column whose name contains "time". For burst data the whole box was hidden — taking the `weight` checkbox and combo, which happened to live inside it, with it, so histogram weighting was unreachable for bursts.
