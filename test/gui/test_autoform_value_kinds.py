@@ -112,6 +112,76 @@ def test_secret_kind_masks_and_reveals(qapp):
     assert vw.editor.echoMode() == QtWidgets.QLineEdit.Password
 
 
+def test_int_slider_renders_a_slider(qapp):
+    """``kind="int"`` with ``style="slider"`` gets a slider, not a bare spin box.
+
+    The int branch used to be tested before the slider branch, which handles
+    both kinds, so every integer slider silently rendered as a plain spin box --
+    a control the spec asked for and did not get, with no error to notice.
+    """
+    from qtpy import QtWidgets
+
+    import chisurf.core.dataspec as ds
+    from chisurf.gui.autoform import AutoForm
+    from chisurf.gui.autoform.sections.builtin import ValueWidget
+
+    view = ds.ModelView(
+        sections=(
+            ds.ValueSection(attr="position", kind="int", label="Pos", style="slider",
+                            minimum=0, maximum=100),
+        )
+    )
+    model = _model(view, position=25)
+    form = AutoForm(model)
+    vw = form.findChildren(ValueWidget)[0]
+
+    slider = vw.findChild(QtWidgets.QSlider)
+    assert slider is not None, "no slider rendered for an int slider field"
+    assert isinstance(vw.editor, QtWidgets.QSpinBox)
+    assert not isinstance(vw.editor, QtWidgets.QDoubleSpinBox)
+    assert vw.editor.value() == 25
+    assert slider.value() == 250  # 25 % of the 0…1000 travel
+
+    # dragging the slider commits an int, not a float
+    slider.setValue(500)
+    assert model.position == 50
+    assert isinstance(model.position, int)
+
+    # and the spin box drives the slider back
+    vw.editor.setValue(75)
+    assert slider.value() == 750
+
+
+def test_slider_follows_a_model_driven_change(qapp):
+    """``sync_fields`` moves the handle, not only the spin box.
+
+    A value the *model* changed -- a playback tick, a fit result -- used to
+    update the spin box and leave the slider where the user last dragged it, so
+    the two controls disagreed about the same number.
+    """
+    from qtpy import QtWidgets
+
+    import chisurf.core.dataspec as ds
+    from chisurf.gui.autoform import AutoForm
+    from chisurf.gui.autoform.sections.builtin import ValueWidget
+
+    view = ds.ModelView(
+        sections=(
+            ds.ValueSection(attr="position", kind="int", label="Pos", style="slider",
+                            minimum=0, maximum=10),
+        )
+    )
+    model = _model(view, position=0)
+    form = AutoForm(model)
+    vw = form.findChildren(ValueWidget)[0]
+    slider = vw.findChild(QtWidgets.QSlider)
+
+    model.position = 7
+    form.sync_fields()
+    assert vw.editor.value() == 7
+    assert slider.value() == 700
+
+
 def test_editable_choice_commits_free_text(qapp):
     import chisurf.core.dataspec as ds
     from chisurf.gui.autoform import AutoForm

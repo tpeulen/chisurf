@@ -4,6 +4,7 @@
 * [Plugin documentation worklist](documentation-worklist.md) - Current screening of plugins by documentation coverage and priority.
 * [High-priority plugin profiles](profiles/index.md) - Evidence records for plugins that should be documented or stabilized first.
 * [Burst analysis](burst.md) - smFRET burst selection, BVA, burst MLE, burst browser, per-burst FCS and background estimation.
+* [ndX multidimensional explorer](ndxplorer.md) - projection, gating, curve overlays and playing a measurement back along one of its own columns.
 * [Correlation (FCS)](fcs.md) - correlator wizard, fFCS filters, 2D-FLCS, curve merging, diffusion/volume calculator and format conversion.
 * [Fluorescence decay](fluorescence-decay.md) - TCSPC lifetime analysis, IRF estimation, MaxEnt MEM, lazy lifetime analysis and time-resolved anisotropy.
 * [Modelling](modelling.md) - structural/FRET modelling (FPS, IMP.bff docking, HydroPro, model editors).

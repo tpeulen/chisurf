@@ -46,6 +46,39 @@ selection is the analysis**: choosing the sub-cloud is how you isolate the
 species you will then quantify — by fitting its marginal here, or by handing it
 to a full model through a {ref}`bridge <concept-md-bridges>`.
 
+(concept-md-playback)=
+## Time is a column, and a static plot integrates it away
+
+One of those axes is special, because it is not a property of the molecule: the
+**macro time** at which each burst was detected. A single-molecule measurement is
+a time series of burst events, and the marginal above is an integral over the
+whole acquisition. If $\rho$ depends on time — the sample photobleaches,
+aggregates, sediments, or the alignment drifts — then
+
+$$
+h_j(v) = \int_0^{T} \!\!\int \rho(\mathbf{p}, t)\,\delta(p_j - v)
+         \,\mathrm{d}\mathbf{p}\,\mathrm{d}t
+$$
+
+averages that dependence away, and the plot of a drifting sample is
+indistinguishable from the plot of a stable one with broader populations.
+
+Restricting to a slice $[t_i, t_{i+1})$ recovers it, and stepping the slice makes
+the change visible as motion rather than as broadening. The same gate answers two
+different questions depending on where its lower edge sits:
+
+- a **window**, $t_i \le t < t_{i+1}$, shows the population as it was *then* — the
+  instantaneous $\rho(\mathbf{p}, t)$, at the cost of the counts in one slice;
+- an **integral**, $t < t_{i+1}$, shows everything acquired so far. It converges
+  to the static plot, and watching it converge is what distinguishes a population
+  that was there from the start from one that only arrives late — both of which
+  look identical in the final histogram.
+
+Nothing about this is specific to time. It is a one-dimensional gate that steps,
+so any column can drive it; a frame index does exactly the same thing for an
+image stack, one frame per step. See the
+{doc}`playback controls <../guides/46_ndxplorer>`.
+
 ## Derived parameters: the columns are computed, not stored
 
 Most of the interesting axes are not measured directly. A burst measures *photon

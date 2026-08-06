@@ -34,6 +34,44 @@ python -m ndxplorer --chisurf-rpc localhost:5555 # linked to a ChiSurf server
 Load an MFD table (a burst `.csv`/HDF5, or a ChiSurf posterior export). Each row
 is one burst; each numeric column is a selectable axis.
 
+(guide-ndx-playback)=
+## Play the measurement back
+
+:::{admonition} Theory
+:class: seealso
+See {ref}`concept-md-playback` for why a static plot cannot tell a drifting
+sample from a stable one with broader populations.
+:::
+
+Every burst carries the macro time at which it was detected, so a burst table is
+a time series and the plot you open is an integral over the whole acquisition.
+The **Playback** panel at the top of the plot controls gates the plot on a slice
+of one column and steps it.
+
+The axis is chosen from the data when a file is loaded — `Mean Macro Time (s)`
+for a burst folder, the frame index for an image stack — and any other numeric
+column can be picked in the **Axis** combo.
+
+| Control | What it does |
+| --- | --- |
+| **Steps** | How many slices the range is cut into. The slice width is the range divided by this, so a one-hour and a one-minute measurement take the same time to play. A frame index starts at one step per frame. |
+| **Step** | Which slice is on screen. Drag to scrub. |
+| ◀◀ ◀ ⏸ ▶ ▶▶ | Step, play, stop. Pressing a play button again stops it; pressing the opposite one reverses. |
+| **Mode** | *Window* — one slice, the population as it was then. *Integrate* — everything up to the current step, so a population that arrives late is visible as it arrives. *Stack* — no gating, the whole measurement (how a file opens). |
+| **Speed** | Steps per second. A redraw takes a few tens of milliseconds, so above roughly 30 fps steps are dropped rather than shown faster. |
+
+The readout under the controls names the slice and the number of points in it.
+
+Playback is a gate like any other, so every other panel follows it: the marginals,
+the 2-D map, a Gaussian fit and a curve fit all see only the surviving points. A
+selection added with **➕ select** while a slice is on screen records that slice
+as part of the gate, so it keeps meaning the same thing after the playback moves
+on.
+
+To watch one population rather than the whole cloud, gate it first and then play:
+the marginal of a gated blob over time is the cleanest way to see a state
+depopulate.
+
 ## Constants: edit, fix/free, and link
 
 The **parameter table** holds the calibration constants as `FittingParameter`s.
