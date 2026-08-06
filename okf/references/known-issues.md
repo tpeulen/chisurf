@@ -1,3 +1,20 @@
+## chimol: the mouse-mode block's text is clipped at the panel's column width
+
+**2026-08-06.** Seen while composing the object panel over a `ray` result on a
+902x562 viewport: the bottom-right block reads `Mouse Mode 3-Button Viewin`,
+`Whee`, `MovS`, `+Box-BoxClipMovS` — every line runs out of column. The column
+is a fixed `column_width = 220`, and the block is laid out to that regardless of
+what its longest line needs, so it is clipped at every window size rather than
+at small ones.
+
+Not caused by the ray-image change (it is the same before and after, and the
+panel is a fixed-width column either way), and not chased there because the fix
+is a layout question for the panel: either the block measures its own text and
+the column takes the wider of the two demands, or the mode names abbreviate.
+PyMOL sizes the internal-GUI column from the text. Reproduce with the composer
+in `chisurf/plugins/chimol/test/test_ray_keeps_the_panel.py` — paint
+`paint_screen_space` onto a `QImage` and read the bottom-right corner.
+
 ## models: `ReactionWidget` (stopped flow) is registered and cannot be instantiated
 
 **2026-08-06.** Same defect as the ET model-free fit below:

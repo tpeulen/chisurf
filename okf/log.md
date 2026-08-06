@@ -2,6 +2,16 @@
 
 ## 2026-08-06
 
+* **`ray` took PyMOL's object panel off the screen with it** ([PyMOL parity](plugins/pymol-parity.md)).
+
+  Reported as "after ray the menu disappears — it should never disappear, only shouldn't be on screenshot", which names the distinction the implementation had lost. The traced image was shown in a `QLabel` laid over the viewport, and the object panel is drawn **in** the viewport rather than beside it — so the label covered the A/S/H/L/C menus, the mouse-mode block and the sequence strip along with the scene. The panel is the only way to switch a representation back on, so it vanished exactly when it was next needed; and the click that dismissed the overlay was *swallowed* (`return True` in the event filter) rather than reaching the button it landed on, so the first click after `ray` did nothing.
+
+  The image now belongs to the renderer's paint pass, blitted into the scene column before the chrome is drawn over it — the same order the live scene is drawn in. It is dropped when it stops being true rather than on any interaction: `set_scene` and `clear` (a command changed what is drawn), a press that the panel did *not* take, or a wheel that is not scrolling the sequence. A press the panel takes is left alone, so a menu click works on the first click.
+
+  A second thing the label did that nothing had noticed: `setScaledContents` on a pixmap gives the label a size hint the layout obeys, so `ray 1920, 1080` resized the **window** to fit the picture.
+
+  **The composition had no test path, and that is why it shipped.** An offscreen framebuffer reads back null, so nothing could look at what the viewport draws. The screen-space pass is now `paint_screen_space(painter)`, callable with a painter on a plain `QImage`, and the tests read the result back: the image lands in the scene column, its rect stays out of the panel's column and the strip's band, a panel click is taken by the panel, a scene click restores the live view, and a scene change drops the image. The containment is asserted on the **rect**, not on pixels — the panel's background is semi-transparent, so an out-of-bounds image comes back *darkened* rather than replaced and a colour comparison passes on the broken case. The mechanism has its own guard: showing a traced image must add no visible child covering the container, which detects the old `QLabel` verbatim.
+
 * **A second, deeper quenching page — and it lands on QuEst** ([documentation browser](subsystems/documentation-browser.md)).
 
   `docs/fundamentals/quenching_mechanisms.md` sits under the phenomenological page and answers *why* a quenching constant has the value it has: the diffusion limit, whether the electron transfer is allowed once the partners meet, and the base-specific case that decides where a dye may be attached to DNA.

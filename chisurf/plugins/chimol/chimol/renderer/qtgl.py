@@ -171,6 +171,11 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         self._gui_grab = False
         #: PyMOL's object panel, drawn in the viewport rather than beside it.
         self._internal_gui = InternalGui()
+        #: The last `ray` result, shown *in place of* the live scene until the
+        #: view changes. It is drawn inside the paint pass rather than by a
+        #: widget laid over the viewport, because a widget over the viewport
+        #: also covers the object panel -- and the panel is the only way back.
+        self._ray_image: Optional[QtGui.QImage] = None
         self._needs_upload: bool = False
         self._program: Optional[QtGui.QOpenGLShaderProgram] = None
         self._pos_attr = -1
@@ -437,6 +442,11 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
     def set_scene(self, scene: Optional[Scene]) -> None:
         """Attach a Scene, rebuild VBOs, and request a repaint."""
         self._scene = scene
+        # A traced image is a picture of the scene that was; the moment a new
+        # one arrives it is a picture of something else. Every command that
+        # changes what is drawn comes through here, so this is the one place
+        # that has to know.
+        self.clear_ray_image()
         self._prepare_draw_data(scene)
         self.update()
 
@@ -444,6 +454,10 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         self._scene = None
         self._draw_data = []
         self._release_gpu_calls()
+        # Same reason as `set_scene`: an emptied viewport that still shows the
+        # last traced frame says the molecule is there when it is not, and this
+        # is the path taken when the scene becomes empty rather than different.
+        self.clear_ray_image()
         self.update()
 
     def configure_grid(self, size: float, spacing: float) -> None:
@@ -1770,7 +1784,12 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         per frame is twice the stall for no reason.
         """
         gui = self._internal_gui
-        if not self._labels and not (gui.visible and gui.rows) and not gui.has_menu():
+        if (
+            not self._labels
+            and not (gui.visible and gui.rows)
+            and not gui.has_menu()
+            and self._ray_image is None
+        ):
             return
 
         # QPainter draws through the same GL context, so it inherits whatever
@@ -1787,13 +1806,118 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         painter = QtGui.QPainter(self)
         painter.setRenderHint(QtGui.QPainter.Antialiasing)
         try:
-            if self._labels:
-                self._paint_labels(painter)
-            self._refresh_gui_state(gui)
-            gui.layout(self.width(), self.height())
-            gui.paint(painter)
+            self.paint_screen_space(painter)
         finally:
             painter.end()
+
+    def paint_screen_space(self, painter) -> None:
+        """Everything in screen space, in the order it must be drawn.
+
+        Parameters
+        ----------
+        painter : QtGui.QPainter
+            Open on the widget in normal use, and on a plain ``QImage`` in
+            tests -- which is the reason this is split out of
+            :meth:`_render_overlay`. The order below is the whole contract and
+            a headless renderer cannot read back a GL framebuffer to check it.
+        """
+        gui = self._internal_gui
+        # First, so everything below is chrome drawn *over* the ray result
+        # exactly as it is drawn over the live scene.
+        self._paint_ray_image(painter)
+        if self._labels:
+            self._paint_labels(painter)
+        self._refresh_gui_state(gui)
+        gui.layout(self.width(), self.height())
+        gui.paint(painter)
+
+    def show_ray_image(self, image) -> bool:
+        """Show a traced image in place of the live scene.
+
+        Parameters
+        ----------
+        image : QtGui.QImage
+            The ray-traced frame.
+
+        Returns
+        -------
+        bool
+            True when the image was accepted.
+
+        Notes
+        -----
+        This used to be a ``QLabel`` laid over the viewport, and that widget
+        covered PyMOL's object panel with it -- the panel is drawn *in* the
+        viewport, so anything laid over the scene hides the A/S/H/L/C menus,
+        the mouse-mode block and the sequence strip. The panel is the only way
+        to switch a representation back on, so it went away exactly when the
+        user next needed it, and the click that dismissed the overlay was
+        swallowed rather than reaching the button it landed on. The traced
+        image belongs *behind* the chrome; only the saved file is chrome-free.
+        """
+        if image is None or image.isNull():
+            return False
+        self._ray_image = image
+        self.update()
+        return True
+
+    def clear_ray_image(self) -> bool:
+        """Drop the traced image and go back to the live scene.
+
+        Returns
+        -------
+        bool
+            True when an image was showing.
+        """
+        if self._ray_image is None:
+            return False
+        self._ray_image = None
+        self.update()
+        return True
+
+    def ray_image_rect(self) -> QtCore.QRect:
+        """The area a traced image is allowed to occupy.
+
+        Returns
+        -------
+        QtCore.QRect
+            The scene column, in widget pixels.
+
+        Notes
+        -----
+        The scene *column*, not the widget: the panel's column and the sequence
+        strip's band are chrome drawn in this viewport, and an image painted
+        across them puts the picture where the chrome goes -- which is the
+        fault this replaced, in a different spelling. Exposed rather than
+        computed inline so the containment can be asserted exactly; a pixel
+        probe cannot, because the panel's background is semi-transparent and
+        would darken an out-of-bounds image rather than replace it.
+        """
+        gui = getattr(self, "_internal_gui", None)
+        strip = int(gui.sequence_height()) if gui is not None else 0
+        return QtCore.QRect(
+            0, strip, self.scene_width(), max(self.height() - strip, 1)
+        )
+
+    def _paint_ray_image(self, painter) -> None:
+        """Blit the traced image into the scene column, aspect preserved."""
+        image = self._ray_image
+        if image is None or image.isNull():
+            return
+
+        target = self.ray_image_rect()
+        if target.width() <= 0 or target.height() <= 0:
+            return
+
+        scaled = image.size().scaled(target.size(), QtCore.Qt.KeepAspectRatio)
+        where = QtCore.QRect(QtCore.QPoint(0, 0), scaled)
+        where.moveCenter(target.center())
+
+        # The letterbox is filled rather than left showing the last GL frame,
+        # or a traced image of a different aspect ratio sits in a frame of the
+        # live scene it replaced.
+        painter.fillRect(target, QtGui.QColor(0, 0, 0))
+        painter.drawImage(where, image)
 
     def _refresh_gui_state(self, gui) -> None:
         """Read the movie position into the panel before it is drawn.
@@ -2366,6 +2490,14 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
             event.accept()
             return
 
+        # Past the panel, so this press is aimed at the scene -- and the scene
+        # is about to move under a still frame of where it used to be. The
+        # press is *not* consumed: dismissing a picture is not what the user
+        # asked for by clicking, and swallowing the click is what made the
+        # first click after `ray` do nothing.
+        self.clear_ray_image()
+
+
         if event.button() == QtCore.Qt.RightButton:
             # Defer: a right *drag* dollies (see mouseMoveEvent); a right *click*
             # opens the context menu on release.
@@ -2506,6 +2638,9 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         # the cursor happened to be on the strip is never what was meant.
         pos = event.position() if hasattr(event, "position") else event.posF()
         gui = self._internal_gui
+        if not (gui.sequence_visible and gui.sequence_strip_contains(pos.x(), pos.y())):
+            # About to move the camera, so the still frame stops being true.
+            self.clear_ray_image()
         if gui.sequence_visible and gui.sequence_strip_contains(pos.x(), pos.y()):
             if delta_steps and gui.scroll_sequence(-delta_steps * 5):
                 self.update()

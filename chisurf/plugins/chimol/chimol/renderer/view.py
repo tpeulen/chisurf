@@ -2335,7 +2335,6 @@ class MolView(QtWidgets.QWidget):
         self.view: QtWidgets.QWidget | None = None
         self._disabled_label: QtWidgets.QLabel | None = None
         self._container: QtWidgets.QWidget | None = None
-        self._ray_overlay: QtWidgets.QLabel | None = None
 
         # Stored geometry
         self._coords: np.ndarray | None = None
@@ -6565,7 +6564,7 @@ class MolView(QtWidgets.QWidget):
         return image
 
     def show_ray_overlay(self, image: QtGui.QImage) -> bool:
-        """Show a rendered image over the OpenGL viewport until interaction.
+        """Show a traced image in place of the live scene.
 
         Parameters
         ----------
@@ -6575,45 +6574,31 @@ class MolView(QtWidgets.QWidget):
         Returns
         -------
         bool
-            ``True`` when the overlay was shown.
+            ``True`` when the image was shown.
+
+        Notes
+        -----
+        The renderer draws it *inside* its paint pass, under the chrome. This
+        was a ``QLabel`` laid over the viewport, and that is what took PyMOL's
+        object panel off the screen after every `ray`: the panel is drawn in
+        the viewport, not beside it, so a widget over the scene covers the
+        A/S/H/L/C menus, the mouse-mode block and the sequence strip -- and the
+        panel is the only way to switch a representation back on. The chrome
+        should be missing from the *file*, which it is, and never from the
+        window.
         """
-        container = getattr(self, "_container", None)
-        if container is None or image is None or image.isNull():
+        renderer = getattr(self, "_renderer", None)
+        show = getattr(renderer, "show_ray_image", None)
+        if not callable(show):
             return False
-        overlay = self._ray_overlay
-        if overlay is None:
-            overlay = QtWidgets.QLabel(container)
-            overlay.setAlignment(QtCore.Qt.AlignCenter)
-            overlay.setScaledContents(True)
-            overlay.setStyleSheet("background-color: black;")
-            overlay.installEventFilter(self)
-            self._ray_overlay = overlay
-            layout = container.layout()
-            if layout is not None:
-                layout.addWidget(overlay, 0, 0)
-        overlay.setPixmap(QtGui.QPixmap.fromImage(image))
-        overlay.show()
-        overlay.raise_()
-        return True
+        return bool(show(image))
 
     def hide_ray_overlay(self) -> None:
-        """Hide the ray-rendered overlay if visible."""
-        overlay = self._ray_overlay
-        if overlay is not None:
-            overlay.hide()
-
-    def eventFilter(self, obj, event):  # type: ignore[override]
-        """Dismiss ray overlay on user interaction."""
-        if obj is self._ray_overlay and event is not None:
-            if event.type() in (
-                QtCore.QEvent.MouseButtonPress,
-                QtCore.QEvent.MouseButtonDblClick,
-                QtCore.QEvent.Wheel,
-                QtCore.QEvent.KeyPress,
-            ):
-                self.hide_ray_overlay()
-                return True
-        return super().eventFilter(obj, event)
+        """Go back to the live scene if a traced image is showing."""
+        renderer = getattr(self, "_renderer", None)
+        clear = getattr(renderer, "clear_ray_image", None)
+        if callable(clear):
+            clear()
 
     def _update_atom_gaussians(self, config: dict) -> list[SceneObject] | None:
         if not self._show_atom_gaussians:
