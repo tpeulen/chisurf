@@ -208,7 +208,7 @@ ninja = "*"
 # i18n-compile compiles them to runtime .qm binaries. `chisurf` depends on the
 # compile so a launched GUI always has fresh translations.
 i18n-extract = { cmd = "python build_tools/i18n/extract_strings.py" }
-i18n-compile = { cmd = "lrelease chisurf/gui/i18n/chisurf_en.ts chisurf/gui/i18n/chisurf_de.ts chisurf/gui/i18n/chisurf_fr.ts", inputs = ["chisurf/gui/i18n/*.ts"], outputs = ["chisurf/gui/i18n/*.qm"] }
+i18n-compile = { cmd = "lrelease chisurf/gui/i18n/chisurf_en.ts chisurf/gui/i18n/chisurf_de.ts chisurf/gui/i18n/chisurf_fr.ts chisurf/gui/i18n/chisurf_ru.ts", inputs = ["chisurf/gui/i18n/*.ts"], outputs = ["chisurf/gui/i18n/*.qm"] }
 
 test-app-linux = { cmd = "echo 'test-app-linux: requires native pixi environment on Linux'", depends-on = ["build-extensions"] }
 # `-m "not slow"` makes the declared marker actually do something: it was

@@ -243,6 +243,16 @@ plot defaults. Many of these are read via `chisurf.settings.gui`.
 
 #### 1.8.1 Window behavior
 
+- **`language`**  
+  UI language as a two-letter locale code. `en` (default) is the canonical
+  source language and needs no catalogue; `de`, `fr` and `ru` load
+  `chisurf/gui/i18n/chisurf_<code>.qm` at startup. Picking a language in the
+  Settings dialog or the ribbon flag dropdown writes it here, so the choice
+  **persists across sessions**; tools and dialogs opened after the switch render
+  in the new language immediately, while already-open windows fully retranslate
+  after a restart. A code without a shipped catalogue silently falls back to
+  English.
+
 - **`RubberBandMove`** / **`RubberBandResize`**  
   Passed to `QMdiSubWindow.setOption` in `FitSubWindow` and other windows to
   enable live rubber‑band move/resize handles for MDI subwindows.
@@ -345,7 +355,7 @@ Fields under `gui.editor` control the integrated text editor:
 
 - **`enabled`**  
   Install the application‑wide tooltip folding filter
-  (`chisurf/gui/tooltip.py`). With it on, every tooltip in ChiSurf is word‑wrapped
+  ({src}`chisurf/gui/tooltip.py`). With it on, every tooltip in ChiSurf is word‑wrapped
   instead of rendering as one very wide line.
 
 - **`wrap_width`**  
