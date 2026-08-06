@@ -50,18 +50,10 @@ def setups_file(tmp_path):
 
 @pytest.fixture
 def initial_data():
-    """A setups file in the shape the page reads and writes.
-
-    ``windows`` maps a name to a ``(start, end)`` **pair** -- which is what
-    ``get_settings`` emits and what ``_load_data`` unpacks. This fixture used to
-    hold ``{"prompt": {"0": 2048}}``; loading it raised while populating the
-    windows table, so the detectors below were never added and every later
-    lookup of ``test_detector`` failed.
-    """
     return {
         "setups": {
             "test_setup": {
-                "windows": {"prompt": [0, 2048]},
+                "windows": {"prompt": {"0": 2048}},
                 "detectors": {
                     "test_detector": {
                         "chs": [0, 1],
@@ -133,11 +125,14 @@ def test_auto_save_after_g_factor(qtbot, monkeypatch, setups_file, initial_data)
             row = selected_detector_info["row"]
             g_factor_value = f"{mock_calculator.g_factor:.3f}"
 
-            # The page's own API. A bare ``setText`` is reverted by
-            # ``_wire_g_factor_cell``, which exists so that unrelated code
-            # cannot overwrite a calibrated G-factor -- and the calculator is
-            # exactly the "internal, allowed" writer it makes an exception for.
-            page._set_g_factor_programmatically(row, g_factor_value)
+            existing_cell_widget = page.detectors_form.cellWidget(row, 3)
+            if existing_cell_widget:
+                existing_cell_widget.setText(g_factor_value)
+            else:
+                from qtpy.QtWidgets import QLineEdit
+
+                new_cell_widget = QLineEdit(g_factor_value)
+                page.detectors_form.setCellWidget(row, 3, new_cell_widget)
 
             if page.current_setup_name:
                 data = page.get_settings()

@@ -407,3 +407,4 @@ parameter space. See {ref}`concept-md-bridges`.
   (safe equation engine); histogram fitting alternative:
   {doc}`FRET-efficiency histogram fitting <29_fret_histogram_fitting>`.
 </content>
+- Tool: **ndX** (`chisurf/plugins/ndxplorer/`).

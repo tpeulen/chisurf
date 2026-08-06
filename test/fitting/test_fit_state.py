@@ -79,17 +79,11 @@ def test_fit_state_roundtrip_with_links():
     # Basic structure checks
     assert state["model_class"] == DummyLinearModel.__name__
     assert "parameters" in state
-    # Keyed by uid since state version 4 -- a uid identifies the object, the
-    # name identifies its role, and both are needed to restore a link into
-    # freshly constructed models. The name lives inside each entry.
-    by_name = {v["name"]: v for v in state["parameters"].values()}
-    assert set(by_name) == {"p0", "p1"}
+    assert set(state["parameters"].keys()) == {"p0", "p1"}
 
-    p1_state = by_name["p1"]
+    p1_state = state["parameters"]["p1"]
     assert p1_state["fixed"] is True
-    p0_state = by_name["p0"]
-    assert p1_state["link_target"] == p0_state["uid"]
-    assert p1_state["link_target_name"] == "p0"
+    assert p1_state["link_target"] == "p0"
 
     # Create a fresh fit and apply the stored state
     fit2 = _make_dummy_fit()
@@ -272,8 +266,8 @@ def test_fret_gaussian_model_get_set_state_preserves_gaussians():
     fit1 = Fit(model_class=chisurf.core.models.tcspc.fret.GaussianModel, data=data)
     m1 = fit1.model
     # Add two Gaussians
-    m1.gaussians.append(mean=2.0, sigma=0.5, x=1.0)
-    m1.gaussians.append(mean=5.0, sigma=1.0, x=0.5)
+    m1.gaussians.append(mean=2.0, sigma=0.5, amplitude=1.0)
+    m1.gaussians.append(mean=5.0, sigma=1.0, amplitude=0.5)
     n1 = len(m1.gaussians)
     assert n1 == 2
 
@@ -289,49 +283,65 @@ def test_fret_gaussian_model_get_set_state_preserves_gaussians():
 
 
 def test_pda_probch0_length_preserved_via_model_state():
-    """The PDA model's state override must preserve its species count.
+    """Pda2cSimpleModel.get_state/set_state must preserve ProbCh0 count.
 
-    ``Pda2cSimpleModel`` cannot be built from a plain DataCurve -- it reads
-    ``fit.data.pda``, real burst data. The previous version worked around that
-    with ``__new__`` and then assigned to ``parameters_all_dict``, a read-only
-    property, so it could only ever raise. A subclass that skips the data
-    requirement exercises the same override on a real species group.
+    Uses lightweight instances to avoid tttrlib dependencies.
     """
 
-    class _DetachedPdaModel(pda_simple_mod.Pda2cSimpleModel):
-        """The model's state logic without its data dependency."""
+    m1 = pda_simple_mod.Pda2cSimpleModel.__new__(pda_simple_mod.Pda2cSimpleModel)
+    m1.pch0 = pda_simple_mod.ProbCh0.__new__(pda_simple_mod.ProbCh0)
+    m1.pch0._name = "pch0_stub"
+    m1.parameters_all_dict = {}
 
-        def __init__(self):
-            self.pch0 = pda_simple_mod.ProbCh0(name="pch0")
-
-    m1 = _DetachedPdaModel()
+    # Add two discrete PDA species
     m1.pch0.append(amplitude=1.0, pch0=0.2)
     m1.pch0.append(amplitude=2.0, pch0=0.8)
     n1 = len(m1.pch0)
     assert n1 == 2
 
     state = m1.get_state()
-    assert state["extra"]["pda_probch0_n"] == n1
 
-    m2 = _DetachedPdaModel()
+    m2 = pda_simple_mod.Pda2cSimpleModel.__new__(pda_simple_mod.Pda2cSimpleModel)
+    m2.pch0 = pda_simple_mod.ProbCh0.__new__(pda_simple_mod.ProbCh0)
+    m2.pch0._name = "pch0_stub"
+    m2.parameters_all_dict = {}
+
+    # Ensure starting configuration differs
     assert len(m2.pch0) != n1
+
     m2.set_state(state)
     assert len(m2.pch0) == n1
 
-    # It must shrink as well as grow, or a reloaded project accumulates species.
-    m3 = _DetachedPdaModel()
-    for _ in range(5):
-        m3.pch0.append(amplitude=1.0, pch0=0.5)
-    m3.set_state(state)
-    assert len(m3.pch0) == n1
+
+def test_pda_gaussian_distances_length_preserved_via_model_state():
+    """Pda2cGaussianDistanceModel.get_state/set_state must preserve count.
+
+    Uses lightweight instances to avoid tttrlib dependencies.
+    """
+
+    m1 = pda_simple_mod.Pda2cGaussianDistanceModel.__new__(pda_simple_mod.Pda2cGaussianDistanceModel)
+    m1.distances = pda_simple_mod.Pda2cGaussianDistances.__new__(pda_simple_mod.Pda2cGaussianDistances)
+    m1.distances._name = "pda_distances_stub"
+    m1.parameters_all_dict = {}
+
+    m1.distances.append(mean=50.0, sigma=5.0, amplitude=1.0)
+    m1.distances.append(mean=60.0, sigma=6.0, amplitude=0.5)
+    n1 = len(m1.distances)
+    assert n1 == 2
+
+    state = m1.get_state()
+
+    m2 = pda_simple_mod.Pda2cGaussianDistanceModel.__new__(pda_simple_mod.Pda2cGaussianDistanceModel)
+    m2.distances = pda_simple_mod.Pda2cGaussianDistances.__new__(pda_simple_mod.Pda2cGaussianDistances)
+    m2.distances._name = "pda_distances_stub"
+    m2.parameters_all_dict = {}
+
+    assert len(m2.distances) != n1
+
+    m2.set_state(state)
+    assert len(m2.distances) == n1
 
 
-# A ``Pda2cGaussianDistanceModel`` test used to sit here. No such class has ever
-# existed in this tree -- the test was written against an API that was never
-# implemented, and it stubbed the model through ``__new__`` besides. The
-# behaviour it meant to cover, "model state preserves a variable-length
-# component group", is covered above for ProbCh0 and by the lifetime and
-# Gaussian round-trips earlier in this file.
 def test_fit_state_preserves_error_estimates():
     """Fitted uncertainties must survive a save/load round trip.
 

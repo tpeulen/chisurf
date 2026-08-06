@@ -37,16 +37,10 @@ def _fit(noise: float = 0.02, seed: int = 0):
     return fit
 
 
-def _sampled(fit, steps: int = 3000, seed: int = 20260803):
-    """Sample the fit so a chain is on it, and return it.
-
-    Seeded: these tests compare a sampled interval against a linear one to a
-    fraction of its own width, and an unseeded chain made that comparison land
-    on either side of the threshold from run to run.
-    """
+def _sampled(fit, steps: int = 3000):
+    """Sample the fit so a chain is on it, and return it."""
     chisurf.core.fitting.fit.sample_fit(
-        fit, tempfile.mkdtemp(), steps=steps, thin=1, n_runs=2, method='de',
-        seed=seed)
+        fit, tempfile.mkdtemp(), steps=steps, thin=1, n_runs=2, method='de')
     return fit
 
 

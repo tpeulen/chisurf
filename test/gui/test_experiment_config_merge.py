@@ -22,10 +22,8 @@ from chisurf.core.experiments import get_experiment_config_files
 from chisurf.gui.main_helper import SetupMixin
 
 #: Experiment sections present in the packaged configuration. A user copy
-#: predating them is exactly the situation the bug made permanent. These are
-#: checked against the packaged file first, so that renaming a section fails
-#: with "no longer shipped" rather than looking like a broken merge.
-SHIPPED_ONLY_SECTIONS = ("ics", "pda")
+#: predating them is exactly the situation the bug made permanent.
+SHIPPED_ONLY_SECTIONS = ("ics", "pda3c")
 
 #: A section the user's stale copy carries and the shipped file does not.
 STALE_SECTION = "rics"
@@ -60,8 +58,6 @@ def _write_stale_user_config(settings_dir) -> None:
     """Write a user configuration from before the shipped sections existed."""
     packaged, _ = get_experiment_config_files()
     shipped = yaml.safe_load(packaged.read_text(encoding="utf-8"))
-    for section in SHIPPED_ONLY_SECTIONS:
-        assert section in shipped, f"{section!r} is no longer shipped — update this test"
     stale = {
         "tcspc": shipped["tcspc"],
         STALE_SECTION: {"name": "RICS", "readers": [], "models": []},

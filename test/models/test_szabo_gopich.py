@@ -499,29 +499,27 @@ def _kolmogorov_smirnov(a, b):
 
 
 @pytest.mark.parametrize("rate", [1e2, 1e3, 1e4])
-def test_the_sampled_occupancy_matches_the_closed_form(rate):
-    """The sampler against the law, over three decades of exchange.
-
-    This used to compare two samplers -- a C++ one and a numpy one -- which is a
-    weaker statement than it looks: two implementations agreeing is not evidence
-    when they share an assumption. The numpy one is gone (the C++ sampler is
-    checked against the closed form in the simulation library's own suite), so
-    this asserts the thing that was actually meant: a symmetric scheme's
-    equilibrium occupancy and the fact that every window's fractions sum to one.
-    """
+def test_the_engine_and_the_reference_sample_the_same_occupancy_law(rate):
     from chisurf.core.fluorescence.kinetics import (
-        equilibrium_populations,
         occupation_time_fractions,
+        occupation_time_fractions_reference,
     )
 
     K = np.array([[0.0, rate, rate / 2], [rate, 0.0, rate], [rate / 2, rate, 0.0]])
     window, n = 2e-3, 4000
-    sampled = occupation_time_fractions(K, window, n, seed=5)
+    fast = occupation_time_fractions(K, window, n, seed=5)
+    slow = occupation_time_fractions_reference(K, window, n, seed=5)
 
-    assert sampled.shape == (n, 3)
-    assert np.allclose(sampled.sum(axis=1), 1.0, atol=1e-9)
-    # Averaged over windows, the occupancy is the equilibrium population.
-    assert np.allclose(sampled.mean(axis=0), equilibrium_populations(K), atol=0.02)
+    assert fast.shape == slow.shape == (n, 3)
+    assert np.allclose(fast.sum(axis=1), 1.0, atol=1e-9)
+    # Independent samplers with independent streams, so compare distributions,
+    # not draws: the observable a dynamic PDA actually consumes is a projection
+    # of the occupancy onto per-state probabilities.
+    projection = np.array([0.8, 0.5, 0.2])
+    assert _kolmogorov_smirnov(fast @ projection, slow @ projection) < 0.05
+    assert np.allclose(fast.mean(axis=0), slow.mean(axis=0), atol=0.02)
+    assert np.allclose(fast.std(axis=0), slow.std(axis=0), atol=0.02)
+
 
 def test_sampled_occupancy_recovers_the_equilibrium_populations():
     from chisurf.core.fluorescence.kinetics import (

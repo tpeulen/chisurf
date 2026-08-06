@@ -17,6 +17,8 @@ Two things a viewer is asked for constantly and PyMOL answers only halfway:
 
 from __future__ import annotations
 
+from contextlib import contextmanager
+
 import numpy as np
 
 from ..analysis.clashes import ClashCriteria, clash_color, find_clashes
@@ -29,7 +31,14 @@ WATER_MODES = ("bridge", "exclude", "only")
 
 
 class InteractionMixin:
-    """`hbond_network` and `clashes`."""
+    """`hbond_network`, `clashes` and the `wizard`."""
+
+    #: What PyMOL calls the preview object the rotamers live in, one state each.
+    PREVIEW_OBJECT = "mutation"
+    #: And the bump geometry drawn for the state on screen. PyMOL's own name is
+    #: `_bump_check`; the leading underscore is its convention for an object the
+    #: user did not make, and it is kept.
+    BUMP_OBJECT = "_bump_check"
 
     # ------------------------------------------------------------------ #
     # Hydrogen-bond networks
@@ -439,13 +448,15 @@ class InteractionMixin:
             self._wizard_step(viewer, state, argument)
         elif action == "bump":
             state.bump_check = not state.bump_check
-            self._wizard_preview(viewer, state)
+            self._wizard_show_state(viewer, state)
         elif action == "apply":
             self._wizard_finish(viewer, keep=True)
         elif action == "clear":
-            self._wizard_restore(viewer, state)
+            self._wizard_delete_preview(viewer, state)
             state.target = ""
             state.scores = []
+            state.site = None
+            self._wizard_bumps(viewer, state)
             self._wizard_refresh(viewer, state)
         else:
             self._emit_error(f"wizard: unknown action {action!r}")
@@ -528,11 +539,25 @@ class InteractionMixin:
             except ValueError:
                 self._emit_error("wizard: rotamer must be a number or 'next'")
                 return
-        self._wizard_preview(viewer, state)
+        # A state change, not a rebuild: the rotamers are already there.
+        self._wizard_show_state(viewer, state)
 
     def _wizard_preview(self, viewer, state, choose_best: bool = False) -> None:
-        """Build the chosen rotamer into the structure, keeping the original."""
-        from ..analysis.mutate import mutate_residue
+        """Build every rotamer once, as **states of a preview object**.
+
+        PyMOL's `do_library`, 1:1: it creates an object called `mutation` with
+        one state per rotamer -- `cmd.create(obj_name, frag_name, 1, state)` in
+        a loop, each state titled with the rotamer's frequency -- scores every
+        state once, and leaves the source structure **untouched** until Apply.
+        Stepping a rotamer is then a *frame change*, not a rebuild.
+
+        Which is also why it is fast. Rebuilding the residue inside the source
+        object, as this did before, re-ran `set_structure` on the whole
+        molecule for every step: 2.2 s per rotamer on a 1363-atom protein, of
+        which 0.97 s was recomputing ambient occlusion for atoms that had not
+        moved. A separate object with the states already in it costs that once.
+        """
+        from ..analysis.mutate import build_rotamers, score_rotamers
 
         if not state.residue or not state.target:
             self._wizard_refresh(viewer, state)
@@ -543,89 +568,278 @@ class InteractionMixin:
             return
 
         chain, resi, _resn = state.residue
+        rows = self._wizard_residue_rows(atoms, chain, resi)
+        if not rows:
+            self._emit_error("wizard: the residue is no longer there")
+            return
+
+        xyz = np.asarray(atoms["xyz"], dtype=float)
+        atom_names = np.array([str(n).strip() for n in atoms["atom_name"]])
+        elements = np.array([str(e).strip() for e in atoms["element"]])
+        backbone = {
+            atom_names[i]: xyz[i] for i in rows if atom_names[i] in ("N", "CA", "C", "O")
+        }
+        hydrogens = bool(np.any(np.isin(np.char.upper(elements), ("H", "D"))))
+        try:
+            site = build_rotamers(state.target, backbone, hydrogens=hydrogens)
+        except (KeyError, ValueError) as exc:
+            self._emit_error(f"wizard: {exc}")
+            return
+
+        # Scored against the neighbourhood once, for every state, exactly as
+        # the wizard scores every state before showing you any of them.
+        centre = xyz[rows].mean(axis=0)
+        near = np.linalg.norm(xyz - centre, axis=1) <= 12.0
+        near[rows] = False
+        site = score_rotamers(site, xyz[near], elements[near])
+
+        state.site = site
+        state.scores = [(rot.frequency, rot.strain) for rot in site.rotamers]
+        if choose_best:
+            state.rotamer = int(min(
+                range(len(site.rotamers)),
+                key=lambda k: (site.rotamers[k].strain, -site.rotamers[k].frequency),
+            ))
+        state.rotamer = max(0, min(state.rotamer, len(site.rotamers) - 1))
+
+        self._wizard_show_states(viewer, state, site)
+        self._wizard_show_state(viewer, state)
+
+    def _wizard_residue_rows(self, atoms, chain, resi) -> list[int]:
+        """Every row of one residue, by chain and number."""
         names = atoms.dtype.names or ()
         chains = (
             np.array([str(c) for c in atoms["chain"]]) if "chain" in names
             else np.array([""] * len(atoms))
         )
-        rows = [
+        return [
             i for i in range(len(atoms))
             if int(atoms["res_id"][i]) == int(resi) and chains[i] == chain
         ]
-        if not rows:
-            self._emit_error("wizard: the residue is no longer there")
-            return
-        if state.original is None:
-            # The preview replaces the residue in place, so the only way back
-            # is a copy of what was there. Taken once, before the first build.
-            state.original = np.array(atoms[rows], dtype=atoms.dtype).copy()
-            state.original_at = rows[0]
 
+    def _wizard_show_states(self, viewer, state, site) -> None:
+        """Create the `mutation` object, one state per rotamer.
+
+        PyMOL names it `mutation` and so does this: it appears in the object
+        list, it can be switched off, and `delete mutation` gets rid of it --
+        the preview is an object like any other rather than a mode the panel
+        owns.
+        """
+        from ..io.structure import StructurePayload
+
+        self._wizard_delete_preview(viewer, state)
+        keep_camera = self._wizard_keeps_the_camera(viewer)
+        keep_camera.__enter__()
+
+        frames = np.stack([rot.coords for rot in site.rotamers])
+        first = frames[0]
+        dtype = np.dtype([
+            ("atom_name", "U4"), ("res_name", "U4"), ("res_id", "i4"),
+            ("chain", "U2"), ("element", "U2"), ("xyz", "f8", 3),
+        ])
+        chain, resi, _resn = state.residue
+        rows = np.array(
+            [
+                (name, state.target, int(resi), chain, element, tuple(xyz))
+                for name, element, xyz in zip(site.names, site.elements, first)
+            ],
+            dtype=dtype,
+        )
+        payload = StructurePayload(
+            coords=first,
+            atoms=rows,
+            bonds=np.asarray(site.bonds, dtype=int) if site.bonds else None,
+            frames=frames,
+            reader="mutation",
+        )
+        state.preview_id = viewer.add_payload(
+            payload, name=self.PREVIEW_OBJECT, fit_camera=False
+        )
+        # In the source's frame, not its own. An object centred on its own
+        # centroid is drawn at the middle of the scene, so a fourteen-atom
+        # residue previewed that way appears nowhere near the residue it
+        # replaces -- and the camera refits to it on top of that.
+        viewer.set_frames(
+            frames,
+            object_id=state.preview_id,
+            active_frame=state.rotamer,
+            share_frame_with=state.object_id,
+        )
+        # Sticks and lines, which is what PyMOL shows a mutation object as
+        # (`cmd.show(self.rep, obj_name)` with `rep` defaulting to lines, plus
+        # `cmd.show('lines', obj_name)` unconditionally). Left at the default a
+        # fourteen-atom residue is drawn as a *cartoon*, which splines a ribbon
+        # through one residue and is the blob this first produced.
+        with viewer._activate_object(state.preview_id):
+            viewer._show_cartoon = False
+            viewer._show_trace = False
+            viewer._show_atoms = False
+            viewer._show_surface = False
+            viewer._show_sticks = True
+            viewer._show_lines = True
+            viewer._show_nonbonded = False
+        window = self._require_window_and_viewer()[0]
+        if window is not None and hasattr(window, "_refresh_objects_from_viewer"):
+            try:
+                window._refresh_objects_from_viewer()
+            except Exception:
+                pass
+        keep_camera.__exit__(None, None, None)
+
+    @contextmanager
+    def _wizard_keeps_the_camera(self, viewer):
+        """Hold the framing across a wizard update.
+
+        PyMOL sets `auto_zoom 0` around `do_library` for this reason: you have
+        framed the residue you are mutating, and creating an object beside it
+        must not take that away. chimol has more ways to move the camera than
+        one flag covers -- a new object shifts the scene centre, a state change
+        re-derives the radius -- so the view is saved and put back, which is
+        the same promise made where it cannot be missed.
+        """
         try:
-            result = mutate_residue(
-                atoms, rows, state.target,
-                rotamer=state.rotamer if not choose_best else None,
-            )
-        except (KeyError, ValueError) as exc:
-            self._emit_error(f"wizard: {exc}")
-            return
-        state.rotamer = result.chosen
-        state.scores = [
-            (rot.frequency, rot.strain) for rot in result.site.rotamers
-        ]
-        self._apply_mutation(viewer, state.object_id, state.object_name, atoms, result)
-        if state.bump_check:
-            self.clashes(f"resi {resi}", "", "clashes")
-        else:
-            self._clear_measurement_group(viewer, "clashes")
-            viewer._measurements = {
-                k: v for k, v in viewer._measurements.items()
-                if k not in ("clashes", "clashes_ok")
-            }
-        self._wizard_refresh(viewer, state)
+            view = viewer.get_view_state()
+        except Exception:
+            view = None
+        try:
+            yield
+        finally:
+            if view is not None:
+                try:
+                    viewer.set_view_state(view)
+                except Exception:
+                    pass
 
-    def _wizard_restore(self, viewer, state) -> None:
-        """Put the original residue back -- Clear, and leaving without Apply."""
-        if state.original is None or not state.object_id:
+    def _wizard_show_state(self, viewer, state) -> None:
+        """Show one rotamer: the frame, the bumps for it, and the panel.
+
+        **One redraw**, and a draft one. Stepping used to cost three full
+        rebuilds of every visible object -- the frame change, the bumps and the
+        panel each asked for their own -- with an ambient-occlusion bake of the
+        whole protein inside each. The molecule has not moved; only which state
+        of a fourteen-atom object is shown has.
+        """
+        # No draft mode here, deliberately. Stepping a rotamer is not
+        # scrubbing a trajectory: you are *looking* at each one to judge it,
+        # and the draft path drops the occlusion bake, which is most of what
+        # makes the picture readable. One suspended redraw is enough -- the
+        # step costs about as much as a single rebuild rather than three.
+        with self._wizard_keeps_the_camera(viewer), viewer.suspend_updates():
+            if state.preview_id and state.site is not None:
+                # The preview's own state, not the global timeline. PyMOL's
+                # states *are* global; chimol's drive trajectory playback for
+                # every object at once, and asking the whole scene for state
+                # seven to step a nine-state rotamer re-derives the scene
+                # bounds from a fourteen-atom object -- measured: the protein
+                # shrinks to a speck and the camera cannot be put back, because
+                # the zoom is derived rather than stored. Stepping the preview's
+                # own state renders correctly and costs 32 ms. The panel says
+                # which rotamer is on screen; the movie transport stays the
+                # movie transport.
+                with viewer._activate_object(state.preview_id):
+                    preview_state = viewer._get_active_state()
+                    viewer._select_state_frame(preview_state, state.rotamer)
+            self._wizard_bumps(viewer, state)
+            self._wizard_refresh(viewer, state)
+
+    def _wizard_bumps(self, viewer, state) -> None:
+        """Draw the bump check for the state on screen, or clear it.
+
+        PyMOL builds a `_bump_check` object out of the side chain and its
+        surroundings and lets sculpting draw into it. The drawing is the same
+        (:func:`~chimol.analysis.clashes.find_clashes` and PyMOL's own colour);
+        what is different is that chimol has an overlay to draw into and does
+        not need a second object to hang the geometry off.
+        """
+        from ..analysis.clashes import ClashCriteria, find_clashes, radii_for
+        from ..analysis.mutate import BACKBONE
+
+        measurements = {
+            key: value for key, value in viewer._measurements.items()
+            if key not in (self.BUMP_OBJECT, f"{self.BUMP_OBJECT}_ok")
+        }
+        viewer._measurements = measurements
+        if not state.bump_check or state.site is None:
+            viewer._update_view()
             return
+
         entry = viewer._objects.get(state.object_id)
         atoms = getattr(getattr(entry, "state", None), "atoms", None)
         if atoms is None:
             return
         chain, resi, _resn = state.residue
-        names = atoms.dtype.names or ()
-        chains = (
-            np.array([str(c) for c in atoms["chain"]]) if "chain" in names
-            else np.array([""] * len(atoms))
-        )
-        rows = [
-            i for i in range(len(atoms))
-            if int(atoms["res_id"][i]) == int(resi) and chains[i] == chain
+        rows = self._wizard_residue_rows(atoms, chain, resi)
+        xyz = np.asarray(atoms["xyz"], dtype=float)
+        elements = np.array([str(e).strip() for e in atoms["element"]])
+        centre = xyz[rows].mean(axis=0) if rows else xyz.mean(axis=0)
+        near = np.linalg.norm(xyz - centre, axis=1) <= 12.0
+        near[rows] = False
+
+        site = state.site
+        rotamer = site.rotamers[state.rotamer]
+        side_chain = [
+            index for index, name in enumerate(site.names) if name not in BACKBONE
         ]
-        keep = np.ones(len(atoms), dtype=bool)
-        keep[rows] = False
-        at = min(rows) if rows else state.original_at
-        entry.state.atoms = np.concatenate([
-            atoms[keep][:at], state.original, atoms[keep][at:]
+        combined = np.vstack([rotamer.coords[side_chain], xyz[near]])
+        radii = np.concatenate([
+            radii_for([site.elements[i] for i in side_chain]),
+            radii_for(elements[near]),
         ])
-        entry.state.all_atom_coords = None
-        entry.state.coords = None
-        self._rebuild_after_coordinate_change(viewer, state.object_id)
-        state.original = None
+        position = {atom: row for row, atom in enumerate(side_chain)}
+        bonds = [
+            (position[i], position[j]) for i, j in site.bonds
+            if i in position and j in position
+        ]
+        subject = np.zeros(len(combined), dtype=bool)
+        subject[: len(side_chain)] = True
+        criteria = ClashCriteria.from_config()
+        report = find_clashes(
+            combined, radii, bonds, subject=subject, criteria=criteria
+        )
+        self._draw_clashes(
+            viewer, self.BUMP_OBJECT, None, report, criteria,
+            coords=combined, radii=radii,
+        )
+
+    def _wizard_delete_preview(self, viewer, state) -> None:
+        """Remove the `mutation` object, if there is one."""
+        preview = getattr(state, "preview_id", "")
+        if not preview:
+            return
+        try:
+            viewer.remove_object(preview)
+        except Exception:
+            try:
+                viewer._objects.pop(preview, None)
+            except Exception:
+                pass
+        state.preview_id = ""
 
     def _wizard_finish(self, viewer, keep: bool) -> None:
-        """End the wizard, keeping the preview or putting the residue back."""
+        """End the wizard: Apply writes the state in, anything else drops it.
+
+        The source structure is only ever touched here. Everything before this
+        was a separate object, which is what makes Clear and Done free -- there
+        is nothing to undo, only an object to delete.
+        """
         state = getattr(viewer, "_wizard", None)
         if state is None:
             return
-        if not keep:
-            self._wizard_restore(viewer, state)
-        self._clear_measurement_group(viewer, "clashes")
+        if keep:
+            self._wizard_commit(viewer, state)
+        self._wizard_delete_preview(viewer, state)
+        for group in (self.BUMP_OBJECT, "clashes"):
+            self._clear_measurement_group(viewer, group)
         viewer._measurements = {
             k: v for k, v in viewer._measurements.items()
-            if k not in ("clashes", "clashes_ok")
+            if k not in (
+                "clashes", "clashes_ok", self.BUMP_OBJECT, f"{self.BUMP_OBJECT}_ok",
+            )
         }
         viewer._wizard = None
+        # Leaving is not a scrub: whatever is on screen now is what the user
+        # will be looking at, so it is drawn at full quality.
+        viewer._draft_quality = False
         gui = self._wizard_gui(viewer)
         if gui is not None:
             gui.wizard_rows = []
@@ -634,6 +848,29 @@ class InteractionMixin:
         viewer._update_view()
         self._emit_message(
             "wizard: applied" if keep else "wizard: done"
+        )
+
+    def _wizard_commit(self, viewer, state) -> None:
+        """Write the state on screen into the source residue -- PyMOL's Apply."""
+        from ..analysis.mutate import MutationResult
+
+        if state.site is None or not state.residue:
+            return
+        entry = viewer._objects.get(state.object_id)
+        atoms = getattr(getattr(entry, "state", None), "atoms", None)
+        if atoms is None:
+            return
+        chain, resi, _resn = state.residue
+        rows = self._wizard_residue_rows(atoms, chain, resi)
+        if not rows:
+            self._emit_error("wizard: the residue is no longer there")
+            return
+        state.site.indices = rows
+        result = MutationResult(
+            site=state.site, chosen=state.rotamer, residue_name=state.target
+        )
+        self._apply_mutation(
+            viewer, state.object_id, state.object_name, atoms, result
         )
 
     def _wizard_refresh(self, viewer, state) -> None:
@@ -675,28 +912,54 @@ class InteractionMixin:
             criteria=ClashCriteria.from_config(),
         )
 
-    def _draw_clashes(self, viewer, name, atoms, report, criteria) -> None:
-        """Put the bumps on screen, one solid segment per pair, colour by depth.
+    def _draw_clashes(
+        self, viewer, name, atoms, report, criteria, *, coords=None, radii=None
+    ) -> None:
+        """Draw the bumps where PyMOL draws them: **in the gap**, not atom to atom.
 
-        PyMOL's `sculpt_vdw_vis_mode` 2 draws a line whose width grows with the
-        severity and draws nothing below `vis_mid`; mode 1 draws a cylinder for
-        every pair, including the comfortable ones. This takes mode 2's line
-        and mode 1's coverage: a green line for a contact that is fine is worth
-        seeing, and a chimol overlay line cannot vary its width per segment.
+        `SculptCGOBump` mode 1 -- the mode the mutagenesis wizard turns on --
+        does not draw a line between the two atom centres. It finds the
+        *contact point*, the position dividing the pair in proportion to their
+        radii, and draws a short cylinder across it whose radius is half the
+        overlap. So a clash reads as a small mark sitting between two atoms,
+        and a structure with fifty contacts looks like fifty marks.
+
+        Drawing centre to centre, which is what this did, turns the same fifty
+        contacts into fifty long lines crossing the molecule -- a spider's web
+        with the actual overlaps somewhere inside it. Same data, unreadable
+        picture, and it was the first thing anyone said about it.
+
+        The mark is a segment rather than a cylinder because a chimol overlay
+        draws lines; its **width** carries the radius, in the two buckets the
+        overlay allows (PyMOL's own `CGOLinewidth(1 + color_factor * 3)` is the
+        same idea with a continuous width).
         """
-        xyz = np.asarray(atoms["xyz"], dtype=float)
+        from ..analysis.clashes import bump_geometry
+
+        if coords is None:
+            coords = np.asarray(atoms["xyz"], dtype=float)
+        if radii is None:
+            from ..analysis.clashes import radii_for
+
+            radii = radii_for(
+                [str(e) for e in atoms["element"]]
+                if atoms is not None and "element" in (atoms.dtype.names or ())
+                else []
+            )
+        coords = np.asarray(coords, dtype=float)
+        radii = np.asarray(radii, dtype=float)
+
         measurements = dict(viewer._measurements)
         for suffix in ("", "_ok"):
             measurements.pop(f"{name}{suffix}", None)
 
-        # Two objects, not one: PyMOL widens the line with the severity
-        # (`CGOLinewidth(1 + color_factor * 3)`) and a chimol overlay carries
-        # one width per geometry. Splitting at `vis_mid` -- where the colour
-        # starts leaving green -- keeps the distinction that matters, which is
-        # that a red line is a problem and a green one is reassurance.
         buckets = {
-            f"{name}_ok": ([c for c in report.clashes if c.overlap < criteria.vis_mid], 1.0),
-            name: ([c for c in report.clashes if c.overlap >= criteria.vis_mid], 3.0),
+            f"{name}_ok": (
+                [c for c in report.clashes if c.overlap < criteria.vis_mid], 2.0
+            ),
+            name: (
+                [c for c in report.clashes if c.overlap >= criteria.vis_mid], 5.0
+            ),
         }
         for key, (group, width) in buckets.items():
             if not group:
@@ -704,8 +967,9 @@ class InteractionMixin:
             pairs = np.empty((len(group) * 2, 3), dtype=float)
             colours = np.empty((len(group) * 2, 4), dtype=float)
             for k, clash in enumerate(group):
-                pairs[2 * k] = xyz[clash.i]
-                pairs[2 * k + 1] = xyz[clash.j]
+                end1, end2, _radius = bump_geometry(clash, coords, radii, criteria)
+                pairs[2 * k] = end1
+                pairs[2 * k + 1] = end2
                 rgb = clash_color(clash.overlap, criteria)
                 colours[2 * k] = (*rgb, 1.0)
                 colours[2 * k + 1] = (*rgb, 1.0)

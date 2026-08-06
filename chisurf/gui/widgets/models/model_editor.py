@@ -1,17 +1,19 @@
 """Live-wiring seam between a fit's model and its on-screen editor/plots.
 
-Every model is a pure, Qt-free compute model whose editor is generated:
+This is the compatibility bridge that lets the new *pure model + AutoModelWidget*
+path coexist with the legacy *model-is-a-widget* classes during migration:
 
-* :func:`build_model_editor` returns the editor widget for the model panel — an
-  :class:`~chisurf.gui.widgets.models.auto_model_widget.AutoModelWidget` built
-  from the model's ``view_spec()``.
-* :func:`model_plot_specs` returns the ``(plot_class, options)`` list for the fit
-  subwindow, resolved from ``view_spec().plots``.
+* :func:`build_model_editor` returns the editor widget to place in the model
+  panel. For a legacy model that is itself a ``QWidget`` it returns the model
+  unchanged (identical behaviour); for a pure (Qt-free) model it builds an
+  :class:`~chisurf.gui.widgets.models.auto_model_widget.AutoModelWidget`.
+* :func:`model_plot_specs` returns the ``(plot_class, options)`` list for the
+  fit subwindow, preferring the model's data-driven ``view_spec().plots`` and
+  falling back to the legacy ``plot_classes`` attribute.
 
-The ``plot_classes`` attribute this used to fall back on is gone (see the
-`GUI & AutoForm <okf/subsystems/gui-autoform.md>`_ concept):
-a model naming GUI plot classes was the last hard dependency from the compute
-side onto the GUI, and nothing declares one any more.
+Because every model registered today is still a widget, both functions take the
+legacy branch unless a model opts in by being a pure model — so wiring these in
+is behaviour-preserving.
 """
 from __future__ import annotations
 
@@ -43,21 +45,23 @@ def _is_alive(widget) -> bool:
 
 
 def build_model_editor(model) -> QtWidgets.QWidget:
-    """Return the editor widget for ``model``, building it once and caching it.
+    """Return the editor widget for ``model`` (legacy widget or auto-built).
 
-    The widget is cached on the model (:data:`_EDITOR_ATTR`) so later
-    show/hide/lookup operate on the same one. A model that *is* a widget (there
-    are none in the tree; a third-party one could be) is returned unchanged.
+    For a legacy model that is itself a ``QWidget`` the model is returned
+    unchanged. For a pure model an :class:`AutoModelWidget` is built once and
+    cached on the model (:data:`_EDITOR_ATTR`) so later show/hide/lookup operate
+    on the same widget.
 
     Parameters
     ----------
     model : chisurf.core.models.model.Model
-        The fit's model.
+        The fit's model. May be a legacy model-widget or a pure model.
 
     Returns
     -------
     QtWidgets.QWidget
-        The (cached) :class:`AutoModelWidget` bound to ``model``.
+        ``model`` itself when it is already a widget, otherwise the (cached)
+        :class:`AutoModelWidget` bound to it.
     """
     if isinstance(model, QtWidgets.QWidget):
         return model
@@ -76,9 +80,10 @@ def build_model_editor(model) -> QtWidgets.QWidget:
 def model_editor_widget(model):
     """Return the on-screen editor widget for ``model``, or ``None``.
 
-    The cached :class:`AutoModelWidget`, if one has been built (via
-    :func:`build_model_editor`). Use this where code manipulates the editor
-    directly (show/hide/screenshot).
+    Legacy widget models *are* their own editor; pure models return the cached
+    :class:`AutoModelWidget` if one has been built (via
+    :func:`build_model_editor`). Use this where code historically manipulated the
+    model widget directly (show/hide/screenshot).
     """
     if isinstance(model, QtWidgets.QWidget):
         return model
@@ -103,14 +108,14 @@ def hide_model_editor(model) -> None:
 def model_plot_specs(model):
     """Return ``[(plot_class, options), ...]`` for the fit subwindow.
 
-    Resolved from the model's ``view_spec().plots``: each entry names a plot by
-    registry key, and the accessors its options carry are resolved here because
-    JSON cannot hold a callable.
-
-    Returns an empty list when the model declares no plots — a fit window with no
-    plot tabs is a visible, fixable state; silently substituting some other
-    model's plots is not.
+    Legacy model-widgets keep their own ``plot_classes`` (a hand-written widget
+    must not inherit, say, the lifetime view-spec's plots just because it
+    multiply-inherits ``LifetimeModel``). Only pure models — the ones rendered by
+    :class:`AutoModelWidget` — drive their plots from ``view_spec().plots``.
     """
+    if isinstance(model, QtWidgets.QWidget):
+        return list(getattr(model, "plot_classes", []))
+
     try:
         view = model.view_spec()
     except Exception as exc:  # pragma: no cover - defensive
@@ -154,6 +159,6 @@ def model_plot_specs(model):
                     resolved.append((cls, opts))
                 return resolved
         except Exception as exc:  # pragma: no cover - defensive
-            logging.error(f"model_plot_specs: could not resolve plots: {exc}")
+            logging.debug(f"model_plot_specs: resolve failed, using legacy: {exc}")
 
-    return []
+    return list(getattr(model, "plot_classes", []))

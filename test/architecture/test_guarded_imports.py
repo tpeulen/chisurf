@@ -26,6 +26,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[2] / "chisurf"
 OPTIONAL = {
     # hardware / vendor SDKs
     "mcculw": "Measurement Computing DAQ SDK, Windows-only",
+    "burbulator_dll_wrapper": "Windows DLL wrapper for the burbulator simulator",
     "quest": "optional QuEsT accessible-volume extension",
     # platform
     "ctypes": "ctypes.wintypes exists on Windows only",

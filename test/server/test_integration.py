@@ -11,11 +11,6 @@ from chisurf.server.protocol import METHOD_NOT_FOUND
 
 from test.server.helpers import find_free_port
 
-#: A model the server can actually build. "TCSPC" is the name of the
-#: *experiment*, never of a model, so every fit created with it failed with
-#: "model 'TCSPC' not found" and the tests that depend on one skipped or failed.
-TCSPC_MODEL = "Lifetime (new)"
-
 
 @pytest.fixture
 def server_client():
@@ -54,7 +49,7 @@ def _create_tcspc_fit(client, dataset_index):
         The ``fit.create`` result.
     """
     try:
-        ft = client.fit__create(dataset_index=dataset_index, model_name=TCSPC_MODEL)
+        ft = client.fit__create(dataset_index=dataset_index, model_name="TCSPC")
     except RemoteError as e:
         pytest.skip(f"TCSPC model not available in this environment: {e}")
     if not ft.get("ok"):

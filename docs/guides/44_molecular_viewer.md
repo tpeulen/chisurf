@@ -1132,10 +1132,17 @@ clashes chain A, chain B   # only across the interface
 clashes sele               # whatever is picked
 ```
 
-Every overlapping pair gets a line, green where the contact is comfortable and
-red where the two atoms are inside each other, and the console reports the
-**strain**: the summed overlap, which is the number the wizard ranks rotamers
-by. Two rules stop it from crying wolf, both PyMOL's:
+Every overlapping pair is drawn the way PyMOL's sculpting draws it
+(`SculptCGOBump`): not a line from atom to atom, but a short mark at the
+**contact point** — the position dividing the pair in proportion to their radii
+— extending only a little either side of it, with a *width* set by how deep the
+overlap is. A clash is therefore a stub sitting in the gap between two atoms
+rather than a line drawn through both of them, which is what keeps a crowded
+site readable. The colour is PyMOL's ramp: green until the overlap passes
+`sculpt_vdw_vis_mid` (0.1 Å), then to red over the next `sculpt_vdw_vis_max`
+(0.3 Å). The console reports the **strain**: the summed overlap, which is the
+number the wizard ranks rotamers by. Two rules stop it from crying wolf, both
+PyMOL's:
 
 * a hydrogen bond is not a clash. The pair's cutoff drops by
   `sculpt_hb_overlap` (1.0 Å) for the hydrogen and `sculpt_hb_overlap_base`
@@ -1217,7 +1224,7 @@ view saying what it is waiting for.
 * - `Mutate THR`54/E to …`
   - the residue chooser — the twenty, grouped by class as PyMOL groups them
 * - `< rotamer 5/9 >`
-  - step to the next conformation; the structure updates as you go
+  - show the next conformation — a state change of the preview, not a rebuild
 * - `10%  strain 29.4`
   - frequency and strain of the one on screen; opens the full list to jump
 * - `Bump check: on`
@@ -1228,8 +1235,13 @@ view saying what it is waiting for.
 
 Pick a residue first — a click in the view or the sequence, or `select resi 54`
 — then start the wizard; it takes whatever is selected. **Nothing is committed
-until Apply**: `Clear` and `Done` both put the original residue back, atom for
-atom.
+until Apply**, and not because the change is undone: choosing a target builds
+every rotamer once into a separate object called `mutation`, **one state per
+rotamer**, exactly as PyMOL's `do_library` does. The structure you are mutating
+is never touched, so `Clear` and `Done` are a delete rather than a restore, and
+stepping is a state change costing about 30 ms rather than a rebuild of the
+whole molecule (which, measured on a 1363-atom protein, took 2.2 s a step —
+two thirds of it re-baking ambient occlusion for atoms that had not moved).
 
 The same thing from the console, which is what the panel's rows send:
 
@@ -1242,10 +1254,13 @@ wizard apply              # or: wizard clear / wizard done
 ```
 
 :::{note}
-PyMOL previews rotamers as *states* of a separate `mutation` object and you
-scrub the states; chimol applies them in place and gives you `<` and `>`. Same
-loop, one fewer object to explain — and the reason it is affordable is that
-building a rotamer and scoring it takes milliseconds.
+The `mutation` object appears in the object list while the wizard is open, with
+its states, and you can hide or colour it like any other. Its states belong to
+*it* — the panel's `<` and `>` step them, and the movie transport at the bottom
+of the panel keeps meaning the trajectory, since asking the whole scene for
+state seven to step a nine-state rotamer re-derives the scene bounds from a
+fourteen-atom object. The camera is held across every wizard action for the same
+reason: you framed the residue, and previewing must not take that away.
 :::
 
 ## Bonds

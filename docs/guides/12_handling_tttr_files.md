@@ -82,3 +82,4 @@ Micro-time histograms from a TTTR file.
 ## See also
 
 - `chisurf/core/fio/fluorescence/` and the `tttrlib.TTTR` reader; plugins in `chisurf/plugins/tttr/`.
+- Tools: the **TTTR Toolbox** (`chisurf/plugins/tttr/tttr_toolbox/`) converts, splits and edits headers; **Microtime Shifter** (`chisurf/plugins/tttr/tttr_microtime_shifter/`) moves a detector's TAC axis; **ALEX Creator** (`chisurf/plugins/tttr/ptu_alex_creator/`) writes an alternating-excitation file; **Count Rate Analysis** (`chisurf/plugins/tttr/tttr_count_rate_analysis/`) compares detectors across many files; **Histogram-Microtime** (`chisurf/plugins/tttr/microtime_histogram/`) builds the decay; and **TTTR→Time-Window BIDs** (`chisurf/plugins/tttr/tttr_time_windows/`) turns fixed windows into burst ids.

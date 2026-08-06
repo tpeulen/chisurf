@@ -129,6 +129,21 @@ traced image while the viewport is framed correctly. Not chased — noted here
 because every headless screenshot of chimol inherits it, so a badly framed
 reference image is not evidence of a geometry bug.
 
+**0d. "It got dark" is a camera report, and "it is slow" is rarely arithmetic.**
+Two standing corrections from the mutagenesis wizard, both of which cost an hour
+of looking in the wrong place. A screenshot that goes dark after an interaction
+reads as a lighting or occlusion regression, so that is what was instrumented —
+and the instrumentation proved the scene data identical across steps
+(`n_objects 7 {'mesh': (3, 0.398), 'points': (1, 0.6), 'line': (3, 0.47)}` before
+and after). The molecule was **receding**: adding an object moves the scene
+centre and a state change re-derives the radius, so the camera drifts and the
+frame dims because the subject is leaving. Check the view state before the
+renderer. Second: the response to a slow interaction was "use numba", and the
+arithmetic was 125 ms of a 2.2 s step — the rest was rebuilding and re-baking
+occlusion for atoms that had not moved. **Time the parts before choosing a
+faster language for one of them**; here the fix was PyMOL's data model (states),
+which took the step to 32 ms with the same Python.
+
 **0. A trajectory that is a simulation — landed, with one thing left.** See
 *[A frame carries more than coordinates](#a-frame-carries-more-than-coordinates)*
 below. What is **open**: the depiction is spheres only, so the buried strata are
@@ -628,17 +643,55 @@ PyMOL ships is built from them; that vocabulary is transcribed as
 because choosing a rotamer means *looking* at each one and a command cannot
 offer that.
 
-Two deliberate differences from PyMOL's wizard, both simplifications:
+**The preview is a states object, and that is not a detail of taste — it is the
+performance.** The wizard first previewed **in place**: rebuild the residue in
+the source object on each step, keeping a copy of the original rows so `Clear`
+could restore them. It was correct and it was unusable — **2.2 s per step** on a
+1363-atom protein, because rebuilding the residue runs `set_structure` over the
+whole molecule and re-bakes ambient occlusion for 1349 atoms that did not move.
+The instinct at that point ("use numba") aims at the wrong thing: building all
+81 rotamers of the largest residue costs **28 ms** and scoring them **97 ms**,
+so the arithmetic was never the cost. PyMOL's own design removes it — a separate
+object named `mutation`, `cmd.create(obj, frag, 1, state)` per rotamer, and
+stepping is a state change. Measured after the port: build a target **320 ms**
+(was 2881), step a rotamer **32 ms** (was 2172). No numba, no approximation, and
+`Clear`/`Done` become a delete rather than a restore because the source was
+never touched.
 
-* it previews **in place** rather than as states of a separate `mutation`
-  object. PyMOL builds one state per rotamer and you scrub them; chimol
-  rebuilds the residue on each step, which is milliseconds and one fewer object
-  to explain. What that costs is a copy of the original rows, kept so `Clear`
-  and `Done` can put the residue back atom for atom — a preview that cannot be
-  undone is not a preview;
-* the caps (`N-Cap`, `C-Cap`) and `dep`/`rep` rows are absent: chimol mutates
-  inside a chain and has no terminus chemistry, one rotamer library, and its
-  representations are the object menu's business.
+Three things had to be right for a separate object to work here, none of them
+obvious from PyMOL, whose scene model differs:
+
+* **it must live in the source object's frame.** An object added on its own is
+  centred on its own centroid, so a 14-atom residue previews at the middle of
+  the scene rather than where it belongs (`set_frames(..., share_frame_with=)`);
+* **its states are its own.** chimol's timeline is global and drives trajectory
+  playback for every object; asking the whole scene for state 7 to step a
+  9-state rotamer re-derives the scene bounds from the 14-atom object and the
+  protein shrinks to a speck. Stepping the preview's own state via
+  `_select_state_frame` renders correctly. The cost is cosmetic — the movie
+  transport keeps showing the trajectory's state, not the rotamer's — and that
+  is the right trade;
+* **the camera is held across every wizard action.** PyMOL needs only
+  `auto_zoom 0`; chimol loses the framing two further ways (adding an object
+  moves the scene centre, a state change re-derives the radius). The symptom was
+  read wrong for an hour: successive screenshots looked *dark*, which reads as a
+  lighting or occlusion regression, and instrumenting proved the scene data
+  identical across steps. It was the camera receding. `get_view_state` /
+  `set_view_state` around the build and the step, with a test that asserts it.
+
+Two deliberate differences from PyMOL's wizard remain, both simplifications: the
+caps (`N-Cap`, `C-Cap`) and the `dep`/`rep` rows are absent — chimol mutates
+inside a chain and has no terminus chemistry, has one rotamer library, and its
+representations are the object menu's business.
+
+**A bump is drawn between the surfaces, not between the atoms.** The first
+drawing ran a line from atom centre to atom centre, which is what "clash line"
+suggests and is wrong: in a crowded site the lines cross the whole residue and
+the picture is a scribble. `SculptCGOBump` (mode 1) draws a short segment about
+the **contact point** — the position dividing the pair in proportion to their
+radii — extending a `delta` fraction either side, with the *radius* carrying the
+depth of the overlap. Transcribed as `clashes.bump_geometry`; the visual
+difference is the whole reason the feature is legible.
 
 The prompt goes **below the sequence strip**, not at the window's top edge —
 the strip owns a band up there and a prompt drawn at `y = margin` lands on the

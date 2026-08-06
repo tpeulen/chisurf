@@ -93,6 +93,8 @@ session-*.md
 dummy.db
 wrapper_test.spc
 scripts/*.txt
+# compiled burbulator lib (built by setup.py per-platform)
+chisurf/plugins/core/acq/tcspc_devices/simulation/*.dylib
 chisurf/plugins/core/acq/tcspc_devices/simulation/*.so
 chisurf/plugins/core/acq/tcspc_devices/simulation/*.dll
 # agent / AI assistant artifacts (kept local-only, never tracked)

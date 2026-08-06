@@ -373,21 +373,9 @@ class AutoForm(QtWidgets.QWidget):
             grid.setVerticalSpacing(2)
             per_row = max(1, fields_per_row or FIELDS_PER_ROW)
             any_expanding = False
-            # A field marked ``_autoform_full_row`` takes a row to itself and
-            # spans every field column. Sharing a row is right for a spin box and
-            # wrong for an equation: packed two-up, the equation field shrank to
-            # showing its last three characters, which is not a field a user can
-            # read what they typed in.
-            slot = 0
-            for field in pending:
-                full_row = bool(getattr(field, "_autoform_full_row", False))
-                if full_row and slot % per_row:
-                    slot += per_row - (slot % per_row)
-                i = slot
-                slot += per_row if full_row else 1
+            for i, field in enumerate(pending):
                 r, c = divmod(i, per_row)
                 col = c * 2
-                span = 2 * per_row - 1 if full_row else 1
                 label = _make_form_label(getattr(field, "form_label", ""))
                 tip = field.toolTip()
                 if tip:
@@ -404,7 +392,7 @@ class AutoForm(QtWidgets.QWidget):
                 field.setSizePolicy(QtWidgets.QSizePolicy.Expanding, vpolicy)
                 _make_field_shrinkable(field)
                 grid.addWidget(label, r, col)
-                grid.addWidget(field, r, col + 1, 1, span)
+                grid.addWidget(field, r, col + 1)
                 grid.setColumnStretch(col + 1, 1)
                 if expanding:
                     grid.setRowStretch(r, 1)

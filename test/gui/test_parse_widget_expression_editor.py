@@ -1,14 +1,4 @@
-"""The parse editors' equation field: validity badge, preview, parameter discovery.
-
-These controls were the only reason ``parse/widget.py`` and ``parseWidget.ui``
-existed after the parse models became data-described (PRD-38). They are a
-``value`` section of ``kind: "expression"`` now, rendered by the shared
-:class:`~chisurf.gui.widgets.expression_input.ExpressionInput` — so this drives
-the *generated* editor rather than a hand-written widget, and the behaviour it
-asserts is the one every parse model gets.
-"""
-from __future__ import annotations
-
+"""The parse-model formula widget uses the validated ExpressionInput editor."""
 import os
 
 import numpy as np
@@ -17,72 +7,64 @@ import pytest
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 
-@pytest.fixture()
-def equation_field(qapp):
-    """Return the ``ExpressionInput`` of a generated TCSPC parse editor."""
-    import chisurf.core.fitting.fit as fit_mod
-
-    from chisurf.core.data import DataCurve
-    from chisurf.core.models.tcspc.parse.tcspc_parse import ParseDecayModel
-    from chisurf.gui.widgets.expression_input import ExpressionInput
-    from chisurf.gui.widgets.models.model_editor import build_model_editor
-
-    x = np.linspace(0.05, 25, 256)
-    data = DataCurve(name="synthetic", load_filename_on_init=False,
-                     x=x, y=np.exp(-x / 4.0) + 1.0)
-    model = fit_mod.Fit(model_class=ParseDecayModel, data=data).model
-    editor = build_model_editor(model)
-    fields = editor.findChildren(ExpressionInput)
-    assert len(fields) == 1, f"expected one equation field, found {len(fields)}"
-    return fields[0], model
+class _MockData:
+    def __init__(self, x):
+        self.x = x
+        self.y = np.zeros_like(x)
+        self.ey = np.ones_like(x)
 
 
-def test_equation_field_is_the_shared_expression_input(equation_field):
-    """The parse editor's equation field is the validated shared widget."""
-    field, _model = equation_field
-    assert field.text(), "the equation field opened empty"
-    assert field.is_valid()
-    # The ✓/✗ badge and the names reference are what the old .ui was kept for.
-    assert field._badge.text() == "✓"
+class _MockFit:
+    def __init__(self, x):
+        self.data = _MockData(x)
+        self.xmin = 0
+        self.xmax = len(x) - 1
+
+    def update(self):
+        pass
 
 
-def test_field_is_seeded_from_the_catalogue(equation_field):
-    """It opens showing the equation the selected catalogue entry defines."""
-    field, model = equation_field
-    assert field.text() == str(model.func).strip()
+@pytest.fixture
+def parse_widget(qapp):
+    from chisurf.core.models.parse import ParseModel
+    from chisurf.gui.widgets.models.parse.widget import ParseFormulaWidget
+
+    model = ParseModel(fit=_MockFit(np.linspace(0.01, 50.0, 256)))
+    return ParseFormulaWidget(model=model)
 
 
-def test_editing_discovers_the_free_parameters(equation_field):
-    """Every name that is not x, a function or a constant is a parameter."""
-    field, _model = equation_field
-    field.setText("a1*exp(-x/tau1) + a2*exp(-x/tau2)")
-    assert field.is_valid()
-    assert field.discovered_parameters() == ["a1", "tau1", "a2", "tau2"]
+def test_expression_input_is_installed(parse_widget):
+    assert getattr(parse_widget, "expr_input", None) is not None
+    # The raw text box is hidden and kept only as a backing store.
+    assert not parse_widget.plainTextEdit.isVisible()
 
 
-def test_unsafe_formula_is_flagged(equation_field):
-    """An expression reaching for attributes is rejected, not merely unparsed."""
-    field, _model = equation_field
-    field.setText("a1 * exp(-x/tau1).__class__")
-    assert not field.is_valid()
-    assert field._badge.text() == "✗"
+def test_editor_seeded_from_catalog(parse_widget):
+    assert parse_widget.expr_input.text() == parse_widget.plainTextEdit.toPlainText()
+    assert parse_widget.expr_input.text() != ""
 
 
-def test_committing_an_equation_reaches_the_model(equation_field):
-    """Pressing Return on a valid equation writes it through to the model."""
-    field, model = equation_field
-    field.setText("a1*exp(-x/tau1) + b")
-    field._on_return()
-    assert "b" in str(model.func)
-    assert "b" in model.parameters_all_dict
+def test_edit_syncs_backing_store_and_validates(parse_widget):
+    parse_widget.expr_input.setText("a1*exp(-x/tau1) + a2*exp(-x/tau2)")
+    # Backing store mirrors the editor so existing readers keep working.
+    assert parse_widget.plainTextEdit.toPlainText() == "a1*exp(-x/tau1) + a2*exp(-x/tau2)"
+    assert parse_widget.expr_input.is_valid()
+    assert parse_widget.expr_input.discovered_parameters() == ["a1", "tau1", "a2", "tau2"]
 
 
-def test_choosing_a_catalogue_entry_changes_the_equation(equation_field):
-    """The `choice` over ``catalogue_names`` drives ``func`` through the model."""
-    _field, model = equation_field
-    names = list(model.catalogue_names)
-    if len(names) < 2:
-        pytest.skip("catalogue has fewer than two entries")
-    before = str(model.func)
-    model.model_name = next(n for n in names if n != model.model_name)
-    assert str(model.func) != before
+def test_unsafe_formula_flagged(parse_widget):
+    parse_widget.expr_input.setText("a1 * exp(-x/tau1).__class__")
+    assert not parse_widget.expr_input.is_valid()
+    assert parse_widget.expr_input._badge.text() == "✗"
+
+
+def test_model_change_updates_editor(parse_widget):
+    if parse_widget.comboBox.count() < 2:
+        pytest.skip("catalogue has a single model")
+    parse_widget.comboBox.setCurrentIndex(1)
+    parse_widget.onModelChanged()
+    assert parse_widget.expr_input.text() == parse_widget.plainTextEdit.toPlainText()
+
+
+if __name__ == "__main__":  # pragma: no cover
+    pytest.main([__file__, "-q"])

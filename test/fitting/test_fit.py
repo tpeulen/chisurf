@@ -233,16 +233,10 @@ class FitTests(unittest.TestCase):
             base = os.path.join(td, 'fit')
             fit.save(base, 'csv', save_curves=True)
 
-            # A FitGroup derives one filename per member, so the base picks up
-            # a member suffix ("fit_00_model.csv"). Match on the curve name
-            # rather than the naming convention: what this test is about is the
-            # padding inside the file, not how the file got named.
-            import glob
-            models = glob.glob(os.path.join(td, '*_model.csv'))
-            wres = glob.glob(os.path.join(td, '*_weighted residuals.csv'))
-            self.assertEqual(len(models), 1, f"expected one model curve, got {models}")
-            self.assertEqual(len(wres), 1, f"expected one residual curve, got {wres}")
-            fn_model, fn_wres = models[0], wres[0]
+            fn_model = base + '_model.csv'
+            fn_wres = base + '_weighted residuals.csv'
+            self.assertTrue(os.path.isfile(fn_model))
+            self.assertTrue(os.path.isfile(fn_wres))
 
             arr_model = np.loadtxt(fn_model)
             arr_wres = np.loadtxt(fn_wres)

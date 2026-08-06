@@ -266,3 +266,7 @@ Cite the paper for the method, and report the threshold and gap ceiling you used
   used to read out slow dynamics instead of to merge bursts.
 * [Photon burst identification](13_burst_identification.md) — the search whose
   splitting this repairs.
+
+## See also
+
+- Tool: **Burst Fusion** (`chisurf/plugins/burst/burst_fusion/`).

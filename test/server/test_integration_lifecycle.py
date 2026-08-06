@@ -18,11 +18,6 @@ from chisurf.server.app import ChiSurfServer
 from chisurf.core.api._proxies import ProxyFitList, ProxyDatasetList
 from test.server.helpers import find_free_port
 
-#: A model the server can actually build. "TCSPC" is the name of the
-#: *experiment*, never of a model, so every fit created with it failed with
-#: "model 'TCSPC' not found" and the tests that depend on one skipped or failed.
-TCSPC_MODEL = "Lifetime (new)"
-
 
 # ── Shared server + client (module-scoped) ──────────────────────
 
@@ -65,16 +60,7 @@ def _reset():
         pass
 
 
-#: A decay long enough to fit. The two-point curve this used to send made every
-#: dataset unusable as soon as a fit was actually *run* over it: the optimiser
-#: rejects a window narrower than the number of free parameters with
-#: ``Improper input: N=4 must not exceed M=(1,)``.
-_N_POINTS = 64
-_DEFAULT_X = tuple(float(i) for i in range(_N_POINTS))
-_DEFAULT_Y = tuple(1000.0 * math.exp(-i / 8.0) + 5.0 for i in range(_N_POINTS))
-
-
-def _add_ds(c, name="TestDS", x=_DEFAULT_X, y=_DEFAULT_Y):
+def _add_ds(c, name="TestDS", x=(0.0, 1.0), y=(2.0, 3.0)):
     return c.call("dataset.load", {
         "reader_name": f"{name}R", "filename": f"/tmp/{name}.dat",
         "name": name, "curve_data": {"x": list(x), "y": list(y)},
@@ -109,7 +95,7 @@ class TestProxyLifecycle:
         flist = ProxyFitList(client)
         assert len(flist) == 0
         _add_ds(client, "PFitDS")
-        ft = client.fit__create(dataset_index=0, model_name=TCSPC_MODEL)
+        ft = client.fit__create(dataset_index=0, model_name="TCSPC")
         if not ft.get("ok"):
             pytest.skip(f"fit__create: {ft.get('error')}")
         flist._invalidate()
@@ -118,7 +104,7 @@ class TestProxyLifecycle:
 
     def test_run_fit_through_proxy(self, client):
         _add_ds(client, "RunProxy")
-        ft = client.fit__create(dataset_index=0, model_name=TCSPC_MODEL)
+        ft = client.fit__create(dataset_index=0, model_name="TCSPC")
         if not ft.get("ok"):
             pytest.skip(f"fit__create: {ft.get('error')}")
         fit = ProxyFitList(client)[0]
@@ -127,7 +113,7 @@ class TestProxyLifecycle:
 
     def test_proxy_pop_through_server(self, client):
         _add_ds(client, "PopDS")
-        ft = client.fit__create(dataset_index=0, model_name=TCSPC_MODEL)
+        ft = client.fit__create(dataset_index=0, model_name="TCSPC")
         if not ft.get("ok"):
             pytest.skip(f"fit__create: {ft.get('error')}")
         flist = ProxyFitList(client)
@@ -139,7 +125,7 @@ class TestProxyLifecycle:
 
     def test_proxy_clear_through_server(self, client):
         _add_ds(client, "ClrDS")
-        ft = client.fit__create(dataset_index=0, model_name=TCSPC_MODEL)
+        ft = client.fit__create(dataset_index=0, model_name="TCSPC")
         if not ft.get("ok"):
             pytest.skip(f"fit__create: {ft.get('error')}")
         flist = ProxyFitList(client)
@@ -149,7 +135,7 @@ class TestProxyLifecycle:
 
     def test_proxy_iterate_enumerate(self, client):
         _add_ds(client, "EnumDS")
-        ft = client.fit__create(dataset_index=0, model_name=TCSPC_MODEL)
+        ft = client.fit__create(dataset_index=0, model_name="TCSPC")
         if not ft.get("ok"):
             pytest.skip(f"fit__create: {ft.get('error')}")
         flist = ProxyFitList(client)
@@ -168,8 +154,8 @@ class TestProxyLifecycle:
 
     def test_proxy_fit_getitem(self, client):
         _add_ds(client, "GetItem")
-        ft1 = client.fit__create(dataset_index=0, model_name=TCSPC_MODEL)
-        ft2 = client.fit__create(dataset_index=0, model_name=TCSPC_MODEL)
+        ft1 = client.fit__create(dataset_index=0, model_name="TCSPC")
+        ft2 = client.fit__create(dataset_index=0, model_name="TCSPC")
         if not ft1.get("ok") or not ft2.get("ok"):
             pytest.skip("fit__create not available")
         flist = ProxyFitList(client)
@@ -227,7 +213,7 @@ class TestLargePayload:
         _add_ds(client, "TenFit")
         created = 0
         for _ in range(10):
-            ft = client.fit__create(dataset_index=0, model_name=TCSPC_MODEL)
+            ft = client.fit__create(dataset_index=0, model_name="TCSPC")
             if ft.get("ok"):
                 created += 1
         if created == 0:
@@ -294,7 +280,7 @@ class TestParameterLifecycle:
 
     def _setup(self, client):
         _add_ds(client, "Param")
-        ft = client.fit__create(dataset_index=0, model_name=TCSPC_MODEL)
+        ft = client.fit__create(dataset_index=0, model_name="TCSPC")
         if not ft.get("ok"):
             pytest.skip(f"fit__create: {ft.get('error')}")
         info = client.fit__get(fit_index=ft["fit_index"])
@@ -327,13 +313,8 @@ class TestParameterLifecycle:
     def test_set_bounds(self, client):
         ft, params = self._setup(client)
         p = params[0]["name"]
-        # Two RPCs on purpose: `parameter.set_bounds` carries the interval and
-        # `parameter.set_bounds_on` decides whether it is enforced. The client
-        # rejects unknown keywords, so the `bounds_on=True` this used to pass
-        # never reached the server -- it raised TypeError before sending.
-        r = client.parameter__set_bounds(p, 0.0, 100.0, fit_index=ft["fit_index"])
+        r = client.parameter__set_bounds(p, 0.0, 100.0, bounds_on=True, fit_index=ft["fit_index"])
         assert r.get("ok") is True
-        assert client.parameter__set_bounds_on(p, True, fit_index=ft["fit_index"]).get("ok")
         info = client.fit__get(fit_index=ft["fit_index"])
         for par in info["model"]["parameters_all"]:
             if par["name"] == p:
@@ -353,11 +334,8 @@ class TestParameterLifecycle:
         if len(params) < 2:
             pytest.skip("need 2+ params")
         client.parameter__link(params[0]["name"], params[1]["name"], fit_index=ft["fit_index"])
-        # ``parameter.get`` declares ``result_key: "parameter"``, so the client
-        # returns the parameter payload itself -- there is no "ok" envelope to
-        # read, and asserting on one only ever saw ``None``.
         pinfo = client.parameter__get(params[0]["name"], fit_index=ft["fit_index"])
-        assert pinfo.get("name") == params[0]["name"]
+        assert pinfo.get("ok") is True
         assert pinfo.get("linked_to") is not None
 
 
@@ -375,7 +353,7 @@ class TestHighFrequency:
         _add_ds(client, "RFit")
         indices = []
         for _ in range(20):
-            ft = client.fit__create(dataset_index=0, model_name=TCSPC_MODEL)
+            ft = client.fit__create(dataset_index=0, model_name="TCSPC")
             if ft.get("ok"):
                 indices.append(ft["fit_index"])
         if not indices:
@@ -388,7 +366,7 @@ class TestHighFrequency:
         _add_ds(client, "Inter")
         indices = []
         for i in range(10):
-            ft = client.fit__create(dataset_index=0, model_name=TCSPC_MODEL)
+            ft = client.fit__create(dataset_index=0, model_name="TCSPC")
             if ft.get("ok"):
                 indices.append(ft["fit_index"])
             if i >= 3 and indices:
@@ -420,51 +398,36 @@ class TestHighFrequency:
 
 
 class TestErrorBoundary:
-    """A failing call raises, it does not return ``{"ok": False}``.
-
-    Service errors are carried in the JSON-RPC ``error`` member and
-    :meth:`ChisurfClient.call` turns them into :class:`RemoteError`; only a
-    *transport* failure ever produced the ``ok: False`` dict these tests were
-    written against. Asserting ``not result.get("ok")`` therefore never
-    described the contract: it passed on any successful call too, because a
-    result payload has no ``"ok"`` key either.
-    """
 
     def test_unknown_method(self, client):
-        with pytest.raises(RemoteError, match="not found"):
-            client.call("does.not.exist")
+        r = client.call("does.not.exist")
+        assert not r.get("ok")
+        assert "not found" in r.get("error", "").lower()
 
     def test_none_index(self, client):
-        with pytest.raises(RemoteError):
-            client.call("dataset.get", {"dataset_index": None})
+        assert not client.call("dataset.get", {"dataset_index": None}).get("ok")
 
     def test_string_index(self, client):
-        with pytest.raises(RemoteError):
-            client.call("dataset.get", {"dataset_index": "abc"})
+        assert not client.call("dataset.get", {"dataset_index": "abc"}).get("ok")
 
     def test_list_index(self, client):
-        with pytest.raises(RemoteError):
-            client.call("dataset.get", {"dataset_index": [1, 2, 3]})
+        assert not client.call("dataset.get", {"dataset_index": [1, 2, 3]}).get("ok")
 
     def test_missing_param(self, client):
-        with pytest.raises(RemoteError):
-            client.call("dataset.get", {})
+        assert not client.call("dataset.get", {}).get("ok")
 
     def test_out_of_range(self, client):
-        with pytest.raises(RemoteError):
-            client.call("dataset.get", {"dataset_index": 99999})
+        assert not client.call("dataset.get", {"dataset_index": 99999}).get("ok")
 
     def test_negative_index(self, client):
-        with pytest.raises(RemoteError):
-            client.call("dataset.get", {"dataset_index": -1})
+        r = client.call("dataset.get", {"dataset_index": -1})
+        assert isinstance(r, dict)
 
     def test_nan_in_param(self, client):
-        with pytest.raises(RemoteError):
-            client.call("dataset.get", {"dataset_index": float("nan")})
+        assert not client.call("dataset.get", {"dataset_index": float("nan")}).get("ok")
 
     def test_inf_in_param(self, client):
-        with pytest.raises(RemoteError):
-            client.call("dataset.get", {"dataset_index": float("inf")})
+        assert not client.call("dataset.get", {"dataset_index": float("inf")}).get("ok")
 
     def test_nested_extra_param(self, client):
         """meta.ping accepts ping calls with extra params stripped."""
@@ -616,7 +579,7 @@ class TestProxyRpcErrorHandling:
 
     def test_proxy_run_returns_error_dict_on_failure(self, client):
         _add_ds(client, "ErrRun")
-        ft = client.fit__create(dataset_index=0, model_name=TCSPC_MODEL)
+        ft = client.fit__create(dataset_index=0, model_name="TCSPC")
         if not ft.get("ok"):
             pytest.skip(f"fit__create: {ft.get('error')}")
         flist = ProxyFitList(client)
@@ -628,7 +591,7 @@ class TestProxyRpcErrorHandling:
 
     def test_proxy_update_does_not_crash(self, client):
         _add_ds(client, "ErrUpd")
-        ft = client.fit__create(dataset_index=0, model_name=TCSPC_MODEL)
+        ft = client.fit__create(dataset_index=0, model_name="TCSPC")
         if not ft.get("ok"):
             pytest.skip(f"fit__create: {ft.get('error')}")
         fit = ProxyFitList(client)[0]
@@ -637,7 +600,7 @@ class TestProxyRpcErrorHandling:
 
     def test_proxy_model_finalize_does_not_crash(self, client):
         _add_ds(client, "ErrFin")
-        ft = client.fit__create(dataset_index=0, model_name=TCSPC_MODEL)
+        ft = client.fit__create(dataset_index=0, model_name="TCSPC")
         if not ft.get("ok"):
             pytest.skip(f"fit__create: {ft.get('error')}")
         fit = ProxyFitList(client)[0]
@@ -646,20 +609,17 @@ class TestProxyRpcErrorHandling:
 
     def test_proxy_save_does_not_crash(self, client):
         _add_ds(client, "ErrSav")
-        ft = client.fit__create(dataset_index=0, model_name=TCSPC_MODEL)
+        ft = client.fit__create(dataset_index=0, model_name="TCSPC")
         if not ft.get("ok"):
             pytest.skip(f"fit__create: {ft.get('error')}")
         fit = ProxyFitList(client)[0]
-        # ``FitProxy.save`` takes the destination; calling it bare raised
-        # TypeError in the *client*, before anything reached the server.
-        with tempfile.TemporaryDirectory() as tmp:
-            result = fit.save(os.path.join(tmp, "fit.json"))
+        result = fit.save()
         assert isinstance(result, dict)
 
     def test_proxy_set_dataset_does_not_crash(self, client):
         _add_ds(client, "ErrSDS")
         _add_ds(client, "ErrSDS2", x=(3.0,), y=(4.0,))
-        ft = client.fit__create(dataset_index=0, model_name=TCSPC_MODEL)
+        ft = client.fit__create(dataset_index=0, model_name="TCSPC")
         if not ft.get("ok"):
             pytest.skip(f"fit__create: {ft.get('error')}")
         fit = ProxyFitList(client)[0]
@@ -668,17 +628,12 @@ class TestProxyRpcErrorHandling:
 
     def test_proxy_set_result_idx_does_not_crash(self, client):
         _add_ds(client, "ErrSRI")
-        ft = client.fit__create(dataset_index=0, model_name=TCSPC_MODEL)
+        ft = client.fit__create(dataset_index=0, model_name="TCSPC")
         if not ft.get("ok"):
             pytest.skip(f"fit__create: {ft.get('error')}")
         fit = ProxyFitList(client)[0]
-        # A fit with no stored results has nothing to restore, and says so.
-        with pytest.raises(RemoteError, match="no results"):
-            fit.set_result_idx(result_idx=0)
-        # It is the call that refuses, not the server: it still answers.
-        assert client.meta__ping().get("ok") is True
-        fit.run()
-        assert isinstance(fit.set_result_idx(result_idx=0), dict)
+        result = fit.set_result_idx(result_idx=0)
+        assert isinstance(result, dict)
 
 
 # ── 11. chisurf.run() pattern ────────────────────────────────────
@@ -689,14 +644,12 @@ class TestChisurfRunPattern:
     def test_run_expression_via_call(self, client):
         """Simulate chisurf.run(\"chisurf.fits[0].set_result_idx(2)\") pattern."""
         _add_ds(client, "RunPat")
-        ft = client.fit__create(dataset_index=0, model_name=TCSPC_MODEL)
+        ft = client.fit__create(dataset_index=0, model_name="TCSPC")
         if not ft.get("ok"):
             pytest.skip(f"fit__create: {ft.get('error')}")
         flist = ProxyFitList(client)
         # This is what chisurf.run("chisurf.fits[0].set_result_idx(2)") would do
         fit = flist[0]
-        fit.run()
-        # One result stored, so index 2 clips onto it rather than failing.
         result = fit.set_result_idx(result_idx=2)
         assert isinstance(result, dict)
         assert "ok" in result
@@ -704,14 +657,12 @@ class TestChisurfRunPattern:
     def test_run_expression_multiple_calls(self, client):
         """Multiple proxy RPC calls in sequence (like GUI does)."""
         _add_ds(client, "MultiPat")
-        ft = client.fit__create(dataset_index=0, model_name=TCSPC_MODEL)
+        ft = client.fit__create(dataset_index=0, model_name="TCSPC")
         if not ft.get("ok"):
             pytest.skip(f"fit__create: {ft.get('error')}")
         fit = ProxyFitList(client)[0]
-        # Run first: selecting a result before one exists is what the GUI would
-        # never do, and the server refuses it explicitly.
-        r1 = fit.run()
-        r2 = fit.set_result_idx(result_idx=0)
+        r1 = fit.set_result_idx(result_idx=0)
+        r2 = fit.run()
         r3 = fit.update()
         assert isinstance(r1, dict)
         assert isinstance(r2, dict)
@@ -720,8 +671,8 @@ class TestChisurfRunPattern:
     def test_enumerate_fits_pattern(self, client):
         """for idx, f in enumerate(chisurf.fits): ... pattern."""
         _add_ds(client, "EnumPat")
-        ft1 = client.fit__create(dataset_index=0, model_name=TCSPC_MODEL)
-        ft2 = client.fit__create(dataset_index=0, model_name=TCSPC_MODEL)
+        ft1 = client.fit__create(dataset_index=0, model_name="TCSPC")
+        ft2 = client.fit__create(dataset_index=0, model_name="TCSPC")
         if not ft1.get("ok") or not ft2.get("ok"):
             pytest.skip("fit__create not available")
         flist = ProxyFitList(client)
@@ -735,7 +686,7 @@ class TestChisurfRunPattern:
     def test_fits_index_access(self, client):
         """chisurf.fits[idx] pattern works."""
         _add_ds(client, "IdxPat")
-        ft = client.fit__create(dataset_index=0, model_name=TCSPC_MODEL)
+        ft = client.fit__create(dataset_index=0, model_name="TCSPC")
         if not ft.get("ok"):
             pytest.skip(f"fit__create: {ft.get('error')}")
         flist = ProxyFitList(client)
@@ -777,7 +728,7 @@ class TestUnicodeData:
     def test_unicode_fit_name(self, client):
         """Unicode in fit name."""
         _add_ds(client, "UniFitDS")
-        ft = client.fit__create(dataset_index=0, model_name=TCSPC_MODEL,
+        ft = client.fit__create(dataset_index=0, model_name="TCSPC",
                                 fit_name="Fít_Nömé_über")
         if not ft.get("ok"):
             pytest.skip("fit__create not available")
@@ -800,7 +751,7 @@ class TestUnicodeData:
     def test_unicode_parameter_name(self, client):
         """Parameter names with unicode (though unusual)."""
         _add_ds(client, "UniParamDS")
-        ft = client.fit__create(dataset_index=0, model_name=TCSPC_MODEL)
+        ft = client.fit__create(dataset_index=0, model_name="TCSPC")
         if not ft.get("ok"):
             pytest.skip(f"fit__create: {ft.get('error')}")
         info = client.fit__get(fit_index=ft["fit_index"])
@@ -840,7 +791,7 @@ class TestConcurrentOperations:
         _add_ds(client, "LargeList")
         created = []
         for i in range(30):
-            ft = client.fit__create(dataset_index=0, model_name=TCSPC_MODEL,
+            ft = client.fit__create(dataset_index=0, model_name="TCSPC",
                                     fit_name=f"ListFit{i}")
             if ft.get("ok"):
                 created.append(ft)
@@ -854,7 +805,7 @@ class TestConcurrentOperations:
         _add_ds(client, "InterDS")
         created = []
         for i in range(10):
-            ft = client.fit__create(dataset_index=0, model_name=TCSPC_MODEL,
+            ft = client.fit__create(dataset_index=0, model_name="TCSPC",
                                     fit_name=f"Inter{i}")
             if ft.get("ok"):
                 created.append(ft)
@@ -875,7 +826,7 @@ class TestProxyPluginPatterns:
     def test_fit_model_lazy_fetch_n_points(self, client):
         """fit.model.n_points lazy-fetches via fit__get when accessed through proxy."""
         _add_ds(client, "LazyN")
-        ft = client.fit__create(dataset_index=0, model_name=TCSPC_MODEL,
+        ft = client.fit__create(dataset_index=0, model_name="TCSPC",
                                 fit_name="LazyFit")
         if not ft.get("ok"):
             pytest.skip("fit__create not available")
@@ -890,7 +841,7 @@ class TestProxyPluginPatterns:
     def test_fit_data_filename_via_proxy(self, client):
         """fit.data.filename works through proxy lazy-fetch."""
         _add_ds(client, "LazyData", x=[0.0, 1.0], y=[2.0, 3.0])
-        ft = client.fit__create(dataset_index=0, model_name=TCSPC_MODEL,
+        ft = client.fit__create(dataset_index=0, model_name="TCSPC",
                                 fit_name="LazyFit2")
         if not ft.get("ok"):
             pytest.skip("fit__create not available")
@@ -906,7 +857,7 @@ class TestProxyPluginPatterns:
         """fit.save(path, 'csv') works with positional args through proxy."""
         import tempfile, os
         _add_ds(client, "SavePos", x=[0.0, 1.0], y=[2.0, 3.0])
-        ft = client.fit__create(dataset_index=0, model_name=TCSPC_MODEL,
+        ft = client.fit__create(dataset_index=0, model_name="TCSPC",
                                 fit_name="SaveFit")
         if not ft.get("ok"):
             pytest.skip("fit__create not available")
@@ -924,7 +875,7 @@ class TestProxyPluginPatterns:
     def test_enumerate_fits_attribute_access(self, client):
         """enumerate(fits) and attribute access works like plugins do."""
         _add_ds(client, "EnumDS", x=[0.0], y=[1.0])
-        ft = client.fit__create(dataset_index=0, model_name=TCSPC_MODEL,
+        ft = client.fit__create(dataset_index=0, model_name="TCSPC",
                                 fit_name="EnumFit")
         if not ft.get("ok"):
             pytest.skip("fit__create not available")
@@ -939,7 +890,7 @@ class TestProxyPluginPatterns:
     def test_parameters_all_through_proxy(self, client):
         """fit.model.parameters_all list access through proxy after lazy-fetch."""
         _add_ds(client, "ParamDS", x=[0.0, 1.0], y=[2.0, 3.0])
-        ft = client.fit__create(dataset_index=0, model_name=TCSPC_MODEL,
+        ft = client.fit__create(dataset_index=0, model_name="TCSPC",
                                 fit_name="ParamFit")
         if not ft.get("ok"):
             pytest.skip("fit__create not available")

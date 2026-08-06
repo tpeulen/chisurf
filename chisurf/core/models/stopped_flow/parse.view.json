@@ -16,7 +16,7 @@
         {
           "type": "value",
           "attr": "func",
-          "kind": "expression",
+          "kind": "str",
           "label": "f(x)",
           "description": "The equation, in Python syntax. Every free name becomes a fitted parameter. Committed when you leave the field."
         },

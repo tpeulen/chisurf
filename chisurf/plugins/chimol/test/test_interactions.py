@@ -513,9 +513,19 @@ def _panel(window):
 
 
 def _residue_name(window, resi: int) -> str:
-    state = list(window.viewer._objects.values())[0].state
-    rows = np.nonzero(np.asarray(state.atoms["res_id"], dtype=int) == resi)[0]
-    return str(state.atoms["res_name"][rows[0]]).strip()
+    entry = next(
+        e for e in window.viewer._objects.values() if e.name == "148l"
+    )
+    rows = np.nonzero(np.asarray(entry.state.atoms["res_id"], dtype=int) == resi)[0]
+    return str(entry.state.atoms["res_name"][rows[0]]).strip()
+
+
+def _preview(window):
+    """The `mutation` object PyMOL's wizard creates, or ``None``."""
+    for entry in window.viewer._objects.values():
+        if entry.name == "mutation":
+            return entry
+    return None
 
 
 def test_the_wizard_panel_is_pymols_shape(wizard_cmd):
@@ -536,56 +546,91 @@ def test_the_wizard_panel_is_pymols_shape(wizard_cmd):
     assert any("THR`54" in label for _k, label in rows), "the residue is not named"
 
 
-def test_choosing_a_target_previews_it_and_lists_the_rotamers(wizard_cmd):
+def test_choosing_a_target_builds_one_state_per_rotamer(wizard_cmd):
+    """PyMOL's `do_library`: an object called `mutation`, a state per rotamer.
+
+    And the source structure untouched -- the preview is a *different object*,
+    which is what makes Clear and Done free and stepping a frame change rather
+    than a rebuild.
+    """
     cmd, window = wizard_cmd
     cmd.do("select resi 54")
     cmd.do("wizard mutagenesis")
     cmd.do("wizard target, TRP")
 
-    assert _residue_name(window, 54) == "TRP", "the preview was not built"
-    labels = [label for _kind, label in _panel(window)]
-    assert any(label.startswith("< rotamer 1") or "rotamer" in label for label in labels)
-    assert any("strain" in label for label in labels)
     assert cmd._errors == []
+    assert _residue_name(window, 54) == "THR", "the source was modified by a preview"
+    preview = _preview(window)
+    assert preview is not None, "no `mutation` object was created"
+    frames = np.asarray(preview.state.frames)
+    assert frames.ndim == 3 and frames.shape[0] == len(window.viewer._wizard.scores)
+    labels = [label for _kind, label in _panel(window)]
+    assert any("rotamer" in label for label in labels)
+    assert any("strain" in label for label in labels)
 
 
-def test_stepping_changes_the_conformation_and_the_strain(wizard_cmd):
+def test_stepping_is_a_state_change_not_a_rebuild(wizard_cmd):
+    """The rotamer on screen changes; nothing is built and nothing is touched."""
     cmd, window = wizard_cmd
     cmd.do("select resi 54")
     cmd.do("wizard mutagenesis")
     cmd.do("wizard target, TRP")
     state = window.viewer._wizard
-    first = (state.rotamer, state.scores[state.rotamer])
-    xyz_first = np.asarray(
-        list(window.viewer._objects.values())[0].state.atoms["xyz"], dtype=float
-    ).copy()
+    before = state.rotamer
+    frames_before = np.asarray(_preview(window).state.frames).copy()
 
     cmd.do("wizard rotamer, next")
 
     state = window.viewer._wizard
-    assert state.rotamer != first[0]
-    xyz_next = np.asarray(
-        list(window.viewer._objects.values())[0].state.atoms["xyz"], dtype=float
+    assert state.rotamer != before
+    frames_after = np.asarray(_preview(window).state.frames)
+    assert np.array_equal(frames_before, frames_after), (
+        "the states were rebuilt -- stepping must only change which one is shown"
     )
-    assert xyz_first.shape == xyz_next.shape
-    assert not np.allclose(xyz_first, xyz_next), "the side chain did not move"
+    shown = np.asarray(_preview(window).state.coords)
+    assert shown.shape[0] == frames_after.shape[1]
 
 
-def test_clear_puts_the_original_residue_back(wizard_cmd):
-    """A preview that cannot be undone is not a preview."""
+def test_the_wizard_never_moves_the_camera(wizard_cmd):
+    """You framed the residue; previewing a rotamer must not take that away.
+
+    PyMOL turns `auto_zoom` off around `do_library` for this. chimol has more
+    ways to lose the framing than that flag covers -- adding an object moves
+    the scene centre, and a state change re-derives the radius -- and the
+    symptom is not subtle once it is on screen: measured, the protein receded
+    until the viewport read as black with a few sticks in it, and every step
+    took it further. The view is therefore saved and put back around both the
+    build and the step.
+    """
+    cmd, window = wizard_cmd
+    cmd.do("select resi 54")
+    cmd.do("wizard mutagenesis")
+    before = list(window.viewer.get_view_state())
+
+    cmd.do("wizard target, TRP")
+    after_build = list(window.viewer.get_view_state())
+    assert after_build == pytest.approx(before), "building the rotamers moved the camera"
+
+    cmd.do("wizard rotamer, next")
+    cmd.do("wizard rotamer, next")
+    after_steps = list(window.viewer.get_view_state())
+    assert after_steps == pytest.approx(before), "stepping a rotamer moved the camera"
+
+
+def test_clear_drops_the_preview_object(wizard_cmd):
+    """There is nothing to undo -- only an object to delete."""
     cmd, window = wizard_cmd
     before = _residue_name(window, 54)
-    atoms_before = len(list(window.viewer._objects.values())[0].state.atoms)
 
     cmd.do("select resi 54")
     cmd.do("wizard mutagenesis")
     cmd.do("wizard target, TRP")
-    assert _residue_name(window, 54) == "TRP"
+    assert _preview(window) is not None
 
     cmd.do("wizard clear")
 
+    assert _preview(window) is None
     assert _residue_name(window, 54) == before
-    assert len(list(window.viewer._objects.values())[0].state.atoms) == atoms_before
 
 
 def test_done_without_apply_leaves_the_structure_alone(wizard_cmd):
@@ -598,6 +643,7 @@ def test_done_without_apply_leaves_the_structure_alone(wizard_cmd):
     cmd.do("wizard done")
 
     assert _residue_name(window, 54) == before
+    assert _preview(window) is None, "the preview object outlived the wizard"
     assert _panel(window) == [], "the panel outlived the wizard"
     assert window.viewer._wizard is None
 
@@ -610,6 +656,7 @@ def test_apply_keeps_it(wizard_cmd):
     cmd.do("wizard apply")
 
     assert _residue_name(window, 54) == "ALA"
+    assert _preview(window) is None
     assert window.viewer._wizard is None
 
 
@@ -633,12 +680,12 @@ def test_the_bump_check_can_be_turned_off(wizard_cmd):
     cmd.do("wizard mutagenesis")
     cmd.do("wizard target, TRP")
     assert any(
-        key in window.viewer._measurements for key in ("clashes", "clashes_ok")
+        key.startswith("_bump_check") for key in window.viewer._measurements
     ), "the bump check drew nothing"
 
     cmd.do("wizard bump, toggle")
 
     assert not any(
-        key in window.viewer._measurements for key in ("clashes", "clashes_ok")
+        key.startswith("_bump_check") for key in window.viewer._measurements
     )
     assert any("off" in label for _k, label in _panel(window))

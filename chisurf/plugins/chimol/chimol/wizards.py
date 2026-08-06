@@ -12,23 +12,25 @@ is the row, with PyMOL's three codes spelled out as names) and the mutagenesis
 wizard is the first user of it, because it is the one feature where a command
 is genuinely the wrong surface: choosing a rotamer means *looking* at each one.
 
-What the wizard adds over `mutate` as a command:
+What the wizard adds over `mutate` as a command, and it is PyMOL's own design:
 
-* the rotamer is **stepped and seen**. PyMOL puts each rotamer in a state of a
-  preview object and you scrub the states; chimol applies them in place and
-  offers `<` and `>`, which is the same loop with one less object to explain;
+* every rotamer is built **once**, into an object called `mutation` with one
+  **state per rotamer** -- `cmd.create(obj_name, frag_name, 1, state)` in a
+  loop. Stepping is then a frame change and costs nothing. Rebuilding the
+  residue inside the source object instead, which is what this did first, ran
+  `set_structure` over the whole molecule per step: 2.2 s on a 1363-atom
+  protein, two thirds of it recomputing ambient occlusion for atoms that had
+  not moved;
 * the strain and the frequency are on screen while you step, which is the whole
   content of PyMOL's panel;
-* **nothing is committed until Apply.** The original residue's rows are kept
-  and put back by Clear or by leaving -- a preview that cannot be undone is not
-  a preview.
+* **the source structure is not touched until Apply.** Not "restored on
+  cancel" -- untouched, because the preview is a different object. That is what
+  makes Clear and Done free.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-
-import numpy as np
 
 from .object_menus import MenuEntry
 from .renderer.internal_gui import WizardRow
@@ -97,9 +99,11 @@ class MutagenesisWizard(Wizard):
     bump_check: bool = True
     #: ``(frequency, strain)`` per rotamer of the current target, for the panel.
     scores: list[tuple[float, float]] = field(default_factory=list)
-    #: The residue's original rows, kept so Clear and leaving can put them back.
-    original: np.ndarray | None = None
-    original_at: int = -1
+    #: The built rotamers, scored once. PyMOL builds them into an object with a
+    #: state each and never rebuilds; so does this, and stepping is a frame.
+    site: object | None = None
+    #: The object id of that preview -- PyMOL's `mutation`.
+    preview_id: str = ""
 
     def panel(self) -> list[WizardRow]:
         """Return PyMOL's panel: banner, pop-up, stepper, toggle, buttons."""

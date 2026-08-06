@@ -55,24 +55,27 @@ def test_fcs_regression():
     assert np.allclose(y, ref_y)
 
 def test_parse_model_evaluation():
-    """ParseModel must extract its symbols and evaluate them over the data.
-
-    A ModelCurve is constructed *by* a Fit and reads its x-axis from
-    ``fit.data``; it cannot be instantiated bare, which is what this test used
-    to do before hanging a mock fit off it afterwards.
-    """
-    from chisurf.core.data import DataCurve
-    from chisurf.core.fitting.fit import Fit
-
-    x = np.array([1.0, 2.0, 3.0])
-    data = DataCurve(x=x, y=np.zeros_like(x))
-    fit = Fit(model_class=ParseModel, data=data)
-    model = fit.model
+    # Test ParseModel's equation transformation and evaluation
+    model = ParseModel()
     model.func = "a*x + b"
-
+    
     # Check if keys were extracted correctly
     assert "a" in model._keys
     assert "b" in model._keys
+    
+    # Mock some data
+    class MockData:
+        def __init__(self, x):
+            self.x = x
+    
+    class MockFit:
+        def __init__(self, x):
+            self.data = MockData(x)
+        def update(self):
+            pass
+            
+    x = np.array([1.0, 2.0, 3.0])
+    model.fit = MockFit(x)
     
     # Set parameters: a=2.0, b=1.0
     for p in model._parameters_equation:

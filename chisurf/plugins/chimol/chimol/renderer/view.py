@@ -618,7 +618,9 @@ class MolView(QtWidgets.QWidget):
     _restraints = _StateField("restraints")
     _rmf_provenance = _StateField("rmf_provenance")
 
-    def apply_payload(self, payload, *, object_id: str | None = None) -> None:
+    def apply_payload(
+        self, payload, *, object_id: str | None = None, fit_camera: bool = True
+    ) -> None:
         """Load everything a reader recovered from a file into one object.
 
         The single route from a file into the viewer. RMF used to have its own
@@ -635,10 +637,16 @@ class MolView(QtWidgets.QWidget):
             What the reader produced.
         object_id : str, optional
             Which object to load into; the active one by default.
+        fit_camera : bool, optional
+            Frame the result -- PyMOL's ``auto_zoom``, which its own wizard
+            turns **off** before building a preview (`cmd.set('auto_zoom', 0)`
+            in `do_library`). An object created beside the one you are looking
+            at must not throw your framing away.
         """
         with self._activate_object(object_id):
             self.set_coordinates(
                 payload.coords,
+                fit_camera=fit_camera,
                 trace_coords=payload.trace_coords,
                 res_ids=payload.res_ids,
                 res_names=payload.res_names,
@@ -689,6 +697,7 @@ class MolView(QtWidgets.QWidget):
         *,
         name: str | None = None,
         source_path: str | None = None,
+        fit_camera: bool = True,
     ) -> str:
         """Create an object from a reader payload and return its id.
 
@@ -708,7 +717,9 @@ class MolView(QtWidgets.QWidget):
             The new object's id.
         """
         entry = self._create_object(name=name, source_path=source_path)
-        self.apply_payload(payload, object_id=entry.object_id)
+        self.apply_payload(
+            payload, object_id=entry.object_id, fit_camera=fit_camera
+        )
         self._apply_deposited_secondary_structure(source_path)
         return entry.object_id
 
@@ -3097,7 +3108,27 @@ class MolView(QtWidgets.QWidget):
         *,
         object_id: str | None = None,
         active_frame: int | None = None,
+        share_frame_with: str | None = None,
     ) -> None:
+        """Attach a trajectory to an object.
+
+        Parameters
+        ----------
+        frames : numpy.ndarray
+            ``(T, N, 3)`` raw coordinates.
+        object_id : str, optional
+            Which object. The active one by default.
+        active_frame : int, optional
+            Which frame to show.
+        share_frame_with : str, optional
+            Put the frames in **another object's** render frame instead of
+            centring them on themselves. An object built beside an existing one
+            -- a mutation preview, a docked copy -- has to be drawn where it
+            belongs relative to that one, and centring it on its own centroid
+            puts a fourteen-atom residue at the middle of the scene. The
+            stored raw coordinates are untouched, as in :meth:`_reframe_to`;
+            only the render arrays move.
+        """
         arr = np.asarray(frames, dtype=float)
         if arr.ndim != 3 or arr.shape[2] != 3:
             raise ValueError("frames must have shape (T, N, 3)")
@@ -3106,6 +3137,10 @@ class MolView(QtWidgets.QWidget):
 
         flat = arr.reshape(-1, 3)
         center, radius = _compute_center_radius(flat)
+        if share_frame_with:
+            borrowed = self.object_raw_center(share_frame_with)
+            if borrowed is not None:
+                center = np.asarray(borrowed, dtype=float).reshape(3)
         scale = float(self._scale_factor)
         arr_scaled = (arr - center) * scale
 
@@ -3118,6 +3153,24 @@ class MolView(QtWidgets.QWidget):
             self._center = np.zeros(3, dtype=float)
             self._radius = float(radius * scale)
             self._selected_residues = []
+            if share_frame_with:
+                # The object now lives in the other's frame, so its own record
+                # of where the origin is has to say the same -- everything that
+                # converts world coordinates for this object reads it.
+                self._raw_center = np.asarray(center, dtype=float)
+                # And its *scene* centre and radius are the parent's, not its
+                # own. `_update_view` averages the objects' centres to aim the
+                # camera and takes the largest radius to frame it, so a
+                # fourteen-atom object claiming the origin as its centre drags
+                # the camera target halfway there and the clip slab with it --
+                # the molecule goes dark and half of it is clipped away.
+                parent = self._objects.get(share_frame_with)
+                parent_state = getattr(parent, "state", None)
+                if parent_state is not None:
+                    if getattr(parent_state, "center", None) is not None:
+                        self._center = np.asarray(parent_state.center, dtype=float)
+                    if getattr(parent_state, "radius", None) is not None:
+                        self._radius = float(parent_state.radius)
             # Keep the global timeline in sync with the new trajectory so
             # ``set_current_frame`` / ``get_total_frames`` reflect reality.
             self._total_frames = max(self._total_frames, int(arr.shape[0]))
@@ -5000,6 +5053,49 @@ class MolView(QtWidgets.QWidget):
         except Exception:
             # No event loop to settle into (headless stepping). Leave the flag
             # to the rate test alone -- the next unhurried frame bakes anyway.
+            logger.debug("chimol: no settle timer available", exc_info=True)
+
+    @contextmanager
+    def suspend_updates(self):
+        """Collapse every redraw inside the block into one at the end.
+
+        A command that touches several things -- a frame, an overlay and a
+        panel -- otherwise pays for a full scene rebuild per touch, and the
+        first two are never seen. Counted, so nesting is safe, and the redraw
+        still happens if the block raises: a half-drawn scene left behind
+        because something failed is worse than the failure.
+        """
+        self._update_depth = getattr(self, "_update_depth", 0) + 1
+        try:
+            yield
+        finally:
+            self._update_depth -= 1
+            if self._update_depth <= 0:
+                self._update_depth = 0
+                self._update_view()
+
+    def begin_scrub(self) -> None:
+        """Declare that redraws are about to arrive faster than anyone can look.
+
+        :meth:`_note_frame_change` decides this from the *rate* of frame
+        changes, which cannot help a caller whose own updates are slow because
+        the bake is what makes them slow -- stepping a rotamer took a second,
+        so no two steps ever arrived close enough together to count as
+        scrubbing, and every one of them paid for an ambient-occlusion bake of
+        a molecule that had not moved. A caller that knows it is scrubbing says
+        so, and the same settle timer restores full quality when it stops.
+        """
+        self._draft_quality = True
+        self._last_frame_change = time.perf_counter()
+        try:
+            timer = getattr(self, "_settle_timer", None)
+            if timer is None:
+                timer = QtCore.QTimer(self)
+                timer.setSingleShot(True)
+                timer.timeout.connect(self._bake_after_settling)
+                self._settle_timer = timer
+            timer.start(self._SETTLE_MS)
+        except Exception:
             logger.debug("chimol: no settle timer available", exc_info=True)
 
     def _bake_after_settling(self) -> None:
@@ -8675,6 +8771,9 @@ class MolView(QtWidgets.QWidget):
             load path or a camera command should ask for this.
         """
         if self._renderer is None:
+            return
+        if getattr(self, "_update_depth", 0) > 0:
+            # Inside `suspend_updates`: the caller will ask once at the end.
             return
 
         self._occlusion_vertices_this_build = 0
