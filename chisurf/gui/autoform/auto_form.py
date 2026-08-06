@@ -680,8 +680,18 @@ class AutoForm(QtWidgets.QWidget):
     def _build_panel(self, section: vs.PanelSection):
         box = self._make_fold_box(section)
         self._emit_sections(section.sections, box.add_widget, fields_per_row=section.n_col)
-        if getattr(section, "bounds_toggle", False):
-            self._add_bounds_toggle(box)
+        # A child that wants the spare vertical space makes its panel want it
+        # too. Only *top-level* children are checked when the stretch is handed
+        # out, so an expanding section nested inside a panel used to be invisible
+        # to that: the form appended a trailing stretch instead, the panel stayed
+        # at its minimum, and the space a table or plot asked for went to the gap
+        # underneath it.
+        for child in box.findChildren(QtWidgets.QWidget):
+            if getattr(child, "_autoform_expanding", False):
+                box._autoform_expanding = True
+                box.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
+                                  QtWidgets.QSizePolicy.Expanding)
+                break
         # Record the spec, as every leaf section widget does. A panel is the
         # natural thing for a guided tour to point at — "Channels", "Background"
         # — but without this the lookup by ``{"title": …}`` found nothing and the

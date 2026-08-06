@@ -137,11 +137,45 @@ created at, which never happens for a panel built headlessly. `setParent(None)`
 first, then delete. A test asserts no child of the histogram panel is outside a
 layout.
 
-**The remaining blocks** (`z`, `Draw Mask`, `Selection`) are still plain group
-boxes, and a real AutoForm port of the histogram controls — `value` and `choice`
-sections instead of an adopted widget — is a separate change with a separate
-payoff (tooltips, generated docs, state save/restore) and a large blast radius
-through the mixins.
+`z axis`, `Draw Mask` and `Selection` followed the same way, so the dock is five
+foldable panels and **no group box at all** — their order and fold defaults are
+`plotting/plot_panels.view.json` rather than the `.ui`. Two of them were
+*checkable* group boxes, and their check state was not decoration: it gated the
+z plot and mask drawing. A collapsible box has no such state, and conflating the
+two would mean a panel someone tidied away silently stopped gating, so each got
+an explicit check box inside the panel — `checkBoxEnableZ` and
+`checkBoxEnableDrawing`, which every call site now names.
+
+A real AutoForm port of those controls — `value` and `choice` sections instead
+of an adopted widget — is a separate change with a separate payoff (tooltips,
+generated docs, state save/restore) and a large blast radius through the mixins.
+
+## The window's docks are ChiSurf's
+
+`plot_main.ui` declared five `QDockWidget`s and the window tabified three of them
+by hand (`arrange_docks_preserving_geometry`, now deleted) and hid the other two.
+They are one `DockArea` now (`utils/dock_conversion.py`), the same widget the fit
+windows use: styled draggable tabs, drop-to-split in any direction, a context
+menu, and an arrangement that could be persisted.
+
+The panels themselves are untouched. A `QDockWidget` is a *container*, so the
+conversion lifts its contents out — the widget `uic` built and everything else is
+wired to — hands them to the dock area and disposes of the container. Three
+details carry it:
+
+- **Take the contents out before removing the dock.** `removeDockWidget` on a
+  dock that still owns its widget takes the widget with it.
+- **The attribute keeps its name and gains a new referent.** The window enables
+  and hides these by name (`dockWidget_Parameters`, …), so each now points at the
+  panel rather than at a container that no longer exists; otherwise every
+  `setEnabled` becomes a silent no-op.
+- **A dock tab is shown through the area, not by the widget.** The Fit action
+  drove `QDockWidget.setVisible`; hiding the *widget* of a tab still in the bar
+  leaves the tab there with nothing behind it. It calls `showTab`/`hideTab` now.
+
+Panels stay on the left and the plot splits off to the right — where the Qt dock
+had them, because moving a column someone reaches for without looking is a change
+with no upside.
 
 ## Gating: one path, one answer
 

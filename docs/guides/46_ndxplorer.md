@@ -46,9 +46,13 @@ sample from a stable one with broader populations.
 Every burst carries the macro time at which it was detected, so a burst table is
 a time series and the plot you open is an integral over the whole acquisition.
 The **Playback** panel at the top of the plot controls gates the plot on a slice
-of one column and steps it. It starts folded — click the header to open it. (The
-**Histogram** block below it folds the same way, so the settings you set once can
-be put away while you scrub.)
+of one column and steps it. It starts folded — click the header to open it.
+
+Every block of the plot controls folds the same way (**Playback**,
+**Histogram**, **z axis**, **Draw Mask**, **Selection**), so the settings you set
+once can be put away while you scrub. The panels themselves are drag-and-drop
+dock tabs: drop one on an edge of the window to split the layout, or onto another
+tab to stack them.
 
 The axis is chosen from the data when a file is loaded — `Mean Macro Time (s)`
 for a burst folder, the frame index for an image stack — and any other numeric

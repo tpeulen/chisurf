@@ -165,6 +165,12 @@ mixins reach by name. Pair it with `"expanding": false` for a compact block of
 controls, which should stay at the height it needs rather than absorb the dock's
 spare space — a panel that keeps that space folds into a panel-sized hole.
 
+`"expanding": true` inside a `panel` now reaches the layout. The stretch is
+handed to *top-level* children only, so an expanding section nested in a panel
+was invisible to it: the form appended a trailing stretch, the panel stayed at
+its minimum, and the height a table or plot asked for went to the gap underneath.
+A panel whose subtree contains an expanding widget is marked expanding itself.
+
 # Reporting to the user: one message box, one progress bar
 
 Two things every long-running or fallible tool must do — say that something went
