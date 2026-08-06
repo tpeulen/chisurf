@@ -64,6 +64,41 @@ installs only.
 tab) removes the saved state as well as re-applying the default, so the reset is
 not undone by the next start.
 
+## A QA run must not be able to save a layout
+
+`closeEvent` saves unconditionally, and a test fixture or a headless screenshot
+closes the window it built — so for as long as `QSettings` reached the real
+preferences, **running the GUI suite replaced the developer's dock layout with
+whatever the small offscreen window happened to have**, and their next real
+start restored it: the five docks split across two columns with *Plot settings*
+collapsed to its title bar. Nothing looked broken at the time; the damage
+surfaced a session later, in a different process, which is what made it hard to
+attribute.
+
+`chisurf.gui.gui_tweaks.isolate_qsettings_for_qa` closes that off at import of
+`chisurf.gui`, before any settings object or plugin GUI module exists. It
+detects a QA run (`QT_QPA_PLATFORM` offscreen/minimal/vnc, or pytest in the
+process) and replaces `qtpy.QtCore.QSettings` with a subclass that rewrites the
+organization/application forms into an explicit `IniFormat` file under
+`CHISURF_SETTINGS_DIR`. That covers **every** saver in the app — the main
+window and each tool's own `QSettings("chisurf", "…Tool")` — without touching a
+call site; a call that already names its own file is passed through, having
+never been at risk. `CHISURF_ALLOW_REAL_QSETTINGS=1` opts out.
+
+The class swap is the mechanism because the documented one does not work.
+`QSettings.setDefaultFormat(IniFormat)` is specified to bind the two-argument
+constructor, and on the Qt build here it does not: afterwards
+`QSettings("ChiSurf", "MainWindow").format()` is still `NativeFormat` and the
+file is still the plist. `setPath` alone is no better — the native macOS
+backend is `CFPreferences`, keyed to the logged-in user, and ignores both
+`setPath` and `$HOME`. **Assert the instance, never `defaultFormat()`:** a
+redirection that quietly fails looks exactly like one that worked.
+`test/gui/test_qsettings_isolation.py` pins it.
+
+`_LAYOUT_VERSION` is therefore bumped for a second reason as well as a changed
+default: **to discard a generation of saved layouts known to be wrong**. 3 drops
+the ones written by QA runs before this guard existed.
+
 Two things are easy to get wrong here, both invisible in code review and
 obvious in a screenshot:
 

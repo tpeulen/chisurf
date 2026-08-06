@@ -241,11 +241,18 @@ class Main(
 
     _READ_DATA_DOCK_WIDTH = 390
 
-    #: Bumped whenever :meth:`apply_default_dock_layout` changes. A layout saved
-    #: by an older version is ignored once, so a changed default is what the user
+    #: Bumped whenever :meth:`apply_default_dock_layout` changes — and to discard
+    #: a generation of saved layouts known to be wrong. A layout saved by an
+    #: older version is ignored once, so the authored default is what the user
     #: actually sees; anything they rearrange afterwards is saved under the
     #: current version and survives every later start.
-    _LAYOUT_VERSION = 2
+    #:
+    #: 3 drops the layouts written by QA runs before
+    #: :func:`~chisurf.gui.gui_tweaks.isolate_qsettings_for_qa` existed: a test
+    #: or headless screenshot saved its own small offscreen window on close, and
+    #: a real session then restored it — docks split into two columns with
+    #: *Plot settings* collapsed to its title bar.
+    _LAYOUT_VERSION = 3
 
     def _save_window_state(self):
         """Persist dock layout and window geometry via QSettings."""

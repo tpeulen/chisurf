@@ -2,7 +2,9 @@ from __future__ import annotations
 import chisurf as cs
 
 import os
+import pathlib
 import sys
+import tempfile
 
 
 def _sanitize_qt_plugin_path() -> None:
@@ -53,10 +55,163 @@ def _sanitize_qt_plugin_path() -> None:
         os.environ["QT_QPA_PLATFORM_PLUGIN_PATH"] = platforms_dir
 
 
+#: Platform plugins that mean "nobody is looking at this window": a test run or
+#: a headless screenshot, never a session whose layout is worth keeping.
+_QA_PLATFORMS = frozenset({"offscreen", "minimal", "vnc"})
+
+#: Opt out of :func:`isolate_qsettings_for_qa` — for the rare headless run that
+#: really is meant to write the user's preferences.
+_ALLOW_REAL_QSETTINGS_VAR = "CHISURF_ALLOW_REAL_QSETTINGS"
+
+_TRUTHY = {"1", "true", "yes", "on"}
+
+
+def qa_run_reason() -> str | None:
+    """Say why this process counts as QA, or ``None`` when it is a real session.
+
+    Returns
+    -------
+    str or None
+        A short phrase naming the evidence — the offscreen platform plugin, or
+        pytest driving the process — suitable for a log line.
+    """
+    if os.environ.get(_ALLOW_REAL_QSETTINGS_VAR, "").strip().lower() in _TRUTHY:
+        return None
+    platform = os.environ.get("QT_QPA_PLATFORM", "").split(":", 1)[0].strip().lower()
+    if platform in _QA_PLATFORMS:
+        return f"QT_QPA_PLATFORM={platform}"
+    if "PYTEST_CURRENT_TEST" in os.environ or "pytest" in sys.modules:
+        return "running under pytest"
+    return None
+
+
+def isolate_qsettings_for_qa() -> str | None:
+    """Point ``QSettings`` at a scratch directory when this is a QA run.
+
+    Every widget that remembers something — the main window's dock layout, each
+    tool's last-used paths — persists it through ``QSettings(org, app)``, and
+    those two-argument constructions write the *user's* real preferences. A test
+    or a headless screenshot builds the same widgets, and closing them saves:
+    ``Main.closeEvent`` calls ``_save_window_state`` unconditionally. So a suite
+    run in an 800×600 offscreen window would overwrite the developer's dock
+    layout with the collapsed arrangement that window happened to have, and the
+    next real start would restore it.
+
+    Redirecting one seam covers all of them, and the seam is the class rather
+    than ``setDefaultFormat``. ``setPath`` only ever applied to ini files — the
+    native macOS backend is ``CFPreferences``, which is keyed to the logged-in
+    user and ignores both ``setPath`` and ``$HOME`` — so the format has to change
+    too. ``setDefaultFormat`` is documented to do that for the two-argument
+    constructor and *does not* on the Qt build here: after setting it,
+    ``QSettings("ChiSurf", "MainWindow").format()`` is still ``NativeFormat`` and
+    the file is still the plist. Measure it before trusting it; a redirection
+    that quietly fails looks exactly like one that worked.
+
+    So ``qtpy.QtCore.QSettings`` is replaced with a subclass that rewrites the
+    organization/application forms into an explicit ``IniFormat`` construction.
+    Call sites are untouched: they say ``QtCore.QSettings(...)`` and get the
+    subclass. A call that already names its own file is left alone — it was
+    never writing the user's preferences.
+
+    Call before the first ``QSettings`` is constructed *and* before the modules
+    that do ``from qtpy.QtCore import QSettings`` are imported, which is why this
+    runs from :mod:`chisurf.gui.gui_tweaks` at import.
+
+    Returns
+    -------
+    str or None
+        The directory preferences were redirected to, or ``None`` when this is a
+        real session and the user's own preferences were left in place.
+    """
+    reason = qa_run_reason()
+    if reason is None:
+        return None
+    try:
+        from qtpy import QtCore
+    except Exception:
+        return None
+
+    configured = os.environ.get("CHISURF_SETTINGS_DIR", "").strip()
+    root = (
+        pathlib.Path(configured) if configured
+        else pathlib.Path(tempfile.gettempdir()) / "chisurf-qa-settings"
+    )
+    try:
+        root.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        return None
+
+    base = QtCore.QSettings
+    if getattr(base, "_chisurf_qa_root", None) is not None:
+        return base._chisurf_qa_root
+
+    for scope in (base.UserScope, base.SystemScope):
+        base.setPath(base.IniFormat, scope, str(root))
+    base.setDefaultFormat(base.IniFormat)
+
+    class _QaQSettings(base):
+        """``QSettings`` that cannot reach the user's real preferences."""
+
+        _chisurf_qa_root = str(root)
+
+        def __init__(self, *args, **kwargs):
+            parent = kwargs.pop("parent", None)
+            if args and isinstance(args[-1], QtCore.QObject):
+                parent, args = args[-1], args[:-1]
+
+            if _names_a_file(args):
+                super().__init__(*args, **kwargs)
+            else:
+                organization, application = _organization_and_application(args, base)
+                super().__init__(
+                    base.IniFormat, base.UserScope, organization, application,
+                )
+            if parent is not None:
+                self.setParent(parent)
+
+    QtCore.QSettings = _QaQSettings
+    return str(root)
+
+
+def _names_a_file(args: tuple) -> bool:
+    """Whether a ``QSettings`` argument list already points at its own file.
+
+    Those calls — ``QSettings(path, QSettings.IniFormat)`` — were never writing
+    the user's preferences and are passed through untouched. ``QSettings(org,
+    app)`` has the same arity, so the second argument is what separates them: a
+    format enum there, an application name in the organization form.
+    """
+    return (
+        len(args) >= 2
+        and isinstance(args[0], (str, os.PathLike))
+        and not isinstance(args[1], str)
+    )
+
+
+def _organization_and_application(args: tuple, base) -> tuple[str, str]:
+    """Pull organization and application out of the remaining constructor forms.
+
+    Handles ``()``, ``(organization,)``, ``(organization, application)`` and
+    ``(format, scope, organization, application)``; anything the application did
+    not supply falls back to what ``QCoreApplication`` was given, exactly as Qt
+    itself would.
+    """
+    from qtpy import QtCore
+
+    if len(args) >= 4 and not isinstance(args[0], str):
+        organization, application = args[2], args[3]
+    else:
+        strings = [a for a in args if isinstance(a, str)]
+        organization = strings[0] if strings else QtCore.QCoreApplication.organizationName()
+        application = strings[1] if len(strings) > 1 else QtCore.QCoreApplication.applicationName()
+    return organization or "ChiSurf", application or "ChiSurf"
+
+
 # Run as a side effect of import. ``chisurf.gui`` imports this module before it
 # imports ``qtpy`` and long before ``QApplication`` is created, so the corrected
 # paths are in place when Qt first reads them.
 _sanitize_qt_plugin_path()
+isolate_qsettings_for_qa()
 
 
 def apply_platform_window_tweaks(window) -> None:
