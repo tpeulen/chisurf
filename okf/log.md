@@ -2,6 +2,12 @@
 
 ## 2026-08-06
 
+* **Spanish and Portuguese join the shipped locales** ([i18n](subsystems/i18n.md)).
+
+  `chisurf_es` and `chisurf_pt`, **3088** finished terms each — the same scope as the Russian catalogue, and reached the same way: extract with `--locales es pt` (never a bare `i18n-extract`, which would rewrite the shared `de`/`fr` files other instances are editing), then fill from **paired** batch files, `{index: [es, pt]}`. Pairing matters beyond bookkeeping: the two Romance locales are translated against one reading of each source string instead of two independent ones, so *burst* is `ráfaga`/`rajada` everywhere rather than drifting between panels. Portuguese follows **European** usage and post-1990 orthography (`ficheiro`, `definições`, `detetor`/`deteção`) — a decision, not an accident, and written into the concept so it is not "corrected" toward pt-BR later. The 394 sources left English per locale are the usual class: units, math symbols, format codes, Qt signal/objectName artifacts.
+
+  No code was needed. `available_languages()` discovers a locale from its `.qm`, and `es`/`pt` were already in the endonym table and the painted-flag recipes; only `DEFAULT_LOCALES`, the `i18n-compile` task and the tests moved. Verified offscreen: `tttr_time_windows` renders fully in both (*Procesar / Ajustes / Archivos / Vista previa / Resumen / Listo* and *Processar / Definições / Ficheiros / Pré-visualização / Resumo / Pronto*), and the pickers now list six languages, each with its own painted flag.
+
 * **PRD-38 is complete: no model widgets, no `plot_classes`, no `.ui` under `models/`** ([PRD-38](prds/prd-38.md), [GUI & AutoForm](subsystems/gui-autoform.md)).
 
   The three cleanups that were left after the last extraction. `gui/widgets/models/pda2c/widgets.py` is deleted (2,090 lines): nine of its ten classes were unreferenced once the PDA models became data-described, and the tenth — `FretRdaAxisSettingsWidget` — was never a model widget at all, since the FRET distance axis is one global setting. It moved to `gui/widgets/fret_rda_axis_settings.py`, where the relocation screenshot showed its two distance spin boxes carrying a literal **tab** where the `Å` suffix belonged.
@@ -13,6 +19,22 @@
   **Two tests were red before this work and are fixed here.** `test_model_widget_metaclass.py` named `chisurf.gui.widgets.models.tcspc.et` as its worked example and that module was deleted in increment 14, so it had been failing since. Replaced by `test_model_widget_modules_import.py`, which asserts what still matters: every module under `gui/widgets/models` imports, and each deprecated class path resolves to a **non-widget** model with the right `name` — a path resolving to the wrong class is as broken as one that does not resolve, and just as quiet.
 
   Final counts: 44 models across 12 families, zero legacy registrations, `.ui` forms 43 → **28** tree-wide. Not fixed and not caused here: the PDA dynamic-fit threshold (`chi2r = 1.5339` against `< 1.5`), which reproduces identically at `b5f6eec0c^` — recorded in [known issues](references/known-issues.md) with the question to answer before moving the number.
+
+* **Resetting MMFDB locked the workspace out — the seed ships no accounts.**
+
+  The admin **Reset** action copies `mmfdb/data/sample_management.db` over the user database. That seed carries `user_default`, `guest` and two demo users, and **no administrator at all**, so the reset deleted the only account anyone could log in with. The screenshot that started this was a login dialog with `admin` selected and nothing that would accept it.
+
+  Two hand-rolled copies existed (`mmfdb.admin` RPC handler, ChiSurf's `database_connector` plugin) and neither re-established an account. Both now call the one implementation, `database_resolver.reset_user_database_from_source`: backup → copy → **drop the replaced database's `-wal`/`-shm`** (they describe pages of a file that no longer exists, and SQLite would replay them into the seed) → `ensure_default_accounts`. Credentials come from `mmfdb.config.set_admin_bootstrap_resolver` / `set_default_accounts_resolver`, the same host-resolver pattern already used for the default user id and the auth config, which ChiSurf registers in `prepare_embedded_mmfdb`. MMFDB stays fail-closed standalone: no resolver and no `MMFDB_BOOTSTRAP_ADMIN_*` means no implicit account.
+
+  **The desktop now seeds two accounts, not one.** `admin`/`admin` administers; `user`/`user` (new, unprivileged, `users` group) is what everyday work is attributed to and what `mmfdb.default_user_id` ships as — previously `user_default`, MMFDB's *service* identity, which cannot log in and was nevertheless the first name the login dialog offered. Both accounts are offered by the dialog and both satisfy the embedded autologin, so working as `admin` still signs in without a prompt.
+
+  **The trap underneath is the same one twice**, and it is why `default_user_id` could not simply be pointed at a new name. Ordinary provenance writes auto-create a plain, passwordless row for whatever that setting names.
+  - Named at the **administrator** — which is what every existing ChiSurf install has on disk (`default_user_id: admin`) — the bootstrap *refuses to claim an existing identity*, deliberately. That is a permanent lockout **and** an unguarded exception in `chisurf/gui/__init__.py` at startup. The promotable set is no longer the single hard-coded `SERVICE_USER_ID` but whatever MMFDB itself auto-creates for the acting user (`+ configured_default_user_id()`).
+  - Named at the **working account**, the stub has no password, and an insert-if-missing seed walks past it forever. `ensure_local_account` therefore *completes* a stub instead of skipping it.
+
+  Both claims stay narrow in the same way: only while the row is a bare stub — a password, admin rights or passwordless login make it somebody's account and it is left untouched. The refusal message now names the acting identity that was actually configured instead of guessing at the collision.
+
+  Concept: [architecture/mmfdb](architecture/mmfdb.md), new section *Staying loginable*. Tests: `modules/mmfdb/tests/test_reset_restores_admin.py` (6), two added to `test_bootstrap_placeholder_admin.py`, two to `test/core/test_mmfdb_desktop_bootstrap.py`; `test/settings/test_mmfdb_identity_collision.py` rewritten — it pinned the *old* "acting identity must not be the admin name" rule, and now pins that the shipped identity is a seeded account with a password and one MMFDB may claim. Suites: mmfdb **775 passed**; ChiSurf `test_mmfdb_desktop_bootstrap` + `database_connector` + `mmfdb_admin` + `user_editor` **134**, `test/settings` 23, `test/core` 1042. Login dialog and reset confirmation rendered offscreen and inspected.
 
 * **ProteinMC left the GUI layer — the last model that could only be clicked** ([PRD-38](prds/prd-38.md)).
 
