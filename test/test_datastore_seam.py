@@ -1,8 +1,9 @@
 """Tests for the columnar-store seam, :mod:`chisurf.core.datastore`.
 
 Covers the two conversions, the three cell-write routes, the mask semantics that
-distinguish a store from a frame, and the borrowed-column trap that makes a
-cached column proxy read freed memory.
+distinguish a store from a frame, the borrowed-column trap that makes a cached
+column proxy read freed memory, and the file half -- what survives a write and
+what a foreign or older file does instead of reading as an empty table.
 """
 
 from __future__ import annotations
@@ -12,15 +13,19 @@ import pandas as pd
 import pytest
 
 from chisurf.core.datastore import (
+    LegacyTableError,
     clear_cell,
     column_at,
     column_values,
     dataframe_from_store,
     is_missing,
     new_store,
+    read_table,
+    read_table_frame,
     set_cell,
     store_from_arrays,
     store_from_dataframe,
+    write_table,
 )
 
 
@@ -282,3 +287,108 @@ def test_is_missing_does_not_treat_an_empty_string_as_missing():
     assert not is_missing("")
     assert not is_missing(0)
     assert not is_missing(False)
+
+
+# ── tables in a file ─────────────────────────────────────────────────────
+
+
+def test_a_written_table_comes_back_column_for_column(frame, tmp_path):
+    """The whole point of the file half: what goes in is what comes out, in the
+    dtypes it went in with. A frame's own writer widens a float32 column to
+    float64 and an integer column with a hole to floats."""
+    path = tmp_path / "t.h5"
+    write_table(path, frame)
+
+    store = read_table(path)
+    assert store is not None
+    back = dataframe_from_store(store)
+    assert list(back.columns) == list(frame.columns)
+    assert back["small"].dtype == np.float32
+    assert back["count"].dtype == np.int32
+    np.testing.assert_array_equal(back["name"], frame["name"])
+    np.testing.assert_allclose(back["value"], frame["value"])
+
+
+def test_a_masked_integer_cell_survives_the_file_as_a_mask(tmp_path):
+    """Not as a NaN, which is the thing a frame cannot do: the column would have
+    to become floats to carry one, and then "not measured" and "zero" are the
+    same as far as the dtype is concerned."""
+    store = store_from_arrays({"count": np.array([1, 2, 3], dtype="int32")})
+    clear_cell(store, 1, 0)
+    path = tmp_path / "t.h5"
+    write_table(path, store)
+
+    back = read_table(path)
+    assert back["count"].numpy().dtype == np.int32
+    assert not back["count"].valid(1)
+    assert back["count"].valid(0)
+
+
+def test_a_text_column_survives_as_a_dictionary(tmp_path):
+    """A repeated label costs a code, not a string. This is what makes a burst
+    table with a "First File" column smaller on disk than the frame it
+    replaces rather than larger."""
+    labels = np.array(["Green", "Red", "Green", "Red"] * 32, dtype=object)
+    path = tmp_path / "t.h5"
+    write_table(path, {"First File": labels})
+
+    back = read_table(path)
+    assert back["First File"].dtype == "str"
+    assert sorted(back["First File"].dictionary()) == ["Green", "Red"]
+    assert list(back["First File"].numpy()) == list(labels)
+
+
+def test_meta_is_a_child_group_and_not_a_repeated_column(frame, tmp_path):
+    """A back-reference to the photon file belongs beside the results. Writing
+    it as a column would repeat one string once per row, and a second write
+    used to truncate the first table away entirely."""
+    path = tmp_path / "t.h5"
+    write_table(path, frame, meta={"source_tttr": "/data/run.ptu"})
+
+    store = read_table(path)
+    assert store.n_rows() == len(frame)
+    assert list(store.group("meta")["source_tttr"].numpy()) == ["/data/run.ptu"]
+
+
+def test_a_file_that_is_not_a_columnar_table_reads_as_none(tmp_path):
+    """Not as an empty table. The reader answers a foreign file with no columns
+    rather than an error, so a caller that only catches exceptions opens every
+    one of them blank and reports success."""
+    path = tmp_path / "not.h5"
+    path.write_bytes(b"not an HDF5 file at all")
+    assert read_table(path) is None
+
+
+def test_a_missing_file_reads_as_none(tmp_path):
+    assert read_table(tmp_path / "absent.h5") is None
+
+
+def test_the_frame_reader_prefers_the_columnar_layout(frame, tmp_path):
+    path = tmp_path / "t.h5"
+    write_table(path, frame)
+    back = read_table_frame(path)
+    assert list(back.columns) == list(frame.columns)
+    assert len(back) == len(frame)
+
+
+def test_a_file_in_neither_layout_declines_by_name(tmp_path):
+    """A named decline, not an empty table: a caller merging into an existing
+    file has to tell "nothing was there" from "I could not read what was
+    there", because treating the second as the first discards an analysis."""
+    path = tmp_path / "not.h5"
+    path.write_bytes(b"not an HDF5 file at all")
+    with pytest.raises(LegacyTableError):
+        read_table_frame(path)
+
+
+def test_an_older_frame_written_file_still_reads(frame, tmp_path):
+    """The layout every existing analysis is stored in. It needs an optional
+    package, so where that is absent this is a skip rather than a failure --
+    and the decline it produces there is covered above."""
+    pytest.importorskip("tables")
+    path = tmp_path / "legacy.h5"
+    frame.to_hdf(str(path), key="results", mode="w", format="table")
+
+    back = read_table_frame(path)
+    assert list(back.columns) == list(frame.columns)
+    np.testing.assert_allclose(back["value"], frame["value"])
