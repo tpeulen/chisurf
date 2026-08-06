@@ -2,6 +2,16 @@
 
 ## 2026-08-06
 
+* **Parity: ChimeraX's measurement suite, three of eight** ([pymol parity](plugins/pymol-parity.md)).
+
+  ChimeraX is the authority on functionality and its `measure_*` family was the largest thing it had that ChiMOL had nothing of -- eight commands against ChiMOL's distance, angle and dihedral. `measure_buriedarea`, `measure_center` and `measure_inertia` are in.
+
+  **Buried area is the one worth having**, and two details decide whether it is an interface area or just a difference of numbers. Each set's own area is computed with **only that set present** rather than by masking a crowded surface -- an atom in neither set must not occlude. And it is always the **solvent-accessible** surface whatever `dot_solvent` says, because a buried van der Waals area is not the quantity anyone means, and silently answering a different question because a global flag was off is this plugin's most repeated failure. On T4 lysozyme the two halves bury 950 A^2.
+
+  `measure_inertia` transcribes `moments_of_inertia` (second moments over the weight, parallel-axis shift, `eigh`, ascending eigenvalues, right-handed flip) and reports itself **unweighted**: ChimeraX weights by atomic mass, ChiMOL has no mass table, and the difference for a protein is small but not nothing. Saying so beats a number whose weighting nobody can see -- the same blocker shape as `valence`, and the reason `measure_weight` is not among the three.
+
+  **How to test a number with no reference to check it against**, which is the transferable part: pin *properties*, not a value. Buried area is symmetric under swapping the sets, is zero for two residues at opposite ends of the fold, grows with the probe radius, is refused for overlapping selections, and does not move when `dot_solvent` changes. A single hand-computed value can be matched by an implementation that is wrong everywhere else. 10 tests; the fixture is module-scoped after a window-per-test made the file take 110 s instead of 29.
+
 * **A burst measurement had a time axis and no way to look at it** ([ndX](plugins/ndxplorer.md)).
 
   Every burst carries `Mean Macro Time (s)`, monotonic across all the `.bur` files of a measurement, and ndX drew the whole acquisition as one static 2-D histogram — which is an integral over time, so a photobleaching sample and a stable one with broader populations produce the same picture. The machinery to fix that was already in the file, wired to the wrong thing: the `Image` group box held a spin box, five transport buttons and a `QTimer` bound to an image **frame index**, and `axis_helpers` explicitly rejected any column whose name contains "time". For burst data the whole box was hidden — taking the `weight` checkbox and combo, which happened to live inside it, with it, so histogram weighting was unreachable for bursts.

@@ -271,7 +271,7 @@ not**, and they group into five kinds:
 
 | Gap | Commands | Worth |
 | --- | --- | --- |
-| **Measurement** | `measure_buriedarea` `measure_center` `measure_convexity` `measure_correlation` `measure_inertia` `measure_rotation` `measure_symmetry` `measure_weight` | **Highest.** ChiMOL measures distances, angles and SASA; this is a whole analysis suite it has none of. `buriedarea` (interface area) and `correlation` (map-to-model fit) are the two a structural biologist reaches for daily, and both are computable from what ChiMOL already holds — `get_area` gives the components of a buried area, and the volume reader gives the map. |
+| **Measurement** | ~~`measure_buriedarea`~~ ~~`measure_center`~~ ~~`measure_inertia`~~ · `measure_convexity` `measure_correlation` `measure_rotation` `measure_symmetry` `measure_weight` | **Three landed** (2026-08-06); five left. `measure_weight` needs an atomic-mass table ChiMOL does not have — the same shape of blocker as `valence`, and the reason `measure_inertia` reports itself as **unweighted** rather than quietly weighting by nothing. `measure_correlation` needs the map reader wired to the atom set and is the next worth doing. |
 | **Colour and attributes** | `palette` `colorname` `rainbow` `defattr` `setattr` | `defattr` — assign a per-atom attribute *from a file* and colour by it — is the one that unlocks the rest, and is close to `alter` plus `spectrum b`. |
 | **Appearance** | `material` `size` `style` `tile` `axis` `windowsize` | `tile` (lay every open structure out on a grid) is the cheapest big win for comparing models, which is what ChiSurf produces. |
 | **Movie** | `crossfade` `perframe` `fly` `roll` `wobble` `time` `wait` | ChiMOL has `mplay`/`mset`/`mview`. `perframe` (run a command each frame) is the general one and would subsume several. |
@@ -2353,6 +2353,40 @@ compares the distances as drawn with the distances in Angstrom.
 
 It surfaced only because `cell` gave the scene something with an absolute
 position to disagree with.
+
+## The measurement suite, and testing a number with no reference to check it against
+
+ChimeraX is the authority on functionality, and its `measure_*` family was the
+largest thing it had that ChiMOL had nothing of. Three landed:
+`measure_buriedarea`, `measure_center`, `measure_inertia`.
+
+**Buried area** is the one worth having. Transcribed from
+`measure_buriedarea.py`: the SAS area of each set alone, minus the area of the
+two together, **halved** — each set carries surface at the interface, so the
+interface is half of what is buried. Two details that a from-scratch version
+gets wrong:
+
+* each set's own area is computed with **only that set present**, not by masking
+  a crowded surface. An atom in neither set must not occlude, or the number is a
+  difference of two other numbers rather than an interface;
+* it is always the **solvent-accessible** surface, whatever `dot_solvent` says.
+  A buried van der Waals area is not what anyone means, and silently answering a
+  different question because a global flag was off is this file's most repeated
+  failure.
+
+`measure_inertia` transcribes `moments_of_inertia`: second moments over the
+weight, the parallel-axis shift to the centre, `eigh`, eigenvalues ascending,
+and the third axis flipped if the frame came out left-handed. It reports itself
+**unweighted** because ChiMOL has no atomic-mass table — for a protein the
+difference is small and it is not nothing, and a number whose weighting nobody
+can see is worse than one that says what it is.
+
+**How to test a quantity with nothing to compare it against.** There is no
+reference value here, so each test pins a *property*: buried area is symmetric
+under swapping the sets, is zero for two residues at opposite ends of the fold,
+grows with the probe radius, is refused for overlapping selections, and does not
+move when `dot_solvent` changes. That is a stronger check than one hand-computed
+number, which can be matched by an implementation that is wrong everywhere else.
 
 # Working rules
 

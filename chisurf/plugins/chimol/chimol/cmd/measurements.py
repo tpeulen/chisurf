@@ -7,6 +7,7 @@ import numpy as np
 from ..analysis.metrics import compute_kabsch, compute_rmsd
 from .base import BaseCmd
 from .registry import command
+from .selection_types import Selection
 
 
 def _is_number(text: str) -> bool:
@@ -1198,3 +1199,195 @@ class MeasurementMixin(BaseCmd):
             return np.zeros((0, 3), dtype=float)
 
         return atom_coords_arr[keep_mask].copy()
+
+    # ------------------------------------------------------------------ #
+    # ChimeraX's measurement suite
+    #
+    # PyMOL is the reference for the GUI and the UX; ChimeraX is the reference
+    # for *functionality*, and this is the largest thing it has that ChiMOL had
+    # nothing of -- eight `measure_*` commands against ChiMOL's distance, angle
+    # and dihedral. These three are the ones computable from what ChiMOL already
+    # holds; `measure_correlation` needs a map and is not built.
+    # ------------------------------------------------------------------ #
+    @command("measure_buriedarea", aliases=("buried_area",))
+    def measure_buriedarea(
+        self, sel1: Selection = "", sel2: Selection = "", probe: str = "",
+    ) -> None:
+        """Solvent-accessible area buried between two sets of atoms.
+
+        Transcribed from ChimeraX's ``measure_buriedarea``: the buried area is
+        the SAS area of each set alone, minus the area of the two together,
+        **halved** -- because each set carries surface at the interface, so the
+        interface area is half of what is buried in total.
+
+        The two sets must be disjoint, and each set's own area is computed with
+        *only that set present*: an atom in neither set does not occlude, which
+        is what makes the number an interface area rather than a difference of
+        two crowded surfaces.
+
+        Parameters
+        ----------
+        sel1, sel2 : str
+            The two atom sets. They must not overlap.
+        probe : str, optional
+            Probe radius in Angstrom; the ``solvent_radius`` setting by default.
+
+        Notes
+        -----
+        Always the *solvent-accessible* surface, whatever ``dot_solvent`` says.
+        A buried van der Waals area is not the quantity anyone means by "buried
+        area", and silently answering a different question because a global flag
+        happened to be off is the failure mode this file keeps finding.
+        """
+        from ..analysis.surface_area import atom_surface_areas
+        from ..settings import get_setting
+
+        if not str(sel1).strip() or not str(sel2).strip():
+            self._emit_error(
+                "Usage: measure_buriedarea <selection 1>, <selection 2> [, probe]"
+            )
+            return
+
+        window, viewer = self._require_window_and_viewer()
+        if viewer is None:
+            return
+        try:
+            id1, name1, mask1 = self._resolve_selection_to_atom_mask(viewer, str(sel1))
+            id2, name2, mask2 = self._resolve_selection_to_atom_mask(viewer, str(sel2))
+        except Exception as exc:
+            self._emit_error(f"measure_buriedarea: {exc}")
+            return
+        if id1 != id2:
+            self._emit_error(
+                "measure_buriedarea: both selections must be in one object "
+                f"('{name1}' and '{name2}'); the area between two objects needs "
+                "them merged with `create` first"
+            )
+            return
+
+        mask1 = np.asarray(mask1, dtype=bool)
+        mask2 = np.asarray(mask2, dtype=bool)
+        overlap = int((mask1 & mask2).sum())
+        if overlap:
+            self._emit_error(
+                f"measure_buriedarea: the two selections share {overlap} atoms; "
+                "they must be disjoint or the area is counted twice"
+            )
+            return
+        if not mask1.any() or not mask2.any():
+            self._emit_error("measure_buriedarea: a selection matched no atoms")
+            return
+
+        entry = getattr(viewer, "_objects", {}).get(id1)
+        atoms = getattr(getattr(entry, "state", None), "atoms", None)
+        if atoms is None or "radius" not in (atoms.dtype.names or ()):
+            self._emit_error(
+                "measure_buriedarea: this structure carries no van der Waals radii"
+            )
+            return
+        xyz = np.asarray(atoms["xyz"], dtype=float)
+        radii = np.asarray(atoms["radius"], dtype=float)
+
+        try:
+            probe_radius = (
+                float(str(probe).strip()) if str(probe).strip()
+                else float(get_setting("solvent_radius"))
+            )
+        except ValueError:
+            self._emit_error(f"measure_buriedarea: probe must be a number, got {probe!r}")
+            return
+        density = int(get_setting("dot_density"))
+
+        def sasa(mask: np.ndarray) -> float:
+            """Total SAS area of a subset, with only that subset present."""
+            return float(
+                atom_surface_areas(
+                    xyz[mask], radii[mask],
+                    solvent_radius=probe_radius,
+                    dot_solvent=True,
+                    dot_density=density,
+                ).sum()
+            )
+
+        area1 = sasa(mask1)
+        area2 = sasa(mask2)
+        both = sasa(mask1 | mask2)
+        buried = 0.5 * (area1 + area2 - both)
+
+        self._emit_message(
+            f"measure_buriedarea: {buried:.4g} A^2 buried between "
+            f"'{sel1}' and '{sel2}' "
+            f"(areas {area1:.4g} + {area2:.4g}, together {both:.4g}; "
+            f"probe {probe_radius:g} A)"
+        )
+
+    @command("measure_center", aliases=("centroid",))
+    def measure_center(self, sel: Selection = "all") -> None:
+        """Centre of a selection, in Angstrom (ChimeraX ``measure center``).
+
+        Unweighted: the centre of the atoms, not the centre of mass. ChimeraX
+        weights a *map* by density and atoms not at all, so this is the same
+        quantity for the atom case, and saying "centre" rather than "centre of
+        mass" is the honest name for it.
+        """
+        atoms, mask, _object_id = self._selection_atoms(sel, "measure_center")
+        if atoms is None:
+            return
+        xyz = np.asarray(atoms["xyz"], dtype=float)[np.asarray(mask, dtype=bool)]
+        if xyz.size == 0:
+            self._emit_error(f"measure_center: '{sel}' matched no atoms")
+            return
+        centre = xyz.mean(axis=0)
+        self._emit_message(
+            f"measure_center: {len(xyz)} atoms centred at "
+            f"[{centre[0]:.3f}, {centre[1]:.3f}, {centre[2]:.3f}]"
+        )
+
+    @command("measure_inertia", aliases=("inertia",))
+    def measure_inertia(self, sel: Selection = "all") -> None:
+        """Principal axes and moments of a selection (ChimeraX ``measure inertia``).
+
+        Transcribed from ``measure_inertia.py::moments_of_inertia``: the
+        second-moment tensor, divided by the total weight, shifted to the centre
+        by the parallel-axis term, then diagonalised with eigenvalues sorted
+        ascending and the third axis flipped if needed so the axes are
+        right-handed.
+
+        **Unweighted**, and that is stated in the output rather than hidden:
+        ChimeraX weights by atomic mass, and ChiMOL has no mass table. For a
+        protein the two differ little -- carbon, nitrogen and oxygen are within
+        14 % of each other -- but "little" is not "not at all", and a number
+        whose weighting nobody can see is worse than one that says what it is.
+        """
+        atoms, mask, _object_id = self._selection_atoms(sel, "measure_inertia")
+        if atoms is None:
+            return
+        xyz = np.asarray(atoms["xyz"], dtype=float)[np.asarray(mask, dtype=bool)]
+        if xyz.shape[0] < 3:
+            self._emit_error(
+                f"measure_inertia: '{sel}' has {xyz.shape[0]} atoms; three are "
+                "needed for a tensor"
+            )
+            return
+
+        centre = xyz.mean(axis=0)
+        centred = xyz - centre
+        tensor = (centred * centred).sum() * np.identity(3) - centred.T @ centred
+        tensor /= float(xyz.shape[0])
+        values, vectors = np.linalg.eigh(tensor)
+        order = np.argsort(values)
+        values, axes = values[order], vectors[:, order].T
+        if float(np.dot(np.cross(axes[0], axes[1]), axes[2])) < 0:
+            axes[2] = -axes[2]
+
+        extents = [
+            float(np.ptp(centred @ axis)) for axis in axes
+        ]
+        self._emit_message(
+            "measure_inertia: unweighted (no mass table); "
+            f"centre [{centre[0]:.3f}, {centre[1]:.3f}, {centre[2]:.3f}], "
+            "moments "
+            + ", ".join(f"{v:.4g}" for v in values)
+            + "; extents along the axes "
+            + ", ".join(f"{e:.3g} A" for e in extents)
+        )
