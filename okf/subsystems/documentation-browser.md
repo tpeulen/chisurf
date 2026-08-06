@@ -74,18 +74,43 @@ page and a search). Three automated numbers back that up:
    images, broken heading ids) found and fixed everything it could detect. What
    they have not had is somebody reading them for *correctness*, which is what
    `--ai` records.
-3. **58 plugins ship without a README** and **80 GUI plugins have no `?` page or
+3. **Two theory gaps are still open, both mined and both unwritten.** The
+   Lakowicz pass covered the orientation factor and distance distributions;
+   these two were identified the same way — a shipped model with no concept
+   page — and not written:
+   * **Lifetime distributions and maximum entropy.** `models/tcspc/maxent.py`
+     with `maxent_lifetime.view.json` / `maxent_fret.view.json`, and the
+     `maxent_decay` plugin. The source is ch. 4 (§4.11.2 lifetime
+     distributions, §4.14 the maximum-entropy method). The point the page has
+     to make is the one a user gets wrong: a continuous distribution and two or
+     three discrete exponentials fit the same decay, and choosing between them
+     is a modelling decision, not a goodness-of-fit one.
+   * **Homo-transfer and energy migration.** `models/tcspc/pddem.py` (partial
+     donor–donor energy migration) has no concept page at all, though the
+     manual has a page on it. Source: ch. 13 (homotransfer) and ch. 15
+     (transfer to multiple acceptors in one, two or three dimensions). The
+     distinguishing fact is that homo-transfer does **not** change the
+     lifetime — donor and acceptor are the same species — so it is detected by
+     depolarization, which is why it belongs beside
+     `docs/fundamentals/polarization_and_rotation.md`.
+
+   Both plugins need the same renovation `kappa2_dist` just had: check
+   `test/plugin_help_guide_allowlist.txt`, and check whether their
+   `manifest.json` names the real module or a legacy shim — that mismatch is
+   what made the seam guard and the runtime disagree for `kappa2_dist`.
+
+4. **58 plugins ship without a README** and **80 GUI plugins have no `?` page or
    guided tour** (`test/plugin_help_guide_allowlist.txt` is the shrinking
    tracker for the second, owned by
    [help buttons and guided tours](gui-help-and-guides.md)). Every plugin *is*
    now in the catalogue: the generator used to walk `manifest.json` only, so 13
    plugins that declare themselves in code appeared in the menus but had no
    reference page at all.
-4. **The RST manual has no `docs/manual/_images` scaling policy.** Screenshots
+5. **The RST manual has no `docs/manual/_images` scaling policy.** Screenshots
    are full-resolution and arrive as big blocks with a lot of air around them;
    `_constrain_image_widths` bounds the width but the vertical rhythm around a
    block image is still loose.
-5. **Only `.md` files are indexed for cross-reference labels**
+6. **Only `.md` files are indexed for cross-reference labels**
    (`api/xref.py:ref_index`). A `(label)=` in an `.rst` page is therefore not
    findable — no page needs it yet, and adding it means teaching the index the
    reStructuredText spelling too.
