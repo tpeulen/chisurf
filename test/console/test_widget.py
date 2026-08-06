@@ -317,3 +317,157 @@ def test_prompt_survives_scrollback_trimming(console):
     console.view.set_input_buffer("still_works = 1")
     run(console, console.view.input_buffer())
     assert console.shell.user_ns["still_works"] == 1
+
+
+# ----------------------------------------------------------------------
+# the pager
+# ----------------------------------------------------------------------
+
+def test_long_output_goes_to_the_pager(console):
+    """``obj?`` fills the pager instead of burying the transcript.
+
+    Introspecting one object can produce hundreds of lines. Left in the
+    scrollback they push everything the user did out of view, which is the one
+    thing a transcript exists for.
+    """
+    before = console.view.document().blockCount()
+    run(console, "sum?")
+    assert not console.pager.isHidden()
+    assert "Docstring" in console.pager.view.toPlainText()
+    assert console.view.document().blockCount() - before <= 3
+
+
+def test_the_pager_names_what_was_asked(console):
+    """The header says what produced the page, not just "Output"."""
+    run(console, "sum?")
+    assert console.pager._title.text() == "sum?"
+
+
+def test_escape_dismisses_the_pager(console, qtbot):
+    """Esc closes the page and hands focus back."""
+    run(console, "sum?")
+    press(console.pager.view, QtCore.Qt.Key_Escape)
+    assert console.pager.isHidden()
+
+
+def test_paging_none_keeps_output_in_the_scrollback(console):
+    """``gui.console.paging: none`` is honoured.
+
+    Someone who dislikes the split pane must be able to turn it off and still
+    see the output.
+    """
+    console.paging = "none"
+    run(console, "sum?")
+    assert console.pager.isHidden()
+    assert "Docstring" in console.view.toPlainText()
+
+
+def test_the_pager_follows_the_theme(console):
+    """The pager is restyled with the console.
+
+    Its header is a plain ``QWidget``, which ignores a stylesheet background
+    unless ``WA_StyledBackground`` is set -- so it kept Qt's light grey against
+    a dark console until that was fixed.
+    """
+    console.set_style("nocolor")
+    assert console.pager.styleSheet()
+    assert console.theme.background in console.pager.styleSheet()
+
+
+# ----------------------------------------------------------------------
+# help and the guided tour
+# ----------------------------------------------------------------------
+
+def test_the_console_ships_help_and_a_tour():
+    """Both files exist beside the widget.
+
+    A console is the one panel in the window with a blinking cursor and no
+    instructions, so `?` (what things mean) and the tour (what to type first)
+    are not optional here.
+    """
+    import json
+    import pathlib
+
+    package = pathlib.Path(__file__).resolve().parents[2] / "chisurf" / "gui" / "chinsole"
+    assert (package / "help.md").is_file()
+    guide = json.loads((package / "guide.json").read_text(encoding="utf-8"))
+    assert guide["steps"]
+
+
+def test_every_tour_step_points_somewhere():
+    """A step with no target spotlights nothing and reads as a broken tour."""
+    import json
+    import pathlib
+
+    package = pathlib.Path(__file__).resolve().parents[2] / "chisurf" / "gui" / "chinsole"
+    guide = json.loads((package / "guide.json").read_text(encoding="utf-8"))
+    assert all(step.get("target") for step in guide["steps"])
+
+
+def test_the_tour_waits_for_the_user():
+    """At least half the steps ask the user to do something.
+
+    The house rule is that a tour points at controls and waits, rather than
+    pressing them: someone who watched a line being run has not learned to run
+    one.
+    """
+    import json
+    import pathlib
+
+    package = pathlib.Path(__file__).resolve().parents[2] / "chisurf" / "gui" / "chinsole"
+    steps = json.loads((package / "guide.json").read_text(encoding="utf-8"))["steps"]
+    assert sum(1 for step in steps if "await" in step) >= len(steps) // 2
+
+
+def test_tour_targets_name_widgets_that_exist(console):
+    """Every ``name`` target resolves on a real console.
+
+    The failure this prevents is silent: a tour whose target does not resolve
+    still runs, still shows its text, and simply highlights nothing.
+    """
+    import json
+    import pathlib
+
+    package = pathlib.Path(__file__).resolve().parents[2] / "chisurf" / "gui" / "chinsole"
+    steps = json.loads((package / "guide.json").read_text(encoding="utf-8"))["steps"]
+    names = {
+        str(w.objectName()).casefold()
+        for w in console.findChildren(QtWidgets.QWidget)
+        if w.objectName()
+    }
+    names.add(str(console.objectName()).casefold())
+    missing = [
+        step["target"]["name"]
+        for step in steps
+        if step.get("target", {}).get("name")
+        and not any(n.endswith(step["target"]["name"].casefold()) for n in names)
+    ]
+    assert not missing, f"tour points at widgets that do not exist: {missing}"
+
+
+def test_help_links_resolve():
+    """Every documentation link in the help modal points at a real page.
+
+    The modal routes a `docs/` link to ChiSurf's documentation browser, so a
+    dead one is a dead end rather than a broken-looking link.
+    """
+    import pathlib
+    import re
+
+    root = pathlib.Path(__file__).resolve().parents[2]
+    text = (root / "chisurf" / "gui" / "chinsole" / "help.md").read_text(encoding="utf-8")
+    missing = [
+        target for target in re.findall(r"\]\((docs/[^)]+)\)", text)
+        if not (root / target).exists()
+    ]
+    assert not missing, f"help links to pages that do not exist: {missing}"
+
+
+def test_the_interactive_console_shows_the_help_buttons(console, qtbot):
+    """`?` and Guide are reachable from the console itself."""
+    labels = {
+        (button.text() or button.toolTip())
+        for button in console.findChildren(QtWidgets.QAbstractButton)
+    }
+    assert any("?" in label for label in labels)
+    assert any("Guide" in label for label in labels)

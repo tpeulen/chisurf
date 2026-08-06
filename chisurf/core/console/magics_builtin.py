@@ -291,7 +291,7 @@ def _profile(shell, source: str):
     buffer = io.StringIO()
     stats = pstats.Stats(profiler, stream=buffer).sort_stats("cumulative")
     stats.print_stats(25)
-    shell.display_data({"text/plain": buffer.getvalue()}, {}, kind="page")
+    shell.display_data({"text/plain": buffer.getvalue()}, {"title": "%prun"}, kind="page")
     return None
 
 
@@ -558,7 +558,7 @@ def _history(shell, args: str):
         pathlib.Path(known.path).write_text(text, encoding="utf-8")
         shell.write(f"wrote {len(entries)} entries to {known.path}\n")
         return None
-    shell.display_data({"text/plain": text}, {}, kind="page")
+    shell.display_data({"text/plain": text}, {"title": "%history"}, kind="page")
     return None
 
 
@@ -742,7 +742,7 @@ def _lsmagic(shell, args: str):
     lines = ["Line magics:", _columnise(["%" + n for n in shell.magics.names("line")])]
     lines.append("Cell magics:")
     lines.append(_columnise(["%%" + n for n in shell.magics.names("cell")]))
-    shell.display_data({"text/plain": "\n".join(lines)}, {}, kind="page")
+    shell.display_data({"text/plain": "\n".join(lines)}, {"title": "%lsmagic"}, kind="page")
     return None
 
 
@@ -763,7 +763,7 @@ def _magic(shell, args: str):
 @line("quickref")
 def _quickref(shell, args: str):
     """Show a short reference card."""
-    shell.display_data({"text/plain": _QUICKREF}, {}, kind="page")
+    shell.display_data({"text/plain": _QUICKREF}, {"title": "%quickref"}, kind="page")
     return None
 
 

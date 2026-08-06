@@ -1,0 +1,66 @@
+{
+  "_comment": "Guided tour for the ChiSurf console. Every step that asks for something waits for the user to type it; the tour never types on their behalf, because someone who watched a line being run has not learned to run one. Walkable on an empty session -- no data, no fits, no files needed. Read by chisurf.gui.widgets.tools.guided_tour.",
+  "steps": [
+    {
+      "title": "This is the same session you are looking at",
+      "text": "The console is a Python prompt <i>inside</i> the running application — not a separate one. Every dataset you have loaded and every fit you have open is reachable from here, and anything you do takes effect immediately.<br/><br/>Seven short steps. You do the typing; the tour only points.",
+      "target": {
+        "name": "chinsole_view"
+      }
+    },
+    {
+      "title": "Try it",
+      "text": "Click in the console and type<br/><br/><code>2 + 40</code><br/><br/>then press <b>Enter</b>. The value comes back under an <code>Out[1]:</code> label. A <i>statement</i> — <code>x = 1</code> — prints nothing, exactly as Python behaves.",
+      "target": {
+        "name": "chinsole_view"
+      },
+      "await": {
+        "hint": "Type <code>2 + 40</code> and press <b>Enter</b>."
+      }
+    },
+    {
+      "title": "cs is the application",
+      "text": "The name <code>cs</code> is the whole <code>chisurf</code> package. Type<br/><br/><code>cs.fits</code><br/><br/>and press <b>Enter</b>. On an empty session that is an empty list — which is the point: it is the <i>real</i> list, and it fills as you open fits.<br/><br/>Also in scope: <code>gui</code> (the main window), <code>np</code>, <code>os</code>, and <code>_</code> for the last result.",
+      "target": {
+        "name": "chinsole_view"
+      },
+      "await": {
+        "hint": "Type <code>cs.fits</code> and press <b>Enter</b>."
+      }
+    },
+    {
+      "title": "Tab completes against the live objects",
+      "text": "Type <code>cs.</code> and press <b>Tab</b>. The list is built by asking the object what it actually has, right now — so it works for things no static analyser could know, like the columns of a DataFrame or the parameters of a model you just built.<br/><br/><b>Shift+Tab</b> inside a call shows its signature instead.",
+      "target": {
+        "name": "chinsole_view"
+      },
+      "await": {
+        "hint": "Type <code>cs.</code> and press <b>Tab</b>. <b>Esc</b> closes the list."
+      }
+    },
+    {
+      "title": "Ask what something is",
+      "text": "Put a question mark after anything:<br/><br/><code>cs.fits?</code><br/><br/>Type it and press <b>Enter</b>. The type, signature and docstring open in a pane <i>below</i> the console rather than filling the transcript. <code>??</code> shows the source as well.<br/><br/>Press <b>Esc</b> or <b>q</b> to close the pane.",
+      "target": {
+        "name": "chinsole_view"
+      },
+      "await": {
+        "hint": "Type <code>cs.fits?</code> and press <b>Enter</b>, then <b>Esc</b> to close the pane."
+      }
+    },
+    {
+      "title": "Blocks, history and interrupting",
+      "text": "Typing <code>for i in range(3):</code> and pressing Enter gives a continuation line, already indented; a <b>blank line</b> ends the block and runs it.<br/><br/><b>Up</b> and <b>Down</b> walk what you have typed, filtered by the start of the line. <b>Ctrl+R</b> searches it. <b>Ctrl+C</b> interrupts a command that is taking too long, and a runaway <code>print</code> loop cannot lock the window — output is capped, with a note saying how much was dropped.",
+      "target": {
+        "name": "chinsole_view"
+      }
+    },
+    {
+      "title": "Turning what you did into a script",
+      "text": "<b>Macro ▸ Record</b> in the menu bar starts collecting everything you run. Click it again to stop, and it offers to save the lot as a <code>.py</code> file.<br/><br/>Replay it later with <code>%run -i thatfile.py</code> — the <code>-i</code> matters: it runs in <i>this</i> namespace, so the variables it makes stay available.<br/><br/><code>%quickref</code> is the one-page summary of everything else.",
+      "target": {
+        "name": "chinsole_view"
+      }
+    }
+  ]
+}

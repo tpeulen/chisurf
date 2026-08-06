@@ -718,7 +718,11 @@ class Shell:
         text = introspect.format_info(
             introspect.info(obj, name=expression, detail_level=detail_level)
         )
-        self.display_data({"text/plain": text}, {}, kind="page")
+        self.display_data(
+            {"text/plain": text},
+            {"title": f"{expression}{'??' if detail_level else '?'}"},
+            kind="page",
+        )
 
     def complete(self, line: str, cursor_pos: int | None = None):
         """Return completions for *line*.

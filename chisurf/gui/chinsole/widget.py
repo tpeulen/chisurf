@@ -21,6 +21,7 @@ from chisurf.core.console.shell import Shell
 from chisurf.gui.chinsole import settings as console_settings
 from chisurf.gui.chinsole.bridge import OutputPump
 from chisurf.gui.chinsole.completion_popup import CallTipWidget, CompletionPopup
+from chisurf.gui.chinsole.pager import PagerWidget
 from chisurf.gui.chinsole.theme import ConsoleTheme, resolve_theme, theme_from_settings
 from chisurf.gui.chinsole.view import ConsoleView
 
@@ -132,7 +133,11 @@ class Chinsole(QtWidgets.QWidget):
         self._settings = console_settings.console_settings()
         self.theme = resolve_theme(self.config.theme) if self.config.theme else theme_from_settings()
 
+        self.setObjectName("chinsole")
         self.view = ConsoleView(self, self.theme)
+        # Named so the guided tour can point at them: it resolves a target by
+        # objectName, and an unnamed widget is invisible to it.
+        self.view.setObjectName("chinsole_view")
         # Only the inline role draws prompts. COMMAND types into its own
         # line edit, so an "In [n]:" in the output pane above it is a
         # prompt for something that is not entered there.
@@ -145,10 +150,22 @@ class Chinsole(QtWidgets.QWidget):
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
-        layout.addWidget(self.view)
+
+        self.paging = str(self._settings["paging"])
+        self.pager = PagerWidget(self, self.theme)
+        self.pager.setObjectName("chinsole_pager")
+        self.pager.closed.connect(self._focus_input)
+        if self.paging == "hsplit":
+            self._splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal, self)
+        else:
+            self._splitter = QtWidgets.QSplitter(QtCore.Qt.Vertical, self)
+        self._splitter.addWidget(self.view)
+        self._splitter.addWidget(self.pager)
+        layout.addWidget(self._splitter)
 
         if self.config.role is ConsoleRole.COMMAND:
             self.input_line = QtWidgets.QLineEdit(self)
+            self.input_line.setObjectName("chinsole_input")
             self.input_line.setPlaceholderText("Command line")
             layout.addWidget(self.input_line)
             self.input_line.returnPressed.connect(self._submit_command_line)
@@ -207,8 +224,57 @@ class Chinsole(QtWidgets.QWidget):
         if self.view.shows_prompt:
             self.view.show_prompt(self.shell.execution_count, newline=False)
 
+        if self.config.role is ConsoleRole.INTERACTIVE:
+            self._add_help_buttons()
+
         if self.config.init_source:
             self.execute(self.config.init_source, echo=False)
+
+    def _add_help_buttons(self) -> None:
+        """Add the ``?`` and **Guide** buttons above the prompt.
+
+        A console is the one panel in the window with a blinking cursor and no
+        instructions, so the tour matters here more than on a form: `?` explains
+        what something *means*, and the tour is the only thing that says what to
+        type first.
+        """
+        try:
+            from chisurf.gui.widgets.tools.help_guide import attach_help_and_guide
+        except Exception:
+            return
+
+        # A container widget rather than a bare layout, so the strip can carry
+        # the console's background. Left as a layout it took Qt's default light
+        # grey and sat as a bright band above a dark console.
+        self._help_bar = QtWidgets.QWidget(self)
+        self._help_bar.setObjectName("chinsole_help_bar")
+        self._help_bar.setAttribute(QtCore.Qt.WA_StyledBackground, True)
+        bar = QtWidgets.QHBoxLayout(self._help_bar)
+        bar.setContentsMargins(2, 0, 2, 0)
+        bar.setSpacing(2)
+        bar.addStretch()
+        try:
+            attach_help_and_guide(
+                self, bar, title="ChiSurf console", owner=self,
+            )
+        except Exception:
+            self._help_bar.deleteLater()
+            self._help_bar = None
+            return
+        self._style_help_bar()
+        self.layout().insertWidget(0, self._help_bar)
+
+    def _style_help_bar(self) -> None:
+        """Paint the help strip in the console's colours."""
+        bar = getattr(self, "_help_bar", None)
+        if bar is None:
+            return
+        bar.setStyleSheet(
+            f"QWidget#chinsole_help_bar {{ background-color: {self.theme.background}; }}"
+            f"QToolButton, QPushButton {{ border: none; background: transparent;"
+            f" color: {self.theme.prompt_continuation}; }}"
+            f"QToolButton:hover, QPushButton:hover {{ color: {self.theme.foreground}; }}"
+        )
 
     # ------------------------------------------------------------------
     # construction helpers
@@ -305,6 +371,12 @@ class Chinsole(QtWidgets.QWidget):
         execution_count : int or None
         """
         self.pump.flush_now()
+
+        if kind == "page" and self.paging != "none" and self.config.role is not ConsoleRole.OUTPUT:
+            text = data.get("text/plain")
+            if text is not None:
+                self.pager.show_text(text, title=metadata.get("title", ""))
+                return
 
         if not self._settings["images"]:
             text = data.get("text/plain")
@@ -806,6 +878,9 @@ class Chinsole(QtWidgets.QWidget):
         )
         if self.input_line is not None:
             self.input_line.setFont(font)
+        pager = getattr(self, "pager", None)
+        if pager is not None:
+            pager.set_font(font)
 
     def set_style(self, name: str | ConsoleTheme) -> None:
         """Change the colour theme.
@@ -817,6 +892,8 @@ class Chinsole(QtWidgets.QWidget):
         """
         self.theme = resolve_theme(name)
         self.view.apply_theme(self.theme)
+        self.pager.apply_theme(self.theme)
+        self._style_help_bar()
 
     def set_default_style(self, colors: str = "lightbg") -> None:
         """Change the colour theme, qtconsole's spelling.
