@@ -323,20 +323,35 @@ Reproduce with the script pattern in the scratchpad note in
 
 # Acceptance criteria
 
-1. `DataStoreSource` passes the chitable suite cell-for-cell against the
+Status after stage 2 (2026-08-06). Four met, one met in half, one open.
+
+1. **Met.** `DataStoreSource` passes the chitable suite cell-for-cell against the
    `DataFrameSource` fixtures, including editing, filtering, sorting and colour
    ranges, and a text column edits through a dictionary-backed delegate.
-2. `import tables` is required by nothing in the tree, and a guardrail test
-   fails on a `to_hdf`/`read_hdf`/`HDFStore` call reappearing — the same shape of
-   test `pyarrow` needed.
-3. A burst HDF5 file written by ChiSurf opens in ndX, and a file written by the
-   *previous* release still opens in this one (T3).
-4. A burst table with a text column is **smaller** on disk than the pandas file
-   it replaces, not merely faster (T1).
-5. `pandas` remains importable and declared; no code path silently switches
-   between two engines — every fallback is a named, tested decline.
-6. End-to-end burst analysis, selection and export are no slower than today,
-   measured on a real burst folder rather than a synthetic table.
+2. **Met.** Nothing in the shipped package imports the optional HDF5 package,
+   and it is declared nowhere. `test/test_pandas_hdf5_seam.py` fails on a
+   `to_hdf`/`HDFStore` call reappearing — with no allow-list, because there is no
+   file a new one belongs in — and on a *new* frame reader outside the shrinking
+   two-entry list, on a stale entry in it, and on the two readers being tried in
+   the wrong order.
+3. **Met in half.** A file ChiSurf writes opens in ndX (asserted in
+   `burst_h2mm/tests/test_ndx_compat.py` and in the imaging round trip). A file
+   written by the *previous* release still needs the optional package, because
+   T3 was implemented in the library and reverted as out of scope there. It is a
+   named `LegacyTableError` rather than an empty table, and that is the whole of
+   the mitigation. **This is the open half of the criterion**, recorded in
+   [known issues](../references/known-issues.md).
+4. **Met.** With a four-label text column the file is **60.0 MB against the
+   frame writer's 72.6 MB** — smaller, not merely faster — after the library
+   stopped materialising the labels.
+5. **Met.** `pandas` stays importable and declared, and the one fallback is a
+   named, tested decline.
+6. **Met, at one scale only.** On the real BH SPC burst folder the export goes
+   **12.0 ms → 2.6 ms and 35.1 kB → 14.1 kB**, and the analysis and selection
+   steps are untouched by this work. That table is **113 rows**, so it measures
+   the fixed cost and not the scaling; the scaling number is the synthetic 1M-row
+   table above. A folder with millions of bursts has not been measured, and
+   should be before stage 3 claims a memory saving.
 
 # Risks
 
