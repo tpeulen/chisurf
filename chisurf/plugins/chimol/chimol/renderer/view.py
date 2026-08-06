@@ -7381,6 +7381,81 @@ class MolView(QtWidgets.QWidget):
 
         return None
 
+    def _update_cell(self, state: _MolViewObjectState) -> list[SceneObject] | None:
+        """The unit cell as a wireframe box, when the object has one and it is on.
+
+        PyMOL draws the cell as its twelve edges, which is what makes a
+        crystallographic view legible: the mates `symexp` generates are
+        meaningless without the box they tile. The geometry is not transcribed
+        from anywhere -- a cell is fully determined by its six parameters, and
+        `UnitCell.frac_to_real` already turns fractional coordinates into
+        Cartesian ones, so the box is that matrix applied to the eight corners
+        of the unit cube.
+
+        Parameters
+        ----------
+        state : _MolViewObjectState
+            The object; drawn only when it carries ``symmetry`` and
+            ``show_cell``.
+
+        Returns
+        -------
+        list of SceneObject or None
+            One line object, or ``None`` when there is no cell to draw.
+
+        Notes
+        -----
+        Placed in the object's own render frame: everything is drawn centred on
+        the object's centroid and scaled, so a box built in Angstrom around the
+        origin would sit somewhere else entirely. The corners go through the
+        same transform the coordinates did.
+        """
+        if not getattr(state, "show_cell", False):
+            return None
+        symmetry = getattr(state, "symmetry", None) or {}
+        cell = symmetry.get("cell")
+        if cell is None:
+            return None
+        try:
+            basis = np.asarray(cell.frac_to_real(), dtype=float)
+        except Exception:
+            return None
+        if basis.shape != (3, 3) or not np.isfinite(basis).all():
+            return None
+
+        corners = np.array(
+            [[x, y, z] for x in (0.0, 1.0) for y in (0.0, 1.0) for z in (0.0, 1.0)],
+            dtype=float,
+        ) @ basis.T
+        # The twelve edges of a parallelepiped: every pair of corners differing
+        # in exactly one fractional coordinate.
+        keys = [(x, y, z) for x in (0, 1) for y in (0, 1) for z in (0, 1)]
+        edges = [
+            (i, j)
+            for i, a in enumerate(keys)
+            for j, b in enumerate(keys)
+            if i < j and sum(int(p != q) for p, q in zip(a, b)) == 1
+        ]
+        segments = np.empty((len(edges) * 2, 3), dtype=float)
+        for n, (i, j) in enumerate(edges):
+            segments[2 * n] = corners[i]
+            segments[2 * n + 1] = corners[j]
+
+        centre = getattr(state, "raw_center", None)
+        if centre is not None:
+            segments = segments - np.asarray(centre, dtype=float)
+        segments = segments * float(self._scale_factor)
+
+        colour = self._representation_color("cell")
+        if colour is None:
+            colour = np.array([0.6, 0.6, 0.6, 1.0], dtype=float)
+        geom = Geometry(
+            kind="line",
+            positions=segments.astype(np.float32),
+            colors=np.tile(colour, (segments.shape[0], 1)).astype(np.float32),
+        )
+        return [SceneObject(id="cell", geometry=geom, render_mode="opaque")]
+
     def _update_restraints(self, state: _MolViewObjectState) -> list[SceneObject] | None:
         """Build geometry for RMF restraint pseudobonds."""
         if not state.restraints or state.all_atom_coords is None:
@@ -8624,6 +8699,7 @@ class MolView(QtWidgets.QWidget):
         scene_objects += self._update_custom_overlays(surface_cfg) or []
         scene_objects += self._update_measurements() or []
         scene_objects += self._update_restraints(self._get_active_state()) or []
+        scene_objects += self._update_cell(self._get_active_state()) or []
         scene_objects += self._update_selection_highlight(coords) or []
         scene_objects += volume_objects
 

@@ -212,6 +212,9 @@ _SPECS: tuple[SettingSpec, ...] = (
           "Draw the surface in this colour whatever the atoms are; 'default' "
           "to follow the atom colours again."),
 
+    _spec("cell_color", "colors.cell_color", "color_or_default", None,
+          "Colour of the unit-cell box; 'default' for the neutral grey."),
+
     # -- Silhouettes --------------------------------------------------------
     # ChimeraX's, not PyMOL's: PyMOL has no depth-buffer outline outside its ray
     # tracer. `lighting` sets the same values under the same names.

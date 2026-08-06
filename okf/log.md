@@ -2,6 +2,16 @@
 
 ## 2026-08-06
 
+* **`cell` draws the unit cell -- and drawing it showed that `symexp` had never worked** ([pymol parity](plugins/pymol-parity.md)).
+
+  The box is not transcribed from anywhere: a cell is fully determined by its six parameters and `UnitCell.frac_to_real` already exists, so the twelve edges are that matrix applied to the corners of the unit cube. `cell [selection [, on|off|toggle]]`, per object because two structures in a scene can come from different crystals, with `cell_color` beside the three representation overrides.
+
+  **What it exposed is the real find.** `symexp` builds the crystallographic mates around a molecule; every command reported success, the objects appeared in the panel, the atom coordinates were right -- and the picture was **one molecule**. Each object is drawn centred on its own centroid, so every mate was re-centred onto itself and landed at the render origin: six mates with six distinct centroids in Angstrom, all drawn at `(0, 0, 0)`, stacked on the original. `symexp` exists to show how molecules pack, so this removed the feature entirely while looking like it worked. `create`/`extract` had already solved it (`_reframe_to` moves the render arrays into the parent's frame and leaves the stored coordinates alone); the mates never got the call.
+
+  **Why it went unnoticed is the lesson, and it is this file's recurring one.** The symmetry work was verified through the *operators* -- 7658 of them, closure modulo lattice translations, det ±1, one identity -- and through the mates' **coordinates**. Both were correct. Nothing looked at where they were **drawn**. A test that a transform is right is not a test that its result is visible in the right place, and it took giving the scene something with an absolute position, the cell box, for the two to disagree out loud. The guard compares the distances as drawn against the distances in Angstrom.
+
+  Also recorded there: the `junk/pymol-open-source` checkout -- the tracker's stated authority on PyMOL behaviour -- was removed during this session, and `junk/clone.sh` restores it. 6 tests.
+
 * **The first three appearance settings, which are one mechanism under three names** ([pymol parity](plugins/pymol-parity.md)).
 
   With the two-stores blocker cleared, the measured worklist starts: `stick_color`, `cartoon_color` and `surface_color`. PyMOL implements all three with the same line repeated in each representation -- `c != cColorDefault ? c : ai->color` (`RepCylBond.cpp`, `RepSurface.cpp`, `RepRibbon.cpp`) -- so there is one rule here too, read by each representation as it assembles its colours. The sentinel is stored as `None` rather than PyMOL's -1, because a negative number is not a colour and a config full of -1 says nothing to whoever reads it; `-1`, `default`, `none` and `atom` all clear an override.

@@ -175,7 +175,14 @@ hidden rather than cropped around.
 so is **speed**: `ray` was 143–651× slower than it needed to be.
 
 **3. Tier 2 leftovers**, in rough order of use: `matrix_copy`, `ramp_new`,
-`cartoon_dumbbell`, `ellipsoid`, `cell`, `slice`.
+`cartoon_dumbbell`, `ellipsoid`, `slice`. **`cell` is done** -- and drawing the
+box is what exposed that `symexp` had never worked: see *the mates were all in
+the same place* below.
+
+**A note for whoever needs PyMOL's source:** the `junk/pymol-open-source`
+checkout -- this file's stated authority on behaviour -- was removed during the
+2026-08-06 session. `junk/clone.sh` restores it. Nothing here should be
+transcribed from memory; the entries that were, were wrong.
 
 **4. The other `distance` modes.** 0–4 are done; 5–7 (π–π, π–cation), 9
 (halogen bonds) and 10 (salt bridges) are not, and the **A ▸ find** submenu
@@ -2188,6 +2195,36 @@ dead code there; it is merged now.
 The guardrail worth having is the one that walks **every cell of the block** and
 asserts the press starts the gesture the cell names, because the block is
 reference material — someone reads it to find out what ctrl-shift-middle does.
+
+## The mates were all in the same place
+
+`symexp` builds the crystallographic mates around a molecule. Every command
+reported success, the objects appeared in the panel, the atom coordinates were
+right -- and the picture was **one molecule**, because every mate was drawn at
+the render origin.
+
+Each object is drawn centred on its own centroid, so a new object built from a
+mate's coordinates is re-centred onto itself and lands exactly where the
+original is. Measured: six mates with six distinct centroids in Angstrom
+(`[-26.2 29.8 62.2]`, `[17.9 15.4 29.9]`, ...), all drawn at `(0, 0, 0)`.
+`symexp` exists to show how molecules pack, so this removed the feature
+entirely while looking like it worked.
+
+`create`/`extract` had already solved it -- `_reframe_to` moves the *render*
+arrays into the parent's frame and leaves the stored coordinates alone -- and
+the mates simply never got it. One call.
+
+**Why it went unnoticed, and what to take from it:** the symmetry work was
+verified through the *operators* (closure modulo lattice translations, det ±1,
+one identity, 7658 of them) and through the mates' **coordinates**, both of
+which were correct. Nothing looked at where they were **drawn**. A test that
+asserts a transform is right does not assert that the result is *visible in the
+right place*, and the two are different claims -- which is the same lesson as
+the camera-framing and mouse-picking defects in this file. The guard here
+compares the distances as drawn with the distances in Angstrom.
+
+It surfaced only because `cell` gave the scene something with an absolute
+position to disagree with.
 
 # Working rules
 

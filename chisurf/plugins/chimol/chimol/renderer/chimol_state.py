@@ -130,6 +130,12 @@ class _MolViewObjectState:
     ``bond_pairs`` because several consumers flatten that array to ask "which
     atoms have a bond", and an order column would read as an atom index.
     """
+    show_cell: bool = False
+    """Whether the unit cell is drawn as a wireframe box (PyMOL's ``cell``).
+
+    Per object, not global: two structures in a scene can come from different
+    crystals, and the box belongs to the one it was read with.
+    """
     symmetry: Optional[dict] = None
     """Crystal cell, space group and operators, when set or read from the file.
 

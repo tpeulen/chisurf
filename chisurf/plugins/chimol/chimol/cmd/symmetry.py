@@ -253,6 +253,10 @@ class SymmetryMixin(BaseCmd):
             self._emit_error(f"symexp: {obj_name} carries no atoms")
             return
         coords = np.asarray(atoms["xyz"], dtype=float)
+        # The frame every mate has to be drawn in, taken before any are made.
+        parent_centre = getattr(entry.state, "raw_center", None)
+        if parent_centre is not None:
+            parent_centre = np.asarray(parent_centre, dtype=float)
 
         try:
             mates = symmetry_mates(
@@ -289,6 +293,15 @@ class SymmetryMixin(BaseCmd):
             new_entry = viewer._create_object(name=name)
             viewer.set_active_object(new_entry.object_id)
             viewer.set_structure(structure)
+            # In the PARENT's frame, not its own. Every object is otherwise
+            # drawn centred on its own centroid, so each mate landed at the
+            # render origin -- measured, all six and the original had distinct
+            # centroids in Angstrom and were drawn at (0, 0, 0). They were
+            # stacked on top of one another, which makes `symexp` useless for
+            # the one thing it is for: seeing how the molecules pack. `create`
+            # already solved this; the mates never got it.
+            if parent_centre is not None:
+                viewer._reframe_to(new_entry.object_id, parent_centre)
             made.append(name)
 
         # Leave the original active: `symexp` adds context around a molecule, it
@@ -300,3 +313,78 @@ class SymmetryMixin(BaseCmd):
             f"symexp: {len(made)} mates within {distance:g} A of {obj_name} "
             f"('{space_group}', {len(operators)} operators from {source})"
         )
+
+    @command("cell")
+    def cell(self, selection: str = "all", state: str = "") -> None:
+        """Draw or hide the unit cell as a wireframe box (PyMOL ``cell``).
+
+        The mates ``symexp`` builds are hard to read without the box they tile,
+        which is what this is for: twelve edges around the crystallographic cell,
+        drawn in the object's own frame so it sits on the molecule rather than
+        at the scene origin.
+
+        Parameters
+        ----------
+        selection : str, optional
+            Which object's cell. ``all`` is every object that has one.
+        state : str, optional
+            ``on`` / ``off`` / ``toggle``. Toggles when omitted, so ``cell`` on
+            its own switches the box the way clicking a check box would.
+
+        Notes
+        -----
+        A cell is not a representation of the atoms, so it is not part of
+        ``show``/``hide``: an object with no ``CRYST1`` record has no cell to
+        draw, and saying so is more use than an empty ``show cell``.
+        """
+        window, viewer = self._require_window_and_viewer()
+        if viewer is None:
+            return
+
+        wanted = str(state).strip().lower()
+        if wanted not in ("", "on", "off", "toggle", "1", "0", "true", "false"):
+            self._emit_error(f"cell: expected on/off/toggle, got {state!r}")
+            return
+
+        target = str(selection).strip() or "all"
+        if target in ("all", "*", "everything"):
+            object_ids = list(getattr(viewer, "_objects", {}))
+        else:
+            try:
+                obj_id, _name, _mask = self._resolve_selection_to_atom_mask(viewer, target)
+            except Exception as exc:
+                self._emit_error(f"cell: {exc}")
+                return
+            object_ids = [obj_id]
+
+        shown, without = [], []
+        for object_id in object_ids:
+            entry = getattr(viewer, "_objects", {}).get(object_id)
+            if entry is None or getattr(entry, "placeholder", False):
+                continue
+            cell_state = entry.state
+            symmetry = getattr(cell_state, "symmetry", None) or {}
+            if symmetry.get("cell") is None:
+                without.append(entry.name)
+                continue
+            if wanted in ("on", "1", "true"):
+                value = True
+            elif wanted in ("off", "0", "false"):
+                value = False
+            else:
+                value = not bool(getattr(cell_state, "show_cell", False))
+            cell_state.show_cell = value
+            if value:
+                shown.append(entry.name)
+
+        viewer._update_view()
+        if shown:
+            self._emit_message(f"cell: drawn for {', '.join(shown)}")
+        elif without and not shown:
+            self._emit_error(
+                "cell: "
+                + ", ".join(without)
+                + " carries no unit cell (no CRYST1 record); set one with set_symmetry"
+            )
+        else:
+            self._emit_message("cell: hidden")

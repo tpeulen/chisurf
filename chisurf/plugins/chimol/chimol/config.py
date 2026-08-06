@@ -697,6 +697,7 @@ def _load_display_config() -> dict:
             "stick_color": None,
             "cartoon_color": None,
             "surface_color": None,
+            "cell_color": None,
             "aa_groups": {
                 "hydrophobic": [0.4, 0.8, 0.4, 1.0],
                 "polar": [0.4, 0.7, 0.9, 1.0],
