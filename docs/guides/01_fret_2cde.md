@@ -1,3 +1,10 @@
+---
+type: Guide
+title: FRET-2CDE / ALEX-2CDE burst dynamics
+description: 'Single-molecule FRET bursts from freely-diffusing molecules can hide sub-burst dynamics: a molecule that inter-converts between two FRET states while crossing the confocal spot produces one burst with an intermediate apparent efficiency…'
+tags: [guides, fret, bursts, dynamics]
+---
+
 # FRET-2CDE / ALEX-2CDE burst dynamics
 
 :::{admonition} Theory

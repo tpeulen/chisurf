@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: HydroPro
+description: Graphical front-end to the HYDROPRO / HYDRO++ suite for computing hydrodynamic properties (e.g. translational diffusion coefficient) from atomic or bead-model structures.
+resource: chisurf/plugins/modelling/hydropro/
+tags: [reference, plugins, hydropro, structure, computation]
+anchor: plugin-hydropro
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-hydropro)=
 # HydroPro
 

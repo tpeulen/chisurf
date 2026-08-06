@@ -3,17 +3,30 @@
   "version": "2.0.0",
   "display_name": "Help:Documentation",
   "description": "Documentation browser and help resource viewer for ChiSurf.",
-  "authors": ["Thomas-Otavio Peulen"],
-  "categories": ["Help"],
-  "icon": "📖",
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
+  "categories": [
+    "Help"
+  ],
+  "icon": "\ud83d\udcd6",
   "state_namespace": "help",
   "state_schema": {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "type": "object",
     "properties": {
-      "current_path": {"type": ["string", "null"]},
-      "filter_text": {"type": "string"},
-      "edit_mode": {"type": "boolean"}
+      "current_path": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "filter_text": {
+        "type": "string"
+      },
+      "edit_mode": {
+        "type": "boolean"
+      }
     }
   },
   "statefulness": {
@@ -62,6 +75,34 @@
       "cancelable": false
     },
     {
+      "name": "help.docs.ask",
+      "summary": "Answer a question from the documentation, citing the pages it read.",
+      "description": "Puts a question to ChiSurf's documentation and returns a grounded answer together with the pages it was taken from. Needs a language-model provider configured in Settings -> AI; the assistant can only browse, search and read documentation - it cannot load data, fit or run code.",
+      "params_schema": {
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": "string",
+            "description": "The question, in plain language."
+          },
+          "model": {
+            "type": "string",
+            "description": "Model identifier override."
+          },
+          "provider": {
+            "type": "string",
+            "description": "Provider key override."
+          }
+        },
+        "required": [
+          "question"
+        ]
+      },
+      "result_schema": {},
+      "long_running": true,
+      "cancelable": false
+    },
+    {
       "name": "help.docs.contract",
       "summary": "Return the Help plugin workflow contract.",
       "params_schema": {},
@@ -71,6 +112,9 @@
     }
   ],
   "events": [
-    {"topic": "help.docs.*", "description": "Document lifecycle events"}
+    {
+      "topic": "help.docs.*",
+      "description": "Document lifecycle events"
+    }
   ]
 }

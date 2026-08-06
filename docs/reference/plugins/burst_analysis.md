@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Burst Analysis
+description: Integrated burst workflow with burst selection, BVA, burst MLE, burst browser, and background estimation.
+resource: chisurf/plugins/burst/burst_analysis/
+tags: [reference, plugins, burst-analysis, spectroscopy, single-molecule]
+anchor: plugin-burst_analysis
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-burst_analysis)=
 # Burst Analysis
 

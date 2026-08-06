@@ -57,6 +57,46 @@ def render_doc(path: str):
     click.echo(html)
 
 
+@cli.command("ask")
+@click.argument("question", nargs=-1, required=True)
+@click.option("--model", default="", help="Model identifier override.")
+@click.option("--provider", default="", help="Provider key override.")
+@click.option("--json", "as_json", is_flag=True, help="Print the answer as JSON.")
+def ask_docs(question: tuple, model: str, provider: str, as_json: bool):
+    """Ask ChiSurf's documentation a question and get a cited answer.
+
+    The assistant may only browse, search and read documentation — it cannot
+    load data, fit, or run code. A language-model provider must be configured
+    in Settings → AI (or through the usual API-key environment variables).
+
+    \b
+    csc help ask "what does the gamma factor correct for?"
+    csc help ask "how do I fuse bursts?" --json
+    """
+    from chisurf.plugins.core.help.api import ask as ask_api
+
+    answer = ask_api.ask(" ".join(question), model=model, provider=provider)
+
+    if as_json:
+        import json as _json
+
+        click.echo(_json.dumps(answer.to_dict(), indent=2))
+        raise SystemExit(0 if answer.ok else 1)
+
+    if answer.error and not answer.text:
+        click.echo(f"Error: {answer.error}", err=True)
+        raise SystemExit(1)
+    click.echo(answer.text)
+    if answer.pages:
+        click.echo("")
+        click.echo("Sources:")
+        for page in answer.pages:
+            title = page["title"] or page["document"]
+            click.echo(f"  {title} — {page['document']}")
+    if not answer.ok:
+        raise SystemExit(1)
+
+
 @cli.command("review-check")
 @click.option(
     "--quiet", is_flag=True, help="Print only the summary line, not each page."

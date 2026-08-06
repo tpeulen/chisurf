@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Kappa2 Distribution
+description: Calculate and visualise the k² orientation-factor distribution for FRET using WIC, DWT, or isotropic models.
+resource: chisurf/plugins/calculator/kappa2_dist/
+tags: [reference, plugins, kappa2-dist, structure, fret]
+anchor: plugin-kappa2_dist
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-kappa2_dist)=
 # Kappa2 Distribution
 

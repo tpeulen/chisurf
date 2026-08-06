@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Light Path Simulator
+description: Optical light path simulator to calculate crosstalk and R0 overlap integrals.
+resource: chisurf/plugins/core/lightpath_simulator/
+tags: [reference, plugins, lightpath-simulator, spectroscopy]
+anchor: plugin-lightpath_simulator
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-lightpath_simulator)=
 # Light Path Simulator
 

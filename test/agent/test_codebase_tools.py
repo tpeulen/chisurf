@@ -15,6 +15,7 @@ from chisurf.core.agent.knowledge import (
     search_prose,
 )
 from chisurf.core.agent.tools import codebase as codebase_tools
+from chisurf.core.agent.tools import documentation as documentation_tools
 
 
 @pytest.fixture(scope="module")
@@ -162,19 +163,32 @@ def test_read_api_source_suggests_alternatives(context):
         codebase_tools.read_api_source(context, qualname="chisurf.core.fitting.FitGrup")
 
 
-def test_search_docs_finds_the_architecture(context):
-    result = codebase_tools.search_docs(context, query="plugin manifest")
-    assert result["ok"] and result["documents"]
+def test_the_prose_is_reached_through_the_documentation_tools(context):
+    """There is one documentation search, not one per audience.
+
+    The codebase group used to carry its own ``search_docs`` / ``read_doc``
+    beside the ones in :mod:`~chisurf.core.agent.tools.documentation`; a model
+    with two overlapping pairs picked whichever the prompt mentioned last.
+    """
+    assert "search_docs" not in codebase_tools.registry.names()
+    assert "read_doc" not in codebase_tools.registry.names()
+
+    result = documentation_tools.search_documentation(
+        context, query="plugin manifest", scope="code"
+    )
+    assert result["ok"] and result["pages"]
 
 
-def test_read_doc_returns_a_documentation_file(context):
-    result = codebase_tools.read_doc(context, document="okf/subsystems/llm-agent.md")
+def test_a_repository_concept_reads_back(context):
+    result = documentation_tools.read_documentation(
+        context, document="okf/subsystems/llm-agent.md"
+    )
     assert "agent" in result["content"].lower()
 
 
-def test_read_doc_refuses_to_leave_the_repository(context):
+def test_reading_refuses_to_leave_the_repository(context):
     with pytest.raises(ToolError):
-        codebase_tools.read_doc(context, document="../../../etc/passwd")
+        documentation_tools.read_documentation(context, document="../../../etc/passwd")
 
 
 def test_list_plugins_reports_manifests(context):

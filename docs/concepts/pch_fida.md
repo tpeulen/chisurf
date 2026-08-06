@@ -1,3 +1,11 @@
+---
+type: Concept
+title: Photon-counting histogram (PCH) and FIDA
+description: 'Where FCS reads the time structure of intensity fluctuations, the photon-counting histogram (PCH) and fluorescence-intensity distribution analysis (FIDA) read their amplitude structure: how often a fixed sampling interval collects exactly…'
+tags: [concepts, photons, fida]
+anchor: concept-pch-fida
+---
+
 (concept-pch-fida)=
 # Photon-counting histogram (PCH) and FIDA
 

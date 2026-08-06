@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Converter
+description: 'Unified converter hub: TTTR Split/Convert, TTTR→Time-Window BIDs and BID→Analysis.'
+resource: chisurf/plugins/tttr/converter/
+tags: [reference, plugins, converter, tools]
+anchor: plugin-converter
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-converter)=
 # Converter
 

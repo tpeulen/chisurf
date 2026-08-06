@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Burst MLE
+description: Maximum likelihood lifetime analysis for single-molecule burst data.
+resource: chisurf/plugins/burst/burst_mle_analysis/
+tags: [reference, plugins, burst-mle-analysis, spectroscopy, single-molecule]
+anchor: plugin-burst_mle_analysis
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-burst_mle_analysis)=
 # Burst MLE
 

@@ -1,3 +1,11 @@
+---
+type: Development Note
+title: 'PRD: MMFDB Viewer + Future-Ready Node Editor Workflows'
+description: 'Enhance the MMFDB viewer so users can inspect the full experiment data chain: experiments -> raw TTTR files -> processing runs such as Burst Selection -> processed products such as.bur, decays, FCS, PDA…'
+tags: [development, database, mmfdb]
+audience: developer
+---
+
 # PRD: MMFDB Viewer + Future-Ready Node Editor Workflows
 
 ## Summary

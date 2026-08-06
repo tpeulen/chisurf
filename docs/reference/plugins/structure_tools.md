@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Structure Tools
+description: 'Unified structure toolbox: FPS JSON Editor, FRET Docking & Screening, Kappa2 Distribution, QuEst, HydroPro and Trajectory Tools.'
+resource: chisurf/plugins/modelling/structure_tools/
+tags: [reference, plugins, structure-tools, structure]
+anchor: plugin-structure_tools
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-structure_tools)=
 # Structure Tools
 

@@ -1,3 +1,10 @@
+---
+type: Guide
+title: Accessible-volume (AV) calculations
+description: 'To turn a FRET distance into a structural restraint you need the mean dye position, not the attachment-point position: a dye on a flexible linker samples a sterically accessible volume (AV) around its attachment site.'
+tags: [guides, accessible, volume]
+---
+
 # Accessible-volume (AV) calculations
 
 :::{admonition} Theory

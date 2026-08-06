@@ -1,3 +1,11 @@
+---
+type: Fundamentals
+title: Quenching mechanisms in detail
+description: Added, or molecules are removed, and the Stern–Volmer plot bends one way or the other.
+tags: [fundamentals, quenching, mechanisms]
+anchor: fundamentals-quenching-mechanisms
+---
+
 (fundamentals-quenching-mechanisms)=
 # Quenching mechanisms in detail
 

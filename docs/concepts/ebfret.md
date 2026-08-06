@@ -1,3 +1,11 @@
+---
+type: Concept
+title: 'ebFRET: variational-Bayes HMM of binned traces'
+description: Wide-field single-molecule FRET — immobilized molecules on a TIRF surface, or a long confocal trace of one tethered molecule — is recorded as an intensity (or FRET-efficiency) versus time trajectory sampled at a fixed camera frame rate.
+tags: [concepts, kinetics, hmm]
+anchor: concept-ebfret
+---
+
 (concept-ebfret)=
 # ebFRET: variational-Bayes HMM of binned traces
 

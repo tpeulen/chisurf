@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Trajectory Energy
+description: Calculate and analyze trajectory energy time series.
+resource: chisurf/plugins/traj/traj_energy/
+tags: [reference, plugins, traj-energy, structure, trajectory]
+anchor: plugin-traj_energy
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-traj_energy)=
 # Trajectory Energy
 

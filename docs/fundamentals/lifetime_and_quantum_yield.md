@@ -1,3 +1,11 @@
+---
+type: Fundamentals
+title: Lifetime, quantum yield, and the rate picture
+description: Symbols on this page follow ChiSurf's usage; the common alternatives are listed in.
+tags: [fundamentals, tcspc, lifetime]
+anchor: fundamentals-lifetime-quantum-yield
+---
+
 (fundamentals-lifetime-quantum-yield)=
 # Lifetime, quantum yield, and the rate picture
 

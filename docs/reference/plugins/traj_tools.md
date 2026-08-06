@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Traj Tools
+description: Combined dockable workspace for trajectory alignment, conversion, energy calculation, FRET, joining, clash removal, rotation/translation, topology saving, and trajectory energy tools.
+resource: chisurf/plugins/traj/traj_tools/
+tags: [reference, plugins, traj-tools, structure, tools]
+anchor: plugin-traj_tools
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-traj_tools)=
 # Traj Tools
 

@@ -1,3 +1,11 @@
+---
+type: Development Note
+title: MVC Action Architecture (KISS Contract)
+description: This document defines the minimum architecture contract for state-changing flows.
+tags: [development, architecture, actions]
+audience: developer
+---
+
 # MVC Action Architecture (KISS Contract)
 
 This document defines the minimum architecture contract for state-changing flows.

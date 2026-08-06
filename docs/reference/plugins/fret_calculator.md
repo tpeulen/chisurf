@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: FRET-Calculator
+description: Combined heteroFRET and homoFRET parameter calculator.
+resource: chisurf/plugins/calculator/fret_calculator/
+tags: [reference, plugins, fret-calculator, main, tools]
+anchor: plugin-fret_calculator
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-fret_calculator)=
 # FRET-Calculator
 

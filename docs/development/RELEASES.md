@@ -1,3 +1,11 @@
+---
+type: Development Note
+title: Releases
+description: ChiSurf is maintained with one major release line per year and optional minor releases.
+tags: [development, releases]
+audience: developer
+---
+
 # Releases
 
 ChiSurf is maintained with **one major release line per year** and optional minor releases.

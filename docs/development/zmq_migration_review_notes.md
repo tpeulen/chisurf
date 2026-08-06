@@ -1,3 +1,11 @@
+---
+type: Development Note
+title: ZMQ Migration Review Notes
+description: The FDB/mmCIF compatibility slice is independent from the ZMQ fitting review and does not currently have a clean targeted test run.
+tags: [development, migration, review, notes]
+audience: developer
+---
+
 # ZMQ Migration Review Notes
 
 Date: 2026-06-15

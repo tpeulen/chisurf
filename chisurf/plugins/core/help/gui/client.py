@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional
 
 from chisurf.core.plugin.client import InProcessClient
 from chisurf.plugins.core.help.api.contract import (
+    METHOD_ASK,
     METHOD_CONTRACT,
     METHOD_LIST_DOCS,
     METHOD_READ_DOC,
@@ -106,6 +107,49 @@ class HelpClient:
         if result and result.get("ok"):
             return result.get("result", [])
         return []
+
+    def ask(
+        self, question: str, model: str = "", provider: str = ""
+    ) -> Dict[str, Any]:
+        """Ask the documentation a question and return a cited answer.
+
+        The language-model round trip and the page reads happen on the
+        backend; the caller gets the finished answer. Slow — call it off the
+        GUI thread.
+
+        Parameters
+        ----------
+        question : str
+            The question, in plain language.
+        model : str, optional
+            Model identifier override.
+        provider : str, optional
+            Provider key override.
+
+        Returns
+        -------
+        dict
+            ``{"text", "pages", "searched", "steps", "ok", "error"}``. A
+            transport failure comes back as ``ok=False`` with ``error`` set,
+            rather than as an exception, because the caller is a chat panel
+            that has to show something either way.
+
+        """
+        params = {"question": question, "model": model, "provider": provider}
+        result = self._call(METHOD_ASK, params)
+        if result is None:
+            return {"ok": False, "error": "the documentation service did not respond",
+                    "text": "", "pages": [], "searched": [], "steps": 0}
+        if result.get("ok"):
+            return result.get("result", {})
+        return {
+            "ok": False,
+            "error": str(result.get("error", "the question could not be answered")),
+            "text": "",
+            "pages": [],
+            "searched": [],
+            "steps": 0,
+        }
 
     def describe_contract(self) -> Dict[str, Any]:
         """Return the Help plugin workflow contract."""

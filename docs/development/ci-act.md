@@ -1,3 +1,11 @@
+---
+type: Development Note
+title: Local CI With act
+description: This repository now mirrors the GitHub Actions Linux test job locally via act.
+tags: [development]
+audience: developer
+---
+
 # Local CI With `act`
 
 This repository now mirrors the GitHub Actions Linux test job locally via [`act`](https://github.com/nektos/act). Use it to validate Pixi environments before pushing to `development`.

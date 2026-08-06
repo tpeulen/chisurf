@@ -1,3 +1,11 @@
+---
+type: Fundamentals
+title: The optical and detection chain
+description: Between the excited state and a recorded photon sit a light source, an optical train, and a detector.
+tags: [fundamentals, instrumentation]
+anchor: fundamentals-instrumentation
+---
+
 (fundamentals-instrumentation)=
 # The optical and detection chain
 

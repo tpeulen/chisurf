@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: H2MM
+description: Photon-by-photon Hidden Markov Model (H2MM) analysis of single-molecule FRET burst data, with BIC/ICL state selection and Viterbi dwell/transition analysis.
+resource: chisurf/plugins/burst/burst_h2mm/
+tags: [reference, plugins, burst-h2mm, spectroscopy, single-molecule]
+anchor: plugin-burst_h2mm
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-burst_h2mm)=
 # H2MM
 

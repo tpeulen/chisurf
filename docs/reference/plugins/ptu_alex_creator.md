@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: ALEX Creator
+description: Convert ALEX macro-time modulation into micro-time (single, batch or merged), for PIE-style analysis of.sm and other TTTR files.
+resource: chisurf/plugins/tttr/ptu_alex_creator/
+tags: [reference, plugins, ptu-alex-creator, tools, converter, tttr]
+anchor: plugin-ptu_alex_creator
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-ptu_alex_creator)=
 # ALEX Creator
 

@@ -985,6 +985,70 @@ def _grab_kappa2_tool():
     _grab(tool, "kappa2_tool.png")
 
 
+def _grab_ask_the_documentation():
+    """The help browser's Ask panel, beside the page it cited.
+
+    The conversation is placed directly rather than run: the answer would come
+    from whichever model the machine happens to have configured, so the
+    screenshot would differ on every machine and could not be regenerated. The
+    *rendering* — the answer layout, the citation list, the warning when
+    nothing was read — is what the figure documents, and that is ours.
+    """
+    from chisurf.core.agent import doc_index
+    from chisurf.plugins.core.help.gui.tool import HelpWidget
+
+    widget = HelpWidget()
+    widget.resize(1500, 900)
+    widget.show()
+    QApplication.instance().processEvents()
+
+    page = doc_index.resolve("docs/concepts/accurate_fret.md")
+    if page is not None:
+        widget.navigate(pathlib.Path(page))
+    widget.show_ask_panel()
+    QApplication.instance().processEvents()
+
+    panel = widget.ask_panel
+    panel._turns.append(panel._question_html("What does the gamma correction factor do?"))
+    panel._turns.append(
+        panel._answer_html(
+            {
+                "text": (
+                    "The gamma factor corrects the raw green/red photon ratio for the "
+                    "two things that make the two channels not comparable: the "
+                    "detection efficiencies of the donor and acceptor detection paths, "
+                    "and the fluorescence quantum yields of the two dyes.\n\n"
+                    "Without it the proximity ratio is not a FRET efficiency, and the "
+                    "population positions in an E-S histogram are shifted. ChiSurf "
+                    "determines gamma from a set of samples spanning a range of "
+                    "efficiencies: the fit of S against E gives gamma and beta together."
+                ),
+                "pages": [
+                    {
+                        "document": "docs/concepts/accurate_fret.md",
+                        "title": "Accurate FRET: correction factors, FRET lines, and "
+                                 "where they come from",
+                        "type": "Concept",
+                        "section": "The four factors",
+                    },
+                    {
+                        "document": "docs/guides/41_accurate_fret.md",
+                        "title": "Accurate FRET: automatic correction factors",
+                        "type": "Guide",
+                        "section": "",
+                    },
+                ],
+            }
+        )
+    )
+    panel._render()
+    # Resized last: the panel is added to the splitter while the window is
+    # already shown, and an earlier resize is undone by the layout settling.
+    widget.resize(1500, 900)
+    QApplication.instance().processEvents()
+    _grab(widget, "ask_the_documentation.png")
+
+
 def main():
     """Generate all guide screenshots."""
     app = QApplication.instance() or QApplication([])  # keep a ref alive  # noqa: F841
@@ -1011,6 +1075,7 @@ def main():
         _grab_chimol_biofilm,
         _grab_region_editor,
         _grab_ndx_gaussian_panel,
+        _grab_ask_the_documentation,
     ):
         try:
             grab()

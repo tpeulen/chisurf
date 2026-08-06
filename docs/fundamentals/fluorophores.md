@@ -1,3 +1,11 @@
+---
+type: Fundamentals
+title: Fluorophores
+description: 'What the probe contributes and what it hides: the fluorophore classes, brightness and photostability, and what actually governs the choice of label.'
+tags: [fundamentals, fluorophores]
+anchor: fundamentals-fluorophores
+---
+
 (fundamentals-fluorophores)=
 # Fluorophores
 

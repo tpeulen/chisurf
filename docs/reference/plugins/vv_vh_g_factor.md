@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: VV/VH G-Factor Calculator
+description: Calculate detector G-factors using tail-matching on VV/VH format files.
+resource: chisurf/plugins/vv_vh_g_factor/
+tags: [reference, plugins, vv-vh-g-factor, spectroscopy, fluorescence-decay]
+anchor: plugin-vv_vh_g_factor
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-vv_vh_g_factor)=
 # VV/VH G-Factor Calculator
 

@@ -1,3 +1,11 @@
+---
+type: Development Note
+title: ChiSurf Software Architecture
+description: This document describes the current source layout and runtime architecture of ChiSurf.
+tags: [development, architecture]
+audience: developer
+---
+
 # ChiSurf Software Architecture
 
 This document describes the current source layout and runtime architecture of

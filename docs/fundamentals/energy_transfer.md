@@ -1,3 +1,11 @@
+---
+type: Fundamentals
+title: Resonance energy transfer
+description: Förster transfer is dipole–dipole coupling between an excited donor and a ground-state acceptor whose absorption overlaps the donor's emission.
+tags: [fundamentals, energy, transfer]
+anchor: fundamentals-energy-transfer
+---
+
 (fundamentals-energy-transfer)=
 # Resonance energy transfer
 

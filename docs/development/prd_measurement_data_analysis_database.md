@@ -1,3 +1,11 @@
+---
+type: Development Note
+title: 'Product Requirements Document (PRD) & Checklist: fdb'
+description: This document defines the requirements, scope, architecture, and current implementation progress of fdb (Fluorescence Database for Chemical Biology workflows in ChiSurf).
+tags: [development, database, mmfdb]
+audience: developer
+---
+
 # Product Requirements Document (PRD) & Checklist: fdb
 
 This document defines the requirements, scope, architecture, and current implementation progress of `fdb` (Fluorescence Database for Chemical Biology workflows in ChiSurf).

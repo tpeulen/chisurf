@@ -28,7 +28,7 @@ tools:
   - run_python
   - set_components
   - run_fit
-  - search_docs
+  - search_documentation
 ---
 
 # Honest uncertainty

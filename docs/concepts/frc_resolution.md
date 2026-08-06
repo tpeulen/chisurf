@@ -1,3 +1,11 @@
+---
+type: Concept
+title: 'Image resolution: what the photons actually resolved'
+description: The resolution of a fluorescence image is not the pixel size, and it is not the diffraction limit either.
+tags: [concepts, imaging, resolution]
+anchor: concept-frc-resolution
+---
+
 (concept-frc-resolution)=
 # Image resolution: what the photons actually resolved
 

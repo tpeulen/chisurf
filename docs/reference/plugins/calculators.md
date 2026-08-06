@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Calculators
+description: Hub that groups ChiSurf's FRET-line, FRET/homoFRET, FCS and phasor-plot calculators and embeds the selected one in a two-panel view.
+resource: chisurf/plugins/calculator/hub/
+tags: [reference, plugins, calculators, main, tools]
+anchor: plugin-calculators
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-calculators)=
 # Calculators
 

@@ -1,3 +1,10 @@
+---
+type: Guide
+title: Driving ChiSurf from its console
+description: The ability to ask the running application questions that no dialog answers — what is the chi-square of every fit I have open?, what does this parameter look like across the series?…
+tags: [guides, console]
+---
+
 # Driving ChiSurf from its console
 
 **What you get:** the ability to ask the running application questions that no

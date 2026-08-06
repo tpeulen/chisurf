@@ -1,3 +1,11 @@
+---
+type: Concept
+title: 'Burst fusion: putting one molecule''s bursts back together'
+description: 'A burst search knows one thing about a molecule: the count rate it produces.'
+tags: [concepts, bursts, burst, fusion]
+anchor: concept-burst-fusion
+---
+
 (concept-burst-fusion)=
 # Burst fusion: putting one molecule's bursts back together
 

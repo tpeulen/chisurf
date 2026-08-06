@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Hidden Markov model
+description: 'Gaussian hidden Markov model for binned time traces: fits states and transitions by Baum-Welch, decodes the state path, and reports emissions, dwell times, transition rates and an AIC/BIC state-count scan. The shared HMM seam of ChiSurf — the same analysis is reachable from the GUI, the CLI and over RPC, and other plugins call its Qt-free core instead of fitting their own.'
+resource: chisurf/plugins/core/hmm/
+tags: [reference, plugins, hmm, analysis, kinetics]
+anchor: plugin-hmm
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-hmm)=
 # Hidden Markov model
 

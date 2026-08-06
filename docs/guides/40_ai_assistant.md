@@ -1,3 +1,12 @@
+---
+type: Guide
+title: 'The AI assistant: operating ChiSurf in plain language'
+description: ChiSurf ships an assistant that operates the program for you.
+tags: [guides, assistant]
+anchor: guide-ai-assistant
+---
+
+(guide-ai-assistant)=
 # The AI assistant: operating ChiSurf in plain language
 
 ChiSurf ships an assistant that operates the program for you. You describe
@@ -8,6 +17,14 @@ result and reports the numbers.
 It is not a chatbot bolted onto the side: it drives the same session you are
 looking at, so anything it creates appears in your windows and is saved in
 your project.
+
+:::{note}
+If your question is *"what does this mean?"* rather than *"do this for me"*,
+the smaller assistant in the help browser is the one you want:
+{ref}`Asking the documentation <guide-ask-the-documentation>`. It is the same
+model with the analysis tools taken away — it reads the documentation and
+cites the pages, and cannot change anything.
+:::
 
 ## Setting it up
 

@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: QuEst
+description: Structure-based simulation of dynamic PET quenching and FRET for dyes tethered to proteins by flexible linkers. The science lives in the quest package; this plugin is the ChiSurf-side shell.
+resource: chisurf/plugins/quenching_estimator/
+tags: [reference, plugins, quenching-estimator, structure, computation]
+anchor: plugin-quenching_estimator
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-quenching_estimator)=
 # QuEst
 

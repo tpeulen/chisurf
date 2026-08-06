@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: FCS Saturation
+description: FCS Saturation Calculator for arbitrary multi-state kinetic schemes (including Cy5).
+resource: chisurf/plugins/calculator/fcs_saturation_calc/
+tags: [reference, plugins, fcs-saturation, spectroscopy, fluorescence-correlation-spectroscopy]
+anchor: plugin-fcs_saturation
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-fcs_saturation)=
 # FCS Saturation
 

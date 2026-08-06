@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: AI Settings
+description: AI Settings plugin for configuring API providers and backends.
+resource: chisurf/plugins/ai_settings/
+tags: [reference, plugins, ai-settings, tools]
+anchor: plugin-ai_settings
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-ai_settings)=
 # AI Settings
 

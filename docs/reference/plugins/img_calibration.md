@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: IRF & BG
+description: Per-detector IRF file and background (kHz) calibration; transferred to phasor and pixel-wise MLE. Optional (skippable) pipeline step.
+resource: chisurf/plugins/microscopy/img_calibration/
+tags: [reference, plugins, img-calibration, imaging]
+anchor: plugin-img_calibration
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-img_calibration)=
 # IRF & BG
 

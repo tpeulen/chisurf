@@ -1,3 +1,11 @@
+---
+type: Concept
+title: Transfer to distributed acceptors, and dimensionality
+description: Every expression in assumes one donor and one acceptor at one distance.
+tags: [concepts, distributed, acceptors]
+anchor: concept-distributed-acceptors
+---
+
 (concept-distributed-acceptors)=
 # Transfer to distributed acceptors, and dimensionality
 

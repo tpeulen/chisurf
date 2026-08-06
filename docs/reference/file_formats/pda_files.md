@@ -1,3 +1,10 @@
+---
+type: File Format
+title: PDA TTTR files
+description: This section describes how to load Photon Distribution Analysis (PDA) data from TTTR files (PTU/HT3/SPC) into ChiSurf using the PDA experiment.
+tags: [reference, file-formats, pda, tttr, photons]
+---
+
 # PDA TTTR files {#pda-tttr}
 
 This section describes how to load Photon Distribution Analysis (PDA) data from

@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Plugin-Check
+description: Tests all ChiSurf plugins for startup errors and reports successes, failures, and skipped checks.
+resource: chisurf/plugins/core/plugin_check/
+tags: [reference, plugins, plugin-check, tools, miscellaneous]
+anchor: plugin-plugin_check
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-plugin_check)=
 # Plugin-Check
 

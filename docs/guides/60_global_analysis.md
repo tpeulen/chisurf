@@ -1,3 +1,10 @@
+---
+type: Guide
+title: 'Global analysis: linking parameters across fits'
+description: 'Theory: Global analysis · Tool: Main ▸ Tools ▸ 🌐 Global View · Code: chisurf.core.fitting.fit, chisurf.core.models.global_model'
+tags: [guides, fitting, global-analysis]
+---
+
 # Global analysis: linking parameters across fits
 
 **Theory:** [Global analysis](../concepts/global_analysis.md) ·

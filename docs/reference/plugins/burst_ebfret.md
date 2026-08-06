@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: ebFRET (binned traces)
+description: Empirical-Bayes Gaussian hidden Markov model for binned single-molecule FRET time traces (ebFRET/vbFRET-style), with a state-count scan, per-state emission recovery, and Viterbi dwell/transition analysis. Complements the photon-by-photon H2MM plugin for TIRF-style intensity-vs-time data.
+resource: chisurf/plugins/burst/burst_ebfret/
+tags: [reference, plugins, burst-ebfret, spectroscopy, single-molecule]
+anchor: plugin-burst_ebfret
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-burst_ebfret)=
 # ebFRET (binned traces)
 

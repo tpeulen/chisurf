@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Number Quest
+description: A small number-guessing game contained in the Games hub.
+resource: chisurf/plugins/misc/games/number_quest/
+tags: [reference, plugins, number-quest, tools, miscellaneous, games]
+anchor: plugin-number_quest
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-number_quest)=
 # Number Quest
 

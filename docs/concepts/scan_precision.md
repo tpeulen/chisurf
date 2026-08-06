@@ -1,3 +1,11 @@
+---
+type: Concept
+title: 'Scan precision: choosing a dwell time before you measure'
+description: 'A raster-scan correlation measurement (RICS and its relatives) has a free parameter that nobody can set from first principles at the microscope: the pixel dwell time.'
+tags: [concepts, scan, precision]
+anchor: concept-scan-precision
+---
+
 (concept-scan-precision)=
 # Scan precision: choosing a dwell time before you measure
 

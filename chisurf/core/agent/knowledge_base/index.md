@@ -26,7 +26,8 @@ and a judgement can be made when a procedure runs out.
 
 # How it is used
 
-The knowledge search (`search_docs`, `read_doc`) covers this bundle alongside
+The knowledge search (`browse_documentation`, `search_documentation`,
+`read_documentation`) covers this bundle alongside
 the repository documentation, so a concept is one lookup away when a skill
 refers to it. Skills link here rather than repeating the background.
 

@@ -1,3 +1,10 @@
+---
+type: Reference
+title: User-Defined Models in ChiSurf
+description: Adding or changing fitting models without modifying the installed package.
+tags: [reference, user, models]
+---
+
 # User-Defined Models in ChiSurf
 
 This document explains how to add or change models **without modifying the

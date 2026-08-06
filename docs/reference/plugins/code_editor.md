@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Code Editor
+description: Shared multi-document code/text editor with project navigation, symbols, diagnostics, and optional Python LSP integration.
+resource: chisurf/plugins/core/code_editor/
+tags: [reference, plugins, code-editor, tools, miscellaneous]
+anchor: plugin-code_editor
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-code_editor)=
 # Code Editor
 

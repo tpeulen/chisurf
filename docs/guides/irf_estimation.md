@@ -1,3 +1,10 @@
+---
+type: Guide
+title: IRF Estimation - ChiSurf Integration
+description: The IRF Estimation module provides blind instrument response function (IRF) inference from fluorescence decay data without requiring separate IRF measurements.
+tags: [guides, estimation]
+---
+
 # IRF Estimation - ChiSurf Integration
 
 :::{admonition} Theory

@@ -1,3 +1,10 @@
+---
+type: Guide
+title: Hidden Markov analysis of binned FRET traces (ebFRET)
+description: 'Wide-field / TIRF-camera FRET gives binned intensity-vs-time traces rather than confocal photon streams. ebFRET fits these with an empirical-Bayes Gaussian-emission HMM: an inner per-trace variational Bayes EM…'
+tags: [guides, kinetics, hmm, fret]
+---
+
 # Hidden Markov analysis of binned FRET traces (ebFRET)
 
 :::{admonition} Theory

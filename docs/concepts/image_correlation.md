@@ -1,3 +1,11 @@
+---
+type: Concept
+title: 'Image correlation: RICS, STICS, TICS and iMSD are one method'
+description: Four acronyms appear in the image-correlation literature — RICS, STICS, TICS and iMSD — and they are usually taught as four techniques with four workflows.
+tags: [concepts, imaging, correlation]
+anchor: concept-image-correlation
+---
+
 (concept-image-correlation)=
 # Image correlation: RICS, STICS, TICS and iMSD are one method
 

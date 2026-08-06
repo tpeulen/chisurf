@@ -1,3 +1,10 @@
+---
+type: Guide
+title: 'Particle tracking: from spots to a diffusion coefficient'
+description: This tool follows individual particles through a movie and turns their trajectories into a diffusion coefficient.
+tags: [guides, diffusion, particle, tracking]
+---
+
 # Particle tracking: from spots to a diffusion coefficient
 
 This tool follows individual particles through a movie and turns their

@@ -1,3 +1,11 @@
+---
+type: Concept
+title: 'Global analysis: one value fitted against all the data'
+description: Fitting measurements one at a time lets every fit invent its own value for every parameter — including quantities that are physically the same in all of them.
+tags: [concepts, fitting, global-analysis]
+anchor: concept-global-analysis
+---
+
 (concept-global-analysis)=
 # Global analysis: one value fitted against all the data
 

@@ -1,3 +1,11 @@
+---
+type: Fundamentals
+title: Solvent and environmental effects
+description: The same dye has different spectra, different quantum yields and different lifetimes depending on where it sits.
+tags: [fundamentals, solvent, environment]
+anchor: fundamentals-solvent
+---
+
 (fundamentals-solvent)=
 # Solvent and environmental effects
 

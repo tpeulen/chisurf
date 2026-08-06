@@ -1,3 +1,11 @@
+---
+type: Concept
+title: Hidden Markov models of binned traces
+description: A binned single-molecule trace — photon counts in consecutive time bins — rarely looks like one process.
+tags: [concepts, hidden, markov, models]
+anchor: concept-hidden-markov-models
+---
+
 (concept-hidden-markov-models)=
 # Hidden Markov models of binned traces
 

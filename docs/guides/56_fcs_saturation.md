@@ -1,3 +1,10 @@
+---
+type: Guide
+title: FCS saturation and focal-volume expansion
+description: 'Tool: Calculators → FCS Saturation · CLI: csg_fcs_saturation / python -m chisurf.plugins.calculator.fcs_saturation_calc.cli.main · Model: FCS (kinetics)'
+tags: [guides, fcs, saturation]
+---
+
 # FCS saturation and focal-volume expansion
 
 **Tool:** Calculators → FCS Saturation · **CLI:** `csg_fcs_saturation` /

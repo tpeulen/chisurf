@@ -1,3 +1,10 @@
+---
+type: Guide
+title: 'Parameter uncertainty: priors, sampling and convergence'
+description: 'Theory: Parameter uncertainty · Code: chisurf.core.fitting.priors, chisurf.core.fitting.sample, chisurf.core.fitting.diagnostics'
+tags: [guides, uncertainty, sampling]
+---
+
 # Parameter uncertainty: priors, sampling and convergence
 
 **Theory:** [Parameter uncertainty](../concepts/parameter_uncertainty.md) ·

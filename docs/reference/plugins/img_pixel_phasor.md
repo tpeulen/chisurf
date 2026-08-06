@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Phasor-FLIM
+description: Per-pixel phasor (g, s) maps and phasor plot from TTTR imaging data.
+resource: chisurf/plugins/microscopy/img_pixel_phasor/
+tags: [reference, plugins, img-pixel-phasor, imaging, phasor-flim]
+anchor: plugin-img_pixel_phasor
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-img_pixel_phasor)=
 # Phasor-FLIM
 

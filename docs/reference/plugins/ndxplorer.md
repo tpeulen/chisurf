@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: ndX
+description: Multidimensional fluorescence data analysis and visualization tool. Supports burst analysis, multiparameter fluorescence detection (MFD), FRET calculations, and interactive selection/filtering of burst events for both single-molecule and image spectroscopy data.
+resource: chisurf/plugins/ndxplorer/
+tags: [reference, plugins, ndxplorer, main, tools]
+anchor: plugin-ndxplorer
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-ndxplorer)=
 # ndX
 

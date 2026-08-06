@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Image Tools
+description: 'Unified imaging toolbox: Image Browser, Drift Correction, CLSM Draw, Molecule-wise MLE, Pixel-wise MLE, PSF Determination.'
+resource: chisurf/plugins/microscopy/imaging_tools/
+tags: [reference, plugins, imaging-tools, spectroscopy]
+anchor: plugin-imaging_tools
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-imaging_tools)=
 # Image Tools
 

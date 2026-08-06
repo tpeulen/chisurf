@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Global View
+description: Interactive network graph for visualizing and managing parameter relationships across fits in global analysis.
+resource: chisurf/plugins/core/globalview/
+tags: [reference, plugins, globalview, main, tools]
+anchor: plugin-globalview
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-globalview)=
 # Global View
 

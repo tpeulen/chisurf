@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: LUT Tools
+description: Compute TTTR microtime LUTs and create channel LUT settings in one dockable workspace.
+resource: chisurf/plugins/tttr/tttr_lut_tools/
+tags: [reference, plugins, tttr-lut-tools, tools, tttr, microtime, lut]
+anchor: plugin-tttr_lut_tools
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-tttr_lut_tools)=
 # LUT Tools
 
@@ -9,7 +19,7 @@ Compute TTTR microtime LUTs and create channel LUT settings in one dockable work
 | --- | --- |
 | Plugin id | `tttr_lut_tools` |
 | Menu path | Tools → TTTR → **LUT Tools** |
-| Categories | TTTR, Microtime, LUT |
+| Categories | Tools, TTTR, Microtime, LUT |
 | Version | 1.0.0 |
 | Surfaces | cli, gui, services |
 | State namespace | `tttr_lut_tools` |
@@ -55,8 +65,12 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | `lut.settings_build` | no | Build a settings.tttr.json bundle from per-channel LUTs and shifts. |
 | `lut.settings_load` | no | Load a settings.tttr.json bundle. |
 
+## Theory and workflow
+
+- **Workflow** — [TAC linearization: microtime LUTs](/guides/37_tttr_microtime_lut.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/tttr/tttr_lut_tools/`
-- Manifest: `chisurf/plugins/tttr/tttr_lut_tools/manifest.json`
-- UI spec: `chisurf/plugins/tttr/tttr_lut_tools/gui/lut_compute.view.json`
+- Manifest: {src}`chisurf/plugins/tttr/tttr_lut_tools/manifest.json`
+- UI spec: {src}`chisurf/plugins/tttr/tttr_lut_tools/gui/lut_compute.view.json`

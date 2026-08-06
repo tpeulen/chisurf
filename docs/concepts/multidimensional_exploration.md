@@ -1,3 +1,11 @@
+---
+type: Concept
+title: Interactive multidimensional exploration
+description: 'Reading a measurement that has many parameters per molecule or per pixel: multi-dimensional histograms, gating, and the projections that make a population visible.'
+tags: [concepts, multidimensional, exploration]
+anchor: concept-multidimensional-exploration
+---
+
 (concept-multidimensional-exploration)=
 
 # Interactive multidimensional exploration

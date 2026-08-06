@@ -1,3 +1,11 @@
+---
+type: Concept
+title: Simulating single-molecule photon streams
+description: 'Every analysis in ChiSurf — an FCS correlation curve, a burst-wise FRET histogram, a photon-by-photon hidden-Markov fit — is an inverse problem: it infers hidden parameters (diffusion coefficients, brightnesses, FRET efficiencies…'
+tags: [concepts, simulation, photons]
+anchor: concept-photophysics-simulation
+---
+
 (concept-photophysics-simulation)=
 # Simulating single-molecule photon streams
 

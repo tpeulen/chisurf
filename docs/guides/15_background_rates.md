@@ -1,3 +1,10 @@
+---
+type: Guide
+title: Background rates
+description: Every single-molecule measurement has a background — detector dark counts, buffer Raman/scatter, and afterpulsing — that must be subtracted from burst signals for accurate FRET, brightness and correlation.
+tags: [guides, corrections, background, rates]
+---
+
 # Background rates
 
 :::{admonition} Theory

@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Particle Tracking
+description: 'Single-particle tracking: detect diffraction-limited particles in every frame, link them into trajectories by exact assignment with gap closing, and fit the diffusion coefficient and anomalous exponent from the mean squared displacement.'
+resource: chisurf/plugins/microscopy/img_tracking/
+tags: [reference, plugins, img-tracking, imaging, tracking]
+anchor: plugin-img_tracking
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-img_tracking)=
 # Particle Tracking
 

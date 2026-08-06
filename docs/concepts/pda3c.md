@@ -1,3 +1,11 @@
+---
+type: Concept
+title: Three-colour PDA (PDA3c)
+description: 'Three-colour photon distribution analysis: the forward model for two simultaneous FRET pairs, and what a third label buys over a two-colour measurement.'
+tags: [concepts, pda, pda3c]
+anchor: concept-pda3c
+---
+
 (concept-pda3c)=
 # Three-colour PDA (PDA3c)
 

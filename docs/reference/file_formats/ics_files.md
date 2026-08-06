@@ -1,3 +1,10 @@
+---
+type: File Format
+title: Image-correlation (ICS) files
+description: This section describes how to load image data for image correlation spectroscopy — RICS, STICS, TICS and iMSD — from TTTR files and image stacks into ChiSurf using the Image correlation experiment.
+tags: [reference, file-formats, imaging, correlation]
+---
+
 # Image-correlation (ICS) files {#ics-image-correlation}
 
 This section describes how to load image data for **image correlation

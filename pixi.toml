@@ -139,6 +139,7 @@ myst-parser = "*"
 
 [feature.docs.tasks]
 docs-plugins = { cmd = "python build_tools/docs/generate_plugin_docs.py" }
+docs-specs = { cmd = "python build_tools/docs/generate_spec_rst.py" }
 docs-screenshots = { cmd = "python docs/guides/make_screenshots.py" }
 # docs-manual is retired: the docs/manual/ RST worked-examples are now hand-
 # maintained (folded into the Guides section), no longer regenerated from the
@@ -148,13 +149,19 @@ docs-clean = { cmd = "rm -rf docs/_build" }
 # The Literature page is generated from docs/references/bibliography.yaml, which
 # is the single source for every work the documentation cites.
 docs-bibliography = { cmd = "python build_tools/docs/make_bibliography.py" }
-docs-html = { depends-on = ["docs-plugins", "docs-bibliography"], cmd = "sphinx-build -E -b html docs docs/_build" }
+# docs/ is an Open Knowledge Format bundle: every page carries a machine-readable
+# header (kind, title, description, tags) that the in-application assistant
+# navigates by. Derived from the page, never hand-written; hand-edited fields
+# survive a re-run.
+docs-frontmatter = { cmd = "python build_tools/docs/okf_frontmatter.py" }
+docs-check-frontmatter = { cmd = "python build_tools/docs/okf_frontmatter.py --check" }
+docs-html = { depends-on = ["docs-plugins", "docs-bibliography", "docs-frontmatter"], cmd = "sphinx-build -E -b html docs docs/_build" }
 # Release gate: fails when a review-tracked page (docs/manual) is unreviewed or
 # has been edited since its sign-off. Sign pages off in the Help browser or with
 # `csc help review-set <path> --reviewer <name>`.
 docs-check-reviewed = { cmd = "python -m chisurf.core.cli help review-check" }
 # Production build: refuses to publish human-unchecked documentation.
-docs-release = { depends-on = ["docs-check-reviewed", "docs-html"] }
+docs-release = { depends-on = ["docs-check-frontmatter", "docs-check-reviewed", "docs-html"] }
 
 [target.win-64.dependencies]
 cmake = "<4"

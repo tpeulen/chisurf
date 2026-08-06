@@ -1155,6 +1155,52 @@ backbone's own tight contacts — an `O` and the next residue's `C` really are
 inside their van der Waals sum — and they bury whatever you were looking for.
 :::
 
+### Mutating a residue
+
+`mutate` is PyMOL's mutagenesis wizard as a command:
+
+```text
+mutate resi 54, TRP        # the least-strained rotamer
+mutate resi 54, TRP, 3     # ...or the third one the report lists
+mutate sele, ALA           # whatever is picked
+```
+
+The backbone stays exactly where it is; the side chain is built onto it from an
+idealised fragment, set to each rotamer of PyMOL's library in turn, and scored
+by the same bump check `clashes` runs. The console prints the table the
+wizard's panel shows — frequency and strain per rotamer — and marks the one
+taken:
+
+```text
+mutate: TRP, 9 rotamers (taking #5)
+    1   30.8%  strain  34.25  N-CA-CB-CG=-67, CA-CB-CG-CD1=100
+ *  5    9.9%  strain  29.45  N-CA-CB-CG=61, CA-CB-CG-CD1=-90
+```
+
+so a second run with a number takes a different one. The **most frequent**
+rotamer and the **least strained** are usually not the same, which is the whole
+reason PyMOL shows both rather than picking silently.
+
+| Detail | What happens |
+| --- | --- |
+| backbone | `N`, `CA`, `C`, `O` are the target's own, untouched |
+| hydrogens | follow the structure — a crystal structure without them gets none |
+| a residue with no `N`/`CA`/`C` | refused, as the wizard refuses it |
+| `GLY`, `ALA` | one conformation; there is no chi angle to set |
+
+Rebuilt as itself on 148L, the library's closest rotamer lands **0.50 Å** from
+the deposited side chain on average (31 of 33 residues within 1 Å) — that is
+the resolution of a rotamer library, which is a set of cluster means, not an
+error in the build.
+
+:::{note}
+The rotamer library is PyMOL's **backbone-independent** one. PyMOL's wizard
+defaults to the backbone-dependent library (phi/psi-binned, 1.4 MB), which is
+better science; the reader for it is in
+`chimol/analysis/make_residue_library.py --dependent`, and it is not shipped
+because nothing yet asks to be phi/psi-aware.
+:::
+
 ## Bonds
 
 Bonds are inferred from the coordinates, using PyMOL's rule: two atoms are bonded

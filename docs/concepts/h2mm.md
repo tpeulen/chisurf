@@ -1,3 +1,11 @@
+---
+type: Concept
+title: Photon-by-photon HMM (H2MM)
+description: Burst-averaged smFRET readouts — the FRET-efficiency histogram, the E–S ALEX map, BVA — collapse each burst to a single value and cannot see dynamics that happen inside a burst.
+tags: [concepts, photons, kinetics, hmm]
+anchor: concept-h2mm
+---
+
 (concept-h2mm)=
 # Photon-by-photon HMM (H2MM)
 

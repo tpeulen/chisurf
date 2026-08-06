@@ -35,6 +35,8 @@ import sys
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
+from build_tools.docs import okf  # noqa: E402
+
 DOCS = REPO_ROOT / "docs"
 PROVENANCE = DOCS / "references" / "figures.yaml"
 
@@ -350,12 +352,61 @@ def render_code(blocks) -> str:
     )
 
 
+#: What each register is, for the OKF header the pages carry. A generated page
+#: is still a page the assistant searches, so it needs the same header as a
+#: written one — emitted here, because an injected one would be overwritten on
+#: the next run.
+_REGISTER_META = {
+    "figures.md": (
+        "Figure index",
+        "Every image the documentation shows, with its caption, where it came from, "
+        "and the page it appears on.",
+        ["reference", "figures", "index"],
+        "figure-index",
+    ),
+    "tables.md": (
+        "Table index",
+        "Every table in the documentation, with the section it belongs to and its columns.",
+        ["reference", "tables", "index"],
+        "table-index",
+    ),
+    "code.md": (
+        "Code index",
+        "Every code block in the documentation, with its language and whether it is verified.",
+        ["reference", "code", "index"],
+        "code-index",
+    ),
+}
+
+
+def _with_front_matter(name: str, body: str) -> str:
+    """Return a rendered register prefixed with its OKF header."""
+    title, description, tags, anchor = _REGISTER_META[name]
+    header = okf.render_front_matter(
+        {
+            "type": "Reference",
+            "title": title,
+            "description": description,
+            "tags": tags,
+            "anchor": anchor,
+            "generator": "build_tools/docs/make_registers.py",
+        }
+    )
+    return header + "\n" + body
+
+
 def generate(check: bool = False) -> int:
     provenance = load_provenance()
     outputs = {
-        DOCS / "reference" / "figures.md": render_figures(collect_figures(), provenance),
-        DOCS / "reference" / "tables.md": render_tables(collect_tables()),
-        DOCS / "reference" / "code.md": render_code(collect_code()),
+        DOCS / "reference" / "figures.md": _with_front_matter(
+            "figures.md", render_figures(collect_figures(), provenance)
+        ),
+        DOCS / "reference" / "tables.md": _with_front_matter(
+            "tables.md", render_tables(collect_tables())
+        ),
+        DOCS / "reference" / "code.md": _with_front_matter(
+            "code.md", render_code(collect_code())
+        ),
     }
     stale = []
     for path, content in outputs.items():

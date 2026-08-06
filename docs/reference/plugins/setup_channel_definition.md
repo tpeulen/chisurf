@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Channel Definition
+description: Detector Channel and PIE-window definition wizard
+resource: chisurf/plugins/core/setup_channel_definition/
+tags: [reference, plugins, setup-channel-definition, setup]
+anchor: plugin-setup_channel_definition
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-setup_channel_definition)=
 # Channel Definition
 

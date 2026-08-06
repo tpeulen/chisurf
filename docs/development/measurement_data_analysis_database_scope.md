@@ -1,3 +1,11 @@
+---
+type: Development Note
+title: fdb Measurement and Data Analysis Database Scope
+description: Fdb is the planned fluorescence database for chemical biology workflows in ChiSurf.
+tags: [development, database, mmfdb]
+audience: developer
+---
+
 # fdb Measurement and Data Analysis Database Scope
 
 Status date: 2026-06-11

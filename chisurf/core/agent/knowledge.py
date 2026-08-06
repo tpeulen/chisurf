@@ -418,20 +418,19 @@ def iter_prose_documents(roots: Iterable[str] = PROSE_ROOTS) -> list[pathlib.Pat
     return documents
 
 
-def _display_document(path: pathlib.Path, base: pathlib.Path) -> str:
-    """Return the identifier a caller can pass back to ``read_doc``."""
-    try:
-        return path.relative_to(base).as_posix()
-    except ValueError:
-        return path.name
-
-
-def search_prose(query: str, limit: int = 6, context_lines: int = 8) -> list[dict[str, Any]]:
+def search_prose(
+    query: str, limit: int = 6, context_lines: int = 8, **filters: Any
+) -> list[dict[str, Any]]:
     """Search the OKF concepts and guides for a phrase.
 
     Signatures say what exists; the prose says why it is that way and what the
     conventions are. Both are needed to write code that belongs in this
     codebase rather than merely running.
+
+    The ranking itself lives in :mod:`chisurf.core.agent.doc_index`, which
+    reads the Open-Knowledge-Format header every page carries and weights it
+    far above the body. There is one implementation of "find the right page",
+    and the codebase tools and the documentation assistant share it.
 
     Parameters
     ----------
@@ -441,64 +440,16 @@ def search_prose(query: str, limit: int = 6, context_lines: int = 8) -> list[dic
         Maximum number of documents to report.
     context_lines : int
         Lines of context around the best match in each document.
+    **filters
+        Passed to :meth:`~chisurf.core.agent.doc_index.DocIndex.search`:
+        ``kind``, ``tag``, ``bundle``, ``user_only``.
 
     Returns
     -------
     list of dict
-        ``{"document", "title", "score", "excerpt"}`` per hit.
+        ``{"document", "type", "title", "description", "tags", "score",
+        "excerpt"}`` per hit.
     """
-    terms = [term for term in re.split(r"[^\w]+", str(query).lower()) if len(term) > 2]
-    if not terms:
-        return []
+    from chisurf.core.agent.doc_index import DocIndex
 
-    base = repository_root()
-    bundle_root = knowledge_base_root()
-    hits: list[tuple[float, dict[str, Any]]] = []
-    for path in iter_prose_documents():
-        try:
-            text = path.read_text(encoding="utf-8")
-        except OSError:
-            continue
-        lowered = text.lower()
-        raw = sum(lowered.count(term) for term in terms)
-        if not raw:
-            continue
-        # Normalise by length: a long document mentioning the word often is
-        # not more relevant than a short one that is about it.
-        score = raw / max(1.0, (len(text) / 4000.0) ** 0.5)
-        # A title match counts double — a document *about* the thing beats one
-        # that mentions it in passing.
-        if any(term in path.stem.lower() for term in terms):
-            score *= 2
-        # The assistant's own bundle is written for exactly this purpose and
-        # is deliberately concise; the repository's documentation is larger
-        # and aimed at developers. Prefer the former when both match.
-        if bundle_root in path.parents:
-            score *= 1.5
-
-        lines = text.splitlines()
-        best_line, best_hits = 0, 0
-        for number, line in enumerate(lines):
-            line_hits = sum(term in line.lower() for term in terms)
-            if line_hits > best_hits:
-                best_line, best_hits = number, line_hits
-        start = max(0, best_line - context_lines // 2)
-        excerpt = "\n".join(lines[start : start + context_lines])
-
-        hits.append(
-            (
-                float(score),
-                {
-                    "document": _display_document(path, base),
-                    "title": next(
-                        (line.lstrip("# ").strip() for line in lines if line.startswith("#")),
-                        path.stem,
-                    ),
-                    "score": float(score),
-                    "excerpt": excerpt,
-                },
-            )
-        )
-
-    hits.sort(key=lambda item: -item[0])
-    return [payload for _, payload in hits[: max(1, int(limit))]]
+    return DocIndex.load().search(query, limit=limit, context_lines=context_lines, **filters)

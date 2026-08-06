@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: FRC Resolution
+description: Measure the resolution an image actually achieved by Fourier ring correlation — of a TIFF stack or a photon stream — and read it against the 1/7, ½-bit or 2σ criterion.
+resource: chisurf/plugins/microscopy/img_frc/
+tags: [reference, plugins, img-frc, imaging]
+anchor: plugin-img_frc
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-img_frc)=
 # FRC Resolution
 

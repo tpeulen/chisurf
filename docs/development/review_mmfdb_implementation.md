@@ -1,3 +1,11 @@
+---
+type: Development Note
+title: MMFDB Implementation Review and Production-Hardening PRD
+description: This document is the current review artifact for the MMFDB implementation.
+tags: [development, database, mmfdb]
+audience: developer
+---
+
 # MMFDB Implementation Review and Production-Hardening PRD
 
 Date: 2026-06-13

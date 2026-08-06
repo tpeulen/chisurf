@@ -1,3 +1,11 @@
+---
+type: Development Note
+title: ChiSurf Client-Server Migration Agent Entrypoint
+description: This is the single starting document for agents implementing ChiSurf's client-server migration.
+tags: [development, client, server, agent, entrypoint]
+audience: developer
+---
+
 # ChiSurf Client-Server Migration Agent Entrypoint
 
 This is the single starting document for agents implementing ChiSurf's

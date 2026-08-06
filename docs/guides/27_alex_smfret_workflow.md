@@ -1,3 +1,10 @@
+---
+type: Guide
+title: A complete µs-ALEX smFRET burst-analysis workflow
+description: This tutorial walks the full end-to-end pipeline for freely-diffusing single-molecule FRET with alternating-laser excitation (µs-ALEX), the way a typical analysis notebook is structured…
+tags: [guides, fret, smfret, bursts]
+---
+
 # A complete µs-ALEX smFRET burst-analysis workflow
 
 :::{admonition} Theory

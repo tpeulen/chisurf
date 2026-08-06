@@ -1,3 +1,10 @@
+---
+type: Index
+title: Guides — how to do it in ChiSurf
+description: Step-by-step guides for the fluorescence analyses in ChiSurf.
+tags: [guides, index]
+---
+
 # Guides — how to do it in ChiSurf
 
 Step-by-step guides for the fluorescence analyses in ChiSurf. Each guide shows
@@ -130,6 +137,7 @@ irf_estimation
 62_maxent_decay
 60_global_analysis
 40_ai_assistant
+70_ask_the_documentation
 59_console
 ```
 
@@ -177,6 +185,7 @@ irf_estimation
 | [Two-channel colocalization](38_colocalization.md) | `img_coloc` plugin, `imaging.colocalization` |
 | [Parameter uncertainty: priors, sampling, convergence](39_parameter_uncertainty.md) | `fitting.priors`, `fitting.sample`, `fitting.diagnostics`, `fitting.reweight`, `fitting.graphview` |
 | [The AI assistant: operating ChiSurf in plain language](40_ai_assistant.md) | `chisurf.core.agent`, agent skills |
+| [Asking the documentation](70_ask_the_documentation.md) | Help browser **Ask** panel, `csc help ask`, `help.docs.ask` |
 | [Accurate FRET: automatic correction factors](41_accurate_fret.md) | `accurate_fret` plugin, `fret.accurate`, `fret.lines` |
 | [κ² distributions: how much is the orientation assumption costing?](61_kappa2_distribution.md) | `kappa2_dist` plugin, `fluorescence.anisotropy.kappa2` |
 | [Three-colour PDA (PDA3c)](42_pda3c.md) | `core.models.pda3c`, `core.fluorescence.pda3c`, `core.fluorescence.kinetics` |

@@ -1,3 +1,11 @@
+---
+type: Fundamentals
+title: Photoselection, depolarization, and rotation
+description: Why absorption and emission are directional, how photoselection produces anisotropy, and how rotational diffusion depolarizes the emission.
+tags: [fundamentals, polarization, rotation]
+anchor: fundamentals-polarization
+---
+
 (fundamentals-polarization)=
 # Photoselection, depolarization, and rotation
 

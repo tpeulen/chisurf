@@ -19,6 +19,9 @@ from chisurf.plugins.core.help.api import xref
 #: have no concept page to point at.
 GUIDES_WITHOUT_A_CONCEPT = {
     "40_ai_assistant.md",
+    # About the documentation itself and the assistant that reads it, not
+    # about a measurement, so there is no theory page for it to point at.
+    "70_ask_the_documentation.md",
     "53_reusing_results.md",
     "59_console.md",
     "index.md",

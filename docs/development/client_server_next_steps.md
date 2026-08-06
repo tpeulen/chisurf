@@ -1,3 +1,11 @@
+---
+type: Development Note
+title: ChiSurf Client-Server Next Steps
+description: This is the short handoff for future work.
+tags: [development, client, server, next, steps]
+audience: developer
+---
+
 # ChiSurf Client-Server Next Steps
 
 This is the short handoff for future work. For architecture details, read:

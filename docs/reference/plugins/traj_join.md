@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Join
+description: Join or stack molecular dynamics trajectories.
+resource: chisurf/plugins/traj/traj_join/
+tags: [reference, plugins, traj-join, structure, trajectory]
+anchor: plugin-traj_join
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-traj_join)=
 # Join
 

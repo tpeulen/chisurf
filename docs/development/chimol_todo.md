@@ -1,3 +1,11 @@
+---
+type: Development Note
+title: Chimol TODO & Command Parity Tracker
+description: This document tracks general development tasks, command parity, structural, and lifecycle TODOs for Chimol that are separate from the render-quality/visual upgrade plan.
+tags: [development, chimol, todo]
+audience: developer
+---
+
 # Chimol TODO & Command Parity Tracker
 
 This document tracks general development tasks, command parity, structural, and lifecycle TODOs for Chimol that are separate from the render-quality/visual upgrade plan.

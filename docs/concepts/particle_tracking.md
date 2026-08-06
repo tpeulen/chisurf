@@ -1,3 +1,11 @@
+---
+type: Concept
+title: Single-particle tracking
+description: 'Following individual particles through a movie measures transport directly: not an ensemble average over a focal volume, but the actual path each particle took.'
+tags: [concepts, particle, tracking]
+anchor: concept-particle-tracking
+---
+
 (concept-particle-tracking)=
 
 # Single-particle tracking

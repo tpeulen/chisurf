@@ -1,3 +1,10 @@
+---
+type: Guide
+title: Working with timestamps and bursts (the data model)
+description: Every burst analysis rests on three per-photon arrays and one per-burst structure.
+tags: [guides, bursts, timestamps]
+---
+
 # Working with timestamps and bursts (the data model)
 
 :::{admonition} Theory

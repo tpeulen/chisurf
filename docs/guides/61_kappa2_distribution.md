@@ -1,3 +1,10 @@
+---
+type: Guide
+title: 'κ² distributions: how much is the orientation assumption costing?'
+description: Every FRET distance you report assumes an orientation factor, almost always $kappa^2 = 2/3$.
+tags: [guides, kappa2, distribution]
+---
+
 # κ² distributions: how much is the orientation assumption costing?
 
 Every FRET distance you report assumes an orientation factor, almost always

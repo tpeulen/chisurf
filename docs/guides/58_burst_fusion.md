@@ -1,3 +1,10 @@
+---
+type: Guide
+title: Fusing bursts the same molecule produced
+description: A burst folder in which one passage through the confocal spot is one burst, instead of the two or three the burst search cut it into…
+tags: [guides, bursts, burst, fusion]
+---
+
 # Fusing bursts the same molecule produced
 
 **What you get:** a burst folder in which one passage through the confocal spot

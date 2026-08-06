@@ -1,3 +1,11 @@
+---
+type: Fundamentals
+title: Symbols and conventions
+description: Fluorescence notation is not uniform. The same letter means different things in the FRET and FCS literature, and the same quantity is written differently by different groups.
+tags: [fundamentals, conventions]
+anchor: fundamentals-conventions
+---
+
 (fundamentals-conventions)=
 # Symbols and conventions
 

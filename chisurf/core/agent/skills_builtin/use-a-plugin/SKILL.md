@@ -22,8 +22,9 @@ tools:
   - list_plugins
   - search_api
   - read_api_source
-  - read_doc
-  - search_docs
+  - read_documentation
+  - search_documentation
+  - browse_documentation
   - run_python
 ---
 

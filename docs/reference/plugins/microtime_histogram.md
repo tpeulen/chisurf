@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Histogram-Microtime
+description: Create and inspect TTTR microtime histograms.
+resource: chisurf/plugins/tttr/microtime_histogram/
+tags: [reference, plugins, microtime-histogram, spectroscopy, fluorescence-decay, tttr]
+anchor: plugin-microtime_histogram
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-microtime_histogram)=
 # Histogram-Microtime
 

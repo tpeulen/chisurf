@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: MMFDB Admin
+description: 'Manage the Multiparametric Fluorescence Database (MMFDB): samples, experiments, setups, raw/processed data, provenance, and project archives.'
+resource: chisurf/plugins/core/mmfdb_admin/
+tags: [reference, plugins, mmfdb-admin, tools, fluorescence, database]
+anchor: plugin-mmfdb_admin
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-mmfdb_admin)=
 # MMFDB Admin
 

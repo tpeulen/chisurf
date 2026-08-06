@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Molecule-wise MLE
+description: Molecule-wise MLE lifetime analysis from TTTR imaging data (PTU).
+resource: chisurf/plugins/microscopy/sm_image_mle/
+tags: [reference, plugins, sm-image-mle, imaging, lifetime]
+anchor: plugin-sm_image_mle
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-sm_image_mle)=
 # Molecule-wise MLE
 

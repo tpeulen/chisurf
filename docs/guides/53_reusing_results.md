@@ -1,3 +1,10 @@
+---
+type: Guide
+title: 'Reusing results: when a step recomputes, and when it does not'
+description: The burst workflow asks each step to run more often than you press its Run button.
+tags: [guides, reusing, results]
+---
+
 # Reusing results: when a step recomputes, and when it does not
 
 The burst workflow asks each step to run more often than you press its Run

@@ -1,3 +1,10 @@
+---
+type: Guide
+title: Exporting burst data
+description: Analysed bursts are exported for downstream visualisation, sharing, or use in other tools.
+tags: [guides, bursts, exporting, burst, data]
+---
+
 # Exporting burst data
 
 :::{admonition} Theory

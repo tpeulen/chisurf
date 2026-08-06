@@ -16,6 +16,10 @@ The catalogue is assembled from three groups:
 ``codebase``
     knowledge for *writing* ChiSurf code: the source API index, the
     documentation, the plugin catalogue, and a syntax/lint check
+``documentation``
+    answering a *user's* question out of the documentation: browsing it by
+    kind and subject through the Open-Knowledge-Format header each page
+    carries, searching it, and reading one page or one section
 ``skills``
     listing and loading the procedures in :mod:`chisurf.core.agent.skills`
 ``system``
@@ -33,6 +37,7 @@ from chisurf.core.agent.tools import (
     codebase,
     data,
     decay,
+    documentation,
     fitting,
     linking,
     scripting,
@@ -45,6 +50,7 @@ __all__ = [
     "codebase",
     "data",
     "decay",
+    "documentation",
     "fitting",
     "linking",
     "scripting",
@@ -72,6 +78,7 @@ def build_default_registry() -> ToolRegistry:
     for group in (
         data.registry,
         codebase.registry,
+        documentation.registry,
         fitting.registry,
         decay.registry,
         linking.registry,

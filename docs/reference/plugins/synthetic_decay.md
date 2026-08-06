@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Synthetic Decay Generator
+description: Generate synthetic TCSPC fluorescence-decay histograms from lifetimes/spectra (optional IRF convolution and Poisson shot noise) — the single canonical decay generator, exposed as API/CLI/RPC/GUI.
+resource: chisurf/plugins/fluorescence_decay/synthetic_decay/
+tags: [reference, plugins, synthetic-decay, spectroscopy, fluorescence-decay]
+anchor: plugin-synthetic_decay
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-synthetic_decay)=
 # Synthetic Decay Generator
 

@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: FRET
+description: Calculate FRET observables from molecular dynamics trajectories.
+resource: chisurf/plugins/traj/fret_trajectory/
+tags: [reference, plugins, traj-fret, structure, trajectory, fret]
+anchor: plugin-traj_fret
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-traj_fret)=
 # FRET
 

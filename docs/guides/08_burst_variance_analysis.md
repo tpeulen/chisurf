@@ -1,3 +1,10 @@
+---
+type: Guide
+title: Burst Variance Analysis (BVA)
+description: BVA (Torella et al., Biophys. J. 2011) is a model-free test for sub-burst FRET dynamics, complementary to 2CDE. Each burst is split into short slices of a few photons, the proximity ratio is computed for every slice…
+tags: [guides, bursts, burst, variance, analysis]
+---
+
 # Burst Variance Analysis (BVA)
 
 :::{admonition} Theory

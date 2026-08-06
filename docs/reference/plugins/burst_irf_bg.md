@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Burst IRF & Background
+description: Extract a per-detector IRF and background rate from the non-burst photons of a single-molecule measurement, and feed them to the burst MLE lifetime fit.
+resource: chisurf/plugins/burst/burst_irf_bg/
+tags: [reference, plugins, burst-irf-bg, spectroscopy, single-molecule]
+anchor: plugin-burst_irf_bg
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-burst_irf_bg)=
 # Burst IRF & Background
 

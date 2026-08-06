@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Burst Background Estimation
+description: Estimate detector background rates from TTTR burst data.
+resource: chisurf/plugins/burst/burst_background/
+tags: [reference, plugins, burst-background, spectroscopy, single-molecule]
+anchor: plugin-burst_background
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-burst_background)=
 # Burst Background Estimation
 

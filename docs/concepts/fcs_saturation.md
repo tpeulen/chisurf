@@ -1,3 +1,11 @@
+---
+type: Concept
+title: Optical saturation in FCS
+description: An FCS curve is usually fitted with a model that assumes the detection volume is a fixed three-dimensional Gaussian.
+tags: [concepts, fcs, saturation]
+anchor: concept-fcs-saturation
+---
+
 (concept-fcs-saturation)=
 # Optical saturation in FCS
 

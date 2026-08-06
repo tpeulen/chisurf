@@ -1,3 +1,11 @@
+---
+type: Development Note
+title: ChiSurf Client-Server Migration Plan
+description: This plan tracks the remaining migration from the current hybrid GUI/server architecture to cleaner server-owned computation and state.
+tags: [development, client, server, migration, plan]
+audience: developer
+---
+
 # ChiSurf Client-Server Migration Plan
 
 This plan tracks the remaining migration from the current hybrid GUI/server

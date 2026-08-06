@@ -27,8 +27,13 @@ import functools
 import json
 import pathlib
 import re
+import sys
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent.parent
+sys.path.insert(0, str(REPO_ROOT))
+
+from build_tools.docs import okf  # noqa: E402
+
 PLUGIN_ROOT = REPO_ROOT / "chisurf" / "plugins"
 REGISTRY = REPO_ROOT / "chisurf" / "core" / "settings" / "constants" / "parameter_registry.json"
 OUT_DIR = REPO_ROOT / "docs" / "reference"
@@ -285,11 +290,74 @@ def _theory_and_workflow(rel_dir: pathlib.Path) -> list:
     return out if len(out) > 2 else []
 
 
+def _docstring_summary(text: str, *names: str) -> str:
+    """Return the first paragraph of a module docstring that says something.
+
+    A plugin without a manifest is described from its docstring, and these
+    docstrings conventionally open with the plugin's own name on a line of its
+    own. Taking the first paragraph therefore produced descriptions like
+    "FCS Correlator" — the title restated, which tells a reader (and the
+    assistant ranking pages) nothing at all.
+
+    Parameters
+    ----------
+    text : str
+        The module docstring.
+    *names : str
+        Spellings of the plugin's name that a lead paragraph may only repeat.
+
+    Returns
+    -------
+    str
+        The first informative paragraph as one line, or ``""``.
+    """
+    banned = {re.sub(r"[^a-z0-9]+", "", str(name).lower()) for name in names if name}
+    for paragraph in (text or "").strip().split("\n\n"):
+        collapsed = " ".join(paragraph.split())
+        if not collapsed:
+            continue
+        if re.sub(r"[^a-z0-9]+", "", collapsed.lower()) in banned:
+            continue
+        return collapsed
+    return ""
+
+
+def _plugin_front_matter(manifest: dict, plugin_dir: pathlib.Path, title: str) -> str:
+    """Return the OKF header for a generated plugin page.
+
+    A generated page needs the header as much as a written one — it is the
+    largest part of the corpus the assistant searches. It is emitted here
+    rather than injected afterwards, because the next regeneration would
+    overwrite an injected one.
+    """
+    pid = manifest.get("id", plugin_dir.name)
+    tags = ["reference", "plugins", pid.replace("_", "-")]
+    for category in manifest.get("categories", []) or []:
+        tag = str(category).strip().lower().replace(" ", "-")
+        if tag and tag not in tags:
+            tags.append(tag)
+    return okf.render_front_matter(
+        {
+            "type": "Plugin Reference",
+            "title": title,
+            "description": okf.plain_text(manifest.get("description", "") or "")
+            or f"Reference page for the {title} plugin.",
+            "resource": plugin_dir.relative_to(REPO_ROOT).as_posix() + "/",
+            "tags": tags[:8],
+            "anchor": f"plugin-{pid}",
+            # No timestamp: a regeneration date would change on every run and
+            # bury the real diff. What a reader needs is "do not hand-edit".
+            "generator": "build_tools/docs/generate_plugin_docs.py",
+        }
+    )
+
+
 def _plugin_page(manifest: dict, plugin_dir: pathlib.Path, registry_params: dict) -> str:
     pid = manifest.get("id", plugin_dir.name)
     category, leaf = _display_parts(manifest.get("display_name", ""), pid)
     rel_dir = plugin_dir.relative_to(PLUGIN_ROOT)
-    out = [f"(plugin-{pid})=", f"# {leaf}", ""]
+    out = [_plugin_front_matter(manifest, plugin_dir, leaf).rstrip("\n"), ""]
+    out += [f"(plugin-{pid})=", f"# {leaf}", ""]
     if manifest.get("description"):
         out += [_md(manifest["description"]), ""]
 
@@ -375,8 +443,12 @@ def _plugin_page(manifest: dict, plugin_dir: pathlib.Path, registry_params: dict
     # application it goes to the code editor, on the website to the repository
     # browser. The package is a directory and stays a plain code span.
     out += ["## Source", "",
-            f"- Plugin package: `chisurf/plugins/{rel_dir}/`",
-            f"- Manifest: {{src}}`chisurf/plugins/{rel_dir}/manifest.json`"]
+            f"- Plugin package: `chisurf/plugins/{rel_dir}/`"]
+    # A plugin that declares itself in code has no manifest, and linking to the
+    # file it does not have was thirteen "no source file" warnings in the build
+    # and thirteen dead links for the reader.
+    if (plugin_dir / "manifest.json").is_file():
+        out.append(f"- Manifest: {{src}}`chisurf/plugins/{rel_dir}/manifest.json`")
     for v in views:
         out.append(f"- UI spec: {{src}}`{v.relative_to(REPO_ROOT)}`")
     out.append("")
@@ -385,7 +457,17 @@ def _plugin_page(manifest: dict, plugin_dir: pathlib.Path, registry_params: dict
 
 def _parameter_glossary(registry: dict) -> str:
     params = registry.get("parameters", {})
-    out = ["(reference-parameters)=", "# Parameter glossary", "",
+    out = [okf.render_front_matter({
+               "type": "Reference",
+               "title": "Parameter glossary",
+               "description": "Every named fit/model parameter known to ChiSurf, with its "
+                              "meaning and the analysis contexts it appears in.",
+               "resource": "chisurf/core/settings/constants/parameter_registry.json",
+               "tags": ["reference", "parameters", "fitting", "glossary"],
+               "anchor": "reference-parameters",
+               "generator": "build_tools/docs/generate_plugin_docs.py",
+           }).rstrip("\n"), "",
+           "(reference-parameters)=", "# Parameter glossary", "",
            "Every named fit/model parameter known to ChiSurf, with its meaning "
            "and the analysis contexts it appears in. Generated from the parameter "
            "registry (`chisurf/core/settings/constants/parameter_registry.json`), "
@@ -439,7 +521,9 @@ def generate() -> None:
         manifest = {
             "id": pid,
             "display_name": info.get("plugin_name", pid),
-            "description": (info.get("description") or "").strip().split("\n\n")[0],
+            "description": _docstring_summary(
+                info.get("description") or "", info.get("plugin_name"), pid
+            ),
             "menu_hidden": bool(info.get("menu_hidden")),
             "_no_manifest": True,
         }
@@ -450,7 +534,15 @@ def generate() -> None:
             (leaf, pid, manifest["description"], manifest["menu_hidden"]))
         written += 1
 
-    idx = ["# Plugin catalogue", "",
+    idx = [okf.render_front_matter({
+               "type": "Index",
+               "title": "Plugin catalogue",
+               "description": "Every discoverable ChiSurf plugin, grouped by its menu category, "
+                              "with a link to its reference page.",
+               "tags": ["reference", "plugins", "catalogue"],
+               "generator": "build_tools/docs/generate_plugin_docs.py",
+           }).rstrip("\n"), "",
+           "# Plugin catalogue", "",
            "Every discoverable ChiSurf plugin, grouped by its menu category. Each "
            "page gives the plugin's identity, its editable parameters, and its "
            "JSON-RPC surface.", "",

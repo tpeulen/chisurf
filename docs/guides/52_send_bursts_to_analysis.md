@@ -1,3 +1,10 @@
+---
+type: Guide
+title: Sending a gated burst population to FCS, TCSPC, PDA or PCH
+description: Exploring a burst parameter space in ndX tells you where the populations are.
+tags: [guides, bursts, fcs, tcspc, pda]
+---
+
 # Sending a gated burst population to FCS, TCSPC, PDA or PCH
 
 Exploring a burst parameter space in ndX tells you *where* the populations are.

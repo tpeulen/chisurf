@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Drift Correction
+description: Measure and remove inter-frame sample drift in TIFF stacks and photon-stream images. Photon streams are corrected photon by photon, so lifetimes and correlations stay valid.
+resource: chisurf/plugins/microscopy/img_drift/
+tags: [reference, plugins, img-drift, imaging]
+anchor: plugin-img_drift
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-img_drift)=
 # Drift Correction
 

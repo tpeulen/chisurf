@@ -1,3 +1,13 @@
+---
+type: Reference
+title: Parameter glossary
+description: Every named fit/model parameter known to ChiSurf, with its meaning and the analysis contexts it appears in.
+resource: chisurf/core/settings/constants/parameter_registry.json
+tags: [reference, parameters, fitting, glossary]
+anchor: reference-parameters
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (reference-parameters)=
 # Parameter glossary
 

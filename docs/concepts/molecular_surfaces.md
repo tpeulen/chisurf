@@ -1,3 +1,11 @@
+---
+type: Concept
+title: Molecular surfaces and solvent accessibility
+description: 'Whether a residue is on the outside of a protein decides a great deal of what can be done to it: which side chains a maleimide can reach, how freely a tethered dye will sample its accessible volume…'
+tags: [concepts, molecular, surfaces]
+anchor: concept-molecular-surfaces
+---
+
 (concept-molecular-surfaces)=
 # Molecular surfaces and solvent accessibility
 

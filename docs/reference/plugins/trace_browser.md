@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Trace Browser
+description: Browse PTU/TTTR intensity traces from a folder, rate and annotate files, preview traces, and export selected traces.
+resource: chisurf/plugins/tttr/trace_browser/
+tags: [reference, plugins, trace-browser, spectroscopy, single-molecule]
+anchor: plugin-trace_browser
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-trace_browser)=
 # Trace Browser
 

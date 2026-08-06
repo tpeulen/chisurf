@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Wizards
+description: Hub that lists ChiSurf's guided wizards and embeds the selected one in a two-panel view.
+resource: chisurf/plugins/core/wizards/
+tags: [reference, plugins, wizards, main, tools]
+anchor: plugin-wizards
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-wizards)=
 # Wizards
 

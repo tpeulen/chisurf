@@ -1,3 +1,11 @@
+---
+type: Concept
+title: 'FCS: the correlation curve and its models'
+description: Fluorescence correlation spectroscopy (FCS) measures the temporal autocorrelation of fluorescence-intensity fluctuations as molecules diffuse through a small confocal detection volume.
+tags: [concepts, fcs, correlation]
+anchor: concept-fcs-correlation
+---
+
 (concept-fcs-correlation)=
 # FCS: the correlation curve and its models
 

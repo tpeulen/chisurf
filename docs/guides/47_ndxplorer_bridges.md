@@ -1,3 +1,10 @@
+---
+type: Guide
+title: 'From a selection to a fit: the ndX analysis bridges'
+description: Gating a population in ndX isolates a species; a bridge then hands that species' photons to a full ChiSurf fit.
+tags: [guides, fitting, ndxplorer, bridges]
+---
+
 # From a selection to a fit: the ndX analysis bridges
 
 :::{admonition} Theory

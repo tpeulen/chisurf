@@ -14,6 +14,17 @@
 # A screenshot's recipe must name the tool, the data it was driven with and the
 # state it was in, so it can be retaken without guessing.
 
+guides/figures/ask_the_documentation.png:
+  caption: The Ask panel beside the page it cited.
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_ask_the_documentation
+  pages:
+  - docs/guides/70_ask_the_documentation.md
+  recipe: 'QT_QPA_PLATFORM=offscreen PYTHONPATH=. python docs/guides/make_screenshots.py.
+    The help browser is opened on docs/concepts/accurate_fret.md with the Ask panel
+    shown; the conversation is placed rather than run, because a live answer would
+    differ with whichever model the machine has configured and the figure could not
+    be regenerated.'
 guides/figures/2cde.png:
   caption: FRET-2CDE separates static from dynamic bursts.
   kind: plot

@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: '{{ cookiecutter.plugin_display_name }}'
+description: '{{ cookiecutter.plugin_description }}'
+resource: chisurf/plugins/cookiecutter-chisurf-plugin/{{cookiecutter.plugin_name}}/
+tags: [reference, plugins, '{{ cookiecutter.plugin-name }}', '{{-cookiecutter.plugin_category-}}']
+anchor: plugin-{{ cookiecutter.plugin_name }}
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-{{ cookiecutter.plugin_name }})=
 # {{ cookiecutter.plugin_display_name }}
 
@@ -21,4 +31,4 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 ## Source
 
 - Plugin package: `chisurf/plugins/cookiecutter-chisurf-plugin/{{cookiecutter.plugin_name}}/`
-- Manifest: `chisurf/plugins/cookiecutter-chisurf-plugin/{{cookiecutter.plugin_name}}/manifest.json`
+- Manifest: {src}`chisurf/plugins/cookiecutter-chisurf-plugin/{{cookiecutter.plugin_name}}/manifest.json`

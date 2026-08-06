@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Games
+description: 'A collection of built-in games: Number Quest, Minesweeper, Tetris, Pong, and Breakout.'
+resource: chisurf/plugins/misc/games/
+tags: [reference, plugins, games, tools, miscellaneous]
+anchor: plugin-games
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-games)=
 # Games
 

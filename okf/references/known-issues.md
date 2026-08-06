@@ -2546,3 +2546,39 @@ Qt-freeness in the server's import path, and unifying it is a wider change than
 the GUI work that surfaced the defect. Until then, **a change to one builder must
 be made to the other**, and the record is
 [core tools](../plugins/core-tools.md#global-view-the-parameter-network).
+
+## The documentation assistant has never answered a question from a real model
+
+**2026-08-06.** `chisurf/plugins/core/help/api/ask.py` and everything behind it
+are covered by scripted-model tests (the restricted registry, the citation
+collection, the panel's rendering of an answer, a no-read answer and a
+failure), and the retrieval underneath is covered by asserting *which page*
+comes back for a question. What has **not** happened is one end-to-end run
+against a live provider: on the machine this was built on, the configured
+Mistral key expired the same day (HTTP 401, "Your API key expired on
+2026-08-06") and the OpenRouter account has no credit (HTTP 402, "can only
+afford 213" of the 4096 reserved tokens). Both error paths are reported
+clearly, which is itself worth something, but the *answer* path has only ever
+run against `ScriptedLLM`.
+
+What that leaves unknown is not the plumbing — it is whether the prompt and the
+`answer-from-docs` skill actually make a model browse before it answers rather
+than answering from memory and citing nothing. The measurement is exactly the
+one the panel already shows: run `csc help ask "what does the gamma factor
+correct for?"` with a working key and check that `answer.pages` is non-empty
+and names `docs/concepts/accurate_fret.md`. If it comes back empty, the fix is
+in the skill, not in the harness.
+
+## An in-flight rename left `test_an_ambiguous_model_name_asks_for_the_full_one` red
+
+**2026-08-06.** `test/agent/test_tools.py` fails in the working tree, and it is
+not this change: another instance is renaming the TCSPC model from
+`"Lifetime (new)"` to `"Lifetime"` and applied the rename mechanically to the
+ambiguity fixture, which turned a prefix-only case into an exact-match one.
+With the registry `["Lifetime", "Lifetime mixer"]`, asking for `"Lifetime"` is
+not ambiguous — `resolve_model_name` finds an exact match and returns it, which
+is the documented and correct precedence. The test is the defect, not the code:
+the fixture needs a registry where no exact match exists (`["Lifetime ",
+"Lifetime mixer"]`, as it effectively was before). Left alone here because the
+file has another instance's uncommitted edits in it.
+

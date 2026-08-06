@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Spectra Downloader
+description: Download, browse and push optical-component spectra (fluorophores, filters, dichroics, detectors, light sources)
+resource: chisurf/plugins/spectra_downloader/
+tags: [reference, plugins, spectra-downloader, spectroscopy, spectra]
+anchor: plugin-spectra_downloader
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-spectra_downloader)=
 # Spectra Downloader
 

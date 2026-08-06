@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Save Topol
+description: Save topology or first-frame structure files from trajectories.
+resource: chisurf/plugins/traj/traj_save_topology/
+tags: [reference, plugins, traj-save-topology, structure, trajectory]
+anchor: plugin-traj_save_topology
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-traj_save_topology)=
 # Save Topol
 

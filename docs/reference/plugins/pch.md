@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: PCH
+description: Photon Counting Histogram (PCH) analysis for single-molecule fluorescence data. Compute PCH histograms from TTTR files and fit multi-species models to extract molecular brightness and occupancy.
+resource: chisurf/plugins/pch/
+tags: [reference, plugins, pch, spectroscopy, single-molecule]
+anchor: plugin-pch
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-pch)=
 # PCH
 

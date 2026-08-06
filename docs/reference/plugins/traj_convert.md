@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Convert
+description: Convert molecular dynamics trajectory files between supported formats.
+resource: chisurf/plugins/traj/traj_convert/
+tags: [reference, plugins, traj-convert, structure, trajectory]
+anchor: plugin-traj_convert
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-traj_convert)=
 # Convert
 

@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: FCS Definitions
+description: FCS channel definition plugin per detector setup
+resource: chisurf/plugins/fcs/fcs_channel_preset/
+tags: [reference, plugins, fcs-channel-preset, setup]
+anchor: plugin-fcs_channel_preset
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-fcs_channel_preset)=
 # FCS Definitions
 

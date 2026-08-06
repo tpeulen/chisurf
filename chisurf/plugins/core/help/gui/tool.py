@@ -68,7 +68,8 @@ import chisurf.core.settings
 from chisurf.core.info import help_url
 from chisurf.gui import dialogs
 from chisurf.gui.glyphs import Glyphs
-from chisurf.plugins.core.help.api import review, toc as toc_api
+from chisurf.plugins.core.help.api import markdown as md_api, review, toc as toc_api
+from chisurf.plugins.core.help.gui.ask_panel import AskPanel
 from chisurf.plugins.core.help.gui.client import HelpClient
 
 logger = logging.getLogger(__name__)
@@ -595,9 +596,20 @@ class HelpWidget(QMainWindow):
         right_layout.addWidget(self.editor, 1)
 
         splitter.addWidget(right_panel)
+
+        # The tree and the search box both assume the reader knows roughly
+        # where the answer is. The Ask panel is for when they do not; it is a
+        # third column rather than a dialog, so an answer and the page it
+        # cites are on screen together.
+        self.ask_panel = AskPanel(self.client)
+        self.ask_panel.pageRequested.connect(self._on_ask_page_requested)
+        self.ask_panel.setVisible(False)
+        splitter.addWidget(self.ask_panel)
+
         splitter.setStretchFactor(0, 0)
         splitter.setStretchFactor(1, 1)
-        splitter.setSizes([300, 900])
+        splitter.setStretchFactor(2, 0)
+        splitter.setSizes([300, 900, 0])
         layout.addWidget(splitter, 1)
         self.splitter = splitter
 
@@ -655,6 +667,16 @@ class HelpWidget(QMainWindow):
         vid_action = toolbar.addAction("🎬  Videos")
         vid_action.setToolTip("Open the ChiSurf video tutorials")
         vid_action.triggered.connect(self._open_video_tutorials)
+
+        toolbar.addSeparator()
+        self.ask_btn = toolbar.addAction("💬  Ask")
+        self.ask_btn.setCheckable(True)
+        self.ask_btn.setToolTip(
+            "Ask the documentation a question in plain words (Ctrl+Shift+A). "
+            "The answer names the pages it came from. Needs an AI provider "
+            "configured in Settings → AI."
+        )
+        self.ask_btn.toggled.connect(self._on_ask_toggled)
 
         spacer = QWidget()
         spacer.setSizePolicy(
@@ -756,6 +778,7 @@ class HelpWidget(QMainWindow):
             (QKeySequence.Back, self.go_back),
             (QKeySequence.Forward, self.go_forward),
             (QKeySequence("Alt+Home"), self.show_home),
+            (QKeySequence("Ctrl+Shift+A"), self.show_ask_panel),
             (QKeySequence.ZoomIn, lambda: self.zoom(+1)),
             (QKeySequence("Ctrl+="), lambda: self.zoom(+1)),
             (QKeySequence("Ctrl++"), lambda: self.zoom(+1)),
@@ -1107,6 +1130,9 @@ class HelpWidget(QMainWindow):
             raw = path.read_text(encoding="utf-8")
         except Exception:
             return None
+        # The OKF header is metadata: matching it is fine, quoting it back at
+        # the reader as a result excerpt is not.
+        raw = md_api.strip_front_matter(raw)
         headings = "\n".join(
             match.group(1)
             for match in re.finditer(r"^#{1,6}\s+(.+)$", raw, re.M)
@@ -1318,6 +1344,40 @@ class HelpWidget(QMainWindow):
         self._history.append(entry)
         self._history_index = len(self._history) - 1
         self._update_history_buttons()
+
+    # ── the Ask panel ───────────────────────────────────────────────
+
+    def _on_ask_toggled(self, checked: bool):
+        """Show or hide the question panel, keeping the reading column wide."""
+        self.ask_panel.setVisible(checked)
+        total = sum(self.splitter.sizes()) or self.width()
+        if checked:
+            panel = max(340, int(total * 0.3))
+            tree = self.splitter.sizes()[0] or 300
+            self.splitter.setSizes([tree, max(200, total - tree - panel), panel])
+            self.ask_panel.input.setFocus()
+        else:
+            tree = self.splitter.sizes()[0] or 300
+            self.splitter.setSizes([tree, max(200, total - tree), 0])
+
+    def show_ask_panel(self):
+        """Open the question panel and put the cursor in it."""
+        self.ask_btn.setChecked(True)
+
+    def _on_ask_page_requested(self, document: str, section: str):
+        """Open a page the assistant cited.
+
+        The identifier is bundle-relative (``docs/concepts/fret.md``), which is
+        what the index reports and what the reader sees; it is resolved here
+        rather than in the panel, because navigation belongs to the browser.
+        """
+        from chisurf.core.agent import doc_index
+
+        path = doc_index.resolve(document)
+        if path is None:
+            return
+        anchor = md_api.slugify_heading(section) if section else None
+        self.navigate(pathlib.Path(path), anchor)
 
     def navigate(self, file_path: pathlib.Path, anchor: Optional[str] = None):
         """Open a page **and record it in the history**.

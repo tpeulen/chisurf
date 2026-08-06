@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Tetris
+description: Classic Tetris game with line clearing, score tracking, and next-piece preview; contained in the Games hub.
+resource: chisurf/plugins/misc/games/tetris/
+tags: [reference, plugins, tetris, tools, miscellaneous, games]
+anchor: plugin-tetris
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-tetris)=
 # Tetris
 

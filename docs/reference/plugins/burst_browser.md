@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Burst Browser
+description: Inspect burstwise analysis tables and plots.
+resource: chisurf/plugins/burst/burst_browser/
+tags: [reference, plugins, burst-browser, spectroscopy, single-molecule]
+anchor: plugin-burst_browser
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-burst_browser)=
 # Burst Browser
 

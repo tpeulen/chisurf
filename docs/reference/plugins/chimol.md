@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: ChiMOL
+description: Molecular structure viewer and protein analysis plugin for ChiSurf.
+resource: chisurf/plugins/chimol/
+tags: [reference, plugins, chimol, structure, molecular-viewer]
+anchor: plugin-chimol
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-chimol)=
 # ChiMOL
 

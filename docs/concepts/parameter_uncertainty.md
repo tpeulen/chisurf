@@ -1,3 +1,11 @@
+---
+type: Concept
+title: 'Parameter uncertainty: priors, posteriors and sampling'
+description: 'What a fitted parameter''s error bar means: likelihood surfaces, priors and posteriors, and the sampling that turns a best value into a credible interval.'
+tags: [concepts, uncertainty, sampling]
+anchor: concept-parameter-uncertainty
+---
+
 (concept-parameter-uncertainty)=
 # Parameter uncertainty: priors, posteriors and sampling
 

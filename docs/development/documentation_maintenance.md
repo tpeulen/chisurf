@@ -1,3 +1,12 @@
+---
+type: Development Note
+title: Refreshing the documentation
+description: 'This page is written for an agent. It is the standing instruction for keeping ChiSurf''s documentation true: what to check, in what order, what counts as evidence, and what must never be done.'
+tags: [development, documentation, maintenance]
+audience: developer
+anchor: documentation-maintenance
+---
+
 (documentation-maintenance)=
 # Refreshing the documentation
 
@@ -21,8 +30,8 @@ Copy this verbatim into a new session when the documentation needs a refresh.
 > You are refreshing the ChiSurf documentation. Work in this order and do not
 > skip a stage:
 >
-> 1. **Run the checks.** `pytest chisurf/plugins/core/help/test` and
->    `python build_tools/docs/make_registers.py --check` and
+> 1. **Run the checks.** `pytest chisurf/plugins/core/help/test test/test_docs_okf.py`
+>    and `python build_tools/docs/make_registers.py --check` and
 >    `python build_tools/docs/make_bibliography.py --check` and
 >    `python -m sphinx -b html -q docs <tmp>`. Every failure is a defect in the
 >    documentation, not in the checks. Fix them before anything else.
@@ -35,7 +44,8 @@ Copy this verbatim into a new session when the documentation needs a refresh.
 >    `python docs/guides/make_figures.py`, GUI screenshots with
 >    `QT_QPA_PLATFORM=offscreen PYTHONPATH=. python docs/guides/make_screenshots.py`,
 >    the plugin catalogue with `python build_tools/docs/generate_plugin_docs.py`,
->    then the registers and the Literature page.
+>    then the registers, the Literature page and
+>    `python build_tools/docs/okf_frontmatter.py`.
 > 4. **Verify every screenshot you touched by looking at it.** Open the PNG and
 >    read it. A screenshot that does not show what its caption claims is worse
 >    than no screenshot. If the interface has changed, retake it from the recipe
@@ -50,6 +60,60 @@ Copy this verbatim into a new session when the documentation needs a refresh.
 ---
 
 ## Rules
+
+### The page header
+
+**Every Markdown page carries a short OKF header, and it is generated.**
+
+```yaml
+---
+type: Guide
+title: Fusing bursts the same molecule produced
+description: A burst folder in which one passage through the confocal spot is one burst…
+tags: [guides, bursts, fusion]
+anchor: guide-burst-fusion
+---
+```
+
+`docs/` is an [Open Knowledge Format](https://github.com/GoogleCloudPlatform/knowledge-catalog)
+bundle: a corpus a machine can navigate, not only a website. The header is what
+makes it one, and it is read by the assistant behind the help browser's **Ask**
+panel ({ref}`the guide <guide-ask-the-documentation>`), which routes a question
+to a *kind* of page — a `Concept` explains, a `Guide` instructs, a
+`Plugin Reference` enumerates controls — before it reads anything. Without a
+header the page is reachable only by matching the reader's words against its
+words, which is exactly the lookup that fails.
+
+The header is **metadata and never prose**: Sphinx keeps it out of the rendered
+HTML and the help browser strips it, so a reader never sees it.
+
+Do not write one by hand. {src}`build_tools/docs/okf_frontmatter.py` derives it
+from the page — `type` from the directory, `title` from the first heading,
+`description` from the lead paragraph, `tags` from the name and title — and
+writes it in:
+
+```bash
+python build_tools/docs/okf_frontmatter.py            # write, keeping hand edits
+python build_tools/docs/okf_frontmatter.py --check     # fail on a page without one
+python build_tools/docs/okf_frontmatter.py --refresh   # re-derive every field
+```
+
+Rules that follow from this:
+
+* **A hand-edited field survives a re-run**, so improve a description that reads
+  badly — the derivation takes the author's first sentence, which is usually
+  right and occasionally is a sentence about something else. `--refresh`
+  discards those edits; use it only when the derivation itself changed.
+* **A generated page's header comes from its generator**, not from the injector
+  — {src}`build_tools/docs/generate_plugin_docs.py`,
+  {src}`build_tools/docs/make_registers.py`,
+  {src}`build_tools/docs/make_bibliography.py`. Injecting one would be
+  overwritten by the next regeneration.
+* **`okf_version` lives only in `docs/index.md`**, the bundle root, and is
+  quoted (unquoted, `0.10` would read as `0.1`).
+* `test/test_docs_okf.py` is the guardrail: it fails on a page with no header,
+  on a header with no `type`, on a description too thin to rank on, and on a
+  title that disagrees with the page's first heading.
 
 ### Figures
 
@@ -180,6 +244,8 @@ carried, so add the suffix there rather than working around it.
 | Command | What it protects |
 | --- | --- |
 | `pytest chisurf/plugins/core/help/test` | Rendering, structure, cross-references, citations, code blocks |
+| `pytest test/test_docs_okf.py` | Every page carries a conformant OKF header, and it never reaches the reader |
+| `python build_tools/docs/okf_frontmatter.py --check` | The same, as a build step |
 | `python build_tools/docs/make_registers.py --check` | The figure, table and code registers are current |
 | `python build_tools/docs/make_bibliography.py --check` | The Literature page matches the bibliography |
 | `python -m sphinx -b html -q docs <out>` | The published site builds without a warning |

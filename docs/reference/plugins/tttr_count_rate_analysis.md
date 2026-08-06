@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Count Rate Analysis
+description: Count rates per detector channel across many TTTR files, with mean/std and a per-file plot.
+resource: chisurf/plugins/tttr/tttr_count_rate_analysis/
+tags: [reference, plugins, tttr-count-rate-analysis, tools, tttr, analysis]
+anchor: plugin-tttr_count_rate_analysis
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-tttr_count_rate_analysis)=
 # Count Rate Analysis
 

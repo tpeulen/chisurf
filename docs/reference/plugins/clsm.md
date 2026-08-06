@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: CLSM-Draw
+description: Create CLSM-TTTR image representations, select pixels interactively, and export fluorescence-decay histograms.
+resource: chisurf/plugins/microscopy/clsm/
+tags: [reference, plugins, clsm, imaging, lifetime]
+anchor: plugin-clsm
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-clsm)=
 # CLSM-Draw
 

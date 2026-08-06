@@ -1,3 +1,10 @@
+---
+type: Guide
+title: RCM from FRET-labelled samples (PIE/ALEX)
+description: The dye-solution RCM calibration needs separate donor-only and acceptor-only reference solutions.
+tags: [guides, fret, samples]
+---
+
 # RCM from FRET-labelled samples (PIE/ALEX)
 
 :::{admonition} Theory

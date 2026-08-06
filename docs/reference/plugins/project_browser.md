@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Open Project
+description: Browse, save, restore, export, and import Chisurf projects using the MMFDB database with version control.
+resource: chisurf/plugins/core/project_browser/
+tags: [reference, plugins, project-browser, tools, project]
+anchor: plugin-project_browser
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-project_browser)=
 # Open Project
 

@@ -7,6 +7,7 @@ from typing import Any
 
 from chisurf.plugins.core.help.api import review
 from chisurf.plugins.core.help.api.contract import (
+    METHOD_ASK,
     METHOD_CONTRACT,
     METHOD_LIST_DOCS,
     METHOD_READ_DOC,
@@ -188,6 +189,30 @@ def _review_check_handler() -> dict:
         return service_error(str(exc), "REVIEW_FAILED")
 
 
+def _ask_handler(params: dict) -> dict:
+    """Answer a question out of the documentation.
+
+    The heavy part — a language-model round trip and several page reads — runs
+    on the backend, so the GUI client stays a thin caller and the same answer
+    is reachable from the CLI and from a script.
+    """
+    question = (params or {}).get("question", "")
+    if not question:
+        return service_error("question is required", "INVALID_PARAMS")
+    try:
+        from chisurf.plugins.core.help.api import ask as ask_api
+
+        answer = ask_api.ask(
+            question,
+            model=(params or {}).get("model", ""),
+            provider=(params or {}).get("provider", ""),
+        )
+        return service_success(answer.to_dict())
+    except Exception as exc:
+        _log.exception("help.docs.ask failed")
+        return service_error(str(exc), "ASK_FAILED")
+
+
 def _contract_handler() -> dict:
     return service_success(contract_descriptor())
 
@@ -205,6 +230,7 @@ def register_services(dispatcher: Any) -> None:
     dispatcher.register(METHOD_READ_DOC, _read_doc_handler)
     dispatcher.register(METHOD_SAVE_DOC, _save_doc_handler)
     dispatcher.register(METHOD_SEARCH_DOCS, _search_docs_handler)
+    dispatcher.register(METHOD_ASK, _ask_handler)
     dispatcher.register(METHOD_CONTRACT, lambda params: _contract_handler())
     dispatcher.register(METHOD_REVIEW_STATUS, _review_status_handler)
     dispatcher.register(METHOD_REVIEW_SET, _review_set_handler)

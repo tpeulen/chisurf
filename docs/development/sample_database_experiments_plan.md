@@ -1,3 +1,11 @@
+---
+type: Development Note
+title: Sample Database Experiments Plan
+description: Extend the built-in ChiSurf sample database from a sample/probe registry into a lightweight LIMS that preserves links between samples, experiments, operators, devices, metadata, and raw experimental data.
+tags: [development, database, mmfdb]
+audience: developer
+---
+
 # Sample Database Experiments Plan
 
 ## Goal

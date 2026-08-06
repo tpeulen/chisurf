@@ -1,3 +1,10 @@
+---
+type: Guide
+title: ns-FCS second-order correlation
+description: The ordinary (pair) correlation function $g^{(2)}(tau)$ measures two-photon coincidences.
+tags: [guides, fcs, correlation]
+---
+
 # ns-FCS second-order correlation
 
 :::{admonition} Theory

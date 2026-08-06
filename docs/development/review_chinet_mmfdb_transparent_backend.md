@@ -1,3 +1,11 @@
+---
+type: Development Note
+title: 'Review and Updated PRD: chinet MMFDB Transparent Backend'
+description: 'Out of scope for this review:'
+tags: [development, database, mmfdb]
+audience: developer
+---
+
 # Review and Updated PRD: chinet MMFDB Transparent Backend
 
 Date: 2026-06-13

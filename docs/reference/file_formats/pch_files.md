@@ -1,3 +1,10 @@
+---
+type: File Format
+title: PCH TTTR files
+description: This section describes how to load Photon Counting Histogram (PCH) data from TTTR files into ChiSurf using the PCH experiment.
+tags: [reference, file-formats, tttr, photons]
+---
+
 # PCH TTTR files {#pch-tttr}
 
 This section describes how to load Photon Counting Histogram (PCH) data from

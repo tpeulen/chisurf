@@ -1,3 +1,11 @@
+---
+type: Development Note
+title: ChiSurf Client-Server Architecture
+description: This is the current architecture reference for ChiSurf's headless server and hybrid GUI/server migration.
+tags: [development, architecture, client, server]
+audience: developer
+---
+
 # ChiSurf Client-Server Architecture
 
 This is the current architecture reference for ChiSurf's headless server and

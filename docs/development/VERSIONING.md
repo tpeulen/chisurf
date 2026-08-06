@@ -1,3 +1,11 @@
+---
+type: Development Note
+title: Versioning
+description: ChiSurf uses a simplified versioning scheme that remains PEP 440 compatible for pip/conda.
+tags: [development, versioning]
+audience: developer
+---
+
 # Versioning
 
 ChiSurf uses a simplified versioning scheme that remains **PEP 440** compatible for pip/conda.

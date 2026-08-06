@@ -7,6 +7,41 @@ tags: [agent, llm, tools, automation, assistant]
 timestamp: '2026-07-25T00:00:00Z'
 ---
 
+# Where to pick this up
+
+1. **The documentation assistant has never run against a real model.** The
+   harness, the restricted registry, the citation collection and the retrieval
+   are all tested; the *answer* path has only ever seen `ScriptedLLM`, because
+   both providers configured on the build machine were unusable on the day
+   (expired key, no credit). The measurement, once a key works:
+   `csc help ask "what does the gamma factor correct for?"` and check that
+   `answer.pages` is non-empty and names `docs/concepts/accurate_fret.md`. An
+   empty `pages` means the model answered from memory — the fix is then in
+   `skills_builtin/answer-from-docs/SKILL.md`, not in the harness. Recorded in
+   [known issues](/references/known-issues.md).
+2. **Retrieval is judged by which page comes back, and that is the only way to
+   judge it.** `test/agent/test_documentation_tools.py` is the harness: add a
+   `(query, expected_document)` row whenever a question routes wrongly, then
+   fix the ranking. Two traps already paid for — a *listing* page (the figure,
+   table and code registers, the plugin catalogue) names every subject in the
+   documentation and wins a term-frequency search while answering nothing, and
+   an unfiltered natural-language query ranks by how chatty a page is unless
+   the question words are dropped. Both are guarded; a third of the same kind
+   is likely.
+3. **The synonym map in `doc_index.py` is a stub with 17 entries.** It exists
+   because the interface's spelling and the documentation's are not the same
+   word (`chi2r` vs *reduced chi-square*), and every entry was added from a
+   query that missed. It is worth growing from real questions rather than from
+   imagination — the parameter glossary
+   (`docs/reference/parameters.md`) is the obvious source, since it already
+   pairs a control's label with its meaning.
+4. **`browse_documentation` truncates at 60 entries with nowhere to go.** It
+   sets `truncated: true`, so the omission is not silent, but there is no
+   second page and no way to ask for the rest — a tag like `plugins` (168
+   pages) shows the first 60 sorted by kind and title, which is an arbitrary
+   third of them. Either page the listing or have the tool refuse and demand a
+   narrower filter.
+
 # What it is
 
 `chisurf/core/agent/` is the harness that lets a language model operate
@@ -29,8 +64,11 @@ fix. Nothing is left to be guessed.
 * `context.py` — `AgentContext`: working directory, code-execution policy,
   confirmation and event callbacks, and the resolution of loose references
   ("the second fit", a file name, an index) to real session objects.
+* `doc_index.py` — the map of the documentation, built from the
+  Open-Knowledge-Format header every page carries (see below).
 * `tools/` — the catalogue: `data.py` (find files, load them, describe
-  experiments/readers/models), `fitting.py` (create, run, inspect, edit,
+  experiments/readers/models), `documentation.py` (browse, search and read the
+  documentation by kind and subject), `fitting.py` (create, run, inspect, edit,
   export), `decay.py` (the knobs that decide whether a decay fit means
   anything: IRF, component count, quality report, plot, and the one-call
   expert protocol), `scripting.py` (`run_python` in the live session,
@@ -234,9 +272,71 @@ Six concepts so far — the session model, TCSPC decays, FRET from lifetimes,
 correlation spectroscopy, measurement files, uncertainty and model choice —
 each with OKF frontmatter and each checkable against the program. Skills link
 into it instead of repeating background, which is what keeps a skill a
-procedure. It is searched with the repository documentation through
-`search_docs`/`read_doc` and ranked slightly above it, since it is written
+procedure. It is searched with the repository documentation through the
+`documentation` tool group and ranked slightly above it, since it is written
 for this purpose and is deliberately concise.
+
+# Answering *out of* the documentation
+
+Driving the program and explaining it are different jobs, and for a while they
+shared one badly-shaped tool. `search_docs` ranked ~570 markdown files by term
+frequency, which put the figure register — a page that names every subject in
+the documentation and explains none — at the top of most queries, and put a
+developer note about a migration next to the guide a user actually wanted.
+
+The fix was to give the corpus a header and rank on it.
+`chisurf/core/agent/doc_index.py` reads the Open-Knowledge-Format front matter
+every page now carries (`docs/`, `okf/` and the assistant's own bundle) and
+builds a cached index over it. Four things it can do that a text search cannot:
+
+* **route by kind before reading.** A `Concept` explains, a `Guide` instructs,
+  a `Plugin Reference` enumerates controls, a `Development Note` is about the
+  code. "What does X mean" and "how do I X" are different pages and the header
+  says which is which.
+* **cross the directories by tag.** The FRET concept, the FRET guides and the
+  FRET plugin pages share a tag and nothing else.
+* **hold a corpus map in one tool result.** ~570 one-line descriptions is a
+  listing the model can *choose* from rather than guess at.
+* **keep a user's question out of the developer pages.** `user_only` is the
+  boundary between using ChiSurf and changing it.
+
+Three ranking rules earn their keep, each from a query that went wrong:
+question words (`what`, `does`, `how`, `mean`) are dropped or the two chattiest
+guides win every query; **listing pages** — more than half their lines a table
+row — are scored down to 0.3, or the registers win everything; and a small
+synonym map bridges the interface's spelling and the documentation's
+(`chi2r` → *reduced chi-square*, `irf` → *instrument response*).
+
+The `documentation` tool group is `browse_documentation` (the map),
+`search_documentation` and `read_documentation` (a page, or one `section` of
+it, plus the pages related by tag). `scope` picks the corpus: `user` (default),
+`code` (`okf/`), or `all`. `knowledge.search_prose` now delegates here, so
+there is **one** implementation of "find the right page" — the codebase group's
+own `search_docs`/`read_doc` were deleted rather than left to compete with it.
+
+The `answer-from-docs` skill carries the procedure and, more importantly, the
+rule: **a claim about ChiSurf comes from a page, and the answer says which**.
+A model's own knowledge of the fluorescence literature is not knowledge of
+*this program*, and a plausible wrong menu path sends the user looking for a
+control that is not there.
+
+## The documentation assistant
+
+`chisurf/plugins/core/help/api/ask.py` is that agent with everything else taken
+away: a registry holding the three documentation tools and nothing more, capped
+at the read tier, eight steps. It cannot load data, fit, run Python or write a
+file — enforced by the registry, not by the prompt, so a question phrased as an
+instruction cannot talk it into doing so.
+
+The pages it cites are **collected from the tool invocations**, not from the
+model's own footnotes, which it will happily invent. An answer with no read
+behind it is reported as such rather than dressed up as sourced — the help
+browser's panel says so in orange.
+
+Three surfaces, one implementation: the **Ask** panel in the help browser
+(`gui/ask_panel.py`, a third column beside the page, on a worker thread), the
+`help.docs.ask` RPC method, and `csc help ask "…"`. Documented for users in
+`docs/guides/70_ask_the_documentation.md`.
 
 # Making the answer *correct*, not just produced
 
@@ -310,8 +410,9 @@ the right way is*, which signatures never carry. Changelogs are excluded from
 the prose search: they mention everything and answer nothing, and by raw hit
 count they win every query.
 
-The `codebase` tool group exposes this as `search_api`, `read_api_source`,
-`search_docs`, `read_doc`, `list_plugins` and `check_python`, all read-tier —
+The `codebase` tool group exposes the index as `search_api`,
+`read_api_source`, `list_plugins` and `check_python`; the prose is reached
+through the `documentation` group with `scope="code"` (below). All read-tier —
 looking something up is free, guessing is expensive. The `program-chisurf`
 skill carries the conventions: core stays Qt-free, state goes through the
 action layer, every function takes a NumPy-style docstring, a material change
@@ -401,6 +502,15 @@ scripted model (`ScriptedLLM`), and the client against fake HTTP responses.
 it is marked `live_llm` and skips unless an API key is configured. The GUI
 panel has widget tests in
 `chisurf/plugins/core/code_editor/test/test_agent_panel_widget.py`.
+
+The documentation side is tested where retrieval can actually be judged:
+`test/agent/test_documentation_tools.py` asserts *which page comes back* for a
+question (23 tests, including that the registers never win a search and that a
+user's question is never answered from a developer note), and
+`chisurf/plugins/core/help/test/test_ask.py` +
+`test_ask_panel.py` drive the assistant end to end against a scripted model —
+that it holds only the three read-only tools, and that it cites the pages it
+read rather than the ones it mentioned.
 
 See also: [API facade](/architecture/api-facade.md),
 [Actions](/subsystems/core.md), [Fitting engine](/subsystems/fitting.md).

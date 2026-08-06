@@ -1,3 +1,10 @@
+---
+type: Guide
+title: FIDA — photon-counting histograms
+description: The photon-counting histogram — how often a time bin contains $k$ photons — carries the molecular brightness and concentration, which an intensity trace alone does not.
+tags: [guides, photons, fida]
+---
+
 # FIDA — photon-counting histograms
 
 :::{admonition} Theory

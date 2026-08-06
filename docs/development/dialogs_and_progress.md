@@ -1,3 +1,11 @@
+---
+type: Development Note
+title: 'Talking to the user: message boxes and progress'
+description: Two things every long-running or fallible piece of ChiSurf has to do — tell the user something went wrong, and show how far the work has got — used to be done four different ways each.
+tags: [development, dialogs, progress]
+audience: developer
+---
+
 # Talking to the user: message boxes and progress
 
 Two things every long-running or fallible piece of ChiSurf has to do — tell the

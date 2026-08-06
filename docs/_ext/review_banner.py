@@ -15,6 +15,7 @@ Set ``review_banner_enabled = False`` in ``conf.py`` to suppress the banners.
 from __future__ import annotations
 
 import pathlib
+import re
 from typing import Any
 
 _BANNER_RST = """\
@@ -23,6 +24,19 @@ _BANNER_RST = """\
    automatically and may contain errors. {detail}
 
 """
+
+#: The same banner in MyST. A page in Markdown was being stamped with the
+#: reStructuredText form, which Markdown does not parse: the directive reached
+#: the reader as the literal text ".. warning::" at the top of the page.
+_BANNER_MYST = """\
+:::{{warning}}
+**This page has not been checked by a human.** It was largely drafted
+automatically and may contain errors. {detail}
+:::
+
+"""
+
+_FRONT_MATTER = re.compile(r"\A---\r?\n.*?\r?\n---\r?\n", re.DOTALL)
 
 _DETAIL = {
     "unreviewed": "It has never been reviewed.",
@@ -59,7 +73,20 @@ def _on_source_read(app, docname: str, source: list) -> None:
     detail = _DETAIL.get(status)
     if detail is None:
         return
-    source[0] = _BANNER_RST.format(detail=detail) + source[0]
+
+    template = _BANNER_MYST if path.endswith(".md") else _BANNER_RST
+    banner = template.format(detail=detail)
+
+    # After the front matter, never before it. A Markdown page carries an
+    # Open-Knowledge-Format header, and MyST only recognises it when the file
+    # *begins* with it — prepending the banner turned the whole header into a
+    # setext heading, so every page's title became its own metadata.
+    text = source[0]
+    match = _FRONT_MATTER.match(text)
+    if match:
+        source[0] = text[: match.end()] + "\n" + banner + text[match.end() :].lstrip("\n")
+    else:
+        source[0] = banner + text
 
 
 def setup(app) -> dict[str, Any]:

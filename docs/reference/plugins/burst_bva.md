@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: BVA
+description: Burst Variance Analysis for single-molecule FRET experiments.
+resource: chisurf/plugins/burst/burst_bva/
+tags: [reference, plugins, burst-bva, spectroscopy, single-molecule]
+anchor: plugin-burst_bva
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-burst_bva)=
 # BVA
 

@@ -1,3 +1,10 @@
+---
+type: Guide
+title: FRET-FCS
+description: Correlating the donor and acceptor signals of freely-diffusing FRET molecules adds dynamics information to FCS. If the molecule inter-converts between FRET states while in the focus…
+tags: [guides, fret, fcs]
+---
+
 # FRET-FCS
 
 :::{admonition} Theory

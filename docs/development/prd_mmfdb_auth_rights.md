@@ -1,3 +1,11 @@
+---
+type: Development Note
+title: 'PRD: MMFDB Authentication, Public Mode, Users, Groups, And Object Rights'
+description: 'Review requirement: this PRD is intentionally explicit.'
+tags: [development, database, mmfdb]
+audience: developer
+---
+
 # PRD: MMFDB Authentication, Public Mode, Users, Groups, And Object Rights
 
 Status date: 2026-06-14

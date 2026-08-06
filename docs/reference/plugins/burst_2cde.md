@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: 2CDE
+description: FRET-2CDE / ALEX-2CDE per-burst dynamics feature (Tomov et al. 2012).
+resource: chisurf/plugins/burst/burst_2cde/
+tags: [reference, plugins, burst-2cde, spectroscopy, single-molecule]
+anchor: plugin-burst_2cde
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-burst_2cde)=
 # 2CDE
 

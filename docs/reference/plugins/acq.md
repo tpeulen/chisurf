@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Acquisition
+description: 'Single-molecule fluorescence acquisition: stream photons from real TCSPC hardware or the built-in tttrlib Sim* photon simulator (confocal diffusion with FRET, anisotropy and photophysics).'
+resource: chisurf/plugins/core/acq/
+tags: [reference, plugins, acq, main, tools, acquisition]
+anchor: plugin-acq
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-acq)=
 # Acquisition
 

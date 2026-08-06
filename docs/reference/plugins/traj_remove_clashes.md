@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Remove Clashed
+description: Remove frames containing steric clashes from trajectories.
+resource: chisurf/plugins/traj/traj_remove_clashes/
+tags: [reference, plugins, traj-remove-clashes, structure, trajectory]
+anchor: plugin-traj_remove_clashes
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-traj_remove_clashes)=
 # Remove Clashed
 

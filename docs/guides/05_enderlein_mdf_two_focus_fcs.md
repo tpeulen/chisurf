@@ -1,3 +1,10 @@
+---
+type: Guide
+title: Enderlein MDF & two-focus FCS
+description: The ordinary FCS models approximate the confocal detection volume by a 3-D Gaussian, which is only a rough description of a real confocal spot.
+tags: [guides, fcs, enderlein, focus]
+---
+
 # Enderlein MDF & two-focus FCS
 
 :::{admonition} Theory

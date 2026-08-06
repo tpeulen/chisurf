@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Rotate/Translate
+description: Apply rigid-body rotation and translation to trajectories.
+resource: chisurf/plugins/traj/traj_rotate_translate/
+tags: [reference, plugins, traj-rotate-translate, structure, trajectory]
+anchor: plugin-traj_rotate_translate
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-traj_rotate_translate)=
 # Rotate/Translate
 

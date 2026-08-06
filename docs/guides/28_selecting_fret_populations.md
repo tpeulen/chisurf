@@ -1,3 +1,10 @@
+---
+type: Guide
+title: Selecting and comparing FRET populations
+description: A single measurement usually contains several sub-populations — different FRET states, donor-only, aggregates.
+tags: [guides, fret, selecting, populations]
+---
+
 # Selecting and comparing FRET populations
 
 :::{admonition} Theory

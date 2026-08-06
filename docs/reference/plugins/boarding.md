@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Boarding Wizard
+description: Startup onboarding wizard for first-run ChiSurf configuration.
+resource: chisurf/plugins/core/boarding/
+tags: [reference, plugins, boarding, help]
+anchor: plugin-boarding
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-boarding)=
 # Boarding Wizard
 

@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: TTTR Tools
+description: 'Unified TTTR toolbox: ALEX Creator, Micro-time Shifter, TTTR Header Editor and Split/Convert.'
+resource: chisurf/plugins/tttr/tttr_toolbox/
+tags: [reference, plugins, tttr-toolbox, tools, tttr]
+anchor: plugin-tttr_toolbox
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-tttr_toolbox)=
 # TTTR Tools
 

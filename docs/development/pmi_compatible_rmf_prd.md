@@ -1,3 +1,11 @@
+---
+type: Development Note
+title: PMI-Compatible RMF Output And Chimol Display PRD
+description: Make all ChiSurf structure-related RMF output PMI-compatible so generated RMF/RMF3 files can be opened correctly in ChimeraX and displayed correctly in Chimol.
+tags: [development, compatible]
+audience: developer
+---
+
 # PMI-Compatible RMF Output And Chimol Display PRD
 
 ## Goal

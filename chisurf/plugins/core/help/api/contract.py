@@ -9,6 +9,7 @@ METHOD_READ_DOC = "help.docs.read"
 METHOD_SAVE_DOC = "help.docs.save"
 METHOD_SEARCH_DOCS = "help.docs.search"
 METHOD_CONTRACT = "help.docs.contract"
+METHOD_ASK = "help.docs.ask"
 METHOD_REVIEW_STATUS = "help.review.status"
 METHOD_REVIEW_SET = "help.review.set"
 METHOD_REVIEW_CHECK = "help.review.check"
@@ -112,6 +113,49 @@ def contract_descriptor() -> Dict[str, Any]:
                                     "title": {"type": "string"},
                                     "match_type": {"type": "string"},
                                 },
+                            },
+                        },
+                    },
+                },
+            },
+            METHOD_ASK: {
+                "summary": (
+                    "Answer a question from the documentation, citing the pages read. "
+                    "Needs a language-model provider configured in Settings -> AI."
+                ),
+                "params": {
+                    "type": "object",
+                    "properties": {
+                        "question": {"type": "string"},
+                        "model": {"type": "string"},
+                        "provider": {"type": "string"},
+                    },
+                    "required": ["question"],
+                },
+                "result": {
+                    "type": "object",
+                    "properties": {
+                        "ok": {"type": "boolean"},
+                        "result": {
+                            "type": "object",
+                            "properties": {
+                                "text": {"type": "string"},
+                                "pages": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "document": {"type": "string"},
+                                            "title": {"type": "string"},
+                                            "type": {"type": "string"},
+                                            "section": {"type": "string"},
+                                        },
+                                    },
+                                },
+                                "searched": {"type": "array", "items": {"type": "string"}},
+                                "steps": {"type": "integer"},
+                                "ok": {"type": "boolean"},
+                                "error": {"type": "string"},
                             },
                         },
                     },

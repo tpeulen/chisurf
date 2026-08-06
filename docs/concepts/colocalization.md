@@ -1,3 +1,11 @@
+---
+type: Concept
+title: 'Colocalization: what the coefficients actually measure'
+description: 'Two colours, one image, one question: do these two species occupy the same structures?'
+tags: [concepts, colocalization]
+anchor: concept-colocalization
+---
+
 (concept-colocalization)=
 # Colocalization: what the coefficients actually measure
 

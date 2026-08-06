@@ -1,3 +1,10 @@
+---
+type: Guide
+title: Multispot (8-spot) smFRET
+description: Multispot excitation splits the beam into several confocal spots imaged onto a detector array, so many molecules are observed in parallel…
+tags: [guides, fret, smfret, bursts]
+---
+
 # Multispot (8-spot) smFRET
 
 :::{admonition} Theory

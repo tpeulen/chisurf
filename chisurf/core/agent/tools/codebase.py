@@ -24,15 +24,6 @@ logger = logging.getLogger(__name__)
 registry = ToolRegistry()
 
 
-def _is_within(path: pathlib.Path, root: pathlib.Path) -> bool:
-    """Return whether *path* sits inside *root*."""
-    try:
-        path.resolve().relative_to(root.resolve())
-    except ValueError:
-        return False
-    return True
-
-
 @registry.add(
     name="search_api",
     description=(
@@ -80,7 +71,7 @@ def search_api(
     if not matches:
         raise ToolError(
             f"nothing in the ChiSurf API matches {query!r}. Try a shorter or "
-            f"different word, or search_docs for the concept."
+            f"different word, or search_documentation for the concept."
         )
     return {
         "ok": True,
@@ -155,93 +146,6 @@ def read_api_source(
         "ok": True,
         **symbol.summary(doc_chars=800),
         "source": source[: context.max_result_chars],
-    }
-
-
-@registry.add(
-    name="search_docs",
-    description=(
-        "Search ChiSurf's own documentation — the architecture concepts and "
-        "the user guides — for how something works or how it should be "
-        "done.\n"
-        "Signatures tell you what exists; this tells you the conventions and "
-        "the reasoning. Use it before designing anything that has to fit into "
-        "the codebase: plugins, models, a new tool."
-    ),
-    parameters={
-        "type": "object",
-        "properties": {
-            "query": {
-                "type": "string",
-                "description": "What to look for, e.g. 'plugin manifest' or 'how fits are stored'.",
-            },
-            "limit": {"type": "integer", "description": "Maximum documents. Default 5."},
-        },
-        "required": ["query"],
-    },
-    safety=SAFETY_READ,
-)
-def search_docs(context: AgentContext, query: str, limit: int = 5) -> dict[str, Any]:
-    """Search the OKF concepts and the guides."""
-    from chisurf.core.agent.knowledge import search_prose
-
-    hits = search_prose(query, limit=limit)
-    if not hits:
-        raise ToolError(
-            f"the documentation has nothing on {query!r}. Try search_api for a "
-            f"symbol, or different words."
-        )
-    return {"ok": True, "query": query, "n_results": len(hits), "documents": hits}
-
-
-@registry.add(
-    name="read_doc",
-    description=(
-        "Read one of ChiSurf's documentation files in full, by the path search_docs reported."
-    ),
-    parameters={
-        "type": "object",
-        "properties": {
-            "document": {
-                "type": "string",
-                "description": "Repository-relative path, e.g. 'okf/subsystems/fitting.md'.",
-            },
-            "max_lines": {"type": "integer", "description": "Maximum lines. Default 250."},
-        },
-        "required": ["document"],
-    },
-    safety=SAFETY_READ,
-)
-def read_doc(context: AgentContext, document: str, max_lines: int = 250) -> dict[str, Any]:
-    """Return the text of a documentation file."""
-    from chisurf.core.agent.knowledge import knowledge_base_root, repository_root
-
-    base = repository_root()
-    name = str(document).strip()
-    target = (base / name).resolve()
-    if not target.is_file():
-        # An installed package reports its own concepts by file name, since
-        # they do not sit under the checkout.
-        matches = sorted(knowledge_base_root().rglob(pathlib.Path(name).name))
-        if matches:
-            target = matches[0]
-    allowed_roots = (base, knowledge_base_root().resolve())
-    if not any(_is_within(target, root) for root in allowed_roots):
-        raise ToolError("only ChiSurf's own documentation can be read this way")
-    if not target.is_file():
-        raise ToolError(f"no such document: {document}. Use search_docs to find one.")
-
-    lines = target.read_text(encoding="utf-8", errors="replace").splitlines()
-    try:
-        shown = target.relative_to(base).as_posix()
-    except ValueError:
-        shown = target.name
-    return {
-        "ok": True,
-        "document": shown,
-        "n_lines": len(lines),
-        "truncated": len(lines) > int(max_lines),
-        "content": "\n".join(lines[: int(max_lines)])[: context.max_result_chars],
     }
 
 

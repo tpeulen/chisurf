@@ -1,3 +1,11 @@
+---
+type: Development Note
+title: Benchmarks
+description: Performance numbers for the compute cores ChiSurf owns.
+tags: [development, benchmarks]
+audience: developer
+---
+
 # Benchmarks
 
 Performance numbers for the compute cores ChiSurf owns. Every table here is

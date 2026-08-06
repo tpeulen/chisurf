@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: FPS JSON Editor
+description: Edit fps.json files for FRET accessible-volume modeling and fetch reference PDB structures by RCSB ID.
+resource: chisurf/plugins/modelling/fps_json_editor/
+tags: [reference, plugins, fps-json-editor, structure, fret]
+anchor: plugin-fps_json_editor
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-fps_json_editor)=
 # FPS JSON Editor
 

@@ -1,3 +1,11 @@
+---
+type: Concept
+title: FRET-2CDE and ALEX-2CDE
+description: In single-molecule FRET on freely diffusing molecules, each labelled molecule crossing the confocal volume produces one short burst of a few tens to a few hundred photons.
+tags: [concepts, bursts, fret]
+anchor: concept-burst-2cde
+---
+
 (concept-burst-2cde)=
 # FRET-2CDE and ALEX-2CDE
 

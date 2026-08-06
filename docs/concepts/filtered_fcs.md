@@ -1,3 +1,11 @@
+---
+type: Concept
+title: Filtered FCS (fFCS/FLCS) and 2D-FLCS
+description: Ordinary FCS correlates the total intensity in each detection channel.
+tags: [concepts, fcs, filtered]
+anchor: concept-filtered-fcs
+---
+
 (concept-filtered-fcs)=
 # Filtered FCS (fFCS/FLCS) and 2D-FLCS
 

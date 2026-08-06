@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: MaxEnt MEM
+description: Maximum-entropy analysis of TCSPC decays (lifetime and FRET distance).
+resource: chisurf/plugins/fluorescence_decay/maxent_decay/
+tags: [reference, plugins, maxent-decay, spectroscopy, fluorescence-decay]
+anchor: plugin-maxent_decay
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-maxent_decay)=
 # MaxEnt MEM
 

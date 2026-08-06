@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: F-Test
+description: 'F-test calculator: compare two nested model fits (confidence <-> chi2 threshold) and compute the chi2-max upper limit of a single fit at a confidence level. Declarative AutoForm view; values load from open fits.'
+resource: chisurf/plugins/core/f_test/
+tags: [reference, plugins, f-test, main, tools, statistics]
+anchor: plugin-f_test
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-f_test)=
 # F-Test
 

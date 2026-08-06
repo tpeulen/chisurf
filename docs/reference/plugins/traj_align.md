@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Align
+description: Align molecular dynamics trajectories to a reference frame or structure.
+resource: chisurf/plugins/traj/traj_align/
+tags: [reference, plugins, traj-align, structure, trajectory]
+anchor: plugin-traj_align
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-traj_align)=
 # Align
 

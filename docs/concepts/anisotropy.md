@@ -1,3 +1,11 @@
+---
+type: Concept
+title: Time-resolved fluorescence anisotropy
+description: Fluorescence anisotropy measures how the polarization of emitted light decays as a fluorophore rotates.
+tags: [concepts, anisotropy]
+anchor: concept-anisotropy
+---
+
 (concept-anisotropy)=
 # Time-resolved fluorescence anisotropy
 

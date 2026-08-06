@@ -1,3 +1,11 @@
+---
+type: Fundamentals
+title: Photon statistics and goodness of fit
+description: Photon detection is a counting process, and its noise is not an instrumental imperfection that better hardware would remove.
+tags: [fundamentals, photons, fitting]
+anchor: fundamentals-photon-statistics
+---
+
 (fundamentals-photon-statistics)=
 # Photon statistics and goodness of fit
 

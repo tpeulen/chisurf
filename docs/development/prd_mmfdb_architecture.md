@@ -1,3 +1,11 @@
+---
+type: Development Note
+title: 'Product Requirements Document: MMFDB Architecture'
+description: This document supersedes the older fdb architecture documents.
+tags: [development, database, mmfdb]
+audience: developer
+---
+
 # Product Requirements Document: MMFDB Architecture
 
 Status date: 2026-06-12

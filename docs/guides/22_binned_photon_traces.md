@@ -1,3 +1,10 @@
+---
+type: Guide
+title: Binned photon traces (MCS)
+description: 'Binning the photon stream into fixed time windows (multi-channel scaler, MCS, traces) is the simplest view of the data and the input to intensity-based methods: burst search, time-trace inspection, camera-style HMM (ebFRET)…'
+tags: [guides, photons, binned, photon, traces]
+---
+
 # Binned photon traces (MCS)
 
 :::{admonition} Theory

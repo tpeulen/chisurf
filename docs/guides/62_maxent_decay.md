@@ -1,3 +1,10 @@
+---
+type: Guide
+title: Maximum-entropy decay analysis
+description: This guide runs the MaxEnt decay tool to recover a distribution of decay times — or of distances — instead of two or three exponential components.
+tags: [guides, tcspc, decay]
+---
+
 # Maximum-entropy decay analysis
 
 This guide runs the **MaxEnt decay** tool to recover a *distribution* of decay

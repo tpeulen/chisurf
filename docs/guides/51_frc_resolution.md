@@ -1,3 +1,10 @@
+---
+type: Guide
+title: 'Image resolution: measuring it from the image itself'
+description: Measuring the resolution an acquisition actually achieved with Fourier ring correlation, and reading the resolution curve it produces.
+tags: [guides, imaging, resolution]
+---
+
 # Image resolution: measuring it from the image itself
 
 How fine a detail did this acquisition actually resolve? Fourier ring

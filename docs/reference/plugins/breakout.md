@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Breakout
+description: Classic Breakout game with progressive difficulty, multiple brick types, mouse/keyboard control, and particle effects; contained in the Games hub.
+resource: chisurf/plugins/misc/games/breakout/
+tags: [reference, plugins, breakout, tools, miscellaneous, games]
+anchor: plugin-breakout
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-breakout)=
 # Breakout
 

@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Batch-Analysis
+description: Apply one pre-optimised template fit to many datasets or files in one pass and export the consolidated results (CSV, DOCX report, per-run ZIP).
+resource: chisurf/plugins/core/batch_analysis/
+tags: [reference, plugins, batch-analysis, main, tools, analysis]
+anchor: plugin-batch_analysis
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-batch_analysis)=
 # Batch-Analysis
 

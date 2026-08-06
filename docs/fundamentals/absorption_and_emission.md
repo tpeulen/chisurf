@@ -1,3 +1,11 @@
+---
+type: Fundamentals
+title: Absorption, the excited state, and emission
+description: The absorbance of a dilute solution follows the Beer–Lambert law, $A = log_{10}(I_0/I) = varepsilon c l$, with the molar extinction coefficient $varepsilon$ in M⁻¹ cm⁻¹, concentration in molar, path length in cm.
+tags: [fundamentals, absorption, emission]
+anchor: fundamentals-absorption-emission
+---
+
 (fundamentals-absorption-emission)=
 # Absorption, the excited state, and emission
 

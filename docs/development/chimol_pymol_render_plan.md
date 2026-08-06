@@ -1,3 +1,11 @@
+---
+type: Development Note
+title: Chimol Render Upgrade Plan
+description: Upgrade Chimol render quality to match/exceed PyMOL while keeping ChiSurf working, with minimal Qt/PyQt coupling in the geometry/model/scene layers to allow a future C++/ImGui port.
+tags: [development, chimol, pymol, render, plan]
+audience: developer
+---
+
 # Chimol Render Upgrade Plan
 
 ## Goal

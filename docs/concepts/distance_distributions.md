@@ -1,3 +1,11 @@
+---
+type: Concept
+title: Distance distributions from the donor decay
+description: A single donor–acceptor distance gives a single transfer rate and therefore a single-exponential quenched donor decay.
+tags: [concepts, tcspc, decay]
+anchor: concept-distance-distributions
+---
+
 (concept-distance-distributions)=
 # Distance distributions from the donor decay
 

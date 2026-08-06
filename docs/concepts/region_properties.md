@@ -1,3 +1,11 @@
+---
+type: Concept
+title: Regions and their properties
+description: 'Deciding which pixels count: how regions of interest are defined, and the shape and intensity properties measured on them.'
+tags: [concepts, region, properties]
+anchor: concept-region-properties
+---
+
 (concept-region-properties)=
 # Regions and their properties
 

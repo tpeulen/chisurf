@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Accurate FRET
+description: 'Accurate FRET (Hellenkamp): automatic alpha/beta/gamma/delta from the burst populations, the optics prior of a saved light path and the static FRET line, with E-S and E-lifetime views.'
+resource: chisurf/plugins/burst/accurate_fret/
+tags: [reference, plugins, accurate-fret, spectroscopy, fret, single-molecule]
+anchor: plugin-accurate_fret
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-accurate_fret)=
 # Accurate FRET
 

@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Colocalization
+description: Two-channel colocalization (Pearson, Manders, Costes, Li ICQ) on TIFF stacks and photon-stream images, with an interactive intensity scatter gate.
+resource: chisurf/plugins/microscopy/img_coloc/
+tags: [reference, plugins, img-coloc, imaging]
+anchor: plugin-img_coloc
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-img_coloc)=
 # Colocalization
 

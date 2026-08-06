@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Burst Fusion
+description: Fuse bursts the same molecule produced, using the recurrence same-molecule probability, into a new burst folder.
+resource: chisurf/plugins/burst/burst_fusion/
+tags: [reference, plugins, burst-fusion, spectroscopy, single-molecule]
+anchor: plugin-burst_fusion
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-burst_fusion)=
 # Burst Fusion
 

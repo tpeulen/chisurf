@@ -1,3 +1,10 @@
+---
+type: Reference
+title: ndX headless CLI recipes
+description: NdX's two core workflows — burst filtering and imaging — run without a window.
+tags: [reference, headless, cli]
+---
+
 # ndX headless CLI recipes
 
 ndX's two core workflows — **burst filtering** and **imaging** — run without

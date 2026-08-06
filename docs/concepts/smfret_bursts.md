@@ -1,3 +1,11 @@
+---
+type: Concept
+title: 'Single-molecule FRET: burst analysis (E, S, corrections)'
+description: Confocal single-molecule FRET watches one labelled molecule at a time as it diffuses through a tiny detection volume.
+tags: [concepts, fret, smfret, bursts]
+anchor: concept-smfret-bursts
+---
+
 (concept-smfret-bursts)=
 # Single-molecule FRET: burst analysis (E, S, corrections)
 

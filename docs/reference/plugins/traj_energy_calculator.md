@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Energy Calculator
+description: Calculate potential energy components for structures and trajectories.
+resource: chisurf/plugins/traj/potential_energy/
+tags: [reference, plugins, traj-energy-calculator, structure, trajectory]
+anchor: plugin-traj_energy_calculator
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-traj_energy_calculator)=
 # Energy Calculator
 

@@ -1,3 +1,10 @@
+---
+type: Reference
+title: ChiSurf Global Settings
+description: The user-configurable ChiSurf settings, what each one changes, and where the settings files live.
+tags: [reference, settings, fitting, global-analysis]
+---
+
 # ChiSurf Global Settings
 
 This document describes the main user-configurable settings used by ChiSurf.

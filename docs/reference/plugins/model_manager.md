@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Models
+description: Model Manager for ChiSurf
+resource: chisurf/plugins/core/model_manager/
+tags: [reference, plugins, model-manager, setup]
+anchor: plugin-model_manager
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-model_manager)=
 # Models
 

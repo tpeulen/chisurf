@@ -1,3 +1,10 @@
+---
+type: Guide
+title: FRET-efficiency histogram fitting
+description: The proximity-ratio / FRET-efficiency histogram of a burst set is a sum of populations, each broadened by shot noise (and possibly dynamics).
+tags: [guides, fret, fitting]
+---
+
 # FRET-efficiency histogram fitting
 
 :::{admonition} Theory

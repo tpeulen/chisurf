@@ -1,3 +1,10 @@
+---
+type: Guide
+title: 'Photon-by-photon kinetics: rates without binning'
+description: This tool fits kinetic rate constants directly to the arrival time and colour of every photon.
+tags: [guides, photons, kinetics]
+---
+
 # Photon-by-photon kinetics: rates without binning
 
 This tool fits kinetic **rate constants** directly to the arrival time and

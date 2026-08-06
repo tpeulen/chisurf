@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Intensity
+description: Per-pixel intensity map; creates the standard imaging HDF5 (with source back-reference) that N&B / phasor / MLE enrich.
+resource: chisurf/plugins/microscopy/img_pixel_intensity/
+tags: [reference, plugins, img-pixel-intensity, imaging]
+anchor: plugin-img_pixel_intensity
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-img_pixel_intensity)=
 # Intensity
 

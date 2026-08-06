@@ -1,3 +1,10 @@
+---
+type: Guide
+title: Hidden Markov models of binned traces
+description: This tool turns a binned trace — photon counts per time bin, in one or more detection channels — into states, dwell times and transition rates.
+tags: [guides, hidden, markov, models]
+---
+
 # Hidden Markov models of binned traces
 
 This tool turns a **binned trace** — photon counts per time bin, in one or more

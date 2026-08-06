@@ -1,3 +1,10 @@
+---
+type: Guide
+title: Combining measurements / technical repeats
+description: Single-molecule datasets are often split across several files — technical repeats of the same sample, a titration series, or long acquisitions saved in chunks.
+tags: [guides, combining, repeats]
+---
+
 # Combining measurements / technical repeats
 
 :::{admonition} Theory

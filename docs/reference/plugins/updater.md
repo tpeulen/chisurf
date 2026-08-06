@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Updates & Packages
+description: Update checker/installer and conda package manager. Surfaced as panels inside the unified Settings dialog.
+resource: chisurf/plugins/core/updater/
+tags: [reference, plugins, updater, setup]
+anchor: plugin-updater
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-updater)=
 # Updates & Packages
 

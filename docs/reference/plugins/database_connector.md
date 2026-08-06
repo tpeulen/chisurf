@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Database Connector
+description: Core database connector services for source/user database resolution, migration, backup, reset, repository access, and FLR CIF import/export.
+resource: chisurf/plugins/core/database_connector/
+tags: [reference, plugins, database-connector, core, database, fluorescence]
+anchor: plugin-database_connector
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-database_connector)=
 # Database Connector
 

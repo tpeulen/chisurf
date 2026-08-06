@@ -1,3 +1,11 @@
+---
+type: Concept
+title: FLIM and the phasor approach
+description: 'Fluorescence-lifetime imaging microscopy (FLIM) turns a decay time into a contrast mechanism: each pixel of an image carries not just a brightness but a fluorescence lifetime that reports on the fluorophore''s environment…'
+tags: [concepts, imaging, flim, phasor]
+anchor: concept-imaging-flim-phasor
+---
+
 (concept-imaging-flim-phasor)=
 # FLIM and the phasor approach
 

@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Anisotropy-Wizard
+description: 'Guided setup of a linked VV/VH global time-resolved anisotropy fit: load polarised decays, background-correct the IRFs, set instrument corrections and define lifetime/rotation spectra.'
+resource: chisurf/plugins/fluorescence_decay/tr_anisotropy/
+tags: [reference, plugins, tr-anisotropy, spectroscopy, fluorescence-decay]
+anchor: plugin-tr_anisotropy
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-tr_anisotropy)=
 # Anisotropy-Wizard
 

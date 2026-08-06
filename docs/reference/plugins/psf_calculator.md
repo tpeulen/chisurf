@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: PSF Calculator
+description: 'Compute and view a 3-D point-spread function: scalar, Airy or vectorial Richards-Wolf, with the input polarization at the objective pupil.'
+resource: chisurf/plugins/calculator/psf_calculator/
+tags: [reference, plugins, psf-calculator, microscopy, optics]
+anchor: plugin-psf_calculator
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-psf_calculator)=
 # PSF Calculator
 

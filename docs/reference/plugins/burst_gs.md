@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Photon-by-photon kinetics
+description: 'Gopich-Szabo photon-by-photon maximum likelihood: continuous-time rate constants and per-state FRET efficiencies fitted directly to photon arrival times and colours, for two- and three-colour data, with a transition-time scan and an H2MM cross-check.'
+resource: chisurf/plugins/burst/burst_gs/
+tags: [reference, plugins, burst-gs, spectroscopy, single-molecule, fret]
+anchor: plugin-burst_gs
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-burst_gs)=
 # Photon-by-photon kinetics
 

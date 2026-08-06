@@ -1,3 +1,13 @@
+---
+type: Bibliography
+title: Literature
+description: Every work the ChiSurf documentation cites, each linking through to the publisher's page.
+resource: docs/references/bibliography.yaml
+tags: [references, literature, citations, bibliography]
+anchor: literature
+generator: build_tools/docs/make_bibliography.py
+---
+
 (literature)=
 # Literature
 

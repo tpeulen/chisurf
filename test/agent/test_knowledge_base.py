@@ -102,9 +102,17 @@ def test_a_question_reaches_the_concept_about_it(query, expected):
 
 
 def test_a_concept_can_be_read_back(tmp_path):
+    """A search result's identifier is one the read tool accepts.
+
+    The two are separate calls and nothing forces them to agree on how a page
+    is named; when they disagree the model finds the right page and then
+    cannot open it.
+    """
+    from chisurf.core.agent.tools import documentation as documentation_tools
+
     context = AgentContext(working_directory=str(tmp_path))
     hit = search_prose("confidence interval", limit=1)[0]
-    result = codebase_tools.read_doc(context, document=hit["document"])
+    result = documentation_tools.read_documentation(context, document=hit["document"])
     assert "support plane" in result["content"].lower()
 
 

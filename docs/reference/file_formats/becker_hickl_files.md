@@ -1,3 +1,10 @@
+---
+type: File Format
+title: Becker & Hickl File Readers
+description: The bhfiles module provides unified access to various Becker & Hickl file formats used in time-resolved spectroscopy.
+tags: [reference, file-formats, becker, hickl, files]
+---
+
 # Becker & Hickl File Readers
 
 ## Overview

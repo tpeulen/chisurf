@@ -1,3 +1,11 @@
+---
+type: Concept
+title: 'Pair correlation and flow maps: where molecules go'
+description: 'Pair-correlation functions and flow maps: correlating one place against another to measure where molecules go, not just how fast they move.'
+tags: [concepts, correlation, pair]
+anchor: concept-pair-correlation
+---
+
 (concept-pair-correlation)=
 # Pair correlation and flow maps: where molecules go
 

@@ -23,8 +23,8 @@ triggers:
 tools:
   - search_api
   - read_api_source
-  - search_docs
-  - read_doc
+  - search_documentation
+  - read_documentation
   - list_plugins
   - check_python
   - write_file
@@ -40,10 +40,12 @@ mistake.
 
 ## Before writing a line
 
-1. **`search_docs`** for the concept — the OKF concepts under `okf/` describe
-   the architecture and *why* it is that way, the guides under `docs/` show
-   the intended workflow. Read the one that governs what you are about to
-   touch.
+1. **`search_documentation(..., scope="code")`** for the concept — the OKF
+   concepts under `okf/` describe the architecture and *why* it is that way.
+   `scope="user"` reaches the guides under `docs/`, which show the intended
+   workflow. Read the one that governs what you are about to touch, with
+   **`read_documentation`** (pass a `section` rather than pulling in a whole
+   long page).
 2. **`search_api`** for the symbols you intend to call, and
    **`read_api_source`** when the signature is not enough. The index is built
    from the source, so it is never out of date.

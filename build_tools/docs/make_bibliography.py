@@ -23,6 +23,7 @@ import sys
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
+from build_tools.docs import okf  # noqa: E402
 from chisurf.plugins.core.help.api import bibliography as bib  # noqa: E402
 
 #: Topic key -> the heading it appears under, in reading order. A topic missing
@@ -53,7 +54,23 @@ TOPIC_TITLES = [
     ("exploration", "Dimensionality reduction and clustering"),
 ]
 
-HEADER = """(literature)=
+#: The OKF header the generated page carries. Emitted here rather than
+#: injected afterwards, which the next regeneration would undo.
+FRONT_MATTER = okf.render_front_matter(
+    {
+        "type": "Bibliography",
+        "title": "Literature",
+        "description": "Every work the ChiSurf documentation cites, each linking through to "
+        "the publisher's page.",
+        "resource": "docs/references/bibliography.yaml",
+        "tags": ["references", "literature", "citations", "bibliography"],
+        "anchor": "literature",
+        "generator": "build_tools/docs/make_bibliography.py",
+    }
+)
+
+HEADER = FRONT_MATTER + """
+(literature)=
 # Literature
 
 Every work the ChiSurf documentation cites, in one place. **Each entry links to

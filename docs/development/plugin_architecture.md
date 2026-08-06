@@ -1,3 +1,11 @@
+---
+type: Development Note
+title: ChiSurf Plugin Architecture & Migration Plan
+description: Every plugin MUST have a manifest.json in its root package directory.
+tags: [development, plugins, plugin, architecture]
+audience: developer
+---
+
 # ChiSurf Plugin Architecture & Migration Plan
 
 ## 1. Current State

@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Settings
+description: Unified Settings for ChiSurf
+resource: chisurf/plugins/core/setup/
+tags: [reference, plugins, setup]
+anchor: plugin-setup
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-setup)=
 # Settings
 

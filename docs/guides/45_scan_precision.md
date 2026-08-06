@@ -1,3 +1,10 @@
+---
+type: Guide
+title: 'Planning a scan: which dwell time measures D best?'
+description: 'Before you record an image-correlation measurement, this tool answers two questions from the settings alone: how precisely will this acquisition measure $D$, and which pixel dwell time would measure it better.'
+tags: [guides, scan, precision]
+---
+
 # Planning a scan: which dwell time measures D best?
 
 Before you record an image-correlation measurement, this tool answers two

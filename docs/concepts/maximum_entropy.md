@@ -1,3 +1,11 @@
+---
+type: Concept
+title: Lifetime distributions and maximum entropy
+description: A multi-exponential fit answers "which two or three lifetimes?" — a question that presupposes there are two or three.
+tags: [concepts, tcspc, lifetime]
+anchor: concept-maximum-entropy
+---
+
 (concept-maximum-entropy)=
 # Lifetime distributions and maximum entropy
 

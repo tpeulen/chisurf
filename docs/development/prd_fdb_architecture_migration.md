@@ -1,3 +1,11 @@
+---
+type: Development Note
+title: 'Product Requirements Document: fdb Architecture Migration'
+description: This PRD defines the migration from the current phase-grown fdb implementation to a clearer, future-proof architecture.
+tags: [development, architecture, migration]
+audience: developer
+---
+
 # Product Requirements Document: fdb Architecture Migration
 
 Status date: 2026-06-12

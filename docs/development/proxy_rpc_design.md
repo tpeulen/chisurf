@@ -1,3 +1,11 @@
+---
+type: Development Note
+title: Proxy/RPC Design Targets
+description: Zero magic. Every proxy object is an explicit, typed wrapper with well-defined properties and methods.
+tags: [development, proxy, design]
+audience: developer
+---
+
 # Proxy/RPC Design Targets
 
 ## Core Principle

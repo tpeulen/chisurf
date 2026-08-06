@@ -1,3 +1,10 @@
+---
+type: Guide
+title: Fluorescence lifetime and anisotropy decay fitting
+description: Time-correlated single-photon counting (TCSPC) records the arrival time of each photon relative to the excitation pulse, building a fluorescence decay.
+tags: [guides, tcspc, lifetime, anisotropy, fitting, decay]
+---
+
 # Fluorescence lifetime and anisotropy decay fitting
 
 ## What it does

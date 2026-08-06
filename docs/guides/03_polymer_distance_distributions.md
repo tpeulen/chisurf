@@ -1,3 +1,10 @@
+---
+type: Guide
+title: Polymer inter-dye distance distributions
+description: FRET between two dyes on a flexible chain reports on the distribution of inter-dye distances $P(R)$, not a single distance — and for unfolded / intrinsically disordered proteins the shape of $P(R)$ is set by polymer statistics.
+tags: [guides, polymer, distance, distributions]
+---
+
 # Polymer inter-dye distance distributions
 
 :::{admonition} Theory

@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Decay Analysis
+description: Integrated fluorescence lifetime analysis tools with IRF estimation, MaxEnt MEM, Lazy Lifetime Analysis, microtime histograms, and VV/VH G-factor calibration.
+resource: chisurf/plugins/fluorescence_decay/lifetime_analysis/
+tags: [reference, plugins, lifetime-analysis, spectroscopy, fluorescence-decay]
+anchor: plugin-lifetime_analysis
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-lifetime_analysis)=
 # Decay Analysis
 

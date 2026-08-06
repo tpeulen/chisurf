@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Docking & Screening
+description: FRET-restrained rigid-body docking, refinement, structure-library screening and error estimation using IMP + IMP.bff accessible volumes (a thin shim around IMP.pmi).
+resource: chisurf/plugins/modelling/fret/
+tags: [reference, plugins, fret-docking, structure, fret]
+anchor: plugin-fret_docking
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-fret_docking)=
 # Docking & Screening
 

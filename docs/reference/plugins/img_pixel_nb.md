@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Number & Brightness
+description: Per-pixel Number (N) and Brightness (B) maps from TTTR imaging data.
+resource: chisurf/plugins/microscopy/img_pixel_nb/
+tags: [reference, plugins, img-pixel-nb, imaging]
+anchor: plugin-img_pixel_nb
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-img_pixel_nb)=
 # Number & Brightness
 

@@ -59,7 +59,7 @@ def test_the_bibliography_and_figures_are_shipped():
 
     assert any(name.endswith(".bib") or "references" in name for name in shipped)
     assert any(name.endswith(".png") for name in shipped)
-    assert "index.rst" in shipped
+    assert "index.md" in shipped
 
 
 def test_build_output_and_dead_formats_are_not_shipped():
@@ -76,7 +76,7 @@ def test_a_packaged_copy_wins_over_the_checkout(tmp_path, monkeypatch):
     """An installed ChiSurf reads its own documentation, not a stray tree."""
     packaged = tmp_path / "chisurf"
     (packaged / "docs").mkdir(parents=True)
-    (packaged / "docs" / "index.rst").write_text("stub\n", encoding="utf-8")
+    (packaged / "docs" / "index.md").write_text("stub\n", encoding="utf-8")
 
     monkeypatch.setattr(toc_api, "package_root", lambda: packaged)
     toc_api.docs_root.cache_clear()
@@ -94,7 +94,7 @@ def test_the_checkout_is_used_when_nothing_is_packaged(tmp_path, monkeypatch):
     try:
         root = toc_api.docs_root()
         assert root.name == "docs"
-        assert (root / "index.rst").is_file()
+        assert (root / "index.md").is_file()
     finally:
         toc_api.docs_root.cache_clear()
 
@@ -118,8 +118,8 @@ def test_the_selection_is_a_sane_size():
 def test_pathlib_relative_addresses_stay_docs_relative():
     """The address bar reads ``docs/...`` in a checkout and in an install."""
     docs = toc_api.docs_root()
-    page = docs / "index.rst"
+    page = docs / "index.md"
     assert (
         pathlib.Path(page).relative_to(toc_api.repository_root()).as_posix()
-        == "docs/index.rst"
+        == "docs/index.md"
     )

@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: User Editor
+description: User editor plugin for Chisurf to manage users registered in the MMFDB.
+resource: chisurf/plugins/core/user_editor/
+tags: [reference, plugins, user-editor, setup]
+anchor: plugin-user_editor
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-user_editor)=
 # User Editor
 

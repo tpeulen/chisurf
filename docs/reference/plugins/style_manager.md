@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Styles
+description: Style Manager Plugin for ChiSurf
+resource: chisurf/plugins/core/style_manager/
+tags: [reference, plugins, style-manager, setup]
+anchor: plugin-style_manager
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-style_manager)=
 # Styles
 

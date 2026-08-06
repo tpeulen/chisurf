@@ -1,3 +1,11 @@
+---
+type: Concept
+title: Biofilm growth and stratification
+description: A biofilm is a community of cells attached to a surface and held in a matrix they secrete.
+tags: [concepts, biofilm, growth]
+anchor: concept-biofilm-growth
+---
+
 (concept-biofilm-growth)=
 # Biofilm growth and stratification
 

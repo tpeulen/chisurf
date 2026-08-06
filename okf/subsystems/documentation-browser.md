@@ -40,6 +40,35 @@ one that was broken for every window size but the one the page loaded at.
   and the website are built from the same toctrees, so a warning there is a
   wrong tree here.
 
+**Where the corpus itself is now machine-readable.** `docs/` is an
+[Open Knowledge Format](https://github.com/GoogleCloudPlatform/knowledge-catalog)
+bundle: every one of the 277 Markdown pages carries a front-matter header
+(`type`, `title`, `description`, `tags`, `anchor`), and the header is *derived*
+by `build_tools/docs/okf_frontmatter.py` from the page rather than hand-written
+— `type` from the directory, `title` from the first heading, `description` from
+the lead paragraph. A hand-edited field survives a re-run; `--refresh` discards
+it. Generated pages (the 125 plugin pages, the parameter glossary, the three
+registers, the Literature page) get theirs from their own generator, because an
+injected one would be overwritten on the next regeneration.
+
+Two things this cost, and both are the kind that would have been found much
+later:
+
+* The **review banner extension prepended its text to the source**, which hid
+  the front matter from MyST — every stamped page's `<title>` became its own
+  flattened metadata. It also stamped Markdown pages with a *reStructuredText*
+  directive, so `.. warning::` had been reaching the reader as literal text on
+  every unreviewed Markdown page. Both fixed in `docs/_ext/review_banner.py`;
+  guarded in `test/test_docs_okf.py`.
+* The generated plugin pages **linked to a `manifest.json` that is not there**
+  for the 13 plugins that declare themselves in code — thirteen build warnings
+  and thirteen dead links. The Sphinx build is warning-free again.
+
+The guardrail is `test/test_docs_okf.py` (a header on every page, a non-empty
+`type`, a description substantial enough to rank on, a title that agrees with
+the first heading) plus `docs-check-frontmatter`, which `docs-release` depends
+on.
+
 **What is open.**
 
 0. **The packaged copy is proven by a wheel, and only by a wheel.** `pip wheel .

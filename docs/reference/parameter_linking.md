@@ -1,3 +1,10 @@
+---
+type: Reference
+title: Linking parameters
+description: 'Linking makes one parameter follow another: the follower stops being a degree of freedom and reads its value from the master.'
+tags: [reference, parameter, linking]
+---
+
 # Linking parameters
 
 Linking makes one parameter *follow* another: the follower stops being a degree

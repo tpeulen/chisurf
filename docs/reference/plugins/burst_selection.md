@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Burst Selection
+description: Burst selection and FRET analysis for single-molecule fluorescence data.
+resource: chisurf/plugins/burst/burst_selection/
+tags: [reference, plugins, burst-selection, spectroscopy, single-molecule]
+anchor: plugin-burst_selection
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-burst_selection)=
 # Burst Selection
 

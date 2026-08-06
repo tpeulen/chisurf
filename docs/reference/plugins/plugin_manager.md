@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Plugins
+description: Plugin Manager for ChiSurf
+resource: chisurf/plugins/core/plugin_manager/
+tags: [reference, plugins, plugin-manager, setup]
+anchor: plugin-plugin_manager
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-plugin_manager)=
 # Plugins
 

@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Audifier
+description: Convert TTTR photon streams to audio, with a live micro-time / lifetime waterfall preview.
+resource: chisurf/plugins/tttr/audifier/
+tags: [reference, plugins, tttr-audifier, tools, tttr, analysis]
+anchor: plugin-tttr_audifier
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-tttr_audifier)=
 # Audifier
 

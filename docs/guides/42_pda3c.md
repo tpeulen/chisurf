@@ -1,3 +1,10 @@
+---
+type: Guide
+title: Three-colour PDA (PDA3c)
+description: Three-colour PDA recovers three inter-dye distances and their correlations from the photon statistics of single bursts.
+tags: [guides, pda, pda3c]
+---
+
 # Three-colour PDA (PDA3c)
 
 :::{admonition} Theory

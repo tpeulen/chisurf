@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Microtime Shifter
+description: Apply global and per-channel micro-time shifts to TTTR files.
+resource: chisurf/plugins/tttr/tttr_microtime_shifter/
+tags: [reference, plugins, microtime-shifter, tools, tttr, editor]
+anchor: plugin-microtime_shifter
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-microtime_shifter)=
 # Microtime Shifter
 

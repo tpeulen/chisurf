@@ -1,3 +1,10 @@
+---
+type: Guide
+title: Two-channel colocalization
+description: The Imaging → Colocalization tool (img_coloc) takes one image with at least two channels and reports the standard colocalization coefficient set for a chosen channel pair — Pearson, Manders (overlap and split), Li's ICQ, Spearman…
+tags: [guides, colocalization]
+---
+
 # Two-channel colocalization
 
 :::{admonition} Theory

@@ -1,3 +1,11 @@
+---
+type: Concept
+title: Photon-by-photon kinetics (Gopich–Szabo)
+description: A molecule that switches conformation while it is being observed leaves the evidence in the order of its photons, not in their sum.
+tags: [concepts, photons, kinetics]
+anchor: concept-photon-by-photon-kinetics
+---
+
 (concept-photon-by-photon-kinetics)=
 
 # Photon-by-photon kinetics (Gopich–Szabo)

@@ -1,3 +1,13 @@
+---
+type: Plugin Reference
+title: Image Browser
+description: Browse TTTR files in a folder and preview intensity images for all DetectorWizard-defined detector windows.
+resource: chisurf/plugins/tttr/tttr_image_browser/
+tags: [reference, plugins, tttr-image-browser, imaging, tools]
+anchor: plugin-tttr_image_browser
+generator: build_tools/docs/generate_plugin_docs.py
+---
+
 (plugin-tttr_image_browser)=
 # Image Browser
 

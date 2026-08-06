@@ -1,3 +1,11 @@
+---
+type: Development Note
+title: History, Project Persistence, and MCP Action Routing
+description: This note documents the current action-routing path used for operation history, project save/load metadata, and MCP-style external control.
+tags: [development, history, project]
+audience: developer
+---
+
 # History, Project Persistence, and MCP Action Routing
 
 This note documents the current action-routing path used for operation history,
