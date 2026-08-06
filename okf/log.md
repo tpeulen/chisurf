@@ -12,6 +12,14 @@
 
   `Main._LAYOUT_VERSION` 2 → 3, which is what repairs the layouts already on disk: the stale generation is ignored once and the authored tab stack is what opens. Verified as a pair of offscreen grabs from the user's own saved state — under version 2 the default returns with full tab labels; under version 3 the two-column arrangement is still restored, so persistence itself is intact. Pinned by `test/gui/test_qsettings_isolation.py` (8 tests) alongside `test/gui/test_dock_layout.py` (6, still green).
 
+* **`modules/quest` was a stale duplicate of a package developed elsewhere** ([build & env](workflows/build-and-env.md)).
+
+  Startup logged `ModuleNotFoundError: No module named 'quest.rpc'` from plugin service registration, and carried on with QuEst's sixteen RPC methods missing. The submodule was pinned at an April commit predating QuEst's own restructuring, so it had neither `quest/rpc` nor `quest/gui` — the two things `quenching_estimator` imports. The pin could therefore never satisfy the shipped plugin, and had not for months.
+
+  It only *surfaced* through path order: the installed QuEst (`~/dev/quest`, via a `.pth`) normally wins, but an IDE run configuration exporting `modules/quest` on `PYTHONPATH` puts the stale copy first. Diagnosed by reading the failing process's own environment rather than reproducing from a shell, where it does not fail — `ps -Eww` on the running app, since it was still open. A duplicate of a package developed elsewhere is a shadowing bug waiting for a path order.
+
+  Resolved the way `mmfdb` and `tttrlib` already are: `modules/quest` is now a tracked symlink to `../../quest` and the submodule is out of `.gitmodules`. Verified under the user's exact `PYTHONPATH` — all 16 methods register, and the plugin's 14 tests pass. `.git/modules/quest` is deliberately left in place: the pinned commit is not reachable from the sibling checkout (the histories diverged) so that directory is its only local copy.
+
 * **The plugin toolbar was shipping four buttons where it promised seven** ([GUI startup](architecture/gui-startup.md)).
 
   From the same startup log as the dock report: three `Could not find module for plugin` warnings, for `Single-Molecule:Burst-Selection`, `Single-Molecule:Burst MLE Lifetime Analysis` and `Tools:ndXplorer`. `plugins.toolbar_plugins` keys on the *display* name, and all three had been renamed — a space for a hyphen, and two shortened to `Burst MLE` and `ndX`. A dead entry does not fail: the button is skipped, one line goes to the log, startup carries on.

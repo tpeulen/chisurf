@@ -301,6 +301,22 @@ git clone https://github.com/Fluorescence-Tools/tttrlib.git ../tttrlib
 The task fails loudly if that source is missing, since there is no package to
 fall back on. See [compiled modules](/subsystems/compiled-modules.md).
 
+**`modules/quest` is a sibling checkout too, and was a stale submodule.** It was
+pinned at a commit predating QuEst's own restructuring, so it carried neither
+`quest/rpc` nor `quest/gui` — which is to say the pin could not satisfy the
+`quenching_estimator` plugin that imports both. Nothing failed as long as the
+installed QuEst won the import; an IDE run configuration that puts
+`modules/quest` on `PYTHONPATH` makes the stale copy win instead, and startup
+then logs `ModuleNotFoundError: No module named 'quest.rpc'` from plugin service
+registration and continues with sixteen RPC methods missing. **A duplicate of a
+package that is developed elsewhere is a shadowing bug waiting for a path
+order**, which is why the actively-developed companions are symlinks rather than
+copies. `modules/quest -> ../../quest` now, as `mmfdb` and `tttrlib` already
+were; the submodule is out of `.gitmodules`. Its old object store is left in
+`.git/modules/quest`, because the pinned commit is not reachable from the
+sibling checkout — the two histories diverged — and that directory is the only
+local copy.
+
 # Conda recipe: what it builds, and what it must not grow back
 
 `rattler-recipe/recipe.yaml` packages **chisurf and nothing else**. The whole
