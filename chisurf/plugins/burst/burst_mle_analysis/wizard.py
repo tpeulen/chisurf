@@ -20,6 +20,7 @@ import pandas as pd
 
 import json
 
+from chisurf.core.datastore import write_csv_table
 import chisurf as cs
 
 from chisurf.gui.autoform import AutoForm
@@ -521,7 +522,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             try:
                 info.mkdir(parents=True, exist_ok=True)
                 target = info / "state_lifetimes.csv"
-                pd.DataFrame(rows).to_csv(target, index=False)
+                write_csv_table(target, pd.DataFrame(rows), delimiter=",")
             except OSError as exc:
                 cs.logging.warning(f"Could not write {info}: {exc}")
                 continue

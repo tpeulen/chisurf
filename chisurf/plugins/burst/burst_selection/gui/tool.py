@@ -9,6 +9,7 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
+from chisurf.core.datastore import write_csv_table
 import numpy as np
 import pandas as pd
 import pyqtgraph as pg
@@ -3132,7 +3133,7 @@ class BurstSelectionTool(ChisurfDockTool):
         if not path:
             return
         try:
-            self._last_frame.to_csv(path, sep="\t", index=False)
+            write_csv_table(path, self._last_frame)
             self.summary.setPlainText(f"Exported to {path}")
         except Exception as exc:
             self.summary.setPlainText(f"Export failed: {exc}")

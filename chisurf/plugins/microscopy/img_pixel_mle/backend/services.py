@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from chisurf.core.datastore import write_csv_table
 from ..api.contract import (
     METHOD_ANALYZE,
     METHOD_CONTRACT,
@@ -132,7 +133,7 @@ def _handle_analyze(params: dict[str, Any]) -> dict[str, Any]:
             os.makedirs(out_dir, exist_ok=True)
             stem = os.path.splitext(os.path.basename(f))[0]
             out_path = os.path.join(out_dir, f"{stem}_pixel_mle.csv")
-            result.dataframe.to_csv(out_path, index=False)
+            write_csv_table(out_path, result.dataframe, delimiter=",")
             processed.append(f)
             output_paths.append(out_path)
 

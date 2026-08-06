@@ -305,10 +305,16 @@ def write_hdf5(df, path: str | pathlib.Path, key: str = NDX_HDF5_KEY) -> str:
 
 
 def write_csv(df, path: str | pathlib.Path) -> str:
-    """Write a table to an ndX-openable CSV file."""
+    """Write a table to an ndX-openable CSV file.
+
+    Comma-delimited, header first, which is the shape ndX's threaded reader
+    takes straight into a store.
+    """
+    from chisurf.core.datastore import write_csv_table
+
     path = pathlib.Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    df.to_csv(str(path), index=False)
+    write_csv_table(path, df, delimiter=",")
     return str(path)
 
 

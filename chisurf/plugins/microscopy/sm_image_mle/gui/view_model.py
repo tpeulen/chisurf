@@ -15,6 +15,7 @@ import logging
 import pathlib
 from collections.abc import Callable
 
+from chisurf.core.datastore import write_csv_table
 import numpy as np
 
 from chisurf.core.roi import RegionCollection
@@ -357,7 +358,7 @@ class MoleculeMleViewModel(MleObserverMixin):
             return ""
         sep = "," if str(path).lower().endswith(".csv") else "\t"
         combined = pd.concat(frames, ignore_index=True)
-        combined.to_csv(path, sep=sep, index=False)
+        write_csv_table(path, combined, delimiter=sep)
         self.status_text = f"Exported {len(combined)} molecule(s) to {pathlib.Path(path).name}"
         self.notify("exported")
         return str(path)
@@ -446,7 +447,7 @@ class MoleculeMleViewModel(MleObserverMixin):
         if frames:
             try:
                 joint = pathlib.Path(self.files[0]).parent / "joint_output.tsv"
-                pd.concat(frames, ignore_index=True).to_csv(joint, sep="\t", index=False)
+                write_csv_table(joint, pd.concat(frames, ignore_index=True))
             except Exception:
                 logger.debug("joint TSV export failed", exc_info=True)
 
@@ -467,7 +468,7 @@ class MoleculeMleViewModel(MleObserverMixin):
         df.insert(0, "source_ptu", str(path))
         out_dir = pathlib.Path(path).parent / f"{pathlib.Path(path).stem}_analysis"
         out_dir.mkdir(parents=True, exist_ok=True)
-        df.to_csv(out_dir / "molecule_data.tsv", sep="\t", index=False)
+        write_csv_table(out_dir / "molecule_data.tsv", df)
         try:
             np.save(out_dir / "intensity.npy", np.asarray(result.intensity_image))
         except Exception:

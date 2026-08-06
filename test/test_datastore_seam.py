@@ -8,6 +8,8 @@ what a foreign or older file does instead of reading as an empty table.
 
 from __future__ import annotations
 
+import io
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -20,11 +22,13 @@ from chisurf.core.datastore import (
     dataframe_from_store,
     is_missing,
     new_store,
+    read_csv_table,
     read_table,
     read_table_frame,
     set_cell,
     store_from_arrays,
     store_from_dataframe,
+    write_csv_table,
     write_table,
 )
 
@@ -414,3 +418,78 @@ def test_a_group_can_be_added_beside_an_existing_table(tmp_path):
 
     assert [read_table(path)[i].name() for i in range(read_table(path).n_columns())] == ["a"]
     assert read_table(path, group="/extra") is not None
+
+
+# ── tables as delimited text ─────────────────────────────────────────────
+
+
+def test_csv_round_trips_values_and_column_names(frame, tmp_path):
+    path = tmp_path / "t.csv"
+    write_csv_table(path, frame)
+
+    store = read_csv_table(path)
+    assert store is not None
+    assert [store[i].name() for i in range(store.n_columns())] == list(frame.columns)
+    np.testing.assert_allclose(store["count"].numpy(), frame["count"])
+    assert list(store["name"].numpy()) == frame["name"].tolist()
+
+
+def test_a_missing_number_is_an_empty_field_not_the_text_nan(tmp_path):
+    """What a frame's writer produces, and what the reader here takes back as
+    missing. Converted straight across, a store would write the literal "nan":
+    a frame says missing with a NaN and a store says it with its mask, and the
+    two have to be put back in step at the text boundary."""
+    text = write_csv_table(None, {"x": np.array([1.0, np.nan, 3.0])})
+    assert text.splitlines()[1:] == ["1", "", "3"]
+
+
+def test_an_infinity_is_a_value_and_survives(tmp_path):
+    """Not a gap. Masking it would turn a diverging fit result into a blank."""
+    text = write_csv_table(None, {"x": np.array([1.0, np.inf, -np.inf])})
+    assert text.splitlines()[1:] == ["1", "inf", "-inf"]
+
+
+def test_an_integral_float_loses_its_decimal_point(tmp_path):
+    """The one difference from the frame writer, pinned rather than hidden: no
+    writer setting restores it, and it is why the burst companion formats other
+    programs read are deliberately not written through this."""
+    text = write_csv_table(None, {"x": np.array([12.0, 1.5, 0.0])})
+    assert text.splitlines()[1:] == ["12", "1.5", "0"]
+    # Still the same numbers on the way back in, which is what makes it a
+    # formatting difference rather than a data one.
+    import pandas as pd
+
+    assert pd.read_csv(io.StringIO(text), sep="\t")["x"].tolist() == [12.0, 1.5, 0.0]
+
+
+def test_the_text_otherwise_matches_the_frame_writer(tmp_path):
+    """Everything except the integral floats: separators, header, column order,
+    text values, integers, and a full-precision double."""
+    frame = pd.DataFrame(
+        {
+            "n": np.array([1, 2], dtype=np.int64),
+            "wide": np.array([2**53 + 1, 5], dtype=np.int64),
+            "precise": np.array([123.456789012345, 1.5]),
+            "label": ["a b", "c"],
+        }
+    )
+    buffer = io.StringIO()
+    frame.to_csv(buffer, sep="\t", index=False)
+    assert write_csv_table(None, frame) == buffer.getvalue()
+
+
+def test_a_file_this_reader_declines_is_none_not_a_wrong_answer(tmp_path):
+    """A decimal comma is a file for the general reader. Guessing is what makes
+    one machine read a table another machine reads differently."""
+    path = tmp_path / "comma.csv"
+    path.write_text("a;b\n1,5;2,5\n")
+    store = read_csv_table(path, delimiter=";")
+    # It reads, but not as numbers -- which is exactly why the caller has to be
+    # told rather than handed a table of text where it expected floats.
+    assert store is None or store["a"].dtype == "str"
+
+
+def test_writing_only_some_columns_keeps_their_order(tmp_path):
+    text = write_csv_table(None, {"a": np.arange(2.0), "b": np.arange(2.0), "c": np.arange(2.0)},
+                           columns=["c", "a"])
+    assert text.splitlines()[0] == "c\ta"

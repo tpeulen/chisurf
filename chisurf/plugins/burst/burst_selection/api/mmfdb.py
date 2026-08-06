@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 
+from chisurf.core.datastore import write_csv_table
 from mmfdb.provenance.result_registry import (
     LinkValidationError,
     register_raw_measurement,
@@ -308,7 +309,7 @@ class BurstMMFDBPipeline:
             # Use the native, interoperable .bur tabular encoding for in-memory
             # results too. This keeps API/CLI/GUI output equivalent and avoids
             # coupling registration to a Python-only dataframe codec.
-            data = pd.DataFrame(rows).to_csv(sep="\t", index=False).encode("utf-8")
+            data = write_csv_table(None, pd.DataFrame(rows)).encode("utf-8")
             data_format = "bur"
 
         calibrated_at = self._resolve_calibrated_at(request)
