@@ -307,6 +307,31 @@ The reader is **not** migrated, and the reason is measured rather than assumed:
 DataFrame to its caller, so the win is unavailable until the burst-table layer
 holds a store. That is stage 3.
 
+**When the library's float formatting lands** — an integral float keeping its
+decimal point — the exclusion above stops applying to the burst *table*, and the
+work is then mechanical. The eight remaining frame `to_csv` sites split two
+ways, and only the first group is unblocked by that fix:
+
+*`.bur` — the burst table, five sites, waiting only on the float formatting:*
+
+* `core/fio/fluorescence/burst.py:418` and `:647`
+* `plugins/burst/burst_fusion/core/fusion.py:430`
+* `plugins/burst/bid_to_analysis/__init__.py:379`
+* `plugins/burst/burst_h2mm/examples/generate_example_data.py:88`
+
+*Companions — three sites that are a different job and are **not** unblocked by
+it*, because their canonical writer is `burst_companion.write_companion`
+(`%.6f`, zero-interleaved, one row per burst including the skipped ones) and
+these bypass it:
+
+* `core/fio/fluorescence/burst.py:197` (`.bv4`)
+* `plugins/burst/burst_bva/core/computation.py:264` (`.bv4`)
+* `plugins/burst/burst_2cde/core/computation.py:303` (`.2c4`)
+
+Re-derive the parity before moving the first group — write one real `.bur` both
+ways and diff the text byte for byte, which is how the divergence was found
+rather than assumed.
+
 The reader's *limits* are already expressed the way this PRD asked for:
 `read_csv_table` returns `None` for a file the threaded reader does not handle —
 a decimal comma, a skipped preamble, whitespace alignment — rather than guessing,
