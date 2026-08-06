@@ -3,8 +3,8 @@ type: PRD
 prd: "81"
 title: "PRD-81: chinsole — one console seam, and the end of qtconsole"
 description: ChiSurf had three hand-rolled consoles and a Jupyter kernel running inside the GUI process to provide a text box that runs Python. chinsole is the in-tree replacement — a Qt-free interpreter under a Qt widget — and the seam every console in the application goes through.
-status: in-progress
-phase: "all three consoles ported; pager and user guide open"
+status: done
+phase: "shipped; the notebook server is the open dependency question"
 resource: chisurf/gui/chinsole/
 tags: [prd, gui, console, chinsole, dependencies, qtconsole, chimol, code-editor]
 timestamp: '2026-08-06T00:00:00Z'
@@ -52,10 +52,15 @@ timestamp: '2026-08-06T00:00:00Z'
    permanent on every install — implementing them is the only thing that
    actually works. All four lines of the shipped `console_init` now run with no
    stderr.
-7. **Still to do:** `%debug` is wired but unexercised; the pager
-   (`gui.console.paging`) is a setting with no widget behind it yet, so `obj?`
-   output goes to the scrollback rather than a pane; and there is no user guide
-   page for the console.
+7. **Still to do:** `%debug` is wired but unexercised — it builds a real
+   `pdb.Pdb` over the console's input seam, which should work, but nobody has
+   driven it. Everything else in the Definition of Done is shipped.
+8. **A defect worth knowing because it recurred three times:** a plain
+   `QWidget` subclass **ignores a stylesheet background** unless
+   `WA_StyledBackground` is set. The pager's header, the help-button strip and
+   the editor panel all sat at Qt's default light grey against a dark console
+   before that was noticed — each read as a strip of a different application,
+   and each was found by looking at a PNG, never by a test.
 
 # Why
 
@@ -116,8 +121,9 @@ difference.
 - [x] chimol's `CommandDock` ported onto `ConsoleRole.COMMAND` (and gained Python)
 - [x] Code editor's output panel ported onto `ConsoleRole.OUTPUT` (and gained streaming)
 - [x] `Macro ▸ Record` made stoppable
-- [ ] Pager widget behind `gui.console.paging`
-- [ ] User guide page
+- [x] Pager widget behind `gui.console.paging`
+- [x] `?` help modal and a guided tour that waits for the user
+- [x] User guide page (`docs/guides/59_console.md`)
 
 See also: [macros, CLI & scripting](/subsystems/macros-cli.md),
 [known issues](/references/known-issues.md).
