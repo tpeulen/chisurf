@@ -13,6 +13,13 @@
     "sha256": "e041304102fb6415538d4c311d41ce3e8055bf8a146dbd97cc3cf0eb56c1742e",
     "status": "ai-reviewed"
   },
+  "biofilm_growth.md": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "4a80a8280f85d07e3c8210b55bdd3a228ff794c95bcec640e3211a8c30a5052f",
+    "status": "ai-reviewed"
+  },
   "ebfret.md": {
     "date": "2026-08-06",
     "reviewer": "agent",
@@ -27,11 +34,25 @@
     "sha256": "a86714edcb9283427e86758bf8e120fb7dde4635264dd3646ee7d846d7bb8b7b",
     "status": "ai-reviewed"
   },
+  "fcs_saturation.md": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "61d68b44c974fa3c3c42bbf17638d1e38a185bfb1c94319d489dec11a8416a03",
+    "status": "ai-reviewed"
+  },
   "filtered_fcs.md": {
     "date": "2026-08-06",
     "reviewer": "agent",
     "reviewer_kind": "ai",
     "sha256": "dacf392e8dee2aac6324e25300c5052b991a5e4d3161b4d4d1958008df5ae250",
+    "status": "ai-reviewed"
+  },
+  "frc_resolution.md": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "a794f6122c647435bede1e3f28336702b6ae76e933779dad932be674f92877d2",
     "status": "ai-reviewed"
   },
   "fret.md": {
@@ -48,11 +69,25 @@
     "sha256": "3f7a5f6ada0014ec2a4cd9b1c5e5cf68f0e075ded7ff41f47abef89a23d118bb",
     "status": "ai-reviewed"
   },
+  "pch_fida.md": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "ec9b9f91855727e84a90f01d5048bc9cddcb34a7ea0fa0b3f5ef96c43d052bfd",
+    "status": "ai-reviewed"
+  },
   "photophysics_simulation.md": {
     "date": "2026-08-06",
     "reviewer": "agent",
     "reviewer_kind": "ai",
     "sha256": "ad0bebf423a89c05c668a97b98509a7db40f12e26df661a47be11db2cdd709bf",
+    "status": "ai-reviewed"
+  },
+  "recurrence.md": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "54a0b86a2466cd4f28dba8fba9330c5e8029e68d21ab179d913efaf5fd7cd0f0",
     "status": "ai-reviewed"
   },
   "smfret_bursts.md": {

@@ -411,14 +411,20 @@ def test_no_page_writes_a_reference_by_hand():
 
     from chisurf.plugins.core.help.api.toc import docs_root, repository_root
 
-    pattern = re.compile(r"^\s*[-*]\s.*\[10\.\d{4,9}/[^\]]+\]\(https?://[^)]*doi\.org[^)]*\)\s*$", re.M)
+    patterns = [
+        # A bullet whose whole content is a DOI link.
+        re.compile(r"^\s*[-*]\s.*\[10\.\d{4,9}/[^\]]+\]\(https?://[^)]*doi\.org[^)]*\)\s*$", re.M),
+        # A bullet that writes the reference out: "Author, A. (1999). Title. ..."
+        re.compile(r"^\s*[-*]\s.{0,120}\((?:19|20)\d{2}\)\.\s", re.M),
+    ]
     offenders = []
     roots = [docs_root(), repository_root() / "chisurf" / "plugins"]
     for root in roots:
         for page in root.rglob("*.md"):
             if "_build" in page.parts or page.parent.name == "references":
                 continue
-            if pattern.search(page.read_text(encoding="utf-8")):
+            text = page.read_text(encoding="utf-8")
+            if any(pattern.search(text) for pattern in patterns):
                 offenders.append(str(page.relative_to(repository_root())))
     assert not offenders, offenders
 

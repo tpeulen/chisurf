@@ -10,7 +10,7 @@ Pages cite a work by its **key** — the name each entry is anchored under below
 and the citation renders as a link to the paper. The source of truth is
 [`bibliography.yaml`](bibliography.yaml) — add a work there and it appears here.
 
-*117 works.*
+*119 works.*
 
 
 ## FRET: mechanism, accuracy and corrections
@@ -287,7 +287,7 @@ and the citation renders as a link to the paper. The source of truth is
 
 (qian1990)=
 
-**[Qian & Elson (1990)](https://doi.org/10.1016/0301-4622(90)80039-A)** — H. Qian, E. L. Elson. *On the statistics of fluorescence correlation spectroscopy*. Biophysical Chemistry **38**, 49-57. (1990).  
+**[Qian & Elson (1990)](https://doi.org/10.1073/pnas.87.14.5479)** — H. Qian, E. L. Elson. *Distribution of molecular aggregation by analysis of fluctuation moments*. Proceedings of the National Academy of Sciences **87**, 5479-5483. (1990).  
 *The moment analysis behind Number & Brightness.*
 
 (rigler1993)=
@@ -367,6 +367,11 @@ and the citation renders as a link to the paper. The source of truth is
 (nieuwenhuizen2013)=
 
 **[Nieuwenhuizen et al. (2013)](https://doi.org/10.1038/nmeth.2448)** — R. P. J. Nieuwenhuizen, K. A. Lidke, M. Bates, et al. *Measuring image resolution in optical nanoscopy*. Nature Methods **10**, 557-562. (2013).
+
+(pawley2006)=
+
+**[Pawley (2006)](https://doi.org/10.1007/978-0-387-45524-2)** — J. B. Pawley. *Handbook of Biological Confocal Microscopy*. Springer US. (2006).  
+*The reference work on confocal imaging, including PSF characterisation.*
 
 (richards1959)=
 
@@ -511,6 +516,14 @@ and the citation renders as a link to the paper. The source of truth is
 
 **[Koshioka et al. (1995)](https://doi.org/10.1366/0003702953963652)** — M. Koshioka, K. Sasaki, H. Masuhara. *Time-dependent fluorescence depolarization analysis in three-dimensional microspectroscopy*. Applied Spectroscopy **49**, 224-228. (1995).  
 *Depolarisation by a high-NA objective — where the l1/l2 mixing factors come from.*
+
+
+## Optics and point-spread functions
+
+(siegman1986)=
+
+**[Siegman (1986)](https://search.crossref.org/search/works?q=Lasers+University+Science+Books+1986&from_ui=yes)** — A. E. Siegman. *Lasers*. University Science Books. (1986).  
+*Gaussian-beam optics, including the beam-waist relations used for a PSF.*
 
 
 ## Statistics, sampling and convergence

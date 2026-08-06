@@ -76,7 +76,7 @@ $$
 In ChiSurf the confocal volume is the 3-D Gaussian (3DG), so the radial
 brightness profile is $\bar{PSF}\propto e^{-2x^2}$ and the integral is taken over
 the reduced coordinate $x = r/w$ with the spherical volume element
-$\mathrm{d}\mathbf{r} = 4\pi w^3 x^2\,\mathrm{d}x$ (`pch_single_species`) — that
+$\mathrm{d}\mathbf{r} = 4\pi w^3 x^2\,\mathrm{d}x$ ({src}`chisurf/plugins/pch/api/algorithms.py#pch_single_species`) — that
 $x^2$ shell weight is what makes the volume three-dimensional; without it the
 same integral describes a *1-D* Gaussian and returns $\gamma_2 = 2^{-1/2}$
 instead of $2^{-3/2}$. Second, the actual number of
@@ -89,7 +89,8 @@ P(k) = \sum_{n=0}^{\infty} \mathrm{Poisson}(n;N)\;
        \big(p^{(1)}\big)^{\ast n}(k) .
 $$
 
-That is exactly `pch_open_system`: a Poisson-weighted stack of repeated
+That is exactly
+{src}`chisurf/plugins/pch/api/algorithms.py#pch_open_system`: a Poisson-weighted stack of repeated
 convolutions of $p^{(1)}$ with itself.
 
 ## Multiple species
@@ -103,13 +104,12 @@ P(k) = P_1 \ast P_2 \ast \cdots \ast P_S \,(k),
 $$
 
 each $P_s$ being an open-system PCH with its own $(\epsilon_s, N_s)$. ChiSurf's
-`pch_mixture` builds this with FFT convolutions, and the fit returns per-species
+{src}`chisurf/plugins/pch/api/algorithms.py#pch_mixture` builds this with FFT convolutions, and the fit returns per-species
 brightness $\epsilon_s$, occupancy $N_s$, and amplitude fractions.
 
 ## FIDA: the generating-function route
 
-Repeated convolutions are exact but stiff; **FIDA** (Kask, Palo, Ullmann & Gall
-1999) recasts the same physics through the probability **generating function**
+Repeated convolutions are exact but stiff; **FIDA** ({cite}`kask1999`) recasts the same physics through the probability **generating function**
 $G(\xi)=\sum_k P(k)\,\xi^k$, which turns convolutions into products and integrals
 into an exponent:
 
@@ -124,11 +124,11 @@ volume element that emits at relative brightness $x\in(0,1]$, normalized to
 $\int w\,\mathrm{d}x = 1$ — and $\lambda_\text{bg}$ is the mean background per
 bin. Crucially, $w(x)$ is an *explicit, adjustable* description of the optics:
 an ideal 3-D Gaussian gives $w(x)\propto(-\ln x)^{1/2}/x$
-(`dvdx_gaussian`), but a real, aberrated PSF deviates from Gaussian in exactly
+({src}`chisurf/core/models/pch/fida.py#dvdx_gaussian`), but a real, aberrated PSF deviates from Gaussian in exactly
 the way that biases brightness, and FIDA corrects for it by fitting a modified
-$w(x)$ (the first- and second-order spatial corrections in Kask 1999). The
+$w(x)$ (the first- and second-order spatial corrections of {cite}`kask1999`). The
 histogram is recovered as the Taylor coefficients of $G$ — evaluate $G$ on the
-complex unit circle and inverse-FFT (`fida_pch`). FIDA and PCH are two
+complex unit circle and inverse-FFT ({src}`chisurf/core/models/pch/fida.py#fida_pch`). FIDA and PCH are two
 computational routes to the *same* observables $(\epsilon, N)$; FIDA handles
 non-ideal volumes and many species more gracefully, PCH is more transparent.
 
@@ -187,24 +187,23 @@ time** truncates the high-$k$ tail (pushing the histogram sub-Poissonian) and
 **Triplet blinking** in the microsecond range sits squarely in the PCH bin window
 and lowers apparent brightness. Finally, the **3-D Gaussian PSF is an
 idealization** — real volumes have wings, which is why FIDA carries an explicit
-volume-shape correction (`dvdx_gaussian`) rather than assuming the ideal profile.
+volume-shape correction ({src}`chisurf/core/models/pch/fida.py#dvdx_gaussian`)
+rather than assuming the ideal profile.
 
 ## See also
 
 - Guide: {doc}`/guides/04_fida_pch`; related FCS concept:
   {doc}`/concepts/fcs_correlation`.
 - ChiSurf source: single-species and mixture PCH in
-  `chisurf/core/models/pch/` and {src}`chisurf/plugins/pch/api/algorithms.py`
-  (`pch_single_species`, `pch_open_system`, `pch_mixture`); FIDA
-  generating-function model in {src}`chisurf/core/models/pch/fida.py`
-  (`fida_pch`, `fit_fida`, `dvdx_gaussian`); the **PCH** plugin
+  {src}`chisurf/plugins/pch/api/algorithms.py`; the FIDA generating-function
+  model in {src}`chisurf/core/models/pch/fida.py`; the **PCH** plugin
   (`chisurf/plugins/pch/`, RPC `pch.compute` / `pch.fit`).
-- Chen, Y., Müller, J. D., Berland, K. M. & Gratton, E. (1999). The photon
-  counting histogram in fluorescence fluctuation spectroscopy. *Biophys. J.*
-  **77**, 553–567.
-- Kask, P., Palo, K., Ullmann, D. & Gall, K. (1999). Fluorescence-intensity
-  distribution analysis and its application in biomolecular detection
-  technology. *Proc. Natl. Acad. Sci. USA* **96**, 13756–13761.
-- Qian, H. & Elson, E. L. (1990). Distribution of molecular aggregation by
-  analysis of fluctuation moments. *Proc. Natl. Acad. Sci. USA* **87**,
-  5479–5483.
+
+## References
+
+- {cite}`chen1999` — PCH itself: the histogram derived from the detection
+  profile, and the open-system convolution above.
+- {cite}`kask1999` — FIDA: the same physics through the generating function,
+  with an adjustable description of the optics.
+- {cite}`qian1990` — the moment analysis that Number & Brightness is, and the
+  low-order truncation of both.

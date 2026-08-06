@@ -146,12 +146,12 @@ For confocal microscopy, typical values are 2–3 (axial resolution is worse tha
 
 ## References
 
-1. **PSF Characterization**
-   - Pawley, J. (2006). *Handbook of Biological Confocal Microscopy*. Springer.
-   - Richards, B., & Wolf, E. (1959). *Electromagnetic diffraction in optical systems. II. Structure of the image field in an aplanatic system*. Proc. R. Soc. Lond. A, 253, 358-379.
-
-2. **Gaussian Beam Optics**
-   - Siegman, A. E. (1986). *Lasers*. University Science Books.
+- {cite}`pawley2006` — the reference work on confocal imaging, and where PSF
+  characterisation is treated in full.
+- {cite}`richards1959` — the vectorial diffraction theory the focus shape
+  follows from.
+- {cite}`siegman1986` — Gaussian-beam optics, for the beam-waist relations used
+  above.
 
 ## License
 

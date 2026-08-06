@@ -2,6 +2,14 @@
 
 ## 2026-08-06
 
+* **A reference written out by hand is now a test failure, not a style preference** ([documentation browser](subsystems/documentation-browser.md)).
+
+  The guard against hand-written references only caught a bullet that *was* a DOI link, so pages that spelled a citation out in full — "Chen, Y., Müller, J. D., Berland, K. M. & Gratton, E. (1999). …" — passed it. Widening it to the shape an author actually writes found four more blocks, in the PCH, recurrence and PSF-determination pages, and with them two works nobody had recorded (`pawley2006`, `siegman1986`).
+
+  It also found a **wrong paper**. `qian1990` had been entered as *On the statistics of fluorescence correlation spectroscopy* (Biophys. Chem. 38, 49), but the page cites Qian & Elson's *other* 1990 paper — the moment analysis in PNAS 87, 5479 — which is the one Number & Brightness comes from. A key that resolves to a plausible neighbour of the intended work is the failure mode a bibliography exists to prevent, and it is only visible when the prose it replaced is read next to it.
+
+  Six more concept pages reviewed and corrected: `frc_resolution` was crediting the fixed 1/7 threshold to the paper that introduced the ½-bit criterion; `fcs_saturation` and `frc_resolution` had no pointer into their implementations at all. 94 of 325 pages now carry a recorded first pass.
+
 * **Nineteen more citations written as prose, and one table that did not reproduce** ([documentation browser](subsystems/documentation-browser.md)).
 
   Nineteen works were still cited in running text — "Pirchi & Tsukanov et al. 2016", "Chen, Müller, Berland & Gratton 1999" — across eight concept and guide pages. Each is now a key, which took five works into the bibliography that were being relied on without being recorded anywhere (`qian1990`, `chen1999`, `kask1999`, `kalinin2007`, `lerner2018`); 117 works, all but three with a verified DOI.

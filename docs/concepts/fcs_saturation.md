@@ -138,8 +138,8 @@ show 1.0 in the centre where the bright-state population is 0.17.
 ## The second apparent diffusion time
 
 The volume expansion is only half the story, and it is the half that shows up as
-an amplitude. The other half is a **shape** change, and it is what Widengren and
-Rigler pointed out: a saturated curve is no longer *one* diffusion component.
+an amplitude. The other half is a **shape** change: a saturated curve is no longer *one*
+diffusion component ({cite}`gregor2005`).
 
 The reason is in the transform. `G_diff(τ)` is a weighted sum of `exp(-D k² τ)`
 over the emission profile's power spectrum. For a Gaussian profile that sum
@@ -172,8 +172,8 @@ sharper edge, which decorrelates over a shorter distance than the flat centre.
 
 ### Fitting it: a global triplet times two diffusion times
 
-The established analysis is Widengren's: a **global triplet term** multiplying a
-**sum of two diffusion components**. Diffusion terms add and bunching terms
+The established analysis ({cite}`widengren1995`) is a **global triplet term**
+multiplying a **sum of two diffusion components**. Diffusion terms add and bunching terms
 multiply, so this needs a summed multi-component diffusion — the `species` mode
 of the `FCS (general)` model, with the triplet as one of its bunching terms.
 
@@ -264,11 +264,21 @@ saturated volume — is expressible. That is the shape a FRET-FCS treatment need
 where donor and acceptor channels see the same states with different
 brightnesses.
 
-## Further reading
+## See also
 
 * [Correlation and FCS basics](fcs_correlation.md)
 * [Photophysics simulation](photophysics_simulation.md)
 * [Guide: FCS saturation and focal-volume expansion](../guides/56_fcs_saturation.md)
+* Implementation: the steady-state solve
+  {src}`chisurf/core/fluorescence/fcs/saturation.py#steady_state_full_populations`,
+  the numerical correlation
+  {src}`chisurf/core/fluorescence/fcs/saturation.py#fcs_numerical_g_diff`, the
+  unsaturated closed form it reduces to
+  {src}`chisurf/core/fluorescence/fcs/saturation.py#gaussian_g_diff`, and the
+  linked power-series fit
+  {src}`chisurf/core/fluorescence/fcs/power_series.py#build_power_series_fit`.
+
+## References
 * {cite}`widengren1995` — the triplet term, and the power dependence that
   distinguishes it from what saturation does.
 * {cite}`widengren2000` — photoinduced isomerisation, the other dark state a

@@ -102,9 +102,21 @@ its criterion is not a result.** Quote both.
   treat the last digit as decoration. Smoothing the curve over a few rings
   before reading the crossing is standard and is what the tool does.
 
+## See also
+
+- Guide: {doc}`/guides/51_frc_resolution` · drift first:
+  {ref}`concept-drift-correction`.
+- Implementation: the split into two independent halves
+  {src}`chisurf/plugins/microscopy/img_frc/core.py#halves`, the ring correlation
+  and criteria {src}`chisurf/plugins/microscopy/img_frc/api/frc.py#compute_resolution`
+  and {src}`chisurf/plugins/microscopy/img_frc/api/frc.py#list_criteria`.
+
 ## References
 
-- {cite}`nieuwenhuizen2013` — Fourier ring correlation as a resolution measure for localisation microscopy.
-- {cite}`vanheel2005` — where the 1/7 and 3-sigma thresholds come from, and what each assumes.
-- {cite}`banterle2013` — the FRC threshold refined for super-resolution images specifically.
+- {cite}`vanheel2005` — the correlation-shell criteria themselves: where the
+  ½-bit and the σ-based thresholds come from, and what each assumes.
+- {cite}`banterle2013` — the FRC criterion argued specifically for
+  super-resolution fluorescence images.
+- {cite}`nieuwenhuizen2013` — FRC as the practical resolution measure for
+  localisation microscopy, and the fixed 1/7 convention used here.
 

@@ -1226,12 +1226,12 @@ lerner2018:
 
 qian1990:
   authors: H. Qian, E. L. Elson
-  title: On the statistics of fluorescence correlation spectroscopy
-  journal: Biophysical Chemistry
+  title: Distribution of molecular aggregation by analysis of fluctuation moments
+  journal: Proceedings of the National Academy of Sciences
   year: 1990
-  volume: 38
-  pages: 49-57
-  doi: 10.1016/0301-4622(90)80039-A
+  volume: 87
+  pages: 5479-5483
+  doi: 10.1073/pnas.87.14.5479
   note: The moment analysis behind Number & Brightness.
   topics: [fcs, pch]
 
@@ -1267,3 +1267,20 @@ kalinin2007:
   doi: 10.1021/jp072293p
   note: PDA extended to anisotropy, and the treatment of the brightness distribution.
   topics: [pda, smfret]
+
+pawley2006:
+  authors: J. B. Pawley
+  title: Handbook of Biological Confocal Microscopy
+  journal: Springer US
+  year: 2006
+  doi: 10.1007/978-0-387-45524-2
+  note: The reference work on confocal imaging, including PSF characterisation.
+  topics: [imaging, optics]
+
+siegman1986:
+  authors: A. E. Siegman
+  title: Lasers
+  journal: University Science Books
+  year: 1986
+  note: Gaussian-beam optics, including the beam-waist relations used for a PSF.
+  topics: [optics]

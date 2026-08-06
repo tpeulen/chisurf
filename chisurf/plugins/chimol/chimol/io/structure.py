@@ -734,14 +734,7 @@ def _read_full_model(structure_factory: Callable[..., object], path: Path) -> ob
     """
     try:
         return structure_factory(
-            str(path),
-            keep_water=True,
-            only_standard_residues=False,
-            # A viewer wants van der Waals radii -- it draws spheres and
-            # measures surfaces with them -- and that is also the fast reader:
-            # 1239 ms to 25 ms on a 9315-atom structure, because the native
-            # parser never builds an IMP hierarchy to walk back out of.
-            radii="vdw",
+            str(path), keep_water=True, only_standard_residues=False
         )
     except TypeError:
         logger.debug(

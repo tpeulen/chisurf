@@ -164,6 +164,6 @@ folder in which one molecule's fragments are one burst.
 - The same probability used to merge split bursts: {ref}`concept-burst-fusion`.
 - Related intra-burst dynamics probes: {ref}`concept-bva`, {ref}`concept-burst-2cde`.
 - ChiSurf source: {src}`chisurf/core/fluorescence/burst/recurrence.py`.
-- Hoffmann, A., Nettels, D., Gopich, I. V., Schuler, B. (2011). Quantifying
-  heterogeneity and dynamics in single-molecule FRET via recurrence analysis of
-  single particles (RASP). *Physical Chemistry Chemical Physics*, 13, 1857–1871.
+- Key literature: {cite}`hoffmann2011` is recurrence analysis of single
+  particles itself — the method this page describes, and where the recurrence
+  probability comes from.
