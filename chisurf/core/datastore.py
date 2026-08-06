@@ -36,11 +36,11 @@ than hidden.
 Column lifetime
 ---------------
 A ``Column`` obtained from a store is a **borrowed reference into the store's
-own column vector**, and adding a further column reallocates that vector. The
-stale proxy does not raise — it reads freed memory and answers with an empty
-name and no data. Nothing here keeps a ``Column`` across a call that could add
-one; :func:`column_at` re-fetches every time, and callers should do the same
-rather than caching proxies. See :func:`column_at` for the whole story.
+own column container**, and removing a column invalidates every reference into
+it. The stale proxy does not raise — it reads freed memory and answers with an
+empty name and no data. Nothing here keeps a ``Column`` across a call that could
+invalidate one; :func:`column_at` re-fetches every time, and callers should do
+the same. See :func:`column_at` for the whole story.
 """
 
 from __future__ import annotations
@@ -102,11 +102,17 @@ def column_at(store: Any, index: int) -> Any:
     """Return the column at ``index``, freshly fetched from ``store``.
 
     Always call this instead of holding on to a column. A ``Column`` handed out
-    by ``DataStore.add`` or ``store[i]`` is a reference into a
-    ``std::vector<Column>``; adding another column reallocates that vector and
-    every previously handed-out proxy then points at freed memory. It does not
-    raise — the stale proxy reports an empty name and an empty array, so the
-    symptom is a column that silently goes blank rather than an error.
+    by ``DataStore.add`` or ``store[i]`` is a reference into the store's column
+    container, and **removing** a column invalidates every reference into it.
+    It does not raise — the stale proxy reports an empty name and an empty
+    array, so the symptom is a column that silently goes blank rather than an
+    error.
+
+    Appending used to invalidate too, which was the worse case because it
+    happens while a table is merely being built. The library now holds its
+    columns in a container whose references survive an append, but an
+    environment carrying the older build still dangles there, so this is the
+    rule on both counts.
 
     Parameters
     ----------

@@ -2182,41 +2182,36 @@ a 3-atom AV asserts nothing useful about efficiency matrices anyway.
 tree, but a suite that segfaults cannot show the removal is safe, and removing
 a dependency on the strength of a crash would be backwards.
 
-## storage: a borrowed `Column` from the columnar store dangles on the next `add()`
+## storage: a borrowed `Column` from the columnar store is not safe to cache
 
 **2026-08-06.** In the simulation library's `DataStore`, a `Column` handed out
-by `add()` or `store[i]` is a reference into a `std::vector<Column>`. Adding
-another column reallocates that vector, and every previously handed-out proxy
-then reads **freed memory** — reporting an empty name and an empty array rather
-than raising. Reproduce:
+by `add()` or `store[i]` is a borrowed reference into the store's column
+container. A structural change can invalidate it, and the stale proxy does not
+raise — it reads freed memory and answers with an empty name and an empty
+array. The symptom is a column that silently goes blank, which no assertion
+catches.
 
-```python
-store = tttrlib.DataStore()
-held = store.add("f", np.arange(5, dtype="float64"))
-for i in range(8):
-    store.add(f"x{i}", np.arange(5, dtype="float64"))
-print(held.name(), held.numpy())      # '' []   <- was 'f' [0. 1. 2. 3. 4.]
-```
+**The append case is fixed at the source, and is not yet in any built
+environment.** The container is now one whose references survive an append
+(`std::deque`, `modules/core/include/DataStore.h`) — verified by building the
+library into a scratch prefix and holding a proxy across fifty `add()` calls:
+name, data and write-through all intact, where the shipped build reports `''`
+and `[]`. **That change is uncommitted in the library checkout and the binary in
+this environment is still the old one**, so every environment here still dangles
+on append until it is rebuilt.
 
-**Why it matters here.** It is precisely the shape a table adapter wants: fetch
-the columns once, keep them, read cells from them. The symptom is not a crash
-but a table that silently goes blank, which no assertion catches.
+**Removal still invalidates, and unevenly.** `remove_column` invalidates some
+proxies and not others depending on the index and the container — a vector erase
+at index 2 leaves index 0 readable, a deque erase does not. So *whether* a given
+proxy survives is not a contract in either build.
 
-**Worked around, not fixed.** `chisurf/core/datastore.py` never caches a proxy —
-`column_at()` re-fetches, and `DataStoreSource` goes through it for every
-access. `test/test_datastore_seam.py::test_a_cached_column_proxy_goes_stale_when_a_column_is_added`
-pins the library behaviour and **fails once the library is fixed**, which is the
-signal to drop the workaround.
-
-**The root-cause fix, and why it did not land in this change.** It is one line —
-`std::vector<Column> columns_` → a container with stable references (`std::deque`
-works; nothing in the header needs contiguity, and `erase`/`shrink_to_fit` are
-available on both) plus `#include <deque>`, at `modules/core/include/DataStore.h`.
-It was not applied because another instance holds **308 uncommitted lines** in
-that same header: the fix could be written but not *verified*, since verifying it
-means rebuilding the extension on top of someone else's half-finished work, and a
-break would be indistinguishable from mine. Land it when that header is clean,
-with a regression test that adds nine columns and reads the first one back.
+**The rule is therefore unchanged: never cache a proxy.**
+`chisurf/core/datastore.py` re-fetches through `column_at()` and
+`DataStoreSource` goes through it for every access. `test/test_datastore_seam.py`
+asserts the positive invariant — `column_at` answers with live data across both
+an append and a removal — and passes against the shipped build *and* the fixed
+one. It deliberately does **not** assert that a stale proxy breaks: that would
+be pinning a bug whose presence depends on the build.
 
 **Two smaller gaps found the same way**, both real and both worked around in
 `chisurf/core/datastore.py`: a boolean column has no zero-copy view and decodes

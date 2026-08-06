@@ -66,16 +66,27 @@ means: a masked cell is *not* visible to `np.isnan`.
 
 ## A column proxy is borrowed, and it dangles silently
 
-A `Column` obtained from a store — from `add()`, from `store[i]` — is a
-reference into the store's own column vector. **Adding another column
-reallocates that vector and every previously handed-out proxy then points at
-freed memory.** It does not raise: the stale proxy reports an empty name and an
-empty array, so the symptom is a column that silently goes blank.
+A `Column` obtained from a store — from `add()`, from `store[i]` — is a borrowed
+reference into the store's own column container. A structural change can
+invalidate it, and **it does not raise**: the stale proxy reports an empty name
+and an empty array, so the symptom is a column that silently goes blank.
 
-Never cache a `Column`. `column_at(store, i)` re-fetches, and every accessor in
-this seam and in `DataStoreSource` goes through it. The root cause is being
-fixed in the library (a container with stable references); the rule stands
-regardless, because `remove_column` invalidates references under any container.
+Appending used to invalidate everything, which was the worse case because it
+happens while a table is merely being built. That is fixed at the library source
+(the columns now live in a container whose references survive an append) —
+measured by holding a proxy across fifty `add()` calls in a scratch build: name,
+data and write-through all intact, where the shipped build answers `''` and
+`[]`. The fix is **not in any built environment here yet**.
+
+Removal still invalidates, and unevenly: whether a given proxy survives depends
+on the index and the container. So *whether* a proxy is still good is not a
+contract in either build.
+
+**The rule is therefore unchanged: never cache a `Column`.** `column_at(store, i)`
+re-fetches, and every accessor in this seam and in `DataStoreSource` goes
+through it. The test asserts the positive invariant — `column_at` answers with
+live data across an append *and* a removal — rather than asserting that a stale
+proxy breaks, which would be pinning a bug whose presence depends on the build.
 
 ## Three routes to write one cell
 
@@ -111,7 +122,7 @@ preference.
 | A text column is written to HDF5 with its labels **materialised** | the file is larger than the pandas one it would replace — the single thing blocking the storage-path migration |
 | No CSV writer | the reader is fast and the writer would still go through a frame |
 | No reader for the legacy frame-written HDF5 layout | files written by earlier releases must stay openable after the HDF5 table dependency goes |
-| A `Column` handed out by `add()`/`[i]` **dangles** on the next `add()` | silently blank columns; worked around by never caching a proxy |
+| A `Column` handed out by `add()`/`[i]` is **invalidated** by a structural change | silently blank columns; the append case is fixed at the library source but is in no built environment here yet, and removal still invalidates — worked around by never caching a proxy |
 | A boolean column has **no zero-copy view**, and decodes through a per-row Python loop | filtering a large boolean column is O(n) in Python, and a write through the returned array is silently lost |
 | `mask_numpy()` returns a **copy** | a single-cell mask change is a read-modify-write of the whole mask |
 | `set_numpy` on a text column **appends** instead of replacing | a second call doubles the column |

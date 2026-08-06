@@ -580,9 +580,9 @@ class DataStoreSource(TableSource):
     Notes
     -----
     No ``Column`` is ever cached. A column proxy is a borrowed reference into
-    the store's column vector and adding a column reallocates it, after which
-    the stale proxy silently reads freed memory — an empty name and no data,
-    with no exception. Every access re-fetches through
+    the store's column container and removing a column invalidates it, after
+    which the stale proxy silently reads freed memory — an empty name and no
+    data, with no exception. Every access re-fetches through
     :func:`chisurf.core.datastore.column_at`.
     """
 

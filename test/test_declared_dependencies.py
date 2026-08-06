@@ -100,6 +100,11 @@ def _allowed_modules() -> set[str]:
 _BUILD_ONLY = {
     "pip", "cmake", "ninja", "swig", "scikit-build-core", "pybind11",
     "llvm-openmp", "cmake-build-extension", "python",
+    # hdf5 is a build dependency of the photon library, whose CMake requires it
+    # unconditionally. It is not part of the released runtime -- the shipped
+    # package depends on that library, already linked -- so it belongs here
+    # rather than in the recipe's run list.
+    "hdf5",
 }
 
 #: In the dev env but deliberately not in the released package, with the reason.

@@ -222,31 +222,51 @@ def test_column_values_raw_keeps_the_buffer(frame):
 # ── the borrowed-column trap ─────────────────────────────────────────────
 
 
-def test_a_cached_column_proxy_goes_stale_when_a_column_is_added():
-    """Pin the library behaviour this seam exists to route around.
+def test_a_cached_column_proxy_is_not_safe_across_a_structural_change():
+    """Why this seam never caches a column proxy.
 
-    A ``Column`` is a reference into the store's column vector. Adding another
-    column reallocates it and the held proxy reads freed memory — silently, with
-    an empty name and no data, rather than raising. If this test ever fails
-    because the proxy stayed valid, the library has been fixed and the
-    re-fetching in this module is merely belt and braces.
+    A ``Column`` is a borrowed reference into the store's column container, so
+    a structural change can invalidate it — and the stale proxy does not raise,
+    it reads freed memory and answers with an empty name and no data. The
+    symptom is a column that silently goes blank.
+
+    **Whether any particular proxy survives is not a contract.** It depends on
+    the container the installed build uses and on which column moved: an
+    appended column used to invalidate everything and no longer does, and a
+    removal invalidates some proxies and not others depending on the index. So
+    this test asserts only that a proxy taken before the change is not
+    *trustworthy* afterwards — either it still reads correctly or it has gone
+    blank, and a caller cannot tell which without re-fetching. That is the
+    whole argument for :func:`column_at`.
     """
     store = new_store()
-    held = store.add("f", np.arange(5, dtype="float64"))
-    for i in range(8):
+    for i in range(4):
         store.add(f"x{i}", np.arange(5, dtype="float64"))
-    assert held.name() == "" or len(held.numpy()) == 0, (
-        "the borrowed-column reference survived a reallocation — see the "
-        "columnar-store concept and drop this workaround"
+    held = store[0]
+    store.remove_column(2)
+    intact = held.name() == "x0" and len(held.numpy()) == 5
+    blank = held.name() == "" or len(held.numpy()) == 0
+    assert intact or blank, (
+        f"a stale proxy answered with neither live data nor a blank: "
+        f"{held.name()!r}, {len(held.numpy())} rows"
     )
 
 
 def test_column_at_always_answers_with_live_data():
-    """The seam's rule — re-fetch — is immune to the reallocation above."""
+    """The seam's rule — re-fetch — is immune to either invalidation.
+
+    Holds across an append and across a removal, and therefore across both the
+    older library build and the current one.
+    """
     store = new_store()
     store.add("f", np.arange(5, dtype="float64"))
     for i in range(8):
         store.add(f"x{i}", np.arange(5, dtype="float64"))
+    column = column_at(store, 0)
+    assert column.name() == "f"
+    np.testing.assert_array_equal(column.numpy(), np.arange(5, dtype="float64"))
+
+    store.remove_column(4)
     column = column_at(store, 0)
     assert column.name() == "f"
     np.testing.assert_array_equal(column.numpy(), np.arange(5, dtype="float64"))

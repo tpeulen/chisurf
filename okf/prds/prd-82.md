@@ -29,13 +29,14 @@ nothing about that has changed. Before starting it, note what stage 1 turned up:
    write is expressible today over `dictionary()` / `set_dictionary()` /
    `codes()`, which is what `set_cell` does. It still belongs in the library so
    six consumers do not re-derive it, but it blocks nothing.
-2. **A new gap outranks most of the T-list: a borrowed `Column` dangles.** A
-   proxy from `add()` or `store[i]` is a reference into a `std::vector<Column>`;
-   the next `add()` reallocates and the held proxy reads freed memory, silently,
-   as an empty column. Every stage below wants to fetch columns once and keep
-   them, so every stage will meet this. Worked around by never caching a proxy;
-   root cause, the one-line container change, and why it could not be verified
-   in that change are in
+2. **A borrowed `Column` is not safe to cache — and the append case is now
+   fixed at the library source but is in no built environment here.** Every
+   stage below wants to fetch columns once and keep them, so every stage meets
+   this. Rebuilding the library is what makes the fix real: `pixi run
+   build-tttrlib` could not configure on macOS at all until `hdf5` was declared
+   for every platform rather than for `win-64`/`linux-64` only, which is why the
+   shipped binary was stale. *Removal* still invalidates unevenly, so
+   `column_at()` and the never-cache rule stay regardless. Detail in
    [known issues](../references/known-issues.md).
 3. **Two smaller library gaps**, both worked around in the seam: a boolean
    column has no zero-copy view (it decodes through a per-row Python loop, and a
@@ -251,7 +252,7 @@ required to finish stage 3 without hand-rolling the same loop in six plugins.
 | **T7** | **Group-by aggregation over a dictionary column** | 6 call sites. Most of it is `codes` + `np.bincount`, which is *why* it belongs in the library: every consumer writing that loop by hand is how the codes get copied. |
 | ~~T8~~ | ~~Single-cell string write~~ | **Not a gap.** Expressible over `dictionary()` / `set_dictionary()` / `codes()`, which is what `set_cell` does. Worth having in the library so six consumers do not re-derive it; blocks nothing. |
 | T9 | `describe`-shaped summary | `profile()` already covers most of it; listed so it is not rediscovered as missing. |
-| **T10** | **A `Column` reference that survives `add()`** | Found by stage 1, and it outranks most of this list because every stage wants to fetch columns once and keep them. A proxy from `add()`/`store[i]` points into a `std::vector<Column>`; the next `add()` reallocates and it reads freed memory — an empty name and no data, with no exception. One-line fix (a stable-reference container) in `modules/core/include/DataStore.h`; see [known issues](../references/known-issues.md) for why it could not be verified in the change that found it. |
+| ~~T10~~ | ~~A `Column` reference that survives `add()`~~ | **Fixed at the library source** (a stable-reference container in `modules/core/include/DataStore.h`), verified in a scratch build: a proxy survives fifty `add()` calls where the shipped build answers `''` and `[]`. **Not in any built environment here yet**, and *removal* still invalidates unevenly, so the never-cache rule and `column_at()` stay. |
 | T11 | A zero-copy view for a **boolean** column | Today `numpy()` decodes it through a per-row Python loop, so filtering a large boolean column is O(n) in Python — and the array it returns is a *copy*, so a write through it is silently lost. |
 | T12 | `mask_numpy()` as a view rather than a copy | A single-cell mask change is currently a read-modify-write of the whole mask. Also: `set_numpy` on a text column **appends** instead of replacing, so a second call doubles it. |
 

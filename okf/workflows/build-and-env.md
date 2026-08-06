@@ -151,6 +151,49 @@ env lives under the central pixi cache instead of `<repo>/.pixi/envs`, so the re
 folder stays clean. Set it once per machine with
 `pixi config set --global detached-environments true`.
 
+## A native build dependency that arrived by accident, and left the same way
+
+`hdf5` is a **build** dependency of the photon library — its CMake calls
+`find_package(HDF5)` unconditionally — but it was never declared as one. It used
+to arrive in the environment as a transitive dependency of the HDF5 table
+package, so nothing noticed. Removing that package took HDF5 out of the macOS
+environment with it, and `build-tttrlib` has been unable to configure there ever
+since:
+
+```
+CMake Error ... Could NOT find HDF5 (missing: HDF5_LIBRARIES HDF5_INCLUDE_DIRS C)
+```
+
+It *was* declared — for `win-64` and `linux-64` only — which is what made the
+failure read as platform-specific rather than as the missing dependency it was.
+It is now in the common `[dependencies]` table, and in `_BUILD_ONLY` in
+`test/test_declared_dependencies.py`, because it is not part of the released
+runtime: the shipped package depends on the photon library already linked.
+
+**Two traps this hid behind.** A pipeline hides it — `pixi run build-tttrlib |
+tail` reports the exit status of `tail`, so a failed build reads as success; run
+it unpiped, or check `${PIPESTATUS[0]}`. And the failure is *not* fatal to
+anything you would notice: the previously built library stays installed and
+importable, so a C++ change appears to have been rebuilt when it has not. The
+way to tell is to assert the new behaviour from Python, not to read the build log.
+
+**Verifying a library change without disturbing anyone.** Building into a
+scratch prefix touches neither environment, which matters because the
+environments here are shared and the lock file usually carries another session's
+uncommitted work:
+
+```bash
+ENV=<conda env with hdf5>
+CMAKE_ARGS="-DCMAKE_PREFIX_PATH=$ENV -DHDF5_ROOT=$ENV -DHDF5_NO_FIND_PACKAGE_CONFIG_FILE=TRUE" \
+  $ENV/bin/python -m pip install <library source> --no-build-isolation --no-deps \
+    --target /tmp/verify/pkg --config-settings=build-dir=/tmp/verify/build
+PYTHONPATH=/tmp/verify/pkg python -c "..."
+```
+
+Running the affected suites under that `PYTHONPATH` as well as normally is how a
+change is shown to be correct against **both** the shipped build and the fixed
+one.
+
 # Common commands
 
 ```bash

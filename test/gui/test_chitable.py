@@ -846,12 +846,13 @@ def test_store_source_read_only_columns_and_colorize_selection(store):
     assert specs["count"].colorize is False
 
 
-def test_store_source_survives_a_column_being_added(store):
+def test_store_source_survives_a_structural_change(store):
     """The borrowed-column trap: a source must not hold a stale proxy.
 
-    Adding a column reallocates the store's column vector, and any ``Column``
-    handed out earlier then reads freed memory — silently, as an empty column.
-    ``DataStoreSource`` re-fetches, so the table keeps working.
+    A ``Column`` handed out earlier is a reference into the store's column
+    container; a structural change invalidates it and it then reads freed
+    memory — silently, as an empty column. ``DataStoreSource`` re-fetches, so
+    the table keeps working across both an append and a removal.
     """
     src = DataStoreSource(store, editable=True)
     assert src.value(0, 0) == "alpha"
@@ -861,3 +862,8 @@ def test_store_source_survives_a_column_being_added(store):
     src.set_store(store)
     assert [s.key for s in src.column_specs()][-1] == "extra"
     assert src.value(3, 5) == 3.0
+
+    store.remove_column(store.n_columns() - 1)
+    src.set_store(store)
+    assert src.value(0, 0) == "alpha"
+    assert src.value(2, 1) == 300.0

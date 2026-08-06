@@ -28,6 +28,13 @@ numpy = "*"
 typing-extensions = ">=4.14"
 pyyaml = "*"
 markdown = "*"
+# HDF5 is a BUILD dependency of tttrlib on every platform — `find_package(HDF5)`
+# in its CMake is not optional — and it used to arrive by accident, dragged in by
+# PyTables. Dropping PyTables took it out of the macOS environment with it, and
+# `build-tttrlib` has been unable to configure there ever since ("Could NOT find
+# HDF5"). It was declared for win-64 and linux-64 only, which is why the failure
+# looked platform-specific rather than like the missing dependency it is.
+hdf5 = "*"
 # click-didyoumean was dropped: chisurf.core.cli_support.DidYouMeanGroup is the
 # in-tree replacement. pytools was dropped: nothing imports it.
 click = "*"
@@ -147,7 +154,6 @@ docs-check-reviewed = { cmd = "python -m chisurf.core.cli help review-check" }
 docs-release = { depends-on = ["docs-check-reviewed", "docs-html"] }
 
 [target.win-64.dependencies]
-hdf5 = "*"
 cmake = "<4"
 ninja = "*"
 
@@ -158,8 +164,6 @@ ninja = "*"
 # meant a fresh environment silently got a broken correlator. tttrlib is built
 # from source by the `build-tttrlib` task instead, via the tracked
 # `modules/tttrlib` symlink (the same sibling-checkout pattern as modules/mmfdb).
-[target.linux-64.dependencies]
-hdf5 = "*"
 
  [tasks]
  test-chinet = { cmd = "python -m pytest modules/chinet/test -x -q" }
