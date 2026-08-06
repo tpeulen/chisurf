@@ -155,6 +155,24 @@ Two levels, and they mean different things:
 An agent must never record the second. Either level lapses automatically when
 the page is edited, so sign off page by page rather than in a sweep.
 
+### What ships with the application
+
+The help browser reads these pages from disk, so an installed ChiSurf has to
+carry them: the build copies a selection of `docs/` into the package itself, at
+`chisurf/docs`, and the browser prefers that copy over any source tree. A
+checkout has no such copy — `docs/` stays the single place a page is edited.
+
+The selection lives in {src}`_shipped_docs.py#iter_shipped_docs`: pages,
+figures and the data files the renderer resolves against (the bibliography, the
+figure register, review status). Left out are Sphinx build output, the retired
+Word manual, the Sphinx extensions, and the manual's `.emf` figures — a vector
+format no browser draws, which is why `docs-manual` converts them to PNG.
+
+Practical consequence when adding documentation: **a page in a format the
+selection does not list ships as a broken link, not as an error.** A guardrail
+test (`test_packaging.py`) fails if anything the table of contents lists is not
+carried, so add the suffix there rather than working around it.
+
 ---
 
 ## What the checks are

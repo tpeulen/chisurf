@@ -1,9 +1,18 @@
 import os
 import pathlib
+import sys
 from distutils.command.build import build as _build
+
 from setuptools import setup
+from setuptools.command.build_py import build_py as _build_py
 
 HERE = pathlib.Path(__file__).parent.resolve()
+
+# A PEP 517 build runs this file with ``exec`` and the project root *not* on
+# ``sys.path``, so a plain import of the sibling module fails there and only
+# there -- which is every real ``pip install``.
+sys.path.insert(0, str(HERE))
+from _shipped_docs import iter_shipped_docs  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Build-time static version
@@ -51,8 +60,41 @@ class build(_build):
     """Freeze the version, then build normally."""
 
     def run(self):
+        """Write the static version file, then run the normal build."""
         _write_version_file(_resolve_version())
         super().run()
+
+
+class build_py(_build_py):
+    """Build normally, then carry the documentation inside the package.
+
+    The help browser reads ``docs/`` at runtime, and ``docs/`` is not part of
+    any package, so an installed ChiSurf had no documentation to open. The
+    selection ships into ``chisurf/docs`` in the *build* directory -- never
+    into the checkout, where it would shadow the originals with a stale copy.
+    """
+
+    def run(self):
+        """Build the packages, then copy the shipped documentation beside them."""
+        super().run()
+        if self.build_lib is None:
+            return
+        docs = HERE / "docs"
+        target = pathlib.Path(self.build_lib) / "chisurf" / "docs"
+        count = 0
+        for relative in iter_shipped_docs(docs):
+            destination = target / relative
+            self.mkpath(str(destination.parent))
+            self.copy_file(str(docs / relative), str(destination), preserve_mode=False)
+            count += 1
+        print(f"Copied {count} documentation files -> {target}")
+
+    def get_outputs(self, include_bytecode=1):
+        """Report the copied documentation, so installers place it too."""
+        outputs = super().get_outputs(include_bytecode)
+        target = pathlib.Path(self.build_lib) / "chisurf" / "docs"
+        outputs.extend(str(target / relative) for relative in iter_shipped_docs(HERE / "docs"))
+        return outputs
 
 
 # ---------------------------------------------------------------------------
@@ -63,5 +105,5 @@ setup(
     # pyproject.toml's [tool.setuptools.packages.find].
     include_package_data=True,
     zip_safe=False,
-    cmdclass={"build": build},
+    cmdclass={"build": build, "build_py": build_py},
 )

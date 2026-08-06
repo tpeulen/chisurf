@@ -22,6 +22,9 @@ from __future__ import annotations
 import pathlib
 import re
 
+from chisurf.plugins.core.help.api.toc import docs_root
+from chisurf.plugins.core.help.api.toc import repository_root as _docs_parent
+
 __all__ = [
     "expand_roles",
     "ref_index",
@@ -44,12 +47,14 @@ _REF_CACHE: dict[str, tuple[pathlib.Path, str]] | None = None
 
 
 def repository_root() -> pathlib.Path:
-    """Return the directory that holds ``docs/`` — the repo or install root."""
-    here = pathlib.Path(__file__).resolve()
-    for parent in here.parents:
-        if (parent / "docs").is_dir():
-            return parent
-    return here.parents[-1]
+    """Return the directory that holds ``docs/`` — the repo or install root.
+
+    One resolver, in :mod:`~chisurf.plugins.core.help.api.toc`: a second copy
+    of the walk here would find the checkout's documentation while the browser
+    read the packaged one, and cross-references would resolve into a different
+    tree than the pages they sit on.
+    """
+    return _docs_parent()
 
 
 def resolve_document(target: str, base: pathlib.Path | None = None) -> pathlib.Path | None:
@@ -77,14 +82,14 @@ def resolve_document(target: str, base: pathlib.Path | None = None) -> pathlib.P
     if path.is_absolute():
         return path if path.is_file() else None
 
-    root = repository_root()
+    docs = docs_root()
     candidates: list[pathlib.Path] = []
     if base is not None:
         candidates.append(base / path)
-    candidates.append(root / path)
+    candidates.append(docs.parent / path)
     # A link may name the page without the ``docs/`` prefix, which is how the
     # docs cross-reference each other.
-    candidates.append(root / "docs" / path)
+    candidates.append(docs / path)
     for candidate in candidates:
         if candidate.is_file():
             return candidate.resolve()
@@ -112,7 +117,7 @@ def ref_index(refresh: bool = False) -> dict[str, tuple[pathlib.Path, str]]:
     if _REF_CACHE is not None and not refresh:
         return _REF_CACHE
     index: dict[str, tuple[pathlib.Path, str]] = {}
-    docs = repository_root() / "docs"
+    docs = docs_root()
     if docs.is_dir():
         for page in docs.rglob("*.md"):
             try:

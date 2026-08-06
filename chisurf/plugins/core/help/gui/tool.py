@@ -41,6 +41,7 @@ from qtpy.QtGui import (
     QKeySequence,
     QPainter,
     QPixmap,
+    QTextCursor,
     QTextDocument,
 )
 from qtpy.QtWidgets import (
@@ -235,21 +236,37 @@ def _constrain_image_widths(html: str, base_dir: pathlib.Path, max_width: int) -
     return _IMG_TAG.sub(_fix, html)
 
 
-def _apply_measure(html: str, available: int, maximum: int) -> str:
-    """Hold the text column to a readable width inside a wide window.
+#: Smallest gutter a page keeps, so text never touches the scrollbar.
+MIN_GUTTER = 10
 
-    A maximised help window is over a thousand pixels of text per line, which
-    is roughly twice what is comfortable to read. Qt's rich-text engine ignores
-    ``max-width``, so the limit is applied as symmetric body margins computed
-    for the width the page is actually being shown at.
+#: Qt's own margin around the document body, which sits inside the gutter.
+_DOCUMENT_MARGIN = 4
+
+
+def measure_margin(available: int, maximum: int, minimum: int = MIN_GUTTER) -> int:
+    """Return the gutter that holds a text column of *maximum* inside *available*.
+
+    A maximised help window is over a thousand pixels of text per line, which is
+    roughly twice what is comfortable to read, so the column is centred inside
+    the viewport. In a narrow window the viewport *is* the column and only the
+    minimum gutter is kept.
+
+    Parameters
+    ----------
+    available : int
+        Viewport width in pixels.
+    maximum : int
+        Widest text column to allow, in pixels.
+    minimum : int, optional
+        Gutter to keep even when the viewport is narrower than *maximum*.
+
+    Returns
+    -------
+    int
+        Margin to leave on each side.
+
     """
-    if available <= maximum + 40:
-        return html
-    margin = (available - maximum) // 2
-    style = f"<style>body {{ margin-left: {margin}px; margin-right: {margin}px; }}</style>"
-    if "</head>" in html:
-        return html.replace("</head>", f"{style}</head>", 1)
-    return style + html
+    return max(minimum, (available - maximum) // 2)
 
 
 #: Emoji rendered to pixmaps, keyed by (character, pixel size).
@@ -306,7 +323,134 @@ def emoji_icon(character: str, size: int = 16):
 
 
 class HelpTextBrowser(QTextBrowser):
-    """Custom text browser that handles local and remote resource loading."""
+    """Text browser that loads local and remote resources and holds a measure.
+
+    The readable-column limit used to be written into the page as fixed body
+    margins, computed for the width the viewport happened to have when the page
+    was rendered. Qt's rich-text engine lays those out once, so narrowing the
+    window afterwards left the gutters at their old size: the text column
+    collapsed to a fraction of the window, most of the page went blank and the
+    document — still as wide as the window it was rendered for — grew a
+    horizontal scrollbar. The limit lives on the *document's root frame*
+    instead, where it can be recomputed on every resize without re-rendering
+    the page or losing the reading position. Figures and typeset formulas are
+    resized along with it, for the same reason: one formula wider than the
+    window is enough to slide every paragraph on the page sideways.
+    """
+
+    #: Widest comfortable text column, in pixels. Beyond roughly this the eye
+    #: loses the start of the next line; the manual's screenshots are wider and
+    #: are allowed to be, which is why this bounds the *text* and not the page.
+    MAX_TEXT_WIDTH = 860
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        #: Width each image was laid out at when the page arrived, keyed by
+        #: source. Scaling always starts from this, so narrowing and widening
+        #: the window again restores the figure rather than compounding.
+        self._image_sizes: dict = {}
+        #: Column the document is currently laid out for.
+        self._column: Optional[int] = None
+
+    def setHtml(self, html, *args):
+        """Show *html* and fit it to the current column."""
+        self._image_sizes = {}
+        self._column = None
+        super().setHtml(html, *args)
+        self.apply_measure()
+
+    def resizeEvent(self, event):
+        """Re-fit the text column and its figures to the new viewport width."""
+        super().resizeEvent(event)
+        self.apply_measure()
+
+    def apply_measure(self):
+        """Fit the page to the viewport, capped at ``MAX_TEXT_WIDTH``.
+
+        Called on resize and after every page load, and cheap to call often:
+        it returns immediately unless the column actually changed, because
+        rewriting frame and image formats relays the document out — which can
+        resize the viewport again.
+        """
+        try:
+            column = self.text_column_width()
+            if self._column == column:
+                return
+            self._column = column
+            frame = self.document().rootFrame()
+            margin = measure_margin(self.viewport().width(), self.MAX_TEXT_WIDTH)
+            frame_format = frame.frameFormat()
+            if abs(frame_format.leftMargin() - margin) >= 0.5:
+                frame_format.setLeftMargin(margin)
+                frame_format.setRightMargin(margin)
+                frame.setFrameFormat(frame_format)
+            self._fit_images(column)
+        except Exception:
+            logger.debug("could not apply the text measure", exc_info=True)
+
+    def _fit_images(self, column: int):
+        """Scale every figure and formula down to at most *column* pixels.
+
+        The scan and the edit are two passes: applying a format inside the
+        fragment iteration would be mutating the thing being walked.
+        """
+        document = self.document()
+        edits = []
+        block = document.begin()
+        while block.isValid():
+            fragments = block.begin()
+            while not fragments.atEnd():
+                fragment = fragments.fragment()
+                if fragment.charFormat().isImageFormat():
+                    scaled = self._scaled_image(fragment.charFormat(), column)
+                    if scaled is not None:
+                        edits.append((fragment.position(), fragment.length(), scaled))
+                fragments += 1
+            block = block.next()
+        if not edits:
+            return
+
+        was_modified = document.isModified()
+        cursor = QTextCursor(document)
+        for position, length, image in edits:
+            cursor.setPosition(position)
+            cursor.setPosition(position + length, QTextCursor.KeepAnchor)
+            cursor.setCharFormat(image)
+        if not was_modified:
+            document.setModified(False)
+
+    def _scaled_image(self, char_format, column: int):
+        """Return *char_format* resized to *column*, or *None* if it fits.
+
+        The size is derived from the width the image had when the page arrived,
+        not from its current one, so narrowing and widening the window again
+        restores the figure instead of shrinking it twice.
+        """
+        image = char_format.toImageFormat()
+        natural = self._image_sizes.get(image.name())
+        if natural is None:
+            natural = (image.width(), image.height())
+            self._image_sizes[image.name()] = natural
+        width, height = natural
+        if width <= 0 or height <= 0:
+            return None
+        target = min(width, column)
+        if abs(image.width() - target) < 1:
+            return None
+        image.setWidth(target)
+        image.setHeight(max(1, round(height * target / width)))
+        return image
+
+    def text_column_width(self) -> int:
+        """Return the width text is laid out in, images and formulas included.
+
+        This is what is left of the viewport once the gutters and the
+        document's own margin are taken off, so a figure given this width fits
+        without a horizontal scrollbar.
+        """
+        available = max(320, self.viewport().width())
+        margin = measure_margin(available, self.MAX_TEXT_WIDTH)
+        return max(160, available - 2 * margin - 2 * _DOCUMENT_MARGIN)
 
     def loadResource(self, type, name):
         """Load local or remote resources for the help browser."""
@@ -345,10 +489,9 @@ class HelpWidget(QMainWindow):
 
     """
 
-    #: Widest comfortable text column, in pixels. Beyond roughly this the eye
-    #: loses the start of the next line; the manual's screenshots are wider and
-    #: are allowed to be, which is why this bounds the *text* and not the page.
-    MAX_TEXT_WIDTH = 860
+    #: Widest comfortable text column, in pixels. Owned by the viewer, which
+    #: applies it; kept here as the name the rest of the window reads it by.
+    MAX_TEXT_WIDTH = HelpTextBrowser.MAX_TEXT_WIDTH
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -627,7 +770,7 @@ class HelpWidget(QMainWindow):
     # ── zoom ────────────────────────────────────────────────────────
 
     #: Body text size in points, and the range the reader may take it to.
-    DEFAULT_FONT_SIZE = 10.5
+    DEFAULT_FONT_SIZE = 12.0
     MIN_FONT_SIZE = 7.0
     MAX_FONT_SIZE = 24.0
 
@@ -1341,7 +1484,7 @@ class HelpWidget(QMainWindow):
             # a formula wider than the column gives the whole page a horizontal
             # scrollbar, and every paragraph on it then slides sideways.
             try:
-                column = min(self.MAX_TEXT_WIDTH, max(320, self.viewer.viewport().width()))
+                column = self.viewer.text_column_width()
             except Exception:
                 column = self.MAX_TEXT_WIDTH
             self._math_renderer = MathRenderer(
@@ -1393,7 +1536,9 @@ class HelpWidget(QMainWindow):
                 font_size=self.font_size,
             )
         except Exception:
-            logger.debug("could not render %s", file_path, exc_info=True)
+            # Not debug: the reader is about to be shown raw Markdown, source
+            # syntax and all, and nothing else says why.
+            logger.warning("could not render %s", file_path, exc_info=True)
             html = None
         return html, shown
 
@@ -1411,13 +1556,9 @@ class HelpWidget(QMainWindow):
             except Exception:
                 pass
         try:
-            width = self.viewer.viewport().width() - 24
-            if width <= 0:
-                width = self.MAX_TEXT_WIDTH
-            html = _apply_measure(html, width, self.MAX_TEXT_WIDTH)
             if base_dir is not None:
                 html = _constrain_image_widths(
-                    html, base_dir, min(width, self.MAX_TEXT_WIDTH)
+                    html, base_dir, self.viewer.text_column_width()
                 )
         except Exception:
             pass

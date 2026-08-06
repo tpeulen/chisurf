@@ -277,12 +277,42 @@ def test_inline_images_are_not_wrapped():
 
 def test_text_column_is_bounded_in_a_wide_window():
     """A thousand-pixel line is not readable, whatever the window is doing."""
-    from chisurf.plugins.core.help.gui.tool import _apply_measure
+    from chisurf.plugins.core.help.gui.tool import MIN_GUTTER, measure_margin
 
-    html = "<html><head></head><body><p>x</p></body></html>"
-    assert "margin-left" not in _apply_measure(html, 700, 860)
-    wide = _apply_measure(html, 1600, 860)
-    assert "margin-left: 370px" in wide
+    assert measure_margin(700, 860) == MIN_GUTTER
+    assert measure_margin(1600, 860) == 370
+
+
+def test_text_column_follows_the_window_when_it_narrows(qapp, qtbot):
+    """The measure is not frozen at the width the page was rendered for.
+
+    Opening wide and then narrowing used to leave the gutters at their old
+    size: the text column collapsed to a fraction of the window and the
+    document, still as wide as before, grew a horizontal scrollbar.
+    """
+    from chisurf.plugins.core.help.gui.tool import HelpWidget
+    from chisurf.plugins.core.help.api.toc import repository_root
+
+    page = repository_root() / "docs" / "concepts" / "fret.md"
+    if not page.is_file():
+        import pytest
+
+        pytest.skip("documentation not present in this checkout")
+
+    widget = HelpWidget()
+    qtbot.addWidget(widget)
+    widget.resize(1800, 900)
+    widget.show()
+    qapp.processEvents()
+    widget.navigate(page)
+    qapp.processEvents()
+
+    widget.resize(1000, 900)
+    qapp.processEvents()
+
+    viewport = widget.viewer.viewport().width()
+    assert widget.viewer.document().idealWidth() <= viewport + 1
+    assert widget.viewer.horizontalScrollBar().maximum() == 0
 
 
 def test_zoom_changes_the_rendered_size(qapp, qtbot):

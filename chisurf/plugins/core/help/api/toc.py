@@ -29,6 +29,7 @@ Three things this file is careful about:
 
 from __future__ import annotations
 
+import functools
 import pathlib
 import re
 from dataclasses import dataclass, field
@@ -39,6 +40,7 @@ __all__ = [
     "build_toc",
     "docs_root",
     "iter_pages",
+    "package_root",
     "read_index",
     "repository_root",
 ]
@@ -96,18 +98,50 @@ class Node:
             yield from child.walk()
 
 
-def repository_root() -> pathlib.Path:
-    """Return the directory holding ``docs/`` — the repository or install root."""
+def package_root() -> pathlib.Path:
+    """Return the installed ``chisurf`` package directory."""
+    here = pathlib.Path(__file__).resolve()
+    for parent in here.parents:
+        if parent.name == "chisurf" and (parent / "__init__.py").is_file():
+            return parent
+    return here.parents[4]
+
+
+@functools.lru_cache(maxsize=1)
+def docs_root() -> pathlib.Path:
+    """Return the ``docs/`` directory the application reads.
+
+    A distribution carries the documentation *inside* the package, at
+    ``chisurf/docs`` — that is the one directory every installer is guaranteed
+    to place, so the help browser works from a wheel or a conda package with
+    no source tree anywhere. A checkout has no such copy (it is assembled at
+    build time, never written into the tree), so the repository's own ``docs/``
+    is used and stays the single thing an author edits.
+
+    Returns
+    -------
+    pathlib.Path
+        The documentation root. It may not exist, in a stripped-down install
+        with the documentation left out; callers show what they can.
+
+    """
+    packaged = package_root() / "docs"
+    if packaged.is_dir():
+        return packaged
     here = pathlib.Path(__file__).resolve()
     for parent in here.parents:
         if (parent / "docs").is_dir():
-            return parent
-    return here.parents[-1]
+            return parent / "docs"
+    return packaged
 
 
-def docs_root() -> pathlib.Path:
-    """Return the ``docs/`` directory."""
-    return repository_root() / "docs"
+def repository_root() -> pathlib.Path:
+    """Return the directory holding ``docs/`` — the repository or install root.
+
+    Defined as the parent of :func:`docs_root` so that a page's address reads
+    ``docs/guides/…`` whether it came from a checkout or from the package.
+    """
+    return docs_root().parent
 
 
 # ── toctree parsing ─────────────────────────────────────────────────

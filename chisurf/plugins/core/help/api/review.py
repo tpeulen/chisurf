@@ -190,17 +190,18 @@ def content_hash(text: str) -> str:
 
 
 def docs_root() -> pathlib.Path | None:
-    """Return the repository ``docs/`` directory, or *None* when unavailable.
+    """Return the ``docs/`` directory, or *None* when there is none to review.
 
     Returns
     -------
     pathlib.Path or None
-        The documentation root; *None* for installations without a source tree.
+        The documentation root; *None* when the installation carries no
+        documentation at all.
 
     """
-    import chisurf as cs
+    from chisurf.plugins.core.help.api.toc import docs_root as _root
 
-    root = pathlib.Path(cs.__file__).resolve().parent.parent / "docs"
+    root = _root()
     return root if root.is_dir() else None
 
 

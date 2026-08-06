@@ -15,7 +15,14 @@ component whose defects are invisible to assertions and obvious in an image
 it through a concept page, a manual page, a guide, a plugin README, the start
 page and a search). Three automated numbers back that up:
 
-* `pytest chisurf/plugins/core/help/test` — 743 tests. Five are the real
+The layout has its own measurement, and it is not a screenshot of a *freshly
+opened* window: open the browser **wide, then narrow it** and read
+`viewer.document().idealWidth()` against `viewer.viewport().width()` and
+`horizontalScrollBar().maximum()`. A page that fits when it is opened is not
+the same claim as a page that still fits after a resize, and it was the second
+one that was broken for every window size but the one the page loaded at.
+
+* `pytest chisurf/plugins/core/help/test` — 793 tests. Five are the real
   guardrails, all in `test_render.py`: **every formula in `docs/` typesets**;
   **no page in the tree leaks its markup** — no fence, no `$$` and no surviving
   role, checked over *every* `.md` and `.rst` through the same chain the browser
@@ -35,6 +42,15 @@ page and a search). Three automated numbers back that up:
 
 **What is open.**
 
+0. **The packaged copy is proven by a wheel, and only by a wheel.** `pip wheel .
+   --no-deps --no-build-isolation` then unzip it somewhere and put *that* on
+   `PYTHONPATH` with the checkout out of the way — the checkout's `docs/` is
+   found by the fallback, so a test run from the repository cannot tell the two
+   apart. Done once (599 entries, 44 MB wheel, a manual page with its
+   screenshot rendered from it). What has **not** been checked is the conda
+   package built by `build_tools/build_installer.py`, which assembles a runtime
+   on top of `pip install .`; the recipe needs no change, but nobody has opened
+   Help in an installed build.
 1. **The manual is AI-reviewed and awaits a human** — `csc help review-list`
    reports `0 reviewed, 94 AI-reviewed, 0 stale, 231 unreviewed` over the whole
    tree; the manual's own 79 are all AI-reviewed. All 79 pages
@@ -142,6 +158,14 @@ documentation link anywhere in the application.
 | Literature | `api/bibliography.py` | One entry per cited work; expands `{cite}` and says where the paper can be got. |
 | Source links | `api/source_links.py` | Resolves `path#symbol` to a file and a line, by parsing rather than by counting; labels the link with the path as written, in both renderers. |
 | Window | `gui/tool.py` | Address bar, tree, start page, search, history, previous/next, authoring tools. |
+
+**Where the pages come from.** `api/toc.py` owns the one answer, in
+`docs_root()`: the copy **inside the package** (`chisurf/docs`) if a
+distribution carries one, the repository's `docs/` otherwise. `xref.py` and
+`review.py` had their own walk-up copies of that search and now delegate — two
+resolvers meant cross-references could resolve into a different tree than the
+pages they sat on. `repository_root()` is *defined* as `docs_root().parent`, so
+a page's address reads `docs/guides/…` from either layout.
 
 # Decisions worth keeping
 
@@ -379,6 +403,26 @@ table instead — that is the one element Qt fills as one rectangle.
 **A dead cross-reference degrades to words, never to markup.** If a label does
 not resolve, the reader sees the caption, not `{ref}`something``.
 
+**A distribution carries the documentation, inside the package.** Everything
+above is read from disk at runtime, and `docs/` sits *beside* the package, so
+nothing put it in a wheel or a conda package: installed rather than run from a
+checkout, the Help window opened onto an empty tree and every `?` link led
+nowhere. `build_py` (in `setup.py`) copies a selection into
+`chisurf/docs` **in the build directory** — never into the checkout, where a
+copy would shadow the originals and go stale — and `docs_root()` prefers it.
+
+What ships is `_shipped_docs.iter_shipped_docs`, a module rather than a few
+lines inside the build because a test reads it too: the guardrail is that
+**every page the tree lists is a page the distribution carries**, which is the
+one way this fails quietly (a page in a format nobody listed ships as a broken
+link, not as an error). 599 files, 22 MB. Left out: `docs/_build` (Sphinx
+output the browser never reads), `docs/_old_manual` (the retired Word
+original), `docs/_ext` (Sphinx extension code), and the manual's `.emf`
+figures — 103 MB, four fifths of the whole tree, in a vector format neither Qt
+nor a browser can draw, which is why `docs-manual` converts them to PNG in the
+first place. The same selection bounds the sdist, whose `recursive-include`
+had been pulling all of it in.
+
 # Failure modes seen here
 
 * **An unknown directive is dropped silently.** Bare docutils parses at a report
@@ -416,6 +460,30 @@ not resolve, the reader sees the caption, not `{ref}`something``.
   is in points, so `QTextBrowser.zoomIn` moves the body text and leaves the
   headings, tables and formulas where they were. Ctrl+± re-renders the page at a
   new point size and re-typesets the formulas with it.
+* **A layout written into the page is a layout that cannot reflow.** The
+  readable-column limit was applied as body margins computed for the viewport
+  width *at render time*. Qt lays those out once, so narrowing the window
+  afterwards kept the old gutters: the text column collapsed to a quarter of
+  the window, most of the page went blank, and the document — still as wide as
+  the window it had been rendered for — grew a horizontal scrollbar. The
+  measure now lives on the document's **root frame**, recomputed in
+  `resizeEvent` and after every `setHtml`, which reflows without re-rendering
+  or losing the reading position. Figures and formulas are rescaled in the same
+  pass, from a per-image baseline recorded when the page arrived, so narrowing
+  and widening again restores the figure instead of compounding a shrink.
+* **Qt scrolls the document, not the block.** One line of a code block wider
+  than the window put a horizontal scrollbar under the whole page and slid
+  every paragraph on it sideways with the code. `pre` is `white-space:
+  pre-wrap`; the same reasoning already bounded the typeset formulas.
+* **`line-height` in Qt is not `line-height` in a browser.** It applies to the
+  line box rather than the font, so 148% — a normal-looking value tuned by eye
+  against a web page — read as nearly two blank lines between every pair of
+  lines, and a page of prose barely filled the window. 122% with a 12 pt body
+  is the same page at a comfortable density.
+* **A page that fails to render shows its own source, silently.** The fallback
+  is `setPlainText` of the Markdown, logged at *debug*, so the reader gets
+  `[title](url)` and a horizontal scrollbar (a URL is one unbreakable token)
+  with nothing anywhere saying why. It is logged at **warning** now.
 
 # Related
 

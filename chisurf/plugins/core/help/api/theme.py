@@ -121,7 +121,7 @@ def from_palette(widget) -> Theme:
     return Theme(**{**theme.__dict__, **replacements})
 
 
-def stylesheet(theme: Theme, *, font_size: float = 10.5) -> str:
+def stylesheet(theme: Theme, *, font_size: float = 12.0) -> str:
     """Build the ``<style>`` block for a page rendered with *theme*.
 
     Parameters
@@ -147,15 +147,19 @@ body {{
   font-size: {font_size}pt;
   color: {theme.text};
   background-color: {theme.background};
-  line-height: 148%;
+  /* Qt's rich-text engine applies ``line-height`` to the *line box*, not to
+     the font, so a value tuned by eye in a browser reads far looser here: 148%
+     put nearly two blank lines' worth of air between every pair of lines and
+     a page of prose barely filled the window. */
+  line-height: 122%;
 }}
-h1 {{ font-size: {font_size + 7.5:.1f}pt; color: {theme.heading}; margin: 2px 0 10px 0; }}
-h2 {{ font-size: {font_size + 4.0:.1f}pt; color: {theme.heading}; margin: 20px 0 6px 0; }}
-h3 {{ font-size: {font_size + 2.0:.1f}pt; color: {theme.heading}; margin: 16px 0 4px 0; }}
-h4, h5, h6 {{ font-size: {font_size + 0.5:.1f}pt; color: {theme.heading}; margin: 14px 0 4px 0; }}
-p {{ margin: 7px 0; }}
+h1 {{ font-size: {font_size + 7.5:.1f}pt; color: {theme.heading}; margin: 2px 0 8px 0; }}
+h2 {{ font-size: {font_size + 4.0:.1f}pt; color: {theme.heading}; margin: 16px 0 5px 0; }}
+h3 {{ font-size: {font_size + 2.0:.1f}pt; color: {theme.heading}; margin: 13px 0 3px 0; }}
+h4, h5, h6 {{ font-size: {font_size + 0.5:.1f}pt; color: {theme.heading}; margin: 11px 0 3px 0; }}
+p {{ margin: 6px 0; }}
 a {{ color: {theme.link}; text-decoration: none; }}
-li {{ margin: 3px 0; }}
+li {{ margin: 2px 0; }}
 hr {{ border: 1px solid {theme.rule}; }}
 code {{
   font-family: 'SF Mono', Menlo, Consolas, 'Courier New', monospace;
@@ -170,6 +174,10 @@ pre {{
   color: {theme.text};
   padding: 8px;
   margin: 8px 0;
+  /* Qt scrolls the *document*, not the block: one long command line would put
+     a horizontal scrollbar under the whole page and slide every paragraph on
+     it sideways with the code. Wrapping keeps the page still. */
+  white-space: pre-wrap;
 }}
 pre code {{ background-color: {theme.code_background}; color: {theme.text}; }}
 /* A link into the source keeps the code font but takes the link colour --
