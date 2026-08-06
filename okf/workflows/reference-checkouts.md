@@ -42,10 +42,55 @@ Python files use `#`. The keys:
 
 | Key | Meaning |
 | --- | --- |
-| `CHISURF-REVIEWED` | the date it was read. Its presence is what "reviewed" means |
+| `CHISURF-REVIEWED` | the date it was **read**. Its presence is what "reviewed" means |
+| `CHISURF-SURVEYED` | the date it was **triaged** — opened and judged, not read |
+| `CHISURF-VALUE` | `<rank> <facets> -- what reading this would buy ChiSurf` |
 | `CHISURF-TAKEN` | what came across, and **where it landed** in this tree |
 | `CHISURF-SKIPPED` | what was read and deliberately not taken, **and why** |
 | `CHISURF-RECORD` | the OKF concept that holds the full account |
+
+## The survey pass, and why it is separate
+
+Reading is expensive; *deciding what to read* was more expensive still, because
+nothing recorded it. With 480 files in the PyMOL preset and 25 of them read, the
+honest state of the shelf was "almost nothing, and no one can tell which of the
+remaining 455 would repay the effort". So there are two depths, and they are
+deliberately not the same marker:
+
+* a **survey** opens the file, looks at what is in it, and writes one ranked
+  line — `CHISURF-SURVEYED` plus `CHISURF-VALUE`. Cheap, and the whole checkout
+  can be done in one sitting.
+* a **review** reads it, transcribes what is worth having, and writes
+  `CHISURF-REVIEWED` with `TAKEN` and `SKIPPED`. That is the one that closes a
+  file, and it is the only one the coverage percentage counts.
+
+Conflating them would inflate the single number this exists to produce. A
+surveyed file is *not* mined; it is a file whose value is now known.
+
+The ranks are about **ChiSurf**, never about the file in the abstract:
+
+| Rank | Meaning |
+| --- | --- |
+| A | read next — a behaviour chimol needs and does not have |
+| B | worth reading when that area comes up |
+| C | reference only — consult for a detail, do not transcribe |
+| D | nothing here for chimol |
+
+and the facets — `ux`, `gui`, `feature`, `render`, `data`, `perf` — exist so the
+worklist can be filtered by what someone is actually working on. PyMOL is the
+authority on the GUI and the UX, so those two carry the most weight in a rank.
+
+The tool gathers and writes; the **judgement is a person's**:
+
+```bash
+python -m build_tools.dev_utils.reference_annotate junk/pymol-open-source \
+    --digest layer4 --unmarked-only        # size, header comment, symbols, settings
+python -m build_tools.dev_utils.reference_annotate junk/pymol-open-source \
+    --apply survey.json --date 2026-08-06  # {path: {rank, facets, value}}
+```
+
+`--apply` also takes `reviewed`, `taken` and `skipped`, so a file that was read
+rather than skimmed ends up carrying both depths from one call.
 
 Four things make it work:
 
@@ -69,7 +114,14 @@ Four things make it work:
 python -m build_tools.dev_utils.reference_coverage --all
 python -m build_tools.dev_utils.reference_coverage junk/pymol-open-source
 python -m build_tools.dev_utils.reference_coverage junk/pymol-open-source --unreviewed layer2
+python -m build_tools.dev_utils.reference_coverage junk/pymol-open-source --unsurveyed layer2
+python -m build_tools.dev_utils.reference_coverage junk/pymol-open-source --rank A
 ```
+
+The per-checkout report prints the coverage table **and the worklist**: every
+surveyed-but-unread file at rank A and B, with its facets and its one line.
+`--rank A` prints that list alone, which is the answer to "what should I read
+next".
 
 `--all` prints one line per checkout, which is the answer to *"is this source
 exhausted?"* for the whole shelf. A single checkout gets a per-directory table
@@ -82,8 +134,10 @@ narrow to the directories genuinely worth reading. PyMOL is ~3000 files, most of
 them build glue, and counting those would hold coverage near zero for ever and
 tell nobody anything.
 
-As of 2026-08-06: PyMOL **14 / 468**, ChimeraX **10 / 116**, everything else
-**0**. Nowhere near exhausted, and now that is a number rather than a feeling.
+As of 2026-08-06: PyMOL **25 read / 480**, with the **whole preset surveyed** —
+every file carries a rank, and 36 of them are rank A. ChimeraX **10 / 116**,
+unsurveyed; everything else **0**. Nowhere near exhausted, and now that is a
+number and a worklist rather than a feeling.
 
 # Which reference answers which question
 

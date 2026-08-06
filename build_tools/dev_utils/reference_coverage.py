@@ -90,9 +90,29 @@ SKIP_DIRECTORIES = frozenset({
 _MARKER = re.compile(
     r"CHISURF-REVIEWED:\s*(?P<date>[0-9]{4}-[0-9]{2}-[0-9]{2})", re.IGNORECASE
 )
+#: The triage pass: *looked at*, not read line by line. Kept apart from
+#: `REVIEWED` on purpose -- a survey that inflated the coverage figure would
+#: make the one number this script exists to produce a lie.
+_SURVEYED = re.compile(
+    r"CHISURF-SURVEYED:\s*(?P<date>[0-9]{4}-[0-9]{2}-[0-9]{2})", re.IGNORECASE
+)
+#: What a surveyed file is *worth*, so a later pass can start at the top:
+#: ``CHISURF-VALUE: A ux,gui -- the whole mouse-mode matrix lives here``.
+_VALUE = re.compile(
+    r"CHISURF-VALUE:\s*(?P<rank>[A-Da-d])\s+(?P<facets>[a-z, ]*?)\s*--\s*(?P<text>.+)"
+)
 _TAKEN = re.compile(r"CHISURF-TAKEN:\s*(?P<text>.+)")
 _SKIPPED = re.compile(r"CHISURF-SKIPPED:\s*(?P<text>.+)")
 _SUFFIXES = {".cpp", ".c", ".h", ".py", ".txt"}
+
+#: What the ranks mean. A file is ranked for *ChiSurf*, not in the abstract:
+#: the question is always "what would reading this buy the viewer".
+RANKS: dict[str, str] = {
+    "A": "read next -- a behaviour chimol needs and does not have",
+    "B": "worth reading when that area comes up",
+    "C": "reference only -- consult for a detail, do not transcribe",
+    "D": "nothing here for chimol",
+}
 
 
 @dataclasses.dataclass
@@ -101,12 +121,21 @@ class FileReview:
 
     path: pathlib.Path
     date: str | None = None
+    surveyed: str | None = None
+    rank: str = ""
+    facets: tuple[str, ...] = ()
+    value: str = ""
     taken: list[str] = dataclasses.field(default_factory=list)
     skipped: list[str] = dataclasses.field(default_factory=list)
 
     @property
     def reviewed(self) -> bool:
         return self.date is not None
+
+    @property
+    def touched(self) -> bool:
+        """Whether anyone has looked at this file at all, at either depth."""
+        return self.reviewed or self.surveyed is not None
 
 
 def read_marker(path: pathlib.Path) -> FileReview:
@@ -123,9 +152,20 @@ def read_marker(path: pathlib.Path) -> FileReview:
     except OSError:
         return review
     match = _MARKER.search(head)
-    if match is None:
+    surveyed = _SURVEYED.search(head)
+    value = _VALUE.search(head)
+    if match is None and surveyed is None:
         return review
-    review.date = match.group("date")
+    if match is not None:
+        review.date = match.group("date")
+    if surveyed is not None:
+        review.surveyed = surveyed.group("date")
+    if value is not None:
+        review.rank = value.group("rank").upper()
+        review.facets = tuple(
+            f.strip() for f in value.group("facets").split(",") if f.strip()
+        )
+        review.value = value.group("text").strip()
     review.taken = [m.group("text").strip() for m in _TAKEN.finditer(head)]
     review.skipped = [m.group("text").strip() for m in _SKIPPED.finditer(head)]
     return review
@@ -165,16 +205,50 @@ def report(reviews: list[FileReview], root: pathlib.Path) -> str:
         key = str(review.path.parent.relative_to(root))
         by_directory.setdefault(key, []).append(review)
 
-    lines = [f"{'directory':34} {'reviewed':>10} {'files':>7}  {'coverage':>8}"]
+    header = (
+        f"{'directory':34} {'reviewed':>9} {'surveyed':>9} {'files':>7}  {'coverage':>8}"
+    )
+    lines = [header]
     total_reviewed = 0
+    total_surveyed = 0
     for directory in sorted(by_directory):
         group = by_directory[directory]
         done = sum(1 for r in group if r.reviewed)
+        seen = sum(1 for r in group if r.surveyed is not None)
         total_reviewed += done
+        total_surveyed += seen
         share = 100.0 * done / len(group) if group else 0.0
-        lines.append(f"{directory:34} {done:10d} {len(group):7d}  {share:7.1f}%")
+        lines.append(
+            f"{directory:34} {done:9d} {seen:9d} {len(group):7d}  {share:7.1f}%"
+        )
     share = 100.0 * total_reviewed / len(reviews) if reviews else 0.0
-    lines.append(f"{'TOTAL':34} {total_reviewed:10d} {len(reviews):7d}  {share:7.1f}%")
+    lines.append(
+        f"{'TOTAL':34} {total_reviewed:9d} {total_surveyed:9d} "
+        f"{len(reviews):7d}  {share:7.1f}%"
+    )
+
+    ranked = [r for r in reviews if r.rank and not r.reviewed]
+    if ranked:
+        lines.append("")
+        lines.append(
+            f"Worklist -- surveyed, ranked, not yet read ({len(ranked)}). "
+            "A: " + RANKS["A"]
+        )
+        for rank in ("A", "B"):
+            group = [r for r in ranked if r.rank == rank]
+            if not group:
+                continue
+            lines.append(f"  {rank} ({len(group)}):")
+            for review in group:
+                facets = ",".join(review.facets)
+                lines.append(
+                    f"    {review.path.relative_to(root)}"
+                    f"{f' [{facets}]' if facets else ''}: {review.value}"
+                )
+        for rank in ("C", "D"):
+            group = [r for r in ranked if r.rank == rank]
+            if group:
+                lines.append(f"  {rank} ({len(group)}) -- {RANKS[rank]}")
 
     taken = [(r, t) for r in reviews if r.reviewed for t in r.taken]
     if taken:
@@ -221,6 +295,16 @@ def main(argv: list[str] | None = None) -> int:
         metavar="DIR",
         help="list the unreviewed files under this directory instead of the table",
     )
+    parser.add_argument(
+        "--unsurveyed",
+        metavar="DIR",
+        help="list the files under this directory nobody has even triaged",
+    )
+    parser.add_argument(
+        "--rank",
+        metavar="LETTER",
+        help="list only the surveyed files at this rank (A..D), highest value first",
+    )
     args = parser.parse_args(argv)
 
     if args.all:
@@ -253,6 +337,25 @@ def main(argv: list[str] | None = None) -> int:
         for review in reviews:
             if not review.reviewed:
                 print(review.path.relative_to(root))
+        return 0
+
+    if args.unsurveyed:
+        reviews = survey(root, (args.unsurveyed,))
+        for review in reviews:
+            if not review.touched:
+                print(review.path.relative_to(root))
+        return 0
+
+    if args.rank:
+        wanted = args.rank.upper()
+        for review in survey(root, directories):
+            if review.rank != wanted:
+                continue
+            facets = ",".join(review.facets)
+            print(
+                f"{review.path.relative_to(root)}"
+                f"{f' [{facets}]' if facets else ''}: {review.value}"
+            )
         return 0
 
     print(report(survey(root, directories), root))

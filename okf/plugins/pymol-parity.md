@@ -83,6 +83,35 @@ names (`state.cartoon_mask.sum()` against the residues the selection should
 cover) — a mesh count cannot distinguish "the selection" from "everything", and
 a mask is where the two differ.
 
+**0a-bis. The PyMOL source is now a ranked worklist, so "what next" is a
+command.** Every file in the reading preset (480) carries a
+`CHISURF-VALUE: <rank> <facets> -- …` header; 25 are read, the rest are
+triaged. `python -m build_tools.dev_utils.reference_coverage
+junk/pymol-open-source --rank A` prints the 36 that matter, and the report
+prints A and B with the coverage table. The A-list clusters, and the clusters
+are the shape of the remaining work:
+
+* **the overlay GUI chimol hand-rolled**: `layer0/Block.{cpp,h}` (the widget
+  base class every panel derives from), `layer1/Ortho.cpp` (the block stack,
+  who gets a click, the command line), `layer1/Seq.cpp` +
+  `layer3/Seeker.cpp` (the sequence viewer, drawn and driven),
+  `layer1/Control.cpp` (the transport and the idle policy),
+  `layer1/ButMode.cpp`, `layer3/SpecRec.h` (a panel row as a data type);
+* **the UX chimol has none of**: `modules/pymol/_gui.py` — the entire desktop
+  menu bar *as data*, which is how the object menus were generated and how the
+  menu bar should be — plus `keyboard.py`, `shortcut_manager.py`,
+  `completing.py` (tab completion), and `pmg_qt/keymapping.py` +
+  `pymol_gl_widget.py`, which carry the two platform traps already hit once
+  each (Meta-is-Ctrl on macOS, shift+wheel arriving as `angleDelta().x()`);
+* **representations**: `RepCartoon.cpp` (4.3k lines, 67 settings),
+  `RepLabel.cpp` (the whole disabled L menu), `RepSphere.cpp` (`sphere_mode`),
+  `layer1/Extrude.cpp` (where the cartoon's shape comes from),
+  `ObjectVolume.cpp`;
+* **data**: `CifMoleculeReader.cpp` + `CifBondDict.h`, which together unblock
+  `valence`; `AtomInfo.cpp`; `ObjectMolecule.cpp`;
+* **one small file that closes three menu entries**: `layer3/Interactions.h`,
+  the halogen-bond, salt-bridge and pi-interaction criteria.
+
 **0b-bis. A unit test that calls the widget's handler directly cannot see a
 dead event path.** Standing correction, from 2026-08-06 and the same family as
 0a. `InternalGui.mouse_move` was covered and correct, and *nothing called it*:
