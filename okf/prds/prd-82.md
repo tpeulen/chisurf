@@ -223,8 +223,12 @@ tested decline*.
 `H5Fcreate(..., H5F_ACC_TRUNC, ...)`, so writing a second group truncates the
 first — verified: write the table at `/`, then `meta` at `/meta`, and the table
 is gone. The imaging format needs exactly that shape (`results` plus a `meta`
-back-reference to the photon file), so **T13** below blocks `pixel_maps.py`
-outright rather than merely making it slower.
+back-reference to the photon file), so **T13** blocks `pixel_maps.py` outright
+rather than merely making it slower. It is now specified as the library's
+PRD-019 and is being implemented; the requirement grew in the writing — the
+container gains named child groups (a store becomes a tree) and the file is the
+serialisation of it, so this stage should be written against that shape rather
+than against a per-group write call.
 
 This stage therefore needs **T1**, **T3** and **T13**.
 
@@ -276,7 +280,7 @@ required to finish stage 3 without hand-rolling the same loop in six plugins.
 | **T6** | **`argsort` / sort by column** | Table sorting; chitable currently sorts through the proxy on a numpy array per column, which is fine for one column and not for a stable multi-column sort. |
 | **T7** | **Group-by aggregation over a dictionary column** | 6 call sites. Most of it is `codes` + `np.bincount`, which is *why* it belongs in the library: every consumer writing that loop by hand is how the codes get copied. |
 | ~~T8~~ | ~~Single-cell string write~~ | **Not a gap.** Expressible over `dictionary()` / `set_dictionary()` / `codes()`, which is what `set_cell` does. Worth having in the library so six consumers do not re-derive it; blocks nothing. |
-| **T13** | **An append/multi-group HDF5 write** | `write_hdf5_table` truncates the file (`H5F_ACC_TRUNC`), so one file holds one group. The imaging format is a `results` table plus a `meta` back-reference to the photon file, which is unrepresentable today. |
+| **T13** | **Data groups — a store is a tree, in memory and in the file** | `write_hdf5_table` truncates the file (`H5F_ACC_TRUNC`), so one file holds one group; the imaging format is a `results` table plus a `meta` back-reference and is unrepresentable today. **Specified and accepted for implementation** as the library's PRD-019, and scoped wider than first thought: the container itself gains named child groups, each a full store with its own columns, row count and selection, and the file becomes the serialisation of that tree. The reader already handles the layout — measured — so the file work is write-side plus one strictness change. |
 | T9 | `describe`-shaped summary | `profile()` already covers most of it; listed so it is not rediscovered as missing. |
 | ~~T10~~ | ~~A `Column` reference that survives `add()`~~ | **Fixed at the library source** (a stable-reference container in `modules/core/include/DataStore.h`), verified in a scratch build: a proxy survives fifty `add()` calls where the shipped build answers `''` and `[]`. **Not in any built environment here yet**, and *removal* still invalidates unevenly, so the never-cache rule and `column_at()` stay. |
 | T11 | A zero-copy view for a **boolean** column | Today `numpy()` decodes it through a per-row Python loop, so filtering a large boolean column is O(n) in Python — and the array it returns is a *copy*, so a write through it is silently lost. |

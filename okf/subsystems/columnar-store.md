@@ -127,6 +127,7 @@ preference.
 | `mask_numpy()` returns a **copy** | a single-cell mask change is a read-modify-write of the whole mask |
 | `set_numpy` on a text column **appends** instead of replacing | a second call doubles the column |
 | No `take`/`compact`, `concat`, `argsort`, or group-by over a dictionary column | a selection can be expressed but not *realised*; six plugins would hand-roll the same loop |
+| A file holds **one** table — the writer truncates, so a second group destroys the first | the imaging format is a `results` table plus a `meta` back-reference and cannot be written at all. Specified for implementation in the library, and scoped wider on the way: the container gains named child groups (a store becomes a tree) and the file becomes the serialisation of that tree. The reader already handles the layout — measured — so the work is write-side. |
 
 A single-cell **text** write was expected to be a gap and is not: it is
 expressible over `dictionary()` / `set_dictionary()` / `codes()`, which is what
@@ -139,11 +140,15 @@ consumer does not re-derive it.
    comparison in the table above, and today the store loses it. Re-derive with a
    benchmark that *includes a text column* — numeric-only the store wins by 6×
    on write and 22× on read, and that number flatters.
-2. **The burst-table layer**, then its readers, then the plugins. Each stage
+2. **Wait for data groups before the HDF5 stage.** A store is becoming a tree —
+   named child groups, each with its own columns and row count — and the file
+   becomes the serialisation of it. Writing the HDF5 stage against today's
+   one-table-per-file call would have to be redone; write it against the tree.
+3. **The burst-table layer**, then its readers, then the plugins. Each stage
    deletes its frame conversion rather than keeping it beside the store; two
    containers living side by side is how a second full copy of the table
    appeared in the companion viewer before it was deleted again.
-3. **Compression default.** The library's HDF5 writer defaults to level 4, which
+4. **Compression default.** The library's HDF5 writer defaults to level 4, which
    costs 2.58 s against 0.08 s on a numeric table to save 8% of the file. These
    files are written once per analysis and read repeatedly.
 
