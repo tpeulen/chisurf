@@ -580,6 +580,42 @@ def test_a_selection_set_from_outside_is_announced(viewport):
     assert _selection_markers(view), "and nothing was drawn"
 
 
+def test_a_middle_drag_moves_the_molecule_with_the_cursor(viewport):
+    """One pixel of mouse is one pixel of scene, on both axes.
+
+    PyMOL's `cButModeTransXY` translates by `delta * vScale`, and vScale --
+    `depth * 2 tan(fov/2) / Height` -- is the same on both axes, so the
+    molecule stays under the cursor. chimol multiplied the horizontal scale by
+    the aspect ratio on top of that, which counts the aspect twice: on this
+    viewport the x drag ran ~1.7x the cursor, reported as "middle mouse too
+    sensitive".
+    """
+    from qtpy import QtCore
+
+    view, widget, qapp = viewport
+    _index, point = _atom_point(view, widget)
+    # Measured at the *pivot*, which is the depth PyMOL's vScale is taken at:
+    # an atom nearer or further than it follows the cursor by a little more or
+    # less, and that is perspective rather than a scaling error.
+    pivot = np.asarray(view._scene.center, dtype=float)[None, :]
+    before = widget.project_to_screen(pivot)
+
+    delta = QtCore.QPoint(120, 60)
+    end = point + delta
+    _drag(widget, qapp, point, end, QtCore.Qt.NoModifier,
+          button=QtCore.Qt.MiddleButton)
+
+    after = widget.project_to_screen(pivot)
+    moved_x = float(after[0][0] - before[0][0])
+    moved_y = float(after[1][0] - before[1][0])
+    assert moved_x == pytest.approx(delta.x(), abs=2.0), (
+        f"the molecule moved {moved_x:.1f}px for a {delta.x()}px drag"
+    )
+    assert moved_y == pytest.approx(delta.y(), abs=2.0), (
+        f"the molecule moved {moved_y:.1f}px for a {delta.y()}px drag"
+    )
+
+
 def test_the_middle_button_stops_panning_when_released(viewport):
     """It did not: the class defined `mouseReleaseEvent` twice.
 
