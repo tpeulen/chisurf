@@ -20,6 +20,7 @@ import os
 import pathlib
 from collections.abc import Callable
 
+from chisurf.core.datastore import write_csv_table
 import numpy as np
 
 from chisurf.core.fluorescence.mle.fit2x import parameter_names_of, Fit2xModel
@@ -553,7 +554,7 @@ class PixelMleViewModel(MleObserverMixin):
         out_dir = os.path.dirname(path) or "."
         stem = pathlib.Path(path).stem
         try:
-            dataframe.to_csv(os.path.join(out_dir, f"{stem}_pixel_mle.csv"), index=False)
+            write_csv_table(os.path.join(out_dir, f"{stem}_pixel_mle.csv"), dataframe, delimiter=",")
         except Exception:
             logger.debug("CSV export failed for %s", path, exc_info=True)
 

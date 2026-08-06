@@ -36,6 +36,7 @@ from collections import OrderedDict
 from collections.abc import Sequence
 from typing import Any
 
+from chisurf.core.datastore import write_csv_table
 import numpy as np
 import pandas as pd
 
@@ -427,7 +428,7 @@ def write_fused_analysis(
             macro_time_resolution=resolution,
         )
         bur_path = bur_dir / f"{measurement.stem}.bur"
-        fused.to_csv(bur_path, sep="\t", index=False)
+        write_csv_table(bur_path, fused)
         written.append(str(bur_path))
         per_measurement[measurement.stem] = {
             "bursts_before": int(len(frame)),

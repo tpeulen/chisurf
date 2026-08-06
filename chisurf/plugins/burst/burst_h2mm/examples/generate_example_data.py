@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import pathlib
 
+from chisurf.core.datastore import write_csv_table
 import numpy as np
 
 
@@ -85,7 +86,7 @@ def generate_example_data(
     tttr.write_hdf_file(str(tttr_path))
 
     bur_path = out_dir / "sim_smfret.bur"
-    frame.to_csv(bur_path, sep="\t", index=False)
+    write_csv_table(bur_path, frame)
     return bur_path, tttr_path
 
 

@@ -29,6 +29,7 @@ import pandas as pd
 import tttrlib
 
 import chisurf as cs
+from chisurf.core.datastore import write_csv_table
 
 #: Sentinel written for a per-detector column a burst has no photons in. Matches
 #: the ``-1.0`` the duration and rate columns already use, so a reader that
@@ -415,7 +416,7 @@ def write_bur_file_old(bur_filename, start_stop, filename, tttr, windows, detect
         summary_df = pd.DataFrame(summary_rows)
     else:
         summary_df = pd.DataFrame(columns=header_keys)
-    summary_df.to_csv(bur_filename, sep='\t', index=False)
+    write_csv_table(bur_filename, summary_df)
 
 
 def generate_burst_dataframe(
@@ -644,7 +645,7 @@ def write_dataframe_to_bur(df, bur_filename):
     bur_filename : str or pathlib.Path
         Path to the output .bur file.
     """
-    df.to_csv(bur_filename, sep="\t", index=False)
+    write_csv_table(bur_filename, df)
 
 
 def write_bur_file_fast(bur_filename, start_stop, filename, tttr, windows, detectors):

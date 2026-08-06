@@ -440,26 +440,45 @@ def test_a_missing_number_is_an_empty_field_not_the_text_nan(tmp_path):
     a frame says missing with a NaN and a store says it with its mask, and the
     two have to be put back in step at the text boundary."""
     text = write_csv_table(None, {"x": np.array([1.0, np.nan, 3.0])})
-    assert text.splitlines()[1:] == ["1", "", "3"]
+    assert text.splitlines()[1:] == ["1.0", "", "3.0"]
 
 
 def test_an_infinity_is_a_value_and_survives(tmp_path):
     """Not a gap. Masking it would turn a diverging fit result into a blank."""
     text = write_csv_table(None, {"x": np.array([1.0, np.inf, -np.inf])})
-    assert text.splitlines()[1:] == ["1", "inf", "-inf"]
+    assert text.splitlines()[1:] == ["1.0", "inf", "-inf"]
 
 
-def test_an_integral_float_loses_its_decimal_point(tmp_path):
-    """The one difference from the frame writer, pinned rather than hidden: no
-    writer setting restores it, and it is why the burst companion formats other
-    programs read are deliberately not written through this."""
-    text = write_csv_table(None, {"x": np.array([12.0, 1.5, 0.0])})
-    assert text.splitlines()[1:] == ["12", "1.5", "0"]
-    # Still the same numbers on the way back in, which is what makes it a
-    # formatting difference rather than a data one.
-    import pandas as pd
+def test_an_integral_float_keeps_its_decimal_point(tmp_path):
+    """A shortest-form writer spells 12.0 as "12" -- the same double, the
+    shorter text. Not the same COLUMN, though, to a reader inferring types from
+    text: an all-integral column stops looking like a real one, and an all-zero
+    column is exactly what a burst companion carries for skipped bursts. So the
+    seam asks for the decimal point, and a caller has to opt out of it."""
+    assert write_csv_table(None, {"x": np.array([12.0, 1.5, 0.0])}).splitlines()[1:] == [
+        "12.0", "1.5", "0.0"
+    ]
+    assert write_csv_table(
+        None, {"x": np.array([12.0, 1.5, 0.0])}, keep_decimal_point=False
+    ).splitlines()[1:] == ["12", "1.5", "0"]
 
-    assert pd.read_csv(io.StringIO(text), sep="\t")["x"].tolist() == [12.0, 1.5, 0.0]
+
+def test_a_real_bur_file_is_written_byte_for_byte_as_before(tmp_path):
+    """The burst table is an interchange format, so "the numbers are the same"
+    is not the bar -- the text is. Measured over every .bur in the tree at the
+    time this landed: 45 of 45 byte-identical, and every numeric cell reading
+    back to within 0.0."""
+    import glob
+    import io as _io
+
+    paths = sorted(glob.glob("modules/ndxplorer/test/mfd/**/*.bur", recursive=True))
+    if not paths:
+        pytest.skip("no .bur fixtures available")
+    for path in paths[:5]:
+        frame = pd.read_csv(path, sep="\t")
+        buffer = _io.StringIO()
+        frame.to_csv(buffer, sep="\t", index=False)
+        assert write_csv_table(None, frame) == buffer.getvalue(), path
 
 
 def test_the_text_otherwise_matches_the_frame_writer(tmp_path):

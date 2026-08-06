@@ -13,6 +13,7 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from chisurf.core.datastore import write_csv_table
 from ..core.molecule_mle import fit_molecules_from_files
 
 if TYPE_CHECKING:
@@ -72,7 +73,7 @@ def analyze_request(request: MoleculeMleRequest) -> MoleculeMleResult:
         out_dir = ptu_path.parent / f"{ptu_path.stem}_analysis"
         out_dir.mkdir(parents=True, exist_ok=True)
         tsv = out_dir / "molecule_data.tsv"
-        df.to_csv(tsv, sep="\t", index=False)
+        write_csv_table(tsv, df)
         output_paths.append(str(tsv))
         processed.append(file_str)
         frames.append(df)
@@ -85,7 +86,7 @@ def analyze_request(request: MoleculeMleRequest) -> MoleculeMleResult:
         out_dir = Path(request.output_dir) if request.output_dir else Path(request.files[0]).parent
         out_dir.mkdir(parents=True, exist_ok=True)
         joint_path = out_dir / "joint_output.tsv"
-        combined.to_csv(joint_path, sep="\t", index=False)
+        write_csv_table(joint_path, combined)
         joint_tsv = str(joint_path)
 
     return MoleculeMleResult(

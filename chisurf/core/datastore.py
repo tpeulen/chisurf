@@ -564,6 +564,7 @@ def write_csv_table(
     delimiter: str = "\t",
     header: bool = True,
     columns: Sequence[str] | None = None,
+    keep_decimal_point: bool = True,
 ) -> None:
     """Write a table as delimited text, in parallel.
 
@@ -571,17 +572,21 @@ def write_csv_table(
     a store: **5.0x on 5k rows and 7.2x on 200k** (1.97 s -> 0.27 s), at byte-
     identical file size.
 
-    One difference in the text, and it is not removable — no writer setting
-    restores it. A float that happens to be integral is written as the shortest
-    text that reads back as the same double, so ``12.0`` becomes ``12`` and
-    ``0.0`` becomes ``0``. Both readers here take those back as the same
-    ``float64`` values, but a *column* whose values are all integral now looks
-    like an integer column to a reader that infers types from the text. That is
-    why the burst companion formats — ``.bur``, ``.bv4``, ``.2c4``, which other
-    programs read and which are merged column-wise by position — are
-    deliberately **not** written through this. See
-    :mod:`chisurf.core.fio.fluorescence.burst_companion`, whose ``%.6f`` is the
-    canonical formatting for those.
+    The text matches what a frame's writer produces, which is what makes this a
+    drop-in for it. That needs saying because the writer's *own* default is
+    different: a shortest-form writer spells an integral value in a real column
+    ``12`` rather than ``12.0``, since they are the same double. They are not the
+    same *column* to a reader inferring types from text — an all-integral column
+    stops looking like a real one, and an all-zero column is exactly what a
+    burst companion carries for the bursts an analysis skipped. So
+    ``keep_decimal_point`` is on here, and turning it off is a deliberate choice
+    to write the shorter spelling.
+
+    The burst companion formats are still **not** written through this: their
+    canonical writer is
+    :func:`chisurf.core.fio.fluorescence.burst_companion.write_companion`, which
+    owns their ``%.6f``, their zero interleaving and their one-row-per-burst
+    rule, none of which is a formatting question.
 
     Non-finite floats are masked rather than written as ``nan``, so a missing
     value comes out as the empty field a frame writes and this module's reader
@@ -599,6 +604,9 @@ def write_csv_table(
         Whether to write the column-name row.
     columns : sequence of str, optional
         Which columns, in this order. All of them by default.
+    keep_decimal_point : bool
+        Write an integral value in a real column as ``12.0`` rather than ``12``,
+        so the column still reads back as a real one. On by default; see above.
 
     Returns
     -------
@@ -615,6 +623,7 @@ def write_csv_table(
         header=header,
         na_rep=CSV_NA,
         columns=None if columns is None else list(columns),
+        keep_decimal_point=keep_decimal_point,
     )
 
 

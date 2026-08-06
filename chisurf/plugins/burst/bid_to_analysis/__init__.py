@@ -21,6 +21,7 @@ import os
 import pathlib
 import time
 import json
+from chisurf.core.datastore import write_csv_table
 import numpy as np
 import zipfile
 import pandas as pd
@@ -376,7 +377,7 @@ def _per_file_process(bid_path: pathlib.Path, output_dir: pathlib.Path, windows:
                 df_to_append = df.iloc[1:].copy() if include_zeros and len(df) > 0 else df
                 if existing_df is not None:
                     combined = pd.concat([existing_df, df_to_append], ignore_index=True, sort=False)
-                    combined.to_csv(bur_path, sep='\t', index=False)
+                    write_csv_table(bur_path, combined)
                 else:
                     write_dataframe_to_bur(df_to_append, str(bur_path))
             else:

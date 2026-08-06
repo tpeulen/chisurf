@@ -15,6 +15,7 @@ from collections.abc import Sequence
 
 from qtpy import QtCore, QtGui, QtWidgets
 
+from chisurf.core.datastore import write_csv_table
 from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.chitable.model import ChiTableModel
 
@@ -353,7 +354,7 @@ class ChiTableView(QtWidgets.QTableView):
             if not path:
                 return None
         model.fetch_all()
-        model.to_dataframe().to_csv(path, index=False)
+        write_csv_table(path, model.to_dataframe(), delimiter=",")
         return path
 
     # ── context menus ────────────────────────────────────────────────────
