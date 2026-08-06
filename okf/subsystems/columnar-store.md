@@ -118,8 +118,9 @@ Blanking a cell sets the mask bit instead of writing a sentinel.
 |---|---|
 | `DataStoreSource` in [chitable](gui-tables.md) | landed — a store backs a table widget, with a text column editing as a drop-down of its dictionary |
 | the HDF5 writers | landed — all seven, through `write_table` / `read_table` / `read_table_frame` in this module |
-| the burst-table layer and its readers | not started |
-| the CSV readers | blocked on a writer in the library |
+| the CSV writers | landed for the files ChiSurf owns — `write_csv_table`; the burst companion formats are excluded on purpose |
+| the burst-table layer and its readers | not started, and it is what everything else is now waiting on |
+| the CSV readers | measured and deferred: **7.6× into a store, 1.1× back into a frame** |
 
 `write_table` is the only way a table enters HDF5 in the shipped package now,
 and `test/test_pandas_hdf5_seam.py` fails on a frame writer reappearing. Frame
@@ -140,7 +141,6 @@ preference.
 | ~~A text column is written to HDF5 with its labels materialised~~ | **Closed.** The codes are the dataset and the dictionary is an attribute on it: 96.0 → 60.0 MB, write 0.185 → 0.037 s, read 0.191 → 0.011 s |
 | ~~A file holds one table; the writer truncates~~ | **Closed.** A store is a tree of named child groups and the file is its serialisation, which is what the imaging format (`results` plus a `meta` back-reference) needs |
 | **No reader for the frame-written layout, and none wanted here** | a library that reads photon data has no business knowing another ecosystem's container layout. Files from earlier releases are opened by `read_table_frame`, which falls back to that ecosystem's own reader and turns a missing optional package into a named `LegacyTableError` rather than an empty table |
-| No CSV writer | the reader is fast and the writer would still go through a frame |
 | A `Column` handed out by `add()`/`[i]` is **invalidated** by a structural change | silently blank columns; the append case is fixed at the library source but is in no built environment here yet, and removal still invalidates — worked around by never caching a proxy |
 | A boolean column has **no zero-copy view**, and decodes through a per-row Python loop | filtering a large boolean column is O(n) in Python, and a write through the returned array is silently lost |
 | `mask_numpy()` returns a **copy** | a single-cell mask change is a read-modify-write of the whole mask |
@@ -153,6 +153,12 @@ expressible over `dictionary()` / `set_dictionary()` / `codes()`, which is what
 consumer does not re-derive it.
 
 # Where to pick this up
+
+**One number sets the order of everything below.** Reading a 200k-row burst
+table costs 541 ms as a frame, **71 ms into a store (7.6×)**, and 485 ms into a
+store and back to a frame (**1.1×**). The speed is in *not being a frame*. Every
+remaining consumer hands a DataFrame to its caller, so nothing else is worth
+migrating until the burst-table layer holds a store.
 
 1. **The burst-table layer**, then its readers, then the plugins —
    `core/fluorescence/burst/table.py` and `photons.py` first, since everything

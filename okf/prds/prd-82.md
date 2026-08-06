@@ -12,15 +12,41 @@ timestamp: '2026-08-06T00:00:00Z'
 
 # Where to pick this up
 
-**Stages 1 and 2 have landed** (2026-08-06). Stage 1 is the chitable adapter and
-the Qt-free seam; stage 2 is every HDF5 writer. `to_hdf` and `HDFStore` appear
-nowhere in the shipped package, and `test/test_pandas_hdf5_seam.py` fails on one
-reappearing — there is no allow-list for writers, because there is no file a new
-one belongs in. Frame *readers* are allow-listed and the list is shrinking
+**Stages 1, 2 and the writer half of 4 have landed** (2026-08-06). Stage 1 is
+the chitable adapter and the Qt-free seam; stage 2 is every HDF5 writer; stage 4
+is CSV, and the *reader* half of it is deliberately not done — see below, it is
+measured and it belongs with stage 3.
+
+`to_hdf` and `HDFStore` appear nowhere in the shipped package, and
+`test/test_pandas_hdf5_seam.py` fails on one reappearing — there is no
+allow-list for writers, because there is no file a new one belongs in. Frame
+*readers* are allow-listed and the list is shrinking
 (`test/pandas_hdf5_read_allowlist.txt`, two entries).
 
-The two library gaps that blocked stage 2 are closed, and one was closed the
-wrong way first and reverted — read that before proposing it again:
+**The one measurement that decides what happens next.** Reading a 200k-row
+burst table:
+
+| | |
+|---|---|
+| a frame, as today | 541 ms |
+| into a **store** | **71 ms (7.6×)** |
+| into a store and back to a frame | 485 ms (**1.1×**) |
+
+The speed is in *not being a frame*. A consumer that still wants a DataFrame
+gains essentially nothing, so migrating the ~10 `pd.read_csv` sites that read
+`.bur` files would be churn until the burst-table layer holds a store. That is
+stage 3, and this is the argument for doing it. Same shape as the write side:
+`write_burst_hdf5` converts a frame at the file boundary, so the file size and
+the write time are collected and the **109.5 → 60.2 MB of memory is not**.
+
+The read parity itself is settled and good: on a real `.bur`, tttrlib and pandas
+agree on shape, on every value, and on **all 16 dtypes** — the only difference is
+the trailing unnamed column, which pandas calls `Unnamed: 16` and tttrlib calls
+`""`. Both spellings are already tolerated (`burst.py` tests for both, ndX drops
+either), so nothing has to change for it.
+
+The library gaps that blocked stage 2 are closed, and one was closed the wrong
+way first and reverted — read that before proposing it again:
 
 1. **T1 (a text column materialised in HDF5) is fixed at the library source.**
    The dataset is the `int32` codes, the labels are a `dictionary` attribute on
@@ -30,7 +56,10 @@ wrong way first and reverted — read that before proposing it again:
 2. **T13 (one table per file) is fixed**: a store is a tree of named child
    groups and the file is its serialisation, so the imaging format's `results`
    plus `meta` back-reference is one write.
-3. **T3 was attempted in the library and REVERTED, deliberately.** A reader for
+3. **T2 (`write_csv`) has landed** and is in use. Measured 5.0× on 5k rows and
+   7.2× on 200k *including* the frame→store conversion, at byte-identical file
+   size.
+4. **T3 was attempted in the library and REVERTED, deliberately.** A reader for
    the frame-written layout was written there — both variants, including a
    protocol-0 pickle scan for the column names the compound dataset does not
    carry — and it is the wrong place: a library that reads photon data has no
@@ -43,6 +72,18 @@ wrong way first and reverted — read that before proposing it again:
    half is met only where it is installed. That is unchanged from before this
    work and is recorded in [known issues](../references/known-issues.md).
 
+**The burst companion formats are deliberately untouched by stage 4**, and the
+reason is a number: the CSV writer writes a float that happens to be integral as
+the shortest text that reads back as the same double, so `12.0` becomes `12` and
+`0.0` becomes `0`, and **no writer setting restores it** (checked at precision 0,
+6, 15, 17). Values survive; a *column* whose values are all integral stops
+looking like a float column to a reader inferring types from text — and an
+all-zero column is exactly what a companion carries for the bursts an analysis
+skipped. `.bur`, `.bv4` and `.2c4` are merged column-wise by position by other
+programs. Their canonical writer, `burst_companion.write_companion`, already
+formats them `%.6f`; the `to_csv` call sites that bypass it should converge on
+*that*, which is a separate job from this PRD.
+
 Two things the migration turned up in the burst tables themselves, both
 invisible while the frame writer was in the way:
 
@@ -54,13 +95,6 @@ invisible while the frame writer was in the way:
   columns as `int32` codes and put the labels in a JSON attribute that *nothing
   in this tree ever read*, so ndX showed `Source File` and `First File` as
   integers. A dictionary column carries its labels, so they are file names now.
-
-Next is **stage 3, the burst-table layer**, and the thing to know before
-starting: the writers convert a frame at the file boundary, so **a frame is
-still built in memory everywhere**. The file size and the write time are
-collected; the 109.5 → 60.2 MB of memory is not. `core/fluorescence/burst/
-table.py` and `photons.py` are what has to move for that, and everything else
-reads them.
 
 One measurement to re-derive rather than trust, and the trap in it:
 
@@ -261,11 +295,22 @@ affected**: `burst_companion.write_companion` is numpy-only and stays the
 canonical writer. A store is a better fit for it than a frame, but that is a
 follow-up, not a prerequisite.
 
-## Stage 4 — CSV
+## Stage 4 — CSV — **writer landed, reader deferred to stage 3**
 
-`pd.read_csv` (25 sites) → `tttrlib.read_csv`, with the same *named limits* ndX
-uses (decimal comma, skipped preamble, whitespace alignment fall back to pandas,
-declared rather than silently switched). `to_csv` (8 sites) needs **T2**.
+`write_csv` is in use for every CSV ChiSurf owns end to end: the ndX-openable
+H2MM burst table, the burst-MLE and pixel-MLE exports, the single-molecule MLE
+tables, the burst-selection table export and its MMFDB payload. The burst
+companion formats are excluded on purpose — see the resume section.
+
+The reader is **not** migrated, and the reason is measured rather than assumed:
+7.6× into a store, 1.1× back into a frame. Every `pd.read_csv` site here hands a
+DataFrame to its caller, so the win is unavailable until the burst-table layer
+holds a store. That is stage 3.
+
+The reader's *limits* are already expressed the way this PRD asked for:
+`read_csv_table` returns `None` for a file the threaded reader does not handle —
+a decimal comma, a skipped preamble, whitespace alignment — rather than guessing,
+so a fallback is a named decline and not a silent switch.
 
 ## Non-goals
 

@@ -2,6 +2,16 @@
 
 ## 2026-08-06
 
+* **CSV joins the columnar seam, and the reader half is deferred on a measurement** ([PRD-82](prds/prd-82.md), [columnar store](subsystems/columnar-store.md)).
+
+  The library's threaded CSV writer landed, so `write_csv_table` is the text half of the same seam: **5.0× on 5k rows and 7.2× on 200k** (1.97 s → 0.27 s) against the frame writer it replaces, including the frame→store conversion, at byte-identical file size. In use for every CSV ChiSurf owns end to end — the ndX-openable H2MM burst table, the burst-MLE and pixel-MLE exports, the single-molecule MLE tables, the burst-selection export and its MMFDB payload.
+
+  **Two things had to be settled first, because these are files other programs read.** A frame says "missing" with a `NaN` and a store says it with its mask, so a frame converted straight across wrote the literal text `nan` where the frame's own writer wrote an empty field; the seam masks non-finite floats at the text boundary and only there, since an HDF5 write keeps the `NaN` as the value it is. An infinity is left alone — masking it would turn a diverging fit result into a blank. The second could **not** be settled: an integral float is written as the shortest text that reads back as the same double, so `12.0` becomes `12` and `0.0` becomes `0`, and no writer setting restores it (checked at precision 0, 6, 15, 17). Values survive, but a *column* whose values are all integral stops looking like a float column to a reader inferring types from text.
+
+  **So the burst companion formats are deliberately excluded.** `.bur`, `.bv4` and `.2c4` are merged column-wise by position by other programs, and an all-zero column is exactly what a companion carries for the bursts an analysis skipped. Their canonical writer already formats them `%.6f`; the `to_csv` call sites bypassing it should converge on *that*, which is a separate job.
+
+  **The reader half is measured and not done, which is the useful result.** Reading a 200k-row burst table: 541 ms as a frame, **71 ms into a store (7.6×)**, 485 ms into a store and back to a frame (**1.1×**). The speed is in *not being a frame*, and every `pd.read_csv` site here hands a DataFrame to its caller — so migrating the ~10 `.bur` readers would be churn until the burst-table layer holds a store. That is stage 3, and this is now the argument for it. Read *parity* is settled and good: on a real `.bur`, tttrlib and pandas agree on shape, on every value and on all 16 dtypes, differing only in what they call the trailing unnamed column (`Unnamed: 16` against `""`), a spelling both sides already tolerate.
+
 * **Hydrogen-bond networks, a clash check and residue mutation** ([PyMOL parity](plugins/pymol-parity.md)).
 
   Three requests, three different relationships to PyMOL.
