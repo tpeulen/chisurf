@@ -8,7 +8,7 @@ from typing import Any, List, Optional
 import numpy as np
 from qtpy import QtCore, QtGui, QtWidgets
 
-try:  # Use PyOpenGL for raw GL entry points just like pyqtgraph's QGLWidget
+try:  # PyOpenGL is the GL binding: raw entry points on a plain QOpenGLWidget.
     from OpenGL import GL  # type: ignore
 except Exception:  # pragma: no cover - handled at runtime
     GL = None
@@ -261,11 +261,6 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         cam_cfg = (_DISPLAY_CONFIG.get("camera") or {})
         self._fov = float(cam_cfg.get("field_of_view", DEFAULT_FOV))
         self._orthoscopic = bool(cam_cfg.get("orthoscopic", False))
-        self._opts = {
-            "center": QtGui.QVector3D(0.0, 0.0, 0.0),
-            "fov": self._fov,
-        }
-        self.opts = self._opts  # Compatibility with picking helpers
         self._drag_selecting = False
         self._drag_start: Optional[QtCore.QPoint] = None
         self._rubber_band = QtWidgets.QRubberBand(QtWidgets.QRubberBand.Rectangle, self)
@@ -436,7 +431,6 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         """Attach a Scene, rebuild VBOs, and request a repaint."""
         self._scene = scene
         self._prepare_draw_data(scene)
-        self._update_center_opt()
         self.update()
 
     def clear(self) -> None:
@@ -668,7 +662,6 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         if new_fov < 1e-3 or abs(new_fov - self._fov) < 1e-9:
             return
         self._fov = new_fov
-        self._opts["fov"] = new_fov
         self._distance = max(
             distance_for_radius(
                 self._target_radius, new_fov, aspect=self._aspect()
@@ -706,7 +699,6 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         self._rot = self._make_rot(elevation, azimuth)
         self._pan_offset = np.zeros(3, dtype=float)
         self._view_shift = np.zeros(3, dtype=float)
-        self._update_center_opt()
         self.update()
 
     def look_at(self, target: np.ndarray) -> None:
@@ -725,7 +717,6 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
                 center = np.zeros(3, dtype=float)
         self._pan_offset = np.asarray(target, dtype=float) - center
         self._view_shift = np.zeros(3, dtype=float)
-        self._update_center_opt()
         self.update()
 
     def set_origin(self, origin: np.ndarray) -> None:
@@ -752,7 +743,6 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
 
         self._view_shift = self._view_shift + self._rot @ (wanted - previous)
         self._pan_offset = wanted - center
-        self._update_center_opt()
         self.update()
 
     def get_origin(self) -> np.ndarray:
@@ -805,7 +795,6 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
             self._distance = max(0.1, self._distance - d)
         else:
             return
-        self._update_center_opt()
         self.update()
 
     def _announce_clipping(self) -> None:
@@ -909,15 +898,8 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         # Assigned rather than routed through set_field_of_view: the tuple
         # already carries the matching distance, which re-framing would discard.
         self._fov = abs(float(state.fov))
-        self._opts["fov"] = self._fov
         self._orthoscopic = bool(state.orthoscopic)
-        self._update_center_opt()
         self.update()
-
-    # Compatibility helpers -------------------------------------------------
-    def cameraPosition(self) -> QtGui.QVector3D:
-        pos = self._camera_position()
-        return QtGui.QVector3D(float(pos[0]), float(pos[1]), float(pos[2]))
 
     def project_to_screen(self, points) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Where scene points land in the widget, in widget pixels.
@@ -2351,16 +2333,6 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
                 call.index_vbo.destroy()
         self._gpu_calls = []
 
-    def _update_center_opt(self) -> None:
-        center = np.zeros(3, dtype=float)
-        if self._scene is not None:
-            try:
-                center = np.asarray(self._scene.center, dtype=float)
-            except Exception:
-                center = np.zeros(3, dtype=float)
-        center = center + self._pan_offset
-        self._opts["center"] = QtGui.QVector3D(float(center[0]), float(center[1]), float(center[2]))
-
     # ------------------------------------------------------------------
     # Input handling (basic orbit controls)
     # ------------------------------------------------------------------
@@ -2554,7 +2526,7 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         height = max(self.height(), 1)
         if width <= 0 or height <= 0:
             return
-        fov = math.radians(float(self._opts.get("fov", 45.0)))
+        fov = math.radians(float(self._fov))
         half_tan = math.tan(fov / 2.0)
         if half_tan <= 0:
             return
@@ -2570,7 +2542,6 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         mult = self._pan_delta_multiplier(self._mouse_mode)
         shift = (mult * -dx * scale_x) * right + (mult * dy * scale_y) * up
         self._pan_offset += shift
-        self._update_center_opt()
         self.update()
 
     def _camera_forward_vector(self) -> np.ndarray:
