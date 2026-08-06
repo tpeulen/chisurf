@@ -402,12 +402,14 @@ def set_use_ribbon_interface(use_ribbon: bool) -> bool:
         if not isinstance(data, dict):
             data = {}
         
-        # Ensure gui section exists
-        gui_cfg = data.get('gui', {})
+        # Ensure gui section exists *and is the one attached to ``data``* — a
+        # ``data.get('gui', {})`` default is an orphan dict, so the write would be
+        # silently dropped for a settings file that has no ``gui:`` section yet.
+        gui_cfg = data.get('gui')
         if not isinstance(gui_cfg, dict):
             gui_cfg = {}
-            data['gui'] = gui_cfg
-        
+        data['gui'] = gui_cfg
+
         gui_cfg['use_ribbon_interface'] = bool(use_ribbon)
         with open(settings_file, 'w', encoding='utf-8') as fh:
             yaml.safe_dump(data, fh, default_flow_style=False)
@@ -454,10 +456,12 @@ def set_language(code: str) -> bool:
         if not isinstance(data, dict):
             data = {}
 
-        gui_cfg = data.get('gui', {})
+        # See the note in :func:`set_use_ribbon`: the section has to be attached
+        # to ``data`` before it is written, or the language never persists.
+        gui_cfg = data.get('gui')
         if not isinstance(gui_cfg, dict):
             gui_cfg = {}
-            data['gui'] = gui_cfg
+        data['gui'] = gui_cfg
 
         gui_cfg['language'] = str(code).strip() or 'en'
         with open(settings_file, 'w', encoding='utf-8') as fh:
@@ -502,11 +506,12 @@ def set_acquisition_settings(acquisition_settings: dict) -> bool:
         if not isinstance(data, dict):
             data = {}
 
-        # Ensure gui section exists
-        gui_cfg = data.get('gui', {})
+        # Ensure the gui section exists and is attached to ``data`` (see
+        # :func:`set_use_ribbon`).
+        gui_cfg = data.get('gui')
         if not isinstance(gui_cfg, dict):
             gui_cfg = {}
-            data['gui'] = gui_cfg
+        data['gui'] = gui_cfg
 
         gui_cfg['acquisition'] = acquisition_settings
 
