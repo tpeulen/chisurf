@@ -563,10 +563,51 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
         key = DEMOS[0][0]
         open_script_editor(self, text=read_demo(key), path=demo_path(key))
 
+    def show_settings_table(self) -> None:
+        """Open the filterable table of every registered setting.
+
+        Kept as a window rather than a dock: it is consulted and closed, and a
+        dock would take a column from the viewer permanently for something used
+        occasionally.
+        """
+        from .settings_table import show_settings_table
+
+        existing = getattr(self, "_settings_table", None)
+        if existing is not None:
+            try:
+                existing.show()
+                existing.raise_()
+                return
+            except RuntimeError:
+                pass  # the window was closed and deleted; make another
+        self._settings_table = show_settings_table(
+            self, on_changed=self._redraw_after_setting
+        )
+
+    def _redraw_after_setting(self) -> None:
+        """Repaint the viewer after a setting changed in the table."""
+        viewer = getattr(self, "viewer", None)
+        if viewer is None:
+            return
+        try:
+            viewer._update_view()
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "chimol: could not redraw after a setting change", exc_info=True
+            )
+
     def _build_view_menu(self) -> None:
         menu_bar = self.menuBar()
         view_menu = menu_bar.addMenu("&View")
         self._view_menu_actions: list[QtGui.QAction] = []
+
+        # 85 settings, and until this the only way to reach one was to know its
+        # name and type `set`. PyMOL keeps the same thing behind its Settings
+        # menu, which is where anyone coming from it will look.
+        self._act_settings = view_menu.addAction("\U0001f39b Settings\u2026")
+        self._act_settings.triggered.connect(self.show_settings_table)
+        self._view_menu_actions.append(self._act_settings)
+        view_menu.addSeparator()
 
         if self.dock_area is not None:
             self._act_toggle_sequence = view_menu.addAction(

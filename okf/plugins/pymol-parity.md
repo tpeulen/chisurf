@@ -205,16 +205,19 @@ read* -- otherwise the same file is re-read by the next session and "is the
 source exhausted?" has no answer. As of 2026-08-06 it is **14 files of 461**
 (3.0 %) across the layers that matter. Nowhere near exhausted.
 
-**Editing the reference checkouts is sanctioned, for the header only.** A marker
-goes at the top of each file that has been read, so it is found by whoever opens
-the file rather than by whoever thinks to search here:
+**Editing the reference checkouts is sanctioned, for the header only** -- and
+this is a **general rule for everything in `junk/`**, not a chimol one: see
+[reference checkouts](../workflows/reference-checkouts.md), which owns the
+format, and `CLAUDE.md`. A marker goes at the top of each file that has been
+read, so it is found by whoever opens the file rather than by whoever thinks to
+search here:
 
 ```c
 /*
- * CHIMOL-REVIEWED: 2026-08-06
- * CHIMOL-TAKEN: cSetting_stick_color -> renderer/view.py::_representation_color
- * CHIMOL-SKIPPED: cSetting_valence -- chimol has no bond orders
- * CHIMOL-RECORD: okf/plugins/pymol-parity.md
+ * CHISURF-REVIEWED: 2026-08-06
+ * CHISURF-TAKEN: cSetting_stick_color -> renderer/view.py::_representation_color
+ * CHISURF-SKIPPED: cSetting_valence -- chimol has no bond orders
+ * CHISURF-RECORD: okf/plugins/pymol-parity.md
  * Header added by ChiSurf; the code below is untouched.
  */
 ```
@@ -238,15 +241,68 @@ one".
 Measure it with:
 
 ```bash
-python chisurf/plugins/chimol/chimol/analysis/reference_coverage.py junk/pymol-open-source
-python .../reference_coverage.py junk/pymol-open-source --unreviewed layer2
-python .../reference_coverage.py junk/ChimeraX --chimerax
+python -m build_tools.dev_utils.reference_coverage --all
+python -m build_tools.dev_utils.reference_coverage junk/pymol-open-source
+python -m build_tools.dev_utils.reference_coverage junk/pymol-open-source --unreviewed layer2
+python -m build_tools.dev_utils.reference_coverage junk/ChimeraX
 ```
 
 The denominator is the directories the parity work actually reads (`layer0`-`layer5`,
 `modules/pymol`) rather than the whole tree: PyMOL is ~3000 files, most of them
 build glue and bundled dependencies, and counting those would hold coverage near
 zero for ever and tell nobody anything.
+
+## Which reference answers which question
+
+**PyMOL is the authority on the GUI and the UX; ChimeraX is the authority on
+functionality.** (User instruction, 2026-08-06; it supersedes the earlier
+"ChimeraX for rendering only".) The reason is what each does well: PyMOL's
+interface is the one structural biologists have in their fingers, so matching it
+is what makes ChiMOL usable without being learned — while ChimeraX has the
+larger *capability* surface, and is where to look for what a viewer should be
+able to **do**.
+
+### ChimeraX for functionality — the measured gap
+
+`src/bundles/std_commands/src` holds **71** commands. **36** are covered by a
+ChiMOL command already (under PyMOL's spelling: `cofr` is `origin`, `zonesel` is
+`select … within`, `sym` is `symexp`, `coordset` is `mset`/`mplay`). **35 are
+not**, and they group into five kinds:
+
+| Gap | Commands | Worth |
+| --- | --- | --- |
+| **Measurement** | `measure_buriedarea` `measure_center` `measure_convexity` `measure_correlation` `measure_inertia` `measure_rotation` `measure_symmetry` `measure_weight` | **Highest.** ChiMOL measures distances, angles and SASA; this is a whole analysis suite it has none of. `buriedarea` (interface area) and `correlation` (map-to-model fit) are the two a structural biologist reaches for daily, and both are computable from what ChiMOL already holds — `get_area` gives the components of a buried area, and the volume reader gives the map. |
+| **Colour and attributes** | `palette` `colorname` `rainbow` `defattr` `setattr` | `defattr` — assign a per-atom attribute *from a file* and colour by it — is the one that unlocks the rest, and is close to `alter` plus `spectrum b`. |
+| **Appearance** | `material` `size` `style` `tile` `axis` `windowsize` | `tile` (lay every open structure out on a grid) is the cheapest big win for comparing models, which is what ChiSurf produces. |
+| **Movie** | `crossfade` `perframe` `fly` `roll` `wobble` `time` `wait` | ChiMOL has `mplay`/`mset`/`mview`. `perframe` (run a command each frame) is the general one and would subsume several. |
+| **Session/env** | `alias` `runscript` `altlocs` `cd` `pwd` `version` `move_cofr` | `alias` and `altlocs` are the two with real content. |
+
+Re-derive with `analysis/reference_coverage.py` plus the command scan in
+`test/test_reference_coverage.py`.
+
+### PyMOL for the GUI and the UX — what its Qt front end has
+
+`modules/pmg_qt` is **6812 lines** across a dozen widgets, and it is the right
+reference because it is the Qt interface, not the retired Tk one. Read as a
+survey; nothing here is transcribed yet:
+
+| File | Lines | What it is | ChiMOL |
+| --- | --- | --- | --- |
+| `builder.py` | 1579 | molecular builder: fragments, valence editing | absent, and out of scope for now |
+| `pymol_qt_gui.py` | 1267 | the main window, menu bar, the command line's history | ChiMOL's is closer to this than to the Tk one |
+| `volume.py` | 877 | the volume-ramp editor: drag colour/alpha stops over a histogram | absent — ChiMOL contours by level only |
+| `file_dialogs.py` | 855 | format-aware open/save | partly |
+| `shortcut_menu_gui.py` | 415 | **editable keyboard shortcuts**, presented as a menu | absent |
+| `properties_dialog.py` | 415 | per-atom property inspector | absent |
+| `scene_bin_gui.py` | 397 | scene thumbnails as a strip | ChiMOL stores scenes, shows no bin |
+| `advanced_settings_gui.py` | 92 | **every setting in one filterable table** | absent — and this is the standout |
+
+**The standout is the settings table**, and the reason is arithmetic: ChiMOL has
+**79 registered settings** and the only way to reach any of them is to know its
+name and type `set`. PyMOL's answer is 92 lines — a filter box over a
+two-column table, booleans as check boxes, everything else editable in place,
+the description as the tooltip. Everything it needs, ChiMOL already has:
+`iter_settings()` yields the name, the value, the type and a one-line doc.
 
 **A note for whoever needs PyMOL's source:** `junk/pymol-open-source` is the
 authority on behaviour and **is present**. A 2026-08-06 session briefly found it

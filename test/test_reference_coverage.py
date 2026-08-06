@@ -1,9 +1,13 @@
-"""The marker that says which reference files have been mined.
+"""The marker that says which files in ``junk/`` have already been mined.
 
-ChiMOL is built by transcribing PyMOL's source, so *which parts have been read*
-is a question the tree has to be able to answer -- otherwise the same file gets
-re-read and "is the source exhausted?" has no answer at all. The answer is a
-header in the reference file itself, and this covers the reader for it.
+``junk/`` holds the reference implementations ChiSurf is built against -- roughly
+forty checkouts, from PyMOL and ChimeraX to FRETBursts and the imaging-FCS
+tools. Work here means reading them and transcribing what they get right, so
+*which parts have been read* is a question the tree has to be able to answer:
+otherwise the same file is re-read by the next session, and "is this source
+exhausted?" has no answer at all. The answer is a header in the reference file
+itself, and this covers the reader for it. The rule is in ``CLAUDE.md`` and
+[reference checkouts](okf/workflows/reference-checkouts.md).
 
 The reference checkouts live in gitignored ``junk/`` and are not present in CI,
 so these tests build their own tiny tree. That is deliberate: a test that skips
@@ -15,7 +19,7 @@ import pathlib
 
 import pytest
 
-from chisurf.plugins.chimol.chimol.analysis import reference_coverage as rc
+from build_tools.dev_utils import reference_coverage as rc
 
 
 @pytest.fixture
@@ -25,16 +29,16 @@ def checkout(tmp_path):
     layer2.mkdir()
     (layer2 / "RepMarked.cpp").write_text(
         "/*\n"
-        " * CHIMOL-REVIEWED: 2026-08-06\n"
-        " * CHIMOL-TAKEN: cSetting_thing -> renderer/view.py::_thing\n"
-        " * CHIMOL-SKIPPED: RepOther -- no data for it\n"
-        " * CHIMOL-RECORD: okf/plugins/pymol-parity.md\n"
+        " * CHISURF-REVIEWED: 2026-08-06\n"
+        " * CHISURF-TAKEN: cSetting_thing -> renderer/view.py::_thing\n"
+        " * CHISURF-SKIPPED: RepOther -- no data for it\n"
+        " * CHISURF-RECORD: okf/plugins/pymol-parity.md\n"
         " */\n"
         "int main() { return 0; }\n",
         encoding="utf-8",
     )
     (layer2 / "RepUnmarked.cpp").write_text("int main() { return 1; }\n", encoding="utf-8")
-    (layer2 / "notes.md").write_text("CHIMOL-REVIEWED: 2026-08-06\n", encoding="utf-8")
+    (layer2 / "notes.md").write_text("CHISURF-REVIEWED: 2026-08-06\n", encoding="utf-8")
     return tmp_path
 
 
@@ -81,7 +85,7 @@ def test_a_marker_below_the_header_does_not_count(tmp_path):
     path = tmp_path / "layer2"
     path.mkdir()
     buried = path / "Deep.cpp"
-    buried.write_text("\n" * 60 + "// CHIMOL-REVIEWED: 2026-08-06\n", encoding="utf-8")
+    buried.write_text("\n" * 60 + "// CHISURF-REVIEWED: 2026-08-06\n", encoding="utf-8")
     assert not rc.read_marker(buried).reviewed
 
 
