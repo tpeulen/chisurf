@@ -1,0 +1,71 @@
+{
+  "folder_name": "countrate_All 0.2000#60",
+  "output_paths": {
+    "bur": "/private/tmp/claude-501/-Users-tpeulen-dev-chisurf/3c75c3e7-7cf5-42dc-ab51-98325a48f84f/scratchpad/bl/work/countrate_All 0.2000#60/bi4_bur/m000.bur",
+    "mti_dir": "/private/tmp/claude-501/-Users-tpeulen-dev-chisurf/3c75c3e7-7cf5-42dc-ab51-98325a48f84f/scratchpad/bl/work/countrate_All 0.2000#60/Info",
+    "output_folder": "/private/tmp/claude-501/-Users-tpeulen-dev-chisurf/3c75c3e7-7cf5-42dc-ab51-98325a48f84f/scratchpad/bl/work/countrate_All 0.2000#60"
+  },
+  "metadata": {
+    "n_files": "1",
+    "n_bursts": "3727",
+    "n_selected": "145270",
+    "n_photons": "174438",
+    "output_folder": "/private/tmp/claude-501/-Users-tpeulen-dev-chisurf/3c75c3e7-7cf5-42dc-ab51-98325a48f84f/scratchpad/bl/work/countrate_All 0.2000#60"
+  },
+  "tree": [
+    {
+      "path": "Info",
+      "kind": "dir"
+    },
+    {
+      "path": "Info/analysis.json",
+      "kind": "file",
+      "bytes": 2210,
+      "sha256": "223c756cd2d335bcdd94171639559f961f4c05d85b77b8c9d053fb98165d38c7",
+      "text": "{\n  \"format\": \"chisurf-burst-analysis\",\n  \"settings\": {\n    \"burst_detection\": {\n      \"min_photons\": 60,\n      \"photon_window\": 10,\n      \"time_window\": 0.001\n    },\n    \"gmm\": {\n      \"auto_components\": false,\n      \"covariance_type\": \"spherical\",\n      \"max_components\": 10,\n      \"max_iter\": 50,\n      \"n_init\": 10,\n      \"random_state\": 42,\n      \"reg_covar\": 1e-06,\n      \"tol\": 0.001\n    },\n    \"output_formats\": [\n      \"bur\"\n    ],\n    \"photon_filter\": {\n      \"bocpd_filter\": {\n        \"changepoint_prob\": 1e-05,\n        \"dt\": 0.001,\n        \"prior_count\": 1.0,\n        \"prior_duration\": 0.1\n      },\n      \"channels\": [],\n      \"count_rate_filter\": {\n        \"invert\": false,\n        \"n_ph_max\": 60,\n        \"time_window\": 0.001\n      },\n      \"cusum_filter\": {\n        \"alpha\": 0.05,\n        \"background_rate\": 2000,\n        \"beta\": 0.05,\n        \"min_photons\": 50,\n        \"sb_ratio\": 30.0\n      },\n      \"delta_macro_time_filter\": {\n        \"dT_max\": 0.2,\n        \"dT_max_active\": true,\n        \"dT_min\": 0.0,\n        \"dT_min_active\": true\n      },\n      \"filter_active\": false,\n      \"invert_filter\": false,\n      \"kalman_filter\": {\n        \"dt\": 0.001,\n        \"merge_gap\": 5,\n        \"min_len\": 2,\n        \"q\": 0.01,\n        \"r_scale\": 0.1,\n        \"z_thresh\": 3.0\n      },\n      \"max_gap\": 4,\n      \"microtime_ranges\": [],\n      \"tttrlib_search\": {\n        \"algorithm\": \"maxtree\",\n        \"parameters\": {}\n      },\n      \"use_gap_fill\": true,\n      \"used_filter\": \"count_rate\"\n    },\n    \"remove_folder\": false,\n    \"zip_output\": false\n  },\n  \"software\": {\n    \"package\": \"chisurf\",\n    \"version\": \"26.dev4941\"\n  },\n  \"sources\": [\n    {\n      \"container_type\": \"SPC-130\",\n      \"macro_time_resolution\": 1.35e-08,\n      \"micro_time_resolution\": 3.2958984375e-12,\n      \"n_photons\": 174438,\n      \"number_of_micro_time_channels\": 4096,\n      \"path\": \"/private/tmp/claude-501/-Users-tpeulen-dev-chisurf/3c75c3e7-7cf5-42dc-ab51-98325a48f84f/scratchpad/bl/work/m000.spc\",\n      \"routing_channels\": [\n        0,\n        1,\n        8,\n        9\n      ],\n      \"settings\": {\n        \"detectors\": {},\n        \"macro_time_resolution\": 1.35e-08,\n        \"windows\": {}\n      }\n    }\n  ],\n  \"version\": 1\n}"
+    },
+    {
+      "path": "Info/datetime.txt",
+      "kind": "file",
+      "bytes": 32,
+      "sha256": "769c94dde566fbc7b4336f2193654b00e8f6f9aef6a7d722c52ded3ff39f9b19",
+      "text": "Date: 2026-08-06\nTime: 23:25:38\n"
+    },
+    {
+      "path": "Info/m000.mti",
+      "kind": "file",
+      "bytes": 126,
+      "sha256": "22609391e2f1cb2cb1c240049118fa2aade048706e56751ee877ad0040458d4b",
+      "text": "/private/tmp/claude-501/-Users-tpeulen-dev-chisurf/3c75c3e7-7cf5-42dc-ab51-98325a48f84f/scratchpad/bl/work/m000.spc\t69.243422\n"
+    },
+    {
+      "path": "Info/photon_selection_parameters.json",
+      "kind": "file",
+      "bytes": 1818,
+      "sha256": "f7a286812fa81143d5be7c45ae43e8e3761f06048e6091ff10487d29bf710e4a",
+      "text": "{\n    \"photon_filter\": {\n        \"channels\": [],\n        \"microtime_ranges\": [],\n        \"filter_active\": false,\n        \"used_filter\": \"count_rate\",\n        \"count_rate_filter\": {\n            \"n_ph_max\": 60,\n            \"time_window\": 0.001,\n            \"invert\": false\n        },\n        \"bocpd_filter\": {\n            \"prior_count\": 1.0,\n            \"prior_duration\": 0.1,\n            \"changepoint_prob\": 1e-05,\n            \"dt\": 0.001\n        },\n        \"kalman_filter\": {\n            \"q\": 0.01,\n            \"r_scale\": 0.1,\n            \"z_thresh\": 3.0,\n            \"min_len\": 2,\n            \"merge_gap\": 5,\n            \"dt\": 0.001\n        },\n        \"cusum_filter\": {\n            \"min_photons\": 50,\n            \"background_rate\": 2000,\n            \"sb_ratio\": 30.0,\n            \"alpha\": 0.05,\n            \"beta\": 0.05\n        },\n        \"tttrlib_search\": {\n            \"algorithm\": \"maxtree\",\n            \"parameters\": {}\n        },\n        \"delta_macro_time_filter\": {\n            \"dT_min\": 0.0,\n            \"dT_max\": 0.2,\n            \"dT_min_active\": true,\n            \"dT_max_active\": true\n        },\n        \"invert_filter\": false,\n        \"max_gap\": 4,\n        \"use_gap_fill\": true\n    },\n    \"burst_detection\": {\n        \"min_photons\": 60,\n        \"photon_window\": 10,\n        \"time_window\": 0.001\n    },\n    \"gmm\": {\n        \"covariance_type\": \"spherical\",\n        \"random_state\": 42,\n        \"max_iter\": 50,\n        \"n_init\": 10,\n        \"tol\": 0.001,\n        \"max_components\": 10,\n        \"reg_covar\": 1e-06,\n        \"auto_components\": false\n    },\n    \"output_formats\": [\n        \"bur\"\n    ],\n    \"zip_output\": false,\n    \"remove_folder\": false,\n    \"timestamp\": \"2026-08-06 23:25:38\",\n    \"selected_setup\": \"Test\",\n    \"channels\": [],\n    \"microtime_ranges\": [],\n    \"files\": [\n        \"m000.spc\"\n    ]\n}"
+    },
+    {
+      "path": "bi4_bur",
+      "kind": "dir"
+    },
+    {
+      "path": "bi4_bur/m000.bur",
+      "kind": "file",
+      "bytes": 436743,
+      "sha256": "edd838183a974b648bdbed906368f2472a47077a6c53093db7e491de459b6551"
+    }
+  ],
+  "bur_columns": [
+    "First Photon",
+    "Last Photon",
+    "Duration (ms)",
+    "Mean Macro Time (ms)",
+    "Number of Photons",
+    "Count Rate (KHz)",
+    "Confidence (sigma)",
+    "First File",
+    "Last File"
+  ],
+  "bur_lines": 6894
+}

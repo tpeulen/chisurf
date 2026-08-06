@@ -6,6 +6,7 @@ import json
 import logging
 import shutil
 import time
+import warnings
 from collections.abc import Iterable
 from dataclasses import asdict
 from pathlib import Path
@@ -30,7 +31,15 @@ from chisurf.core.fluorescence.burst.utils import create_array_with_ones
 from chisurf.core.math.signal import fill_small_gaps_in_array
 from chisurf.core.math.signal import find_bursts as signal_find_bursts
 
-from .io import get_unique_folder_path, load_tttr, write_bur, write_hdf5, zip_output_folder
+from .io import (
+    get_unique_folder_path,
+    load_tttr,
+    write_bur,
+    write_container,
+    write_hdf5,
+    zip_output_folder,
+)
+from .serialization import to_jsonable
 from .models import (
     AnalysisRequest,
     AnalysisResult,
@@ -605,6 +614,15 @@ def analyze_request(request: AnalysisRequest) -> AnalysisResult:
             frame = pd.DataFrame(result.dataframes.get(str(path), []))
             frame["Source File"] = str(path)
             hdf5_frames.append(frame)
+        if "pto" in request.settings.output_formats:
+            container = write_container(
+                path,
+                pd.DataFrame(result.dataframes.get(str(path), [])),
+                parameters=to_jsonable(request.settings),
+                out_dir=request.output_dir,
+            )
+            output_paths.setdefault("pto", container)
+            output_paths_by_file.setdefault(str(path), {})["pto"] = container
         metadata["n_bursts"] += int(result.metadata.get("n_bursts", 0))
         metadata["n_selected"] += int(result.metadata.get("n_selected", 0))
         metadata["n_photons"] += int(result.metadata.get("n_photons", 0))
@@ -614,6 +632,18 @@ def analyze_request(request: AnalysisRequest) -> AnalysisResult:
         output_paths["output_folder"] = str(legacy_output_folder)
         metadata["output_folder"] = str(legacy_output_folder)
         if "hdf5" in request.settings.output_formats and hdf5_frames:
+            # Deprecated. The name carries a timestamp, so every re-run leaves
+            # another file nobody reads, and the container holds the same table
+            # with the provenance this never had. Kept working for pipelines
+            # that still ask for it; the `.bur` companions stay because external
+            # tools read those, and this had no such consumer.
+            warnings.warn(
+                "burst-selection HDF5 output is deprecated: use output_formats "
+                "'pto' for the measurement's container, or 'bur' for the legacy "
+                "companion layout.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
             hdf5_dir = legacy_output_folder / "hdf5"
             hdf5_path = hdf5_dir / f"burst_data_{time.strftime('%Y%m%d-%H%M%S')}.h5"
             write_hdf5(hdf5_frames, hdf5_path)

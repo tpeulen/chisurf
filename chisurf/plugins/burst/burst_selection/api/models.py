@@ -149,8 +149,10 @@ class AnalysisSettings:
     gmm : GMMSettings
         Optional Gaussian mixture model settings.
     output_formats : list of str
-        Output formats to write. Supported values are ``"bur"`` and
-        ``"hdf5"``.
+        Output formats to write. ``"pto"`` writes the bursts into the
+        measurement's own container beside the instrument file, which is the
+        target layout; ``"bur"`` and ``"hdf5"`` write the legacy folder and are
+        kept so existing pipelines and external tools keep working.
     zip_output : bool
         Whether legacy output folders should be zipped after processing.
     remove_folder : bool
