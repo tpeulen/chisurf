@@ -159,3 +159,36 @@ def test_a_three_dimensional_decay_is_not_fitted_by_the_one_dimensional_law(time
     assert wrong > 10 * right, (
         f"the 1-D law fitted 3-D data too well: {wrong:.3e} vs {right:.3e}"
     )
+
+
+@pytest.mark.parametrize("dimension", [1, 2, 3])
+def test_the_geometry_survives_a_save_and_reload(dimension):
+    """A saved 1-D fit must not reopen as a 2-D fit carrying the 1-D density.
+
+    The dimensionality selects a decay *law* and is not optimized, so it is a
+    plain attribute rather than a FittingParameter -- which means nothing in the
+    parameter machinery persists it. Before ``get_state``/``set_state`` were
+    written the density round-tripped and the geometry it belongs to silently
+    reverted to the default, which is worse than losing both.
+    """
+    x = np.linspace(0.02, 40.0, 128)
+    y = np.exp(-x / 4.0)
+
+    saved = _fit_with_model(x, y).model
+    saved.dimension = dimension
+    saved.c_over_c0 = 2.2
+    saved.forster_radius = 61.0
+    saved.tau_d0 = 3.1
+
+    restored = _fit_with_model(x, y).model
+    restored.set_state(saved.get_state())
+
+    assert restored.dimension == dimension
+    assert restored.c_over_c0 == pytest.approx(2.2)
+    assert restored.forster_radius == pytest.approx(61.0)
+    assert restored.tau_d0 == pytest.approx(3.1)
+    # And the restored model must compute the same decay, not merely report the
+    # same numbers -- the geometry has to have reached the decay law.
+    np.testing.assert_allclose(
+        restored.unconvolved_decay(x), saved.unconvolved_decay(x), rtol=1e-12
+    )

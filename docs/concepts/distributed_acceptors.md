@@ -131,6 +131,33 @@ control that is not there:
   reported density rather than improving the fit. They are fixed by default for
   that reason.
 
+### Choosing the geometry: fit all three
+
+The dimensionality is not fitted, so the way to establish it is to fit each and
+compare. That works because the wrong law does not merely fit slightly worse —
+it fits *hopelessly* worse. Fitting simulated decays (donor $\tau_{D(0)} = 4$ ns,
+no convolution, density released from a deliberately wrong start):
+
+| Simulated | Fitted as 1-D | Fitted as 2-D | Fitted as 3-D |
+|---|---|---|---|
+| **1-D**, $C/C_0 = 1.7$ | **1.700**, SSR 2e-14 | 0.931, SSR 2e-03 | 0.595, SSR 8e-03 |
+| **2-D**, $C/C_0 = 1.3$ | 1.820, SSR 2e-02 | **1.300**, SSR 3e-14 | 0.866, SSR 7e-03 |
+| **3-D**, $C/C_0 = 0.9$ | 1.415, SSR 7e-02 | 1.070, SSR 2e-02 | **0.900**, SSR 1e-13 |
+
+The right law recovers the density exactly and the residual falls to numerical
+noise; the wrong ones are eight to eleven orders of magnitude worse. On real
+data the separation is smaller — noise, an imperfect instrument response and a
+donor that is not single-exponential all narrow it — but the ordering is robust,
+and this is what makes the decay shape a measurement of geometry rather than an
+assumption about it.
+
+:::{warning}
+Note what the wrong rows still do: they return a **plausible** density. Fitting
+1-D data with the 2-D law gives $C/C_0 = 0.93$ rather than 1.7 — a number that
+looks perfectly reasonable and is wrong by 45 %. Reporting a density without
+having compared the three geometries is reporting an assumption.
+:::
+
 The panel reports the implied transfer efficiency and the absolute density
 alongside `C/C0`. Both are computed from the fitted density, so neither carries
 an error bar of its own — propagate the uncertainty on `C/C0` instead

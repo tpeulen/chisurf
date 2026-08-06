@@ -261,6 +261,54 @@ class DistributedAcceptorModel(LifetimeModel):
         decay = self.corrections.linearize(decay)
         self.y = np.maximum(decay, 0)
 
+    # ── persistence ──────────────────────────────────────────────────
+
+    def get_state(self) -> dict:
+        """Return a JSON-serializable state snapshot.
+
+        The dimensionality is a plain attribute rather than a
+        :class:`FittingParameter` -- it selects a decay *law*, it is not
+        optimized -- so nothing in the parameter machinery persists it. Without
+        this, saving a 1-D fit and reopening it gave a 2-D fit carrying the 1-D
+        density: the number survived and the geometry it belongs to did not.
+        """
+        state = super().get_state()
+        if not isinstance(state, dict):
+            state = {}
+        extra = state.get("extra")
+        if not isinstance(extra, dict):
+            extra = {}
+            state["extra"] = extra
+        extra["dimension"] = int(self.dimension)
+        extra["c_over_c0"] = float(self.c_over_c0)
+        extra["forster_radius"] = float(self.forster_radius)
+        extra["tau_d0"] = float(self.tau_d0)
+        return state
+
+    def set_state(self, state: dict) -> None:
+        """Restore state from a JSON-serializable snapshot."""
+        super().set_state(state)
+        if not isinstance(state, dict):
+            return
+        extra = state.get("extra")
+        if not isinstance(extra, dict):
+            return
+        if "dimension" in extra:
+            try:
+                self.dimension = int(extra["dimension"])
+            except (TypeError, ValueError):
+                pass
+        for key, setter in (
+            ("c_over_c0", "c_over_c0"),
+            ("forster_radius", "forster_radius"),
+            ("tau_d0", "tau_d0"),
+        ):
+            if key in extra:
+                try:
+                    setattr(self, setter, float(extra[key]))
+                except (TypeError, ValueError):
+                    pass
+
     def __str__(self) -> str:
         """Return a string representation."""
         s = super().__str__()

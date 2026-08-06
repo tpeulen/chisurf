@@ -2,6 +2,20 @@
 
 ## 2026-08-06
 
+* **A saved 1-D fit reopened as a 2-D fit carrying the 1-D density** ([models](subsystems/models.md)).
+
+  The distributed-acceptor model selects a decay *law* with its dimensionality, and because that is not something an optimizer touches it is a plain attribute rather than a `FittingParameter` — so nothing in the parameter machinery persisted it. `get_state`/`set_state` carried `C/C0` faithfully and dropped the geometry it belongs to, which is worse than losing both: the reopened fit looked complete and was wrong. Now persisted, with a test that asserts the restored model computes the *same decay* rather than merely reporting the same numbers.
+
+  **All three random distributions verified end to end**, each fitted with each law from a deliberately wrong start (τ_D(0) = 4 ns, convolution off, density released):
+
+  | simulated | as 1-D | as 2-D | as 3-D |
+  |---|---|---|---|
+  | 1-D, C/C0 = 1.7 | **1.700**, SSR 2e-14 | 0.931, SSR 2e-03 | 0.595, SSR 8e-03 |
+  | 2-D, C/C0 = 1.3 | 1.820, SSR 2e-02 | **1.300**, SSR 3e-14 | 0.866, SSR 7e-03 |
+  | 3-D, C/C0 = 0.9 | 1.415, SSR 7e-02 | 1.070, SSR 2e-02 | **0.900**, SSR 1e-13 |
+
+  The right law recovers the density exactly and the wrong ones are eight to eleven orders of magnitude worse, so the geometry is established by fitting all three and comparing rather than assumed. **The trap worth naming:** a wrong law still returns a *plausible* density — 1-D data fitted as 2-D gives 0.93 against a truth of 1.7, a number nothing in the output flags. The table and that warning are now in `docs/concepts/distributed_acceptors.md`.
+
 * **The distributed-acceptor decay is now a fittable model** ([models](subsystems/models.md)).
 
   `chisurf/core/models/tcspc/distributed_acceptor.py` — `FRET: distributed acceptors` in the model selector. It releases `C/C0` against a donor lifetime spectrum, with the dimensionality as a radio button rather than a fitted parameter: the three laws are distinguishable, so the right way to choose is to fit each and compare rather than let an optimizer wander between them.
