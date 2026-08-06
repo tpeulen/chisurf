@@ -73,6 +73,30 @@ execution lived inside an in-process Jupyter kernel.
 (read-only, for the code editor's panel). Where input lives was the only
 structural difference between ChiSurf's three hand-rolled consoles.
 
+**Command or Python is one rule, in `chisurf/core/console/dispatch.py`.** A
+console that accepts both has to decide per line, and the rule is short but
+every clause of it was paid for by a bug report — so it lives in the Qt-free
+half and every prompt calls it. It was written out once per prompt until
+2026-08-06 (the widget, chimol's ptpython binding, that REPL's `input()`
+fallback) and the three had drifted into three different rules, two carrying
+defects the third had already fixed.
+
+The rule: a line that does not compile is a command; a line that compiles is
+Python only when the name it would evaluate is actually bound. So `fetch 1f5n`
+and `color red, all` are commands because they are syntax errors, `set` stays
+the builtin, and `ray` / `zoom` / `orient` / `undo` are commands because they
+are bound to nothing and evaluating them could only raise. Whether the
+dispatcher *recognises* the word is deliberately not asked — it cannot change
+an answer, and asking it splits the rule into two branches that then have to be
+kept identical by hand.
+
+`is_incomplete_python` is the companion a *line-at-a-time* prompt needs and the
+widget does not: where Enter can continue a block, `for i in range(3):` must
+reach the buffer rather than the command layer, or the body can never be typed.
+The widget submits whole cells and never sees a partial block. Guarded by
+`test/console/test_dispatch_rule.py`, which fails on any prompt that compiles
+the line itself.
+
 **The legacy spellings still work.** `QIPythonWidget` is a shim over `Chinsole`;
 `pushVariables`, `set_default_style`, `execute_on_gui_thread` and
 `log_on_gui_thread` are aliases. `chisurf.run(...)` still marshals to the GUI

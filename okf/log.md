@@ -12,6 +12,14 @@
 
   Nothing asserted the rungs are *drawn*, either — only that geometry exists near the trace, which the backbone tube satisfies on its own. The new measurement is at C1', which each rung routes through and caps: **1.41 Å** away with the block missing (the nearest thing is the base ring, across the glycosidic bond), **0.00 Å** with it present. Parametrised over smoothing, because the anchoring is what couples the two halves.
 
+* **One command-or-Python rule, after three copies drifted into three rules** ([macros & CLI](subsystems/macros-cli.md)).
+
+  Chased down while checking the reporter's dispatch hypothesis. The rule was written out once per prompt and the copies had diverged: the Qt console's was correct; chimol's ptpython binding asked only whether the line *compiles*, so every no-argument command (`ray`, `zoom`, `orient`, `undo`) was evaluated as a name and answered `NameError` — **the defect the Qt copy carries a comment about having already fixed**; and the `input()` fallback asked nothing about Python at all, so `set` reached chimol's `set` instead of the builtin. Both prompts now call `chisurf.core.console.dispatch`.
+
+  Extracting it settled a question the old code left open: the widget asked `dispatcher.handles(line)` first and then made **both branches identical**, so the dispatcher's vocabulary never changed an answer. It cannot: an unrecognised word that is not Python still belongs to the command layer, which is the only one that can say "no such command", and a recognised word that is bound in Python is still Python. The shared rule drops the question and records why, rather than keeping two branches identical by hand.
+
+  One thing the GUI copy did not need and the REPLs do: `is_incomplete_python`. At a prompt where Enter can *continue* a block, `for i in range(3):` does not compile and would be swallowed as a command, after which the body can never be typed. The Qt console submits whole cells and never sees a partial block. A guardrail test fails on any prompt that compiles the line itself.
+
 * **Transfer to distributed acceptors, implemented rather than described** ([documentation browser](subsystems/documentation-browser.md)).
 
   The one remaining Lakowicz gap the user asked for (frequency-domain lifetimes and spectral relaxation were ruled out) needed code, not prose: the single-distance FRET expressions do not apply when acceptors are *spread* rather than placed — dyes in solution, probes across a membrane, intercalators along a helix — and nothing in the tree covered it. `chisurf/core/fluorescence/fret/dimensionality.py` now implements the closed-form donor decays for one, two and three dimensions, the characteristic density `C0`, and the efficiency by quadrature. `docs/concepts/distributed_acceptors.md` documents them.

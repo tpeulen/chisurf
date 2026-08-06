@@ -18,6 +18,7 @@ import typing
 
 from qtpy import QtCore, QtGui, QtWidgets
 
+from chisurf.core.console import dispatch
 from chisurf.core.console.history import HistoryManager
 from chisurf.core.console.shell import Shell
 from chisurf.gui.chinsole import settings as console_settings
@@ -500,95 +501,15 @@ class Chinsole(QtWidgets.QWidget):
 
         Notes
         -----
-        A line goes to the dispatcher only when it claims it **and** it does not
-        compile as Python. Deciding on the dispatcher alone would shadow real
-        Python -- chimol has a ``set`` command, and ``set()`` is a builtin.
+        The rule itself lives in :mod:`chisurf.core.console.dispatch`, shared
+        with the standalone REPLs that face the same question -- it had been
+        written out once per prompt, and the copies had drifted.
         """
-        if self.dispatcher is None or not line.strip():
-            return False
-
-        compiles = False
-        for mode in ("eval", "exec"):
-            try:
-                compile(line, "<input>", mode)
-            except SyntaxError:
-                continue
-            else:
-                compiles = True
-                break
-
-        if self.dispatcher.handles(line):
-            if not compiles:
-                return True
-            # It is a known command *and* valid Python. Prefer Python only when
-            # the name it would evaluate actually exists.
-            #
-            # Preferring Python unconditionally -- which is what stood here --
-            # made every **no-argument** command unreachable: `ray`,
-            # `split_chains`, `orient`, `zoom`, `undo` are all valid Python
-            # expressions, so they were evaluated as names, and the console
-            # answered `NameError: name 'ray' is not defined`. Reported exactly
-            # that way. A command with arguments was fine, because `fetch 1f5n`
-            # is a syntax error, which is why the failure looked arbitrary.
-            #
-            # The case the old rule was protecting is real and is kept: `set` is
-            # a builtin, so `set` alone still evaluates to the type.
-            return not self._name_exists_in_python(line)
-
-        # Not a name the dispatcher claims. At a command prompt a bare word
-        # that Python also has nothing for -- `splitt_chains` -- is far more
-        # likely a mistyped command than a mistyped expression, so it goes to
-        # the command layer to be told so by name. `NameError: name
-        # 'splitt_chains' is not defined` is a true statement about the wrong
-        # language.
-        if not compiles:
-            return True
-        return not self._name_exists_in_python(line)
-
-    def _name_exists_in_python(self, line: str) -> bool:
-        """Whether the leading name of *line* is bound in the console.
-
-        Parameters
-        ----------
-        line : str
-            A line that compiles as Python.
-
-        Returns
-        -------
-        bool
-            True when Python has something of that name -- a variable, an
-            import, a builtin -- so evaluating it is meaningful. False when it
-            would only ever raise ``NameError``, in which case the command layer
-            is what the user meant.
-
-        Notes
-        -----
-        Only the **root** name is checked, so `zoom` and `zoom.__doc__` answer
-        alike, and a user who binds `ray = 5` gets their variable back -- which
-        is surprising only if you have both, and is the same precedence a shell
-        gives a function over a program of the same name.
-        """
-        import ast
-        import builtins
-
-        try:
-            tree = ast.parse(line.strip(), mode="eval")
-        except SyntaxError:
-            return False
-        node = tree.body
-        while isinstance(node, (ast.Attribute, ast.Subscript)):
-            node = node.value
-        if isinstance(node, ast.Call):
-            node = node.func
-            while isinstance(node, (ast.Attribute, ast.Subscript)):
-                node = node.value
-        if not isinstance(node, ast.Name):
-            # Not a bare name at all -- an operation, a literal, a comparison.
-            # That is Python by construction.
-            return True
-        name = node.id
-        namespace = getattr(self.shell, "user_ns", {}) or {}
-        return name in namespace or hasattr(builtins, name)
+        return dispatch.is_command(
+            line,
+            has_dispatcher=self.dispatcher is not None,
+            namespace=getattr(self.shell, "user_ns", {}) or {},
+        )
 
     def _run_dispatcher(self, line: str) -> None:
         """Run *line* through the command dispatcher.

@@ -27,6 +27,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from chisurf.core.console import dispatch
+
 # ---------------------------------------------------------------------------
 # History helpers (shared between ptpython and fallback paths)
 # ---------------------------------------------------------------------------
@@ -226,7 +228,7 @@ def _run_ptpython_repl(cmd_instance) -> None:
         # Merge chimol completer with the default Python completer
         _install_chimol_completer(repl, completer)
         # Install a key binding that intercepts plain chimol commands
-        _install_chimol_keybinding(repl, cmd_instance)
+        _install_chimol_keybinding(repl, cmd_instance, ns)
 
     print(_BANNER)
 
@@ -250,13 +252,27 @@ def _install_chimol_completer(repl, chimol_completer) -> None:
         repl.completer = chimol_completer
 
 
-def _install_chimol_keybinding(repl, cmd_instance) -> None:
-    """Add a key binding so that bare chimol commands (``load foo.pdb``)
-    are intercepted before Python evaluation.
+def _install_chimol_keybinding(repl, cmd_instance, namespace) -> None:
+    """Intercept bare chimol commands before ptpython evaluates them.
 
-    Strategy: on Enter, if the current buffer text starts with a known
-    chimol command name and is NOT valid Python, route it through
-    ``cmd.do()`` instead.
+    Parameters
+    ----------
+    repl : ptpython.repl.PythonRepl
+        The REPL whose Enter key is being bound.
+    cmd_instance : chimol command object
+        Runs whatever the rule decides is a command.
+    namespace : mapping
+        The REPL's user namespace, which the rule consults to tell a command
+        from a name that is actually bound.
+
+    Notes
+    -----
+    On Enter, :mod:`chisurf.core.console.dispatch` decides command-or-Python --
+    the same rule the Qt console uses. This prompt used to carry its own copy,
+    which asked only whether the line compiles, so every **no-argument**
+    command (``ray``, ``zoom``, ``orient``, ``undo``) was evaluated as a name
+    and answered ``NameError`` -- the defect the Qt copy had already fixed and
+    this one had not, because they were two copies.
     """
     from prompt_toolkit.enums import DEFAULT_BUFFER
     from prompt_toolkit.filters import HasFocus
@@ -274,30 +290,18 @@ def _install_chimol_keybinding(repl, cmd_instance) -> None:
             buf.validate_and_handle()
             return
 
-        first_token = text.split()[0].lower()
-        is_chimol_cmd = first_token in cmd_instance.command_names()
-
-        if is_chimol_cmd:
-            # Check whether it is also valid Python
-            is_python = False
+        # An unfinished block is neither -- let ptpython keep collecting it,
+        # or `for i in range(3):` gets swallowed as a command and the body can
+        # never be typed. This binding is eager, so nothing else asks first.
+        if not dispatch.is_incomplete_python(text) and dispatch.is_command(
+            text, namespace=namespace
+        ):
+            buf.reset()
             try:
-                compile(text, "<input>", "eval")
-                is_python = True
-            except SyntaxError:
-                try:
-                    compile(text, "<input>", "exec")
-                    is_python = True
-                except SyntaxError:
-                    pass
-
-            if not is_python:
-                # Execute as chimol command
-                buf.reset()
-                try:
-                    cmd_instance.do(text)
-                except Exception as exc:
-                    print(f"\033[31m[error]\033[0m {exc}", file=sys.stderr)
-                return
+                cmd_instance.do(text)
+            except Exception as exc:
+                print(f"\033[31m[error]\033[0m {exc}", file=sys.stderr)
+            return
 
         # Fall through to normal ptpython handling
         buf.validate_and_handle()
@@ -335,9 +339,11 @@ def _run_fallback_repl(cmd_instance) -> None:
             if line.lower() in ("quit", "exit"):
                 break
 
-            # Try as chimol command first
-            first_token = line.split()[0].lower()
-            if first_token in cmd_instance.command_names():
+            # Command or Python, by the shared rule. This prompt used to take
+            # the command whenever the first word was one, with no Python check
+            # at all -- so `set` reached chimol's `set` rather than the builtin,
+            # the very case the rule exists to protect.
+            if dispatch.is_command(line, namespace=ns):
                 cmd_instance.do(line)
                 continue
 
