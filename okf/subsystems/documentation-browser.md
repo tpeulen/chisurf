@@ -172,6 +172,30 @@ three pages called *Overview* and two called *Calculations*; they are retitled a
 the source, and `test_toc.py` fails if a section ever contains two pages with
 one title.
 
+**A formula wider than the text column is stacked, not shrunk.** Qt gives the
+*whole page* a horizontal scrollbar when one image overflows, so every paragraph
+on it starts sliding sideways. A display row is therefore split at the
+``\qquad``/``\quad`` its author used to set two formulas side by side — the
+answer a typesetter would give — and only a single indivisible formula that is
+still too wide is scaled down. The split is made at brace depth zero, and never
+at a thin space, which would leave an arrow or a comma alone on a line.
+
+**mathtext's gaps are filled by rewriting, and the rewrites have to be
+brace-matching.** ``\underbrace{X}_{label}`` became ``\underset{label}{X}``
+through a regex with one level of nesting baked in, so a term containing a
+fraction inside a delimiter fell through and the label came out as a *subscript*
+stuck to the end of the expression — "amplitudedecay" beside the RICS model
+rather than under it. Two more of the same kind: a matrix keeps its shape as
+``[a, b; c, d]`` instead of collapsing to ``[abcd]``, and a space inside
+``\text{…}`` survives as ``\ ``, because mathtext drops ordinary spaces in
+maths mode.
+
+**Zoom is Ctrl *and* Shift.** Ctrl+scroll is the browser convention, but on a
+trackpad the operating system's screen magnifier claims it and the gesture never
+reaches the application — so the browser looks like it has no zoom at all.
+Shift+wheel arrives on the *horizontal* delta on most mice, so either axis
+zooms.
+
 **Developer documentation is not user documentation.** Architecture notes,
 migration plans and the bundled modules' READMEs appear only behind the
 *Authoring → Developer docs* toggle. So does the review sign-off: a release gate

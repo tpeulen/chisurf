@@ -2,6 +2,18 @@
 
 ## 2026-08-06
 
+* **Every equation in the documentation was rendered, measured and looked at** ([documentation browser](subsystems/documentation-browser.md)).
+
+  **41 display formulas were wider than the text column.** Qt does not scale an oversized image down — it gives the *whole page* a horizontal scrollbar, so every paragraph on the page starts sliding sideways under the reader. A row is now split at the `\qquad`/`\quad` its author used to set two formulas side by side, which is the answer a typesetter would give; only a single indivisible formula that is still too wide is scaled. At the size pages are read at, **nothing is scaled and nothing overflows**, and at maximum zoom the splitter absorbs all but 23 rows. The split is made at brace depth zero and never at a thin space, which would strand an arrow alone on a line.
+
+  **A label under a term was landing beside it.** `\underbrace{X}_{label}` → `\underset{label}{X}` was a regex with one level of nesting baked in, so a term containing a fraction inside a delimiter fell through to the fallback and its label became a *subscript* — the RICS model read "…)⁻¹ᐟ² amplitudedecay exp[…] spatialcorrelation" instead of carrying three labels under three factors. Rewritten with brace matching. Two neighbours of the same bug: a matrix was collapsing to `[1α0γ]` because the `&` and `\\` separators are deleted before the matrix rewrite ever sees them — it is now flattened *first*, to `[1, α; 0, γ]`, which is also small enough to stay text rather than becoming a picture; and a space inside `\text{…}` vanished, because mathtext drops ordinary spaces in maths mode.
+
+  **Inline typography:** a command name eats the space that terminates it, so `\lambda = x` read "λ= x"; and a hyphen is not a minus sign — `E(1-E)` now sets U+2212, except inside `\text{…}`, where "shot-noise" is a word.
+
+  **Zoom is Shift+wheel as well as Ctrl+wheel**, because on a trackpad the operating system's screen magnifier claims Ctrl+scroll and the gesture never reaches the application at all. Shift+wheel arrives on the horizontal delta on most mice, so either axis zooms.
+
+  Also: a shortened caption in the figure/table/code registers could end mid-formula, and the unpaired `$` was then closed against the next dollar *several rows down*, swallowing everything between them. Shortening now backs up to where the delimiters balance, and a test fails on an unbalanced register row.
+
 * **The nucleic cartoon traced a helix by averaging it, which is a contraction**
   ([chimol](plugins/chimol.md), [known issues](references/known-issues.md)).
 

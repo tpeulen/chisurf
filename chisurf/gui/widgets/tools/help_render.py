@@ -76,12 +76,21 @@ def render_help(
         logger.debug("could not expand source roles", exc_info=True)
 
     theme = theme_api.from_palette(widget)
+    # A `?` modal is much narrower than the documentation window, and a formula
+    # wider than it gives the modal a horizontal scrollbar rather than being
+    # stacked or shrunk to fit.
+    column = MathRenderer.MAX_DISPLAY_WIDTH
+    try:
+        if widget is not None and widget.width() > 200:
+            column = min(column, widget.width() - 60)
+    except Exception:
+        pass
     try:
         return render_document(
             shown,
             path or pathlib.Path("help.md"),
             theme=theme,
-            math=MathRenderer(colour=theme.text, font_size=font_size),
+            math=MathRenderer(colour=theme.text, font_size=font_size, max_width=column),
             font_size=font_size,
         )
     except Exception:

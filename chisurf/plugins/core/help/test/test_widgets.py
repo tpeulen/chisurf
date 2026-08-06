@@ -62,9 +62,13 @@ def test_tree_follows_the_documentation_structure(qapp, qtbot):
         if "Concepts" in widget.tree.topLevelItem(index).text(0)
     )
     # Grouped, not a flat alphabetical run: the first level holds the rubrics.
+    # Asserted as a *property* rather than by naming one rubric -- the rubrics
+    # are authored in the page and get reorganised, and a test that names one
+    # fails on an editorial change that is not a defect.
     groups = [concepts.child(i).text(0) for i in range(concepts.childCount())]
-    assert "Fundamentals" in groups
-    assert concepts.child(0).childCount() >= 3
+    assert len(groups) >= 3, groups
+    assert all(concepts.child(i).childCount() >= 1 for i in range(len(groups))), groups
+    assert max(concepts.child(i).childCount() for i in range(len(groups))) >= 3
 
 
 def test_every_tree_leaf_has_a_document(qapp, qtbot):
@@ -390,3 +394,45 @@ def test_both_sign_off_levels_are_offered(qapp, qtbot):
     assert any("Mark reviewed" in label for label in labels)
     assert any("AI-reviewed" in label for label in labels)
     assert widget.review_filter.findData(review.STATUS_AI_REVIEWED) >= 0
+
+
+def test_shift_and_ctrl_wheel_both_zoom(qapp, qtbot):
+    """Shift + wheel zooms as well as Ctrl + wheel.
+
+    On a trackpad Ctrl + scroll is claimed by the operating system's screen
+    magnifier, so the gesture never reaches the application and the browser
+    looks like it has no zoom at all.
+    """
+    from qtpy.QtCore import QPoint, QPointF
+    from qtpy.QtGui import QWheelEvent
+
+    from chisurf.plugins.core.help.gui.tool import HelpWidget
+
+    widget = HelpWidget()
+    qtbot.addWidget(widget)
+    widget.resize(900, 700)
+    viewport = widget.viewer.viewport()
+
+    def wheel(modifier, dy=120, dx=0):
+        where = QPointF(viewport.rect().center())
+        event = QWheelEvent(
+            where, viewport.mapToGlobal(where.toPoint()), QPoint(dx, dy),
+            QPoint(dx, dy), Qt.NoButton, modifier, Qt.NoScrollPhase, False,
+        )
+        qapp.sendEvent(viewport, event)
+
+    start = widget.font_size
+    wheel(Qt.ShiftModifier)
+    assert widget.font_size > start
+    widget.set_font_size(start)
+    wheel(Qt.ControlModifier)
+    assert widget.font_size > start
+    widget.set_font_size(start)
+    # Shift + wheel is horizontal scrolling on most mice, so the delta arrives
+    # on the x axis; that must zoom too or the gesture works on trackpads only.
+    wheel(Qt.ShiftModifier, dy=0, dx=120)
+    assert widget.font_size > start
+    widget.set_font_size(start)
+    wheel(Qt.NoModifier, dy=-120)
+    assert widget.font_size == start
+

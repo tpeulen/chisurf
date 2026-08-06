@@ -82,9 +82,10 @@ nested loops run:
 
 $$
 \underbrace{\text{per-trace VBEM}}_{\text{inner: fit each trace to the current prior}}
-\;\longrightarrow\;
-\underbrace{\text{hyperparameter update}}_{\text{outer: re-estimate the shared prior from all posteriors}}
-\;\longrightarrow\;\text{repeat until }\textstyle\sum_n\mathcal{L}_n\text{ converges.}
+\;\longrightarrow\; \\
+\underbrace{\text{hyperparameter update}}_{\text{outer: re-estimate the prior from all posteriors}}
+\;\longrightarrow\; \\
+\text{repeat until }\textstyle\sum_n\mathcal{L}_n\text{ converges.}
 $$
 
 The outer h-step matches the Dirichlet and Normal-Gamma prior hyperparameters to

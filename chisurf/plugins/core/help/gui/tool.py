@@ -671,15 +671,23 @@ class HelpWidget(QMainWindow):
         else:
             self._show_generated(self._home_html())
 
+    #: Modifiers that turn the wheel into a zoom. Ctrl/⌘ is the browser
+    #: convention; Shift is here because on a trackpad Ctrl+scroll is taken by
+    #: the operating system's own screen magnifier, and the gesture then never
+    #: reaches the application at all.
+    ZOOM_MODIFIERS = Qt.ControlModifier | Qt.ShiftModifier | Qt.MetaModifier
+
     def eventFilter(self, watched, event):
-        """Ctrl/⌘ + wheel zooms, as it does in a browser."""
+        """Ctrl/⌘ + wheel and Shift + wheel zoom, as they do in a browser."""
         try:
             if (
                 watched is self.viewer.viewport()
                 and event.type() == QEvent.Wheel
-                and event.modifiers() & Qt.ControlModifier
+                and event.modifiers() & self.ZOOM_MODIFIERS
             ):
-                delta = event.angleDelta().y()
+                # Shift+wheel is horizontal scrolling on most mice, so the
+                # delta arrives on x rather than y; either axis zooms.
+                delta = event.angleDelta().y() or event.angleDelta().x()
                 if delta:
                     self.zoom(1 if delta > 0 else -1)
                 return True
@@ -1328,8 +1336,17 @@ class HelpWidget(QMainWindow):
         if getattr(self, "_math_renderer", None) is None:
             from chisurf.plugins.core.help.api.mathtext import MathRenderer
 
+            # The formulas are bounded by the *text column*, not by the window:
+            # a formula wider than the column gives the whole page a horizontal
+            # scrollbar, and every paragraph on it then slides sideways.
+            try:
+                column = min(self.MAX_TEXT_WIDTH, max(320, self.viewer.viewport().width()))
+            except Exception:
+                column = self.MAX_TEXT_WIDTH
             self._math_renderer = MathRenderer(
-                colour=self.doc_theme.text, font_size=self.font_size
+                colour=self.doc_theme.text,
+                font_size=self.font_size,
+                max_width=column,
             )
         return self._math_renderer
 

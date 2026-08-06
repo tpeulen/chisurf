@@ -88,6 +88,10 @@ def normalise_latex(latex: str) -> str:
         return body
 
     text = _ENVIRONMENTS.sub(_flatten, text)
+    # Matrices before the row/column separators are thrown away: mathtext has
+    # no matrix environment, and a matrix whose separators were already deleted
+    # reads as one run-on string ("[1α0γ]" for a 2x2).
+    text = _flatten_matrices(text)
     text = text.replace(r"\\", " ")
     text = re.sub(r"(?<!\\)&", "", text)
     # mathtext parses one line: a newline inside a formula is a parse error, not
@@ -121,8 +125,8 @@ def normalise_latex(latex: str) -> str:
         r"\\\1{\2}",
         text,
     )
-    # Matrix environments have no mathtext equivalent; the rows are shown as a
-    # bracketed, comma-separated list rather than dropped.
+    # Any matrix delimiters left over from a form _flatten_matrices could not
+    # pair up are dropped rather than shown as literal text.
     text = re.sub(
         r"\\begin\{[bBpvV]?matrix\*?\}|\\begin\{smallmatrix\}|"
         r"\\end\{[bBpvV]?matrix\*?\}|\\end\{smallmatrix\}",
@@ -149,16 +153,8 @@ def normalise_latex(latex: str) -> str:
     # ``\underbrace{X}_{label}`` becomes ``\underset{label}{X}`` -- the label
     # stays *under* the term instead of turning into a subscript of it, which
     # read as part of the formula.
-    text = re.sub(
-        r"\\underbrace\s*\{((?:[^{}]|\{[^{}]*\})*)\}\s*_\s*\{((?:[^{}]|\{[^{}]*\})*)\}",
-        r"\\underset{\2}{\1}",
-        text,
-    )
-    text = re.sub(
-        r"\\overbrace\s*\{((?:[^{}]|\{[^{}]*\})*)\}\s*\^\s*\{((?:[^{}]|\{[^{}]*\})*)\}",
-        r"\\overset{\2}{\1}",
-        text,
-    )
+    text = _rewrite_brace(text, "underbrace", "_", "underset")
+    text = _rewrite_brace(text, "overbrace", "^", "overset")
     text = re.sub(r"\\underbrace\s*\{", r"{", text)
     text = re.sub(r"\\overbrace\s*\{", r"{", text)
     text = re.sub(r"\\stackrel(?![A-Za-z])", r"\\overset", text)
@@ -168,9 +164,134 @@ def normalise_latex(latex: str) -> str:
     text = re.sub(r"\\label\s*\{[^}]*\}", "", text)
     text = re.sub(r"\\(?:displaystyle|textstyle|scriptstyle|limits|nolimits)\b", "", text)
     text = re.sub(r"\\operatorname\s*\*?\s*\{", r"\\mathrm{", text)
+    # mathtext drops ordinary spaces in maths mode, so ``\mathrm{amplitude
+    # decay}`` -- a *label*, not a formula -- came out as "amplitudedecay".
+    text = _space_text_groups(text)
     # ``\left.``/``\right.`` (invisible delimiters) are unsupported.
     text = text.replace(r"\left.", "").replace(r"\right.", "")
     return text.strip()
+
+
+
+#: Matrix environments and the delimiters they are set in.
+_MATRIX_DELIMITERS = {
+    # ``matrix`` and ``smallmatrix`` carry no delimiters of their own: the
+    # source supplies them, usually as ``\left[ … \right]``.
+    "matrix": ("", ""), "smallmatrix": ("", ""),
+    "pmatrix": ("(", ")"), "bmatrix": ("[", "]"),
+    "Bmatrix": (r"\{", r"\}"), "vmatrix": ("|", "|"), "Vmatrix": (r"\|", r"\|"),
+}
+
+_MATRIX_BLOCK = re.compile(
+    r"\\begin\{(" + "|".join(_MATRIX_DELIMITERS) + r")\*?\}(.*?)\\end\{\1\*?\}",
+    re.DOTALL,
+)
+
+
+def _flatten_matrices(text: str) -> str:
+    r"""Write a matrix as a bracketed list of rows.
+
+    mathtext has no matrix environment, so a matrix has to become something
+    one-dimensional. Deleting the ``&`` and ``\\`` separators — which is what
+    the generic rewrite below does — turns a 2x2 into one run-on string; keeping
+    them as ``,`` and ``;`` keeps the shape readable.
+    """
+    def _one(match: "re.Match[str]") -> str:
+        left, right = _MATRIX_DELIMITERS[match.group(1)]
+        rows = [row.strip() for row in re.split(r"\\\\", match.group(2))]
+        rows = [row for row in rows if row.strip(" &\n\t")]
+        body = r";\; ".join(
+            r",\, ".join(cell.strip() for cell in row.split("&") if cell.strip())
+            for row in rows
+        )
+        return f"{left}{body}{right}"
+
+    previous = None
+    while previous != text:
+        previous = text
+        text = _MATRIX_BLOCK.sub(_one, text)
+    return text
+
+
+def _matched_group(text: str, start: int) -> tuple[str, int]:
+    r"""Return the contents of the ``{…}`` at *start* and the index after it.
+
+    Brace matching rather than a regex, because a regex has to fix how deeply
+    groups may nest — and a formula that nests one level deeper than it allows
+    does not fail loudly, it silently keeps the ``\underbrace`` label as a
+    *subscript* stuck to the end of the expression.
+    """
+    if start >= len(text) or text[start] != "{":
+        return "", start
+    depth, index = 0, start
+    while index < len(text):
+        if text[index] == "{":
+            depth += 1
+        elif text[index] == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start + 1: index], index + 1
+        index += 1
+    return "", start
+
+
+def _rewrite_brace(text: str, command: str, marker: str, replacement: str) -> str:
+    r"""Rewrite ``\command{X}<marker>{Y}`` into ``\replacement{Y}{X}``.
+
+    mathtext has ``\underset``/``\overset`` but no braces, so this is how a
+    label under a term survives — as a label under the term rather than as a
+    subscript of it.
+    """
+    out, index = [], 0
+    token = "\\" + command
+    while True:
+        found = text.find(token, index)
+        if found < 0:
+            out.append(text[index:])
+            return "".join(out)
+        after = found + len(token)
+        while after < len(text) and text[after] == " ":
+            after += 1
+        body, after_body = _matched_group(text, after)
+        cursor = after_body
+        while cursor < len(text) and text[cursor] == " ":
+            cursor += 1
+        if not body or cursor >= len(text) or text[cursor] != marker:
+            out.append(text[index:after_body or after])
+            index = after_body if after_body > found else found + len(token)
+            continue
+        cursor += 1
+        while cursor < len(text) and text[cursor] == " ":
+            cursor += 1
+        label, after_label = _matched_group(text, cursor)
+        if not label:
+            out.append(text[index:after_body])
+            index = after_body
+            continue
+        out.append(text[index:found])
+        out.append(f"\\{replacement}{{{label}}}{{{body}}}")
+        index = after_label
+
+
+def _space_text_groups(text: str) -> str:
+    r"""Make the spaces inside ``\mathrm{…}`` survive into the raster."""
+    out, index = [], 0
+    while True:
+        match = re.search(r"\\(mathrm|mathbf|mathit)\s*\{", text[index:])
+        if match is None:
+            out.append(text[index:])
+            return "".join(out)
+        start = index + match.start()
+        brace = index + match.end() - 1
+        body, after = _matched_group(text, brace)
+        if not after or after == brace:
+            out.append(text[index:brace + 1])
+            index = brace + 1
+            continue
+        out.append(text[index:brace + 1])
+        out.append(re.sub(r" +", r"\\ ", body))
+        out.append("}")
+        index = after
 
 
 def math_rows(latex: str) -> list[str]:
@@ -199,6 +320,77 @@ def math_rows(latex: str) -> list[str]:
     rows = [row.strip() for row in re.split(r"\\\\", body)]
     rows = [row for row in rows if row.strip(" &\n\t")]
     return rows or [latex]
+
+
+#: Separators an author uses to set two formulas side by side on one line.
+#: Ordered widest-gap first, so a row breaks at the biggest space it has.
+#: Deliberately *not* the thin spaces ``\;`` and ``\,``: those separate a
+#: symbol from its neighbour inside one expression, and breaking there leaves an
+#: orphan arrow or comma alone on a line.
+_SIDE_BY_SIDE = (r"\qquad", r"\quad")
+
+
+def _side_by_side(latex: str) -> list[str]:
+    """Split one display row where its author put horizontal space.
+
+    ``E = a, \\qquad S = b`` is two statements typeset on one line; if they do
+    not fit on one line, stacking them is what a typesetter would do. The split
+    is made only at **brace depth zero** — a ``\\qquad`` inside ``\\frac{…}`` or
+    ``\\text{…}`` is part of one expression and breaking there would produce two
+    unparsable halves.
+
+    Parameters
+    ----------
+    latex : str
+        One display row, already free of ``\\\\`` separators.
+
+    Returns
+    -------
+    list of str
+        The pieces, with a trailing comma kept on the piece it belongs to; a
+        single-element list when the row has no top-level separator.
+
+    """
+    for separator in _SIDE_BY_SIDE:
+        parts, depth, start = [], 0, 0
+        index = 0
+        while index < len(latex):
+            character = latex[index]
+            if character == "\\" and latex.startswith(separator, index):
+                after = index + len(separator)
+                # ``\quad`` must not match the start of ``\quadrant``.
+                if depth == 0 and not latex[after: after + 1].isalpha():
+                    piece = latex[start:index].strip()
+                    if piece:
+                        parts.append(piece)
+                    start = after
+                    index = after
+                    continue
+            if character == "{":
+                depth += 1
+            elif character == "}":
+                depth = max(0, depth - 1)
+            index += 1
+        tail = latex[start:].strip()
+        if tail:
+            parts.append(tail)
+        parts = [p.strip().rstrip("&").strip() for p in parts]
+        parts = [p for p in parts if p]
+        if len(parts) > 1:
+            return parts
+    return [latex]
+
+
+def _scaled(tag: str, width: int) -> str:
+    """Shrink an ``<img>`` fragment to *width*, keeping its aspect ratio."""
+    match = re.search(r'width="(\d+)"\s+height="(\d+)"', tag or "")
+    if not match:
+        return tag
+    current, height = int(match.group(1)), int(match.group(2))
+    if current <= width or current <= 0:
+        return tag
+    scaled_height = max(1, round(height * width / current))
+    return tag.replace(match.group(0), f'width="{width}" height="{scaled_height}"')
 
 
 def _unicode_fallback(latex: str) -> str:
@@ -320,6 +512,10 @@ def html_math(latex: str) -> Optional[str]:
         An HTML fragment, or *None* when the formula must be rasterised.
 
     """
+    # A matrix is two-dimensional only as long as it keeps its environment; once
+    # flattened to "[a, b; c, d]" it is ordinary text, and text is what an
+    # inline formula should be.
+    latex = _flatten_matrices(latex)
     try:
         html, position = _inline_group(latex, 0, stop_at_brace=False)
     except _UnsupportedInline:
@@ -392,19 +588,29 @@ def _inline_command(text: str, index: int) -> tuple[str, int]:
     index += len(match.group(0))
     # TeX swallows the whitespace that terminates a command name, so
     # ``\langle E\rangle`` must not come out as "⟨ E⟩".
+    swallowed = False
     while index < len(text) and text[index] == " ":
         index += 1
+        swallowed = True
+    # ...but TeX then sets its own space around a relation, and we do not, so
+    # a swallowed space in front of one has to be given back: "λ = x", not
+    # "λ= x".
+    following = ""
+    if swallowed and index < len(text):
+        nxt = text[index]
+        if nxt in _INLINE_RELATIONS or nxt == "-":
+            following = "&#8201;"
     if name in _HTML_SPACES:
         return _HTML_SPACES[name], index
     if name in _HTML_SYMBOLS:
         symbol = _HTML_SYMBOLS[name]
         if symbol in _SPACED_SYMBOLS:
             return f"&#8201;{symbol}&#8201;", index
-        return symbol, index
+        return symbol + following, index
     if name in _HTML_OPERATORS:
-        return _HTML_OPERATORS[name], index
+        return _HTML_OPERATORS[name] + following, index
     if name in _HTML_FUNCTIONS:
-        return name, index
+        return name + following, index
     if name in ("frac", "tfrac", "dfrac", "cfrac"):
         numerator, index = _inline_atom(text, index)
         denominator, index = _inline_atom(text, index)
@@ -445,6 +651,9 @@ def _inline_command(text: str, index: int) -> tuple[str, int]:
         # Upright by construction: strip the italics the letters were given.
         if not open_tag:
             inner = re.sub(r"</?i>", "", inner)
+        # ...and inside words a hyphen is a hyphen, not a minus sign: this is
+        # prose set in a formula, so "shot-noise" must not become "shot−noise".
+        inner = inner.replace("−", "-")
         return f"{open_tag}{inner}{close_tag}", index
     if name in ("left", "right", "big", "bigl", "bigr", "Big", "Bigl", "Bigr"):
         return "", index
@@ -471,10 +680,20 @@ def _bracket(html: str, always: bool = False) -> str:
     return html
 
 
+#: Characters TeX sets as relations or binary operators. A command name eats
+#: the space that terminates it, so ``\lambda = x`` would come out as "λ= x"
+#: unless the space is put back in front of one of these.
+_INLINE_RELATIONS = set("=<>+\u2212\u00b1\u2213\u2260\u2264\u2265\u2248\u221d")
+
+
 def _inline_char(char: str) -> str:
     """Convert one ordinary character, italicising variables as TeX does."""
     if char.isalpha():
         return f"<i>{char}</i>"
+    if char == "-":
+        # A hyphen is not a minus sign: it is half the width and sits lower,
+        # and in "E(1-E)" the difference is visible at reading size.
+        return "\u2212"
     if char == "&":
         return "&amp;"
     if char == "<":
@@ -519,9 +738,21 @@ class MathRenderer:
     #: landed in a sentence or in a displayed equation.
     _FONTSET = "stixsans"
 
-    def __init__(self, colour: str = "#202020", font_size: float = 11.0):
+    #: Widest a displayed formula may be, in the same pixels the text column is
+    #: measured in. A formula wider than the column is not merely ugly: Qt gives
+    #: the *whole page* a horizontal scrollbar, so every paragraph on it starts
+    #: sliding sideways under the reader.
+    MAX_DISPLAY_WIDTH = 860
+
+    def __init__(
+        self,
+        colour: str = "#202020",
+        font_size: float = 11.0,
+        max_width: int = MAX_DISPLAY_WIDTH,
+    ):
         self.colour = colour
         self.font_size = float(font_size)
+        self.max_width = int(max_width)
         self._cache: dict[tuple[str, bool], Optional[str]] = {}
         self._available: Optional[bool] = None
 
@@ -550,8 +781,37 @@ class MathRenderer:
             if as_text is not None:
                 return f'<span class="math-inline">{as_text}</span>'
             return self._one(latex, False)
-        rows = [self._one(row, True) for row in math_rows(latex)]
+        rows = []
+        for row in math_rows(latex):
+            rows.extend(self._fit(row))
         return '<p align="center" class="math-display">' + "<br>".join(rows) + "</p>"
+
+    def _fit(self, row: str) -> list[str]:
+        """Return the fragments for one source row, none wider than the column.
+
+        A row written as ``A, \\qquad B`` is two formulas set side by side, and
+        when the pair does not fit the typographic answer is to stack them —
+        *not* to shrink them, which is what leaves one equation on a page
+        visibly smaller than the rest. Only when a single indivisible formula is
+        still too wide is it scaled down, because the alternative is a page that
+        scrolls sideways.
+        """
+        tag = self._one(row, True)
+        if self._width_of(tag) <= self.max_width:
+            return [tag]
+        parts = _side_by_side(row)
+        if len(parts) > 1:
+            fitted = []
+            for part in parts:
+                fitted.extend(self._fit(part))
+            return fitted
+        return [_scaled(tag, self.max_width)]
+
+    @staticmethod
+    def _width_of(tag: str) -> int:
+        """Displayed width of an ``<img>`` fragment, or 0 when it is text."""
+        match = re.search(r'width="(\d+)"', tag or "")
+        return int(match.group(1)) if match else 0
 
     def _one(self, latex: str, display: bool) -> str:
         """Return the fragment for a single typeset line, image or fallback."""

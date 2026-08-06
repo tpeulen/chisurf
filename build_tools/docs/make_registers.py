@@ -234,9 +234,22 @@ def _figure_rows(figures, provenance) -> tuple[list[str], int]:
 
 
 def _cell(text: str) -> str:
+    """Return *text* as one table cell, shortened without breaking its markup.
+
+    Cutting at a fixed character count can land in the middle of a formula and
+    leave an unpaired ``$``, which the renderer then closes against the *next*
+    dollar on the page — several rows further down, swallowing everything
+    between them into one nonsensical formula. Shortening therefore backs up to
+    the last point where the delimiters are balanced.
+    """
     text = " ".join(str(text or "").split())
     text = text.replace("|", "\\|")
-    return (text[:160] + "…") if len(text) > 160 else (text or "—")
+    if len(text) <= 160:
+        return text or "—"
+    cut = 160
+    while cut > 40 and (text.count("$", 0, cut) % 2 or text.count("`", 0, cut) % 2):
+        cut -= 1
+    return text[:cut].rstrip() + "…"
 
 
 def _link(page: str) -> str:

@@ -119,3 +119,26 @@ def test_the_refresh_rule_is_written_down():
 def test_register_is_reachable_from_the_reference_section(register):
     index = (docs_root() / "reference" / "index.rst").read_text(encoding="utf-8")
     assert pathlib.Path(register).stem in index
+
+
+def test_a_register_row_never_leaves_a_formula_open():
+    """A shortened caption must not end mid-formula.
+
+    An unpaired ``$`` is closed against the *next* dollar on the page — several
+    rows further down — and everything between them is swallowed into one
+    nonsensical formula. The register is generated, so this can only be fixed
+    where the shortening happens.
+    """
+    from chisurf.plugins.core.help.api.toc import docs_root
+
+    offenders = []
+    for name in ("figures", "tables", "code"):
+        page = docs_root() / "reference" / f"{name}.md"
+        if not page.is_file():
+            continue
+        for number, line in enumerate(page.read_text(encoding="utf-8").split("\n"), 1):
+            if not line.startswith("|"):
+                continue
+            if line.count("$") % 2 or line.count("`") % 2:
+                offenders.append((f"{name}.md", number, line[:80]))
+    assert not offenders, offenders[:5]

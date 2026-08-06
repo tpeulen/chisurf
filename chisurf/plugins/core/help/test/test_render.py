@@ -182,6 +182,84 @@ def test_every_formula_in_the_documentation_typesets():
     assert not failures, failures[:5]
 
 
+def test_a_wide_formula_is_stacked_rather_than_shrunk():
+    """``A, \\qquad B`` that does not fit becomes two lines, both full size.
+
+    Shrinking is the wrong answer twice over: it leaves one equation on a page
+    visibly smaller than the rest, and it is only reached because the formula
+    was going to overflow — which in Qt gives the *whole page* a horizontal
+    scrollbar, so every paragraph starts sliding sideways under the reader.
+    """
+    renderer = MathRenderer(font_size=10.5, max_width=200)
+    html = renderer.to_html(
+        r"E = \frac{a}{b}, \qquad S = \frac{c}{d}, \qquad R = \frac{e}{f}", display=True
+    )
+    assert html.count("<img") == 3
+    assert "<br>" in html
+
+
+def test_a_split_never_orphans_part_of_an_expression():
+    """A ``\\quad`` inside a group is spacing, not a place to break."""
+    from chisurf.plugins.core.help.api.mathtext import _side_by_side
+
+    assert _side_by_side(r"\frac{a \quad b}{c}") == [r"\frac{a \quad b}{c}"]
+    assert _side_by_side(r"E = a, \qquad S = b") == ["E = a,", "S = b"]
+    # A thin space separates neighbours inside one expression; breaking there
+    # would leave the arrow alone on a line of its own.
+    assert _side_by_side(r"A \;\longrightarrow\; B") == [r"A \;\longrightarrow\; B"]
+
+
+def test_no_formula_in_the_documentation_overflows_the_text_column():
+    """At the size pages are read at, every formula fits the column it is in."""
+    import re as _re
+
+    from chisurf.plugins.core.help.api.toc import docs_root
+
+    renderer = MathRenderer(font_size=10.5)
+    over = []
+    root = docs_root()
+    for page in sorted(root.rglob("*.md")) + sorted(root.rglob("*.rst")):
+        if "_build" in page.parts:
+            continue
+        text = _re.sub(r"```.*?```", " ", page.read_text(encoding="utf-8"), flags=_re.DOTALL)
+        text = _re.sub(r"`[^`\n]*`", " ", text)
+        for kind, payload in split_math(text):
+            if kind != "display":
+                continue
+            html = renderer.to_html(payload, display=True)
+            for width in _re.findall(r'width="(\d+)"', html):
+                if int(width) >= renderer.max_width:
+                    over.append((page.name, int(width), payload.strip()[:60]))
+    assert not over, over[:5]
+
+
+def test_a_label_under_a_term_stays_under_it():
+    """``\\underbrace{X}_{label}`` must not turn the label into a subscript.
+
+    The rewrite used to be a regex with one level of nesting baked in, so a
+    braced term one level deeper — a fraction inside a delimiter — silently fell
+    through to the fallback and the label came out stuck to the end of the
+    expression as "amplitudedecay".
+    """
+    out = normalise_latex(
+        r"\underbrace{\Bigl(1 + \tfrac{\mathrm{MSD}}{w_r^2}\Bigr)^{-1}}_{\text{amplitude decay}}"
+    )
+    assert "underset" in out
+    assert "underbrace" not in out
+    # ...and the space inside the label survives: mathtext drops ordinary
+    # spaces in maths mode, so the two words ran together.
+    assert r"amplitude\ decay" in out
+
+
+def test_a_matrix_keeps_its_shape_when_it_is_flattened():
+    """mathtext has no matrix, so one becomes "[a, b; c, d]" — not "[abcd]"."""
+    out = normalise_latex(r"\begin{bmatrix}a & b\\ c & d\end{bmatrix}")
+    assert "," in out and ";" in out and "bmatrix" not in out
+    assert out.startswith("[") and out.endswith("]")
+    # Small enough to be text, so an inline matrix is no longer a picture.
+    assert html_math(r"D=\left[\begin{smallmatrix}1&\alpha\\0&\gamma\end{smallmatrix}\right]")
+
+
 def test_multiline_display_maths_becomes_several_lines():
     rows = math_rows(r"a = b \\ c = d")
     assert rows == ["a = b", "c = d"]
