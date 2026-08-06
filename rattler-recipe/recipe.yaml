@@ -126,7 +126,6 @@ requirements:
     - scipy
     - numba
     - boost-cpp
-    - mdtraj
     - ipython
     - notebook <7
     - pyopengl

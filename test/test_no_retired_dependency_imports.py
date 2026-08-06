@@ -60,6 +60,10 @@ RETIRED = {
         "numexpr",
         "write a numba kernel; NUMBA_NUM_THREADS already comes from settings",
     ),
+    "mdtraj": (
+        "mdtraj",
+        "use chisurf.core.fio.trajectory + chisurf.core.structure.trajectory_data",
+    ),
     "boost_histogram": (
         "boost-histogram",
         "histograms are filled in tttrlib, which is faster on matched features",

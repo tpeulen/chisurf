@@ -2,6 +2,8 @@
 
 import os
 import tempfile
+import pathlib
+
 import numpy as np
 import pytest
 
@@ -254,8 +256,21 @@ def test_trajectory_pair_selection():
         from ..core import av
         av.select_backend("auto")
         
+        # An accessible volume needs a structure to be accessible *around*.
+        # Three atoms filter to an empty obstacle set, which is not a
+        # meaningful AV -- and used to take the process down with it, because
+        # LabelLib segfaults on an empty array rather than returning. Use a
+        # real protein for this part.
+        real_pdb = (pathlib.Path(__file__).resolve().parents[5]
+                    / "test/data/atomic_coordinates/pdb_files/148l.pdb")
+        if not real_pdb.is_file():
+            pytest.skip(f"reference structure not found: {real_pdb}")
+        real_traj = md.load(str(real_pdb))
+        real_dcd = os.path.join(os.path.dirname(traj_path), "148l.dcd")
+        md.join([real_traj, real_traj, real_traj]).save_dcd(real_dcd)
+
         effs, pair_names = compute_efficiency_matrix_from_evaluators_trajectory(
-            top_path, traj_path, positions, distances
+            str(real_pdb), real_dcd, positions, distances
         )
         assert effs.shape == (3, 1)
         assert pair_names == ["pos1_pos2"]

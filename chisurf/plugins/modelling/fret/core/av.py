@@ -129,6 +129,17 @@ def _av_labellib(
     atoms : (N, 4) float32 — xyzr (r = vdW radius)
     source_xyz : (3,) float64 — attachment point
     """
+    # LabelLib segfaults on an empty obstacle set -- it takes the process down
+    # rather than returning, so the check has to be here and not in the caller.
+    # An empty set is reachable whenever the structure filters to nothing: a
+    # selection that matches no atom, or a residue whose own atoms are all
+    # excluded as the attachment site.
+    if atoms.shape[0] == 0:
+        raise ValueError(
+            "cannot compute an accessible volume: no atoms were given as "
+            "obstacles. Check the structure and the attachment selection."
+        )
+
     # LabelLib expects F-order contiguous float32 arrays
     at = np.asfortranarray(atoms.T.astype(np.float32))  # (4, N)
     src = source_xyz.astype(np.float32)  # (3,)

@@ -35,7 +35,6 @@ DEPS=(
     "micromamba"
     "qtpy<2.0"
     "pyqtgraph=0.13.7"
-    "mdtraj=1.11.1"
     "tttrlib=0.26.2"
     "scipy"
     "pandas"

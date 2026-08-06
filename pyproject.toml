@@ -63,7 +63,6 @@ dependencies = [
     "python-docx",
     "markdown",
     "msgpack>=1.1.2",
-    "mdtraj",
     "ipython",
     "click",
     "pyzmq>=25.0",

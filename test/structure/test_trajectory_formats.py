@@ -86,8 +86,7 @@ def test_a_trajectory_without_a_topology_is_refused(trajectory_file):
 
 
 def test_a_topology_that_does_not_match_is_refused(trajectory_file):
-    pytest.importorskip("mdtraj")
-    import mdtraj as md
+    from chisurf.core.structure import trajectory_data as md
 
     with tempfile.TemporaryDirectory() as tmp:
         small = pathlib.Path(tmp) / "ten_atoms.pdb"
