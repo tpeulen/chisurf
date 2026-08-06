@@ -42,6 +42,8 @@ from __future__ import annotations
 
 import numpy as np
 
+from ..config import _DISPLAY_CONFIG
+
 try:  # pragma: no cover - exercised only with a real GL context
     from OpenGL import GL
 except Exception:  # pragma: no cover
@@ -117,6 +119,16 @@ class PostProcess:
     Every method is a no-op when the framebuffer could not be created, so a
     driver that refuses it degrades to the direct rendering that came before
     rather than to a black window.
+
+    The silhouette settings are **properties over the display configuration**,
+    not fields. They used to be both: copied into this object when the renderer
+    was constructed, and left in the configuration where nothing read them
+    again. So ``lighting silhouette=on`` moved the picture without touching the
+    configuration, the configuration was a start-up default that no live change
+    could reach, and ``set silhouette, on`` could not be registered at all --
+    registering a name against a store the renderer re-reads only at
+    construction is precisely how a setting ends up accepted and inert. One
+    store, read where it is used, is what makes the name mean something.
     """
 
     def __init__(self) -> None:
@@ -130,13 +142,58 @@ class PostProcess:
         self._outline_program = 0
         self._failed = False
 
-        #: Silhouette settings, named as ChimeraX names them.
-        self.silhouette = False
-        self.silhouette_thickness = 1.0
-        self.silhouette_color = (0.0, 0.0, 0.0, 1.0)
-        self.depth_jump = 0.03
         #: 1.0 for an orthographic projection, where the correction collapses.
         self.near_far_ratio = 1.0
+
+    # ------------------------------------------------------------------ #
+    # Silhouette settings -- one store, in the display configuration
+    # ------------------------------------------------------------------ #
+    @staticmethod
+    def _config() -> dict:
+        """The ``silhouette`` section, created if a config predates it."""
+        section = _DISPLAY_CONFIG.get("silhouette")
+        if not isinstance(section, dict):
+            section = {}
+            _DISPLAY_CONFIG["silhouette"] = section
+        return section
+
+    @property
+    def silhouette(self) -> bool:
+        """Whether an outline is drawn around the geometry."""
+        return bool(self._config().get("enabled", False))
+
+    @silhouette.setter
+    def silhouette(self, value) -> None:
+        self._config()["enabled"] = bool(value)
+
+    @property
+    def silhouette_thickness(self) -> float:
+        """Outline width, in pixels."""
+        return float(self._config().get("thickness", 1.0))
+
+    @silhouette_thickness.setter
+    def silhouette_thickness(self, value) -> None:
+        self._config()["thickness"] = float(value)
+
+    @property
+    def depth_jump(self) -> float:
+        """Depth difference, as a fraction of the scene, that counts as an edge."""
+        return float(self._config().get("depth_jump", 0.03))
+
+    @depth_jump.setter
+    def depth_jump(self, value) -> None:
+        self._config()["depth_jump"] = float(value)
+
+    @property
+    def silhouette_color(self) -> tuple:
+        """Outline colour, RGBA in ``0..1``."""
+        return tuple(
+            float(c) for c in self._config().get("color", [0.0, 0.0, 0.0, 1.0])
+        )
+
+    @silhouette_color.setter
+    def silhouette_color(self, value) -> None:
+        self._config()["color"] = [float(c) for c in value]
 
     # ------------------------------------------------------------------ #
     # Lifecycle

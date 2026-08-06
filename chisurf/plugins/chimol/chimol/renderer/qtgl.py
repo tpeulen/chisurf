@@ -212,14 +212,11 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         # cue reuse the same target rather than each adding their own.
         from .postprocess import PostProcess
 
+        # No copying: `PostProcess` reads the `silhouette` section itself, so a
+        # `set silhouette, on` reaches a viewer that is already open. Copying
+        # here is what made the configuration a start-up default nothing could
+        # change and the renderer's copy a value nothing could see.
         self._post = PostProcess()
-        silhouette_cfg = (_DISPLAY_CONFIG.get("silhouette") or {})
-        self._post.silhouette = bool(silhouette_cfg.get("enabled", False))
-        self._post.silhouette_thickness = float(silhouette_cfg.get("thickness", 1.0))
-        self._post.depth_jump = float(silhouette_cfg.get("depth_jump", 0.03))
-        self._post.silhouette_color = tuple(
-            float(c) for c in silhouette_cfg.get("color", [0.0, 0.0, 0.0, 1.0])
-        )
 
         lighting_cfg = (_DISPLAY_CONFIG.get("lighting") or {})
         light_dir = lighting_cfg.get("light_direction", [0.0, 0.0, 1.0])

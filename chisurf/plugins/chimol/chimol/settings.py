@@ -193,6 +193,19 @@ _SPECS: tuple[SettingSpec, ...] = (
           "structure that grows, where following the centroid slides the scene "
           "out from under it."),
 
+    # -- Silhouettes --------------------------------------------------------
+    # ChimeraX's, not PyMOL's: PyMOL has no depth-buffer outline outside its ray
+    # tracer. `lighting` sets the same values under the same names.
+    _spec("silhouette", "silhouette.enabled", "bool", False,
+          "Draw an outline where the depth buffer steps, as ChimeraX does."),
+    _spec("silhouette_thickness", "silhouette.thickness", "float", 1.0,
+          "Outline width in pixels."),
+    _spec("depth_jump", "silhouette.depth_jump", "float", 0.03,
+          "Depth difference, as a fraction of the scene depth, that counts as "
+          "an edge. Smaller finds more edges."),
+    _spec("silhouette_color", "silhouette.color", "color", [0.0, 0.0, 0.0, 1.0],
+          "Outline colour."),
+
     # -- Background ---------------------------------------------------------
     _spec("bg_rgb", "background", "color", "k",
           "Background colour, as a colour name or an RGB triplet."),
