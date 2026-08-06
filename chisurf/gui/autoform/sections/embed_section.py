@@ -11,13 +11,24 @@ Authoring::
     {"type": "custom", "key": "embed",
      "options": {"widget": "chisurf.plugins.fcs.fcs_channel_preset.gui.tool:FCSChannelWidget"}}
 
+    {"type": "custom", "key": "embed", "options": {"attr": "histogram_widget"}}
+
 ``options`` keys:
 
-* ``widget`` (required) — dotted import path ``"pkg.module:ClassName"`` or
-  ``"pkg.module.ClassName"``.
-* ``kwargs`` — mapping passed to the widget constructor.
-* ``pass_model`` — when ``True``, the bound model is passed as ``model=`` kwarg.
+* ``widget`` — dotted import path ``"pkg.module:ClassName"`` or
+  ``"pkg.module.ClassName"``; a *fresh* instance is constructed.
+* ``attr`` — name of a model attribute (or zero-argument method) holding a widget
+  that already exists, which is adopted as it is. This is what a panel loaded
+  from a ``.ui`` file needs: its widgets are built by ``uic``, wired by name and
+  referenced from a dozen places, so constructing a second copy is not the same
+  thing as showing the one that is already there. Exactly one of ``widget`` and
+  ``attr`` is used, ``attr`` first.
+* ``kwargs`` — mapping passed to the widget constructor (``widget`` form only).
+* ``pass_model`` — when ``True``, the bound model is passed as ``model=`` kwarg
+  (``widget`` form only).
 * ``expanding`` — mark the widget to take spare vertical space (default ``True``).
+  Set ``false`` for a compact panel of controls, which should stay at the height
+  it needs.
 """
 
 from __future__ import annotations
@@ -41,12 +52,37 @@ def _resolve(path: str):
     return getattr(module, attr)
 
 
+def _adopt(model, attr: str):
+    """Return the widget the model already holds under `attr`, or ``None``."""
+    value = getattr(model, attr, None)
+    if callable(value):
+        try:
+            value = value()
+        except Exception as exc:  # pragma: no cover - defensive
+            logging.warning(f"embed section: {attr}() failed: {exc}")
+            return None
+    if value is None:
+        logging.warning(f"embed section: model has no widget at {attr!r}")
+    return value
+
+
 @register_section("embed")
 def _embed_section_factory(model, target=None, **options):
-    """Instantiate and return the widget named by ``options['widget']``."""
+    """Return the widget named by ``options['attr']`` or ``options['widget']``."""
+    attr = options.get("attr", "")
+    if attr:
+        widget = _adopt(model, str(attr))
+        if widget is None:
+            return None
+        if options.get("expanding", True):
+            widget._autoform_expanding = True
+            widget.setSizePolicy(QtWidgets.QSizePolicy.Expanding,
+                                 QtWidgets.QSizePolicy.Expanding)
+        return widget
+
     path = options.get("widget", "")
     if not path:
-        logging.warning("embed section: no 'widget' path given")
+        logging.warning("embed section: neither 'attr' nor 'widget' given")
         return None
     try:
         cls = _resolve(str(path))

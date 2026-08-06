@@ -86,6 +86,12 @@ contains "time". They are now one:
 | `playback.view.json` | `ndxplorer/plotting/` | The panel: axis combo, step count, step slider, transport row, mode radios, speed slider, live readout. Rendered by ChiSurf's [AutoForm](../subsystems/gui-autoform.md) as a foldable `panel`. |
 | `setup_playback` | `plot_control.py` | Picks the axis after **every** load — frame index first, then macro time, else idle with all columns offered. |
 
+The panel opens **folded** — it is the block a user sets up once and then wants
+out of the way — and the fold state is remembered on the view model rather than
+re-read from the spec, because the step slider's range is the step count and
+changing it rebuilds the form. A spec that re-asserted `collapsed: true` on every
+rebuild would fold the panel under the hands of the user who just opened it.
+
 The three modes are three questions. `window` (`edges[i] <= v < edges[i+1]`) is
 the population as it was then; `integrate` (`v < edges[i+1]`) is everything so
 far, which converges to the static plot and shows a late-arriving population
@@ -106,6 +112,36 @@ The slice reaches the data layer as `MaskState.slice_mask` plus
 `MaskState.slice_key` (`core/data/mask_state.py`). The array is never in the
 cache key: it is expensive to compare and, compared by identity, wrong. The key
 is the scalars.
+
+## The plot-control dock is folding, block by block
+
+Playback arrived as an AutoForm `panel` and got a fold for free, which made the
+asymmetry with the rest of the dock the obvious next thing. **Histogram** follows
+(`plotting/histogram.view.json` + `histogram_view_model.py`), but by a different
+route: its thirty-odd controls are the ones `plot_control.ui` declares, wired to
+the axis/scale/histogram mixins by `objectName` and read from a dozen tests as
+`control.comboBoxSelX`, `control.n_xhist_2d`, `control.xmin`. So the panel
+**adopts** that widget instead of rebuilding it, through the `embed` section's
+new `attr` option (chisurf-side: `embed` could only *construct* a fresh widget,
+which is the wrong half for anything `uic` built and something else is wired to).
+
+Wrapping it turned up a defect that had been there all along and was merely
+hidden: `QGridLayout.replaceWidget` — used to swap four min/max spin boxes for
+pyqtgraph's — takes the old widget out of the layout but leaves it a **child**,
+and a child no layout positions draws at (0, 0). All four sat stacked in the
+top-left corner as one spin box reading `0`. The group box's title bar had been
+absorbing them; without it they landed on the x-axis row and ate the `x:` label.
+`deleteLater()` was already being called and does not help: the deferred-delete
+event is only processed when the event loop unwinds past the level the widget was
+created at, which never happens for a panel built headlessly. `setParent(None)`
+first, then delete. A test asserts no child of the histogram panel is outside a
+layout.
+
+**The remaining blocks** (`z`, `Draw Mask`, `Selection`) are still plain group
+boxes, and a real AutoForm port of the histogram controls — `value` and `choice`
+sections instead of an adopted widget — is a separate change with a separate
+payoff (tooltips, generated docs, state save/restore) and a large blast radius
+through the mixins.
 
 ## Gating: one path, one answer
 

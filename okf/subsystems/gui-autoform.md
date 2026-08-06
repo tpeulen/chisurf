@@ -154,6 +154,17 @@ controls with no extra vertical space), `help` (a `?` modal button),
 `progress` (the one inline progress bar — see below), and
 `wizard`/`info`/`embed`.
 
+`embed` takes either `widget` (a dotted import path — a *fresh* instance is
+constructed) or **`attr`** (the name of a model attribute or zero-argument method
+holding a widget that already exists, which is adopted as it is). The second is
+what a panel loaded from a `.ui` file needs: its controls are built by `uic`,
+wired by `objectName` and referenced from a dozen places, so constructing a
+second copy yields a panel-shaped decoy with nothing connected to it. That is how
+ndX's Histogram block became foldable without rebuilding thirty controls its
+mixins reach by name. Pair it with `"expanding": false` for a compact block of
+controls, which should stay at the height it needs rather than absorb the dock's
+spare space — a panel that keeps that space folds into a panel-sized hole.
+
 # Reporting to the user: one message box, one progress bar
 
 Two things every long-running or fallible tool must do — say that something went
@@ -439,6 +450,34 @@ validation, not model math.)
 
 When touching GUI code, prefer porting hand-built widgets to AutoForm + a
 JSON view scheme.
+
+## Prefer the table rendering of a parameter group (repo-wide)
+
+**`parameter_group_table` is the default; `parameter_group` is the exception.**
+This was already universal practice before it was written down: every
+`*.view.json` in the tree uses the table form, and *none* uses the verbose one.
+Only the FCS-scoped statement existed, so the rule read as a local preference
+rather than the convention it is.
+
+A parameter group is a homogeneous list of parameters each carrying the same
+columns — value, fixed, bounds, error. That is a table. The stacked form spends a
+labelled row plus six controls per parameter, so an eleven-parameter convolve
+group fills the panel on its own and pushes the rest of the editor below the
+fold.
+
+Reach for the verbose `parameter_group` only when:
+
+- a parameter needs a control a table cell cannot host — a prior editor, a
+  bespoke widget; or
+- the group is short enough (one or two parameters) that a table's header row
+  costs more vertical space than it saves.
+
+Both are `target`/`exclude_source`/`collapsible`-compatible, so the choice is one
+word in the JSON.
+
+`Model.view_spec()`'s auto-derive fallback emits `ParameterGroupTableSection` for
+the same reason: a model with no authored spec should get the rendering every
+authored spec chose, not the one none of them did.
 
 ## Runtime `.ui` forms are prototyping-only (migration target: removal)
 
