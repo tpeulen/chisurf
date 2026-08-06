@@ -2219,3 +2219,41 @@ through a per-row Python loop (so a write through the returned array is silently
 lost, and filtering a large boolean column is O(n) in Python), and `mask_numpy()`
 returns a copy (so a single-cell mask change is a read-modify-write of the whole
 mask). Both are listed in the [columnar-store concept](../subsystems/columnar-store.md).
+
+## build: the sibling environment gets a build it cannot load
+
+**2026-08-06.** The photon library is built into the pixi environment and
+symlinked into the sibling conda environment. The two disagree about HDF5 — pixi
+solves 2.1 (`libhdf5.320`), the conda environment carries 1.14 (`libhdf5.310`) —
+so the shared build is unloadable in the sibling:
+
+```
+ImportError: dlopen(...): Library not loaded: @rpath/libhdf5.320.dylib
+```
+
+**`build-tttrlib` reports success**, because it verifies the environment it
+installed into and that one is fine; the sibling breaks silently and shows up
+only when a suite next runs there. Worked around by giving the sibling its own
+build installed as a real directory instead of a symlink (recipe in
+[build and env](../workflows/build-and-env.md)) — **which the next
+`build-tttrlib` undoes**, re-creating the symlink.
+
+The durable fix is one of: pin the same HDF5 in both environments, or make the
+link step verify that the extension actually *loads* in every environment it
+links into rather than only in the one it installed to. Neither is done.
+
+## storage: seven pandas HDF5 call sites are dead in a freshly solved environment
+
+**2026-08-06.** `pytables` is declared nowhere, and a freshly solved environment
+now genuinely has none — `to_hdf` raises `ImportError: Missing optional
+dependency 'pytables'`. Seven call sites still go through it (the burst-selection
+writer, the photon-filter wizard, `bid_to_analysis`, the H2MM ndX export, the
+imaging pixel maps, the burst-state reader and the MCMC chain writer), so all
+seven are dead there. They work in developer environments only because those
+still carry the package.
+
+Moving them onto the columnar writer is [PRD-82](../prds/prd-82.md) stage 2, and
+it is blocked on three library gaps — a text column that inflates the file, a
+legacy reader that returns an **empty store** instead of declining, and a writer
+that truncates so one file cannot hold two groups. Until then this is a real gap
+between the developer environment and a fresh one.

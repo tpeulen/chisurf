@@ -194,6 +194,47 @@ Running the affected suites under that `PYTHONPATH` as well as normally is how a
 change is shown to be correct against **both** the shipped build and the fixed
 one.
 
+## Two environments, two HDF5s, one shared build
+
+The photon library is built once, into the pixi environment, and `link_build()`
+symlinks the result into the sibling conda environment. That only works while
+both environments agree on the native libraries the build links, and **they do
+not agree about HDF5**: the pixi solve takes HDF5 2.1 (`libhdf5.320`), the conda
+environment carries 1.14 (`libhdf5.310`). A build made in one is unloadable in
+the other:
+
+```
+ImportError: dlopen(...): Library not loaded: @rpath/libhdf5.320.dylib
+```
+
+**`build-tttrlib` reports success anyway**, because it verifies the environment
+it installed *into* (`sys.prefix`) and that one is fine. The symlinked sibling
+breaks silently, and the failure only shows up the next time a test suite runs
+there.
+
+Until the two environments agree on HDF5, the sibling needs **its own build**
+rather than a symlink — built against its own prefix and installed as a real
+directory:
+
+```bash
+ENV=<sibling conda env>
+SP=$ENV/lib/python3.12/site-packages
+CMAKE_ARGS="-DCMAKE_PREFIX_PATH=$ENV -DHDF5_ROOT=$ENV -DHDF5_NO_FIND_PACKAGE_CONFIG_FILE=TRUE" \
+  $ENV/bin/python -m pip install <library source> --no-build-isolation --no-deps \
+    --target /tmp/build/pkg --config-settings=build-dir=/tmp/build/tree
+rm "$SP/<pkg>" "$SP/<pkg>-*.dist-info"          # symlinks: removing them leaves pixi untouched
+cp -R /tmp/build/pkg/<pkg> /tmp/build/pkg/<pkg>-*.dist-info "$SP/"
+find "$SP/<pkg>" \( -name '*.so' -o -name '*.dylib' \) -exec /usr/bin/codesign --force --sign - {} \;
+```
+
+The codesign step is not optional on macOS: a copied extension whose signature
+is invalidated dies on import with **exit 137 / Killed: 9** and no message.
+
+**Re-running `build-tttrlib` re-creates the symlink and breaks the sibling
+again.** The durable fix is for the two environments to pin the same HDF5, or
+for the link step to check that the built extension actually loads in every
+environment it links into — not only in the one it installed to.
+
 # Common commands
 
 ```bash

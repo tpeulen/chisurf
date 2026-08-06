@@ -187,7 +187,14 @@ not an editor.
 
 ## Stage 2 — HDF5: the writers move, and `pytables` is actually gone
 
-Five call sites, all of them writing tables that are already numeric-plus-labels:
+**Seven** call sites, not five — `burst_selection/api/io.py` and the photon-filter
+wizard were missed in the first count. And `pytables` is not merely
+*undeclared*: a freshly solved environment has none, so **every one of these is
+dead there today**, `to_hdf` raising `ImportError: Missing optional dependency
+'pytables'`. That is no longer a prediction; it was reproduced once `hdf5` was
+declared and the environment re-solved.
+
+Three library gaps block this stage, and two of them were found by trying it:
 
 | Call site | What it writes |
 |---|---|
@@ -200,8 +207,26 @@ Five call sites, all of them writing tables that are already numeric-plus-labels
 They become `tttrlib.write_hdf5` / `tttrlib.read_hdf5` (one dataset per column).
 The reader half is **already wired on the ndX side**:
 `ndxplorer/io/reader.py:881` has `read_hdf5_store` on
-`tttrlib.read_hdf5_table_columns`, with `pd.read_hdf` as the other branch. This
-stage needs **T1** and **T8** below.
+`tttrlib.read_hdf5_table_columns`, with `pd.read_hdf` as the other branch.
+
+**The legacy read fails silently, which is the trap.** Handed a pandas-written
+file — `fixed` or `table` — `read_hdf5`, `read_hdf5_table` and
+`read_hdf5_table_columns` do not raise: they return an **empty store** and an
+empty column tuple, while `isHDF5File` says `True`. A reader that trusts them
+opens every existing user file as a blank table with no error. ndX already
+guards this correctly (`if len(columns) < 1: return None`, then
+`store.n_rows() > 0`), and that guard is the template every ChiSurf call site
+must copy until **T3** lands. It is also what criterion 5 means by a *named,
+tested decline*.
+
+**A file cannot hold two groups.** `write_hdf5_table` opens with
+`H5Fcreate(..., H5F_ACC_TRUNC, ...)`, so writing a second group truncates the
+first — verified: write the table at `/`, then `meta` at `/meta`, and the table
+is gone. The imaging format needs exactly that shape (`results` plus a `meta`
+back-reference to the photon file), so **T13** below blocks `pixel_maps.py`
+outright rather than merely making it slower.
+
+This stage therefore needs **T1**, **T3** and **T13**.
 
 ## Stage 3 — the burst tables
 
@@ -245,12 +270,13 @@ required to finish stage 3 without hand-rolling the same loop in six plugins.
 |---|---|---|
 | **T1** | **String columns round-trip dictionary-encoded through HDF5** | The one place the current writer loses. Numeric-only, tttrlib writes 56 MB in 0.08 s and reads it in 0.02 s against pandas' 64 MB / 0.46 s / 0.45 s. Add one four-label text column and the file goes to **100 MB against pandas' 77 MB** — the labels are materialised. Writing the dictionary plus an int32 code array is ~4 MB for that column instead of ~44 MB. |
 | **T2** | **`write_csv`** | 8 call sites, and without it stage 4 is half a migration: the reader is fast and the writer still goes through a frame. |
-| **T3** | **A reader for the legacy pandas HDF5 layout** | Files already written with `format="table"` must stay openable *without* pytables, otherwise the removal breaks existing user data. tttrlib already links HDF5, so this belongs beside `hdf5_table` rather than in chisurf. |
+| **T3** | **A reader for the legacy pandas HDF5 layout** | Files already written with `format="table"` must stay openable *without* pytables, otherwise the removal breaks existing user data. tttrlib already links HDF5, so this belongs beside `hdf5_table` rather than in chisurf. **Worse than it reads:** handed such a file today the reader returns an *empty store* rather than declining, so a migrated call site opens every existing file blank and reports success. Until it lands, every call site must copy ndX's explicit column-count guard. |
 | **T4** | **`take` / `compact`** — materialise the selected rows into a new store | `dropna` (4), filtered exports and every burst-selection write. Today a selection is a mask and there is no way to *realise* it. |
 | **T5** | **`concat` / row append** | `pd.concat` is 26 call sites, the second-largest `pd.*` name after the constructor. |
 | **T6** | **`argsort` / sort by column** | Table sorting; chitable currently sorts through the proxy on a numpy array per column, which is fine for one column and not for a stable multi-column sort. |
 | **T7** | **Group-by aggregation over a dictionary column** | 6 call sites. Most of it is `codes` + `np.bincount`, which is *why* it belongs in the library: every consumer writing that loop by hand is how the codes get copied. |
 | ~~T8~~ | ~~Single-cell string write~~ | **Not a gap.** Expressible over `dictionary()` / `set_dictionary()` / `codes()`, which is what `set_cell` does. Worth having in the library so six consumers do not re-derive it; blocks nothing. |
+| **T13** | **An append/multi-group HDF5 write** | `write_hdf5_table` truncates the file (`H5F_ACC_TRUNC`), so one file holds one group. The imaging format is a `results` table plus a `meta` back-reference to the photon file, which is unrepresentable today. |
 | T9 | `describe`-shaped summary | `profile()` already covers most of it; listed so it is not rediscovered as missing. |
 | ~~T10~~ | ~~A `Column` reference that survives `add()`~~ | **Fixed at the library source** (a stable-reference container in `modules/core/include/DataStore.h`), verified in a scratch build: a proxy survives fifty `add()` calls where the shipped build answers `''` and `[]`. **Not in any built environment here yet**, and *removal* still invalidates unevenly, so the never-cache rule and `column_at()` stay. |
 | T11 | A zero-copy view for a **boolean** column | Today `numpy()` decodes it through a per-row Python loop, so filtering a large boolean column is O(n) in Python — and the array it returns is a *copy*, so a write through it is silently lost. |

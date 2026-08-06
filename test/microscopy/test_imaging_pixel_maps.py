@@ -514,3 +514,77 @@ def test_nb_and_phasor_tools_run():
     assert ph.g_map() is not None and ph.s_map() is not None
     hist = ph.phasor_histogram_map()  # 2-D (g, s) density
     assert hist is not None and hist.ndim == 2
+
+
+# ── merging into an existing imaging file ────────────────────────────────
+
+
+def test_add_maps_preserves_columns_of_a_columnar_file():
+    """Regression: merging must not discard the analysis already in the file.
+
+    ``add_maps_to_hdf5`` rewrites the per-pixel table, so it first reads what is
+    there. It used to turn *any* read failure into "there was no table" and
+    rewrite with only the new maps — silently, reporting success. A file in the
+    columnar layout (one 1-D dataset per column, which the companion viewer's
+    fast path reads and which the storage migration produces) is exactly such a
+    file, so an expensive lifetime fit vanished when N&B was run over it.
+    """
+    import tttrlib
+
+    from chisurf.core.datastore import store_from_arrays
+    from chisurf.core.fluorescence.imaging.pixel_maps import add_maps_to_hdf5
+
+    ny, nx = 4, 4
+    yy, xx = np.indices((ny, nx))
+    store = store_from_arrays(
+        {
+            "X pixel": xx.ravel().astype("int32"),
+            "Y pixel": yy.ravel().astype("int32"),
+            "Tau": np.full(ny * nx, 2.5),
+        }
+    )
+    with tempfile.TemporaryDirectory() as d:
+        path = os.path.join(d, "img.h5")
+        tttrlib.write_hdf5_table(path, store, "/", 0)
+
+        added = add_maps_to_hdf5(path, {"N": np.full((ny, nx), 7.0)})
+        assert added == ["N"]
+
+        from chisurf.core.fluorescence.imaging.pixel_maps import read_imaging_table
+
+        back = read_imaging_table(path)
+        assert "Tau" in back.columns, "the lifetime map was discarded by the merge"
+        assert "N" in back.columns
+        np.testing.assert_allclose(back["Tau"].to_numpy(), 2.5)
+        np.testing.assert_allclose(back["N"].to_numpy(), 7.0)
+
+
+def test_add_maps_refuses_an_unreadable_file_rather_than_overwriting():
+    """A file that exists but cannot be read stops the merge.
+
+    Rewriting it would destroy whatever it holds, and "unreadable" is not
+    evidence that it holds nothing.
+    """
+    from chisurf.core.fluorescence.imaging.pixel_maps import add_maps_to_hdf5
+
+    with tempfile.TemporaryDirectory() as d:
+        path = os.path.join(d, "junk.h5")
+        with open(path, "wb") as fh:
+            fh.write(b"not an HDF5 file at all")
+        before = os.path.getsize(path)
+        with pytest.raises(OSError):
+            add_maps_to_hdf5(path, {"N": np.zeros((2, 2))})
+        assert os.path.getsize(path) == before, "the unreadable file was overwritten"
+
+
+def test_add_maps_still_creates_a_missing_file():
+    """An absent file is genuinely "nothing there" and is created from the maps."""
+    from chisurf.core.fluorescence.imaging.pixel_maps import (
+        add_maps_to_hdf5,
+        read_imaging_table,
+    )
+
+    with tempfile.TemporaryDirectory() as d:
+        path = os.path.join(d, "new.h5")
+        assert add_maps_to_hdf5(path, {"N": np.zeros((2, 2))}) == ["N"]
+        assert "N" in read_imaging_table(path).columns

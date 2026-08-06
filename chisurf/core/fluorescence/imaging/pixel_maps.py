@@ -706,13 +706,76 @@ def write_imaging_hdf5(df, path: str, source: str | None = None) -> None:
 
 
 def read_imaging_source(path: str) -> str | None:
-    """Return the back-referenced source-TTTR path stored in an imaging HDF5."""
+    """Return the back-referenced source-TTTR path stored in an imaging HDF5.
+
+    The back-reference is optional — most imaging files carry none — so a
+    missing ``meta`` table is not an error and reads as ``None``.
+
+    Parameters
+    ----------
+    path : str
+        Imaging HDF5 file.
+
+    Returns
+    -------
+    str or None
+    """
     import pandas as pd
 
     try:
         return str(pd.read_hdf(path, key="meta")["source_tttr"].iloc[0])
     except Exception:
         return None
+
+
+def read_imaging_table(path: str, key: str = "results"):
+    """Return the per-pixel table of an imaging HDF5, whatever layout it is in.
+
+    Reads both layouts a ChiSurf imaging file comes in: the frame-written
+    PyTables one, and the columnar one (a group of 1-D datasets, one per
+    column) that the companion viewer's fast path reads.
+
+    Parameters
+    ----------
+    path : str
+        Imaging HDF5 file. Must exist.
+    key : str
+        Table key / group name.
+
+    Returns
+    -------
+    pandas.DataFrame
+
+    Raises
+    ------
+    OSError
+        When the file exists but neither layout could be read from it. This is
+        deliberately **not** softened into "there is no table": a caller that
+        merges into an existing file has to be able to tell "nothing was there"
+        from "I could not read what was there", because the second one silently
+        discards an analysis if it is treated as the first.
+    """
+    import pandas as pd
+
+    errors = []
+    try:
+        return pd.read_hdf(path, key=key)
+    except Exception as exc:  # a columnar file, or no PyTables in this env
+        errors.append(f"table layout: {exc}")
+
+    try:
+        import tttrlib
+
+        from chisurf.core.datastore import dataframe_from_store
+
+        group = key if key.startswith("/") else "/"
+        if tttrlib.read_hdf5_table_columns(str(path), group):
+            return dataframe_from_store(tttrlib.read_hdf5_table(str(path), group))
+        errors.append("columnar layout: no 1-D column datasets in the group")
+    except Exception as exc:
+        errors.append(f"columnar layout: {exc}")
+
+    raise OSError(f"{path} is not a readable imaging table — " + "; ".join(errors))
 
 
 def add_maps_to_hdf5(path: str, maps: dict[str, np.ndarray], key: str = "results") -> list[str]:
@@ -741,18 +804,18 @@ def add_maps_to_hdf5(path: str, maps: dict[str, np.ndarray], key: str = "results
     """
     import os
 
-    import pandas as pd
-
     new = maps_to_dataframe(maps)
     _keys = ("X pixel", "Y pixel", "Pixel Number")
     add_cols = [c for c in new.columns if c not in _keys]
 
+    # "There is no file" and "I could not read the file" are different answers,
+    # and conflating them loses data: this function REWRITES the table, so a
+    # failed read used to mean every column already in the file — an expensive
+    # lifetime fit, say — was silently dropped and the call still reported
+    # success. A file that exists must be readable or this stops.
     base = None
     if os.path.exists(path):
-        try:
-            base = pd.read_hdf(path, key=key)
-        except Exception:
-            base = None
+        base = read_imaging_table(path, key=key)
 
     if base is not None and {"X pixel", "Y pixel"}.issubset(base.columns):
         # Drop any stale copies of the incoming columns, then merge by pixel.
