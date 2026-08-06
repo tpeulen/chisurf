@@ -65,6 +65,30 @@ submit, assert on the resulting objects. Where a platform transforms an event �
 macOS shift+scroll, trackpad sub-notch deltas — the test has to carry the
 platform's shape, not the API's.
 
+**0b. Run the tests that cover the file you edited — and read the picture, not
+the mesh count.** Also a standing correction rather than a task, and the third
+in a row that a green suite did not catch. On 2026-08-06 a rung-drawing block
+landed in the wrong cartoon function and `NameError`-ed every protein cartoon
+with secondary structure; `test_cartoon_geometry.py` already covered it in six
+tests and was simply not run before the commit. The nucleic tests stayed green
+because the nucleic builder calls the protein one with `ss_codes=None`, which
+returns early two lines above the fault — **a test that reaches a function
+through a different door is not coverage of that door.**
+
+The picture half is separate and cost as much. `show cartoon, <sele>` reported
+success, produced a plausible triangle count and rendered the *whole structure*;
+it was visible only in the PNG, and only because the render was taken for an
+unrelated reason. When judging a representation, count the entities the mask
+names (`state.cartoon_mask.sum()` against the residues the selection should
+cover) — a mesh count cannot distinguish "the selection" from "everything", and
+a mask is where the two differ.
+
+**0c. `ray` does not frame like the viewport.** Unresolved, seen again on
+2026-08-06: `orient` then `ray` puts the molecule off-centre and small in the
+traced image while the viewport is framed correctly. Not chased — noted here
+because every headless screenshot of chimol inherits it, so a badly framed
+reference image is not evidence of a geometry bug.
+
 **0. A trajectory that is a simulation — landed, with one thing left.** See
 *[A frame carries more than coordinates](#a-frame-carries-more-than-coordinates)*
 below. What is **open**: the depiction is spheres only, so the buried strata are

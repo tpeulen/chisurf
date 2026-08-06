@@ -893,6 +893,15 @@ class SelectionMixin(BaseCmd):
         has no CA trace, such as a ligand -- contributes no residues. That is an
         answer, not a failure: raising here made ``show cartoon, <group>`` fail
         on the whole group because one member was a ligand.
+
+        A residue is identified by ``(chain, res_id)``, never by ``res_id``
+        alone. A residue number is only unique within its chain, so matching on
+        the number made every selection reach into every other chain that
+        happens to number a residue the same: ``show cartoon, polymer.nucleic``
+        on 1RTD selected 194 residue rows for ~92 nucleotides, and the 102
+        amino acids that came with them were drawn as loose loops beside the
+        duplex. Only the chain array's absence falls back to the number, and
+        then a single-chain object is the only case that can be right anyway.
         """
         atom_mask = np.asarray(atom_mask, dtype=bool)
         if not atom_mask.any():
@@ -905,12 +914,59 @@ class SelectionMixin(BaseCmd):
                 return []
             atom_res_ids = np.asarray(all_atom_res_ids)
             res_ids = np.asarray(residue_ids)
+
+            atom_chains = self._atom_chain_ids(state, atom_res_ids.shape[0])
+            res_chains = getattr(state, "residue_chain_ids", None)
+            if atom_chains is not None and res_chains is not None:
+                res_chains = np.char.strip(np.asarray(res_chains).astype(str))
+                if res_chains.shape[0] == res_ids.shape[0]:
+                    selected = set(
+                        zip(
+                            atom_chains[atom_mask].tolist(),
+                            atom_res_ids[atom_mask].tolist(),
+                        )
+                    )
+                    return [
+                        i
+                        for i, key in enumerate(
+                            zip(res_chains.tolist(), res_ids.tolist())
+                        )
+                        if key in selected
+                    ]
+
             selected = np.unique(atom_res_ids[atom_mask])
             return np.where(np.isin(res_ids, selected))[0].tolist()
         except ValueError:
             raise
         except Exception as exc:
             raise ValueError(f"Failed to extract residue indices: {exc}")
+
+    @staticmethod
+    def _atom_chain_ids(state, n_atoms: int):
+        """Per-atom chain ids as stripped strings, or None if unavailable.
+
+        Parameters
+        ----------
+        state : object
+            The object's renderer state.
+        n_atoms : int
+            Expected length; a mismatch is treated as unavailable rather than
+            broadcast against the wrong domain.
+
+        Returns
+        -------
+        np.ndarray or None
+        """
+        atoms = getattr(state, "atoms", None)
+        if atoms is None:
+            return None
+        try:
+            chains = np.asarray(atoms["chain"]).astype(str)
+        except Exception:
+            return None
+        if chains.shape[0] != n_atoms:
+            return None
+        return np.char.strip(chains)
 
     def _resolve_selection_to_residue_indices_multi(
         self,

@@ -20,6 +20,14 @@
 
   One thing the GUI copy did not need and the REPLs do: `is_incomplete_python`. At a prompt where Enter can *continue* a block, `for i in range(3):` does not compile and would be swallowed as a command, after which the body can never be typed. The Qt console submits whole cells and never sees a partial block. A guardrail test fails on any prompt that compiles the line itself.
 
+* **`show cartoon, chain A` was showing every chain** ([PyMOL parity](plugins/pymol-parity.md)).
+
+  Found while photographing the cartoon fix: the nucleic-only render came back with the whole protein in it. Two independent faults, either of which alone produces the same picture.
+
+  The scoped show read the **mask before the flag**. A loaded object carries an all-True mask rather than `None`, so `hide everything` cleared the flag and left 2028/2028 residues set behind it, and the scoped show OR-ed the selection onto a mask that already covered everything. The "off everywhere" case the code did handle — a `None` mask — is one a real object never reaches. While the representation is off its mask is not observable, so the flag decides what the mask *means* and has to be read first.
+
+  And residues were matched **by number alone**. A residue number is unique only within its chain. Measured on 1RTD: `chain A` selected **2028 rows across all eight chains** — the entire structure — and `polymer.nucleic` selected 194 rows for 90 nucleotides, the extra 102 amino acids drawn as loose loops beside the duplex. Now 554 rows in chain A, and 90 nucleotides with nothing else. Chain-blind matching is only correct on a single-chain object, which is exactly why it looked right in every test.
+
 * **Transfer to distributed acceptors, implemented rather than described** ([documentation browser](subsystems/documentation-browser.md)).
 
   The one remaining Lakowicz gap the user asked for (frequency-domain lifetimes and spectral relaxation were ruled out) needed code, not prose: the single-distance FRET expressions do not apply when acceptors are *spread* rather than placed — dyes in solution, probes across a membrane, intercalators along a helix — and nothing in the tree covered it. `chisurf/core/fluorescence/fret/dimensionality.py` now implements the closed-form donor decays for one, two and three dimensions, the characteristic density `C0`, and the efficiency by quadrature. `docs/concepts/distributed_acceptors.md` documents them.

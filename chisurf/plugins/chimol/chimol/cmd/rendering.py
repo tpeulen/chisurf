@@ -537,14 +537,28 @@ class RenderingMixin(BaseCmd):
                 # two lengths would broadcast and fail -- one rep, one domain.
                 cur_mask = self._expand_mask_to_atoms(entry.state, cur_mask, n_items)
 
+            # The flag decides what the stored mask *means*, and it is the flag
+            # that must be read first. While the representation is off, its mask
+            # is not observable, so whatever is in it is stale -- it is whatever
+            # was showing when the representation was last turned off. Reading
+            # the mask first, and treating only ``None`` as "off everywhere",
+            # made `hide everything; show cartoon, <sele>` show **everything**:
+            # a loaded object carries an all-True mask rather than ``None``, so
+            # `hide everything` cleared the flag, left 2028/2028 residues set,
+            # and the scoped show OR-ed the selection onto a mask that already
+            # covered the whole structure. The ``None`` case the code did handle
+            # was one a real object never reaches.
             if visible:
-                if cur_mask is None and cur_flag:
-                    viewer._update_view()
-                    return
-                if cur_mask is None:
-                    mask = np.zeros(n_items, dtype=bool)
-                else:
+                if cur_flag:
+                    if cur_mask is None:
+                        # On everywhere already -- nothing to widen.
+                        viewer._update_view()
+                        return
                     mask = cur_mask.copy()
+                else:
+                    # Off everywhere, so a scoped show means *just* the
+                    # selection.
+                    mask = np.zeros(n_items, dtype=bool)
                 if residue_level:
                     for ri in res_indices:
                         if 0 <= ri < n_items:
@@ -556,7 +570,9 @@ class RenderingMixin(BaseCmd):
                 viewer._update_view()
                 return
 
-            if cur_mask is None and not cur_flag:
+            if not cur_flag:
+                # Off everywhere: nothing is drawn, so there is nothing for a
+                # scoped hide to take away.
                 viewer._update_view()
                 return
             if cur_mask is None:
