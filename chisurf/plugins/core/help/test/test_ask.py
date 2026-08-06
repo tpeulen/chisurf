@@ -164,6 +164,94 @@ def test_a_run_that_never_read_anything_is_visible_as_such():
     assert answer.pages == []
 
 
+# ── a citation must be a real page ────────────────────────────────────
+
+
+def test_a_named_page_that_does_not_exist_is_struck_and_reported():
+    """The worst failure mode, seen against a real provider.
+
+    Asked what the code editor's assistant does, the model answered from
+    nothing and closed with "— *Python scripting in ChiSurf*
+    (`docs/guides/10_python_scripting.md`)" — a page that has never existed. A
+    fabricated citation is worse than no citation, because the citation is what
+    a reader checks the answer by.
+    """
+    session = _session(
+        [
+            ("read_documentation", {"document": "docs/concepts/fret.md"}),
+            "See docs/guides/10_python_scripting.md for the rest.",
+        ]
+    )
+    answer = ask_api.ask("what is FRET?", session=session)
+
+    assert answer.fabricated == ["docs/guides/10_python_scripting.md"]
+    assert "10_python_scripting" not in answer.text
+    assert "[no such page]" in answer.text
+
+
+def test_a_real_page_named_in_the_prose_is_left_alone():
+    session = _session(
+        [
+            ("read_documentation", {"document": "docs/concepts/fret.md"}),
+            "The theory is in docs/concepts/fret.md.",
+        ]
+    )
+    answer = ask_api.ask("what is FRET?", session=session)
+    assert answer.fabricated == []
+    assert "docs/concepts/fret.md" in answer.text
+
+
+def test_verify_citations_is_usable_on_its_own():
+    text, bad = ask_api.verify_citations(
+        "See docs/concepts/fret.md and docs/nope/missing.md."
+    )
+    assert bad == ["docs/nope/missing.md"]
+    assert "docs/concepts/fret.md" in text
+
+
+# ── reading is not optional ───────────────────────────────────────────
+
+
+def test_an_answer_with_no_read_is_sent_back_once():
+    """Prompting alone did not stop it answering from search excerpts."""
+    session = _session(
+        [
+            ("search_documentation", {"query": "simulate photon stream"}),
+            "ChiSurf can probably simulate photons.",
+            ("read_documentation", {"document": "docs/concepts/photophysics_simulation.md"}),
+            "ChiSurf simulates photon streams; see the concept page.",
+        ]
+    )
+    answer = ask_api.ask("can ChiSurf simulate a photon stream?", session=session)
+
+    assert answer.grounded
+    assert [p["document"] for p in answer.pages] == [
+        "docs/concepts/photophysics_simulation.md"
+    ]
+    assert "simulates photon streams" in answer.text
+    # Both turns count as one answer: the search from the first is still
+    # reported, and the steps are the sum.
+    assert answer.searched == ["simulate photon stream"]
+    assert answer.steps >= 2
+
+
+def test_the_push_happens_once_and_then_gives_up():
+    """A model that will not read after being told to is not asked a third time."""
+    session = _session(["I know the answer already.", "I still know it."])
+    answer = ask_api.ask("what is FRET?", session=session)
+    assert not answer.grounded
+    assert answer.pages == []
+
+
+def test_a_run_that_read_is_not_pushed():
+    session = _session(
+        [("read_documentation", {"document": "docs/concepts/fret.md"}), "Energy transfer."]
+    )
+    answer = ask_api.ask("what is FRET?", session=session)
+    assert answer.grounded
+    assert answer.steps == 2
+
+
 # ── failures the user has to be able to read ──────────────────────────
 
 

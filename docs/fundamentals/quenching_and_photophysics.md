@@ -2,7 +2,7 @@
 type: Fundamentals
 title: Quenching, blinking, and bleaching
 description: Everything that empties $S_1$ without emitting a photon sits in $k_{nr}$.
-tags: [fundamentals, quenching, photophysics]
+tags: [fundamentals, photons, quenching, photophysics]
 anchor: fundamentals-quenching
 ---
 

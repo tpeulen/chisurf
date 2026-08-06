@@ -296,11 +296,15 @@ Measured 2026-08-06 on an M-series Mac, best of five after a warm-up, through
 `chisurf.core.fio.structure.coordinates.read_coordinates` with `keep_water=True`
 and `only_standard_residues=False` (what the viewer asks for).
 
-| File | Atoms | Before | After | A numpy column parser |
+| File | Atoms | IMP, before | IMP, after | Native (`radii="vdw"`) |
 | --- | ---: | ---: | ---: | ---: |
-| `148l.pdb` | 1 363 | 0.195 s | 0.151 s | 0.0009 s |
-| `hGBP1_closed.pdb` | 9 315 | 1.393 s | 0.957 s | 0.0060 s |
-| `1rtd.pdb` | 17 784 | 3.658 s | 1.566 s | 0.0137 s |
+| `148l.pdb` | 1 363 | 0.195 s | 0.151 s | **0.008 s** |
+| `hGBP1_closed.pdb` | 9 315 | 1.393 s | 0.957 s | **0.025 s** |
+| `1rtd.pdb` | 17 784 | 3.658 s | 1.566 s | **0.048 s** |
+
+The native reader is **49x** faster than the improved IMP path and **50x** the
+original. It is selected by `radii="vdw"`, which is a *policy* rather than a
+default: see below.
 
 **The parser was never the slow part.** A profile of the 1.39 s read attributes
 **0.079 s** to `IMP.atom.read_pdb` — the actual file parsing — and the rest to

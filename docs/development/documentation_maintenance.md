@@ -152,6 +152,14 @@ headlessly (`QT_QPA_PLATFORM=offscreen`, `widget.grab().save(...)`), drive the
 widget into a *realistic* state — real data loaded, the analysis actually run —
 and register it.
 
+**A figure fills the reading column, and clicking it opens it full size.** The
+browser scales a block figure *up* as well as down, so a plot saved at 470
+pixels no longer sits as a thumbnail in an 860-pixel measure — but that also
+means a figure saved too small is now visibly soft. Save plots at a width of
+about 900–1200 px. Whatever the column cannot show, the reader gets by
+clicking: the figure opens in a window sized to the screen, with zoom and
+actual-size.
+
 **Look at every screenshot you produce.** Not "the test passed": open the image
 and read it. Clipped labels, a status box eating the panel, an upside-down plot
 and overlapping tab bars are invisible to assertions and obvious in an image.

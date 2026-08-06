@@ -2,7 +2,7 @@
 type: File Format
 title: R_DA axis settings
 description: 'The global donor–acceptor distance axis (R_DA) used in FRET-related models is controlled by the entries in settings_chisurf.yaml under the fret section:'
-tags: [reference, file-formats, settings]
+tags: [reference, file-formats, settings, fitting, global-analysis, fret]
 ---
 
 # R_DA axis settings

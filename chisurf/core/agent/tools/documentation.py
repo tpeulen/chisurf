@@ -62,6 +62,20 @@ def _scope(scope: str) -> dict[str, Any]:
     return {"user_only": True}
 
 
+def _near(available, wanted: str, limit: int = 3) -> list[str]:
+    """Return the available names closest to *wanted*."""
+    from chisurf.core.agent.doc_index import _edit_distance
+
+    target = str(wanted).strip().lower()
+    if not target:
+        return []
+    scored = [
+        (_edit_distance(target, str(name).lower(), 3), str(name))
+        for name in available
+    ]
+    return [name for distance, name in sorted(scored) if distance <= 3][:limit]
+
+
 def _index():
     """Return the documentation index, built or cached."""
     from chisurf.core.agent.doc_index import DocIndex
@@ -116,15 +130,19 @@ def browse_documentation(
     entries = index.filter(kind=kind, tag=tag, **_scope(scope))
 
     if not entries:
-        available = {
-            "kinds": list(index.kinds()),
-            "tags": list(index.tags())[:40],
-        }
         if kind or tag:
+            # A subject the reader names is a *search*, not a tag, and this is
+            # the error a model hits when it tries the user's words as one.
+            # Saying "here are 26 kinds and 20 tags" sent it round again; the
+            # near matches and one instruction do not.
+            near = _near(index.tags(), tag) if tag else _near(index.kinds(), kind)
+            hint = f" Did you mean {', '.join(near)}?" if near else ""
             raise ToolError(
-                f"no pages with kind={kind!r} tag={tag!r}. "
-                f"Available kinds: {', '.join(available['kinds'])}. "
-                f"Common tags: {', '.join(available['tags'][:20])}."
+                f"no pages with kind={kind!r} tag={tag!r}.{hint} "
+                f"A tag is a broad subject, not a search term — for a word from "
+                f"the user's question use search_documentation instead. "
+                f"Kinds: {', '.join(index.kinds())}. "
+                f"Commonest tags: {', '.join(list(index.tags())[:20])}."
             )
         raise ToolError("the documentation index is empty")
 
@@ -199,12 +217,32 @@ def search_documentation(
     index = _index()
     hits = index.search(query, limit=limit, kind=kind, tag=tag, **_scope(scope))
     if not hits:
+        near = index.near_spellings(query)
+        if near:
+            spellings = "; ".join(
+                f"{word} -> {' / '.join(options)}" for word, options in near.items()
+            )
+            raise ToolError(
+                f"nothing matches {query!r}, but the documentation uses a near "
+                f"spelling: {spellings}. Search again with it. Do not tell the "
+                f"user their term does not exist until you have."
+            )
         raise ToolError(
             f"nothing in the documentation matches {query!r}. Try "
             f"browse_documentation to see what kinds and subjects exist, or "
             f"different words — the pages may use another spelling."
         )
-    return {"ok": True, "query": query, "n_results": len(hits), "pages": hits}
+    result = {"ok": True, "query": query, "n_results": len(hits), "pages": hits}
+    corrected = hits[0].get("corrected_from") if hits else None
+    if corrected:
+        # The hits are for a *different* spelling, and an answer that does not
+        # say so reads as though the user's own word was found.
+        result["corrected_from"] = corrected
+        result["note"] = (
+            "no page uses the word as written; these are for the spelling the "
+            "documentation uses. Say so in your answer."
+        )
+    return result
 
 
 @registry.add(

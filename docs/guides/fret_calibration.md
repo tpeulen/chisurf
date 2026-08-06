@@ -2,7 +2,7 @@
 type: Guide
 title: 'Accurate FRET: calibration'
 description: Turning raw single-molecule photon counts into an accurate FRET efficiency requires a handful of instrument/photophysics calibration factors.
-tags: [guides, fret, calibration]
+tags: [guides, fret, calibration, photons]
 ---
 
 # Accurate FRET: calibration

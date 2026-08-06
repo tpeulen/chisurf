@@ -2,7 +2,7 @@
 type: Reference
 title: User-Defined Models in ChiSurf
 description: Adding or changing fitting models without modifying the installed package.
-tags: [reference, user, models]
+tags: [reference, fitting, user, models]
 ---
 
 # User-Defined Models in ChiSurf
@@ -112,7 +112,7 @@ containing only your model, you will lose every built-in model for that
 experiment. Copy the packaged list and append to it.
 
 The packaged default lives at
-`chisurf/core/settings/experiment_configs.yaml` inside the installation; use it
+{src}`chisurf/core/settings/experiment_configs.yaml` inside the installation; use it
 as the reference for what to copy.
 :::
 

@@ -2,7 +2,7 @@
 type: Guide
 title: RCM detection calibration from dye solutions
 description: Quantitative multi-parameter fluorescence needs the detection/routing correction matrix (RCM) — the linear map that corrects measured per-channel count rates for detection efficiencies and cross-talk between the spectral (and…
-tags: [guides, calibration]
+tags: [guides, calibration, corrections, spectra]
 ---
 
 # RCM detection calibration from dye solutions

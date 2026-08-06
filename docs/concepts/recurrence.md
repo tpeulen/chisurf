@@ -2,7 +2,7 @@
 type: Concept
 title: Recurrence analysis of single particles (RASP)
 description: In freely-diffusing single-molecule FRET, a molecule crosses the confocal volume in about a millisecond and produces one burst — far too short to observe slow (ms–s) conformational kinetics.
-tags: [concepts, recurrence]
+tags: [concepts, fret, bursts, kinetics]
 anchor: concept-recurrence
 ---
 

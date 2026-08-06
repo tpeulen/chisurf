@@ -3,7 +3,7 @@ okf_version: "0.2"
 type: Index
 title: ChiSurf documentation
 description: ChiSurf is an interactive global-analysis platform for time-resolved and single-molecule fluorescence data — time-correlated single-photon counting (TCSPC), fluorescence correlation spectroscopy (FCS), and single-molecule FRET (smFRET).
-tags: [index]
+tags: [fitting, global-analysis, photons, tcspc, correlation, fcs, fret, smfret]
 ---
 
 # ChiSurf documentation

@@ -88,6 +88,61 @@ def test_a_failure_reaches_the_reader(panel, qtbot):
     assert "no API key" in panel.transcript.toHtml()
 
 
+# ── the answer's own links ────────────────────────────────────────────
+
+
+def test_a_page_named_in_the_prose_becomes_a_link(panel, qtbot):
+    """An answer that names a page and makes you go and find it is half done."""
+    panel._client.answer = {
+        "ok": True,
+        "text": "The four factors are in docs/concepts/accurate_fret.md.",
+        "pages": [{"document": "docs/concepts/accurate_fret.md", "title": "Accurate FRET",
+                   "type": "Concept", "section": ""}],
+    }
+    panel.ask("where are the factors?")
+    qtbot.waitUntil(lambda: not panel.busy, timeout=5000)
+    html = panel.transcript.toHtml()
+    assert 'href="docs/concepts/accurate_fret.md"' in html
+
+
+def test_a_markdown_link_the_model_wrote_is_rendered(panel, qtbot):
+    panel._client.answer = {
+        "ok": True,
+        "text": "See [the four factors](docs/concepts/accurate_fret.md#The four factors).",
+        "pages": [{"document": "docs/concepts/accurate_fret.md", "title": "Accurate FRET",
+                   "type": "Concept", "section": "The four factors"}],
+    }
+    panel.ask("where?")
+    qtbot.waitUntil(lambda: not panel.busy, timeout=5000)
+    html = panel.transcript.toHtml()
+    assert "accurate_fret.md#The four factors" in html
+    assert "[the four factors]" not in html, "the Markdown was not rendered"
+
+
+def test_linkify_leaves_an_unknown_path_alone():
+    """Only a page that exists becomes a link; a dead one stays plain text."""
+    from chisurf.plugins.core.help.gui.ask_panel import linkify_pages
+
+    out = linkify_pages("see docs/concepts/no_such_page.md for more")
+    assert "](" not in out
+
+
+def test_linkify_does_not_double_wrap_an_existing_link():
+    from chisurf.plugins.core.help.gui.ask_panel import linkify_pages
+
+    original = "see [FRET](docs/concepts/fret.md) for more"
+    assert linkify_pages(original) == original
+
+
+def test_clicking_a_link_in_the_prose_opens_the_page(panel, qtbot):
+    """A Markdown link is a bare path, not the source list's `doc:` scheme."""
+    from qtpy.QtCore import QUrl
+
+    with qtbot.waitSignal(panel.pageRequested, timeout=2000) as blocker:
+        panel._on_anchor(QUrl("docs/concepts/accurate_fret.md#The four factors"))
+    assert blocker.args == ["docs/concepts/accurate_fret.md", "The four factors"]
+
+
 def test_clicking_a_source_asks_the_browser_to_open_it(panel, qtbot):
     with qtbot.waitSignal(panel.pageRequested, timeout=2000) as blocker:
         panel._on_anchor(QUrl("doc:docs/concepts/fret.md#What it is"))
@@ -130,6 +185,32 @@ def test_the_browser_offers_it_and_keeps_it_out_of_the_way(qapp, qtbot):
     widget.show_ask_panel()
     assert widget.ask_btn.isChecked()
     assert widget.splitter.sizes()[2] > 0
+
+
+def test_a_section_link_lands_on_the_heading(qapp, qtbot):
+    """The slug the panel computes has to be the id the renderer emitted.
+
+    When it is not, the viewer stays where it was and the link silently does
+    nothing — the failure looks like a page that simply did not scroll.
+    """
+    import re
+
+    from chisurf.core.agent import doc_index
+    from chisurf.plugins.core.help.api import markdown as md_api
+    from chisurf.plugins.core.help.gui.tool import HelpWidget
+
+    widget = HelpWidget()
+    qtbot.addWidget(widget)
+
+    body = doc_index.read_body("docs/concepts/accurate_fret.md") or ""
+    html = md_api.render_markdown(body) or ""
+    ids = set(re.findall(r'id="([^"]+)"', html))
+    for heading in ("The four factors", "Error bars", "See also"):
+        assert md_api.slugify_heading(heading) in ids, heading
+
+    widget._on_ask_page_requested("docs/concepts/accurate_fret.md", "The four factors")
+    assert widget.current_path is not None
+    assert widget.current_path.name == "accurate_fret.md"
 
 
 def test_a_cited_page_opens_in_the_viewer(qapp, qtbot):

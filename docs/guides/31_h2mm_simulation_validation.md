@@ -2,7 +2,7 @@
 type: Guide
 title: 'H2MM: simulating and validating'
 description: 'Before trusting an H2MM result on real data you validate the whole chain on simulated data with a known number of states, known FRET efficiencies and known transition rates: simulate the photon stream…'
-tags: [guides, simulation, h2mm, validation]
+tags: [guides, simulation, fret, photons]
 ---
 
 # H2MM: simulating and validating

@@ -1014,14 +1014,17 @@ def _grab_ask_the_documentation():
         panel._answer_html(
             {
                 "text": (
-                    "The gamma factor corrects the raw green/red photon ratio for the "
-                    "two things that make the two channels not comparable: the "
-                    "detection efficiencies of the donor and acceptor detection paths, "
-                    "and the fluorescence quantum yields of the two dyes.\n\n"
+                    "The γ factor corrects the raw green/red photon ratio for the two "
+                    "things that make the two channels not comparable: the detection "
+                    "efficiencies of the donor and acceptor detection paths, and the "
+                    "fluorescence quantum yields of the two dyes.\n\n"
                     "Without it the proximity ratio is not a FRET efficiency, and the "
-                    "population positions in an E-S histogram are shifted. ChiSurf "
-                    "determines gamma from a set of samples spanning a range of "
-                    "efficiencies: the fit of S against E gives gamma and beta together."
+                    "populations in an E–S histogram sit in the wrong place. All four "
+                    "factors and where each comes from are in "
+                    "[The four factors]"
+                    "(docs/concepts/accurate_fret.md#The four factors); the workflow "
+                    "that determines them is "
+                    "[Accurate FRET corrections](docs/guides/41_accurate_fret.md)."
                 ),
                 "pages": [
                     {

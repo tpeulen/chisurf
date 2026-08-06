@@ -2,7 +2,7 @@
 type: Concept
 title: Fitting the 2D MFD histogram
 description: 'The two plots that define multiparameter fluorescence detection — FRET efficiency against donor lifetime, and anisotropy against lifetime — are usually read: a static line is drawn on top, and the deviation from it is discussed.'
-tags: [concepts, fitting]
+tags: [concepts, fitting, fret, tcspc, lifetime, anisotropy]
 anchor: concept-mfd-fitting
 ---
 

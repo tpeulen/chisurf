@@ -154,7 +154,59 @@ def test_browsing_a_tag_crosses_the_directories(context):
 def test_an_unknown_filter_says_what_is_available(context):
     with pytest.raises(ToolError) as excinfo:
         doc_tools.browse_documentation(context, kind="Recipe")
-    assert "Available kinds" in str(excinfo.value)
+    assert "Kinds:" in str(excinfo.value)
+
+
+def test_a_near_miss_filter_is_offered_the_right_name(context):
+    with pytest.raises(ToolError) as excinfo:
+        doc_tools.browse_documentation(context, kind="Concpet")
+    assert "Did you mean" in str(excinfo.value)
+    assert "Concept" in str(excinfo.value)
+
+
+def test_a_word_used_as_a_tag_is_sent_to_the_search(context):
+    """A model's first instinct with a bare noun is to try it as a tag.
+
+    It failed twice on "rhem weller" — once per word — and the error was a
+    wall of 26 kinds and 20 tags, which taught it nothing.
+    """
+    with pytest.raises(ToolError) as excinfo:
+        doc_tools.browse_documentation(context, tag="weller")
+    assert "search_documentation" in str(excinfo.value)
+
+
+def test_a_misspelled_search_finds_the_page_anyway(context):
+    """The failure that made the assistant correct the user to another subject.
+
+    Asked "rhem weller?", it searched, found nothing under *rhem*, and told
+    the user their term did not exist — while a whole section of
+    ``quenching_mechanisms.md`` is named after Rehm-Weller.
+    """
+    result = doc_tools.search_documentation(context, query="rhem weller", limit=3)
+    documents = [page["document"] for page in result["pages"]]
+    assert "docs/fundamentals/quenching_mechanisms.md" in documents
+    assert result["corrected_from"] == {"rhem": ["rehm"]}
+    assert "Say so in your answer" in result["note"]
+
+
+def test_a_misspelled_phrase_still_finds_the_page(index):
+    """Damerau, not Levenshtein: a transposition is one typo, not two.
+
+    Under plain Levenshtein "rhem" is nearer to *them* than to *Rehm*, and the
+    rarity tie-break is what keeps a common word from winning anyway.
+    """
+    assert index.near_spellings("rhem weller") == {"rhem": ["rehm"]}
+    documents = [h["document"] for h in index.search("rhem weller", limit=3, user_only=True)]
+    assert "docs/fundamentals/quenching_mechanisms.md" in documents
+
+
+def test_a_corrected_search_says_that_it_corrected(context):
+    """An answer must be able to tell the user which spelling was searched."""
+    result = doc_tools.search_documentation(context, query="anisotrpy decay", limit=3)
+    assert result["pages"]
+    # One good word and one typo: the typo used to be silently ignored, because
+    # the good word alone produced hits and the fallback never ran.
+    assert result["corrected_from"]["anisotrpy"] == ["anisotropy"]
 
 
 def test_the_scope_names_are_checked(context):

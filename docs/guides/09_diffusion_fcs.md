@@ -2,7 +2,7 @@
 type: Guide
 title: Diffusion FCS
 description: Fluorescence correlation spectroscopy (FCS) measures the temporal autocorrelation of fluorescence fluctuations as molecules diffuse through the confocal volume.
-tags: [guides, diffusion, fcs]
+tags: [guides, diffusion, fcs, correlation]
 ---
 
 # Diffusion FCS

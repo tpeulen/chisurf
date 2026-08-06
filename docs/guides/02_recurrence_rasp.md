@@ -2,7 +2,7 @@
 type: Guide
 title: Recurrence analysis of single particles (RASP)
 description: A single burst lasts about a millisecond — too short to see slow (ms–s) conformational kinetics.
-tags: [guides, recurrence, rasp]
+tags: [guides, bursts, kinetics]
 ---
 
 # Recurrence analysis of single particles (RASP)

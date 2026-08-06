@@ -2,7 +2,7 @@
 type: Concept
 title: Homo-transfer and energy migration
 description: Förster transfer between two chemically identical fluorophores is called homo-transfer, or energy migration.
-tags: [concepts, energy, migration]
+tags: [concepts, fret, energy, migration]
 anchor: concept-energy-migration
 ---
 

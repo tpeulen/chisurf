@@ -2,7 +2,7 @@
 type: Guide
 title: 'Pair correlation and flow maps: measuring where molecules go'
 description: RICS gives you a diffusion coefficient. This guide is about the two questions it cannot answer — which way is the sample moving, and is this place connected to that one…
-tags: [guides, correlation, pair]
+tags: [guides, correlation, diffusion]
 ---
 
 # Pair correlation and flow maps: measuring where molecules go

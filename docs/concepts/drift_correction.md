@@ -2,7 +2,7 @@
 type: Concept
 title: Drift correction
 description: Why a sample moves over the minutes an image stack takes to record, and how the drift is measured and removed before the stack is correlated.
-tags: [concepts, corrections, drift, correction]
+tags: [concepts, corrections, imaging]
 anchor: concept-drift-correction
 ---
 

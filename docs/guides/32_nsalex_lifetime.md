@@ -2,7 +2,7 @@
 type: Guide
 title: 'ns-ALEX / PIE: FRET, stoichiometry and lifetime together'
 description: With pulsed interleaved excitation (PIE / ns-ALEX) each photon carries a nanotime (micro-time = delay after its excitation pulse) in addition to its detector and macro time.
-tags: [guides, tcspc, lifetime, fret]
+tags: [guides, tcspc, lifetime, fret, photons]
 ---
 
 # ns-ALEX / PIE: FRET, stoichiometry and lifetime together

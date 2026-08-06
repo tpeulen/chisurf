@@ -2,7 +2,7 @@
 type: Concept
 title: Two-colour PDA (PDA2c)
 description: Photon Distribution Analysis (PDA) explains the shape of a single-molecule FRET histogram from first principles.
-tags: [concepts, pda, pda2c]
+tags: [concepts, pda, photons, fret]
 anchor: concept-pda2c
 ---
 

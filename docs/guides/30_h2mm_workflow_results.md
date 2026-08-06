@@ -2,7 +2,7 @@
 type: Guide
 title: 'H2MM: complete workflow and results'
 description: 'Building on tutorial 19, this walks the full photon-by-photon hidden-Markov workflow the way a dedicated H2MM analysis is structured: optimise models for a range of state counts, select by BIC/ICL…'
-tags: [guides, h2mm, workflow, results]
+tags: [guides, photons, h2mm, workflow, results]
 ---
 
 # H2MM: complete workflow and results

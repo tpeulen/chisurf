@@ -9,16 +9,17 @@ timestamp: '2026-07-25T00:00:00Z'
 
 # Where to pick this up
 
-1. **The documentation assistant has never run against a real model.** The
-   harness, the restricted registry, the citation collection and the retrieval
-   are all tested; the *answer* path has only ever seen `ScriptedLLM`, because
-   both providers configured on the build machine were unusable on the day
-   (expired key, no credit). The measurement, once a key works:
-   `csc help ask "what does the gamma factor correct for?"` and check that
-   `answer.pages` is non-empty and names `docs/concepts/accurate_fret.md`. An
-   empty `pages` means the model answered from memory — the fix is then in
-   `skills_builtin/answer-from-docs/SKILL.md`, not in the harness. Recorded in
-   [known issues](/references/known-issues.md).
+1. **The battery is the measurement, and it is not in the test suite.** Ten
+   questions against a live provider, scored on *whether a page was opened and
+   which one* — that is what found the fabricated citation and the answer built
+   out of search excerpts, and neither was visible to a scripted model. It
+   currently reads 10/10 grounded on Mistral `mistral-small-latest`, median 5 s.
+   It cannot go in `pytest` (a key, a network and a few cents per run), so it
+   has to be run deliberately after any change to the prompt, the skill or the
+   ranking. Re-run it the same way: ask the ten questions through
+   `ask.ask(..., provider="mistral")` and count `answer.pages`. A single
+   question is `csc help ask "what does the gamma factor correct for?"`, which
+   should name `docs/concepts/accurate_fret.md`.
 2. **Retrieval is judged by which page comes back, and that is the only way to
    judge it.** `test/agent/test_documentation_tools.py` is the harness: add a
    `(query, expected_document)` row whenever a question routes wrongly, then
@@ -332,6 +333,67 @@ The pages it cites are **collected from the tool invocations**, not from the
 model's own footnotes, which it will happily invent. An answer with no read
 behind it is reported as such rather than dressed up as sourced — the help
 browser's panel says so in orange.
+
+Three things a run against a real provider (Mistral, `mistral-small-latest`)
+changed, none of which a scripted model would have shown:
+
+**A citation must be a real page.** Asked what the code editor's assistant
+does, it answered from nothing and closed with "— *Python scripting in
+ChiSurf* (`docs/guides/10_python_scripting.md`)", a page that has never
+existed. A fabricated citation is worse than no citation, because the citation
+is what a reader checks the answer *by*. Every path in an answer is now
+resolved against the index (`ask.verify_citations`); one that does not exist is
+struck from the text and reported on `Answer.fabricated`, and the panel says so
+in red. The check is decisive in a way prompting is not — a page either exists
+or it does not.
+
+**Reading is not optional.** Asked whether ChiSurf can simulate a photon
+stream, it answered from the *search excerpts* and invented an API call to go
+with it, with the two pages that would have answered it properly one call away.
+A run that produced no `read_documentation` is now sent back once with the
+omission named (`ask.READ_FIRST`); both turns count as one answer, so what was
+read and searched accumulates over them. Once, not in a loop: a model that will
+not read after being told to will not on the third ask, and the user is
+waiting.
+
+**The answer carries the links.** Naming a page and leaving the reader to find
+it does half the job, so the prose is rendered as Markdown and the model is
+asked to link each page where it uses it, `#heading` included. Bare paths are
+linked afterwards anyway (`ask_panel.linkify_pages`), because a model does not
+reliably write the syntax; only paths that resolve become links. A section link
+lands on the heading because the panel's slug is the id the renderer emits —
+asserted over a real page in `test_ask_panel.py`, since when it is not the
+viewer silently stays where it was.
+
+**The answer is rendered, not printed.** It goes through the help browser's own
+Markdown renderer with the browser's math renderer attached, so `$$\Delta G =
+\ldots$$` is typeset and lists, tables and code come out as themselves. The
+renderer is sized to *the panel*, not to the reading column beside it — a
+formula typeset for the column is clipped at the panel's right edge with no
+scrollbar to reveal it. The transcript scrolls to the newest *question* rather
+than to the bottom, because an answer with an equation and a list of terms is
+taller than the panel and the bottom hides the question.
+
+**A misspelled rare name has to be recoverable.** Asked "rhem weller?", the
+assistant tried both words as *tags* (two failed calls), searched `Rhem`, got
+"nothing matches", and told the user their term did not exist — while a whole
+section of `quenching_mechanisms.md` is named after Rehm–Weller. Three fixes,
+all in retrieval rather than in prompting: `doc_index.near_spellings` corrects
+against the corpus's own vocabulary **before** scoring (a query with one good
+word and one typo would never reach a retry-on-empty); the distance is
+**Damerau**, so a transposition is one edit and not two (under plain
+Levenshtein "rhem" is nearer *them* than *Rehm*), with ties broken toward the
+**rarer** word; and a search that corrected something says so, so the answer can
+tell the user which spelling it used. The tool errors were rewritten to be
+recoverable too — an unknown tag now suggests the near ones and says that a
+word from the question is a search, not a tag.
+
+Measured over ten straightforward questions: **10/10 answered from a page that
+was actually opened** (8/10 before). Over thirteen deliberately awkward ones —
+bare nouns, acronyms, misspellings, and a thing ChiSurf cannot do — 13/13 on
+`mistral-large-latest`, which is now the default model. The small model reached
+13/13 too but is the one that invented the correction; the difference the size
+buys is *whether it goes and reads*.
 
 Three surfaces, one implementation: the **Ask** panel in the help browser
 (`gui/ask_panel.py`, a third column beside the page, on a worker thread), the

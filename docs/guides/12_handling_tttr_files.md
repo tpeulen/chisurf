@@ -2,7 +2,7 @@
 type: Guide
 title: Handling TTTR files (and Photon-HDF5)
 description: Time-tagged time-resolved (TTTR) data records, for every photon, a macro time (arrival on the experiment clock), a micro time (delay after the laser pulse — the TCSPC channel) and a routing channel (detector).
-tags: [guides, tttr, photons]
+tags: [guides, tttr, photons, tcspc]
 ---
 
 # Handling TTTR files (and Photon-HDF5)

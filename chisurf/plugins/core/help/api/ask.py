@@ -27,6 +27,7 @@ JSON-RPC, the CLI calls it in-process, and the tests call it directly.
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -48,6 +49,23 @@ MAX_STEPS = 8
 #: Skill carrying the procedure — browse by kind, read the page, cite it.
 SKILL = "answer-from-docs"
 
+#: What to say when the model answered without opening anything. Observed
+#: against a real provider: asked whether ChiSurf can simulate a photon stream,
+#: it answered from the *search excerpts* and invented an API call to go with
+#: it — the pages that would have answered it properly were right there and it
+#: never opened one. Prompting alone does not fix this, so the run is sent back
+#: once with the omission named.
+READ_FIRST = (
+    "You have not opened a documentation page, so that answer is not grounded "
+    "in anything. Open the most relevant page with read_documentation and "
+    "answer from what it says. If, having read it, the documentation genuinely "
+    "does not cover the question, say so plainly and name the nearest page you "
+    "did read."
+)
+
+#: A path to a documentation page as a model writes it in prose.
+_CITED_PATH = re.compile(r"\b((?:docs|okf)/[\w./-]+\.md)\b")
+
 INSTRUCTIONS = """\
 You are ChiSurf's documentation assistant. The person asking is using the
 program, not writing it.
@@ -62,9 +80,27 @@ Rules:
 
 * Read before you answer. An answer with no `read_documentation` call behind
   it is a guess, however confident it sounds.
-* End with the page you used, as its title and path.
-* If the documentation does not cover it, say so and name the nearest page.
-  Never invent a menu path, a control, a setting name or a file format.
+* **Write every page you mention as a Markdown link**, so the reader can jump
+  straight to it: `[Accurate FRET](docs/concepts/accurate_fret.md)`. Link to a
+  heading with `#`, spelled exactly as the heading is:
+  `[the four factors](docs/concepts/accurate_fret.md#The four factors)`. Link
+  the page at the point in the sentence where you use it, not only at the end
+  — "the γ factor is defined in [Accurate FRET](…)" is worth more than a
+  footnote. Use only paths you actually opened; `read_documentation` reports
+  the page's headings, so a section link is checkable before you write it.
+* End with the page you used, as a link.
+* If the documentation does not cover it, say so and link the nearest page.
+  Never invent a menu path, a control, a setting name or a file format, and
+  never write a page path you have not opened.
+* **Write mathematics as LaTeX**, inline `$\\kappa^2$` or displayed
+  `$$\\Delta G = E(D^+/D) - E(A/A^-) - \\Delta G_{00}$$`. It is typeset for
+  the reader. Plain text like "DG = E(D+/D) - ..." is not.
+* Markdown is rendered: use **bold**, `code`, lists and tables where they help.
+* **Never tell the user a term does not exist** because a search missed it.
+  Search the words they typed; if that finds nothing the tool tells you the
+  near spelling the documentation uses — search again with it. Substituting a
+  different subject for the one they asked about is the worst possible answer,
+  because it reads as a correction.
 * Be brief. Two or three paragraphs, and a list of steps if the question was
   "how do I".
 """
@@ -83,6 +119,10 @@ class Answer:
         from the tool calls, so it cannot include a page the model imagined.
     searched : list of str
         The queries it tried, which is what to show when it found nothing.
+    fabricated : list of str
+        Page paths the answer *named* that do not exist. Empty is the normal
+        case; a non-empty list means the model wrote itself a citation, and the
+        paths have been struck from :attr:`text` before it reaches anybody.
     steps : int
         Model turns used.
     ok : bool
@@ -95,9 +135,15 @@ class Answer:
     text: str = ""
     pages: list[dict[str, Any]] = field(default_factory=list)
     searched: list[str] = field(default_factory=list)
+    fabricated: list[str] = field(default_factory=list)
     steps: int = 0
     ok: bool = False
     error: str = ""
+
+    @property
+    def grounded(self) -> bool:
+        """Whether the answer rests on a page that was actually opened."""
+        return bool(self.pages)
 
     def to_dict(self) -> dict[str, Any]:
         """Return the answer as a JSON-RPC-safe mapping."""
@@ -105,6 +151,8 @@ class Answer:
             "text": self.text,
             "pages": self.pages,
             "searched": self.searched,
+            "fabricated": self.fabricated,
+            "grounded": self.grounded,
             "steps": self.steps,
             "ok": self.ok,
             "error": self.error,
@@ -222,6 +270,54 @@ def _pages_read(result) -> list[dict[str, Any]]:
     return pages
 
 
+def _dedup(pages) -> list[dict[str, Any]]:
+    """Return the pages in order, one entry per document."""
+    seen: set[str] = set()
+    unique: list[dict[str, Any]] = []
+    for page in pages:
+        document = page.get("document", "")
+        if document and document not in seen:
+            seen.add(document)
+            unique.append(page)
+    return unique
+
+
+def verify_citations(text: str) -> tuple[str, list[str]]:
+    """Strike page paths the answer names that do not exist.
+
+    A model that has not opened anything will still write itself a source line,
+    and it will look exactly like a real one. Observed against a real provider:
+    an answer closed with "— *Python scripting in ChiSurf*
+    (`docs/guides/10_python_scripting.md`)" for a page that has never existed.
+    That is worse than an unsourced answer, because the citation is what a
+    reader checks the answer *by*.
+
+    Every path is therefore resolved against the documentation index. The check
+    is cheap, it is decisive — a page either exists or it does not — and it
+    cannot be talked out of by a confident tone.
+
+    Parameters
+    ----------
+    text : str
+        The answer as the model wrote it.
+
+    Returns
+    -------
+    tuple
+        ``(text, fabricated)``. The text has each unresolvable path replaced by
+        a marker; *fabricated* lists them.
+    """
+    from chisurf.core.agent import doc_index
+
+    fabricated: list[str] = []
+    for path in dict.fromkeys(_CITED_PATH.findall(text or "")):
+        if doc_index.resolve(path) is None:
+            fabricated.append(path)
+    for path in fabricated:
+        text = text.replace(path, "[no such page]")
+    return text, fabricated
+
+
 def _queries(result) -> list[str]:
     """Return the search queries a run tried."""
     return [
@@ -268,15 +364,34 @@ def ask(question: str, *, model: str = "", provider: str = "", session=None) -> 
     try:
         session = session or build_session(model=model, provider=provider)
         result = session.ask(text)
+        runs = [result]
+        # One push, not a loop: a model that will not open a page after being
+        # told to is not going to on the third ask, and the user is waiting.
+        if result.ok and not _pages_read(result):
+            second = session.ask(READ_FIRST)
+            runs.append(second)
+            if _pages_read(second) or second.ok:
+                result = second
+        # Both turns are one answer as far as the caller is concerned, so what
+        # was read and searched accumulates over them; only the *text* comes
+        # from the turn that produced it.
+        pages = _dedup(page for run in runs for page in _pages_read(run))
+        searched = list(dict.fromkeys(query for run in runs for query in _queries(run)))
+        steps = sum(run.steps for run in runs)
     except Exception as exc:
         logger.exception("the documentation assistant failed")
         return Answer(error=str(exc))
 
+    answer_text, fabricated = verify_citations(result.text)
+    if fabricated:
+        logger.warning("the assistant cited pages that do not exist: %s", fabricated)
+
     return Answer(
-        text=result.text,
-        pages=_pages_read(result),
-        searched=_queries(result),
-        steps=result.steps,
+        text=answer_text,
+        pages=pages,
+        searched=searched,
+        fabricated=fabricated,
+        steps=steps,
         ok=result.ok,
         error=result.error or ("" if result.ok else f"stopped: {result.stop_reason}"),
     )

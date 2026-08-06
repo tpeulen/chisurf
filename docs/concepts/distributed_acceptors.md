@@ -2,7 +2,7 @@
 type: Concept
 title: Transfer to distributed acceptors, and dimensionality
 description: Every expression in assumes one donor and one acceptor at one distance.
-tags: [concepts, distributed, acceptors]
+tags: [concepts, fret, distributed, acceptors]
 anchor: concept-distributed-acceptors
 ---
 

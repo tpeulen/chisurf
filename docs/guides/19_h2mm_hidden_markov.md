@@ -2,7 +2,7 @@
 type: Guide
 title: Photon-by-photon hidden Markov models (H2MM)
 description: H2MM fits a hidden Markov model directly to the photon stream — not to binned intensities — so it resolves sub-burst FRET-state dynamics down to the microsecond scale, well below the bin sizes an intensity-trace HMM needs.
-tags: [guides, photons, h2mm, hidden, markov]
+tags: [guides, photons, bursts, fret, dynamics, kinetics, hmm]
 ---
 
 # Photon-by-photon hidden Markov models (H2MM)

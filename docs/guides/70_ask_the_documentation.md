@@ -2,7 +2,7 @@
 type: Guide
 title: Asking the documentation
 description: Putting a question to ChiSurf's documentation in plain words and getting an answer with the pages it came from, in the help browser or from the command line.
-tags: [guides, documentation, assistant, help]
+tags: [guides, documentation]
 anchor: guide-ask-the-documentation
 ---
 
@@ -39,14 +39,28 @@ reading. Type the question and press Enter.
 :name: fig-ask-the-documentation
 :width: 100%
 
-The Ask panel beside the page it cited. The answer is followed by the pages it
-was actually read from; clicking one opens it in the viewer on the left.
+The Ask panel beside the page it cited. The links in the answer's own prose go
+to the page — and to the heading on it — and the list underneath is what the
+assistant actually opened.
 ```
 
-The answer is followed by **the pages it read**, as links. That list is not
-the assistant's own footnote — it is recorded from what it opened, so a page
-in the list is a page it saw. If it answers **without opening anything**, the
-panel says so in orange: treat that answer as a suggestion and check it.
+**The answer itself is linked.** Where it names a page — or a heading on one —
+that is a link: click it and the viewer on the left opens there, at the
+section, not at the top. The list underneath is **the pages it read**, and it
+is not the assistant's own footnote: it is recorded from what it opened, so a
+page in that list is a page it saw.
+
+Two warnings can appear under an answer, and both are worth reading:
+
+*No documentation page was opened for this answer.*
+: It answered from itself rather than from the documentation. Treat it as a
+  suggestion and check it.
+
+*It also named a page that does not exist.*
+: It wrote itself a citation. Every path in an answer is resolved before you
+  see it, and one that goes nowhere is struck out and reported — but a model
+  that invented a citation may have invented the rest, so check the whole
+  answer.
 
 The panel keeps the conversation, so a follow-up (*"and where do I set it?"*)
 is understood in the context of the previous answer. **🗑** clears it.
@@ -65,6 +79,29 @@ knowledge of the literature: a plausible answer that does not match this
 program is worse than no answer, because you will go looking for a control
 that is not there. When the documentation does not cover something it says so
 and names the nearest page.
+
+The answer is Markdown, and it is rendered: **bold**, lists, tables, `code`
+and — the part that matters here — mathematics. An answer that quotes the
+Rehm–Weller equation shows it typeset, in the same face as the pages beside it,
+not as `$\Delta G = \ldots$`.
+
+## Which model
+
+The assistant uses whatever is configured in **Settings → AI**; a fresh install
+is on **Mistral**, which processes in the EU, with `mistral-large-latest`.
+
+The model size shows on exactly one thing: whether it goes and *reads*. Asked
+a two-word question with a misspelled name — *"rhem weller?"* — a smaller model
+searched, missed, and told the user their term did not exist, explaining a
+different subject instead; the large model finds
+{doc}`Quenching mechanisms in detail </fundamentals/quenching_mechanisms>` and
+answers from it. Over thirteen deliberately awkward queries (bare nouns,
+acronyms, misspellings, and one thing ChiSurf cannot do at all) every one was
+answered from a page that had been opened.
+
+Any model with tool calling works, and a local one keeps everything on your
+machine. Without tool calling the answer falls back to a text protocol and is
+markedly less reliable — the tool calls are what make it read.
 
 ## From the command line
 
@@ -128,6 +165,7 @@ If you are writing documentation, the header is generated and checked — see
 | *the API key … was rejected* | The key is wrong or expired. |
 | *lack of credit* | The account has run out, or `max_tokens` in **Settings → AI** reserves more than it can afford. |
 | *the documentation has nothing on …* | It is telling the truth. Try the words the pages use, or browse the tree. |
+| *No documentation page was opened* | It answered from itself. Ask again more specifically, or search the tree yourself — the answer is not grounded. |
 
 ## See also
 

@@ -2,7 +2,7 @@
 type: Fundamentals
 title: Time-correlated single-photon counting
 description: TCSPC measures a decay by timing individual photons relative to the excitation pulse and accumulating a histogram of those delays.
-tags: [fundamentals, photons, photon, counting]
+tags: [fundamentals, photons, tcspc, decay]
 anchor: fundamentals-photon-counting
 ---
 

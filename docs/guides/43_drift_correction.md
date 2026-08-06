@@ -2,7 +2,7 @@
 type: Guide
 title: Drift correction
 description: Measure and remove inter-frame sample drift, in camera stacks and in photon-stream (confocal) images alike.
-tags: [guides, corrections, drift, correction]
+tags: [guides, corrections, photons]
 ---
 
 # Drift correction

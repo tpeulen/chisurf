@@ -69,6 +69,25 @@ The guardrail is `test/test_docs_okf.py` (a header on every page, a non-empty
 the first heading) plus `docs-check-frontmatter`, which `docs-release` depends
 on.
 
+**Figures fill the column, and open out of it.** Qt draws an image at its
+native pixel size, and `_fit_images` only ever scaled *down*, so a 470-pixel
+plot sat in the 860-pixel reading measure looking like a thumbnail. A block
+figure — an image alone in its paragraph — is now scaled up as well, to at most
+`MAX_UPSCALE` (2×) its own pixels. Inline images (typeset formulas, badges) are
+still only shrunk: enlarging one makes it tower over its line.
+
+The column, not the window, is the ceiling even for a figure, and that is not a
+preference: the text sits in a frame indented by the reading gutter and the
+image is *inside* that frame, so a wider one is drawn past the right edge and
+gives the whole page a horizontal scrollbar. (Tried and reverted — a
+`figure_width()` of viewport-minus-gutter produced exactly that.) What the
+column cannot give, a click does:
+[`gui/figure_view.py`](../../chisurf/plugins/core/help/gui/figure_view.py) opens
+the figure at the file's real pixels, sized to the screen, with zoom and
+actual-size. Qt has no clickable image, so the hit test is ours —
+`HelpTextBrowser.image_at` probes the char format on both sides of the cursor,
+because a click lands *between* two characters.
+
 **What is open.**
 
 0. **The packaged copy is proven by a wheel, and only by a wheel.** `pip wheel .

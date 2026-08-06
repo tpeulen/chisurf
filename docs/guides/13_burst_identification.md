@@ -2,7 +2,7 @@
 type: Guide
 title: Photon burst identification and the burst list
 description: In a confocal single-molecule experiment the focus is mostly empty; a molecule crossing it produces a short, intense burst of photons above the diffuse background.
-tags: [guides, bursts, photons]
+tags: [guides, bursts, photons, corrections]
 ---
 
 # Photon burst identification and the burst list

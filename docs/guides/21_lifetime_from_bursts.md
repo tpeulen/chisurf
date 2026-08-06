@@ -2,7 +2,7 @@
 type: Guide
 title: Fluorescence lifetime from photon bursts
 description: Beyond photon counts, each burst carries the donor and acceptor micro-times — so a fluorescence lifetime can be fitted per burst.
-tags: [guides, tcspc, lifetime, bursts, photons]
+tags: [guides, tcspc, lifetime, bursts, photons, fret]
 ---
 
 # Fluorescence lifetime from photon bursts

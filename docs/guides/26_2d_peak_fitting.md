@@ -2,7 +2,7 @@
 type: Guide
 title: 2-D peak fitting
 description: Multi-parameter histograms — most often the E–S plot, but also lifetime-vs-E or any two burst observables — contain several populations as 2-D peaks.
-tags: [guides, fitting, peak]
+tags: [guides, fitting, tcspc, lifetime, bursts]
 ---
 
 # 2-D peak fitting

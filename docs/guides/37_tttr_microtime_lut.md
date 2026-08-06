@@ -2,7 +2,7 @@
 type: Guide
 title: 'TAC linearization: microtime LUTs'
 description: 'Some TCSPC hardware — notably Becker&Hickl SPC-130 — records photon micro-times on a TAC (time-to-amplitude converter) axis with visible differential non-linearity (DNL): the channels are not exactly equal in width.'
-tags: [guides, tttr, photons]
+tags: [guides, tttr, photons, tcspc]
 ---
 
 # TAC linearization: microtime LUTs

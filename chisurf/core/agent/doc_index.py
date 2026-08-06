@@ -188,6 +188,45 @@ class DocIndex:
     """A searchable, browsable index of every documented page."""
 
     entries: list[DocEntry] = field(default_factory=list)
+    _vocabulary: Any = None
+
+    def vocabulary(self):
+        """Return (and cache) the corpus's distinctive words."""
+        if self._vocabulary is None:
+            self._vocabulary = _Vocabulary(self.entries)
+        return self._vocabulary
+
+    def near_spellings(self, query: str, limit: int = 3) -> dict[str, list[str]]:
+        """Return, per query word the corpus does not contain, the closest ones.
+
+        A rare proper name is exactly the word a user mistypes and exactly the
+        word an exact-match search cannot recover from. Asked about
+        "rhem weller", the assistant searched, found nothing under *rhem*, and
+        told the user their term did not exist — while
+        ``docs/fundamentals/quenching_mechanisms.md`` has a whole section named
+        after Rehm–Weller.
+
+        Parameters
+        ----------
+        query : str
+            The user's words.
+        limit : int
+            Maximum suggestions per word.
+
+        Returns
+        -------
+        dict
+            ``{typo: [near, …]}``, empty when every word is already in use.
+        """
+        vocabulary = self.vocabulary()
+        suggestions: dict[str, list[str]] = {}
+        for word in re.split(r"[^\w]+", str(query).lower()):
+            if len(word) < 4 or word in _QUERY_STOPWORDS or word in vocabulary.words:
+                continue
+            near = [w for w in vocabulary.nearest(word, limit) if w != word]
+            if near:
+                suggestions[word] = near
+        return suggestions
 
     # ── construction ──────────────────────────────────────────────────
 
@@ -367,6 +406,16 @@ class DocIndex:
             if expansion not in terms
         ]
 
+        # A word the corpus does not contain is corrected *before* scoring,
+        # not after failing. "anisotrpy decay" matched on `decay` alone, so a
+        # retry-on-nothing would never have fired and the typo would have been
+        # silently ignored — which is how a near-miss becomes a wrong page
+        # rather than a visible correction.
+        corrections = self.near_spellings(query)
+        for word, options in corrections.items():
+            terms = [term for term in terms if term != word]
+            terms.extend(options[:1])
+
         candidates = self.filter(kind=kind, tag=tag, bundle=bundle, user_only=user_only)
         hits: list[tuple[float, dict[str, Any]]] = []
         for entry in candidates:
@@ -414,7 +463,13 @@ class DocIndex:
                                  "excerpt": _excerpt(body, terms, context_lines)}))
 
         hits.sort(key=lambda item: -item[0])
-        return [payload for _, payload in hits[: max(1, int(limit))]]
+        chosen = [payload for _, payload in hits[: max(1, int(limit))]]
+        if corrections:
+            # The reader has to be told which spelling was searched; an answer
+            # that quietly uses another word reads as though theirs was found.
+            for payload in chosen:
+                payload["corrected_from"] = corrections
+        return chosen
 
     def get(self, document: str) -> DocEntry | None:
         """Return the entry for a page path, tolerating a bare file name."""
@@ -552,6 +607,117 @@ def _excerpt(body: str, terms: list[str], context_lines: int) -> str:
             best_line, best_hits = number, hits
     start = max(0, best_line - context_lines // 2)
     return "\n".join(lines[start : start + context_lines]).strip()
+
+
+# ── near spellings ────────────────────────────────────────────────────
+
+
+def _edit_distance(first: str, second: str, ceiling: int = 2) -> int:
+    """Return the Damerau-Levenshtein distance, capped at *ceiling*.
+
+    Transpositions count as **one** edit, not two, and that is the whole
+    reason to write this rather than plain Levenshtein: swapping two adjacent
+    letters is the commonest typo there is. Under plain Levenshtein "rhem" is
+    two edits from *Rehm* and one from *them*, so the suggestion came back as
+    the pronoun.
+
+    Small enough to own: a dependency for thirty lines of dynamic programming
+    is a dependency to keep working forever.
+
+    Parameters
+    ----------
+    first, second : str
+        The words to compare.
+    ceiling : int
+        Stop and return ``ceiling + 1`` once the distance is certainly larger.
+
+    Returns
+    -------
+    int
+    """
+    if abs(len(first) - len(second)) > ceiling:
+        return ceiling + 1
+    rows = len(first) + 1
+    columns = len(second) + 1
+    grid = [[0] * columns for _ in range(rows)]
+    for i in range(rows):
+        grid[i][0] = i
+    for j in range(columns):
+        grid[0][j] = j
+    for i in range(1, rows):
+        best = ceiling + 1
+        for j in range(1, columns):
+            cost = first[i - 1] != second[j - 1]
+            value = min(
+                grid[i - 1][j] + 1,
+                grid[i][j - 1] + 1,
+                grid[i - 1][j - 1] + cost,
+            )
+            if (
+                i > 1
+                and j > 1
+                and first[i - 1] == second[j - 2]
+                and first[i - 2] == second[j - 1]
+            ):
+                value = min(value, grid[i - 2][j - 2] + 1)
+            grid[i][j] = value
+            best = min(best, value)
+        if best > ceiling:
+            return ceiling + 1
+    return grid[-1][-1]
+
+
+class _Vocabulary:
+    """The distinctive words the corpus uses, and how widely each is used.
+
+    The count is the point. A mistyped rare name has to beat a common word at
+    the same edit distance, and the only thing separating *Rehm* from *them* is
+    that one names a section of one page and the other appears on two hundred.
+    """
+
+    def __init__(self, entries: list[DocEntry]):
+        counts: dict[str, int] = {}
+        for entry in entries:
+            seen: set[str] = set()
+            for source in (entry.title, entry.description, " ".join(entry.headings)):
+                for word in re.split(r"[^\w]+", source.lower()):
+                    if len(word) >= 4 and not word.isdigit():
+                        seen.add(word)
+            seen.update(tag for tag in entry.tags if len(tag) >= 4)
+            for word in seen:
+                counts[word] = counts.get(word, 0) + 1
+        self.counts = counts
+        self.words = set(counts)
+
+    def nearest(self, term: str, limit: int = 3) -> list[str]:
+        """Return the corpus words closest to *term*, best first.
+
+        Ranked by edit distance, then by how *rare* the word is: at equal
+        distance the distinctive word is the one the user meant.
+
+        Parameters
+        ----------
+        term : str
+            A word the corpus does not contain.
+        limit : int
+            Maximum number of suggestions.
+
+        Returns
+        -------
+        list of str
+        """
+        if len(term) < 4:
+            return []
+        ceiling = 1 if len(term) < 6 else 2
+        scored = []
+        for word, count in self.counts.items():
+            if word in _QUERY_STOPWORDS:
+                continue
+            distance = _edit_distance(term, word, ceiling)
+            if distance <= ceiling:
+                scored.append((distance, count, word))
+        scored.sort()
+        return [word for _distance, _count, word in scored[: max(1, int(limit))]]
 
 
 def resolve(document: str) -> pathlib.Path | None:

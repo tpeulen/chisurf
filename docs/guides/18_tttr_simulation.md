@@ -2,7 +2,7 @@
 type: Guide
 title: TTTR simulation of diffusing particles
 description: 'Simulating single-molecule data with a known ground truth is the way to validate an analysis pipeline: you generate photons from molecules with defined diffusion coefficients, brightnesses, FRET states and kinetics…'
-tags: [guides, tttr, photons, simulation]
+tags: [guides, tttr, photons, simulation, diffusion, fret, kinetics]
 ---
 
 # TTTR simulation of diffusing particles

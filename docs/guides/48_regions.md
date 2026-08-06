@@ -2,7 +2,7 @@
 type: Guide
 title: 'Regions: selecting pixels, measuring what you selected'
 description: Almost every imaging analysis begins by deciding which pixels count — a cell, an illuminated patch, a bead, one immobilised molecule, the empty field that measures background.
-tags: [guides, regions]
+tags: [guides, imaging, corrections]
 ---
 
 # Regions: selecting pixels, measuring what you selected

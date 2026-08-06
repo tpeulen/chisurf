@@ -2,7 +2,7 @@
 type: File Format
 title: FCS file formats
 description: The correlation-curve file formats the FCS experiment reads, and how each format's columns are interpreted.
-tags: [reference, file-formats, fcs]
+tags: [reference, file-formats, fcs, correlation]
 ---
 
 # FCS file formats

@@ -2,7 +2,7 @@
 type: Guide
 title: Fitting an MFD burst histogram
 description: A burst-analysis folder loaded as a fittable dataset, and a kinetic model fitted to its FRET-efficiency-against-lifetime histogram — instead of a static line drawn on top and eyeballed.
-tags: [guides, fitting, bursts]
+tags: [guides, fitting, bursts, fret, tcspc, lifetime]
 ---
 
 # Fitting an MFD burst histogram

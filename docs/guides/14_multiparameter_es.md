@@ -2,7 +2,7 @@
 type: Guide
 title: Multi-parameter E–S histograms and correction factors
 description: 'With alternating-laser excitation (ALEX) or pulsed-interleaved excitation (PIE) each burst gets two coordinates: the FRET efficiency $E$ (from the donor-excitation photons) and the stoichiometry $S$ (donor-excitation vs total signal).'
-tags: [guides, corrections, multiparameter]
+tags: [guides, corrections, bursts, fret]
 ---
 
 # Multi-parameter E–S histograms and correction factors

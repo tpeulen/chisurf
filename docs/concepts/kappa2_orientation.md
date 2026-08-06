@@ -2,7 +2,7 @@
 type: Concept
 title: The orientation factor κ² and what it costs
 description: The Förster radius contains $kappa^2$, the mutual orientation of the donor emission dipole and the acceptor absorption dipole.
-tags: [concepts, kappa2, orientation]
+tags: [concepts, fret, kappa2, orientation, anisotropy]
 anchor: concept-kappa2-orientation
 ---
 

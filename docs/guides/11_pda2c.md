@@ -2,7 +2,7 @@
 type: Guide
 title: Two-colour PDA (PDA2c)
 description: 'The FRET-efficiency histogram of freely-diffusing single molecules is broadened by shot noise: even a single, perfectly static distance produces a spread of apparent efficiencies because each burst contains only a finite number of photons.'
-tags: [guides, pda, pda2c]
+tags: [guides, pda, fret, bursts]
 ---
 
 # Two-colour PDA (PDA2c)

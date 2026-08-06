@@ -2,7 +2,7 @@
 type: Concept
 title: 'Accurate FRET: correction factors, FRET lines, and where they come from'
 description: 'Turning photon ratios into a FRET efficiency: the correction factors (alpha, beta, gamma, delta), where each comes from, and the static and dynamic FRET lines they place on the plot.'
-tags: [concepts, fret, corrections]
+tags: [concepts, fret, corrections, photons]
 anchor: concept-accurate-fret
 ---
 

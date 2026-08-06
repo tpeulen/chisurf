@@ -54,8 +54,13 @@ DEFAULT_PROVIDER_SETTINGS = {
     },
     "mistral": {
         "base_url": "https://api.mistral.ai/v1",
-        "text_model": "mistral-small-latest",
-        "model": "mistral-small-latest",
+        # The large model, not the small one. The difference shows on the job
+        # that matters here — following a described tool catalogue and reading
+        # before answering. On the small model a bare, misspelled term
+        # ("rhem weller") was answered by *correcting the user* to a different
+        # subject; the large one finds the page.
+        "text_model": "mistral-large-latest",
+        "model": "mistral-large-latest",
         "image_model": "mistral-medium-latest",
         "api_key": "",
         "temperature": 0.3,

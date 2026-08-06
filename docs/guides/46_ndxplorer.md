@@ -2,7 +2,7 @@
 type: Guide
 title: Exploring & fitting multidimensional data (ndX)
 description: NdX (the ndxplorer package, formerly written out as ndXplorer) is ChiSurf's interactive explorer for tables with many columns — burst data (E, S, lifetime, brightness, …), imaging-derived parameters, or posterior draws.
-tags: [guides, fitting, ndxplorer]
+tags: [guides, fitting, bursts, tcspc, lifetime, imaging]
 ---
 
 # Exploring & fitting multidimensional data (ndX)

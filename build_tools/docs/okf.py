@@ -70,6 +70,20 @@ DIRECTORY_AUDIENCE: dict[str, str] = {
 #: reach the concept, the guides and the plugin pages at once.
 TOPIC_TAGS: dict[str, tuple[str, ...]] = {
     "fret": ("fret",),
+    # A page can be *about* FRET without the acronym appearing in its title —
+    # κ², homo-transfer, the Förster radius. Left out, those pages were
+    # invisible to a browse by subject and a question about κ² was answered
+    # from the general FRET concept instead.
+    "förster": ("fret",),
+    "forster": ("fret",),
+    "donor": ("fret",),
+    "acceptor": ("fret",),
+    "efficiency": ("fret",),
+    "transfer": ("fret",),
+    "kappa": ("fret", "kappa2", "orientation"),
+    "kappa2": ("fret", "kappa2", "orientation"),
+    "dipole": ("orientation", "anisotropy"),
+    "orientation": ("orientation",),
     "smfret": ("fret", "smfret", "bursts"),
     "burst": ("bursts",),
     "bursts": ("bursts",),
@@ -137,6 +151,15 @@ _STOPWORDS = frozenset(
     their then there these this to use used using what when where which who why
     with your you page guide chisurf""".split()
 )
+
+#: Fields this module computes from the page. They are recomputed on every
+#: run, so an improvement to the derivation reaches pages that already have a
+#: header.
+_DERIVED_FIELDS = frozenset({"type", "title", "description", "tags", "anchor", "audience"})
+
+#: Of those, the ones a human plausibly rewrites by hand — prose, not a
+#: computation. Preserved unless the caller asks for a refresh.
+_AUTHORED_FIELDS = frozenset({"description", "title"})
 
 _FRONT_MATTER = re.compile(r"\A---\r?\n(.*?)\r?\n---\r?\n?", re.DOTALL)
 _MYST_ANCHOR = re.compile(r"\A\(([A-Za-z0-9_.-]+)\)=\s*$")
@@ -482,7 +505,12 @@ def extract_description(body: str, limit: int = 240) -> str:
     return text
 
 
-def derive_tags(relative: pathlib.PurePosixPath, title: str, body: str) -> list[str]:
+def derive_tags(
+    relative: pathlib.PurePosixPath,
+    title: str,
+    body: str,
+    meta_description: str = "",
+) -> list[str]:
     """Return topic tags for a page.
 
     Parameters
@@ -493,12 +521,14 @@ def derive_tags(relative: pathlib.PurePosixPath, title: str, body: str) -> list[
         The page title.
     body : str
         The document body.
+    meta_description : str
+        The page's one-line description, mined for subjects the title omits.
 
     Returns
     -------
     list of str
         Tags, most structural first: the section the page lives in, then the
-        subjects recognised in its name and title.
+        subjects recognised in its name, title and description.
     """
     tags: list[str] = []
     section = relative.parts[0] if len(relative.parts) > 1 else ""
@@ -507,7 +537,13 @@ def derive_tags(relative: pathlib.PurePosixPath, title: str, body: str) -> list[
     if len(relative.parts) > 2:
         tags.append(relative.parts[1].replace("_", "-"))
 
-    words = re.split(r"[^A-Za-z0-9]+", f"{relative.stem} {title}".lower())
+    # The description is mined too, not only the name and the title. A page
+    # called "The orientation factor κ² and what it costs" carries no word a
+    # reader would search for it by; its first sentence says "Förster radius",
+    # "donor" and "acceptor", which is what puts it under `fret` where the
+    # concept and the guides about the same measurement already are.
+    description = str(meta_description or "")
+    words = re.split(r"[^A-Za-z0-9]+", f"{relative.stem} {title} {description}".lower())
     for word in words:
         if not word or word.isdigit() or word in _STOPWORDS:
             continue
@@ -567,11 +603,15 @@ def derive_meta(
     _, body = split_front_matter(text)
 
     title = extract_title(body) or relative.stem.replace("_", " ").replace("-", " ").capitalize()
+    # A hand-tuned description is the better source of subjects than a derived
+    # one, so the tags are mined from whichever the page will end up carrying.
+    description = str(existing.get("description") or "") if preserve else ""
+    description = description or extract_description(body)
     meta: dict[str, Any] = {
         "type": page_type(relative),
         "title": title,
         "description": extract_description(body),
-        "tags": derive_tags(relative, title, body),
+        "tags": derive_tags(relative, title, body, description),
     }
     anchor = extract_anchor(body)
     if anchor:
@@ -580,11 +620,17 @@ def derive_meta(
     if audience:
         meta["audience"] = audience
 
-    # Anything an author added by hand is theirs, not the tool's, and a
-    # regeneration that quietly reverted it would make the header untrustworthy.
+    # Prose is preserved; mechanical fields are re-derived. A description
+    # someone rewrote is *theirs* and a regeneration that reverted it would
+    # make the header untrustworthy — but `tags` is a computation, and keeping
+    # a stale one meant that improving the derivation changed nothing on any
+    # page that already had a header. (That is how the κ² concept kept its
+    # `[concepts, kappa2, orientation]` and stayed invisible to a browse by
+    # `fret`.) Unknown keys an author added are always kept.
     for key, value in existing.items():
-        if key not in meta or preserve:
-            meta[key] = value
+        if key in _DERIVED_FIELDS and not (preserve and key in _AUTHORED_FIELDS):
+            continue
+        meta[key] = value
     for key, value in (keep or {}).items():
         meta[key] = value
     return meta

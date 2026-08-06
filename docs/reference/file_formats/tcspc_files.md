@@ -2,7 +2,7 @@
 type: File Format
 title: TCSPC file readers
 description: The TCSPC TXT/CSV reader loads time‑correlated single photon counting (TCSPC) decays from plain text or CSV files and converts them into ChiSurf TCSPC datasets that can be used for lifetime fitting and FRET analysis.
-tags: [reference, file-formats, tcspc]
+tags: [reference, file-formats, tcspc, photons, lifetime, fitting, fret]
 ---
 
 # TCSPC file readers

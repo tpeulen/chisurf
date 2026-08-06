@@ -350,6 +350,9 @@ class HelpTextBrowser(QTextBrowser):
         #: source. Scaling always starts from this, so narrowing and widening
         #: the window again restores the figure rather than compounding.
         self._image_sizes: dict = {}
+        #: Called with an image name when a figure is clicked. The browser
+        #: sets it; a bare viewer simply does nothing.
+        self.imageClicked = None
         #: Column the document is currently laid out for.
         self._column: Optional[int] = None
 
@@ -390,7 +393,21 @@ class HelpTextBrowser(QTextBrowser):
             logger.debug("could not apply the text measure", exc_info=True)
 
     def _fit_images(self, column: int):
-        """Scale every figure and formula down to at most *column* pixels.
+        """Size every image to the text column, enlarging the figures.
+
+        A *figure* — an image alone in its paragraph — is scaled **up** as
+        well as down. Qt draws an image at its native pixel size, so a
+        470-pixel plot sat in an 860-pixel column looking like a thumbnail
+        with half the measure empty beside it; filling the column nearly
+        doubles it. An *inline* image (a typeset formula, a badge) is only
+        ever scaled down: enlarging it would make it tower over its own line.
+
+        The column, and not the window, is the ceiling even for a figure: the
+        text sits in a frame indented by the reading gutter and the image is
+        inside that frame, so a wider one is drawn past the right edge and
+        gives the whole page a horizontal scrollbar. What the column cannot
+        give, the click does — see
+        :mod:`~chisurf.plugins.core.help.gui.figure_view`.
 
         The scan and the edit are two passes: applying a format inside the
         fragment iteration would be mutating the thing being walked.
@@ -400,13 +417,19 @@ class HelpTextBrowser(QTextBrowser):
         block = document.begin()
         while block.isValid():
             fragments = block.begin()
+            images, others = [], 0
             while not fragments.atEnd():
                 fragment = fragments.fragment()
                 if fragment.charFormat().isImageFormat():
-                    scaled = self._scaled_image(fragment.charFormat(), column)
-                    if scaled is not None:
-                        edits.append((fragment.position(), fragment.length(), scaled))
+                    images.append(fragment)
+                elif fragment.text().strip():
+                    others += 1
                 fragments += 1
+            alone = len(images) == 1 and others == 0
+            for fragment in images:
+                scaled = self._scaled_image(fragment.charFormat(), column, upscale=alone)
+                if scaled is not None:
+                    edits.append((fragment.position(), fragment.length(), scaled))
             block = block.next()
         if not edits:
             return
@@ -420,12 +443,26 @@ class HelpTextBrowser(QTextBrowser):
         if not was_modified:
             document.setModified(False)
 
-    def _scaled_image(self, char_format, column: int):
+    #: How far a figure may be enlarged past its own pixels before it is
+    #: visibly soft. Screenshots and matplotlib plots are saved small; filling
+    #: the column matters more than pixel-exactness, up to a point.
+    MAX_UPSCALE = 2.0
+
+    def _scaled_image(self, char_format, column: int, upscale: bool = False):
         """Return *char_format* resized to *column*, or *None* if it fits.
 
         The size is derived from the width the image had when the page arrived,
         not from its current one, so narrowing and widening the window again
         restores the figure instead of shrinking it twice.
+
+        Parameters
+        ----------
+        char_format : QTextCharFormat
+            The fragment's format.
+        column : int
+            Width available to the image.
+        upscale : bool
+            Allow enlarging past the natural size, up to :attr:`MAX_UPSCALE`.
         """
         image = char_format.toImageFormat()
         natural = self._image_sizes.get(image.name())
@@ -435,12 +472,59 @@ class HelpTextBrowser(QTextBrowser):
         width, height = natural
         if width <= 0 or height <= 0:
             return None
-        target = min(width, column)
+        ceiling = width * self.MAX_UPSCALE if upscale else width
+        target = round(min(ceiling, column))
         if abs(image.width() - target) < 1:
             return None
         image.setWidth(target)
         image.setHeight(max(1, round(height * target / width)))
         return image
+
+    def image_at(self, position):
+        """Return the name of the image under a viewport *position*, or ``""``.
+
+        Qt's rich text has no notion of a clickable image, so the hit test is
+        done by hand: the cursor at that point, and the character format on
+        either side of it — a click lands *between* two characters, and the
+        image can be the one before it as easily as the one after.
+        """
+        cursor = self.cursorForPosition(position)
+        for offset in (0, -1):
+            probe = QTextCursor(cursor)
+            if offset:
+                probe.movePosition(QTextCursor.Left, QTextCursor.KeepAnchor)
+                fmt = probe.charFormat()
+            else:
+                probe.movePosition(QTextCursor.Right, QTextCursor.KeepAnchor)
+                fmt = probe.charFormat()
+            if fmt.isImageFormat():
+                name = fmt.toImageFormat().name()
+                if name:
+                    return name
+        return ""
+
+    def mouseMoveEvent(self, event):
+        """Show a pointing hand over a figure, so it reads as clickable."""
+        try:
+            if self.imageClicked is not None:
+                over = bool(self.image_at(event.pos()))
+                self.viewport().setCursor(Qt.PointingHandCursor if over else Qt.IBeamCursor)
+        except Exception:
+            logger.debug("could not test for a figure under the pointer", exc_info=True)
+        super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        """Open the figure under the pointer, if there is one."""
+        try:
+            if event.button() == Qt.LeftButton and not self.textCursor().hasSelection():
+                name = self.image_at(event.pos())
+                if name and self.imageClicked is not None:
+                    self.imageClicked(name)
+                    event.accept()
+                    return
+        except Exception:
+            logger.debug("could not open the figure under the pointer", exc_info=True)
+        super().mouseReleaseEvent(event)
 
     def text_column_width(self) -> int:
         """Return the width text is laid out in, images and formulas included.
@@ -538,6 +622,9 @@ class HelpWidget(QMainWindow):
         splitter.addWidget(self.tree)
 
         self.viewer = HelpTextBrowser()
+        # A figure is laid out to the reading column; a click opens it at its
+        # own size, which is the only place the four-panel plots are legible.
+        self.viewer.imageClicked = self._open_figure
         self.viewer.setOpenExternalLinks(False)
         self.viewer.setOpenLinks(False)
         self.viewer.anchorClicked.connect(self._on_anchor_clicked)
@@ -601,7 +688,10 @@ class HelpWidget(QMainWindow):
         # where the answer is. The Ask panel is for when they do not; it is a
         # third column rather than a dialog, so an answer and the page it
         # cites are on screen together.
-        self.ask_panel = AskPanel(self.client)
+        self.ask_panel = AskPanel(
+            self.client,
+            math_provider=lambda width: self.math_renderer_for(width),
+        )
         self.ask_panel.pageRequested.connect(self._on_ask_page_requested)
         self.ask_panel.setVisible(False)
         splitter.addWidget(self.ask_panel)
@@ -1345,6 +1435,19 @@ class HelpWidget(QMainWindow):
         self._history_index = len(self._history) - 1
         self._update_history_buttons()
 
+    def _open_figure(self, name: str):
+        """Show the clicked figure full size.
+
+        Resolved against the *current page's* directory, because a page writes
+        its figures relatively (``figures/x.png``) and the name Qt kept is the
+        one from the HTML.
+        """
+        from chisurf.plugins.core.help.gui.figure_view import show_figure
+
+        base = self.current_path.parent if self.current_path else None
+        if not show_figure(name, base_dir=base, parent=self):
+            logger.debug("could not open the figure %s", name)
+
     # ── the Ask panel ───────────────────────────────────────────────
 
     def _on_ask_toggled(self, checked: bool):
@@ -1534,25 +1637,52 @@ class HelpWidget(QMainWindow):
             self._doc_theme = _theme.from_palette(self.viewer)
         return self._doc_theme
 
-    @property
-    def math_renderer(self):
-        """Shared LaTeX renderer, so a formula is typeset once per session."""
-        if getattr(self, "_math_renderer", None) is None:
-            from chisurf.plugins.core.help.api.mathtext import MathRenderer
+    def math_renderer_for(self, max_width: int):
+        """Return a LaTeX renderer bounded by *max_width*, cached per width.
 
-            # The formulas are bounded by the *text column*, not by the window:
-            # a formula wider than the column gives the whole page a horizontal
-            # scrollbar, and every paragraph on it then slides sideways.
-            try:
-                column = self.viewer.text_column_width()
-            except Exception:
-                column = self.MAX_TEXT_WIDTH
-            self._math_renderer = MathRenderer(
+        The width matters and it is not one number: the reading column and the
+        Ask panel beside it are different sizes, and a formula typeset for the
+        column is clipped at the panel's right edge. Renderers are cached in
+        coarse buckets so a formula is still typeset once per session per
+        place it appears, rather than once per pixel of a resize.
+
+        Parameters
+        ----------
+        max_width : int
+            Widest a formula may be drawn, in pixels.
+
+        Returns
+        -------
+        MathRenderer
+        """
+        from chisurf.plugins.core.help.api.mathtext import MathRenderer
+
+        cache = getattr(self, "_math_renderers", None)
+        if cache is None:
+            cache = self._math_renderers = {}
+        bucket = max(120, int(max_width) // 40 * 40)
+        key = (bucket, round(self.font_size, 1), self.doc_theme.text)
+        if key not in cache:
+            cache[key] = MathRenderer(
                 colour=self.doc_theme.text,
                 font_size=self.font_size,
-                max_width=column,
+                max_width=bucket,
             )
-        return self._math_renderer
+        return cache[key]
+
+    @property
+    def math_renderer(self):
+        """Shared LaTeX renderer for the reading column.
+
+        The formulas are bounded by the *text column*, not by the window: a
+        formula wider than the column gives the whole page a horizontal
+        scrollbar, and every paragraph on it then slides sideways.
+        """
+        try:
+            column = self.viewer.text_column_width()
+        except Exception:
+            column = self.MAX_TEXT_WIDTH
+        return self.math_renderer_for(column)
 
     def _render(self, file_path: pathlib.Path, text: str):
         """Render *text* for display, returning ``(html, source_shown)``.

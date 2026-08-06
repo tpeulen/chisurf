@@ -2,7 +2,7 @@
 type: Concept
 title: Förster resonance energy transfer (FRET)
 description: Förster resonance energy transfer is the non-radiative transfer of excitation energy from an excited donor fluorophore to a nearby acceptor through resonant dipole–dipole coupling.
-tags: [concepts, fret]
+tags: [concepts, fret, orientation, anisotropy]
 anchor: concept-fret
 ---
 

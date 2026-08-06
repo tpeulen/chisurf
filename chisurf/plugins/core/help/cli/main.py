@@ -63,7 +63,7 @@ def render_doc(path: str):
 @click.option("--provider", default="", help="Provider key override.")
 @click.option("--json", "as_json", is_flag=True, help="Print the answer as JSON.")
 def ask_docs(question: tuple, model: str, provider: str, as_json: bool):
-    """Ask ChiSurf's documentation a question and get a cited answer.
+    r"""Ask ChiSurf's documentation a question and get a cited answer.
 
     The assistant may only browse, search and read documentation — it cannot
     load data, fit, or run code. A language-model provider must be configured
@@ -93,6 +93,19 @@ def ask_docs(question: tuple, model: str, provider: str, as_json: bool):
         for page in answer.pages:
             title = page["title"] or page["document"]
             click.echo(f"  {title} — {page['document']}")
+    else:
+        click.echo("")
+        click.echo(
+            "No documentation page was opened for this answer — treat it as a "
+            "suggestion and check it.",
+            err=True,
+        )
+    if answer.fabricated:
+        click.echo(
+            "It also named pages that do not exist: "
+            + ", ".join(answer.fabricated),
+            err=True,
+        )
     if not answer.ok:
         raise SystemExit(1)
 

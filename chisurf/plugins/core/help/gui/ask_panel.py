@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import html as _html
 import logging
+import re
 from typing import Any
 
 from qtpy.QtCore import QObject, QThread, Signal
@@ -41,6 +42,7 @@ from qtpy.QtWidgets import (
 )
 
 from chisurf.gui.glyphs import Glyphs
+from chisurf.plugins.core.help.api import markdown as md_api
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +55,46 @@ EXAMPLE_QUESTIONS: tuple[str, ...] = (
     "Which tool fuses bursts that one molecule produced?",
     "What file formats can ChiSurf read?",
 )
+
+
+#: A documentation path as a model writes it in prose, when it has not used
+#: the link syntax. Only paths that resolve are linked — a fabricated one has
+#: already been struck by ``ask.verify_citations`` before it gets here.
+_BARE_PATH = re.compile(r"(?<!\()(?<!/)\b((?:docs|okf)/[\w./-]+\.md)(?:#([\w -]+))?\b(?!\))")
+
+
+def linkify_pages(text: str) -> str:
+    """Turn documentation paths in *text* into Markdown links.
+
+    Parameters
+    ----------
+    text : str
+        The answer, as the model wrote it.
+
+    Returns
+    -------
+    str
+        The same text with every resolvable bare page path replaced by a link
+        carrying the page's own title. Paths already inside a Markdown link are
+        left alone.
+    """
+    from chisurf.core.agent.doc_index import DocIndex
+
+    try:
+        index = DocIndex.load()
+    except Exception:  # pragma: no cover - the index is a cache, not a hard dep
+        return text
+
+    def replace(match: re.Match[str]) -> str:
+        document, section = match.group(1), match.group(2) or ""
+        entry = index.get(document)
+        if entry is None:
+            return match.group(0)
+        label = section or entry.title or document
+        target = f"{document}#{section}" if section else document
+        return f"[{label}]({target})"
+
+    return _BARE_PATH.sub(replace, text)
 
 
 class _AskWorker(QObject):
@@ -76,7 +118,7 @@ class _AskWorker(QObject):
 
 
 class AskPanel(QWidget):
-    """A question-and-answer transcript over ChiSurf's documentation.
+    r"""A question-and-answer transcript over ChiSurf's documentation.
 
     Parameters
     ----------
@@ -84,6 +126,11 @@ class AskPanel(QWidget):
         The plugin client the question is put through.
     parent : QWidget, optional
         Parent widget.
+    math_provider : callable, optional
+        ``provider(max_width) -> MathRenderer``, used to typeset formulas at
+        the panel's own width. Without one the mathematics stays as its LaTeX
+        source, which is what an answer full of ``$\\Delta G = \\ldots$``
+        looks like.
 
     Attributes
     ----------
@@ -94,12 +141,16 @@ class AskPanel(QWidget):
 
     pageRequested = Signal(str, str)
 
-    def __init__(self, client, parent: QWidget | None = None):
+    def __init__(self, client, parent: QWidget | None = None, math_provider=None):
         super().__init__(parent)
         self._client = client
+        # The browser's own renderer, so a formula is typeset once per session
+        # and comes out in the same face and colour as the pages beside it.
+        self._math_provider = math_provider
         self._thread: QThread | None = None
         self._worker: _AskWorker | None = None
         self._turns: list[str] = []
+        self._last_anchor = ""
         self.setMinimumWidth(300)
         self._build()
         self._render()
@@ -159,6 +210,7 @@ class AskPanel(QWidget):
     def clear(self) -> None:
         """Forget the conversation and show the empty state again."""
         self._turns = []
+        self._last_anchor = ""
         self.status.setVisible(False)
         self._render()
 
@@ -185,7 +237,8 @@ class AskPanel(QWidget):
         if self.busy:
             return
         self.input.clear()
-        self._turns.append(self._question_html(question))
+        self._last_anchor = f"turn{len(self._turns)}"
+        self._turns.append(self._question_html(question, len(self._turns)))
         self._render()
         self._set_busy(True, "Reading the documentation…")
 
@@ -217,13 +270,22 @@ class AskPanel(QWidget):
     # ── rendering ─────────────────────────────────────────────────────
 
     def _render(self) -> None:
-        """Redraw the transcript and scroll to the bottom."""
+        """Redraw the transcript, showing the start of the newest exchange.
+
+        Scrolling to the *bottom* is what a chat window does and it is wrong
+        here: an answer with an equation and a list of terms is taller than the
+        panel, so the bottom hides the question and the first paragraph — the
+        part the reader wants. The view goes to the last question instead.
+        """
         body = "\n".join(self._turns) if self._turns else self._empty_html()
         self.transcript.setHtml(
             "<body style='font-size:10pt;'>" + body + "</body>"
         )
-        bar = self.transcript.verticalScrollBar()
-        bar.setValue(bar.maximum())
+        if self._last_anchor:
+            self.transcript.scrollToAnchor(self._last_anchor)
+        else:
+            bar = self.transcript.verticalScrollBar()
+            bar.setValue(bar.maximum())
 
     def _empty_html(self) -> str:
         """Return the transcript shown before anything has been asked."""
@@ -243,19 +305,44 @@ class AskPanel(QWidget):
         )
 
     @staticmethod
-    def _question_html(question: str) -> str:
+    def _question_html(question: str, turn: int = 0) -> str:
+        """One question, anchored so the view can be scrolled to it."""
         return (
-            "<p style='margin-top:10px;'><b>"
+            f"<a name='turn{turn}'></a><p style='margin-top:10px;'><b>"
             + _html.escape(question)
             + "</b></p>"
         )
 
-    @staticmethod
-    def _answer_html(answer: dict) -> str:
-        """One answer, followed by the pages it was actually taken from."""
-        text = _html.escape(str(answer.get("text", "")))
-        paragraphs = "".join(
-            f"<p style='margin:6px 0;'>{block}</p>"
+    def _math(self):
+        """Return a math renderer sized to this panel, or ``None``.
+
+        Sized to *this* column: a renderer built for the reading column draws
+        a displayed equation wider than the panel, and it is clipped at the
+        right edge with no scrollbar to reveal it.
+        """
+        if self._math_provider is None:
+            return None
+        try:
+            width = self.transcript.viewport().width() or self.width()
+            return self._math_provider(max(160, width - 16))
+        except Exception:  # pragma: no cover - a missing renderer is not fatal
+            logger.debug("no math renderer for the Ask panel", exc_info=True)
+            return None
+
+    def _answer_html(self, answer: dict) -> str:
+        r"""One answer, followed by the pages it was actually taken from.
+
+        The prose is rendered as Markdown rather than escaped, so a page the
+        answer *mentions* is a link the reader can follow — an answer that
+        names ``docs/concepts/accurate_fret.md`` and makes you go and find it
+        has done half the job. Bare paths are linked too, because a model does
+        not reliably write the link syntax even when told to. Mathematics goes
+        through the browser's own renderer, so ``$\\kappa^2$`` is typeset
+        rather than shown as its source.
+        """
+        text = linkify_pages(str(answer.get("text", "")))
+        paragraphs = md_api.render_body(text, math=self._math()) or "".join(
+            f"<p style='margin:6px 0;'>{_html.escape(block)}</p>"
             for block in text.split("\n\n")
             if block.strip()
         )
@@ -282,6 +369,17 @@ class AskPanel(QWidget):
                 "<p style='color:#a07000; font-size:9pt;'>No documentation page was "
                 "opened for this answer — treat it as a suggestion and check it.</p>"
             )
+        fabricated = answer.get("fabricated") or []
+        if fabricated:
+            # The path has already been struck from the text; saying so is what
+            # stops the reader hunting for a page that was never there.
+            sources += (
+                "<p style='color:#b04040; font-size:9pt;'>It also named "
+                + ("a page that does not exist: " if len(fabricated) == 1
+                   else "pages that do not exist: ")
+                + ", ".join(_html.escape(str(name)) for name in fabricated)
+                + ". Do not trust the rest of this answer without checking it.</p>"
+            )
         return paragraphs + sources
 
     @staticmethod
@@ -296,12 +394,26 @@ class AskPanel(QWidget):
     # ── links ─────────────────────────────────────────────────────────
 
     def _on_anchor(self, url: Any) -> None:
-        """Route a clicked link: an example question, or a cited page."""
+        """Route a clicked link.
+
+        Three shapes reach here: an example question (``ask:``), a source-list
+        entry (``doc:``), and a link inside the answer's own prose, which is
+        an ordinary Markdown link and therefore a bare ``docs/…md`` path. The
+        last one is the point of rendering the answer as Markdown — a page the
+        answer *mentions* has to be one click away, not something to go and
+        look up.
+        """
         target = url.toString() if hasattr(url, "toString") else str(url)
         if target.startswith("ask:"):
             self.ask(target[4:])
             return
         if target.startswith("doc:"):
-            rest = target[4:]
-            document, _, section = rest.partition("#")
+            target = target[4:]
+        elif target.startswith(("http://", "https://", "mailto:")):
+            import webbrowser
+
+            webbrowser.open(target)
+            return
+        document, _, section = target.partition("#")
+        if document.startswith(("docs/", "okf/")):
             self.pageRequested.emit(document, section)

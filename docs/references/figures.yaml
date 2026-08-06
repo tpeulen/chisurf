@@ -15,7 +15,7 @@
 # state it was in, so it can be retaken without guessing.
 
 guides/figures/ask_the_documentation.png:
-  caption: The Ask panel beside the page it cited.
+  caption: The Ask panel beside the page it cited, with the links in the answer's own prose.
   kind: screenshot
   origin: docs/guides/make_screenshots.py::_grab_ask_the_documentation
   pages:
@@ -24,7 +24,8 @@ guides/figures/ask_the_documentation.png:
     The help browser is opened on docs/concepts/accurate_fret.md with the Ask panel
     shown; the conversation is placed rather than run, because a live answer would
     differ with whichever model the machine has configured and the figure could not
-    be regenerated.'
+    be regenerated. The placed answer carries Markdown links so the figure shows the
+    linked prose, which is what the page is describing.'
 guides/figures/2cde.png:
   caption: FRET-2CDE separates static from dynamic bursts.
   kind: plot

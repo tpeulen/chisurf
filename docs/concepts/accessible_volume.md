@@ -2,7 +2,7 @@
 type: Concept
 title: Accessible-volume (AV) dye modeling
 description: FRET reports a distance between two dyes, but structural modeling needs a distance between two atoms of the biomolecule.
-tags: [concepts, accessible, volume]
+tags: [concepts, fret, structure]
 anchor: concept-accessible-volume
 ---
 

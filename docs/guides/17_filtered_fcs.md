@@ -2,7 +2,7 @@
 type: Guide
 title: Filtered FCS (fFCS / 2D-FLCS)
 description: When two species share the same diffusion time but differ in fluorescence lifetime (or spectrum, or polarisation), ordinary FCS cannot separate them.
-tags: [guides, fcs, filtered]
+tags: [guides, fcs, diffusion, tcspc, lifetime]
 ---
 
 # Filtered FCS (fFCS / 2D-FLCS)

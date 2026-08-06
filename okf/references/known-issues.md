@@ -1,3 +1,39 @@
+## photon container: adding an instrument file reads it whole into memory
+
+**2026-08-06.** `chisurf/core/fio/pto.py::Measurement.create` embeds the
+instrument file verbatim, which is what makes a `.pto` restorable. It has to do
+that through `PtoFile.add(kind, encoding, name, bytes)` — the only input path
+tttrlib exposes — so an 8 GiB PTU becomes an 8 GiB Python `bytes` before it is
+written. The seam warns above 256 MiB rather than failing, and everything below
+that is unaffected, so this bites exactly the case the container exists for.
+
+**It is not a format problem and needs no spec change.** `PtoFile::add` already
+writes the element header first and then streams the payload in a single
+`m.f.write(data, n)` — the comment above it says as much ("a gigabyte never goes
+through a buffer"). Only that one call needs to become a read/write loop over a
+`FILE*`; the slot bookkeeping, the reserve and the on-disk bytes are identical.
+`extract()` already streams in the other direction and is the model.
+
+**Tracked** as Part 5 of `modules/tttrlib/PRDs/PRD-020-pto-streaming-and-targeted-reads.md`,
+which scopes it together with the read-side half of the same weakness: a PTO
+payload can only be read whole, and the column-subset and read-at-an-offset
+paths that `io_store` already has are the one combination it does not expose.
+
+**The fix**, in `modules/tttrlib`:
+
+- `modules/io/pto/include/io_pto.h` + `src/io_pto.cpp` — add
+  `std::uint64_t add_file(kind, encoding, name, const std::string& path, reserve = 0)`
+  beside `add`, sizing the payload with `std::filesystem::file_size` and
+  streaming it in blocks;
+- `ext/python/Pto.i` — nothing to do beyond exposing it; the argument is a
+  `std::string`, so the existing bytes typemap is not involved;
+- rebuild and reinstall into the `arm64` environment.
+
+`Measurement._add_payload_from_path` already prefers `add_file` when the library
+offers it, so the seam picks the streaming path up with no chisurf-side change
+the moment tttrlib ships it. `test/fio/test_pto.py` covers the round trip either
+way.
+
 ## imaging: a 30-frame acquisition reconstructs as 29, and the flags that would fix it do not reach the reconstruction
 
 **2026-08-06.** Found by rebuilding the simulation library from source (the
@@ -2547,7 +2583,30 @@ the GUI work that surfaced the defect. Until then, **a change to one builder mus
 be made to the other**, and the record is
 [core tools](../plugins/core-tools.md#global-view-the-parameter-network).
 
-## The documentation assistant has never answered a question from a real model
+## The assistant still fabricates a citation now and then
+
+**2026-08-06.** Over thirteen live questions on `mistral-large-latest`, two
+answers named a page that does not exist — `docs/concepts/pda.md` and
+`docs/guides/42_fret_from_bursts.md`. Both are plausible file names for pages
+that *could* exist, which is exactly why the model wrote them. Nothing reached
+the reader: `ask.verify_citations` resolves every path, strikes the dead ones
+and reports them, and both the panel and the CLI say so in as many words. So
+the guard works and the behaviour underneath does not.
+
+Worth knowing before trying to fix it: the fabricated paths appear **alongside
+real, opened ones** in the same answer, so "did it read anything" does not
+catch it — only resolving each path does. The obvious next step is to give the
+model the page list it is allowed to cite (the `related` list already in every
+`read_documentation` result), or to feed the struck paths back for one
+correction turn the way `READ_FIRST` does for an unread answer. Neither was
+done here because the current behaviour is honest and visible, and a second
+retry turn costs every answer a round trip to fix one in six.
+
+## (closed) The documentation assistant has never answered a question from a real model
+
+**Closed the same day** — a working key arrived and the battery was run; see
+the log entry and [LLM agent](../subsystems/llm-agent.md). What follows is the
+original note, kept because it says what the measurement is.
 
 **2026-08-06.** `chisurf/plugins/core/help/api/ask.py` and everything behind it
 are covered by scripted-model tests (the restricted registry, the citation

@@ -2,7 +2,7 @@
 type: Concept
 title: 'TCSPC: fluorescence-lifetime fitting'
 description: Time-correlated single-photon counting (TCSPC) measures the fluorescence lifetime — the mean time a fluorophore spends in the excited state before emitting a photon.
-tags: [concepts, tcspc, lifetime, fitting]
+tags: [concepts, tcspc, lifetime, fitting, photons]
 anchor: concept-tcspc-lifetime
 ---
 

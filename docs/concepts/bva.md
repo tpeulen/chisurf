@@ -2,7 +2,7 @@
 type: Concept
 title: Burst Variance Analysis (BVA)
 description: Burst Variance Analysis (BVA) is a model-free test for sub-burst FRET dynamics in single-molecule confocal experiments.
-tags: [concepts, bursts]
+tags: [concepts, bursts, fret, dynamics]
 anchor: concept-bva
 ---
 

@@ -2,7 +2,7 @@
 type: Guide
 title: Confocal scan images (CLSM)
 description: A laser-scanning confocal microscope builds an image by rastering the focus across the sample while recording TTTR photons tagged with frame/line/pixel markers.
-tags: [guides, scan, images]
+tags: [guides, imaging, tttr, photons]
 ---
 
 # Confocal scan images (CLSM)
