@@ -10,7 +10,7 @@ Pages cite a work by its **key** — the name each entry is anchored under below
 and the citation renders as a link to the paper. The source of truth is
 [`bibliography.yaml`](bibliography.yaml) — add a work there and it appears here.
 
-*129 works.*
+*132 works.*
 
 
 ## FRET: mechanism, accuracy and corrections
@@ -101,6 +101,11 @@ and the citation renders as a link to the paper. The source of truth is
 
 **[Eggeling et al. (2001)](https://doi.org/10.1016/s0168-1656(00)00412-0)** — C. Eggeling, S. Berger, L. Brand, J. R. Fries, J. Schaffer, A. Volkmer, C. A. M. Seidel. *Data registration and selective single-molecule analysis using multi-parameter fluorescence detection*. Journal of Biotechnology **86**, 163-180. (2001).  
 *Burst selection and multi-parameter detection.*
+
+(ha2012)=
+
+**[Ha & Tinnefeld (2012)](https://doi.org/10.1146/annurev-physchem-032210-103340)** — T. Ha, P. Tinnefeld. *Photophysics of fluorescent probes for single-molecule biophysics and super-resolution imaging*. Annual Review of Physical Chemistry **63**, 595-617. (2012).  
+*Triplet versus redox blinking, ROXS, and what dark states do to a FRET histogram.*
 
 (hoffmann2011)=
 
@@ -545,10 +550,20 @@ and the citation renders as a link to the paper. The source of truth is
 
 ## Photophysics
 
+(gehlen2020)=
+
+**[Gehlen (2020)](https://doi.org/10.1016/j.jphotochemrev.2019.100338)** — M. H. Gehlen. *The centenary of the Stern-Volmer equation of fluorescence quenching - from the single line plot to the SV quenching map*. Journal of Photochemistry and Photobiology C **42**, 100338. (2020).  
+*What every deviation from a straight Stern-Volmer line can mean, and why more than one mechanism fits each.*
+
 (kasha1950)=
 
 **[Kasha (1950)](https://doi.org/10.1039/df9500900014)** — M. Kasha. *Characterization of electronic transitions in complex molecules*. Discussions of the Faraday Society **9**, 14-19. (1950).  
 *Emission is from the lowest excited state of a given multiplicity, hence independent of excitation wavelength.*
+
+(lehrer1971)=
+
+**[Lehrer (1971)](https://doi.org/10.1021/bi00793a015)** — S. S. Lehrer. *Solute perturbation of protein fluorescence - quenching of the tryptophyl fluorescence of model compounds and of lysozyme by iodide ion*. Biochemistry **10**, 3254-3263. (1971).  
+*The modified Stern-Volmer plot, and the fractional accessibility read from its intercept.*
 
 (lippert1955)=
 

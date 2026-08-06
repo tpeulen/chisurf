@@ -2,6 +2,20 @@
 
 ## 2026-08-06
 
+* **Quenching and blinking: the two cases the page had skipped** ([documentation browser](subsystems/documentation-browser.md)).
+
+  `docs/fundamentals/quenching_and_photophysics.md` had the textbook dichotomy — dynamic quenching shortens the lifetime, static does not — and stopped there. Two things it got wrong by omission, both researched against the current literature rather than the 2006 text.
+
+  **"Measure the lifetime to tell static from dynamic" separates the dynamic part and then silently lumps two mechanisms together.** A ground-state complex and a *sphere of action* (a quencher that merely happens to be adjacent at the moment of excitation, no complex formed) both remove molecules before they emit, so **both** leave `tau0/tau = 1 + K_D[Q]` and both read as "static". The page now gives the Perrin exponential form and the three things that *do* separate them: a complex perturbs the absorption spectrum, its temperature dependence runs the other way, and a fitted sphere volume implying a radius much larger than contact means the exponential is absorbing something else.
+
+  **A mixture's apparent K_SV is not the K of anything.** Downward curvature is `F/F0 = sum_i f_i/(1 + K_i[Q])`, whose initial slope is the *intensity-weighted mean* over species and therefore drifts with the concentration range chosen. Added the Lehrer modified plot with `f_a` from the intercept, and the three cautions that matter: an "inaccessible" fraction quenched at even `0.1 K_a` still looks linear and inflates `f_a`; two classes is a parameterization, not a count; and selective quenching shifts the spectrum, so the difference spectrum *is* the quenched population — a test of the two-class model rather than an assumption of it.
+
+  **Blinking rewritten around the triplet/redox distinction.** Triplet blinking is microseconds aerated and milliseconds deoxygenated; redox blinking produces radical ions persisting milliseconds to seconds and is what dominates single-molecule traces — so the buffer, not the dye, sets the blinking. Hence ROXS: a reductant alone empties the triplet and leaves the radical anion, which is why adding a thiol can make blinking *worse*. Named the failure that matters for this codebase: thiol-induced Cy5 photoswitching reads as a **zero-FRET population**, because a temporarily dark acceptor is per-burst indistinguishable from an absent one. Also the opposite responses of the two photobleaching routes to oxygen removal, which suppresses the triplet-mediated one and worsens the higher-excited-state one.
+
+  Three sources added to the bibliography: `lehrer1971` (the modified plot), `gehlen2020` (the Stern-Volmer centenary review — what every deviation from linearity can mean, and how many mechanisms fit each), `ha2012` (Ha & Tinnefeld on probe photophysics).
+
+  `docs-html` warning-free; render + crosslinks 251 passed.
+
 * **A saved 1-D fit reopened as a 2-D fit carrying the 1-D density** ([models](subsystems/models.md)).
 
   The distributed-acceptor model selects a decay *law* with its dimensionality, and because that is not something an optimizer touches it is a plain attribute rather than a `FittingParameter` — so nothing in the parameter machinery persisted it. `get_state`/`set_state` carried `C/C0` faithfully and dropped the geometry it belongs to, which is worse than losing both: the reopened fit looked complete and was wrong. Now persisted, with a test that asserts the restored model computes the *same decay* rather than merely reporting the same numbers.
