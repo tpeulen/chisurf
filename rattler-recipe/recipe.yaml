@@ -129,7 +129,6 @@ requirements:
     - ipython
     - notebook <7
     - pyopengl
-    - pytables
     # guidata/guiqwt removed: guiqwt's users (global_tcspc, surfaceplot) were
     # ported to pyqtgraph, and guidata's DataFrameEditor was replaced by the
     # in-tree chitable widget family. No third-party GUI toolkit remains.

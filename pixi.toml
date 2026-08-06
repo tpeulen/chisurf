@@ -49,7 +49,6 @@ pdb2pqr = "*"
 ipython = "*"
 notebook = "<7"
 pyopengl = "*"
-pytables = "*"
 python-docx = "*"
 # scikit-learn: k-means and GMM for burst selection and ndXplorer clustering,
 # PCA for the parameter decomposition, and the H2MM surrogate. (hmmlearn was

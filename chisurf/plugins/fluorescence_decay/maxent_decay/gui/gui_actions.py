@@ -122,7 +122,7 @@ class _MaxentActionsMixin:
         except Exception:
             pass
 
-        h5_path = out_dir / "sampling.h5"
+        samples_path = out_dir / "sampling.npz"
         json_path = out_dir / "sampling_project.json"
 
         steps_total = 500
@@ -183,7 +183,7 @@ class _MaxentActionsMixin:
                     stats = sample_mem_distribution_mcmc(
                         result,
                         nwalkers=walkers_val,
-                        filename=str(h5_path),
+                        filename=str(samples_path),
                         steps_total=steps_total,
                         thin=int(thin_val),
                         substeps=int(substeps_val),
@@ -263,7 +263,7 @@ class _MaxentActionsMixin:
                 "mode": "FRET" if "R" in result else "lifetime",
                 "mem": meta,
                 "sampling": {
-                    "hdf5_file": h5_path.name,
+                    "hdf5_file": samples_path.name,
                     "nwalkers": int(stats.get("nwalkers", 0)),
                     "steps_total": int(stats.get("steps_total", steps_total)),
                     "thin": int(stats.get("thin", 1)),

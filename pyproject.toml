@@ -58,7 +58,6 @@ dependencies = [
     "PyYAML",
     "packaging",
     "typing-extensions",
-    "tables",
     "matplotlib",
     "python-docx",
     "markdown",

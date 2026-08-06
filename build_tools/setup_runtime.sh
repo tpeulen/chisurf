@@ -50,7 +50,6 @@ DEPS=(
     "ipython"
     "notebook<7"
     "pyopengl"
-    "pytables"
     "python-docx"
     "latexify-py"
     "pygments"

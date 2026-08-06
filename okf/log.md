@@ -2,6 +2,12 @@
 
 ## 2026-08-06
 
+* **`pytables` is gone: the MEM sampler's posterior is a `.npz`** ([PRD-80](prds/prd-80.md)). Its only remaining use was writing seven float arrays and eight scalars, which is exactly what a compressed `.npz` is for — nothing read those files incrementally, and the whole posterior is loaded at once anyway, so HDF5 bought a dependency and nothing else. The GUI's output is `sampling.npz` now rather than `sampling.h5`.
+  Dropped from `pixi.toml`, `pyproject.toml`, the recipe, the py314 settings manifest and `setup_runtime.sh`, and added to the guardrail — with `pytables` registered as an alias of the `tables` import name, the same trap `pyarrow`/`pyarrow-core` sprang earlier.
+  **That closes the dependency work: eight removed this session** — `tifffile`, `imageio`, `imagecodecs`, `pyarrow`, `boost-histogram`, `numexpr`, `mdtraj`, `pytables`. Each replacement was checked against the thing it replaced *before* the removal, with committed fixtures so the comparisons outlive it, and the four that had a performance story are all faster: DCD 1.1–3.4×, XTC 1.8–2.2×, the quenching kernel 22×, histograms via the TTTR library.
+
+## 2026-08-06
+
 * **`mdtraj` is gone — and the segfault under it was a real landmine, not just a bad fixture** ([PRD-80](prds/prd-80.md)). Dropped from `pixi.toml`, `pyproject.toml`, the recipe, the py314 settings manifest and `setup_runtime.sh`, and added to the retired-dependency guardrail.
   **The crash, run down rather than worked around.** LabelLib's `dyeDensityAV1` **segfaults on an empty obstacle array** — it takes the process down instead of returning, which is why the check has to sit in `_av_labellib` and not in a caller. Reproduced in three lines; an empty set is reachable whenever a structure filters to nothing, so any selection matching no atom could kill a running ChiSurf, not only a test. It now raises. Two earlier suspicions were both wrong and cheap to eliminate first: zero radii and a far-away attachment point each compute fine.
   The fixture was *also* wrong — a three-atom "protein" filters to an empty obstacle set — so that assertion now runs against 148L. An accessible volume needs a structure to be accessible *around*; three atoms asserted nothing.

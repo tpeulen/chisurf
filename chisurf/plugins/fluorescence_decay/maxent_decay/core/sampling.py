@@ -15,7 +15,6 @@ import logging
 import math
 import sys
 import numpy as np
-import tables
 
 from chisurf.core.fitting.ensemble import EnsembleSampler
 
@@ -374,26 +373,28 @@ def sample_mem_distribution_mcmc(
             logger.warning("MEM sampling: failed to write TSV stack: %s", exc)
 
     if filename is not None:
-        filters = tables.Filters(complib="zlib", shuffle=True, complevel=1)
-        with tables.open_file(str(filename), mode="w", title="MEM sampling", filters=filters) as h5:
-            root = h5.root
-            h5.create_array(root, "axis", dist_axis, "Lifetime or distance axis")
-            h5.create_array(root, "p_mem", p0, "Original MEM distribution")
-            h5.create_array(root, "p_mean", p_mean, "Posterior mean distribution")
-            h5.create_array(root, "p_lo", p_lo, "Lower credible band (16th percentile)")
-            h5.create_array(root, "p_med", p_med, "Median distribution (50th percentile)")
-            h5.create_array(root, "p_hi", p_hi, "Upper credible band (84th percentile)")
-            h5.create_array(root, "p_samples", p_used, "MCMC samples (thinned)")
-
-            attrs = root._v_attrs
-            attrs.mode = "FRET" if "R" in result else "lifetime"
-            attrs.nu = float(nu_val)
-            attrs.nwalkers = int(nwalkers)
-            attrs.steps_total = int(steps_total)
-            attrs.thin = int(thin)
-            attrs.ndim = int(ndim)
-            attrs.sum_p = float(p0_sum)
-            attrs.n_samples = int(p_used.shape[0])
+        # A compressed .npz: the payload is seven float arrays and a handful of
+        # scalars, which is exactly what it is for. HDF5 bought nothing here
+        # except a dependency -- nothing reads these files incrementally, and
+        # the whole posterior is loaded at once anyway.
+        np.savez_compressed(
+            str(filename),
+            axis=dist_axis,                 # lifetime or distance axis
+            p_mem=p0,                       # original MEM distribution
+            p_mean=p_mean,                  # posterior mean
+            p_lo=p_lo,                      # 16th percentile
+            p_med=p_med,                    # median
+            p_hi=p_hi,                      # 84th percentile
+            p_samples=p_used,               # thinned MCMC samples
+            mode="FRET" if "R" in result else "lifetime",
+            nu=float(nu_val),
+            nwalkers=int(nwalkers),
+            steps_total=int(steps_total),
+            thin=int(thin),
+            ndim=int(ndim),
+            sum_p=float(p0_sum),
+            n_samples=int(p_used.shape[0]),
+        )
 
     return stats
 

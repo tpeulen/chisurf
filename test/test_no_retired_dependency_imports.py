@@ -60,6 +60,10 @@ RETIRED = {
         "numexpr",
         "write a numba kernel; NUMBA_NUM_THREADS already comes from settings",
     ),
+    "tables": (
+        "pytables",
+        "posterior samples are .npz; nothing else needed HDF5 through it",
+    ),
     "mdtraj": (
         "mdtraj",
         "use chisurf.core.fio.trajectory + chisurf.core.structure.trajectory_data",
@@ -92,6 +96,7 @@ RETIRED = {
 #: would let the dependency back in under a spelling the guardrail cannot see.
 _ALSO_PACKAGED_AS = {
     "pyarrow": ("pyarrow-core",),
+    "tables": ("pytables",),
 }
 
 #: Retired from the *application* but still declared as an optional extra, so
