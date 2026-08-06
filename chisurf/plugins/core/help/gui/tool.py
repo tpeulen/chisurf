@@ -108,6 +108,7 @@ REVIEW_COLOURS = {
 #: Icon per top-level section, so the parts are told apart at a glance.
 SECTION_ICONS = {
     "Getting started": "🚀",
+    "Fundamentals — photophysics": "🔬",
     "Concepts — the theory": "📐",
     "Guides — how to in ChiSurf": "🧭",
     "Fitting interface & examples": "📘",

@@ -386,16 +386,37 @@ def page_summary(path: pathlib.Path, limit: int = 180) -> str:
 
 # ── the tree ────────────────────────────────────────────────────────
 
-#: Top-level sections, in the order a reader meets them, described by the
-#: index that defines each one.
-_SECTIONS = (
-    ("Getting started", "getting_started/index", "Install ChiSurf, launch it, run a first analysis."),
-    ("Concepts — the theory", "concepts/index", "What each method measures, with the formulas and the assumptions."),
-    ("Guides — how to in ChiSurf", "guides/index", "Step-by-step workflows in the real interface."),
-    ("Fitting interface & examples", "manual/index", "The fitting interface itself, and complete worked examples."),
-    ("Reference", "reference/index", "File formats, settings, parameters and the plugin catalogue."),
-    ("Literature", "references/index", "Every work the documentation cites, each linking to the paper."),
-)
+#: How each top-level section reads in the browser, keyed by the index that
+#: defines it. The *membership and order* are not here — they come from
+#: ``docs/index.rst``, so a section added to the website appears in the
+#: application without anyone remembering to add it in two places. This is only
+#: the wording: the website's captions are parenthetical ("Concepts (theory)")
+#: where a navigation row reads better with a dash, and a summary line has
+#: nowhere to live in a caption at all.
+_SECTION_WORDING = {
+    "getting_started/index": (
+        "Getting started", "Install ChiSurf, launch it, run a first analysis."),
+    "fundamentals/index": (
+        "Fundamentals — photophysics",
+        "The excited state, transfer, the instrument and the counting "
+        "statistics every method assumes."),
+    "concepts/index": (
+        "Concepts — the theory",
+        "What each method measures, with the formulas and the assumptions."),
+    "guides/index": (
+        "Guides — how to in ChiSurf", "Step-by-step workflows in the real interface."),
+    "manual/index": (
+        "Fitting interface & examples",
+        "The fitting interface itself, and complete worked examples."),
+    "reference/index": (
+        "Reference", "File formats, settings, parameters and the plugin catalogue."),
+    "references/index": (
+        "Literature", "Every work the documentation cites, each linking to the paper."),
+}
+
+#: Sections the root index lists that are not user documentation. Development is
+#: shown only behind the authoring toggle, and builds its own node there.
+_NOT_USER_SECTIONS = {"development/index"}
 
 #: Files under a plugin that document the plugin for its maintainer, not its user.
 _MAINTAINER_PAGES = {
@@ -433,11 +454,19 @@ def build_toc(
     docs = base / "docs"
     toc = Node("ChiSurf help", kind="section")
 
-    for title, index, summary in _SECTIONS:
+    for index, caption in _root_sections(docs):
+        if index in _NOT_USER_SECTIONS:
+            continue
         path = _index_path(docs, index)
         if path is None:
             continue
-        section = Node(title, path=path, kind="section", summary=summary)
+        title, summary = _SECTION_WORDING.get(index, (caption or "", ""))
+        section = Node(
+            title or caption or page_title(path),
+            path=path,
+            kind="section",
+            summary=summary,
+        )
         # A section index without a toctree is simply a page (Getting started
         # is one long page); it still belongs in the tree, as a leaf.
         section.children = read_index(path)
@@ -465,6 +494,38 @@ def build_toc(
 
     _fill_summaries(toc)
     return toc
+
+
+def _root_sections(docs: pathlib.Path) -> list[tuple[str, str]]:
+    """Return ``(index, caption)`` for each section ``docs/index`` lists.
+
+    The sections of the application's tree are the sections of the website,
+    read from the same file — otherwise a section added to one is simply absent
+    from the other, silently and for as long as nobody opens both. (That is not
+    hypothetical: ``fundamentals/`` was published on the website and missing
+    from the help browser.)
+
+    Falls back to the known order when the root index cannot be read, so a
+    packaging accident degrades the wording rather than emptying the tree.
+    """
+    root_index = _index_path(docs, "index")
+    found: list[tuple[str, str]] = []
+    if root_index is not None:
+        for node in read_index(root_index):
+            caption = node.title if node.kind == "group" else ""
+            entries = node.children if node.kind == "group" else [node]
+            for entry in entries:
+                if entry.path is None:
+                    continue
+                try:
+                    relative = entry.path.relative_to(docs).with_suffix("").as_posix()
+                except ValueError:
+                    continue
+                if relative.endswith("/index"):
+                    found.append((relative, caption))
+    if found:
+        return found
+    return [(index, "") for index in _SECTION_WORDING]
 
 
 def _index_path(docs: pathlib.Path, index: str) -> Optional[pathlib.Path]:

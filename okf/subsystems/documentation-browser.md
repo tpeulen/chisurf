@@ -162,6 +162,15 @@ chapters live in `docs/manual/index.rst`: `build_tools/docs/convert_manual.py`
 writes `index.generated.rst` beside it and never over it, because the chapter
 structure exists nowhere in the source document.
 
+**And so are the sections.** The top level was a hard-coded tuple long after
+the levels below it were being read from the source, which is exactly how
+`docs/fundamentals/` came to be published on the website and absent from the
+application — silently, with nothing failing. Sections and their order now come
+from `docs/index.rst`. What stays in code is the *wording*: the website's
+captions are parenthetical ("Concepts (theory)") where a navigation row reads
+better with a dash, and a summary line has nowhere to live in a caption at all.
+A section nobody has worded yet still appears, under its caption.
+
 **A group comes from the page, not from a list here.** A `.. rubric::` or a `##`
 heading above a toctree names the group under it, and a `:caption:` does the
 same. Nothing in the code enumerates "Fundamentals", "Correlation methods" or

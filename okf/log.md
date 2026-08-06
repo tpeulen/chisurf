@@ -2,6 +2,12 @@
 
 ## 2026-08-06
 
+* **A section on the website was missing from the help browser, and could be again** ([documentation browser](subsystems/documentation-browser.md)).
+
+  The concept says the tree *is* the documentation's own table of contents, and the sub-levels always were — but the **top level was a hard-coded tuple** in `api/toc.py`. So `docs/fundamentals/` was published on the website and simply absent from the application: silently, with nothing failing, for as long as nobody happened to open both.
+
+  The sections and their order now come from `docs/index.rst`'s own toctrees, exactly as the levels below them do. What stays in code is only the **wording** — the website's captions are parenthetical ("Concepts (theory)") where a navigation row reads better with a dash, and a one-line summary has nowhere to live in a caption at all — keyed by index path, with the caption as the fallback for a section nobody has worded yet. `development/index` is named as not-user-documentation rather than omitted by silence. A test asserts that every directory the root index lists is either in the tree or explicitly excluded.
+
 * **Every equation in the documentation was rendered, measured and looked at** ([documentation browser](subsystems/documentation-browser.md)).
 
   **41 display formulas were wider than the text column.** Qt does not scale an oversized image down — it gives the *whole page* a horizontal scrollbar, so every paragraph on the page starts sliding sideways under the reader. A row is now split at the `\qquad`/`\quad` its author used to set two formulas side by side, which is the answer a typesetter would give; only a single indivisible formula that is still too wide is scaled. At the size pages are read at, **nothing is scaled and nothing overflows**, and at maximum zoom the splitter absorbs all but 23 rows. The split is made at brace depth zero and never at a thin space, which would strand an arrow alone on a line.

@@ -160,3 +160,31 @@ def test_maintainer_pages_are_not_offered_as_plugin_documentation():
     names = {node.path.name.lower() for node in toc_api.iter_pages(plugins)}
     assert "status.md" not in names
     assert "contract.md" not in names
+
+
+def test_the_sections_come_from_the_root_index():
+    """A section added to the website must appear in the application too.
+
+    The list used to be hard-coded here, so ``docs/fundamentals/`` was published
+    on the website and simply absent from the help browser — silently, and for
+    as long as nobody happened to open both.
+    """
+    from chisurf.plugins.core.help.api import toc as toc_api
+
+    docs = toc_api.docs_root()
+    listed = [index for index, _caption in toc_api._root_sections(docs)]
+    assert "concepts/index" in listed and "guides/index" in listed
+
+    tree = toc_api.build_toc()
+    paths = {
+        node.path.parent.name
+        for node in tree.children
+        if node.path is not None
+    }
+    for index in listed:
+        directory = index.rsplit("/", 1)[0]
+        if index in toc_api._NOT_USER_SECTIONS:
+            assert directory not in paths, f"{directory} is not user documentation"
+        elif (docs / directory).is_dir():
+            assert directory in paths, f"{directory} is on the website but not in the tree"
+
