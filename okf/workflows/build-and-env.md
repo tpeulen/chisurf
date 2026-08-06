@@ -66,6 +66,29 @@ libtiff already inside the TTTR library (see
 became a Numba kernel. `pyarrow`/`boost-histogram` went the same month, on
 ndxplorer's account rather than ChiSurf's.
 
+**A pin is not a reason to keep a library.** `boost-cpp` was removed on
+2026-08-06 *despite* that measurement, which re-solved unchanged: 250 packages
+with it, **256 without**. Nothing links it — no `find_package(Boost)`, no
+`boost/` include, and no `libboost` load command in any built extension in the
+tree or the local modules (the TTTR library says so in its own `CMakeLists.txt`:
+"Boost removed - using C++17 standard library"). The +6 is not a service boost
+was performing; it is the *shape of the solve* its stale pins were forcing.
+Compare the two closures package by package and the mechanism is plain — with
+`boost-cpp` the solver is held on an older branch throughout (icu 75 vs 78,
+qt-main build 6 vs 8, gstreamer 1.24 vs 1.26, krb5 1.21 vs 1.22, matplotlib
+3.10 vs 3.11). The fourteen font/cairo/pango packages have a single owner, and
+it is none of the obvious suspects: `gst-plugins-base` **gained a `pango`
+dependency between 1.24.11 (no font deps at all) and 1.26.11 (`pango >=1.56.4`)**,
+and GStreamer is there because Qt is. Pillow is the same build in both solves;
+pinning `matplotlib <3.11` recovers only one of the fourteen (`libraqm`). So the
+chain is `boost-cpp` → an `xz`/`icu`-era pin → `qt-main` build 6 → GStreamer
+1.24 → no Pango. Keeping a C++ library nothing compiles against, in
+order to freeze five unrelated packages at older builds, is a pin wearing a
+dependency's clothes: the next unrelated re-solve moves that branch anyway. The
+rule the measurement supports is *measure before removing*, not *never remove
+what measures badly* — when the closure delta is a side effect rather than a
+use, the use decides.
+
 Not every removal shrinks the closure, and saying which is which matters more
 than the count. Dropping `numexpr` frees **nothing**: `pytables` hard-requires
 it, so it is installed either way, and the gain is that no ChiSurf code reaches
@@ -81,8 +104,7 @@ lists must agree with each other: what the dev env declares the conda package
 ships, and what the conda runtime has the wheel declares too (as a requirement,
 or as an extra when the code detects it and works without it). Every deliberate
 difference is named in the test with its reason — `micromamba` ships but is not
-a wheel dependency, `pdb2pqr` and `latexify-py` are dev-env-only, `boost-cpp` is
-a C++ library pip cannot install. An import
+a wheel dependency, `pdb2pqr` and `latexify-py` are dev-env-only. An import
 inside a `try`, a function or an `if` is an optional feature the code is expected
 to survive without, and is deliberately not policed. So a package that is genuinely
 optional gets one of two homes: a guarded import (`psutil` for the system
@@ -138,6 +160,10 @@ Two consequences worth stating, because both were violated for months:
   `--no-build-isolation`) and git (the version fallback) remain. Whatever still
   compiles does so elsewhere — tttrlib in `build_tools/build_tttrlib.py`,
   labellib and the local modules in `build_tools/build_installer.py`.
+  **`run:` is now held to the same list**, which is how `boost-cpp` survived the
+  first sweep: the guard only read `host:`, so a build-time C++ library sitting
+  in the *runtime* list — the strangest place of the two — went unseen for
+  months. `test_recipe_needs_no_toolchain` checks both sections.
 - **An inline `script:` makes a `build.sh`/`build.bat` beside it dead.**
   rattler-build runs one or the other, and the inline script wins. Two such
   scripts sat in `rattler-recipe/` from April to August 2026 being actively

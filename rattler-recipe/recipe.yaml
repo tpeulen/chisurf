@@ -125,7 +125,10 @@ requirements:
     - pandas
     - scipy
     - numba
-    - boost-cpp
+    # boost-cpp removed: it was a build-time C++ library that outlived the build
+    # it belonged to. Nothing in the tree or in the local modules links libboost
+    # -- tttrlib builds against the C++17 standard library -- so shipping it in
+    # `run:` installed a compiler dependency into every user's environment.
     - ipython
     - notebook <7
     - pyopengl

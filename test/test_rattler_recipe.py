@@ -195,11 +195,15 @@ def test_recipe_needs_no_toolchain():
     text = _recipe_text()
     assert "\n  build:\n" not in text, "recipe declares a build: section for a build that compiles nothing"
 
-    declared = {item.split()[0].lower() for item in _section("host") if not item.startswith("${{")}
-    assert not declared & _TOOLCHAIN, (
-        f"toolchain packages in host: {sorted(declared & _TOOLCHAIN)} -- nothing in "
-        "`pip install .` uses them"
-    )
+    for section in ("host", "run"):
+        declared = {
+            item.split()[0].lower() for item in _section(section)
+            if not item.startswith("${{")
+        }
+        assert not declared & _TOOLCHAIN, (
+            f"toolchain packages in {section}: {sorted(declared & _TOOLCHAIN)} -- nothing in "
+            "`pip install .` uses them"
+        )
 
 
 def test_recipe_has_no_ignored_build_script():

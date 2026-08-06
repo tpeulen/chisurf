@@ -44,7 +44,10 @@ pillow = "*"
 pandas = "*"
 scipy = "*"
 numba = "*"
-boost-cpp = "*"
+# boost-cpp was dropped: nothing links it. The C++ that used to want Boost --
+# the burbulator library and the Cython extensions -- is retired, tttrlib
+# builds against the C++17 standard library instead, and no built extension
+# in the tree or in the local modules records a libboost load command.
 pdb2pqr = "*"
 ipython = "*"
 notebook = "<7"

@@ -119,7 +119,6 @@ _SHIPPED_ONLY = {
 #: Runtime packages a wheel cannot or need not declare, with the reason.
 _NOT_ON_PYPI = {
     "micromamba": "a conda package manager, not a Python distribution",
-    "boost-cpp": "a C++ library the extensions are built against, not installed by pip",
 }
 
 #: Distribution spellings that differ between conda and PyPI.

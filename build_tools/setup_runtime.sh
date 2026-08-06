@@ -46,7 +46,6 @@ DEPS=(
     "pyyaml"
     "markdown"
     "click"
-    "boost-cpp"
     "ipython"
     "notebook<7"
     "pyopengl"
