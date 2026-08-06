@@ -14,8 +14,8 @@ This is the short handoff for future work. For architecture details, read:
 - `meta.ping`, `meta.methods`, and `meta.protocol` are implemented.
 - `ChisurfClient` lives in `chisurf.core.api._client`.
 - `ChiSurfAPI` and `PluginContext` live in `chisurf.core.api`.
-- RPC server methods are registered from `chisurf/server/server_methods.json`.
-- Client wrapper methods are generated from `chisurf/server/client_methods.json`.
+- RPC server methods are registered from {src}`chisurf/server/server_methods.json`.
+- Client wrapper methods are generated from {src}`chisurf/server/client_methods.json`.
 - GUI/local-object compatibility remains for many workflows.
 - Transparent proxies are not part of the normal GUI startup path.
 - Service failures use structured metadata through `service_error()` where migrated.

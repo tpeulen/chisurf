@@ -11,7 +11,7 @@
 | ZMQ JSON-RPC server | Working transport, `ServiceDispatcher`, session state, event bus |
 | Core "namespace" RPC methods | `dataset.*`, `fit.*`, `parameter.*`, `project.*`, `session.*`, `model.*`, `graph.*` |
 | Plugin discovery | `iter_plugins()` walks `__path__` and parses AST for `name`/`cli_entrypoint` — works well |
-| CLI registration | `chisurf/core/cli.py` reads `manifest.json` `entrypoints.cli` first and falls back to the AST `cli_entrypoint`; both are scanned without importing plugin code |
+| CLI registration | {src}`chisurf/core/cli.py` reads `manifest.json` `entrypoints.cli` first and falls back to the AST `cli_entrypoint`; both are scanned without importing plugin code |
 
 ### What needs to change
 
@@ -384,7 +384,7 @@ someone who watched a button being pressed has not learned where it is.
 A step whose target does not resolve is **shown centred rather than skipped**, so
 a wrong target never fails loudly — it quietly turns the tour into a slideshow.
 Always walk a new tour headlessly and confirm every step resolves.
-`test/test_plugin_help_guide_seam.py` enforces all of this against a **shrinking**
+{src}`test/test_plugin_help_guide_seam.py` enforces all of this against a **shrinking**
 allow-list; adding your plugin to that list is never the fix.
 
 ---
@@ -687,7 +687,7 @@ class PluginRegistry:
         """Build plugin menu from manifests."""
 ```
 
-The registry lives at `chisurf/core/plugin/registry.py`. It reads manifest.json (preferred) or falls back to AST parsing of `__init__.py` for backward compatibility.
+The registry lives at {src}`chisurf/core/plugin/registry.py`. It reads manifest.json (preferred) or falls back to AST parsing of `__init__.py` for backward compatibility.
 
 ---
 
@@ -696,8 +696,8 @@ The registry lives at `chisurf/core/plugin/registry.py`. It reads manifest.json 
 ### Phase 0 — Foundation (docs + contracts)
 
 1. [x] Write this architecture plan
-2. [ ] Create `chisurf/core/plugin/manifest.py` with `PluginManifest` dataclass + schema validation
-3. [ ] Create `chisurf/core/plugin/registry.py` with `PluginRegistry`
+2. [ ] Create {src}`chisurf/core/plugin/manifest.py` with `PluginManifest` dataclass + schema validation
+3. [ ] Create {src}`chisurf/core/plugin/registry.py` with `PluginRegistry`
 4. [ ] Add `manifest.json` validation tests
 5. [ ] Add `PluginClient` protocol and `InProcessClient` implementation
 6. [ ] Add state patch helpers to `SessionState`
@@ -727,7 +727,7 @@ The registry lives at `chisurf/core/plugin/registry.py`. It reads manifest.json 
 
 **Why the CLI does not call `registry.register_cli`.** That method imports every
 plugin's CLI object to attach it to the Click group, which would make `csc --help`
-import the whole plugin tree — Qt, tttrlib and all. `chisurf/core/cli.py` instead
+import the whole plugin tree — Qt, tttrlib and all. {src}`chisurf/core/cli.py` instead
 reads `entrypoints.cli` during the same filesystem+AST scan it already performs,
 registers a thin forwarding command per plugin, and imports the target module only
 when that command is actually invoked. `PluginRegistry.register_cli` remains for

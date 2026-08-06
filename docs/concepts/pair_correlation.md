@@ -195,8 +195,8 @@ the trend.
 
 ## References
 
-- {cite}`digman2009`
-- {cite}`digman2012`
-- {cite}`hebert2005`
-- {cite}`cardarelli2010`
+- {cite}`digman2009` — pair correlation itself: diffusion measured between two points, not within one.
+- {cite}`digman2012` — the scanning-ICS family this belongs to, and how the scan sets the timescales.
+- {cite}`hebert2005` — spatiotemporal image correlation - the velocity field a pCF carpet complements.
+- {cite}`cardarelli2010` — pCF applied to transport through the nuclear pore, the canonical demonstration.
 

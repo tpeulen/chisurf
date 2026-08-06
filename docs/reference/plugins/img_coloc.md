@@ -84,5 +84,5 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Source
 
 - Plugin package: `chisurf/plugins/microscopy/img_coloc/`
-- Manifest: `chisurf/plugins/microscopy/img_coloc/manifest.json`
-- UI spec: `chisurf/plugins/microscopy/img_coloc/gui/coloc.view.json`
+- Manifest: {src}`chisurf/plugins/microscopy/img_coloc/manifest.json`
+- UI spec: {src}`chisurf/plugins/microscopy/img_coloc/gui/coloc.view.json`

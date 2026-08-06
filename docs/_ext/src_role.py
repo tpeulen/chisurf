@@ -75,8 +75,7 @@ def src_role(name, rawtext, text, lineno, inliner, options=None, content=None):
             )
         )
 
-    label = caption or (f"{resolved.path.name}::{resolved.symbol}" if resolved.symbol
-                        else relative)
+    label = caption or source_links.link_label(body, resolved)
     node = nodes.reference(rawtext, "", nodes.literal(rawtext, label), refuri=uri)
     return [node], messages
 

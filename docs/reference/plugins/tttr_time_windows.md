@@ -28,4 +28,4 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 ## Source
 
 - Plugin package: `chisurf/plugins/tttr/tttr_time_windows/`
-- Manifest: `chisurf/plugins/tttr/tttr_time_windows/manifest.json`
+- Manifest: {src}`chisurf/plugins/tttr/tttr_time_windows/manifest.json`

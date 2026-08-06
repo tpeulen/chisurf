@@ -37,5 +37,5 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Source
 
 - Plugin package: `chisurf/plugins/microscopy/img_drift/`
-- Manifest: `chisurf/plugins/microscopy/img_drift/manifest.json`
-- UI spec: `chisurf/plugins/microscopy/img_drift/gui/drift.view.json`
+- Manifest: {src}`chisurf/plugins/microscopy/img_drift/manifest.json`
+- UI spec: {src}`chisurf/plugins/microscopy/img_drift/gui/drift.view.json`

@@ -20,4 +20,4 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 ## Source
 
 - Plugin package: `chisurf/plugins/tttr/converter/`
-- Manifest: `chisurf/plugins/tttr/converter/manifest.json`
+- Manifest: {src}`chisurf/plugins/tttr/converter/manifest.json`

@@ -33,4 +33,4 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 ## Source
 
 - Plugin package: `chisurf/plugins/core/database_connector/`
-- Manifest: `chisurf/plugins/core/database_connector/manifest.json`
+- Manifest: {src}`chisurf/plugins/core/database_connector/manifest.json`

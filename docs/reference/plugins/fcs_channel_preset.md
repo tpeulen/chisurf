@@ -25,5 +25,5 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Source
 
 - Plugin package: `chisurf/plugins/fcs/fcs_channel_preset/`
-- Manifest: `chisurf/plugins/fcs/fcs_channel_preset/manifest.json`
-- UI spec: `chisurf/plugins/fcs/fcs_channel_preset/gui/fcs_channel_preset.view.json`
+- Manifest: {src}`chisurf/plugins/fcs/fcs_channel_preset/manifest.json`
+- UI spec: {src}`chisurf/plugins/fcs/fcs_channel_preset/gui/fcs_channel_preset.view.json`

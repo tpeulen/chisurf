@@ -91,7 +91,7 @@ reference the correction factors need.
 ## See also
 
 - Theory: {ref}`concept-md-bridges`, {ref}`concept-multidimensional-exploration`.
-- `ndxplorer/analysis/burst_bridge.py` (client); `chisurf/server/services/pda.py`
+- `ndxplorer/analysis/burst_bridge.py` (client); {src}`chisurf/server/services/pda.py`
   (`pda.from_bursts`); the burst-FCS ({doc}`16_fret_fcs`) and burst-MLE
   ({doc}`21_lifetime_from_bursts`) analyses the other targets drive.
 ```

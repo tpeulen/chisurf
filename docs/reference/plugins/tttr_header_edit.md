@@ -26,4 +26,4 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 - Plugin package: `chisurf/plugins/tttr/tttr_header_edit/`
 - Manifest: `chisurf/plugins/tttr/tttr_header_edit/manifest.json`
-- UI spec: `chisurf/plugins/tttr/tttr_header_edit/gui/header.view.json`
+- UI spec: {src}`chisurf/plugins/tttr/tttr_header_edit/gui/header.view.json`

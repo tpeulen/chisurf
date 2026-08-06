@@ -89,8 +89,8 @@ $$
 - **Background $b$** — dark counts and ambient light add a constant offset
   (measured from a buffer run or fitted).
 - **Pile-up $P_i$** — high count rates preferentially drop *late* photons,
-  shortening the apparent lifetime; corrected per-channel on the model (Coates
-  1968) so the measured Poisson statistics are preserved. The correction divides
+  shortening the apparent lifetime; corrected per-channel on the model
+  ({cite}`coates1968`) so the measured Poisson statistics are preserved. The correction divides
   by the excitation pulses that have not yet produced a detection, so it needs
   the *measurement time* (nuisance $t_{exp}$) and the *repetition rate* of the
   run: if the two imply fewer pulses than there are recorded photons the
@@ -109,7 +109,7 @@ so the residuals stay Poisson.
   per-burst and per-pixel fits, where a whole decay may hold only tens to
   hundreds of photons. There the Gaussian approximation biases the lifetime.
   ChiSurf routes these through the tttrlib $\mathrm{Fit23/24/25}$ estimators (the
-  Maus-2001 $2I^*$ statistic); see {doc}`/guides/21_lifetime_from_bursts`.
+  $2I^*$ statistic of {cite}`maus2001`); see {doc}`/guides/21_lifetime_from_bursts`.
 
 Both fit in convolved space; they differ in the statistic and in how many
 parameters a given photon budget can support.
@@ -180,21 +180,14 @@ FRET distance distributions and anisotropy decays are resolved; see
 - Guides: {doc}`/guides/10_lifetime_anisotropy_fitting` ·
   {doc}`/guides/21_lifetime_from_bursts` · {doc}`/guides/32_nsalex_lifetime`.
 - Implementation: convolution kernels
-  `chisurf/core/fluorescence/tcspc/convolve.py`; nuisances (pile-up, DNL)
-  `chisurf/core/fluorescence/tcspc/corrections.py`; IRF helpers
-  `chisurf/core/fluorescence/tcspc/irf.py`; lifetime models
-  `chisurf/core/models/tcspc/`; Poisson-MLE facade
-  `chisurf/core/fluorescence/mle/`.
-- Key literature: D. V. O'Connor & D. Phillips, *Time-correlated Single Photon
-  Counting* (1984) — the standard treatment of reconvolution and the nuisance
-  terms; W. Becker, *Advanced Time-Correlated Single Photon Counting Techniques*
-  (2005) — the instrumentation, pile-up and differential non-linearity;
-  J. R. Lakowicz, *Principles of Fluorescence Spectroscopy* (3rd ed., 2006),
-  lifetime chapters — the two averages and their correct use; P. B. Coates,
-  *The correction for photon "pile-up" in the measurement of radiative lifetimes*,
-  J. Phys. E (1968) — the pile-up correction applied above;
-  M. Maus, M. Cotlet, J. Hofkens, T. Gensch, F. C. De Schryver, J. Schaffer &
-  C. A. M. Seidel, *An experimental comparison of the maximum likelihood
-  estimation and nonlinear least-squares fluorescence lifetime analysis of single
-  molecules*, Anal. Chem. (2001) — the $2I^*$ statistic used for burst- and
+  {src}`chisurf/core/fluorescence/tcspc/convolve.py`; nuisances (pile-up, DNL)
+  {src}`chisurf/core/fluorescence/tcspc/corrections.py`; IRF helpers
+  {src}`chisurf/core/fluorescence/tcspc/irf.py`; lifetime models
+  {src}`chisurf/core/models/tcspc/lifetime.py`; Poisson-MLE facade
+  {src}`chisurf/core/fluorescence/mle/__init__.py`.
+- Key literature: {cite}`oconnor1984` is the standard treatment of reconvolution
+  and the nuisance terms; {cite}`becker2005` the instrumentation, pile-up and
+  differential non-linearity; {cite}`lakowicz2006` (lifetime chapters) the two
+  averages and their correct use; {cite}`coates1968` the pile-up correction
+  applied above; {cite}`maus2001` the $2I^*$ statistic used for burst- and
   pixel-wise fits.

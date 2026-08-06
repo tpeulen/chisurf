@@ -73,5 +73,5 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Source
 
 - Plugin package: `chisurf/plugins/microscopy/clsm/`
-- Manifest: `chisurf/plugins/microscopy/clsm/manifest.json`
-- UI spec: `chisurf/plugins/microscopy/clsm/gui/clsm.view.json`
+- Manifest: {src}`chisurf/plugins/microscopy/clsm/manifest.json`
+- UI spec: {src}`chisurf/plugins/microscopy/clsm/gui/clsm.view.json`

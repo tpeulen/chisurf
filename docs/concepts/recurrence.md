@@ -146,7 +146,7 @@ buys timescale at a steep cost in precision.
 
 RASP in ChiSurf operates purely on the **per-burst table** (arrival time plus
 proximity ratio / efficiency) — no photon-level access is needed. The routines in
-`chisurf/core/fluorescence/burst/recurrence.py` compute $P_\text{same}(\tau)$
+{src}`chisurf/core/fluorescence/burst/recurrence.py` compute $P_\text{same}(\tau)$
 from the burst arrival times and the recurrence histogram for a chosen efficiency
 sub-population and recurrence window. See {doc}`/guides/02_recurrence_rasp` for the
 worked example.
@@ -163,7 +163,7 @@ folder in which one molecule's fragments are one burst.
 - Guide: {doc}`/guides/02_recurrence_rasp`.
 - The same probability used to merge split bursts: {ref}`concept-burst-fusion`.
 - Related intra-burst dynamics probes: {ref}`concept-bva`, {ref}`concept-burst-2cde`.
-- ChiSurf source: `chisurf/core/fluorescence/burst/recurrence.py`.
+- ChiSurf source: {src}`chisurf/core/fluorescence/burst/recurrence.py`.
 - Hoffmann, A., Nettels, D., Gopich, I. V., Schuler, B. (2011). Quantifying
   heterogeneity and dynamics in single-molecule FRET via recurrence analysis of
   single particles (RASP). *Physical Chemistry Chemical Physics*, 13, 1857–1871.

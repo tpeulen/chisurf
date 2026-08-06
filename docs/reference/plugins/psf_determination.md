@@ -51,5 +51,5 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Source
 
 - Plugin package: `chisurf/plugins/microscopy/psf_determination/`
-- Manifest: `chisurf/plugins/microscopy/psf_determination/manifest.json`
-- UI spec: `chisurf/plugins/microscopy/psf_determination/gui/psf.view.json`
+- Manifest: {src}`chisurf/plugins/microscopy/psf_determination/manifest.json`
+- UI spec: {src}`chisurf/plugins/microscopy/psf_determination/gui/psf.view.json`

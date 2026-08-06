@@ -20,4 +20,4 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 ## Source
 
 - Plugin package: `chisurf/plugins/modelling/structure_tools/`
-- Manifest: `chisurf/plugins/modelling/structure_tools/manifest.json`
+- Manifest: {src}`chisurf/plugins/modelling/structure_tools/manifest.json`

@@ -26,4 +26,4 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 ## Source
 
 - Plugin package: `chisurf/plugins/calculator/fcs_saturation_calc/`
-- Manifest: `chisurf/plugins/calculator/fcs_saturation_calc/manifest.json`
+- Manifest: {src}`chisurf/plugins/calculator/fcs_saturation_calc/manifest.json`

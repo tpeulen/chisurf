@@ -21,4 +21,4 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 ## Source
 
 - Plugin package: `chisurf/plugins/fluorescence_decay/lltf/`
-- Manifest: `chisurf/plugins/fluorescence_decay/lltf/manifest.json`
+- Manifest: {src}`chisurf/plugins/fluorescence_decay/lltf/manifest.json`

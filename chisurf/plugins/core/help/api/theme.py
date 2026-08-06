@@ -172,6 +172,10 @@ pre {{
   margin: 8px 0;
 }}
 pre code {{ background-color: {theme.code_background}; color: {theme.text}; }}
+/* A link into the source keeps the code font but takes the link colour --
+   otherwise it is indistinguishable from the code spans around it and nobody
+   discovers it is clickable. */
+a code {{ color: {theme.link}; }}
 blockquote {{
   color: {theme.muted};
   border-left: 3px solid {theme.quote_bar};

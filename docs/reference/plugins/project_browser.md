@@ -38,4 +38,4 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 ## Source
 
 - Plugin package: `chisurf/plugins/core/project_browser/`
-- Manifest: `chisurf/plugins/core/project_browser/manifest.json`
+- Manifest: {src}`chisurf/plugins/core/project_browser/manifest.json`

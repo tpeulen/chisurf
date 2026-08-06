@@ -78,9 +78,22 @@ class Entry:
         return parts[-1] if parts else first
 
     @property
+    def author_list(self) -> list[str]:
+        """Surnames of the authors, in order."""
+        raw = re.split(r",| and |&", self.authors)
+        names = []
+        for piece in raw:
+            piece = piece.strip().rstrip(".")
+            if not piece or piece.lower() in ("et al", "jr", "sr"):
+                continue
+            parts = [p for p in piece.replace(".", " ").split() if len(p) > 1]
+            names.append(parts[-1] if parts else piece)
+        return names
+
+    @property
     def multiple_authors(self) -> bool:
         """Whether the work has more than one author."""
-        return "," in self.authors or " and " in self.authors
+        return len(self.author_list) > 1
 
 
 def _docs_root() -> pathlib.Path:
@@ -157,11 +170,23 @@ def entry_url(entry: Entry) -> str:
 
 
 def short_citation(entry: Entry) -> str:
-    """Return the words a citation reads as: "Magde et al. (1972)"."""
-    author = entry.first_author
-    suffix = " et al." if entry.multiple_authors else ""
+    """Return the words a citation reads as.
+
+    One author is named, two are both named, three or more become "et al." —
+    the usual convention, and worth following because "O'Connor et al." for a
+    two-author book is the kind of thing a reader notices and mistrusts.
+    """
+    names = entry.author_list
     year = f" ({entry.year})" if entry.year else ""
-    return f"{author}{suffix}{year}".strip()
+    if not names:
+        return f"{entry.key}{year}".strip()
+    if len(names) == 1:
+        who = names[0]
+    elif len(names) == 2:
+        who = f"{names[0]} & {names[1]}"
+    else:
+        who = f"{names[0]} et al."
+    return f"{who}{year}".strip()
 
 
 def format_entry(entry: Entry) -> str:

@@ -25,5 +25,5 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Source
 
 - Plugin package: `chisurf/plugins/microscopy/img_pixel_nb/`
-- Manifest: `chisurf/plugins/microscopy/img_pixel_nb/manifest.json`
-- UI spec: `chisurf/plugins/microscopy/img_pixel_nb/gui/nb.view.json`
+- Manifest: {src}`chisurf/plugins/microscopy/img_pixel_nb/manifest.json`
+- UI spec: {src}`chisurf/plugins/microscopy/img_pixel_nb/gui/nb.view.json`

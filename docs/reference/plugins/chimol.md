@@ -25,5 +25,5 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Source
 
 - Plugin package: `chisurf/plugins/chimol/`
-- Manifest: `chisurf/plugins/chimol/manifest.json`
-- UI spec: `chisurf/plugins/chimol/chimol/app/volume.view.json`
+- Manifest: {src}`chisurf/plugins/chimol/manifest.json`
+- UI spec: {src}`chisurf/plugins/chimol/chimol/app/volume.view.json`

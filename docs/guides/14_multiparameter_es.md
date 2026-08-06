@@ -35,7 +35,7 @@ dir_a = cal.direct_excitation_from_acceptor_only(i_da, i_aa)
 est = cal.global_es_correction(i_dd, i_da, i_aa, labels, alpha=leak, delta=dir_a)
 ```
 
-The per-burst $E$/$S$ are computed in `chisurf/core/fluorescence/burst/es.py`
+The per-burst $E$/$S$ are computed in {src}`chisurf/core/fluorescence/burst/es.py`
 (ALEX/PIE-aware); the burst browser plots the 2-D histogram and the
 `fret_calculator` / calibration tools manage the factors. See also the
 [RCM detection calibration](07_rcm_calibration.md) for the full channel matrix.
@@ -55,4 +55,4 @@ Multi-parameter E–S histogram.
 
 ## See also
 
-- `chisurf/core/fluorescence/burst/es.py`, `chisurf/core/fluorescence/fret/calibration.py`.
+- {src}`chisurf/core/fluorescence/burst/es.py`, {src}`chisurf/core/fluorescence/fret/calibration.py`.

@@ -99,9 +99,8 @@ expressed.
 - Simulation configuration: `IMP/swarm/examples/biofilm_growth.yaml` in the
   modelling framework beside ChiSurf; the runner is
   `IMP.swarm.core.visual_runner`.
-- Key literature: de Beer, Stoodley, Roe & Lewandowski 1994 (Biotechnol.
-  Bioeng. 43:1131, oxygen microelectrode profiles in biofilms); Stewart &
-  Franklin 2008 (Nat. Rev. Microbiol. 6:199, physiological heterogeneity in
-  biofilms); Lardon et al. 2011 (Environ. Microbiol. 13:2416, iDynoMiCS);
-  Picioreanu, van Loosdrecht & Heijnen 1998 (Biotechnol. Bioeng. 58:101,
-  mathematical modelling of biofilm structure).
+- Key literature: {cite}`debeer1994` measures the oxygen profiles through a
+  biofilm; {cite}`stewart2008` on why a biofilm is not one population;
+  {cite}`lardon2011` the individual-based simulator this demonstration follows;
+  {cite}`picioreanu1998` on the diffusion-limited growth that produces the
+  finger-like structure.

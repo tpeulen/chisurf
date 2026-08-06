@@ -104,7 +104,7 @@ its criterion is not a result.** Quote both.
 
 ## References
 
-- {cite}`nieuwenhuizen2013`
-- {cite}`vanheel2005`
-- {cite}`banterle2013`
+- {cite}`nieuwenhuizen2013` — Fourier ring correlation as a resolution measure for localisation microscopy.
+- {cite}`vanheel2005` — where the 1/7 and 3-sigma thresholds come from, and what each assumes.
+- {cite}`banterle2013` — the FRC threshold refined for super-resolution images specifically.
 

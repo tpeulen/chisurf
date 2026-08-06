@@ -74,6 +74,6 @@ You can manually trigger a release build using the `workflow_dispatch` trigger i
 
 ## Build/Publish Notes
 
-- **Version Persistence**: The `rattler-recipe/generate_version.py` script dynamically computes the version from git tags.
+- **Version Persistence**: The {src}`rattler-recipe/generate_version.py` script dynamically computes the version from git tags.
 - **Installer Naming**: Installers are versioned (e.g., `ChiSurf-Windows-Setup-26.1.exe`).
 - **Release Notes**: GitHub Release notes are automatically generated from commit messages between the current and previous tag.

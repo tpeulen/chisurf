@@ -151,7 +151,7 @@ duration. `simulated.true_responses()` hands back the declared instrument respon
 and background, which you can pass to `load_mfd_data(..., responses=...)` to separate
 whatever you are testing from the contamination of the estimated one.
 
-`examples/mfd_dynamics_timescales.py` runs all four regimes and fits each one back.
+{src}`examples/mfd_dynamics_timescales.py` runs all four regimes and fits each one back.
 Bear in mind what it proves: the simulator shares its physics with the model, so it
 is a **code** test. It shows the machinery is wired correctly, not that the physics
 is right.

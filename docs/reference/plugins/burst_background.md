@@ -25,5 +25,5 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Source
 
 - Plugin package: `chisurf/plugins/burst/burst_background/`
-- Manifest: `chisurf/plugins/burst/burst_background/manifest.json`
-- UI spec: `chisurf/plugins/burst/burst_background/gui/background.view.json`
+- Manifest: {src}`chisurf/plugins/burst/burst_background/manifest.json`
+- UI spec: {src}`chisurf/plugins/burst/burst_background/gui/background.view.json`

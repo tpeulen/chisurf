@@ -309,8 +309,8 @@ does not know.
 ## References
 
 - {cite}`hellenkamp2018` — a multi-laboratory benchmark study.* Nat Methods 15:669–676.
-- {cite}`lee2005`
-- {cite}`sisamakis2010`
-- {cite}`kalinin2010`
+- {cite}`lee2005` — the ALEX correction scheme and the 1/S-versus-E construction used here.
+- {cite}`sisamakis2010` — the multiparameter detection scheme and the correction factors it rests on.
+- {cite}`kalinin2010` — photon distribution analysis combined with lifetime, and what each adds.
 - {cite}`barth2022` — I. Theory of FRET-lines.* J Chem Phys 156:141501.
 

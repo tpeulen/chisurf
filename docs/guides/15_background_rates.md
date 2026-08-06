@@ -45,4 +45,4 @@ Background from inter-photon times.
 
 ## See also
 
-- `chisurf/core/fluorescence/burst/background.py`, `.../irf_bg.py`; plugin `burst_background`.
+- {src}`chisurf/core/fluorescence/burst/background.py`, `.../irf_bg.py`; plugin `burst_background`.

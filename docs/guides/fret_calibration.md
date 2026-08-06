@@ -365,7 +365,7 @@ push_calibration_to_ndx(ndx_window, calib)
 `tttrlib` photon simulation (recorded on `GroundTruth.gamma`), so an end-to-end
 calibration can be checked against ground truth (simulate → select bursts →
 correct → recover the true efficiencies). See
-`test/plugins/burst/test_calibration_simulation.py` and the example notebook.
+{src}`test/plugins/burst/test_calibration_simulation.py` and the example notebook.
 
 ## See also
 
@@ -377,12 +377,13 @@ correct → recover the true efficiencies). See
 - Where E and S come from: [multi-parameter E–S](14_multiparameter_es.md);
   the background rates the correction subtracts:
   [background rates](15_background_rates.md).
-- Source: `chisurf/core/fluorescence/fret/calibration.py`,
-  `chisurf/core/fluorescence/burst/es.py`,
-  `chisurf/core/fluorescence/crosstalk.py`.
+- Source: {src}`chisurf/core/fluorescence/fret/calibration.py`,
+  {src}`chisurf/core/fluorescence/burst/es.py`,
+  {src}`chisurf/core/fluorescence/crosstalk.py`.
 
 ## References
 
-- {cite}`hellenkamp2018` — a multi-laboratory benchmark study", *Nat. Methods* **15**, 669 (2018).
-- {cite}`lee2005`
+- {cite}`hellenkamp2018` — the multi-laboratory benchmark: the reference
+  protocol and the correction conventions used here.
+- {cite}`lee2005` — where the $\gamma$ and $\beta$ from the E-S line come from.
 

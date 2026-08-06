@@ -59,5 +59,5 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Source
 
 - Plugin package: `chisurf/plugins/microscopy/img_flow/`
-- Manifest: `chisurf/plugins/microscopy/img_flow/manifest.json`
-- UI spec: `chisurf/plugins/microscopy/img_flow/gui/flow.view.json`
+- Manifest: {src}`chisurf/plugins/microscopy/img_flow/manifest.json`
+- UI spec: {src}`chisurf/plugins/microscopy/img_flow/gui/flow.view.json`

@@ -30,4 +30,4 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 ## Source
 
 - Plugin package: `chisurf/plugins/vv_vh_g_factor/`
-- Manifest: `chisurf/plugins/vv_vh_g_factor/manifest.json`
+- Manifest: {src}`chisurf/plugins/vv_vh_g_factor/manifest.json`

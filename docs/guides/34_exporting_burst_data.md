@@ -60,6 +60,6 @@ scatter by `State` in ndX gives the recovered state trajectory directly.
 
 ## See also
 
-- `chisurf/plugins/burst/burst_h2mm/core/export.py`, `chisurf/plugins/burst/bid_to_analysis/`.
+- {src}`chisurf/plugins/burst/burst_h2mm/core/export.py`, `chisurf/plugins/burst/bid_to_analysis/`.
 - What the index ranges being exported mean: [timestamps and bursts](33_timestamps_and_bursts.md).
 - The analysis that produces the `State` column: [H2MM](19_h2mm_hidden_markov.md).

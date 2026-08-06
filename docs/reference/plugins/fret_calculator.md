@@ -47,6 +47,6 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Source
 
 - Plugin package: `chisurf/plugins/calculator/fret_calculator/`
-- Manifest: `chisurf/plugins/calculator/fret_calculator/manifest.json`
-- UI spec: `chisurf/plugins/calculator/fret_calculator/gui/fret.view.json`
-- UI spec: `chisurf/plugins/calculator/fret_calculator/gui/homofret.view.json`
+- Manifest: {src}`chisurf/plugins/calculator/fret_calculator/manifest.json`
+- UI spec: {src}`chisurf/plugins/calculator/fret_calculator/gui/fret.view.json`
+- UI spec: {src}`chisurf/plugins/calculator/fret_calculator/gui/homofret.view.json`

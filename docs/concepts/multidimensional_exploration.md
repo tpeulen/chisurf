@@ -104,7 +104,7 @@ means the transform is inspectable rather than baked into a loader.
 
 Those equations are user-editable text, so they cannot be handed to Python's
 `eval`. ChiSurf provides a shared **safe expression engine**
-(`chisurf/core/expressions.py`) that ndX uses when present: it parses an
+({src}`chisurf/core/expressions.py`) that ndX uses when present: it parses an
 expression to an abstract syntax tree and walks it against an explicit
 **allow-list** of node types, functions (`exp`, `sqrt`, `log`, trigonometry, …)
 and constants ($\pi$, $e$). A name that is not a known column, a listed function
@@ -225,8 +225,8 @@ individual analyses have their own concept pages.
 
 ## References
 
-- {cite}`sisamakis2010`
-- {cite}`kalinin2010`
-- {cite}`mcinnes2018`
-- {cite}`campello2013`
+- {cite}`sisamakis2010` — the multiparameter detection scheme and the correction factors it rests on.
+- {cite}`kalinin2010` — photon distribution analysis combined with lifetime, and what each adds.
+- {cite}`mcinnes2018` — the embedding used to lay out a many-dimensional burst set in two.
+- {cite}`campello2013` — the density-based clustering that finds populations without being told how many.
 

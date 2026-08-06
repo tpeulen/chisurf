@@ -21,5 +21,5 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 ## Source
 
 - Plugin package: `chisurf/plugins/traj/traj_save_topology/`
-- Manifest: `chisurf/plugins/traj/traj_save_topology/manifest.json`
-- UI spec: `chisurf/plugins/traj/traj_save_topology/save_topology.view.json`
+- Manifest: {src}`chisurf/plugins/traj/traj_save_topology/manifest.json`
+- UI spec: {src}`chisurf/plugins/traj/traj_save_topology/save_topology.view.json`

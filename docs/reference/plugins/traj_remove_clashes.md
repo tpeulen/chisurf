@@ -27,5 +27,5 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Source
 
 - Plugin package: `chisurf/plugins/traj/traj_remove_clashes/`
-- Manifest: `chisurf/plugins/traj/traj_remove_clashes/manifest.json`
-- UI spec: `chisurf/plugins/traj/traj_remove_clashes/remove_clashes.view.json`
+- Manifest: {src}`chisurf/plugins/traj/traj_remove_clashes/manifest.json`
+- UI spec: {src}`chisurf/plugins/traj/traj_remove_clashes/remove_clashes.view.json`

@@ -41,5 +41,5 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Source
 
 - Plugin package: `chisurf/plugins/microscopy/img_pixel_phasor/`
-- Manifest: `chisurf/plugins/microscopy/img_pixel_phasor/manifest.json`
-- UI spec: `chisurf/plugins/microscopy/img_pixel_phasor/gui/phasor.view.json`
+- Manifest: {src}`chisurf/plugins/microscopy/img_pixel_phasor/manifest.json`
+- UI spec: {src}`chisurf/plugins/microscopy/img_pixel_phasor/gui/phasor.view.json`

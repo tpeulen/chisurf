@@ -269,7 +269,11 @@ brightnesses.
 * [Correlation and FCS basics](fcs_correlation.md)
 * [Photophysics simulation](photophysics_simulation.md)
 * [Guide: FCS saturation and focal-volume expansion](../guides/56_fcs_saturation.md)
-* {cite}`widengren1995`
-* {cite}`widengren2000`
-* {cite}`nagy2005`
-* {cite}`gregor2005`
+* {cite}`widengren1995` — the triplet term, and the power dependence that
+  distinguishes it from what saturation does.
+* {cite}`widengren2000` — photoinduced isomerisation, the other dark state a
+  power series has to account for.
+* {cite}`nagy2005` — observation volumes and the gamma-factors that change when
+  the volume is no longer Gaussian.
+* {cite}`gregor2005` — how optical saturation distorts an FCS measurement, and
+  the correction this page implements.

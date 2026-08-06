@@ -26,5 +26,5 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Source
 
 - Plugin package: `chisurf/plugins/traj/traj_align/`
-- Manifest: `chisurf/plugins/traj/traj_align/manifest.json`
-- UI spec: `chisurf/plugins/traj/traj_align/align_trajectory.view.json`
+- Manifest: {src}`chisurf/plugins/traj/traj_align/manifest.json`
+- UI spec: {src}`chisurf/plugins/traj/traj_align/align_trajectory.view.json`

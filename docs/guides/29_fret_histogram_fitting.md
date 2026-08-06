@@ -20,7 +20,7 @@ for the peak positions.
 ## In ChiSurf
 
 Burst features are clustered/fit with a scikit-learn `GaussianMixture` in
-`chisurf/plugins/burst/burst_selection/api/features.py`; the same one-dimensional
+{src}`chisurf/plugins/burst/burst_selection/api/features.py`; the same one-dimensional
 fit applies to the FRET efficiency:
 
 ```python
@@ -53,4 +53,4 @@ FRET-efficiency histogram fit.
 
 ## See also
 
-- `chisurf/plugins/burst/burst_selection/api/features.py`; shot-noise-aware fitting: [PDA](11_pda2c.md).
+- {src}`chisurf/plugins/burst/burst_selection/api/features.py`; shot-noise-aware fitting: [PDA](11_pda2c.md).

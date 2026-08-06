@@ -31,5 +31,5 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Source
 
 - Plugin package: `chisurf/plugins/fluorescence_decay/tr_anisotropy/`
-- Manifest: `chisurf/plugins/fluorescence_decay/tr_anisotropy/manifest.json`
-- UI spec: `chisurf/plugins/fluorescence_decay/tr_anisotropy/anisotropy.view.json`
+- Manifest: {src}`chisurf/plugins/fluorescence_decay/tr_anisotropy/manifest.json`
+- UI spec: {src}`chisurf/plugins/fluorescence_decay/tr_anisotropy/anisotropy.view.json`

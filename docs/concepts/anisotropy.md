@@ -232,14 +232,12 @@ difference between the channels. ChiSurf supports both a single stacked
 - Guide: {doc}`/guides/10_lifetime_anisotropy_fitting`; the intensity decay it
   rides on: {ref}`concept-tcspc-lifetime`.
 - Implementation: polarized-decay kernels
-  `chisurf/core/fluorescence/anisotropy/` (`decay.py` builds VV/VH from the
-  magic-angle decay and the rotation spectrum; `integrals.py`, `kappa2.py`);
-  anisotropy parameter group and combined-fit model
-  `chisurf/core/models/tcspc/anisotropy.py` and
-  `chisurf/core/models/tcspc/lifetime.py`.
-- Reference: J. R. Lakowicz, *Principles of Fluorescence Spectroscopy*
-  (3rd ed., 2006), anisotropy chapters (steady-state and time-resolved
-  anisotropy, the Perrin equation, hindered rotors).
-- Reference: J. Schaffer, A. Volkmer, C. Eggeling, V. Subramaniam, G. Striker &
-  C. A. M. Seidel, *J. Phys. Chem. A* **103** (1999) 331 — the $G =
-  S_\parallel/S_\perp$ convention and the $l_1, l_2$ correction used throughout.
+  {src}`chisurf/core/fluorescence/anisotropy/decay.py#vm_rt_to_vv_vh` builds
+  VV/VH from the magic-angle decay and the rotation spectrum; the anisotropy
+  parameter group is
+  {src}`chisurf/core/models/tcspc/anisotropy.py#Anisotropy` and the combined-fit
+  model {src}`chisurf/core/models/tcspc/lifetime.py`.
+- Key literature: {cite}`lakowicz2006` (anisotropy chapters) covers
+  steady-state and time-resolved anisotropy, the Perrin equation and hindered
+  rotors; {cite}`schaffer1999` is the $G = S_\parallel/S_\perp$ convention and
+  the $l_1, l_2$ correction used throughout.

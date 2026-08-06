@@ -49,4 +49,4 @@ FRET-FCS auto and cross correlations.
 
 ## See also
 
-- FCS models `chisurf/core/models/fcs/models.yaml`; [Diffusion FCS](09_diffusion_fcs.md).
+- FCS models {src}`chisurf/core/models/fcs/models.yaml`; [Diffusion FCS](09_diffusion_fcs.md).

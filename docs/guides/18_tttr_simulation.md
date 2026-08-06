@@ -32,7 +32,7 @@ sim.run()
 macro = sim.macro_window                        # + sim.arrival_time, sim.micro_time, sim.channel
 ```
 
-The lifetime-FCS simulator (`chisurf/core/fluorescence/fcs/simulate.py`) and the
+The lifetime-FCS simulator ({src}`chisurf/core/fluorescence/fcs/simulate.py`) and the
 FRET-docking / burst-workflow `simulate()` helpers wrap this for common cases,
 returning data registered in MMFDB so recovered states can be compared with the
 truth.
@@ -81,4 +81,4 @@ Simulated confocal trace and its correlation.
 
 ## See also
 
-- `tttrlib.SimEngine`; `chisurf/core/fluorescence/fcs/simulate.py`.
+- `tttrlib.SimEngine`; {src}`chisurf/core/fluorescence/fcs/simulate.py`.

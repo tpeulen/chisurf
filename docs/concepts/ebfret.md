@@ -191,7 +191,7 @@ at either end of it.
   (`core/vbem.py`), empirical-Bayes prior loop (`core/ebayes.py`), Viterbi
   decoding (`core/viterbi.py`), state scan and dwell/transition outputs
   (`core/analysis.py`).
-- Key literature: van de Meent, Bronson, Wiggins & Gonzalez 2014 (Biophys. J.
-  106:1327; ebFRET, empirical-Bayes variational HMM); Bronson, Fei, Hofman,
-  Gonzalez & Wiggins 2009 (Biophys. J. 97:3196; vbFRET); Blanco & Walter 2010
-  (Methods Enzymol. 472:153; transition-density plots).
+- Key literature: {cite}`vandemeent2014` is ebFRET — the empirical-Bayes
+  variational HMM this implements; {cite}`bronson2009` is vbFRET, the per-trace
+  variational method it builds on; {cite}`blanco2010` on reading
+  transition-density plots.

@@ -43,4 +43,4 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 - Plugin package: `chisurf/plugins/tttr/tttr_splitter/`
 - Manifest: `chisurf/plugins/tttr/tttr_splitter/manifest.json`
-- UI spec: `chisurf/plugins/tttr/tttr_splitter/gui/splitter.view.json`
+- UI spec: {src}`chisurf/plugins/tttr/tttr_splitter/gui/splitter.view.json`

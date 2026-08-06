@@ -52,5 +52,5 @@ Second-order correlation g^(3).
 
 ## See also
 
-- `chisurf/core/fluorescence/fcs/correlate.py` (`second_order_correlation`)
+- {src}`chisurf/core/fluorescence/fcs/correlate.py` (`second_order_correlation`)
 - The pair-correlation machinery in the same module (`correlate`, `log_corr`, `make_fine`).

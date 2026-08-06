@@ -50,5 +50,5 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Source
 
 - Plugin package: `chisurf/plugins/fcs/fcs_calculator/`
-- Manifest: `chisurf/plugins/fcs/fcs_calculator/manifest.json`
-- UI spec: `chisurf/plugins/fcs/fcs_calculator/fcs_calculator.view.json`
+- Manifest: {src}`chisurf/plugins/fcs/fcs_calculator/manifest.json`
+- UI spec: {src}`chisurf/plugins/fcs/fcs_calculator/fcs_calculator.view.json`

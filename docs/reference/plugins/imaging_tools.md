@@ -20,4 +20,4 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 ## Source
 
 - Plugin package: `chisurf/plugins/microscopy/imaging_tools/`
-- Manifest: `chisurf/plugins/microscopy/imaging_tools/manifest.json`
+- Manifest: {src}`chisurf/plugins/microscopy/imaging_tools/manifest.json`

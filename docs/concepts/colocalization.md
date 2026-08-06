@@ -270,10 +270,10 @@ A defensible colocalization result is not one number but a small set:
 
 ## References
 
-- {cite}`dunn2011`
-- {cite}`manders1993`
-- {cite}`costes2004`
-- {cite}`li2004`
-- {cite}`bolte2006`
-- {cite}`vansteensel1996`
+- {cite}`dunn2011` — the practical guide: which coefficient answers which question.
+- {cite}`manders1993` — the overlap coefficients M1/M2 and what they do and do not measure.
+- {cite}`costes2004` — the automatic threshold and the randomisation test for significance.
+- {cite}`li2004` — the intensity-correlation-quotient, an alternative to a single coefficient.
+- {cite}`bolte2006` — a tour of the pitfalls: bleed-through, sampling and object-based analysis.
+- {cite}`vansteensel1996` — the cross-correlation-versus-shift test that separates real overlap from chance.
 

@@ -56,5 +56,5 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Source
 
 - Plugin package: `chisurf/plugins/calculator/rics_precision/`
-- Manifest: `chisurf/plugins/calculator/rics_precision/manifest.json`
-- UI spec: `chisurf/plugins/calculator/rics_precision/gui/precision.view.json`
+- Manifest: {src}`chisurf/plugins/calculator/rics_precision/manifest.json`
+- UI spec: {src}`chisurf/plugins/calculator/rics_precision/gui/precision.view.json`

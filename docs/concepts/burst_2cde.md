@@ -182,7 +182,7 @@ read as zeros.
 - Guide: {doc}`/guides/01_fret_2cde`.
 - Plugin `chisurf/plugins/burst/burst_2cde/`; engine `tttrlib.TwoCDE`
   (base class `tttrlib.BurstFeature`); reference NumPy port in
-  `chisurf/plugins/burst/burst_2cde/core/computation.py`.
+  {src}`chisurf/plugins/burst/burst_2cde/core/computation.py`.
 - The complementary variance-based dynamics test, Burst Variance Analysis
   (`chisurf/plugins/burst/burst_bva/`).
 - Tomov, Best, Doose, et al., *Disentangling subpopulations in single-molecule

@@ -36,7 +36,7 @@ import re
 from dataclasses import dataclass
 from typing import Optional
 
-__all__ = ["SourceTarget", "is_source_path", "resolve", "symbol_line"]
+__all__ = ["SourceTarget", "is_source_path", "link_label", "resolve", "symbol_line"]
 
 #: Suffixes treated as source rather than as documentation.
 SOURCE_SUFFIXES = (
@@ -210,6 +210,19 @@ def symbol_line(path: pathlib.Path, symbol: str) -> Optional[int]:
 SRC_ROLE = re.compile(r"\{src\}`([^`]+)`")
 
 
+def link_label(written: str, target: Optional[SourceTarget] = None) -> str:
+    """Return how a source link should read when the page gives no caption.
+
+    The **path as written**, because a "See also" list naming five files from
+    four directories is unreadable as five bare basenames; a symbol is appended
+    as ``file.py::name`` so the reader can see it goes to a definition rather
+    than to the top of the file.
+    """
+    path, _, symbol = _SCHEME.sub("", str(written or "").strip()).partition("#")
+    symbol = symbol.strip() or (target.symbol if target is not None else "")
+    return f"{path.strip()}::{symbol}" if symbol else path.strip()
+
+
 def expand_source_roles(text: str) -> str:
     """Rewrite every ``{src}`` role into an ordinary Markdown link.
 
@@ -223,7 +236,7 @@ def expand_source_roles(text: str) -> str:
         if "<" in body and body.endswith(">"):
             caption, body = body[: body.index("<")].strip(), body[body.index("<") + 1: -1]
         resolved = resolve(body)
-        label = caption or (resolved.label if resolved else body)
+        label = caption or link_label(body, resolved)
         return f"[`{label}`]({body})"
 
     return SRC_ROLE.sub(_replace, str(text))

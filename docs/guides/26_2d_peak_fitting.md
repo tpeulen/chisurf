@@ -17,7 +17,7 @@ comparison between conditions.
 ## In ChiSurf
 
 Burst features are extracted and clustered with a **Gaussian mixture model** in
-`chisurf/plugins/burst/burst_selection/api/features.py`:
+{src}`chisurf/plugins/burst/burst_selection/api/features.py`:
 
 ```python
 from chisurf.plugins.burst.burst_selection.api.features import extract_features
@@ -57,6 +57,6 @@ distribution.
 
 ## See also
 
-- `chisurf/plugins/burst/burst_selection/api/features.py`; the E–S histogram it operates on ([multi-parameter E–S](14_multiparameter_es.md)).
+- {src}`chisurf/plugins/burst/burst_selection/api/features.py`; the E–S histogram it operates on ([multi-parameter E–S](14_multiparameter_es.md)).
 - Gating and comparing the resulting populations: [selecting FRET populations](28_selecting_fret_populations.md).
 - 1-D efficiency-histogram fitting: [FRET-histogram fitting](29_fret_histogram_fitting.md).

@@ -61,5 +61,5 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Source
 
 - Plugin package: `chisurf/plugins/calculator/psf_calculator/`
-- Manifest: `chisurf/plugins/calculator/psf_calculator/manifest.json`
-- UI spec: `chisurf/plugins/calculator/psf_calculator/psf_calculator.view.json`
+- Manifest: {src}`chisurf/plugins/calculator/psf_calculator/manifest.json`
+- UI spec: {src}`chisurf/plugins/calculator/psf_calculator/psf_calculator.view.json`

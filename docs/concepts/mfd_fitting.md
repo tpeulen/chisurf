@@ -196,7 +196,7 @@ occupation-time law and the wrapped moments in closed form.
 Regimes are named in **transitions per burst**, because a rate only means something
 next to an observation window: 500 s⁻¹ is slow exchange for a 10 ms transit and fast
 exchange for a 0.1 ms one. Fitting the same molecule in each
-(`examples/mfd_dynamics_timescales.py`, 3000 bursts):
+({src}`examples/mfd_dynamics_timescales.py`, 3000 bursts):
 
 | regime | true rate | fitted | bursts between the states |
 |---|---|---|---|

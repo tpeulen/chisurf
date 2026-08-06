@@ -29,4 +29,4 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 ## Source
 
 - Plugin package: `chisurf/plugins/pch/`
-- Manifest: `chisurf/plugins/pch/manifest.json`
+- Manifest: {src}`chisurf/plugins/pch/manifest.json`

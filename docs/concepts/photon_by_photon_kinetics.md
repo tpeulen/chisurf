@@ -209,8 +209,8 @@ Two failure modes deserve naming:
 
 ## References
 
-- {cite}`gopich2006`
-- {cite}`gopich2009`
-- {cite}`chung2012`
-- {cite}`pirchi2016`
+- {cite}`gopich2006` — the theory of photon-by-photon likelihood for a kinetic scheme.
+- {cite}`gopich2009` — the colour-pattern likelihood that photon-by-photon FRET analysis maximises.
+- {cite}`chung2012` — the same likelihood used to measure a transition path time.
+- {cite}`pirchi2016` — H2MM - the algorithm that makes that likelihood tractable on real burst data.
 

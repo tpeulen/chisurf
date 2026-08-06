@@ -21,7 +21,7 @@ Correlation curves are computed from TTTR photon data by the **`fcs_correlator`*
 plugin (multi-tau, with optional fine/ns-scale correlation; see
 {doc}`16_fret_fcs` and {doc}`17_filtered_fcs`) and fitted in the **FCS
 experiment** against the model catalogue in
-`chisurf/core/models/fcs/models.yaml`.
+{src}`chisurf/core/models/fcs/models.yaml`.
 
 The **composable FCS model editor** builds the correlation function from
 independent factors — pick a diffusion geometry, then add bunching /
@@ -90,7 +90,7 @@ a triplet term.
 
 - Concept: {ref}`concept-fcs-correlation` · all FCS plugins:
   {doc}`/reference/plugins/index`.
-- Model catalogue: `chisurf/core/models/fcs/models.yaml`; correlator:
+- Model catalogue: {src}`chisurf/core/models/fcs/models.yaml`; correlator:
   `chisurf/plugins/fcs/fcs_correlator/`.
 - Absolute concentrations & two-focus: {doc}`05_enderlein_mdf_two_focus_fcs`.
 - Higher-order statistics: {doc}`06_nsfcs_second_order`.

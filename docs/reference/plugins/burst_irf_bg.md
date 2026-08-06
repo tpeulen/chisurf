@@ -30,5 +30,5 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Source
 
 - Plugin package: `chisurf/plugins/burst/burst_irf_bg/`
-- Manifest: `chisurf/plugins/burst/burst_irf_bg/manifest.json`
-- UI spec: `chisurf/plugins/burst/burst_irf_bg/gui/irf_bg.view.json`
+- Manifest: {src}`chisurf/plugins/burst/burst_irf_bg/manifest.json`
+- UI spec: {src}`chisurf/plugins/burst/burst_irf_bg/gui/irf_bg.view.json`

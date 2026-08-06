@@ -87,7 +87,7 @@ where $f_D$ is the *area-normalized* donor emission ($\int f_D\,\mathrm{d}\lambd
 $R_0$ is a **sixth root** of its inputs, it is remarkably forgiving of moderate
 errors in $Q_D$ or $J$: a 40% error in $J$ shifts $R_0$ by under 6%. Typical
 organic-dye pairs have $R_0 \approx 4$–$6$ nm. ChiSurf computes $J$ and $R_0$ from
-spectra in `chisurf/core/fluorescence/fret/forster.py` and can look up tabulated
+spectra in {src}`chisurf/core/fluorescence/fret/forster.py` and can look up tabulated
 pair values from its fluorophore database.
 
 ## The orientation factor $\kappa^2$
@@ -189,7 +189,7 @@ measured routinely and why $Q_D$ and $J$ rarely need to be known to better than
 
 :::{note}
 ChiSurf defaults to $\kappa^2 = 2/3$ and $n = 1.33$. Note the unit convention in
-`chisurf/core/fluorescence/fret/forster.py`: the prefactor 0.02108 yields $R_0$ in
+{src}`chisurf/core/fluorescence/fret/forster.py`: the prefactor 0.02108 yields $R_0$ in
 **nm**, but `forster_radius()` returns **Ångström** (it multiplies by 10).
 :::
 
@@ -210,11 +210,13 @@ with the flexible dye-linker cloud handled by accessible volumes
 - Related concepts: {ref}`concept-smfret-bursts` (per-burst $E$, $S$, and the
   correction factors) · {ref}`concept-accessible-volume` (dye clouds and the
   three distance measures).
-- Implementation: `chisurf/core/fluorescence/fret/` — overlap integral and
-  Förster radius (`forster.py`), intensity-based $E$ and distance conversions
-  (`__init__.py`), FRET-line generation (`fret_line.py`), calibration factors
-  (`calibration.py`); FRET-line GUI `chisurf/plugins/fret_line/`.
-- Key literature: Förster, T. *Zwischenmolekulare Energiewanderung und
-  Fluoreszenz.* Ann. Phys. **437**, 55–75 (1948); Lakowicz, J. R. *Principles of
-  Fluorescence Spectroscopy*, 3rd ed. (2006), FRET chapters; Clegg, R. M. Curr.
-  Opin. Biotechnol. **6**, 103–110 (1995).
+- Implementation: overlap integral and Förster radius
+  {src}`chisurf/core/fluorescence/fret/forster.py#forster_radius`, intensity-based
+  $E$ and distance conversions
+  {src}`chisurf/core/fluorescence/fret/__init__.py`, FRET-line generation
+  {src}`chisurf/core/fluorescence/fret/fret_line.py`, calibration factors
+  {src}`chisurf/core/fluorescence/fret/calibration.py`; FRET-line GUI
+  `chisurf/plugins/fret_line/`.
+- Key literature: {cite}`foerster1948` is the mechanism itself;
+  {cite}`clegg1995` a compact review of it; {cite}`lakowicz2006` the textbook
+  treatment, FRET chapters.

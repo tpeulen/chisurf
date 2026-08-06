@@ -8,8 +8,8 @@ with `chisurf/`, the source tree wins and this document should be fixed.
 
 | Path | Role |
 |------|------|
-| `chisurf/__init__.py` | Runtime globals, lazy accessors, logging setup, compatibility shims |
-| `chisurf/__main__.py` | GUI application entry point for `python -m chisurf` |
+| {src}`chisurf/__init__.py` | Runtime globals, lazy accessors, logging setup, compatibility shims |
+| {src}`chisurf/__main__.py` | GUI application entry point for `python -m chisurf` |
 | `chisurf/core/` | Domain objects, fitting, data, models, math, settings, actions, API facade |
 | `chisurf/core/actions/` | Action registry, dispatcher, and state-change action implementations |
 | `chisurf/core/api/` | Hybrid API facade, plugin context, remote client wrapper, optional proxies |
@@ -46,7 +46,7 @@ Domain and Session State
 
 ## Important Runtime Globals
 
-`chisurf/__init__.py` still exposes several process-local globals. These are
+{src}`chisurf/__init__.py` still exposes several process-local globals. These are
 part of the current hybrid architecture and remain important for GUI and legacy
 macro compatibility.
 
@@ -134,7 +134,7 @@ so callers can inspect `error_code`, `jsonrpc_code`, and optional
 
 ## RPC Namespaces
 
-The authoritative method registry is `chisurf/server/server_methods.json`.
+The authoritative method registry is {src}`chisurf/server/server_methods.json`.
 `meta.protocol` returns the namespace catalogue from `chisurf.server.protocol`.
 
 | Namespace | Methods |

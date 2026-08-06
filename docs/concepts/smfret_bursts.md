@@ -136,7 +136,7 @@ $$
 \beta = \Omega + \Sigma - 1
 $$
 
-(Lee 2005 / Hellenkamp 2018). Applying $\gamma$ and $\beta$ **straightens the
+({cite}`lee2005,hellenkamp2018`). Applying $\gamma$ and $\beta$ **straightens the
 FRET line**: every species falls on the same horizontal $S\approx0.5$, and $E$ is
 now accurate. It then maps to distance through Förster,
 $E = 1/[1+(R/R_0)^6]$, i.e. $R = R_0\,(1/E - 1)^{1/6}$.
@@ -209,7 +209,7 @@ comparable between instruments, but several systematic terms remain:
   at an intermediate distance" is the classic misinterpretation — this is why the
   static/dynamic tests matter before any structural interpretation.
 
-The multi-laboratory benchmark study (Hellenkamp *et al.* 2018) puts numbers on
+The multi-laboratory benchmark study {cite}`hellenkamp2018` puts numbers on
 this: with a carefully executed protocol, inter-laboratory agreement on
 $E$ is a few hundredths, corresponding to ~1 Å or better on well-behaved
 reference samples — but that is the *best* case, on standards chosen to avoid the
@@ -217,18 +217,25 @@ dye artefacts above.
 
 ## References
 
-- {cite}`foerster1948`
-- {cite}`lee2005`
-- {cite}`kapanidis2004`
-- {cite}`hellenkamp2018` — a multi-laboratory benchmark study", *Nature Methods* (2018). *The reference protocol, the correction conventions, and the achievable accuracy.*.
-- {cite}`eggeling2001`
+- {cite}`foerster1948` — the mechanism the efficiency is a measure of.
+- {cite}`kapanidis2004` — alternating excitation, which is what makes $S$ (and
+  therefore the sorting above) possible at all.
+- {cite}`lee2005` — the correction algebra on this page, and the E-S line whose
+  slope and intercept give $\gamma$ and $\beta$.
+- {cite}`hellenkamp2018` — the multi-laboratory benchmark: the reference
+  protocol, the correction conventions ChiSurf follows, and how accurate an
+  inter-laboratory $E$ actually is.
+- {cite}`eggeling2001` — burst selection and the multiparameter analysis the
+  E-S histogram sits inside.
 
 ## See also
 
 - Guides: {doc}`/guides/13_burst_identification` · {doc}`/guides/14_multiparameter_es`
   · {doc}`/guides/15_background_rates` · {doc}`/guides/27_alex_smfret_workflow`.
-- Implementation: per-burst E/S `chisurf/core/fluorescence/burst/es.py`;
-  correction algebra `chisurf/core/fluorescence/crosstalk.py`; calibration
-  factors `chisurf/core/fluorescence/fret/calibration.py`; burst search &
-  background `chisurf/core/fluorescence/burst/`; burst plugins
+- Implementation: per-burst E/S {src}`chisurf/core/fluorescence/burst/es.py`;
+  correction algebra {src}`chisurf/core/fluorescence/crosstalk.py`; calibration
+  factors {src}`chisurf/core/fluorescence/fret/calibration.py`; burst search
+  {src}`chisurf/core/fluorescence/burst/tttrlib_search.py#search`; background
+  estimation
+  {src}`chisurf/core/fluorescence/burst/background.py#estimate_background_from_interphoton_times`; burst plugins
   `chisurf/plugins/burst/`.

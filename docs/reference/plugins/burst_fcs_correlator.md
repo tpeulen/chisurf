@@ -52,6 +52,6 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Source
 
 - Plugin package: `chisurf/plugins/burst/burst_fcs_correlator/`
-- Manifest: `chisurf/plugins/burst/burst_fcs_correlator/manifest.json`
-- UI spec: `chisurf/plugins/burst/burst_fcs_correlator/gui/burst_fcs.view.json`
-- UI spec: `chisurf/plugins/burst/burst_fcs_correlator/gui/burst_fcs_plots.view.json`
+- Manifest: {src}`chisurf/plugins/burst/burst_fcs_correlator/manifest.json`
+- UI spec: {src}`chisurf/plugins/burst/burst_fcs_correlator/gui/burst_fcs.view.json`
+- UI spec: {src}`chisurf/plugins/burst/burst_fcs_correlator/gui/burst_fcs_plots.view.json`

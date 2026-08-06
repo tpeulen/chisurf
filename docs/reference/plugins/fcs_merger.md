@@ -29,4 +29,4 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 ## Source
 
 - Plugin package: `chisurf/plugins/fcs/fcs_merger/`
-- Manifest: `chisurf/plugins/fcs/fcs_merger/manifest.json`
+- Manifest: {src}`chisurf/plugins/fcs/fcs_merger/manifest.json`

@@ -7,6 +7,7 @@ what the defect looked like.
 """
 
 import pathlib
+import re
 
 import pytest
 
@@ -230,21 +231,60 @@ def test_front_matter_is_metadata_not_prose():
     assert "title: x" not in html
 
 
-def test_real_pages_render_without_leaking_markup():
-    """Spot-check the shipped pages for markup that reached the reader."""
+def _as_the_browser_renders(page: pathlib.Path, math: "MathRenderer") -> str:
+    """Render *page* through the same chain the browser uses.
+
+    The browser expands cross-reference, citation and source roles *before*
+    handing the text to a renderer, so a test that calls the renderer alone
+    checks something no reader ever sees.
+    """
+    from chisurf.gui.widgets.tools.doc_links import expand_roles
+    from chisurf.plugins.core.help.api.bibliography import expand_citations
+    from chisurf.plugins.core.help.api.render import render_document
+    from chisurf.plugins.core.help.api.source_links import expand_source_roles
+
+    text = page.read_text(encoding="utf-8")
+    if page.suffix == ".md":
+        text = expand_source_roles(expand_citations(expand_roles(text, page.parent)))
+    return render_document(text, page, math=math) or ""
+
+
+#: Markup that means the renderer gave up and the reader is looking at source.
+_LEAKED_MARKUP = (
+    ":::{", "```{", "$$",
+    "{ref}", "{doc}", "{numref}", "{cite}", "{src}", "{term}",
+    ":ref:`", ":doc:`", ":numref:`", ":cite:`", ":src:`",
+)
+
+_CODE_BLOCK = re.compile(r"<pre.*?</pre>|<code.*?</code>", re.DOTALL)
+
+
+def test_no_page_in_the_tree_leaks_its_markup():
+    """Every shipped page, in both languages, reaches the reader as prose.
+
+    Not a spot check: a role registered for Markdown and forgotten for
+    reStructuredText renders as its own source text — visible to any reader and
+    to no assertion that only looks at the pages it already knew about. Code
+    spans are excluded, because a page that *documents* the syntax must be able
+    to show it.
+    """
     from chisurf.plugins.core.help.api.toc import docs_root
 
+    root = docs_root()
     renderer = MathRenderer()
     offenders = []
-    pages = sorted(docs_root().glob("concepts/*.md")) + sorted(
-        docs_root().glob("guides/*.md")
-    )
+    pages = [
+        p
+        for p in sorted(root.rglob("*.md")) + sorted(root.rglob("*.rst"))
+        if "_build" not in p.parts
+    ]
+    assert len(pages) > 100, "the documentation tree was not found"
     for page in pages:
-        html = render_body(page.read_text(encoding="utf-8"), math=renderer)
-        for marker in (":::{", "```{", "$$"):
+        html = _CODE_BLOCK.sub(" ", _as_the_browser_renders(page, renderer))
+        for marker in _LEAKED_MARKUP:
             if marker in html:
-                offenders.append((page.name, marker))
-    assert not offenders, offenders[:5]
+                offenders.append((str(page.relative_to(root)), marker))
+    assert not offenders, offenders[:10]
 
 
 def test_documents_dispatch_on_suffix():
@@ -295,6 +335,44 @@ def test_every_citation_in_the_documentation_resolves():
     assert not unknown, unknown
 
 
+def test_every_source_link_in_the_documentation_resolves():
+    """A link into the code must land on a file, and on the symbol it names.
+
+    This is the whole reason source links are addressed by symbol rather than by
+    line: a rename has to fail here, in a test, rather than quietly open the
+    right file at the wrong place for a reader.
+    """
+    from chisurf.plugins.core.help.api import source_links as src
+    from chisurf.plugins.core.help.api.toc import docs_root
+
+    root = docs_root()
+    rst_role = re.compile(r":src:`([^`]+)`")
+    broken = []
+    for page in list(root.rglob("*.md")) + list(root.rglob("*.rst")):
+        if "_build" in page.parts:
+            continue
+        text = page.read_text(encoding="utf-8")
+        for match in list(src.SRC_ROLE.finditer(text)) + list(rst_role.finditer(text)):
+            body = match.group(1).strip()
+            if "<" in body and body.endswith(">"):
+                body = body[body.index("<") + 1: -1]
+            resolved = src.resolve(body)
+            if resolved is None:
+                broken.append((page.name, body, "no such file"))
+            elif resolved.missing_symbol:
+                broken.append((page.name, body, "no such symbol"))
+    assert not broken, broken[:10]
+
+
+def test_a_source_link_reads_as_the_path_it_points_at():
+    """Both renderers label a link the same way, or the app and site diverge."""
+    from chisurf.plugins.core.help.api.source_links import expand_source_roles
+
+    out = expand_source_roles("{src}`chisurf/core/fitting/fit.py#sample_fit`")
+    assert "chisurf/core/fitting/fit.py::sample_fit" in out
+    assert "](chisurf/core/fitting/fit.py#sample_fit)" in out
+
+
 def test_the_literature_page_lists_every_work():
     """The page is generated; a work added to the bibliography must appear."""
     from chisurf.plugins.core.help.api import bibliography as bib
@@ -342,6 +420,25 @@ def test_no_page_writes_a_reference_by_hand():
                 continue
             if pattern.search(page.read_text(encoding="utf-8")):
                 offenders.append(str(page.relative_to(repository_root())))
+    assert not offenders, offenders
+
+
+def test_a_reference_bullet_says_why_it_is_there():
+    """A list of bare citations tells the reader nothing they can act on.
+
+    "Geyer (1992)" as a whole bullet leaves a reader who has not read it no way
+    to decide whether it is worth finding. One clause of *why* is the difference
+    between a bibliography and a reading list.
+    """
+    from chisurf.plugins.core.help.api.toc import docs_root
+
+    bare = re.compile(r"^\s*[-*]\s+\{cite\}`[^`]+`\s*$", re.M)
+    offenders = []
+    for page in sorted(docs_root().rglob("*.md")):
+        if "_build" in page.parts or page.parent.name == "references":
+            continue
+        if bare.search(page.read_text(encoding="utf-8")):
+            offenders.append(page.name)
     assert not offenders, offenders
 
 

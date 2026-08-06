@@ -144,7 +144,7 @@ higher-dimensional posteriors.
 
 ## 2D-MFD: recovering a known exchange rate
 
-`test/benchmarks/benchmark_mfd_engines.py`. The work unit is **one fit**, and the
+{src}`test/benchmarks/benchmark_mfd_engines.py`. The work unit is **one fit**, and the
 quality reported next to it is the **bias and RMSE of the recovered exchange
 rate** against the rate that generated the photons — not a deviance, which every
 setting can lower by explaining the data differently.

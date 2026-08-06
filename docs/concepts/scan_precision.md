@@ -148,6 +148,6 @@ which no amount of averaging removes.
 
 ## References
 
-- {cite}`sanguigno2010`
-- {cite}`digman2005`
+- {cite}`sanguigno2010` — the closed form for a correlation measured under a scanning beam.
+- {cite}`digman2005` — scanning FCS: the beam supplies the sampling that a stationary focus cannot.
 

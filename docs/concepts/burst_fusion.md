@@ -146,6 +146,6 @@ efficiency. They are recomputed on the fused folder instead.
 
 ## References
 
-- {cite}`hoffmann2011`
-- {cite}`nir2006`
+- {cite}`hoffmann2011` — separating shot noise from real heterogeneity in a burst distribution.
+- {cite}`nir2006` — the shot-noise-limited histogram a measured one has to be compared against.
 

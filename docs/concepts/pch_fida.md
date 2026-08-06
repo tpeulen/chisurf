@@ -194,9 +194,9 @@ volume-shape correction (`dvdx_gaussian`) rather than assuming the ideal profile
 - Guide: {doc}`/guides/04_fida_pch`; related FCS concept:
   {doc}`/concepts/fcs_correlation`.
 - ChiSurf source: single-species and mixture PCH in
-  `chisurf/core/models/pch/` and `chisurf/plugins/pch/api/algorithms.py`
+  `chisurf/core/models/pch/` and {src}`chisurf/plugins/pch/api/algorithms.py`
   (`pch_single_species`, `pch_open_system`, `pch_mixture`); FIDA
-  generating-function model in `chisurf/core/models/pch/fida.py`
+  generating-function model in {src}`chisurf/core/models/pch/fida.py`
   (`fida_pch`, `fit_fida`, `dvdx_gaussian`); the **PCH** plugin
   (`chisurf/plugins/pch/`, RPC `pch.compute` / `pch.fit`).
 - Chen, Y., Müller, J. D., Berland, K. M. & Gratton, E. (1999). The photon

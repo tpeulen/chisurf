@@ -183,7 +183,7 @@ TIFF, pass channel indices: `-a 0 -b 1`.
 
 Two runnable examples ship with ChiSurf:
 
-* `examples/scripts/colocalization.py` — headless script covering both regimes on
+* {src}`examples/scripts/colocalization.py` — headless script covering both regimes on
   synthetic data whose answer is known by construction, with assertions (it runs
   as part of the test suite).
 * `examples/notebooks/Colocalization.ipynb` (plus its `.py` cell-script twin) — the

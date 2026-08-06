@@ -32,4 +32,4 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 ## Source
 
 - Plugin package: `chisurf/plugins/fluorescence_decay/irf_estimator/`
-- Manifest: `chisurf/plugins/fluorescence_decay/irf_estimator/manifest.json`
+- Manifest: {src}`chisurf/plugins/fluorescence_decay/irf_estimator/manifest.json`

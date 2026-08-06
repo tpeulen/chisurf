@@ -289,11 +289,14 @@ def _plugin_page(manifest: dict, plugin_dir: pathlib.Path, registry_params: dict
                        f"{_md(m.get('description') or m.get('summary',''))} |")
         out.append("")
 
+    # A file is written as a ``{src}`` role so the reader can open it: in the
+    # application it goes to the code editor, on the website to the repository
+    # browser. The package is a directory and stays a plain code span.
     out += ["## Source", "",
             f"- Plugin package: `chisurf/plugins/{rel_dir}/`",
-            f"- Manifest: `chisurf/plugins/{rel_dir}/manifest.json`"]
+            f"- Manifest: {{src}}`chisurf/plugins/{rel_dir}/manifest.json`"]
     for v in views:
-        out.append(f"- UI spec: `{v.relative_to(REPO_ROOT)}`")
+        out.append(f"- UI spec: {{src}}`{v.relative_to(REPO_ROOT)}`")
     out.append("")
     return "\n".join(out)
 

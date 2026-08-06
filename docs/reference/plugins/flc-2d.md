@@ -96,5 +96,5 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Source
 
 - Plugin package: `chisurf/plugins/fcs/flc_2d/`
-- Manifest: `chisurf/plugins/fcs/flc_2d/manifest.json`
-- UI spec: `chisurf/plugins/fcs/flc_2d/gui/flc_2d.view.json`
+- Manifest: {src}`chisurf/plugins/fcs/flc_2d/manifest.json`
+- UI spec: {src}`chisurf/plugins/fcs/flc_2d/gui/flc_2d.view.json`

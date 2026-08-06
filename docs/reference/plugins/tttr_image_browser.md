@@ -36,5 +36,5 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Source
 
 - Plugin package: `chisurf/plugins/tttr/tttr_image_browser/`
-- Manifest: `chisurf/plugins/tttr/tttr_image_browser/manifest.json`
-- UI spec: `chisurf/plugins/tttr/tttr_image_browser/gui/browser.view.json`
+- Manifest: {src}`chisurf/plugins/tttr/tttr_image_browser/manifest.json`
+- UI spec: {src}`chisurf/plugins/tttr/tttr_image_browser/gui/browser.view.json`

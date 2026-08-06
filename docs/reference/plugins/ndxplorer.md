@@ -21,4 +21,4 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 ## Source
 
 - Plugin package: `chisurf/plugins/ndxplorer/`
-- Manifest: `chisurf/plugins/ndxplorer/manifest.json`
+- Manifest: {src}`chisurf/plugins/ndxplorer/manifest.json`

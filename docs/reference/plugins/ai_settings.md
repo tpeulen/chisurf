@@ -43,5 +43,5 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Source
 
 - Plugin package: `chisurf/plugins/ai_settings/`
-- Manifest: `chisurf/plugins/ai_settings/manifest.json`
-- UI spec: `chisurf/plugins/ai_settings/gui/ai_settings.view.json`
+- Manifest: {src}`chisurf/plugins/ai_settings/manifest.json`
+- UI spec: {src}`chisurf/plugins/ai_settings/gui/ai_settings.view.json`

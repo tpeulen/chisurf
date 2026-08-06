@@ -213,6 +213,7 @@ hands the network to an AV-restraint scoring function for docking and refinement
 - Code: `chisurf/core/structure/av/` (`BasicAV`, `ACV`, `DynamicAV`); FRET plugin
   `chisurf/plugins/modelling/fret/` (`core/av.py`, `core/distance.py`,
   `core/imp_engine.py`); editor `chisurf/plugins/modelling/fps_json_editor/`.
-- Key literature: Sindbert et al. 2011 (*JACS*, AV); Kalinin et al. 2012
-  (*Nat. Methods*, FPS toolkit); Dimura et al. 2016 (*COSB*, integrative FRET
-  modeling).
+- Key literature: {cite}`sindbert2011` introduces the accessible volume and
+  measures what the linker does to a distance; {cite}`kalinin2012` is the FPS
+  toolkit and its benchmark; {cite}`dimura2016` reviews FRET-restrained
+  integrative modelling.

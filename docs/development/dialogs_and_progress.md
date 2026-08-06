@@ -31,8 +31,8 @@ gets is the one deciding whether a file is overwritten or a record deleted.
 `ChiSurfMessageBox` fixes both: it logs every box at a matching level whether or
 not it is shown, raises the window only when a person could dismiss it, and
 otherwise returns the answer the caller declared safe. A guard test
-(`test/test_headless_dialog_seam.py`) fails the build if a raw `QMessageBox`
-reappears anywhere outside `chisurf/gui/dialogs.py`.
+({src}`test/test_headless_dialog_seam.py`) fails the build if a raw `QMessageBox`
+reappears anywhere outside {src}`chisurf/gui/dialogs.py`.
 
 | Call | Returns | Headless |
 | --- | --- | --- |

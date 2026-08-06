@@ -62,5 +62,5 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Source
 
 - Plugin package: `chisurf/plugins/calculator/kappa2_dist/`
-- Manifest: `chisurf/plugins/calculator/kappa2_dist/manifest.json`
-- UI spec: `chisurf/plugins/calculator/kappa2_dist/k2dist.view.json`
+- Manifest: {src}`chisurf/plugins/calculator/kappa2_dist/manifest.json`
+- UI spec: {src}`chisurf/plugins/calculator/kappa2_dist/k2dist.view.json`

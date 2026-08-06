@@ -53,8 +53,8 @@ Do not restart from early migration phases. Begin with the current TODOs in
 2. Continue facade migration for one workflow at a time.
 3. Add GUI/server startup smoke coverage where feasible.
 
-Before adding a new endpoint, check `chisurf/server/server_methods.json`,
-`chisurf/server/client_methods.json`, and `chisurf.core.api.ChiSurfAPI` to avoid
+Before adding a new endpoint, check {src}`chisurf/server/server_methods.json`,
+{src}`chisurf/server/client_methods.json`, and `chisurf.core.api.ChiSurfAPI` to avoid
 duplicating existing functionality.
 
 ## Validation Commands

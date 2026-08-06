@@ -12,10 +12,10 @@ per-photon **statistical weights** and correlates the *weighted* photon streams,
 so the resulting curves are species-selective.
 
 The technique appears under several names for the same idea: **FLCS**
-(fluorescence-lifetime correlation spectroscopy, Böhmer 2002; Kapusta 2007) when
-the fingerprint is a lifetime pattern, **fFCS / species-FCS** (Felekyan 2012) in
+(fluorescence-lifetime correlation spectroscopy, {cite}`boehmer2002,kapusta2007`) when
+the fingerprint is a lifetime pattern, **fFCS / species-FCS** ({cite}`felekyan2012`) in
 the multiparameter (MFD) setting where the pattern may also encode polarisation or
-spectrum, and **2D-FLCS** (Ishii & Tahara 2013) for the two-dimensional
+spectrum, and **2D-FLCS** ({cite}`ishii2013`) for the two-dimensional
 lifetime–lifetime extension.
 
 For the step-by-step workflow in ChiSurf, see the guide
@@ -122,7 +122,7 @@ contrast — polarisation or a spectral channel — rather than pushing the inve
 
 ## 2D-FLCS: a lifetime–lifetime correlation map
 
-**2D-FLCS** (Ishii & Tahara 2013) drops the requirement of *known* patterns and
+**2D-FLCS** ({cite}`ishii2013`) drops the requirement of *known* patterns and
 instead measures, at each correlation lag $\tau$, the **joint distribution of the
 micro-time of the first photon and the micro-time of the second photon**:
 
@@ -155,17 +155,18 @@ $k = k_{12} + k_{21}$.
 
 - Guide: {doc}`/guides/17_filtered_fcs`; foundational FCS concept:
   {ref}`concept-fcs-correlation`.
-- ChiSurf source: `chisurf/core/fluorescence/fcs/filtered.py`
-  (`calc_ffcs_filters`, the $F=(D^{\mathsf T}WD)^{-1}D^{\mathsf T}W$ filter,
-  `uniform_pattern` afterpulse removal, `filter_condition_number`,
-  `species_filtered_correlation`); interactive filter design in the
+- ChiSurf source:
+  {src}`chisurf/core/fluorescence/fcs/filtered.py#calc_ffcs_filters` is the
+  $F=(D^{\mathsf T}WD)^{-1}D^{\mathsf T}W$ filter itself;
+  {src}`chisurf/core/fluorescence/fcs/filtered.py#uniform_pattern` the
+  afterpulse removal;
+  {src}`chisurf/core/fluorescence/fcs/filtered.py#filter_condition_number` the
+  conditioning diagnostic; and
+  {src}`chisurf/core/fluorescence/fcs/filtered.py#species_filtered_correlation`
+  the weighted correlator. Interactive filter design in the
   `chisurf/plugins/fcs/fcs_filter_calculator/` plugin; 2D-FLCS maps and MEM/Tikhonov
   inversion in the `chisurf/plugins/fcs/flc_2d/` plugin.
-- Literature: Böhmer, Wahl, Rahn, Erdmann & Enderlein, *Time-resolved fluorescence
-  correlation spectroscopy*, Chem. Phys. Lett. **353**, 439 (2002); Kapusta, Wahl,
-  Benda, Hof & Enderlein, *Fluorescence Lifetime Correlation Spectroscopy*,
-  J. Fluoresc. **17**, 43 (2007); Felekyan, Kalinin, Sanabria, Valeri & Seidel,
-  *Filtered FCS: species auto- and cross-correlation functions highlight binding
-  and dynamics in biomolecules*, ChemPhysChem **13**, 1036 (2012); Ishii & Tahara,
-  *Two-dimensional fluorescence lifetime correlation spectroscopy* (parts 1 & 2),
-  J. Phys. Chem. B **117**, 11414 & 11423 (2013).
+- Literature: {cite}`boehmer2002` introduces lifetime-weighted correlation;
+  {cite}`kapusta2007` the filter formulation; {cite}`felekyan2012` the species
+  auto- and cross-correlations this page derives; {cite}`ishii2013,ishii2013b`
+  the two-dimensional extension, principle and application.

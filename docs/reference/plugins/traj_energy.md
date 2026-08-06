@@ -21,4 +21,4 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 ## Source
 
 - Plugin package: `chisurf/plugins/traj/traj_energy/`
-- Manifest: `chisurf/plugins/traj/traj_energy/manifest.json`
+- Manifest: {src}`chisurf/plugins/traj/traj_energy/manifest.json`

@@ -257,8 +257,8 @@ parametric bootstrap.
 
 - {cite}`gopich2010` — the multistate time-averaging approximation used for dynamics.
 - {cite}`antonik2006` — two-colour PDA, the foundation.
-- {cite}`kalinin2008`
-- {cite}`barth2019`
+- {cite}`kalinin2008` — dynamic PDA: exchange during a burst, and how the histogram reports it.
+- {cite}`barth2019` — three-colour PDA, the extension this page describes.
 
 ## See also
 

@@ -536,16 +536,16 @@ Two rules keep the report honest:
 
 ## References
 
-- {cite}`gelman1992`
-- {cite}`vehtari2021`
-- {cite}`geyer1992`
-- {cite}`haario2001`
-- {cite}`goodman2010`
-- {cite}`foremanmackey2013`
-- {cite}`karamanis2021`
-- {cite}`neal2003`
-- {cite}`vehtari2024`
-- {cite}`zhang2009`
+- {cite}`gelman1992` — the multiple-chain idea behind R-hat: one chain cannot tell you it has converged.
+- {cite}`vehtari2021` — the rank-normalised, folded R-hat and the effective sample size ChiSurf reports.
+- {cite}`geyer1992` — why an autocorrelated chain carries fewer independent samples than it has steps.
+- {cite}`haario2001` — adaptive Metropolis - learning the proposal covariance from the chain itself.
+- {cite}`goodman2010` — the affine-invariant ensemble move, which needs no proposal scale.
+- {cite}`foremanmackey2013` — the implementation that made that ensemble sampler standard practice.
+- {cite}`karamanis2021` — ensemble slice sampling: every walker moves every step, no rejections.
+- {cite}`neal2003` — slice sampling itself, and why the stepping-out has to overshoot.
+- {cite}`vehtari2024` — Pareto-smoothed importance sampling and the k-hat diagnostic for a bad tail.
+- {cite}`zhang2009` — the generalised-Pareto fit that k-hat is read from.
 
 ## The code
 

@@ -39,7 +39,7 @@ Copy this verbatim into a new session when the documentation needs a refresh.
 > 4. **Verify every screenshot you touched by looking at it.** Open the PNG and
 >    read it. A screenshot that does not show what its caption claims is worse
 >    than no screenshot. If the interface has changed, retake it from the recipe
->    in `docs/references/figures.yaml` and update the caption in the same change.
+>    in {src}`docs/references/figures.yaml` and update the caption in the same change.
 > 5. **Read the pages you changed, end to end**, and record what you read:
 >    `csc help review-set <page> --ai`. Never record a page you did not read.
 >    Never record `--reviewer` (a human sign-off) on your own behalf.
@@ -53,7 +53,7 @@ Copy this verbatim into a new session when the documentation needs a refresh.
 
 ### Figures
 
-**Every image is in the register, with an origin.** `docs/references/figures.yaml`
+**Every image is in the register, with an origin.** {src}`docs/references/figures.yaml`
 is the source of truth; `docs/reference/figures.md` is generated from it. An
 image used by a page but absent from the file shows as *unrecorded*, and the
 build's `--check` mode fails when the register is stale.
@@ -118,9 +118,9 @@ block claiming to be Python is a block that claims to run.
 
 ### Literature
 
-Citations are keys into `docs/references/bibliography.yaml`; write
+Citations are keys into {src}`docs/references/bibliography.yaml`; write
 `` {cite}`key` ``, never a reference by hand. Add a work by adding an entry and
-regenerating (`build_tools/docs/make_bibliography.py`).
+regenerating ({src}`build_tools/docs/make_bibliography.py`).
 
 **Never invent a DOI.** Verify it against Crossref
 (`https://api.crossref.org/works/<doi>`) and compare the returned title with the

@@ -20,4 +20,4 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 ## Source
 
 - Plugin package: `chisurf/plugins/core/setup_channel_definition/`
-- Manifest: `chisurf/plugins/core/setup_channel_definition/manifest.json`
+- Manifest: {src}`chisurf/plugins/core/setup_channel_definition/manifest.json`

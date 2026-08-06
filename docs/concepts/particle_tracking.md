@@ -173,10 +173,10 @@ gives 20 out of 20.
 
 ## References
 
-- {cite}`crocker1996`
-- {cite}`olivomarin2002`
-- {cite}`jaqaman2008`
-- {cite}`michalet2010`
+- {cite}`crocker1996` — the centroid localisation and linking that every tracker still starts from.
+- {cite}`olivomarin2002` — the multiscale-product spot detector used to find particles before linking.
+- {cite}`jaqaman2008` — linking as a global assignment problem, which is what survives dense fields.
+- {cite}`michalet2010` — how localisation error and finite track length bias an MSD-derived D.
 - {cite}`chenouard2014` — the community benchmark, and the source of the "density, not algorithm, is the limit" conclusion.
 
 ## Runnable examples

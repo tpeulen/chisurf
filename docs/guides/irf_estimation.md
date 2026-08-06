@@ -261,7 +261,7 @@ Perform FFT-based convolution along specified axis.
 
 ## Examples
 
-See `test/tcspc/test_irf_estimation.py` for a comprehensive, automated example suite including:
+See {src}`test/tcspc/test_irf_estimation.py` for a comprehensive, automated example suite including:
 - Basic IRF estimation
 - Step-by-step pipeline tests
 - Multi-channel data

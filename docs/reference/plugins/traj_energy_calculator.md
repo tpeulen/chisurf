@@ -25,5 +25,5 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Source
 
 - Plugin package: `chisurf/plugins/traj/potential_energy/`
-- Manifest: `chisurf/plugins/traj/potential_energy/manifest.json`
-- UI spec: `chisurf/plugins/traj/potential_energy/calculate_potential.view.json`
+- Manifest: {src}`chisurf/plugins/traj/potential_energy/manifest.json`
+- UI spec: {src}`chisurf/plugins/traj/potential_energy/calculate_potential.view.json`

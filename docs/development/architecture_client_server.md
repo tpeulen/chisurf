@@ -18,8 +18,8 @@ hybrid GUI/server migration. The implementation source of truth is
 - The GUI process still owns real Python objects for many workflows through `chisurf.fits` and `chisurf.imported_datasets`.
 - `chisurf.server` can run as a headless JSON-RPC server with its own `SessionState`.
 - `chisurf.core.api.ChiSurfAPI` provides `local`, `hybrid`, and `server` modes.
-- `chisurf.core.api._client.ChisurfClient` wraps ZMQ RPC calls and installs typed methods from `chisurf/server/client_methods.json`.
-- The server registers methods from `chisurf/server/server_methods.json`.
+- `chisurf.core.api._client.ChisurfClient` wraps ZMQ RPC calls and installs typed methods from {src}`chisurf/server/client_methods.json`.
+- The server registers methods from {src}`chisurf/server/server_methods.json`.
 - Transparent proxies exist under `chisurf.core.api._proxies`, but normal GUI startup must not install them by default.
 
 ## Process Model
@@ -39,15 +39,15 @@ ZMQ subscriber <-- ZMQ PUB/SUB events --------  EventBus
 
 | Component | Path | Responsibility |
 |-----------|------|----------------|
-| `ChiSurfAPI` | `chisurf/core/api/__init__.py` | Stable facade for local, hybrid, and server-mode operations |
-| `PluginContext` | `chisurf/core/api/context.py` | Context object for migrated plugins |
-| `ChisurfClient` | `chisurf/core/api/_client.py` | High-level client over ZMQ JSON-RPC |
-| `ChiSurfServer` | `chisurf/server/app.py` | Server lifecycle and component wiring |
-| `ServiceDispatcher` | `chisurf/server/dispatcher.py` | RPC method lookup and service invocation |
-| `SessionState` | `chisurf/server/session.py` | Server-side datasets, fits, experiments, project/session snapshots |
-| `ServiceResult` | `chisurf/server/services/__init__.py` | Standard `{"ok": bool, ...}` service return shape |
-| `service_error()` | `chisurf/server/services/__init__.py` | Structured service error helper |
-| Protocol metadata | `chisurf/server/protocol.py` | JSON-RPC helpers, protocol version, method catalogue, schemas |
+| `ChiSurfAPI` | {src}`chisurf/core/api/__init__.py` | Stable facade for local, hybrid, and server-mode operations |
+| `PluginContext` | {src}`chisurf/core/api/context.py` | Context object for migrated plugins |
+| `ChisurfClient` | {src}`chisurf/core/api/_client.py` | High-level client over ZMQ JSON-RPC |
+| `ChiSurfServer` | {src}`chisurf/server/app.py` | Server lifecycle and component wiring |
+| `ServiceDispatcher` | {src}`chisurf/server/dispatcher.py` | RPC method lookup and service invocation |
+| `SessionState` | {src}`chisurf/server/session.py` | Server-side datasets, fits, experiments, project/session snapshots |
+| `ServiceResult` | {src}`chisurf/server/services/__init__.py` | Standard `{"ok": bool, ...}` service return shape |
+| `service_error()` | {src}`chisurf/server/services/__init__.py` | Structured service error helper |
+| Protocol metadata | {src}`chisurf/server/protocol.py` | JSON-RPC helpers, protocol version, method catalogue, schemas |
 
 ## Server Responsibilities
 
@@ -67,8 +67,8 @@ ZMQ subscriber <-- ZMQ PUB/SUB events --------  EventBus
 
 ## RPC Method Registry
 
-The authoritative registry is `chisurf/server/server_methods.json`. The client
-method wrappers are generated from `chisurf/server/client_methods.json`.
+The authoritative registry is {src}`chisurf/server/server_methods.json`. The client
+method wrappers are generated from {src}`chisurf/server/client_methods.json`.
 
 | Namespace | Methods |
 |-----------|---------|

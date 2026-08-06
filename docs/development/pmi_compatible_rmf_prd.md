@@ -12,17 +12,17 @@ Primary source areas:
 
 - `chisurf/plugins/modelling/proteinmc/`
 - `chisurf/core/models/structure/`
-- `chisurf/plugins/chimol/chimol/io/rmf.py`
-- `chisurf/plugins/chimol/chimol/renderer/chimol_state.py`
-- `chisurf/plugins/chimol/chimol/renderer/view.py`
+- {src}`chisurf/plugins/chimol/chimol/io/rmf.py`
+- {src}`chisurf/plugins/chimol/chimol/renderer/chimol_state.py`
+- {src}`chisurf/plugins/chimol/chimol/renderer/view.py`
 - `chisurf/plugins/chimol/chimol/app/`
 
 Reference-only source areas:
 
-- `/Users/tpeulen/dev/imp/modules/pmi/pyext/src/output.py`
-- `/Users/tpeulen/dev/imp/modules/pmi/pyext/src/topology/__init__.py`
-- `/Users/tpeulen/dev/imp/modules/pmi/pyext/src/dof/__init__.py`
-- `/Users/tpeulen/dev/imp/modules/pmi/pyext/src/macros.py`
+- {src}`/Users/tpeulen/dev/imp/modules/pmi/pyext/src/output.py`
+- {src}`/Users/tpeulen/dev/imp/modules/pmi/pyext/src/topology/__init__.py`
+- {src}`/Users/tpeulen/dev/imp/modules/pmi/pyext/src/dof/__init__.py`
+- {src}`/Users/tpeulen/dev/imp/modules/pmi/pyext/src/macros.py`
 - `thirdparty/rmf_chimerax/src/io.py`
 - `thirdparty/rmf_chimerax/src/tool.py`
 - `thirdparty/rmf_chimerax/src/cmd.py`
@@ -53,17 +53,17 @@ Live inspection means:
 
 ## Current State
 
-ProteinMC currently writes RMF via `chisurf/plugins/modelling/proteinmc/rmf.py`.
+ProteinMC currently writes RMF via {src}`chisurf/plugins/modelling/proteinmc/rmf.py`.
 
 Known limitations:
 
 - The writer builds a minimal IMP hierarchy manually.
 - It saves coordinate frames but not PMI `stat` metadata.
 - It does not embed `energy`, `labeling_energy`, `rmsd`, `drmsd`, `iteration`, `accepted`, or `rejected` values.
-- Similar RMF writer code exists in `chisurf/core/models/structure/rmf.py`.
-- Similar ProteinMC runner code exists in `chisurf/core/models/structure/proteinmc.py`.
+- Similar RMF writer code exists in {src}`chisurf/core/models/structure/rmf.py`.
+- Similar ProteinMC runner code exists in {src}`chisurf/core/models/structure/proteinmc.py`.
 
-Chimol currently reads RMF via `chisurf/plugins/chimol/chimol/io/rmf.py`.
+Chimol currently reads RMF via {src}`chisurf/plugins/chimol/chimol/io/rmf.py`.
 
 Known limitations:
 
@@ -91,11 +91,11 @@ Use a shared RMF writer implementation for structure trajectories.
 
 Recommended module layout:
 
-- `chisurf/core/models/structure/rmf.py`: canonical shared PMI-compatible RMF writer and metadata helpers.
-- `chisurf/plugins/modelling/proteinmc/rmf.py`: thin compatibility import or ProteinMC-specific adapter around the shared writer.
-- `chisurf/plugins/modelling/proteinmc/model.py`: ProteinMC runner passes frame metadata into the writer.
-- `chisurf/plugins/chimol/chimol/io/rmf.py`: loader extracts hierarchy, coordinates, features, provenance, and PMI `stat` frame series.
-- `chisurf/plugins/chimol/chimol/app/rmf_panel.py`: RMF feature/provenance/plot dock.
+- {src}`chisurf/core/models/structure/rmf.py`: canonical shared PMI-compatible RMF writer and metadata helpers.
+- {src}`chisurf/plugins/modelling/proteinmc/rmf.py`: thin compatibility import or ProteinMC-specific adapter around the shared writer.
+- {src}`chisurf/plugins/modelling/proteinmc/model.py`: ProteinMC runner passes frame metadata into the writer.
+- {src}`chisurf/plugins/chimol/chimol/io/rmf.py`: loader extracts hierarchy, coordinates, features, provenance, and PMI `stat` frame series.
+- {src}`chisurf/plugins/chimol/chimol/app/rmf_panel.py`: RMF feature/provenance/plot dock.
 
 The shared writer should support two levels of compatibility:
 
@@ -174,7 +174,7 @@ Tasks:
 
 Reference behavior:
 
-- `/Users/tpeulen/dev/imp/modules/pmi/pyext/src/output.py`, methods `init_rmf()` and `write_rmf()`.
+- {src}`/Users/tpeulen/dev/imp/modules/pmi/pyext/src/output.py`, methods `init_rmf()` and `write_rmf()`.
 
 Pseudo-API:
 
@@ -243,7 +243,7 @@ Acceptance criteria:
 
 Tasks:
 
-- Extend `chisurf/plugins/chimol/chimol/io/rmf.py`.
+- Extend {src}`chisurf/plugins/chimol/chimol/io/rmf.py`.
 - During frame iteration, read root-node values from RMF category `stat`.
 - Build `rmf_frame_series: dict[str, np.ndarray]` for numeric keys.
 - Preserve string values in `rmf_frame_metadata` if useful.
@@ -291,7 +291,7 @@ Acceptance criteria:
 
 Tasks:
 
-- Add `chisurf/plugins/chimol/chimol/app/rmf_panel.py`.
+- Add {src}`chisurf/plugins/chimol/chimol/app/rmf_panel.py`.
 - Provide a dock with:
   - frame-series combo box,
   - line plot widget,
@@ -443,7 +443,7 @@ Acceptance criteria:
 
 ## Open Questions For The Implementing Agent
 
-1. Should the canonical writer live in `chisurf/core/models/structure/rmf.py` or a new lower-level module such as `chisurf/core/structure/rmf.py`?
+1. Should the canonical writer live in {src}`chisurf/core/models/structure/rmf.py` or a new lower-level module such as `chisurf/core/structure/rmf.py`?
 2. Should ProteinMC's plugin-local RMF module remain a compatibility wrapper permanently?
 3. Should live inspection be manual refresh first, or should file watching be implemented immediately after stable refresh?
 4. Should all ChiSurf-specific frame keys be prefixed with `ChiSurf_` or only ProteinMC-specific keys with `ProteinMC_`?

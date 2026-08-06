@@ -32,4 +32,4 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 ## Source
 
 - Plugin package: `chisurf/plugins/core/code_editor/`
-- Manifest: `chisurf/plugins/core/code_editor/manifest.json`
+- Manifest: {src}`chisurf/plugins/core/code_editor/manifest.json`

@@ -51,4 +51,4 @@ Combining technical repeats.
 
 ## See also
 
-- `chisurf/plugins/burst/burst_analysis/api/workflow.py` (`register_all`, `select_bursts`).
+- {src}`chisurf/plugins/burst/burst_analysis/api/workflow.py` (`register_all`, `select_bursts`).

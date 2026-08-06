@@ -46,6 +46,6 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Source
 
 - Plugin package: `chisurf/plugins/spectra_downloader/`
-- Manifest: `chisurf/plugins/spectra_downloader/manifest.json`
-- UI spec: `chisurf/plugins/spectra_downloader/gui/endpoint_auth.view.json`
-- UI spec: `chisurf/plugins/spectra_downloader/gui/overview.view.json`
+- Manifest: {src}`chisurf/plugins/spectra_downloader/manifest.json`
+- UI spec: {src}`chisurf/plugins/spectra_downloader/gui/endpoint_auth.view.json`
+- UI spec: {src}`chisurf/plugins/spectra_downloader/gui/overview.view.json`

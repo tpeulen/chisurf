@@ -37,6 +37,6 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Source
 
 - Plugin package: `chisurf/plugins/fcs/fcs_filter_calculator/`
-- Manifest: `chisurf/plugins/fcs/fcs_filter_calculator/manifest.json`
-- UI spec: `chisurf/plugins/fcs/fcs_filter_calculator/gui_parts/calculator_options.view.json`
-- UI spec: `chisurf/plugins/fcs/fcs_filter_calculator/gui_parts/instrument_options.view.json`
+- Manifest: {src}`chisurf/plugins/fcs/fcs_filter_calculator/manifest.json`
+- UI spec: {src}`chisurf/plugins/fcs/fcs_filter_calculator/gui_parts/calculator_options.view.json`
+- UI spec: {src}`chisurf/plugins/fcs/fcs_filter_calculator/gui_parts/instrument_options.view.json`

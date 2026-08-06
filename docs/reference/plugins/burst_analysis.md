@@ -21,4 +21,4 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 ## Source
 
 - Plugin package: `chisurf/plugins/burst/burst_analysis/`
-- Manifest: `chisurf/plugins/burst/burst_analysis/manifest.json`
+- Manifest: {src}`chisurf/plugins/burst/burst_analysis/manifest.json`

@@ -28,5 +28,5 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Source
 
 - Plugin package: `chisurf/plugins/traj/traj_join/`
-- Manifest: `chisurf/plugins/traj/traj_join/manifest.json`
-- UI spec: `chisurf/plugins/traj/traj_join/join_trajectories.view.json`
+- Manifest: {src}`chisurf/plugins/traj/traj_join/manifest.json`
+- UI spec: {src}`chisurf/plugins/traj/traj_join/join_trajectories.view.json`

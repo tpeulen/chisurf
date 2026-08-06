@@ -29,4 +29,4 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 ## Source
 
 - Plugin package: `chisurf/plugins/burst/burst_h2mm/`
-- Manifest: `chisurf/plugins/burst/burst_h2mm/manifest.json`
+- Manifest: {src}`chisurf/plugins/burst/burst_h2mm/manifest.json`

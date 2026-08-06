@@ -54,5 +54,5 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Source
 
 - Plugin package: `chisurf/plugins/core/hmm/`
-- Manifest: `chisurf/plugins/core/hmm/manifest.json`
-- UI spec: `chisurf/plugins/core/hmm/gui/hmm.view.json`
+- Manifest: {src}`chisurf/plugins/core/hmm/manifest.json`
+- UI spec: {src}`chisurf/plugins/core/hmm/gui/hmm.view.json`

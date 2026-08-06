@@ -76,7 +76,7 @@ strand and loop cross-sections agree to ~0.1 Å.
 ### Milestone 6: PyMOL Compat Widget [LATER]
 **Files changed:** `MolView.py` (legacy), `view.py`
 
-- [ ] Replace `chisurf/gui/plots/molview/MolView.py` with Chimol compat wrapper
+- [ ] Replace {src}`chisurf/gui/plots/molview/MolView.py` with Chimol compat wrapper
 
 ### Milestone 7: High-Quality Export [LATER]
 **Files changed:** `qtgl.py`, `view.py`

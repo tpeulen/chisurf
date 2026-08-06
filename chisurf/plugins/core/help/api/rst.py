@@ -86,9 +86,58 @@ def _register_sphinx_roles() -> None:
         uri = str(target) + (f"#{anchor}" if anchor else "")
         return [nodes.reference(rawtext, label, refuri=uri)], []
 
+    def _source_role(name, rawtext, text, lineno, inliner, options=None, content=None):
+        """``:src:`path#symbol``` -> a link the browser opens in the code editor.
+
+        Written the same way in a Markdown page and a manual page, so a reader
+        cannot tell which renderer produced the link — and neither can a writer
+        have to remember.
+        """
+        from chisurf.plugins.core.help.api.source_links import resolve
+
+        body = text.strip()
+        caption = ""
+        if "<" in body and body.endswith(">"):
+            caption, body = body[: body.index("<")].strip(), body[body.index("<") + 1: -1]
+        resolved = resolve(body)
+        label = caption or (resolved.label if resolved else body)
+        if resolved is None:
+            return [nodes.literal(rawtext, label)], []
+        return [nodes.reference(rawtext, "", nodes.literal(rawtext, label),
+                                refuri=body)], []
+
+    def _cite_role(name, rawtext, text, lineno, inliner, options=None, content=None):
+        """``:cite:`key``` -> the short citation, linked to where the work lives."""
+        from chisurf.plugins.core.help.api.bibliography import (
+            bibliography, entry_url, short_citation,
+        )
+
+        entries = bibliography()
+        children: list = []
+        for index, key in enumerate(k.strip() for k in text.split(",")):
+            if not key:
+                continue
+            if index:
+                children.append(nodes.Text("; "))
+            entry = entries.get(key)
+            if entry is None:
+                children.append(nodes.literal(rawtext, key))
+                continue
+            children.append(
+                nodes.reference(rawtext, short_citation(entry), refuri=entry_url(entry))
+            )
+        return children or [nodes.Text(text)], []
+
     for role_name in ("ref", "doc", "numref"):
         try:
             roles.register_local_role(role_name, _reference_role)
+        except Exception:  # pragma: no cover
+            continue
+
+    for role_name, handler in (("src", _source_role), ("code-src", _source_role),
+                               ("cite", _cite_role)):
+        try:
+            roles.register_local_role(role_name, handler)
         except Exception:  # pragma: no cover
             continue
 

@@ -486,14 +486,14 @@ Redaction:
 
 ## Dependent Code To Update
 
-- [ ] `chisurf/plugins/core/mmfdb_admin/gui/client.py`
-- [ ] `chisurf/plugins/core/mmfdb_admin/backend/password_services.py`
-- [ ] `chisurf/plugins/core/mmfdb_admin/backend/services.py`
-- [ ] `chisurf/plugins/core/mmfdb_admin/backend/measurement_services.py`
+- [ ] {src}`chisurf/plugins/core/mmfdb_admin/gui/client.py`
+- [ ] {src}`chisurf/plugins/core/mmfdb_admin/backend/password_services.py`
+- [ ] {src}`chisurf/plugins/core/mmfdb_admin/backend/services.py`
+- [ ] {src}`chisurf/plugins/core/mmfdb_admin/backend/measurement_services.py`
 - [ ] `chisurf/plugins/core/mmfdb_admin/backend/setup_services.py`
-- [ ] `chisurf/plugins/core/mmfdb_admin/gui/tool.py`
+- [ ] {src}`chisurf/plugins/core/mmfdb_admin/gui/tool.py`
 - [ ] `chisurf/plugins/core/user_editor/gui.py`
-- [ ] startup login dialog in `chisurf/gui/__init__.py`
+- [ ] startup login dialog in {src}`chisurf/gui/__init__.py`
 - [ ] `chisurf/core/mmfdb/repository.py`
 - [ ] `chisurf/core/mmfdb/api.py`
 - [ ] Chinet MMFDB adapter

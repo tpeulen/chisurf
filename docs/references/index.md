@@ -10,7 +10,7 @@ Pages cite a work by its **key** — the name each entry is anchored under below
 and the citation renders as a link to the paper. The source of truth is
 [`bibliography.yaml`](bibliography.yaml) — add a work there and it appears here.
 
-*92 works.*
+*112 works.*
 
 
 ## FRET: mechanism, accuracy and corrections
@@ -18,6 +18,11 @@ and the citation renders as a link to the paper. The source of truth is
 (barth2022)=
 
 **[Barth et al. (2022)](https://doi.org/10.1063/5.0089134)** — A. Barth, O. Opanasyuk, T.-O. Peulen, et al. *Unraveling multi-state molecular dynamics in single-molecule FRET experiments — I. Theory of FRET-lines*. Journal of Chemical Physics **156**, 141501. (2022).
+
+(clegg1995)=
+
+**[Clegg (1995)](https://doi.org/10.1016/0958-1669(95)80016-6)** — R. M. Clegg. *Fluorescence resonance energy transfer*. Current Opinion in Biotechnology **6**, 103-110. (1995).  
+*A compact review of the mechanism and its assumptions.*
 
 (dimura2016)=
 
@@ -41,8 +46,18 @@ and the citation renders as a link to the paper. The source of truth is
 
 (kalinin2004)=
 
-**[Kalinin et al. (2004)](https://doi.org/10.1021/jp031096x)** — S. Kalinin, L. B.-Å. Johansson. *Energy migration and transfer rates are invariant to modeling the fluorescence relaxation by discrete and continuous distributions of lifetimes*. Journal of Physical Chemistry B **108**, 3092-3097. (2004).  
+**[Kalinin & Johansson (2004)](https://doi.org/10.1021/jp031096x)** — S. Kalinin, L. B.-Å. Johansson. *Energy migration and transfer rates are invariant to modeling the fluorescence relaxation by discrete and continuous distributions of lifetimes*. Journal of Physical Chemistry B **108**, 3092-3097. (2004).  
 *The PDDEM model.*
+
+(kalinin2012)=
+
+**[Kalinin et al. (2012)](https://doi.org/10.1038/nmeth.2222)** — S. Kalinin, T. Peulen, S. Sindbert, et al. *A toolkit and benchmark study for FRET-restrained high-precision structural modeling*. Nature Methods **9**, 1218-1225. (2012).  
+*The FPS toolkit - AV screening, distance networks and the benchmark.*
+
+(lakowicz2006)=
+
+**[Lakowicz (2006)](https://doi.org/10.1007/978-0-387-46312-4)** — J. R. Lakowicz. *Principles of Fluorescence Spectroscopy*. Springer US. (2006).  
+*The standard textbook; 3rd edition. FRET, lifetime and anisotropy chapters.*
 
 (lee2005)=
 
@@ -54,8 +69,23 @@ and the citation renders as a link to the paper. The source of truth is
 **[Peulen et al. (2017)](https://doi.org/10.1021/acs.jpcb.7b03441)** — T. O. Peulen, O. Opanasyuk, C. A. M. Seidel. *Combining graphical and analytical methods with molecular simulations to analyze time-resolved FRET measurements of labeled macromolecules accurately*. Journal of Physical Chemistry B **121**, 8211-8241. (2017).  
 *FRET lines, and what they say about dynamics.*
 
+(sindbert2011)=
+
+**[Sindbert et al. (2011)](https://doi.org/10.1021/ja105725e)** — S. Sindbert, S. Kalinin, H. Nguyen, A. Kienzler, L. Clima, W. Bannwarth, B. Appel, S. Müller, C. A. M. Seidel. *Accurate distance determination of nucleic acids via Förster resonance energy transfer - implications of dye linker length and rigidity*. Journal of the American Chemical Society **133**, 2463-2480. (2011).  
+*The accessible-volume model of the dye cloud, and what the linker does to a distance.*
+
 
 ## Single-molecule FRET
+
+(blanco2010)=
+
+**[Blanco & Walter (2010)](https://doi.org/10.1016/S0076-6879(10)72011-5)** — M. Blanco, N. G. Walter. *Analysis of complex single-molecule FRET time trajectories*. Methods in Enzymology **472**, 153-178. (2010).  
+*Transition-density plots and the practice of reading them.*
+
+(bronson2009)=
+
+**[Bronson et al. (2009)](https://doi.org/10.1016/j.bpj.2009.09.031)** — J. E. Bronson, J. Fei, J. M. Hofman, R. L. Gonzalez Jr., C. H. Wiggins. *Learning rates and states from biophysical time series - a Bayesian approach to model selection and single-molecule FRET data*. Biophysical Journal **97**, 3196-3205. (2009).  
+*vbFRET - variational Bayes per trace, and how the evidence picks the state count.*
 
 (eggeling2001)=
 
@@ -66,14 +96,29 @@ and the citation renders as a link to the paper. The source of truth is
 
 **[Hoffmann et al. (2011)](https://doi.org/10.1039/c0cp01911a)** — A. Hoffmann, D. Nettels, J. Clark, et al. *Quantifying heterogeneity and conformational dynamics from single molecule FRET of diffusing molecules: recurrence analysis of single particles (RASP)*. Physical Chemistry Chemical Physics **13**, 1857-1871. (2011).
 
+(ingargiola2016)=
+
+**[Ingargiola et al. (2016)](https://doi.org/10.1371/journal.pone.0160716)** — A. Ingargiola, E. Lerner, S. Chung, S. Weiss, X. Michalet. *FRETBursts - an open source toolkit for analysis of freely-diffusing single-molecule FRET*. PLOS ONE **11**, e0160716. (2016).  
+*The open burst-analysis toolkit, and the PyBroMo diffusion simulator beside it.*
+
 (kapanidis2004)=
 
 **[Kapanidis et al. (2004)](https://doi.org/10.1073/pnas.0401690101)** — A. N. Kapanidis, N. K. Lee, T. A. Laurence, S. Doose, E. Margeat, S. Weiss. *Fluorescence-aided molecule sorting: analysis of structure and interactions by alternating-laser excitation of single molecules*. Proceedings of the National Academy of Sciences **101**, 8936-8941. (2004).  
 *Where stoichiometry-based sorting is introduced.*
 
+(vandemeent2014)=
+
+**[Meent et al. (2014)](https://doi.org/10.1016/j.bpj.2013.12.055)** — J.-W. van de Meent, J. E. Bronson, C. H. Wiggins, R. L. Gonzalez Jr. *Empirical Bayes methods enable advanced population-level analyses of single-molecule FRET experiments*. Biophysical Journal **106**, 1327-1337. (2014).  
+*ebFRET - the empirical-Bayes variational HMM shared across traces.*
+
 (nir2006)=
 
 **[Nir et al. (2006)](https://doi.org/10.1021/jp063483n)** — E. Nir, X. Michalet, K. M. Hamadani, et al. *Shot-noise limited single-molecule FRET histograms: comparison between theory and experiments*. Journal of Physical Chemistry B **110**, 22103-22124. (2006).
+
+(schrimpf2018)=
+
+**[Schrimpf et al. (2018)](https://doi.org/10.1016/j.bpj.2018.02.035)** — W. Schrimpf, A. Barth, J. Hendrix, D. C. Lamb. *PAM - a framework for integrated analysis of imaging, single-molecule and fluorescence fluctuation spectroscopy data*. Biophysical Journal **114**, 1518-1528. (2018).  
+*A comparable open analysis framework; its H2MM implementation.*
 
 (sisamakis2010)=
 
@@ -105,7 +150,7 @@ and the citation renders as a link to the paper. The source of truth is
 
 (gopich2010)=
 
-**[Gopich et al. (2010)](https://doi.org/10.1021/jp105359z)** — I. V. Gopich, A. Szabo. *FRET efficiency distributions of multistate single molecules*. Journal of Physical Chemistry B **114**, 15221. (2010).  
+**[Gopich & Szabo (2010)](https://doi.org/10.1021/jp105359z)** — I. V. Gopich, A. Szabo. *FRET efficiency distributions of multistate single molecules*. Journal of Physical Chemistry B **114**, 15221. (2010).  
 *The multistate time-averaging approximation used for dynamics.*
 
 (kalinin2008)=
@@ -126,11 +171,11 @@ and the citation renders as a link to the paper. The source of truth is
 
 (gopich2006)=
 
-**[Gopich et al. (2006)](https://doi.org/10.1063/1.2180770)** — I. V. Gopich, A. Szabo. *Theory of the statistics of kinetic transitions with application to single-molecule enzyme catalysis*. Journal of Chemical Physics **124**, 154712. (2006).
+**[Gopich & Szabo (2006)](https://doi.org/10.1063/1.2180770)** — I. V. Gopich, A. Szabo. *Theory of the statistics of kinetic transitions with application to single-molecule enzyme catalysis*. Journal of Chemical Physics **124**, 154712. (2006).
 
 (gopich2009)=
 
-**[Gopich et al. (2009)](https://doi.org/10.1021/jp903671p)** — I. V. Gopich, A. Szabo. *Decoding the pattern of photon colors in single-molecule FRET*. Journal of Physical Chemistry B **113**, 10965-10973. (2009).
+**[Gopich & Szabo (2009)](https://doi.org/10.1021/jp903671p)** — I. V. Gopich, A. Szabo. *Decoding the pattern of photon colors in single-molecule FRET*. Journal of Physical Chemistry B **113**, 10965-10973. (2009).
 
 (harris2022)=
 
@@ -152,7 +197,7 @@ and the citation renders as a link to the paper. The source of truth is
 
 (varadhan2008)=
 
-**[VARADHAN et al. (2008)](https://doi.org/10.1111/j.1467-9469.2007.00585.x)** — RAVI VARADHAN, CHRISTOPHE ROLAND. *Simple and Globally Convergent Methods for Accelerating the Convergence of Any EM Algorithm*. Scandinavian Journal of Statistics **35**, 335-353. (2008).  
+**[VARADHAN & ROLAND (2008)](https://doi.org/10.1111/j.1467-9469.2007.00585.x)** — RAVI VARADHAN, CHRISTOPHE ROLAND. *Simple and Globally Convergent Methods for Accelerating the Convergence of Any EM Algorithm*. Scandinavian Journal of Statistics **35**, 335-353. (2008).  
 *SQUAREM — the acceleration applied to the EM iterations.*
 
 
@@ -169,7 +214,7 @@ and the citation renders as a link to the paper. The source of truth is
 
 (elson1974)=
 
-**[Elson et al. (1974)](https://doi.org/10.1002/bip.1974.360130102)** — E. L. Elson, D. Magde. *Fluorescence correlation spectroscopy. I. Conceptual basis and theory*. Biopolymers **13**, 1-27. (1974).  
+**[Elson & Magde (1974)](https://doi.org/10.1002/bip.1974.360130102)** — E. L. Elson, D. Magde. *Fluorescence correlation spectroscopy. I. Conceptual basis and theory*. Biopolymers **13**, 1-27. (1974).  
 *Where the correlation formalism used here is set out.*
 
 (enderlein2005)=
@@ -188,13 +233,23 @@ and the citation renders as a link to the paper. The source of truth is
 
 (haustein2007)=
 
-**[Haustein et al. (2007)](https://doi.org/10.1146/annurev.biophys.36.040306.132612)** — E. Haustein, P. Schwille. *Fluorescence correlation spectroscopy: novel variations of an established technique*. Annual Review of Biophysics and Biomolecular Structure **36**, 151-169. (2007).  
+**[Haustein & Schwille (2007)](https://doi.org/10.1146/annurev.biophys.36.040306.132612)** — E. Haustein, P. Schwille. *Fluorescence correlation spectroscopy: novel variations of an established technique*. Annual Review of Biophysics and Biomolecular Structure **36**, 151-169. (2007).  
 *A readable survey of the model variants.*
 
 (ishii2013)=
 
-**[Ishii et al. (2013)](https://doi.org/10.1021/jp406861u)** — Kunihiko Ishii, Tahei Tahara. *Two-Dimensional Fluorescence Lifetime Correlation Spectroscopy. 1. Principle*. The Journal of Physical Chemistry B **117**, 11414-11422. (2013).  
+**[Ishii & Tahara (2013)](https://doi.org/10.1021/jp406861u)** — Kunihiko Ishii, Tahei Tahara. *Two-Dimensional Fluorescence Lifetime Correlation Spectroscopy. 1. Principle*. The Journal of Physical Chemistry B **117**, 11414-11422. (2013).  
 *Two-dimensional fluorescence lifetime correlation spectroscopy.*
+
+(ishii2013b)=
+
+**[Ishii & Tahara (2013)](https://doi.org/10.1021/jp406864e)** — K. Ishii, T. Tahara. *Two-dimensional fluorescence lifetime correlation spectroscopy. 2. Application*. The Journal of Physical Chemistry B **117**, 11423-11432. (2013).  
+*The companion application paper to ishii2013.*
+
+(kapusta2007)=
+
+**[Kapusta et al. (2007)](https://doi.org/10.1007/s10895-006-0145-1)** — P. Kapusta, M. Wahl, A. Benda, M. Hof, J. Enderlein. *Fluorescence lifetime correlation spectroscopy*. Journal of Fluorescence **17**, 43-48. (2007).  
+*Lifetime filtering of correlation curves.*
 
 (magde1972)=
 
@@ -208,7 +263,7 @@ and the citation renders as a link to the paper. The source of truth is
 
 (petrasek2008)=
 
-**[Petrášek et al. (2008)](https://doi.org/10.1529/biophysj.107.108811)** — Z. Petrášek, P. Schwille. *Precise measurement of diffusion coefficients using scanning fluorescence correlation spectroscopy*. Biophysical Journal **94**, 1437-1448. (2008).
+**[Petrášek & Schwille (2008)](https://doi.org/10.1529/biophysj.107.108811)** — Z. Petrášek, P. Schwille. *Precise measurement of diffusion coefficients using scanning fluorescence correlation spectroscopy*. Biophysical Journal **94**, 1437-1448. (2008).
 
 (rigler1993)=
 
@@ -240,8 +295,13 @@ and the citation renders as a link to the paper. The source of truth is
 
 (widengren2000)=
 
-**[Widengren et al. (2000)](https://doi.org/10.1021/jp000059s)** — Jerker Widengren, Petra Schwille. *Characterization of Photoinduced Isomerization and Back-Isomerization of the Cyanine Dye Cy5 by Fluorescence Correlation Spectroscopy*. The Journal of Physical Chemistry A **104**, 6416-6428. (2000).  
+**[Widengren & Schwille (2000)](https://doi.org/10.1021/jp000059s)** — Jerker Widengren, Petra Schwille. *Characterization of Photoinduced Isomerization and Back-Isomerization of the Cyanine Dye Cy5 by Fluorescence Correlation Spectroscopy*. The Journal of Physical Chemistry A **104**, 6416-6428. (2000).  
 *Photoinduced isomerisation, one of the processes a bunching term absorbs.*
+
+(wohland2001)=
+
+**[Wohland et al. (2001)](https://doi.org/10.1016/S0006-3495(01)76264-9)** — T. Wohland, R. Rigler, H. Vogel. *The standard deviation in fluorescence correlation spectroscopy*. Biophysical Journal **80**, 2987-2999. (2001).  
+*Noise in FCS derived from Brownian-dynamics simulation.*
 
 
 ## Image correlation and scanning microscopy
@@ -252,7 +312,7 @@ and the citation renders as a link to the paper. The source of truth is
 
 (cardarelli2010)=
 
-**[Cardarelli et al. (2010)](https://doi.org/10.1016/j.bpj.2009.12.4114)** — F. Cardarelli, E. Gratton. *In vivo imaging of single-molecule translocation through nuclear pore complexes by pair correlation functions*. PLoS ONE **5**, e10475. (2010).
+**[Cardarelli & Gratton (2010)](https://doi.org/10.1016/j.bpj.2009.12.4114)** — F. Cardarelli, E. Gratton. *In vivo imaging of single-molecule translocation through nuclear pore complexes by pair correlation functions*. PLoS ONE **5**, e10475. (2010).
 
 (digman2005)=
 
@@ -265,11 +325,11 @@ and the citation renders as a link to the paper. The source of truth is
 
 (digman2009)=
 
-**[Digman et al. (2009)](https://doi.org/10.1016/j.bpj.2009.04.048)** — M. A. Digman, E. Gratton. *Imaging barriers to diffusion by pair correlation functions*. Biophysical Journal **97**, 665-673. (2009).
+**[Digman & Gratton (2009)](https://doi.org/10.1016/j.bpj.2009.04.048)** — M. A. Digman, E. Gratton. *Imaging barriers to diffusion by pair correlation functions*. Biophysical Journal **97**, 665-673. (2009).
 
 (digman2012)=
 
-**[Digman et al. (2012)](https://doi.org/10.1002/bies.201100118)** — M. A. Digman, E. Gratton. *Scanning image correlation spectroscopy*. BioEssays **34**, 377-385. (2012).
+**[Digman & Gratton (2012)](https://doi.org/10.1002/bies.201100118)** — M. A. Digman, E. Gratton. *Scanning image correlation spectroscopy*. BioEssays **34**, 377-385. (2012).
 
 (hebert2005)=
 
@@ -277,7 +337,7 @@ and the citation renders as a link to the paper. The source of truth is
 
 (vanheel2005)=
 
-**[Heel et al. (2005)](https://doi.org/10.1016/j.jsb.2005.05.009)** — M. van Heel, M. Schatz. *Fourier shell correlation threshold criteria*. Journal of Structural Biology **151**, 250-262. (2005).
+**[Heel & Schatz (2005)](https://doi.org/10.1016/j.jsb.2005.05.009)** — M. van Heel, M. Schatz. *Fourier shell correlation threshold criteria*. Journal of Structural Biology **151**, 250-262. (2005).
 
 (nieuwenhuizen2013)=
 
@@ -285,7 +345,7 @@ and the citation renders as a link to the paper. The source of truth is
 
 (richards1959)=
 
-**[Richards et al. (1959)](https://doi.org/10.1098/rspa.1959.0200)** — B. Richards, E. Wolf. *Electromagnetic diffraction in optical systems, II. Structure of the image field in an aplanatic system*. Proceedings of the Royal Society of London. Series A. Mathematical and Physical Sciences **253**, 358-379. (1959).  
+**[Richards & Wolf (1959)](https://doi.org/10.1098/rspa.1959.0200)** — B. Richards, E. Wolf. *Electromagnetic diffraction in optical systems, II. Structure of the image field in an aplanatic system*. Proceedings of the Royal Society of London. Series A. Mathematical and Physical Sciences **253**, 358-379. (1959).  
 *The vectorial focal field a high-NA objective produces — the basis of the PSF calculator.*
 
 (sroda2020)=
@@ -308,7 +368,7 @@ and the citation renders as a link to the paper. The source of truth is
 
 (crocker1996)=
 
-**[Crocker et al. (1996)](https://doi.org/10.1006/jcis.1996.0217)** — J. C. Crocker, D. G. Grier. *Methods of digital video microscopy for colloidal studies*. Journal of Colloid and Interface Science **179**, 298-310. (1996).
+**[Crocker & Grier (1996)](https://doi.org/10.1006/jcis.1996.0217)** — J. C. Crocker, D. G. Grier. *Methods of digital video microscopy for colloidal studies*. Journal of Colloid and Interface Science **179**, 298-310. (1996).
 
 (jaqaman2008)=
 
@@ -327,7 +387,7 @@ and the citation renders as a link to the paper. The source of truth is
 
 (bolte2006)=
 
-**[Bolte et al. (2006)](https://doi.org/10.1111/j.1365-2818.2006.01706.x)** — S. Bolte, F. P. Cordelières. *A guided tour into subcellular colocalization analysis in light microscopy*. Journal of Microscopy **224**, 213-232. (2006).
+**[Bolte & Cordelières (2006)](https://doi.org/10.1111/j.1365-2818.2006.01706.x)** — S. Bolte, F. P. Cordelières. *A guided tour into subcellular colocalization analysis in light microscopy*. Journal of Microscopy **224**, 213-232. (2006).
 
 (costes2004)=
 
@@ -369,21 +429,31 @@ and the citation renders as a link to the paper. The source of truth is
 
 (lee1971)=
 
-**[Lee et al. (1971)](https://doi.org/10.1016/0022-2836(71)90324-X)** — B. Lee, F. M. Richards. *The interpretation of protein structures: estimation of static accessibility*. Journal of Molecular Biology **55**, 379-400. (1971).  
+**[Lee & Richards (1971)](https://doi.org/10.1016/0022-2836(71)90324-X)** — B. Lee, F. M. Richards. *The interpretation of protein structures: estimation of static accessibility*. Journal of Molecular Biology **55**, 379-400. (1971).  
 *The accessible surface and the rolling probe.*
 
 (vanoosterom1983)=
 
-**[Oosterom et al. (1983)](https://doi.org/10.1109/tbme.1983.325207)** — A. van Oosterom, J. Strackee. *The solid angle of a plane triangle*. IEEE Transactions on Biomedical Engineering **30**, 125-126. (1983).  
+**[Oosterom & Strackee (1983)](https://doi.org/10.1109/tbme.1983.325207)** — A. van Oosterom, J. Strackee. *The solid angle of a plane triangle*. IEEE Transactions on Biomedical Engineering **30**, 125-126. (1983).  
 *The spherical-excess formula used for the point weights.*
 
 (shrake1973)=
 
-**[Shrake et al. (1973)](https://doi.org/10.1016/0022-2836(73)90011-9)** — A. Shrake, J. A. Rupley. *Environment and exposure to solvent of protein atoms. Lysozyme and insulin*. Journal of Molecular Biology **79**, 351-371. (1973).  
+**[Shrake & Rupley (1973)](https://doi.org/10.1016/0022-2836(73)90011-9)** — A. Shrake, J. A. Rupley. *Environment and exposure to solvent of protein atoms. Lysozyme and insulin*. Journal of Molecular Biology **79**, 351-371. (1973).  
 *The dot-sampling algorithm used here.*
 
 
 ## Time-resolved fluorescence
+
+(becker2005)=
+
+**[Becker (2005)](https://doi.org/10.1007/3-540-28882-1)** — W. Becker. *Advanced Time-Correlated Single Photon Counting Techniques*. Springer Series in Chemical Physics. (2005).  
+*Instrumentation, pile-up and differential non-linearity.*
+
+(coates1968)=
+
+**[Coates (1968)](https://doi.org/10.1088/0022-3735/1/8/437)** — P. B. Coates. *The correction for photon 'pile-up' in the measurement of radiative lifetimes*. Journal of Physics E - Scientific Instruments **1**, 878-879. (1968).  
+*The pile-up correction applied to high-count-rate TCSPC.*
 
 (gomezsanchez2024)=
 
@@ -394,6 +464,16 @@ and the citation renders as a link to the paper. The source of truth is
 
 **[Maus et al. (2001)](https://doi.org/10.1021/ac000877g)** — Michael Maus, Mircea Cotlet, Johan Hofkens, Thomas Gensch, Frans C. De Schryver, J. Schaffer, C. A. M. Seidel. *An Experimental Comparison of the Maximum Likelihood Estimation and Nonlinear Least-Squares Fluorescence Lifetime Analysis of Single Molecules*. Analytical Chemistry **73**, 2078-2086. (2001).  
 *Maximum likelihood against least squares for photon-limited decays — the 2I* statistic used for burst-wise lifetimes.*
+
+(oconnor1984)=
+
+**[O'Connor & Phillips (1984)](https://doi.org/10.1016/B978-0-12-524140-3.X5001-1)** — D. V. O'Connor, D. Phillips. *Time-Correlated Single Photon Counting*. Academic Press. (1984).  
+*The standard treatment of reconvolution and the TCSPC nuisance terms.*
+
+(schaffer1999)=
+
+**[Schaffer et al. (1999)](https://doi.org/10.1021/jp9833597)** — J. Schaffer, A. Volkmer, C. Eggeling, V. Subramaniam, G. Striker, C. A. M. Seidel. *Identification of single molecules in aqueous solution by time-resolved fluorescence anisotropy*. The Journal of Physical Chemistry A **103**, 331-336. (1999).  
+*The G = S_par/S_perp convention and the l1, l2 channel-mixing correction.*
 
 
 ## Anisotropy
@@ -417,7 +497,7 @@ and the citation renders as a link to the paper. The source of truth is
 
 (terbraak2008)=
 
-**[Braak et al. (2008)](https://doi.org/10.1007/s11222-008-9104-9)** — Cajo J. F. ter Braak, Jasper A. Vrugt. *Differential Evolution Markov Chain with snooker updater and fewer chains*. Statistics and Computing **18**, 435-446. (2008).  
+**[Braak & Vrugt (2008)](https://doi.org/10.1007/s11222-008-9104-9)** — Cajo J. F. ter Braak, Jasper A. Vrugt. *Differential Evolution Markov Chain with snooker updater and fewer chains*. Statistics and Computing **18**, 435-446. (2008).  
 *DE-MC with a snooker update and fewer chains.*
 
 (campello2013)=
@@ -430,7 +510,7 @@ and the citation renders as a link to the paper. The source of truth is
 
 (gelman1992)=
 
-**[Gelman et al. (1992)](https://doi.org/10.1214/ss/1177011136)** — A. Gelman, D. B. Rubin. *Inference from iterative simulation using multiple sequences*. Statistical Science **7**, 457-472. (1992).
+**[Gelman & Rubin (1992)](https://doi.org/10.1214/ss/1177011136)** — A. Gelman, D. B. Rubin. *Inference from iterative simulation using multiple sequences*. Statistical Science **7**, 457-472. (1992).
 
 (geyer1992)=
 
@@ -438,7 +518,7 @@ and the citation renders as a link to the paper. The source of truth is
 
 (goodman2010)=
 
-**[Goodman et al. (2010)](https://doi.org/10.2140/camcos.2010.5.65)** — J. Goodman, J. Weare. *Ensemble samplers with affine invariance*. Communications in Applied Mathematics and Computational Science **5**, 65-80. (2010).
+**[Goodman & Weare (2010)](https://doi.org/10.2140/camcos.2010.5.65)** — J. Goodman, J. Weare. *Ensemble samplers with affine invariance*. Communications in Applied Mathematics and Computational Science **5**, 65-80. (2010).
 
 (haario2001)=
 
@@ -446,7 +526,7 @@ and the citation renders as a link to the paper. The source of truth is
 
 (karamanis2021)=
 
-**[Karamanis et al. (2021)](https://doi.org/10.1007/s11222-021-10038-2)** — M. Karamanis, F. Beutler. *Ensemble slice sampling*. Statistics and Computing **31**, 61. (2021).
+**[Karamanis & Beutler (2021)](https://doi.org/10.1007/s11222-021-10038-2)** — M. Karamanis, F. Beutler. *Ensemble slice sampling*. Statistics and Computing **31**, 61. (2021).
 
 (mcinnes2018)=
 
@@ -466,7 +546,30 @@ and the citation renders as a link to the paper. The source of truth is
 
 (zhang2009)=
 
-**[Zhang et al. (2009)](https://doi.org/10.1198/tech.2009.08017)** — J. Zhang, M. A. Stephens. *A new and efficient estimation method for the generalized Pareto distribution*. Technometrics **51**, 316-325. (2009).
+**[Zhang & Stephens (2009)](https://doi.org/10.1198/tech.2009.08017)** — J. Zhang, M. A. Stephens. *A new and efficient estimation method for the generalized Pareto distribution*. Technometrics **51**, 316-325. (2009).
+
+
+## Other
+
+(debeer1994)=
+
+**[Beer et al. (1994)](https://doi.org/10.1002/bit.260431118)** — D. de Beer, P. Stoodley, F. Roe, Z. Lewandowski. *Effects of biofilm structures on oxygen distribution and mass transport*. Biotechnology and Bioengineering **43**, 1131-1138. (1994).  
+*Oxygen microelectrode profiles through a biofilm.*
+
+(lardon2011)=
+
+**[Lardon et al. (2011)](https://doi.org/10.1111/j.1462-2920.2011.02414.x)** — L. A. Lardon, B. V. Merkey, S. Martins, A. Dötsch, C. Picioreanu, J.-U. Kreft, B. F. Smets. *iDynoMiCS - next-generation individual-based modelling of biofilms*. Environmental Microbiology **13**, 2416-2434. (2011).  
+*The individual-based biofilm simulator the demonstration follows.*
+
+(picioreanu1998)=
+
+**[Picioreanu et al. (1998)](https://doi.org/10.1002/(SICI)1097-0290(19980405)58:1<101::AID-BIT11>3.0.CO;2-M)** — C. Picioreanu, M. C. M. van Loosdrecht, J. J. Heijnen. *Mathematical modeling of biofilm structure with a hybrid differential-discrete cellular automaton approach*. Biotechnology and Bioengineering **58**, 101-116. (1998).  
+*Diffusion-limited growth producing the finger-like structure.*
+
+(stewart2008)=
+
+**[Stewart & Franklin (2008)](https://doi.org/10.1038/nrmicro1838)** — P. S. Stewart, M. J. Franklin. *Physiological heterogeneity in biofilms*. Nature Reviews Microbiology **6**, 199-210. (2008).  
+*Why a biofilm is not one population.*
 
 
 ---

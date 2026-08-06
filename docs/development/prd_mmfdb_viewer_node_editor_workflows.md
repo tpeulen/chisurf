@@ -28,18 +28,18 @@ points.
 
 ## Current Facts To Respect
 
-- [x] MMFDB viewer lives mainly in `chisurf/plugins/core/mmfdb_admin/gui/tool.py`.
-- [x] MMFDB client lives in `chisurf/plugins/core/mmfdb_admin/gui/client.py`.
+- [x] MMFDB viewer lives mainly in {src}`chisurf/plugins/core/mmfdb_admin/gui/tool.py`.
+- [x] MMFDB client lives in {src}`chisurf/plugins/core/mmfdb_admin/gui/client.py`.
 - [x] `MMFDBClient` production default uses `ZmqClient`; `inprocess=True` is explicit.
 - [x] `SampleDatabaseClient` remains a legacy in-process compatibility client.
 - [x] MMFDB GUI no longer imports `FluorescenceDatabase` or `resolve_database_path`
-      directly in `chisurf/plugins/core/mmfdb_admin/gui/tool.py`.
+      directly in {src}`chisurf/plugins/core/mmfdb_admin/gui/tool.py`.
 - [x] Provenance/data RPC handlers live in
-      `chisurf/plugins/core/mmfdb_admin/backend/measurement_services.py`.
-- [x] Node editor widget lives in `chisurf/gui/widgets/node_editor/editor.py`.
-- [x] Node scene serialization lives in `chisurf/gui/widgets/node_editor/scene.py`.
-- [x] Node type registry lives in `chisurf/gui/widgets/node_editor/registry.py`.
-- [x] Headless node graph model lives in `chisurf/gui/widgets/node_editor/graph.py`.
+      {src}`chisurf/plugins/core/mmfdb_admin/backend/measurement_services.py`.
+- [x] Node editor widget lives in {src}`chisurf/gui/widgets/node_editor/editor.py`.
+- [x] Node scene serialization lives in {src}`chisurf/gui/widgets/node_editor/scene.py`.
+- [x] Node type registry lives in {src}`chisurf/gui/widgets/node_editor/registry.py`.
+- [x] Headless node graph model lives in {src}`chisurf/gui/widgets/node_editor/graph.py`.
 - [x] Existing MMFDB UI bug: `raw_data.list` returns `raw_data`, but the UI
       reads `raw_datasets`.
 - [x] Existing MMFDB UI bug: `processed_data.list` returns `processed_data`,
@@ -82,7 +82,7 @@ points.
 
 ### 1. Make `NodeEditorWidget` reusable instead of demo-only
 
-Edit `chisurf/gui/widgets/node_editor/editor.py`.
+Edit {src}`chisurf/gui/widgets/node_editor/editor.py`.
 
 - [x] Add backward-compatible constructor kwargs:
   - [x] `build_example: bool = True`
@@ -116,7 +116,7 @@ Edit `chisurf/gui/widgets/node_editor/editor.py`.
 
 ### 2. Add read-only interaction mode
 
-Edit `chisurf/gui/widgets/node_editor/scene.py`.
+Edit {src}`chisurf/gui/widgets/node_editor/scene.py`.
 
 - [x] Add `read_only: bool = False` to `NodeScene.__init__`.
 - [x] Store `self.read_only`.
@@ -147,8 +147,8 @@ Edit `chisurf/gui/widgets/node_editor/scene.py`.
 
 ### 3. Preserve graph identity and metadata
 
-Edit `chisurf/gui/widgets/node_editor/scene.py` and
-`chisurf/gui/widgets/node_editor/edge_item.py`.
+Edit {src}`chisurf/gui/widgets/node_editor/scene.py` and
+{src}`chisurf/gui/widgets/node_editor/edge_item.py`.
 
 - [x] In `NodeScene.from_dict()`, construct `NodeModel(..., id=node_id)`.
 - [x] Preserve top-level `meta` from loaded graph on the scene.
@@ -166,7 +166,7 @@ Edit `chisurf/gui/widgets/node_editor/scene.py` and
 
 ### 4. Add future workflow extension points
 
-Edit `chisurf/gui/widgets/node_editor/registry.py`.
+Edit {src}`chisurf/gui/widgets/node_editor/registry.py`.
 
 - [x] Extend `NodeType` with optional fields:
   - [x] `description: str = ""`
@@ -186,7 +186,7 @@ Edit `chisurf/gui/widgets/node_editor/registry.py`.
 
 ### 5. Add headless graph helpers for workflows
 
-Edit `chisurf/gui/widgets/node_editor/graph.py`.
+Edit {src}`chisurf/gui/widgets/node_editor/graph.py`.
 
 - [x] Align `GraphDef.to_dict()` with current scene schema:
   - [x] use `pos: [x, y]`, not separate `x`/`y`
@@ -204,7 +204,7 @@ Edit `chisurf/gui/widgets/node_editor/graph.py`.
 
 ## MMFDB Provenance Graph Adapter
 
-Create `chisurf/plugins/core/mmfdb_admin/gui/provenance_graph.py`.
+Create {src}`chisurf/plugins/core/mmfdb_admin/gui/provenance_graph.py`.
 
 ### Public API
 
@@ -287,7 +287,7 @@ Adapter input is the result of `provenance.graph.export`.
 
 ## MMFDB Client Changes
 
-Edit `chisurf/plugins/core/mmfdb_admin/gui/client.py`.
+Edit {src}`chisurf/plugins/core/mmfdb_admin/gui/client.py`.
 
 - [x] Add typed helper `list_raw_data(experiment_id=None, data_type=None)`.
 - [x] Add typed helper `get_raw_data(raw_data_id)`.
@@ -305,7 +305,7 @@ Edit `chisurf/plugins/core/mmfdb_admin/gui/client.py`.
 
 ## MMFDB Viewer Changes
 
-Edit `chisurf/plugins/core/mmfdb_admin/gui/tool.py`.
+Edit {src}`chisurf/plugins/core/mmfdb_admin/gui/tool.py`.
 
 ### Data table fixes
 
@@ -619,16 +619,16 @@ Arm64 conda verification completed with:
 
 Review scope:
 
-- [x] `chisurf/plugins/core/mmfdb_admin/gui/tool.py`
-- [x] `chisurf/plugins/core/mmfdb_admin/gui/client.py`
-- [x] `chisurf/plugins/core/mmfdb_admin/gui/provenance_graph.py`
-- [x] `chisurf/gui/widgets/node_editor/editor.py`
-- [x] `chisurf/gui/widgets/node_editor/graph.py`
-- [x] `chisurf/gui/widgets/node_editor/scene.py`
+- [x] {src}`chisurf/plugins/core/mmfdb_admin/gui/tool.py`
+- [x] {src}`chisurf/plugins/core/mmfdb_admin/gui/client.py`
+- [x] {src}`chisurf/plugins/core/mmfdb_admin/gui/provenance_graph.py`
+- [x] {src}`chisurf/gui/widgets/node_editor/editor.py`
+- [x] {src}`chisurf/gui/widgets/node_editor/graph.py`
+- [x] {src}`chisurf/gui/widgets/node_editor/scene.py`
 - [x] `test/plugins/test_sample_database_plugin.py`
-- [x] `test/plugins/test_provenance_graph_adapter.py`
-- [x] `chisurf/gui/widgets/node_editor/tests/test_read_only.py`
-- [x] `chisurf/gui/widgets/node_editor/tests/test_graph_headless.py`
+- [x] {src}`test/plugins/test_provenance_graph_adapter.py`
+- [x] {src}`chisurf/gui/widgets/node_editor/tests/test_read_only.py`
+- [x] {src}`chisurf/gui/widgets/node_editor/tests/test_graph_headless.py`
 
 Current review decision:
 
@@ -651,16 +651,16 @@ Current review decision:
 Findings fixed in this implementation pass:
 
 - [x] **P1: MMFDB GUI no longer bypasses RPC for condition/probe operations.**
-      `chisurf/plugins/core/mmfdb_admin/gui/tool.py` now uses typed `MMFDBClient`
+      {src}`chisurf/plugins/core/mmfdb_admin/gui/tool.py` now uses typed `MMFDBClient`
       helpers for condition save/lookup and probe loading, and no longer imports
       `FluorescenceDatabase` or `resolve_database_path` in that file.
   - [x] Condition save in `save_condition()` calls `self.client.save_sample_condition()`.
   - [x] Condition lookup in `_auto_fill_condition_details()` calls `self.client.get_sample_condition()`.
   - [x] Probe loading in `fill_probes()` calls `self.client.list_probes()`.
   - [x] `FluorescenceDatabase` and `resolve_database_path` imports were removed
-        from `chisurf/plugins/core/mmfdb_admin/gui/tool.py`.
+        from {src}`chisurf/plugins/core/mmfdb_admin/gui/tool.py`.
 - [x] **P1: `MMFDBClient` now defaults to a ZMQ JSON-RPC client.**
-      `chisurf/plugins/core/mmfdb_admin/gui/client.py` builds `ZmqClient` by default;
+      {src}`chisurf/plugins/core/mmfdb_admin/gui/client.py` builds `ZmqClient` by default;
       in-process construction is available only with `inprocess=True` or via
       explicit dependency injection. `SampleDatabaseClient` forces the legacy
       in-process compatibility path.
@@ -670,7 +670,7 @@ Findings fixed in this implementation pass:
   - [x] Added a test proving default construction uses ZMQ and does not import
         plugin backend services.
 - [x] **P2: A read-only `NodeViewerWidget` abstraction is now available.**
-      `chisurf/gui/widgets/node_editor/node_viewer.py` owns the embeddable
+      {src}`chisurf/gui/widgets/node_editor/node_viewer.py` owns the embeddable
       read-only graph display API (`load_graph_dict`, `graph_dict`, `fit_graph`,
       `clear_graph`, selection signals), while `NodeEditorWidget` remains an
       editable subclass for workflow authoring/demo behavior.
@@ -698,14 +698,14 @@ Verification performed during review:
 
 Review scope:
 
-- [x] `chisurf/gui/widgets/node_editor/node_viewer.py`
-- [x] `chisurf/gui/widgets/node_editor/editor.py`
-- [x] `chisurf/gui/widgets/node_editor/tests/test_node_viewer.py`
-- [x] `chisurf/gui/widgets/node_editor/tests/test_read_only.py`
-- [x] `chisurf/plugins/core/mmfdb_admin/gui/client.py`
-- [x] `chisurf/plugins/core/mmfdb_admin/gui/tool.py`
-- [x] `chisurf/plugins/core/mmfdb_admin/backend/services.py`
-- [x] `chisurf/plugins/core/mmfdb_admin/manifest.json`
+- [x] {src}`chisurf/gui/widgets/node_editor/node_viewer.py`
+- [x] {src}`chisurf/gui/widgets/node_editor/editor.py`
+- [x] {src}`chisurf/gui/widgets/node_editor/tests/test_node_viewer.py`
+- [x] {src}`chisurf/gui/widgets/node_editor/tests/test_read_only.py`
+- [x] {src}`chisurf/plugins/core/mmfdb_admin/gui/client.py`
+- [x] {src}`chisurf/plugins/core/mmfdb_admin/gui/tool.py`
+- [x] {src}`chisurf/plugins/core/mmfdb_admin/backend/services.py`
+- [x] {src}`chisurf/plugins/core/mmfdb_admin/manifest.json`
 - [x] `test/plugins/test_sample_database_plugin.py`
 - [x] `docs/prd_mmfdb_viewer_node_editor_workflows.md`
 
@@ -860,17 +860,17 @@ Core modules:
 - [ ] Create `chisurf/core/nodeviewer/layout.py`.
 - [ ] Create `chisurf/core/nodeviewer/providers.py`.
 - [ ] Move or wrap current headless graph helpers from
-      `chisurf/gui/widgets/node_editor/graph.py` into core without breaking
+      {src}`chisurf/gui/widgets/node_editor/graph.py` into core without breaking
       existing imports.
-- [ ] Keep compatibility import shims in `chisurf/gui/widgets/node_editor/graph.py`
+- [ ] Keep compatibility import shims in {src}`chisurf/gui/widgets/node_editor/graph.py`
       until all callers are migrated.
 
 API / transport modules:
 
 - [ ] Create `chisurf/server/services/nodeviewer.py`.
 - [ ] Register nodeviewer JSON-RPC methods in the server dispatcher.
-- [ ] Add method specs to `chisurf/server/server_methods.json`.
-- [ ] Add client method specs to `chisurf/server/client_methods.json` if the
+- [ ] Add method specs to {src}`chisurf/server/server_methods.json`.
+- [ ] Add client method specs to {src}`chisurf/server/client_methods.json` if the
       client catalogue expects them.
 - [ ] Use `chisurf/server/transport/zmq.py::ZmqClient` for production GUI
       transport.
@@ -880,7 +880,7 @@ API / transport modules:
 
 GUI modules:
 
-- [ ] Create `chisurf/gui/widgets/node_editor/node_viewer.py` or
+- [ ] Create {src}`chisurf/gui/widgets/node_editor/node_viewer.py` or
       `chisurf/gui/widgets/node_viewer.py`.
 - [ ] Implement `NodeViewerWidget` as a thin read-only wrapper around the
       existing scene/view infrastructure.
@@ -891,7 +891,7 @@ GUI modules:
 
 MMFDB provider modules:
 
-- [ ] Keep `chisurf/plugins/core/mmfdb_admin/gui/provenance_graph.py` temporarily for
+- [ ] Keep {src}`chisurf/plugins/core/mmfdb_admin/gui/provenance_graph.py` temporarily for
       GUI compatibility.
 - [ ] Move provider-neutral conversion helpers to core or server-side provider
       modules.

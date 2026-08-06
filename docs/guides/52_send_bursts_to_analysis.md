@@ -55,7 +55,7 @@ What ships today:
 
 ### Advertising another analysis
 
-Add an entry to `chisurf/server/burst_consumers.json`, or — for an analysis that
+Add an entry to {src}`chisurf/server/burst_consumers.json`, or — for an analysis that
 lives in a plugin — a `burst_consumers` array in that plugin's `manifest.json`,
 using the same fields. A plugin entry reusing an existing `key` supersedes the
 built-in one.

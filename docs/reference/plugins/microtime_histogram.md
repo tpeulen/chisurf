@@ -21,4 +21,4 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 ## Source
 
 - Plugin package: `chisurf/plugins/tttr/microtime_histogram/`
-- Manifest: `chisurf/plugins/tttr/microtime_histogram/manifest.json`
+- Manifest: {src}`chisurf/plugins/tttr/microtime_histogram/manifest.json`

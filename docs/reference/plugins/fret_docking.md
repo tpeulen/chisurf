@@ -65,5 +65,5 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Source
 
 - Plugin package: `chisurf/plugins/modelling/fret/`
-- Manifest: `chisurf/plugins/modelling/fret/manifest.json`
-- UI spec: `chisurf/plugins/modelling/fret/gui/fret_dock.view.json`
+- Manifest: {src}`chisurf/plugins/modelling/fret/manifest.json`
+- UI spec: {src}`chisurf/plugins/modelling/fret/gui/fret_dock.view.json`

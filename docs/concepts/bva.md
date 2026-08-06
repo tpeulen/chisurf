@@ -156,7 +156,7 @@ and binned-trace HMMs cover the slower ones.
   {doc}`FRET-2CDE </guides/01_fret_2cde>`.
 - ChiSurf source: the `burst_bva` plugin
   (`chisurf/plugins/burst/burst_bva/`); the reference NumPy/pandas
-  implementation `chisurf/core/fluorescence/burst/bva.py`; the fast parallel
+  implementation {src}`chisurf/core/fluorescence/burst/bva.py`; the fast parallel
   engine `tttrlib.BVA` (base class `tttrlib.BurstFeature`), with the static-line
   helper `tttrlib.BVA.compute_static_bva_line`.
 - Primary literature: J. P. Torella, S. J. Holden, Y. Santoso, J. Hohlbein and

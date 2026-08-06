@@ -984,3 +984,229 @@ zunino2025:
   doi: 10.1038/s41566-025-01695-0
   note: Structured detection for simultaneous super-resolution and optical sectioning.
   topics: [imaging, optics]
+
+# ── Reference works, textbooks and monographs ───────────────────────
+
+lakowicz2006:
+  authors: J. R. Lakowicz
+  title: Principles of Fluorescence Spectroscopy
+  journal: Springer US
+  year: 2006
+  doi: 10.1007/978-0-387-46312-4
+  note: The standard textbook; 3rd edition. FRET, lifetime and anisotropy chapters.
+  topics: [fret, tcspc, anisotropy]
+
+oconnor1984:
+  authors: D. V. O'Connor, D. Phillips
+  title: Time-Correlated Single Photon Counting
+  journal: Academic Press
+  year: 1984
+  doi: 10.1016/B978-0-12-524140-3.X5001-1
+  note: The standard treatment of reconvolution and the TCSPC nuisance terms.
+  topics: [tcspc]
+
+becker2005:
+  authors: W. Becker
+  title: Advanced Time-Correlated Single Photon Counting Techniques
+  journal: Springer Series in Chemical Physics
+  year: 2005
+  doi: 10.1007/3-540-28882-1
+  note: Instrumentation, pile-up and differential non-linearity.
+  topics: [tcspc]
+
+clegg1995:
+  authors: R. M. Clegg
+  title: Fluorescence resonance energy transfer
+  journal: Current Opinion in Biotechnology
+  year: 1995
+  volume: 6
+  pages: 103-110
+  doi: 10.1016/0958-1669(95)80016-6
+  note: A compact review of the mechanism and its assumptions.
+  topics: [fret]
+
+coates1968:
+  authors: P. B. Coates
+  title: The correction for photon 'pile-up' in the measurement of radiative lifetimes
+  journal: Journal of Physics E - Scientific Instruments
+  year: 1968
+  volume: 1
+  pages: 878-879
+  doi: 10.1088/0022-3735/1/8/437
+  note: The pile-up correction applied to high-count-rate TCSPC.
+  topics: [tcspc]
+
+# ── Accessible volumes and FRET-restrained modelling ────────────────
+
+sindbert2011:
+  authors: S. Sindbert, S. Kalinin, H. Nguyen, A. Kienzler, L. Clima, W. Bannwarth, B. Appel, S. Müller, C. A. M. Seidel
+  title: Accurate distance determination of nucleic acids via Förster resonance energy transfer - implications of dye linker length and rigidity
+  journal: Journal of the American Chemical Society
+  year: 2011
+  volume: 133
+  pages: 2463-2480
+  doi: 10.1021/ja105725e
+  note: The accessible-volume model of the dye cloud, and what the linker does to a distance.
+  topics: [fret, structure]
+
+kalinin2012:
+  authors: S. Kalinin, T. Peulen, S. Sindbert, et al.
+  title: A toolkit and benchmark study for FRET-restrained high-precision structural modeling
+  journal: Nature Methods
+  year: 2012
+  volume: 9
+  pages: 1218-1225
+  doi: 10.1038/nmeth.2222
+  note: The FPS toolkit - AV screening, distance networks and the benchmark.
+  topics: [fret, structure]
+
+# ── Binned-trace hidden Markov analysis ─────────────────────────────
+
+vandemeent2014:
+  authors: J.-W. van de Meent, J. E. Bronson, C. H. Wiggins, R. L. Gonzalez Jr.
+  title: Empirical Bayes methods enable advanced population-level analyses of single-molecule FRET experiments
+  journal: Biophysical Journal
+  year: 2014
+  volume: 106
+  pages: 1327-1337
+  doi: 10.1016/j.bpj.2013.12.055
+  note: ebFRET - the empirical-Bayes variational HMM shared across traces.
+  topics: [dynamics, smfret]
+
+bronson2009:
+  authors: J. E. Bronson, J. Fei, J. M. Hofman, R. L. Gonzalez Jr., C. H. Wiggins
+  title: Learning rates and states from biophysical time series - a Bayesian approach to model selection and single-molecule FRET data
+  journal: Biophysical Journal
+  year: 2009
+  volume: 97
+  pages: 3196-3205
+  doi: 10.1016/j.bpj.2009.09.031
+  note: vbFRET - variational Bayes per trace, and how the evidence picks the state count.
+  topics: [dynamics, smfret]
+
+blanco2010:
+  authors: M. Blanco, N. G. Walter
+  title: Analysis of complex single-molecule FRET time trajectories
+  journal: Methods in Enzymology
+  year: 2010
+  volume: 472
+  pages: 153-178
+  doi: 10.1016/S0076-6879(10)72011-5
+  note: Transition-density plots and the practice of reading them.
+  topics: [dynamics, smfret]
+
+schrimpf2018:
+  authors: W. Schrimpf, A. Barth, J. Hendrix, D. C. Lamb
+  title: PAM - a framework for integrated analysis of imaging, single-molecule and fluorescence fluctuation spectroscopy data
+  journal: Biophysical Journal
+  year: 2018
+  volume: 114
+  pages: 1518-1528
+  doi: 10.1016/j.bpj.2018.02.035
+  note: A comparable open analysis framework; its H2MM implementation.
+  topics: [dynamics, smfret]
+
+# ── Simulation of photon streams ────────────────────────────────────
+
+wohland2001:
+  authors: T. Wohland, R. Rigler, H. Vogel
+  title: The standard deviation in fluorescence correlation spectroscopy
+  journal: Biophysical Journal
+  year: 2001
+  volume: 80
+  pages: 2987-2999
+  doi: 10.1016/S0006-3495(01)76264-9
+  note: Noise in FCS derived from Brownian-dynamics simulation.
+  topics: [fcs, simulation]
+
+ingargiola2016:
+  authors: A. Ingargiola, E. Lerner, S. Chung, S. Weiss, X. Michalet
+  title: FRETBursts - an open source toolkit for analysis of freely-diffusing single-molecule FRET
+  journal: PLOS ONE
+  year: 2016
+  volume: 11
+  pages: e0160716
+  doi: 10.1371/journal.pone.0160716
+  note: The open burst-analysis toolkit, and the PyBroMo diffusion simulator beside it.
+  topics: [smfret, simulation]
+
+# ── Lifetime-resolved correlation ───────────────────────────────────
+
+kapusta2007:
+  authors: P. Kapusta, M. Wahl, A. Benda, M. Hof, J. Enderlein
+  title: Fluorescence lifetime correlation spectroscopy
+  journal: Journal of Fluorescence
+  year: 2007
+  volume: 17
+  pages: 43-48
+  doi: 10.1007/s10895-006-0145-1
+  note: Lifetime filtering of correlation curves.
+  topics: [filtered-fcs, fcs]
+
+ishii2013b:
+  authors: K. Ishii, T. Tahara
+  title: Two-dimensional fluorescence lifetime correlation spectroscopy. 2. Application
+  journal: The Journal of Physical Chemistry B
+  year: 2013
+  volume: 117
+  pages: 11423-11432
+  doi: 10.1021/jp406864e
+  note: The companion application paper to ishii2013.
+  topics: [filtered-fcs, fcs]
+
+# ── Biofilms (molecular-viewer demonstration) ───────────────────────
+
+debeer1994:
+  authors: D. de Beer, P. Stoodley, F. Roe, Z. Lewandowski
+  title: Effects of biofilm structures on oxygen distribution and mass transport
+  journal: Biotechnology and Bioengineering
+  year: 1994
+  volume: 43
+  pages: 1131-1138
+  doi: 10.1002/bit.260431118
+  note: Oxygen microelectrode profiles through a biofilm.
+  topics: [simulation]
+
+stewart2008:
+  authors: P. S. Stewart, M. J. Franklin
+  title: Physiological heterogeneity in biofilms
+  journal: Nature Reviews Microbiology
+  year: 2008
+  volume: 6
+  pages: 199-210
+  doi: 10.1038/nrmicro1838
+  note: Why a biofilm is not one population.
+  topics: [simulation]
+
+lardon2011:
+  authors: L. A. Lardon, B. V. Merkey, S. Martins, A. Dötsch, C. Picioreanu, J.-U. Kreft, B. F. Smets
+  title: iDynoMiCS - next-generation individual-based modelling of biofilms
+  journal: Environmental Microbiology
+  year: 2011
+  volume: 13
+  pages: 2416-2434
+  doi: 10.1111/j.1462-2920.2011.02414.x
+  note: The individual-based biofilm simulator the demonstration follows.
+  topics: [simulation]
+
+picioreanu1998:
+  authors: C. Picioreanu, M. C. M. van Loosdrecht, J. J. Heijnen
+  title: Mathematical modeling of biofilm structure with a hybrid differential-discrete cellular automaton approach
+  journal: Biotechnology and Bioengineering
+  year: 1998
+  volume: 58
+  pages: 101-116
+  doi: 10.1002/(SICI)1097-0290(19980405)58:1<101::AID-BIT11>3.0.CO;2-M
+  note: Diffusion-limited growth producing the finger-like structure.
+  topics: [simulation]
+
+schaffer1999:
+  authors: J. Schaffer, A. Volkmer, C. Eggeling, V. Subramaniam, G. Striker, C. A. M. Seidel
+  title: Identification of single molecules in aqueous solution by time-resolved fluorescence anisotropy
+  journal: The Journal of Physical Chemistry A
+  year: 1999
+  volume: 103
+  pages: 331-336
+  doi: 10.1021/jp9833597
+  note: The G = S_par/S_perp convention and the l1, l2 channel-mixing correction.
+  topics: [anisotropy, tcspc]

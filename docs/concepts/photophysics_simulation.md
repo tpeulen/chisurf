@@ -167,12 +167,11 @@ they don't, the simulator has isolated the bias before it reaches real data.
   stream must reproduce) · {ref}`concept-h2mm` (photon-by-photon HMM validated on
   simulated states).
 - Engine & wrappers: `tttrlib.SimEngine` (the confocal Brownian/Poisson
-  simulator); `chisurf/core/fluorescence/fcs/simulate.py` (lifetime-FCS wrapper);
-  the burst-workflow `simulate()` in
-  `chisurf/plugins/burst/burst_analysis/api/workflow.py`; the interactive
+  simulator); {src}`chisurf/core/fluorescence/fcs/simulate.py` (lifetime-FCS wrapper);
+  the burst-workflow
+  {src}`chisurf/plugins/burst/burst_analysis/api/workflow.py#simulate`; the interactive
   lifetime-FCS simulator plugin `chisurf/plugins/fcs/fcs_lfcs_sim/`.
-- Literature: Wohland, Rigler & Vogel, *Biophys. J.* **80**, 2987 (2001), the
-  standard treatment of noise in FCS by Brownian-dynamics simulation;
-  Ingargiola et al., *PLoS ONE* **11**, e0160716 (2016), the PyBroMo/FRETBursts
-  confocal smFRET diffusion simulator; Gopich & Szabo, *J. Phys. Chem. B* **113**,
-  10965 (2009), photon-by-photon FRET-trajectory theory underlying H2MM.
+- Literature: {cite}`wohland2001` is the standard treatment of noise in FCS by
+  Brownian-dynamics simulation; {cite}`ingargiola2016` the open burst toolkit and
+  the PyBroMo confocal smFRET diffusion simulator beside it; {cite}`gopich2009`
+  the photon-by-photon FRET-trajectory theory underlying H2MM.

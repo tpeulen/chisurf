@@ -77,4 +77,4 @@ Filtered FCS patterns and filters.
 
 ## See also
 
-- `chisurf/core/fluorescence/fcs/filtered.py`; plugins `fcs_filter_calculator`, `flc_2d`.
+- {src}`chisurf/core/fluorescence/fcs/filtered.py`; plugins `fcs_filter_calculator`, `flc_2d`.

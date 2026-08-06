@@ -20,4 +20,4 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 ## Source
 
 - Plugin package: `chisurf/plugins/core/plugin_manager/`
-- Manifest: `chisurf/plugins/core/plugin_manager/manifest.json`
+- Manifest: {src}`chisurf/plugins/core/plugin_manager/manifest.json`

@@ -25,5 +25,5 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Source
 
 - Plugin package: `chisurf/plugins/traj/traj_rotate_translate/`
-- Manifest: `chisurf/plugins/traj/traj_rotate_translate/manifest.json`
-- UI spec: `chisurf/plugins/traj/traj_rotate_translate/rotate_translate.view.json`
+- Manifest: {src}`chisurf/plugins/traj/traj_rotate_translate/manifest.json`
+- UI spec: {src}`chisurf/plugins/traj/traj_rotate_translate/rotate_translate.view.json`

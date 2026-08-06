@@ -68,5 +68,5 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Source
 
 - Plugin package: `chisurf/plugins/microscopy/sm_image_mle/`
-- Manifest: `chisurf/plugins/microscopy/sm_image_mle/manifest.json`
-- UI spec: `chisurf/plugins/microscopy/sm_image_mle/gui/molecule_mle.view.json`
+- Manifest: {src}`chisurf/plugins/microscopy/sm_image_mle/manifest.json`
+- UI spec: {src}`chisurf/plugins/microscopy/sm_image_mle/gui/molecule_mle.view.json`

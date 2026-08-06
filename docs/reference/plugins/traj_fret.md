@@ -36,5 +36,5 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Source
 
 - Plugin package: `chisurf/plugins/traj/fret_trajectory/`
-- Manifest: `chisurf/plugins/traj/fret_trajectory/manifest.json`
-- UI spec: `chisurf/plugins/traj/fret_trajectory/structure2transfer.view.json`
+- Manifest: {src}`chisurf/plugins/traj/fret_trajectory/manifest.json`
+- UI spec: {src}`chisurf/plugins/traj/fret_trajectory/structure2transfer.view.json`

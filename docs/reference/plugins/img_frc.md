@@ -49,5 +49,5 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Source
 
 - Plugin package: `chisurf/plugins/microscopy/img_frc/`
-- Manifest: `chisurf/plugins/microscopy/img_frc/manifest.json`
-- UI spec: `chisurf/plugins/microscopy/img_frc/gui/frc.view.json`
+- Manifest: {src}`chisurf/plugins/microscopy/img_frc/manifest.json`
+- UI spec: {src}`chisurf/plugins/microscopy/img_frc/gui/frc.view.json`

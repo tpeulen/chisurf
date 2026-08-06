@@ -75,5 +75,5 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Source
 
 - Plugin package: `chisurf/plugins/burst/burst_gs/`
-- Manifest: `chisurf/plugins/burst/burst_gs/manifest.json`
-- UI spec: `chisurf/plugins/burst/burst_gs/gui/burst_gs.view.json`
+- Manifest: {src}`chisurf/plugins/burst/burst_gs/manifest.json`
+- UI spec: {src}`chisurf/plugins/burst/burst_gs/gui/burst_gs.view.json`

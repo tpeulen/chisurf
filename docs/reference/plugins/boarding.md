@@ -21,5 +21,5 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 ## Source
 
 - Plugin package: `chisurf/plugins/core/boarding/`
-- Manifest: `chisurf/plugins/core/boarding/manifest.json`
-- UI spec: `chisurf/plugins/core/boarding/boarding.view.json`
+- Manifest: {src}`chisurf/plugins/core/boarding/manifest.json`
+- UI spec: {src}`chisurf/plugins/core/boarding/boarding.view.json`

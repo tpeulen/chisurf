@@ -39,7 +39,7 @@ bursts.bva("green", "red")                       # variance analysis (tutorial 8
 bursts.recurrence("green", "red")                # slow kinetics     (tutorial 2)
 ```
 
-The correction factors are managed by `chisurf/core/fluorescence/fret/calibration.py`
+The correction factors are managed by {src}`chisurf/core/fluorescence/fret/calibration.py`
 (see [tutorial 14](14_multiparameter_es.md)); the background by
 [tutorial 15](15_background_rates.md); and the burst search by
 [tutorial 13](13_burst_identification.md). `BurstWorkflow.simulate(fret=…,
@@ -62,5 +62,5 @@ $S$ distributions.
 
 ## See also
 
-- Guided facade: `chisurf/plugins/burst/burst_analysis/api/workflow.py`.
+- Guided facade: {src}`chisurf/plugins/burst/burst_analysis/api/workflow.py`.
 - Population selection: [tutorial 28](28_selecting_fret_populations.md); histogram fitting: [tutorial 29](29_fret_histogram_fitting.md).

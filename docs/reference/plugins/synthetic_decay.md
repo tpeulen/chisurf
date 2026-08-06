@@ -45,5 +45,5 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Source
 
 - Plugin package: `chisurf/plugins/fluorescence_decay/synthetic_decay/`
-- Manifest: `chisurf/plugins/fluorescence_decay/synthetic_decay/manifest.json`
-- UI spec: `chisurf/plugins/fluorescence_decay/synthetic_decay/gui/synthetic_decay.view.json`
+- Manifest: {src}`chisurf/plugins/fluorescence_decay/synthetic_decay/manifest.json`
+- UI spec: {src}`chisurf/plugins/fluorescence_decay/synthetic_decay/gui/synthetic_decay.view.json`

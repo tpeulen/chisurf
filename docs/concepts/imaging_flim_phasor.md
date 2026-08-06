@@ -169,7 +169,7 @@ fit the pixels that matter.
 
 - Guide: {doc}`/guides/24_scan_images` — building CLSM images from a TTTR stream and
   computing per-pixel intensity, lifetime, MLE, and phasor maps.
-- Phasor math: `chisurf/core/fluorescence/tcspc/phasor.py`
+- Phasor math: {src}`chisurf/core/fluorescence/tcspc/phasor.py`
   (`phasor_giw`, `phasor_siw`, the `Phasor` class).
 - Imaging plugins: `chisurf/plugins/microscopy/img_pixel_phasor/` (per-pixel
   $g,s$ maps, universal-circle ROI, apparent lifetime, cursor masks, unmixing),

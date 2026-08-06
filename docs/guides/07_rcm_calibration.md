@@ -56,5 +56,5 @@ Routing-correction matrix from dye solutions.
 
 ## See also
 
-- `chisurf/core/fluorescence/fret/calibration.py` (`rcm_from_dye_solutions`, plus the
+- {src}`chisurf/core/fluorescence/fret/calibration.py` (`rcm_from_dye_solutions`, plus the
   γ/β/leakage/direct-excitation correction helpers).

@@ -281,6 +281,7 @@ $\mathbf{A}$.
   {doc}`/guides/31_h2mm_simulation_validation`; binned-HMM alternative
   {doc}`/guides/20_ebfret_binned_hmm`.
 - Plugin: `chisurf/plugins/burst/burst_h2mm/`; engine `tttrlib.H2MM`.
-- Key literature: Pirchi, Tsukanov et al. 2016 (J. Phys. Chem. B 120:13065);
-  Schrimpf, Barth, Hendrix & Lamb 2018 (Biophys. J. 114:1518, PAM);
-  Harris et al. 2022 (Nat. Commun. 13:1000, burstH2MM).
+- Key literature: {cite}`pirchi2016` is H2MM itself; {cite}`harris2022` is
+  burstH2MM, whose plots this plugin follows; {cite}`schrimpf2018` a comparable
+  framework with its own implementation; {cite}`gopich2009` the photon-by-photon
+  theory underneath all three.

@@ -55,7 +55,7 @@ Two practical consequences follow from $G$ being a *statistical* quantity:
 ## The anatomy of a correlation curve
 
 Every model in ChiSurf's catalogue
-(`chisurf/core/models/fcs/models.yaml`) is a **product of independent factors**,
+({src}`chisurf/core/models/fcs/models.yaml`) is a **product of independent factors**,
 each describing a different physical process on a different timescale:
 
 $$
@@ -219,17 +219,23 @@ $\chi^2$.
 
 ## References
 
-- {cite}`magde1972` — the original FCS experiment.
-- {cite}`elson1974`
-- {cite}`rigler1993`
-- {cite}`widengren1995`
-- {cite}`schwille1999`
-- {cite}`haustein2007`
+- {cite}`magde1972` — the original FCS experiment, a chemical relaxation read
+  out of intensity fluctuations.
+- {cite}`elson1974` — the theory: what $G(\tau)$ is and why its amplitude
+  counts molecules.
+- {cite}`rigler1993` — confocal FCS as it is practised now, and the diffusion
+  model fitted above.
+- {cite}`widengren1995` — the triplet term, measured and separated from
+  diffusion.
+- {cite}`schwille1999` — dual-colour cross-correlation, the extension to
+  binding.
+- {cite}`haustein2007` — a review to read before choosing a model: the
+  variations, and what each assumes.
 
 ## See also
 
 - Guide: {doc}`/guides/09_diffusion_fcs` · two-focus & absolute volume:
   {doc}`/guides/05_enderlein_mdf_two_focus_fcs` · filtered FCS:
   {doc}`/guides/17_filtered_fcs`.
-- Model catalogue: `chisurf/core/models/fcs/models.yaml`; correlator plugin
+- Model catalogue: {src}`chisurf/core/models/fcs/models.yaml`; correlator plugin
   `chisurf/plugins/fcs/fcs_correlator/`.

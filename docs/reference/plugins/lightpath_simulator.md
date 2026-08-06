@@ -32,4 +32,4 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 ## Source
 
 - Plugin package: `chisurf/plugins/core/lightpath_simulator/`
-- Manifest: `chisurf/plugins/core/lightpath_simulator/manifest.json`
+- Manifest: {src}`chisurf/plugins/core/lightpath_simulator/manifest.json`

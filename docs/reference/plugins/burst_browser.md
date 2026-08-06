@@ -21,5 +21,5 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 ## Source
 
 - Plugin package: `chisurf/plugins/burst/burst_browser/`
-- Manifest: `chisurf/plugins/burst/burst_browser/manifest.json`
-- UI spec: `chisurf/plugins/burst/burst_browser/gui/burst_browser.view.json`
+- Manifest: {src}`chisurf/plugins/burst/burst_browser/manifest.json`
+- UI spec: {src}`chisurf/plugins/burst/burst_browser/gui/burst_browser.view.json`

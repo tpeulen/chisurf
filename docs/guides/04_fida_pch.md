@@ -61,5 +61,5 @@ FIDA photon-counting histograms.
 
 ## See also
 
-- `chisurf/core/models/pch/fida.py` (`fida_pch`, `fit_fida`, `dvdx_gaussian`, `fida_residuals`)
-- Model widget: `chisurf/gui/widgets/models/pch/fida_widget.py`.
+- {src}`chisurf/core/models/pch/fida.py` (`fida_pch`, `fit_fida`, `dvdx_gaussian`, `fida_residuals`)
+- Model widget: {src}`chisurf/gui/widgets/models/pch/fida_widget.py`.
