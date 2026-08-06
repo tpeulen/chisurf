@@ -28,6 +28,7 @@ from chisurf.core.datastore import (
     set_cell,
     store_from_arrays,
     store_from_dataframe,
+    store_from_rows,
     write_csv_table,
     write_table,
 )
@@ -512,3 +513,33 @@ def test_writing_only_some_columns_keeps_their_order(tmp_path):
     text = write_csv_table(None, {"a": np.arange(2.0), "b": np.arange(2.0), "c": np.arange(2.0)},
                            columns=["c", "a"])
     assert text.splitlines()[0] == "c\ta"
+
+
+# ── row-oriented input ───────────────────────────────────────────────────
+
+
+def test_rows_become_columns_in_first_seen_order(tmp_path):
+    """The shape an API hands back, which otherwise goes through a frame purely
+    to be turned column-wise again."""
+    rows = [{"b": 1.0, "a": 2.0}, {"a": 3.0, "b": 4.0}]
+    store = store_from_rows(rows)
+    assert [store[i].name() for i in range(store.n_columns())] == ["b", "a"]
+    np.testing.assert_array_equal(store["a"].numpy(), [2.0, 3.0])
+
+
+def test_a_key_some_rows_lack_is_masked_not_filled(tmp_path):
+    """The distinction a store has and a frame does not: the cell says "not
+    measured" rather than carrying a sentinel someone has to remember."""
+    store = store_from_rows([{"a": 1.0}, {"a": 2.0, "b": 5.0}])
+    assert not store["b"].valid(0)
+    assert store["b"].valid(1)
+
+
+def test_rows_write_straight_to_csv(tmp_path):
+    """No frame in between, and a masked cell is the empty field."""
+    text = write_csv_table(None, [{"a": 1.0, "b": "x"}, {"a": 3.0}])
+    assert text.splitlines() == ["a\tb", "1.0\tx", "3.0\t"]
+
+
+def test_an_empty_row_list_is_an_empty_table(tmp_path):
+    assert store_from_rows([]).n_rows() == 0

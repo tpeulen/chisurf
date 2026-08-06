@@ -14,7 +14,6 @@ import logging
 from pathlib import Path
 
 import numpy as np
-import pandas as pd
 from qtpy import QtCore, QtWidgets
 
 from chisurf.gui import chiplot as cp
@@ -30,7 +29,9 @@ class _BurstTableModel(QtCore.QAbstractTableModel):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._df: pd.DataFrame | None = None
+        #: The burst table, as whatever column-addressable object the
+        #: caller has -- a frame today, a store once the burst layer moves.
+        self._df = None
         self._rows: np.ndarray | None = None
 
     def set_dataframe(self, df):

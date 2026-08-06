@@ -9,7 +9,6 @@ import tttrlib
 import json
 import time
 import numpy as np
-import pandas as pd
 
 import pyqtgraph as pg
 import matplotlib

@@ -14,7 +14,6 @@ from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.chitable import edit_dataframe
 
 import numpy as np
-import pandas as pd
 from sklearn.mixture import GaussianMixture
 
 import chisurf.gui.decorators
@@ -625,7 +624,7 @@ class BurstSelectionTool(QtWidgets.QMainWindow):
 
         data = self.current_df[selected_feature]
         try:
-            data = pd.to_numeric(data)
+            data = np.asarray(data, dtype=float)
         except Exception as e:
             logging.info(f"Could not convert data in column {selected_feature} to numeric: {e}")
             return

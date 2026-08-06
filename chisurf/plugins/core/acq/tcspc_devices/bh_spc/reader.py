@@ -80,10 +80,3 @@ class BeckerHicklSPCSetupReader:
         """Returns a clean dictionary: param name → value (string form)."""
         return {name: param["value"] for name, param in self.parameters.items()}
 
-    def to_dataframe(self):
-        """Returns all parameters as a Pandas DataFrame (if pandas is installed)."""
-        try:
-            import pandas as pd
-            return pd.DataFrame.from_dict(self.parameters, orient='index')
-        except ImportError:
-            raise ImportError("pandas is required for DataFrame export. Please install it via 'pip install pandas'.")

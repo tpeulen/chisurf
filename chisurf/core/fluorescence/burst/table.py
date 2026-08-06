@@ -95,6 +95,75 @@ def read_burst_table(path: str | pathlib.Path) -> dict[str, np.ndarray]:
         with np.load(path) as data:
             return {k: np.asarray(data[k], dtype=float).ravel() for k in data.files}
 
+    columns = _read_delimited(path)
+    if not columns:
+        raise ValueError(f"no numeric columns found in {path}")
+    return columns
+
+
+def _sniff_delimiter(path: pathlib.Path) -> str | None:
+    """Return the separator of a delimited file, or ``None`` if it is not plain.
+
+    A burst table is one of four separators and a header on the first line. This
+    answers by counting candidates in the header rather than by sniffing the
+    whole file, and answers ``None`` — rather than guessing — for a file with a
+    comment preamble or no clear separator, because those are what the general
+    reader is for.
+
+    Parameters
+    ----------
+    path : pathlib.Path
+        File to inspect.
+
+    Returns
+    -------
+    str or None
+    """
+    try:
+        with open(path, encoding="utf-8", errors="ignore") as handle:
+            header = handle.readline()
+    except OSError:
+        return None
+    if not header or header.lstrip().startswith("#"):
+        return None
+    counts = {sep: header.count(sep) for sep in ("\t", ",", ";", " ")}
+    best = max(counts, key=counts.get)
+    return best if counts[best] > 0 else None
+
+
+def _read_delimited(path: pathlib.Path) -> dict[str, np.ndarray]:
+    """Read a delimited burst table into ``{column: float array}``.
+
+    The threaded reader first, which handles a plain delimited file with its
+    header on the first line; anything else — a comment preamble, a decimal
+    comma, whitespace alignment — falls back to the general reader, which is
+    named rather than silent so the two cannot quietly disagree.
+
+    Parameters
+    ----------
+    path : pathlib.Path
+        File to read.
+
+    Returns
+    -------
+    dict
+        Numeric columns keyed by their header name.
+    """
+    from chisurf.core.datastore import column_values, read_csv_table
+
+    delimiter = _sniff_delimiter(path)
+    if delimiter is not None:
+        store = read_csv_table(path, delimiter=delimiter)
+        if store is not None:
+            columns = {}
+            for index in range(store.n_columns()):
+                name = str(store[index].name())
+                values = np.asarray(column_values(store, index), dtype=float).ravel()
+                if values.size and np.any(np.isfinite(values)):
+                    columns[name] = values
+            if columns:
+                return columns
+
     import pandas as pd
 
     frame = pd.read_csv(path, sep=None, engine="python", comment="#")
@@ -103,8 +172,6 @@ def read_burst_table(path: str | pathlib.Path) -> dict[str, np.ndarray]:
         values = pd.to_numeric(frame[name], errors="coerce").to_numpy(dtype=float)
         if np.any(np.isfinite(values)):
             columns[str(name)] = values
-    if not columns:
-        raise ValueError(f"no numeric columns found in {path}")
     return columns
 
 

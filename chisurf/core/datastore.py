@@ -82,6 +82,7 @@ __all__ = [
     "set_cell",
     "store_from_arrays",
     "store_from_dataframe",
+    "store_from_rows",
     "write_csv_table",
     "write_table",
 ]
@@ -509,8 +510,60 @@ def _as_store(data: Any) -> Any:
         return store_from_arrays(data)
     if hasattr(data, "n_columns"):
         return data
+    if isinstance(data, Sequence) and not isinstance(data, (str, bytes)):
+        return store_from_rows(data)
     return store_from_dataframe(data)
 
+
+
+
+def store_from_rows(rows: Sequence[Mapping[str, Any]]) -> Any:
+    """Build a store from a sequence of row mappings.
+
+    The row-oriented shape an API hands back, and the one that otherwise goes
+    through a frame purely to be turned column-wise again. Column order is
+    first-seen across the rows, so a table stays in the order it was built in
+    rather than alphabetically.
+
+    A key some rows lack is **masked** in those rows rather than filled with a
+    sentinel, which is the distinction a store has and a frame does not: an
+    integer column keeps its dtype and still says "not measured".
+
+    Parameters
+    ----------
+    rows : sequence of mapping
+        One mapping per row.
+
+    Returns
+    -------
+    tttrlib.DataStore
+    """
+    rows = list(rows)
+    names: list[str] = []
+    seen: set[str] = set()
+    for row in rows:
+        for name in row:
+            if name not in seen:
+                seen.add(name)
+                names.append(str(name))
+
+    store = new_store()
+    if not rows:
+        return store
+    for name in names:
+        present = np.array([name in row for row in rows], dtype=bool)
+        raw = [row.get(name) for row in rows]
+        if any(isinstance(v, str) for v in raw if v is not None):
+            values = np.array(["" if v is None else str(v) for v in raw], dtype=object)
+        else:
+            values = np.array([np.nan if v is None else v for v in raw], dtype=float)
+            present &= np.isfinite(values) | ~np.isnan(values)
+        store.add(name, values)
+        if not present.all():
+            column = store[store.n_columns() - 1]
+            column.set_mask(np.ascontiguousarray(present, dtype=np.uint8))
+    store.set_n_rows(len(rows))
+    return store
 
 def read_table(path: Any, *, group: str = "/") -> Any:
     """Return a columnar HDF5 table as a store, or ``None`` if it is not one.
