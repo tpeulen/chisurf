@@ -75,7 +75,12 @@ def r2i(coord_i, a1, a2, a3, a4, ai):
     return ai + 1
 
 
-@nb.jit('float64[:,:](float64[:,:], int32[:,:], float64[:,:], int32)', nogil=True, nopython=True)
+# `cache=True`: this is the one kernel on the structure-loading path whose
+# machine code was **not** written to disk, so every new process paid to
+# compile it again. Measured over a plain PDB load, eight kernels compile and
+# seven of them were already cached; this was the eighth.
+@nb.jit('float64[:,:](float64[:,:], int32[:,:], float64[:,:], int32)',
+        nogil=True, nopython=True, cache=True)
 def atom_dist(
         aDist: np.ndarray,
         resLookUp: np.ndarray,

@@ -282,6 +282,45 @@ remain the right answer for the models they were added for, where the count is
 in the hundreds of thousands. The remaining ~3.9 ms floor is the 2-D sequence
 strip's text, not the molecule.
 
+## Reading a PDB
+
+Measured 2026-08-06 on an M-series Mac, best of five after a warm-up, through
+`chisurf.core.fio.structure.coordinates.read_coordinates` with `keep_water=True`
+and `only_standard_residues=False` (what the viewer asks for).
+
+| File | Atoms | Before | After | A numpy column parser |
+| --- | ---: | ---: | ---: | ---: |
+| `148l.pdb` | 1 363 | 0.195 s | 0.151 s | 0.0009 s |
+| `hGBP1_closed.pdb` | 9 315 | 1.393 s | 0.957 s | 0.0060 s |
+| `1rtd.pdb` | 17 784 | 3.658 s | 1.566 s | 0.0137 s |
+
+**The parser was never the slow part.** A profile of the 1.39 s read attributes
+**0.079 s** to `IMP.atom.read_pdb` — the actual file parsing — and the rest to
+`convert_atoms`, the Python loop that turns IMP's hierarchy into ChiSurf's
+structured array. Per atom it built *twelve* SWIG `ParticleAdaptor`s (a separate
+`Atom`, `Residue`, `Chain`, `Mass` and **two** `XYZR` decorators), looked the
+chain id and element name up again for every atom of the same chain, and
+assigned a `Vector3D` straight into a numpy field — which falls back to the
+**iteration protocol**, 37 260 calls into `Vector3D___getitem__` for 9 315
+atoms, 0.548 s of the total. That last one is the same trap that cost 17 s of a
+19.7 s RMF load the same week: it is a property of every SWIG sequence, not of
+one binding.
+
+Building each decorator once, caching the chain and element lookups, and
+subscripting the vector three times gives the "After" column. The remaining cost
+is still per-atom SWIG traffic, which is why the third column matters: a
+fixed-column numpy parser reads the same file **110×** faster again, and needs
+no IMP at all.
+
+### Is it numba?
+
+No, and it is worth having the number: over a plain `load` of `148l.pdb`, eight
+`njit` kernels compile and the **JIT premium is 0.076 s of a 0.70 s load**.
+Seven of the eight already wrote their machine code to disk (`cache=True`), so a
+second run of the application pays nothing for them; the eighth,
+`protein.atom_dist`, did not and now does. Re-derive with the dispatcher walk in
+`build_tools/dev_utils` or by comparing a first and second load in one process.
+
 ## Adding a component
 
 A benchmark belongs here when a component is (a) on a path a user waits for, and

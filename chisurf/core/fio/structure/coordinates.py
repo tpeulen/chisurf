@@ -508,26 +508,66 @@ def convert_atoms(
     if radius_no_interaction:
         radius_scaleling = 2**(-1./6.)
     t = IMP.atom.get_element_table()
+
+    # Every name below is a local, and every decorator is built once. This loop
+    # is where reading a PDB spends its time -- **not** in IMP's parser, which
+    # is a measured 0.079 s of a 1.39 s read. What costs the other 1.3 s is the
+    # per-atom SWIG traffic: twelve `ParticleAdaptor` constructions per atom,
+    # and a `Vector3D` handed to numpy.
+    imp_atom = IMP.atom.Atom
+    imp_residue = IMP.atom.Residue
+    imp_chain = IMP.atom.Chain
+    imp_mass = IMP.atom.Mass
+    imp_xyzr = IMP.core.XYZR
+    element_name = t.get_name
+
+    # A chain decorator per *atom* rebuilt the same object for every atom of a
+    # chain; there are a handful of chains and tens of thousands of atoms. The
+    # element name is likewise one of a dozen strings looked up 9315 times.
+    chain_ids: dict = {}
+    element_names: dict = {}
+
     j = 0
     for atom in ps:
-        a = IMP.atom.Atom(atom)
-        r = IMP.atom.Residue(a.get_parent())
+        a = imp_atom(atom)
+        parent = a.get_parent()
+        r = imp_residue(parent)
 
-        if not _imp_keep_residue(r.get_name()) and only_standard_residues:
+        res_name = r.get_name()
+        if not _imp_keep_residue(res_name) and only_standard_residues:
             continue
 
-        c = IMP.atom.Chain(r.get_parent())
-        atoms[j]['i'] = j
-        atoms[j]['chain'] = c.get_id()
-        atoms[j]['res_id'] = r.get_index()
-        atoms[j]['res_name'] = r.get_name()
-        atoms[j]['atom_id'] = a.get_input_index()
-        atoms[j]['atom_name'] = _imp_atom_name(a)
-        atoms[j]['element'] = t.get_name(a.get_element())
-        atoms[j]['xyz'] = IMP.core.XYZR(atom).get_coordinates()
-        atoms[j]['radius'] = IMP.core.XYZR(atom).get_radius() * radius_scaleling
-        atoms[j]['bfactor'] = a.get_temperature_factor()
-        atoms[j]['mass'] = IMP.atom.Mass(atom).get_mass()
+        chain_particle = r.get_parent()
+        key = chain_particle.get_particle_index()
+        chain_id = chain_ids.get(key)
+        if chain_id is None:
+            chain_id = chain_ids[key] = imp_chain(chain_particle).get_id()
+
+        element = a.get_element()
+        name = element_names.get(element)
+        if name is None:
+            name = element_names[element] = element_name(element)
+
+        xyzr = imp_xyzr(atom)
+        # Subscripted three times rather than assigned whole: numpy converting a
+        # SWIG `Vector3D` falls back to the iteration protocol, which cost
+        # 0.548 s of the 1.39 s -- 37,260 calls into `Vector3D___getitem__` for
+        # 9,315 atoms. The identical trap was fixed in the RMF reader the same
+        # week; it is a property of every SWIG sequence, not of one binding.
+        v = xyzr.get_coordinates()
+
+        row = atoms[j]
+        row['i'] = j
+        row['chain'] = chain_id
+        row['res_id'] = r.get_index()
+        row['res_name'] = res_name
+        row['atom_id'] = a.get_input_index()
+        row['atom_name'] = _imp_atom_name(a)
+        row['element'] = name
+        row['xyz'] = (v[0], v[1], v[2])
+        row['radius'] = xyzr.get_radius() * radius_scaleling
+        row['bfactor'] = a.get_temperature_factor()
+        row['mass'] = imp_mass(atom).get_mass()
         j += 1
     return atoms[:j]
 
