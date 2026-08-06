@@ -133,6 +133,7 @@ class Chinsole(QtWidgets.QWidget):
         self.theme = resolve_theme(self.config.theme) if self.config.theme else theme_from_settings()
 
         self.view = ConsoleView(self, self.theme)
+        self.view.shows_prompt = self.config.role is not ConsoleRole.OUTPUT
         self.view._prompt_text = self.config.prompt
         self.view._continuation_text = self.config.continuation
         self.view.set_max_blocks(int(self._settings["max_blocks"]))

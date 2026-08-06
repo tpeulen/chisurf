@@ -56,6 +56,10 @@ EDITOR_SETTINGS_KEYS = [
     "font_family",
     "font_size",
     "language",
+    # Absent until 2026-08-06, which made the Run-endpoint dropdown inert:
+    # save_editor_settings filters by this list, so the chosen endpoint was
+    # dropped on the way to disk and run_macro always fell back to "process".
+    "run_endpoint",
     "color_scheme",
     "paper_color",
     "default_color",
@@ -118,6 +122,7 @@ def default_editor_settings() -> dict[str, str | int | bool | list[str]]:
         "font_family": "Courier New",
         "font_size": 9,
         "language": "Python",
+        "run_endpoint": "console",
         "color_scheme": "ChiSurf",
         "caret_line_visible": False,
         "line_numbers_visible": True,

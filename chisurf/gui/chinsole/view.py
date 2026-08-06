@@ -99,6 +99,9 @@ class ConsoleView(QtWidgets.QTextEdit):
         #: Set by :class:`~chisurf.gui.chinsole.widget.Chinsole`; consulted
         #: first in :meth:`keyPressEvent`.
         self.completion_popup = None
+        #: Whether this console draws an input prompt. False for a read-only
+        #: output panel, which has nothing to prompt for.
+        self.shows_prompt = True
 
         self.apply_theme(self.theme)
         self.verticalScrollBar().valueChanged.connect(self._note_scroll_position)
@@ -525,11 +528,15 @@ class ConsoleView(QtWidgets.QTextEdit):
         keep_input : bool, optional
             Preserve what is currently typed.
         """
-        typed = self.input_buffer() if keep_input else ""
+        typed = self.input_buffer() if keep_input and self.shows_prompt else ""
         self.clear()
         self._prompt_pos = 0
         self._ansi.reset()
-        self.show_prompt(newline=False)
+        # A read-only console has no prompt to redraw. Doing it anyway put a
+        # stray "In []:" at the head of the code editor's output panel every
+        # time a script was run.
+        if self.shows_prompt:
+            self.show_prompt(newline=False)
         if typed:
             self.set_input_buffer(typed)
 

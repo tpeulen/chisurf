@@ -151,17 +151,21 @@ class CodeEditorWindow(QtWidgets.QMainWindow):
         )
 
         endpoint = QtWidgets.QComboBox(toolbar)
-        _endpoint_keys = ["console", "process", "ipython"]
-        endpoint.addItem(create_emoji_icon("🖥", size=16), "Console")
-        endpoint.addItem(create_emoji_icon(Glyphs.SETTINGS, size=16), "Process")
-        endpoint.addItem(create_emoji_icon("🐍", size=16), "IPython")
+        # Two endpoints, not three. "Console" and "IPython" were the same
+        # thing once the console stopped being a Jupyter kernel: both ran the
+        # file in-process with `cs` in scope. "ipython" is still accepted on
+        # load, because it is in users' saved settings and in script shebangs.
+        _endpoint_keys = ["console", "process"]
+        endpoint.addItem(create_emoji_icon("🖥", size=16), "In ChiSurf")
+        endpoint.addItem(create_emoji_icon(Glyphs.SETTINGS, size=16), "Separate process")
         settings = get_editor_settings()
-        current = settings.get("run_endpoint", "process")
-        endpoint.setCurrentIndex(_endpoint_keys.index(current) if current in _endpoint_keys else 1)
+        current = settings.get("run_endpoint", "console")
+        if current == "ipython":
+            current = "console"
+        endpoint.setCurrentIndex(_endpoint_keys.index(current) if current in _endpoint_keys else 0)
         endpoint.setToolTip(
-            "Console — exec() in-process (cs in scope)\n"
-            "Process — separate subprocess\n"
-            "IPython — send to the ChiSurf IPython console (%run)"
+            "In ChiSurf — runs in this process, so cs and the open fits are in scope\n"
+            "Separate process — runs isolated; a crash cannot take ChiSurf down"
         )
         endpoint.currentIndexChanged.connect(
             lambda idx: self._set_run_endpoint(_endpoint_keys[idx])
@@ -203,6 +207,10 @@ class CodeEditorWindow(QtWidgets.QMainWindow):
 
     def _apply_endpoint_hint(self, endpoint: str) -> None:
         """Pre-select the endpoint combo to match a script's shebang (user can still override)."""
+        if endpoint == "ipython":
+            # Scripts in the wild still carry `# !chisurf: ipython`, including
+            # some shipped in examples/. It names the in-process endpoint.
+            endpoint = "console"
         if endpoint not in self._endpoint_keys:
             return
         idx = self._endpoint_keys.index(endpoint)

@@ -189,11 +189,22 @@ class CodeEditor(QtWidgets.QWidget):
         self.diagnostics_list.setObjectName("code_editor_diagnostics_list")
         self.diagnostics_list.setMaximumHeight(100)
 
-        self.output_console = QtWidgets.QPlainTextEdit()
+        # An OUTPUT-role chinsole rather than a bare QPlainTextEdit: script
+        # output carries ANSI (chinsole formats tracebacks that way, and so do
+        # pytest, colorama and rich), which a plain text edit renders as
+        # literal escape codes. It also brings the scrollback cap and the
+        # carriage-return handling that lets a progress bar redraw in place.
+        from chisurf.gui.chinsole import Chinsole, ConsoleConfig, ConsoleRole
+
+        self.output_console = Chinsole(
+            ConsoleConfig(
+                role=ConsoleRole.OUTPUT,
+                history_path=False,
+                session_log=None,
+                banner="",
+            )
+        )
         self.output_console.setObjectName("code_editor_output_console")
-        self.output_console.setReadOnly(True)
-        self.output_console.setFont(QtGui.QFont("Monospace", 9))
-        self.output_console.setMaximumBlockCount(5000)
 
         self.file_tree.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.file_tree.customContextMenuRequested.connect(self._on_file_tree_context_menu)
@@ -743,10 +754,13 @@ class CodeEditor(QtWidgets.QWidget):
         self.open_file(str(new_path))
 
     def _append_output(self, text: str) -> None:
-        """Append *text* to the output console (always on the GUI thread)."""
-        self.output_console.moveCursor(QtGui.QTextCursor.End)
-        self.output_console.insertPlainText(text)
-        self.output_console.moveCursor(QtGui.QTextCursor.End)
+        """Append *text* to the output console (always on the GUI thread).
+
+        Parameters
+        ----------
+        text : str
+        """
+        self.output_console.append_output(text)
 
     def _on_file_tree_activated(self, index: QtCore.QModelIndex) -> None:
         """Open a file when the shared project browser is activated."""
@@ -1415,7 +1429,12 @@ class CodeEditor(QtWidgets.QWidget):
             stripped = line.strip()
             if stripped.startswith("# !chisurf:"):
                 endpoint = stripped[len("# !chisurf:"):].strip().lower()
-                if endpoint in ("console", "process", "ipython"):
+                if endpoint == "ipython":
+                    # Historic spelling for the in-process endpoint, back when
+                    # the console was a Jupyter kernel. Still in users' files
+                    # and in examples/, so it is normalised, not rejected.
+                    endpoint = "console"
+                if endpoint in ("console", "process"):
                     return endpoint
         return None
 
@@ -1433,36 +1452,17 @@ class CodeEditor(QtWidgets.QWidget):
 
         # Endpoint is always the toolbar dropdown (shebang pre-selects it on open; user can override).
         settings = get_editor_settings()
-        mode = settings.get("run_endpoint", "process")
+        mode = settings.get("run_endpoint", "console")
 
-        if mode == "console":
-            self._run_console(content, filepath)
-        elif mode == "ipython":
-            self._run_ipython_impl(filepath)
-        else:
+        if mode == "process":
             self._run_process_impl(filepath)
-
-    def _run_ipython_impl(self, filepath: str) -> None:
-        """Send the current file to the ChiSurf IPython console via %%run magic."""
-        console = getattr(cs, "console", None)
-        if console is None:
-            self.outputAppended.emit(
-                "⚠️ No IPython console found (cs.console is None).\n"
-                "  Start ChiSurf with the console enabled, or switch to Console/Process mode.\n"
-            )
-            return
-        self.output_console.clear()
-        self.output_console.appendPlainText(f"▶ Sending to IPython: {filepath}\n")
-        # %run executes the file in the kernel namespace where cs is already available.
-        # execute_on_gui_thread is signal-safe (can be called from any thread).
-        # -i runs in the current interactive namespace where cs, np, etc. are already defined.
-        console.execute_on_gui_thread(f"%run -i '{filepath}'")
-        self.outputAppended.emit("  Script sent — see the IPython console for output.\n")
+        else:
+            self._run_console(content, filepath)
 
     def _run_process_impl(self, filepath: str) -> None:
         """Run a file as a subprocess via QProcess, capturing output."""
         self.output_console.clear()
-        self.output_console.appendPlainText(f"▶ Running: {filepath}\n")
+        self.output_console.append_output(f"▶ Running: {filepath}\n")
         self._run_process = QtCore.QProcess(self)
         self._run_process.setProcessChannelMode(QtCore.QProcess.MergedChannels)
         self._run_process.readyReadStandardOutput.connect(self._on_process_output)
@@ -1483,50 +1483,56 @@ class CodeEditor(QtWidgets.QWidget):
     def _run_console(self, content: str, filepath: str) -> None:
         """Run content in-process on the main thread so GUI operations work."""
         self.output_console.clear()
-        self.output_console.appendPlainText(f"▶ Running (console): {filepath}\n")
+        self.output_console.append_output(f"▶ Running in ChiSurf: {filepath}\n")
         self.runStateChanged.emit(True)
         # Defer one event-loop tick so the output panel update renders first,
         # then exec on the main thread (required for any code that touches Qt widgets).
         QtCore.QTimer.singleShot(0, lambda: self._exec_on_main_thread(content, filepath))
 
     def _exec_on_main_thread(self, content: str, filepath: str) -> None:
-        """Execute code on the main thread, capturing stdout/stderr to the output panel."""
-        import io as _io
-        import traceback
+        """Execute *content* on the main thread, streaming its output to the panel.
 
-        class _Tee:
-            def __init__(self, orig, buf):
-                self._orig, self._buf = orig, buf
-            def write(self, text):
-                self._orig.write(text)
-                self._buf.write(text)
-            def flush(self):
-                self._orig.flush()
+        Parameters
+        ----------
+        content : str
+        filepath : str
+            Used as the code's filename, so tracebacks name the real file.
 
-        buf = _io.StringIO()
-        old_stdout, old_stderr = sys.stdout, sys.stderr
-        sys.stdout = _Tee(old_stdout, buf)
-        sys.stderr = _Tee(old_stderr, buf)
-        namespace = {
-            "__name__": "__main__",
-            "__file__": filepath,
-            "cs": cs,
-            "np": __import__("numpy"),
-            "os": os,
-            "sys": sys,
-        }
+        Notes
+        -----
+        Output is emitted **as it is produced**. The previous implementation
+        collected everything into a ``StringIO`` and emitted it from its
+        ``finally`` block, so a script that ran for a minute showed nothing at
+        all until it ended -- and a script that hung showed nothing ever.
+
+        Execution goes through :class:`chisurf.core.console.shell.Shell`, the
+        same interpreter the ChiSurf console uses, so a traceback here is
+        formatted and trimmed exactly as it is there.
+        """
+        from chisurf.core.console.history import HistoryManager
+        from chisurf.core.console.shell import Shell
+
+        def emit(_stream_name: str, text: str) -> None:
+            self.outputAppended.emit(text)
+
+        shell = Shell(
+            user_ns={
+                "__name__": "__main__",
+                "__file__": filepath,
+                "cs": cs,
+                "np": __import__("numpy"),
+                "os": os,
+                "sys": sys,
+            },
+            write=emit,
+            display=lambda data, meta, kind, count: emit(
+                "stdout", (data.get("text/plain") or "") + "\n"
+            ),
+            history=HistoryManager(path=False),
+        )
         try:
-            exec(compile(content, filepath, "exec"), namespace)
-        except SystemExit:
-            pass
-        except Exception:
-            sys.stderr.write(traceback.format_exc())
+            shell.run_cell(content, store_history=False, filename=filepath)
         finally:
-            sys.stdout = old_stdout
-            sys.stderr = old_stderr
-            captured = buf.getvalue()
-            if captured:
-                self.outputAppended.emit(captured)
             self.runStateChanged.emit(False)
 
     def stop_macro(self):

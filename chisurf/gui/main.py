@@ -405,6 +405,35 @@ class Main(
                 window_title = cs.__name__ + "(" + cs.__version__ + "): " + sub_window.windowTitle()
                 self.setWindowTitle(window_title)
 
+    def onRecordMacro(self, recording: bool):
+        """Start or finish recording console input as a macro.
+
+        Parameters
+        ----------
+        recording : bool
+            The *Macro ▸ Record* action's new checked state.
+
+        Notes
+        -----
+        Finishing offers to save straight away. Recording into a buffer the
+        user has no way to write out is what this menu entry did before, and a
+        separate *Save* entry would only reintroduce the chance of losing it.
+        """
+        console = getattr(cs, "console", None)
+        if console is None:
+            return
+        if recording:
+            console.start_recording()
+            self.statusBar().showMessage("Recording macro…")
+            return
+
+        console.stop_recording()
+        self.statusBar().clearMessage()
+        if not console.macro.strip():
+            dialogs.information(self, "Record macro", "Nothing was recorded.")
+            return
+        console.save_macro()
+
     def onRunMacro(
             self,
             filename: pathlib.Path = None,
@@ -1373,7 +1402,11 @@ class Main(
         ##########################################################
         #      Record and run recorded macros                    #
         ##########################################################
-        self.actionRecord.triggered.connect(cs.console.start_recording)
+        # A toggle, not a one-shot: this was wired to start_recording alone,
+        # and nothing in the tree called stop_recording or save_macro, so the
+        # recording could never be ended or written out.
+        self.actionRecord.setCheckable(True)
+        self.actionRecord.toggled.connect(self.onRecordMacro)
 
         ##########################################################
         #    Connect changes in User-interface to actions like:  #
