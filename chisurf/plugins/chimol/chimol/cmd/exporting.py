@@ -420,7 +420,11 @@ class ExportMixin(BaseCmd):
         # from the moment anyone set a background: `bg_color white; ray` traced
         # onto black. The configuration is the fallback for a viewer that has no
         # renderer yet, which is the only case it is right for.
-        live_background = viewer.get_background_color()
+        # Asked for rather than assumed: `ray` is written against any viewer
+        # that can describe its scene, and one that cannot say what its
+        # background is falls back to the configured value.
+        reader = getattr(viewer, "get_background_color", None)
+        live_background = reader() if callable(reader) else None
         bg_rgb = self._parse_background(
             live_background
             if live_background is not None

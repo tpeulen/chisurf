@@ -919,6 +919,58 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         pos = self._camera_position()
         return QtGui.QVector3D(float(pos[0]), float(pos[1]), float(pos[2]))
 
+    def project_to_screen(self, points) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Where scene points land in the widget, in widget pixels.
+
+        Through the **same matrices the frame is drawn with**, because a picker
+        that computes its own projection picks where the molecule is not. That
+        is not hypothetical: this replaced a hand-rolled camera basis built from
+        ``cameraPosition()`` and an ``opts`` dictionary, which are pyqtgraph's
+        API and survived here only as a shim -- one whose ``center`` is a
+        ``QVector3D`` that the helper reading it fed straight to ``numpy``,
+        raising on every click.
+
+        Two things the maths has to respect and a from-scratch version keeps
+        getting wrong: the viewport is the **scene column**, not the widget (the
+        panel takes a column on the right), and it sits below the **sequence
+        strip**, so a y measured from the widget's top is off by the strip's
+        height.
+
+        Parameters
+        ----------
+        points : array_like
+            ``(n, 3)`` positions in scene space -- what the geometry carries.
+
+        Returns
+        -------
+        tuple of numpy.ndarray
+            ``(x, y, visible)``: widget pixel coordinates with the origin at the
+            top left, and a boolean saying which points are in front of the
+            camera. Points behind it carry meaningless coordinates.
+        """
+        pts = np.asarray(points, dtype=float)
+        if pts.ndim != 2 or pts.shape[1] != 3 or pts.shape[0] == 0:
+            empty = np.zeros(0, dtype=float)
+            return empty, empty, np.zeros(0, dtype=bool)
+
+        matrix, _view = self._build_matrices()
+        rows = np.asarray(matrix.data(), dtype=float).reshape(4, 4).T  # Qt is column-major
+        homogeneous = np.column_stack([pts, np.ones(len(pts))])
+        clip = homogeneous @ rows.T
+        w = clip[:, 3]
+        visible = np.isfinite(w) & (w > 1e-9)
+        ndc = np.zeros((len(pts), 2), dtype=float)
+        ndc[visible] = clip[visible, :2] / w[visible, None]
+
+        width = max(self.scene_width(), 1)
+        height = max(self.scene_height(), 1)
+        strip = max(int(self.height()) - height, 0)
+        x = (ndc[:, 0] * 0.5 + 0.5) * width
+        # GL's y runs up from the bottom of the viewport; the widget's runs down
+        # from its top, and the viewport starts under the strip.
+        y = strip + (1.0 - (ndc[:, 1] * 0.5 + 0.5)) * height
+        return x, y, visible
+
     # ------------------------------------------------------------------
     # Qt OpenGL overrides
     # ------------------------------------------------------------------
@@ -2343,22 +2395,28 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
             event.accept()
             return
 
-        if event.button() == QtCore.Qt.MiddleButton:
-            self._panning = True
-            self._last_mouse_pos = event.pos()
-            event.accept()
-            return
-
-        if event.button() == QtCore.Qt.LeftButton:
+        if event.button() in (QtCore.Qt.LeftButton, QtCore.Qt.MiddleButton):
             mods = event.modifiers()
             # Which action this button carries comes from the same table the
             # block on screen draws, so what the panel promises and what the
             # mouse does cannot drift apart. PyMOL binds the box select to
             # shift-left (`+Box`) and the residue select to ctrl-shift-left
             # (`Sele`); both drag a rubber band here.
+            #
+            # The **middle** button comes through here too. It used to be caught
+            # above and turned straight into a pan, so its three modified cells
+            # -- `-Box` on shift, `PkAt` on ctrl, `Orig` on ctrl-shift -- were
+            # unreachable: the block on screen promised a subtract-box that
+            # panned the camera instead. Plain middle is `Move`, which still
+            # pans, and it now says so through the table rather than beside it.
             action = mouse_action_of(
                 self._internal_gui.mouse_mode, event.button(), mods
             )
+            if action == "move":
+                self._panning = True
+                self._last_mouse_pos = event.pos()
+                event.accept()
+                return
             if action in ("+box", "-box", "sele"):
                 self._drag_selecting = True
                 self._drag_start = event.pos()
@@ -2411,7 +2469,12 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
             event.accept()
             return
 
-        if (event.buttons() & QtCore.Qt.MiddleButton) and self._last_mouse_pos is not None:
+        # The *press* decided which gesture this is, from the mode table, so the
+        # drag follows that decision rather than re-deriving one from the button.
+        # Keyed on the button instead, `Move` on ctrl-left rotated -- the table
+        # said pan, the middle-button branch was the only pan, and the left
+        # button fell through to the trackball.
+        if self._panning and self._last_mouse_pos is not None:
             delta = event.pos() - self._last_mouse_pos
             self._pan_from_delta(delta.x(), delta.y())
             self._last_mouse_pos = event.pos()
@@ -2444,13 +2507,6 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
             self._last_mouse_pos = event.pos()
             self.update()
         super().mouseMoveEvent(event)
-
-    def mouseReleaseEvent(self, event: QtGui.QMouseEvent) -> None:
-        if event.button() == QtCore.Qt.MiddleButton:
-            self._panning = False
-            event.accept()
-            return
-        super().mouseReleaseEvent(event)
 
     def wheelEvent(self, event: QtGui.QWheelEvent) -> None:
         mods = event.modifiers()
@@ -2529,11 +2585,20 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         return np.asarray(self._rot[1], dtype=float)
 
     def mouseReleaseEvent(self, event: QtGui.QMouseEvent) -> None:
-        # NOTE: this class defines `mouseReleaseEvent` twice and Python keeps
-        # the last one, so the earlier definition above never runs. Anything
-        # added there is dead code -- which is how the panel's grab flag came to
-        # be set on every press and cleared on none, leaving the camera deaf to
-        # dragging for the rest of the session.
+        # There is **one** of these now. The class used to define it twice and
+        # Python keeps the last, so the earlier one -- which is where the middle
+        # button ended its pan -- never ran: `_panning` was set on every middle
+        # press and cleared on none, so after one middle-drag the molecule
+        # followed the cursor for the rest of the session. Merged rather than
+        # commented, because a note saying "the code above is dead" leaves the
+        # dead code there to be edited by the next person.
+        if self._panning:
+            # Any button can start a pan -- plain middle is `Move`, and so is
+            # ctrl-left -- so the release ends it whichever one it was.
+            self._panning = False
+            event.accept()
+            return
+
         if self._gui_grab:
             # The press belonged to the panel, so the release does too:
             # otherwise letting go over the scene picks whatever is under it.
@@ -2566,12 +2631,18 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
             self._drag_selecting = False
             self._drag_start = None
             if rect.width() > 2 and rect.height() > 2:
-                try:
-                    self._controller.handle_rect_selection(
-                        rect, self._drag_modifiers, self._drag_action
-                    )
-                except Exception:
-                    pass
+                self._controller.handle_rect_selection(
+                    rect, self._drag_modifiers, self._drag_action
+                )
+            elif self._drag_action is not None:
+                # A box that was never dragged is a **click**, and it has to act
+                # like one: ctrl-shift-left is `Sele`, so the press claims it as
+                # a rubber band, and a plain ctrl-shift *click* -- which is how
+                # anyone coming from PyMOL selects a residue -- then fell
+                # through a zero-size rectangle and did nothing at all. Each box
+                # action degenerates to the same operation on the atom under the
+                # cursor.
+                self._controller.handle_mouse_click(event, self._drag_action)
             self._drag_action = None
             event.accept()
             return
@@ -2581,14 +2652,15 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         # action than the drag. In the viewing modes the click is `+/-` -- the
         # clicked residue toggles in/out of the selection -- while a real drag
         # is `rota` and must not touch the selection.
-        if (
-            event.button() == QtCore.Qt.LeftButton
-            and self._press_pos is not None
-            and self._controller is not None
-        ):
+        if self._press_pos is not None and self._controller is not None:
             delta = event.pos() - self._press_pos
             was_drag = abs(delta.x()) > 4 or abs(delta.y()) > 4
             if not was_drag and not self._drag_selecting:
+                # PyMOL has a separate row for clicks, so a press that never
+                # dragged can mean something other than the drag it would have
+                # been -- plain left drags (`Rota`) but clicks (`+/-`). Where
+                # that row says nothing, the modified cell the press resolved
+                # still applies: ctrl-middle is `PkAt` whether or not it moved.
                 try:
                     click = click_action_of(
                         self._internal_gui.mouse_mode,
@@ -2597,11 +2669,17 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
                     )
                 except Exception:
                     click = "none"
-                if click in ("+/-", "sele", "pkat"):
+                if click in ("none", ""):
                     try:
-                        self._controller.handle_mouse_click(event, click)
+                        click = mouse_action_of(
+                            self._internal_gui.mouse_mode,
+                            self._press_button,
+                            self._press_mods,
+                        )
                     except Exception:
-                        pass
+                        click = "none"
+                if click in ("+/-", "sele", "pkat", "+box", "-box", "orig"):
+                    self._controller.handle_mouse_click(event, click)
             self._press_pos = None
             self._press_mods = QtCore.Qt.NoModifier
             self._press_button = None

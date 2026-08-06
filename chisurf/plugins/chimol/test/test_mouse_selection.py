@@ -12,6 +12,19 @@ here:
   selection, so ``show sticks, sele`` reaches exactly the residues that were
   clicked or box-selected,
 * a stored ``sele`` entry wins over the viewer's current highlight.
+
+The tests above the divider stub the picker and drive the merge directly, which
+is the right way to test a merge and **the wrong way to find out whether
+clicking works**. They passed for months while the viewport could not select
+anything at all, because each of them supplied by hand the conditions the
+product did not: they set ``viewer._gl_enabled = True`` -- an attribute no code
+anywhere sets, and the gate the whole picking block hung on -- and replaced
+``viewer.view`` with a bare ``object()``, so the real widget, the real
+projection and the real Qt events were never involved. A fixture is an assertion
+too, and these asserted the broken environment into existence.
+
+So the second half drives real ``QMouseEvent``s through the real widget and
+reads the selection that comes out.
 """
 
 from __future__ import annotations
@@ -142,9 +155,7 @@ def test_rect_selection_honours_the_action(window, monkeypatch):
     )
     monkeypatch.setattr(view_mod, "_get_picking_module", lambda: stub)
     viewer = window.viewer
-    viewer._gl_enabled = True  # type: ignore[attr-defined]
-    if viewer.view is None:
-        viewer.view = object()
+    assert viewer.view is not None, "the viewer has no widget to pick in"
 
     rect = QtCore.QRect(0, 0, 10, 10)
     viewer.set_selected_residues([1])
@@ -192,9 +203,7 @@ def test_an_empty_space_click_deselects_like_pymol(window, monkeypatch):
     stub = types.SimpleNamespace(pick_atom_from_click=lambda *a, **k: None)
     monkeypatch.setattr(view_mod, "_get_picking_module", lambda: stub)
     viewer = window.viewer
-    viewer._gl_enabled = True  # type: ignore[attr-defined]
-    if viewer.view is None:
-        viewer.view = object()
+    assert viewer.view is not None, "the viewer has no widget to pick in"
 
     viewer.set_selected_residues([0, 1, 2])
     ev = types.SimpleNamespace(modifiers=lambda: QtCore.Qt.NoModifier)
@@ -215,9 +224,7 @@ def test_an_empty_space_pick_leaves_the_selection_alone(window, monkeypatch):
     stub = types.SimpleNamespace(pick_atom_from_click=lambda *a, **k: None)
     monkeypatch.setattr(view_mod, "_get_picking_module", lambda: stub)
     viewer = window.viewer
-    viewer._gl_enabled = True  # type: ignore[attr-defined]
-    if viewer.view is None:
-        viewer.view = object()
+    assert viewer.view is not None, "the viewer has no widget to pick in"
 
     viewer.set_selected_residues([0, 1, 2])
     ev = types.SimpleNamespace(modifiers=lambda: QtCore.Qt.NoModifier)
@@ -237,3 +244,308 @@ def test_a_stored_sele_wins_over_the_viewer_highlight(cmd):
     viewer = cmd.window.viewer
     viewer.set_selected_residues([0, 1, 2])
     assert _count(cmd, "sele") == _count(cmd, "chain E and resi 1-10")
+
+
+# --------------------------------------------------------------------------- #
+# Driven as real events, through the real widget
+# --------------------------------------------------------------------------- #
+@pytest.fixture
+def viewport(qapp):
+    """A laid-out viewer with a structure in it, and its GL widget."""
+    from chisurf.plugins.chimol.chimol.io.structure import load_structure_payload
+    from chisurf.plugins.chimol.chimol.renderer.view import MolView
+
+    src = (
+        pathlib.Path(__file__).resolve().parents[4]
+        / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+    )
+    if not src.is_file():
+        pytest.skip(f"missing fixture {src}")
+    _reader, payload = load_structure_payload(str(src))
+    view = MolView()
+    view.resize(900, 700)
+    view.show()
+    for _ in range(5):
+        qapp.processEvents()
+    view.add_payload(payload, name="148l", source_path=str(src))
+    for _ in range(5):
+        qapp.processEvents()
+
+    widget = view.view
+    assert widget is not None, "no widget: the picking path cannot be tested"
+    # Assert the viewport rather than assume it. `scene_width` clamps to 1 on a
+    # widget that was never laid out, which puts every projection in one column
+    # and makes every assertion below meaningless-but-passing.
+    assert widget.scene_width() > 16, widget.scene_width()
+    assert widget.scene_height() > 16, widget.scene_height()
+    yield view, widget, qapp
+    view.close()
+
+
+def _pump(qapp, n=5):
+    for _ in range(n):
+        qapp.processEvents()
+
+
+def _selection(view):
+    return sorted(int(i) for i in (getattr(view, "_selected_residues", []) or []))
+
+
+def _atom_point(view, widget):
+    """Widget position of an atom that is actually on screen."""
+    from qtpy import QtCore
+
+    sx, sy, visible = widget.project_to_screen(view._all_atom_coords)
+    on = np.nonzero(visible)[0]
+    assert on.size, "no atom projected in front of the camera"
+    index = int(on[on.size // 2])
+    return index, QtCore.QPoint(int(round(sx[index])), int(round(sy[index])))
+
+
+def _send(widget, kind, point, button, held, modifiers):
+    from qtpy import QtCore, QtGui, QtWidgets
+
+    QtWidgets.QApplication.sendEvent(
+        widget, QtGui.QMouseEvent(kind, QtCore.QPointF(point), button, held, modifiers)
+    )
+
+
+def _click(widget, qapp, point, modifiers=None, button=None):
+    from qtpy import QtCore
+
+    modifiers = QtCore.Qt.NoModifier if modifiers is None else modifiers
+    button = QtCore.Qt.LeftButton if button is None else button
+    _send(widget, QtCore.QEvent.MouseButtonPress, point, button, button, modifiers)
+    _send(
+        widget, QtCore.QEvent.MouseButtonRelease, point, button,
+        QtCore.Qt.NoButton, modifiers,
+    )
+    _pump(qapp)
+
+
+def _drag(widget, qapp, start, end, modifiers):
+    from qtpy import QtCore
+
+    _send(
+        widget, QtCore.QEvent.MouseButtonPress, start,
+        QtCore.Qt.LeftButton, QtCore.Qt.LeftButton, modifiers,
+    )
+    for fraction in (0.34, 0.67, 1.0):
+        step = QtCore.QPoint(
+            int(start.x() + (end.x() - start.x()) * fraction),
+            int(start.y() + (end.y() - start.y()) * fraction),
+        )
+        _send(
+            widget, QtCore.QEvent.MouseMove, step,
+            QtCore.Qt.NoButton, QtCore.Qt.LeftButton, modifiers,
+        )
+    _send(
+        widget, QtCore.QEvent.MouseButtonRelease, end,
+        QtCore.Qt.LeftButton, QtCore.Qt.NoButton, modifiers,
+    )
+    _pump(qapp)
+
+
+def test_atoms_project_inside_the_scene_column(viewport):
+    """Through the renderer's own matrices, so a pick lands where atoms are drawn.
+
+    The column, not the widget: the panel takes a strip on the right and the
+    sequence viewer a band on top, and a projection ignoring either is out by
+    that much everywhere. The version this replaced used pyqtgraph's camera API
+    on a renderer that has not been pyqtgraph for a long time, and raised on
+    every click.
+    """
+    view, widget, _qapp = viewport
+    sx, sy, visible = widget.project_to_screen(view._all_atom_coords)
+    assert visible.all(), "atoms went behind the camera in a framed view"
+    assert 0 <= sx.min() and sx.max() <= widget.scene_width()
+    strip = widget.height() - widget.scene_height()
+    assert strip <= sy.min() and sy.max() <= widget.height()
+
+
+def test_a_click_on_an_atom_selects_its_residue(viewport):
+    """`SnglClk L` is `+/-`: the clicked residue toggles in."""
+    view, widget, qapp = viewport
+    index, point = _atom_point(view, widget)
+    assert _selection(view) == []
+    _click(widget, qapp, point)
+    picked = _selection(view)
+    assert len(picked) == 1, "clicking an atom selected nothing"
+    residue_id = int(view._all_atom_res_ids[index])
+    assert int(view._residue_ids[picked[0]]) == residue_id, (
+        "the click selected a different residue than the atom it hit"
+    )
+
+
+def test_clicking_the_same_atom_again_deselects_it(viewport):
+    view, widget, qapp = viewport
+    _index, point = _atom_point(view, widget)
+    _click(widget, qapp, point)
+    assert _selection(view)
+    _click(widget, qapp, point)
+    assert _selection(view) == []
+
+
+def test_clicking_empty_space_deactivates_the_selection(viewport):
+    from qtpy import QtCore
+
+    view, widget, qapp = viewport
+    _index, point = _atom_point(view, widget)
+    _click(widget, qapp, point)
+    assert _selection(view)
+    _click(widget, qapp, QtCore.QPoint(4, widget.height() - 4))
+    assert _selection(view) == []
+
+
+def test_ctrl_shift_click_sets_the_selection(viewport):
+    """`CtSh L` is `Sele`, and a click is a box that was never dragged.
+
+    The press claims those modifiers for a rubber band, so a plain ctrl-shift
+    *click* -- how anyone coming from PyMOL picks a residue -- fell through a
+    zero-size rectangle and did nothing.
+    """
+    from qtpy import QtCore
+
+    view, widget, qapp = viewport
+    _index, point = _atom_point(view, widget)
+    _click(
+        widget, qapp, point, QtCore.Qt.ControlModifier | QtCore.Qt.ShiftModifier
+    )
+    assert len(_selection(view)) == 1
+
+
+def test_shift_drag_selects_every_residue_in_the_box(viewport):
+    """`Shft L` is `+Box`, and it takes exactly the residues the box encloses."""
+    from qtpy import QtCore
+
+    view, widget, qapp = viewport
+    rx, ry, visible = widget.project_to_screen(view._coords)
+    on = np.nonzero(visible)[0]
+    cx, cy = float(np.median(rx[on])), float(np.median(ry[on]))
+    start = QtCore.QPoint(int(cx - 60), int(cy - 60))
+    end = QtCore.QPoint(int(cx + 60), int(cy + 60))
+    expected = sorted(
+        int(i) for i in on
+        if start.x() <= rx[i] <= end.x() and start.y() <= ry[i] <= end.y()
+    )
+    assert len(expected) > 3, "the box caught too little to be a test"
+    _drag(widget, qapp, start, end, QtCore.Qt.ShiftModifier)
+    assert _selection(view) == expected
+
+
+def test_the_middle_button_stops_panning_when_released(viewport):
+    """It did not: the class defined `mouseReleaseEvent` twice.
+
+    Python keeps the last, so the one that ended the pan never ran and after a
+    single middle-drag the molecule followed the cursor for the session.
+    """
+    from qtpy import QtCore
+
+    view, widget, qapp = viewport
+    _index, point = _atom_point(view, widget)
+    _send(
+        widget, QtCore.QEvent.MouseButtonPress, point,
+        QtCore.Qt.MiddleButton, QtCore.Qt.MiddleButton, QtCore.Qt.NoModifier,
+    )
+    _pump(qapp, 2)
+    assert widget._panning, "plain middle is `Move`, which pans"
+    _send(
+        widget, QtCore.QEvent.MouseButtonRelease, point,
+        QtCore.Qt.MiddleButton, QtCore.Qt.NoButton, QtCore.Qt.NoModifier,
+    )
+    _pump(qapp, 2)
+    assert not widget._panning
+
+
+def test_ctrl_left_pans_rather_than_rotating(viewport):
+    """`Ctrl L` is `Move` in the block, and the block is what people read.
+
+    The gesture used to be chosen from the *button* while dragging rather than
+    from the action the press resolved, so the only pan was the middle button.
+    """
+    from qtpy import QtCore
+
+    view, widget, qapp = viewport
+    _index, point = _atom_point(view, widget)
+    _send(
+        widget, QtCore.QEvent.MouseButtonPress, point,
+        QtCore.Qt.LeftButton, QtCore.Qt.LeftButton, QtCore.Qt.ControlModifier,
+    )
+    _pump(qapp, 2)
+    assert widget._panning
+    _send(
+        widget, QtCore.QEvent.MouseButtonRelease, point,
+        QtCore.Qt.LeftButton, QtCore.Qt.NoButton, QtCore.Qt.ControlModifier,
+    )
+    _pump(qapp, 2)
+    assert not widget._panning
+
+
+def test_ctrl_shift_middle_moves_the_pivot(viewport):
+    """`CtSh M` is `Orig`, which the block drew and nothing was wired to."""
+    from qtpy import QtCore
+
+    view, widget, qapp = viewport
+    _index, point = _atom_point(view, widget)
+    before = np.asarray(widget._pan_offset, dtype=float).copy()
+    _click(
+        widget, qapp, point,
+        QtCore.Qt.ControlModifier | QtCore.Qt.ShiftModifier,
+        button=QtCore.Qt.MiddleButton,
+    )
+    after = np.asarray(widget._pan_offset, dtype=float)
+    assert not np.allclose(before, after), "the pivot did not move"
+    assert _selection(view) == [], "`Orig` is not a selection action"
+
+
+def test_every_cell_the_block_shows_starts_the_gesture_it_names(viewport):
+    """The block on screen is reference material, so it must not over-promise.
+
+    The middle button had three cells that drew a name and did nothing -- it was
+    turned into a pan before the table was ever consulted.
+    """
+    from qtpy import QtCore
+
+    from chisurf.plugins.chimol.chimol.mouse_modes import action_of
+
+    view, widget, qapp = viewport
+    mode = widget._internal_gui.mouse_mode
+    gestures = {
+        "move": "pan", "+box": "band", "-box": "band", "sele": "band",
+        "rota": "click", "pkat": "click", "orig": "click",
+    }
+    for modifiers in (
+        QtCore.Qt.NoModifier,
+        QtCore.Qt.ShiftModifier,
+        QtCore.Qt.ControlModifier,
+        QtCore.Qt.ControlModifier | QtCore.Qt.ShiftModifier,
+    ):
+        for button in (QtCore.Qt.LeftButton, QtCore.Qt.MiddleButton):
+            action = action_of(mode, button, modifiers)
+            wanted = gestures.get(action)
+            if wanted is None:
+                continue
+            widget._panning = False
+            widget._drag_selecting = False
+            widget._press_pos = None
+            _index, point = _atom_point(view, widget)
+            _send(
+                widget, QtCore.QEvent.MouseButtonPress, point,
+                button, button, modifiers,
+            )
+            _pump(qapp, 2)
+            started = (
+                "pan" if widget._panning
+                else "band" if widget._drag_selecting
+                else "click" if widget._press_pos is not None
+                else "none"
+            )
+            _send(
+                widget, QtCore.QEvent.MouseButtonRelease, point,
+                button, QtCore.Qt.NoButton, modifiers,
+            )
+            _pump(qapp, 2)
+            assert started == wanted, (
+                f"the block says {action!r} for this cell, and the press started "
+                f"{started!r} instead of {wanted!r}"
+            )

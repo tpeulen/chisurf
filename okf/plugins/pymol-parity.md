@@ -2110,6 +2110,72 @@ and it is what exercises the whole path end to end. `resolve_structure` builds i
 the failure is **raised**, not swallowed, because a path that is not there
 surfaces as "cannot read file" and sends whoever hit it looking for a download.
 
+## Clicking a residue did not work, in four ways at once
+
+The most-used thing in a viewer, and nothing exercised it. Each defect on its
+own is enough to make selection impossible, and they had accumulated:
+
+1. **The picker was pyqtgraph's.** `_project_points_to_screen` built a camera
+   basis from `view.cameraPosition()` and a `view.opts` dictionary — the
+   `GLViewWidget` API, left behind when the renderer was replaced. The renderer
+   kept an `opts` shim *"for compatibility with picking helpers"* whose `center`
+   is a `QVector3D`; the helper passed it to `numpy.asarray`, which raises. So
+   **every click raised**.
+2. **The raise was swallowed** by `except Exception: pass` at the call site, so
+   there was no message, no traceback, nothing in the log.
+3. **The block could not run anyway**: it was gated on
+   `getattr(self, "_gl_enabled", False)`, and *no code anywhere sets
+   `_gl_enabled`*. A dead attribute name, defaulting to False, in front of the
+   whole feature.
+4. **A picked atom mapped to no residue.** `set_coordinates` — which is what
+   `apply_payload`, "the single route from a file into the viewer", calls —
+   cleared `_all_atom_res_ids` and never refilled it, though `set_structure`
+   fills it from the same field. So for RMF, mmCIF and every bead model the
+   pick succeeded and then had nothing to select.
+
+**Why the tests passed throughout, which is the finding worth keeping.**
+`test_mouse_selection.py` existed and was green. It stubbed the picking module,
+set `viewer._gl_enabled = True` *itself* — supplying by hand the gate the
+product never sets — and replaced `viewer.view` with a bare `object()`. Every
+one of those substitutions replaced a thing that was broken with one that was
+not. **A fixture is an assertion too**, and these asserted the broken
+environment into existence. The tests now send real `QMouseEvent`s through the
+real widget and read the selection that comes out; the merge-logic tests that
+legitimately stub are kept, below a divider that says which is which.
+
+**The projection lives on the renderer now** (`project_to_screen`), through the
+same matrices `paintGL` uses, because a picker that computes its own projection
+picks where the molecule is not. Two things a from-scratch version keeps getting
+wrong and this one asserts: the viewport is the **scene column**, not the widget
+(the panel takes a strip), and it sits **below the sequence strip**.
+
+## The mouse block promised more than the mouse did
+
+With picking working, the remaining gaps were in the routing, and they are all
+the same shape: the *button* decided the gesture instead of the **action the
+table resolves**.
+
+* the **middle button** was turned into a pan before the table was consulted, so
+  its three modified cells — `-Box`, `PkAt`, `Orig` — were unreachable. The
+  block on screen drew a subtract-box that panned the camera;
+* `Ctrl L` is `Move` in PyMOL, and it rotated, because the *drag* handler keyed
+  on `LeftButton` rather than on what the press had decided;
+* a **ctrl-shift click** — how anyone coming from PyMOL picks a residue — did
+  nothing: the press correctly claimed `Sele` for a rubber band, and a band that
+  is never dragged fell through a zero-size rectangle. Each box action now
+  degenerates to the same operation on the atom under the cursor;
+* `Orig` was in the table and wired to nothing.
+
+`mouseReleaseEvent` was **defined twice**, and Python keeps the last, so the
+earlier one — which ended the middle-button pan — never ran: after one
+middle-drag the molecule followed the cursor for the rest of the session. There
+was a comment saying the duplicate existed. A note that code is dead leaves the
+dead code there; it is merged now.
+
+The guardrail worth having is the one that walks **every cell of the block** and
+asserts the press starts the gesture the cell names, because the block is
+reference material — someone reads it to find out what ctrl-shift-middle does.
+
 # Working rules
 
 1. **Read the C++ before implementing.** Every one of `refine_tips`, the

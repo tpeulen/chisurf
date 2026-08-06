@@ -49,81 +49,49 @@ def _project_points_to_screen(
     coords: np.ndarray,
     view,
 ) -> Optional[tuple[np.ndarray, np.ndarray, np.ndarray]]:
+    """Project scene points to widget pixels, through the renderer itself.
+
+    Parameters
+    ----------
+    coords : numpy.ndarray
+        ``(n, 3)`` positions in scene space.
+    view : chimol.renderer.qtgl.QtGLRenderer
+        The widget that draws them.
+
+    Returns
+    -------
+    tuple of numpy.ndarray, or None
+        ``(x, y, visible)``, or ``None`` when there is nothing to project or the
+        renderer cannot answer.
+
+    Notes
+    -----
+    This used to build a camera basis of its own from ``view.cameraPosition()``
+    and a ``view.opts`` dictionary -- pyqtgraph's ``GLViewWidget`` API, left
+    behind when the renderer was replaced. The renderer kept an ``opts`` shim
+    "for compatibility with picking helpers" whose ``center`` is a
+    ``QVector3D``; this function fed it to ``numpy.asarray``, which raises. So
+    **every click raised**, the exception was swallowed by the caller, and
+    picking did nothing at all.
+
+    A picker must project the way the renderer draws, or it picks where the
+    molecule is not -- and the hand-rolled version ignored both the panel column
+    and the sequence strip, so even repaired it would have been out by the
+    strip's height.
+    """
     pts = np.asarray(coords, dtype=float)
     if pts.ndim != 2 or pts.shape[0] == 0:
         return None
-
+    project = getattr(view, "project_to_screen", None)
+    if not callable(project):
+        return None
     try:
-        cam_pos = view.cameraPosition()
-        center = view.opts.get("center", None)
+        sx, sy, visible = project(pts)
     except Exception:
         return None
-
-    if center is None:
+    if sx.shape[0] != pts.shape[0]:
         return None
-
-    try:
-        cam = np.array([cam_pos.x(), cam_pos.y(), cam_pos.z()], dtype=float)
-    except Exception:
-        cam = np.asarray(cam_pos, dtype=float)
-    cen = np.asarray(center, dtype=float)
-
-    view_dir = cen - cam
-    norm = float(np.linalg.norm(view_dir))
-    if not np.isfinite(norm) or norm <= 0.0:
-        return None
-    view_dir /= norm
-
-    up0 = np.array([0.0, 0.0, 1.0], dtype=float)
-    if abs(float(np.dot(up0, view_dir))) > 0.99:
-        up0 = np.array([0.0, 1.0, 0.0], dtype=float)
-    right = np.cross(view_dir, up0)
-    rnorm = float(np.linalg.norm(right))
-    if not np.isfinite(rnorm) or rnorm <= 0.0:
-        return None
-    right /= rnorm
-    up = np.cross(right, view_dir)
-    unorm = float(np.linalg.norm(up))
-    if not np.isfinite(unorm) or unorm <= 0.0:
-        return None
-    up /= unorm
-
-    w = max(1.0, float(view.width()))
-    h = max(1.0, float(view.height()))
-
-    fov_deg = float(view.opts.get("fov", 60.0))
-    fov = math.radians(fov_deg)
-    dist = float(np.linalg.norm(cen - cam))
-    if not np.isfinite(dist) or dist <= 0.0:
-        dist = 1.0
-    half_h = math.tan(fov / 2.0) * dist
-    aspect = w / h if h > 0 else 1.0
-    half_w = half_h * aspect
-    if half_w == 0.0 or half_h == 0.0:
-        return None
-
-    v = pts - cam
-    z_c = np.dot(v, view_dir)
-    mask = np.isfinite(z_c) & (z_c > 0.0)
-    if not np.any(mask):
-        return None
-
-    x_c = np.dot(v, right)
-    y_c = np.dot(v, up)
-    scale = np.zeros_like(z_c)
-    scale[mask] = dist / z_c[mask]
-
-    x_plane = x_c * scale
-    y_plane = y_c * scale
-
-    with np.errstate(invalid="ignore", divide="ignore"):
-        nx = x_plane / half_w
-        ny = y_plane / half_h
-
-    sx = 0.5 * w * (1.0 + nx)
-    sy = 0.5 * h * (1.0 - ny)
-
-    return sx, sy, mask
+    return sx, sy, visible
 
 
 def pick_residue_from_click(

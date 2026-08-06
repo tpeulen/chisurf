@@ -2798,7 +2798,24 @@ class MolView(QtWidgets.QWidget):
         # it was read, so the panel does not have to know which reader ran.
         self._rmf_hierarchy = hierarchy
         self._set_representations(arr.shape[0], resolutions, resolution_default_mask)
+        # Which residue each atom belongs to. `set_structure` fills this from
+        # the same field and this method only cleared it, so **every object
+        # loaded through a payload** -- which is every reader except the PDB
+        # structure path: RMF, mmCIF, bead models -- had no atom-to-residue map
+        # at all. Clicking one picked the atom and then found no residue to
+        # select, which looks exactly like picking being broken.
         self._all_atom_res_ids = None
+        if isinstance(atoms, np.ndarray) and "res_id" in set(atoms.dtype.fields or {}):
+            try:
+                self._all_atom_res_ids = np.asarray(atoms["res_id"])
+            except Exception:
+                self._all_atom_res_ids = None
+        elif res_ids is not None:
+            # No atom table, so the coordinates *are* the residues -- one row
+            # each, which is what a coarse bead model gives.
+            candidate = np.asarray(res_ids)
+            if candidate.shape[0] == arr.shape[0]:
+                self._all_atom_res_ids = candidate
         self._atom_features = {}
         self._atom_feature_meta = {}
         self._show_atom_gaussians = False
@@ -4407,7 +4424,12 @@ class MolView(QtWidgets.QWidget):
         atom_indices = []
         residue_indices = []
         mods = None
-        if self._coords is not None and getattr(self, "_gl_enabled", False) and self.view is not None:
+        # `_gl_enabled` was the gate here and **no code has ever set it**: the
+        # `getattr` default made every click skip the whole picking block, on
+        # top of the projection below raising. Two independent reasons the
+        # viewport could not select anything. What actually has to hold is that
+        # there is a widget able to project.
+        if self._coords is not None and self.view is not None:
             picking_mod = _get_picking_module()
             try:
                 sel_cfg = _DISPLAY_CONFIG.get("selection", {})
@@ -4466,9 +4488,7 @@ class MolView(QtWidgets.QWidget):
                     self.atomSelectionChanged.emit([])
                 except Exception:
                     pass
-                if action in ("+/-", "sele") and self._coords is not None and getattr(
-                    self, "_gl_enabled", False
-                ):
+                if action in ("+/-", "sele") and self._coords is not None:
                     try:
                         self._update_view()
                     except Exception:
@@ -4480,6 +4500,22 @@ class MolView(QtWidgets.QWidget):
         except Exception:
             pass
 
+        # `Orig` is not a selection at all: it moves the point the camera turns
+        # about to the atom under the cursor, which is how PyMOL re-centres a
+        # rotation without typing anything. The cell was in the block on screen
+        # and wired to nothing, so ctrl-shift-middle silently did nothing.
+        if action == "orig" and atom_indices:
+            try:
+                raw = self._atoms["xyz"][atom_indices[0]]
+            except Exception:
+                raw = None
+            if raw is not None:
+                try:
+                    self.set_rotation_origin(np.asarray(raw, dtype=float))
+                except Exception:
+                    pass
+            return
+
         # The action, not the modifier, carries the meaning -- PyMOL's cells:
         #   +/-   -- the clicked residue toggles in/out of the selection
         #   Sele  -- the clicked residue becomes the selection
@@ -4488,13 +4524,17 @@ class MolView(QtWidgets.QWidget):
             "sele": "set",
             "+/-": "toggle",
             "pkat": "pick",
+            # A box action that was clicked rather than dragged is the same
+            # operation on one atom -- see the release handler in `qtgl`.
+            "+box": "add",
+            "-box": "subtract",
         }.get(action, "toggle")
         try:
             self._apply_selection_indices(residue_indices, mods, mode=mode)
         except Exception:
             pass
 
-        if self._coords is not None and getattr(self, "_gl_enabled", False):
+        if self._coords is not None:
             try:
                 self._update_view()
             except Exception:
@@ -4574,7 +4614,7 @@ class MolView(QtWidgets.QWidget):
 
         ``action=None`` keeps the legacy behaviour: the rectangle replaces.
         """
-        if self._coords is None or not getattr(self, "_gl_enabled", False) or self.view is None:
+        if self._coords is None or self.view is None:
             return
 
         picking_mod = _get_picking_module()
