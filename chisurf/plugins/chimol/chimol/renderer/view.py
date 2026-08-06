@@ -16,6 +16,7 @@ from ..analysis.atom_classes import classify_atoms
 from ..analysis.side_chain_helper import hidden_backbone_bonds
 from ..analysis.ss import assign_ss_c3_from_atoms
 from ..colors import (
+    as_rgba,
     _build_chain_color_array,
     _build_element_color_array,
     _build_residue_color_array,
@@ -943,6 +944,44 @@ class MolView(QtWidgets.QWidget):
 
         self._update_view()
         return True
+
+    def _representation_color(self, name: str) -> np.ndarray | None:
+        """PyMOL's per-representation colour override, as RGBA, or ``None``.
+
+        ``stick_color``, ``cartoon_color`` and ``surface_color`` each say "draw
+        this representation in *this* colour, whatever the atoms are". PyMOL
+        stores the absence of an override as the sentinel ``cColorDefault``
+        (-1) and every representation applies the same one-line rule --
+        ``c != cColorDefault ? c : ai->color`` (`RepCylBond.cpp`,
+        `RepSurface.cpp`, `RepRibbon.cpp`) -- so there is one rule here too,
+        read by each representation as it assembles its colours.
+
+        Parameters
+        ----------
+        name : str
+            ``"stick"``, ``"cartoon"`` or ``"surface"``.
+
+        Returns
+        -------
+        numpy.ndarray or None
+            ``(4,)`` RGBA, or ``None`` for "no override" -- which is the whole
+            point: the caller then leaves the per-atom colours it already built
+            exactly as they are.
+
+        Notes
+        -----
+        Read from the configuration **here, where it is used**, so a live
+        ``set stick_color, red`` reaches the next redraw. Caching it on the
+        object at load time is what made three other settings inert.
+        """
+        spec = (_DISPLAY_CONFIG.get("colors") or {}).get(f"{name}_color")
+        if spec is None:
+            return None
+        parsed = as_rgba(spec)
+        if parsed is None:
+            return None
+        rgba = np.asarray(parsed, dtype=float)
+        return rgba if np.isfinite(rgba).all() else None
 
     def _atom_rgba_array(self, n_atoms: int) -> np.ndarray:
         """Per-atom colours as currently drawn, as an ``(n, 4)`` array."""
@@ -5243,6 +5282,12 @@ class MolView(QtWidgets.QWidget):
 
         coords_cartoon = coords
         colors_for_tube = colors
+        # `cartoon_color` applies to the cartoon and to nothing else, so it is
+        # read here rather than folded into `_colors_per_ca` -- that array is
+        # shared with the trace, which PyMOL colours through `ribbon_color`.
+        cartoon_override = self._representation_color("cartoon")
+        if cartoon_override is not None:
+            colors_for_tube = np.tile(cartoon_override, (n_points, 1))
         idx_all = np.arange(n_points, dtype=int)
         idx_cartoon = idx_all
 
@@ -7312,6 +7357,13 @@ class MolView(QtWidgets.QWidget):
                         if np.isfinite(col_ov).all():
                             atom_colors[i_atom, :] = col_ov
 
+                # `stick_color` wins over all of it, which is what a
+                # per-representation override means: PyMOL takes the atom's
+                # colour only when the setting is its "default" sentinel.
+                stick_override = self._representation_color("stick")
+                if stick_override is not None:
+                    atom_colors[:, :] = stick_override
+
                 # Use cylinder mesh for sticks (replaces GL_LINES)
                 sticks_radius = float(sticks_cfg.get("radius", 0.15)) * float(self._scale_factor)
                 sticks_segments = int(sticks_cfg.get("segments_circle", 12))
@@ -7826,6 +7878,10 @@ class MolView(QtWidgets.QWidget):
                 col_ov = ov[i_atom]
                 if np.isfinite(col_ov).all():
                     colors[i_atom, :] = col_ov
+
+        surface_override = self._representation_color("surface")
+        if surface_override is not None:
+            colors[:, :] = surface_override
 
         return colors
 

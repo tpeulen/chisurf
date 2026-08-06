@@ -689,6 +689,14 @@ def _load_display_config() -> dict:
         },
         "colors": {
             "base": [0.8, 0.8, 1.0, 1.0],
+            # PyMOL's per-representation colour overrides. `None` is its
+            # `cColorDefault` (-1): no override, so the representation takes
+            # each atom's own colour. Every one of its representations tests
+            # exactly this -- `c != cColorDefault ? c : ai->color` -- so one
+            # sentinel and one rule serve all three.
+            "stick_color": None,
+            "cartoon_color": None,
+            "surface_color": None,
             "aa_groups": {
                 "hydrophobic": [0.4, 0.8, 0.4, 1.0],
                 "polar": [0.4, 0.7, 0.9, 1.0],

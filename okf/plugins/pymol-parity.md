@@ -87,6 +87,28 @@ six `h_bond_*` came off this list with the polar-contact finder, and
 `surface_color`, `surface_type`, `stick_color`, `ribbon_color`, `stick_ball`,
 `sphere_mode`, `valence` and the `util.py` lighting family at the top.
 
+**The first three of that ranking have landed** -- `stick_color`,
+`cartoon_color` and `surface_color`, which are one mechanism under three names:
+PyMOL implements each with the same line in its own representation,
+`c != cColorDefault ? c : ai->color`, where the sentinel is the integer -1.
+chimol stores the absence of an override as `None` (a negative number is not a
+colour and a config full of -1 says nothing to whoever reads it) and accepts
+`-1`, `default`, `none` and `atom` to clear it. Two things the implementation
+turned on:
+
+* the override is read **where the representation assembles its colours**, not
+  folded into the shared per-residue array -- that array feeds the cartoon *and*
+  the trace, so one fold would colour both;
+* the colour *parser* had to move. It lived in the command layer, and the
+  renderer cannot call that, so `colors.as_rgba` is the shared reader now --
+  names, hex and sequences. The command layer keeps the part that is session
+  state (colours defined with `set_color`).
+
+`ribbon_color` is **deliberately not registered**. chimol has no separate ribbon
+representation -- `show ribbon` already aliases the cartoon -- so the name would
+colour something other than what a PyMOL user means by it. Decide that
+deliberately rather than by accident.
+
 `surface_quality` **is fixed** -- it was three defects wearing one name, and the
 finding generalises: a registered setting with a live config path and a passing
 test still had no effect at all. Before registering more names, **count what the

@@ -297,6 +297,59 @@ def get_pymol_color(name: str) -> tuple[float, float, float, float]:
     return (rgb[0], rgb[1], rgb[2], 1.0)
 
 
+def as_rgba(spec) -> tuple[float, float, float, float] | None:
+    """Read a colour written as a name, a hex string or a sequence.
+
+    Lives here rather than in the command layer because the *renderer* needs to
+    read colours too -- the per-representation overrides come out of the display
+    configuration, where a value may equally be ``"red"``, ``"#ff0000"`` or
+    ``[1, 0, 0]``. The command layer's parser additionally resolves colours the
+    user defined with ``set_color``, which is session state and does not belong
+    in a module of tables.
+
+    Parameters
+    ----------
+    spec : str or sequence of float or None
+        A PyMOL colour name, ``#rrggbb`` / ``#rrggbbaa``, or 3-4 numbers.
+
+    Returns
+    -------
+    tuple of float or None
+        RGBA in ``0..1``, or ``None`` when *spec* names no colour -- including
+        ``None`` itself, which is how "no override" is stored.
+    """
+    if spec is None:
+        return None
+    if isinstance(spec, str):
+        text = spec.strip()
+        if not text:
+            return None
+        key = text.lower()
+        if key in _PYMOL_COLORS:
+            return get_pymol_color(key)
+        if key.startswith("#") and len(key) in (7, 9):
+            try:
+                values = [int(key[i:i + 2], 16) / 255.0 for i in range(1, len(key) - 1, 2)]
+            except ValueError:
+                return None
+            return (values[0], values[1], values[2], values[3] if len(values) > 3 else 1.0)
+        parts = [p for p in text.replace(",", " ").replace("[", " ").replace("]", " ").split() if p]
+        try:
+            numbers = [float(p) for p in parts]
+        except ValueError:
+            return None
+    else:
+        try:
+            numbers = [float(v) for v in spec]
+        except (TypeError, ValueError):
+            return None
+    if len(numbers) == 3:
+        return (numbers[0], numbers[1], numbers[2], 1.0)
+    if len(numbers) == 4:
+        return (numbers[0], numbers[1], numbers[2], numbers[3])
+    return None
+
+
 #: PyMOL's chain colour cycle, transcribed from ``util._color_cycle``
 #: (``modules/pymol/util.py``) in its order. This is what ``util.cbc`` and every
 #: "color by chain" path in PyMOL walks, so an eight-colour palette of our own

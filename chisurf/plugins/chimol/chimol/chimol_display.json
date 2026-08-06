@@ -194,6 +194,9 @@
       1.0,
       1.0
     ],
+    "stick_color": null,
+    "cartoon_color": null,
+    "surface_color": null,
     "aa_groups": {
       "hydrophobic": [
         0.4,

@@ -48,6 +48,11 @@ __all__ = [
 _TRUE = {"on", "yes", "true", "1", "t", "y"}
 _FALSE = {"off", "no", "false", "0", "f", "n"}
 
+#: What a user types to clear a per-representation colour override. ``-1`` is
+#: PyMOL's own spelling and works here for scripts that carry it; the words are
+#: for people.
+_DEFAULT_COLOR_TOKENS = {"-1", "default", "none", "off", "atom"}
+
 
 class UnknownSettingError(KeyError):
     """Raised for a setting name that is neither registered nor a config path."""
@@ -192,6 +197,20 @@ _SPECS: tuple[SettingSpec, ...] = (
           "molecule that wanders across the box in view; turn it off for a "
           "structure that grows, where following the centroid slides the scene "
           "out from under it."),
+
+    # -- Per-representation colour overrides --------------------------------
+    # PyMOL's rule, one line in each of its representations:
+    # `c != cColorDefault ? c : ai->color`. `default` (or PyMOL's own -1) clears
+    # the override and the representation goes back to the atoms' colours.
+    _spec("stick_color", "colors.stick_color", "color_or_default", None,
+          "Draw sticks in this colour whatever the atoms are; 'default' to "
+          "follow the atom colours again."),
+    _spec("cartoon_color", "colors.cartoon_color", "color_or_default", None,
+          "Draw the cartoon in this colour whatever the residues are; "
+          "'default' to follow the residue colours again."),
+    _spec("surface_color", "colors.surface_color", "color_or_default", None,
+          "Draw the surface in this colour whatever the atoms are; 'default' "
+          "to follow the atom colours again."),
 
     # -- Silhouettes --------------------------------------------------------
     # ChimeraX's, not PyMOL's: PyMOL has no depth-buffer outline outside its ray
@@ -559,7 +578,17 @@ def coerce(value: Any, kind: str) -> Any:
     if kind == "vector":
         return _as_vector(value)
 
-    if kind == "color":
+    if kind in ("color", "color_or_default"):
+        # PyMOL's per-representation colour settings carry a sentinel meaning
+        # "no override, use the atom's own colour" -- the integer -1, which it
+        # calls `cColorDefault` and every representation tests for
+        # (`c != cColorDefault ? c : ai->color`). Stored as ``None``, because a
+        # negative number is not a colour and a config full of -1 says nothing
+        # to whoever reads it.
+        if kind == "color_or_default" and (
+            value is None or str(value).strip().lower() in _DEFAULT_COLOR_TOKENS
+        ):
+            return None
         # A colour name stays a name: chimol's background accepts 'k'/'white'
         # directly, and keeping the token means `get` echoes what was set.
         if isinstance(value, str) and not any(c in value for c in "[,0123456789"):

@@ -2,6 +2,16 @@
 
 ## 2026-08-06
 
+* **The first three appearance settings, which are one mechanism under three names** ([pymol parity](plugins/pymol-parity.md)).
+
+  With the two-stores blocker cleared, the measured worklist starts: `stick_color`, `cartoon_color` and `surface_color`. PyMOL implements all three with the same line repeated in each representation -- `c != cColorDefault ? c : ai->color` (`RepCylBond.cpp`, `RepSurface.cpp`, `RepRibbon.cpp`) -- so there is one rule here too, read by each representation as it assembles its colours. The sentinel is stored as `None` rather than PyMOL's -1, because a negative number is not a colour and a config full of -1 says nothing to whoever reads it; `-1`, `default`, `none` and `atom` all clear an override.
+
+  **Two things the implementation turned on.** The override must be read where the representation builds its colours, *not* folded into the shared per-residue array -- that array feeds the cartoon **and** the trace, so one fold would colour both. And the colour parser had to move: it lived in the command layer, which the renderer cannot call, so `colors.as_rgba` is the shared reader now (names, hex, sequences) while the command layer keeps the part that is session state, the colours defined with `set_color`.
+
+  `ribbon_color` is **deliberately not registered**: chimol has no separate ribbon representation -- `show ribbon` already aliases the cartoon -- so the name would colour something other than what a PyMOL user means by it.
+
+  8 tests, checking the three things that separate a setting that works from one that is merely registered: the override reaches the geometry it names, reaches **only** that one, and clearing it puts the atoms' colours back. They read the built scene rather than pixels, since shading is applied on top and an exact colour comparison would be a test of the ambient occlusion. Verified in a real window as a figure: sky-blue cartoon, orange ligand sticks, translucent pale-green surface over residues 1-40.
+
 * **Inline formulas are text again, and the navigation icons are back** ([documentation browser](subsystems/documentation-browser.md)).
 
   **A picture in the middle of a sentence is the thing to avoid.** A rasterised inline formula sits at its own baseline, in its own font, at a size that stops matching the moment anything around it changes — and a tall one (a fraction, a sum with limits) shoves the line apart and floats above the words, which is what "the equations look horrible" was a photograph of: `x_i = a_i/\sum_j a_j` set as an image twice the height of the line it interrupted. Inline mathematics now converts to **HTML text** wherever it possibly can: slashed fractions that keep precedence (`(a+b)/c`, never `a+b/c`), big operators with their limits as ordinary sub- and superscripts, combining accents for `\hat`/`\bar`/`\vec`, script letters, upright function names, roots. Across `docs/` that is **102 rasterised inline formulas down to 5** — all matrices, genuinely two-dimensional, and those now carry `vertical-align: middle` so they at least sit on the line rather than hanging off it. Display mathematics is unchanged: it *should* be a picture, and it is a transparent one. A test holds the count.
