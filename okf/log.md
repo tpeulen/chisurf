@@ -2,6 +2,14 @@
 
 ## 2026-08-06
 
+* **A corrupted container took the reader out with the OOM killer** ([photon container](subsystems/photon-container.md)).
+
+  Compared PTO's EBML against libebml, the reference it borrows its element ids and framing from. Two things matched and were left alone — `CodedSizeLength`'s finite-size rule, where libebml reserves all-ones exactly as our `size_octets` does, and `EbmlSInteger`'s width ladder, which `int_elem` matches bound for bound. One did not.
+
+  libebml carries `SafeReadIOCallback` for a reason: an Element Data Size is read *out of the file*, so in a damaged or hostile one it is whatever the file claims. `read_element` sized a `std::vector` from it and only found the truncation on the read that followed, so a single corrupt byte in the Segment header asked for tens of petabytes and the process was killed. Nothing reported a damaged file because nothing got that far.
+
+  Found by sweeping single-byte corruptions through a valid container — 1207 cases, two fatal, both in the size VINT of a top-level element. Allocations from an untrusted size are now bounded by what the file can contain before a byte of it is believed; the sweep is clean, and so are 600 random multi-byte corruptions with truncation. The header is also refused when it declares `EBMLMaxIDLength`/`EBMLMaxSizeLength` wider than this reader parses, which would otherwise have produced a plausible wrong answer rather than a refusal.
+
 * **The pandas surface is now a tracked, shrinking number — 47 files, five off it in the first pass** ([PRD-82](prds/prd-82.md), [columnar store](subsystems/columnar-store.md)).
 
   Nothing measured it, so it could only be argued about. `test/pandas_import_allowlist.txt` is that measurement, enforced both ways by `test/test_pandas_seam.py`: a new importer fails, and so does a **stale entry**, because a list that stops describing the tree stops being a tracker. Tests are excluded deliberately — a test building a fixture frame *is* interop, which is what pandas is kept for, so counting them would mean the number could never honestly reach zero.
