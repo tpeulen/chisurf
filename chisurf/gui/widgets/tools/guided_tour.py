@@ -101,6 +101,21 @@ class TourStep:
         Optional ``{"signal": ..., "hint": ...}`` (spelled ``await`` in the JSON,
         which is a Python keyword). When present, the step waits for the user to
         use the highlighted control before Next becomes available.
+    links : list of dict
+        Optional further reading, shown as a row of links under the text. Each
+        entry is ``{"text": ..., "url"|"doc"|"cite"|"src": ...}``:
+
+        ``url``
+            a web address, opened in the system browser;
+        ``cite``
+            a citation key from the bibliography — the tour links to the paper;
+        ``doc``
+            a documentation page, opened in the help browser;
+        ``src``
+            a source file, optionally ``file.py#symbol``, opened in the editor.
+
+        A tour explains *which control to touch*; a link is how it hands over
+        to the explanation of **why**, without turning the bubble into an essay.
     """
 
     title: str = ""
@@ -108,6 +123,7 @@ class TourStep:
     target: dict[str, Any] = field(default_factory=dict)
     expect: dict[str, Any] = field(default_factory=dict)
     waits: bool = False
+    links: list = field(default_factory=list)
 
 
 def load_tour(path: str | pathlib.Path) -> list[TourStep]:
@@ -158,6 +174,7 @@ def load_tour(path: str | pathlib.Path) -> list[TourStep]:
                 target=dict(item.get("target") or {}),
                 expect=expect,
                 waits=waits,
+                links=[dict(link) for link in (item.get("links") or []) if isinstance(link, dict)],
             )
         )
     return steps
@@ -372,10 +389,58 @@ class _Bubble(QtWidgets.QFrame):
 
     @staticmethod
     def _open_link(url: str) -> None:
-        """Send a link in a step's text to the docs or the system browser."""
+        """Follow a link in a step: source, a paper, a page or the web."""
         from chisurf.gui.widgets.tools.doc_links import open_link
+        from chisurf.plugins.core.help.api.source_links import is_source_path
 
+        if is_source_path(url):
+            from chisurf.gui.widgets.tools.code_links import open_source
+
+            if open_source(url):
+                return
         open_link(url)
+
+
+
+def _links_html(links) -> str:
+    """Render a step's further-reading links as one line of rich text.
+
+    A tour says *which control to press*; these say where the reasoning is
+    written down — the paper, the concept page, the code — without the bubble
+    turning into an essay. A ``cite`` entry is resolved through the shared
+    bibliography, so a tour and a documentation page cite the same work
+    identically and both land on the publisher's page.
+    """
+    if not links:
+        return ""
+    parts = []
+    for link in links:
+        if not isinstance(link, dict):
+            continue
+        text = str(link.get("text") or "").strip()
+        if "cite" in link:
+            try:
+                from chisurf.plugins.core.help.api.bibliography import (
+                    bibliography,
+                    entry_url,
+                    short_citation,
+                )
+
+                entry = bibliography().get(str(link["cite"]).strip())
+            except Exception:
+                entry = None
+            if entry is None:
+                continue
+            parts.append(f'<a href="{entry_url(entry)}">{text or short_citation(entry)}</a>')
+            continue
+        for key in ("url", "doc", "src"):
+            if key in link:
+                href = str(link[key]).strip()
+                parts.append(f'<a href="{href}">{text or href}</a>')
+                break
+    if not parts:
+        return ""
+    return "<br/><br/><span>📖 " + " · ".join(parts) + "</span>"
 
 
 class GuidedTour(QtCore.QObject):
@@ -763,7 +828,7 @@ class GuidedTour(QtCore.QObject):
 
         self._disconnect()
         bubble.title.setText(step.title)
-        bubble.body.setText(step.text)
+        bubble.body.setText(step.text + _links_html(step.links))
         bubble.counter.setText(f"{self._index + 1} / {len(self._steps)}")
         bubble.back_button.setEnabled(self._index > 0)
         bubble.next_button.setText(

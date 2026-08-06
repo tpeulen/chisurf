@@ -547,3 +547,6 @@ Two rules keep the report honest:
 - {cite}`vehtari2024`
 - {cite}`zhang2009`
 
+## The code
+
+The samplers live in {src}`chisurf/core/fitting/sample.py`, the convergence diagnostics in {src}`diagnostics.py <chisurf/core/fitting/diagnostics.py#split_rhat>`, and the entry point a fit uses is {src}`sample_fit <chisurf/core/fitting/fit.py#sample_fit>`. Those links open the code editor at the definition — addressed by name, so they survive edits above them.

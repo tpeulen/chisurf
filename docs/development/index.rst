@@ -18,6 +18,7 @@ Architecture & API
 .. toctree::
    :maxdepth: 1
 
+   documentation_maintenance
    architecture
    architecture_client_server
    architecture_mvc_actions

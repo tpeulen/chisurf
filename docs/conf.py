@@ -44,6 +44,9 @@ extensions = [
     # the in-application help browser expands with, so a citation reads and
     # links identically in both.
     'cite_role',
+    # `{src}`path#symbol`` -- the code editor in the app, the repository
+    # browser on the website. Addressed by symbol, never by line number.
+    'src_role',
 ]
 
 # Set to False to build the manual without human-review banners.

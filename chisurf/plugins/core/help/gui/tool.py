@@ -31,7 +31,7 @@ import re
 import webbrowser
 from typing import Optional
 
-from qtpy.QtCore import QEvent, Qt, QTimer, QUrl
+from qtpy.QtCore import QEvent, QStringListModel, Qt, QTimer, QUrl
 from qtpy.QtGui import (
     QBrush,
     QColor,
@@ -46,6 +46,7 @@ from qtpy.QtGui import (
 from qtpy.QtWidgets import (
     QApplication,
     QComboBox,
+    QCompleter,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -407,6 +408,29 @@ class HelpWidget(QMainWindow):
         right_layout.setContentsMargins(4, 0, 0, 0)
         right_layout.setSpacing(2)
 
+        # The address bar: every page has an address, and a reader (or a bug
+        # report, or a colleague) can type or paste one. It accepts a
+        # documentation path, a source path with a #symbol, a citation key or a
+        # URL -- the same vocabulary the links in the pages use.
+        address_row = QHBoxLayout()
+        address_row.setContentsMargins(0, 0, 0, 2)
+        address_row.setSpacing(4)
+        self.address_edit = QLineEdit()
+        self.address_edit.setPlaceholderText(
+            "Address — docs/concepts/fret.md, chisurf/core/fitting/fit.py#sample_fit, "
+            "cite:magde1972, https://…"
+        )
+        self.address_edit.setClearButtonEnabled(True)
+        self.address_edit.returnPressed.connect(self._on_address_entered)
+        self.address_completer_model = QStringListModel(self)
+        completer = QCompleter(self.address_completer_model, self)
+        completer.setCaseSensitivity(Qt.CaseInsensitive)
+        completer.setFilterMode(Qt.MatchContains)
+        self.address_edit.setCompleter(completer)
+        address_row.addWidget(QLabel("Address:"))
+        address_row.addWidget(self.address_edit, 1)
+        right_layout_address = address_row
+
         self.breadcrumb_label = QLabel("")
         self.breadcrumb_label.setStyleSheet("color: #8a8a8a; font-size: 9pt;")
         self.title_label = QLabel("ChiSurf documentation")
@@ -418,6 +442,7 @@ class HelpWidget(QMainWindow):
         self.review_label.setWordWrap(True)
         self.review_label.setVisible(False)
 
+        right_layout.addLayout(right_layout_address)
         right_layout.addWidget(self.breadcrumb_label)
         right_layout.addWidget(self.title_label)
         right_layout.addWidget(self.path_label)
@@ -695,6 +720,7 @@ class HelpWidget(QMainWindow):
         # Badges last: the statuses are read for the pages that ended up in the
         # tree, so nothing rediscovers the documentation a second time.
         self._refresh_tree_badges()
+        self._refresh_address_completions()
         self._update_review_summary()
 
     def _add_node(self, parent, node, statuses, trail):
@@ -774,6 +800,76 @@ class HelpWidget(QMainWindow):
         except Exception:
             logger.debug("review status unavailable", exc_info=True)
         return statuses
+
+    # ── the address bar ─────────────────────────────────────────────
+
+    def _refresh_address_completions(self):
+        """Offer every page in the tree as a completion."""
+        if not hasattr(self, "address_completer_model"):
+            return
+        root = toc_api.repository_root()
+        addresses = []
+        for key in self._items:
+            try:
+                addresses.append(pathlib.Path(key).relative_to(root).as_posix())
+            except ValueError:
+                addresses.append(key)
+        self.address_completer_model.setStringList(sorted(addresses))
+
+    def _set_address(self, path: Optional[pathlib.Path]):
+        """Show the address of what is on screen, without disturbing typing."""
+        if not hasattr(self, "address_edit") or self.address_edit.hasFocus():
+            return
+        if path is None:
+            self.address_edit.setText("")
+            return
+        try:
+            text = path.relative_to(toc_api.repository_root()).as_posix()
+        except ValueError:
+            text = str(path)
+        self.address_edit.setText(text)
+
+    def _on_address_entered(self):
+        """Go to whatever was typed: a page, a source symbol, a key or a URL."""
+        text = self.address_edit.text().strip()
+        if not text:
+            return
+        if text.startswith(("http://", "https://", "doi:", "mailto:")):
+            from chisurf.gui.widgets.tools.doc_links import open_link
+
+            open_link(text)
+            return
+        if text.startswith("cite:"):
+            from chisurf.plugins.core.help.api.bibliography import bibliography, entry_url
+            from chisurf.gui.widgets.tools.doc_links import open_link
+
+            entry = bibliography().get(text[len("cite:"):].strip())
+            if entry is not None:
+                open_link(entry_url(entry))
+                return
+
+        from chisurf.plugins.core.help.api.source_links import is_source_path
+
+        if is_source_path(text):
+            from chisurf.gui.widgets.tools.code_links import open_source
+
+            if open_source(text):
+                return
+
+        from chisurf.gui.widgets.tools.doc_links import resolve_document
+
+        base = self.current_path.parent if self.current_path else None
+        anchor = ""
+        if "#" in text:
+            text, _, anchor = text.partition("#")
+        target = resolve_document(text, base)
+        if target is not None:
+            self.navigate(target, anchor or None)
+            return
+        # Not an address: treat it as something to search for, which is what a
+        # browser does with a bare word.
+        self.search_edit.setText(text)
+        self._run_search()
 
     # ── search ──────────────────────────────────────────────────────
 
@@ -1128,6 +1224,7 @@ class HelpWidget(QMainWindow):
         self.title_label.setText(title)
         self.breadcrumb_label.setText(self._trail.get(key, ""))
         self.path_label.setText(key)
+        self._set_address(file_path)
         if hasattr(self, "edit_btn"):
             self.edit_btn.setEnabled(True)
         self._select_in_tree(key)
@@ -1260,6 +1357,14 @@ class HelpWidget(QMainWindow):
         except Exception:
             logger.debug("could not expand citations", exc_info=True)
         try:
+            # ``{src}`file#symbol``` becomes a link the click handler routes to
+            # the code editor.
+            from chisurf.plugins.core.help.api.source_links import expand_source_roles
+
+            shown = expand_source_roles(shown)
+        except Exception:
+            logger.debug("could not expand source roles", exc_info=True)
+        try:
             from chisurf.plugins.core.help.api.render import render_document
 
             html = render_document(
@@ -1343,10 +1448,21 @@ class HelpWidget(QMainWindow):
                 open_link(url)
                 return
 
+            base = self.current_path.parent if self.current_path else None
+            raw = url.path() or url.toString()
+            # Source, not documentation: open it in the code editor, at the
+            # symbol the link names.
+            from chisurf.plugins.core.help.api.source_links import is_source_path
+
+            if is_source_path(raw) or (fragment and is_source_path(f"{raw}#{fragment}")):
+                from chisurf.gui.widgets.tools.code_links import open_source
+
+                if open_source(f"{raw}#{fragment}" if fragment else raw, base):
+                    return
+
             target = pathlib.Path(url.toLocalFile()) if url.isLocalFile() else None
             if target is None:
-                base = self.current_path.parent if self.current_path else None
-                target = resolve_document(url.path() or url.toString(), base)
+                target = resolve_document(raw, base)
             if target is not None and target.exists():
                 if target.suffix.lower() in (".md", ".rst", ".txt"):
                     self.navigate(target, fragment)

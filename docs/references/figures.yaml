@@ -1,0 +1,1598 @@
+# Where every figure in the documentation came from.
+#
+# Keyed by the image path relative to docs/. The register
+# (docs/reference/figures.md) is generated from this file plus a scan of the
+# pages, so an image used without an entry here shows up as *unrecorded*.
+#
+# Fields:
+#   caption  what the figure shows (the page's caption is used when absent)
+#   origin   script::function, a plugin, or the document it was extracted from
+#   kind     plot | screenshot | diagram | legacy screenshot
+#   recipe   how to make it again -- detailed enough to follow without asking
+#   pages    where it is used
+#
+# A screenshot's recipe must name the tool, the data it was driven with and the
+# state it was in, so it can be retaken without guessing.
+
+guides/figures/2cde.png:
+  caption: FRET-2CDE separates static from dynamic bursts.
+  kind: plot
+  origin: docs/guides/make_figures.py::fig_2cde
+  pages:
+  - docs/guides/01_fret_2cde.md
+  recipe: Run `python docs/guides/make_figures.py` from the repository root; this figure is written by
+    `fig_2cde()`.
+guides/figures/accurate_fret_es.png:
+  caption: '**E–S.** Donor-only near $S = 1$, acceptor-only near $S = 0$ (their "efficiency" is meaningless
+    — no donor signal), and the doubly labelled populations at $S = 0.5$ once $\beta$ is right. The colours
+    are the classes the mixture found, not gates that were drawn.'
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_accurate_fret_tool
+  pages:
+  - docs/guides/41_accurate_fret.md
+  recipe: Run `python docs/guides/make_screenshots.py` from the repository root; this figure is written
+    by `_grab_accurate_fret_tool()`.
+guides/figures/accurate_fret_etau.png:
+  caption: '**E–lifetime.** Both populations sit on the static line (white), as a static sample must;
+    the dynamic line (red dashed) connects them. A population bowing towards the dynamic line exchanges
+    within the burst; a population sitting systematically *below* the static line points at a too-large
+    $\gamma$ or a wrong $\tau_{D(0)}$.'
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_accurate_fret_tool
+  pages:
+  - docs/guides/41_accurate_fret.md
+  recipe: Run `python docs/guides/make_screenshots.py` from the repository root; this figure is written
+    by `_grab_accurate_fret_tool()`.
+guides/figures/accurate_fret_lines.png:
+  caption: 'Left: the static FRET line for a 6 Å linker distribution, the no-linker diagonal, and the
+    dynamic line between two limiting distances. Right: the same static population corrected with a 40
+    % too large $\gamma$ falls below its own line — the residual the lifetime route removes.'
+  kind: plot
+  origin: docs/guides/make_figures.py::fig_accurate_fret
+  pages:
+  - docs/concepts/accurate_fret.md
+  recipe: Run `python docs/guides/make_figures.py` from the repository root; this figure is written by
+    `fig_accurate_fret()`.
+guides/figures/accurate_fret_tool.png:
+  caption: 'The tool after *Calibrate*: channel mapping and photophysics on the left, the factors with
+    their uncertainties and how each was determined on the right.'
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_accurate_fret_tool
+  pages:
+  - docs/guides/41_accurate_fret.md
+  recipe: Run `python docs/guides/make_screenshots.py` from the repository root; this figure is written
+    by `_grab_accurate_fret_tool()`.
+guides/figures/alex_workflow.png:
+  caption: µs-ALEX smFRET burst analysis.
+  kind: plot
+  origin: docs/guides/make_figures.py::fig_alex_workflow
+  pages:
+  - docs/guides/27_alex_smfret_workflow.md
+  recipe: Run `python docs/guides/make_figures.py` from the repository root; this figure is written by
+    `fig_alex_workflow()`.
+guides/figures/av.png:
+  caption: Accessible volumes and the inter-dye distance distribution.
+  kind: plot
+  origin: docs/guides/make_figures.py::fig_av
+  pages:
+  - docs/guides/23_accessible_volume.md
+  recipe: Run `python docs/guides/make_figures.py` from the repository root; this figure is written by
+    `fig_av()`.
+guides/figures/background.png:
+  caption: Background from inter-photon times.
+  kind: plot
+  origin: docs/guides/make_figures.py::fig_background
+  pages:
+  - docs/guides/15_background_rates.md
+  recipe: Run `python docs/guides/make_figures.py` from the repository root; this figure is written by
+    `fig_background()`.
+guides/figures/burst_2cde_tool.png:
+  caption: 'The FRET-2CDE tool. **Controls** select the `fret` variant, the `laplace` KDE kernel, $\tau=100\,\mu
+    s$, and the donor/acceptor routing channels. The plot shows 2CDE vs proximity ratio: two **static**
+    populations sit on the $\approx10$ baseline at low/high FRET, while a **dynamic** sub-population is
+    clearly elevated — the separation the score is built to reveal (see {ref}`concept-burst-2cde`).'
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_2cde_tool
+  pages:
+  - docs/guides/01_fret_2cde.md
+  recipe: Run `python docs/guides/make_screenshots.py` from the repository root; this figure is written
+    by `_grab_2cde_tool()`.
+guides/figures/burst_browser.png:
+  caption: The Burst Browser on a real single-molecule DNA dataset (2980 bursts). The **Controls** panel
+    sets the histogram column ($E$) and the `E min` / `S min` / `Size min` gates; the **Bursts** table
+    lists every burst; the **Histogram** panel shows the FRET-efficiency distribution — here clearly bimodal,
+    a donor-only peak near $E=0$ and a FRET population around $E\approx0.4$.
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_burst_browser
+  pages:
+  - docs/guides/28_selecting_fret_populations.md
+  recipe: Run `python docs/guides/make_screenshots.py` from the repository root; this figure is written
+    by `_grab_burst_browser()`.
+guides/figures/burst_gs_transition_time.png:
+  caption: 'The expected result: flat at zero while the crossing is too fast to leave a trace, falling
+    steeply once it is long enough to be visible. The flat region is the answer — the crossing is faster
+    than the point where the curve breaks. This is an upper bound, and reporting it as one is the honest
+    reading.'
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_burst_gs_tool
+  pages:
+  - docs/guides/49_photon_by_photon_kinetics.md
+  recipe: Run `python docs/guides/make_screenshots.py` from the repository root; this figure is written
+    by `_grab_burst_gs_tool()`.
+guides/figures/burst_gs_workspace.png:
+  caption: 'Fitted on simulated photons from a molecule with known kinetics — 3000 and 1000 s⁻¹ between
+    states at E = 0.25 and 0.75. The fit returns 2879 and 1027 s⁻¹ at E = 0.244 and 0.750, and a 256 µs
+    relaxation time against a true 250 µs. Left: where the photons come from and what scheme to fit. Right:
+    the report, with the fitted parameters, the states and the transition-time scan on tabs below.'
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_burst_gs_tool
+  pages:
+  - docs/guides/49_photon_by_photon_kinetics.md
+  recipe: Run `python docs/guides/make_screenshots.py` from the repository root; this figure is written
+    by `_grab_burst_gs_tool()`.
+guides/figures/burst_lifetime.png:
+  caption: '**Left:** the VV/VH micro-time histograms of one ~2000-photon burst with the IRF and the reconvolved
+    MLE model. **Right:** the E–$\tau$ plot. Static populations sit *on* the static FRET line $E = 1-\tau/\tau_0$;
+    a species exchanging between two states falls on the **dynamic line**, which bows to the right because
+    the decay reports the intensity-weighted lifetime while $E$ follows the species-weigh'
+  kind: plot
+  origin: docs/guides/make_figures.py::fig_burst_lifetime
+  pages:
+  - docs/guides/21_lifetime_from_bursts.md
+  recipe: Run `python docs/guides/make_figures.py` from the repository root; this figure is written by
+    `fig_burst_lifetime()`.
+guides/figures/burst_search.png:
+  caption: Burst identification.
+  kind: plot
+  origin: docs/guides/make_figures.py::fig_burst_search
+  pages:
+  - docs/guides/13_burst_identification.md
+  recipe: Run `python docs/guides/make_figures.py` from the repository root; this figure is written by
+    `fig_burst_search()`.
+guides/figures/bva.png:
+  caption: Burst Variance Analysis.
+  kind: plot
+  origin: docs/guides/make_figures.py::fig_bva
+  pages:
+  - docs/guides/08_burst_variance_analysis.md
+  recipe: Run `python docs/guides/make_figures.py` from the repository root; this figure is written by
+    `fig_bva()`.
+guides/figures/chimol_accessibility.png:
+  caption: 'T4 lysozyme (PDB 148L) as a space-filling model, coloured by solvent-accessible surface area
+    from `get_area`: red where the surface is exposed, blue where it is buried. The explicit `0, 25` range
+    matters — the most exposed atom is an outlier, and an automatic range leaves the whole surface reading
+    blue.'
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_chimol_viewer
+  pages:
+  - docs/guides/44_molecular_viewer.md
+  recipe: Run `python docs/guides/make_screenshots.py` from the repository root; this figure is written
+    by `_grab_chimol_viewer()`.
+guides/figures/chimol_biofilm_late.png:
+  caption: A simulated biofilm at the end of its run, from **Demo ▸ Biofilm growth**. Each bead is one
+    cell; the colour is its modelled oxygen state, taken from how deep it sits below the local top of
+    the film. A cell never moves once it is born, so every colour change in the movie is a cell being
+    **buried** by the ones that grew over it. Green is the aerobic surface, amber the transition, red
+    the anoxic int
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_chimol_biofilm
+  pages:
+  - docs/guides/44_molecular_viewer.md
+  recipe: Run `python docs/guides/make_screenshots.py` from the repository root; this figure is written
+    by `_grab_chimol_biofilm()`.
+guides/figures/chimol_groups_panel.png:
+  caption: Two groups in the Objects panel. `ligands` is open, so its members are drawn indented beneath
+    it; `parts` is collapsed. A group row carries the same five menus an object row does, and a menu choice
+    made there is applied to every member — so **H ▸ everything** on `ligands` hides both molecules.
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_chimol_viewer
+  pages:
+  - docs/guides/44_molecular_viewer.md
+  recipe: Run `python docs/guides/make_screenshots.py` from the repository root; this figure is written
+    by `_grab_chimol_viewer()`.
+guides/figures/chimol_map_isomesh.png:
+  caption: A density contoured as an `isomesh` around the structure it belongs to. The wireframe leaves
+    the model visible inside, which is the point of that mode; the same contour as `isosurface` is a solid
+    envelope.
+  kind: ''
+  origin: ''
+  pages:
+  - docs/guides/44_molecular_viewer.md
+  recipe: ''
+guides/figures/chimol_map_panel.png:
+  caption: The Map panel. Each contour is a marker on the histogram — here a filled surface (blue) and
+    a wireframe (orange) on the same map. Drag a marker to move that level, click empty histogram to add
+    one, right-click a marker to remove it.
+  kind: ''
+  origin: ''
+  pages:
+  - docs/guides/44_molecular_viewer.md
+  recipe: ''
+guides/figures/chimol_npc_molecule.png:
+  caption: 'The eight-spoke nuclear pore, all 234,184 beads, exactly as the demo draws it. Colour comes
+    from the entry''s hierarchy — one per nucleoporin, shared by all sixteen copies — so the eight-fold
+    symmetry shows as a repeating pattern rather than as a mosaic. The depth is ambient occlusion: beads
+    buried inside the assembly darken, exposed ones stay bright.'
+  kind: ''
+  origin: ''
+  pages:
+  - docs/guides/44_molecular_viewer.md
+  recipe: ''
+guides/figures/chimol_objects_panel.png:
+  caption: The Objects panel, here with the ligand and its peptidoglycan split off into objects of their
+    own. Each molecule gets a row with PyMOL's five menus — **A**ction, **S**how, **H**ide, **L**abel
+    and **C**olour — and the grey `all` row applies a choice to every object at once.
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_chimol_viewer
+  pages:
+  - docs/guides/44_molecular_viewer.md
+  recipe: Run `python docs/guides/make_screenshots.py` from the repository root; this figure is written
+    by `_grab_chimol_viewer()`.
+guides/figures/clsm.png:
+  caption: Simulated confocal scan. **Left:** photons per pixel. **Middle:** the per-pixel lifetime; photon-starved
+    pixels are masked (dark). **Right:** the micro-time decays of the two regions — 3.2 ns unquenched
+    versus 1.6 ns under FRET.
+  kind: plot
+  origin: docs/guides/make_figures.py::fig_clsm
+  pages:
+  - docs/guides/24_scan_images.md
+  recipe: Run `python docs/guides/make_figures.py` from the repository root; this figure is written by
+    `fig_clsm()`.
+guides/figures/coloc_object_distances.png:
+  caption: Nearest-neighbour distances in both directions. The spike near 1 px are the real partners;
+    the flat tail is what chance looks like.
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_coloc_objects
+  pages:
+  - docs/guides/38_colocalization.md
+  recipe: Run `python docs/guides/make_screenshots.py` from the repository root; this figure is written
+    by `_grab_coloc_objects()`.
+guides/figures/coloc_objects.png:
+  caption: 'Segmented objects of both channels: 1 = channel A only, 2 = channel B only, 3 = both. Coincidence
+    is read straight off the map.'
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_coloc_objects
+  pages:
+  - docs/guides/38_colocalization.md
+  recipe: Run `python docs/guides/make_screenshots.py` from the repository root; this figure is written
+    by `_grab_coloc_objects()`.
+guides/figures/coloc_scatter.png:
+  caption: Joint intensity histogram of the two channels with the draggable gate. The gated pixel population
+    gets its own coefficients.
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_coloc_tool
+  pages:
+  - docs/guides/38_colocalization.md
+  recipe: Run `python docs/guides/make_screenshots.py` from the repository root; this figure is written
+    by `_grab_coloc_tool()`.
+guides/figures/coloc_workspace.png:
+  caption: 'The colocalization tool on a two-detector confocal image: detector setup and channel pair
+    on the left, coefficients on the right.'
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_coloc_tool
+  pages:
+  - docs/guides/38_colocalization.md
+  recipe: Run `python docs/guides/make_screenshots.py` from the repository root; this figure is written
+    by `_grab_coloc_tool()`.
+guides/figures/combining_repeats.png:
+  caption: Combining technical repeats.
+  kind: plot
+  origin: docs/guides/make_figures.py::fig_combining_repeats
+  pages:
+  - docs/guides/35_combining_repeats.md
+  recipe: Run `python docs/guides/make_figures.py` from the repository root; this figure is written by
+    `fig_combining_repeats()`.
+guides/figures/drift_after.png:
+  caption: 'After: the same sum with the drift removed. The same signal is concentrated back into round
+    spots. If your "after" looks no sharper than your "before", the correction did not work — do not export
+    it.'
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_drift_tool
+  pages:
+  - docs/guides/43_drift_correction.md
+  recipe: Run `python docs/guides/make_screenshots.py` from the repository root; this figure is written
+    by `_grab_drift_tool()`.
+guides/figures/drift_before.png:
+  caption: 'Before: all frames summed. Drift smears every punctum into a diagonal streak along the direction
+    of travel.'
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_drift_tool
+  pages:
+  - docs/guides/43_drift_correction.md
+  recipe: Run `python docs/guides/make_screenshots.py` from the repository root; this figure is written
+    by `_grab_drift_tool()`.
+guides/figures/drift_workspace.png:
+  caption: 'The drift-correction workspace. Left: the settings, in workflow order. Right: the drift trace,
+    with `dx`, `dy` and the total displacement `|d|` per frame. This stack was built with a known linear
+    drift, so the trace is the ground truth.'
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_drift_tool
+  pages:
+  - docs/guides/43_drift_correction.md
+  recipe: Run `python docs/guides/make_screenshots.py` from the repository root; this figure is written
+    by `_grab_drift_tool()`.
+guides/figures/e_hist_fit.png:
+  caption: FRET-efficiency histogram fit.
+  kind: plot
+  origin: docs/guides/make_figures.py::fig_e_hist_fit
+  pages:
+  - docs/guides/29_fret_histogram_fitting.md
+  recipe: Run `python docs/guides/make_figures.py` from the repository root; this figure is written by
+    `fig_e_hist_fit()`.
+guides/figures/ebfret.png:
+  caption: '**Left:** one of the twelve traces (grey) with the decoded Viterbi state path (red) and the
+    fitted state means (dotted). **Right:** the model-selection curve — evidence against state count,
+    maximal at the true K = 3.'
+  kind: plot
+  origin: docs/guides/make_figures.py::fig_ebfret
+  pages:
+  - docs/guides/20_ebfret_binned_hmm.md
+  recipe: Run `python docs/guides/make_figures.py` from the repository root; this figure is written by
+    `fig_ebfret()`.
+guides/figures/es.png:
+  caption: Multi-parameter E–S histogram.
+  kind: plot
+  origin: docs/guides/make_figures.py::fig_es
+  pages:
+  - docs/guides/14_multiparameter_es.md
+  recipe: Run `python docs/guides/make_figures.py` from the repository root; this figure is written by
+    `fig_es()`.
+guides/figures/fcs_diffusion.png:
+  caption: 3-D Gaussian diffusion FCS for three diffusion times, with (dashed) and without a triplet term.
+  kind: plot
+  origin: docs/guides/make_figures.py::fig_fcs_diffusion
+  pages:
+  - docs/guides/09_diffusion_fcs.md
+  recipe: Run `python docs/guides/make_figures.py` from the repository root; this figure is written by
+    `fig_fcs_diffusion()`.
+guides/figures/fcs_model_editor.png:
+  caption: The composable FCS model editor. The **Type** selector switches the diffusion term (MDF / single-focus
+    Gauss / two-focus). The live **Equation** box shows the currently active $G(\tau)$; the parameter
+    table exposes $N$, the diffusion coefficient $D$, the lateral/axial waists $w_r$/$w_z$, the offset
+    $b$, and the background rate `BG`. **Bunching**, **Anticorr**, and **Outputs** fold-outs add triplet
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_fcs_model_editor
+  pages:
+  - docs/guides/09_diffusion_fcs.md
+  recipe: Run `python docs/guides/make_screenshots.py` from the repository root; this figure is written
+    by `_grab_fcs_model_editor()`.
+guides/figures/fida.png:
+  caption: FIDA photon-counting histograms.
+  kind: plot
+  origin: docs/guides/make_figures.py::fig_fida
+  pages:
+  - docs/guides/04_fida_pch.md
+  recipe: Run `python docs/guides/make_figures.py` from the repository root; this figure is written by
+    `fig_fida()`.
+guides/figures/filtered_fcs.png:
+  caption: Filtered FCS patterns and filters.
+  kind: plot
+  origin: docs/guides/make_figures.py::fig_filtered_fcs
+  pages:
+  - docs/guides/17_filtered_fcs.md
+  recipe: Run `python docs/guides/make_figures.py` from the repository root; this figure is written by
+    `fig_filtered_fcs()`.
+guides/figures/flow_tool.png:
+  caption: 'The flow-map tool on its own demo. Left: the settings, in workflow order. Right: the headline
+    numbers, the arrows over the time-averaged image, and the profile across the frame with the simulated
+    truth drawn beside it — which is how the 20 % shear bias becomes visible rather than theoretical.'
+  kind: ''
+  origin: ''
+  pages:
+  - docs/guides/55_pair_correlation.md
+  recipe: ''
+guides/figures/frc_workspace.png:
+  caption: 'The FRC workspace on a confocal photon stream. Left: the settings. Right: the headline resolution,
+    the FRC curve against the 1/7 threshold with the crossing marked, and — behind the *Diagnostics* tabs
+    — the two independent halves the curve came from and the ring-by-ring numbers.'
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_frc_tool
+  pages:
+  - docs/guides/51_frc_resolution.md
+  recipe: Run `python docs/guides/make_screenshots.py` from the repository root; this figure is written
+    by `_grab_frc_tool()`.
+guides/figures/fret_fcs.png:
+  caption: FRET-FCS auto and cross correlations.
+  kind: plot
+  origin: docs/guides/make_figures.py::fig_fret_fcs
+  pages:
+  - docs/guides/16_fret_fcs.md
+  recipe: Run `python docs/guides/make_figures.py` from the repository root; this figure is written by
+    `fig_fret_fcs()`.
+guides/figures/g3.png:
+  caption: Second-order correlation g^(3).
+  kind: plot
+  origin: docs/guides/make_figures.py::fig_g3
+  pages:
+  - docs/guides/06_nsfcs_second_order.md
+  recipe: Run `python docs/guides/make_figures.py` from the repository root; this figure is written by
+    `fig_g3()`.
+guides/figures/h2mm.png:
+  caption: H2MM state path and dwell E histogram.
+  kind: plot
+  origin: docs/guides/make_figures.py::fig_h2mm
+  pages:
+  - docs/guides/19_h2mm_hidden_markov.md
+  recipe: Run `python docs/guides/make_figures.py` from the repository root; this figure is written by
+    `fig_h2mm()`.
+guides/figures/h2mm_dashboard.png:
+  caption: H2MM results dashboard.
+  kind: plot
+  origin: docs/guides/make_figures.py::fig_h2mm_dashboard
+  pages:
+  - docs/guides/30_h2mm_workflow_results.md
+  recipe: Run `python docs/guides/make_figures.py` from the repository root; this figure is written by
+    `fig_h2mm_dashboard()`.
+guides/figures/h2mm_recovery.png:
+  caption: H2MM recovers the simulated states.
+  kind: plot
+  origin: docs/guides/make_figures.py::fig_h2mm_recovery
+  pages:
+  - docs/guides/31_h2mm_simulation_validation.md
+  recipe: Run `python docs/guides/make_figures.py` from the repository root; this figure is written by
+    `fig_h2mm_recovery()`.
+guides/figures/h2mm_state_decays.png:
+  caption: 'Per-state decays of a two-state fit with **every colour ticked**. Green is the donor, red
+    the sensitised acceptor, yellow the directly excited acceptor — red and yellow share the same detectors
+    and are separated by the PIE window at ~6.8 ns. Solid is S0 (low FRET: little red), dashed is S1 (high
+    FRET).'
+  kind: ''
+  origin: ''
+  pages:
+  - docs/guides/19_h2mm_hidden_markov.md
+  recipe: ''
+guides/figures/hmm_workspace.png:
+  caption: 'Fitted on a simulated two-state trace with 1 ms bins — states at 18 and 55 counts per bin,
+    true rates 15 and 30 s⁻¹. The fit returns 18.0 and 55.0 counts with 13.9 and 27.9 s⁻¹, and BIC picks
+    two states. Left: the settings. Middle: the trace with the decoded path, and the intensity histogram
+    with the fitted emissions. Right: the state table, the transition matrix with rates, the dwell-time
+    histogr'
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_hmm_tool
+  pages:
+  - docs/guides/54_hidden_markov_models.md
+  recipe: Run `python docs/guides/make_screenshots.py` from the repository root; this figure is written
+    by `_grab_hmm_tool()`.
+guides/figures/lifetime_anisotropy.png:
+  caption: Fluorescence lifetime and anisotropy decays.
+  kind: plot
+  origin: docs/guides/make_figures.py::fig_lifetime_anisotropy
+  pages:
+  - docs/guides/10_lifetime_anisotropy_fitting.md
+  recipe: Run `python docs/guides/make_figures.py` from the repository root; this figure is written by
+    `fig_lifetime_anisotropy()`.
+guides/figures/lut.png:
+  caption: DNL and its LUT correction.
+  kind: plot
+  origin: docs/guides/make_figures.py::fig_lut
+  pages:
+  - docs/guides/37_tttr_microtime_lut.md
+  recipe: Run `python docs/guides/make_figures.py` from the repository root; this figure is written by
+    `fig_lut()`.
+guides/figures/lut_channel_box.png:
+  caption: The LUT-handling box in the channel-definition editor.
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::main
+  pages:
+  - docs/guides/37_tttr_microtime_lut.md
+  recipe: Run `python docs/guides/make_screenshots.py` from the repository root; this figure is written
+    by `main()`.
+guides/figures/lut_tools_workspace.png:
+  caption: '① Compute LUT — per-channel: routing-channel selector, draggable linear region on the raw
+    TAC histogram, corrected preview below.'
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::main
+  pages:
+  - docs/guides/37_tttr_microtime_lut.md
+  recipe: Run `python docs/guides/make_screenshots.py` from the repository root; this figure is written
+    by `main()`.
+guides/figures/mcs.png:
+  caption: Binned photon trace (MCS).
+  kind: plot
+  origin: docs/guides/make_figures.py::fig_mcs
+  pages:
+  - docs/guides/22_binned_photon_traces.md
+  recipe: Run `python docs/guides/make_figures.py` from the repository root; this figure is written by
+    `fig_mcs()`.
+guides/figures/mdf.png:
+  caption: Enderlein MDF and two-focus FCS.
+  kind: plot
+  origin: docs/guides/make_figures.py::fig_mdf
+  pages:
+  - docs/guides/05_enderlein_mdf_two_focus_fcs.md
+  recipe: Run `python docs/guides/make_figures.py` from the repository root; this figure is written by
+    `fig_mdf()`.
+guides/figures/multispot.png:
+  caption: 8-spot multispot smFRET.
+  kind: plot
+  origin: docs/guides/make_figures.py::fig_multispot
+  pages:
+  - docs/guides/36_multispot.md
+  recipe: Run `python docs/guides/make_figures.py` from the repository root; this figure is written by
+    `fig_multispot()`.
+guides/figures/ndxplorer_gaussian_panel.png:
+  caption: The Gaussian-fit panel after fitting two simulated populations — ChiSurf's parameter table,
+    stacked one parameter per row so the panel stays narrow. The second component's centre was held (ticked
+    *Fixed*, greyed out, and returned unchanged at 0.74) while everything else was optimised onto the
+    data.
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_ndx_gaussian_panel
+  pages:
+  - docs/guides/46_ndxplorer.md
+  recipe: Run `python docs/guides/make_screenshots.py` from the repository root; this figure is written
+    by `_grab_ndx_gaussian_panel()`.
+guides/figures/ndxplorer_marginal_fit.png:
+  caption: 'Left: every burst lies on the fitted static FRET line $E = 1 - \tau/\tau_0$ ($\tau_0 = 4.00$
+    ns recovered). Right: the E marginal fitted with two Gaussians via ndX''s `fit_equation_to_marginal`
+    engine. The FRET peak (broad) is well described; the near-zero-efficiency peak is shot-noise-discretised
+    rather than Gaussian, so its $\chi^2_r$ is elevated — the cue to hand that population to a {ref}`PDA
+    b'
+  kind: plot
+  origin: docs/guides/make_figures.py::fig_ndxplorer
+  pages:
+  - docs/guides/46_ndxplorer.md
+  recipe: Run `python docs/guides/make_figures.py` from the repository root; this figure is written by
+    `fig_ndxplorer()`.
+guides/figures/nsalex_etau.png:
+  caption: ns-ALEX FRET–lifetime plot.
+  kind: plot
+  origin: docs/guides/make_figures.py::fig_nsalex_etau
+  pages:
+  - docs/guides/32_nsalex_lifetime.md
+  recipe: Run `python docs/guides/make_figures.py` from the repository root; this figure is written by
+    `fig_nsalex_etau()`.
+guides/figures/pcf_barrier.png:
+  caption: A simulated line with an impermeable wall at pixel 32 and a different drift on each side. The
+    intensity (grey, right panel) is flat across the wall and the local autocorrelation is unremarkable;
+    only the pair correlation notices.
+  kind: plot
+  origin: docs/guides/make_figures.py::fig_pcf_barrier
+  pages:
+  - docs/concepts/pair_correlation.md
+  - docs/guides/55_pair_correlation.md
+  recipe: Run `python docs/guides/make_figures.py` from the repository root; this figure is written by
+    `fig_pcf_barrier()`.
+guides/figures/pcf_flow_arrows.png:
+  caption: A simulated cellular flow (left), the field recovered tile by tile (middle), and every tile's
+    two velocity components against the truth (right).
+  kind: plot
+  origin: docs/guides/make_figures.py::fig_pcf_flow_arrows
+  pages:
+  - docs/concepts/pair_correlation.md
+  - docs/guides/55_pair_correlation.md
+  recipe: Run `python docs/guides/make_figures.py` from the repository root; this figure is written by
+    `fig_pcf_flow_arrows()`.
+guides/figures/pda.png:
+  caption: PDA shot-noise-limited E histograms.
+  kind: plot
+  origin: docs/guides/make_figures.py::fig_pda
+  pages:
+  - docs/guides/11_pda2c.md
+  recipe: Run `python docs/guides/make_figures.py` from the repository root; this figure is written by
+    `fig_pda()`.
+guides/figures/pda3c_exchange.png:
+  caption: 'The exchange panel with three species and a linear chain 1↔2↔3: `k13` and `k31` sit at zero,
+    so there is no direct 1↔3 transition. The grid and the parameter table below it are the same objects
+    — type in one, fix or free in the other.'
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_pda3c_exchange_panel
+  pages:
+  - docs/guides/42_pda3c.md
+  recipe: Run `python docs/guides/make_screenshots.py` from the repository root; this figure is written
+    by `_grab_pda3c_exchange_panel()`.
+guides/figures/pda_model_editor.png:
+  caption: The PDA (Gaussian-distance) model editor. **FRET parameters** hold $\tau_0$, the Förster radius
+    $R_0$, and $\kappa^2$; **Distance distribution** is an add/remove list of Gaussian components (mean
+    $R_{P}$, width $s_{P}$, fraction $x_{P}$); **Corrections / nuisance** carries background, leakage,
+    direct excitation and $\gamma$. These map onto the forward model in {ref}`concept-pda2c`.
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_pda_editor
+  pages:
+  - docs/guides/11_pda2c.md
+  recipe: Run `python docs/guides/make_screenshots.py` from the repository root; this figure is written
+    by `_grab_pda_editor()`.
+guides/figures/peak_fit_2d.png:
+  caption: '**Left:** the 2-D E–S histogram of four simulated populations (donor-only, acceptor-only and
+    two FRET species). **Right:** the 4-component Gaussian mixture fitted to the same bursts, with 1σ
+    and 2σ covariance ellipses and the recovered centre, stoichiometry and weight of each component.'
+  kind: plot
+  origin: docs/guides/make_figures.py::fig_2d_peak_fit
+  pages:
+  - docs/guides/26_2d_peak_fitting.md
+  recipe: Run `python docs/guides/make_figures.py` from the repository root; this figure is written by
+    `fig_2d_peak_fit()`.
+guides/figures/polymer.png:
+  caption: Polymer distance distributions.
+  kind: plot
+  origin: docs/guides/make_figures.py::fig_polymer
+  pages:
+  - docs/guides/03_polymer_distance_distributions.md
+  recipe: Run `python docs/guides/make_figures.py` from the repository root; this figure is written by
+    `fig_polymer()`.
+guides/figures/population_selection.png:
+  caption: Selecting FRET populations.
+  kind: plot
+  origin: docs/guides/make_figures.py::fig_population_selection
+  pages:
+  - docs/guides/28_selecting_fret_populations.md
+  recipe: Run `python docs/guides/make_figures.py` from the repository root; this figure is written by
+    `fig_population_selection()`.
+guides/figures/precision_workspace.png:
+  caption: 'The RICS-precision calculator. Left: what you are measuring and how you intend to scan it.
+    Right: predicted relative error against pixel dwell time, on log axes, with your own setting marked
+    as a diamond. Here the default 8 µs sits just left of the minimum near 16 µs — about 1.4× worse, which
+    is not worth changing the protocol for.'
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_precision_tool
+  pages:
+  - docs/guides/45_scan_precision.md
+  recipe: Run `python docs/guides/make_screenshots.py` from the repository root; this figure is written
+    by `_grab_precision_tool()`.
+guides/figures/rasp.png:
+  caption: 'RASP: same-molecule probability and recurrence histogram.'
+  kind: plot
+  origin: docs/guides/make_figures.py::fig_rasp
+  pages:
+  - docs/guides/02_recurrence_rasp.md
+  recipe: Run `python docs/guides/make_figures.py` from the repository root; this figure is written by
+    `fig_rasp()`.
+guides/figures/rcm.png:
+  caption: Routing-correction matrix from dye solutions.
+  kind: plot
+  origin: docs/guides/make_figures.py::fig_rcm
+  pages:
+  - docs/guides/07_rcm_calibration.md
+  recipe: Run `python docs/guides/make_figures.py` from the repository root; this figure is written by
+    `fig_rcm()`.
+guides/figures/rcm_alex.png:
+  caption: Simulated PIE/ALEX data with a known instrument ($\gamma=1.35$, $\alpha=0.09$, $\delta=0.06$,
+    $\beta=0.95$). **Left:** the raw $E_\text{app}$/$S_\text{app}$ map. **Right:** after correction —
+    the two FRET populations land on their true efficiencies (dashed lines at E = 0.30 and 0.70), computed
+    with the real `corrected_es`.
+  kind: plot
+  origin: docs/guides/make_figures.py::fig_rcm_alex
+  pages:
+  - docs/guides/25_rcm_from_fret_samples.md
+  recipe: Run `python docs/guides/make_figures.py` from the repository root; this figure is written by
+    `fig_rcm_alex()`.
+guides/figures/regions.png:
+  caption: 'Left: a frame with eight molecules and a drawn analysis region; only the four inside it are
+    searched for. Middle: each segmented molecule is its own region, with the measured centroid marked.
+    Right: the background is the patch *minus the molecules dilated by a 3-pixel margin* — 13.9 photons/pixel.
+    Taking the plain complement instead gives 25.2, an **81 % overestimate**, because the pixels touching'
+  kind: plot
+  origin: docs/guides/make_figures.py::fig_regions
+  pages:
+  - docs/guides/48_regions.md
+  recipe: Run `python docs/guides/make_figures.py` from the repository root; this figure is written by
+    `fig_regions()`.
+guides/figures/regions_list.png:
+  caption: 'The region list, here in the CLSM tool. One row per region: its name, what kind of shape it
+    is, how big and how bright it is, and two tick boxes. The left tick includes a region in the selection;
+    unticking keeps it without using it — which is how you see what a region was contributing. The **~**
+    column uses everything *outside* that region instead. **Combine** says how the ticked ones reduce
+    to th'
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_region_editor
+  pages:
+  - docs/guides/48_regions.md
+  recipe: Run `python docs/guides/make_screenshots.py` from the repository root; this figure is written
+    by `_grab_region_editor()`.
+guides/figures/regions_overlay.png:
+  caption: 'The same three regions on the image. Drawn shapes get grab handles and write their new geometry
+    straight back into the list; the selected one is drawn thicker, and a region that is switched off
+    is greyed rather than hidden. A painted mask (the white patch) deliberately has **no** handle: there
+    is no small set of grips that would edit it, and a bounding box that replaced the mask on the first
+    drag '
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_region_editor
+  pages:
+  - docs/guides/48_regions.md
+  recipe: Run `python docs/guides/make_screenshots.py` from the repository root; this figure is written
+    by `_grab_region_editor()`.
+guides/figures/simulation.png:
+  caption: Simulated confocal trace and its correlation.
+  kind: plot
+  origin: docs/guides/make_figures.py::fig_simulation
+  pages:
+  - docs/guides/18_tttr_simulation.md
+  recipe: Run `python docs/guides/make_figures.py` from the repository root; this figure is written by
+    `fig_simulation()`.
+guides/figures/tcspc_lifetime_editor.png:
+  caption: The TCSPC lifetime model editor. **Convolution** selects the IRF curve and the convolution
+    mode (`per`iodic / `exp` / `full`); **Generic** holds the scatter `sc`, background `bg`, and constant-background
+    `tBg` nuisances; **Lifetimes** is an add/remove table of amplitude–lifetime pairs ($x_L$, $\tau_L$)
+    with normalization and linking; **Anisotropy** adds the polarised $r(t)$ model.
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_tcspc_lifetime_editor
+  pages:
+  - docs/guides/10_lifetime_anisotropy_fitting.md
+  recipe: Run `python docs/guides/make_screenshots.py` from the repository root; this figure is written
+    by `_grab_tcspc_lifetime_editor()`.
+guides/figures/timestamps_bursts.png:
+  caption: '**Top:** the photon stream, one tick per photon, on two routing channels; the shaded spans
+    are three bursts, labelled with their `[first, last]` photon indices. **Bottom:** the same stream
+    binned into a count-rate trace — the bursts are the spikes the search flags.'
+  kind: plot
+  origin: docs/guides/make_figures.py::fig_timestamps
+  pages:
+  - docs/guides/33_timestamps_and_bursts.md
+  recipe: Run `python docs/guides/make_figures.py` from the repository root; this figure is written by
+    `fig_timestamps()`.
+guides/figures/tracking_trajectories.png:
+  caption: The Trajectories view, drawn in image coordinates so it overlays the Movie view. Eight compact
+    random walks, none jumping across the field — that is what correct linking looks like. **A track that
+    leaps abruptly from one region to another is an identity swap**, and each one invents a displacement
+    that never happened and inflates D.
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_tracking_tool
+  pages:
+  - docs/guides/50_particle_tracking.md
+  recipe: Run `python docs/guides/make_screenshots.py` from the repository root; this figure is written
+    by `_grab_tracking_tool()`.
+guides/figures/tracking_workspace.png:
+  caption: 'Tracked on a simulated movie with known kinetics: 8 particles at D = 0.5 px²/frame. The tool
+    recovers 8 tracks of the full 60 frames and D = 0.504 ± 0.1 — and still prints a *"Read with care"*
+    note, because eight tracks is not many. The Movie view marks every detection; scrub the frame slider
+    and they should follow the particles.'
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_tracking_tool
+  pages:
+  - docs/guides/50_particle_tracking.md
+  recipe: Run `python docs/guides/make_screenshots.py` from the repository root; this figure is written
+    by `_grab_tracking_tool()`.
+guides/figures/tttr.png:
+  caption: Micro-time histograms from a TTTR file.
+  kind: plot
+  origin: docs/guides/make_figures.py::fig_tttr
+  pages:
+  - docs/guides/12_handling_tttr_files.md
+  recipe: Run `python docs/guides/make_figures.py` from the repository root; this figure is written by
+    `fig_tttr()`.
+manual/_images/image_rId10.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/overview.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId101.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/speciesfiltered_fcs_to_recover_dynamics.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId103.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/speciesfiltered_fcs_to_recover_dynamics.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId104.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/determination_of_gfactor_and_depolarization_factors_using_chisurf.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId108.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/data_input_and_file_format.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId109.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/data_input_and_file_format.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId11.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/overview.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId110.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/data_input_and_file_format.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId111.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/data_input_and_file_format.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId112.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/data_input_and_file_format.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId113.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/data_input_and_file_format.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId114.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/data_input_and_file_format.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId115.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/data_input_and_file_format.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId116.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/two_single_files.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId117.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/vv_vh_format.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId118.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId119.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId12.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/overview.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId120.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId121.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId122.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId123.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId124.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId125.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId126.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId127.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId128.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId129.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId13.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/data_import.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId130.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/step_1_approximating_gfactor_with_small_fluorophore.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId131.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/step_2_joint_analysis_to_determine_gfactor_ls_and_lp.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId132.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/step_2_joint_analysis_to_determine_gfactor_ls_and_lp.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId133.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/step_2_joint_analysis_to_determine_gfactor_ls_and_lp.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId134.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/loading_and_setting_up_the_egfp_data_set.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId135.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/setting_up_the_joint_global_fit_of_a488__egfp.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId136.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/setting_up_the_joint_global_fit_of_a488__egfp.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId137.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/setting_up_the_joint_global_fit_of_a488__egfp.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId138.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/setting_up_the_joint_global_fit_of_a488__egfp.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId139.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/setting_up_the_joint_global_fit_of_a488__egfp.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId14.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/data_import.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId140.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/setting_up_the_joint_global_fit_of_a488__egfp.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId141.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/saving__exporting_the_results.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId142.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/reusing_the_parameter_to_analyse_the_actual_samples.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId143.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/reusing_the_parameter_to_analyse_the_actual_samples.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId15.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/data_import.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId16.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/data_import.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId17.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/creating_fits.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId18.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/analysis_dock.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId19.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/parameters.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId20.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/fit_interface.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId21.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/model_scoring_range.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId22.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/parameter_optimization.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId23.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/parameter_sampling.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId24.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/multiple_document_interface.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId25.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/fit_plots.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId26.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/parameter_scan.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId27.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/nuisances.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId28.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/nuisances.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId29.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/nuisances.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId30.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/equation_parsing.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId31.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/reference_curves.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId32.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/fcalculator.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId33.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/anisotropy_wizard.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId34.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/anisotropy_wizard.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId35.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/anisotropy_wizard.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId36.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/anisotropy_wizard.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId37.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/anisotropy_wizard.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId38.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/overview_2.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId40.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/loading__plotting_data.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId41.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/correlator.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId42.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/correlation_merging.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId43.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/overview_3.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId44.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/overview_3.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId45.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/changing_visualizations.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId46.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/changing_visualizations.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId47.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/saving_and_loading_networks.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId48.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/saving_and_loading_networks.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId49.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/saving_and_loading_networks.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId50.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/saving_and_loading_networks.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId51.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/linking_parameters.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId53.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/fit_of_a_fcs_curve.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId54.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/fit_of_a_fcs_curve.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId55.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/fit_of_a_fcs_curve.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId56.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/fit_of_a_fcs_curve.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId57.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/fit_of_a_fcs_curve.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId58.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/fit_of_a_fcs_curve.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId59.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/fit_of_a_fcs_curve.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId60.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/fit_of_a_fcs_curve.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId61.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/fit_of_a_fcs_curve.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId63.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/fit_of_a_fcs_curve.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId64.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/fit_of_a_fcs_curve.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId65.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/fit_of_a_fcs_curve.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId66.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/fit_of_a_fcs_curve.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId67.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/fit_of_a_fcs_curve.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId68.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/fit_of_a_fcs_curve.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId69.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/fit_of_a_fcs_curve.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId70.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/fit_of_a_fcs_curve.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId71.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/fit_of_a_fcs_curve.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId72.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/estimation_of_the_fluorophore_concentration.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId73.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/estimation_of_the_fluorophore_concentration.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId74.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/fit_of_fcs_curve.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId75.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/calculations.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId76.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/calculations.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId77.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/correction_factors_for_spectral_crosstalk__direct_acceptor_excitation.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId79.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/determination_of_molecular_brightness.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId80.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/determination_of_molecular_brightness.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId81.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/global_fit_of_fcs_curves.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId82.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/calculations_2.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId83.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/adding_the_membranediffusion_models.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId84.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/adding_the_membranediffusion_models.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId85.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/fit_of_autocorrelation_curves.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId86.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/fit_of_autocorrelation_curves.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId87.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/crosstalkinduced_correlations.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId89.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/crosstalkinduced_correlations.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId91.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/fit_of_auto_and_crosscorrelation_curves.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId92.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/calculation_of_codiffusing_molecules.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId94.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/global_fit_of_auto_and_crosscorrelation_curves.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId95.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/influence_of_fret_efficiency.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId96.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/influence_of_triplet_blinking.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId97.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/speciesfiltered_fcs_to_recover_dynamics.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.
+manual/_images/image_rId99.png:
+  kind: legacy screenshot
+  origin: docs/_old_manual/manual.docx
+  pages:
+  - docs/manual/speciesfiltered_fcs_to_recover_dynamics.rst
+  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
+    older interface and should be replaced by a fresh screenshot of the current one.

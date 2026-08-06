@@ -4,7 +4,17 @@
     {
       "title": "Did it stay there, or did it move?",
       "text": "A burst's mean FRET efficiency says <b>where</b> the molecule sat. It does not say whether it <b>stayed</b> there — a molecule that switches state while crossing the focus lands at some intermediate <i>E</i>, and on the histogram that is indistinguishable from a genuinely static intermediate.<br/><br/>2CDE separates the two from the photon arrival times alone: one number per burst, no kinetic model, no binning.<br/><br/>Seven steps.",
-      "target": {}
+      "target": {},
+      "links": [
+        {
+          "cite": "tomov2012",
+          "text": "the 2CDE paper"
+        },
+        {
+          "doc": "docs/concepts/burst_2cde.md",
+          "text": "what it measures"
+        }
+      ]
     },
     {
       "title": "The burst folder, not the raw files",

@@ -376,7 +376,7 @@ use it.
 
 Minimum API:
 
-```python
+```text
 record_operation_with_artifacts(
     operation_id: str,
     operation_type: str,

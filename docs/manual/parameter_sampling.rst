@@ -40,6 +40,9 @@ From the shell
   fit = cs.current_fit
   report = chisurf.core.fitting.fit.sample_fit(fit, "/output/directory")
 
+The function is :src:`sample_fit <chisurf/core/fitting/fit.py#sample_fit>` —
+that link opens it in the code editor, at its definition.
+
 The second argument is a **directory**, not a file name: a timestamped
 sub-directory is created inside it holding the chains and a ``diagnostics.json``.
 The same report is returned — per-parameter mean, standard deviation, quantiles,

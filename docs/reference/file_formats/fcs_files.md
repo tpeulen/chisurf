@@ -87,7 +87,7 @@ When `experiment_reader: csv`, `read_fcs` uses the generic `Csv` loader in
 
 ```python
 csv = chisurf.core.fio.ascii.Csv()
-csv.load(filename=filename, ...)
+csv.load(filename=filename)
 x, y = csv.data[0], csv.data[1]
 ey = csv.data[2]
 ```
@@ -167,7 +167,7 @@ In the single-curve variant:
 
 ```python
 # tau in ms, trace in kHz
-trace.append((float(row[0]) * 1000, float(row[1]))
+trace.append((float(row[0]) * 1000, float(row[1])))
 ```
 
 The reader uses the trace to compute acquisition time and mean count rate,

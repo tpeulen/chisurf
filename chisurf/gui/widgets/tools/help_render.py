@@ -68,6 +68,12 @@ def render_help(
         shown = expand_citations(shown)
     except Exception:
         logger.debug("could not expand citations", exc_info=True)
+    try:
+        from chisurf.plugins.core.help.api.source_links import expand_source_roles
+
+        shown = expand_source_roles(shown)
+    except Exception:
+        logger.debug("could not expand source roles", exc_info=True)
 
     theme = theme_api.from_palette(widget)
     try:

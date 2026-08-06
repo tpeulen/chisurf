@@ -232,10 +232,16 @@ def expand_citations(text: str) -> str:
 
 
 def unknown_keys(text: str) -> list[str]:
-    """Return the citation keys in *text* that the bibliography does not define."""
+    """Return the citation keys in *text* that the bibliography does not define.
+
+    Code is skipped: a page that *documents* the citation syntax shows
+    ``{cite}`key``` in a code span, and that is an example, not a citation.
+    """
     entries = bibliography()
+    stripped = re.sub(r"```.*?```", " ", str(text), flags=re.DOTALL)
+    stripped = re.sub(r"``[^`]*``|`[^`\n]*`", " ", stripped)
     missing = []
-    for match in CITE_ROLE.finditer(str(text)):
+    for match in CITE_ROLE.finditer(stripped):
         for key in (k.strip() for k in match.group(1).split(",")):
             if key and key not in entries and key not in missing:
                 missing.append(key)

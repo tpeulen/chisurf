@@ -2,6 +2,20 @@
 
 ## 2026-08-06
 
+* **The documentation becomes maintainable: addresses, code links, registers, and a written refresh procedure** ([documentation browser](subsystems/documentation-browser.md)).
+
+  **A link to code opens the code editor, addressed by symbol.** `` {src}`chisurf/core/fitting/fit.py#sample_fit` `` resolves by *parsing* the file, not by counting lines: a line number is correct exactly until somebody edits the file above it, and then it points at the wrong thing while still looking right, whereas a renamed symbol fails loudly and the reader is told the page is stale. The editor already open is reused and the file lands in a new tab, so following three references leaves one editor with three tabs rather than three editors. The same role renders on the website as a link into the repository browser, so one spelling serves both.
+
+  **Every page has an address, and there is a bar to type it into.** It takes a documentation path, a source path with a `#symbol`, a `cite:` key or a URL — the vocabulary the links already use — with completion over all 440 pages. A page is now quotable in a bug report.
+
+  **Guided tours can point at the literature.** A step may carry `{"cite": …}`, `{"doc": …}`, `{"src": …}` or `{"url": …}`; the tour still says *which control to press* and the link hands over to why, instead of the bubble growing into an essay. The 2CDE tour's first step now links its paper and its concept page.
+
+  **Three registers, and they are the point of the exercise.** `docs/reference/figures.md` lists all 202 images with caption, page and **origin**; `tables.md` all 464 tables; `code.md` all 383 blocks with the verification each is subject to. Provenance lives in `docs/references/figures.yaml` — 194 images traced automatically to the function that draws them, the manual's legacy screenshots marked as showing an interface that no longer exists, five still unrecorded and listed as the worklist. A recipe must name the tool, the data and the state, and a test fails on one shorter than eight words: "screenshot of the tool" is not a recipe anybody can follow.
+
+  **Code in the documentation is now tested.** Every Python block is parsed, every `chisurf.…` name it uses must resolve, and a block marked ```` ```python run ```` is executed in a temporary directory. It immediately found four broken snippets — an unbalanced parenthesis, a positional argument after a keyword, an IPython magic claiming to be Python, and a signature sketch that never was — on top of the two moved modules the earlier manual check caught.
+
+  **And the whole procedure is written down for an agent** (`docs/development/documentation_maintenance.md`): a standing prompt to paste into a fresh session, the order the checks run in, what counts as evidence (open the PNG and read it — "the test passed" is not evidence), and the rule that an agent records `--ai` and never a human sign-off. A test asserts that the instruction still contains its own essential clauses, because a procedure nobody can find is a procedure nobody runs.
+
 * **Parity: ChimeraX's measurement suite, three of eight** ([pymol parity](plugins/pymol-parity.md)).
 
   ChimeraX is the authority on functionality and its `measure_*` family was the largest thing it had that ChiMOL had nothing of -- eight commands against ChiMOL's distance, angle and dihedral. `measure_buriedarea`, `measure_center` and `measure_inertia` are in.
