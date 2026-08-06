@@ -81,6 +81,18 @@ def capture(
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
     if expand_panels:
+        # AutoForm's fold headers are ``CollapsibleBox``es, whose header is a
+        # QPushButton -- looking only for checkable QToolButtons found none of
+        # them, so every panel a spec declares ``collapsed`` stayed shut and its
+        # controls were missing from both halves of the pair *and* from the
+        # control inventory. That is exactly the loss this module exists to catch.
+        try:
+            from chisurf.gui.widgets.collapsible_box import CollapsibleBox
+
+            for box in widget.findChildren(CollapsibleBox):
+                box.set_expanded(True)
+        except Exception:
+            pass
         for btn in widget.findChildren(QtWidgets.QToolButton):
             if btn.isCheckable() and not btn.isChecked() and btn.text() != "bounds":
                 try:

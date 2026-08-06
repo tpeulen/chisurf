@@ -1,123 +1,57 @@
+"""ProteinMC: the pure model, its generated editor, and the plots that read it.
+
+The 1,984-line ``ProteinMCModelWidget`` these tests used to drive is gone
+(PRD-38); ``ProteinMCModel`` holds the same state, runs the sampler in a plain
+thread, and is rendered from ``proteinmc.view.json``. Each test below is the
+behaviour its widget-driven predecessor asserted, moved onto whatever now owns
+it — which is why most of them no longer need a display at all.
+"""
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
+import pytest
 from qtpy import QtWidgets
 
 from chisurf.core.models.structure.proteinmc import ProteinMCProgress
 
 
-def test_proteinmc_widget_registers_structure_and_trajectory_plots():
-    import chisurf.gui.widgets.models.proteinmc as proteinmc_widget
-
-    names = [plot_class.name for plot_class, _ in proteinmc_widget.ProteinMCModelWidget.plot_classes]
-    assert names == ["Structure", "Distance Network", "Trajectory-Plot"]
+def _fit(data=None):
+    """Return a minimal fit stub the model is happy to be constructed against."""
+    return SimpleNamespace(name="fit", data=data, plots=[])
 
 
-def test_fitting_controller_finds_proteinmc_group_model(qapp):
-    from chisurf.gui.widgets.fitting.fit_controller import FittingControllerWidget
+def _model(data=None):
+    """Return a bare :class:`ProteinMCModel` over a fit stub."""
+    from chisurf.core.models.structure.proteinmc_model import ProteinMCModel
 
-    class ProteinMCModel:
-        name = "ProteinMC"
-
-        def run_sampling(self):
-            return None
-
-    controller = FittingControllerWidget.__new__(FittingControllerWidget)
-    controller.fit = SimpleNamespace(model=ProteinMCModel())
-    controller.comboBox = QtWidgets.QComboBox()
-    controller.comboBox.addItem("ProteinMC")
-
-    assert controller._proteinmc_model_widget() is controller.fit.model
+    return ProteinMCModel(fit=_fit(data))
 
 
-class FakeChimolView(QtWidgets.QWidget):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args[:1] if args else [])
-        self.frames = []
-        self.object_id = None
-
-    def add_coordinates(self, coords, *, name=None, source_path=None):
-        self.object_id = "obj1"
-        self.coords = np.asarray(coords)
-        return self.object_id
-
-    def add_structure(self, structure, *, name=None, source_path=None):
-        self.object_id = "obj1"
-        self.structure = structure
-        self.coords = np.asarray(getattr(structure, "xyz", np.zeros((0, 3))))
-        return self.object_id
-
-    def set_frames(self, frames, *, object_id=None):
-        self.frames = list(np.asarray(frames))
-
-    def set_active_frame(self, index, *, object_id=None):
-        self.active_frame = int(index)
-
-    def append_frame(self, frame, *, object_id=None):
-        self.frames.append(np.asarray(frame))
-        return len(self.frames)
-
-
-def test_proteinmc_widget_updates_arrays_and_chimol(qapp, qtbot, monkeypatch):
-    import chisurf.gui.widgets.models.proteinmc as proteinmc_widget
-
-    monkeypatch.setattr(proteinmc_widget, "ChimolView", FakeChimolView)
-    fit = SimpleNamespace(name="fit", data=None, plots=[])
-    widget = proteinmc_widget.ProteinMCModelWidget(fit=fit)
-    qtbot.addWidget(widget)
-
-    progress = ProteinMCProgress(
+def _progress(energy=2.0, labeling=1.0, xyz=None):
+    """Return one sampler progress payload."""
+    return ProteinMCProgress(
         frame_index=1,
         target_frames=2,
         iteration=1,
         accepted=1,
         rejected=0,
-        energy=2.0,
-        labeling_energy=1.0,
+        energy=energy,
+        labeling_energy=labeling,
         rmsd=[0.0],
         drmsd=[0.0],
-        energies=[2.0],
-        labeling_energies=[1.0],
-        xyz=np.zeros((3, 3)),
+        energies=[energy],
+        labeling_energies=[labeling],
+        xyz=np.zeros((3, 3)) if xyz is None else xyz,
         output_file="out.rmf3",
     )
-    widget.on_progress(progress)
-
-    assert widget.energy == [2.0]
-    assert widget.chi2r == [1.0]
-    assert len(widget.viewer.frames) == 1
 
 
-def test_proteinmc_widget_global_frame_updates_plots(qapp, qtbot, monkeypatch):
-    import chisurf.gui.widgets.models.proteinmc as proteinmc_widget
-
-    class PlotStub:
-        def __init__(self):
-            self.updated = 0
-
-        def update(self):
-            self.updated += 1
-
-    monkeypatch.setattr(proteinmc_widget, "ChimolView", FakeChimolView)
-    fit = SimpleNamespace(name="fit", data=None, plots=[])
-    widget = proteinmc_widget.ProteinMCModelWidget(fit=fit)
-    qtbot.addWidget(widget)
-    plot = PlotStub()
-    fit.plots = [plot]
-    widget.trajectory_frames = [np.zeros((3, 3)), np.ones((3, 3))]
-
-    widget.set_current_frame(1)
-
-    assert widget.current_frame_index == 1
-    qtbot.waitUntil(lambda: plot.updated == 1, timeout=1000)
-
-
-def test_distance_network_plot_constructs(qapp, qtbot, tmp_path):
-    from chisurf.gui.plots.proteinMC import ProteinMCDistanceNetworkPlot, _agreement_color
-
+def _two_ca_structure():
+    """Return a structure of two Cα atoms 10 Å apart, and its labelling JSON."""
     atoms = np.zeros(
         2,
         dtype=[("xyz", float, (3,)), ("atom_name", "S2"), ("res_id", int), ("chain", "S1")],
@@ -126,19 +60,272 @@ def test_distance_network_plot_constructs(qapp, qtbot, tmp_path):
     atoms["atom_name"] = [b"CA", b"CA"]
     atoms["res_id"] = [1, 2]
     atoms["chain"] = [b"A", b"A"]
-    labeling = tmp_path / "fps.json"
-    labeling.write_text(
-        '{"Positions":{"p1":{"chain_identifier":"A","residue_seq_number":1,"atom_name":"CA"},'
-        '"p2":{"chain_identifier":"A","residue_seq_number":2,"atom_name":"CA"}},'
-        '"Distances":{"d":{"position1_name":"p1","position2_name":"p2","distance":10,"error_neg":1,"error_pos":1}}}',
-        encoding="utf-8",
+    return SimpleNamespace(atoms=atoms, xyz=atoms["xyz"])
+
+
+def _labeling_file(tmp_path, score_sets=None):
+    """Write an FPS JSON with one distance between the two Cα positions."""
+    payload = {
+        "Positions": {
+            "p1": {"chain_identifier": "A", "residue_seq_number": 1, "atom_name": "CA"},
+            "p2": {"chain_identifier": "A", "residue_seq_number": 2, "atom_name": "CA"},
+        },
+        "Distances": {"d1": {"position1_name": "p1", "position2_name": "p2", "distance": 10}},
+        "χ²": score_sets if score_sets is not None else {"chi2_C1": {"distances": ["d1"]}},
+    }
+    path = tmp_path / "fps.json"
+    path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+    return path
+
+
+# ---------------------------------------------------------------------------
+# the model
+# ---------------------------------------------------------------------------
+def test_proteinmc_declares_structure_and_trajectory_plots(qapp):
+    """The view spec resolves to the same three plot tabs the widget listed."""
+    from chisurf.gui.widgets.models.model_editor import model_plot_specs
+
+    names = [plot_class.name for plot_class, _ in model_plot_specs(_model())]
+    assert names == ["Structure", "Distance Network", "Trajectory-Plot"]
+
+
+def test_progress_payload_fills_the_traces_and_the_trajectory():
+    """A progress callback records the energies and appends the frame."""
+    model = _model()
+    model._on_progress(_progress(energy=2.0, labeling=1.0))
+
+    assert model.energy == [2.0]
+    assert model.chi2r == [1.0]
+    assert model.frame_count == 1
+    assert model.current_frame_index == 0
+
+
+def test_set_current_frame_clamps_and_follows_the_distances(tmp_path):
+    """Selecting a frame re-measures the distances on *that* frame."""
+    structure = _two_ca_structure()
+    model = _model(structure)
+    model.labeling_file = str(_labeling_file(tmp_path))
+    model.score_set = "chi2_C1"
+    model.proteinmc_structure = structure
+    model.reload_distances()
+
+    model.trajectory_frames = [
+        np.array([[0.0, 0.0, 0.0], [10.0, 0.0, 0.0]]),
+        np.array([[0.0, 0.0, 0.0], [5.0, 0.0, 0.0]]),
+    ]
+    model.set_current_frame(1)
+    assert model.current_frame_index == 1
+    assert model._distance_parameters["d1"].value == pytest.approx(5.0)
+
+    model.set_current_frame(99)
+    assert model.current_frame_index == 1, "frame index was not clamped"
+
+
+def test_distances_are_written_onto_the_parameters(tmp_path):
+    """The distance outputs are plain parameter writes, assertable headless.
+
+    The hand-written version published them through the GUI fitting client
+    inside a bare ``except``, so they stayed NaN with no client present.
+    """
+    structure = _two_ca_structure()
+    model = _model(structure)
+    model.labeling_file = str(_labeling_file(tmp_path))
+    model.score_set = "chi2_C1"
+    model.proteinmc_structure = structure
+    model.reload_distances()
+
+    model.update_distance_values()
+    assert model._distance_parameters["d1"].value == pytest.approx(10.0)
+
+    model.trajectory_frames = [np.array([[0.0, 0.0, 0.0], [5.0, 0.0, 0.0]])]
+    model.current_frame_index = 0
+    model.update_distance_values()
+    assert model._distance_parameters["d1"].value == pytest.approx(5.0)
+
+
+def test_score_set_selects_which_distances_are_restrained(tmp_path):
+    """The score set filters the distances, and a partial name still resolves."""
+    labeling = _labeling_file(
+        tmp_path,
+        score_sets={"chi2_C1_20p": {"distances": ["d1"]}, "chi2_C2_33p": {"distances": []}},
     )
+    model = _model(_two_ca_structure())
+    model.labeling_file = str(labeling)
+
+    assert "chi2_C1_20p" in model.score_set_names()
+    assert "chi2_C2_33p" in model.score_set_names()
+
+    # A project may store an abbreviated name; substring matching resolves it
+    # rather than silently restraining nothing.
+    model.score_set = "c1"
+    model.reload_distances()
+    assert list(model._distance_parameters) == ["d1"]
+
+    model.score_set = "chi2_C2_33p"
+    model.reload_distances()
+    assert model._distance_parameters == {}
+
+    model.score_set = ""
+    model.reload_distances()
+    assert model._distance_parameters == {}
+
+
+def test_energy_terms_are_editable_rows(tmp_path):
+    """The energy-term table's rows and cell writes reach the runner payload."""
+    model = _model()
+    terms = [row["term"] for row in model.potential_rows()]
+    assert terms == ["H-bond", "UNRES", "Dye potential"]
+
+    model.set_potential_field(0, "weight", 3.5)
+    model.set_potential_field(0, "eval_every", 4)
+    payload = model.potential_settings()[0]
+    assert payload["weight"] == pytest.approx(3.5)
+    assert payload["eval_interval"] == 4
+
+    # Adding the same term twice would make the runner sum it twice.
+    model.new_potential = "mj"
+    model.add_potential()
+    model.add_potential()
+    assert [p["name"] for p in model.potential_settings()] == ["hbond", "unres", "dye", "mj"]
+
+    model.selected_potential = {"index": 3}
+    model.remove_selected_potential()
+    assert [p["name"] for p in model.potential_settings()] == ["hbond", "unres", "dye"]
+
+
+def test_term_settings_keep_the_type_of_their_default():
+    """A bool setting reaches the runner as a bool, not the string ``"True"``."""
+    model = _model()
+    model.new_potential = "go"
+    model.add_potential()
+    model.selected_potential = {"index": 3}
+
+    names = [row["name"] for row in model.potential_setting_rows()]
+    assert "native_cutoff_on" in names
+    model.set_potential_setting(names.index("native_cutoff_on"), "value", "false")
+    model.set_potential_setting(names.index("epsilon"), "value", "2.5")
+
+    settings = next(p for p in model.potential_settings() if p["name"] == "go")["settings"]
+    assert settings["native_cutoff_on"] is False
+    assert settings["epsilon"] == pytest.approx(2.5)
+
+
+def test_state_round_trips_through_a_project(tmp_path):
+    """``get_state``/``set_state`` carry the whole setup, including the terms."""
+    labeling = _labeling_file(tmp_path)
+    model = _model(_two_ca_structure())
+    model.labeling_file = str(labeling)
+    model.score_set = "chi2_C1"
+    model.n_iter = 4242
+    model.kt = 2.25
+    model.set_potential_field(0, "weight", 7.0)
+
+    restored = _model(_two_ca_structure())
+    restored.set_state(model.get_state())
+
+    assert restored.n_iter == 4242
+    assert restored.kt == pytest.approx(2.25)
+    assert restored.labeling_file == str(labeling)
+    assert restored.score_set == "chi2_C1"
+    assert restored.potential_settings()[0]["weight"] == pytest.approx(7.0)
+    assert list(restored._distance_parameters) == ["d1"]
+
+
+def test_start_sampling_runs_the_runner_in_a_thread(monkeypatch, tmp_path):
+    """Sampling runs headless: no Qt worker, no dialog, just the model."""
+    import chisurf.core.models.structure.proteinmc_model as module
+
+    class FakeRunner:
+        def __init__(self, *, progress_callback=None, output_file=None, **kwargs):
+            self.progress_callback = progress_callback
+            self.output_file = output_file
+            self.structure = SimpleNamespace(atoms=None, xyz=np.zeros((3, 3)))
+
+        def run(self):
+            if self.progress_callback is not None:
+                self.progress_callback(_progress(energy=3.0, labeling=2.0))
+            return SimpleNamespace(output_file=self.output_file, structure=self.structure)
+
+        def stop(self):
+            return None
+
+    monkeypatch.setattr(module, "ProteinMCRunner", FakeRunner)
+    model = _model()
+    model.structure_file = "148l"
+    model.output_directory = str(tmp_path)
+    model.n_iter = model.n_out = model.n_written = 1
+
+    model.start_sampling()
+    model._thread.join(timeout=5.0)
+    assert not model.is_sampling
+
+    assert model.energy == [3.0]
+    assert model.chi2r == [2.0]
+    assert model.frame_count == 1
+    assert "finished" in model.sampling_status
+
+
+def test_start_sampling_without_an_output_directory_does_not_run():
+    """A missing output folder is refused, not turned into a crash mid-run."""
+    model = _model()
+    model.structure_file = "148l"
+    model.start_sampling()
+    assert not model.is_sampling
+    assert model.frame_count == 0
+
+
+# ---------------------------------------------------------------------------
+# the editor
+# ---------------------------------------------------------------------------
+def test_editor_renders_the_run_controls_and_the_term_tables(qapp):
+    """The generated editor carries the run controls and both term tables."""
+    from chisurf.gui.autoform.sections.background_run_section import BackgroundRunWidget
+    from chisurf.gui.widgets.models.model_editor import build_model_editor
+
+    model = _model()
+    editor = build_model_editor(model)
+
+    runners = editor.findChildren(BackgroundRunWidget)
+    assert runners, "no background_run section in the ProteinMC editor"
+    assert runners[0].start_button.isEnabled()
+    assert not runners[0].stop_button.isEnabled(), "Stop is live before a run starts"
+
+    tables = editor.findChildren(QtWidgets.QTableWidget)
+    headers = [
+        {t.horizontalHeaderItem(c).text() for c in range(t.columnCount())
+         if t.horizontalHeaderItem(c) is not None}
+        for t in tables
+    ]
+    assert any({"Term", "Weight"} <= h for h in headers), headers
+    assert any({"Setting", "Value"} <= h for h in headers), headers
+
+
+def test_fitting_controller_finds_the_proteinmc_model(qapp):
+    """The fit controller still recognises ProteinMC and hands it Sampling."""
+    from chisurf.gui.widgets.fitting.fit_controller import FittingControllerWidget
+
+    controller = FittingControllerWidget.__new__(FittingControllerWidget)
+    controller.fit = SimpleNamespace(model=_model())
+    controller.comboBox = QtWidgets.QComboBox()
+    controller.comboBox.addItem("ProteinMC")
+
+    assert controller._proteinmc_model_widget() is controller.fit.model
+    # The Sampling button calls this with the folder and run length it collected.
+    assert controller._model_sampling_handler() is not None
+
+
+def test_distance_network_plot_constructs(qapp, qtbot, tmp_path):
+    """The network plot reads the labelling file off the *model*, not a line edit."""
+    from chisurf.gui.plots.proteinMC import ProteinMCDistanceNetworkPlot, _agreement_color
+
+    structure = _two_ca_structure()
+    xyz = structure.atoms["xyz"]
     model = SimpleNamespace(
-        proteinmc_structure=SimpleNamespace(atoms=atoms),
-        trajectory_frames=[atoms["xyz"], atoms["xyz"] + 1.0, atoms["xyz"] + 2.0],
+        proteinmc_structure=structure,
+        trajectory_frames=[xyz, xyz + 1.0, xyz + 2.0],
         current_frame_index=0,
         frame_count=3,
-        labeling_edit=SimpleNamespace(text=lambda: str(labeling)),
+        labeling_file=str(_labeling_file(tmp_path)),
     )
     model.set_current_frame = lambda value: setattr(model, "current_frame_index", int(value))
     plot = ProteinMCDistanceNetworkPlot(SimpleNamespace(model=model))
@@ -156,229 +343,9 @@ def test_distance_network_plot_constructs(qapp, qtbot, tmp_path):
     assert _agreement_color(-3.0) == _agreement_color(3.0)
 
 
-def test_proteinmc_widget_start_runs_worker(qapp, qtbot, monkeypatch, tmp_path):
-    import chisurf.gui.widgets.models.proteinmc as proteinmc_widget
-
-    class FakeRunner:
-        def __init__(self, *, progress_callback=None, output_file=None, **kwargs):
-            self.progress_callback = progress_callback
-            self.output_file = output_file
-            self.structure = SimpleNamespace(atoms=None, xyz=np.zeros((3, 3)))
-
-        def run(self):
-            progress = ProteinMCProgress(
-                frame_index=1,
-                target_frames=1,
-                iteration=1,
-                accepted=1,
-                rejected=0,
-                energy=3.0,
-                labeling_energy=2.0,
-                rmsd=[0.0],
-                drmsd=[0.0],
-                energies=[3.0],
-                labeling_energies=[2.0],
-                xyz=np.zeros((3, 3)),
-                output_file=self.output_file,
-            )
-            if self.progress_callback is not None:
-                self.progress_callback(progress)
-            return SimpleNamespace(output_file=self.output_file)
-
-        def stop(self):
-            return None
-
-    monkeypatch.setattr(proteinmc_widget, "ChimolView", FakeChimolView)
-    monkeypatch.setattr(proteinmc_widget, "ProteinMCRunner", FakeRunner)
-    widget = proteinmc_widget.ProteinMCModelWidget(fit=SimpleNamespace(name="fit", data=None, plots=[]))
-    qtbot.addWidget(widget)
-    widget.structure_edit.setText(str(Path("test/data/atomic_coordinates/pdb_files/148l.pdb")))
-    widget.n_iter_spin.setValue(1)
-    widget.n_out_spin.setValue(1)
-    widget.n_written_spin.setValue(1)
-
-    widget.start_proteinmc(output_directory=tmp_path)
-    assert not widget.structure_edit.isEnabled()
-
-    import time
-    start_time = time.perf_counter()
-    while widget._thread is not None:
-        qapp.processEvents()
-        time.sleep(0.01)
-        if time.perf_counter() - start_time > 5.0:
-            raise TimeoutError("Test timed out waiting for thread to finish")
-    assert widget.energy == [3.0]
-    assert widget.chi2r == [2.0]
-    assert widget.start_button.isEnabled()
-    assert widget.structure_edit.isEnabled()
-
-
-def test_score_set_combobox_in_dialog(qapp, qtbot, monkeypatch, tmp_path):
-    """Test the score_set combobox dynamic population and fallback resolution.
-
-    Parameters
-    ----------
-    qapp : QApplication
-        Qt application fixture.
-    qtbot : QtBot
-        Qt bot fixture.
-    monkeypatch : MonkeyPatch
-        Pytest monkeypatch fixture.
-    tmp_path : Path
-        Temporary directory path.
-    """
-    from types import SimpleNamespace
-
-    from qtpy import QtWidgets
-
-    import chisurf.gui.widgets.models.proteinmc as proteinmc_widget
-
-    # 1. Create a dummy fps.json file
-    labeling = tmp_path / "fps.json"
-    labeling.write_text(
-        '{"Positions": {"p1": {"chain_identifier": "A", "residue_seq_number": 1}},'
-        '"Distances": {"d1": {"position1_name": "p1", "position2_name": "p1", "distance": 5}},'
-        '"χ²": {"chi2_C1_20p": {"distances": ["d1"]}, "chi2_C2_33p": {"distances": []}}}',
-        encoding="utf-8"
-    )
-
-    # 2. Setup widget
-    monkeypatch.setattr(proteinmc_widget, "ChimolView", FakeChimolView)
-    fit = SimpleNamespace(name="fit", data=None, plots=[])
-    widget = proteinmc_widget.ProteinMCModelWidget(fit=fit)
-    qtbot.addWidget(widget)
-
-    # Set labeling file
-    widget.labeling_edit.setText(str(labeling))
-
-    # Verify score_set_combo contains the options
-    items = [widget.score_set_combo.itemText(i) for i in range(widget.score_set_combo.count())]
-    assert "chi2_C1_20p" in items
-    assert "chi2_C2_33p" in items
-
-    # 3. Test substring matching fallback on load
-    state = {
-        "proteinmc": {
-            "labeling_file": str(labeling),
-            "score_set": "c1",
-            "settings": {
-                "potentials": [
-                    {
-                        "name": "dye",
-                        "weight": 1.0,
-                        "settings": {
-                            "labeling_file": str(labeling),
-                            "score_set": "c1"
-                        }
-                    }
-                ]
-            }
-        }
-    }
-    widget.set_state(state)
-    assert widget.score_set_combo.currentText() == "chi2_C1_20p"
-
-    # Verify only C1 distance parameters widgets are shown
-    assert "d1" in widget._distance_parameters
-    assert len(widget._distance_parameters) == 1
-
-    # 4. Test dialog opening and score_set combobox
-    dialog_exec_called = False
-    def fake_exec(self_dialog):
-        nonlocal dialog_exec_called
-        dialog_exec_called = True
-        combos = self_dialog.findChildren(QtWidgets.QComboBox)
-        assert len(combos) >= 1
-        combo_items = [combos[0].itemText(i) for i in range(combos[0].count())]
-        assert "chi2_C1_20p" in combo_items
-        assert "chi2_C2_33p" in combo_items
-        assert combos[0].currentText() == "chi2_C1_20p"
-
-        # Simulate user changing score set to "chi2_C2_33p"
-        combos[0].setCurrentText("chi2_C2_33p")
-        return QtWidgets.QDialog.Accepted
-
-    monkeypatch.setattr(QtWidgets.QDialog, "exec_", fake_exec)
-
-    # Open dialog for row of "fps" potential
-    widget.edit_potential_details(2)
-
-    assert dialog_exec_called
-    # The selected score set should now be "chi2_C2_33p" in the widget
-    assert widget.score_set_combo.currentText() == "chi2_C2_33p"
-
-    # 5. Verify distances are updated (chi2_C2_33p has 0 distances)
-    assert len(widget._distance_parameters) == 0
-
-    # 6. Verify setting score_set to "" shows no distance parameter widgets
-    widget.score_set_combo.setCurrentIndex(0) # ""
-    assert len(widget._distance_parameters) == 0
-
-
-def test_update_distance_widgets_integration(qapp, qtbot, monkeypatch, tmp_path):
-    """Test that update_distance_widgets updates parameters from trajectory and structure.
-
-    Parameters
-    ----------
-    qapp : QApplication
-        Qt application fixture.
-    qtbot : QtBot
-        Qt bot fixture.
-    monkeypatch : MonkeyPatch
-        Pytest monkeypatch fixture.
-    tmp_path : Path
-        Temporary directory path.
-    """
-    from types import SimpleNamespace
-
-    from qtpy import QtWidgets
-
-    import chisurf.gui.widgets.models.proteinmc as proteinmc_widget
-
-    labeling = tmp_path / "fps.json"
-    labeling.write_text(
-        '{"Positions": {"p1": {"chain_identifier": "A", "residue_seq_number": 1, "atom_name": "CA"},'
-        '"p2": {"chain_identifier": "A", "residue_seq_number": 2, "atom_name": "CA"}},'
-        '"Distances": {"d1": {"position1_name": "p1", "position2_name": "p2", "distance": 10}},'
-        '"χ²": {"chi2_C1": {"distances": ["d1"]}}}',
-        encoding="utf-8"
-    )
-
-    atoms = np.zeros(
-        2,
-        dtype=[("xyz", float, (3,)), ("atom_name", "S2"), ("res_id", int), ("chain", "S1")],
-    )
-    atoms["xyz"] = np.array([[0.0, 0.0, 0.0], [10.0, 0.0, 0.0]])
-    atoms["atom_name"] = [b"CA", b"CA"]
-    atoms["res_id"] = [1, 2]
-    atoms["chain"] = [b"A", b"A"]
-    structure = SimpleNamespace(atoms=atoms, xyz=atoms["xyz"])
-
-    monkeypatch.setattr(proteinmc_widget, "ChimolView", FakeChimolView)
-    fit = SimpleNamespace(name="fit", data=structure, plots=[])
-    widget = proteinmc_widget.ProteinMCModelWidget(fit=fit)
-    qtbot.addWidget(widget)
-
-    widget.labeling_edit.setText(str(labeling))
-    widget.score_set_combo.setCurrentText("chi2_C1")
-
-    # Set structural data and verify update_distance_widgets resolves the coordinates
-    widget.proteinmc_structure = structure
-    widget.update_distance_widgets()
-    assert widget._distance_parameters["d1"].value == 10.0
-
-    # Add a frame with a different distance (e.g. 5.0 Å)
-    frame = np.array([[0.0, 0.0, 0.0], [5.0, 0.0, 0.0]])
-    widget.trajectory_frames = [frame]
-    widget.current_frame_index = 0
-
-    widget.update_distance_widgets()
-    assert widget._distance_parameters["d1"].value == 5.0
-
-
 def test_progress_dialog_minimize_and_restore(qapp, qtbot, monkeypatch):
     """Test progress dialog hide to status bar and double-click to restore."""
-    from qtpy import QtCore, QtGui, QtWidgets
+    from qtpy import QtCore, QtGui
 
     from chisurf.gui.widgets.progress import EnhancedProgressDialog, MinimisedProgressWidget
 
@@ -417,7 +384,6 @@ def test_progress_dialog_minimize_and_restore(qapp, qtbot, monkeypatch):
     assert len(statusbar_widgets) == 1
 
     # 3. Restore by double-clicking status bar widget
-    # Directly invoke mouseDoubleClickEvent to simulate double click
     event = QtGui.QMouseEvent(
         QtCore.QEvent.MouseButtonDblClick,
         QtCore.QPointF(5, 5),
@@ -425,7 +391,7 @@ def test_progress_dialog_minimize_and_restore(qapp, qtbot, monkeypatch):
         QtCore.Qt.LeftButton,
         QtCore.Qt.NoModifier
     ) if hasattr(QtGui, "QMouseEvent") else None
-    
+
     if event:
         dialog._statusbar_widget.mouseDoubleClickEvent(event)
     else:
@@ -442,6 +408,3 @@ def test_progress_dialog_minimize_and_restore(qapp, qtbot, monkeypatch):
     dialog.finish(close_delay_ms=0)
     qapp.processEvents()
     assert len(main_win.statusBar().findChildren(MinimisedProgressWidget)) == 0
-
-
-

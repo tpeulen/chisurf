@@ -1,0 +1,245 @@
+{
+  "_comment": "Editor layout for the coarse-grained MC structure sampler (ProteinMCModel). The hand-written predecessor hid the sampling settings behind a modal dialog and each energy term's parameters behind a second one; both are tables here, so what a run will actually do is visible without opening anything. The run itself is the general `background_run` section — the model exposes two zero-arg methods and a progress fraction, and the section owns the timer that repaints the trajectory plots while sampling.",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Inputs",
+      "collapsible": true,
+      "collapsed": false,
+      "sections": [
+        {
+          "type": "value",
+          "attr": "structure_file",
+          "kind": "file",
+          "label": "Structure",
+          "call": "load_starting_structure",
+          "placeholder": "PDB/PQR path or PDB ID, e.g. 148l",
+          "description": "The conformation sampling starts from. A PDB ID is fetched; a local .pdb/.pqr/.cif is read as-is. ProteinMC protonates it, so the atom count of a trajectory frame is not the atom count of this file."
+        },
+        {
+          "type": "value",
+          "attr": "labeling_file",
+          "kind": "file",
+          "label": "Labelling",
+          "call": "on_labeling_file_changed",
+          "rebuild_on_change": true,
+          "description": "FPS JSON holding the labelling positions, the inter-dye distances and the χ² score sets. It supplies the FRET restraints the Dye potential scores against."
+        },
+        {
+          "type": "choice",
+          "attr": "score_set",
+          "label": "Score set",
+          "options_source": "score_set_names",
+          "call": "reload_distances",
+          "rebuild_on_change": true,
+          "description": "Which χ² group of the labelling file is scored — it selects the subset of distances used as restraints, and therefore which distances are reported below."
+        },
+        {
+          "type": "value",
+          "attr": "output_directory",
+          "kind": "directory",
+          "label": "Output",
+          "description": "Where proteinmc.rmf3 and the autosaved project are written. Choosing it before starting is what makes a run resumable."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "FlexFit",
+      "collapsible": true,
+      "collapsed": true,
+      "description": "Restrict the moving residues to a named set, instead of letting the whole chain move.",
+      "sections": [
+        {
+          "type": "toggle",
+          "attr": "use_flexfit",
+          "label": "Use FlexFit",
+          "description": "When on, only the residues of the selected set move; everything else is held rigid."
+        },
+        {
+          "type": "choice",
+          "attr": "flexfit_set",
+          "label": "Set",
+          "options_source": "flexfit_set_names",
+          "description": "The FlexFit set from the labelling file that defines the flexible residues."
+        },
+        {
+          "type": "value",
+          "attr": "flexfit_summary",
+          "kind": "str",
+          "read_only": true,
+          "label": "Mobile",
+          "description": "How many residues the active set leaves mobile, out of the residues the labelling file mentions."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Energy terms",
+      "collapsible": true,
+      "collapsed": false,
+      "sections": [
+        {
+          "type": "table",
+          "source": "potential_rows",
+          "selected_attr": "selected_potential",
+          "editable": true,
+          "update_call": "set_potential_field",
+          "height": 110,
+          "columns": [
+            {
+              "key": "term",
+              "label": "Term",
+              "width": 150,
+              "description": "The energy term. Select a row to edit its own parameters below."
+            },
+            {
+              "key": "eval_every",
+              "label": "Eval. every",
+              "description": "Evaluate this term every N MC steps (1 = every step). Raise it for a term that is expensive and slowly varying."
+            },
+            {
+              "key": "weight",
+              "label": "Weight",
+              "description": "Multiplies this term's contribution to the total energy."
+            }
+          ]
+        },
+        {
+          "type": "choice",
+          "attr": "new_potential",
+          "label": "Add",
+          "options_source": "potential_choices",
+          "description": "Which energy term the Add button appends."
+        },
+        {
+          "type": "button_row",
+          "buttons": [
+            {
+              "label": "➕ Add term",
+              "action": "add_potential",
+              "description": "Append the term chosen above; a term already in the list is not added twice."
+            },
+            {
+              "label": "➖ Remove",
+              "action": "remove_selected_potential",
+              "description": "Drop the selected term (the last one when nothing is selected)."
+            }
+          ]
+        },
+        {
+          "type": "table",
+          "source": "potential_setting_rows",
+          "editable": true,
+          "update_call": "set_potential_setting",
+          "height": 110,
+          "columns": [
+            {
+              "key": "name",
+              "label": "Setting",
+              "width": 150
+            },
+            {
+              "key": "value",
+              "label": "Value"
+            }
+          ],
+          "description": "The selected term's own parameters. Each keeps the type of its default, so a checkbox setting cannot reach the sampler as the string \"True\"."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Sampling",
+      "collapsible": true,
+      "collapsed": false,
+      "sections": [
+        {
+          "type": "custom",
+          "key": "scalar_table",
+          "options": {
+            "rows": [
+              {
+                "attr": "n_iter",
+                "label": "MC trials",
+                "kind": "int"
+              },
+              {
+                "attr": "n_out",
+                "label": "Save every",
+                "kind": "int"
+              },
+              {
+                "attr": "n_written",
+                "label": "Max frames",
+                "kind": "int"
+              },
+              {
+                "attr": "scale",
+                "label": "Move scale",
+                "kind": "float",
+                "decimals": 6
+              },
+              {
+                "attr": "kt",
+                "label": "kT",
+                "kind": "float",
+                "decimals": 4
+              },
+              {
+                "attr": "n_runs",
+                "label": "Runs",
+                "kind": "int"
+              }
+            ]
+          },
+          "description": "kT sets how readily an uphill move is accepted; move scale sets how far one move goes. Max frames caps the trajectory, Save every decides how many MC trials each frame is worth."
+        },
+        {
+          "type": "custom",
+          "key": "background_run",
+          "options": {
+            "start_action": "start_sampling",
+            "stop_action": "stop_sampling",
+            "running_attr": "is_sampling",
+            "progress_attr": "sampling_progress",
+            "status_attr": "sampling_status",
+            "start_label": "▶ Sample",
+            "stop_label": "■ Stop",
+            "start_description": "Start sampling in the background. A run continues from the frames already in hand rather than discarding them, so a saved project resumes.",
+            "stop_description": "Ask the sampler to stop after the current step.",
+            "interval_ms": 500
+          }
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Inter-fluorophore distances",
+      "collapsible": true,
+      "collapsed": false,
+      "description": "Measured on the frame currently displayed — outputs of the structure, not parameters of the fit.",
+      "sections": [
+        {
+          "type": "parameter_group_table",
+          "parameters_source": "_distance_parameter_rows",
+          "collapsible": false
+        }
+      ]
+    }
+  ],
+  "plots": [
+    {
+      "key": "proteinmc_structure",
+      "options": {}
+    },
+    {
+      "key": "proteinmc_network",
+      "options": {}
+    },
+    {
+      "key": "proteinmc_traces",
+      "options": {}
+    }
+  ]
+}

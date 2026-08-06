@@ -53,6 +53,17 @@ register_plot("lcurve", lambda: _plots().LCurvePlot)
 register_plot("pr_ci", lambda: _plots().DeerPrCIPlot)
 
 
+def _proteinmc_plots():
+    import chisurf.gui.plots.proteinMC as _p
+
+    return _p
+
+
+register_plot("proteinmc_structure", lambda: _proteinmc_plots().ProteinMCStructurePlot)
+register_plot("proteinmc_network", lambda: _proteinmc_plots().ProteinMCDistanceNetworkPlot)
+register_plot("proteinmc_traces", lambda: _proteinmc_plots().ProteinMCPlot)
+
+
 def resolve_distribution_options(options: dict) -> dict:
     """Resolve string accessors in distribution-plot options to callables.
 

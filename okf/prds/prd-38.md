@@ -14,7 +14,7 @@ timestamp: '2026-07-05T00:00:00Z'
 PRD-38 makes a fitting model's editor the automatic result of its computational definition instead of a hand-written per-model widget that duplicates the model's structure and welds Qt to the compute side. Each model stays in one place (parameters plus `update_model` in `chisurf/core/models`, Qt-free), its editor is described in a hand-editable `<model>.view.json` file, and the GUI renders that spec by composition via `AutoModelWidget`. A strict, AST-CI-enforced boundary keeps `core/models/**` from importing any GUI toolkit, while a string-keyed registry provides an escape hatch for bespoke custom sections. The view-spec vocabulary has grown to parameter groups, dynamic groups, curve inputs, choices, toggles, and custom sections plus plots.
 
 # Status
-In-progress (unassigned phase). Data spine, boundary test, generic renderer, live wiring, section vocabulary and every TCSPC, PDA, DEER, ICS, MFD, PCH, parse, global-fit, FCS and stopped-flow model are done. **One registered model remains** — `ProteinMCModelWidget`, tier B+C — plus the tier-D `pda2c/widgets.py` cleanup and dropping `plot_classes`. The per-model backlog is the STATUS TABLE below.
+In-progress (unassigned phase). **Every registered model is a pure compute model rendered from a `*.view.json`.** What is left is not a migration: the tier-D `pda2c/widgets.py` cleanup, dropping `plot_classes` (whose only remaining holders are those dead classes and the seam's fallback branches), and the equation validity badge + LaTeX preview that keep `parse/parseWidget.ui` alive. The per-model backlog is the STATUS TABLE below.
 
 # STATUS TABLE — per-model screening
 
@@ -61,7 +61,7 @@ needs a new AutoForm section · **D** dead code.
 | pcf | `ParsePCFModel` (`parse.view.json`) | ✅ | — | as above |
 | stopped_flow | `ParseStoppedFlowModel` (`parse.view.json`) | ✅ | — | it had **no catalogue and could not be constructed** at all; both fixed |
 | stopped_flow | `ReactionModel` (`reaction.view.json`) | ✅ | — | it was **abstract** and could not be constructed at all; now it computes |
-| structure | `ProteinMCModelWidget` (1984 LOC) | ❌ | B+C | no core `Model` subclass; also needs a per-row-settings table and a worker run/stop control |
+| structure | `ProteinMCModel` (`proteinmc.view.json`) | ✅ | — | — |
 | global | `GlobalFitModel` (`globalfit.view.json`) | ✅ | — | — |
 | global | `ParameterTransformModel` (`parameter_transform.view.json`) | ✅ | — | — |
 
@@ -73,11 +73,11 @@ reading of it. `gui/widgets/models/tcspc/lifetime_mix.py::LifetimeMixModelWidget
 is unregistered. The 5 stray `.ui` files that sat inside the Qt-free
 `core/models/**` are deleted.
 
-Counts at time of writing: 43 model classes ported across 12 families; **1 legacy
-registration remains** (ProteinMC) and **1 `.ui` file under `models/`** (see the
-table below). `gui/widgets/models/tcspc/` is down from ~5k LOC
-to an alias module plus two helper files, and `gui/widgets/models/fcs/` is now four
-deprecation shims totalling ~70 lines (from ~1,950).
+Counts at time of writing: 44 model classes ported across 12 families; **no legacy
+registration remains** and **one `.ui` file** is left under `models/` (see the
+table below). `gui/widgets/models/tcspc/` is down from ~5k LOC to an alias module
+plus two helper files, `gui/widgets/models/fcs/` is four deprecation shims
+totalling ~70 lines (from ~1,950), and `proteinmc.py` is 26 lines (from 1,984).
 
 # Goal
 Make a fitting model's **editor the automatic result of its computational definition**. Maintain each model in one place (compute + parameters in `chisurf/core/models`), describe its editor in a **user-editable JSON file that accompanies the model**, and have the GUI render that editor generically. Eliminate the hand-written, per-model widget that today duplicates the model's structure and welds Qt to the compute side.
@@ -612,50 +612,97 @@ parameters instead of calling `add_reaction`), and
 `chisurf.core.models.stopped_flow` re-exports `ReactionSystem`, which is the import
 path every doctest in the module already used and which did not exist.
 
-# Where to pick this up: the last extraction, then two cleanups
+**Increment 19 (ProteinMC — the last extraction) — DONE.** `ProteinMCModel` is in
+`core/models/structure/proteinmc_model.py` with `proteinmc.view.json`;
+`gui/widgets/models/proteinmc.py` is 26 lines of deprecation shim, from 1,984.
 
-One registered model still lives in the GUI layer, and it is genuinely tier B —
-the compute is *in* the Qt file, so there is nothing to point a `view.json` at
-until it moves.
+**What made this one tier B+C was that none of it could be reached from Python.**
+The sampling settings lived in a modal dialog, each energy term's parameters in a
+second one, and the run in a Qt worker with two throttling timers and a progress
+dialog — so ProteinMC could only be run by clicking, and nothing about it was
+assertable without a display. The model owns that state now and runs the sampler
+in a plain `threading.Thread`, which is what let the widget-driven tests become
+model tests.
 
-1. **`ProteinMCModelWidget`** (`gui/widgets/models/proteinmc.py`, 1984 LOC) —
-   the biggest, and the only one with **no core `Model` subclass at all**. It
-   additionally needs two things the vocabulary does not have: a
-   **per-row-settings table** (the energy terms, each with its own *Eval. every*
-   and *Weight* plus open/delete buttons — see the baseline image) and a
-   **worker run/stop** control, because the sampler runs in a thread and the
-   editor has to be able to stop it.
+The two "new sections" the table predicted turned out to be one new section and
+one existing one:
 
-Then two cleanups that are not migrations: relocate `FretRdaAxisSettingsWidget`
-out of `pda2c/widgets.py` and delete the ~1,590 dead lines around it (tier D), and
-task 9 — **drop `plot_classes`**, whose only remaining holders are those legacy
-files, `model_widget.py`, and the fallback branches in `model_editor.py`.
+- **the per-row settings table is an ordinary `table`.** `TableSection` already
+  has `editable` + `update_call(row, column, value)` + `selected_attr`, so the
+  energy terms are one table (Term / Eval. every / Weight, selection driving
+  which term is being configured) and the selected term's own parameters are a
+  second table below it. *Not* `state_table`, which binds plain float lists —
+  these are heterogeneous per-term dicts, and each setting keeps the type of its
+  default so a text cell cannot deliver `"True"` to the runner.
+- **`background_run` is the new one, and it is general.** A model exposes two
+  zero-arg methods (`start_action` / `stop_action`) and up to three read-only
+  attributes (`running_attr`, `progress_attr`, `status_attr`); the section owns
+  the start/stop buttons, the bar, the status line **and the timer**. Throttling
+  the repaint is the reason a timer is right rather than a signal per frame: the
+  plots redraw in O(frames) and a sampler emits far faster than a screen
+  refreshes. That is the general form of the two hand-rolled throttles the widget
+  had.
 
-**Copy the shape from `core/models/pch/pch_model.py`** for any extraction:
-parameters in lists with `label_text` on them, a `_species_parameter_rows` for a
-`row_width: 2` table, zero-arg methods for any `button_row`, and a
-`view_spec_file`. Add each model to `JSON_DESCRIBED_TCSPC_MODELS` in
-`test/gui/test_model_editor_integration.py` — that guard is what catches a
-silently dropped section.
+Also here: the three ProteinMC plots are registered plot **keys**
+(`proteinmc_structure` / `proteinmc_network` / `proteinmc_traces`) so the spec can
+name them; the distance-network plot read `model.labeling_edit.text()` — a line
+edit — and reads `model.labeling_file` now; and the distances themselves were the
+`get_fitting_client()`-in-a-bare-`except` pattern once more, so they were NaN
+headless.
 
-**The one pattern that makes a model tier B**, and the thing to look for first: a
-computed output written through `get_fitting_client()` from inside `update_model`,
-wrapped in a bare `except`. It does nothing whenever that client is absent and says
-nothing about it. FIDA's mean, PCH's component defaults and dye-shape's D / tauD /
-cpm were all this. The fix is a direct parameter write; the parameter's own
-controller binding repaints it.
+**A defect in the parity helper itself, found by using it.**
+`migration_parity.capture()` expanded folds by clicking checkable `QToolButton`s,
+but AutoForm's `CollapsibleBox` header is a `QPushButton` — so **every panel a
+spec declares `collapsed` stayed shut**, in both halves of every pair taken with
+it, and its controls were missing from the control inventory too. That is exactly
+the loss the module exists to catch. Fixed to call `CollapsibleBox.set_expanded`.
 
-**Do the edits by hand, not mechanically.** Two attempts to rewrite
-`dye_volume_widget.py`'s fitting-client blocks with a script both produced a
-broken module: the blocks are `try:` bodies that *also* contain the statements
-computing the value being published (`D_um2_s = D_m2_s * 1.0e12`), and one sits
-inside a `for` loop, so deleting the block deletes the computation and dropping
-"plumbing" lines by pattern breaks the indentation.
+*Guard note:* `_distance_parameter_rows` is legitimately empty until a labelling
+file is chosen, so the parametrized guard now has a short, documented
+`DATA_DEPENDENT_PARAMETER_SOURCES` set — a source that resolves and returns
+nothing yet is a data state, not a spec defect.
 
-**How to verify any of it:** the before/after parity rule
+# Where to pick this up: three cleanups, no migrations left
+
+Every registered model is now a pure compute model rendered from a `*.view.json`.
+What remains is cleanup, in this order because each unblocks the next:
+
+1. **Relocate `FretRdaAxisSettingsWidget`** out of
+   `gui/widgets/models/pda2c/widgets.py` (`:1047`; `gui/main.py:1514` imports it)
+   and delete the ~1,590 dead lines around it — 9 of the file's 10 classes are
+   unreferenced outside it. The file is **not** a wholesale delete.
+2. **Drop `plot_classes`** (task 9). Its only remaining holders are those dead
+   pda2c classes, `model_widget.py`, and the two fallback branches in
+   `model_editor.py`; once (1) lands, nothing reads it and plots come only from
+   `view_spec().plots`.
+3. **The equation validity badge + LaTeX preview**, which are the only reason
+   `parse/parseWidget.ui` and `parse/widget.py::ParseFormulaWidget` still exist.
+   A `value` `kind: "expression"` — a line edit that colours by whether the
+   equation parses, with the rendered form beside it — gives the four parse
+   editors back the two controls they lost, and the last `.ui` under `models/`
+   goes with it. The LaTeX conversion (`gui/widgets/models/parse/latex.py`) is
+   presentation and stays GUI-side; it is also used by `equation_editor` and
+   `expression_input`, so it stays regardless.
+
+**Copy the shape from `core/models/pch/pch_model.py`** if a new model ever needs
+writing: parameters in lists with `label_text` on them, a
+`_species_parameter_rows` for a `row_width: 2` table, zero-arg methods for any
+`button_row`, and a `view_spec_file`. Add each model to
+`JSON_DESCRIBED_TCSPC_MODELS` in `test/gui/test_model_editor_integration.py` —
+that guard is what catches a silently dropped section.
+
+**The one pattern that made a model tier B**, and the thing to look for in any
+future extraction: a computed output written through `get_fitting_client()` from
+inside `update_model`, wrapped in a bare `except`. It does nothing whenever that
+client is absent and says nothing about it. FIDA's mean, PCH's component
+defaults, dye-shape's D / tauD / cpm and ProteinMC's inter-dye distances were all
+this. The fix is a direct parameter write; the parameter's own controller binding
+repaints it.
+
+**How to verify a GUI change here:** the before/after parity rule
 ([testing workflow](/workflows/testing.md)) with `test/gui/migration_parity.py`.
 Capture the legacy baseline *before* touching the code — it is unrecoverable
-afterwards. Two traps in reading the result:
+afterwards. Three traps in reading the result:
 
 * a parity diff's "lost" list is mostly **renames** — `w0`→`w0[nm]`,
   `r[MHz]`→`rep`, `Linearize`→`DNL`, `...`→`…` — and names that moved into table
@@ -663,8 +710,10 @@ afterwards. Two traps in reading the result:
 * `capture()` renders the widget it is given at a fixed width, so put the editor
   in **no** parent layout first — a holder `QWidget` constrains it and the image
   comes back at the wrong size with its tables cropped, which looks exactly like
-  a layout defect in the port.
-
+  a layout defect in the port;
+* it expands folds through `CollapsibleBox.set_expanded`. Before increment 19 it
+  clicked checkable `QToolButton`s, which AutoForm's headers are not, so every
+  `collapsed` panel was silently missing from every pair taken with it.
 
 # The `.ui` files under `models/` — what each one is waiting on
 

@@ -1037,7 +1037,7 @@ def add_fit(
     if model_class is None and model_name != "None":
         if model_name == "ProteinMC":
             try:
-                import chisurf.gui.widgets.models.proteinmc  # noqa: F401
+                import chisurf.core.models.structure.proteinmc_model  # noqa: F401
             except Exception:
                 pass
         from chisurf.core.models.model import Model

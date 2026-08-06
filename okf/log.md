@@ -2,6 +2,22 @@
 
 ## 2026-08-06
 
+* **ProteinMC left the GUI layer — the last model that could only be clicked** ([PRD-38](prds/prd-38.md)).
+
+  `ProteinMCModel` (`chisurf/core/models/structure/proteinmc_model.py` + `proteinmc.view.json`) replaces the 1,984-line `ProteinMCModelWidget`, which is now 26 lines of deprecation shim. **Every registered fitting model is now a pure compute model rendered from a `*.view.json`**; what is left of PRD-38 is cleanup, not migration.
+
+  **What made this the hard one was that none of it could be reached from Python.** The sampling settings lived in a modal dialog, each energy term's parameters in a second one, and the run in a Qt worker with two throttling timers and a progress dialog — so ProteinMC could only be run by clicking, and nothing about it was assertable without a display. The model owns that state now and runs the sampler in a plain `threading.Thread`; the widget-driven tests became model tests.
+
+  **The per-row settings table needed no new section.** `TableSection` already has `editable` + `update_call(row, column, value)` + `selected_attr`, so the energy terms are one table whose selection drives a second table of the selected term's own parameters — each keeping the type of its default, so a text cell cannot deliver `"True"` to the runner. Not `state_table`, which binds plain float lists.
+
+  **`background_run` is the one new section, and it is general.** A model exposes two zero-arg methods and up to three read-only attributes (`running_attr` / `progress_attr` / `status_attr`); the section owns the start/stop buttons, the bar, the status line and the **timer**. Throttling the repaint is why a timer is right rather than a signal per frame: the plots redraw in O(frames) and a sampler emits far faster than a screen refreshes.
+
+  Also: the three ProteinMC plots are registered plot keys so a spec can name them; the distance-network plot read `model.labeling_edit.text()` — a line edit — and reads `model.labeling_file` now; and the inter-dye distances were the `get_fitting_client()`-inside-a-bare-`except` pattern once more, so they were NaN headless.
+
+  **A defect in the parity helper itself, found by using it.** `test/gui/migration_parity.py::capture` expanded folds by clicking checkable `QToolButton`s, but AutoForm's `CollapsibleBox` header is a `QPushButton` — so **every panel a spec declares `collapsed` stayed shut**, in both halves of every pair taken with it, and its controls were missing from the control inventory too. That is exactly the loss the module exists to catch. It calls `CollapsibleBox.set_expanded` now.
+
+  14 ProteinMC + 28 integration + 53 editor tests pass; verified by a before/after parity pair (the port shows strictly more than the widget did — the settings that were behind two modal dialogs are tables).
+
 * **Two plots for the deeper quenching page, and the dye references QuEst rests on** ([documentation browser](subsystems/documentation-browser.md)).
 
   `fig_transient_quenching` uses the constants of ChiSurf's own shipped `Transient-Quenching` parse model, so the figure and the fittable model cannot drift apart. The first render was wrong in a way only looking catches: over 0-20 ns the transient curve merely looks *steeper* than the steady-state one, and the claim being made — that the decay is **non-exponential** — was invisible. Cut to 4 ns and drawn against the curve's **own** extrapolated long-time slope, the deviation is the point of the panel.
@@ -11,6 +27,18 @@
   Four references added for the QuEst side, which had none: {cite}`doose2005` established that dye-tryptophan quenching needs van der Waals **contact**, which is what justifies QuEst's step function of distance rather than a smooth falloff; {cite}`doose2009` is the same quenching used deliberately (PET-FCS); {cite}`vandeLinde2018` separates static and dynamic contributions for **ATTO 655** and finds a ground-state complex, a sphere of action *and* a dynamic term in one system — the three mechanisms of the phenomenology page in a single measurement; {cite}`chen2012` follows **Alexa 488** quenching across folded, molten-globule and unfolded states, which is the clearest statement that Q_D belongs to the conformation and not to the dye.
 
   `docs-html` warning-free; render + crosslinks 251 passed.
+
+* **The in-viewport panel had no mouse tracking, so every hover behaviour was dead** ([PyMOL parity](plugins/pymol-parity.md)).
+
+  Reported as "submenus overlap and don't collapse when the mouse leaves", plus "rect select does not work" and "show the side menu even with nothing loaded". The first two were each several faults deep.
+
+  **Menus.** Qt delivers a mouse move to a widget without `setMouseTracking(True)` only while a button is held, and the GL widget never set it — so no row highlight, no menu-entry highlight, and no hover-open. A submenu could only be opened by *clicking* it, and nothing ever told the panel the cursor had left, so they piled up. `InternalGui.mouse_move` was covered by tests and correct; the tests call it directly, and nothing called it in the app. On top of that, placement clamped a submenu into the window instead of flipping it to the other side — with the panel docked against the right edge, that put every submenu on top of its own parent. Both halves are now PyMOL's (`layer4/PopUp.cpp`, `layer1/Pop.cpp`): `PopPlaceChild`'s try-preferred-side-then-flip with an inherited `PlacementAffinity`, the child's first entry aligned with the row it hangs off, and the child freed as soon as the cursor is on another row. One deliberate difference: PyMOL waits `cChildDelay` (0.25 s) before closing, for sloppy mousing; chimol closes immediately, which is affordable only because the child sits adjacent to the row.
+
+  **Box select.** Three independent faults. The release ended a box only for the *left* button, and `-Box` is shift-middle in every three-button mode — so that drag never completed and `_drag_selecting` stayed set, turning every later drag of the session into a box that could not be finished either. `handle_rect_selection` never redrew (`handle_mouse_click` did), so a box updated the sequence strip and left the molecule showing no selection rings; the redraw moved into `_apply_selection_indices`, the one place the selection changes. And the band was a `QRubberBand` child of the GL widget, invisible to `grab()` — it is drawn in the overlay painter now, so a screenshot of a box select contains the box.
+
+  **The empty panel.** The overlay pass was gated on the panel having rows while `scene_width` gives the column away to a merely visible panel, so an empty window had a black stripe instead of a panel; and `sync_internal_gui` ran only when an object arrived. It is called once at startup now, `all` and `sele` in it, as PyMOL's is.
+
+  Verified by driving a real window and reading the framebuffer grabs: empty window, the C menu with `reds` open to the left of it, a three-level `Action > find > polar contacts` chain, the collapse, and a box select before/after with the rings visible. Suites: 344 + 120 passed (menus, panel, selection, viewport chrome).
 
 * **`ray` took PyMOL's object panel off the screen with it** ([PyMOL parity](plugins/pymol-parity.md)).
 
@@ -54,7 +82,7 @@
 
   **The second half: `docs/` was in no distribution at all.** It sits beside the package, so no wheel or conda package contained it, and an installed ChiSurf opened Help onto an empty tree with every `?` link dead. `build_py` now copies a selection into `chisurf/docs` **in the build directory** — never into the checkout, where it would shadow the originals — and `api/toc.docs_root()` prefers that copy. The selection is `_shipped_docs.iter_shipped_docs`, shared with the guardrail test that every page the tree lists is a page the distribution carries: 599 files, 22 MB. Out: `docs/_build`, `docs/_old_manual`, `docs/_ext`, and the manual's `.emf` figures — 103 MB, four fifths of the tree, in a format neither Qt nor a browser can draw. The sdist manifest was pulling all of it in and now prunes the same set.
 
-  `xref.py` and `review.py` each had their own copy of the walk-up search and now delegate to `toc.py`; two resolvers meant cross-references could resolve into a different tree than the pages they sat on. Proven on a real wheel (`pip wheel .`, 44 MB, 599 doc entries) unzipped and put on `PYTHONPATH` with the checkout out of the way — a manual `.rst` page rendered with its screenshot, no horizontal scrollbar. 800 help tests pass.
+  `xref.py` and `review.py` each had their own copy of the walk-up search and now delegate to `toc.py`; two resolvers meant cross-references could resolve into a different tree than the pages they sat on. Proven on a real wheel (`pip wheel .`, 44 MB, 599 doc entries) unzipped and put on `PYTHONPATH` with the checkout out of the way — a manual `.rst` page rendered with its screenshot, no horizontal scrollbar. 792 help tests pass, 1 skipped.
 
 * **The reaction-scheme model — and the reaction system under it had never run** ([PRD-38](prds/prd-38.md)).
 

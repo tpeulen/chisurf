@@ -578,14 +578,12 @@ class ProteinMCDistanceNetworkPlot(Plot):
             xyz = getattr(structure, "xyz", None)
             if xyz is not None:
                 frames = [xyz]
-        labeling_file = ""
-        try:
-            labeling_file = self.model.labeling_edit.text().strip()
-        except Exception:
-            pass
+        # A model attribute, not a line edit: the ProteinMC editor is generated
+        # from a view spec now, so the widget this used to reach into is gone.
+        labeling_file = str(getattr(self.model, "labeling_file", "") or "").strip()
         if not labeling_file:
             try:
-                for pot in getattr(self.model, "_potential_settings", lambda: [])():
+                for pot in getattr(self.model, "potential_settings", lambda: [])():
                     if pot.get("name") == "dye":
                         labeling_file = pot.get("settings", {}).get("labeling_file", "")
                         if labeling_file:

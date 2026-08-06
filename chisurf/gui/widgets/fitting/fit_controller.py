@@ -25,6 +25,11 @@ from chisurf.core.math.optimization.leastsqbound import OptimizationCancelled
 from chisurf.core.actions import record_action
 from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
 
+#: ProteinMC drives the Sampling button itself and has no generic Fit, so this
+#: controller has to recognise it. Matching on ``model.name`` is the primary
+#: test; the class names are the fallback for a project pinning an older path.
+_PROTEINMC_CLASS_NAMES = ("ProteinMCModel", "ProteinMCModelWidget")
+
 
 class FittingControllerWidget(Controller):
 
@@ -713,7 +718,7 @@ class FittingControllerWidget(Controller):
         for model in self._candidate_sampling_models():
             model_name = str(getattr(model, "name", "") or getattr(model.__class__, "name", ""))
             class_name = str(getattr(model.__class__, "__name__", ""))
-            if model_name == "ProteinMC" or class_name == "ProteinMCModelWidget":
+            if model_name == "ProteinMC" or class_name in _PROTEINMC_CLASS_NAMES:
                 return True
         return False
 
@@ -723,7 +728,7 @@ class FittingControllerWidget(Controller):
         for model in self._candidate_sampling_models():
             model_name = str(getattr(model, "name", "") or getattr(model.__class__, "name", ""))
             class_name = str(getattr(model.__class__, "__name__", ""))
-            if model_name == "ProteinMC" or class_name == "ProteinMCModelWidget":
+            if model_name == "ProteinMC" or class_name in _PROTEINMC_CLASS_NAMES:
                 return model
         return None
 

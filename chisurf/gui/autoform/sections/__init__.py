@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from . import anisotropy_diagnostics_section  # noqa: F401
 from . import (
+    background_run_section,  # noqa: F401  (registers the "background_run" section)
     builtin,  # noqa: F401  (side effect: populate the registry)
     chimol_section,  # noqa: F401  (registers the "chimol" section)
     data_source_section,  # noqa: F401  (registers the "data_source" section)

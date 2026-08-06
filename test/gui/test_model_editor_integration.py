@@ -323,11 +323,23 @@ JSON_DESCRIBED_TCSPC_MODELS = [
     "chisurf.core.models.pcf.parse.ParsePCFModel",
     "chisurf.core.models.stopped_flow.parse.ParseStoppedFlowModel",
     "chisurf.core.models.stopped_flow.reaction.ReactionModel",
+    "chisurf.core.models.structure.proteinmc_model.ProteinMCModel",
     "chisurf.core.models.global_model.globalfit.GlobalFitModel",
     "chisurf.core.models.parameter_transform.model.ParameterTransformModel",
     "chisurf.core.models.pch.fida_model.FidaModel",
     "chisurf.core.models.pch.pch_model.PchMultiComponentModel",
 ]
+
+
+#: ``parameters_source`` names whose list is legitimately empty until the user
+#: supplies a file. The guard exists to catch a *mistyped* source and an unseeded
+#: component group; a source that resolves and returns nothing yet is a data
+#: state, not a spec defect. Keep this list short and say why for each entry.
+DATA_DEPENDENT_PARAMETER_SOURCES = {
+    # ProteinMC's inter-fluorophore distances come from the labelling file, and
+    # a fresh model has none.
+    "_distance_parameter_rows",
+}
 
 
 @pytest.mark.parametrize("path", JSON_DESCRIBED_TCSPC_MODELS)
@@ -388,7 +400,8 @@ def test_json_described_model_editor_builds_every_section(qapp, path, caplog):
                     f"{type(group).__name__}"
                 )
                 resolved = list(value() if callable(value) else value)
-                assert resolved, f"{path}: parameters_source {source!r} is empty"
+                if source not in DATA_DEPENDENT_PARAMETER_SOURCES:
+                    assert resolved, f"{path}: parameters_source {source!r} is empty"
                 continue
             if hasattr(group, "find_parameters") and not list(group.parameters_all):
                 group.find_parameters()
