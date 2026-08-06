@@ -305,7 +305,7 @@ class InteractionMixin:
         ]
 
     def _report_rotamers(self, result) -> None:
-        """The wizard's panel, as console lines: frequency and strain."""
+        """Print the wizard's panel as console lines: frequency and strain."""
         site = result.site
         self._emit_message(
             f"mutate: {result.residue_name}, {len(site.rotamers)} rotamers "
@@ -351,7 +351,7 @@ class InteractionMixin:
             if "res_name" in names:
                 row["res_name"] = result.residue_name
             if "radius" in names:
-                from ..analysis.clashes import VDW_RADII, DEFAULT_VDW
+                from ..analysis.clashes import DEFAULT_VDW, VDW_RADII
 
                 row["radius"] = VDW_RADII.get(str(element).upper(), DEFAULT_VDW)
             row["xyz"] = rotamer.coords[position]
@@ -396,6 +396,255 @@ class InteractionMixin:
             f"mutate: {obj_name} residue is now {result.residue_name} "
             f"(strain {rotamer.strain:.2f})"
         )
+
+    # ------------------------------------------------------------------ #
+    # The wizard, PyMOL's simplest GUI
+    # ------------------------------------------------------------------ #
+    @command("wizard")
+    def wizard(self, name: str = "", argument: str = "") -> None:
+        """Run a wizard, or drive the one that is running.
+
+        ``wizard mutagenesis`` starts it, ``wizard done`` ends it, and the
+        panel's own rows send the rest -- ``wizard target, LYS``,
+        ``wizard rotamer, next``, ``wizard apply``. PyMOL's is the same
+        command with the same first argument.
+
+        Parameters
+        ----------
+        name : str
+            The wizard to start, or an action for the running one.
+        argument : str, optional
+            What the action needs: a residue name, a rotamer number or
+            ``next``.
+        """
+        window, viewer = self._require_window_and_viewer()
+        if viewer is None:
+            return
+        action = str(name).strip().lower()
+
+        if action in ("", "mutagenesis", "mutate"):
+            self._wizard_start(viewer)
+            return
+        if action == "done":
+            self._wizard_finish(viewer, keep=False)
+            return
+
+        state = getattr(viewer, "_wizard", None)
+        if state is None:
+            self._emit_error("wizard: no wizard is running")
+            return
+        if action == "target":
+            self._wizard_set_target(viewer, state, argument)
+        elif action == "rotamer":
+            self._wizard_step(viewer, state, argument)
+        elif action == "bump":
+            state.bump_check = not state.bump_check
+            self._wizard_preview(viewer, state)
+        elif action == "apply":
+            self._wizard_finish(viewer, keep=True)
+        elif action == "clear":
+            self._wizard_restore(viewer, state)
+            state.target = ""
+            state.scores = []
+            self._wizard_refresh(viewer, state)
+        else:
+            self._emit_error(f"wizard: unknown action {action!r}")
+
+    def _wizard_gui(self, viewer):
+        """Return the in-viewport panel, or ``None`` without a renderer."""
+        renderer = getattr(viewer, "_renderer", None)
+        return getattr(renderer, "_internal_gui", None)
+
+    def _wizard_start(self, viewer) -> None:
+        """Install the mutagenesis wizard and pick up whatever is selected."""
+        from ..wizards import MutagenesisWizard
+
+        state = MutagenesisWizard()
+        viewer._wizard = state
+        # A selection already made is the residue: starting the wizard with a
+        # residue picked and then being asked to pick one is the sort of thing
+        # that makes a panel feel like it is not listening.
+        selected = list(getattr(viewer, "_selected_residues", []) or [])
+        if selected:
+            self._wizard_adopt_selection(viewer, state)
+        self._wizard_refresh(viewer, state)
+        self._emit_message("wizard: mutagenesis -- pick a residue")
+
+    def _wizard_adopt_selection(self, viewer, state) -> None:
+        """Take the current selection's residue as the wizard's subject."""
+        object_id = viewer.get_active_object_id()
+        entry = viewer._objects.get(object_id) if object_id else None
+        atoms = getattr(getattr(entry, "state", None), "atoms", None)
+        if atoms is None or not len(atoms):
+            return
+        selected = list(getattr(viewer, "_selected_residues", []) or [])
+        if not selected:
+            return
+        residue_ids = getattr(viewer, "_residue_ids", None)
+        if residue_ids is None:
+            return
+        try:
+            resi = int(np.asarray(residue_ids)[selected[0]])
+        except Exception:
+            return
+        names = atoms.dtype.names or ()
+        chains = (
+            np.array([str(c) for c in atoms["chain"]]) if "chain" in names
+            else np.array([""] * len(atoms))
+        )
+        rows = [
+            i for i in range(len(atoms))
+            if int(atoms["res_id"][i]) == resi
+        ]
+        if not rows:
+            return
+        state.object_id = object_id
+        state.object_name = getattr(entry, "name", object_id)
+        state.residue = (
+            chains[rows[0]], resi, str(atoms["res_name"][rows[0]]).strip()
+        )
+
+    def _wizard_set_target(self, viewer, state, residue_name: str) -> None:
+        """Choose what the residue becomes, and preview the best rotamer."""
+        if not state.residue:
+            self._emit_error("wizard: pick a residue first")
+            return
+        state.target = str(residue_name).strip().upper()
+        state.rotamer = 0
+        self._wizard_preview(viewer, state, choose_best=True)
+
+    def _wizard_step(self, viewer, state, argument: str) -> None:
+        """Move to another rotamer -- ``next`` or a 1-based number."""
+        if not state.scores:
+            return
+        text = str(argument).strip().lower()
+        if text in ("", "next", "+"):
+            state.rotamer = (state.rotamer + 1) % len(state.scores)
+        elif text in ("prev", "previous", "-"):
+            state.rotamer = (state.rotamer - 1) % len(state.scores)
+        else:
+            try:
+                state.rotamer = max(0, min(int(text) - 1, len(state.scores) - 1))
+            except ValueError:
+                self._emit_error("wizard: rotamer must be a number or 'next'")
+                return
+        self._wizard_preview(viewer, state)
+
+    def _wizard_preview(self, viewer, state, choose_best: bool = False) -> None:
+        """Build the chosen rotamer into the structure, keeping the original."""
+        from ..analysis.mutate import mutate_residue
+
+        if not state.residue or not state.target:
+            self._wizard_refresh(viewer, state)
+            return
+        entry = viewer._objects.get(state.object_id)
+        atoms = getattr(getattr(entry, "state", None), "atoms", None)
+        if atoms is None or not len(atoms):
+            return
+
+        chain, resi, _resn = state.residue
+        names = atoms.dtype.names or ()
+        chains = (
+            np.array([str(c) for c in atoms["chain"]]) if "chain" in names
+            else np.array([""] * len(atoms))
+        )
+        rows = [
+            i for i in range(len(atoms))
+            if int(atoms["res_id"][i]) == int(resi) and chains[i] == chain
+        ]
+        if not rows:
+            self._emit_error("wizard: the residue is no longer there")
+            return
+        if state.original is None:
+            # The preview replaces the residue in place, so the only way back
+            # is a copy of what was there. Taken once, before the first build.
+            state.original = np.array(atoms[rows], dtype=atoms.dtype).copy()
+            state.original_at = rows[0]
+
+        try:
+            result = mutate_residue(
+                atoms, rows, state.target,
+                rotamer=state.rotamer if not choose_best else None,
+            )
+        except (KeyError, ValueError) as exc:
+            self._emit_error(f"wizard: {exc}")
+            return
+        state.rotamer = result.chosen
+        state.scores = [
+            (rot.frequency, rot.strain) for rot in result.site.rotamers
+        ]
+        self._apply_mutation(viewer, state.object_id, state.object_name, atoms, result)
+        if state.bump_check:
+            self.clashes(f"resi {resi}", "", "clashes")
+        else:
+            self._clear_measurement_group(viewer, "clashes")
+            viewer._measurements = {
+                k: v for k, v in viewer._measurements.items()
+                if k not in ("clashes", "clashes_ok")
+            }
+        self._wizard_refresh(viewer, state)
+
+    def _wizard_restore(self, viewer, state) -> None:
+        """Put the original residue back -- Clear, and leaving without Apply."""
+        if state.original is None or not state.object_id:
+            return
+        entry = viewer._objects.get(state.object_id)
+        atoms = getattr(getattr(entry, "state", None), "atoms", None)
+        if atoms is None:
+            return
+        chain, resi, _resn = state.residue
+        names = atoms.dtype.names or ()
+        chains = (
+            np.array([str(c) for c in atoms["chain"]]) if "chain" in names
+            else np.array([""] * len(atoms))
+        )
+        rows = [
+            i for i in range(len(atoms))
+            if int(atoms["res_id"][i]) == int(resi) and chains[i] == chain
+        ]
+        keep = np.ones(len(atoms), dtype=bool)
+        keep[rows] = False
+        at = min(rows) if rows else state.original_at
+        entry.state.atoms = np.concatenate([
+            atoms[keep][:at], state.original, atoms[keep][at:]
+        ])
+        entry.state.all_atom_coords = None
+        entry.state.coords = None
+        self._rebuild_after_coordinate_change(viewer, state.object_id)
+        state.original = None
+
+    def _wizard_finish(self, viewer, keep: bool) -> None:
+        """End the wizard, keeping the preview or putting the residue back."""
+        state = getattr(viewer, "_wizard", None)
+        if state is None:
+            return
+        if not keep:
+            self._wizard_restore(viewer, state)
+        self._clear_measurement_group(viewer, "clashes")
+        viewer._measurements = {
+            k: v for k, v in viewer._measurements.items()
+            if k not in ("clashes", "clashes_ok")
+        }
+        viewer._wizard = None
+        gui = self._wizard_gui(viewer)
+        if gui is not None:
+            gui.wizard_rows = []
+            gui.wizard_prompt = []
+            gui.wizard_menu = None
+        viewer._update_view()
+        self._emit_message(
+            "wizard: applied" if keep else "wizard: done"
+        )
+
+    def _wizard_refresh(self, viewer, state) -> None:
+        """Push the wizard's rows and prompt into the viewport panel."""
+        gui = self._wizard_gui(viewer)
+        if gui is None:
+            return
+        gui.wizard_rows = state.panel()
+        gui.wizard_prompt = state.prompt()
+        gui.wizard_menu = state.menu
+        viewer._update_view()
 
     # ------------------------------------------------------------------ #
     # Shared helpers

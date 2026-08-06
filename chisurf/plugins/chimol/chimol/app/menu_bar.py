@@ -25,7 +25,6 @@ OMITTED_MENUS: dict[str, str] = {
     "Build": "no structure editing",
     "Movie": "no movie programming; frames are driven by the timeline panel",
     "Scene": "no stored scenes",
-    "Wizard": "no wizards",
     "Plugin": "chimol is itself a ChiSurf plugin",
 }
 
@@ -173,6 +172,19 @@ MOUSE_MENU: tuple[MenuEntry, ...] = (
 )
 
 
+#: PyMOL's Wizard menu, with the one wizard chimol has. The rest of PyMOL's
+#: -- measurement, appearance, density, sculpting -- are listed nowhere rather
+#: than listed and disabled: a wizard is a *mode*, and offering to enter one
+#: that does not exist is worse than not offering it.
+WIZARD_MENU: tuple[MenuEntry, ...] = (
+    MenuEntry("Mutagenesis", "wizard mutagenesis",
+              "Pick a residue, choose what it becomes, step the rotamers and "
+              "watch the clashes; nothing is committed until Apply."),
+    SEP,
+    MenuEntry("Done", "wizard done", "Leave the wizard, discarding a preview."),
+)
+
+
 HELP_MENU: tuple[MenuEntry, ...] = (
     MenuEntry("Commands", "help"),
     MenuEntry("Settings", "help_setting"),
@@ -186,6 +198,7 @@ MENU_BAR: tuple[tuple[str, tuple[MenuEntry, ...]], ...] = (
     ("Display", DISPLAY_MENU),
     ("Setting", SETTING_MENU),
     ("Mouse", MOUSE_MENU),
+    ("Wizard", WIZARD_MENU),
     ("Help", HELP_MENU),
 )
 

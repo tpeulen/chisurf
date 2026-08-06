@@ -466,3 +466,179 @@ def test_rebuilding_a_residue_as_itself_reproduces_it(tmp_path):
         "deposited ones -- the fragment fit or the chi rotation is wrong"
     )
     assert sum(1 for d in deviations if d < 1.0) >= 0.85 * len(deviations)
+
+
+# --------------------------------------------------------------------------- #
+# The wizard panel
+# --------------------------------------------------------------------------- #
+@pytest.fixture
+def qapp():
+    from qtpy import QtWidgets
+
+    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+
+
+@pytest.fixture
+def wizard_cmd(qapp, tmp_path):
+    """A loaded window with the command layer wired to it."""
+    import shutil
+
+    from chisurf.plugins.chimol.chimol.app.molview_main_window import (
+        MolViewPluginWindow,
+    )
+    from chisurf.plugins.chimol.chimol.cmd.command import Cmd
+
+    src = _PDB / "148l.pdb"
+    if not src.is_file():
+        pytest.skip("no 148l fixture")
+    pdb = tmp_path / "148l.pdb"
+    shutil.copyfile(src, pdb)
+
+    window = MolViewPluginWindow()
+    window._load_structure_from_path(pdb, name="148l")
+    cmd = Cmd(window)
+    errors: list[str] = []
+    cmd.set_error_callback(errors.append)
+    cmd.set_message_callback(lambda _m: None)
+    cmd._errors = errors
+    # Not closed: tearing down a QOpenGLWidget inside pytest aborts the
+    # interpreter in this environment, which takes the whole run with it. The
+    # window is left to the process, as the other window fixtures here do.
+    return cmd, window
+
+
+def _panel(window):
+    gui = window.viewer.view._internal_gui
+    return [(row.kind, row.label) for row in gui.wizard_rows]
+
+
+def _residue_name(window, resi: int) -> str:
+    state = list(window.viewer._objects.values())[0].state
+    rows = np.nonzero(np.asarray(state.atoms["res_id"], dtype=int) == resi)[0]
+    return str(state.atoms["res_name"][rows[0]]).strip()
+
+
+def test_the_wizard_panel_is_pymols_shape(wizard_cmd):
+    """A banner, pop-ups carrying their value, and buttons. Nothing else.
+
+    PyMOL's `get_panel` has exactly three row codes and every wizard it ships
+    is built from them; a panel that grows a fourth kind is a panel that has
+    stopped being the simplest thing that works.
+    """
+    cmd, window = wizard_cmd
+    cmd.do("select resi 54")
+    cmd.do("wizard mutagenesis")
+
+    rows = _panel(window)
+    assert rows[0] == ("title", "Mutagenesis")
+    assert {kind for kind, _label in rows} <= {"title", "menu", "button"}
+    assert ("button", "Apply") in rows and ("button", "Done") in rows
+    assert any("THR`54" in label for _k, label in rows), "the residue is not named"
+
+
+def test_choosing_a_target_previews_it_and_lists_the_rotamers(wizard_cmd):
+    cmd, window = wizard_cmd
+    cmd.do("select resi 54")
+    cmd.do("wizard mutagenesis")
+    cmd.do("wizard target, TRP")
+
+    assert _residue_name(window, 54) == "TRP", "the preview was not built"
+    labels = [label for _kind, label in _panel(window)]
+    assert any(label.startswith("< rotamer 1") or "rotamer" in label for label in labels)
+    assert any("strain" in label for label in labels)
+    assert cmd._errors == []
+
+
+def test_stepping_changes_the_conformation_and_the_strain(wizard_cmd):
+    cmd, window = wizard_cmd
+    cmd.do("select resi 54")
+    cmd.do("wizard mutagenesis")
+    cmd.do("wizard target, TRP")
+    state = window.viewer._wizard
+    first = (state.rotamer, state.scores[state.rotamer])
+    xyz_first = np.asarray(
+        list(window.viewer._objects.values())[0].state.atoms["xyz"], dtype=float
+    ).copy()
+
+    cmd.do("wizard rotamer, next")
+
+    state = window.viewer._wizard
+    assert state.rotamer != first[0]
+    xyz_next = np.asarray(
+        list(window.viewer._objects.values())[0].state.atoms["xyz"], dtype=float
+    )
+    assert xyz_first.shape == xyz_next.shape
+    assert not np.allclose(xyz_first, xyz_next), "the side chain did not move"
+
+
+def test_clear_puts_the_original_residue_back(wizard_cmd):
+    """A preview that cannot be undone is not a preview."""
+    cmd, window = wizard_cmd
+    before = _residue_name(window, 54)
+    atoms_before = len(list(window.viewer._objects.values())[0].state.atoms)
+
+    cmd.do("select resi 54")
+    cmd.do("wizard mutagenesis")
+    cmd.do("wizard target, TRP")
+    assert _residue_name(window, 54) == "TRP"
+
+    cmd.do("wizard clear")
+
+    assert _residue_name(window, 54) == before
+    assert len(list(window.viewer._objects.values())[0].state.atoms) == atoms_before
+
+
+def test_done_without_apply_leaves_the_structure_alone(wizard_cmd):
+    cmd, window = wizard_cmd
+    before = _residue_name(window, 54)
+
+    cmd.do("select resi 54")
+    cmd.do("wizard mutagenesis")
+    cmd.do("wizard target, ALA")
+    cmd.do("wizard done")
+
+    assert _residue_name(window, 54) == before
+    assert _panel(window) == [], "the panel outlived the wizard"
+    assert window.viewer._wizard is None
+
+
+def test_apply_keeps_it(wizard_cmd):
+    cmd, window = wizard_cmd
+    cmd.do("select resi 54")
+    cmd.do("wizard mutagenesis")
+    cmd.do("wizard target, ALA")
+    cmd.do("wizard apply")
+
+    assert _residue_name(window, 54) == "ALA"
+    assert window.viewer._wizard is None
+
+
+def test_the_residue_menu_offers_the_twenty_by_class(wizard_cmd):
+    """Grouped as PyMOL's own menu groups them, not alphabetically."""
+    cmd, window = wizard_cmd
+    cmd.do("select resi 54")
+    cmd.do("wizard mutagenesis")
+
+    entries = window.viewer._wizard.menu("residue")
+    names = [e.label for e in entries if not e.is_separator]
+    assert len(names) == 20
+    assert names[:3] == ["ALA", "GLY", "PRO"]
+    assert any(e.is_separator for e in entries), "the classes are not separated"
+    assert all(e.command.startswith("wizard target,") for e in entries if e.command)
+
+
+def test_the_bump_check_can_be_turned_off(wizard_cmd):
+    cmd, window = wizard_cmd
+    cmd.do("select resi 54")
+    cmd.do("wizard mutagenesis")
+    cmd.do("wizard target, TRP")
+    assert any(
+        key in window.viewer._measurements for key in ("clashes", "clashes_ok")
+    ), "the bump check drew nothing"
+
+    cmd.do("wizard bump, toggle")
+
+    assert not any(
+        key in window.viewer._measurements for key in ("clashes", "clashes_ok")
+    )
+    assert any("off" in label for _k, label in _panel(window))

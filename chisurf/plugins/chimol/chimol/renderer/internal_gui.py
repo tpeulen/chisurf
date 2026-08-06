@@ -115,6 +115,34 @@ class SequenceRow:
 
 
 @dataclass
+class WizardRow:
+    """One line of the wizard panel, in PyMOL's own shape.
+
+    PyMOL's `Wizard.get_panel` returns `[code, label, action]` per row, where
+    the code is 1 for the banner, 2 for a button whose action is a command, and
+    3 for a pop-up whose action names a menu the wizard supplies. That is the
+    whole vocabulary, and it is enough for every wizard it ships -- so it is
+    the vocabulary here, with the codes spelled out.
+
+    Attributes
+    ----------
+    kind : {"title", "button", "menu"}
+        What the row is.
+    label : str
+        What it says. A pop-up row carries its current value in the label, as
+        PyMOL's do (`Mutate to LYS`, `Hydrogens: auto`), because there is
+        nowhere else to show it.
+    action : str
+        A command for a button; a menu **tag** for a pop-up, resolved by
+        whoever supplied the panel.
+    """
+
+    kind: str
+    label: str
+    action: str = ""
+
+
+@dataclass
 class GuiRow:
     """One line of the panel: a molecule, a group, or the ``all`` header."""
 
@@ -246,6 +274,19 @@ class InternalGui:
         #: over the scene.
         self.docked = True
         self.rows: list[GuiRow] = []
+        #: The wizard panel, PyMOL's `get_panel()`: rows drawn under the object
+        #: list while a wizard is running, and nothing at all when none is.
+        self.wizard_rows: list[WizardRow] = []
+        #: PyMOL's `get_prompt()`: the line in the top-left of the viewport
+        #: telling you what the wizard is waiting for. It is the whole of the
+        #: instruction, and a wizard without one is a panel of buttons whose
+        #: order nobody can guess.
+        self.wizard_prompt: list[str] = []
+        #: Resolves a pop-up row's tag into menu entries, supplied with the
+        #: panel by whoever is running the wizard.
+        self.wizard_menu: Callable[[str], Sequence[MenuEntry]] | None = None
+        self._wizard_rect = Rect(0, 0, 0, 0)
+        self._wizard_row_rects: list[tuple[Rect, WizardRow]] = []
         self._run_command = run_command
         self._row_rects: list[Rect] = []
         self._button_rects: list[dict[str, Rect]] = []
@@ -377,8 +418,34 @@ class InternalGui:
             self._button_rects.append(keys)
             y += self.ROW_H
 
+        self.layout_wizard(width, height)
         self.layout_block(width, height)
         self.layout_sequence(width, height)
+
+    def layout_wizard(self, width: int, height: int) -> None:
+        """Place the wizard panel directly under the object list.
+
+        Where PyMOL puts it: the wizard is a *block* in the internal GUI
+        column, below the object list and above the mouse-mode block, so the
+        thing you are being asked to do sits next to the objects you would do
+        it to.
+        """
+        self._wizard_row_rects = []
+        if not self.wizard_rows:
+            self._wizard_rect = Rect(0, 0, 0, 0)
+            return
+        column = self.column_width if self.docked else max(
+            self._panel.w, 160.0
+        )
+        top = self._panel.y + self._panel.h + self.PAD
+        panel_h = self.PAD + self.ROW_H * len(self.wizard_rows) + self.PAD
+        x = width - column if self.docked else self._panel.x
+        self._wizard_rect = Rect(x, top, column, panel_h)
+
+        y = top + self.PAD
+        for row in self.wizard_rows:
+            self._wizard_row_rects.append((Rect(x, y, column, self.ROW_H), row))
+            y += self.ROW_H
 
     def set_sequences(self, rows: Sequence[SequenceRow]) -> None:
         """Replace the sequences the strip shows."""
@@ -703,6 +770,15 @@ class InternalGui:
                 return Hit("residue", row=found[0], key=str(found[1]))
             return Hit("sequence")
 
+        for index, (rect, row) in enumerate(self._wizard_row_rects):
+            if rect.contains(x, y):
+                # A title row takes the click and does nothing, so a stray
+                # press on the wizard's banner does not fall through to the
+                # scene and start rotating the molecule behind it.
+                return Hit("wizard", row=index, key=row.kind)
+        if self._wizard_rect.contains(x, y):
+            return Hit("wizard")
+
         if self.docked and self._splitter.contains(x, y):
             return Hit("splitter")
 
@@ -889,6 +965,26 @@ class InternalGui:
                     rect = self._button_rects[hit.row][key]
                     self._open_menu(f"{title}:", row.name, entries, rect.x, rect.y + rect.h)
                     break
+            return True
+
+        if hit.kind == "wizard":
+            self.close_menus()
+            if hit.row < 0 or hit.row >= len(self._wizard_row_rects):
+                return True                        # the panel's own background
+            rect, row = self._wizard_row_rects[hit.row]
+            if row.kind == "button":
+                self._emit(row.action, "")
+            elif row.kind == "menu":
+                entries = ()
+                if self.wizard_menu is not None:
+                    try:
+                        entries = self.wizard_menu(row.action) or ()
+                    except Exception:
+                        entries = ()
+                if entries:
+                    self._open_menu(
+                        row.label, "", entries, rect.x, rect.y + rect.h
+                    )
             return True
 
         if hit.kind == "scrollbar":
@@ -1211,8 +1307,12 @@ class InternalGui:
             ))
         if self.visible and self.rows:
             self._paint_panel(painter, QtGui, QtCore, metrics)
+        if self.visible and self.wizard_rows:
+            self._paint_wizard(painter, QtGui, QtCore)
         if self.visible:
             self._paint_block(painter, QtGui, QtCore)
+        if self.wizard_prompt:
+            self._paint_prompt(painter, QtGui, QtCore)
         if self.visible and self.docked:
             painter.setPen(QtCore.Qt.NoPen)
             painter.setBrush(QtGui.QColor(*SPLITTER_FG))
@@ -1263,6 +1363,75 @@ class InternalGui:
                              and self._hover.key == key),
                     enabled=row.enabled or row.is_header,
                 )
+
+    def _paint_wizard(self, painter, QtGui, QtCore) -> None:
+        """Draw the wizard panel, PyMOL's three row kinds and nothing else.
+
+        A banner, pop-ups that carry their current value in the label, and
+        buttons. PyMOL draws a pop-up and a button the same way and tells them
+        apart by what happens on the click; here a pop-up keeps the menu
+        marker, because a row that opens a menu and a row that acts are worth
+        distinguishing before the click rather than after it.
+        """
+        rect = self._wizard_rect
+        painter.setPen(QtCore.Qt.NoPen)
+        painter.setBrush(QtGui.QColor(*PANEL_BG))
+        painter.drawRect(QtCore.QRectF(rect.x, rect.y, rect.w, rect.h))
+
+        for row_rect, row in self._wizard_row_rects:
+            hovered = (
+                self._hover.kind == "wizard"
+                and 0 <= self._hover.row < len(self._wizard_row_rects)
+                and self._wizard_row_rects[self._hover.row][1] is row
+            )
+            if row.kind == "title":
+                painter.setPen(QtCore.Qt.NoPen)
+                painter.setBrush(QtGui.QColor(*HEADER_BG))
+                painter.drawRect(
+                    QtCore.QRectF(row_rect.x, row_rect.y, row_rect.w, row_rect.h)
+                )
+                painter.setPen(QtGui.QColor(*HEADER_FG))
+            else:
+                if hovered:
+                    painter.setPen(QtCore.Qt.NoPen)
+                    painter.setBrush(QtGui.QColor(*MENU_SEL_BG))
+                    painter.drawRect(
+                        QtCore.QRectF(row_rect.x + 1, row_rect.y,
+                                      row_rect.w - 2, row_rect.h)
+                    )
+                painter.setPen(QtGui.QColor(*MENU_FG))
+            painter.drawText(
+                QtCore.QRectF(row_rect.x + self.PAD, row_rect.y,
+                              row_rect.w - 2 * self.PAD, row_rect.h),
+                int(QtCore.Qt.AlignVCenter | QtCore.Qt.AlignLeft), row.label,
+            )
+            if row.kind == "menu":
+                painter.drawText(
+                    QtCore.QRectF(row_rect.x, row_rect.y,
+                                  row_rect.w - self.PAD, row_rect.h),
+                    int(QtCore.Qt.AlignVCenter | QtCore.Qt.AlignRight), "▾",
+                )
+
+    def _paint_prompt(self, painter, QtGui, QtCore) -> None:
+        """Draw the wizard's instruction, top-left of the scene, as PyMOL does.
+
+        Not in the panel: the prompt says what to do *in the view* -- "pick a
+        residue" -- and putting it in the corner where the panel is means
+        looking away from the molecule to read it.
+        """
+        if not self.wizard_prompt:
+            return
+        painter.setPen(QtGui.QColor(*MODE_TITLE_FG))
+        # Below the sequence strip, not over it. The strip owns a band at the
+        # top of the window and the scene starts under it; a prompt at the
+        # window's own top edge lands on the residue numbers.
+        y = self.sequence_height() + self.MARGIN
+        for line in self.wizard_prompt:
+            painter.drawText(
+                QtCore.QRectF(self.MARGIN, y, self._width * 0.6, self.ROW_H),
+                int(QtCore.Qt.AlignVCenter | QtCore.Qt.AlignLeft), str(line),
+            )
+            y += self.ROW_H
 
     def _paint_sequence(self, painter, QtGui, QtCore) -> None:
         """Draw the sequence strip: numbers, names, residues, selection.

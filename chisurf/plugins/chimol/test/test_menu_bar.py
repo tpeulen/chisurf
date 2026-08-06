@@ -28,7 +28,7 @@ def test_the_bar_keeps_pymols_names_and_order():
 
 def test_omitted_menus_are_the_ones_chimol_cannot_fill():
     """A menu is dropped only when chimol has nothing at all to put in it."""
-    assert set(OMITTED_MENUS) == {"Build", "Movie", "Scene", "Wizard", "Plugin"}
+    assert set(OMITTED_MENUS) == {"Build", "Movie", "Scene", "Plugin"}
     for title, reason in OMITTED_MENUS.items():
         assert reason, f"{title} is omitted without a reason"
 

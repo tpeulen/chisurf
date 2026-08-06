@@ -1201,6 +1201,53 @@ better science; the reader for it is in
 because nothing yet asks to be phi/psi-aware.
 :::
 
+### The mutagenesis wizard
+
+Choosing a rotamer means *looking* at each one, so mutation is the one place a
+command is the wrong surface. **Wizard ▸ Mutagenesis** opens PyMOL's simplest
+GUI: a small panel under the object list, and a line in the top-left of the
+view saying what it is waiting for.
+
+```{list-table}
+:header-rows: 1
+:widths: 30 70
+
+* - Row
+  - What it does
+* - `Mutate THR`54/E to …`
+  - the residue chooser — the twenty, grouped by class as PyMOL groups them
+* - `< rotamer 5/9 >`
+  - step to the next conformation; the structure updates as you go
+* - `10%  strain 29.4`
+  - frequency and strain of the one on screen; opens the full list to jump
+* - `Bump check: on`
+  - draw the clash lines for the previewed conformation
+* - `Apply` / `Clear` / `Done`
+  - keep it, put the original residue back, or leave (leaving discards)
+```
+
+Pick a residue first — a click in the view or the sequence, or `select resi 54`
+— then start the wizard; it takes whatever is selected. **Nothing is committed
+until Apply**: `Clear` and `Done` both put the original residue back, atom for
+atom.
+
+The same thing from the console, which is what the panel's rows send:
+
+```text
+wizard mutagenesis
+wizard target, TRP
+wizard rotamer, next      # or: wizard rotamer, 3
+wizard bump, toggle
+wizard apply              # or: wizard clear / wizard done
+```
+
+:::{note}
+PyMOL previews rotamers as *states* of a separate `mutation` object and you
+scrub the states; chimol applies them in place and gives you `<` and `>`. Same
+loop, one fewer object to explain — and the reason it is affordable is that
+building a rotamer and scoring it takes milliseconds.
+:::
+
 ## Bonds
 
 Bonds are inferred from the coordinates, using PyMOL's rule: two atoms are bonded

@@ -618,12 +618,48 @@ library (a set of cluster means), not an error in the build. The *choice* is a
 separate matter: the least-strained rotamer is often not the crystallographic
 one, which is precisely why PyMOL's wizard shows the list and so does `mutate`.
 
+**The wizard panel is PyMOL's simplest GUI, and it is now chimol's.**
+`Wizard.get_panel()` returns rows of `[code, label, action]` — 1 a banner, 2 a
+button whose action is a command, 3 a pop-up whose action names a menu the
+wizard supplies — and the viewport draws them under the object list, with
+`get_prompt()` in the top-left of the scene. Three codes, and every wizard
+PyMOL ships is built from them; that vocabulary is transcribed as
+`WizardRow(kind, label, action)`, and the mutagenesis wizard is its first user,
+because choosing a rotamer means *looking* at each one and a command cannot
+offer that.
+
+Two deliberate differences from PyMOL's wizard, both simplifications:
+
+* it previews **in place** rather than as states of a separate `mutation`
+  object. PyMOL builds one state per rotamer and you scrub them; chimol
+  rebuilds the residue on each step, which is milliseconds and one fewer object
+  to explain. What that costs is a copy of the original rows, kept so `Clear`
+  and `Done` can put the residue back atom for atom — a preview that cannot be
+  undone is not a preview;
+* the caps (`N-Cap`, `C-Cap`) and `dep`/`rep` rows are absent: chimol mutates
+  inside a chain and has no terminus chemistry, one rotamer library, and its
+  representations are the object menu's business.
+
+The prompt goes **below the sequence strip**, not at the window's top edge —
+the strip owns a band up there and a prompt drawn at `y = margin` lands on the
+residue numbers. Found by looking at the screenshot, which is the only way that
+class of fault is ever found.
+
 Open here: the **backbone-dependent** library (`sc_bb_dep.pkl`, 3569 phi/psi
 bins) is PyMOL's own default and is not shipped — the reader is written
 (`--dependent`) and 1.4 MB of generated module was not worth it before anyone
-asked to be phi/psi-aware. No GUI panel yet either: the wizard's list-with-
-strain is a console table, and the natural home for it is an AutoForm panel
-beside the object list.
+asked to be phi/psi-aware. And the wizard is the *only* one: PyMOL's
+measurement, appearance, density and sculpting wizards have no chimol
+equivalent, which is why the Wizard menu lists one entry rather than listing
+five and disabling four — a wizard is a **mode**, and offering to enter one
+that does not exist is worse than not offering it.
+
+**A test trap worth knowing.** A `MolViewPluginWindow` built inside a pytest
+fixture aborts the interpreter — SIGABRT, taking the whole run with it —
+*unless the `QApplication` is created by a fixture of its own that the window
+fixture depends on*. Creating it inline at the top of the same fixture is not
+enough. `test_interactions.py`'s `qapp` fixture is the pattern; the abort is
+silent about its cause and costs an hour to find twice.
 
 ## The element field was one character wide
 
