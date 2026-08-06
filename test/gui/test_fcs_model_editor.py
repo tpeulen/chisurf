@@ -444,8 +444,13 @@ def test_clicking_add_bunching_button_refreshes_the_equation_panel(qapp):
     bunching_box = next(
         b for b in editor.findChildren(CollapsibleBox) if b.title() == "Bunching terms"
     )
+    # A ``QToolButton``, not a ``QPushButton`` — the component add/remove pair
+    # was restyled and the two classes are siblings, so looking for the wrong
+    # one finds nothing and this test raised ``StopIteration`` rather than
+    # failing on what it is about.
     add_btn = next(
-        btn for btn in bunching_box.findChildren(QtWidgets.QPushButton) if btn.text() == "add"
+        btn for btn in bunching_box.findChildren(QtWidgets.QToolButton)
+        if btn.text() == "add"
     )
     add_btn.click()
 
@@ -453,3 +458,134 @@ def test_clicking_add_bunching_button_refreshes_the_equation_panel(qapp):
     after_text = info.toPlainText()
     assert after_text != before_text
     assert "b1" in after_text   # the new term's a_b1/tau_b1 subscript
+
+
+# ---------------------------------------------------------------------------
+# Models extracted out of the GUI layer (PRD-38): the bugs the extraction fixed
+# ---------------------------------------------------------------------------
+def _make_correlation_data(mean_count_rate: float | None = None):
+    """A synthetic single-component correlation curve on a log lag grid (ms).
+
+    The module's other fixture is an all-zero curve, which is fine for models
+    that only need an x-axis; an inversion needs something to invert.
+    """
+    from chisurf.core.data import DataCurve
+
+    x = np.logspace(-3, 3, 60)
+    y = 1.0 + 1.0 / (1.0 + x / 0.5)
+    data = DataCurve(name="synthetic-fcs", load_filename_on_init=False, y=y, x=x)
+    if mean_count_rate is not None:
+        data.meta_data["mean_count_rate"] = mean_count_rate
+    return data
+
+
+def test_dye_shape_outputs_are_written_by_update(qapp):
+    """``D``/``tauD``/``cpm`` are written by ``update_model``, not by a GUI client.
+
+    The hand-written version published these four derived values through
+    ``get_fitting_client()`` inside a bare ``except``, so they stayed NaN
+    whenever that client was absent -- headless, and in the running app until the
+    editor had registered the fit. They are plain parameter writes now, which is
+    also what makes them assertable without a display.
+    """
+    import chisurf.core.fitting.fit as fit_mod
+
+    from chisurf.core.models.fcs.dye_shape import DyeShapeFCSModel
+
+    data = _make_correlation_data(mean_count_rate=25.0)
+    model = fit_mod.Fit(model_class=DyeShapeFCSModel, data=data).model
+    assert model.dye_name, "no reference dye resolved from MMFDB"
+    model.update()
+
+    for p in (model._D, model._tauD, model._cpm, model._cpm_all):
+        assert np.isfinite(p.value), f"{p.name} was not written by update_model"
+    # cpm counts the bright molecules only, cpm_all also the dark ones, so with a
+    # non-zero bunching amplitude the second is the smaller number.
+    assert model._cpm_all.value < model._cpm.value
+
+
+def test_dye_shape_dye_choice_changes_the_curve(qapp):
+    """Picking a different reference dye changes D and therefore the curve."""
+    import chisurf.core.fitting.fit as fit_mod
+
+    from chisurf.core.fluorescence.dyes import diffusion_coefficient_25C
+    from chisurf.core.models.fcs.dye_shape import DyeShapeFCSModel
+
+    model = fit_mod.Fit(
+        model_class=DyeShapeFCSModel, data=_make_correlation_data()
+    ).model
+    names = model.dye_names()
+    d_current = diffusion_coefficient_25C(model.dye_name)
+    other = next(
+        (n for n in names if abs(diffusion_coefficient_25C(n) - d_current) > 1e-9), None
+    )
+    if other is None:
+        pytest.skip("MMFDB supplies no second reference dye with a different D")
+
+    model.update()
+    first = np.asarray(model.y).copy()
+    d_first = float(model._D.value)
+
+    model.dye_name = other
+    model.update()
+    assert float(model._D.value) != d_first
+    assert not np.allclose(first, np.asarray(model.y))
+
+
+@pytest.mark.parametrize(
+    "class_name", ["MaxEntFCSModel", "MaxEntRHModel"]
+)
+def test_maxent_l_curve_is_finite_with_an_unset_fit_range(qapp, class_name):
+    """The L-curve is usable on a fit whose range has not been set.
+
+    ``Fit`` starts with ``xmax == 0``, which is an *empty* window, not a full
+    one; the misfit norm of an empty window is NaN, so every point of the sweep
+    came back NaN and no corner could ever be detected -- for exactly the state a
+    model is in the moment it is opened. The model now reads a degenerate window
+    as the whole curve.
+    """
+    import chisurf.core.fitting.fit as fit_mod
+
+    from chisurf.core.models.fcs import maxent_models
+
+    model_class = getattr(maxent_models, class_name)
+    fit = fit_mod.Fit(model_class=model_class, data=_make_correlation_data())
+    model = fit.model
+    assert fit.xmax <= fit.xmin, "fixture no longer reproduces the unset window"
+
+    model.compute_l_curve(n_points=8, log10_min=-5.0, log10_max=1.0)
+    l_curve = model.l_curve
+    assert l_curve is not None
+    assert np.all(np.isfinite(l_curve.residual_norm)), "misfit norm is NaN across the sweep"
+    assert np.all(np.isfinite(l_curve.solution_norm))
+    assert l_curve.corner_index is not None, "no corner detected"
+
+    # Adopting the corner writes the weight directly; the legacy path routed this
+    # through the GUI fitting client, so clicking the L-curve did nothing headless.
+    model.use_l_curve_corner()
+    expected = np.log10(float(l_curve.reg[l_curve.corner_index]))
+    assert float(model._reg.value) == pytest.approx(expected)
+
+
+def test_maxent_lcurve_section_renders_with_its_sweep_controls(qapp):
+    """The MaxEnt editor carries the L-curve *and* the controls that drive it.
+
+    The sweep window, the compute button and click-to-adopt used to live in a
+    bespoke plot class and its controller; they are options of the shared
+    ``lcurve`` section now, so this asserts the declaration reaches the widget.
+    """
+    from qtpy import QtWidgets
+
+    import chisurf.core.fitting.fit as fit_mod
+
+    from chisurf.core.models.fcs.maxent_models import MaxEntFCSModel
+    from chisurf.gui.autoform.sections.builtin import LCurveWidget
+    from chisurf.gui.widgets.models.model_editor import build_model_editor
+
+    fit = fit_mod.Fit(model_class=MaxEntFCSModel, data=_make_correlation_data())
+    editor = build_model_editor(fit.model)
+    widgets = editor.findChildren(LCurveWidget)
+    assert widgets, "no lcurve section in the MaxEnt editor"
+    buttons = [b.text() for b in widgets[0].findChildren(QtWidgets.QToolButton)]
+    assert any("sweep" in b for b in buttons), buttons
+    assert any("corner" in b for b in buttons), buttons

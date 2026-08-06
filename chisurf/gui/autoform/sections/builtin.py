@@ -1667,12 +1667,28 @@ class LCurveWidget(QtWidgets.QWidget):
         {"type": "custom", "key": "lcurve", "target": "lcurve_data", "title": "L-curve"}
 
     The corner (auto-selected regularization weight) is highlighted.
+
+    A model that can *sample* its own L-curve adds the sweep controls
+    declaratively, so picking the weight happens where the curve is drawn rather
+    than in a bespoke plot class::
+
+        {"type": "custom", "key": "lcurve", "target": "l_curve", "options": {
+            "compute_action": "compute_l_curve",
+            "select_action": "set_reg_from_lcurve_index",
+            "log10_min": -6.0, "log10_max": 3.0, "n_points": 32}}
+
+    ``compute_action`` names a model method taking ``n_points``/``log10_min``/
+    ``log10_max``; ``select_action`` names one taking the index of a swept point,
+    which is what a click on the curve commits. Without either option the widget
+    is the read-only view it has always been.
     """
 
     #: marker so :meth:`AutoForm.refresh_plots` re-reads this widget.
     AUTOFORM_REFRESH = True
 
     def __init__(self, model, target: str, **options):
+        from chisurf.gui import chiplot as cp
+
         super().__init__()
         self._model = model
         self._target = target
@@ -1680,51 +1696,153 @@ class LCurveWidget(QtWidgets.QWidget):
         self._plot = None
         lay = QtWidgets.QVBoxLayout(self)
         lay.setContentsMargins(0, 0, 0, 0)
-        try:
-            import pyqtgraph as pg
+        lay.setSpacing(2)
 
-            self._pg = pg
-            self._plot = pg.PlotWidget()
-            self._plot.setLogMode(x=True, y=True)
-            self._plot.setLabel("bottom", options.get("x_label", "residual norm"))
-            self._plot.setLabel("left", options.get("y_label", "solution norm"))
-            self._plot.addLegend()
-            lay.addWidget(self._plot)
-        except Exception:  # pragma: no cover - pyqtgraph optional
-            lay.addWidget(QtWidgets.QLabel("pyqtgraph not available"))
+        self._plot = cp.Plot()
+        self._plot.set_log(x=True, y=True)
+        self._plot.set_labels(
+            bottom=options.get("x_label", "residual norm"),
+            left=options.get("y_label", "solution norm"),
+        )
+        # An L-curve descends left to right, so a top-left legend lands on it.
+        self._plot.legend(offset=(-30, 30))
+        # Both axes are decades already; an SI multiplier on top of that prints
+        # "chi2r (x0.001)" over ticks that read 0.001 … 10 and contradicts them.
+        self._plot.set_si_prefix(x=False, y=False)
+        # An empty L-curve is a large black rectangle; capped, it stays a panel
+        # in a stack of parameter tables rather than pushing them off screen.
+        self._plot.setMinimumHeight(int(options.get("min_height", 160)))
+        self._plot.setMaximumHeight(int(options.get("max_height", 260)))
+        lay.addWidget(self._plot)
+
+        if options.get("compute_action") or options.get("select_action"):
+            lay.addWidget(self._build_controls())
+        if options.get("select_action"):
+            self._plot.clicked.connect(self._on_plot_clicked)
+
         self.refresh()
+
+    def _build_controls(self) -> QtWidgets.QWidget:
+        """Build the sweep window + compute row shown when the model can sample."""
+        row = QtWidgets.QWidget()
+        lay = QtWidgets.QHBoxLayout(row)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.setSpacing(4)
+
+        def _spin(value, lo, hi, step, decimals=None):
+            box = (
+                QtWidgets.QSpinBox() if decimals is None else QtWidgets.QDoubleSpinBox()
+            )
+            if decimals is not None:
+                box.setDecimals(decimals)
+            box.setRange(lo, hi)
+            box.setSingleStep(step)
+            box.setValue(value)
+            return box
+
+        self._sb_min = _spin(float(self._opts.get("log10_min", -3.0)), -12.0, 12.0, 0.5, 2)
+        self._sb_max = _spin(float(self._opts.get("log10_max", 0.0)), -12.0, 12.0, 0.5, 2)
+        self._sb_n = _spin(int(self._opts.get("n_points", 32)), 2, 256, 2)
+        for label, box in (("min", self._sb_min), ("max", self._sb_max), ("N", self._sb_n)):
+            lay.addWidget(QtWidgets.QLabel(label))
+            lay.addWidget(box)
+
+        if self._opts.get("compute_action"):
+            btn = QtWidgets.QToolButton()
+            btn.setText("⟳ sweep")
+            btn.setToolTip(
+                "Sample the regularization weight over the range above and redraw the "
+                "L-curve. The corner is the weight balancing misfit against smoothness."
+            )
+            btn.clicked.connect(self._on_compute)
+            lay.addWidget(btn)
+
+            corner_btn = QtWidgets.QToolButton()
+            corner_btn.setText("⌾ corner")
+            corner_btn.setToolTip("Adopt the weight at the detected corner.")
+            corner_btn.clicked.connect(self._on_use_corner)
+            lay.addWidget(corner_btn)
+        lay.addStretch(1)
+        return row
 
     def _data(self):
         obj = getattr(self._model, self._target, None)
         return obj() if callable(obj) else obj
 
+    def _on_compute(self) -> None:
+        """Run the model's sweep over the window in the controls, then redraw."""
+        fn = getattr(self._model, str(self._opts.get("compute_action")), None)
+        if not callable(fn):
+            logging.warning(
+                f"LCurveWidget: compute_action {self._opts.get('compute_action')!r} "
+                f"is not a method of {type(self._model).__name__}"
+            )
+            return
+        lo, hi = float(self._sb_min.value()), float(self._sb_max.value())
+        fn(n_points=int(self._sb_n.value()), log10_min=min(lo, hi), log10_max=max(lo, hi))
+        self.refresh()
+
+    def _on_use_corner(self) -> None:
+        """Commit the detected corner through ``select_action``."""
+        data = self._data()
+        idx = getattr(data, "corner_index", None) if data is not None else None
+        if idx is not None:
+            self._select(int(idx))
+
+    def _select(self, idx: int) -> None:
+        """Commit a swept point by index and redraw the selection marker."""
+        fn = getattr(self._model, str(self._opts.get("select_action")), None)
+        if callable(fn):
+            fn(int(idx))
+        self.refresh()
+
+    def _on_plot_clicked(self, x: float, y: float) -> None:
+        """Commit the swept point nearest the click, in log-log screen terms.
+
+        The axes are logarithmic, so nearest must be measured in decades — in
+        linear distance the low-misfit end of the curve swallows every click.
+        """
+        import numpy as np
+
+        data = self._data()
+        if data is None or len(getattr(data, "reg", ())) == 0:
+            return
+        rho = np.asarray(data.residual_norm, dtype=float)
+        eta = np.asarray(data.solution_norm, dtype=float)
+        ok = np.isfinite(rho) & np.isfinite(eta) & (rho > 0) & (eta > 0)
+        if not ok.any() or x <= 0 or y <= 0:
+            return
+        d = np.full(rho.shape, np.inf)
+        d[ok] = (np.log10(rho[ok]) - np.log10(x)) ** 2 + (
+            np.log10(eta[ok]) - np.log10(y)
+        ) ** 2
+        self._select(int(np.argmin(d)))
+
     def refresh(self) -> None:
         """Re-read the model's :class:`LCurveData` and redraw."""
+        import numpy as np
+
+        from chisurf.gui import chiplot as cp
+
         if self._plot is None:
             return
-        data = self._data()
         self._plot.clear()
+        data = self._data()
         if data is None or getattr(data, "reg", None) is None or len(data.reg) == 0:
             return
-        pg = self._pg
-        self._plot.plot(
-            data.residual_norm,
-            data.solution_norm,
-            pen=pg.mkPen("c", width=2),
+        self._plot.line(
+            np.asarray(data.residual_norm, dtype=float),
+            np.asarray(data.solution_norm, dtype=float),
+            pen=cp.to_pen("c", width=2),
             symbol="o",
-            symbolSize=5,
-            symbolBrush="c",
+            symbol_size=5,
+            symbol_brush="c",
             name="L-curve",
         )
         corner = getattr(data, "corner_point", None)
         if corner is not None:
-            self._plot.plot(
-                [corner[0]],
-                [corner[1]],
-                pen=None,
-                symbol="o",
-                symbolSize=12,
-                symbolBrush="r",
+            self._plot.scatter(
+                [corner[0]], [corner[1]], symbol="o", size=12, brush="r", pen="r",
                 name="chosen",
             )
 

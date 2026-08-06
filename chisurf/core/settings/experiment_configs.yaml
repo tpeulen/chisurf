@@ -210,12 +210,12 @@ fcs:
         file_type: Correlator.com SIN files (*.sin)
   models:
     - chisurf.core.models.fcs.parse.ParseFCSModel
-    - chisurf.gui.widgets.models.fcs.DyeShapeFCSWidget
+    - chisurf.core.models.fcs.dye_shape.DyeShapeFCSModel
     - chisurf.core.models.fcs.mdf.MdfFCSModel
     - chisurf.core.models.fcs.general.GeneralFCSModel
     - chisurf.core.models.fcs.kinetics.FCSKineticsModel
-    - chisurf.gui.widgets.models.fcs.MaxEntFCSWidget
-    - chisurf.gui.widgets.models.fcs.MaxEntRHWidget
+    - chisurf.core.models.fcs.maxent_models.MaxEntFCSModel
+    - chisurf.core.models.fcs.maxent_models.MaxEntRHModel
 
 pcf:
   # Pair-correlation-function analysis (distribution-of-transit-times fits).

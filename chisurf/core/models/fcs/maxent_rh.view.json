@@ -1,0 +1,107 @@
+{
+  "_comment": "Editor layout for the MaxEnt hydrodynamic-radius FCS model (MaxEntRHModel). Same inversion as maxent_fcs.view.json, but the grid is a size axis: w0 and the sample temperature turn each diffusion time into a radius, so they get their own panel — get either wrong and the distribution is in the wrong units, not merely the wrong shape.",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "MaxEnt (hydrodynamic radius)",
+      "collapsible": true,
+      "collapsed": false,
+      "sections": [
+        {
+          "type": "parameter_group_table",
+          "parameters_source": "_maxent_parameter_rows",
+          "collapsible": false,
+          "description": "reg is log10 of the entropy weight. rh_min/rh_max/n_rh set the log-spaced radius grid the distribution is recovered on; s is the structure parameter and b the baseline."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Optics",
+      "collapsible": true,
+      "collapsed": false,
+      "sections": [
+        {
+          "type": "parameter_group_table",
+          "parameters_source": "_optics_parameter_rows",
+          "collapsible": false,
+          "description": "The beam waist and the sample temperature convert a diffusion time into a hydrodynamic radius (Stokes-Einstein through the water viscosity)."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "L-curve",
+      "collapsible": true,
+      "collapsed": false,
+      "description": "Regularization sweep: the corner is the weight that balances misfit against the smoothness of the recovered distribution.",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "lcurve",
+          "target": "l_curve",
+          "options": {
+            "compute_action": "compute_l_curve",
+            "select_action": "set_reg_from_lcurve_index",
+            "log10_min": -6.0,
+            "log10_max": 3.0,
+            "n_points": 32,
+            "x_label": "chi2r",
+            "y_label": "|p|"
+          },
+          "description": "Press sweep to sample the weight over the range shown, then click a point (or 'corner') to adopt its weight."
+        }
+      ]
+    }
+  ],
+  "plots": [
+    {
+      "key": "line",
+      "options": {
+        "scale_x": "log",
+        "d_scaley": "lin",
+        "r_scaley": "lin",
+        "x_label": "t_c (ms)",
+        "y_label": "G_c(t_c)"
+      }
+    },
+    {
+      "key": "fit_table",
+      "options": {}
+    },
+    {
+      "key": "fit_info",
+      "options": {}
+    },
+    {
+      "key": "parameter_scan",
+      "options": {}
+    },
+    {
+      "key": "distribution",
+      "options": {
+        "scale_x": "log",
+        "distribution_options": {
+          "MaxEnt rH": {
+            "attribute": "maxent_rH_distribution",
+            "accessor": "distribution_pair",
+            "accessor_kwargs": {
+              "sort": false
+            },
+            "curve_options": {
+              "stepMode": "right",
+              "connect": "all",
+              "symbol": "None",
+              "multi_curve": false,
+              "fillLevel": 0.0
+            }
+          }
+        }
+      }
+    },
+    {
+      "key": "residual",
+      "options": {}
+    }
+  ]
+}

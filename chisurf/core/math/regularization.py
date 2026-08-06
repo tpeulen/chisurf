@@ -414,7 +414,11 @@ def discrete_lcurve_corner(
     chord_norm = np.linalg.norm(chord)
     if chord_norm <= 0.0:
         return int(idx_all[0])
-    dist = np.abs(np.cross(chord, P - P[0])) / chord_norm
+    # Perpendicular distance of each point from the chord. Written out rather
+    # than via ``np.cross``, whose 2-D-vector form NumPy 2 deprecates -- the
+    # z-component of a 2-D cross product is this one scalar expression.
+    d = P - P[0]
+    dist = np.abs(chord[0] * d[:, 1] - chord[1] * d[:, 0]) / chord_norm
 
     score = 0.5 * _normalized_score(curv) + 0.5 * _normalized_score(dist)
     if not np.any(np.isfinite(score)):

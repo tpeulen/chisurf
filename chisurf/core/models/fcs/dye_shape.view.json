@@ -1,0 +1,91 @@
+{
+  "_comment": "Editor layout for the dye-shape FCS calibration model (DyeShapeFCSModel). The dye is the fixed quantity here — picking it fixes D, so the geometry (w0, s) is what the fit determines and D / tauD / cpm are read-only outputs of it. The parameters live on the model itself, so the tables carry no target.",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Reference dye",
+      "collapsible": true,
+      "collapsed": false,
+      "sections": [
+        {
+          "type": "choice",
+          "attr": "dye_name",
+          "label": "Dye",
+          "options_source": "dye_names",
+          "editable": true,
+          "description": "Reference species from MMFDB carrying a diffusion coefficient D(25 °C, water); curate them in the MMFDB admin tool. Type to search — matching is on any part of the name."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Volume and amplitude",
+      "collapsible": true,
+      "collapsed": false,
+      "sections": [
+        {
+          "type": "parameter_group_table",
+          "parameters_source": "_shape_parameter_rows",
+          "collapsible": false,
+          "description": "N and the baseline b scale the curve; w0 and s are the confocal volume shape this calibration determines. temp sets the water viscosity the dye's D is scaled with."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Bunching",
+      "collapsible": true,
+      "collapsed": false,
+      "sections": [
+        {
+          "type": "parameter_group_table",
+          "parameters_source": "_bunching_parameter_rows",
+          "collapsible": false,
+          "description": "One global bunching term: amplitude b_a and relaxation time b_t. b_a also sets the dark fraction that separates cpm from cpm_all."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Outputs",
+      "collapsible": true,
+      "collapsed": false,
+      "sections": [
+        {
+          "type": "parameter_group_table",
+          "parameters_source": "_output_parameter_rows",
+          "collapsible": false,
+          "description": "Derived, not fitted: D from the dye and the temperature, tauD from D and w0, and the counts per molecule over the bright (cpm) and all (cpm_all) molecules."
+        }
+      ]
+    }
+  ],
+  "plots": [
+    {
+      "key": "line",
+      "options": {
+        "scale_x": "log",
+        "d_scaley": "lin",
+        "r_scaley": "lin",
+        "x_label": "t_c (ms)",
+        "y_label": "G_c(t_c)"
+      }
+    },
+    {
+      "key": "fit_table",
+      "options": {}
+    },
+    {
+      "key": "fit_info",
+      "options": {}
+    },
+    {
+      "key": "parameter_scan",
+      "options": {}
+    },
+    {
+      "key": "residual",
+      "options": {}
+    }
+  ]
+}

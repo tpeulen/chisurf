@@ -14,7 +14,7 @@ timestamp: '2026-07-05T00:00:00Z'
 PRD-38 makes a fitting model's editor the automatic result of its computational definition instead of a hand-written per-model widget that duplicates the model's structure and welds Qt to the compute side. Each model stays in one place (parameters plus `update_model` in `chisurf/core/models`, Qt-free), its editor is described in a hand-editable `<model>.view.json` file, and the GUI renders that spec by composition via `AutoModelWidget`. A strict, AST-CI-enforced boundary keeps `core/models/**` from importing any GUI toolkit, while a string-keyed registry provides an escape hatch for bespoke custom sections. The view-spec vocabulary has grown to parameter groups, dynamic groups, curve inputs, choices, toggles, and custom sections plus plots.
 
 # Status
-In-progress (unassigned phase). Data spine, boundary test, generic renderer, live wiring, section vocabulary, and the **TCSPC Lifetime + mixer flip** are done. The per-model backlog is the STATUS TABLE below; the TCSPC FRET family, the compute-in-GUI extractions, and dropping `plot_classes` remain.
+In-progress (unassigned phase). Data spine, boundary test, generic renderer, live wiring, section vocabulary and every TCSPC, PDA, DEER, ICS, MFD, PCH, parse, global-fit and FCS model are done. **Two registered models remain** — `ProteinMCModelWidget` and `ReactionWidget`, both tier B — plus the tier-D `pda2c/widgets.py` cleanup and dropping `plot_classes`. The per-model backlog is the STATUS TABLE below.
 
 # STATUS TABLE — per-model screening
 
@@ -48,11 +48,11 @@ needs a new AutoForm section · **D** dead code.
 | tcspc | `FRETStructure` (`fret_structure.view.json`) | ✅ | — | anisotropy r(t) panel, shared |
 | tcspc | `MaxEntLifetimeModel` (`maxent_lifetime.view.json`), `MaxEntFRETModel` (`maxent_fret.view.json`) | ✅ | — | — |
 | tcspc | `ParseDecayModel` (`parse_decay.view.json`) | ✅ | — | equation validity badge + LaTeX preview not ported |
-| tcspc | `EtModelFree` (`gui/.../et.py:250`) | ❌ | B | extraction; then reuse `lcurve` |
+| tcspc | ~~`EtModelFree`~~ | — | D | **deregistered** — abstract, never openable; see [known issues](/references/known-issues.md) |
 | fcs | `MdfFCSModel`, `GeneralFCSModel`, `FCSKineticsModel` | ✅ | — | — |
 | fcs | `ParseFCSModel` (`parse.view.json`) | ✅ | — | as above |
-| fcs | `DyeShapeFCSModel` (`dye_volume_widget.py:68`) | ❌ | B | extraction |
-| fcs | `MaxEntFCSModel` (`maxent_widget.py:24`), `MaxEntRHModel` (`:934`) | ❌ | B | extraction; GUI plot class `MaxEntFCSLCurvePlot` re-declarable as `lcurve` |
+| fcs | `DyeShapeFCSModel` (`dye_shape.view.json`) | ✅ | — | — |
+| fcs | `MaxEntFCSModel` (`maxent_fcs.view.json`), `MaxEntRHModel` (`maxent_rh.view.json`) | ✅ | — | — |
 | pda2c/pda3c | all 7 | ✅ | — | — |
 | deer | all 4 | ✅ | — | — |
 | ics | both | ✅ | — | — |
@@ -73,12 +73,11 @@ reading of it. `gui/widgets/models/tcspc/lifetime_mix.py::LifetimeMixModelWidget
 is unregistered. The 5 stray `.ui` files that sat inside the Qt-free
 `core/models/**` are deleted.
 
-Counts at time of writing: 39 model classes ported across 10 families; **5 legacy
-registrations remain** (FCS ×3, ProteinMC, ReactionWidget) and **2 `.ui` files
-under `models/`** (see the table below). `gui/widgets/models/tcspc/` is down
-from ~5k LOC to an alias module plus two helper files. **The only hand-written TCSPC model left is
-`EtModelFreeWidget`** — which is registered and *abstract*, so it cannot be
-opened at all (see known-issues).
+Counts at time of writing: 42 model classes ported across 11 families; **2 legacy
+registrations remain** (ProteinMC, ReactionWidget) and **2 `.ui` files under
+`models/`** (see the table below). `gui/widgets/models/tcspc/` is down from ~5k LOC
+to an alias module plus two helper files, and `gui/widgets/models/fcs/` is now four
+deprecation shims totalling ~70 lines (from ~1,950).
 
 # Goal
 Make a fitting model's **editor the automatic result of its computational definition**. Maintain each model in one place (compute + parameters in `chisurf/core/models`), describe its editor in a **user-editable JSON file that accompanies the model**, and have the GUI render that editor generically. Eliminate the hand-written, per-model widget that today duplicates the model's structure and welds Qt to the compute side.
@@ -532,93 +531,98 @@ Also fixed here, affecting fifteen *other* specs: Qt reads `&` in a widget's tex
 as a mnemonic marker, so a panel titled "Background & totals" rendered as
 "Background _totals". Titles are escaped at the renderer now.
 
-# Where to pick this up: the three remaining extractions
+**Increment 17 (the FCS extractions, and a sweep that had always returned NaN) — DONE.**
+`DyeShapeFCSModel`, `MaxEntFCSModel` and `MaxEntRHModel` are in `core/models/fcs/`
+(`dye_shape.py`, `maxent_models.py`) and described by JSON. Three findings:
 
-`DyeShapeFCSModel` (`gui/widgets/models/fcs/dye_volume_widget.py`),
-`MaxEntFCSModel` + `MaxEntRHModel` (`fcs/maxent_widget.py`, 1388 LOC, which also
-defines a GUI plot class and a controller), and `ProteinMCModelWidget`
-(`proteinmc.py`, 1984 LOC, which additionally needs a per-row-settings table and a
-worker run/stop control).
+- **The same fitting-client pattern increment 16 named, twice more.** Dye-shape's
+  `D` / `tauD` / `cpm` / `cpm_all` were published through `get_fitting_client()`
+  inside a bare `except`, so all four stayed **NaN** whenever the client was
+  absent — which the legacy baseline screenshot shows plainly, four yellow
+  `nan` fields in a shipped editor. They are direct parameter writes now.
+- **The L-curve was NaN for every fit that had just been opened.** `Fit` starts
+  with `xmax == 0`, which is an *empty* window rather than a full one, and the
+  misfit norm of an empty window is NaN — so the entire sweep came back NaN, no
+  corner could be detected, and the plot drew nothing until the user happened to
+  set a fit range. The models read a degenerate window as the whole curve
+  (`_fit_window`). *This is why "the L-curve is there" was never evidence that it
+  worked.*
+- **The bespoke L-curve plot and its controller are gone (≈400 LOC).** Instead of
+  re-authoring them, the shared `lcurve` section grew what they had: a sweep
+  window (min/max/N), a **sweep** button bound to `compute_action`, a **corner**
+  button, and click-to-adopt bound to `select_action` — nearest point measured in
+  *decades*, because on log axes the low-misfit end otherwise swallows every
+  click. Every regularized model gets those controls by declaring one section.
+  Porting it also took `LCurveWidget` off raw pyqtgraph onto chiplot and struck
+  `maxent_widget.py` from `test/chiplot_native_allowlist.txt`.
 
-**Do these by hand, not mechanically.** Two attempts to rewrite
-`dye_volume_widget.py`'s fitting-client blocks with a script both produced a broken
-module: the blocks are `try:` bodies that *also* contain the statements computing
-the value being published (`D_um2_s = D_m2_s * 1.0e12`), and one sits inside a
-`for` loop, so deleting the block deletes the computation and dropping "plumbing"
-lines by pattern breaks the indentation. The extraction is small — move the class,
-keep every computing statement, and replace only the
-`fc = get_fitting_client() … set_parameter_value/fixed` calls with
-`param.value = …; param.fixed = True`.
+Two smaller things: `datatools.distribution_pair` is the **identity** accessor a
+distribution plot needs when the model attribute already *is* the `(density, axis)`
+pair (JSON cannot hold the lambda the legacy spec used), and
+`regularization.discrete_lcurve_corner` no longer calls `np.cross` on 2-D vectors,
+which NumPy 2 deprecates.
 
-Copy the shape from `core/models/pch/pch_model.py`: parameters in lists with
-`label_text` on them, a `_species_parameter_rows` for a `row_width: 2` table,
-zero-arg methods for any `button_row`, and a `view_spec_file`. Add each model to
-`JSON_DESCRIBED_TCSPC_MODELS` in `test/gui/test_model_editor_integration.py` — that
-guard is what catches a silently dropped section.
+The dye-shape model also stopped importing `chisurf.plugins.fcs.fcs_calculator`
+for its Stokes-Einstein helpers — those are thin wrappers over
+`core/fluorescence/diffusion.py`, so core now calls core.
 
-For the two MaxEnt FCS models specifically: they carry an L-curve, and
-`core/models/tcspc/maxent.py` already shows the pattern — expose the cached sweep
-as an `l_curve` property returning `LCurveData`, then declare the existing `lcurve`
-section. Their GUI plot class and controller become redundant at that point.
+# Where to pick this up: the two remaining extractions
 
-**START NEXT — the parse family, and what it needs (analysed, not yet built).**
-This is the highest-value item left: one new section **retires four registered
-models at once** (`ParseDecayModelWidget`, `ParseFCSWidget`, `ParsePCFWidget`,
-`ParseStoppedFlowWidget`). The blocker is *not* the section — it is that **core
-`ParseModel` knows nothing about the model catalogue**. Everything about it lives
-in `gui/widgets/models/parse/widget.py`:
+Two registered models still live in the GUI layer, and both are genuinely
+tier B — the compute is *in* the Qt file, so there is nothing to point a
+`view.json` at until it moves.
 
-- `yaml.safe_load` of the catalogue and the path to it (`:114`, `:279`), plus a
-  "load another YAML" file dialog (`:291`);
-- `models` setter that repopulates the combobox (`:309-311`), `model_name`
-  get/set by combobox index (`:316-322`);
-- `set_initial_values` applying the YAML `initial:` block to the parameters
-  (`:336-346`);
-- the description + equation HTML shown to the user (`:181-182`, `:369`).
+1. **`ProteinMCModelWidget`** (`gui/widgets/models/proteinmc.py`, 1984 LOC) —
+   the biggest, and the only one with **no core `Model` subclass at all**. It
+   additionally needs two things the vocabulary does not have: a
+   **per-row-settings table** (the energy terms, each with its own *Eval. every*
+   and *Weight* plus open/delete buttons — see the baseline image) and a
+   **worker run/stop** control, because the sampler runs in a thread and the
+   editor has to be able to stop it.
+2. **`ReactionWidget`** (`gui/widgets/models/stopped_flow/stopped_flow.py` +
+   `reaction.ui`) — *abstract*, no `update_model`, so like the old stopped-flow
+   parse model it **could never be opened**; a before-image is impossible and
+   functional compatibility is the bar, not file compatibility. What core needs
+   and how to declare each control is in the section below.
 
-Core has only `func` (whose setter parses), `_models`, `_keys`, `_count` — the
-dict is initialised empty and nothing fills it. So the port is **two steps**:
+Then two cleanups that are not migrations: relocate `FretRdaAxisSettingsWidget`
+out of `pda2c/widgets.py` and delete the ~1,590 dead lines around it (tier D), and
+task 9 — **drop `plot_classes`**, whose only remaining holders are those legacy
+files, `model_widget.py`, and the fallback branches in `model_editor.py`.
 
-1. **Move the catalogue into core** (Qt-free): a `catalogue_file` /
-   `load_catalogue(path)`, `catalogue_names` for a `choice`'s `options_source`, a
-   `model_name` property whose setter sets `func` *and* applies the `initial:`
-   values, and a `description` property. The catalogues are already data
-   (`core/models/parse/models.yaml`, `core/models/tcspc/parse/tcspc_model.yaml`,
-   `core/models/pcf/models.yaml`), so this is relocation, not design.
-2. **Then one new `equation_catalogue` section**: catalogue combobox + the single
-   equation field + rendered preview + description. *Do not* try to reuse
-   `equation_editor` — it is a **table** of `output = expression` rows, a
-   different shape from ParseModel's one `func` string, and forcing it would be
-   worse than a new section. The LaTeX conversion
-   (`gui/widgets/models/parse/latex.py`) is presentation and stays GUI-side.
+**Copy the shape from `core/models/pch/pch_model.py`** for any extraction:
+parameters in lists with `label_text` on them, a `_species_parameter_rows` for a
+`row_width: 2` table, zero-arg methods for any `button_row`, and a
+`view_spec_file`. Add each model to `JSON_DESCRIBED_TCSPC_MODELS` in
+`test/gui/test_model_editor_integration.py` — that guard is what catches a
+silently dropped section.
 
-With step 1 done, most of the editor is existing vocabulary (`choice` with
-`options_source`, `info` for the description, `parameter_group_table` for the
-parsed parameters) and the new section only owns the equation + preview.
+**The one pattern that makes a model tier B**, and the thing to look for first: a
+computed output written through `get_fitting_client()` from inside `update_model`,
+wrapped in a bare `except`. It does nothing whenever that client is absent and says
+nothing about it. FIDA's mean, PCH's component defaults and dye-shape's D / tauD /
+cpm were all this. The fix is a direct parameter write; the parameter's own
+controller binding repaints it.
 
-(2) `EtModelFreeWidget` is tier B — its compute (`EtModelFree`) lives *inside*
-`gui/widgets/models/tcspc/et.py`, so it needs extracting into `core/models/**`
-first, after which its L-curve UI is a re-authoring job against the existing
-`lcurve` section (increment 11 proved that pattern). Once both are gone,
-`gui/widgets/models/tcspc/lifetime.py` can lose
-`LifetimeWidget`/`LifetimeModelWidgetBase` and be deleted, and `gaussian.py`'s
-`GaussianWidget` + `discrete_distance.py` go with it — they are now referenced
-only by `tcspc/__init__.py` and one test. Generate each spec from
-`fret_gaussian.view.json`, and check the group's parameters carry `label_text`
-before trusting the table. (2) The
-**global-fit migration** — `global_parameter_table` is built, tested and used by
-*nothing* while `global_model/widget.py` + `globalfit.ui` hand-roll a weaker
-version; cheapest real migration left. (3) The anisotropy r(t)
-section, which closes Lifetime completely. (4) Relocate
-`FretRdaAxisSettingsWidget` out of `pda2c/widgets.py`, then delete the ~1,590
-dead lines around it. (5) Task 9 — drop `plot_classes`.
+**Do the edits by hand, not mechanically.** Two attempts to rewrite
+`dye_volume_widget.py`'s fitting-client blocks with a script both produced a
+broken module: the blocks are `try:` bodies that *also* contain the statements
+computing the value being published (`D_um2_s = D_m2_s * 1.0e12`), and one sits
+inside a `for` loop, so deleting the block deletes the computation and dropping
+"plumbing" lines by pattern breaks the indentation.
 
 **How to verify any of it:** the before/after parity rule
 ([testing workflow](/workflows/testing.md)) with `test/gui/migration_parity.py`.
 Capture the legacy baseline *before* touching the code — it is unrecoverable
-afterwards. Do not trust a parity diff's "lost" list at face value: renames
-(`r[MHz]`→`rep`, `Linearize`→`DNL`, `...`→`…`) and names that moved into table
-cells both read as losses.
+afterwards. Two traps in reading the result:
+
+* a parity diff's "lost" list is mostly **renames** — `w0`→`w0[nm]`,
+  `r[MHz]`→`rep`, `Linearize`→`DNL`, `...`→`…` — and names that moved into table
+  cells also read as losses. Check each one before believing it;
+* `capture()` renders the widget it is given at a fixed width, so put the editor
+  in **no** parent layout first — a holder `QWidget` constrains it and the image
+  comes back at the wrong size with its tables cropped, which looks exactly like
+  a layout defect in the port.
 
 
 # The `.ui` files under `models/` — what each one is waiting on

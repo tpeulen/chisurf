@@ -482,6 +482,33 @@ def first_distribution_pair(
     return d[0][0], d[0][1]
 
 
+def distribution_pair(
+        d: typing.Tuple[np.ndarray, np.ndarray],
+        sort: bool = False
+) -> typing.Tuple[np.ndarray, np.ndarray]:
+    """Return a ``(density, axis)`` pair unchanged.
+
+    The identity accessor. A model attribute that already *is* the
+    ``(density, axis)`` pair a distribution plot draws still needs an accessor
+    named in its view spec, because the plot calls one unconditionally -- this is
+    that name, so such a model needs neither a lambda (which JSON cannot hold)
+    nor a wrapper property whose only job is to be reshaped back.
+
+    Parameters
+    ----------
+    d : tuple of numpy.ndarray
+        The ``(density, axis)`` pair.
+    sort : bool
+        Accepted and ignored, so every accessor takes the same keywords.
+
+    Returns
+    -------
+    tuple of numpy.ndarray
+        ``d`` itself.
+    """
+    return d
+
+
 def interleaved_to_two_columns(
         ls: np.ndarray,
         sort: bool = False

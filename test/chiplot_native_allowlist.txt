@@ -18,15 +18,12 @@
 #   * curve performance — setDownsampling / setClipToView
 #     (tttr_lut_tools, lineplot)
 #   * legend text colour (spectrum_view)
-#   * a handle's click signal (maxent_widget: sigPointsClicked)
-#   * export-hint on a handle (maxent_widget: setExportHint)
 #   * scene mouse position → data coordinates (irf_estimator)
 #
 # This list only SHRINKS. When you touch one of these files, port it and strike
 # the line; adding a NEW line is a test failure, not a fix. Goal: empty.
 # See test/test_pyqtgraph_seam.py and okf/subsystems/chiplot.md.
 chisurf/gui/plots/lineplot/lineplot.py
-chisurf/gui/widgets/models/fcs/maxent_widget.py
 chisurf/gui/widgets/node_editor/widgets/pt_plot_widget.py
 chisurf/gui/widgets/spectrum_view.py
 chisurf/plugins/burst/burst_background/gui/sections.py

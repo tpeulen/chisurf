@@ -2,6 +2,20 @@
 
 ## 2026-08-06
 
+* **The FCS models left the GUI layer, and an L-curve that had always returned NaN** ([PRD-38](prds/prd-38.md), [FCS](plugins/fcs.md)).
+
+  `DyeShapeFCSModel`, `MaxEntFCSModel` and `MaxEntRHModel` are in `chisurf/core/models/fcs/` (`dye_shape.py`, `maxent_models.py`) with `dye_shape.view.json` / `maxent_fcs.view.json` / `maxent_rh.view.json`; `dye_volume_widget.py` and `maxent_widget.py` are deprecation shims (~1,930 lines of Qt deleted). Three registrations off the legacy list; **two remain** (ProteinMC, ReactionWidget).
+
+  **The L-curve had never worked on a freshly opened fit.** `Fit` starts with `xmax == 0` — an *empty* window, not a full one — and the misfit norm of an empty window is NaN, so the entire regularization sweep came back NaN, no corner was ever detected and the plot drew nothing until the user happened to set a fit range. Both models now read a degenerate window as the whole curve. Guard: `test_maxent_l_curve_is_finite_with_an_unset_fit_range`.
+
+  **The same fitting-client pattern, twice more.** Dye-shape's `D` / `tauD` / `cpm` / `cpm_all` were published through `get_fitting_client()` inside a bare `except`, so all four stayed NaN whenever that client was absent — visible as four yellow `nan` fields in the legacy baseline screenshot. Direct parameter writes now, and assertable headless.
+
+  **The bespoke L-curve plot and its controller are gone (~400 LOC).** The shared AutoForm `lcurve` section grew what they had: a sweep window, a **sweep** button (`compute_action`), a **corner** button and click-to-adopt (`select_action`) — nearest point measured in *decades*, since on log axes the low-misfit end otherwise swallows every click. Every regularized model gets those controls by declaring one section. Porting it took `LCurveWidget` off raw pyqtgraph onto chiplot and struck `maxent_widget.py` from `test/chiplot_native_allowlist.txt`.
+
+  Also: `datatools.distribution_pair` is the identity accessor for a model attribute that already *is* the `(density, axis)` pair (JSON cannot hold the lambda the legacy spec used); `regularization.discrete_lcurve_corner` stopped calling `np.cross` on 2-D vectors, which NumPy 2 deprecates; and the dye-shape model reads its Stokes-Einstein helpers from `core/fluorescence/diffusion.py` instead of importing a plugin.
+
+  Verified by before/after parity images for all three editors (every control accounted for; the "lost" entries are unit renames such as `w0`→`w0[nm]`). 25 FCS editor + 26 integration + 25 renderer + 16 view-spec/boundary + 6 seam tests pass.
+
 * **Two plots for the quenching page, and a pass over the ones already there** ([documentation browser](subsystems/documentation-browser.md)).
 
   `fig_static_quenching_mechanisms` puts the point of the new section on one axis pair: three mechanisms give three different `F0/F` curves and **one identical** `tau0/tau` line, because the lifetime reports the dynamic part and nothing else. The arithmetic that separates a sphere of action from a complex is computed rather than quoted — a 7 A contact shell contributes 0.865 /M, and reproducing the plotted `K_S` = 5 /M with a sphere instead would need a radius of **12.6 A**, which is not contact.
