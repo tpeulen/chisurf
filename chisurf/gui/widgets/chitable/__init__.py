@@ -56,6 +56,7 @@ from chisurf.gui.widgets.chitable.proxy import ForeignTableProxy, ReadOnlyColumn
 from chisurf.gui.widgets.chitable.source import (
     ArraySource,
     DataFrameSource,
+    DataStoreSource,
     RecordSource,
     TableSource,
 )
@@ -81,6 +82,7 @@ __all__ = [
     "DEFAULT_FEATURES",
     "DEFAULT_FORMAT",
     "DataFrameSource",
+    "DataStoreSource",
     "FilterSpec",
     "FloatEditDelegate",
     "ForeignTableProxy",

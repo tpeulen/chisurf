@@ -2181,3 +2181,46 @@ a 3-atom AV asserts nothing useful about efficiency matrices anyway.
 **This is why `mdtraj` is still declared.** Every import of it is gone from the
 tree, but a suite that segfaults cannot show the removal is safe, and removing
 a dependency on the strength of a crash would be backwards.
+
+## storage: a borrowed `Column` from the columnar store dangles on the next `add()`
+
+**2026-08-06.** In the simulation library's `DataStore`, a `Column` handed out
+by `add()` or `store[i]` is a reference into a `std::vector<Column>`. Adding
+another column reallocates that vector, and every previously handed-out proxy
+then reads **freed memory** — reporting an empty name and an empty array rather
+than raising. Reproduce:
+
+```python
+store = tttrlib.DataStore()
+held = store.add("f", np.arange(5, dtype="float64"))
+for i in range(8):
+    store.add(f"x{i}", np.arange(5, dtype="float64"))
+print(held.name(), held.numpy())      # '' []   <- was 'f' [0. 1. 2. 3. 4.]
+```
+
+**Why it matters here.** It is precisely the shape a table adapter wants: fetch
+the columns once, keep them, read cells from them. The symptom is not a crash
+but a table that silently goes blank, which no assertion catches.
+
+**Worked around, not fixed.** `chisurf/core/datastore.py` never caches a proxy —
+`column_at()` re-fetches, and `DataStoreSource` goes through it for every
+access. `test/test_datastore_seam.py::test_a_cached_column_proxy_goes_stale_when_a_column_is_added`
+pins the library behaviour and **fails once the library is fixed**, which is the
+signal to drop the workaround.
+
+**The root-cause fix, and why it did not land in this change.** It is one line —
+`std::vector<Column> columns_` → a container with stable references (`std::deque`
+works; nothing in the header needs contiguity, and `erase`/`shrink_to_fit` are
+available on both) plus `#include <deque>`, at `modules/core/include/DataStore.h`.
+It was not applied because another instance holds **308 uncommitted lines** in
+that same header: the fix could be written but not *verified*, since verifying it
+means rebuilding the extension on top of someone else's half-finished work, and a
+break would be indistinguishable from mine. Land it when that header is clean,
+with a regression test that adds nine columns and reads the first one back.
+
+**Two smaller gaps found the same way**, both real and both worked around in
+`chisurf/core/datastore.py`: a boolean column has no zero-copy view and decodes
+through a per-row Python loop (so a write through the returned array is silently
+lost, and filtering a large boolean column is O(n) in Python), and `mask_numpy()`
+returns a copy (so a single-cell mask change is a read-modify-write of the whole
+mask). Both are listed in the [columnar-store concept](../subsystems/columnar-store.md).

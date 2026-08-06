@@ -1,10 +1,13 @@
 """Table sources — the adapter layer of :mod:`chisurf.gui.widgets.chitable`.
 
 A :class:`TableSource` is the only thing :class:`~chisurf.gui.widgets.chitable.model.ChiTableModel`
-knows about. Three adapters cover every tabular shape already in the tree:
+knows about. Four adapters cover every tabular shape in the tree:
 
 ``DataFrameSource``
     a :class:`pandas.DataFrame` (ndX burst frames, model-parameter tables);
+``DataStoreSource``
+    a ``tttrlib.DataStore`` — the [columnar store](/subsystems/columnar-store.md)
+    the burst tables are migrating onto;
 ``ArraySource``
     named ``numpy`` column arrays (fit curves: x / data / model / residuals);
 ``RecordSource``
@@ -19,8 +22,10 @@ Notes
 -----
 Numeric dtype tests go exclusively through :func:`pandas.api.types.is_numeric_dtype`.
 ``numpy.issubdtype`` raises on pandas extension dtypes (the nullable ``Float64``
-the pyarrow reader produces), which is the root cause of a long-standing crash in
-ndX's table editor.
+a nullable-dtype reader produces), which is the root cause of a long-standing crash in
+ndX's table editor. :class:`DataStoreSource` cannot reproduce that class of bug at
+all: a store column states its type outright, so nothing has to be inferred from a
+dtype object.
 """
 
 from __future__ import annotations
@@ -498,6 +503,309 @@ class DataFrameSource(TableSource):
             return str(self._df.index[row])
         except Exception:
             return str(row)
+
+
+#: Largest dictionary a text column may have before its cells stop offering a
+#: combo box. Four labels is a stream name and belongs in a drop-down; ten
+#: thousand is free text and a drop-down would be unusable.
+MAX_CHOICE_LABELS = 64
+
+#: ``Column.dtype`` strings that make an integer column.
+_INT_DTYPES = frozenset(
+    {"int8", "int16", "int32", "int64", "uint8", "uint16", "uint32", "uint64"}
+)
+
+
+def kind_from_column_dtype(dtype: str) -> str:
+    """Map a ``tttrlib`` column dtype string onto a :class:`ColumnSpec` kind.
+
+    A store column *states* its type, so unlike :func:`kind_from_dtype` this
+    needs no inference and cannot raise on an unexpected dtype object.
+
+    Parameters
+    ----------
+    dtype : str
+        ``Column.dtype`` — one of ``"float64"``, ``"float32"``, the signed and
+        unsigned integer names, ``"bool"`` or ``"str"``.
+
+    Returns
+    -------
+    str
+        One of ``"bool"``, ``"int"``, ``"float"`` or ``"str"``.
+    """
+    if dtype == "bool":
+        return KIND_BOOL
+    if dtype in _INT_DTYPES:
+        return KIND_INT
+    if dtype in ("float32", "float64"):
+        return KIND_FLOAT
+    return KIND_STR
+
+
+class DataStoreSource(TableSource):
+    """Adapter over a ``tttrlib.DataStore`` columnar table.
+
+    The store answers this class's five obligations more directly than a frame
+    does. ``column_array`` is the column's own buffer in its own dtype, where
+    :class:`DataFrameSource` converts to ``float64``; ``set_value`` writes
+    through that same buffer; and ``column_specs`` reads a stated column type
+    instead of inferring one from a dtype object.
+
+    Two behaviours have no ``DataFrameSource`` equivalent:
+
+    * **Blanking a cell sets the validity mask** rather than writing ``NaN``,
+      so an integer column keeps both its dtype and the difference between
+      "zero" and "not measured".
+    * **A text column edits as a drop-down** of its dictionary labels when the
+      dictionary is small enough (:data:`MAX_CHOICE_LABELS`), because the store
+      already knows the distinct values. Typing a label that is not in the
+      dictionary adds it.
+
+    Parameters
+    ----------
+    store : tttrlib.DataStore
+        The store to expose. Held by reference; edits mutate it in place.
+    editable : bool
+        Make every column editable. Per-column exceptions go through
+        ``readonly_columns`` or explicit ``specs``.
+    specs : sequence of ColumnSpec, optional
+        Explicit column specs. When given they must match the store's columns
+        in length and order; anything omitted is synthesised from the types.
+    readonly_columns : sequence of str
+        Column names to force read-only, even when ``editable`` is set.
+    colorize_columns : sequence of str, optional
+        Column names opted into value colouring. ``None`` colours every numeric
+        column.
+
+    Notes
+    -----
+    No ``Column`` is ever cached. A column proxy is a borrowed reference into
+    the store's column vector and adding a column reallocates it, after which
+    the stale proxy silently reads freed memory — an empty name and no data,
+    with no exception. Every access re-fetches through
+    :func:`chisurf.core.datastore.column_at`.
+    """
+
+    def __init__(
+        self,
+        store: Any,
+        *,
+        editable: bool = False,
+        specs: Sequence[ColumnSpec] | None = None,
+        readonly_columns: Sequence[str] = (),
+        colorize_columns: Sequence[str] | None = None,
+    ) -> None:
+        self._store = store
+        self._editable = bool(editable)
+        self._readonly = set(readonly_columns or ())
+        self._colorize = None if colorize_columns is None else set(colorize_columns)
+        self._specs = tuple(specs) if specs else self._build_specs()
+
+    # -- construction -----------------------------------------------------
+
+    def _build_specs(self) -> tuple:
+        """Derive one column spec per store column.
+
+        Returns
+        -------
+        tuple of ColumnSpec
+        """
+        return tuple(self._spec_for(i) for i in range(int(self._store.n_columns())))
+
+    def _spec_for(self, col: int) -> ColumnSpec:
+        """Derive the spec of one column from its stated type.
+
+        Parameters
+        ----------
+        col : int
+            Positional column index.
+
+        Returns
+        -------
+        ColumnSpec
+        """
+        column = self._column(col)
+        name = str(column.name())
+        kind = kind_from_column_dtype(column.dtype)
+        numeric = kind in (KIND_FLOAT, KIND_INT)
+        colorize = numeric if self._colorize is None else (name in self._colorize)
+        editable = self._editable and name not in self._readonly
+
+        delegate, choices = "", ()
+        if kind == KIND_BOOL:
+            delegate = "bool"
+        elif kind == KIND_STR:
+            labels = tuple(str(label) for label in column.dictionary())
+            if editable and 0 < len(labels) <= MAX_CHOICE_LABELS:
+                delegate, choices = "choice", labels
+        return ColumnSpec(
+            key=name,
+            label=name,
+            kind=kind,
+            editable=editable,
+            colorize=colorize,
+            delegate=delegate,
+            choices=choices,
+        )
+
+    def _column(self, col: int) -> Any:
+        """Return a freshly fetched column proxy.
+
+        Parameters
+        ----------
+        col : int
+            Positional column index.
+
+        Returns
+        -------
+        tttrlib.Column
+        """
+        from chisurf.core.datastore import column_at
+
+        return column_at(self._store, col)
+
+    # -- TableSource ------------------------------------------------------
+
+    @property
+    def store(self) -> Any:
+        """Return the wrapped store.
+
+        Returns
+        -------
+        tttrlib.DataStore
+        """
+        return self._store
+
+    def set_store(self, store: Any) -> None:
+        """Replace the wrapped store and rebuild the column specs.
+
+        Parameters
+        ----------
+        store : tttrlib.DataStore
+            The new store.
+        """
+        self._store = store
+        self._specs = self._build_specs()
+
+    def column_specs(self) -> Sequence[ColumnSpec]:
+        """Return the derived or supplied column specs.
+
+        Returns
+        -------
+        sequence of ColumnSpec
+        """
+        return self._specs
+
+    def row_count(self) -> int:
+        """Return the number of rows.
+
+        Returns
+        -------
+        int
+            The store's declared row count, falling back to the longest column
+            for a store assembled without one.
+        """
+        rows = int(self._store.n_rows())
+        if rows:
+            return rows
+        return max(
+            (int(self._column(i).size()) for i in range(int(self._store.n_columns()))),
+            default=0,
+        )
+
+    def value(self, row: int, col: int) -> Any:
+        """Return one cell, or a missing marker when the mask says so.
+
+        Parameters
+        ----------
+        row : int
+            Positional row index.
+        col : int
+            Positional column index.
+
+        Returns
+        -------
+        object
+            ``numpy.nan`` for a masked float cell, ``None`` for any other masked
+            cell or an out-of-range position, and otherwise the value in the
+            column's own dtype.
+        """
+        try:
+            column = self._column(col)
+        except Exception:
+            return None
+        if not 0 <= row < int(column.size()):
+            return None
+        if column.has_mask() and not column.valid(row):
+            return np.nan if column.dtype in ("float32", "float64") else None
+        dtype = column.dtype
+        if dtype == "str":
+            return column.string_at(row)
+        if dtype == "bool":
+            return bool(column.value_at(row))
+        try:
+            return column.numpy()[row]
+        except Exception:
+            return None
+
+    def set_value(self, row: int, col: int, value: Any) -> bool:
+        """Write one cell through the store.
+
+        A blank or ``NaN`` value clears the cell's validity bit instead of
+        writing a sentinel; a new text label is appended to the column's
+        dictionary and the column's spec picks it up.
+
+        Parameters
+        ----------
+        row : int
+            Positional row index.
+        col : int
+            Positional column index.
+        value : object
+            Already coerced to the column's kind.
+
+        Returns
+        -------
+        bool
+        """
+        from chisurf.core.datastore import set_cell
+
+        try:
+            was_choice = self._specs[col].choices
+            if not set_cell(self._store, row, col, value):
+                return False
+        except Exception:
+            return False
+        if was_choice and str(value) not in was_choice:
+            specs = list(self._specs)
+            specs[col] = self._spec_for(col)
+            self._specs = tuple(specs)
+        return True
+
+    def column_array(self, col: int) -> np.ndarray | None:
+        """Return a column as an array, honouring its validity mask.
+
+        An unmasked numeric column comes back as the store's own buffer, in its
+        own dtype and without a copy — that is what keeps filtering and colour
+        ranges over a million rows cheap. A masked column is widened to
+        ``float64`` with ``NaN`` at the masked positions, so downstream numpy
+        comparisons see the missing values.
+
+        Parameters
+        ----------
+        col : int
+            Positional column index.
+
+        Returns
+        -------
+        numpy.ndarray or None
+        """
+        from chisurf.core.datastore import column_values
+
+        try:
+            return column_values(self._store, col)
+        except Exception:
+            return None
 
 
 class ArraySource(TableSource):

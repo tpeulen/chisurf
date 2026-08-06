@@ -30,7 +30,7 @@ framework beyond Qt itself.
 ```
 chisurf/gui/widgets/chitable/
   columns.py    ColumnSpec — key, label, kind, format, editable, delegate
-  source.py     TableSource protocol + DataFrame / Array / Record adapters
+  source.py     TableSource protocol + DataFrame / DataStore / Array / Record adapters
   filters.py    ColumnFilter, FilterSpec, ColumnCache
   model.py      ChiTableModel
   colorize.py   ValueColorScheme
@@ -46,9 +46,18 @@ chisurf/gui/widgets/chitable/
 
 A caller supplies a **`TableSource`** rather than subclassing the model, so
 filtering, sorting, formatting, colouring, staged edits and paging are written
-once. Three adapters cover every tabular shape in the tree:
+once. Four adapters cover every tabular shape in the tree:
 
 * `DataFrameSource` — a pandas frame (burst tables, model parameters);
+* `DataStoreSource` — a [columnar store](columnar-store.md), the container the
+  burst tables are migrating onto. It answers the protocol more directly than a
+  frame does — `column_array()` is the column's own buffer in its own dtype,
+  where the frame adapter converts to float64 — and it can do three things a
+  frame cannot: keep a narrow dtype through an edit, blank a cell by setting a
+  validity mask instead of writing a sentinel (so an integer column keeps both
+  its dtype and the difference between "zero" and "not measured"), and offer a
+  text column's dictionary as a drop-down. It also cannot reproduce the
+  extension-dtype crash below: a store column *states* its type;
 * `ArraySource` — named numpy column arrays, short columns NaN-padded (fit
   curves: x / data / model / residuals / mask plus support curves);
 * `RecordSource` — row objects or dicts with an explicit column spec, its

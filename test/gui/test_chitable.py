@@ -28,9 +28,11 @@ from chisurf.gui.widgets.chitable import (  # noqa: E402
     ColumnFilter,
     ColumnSpec,
     DataFrameSource,
+    DataStoreSource,
     FilterSpec,
     RecordSource,
     ValueColorScheme,
+    delegate_for,
     edit_dataframe,
     is_valid_format,
 )
@@ -641,3 +643,221 @@ def test_rich_text_delegate_renders_entity_only_labels(qapp):
 
     # Plain text still takes the cheap path: same ink as the base delegate.
     assert _paint_ink_width(rich, "tau") == _paint_ink_width(plain, "tau")
+
+
+# ── the columnar-store source ────────────────────────────────────────────
+#
+# The contract is equivalence: a table backed by the columnar store must behave
+# exactly as the same table backed by a frame, cell for cell — and then do the
+# three things a frame cannot (keep a narrow dtype, mark a cell missing without
+# a sentinel, offer a text column's distinct values as a drop-down).
+
+
+@pytest.fixture
+def store(frame):
+    """Return the ``frame`` fixture converted into a columnar store.
+
+    Returns
+    -------
+    tttrlib.DataStore
+    """
+    from chisurf.core.datastore import store_from_dataframe
+
+    return store_from_dataframe(frame)
+
+
+@pytest.fixture(params=["frame", "store"])
+def paired_source(request, frame, store):
+    """Yield the same table as a frame source and as a store source.
+
+    Returns
+    -------
+    TableSource
+    """
+    if request.param == "frame":
+        return DataFrameSource(frame, editable=True)
+    return DataStoreSource(store, editable=True)
+
+
+def test_store_source_matches_frame_source_cell_for_cell(frame, store):
+    """Every cell, every kind, every header — identical between the two sources."""
+    from chisurf.gui.widgets.chitable.source import is_na
+
+    df_source = DataFrameSource(frame)
+    ds_source = DataStoreSource(store)
+
+    assert [s.key for s in ds_source.column_specs()] == [s.key for s in df_source.column_specs()]
+    assert [s.kind for s in ds_source.column_specs()] == [s.kind for s in df_source.column_specs()]
+    assert ds_source.row_count() == df_source.row_count()
+    assert ds_source.column_count() == df_source.column_count()
+
+    for row in range(df_source.row_count()):
+        assert ds_source.row_label(row) == df_source.row_label(row)
+        for col in range(df_source.column_count()):
+            expected, got = df_source.value(row, col), ds_source.value(row, col)
+            if is_na(expected):
+                assert is_na(got), f"cell ({row}, {col}): {got!r} is not missing"
+            else:
+                assert got == expected, f"cell ({row}, {col}): {got!r} != {expected!r}"
+
+
+def test_store_source_model_formats_identically(frame, store):
+    """The model renders the two sources into the same strings."""
+    df_model = ChiTableModel(DataFrameSource(frame))
+    ds_model = ChiTableModel(DataStoreSource(store))
+    for row in range(df_model.rowCount()):
+        for col in range(df_model.columnCount()):
+            expected = df_model.data(df_model.index(row, col), QtCore.Qt.DisplayRole)
+            got = ds_model.data(ds_model.index(row, col), QtCore.Qt.DisplayRole)
+            assert got == expected, f"cell ({row}, {col}): {got!r} != {expected!r}"
+
+
+def test_store_source_filters_like_a_frame(paired_source):
+    """Global search, numeric operators and the null test all behave the same."""
+    model = ChiTableModel(paired_source)
+    model.set_filter(FilterSpec(query="mm"))
+    assert model.rowCount() == 1
+    assert model.data(model.index(0, 0), QtCore.Qt.DisplayRole) == "gamma"
+
+    col = model.column_index("value")
+    model.set_filter(FilterSpec(columns=(ColumnFilter(column=col, op="ge", value=20),)))
+    assert model.rowCount() == 2
+    model.set_filter(FilterSpec(columns=(ColumnFilter(column=col, op="isnull"),)))
+    assert model.rowCount() == 1
+    assert model.data(model.index(0, 0), QtCore.Qt.DisplayRole) == "delta"
+
+    name = model.column_index("name")
+    model.set_filter(FilterSpec(columns=(ColumnFilter(column=name, op="regex", value="^[bg]"),)))
+    assert model.rowCount() == 2
+
+
+def test_store_source_sorts_like_a_frame(paired_source):
+    """Including where the missing values land in each direction."""
+    model = ChiTableModel(paired_source)
+    col = model.column_index("value")
+    model.sort(col, QtCore.Qt.AscendingOrder)
+    shown = [model.data(model.index(r, 0), QtCore.Qt.DisplayRole) for r in range(model.rowCount())]
+    assert shown[:3] == ["alpha", "beta", "gamma"]
+    model.sort(col, QtCore.Qt.DescendingOrder)
+    shown = [model.data(model.index(r, 0), QtCore.Qt.DisplayRole) for r in range(model.rowCount())]
+    assert shown[0] == "delta"
+    assert shown[1] == "gamma"
+
+
+def test_store_source_colour_range_matches(paired_source):
+    """The colour ramp needs a numeric range; a store column must supply one."""
+    model = ChiTableModel(paired_source)
+    lo, hi = model.column_range(model.column_index("value"))
+    assert (lo, hi) == (1.0, 300.0)
+
+
+def test_store_source_hides_empty_columns(qapp, store):
+    """The all-blank text column is found through the store's own array."""
+    widget = ChiTableWidget()
+    widget.set_source(DataStoreSource(store))
+    note = widget.table_model.column_index("note")
+    assert not widget.table_view.isColumnHidden(note)
+    widget.hide_empty_columns(True)
+    assert widget.table_view.isColumnHidden(note)
+    widget.deleteLater()
+
+
+def test_store_source_edit_while_filtered_writes_the_right_row(store):
+    """The filtered-edit regression, re-run against the store."""
+    src = DataStoreSource(store, editable=True)
+    model = ChiTableModel(src)
+    model.set_filter(FilterSpec(query="gamma"))
+    assert model.rowCount() == 1
+    assert model.source_row(0) == 2
+
+    assert model.setData(model.index(0, 1), "999", QtCore.Qt.EditRole)
+    assert store["value"].numpy()[2] == 999.0
+    assert store["value"].numpy()[0] == 1.0
+
+
+# -- what a frame cannot do ----------------------------------------------
+
+
+def test_store_source_keeps_a_narrow_dtype_through_an_edit(qapp):
+    """A float32 column edits as float32 instead of being widened to float64."""
+    from chisurf.core.datastore import store_from_arrays
+
+    small = store_from_arrays({"small": np.array([0.5, 1.5, 2.5], dtype="float32")})
+    model = ChiTableModel(DataStoreSource(small, editable=True))
+    assert model.setData(model.index(0, 0), "9.25", QtCore.Qt.EditRole)
+    assert small["small"].dtype == "float32"
+    assert small["small"].numpy()[0] == np.float32(9.25)
+
+
+def test_store_source_blanks_an_integer_cell_without_losing_the_dtype(store):
+    """Clearing a cell sets the validity mask; a frame would have to widen to float."""
+    src = DataStoreSource(store, editable=True)
+    model = ChiTableModel(src)
+    col = model.column_index("count")
+
+    assert model.setData(model.index(1, col), "", QtCore.Qt.EditRole)
+    assert store["count"].dtype == "int64"
+    assert store["count"].valid(1) is False
+    # It renders as the same blank a NaN renders as.
+    assert model.data(model.index(1, col), QtCore.Qt.DisplayRole) in ("", None)
+    # And the filter sees it as missing.
+    model.set_filter(FilterSpec(columns=(ColumnFilter(column=col, op="isnull"),)))
+    assert model.rowCount() == 1
+
+
+def test_store_source_offers_text_labels_as_a_drop_down(store):
+    """A text column knows its distinct values, so its cells edit as a combo box."""
+    src = DataStoreSource(store, editable=True)
+    spec = src.column_specs()[0]
+    assert spec.delegate == "choice"
+    assert spec.choices == ("alpha", "beta", "gamma", "delta")
+    assert delegate_for(spec.delegate, spec.choices) is not None
+
+
+def test_store_source_learns_a_new_label(store):
+    """Typing a label the dictionary does not have adds it, and the spec follows."""
+    src = DataStoreSource(store, editable=True)
+    model = ChiTableModel(src)
+    assert model.setData(model.index(0, 0), "omega", QtCore.Qt.EditRole)
+    assert src.value(0, 0) == "omega"
+    assert "omega" in src.column_specs()[0].choices
+
+
+def test_store_source_declines_a_drop_down_for_a_large_dictionary():
+    """A thousand distinct labels is free text, not a combo box."""
+    from chisurf.core.datastore import store_from_arrays
+    from chisurf.gui.widgets.chitable.source import MAX_CHOICE_LABELS
+
+    many = store_from_arrays({"id": [f"burst{i}" for i in range(MAX_CHOICE_LABELS + 1)]})
+    spec = DataStoreSource(many, editable=True).column_specs()[0]
+    assert spec.kind == "str"
+    assert spec.delegate == ""
+    assert spec.choices == ()
+
+
+def test_store_source_read_only_columns_and_colorize_selection(store):
+    src = DataStoreSource(
+        store, editable=True, readonly_columns=("name",), colorize_columns=("value",)
+    )
+    specs = {s.key: s for s in src.column_specs()}
+    assert specs["name"].editable is False
+    assert specs["value"].editable is True
+    assert specs["value"].colorize is True
+    assert specs["count"].colorize is False
+
+
+def test_store_source_survives_a_column_being_added(store):
+    """The borrowed-column trap: a source must not hold a stale proxy.
+
+    Adding a column reallocates the store's column vector, and any ``Column``
+    handed out earlier then reads freed memory — silently, as an empty column.
+    ``DataStoreSource`` re-fetches, so the table keeps working.
+    """
+    src = DataStoreSource(store, editable=True)
+    assert src.value(0, 0) == "alpha"
+    store.add("extra", np.arange(4, dtype="float64"))
+    assert src.value(0, 0) == "alpha"
+    assert src.value(2, 1) == 300.0
+    src.set_store(store)
+    assert [s.key for s in src.column_specs()][-1] == "extra"
+    assert src.value(3, 5) == 3.0

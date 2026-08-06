@@ -3,8 +3,8 @@ type: PRD
 prd: "82"
 title: "PRD-82: The table layer onto tttrlib's DataStore — chitable first, then pandas and pytables out of the storage path"
 description: chitable, the burst tables and the HDF5 writers move onto tttrlib's DataStore one adapter at a time. The dependency count is not the argument -- pandas stays installed either way -- the arguments are half the memory, dtypes and missing values that survive a file, and the removal of pytables, which is already broken in a freshly solved environment.
-status: planned
-phase: "unassigned"
+status: in-progress
+phase: "stage 1 landed"
 resource: chisurf/gui/widgets/chitable/source.py
 tags: [prd, chitable, datastore, tttrlib, pandas, pytables, dependencies, burst, hdf5, csv]
 timestamp: '2026-08-06T00:00:00Z'
@@ -12,14 +12,38 @@ timestamp: '2026-08-06T00:00:00Z'
 
 # Where to pick this up
 
-Nothing has been implemented. Start at **stage 1** (`DataStoreSource` in
-chitable) — it is the only stage that needs no tttrlib change, and it is the one
-that proves the adapter contract before anything is migrated onto it. Stages 2
-and 3 are blocked on tttrlib work listed under
-[What tttrlib needs](#what-tttrlib-needs); of that list, **T1 (dictionary-encoded
-strings through HDF5) blocks the most**, because it is what makes a burst table
-smaller in a file rather than larger, and every later stage is judged on that
-comparison.
+**Stage 1 has landed** (2026-08-06): `chisurf/core/datastore.py` is the Qt-free
+seam and `DataStoreSource` is chitable's fourth adapter, with 75 tests green
+across `test/test_datastore_seam.py` and `test/gui/test_chitable.py`. The
+adapter is asserted equal to `DataFrameSource` cell for cell, and does the three
+things a frame cannot: keeps a narrow dtype through an edit, blanks an integer
+cell by mask rather than by widening, and edits a text column as a drop-down of
+its dictionary. The durable description is the new
+[columnar-store concept](../subsystems/columnar-store.md) — **source may not
+name this PRD**, so that concept is what the code points at.
+
+Next is **stage 2 (HDF5)**, and it is blocked on **T1** exactly as predicted;
+nothing about that has changed. Before starting it, note what stage 1 turned up:
+
+1. **T8 was not a blocker and is off the critical path.** A single-cell text
+   write is expressible today over `dictionary()` / `set_dictionary()` /
+   `codes()`, which is what `set_cell` does. It still belongs in the library so
+   six consumers do not re-derive it, but it blocks nothing.
+2. **A new gap outranks most of the T-list: a borrowed `Column` dangles.** A
+   proxy from `add()` or `store[i]` is a reference into a `std::vector<Column>`;
+   the next `add()` reallocates and the held proxy reads freed memory, silently,
+   as an empty column. Every stage below wants to fetch columns once and keep
+   them, so every stage will meet this. Worked around by never caching a proxy;
+   root cause, the one-line container change, and why it could not be verified
+   in that change are in
+   [known issues](../references/known-issues.md).
+3. **Two smaller library gaps**, both worked around in the seam: a boolean
+   column has no zero-copy view (it decodes through a per-row Python loop, and a
+   write through the returned array is silently lost), and `mask_numpy()`
+   returns a copy.
+4. **148 files in the shipped package still name a PRD**, tracked by
+   `test/prd_mention_allowlist.txt`. Every file this migration touches gets its
+   PRD references ported to the owning concept in the same change.
 
 Two measurements to re-derive before trusting anything here, and the trap in
 each:
@@ -128,9 +152,13 @@ a frame, which is what makes this migration piecewise rather than a flag day.
 
 # Proposal
 
-## Stage 1 — `DataStoreSource` (no tttrlib change needed)
+## Stage 1 — `DataStoreSource` (no tttrlib change needed) — **landed**
 
-A fourth adapter in `chisurf/gui/widgets/chitable/source.py`:
+A fourth adapter in `chisurf/gui/widgets/chitable/source.py`, over a Qt-free
+seam in `chisurf/core/datastore.py` that stages 2–4 share (`store_from_dataframe`,
+`dataframe_from_store`, `store_from_arrays`, `column_at`, `column_values`,
+`set_cell`, `clear_cell`). The conversions live in core rather than in the
+widget so that the GUI does not become the seam:
 
 ```python
 source = DataStoreSource(store, editable=True)     # tttrlib.DataStore
@@ -149,7 +177,12 @@ widget = ChiTableWidget(source)
 
 Acceptance for this stage alone: the existing chitable test suite passes against
 a `DataStoreSource` built from the same data as its `DataFrameSource` fixtures,
-cell for cell.
+cell for cell. **Met** — the filter, sort, colour-range and filtered-edit tests
+are parametrised over both sources, and a dedicated test walks every cell of
+both and asserts equality. One design choice worth knowing: a text column edits
+as a combo box only while its dictionary is small (`MAX_CHOICE_LABELS = 64`);
+beyond that it is free text, because a drop-down of ten thousand burst ids is
+not an editor.
 
 ## Stage 2 — HDF5: the writers move, and `pytables` is actually gone
 
@@ -216,8 +249,11 @@ required to finish stage 3 without hand-rolling the same loop in six plugins.
 | **T5** | **`concat` / row append** | `pd.concat` is 26 call sites, the second-largest `pd.*` name after the constructor. |
 | **T6** | **`argsort` / sort by column** | Table sorting; chitable currently sorts through the proxy on a numpy array per column, which is fine for one column and not for a stable multi-column sort. |
 | **T7** | **Group-by aggregation over a dictionary column** | 6 call sites. Most of it is `codes` + `np.bincount`, which is *why* it belongs in the library: every consumer writing that loop by hand is how the codes get copied. |
-| **T8** | **Single-cell string write** | chitable editing of a text column. Numeric cell writes already work through the writable view; a dictionary column needs an explicit "set row *i* to label *s*, adding it to the dictionary if new". |
+| ~~T8~~ | ~~Single-cell string write~~ | **Not a gap.** Expressible over `dictionary()` / `set_dictionary()` / `codes()`, which is what `set_cell` does. Worth having in the library so six consumers do not re-derive it; blocks nothing. |
 | T9 | `describe`-shaped summary | `profile()` already covers most of it; listed so it is not rediscovered as missing. |
+| **T10** | **A `Column` reference that survives `add()`** | Found by stage 1, and it outranks most of this list because every stage wants to fetch columns once and keep them. A proxy from `add()`/`store[i]` points into a `std::vector<Column>`; the next `add()` reallocates and it reads freed memory — an empty name and no data, with no exception. One-line fix (a stable-reference container) in `modules/core/include/DataStore.h`; see [known issues](../references/known-issues.md) for why it could not be verified in the change that found it. |
+| T11 | A zero-copy view for a **boolean** column | Today `numpy()` decodes it through a per-row Python loop, so filtering a large boolean column is O(n) in Python — and the array it returns is a *copy*, so a write through it is silently lost. |
+| T12 | `mask_numpy()` as a view rather than a copy | A single-cell mask change is currently a read-modify-write of the whole mask. Also: `set_numpy` on a text column **appends** instead of replacing, so a second call doubles it. |
 
 **Compression default is worth a look while T1 is open**: `write_hdf5` defaults
 to compression level 4, which costs **2.58 s against 0.08 s** on a numeric table
