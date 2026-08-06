@@ -1,0 +1,75 @@
+[
+  {
+    "title": "This is the parameter network",
+    "text": "Every open fit is a large blue disc, and every parameter in it is a small disc joined to it by a thin grey line. The colour of a parameter says what it is doing: purple is free, green follows another parameter, grey is fixed. The key is in the top-left corner.",
+    "target": {
+      "tab": "🕸️ Network"
+    }
+  },
+  {
+    "title": "Show the fixed parameters too",
+    "text": "A fixed parameter is not estimated, but it can still be linked — and it is hidden until you ask for it. Tick this to see the whole model.",
+    "target": {
+      "name": "globalview_include_fixed"
+    },
+    "await": {
+      "hint": "Tick ‘Include fixed’"
+    }
+  },
+  {
+    "title": "Link two parameters by dragging",
+    "text": "Drag one parameter node onto another. The one you dragged becomes the follower: it stops being estimated and takes the other's value. That is what makes a fit global — two datasets sharing one lifetime.",
+    "target": {
+      "tab": "🕸️ Network"
+    }
+  },
+  {
+    "title": "…or by selecting and pressing Link",
+    "text": "Click one parameter (it gets a red rim — it is the master), click a second, then press Link. The same thing happens, and it works when the two nodes are far apart.",
+    "target": {
+      "action": "🔗 Link"
+    }
+  },
+  {
+    "title": "Edit what you selected",
+    "text": "The Selection panel holds an editor for each selected parameter, captioned with the fit it belongs to — which matters, because two fits of the same model name their parameters identically.",
+    "target": {
+      "tab": "🔗 Selection"
+    }
+  },
+  {
+    "title": "Break a link",
+    "text": "Double-click a cyan arrow in the network, or select the follower and press Unlink. Tick ‘all’ first to clear every link in every fit at once.",
+    "target": {
+      "action": "🧹 Unlink"
+    }
+  },
+  {
+    "title": "When the network gets crowded",
+    "text": "Change the Layout to move the nodes around, raise Spread to push them apart, then use the wheel to zoom and drag the background to pan. ⌖ puts everything back in the panel. Connect base joins the fits and plugin groups to each other, so you can see what is available to link against.",
+    "target": {
+      "tab": "🎨 View"
+    }
+  },
+  {
+    "title": "Keeping up with the fits",
+    "text": "The network follows the fits by itself — changes are coalesced, and the layout only re-runs when the shape actually changed, so a running fit costs nothing here. Untick ‘auto’ to take that over, and press ⟳ Refresh when you want it redrawn.",
+    "target": {
+      "name": "refresh"
+    }
+  },
+  {
+    "title": "Everything at once",
+    "text": "The Parameters panel is the same information as a table: every parameter of every fit and every plugin group, searchable, with value, bounds, fixed state and which row it follows.",
+    "target": {
+      "tab": "🎛️ Parameters"
+    }
+  },
+  {
+    "title": "Keep the scheme",
+    "text": "Save writes the network — values, fixed flags and links — as a GraphML file. Loading it applies all three onto the fits you have open, which is how one linking scheme is reused on a new set of datasets.",
+    "target": {
+      "name": "save"
+    }
+  }
+]

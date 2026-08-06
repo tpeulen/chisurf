@@ -12,6 +12,36 @@ user administration, project I/O, updates, data acquisition, and batch runs. The
 under `chisurf/plugins/core/` and follow the same manifest contract as feature plugins,
 so ChiSurf's own plumbing is packaged as plugins too.
 
+## Where to pick this up
+
+The open front here is **Global View** (see
+[below](#global-view-the-parameter-network) for what it now is).
+
+1. **Delete the server's copy of the graph builder.** Two implementations of one
+   contract: `chisurf/plugins/core/globalview/api/graph.py` and
+   `chisurf/server/services/graph.py`. Measure the drift by running the same
+   fits through both and diffing the node/edge sets — today the server's has no
+   `group` node type at all, so a network fetched over RPC silently omits every
+   registered plugin parameter group, and the link-by-name defect had to be
+   fixed twice. The blocker is unproven: `api/graph.py` looks Qt-free (its only
+   import, `GlobalFitModel`, is function-local) but that has not been checked
+   against the server's import path — check it, and if it holds the deletion is
+   the whole fix. Recorded in [known issues](/references/known-issues.md).
+2. **`GraphWizard.link()` still writes values and fixed flags one RPC call at a
+   time** when a GraphML file is loaded — two calls per node, plus one per edge.
+   Fine for the fits anyone has open today; it will not be for a saved network
+   of a few hundred parameters. A batched `set_parameters` on the fitting client
+   is the shape of the fix.
+3. **The Selection panel rebuilds every editor on every click.** Cheap now
+   (`clear_layout` + `make_fitting_parameter_widget` for at most two nodes) but
+   it is the reason `clear_layout` had to be fixed to unparent — worth
+   remembering before the selection limit is raised past two.
+4. *Tried and reverted:* making a plain drag on a parameter **move** the node
+   and Shift-drag create the link. It is the better default in the abstract and
+   it breaks every existing user's muscle memory for the plugin's one purpose;
+   the gesture is left as it was (drag = link, Shift-drag = move) and both are
+   in the tooltip and the help.
+
 | Plugin dir | Display name | What it does |
 | --- | --- | --- |
 | `core/setup` | Setup:Settings | Unified Settings dialog that hosts several config panels. |
@@ -27,7 +57,7 @@ so ChiSurf's own plumbing is packaged as plugins too.
 | `core/updater` | Setup:Updates & Packages | Update checker/installer and conda package manager (panels inside Settings). |
 | `core/acq` | Main:Tools:Acquisition | Single-molecule acquisition from TCSPC hardware or the built-in tttrlib photon simulator. |
 | `core/batch_analysis` | Main:Tools:Batch-Analysis | Apply one template fit to many datasets/files and export consolidated results. |
-| `core/globalview` | Main:Tools:Global View | Interactive network graph of parameter relationships across fits. |
+| `core/globalview` | Main:Tools:Global View | Interactive network graph of parameter relationships across fits — see [below](#global-view-the-parameter-network). |
 | `core/help` | Help:Documentation | Documentation browser and editor (Markdown + the reStructuredText user manual), with human-review sign-off tracking. |
 | `core/lightpath_simulator` | Spectroscopy:Light Path Simulator | Compute crosstalk and R₀ overlap integrals for an optical path. |
 | `sample_database` | Legacy:Sample Database | Retired prerelease MMFDB surface; active work belongs in `core/mmfdb_admin`. |
@@ -78,3 +108,78 @@ the 79 `.rst` pages were invisible. `api/rst.py` renders them through bare
 docutils (a Sphinx build is far too slow for interactive browsing), registering
 no-op fallbacks for Sphinx-only roles such as `:doc:`/`:ref:` so cross-references
 degrade to readable labels instead of error markers.
+
+## Global View: the parameter network
+
+`core/globalview` is where a global analysis is *assembled*: it draws every open
+fit, every parameter in it, and every link between parameters, and lets those
+links be made and broken by hand. The theory it serves is in
+[`docs/concepts/global_analysis.md`](../../docs/concepts/global_analysis.md) and
+the workflow in
+[`docs/guides/60_global_analysis.md`](../../docs/guides/60_global_analysis.md);
+the linking machinery itself belongs to [parameters](/subsystems/parameters.md).
+
+Four dock panels over a `DockArea`, like every other tool: **Network** (the
+graph), **Parameters** (the same content as a table, the shared
+`global_parameter_table` AutoForm section), **Selection** (an editor per
+selected node, captioned with its owner — two fits of one model name their
+parameters identically), and **View** (layout, node size, spread, *Connect
+base*, *Include fixed*).
+
+### Drawing
+
+The graph is painted directly, on the shared node-link marks in
+`chisurf/gui/widgets/graph_canvas.py` — the same dark grid, radial-gradient
+discs and curved arrows the [state-scheme diagram](/subsystems/gui-autoform.md)
+uses, so ChiSurf's two graphs read as one idea. That module is the seam: node
+palette, backdrop, `ZoomPan`, cubic edge routing, arrowheads, badges, legend.
+
+It replaced a `pyqtgraph.GraphItem`, which sized nodes in **data** coordinates —
+so label offsets, arrow lengths and node radii all scaled with the layout, and a
+graph was either unreadable dots or a few huge blobs. The layout is now fitted
+to the panel (re-fitted on resize and on show, until the user drags a node), and
+*spread* scales it past the panel edges instead of being an invisible layout
+argument.
+
+Three edge kinds, and they are different claims:
+
+| edge | drawn | means |
+| --- | --- | --- |
+| ownership | thin grey, no head | this parameter belongs to that fit or group |
+| link | cyan, arrowhead at the **master** | this parameter follows that one |
+| base (*Connect base*) | dashed, dim | these owners are things links can run between |
+
+*Connect base* connects every **owner** — fits *and* registered parameter groups
+— not fits only, so a plugin's working model (an ndX selection, a calculator)
+appears with the fits it exists to be linked against.
+
+### Refreshing without cost
+
+The tool subscribes to `fit.`/`parameter.` events, which during a fit arrive once
+per iteration. Answering each one meant re-running a layout algorithm hundreds of
+times for a graph whose shape never changed. Now the events are coalesced into
+one wake-up (`REFRESH_DEBOUNCE_MS`), the rebuild is skipped entirely while the
+window is hidden, and the layout only re-runs when a **structure signature**
+(node names, node kinds, edges) differs from what is drawn — values moving is not
+a reason to move a node. An explicit **⟳ Refresh** always redraws, and *auto* can
+be switched off, in which case the status bar says when the picture is stale.
+
+### Traps this area has already sprung
+
+- **A link edge resolved by name** matched *every* same-named parameter in the
+  session, so three fits with a `tau1` turned one link into three arrows. Both
+  builders (`plugins/core/globalview/api/graph.py` and the server's
+  `server/services/graph.py`) now resolve the master by UUID, with the name only
+  as a fallback.
+- **`chinet.graph` edges are undirected** and come back renumbered low-to-high,
+  so a link's follower → master direction is destroyed by a round trip through
+  the graph container. The graph is used for *layout only*; the directed edges
+  are carried out of the builder separately.
+- **Node ids are not canvas indices.** They diverge the moment `include_fixed`
+  drops a node, and an un-reindexed edge then joins two unrelated parameters.
+- **A dock layout saved before the window is shown** records every split as
+  ~48/48 and, being persisted, beats the authored default on every later launch.
+  Saving waits for the first real show.
+- **Two graph builders exist** — the plugin's and the server's `graph.build`
+  service — and they have already drifted once. Fixes must land in both until
+  they are unified; see [known issues](/references/known-issues.md).

@@ -13,6 +13,4 @@ chisurf/plugins/burst/burst_selection/gui/tool.py
 chisurf/plugins/core/acq/__init__.py
 chisurf/plugins/core/acq/gui/tool.py
 chisurf/plugins/core/acq/gui/windows.py
-chisurf/plugins/core/globalview/graphplotwidget.py
-chisurf/plugins/core/globalview/gui/tool.py
 chisurf/plugins/tttr/intensity_trace/__init__.py

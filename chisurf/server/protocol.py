@@ -485,12 +485,12 @@ METHOD_PARAM_SCHEMAS = {
     },
     "graph.build": {
         "required_params": [],
-        "optional_params": ["fit_indices", "fit_uids", "include_fixed", "connect_fits"],
+        "optional_params": ["fit_indices", "fit_uids", "include_fixed", "connect_owners"],
         "result": "GraphBuildResult",
     },
     "graph.build_fits": {
         "required_params": [],
-        "optional_params": ["fit_indices", "fit_uids", "include_fixed", "connect_fits"],
+        "optional_params": ["fit_indices", "fit_uids", "include_fixed", "connect_owners"],
         "result": "GraphBuildResult",
     },
     "log.write": {

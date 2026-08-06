@@ -14,6 +14,12 @@ class GraphNode:
     fixed: bool = False
     is_linked: bool = False
     link_name: str = ""
+    #: Global UUID of the parameter this one is linked *to*. Matching by name
+    #: alone drew an edge to every same-named parameter in every fit — three
+    #: fits with a ``tau1`` each produced three edges from one link — so the
+    #: identity of the master is carried explicitly and the name is only a
+    #: fallback for graphs read back from GraphML.
+    link_uid: str = ""
     fit_name: str = ""
     data_filename: str = ""
     model: str = ""
@@ -54,7 +60,7 @@ def _model_of(owner: Any) -> Any:
 def build_graph(
     fit_list: List[Any],
     include_fixed: bool = True,
-    connect_fits: bool = False,
+    connect_owners: bool = False,
     skip_global_fit: bool = True,
     group_list: Optional[List[Any]] = None,
 ) -> GraphResult:
@@ -66,8 +72,12 @@ def build_graph(
         List of fit objects (Fit or FitGroup).
     include_fixed : bool
         Whether to include fixed parameters.
-    connect_fits : bool
-        Whether to add edges between all fit nodes.
+    connect_owners : bool
+        Whether to join every **owner** node — every fit *and* every registered
+        parameter group — to every other. It used to join fits only, which left
+        a plugin's working model (ndX, a calculator) floating apart from the
+        fits it is there to be linked against: the one relation the option
+        exists to make visible was the one it did not draw.
     skip_global_fit : bool
         Whether to skip fits with GlobalFitModel.
     group_list : list, optional
@@ -117,15 +127,18 @@ def build_graph(
             except Exception:
                 is_linked = False
             try:
-                link_name = str(getattr(getattr(param, "link", None), "name", "") or "")
+                link = getattr(param, "link", None)
+                link_name = str(getattr(link, "name", "") or "")
+                link_uid = _uid(link) if link is not None else ""
             except Exception:
                 link_name = ""
+                link_uid = ""
             pid = counter["idx"]
             result.nodes.append(GraphNode(
                 node_idx=pid, node_type="parameter",
                 name=str(getattr(param, "name", "param")), fit_idx=fit_idx,
                 value=_safe_float(getattr(param, "value", None)), fixed=fixed,
-                is_linked=is_linked, link_name=link_name,
+                is_linked=is_linked, link_name=link_name, link_uid=link_uid,
                 param_uid=_uid(param), owner_uid=owner_uid, owner_id=owner_id,
             ))
             result.edges.append(GraphEdge(source=pid, target=node_id))
@@ -159,23 +172,32 @@ def build_graph(
             owner_uid=_uid(_model_of(group)), owner_id=str(owner_id),
         )
 
-    # Connect linked parameters
+    # Connect each linked parameter to the *one* parameter it follows. Resolved
+    # by UUID; the name is only consulted when the master carries no UUID, and
+    # even then the first match wins rather than all of them.
+    by_uid = {
+        n.param_uid: n for n in result.nodes
+        if n.node_type == "parameter" and n.param_uid
+    }
+    by_name: Dict[str, GraphNode] = {}
     for n in result.nodes:
-        if n.node_type != "parameter":
-            continue
-        if not n.is_linked or not n.link_name:
-            continue
-        for m in result.nodes:
-            if m.node_type != "parameter":
-                continue
-            if m.name == n.link_name:
-                result.edges.append(GraphEdge(source=n.node_idx, target=m.node_idx))
+        if n.node_type == "parameter":
+            by_name.setdefault(n.name, n)
 
-    # Optional: connect all fit nodes
-    if connect_fits:
-        fit_nodes = [n for n in result.nodes if n.node_type == "fit"]
-        for i, a in enumerate(fit_nodes):
-            for b in fit_nodes[i + 1:]:
+    for n in result.nodes:
+        if n.node_type != "parameter" or not n.is_linked:
+            continue
+        master = by_uid.get(n.link_uid) if n.link_uid else None
+        if master is None and n.link_name:
+            master = by_name.get(n.link_name)
+        if master is not None and master.node_idx != n.node_idx:
+            result.edges.append(GraphEdge(source=n.node_idx, target=master.node_idx))
+
+    # Optional: connect every owner — fits and registered groups alike.
+    if connect_owners:
+        owners = [n for n in result.nodes if n.node_type in ("fit", "group")]
+        for i, a in enumerate(owners):
+            for b in owners[i + 1:]:
                 result.edges.append(GraphEdge(source=a.node_idx, target=b.node_idx))
 
     return result

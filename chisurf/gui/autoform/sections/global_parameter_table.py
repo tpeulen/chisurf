@@ -481,16 +481,27 @@ class GlobalParameterTableWidget(QtWidgets.QWidget):
         refresh_btn.setToolTip("Reload parameters from all fits and plugins")
         refresh_btn.clicked.connect(self.refresh)
 
+        # No title of its own: the hosting section already captions this widget,
+        # and printing "All fitting parameters" twice, one line apart, only
+        # costs a row of the table.
         bar = QtWidgets.QHBoxLayout()
         bar.setContentsMargins(0, 0, 0, 0)
-        bar.addWidget(QtWidgets.QLabel("All fitting parameters"))
         bar.addStretch(1)
         bar.addWidget(refresh_btn)
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(2, 2, 2, 2)
         layout.addLayout(bar)
-        layout.addWidget(self._table)
+        layout.addWidget(self._table, 1)
+
+        # A table is the whole point of the panel it sits in, so it takes the
+        # spare height instead of being capped at its size hint with dead space
+        # under it. The marker is what AutoForm looks for when deciding which
+        # section gets the stretch.
+        self.setSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding
+        )
+        self._autoform_expanding = True
 
         self._subscribe_events()
         self.refresh()

@@ -1,3 +1,55 @@
+## models: `EtModelFreeWidget` is registered and cannot be instantiated
+
+**2026-08-06.** The TCSPC model menu offers "ET model free", and choosing it can
+only fail:
+
+```
+TypeError: Can't instantiate abstract class EtModelFreeWidget
+           without an implementation for abstract method 'update_model'
+```
+
+`EtModelFreeWidget.__abstractmethods__` is `frozenset({'update_model'})`. Its
+compute class `EtModelFree` lives *inside*
+`chisurf/gui/widgets/models/tcspc/et.py` (line ~250), which is why it is tier B in
+[PRD-38](../prds/prd-38.md): the model has to be extracted into `core/models/**`
+before its editor can be described in JSON, and the extraction is also what would
+give it a real `update_model`.
+
+**Why it went unnoticed:** nothing constructs it. Construction smoke tests skip GUI
+model widgets, and the editor-integration guard walks only the JSON-described
+models. It is registered in `experiment_configs.yaml`, so it appears in the menu
+regardless.
+
+To reproduce, resolve it the way `add_fit` does and build a `Fit`:
+
+```python
+from chisurf.gui.widgets.models.tcspc import EtModelFreeWidget
+print(EtModelFreeWidget.__abstractmethods__)   # -> {'update_model'}
+```
+
+Once ported, drop it from `_a_still_legacy_widget_model`'s skip in
+`test/gui/test_auto_model_widget.py` -- that helper currently steps over abstract
+widgets so the MRO tests do not report this pre-existing breakage as their own.
+
+## models: the ported parse editors have no equation validity badge or LaTeX preview
+
+**2026-08-06.** The four parse editors are generated from JSON now
+([PRD-38](../prds/prd-38.md) increment 12) and the equation is a plain text field.
+The hand-written `ParseFormulaWidget`
+(`chisurf/gui/widgets/models/parse/widget.py`) showed two things the generated one
+does not: a ✓/✗ **validity badge** as you type, and a rendered **LaTeX preview** of
+the equation.
+
+That file is kept for this reason -- it is otherwise reachable only from its own
+`__init__` and `test/gui/test_parse_widget_expression_editor.py`, and deleting it
+is what closing this gap unlocks.
+
+The pieces already exist: `chisurf/gui/widgets/expression_input.py` has the badge
+(and `chisurf/gui/widgets/models/parse/latex.py` the conversion, used by
+`equation_editor` and `expression_input` too). The clean fix is a `value`
+`kind: "expression"` -- or a small section wrapping `expression_input` -- so *any*
+view spec gets a validated, previewed formula field, not just the parse models.
+
 ## chimol: the nucleic-acid cartoon has artifacts — RESOLVED 2026-08-06
 
 Kept for the mechanism, which generalises past this one representation.
@@ -2352,3 +2404,25 @@ it is blocked on three library gaps — a text column that inflates the file, a
 legacy reader that returns an **empty store** instead of declining, and a writer
 that truncates so one file cannot hold two groups. Until then this is a real gap
 between the developer environment and a fresh one.
+
+## globalview: two graph builders, and they have already drifted
+
+**2026-08-06.** The parameter graph is built twice. The plugin builds it locally
+(`chisurf/plugins/core/globalview/api/graph.py`); the server builds it again, by
+hand, for the `graph.build` RPC (`chisurf/server/services/graph.py`,
+"mirrors the client-side logic"). They are not one implementation with two
+transports — they are two implementations of the same contract, and today they
+were fixed twice for the same defect: a link edge resolved by parameter *name*,
+which drew an arrow from a follower to every same-named parameter in the session
+(three fits with a `tau1` turned one link into three arrows, two of them false).
+The server copy has also never had the `group` node type the plugin grew for
+out-of-fit parameter groups, so a network fetched over RPC is missing every
+plugin working model that a locally built one shows.
+
+The durable fix is to delete the server copy and have `graph.build` call the
+plugin's Qt-free `api/graph.py`, which already returns plain dataclasses. It was
+not done here because the plugin `api` package has not been checked for
+Qt-freeness in the server's import path, and unifying it is a wider change than
+the GUI work that surfaced the defect. Until then, **a change to one builder must
+be made to the other**, and the record is
+[core tools](../plugins/core-tools.md#global-view-the-parameter-network).

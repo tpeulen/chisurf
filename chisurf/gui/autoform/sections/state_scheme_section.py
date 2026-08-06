@@ -1,9 +1,16 @@
-"""AutoForm custom section for clean HMM state scheme diagram visualization."""
+"""AutoForm custom section for clean HMM state scheme diagram visualization.
+
+The marks — dark grid, gradient discs, curved arrows with rate badges — are the
+shared node-link vocabulary in :mod:`chisurf.gui.widgets.graph_canvas`, so this
+diagram and the Global View parameter graph look like one tool.
+"""
 from __future__ import annotations
 
 import math
 import numpy as np
 from qtpy import QtWidgets, QtCore, QtGui
+
+from chisurf.gui.widgets import graph_canvas as gc
 
 from .registry import register_section
 from .rate_matrix_section import _resolve
@@ -12,14 +19,7 @@ from .rate_matrix_section import _resolve
 #: Node fills, by state index. Cycled rather than exhausted: the palette used to
 #: run out after four states and every state past the third came out the same
 #: orange, which is a real limitation for a scheme with five.
-_NODE_COLOURS = (
-    ("#42a5f5", "#1565c0"),
-    ("#66bb6a", "#2e7d32"),
-    ("#ab47bc", "#6a1b9a"),
-    ("#ffa726", "#e65100"),
-    ("#26c6da", "#00838f"),
-    ("#ec407a", "#ad1457"),
-)
+_NODE_COLOURS = gc.NODE_PALETTE
 
 
 class SchemeCanvasWidget(QtWidgets.QWidget):
@@ -221,8 +221,7 @@ class StateSchemeWidget(QtWidgets.QWidget):
         #: space so a zoom never disturbs a layout the user arranged by hand;
         #: the zoom lives here and is applied at paint time and inverted on the
         #: way back in for hit-testing.
-        self._zoom = 1.0
-        self._zoom_origin = QtCore.QPointF(0.0, 0.0)
+        self._view = gc.ZoomPan()
 
     AUTOFORM_REFRESH = True
     is_form_field = False
@@ -279,14 +278,11 @@ class StateSchemeWidget(QtWidgets.QWidget):
 
     #: Zoom limits. Below the first the labels are unreadable; above the second
     #: a single node fills the canvas and there is nothing left to orient by.
-    ZOOM_RANGE = (0.25, 6.0)
+    ZOOM_RANGE = gc.ZoomPan.ZOOM_RANGE
 
     def _transform(self) -> QtGui.QTransform:
         """Return the scene -> canvas transform."""
-        t = QtGui.QTransform()
-        t.translate(self._zoom_origin.x(), self._zoom_origin.y())
-        t.scale(self._zoom, self._zoom)
-        return t
+        return self._view.transform()
 
     def _scene_pos(self, point) -> QtCore.QPointF:
         """Map a canvas position back to scene coordinates.
@@ -295,9 +291,7 @@ class StateSchemeWidget(QtWidgets.QWidget):
         coordinates, so the inverse has to be applied on the way in or clicking
         a zoomed node would miss it by exactly the zoom factor.
         """
-        inverse, ok = self._transform().inverted()
-        p = QtCore.QPointF(point)
-        return inverse.map(p) if ok else p
+        return self._view.scene_pos(point)
 
     def _on_canvas_wheel(self, event: QtGui.QWheelEvent):
         """Zoom about the pointer.
@@ -306,25 +300,8 @@ class StateSchemeWidget(QtWidgets.QWidget):
         zoom usable for inspecting one transition in a busy scheme: the thing
         under the cursor stays under the cursor.
         """
-        delta = event.angleDelta().y()
-        if not delta:
+        if not self._view.zoom_by(event.angleDelta().y(), gc.wheel_anchor(event)):
             return
-        low, high = self.ZOOM_RANGE
-        factor = 1.0015 ** float(delta)
-        new_zoom = min(high, max(low, self._zoom * factor))
-        if abs(new_zoom - self._zoom) < 1e-9:
-            return
-        try:
-            anchor = QtCore.QPointF(event.position())
-        except AttributeError:      # Qt5 spelling
-            anchor = QtCore.QPointF(event.pos())
-        scene = self._scene_pos(anchor)
-        # Keep `scene` under `anchor`: origin' = anchor - scene * zoom'
-        self._zoom = new_zoom
-        self._zoom_origin = QtCore.QPointF(
-            anchor.x() - scene.x() * new_zoom,
-            anchor.y() - scene.y() * new_zoom,
-        )
         self._spin.hide()
         self._editing_pair = None
         self.canvas.update()
@@ -332,8 +309,7 @@ class StateSchemeWidget(QtWidgets.QWidget):
 
     def reset_view(self):
         """Return to 1:1, centred as laid out."""
-        self._zoom = 1.0
-        self._zoom_origin = QtCore.QPointF(0.0, 0.0)
+        self._view.reset()
         self.canvas.update()
 
     def _excitation(self):
@@ -504,40 +480,13 @@ class StateSchemeWidget(QtWidgets.QWidget):
         return None
 
     def _compute_edge_routing(self, p_i: QtCore.QPointF, p_j: QtCore.QPointF, is_two_way: bool, pair_key: tuple[int, int] = (0, 0)):
-        r_node = 26.0
-        dx = p_j.x() - p_i.x()
-        dy = p_j.y() - p_i.y()
-        dist = math.hypot(dx, dy)
-        if dist < 1e-4:
-            return None, None, None, None, None
-
-        ux, uy = dx / dist, dy / dist
-        px, py = -uy, ux
-
-        if pair_key in self._arrow_offsets:
-            h = self._arrow_offsets[pair_key]
-            offset_side = 7.0 if is_two_way else 0.0
-        elif is_two_way:
-            h = max(24.0, min(50.0, dist * 0.26))
-            offset_side = 7.0
-        else:
-            h = max(10.0, min(22.0, dist * 0.12))
-            offset_side = 0.0
-
-        p0 = QtCore.QPointF(p_i.x() + ux * r_node + px * offset_side, p_i.y() + uy * r_node + py * offset_side)
-        p3 = QtCore.QPointF(p_j.x() - ux * r_node + px * offset_side, p_j.y() - uy * r_node + py * offset_side)
-
-        mid_x = (p0.x() + p3.x()) / 2.0 + px * h
-        mid_y = (p0.y() + p3.y()) / 2.0 + py * h
-        pmid = QtCore.QPointF(mid_x, mid_y)
-
-        p1 = QtCore.QPointF(p0.x() + (pmid.x() - p0.x()) * 0.6, p0.y() + (pmid.y() - p0.y()) * 0.6)
-        p2 = QtCore.QPointF(p3.x() + (pmid.x() - p3.x()) * 0.6, p3.y() + (pmid.y() - p3.y()) * 0.6)
-
-        path = QtGui.QPainterPath()
-        path.moveTo(p0)
-        path.cubicTo(p1, p2, p3)
-        return path, p0, p3, p2, pmid
+        """Route one transition arrow, honouring a curvature the user dragged."""
+        return gc.edge_path(
+            p_i, p_j,
+            r_from=26.0, r_to=26.0,
+            two_way=is_two_way,
+            bow=self._arrow_offsets.get(pair_key),
+        )
 
     def _get_active_midpoints(self, n: int, dark_m: np.ndarray) -> dict[tuple[int, int], QtCore.QPointF]:
         midpoints = {}
@@ -568,20 +517,7 @@ class StateSchemeWidget(QtWidgets.QWidget):
         painter = QtGui.QPainter(canvas)
         painter.setRenderHint(QtGui.QPainter.Antialiasing)
 
-        # Fill background with dark plot color and draw grid lines
-        rect = canvas.rect()
-        painter.fillRect(rect, QtGui.QColor("#151515"))
-
-        grid_pen = QtGui.QPen(QtGui.QColor(255, 255, 255, 20), 1, QtCore.Qt.DashLine)
-        painter.setPen(grid_pen)
-        grid_step = 35
-        for x in range(grid_step, rect.width(), grid_step):
-            painter.drawLine(x, 0, x, rect.height())
-        for y in range(grid_step, rect.height(), grid_step):
-            painter.drawLine(0, y, rect.width(), y)
-
-        painter.setPen(QtGui.QPen(QtGui.QColor(50, 50, 50), 1))
-        painter.drawRect(rect.adjusted(0, 0, -1, -1))
+        gc.paint_backdrop(painter, canvas.rect())
 
         # The grid above is a fixed backdrop; everything below is the scheme
         # itself and moves with the zoom.
@@ -628,10 +564,8 @@ class StateSchemeWidget(QtWidgets.QWidget):
 
                 if is_excitation and rate <= 0.0:
                     pen_w = 2.5
-                    arrow_color = QtGui.QColor("#00e5ff")
-                    pen = QtGui.QPen(arrow_color, pen_w, QtCore.Qt.SolidLine, QtCore.Qt.RoundCap, QtCore.Qt.RoundJoin)
+                    arrow_color = QtGui.QColor(gc.ACCENT)
                     badge_bg = QtGui.QColor(0, 140, 170, 230)
-                    text_color = QtGui.QColor(255, 255, 255)
                     rate_str = "k_exc"
                 else:
                     pen_w = max(1.8, 1.8 + 2.2 * math.log10(rate + 1.0))
@@ -639,77 +573,37 @@ class StateSchemeWidget(QtWidgets.QWidget):
                     # otherwise -- meaningful only when there *is* one. Without
                     # an excitation edge, singling out state 0 would claim a
                     # ground state the scheme never declared.
-                    if excitation is None:
-                        arrow_color = QtGui.QColor("#00e5ff")
-                    elif j == excitation[0] or i == excitation[0]:
-                        arrow_color = QtGui.QColor("#00e5ff")
+                    if excitation is None or j == excitation[0] or i == excitation[0]:
+                        arrow_color = QtGui.QColor(gc.ACCENT)
                     else:
-                        arrow_color = QtGui.QColor("#ff4081")
-                    pen = QtGui.QPen(arrow_color, pen_w, QtCore.Qt.SolidLine, QtCore.Qt.RoundCap, QtCore.Qt.RoundJoin)
+                        arrow_color = QtGui.QColor(gc.ACCENT_ALT)
                     badge_bg = QtGui.QColor(20, 20, 20, 225)
-                    text_color = QtGui.QColor(255, 255, 255)
                     rate_str = f"{rate:.2f}"
 
-                painter.setPen(pen)
+                painter.setPen(QtGui.QPen(
+                    arrow_color, pen_w, QtCore.Qt.SolidLine,
+                    QtCore.Qt.RoundCap, QtCore.Qt.RoundJoin,
+                ))
                 painter.setBrush(QtCore.Qt.NoBrush)
                 painter.drawPath(path)
 
-                ah_angle = math.atan2(p3.y() - p2.y(), p3.x() - p2.x())
-                arrow_size = 10.0 + pen_w * 0.5
-                ah_p1 = QtCore.QPointF(
-                    p3.x() - arrow_size * math.cos(ah_angle - math.pi / 6),
-                    p3.y() - arrow_size * math.sin(ah_angle - math.pi / 6)
+                gc.draw_arrow_head(painter, p3, p2, arrow_color, pen_w)
+                gc.draw_badge(
+                    painter, pmid, rate_str, outline=arrow_color, fill=badge_bg,
                 )
-                ah_p2 = QtCore.QPointF(
-                    p3.x() - arrow_size * math.cos(ah_angle + math.pi / 6),
-                    p3.y() - arrow_size * math.sin(ah_angle + math.pi / 6)
-                )
-                arrow_head = QtGui.QPolygonF([p3, ah_p1, ah_p2])
-                painter.setBrush(QtGui.QBrush(arrow_color))
-                painter.setPen(QtCore.Qt.NoPen)
-                painter.drawPolygon(arrow_head)
-
-                fm = painter.fontMetrics()
-                bw = max(40, fm.horizontalAdvance(rate_str) + 12)
-                bh = 20
-
-                painter.setBrush(QtGui.QBrush(badge_bg))
-                painter.setPen(QtGui.QPen(arrow_color, 1.2))
-                badge_rect = QtCore.QRectF(pmid.x() - bw / 2.0, pmid.y() - bh / 2.0, bw, bh)
-                painter.drawRoundedRect(badge_rect, 6, 6)
-
-                painter.setPen(QtGui.QPen(text_color))
-                font = painter.font()
-                font.setPointSize(9)
-                font.setBold(True)
-                painter.setFont(font)
-                painter.drawText(badge_rect, QtCore.Qt.AlignCenter, rate_str)
 
         # Draw nodes (Photophysical State Badges)
         for i in range(n):
-            pt = self._node_coords[i]
-            node_rect = QtCore.QRectF(pt.x() - r_node, pt.y() - r_node, 2 * r_node, 2 * r_node)
-
-            grad = QtGui.QRadialGradient(pt.x() - r_node * 0.3, pt.y() - r_node * 0.3, r_node * 1.5)
-            light, dark = _NODE_COLOURS[i % len(_NODE_COLOURS)]
-            grad.setColorAt(0, QtGui.QColor(light))
-            grad.setColorAt(1, QtGui.QColor(dark))
-
             is_dragged = (self._dragged_node == i)
-            border_color = QtGui.QColor("#ffeb3b") if is_dragged else QtGui.QColor(240, 240, 240)
-            border_w = 3.0 if is_dragged else 2.0
-
-            painter.setBrush(QtGui.QBrush(grad))
-            painter.setPen(QtGui.QPen(border_color, border_w))
-            painter.drawEllipse(node_rect)
-
-            painter.setPen(QtGui.QPen(QtCore.Qt.white))
-            font = painter.font()
-            font.setBold(True)
-            font.setPointSize(10)
-            painter.setFont(font)
-            lbl = short_labels[i] if i < len(short_labels) else f"S{i}"
-            painter.drawText(node_rect, QtCore.Qt.AlignCenter, lbl)
+            gc.draw_node(
+                painter,
+                self._node_coords[i],
+                r_node,
+                _NODE_COLOURS[i % len(_NODE_COLOURS)],
+                short_labels[i] if i < len(short_labels) else f"S{i}",
+                border=QtGui.QColor("#ffeb3b") if is_dragged else None,
+                border_width=3.0 if is_dragged else 2.0,
+            )
 
         painter.end()
 

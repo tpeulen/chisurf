@@ -946,7 +946,7 @@ class ChiSurfAPI:
         fit_indices: Optional[List[int]] = None,
         fit_uids: Optional[List[str]] = None,
         include_fixed: bool = True,
-        connect_fits: bool = False,
+        connect_owners: bool = False,
     ) -> Dict[str, Any]:
         """Build the fit/parameter graph for the selected fits.
 
@@ -962,8 +962,9 @@ class ChiSurfAPI:
             Unique identifiers of the fits to include.  Defaults to every fit.
         include_fixed : bool, optional
             Include fixed parameters as nodes.  Default ``True``.
-        connect_fits : bool, optional
-            Additionally connect every pair of fit nodes.  Default ``False``.
+        connect_owners : bool, optional
+            Additionally connect every pair of *owner* nodes — fits and
+            registered parameter groups alike.  Default ``False``.
 
         Returns
         -------
@@ -975,7 +976,7 @@ class ChiSurfAPI:
                 fit_indices=fit_indices,
                 fit_uids=fit_uids,
                 include_fixed=include_fixed,
-                connect_fits=connect_fits,
+                connect_owners=connect_owners,
             )
         from chisurf.server.services import graph as _graph
 
@@ -984,7 +985,7 @@ class ChiSurfAPI:
             fit_indices=fit_indices,
             fit_uids=fit_uids,
             include_fixed=include_fixed,
-            connect_fits=connect_fits,
+            connect_owners=connect_owners,
         )
 
 

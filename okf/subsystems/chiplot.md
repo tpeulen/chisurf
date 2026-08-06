@@ -62,7 +62,7 @@ today, a native OpenGL renderer behind the same contract is the goal.
 if a *new* file imports pyqtgraph directly, and equally if an entry in
 `test/pyqtgraph_import_allowlist.txt` has already been ported. That allow-list
 is a **shrinking migration tracker**, not a place to add oneself: it started at
-76 files and is down to 15, of which the ChiMOL OpenGL module is owned by
+76 files and is down to 12, of which the ChiMOL OpenGL module is owned by
 [PRD-57](/prds/prd-57.md) and out of scope.
 
 The safety net has two halves, and the object one is easy to get wrong:

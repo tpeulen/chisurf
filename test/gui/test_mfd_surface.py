@@ -373,7 +373,7 @@ def test_the_scheme_zooms_about_the_pointer(fit, qapp):
 
     plot = StateSchemePlot(fit, target="kinetics", labels_attr="state_names")
     widget = plot.scheme_widget
-    assert widget._zoom == pytest.approx(1.0)
+    assert widget._view.zoom == pytest.approx(1.0)
 
     anchor = QtCore.QPointF(260.0, 120.0)
     before = widget._scene_pos(anchor)
@@ -382,7 +382,7 @@ def test_the_scheme_zooms_about_the_pointer(fit, qapp):
         QtCore.Qt.NoButton, QtCore.Qt.NoModifier, QtCore.Qt.NoScrollPhase, False,
     )
     widget._on_canvas_wheel(event)
-    assert widget._zoom > 1.5
+    assert widget._view.zoom > 1.5
     # What was under the pointer is still under the pointer.
     after = widget._scene_pos(anchor)
     assert after.x() == pytest.approx(before.x(), abs=1e-6)
@@ -396,7 +396,7 @@ def test_the_scheme_zooms_about_the_pointer(fit, qapp):
     low, high = widget.ZOOM_RANGE
     for _ in range(40):
         widget._on_canvas_wheel(event)
-    assert widget._zoom <= high
+    assert widget._view.zoom <= high
 
 
 def test_the_node_palette_does_not_run_out(qapp):

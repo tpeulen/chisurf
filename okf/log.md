@@ -24,6 +24,20 @@
 
   The sections and their order now come from `docs/index.rst`'s own toctrees, exactly as the levels below them do. What stays in code is only the **wording** — the website's captions are parenthetical ("Concepts (theory)") where a navigation row reads better with a dash, and a one-line summary has nowhere to live in a caption at all — keyed by index path, with the caption as the fallback for a section nobody has worded yet. `development/index` is named as not-user-documentation rather than omitted by silence. A test asserts that every directory the root index lists is either in the tree or explicitly excluded.
 
+* **Global View is a dock tool that paints its own network, and stops paying for a running fit** ([core tools](plugins/core-tools.md#global-view-the-parameter-network)).
+
+  The window was a `QTabWidget` over two `QGroupBox`es whose second grid column absorbed the whole width — a spin box for a number between 0 and 1 was eight hundred pixels wide — above a `pyqtgraph.GraphItem` that sized nodes in **data** coordinates, so labels, arrowheads and radii scaled with the layout and the graph read as a cloud of dots. It is now four docks over a `DockArea` (Network / Parameters / Selection / View) with the canonical toolbar, and the graph is painted directly on a new shared node-link module, `chisurf/gui/widgets/graph_canvas.py`: the same dark grid, radial-gradient discs and curved arrows the state-scheme diagram uses, which was refactored onto the same primitives (pixel-identical but for one badge that had been measured with a stale font). Both graphs in ChiSurf now look like one idea. `graphplotwidget.py` and the shadowed `gui.py` are deleted and both globalview entries struck from the pyqtgraph allow-list (16 left).
+
+  **Four defects, each of which drew a plausible picture rather than failing.** (1) A link edge was resolved by parameter *name*, so a follower drew an arrow to every same-named parameter in the session — three fits with a `tau1` turned one link into three arrows, two of them fiction; masters resolve by UUID now, in the plugin builder *and* the server's duplicate of it. (2) `chinet.graph` edges are undirected and come back renumbered low-to-high, so the follower → master direction was destroyed by the round trip and half the arrows pointed the wrong way; the graph is used for layout only and the directed edges are carried out of the builder separately. (3) Node ids were fed to the canvas as array indices, which diverge the moment `include_fixed` drops a node — an edge then joins two unrelated parameters. (4) `clear_layout` took widgets out of a layout but left them parented and visible until a deferred-delete round, so the previous selection's editors floated over the new ones; and it asked the emptied layout item for its widget twice, which returns `None` the second time.
+
+  **Auto-refresh no longer costs anything.** It was subscribed to `parameter.` events — one per fit iteration — and re-ran a layout algorithm on each. Events are now coalesced into one wake-up (300 ms), skipped entirely while the window is hidden, and the layout only re-runs when a structure signature (node names, kinds, edges) differs from what is drawn: values moving is not a reason to move a node. An explicit **⟳ Refresh** always redraws and *auto* can be switched off, in which case the status bar says the picture is stale. Related: a dock layout saved while the window was still being built recorded every split as 48/48 and, persisted, beat the authored default on every later launch — saving now waits for the first real show.
+
+  **"Connect fits" is "Connect base"** and connects every *owner* — fits **and** registered parameter groups — so a plugin's working model (an ndX selection, a calculator) sits with the fits it exists to be linked against instead of floating apart. Renamed through the RPC surface (`connect_owners`) in the plugin, the server service, `ChiSurfAPI` and the manifest. Owner-to-owner edges are drawn dashed and dim, because "these are things links can run between" is a different claim from "this parameter belongs to that fit".
+
+  Also: node labels are elided on a translucent plate (a dense graph was unreadable overlay), the layout is fitted to the panel and re-fitted on resize/show until the user drags a node, a colour key is drawn in the canvas, each editor in **Selection** is captioned with its owner (two fits of one model name their parameters identically), and the parameter table now fills its panel instead of being capped with dead space under it, without printing its title twice.
+
+  Docs: new [`docs/concepts/global_analysis.md`](../docs/concepts/global_analysis.md) (what linking does to the estimator, why $\chi^2$ rises and precision improves, link vs fix vs prior, how to test a shared parameter) and [`docs/guides/60_global_analysis.md`](../docs/guides/60_global_analysis.md) (GUI walkthrough plus two headless recipes whose printed output is the run output), both registered in their indexes. The plugin ships `help.md` and a ten-step `guide.json` and is struck from the help/guide allow-list. Tests: `test/gui/test_globalview_canvas.py` (16), including that every guided-tour step resolves to a real widget — the shared seam test only checks targets that name a view spec, and this window has none. The two graph builders that must now be fixed in lockstep are recorded in [known issues](references/known-issues.md).
+
 * **Every equation in the documentation was rendered, measured and looked at** ([documentation browser](subsystems/documentation-browser.md)).
 
   **41 display formulas were wider than the text column.** Qt does not scale an oversized image down — it gives the *whole page* a horizontal scrollbar, so every paragraph on the page starts sliding sideways under the reader. A row is now split at the `\qquad`/`\quad` its author used to set two formulas side by side, which is the answer a typesetter would give; only a single indivisible formula that is still too wide is scaled. At the size pages are read at, **nothing is scaled and nothing overflows**, and at maximum zoom the splitter absorbs all but 23 rows. The split is made at brace depth zero and never at a thin space, which would strand an arrow alone on a line.
@@ -416,6 +430,58 @@
   this must `show()` the editor and use `setFixedWidth` — `resize()` alone is refused
   below a layout's minimum, so the first harness I wrote narrowed nothing and proved
   nothing.
+
+  **The parse family went next, and the section it was supposed to need did not
+  exist for a reason.** PRD-38 had it filed as the one genuine tier-C item — a
+  bespoke equation-catalogue widget. But the catalogue was only *bespoke* because it
+  lived in the Qt widget: `ParseModel._models` was a dict nothing ever filled, so
+  picking an equation was not something a script or a view spec could do. Moving the
+  catalogue into core made the editor ordinary vocabulary — a `choice` over
+  `catalogue_names`, a `value` on `func`, an `info` for the description, a parameter
+  table — and retired four registered models (TCSPC decay, FCS, PCF, stopped flow)
+  with **no new section at all**.
+
+  Two of those four were not merely un-ported but **unopenable**. The stopped-flow
+  parse model passed a `str` where a `pathlib.Path` was expected *and* pointed at a
+  catalogue file that is not in the tree, so it raised `AttributeError` on
+  construction; it now has a core model and the catalogue it never had. And
+  `EtModelFreeWidget` — still in the menu — is **abstract**, missing `update_model`,
+  so choosing it can only fail. Nothing constructs these, which is why nothing
+  noticed.
+
+  Two framework fixes worth more than the ports: `info`'s `source` and the new
+  `parameters_source` demanded a *method*, so naming a property or a list rendered
+  an empty box or dropped a whole table with at most a warning — a trap already
+  recorded once as a gotcha, now fixed at the resolver. And catalogue initial values
+  are **seeded when the equation is parsed** rather than applied after selection,
+  because any re-parse rebuilds the parameter objects and building the editor
+  triggers one: `Mode` opened at 1 where the catalogue says 20.
+
+  *Also worth knowing:* the shared test fixture built its data on an axis starting at
+  zero, which makes a `log(x)` equation legitimately non-finite — a correct model
+  looked broken until the axis became strictly positive, which is what a time or lag
+  axis is anyway.
+
+  **Global fit followed** — `global_parameter_table` was built, tested and used by
+  *nothing*, and is now this editor's parameter view, so it shows every parameter of
+  every fit plus the registered out-of-fit groups instead of one hand-rolled table.
+  `globalfit.ui` is gone. One contract worth knowing: `button_row`'s `action` is a
+  **zero-arg model method**, not a dispatcher action, and the existing `model.*`
+  actions all need arguments — so the selection state moved onto the model
+  (`selected_local_fit`, `selected_candidate_fit`, `new_global_parameter_name`) and
+  the buttons call zero-arg methods over it. That is what let the list, the picker
+  and the buttons all be generic sections with no widget state.
+
+  **The remaining `.ui` files are now mapped one by one** rather than counted. Two
+  (`tcspc_convolve.ui`, `tcspcCorrections.ui`) are already dead: their widgets are
+  reachable only from `LifetimeModelWidgetBase`, which no registered model uses. But
+  deleting that ~2.5k-LOC layer has to happen in one change with two conditions, or
+  it is a regression — `anisotropy.py` holds the r(t) diagnostics panel that is the
+  single un-ported control of every FRET/Lifetime editor, so removing it destroys the
+  reference before its replacement exists; and a contract test AST-inspects
+  `ConvolveWidget`. The other four each block on exactly one thing: an `EtModelFree`
+  extraction, an `expression` field (validity badge + LaTeX), a catalogue API for
+  Python `code:` rather than equations, and a reaction-scheme section.
 
   Also: `LifetimeModel.name` was `"Lifetime "` with a trailing space, which stopped being cosmetic the moment the primary entry is matched *by name* against an `==` comparison; name fixed and the match made whitespace-tolerant. `"Lifetime (new)"` had become a de-facto API string in 13 test files. 45 tests green; the 5 stray `.ui` files inside the Qt-free `core/models/**` are gone.
 

@@ -53,7 +53,7 @@ def graph_build_handler(
     fit_indices: Optional[List[int]] = None,
     fit_uids: Optional[List[str]] = None,
     include_fixed: bool = True,
-    connect_fits: bool = False,
+    connect_owners: bool = False,
     state: Any = None,
     **kwargs: Any,
 ) -> Dict[str, Any]:
@@ -63,7 +63,7 @@ def graph_build_handler(
         result = build_graph(
             fit_list=fits,
             include_fixed=include_fixed,
-            connect_fits=connect_fits,
+            connect_owners=connect_owners,
         )
         return {
             "ok": True,

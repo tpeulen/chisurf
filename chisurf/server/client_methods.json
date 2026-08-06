@@ -47,8 +47,8 @@
     {"name": "model__finalize", "rpc": "model.finalize", "params": [{"name": "fit_index", "default": 0}, {"name": "fit_uid", "default": null}]},
     {"name": "model__set_parse_function", "rpc": "model.set_parse_function", "params": [{"name": "parse_function", "required": true}, {"name": "fit_index", "default": 0}, {"name": "fit_uid", "default": null}]},
 
-    {"name": "graph__build", "rpc": "graph.build", "params": [{"name": "fit_indices", "default": null}, {"name": "fit_uids", "default": null}, {"name": "include_fixed", "default": true}, {"name": "connect_fits", "default": false}]},
-    {"name": "graph__build_fits", "rpc": "graph.build_fits", "params": [{"name": "fit_indices", "default": null}, {"name": "fit_uids", "default": null}, {"name": "include_fixed", "default": true}, {"name": "connect_fits", "default": false}]},
+    {"name": "graph__build", "rpc": "graph.build", "params": [{"name": "fit_indices", "default": null}, {"name": "fit_uids", "default": null}, {"name": "include_fixed", "default": true}, {"name": "connect_owners", "default": false}]},
+    {"name": "graph__build_fits", "rpc": "graph.build_fits", "params": [{"name": "fit_indices", "default": null}, {"name": "fit_uids", "default": null}, {"name": "include_fixed", "default": true}, {"name": "connect_owners", "default": false}]},
     {"name": "log__write", "rpc": "log.write", "params": [{"name": "level", "default": "info"}, {"name": "message", "required": true}, {"name": "logger_name", "default": "chisurf.rpc"}, {"name": "extra", "default": null}]},
 
     {"name": "editor__document_list", "rpc": "editor.document.list", "params": [], "result_key": "documents", "default": []},

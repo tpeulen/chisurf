@@ -35,7 +35,8 @@ The GUI communicates with backend services via ZMQ JSON-RPC for graph building a
 Integration surfaces:
 
 - Python API: `chisurf.plugins.core.globalview.api`
-- GUI: `chisurf.plugins.core.globalview.gui:GraphWizard`
+- GUI: `chisurf.plugins.core.globalview.gui:GraphWizard` (four docks: Network,
+  Parameters, Selection, View)
 - Canonical RPC methods:
   - `globalview.graph.build` - Build parameter relationship graph
   - `globalview.parameters.list` - List all parameters across fits
@@ -48,9 +49,9 @@ The GUI is an adapter over `GlobalViewClient`; graph behavior belongs in `api/` 
 
 - Python packages:
   - PyQt5
-  - PyQtGraph
   - numpy
-  - chinet (`chinet.graph` — graph container, layouts and GraphML I/O)
+  - chinet (`chinet.graph` — graph container and layout algorithms; the drawing
+    is ChiSurf's own, on `chisurf.gui.widgets.graph_canvas`)
 
 ## Usage
 
@@ -60,9 +61,9 @@ The GUI is an adapter over `GlobalViewClient`; graph behavior belongs in `api/` 
    - Fits appear as larger nodes
    - Parameters appear as smaller nodes connected to their respective fits
 4. Create parameter links:
-   - Select a source parameter node
-   - Select a target parameter node
-   - Confirm the link creation
+   - Drag one parameter node onto another — the one dragged becomes the
+     follower; or select the master, then the follower, and press Link
+   - Double-click a link arrow to break it
 5. Edit parameter properties:
    - Select a parameter node
    - Modify properties (fixed/free, bounds, value)

@@ -11,7 +11,7 @@ class GlobalViewState:
     selected_fit_indices: List[int] = field(default_factory=list)
     graph_layout: str = "kamada_kawai"
     include_fixed: bool = True
-    connect_fits: bool = False
+    connect_owners: bool = False
     graph_scale: float = 1.0
     node_size: float = 0.02
 
@@ -75,12 +75,12 @@ class GlobalViewClient:
         fit_indices: Optional[List[int]] = None,
         fit_uids: Optional[List[str]] = None,
         include_fixed: bool = True,
-        connect_fits: bool = False,
+        connect_owners: bool = False,
     ) -> Dict[str, Any]:
         """Build a parameter relationship graph from fit objects."""
         params: Dict[str, Any] = {
             "include_fixed": include_fixed,
-            "connect_fits": connect_fits,
+            "connect_owners": connect_owners,
         }
         if fit_indices is not None:
             params["fit_indices"] = fit_indices

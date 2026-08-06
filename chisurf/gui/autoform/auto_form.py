@@ -1054,9 +1054,15 @@ class AutoForm(QtWidgets.QWidget):
         layout.addWidget(caption)
         layout.addWidget(widget)
         # The hosting panel gives spare vertical space to expanding sections, and
-        # that marker lives on the inner widget — carry it out to the wrapper.
+        # that marker lives on the inner widget — carry it out to the wrapper,
+        # and give the widget the stretch inside the wrapper too, or the height
+        # the panel just handed over stops at the caption.
         if getattr(widget, "_autoform_expanding", False):
             holder._autoform_expanding = True
+            layout.setStretch(1, 1)
+            holder.setSizePolicy(
+                QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Expanding
+            )
         # ``section_widget`` must hand back the widget the factory built, not the
         # caption wrapper: a caller asking for a section by name wants the thing
         # with the API on it.

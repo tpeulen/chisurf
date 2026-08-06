@@ -29,7 +29,7 @@
           "fit_indices": {"type": "array", "items": {"type": "integer"}},
           "fit_uids": {"type": "array", "items": {"type": "string"}},
           "include_fixed": {"type": "boolean"},
-          "connect_fits": {"type": "boolean"}
+          "connect_owners": {"type": "boolean"}
         }
       },
       "result_schema": {

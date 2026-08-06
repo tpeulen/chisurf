@@ -26,11 +26,23 @@ def get_widgets_in_layout(
 
 def clear_layout(layout: QtWidgets.QLayout):
     """Clears all widgets within a layout
+
+    Taking a widget out of a layout does not take it off the screen: it keeps
+    its parent and its last geometry, and ``deleteLater`` only removes it once
+    the event loop reaches a deferred-delete round. Until then the old widgets
+    are still painted, stacked at wherever the layout last put them — which is
+    how a panel rebuilt on every selection ends up showing the previous
+    selection's editors floating over the new ones. Unparenting first is what
+    makes the clear immediate.
     """
     while layout.count():
         child = layout.takeAt(0)
-        if child.widget() is not None:
-            child.widget().deleteLater()
+        widget = child.widget()
+        if widget is not None:
+            # Held in a local: unparenting empties the layout item, so asking it
+            # for its widget a second time returns ``None``.
+            widget.setParent(None)
+            widget.deleteLater()
         elif child.layout() is not None:
             clear_layout(child.layout())
 

@@ -15,7 +15,10 @@ The window those links open into is a subsystem of its own:
 **The measurement.** `pytest test/test_plugin_help_guide_seam.py` — the number
 that matters is the line count of `test/plugin_help_guide_allowlist.txt`
 (`grep -c '^chisurf' test/plugin_help_guide_allowlist.txt`). It went **105 → 96
-→ 93 → 92 → 91 → 89 → 87 → 83 → 81**; 109 plugins declare a `gui` entrypoint. Regenerate the list from the tree
+→ 93 → 92 → 91 → 89 → 87 → 83 → 81 → 79**; 109 plugins declare a `gui`
+entrypoint. (Global View is one of the two most recent: a `help.md` and a
+ten-step `guide.json` landed with its rebuild onto docks — see
+[core tools](../plugins/core-tools.md#global-view-the-parameter-network).) Regenerate the list from the tree
 with the `gui_plugins()` helper in that test file rather than by hand — a plugin
 whose `entrypoints.gui` names a *package* rather than a module resolves to that
 package's `gui/` subdirectory, not to the folder you would guess, and

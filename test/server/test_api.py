@@ -112,7 +112,7 @@ class DummyClient:
         return {"ok": True}
 
     def graph__build(self, fit_indices=None, fit_uids=None, include_fixed=True,
-                     connect_fits=False):
+                     connect_owners=False):
         self._calls.append("graph__build")
         return {"ok": True, "graph": {"nodes": [], "edges": []}}
 

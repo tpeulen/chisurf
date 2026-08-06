@@ -26,7 +26,7 @@ def build_fit_graph(
     fit_indices: Optional[List[int]] = None,
     fit_uids: Optional[List[str]] = None,
     include_fixed: bool = True,
-    connect_fits: bool = False,
+    connect_owners: bool = False,
 ) -> ServiceResult:
     """Build a graph from fits on the server, returning nodes and edges as JSON.
 
@@ -100,9 +100,12 @@ def build_fit_graph(
             except Exception:
                 is_linked = False
             try:
-                link_name = str(getattr(getattr(param, "link", None), "name", "") or "")
+                link = getattr(param, "link", None)
+                link_name = str(getattr(link, "name", "") or "")
+                link_uid = str(getattr(link, "unique_identifier", "") or "")
             except Exception:
                 link_name = ""
+                link_uid = ""
 
             param_node = {
                 "node_idx": node_idx,
@@ -113,36 +116,44 @@ def build_fit_graph(
                 "fixed": fixed,
                 "is_linked": is_linked,
                 "link_name": link_name,
+                "link_uid": link_uid,
+                "param_uid": str(getattr(param, "unique_identifier", "") or ""),
             }
             param_node_id = node_idx
             nodes.append(param_node)
             edges.append({"source": param_node_id, "target": node_id})
             node_idx += 1
 
-    # Connect linked parameters
+    # Connect each linked parameter to the *one* parameter it follows. Resolved
+    # by UUID; the name is only a fallback, and even then the first match wins.
+    # Matching by name alone drew an edge to every same-named parameter in the
+    # session — three fits of one model turned one link into three arrows, two
+    # of them fiction.
+    by_uid = {
+        n["param_uid"]: n for n in nodes
+        if n["node_type"] == "parameter" and n.get("param_uid")
+    }
+    by_name: Dict[str, Any] = {}
     for n in nodes:
-        if n["node_type"] != "parameter":
-            continue
-        if not n.get("is_linked"):
-            continue
-        link_name = n.get("link_name", "")
-        if not link_name:
-            continue
-        for m in nodes:
-            if m["node_type"] != "parameter":
-                continue
-            if m["node_idx"] == n["node_idx"]:
-                # A parameter linked to a same-named one elsewhere matches
-                # itself by name; an edge onto itself is not a link.
-                continue
-            if m["name"] == link_name:
-                edges.append({"source": n["node_idx"], "target": m["node_idx"]})
+        if n["node_type"] == "parameter":
+            by_name.setdefault(n["name"], n)
 
-    # Optional: connect all fit nodes to each other
-    if connect_fits:
-        fit_nodes = [n for n in nodes if n["node_type"] == "fit"]
-        for i, a in enumerate(fit_nodes):
-            for b in fit_nodes[i + 1:]:
+    for n in nodes:
+        if n["node_type"] != "parameter" or not n.get("is_linked"):
+            continue
+        master = by_uid.get(n.get("link_uid", "")) if n.get("link_uid") else None
+        if master is None and n.get("link_name"):
+            master = by_name.get(n["link_name"])
+        if master is not None and master["node_idx"] != n["node_idx"]:
+            edges.append({"source": n["node_idx"], "target": master["node_idx"]})
+
+    # Optional: connect every owner node to every other. "Owner" rather than
+    # "fit" so a registered parameter group (a plugin's working model) joins the
+    # same web instead of floating apart from the fits it can be linked to.
+    if connect_owners:
+        owners = [n for n in nodes if n["node_type"] in ("fit", "group")]
+        for i, a in enumerate(owners):
+            for b in owners[i + 1:]:
                 edges.append({"source": a["node_idx"], "target": b["node_idx"]})
 
     return {

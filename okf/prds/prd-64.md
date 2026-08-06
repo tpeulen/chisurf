@@ -44,11 +44,15 @@ tracker, and headless tests.
 
 **Phases 2–3 are well advanced.** Batches 1–33 (see the
 [migration plan](#migration-plan)) have taken
-`test/pyqtgraph_import_allowlist.txt` from its 76-file seed to **15 entries**:
+`test/pyqtgraph_import_allowlist.txt` from its 76-file seed to **12 entries**:
 four in `chisurf/gui/**` (`autoform/sections/builtin.py` and three TTTR wizard
-files), ten plugin files (`burst_h2mm`, `burst_mle_analysis`, `burst_selection`,
-`core/acq`, `core/globalview`, `tttr/intensity_trace`), and the PRD-57-owned
-ChiMOL OpenGL entry that is a non-goal here. Phase 4 (`modules/`) and Phase 5+
+files), eight plugin files (`burst_h2mm`, `burst_mle_analysis`, `burst_selection`,
+`core/acq`, `tttr/intensity_trace`), and the PRD-57-owned ChiMOL OpenGL entry
+that is a non-goal here. `core/globalview` left the list by dropping pyqtgraph
+altogether rather than porting to chiplot: its graph is a node-link diagram, not
+a plot, and it is now painted directly on the shared
+`chisurf/gui/widgets/graph_canvas.py` marks — see
+[core tools](../plugins/core-tools.md#global-view-the-parameter-network). Phase 4 (`modules/`) and Phase 5+
 (native OpenGL backend) remain.
 
 **Design decision (revised).** The seam is *not* a pyqtgraph-shaped re-export.
