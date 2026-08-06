@@ -601,6 +601,23 @@
   interpolating, because data and model have independent time axes and resampling
   would write numbers the fit never computed.
 
+  **Two of the six core extractions landed** (FIDA and multi-component PCH), and
+  they identified the pattern behind all of them: a computed output written through
+  `get_fitting_client()` from inside `update_model`, wrapped in a bare `except`. It
+  does nothing whenever that client is absent — headless, or before the editor has
+  registered the fit — so PCH's "add component" button had never worked outside a
+  live GUI. A direct parameter write is the fix. The PCH histogram maths moved to
+  core with the model: four numpy functions had been living in a Qt module, so the
+  distribution could not be computed or checked against a reference without
+  importing the GUI.
+
+  *Two attempts to script the third extraction produced a broken module and were
+  thrown away.* Those fitting-client blocks are `try:` bodies that also contain the
+  statements computing the value being published, and one sits inside a `for` loop —
+  so removing the block removes the computation, and filtering "plumbing" lines by
+  pattern breaks the indentation. It is a by-hand job; the note is in PRD-38 so the
+  next attempt does not start the same way.
+
   Also: `LifetimeModel.name` was `"Lifetime "` with a trailing space, which stopped being cosmetic the moment the primary entry is matched *by name* against an `==` comparison; name fixed and the match made whitespace-tolerant. `"Lifetime (new)"` had become a de-facto API string in 13 test files. 45 tests green; the 5 stray `.ui` files inside the Qt-free `core/models/**` are gone.
 
 * **`build-tttrlib` now leaves every environment able to import what it built** ([build and env](workflows/build-and-env.md), [known issues](references/known-issues.md)).

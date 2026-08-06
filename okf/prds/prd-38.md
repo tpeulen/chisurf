@@ -73,9 +73,9 @@ reading of it. `gui/widgets/models/tcspc/lifetime_mix.py::LifetimeMixModelWidget
 is unregistered. The 5 stray `.ui` files that sat inside the Qt-free
 `core/models/**` are deleted.
 
-Counts at time of writing: 37 model classes ported across 10 families; **7 legacy
-registrations remain** (FCS ×3, PCH ×2, ProteinMC, ReactionWidget) and **2 `.ui`
-files under `models/`** (see the table below). `gui/widgets/models/tcspc/` is down
+Counts at time of writing: 39 model classes ported across 10 families; **5 legacy
+registrations remain** (FCS ×3, ProteinMC, ReactionWidget) and **2 `.ui` files
+under `models/`** (see the table below). `gui/widgets/models/tcspc/` is down
 from ~5k LOC to an alias module plus two helper files. **The only hand-written TCSPC model left is
 `EtModelFreeWidget`** — which is registered and *abstract*, so it cannot be
 opened at all (see known-issues).
@@ -511,6 +511,55 @@ Three things changed in the porting rather than being copied:
 Verified headless by driving the window directly: four curves, both axes populated,
 l1→l2 tracking while linked, l2 independent when unlinked, Reset restoring the
 fit's factors — and by reading the screenshot.
+
+**Increment 16 (PCH extractions) — DONE.** `FidaModel` and
+`PchMultiComponentModel` are in `core/models/pch/`, and the four numpy functions
+the latter computes with (`compute_p1`, `pch_single_species`, `pch_open_system`,
+`pch_mixture`) moved to `core/models/pch/pch.py` — they were defined in a Qt
+module, so a PCH distribution could not be evaluated or checked against a
+reference without importing the GUI.
+
+**What made these tier B was one pattern, and it is the thing to look for in the
+rest**: a computed output written through `get_fitting_client()` from inside
+`update_model` (or from `add_component`), wrapped in a bare `except`. It does
+nothing whenever the client is absent — headless, or before the editor has
+registered the fit — and says nothing about it. FIDA's mean, PCH's component
+defaults, and (still un-extracted) the dye-shape model's D / tauD / cpm are all
+this. The fix is a direct parameter write; the parameter's own controller binding
+repaints it.
+
+Also fixed here, affecting fifteen *other* specs: Qt reads `&` in a widget's text
+as a mnemonic marker, so a panel titled "Background & totals" rendered as
+"Background _totals". Titles are escaped at the renderer now.
+
+# Where to pick this up: the three remaining extractions
+
+`DyeShapeFCSModel` (`gui/widgets/models/fcs/dye_volume_widget.py`),
+`MaxEntFCSModel` + `MaxEntRHModel` (`fcs/maxent_widget.py`, 1388 LOC, which also
+defines a GUI plot class and a controller), and `ProteinMCModelWidget`
+(`proteinmc.py`, 1984 LOC, which additionally needs a per-row-settings table and a
+worker run/stop control).
+
+**Do these by hand, not mechanically.** Two attempts to rewrite
+`dye_volume_widget.py`'s fitting-client blocks with a script both produced a broken
+module: the blocks are `try:` bodies that *also* contain the statements computing
+the value being published (`D_um2_s = D_m2_s * 1.0e12`), and one sits inside a
+`for` loop, so deleting the block deletes the computation and dropping "plumbing"
+lines by pattern breaks the indentation. The extraction is small — move the class,
+keep every computing statement, and replace only the
+`fc = get_fitting_client() … set_parameter_value/fixed` calls with
+`param.value = …; param.fixed = True`.
+
+Copy the shape from `core/models/pch/pch_model.py`: parameters in lists with
+`label_text` on them, a `_species_parameter_rows` for a `row_width: 2` table,
+zero-arg methods for any `button_row`, and a `view_spec_file`. Add each model to
+`JSON_DESCRIBED_TCSPC_MODELS` in `test/gui/test_model_editor_integration.py` — that
+guard is what catches a silently dropped section.
+
+For the two MaxEnt FCS models specifically: they carry an L-curve, and
+`core/models/tcspc/maxent.py` already shows the pattern — expose the cached sweep
+as an `l_curve` property returning `LCurveData`, then declare the existing `lcurve`
+section. Their GUI plot class and controller become redundant at that point.
 
 **START NEXT — the parse family, and what it needs (analysed, not yet built).**
 This is the highest-value item left: one new section **retires four registered
