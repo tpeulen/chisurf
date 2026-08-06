@@ -2,6 +2,22 @@
 
 ## 2026-08-06
 
+* **Transfer to distributed acceptors, implemented rather than described** ([documentation browser](subsystems/documentation-browser.md)).
+
+  The one remaining Lakowicz gap the user asked for (frequency-domain lifetimes and spectral relaxation were ruled out) needed code, not prose: the single-distance FRET expressions do not apply when acceptors are *spread* rather than placed — dyes in solution, probes across a membrane, intercalators along a helix — and nothing in the tree covered it. `chisurf/core/fluorescence/fret/dimensionality.py` now implements the closed-form donor decays for one, two and three dimensions, the characteristic density `C0`, and the efficiency by quadrature. `docs/concepts/distributed_acceptors.md` documents them.
+
+  The physics worth carrying: the stretch exponent is `d/6` — a half, a third, a sixth — so the three cases are *distinguishable*, and the decay shape is a probe of the geometry the acceptors occupy rather than only of how many there are. `C0` is defined so that `C/C0` is literally the number of acceptors within `R0`.
+
+  **The reference's own numbers do not all reproduce.** Lakowicz quotes 72 %, 66 % and 63 % for the efficiency at `C = C0` in three, two and one dimensions. The three-dimensional value is right; the other two are **67.2 %** and **64.2 %**, confirmed two ways (SciPy adaptive quadrature over [0, ∞) and a dense trapezoid rule to 400 τ), with the gamma constants asserted exactly against `math.gamma`. The docs and the tests quote the computed values and record the discrepancy rather than quietly matching the book.
+
+  **A test caught a defect in its own validator.** `int(2.5)` is 2, so `dimension=2.5` was silently answering a question nobody asked; the check now rejects non-integral input. Of the 31 tests the load-bearing one recovers the stretch exponent *from the decay* by a log–log slope rather than reading it from the source — a transposed 1/3 and 1/2 is the easiest possible mistake here and fails that test and nothing else.
+
+  The figure is log–log deliberately: at equal density the three curves **cross** — lower dimensionality quenches harder early and less overall — and a linear time axis compresses that crossing into the first pixel column. Caught by looking at the first render.
+
+  Not done, and the next real work rather than the next page: this is a set of functions, not a fittable `Model`, so a membrane donor decay cannot yet be fitted through the GUI.
+
+  Verified: `docs-html` warning-free; render + crosslinks 251 passed; the new suite 31 passed; doctests pass.
+
 * **Every plugin page now says what it is for, and nine theory pages have a picture** ([documentation browser](subsystems/documentation-browser.md)).
 
   **All 125 generated plugin pages linked to no concept and no guide.** A reader who landed on one got the parameter table and the RPC surface, and no route to the theory or the workflow. Each page now carries a **Theory and workflow** section — derived by reading the documentation rather than by declaring the link in a manifest: a page that talks about a plugin already names its package, and a link built from that cannot go stale while the sentence around it is still true. Declaring it twice is what drifts.

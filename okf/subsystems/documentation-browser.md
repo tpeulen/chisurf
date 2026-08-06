@@ -74,17 +74,29 @@ page and a search). Three automated numbers back that up:
    images, broken heading ids) found and fixed everything it could detect. What
    they have not had is somebody reading them for *correctness*, which is what
    `--ai` records.
-3. **The Lakowicz pass is complete.** The two gaps recorded on 2026-08-06 are
-   written: `concepts/maximum_entropy.md` (with `guides/62_maxent_decay.md`) and
-   `concepts/energy_migration.md`. Both plugins were renovated with them —
-   `maxent_decay` lost a bespoke `HelpDialog` that pasted `--help` output into a
-   `QTextEdit`, and both are struck from `test/plugin_help_guide_allowlist.txt`
-   (87 → 85). What the pass did *not* cover, and would be the next source rather
-   than the next gap: frequency-domain lifetimes, spectral relaxation in depth,
-   and transfer to acceptors distributed in one, two or three dimensions — the
-   last is named in one paragraph of `concepts/energy_migration.md` and
-   deliberately not developed, because no ChiSurf model fits it today. Adding
-   one is what would justify the page.
+3. **The Lakowicz pass is closed, and its scope was set by the user.** Written:
+   `kappa2_orientation`, `distance_distributions`, `maximum_entropy`,
+   `energy_migration`, `distributed_acceptors`, plus the 11 `fundamentals`
+   pages, guides 61–62 and the `kappa2_dist` / `maxent_decay` renovations.
+   **Ruled out explicitly, do not re-propose:** frequency-domain lifetime
+   measurement and spectral relaxation. Both are covered at length in the
+   source and neither has an analysis behind it here.
+
+   Multi-acceptor was the one gap that needed *code* rather than prose, and it
+   got it: `chisurf/core/fluorescence/fret/dimensionality.py` implements the
+   1-D/2-D/3-D donor decay laws, the characteristic density and the efficiency,
+   with 31 tests. Worth knowing before extending it — **the reference's own
+   numbers do not all reproduce**. Lakowicz quotes 72 %, 66 % and 63 % for the
+   efficiency at `C = C0`; the three-dimensional value is right and the other
+   two are 67.2 % and 64.2 %, confirmed by adaptive quadrature and by a dense
+   trapezoid rule, with the gamma constants asserted exactly. The docs quote
+   the computed values and say so.
+
+   What the module does *not* do, and would be the next real work rather than
+   the next page: it is a set of functions, not a fittable `Model`, so a
+   membrane donor decay cannot yet be fitted through the GUI. Adding a TCSPC
+   model that releases `C/C0` and the dimensionality is the step that would make
+   the concept page describe a workflow instead of an API.
 
 4. **58 plugins ship without a README** and **80 GUI plugins have no `?` page or
    guided tour** (`test/plugin_help_guide_allowlist.txt` is the shrinking

@@ -21,6 +21,7 @@ alternatives are collected in :doc:`/fundamentals/conventions`.
    kappa2_orientation
    distance_distributions
    energy_migration
+   distributed_acceptors
    tcspc_lifetime
    anisotropy
    fcs_correlation

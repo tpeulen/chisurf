@@ -1599,7 +1599,7 @@ if __name__ == "__main__":
     # Fundamentals / theory pages
     fig_jablonski(); fig_lifetime_averages(); fig_stern_volmer()
     fig_energy_transfer_window(); fig_perrin(); fig_kappa2_models()
-    fig_maxent_nu()
+    fig_maxent_nu(); fig_distributed_acceptors()
     print("all figures written to", FIG)
 
 
@@ -1888,3 +1888,44 @@ def fig_maxent_nu():
     ax2.set_xlim(0, 20); ax2.set_ylim(0.7, 6e4); ax2.legend(fontsize=8)
     ax2.set_title("all three fit this decay", fontsize=10)
     save(fig, "maxent_nu.png")
+
+
+def fig_distributed_acceptors():
+    """The three dimensionalities, and why they are distinguishable."""
+    from chisurf.core.fluorescence.fret.dimensionality import (
+        donor_decay,
+        transfer_efficiency,
+    )
+    tau = 4.0
+    # Log time: the distinguishing feature is the *short*-time behaviour, and a
+    # linear axis compresses it into the first pixel column. The curves cross --
+    # lower dimensionality quenches harder early and less overall -- and that
+    # crossing is the whole content of the panel.
+    t = np.geomspace(1e-3 * tau, 4.0 * tau, 1200)
+    colours = {3: "#3b5bdb", 2: "#2b8a3e", 1: "#e8590c"}
+    names = {3: "3-D (solution)", 2: "2-D (membrane)", 1: "1-D (helix)"}
+
+    fig, (ax, ax2) = plt.subplots(1, 2, figsize=(8.8, 3.5))
+    ax.loglog(t, np.exp(-t / tau), lw=1.6, color="k", ls="--",
+              label="no acceptor")
+    for d in (3, 2, 1):
+        ax.loglog(t, donor_decay(t, tau, 1.0, d), lw=1.9, color=colours[d],
+                  label=names[d])
+    ax.set_xlabel("time / ns"); ax.set_ylabel("donor intensity")
+    ax.set_ylim(1e-3, 1.4); ax.legend(fontsize=8, loc="lower left")
+    ax.set_title(r"at $C = C_0$, all with the same $\tau_{D(0)}$", fontsize=10)
+
+    # Efficiency against density -- the curve an experiment actually walks along
+    dens = np.geomspace(0.05, 20.0, 40)
+    for d in (3, 2, 1):
+        e = [transfer_efficiency(c, d) for c in dens]
+        ax2.semilogx(dens, e, lw=1.9, color=colours[d], label=names[d])
+        e0 = transfer_efficiency(1.0, d)
+        ax2.plot([1.0], [e0], "o", color=colours[d], ms=5)
+        print(f"  distributed_acceptors.png: d={d}  E(C=C0) = {e0:.4f}")
+    ax2.axvline(1.0, color="0.6", lw=0.8, ls=":")
+    ax2.set_xlabel(r"$C/C_0$   (acceptors within $R_0$)")
+    ax2.set_ylabel("transfer efficiency")
+    ax2.set_ylim(0, 1); ax2.legend(fontsize=8, loc="lower right")
+    ax2.set_title("more directions to approach from, more transfer", fontsize=10)
+    save(fig, "distributed_acceptors.png")
