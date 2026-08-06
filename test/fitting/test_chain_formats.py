@@ -58,8 +58,12 @@ def sample(fit, chain_format, steps=400, n_runs=2):
 def read_chain(path):
     """Read a chain file of either format into an array of draws."""
     if path.suffix == ".h5":
-        import pandas as pd
-        frame = pd.read_hdf(path, key="results")
+        # Read through the seam rather than through a frame: the point of the
+        # columnar layout is that it opens with no optional HDF5 package, and a
+        # test that reaches for one would not notice if that stopped being true.
+        from chisurf.core.datastore import read_table_frame
+
+        frame = read_table_frame(path)
         return list(frame.columns), frame.to_numpy()
     with open(path) as f:
         names = f.readline().lstrip("#").split()

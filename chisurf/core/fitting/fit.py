@@ -2339,15 +2339,15 @@ def sample_fit(
         return ['chi2r', 'lnprior'] + list(r['parameter_names']), rows
 
     def save_chain_to_hdf5(r, fn_target):
-        """Save a sampling result to a compressed HDF5 table.
+        """Save a sampling result to an HDF5 table, one dataset per column.
 
         Text chains are the default because they need nothing to read, but they
         are also the reason a long run fills a disk: every number costs ~25
         characters where a float64 costs 8, before compression. A chain worth
         keeping is usually one that ran long enough for that to matter.
 
-        Written under the ``results`` key, which is where the readers that
-        matter -- nDXplorer's among them -- look first.
+        Written at the file root, which is where the readers that matter --
+        nDXplorer's among them -- look first.
 
         Parameters
         ----------
@@ -2356,14 +2356,10 @@ def sample_fit(
         fn_target : str
             Target file path.
         """
-        import pandas as pd
+        from chisurf.core.datastore import write_table
 
         names, rows = chain_frame(r)
-        frame = pd.DataFrame(rows, columns=names)
-        frame.to_hdf(
-            fn_target, key='results', mode='w', format='table',
-            complib='zlib', complevel=5,
-        )
+        write_table(fn_target, {name: rows[:, i] for i, name in enumerate(names)})
 
     def save_chain_to_file(r, fn_target):
         """Save a sampling result dict to a tab-separated text file.
