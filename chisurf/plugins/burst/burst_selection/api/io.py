@@ -2,16 +2,18 @@
 
 from __future__ import annotations
 
-import json
 import zipfile
 from collections.abc import Sequence
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 import tttrlib
 
-from chisurf.core.fio.fluorescence.burst import read_bur_file, write_dataframe_to_bur
+from chisurf.core.fio.fluorescence.burst import (
+    read_bur_file,
+    write_burst_hdf5,
+    write_dataframe_to_bur,
+)
 
 
 def load_tttr(
@@ -121,80 +123,19 @@ def get_unique_folder_path(base_path: Path) -> Path:
         counter += 1
 
 
-def _pick_complib(target_dir: Path) -> str:
-    """Pick the best available HDF5 compression library."""
-    for candidate in ("bzip2", "blosc", "zlib"):
-        tmp = target_dir / "__hdf5_complib_test__.h5"
-        try:
-            pd.HDFStore(str(tmp), mode="w", complib=candidate).close()
-            tmp.unlink(missing_ok=True)
-            return candidate
-        except Exception:
-            tmp.unlink(missing_ok=True)
-            continue
-    return "zlib"
-
-
-def _prepare_hdf5_dataframe(combined: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, list]]:
-    """Apply legacy HDF5 encoding steps: drop all-NaN cols, downcast, encode objects.
-
-    Returns
-    -------
-    df : pd.DataFrame
-        Encoded DataFrame (object columns replaced by ``int32`` codes).
-    cat_map : dict[str, list]
-        Mapping of column name → category list for decoding.
-    """
-    # --- drop empty columns
-    df = combined.dropna(axis=1, how="all").copy()
-
-    # --- downcast numerics
-    for c in df.select_dtypes(include=["integer"]).columns:
-        if (df[c] >= 0).all():
-            df[c] = pd.to_numeric(df[c], downcast="unsigned")
-        else:
-            df[c] = pd.to_numeric(df[c], downcast="integer")
-    for c in df.select_dtypes(include=["floating"]).columns:
-        df[c] = df[c].astype(np.float32)
-
-    # --- encode strings/objects as categorical codes
-    cat_map: dict[str, list] = {}
-    obj_cols = df.select_dtypes(include=["object"]).columns
-    must_encode = {"Source File", "First File", "Last File"} & set(obj_cols)
-
-    for col in obj_cols:
-        nunique = df[col].nunique(dropna=False)
-        if (col in must_encode) or (nunique <= 0.5 * len(df)):
-            cat = pd.Categorical(df[col], ordered=False)
-            cat_map[col] = cat.categories.tolist()
-            df[col] = cat.codes.astype(np.int32)
-        else:
-            cat = pd.Categorical(df[col], ordered=False)
-            cat_map[col] = cat.categories.tolist()
-            df[col] = cat.codes.astype(np.int32)
-
-    return df, cat_map
-
-
 def write_hdf5(
     dataframes: Sequence[pd.DataFrame],
     path: str | Path,
     complib: str | None = None,
 ) -> None:
-    """Write one or more burst DataFrames as a legacy-compatible HDF5 file.
+    """Write one or more burst DataFrames to a columnar HDF5 file.
 
-    The output matches the format produced by
-    ``WizardTTTRPhotonFilter.save_selection`` with
-    ``"hdf5"`` in *output_types*:
-
-    * All DataFrames are concatenated.
-    * All-NaN columns are dropped.
-    * Integers are downcast (unsigned where possible).
-    * Floats are cast to ``np.float32``.
-    * Object columns are encoded as ``int32`` categorical codes; the
-      mapping is stored in the HDF5 storer attribute ``category_map``.
-    * Written with ``pd.HDFStore``, fixed format, key ``"results"``, no
-      index.
+    One dataset per column, in the column's own dtype, with a text column stored
+    as its dictionary codes and labels. That replaces the hand-rolled encoding
+    this used to do -- ``int32`` category codes plus a ``category_map`` JSON
+    attribute -- with the same thing done by the container, so ``Source File``
+    and ``First File`` come back as file names rather than as integers whose key
+    nothing in this tree ever read.
 
     Parameters
     ----------
@@ -203,25 +144,13 @@ def write_hdf5(
     path : str or Path
         Output ``.h5`` path.
     complib : str, optional
-        Compression library override (default: auto-detect ``bzip2`` →
-        ``blosc`` → ``zlib``).
+        Ignored, and kept so callers do not have to change. These files are
+        written once per analysis and read repeatedly, and compressing them
+        costs roughly thirty times the write to save eight percent of the size.
     """
     target = Path(path)
     target.parent.mkdir(parents=True, exist_ok=True)
-
-    if not dataframes:
-        combined = pd.DataFrame()
-    else:
-        combined = pd.concat(list(dataframes), ignore_index=True)
-    df, cat_map = _prepare_hdf5_dataframe(combined)
-
-    if complib is None:
-        complib = _pick_complib(target.parent)
-
-    with pd.HDFStore(str(target), mode="w", complib=complib, complevel=9) as store:
-        store.put("results", df, format="fixed", index=False)
-        st = store.get_storer("results")
-        st.attrs.category_map = json.dumps(cat_map)
+    write_burst_hdf5(dataframes, target)
 
 
 def zip_output_folder(output_folder: Path, zip_path: str | Path | None = None) -> Path:

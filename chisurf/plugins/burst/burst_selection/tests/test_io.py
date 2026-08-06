@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import zipfile
 from pathlib import Path
 
@@ -10,6 +9,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from chisurf.core.datastore import read_table, read_table_frame
 from chisurf.plugins.burst.burst_selection.api.io import (
     get_unique_folder_path,
     write_hdf5,
@@ -112,34 +112,31 @@ def test_get_unique_folder_path_avoids_both_conflicts(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 
 def test_write_hdf5_roundtrip(burst_dataframe: pd.DataFrame, tmp_path: Path) -> None:
-    """Write HDF5 and read it back with legacy decode; verify no data loss."""
+    """Every column survives the file, text ones included."""
     h5_path = tmp_path / "burst_data.h5"
     write_hdf5([burst_dataframe], h5_path)
 
-    with pd.HDFStore(str(h5_path), mode="r") as store:
-        df_read = store["results"]
-        cat_map = json.loads(store.get_storer("results").attrs.category_map)
-
-    for col, categories in cat_map.items():
-        df_read[col] = pd.Categorical.from_codes(
-            df_read[col].where(df_read[col] >= 0, -1),
-            categories,
-        )
-
+    df_read = read_table_frame(h5_path)
     common_cols = [c for c in burst_dataframe.columns if c in df_read.columns]
     assert len(common_cols) > 0, "No common columns after roundtrip"
 
     for col in common_cols:
-        if col in cat_map:
-            assert df_read[col].tolist() == burst_dataframe[col].tolist(), (
-                f"Column {col} values differ after roundtrip"
-            )
-        elif np.issubdtype(burst_dataframe[col].dtype, np.floating):
+        original = np.asarray(burst_dataframe[col])
+        if np.issubdtype(original.dtype, np.floating):
             assert np.allclose(
                 df_read[col].values.astype(float),
                 burst_dataframe[col].values.astype(float),
                 equal_nan=True,
             ), f"Float column {col} values differ"
+        elif original.dtype == object:
+            # A text column has ONE type, and this format's interleaved
+            # separator rows put the integer 0 in every column -- including the
+            # file-name ones. Those rows read back as the label "0". The frame
+            # writer kept the int only because a categorical holds mixed
+            # objects, and nothing ever decoded that attribute to notice.
+            assert df_read[col].tolist() == [str(v) for v in original.tolist()], (
+                f"Column {col} values differ after roundtrip"
+            )
         else:
             assert df_read[col].tolist() == burst_dataframe[col].tolist(), (
                 f"Column {col} values differ after roundtrip"
@@ -147,27 +144,31 @@ def test_write_hdf5_roundtrip(burst_dataframe: pd.DataFrame, tmp_path: Path) -> 
 
 
 def test_write_hdf5_empty_input(tmp_path: Path) -> None:
-    """Write an empty list of DataFrames and verify the file is valid."""
+    """A run that selected nothing writes a file rather than failing."""
     h5_path = tmp_path / "empty.h5"
     write_hdf5([], h5_path)
-    with pd.HDFStore(str(h5_path), mode="r") as store:
-        df_read = store["results"]
-    assert len(df_read) == 0
+    assert h5_path.exists()
+    assert read_table(h5_path) is None
 
 
-def test_write_hdf5_category_map_structure(tmp_path: Path) -> None:
-    """Verify category_map JSON is present and parseable."""
+def test_write_hdf5_keeps_the_labels_of_a_text_column(tmp_path: Path) -> None:
+    """The encoding this used to hand-roll -- int32 codes plus a category_map
+    JSON attribute -- is what a dictionary column is, so the labels travel WITH
+    the column. Nothing in this tree ever read that attribute back, so the file
+    used to carry ``Source File`` as integers with the key on the side."""
     df = pd.DataFrame(
         {
-            "Source File": ["/a/b.spc", "/a/c.spc"],
-            "Number of Photons": [10, 20],
+            "Source File": ["/a/b.spc", "/a/c.spc", "/a/b.spc"],
+            "Number of Photons": [10, 20, 30],
         }
     )
     h5_path = tmp_path / "cat_test.h5"
     write_hdf5([df], h5_path)
-    with pd.HDFStore(str(h5_path), mode="r") as store:
-        cat_map = json.loads(store.get_storer("results").attrs.category_map)
-    assert "Source File" in cat_map
+
+    store = read_table(h5_path)
+    assert store["Source File"].dtype == "str"
+    assert sorted(store["Source File"].dictionary()) == ["/a/b.spc", "/a/c.spc"]
+    assert list(store["Source File"].numpy()) == df["Source File"].tolist()
 
 
 # ---------------------------------------------------------------------------

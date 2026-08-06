@@ -278,60 +278,30 @@ def _write_sl5(output_dir: pathlib.Path, tttr_path: pathlib.Path, filetype: str,
 
 
 def _write_hdf5_combined(output_dir: pathlib.Path, dataframes: List[pd.DataFrame]) -> None:
-    import pandas as pd
-    import numpy as np
+    """Write the combined burst tables to one columnar HDF5 file.
+
+    The encoding this used to build by hand -- integers downcast, floats
+    narrowed, every text column replaced by ``int32`` codes with the labels in a
+    JSON attribute -- lives in
+    :func:`chisurf.core.fio.fluorescence.burst.write_burst_hdf5`, which is also
+    what the burst-selection API and the photon-filter wizard call. There were
+    three copies of it.
+
+    Parameters
+    ----------
+    output_dir : pathlib.Path
+        Analysis output folder; the file goes in its ``hdf5`` subfolder.
+    dataframes : list of pandas.DataFrame
+        Per-measurement burst tables.
+    """
+    from chisurf.core.fio.fluorescence.burst import write_burst_hdf5
 
     if not dataframes:
         return
-    combined = pd.concat(dataframes, ignore_index=True)
-    # drop empty cols
-    combined = combined.dropna(axis=1, how='all')
-
-    # downcast
-    for c in combined.select_dtypes(include=["integer"]).columns:
-        if (combined[c] >= 0).all():
-            combined[c] = pd.to_numeric(combined[c], downcast="unsigned")
-        else:
-            combined[c] = pd.to_numeric(combined[c], downcast="integer")
-    for c in combined.select_dtypes(include=["floating"]).columns:
-        combined[c] = combined[c].astype(np.float32)
-
-    # encode objects as categorical
-    cat_map = {}
-    obj_cols = combined.select_dtypes(include=["object"]).columns
-    must_encode = {"Source File", "First File", "Last File"} & set(obj_cols)
-    for col in obj_cols:
-        nunique = combined[col].nunique(dropna=False)
-        if (col in must_encode) or (nunique <= 0.5 * len(combined)):
-            cat = pd.Categorical(combined[col], ordered=False)
-            cat_map[col] = cat.categories.tolist()
-            combined[col] = cat.codes.astype(np.int32)
-        else:
-            cat = pd.Categorical(combined[col], ordered=False)
-            cat_map[col] = cat.categories.tolist()
-            combined[col] = cat.codes.astype(np.int32)
-
-    # choose compression
-    complib = "bzip2"
-    try:
-        pd.HDFStore(str(output_dir / '___tmp__.h5'), mode='w', complib=complib).close()
-        (output_dir / '___tmp__.h5').unlink(missing_ok=True)
-    except Exception:
-        complib = "blosc"
-        try:
-            pd.HDFStore(str(output_dir / '___tmp__.h5'), mode='w', complib=complib).close()
-            (output_dir / '___tmp__.h5').unlink(missing_ok=True)
-        except Exception:
-            complib = "zlib"
-
     hdf5_dir = output_dir / 'hdf5'
     hdf5_dir.mkdir(parents=True, exist_ok=True)
     timestamp = time.strftime("%Y%m%d-%H%M%S")
-    h5_file = hdf5_dir / f"burst_data_{timestamp}.h5"
-    with pd.HDFStore(h5_file, mode='w', complib=complib, complevel=9) as store:
-        store.put('results', combined, format='fixed', index=False)
-        st = store.get_storer('results')
-        st.attrs.category_map = json.dumps(cat_map)
+    write_burst_hdf5(dataframes, hdf5_dir / f"burst_data_{timestamp}.h5")
 
 
 def zip_output_folder(output_folder: pathlib.Path) -> Optional[pathlib.Path]:

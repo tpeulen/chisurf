@@ -21,6 +21,7 @@ import chisurf.core.math
 import chisurf.gui.decorators
 import chisurf.core.fluorescence.burst
 from chisurf.gui import QtGui, QtWidgets, QtCore, uic
+from chisurf.core.fio.fluorescence.burst import write_burst_hdf5
 from chisurf.core.math.signal import fill_small_gaps_in_array
 from chisurf.core.settings.path_utils import get_path
 from chisurf.core.settings.file_utils import safe_open_file
@@ -1425,56 +1426,6 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
 
         if "hdf5" in output_types and all_dfs:
             progress.update_text("Creating combined HDF5 file (compact)...")
-            combined = pd.concat(all_dfs, ignore_index=True)
-
-            # --- drop empty columns
-            combined = combined.dropna(axis=1, how="all")
-
-            # --- downcast numerics
-            for c in combined.select_dtypes(include=["integer"]).columns:
-                if (combined[c] >= 0).all():
-                    combined[c] = pd.to_numeric(combined[c], downcast="unsigned")
-                else:
-                    combined[c] = pd.to_numeric(combined[c], downcast="integer")
-            for c in combined.select_dtypes(include=["floating"]).columns:
-                combined[c] = combined[c].astype(np.float32)
-
-            # --- encode strings/objects as categorical codes (to keep format='fixed')
-            #     store mapping for reconstruction; -1 will represent NaN
-            cat_map = {}
-            obj_cols = combined.select_dtypes(include=["object"]).columns
-            # strongly recommend encoding these (very repetitive paths)
-            must_encode = {"Source File", "First File", "Last File"} & set(obj_cols)
-
-            for col in obj_cols:
-                # Decide if encoding is worth it: always for must_encode, else low-cardinality
-                nunique = combined[col].nunique(dropna=False)
-                if (col in must_encode) or (nunique <= 0.5 * len(combined)):
-                    cat = pd.Categorical(combined[col], ordered=False)
-                    cat_map[col] = cat.categories.tolist()
-                    # use smallest int that can hold -1 and max code
-                    codes = cat.codes.astype(np.int32)
-                    combined[col] = codes
-                else:
-                    # If you really want to keep these as strings, *convert to bytes*
-                    # or skip entirely; better is to encode everything to codes for size.
-                    cat = pd.Categorical(combined[col], ordered=False)
-                    cat_map[col] = cat.categories.tolist()
-                    combined[col] = cat.codes.astype(np.int32)
-
-            # pick compression with fallback
-            complib = "bzip2"
-            try:
-                # test if available on this build
-                pd.HDFStore(str(unique_path / '___tmp__.h5'), mode='w', complib=complib).close()
-                (unique_path / '___tmp__.h5').unlink(missing_ok=True)
-            except Exception:
-                complib = "blosc"  # fast & good ratio
-                try:
-                    pd.HDFStore(str(unique_path / '___tmp__.h5'), mode='w', complib=complib).close()
-                    (unique_path / '___tmp__.h5').unlink(missing_ok=True)
-                except Exception:
-                    complib = "zlib"  # last resort, always available
 
             hdf5_dir = unique_path / 'hdf5'
             hdf5_dir.mkdir(parents=True, exist_ok=True)
@@ -1482,17 +1433,14 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
             h5_file = hdf5_dir / f"burst_data_{timestamp}.h5"
 
             progress.update_text(f"Writing HDF5 file: {h5_file.name}")
-
-            # Write with FIXED format (dense), no index
-            with pd.HDFStore(h5_file, mode='w', complib=complib, complevel=9) as store:
-                store.put('results', combined, format='fixed', index=False)
-                st = store.get_storer('results')
-                # Save mapping; -1 in codes = NaN
-                st.attrs.category_map = json.dumps(cat_map)
+            # One dataset per column, with the text columns dictionary-encoded
+            # by the container rather than by hand here. This was the third copy
+            # of that encoding; it lives in write_burst_hdf5 now.
+            write_burst_hdf5(all_dfs, h5_file)
 
             current_task += 1
             progress.update_progress(current_task, "HDF5 file created (compact)")
-            logger.debug("HDF5 compact file written: %s (complib=%s)", h5_file, complib)
+            logger.debug("HDF5 compact file written: %s", h5_file)
             if progress.wasCanceled():
                 logger.warning("Operation canceled by user during HDF5 writing.")
                 return

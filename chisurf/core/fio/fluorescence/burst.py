@@ -886,3 +886,50 @@ def read_bur_with_companions(bur_path, endings=None) -> pd.DataFrame:
             if col and col not in df.columns:
                 df[col] = extra[col].values
     return df
+
+
+def write_burst_hdf5(dataframes, path) -> None:
+    """Write one or more burst tables to a single columnar HDF5 file.
+
+    One writer for what used to be three near-identical copies (the burst
+    selection API, the BID-to-analysis converter and the photon-filter wizard),
+    each of which built the same thing by hand: all-empty columns dropped,
+    integers downcast, floats narrowed to ``float32``, and every text column
+    replaced by ``int32`` category codes with the labels kept off to one side in
+    a JSON attribute.
+
+    That last step is what a store does natively — a text column *is* a
+    dictionary and a code array — so the encoding is not built here at all, and
+    the labels stay attached to the column instead of living in an attribute
+    nothing in this tree ever read back. A reader therefore now sees
+    ``First File`` as the file names rather than as integers it has no key for.
+
+    Parameters
+    ----------
+    dataframes : sequence of pandas.DataFrame
+        Burst summary tables. They are concatenated; an empty sequence writes an
+        empty table rather than failing, which is what a run that selected
+        nothing produces.
+    path : str or pathlib.Path
+        Target ``.h5`` file.
+    """
+    from chisurf.core.datastore import store_from_dataframe, write_table
+
+    frames = list(dataframes)
+    combined = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
+    # An all-empty column carries nothing and costs a dataset; the frame writer
+    # dropped these too.
+    combined = combined.dropna(axis=1, how="all").copy()
+    # A burst table ends in an UNNAMED column -- the trailing separator of the
+    # `.bur` format read as a field. A dataset needs a name, and nothing can ask
+    # for this one anyway: `read_bur_with_companions` already skips it by the
+    # same test. The frame writer stored it, unreadably, rather than saying so.
+    combined = combined[[c for c in combined.columns if str(c).strip()]]
+
+    for column in combined.select_dtypes(include=["integer"]).columns:
+        kind = "unsigned" if (combined[column] >= 0).all() else "integer"
+        combined[column] = pd.to_numeric(combined[column], downcast=kind)
+    for column in combined.select_dtypes(include=["floating"]).columns:
+        combined[column] = combined[column].astype(np.float32)
+
+    write_table(path, store_from_dataframe(combined))
