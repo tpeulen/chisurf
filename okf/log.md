@@ -2,6 +2,16 @@
 
 ## 2026-08-06
 
+* **Two plots for the deeper quenching page, and the dye references QuEst rests on** ([documentation browser](subsystems/documentation-browser.md)).
+
+  `fig_transient_quenching` uses the constants of ChiSurf's own shipped `Transient-Quenching` parse model, so the figure and the fittable model cannot drift apart. The first render was wrong in a way only looking catches: over 0-20 ns the transient curve merely looks *steeper* than the steady-state one, and the claim being made — that the decay is **non-exponential** — was invisible. Cut to 4 ns and drawn against the curve's **own** extrapolated long-time slope, the deviation is the point of the panel.
+
+  `fig_rehm_weller` shows the rate climbing with driving force and stopping at the diffusion limit, with the four nucleobases marked. Also wrong first time: I placed them past the knee, where all four sit on the plateau within a factor of two — which says the opposite of what the ordering means. On the rising part they span three decades, which is why G matters and T does not. **The positions are the known ordering, not measured dG**, and both the caption and `figures.yaml` say so; the recipe records why moving them would invert the figure's meaning.
+
+  Four references added for the QuEst side, which had none: {cite}`doose2005` established that dye-tryptophan quenching needs van der Waals **contact**, which is what justifies QuEst's step function of distance rather than a smooth falloff; {cite}`doose2009` is the same quenching used deliberately (PET-FCS); {cite}`vandeLinde2018` separates static and dynamic contributions for **ATTO 655** and finds a ground-state complex, a sphere of action *and* a dynamic term in one system — the three mechanisms of the phenomenology page in a single measurement; {cite}`chen2012` follows **Alexa 488** quenching across folded, molten-globule and unfolded states, which is the clearest statement that Q_D belongs to the conformation and not to the dye.
+
+  `docs-html` warning-free; render + crosslinks 251 passed.
+
 * **`ray` took PyMOL's object panel off the screen with it** ([PyMOL parity](plugins/pymol-parity.md)).
 
   Reported as "after ray the menu disappears — it should never disappear, only shouldn't be on screenshot", which names the distinction the implementation had lost. The traced image was shown in a `QLabel` laid over the viewport, and the object panel is drawn **in** the viewport rather than beside it — so the label covered the A/S/H/L/C menus, the mouse-mode block and the sequence strip along with the scene. The panel is the only way to switch a representation back on, so it vanished exactly when it was next needed; and the click that dismissed the overlay was *swallowed* (`return True` in the event filter) rather than reaching the button it landed on, so the first click after `ray` did nothing.

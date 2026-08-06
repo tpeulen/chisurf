@@ -1828,3 +1828,27 @@ guides/figures/quenching_mixtures.png:
     The quoted intercepts are least-squares fits over 1 < 1/[Q] < 8 -- a deliberately ordinary window --
     and give f_a = 0.50 and 0.74 against a truth of 0.50. Changing that window changes the second number,
     which is the point being made, so it is fitted rather than asserted.'
+guides/figures/transient_quenching.png:
+  caption: The time-dependent quenching rate, and the non-exponential decay it produces for a single
+    species with a single quencher.
+  kind: plot
+  origin: docs/guides/make_figures.py::fig_transient_quenching
+  pages:
+  - docs/fundamentals/quenching_mechanisms.md
+  recipe: Run `python docs/guides/make_figures.py`; the constants are the defaults of ChiSurf's shipped
+    `Transient-Quenching` parse model (tau0 = 4 ns, R = 7.5 A, D = 40 A^2/ns, Vav = 16755 A^3), so the
+    figure and the fittable model cannot drift apart. The right panel is deliberately cut at 4 ns and
+    carries the curve's own extrapolated long-time slope - over 0-20 ns the curve merely looks steeper
+    and the non-exponentiality is invisible.
+guides/figures/rehm_weller.png:
+  caption: Quenching rate against driving force, plateauing at the diffusion limit, with the four
+    nucleobases marked by their ordering.
+  kind: plot
+  origin: docs/guides/make_figures.py::fig_rehm_weller
+  pages:
+  - docs/fundamentals/quenching_mechanisms.md
+  recipe: 'Run `python docs/guides/make_figures.py`; the Rehm-Weller expression with dG_act = dG/2 +
+    sqrt((dG/2)^2 + dG0^2), dG0 = 0.1 eV, k_diff = 1e10 /M/s. IMPORTANT: the nucleobases are placed by
+    their known ORDERING, not at measured dG values, and they sit on the rising part of the curve rather
+    than the plateau because that is where the bases actually differ. Moving them onto the plateau would
+    make the figure say the opposite of what the ordering means. The caption states this.'

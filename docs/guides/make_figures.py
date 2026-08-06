@@ -1601,6 +1601,7 @@ if __name__ == "__main__":
     fig_energy_transfer_window(); fig_perrin(); fig_kappa2_models()
     fig_maxent_nu(); fig_distributed_acceptors()
     fig_static_quenching_mechanisms(); fig_quenching_mixtures()
+    fig_transient_quenching(); fig_rehm_weller()
     print("all figures written to", FIG)
 
 
@@ -2040,3 +2041,84 @@ def fig_quenching_mixtures():
     ax2.legend(fontsize=8, loc="lower right")
     ax2.set_title("modified plot: the intercept is $1/f_a$", fontsize=10)
     save(fig, "quenching_mixtures.png")
+
+
+def fig_transient_quenching():
+    """The rate is not constant in time, and the decay shows it."""
+    # ChiSurf ships this as the `Transient-Quenching` parse model; the constants
+    # are its own defaults, so the figure and the fittable model agree.
+    tau0, R, D, Nq, Vav = 4.0, 7.5, 40.0, 1.0, 16755.0     # ns, A, A^2/ns, -, A^3
+    k0 = 4 * np.pi * R * D * Nq**2 / Vav                    # 1/ns
+
+    t = np.geomspace(1e-4, 20.0, 1200)
+    transient = 1 + 2 * R / np.sqrt(np.pi * D * t)
+
+    fig, (ax, ax2) = plt.subplots(1, 2, figsize=(8.8, 3.4))
+    ax.loglog(t, transient, lw=2.0, color="#e8590c")
+    ax.axhline(1.0, color="#3b5bdb", lw=1.6, ls="--")
+    ax.text(2.0, 1.15, "steady state", color="#3b5bdb", fontsize=8)
+    ax.set_xlabel("time / ns"); ax.set_ylabel(r"$k(t)\,/\,k_0$")
+    ax.set_title("pairs already in contact react first", fontsize=10)
+
+    with np.errstate(divide="ignore"):
+        steady = np.exp(-t / tau0 - k0 * t)
+        full = np.exp(-t / tau0 - k0 * t * transient)
+    # Short axis, and the long-time asymptote extrapolated back: a straight line
+    # on a semilog plot is an exponential, so the gap between the curve and its
+    # own asymptote IS the non-exponentiality. Over 0-20 ns the curve merely
+    # looks steeper and the point is invisible.
+    ax2.semilogy(t, steady, lw=2.0, color="#3b5bdb",
+                 label="steady-state rate only")
+    ax2.semilogy(t, full, lw=2.4, color="#e8590c", label="with transient term")
+    tail = (t > 6.0) & (t < 12.0)
+    slope, intercept = np.polyfit(t[tail], np.log(full[tail]), 1)
+    ax2.semilogy(t, np.exp(intercept + slope * t), lw=1.0, color="0.35", ls=":",
+                 label="its long-time slope, extrapolated")
+    ax2.set_xlim(0, 4.0); ax2.set_ylim(2e-2, 1.6)
+    ax2.set_xlabel("time / ns"); ax2.set_ylabel("donor intensity")
+    ax2.legend(fontsize=8, loc="lower left")
+    ax2.set_title("not a straight line: not an exponential", fontsize=10)
+    save(fig, "transient_quenching.png")
+    drop = 1 - full[np.argmin(np.abs(t - 0.1))] / steady[np.argmin(np.abs(t - 0.1))]
+    print(f"  transient_quenching.png: k0 = {k0:.4f} /ns; at t = 0.1 ns the "
+          f"transient term removes a further {drop:.1%} of the population")
+
+
+def fig_rehm_weller():
+    """Driving force buys rate until diffusion caps it -- and then stops."""
+    RT = 0.02569                       # eV at 25 C
+    k_diff = 1.0e10                    # M^-1 s^-1
+    kKZ = 1.0e11                       # the pre-exponential of the Rehm-Weller form
+    dG0 = 0.10                         # activation at zero driving force, eV
+
+    dG = np.linspace(0.6, -1.4, 600)
+    dG_act = dG / 2 + np.sqrt((dG / 2) ** 2 + dG0**2)
+    k_q = k_diff / (1 + (k_diff / kKZ) * np.exp(dG_act / RT))
+
+    fig, ax = plt.subplots(figsize=(6.4, 3.8))
+    ax.semilogy(dG, k_q, lw=2.4, color="#3b5bdb")
+    ax.axhline(k_diff, color="#e8590c", lw=1.4, ls="--")
+    ax.text(-0.55, k_diff * 0.30, "diffusion limit", color="#e8590c", fontsize=9)
+    ax.set_xlabel(r"$\Delta G$ / eV      (more negative = stronger driving force)")
+    ax.set_ylabel(r"$k_q$ / M$^{-1}$s$^{-1}$")
+    ax.set_xlim(0.6, -1.4); ax.set_ylim(1e4, 3e10)
+
+    # The nucleobases, placed by their ORDER only -- see the caption. Guanine is
+    # the easiest to oxidize and therefore the furthest into the plateau.
+    # Placed on the RISING part, not the plateau: the bases differ strongly in
+    # how well they quench, which is the whole content of the ordering. Putting
+    # them all past the knee would say the opposite.
+    order = [("T", 0.20, 6.0), ("C", 0.13, 0.16), ("A", -0.05, 0.16), ("G", -0.38, 0.16)]
+    for label, x, ymul in order:
+        y = k_diff / (1 + (k_diff / kKZ) * np.exp(
+            (x / 2 + np.sqrt((x / 2) ** 2 + dG0**2)) / RT))
+        ax.plot([x], [y], "o", color="#2b8a3e", ms=7)
+        ax.annotate(label, xy=(x, y), xytext=(x, y * ymul), ha="center",
+                    fontsize=11, color="#2b8a3e", fontweight="bold")
+    ax.text(-0.55, 3e5,
+            "G sits where the curve has flattened:\nmore driving force would buy nothing.\n"
+            "T and C are on the steep part, where\nsmall shifts change the rate by decades.",
+            fontsize=8, color="0.35", va="bottom")
+    save(fig, "rehm_weller.png")
+    print(f"  rehm_weller.png: plateau at k_diff = {k_diff:.1e} /M/s; "
+          f"nucleobases placed by ORDER, not by measured dG")

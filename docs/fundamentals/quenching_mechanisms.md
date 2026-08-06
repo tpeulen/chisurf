@@ -71,6 +71,19 @@ shortens the early part of the decay while a complex or a sphere of action
 leaves the decay shape untouched and only scales it.
 :::
 
+```{figure} /guides/figures/transient_quenching.png
+:alt: the time-dependent quenching rate and the non-exponential decay it produces
+:width: 100%
+
+Left: $k(t)/k_0$ — pairs that start in contact react before diffusion has moved
+anything, so the rate begins orders of magnitude above its steady-state value
+and relaxes onto it. Right: what that does to the decay. A straight line on a
+semilog plot is an exponential, so the gap between the curve and its **own**
+long-time slope is the non-exponentiality — present for a single species with a
+single quencher. Constants are the defaults of ChiSurf's shipped
+`Transient-Quenching` model, so the figure and the fittable model agree.
+```
+
 The Collins–Kimball refinement replaces the assumption that reaction is certain
 at contact with a finite intrinsic reactivity there (a radiation boundary
 condition), which is what lets a transient-effect fit return a reaction radius
@@ -144,6 +157,23 @@ $$
 oxidation potential of the four. Both a dynamic and a static component are
 present — the static one from ground-state stacking of dye on base — so a dye
 adjacent to a G loses quantum yield in two ways at once.
+
+```{figure} /guides/figures/rehm_weller.png
+:alt: quenching rate against driving force, with the four nucleobases marked
+:width: 80%
+:align: center
+
+The Rehm–Weller shape: the rate climbs steeply with driving force and then stops
+at the diffusion limit. Guanine sits where the curve has flattened — more
+driving force would buy nothing — while thymine and cytosine are on the steep
+part, where a small shift changes the rate by decades. That is why the four
+bases differ so much, and why G is the one to keep away from a label.
+
+**The nucleobases are placed by their known *ordering*, not at measured
+$\Delta G$ values.** The curve is the Rehm–Weller expression with a typical
+$\Delta G^\ddagger(0) = 0.1$ eV; the positions illustrate the ranking
+{cite}`seidel1996`, they are not a data set.
+```
 
 ### Why this matters before it becomes interesting
 
@@ -224,6 +254,22 @@ In ChiSurf the fittable form is `AVDecayModel`
 quenching decay into the ordinary TCSPC fitting path
 ({ref}`concept-tcspc-lifetime`).
 
+The experimental groundwork this rests on is worth reading before trusting a
+simulated quantum yield. {cite}`doose2005` measured how a range of organic dyes
+are quenched by tryptophan and established that the interaction needs van der
+Waals **contact** — which is what justifies a step function of distance rather
+than a smooth $1/r^n$ falloff. {cite}`doose2009` develops the same contact
+quenching into a reporter for conformational dynamics, and is the reference for
+what the technique measures once the quenching is deliberate rather than a
+nuisance. For ATTO 655, the dye most used for PET work,
+{cite}`vandeLinde2018` separates the static and dynamic contributions at the
+single-molecule level and finds both a ground-state complex and a sphere of
+action alongside the dynamic term — the three mechanisms of
+{ref}`fundamentals-quenching` in one system. For Alexa 488, the donor in much of
+the FRET work here, {cite}`chen2012` tracks how tryptophan quenching changes
+between folded, molten-globule and unfolded states, which is the clearest
+demonstration that $Q_D$ is a property of the *conformation* and not of the dye.
+
 ## See also
 
 - Previous: {ref}`fundamentals-quenching` — the phenomenology, the Stern–Volmer
@@ -241,6 +287,10 @@ quenching decay into the ordinary TCSPC fitting path
   {ref}`fundamentals-fluorophores` · {ref}`fundamentals-solvent`.
 - Literature: {cite}`seidel1996` for the nucleobase ordering and the quenching
   constants behind it; {cite}`steenken1997` for the redox potentials it tracks;
+  {cite}`doose2005` and {cite}`doose2009` for contact quenching by tryptophan and
+  what it can be used to measure; {cite}`vandeLinde2018` for ATTO 655 and
+  {cite}`chen2012` for Alexa 488; {cite}`rehm1970` for the driving-force
+  dependence;
   {cite}`gehlen2020` for the Stern–Volmer deviations these mechanisms produce;
   {cite}`lakowicz2006`, the chapter on quenching mechanisms and dynamics, for the
   Rehm–Weller treatment.

@@ -10,7 +10,7 @@ Pages cite a work by its **key** — the name each entry is anchored under below
 and the citation renders as a link to the paper. The source of truth is
 [`bibliography.yaml`](bibliography.yaml) — add a work there and it appears here.
 
-*135 works.*
+*139 works.*
 
 
 ## FRET: mechanism, accuracy and corrections
@@ -18,6 +18,11 @@ and the citation renders as a link to the paper. The source of truth is
 (barth2022)=
 
 **[Barth et al. (2022)](https://doi.org/10.1063/5.0089134)** — A. Barth, O. Opanasyuk, T.-O. Peulen, et al. *Unraveling multi-state molecular dynamics in single-molecule FRET experiments — I. Theory of FRET-lines*. Journal of Chemical Physics **156**, 141501. (2022).
+
+(chen2012)=
+
+**[Chen (2012)](https://doi.org/10.1371/journal.pone.0046838)** — H. Chen, et al. *Fluorescence of Alexa Fluor dye tracks protein folding*. PLOS ONE **7**, e46838. (2012).  
+*Alexa 488 quenching by tryptophan changes between folded, molten-globule and unfolded states - the donor quantum yield is a property of the conformation.*
 
 (clegg1995)=
 
@@ -241,6 +246,11 @@ and the citation renders as a link to the paper. The source of truth is
 
 **[Dertinger et al. (2007)](https://doi.org/10.1002/cphc.200600638)** — Thomas Dertinger, Victor Pacheco, Iris von der Hocht, Rudolf Hartmann, Ingo Gregor, Jörg Enderlein. *Two‐Focus Fluorescence Correlation Spectroscopy: A New Tool for Accurate and Absolute Diffusion Measurements*. ChemPhysChem **8**, 433-443. (2007).  
 *Two-focus FCS: an external length scale, so a diffusion coefficient needs no calibration dye.*
+
+(doose2009)=
+
+**[Doose et al. (2009)](https://doi.org/10.1002/cphc.200900238)** — S. Doose, H. Neuweiler, M. Sauer. *Fluorescence quenching by photoinduced electron transfer - a reporter for conformational dynamics of macromolecules*. ChemPhysChem **10**, 1389-1398. (2009).  
+*Contact quenching used deliberately; the basis of PET-FCS.*
 
 (elson1974)=
 
@@ -550,6 +560,11 @@ and the citation renders as a link to the paper. The source of truth is
 
 ## Photophysics
 
+(doose2005)=
+
+**[Doose et al. (2005)](https://doi.org/10.1002/cphc.200500191)** — S. Doose, H. Neuweiler, M. Sauer. *A close look at fluorescence quenching of organic dyes by tryptophan*. ChemPhysChem **6**, 2277-2285. (2005).  
+*Quenching needs van der Waals contact - which is what justifies a step function of distance.*
+
 (gehlen2020)=
 
 **[Gehlen (2020)](https://doi.org/10.1016/j.jphotochemrev.2019.100338)** — M. H. Gehlen. *The centenary of the Stern-Volmer equation of fluorescence quenching - from the single line plot to the SV quenching map*. Journal of Photochemistry and Photobiology C **42**, 100338. (2020).  
@@ -564,6 +579,11 @@ and the citation renders as a link to the paper. The source of truth is
 
 **[Lehrer (1971)](https://doi.org/10.1021/bi00793a015)** — S. S. Lehrer. *Solute perturbation of protein fluorescence - quenching of the tryptophyl fluorescence of model compounds and of lysozyme by iodide ion*. Biochemistry **10**, 3254-3263. (1971).  
 *The modified Stern-Volmer plot, and the fractional accessibility read from its intercept.*
+
+(vandeLinde2018)=
+
+**[Linde (2017)](https://search.crossref.org/search/works?q=Photon+antibunching+reveals+static+and+dynamic+quenching+interaction+of+tryptophan+with+Atto-655+Journal+of+Physical+Chemistry+Letters+2017&from_ui=yes)** — S. van de Linde, et al. *Photon antibunching reveals static and dynamic quenching interaction of tryptophan with Atto-655*. Journal of Physical Chemistry Letters **8**, 5821-5826. (2017).  
+*ATTO 655 and tryptophan - a ground-state complex, a sphere of action and a dynamic term in one system.*
 
 (lippert1955)=
 

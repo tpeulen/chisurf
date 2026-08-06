@@ -1127,6 +1127,49 @@ rehm1970:
   note: The free-energy expression, and the measurement showing the rate plateaus at the diffusion limit instead of turning over.
   topics: [photophysics]
 
+doose2005:
+  authors: S. Doose, H. Neuweiler, M. Sauer
+  title: A close look at fluorescence quenching of organic dyes by tryptophan
+  journal: ChemPhysChem
+  year: 2005
+  volume: 6
+  pages: 2277-2285
+  doi: 10.1002/cphc.200500191
+  note: Quenching needs van der Waals contact - which is what justifies a step function of distance.
+  topics: [photophysics]
+
+doose2009:
+  authors: S. Doose, H. Neuweiler, M. Sauer
+  title: Fluorescence quenching by photoinduced electron transfer - a reporter for conformational dynamics of macromolecules
+  journal: ChemPhysChem
+  year: 2009
+  volume: 10
+  pages: 1389-1398
+  doi: 10.1002/cphc.200900238
+  note: Contact quenching used deliberately; the basis of PET-FCS.
+  topics: [photophysics, fcs]
+
+vandeLinde2018:
+  authors: S. van de Linde, et al.
+  title: Photon antibunching reveals static and dynamic quenching interaction of tryptophan with Atto-655
+  journal: Journal of Physical Chemistry Letters
+  year: 2017
+  volume: 8
+  pages: 5821-5826
+  note: ATTO 655 and tryptophan - a ground-state complex, a sphere of action and a dynamic term in one system.
+  topics: [photophysics]
+
+chen2012:
+  authors: H. Chen, et al.
+  title: Fluorescence of Alexa Fluor dye tracks protein folding
+  journal: PLOS ONE
+  year: 2012
+  volume: 7
+  pages: e46838
+  doi: 10.1371/journal.pone.0046838
+  note: Alexa 488 quenching by tryptophan changes between folded, molten-globule and unfolded states - the donor quantum yield is a property of the conformation.
+  topics: [photophysics, fret]
+
 # ── Reference works, textbooks and monographs ───────────────────────
 
 lakowicz2006:
