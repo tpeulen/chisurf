@@ -130,9 +130,8 @@ def read_index(index_path: pathlib.Path) -> list[Node]:
     """
     if not index_path.is_file():
         return []
-    try:
-        text = index_path.read_text(encoding="utf-8")
-    except OSError:
+    text = _source(index_path)
+    if not text:
         return []
 
     directory = index_path.parent
@@ -317,11 +316,35 @@ def _directory_pages(directory: pathlib.Path) -> list[Node]:
 # ── titles ──────────────────────────────────────────────────────────
 
 
+#: Sources read while building the tree, keyed by path and modification stamp.
+#: Every page is read for its title *and* its summary; without this the window
+#: reads the whole documentation tree twice on each open.
+_SOURCE_CACHE: dict[tuple[str, int, int], str] = {}
+
+
+def _source(path: pathlib.Path) -> str:
+    """Return the text of *path*, remembering it until the file changes."""
+    try:
+        stat = path.stat()
+    except OSError:
+        return ""
+    key = (str(path), stat.st_mtime_ns, stat.st_size)
+    text = _SOURCE_CACHE.get(key)
+    if text is None:
+        try:
+            text = path.read_text(encoding="utf-8")
+        except OSError:
+            text = ""
+        if len(_SOURCE_CACHE) > 4000:  # a session, not a service
+            _SOURCE_CACHE.clear()
+        _SOURCE_CACHE[key] = text
+    return text
+
+
 def page_title(path: pathlib.Path) -> str:
     """Return the document's own title, or an empty string."""
-    try:
-        text = path.read_text(encoding="utf-8")
-    except OSError:
+    text = _source(path)
+    if not text:
         return ""
     from chisurf.plugins.core.help.api.render import document_title
 
@@ -334,13 +357,11 @@ def page_summary(path: pathlib.Path, limit: int = 180) -> str:
     The first real sentence of the document is used: it is written to introduce
     the page, so it describes it better than anything that could be generated.
     """
-    try:
-        text = path.read_text(encoding="utf-8")
-    except OSError:
-        return ""
     from chisurf.plugins.core.help.api.markdown import strip_front_matter
 
-    text = strip_front_matter(text)
+    text = strip_front_matter(_source(path))
+    if not text:
+        return ""
     skip = re.compile(
         r"^\s*$|^[#=~^\-*`:.\[(]|^\.\.\s|^\||^\d+\.\s*$|^!\[|^\s*[-*+]\s"
     )
@@ -514,12 +535,13 @@ def _plugin_section(plugins: Optional[Iterable[dict]]) -> Node:
 
 
 def _within(path: pathlib.Path, directory: pathlib.Path) -> bool:
-    """Whether *path* lies inside *directory*."""
-    try:
-        path.relative_to(directory)
-        return True
-    except ValueError:
-        return False
+    """Whether *path* lies inside *directory*.
+
+    Compared as strings: ``Path.relative_to`` costs a parse and a tuple compare
+    per call, and this runs once per documentation file per nested plugin —
+    2.5 s of a 2.8 s window open, measured.
+    """
+    return str(path).startswith(str(directory) + "/")
 
 
 def _page_label(path: pathlib.Path, plugin_label: str, directory: pathlib.Path) -> str:

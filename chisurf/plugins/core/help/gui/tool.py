@@ -483,13 +483,11 @@ class HelpWidget(QMainWindow):
 
     def _on_authoring_toggled(self, checked: bool):
         self.authoring_toolbar.setVisible(checked)
-        if checked:
-            self._update_review_summary()
-            self._refresh_review_state(self.current_path)
-        else:
-            if self.edit_btn.isChecked():
-                self.edit_btn.setChecked(False)
-            self.review_label.setVisible(False)
+        if not checked and self.edit_btn.isChecked():
+            self.edit_btn.setChecked(False)
+        self._refresh_tree_badges()
+        self._update_review_summary()
+        self._refresh_review_state(self.current_path)
 
     # ── the tree ────────────────────────────────────────────────────
 
@@ -508,15 +506,15 @@ class HelpWidget(QMainWindow):
             logger.exception("could not read the documentation contents")
             self._toc = toc_api.Node("ChiSurf help", kind="section")
 
-        statuses = self._review_statuses()
         for section in self._toc.children:
             item = QTreeWidgetItem(self.tree, [self._label(section)])
-            item.setData(_ROLE_KIND, Qt.UserRole, None)
-            self._decorate(item, section, statuses, ["", section.title])
+            self._decorate(item, section, {}, ["", section.title])
             for child in section.children:
-                self._add_node(item, child, statuses, [section.title])
+                self._add_node(item, child, {}, [section.title])
+        # Badges last: the statuses are read for the pages that ended up in the
+        # tree, so nothing rediscovers the documentation a second time.
+        self._refresh_tree_badges()
         self._update_review_summary()
-        self._apply_review_filter()
 
     def _add_node(self, parent, node, statuses, trail):
         item = QTreeWidgetItem(parent, [self._label(node)])
@@ -567,18 +565,21 @@ class HelpWidget(QMainWindow):
         )
 
     def _review_statuses(self) -> dict:
-        """Return ``{path: status}`` for the review-tracked pages."""
+        """Return ``{path: status}`` for the review-tracked pages in the tree.
+
+        Read straight from the review registry rather than through
+        ``help.docs.list``, which rediscovers every document in the project —
+        a second full walk of the tree the contents were just built from.
+        """
+        statuses = {}
         try:
-            result = self.client.list_docs() or {}
-            entries = result.get("entries", [])
-            return {
-                entry["path"]: entry.get("review_status", "")
-                for entry in entries
-                if entry.get("category") == "User manual"
-            }
+            for node in self._order:
+                if node.path is None or not review.is_tracked(node.path):
+                    continue
+                statuses[str(node.path)] = review.status_of(node.path).status
         except Exception:
             logger.debug("review status unavailable", exc_info=True)
-            return {}
+        return statuses
 
     # ── search ──────────────────────────────────────────────────────
 
@@ -1260,8 +1261,16 @@ class HelpWidget(QMainWindow):
         self._update_review_summary()
 
     def _refresh_tree_badges(self):
-        """Re-read review status and update the badges in the tree."""
+        """Re-read review status, and badge the tree while authoring.
+
+        The badge answers "has a human checked this page yet" — a release
+        question. Shown to a reader it is a column of empty check boxes down
+        the manual, saying nothing about which page to open, so it appears only
+        with the authoring tools. The status is still recorded on every row, so
+        the filter works the moment they are switched on.
+        """
         statuses = self._review_statuses()
+        showing = bool(getattr(self, "authoring_btn", None) and self.authoring_btn.isChecked())
         for key, item in self._items.items():
             status = statuses.get(key)
             if status is None:
@@ -1269,7 +1278,7 @@ class HelpWidget(QMainWindow):
             label = item.text(0)
             for badge in REVIEW_BADGES.values():
                 label = label.replace(badge, "").strip()
-            if status and status != review.STATUS_REVIEWED:
+            if showing and status and status != review.STATUS_REVIEWED:
                 label = f"{REVIEW_BADGES.get(status, '')} {label}".strip()
             item.setText(0, label)
             item.setData(0, _ROLE_REVIEW, status)
