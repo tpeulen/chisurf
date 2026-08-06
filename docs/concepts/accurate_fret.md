@@ -313,6 +313,7 @@ does not know.
   correction-factor letters, and how other papers assign them) ·
   {ref}`fundamentals-fluorophores` (the donor-only controls the corrections
   assume).
+- Tools in ChiSurf: **Accurate FRET** (`chisurf/plugins/burst/accurate_fret/`) derives α, β, γ and δ from the burst populations themselves; **Burst Browser** (`chisurf/plugins/burst/burst_browser/`) is where the corrected columns are gated and inspected.
 
 ## References
 
@@ -321,4 +322,3 @@ does not know.
 - {cite}`sisamakis2010` — the multiparameter detection scheme and the correction factors it rests on.
 - {cite}`kalinin2010` — photon distribution analysis combined with lifetime, and what each adds.
 - {cite}`barth2022` — I. Theory of FRET-lines.* J Chem Phys 156:141501.
-

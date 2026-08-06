@@ -38,6 +38,11 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | `phasor.pseudo_color` | no | Colorize a stack of boolean masks into an RGB label image. |
 | `phasor.overlays` | no | Reference-geometry polylines (semicircle, lifetime grid/ticks, FRET, component line). |
 
+## Theory and workflow
+
+- **Theory** — [FLIM and the phasor approach](/concepts/imaging_flim_phasor.md)
+- **Workflow** — [Confocal scan images (CLSM)](/guides/24_scan_images.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/microscopy/img_pixel_phasor/`

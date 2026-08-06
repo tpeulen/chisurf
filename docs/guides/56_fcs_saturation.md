@@ -172,3 +172,4 @@ model tells you how far from zero you are.
 * [Optical saturation in FCS](../concepts/fcs_saturation.md) — the physics
 * [Diffusion and FCS](09_diffusion_fcs.md) — the unsaturated case
 * [Photon-by-photon kinetics](../concepts/photon_by_photon_kinetics.md)
+- Tool: the **FCS Saturation Calculator** (`chisurf/plugins/calculator/fcs_saturation_calc/`).

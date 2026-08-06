@@ -22,6 +22,10 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | --- | --- | --- | --- | --- | --- |
 | Contour levels | `levels` | level_histogram |  |  | The map's value distribution, with each contour as a marker on it. Drag a marker to move that level, click empty histogram to add one, right-click a marker to remove it. |
 
+## Theory and workflow
+
+- **Workflow** — [The molecular viewer (ChiMOL)](/guides/44_molecular_viewer.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/chimol/`

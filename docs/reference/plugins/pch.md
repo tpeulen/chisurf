@@ -26,6 +26,11 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 | `pch.compute` | no | Bins the photon stream into counting intervals of bin_time_us and histograms the counts per bin into the photon counting histogram P(k). An optional micro-time window gates the photons before binning. |
 | `pch.fit` | no | Fits an n-component PCH model to an experimental P(k), yielding per-species molecular brightness (epsilon), mean occupancy (N) and amplitude fractions plus chi-square statistics. Restrict the fitted k range with fit_low/fit_high. |
 
+## Theory and workflow
+
+- **Theory** — [Photon-counting histogram (PCH) and FIDA](/concepts/pch_fida.md)
+- **Workflow** — [FIDA — photon-counting histograms](/guides/04_fida_pch.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/pch/`

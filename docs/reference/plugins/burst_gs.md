@@ -72,6 +72,11 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | `burst_gs.jobs.log_likelihood` | no | Evaluate the Gopich-Szabo log-likelihood of a given scheme. |
 | `burst_gs.jobs.transition_time_scan` | yes | Scan the log-likelihood against the duration of a transition. |
 
+## Theory and workflow
+
+- **Theory** — [Photon-by-photon kinetics (Gopich–Szabo)](/concepts/photon_by_photon_kinetics.md)
+- **Workflow** — [Photon-by-photon kinetics: rates without binning](/guides/49_photon_by_photon_kinetics.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/burst/burst_gs/`

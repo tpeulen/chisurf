@@ -23,6 +23,11 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 | --- | --- | --- |
 | `fcs_saturation.compute` | no | Compute unperturbed and saturated FCS curves for arbitrary kinetic scheme. |
 
+## Theory and workflow
+
+- **Theory** — [Optical saturation in FCS](/concepts/fcs_saturation.md)
+- **Workflow** — [FCS saturation and focal-volume expansion](/guides/56_fcs_saturation.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/calculator/fcs_saturation_calc/`

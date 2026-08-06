@@ -187,3 +187,6 @@ included.
   three ways to produce a scan that looks healthy and carries no diffusion
   information at all.
 
+## See also
+
+- Tools in ChiSurf: **RICS-Precision** (`chisurf/plugins/calculator/rics_precision/`) for choosing the dwell time, and **Flow Maps** (`chisurf/plugins/microscopy/img_flow/`) for the STICS velocity field.

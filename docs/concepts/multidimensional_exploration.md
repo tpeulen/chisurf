@@ -223,10 +223,13 @@ carries, how the selection becomes photons, and how the fit is launched over
 ChiSurf's RPC link — are in the {doc}`workflow guide </guides/46_ndxplorer>`; the
 individual analyses have their own concept pages.
 
+## See also
+
+- Tools in ChiSurf: **ndX** (`chisurf/plugins/ndxplorer/`) is the multidimensional histogram browser these selections are made in.
+
 ## References
 
 - {cite}`sisamakis2010` — the multiparameter detection scheme and the correction factors it rests on.
 - {cite}`kalinin2010` — photon distribution analysis combined with lifetime, and what each adds.
 - {cite}`mcinnes2018` — the embedding used to lay out a many-dimensional burst set in two.
 - {cite}`campello2013` — the density-based clustering that finds populations without being told how many.
-

@@ -166,6 +166,13 @@ for $R \gtrsim R_0$; below $R^\ast$ it pulls the other way. Quoting the wrong
 measure therefore introduces a *signed*, distance-dependent bias, not a
 harmless offset.
 
+```{figure} figures/av_distances.png
+:name: fig-av-distances
+:width: 100%
+
+**The FRET average is not the mean distance, and the difference changes sign.** *Left:* a Gaussian $P(R_{DA})$ of width 12 Å about 62 Å with both scalar distances marked, for $R_0 = 52$ Å. *Right:* the gap $\langle R_{DA}\rangle_E - \langle R_{DA}\rangle$ against the mean, for three cloud widths. It vanishes at $R^\ast \approx 0.945\,R_0 = 49$ Å, is positive below and negative above, and grows with the square of the width — so quoting the wrong measure is a signed, distance-dependent bias, not an offset.
+```
+
 ## The κ² = 2/3 assumption
 
 The Förster radius hides the orientation factor:

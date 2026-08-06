@@ -25,6 +25,10 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 | `tttr_time_windows.jobs.analyze_files` | yes | Split TTTR files into fixed-duration time-window BIDs. |
 | `tttr_time_windows.contract.describe` | no | Return the Time Window Bins workflow contract. |
 
+## Theory and workflow
+
+- **Workflow** — [Handling TTTR files (and Photon-HDF5)](/guides/12_handling_tttr_files.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/tttr/tttr_time_windows/`

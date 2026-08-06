@@ -105,6 +105,13 @@ $$
 The size of $r_\infty/r_0$ measures the cone semi-angle of the restricted
 motion (the order parameter), a common readout in membrane and structural work.
 
+```{figure} figures/anisotropy_decays.png
+:name: fig-anisotropy-decays
+:width: 100%
+
+**What rotation does to the two polarised channels.** *Left:* $r(t)$ built by {src}`chisurf/core/fluorescence/anisotropy/decay.py#vm_rt_to_vv_vh` from a 4 ns magic-angle decay and three rotation spectra — a freely tumbling dye ($\rho = 0.5$ ns), the same dye on a protein ($\rho = 12$ ns), and a hindered case that levels off at $r_\infty = 0.15$. *Right:* the VV and VH decays themselves for the first and last case. Free rotation brings the two channels together within a few nanoseconds; hindered rotation leaves them apart for the whole decay, which is the shape difference the joint fit reads $\rho$ from.
+```
+
 ## The Perrin equation: $\rho$, volume and viscosity
 
 For a spherical rotor the correlation time is linked to the hydrodynamic volume
@@ -243,3 +250,4 @@ difference between the channels. ChiSurf supports both a single stacked
   steady-state and time-resolved anisotropy, the Perrin equation and hindered
   rotors; {cite}`schaffer1999` is the $G = S_\parallel/S_\perp$ convention and
   the $l_1, l_2$ correction used throughout.
+- Tools in ChiSurf: the **Anisotropy Wizard** (`chisurf/plugins/fluorescence_decay/tr_anisotropy/`) sets up the linked VV/VH fit, **VV/VH Anisotropy Decay** (`chisurf/plugins/vv_vh_anisotropy/`) computes $r(t)$ from a stacked file, and **VV/VH G-Factor** (`chisurf/plugins/vv_vh_g_factor/`) measures $G$ by tail matching.

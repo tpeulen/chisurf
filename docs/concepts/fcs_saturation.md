@@ -277,6 +277,7 @@ brightnesses.
   {src}`chisurf/core/fluorescence/fcs/saturation.py#gaussian_g_diff`, and the
   linked power-series fit
   {src}`chisurf/core/fluorescence/fcs/power_series.py#build_power_series_fit`.
+- Tools in ChiSurf: the **FCS Saturation Calculator** (`chisurf/plugins/calculator/fcs_saturation_calc/`) solves an arbitrary kinetic scheme and drives the power series from a slider.
 
 ## References
 * {cite}`widengren1995` — the triplet term, and the power dependence that

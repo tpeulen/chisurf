@@ -147,3 +147,6 @@ page: rather than *predicting* the precision of a scan, it simulates one with a
 known diffusion coefficient and measures what comes back — including the slow
 end of the working range this planner exists to keep you out of.
 
+## See also
+
+- Tool: **RICS-Precision** (`chisurf/plugins/calculator/rics_precision/`).

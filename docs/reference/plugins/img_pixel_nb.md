@@ -22,6 +22,10 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | --- | --- | --- | --- | --- | --- |
 | TTTR file | `filename` | file |  |  | PTU/HT3 imaging file; CLSM markers are auto-detected from the header. |
 
+## Theory and workflow
+
+- **Theory** — [Photon-counting histogram (PCH) and FIDA](/concepts/pch_fida.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/microscopy/img_pixel_nb/`

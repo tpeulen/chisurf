@@ -29,6 +29,10 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 | `irf_estimator.data.transfer_irf` | no | Transfer estimated IRF to ChiSurf as a dataset. |
 | `irf_estimator.contract.describe` | no | Return the IRF Estimator workflow contract. |
 
+## Theory and workflow
+
+- **Workflow** — [IRF Estimation - ChiSurf Integration](/guides/irf_estimation.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/fluorescence_decay/irf_estimator/`

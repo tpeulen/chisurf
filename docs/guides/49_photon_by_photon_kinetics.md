@@ -178,3 +178,7 @@ client that already holds the photons.
   they bias the fitted efficiencies toward each other.
 * Exchange **slower than a burst** is a static mixture, and a static model is the
   right description there — the fit will tell you by driving the rates to zero.
+
+## See also
+
+- Tool: **Photon-by-photon kinetics** (`chisurf/plugins/burst/burst_gs/`).

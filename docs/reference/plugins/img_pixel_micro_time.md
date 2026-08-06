@@ -23,6 +23,11 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | TTTR file | `filename` | file |  |  | PTU/HT3 imaging file; CLSM markers are auto-detected from the header. |
 | Min. photons | `n_ph_min` | int |  |  | Pixels with fewer photons than this are discriminated (set to 0); press Run to apply. |
 
+## Theory and workflow
+
+- **Theory** — [FLIM and the phasor approach](/concepts/imaging_flim_phasor.md)
+- **Workflow** — [Confocal scan images (CLSM)](/guides/24_scan_images.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/microscopy/img_pixel_micro_time/`

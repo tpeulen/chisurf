@@ -439,3 +439,7 @@ them; fit the quantum yields and efficiencies they are made of.
   [2CDE](01_fret_2cde.md).
 * **Distances are only quotable near $R \approx R_0$**; the sixth root inflates
   the error bar at both ends of the efficiency range.
+
+## See also
+
+- Tool: **Accurate FRET** (`chisurf/plugins/burst/accurate_fret/`).

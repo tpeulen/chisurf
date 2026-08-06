@@ -171,6 +171,10 @@ gives 20 out of 20.
 * **Blinking that outlasts the gap tolerance** splits a trajectory in two, which
   biases the length distribution and therefore $D$.
 
+## See also
+
+- Tools in ChiSurf: **Particle Tracking** (`chisurf/plugins/microscopy/img_tracking/`) detects, links and fits the MSD, and writes the trajectories out per track.
+
 ## References
 
 - {cite}`crocker1996` — the centroid localisation and linking that every tracker still starts from.
@@ -187,4 +191,3 @@ gives 20 out of 20.
   them, link them, check the recovered *identities* against the truth, and fit
   `D` with a bootstrapped error bar. It also shows how little crowding it takes
   to start merging tracks, and what fitting `alpha` costs.
-

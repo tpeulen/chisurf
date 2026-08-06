@@ -138,3 +138,7 @@ data, shifts = core.corrected_stack("movie.tif")
 # photon streams: corrected photon by photon, so the image stays analysable
 clsm, shifts = core.correct_photon_image("scan.ptu", channels=[0])
 ```
+
+## See also
+
+- Tool: **Drift Correction** (`chisurf/plugins/microscopy/img_drift/`).

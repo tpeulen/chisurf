@@ -157,6 +157,13 @@ efficiency badly — with a 4.0 ns donor, $E = 1-2.25/4.0 = 0.44$ against a
 spurious $E = 1-3.61/4.0 = 0.10$. This single confusion is the most common
 error in reported lifetime-based FRET efficiencies.
 
+```{figure} figures/lifetime_averages.png
+:name: fig-lifetime-averages
+:width: 100%
+
+**Two averages of one decay.** *Left:* equal amplitudes of a 0.5 ns and a 4.0 ns species, reconvolved with a 90 ps IRF by {src}`chisurf/core/fluorescence/tcspc/convolve.py#convolve_lifetime_spectrum`, with the two averages marked. *Right:* the same two species weighted the two ways — half the *molecules* are short-lived, but they contribute 11 % of the *photons*. Quoting $\langle\tau\rangle_f$ where the FRET formula wants $\langle\tau\rangle_x$ turns $E = 0.44$ into $E = 0.10$.
+```
+
 ```{note}
 Multi-exponential fits are only weakly identifiable: lifetimes closer than
 ~2× are strongly correlated, and discrete components can trade off against a
@@ -195,3 +202,4 @@ FRET distance distributions and anisotropy decays are resolved; see
   averages and their correct use; {cite}`coates1968` the pile-up correction
   applied above; {cite}`maus2001` the $2I^*$ statistic used for burst- and
   pixel-wise fits.
+- Tools in ChiSurf: **Decay Analysis** (`chisurf/plugins/fluorescence_decay/lifetime_analysis/`) collects the decay tools — IRF estimation, **MaxEnt MEM** (`chisurf/plugins/fluorescence_decay/maxent_decay/`) for a lifetime *distribution*, **Lazy Lifetime Analysis** (`chisurf/plugins/fluorescence_decay/lltf/`) for a quick answer, and the **Synthetic Decay Generator** (`chisurf/plugins/fluorescence_decay/synthetic_decay/`) for a decay whose answer you know.

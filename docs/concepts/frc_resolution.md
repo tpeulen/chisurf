@@ -87,6 +87,13 @@ stricter than the other: where they sit depends on the image.
 Because they differ by tens of per cent on the same data, **a resolution without
 its criterion is not a result.** Quote both.
 
+```{figure} figures/frc_thresholds.png
+:name: fig-frc-thresholds
+:width: 100%
+
+**One curve, three criteria, three answers.** An FRC curve against the fixed 1/7 threshold, the ½-bit criterion and the $2\sigma$ criterion, each marked where the curve *falls through* it — 8, 11 and 10 nm on the same data. The count-dependent criteria start above 1 on the innermost rings, which is why a crossing counts only after the curve has been above the threshold; without that rule they both 'cross' in the first ring and report the field of view.
+```
+
 ## What the number does and does not mean
 
 * It is a property of *this acquisition*, not of the microscope. More frames, a
@@ -110,6 +117,7 @@ its criterion is not a result.** Quote both.
   {src}`chisurf/plugins/microscopy/img_frc/core.py#halves`, the ring correlation
   and criteria {src}`chisurf/plugins/microscopy/img_frc/api/frc.py#compute_resolution`
   and {src}`chisurf/plugins/microscopy/img_frc/api/frc.py#list_criteria`.
+- Tools in ChiSurf: **FRC Resolution** (`chisurf/plugins/microscopy/img_frc/`) splits the acquisition and reports the crossing under each criterion.
 
 ## References
 
@@ -119,4 +127,3 @@ its criterion is not a result.** Quote both.
   super-resolution fluorescence images.
 - {cite}`nieuwenhuizen2013` — FRC as the practical resolution measure for
   localisation microscopy, and the fixed 1/7 convention used here.
-

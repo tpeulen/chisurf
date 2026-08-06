@@ -50,3 +50,4 @@ FRET-FCS auto and cross correlations.
 ## See also
 
 - FCS models {src}`chisurf/core/models/fcs/models.yaml`; [Diffusion FCS](09_diffusion_fcs.md).
+- Tool: **Burst-wise FCS** (`chisurf/plugins/burst/burst_fcs_correlator/`).

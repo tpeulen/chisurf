@@ -22,6 +22,10 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | --- | --- | --- | --- | --- | --- |
 | TTTR file | `filename` | file |  |  | PTU/HT3 imaging file (or drop one onto the window); CLSM markers auto-detected. |
 
+## Theory and workflow
+
+- **Workflow** — [Confocal scan images (CLSM)](/guides/24_scan_images.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/microscopy/img_pixel_intensity/`

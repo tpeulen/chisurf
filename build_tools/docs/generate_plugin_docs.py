@@ -23,8 +23,10 @@ Usage::
 
 from __future__ import annotations
 
+import functools
 import json
 import pathlib
+import re
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent.parent
 PLUGIN_ROOT = REPO_ROOT / "chisurf" / "plugins"
@@ -207,6 +209,82 @@ def _discovered_plugins() -> list:
         return []
 
 
+#: Where the theory and the workflows live, and how each reads in a link.
+_DOC_SECTIONS = (
+    ("concepts", "Theory"),
+    ("guides", "Workflow"),
+)
+
+
+def _page_title(path: pathlib.Path) -> str:
+    """First heading of a documentation page, or its file name."""
+    for line in path.read_text(encoding="utf-8", errors="ignore").splitlines():
+        heading = re.match(r"^#\s+(?P<title>.+?)\s*$", line)
+        if heading:
+            return heading.group("title").strip()
+    return path.stem.replace("_", " ")
+
+
+@functools.lru_cache(maxsize=1)
+def _plugin_mentions() -> dict:
+    """Map ``chisurf/plugins/<dir>`` to the documentation pages that name it.
+
+    Built by reading the documentation rather than by declaring the link in a
+    manifest: a page that talks about a plugin already says so, by naming its
+    package or one of its files, and a link derived from that cannot go stale
+    while the sentence around it is still true. Declaring it twice is what
+    drifts.
+    """
+    docs = REPO_ROOT / "docs"
+    mentions: dict = {}
+    reference = re.compile(r"chisurf/plugins/(?P<rest>[\w.-]+(?:/[\w.-]+)*)")
+    for section, _label in _DOC_SECTIONS:
+        directory = docs / section
+        if not directory.is_dir():
+            continue
+        for page in sorted(directory.rglob("*.md")) + sorted(directory.rglob("*.rst")):
+            if page.name.startswith("index."):
+                continue
+            text = page.read_text(encoding="utf-8", errors="ignore")
+            seen = set()
+            for match in reference.finditer(text):
+                parts = match.group("rest").split("/")
+                # The reference may be a file deep inside the package; a
+                # trailing name with a suffix is not a directory.
+                if "." in parts[-1]:
+                    parts = parts[:-1]
+                # Every prefix is a candidate plugin directory; the caller knows
+                # which of them actually exist.
+                for depth in range(1, len(parts) + 1):
+                    seen.add("/".join(parts[:depth]))
+            for key in seen:
+                mentions.setdefault(key, []).append((section, page))
+    return mentions
+
+
+def _theory_and_workflow(rel_dir: pathlib.Path) -> list:
+    """Lines linking a plugin to the pages that explain and apply it."""
+    found = _plugin_mentions().get(rel_dir.as_posix(), [])
+    if not found:
+        return []
+    docs = REPO_ROOT / "docs"
+    out = ["## Theory and workflow", ""]
+    for section, label in _DOC_SECTIONS:
+        pages = sorted(
+            {page for kind, page in found if kind == section},
+            key=lambda page: page.name,
+        )
+        if not pages:
+            continue
+        links = ", ".join(
+            f"[{_page_title(page)}](/{page.relative_to(docs).with_suffix('.md').as_posix()})"
+            for page in pages
+        )
+        out.append(f"- **{label}** — {links}")
+    out.append("")
+    return out if len(out) > 2 else []
+
+
 def _plugin_page(manifest: dict, plugin_dir: pathlib.Path, registry_params: dict) -> str:
     pid = manifest.get("id", plugin_dir.name)
     category, leaf = _display_parts(manifest.get("display_name", ""), pid)
@@ -288,6 +366,10 @@ def _plugin_page(manifest: dict, plugin_dir: pathlib.Path, registry_params: dict
                        f"{'yes' if m.get('long_running') else 'no'} | "
                        f"{_md(m.get('description') or m.get('summary',''))} |")
         out.append("")
+
+    # Where the reader goes for *why* and for *how*, derived from the pages
+    # that already name this plugin.
+    out += _theory_and_workflow(rel_dir)
 
     # A file is written as a ``{src}`` role so the reader can open it: in the
     # application it goes to the code editor, on the website to the repository
@@ -386,6 +468,21 @@ def generate() -> None:
             idx.append(f"| [{_md(leaf)}]({pid}.md){tag} | {_md(desc)} |")
         idx.append("")
     (plugins_dir / "index.md").write_text("\n".join(idx), encoding="utf-8")
+
+    # A plugin that is removed or renamed leaves its page behind, and a page
+    # nothing generated is a page nobody maintains: it stays in the tree,
+    # appears in the toctree glob, and points at code that is no longer there.
+    # (burst_state_mle, proteinmc, fcs_correlator … were all in that state.)
+    kept = {f"{pid}.md" for pids in catalogue.values() for _leaf, pid, *_rest in pids}
+    kept.add("index.md")
+    removed = 0
+    for page in sorted(plugins_dir.glob("*.md")):
+        if page.name in kept or "cookiecutter" in page.name:
+            continue
+        page.unlink()
+        removed += 1
+    if removed:
+        print(f"Removed {removed} pages of plugins that no longer exist")
 
     (OUT_DIR / "parameters.md").write_text(_parameter_glossary(registry), encoding="utf-8")
 

@@ -51,6 +51,11 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | `hmm.fit` | no | Fit a Gaussian hidden Markov model to binned trace(s) and return states, dwell times and transitions. |
 | `hmm.scan` | no | Fit a range of state counts and score each by AIC and BIC. |
 
+## Theory and workflow
+
+- **Theory** — [Hidden Markov models of binned traces](/concepts/hidden_markov_models.md)
+- **Workflow** — [Hidden Markov models of binned traces](/guides/54_hidden_markov_models.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/core/hmm/`

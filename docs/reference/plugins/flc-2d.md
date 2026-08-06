@@ -93,6 +93,11 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | `flc2d.lifetime_lcurve` | yes | Compute 1D lifetime inversion L-curve diagnostics. |
 | `flc2d.contract.describe` | no | Describe the 2D-FLCS RPC namespace. |
 
+## Theory and workflow
+
+- **Theory** — [Filtered FCS (fFCS/FLCS) and 2D-FLCS](/concepts/filtered_fcs.md)
+- **Workflow** — [Filtered FCS (fFCS / 2D-FLCS)](/guides/17_filtered_fcs.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/fcs/flc_2d/`

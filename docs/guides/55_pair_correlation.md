@@ -240,3 +240,7 @@ pixi run -e docs python docs/guides/make_figures.py
 The two figures on this page come from `fig_pcf_flow_arrows` and
 `fig_pcf_barrier` there, which run the very functions described above on
 phantoms whose velocity is known.
+
+## See also
+
+- Tool: **Flow Maps** (`chisurf/plugins/microscopy/img_flow/`).

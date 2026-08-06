@@ -72,3 +72,4 @@ RASP: same-molecule probability and recurrence histogram.
 
 - {src}`chisurf/core/fluorescence/burst/recurrence.py`
 - Workflow: `Bursts.recurrence()` → a `Recurrence` result.
+- Tool: **Burst Selection** (`chisurf/plugins/burst/burst_selection/`).

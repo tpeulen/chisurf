@@ -183,3 +183,7 @@ asking for too many states, and binning too coarsely for the kinetics.
 - {doc}`Photon-by-photon HMM (H2MM) <19_h2mm_hidden_markov>` — no binning.
 - {doc}`HMM of binned traces (ebFRET) <20_ebfret_binned_hmm>` — empirical Bayes over many traces.
 - [Benchmarks](../development/benchmarks.md) — what the fit costs and why.
+
+## See also
+
+- Tool: the **Hidden Markov model** tool (`chisurf/plugins/core/hmm/`).

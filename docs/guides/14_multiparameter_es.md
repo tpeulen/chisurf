@@ -56,3 +56,4 @@ Multi-parameter E–S histogram.
 ## See also
 
 - {src}`chisurf/core/fluorescence/burst/es.py`, {src}`chisurf/core/fluorescence/fret/calibration.py`.
+- Tool: the **Burst Browser** (`chisurf/plugins/burst/burst_browser/`).

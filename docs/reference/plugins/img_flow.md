@@ -56,6 +56,11 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | `img_flow.demo.create` | yes | Simulate a photon stream with a known flow profile and write it as PTU. |
 | `img_flow.contract.describe` | no | Return the RPC contract descriptor. |
 
+## Theory and workflow
+
+- **Theory** — [Image correlation: RICS, STICS, TICS and iMSD are one method](/concepts/image_correlation.md), [Pair correlation and flow maps: where molecules go](/concepts/pair_correlation.md)
+- **Workflow** — [Pair correlation and flow maps: measuring where molecules go](/guides/55_pair_correlation.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/microscopy/img_flow/`

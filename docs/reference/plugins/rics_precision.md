@@ -53,6 +53,11 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Repeats | `n_repeats` | int |  | 5 … 2000 | Monte-Carlo realisations behind each point. The predicted error carries an uncertainty of roughly 1/sqrt(2N) itself — about 11 % at 40 — which is why the position of the minimum is only good to an order of magnitude. |
 | Seed | `seed` | int |  | 0 … 1000000 | Random seed, so a quoted prediction can be reproduced. |
 
+## Theory and workflow
+
+- **Theory** — [Image correlation: RICS, STICS, TICS and iMSD are one method](/concepts/image_correlation.md), [Scan precision: choosing a dwell time before you measure](/concepts/scan_precision.md)
+- **Workflow** — [Planning a scan: which dwell time measures D best?](/guides/45_scan_precision.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/calculator/rics_precision/`

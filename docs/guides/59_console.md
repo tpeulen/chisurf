@@ -135,3 +135,7 @@ The console reads `gui.console_init` (run at startup), `gui.console_style` (the
 colour theme) and the optional `gui.console` block — scrollback cap, output
 limit, completion style, paging. All of them are documented in
 [Settings](../reference/settings.md).
+
+## See also
+
+- Tool: the **Code Editor** (`chisurf/plugins/core/code_editor/`).

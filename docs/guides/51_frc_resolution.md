@@ -115,3 +115,7 @@ Measuring it once on a bright test sample says nothing about the dim one.
 **Do not chase the last digit.** Near the crossing the curve is flat, so the
 estimate wanders by a ring or two; a difference of a few per cent between two
 images is not a difference.
+
+## See also
+
+- Tool: **FRC Resolution** (`chisurf/plugins/microscopy/img_frc/`).

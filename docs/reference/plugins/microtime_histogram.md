@@ -18,6 +18,10 @@ Create and inspect TTTR microtime histograms.
 
 This plugin builds its interface from custom Qt widgets (no declarative `*.view.json` parameter sections were found). Its controls are shown in the plugin's guide; the fit/model parameters it edits are defined in the [parameter glossary](../parameters.md).
 
+## Theory and workflow
+
+- **Workflow** — [Handling TTTR files (and Photon-HDF5)](/guides/12_handling_tttr_files.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/tttr/microtime_histogram/`

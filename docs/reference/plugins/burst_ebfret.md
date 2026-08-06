@@ -24,6 +24,11 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 | --- | --- | --- |
 | `burst_ebfret.jobs.compute` | yes | Fit an empirical-Bayes Gaussian HMM over a set of binned FRET traces. |
 
+## Theory and workflow
+
+- **Theory** — [ebFRET: variational-Bayes HMM of binned traces](/concepts/ebfret.md)
+- **Workflow** — [Hidden Markov analysis of binned FRET traces (ebFRET)](/guides/20_ebfret_binned_hmm.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/burst/burst_ebfret/`

@@ -49,6 +49,11 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | `burst_fcs.fit_simple` | no | Single-component diffusion-time fit of a correlation curve. |
 | `burst_fcs.correlate_file` | yes | Correlate every burst x pair for one TTTR file. |
 
+## Theory and workflow
+
+- **Theory** — [FCS: the correlation curve and its models](/concepts/fcs_correlation.md)
+- **Workflow** — [FRET-FCS](/guides/16_fret_fcs.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/burst/burst_fcs_correlator/`

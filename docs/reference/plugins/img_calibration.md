@@ -31,6 +31,10 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Shift VV (∥, ch) | `sel_shift_vv` | float |  | -100000.0 … 100000.0 (step 1.0) | Circular (wrap-around) shift of the VV IRF, in micro-time channels. |
 | Shift VH (⊥, ch) | `sel_shift_vh` | float |  | -100000.0 … 100000.0 (step 1.0) | Circular (wrap-around) shift of the VH IRF, in micro-time channels. |
 
+## Theory and workflow
+
+- **Workflow** — [Confocal scan images (CLSM)](/guides/24_scan_images.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/microscopy/img_calibration/`

@@ -34,6 +34,11 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Smoothing (σ px) | `smooth` | float |  | 0.0 … 20.0 | Gaussian blur applied to the correlation before the peak is located. Guards against a noise-driven tie between two neighbouring pixels flipping the answer by one pixel. Zero disables it. |
 | Sub-pixel refinement | `subpixel` | bool |  |  | Refine each integer peak by fitting a parabola through its neighbours. Useful for slow drift measured over many frames; the correction itself is still applied in whole pixels. |
 
+## Theory and workflow
+
+- **Theory** — [Drift correction](/concepts/drift_correction.md)
+- **Workflow** — [Drift correction](/guides/43_drift_correction.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/microscopy/img_drift/`

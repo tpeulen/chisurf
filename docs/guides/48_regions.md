@@ -293,3 +293,4 @@ survives a save, a reload and a hop to a headless backend.
 - Object-based colocalization, which counts and compares segmented objects:
   {doc}`38_colocalization`.
 - Confocal images and per-pixel lifetime analysis: {doc}`24_scan_images`.
+- Tool: **Image Tools** (`chisurf/plugins/microscopy/imaging_tools/`).

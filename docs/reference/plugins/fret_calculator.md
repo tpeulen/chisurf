@@ -44,6 +44,10 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | `fret_calculator.homo.compute` | no | Compute homoFRET exchange rate and effective distance. |
 | `fret_calculator.homo.backmap` | no | Back-map homoFRET distance to anisotropy relaxation time. |
 
+## Theory and workflow
+
+- **Theory** — [Förster resonance energy transfer (FRET)](/concepts/fret.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/calculator/fret_calculator/`

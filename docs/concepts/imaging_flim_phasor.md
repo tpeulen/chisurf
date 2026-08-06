@@ -99,6 +99,13 @@ the component phasors, so a multi-exponential pixel lands **inside** the arc, on
 line segment (or polygon) joining its pure components. Anything strictly inside the
 circle is, by construction, multi-exponential.
 
+```{figure} figures/phasor_circle.png
+:name: fig-phasor-circle
+:width: 100%
+
+**The universal circle at 80 MHz.** Single exponentials land on the arc — marked at 0.5, 1, 2, 4 and 8 ns, short lifetimes to the right. A pixel mixing a 0.6 ns and a 4 ns species lies on the chord between them, at the position the lever rule gives for its fractional intensities (quarter points shown). Anything strictly inside the arc is multi-exponential; nothing outside it is physical.
+```
+
 ## Fractions by the lever rule
 
 Because mixing is linear, composition is read off *geometrically*. If a pixel is a
@@ -182,3 +189,4 @@ fit the pixels that matter.
   {cite}`colyer2012` the polar plot as the visual basis of it;
   {cite}`malacrida2021` a review of the universal circle and how to read a
   phasor plot without fitting.
+- Tools in ChiSurf: the **Phasor-Calculator** (`chisurf/plugins/calculator/phasor_calculator/`) for the universal circle and the FRET trajectory; **Pixel Phasor** (`chisurf/plugins/microscopy/img_pixel_phasor/`), **Mean Micro-Time** (`chisurf/plugins/microscopy/img_pixel_micro_time/`) and **Pixel-wise MLE** (`chisurf/plugins/microscopy/img_pixel_mle/`) for the maps themselves.

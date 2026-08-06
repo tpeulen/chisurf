@@ -29,6 +29,11 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 | `fps_json_editor.payload.normalize` | no | Normalize an fps.json payload through the core data model. |
 | `fps_json_editor.av.mrc.save` | no | Save AV points as an IMP-backed MRC density map. |
 
+## Theory and workflow
+
+- **Theory** — [Accessible-volume (AV) dye modeling](/concepts/accessible_volume.md)
+- **Workflow** — [Accessible-volume (AV) calculations](/guides/23_accessible_volume.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/modelling/fps_json_editor/`

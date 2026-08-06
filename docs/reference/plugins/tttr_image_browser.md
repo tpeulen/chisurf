@@ -33,6 +33,10 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | `tttr_image_browser.export.tiff` | yes | Export intensity images (per combo) as TIFF stacks. |
 | `tttr_image_browser.contract.describe` | no | Return the TTTR Image Browser RPC contract. |
 
+## Theory and workflow
+
+- **Workflow** — [Confocal scan images (CLSM)](/guides/24_scan_images.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/tttr/tttr_image_browser/`

@@ -221,3 +221,7 @@ the van Steensel profile peaking at shift 0 — strongly colocalized channels on
 correctly registered instrument. Report the pair $M_1$/$M_2$ alongside it, plus
 the thresholds and how they were chosen; see {ref}`concept-colocalization` for
 what a defensible report contains.
+
+## See also
+
+- Tool: **Colocalization** (`chisurf/plugins/microscopy/img_coloc/`).

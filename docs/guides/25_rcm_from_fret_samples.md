@@ -56,3 +56,4 @@ computed with the real `corrected_es`.
 - {src}`chisurf/core/fluorescence/fret/calibration.py`, `.../burst/es.py`; the dye-solution route: [RCM calibration](07_rcm_calibration.md).
 - The full correction algebra and the general crosstalk-matrix form: [accurate FRET calibration](fret_calibration.md).
 - The E–S map these populations are read from: [multi-parameter E–S](14_multiparameter_es.md).
+- Tool: **Accurate FRET** (`chisurf/plugins/burst/accurate_fret/`).

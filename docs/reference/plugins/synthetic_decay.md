@@ -42,6 +42,10 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | `synthetic_decay.compute` | no | Generate a decay from lifetimes/amplitudes (+ optional IRF, shot noise). |
 | `synthetic_decay.compute_component` | no | Generate a decay from a component definition (lifetime / spectrum / gaussian-lifetime / gaussian-distance). |
 
+## Theory and workflow
+
+- **Theory** — [TCSPC: fluorescence-lifetime fitting](/concepts/tcspc_lifetime.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/fluorescence_decay/synthetic_decay/`

@@ -18,6 +18,11 @@ Inspect burstwise analysis tables and plots.
 
 This plugin builds its interface from custom Qt widgets (no declarative `*.view.json` parameter sections were found). Its controls are shown in the plugin's guide; the fit/model parameters it edits are defined in the [parameter glossary](../parameters.md).
 
+## Theory and workflow
+
+- **Theory** — [Accurate FRET: correction factors, FRET lines, and where they come from](/concepts/accurate_fret.md), [Single-molecule FRET: burst analysis (E, S, corrections)](/concepts/smfret_bursts.md)
+- **Workflow** — [Multi-parameter E–S histograms and correction factors](/guides/14_multiparameter_es.md), [Sending a gated burst population to FCS, TCSPC, PDA or PCH](/guides/52_send_bursts_to_analysis.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/burst/burst_browser/`

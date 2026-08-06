@@ -2,6 +2,18 @@
 
 ## 2026-08-06
 
+* **Every plugin page now says what it is for, and nine theory pages have a picture** ([documentation browser](subsystems/documentation-browser.md)).
+
+  **All 125 generated plugin pages linked to no concept and no guide.** A reader who landed on one got the parameter table and the RPC surface, and no route to the theory or the workflow. Each page now carries a **Theory and workflow** section — derived by reading the documentation rather than by declaring the link in a manifest: a page that talks about a plugin already names its package, and a link built from that cannot go stale while the sentence around it is still true. Declaring it twice is what drifts.
+
+  That reverse index turned the gap into a worklist, and closing it was the actual work: **21 concept pages** gained a *Tools in ChiSurf* line and **35 guides** a *Tool* line, naming the plugin each drives. 72 of 112 plugins now link to their theory or workflow; the remainder are games, setup panels and trajectory utilities that have no theory page and should not pretend to. A test fails on a plugin package named in the documentation that does not exist — two were mistyped on the first pass and both were caught that way.
+
+  **The generator was leaving pages behind.** Fourteen plugins had been removed or renamed and their reference pages stayed: absent from the catalogue, still in the toctree glob, still reachable from search, still pointing at code that is not there (`burst_state_mle`, `proteinmc`, `fcs_correlator`…). The generator now removes what it no longer generates, and a test fails on an orphan.
+
+  **Nine concept pages had no figure at all** — 35 of 38 did not. The new `docs/concepts/make_figures.py` draws each page's central relationship *with the shipped functions*, not with a re-implementation of them: the FRET curve calls `distance_to_fret_efficiency`, the polarised decays call `vm_rt_to_vv_vh`, the BVA floor calls `compute_static_bva_line`, the histograms call `pch_open_system`. That is not ceremony — the first draft called `fret_efficiency(R, R0)`, which takes two *intensities*, and produced a plausible-looking curve that was not the one the page describes. Each figure is recorded in `figures.yaml` with a recipe naming its parameters and its seed.
+
+  Two of them found things. The accessible-volume figure reproduces the page's Jensen table independently, crossing zero at $R^\ast = 49$ Å exactly as the table says. And the FRC figure had to implement the page's own rule — a crossing counts only after the curve has been *above* the threshold — because without it the count-dependent criteria "cross" in the first ring and report a resolution the size of the field of view, which is the failure the page warns about.
+
 * **The last two theory gaps, and the tool that shows why goodness of fit cannot pick a regulariser** ([documentation browser](subsystems/documentation-browser.md)).
 
   `concepts/maximum_entropy.md` and `concepts/energy_migration.md` close the pair recorded earlier the same day, with `guides/62_maxent_decay.md`. MEM had no theory page although `models/tcspc/maxent.py` ships two models and the `maxent_decay` plugin has a GUI, a CLI, an RPC surface and notebooks; PDDEM had a manual page but no concept, so homo-transfer — which changes neither the spectrum, nor the intensity, nor the lifetime, and is detectable only in the anisotropy — was stated nowhere.

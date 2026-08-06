@@ -28,6 +28,11 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | l1 | `l1` | float |  |  | Channel-mixing correction factor l1. |
 | l2 | `l2` | float |  |  | Channel-mixing correction factor l2. |
 
+## Theory and workflow
+
+- **Theory** — [Time-resolved fluorescence anisotropy](/concepts/anisotropy.md)
+- **Workflow** — [Fluorescence lifetime and anisotropy decay fitting](/guides/10_lifetime_anisotropy_fitting.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/fluorescence_decay/tr_anisotropy/`

@@ -175,10 +175,14 @@ areas = atom_surface_areas(
 - **A spherical probe is a caricature of water.** The 1.4 Å convention is useful
   and universal, not physical.
 
+## See also
+
+- Tools in ChiSurf: **Structure Tools** (`chisurf/plugins/modelling/structure_tools/`) exposes the surface and accessibility calculations; **HydroPro** (`chisurf/plugins/modelling/hydropro/`) computes hydrodynamic properties from the same structure.
+- Related tools: **QuEst** (`chisurf/plugins/quenching_estimator/`) simulates dynamic PET quenching for a tethered dye against the same surface.
+
 ## References
 
 - {cite}`lee1971` — the accessible surface and the rolling probe.
 - {cite}`shrake1973` — the dot-sampling algorithm used here.
 - {cite}`connolly1983` — the molecular surface, for contrast.
 - {cite}`vanoosterom1983` — the spherical-excess formula used for the point weights.
-

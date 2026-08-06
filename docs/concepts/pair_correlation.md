@@ -193,10 +193,13 @@ the trend.
 | peak time flat, then a step | two compartments with different transport |
 | arrows everywhere on a still sample | the quality threshold is too low; peak jitter fitted to a line is always *some* velocity |
 
+## See also
+
+- Tools in ChiSurf: **Flow Maps** (`chisurf/plugins/microscopy/img_flow/`) draws the velocity field one arrow per tile; the pCF carpet itself is computed alongside it.
+
 ## References
 
 - {cite}`digman2009` — pair correlation itself: diffusion measured between two points, not within one.
 - {cite}`digman2012` — the scanning-ICS family this belongs to, and how the scan sets the timescales.
 - {cite}`hebert2005` — spatiotemporal image correlation - the velocity field a pCF carpet complements.
 - {cite}`cardarelli2010` — pCF applied to transport through the nuclear pore, the canonical demonstration.
-

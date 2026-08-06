@@ -29,6 +29,10 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 | `lightpath.get_probes_info` | no | Return probe metadata used by the light-path simulator palette. |
 | `lightpath.contract.describe` | no | Return the light-path simulator workflow contract. |
 
+## Theory and workflow
+
+- **Theory** — [Simulating single-molecule photon streams](/concepts/photophysics_simulation.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/core/lightpath_simulator/`

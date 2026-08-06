@@ -18,6 +18,10 @@ Integrated fluorescence lifetime analysis tools with IRF estimation, MaxEnt MEM,
 
 This plugin builds its interface from custom Qt widgets (no declarative `*.view.json` parameter sections were found). Its controls are shown in the plugin's guide; the fit/model parameters it edits are defined in the [parameter glossary](../parameters.md).
 
+## Theory and workflow
+
+- **Theory** — [TCSPC: fluorescence-lifetime fitting](/concepts/tcspc_lifetime.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/fluorescence_decay/lifetime_analysis/`

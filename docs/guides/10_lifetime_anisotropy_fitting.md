@@ -91,3 +91,4 @@ Fluorescence lifetime and anisotropy decays.
 - Lifetimes from single-molecule bursts: {doc}`21_lifetime_from_bursts`;
   ns-ALEX/PIE lifetimes: {doc}`32_nsalex_lifetime`.
 - Distance-distribution FRET models: [Polymer distance distributions](03_polymer_distance_distributions.md).
+- Tool: the **Anisotropy Wizard** (`chisurf/plugins/fluorescence_decay/tr_anisotropy/`), **VV/VH Anisotropy Decay** (`chisurf/plugins/vv_vh_anisotropy/`) and the **VV/VH G-Factor Calculator** (`chisurf/plugins/vv_vh_g_factor/`).

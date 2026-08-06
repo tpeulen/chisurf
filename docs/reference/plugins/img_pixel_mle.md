@@ -69,6 +69,11 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | `img_pixel_mle.analyze.run` | yes | Run pixel-wise MLE on TTTR imaging data. |
 | `img_pixel_mle.contract.describe` | no | Return the RPC contract. |
 
+## Theory and workflow
+
+- **Theory** — [FLIM and the phasor approach](/concepts/imaging_flim_phasor.md)
+- **Workflow** — [Confocal scan images (CLSM)](/guides/24_scan_images.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/microscopy/img_pixel_mle/`

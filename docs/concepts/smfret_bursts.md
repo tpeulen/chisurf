@@ -242,3 +242,4 @@ dye artefacts above.
   estimation
   {src}`chisurf/core/fluorescence/burst/background.py#estimate_background_from_interphoton_times`; burst plugins
   `chisurf/plugins/burst/`.
+- Tools in ChiSurf: **Burst Background Estimation** (`chisurf/plugins/burst/burst_background/`) for the rates the corrections subtract, **Burst IRF & Background** (`chisurf/plugins/burst/burst_irf_bg/`) for the per-detector IRF taken from the same file, and the **Burst Browser** (`chisurf/plugins/burst/burst_browser/`) for gating what comes out.

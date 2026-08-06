@@ -166,3 +166,7 @@ record their own operation.
 - [ndX exploration workflow](46_ndxplorer.md)
 - [Photon distribution analysis](../concepts/pda2c.md)
 - [The metadata store](../reference/plugins/mmfdb_admin.md)
+
+## See also
+
+- Tool: the **Burst Browser** (`chisurf/plugins/burst/burst_browser/`).

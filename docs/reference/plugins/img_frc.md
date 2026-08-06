@@ -46,6 +46,11 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | `img_frc.criteria.list` | no | List the threshold criteria and the available splits. |
 | `img_frc.contract.describe` | no | Return the RPC contract descriptor. |
 
+## Theory and workflow
+
+- **Theory** — [Image resolution: what the photons actually resolved](/concepts/frc_resolution.md)
+- **Workflow** — [Image resolution: measuring it from the image itself](/guides/51_frc_resolution.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/microscopy/img_frc/`

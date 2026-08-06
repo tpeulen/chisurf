@@ -26,6 +26,11 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 | `burst_2cde.workflow.prepare` | no | Resolve 2CDE settings and folders from a burst workflow context. |
 | `burst_2cde.contract.describe` | no | Return the 2CDE workflow contract. |
 
+## Theory and workflow
+
+- **Theory** — [FRET-2CDE and ALEX-2CDE](/concepts/burst_2cde.md)
+- **Workflow** — [FRET-2CDE / ALEX-2CDE burst dynamics](/guides/01_fret_2cde.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/burst/burst_2cde/`

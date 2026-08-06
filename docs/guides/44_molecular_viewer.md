@@ -1384,3 +1384,7 @@ OpenGL viewport does need a display, so `png` will not work headlessly while
 | Settings | 47 registered of PyMOL's 769 |
 
 `okf/plugins/pymol-parity.md` tracks the rest.
+
+## See also
+
+- Tool: **ChiMOL** (`chisurf/plugins/chimol/`).

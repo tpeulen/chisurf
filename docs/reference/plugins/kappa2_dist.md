@@ -59,6 +59,11 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | --- | --- | --- |
 | `kappa2_dist.compute` | no |  |
 
+## Theory and workflow
+
+- **Theory** — [The orientation factor κ² and what it costs](/concepts/kappa2_orientation.md)
+- **Workflow** — [κ² distributions: how much is the orientation assumption costing?](/guides/61_kappa2_distribution.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/calculator/kappa2_dist/`

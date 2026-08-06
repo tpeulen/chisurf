@@ -58,6 +58,13 @@ variance differs by exactly the factor 2 in $\epsilon T$, and the full histogram
 differs even more distinctly in shape. That separation of $\epsilon$ from $N$ is
 the entire reason to build the histogram.
 
+```{figure} figures/pch_brightness.png
+:name: fig-pch-brightness
+:width: 100%
+
+**Two samples no intensity measurement can tell apart.** Open-system photon-counting histograms from {src}`chisurf/plugins/pch/api/algorithms.py#pch_open_system`: few bright molecules ($\epsilon T = 1.0$, $N = 2$) against many dim ones ($\epsilon T = 0.5$, $N = 4$). Both give $\langle k\rangle = 2$ and an identical intensity trace; the *shape* of $P(k)$ is where the difference is.
+```
+
 ## Single-species PCH
 
 The full histogram follows from two nested randomizations
@@ -198,6 +205,7 @@ rather than assuming the ideal profile.
   {src}`chisurf/plugins/pch/api/algorithms.py`; the FIDA generating-function
   model in {src}`chisurf/core/models/pch/fida.py`; the **PCH** plugin
   (`chisurf/plugins/pch/`, RPC `pch.compute` / `pch.fit`).
+- Tools in ChiSurf: the **PCH** plugin (`chisurf/plugins/pch/`) fits the histogram, and **Number & Brightness** (`chisurf/plugins/microscopy/img_pixel_nb/`) reads the same two moments per pixel of an image.
 
 ## References
 

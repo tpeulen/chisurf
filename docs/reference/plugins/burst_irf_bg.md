@@ -27,6 +27,10 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Dark-count floor (quantile) | `baseline_quantile` | float |  | 0.0 … 0.9 (step 0.05) | Quantile of the non-burst micro-time histogram taken as the flat dark-count floor, subtracted before normalising the IRF. |
 | Micro-time binning | `micro_time_binning` | int |  | 1 … 64 (step 1) | Micro-time coarsening for the MLE IRF/background patterns (match the burst-MLE binning). |
 
+## Theory and workflow
+
+- **Theory** — [Single-molecule FRET: burst analysis (E, S, corrections)](/concepts/smfret_bursts.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/burst/burst_irf_bg/`

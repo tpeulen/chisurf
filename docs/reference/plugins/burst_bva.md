@@ -26,6 +26,11 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 | `burst_bva.workflow.prepare` | no | Resolve BVA settings and folders from workflow context. |
 | `burst_bva.contract.describe` | no | Return the BVA workflow contract. |
 
+## Theory and workflow
+
+- **Theory** — [FRET-2CDE and ALEX-2CDE](/concepts/burst_2cde.md), [Burst Variance Analysis (BVA)](/concepts/bva.md)
+- **Workflow** — [Burst Variance Analysis (BVA)](/guides/08_burst_variance_analysis.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/burst/burst_bva/`

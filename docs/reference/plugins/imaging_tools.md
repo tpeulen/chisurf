@@ -17,6 +17,11 @@ Unified imaging toolbox: Image Browser, Drift Correction, CLSM Draw, Molecule-wi
 
 This plugin builds its interface from custom Qt widgets (no declarative `*.view.json` parameter sections were found). Its controls are shown in the plugin's guide; the fit/model parameters it edits are defined in the [parameter glossary](../parameters.md).
 
+## Theory and workflow
+
+- **Theory** — [Regions and their properties](/concepts/region_properties.md)
+- **Workflow** — [Regions: selecting pixels, measuring what you selected](/guides/48_regions.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/microscopy/imaging_tools/`

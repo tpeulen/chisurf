@@ -34,6 +34,11 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Photons | `n_photons` | int |  | 50000 … 20000000 (step 50000) | Photon budget. More photons = cleaner filtered correlations (and a slower simulation). |
 | Seed | `seed` | int |  | 0 … 1000000 (step 1) | RNG seed (deterministic output). |
 
+## Theory and workflow
+
+- **Theory** — [Simulating single-molecule photon streams](/concepts/photophysics_simulation.md)
+- **Workflow** — [TTTR simulation of diffusing particles](/guides/18_tttr_simulation.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/fcs/fcs_lfcs_sim/`

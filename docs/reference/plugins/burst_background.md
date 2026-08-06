@@ -22,6 +22,11 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | --- | --- | --- | --- | --- | --- |
 | files | `files` | path_list |  |  |  |
 
+## Theory and workflow
+
+- **Theory** — [Single-molecule FRET: burst analysis (E, S, corrections)](/concepts/smfret_bursts.md)
+- **Workflow** — [Background rates](/guides/15_background_rates.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/burst/burst_background/`

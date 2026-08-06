@@ -144,8 +144,11 @@ efficiency. They are recomputed on the fused folder instead.
 * {doc}`Burst variance analysis <bva>` and {doc}`2CDE <burst_2cde>` — steps that
   read the folder fusion produces.
 
+## See also
+
+- Tools in ChiSurf: **Burst Fusion** (`chisurf/plugins/burst/burst_fusion/`) estimates the same-molecule probability and writes the fused folder.
+
 ## References
 
 - {cite}`hoffmann2011` — separating shot noise from real heterogeneity in a burst distribution.
 - {cite}`nir2006` — the shot-noise-limited histogram a measured one has to be compared against.
-

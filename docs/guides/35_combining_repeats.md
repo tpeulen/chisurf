@@ -52,3 +52,4 @@ Combining technical repeats.
 ## See also
 
 - {src}`chisurf/plugins/burst/burst_analysis/api/workflow.py` (`register_all`, `select_bursts`).
+- Tool: **FCS-Merger** (`chisurf/plugins/fcs/fcs_merger/`).

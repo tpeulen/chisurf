@@ -68,3 +68,4 @@ Accessible volumes and the inter-dye distance distribution.
 ## See also
 
 - `chisurf/core/structure/av/` (`BasicAV`, `ACV`, `DynamicAV`, `calculate_1_radius`/`calculate_3_radius`); plugin `modelling/fps_json_editor`; the AV decay model `models/tcspc/av_decay.py`.
+- Tool: the **FPS JSON Editor** (`chisurf/plugins/modelling/fps_json_editor/`) and **Structure Tools** (`chisurf/plugins/modelling/structure_tools/`).

@@ -29,6 +29,10 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 | `editor.document.ruff_check` | no | Run Ruff on an open editor document. |
 | `editor.document.ruff_fix` | no | Run Ruff fixes on an open editor document. |
 
+## Theory and workflow
+
+- **Workflow** — [Driving ChiSurf from its console](/guides/59_console.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/core/code_editor/`

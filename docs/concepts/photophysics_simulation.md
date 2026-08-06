@@ -175,3 +175,4 @@ they don't, the simulator has isolated the bias before it reaches real data.
   Brownian-dynamics simulation; {cite}`ingargiola2016` the open burst toolkit and
   the PyBroMo confocal smFRET diffusion simulator beside it; {cite}`gopich2009`
   the photon-by-photon FRET-trajectory theory underlying H2MM.
+- Tools in ChiSurf: the **CLSM Generator** (`chisurf/plugins/microscopy/clsm_generator/`) simulates a scanned image with a known lifetime map, and the **Light Path Simulator** (`chisurf/plugins/core/lightpath_simulator/`) models the optics the photons pass through.

@@ -268,6 +268,10 @@ A defensible colocalization result is not one number but a small set:
 | The region analysed, if not the whole image | the coefficients depend on it |
 | For puncta: object counts, the coincident fraction **and** the tolerance | correlation coefficients do not describe sparse spots |
 
+## See also
+
+- Tools in ChiSurf: **Colocalization** (`chisurf/plugins/microscopy/img_coloc/`) computes all four coefficient families on a TIFF stack or a photon-stream image, with the Costes randomisation test.
+
 ## References
 
 - {cite}`dunn2011` — the practical guide: which coefficient answers which question.
@@ -276,4 +280,3 @@ A defensible colocalization result is not one number but a small set:
 - {cite}`li2004` — the intensity-correlation-quotient, an alternative to a single coefficient.
 - {cite}`bolte2006` — a tour of the pitfalls: bleed-through, sampling and object-based analysis.
 - {cite}`vansteensel1996` — the cross-correlation-versus-shift test that separates real overlap from chance.
-

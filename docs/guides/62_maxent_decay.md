@@ -89,7 +89,7 @@ invented ({ref}`concept-parameter-uncertainty`).
 ## Headless
 
 ```python
-from chisurf.plugins.fluorescence_decay.maxent_decay.fmem import (
+from chisurf.plugins.fluorescence_decay.maxent_decay.api.helpers import (
     build_tau_grid,
     run_lifetime_mem_from_arrays,
 )

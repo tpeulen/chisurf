@@ -27,6 +27,10 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 | `globalview.parameters.link` | no | Link two parameters by name across fits. |
 | `globalview.parameters.unlink` | no | Unlink a parameter. |
 
+## Theory and workflow
+
+- **Workflow** — [Global analysis: linking parameters across fits](/guides/60_global_analysis.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/core/globalview/`

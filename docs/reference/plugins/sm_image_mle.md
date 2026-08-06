@@ -65,6 +65,10 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | `sm_image_mle.analyze.run` | yes | Run molecule-wise MLE on PTU files. |
 | `sm_image_mle.contract.describe` | no | Return the RPC contract. |
 
+## Theory and workflow
+
+- **Theory** — [Regions and their properties](/concepts/region_properties.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/microscopy/sm_image_mle/`

@@ -39,6 +39,10 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 | `quest.jobs.get` | no | Return one operation's status and progress. |
 | `quest.jobs.cancel` | no | Ask a running operation to stop at its next checkpoint. |
 
+## Theory and workflow
+
+- **Theory** — [Molecular surfaces and solvent accessibility](/concepts/molecular_surfaces.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/quenching_estimator/`

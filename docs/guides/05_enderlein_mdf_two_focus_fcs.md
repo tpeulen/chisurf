@@ -68,3 +68,4 @@ Enderlein MDF and two-focus FCS.
 - Model: {src}`chisurf/core/models/fcs/mdf.py` (`MdfFCSModel`, table-view `mdf.view.json`), and the
   general composable model {src}`chisurf/core/models/fcs/general.py` (`GeneralFCSModel`), which lets
   you pick MDF vs. classic 3D-Gaussian diffusion and add bunching/anticorrelation terms.
+- Tool: the **Diffusion/Volume Calculator** (`chisurf/plugins/fcs/fcs_calculator/`).

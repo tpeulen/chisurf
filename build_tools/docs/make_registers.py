@@ -251,6 +251,10 @@ def _cell(text: str) -> str:
     the last point where the delimiters are balanced.
     """
     text = " ".join(str(text or "").split())
+    # A register is an index, not a place for live links: a role that is cut in
+    # half by the shortening below reaches the reader as its own source text,
+    # and one that survives whole points somewhere the row cannot show anyway.
+    text = re.sub(r"\{(?:src|cite|doc|ref|numref)\}`([^`]*)`", r"`\1`", text)
     text = text.replace("|", "\\|")
     if len(text) <= 160:
         return text or "—"

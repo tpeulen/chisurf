@@ -25,6 +25,10 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 | `burst_mle.workflow.prepare` | no | Resolve MLE burst files and channel definitions from workflow context. |
 | `burst_mle.contract.describe` | no | Return the Burst MLE workflow contract. |
 
+## Theory and workflow
+
+- **Workflow** — [Fluorescence lifetime from photon bursts](/guides/21_lifetime_from_bursts.md), [ns-ALEX / PIE: FRET, stoichiometry and lifetime together](/guides/32_nsalex_lifetime.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/burst/burst_mle_analysis/`

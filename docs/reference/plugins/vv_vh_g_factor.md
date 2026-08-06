@@ -27,6 +27,11 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 | `vv_vh_g_factor.solve_linked_l` | no | Solve for the linked l1=l2 mixing parameter. |
 | `vv_vh_g_factor.archive_g_factor` | no | Register reference decay and archive G-factor calibration in MMFDB. |
 
+## Theory and workflow
+
+- **Theory** — [Time-resolved fluorescence anisotropy](/concepts/anisotropy.md)
+- **Workflow** — [Fluorescence lifetime and anisotropy decay fitting](/guides/10_lifetime_anisotropy_fitting.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/vv_vh_g_factor/`

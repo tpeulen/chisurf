@@ -43,6 +43,10 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | User | `user` | str |  |  | Authenticate as this user. Defaults to the current session user. |
 | Password | `password` | password |  |  | MMFDB password. Not needed when the session user is already an administrator. |
 
+## Theory and workflow
+
+- **Theory** — [Förster resonance energy transfer (FRET)](/concepts/fret.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/spectra_downloader/`

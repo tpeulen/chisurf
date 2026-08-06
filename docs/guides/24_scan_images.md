@@ -91,3 +91,5 @@ intensity images and why dim pixels are masked rather than fitted.
 - `tttrlib.CLSMImage`; plugins in `chisurf/plugins/microscopy/`.
 - Fit-free lifetime imaging via phasors and the same MLE estimator per burst:
   {ref}`concept-imaging-flim-phasor`, [lifetime from bursts](21_lifetime_from_bursts.md).
+- Tool: **Pixel-wise MLE** (`chisurf/plugins/microscopy/img_pixel_mle/`), **Pixel Phasor** (`chisurf/plugins/microscopy/img_pixel_phasor/`) and **Mean Micro-Time** (`chisurf/plugins/microscopy/img_pixel_micro_time/`).
+- Also for images: **Intensity** (`chisurf/plugins/microscopy/img_pixel_intensity/`) for the plain photon-count map, **IRF & BG** (`chisurf/plugins/microscopy/img_calibration/`) for the per-detector calibration the lifetime tools consume, **CLSM-Draw** (`chisurf/plugins/microscopy/clsm/`) to build an image from a stream by hand, **CLSM Generator** (`chisurf/plugins/microscopy/clsm_generator/`) to simulate one whose answer is known, and the **Image Browser** (`chisurf/plugins/tttr/tttr_image_browser/`) to page through a folder.

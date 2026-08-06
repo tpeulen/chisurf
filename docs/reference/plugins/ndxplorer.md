@@ -18,6 +18,11 @@ Multidimensional fluorescence data analysis and visualization tool. Supports bur
 
 This plugin builds its interface from custom Qt widgets (no declarative `*.view.json` parameter sections were found). Its controls are shown in the plugin's guide; the fit/model parameters it edits are defined in the [parameter glossary](../parameters.md).
 
+## Theory and workflow
+
+- **Theory** — [Interactive multidimensional exploration](/concepts/multidimensional_exploration.md)
+- **Workflow** — [Exploring & fitting multidimensional data (ndX)](/guides/46_ndxplorer.md), [From a selection to a fit: the ndX analysis bridges](/guides/47_ndxplorer_bridges.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/ndxplorer/`

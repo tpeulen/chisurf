@@ -26,6 +26,11 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 | `burst_h2mm.workflow.prepare` | no | Resolve H2MM settings and folders from a burst workflow context. |
 | `burst_h2mm.contract.describe` | no | Return the H2MM workflow contract. |
 
+## Theory and workflow
+
+- **Theory** — [Photon-by-photon HMM (H2MM)](/concepts/h2mm.md)
+- **Workflow** — [Photon-by-photon hidden Markov models (H2MM)](/guides/19_h2mm_hidden_markov.md), [H2MM: complete workflow and results](/guides/30_h2mm_workflow_results.md), [H2MM: simulating and validating](/guides/31_h2mm_simulation_validation.md), [Exporting burst data](/guides/34_exporting_burst_data.md), [Photon-by-photon HMM (H2MM)](/guides/h2mm.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/burst/burst_h2mm/`

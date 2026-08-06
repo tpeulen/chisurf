@@ -26,6 +26,11 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 | `fcs_merger.average` | no | Weighted-average a list of correlation dicts. |
 | `fcs_merger.parse_folder` | no | Load .cor / .json.gz correlation chunks from a folder. |
 
+## Theory and workflow
+
+- **Theory** — [FCS: the correlation curve and its models](/concepts/fcs_correlation.md)
+- **Workflow** — [Combining measurements / technical repeats](/guides/35_combining_repeats.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/fcs/fcs_merger/`

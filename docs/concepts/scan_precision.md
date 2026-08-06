@@ -146,8 +146,11 @@ which no amount of averaging removes.
 * Precision improves as the square root of the frame count: halving the error
   costs four times the acquisition.
 
+## See also
+
+- Tools in ChiSurf: **RICS-Precision** (`chisurf/plugins/calculator/rics_precision/`) predicts the precision a scan will reach and finds the dwell time that maximises it — before the measurement, not after.
+
 ## References
 
 - {cite}`sanguigno2010` — the closed form for a correlation measured under a scanning beam.
 - {cite}`digman2005` — scanning FCS: the beam supplies the sampling that a stationary focus cannot.
-

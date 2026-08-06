@@ -81,6 +81,11 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Histogram bins | `bins` | int |  | 8 … 1024 | Bins per axis of the intensity scatter (joint histogram). More bins resolve fine structure in the cloud; fewer make sparse images look continuous. |
 | Log histogram | `log_histogram` | bool |  |  | Show the intensity scatter on a logarithmic count scale, so the sparse bright tail stays visible next to the dense background cloud. |
 
+## Theory and workflow
+
+- **Theory** — [Colocalization: what the coefficients actually measure](/concepts/colocalization.md)
+- **Workflow** — [Two-channel colocalization](/guides/38_colocalization.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/microscopy/img_coloc/`

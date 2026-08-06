@@ -62,6 +62,10 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | `fret.screen` | no |  |
 | `fret.estimate_errors` | no |  |
 
+## Theory and workflow
+
+- **Theory** — [Accessible-volume (AV) dye modeling](/concepts/accessible_volume.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/modelling/fret/`

@@ -118,3 +118,4 @@ print(result["k2_mean"], result["RappSD"])
 - Guides: {doc}`10_lifetime_anisotropy_fitting` (measuring the inputs) ·
   {doc}`23_accessible_volume` (the positional half of the same problem) ·
   {doc}`41_accurate_fret`.
+- Tool: **Kappa2 Distribution** (`chisurf/plugins/calculator/kappa2_dist/`).

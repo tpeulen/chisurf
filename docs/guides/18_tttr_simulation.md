@@ -82,3 +82,4 @@ Simulated confocal trace and its correlation.
 ## See also
 
 - `tttrlib.SimEngine`; {src}`chisurf/core/fluorescence/fcs/simulate.py`.
+- Tool: the **lifetime-FCS simulator** (`chisurf/plugins/fcs/fcs_lfcs_sim/`).

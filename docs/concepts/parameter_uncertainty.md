@@ -538,6 +538,7 @@ Two rules keep the report honest:
 
 - Fundamentals: {ref}`fundamentals-photon-statistics` (Poisson noise, choosing
   the statistic, and how to read $\chi^2_r$ and the residuals).
+- Tools in ChiSurf: the **F-Test** (`chisurf/plugins/core/f_test/`) compares two nested fits, and **Batch-Analysis** (`chisurf/plugins/core/batch_analysis/`) repeats one over many datasets so a spread can be measured rather than assumed.
 
 ## References
 

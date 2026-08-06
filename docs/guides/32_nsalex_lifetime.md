@@ -51,3 +51,4 @@ ns-ALEX FRET–lifetime plot.
 ## See also
 
 - Per-burst lifetimes: [tutorial 21](21_lifetime_from_bursts.md); lifetime-resolved HMM states: [H2MM](30_h2mm_workflow_results.md).
+- Tool: **Burst MLE** (`chisurf/plugins/burst/burst_mle_analysis/`).

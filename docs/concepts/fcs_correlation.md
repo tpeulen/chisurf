@@ -79,6 +79,13 @@ $$
 
 Reading a model name is reading which $P$ and $D$ factors it switches on.
 
+```{figure} figures/fcs_factors.png
+:name: fig-fcs-factors
+:width: 100%
+
+**A correlation curve is a product, not a shape.** The diffusion factor alone ($\tau_D = 38$ µs, $\gamma = 5$), the photodynamics factor alone (an 18 % triplet at $\tau_\mathrm{trip} = 3$ µs), and the curve a correlator actually returns — their product, scaled by $1/N$ with $N = 2$. The two processes sit on separate timescales, which is what makes them separable; when they overlap the two factors trade against one another.
+```
+
 ## The diffusion factor and the confocal Gaussian volume
 
 The detection volume is approximated by a 3-D Gaussian with lateral $1/e^2$
@@ -241,3 +248,4 @@ $\chi^2$.
   {doc}`/guides/17_filtered_fcs`.
 - Model catalogue: {src}`chisurf/core/models/fcs/models.yaml`; correlator plugin
   `chisurf/plugins/fcs/fcs_correlator/`.
+- Tools in ChiSurf: the **Diffusion/Volume Calculator** (`chisurf/plugins/fcs/fcs_calculator/`) converts between $\tau_D$, $D$, $r_h$ and a concentration; **FCS-Merger** (`chisurf/plugins/fcs/fcs_merger/`) averages repeats; **Burst-wise FCS** (`chisurf/plugins/burst/burst_fcs_correlator/`) correlates inside bursts.

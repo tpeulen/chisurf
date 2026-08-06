@@ -54,6 +54,13 @@ The response is steep and sigmoidal in $R/R_0$: $E$ is near 1 well below $R_0$,
 near 0 well above it, and most informative within roughly $\pm 40\%$ of $R_0$,
 which sets the useful dynamic range of any dye pair.
 
+```{figure} figures/fret_ruler.png
+:name: fig-fret-ruler
+:width: 100%
+
+**The spectroscopic ruler, and the price of leaving its window.** *Left:* the efficiency computed by {src}`chisurf/core/fluorescence/general.py#distance_to_fret_efficiency` for $R_0 = 52$ Å, with the usable $0.5\,R_0 - 1.5\,R_0$ band shaded. *Right:* the same relation read as precision — $(\Delta R/R)/\Delta E = 1/[6E(1-E)]$, marked at $E$ = 0.1, 0.5 and 0.9. Mid-range costs 0.67, the ends 1.85, which is why a 2 % efficiency error is 1.3 % in distance at $E = 0.5$ and 7 % in the tails.
+```
+
 :::{note}
 FRET averages the transfer **rate**, not the distance. When the separation is a
 *distribution* $P(R)$ (flexible linkers, conformational heterogeneity), the
@@ -224,3 +231,4 @@ with the flexible dye-linker cloud handled by accessible volumes
 - Key literature: {cite}`foerster1948` is the mechanism itself;
   {cite}`clegg1995` a compact review of it; {cite}`lakowicz2006` the textbook
   treatment, FRET chapters.
+- Tools in ChiSurf: the **FRET-Calculator** (`chisurf/plugins/calculator/fret_calculator/`) converts between $E$, $R$ and $R_0$; the **Spectra Downloader** (`chisurf/plugins/spectra_downloader/`) fetches the spectra the overlap integral needs.

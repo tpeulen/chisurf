@@ -169,3 +169,6 @@ everything on this page from the Python API instead of the GUI, on simulated
 data whose diffusion coefficient is known — including the identity check against
 the ground truth, which is the one diagnostic the GUI cannot show you.
 
+## See also
+
+- Tool: **Particle Tracking** (`chisurf/plugins/microscopy/img_tracking/`).

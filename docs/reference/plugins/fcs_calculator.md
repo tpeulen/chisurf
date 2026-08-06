@@ -47,6 +47,11 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | `fcs_calculator.water_viscosity` | no | Water viscosity (mPa·s) at a temperature. |
 | `fcs_calculator.reference_dyes` | no | MMFDB reference species with a diffusion coefficient D(25 °C, water). |
 
+## Theory and workflow
+
+- **Theory** — [FCS: the correlation curve and its models](/concepts/fcs_correlation.md)
+- **Workflow** — [Enderlein MDF & two-focus FCS](/guides/05_enderlein_mdf_two_focus_fcs.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/fcs/fcs_calculator/`

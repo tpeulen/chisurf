@@ -34,6 +34,11 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | `fcs_filter.compute_mfd` | no | Compute MFD fFCS filters from arrays. |
 | `fcs_filter.compute_mfd_from_files` | no | Compute MFD fFCS filters from files. |
 
+## Theory and workflow
+
+- **Theory** — [Filtered FCS (fFCS/FLCS) and 2D-FLCS](/concepts/filtered_fcs.md)
+- **Workflow** — [Filtered FCS (fFCS / 2D-FLCS)](/guides/17_filtered_fcs.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/fcs/fcs_filter_calculator/`

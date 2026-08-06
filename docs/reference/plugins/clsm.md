@@ -70,6 +70,10 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | `clsm.decay.extract` | yes | Extract a decay histogram from a pixel selection. |
 | `clsm.contract.describe` | no | Return the RPC contract descriptor. |
 
+## Theory and workflow
+
+- **Workflow** — [Confocal scan images (CLSM)](/guides/24_scan_images.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/microscopy/clsm/`

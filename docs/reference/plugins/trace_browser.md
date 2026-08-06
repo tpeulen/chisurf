@@ -29,6 +29,10 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 | `trace_browser.export.csv` | yes | Export selected traces as CSV files. |
 | `trace_browser.contract.describe` | no | Return the Trace Browser RPC contract. |
 
+## Theory and workflow
+
+- **Workflow** — [Binned photon traces (MCS)](/guides/22_binned_photon_traces.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/tttr/trace_browser/`

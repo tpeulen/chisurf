@@ -147,3 +147,7 @@ monotonically has frames that differ in amplitude as well as position. Removing
 each frame's mean (as the estimator does) handles the offset, not the change in
 contrast; with severe bleaching, prefer *previous frame* referencing, where
 consecutive frames are most similar in brightness.
+
+## See also
+
+- Tools in ChiSurf: **Drift Correction** (`chisurf/plugins/microscopy/img_drift/`) measures the shift and applies it — to the frames of a stack, or to the coordinates of a photon stream.

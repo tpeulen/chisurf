@@ -95,3 +95,4 @@ reference the correction factors need.
   (`pda.from_bursts`); the burst-FCS ({doc}`16_fret_fcs`) and burst-MLE
   ({doc}`21_lifetime_from_bursts`) analyses the other targets drive.
 ```
+- Tool: **ndX** (`chisurf/plugins/ndxplorer/`).

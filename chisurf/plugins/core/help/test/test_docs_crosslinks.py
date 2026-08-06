@@ -92,3 +92,48 @@ def test_document_links_resolve(page):
         if xref.resolve_document(path, page.parent) is None:
             dead.append(target)
     assert not dead, dead
+
+
+def test_every_plugin_path_named_in_the_documentation_exists():
+    """A page that names a plugin package must name one that is there.
+
+    The plugin reference pages derive their *Theory and workflow* links from
+    these mentions, so a mistyped package silently drops the cross-reference
+    instead of producing a broken link anybody would notice.
+    """
+    from chisurf.plugins.core.help.api.toc import docs_root, repository_root
+
+    root = repository_root()
+    pattern = re.compile(r"`(chisurf/plugins/[\w./-]+?)/`")
+    missing = []
+    for page in sorted(docs_root().rglob("*.md")) + sorted(docs_root().rglob("*.rst")):
+        if "_build" in page.parts:
+            continue
+        for match in pattern.finditer(page.read_text(encoding="utf-8")):
+            if not (root / match.group(1)).is_dir():
+                missing.append((page.name, match.group(1)))
+    assert not missing, missing[:10]
+
+
+def test_the_plugin_catalogue_has_no_orphan_pages():
+    """A plugin that is removed must not leave its reference page behind.
+
+    An orphan is worse than a missing page: it is still in the toctree glob,
+    still reachable from search, and points at code that is no longer there.
+    """
+    from chisurf.plugins.core.help.api.toc import docs_root
+
+    directory = docs_root() / "reference" / "plugins"
+    if not directory.is_dir():
+        pytest.skip("no generated plugin catalogue in this checkout")
+    index = (directory / "index.md").read_text(encoding="utf-8")
+    listed = set(re.findall(r"\(([\w.-]+)\.md\)", index))
+    orphans = [
+        page.name
+        for page in sorted(directory.glob("*.md"))
+        if page.name != "index.md"
+        and "cookiecutter" not in page.name
+        and page.stem not in listed
+    ]
+    assert not orphans, orphans
+

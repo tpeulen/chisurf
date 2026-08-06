@@ -143,3 +143,7 @@ too many states looks like.
     (pp. 443-445).
 [^squarem]: {cite}`varadhan2008` — SQUAREM, the acceleration applied to the EM
     iteration.
+
+## See also
+
+- Tools in ChiSurf: the **Hidden Markov model** tool (`chisurf/plugins/core/hmm/`) fits, decodes and scans the state count from the GUI, the CLI and over RPC.

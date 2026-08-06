@@ -58,3 +58,4 @@ Routing-correction matrix from dye solutions.
 
 - {src}`chisurf/core/fluorescence/fret/calibration.py` (`rcm_from_dye_solutions`, plus the
   γ/β/leakage/direct-excitation correction helpers).
+- Tool: **Accurate FRET** (`chisurf/plugins/burst/accurate_fret/`).
