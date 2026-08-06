@@ -1,3 +1,62 @@
+## chimol: the nucleic-acid cartoon has artifacts (2026-08-06)
+
+Reported with a screenshot of `1rtd`'s DNA drawn as `cartoon`: the base rings
+are there and are recognisably the right idea, but
+
+* rings sit **detached** from the backbone ribbon rather than joined to it by a
+  glycosidic connector;
+* thin **spokes** stick out of the ribbon at angles that match nothing;
+* neighbouring rings **overlap and disagree in orientation**, where a duplex
+  should show a regular ladder of parallel plates.
+
+Reproduced (`load 1rtd; hide everything; show cartoon`) but **not diagnosed**.
+The likely places, in order: the ring is built from the base atoms, so a residue
+whose atom set is incomplete or misnamed would give a degenerate polygon; the
+ring's *normal* comes from the base plane and the ribbon's from the backbone
+frame, and the two disagreeing is what would tilt plates against each other; and
+the spokes look like the connector drawn to a wrong atom. The nucleic path is
+`geometry/cartoon.py` plus `test_nucleic_cartoon_render.py`, which passes -- so
+whatever is wrong is not asserted there, and the first job is a test that fails
+on the picture.
+
+Not attempted in the session that found it: the wheel fix beside it was
+finished and verified, and starting a geometry investigation on the same commit
+would have shipped two half-things.
+
+## ndX: the mask event filter reads a deleted check box during start-up (2026-08-06)
+
+`MaskDrawingIntegration.eventFilter` (`utils/mask_drawing_integration.py:427`)
+asks `plot_control.mask_widget.is_drawing_enabled()` on every event it sees,
+including one `Enter` on the plot canvas raised while the window is still being
+built. At that moment `MaskDrawingWidget.enable_drawing_checkbox` holds a wrapped
+object that has been deleted, and the `except (RuntimeError, AttributeError)`
+around it logs
+
+```
+WARNING - Error checking drawing enabled state:
+          wrapped C/C++ object of type QCheckBox has been deleted
+```
+
+and returns `False`. By the time construction finishes the reference is valid
+again and points at the live check box, so the visible effect is limited to that
+one event being treated as "drawing off" — which it is anyway, since drawing
+starts disabled. What is *not* known is which object is deleted: only one
+`SurfacePlotWidget` is ever constructed, and the check box the control holds at
+the end is alive and is the same object the mask widget references.
+
+**Measured, not assumed: this is not from the AutoForm panel work.** It
+reproduces on a pristine `HEAD` checkout of the module — copy the tree, restore
+every modified file with `git show HEAD:<path>`, put the copy first on
+`PYTHONPATH` and build an `NDXplorer`; the warning appears exactly once there
+too. It also appears with both AutoForm panel builders monkey-patched to no-ops,
+which is what rules out the panels rather than the check box that replaced the
+checkable group box.
+
+The fix is to look the check box up by `objectName` at call time rather than
+hold a reference across construction, or to install the event filter after the
+window is built. Both are changes to the mask subsystem, which is why neither
+was made while wrapping the panels.
+
 ## okf: the update log is ~40 % duplicated entries (2026-08-06)
 
 `okf/log.md` holds **1977 entries of which 1180 are distinct** — 765 appear more

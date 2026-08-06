@@ -254,6 +254,13 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         self._min_near_clip = 0.01
         self._max_near_clip = 10.0
         self._clip_wheel_scale = 0.85
+        #: Fraction of the slab's own thickness one wheel step moves it by.
+        #: PyMOL's `0.1 * mouse_wheel_scale`; being a *fraction* is what makes
+        #: the gesture feel the same on a peptide and on a ribosome.
+        self._slab_wheel_fraction = 0.1
+        #: Whether the slab is still the configured default. The first move
+        #: fits it around the scene; after that it belongs to the user.
+        self._slab_moved = False
         self._grid_draw_data: Optional[_DrawData] = None
         # Vertical field of view in degrees, shared by the projection matrix,
         # the framing rule and the serialised view tuple so that an offscreen
@@ -2493,18 +2500,33 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
                 self.update()
             event.accept()
             return
-        # Shift+wheel moves the near clipping plane, as PyMOL's shifted wheel
-        # works the slab. Ctrl+wheel does the same thing and is kept: it was the
-        # only binding for it, and silently taking it away from anyone with it
-        # in their fingers is worse than having two ways to clip.
-        if mods & (QtCore.Qt.ShiftModifier | QtCore.Qt.ControlModifier):
-            if delta_steps != 0:
-                for _ in range(abs(delta_steps)):
-                    if delta_steps > 0:
-                        new_near = self._near_clip * self._clip_wheel_scale
-                    else:
-                        new_near = self._near_clip / self._clip_wheel_scale
-                    self._near_clip = self._clamp_near_clip(new_near)
+        # PyMOL's wheel column, transcribed: `Shft` is `MovS` and `CtSh` is
+        # `MovZ`, both of which move the **whole slab** -- `SceneClipMode::
+        # Proportional` shifts front *and* back by `(front - back) * movement`
+        # (`layer1/Scene.cpp`) -- while `Ctrl` is `MvSZ`, the same move with the
+        # camera following it.
+        #
+        # What stood here moved the *near plane alone*, multiplicatively, and
+        # clamped it to `max_near_clip` = 5 scene units. On a molecule ~200
+        # units across the near plane therefore never reached the geometry
+        # whatever you did, which is why shift-wheel appeared to do nothing at
+        # all. Moving the slab by a fraction of its own thickness is
+        # scale-free, so one wheel step is one step whatever the molecule.
+        if delta_steps != 0 and (mods & (QtCore.Qt.ShiftModifier | QtCore.Qt.ControlModifier)):
+            self._fit_slab_to_scene()
+            thickness = max(float(self._far_clip) - float(self._near_clip), 1e-6)
+            shift = thickness * self._slab_wheel_fraction * float(delta_steps)
+            near = float(self._near_clip) + shift
+            far = float(self._far_clip) + shift
+            # The slab may travel, but it must not turn inside out or cross the
+            # camera: a near plane at or behind zero makes the projection
+            # singular and the scene vanishes rather than clips.
+            if near > self._min_near_clip and far > near:
+                self._near_clip, self._far_clip = near, far
+                if mods & QtCore.Qt.ControlModifier:
+                    # `MvSZ`: the camera goes with it, so the slab stays put
+                    # against the molecule and the view dollies instead.
+                    self._distance = max(float(self._distance) + shift, 0.1)
                 self._announce_clipping()
                 self.update()
             event.accept()
@@ -2515,6 +2537,38 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
             self._distance = max(self._distance * (1.0 - 0.1 * delta), 2.0)
             self.update()
         super().wheelEvent(event)
+
+    def _fit_slab_to_scene(self) -> None:
+        """Put the slab around the molecule, once, before it is first moved.
+
+        The clipping planes come from the configuration -- 0.03 and 2000 scene
+        units -- and nothing re-derived them from what is actually on screen. So
+        the near plane sat about 1500 units in *front* of a molecule 400 units
+        deep, and the first several wheel clicks moved a slab through empty
+        space: the gesture worked and the picture did not change, which is
+        indistinguishable from the gesture doing nothing.
+
+        PyMOL fits front and back around the scene (`SceneClipSet` after a
+        zoom), so a click is a click on a peptide and on a ribosome alike. This
+        does the same, and only while the slab is still the configured default:
+        once it has been moved, it is the user's and must stay where they put
+        it.
+        """
+        if self._slab_moved:
+            return
+        self._slab_moved = True
+        radius = max(float(self._target_radius), 1e-3)
+        distance = float(self._distance)
+        near = distance - radius
+        far = distance + radius
+        if near > self._min_near_clip and far > near:
+            self._near_clip, self._far_clip = near, far
+            # This *is* the framing, so it becomes the baseline "not clipped"
+            # position: scroll one step out and back and the status line has to
+            # say `Clipping: off` again, which it can only do if the reference
+            # moved with the slab.
+            self._framed_near_clip = near
+            self._framed_far_clip = far
 
     def _clamp_near_clip(self, value: float) -> float:
         val = max(float(value), self._min_near_clip)
