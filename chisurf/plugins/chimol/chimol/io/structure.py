@@ -9,7 +9,7 @@ import numpy as np
 from qtpy import QtWidgets
 
 from ..analysis.atom_classes import ATOMIC_NUMBER
-from .atoms import ATOM_DTYPE, BEAD_RES_NAME, atom_row, bead_row, empty_atoms
+from .atoms import ATOM_DTYPE, BEAD_RES_NAME, atom_row, bead_row
 
 logger = logging.getLogger(__name__)
 
@@ -647,35 +647,24 @@ def load_trajectory_frames(path: Path) -> np.ndarray:
     readers in :mod:`chisurf.core.fio.structure.coordinates`.
     """
 
-    try:  # Lazy import so Moview does not hard-depend on mdtraj
-        import mdtraj as md  # type: ignore[import]
-    except Exception as exc:  # pragma: no cover - environment dependent
-        raise MdtrajNotAvailableError(
-            "MDTraj is required to load this file type (e.g. GRO/HDF5 trajectory). "
-            "Install it with 'conda install -c conda-forge mdtraj' or 'pip install mdtraj'."
-        ) from exc
-
     suffix = path.suffix.lower()
-    # For now we restrict to formats where MDTraj can infer topology from the
-    # file itself without a separate topology argument.
-    if suffix not in {".gro", ".g96", ".h5", ".hdf5"}:
-        raise ValueError(f"File type '{suffix}' is not recognised as an MDTraj trajectory/structure")
+    if suffix not in {".dcd", ".xtc"}:
+        raise ValueError(
+            f"File type '{suffix}' is not a trajectory ChiSurf reads "
+            "(.dcd and .xtc are)"
+        )
 
-    try:
-        traj = md.load(str(path))
-    except Exception as exc:
-        raise RuntimeError(f"mdtraj failed to load '{path}': {exc}") from exc
+    from chisurf.core.fio.trajectory import read_dcd, read_xtc
 
-    xyz = getattr(traj, "xyz", None)
-    if xyz is None:
-        raise RuntimeError(f"mdtraj did not return coordinates for '{path}'")
-
+    if suffix == ".dcd":
+        xyz, _, _ = read_dcd(str(path))          # already Angstrom
+        return np.ascontiguousarray(xyz, dtype=float)
+    xyz, _, _, _ = read_xtc(str(path))           # nanometres
     arr = np.asarray(xyz, dtype=float)
     if arr.ndim != 3 or arr.shape[2] != 3 or arr.shape[0] == 0 or arr.shape[1] == 0:
-        raise RuntimeError(f"mdtraj returned invalid xyz array for '{path}' with shape {arr.shape!r}")
+        raise RuntimeError(f"invalid coordinates in '{path}': shape {arr.shape!r}")
 
-    # MDTraj uses nanometers; convert to Angstrom to be consistent with IMP
-    # based loaders used elsewhere in ChiSurf/Moview.
+    # XTC is nanometres; the rest of ChiSurf/Moview works in Angstrom.
     arr *= 10.0
     return arr
 
@@ -685,67 +674,15 @@ _VDW = {"H": 1.20, "C": 1.70, "N": 1.55, "O": 1.52, "S": 1.80, "P": 1.80}
 
 
 def load_trajectory_atoms(path: Path, first_frame: np.ndarray):
-    """Build an atom array from an MDTraj file's **topology**.
+    """Return ``None``: DCD and XTC carry no topology.
 
-    Returns ``None`` when the file carries no topology.
-
-    Why this exists
-    ---------------
-    :func:`load_trajectory_frames` returned coordinates and dropped
-    ``traj.topology`` on the floor, so an all-atom trajectory arrived with no
-    residues, no chains and no atom names. Everything keyed on that identity then
-    degraded silently: the cartoon builder had no CA atoms to spline through and
-    treated all 5235 atoms as trace points, drawing ~340 disconnected fragments;
-    ``intra_fit polymer`` could not resolve a selection; the sequence view was
-    empty.
-
-    None of it errored, which is why it read as "cartoons do not work on
-    trajectories". They do -- the identity was being discarded at load.
-
-    Parameters
-    ----------
-    path : pathlib.Path
-        The trajectory file.
-    first_frame : numpy.ndarray
-        ``(N, 3)`` coordinates in Angstrom, used to fill the ``xyz`` field.
-
-    Returns
-    -------
-    numpy.ndarray or None
-        A structured atom array, or None when there is no topology to read.
+    They store coordinates and nothing else, so there are no atom names,
+    residues or chains to recover. The caller falls back to a bare point cloud,
+    which is what the previous reader produced for these formats too — the
+    topology it could read belonged to the HDF5 trajectories ChiSurf no longer
+    supports.
     """
-    try:
-        import mdtraj as md  # type: ignore[import]
-
-        topology = md.load(str(path)).topology
-    except Exception:
-        return None
-    if topology is None:
-        return None
-
-    atoms = list(topology.atoms)
-    if not atoms or len(atoms) != int(np.asarray(first_frame).shape[0]):
-        return None
-
-    array = empty_atoms(len(atoms))
-    for index, atom in enumerate(atoms):
-        residue = atom.residue
-        element = getattr(atom.element, "symbol", "") or ""
-        array["i"][index] = index
-        array["atom_id"][index] = index + 1
-        array["atom_name"][index] = str(atom.name)[:5]
-        array["element"][index] = str(element).upper()[:2]
-        array["res_name"][index] = str(residue.name)[:5]
-        # resSeq, not the 0-based index: it is what the file says the residue is
-        # called, and what a `resi 42` selection has to match.
-        array["res_id"][index] = int(getattr(residue, "resSeq", residue.index))
-        chain_index = int(getattr(residue.chain, "index", 0))
-        array["chain"][index] = chr(ord("A") + chain_index % 26)
-        array["radius"][index] = _VDW.get(str(element).upper(), 1.70)
-        array["mass"][index] = float(getattr(atom.element, "mass", 0.0) or 0.0)
-    array["xyz"] = np.asarray(first_frame, dtype=float)
-    return array
-
+    return None
 
 def _read_full_model(structure_factory: Callable[..., object], path: Path) -> object:
     """Build a structure that keeps waters, ligands and modified residues.

@@ -186,7 +186,7 @@ class FretTrajectoryViewModel:
 
     def _load_topology(self, trajectory_file: str) -> None:
         """Extract the first frame of *trajectory_file* into :attr:`pdb`."""
-        import mdtraj as md
+        from chisurf.core.structure import trajectory_data as md
 
         from chisurf.core.fio.structure import coordinates
 

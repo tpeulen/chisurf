@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-import mdtraj as md
+from chisurf.core.structure import trajectory_data as md
 import numpy as np
 from qtpy import QtCore, QtWidgets
 

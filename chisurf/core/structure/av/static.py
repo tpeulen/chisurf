@@ -524,7 +524,7 @@ def calc_weights_from_traj(
      Example
      -------
 
-     >>> import mdtraj as md
+     >>> from chisurf.core.structure import trajectory_data as md
      >>> import pylab as p
      >>> import cs.core.fluorescence
      >>> from cs.core.structure.av.static import calc_av1_py, calc_weights_from_traj
@@ -587,7 +587,7 @@ def calc_distance_from_traj(traj, res_id, atom_name, chain_id, ng, dg, r0_res, r
      Example
      -------
 
-     >>> import mdtraj as md
+     >>> from chisurf.core.structure import trajectory_data as md
      >>> import pylab as p
      >>> import cs.core.settings as mfm
      >>> from cs.core.structure.av.static import calc_av1_py, calc_weights_from_traj

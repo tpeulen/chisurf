@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import argparse
-import mdtraj as md
+from chisurf.core.structure import trajectory_data as md
 import numba as nb
 import numpy as np
 

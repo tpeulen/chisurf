@@ -2060,3 +2060,33 @@ wait for them to finish, or build from a clean checkout at a known commit.
 **What it costs meanwhile:** any suite touching `tttrlib` cannot even be
 collected — 37 collection errors across the plugin tests — so a green run is
 not obtainable while it lasts, and a red one says nothing.
+
+## A 3-atom AV fixture segfaults LabelLib
+
+**Found 2026-08-06** finishing the mdtraj port. `test_pair_selection.py`
+reaches `compute_efficiency_matrix_from_evaluators_trajectory` on a **3-atom**
+"protein" (one ALA: CA, HA, N) and LabelLib's C extension segfaults:
+
+```
+Fatal Python error: Segmentation fault
+  av.py:141 in _av_labellib   <- compute_av <- compute_avs_for_structure
+  evaluate.py:234 in evaluate_trajectory
+  pair_selection.py:292 in compute_efficiency_matrix_from_evaluators_trajectory
+```
+
+**Honest attribution:** the crash appeared when that test's fixture moved from
+an mdtraj-written XTC to a ChiSurf-written DCD, so it is *plausibly* mine — but
+the coordinates round-trip correctly and the PDB carries the right element
+column, so what changed is the numbers reaching an AV grid, not their meaning.
+An accessible volume around three atoms is degenerate input either way, and a
+segfault is never the right answer to it. **Do not assume the port is
+innocent** without checking; equally, do not assume the fixture is the only
+caller that can reach this.
+
+**Where to start:** guard `_av_labellib` against a structure too small to grid
+(it should raise, not crash), then re-point the fixture at a real structure —
+a 3-atom AV asserts nothing useful about efficiency matrices anyway.
+
+**This is why `mdtraj` is still declared.** Every import of it is gone from the
+tree, but a suite that segfaults cannot show the removal is safe, and removing
+a dependency on the strength of a crash would be backwards.

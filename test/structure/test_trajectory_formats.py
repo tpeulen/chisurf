@@ -5,13 +5,14 @@ The coordinates come from ChiSurf's own codecs
 elsewhere. What matters here is the wiring: that the loader reaches those
 codecs, pairs them with a topology, and refuses the cases where it cannot.
 
-One thing to know before reading the assertions. ``TrajectoryFile`` computes an
-RMSD in its constructor, and ``mdtraj.rmsd`` **centres its inputs in place** —
-so every trajectory this class loads comes back recentred, by up to several
-nanometres. That is long-standing behaviour for every format, not something the
-DCD/XTC path introduced, and it is why the comparisons below put the reference
-through the same treatment rather than comparing against the file's own
-coordinates.
+One thing to know before reading the assertions, because it **changed**.
+``TrajectoryFile`` computes an RMSD in its constructor, and the implementation
+it used to call centred its inputs *in place* — so every trajectory this class
+loaded came back recentred, by up to several nanometres, silently and for every
+format. ChiSurf's own ``rmsd`` is pure, so that no longer happens: a loaded
+trajectory now holds the coordinates the file holds. These tests pin that,
+because it is exactly the kind of behaviour a future reimplementation could
+reintroduce by accident.
 """
 
 from __future__ import annotations
@@ -35,26 +36,25 @@ def trajectory_file():
 
 
 def _reference(path, kind):
-    """Load *path* with the reference reader and apply the same centring."""
-    import mdtraj as md
+    """Return the coordinates the file itself holds, in nanometres."""
+    from chisurf.core.fio.trajectory import read_dcd, read_xtc
 
-    top = md.load_topology(str(TOPOLOGY))
-    traj = md.load_dcd(str(path), top=top) if kind == "dcd" else md.load_xtc(str(path), top=top)
-    md.rmsd(traj, traj, 0)          # centres in place, as the loader's does
-    return traj.xyz
+    if kind == "dcd":
+        xyz, _, _ = read_dcd(str(path))
+        return xyz / 10.0                      # Angstrom on disk
+    xyz, _, _, _ = read_xtc(str(path))
+    return xyz                                 # XTC is already nanometres
 
 
 @pytest.mark.parametrize("path, kind, atol", [
-    # XTC stores nanometres, which is what the loader wants, so nothing is
-    # converted and the agreement is exact. DCD stores Angstrom and is divided
-    # by ten on the way in; that float32 division is the entire difference, and
-    # a tolerance here is honest rather than slack. The codecs themselves are
-    # checked bit-exactly against reference files in test/fio/.
+    # The loaded coordinates must be the file's own -- not recentred, not
+    # rescaled. XTC stores nanometres and needs no conversion, so it is exact;
+    # DCD stores Angstrom and is divided by ten on the way in, and that float32
+    # division is the entire difference.
     (DCD, "dcd", 1e-5),
     (XTC, "xtc", 0.0),
 ])
 def test_a_coordinate_trajectory_loads_with_a_topology(trajectory_file, path, kind, atol):
-    pytest.importorskip("mdtraj")
     traj = trajectory_file(str(path), topology=str(TOPOLOGY))
     assert traj.xyz.shape == (3, 5235, 3)
     assert traj.topology.n_atoms == 5235

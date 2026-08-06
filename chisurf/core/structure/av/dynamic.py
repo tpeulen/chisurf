@@ -2,10 +2,8 @@ from __future__ import annotations
 from chisurf import typing
 
 import time
-import json
 import numpy as np
 import numba as nb
-import tables
 
 import chisurf.core.fio
 import chisurf.core.fio.structure.coordinates
@@ -196,59 +194,18 @@ class DiffusionSimulation(object):
     def save(
             self,
             filename: str,
-            mode: str = 'h5',
+            mode: str = 'rmf3',
             **kwargs
     ):
         """
 
         :param filename:
-        :param mode:
+        :param mode: ``'rmf3'`` for the trajectory, ``'xyz'`` or ``'npy'``
         :param kwargs:
         :return:
         """
-        if mode == 'h5':
-            compression = tables.Filters(
-                complib='zlib', shuffle=True, complevel=1
-            )
-            h5handle = tables.open_file(
-                filename, mode="w", title="Test file", filters=compression
-            )
-            h5handle.create_array(
-                '/',
-                'topology',
-                np.array(
-                    json.dumps(self.dye.dye_definition)
-                ).reshape(1),
-                shape=(1,)
-            )
-            h5handle.create_earray(
-                where='/',
-                name='coordinates',
-                atom=tables.Float32Atom(),
-                shape=(0, self.dye.n_atoms, 3)
-            )
-            h5handle.create_earray(
-                where='/',
-                name='time',
-                atom=tables.Float32Atom(),
-                shape=(0,)
-            )
-            h5handle.create_group(
-                where='/', name='fluorescence'
-            )
-            h5handle.create_earray(
-                where='/fluorescence/',
-                name='quencher_distance',
-                atom=tables.Float32Atom(), shape=(0,)
-            )
-            # set units
-            h5handle.root.time.set_attr('units', 'picoseconds')
-            h5handle.root.xyz.set_attr('units', 'angstroms')
-            h5handle.root.fluorescence.quencher_distance.set_attr('units', 'angstroms')
-
-            h5handle.root.xyz.append(self.xyz)
-            h5handle.root.time.append(self.time_axis)
-            h5handle.close()
+        if mode in ("rmf", "rmf3"):
+            self._save_rmf(filename)
         elif mode == 'xyz':
             skip = kwargs.get('skip', 1)
             coordinates = self.xyz[::skip]
@@ -257,6 +214,41 @@ class DiffusionSimulation(object):
             chisurf.core.fio.structure.coordinates.write_xyz(filename, coordinates)
         elif mode == 'npy':
             np.save(filename, self.xyz)
+
+    def _save_rmf(self, filename: str) -> None:
+        """Write the dye trajectory as RMF3.
+
+        RMF is the format the modelling side of ChiSurf already reads, and it
+        keeps the per-frame coordinates together with the particle identity in
+        one file — which the previous HDF5 writer did not, because it created a
+        ``/coordinates`` array and then appended to a ``/xyz`` node that was
+        never made. That path raised ``AttributeError`` for anyone who used it.
+
+        Parameters
+        ----------
+        filename : str
+            Destination ``.rmf3`` path.
+        """
+        import RMF
+
+        xyz = np.asarray(self.xyz, dtype=np.float32)
+        n_frames, n_atoms = xyz.shape[0], xyz.shape[1]
+        handle = RMF.create_rmf_file(str(filename))
+        handle.set_description(
+            f"ChiSurf dye-diffusion trajectory: {self.dye.dye_name}"
+        )
+        factory = RMF.ParticleFactory(handle)
+        nodes = [handle.get_root_node().add_child(f"dye{i}", RMF.REPRESENTATION)
+                 for i in range(n_atoms)]
+        radius = float(self.dye.av_radius)
+        for frame in range(n_frames):
+            handle.add_frame(str(frame), RMF.FRAME)
+            for i, node in enumerate(nodes):
+                decorator = factory.get(node)
+                decorator.set_coordinates(RMF.Vector3(*xyz[frame, i]))
+                if frame == 0:
+                    decorator.set_radius(radius)
+                    decorator.set_mass(1.0)
 
     def run(
             self,

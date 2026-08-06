@@ -4,8 +4,7 @@
 trajectory paths, the output directory / base name / extension, the frame
 range/stride, and the folder / split toggles) plus a running log, and performs
 the actual conversion — either splitting a trajectory into one structure file
-per frame (:func:`mdtraj.iterload` + ``save``) or converting it to a single file
-through :func:`mdtraj.scripts.mdconvert.main`. It is deliberately free of Qt so
+per frame, or converting it to a single file. It is deliberately free of Qt so
 the logic can be unit-tested headlessly; the GUI (``sections`` + ``widget``) owns
 all Qt concerns and drives this model.
 
@@ -31,7 +30,7 @@ ENDINGS = (".dcd", ".xtc", ".pdb", ".h5")
 
 
 class Object:
-    """Plain argument shim passed to :func:`mdtraj.scripts.mdconvert.main`.
+    """Plain argument holder for the conversion parameters.
 
     ``mdconvert.main`` expects an ``argparse``-style namespace; this bare object
     is populated with the attributes it reads (``topology``, ``input``,
@@ -140,13 +139,12 @@ class MDConverterViewModel:
 
         When :attr:`split` is set, every frame is iterated and written to its own
         ``{filename}_%08d{ending}`` file in :attr:`target_directory`; otherwise the
-        whole trajectory is converted to a single ``{filename}{ending}`` file via
-        :func:`mdtraj.scripts.mdconvert.main`. A non-default :attr:`first_frame` /
+        whole trajectory is read and written as a single ``{filename}{ending}``
+        file. A non-default :attr:`first_frame` /
         :attr:`last_frame` range switches the reader from chunked/strided reads to
         an index slice, mirroring the legacy tool.
         """
-        import mdtraj as md
-        from mdtraj.scripts import mdconvert
+        from chisurf.core.structure import trajectory_data as md
 
         self.append_log("Starting trajectory conversion")
         args = Object()
@@ -186,7 +184,14 @@ class MDConverterViewModel:
         else:
             args.output = os.path.join(self.target_directory, self.filename + self.ending)
             self.append_log(f"Output: {args.output}")
-            mdconvert.main(args)
+            # One file: read the whole trajectory and write it out. This used
+            # to shell out to an external converter, which is the same loop
+            # with an argv in the middle.
+            whole = md.load(self.trajectory, top=self.topology_file or None,
+                            stride=args.stride)
+            if args.index is not None:
+                whole = whole[args.index]
+            whole.save(args.output)
         self.append_log("Conversion done")
 
 

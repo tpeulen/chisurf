@@ -3,23 +3,16 @@ from pathlib import Path
 
 import numpy as np
 
-try:
-    import mdtraj as md
-except Exception:  # pragma: no cover - optional dependency
-    md = None
-
 from chisurf.plugins.chimol.chimol.analysis import assign_ss_c3_from_file
 
 
-class TestChimolSSAgainstMDTraj(unittest.TestCase):
+class TestChimolSSAgainstReferenceDSSP(unittest.TestCase):
 
     def setUp(self) -> None:
         # Locate 148l.pdb relative to repository root.
         # This file lives at
         #   .../chisurf/chisurf/plugins/chimol/tests/test_ss_vs_mdtraj.py
         # so ``parents[4]`` is the repo root (chisurf).
-        if md is None:
-            self.skipTest("mdtraj not installed; skipping DSSP comparison test")
         here = Path(__file__).resolve()
         repo_root = here.parents[4]
         pdb_path = repo_root / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
@@ -28,20 +21,21 @@ class TestChimolSSAgainstMDTraj(unittest.TestCase):
         self._pdb_path = pdb_path
 
     def test_ss_roughly_agrees_with_mdtraj(self) -> None:
-        """Chimol DSSP-like SS should roughly agree with mdtraj+DSSP.
+        """Chimol's DSSP-like SS should roughly agree with real DSSP.
 
         The goal is not bit-for-bit equality, but to ensure:
         - We assign a mix of H/E/C (not all coil).
         - There is a reasonable fraction of residues where our C3 code
-          matches mdtraj's simplified DSSP.
+          matches the reference simplified DSSP.
         """
 
-        try:
-            traj = md.load(str(self._pdb_path))
-            dssp = md.compute_dssp(traj, simplified=True)[0]
-        except Exception as e:  # pragma: no cover - environment dependent
-            self.skipTest(f"mdtraj or external DSSP not available: {e}")
-
+        # The reference assignment is recorded rather than recomputed: it came
+        # from a real DSSP implementation once, and committing it means this
+        # comparison does not need that implementation installed for ever.
+        reference_path = self._pdb_path.with_name("148l_dssp_simplified.txt")
+        if not reference_path.is_file():
+            self.skipTest(f"reference DSSP not found: {reference_path}")
+        dssp = reference_path.read_text().strip()
         ref = np.array([c if c in ("H", "E", "C") else "C" for c in dssp], dtype="U1")
         n_res = int(ref.shape[0])
 

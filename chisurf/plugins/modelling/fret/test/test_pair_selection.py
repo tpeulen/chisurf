@@ -177,7 +177,7 @@ def test_select_pairs_cli_writes_report(tmp_path, monkeypatch):
 
 
 def test_trajectory_pair_selection():
-    import mdtraj as md
+    from chisurf.core.structure import trajectory_data as md
     import tempfile
     
     # Create a simple molecule trajectory with 3 frames
@@ -185,10 +185,11 @@ def test_trajectory_pair_selection():
         [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
         [[0.0, 0.0, 0.0], [1.1, 0.0, 0.0], [0.0, 1.1, 0.0]],
         [[0.0, 0.0, 0.0], [1.2, 0.0, 0.0], [0.0, 1.2, 0.0]]
-    ]) * 0.1 # mdtraj uses nanometers!
+    ]) * 0.1 # trajectories are in nanometres
     
     # Create a basic topology
-    from mdtraj.core.topology import Topology
+    from chisurf.core.structure.topology import Topology
+
     t = Topology()
     c = t.add_chain()
     r = t.add_residue("ALA", c)
@@ -199,13 +200,13 @@ def test_trajectory_pair_selection():
     # Save topology and trajectory
     with tempfile.NamedTemporaryFile(suffix=".pdb", delete=False) as f_top:
         top_path = f_top.name
-    with tempfile.NamedTemporaryFile(suffix=".xtc", delete=False) as f_traj:
+    with tempfile.NamedTemporaryFile(suffix=".dcd", delete=False) as f_traj:
         traj_path = f_traj.name
         
     try:
         traj = md.Trajectory(xyz, t)
         traj[0].save_pdb(top_path)
-        traj.save_xtc(traj_path)
+        traj.save_dcd(traj_path)
         
         # Test compute_rmsd_matrix_from_trajectory
         from ..core.pair_selection import (

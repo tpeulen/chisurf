@@ -176,7 +176,7 @@ class PotentialEnergyViewModel:
         int
             The number of frames processed.
         """
-        import mdtraj
+        from chisurf.core.structure import trajectory_data as mdtraj
 
         import chisurf.core.fio as io
         import chisurf.core.structure

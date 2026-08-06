@@ -2,7 +2,7 @@
 
 :class:`SaveTopologyViewModel` holds the interactive state (the loaded
 trajectory path and a running log) and performs the actual work — loading the
-first frame of a trajectory through :mod:`mdtraj` and writing it out as a
+first frame of a trajectory through ChiSurf's trajectory readers and writing it out as a
 topology/structure file. It is deliberately free of Qt so the logic can be
 unit-tested headlessly; the GUI (``sections`` + ``widget``) owns all Qt concerns
 and drives this model.
@@ -34,6 +34,9 @@ class SaveTopologyViewModel:
 
     def __init__(self) -> None:
         self.trajectory_filename: str = ""
+        # DCD and XTC store coordinates only, so the atom names have to come
+        # from somewhere. Empty is fine for a self-describing file.
+        self.topology_filename: str = ""
         self._log: list[str] = []
         self._observers: list[Callable[[str], None]] = []
         self.append_log("Ready")
@@ -63,6 +66,12 @@ class SaveTopologyViewModel:
         return f"<pre style='margin:0;font-family:monospace'>{lines}</pre>"
 
     # ── file wiring ─────────────────────────────────────────────────────
+    def set_topology(self, filename: str) -> None:
+        """Set the topology (PDB) that names the atoms, and notify observers."""
+        self.topology_filename = str(filename)
+        self.append_log(f"Topology: {self.topology_filename}")
+        self._notify("loaded")
+
     def set_trajectory(self, filename: str) -> None:
         """Set the source trajectory path and notify observers."""
         self.trajectory_filename = str(filename)
@@ -78,7 +87,7 @@ class SaveTopologyViewModel:
         target_filename : str
             Destination structure file (e.g. a ``.pdb`` path).
         """
-        import mdtraj as md
+        from chisurf.core.structure import trajectory_data as md
 
         filename = self.trajectory_filename
         if not filename:
@@ -86,7 +95,7 @@ class SaveTopologyViewModel:
             return
         try:
             self.append_log(f"Loading first frame: {filename}")
-            frame_0 = md.load_frame(filename, 0)
+            frame_0 = md.load_frame(filename, 0, top=self.topology_filename or None)
             self.append_log(f"Saving topology to: {target_filename}")
             frame_0.save(target_filename)
             self.append_log("Topology saved")

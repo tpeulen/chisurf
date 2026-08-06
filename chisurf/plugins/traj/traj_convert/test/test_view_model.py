@@ -7,9 +7,10 @@ import numpy as np
 import pytest
 
 
-def _tiny_trajectory(path: str, n_frames: int = 5):
+def _tiny_trajectory(path: str, n_frames: int = 5) -> str:
     """Write a minimal *n_frames* three-atom trajectory to *path* and return it."""
-    md = pytest.importorskip("mdtraj")
+    from chisurf.core.structure import trajectory_data as md
+
     topology = md.Topology()
     chain = topology.add_chain()
     residue = topology.add_residue("ALA", chain)
@@ -18,7 +19,10 @@ def _tiny_trajectory(path: str, n_frames: int = 5):
     rng = np.random.default_rng(0)
     xyz = rng.random((n_frames, 3, 3)).astype(np.float32)
     traj = md.Trajectory(xyz=xyz, topology=topology)
-    traj.save(path)
+    traj.save_dcd(path)
+    pdb = str(path).replace('.dcd', '.pdb')
+    traj[0].save_pdb(pdb)
+    return pdb
     return traj
 
 
@@ -32,7 +36,7 @@ def test_settable_attrs_round_trip():
     from chisurf.plugins.traj.traj_convert.view_model import MDConverterViewModel
 
     model = MDConverterViewModel()
-    model.set_trajectory("/data/traj.h5")
+    model.set_trajectory("/data/traj.dcd")
     model.set_target_directory("/data/out")
     model.use_folder = True
     model.first_frame = 3
@@ -41,7 +45,7 @@ def test_settable_attrs_round_trip():
     model.filename = "conv"
     model.ending = ".xtc"
     model.split = True
-    assert model.trajectory == "/data/traj.h5"
+    assert model.trajectory == "/data/traj.dcd"
     assert model.target_directory == "/data/out"
     assert model.use_folder is True
     assert model.first_frame == 3
@@ -90,45 +94,44 @@ def test_set_trajectory_notifies():
     model = MDConverterViewModel()
     events = []
     model.add_observer(events.append)
-    model.set_trajectory("/data/traj.h5")
-    assert model.trajectory == "/data/traj.h5"
+    model.set_trajectory("/data/traj.dcd")
+    assert model.trajectory == "/data/traj.dcd"
     assert "trajectory" in events
 
 
 def test_convert_single_file(tmp_path):
-    md = pytest.importorskip("mdtraj")
+    from chisurf.core.structure import trajectory_data as md
+
     from chisurf.plugins.traj.traj_convert.view_model import MDConverterViewModel
 
-    source = tmp_path / "src.h5"
-    traj = _tiny_trajectory(str(source), n_frames=5)
-    pdb = tmp_path / "top.pdb"
-    traj[0].save(str(pdb))
+    source = tmp_path / "src.dcd"
+    pdb = _tiny_trajectory(str(source), n_frames=5)
 
     model = MDConverterViewModel()
     model.set_trajectory(str(source))
     model.set_topology(str(pdb))
     model.set_target_directory(str(tmp_path))
     model.filename = "out"
-    model.ending = ".h5"
+    model.ending = ".dcd"
     model.convert()
 
-    out = tmp_path / "out.h5"
+    out = tmp_path / "out.dcd"
     assert out.exists()
-    loaded = md.load(str(out))
+    loaded = md.load(str(out), top=str(pdb))
     assert loaded.n_frames == 5
     assert loaded.n_atoms == 3
     assert "Conversion done" in model.log_html()
 
 
 def test_convert_split_per_frame(tmp_path):
-    pytest.importorskip("mdtraj")
     from chisurf.plugins.traj.traj_convert.view_model import MDConverterViewModel
 
-    source = tmp_path / "src.h5"
-    _tiny_trajectory(str(source), n_frames=4)
+    source = tmp_path / "src.dcd"
+    pdb = _tiny_trajectory(str(source), n_frames=4)
 
     model = MDConverterViewModel()
     model.set_trajectory(str(source))
+    model.set_topology(str(pdb))
     model.set_target_directory(str(tmp_path))
     model.filename = "frame"
     model.ending = ".pdb"

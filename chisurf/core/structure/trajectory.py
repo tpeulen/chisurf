@@ -5,12 +5,14 @@ import copy
 import os
 import tempfile
 
-import mdtraj
 import numba as nb
 import numpy as np
 
 import chisurf.core.base
 import chisurf.core.structure
+from .topology import Topology as _Topology
+from .trajectory_data import Trajectory as _Trajectory
+from . import trajectory_data as _traj_data
 
 
 class Universe(object):
@@ -74,13 +76,20 @@ class Universe(object):
 
 
 class TrajectoryFile(
-    mdtraj.Trajectory,
+    _Trajectory,
     chisurf.core.base.Base
 ):
 
-    """
-    Creates an Trajectory of mfm.structure.Structures given a HDF5-File using
-    mdtraj.HDF5TrajectoryFile
+    """A trajectory of :class:`Structure` frames, read from a file.
+
+    Coordinates come from ChiSurf's own readers
+    (:mod:`chisurf.core.fio.trajectory`) and the atom descriptions from
+    :class:`~chisurf.core.structure.topology.Topology`; there is no MD library
+    behind this.
+
+    Accepts a ``.pdb``, a ``.dcd`` or ``.xtc`` (with ``topology=``), a
+    :class:`~chisurf.core.structure.trajectory_data.Trajectory`, or a
+    :class:`Structure`
 
     Parameters
     ----------
@@ -144,12 +153,12 @@ class TrajectoryFile(
     >>> print(traj.name)
     '/ data/ structure/ data/ structure/ T4L_Trajectory.h5'
 
-    initialize with mdtraj.Trajectory
+    initialize from another trajectory
 
     >>> import chisurf.core.structure
     >>> from chisurf.core.structure import TrajectoryFile
     >>> traj = TrajectoryFile('./test/data/modelling/trajectory/h5-file/hgbp1_transition.h5', reading_routine='r', stride=1)
-    >>> t2 = TrajectoryFile(traj.mdtraj, filename='test.h5')
+    >>> t2 = TrajectoryFile(traj, filename='test.dcd')
 
     Attributes:
     -----------
@@ -180,7 +189,7 @@ class TrajectoryFile(
     ):
         """
 
-        :param p_object: either a string pointing to an .hdf or .pdb file; a mdtraj.Trajectory object;
+        :param p_object: a path to a .pdb/.cif/.dcd/.xtc file, a Trajectory,
             or a chisurf.core.structure.Structure object;
         :param filename:
         :param rmsd_ref_state:
@@ -204,66 +213,46 @@ class TrajectoryFile(
         self.center = center
         self._invert = inverse_trajectory
         self._structure = None
+        self._filename = filename
 
-        _, h5_tmp = tempfile.mkstemp(
-            suffix=".h5"
-        )
-        _, pdb_tmp = tempfile.mkstemp(
-            suffix=".pdb"
-        )
-        if filename is None:
-            self._filename = h5_tmp
-        else:
-            self._filename = filename
+        traj_data = _traj_data
 
-        if isinstance(
-                p_object, str
-        ):
-            if p_object.endswith('.pdb'):
+        if isinstance(p_object, str):
+            lowered = p_object.lower()
+            if self._filename is None:
+                self._filename = p_object
+            if lowered.endswith((".dcd", ".xtc")):
+                if topology is None:
+                    raise ValueError(
+                        f"{p_object!r} stores coordinates only; pass topology=<pdb path>"
+                    )
+                loaded = traj_data.load(p_object, top=topology, stride=self.stride,
+                                        atom_indices=atom_indices)
+                structure = chisurf.core.structure.Structure(topology)
+            elif lowered.endswith((".pdb", ".ent", ".cif", ".pqr")):
+                loaded = traj_data.load(p_object, atom_indices=atom_indices)
                 structure = chisurf.core.structure.Structure(p_object)
-                self._mdtraj = mdtraj.Trajectory.load(p_object)
-                self._mdtraj.save_hdf5(self._filename)
-            elif p_object.endswith('.h5'):
-                self._filename = p_object
-                self._mdtraj = mdtraj.Trajectory.load(
-                    p_object,
-                    stride=self.stride
-                )
-                self._mdtraj[0].save_pdb(pdb_tmp)
-                structure = chisurf.core.structure.Structure(pdb_tmp)
-            elif p_object.lower().endswith(('.dcd', '.xtc')):
-                structure, self._mdtraj = self._load_coordinate_trajectory(
-                    p_object, topology
-                )
-                self._filename = p_object
             else:
                 raise ValueError(
-                    f"cannot read {p_object!r}: expected .pdb, .dcd or .xtc"
+                    f"cannot read {p_object!r}: expected .pdb, .cif, .dcd or .xtc"
                 )
-        elif isinstance(
-                p_object,
-                mdtraj.Trajectory
-        ):
-            self._mdtraj = p_object
-            self._mdtraj[0].save_pdb(pdb_tmp)
-            structure = chisurf.core.structure.Structure(pdb_tmp)
-        elif isinstance(
-                p_object,
-                chisurf.core.structure.Structure
-        ):
-            p_object.write(pdb_tmp)
-            self._mdtraj = mdtraj.Trajectory.load(pdb_tmp)
-            self._mdtraj.save_hdf5(filename=self._filename)
+        elif isinstance(p_object, traj_data.Trajectory):
+            loaded = p_object
+            structure = self._structure_from(loaded)
+        elif isinstance(p_object, chisurf.core.structure.Structure):
             structure = p_object
+            loaded = traj_data.Trajectory(
+                p_object.xyz[np.newaxis] / 10.0,
+                _Topology(p_object.atoms),
+            )
+        else:
+            raise TypeError(f"cannot build a trajectory from {type(p_object).__name__}")
 
         self.structure = structure
-        super().__init__(
-            xyz=self._mdtraj.xyz,
-            topology=self._mdtraj.topology
-        )
+        super().__init__(xyz=loaded.xyz, topology=loaded.topology, time=loaded.time)
 
         if self.center:
-            self._mdtraj.center_coordinates()
+            self.center_coordinates()
 
         self.rmsd_ref_state = rmsd_ref_state
         self.rmsd = list()
@@ -272,52 +261,15 @@ class TrajectoryFile(
         self.chi2r = list()
         self.offset = 0
 
-    def _load_coordinate_trajectory(self, filename: str, topology: str):
-        """Read a DCD or XTC and pair it with a topology from a PDB.
-
-        These formats hold coordinates and nothing else, so the topology has to
-        come from somewhere; there is no way to guess atom names from a
-        coordinate block. Decoding is ChiSurf's own
-        (:mod:`chisurf.core.fio.trajectory`).
-
-        Parameters
-        ----------
-        filename : str
-            Path to the ``.dcd`` or ``.xtc``.
-        topology : str
-            Path to a PDB with the matching atoms.
-
-        Returns
-        -------
-        tuple
-            ``(Structure, mdtraj.Trajectory)``.
-        """
-        from chisurf.core.fio.trajectory import read_dcd, read_xtc
-
-        if topology is None:
-            raise ValueError(
-                f"{filename!r} stores coordinates only; pass topology=<pdb path>"
-            )
-        indices = self.atom_indices
-        if filename.lower().endswith('.dcd'):
-            # DCD is Angstrom; mdtraj works in nanometres.
-            xyz, _, _ = read_dcd(filename, stride=self.stride, atom_indices=indices)
-            xyz = xyz / 10.0
-        else:
-            xyz, _, _, _ = read_xtc(filename, stride=self.stride, atom_indices=indices)
-
-        top = mdtraj.load_topology(topology)
-        if indices is not None:
-            top = top.subset(indices)
-        if top.n_atoms != xyz.shape[1]:
-            # Silently trusting a mismatched topology renames every atom, which
-            # then travels into distances and FRET pairs without an error.
-            raise ValueError(
-                f"topology {topology!r} has {top.n_atoms} atoms but "
-                f"{filename!r} has {xyz.shape[1]}"
-            )
-        return (chisurf.core.structure.Structure(topology),
-                mdtraj.Trajectory(xyz, top))
+    @staticmethod
+    def _structure_from(trajectory) -> "chisurf.core.structure.Structure":
+        """Return a :class:`Structure` for a trajectory's first frame."""
+        structure = chisurf.core.structure.Structure()
+        if trajectory.topology is not None:
+            atoms = trajectory.topology.atom_array.copy()
+            atoms["xyz"] = trajectory.xyz[0] * 10.0
+            structure.atoms = atoms
+        return structure
 
     def clear(self):
         """Clear all recorded RMSD, dRMSD, energy, and chi2 values."""
@@ -335,14 +287,13 @@ class TrajectoryFile(
         oder of the trajectory is inverted
         """
         if self.invert:
-            return self._mdtraj.xyz[::-1]
-        else:
-            return self._mdtraj.xyz
+            return self._xyz[::-1]
+        return self._xyz
 
     @xyz.setter
     def xyz(self, v):
         """Set cartesian coordinates."""
-        self._xyz = v
+        self._xyz = np.ascontiguousarray(v, dtype=np.float32)
 
     @property
     def structure(self) -> chisurf.core.structure.Structure:
@@ -385,12 +336,7 @@ class TrajectoryFile(
         """Set the trajectory filename; saving the trajectory to disk."""
         if isinstance(v, str):
             self._filename = v
-            mdtraj.Trajectory.save(self, filename=v)
-
-    @property
-    def mdtraj(self) -> mdtraj.Trajectory:
-        """The underlying mdtraj.Trajectory object."""
-        return self._mdtraj
+            self.save(v)
 
     @property
     def name(self) -> str:
@@ -416,7 +362,7 @@ class TrajectoryFile(
     ):
         """Set the reference frame for RMSD calculations and compute RMSDs."""
         self._rmsd_ref_state = ref_frame
-        self.rmsd = mdtraj.rmsd(self, self, ref_frame)
+        self.rmsd = _traj_data.rmsd(self, self, ref_frame)
 
     @property
     def directory(self) -> str:
@@ -453,9 +399,9 @@ class TrajectoryFile(
 
         >>> import chisurf.core.settings as mfm
         >>> from chisurf.core.structure import TrajectoryFile
-        >>> traj = TrajectoryFile('./test/data/structure/2807_8_9_b.h5', reading_routine='r', stride=1)
+        >>> traj = TrajectoryFile('./test/data/structure/2807_8_9_b.dcd', topology='top.pdb', stride=1)
         >>> traj
-        <mdtraj.Trajectory with 92 frames, 2495 atoms, 164 residues, without unitcells at 0x117f3b70>
+        <Trajectory: 92 frames, 2495 atoms>
         >>> traj.values
         array([], shape=(4, 0), dtype=float64)
         >>> traj.append(times[0])
@@ -500,33 +446,35 @@ class TrajectoryFile(
 
         >>> import chisurf.core.settings as mfm
         >>> from chisurf.core.structure import TrajectoryFile
-        >>> traj = TrajectoryFile('./test/data/structure/2807_8_9_b.h5', reading_routine='r', stride=1)
+        >>> traj = TrajectoryFile('./test/data/structure/2807_8_9_b.dcd', topology='top.pdb', stride=1)
         >>> traj
-        <mdtraj.Trajectory with 92 frames, 2495 atoms, 164 residues, without unitcells at 0x11762b70>
+        <Trajectory: 92 frames, 2495 atoms>
         >>> t.append(traj[0])
-        <mdtraj.Trajectory with 93 frames, 2495 atoms, 164 residues, without unitcells at 0x11762b70>
+        <Trajectory: 93 frames, 2495 atoms>
         """
         verbose = verbose or self.verbose
         if isinstance(xyz, chisurf.core.structure.Structure):
             xyz = xyz.xyz
 
-        xyz = xyz.reshape((1, xyz.shape[0], 3)) / 10.0
-        # write to trajectory file
-        mode = 'a' if os.path.isfile(self.filename) else 'w'
-        t = mdtraj.formats.hdf5.HDF5TrajectoryFile(self.filename, mode=mode)
-        t.write(xyz, time=len(t))
-        t.close()
+        # Appending grows the trajectory in memory. It used to reopen the file
+        # and write one frame per call, which made a Monte-Carlo run pay a file
+        # round-trip per accepted move; :meth:`save` writes when asked.
+        frame = np.asarray(xyz, dtype=np.float32).reshape((1, -1, 3)) / 10.0
+        self._xyz = (frame if self._xyz is None or len(self._xyz) == 0
+                     else np.append(self._xyz, frame, axis=0))
+        self.time = np.arange(len(self._xyz), dtype=np.float32)
 
-        if update_rmsd:
-            self._xyz = np.append(self._xyz, xyz, axis=0)
-            self._time = np.arange(len(self._xyz))
+        if update_rmsd and len(self._xyz) > 1:
+            # Indexing this class yields Structure objects, not frames, so the
+            # RMSD is taken on plain trajectories built from the coordinates.
+            def frame_at(index):
+                """Return frame *index* as a one-frame trajectory."""
+                return _traj_data.Trajectory(self._xyz[index][np.newaxis])
 
-            self.mdtraj._xyz = self._xyz
-            self.mdtraj._time = self.time
-            new = self.mdtraj[-1]
-            previous = self.mdtraj[-2]
-            next_drmsd = mdtraj.rmsd(new, previous) * 10.0
-            next_rmsd = mdtraj.rmsd(new, self.mdtraj[self.rmsd_ref_state]) * 10.0
+            new_frame = frame_at(-1)
+            next_drmsd = _traj_data.rmsd(new_frame, frame_at(-2)) * 10.0
+            next_rmsd = _traj_data.rmsd(
+                new_frame, frame_at(self.rmsd_ref_state)) * 10.0
         else:
             next_drmsd = [0.0]
             next_rmsd = [0.0]
@@ -542,7 +490,7 @@ class TrajectoryFile(
         Implements iterator
         >>> import chisurf.core.structure
         >>> from chisurf.core.structure import TrajectoryFile
-        >>> traj = TrajectoryFile('./test/data/structure/2807_8_9_b.h5', reading_routine='r', stride=1)
+        >>> traj = TrajectoryFile('./test/data/structure/2807_8_9_b.dcd', topology='top.pdb', stride=1)
         >>> for s in traj:
         >>>     print(s)
         [<mfm.structure.structure.mfm.structure.Structure object at 0x12FAE330>, <mfm.structure.structure.mfm.structure.Structure object at 0x12FAE3B0>, <li
@@ -592,9 +540,9 @@ class TrajectoryFile(
         return element
 
     def slice(self, key, copy=True):
-        """Slice the trajectory using mdtraj's slice method and return a new TrajectoryFile."""
-        s = self.mdtraj.slice(key, copy=True)
-        return TrajectoryFile(p_object=s)
+        """Return the selected frames as a new :class:`TrajectoryFile`."""
+        return TrajectoryFile(
+            p_object=_traj_data.Trajectory(self._xyz[key], self.topology))
 
     def __getitem__(self, key):
         """Return a structure (int key) or list of structures (slice key)."""
@@ -602,7 +550,7 @@ class TrajectoryFile(
         # http://code.activestate.com/recipes/576410-lazy-lists/
         if isinstance(key, int):
             s = copy.copy(self.structure)
-            s.xyz = self.mdtraj[key].xyz * 10.0
+            s.xyz = self._xyz[key] * 10.0
             s.update()
             return s
 
@@ -618,7 +566,7 @@ class TrajectoryFile(
                 """Create a :class:`Structure` instance for trajectory index *i*."""
                 s = copy.copy(self.structure)
                 s._filename = self.structure.labeling_file
-                s.xyz = self.mdtraj[i].xyz * 10.0
+                s.xyz = self._xyz[i] * 10.0
                 s.update()
                 return s
 
