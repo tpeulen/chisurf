@@ -322,6 +322,7 @@ JSON_DESCRIBED_TCSPC_MODELS = [
     "chisurf.core.models.global_model.globalfit.GlobalFitModel",
     "chisurf.core.models.parameter_transform.model.ParameterTransformModel",
     "chisurf.core.models.pch.fida_model.FidaModel",
+    "chisurf.core.models.pch.pch_model.PchMultiComponentModel",
 ]
 
 

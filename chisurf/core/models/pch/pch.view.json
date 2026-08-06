@@ -1,0 +1,66 @@
+{
+  "_comment": "Editor layout for the multi-component PCH model. A species is a brightness and an occupancy, so they render as pairs; switching a component off means zeroing either of its parameters, which is what add/remove do.",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Species",
+      "sections": [
+        {
+          "type": "button_row",
+          "buttons": [
+            {
+              "label": "➕ Add component",
+              "action": "add_component",
+              "description": "Switch on the next species with default brightness and occupancy."
+            },
+            {
+              "label": "➖ Remove",
+              "action": "remove_component",
+              "description": "Switch off the last active species (one always remains)."
+            }
+          ]
+        },
+        {
+          "type": "parameter_group_table",
+          "parameters_source": "_species_parameter_rows",
+          "row_width": 2,
+          "slot_labels": [
+            "ε",
+            "N"
+          ],
+          "row_labels": [
+            "1",
+            "2",
+            "3"
+          ],
+          "collapsible": false,
+          "description": "Molecular brightness ε and mean occupancy N per species; a zero in either switches that species off."
+        }
+      ]
+    }
+  ],
+  "plots": [
+    {
+      "key": "line",
+      "options": {
+        "scale_x": "lin",
+        "d_scaley": "log",
+        "r_scaley": "lin",
+        "x_label": "photons / bin",
+        "y_label": "frequency"
+      }
+    },
+    {
+      "key": "fit_table",
+      "options": {}
+    },
+    {
+      "key": "fit_info",
+      "options": {}
+    },
+    {
+      "key": "residual",
+      "options": {}
+    }
+  ]
+}

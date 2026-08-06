@@ -278,7 +278,7 @@ pch:
       controller_class: chisurf.gui.widgets.experiments.pch.PCHController
       controller_params: {}
   models:
-    - chisurf.gui.widgets.models.pch.PchMultiComponentModelWidget
+    - chisurf.core.models.pch.pch_model.PchMultiComponentModel
     - chisurf.core.models.pch.fida_model.FidaModel
 
 structure:
