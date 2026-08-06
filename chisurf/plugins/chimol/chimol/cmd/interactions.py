@@ -187,6 +187,217 @@ class InteractionMixin:
             )
 
     # ------------------------------------------------------------------ #
+    # Mutagenesis
+    # ------------------------------------------------------------------ #
+    @command("mutate")
+    def mutate(
+        self,
+        selection: str = "",
+        residue_name: str = "",
+        rotamer: str | int = "",
+    ) -> None:
+        """Mutate one residue, PyMOL's mutagenesis wizard as a command.
+
+        Parameters
+        ----------
+        selection : str
+            Anything that resolves to a **single residue** -- ``resi 54``,
+            ``sele``, a picked atom.
+        residue_name : str
+            The three-letter code it becomes.
+        rotamer : int, optional
+            Which conformation, 1-based as the report lists them. Omitted, the
+            least strained is taken -- the wizard's `state_best`.
+
+        Notes
+        -----
+        The backbone stays where it is and the side chain is built onto it from
+        an idealised fragment, then set to each rotamer of PyMOL's library in
+        turn and scored by the bump check. `mutate resi 54, TRP` with no
+        rotamer prints the table and applies the best; run it again with a
+        number to take another one.
+        """
+        window, viewer = self._require_window_and_viewer()
+        if viewer is None:
+            return
+        if not selection or not residue_name:
+            self._emit_error("Usage: mutate <selection>, <residue name> [, rotamer]")
+            return
+
+        from ..analysis.mutate import mutate_residue
+
+        try:
+            hits = self._resolve_selection_to_atom_masks(viewer, selection)
+        except Exception as exc:
+            self._emit_error(str(exc))
+            return
+        picked = [(oid, name, mask) for oid, name, mask in hits if mask.any()]
+        if not picked:
+            self._emit_error("mutate: selection matched no atoms")
+            return
+        if len(picked) > 1:
+            self._emit_error("mutate: the selection spans more than one object")
+            return
+
+        obj_id, obj_name, mask = picked[0]
+        entry = viewer._objects.get(obj_id)
+        atoms = getattr(getattr(entry, "state", None), "atoms", None)
+        if atoms is None or not len(atoms):
+            self._emit_error(f"mutate: {obj_name} has no atoms")
+            return
+
+        residue = self._single_residue(atoms, mask)
+        if residue is None:
+            return
+
+        index = None
+        if str(rotamer).strip():
+            try:
+                index = int(rotamer) - 1
+            except ValueError:
+                self._emit_error("mutate: the rotamer must be a number")
+                return
+
+        try:
+            result = mutate_residue(atoms, residue, residue_name, rotamer=index)
+        except KeyError:
+            self._emit_error(
+                f"mutate: no fragment for {residue_name.upper()} -- "
+                "the twenty standard residues are available"
+            )
+            return
+        except ValueError as exc:
+            self._emit_error(f"mutate: {exc}")
+            return
+
+        self._report_rotamers(result)
+        self._apply_mutation(viewer, obj_id, obj_name, atoms, result)
+
+    def _single_residue(self, atoms, mask) -> list[int] | None:
+        """Every atom of the one residue the selection picks, or an error.
+
+        PyMOL's wizard works on one residue at a time and takes the *whole*
+        residue however few of its atoms were picked -- clicking a side-chain
+        carbon mutates the residue, not the atom.
+        """
+        names = atoms.dtype.names or ()
+        chain = (
+            np.array([str(c) for c in atoms["chain"]]) if "chain" in names
+            else np.array([""] * len(atoms))
+        )
+        resid = (
+            np.asarray(atoms["res_id"], dtype=int) if "res_id" in names
+            else np.zeros(len(atoms), dtype=int)
+        )
+        keys = {(chain[i], int(resid[i])) for i in np.nonzero(mask)[0]}
+        if not keys:
+            self._emit_error("mutate: selection matched no atoms")
+            return None
+        if len(keys) > 1:
+            self._emit_error(
+                f"mutate: the selection spans {len(keys)} residues -- pick one"
+            )
+            return None
+        key = keys.pop()
+        return [
+            i for i in range(len(atoms))
+            if (chain[i], int(resid[i])) == key
+        ]
+
+    def _report_rotamers(self, result) -> None:
+        """The wizard's panel, as console lines: frequency and strain."""
+        site = result.site
+        self._emit_message(
+            f"mutate: {result.residue_name}, {len(site.rotamers)} rotamers "
+            f"(taking #{result.chosen + 1})"
+        )
+        order = sorted(
+            range(len(site.rotamers)),
+            key=lambda k: -site.rotamers[k].frequency,
+        )[:8]
+        for k in order:
+            rot = site.rotamers[k]
+            mark = "*" if k == result.chosen else " "
+            chis = ", ".join(
+                f"{'-'.join(quad)}={angle:.0f}" for quad, angle in rot.chis.items()
+            )
+            self._emit_message(
+                f" {mark}{k + 1:3d}  {rot.frequency * 100:5.1f}%  "
+                f"strain {rot.strain:6.2f}  {chis}"
+            )
+
+    def _apply_mutation(self, viewer, obj_id, obj_name, atoms, result) -> None:
+        """Replace the residue's rows with the built ones, in place.
+
+        In place, not appended: the atom table is in file order and a residue
+        that jumps to the end of it breaks every reader of that order -- the
+        sequence strip, the backbone trace, the bond inference that walks
+        neighbouring residues.
+        """
+        site = result.site
+        rotamer = result.rotamer
+        indices = sorted(site.indices)
+        first = indices[0]
+        template = atoms[first]
+        names = atoms.dtype.names or ()
+
+        rows = []
+        for position, (atom_name, element) in enumerate(zip(site.names, site.elements)):
+            row = np.array(template, dtype=atoms.dtype).copy()
+            if "atom_name" in names:
+                row["atom_name"] = atom_name
+            if "element" in names:
+                row["element"] = element
+            if "res_name" in names:
+                row["res_name"] = result.residue_name
+            if "radius" in names:
+                from ..analysis.clashes import VDW_RADII, DEFAULT_VDW
+
+                row["radius"] = VDW_RADII.get(str(element).upper(), DEFAULT_VDW)
+            row["xyz"] = rotamer.coords[position]
+            rows.append(row)
+
+        keep = np.ones(len(atoms), dtype=bool)
+        keep[indices] = False
+        rebuilt = np.concatenate([
+            atoms[keep][:first],
+            np.array(rows, dtype=atoms.dtype),
+            atoms[keep][first:],
+        ])
+
+        entry = viewer._objects.get(obj_id)
+        entry.state.atoms = rebuilt
+        entry.state.all_atom_coords = None
+        entry.state.coords = None
+        # Everything else indexed by atom -- colours, masks, per-atom overrides
+        # -- is now the wrong length, and the load path re-derives all of it.
+        for field_name in (
+            "colors_per_atom_override", "protected_mask", "masked_mask",
+            "all_atom_res_ids", "all_atom_radii",
+        ):
+            if hasattr(entry.state, field_name):
+                setattr(entry.state, field_name, None)
+        self._rebuild_after_coordinate_change(viewer, obj_id)
+        # The residue is a different residue now, so every view of the sequence
+        # is stale -- the strip, the docked list and the object row. The viewer
+        # re-derives its own arrays through `set_structure`; the window has to
+        # be told, or the strip goes on showing the letter of the residue that
+        # is no longer there.
+        window = getattr(self, "_window", None) or self._require_window_and_viewer()[0]
+        for refresh in ("_refresh_objects_from_viewer", "_update_sequence_view",
+                        "sync_internal_gui"):
+            method = getattr(window, refresh, None)
+            if callable(method):
+                try:
+                    method()
+                except Exception:
+                    pass
+        self._emit_message(
+            f"mutate: {obj_name} residue is now {result.residue_name} "
+            f"(strain {rotamer.strain:.2f})"
+        )
+
+    # ------------------------------------------------------------------ #
     # Shared helpers
     # ------------------------------------------------------------------ #
     def _clash_report(self, atoms, bond_pairs, subject):

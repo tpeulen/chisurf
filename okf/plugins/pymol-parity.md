@@ -559,6 +559,72 @@ app, three times over:
 `box` — Maestro's plain-left cell — was also the one box action the press did
 not recognise, so the block on screen named a gesture the widget did not start.
 
+## Networks, clashes and mutation: what PyMOL half-answers
+
+Three requests in one, and each is a different relationship to PyMOL.
+
+**Hydrogen-bond networks are not PyMOL's at all.** It finds polar contacts
+(`distance ..., mode=2`, already transcribed) and draws them as one
+undifferentiated bundle; which of them belong together is left to the eye, and
+the eye is exactly what misses a four-bond water-mediated path. So the contacts
+are unchanged and the grouping is new: connected components over "these two
+bonds share an atom", each drawn in its own colour, each described by what it
+spans — bonds, residues, waters, and whether it crosses chains, which is what
+makes an interface network worth a second look. Three water policies, because
+either default is misleading: a water may **bridge** two halves, be **excluded**
+(the protein's own network), or be all there is (**only**, the wire). ChimeraX
+does not name a network either; its `hbonds` returns a list.
+
+**The clash check is PyMOL's, and it is not a command there.** It is the bump
+check inside the mutagenesis wizard: sculpting's van der Waals term, one
+iteration, with `sculpt_vdw_vis_mode` on. Transcribed from `Sculpt.cpp`, and
+three details are what separate it from a naive vdW test:
+
+* a **hydrogen bond is not a clash** — the pair cutoff drops by
+  `sculpt_hb_overlap` (1.0 Å) for the hydrogen and `sculpt_hb_overlap_base`
+  (0.35 Å) for the heavy atoms;
+* **1-2 and 1-3 pairs are excluded**, and a **1-4 pair is scored but never
+  drawn**. That asymmetry is deliberate in PyMOL: `SculptCGOBump` is called only
+  in the `ex == 10` arm. Drawing 1-4 pairs buries the real clashes in
+  intra-residue haze;
+* the radii are **PyMOL's `ElementTable`**, not the force-field radii chimol's
+  reader stores. Measured on 148L: with the reader's radii, 862 pairs report as
+  deep overlaps; with PyMOL's, 15 do. That was the first measurement this work
+  took and it decided the whole design — a clash check calibrated against the
+  wrong radii is worse than none.
+
+**Mutation is PyMOL's loop with PyMOL's data.** `do_library`: fragment onto the
+backbone, one state per rotamer, bump-check each, start on the least strained.
+The data is generated from the reference checkout rather than re-derived —
+`analysis/make_residue_library.py` reads `data/chempy/fragments/*.pkl` and
+`sc_bb_ind.pkl` and writes a plain-Python module, the same pattern the 547
+space groups use. Three things decide whether the result is usable:
+
+* the **backbone is not moved**. The fragment is fitted on N/CA/C and then the
+  target's own backbone is kept; the fit residual is absorbed as a *translation
+  onto CA*, which puts it in the N-CA-CB angle instead of stretching the CA-CB
+  bond (1.58 Å before that, 1.55 after, against an ideal 1.53);
+* **which atoms a chi rotation moves** is read from the fragment's own bond
+  graph, not from a per-residue table that goes wrong on the one residue nobody
+  checked;
+* the side chain is scored **with its own bonds**, or every bond in it counts as
+  two atoms deep inside their radii and a tryptophan reports strain 60 before
+  it has touched anything (measured: 64.7 → 29.4 when the bonds went in).
+
+Validation is the identity rebuild: mutate every residue of 148L into itself and
+ask how close the library's best rotamer lands to the deposited side chain.
+**0.50 Å mean, 31 of 33 within 1 Å** — which is the resolution of a rotamer
+library (a set of cluster means), not an error in the build. The *choice* is a
+separate matter: the least-strained rotamer is often not the crystallographic
+one, which is precisely why PyMOL's wizard shows the list and so does `mutate`.
+
+Open here: the **backbone-dependent** library (`sc_bb_dep.pkl`, 3569 phi/psi
+bins) is PyMOL's own default and is not shipped — the reader is written
+(`--dependent`) and 1.4 MB of generated module was not worth it before anyone
+asked to be phi/psi-aware. No GUI panel yet either: the wizard's list-with-
+strain is a console table, and the natural home for it is an AutoForm panel
+beside the object list.
+
 ## The element field was one character wide
 
 Found in the same pass. `ZN` was stored as `Z`, `CL` as `C`. Everything keyed on

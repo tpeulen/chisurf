@@ -2,6 +2,18 @@
 
 ## 2026-08-06
 
+* **Hydrogen-bond networks, a clash check and residue mutation** ([PyMOL parity](plugins/pymol-parity.md)).
+
+  Three requests, three different relationships to PyMOL.
+
+  **Networks are not PyMOL's at all.** It finds polar contacts and draws them as one undifferentiated bundle; which of them belong together is left to the eye, and the eye is what misses a four-bond water-mediated path. The contacts are unchanged — the transcribed finder, same settings — and `hbond_network` adds the grouping: connected components over "these two bonds share an atom", each in its own colour, each described by what it spans. Water may bridge two halves, be excluded, or be the whole question (the wire). ChimeraX does not name a network either.
+
+  **The clash check is PyMOL's, and it is not a command there** — it is the bump check inside the mutagenesis wizard. Transcribed from `Sculpt.cpp`: the hb-overlap allowances (without which every hydrogen bond reports as a clash), the exclusion arms (1-2 and 1-3 out, a 1-4 pair scored but *never drawn* — `SculptCGOBump` is called only in the unexcluded arm), and the green-to-red colour. The radii are PyMOL's `ElementTable`, not the reader's force-field radii: on 148L that is 15 deep overlaps against 862, which is the measurement that decided the design.
+
+  **Mutation is PyMOL's loop with PyMOL's data.** `do_library` — fragment onto the backbone, one state per rotamer, bump-check each, start on the least strained — with the fragments and the rotamer library *generated* from the reference checkout rather than re-derived, the same pattern the 547 space groups use. The fit residual is absorbed as a translation onto CA so it lands in the N-CA-CB angle instead of stretching the CA-CB bond, and the side chain is scored with its own bonds or a tryptophan strains 60 before touching anything. Validated by the identity rebuild: every residue of 148L mutated into itself, the library's best rotamer landing **0.50 Å** from the deposited side chain on average, 31 of 33 within 1 Å.
+
+  All three are in the A ▸ find submenu and the viewer guide. Open: the backbone-dependent rotamer library (written, not shipped) and a panel for the rotamer table, which is a console table today.
+
 * **The documentation is now a corpus the assistant can navigate, and it can be asked questions** ([documentation browser](subsystems/documentation-browser.md), [LLM agent](subsystems/llm-agent.md)).
 
   `docs/` became an Open Knowledge Format bundle: all 277 Markdown pages carry a front-matter header (`type`, `title`, `description`, `tags`, `anchor`), derived from the page by `build_tools/docs/okf_frontmatter.py` rather than hand-written, and preserved where a human improved it. The generators emit their own (plugin pages, parameter glossary, the three registers, the Literature page), because an injected header would be overwritten on the next run. `docs/index.rst` became `docs/index.md` so the bundle root can declare `okf_version`. The header is metadata and never prose: Sphinx keeps it out of the HTML, the help browser strips it, and `test/test_docs_okf.py` fails if either stops being true.

@@ -329,3 +329,140 @@ def test_a_real_protein_has_networks_and_almost_no_clashes():
         f"{len(overlapping)} deep overlaps in a refined structure of "
         f"{len(atoms)} atoms -- the exclusion or the hb allowance is not applying"
     )
+
+
+# --------------------------------------------------------------------------- #
+# Mutagenesis
+# --------------------------------------------------------------------------- #
+def test_every_standard_residue_has_a_fragment_and_its_rotamers():
+    """Twenty fragments, eighteen libraries -- ALA and GLY have no chi angle."""
+    from chisurf.plugins.chimol.chimol.analysis.residue_library import (
+        FRAGMENTS,
+        ROTAMERS,
+    )
+
+    assert len(FRAGMENTS) == 20
+    assert set(ROTAMERS) | {"ALA", "GLY"} == set(FRAGMENTS)
+    for resn, rotamers in ROTAMERS.items():
+        freqs = [freq for freq, _chis in rotamers]
+        assert freqs == sorted(freqs, reverse=True), f"{resn} is not sorted"
+        assert all(chis for _f, chis in rotamers), f"{resn} has a chi-less rotamer"
+
+
+def test_a_built_rotamer_has_the_chi_angles_it_says():
+    """The whole point of the library: the built side chain *is* that rotamer."""
+    from chisurf.plugins.chimol.chimol.analysis.mutate import (
+        _dihedral,
+        build_rotamers,
+    )
+
+    backbone = {
+        "N": np.array([0.0, 0.0, 0.0]),
+        "CA": np.array([1.458, 0.0, 0.0]),
+        "C": np.array([2.0, 1.42, 0.0]),
+    }
+    site = build_rotamers("ARG", backbone, hydrogens=False)
+    index = {name: i for i, name in enumerate(site.names)}
+
+    for rotamer in site.rotamers[:5]:
+        for quad, angle in rotamer.chis.items():
+            built = _dihedral(*(rotamer.coords[index[name]] for name in quad))
+            assert built == pytest.approx(angle, abs=0.5), f"{quad} is off"
+
+
+def test_the_backbone_is_kept_exactly():
+    """The side chain grows out of the existing backbone; the chain does not move."""
+    from chisurf.plugins.chimol.chimol.analysis.mutate import build_rotamers
+
+    backbone = {
+        "N": np.array([3.1, -1.2, 0.7]),
+        "CA": np.array([4.4, -0.7, 1.1]),
+        "C": np.array([5.3, -1.8, 1.7]),
+        "O": np.array([6.5, -1.6, 1.9]),
+    }
+    site = build_rotamers("TYR", backbone, hydrogens=False)
+    index = {name: i for i, name in enumerate(site.names)}
+
+    for atom, xyz in backbone.items():
+        assert site.rotamers[0].coords[index[atom]] == pytest.approx(xyz)
+    # And the bond the rotamer angles are measured against is a real bond.
+    ca_cb = np.linalg.norm(
+        site.rotamers[0].coords[index["CA"]] - site.rotamers[0].coords[index["CB"]]
+    )
+    assert ca_cb == pytest.approx(1.53, abs=0.06), f"CA-CB is {ca_cb:.3f} A"
+
+
+def test_a_residue_without_a_backbone_is_refused():
+    """PyMOL's wizard requires N, C and O before it offers anything."""
+    from chisurf.plugins.chimol.chimol.analysis.mutate import build_rotamers
+
+    with pytest.raises(ValueError):
+        build_rotamers("LEU", {"CA": np.zeros(3)})
+
+
+def test_hydrogens_follow_the_structure():
+    """`hyd auto`: a crystal structure with no hydrogens gets none back.
+
+    One residue drawn with hydrogens and 164 without reads as a rendering
+    fault, and the fragments all carry them.
+    """
+    from chisurf.plugins.chimol.chimol.analysis.mutate import build_rotamers
+
+    backbone = {
+        "N": np.zeros(3), "CA": np.array([1.458, 0.0, 0.0]),
+        "C": np.array([2.0, 1.42, 0.0]),
+    }
+    with_h = build_rotamers("SER", backbone, hydrogens=True)
+    without = build_rotamers("SER", backbone, hydrogens=False)
+
+    assert any(e.upper() == "H" for e in with_h.elements)
+    assert not any(e.upper() == "H" for e in without.elements)
+    assert without.rotamers[0].coords.shape[0] == len(without.names)
+
+
+def test_rebuilding_a_residue_as_itself_reproduces_it(tmp_path):
+    """The validation that says the *geometry* is right rather than the choice.
+
+    Rebuilt as itself, one of the library's rotamers has to land close to the
+    deposited side chain -- the library is a set of cluster means, so 0.5 A is
+    the resolution of the answer, not an error. Which rotamer the bump check
+    picks is a separate question: the least strained one is often not the
+    crystallographic one, and PyMOL has exactly the same property, which is why
+    its wizard shows the list.
+    """
+    from chisurf.plugins.chimol.chimol.analysis.mutate import mutate_residue
+
+    atoms, _bonds = _read("148l.pdb")
+    resid = np.asarray(atoms["res_id"], dtype=int)
+    resn = np.array([str(r).strip() for r in atoms["res_name"]])
+    names = np.array([str(n).strip() for n in atoms["atom_name"]])
+    xyz = np.asarray(atoms["xyz"], dtype=float)
+
+    deviations = []
+    for target in range(3, 40):
+        rows = np.nonzero(resid == target)[0]
+        if not len(rows) or resn[rows[0]] in ("HOH", "GLY"):
+            continue
+        try:
+            result = mutate_residue(atoms, rows, resn[rows[0]])
+        except (KeyError, ValueError):
+            continue
+        index = {name: i for i, name in enumerate(result.site.names)}
+        best = None
+        for rotamer in result.site.rotamers:
+            errors = [
+                float(np.linalg.norm(rotamer.coords[index[names[row]]] - xyz[row]))
+                for row in rows
+                if names[row] not in ("N", "CA", "C", "O") and names[row] in index
+            ]
+            if errors:
+                best = min(best, float(np.mean(errors))) if best else float(np.mean(errors))
+        if best is not None:
+            deviations.append(best)
+
+    assert len(deviations) > 20, "not enough residues were rebuilt to mean anything"
+    assert float(np.mean(deviations)) < 0.8, (
+        f"rebuilt side chains average {np.mean(deviations):.2f} A from the "
+        "deposited ones -- the fragment fit or the chi rotation is wrong"
+    )
+    assert sum(1 for d in deviations if d < 1.0) >= 0.85 * len(deviations)
