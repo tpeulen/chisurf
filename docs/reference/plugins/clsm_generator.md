@@ -9,7 +9,7 @@ Generate a synthetic CLSM photon image from an intensity image + per-detector li
 | --- | --- |
 | Plugin id | `clsm_generator` |
 | Menu path | Imaging → Simulate → **CLSM Generator** |
-| Categories | Imaging, Simulation |
+| Categories | Imaging, Simulate |
 | Version | 1.0.0 |
 | Surfaces | gui |
 | State namespace | `clsm_generator` |
@@ -39,8 +39,13 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | τ levels | `n_lifetime_levels` | int |  | 1 … 256 | Quantisation levels for the lifetime axis (more = finer, slower). |
 | Intensity levels | `n_intensity_levels` | int |  | 1 … 256 | Quantisation levels for the intensity axis. |
 
+## Theory and workflow
+
+- **Theory** — [Simulating single-molecule photon streams](/concepts/photophysics_simulation.md)
+- **Workflow** — [Confocal scan images (CLSM)](/guides/24_scan_images.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/microscopy/clsm_generator/`
-- Manifest: `chisurf/plugins/microscopy/clsm_generator/manifest.json`
-- UI spec: `chisurf/plugins/microscopy/clsm_generator/gui/generator.view.json`
+- Manifest: {src}`chisurf/plugins/microscopy/clsm_generator/manifest.json`
+- UI spec: {src}`chisurf/plugins/microscopy/clsm_generator/gui/generator.view.json`

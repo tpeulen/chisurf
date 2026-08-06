@@ -9,7 +9,7 @@ Classic Tetris game with line clearing, score tracking, and next-piece preview; 
 | --- | --- |
 | Plugin id | `tetris` |
 | Menu path | Tools → Miscellaneous → Games → **Tetris** |
-| Categories | Tools, Miscellaneous |
+| Categories | Tools, Miscellaneous, Games |
 | Version | 2.0.0 |
 | Surfaces | cli, gui, services |
 | State namespace | `tetris_game` |
@@ -21,4 +21,4 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 ## Source
 
 - Plugin package: `chisurf/plugins/misc/games/tetris/`
-- Manifest: `chisurf/plugins/misc/games/tetris/manifest.json`
+- Manifest: {src}`chisurf/plugins/misc/games/tetris/manifest.json`

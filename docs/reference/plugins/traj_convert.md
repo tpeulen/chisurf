@@ -32,11 +32,11 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
 | Filename | `filename` | str |  |  | Output base name; the extension below is appended. |
-| Format | `ending` | choice |  | choices: .dcd, .xtc, .pdb, .h5 | Output file extension / format. |
+| Format | `ending` | choice |  | choices: `output_formats` | Output file extension / format. |
 | Split into one file per frame | `split` | bool |  |  | Write each frame to its own {filename}_%08d{ending} file instead of one combined file. |
 
 ## Source
 
 - Plugin package: `chisurf/plugins/traj/traj_convert/`
-- Manifest: `chisurf/plugins/traj/traj_convert/manifest.json`
-- UI spec: `chisurf/plugins/traj/traj_convert/convert_structures.view.json`
+- Manifest: {src}`chisurf/plugins/traj/traj_convert/manifest.json`
+- UI spec: {src}`chisurf/plugins/traj/traj_convert/convert_structures.view.json`

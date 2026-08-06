@@ -9,7 +9,7 @@ Hub that lists ChiSurf's guided wizards and embeds the selected one in a two-pan
 | --- | --- |
 | Plugin id | `wizards` |
 | Menu path | Main → Tools → **Wizards** |
-| Categories | Tools |
+| Categories | Main, Tools |
 | Version | 1.0.0 |
 | Surfaces | gui |
 | State namespace | `wizards` |
@@ -21,4 +21,4 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 ## Source
 
 - Plugin package: `chisurf/plugins/core/wizards/`
-- Manifest: `chisurf/plugins/core/wizards/manifest.json`
+- Manifest: {src}`chisurf/plugins/core/wizards/manifest.json`

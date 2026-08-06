@@ -9,7 +9,7 @@ Convert TTTR photon streams to audio, with a live micro-time / lifetime waterfal
 | --- | --- |
 | Plugin id | `tttr_audifier` |
 | Menu path | Tools → TTTR → **Audifier** |
-| Categories | TTTR, Analysis |
+| Categories | Tools, TTTR, Analysis |
 | Version | 2.0.0 |
 | Surfaces | gui |
 
@@ -57,5 +57,5 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Source
 
 - Plugin package: `chisurf/plugins/tttr/audifier/`
-- Manifest: `chisurf/plugins/tttr/audifier/manifest.json`
-- UI spec: `chisurf/plugins/tttr/audifier/gui/audifier.view.json`
+- Manifest: {src}`chisurf/plugins/tttr/audifier/manifest.json`
+- UI spec: {src}`chisurf/plugins/tttr/audifier/gui/audifier.view.json`

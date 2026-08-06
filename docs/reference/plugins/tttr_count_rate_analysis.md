@@ -9,7 +9,7 @@ Count rates per detector channel across many TTTR files, with mean/std and a per
 | --- | --- |
 | Plugin id | `tttr_count_rate_analysis` |
 | Menu path | Tools → TTTR → **Count Rate Analysis** |
-| Categories | TTTR, Analysis |
+| Categories | Tools, TTTR, Analysis |
 | Version | 2.0.0 |
 | Surfaces | cli, gui |
 
@@ -21,8 +21,12 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | --- | --- | --- | --- | --- | --- |
 | files | `files` | path_list |  |  |  |
 
+## Theory and workflow
+
+- **Workflow** — [Handling TTTR files (and Photon-HDF5)](/guides/12_handling_tttr_files.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/tttr/tttr_count_rate_analysis/`
-- Manifest: `chisurf/plugins/tttr/tttr_count_rate_analysis/manifest.json`
-- UI spec: `chisurf/plugins/tttr/tttr_count_rate_analysis/gui/count_rate.view.json`
+- Manifest: {src}`chisurf/plugins/tttr/tttr_count_rate_analysis/manifest.json`
+- UI spec: {src}`chisurf/plugins/tttr/tttr_count_rate_analysis/gui/count_rate.view.json`

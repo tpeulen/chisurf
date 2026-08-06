@@ -9,7 +9,7 @@ Apply one pre-optimised template fit to many datasets or files in one pass and e
 | --- | --- |
 | Plugin id | `batch_analysis` |
 | Menu path | Main → Tools → **Batch-Analysis** |
-| Categories | Analysis |
+| Categories | Main, Tools, Analysis |
 | Version | 1.0.0 |
 | Surfaces | cli, gui |
 | State namespace | `batch_analysis` |
@@ -24,8 +24,12 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Template fit | `selected_fit_name` | choice |  | choices: `fit_names` | The pre-optimised fit whose parameters seed every run. |
 | Results CSV | `save_path` | file |  |  | Destination CSV. A DOCX report and a ZIP of per-run exports are written alongside. |
 
+## Theory and workflow
+
+- **Theory** — [Parameter uncertainty: priors, posteriors and sampling](/concepts/parameter_uncertainty.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/core/batch_analysis/`
-- Manifest: `chisurf/plugins/core/batch_analysis/manifest.json`
-- UI spec: `chisurf/plugins/core/batch_analysis/batch.view.json`
+- Manifest: {src}`chisurf/plugins/core/batch_analysis/manifest.json`
+- UI spec: {src}`chisurf/plugins/core/batch_analysis/batch.view.json`

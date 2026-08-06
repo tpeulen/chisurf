@@ -9,7 +9,7 @@ Graphical front-end to the HYDROPRO / HYDRO++ suite for computing hydrodynamic p
 | --- | --- |
 | Plugin id | `hydropro` |
 | Menu path | Structure → Computation → **HydroPro** |
-| Categories | Structure |
+| Categories | Structure, Computation |
 | Version | 1.0.0 |
 | Surfaces | cli, gui, services |
 | State namespace | `hydropro` |
@@ -69,8 +69,12 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | `hydropro.run` | no | Run HYDROPRO/HYDRO++ over structures and return diffusion coefficients. |
 | `hydropro.parse_res` | no | Parse a HYDRO *.res report for the translational diffusion coefficient. |
 
+## Theory and workflow
+
+- **Theory** — [Molecular surfaces and solvent accessibility](/concepts/molecular_surfaces.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/modelling/hydropro/`
-- Manifest: `chisurf/plugins/modelling/hydropro/manifest.json`
-- UI spec: `chisurf/plugins/modelling/hydropro/gui/hydropro.view.json`
+- Manifest: {src}`chisurf/plugins/modelling/hydropro/manifest.json`
+- UI spec: {src}`chisurf/plugins/modelling/hydropro/gui/hydropro.view.json`

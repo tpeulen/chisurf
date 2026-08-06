@@ -10,7 +10,7 @@ Pages cite a work by its **key** — the name each entry is anchored under below
 and the citation renders as a link to the paper. The source of truth is
 [`bibliography.yaml`](bibliography.yaml) — add a work there and it appears here.
 
-*122 works.*
+*129 works.*
 
 
 ## FRET: mechanism, accuracy and corrections
@@ -23,6 +23,11 @@ and the citation renders as a link to the paper. The source of truth is
 
 **[Clegg (1995)](https://doi.org/10.1016/0958-1669(95)80016-6)** — R. M. Clegg. *Fluorescence resonance energy transfer*. Current Opinion in Biotechnology **6**, 103-110. (1995).  
 *A compact review of the mechanism and its assumptions.*
+
+(dale1979)=
+
+**[Dale et al. (1979)](https://doi.org/10.1016/S0006-3495(79)85271-6)** — R. E. Dale, J. Eisinger, W. E. Blumberg. *The orientational freedom of molecular probes - the orientation factor in intramolecular energy transfer*. Biophysical Journal **26**, 161-193. (1979).  
+*How measured depolarization bounds kappa-squared, and hence the systematic distance error.*
 
 (dimura2016)=
 
@@ -531,6 +536,39 @@ and the citation renders as a link to the paper. The source of truth is
 
 **[Koshioka et al. (1995)](https://doi.org/10.1366/0003702953963652)** — M. Koshioka, K. Sasaki, H. Masuhara. *Time-dependent fluorescence depolarization analysis in three-dimensional microspectroscopy*. Applied Spectroscopy **49**, 224-228. (1995).  
 *Depolarisation by a high-NA objective — where the l1/l2 mixing factors come from.*
+
+(perrin1926)=
+
+**[Perrin (1926)](https://search.crossref.org/search/works?q=Polarisation+de+la+lumi%C3%A8re+de+fluorescence.+Vie+moyenne+des+mol%C3%A9cules+dans+l%27%C3%A9tat+excit%C3%A9+Journal+de+Physique+et+le+Radium+1926&from_ui=yes)** — F. Perrin. *Polarisation de la lumière de fluorescence. Vie moyenne des molécules dans l'état excité*. Journal de Physique et le Radium **7**, 390-401. (1926).  
+*Depolarization by rotational diffusion; the equation relating anisotropy, lifetime and correlation time.*
+
+
+## Photophysics
+
+(kasha1950)=
+
+**[Kasha (1950)](https://doi.org/10.1039/df9500900014)** — M. Kasha. *Characterization of electronic transitions in complex molecules*. Discussions of the Faraday Society **9**, 14-19. (1950).  
+*Emission is from the lowest excited state of a given multiplicity, hence independent of excitation wavelength.*
+
+(lippert1955)=
+
+**[Lippert (1955)](https://search.crossref.org/search/works?q=Dipolmoment+und+Elektronenstruktur+von+angeregten+Molek%C3%BClen+Zeitschrift+f%C3%BCr+Naturforschung+A+1955&from_ui=yes)** — E. Lippert. *Dipolmoment und Elektronenstruktur von angeregten Molekülen*. Zeitschrift für Naturforschung A **10**, 541-545. (1955).  
+*General solvent effects; the orientation-polarizability form of the Stokes shift.*
+
+(mataga1956)=
+
+**[Mataga et al. (1956)](https://search.crossref.org/search/works?q=Solvent+effects+upon+fluorescence+spectra+and+the+dipole+moments+of+excited+molecules+Bulletin+of+the+Chemical+Society+of+Japan+1956&from_ui=yes)** — N. Mataga, Y. Kaifu, M. Koizumi. *Solvent effects upon fluorescence spectra and the dipole moments of excited molecules*. Bulletin of the Chemical Society of Japan **29**, 465-470. (1956).  
+*The independent derivation usually cited together with Lippert.*
+
+(sternvolmer1919)=
+
+**[Stern & Volmer (1919)](https://search.crossref.org/search/works?q=%C3%9Cber+die+Abklingzeit+der+Fluoreszenz+Physikalische+Zeitschrift+1919&from_ui=yes)** — O. Stern, M. Volmer. *Über die Abklingzeit der Fluoreszenz*. Physikalische Zeitschrift **20**, 183-188. (1919).  
+*The linear quenching relation, and the observation that it applies to the lifetime.*
+
+(strickler1962)=
+
+**[Strickler & Berg (1962)](https://doi.org/10.1063/1.1733166)** — S. J. Strickler, R. A. Berg. *Relationship between absorption intensity and fluorescence lifetime of molecules*. The Journal of Chemical Physics **37**, 814-822. (1962).  
+*The radiative rate from the absorption spectrum - why the natural lifetime is a property of the transition.*
 
 
 ## Optics and point-spread functions

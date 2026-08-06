@@ -9,7 +9,7 @@ Classic Pong game with CPU opponent, score tracking, and particle effects; conta
 | --- | --- |
 | Plugin id | `pong` |
 | Menu path | Tools → Miscellaneous → Games → **Pong** |
-| Categories | Tools, Miscellaneous |
+| Categories | Tools, Miscellaneous, Games |
 | Version | 2.0.0 |
 | Surfaces | cli, gui, services |
 | State namespace | `pong_game` |
@@ -21,4 +21,4 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 ## Source
 
 - Plugin package: `chisurf/plugins/misc/games/pong/`
-- Manifest: `chisurf/plugins/misc/games/pong/manifest.json`
+- Manifest: {src}`chisurf/plugins/misc/games/pong/manifest.json`

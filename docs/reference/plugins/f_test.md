@@ -9,7 +9,7 @@ F-test calculator: compare two nested model fits (confidence <-> chi2 threshold)
 | --- | --- |
 | Plugin id | `f_test` |
 | Menu path | Main → Tools → **F-Test** |
-| Categories | Tools, Statistics |
+| Categories | Main, Tools, Statistics |
 | Version | 2.0.0 |
 | Surfaces | gui |
 | State namespace | `f_test` |
@@ -38,8 +38,12 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | confidence | `conf_level_2` | float |  | 0.0 … 1.0 (step 0.01) | Confidence level for the χ² upper limit. |
 | χ² max | `chi2_max` | float |  |  | Resulting χ² upper limit at the chosen confidence level. |
 
+## Theory and workflow
+
+- **Theory** — [Parameter uncertainty: priors, posteriors and sampling](/concepts/parameter_uncertainty.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/core/f_test/`
-- Manifest: `chisurf/plugins/core/f_test/manifest.json`
-- UI spec: `chisurf/plugins/core/f_test/gui/ftest.view.json`
+- Manifest: {src}`chisurf/plugins/core/f_test/manifest.json`
+- UI spec: {src}`chisurf/plugins/core/f_test/gui/ftest.view.json`

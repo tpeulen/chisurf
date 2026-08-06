@@ -9,7 +9,7 @@ Unified TTTR toolbox: ALEX Creator, Micro-time Shifter, TTTR Header Editor and S
 | --- | --- |
 | Plugin id | `tttr_toolbox` |
 | Menu path | Tools → **TTTR Tools** |
-| Categories | TTTR |
+| Categories | Tools, TTTR |
 | Version | 1.0.0 |
 | Surfaces | gui |
 
@@ -17,7 +17,11 @@ Unified TTTR toolbox: ALEX Creator, Micro-time Shifter, TTTR Header Editor and S
 
 This plugin builds its interface from custom Qt widgets (no declarative `*.view.json` parameter sections were found). Its controls are shown in the plugin's guide; the fit/model parameters it edits are defined in the [parameter glossary](../parameters.md).
 
+## Theory and workflow
+
+- **Workflow** — [Handling TTTR files (and Photon-HDF5)](/guides/12_handling_tttr_files.md), [Working with timestamps and bursts (the data model)](/guides/33_timestamps_and_bursts.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/tttr/tttr_toolbox/`
-- Manifest: `chisurf/plugins/tttr/tttr_toolbox/manifest.json`
+- Manifest: {src}`chisurf/plugins/tttr/tttr_toolbox/manifest.json`

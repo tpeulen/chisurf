@@ -59,6 +59,8 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Method | Long-running | Summary |
 | --- | --- | --- |
+| `fluorophores.diffusion_reference` | no | List every probe carrying a diffusion coefficient D(25 °C, water). |
+| `fluorophores.import_diffusion_reference` | no | Seed literature diffusion coefficients as probe properties. |
 | `mmfdb.security.auth.change_password` | no |  |
 | `mmfdb.security.auth.login` | no |  |
 | `mmfdb.security.auth.logout` | no |  |
@@ -283,10 +285,10 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Source
 
 - Plugin package: `chisurf/plugins/core/mmfdb_admin/`
-- Manifest: `chisurf/plugins/core/mmfdb_admin/manifest.json`
-- UI spec: `chisurf/plugins/core/mmfdb_admin/gui/connection_auth.view.json`
-- UI spec: `chisurf/plugins/core/mmfdb_admin/gui/optical_components/detector.view.json`
-- UI spec: `chisurf/plugins/core/mmfdb_admin/gui/optical_components/dichroic.view.json`
-- UI spec: `chisurf/plugins/core/mmfdb_admin/gui/optical_components/filter.view.json`
-- UI spec: `chisurf/plugins/core/mmfdb_admin/gui/optical_components/fluorophore.view.json`
-- UI spec: `chisurf/plugins/core/mmfdb_admin/gui/optical_components/light_source.view.json`
+- Manifest: {src}`chisurf/plugins/core/mmfdb_admin/manifest.json`
+- UI spec: {src}`chisurf/plugins/core/mmfdb_admin/gui/connection_auth.view.json`
+- UI spec: {src}`chisurf/plugins/core/mmfdb_admin/gui/optical_components/detector.view.json`
+- UI spec: {src}`chisurf/plugins/core/mmfdb_admin/gui/optical_components/dichroic.view.json`
+- UI spec: {src}`chisurf/plugins/core/mmfdb_admin/gui/optical_components/filter.view.json`
+- UI spec: {src}`chisurf/plugins/core/mmfdb_admin/gui/optical_components/fluorophore.view.json`
+- UI spec: {src}`chisurf/plugins/core/mmfdb_admin/gui/optical_components/light_source.view.json`

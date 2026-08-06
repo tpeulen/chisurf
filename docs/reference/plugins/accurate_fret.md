@@ -9,7 +9,7 @@ Accurate FRET (Hellenkamp): automatic alpha/beta/gamma/delta from the burst popu
 | --- | --- |
 | Plugin id | `accurate_fret` |
 | Menu path | Spectroscopy → FRET → **Accurate FRET** |
-| Categories | FRET, Single-Molecule, Spectroscopy |
+| Categories | Spectroscopy, FRET, Single-Molecule |
 | Version | 1.0.0 |
 | Surfaces | cli, gui, services |
 | State namespace | `accurate_fret` |
@@ -81,8 +81,13 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Bootstrap resamples | `n_bootstrap` | int |  | 0 … 2000 | Resamples used to estimate the uncertainty of each factor (0 skips it). The uncertainties matter twice: they weigh the data against the optics prior, and they propagate into the error bar of the accurate efficiency. |
 | Plotted bursts | `max_points` | int |  | 200 … 200000 | Upper limit of bursts drawn in the scatter plots (the calibration always uses all of them). |
 
+## Theory and workflow
+
+- **Theory** — [Accurate FRET: correction factors, FRET lines, and where they come from](/concepts/accurate_fret.md)
+- **Workflow** — [RCM detection calibration from dye solutions](/guides/07_rcm_calibration.md), [RCM from FRET-labelled samples (PIE/ALEX)](/guides/25_rcm_from_fret_samples.md), [Accurate FRET: automatic correction factors](/guides/41_accurate_fret.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/burst/accurate_fret/`
-- Manifest: `chisurf/plugins/burst/accurate_fret/manifest.json`
-- UI spec: `chisurf/plugins/burst/accurate_fret/gui/accurate_fret.view.json`
+- Manifest: {src}`chisurf/plugins/burst/accurate_fret/manifest.json`
+- UI spec: {src}`chisurf/plugins/burst/accurate_fret/gui/accurate_fret.view.json`

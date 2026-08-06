@@ -9,7 +9,7 @@ Hub that groups ChiSurf's FRET-line, FRET/homoFRET, FCS and phasor-plot calculat
 | --- | --- |
 | Plugin id | `calculators` |
 | Menu path | Main → Tools → **Calculators** |
-| Categories | Tools |
+| Categories | Main, Tools |
 | Version | 1.0.0 |
 | Surfaces | gui |
 | State namespace | `calculators` |
@@ -21,4 +21,4 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 ## Source
 
 - Plugin package: `chisurf/plugins/calculator/hub/`
-- Manifest: `chisurf/plugins/calculator/hub/manifest.json`
+- Manifest: {src}`chisurf/plugins/calculator/hub/manifest.json`

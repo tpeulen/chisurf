@@ -9,7 +9,7 @@ A small number-guessing game contained in the Games hub.
 | --- | --- |
 | Plugin id | `number_quest` |
 | Menu path | Tools → Miscellaneous → Games → **Number Quest** |
-| Categories | Tools, Miscellaneous |
+| Categories | Tools, Miscellaneous, Games |
 | Version | 1.0.0 |
 | Surfaces | gui |
 
@@ -20,4 +20,4 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 ## Source
 
 - Plugin package: `chisurf/plugins/misc/games/number_quest/`
-- Manifest: `chisurf/plugins/misc/games/number_quest/manifest.json`
+- Manifest: {src}`chisurf/plugins/misc/games/number_quest/manifest.json`

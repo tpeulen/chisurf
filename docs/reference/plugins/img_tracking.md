@@ -8,8 +8,8 @@ Single-particle tracking: detect diffraction-limited particles in every frame, l
 | Field | Value |
 | --- | --- |
 | Plugin id | `img_tracking` |
-| Menu path | Microscopy → Imaging → **Particle Tracking** |
-| Categories | Microscopy, Imaging |
+| Menu path | Imaging → **Particle Tracking** |
+| Categories | Imaging, Tracking |
 | Version | 1.0.0 |
 | Surfaces | cli, gui, services |
 | State namespace | `img_tracking` |
@@ -73,8 +73,13 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | `img_tracking.jobs.track` | yes | Detect, link and fit transport for an image stack. |
 | `img_tracking.jobs.simulate` | yes | Track a simulated movie of Brownian particles with a known D. |
 
+## Theory and workflow
+
+- **Theory** — [Single-particle tracking](/concepts/particle_tracking.md)
+- **Workflow** — [Particle tracking: from spots to a diffusion coefficient](/guides/50_particle_tracking.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/microscopy/img_tracking/`
-- Manifest: `chisurf/plugins/microscopy/img_tracking/manifest.json`
-- UI spec: `chisurf/plugins/microscopy/img_tracking/gui/tracking.view.json`
+- Manifest: {src}`chisurf/plugins/microscopy/img_tracking/manifest.json`
+- UI spec: {src}`chisurf/plugins/microscopy/img_tracking/gui/tracking.view.json`

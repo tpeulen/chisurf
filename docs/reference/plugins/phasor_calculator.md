@@ -9,7 +9,7 @@ Interactive phasor plot: universal semicircle with reference-lifetime grid/ticks
 | --- | --- |
 | Plugin id | `phasor_calculator` |
 | Menu path | Main → Tools → **Phasor-Calculator** |
-| Categories | Tools, Phasor-FLIM |
+| Categories | Main, Tools, Phasor-FLIM |
 | Version | 1.0.0 |
 | Surfaces | gui |
 | State namespace | `phasor_calculator` |
@@ -40,8 +40,12 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Cursor s | `cursor_s` | float |  | -0.1 … 0.7 (step 0.01) | Cursor centre s. |
 | Cursor radius | `cursor_radius` | float |  | 0.001 … 0.5 (step 0.01) | Radius of the circular gating cursor. |
 
+## Theory and workflow
+
+- **Theory** — [FLIM and the phasor approach](/concepts/imaging_flim_phasor.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/calculator/phasor_calculator/`
-- Manifest: `chisurf/plugins/calculator/phasor_calculator/manifest.json`
-- UI spec: `chisurf/plugins/calculator/phasor_calculator/gui/phasor.view.json`
+- Manifest: {src}`chisurf/plugins/calculator/phasor_calculator/manifest.json`
+- UI spec: {src}`chisurf/plugins/calculator/phasor_calculator/gui/phasor.view.json`

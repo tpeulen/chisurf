@@ -9,7 +9,7 @@ Single-molecule fluorescence acquisition: stream photons from real TCSPC hardwar
 | --- | --- |
 | Plugin id | `acq` |
 | Menu path | Main → Tools → **Acquisition** |
-| Categories | Tools, Acquisition |
+| Categories | Main, Tools, Acquisition |
 | Version | 1.0.0 |
 | Surfaces | cli, gui, services |
 | State namespace | `acq` |
@@ -27,4 +27,4 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 ## Source
 
 - Plugin package: `chisurf/plugins/core/acq/`
-- Manifest: `chisurf/plugins/core/acq/manifest.json`
+- Manifest: {src}`chisurf/plugins/core/acq/manifest.json`

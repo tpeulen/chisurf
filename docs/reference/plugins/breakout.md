@@ -9,7 +9,7 @@ Classic Breakout game with progressive difficulty, multiple brick types, mouse/k
 | --- | --- |
 | Plugin id | `breakout` |
 | Menu path | Tools → Miscellaneous → Games → **Breakout** |
-| Categories | Tools, Miscellaneous |
+| Categories | Tools, Miscellaneous, Games |
 | Version | 2.0.0 |
 | Surfaces | cli, gui, services |
 | State namespace | `breakout_game` |
@@ -21,4 +21,4 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 ## Source
 
 - Plugin package: `chisurf/plugins/misc/games/breakout/`
-- Manifest: `chisurf/plugins/misc/games/breakout/manifest.json`
+- Manifest: {src}`chisurf/plugins/misc/games/breakout/manifest.json`

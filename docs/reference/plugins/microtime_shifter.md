@@ -9,7 +9,7 @@ Apply global and per-channel micro-time shifts to TTTR files.
 | --- | --- |
 | Plugin id | `microtime_shifter` |
 | Menu path | Tools → TTTR → **Microtime Shifter** |
-| Categories | TTTR, Editor |
+| Categories | Tools, TTTR, Editor |
 | Version | 2.0.0 |
 | Surfaces | cli, gui, services |
 | State namespace | `microtime_shifter` |
@@ -27,7 +27,11 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 | `microtime_shift.identify` | no | Look up a file in the MMFDB object store. |
 | `microtime_shift.contract.describe` | no | Return the Micro-time Shifter workflow contract. |
 
+## Theory and workflow
+
+- **Workflow** — [Handling TTTR files (and Photon-HDF5)](/guides/12_handling_tttr_files.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/tttr/tttr_microtime_shifter/`
-- Manifest: `chisurf/plugins/tttr/tttr_microtime_shifter/manifest.json`
+- Manifest: {src}`chisurf/plugins/tttr/tttr_microtime_shifter/manifest.json`

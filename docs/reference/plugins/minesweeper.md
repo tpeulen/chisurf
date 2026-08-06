@@ -9,7 +9,7 @@ A Minesweeper game with selectable playfield size and mine count, contained in t
 | --- | --- |
 | Plugin id | `minesweeper` |
 | Menu path | Tools → Miscellaneous → Games → **Minesweeper** |
-| Categories | Tools, Miscellaneous |
+| Categories | Tools, Miscellaneous, Games |
 | Version | 1.0.0 |
 | Surfaces | gui |
 
@@ -20,4 +20,4 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 ## Source
 
 - Plugin package: `chisurf/plugins/misc/games/minesweeper/`
-- Manifest: `chisurf/plugins/misc/games/minesweeper/manifest.json`
+- Manifest: {src}`chisurf/plugins/misc/games/minesweeper/manifest.json`
