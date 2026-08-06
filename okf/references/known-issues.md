@@ -17,15 +17,31 @@ over the whole file. Pinned now by
 is how the two come to disagree about an overflow run or a gap flag on
 somebody's data months later, with no error anywhere.
 
-**The fix is an in-memory record decoder in the library's Python surface.** When
-that lands, delete the copy and this test with it.
+**The fix is an in-memory record decoder in the library's Python surface**, and
+it is now specified there as the library's PRD-021 — "decode this buffer" with
+the decoder state carried across chunks, ranged and streaming reads for all
+fourteen container types, and the whole `.set` sidecar in every binding. **Two
+deletions here are that PRD's definition of done**, and neither can happen
+before it lands or acquisition stops working:
 
-**Not the same question, and not a duplicate:** `bh_spc/reader.py` parses the
-`#PR`/`#SP` hardware-parameter blocks of a `.set` file for the card-setup
-dialog. The library also reads `.set` sidecars (`read_bh_set_file`), but only
-the imaging tags a photon reader needs — `SP_IMG_X`, `SP_IMG_Y`, `SP_PIX_CLK`,
-`SP_TAC_R`, `SP_ADC_RE` — and that function is **not exposed in its Python
-surface** at all. Same file, different halves, different purpose.
+* `_process_bh_spc_records_numba` and its pinning test;
+* `bh_spc/reader.py`, once the sidecar parser is in the library.
+
+**The sidecar is the second half, and it is the same story.** `bh_spc/reader.py`
+parses the `#PR`/`#SP` hardware-parameter blocks of a `.set` file for the
+card-setup dialog. The library reads `.set` sidecars too (`read_bh_set_file`),
+but only the five imaging tags a photon reader needs — `SP_IMG_X`, `SP_IMG_Y`,
+`SP_PIX_CLK`, `SP_TAC_R`, `SP_ADC_RE` — and that function is **not exposed in
+any binding**. Measured on two real sidecars, that is **5 of 115** parameters
+and **5 of 121**: the same file is parsed twice by two implementations, each
+ignoring what the other wants. Neither is wrong; the split is.
+
+**The copy is not a performance workaround, which is the thing most likely to be
+assumed.** Reading and decoding 299 999 records from a file through the library
+costs 1.50 ms (200 M records/s); the numba copy decodes the same records,
+already in memory, in 0.66 ms (457 M records/s). Different work — one includes
+the file read — and both far faster than anything downstream needs. The copy
+exists because there is no entry point.
 
 ## photon container: adding an instrument file reads it whole into memory
 
