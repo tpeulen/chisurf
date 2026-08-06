@@ -111,10 +111,13 @@ def test_ndx_hdf5_and_csv_roundtrip(tmp_path):
     path, _ = h2mm.viterbi(fit, data)
     tables = X.build_tables(data, meta, path, np.array([0.15, 0.80]), base_time_s=1e-6)
 
-    pytest.importorskip("tables")  # pandas HDF5 backend
     h5 = X.write_hdf5(tables.photons, tmp_path / "h2mm_photons.h5")
-    # ndX opens MFD-HDF5 by reading key "results" first — must round-trip there.
-    back = pd.read_hdf(h5, key=X.NDX_HDF5_KEY)
+    # ndX opens MFD-HDF5 by taking the file root straight into a store — the
+    # columns must be there, and readable without the optional HDF5 package the
+    # importorskip here used to require.
+    from chisurf.core.datastore import read_table_frame
+
+    back = read_table_frame(h5)
     assert list(back.columns) == list(tables.photons.columns)
     assert len(back) == data.n_photons
 

@@ -577,8 +577,10 @@ def read_table_frame(path: Any, *, key: str = "results") -> Any:
     """
     import pandas as pd
 
-    store = read_table(path, group=key if str(key).startswith("/") else "/")
-    if store is None and key not in ("/", "results"):
+    # The root first, which is where a table is written and where the burst
+    # readers look; then the key as a group, for a file that puts one there.
+    store = read_table(path, group=str(key) if str(key).startswith("/") else "/")
+    if store is None and not str(key).startswith("/"):
         store = read_table(path, group=f"/{key}")
     if store is not None:
         return dataframe_from_store(store)

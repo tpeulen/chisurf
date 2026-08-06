@@ -308,13 +308,16 @@ sampling/2026-07-28_13-53-19/
 └── parameters.json   # what was sampled
 ```
 
-The chains are written as tab-separated text (`.er4`) or as a compressed HDF5
-table (`.h5`), chosen in the **Format** field of the sampling panel or with
-`chain_format` (`optimization.sampling.chain_format` for the default). Text reads
-anywhere, which is why it is the default; HDF5 is about **four times smaller**,
-which is what matters once a run is long enough to be worth keeping — measured
-5.9 MB against 1.2 MB for 3 × 2000 draws of a two-parameter fit. Both open in
-nDXplorer, and both hold the same draws as float64.
+The chains are written as tab-separated text (`.er4`) or as an HDF5 table
+(`.h5`, one dataset per column), chosen in the **Format** field of the sampling
+panel or with `chain_format` (`optimization.sampling.chain_format` for the
+default). Text reads anywhere, which is why it is the default; HDF5 is about
+**three times smaller**, which is what matters once a run is long enough to be
+worth keeping — measured 0.60 MB against 0.20 MB for 3 × 2000 draws of a
+two-parameter fit. The HDF5 file is uncompressed: gzip costs roughly thirty
+times the write to save eight percent of the size, on files written once and
+read repeatedly. Both open in nDXplorer, and both hold the same draws as
+float64.
 
 ```python
 report = chisurf.core.fitting.fit.sample_fit(

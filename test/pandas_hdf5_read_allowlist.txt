@@ -1,0 +1,19 @@
+# Files that still read the frame-written HDF5 layout.
+#
+# This is a SHRINKING list, not somewhere to add yourself. Every entry is a
+# fallback for files an earlier release wrote, kept so those keep opening; the
+# columnar layout is what gets written now and is tried first everywhere. An
+# entry goes away when its files no longer need converting.
+#
+# Enforced by test/test_pandas_hdf5_seam.py, which also fails on a stale entry.
+# There is no companion list for WRITERS: to_hdf and HDFStore are banned
+# outright.
+
+# The seam itself. This IS the legacy path -- read_table_frame tries the
+# columnar layout first and this second, and turns a missing optional package
+# into LegacyTableError rather than into an empty table.
+chisurf/core/datastore.py
+
+# The imaging format, both halves: the per-pixel table and the back-reference to
+# the photon file it was computed from. Both try the columnar layout first.
+chisurf/core/fluorescence/imaging/pixel_maps.py

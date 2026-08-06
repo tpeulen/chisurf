@@ -11,8 +11,9 @@ aggregated, a **per-burst table**. Both are written as plain **numeric** tables
   a categorical colour / Z axis;
 * everything is numeric, so nothing is dropped on import.
 
-HDF5 is written with pandas ``HDFStore`` under key ``"results"`` (the key ndX's
-reader looks for first); CSV is a comma-delimited header + numeric rows.
+HDF5 is written as one dataset per column at the file root, which is what ndX's
+reader takes straight into a store; CSV is a comma-delimited header + numeric
+rows.
 """
 
 from __future__ import annotations
@@ -273,10 +274,33 @@ def build_dwell_table(
 
 
 def write_hdf5(df, path: str | pathlib.Path, key: str = NDX_HDF5_KEY) -> str:
-    """Write a table to an ndX-openable HDF5 file (``key='results'``)."""
+    """Write a table to an ndX-openable HDF5 file, one dataset per column.
+
+    The columns go at the file root, which is the first thing ndX's reader looks
+    at -- it takes such a file straight into a store, with no DataFrame in
+    between and no second copy of the table at the moment it is largest. It also
+    needs no optional HDF5 package, where the frame writer this replaces did.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        The table to write.
+    path : str or pathlib.Path
+        Target file.
+    key : str
+        Kept for callers that pass it. The columns are written at the root, so
+        a non-default key is a group beside them rather than the table.
+
+    Returns
+    -------
+    str
+        The path written.
+    """
+    from chisurf.core.datastore import write_table
+
     path = pathlib.Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    df.to_hdf(str(path), key=key, format="table", mode="w")
+    write_table(path, df, group="/" if key == NDX_HDF5_KEY else f"/{key}")
     return str(path)
 
 

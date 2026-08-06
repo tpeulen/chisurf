@@ -81,13 +81,20 @@ def read_photon_table(analysis_dir):
     """
     import pandas as pd
 
+    from chisurf.core.datastore import LegacyTableError, read_table_frame
+
     root = h2mm_output_dir(analysis_dir)
     h5, csv = root / "h2mm_photons.h5", root / "h2mm_photons.csv"
     if h5.is_file():
         try:
-            return pd.read_hdf(h5, key="results")
-        except Exception:  # pragma: no cover - pytables optional
-            pass
+            return read_table_frame(h5)
+        except LegacyTableError:
+            # An older run's file, in an environment that cannot open that
+            # layout. Falling through to the CSV is right when there is one --
+            # it holds the same table -- and the error below says so when there
+            # is not, rather than reporting the run as never having happened.
+            if not csv.is_file():
+                raise
     if csv.is_file():
         return pd.read_csv(csv)
     raise FileNotFoundError(
