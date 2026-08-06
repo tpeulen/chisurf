@@ -1,3 +1,32 @@
+## acquisition: the SPC-130 record decoder exists twice, because the library exposes its own only behind a file reader
+
+**2026-08-06.** `_process_bh_spc_records_numba` in
+`chisurf/plugins/core/acq/gui/tool.py` is a hand-maintained numba copy of the
+simulation library's `RecordProcessor<BH_RECORD_TYPE_SPC130>`, and its own
+docstring says so. Asked "why is this here at all, it should be the library":
+because the acquisition path decodes records arriving **from the card, in
+memory**, and the library's Python surface offers no "decode this buffer" entry
+point — only `TTTR(filename)`, plus `append_events`, which takes events that are
+already decoded. The duplication is forced by that gap, not chosen.
+
+**It has not drifted.** Measured against `m000.spc` (SPC-130, 174 438 events):
+same event count, and macro times, micro times and routing channels identical
+over the whole file. Pinned now by
+`chisurf/plugins/core/acq/test/test_spc_record_decoder.py`, which reads a real
+`.spc` both ways — a copy of a decoder with nothing holding it to the original
+is how the two come to disagree about an overflow run or a gap flag on
+somebody's data months later, with no error anywhere.
+
+**The fix is an in-memory record decoder in the library's Python surface.** When
+that lands, delete the copy and this test with it.
+
+**Not the same question, and not a duplicate:** `bh_spc/reader.py` parses the
+`#PR`/`#SP` hardware-parameter blocks of a `.set` file for the card-setup
+dialog. The library also reads `.set` sidecars (`read_bh_set_file`), but only
+the imaging tags a photon reader needs — `SP_IMG_X`, `SP_IMG_Y`, `SP_PIX_CLK`,
+`SP_TAC_R`, `SP_ADC_RE` — and that function is **not exposed in its Python
+surface** at all. Same file, different halves, different purpose.
+
 ## photon container: adding an instrument file reads it whole into memory
 
 **2026-08-06.** `chisurf/core/fio/pto.py::Measurement.create` embeds the
