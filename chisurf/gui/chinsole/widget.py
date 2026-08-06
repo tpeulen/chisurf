@@ -8,6 +8,8 @@ is a :class:`ConsoleRole`, not a class hierarchy.
 
 from __future__ import annotations
 
+import os
+
 import contextlib
 import dataclasses
 import enum
@@ -516,15 +518,77 @@ class Chinsole(QtWidgets.QWidget):
                 break
 
         if self.dispatcher.handles(line):
-            # A known command that is *also* valid Python goes to Python:
-            # chimol has a `set` command and `set()` is a builtin.
-            return not compiles
+            if not compiles:
+                return True
+            # It is a known command *and* valid Python. Prefer Python only when
+            # the name it would evaluate actually exists.
+            #
+            # Preferring Python unconditionally -- which is what stood here --
+            # made every **no-argument** command unreachable: `ray`,
+            # `split_chains`, `orient`, `zoom`, `undo` are all valid Python
+            # expressions, so they were evaluated as names, and the console
+            # answered `NameError: name 'ray' is not defined`. Reported exactly
+            # that way. A command with arguments was fine, because `fetch 1f5n`
+            # is a syntax error, which is why the failure looked arbitrary.
+            #
+            # The case the old rule was protecting is real and is kept: `set` is
+            # a builtin, so `set` alone still evaluates to the type.
+            return not self._name_exists_in_python(line)
 
-        # Neither valid Python nor a name the dispatcher claims. At a command
-        # prompt that is far more likely to be a mistyped command than a
-        # mistyped expression, so let the command layer say "unknown command"
-        # rather than reporting a Python SyntaxError for `fetchh 1crn`.
-        return not compiles
+        # Not a name the dispatcher claims. At a command prompt a bare word
+        # that Python also has nothing for -- `splitt_chains` -- is far more
+        # likely a mistyped command than a mistyped expression, so it goes to
+        # the command layer to be told so by name. `NameError: name
+        # 'splitt_chains' is not defined` is a true statement about the wrong
+        # language.
+        if not compiles:
+            return True
+        return not self._name_exists_in_python(line)
+
+    def _name_exists_in_python(self, line: str) -> bool:
+        """Whether the leading name of *line* is bound in the console.
+
+        Parameters
+        ----------
+        line : str
+            A line that compiles as Python.
+
+        Returns
+        -------
+        bool
+            True when Python has something of that name -- a variable, an
+            import, a builtin -- so evaluating it is meaningful. False when it
+            would only ever raise ``NameError``, in which case the command layer
+            is what the user meant.
+
+        Notes
+        -----
+        Only the **root** name is checked, so `zoom` and `zoom.__doc__` answer
+        alike, and a user who binds `ray = 5` gets their variable back -- which
+        is surprising only if you have both, and is the same precedence a shell
+        gives a function over a program of the same name.
+        """
+        import ast
+        import builtins
+
+        try:
+            tree = ast.parse(line.strip(), mode="eval")
+        except SyntaxError:
+            return False
+        node = tree.body
+        while isinstance(node, (ast.Attribute, ast.Subscript)):
+            node = node.value
+        if isinstance(node, ast.Call):
+            node = node.func
+            while isinstance(node, (ast.Attribute, ast.Subscript)):
+                node = node.value
+        if not isinstance(node, ast.Name):
+            # Not a bare name at all -- an operation, a literal, a comparison.
+            # That is Python by construction.
+            return True
+        name = node.id
+        namespace = getattr(self.shell, "user_ns", {}) or {}
+        return name in namespace or hasattr(builtins, name)
 
     def _run_dispatcher(self, line: str) -> None:
         """Run *line* through the command dispatcher.
@@ -573,7 +637,9 @@ class Chinsole(QtWidgets.QWidget):
         if self._settings["completion"] == "none":
             return
         line, cursor = self._current_line_and_cursor()
-        result = self.shell.complete(line, cursor)
+        result = self._dispatcher_completions(line, cursor) or self.shell.complete(
+            line, cursor
+        )
         if not result:
             return
 
@@ -590,6 +656,56 @@ class Chinsole(QtWidgets.QWidget):
         self._completion_result = result
         self.completion_popup.show_for(
             result, self._cursor_global_position(), self.view.font(), self.theme
+        )
+
+    def _dispatcher_completions(self, line: str, cursor: int):
+        """Completions from the command dispatcher, or ``None``.
+
+        Asked **before** Python, because on a command prompt what is being typed
+        is usually a command. Nothing consulted the dispatcher at all before
+        this: Tab went straight to the Python completer, which knows nothing of
+        `split_chains` or `orient` and returned no matches -- so completion
+        appeared simply not to work, while the dispatcher had the answer all
+        along.
+
+        Returning ``None`` rather than an empty result is what lets Python have
+        the line when the dispatcher has nothing to say -- typing `np.arr<Tab>`
+        must still complete.
+
+        Parameters
+        ----------
+        line : str
+        cursor : int
+
+        Returns
+        -------
+        CompletionResult or None
+        """
+        dispatcher = self.dispatcher
+        if dispatcher is None:
+            return None
+        try:
+            matches = list(dispatcher.completions(line, cursor))
+        except Exception:
+            return None
+        if not matches:
+            return None
+
+        from chisurf.core.console.completer import CompletionResult
+
+        # The span the match replaces: back to the last separator, so completing
+        # the *second* word of `color re` replaces `re` and not the whole line.
+        head = line[:cursor]
+        start = cursor
+        while start > 0 and not head[start - 1].isspace() and head[start - 1] != ",":
+            start -= 1
+        prefix = os.path.commonprefix(matches) if len(matches) > 1 else matches[0]
+        return CompletionResult(
+            matches=sorted(matches),
+            start=start,
+            end=cursor,
+            common_prefix=prefix,
+            kind="command",
         )
 
     def _insert_completion(self, match: str) -> None:

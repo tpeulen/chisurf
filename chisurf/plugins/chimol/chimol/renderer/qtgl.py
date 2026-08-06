@@ -2489,7 +2489,18 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
 
     def wheelEvent(self, event: QtGui.QWheelEvent) -> None:
         mods = event.modifiers()
-        delta_steps = int(event.angleDelta().y() / 120.0)
+        # Whichever axis carries it. **macOS turns shift+scroll into a
+        # horizontal scroll** before the application ever sees it, so a shifted
+        # wheel arrives with `angleDelta().y() == 0` and the whole delta in
+        # `x()`. Reading only `y` is why shift+wheel did nothing on a Mac while
+        # a synthetic event in a test -- which sets `y` -- worked perfectly.
+        angle = event.angleDelta()
+        raw = angle.y() if angle.y() else angle.x()
+        delta_steps = int(raw / 120.0)
+        if raw and delta_steps == 0:
+            # A trackpad sends many small deltas rather than 120-unit notches;
+            # truncating them to zero makes the gesture do nothing at all.
+            delta_steps = 1 if raw > 0 else -1
 
         # Over the sequence, the wheel scrolls it. Zooming the molecule because
         # the cursor happened to be on the strip is never what was meant.

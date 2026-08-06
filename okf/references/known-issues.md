@@ -9,15 +9,21 @@ are there and are recognisably the right idea, but
 * neighbouring rings **overlap and disagree in orientation**, where a duplex
   should show a regular ladder of parallel plates.
 
-Reproduced (`load 1rtd; hide everything; show cartoon`) but **not diagnosed**.
-The likely places, in order: the ring is built from the base atoms, so a residue
-whose atom set is incomplete or misnamed would give a degenerate polygon; the
-ring's *normal* comes from the base plane and the ribbon's from the backbone
-frame, and the two disagreeing is what would tilt plates against each other; and
-the spokes look like the connector drawn to a wrong atom. The nucleic path is
-`geometry/cartoon.py` plus `test_nucleic_cartoon_render.py`, which passes -- so
-whatever is wrong is not asserted there, and the first job is a test that fails
-on the picture.
+**Diagnosed by the reporter, which narrows it a long way: the nucleic backbone
+ribbon is drawn OFFSET from the atoms it should follow.** The "spokes" are then
+not stray geometry at all -- they are the connectors from each base to its
+sugar, drawn correctly to the real backbone position while the ribbon runs
+somewhere else, so they appear to stick out of it. That also explains the rings
+looking detached, and it means there is probably **one** fault rather than
+three.
+
+Where to look, in that light: which atom the nucleic guide path is splined
+through. A protein cartoon follows CA; a nucleic one should follow P (or C4'),
+and a guide built from the wrong atom -- or from the protein rule applied to a
+residue that has no CA -- lands beside the chain by exactly the offset seen.
+`geometry/cartoon.py`, and `test_nucleic_cartoon_render.py` passes, so whatever
+is wrong is not asserted there: the first job is a test that fails on the
+picture, comparing the guide points against the P/C4' positions.
 
 Not attempted in the session that found it: the wheel fix beside it was
 finished and verified, and starting a geometry investigation on the same commit
