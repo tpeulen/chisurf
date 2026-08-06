@@ -52,6 +52,19 @@ The findings below are what has been *closed*. This section is the open front,
 kept at the top so a new session does not have to reconstruct it. Ordered by
 what a user actually hits.
 
+**0a. Anything a user types into needs a test that types into it.** Not a task
+— a standing correction, and it belongs first because it is what let two total
+failures sit behind a green suite. Every test of the command layer drove
+`_run_object_menu_command`, the menu path; the **console** was untested, and
+every no-argument command in it was unreachable (see the 2026-08-06 log entry).
+Likewise the shift+wheel test built its own `QWheelEvent` with a `y` delta and
+passed, on a platform that only ever delivers `x`. Both were reported by the
+user against a build whose suite was green. `test/console/test_command_dispatch_rule.py`
+is the pattern: construct the real window, `setText` into the real input line,
+submit, assert on the resulting objects. Where a platform transforms an event —
+macOS shift+scroll, trackpad sub-notch deltas — the test has to carry the
+platform's shape, not the API's.
+
 **0. A trajectory that is a simulation — landed, with one thing left.** See
 *[A frame carries more than coordinates](#a-frame-carries-more-than-coordinates)*
 below. What is **open**: the depiction is spheres only, so the buried strata are

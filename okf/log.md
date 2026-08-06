@@ -2,6 +2,60 @@
 
 ## 2026-08-06
 
+* **Every no-argument command was unreachable from the console** ([chimol](plugins/chimol.md), [chinsole](subsystems/chinsole.md)).
+
+  Reported as "`split_chains` not working, all pymol cmds must work" with a
+  transcript in which `fetch 1f5n` succeeded and `ray` and `split_chains` both
+  answered `NameError: name 'ray' is not defined`. The console takes its own
+  commands *and* Python, and the rule was "a known command that is also valid
+  Python goes to Python", to stop chimol's `set` shadowing the builtin. A bare
+  word is valid Python, so every command that takes no arguments — `ray`,
+  `split_chains`, `orient`, `zoom`, `undo`, `reinit` — was evaluated as a name
+  and could only raise. A command *with* arguments worked, because `fetch 1f5n`
+  is a syntax error and fell through to the command layer; that is why the
+  failure looked arbitrary rather than total, and why it survived so long.
+
+  Python now wins only when the name it would evaluate **actually exists** in
+  the namespace or the builtins. `set` alone still gives the type; `ray` is
+  nothing in Python, so it goes where it was meant to. A word neither side
+  claims — `splitt_chains` — is answered as an unknown command rather than as a
+  `NameError`, which is a true statement about the wrong language.
+
+  **Autocompletion**, reported in the same breath, had the same root cause from
+  the other side: Tab called the Python completer only, which knows no chimol
+  command, returned nothing, and made completion look broken — while the
+  dispatcher that has the answer was never asked. It is asked first now and
+  returns `None` when it has nothing, so `np.ar<Tab>` still completes in Python.
+
+  **The finding worth keeping is not either bug.** Asked "are you using
+  chinsole?", the answer was no: every test of the command layer, and every
+  check I had run, drove `_run_object_menu_command` — the *menu* path. The
+  console could be completely broken with the whole suite green, and it was. New
+  `test/console/test_command_dispatch_rule.py` types into the widget instead: 18
+  tests, and the 100 existing console tests still pass. Any future surface a
+  user types into needs a test that types into it, not one that calls what it
+  calls.
+
+* **shift+wheel did nothing on macOS, and the test that covered it passed**
+  ([chimol](plugins/chimol.md)).
+
+  The slab-move fix landed the day before was reported still dead. The handler
+  read `angleDelta().y()`, which is correct everywhere except the platform it
+  was being used on: **macOS converts shift+scroll into a horizontal scroll**
+  before the application sees the event, so `y()` is zero and `x()` carries the
+  delta. The synthetic event in the test set `y` and passed — a test written
+  from the API rather than from the platform. It now reads whichever axis
+  carries the delta, and a sub-notch trackpad delta no longer truncates to zero
+  steps.
+
+* **Nucleic cartoon artifact — diagnosed by the reporter, not fixed**
+  ([known issues](references/known-issues.md)). "The backbone of the nucleic
+  acid is offset, thus it looks like there are sticks sticking out of the
+  backbone." That reframes it: the "spokes" are the base-to-sugar connectors,
+  drawn correctly to the real atoms while the ribbon runs beside them — so it is
+  probably **one** fault (the guide path splined through the wrong atom for a
+  residue with no CA), not the three symptoms it presents as.
+
 * **The physics every concept page assumed was written down nowhere** ([documentation browser](subsystems/documentation-browser.md)).
 
   `docs/concepts/index.rst` had a rubric *called* "Fundamentals" holding `fret`, `tcspc_lifetime`, `anisotropy`, `fcs_correlation`, `fcs_saturation` and `parameter_uncertainty` — method pages, not fundamentals. The consequence was not cosmetic: the photophysics those methods rest on had no home, so each concept restated the part it needed and none of them stated where `r_0 = 0.4` comes from, why a tabulated `R_0` is not a constant of the dye pair, or why intensity and lifetime falling *together* means something different from intensity falling alone.
@@ -250,6 +304,47 @@
   The Lifetime flip landed for real, and the **before/after screenshot rule** is why it is trustworthy. Two of the three parity gaps PRD-38 listed were already closed (rotation add/remove exists; FWHM is drawn by the IRF widget). The comparison then found a fourth nobody had listed — the `#PhB`/`#PhF` photon counts, computed properties rather than parameters, so the parameter table correctly skipped them and they had silently disappeared. It also surfaced a latent bug: `unload_background_curve` read `model.nuisance` where the group is `generic`, so the action raised into a bare `except: pass` and had **never worked**. One gap remains: the anisotropy r(t) diagnostics panel, which needs a new section.
 
   *The rule that makes this repeatable:* capture the legacy widget **before** touching it — afterwards the baseline is unrecoverable — and compare **control inventory, not pixels**, because a port deliberately changes layout and any SSIM gate is either always red or worthless. Two traps, both hit here: a parameter name that moved into a table cell reads as "lost" to `findChildren(QLabel)`, and renames (`r[MHz]`→`rep`, `Linearize`→`DNL`) read as losses too. `test/gui/migration_parity.py` handles both.
+
+  **A round of layout work on the generated editors**, each item of which turned out
+  to be a framework gap rather than a per-model tweak. The add/remove buttons were
+  stretching to half the panel width each in saturated green and red above *every*
+  component table — now sized to their text with a trailing spacer and muted. A set
+  of parameters belonging to the *model* rather than a nested group could not be a
+  table at all, so chain and maximum-entropy models were columns of standalone rows;
+  `parameter_group_table` gained `parameters_source` and `row_width` with row/slot
+  labels, which also lets a group that is really a **matrix** show itself as one —
+  PDDEM's ten parameters are five named quantities × fluorophore A/B and now read as
+  a 5×2 table. *Row labels live in a table cell, so unlike column headers they are
+  not rich text: `&alpha;` rendered literally until it became `α`.*
+
+  **Tables now shed columns by priority as they narrow, and the `bounds` toggle is
+  gone** — the width check made it redundant, so bounds are always wanted and only
+  space hides them (the `bounds_toggle` spec field went with it, out of 11 specs).
+  Bounds go first, then the error, then the fixed flag — all three reachable in the
+  parameter popup — and name/value are never dropped. The third tier exists because
+  two were not enough: a table packing four parameters per row still overflowed a
+  dock once bounds and errors were gone, which is the multi-column case that looked
+  fixed and was not.
+
+  *The measurement is the interesting part.* Summing column size hints was wrong in
+  both directions — a **stretch** column is given more than its hint, so wide tables
+  looked overfull and dropped everything; every section is floored at a minimum and
+  the paired table's value columns switch between stretching and hugging, so narrow
+  tables measured as fitting and then scrolled anyway. It now **applies a candidate
+  set and asks the header how wide it came out**. In the paired table the column
+  choice and the value-column policy depend on each other, so it settles, chooses,
+  settles again. Separately: a table inside a *collapsed* panel is never resized
+  while hidden, so expanding one used to reveal every column and a sideways
+  scrollbar — decided on show as well as resize now.
+
+  Three of my own guards were worth less than they looked: one asserted the
+  multi-slot case against a model with no table wider than two slots and so checked
+  nothing; one measured overflow by summing hints the widget deliberately ignores;
+  one demanded no scrolling where scrolling is the documented choice over eliding a
+  number. All rewritten to assert the visible outcome. A headless test of any of
+  this must `show()` the editor and use `setFixedWidth` — `resize()` alone is refused
+  below a layout's minimum, so the first harness I wrote narrowed nothing and proved
+  nothing.
 
   Also: `LifetimeModel.name` was `"Lifetime "` with a trailing space, which stopped being cosmetic the moment the primary entry is matched *by name* against an `==` comparison; name fixed and the match made whitespace-tolerant. `"Lifetime (new)"` had become a de-facto API string in 13 test files. 45 tests green; the 5 stray `.ui` files inside the Qt-free `core/models/**` are gone.
 
