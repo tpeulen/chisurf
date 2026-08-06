@@ -8442,6 +8442,27 @@ class MolView(QtWidgets.QWidget):
             color = np.asarray(mdata.get("color", [1.0, 1.0, 1.0, 1.0]), dtype=float)
             label = str(mdata.get("label", ""))
 
+            if kind == "contacts" and coords.shape[0] >= 2:
+                # A bump check: solid segments, one colour *per segment*, from
+                # green where the contact is comfortable to red where the two
+                # atoms are inside each other. Not dashed -- PyMOL's
+                # `sculpt_vdw_vis` draws a solid line (mode 2) or a cylinder
+                # (mode 1), and a dashed one would read as a measurement.
+                pairs = coords[: (coords.shape[0] // 2) * 2]
+                per_vertex = mdata.get("colors")
+                if per_vertex is None:
+                    colours = np.tile(color, (pairs.shape[0], 1))
+                else:
+                    colours = np.asarray(per_vertex, dtype=float)[: pairs.shape[0]]
+                line_geom = Geometry(
+                    kind="line", positions=pairs, colors=colours,
+                    meta={"width": float(mdata.get("width", 2.0))},
+                )
+                scene_objects.append(SceneObject(
+                    id=f"meas_line_{mid}", geometry=line_geom, render_mode="overlay"
+                ))
+                continue
+
             if kind in ("distance", "dashes") and coords.shape[0] >= 2:
                  # PyMOL draws a measurement dashed, and a polar-contact object
                  # holds many segments at once, so both go through the same

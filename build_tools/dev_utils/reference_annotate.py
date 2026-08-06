@@ -56,6 +56,10 @@ RANKS = {
 #: by what someone is actually working on.
 FACETS = ("ux", "gui", "feature", "render", "data", "perf")
 
+#: The last line of a header this tool wrote. Recognising it is what tells an
+#: upgrade where our block ends and the reference's own text begins.
+TRAILER = "Header added by ChiSurf; the code below is untouched."
+
 _MARKED = re.compile(r"CHISURF-(REVIEWED|SURVEYED):", re.IGNORECASE)
 _CPP_SYMBOL = re.compile(
     r"^(?:static\s+|inline\s+|extern\s+\"C\"\s+)*"
@@ -151,15 +155,59 @@ def header_for(path: pathlib.Path, entry: dict, date: str, record: str) -> str:
         body.append(f"CHISURF-SKIPPED: {' '.join(str(skipped).split())}")
     body += [
         f"CHISURF-RECORD: {record}",
-        "Header added by ChiSurf; the code below is untouched.",
+        TRAILER,
     ]
     if path.suffix.lower() == ".py":
         return "".join(f"# {line}\n" for line in body)
     return "/*\n" + "".join(f" * {line}\n" for line in body) + " */\n"
 
 
-def apply(root: pathlib.Path, notes: dict, date: str, record: str) -> tuple[int, int]:
-    """Insert a header per note. Returns ``(written, skipped)``."""
+def _upgrade_header(text: str, entry: dict, date: str, prefix: str) -> str | None:
+    """Add what reading a file yielded to the header the survey left on it.
+
+    **Insertions only.** The survey's own lines are kept exactly as they are and
+    the new ones -- `REVIEWED`, and every `TAKEN` and `SKIPPED` -- go in above
+    `RECORD`, so a `git diff` inside the checkout still shows insertions and
+    zero deletions. Rewriting the block would be easier and would break the one
+    invariant that keeps these markers trustworthy: the file has to go on saying
+    what the reference does.
+
+    Returns the new text, or ``None`` when there is no block of ours to add to.
+    """
+    lines = text.splitlines(keepends=True)
+    record_at = None
+    for index, line in enumerate(lines[:40]):
+        if "CHISURF-RECORD:" in line:
+            record_at = index
+            break
+    if record_at is None:
+        return None
+
+    existing = "".join(lines[:record_at])
+    additions: list[str] = []
+    if entry.get("reviewed") and "CHISURF-REVIEWED:" not in existing:
+        additions.append(f"{prefix}CHISURF-REVIEWED: {date}\n")
+    for taken in entry.get("taken", []):
+        line = f"{prefix}CHISURF-TAKEN: {' '.join(str(taken).split())}\n"
+        if line not in existing:
+            additions.append(line)
+    for skipped in entry.get("skipped", []):
+        line = f"{prefix}CHISURF-SKIPPED: {' '.join(str(skipped).split())}\n"
+        if line not in existing:
+            additions.append(line)
+    if not additions:
+        return None
+    return "".join(lines[:record_at] + additions + lines[record_at:])
+
+
+def apply(
+    root: pathlib.Path, notes: dict, date: str, record: str, upgrade: bool = False
+) -> tuple[int, int]:
+    """Insert a header per note. Returns ``(written, skipped)``.
+
+    With *upgrade*, a file that already carries one of this tool's headers has
+    it **replaced** rather than skipped -- the survey-then-read path.
+    """
     written = skipped = 0
     for relative, entry in notes.items():
         path = root / relative
@@ -169,7 +217,16 @@ def apply(root: pathlib.Path, notes: dict, date: str, record: str) -> tuple[int,
             continue
         text = path.read_text(encoding="utf-8", errors="replace")
         if _MARKED.search(text[:2000]):
-            skipped += 1
+            if not upgrade:
+                skipped += 1
+                continue
+            prefix = "# " if path.suffix.lower() == ".py" else " * "
+            grown = _upgrade_header(text, entry, date, prefix)
+            if grown is None:
+                skipped += 1
+                continue
+            path.write_text(grown, encoding="utf-8")
+            written += 1
             continue
         path.write_text(
             header_for(path, entry, date, record) + text, encoding="utf-8"
@@ -189,6 +246,11 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--date", default="", help="the survey date (YYYY-MM-DD)")
     parser.add_argument("--record", default=DEFAULT_RECORD, help="the OKF concept")
+    parser.add_argument(
+        "--upgrade",
+        action="store_true",
+        help="replace a header this tool wrote (survey -> review) instead of skipping",
+    )
     parser.add_argument(
         "--unmarked-only",
         action="store_true",
@@ -218,7 +280,9 @@ def main(argv: list[str] | None = None) -> int:
             print("--apply needs --date", file=sys.stderr)
             return 2
         notes = json.loads(pathlib.Path(args.apply).read_text(encoding="utf-8"))
-        written, skipped = apply(root, notes, args.date, args.record)
+        written, skipped = apply(
+            root, notes, args.date, args.record, upgrade=args.upgrade
+        )
         print(f"wrote {written}, skipped {skipped} (already marked or missing)")
         return 0
 

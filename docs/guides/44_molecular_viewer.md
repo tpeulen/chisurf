@@ -1,3 +1,10 @@
+---
+type: Guide
+title: The molecular viewer (ChiMOL)
+description: Loading structures into ChiMOL, ChiSurf's built-in molecular viewer, and using selections, representations and rendering to inspect and export them.
+tags: [guides, molecular, viewer]
+---
+
 # The molecular viewer (ChiMOL)
 
 :::{admonition} Theory
@@ -1084,6 +1091,68 @@ worth knowing: a **ligand** or modified residue has no template and falls back t
 free-valence counting, which makes its carbonyl oxygens read as donors too (as
 they do in PyMOL); and **proline does not donate**, where PyMOL invents an amide
 hydrogen for it that the residue does not have.
+:::
+
+### Hydrogen-bond networks
+
+A bundle of dashes says which atoms are bonded; it does not say which bonds
+belong *together*. `hbond_network` groups them — two bonds are in the same
+network when they share an atom — and draws each network in its own colour:
+
+```text
+hbond_network polymer, exclude, 2   # the protein's own networks, 2 bonds and up
+hbond_network all, bridge, 3        # ...with ordered water joining the halves
+hbond_network solvent, only         # the water wires alone
+```
+
+| Argument | Meaning |
+| --- | --- |
+| `selection` | where to look; contacts are found inside it, as `mode=2` does |
+| `waters` | `bridge` (water joins a network), `exclude` (protein only), `only` (water-to-water) |
+| `min_size` | drop networks smaller than this — every structure has dozens of lone surface contacts |
+| `name` | prefix for the objects; `hbnet_1` is the largest network |
+
+Each network becomes its own measurement object, so `disable hbnet_3` hides one
+and the console lists what each is: how many bonds and residues it spans, how
+much of it is water, and whether it crosses chains — which is what makes an
+interface network worth a second look.
+
+The contacts themselves are exactly the ones `distance ..., mode=2` finds, with
+the same settings. The grouping is what is added; PyMOL has no notion of a
+network, so this is not something a PyMOL script can be compared against.
+
+### Clashes
+
+`clashes` is PyMOL's **bump check** — the one its mutagenesis wizard runs on a
+rotamer — available on any selection:
+
+```text
+clashes resi 54            # this residue against everything
+clashes chain A, chain B   # only across the interface
+clashes sele               # whatever is picked
+```
+
+Every overlapping pair gets a line, green where the contact is comfortable and
+red where the two atoms are inside each other, and the console reports the
+**strain**: the summed overlap, which is the number the wizard ranks rotamers
+by. Two rules stop it from crying wolf, both PyMOL's:
+
+* a hydrogen bond is not a clash. The pair's cutoff drops by
+  `sculpt_hb_overlap` (1.0 Å) for the hydrogen and `sculpt_hb_overlap_base`
+  (0.35 Å) for the heavy atoms, without which every hydrogen bond in the
+  structure reports as an overlap;
+* bonded neighbours are excluded — 1-2 and 1-3 outright, and a 1-4 pair
+  contributes strain but is never drawn, because a torsion the geometry
+  already fixes is not something to put a red line across.
+
+Radii are PyMOL's own (`C` 1.70, `N` 1.55, `O` 1.52), not the force-field radii
+the structure reader stores — 0.3 Å per atom is the difference between fifteen
+real overlaps in a refined structure and eight hundred imagined ones.
+
+:::{tip}
+Give it a **selection**, as the wizard does. `clashes all` includes the
+backbone's own tight contacts — an `O` and the next residue's `C` really are
+inside their van der Waals sum — and they bury whatever you were looking for.
 :::
 
 ## Bonds

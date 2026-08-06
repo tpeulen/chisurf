@@ -201,6 +201,26 @@ ACTION_MENU: tuple[MenuEntry, ...] = (
                   "Chimol has no salt-bridge detector (`distance mode=10`)."),
         MenuEntry("pi interactions", None,
                   "Chimol has no pi-stacking detector (`distance mode=5-7`)."),
+        # Below PyMOL's own entries, never among them: the target's rule is
+        # that extensions are additive, so a PyMOL user finds their menu where
+        # they left it. PyMOL groups nothing -- it returns a bundle of dashes
+        # and leaves the networks to the eye.
+        SEP,
+        MenuEntry("hbond networks", "hbond_network {sele}, bridge, 2",
+                  "Groups the polar contacts into networks -- the connected "
+                  "components of the contact graph -- and draws each in its "
+                  "own colour. Water bridges two halves of a network."),
+        MenuEntry("hbond networks (no water)",
+                  "hbond_network {sele}, exclude, 2",
+                  "The same, with every water-mediated contact dropped: the "
+                  "protein's own network."),
+        MenuEntry("water wires", "hbond_network {sele}, only, 2",
+                  "Water-to-water chains only."),
+        SEP,
+        MenuEntry("clashes", "clashes {sele}",
+                  "PyMOL's bump check: every van der Waals overlap involving "
+                  "this selection, green where the contact is comfortable and "
+                  "red where the two atoms are inside each other."),
     )),
     MenuEntry("align", None, "", children=(
         MenuEntry("align to ...", "align {sele}, {text}",
