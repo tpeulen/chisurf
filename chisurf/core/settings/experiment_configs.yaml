@@ -66,6 +66,7 @@ tcspc:
     - chisurf.core.models.tcspc.fret.WormLikeChainModel
     - chisurf.core.models.tcspc.fret.SawNuModel
     - chisurf.core.models.tcspc.fret.IsingChainModel
+    - chisurf.core.models.tcspc.distributed_acceptor.DistributedAcceptorModel
     - chisurf.core.models.tcspc.parse.tcspc_parse.ParseDecayModel
     # Pure compute model; its editor is generated from mix_model.view.json.
     - chisurf.core.models.tcspc.lifetime.LifetimeMixtureModel
@@ -278,7 +279,7 @@ pch:
       controller_params: {}
   models:
     - chisurf.gui.widgets.models.pch.PchMultiComponentModelWidget
-    - chisurf.gui.widgets.models.pch.FidaModelWidget
+    - chisurf.core.models.pch.fida_model.FidaModel
 
 structure:
   readers:

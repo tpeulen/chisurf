@@ -68,6 +68,17 @@ def _make_field_shrinkable(field) -> None:
             editor.setMinimumContentsLength(3)
 
 
+def _literal_title(text: str) -> str:
+    """Escape a spec title so Qt shows it verbatim.
+
+    Qt reads ``&`` in a widget's text as a mnemonic marker: it swallows the
+    character and underlines the next one, so a declared title of
+    ``"Background & totals"`` renders as "Background _totals". View-spec titles are
+    prose, never accelerators, so the ampersand is always literal.
+    """
+    return str(text or "").replace("&", "&&")
+
+
 def _make_form_label(text: str) -> QtWidgets.QLabel:
     """Build the caption shown left of a field.
 
@@ -574,7 +585,9 @@ class AutoForm(QtWidgets.QWidget):
         collapsed = bool(getattr(section, "collapsed", False)) or self._collapsed_when(
             getattr(section, "collapsed_when", None)
         )
-        box = CollapsibleBox(section.title or fallback_title, expanded=not collapsed)
+        box = CollapsibleBox(
+            _literal_title(section.title or fallback_title), expanded=not collapsed
+        )
         # the header is purely cosmetic when not collapsible
         if not getattr(section, "collapsible", True):
             box._btn.setEnabled(False)
@@ -1070,7 +1083,7 @@ class AutoForm(QtWidgets.QWidget):
         layout = QtWidgets.QVBoxLayout(holder)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(2)
-        caption = QtWidgets.QLabel(section.title)
+        caption = QtWidgets.QLabel(_literal_title(section.title))
         caption.setStyleSheet("font-weight: bold;")
         # A label grows into spare vertical space like any other widget, and it
         # centres its text while doing so: next to a height-capped widget the

@@ -1,0 +1,63 @@
+{
+  "_comment": "Editor layout for the FIDA photon-counting-histogram model. Species are a brightness/occupancy *pair*, so they render two per row -- a flat list of six hides which q belongs to which N. Set a species' q or N to 0 to switch it off.",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Species",
+      "sections": [
+        {
+          "type": "parameter_group_table",
+          "parameters_source": "_species_parameter_rows",
+          "row_width": 2,
+          "slot_labels": [
+            "q",
+            "N"
+          ],
+          "row_labels": [
+            "1",
+            "2",
+            "3"
+          ],
+          "collapsible": false,
+          "description": "Molecular brightness q and mean number N per species; a zero in either switches that species off."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Background & totals",
+      "sections": [
+        {
+          "type": "parameter_group_table",
+          "parameters_source": "_scalar_parameter_rows",
+          "collapsible": false,
+          "description": "Background counts per bin, and the resulting mean count per bin (computed)."
+        }
+      ]
+    }
+  ],
+  "plots": [
+    {
+      "key": "line",
+      "options": {
+        "scale_x": "lin",
+        "d_scaley": "log",
+        "r_scaley": "lin",
+        "x_label": "photons / bin",
+        "y_label": "frequency"
+      }
+    },
+    {
+      "key": "fit_table",
+      "options": {}
+    },
+    {
+      "key": "fit_info",
+      "options": {}
+    },
+    {
+      "key": "residual",
+      "options": {}
+    }
+  ]
+}
