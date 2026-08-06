@@ -227,23 +227,148 @@ def _link_into(prefix: Path, source_sp: Path) -> bool:
     return True
 
 
-def link_build() -> None:
-    """Symlink the just-installed tttrlib into the configured extra environments."""
+def _cmake_args(prefix: Path) -> str:
+    """Return the ``CMAKE_ARGS`` that pin the build to one environment's libraries.
+
+    Parameters
+    ----------
+    prefix : pathlib.Path
+        Environment prefix to build against.
+
+    Returns
+    -------
+    str
+    """
+    return " ".join(
+        (
+            f"-DCMAKE_PREFIX_PATH={prefix}",
+            f"-DHDF5_ROOT={prefix}",
+            "-DHDF5_NO_FIND_PACKAGE_CONFIG_FILE=TRUE",
+        )
+    )
+
+
+def _build_into(prefix: Path) -> bool:
+    """Build tttrlib against *prefix* and install it there as a real directory.
+
+    The fallback when a symlink to the shared build cannot be loaded. One build
+    can serve two environments only while they agree on the native libraries it
+    links; they do not have to. HDF5 is the one that bites — an environment
+    solving HDF5 2.1 produces an extension wanting ``libhdf5.320``, which an
+    environment carrying 1.14 cannot load at all:
+
+        ImportError: dlopen(...): Library not loaded: @rpath/libhdf5.320.dylib
+
+    So this environment gets an extension linked against *its own* libraries,
+    installed as real files rather than symlinks so the next shared build does
+    not silently point it back at something it cannot load.
+
+    Parameters
+    ----------
+    prefix : pathlib.Path
+        Environment prefix to build for and install into.
+
+    Returns
+    -------
+    bool
+        ``True`` when the environment imports the build afterwards.
+    """
+    python = prefix / "bin" / "python"
+    target_sp = _site_packages(prefix)
+    if not python.is_file() or target_sp is None:
+        return False
+
+    build_dir = _BUILD_DIR.parent / f"tttrlib-{prefix.name}"
+    staging = build_dir / "pkg"
+    shutil.rmtree(build_dir, ignore_errors=True)
+    staging.mkdir(parents=True, exist_ok=True)
+
+    env = dict(os.environ)
+    env["CMAKE_ARGS"] = _cmake_args(prefix)
+    print(f"build-tttrlib: {prefix.name} cannot load the shared build; "
+          "building against its own libraries (this takes a few minutes)", flush=True)
+    rc = subprocess.call(
+        [str(python), "-m", "pip", "install", str(_SRC),
+         "--no-build-isolation", "--no-deps", "--no-cache-dir",
+         "--target", str(staging),
+         f"--config-settings=build-dir={build_dir / 'tree'}"],
+        env=env,
+    )
+    if rc != 0:
+        print(f"build-tttrlib: dedicated build for {prefix.name} failed", flush=True)
+        return False
+
+    installed = []
+    for src in [staging / _PACKAGE_DIR, *sorted(staging.glob("tttrlib-*.dist-info"))]:
+        if not src.exists():
+            continue
+        dst = target_sp / src.name
+        # Symlinks from an earlier shared build: unlink drops the link, never
+        # the environment it points into.
+        if dst.is_symlink() or dst.is_file():
+            dst.unlink()
+        elif dst.is_dir():
+            shutil.rmtree(dst)
+        shutil.copytree(src, dst) if src.is_dir() else shutil.copy2(src, dst)
+        installed.append(dst)
+
+    # macOS refuses a copied extension whose signature the copy invalidated, and
+    # kills the interpreter (exit 137) with no message rather than raising.
+    if sys.platform == "darwin":
+        for root in installed:
+            for pattern in ("*.so", "*.dylib"):
+                for binary in root.rglob(pattern):
+                    subprocess.run(
+                        ["/usr/bin/codesign", "--force", "--sign", "-", str(binary)],
+                        capture_output=True,
+                    )
+
+    return _verify(prefix)
+
+
+def link_build() -> bool:
+    """Make every configured extra environment import this build.
+
+    Symlinks the freshly built tttrlib into each one, and where that link cannot
+    be *loaded* — different CPython ABI, or native libraries that disagree —
+    builds a dedicated copy for that environment instead. A link that does not
+    import is worse than no link: the failure surfaces later, in someone else's
+    script, as an environment with no tttrlib.
+
+    Returns
+    -------
+    bool
+        ``True`` when every target environment imports tttrlib afterwards.
+    """
     source_sp = Path(
         subprocess.run([sys.executable, "-c",
                         "import site;print(site.getsitepackages()[0])"],
                        capture_output=True, text=True).stdout.strip()
     )
     if not source_sp.is_dir():
-        return
+        return True
+    ok = True
     for prefix in _link_targets():
         try:
-            _link_into(prefix, source_sp)
+            if _link_into(prefix, source_sp):
+                continue
         except OSError as exc:
             print(f"build-tttrlib: could not link into {prefix}: {exc}", flush=True)
+        if (prefix / "bin" / "python").is_file() and not _build_into(prefix):
+            print(f"build-tttrlib: {prefix.name} still cannot import tttrlib", flush=True)
+            ok = False
+    return ok
 
 
 def main() -> int:
+    """Build tttrlib from source and make every configured environment import it.
+
+    Returns
+    -------
+    int
+        Process exit status: ``0`` when the build installed and every
+        environment -- the one built into and each linked one -- imports it.
+    """
     if not (_SRC / "pyproject.toml").is_file():
         print(
             f"build-tttrlib: no tttrlib source at {_SRC}.\n"
@@ -280,13 +405,7 @@ def main() -> int:
     # first. Forcing module mode with an explicit root keeps both out of the
     # same process.
     env = dict(os.environ)
-    env["CMAKE_ARGS"] = " ".join(
-        (
-            f"-DCMAKE_PREFIX_PATH={prefix}",
-            f"-DHDF5_ROOT={prefix}",
-            "-DHDF5_NO_FIND_PACKAGE_CONFIG_FILE=TRUE",
-        )
-    )
+    env["CMAKE_ARGS"] = _cmake_args(Path(prefix))
 
     shutil.rmtree(_BUILD_DIR, ignore_errors=True)
     cmd = [
@@ -307,8 +426,10 @@ def main() -> int:
         return rc
     if not _verify(Path(sys.prefix)):
         return 1
-    link_build()
-    return 0
+    # A linked environment that cannot import what was built is a failed build,
+    # not a cosmetic warning: it is discovered later, as a suite that cannot
+    # collect, by someone with no reason to suspect this task.
+    return 0 if link_build() else 1
 
 
 if __name__ == "__main__":

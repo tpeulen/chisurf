@@ -2,6 +2,14 @@
 
 ## 2026-08-06
 
+* **`build-tttrlib` now leaves every environment able to import what it built** ([build and env](workflows/build-and-env.md), [known issues](references/known-issues.md)).
+
+  One build served two environments by symlink, which works only while both agree on the native libraries it links — and they do not: the solved environment takes HDF5 2.1, the sibling conda environment carries 1.14, so the shared extension is unloadable there (`Library not loaded: @rpath/libhdf5.320.dylib`). The task **reported success anyway**, because it verified only the environment it installed *into*; the sibling broke silently and surfaced later as a suite that could not collect.
+
+  A link that cannot be loaded is now repaired instead of reported: `link_build()` checks each target actually imports, and where it does not — mismatched native libraries, or a different CPython ABI — `_build_into()` builds that environment its own extension against its own prefix and installs it as **real files rather than symlinks**, codesigned, so the next shared build cannot silently point it back at something unloadable. `main()` returns non-zero if any target still cannot import, so this can no longer pass as a green build.
+
+  Verified by reproducing the exact broken state — the unloadable symlink restored by hand — and running the link step: it detected it, rebuilt for the sibling, and verified the import. The `add()`-lifetime fix is live in both environments. 106 tests green.
+
 * **The manual's prose, and three things a reader noticed immediately** ([documentation browser](subsystems/documentation-browser.md)).
 
   **The manual was a docx conversion, and the conversion had eaten things.** A page whose whole body was the word "Missing"; a title slide as the *Introduction*; three worked-example pages whose sentences had holes where an inline equation used to be ("the donor fluorescence in the absence of an acceptor, , can be plotted"); citations that had become "()"; menu paths whose arrow was gone ("File"  "Add dataset"); superscripts flattened into the number beside them (`6.022*1023 mol-1`); and "Open Chisurf2016". None of it fails a build, and a reader meets all of it. Every instance is fixed, and the classes are now guarded — `test_manual_snippets.py` fails on a stub page, on a hole in a sentence, and on an empty citation.
