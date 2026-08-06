@@ -187,6 +187,12 @@ class _OpenMenu:
     rect: Rect = Rect(0, 0, 0, 0)
     owner: MenuEntry | None = None
     affinity: int = 1
+    #: Pixels the content is shifted up when the menu is taller than the
+    #: window, and how far it may go. PyMOL scrolls a long pop-up rather than
+    #: wrapping it into columns, because the column break lands wherever the
+    #: window height happens to put it and takes the grouping with it.
+    scroll: float = 0.0
+    max_scroll: float = 0.0
 
 
 class InternalGui:
@@ -205,8 +211,15 @@ class InternalGui:
     FONT_PT = 10
     MENU_ITEM_H = 18
     MENU_PAD = 6
+    #: The gap a separator leaves between two groups of entries.
+    SEPARATOR_H = 5
     #: Gap between a submenu and the parent it hangs off, on either side.
     CHILD_GAP = 3
+    #: How far one wheel notch scrolls a menu too tall for the window. PyMOL's
+    #: `CPopUp::release` translates the block by ten pixels a notch; a row is
+    #: the better unit, because ten pixels is not a multiple of the row height
+    #: and every notch then slices the rows at both edges in half.
+    MENU_SCROLL_PX = float(MENU_ITEM_H)
     #: Residue numbers every this many columns -- PyMOL's
     #: ``seq_view_label_spacing``, whose default is 5.
     LABEL_SPACING = 5
@@ -727,7 +740,10 @@ class InternalGui:
         for depth in range(len(self._menus) - 1, -1, -1):
             menu = self._menus[depth]
             for rect, entry in menu.item_rects:
-                if rect.contains(x, y):
+                # A scrolled-out row keeps its rectangle -- it is the same list
+                # the painter walks -- so the visibility test has to be here as
+                # well, or a menu would take clicks through its own title.
+                if rect.contains(x, y) and self._menu_row_visible(menu, rect):
                     return depth, entry
             if menu.rect.contains(x, y):
                 return depth, None
@@ -1079,28 +1095,26 @@ class InternalGui:
         testing -- they cannot disagree about where an entry is.
         """
         char_w = self.FONT_PT * 0.62
-        col_w = max(
+        width = max(
             [len(menu.title) * char_w]
             + [len(e.label) * char_w + (18 if e.is_submenu else 0) for e in menu.entries]
         ) + 2 * self.MENU_PAD + 12
 
         title_h = self.MENU_ITEM_H
-        available = max(self._height - 2 * self.MENU_PAD - title_h, self.MENU_ITEM_H)
-        clickable = [e for e in menu.entries if not e.is_separator]
-        per_column = max(int(available // self.MENU_ITEM_H), 1)
-        columns = max(1, -(-len(clickable) // per_column))    # ceil
+        content = title_h + 2 * self.MENU_PAD + sum(
+            self.SEPARATOR_H if e.is_separator else self.MENU_ITEM_H
+            for e in menu.entries
+        )
+        height = min(content, float(self._height))
+        if height < content:
+            # A whole number of rows, so the bottom one is not sliced through
+            # the middle of its text -- which reads as a rendering fault rather
+            # than as "there is more below".
+            rows = max(int((height - title_h - 2 * self.MENU_PAD) // self.MENU_ITEM_H), 1)
+            height = title_h + 2 * self.MENU_PAD + rows * self.MENU_ITEM_H
+        menu.max_scroll = max(content - height, 0.0)
+        menu.scroll = min(max(menu.scroll, 0.0), menu.max_scroll)
 
-        # Separators only cost height while the menu still fits in one column;
-        # once it wraps, they would push the columns out of alignment.
-        wrapped = columns > 1
-        if not wrapped:
-            height = title_h + 2 * self.MENU_PAD + sum(
-                5 if e.is_separator else self.MENU_ITEM_H for e in menu.entries
-            )
-        else:
-            height = title_h + 2 * self.MENU_PAD + per_column * self.MENU_ITEM_H
-
-        width = col_w * columns
         if menu.parent is None:
             x = min(max(menu.x, 0.0), max(self._width - width, 0.0))
         else:
@@ -1112,21 +1126,63 @@ class InternalGui:
         menu.rect = Rect(x, y, width, height)
 
         menu.item_rects = []
-        column, iy = 0, y + self.MENU_PAD + title_h
-        placed = 0
+        iy = y + self.MENU_PAD + title_h - menu.scroll
         for entry in menu.entries:
             if entry.is_separator:
-                if not wrapped:
-                    iy += 5
+                iy += self.SEPARATOR_H
                 continue
-            if wrapped and placed and placed % per_column == 0:
-                column += 1
-                iy = y + self.MENU_PAD + title_h
-            menu.item_rects.append(
-                (Rect(x + column * col_w, iy, col_w, self.MENU_ITEM_H), entry)
-            )
+            menu.item_rects.append((Rect(x, iy, width, self.MENU_ITEM_H), entry))
             iy += self.MENU_ITEM_H
-            placed += 1
+
+    def _snap_scroll(self, menu: _OpenMenu, wanted: float) -> float:
+        """Round a scroll offset to the nearest row boundary.
+
+        So the first visible row starts flush with the top of the list instead
+        of being sliced through its text. The separators are why a fixed step
+        cannot do this on its own: they are five pixels, not a row, so the
+        entries below one are off the row grid.
+        """
+        offsets = [0.0]
+        y = 0.0
+        for entry in menu.entries:
+            y += self.SEPARATOR_H if entry.is_separator else self.MENU_ITEM_H
+            if y <= menu.max_scroll:
+                offsets.append(y)
+        offsets.append(menu.max_scroll)
+        return min(offsets, key=lambda candidate: abs(candidate - wanted))
+
+    def _menu_row_visible(self, menu: _OpenMenu, rect: Rect) -> bool:
+        """Whether a row is inside the menu's window rather than scrolled out."""
+        top = menu.rect.y + self.MENU_PAD + self.MENU_ITEM_H
+        return rect.y >= top - 1 and rect.y + rect.h <= menu.rect.y + menu.rect.h + 1
+
+    def scroll_menu(self, x: float, y: float, steps: int) -> bool:
+        """Scroll the menu under the cursor by *steps* notches. Returns if it moved.
+
+        PyMOL's ``CPopUp::release`` translates the whole pop-up by ten pixels a
+        notch rather than wrapping a long menu into columns, and that is the
+        behaviour: a wrapped menu loses its **grouping**, which is most of what
+        a menu's order is saying. chimol's Action menu wrapped on any short
+        window and the two columns then read as one list broken in an arbitrary
+        place, with the separators dropped to keep the columns aligned.
+        """
+        depth, _entry = self._menu_at(x, y)
+        if depth is None:
+            return False
+        menu = self._menus[depth]
+        if menu.max_scroll <= 0.0:
+            return False
+        before = menu.scroll
+        wanted = min(
+            max(menu.scroll - steps * self.MENU_SCROLL_PX, 0.0), menu.max_scroll
+        )
+        menu.scroll = self._snap_scroll(menu, wanted)
+        if menu.scroll == before:
+            return False
+        # The children hang off rows that have just moved, so they are stale.
+        del self._menus[depth + 1:]
+        self._layout_menu(menu)
+        return True
 
     # ── drawing ──────────────────────────────────────────────────────────
     def paint(self, painter) -> None:
@@ -1399,6 +1455,31 @@ class InternalGui:
         font.setBold(False)
         painter.setFont(font)
 
+        # Say which way there is more, when the menu is taller than the window.
+        # In the *title* row, not at the edges of the list: an arrow on the last
+        # row would sit on top of that row's own text and its submenu marker.
+        # PyMOL draws nothing at all and simply scrolls, which leaves a menu
+        # that is silently cut off at the window edge -- the complaint that the
+        # column-wrapping this replaces was trying to answer.
+        if menu.max_scroll > 0.0:
+            marks = ("▴" if menu.scroll > 0.0 else " ") + (
+                "▾" if menu.scroll < menu.max_scroll else " "
+            )
+            painter.setPen(QtGui.QColor(*MENU_DISABLED_FG))
+            painter.drawText(
+                QtCore.QRectF(menu.rect.x, menu.rect.y + self.MENU_PAD,
+                              menu.rect.w - self.MENU_PAD, self.MENU_ITEM_H),
+                int(QtCore.Qt.AlignVCenter | QtCore.Qt.AlignRight), marks,
+            )
+
+        painter.save()
+        # Below the title, so a scrolled row cannot be drawn over it.
+        painter.setClipRect(QtCore.QRectF(
+            menu.rect.x,
+            menu.rect.y + self.MENU_PAD + self.MENU_ITEM_H,
+            menu.rect.w,
+            max(menu.rect.h - self.MENU_PAD - self.MENU_ITEM_H, 0.0),
+        ))
         for item_rect, entry in menu.item_rects:
             hovered = (self._hover.kind == "menu" and self._hover.entry is entry)
             if hovered and entry.command is not None or (hovered and entry.is_submenu):
@@ -1422,6 +1503,7 @@ class InternalGui:
                                   item_rect.w - self.MENU_PAD, item_rect.h),
                     int(QtCore.Qt.AlignVCenter | QtCore.Qt.AlignRight), "▸",
                 )
+        painter.restore()
 
 
 def _glyph_of(command: str) -> str:

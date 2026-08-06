@@ -1336,6 +1336,8 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
             for call in call_set:
                 if call.primitive == GL_POINTS and call.glyph == "ring":
                     glyph_mode = 3
+                elif call.primitive == GL_POINTS and call.glyph == "selection":
+                    glyph_mode = 4
                 elif call.primitive == GL_POINTS and call.glyph == "square_outline":
                     glyph_mode = 2
                 elif call.glyph == "sphere" and call.primitive == GL_POINTS:
@@ -1613,16 +1615,36 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
                 gl_FragColor = v_color;
                 return;
             } else if (glyphMode == 2) {
-                // A hollow square, which is what PyMOL draws a selection with:
-                // `selection_round_points` is off by default, and the marker is
-                // an outline so it frames an atom instead of hiding it. A solid
-                // dot -- or worse a sphere -- covers the thing being pointed at.
+                // A hollow square: an outline frames an atom instead of hiding
+                // it. Not PyMOL's selection marker -- that one is filled, and
+                // is glyphMode 4 below.
                 vec2 coord = abs(gl_PointCoord * 2.0 - 1.0);
                 float edge = max(coord.x, coord.y);
                 if (edge > 1.0 || edge < 0.62) {
                     discard;
                 }
                 gl_FragColor = v_color;
+                return;
+            } else if (glyphMode == 4) {
+                // PyMOL's selection indicator, in one pass instead of three.
+                // `ExecutiveSetupIndicatorPassMultipassImmediate` draws three
+                // concentric filled squares per selected atom -- the colour at
+                // the full dot width, black at about half of it, white in the
+                // middle -- and the ratios here are its own (width, then 4/8,
+                // then 2/8 at the default eight-pixel marker). Square, not
+                // round: `selection_round_points` is off by default.
+                vec2 coord = abs(gl_PointCoord * 2.0 - 1.0);
+                float edge = max(coord.x, coord.y);
+                if (edge > 1.0) {
+                    discard;
+                }
+                if (edge < 0.25) {
+                    gl_FragColor = vec4(1.0, 1.0, 1.0, v_color.a);
+                } else if (edge < 0.5) {
+                    gl_FragColor = vec4(0.0, 0.0, 0.0, v_color.a);
+                } else {
+                    gl_FragColor = v_color;
+                }
                 return;
             }
             vec3 l = normalize(lightDir);
@@ -2729,10 +2751,22 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
             # truncating them to zero makes the gesture do nothing at all.
             delta_steps = 1 if raw > 0 else -1
 
-        # Over the sequence, the wheel scrolls it. Zooming the molecule because
-        # the cursor happened to be on the strip is never what was meant.
         pos = event.position() if hasattr(event, "position") else event.posF()
         gui = self._internal_gui
+
+        # Over an open menu, the wheel scrolls the menu -- PyMOL's `CPopUp`
+        # takes the scroll buttons and translates the pop-up. A menu longer
+        # than the window is the ordinary case for the Action menu on a small
+        # viewport, and zooming the molecule underneath it is never what was
+        # meant.
+        if gui.has_menu():
+            if delta_steps and gui.scroll_menu(pos.x(), pos.y(), delta_steps):
+                self.update()
+            event.accept()
+            return
+
+        # Over the sequence, the wheel scrolls it. Zooming the molecule because
+        # the cursor happened to be on the strip is never what was meant.
         if not (gui.sequence_visible and gui.sequence_strip_contains(pos.x(), pos.y())):
             # About to move the camera, so the still frame stops being true.
             self.clear_ray_image()
@@ -2817,17 +2851,30 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         return val
 
     def _pan_from_delta(self, dx: float, dy: float) -> None:
-        width = max(self.scene_width(), 1)
-        height = max(self.height(), 1)
-        if width <= 0 or height <= 0:
-            return
+        """Slide the scene by a cursor delta, one pixel of scene per pixel of mouse.
+
+        PyMOL's `cButModeTransXY` translates by `delta * vScale`, where
+        `SceneGetScreenVertexScale` is `depth * 2 tan(fov/2) / Height` — the
+        **same** scale on both axes, and by construction the number of scene
+        units one pixel covers at the origin's depth. The point of it is that
+        the molecule stays under the cursor.
+
+        This multiplied the horizontal scale by the aspect ratio on top of that,
+        which is the aspect counted twice: a perspective frustum is already
+        `height * aspect` wide, so per *pixel* the two axes are equal. On the
+        1278x631 viewport that reported this, horizontal panning ran 1.7x the
+        cursor and the molecule slid out from under it.
+
+        The height is the **scene column's**, not the widget's, because that is
+        the height the projection matrix is built with; the sequence strip's
+        band is not part of it.
+        """
+        height = max(self.scene_height(), 1)
         fov = math.radians(float(self._fov))
         half_tan = math.tan(fov / 2.0)
         if half_tan <= 0:
             return
-        aspect = width / float(height)
-        scale_y = 2.0 * self._distance * half_tan / height
-        scale_x = scale_y * aspect
+        scale = 2.0 * self._distance * half_tan / height
 
         right = self._camera_right_vector()
         up = self._camera_up_vector()
@@ -2835,7 +2882,7 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         # Panning direction depends on the mouse mode: PyMOL moves the object
         # with the cursor; Chimol moves the camera / plane with the cursor.
         mult = self._pan_delta_multiplier(self._mouse_mode)
-        shift = (mult * -dx * scale_x) * right + (mult * dy * scale_y) * up
+        shift = (mult * -dx * scale) * right + (mult * dy * scale) * up
         self._pan_offset += shift
         self.update()
 

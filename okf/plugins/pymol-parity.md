@@ -507,6 +507,25 @@ A submenu is now identified by the parent **entry** it hangs off, held by
 identity, rather than by its label: `by element` opens a menu whose only entry
 is also `by element`, and the label match kept the wrong one open.
 
+**And a long menu scrolls; it does not wrap into columns.** Reported next, as
+"the arrangement of the menu does not make sense": on a small window the Action
+menu broke into two columns, and a column break lands wherever the window
+height happens to put it — so `zoom orient center origin | copy to object
+group delete object` read as one list snapped in an arbitrary place. The
+separators were dropped on top of that, to keep the two columns aligned, which
+removed the grouping that is most of what a menu's order says. PyMOL never
+wraps: `CPopUp::release` takes the scroll buttons and `Block::translate`s the
+pop-up, one column always. Ours does the same, with two deliberate
+improvements over it: the wheel moves by a **row** rather than PyMOL's ten
+pixels (ten is not a multiple of the row height, so every notch sliced the
+rows at both edges), snapping to the nearest entry boundary because a
+five-pixel separator puts the entries below it off the row grid; and the title
+row carries `▴▾` when there is more in that direction, since a menu silently
+cut off at the window edge is the fault the column-wrapping was trying to
+answer. A scrolled-out row keeps its rectangle — it is the same list the
+painter walks — so hit-testing tests visibility too, or the menu would take
+clicks through its own title.
+
 **The panel is also drawn from startup now**, `all` and `sele` in it and nothing
 loaded, as PyMOL's is. Two things kept it away: the overlay pass was gated on the
 panel having *rows*, while `scene_width` gives the column away to a merely

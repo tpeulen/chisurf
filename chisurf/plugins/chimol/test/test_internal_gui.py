@@ -326,32 +326,82 @@ def test_two_submenus_sharing_a_label_are_told_apart(gui):
 # Long menus
 # --------------------------------------------------------------------------- #
 def test_a_long_menu_stays_inside_the_viewport(gui):
-    """Entries that run off the bottom are unreachable, and nothing says so.
-
-    PyMOL's Action menu is two dozen entries; in a viewport sharing its height
-    with a sequence strip and a console it does not fit in one column.
-    """
-    gui.layout(WIDTH, 300)
+    """The menu itself is never off the window, however many entries it has."""
+    gui.layout(WIDTH, 200)
     gui.mouse_press(*_centre(gui._button_rects[1]["A"]))
     menu = gui._menus[-1]
 
     assert menu.rect.y >= 0
-    assert menu.rect.y + menu.rect.h <= 300 + 1e-6
-    for rect, _entry in menu.item_rects:
-        assert rect.y >= 0
-        assert rect.y + rect.h <= 300 + 1e-6
+    assert menu.rect.y + menu.rect.h <= 200 + 1e-6
+    assert menu.max_scroll > 0, "this menu is meant to be taller than the window"
 
 
-def test_every_entry_of_a_wrapped_menu_can_still_be_clicked(gui):
-    """Wrapping is only worth doing if the hit rectangles wrap with it."""
-    gui.layout(WIDTH, 300)
+def test_a_long_menu_keeps_one_column(gui):
+    """It used to wrap, and the wrap is what the arrangement complaint was.
+
+    A second column starts wherever the window height happens to put it, so a
+    menu's *grouping* -- which is most of what its order says -- is broken at
+    an arbitrary place, and the separators were being dropped to keep the two
+    columns aligned. PyMOL never wraps: one column, and the pop-up scrolls.
+    """
+    gui.layout(WIDTH, 200)
     gui.mouse_press(*_centre(gui._button_rects[1]["A"]))
     menu = gui._menus[-1]
 
+    xs = {round(rect.x, 3) for rect, _e in menu.item_rects}
+    assert len(xs) == 1, "the menu grew a second column"
+    ordered = [rect.y for rect, _e in menu.item_rects]
+    assert ordered == sorted(ordered), "the entries are no longer in order"
+    gaps = {
+        round(b - a, 3) for a, b in zip(ordered, ordered[1:])
+    }
+    assert gaps - {float(gui.MENU_ITEM_H)}, (
+        "no gap anywhere: the separators stopped costing height, and the "
+        "groups they mark are what the order is saying"
+    )
+
+
+def test_every_entry_of_a_long_menu_can_be_reached_by_scrolling(gui):
+    """Scrolling is only worth doing if the hit rectangles scroll with it."""
+    gui.layout(WIDTH, 200)
+    gui.mouse_press(*_centre(gui._button_rects[1]["A"]))
+    menu = gui._menus[-1]
+    inside = _centre(menu.rect)
+
     clickable = [e for e in menu.entries if not e.is_separator]
-    assert len(menu.item_rects) == len(clickable), "entries were dropped, not wrapped"
+    assert len(menu.item_rects) == len(clickable), "entries were dropped"
+
+    reached = set()
+    for _ in range(60):
+        for rect, entry in menu.item_rects:
+            if gui.hit_test(*_centre(rect)).entry is entry:
+                reached.add(entry.label)
+        if not gui.scroll_menu(inside[0], inside[1], -1):
+            break
+    assert {e.label for e in clickable} <= reached, (
+        "entries below the fold could not be reached: "
+        f"{ {e.label for e in clickable} - reached }"
+    )
+
+
+def test_a_scrolled_out_row_does_not_take_the_click(gui):
+    """Its rectangle is still in the list; the visibility test is the guard."""
+    gui.layout(WIDTH, 200)
+    gui.mouse_press(*_centre(gui._button_rects[1]["A"]))
+    menu = gui._menus[-1]
+    inside = _centre(menu.rect)
+    gui.scroll_menu(inside[0], inside[1], -3)
+
     for rect, entry in menu.item_rects:
-        assert gui.hit_test(*_centre(rect)).entry is entry
+        if rect.y + rect.h <= menu.rect.y or rect.y >= menu.rect.y + menu.rect.h:
+            assert gui.hit_test(*_centre(rect)).entry is not entry
+
+
+def test_a_menu_that_fits_does_not_scroll(gui):
+    gui.mouse_press(*_centre(gui._button_rects[1]["C"]))
+    menu = gui._menus[-1]
+    assert menu.max_scroll == 0
+    assert gui.scroll_menu(*_centre(menu.rect), -1) is False
 
 
 # --------------------------------------------------------------------------- #

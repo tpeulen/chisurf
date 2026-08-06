@@ -2,6 +2,12 @@
 
 ## 2026-08-06
 
+* **A long menu scrolls; it stopped wrapping into columns** ([PyMOL parity](plugins/pymol-parity.md)).
+
+  Reported as "the arrangement of the menu does not make sense", against a small window where the Action menu had broken into two columns. A column break lands wherever the window height happens to put it, so the entries read as one list snapped in an arbitrary place — and the separators were dropped on top of that to keep the columns aligned, which removes the grouping that is most of what the order says. It also detached the submenus: the child was placed beside the *menu*, so a row in the second column opened its child far to the left of itself.
+
+  PyMOL never wraps — `CPopUp::release` takes the scroll buttons and translates the pop-up, one column always — and neither does chimol now, with two deliberate improvements: the wheel scrolls by a **row** (PyMOL's ten pixels is not a multiple of the row height, so every notch sliced the rows at both edges), snapped to the nearest entry boundary because a five-pixel separator puts everything below it off the row grid; and the title row carries `▴▾` when there is more in that direction, since a menu silently cut off at the window edge is the fault the wrapping was trying to answer. The menu height is a whole number of rows for the same reason. Verified on a 638×374 viewport: one column, groups intact, `preset` opening beside its own row.
+
 * **Every table now enters HDF5 as columns, and the frame writers are gone** ([PRD-82](prds/prd-82.md), [columnar store](subsystems/columnar-store.md), [known issues](references/known-issues.md)).
 
   Seven writers went through a DataFrame's HDF5 writer, which reaches an optional package a freshly solved environment does not carry — so all seven were *dead* there, and dead quietly, because every developer environment still had the package installed from before it was dropped. They write one dataset per column now, through `write_table` in [`chisurf/core/datastore.py`](../chisurf/core/datastore.py). `to_hdf` and `HDFStore` appear nowhere in the shipped package; `test/test_pandas_hdf5_seam.py` fails on one coming back, with **no allow-list for writers** because there is no file a new one belongs in. Frame *readers* are allow-listed and the list is shrinking — two entries, both legacy fallbacks.
