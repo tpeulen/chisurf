@@ -223,7 +223,7 @@ def _load(name: str, view_name: str):
         pathlib.Path(__file__).resolve().parents[4]
         / "test" / "data" / "atomic_coordinates"
     )
-    for candidate in (root / "pdb_files" / name, root / "trajectory" / "h5-file" / name):
+    for candidate in (root / "pdb_files" / name, root / "trajectory" / "hgbp1" / name):
         if candidate.is_file():
             break
     else:

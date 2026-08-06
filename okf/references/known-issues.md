@@ -1,3 +1,46 @@
+## testing: `fret_trajectory`'s suite crashes the interpreter *after* every test passes
+
+**2026-08-06.** `pytest chisurf/plugins/traj/fret_trajectory/` reports
+`11 passed  [100%]` and then dies with `Fatal Python error: Bus error` (sometimes
+`Segmentation fault`) during interpreter shutdown. Every test passes; the process
+exit code does not, so CI reads it as a failure.
+
+**Pre-existing, and measured as such.** It is tempting to blame the DCD port,
+because the port is what made the four previously-`ValueError`-ing tests run at
+all. It is not the cause: a detached worktree at the pre-port commit crashes the
+same way. To re-derive it —
+
+```bash
+git worktree add --detach /tmp/wt <pre-port-sha>
+cd /tmp/wt && export PYTHONPATH="$PWD:$REPO/modules/mmfdb/src:$REPO/modules/chinet:$REPO/modules/imp-tricks/src"
+QT_QPA_PLATFORM=offscreen python -m pytest -q chisurf/plugins/traj/fret_trajectory/
+```
+
+**The traps in measuring it.** Both nearly sent me after the wrong thing:
+
+- **`grep`ing for `failed` finds nothing.** The crash prints no pytest summary
+  at all — the process is gone before one is written. Match on `Bus error` /
+  `Segmentation fault`, or a green-looking run will read as a clean one.
+- **It does not reproduce from a plain script.** A QApplication, four
+  `Structure2Transfer` widgets and three model loads exit 0. It needs the
+  pytest-qt fixtures, so it is a *harness* shutdown-order problem, not something
+  the product does to a user.
+- **No single test causes it.** `test_gui.py` minus `test_gui_interaction_process`
+  is clean 5/5; that test alone is clean 5/5; the four together crash ~1/3; the
+  whole directory crashes 8/8. It accumulates with how much Qt was built, which
+  is why bisecting to one test id finds nothing.
+- **Order matters.** `test_view_model.py` then `test_gui.py` passes; the
+  alphabetical order pytest actually uses is the crashing one.
+
+**Tried and reverted.** The Qt-free view model and the Qt atom-pair section hold
+each other (`section._model` / `model.atom_pair_section`), a strong QWidget↔object
+cycle collected by the GC — possibly after `QApplication` is gone. Making the
+back-reference weak is defensible on its own, but it does **not** fix this: 5/5
+still crash. Reverted rather than kept under a rationale that had been
+disproven. Whatever holds the Qt objects past shutdown is something else; the
+shared session-scoped `qapp` in `chisurf/plugins/conftest.py`, which overrides
+pytest-qt's own and never tears the application down, is the next thing to look at.
+
 ## packaging: five pandas HDF5 writers outlived the `pytables` removal
 
 **2026-08-06.** `pytables` was dropped on the grounds that its "only remaining

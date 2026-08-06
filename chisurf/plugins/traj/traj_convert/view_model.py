@@ -25,16 +25,24 @@ logger = logging.getLogger(__name__)
 
 _VIEW_JSON = pathlib.Path(__file__).parent / "convert_structures.view.json"
 
-#: Output file extensions offered by the converter (order matches the legacy UI).
-ENDINGS = (".dcd", ".xtc", ".pdb", ".h5")
+#: Output file extensions offered by the converter.
+#:
+#: Only what can actually be *written*. The list used to also offer ``.xtc`` and
+#: ``.h5``: XTC is read-only here (the decoder is ours, the bit-packing encoder
+#: is not written) and HDF5 trajectories were retired with
+#: :doc:`PRD-80 </prds/prd-80>`. Offering an unwritable format in a combo box
+#: turns a wrong choice into a traceback at save time, after the user has picked
+#: a directory and a name.
+ENDINGS = (".dcd", ".pdb")
 
 
 class Object:
     """Plain argument holder for the conversion parameters.
 
-    ``mdconvert.main`` expects an ``argparse``-style namespace; this bare object
-    is populated with the attributes it reads (``topology``, ``input``,
-    ``output``, ``stride``, ``chunk``, ``index``, ``force``, ``atom_indices``).
+    The conversion parameters were assembled for an external converter that took
+    an ``argparse``-style namespace. The shell-out is gone -- it was this same
+    read/write loop with an ``argv`` in the middle -- but the holder is kept as
+    the one place the parameters are gathered and validated before the loop runs.
     """
 
     pass
@@ -42,6 +50,18 @@ class Object:
 
 class MDConverterViewModel:
     """State + logic for the MD-Converter tool (no Qt)."""
+
+    def output_formats(self) -> list:
+        """Return the formats the Format combo offers.
+
+        A method, not the literal list in the view spec it replaces: that list
+        was a second copy of :data:`ENDINGS` and had already drifted from it,
+        still offering `.xtc` and `.h5` after both stopped being writable. It
+        must stay a *callable* -- AutoForm resolves a model-backed
+        ``options_source`` by calling it, and a bare property that raises
+        yields an empty combo with only a log line to say so.
+        """
+        return list(ENDINGS)
 
     def view_spec(self):
         """Resolve AutoForm's view spec from the authored ``convert_structures.view.json``."""
@@ -192,6 +212,12 @@ class MDConverterViewModel:
             if args.index is not None:
                 whole = whole[args.index]
             whole.save(args.output)
+            # Say what was written. "Conversion done" over a zero-frame output
+            # reads exactly like a good run -- and a stride or an index that
+            # selects nothing is the easy way to get one.
+            self.append_log(
+                f"Wrote {whole.n_frames} frames of {whole.n_atoms} atoms"
+            )
         self.append_log("Conversion done")
 
 

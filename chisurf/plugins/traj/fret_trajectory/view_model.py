@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import html
 import logging
+import os
 import pathlib
 import tempfile
 import time
@@ -55,7 +56,11 @@ class FretTrajectoryViewModel:
         self.filenames: list[str] = []
         #: Structured coordinate array of the first frame (drives the atom pickers).
         self.pdb: np.ndarray | None = None
-        #: Path of the temporary PDB holding the trajectory topology.
+        #: Topology (PDB) the user supplied. DCD and XTC store coordinates only,
+        #: so the atom names -- which are what the donor/acceptor pickers list --
+        #: are not in the trajectory. Empty is fine for a self-describing file.
+        self.topology_filename: str = ""
+        #: Path of the temporary PDB holding the trajectory's first frame.
         self.topology_file: str = ""
         self._log: list[str] = []
         self._observers: list[Callable[[str], None]] = []
@@ -184,14 +189,33 @@ class FretTrajectoryViewModel:
         """Set a single trajectory file (convenience wrapper)."""
         self.set_trajectory_files([filename])
 
+    def set_topology(self, filename: str) -> None:
+        """Set the topology (PDB) that names the atoms, and notify observers.
+
+        Re-reads the topology when a trajectory is already selected, so picking
+        the two files in either order ends in the same state -- otherwise a
+        user who picks the trajectory first gets empty atom pickers and nothing
+        to say why.
+        """
+        self.topology_filename = str(filename)
+        self._engine.topology_file = self.topology_filename or None
+        self.append_log(f"Topology: {self.topology_filename}")
+        if self.trajectory_file:
+            self._load_topology(self.trajectory_file)
+        self._notify("loaded")
+
     def _load_topology(self, trajectory_file: str) -> None:
         """Extract the first frame of *trajectory_file* into :attr:`pdb`."""
         from chisurf.core.structure import trajectory_data as md
 
         from chisurf.core.fio.structure import coordinates
 
-        frame0 = md.load_frame(trajectory_file, 0)
-        _, tmp = tempfile.mkstemp(suffix=".pdb")
+        frame0 = md.load_frame(trajectory_file, 0,
+                               top=self.topology_filename or None)
+        # `mkstemp` hands back an *open* descriptor; the old code dropped it on
+        # the floor and wrote to the path separately, leaking one fd per load.
+        handle, tmp = tempfile.mkstemp(suffix=".pdb")
+        os.close(handle)
         frame0.save(tmp)
         self.topology_file = tmp
         self.pdb = coordinates.read(tmp, verbose=False)

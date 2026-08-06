@@ -16,11 +16,29 @@ logger = logging.getLogger(__name__)
 StructureFactory = Optional[Callable[[str], object]]
 FileDialogCallable = Optional[Callable[..., Sequence[str]]]
 
-_DEFAULT_FILTER = "Structure files (*.pdb *.ent *.gro *.cif *.mmcif);;All files (*.*)"
+_DEFAULT_FILTER = (
+    "Structure files (*.pdb *.ent *.cif *.mmcif *.dcd *.xtc);;All files (*.*)"
+)
+
+#: The trajectory formats ChiSurf carries a codec for.
+#:
+#: One constant because two call sites need it and they drifted apart the last
+#: time they were written out separately: `load_trajectory_frames` was moved on
+#: to DCD/XTC while the caller that decides whether to *skip the structure
+#: reader* went on naming the old library's formats, so it suppressed the
+#: reader's warning for three formats that can no longer be opened and raised
+#: it for the two that now can.
+TRAJECTORY_SUFFIXES: tuple[str, ...] = (".dcd", ".xtc")
 
 
-class MdtrajNotAvailableError(RuntimeError):
-    """Raised when a trajectory requires MDTraj but it is not installed."""
+class TrajectoryFormatError(RuntimeError):
+    """Raised when a file is asked of the trajectory loader that it cannot read.
+
+    Distinct from a *failed* read: the format itself is not one ChiSurf carries
+    a codec for. The caller must surface this rather than falling back to the
+    structure readers, which cannot read it either and would report their own
+    error about a file they were never the right reader for.
+    """
 
     pass
 
@@ -640,16 +658,21 @@ def parse_pdb_secondary_structure(path: str | Path) -> dict[tuple[str, int], str
 
 
 def load_trajectory_frames(path: Path) -> np.ndarray:
-    """Load a trajectory or multi-frame structure using MDTraj.
+    """Load a trajectory or multi-frame structure through ChiSurf's own codecs.
 
     The returned array has shape ``(T, N, 3)`` with coordinates in Angstroms.
     This helper is only used for formats that are not handled by the IMP-based
     readers in :mod:`chisurf.core.fio.structure.coordinates`.
+
+    Raises
+    ------
+    TrajectoryFormatError
+        If ``path`` is not one of the trajectory formats ChiSurf reads.
     """
 
     suffix = path.suffix.lower()
-    if suffix not in {".dcd", ".xtc"}:
-        raise ValueError(
+    if suffix not in TRAJECTORY_SUFFIXES:
+        raise TrajectoryFormatError(
             f"File type '{suffix}' is not a trajectory ChiSurf reads "
             "(.dcd and .xtc are)"
         )
@@ -773,13 +796,19 @@ def load_structure_payload(
     # notice over the top of it.
     #
     # A trajectory is the same situation and was not covered. The core reader
-    # opens whatever it is given as text, so an HDF5 file failed on its own
-    # magic bytes (`0x89` at position 0) and the load continued down the
-    # fallback with a warning and a full traceback in the log -- for a file the
-    # dedicated reader handles perfectly. Nothing was broken in the picture,
-    # which is exactly why it survived: the only symptom was noise.
+    # opens whatever it is given as text, so a binary trajectory failed on its
+    # own magic bytes and the load continued down the fallback with a warning
+    # and a full traceback in the log -- for a file the dedicated reader
+    # handles perfectly. Nothing was broken in the picture, which is exactly
+    # why it survived: the only symptom was noise.
+    #
+    # The list must track `load_trajectory_frames`. It named the formats of the
+    # library that used to sit behind it (`.h5`, `.gro`, `.g96`) and went on
+    # naming them after the codecs changed underneath, so it suppressed the
+    # warning for three formats ChiSurf can no longer open at all and raised it
+    # for the two it now reads -- the exact inversion of what it is for.
     is_mmcif = str(path).lower().endswith((".cif", ".mmcif", ".bcif"))
-    is_trajectory = str(path).lower().endswith((".h5", ".hdf5", ".gro", ".g96"))
+    is_trajectory = str(path).lower().endswith(TRAJECTORY_SUFFIXES)
     if is_mmcif or is_trajectory:
         structure_factory = None
     elif structure_factory is None:
@@ -801,7 +830,7 @@ def load_structure_payload(
             structure = None
 
     # Reject empty/invalid structures so that callers can fall back to
-    # alternative loaders (e.g. MDTraj for trajectories or GRO files).
+    # alternative loaders (the DCD/XTC trajectory codecs).
     if structure is not None:
         try:
             n_atoms = getattr(structure, "n_atoms", None)
@@ -843,5 +872,6 @@ __all__ = [
     "load_structure_payload",
     "load_trajectory_frames",
     "parse_pdb_secondary_structure",
-    "MdtrajNotAvailableError",
+    "TrajectoryFormatError",
+    "TRAJECTORY_SUFFIXES",
 ]

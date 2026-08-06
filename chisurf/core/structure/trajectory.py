@@ -126,8 +126,8 @@ class TrajectoryFile(
 
     >>> import chisurf.core.structure
     >>> from chisurf.core.structure import TrajectoryFile
-    >>> s = chisurf.core.structure.Structure('./test/data/modelling/trajectory/h5-file/T4L_Topology.pdb', verbose=True, make_coarse=False)
-    >>> traj = chisurf.core.structure.TrajectoryFile('./test/data/modelling/trajectory/h5-file/hgbp1_transition.h5', s, reading_routine='w')
+    >>> s = chisurf.core.structure.Structure('./test/data/modelling/trajectory/hgbp1/T4L_Topology.pdb', verbose=True, make_coarse=False)
+    >>> traj = chisurf.core.structure.TrajectoryFile('./test/data/atomic_coordinates/trajectory/hgbp1/hgbp1_transition.dcd', s, mode='w')
     >>> traj[0]
     <mfm.structure.structure.mfm.structure.Structure at 0x11f34e10>
     >>> print(traj[0])
@@ -142,7 +142,7 @@ class TrajectoryFile(
 
     >>> import chisurf.core.structure
     >>> from chisurf.core.structure import TrajectoryFile
-    >>> traj = TrajectoryFile('./test/data/modelling/trajectory/h5-file/hgbp1_transition.h5', reading_routine='r', stride=1)
+    >>> traj = TrajectoryFile('./test/data/atomic_coordinates/trajectory/hgbp1/hgbp1_transition.dcd', topology='./test/data/atomic_coordinates/trajectory/hgbp1/topol.pdb', mode='r', stride=1)
     >>> print(traj[0:3])
     [<mfm.structure.structure.mfm.structure.Structure at 0x1345d5d0>,
     <mfm.structure.structure.mfm.structure.Structure at 0x1345d610>,
@@ -157,7 +157,7 @@ class TrajectoryFile(
 
     >>> import chisurf.core.structure
     >>> from chisurf.core.structure import TrajectoryFile
-    >>> traj = TrajectoryFile('./test/data/modelling/trajectory/h5-file/hgbp1_transition.h5', reading_routine='r', stride=1)
+    >>> traj = TrajectoryFile('./test/data/atomic_coordinates/trajectory/hgbp1/hgbp1_transition.dcd', topology='./test/data/atomic_coordinates/trajectory/hgbp1/topol.pdb', mode='r', stride=1)
     >>> t2 = TrajectoryFile(traj, filename='test.dcd')
 
     Attributes:
@@ -514,7 +514,7 @@ class TrajectoryFile(
         -------
 
         >>> import chisurf.core.structure
-        >>> traj = chisurf.core.structure.TrajectoryFile('./test/data/modelling/trajectory/h5-file/hgbp1_transition.h5', reading_routine='r', stride=1)
+        >>> traj = chisurf.core.structure.TrajectoryFile('./test/data/atomic_coordinates/trajectory/hgbp1/hgbp1_transition.dcd', topology='./test/data/atomic_coordinates/trajectory/hgbp1/topol.pdb', mode='r', stride=1)
         >>> s = str(traj.next())
         >>> print(s[:500])
         ATOM      1    N MET A   1       7.332 -10.706 -15.034  0.00  0.00             N

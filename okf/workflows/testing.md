@@ -11,8 +11,8 @@ timestamp: '2026-07-05T00:00:00Z'
 
 Run all tests and any `python`/`pytest` in the project's **`arm64` conda env**,
 never conda `base`. It provides the full stack the suite needs: the Qt bindings,
-the compiled C++ extensions, **IMP + IMP.bff** (`IMP` 2.24, `has_imp()` → True), and
-mdtraj. Because IMP is present, the IMP-gated tests (the FRET plugin's
+the compiled C++ extensions, and **IMP + IMP.bff** (`IMP` 2.24, `has_imp()` → True).
+Because IMP is present, the IMP-gated tests (the FRET plugin's
 `refine`/`errors`/docking, `test_imp_engine.py`, `test_dock_project.py`) **run and
 pass here** — a `skipif not has_imp()` test only skips on a machine that lacks IMP,
 not in `arm64`.

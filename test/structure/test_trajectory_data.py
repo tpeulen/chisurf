@@ -22,7 +22,7 @@ from chisurf.core.structure import trajectory_data as traj_ops
 from chisurf.core.structure.topology import Topology
 
 DATA = pathlib.Path(__file__).resolve().parents[1] / "data/atomic_coordinates/trajectory"
-PDB = DATA / "h5-file/topol.pdb"
+PDB = DATA / "hgbp1/topol.pdb"
 DCD = DATA / "dcd/hgbp1_transition.dcd"
 XTC = DATA / "xtc/hgbp1_transition.xtc"
 EXPECTED = np.load(DATA / "ops/ops_expected.npz")

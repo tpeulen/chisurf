@@ -591,7 +591,7 @@ def read_coordinates(
         # structure, and whatever was built from it was simply blank.
         raise ValueError(
             f"cannot read coordinates from '{filename}': this reader handles "
-            "PDB, ENT, mmCIF and PQR. Trajectories (.h5, .gro, ...) are read by "
+            "PDB, ENT, mmCIF and PQR. Trajectories (.dcd, .xtc) are read by "
             "their own loader."
         )
 

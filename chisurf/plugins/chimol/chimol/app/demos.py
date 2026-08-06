@@ -36,7 +36,7 @@ _DATA_DIRS = (
     pathlib.Path(__file__).resolve().parents[5]
     / "test" / "data" / "atomic_coordinates" / "pdb_files",
     pathlib.Path(__file__).resolve().parents[5]
-    / "test" / "data" / "atomic_coordinates" / "trajectory" / "h5-file",
+    / "test" / "data" / "atomic_coordinates" / "trajectory" / "hgbp1",
 )
 
 #: Demo order and one-line descriptions. The order is a tour: what the viewer

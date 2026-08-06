@@ -26,11 +26,15 @@ from chisurf.plugins.chimol.chimol.app.demos import (
     resolve_structure,
 )
 
-_TRAJECTORY = (
+_TRAJ_DIR = (
     pathlib.Path(__file__).resolve().parents[4]
-    / "test" / "data" / "atomic_coordinates" / "trajectory" / "h5-file"
-    / "hgbp1_transition.h5"
+    / "test" / "data" / "atomic_coordinates" / "trajectory"
 )
+#: A trajectory is two files. DCD stores coordinates and nothing else, so the
+#: atom names come from the PDB and the frames are laid onto it -- which is what
+#: `load_traj` is for and what these tests exercise.
+_TOPOLOGY = _TRAJ_DIR / "hgbp1" / "topol.pdb"
+_TRAJECTORY = _TRAJ_DIR / "hgbp1" / "hgbp1_transition.dcd"
 
 
 # --------------------------------------------------------------------------- #
@@ -202,9 +206,12 @@ def test_script_text_runs_line_by_line(window):
 @pytest.fixture
 def trajectory(window):
     win, shared, errors, qapp = window
-    if not _TRAJECTORY.exists():
+    if not (_TRAJECTORY.exists() and _TOPOLOGY.exists()):
         pytest.skip("no trajectory fixture")
-    win._load_structure_from_path(_TRAJECTORY)
+    win._load_structure_from_path(_TOPOLOGY)
+    for _ in range(30):
+        qapp.processEvents()
+    shared.load_traj(str(_TRAJECTORY))
     for _ in range(30):
         qapp.processEvents()
     errors.clear()
@@ -222,13 +229,18 @@ def test_count_states_reports_the_trajectory_length(trajectory):
 
 
 def test_the_trajectory_topology_is_read(trajectory):
-    """An MDTraj file carries atom names and residues; they must arrive.
+    """The atom names and residues must survive `load_traj`.
 
     This test used to assert the opposite -- that the fixture had *no* atoms,
     "because it is coarse-grained". That was my wrong reading: the file is
     all-atom, and the 15.3 A "bead spacing" I measured was in scene units
     (1.53 A in the file, an ordinary bond). The loader was dropping
     ``traj.topology``, so every feature keyed on atom identity degraded silently.
+
+    The same failure has a second way in now that the topology arrives from a
+    separate file: `load_traj` writes frames over an object's coordinates, and
+    if it cleared or replaced the atom array while doing so the degradation
+    would be identical and just as quiet.
     """
     win, _shared, _errors, _qapp = trajectory
     state = win.viewer._objects[win.viewer.get_active_object_id()].state

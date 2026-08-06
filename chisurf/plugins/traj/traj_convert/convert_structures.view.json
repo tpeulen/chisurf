@@ -62,7 +62,7 @@
           "type": "choice",
           "attr": "ending",
           "label": "Format",
-          "options": [".dcd", ".xtc", ".pdb", ".h5"],
+          "options_source": "output_formats",
           "description": "Output file extension / format."
         },
         {

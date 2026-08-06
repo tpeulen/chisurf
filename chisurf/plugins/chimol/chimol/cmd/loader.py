@@ -93,6 +93,97 @@ class LoaderCommands(BaseCmd):
             else:
                 self._emit_message(f"Loaded: {path}")
 
+    @command("load_traj")
+    def load_traj(self, path: str = "", obj: str = "") -> None:
+        """Read coordinate frames onto an object that already has atoms.
+
+        PyMOL's ``load_traj file [, object]``, and the only way to open a DCD or
+        an XTC usefully: they store coordinates and *nothing else* -- no atom
+        names, no residues, no chains. Loaded on their own they arrive as a bare
+        point cloud, and everything keyed on atom identity degrades without
+        erroring: the cartoon splines through every atom instead of the CA
+        trace, a selection resolves to nothing, the sequence view is empty.
+
+        So the topology comes from a structure file loaded first, and the frames
+        are laid onto it here -- the same split the trajectory tools make with
+        their topology picker.
+
+        Parameters
+        ----------
+        path : str
+            The trajectory. See :data:`~chisurf.plugins.chimol.chimol.io.structure.TRAJECTORY_SUFFIXES`.
+        obj : str, optional
+            Which object to lay the frames onto. Defaults to the active one.
+        """
+        if not str(path).strip():
+            self._emit_error("Usage: load_traj <path> [, object]")
+            return
+
+        window, viewer = self._require_window_and_viewer()
+        if viewer is None:
+            return
+
+        from ..io.structure import TrajectoryFormatError, load_trajectory_frames
+
+        resolved = Path(str(path).strip()).expanduser()
+        try:
+            frames = load_trajectory_frames(resolved)
+        except TrajectoryFormatError as exc:
+            self._emit_error(f"load_traj: {exc}")
+            return
+        except Exception as exc:
+            self._emit_error(f"load_traj: could not read '{resolved}': {exc}")
+            return
+
+        obj_id = str(obj).strip() or None
+        if obj_id is not None:
+            obj_id = self._object_id_for_name(viewer, obj_id)
+            if obj_id is None:
+                self._emit_error(f"load_traj: there is no object named '{obj}'")
+                return
+        else:
+            obj_id = viewer.get_active_object_id()
+        if obj_id is None:
+            self._emit_error(
+                "load_traj: nothing is loaded to lay the frames onto -- load the "
+                "structure that names the atoms first"
+            )
+            return
+
+        # The atom counts must agree, and this is the check worth having: a
+        # mismatch is silent otherwise. The frames simply replace the
+        # coordinates, so a topology with a different number of atoms relabels
+        # every position with the wrong atom's name and draws a plausible,
+        # entirely wrong molecule.
+        entry = viewer._objects.get(obj_id)
+        obj_name = getattr(entry, "name", str(obj_id))
+        atoms = getattr(getattr(entry, "state", None), "atoms", None)
+        if atoms is not None and len(atoms) != int(frames.shape[1]):
+            self._emit_error(
+                f"load_traj: '{resolved.name}' has {frames.shape[1]} atoms per "
+                f"frame but {obj_name} has {len(atoms)}; they are not the same "
+                "molecule"
+            )
+            return
+
+        try:
+            viewer.set_frames(frames, object_id=obj_id)
+        except Exception as exc:
+            self._emit_error(f"load_traj: could not store the frames: {exc}")
+            return
+        self._emit_message(
+            f"load_traj: {frames.shape[0]} states of {frames.shape[1]} atoms "
+            f"onto {obj_name}"
+        )
+
+    @staticmethod
+    def _object_id_for_name(viewer, name: str) -> str | None:
+        """Return the id of the object called ``name``, or ``None``."""
+        for object_id, entry in getattr(viewer, "_objects", {}).items():
+            if str(getattr(entry, "name", object_id)) == name:
+                return object_id
+        return name if name in getattr(viewer, "_objects", {}) else None
+
     #: The repositories `fetch` knows. One table rather than three near-identical
     #: commands: the three that were here had drifted, and one of them had never
     #: worked at all.

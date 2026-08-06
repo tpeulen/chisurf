@@ -460,7 +460,7 @@ def rmsd(
     --------
 
     >>> import chisurf.core.settings as mfm
-    >>> times = mfm.TrajectoryFile('./test/data/structure/2807_8_9_b.h5', reading_routine='r', stride=1)
+    >>> times = mfm.TrajectoryFile('./test/data/structure/2807_8_9_b.h5', mode='r', stride=1)
     >>> s1 = times[10]
     >>> s1
     <mfm.structure.structure.Structure at 0x135f3ad0>
@@ -535,7 +535,7 @@ def find_best(
     --------
 
     >>> import chisurf.core.settings as mfm
-    >>> times = times = mfm.TrajectoryFile('./test/data/structure/2807_8_9_b.h5', reading_routine='r', stride=1)
+    >>> times = times = mfm.TrajectoryFile('./test/data/structure/2807_8_9_b.h5', mode='r', stride=1)
     >>> find_best(times.mdtraj, times.mdtraj[2])
     (2, <Trajectory: 1 frames, 2495 atoms>)
     """
@@ -738,7 +738,7 @@ def average(
     --------
 
     >>> import chisurf.core.structure
-    >>> traj = chisurf.core.structure.TrajectoryFile('./test/data/atomic_coordinates/trajectory/h5-file/hgbp1_transition.h5', reading_routine='r', stride=1)
+    >>> traj = chisurf.core.structure.TrajectoryFile('./test/data/atomic_coordinates/trajectory/hgbp1/hgbp1_transition.dcd', topology='./test/data/atomic_coordinates/trajectory/hgbp1/topol.pdb', mode='r', stride=1)
     >>> avg = traj.average
     >>> avg
     <mfm.structure.structure.Structure at 0x117ff770>

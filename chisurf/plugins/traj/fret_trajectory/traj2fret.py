@@ -120,6 +120,7 @@ class CalculateTransfer(object):
     def __init__(
             self,
             trajectory_file: str = None,
+            topology_file: str = None,
             dipoles: bool = True,
             tau0: float = 2.6,
             stride: int = 1,
@@ -144,6 +145,10 @@ class CalculateTransfer(object):
             If verbose is True -> output to std-out.
         """
         self._trajectory_file = trajectory_file
+        #: PDB naming the atoms. Required for DCD and XTC, which store
+        #: coordinates only -- without it the reader cannot say which atom is
+        #: the donor.
+        self.topology_file = topology_file
         self._dipoles = dipoles
         self._tau0 = tau0
         self._stride = stride
@@ -304,7 +309,8 @@ class CalculateTransfer(object):
             f_handle.write('Frame\ttime[ns]\tRDA[Ang]\tkappa\tkappa2\tFRETrate[1/ns]\n')
         n = 0
         results = []
-        for chunk_traj in md.iterload(trajectory_file, stride=stride, chunk=chunk):
+        for chunk_traj in md.iterload(trajectory_file, stride=stride, chunk=chunk,
+                                      top=self.topology_file or None):
             if dipoles:
                 ds, ks = chisurf.core.fluorescence.anisotropy.kappa2.calculate_kappa_distance(
                     chunk_traj.xyz,
@@ -391,6 +397,9 @@ python traj2fret.py traj.h5 -a A 22 CA A 32 CA -d A 101 CA A 152 CA -o output.cs
 
 """,
         formatter_class=argparse.RawTextHelpFormatter)
+    parser.add_argument('--topology', dest='topology_file', type=str, default=None,
+                        help='PDB naming the atoms. Required for .dcd and .xtc, '
+                             'which store coordinates only.')
     parser.add_argument('trajectory_file', metavar='file', type=str,
                         help='Filename of the .h5 trajectory file')
 
@@ -443,7 +452,7 @@ python traj2fret.py traj.h5 -a A 22 CA A 32 CA -d A 101 CA A 152 CA -o output.cs
     # Save the first frame to a PDB and pick the atom numbers
     if args.verbose:
         print("Opening first frame of trajectory.")
-    frame = md.load_frame(args.trajectory_file, 0)
+    frame = md.load_frame(args.trajectory_file, 0, top=args.topology_file)
     if kwargs['t_step'] is None:
         try:
             kwargs['t_step'] = frame.timestep
@@ -500,7 +509,7 @@ python traj2fret.py traj.h5 -a A 22 CA A 32 CA -d A 101 CA A 152 CA -o output.cs
     if args.verbose:
         print("Calculating fluorescence decays.")
     if args.decay_file is not None:
-        traj = md.load(args.trajectory_file)
+        traj = md.load(args.trajectory_file, top=args.topology_file)
         t_step = kwargs['t_step']
         t, rD = traj2anisotropy(traj, t_step, args.donor[0], args.donor[1], t_max=args.decay_time_max)
         t, rA = traj2anisotropy(traj, t_step, args.acceptor[0], args.acceptor[1], t_max=args.decay_time_max)

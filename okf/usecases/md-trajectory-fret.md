@@ -16,7 +16,7 @@ counterpart of [FPS labelling positions](/usecases/fps-labelling-positions.md):
 there the dye position is a static accessible volume on one structure, here it is
 two atoms followed through a conformational transition.
 
-**Data:** `test/data/atomic_coordinates/trajectory/h5-file/hgbp1_transition.h5` —
+**Data:** `test/data/atomic_coordinates/trajectory/hgbp1/hgbp1_transition.dcd` —
 464 frames of hGBP1 going through its open/closed transition, 5235 atoms, two
 chains (A = residues 1–151, B = residues 152–570), frames 1 ps apart.
 

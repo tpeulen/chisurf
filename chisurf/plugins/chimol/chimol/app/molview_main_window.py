@@ -52,7 +52,7 @@ from ..io import (
     open_structure_files,
     load_structure_payload,
     load_trajectory_frames,
-    MdtrajNotAvailableError,
+    TrajectoryFormatError,
     load_mrc_as_points,
 )
 from ..renderer.view import MolView
@@ -527,11 +527,18 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
         # A demo says `load 148l.pdb` so it reads like something a person would
         # type. Resolving the name here is what lets that work from any working
         # directory without the script carrying a machine-specific path.
+        #
+        # Every command whose first argument names a shipped file belongs in
+        # this tuple. `load_traj` was added to a demo and missed, and the demo
+        # then failed on a file that was sitting right there -- the resolver
+        # only knew the one verb it was written for.
+        loaders = ("load", "load_traj")
         lines = []
         for line in text.splitlines():
             stripped = line.strip()
-            if stripped.startswith("load ") and "," not in stripped:
-                lines.append("load " + resolve_structure(stripped[5:].strip()))
+            verb, _, rest = stripped.partition(" ")
+            if verb in loaders and rest.strip() and "," not in stripped:
+                lines.append(f"{verb} " + resolve_structure(rest.strip()))
             else:
                 lines.append(line)
         self.run_script_text("delete all\n" + "\n".join(lines))
@@ -1914,8 +1921,8 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
             )
             n_atoms = 0 if coords_arr is None else coords_arr.shape[0]
         else:
-            # No usable static structure/coords: MDTraj-based trajectory loading
-            # for the formats the structure readers do not cover (GRO, HDF5).
+            # No usable static structure/coords: the trajectory codecs, for
+            # the formats the structure readers do not cover (DCD, XTC).
             #
             # RMF is *not* handled here. It used to be -- a second RMF path,
             # unreachable because the branch above it always returned, which
@@ -1923,8 +1930,11 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
             # `load_structure_payload` with everything else now.
             try:
                 frames = load_trajectory_frames(path)
-            except MdtrajNotAvailableError:
-                # Surface a clear message to GUI/cmd callers.
+            except TrajectoryFormatError:
+                # Surface a clear message to GUI/cmd callers. Falling through
+                # to `primary_exc` below would report the *structure*
+                # reader's complaint about a file it was never the right
+                # reader for -- and that message points back here.
                 raise
             except Exception:
                 if primary_exc is not None:

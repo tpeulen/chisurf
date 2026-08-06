@@ -134,7 +134,9 @@ class _IoSection(QtWidgets.QWidget):
         if self._model.use_folder:
             path = str(QtWidgets.QFileDialog.getExistingDirectory(self, "Open PDB-Files", "."))
         else:
-            path = chisurf.gui.widgets.get_filename("Open HDF-File", "H5-File (*.h5)")
+            path = chisurf.gui.widgets.get_filename(
+                "Open trajectory", "Trajectory (*.dcd *.xtc)"
+            )
         if path:
             self._model.set_trajectory(path)
             self._refresh_host_form()

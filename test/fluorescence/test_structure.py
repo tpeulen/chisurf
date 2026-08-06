@@ -136,9 +136,12 @@ class Tests(unittest.TestCase):
         )
 
     def test_traj_opening(self):
+        # A trajectory is two files: DCD stores coordinates and nothing else, so
+        # the atom names come from the topology beside it.
         import chisurf.core.structure
         traj = chisurf.core.structure.TrajectoryFile(
-            './test/data/atomic_coordinates/trajectory/h5-file/hgbp1_transition.h5',
+            './test/data/atomic_coordinates/trajectory/hgbp1/hgbp1_transition.dcd',
+            topology='./test/data/atomic_coordinates/trajectory/hgbp1/topol.pdb',
             stride=1
         )
         self.assertEqual(

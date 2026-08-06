@@ -51,8 +51,16 @@ and counting `actions.LINK`, then again without the candidate. Measured
 `notebook` **59** (the Jupyter server stack; kept — the GUI starts it), `pyarrow-core`
 **37** (libarrow's AWS/Azure/GCS/gRPC/ORC stack; kept), `scikit-image` **20**,
 `boost-cpp` **8**, `python-docx` 3, `mdtraj` 2, `hdbscan`/`micromamba`/
-`boost-histogram` 1, and **`pytables` 0** — mdtraj requires it, so it is already
-paid for, and swapping it for a different HDF5 binding would only *add* packages.
+`boost-histogram` 1, and **`pytables` 0** — mdtraj required it, so it was already
+paid for, and swapping it for a different HDF5 binding would only have *added*
+packages.
+
+> That last reading is worth keeping as a caution. A dependency measured at
+> **0** is not free — it is *masked*, and the number says nothing about what it
+> costs once the thing masking it leaves. `mdtraj` was retired
+> ([PRD-80](/prds/prd-80.md)) and `pytables` went from 0 to the whole HDF5
+> binding, taking `numexpr` with it. Measure the candidate *and* what would
+> still hold it if the candidate went.
 Two results were counter-intuitive and are the reason for measuring: removing
 `boost-cpp` **grew** the closure by 8 net, because its `xz` pin was holding the
 solve on a branch where Pillow needs no font/cairo stack; and declaring the eight

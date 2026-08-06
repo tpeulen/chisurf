@@ -34,9 +34,12 @@ All eight single-tool `traj_*` widgets — `traj_save_topology`, `traj_align`,
 `potential_energy` and `fret_trajectory` — have been migrated off their
 hand-built `.ui` files onto the [AutoForm](/subsystems/gui-autoform.md)
 pattern. Each now pairs a Qt-free view-model (holding the paths, options and a
-running log, and doing all the `mdtraj`/compute work) with an `AutoForm` laid out
-from a sibling `*.view.json`: a picker custom section (`<name>_io`, with H5/PDB
-browse, drag-drop and the `💾`/`▶` action buttons) plus built-in `value`/
+running log, and doing all the trajectory/compute work through
+`core/structure/trajectory_data.py`) with an `AutoForm` laid out
+from a sibling `*.view.json`: a picker custom section (`<name>_io`, with
+**trajectory and topology** browse rows, drag-drop and the `💾`/`▶` action
+buttons — DCD and XTC store coordinates only, so the atom names come from a
+PDB named separately) plus built-in `value`/
 `choice`/`toggle`/`table` field sections over a live `info` log bound to the
 model's `log_html`. Irreducibly-dynamic Qt (the `potential_energy` per-potential
 parameter editor + potentials table, the `fret_trajectory` four `PDBSelector`

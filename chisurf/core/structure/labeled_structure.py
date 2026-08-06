@@ -175,10 +175,10 @@ def av_filtered_fcs_weights(
     hGBP1 two limiting states are known, with the fraction 0.66 (state-1) and 0.33 (state-2). Using corase-grained
     models of these limiting states fluorescence decays are calculated and the filters are determined.
 
-import chisurf.core.settings as mfm.structure    >>> structure_1 = mfm.structure.Structure('./test/data/modelling/trajectory/h5-file/steps/0_major.pdb')
+import chisurf.core.settings as mfm.structure    >>> structure_1 = mfm.structure.Structure('./test/data/modelling/trajectory/hgbp1/steps/0_major.pdb')
 
-    >>> structure_1 = Structure('./test/data/modelling/trajectory/h5-file/steps/3_minor.pdb')
-    >>> structure_2 = Structure('./test/data/modelling/trajectory/h5-file/steps/3_minor.pdb')
+    >>> structure_1 = Structure('./test/data/modelling/trajectory/hgbp1/steps/3_minor.pdb')
+    >>> structure_2 = Structure('./test/data/modelling/trajectory/hgbp1/steps/3_minor.pdb')
     >>> ls_1 = av_lifetime_spectrum(structure_1, donor_lifetime_spectrum=dl, donor_av_parameter=d_av, acceptor_av_parameter=a_av)
     >>> ls_2 = av_lifetime_spectrum(structure_2, donor_lifetime_spectrum=dl, donor_av_parameter=d_av, acceptor_av_parameter=a_av)
     >>> times = np.linspace(0, 20, num=50)
@@ -193,7 +193,7 @@ import chisurf.core.settings as mfm.structure    >>> structure_1 = mfm.structure
     Now the trajectory of the transition using the crystal-structure as intermediate state was simulated. Using this
     trajectory weights are associated to each frame which correspond to the first and the second state.
 
-    >>> traj = TrajectoryFile('./test/data/modelling/trajectory/h5-file/hgbp1_transition.h5', reading_routine='r')
+    >>> traj = TrajectoryFile('./test/data/atomic_coordinates/trajectory/hgbp1/hgbp1_transition.dcd', topology='./test/data/atomic_coordinates/trajectory/hgbp1/topol.pdb', mode='r')
     >>> d_av = {'residue_seq_number': 12, 'atom_name': 'CB'}  # the resiude numbers are slightly shifted
     >>> a_av = {'residue_seq_number': 567, 'atom_name': 'CB'}
     >>> weights = [av_filtered_fcs_weights(s, lifetime_filters=lf, time_axis=times, donor_lifetime_spectrum=dl, donor_av_parameter=d_av, acceptor_av_parameter=a_av) for s in traj]

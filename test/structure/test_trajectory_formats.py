@@ -24,7 +24,7 @@ import numpy as np
 import pytest
 
 DATA = pathlib.Path(__file__).resolve().parents[1] / "data/atomic_coordinates/trajectory"
-TOPOLOGY = DATA / "h5-file/topol.pdb"
+TOPOLOGY = DATA / "hgbp1/topol.pdb"
 DCD = DATA / "dcd/hgbp1_transition.dcd"
 XTC = DATA / "xtc/hgbp1_transition.xtc"
 

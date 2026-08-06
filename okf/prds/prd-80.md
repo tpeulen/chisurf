@@ -3,8 +3,8 @@ type: PRD
 prd: "80"
 title: "PRD-80: Retire mdtraj — DCD and RMF3 trajectories on IMP, and the end of pytables/numexpr"
 description: mdtraj is the only reason ChiSurf pulls pytables and, through it, numexpr. IMP covers the structure side but has no trajectory reader at all, and RMF3 -- measured -- is ~750x slower to read than DCD, so DCD is the trajectory container and RMF3 the hierarchy/model container.
-status: planned
-phase: "unassigned"
+status: done
+phase: "complete"
 resource: chisurf/core/structure/trajectory.py
 tags: [prd, dependencies, mdtraj, imp, rmf, dcd, pytables, numexpr, trajectories]
 timestamp: '2026-08-05T00:00:00Z'
@@ -443,9 +443,11 @@ there.
 
 # Where to pick this up
 
-**The foundations are done.** Coordinates, selections and topology are all
-ChiSurf's own now, each checked against the library being replaced and each
-with committed fixtures that outlive it:
+**PRD-80 is done.** `mdtraj`, `pytables` and `numexpr` are gone from the tree
+and from `pixi.toml`, and `test/test_no_retired_dependency_imports.py` fails on
+any of them coming back. Coordinates, selections and topology are ChiSurf's own,
+each checked against the library they replaced with committed fixtures that
+outlive it:
 
 | Piece | Where | Checked against the reference |
 |---|---|---|
@@ -454,50 +456,46 @@ with committed fixtures that outlive it:
 | Selections | `core/structure/selection.py` | 45 expressions, identical indices |
 | Topology | `core/structure/topology.py` | atoms/residues/chains/elements identical |
 
-**Every capability now exists**; what is left is the port.
+**A trajectory is now two files, and that shape had to reach the surface.** DCD
+and XTC store coordinates and *nothing else* — no atom names, residues or
+chains — so a topology comes alongside. Every entry point takes one:
+`TrajectoryFile(dcd, topology=pdb)`, a **Topology** row on each of the five
+`traj` tools, and chimol's `load_traj <file>[, object]`, which lays frames onto
+an object that already has atoms.
 
-Done: `structure.py`'s `find_best` and the FRET core (`trajectory.py`,
-`pair_selection.py`, `evaluate.py`) — three of them a **one-line import swap**,
-because the new API deliberately copies the old names and signatures.
-`av/static.py` needed nothing: it is duck-typed on `traj.top.select` and
-`traj.xyz`.
+## What is left, and what to watch for
 
-Remaining, in this order:
+1. **`.gro` and `.g96` can no longer be opened at all.** They were the old
+   library's formats and nothing replaced them. Nothing in the tree asks for
+   them and no fixture uses one, so this is a gap rather than a regression —
+   but it is a real capability that left. GRO is fixed-width text and about a
+   page of code if it is ever wanted.
+2. **`chimol/test/test_ss_vs_mdtraj.py` is skipped** — it used `compute_dssp`
+   as the oracle for chimol's own secondary structure. It needs a *recorded*
+   fixture (run DSSP once, commit the string), not a DSSP implementation.
+3. **`potential_energy` is red for an unrelated reason**: `No module named
+   'IMP.cgmol'`, drift in the companion repo. It is not PRD-80 breakage and it
+   predates this work — see [known issues](../references/known-issues.md).
 
-1. **The other 7 `traj` plugins.** `traj_align` is done and is the template —
-   copy it. The pattern in `traj_join`, `traj_rotate_translate` and
-   `traj_remove_clashes` is identical: swap `import mdtraj as md` +
-   `import tables` for `DCDWriter` and `trajectory_data as md`, add a
-   `topology_filename` field (DCD stores no atom names), open the writer **on
-   the first chunk** so the frame spacing comes from the data, and move the
-   tests from `.h5` to `.dcd` + a `.pdb`.
-   `traj_convert` needs its `mdconvert` shell-out replaced by the same loop;
-   `traj_save_topology`, `fret_trajectory` and `potential_energy` only read.
-   The GUI still needs a topology picker on each — the view models take the
-   field, nothing sets it yet.
-2. **Then `TrajectoryFile`'s base class**, once no plugin depends on the
-   inheritance. Read the centring trap above before starting.
-3. **chimol's `io/structure.py`.** It reaches for mdtraj only for `.gro`,
-   `.g96` and `.h5`, already behind a clear "not available" error. `.h5`
-   trajectories are being dropped anyway; GRO is a fixed-width text format and
-   a page of code. Add `.dcd`/`.xtc` there while you are in it — chimol cannot
-   open either today.
-4. **The remaining five `import tables` sites.** Three are `traj` plugins and
-   vanish with step 1 (`traj_align`'s is already gone); `av/dynamic.py`'s
-   `save()` is the same shape; only `maxent_decay/core/sampling.py` needs a
-   decision (`.npz`).
-5. **Drop `mdtraj`, `pytables` and `numexpr`** and extend the guardrail.
+## The trap worth writing down
 
-**Two test sites, not runtime**: `chimol/test/test_ss_vs_mdtraj.py` uses
-`compute_dssp` as an oracle for chimol's own secondary structure — it needs a
-recorded fixture, not a DSSP implementation — and
-`fret/test/test_pair_selection.py` builds a `Topology`.
+**A format list in two places drifts, and the symptom is only noise.** chimol
+states which files are trajectories in three spots: the loader, the caller that
+decides whether to skip the structure reader, and the file dialog. The loader
+was moved on to DCD/XTC; the other two went on naming the old library's
+formats. Nothing failed. The dialog offered `.gro`, which nothing could open,
+and the skip-the-structure-reader rule fired for exactly the files it should not
+have and not for the two it should — so every DCD that opened *perfectly* wrote
+a warning and a full traceback to the log. There is now one
+`TRAJECTORY_SUFFIXES` constant and a guard test that fails on either half
+drifting from it.
 
-**The IMP question is now smaller than it looked.** It gated topology, and
-topology no longer needs IMP: it is built on `Structure`, which reads PDB and
-mmCIF without any MD library. IMP is still imported 34 times and declared in no
-manifest, and that is worth settling — but it no longer blocks this PRD.
+**A fixture rename is where the wrong file gets picked up silently.** The
+464-frame trajectory now lives at `test/data/atomic_coordinates/trajectory/hgbp1/`
+(the directory was called `h5-file`, which stopped being true). There is a
+*second*, 3-frame `hgbp1_transition.dcd` under `trajectory/dcd/` — the codec A/B
+fixture, paired with an `_expected.npz`. Same name, different length. chimol's
+demo search path briefly held both and resolved by directory order; a demo that
+should show a 464-frame movie would have shown three frames and still passed
+every assertion. Only `trajectory/hgbp1/` is on that path now.
 
-Do not remove mdtraj until the equal-to-mdtraj tests for the *operations* exist
-and pass. The formats, selections and topology already have that cover; the
-operations do not.

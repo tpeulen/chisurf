@@ -18,11 +18,19 @@ program's format, and sanity-check the result. All seven of those live in the
 same window as the FRET tab, one tab each — this use case walks them in the
 order a user actually needs them.
 
-**Data:** `test/data/atomic_coordinates/trajectory/h5-file/hgbp1_transition.h5`
+**Data:** `test/data/atomic_coordinates/trajectory/hgbp1/hgbp1_transition.dcd`
 — 464 frames of hGBP1 through its open/closed transition, 5235 atoms, 570
 residues, 2 chains (A = 1–151, B = 152–570). Note the file's own `time` array is
 **not monotonic** (it runs 0…249 and restarts), so it is a good specimen for
 checking what the tools do to the time axis.
+
+> **Changed 2026-08-06 ([PRD-80](/prds/prd-80.md)).** This walkthrough was
+> taken while the tools read and wrote mdtraj HDF5. They now read **DCD/XTC**
+> and write **DCD**, and a trajectory is **two files**: DCD and XTC store
+> coordinates and nothing else, so every tab has a **Topology** row beside the
+> trajectory one. Read `.h5` below as `.dcd`, and *"Topology is optional"* as
+> *"Topology is required"*. The UX findings further down were re-checked and
+> still stand except where struck.
 
 **Tool:** *Structure → Traj Tools* (`chisurf.plugins.traj.traj_tools`,
 `gui.tool:TrajectoryToolsTool`). Eight tabs — *Align, Convert, Energy Calc,
@@ -43,9 +51,9 @@ front; the status bar names the active tab.
 3. **Align** — click the tab, drop the same `.h5`, type the reference atom set
    into **Atom selection** as a comma-separated list of atom **ids** (e.g. the
    200 backbone `CA` indices), set **Stride** (32 for a quick pass), press
-   **💾 Save aligned…** → `aligned.h5`. Every frame is superposed onto frame 0.
+   **💾 Save aligned…** → `aligned.dcd`. Every frame is superposed onto frame 0.
    **Leaving Atom selection empty destroys the trajectory — see RF-706.**
-4. **Remove Clashed** — drop the trajectory, keep or edit the mdtraj selection
+4. **Remove Clashed** — drop the trajectory, keep or edit the selection
    expression (**not** the same syntax as Align's field — default
    `name CA and resSeq 1 to 256`), set **Min distance** in Ångström (default
    2.85), press **💾 Save clash-free…**. Frames in which any selected atom pair
@@ -154,11 +162,12 @@ of them does it on the default path:
 
 - **"Atom selection" means two different things in adjacent tabs.** Align wants
   a comma-separated list of integer atom **ids**; Remove Clashed wants an
-  **mdtraj selection expression** (`name CA and resSeq 1 to 256`). Same label,
+  **selection expression** (`name CA and resSeq 1 to 256`, now parsed by
+  `core/structure/selection.py`). Same label,
   same oversized multi-line box, incompatible syntax — and pasting one into the
   other fails silently in Align (see RF-706) rather than erroring. Rename to
-  *"Reference atom ids"* vs *"Atom selection (mdtraj)"*, or better, give both
-  tabs the mdtraj expression and translate it internally.
+  *"Reference atom ids"* vs *"Atom selection (expression)"*, or better, give
+  both tabs the expression and translate it internally.
 - **Give the Align/Remove-Clashed atom box one line, not eight.** It eats a
   third of the panel for what is normally a short entry, pushing the log — the
   only place the tool tells you anything — into the leftovers.
@@ -177,12 +186,18 @@ of them does it on the default path:
   and there the window simply stops repainting. Traj Tools should use the shared
   `ChiSurfProgress` the rest of the tree now has.
 - **The Convert tab's three file rows have no placeholder text**, unlike every
-  other tab's *"Drop an H5 trajectory here or browse…"*. A user cannot tell they
-  are drop targets, nor that **Topology** is optional when the input is `.h5`.
-- **`mdconvert`'s own progress goes to the terminal.** Converting printed
-  `converted 15 frames, 5235 atoms` and `['xyz', 'time', 'topology']` to stdout —
-  the GUI shells into `mdtraj.scripts.mdconvert.main`, whose output no GUI user
-  ever sees. Those two lines are exactly what the panel log should show.
+  other tab's *"Drop a trajectory here or browse…"*. A user cannot tell they
+  are drop targets. ~~nor that **Topology** is optional when the input is
+  `.h5`~~ — resolved: the input is DCD/XTC, topology is always required, and
+  every tab now has its own labelled Topology row with a placeholder saying so.
+- ~~**`mdconvert`'s own progress goes to the terminal.**~~ Resolved: the
+  shell-out to an external converter is gone -- it was this same read/write loop
+  with an `argv` in the middle -- and the counts land in the panel log where the
+  finding asked for them (`Wrote 15 frames of 5235 atoms`, verified headlessly
+  at stride 32). The output-format list lost `.xtc` and `.h5` at the same time:
+  neither can be written, and offering an unwritable format in a combo box turns
+  a wrong pick into a traceback after the user has chosen a directory and a
+  name.
 - **Convert is the only tab that pops a modal on success** (*"Conversion
   done!"*) *and* logs it; the other seven only log. Pick one.
 - **Energy Calc's added-potentials table is column-sized backwards** — the
