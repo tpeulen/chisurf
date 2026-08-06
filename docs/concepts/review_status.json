@@ -20,6 +20,20 @@
     "sha256": "4a80a8280f85d07e3c8210b55bdd3a228ff794c95bcec640e3211a8c30a5052f",
     "status": "ai-reviewed"
   },
+  "burst_2cde.md": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "5365d0d3ff01115303a61583ed92429158c2d0b5c7f11f703602389558d5264e",
+    "status": "ai-reviewed"
+  },
+  "bva.md": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "45c0b35e6b55e8aa5fb596c004bb8f317e67fcf2bf0cc13a87573cad313062e9",
+    "status": "ai-reviewed"
+  },
   "ebfret.md": {
     "date": "2026-08-06",
     "reviewer": "agent",
@@ -67,6 +81,20 @@
     "reviewer": "agent",
     "reviewer_kind": "ai",
     "sha256": "3f7a5f6ada0014ec2a4cd9b1c5e5cf68f0e075ded7ff41f47abef89a23d118bb",
+    "status": "ai-reviewed"
+  },
+  "hidden_markov_models.md": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "e95c30da98c8719b88797d4d94afe9212a09a0a181cd192df19a23290272a337",
+    "status": "ai-reviewed"
+  },
+  "imaging_flim_phasor.md": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "b894362e0ffcfe1dfc116535033c6ebf441f4dcc492813dd50678dfac722c699",
     "status": "ai-reviewed"
   },
   "pch_fida.md": {

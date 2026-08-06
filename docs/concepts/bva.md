@@ -159,7 +159,5 @@ and binned-trace HMMs cover the slower ones.
   implementation {src}`chisurf/core/fluorescence/burst/bva.py`; the fast parallel
   engine `tttrlib.BVA` (base class `tttrlib.BurstFeature`), with the static-line
   helper `tttrlib.BVA.compute_static_bva_line`.
-- Primary literature: J. P. Torella, S. J. Holden, Y. Santoso, J. Hohlbein and
-  A. N. Kapanidis, *Identifying molecular dynamics in single-molecule FRET
-  experiments with burst variance analysis*, **Biophys. J.** 100(6), 1568–1577
-  (2011). doi:10.1016/j.bpj.2011.01.066
+- Primary literature: {cite}`torella2011` is burst variance analysis itself —
+  the statistic, the static line, and the false positives it warns about.

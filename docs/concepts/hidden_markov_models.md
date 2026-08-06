@@ -125,8 +125,8 @@ trade-off in this analysis.
 
 ## In ChiSurf
 
-The estimator is `chisurf.core.math.hmm.GaussianHMM`; the shared analysis
-(state ordering, dwell times, model selection) is
+The estimator is {src}`chisurf/core/math/hmm.py#GaussianHMM`; the shared
+analysis (state ordering, dwell times, model selection) is
 `chisurf.plugins.core.hmm.core`, reachable from the GUI tool, the `csc hmm`
 command line and the `hmm.fit` / `hmm.scan` RPC methods. See the guide
 [Hidden Markov models of binned traces](../guides/54_hidden_markov_models.md).
@@ -137,11 +137,9 @@ trace with known rates: choosing the state count by BIC, decoding, dwell-time
 exponentials, the short-bin rate approximation and where it breaks, and what
 too many states looks like.
 
-[^rabiner]: L. R. Rabiner, "A tutorial on hidden Markov models and selected
-    applications in speech recognition", *Proc. IEEE* **77**, 257-286 (1989).
-    <https://doi.org/10.1109/5.18626>
-[^huang]: X. Huang, A. Acero, H.-W. Hon, *Spoken Language Processing*, Prentice
-    Hall (2001), pp. 443-445.
-[^squarem]: R. Varadhan, C. Roland, "Simple and globally convergent methods for
-    accelerating the convergence of any EM algorithm", *Scand. J. Stat.* **35**,
-    335-353 (2008). <https://doi.org/10.1111/j.1467-9469.2007.00585.x>
+[^rabiner]: {cite}`rabiner1989` — the tutorial every HMM implementation is
+    written against: forward-backward, Viterbi and Baum-Welch in one place.
+[^huang]: {cite}`huang2001` — the scaled recursions in the form used here
+    (pp. 443-445).
+[^squarem]: {cite}`varadhan2008` — SQUAREM, the acceleration applied to the EM
+    iteration.

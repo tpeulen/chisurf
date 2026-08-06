@@ -2,6 +2,12 @@
 
 ## 2026-08-06
 
+* **Four more hand-written reference blocks, and the guard that will not let them back** ([documentation browser](subsystems/documentation-browser.md)).
+
+  A reference spelled out over two lines with the year at the start of the *second* one slipped through the widened guard, because the pattern only looked within a line. BVA, 2CDE, the phasor page and the binned-HMM footnotes were all written that way; each is now a key, which took three more works into the bibliography (`colyer2012`, `malacrida2021`, `huang2001`). The guard now also fails on a bullet that ends in a bare `doi:10.…` anywhere inside it. Plugin help pages are deliberately untouched — there a DOI *is* the link, which is the documented style.
+
+  Concept review continues: 18 of 36 pages done, and what the last six needed was less about prose than about *where the reader goes next* — `bva`, `burst_2cde`, `imaging_flim_phasor` and `hidden_markov_models` each named their implementation in a code span that could not be clicked, and now point at the actual function or class.
+
 * **A reference written out by hand is now a test failure, not a style preference** ([documentation browser](subsystems/documentation-browser.md)).
 
   The guard against hand-written references only caught a bullet that *was* a DOI link, so pages that spelled a citation out in full — "Chen, Y., Müller, J. D., Berland, K. M. & Gratton, E. (1999). …" — passed it. Widening it to the shape an author actually writes found four more blocks, in the PCH, recurrence and PSF-determination pages, and with them two works nobody had recorded (`pawley2006`, `siegman1986`).

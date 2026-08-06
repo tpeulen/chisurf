@@ -416,6 +416,8 @@ def test_no_page_writes_a_reference_by_hand():
         re.compile(r"^\s*[-*]\s.*\[10\.\d{4,9}/[^\]]+\]\(https?://[^)]*doi\.org[^)]*\)\s*$", re.M),
         # A bullet that writes the reference out: "Author, A. (1999). Title. ..."
         re.compile(r"^\s*[-*]\s.{0,120}\((?:19|20)\d{2}\)\.\s", re.M),
+        # ...or ends in a bare DOI, which is the same duplication upside down.
+        re.compile(r"^\s*[-*]\s(?:.|\n(?!\s*$))*?doi:\s*10\.\d{4,9}/", re.M | re.I),
     ]
     offenders = []
     roots = [docs_root(), repository_root() / "chisurf" / "plugins"]

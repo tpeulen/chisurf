@@ -8,7 +8,7 @@ molecule sits on the $E$ axis, but not *whether it stayed there*. A molecule tha
 switches between a low- and a high-FRET state while transiting the spot yields a
 single burst at some intermediate efficiency — on the $E$ histogram alone it is
 indistinguishable from a genuinely static intermediate. **2CDE**
-(two-channel kernel density estimator; Tomov et al., *Biophys. J.* 2012) is a
+(two-channel kernel density estimator, {cite}`tomov2012`) is a
 per-burst score that exposes this hidden sub-burst structure directly from the
 photon arrival times, with no kinetic model and no binning.
 
@@ -185,6 +185,5 @@ read as zeros.
   {src}`chisurf/plugins/burst/burst_2cde/core/computation.py`.
 - The complementary variance-based dynamics test, Burst Variance Analysis
   (`chisurf/plugins/burst/burst_bva/`).
-- Tomov, Best, Doose, et al., *Disentangling subpopulations in single-molecule
-  FRET and ALEX experiments with photon distribution analysis*,
-  Biophys. J. **102**, 1163–1173 (2012), doi:10.1016/j.bpj.2011.11.4025.
+- Primary literature: {cite}`tomov2012` introduces the 2CDE kernel and both of
+  its statistics.

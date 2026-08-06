@@ -1284,3 +1284,33 @@ siegman1986:
   year: 1986
   note: Gaussian-beam optics, including the beam-waist relations used for a PSF.
   topics: [optics]
+
+colyer2012:
+  authors: R. A. Colyer, O. H. W. Siegmund, A. S. Tremsin, J. V. Vallerga, S. Weiss, X. Michalet
+  title: Phasor imaging with a widefield photon-counting detector
+  journal: Journal of Biomedical Optics
+  year: 2012
+  volume: 17
+  pages: 016008
+  doi: 10.1117/1.JBO.17.1.016008
+  note: The AB (polar) plot as the visual basis of phasor FLIM.
+  topics: [imaging, phasor]
+
+malacrida2021:
+  authors: L. Malacrida, S. Ranjit, D. M. Jameson, E. Gratton
+  title: The phasor plot - a universal circle to advance fluorescence lifetime analysis and interpretation
+  journal: Annual Review of Biophysics
+  year: 2021
+  volume: 50
+  pages: 575-593
+  doi: 10.1146/annurev-biophys-062920-063631
+  note: The universal circle, and how to read a phasor plot without fitting.
+  topics: [imaging, phasor]
+
+huang2001:
+  authors: X. Huang, A. Acero, H.-W. Hon
+  title: Spoken Language Processing - a guide to theory, algorithm and system development
+  journal: Prentice Hall
+  year: 2001
+  note: The scaled forward-backward recursions in the form used here.
+  topics: [dynamics]

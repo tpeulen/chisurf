@@ -15,11 +15,17 @@ component whose defects are invisible to assertions and obvious in an image
 it through a concept page, a manual page, a guide, a plugin README, the start
 page and a search). Three automated numbers back that up:
 
-* `pytest chisurf/plugins/core/help/test` — 318 tests. Three are the real
-  guardrails, all in `test_render.py`: **every formula in `docs/` typesets**,
-  **no page leaks markup** (no `:::{`, no ` ```{ `, no `$$` reaching the
-  reader), and **inline mathematics stays text** — at most a handful of
-  genuinely two-dimensional formulas may become images.
+* `pytest chisurf/plugins/core/help/test` — 743 tests. Five are the real
+  guardrails, all in `test_render.py`: **every formula in `docs/` typesets**;
+  **no page in the tree leaks its markup** — no fence, no `$$` and no surviving
+  role, checked over *every* `.md` and `.rst` through the same chain the browser
+  uses, because the version that checked three known markers on the pages it
+  already knew about missed `:src:` reaching the reader in the manual;
+  **inline mathematics stays text**; **every `{cite}` and `{src}` resolves** (a
+  source link by *symbol*, so a rename fails here rather than opening the right
+  file at the wrong line); and **no reference is written out by hand** — neither
+  as a bare DOI link nor as "Author, A. (1999). Title. *Journal*…", both of
+  which drift away from the entry they duplicate.
 * `pytest chisurf/plugins/core/help/test/test_docs_crosslinks.py` — 188 tests:
   every concept points at a guide, every guide at a concept, and every
   `{doc}`/`{ref}`/`[…](….md)` resolves to a page that is there.
@@ -30,7 +36,8 @@ page and a search). Three automated numbers back that up:
 **What is open.**
 
 1. **The manual is AI-reviewed and awaits a human** — `csc help review-list`
-   reports `0 reviewed, 79 AI-reviewed, 0 stale, 0 unreviewed`. All 79 pages
+   reports `0 reviewed, 94 AI-reviewed, 0 stale, 231 unreviewed` over the whole
+   tree; the manual's own 79 are all AI-reviewed. All 79 pages
    have been read end to end and corrected against the source code; what remains
    needs somebody with the application open, checking that each screenshot still
    matches the interface and that each procedure still works, then pressing
@@ -43,8 +50,18 @@ page and a search). Three automated numbers back that up:
    `introduction`, `fit_models`.
 2. **The rest of the documentation has not had its first pass.** Review tracking
    now covers `concepts`, `guides`, `getting_started`, `reference` and
-   `references` as well as `manual` — `csc help review-list` reports
-   `0 reviewed, 79 AI-reviewed, 230 unreviewed`. The 230 are not known to be
+   `references` as well as `manual`. **15 of the 36 concept pages are done**;
+   the pass is worth continuing in that order (concepts, then the 63 guides,
+   then `reference`) because a concept page is where the physics that a guide
+   only applies is actually stated. What the finished ones needed, and therefore
+   what to look for: **numbers that do not reproduce** (recompute every worked
+   table — the accessible-volume Jensen table was off in three cells and did not
+   say how it had been produced), **a citation pointing at a plausible
+   neighbour** of the intended paper (`qian1990` was the wrong Qian & Elson
+   1990), **a threshold credited to the wrong paper** (`frc_resolution` gave van
+   Heel the fixed 1/7), and **pages with no pointer into their implementation at
+   all**. Record a page only after reading it end to end:
+   `csc help review-set <path> --ai`. The remaining 231 are not known to be
    *wrong*: an audit over all 340 pages (stubs, holes in sentences, dead links
    and cross-references, missing images, markup leaks, inline formulas as
    images, broken heading ids) found and fixed everything it could detect. What
@@ -82,7 +99,7 @@ documentation link anywhere in the application.
 | Mathematics | `api/mathtext.py` | Inline LaTeX as HTML text; display LaTeX rasterised transparently through matplotlib's mathtext. |
 | Theme | `api/theme.py` | One colour set per page, taken from the running palette. |
 | Literature | `api/bibliography.py` | One entry per cited work; expands `{cite}` and says where the paper can be got. |
-| Source links | `api/source_links.py` | Resolves `path#symbol` to a file and a line, by parsing rather than by counting. |
+| Source links | `api/source_links.py` | Resolves `path#symbol` to a file and a line, by parsing rather than by counting; labels the link with the path as written, in both renderers. |
 | Window | `gui/tool.py` | Address bar, tree, start page, search, history, previous/next, authoring tools. |
 
 # Decisions worth keeping

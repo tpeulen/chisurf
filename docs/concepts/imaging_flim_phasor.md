@@ -169,21 +169,16 @@ fit the pixels that matter.
 
 - Guide: {doc}`/guides/24_scan_images` — building CLSM images from a TTTR stream and
   computing per-pixel intensity, lifetime, MLE, and phasor maps.
-- Phasor math: {src}`chisurf/core/fluorescence/tcspc/phasor.py`
-  (`phasor_giw`, `phasor_siw`, the `Phasor` class).
+- Phasor math: the two moments
+  {src}`chisurf/core/fluorescence/tcspc/phasor.py#phasor_giw` and
+  {src}`chisurf/core/fluorescence/tcspc/phasor.py#phasor_siw`, and the
+  calibration and unmixing on
+  {src}`chisurf/core/fluorescence/tcspc/phasor.py#Phasor`.
 - Imaging plugins: `chisurf/plugins/microscopy/img_pixel_phasor/` (per-pixel
   $g,s$ maps, universal-circle ROI, apparent lifetime, cursor masks, unmixing),
   `img_pixel_micro_time/`, and `img_pixel_mle/` for per-pixel fitting; CLSM
   reconstruction via `tttrlib.CLSMImage`.
-- Digman MA, Caiolfa VR, Zamai M, Gratton E. *The phasor approach to fluorescence
-  lifetime imaging analysis.* **Biophys J** 94(2): L14–L16 (2008) —
-  [doi:10.1529/biophysj.107.120154](https://doi.org/10.1529/biophysj.107.120154).
-- Jameson DM, Gratton E, Hall RD. *The measurement and interpretation of
-  fluorescence polarization / phasors* — foundational treatment of the phasor
-  (polar-plot) representation of lifetimes.
-- Colyer RA, Siegmund OHW, Tremsin AS, Vallerga JV, Weiss S, Michalet X.
-  *Phasor imaging with a widefield photon-counting detector* — the AB (polar)
-  plot as the visual basis of phasor FLIM.
-- Malacrida L, Ranjit S, Jameson DM, Gratton E. *The phasor plot: a universal
-  circle to advance fluorescence lifetime analysis and interpretation.*
-  **Annu Rev Biophys** 50: 575–593 (2021).
+- Key literature: {cite}`digman2008` is the phasor approach to FLIM itself;
+  {cite}`colyer2012` the polar plot as the visual basis of it;
+  {cite}`malacrida2021` a review of the universal circle and how to read a
+  phasor plot without fitting.

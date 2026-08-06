@@ -10,7 +10,7 @@ Pages cite a work by its **key** — the name each entry is anchored under below
 and the citation renders as a link to the paper. The source of truth is
 [`bibliography.yaml`](bibliography.yaml) — add a work there and it appears here.
 
-*119 works.*
+*122 works.*
 
 
 ## FRET: mechanism, accuracy and corrections
@@ -192,6 +192,11 @@ and the citation renders as a link to the paper. The source of truth is
 **[Harris et al. (2022)](https://doi.org/10.1038/s41467-022-28632-x)** — Paul David Harris, Alessandra Narducci, Christian Gebhardt, Thorben Cordes, Shimon Weiss, Eitan Lerner. *Multi-parameter photon-by-photon hidden Markov modeling*. Nature Communications **13**. (2022).  
 *Multi-parameter photon-by-photon hidden Markov modelling.*
 
+(huang2001)=
+
+**[Huang et al. (2001)](https://search.crossref.org/search/works?q=Spoken+Language+Processing+-+a+guide+to+theory%2C+algorithm+and+system+development+Prentice+Hall+2001&from_ui=yes)** — X. Huang, A. Acero, H.-W. Hon. *Spoken Language Processing - a guide to theory, algorithm and system development*. Prentice Hall. (2001).  
+*The scaled forward-backward recursions in the form used here.*
+
 (pirchi2016)=
 
 **[Pirchi et al. (2016)](https://doi.org/10.1021/acs.jpcb.6b10726)** — M. Pirchi, R. Tsukanov, R. Khamis, et al. *Photon-by-photon hidden Markov model analysis for microsecond single-molecule FRET kinetics*. Journal of Physical Chemistry B **120**, 13065-13075. (2016).  
@@ -339,6 +344,11 @@ and the citation renders as a link to the paper. The source of truth is
 
 **[Cardarelli & Gratton (2010)](https://doi.org/10.1016/j.bpj.2009.12.4114)** — F. Cardarelli, E. Gratton. *In vivo imaging of single-molecule translocation through nuclear pore complexes by pair correlation functions*. PLoS ONE **5**, e10475. (2010).
 
+(colyer2012)=
+
+**[Colyer et al. (2012)](https://doi.org/10.1117/1.JBO.17.1.016008)** — R. A. Colyer, O. H. W. Siegmund, A. S. Tremsin, J. V. Vallerga, S. Weiss, X. Michalet. *Phasor imaging with a widefield photon-counting detector*. Journal of Biomedical Optics **17**, 016008. (2012).  
+*The AB (polar) plot as the visual basis of phasor FLIM.*
+
 (digman2005)=
 
 **[Digman et al. (2005)](https://doi.org/10.1529/biophysj.105.062836)** — M. A. Digman, C. M. Brown, P. Sengupta, P. W. Wiseman, A. R. Horwitz, E. Gratton. *Measuring fast dynamics in solutions and cells with a laser scanning microscope*. Biophysical Journal **89**, 1317-1327. (2005).
@@ -363,6 +373,11 @@ and the citation renders as a link to the paper. The source of truth is
 (vanheel2005)=
 
 **[Heel & Schatz (2005)](https://doi.org/10.1016/j.jsb.2005.05.009)** — M. van Heel, M. Schatz. *Fourier shell correlation threshold criteria*. Journal of Structural Biology **151**, 250-262. (2005).
+
+(malacrida2021)=
+
+**[Malacrida et al. (2021)](https://doi.org/10.1146/annurev-biophys-062920-063631)** — L. Malacrida, S. Ranjit, D. M. Jameson, E. Gratton. *The phasor plot - a universal circle to advance fluorescence lifetime analysis and interpretation*. Annual Review of Biophysics **50**, 575-593. (2021).  
+*The universal circle, and how to read a phasor plot without fitting.*
 
 (nieuwenhuizen2013)=
 
