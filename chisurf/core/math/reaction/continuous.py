@@ -1,9 +1,13 @@
 from __future__ import annotations
+
+from functools import reduce
+
 from chisurf import typing
 
 import numpy as np
 from scipy.integrate import odeint
 
+import chisurf.core.fitting.parameter
 import chisurf.core.parameter
 
 
@@ -208,9 +212,9 @@ class ReactionSystem(object):
             verbose = chisurf.core.settings.cs_settings['verbose']
         self.verbose = verbose
         self._concentrations = kwargs.get('concentrations', np.array([[1.0], [1.]], dtype=np.float64))
-        self._species_brightness = kwargs.get(
-            'species_brightness', np.array([[1.0], [1.]], dtype=np.float64)
-        )
+        self._species_brightness = []
+        if 'species_brightness' in kwargs:
+            self.species_brightness = kwargs['species_brightness']
         self._times = kwargs.get(
             'times', np.array([0.0, 1.0], dtype=np.float64)
         )
@@ -280,9 +284,9 @@ class ReactionSystem(object):
             @return: The total number of unique species as an integer.
         """
         try:
-            flat = reduce(lambda x, y: x+y, self.educts + self.products)
+            flat = reduce(lambda x, y: list(x) + list(y), self.educts + self.products)
             return max(flat) + 1
-        except TypeError:
+        except (TypeError, ValueError):
             return 0
 
     def pop(self, i=-1, verbose=False):
@@ -400,8 +404,17 @@ class ReactionSystem(object):
                 dtype=np.float64
             )
         )
-        r = chisurf.core.parameter.Parameter(
-            value=rate
+        # A ``Parameter`` is not fittable, and the rate constants are the whole
+        # point of the fit; the hand-written editor papered over this by
+        # appending its own widget-backed parameters instead of calling this.
+        r = chisurf.core.fitting.parameter.FittingParameter(
+            name="k(%i)" % len(self.rates),
+            label_text="k<sub>%i</sub>" % (len(self.rates) + 1),
+            value=rate,
+            lb=0.0,
+            ub=float("inf"),
+            bounds_on=False,
+            fixed=fixed,
         )
         self.rates.append(r)
         if verbose:
@@ -411,20 +424,30 @@ class ReactionSystem(object):
 
     @property
     def reactions(self):
-        """Get an iterator over all reactions.
+        """Get the reactions as a list of tuples.
 
-        Yields
-        ------
-        tuple
-            A tuple ``(educts, products, educt_stoichiometry,
-            product_stoichiometry, rate_value)`` for each reaction.
+        A **list**, not the ``zip`` this used to return: ``odeint`` calls
+        :meth:`rate_equation` once per step with the same object, and a ``zip``
+        is exhausted after the first call -- so every subsequent derivative was
+        zero and the integrated concentrations never moved off their initial
+        values. The signal was a flat line for any reaction system.
+
+        Returns
+        -------
+        list of tuple
+            One ``(educts, products, educt_stoichiometry,
+            product_stoichiometry, rate_value)`` tuple per reaction.
         """
-        educts = self.educts
-        products = self.products
-        educts_stoichometry = self.educts_stoichometry
-        products_stoichometry = self.products_stoichometry
-        rates = [r.value for r in self.rates]
-        return zip(educts, products, educts_stoichometry, products_stoichometry, rates)
+        return [
+            (e, p, es, ps, float(r.value))
+            for e, p, es, ps, r in zip(
+                self.educts,
+                self.products,
+                self.educts_stoichometry,
+                self.products_stoichometry,
+                self.rates,
+            )
+        ]
 
     def rate_equation(
             self,
@@ -495,7 +518,16 @@ class ReactionSystem(object):
             Initial concentration values.
         """
         self._initial_concentrations = [
-            chisurf.core.fitting.parameter.FittingParameter(value=vi) for vi in v
+            chisurf.core.fitting.parameter.FittingParameter(
+                name="c(%i)" % i,
+                label_text="c<sub>%i</sub>" % (i + 1),
+                value=float(vi),
+                lb=0.0,
+                ub=float("inf"),
+                bounds_on=False,
+                fixed=True,
+            )
+            for i, vi in enumerate(v)
         ]
 
     @property
@@ -550,57 +582,16 @@ class ReactionSystem(object):
         )
         self._concentrations = res[0]
 
-    def plot(
-            self,
-            t_divisor: float = 1.0,
-            normalize: bool = False,
-            show: bool = True
-    ) -> None:
-        """
-        Generates a plot of the currently calculated time dependent
-        concentrations
-        :param t_divisor: float
-            The time-axis is divided byt this number
-        :param normalize: bool
-            If True the signal intensity is divided by the maximum intensity.
-        :param show: bool
-            If True the generated Matplotlib plot is shown
-        :return:
-        """
-        t = self.times
-        y = self.signal_intensity
-        if normalize:
-            y = y / max(y)
-        p.subplot(2, 2, 1)
-        p.plot(t / t_divisor, y)
-
-        p.subplot(2, 2, 2)
-        xs = self.species_fractions
-        for i, y in enumerate(xs.T):
-            p.plot(t / t_divisor, y, label='%i' % i)
-        p.legend()
-
-        p.subplot(2, 2, 3)
-        xs = self.concentrations
-        for i, y in enumerate(xs.T):
-            p.plot(t / t_divisor, y, label='%i' % i)
-        p.legend()
-        if show:
-            p.show()
-
     @property
     def species_brightness(self) -> typing.List[float]:
         """Get the brightness values for each species.
 
         Returns
         -------
-        list of float or np.ndarray
+        list of float
             Brightness coefficients for each species.
         """
-        if isinstance(self._species_brightness, np.ndarray):
-            return self._species_brightness
-        else:
-            return [v.value for v in self._species_brightness]
+        return [float(v.value) for v in self._species_brightness]
 
     @species_brightness.setter
     def species_brightness(
@@ -609,12 +600,29 @@ class ReactionSystem(object):
     ):
         """Set the brightness values for each species.
 
+        The values are wrapped in fitting parameters, mirroring
+        :attr:`initial_concentrations`. The setter used to store whatever it was
+        given while the getter read ``.value`` off each entry, so assigning a
+        plain list of numbers -- the obvious thing to do -- made every later read
+        raise ``AttributeError``.
+
         Parameters
         ----------
         v : list or np.ndarray
             Brightness coefficients.
         """
-        self._species_brightness = v
+        self._species_brightness = [
+            chisurf.core.fitting.parameter.FittingParameter(
+                name="Q(%i)" % i,
+                label_text="Q<sub>%i</sub>" % (i + 1),
+                value=float(vi),
+                lb=0.0,
+                ub=float("inf"),
+                bounds_on=False,
+                fixed=True,
+            )
+            for i, vi in enumerate(np.asarray(v, dtype=float).ravel())
+        ]
 
     @property
     def signal_intensity(self) -> np.ndarray:

@@ -91,7 +91,7 @@ stopped_flow:
       settings_key: tcspc_csv
   models:
     - chisurf.core.models.stopped_flow.parse.ParseStoppedFlowModel
-    - chisurf.gui.widgets.models.stopped_flow.ReactionWidget
+    - chisurf.core.models.stopped_flow.reaction.ReactionModel
 
 # One PDA experiment for both colour counts. Three-colour PDA is not a separate
 # experiment: the same reader reads the same files, and the number of colours is

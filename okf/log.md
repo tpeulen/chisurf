@@ -2,6 +2,14 @@
 
 ## 2026-08-06
 
+* **The reaction-scheme model — and the reaction system under it had never run** ([PRD-38](prds/prd-38.md)).
+
+  `ReactionModel` (`chisurf/core/models/stopped_flow/reaction.py` + `reaction.view.json`) replaces `ReactionWidget`, and `reaction.ui` is deleted. The widget was **abstract** — no `update_model` — so selecting it in the model menu could only raise `TypeError`; there is no before-image and functional compatibility was the bar. Every control it offered is declared with existing vocabulary (species as a `row_width: 2` parameter table with named rows, reactions as a `table` with `selected_attr`, add/remove/reset as a `button_row` of zero-arg methods, the scheme as a `value` `kind: "text"` bound to `reaction_json`, autoscale as a `toggle`). Deliberate difference: the fit range is not duplicated — the old widget embedded a whole `FittingControllerWidget` in the model panel.
+
+  **`ReactionSystem` had four defects, and this model is its first real caller.** `reactions` returned a `zip`; `odeint` calls `rate_equation` once per step with that same object, so it was exhausted after the first call, every later derivative was zero, and **every reaction system integrated to a flat line**. `n_species` raised `NameError` (`reduce` never imported, `except TypeError` too narrow). `species_brightness` could not round-trip a list of numbers — the setter stored what it was given, the getter read `.value` off each entry. `plot()` called a matplotlib alias the module never imported; deleted rather than fixed, since a core maths module does not plot. Rate constants are `FittingParameter`s now — they were plain `Parameter`s, i.e. not fittable, hidden by the editor appending its own widget-backed parameters instead of calling `add_reaction`.
+
+  The guard asserts an `A ⇌ B` system relaxes to the analytic `k_f/k_r` equilibrium, not merely that it "computes something". `chisurf.core.models.stopped_flow` re-exports `ReactionSystem`, the import path every doctest in the module already used and which did not exist. 13 core + 3 editor + 27 integration tests pass.
+
 * **"Incomplete static quenching" was the wrong name on the wrong curve** ([documentation browser](subsystems/documentation-browser.md)).
 
   The page had a section headed *Incomplete static quenching: the sphere of action* showing **upward** curvature. Those are two different things and only one of them was in it. A sphere of action *adds* quenching and bends the plot up; quenching that is **incomplete** — a limited number of binding sites, a complex that is not fully dark, one conformer that forms it and another that does not — bends the plot **down**, because `F/F0 = (1-f) + f/(1 + K_S[Q])` rises towards `1/(1-f)` and stops. More quencher cannot remove emission that was never quenchable.

@@ -322,6 +322,7 @@ JSON_DESCRIBED_TCSPC_MODELS = [
     "chisurf.core.models.fcs.maxent_models.MaxEntRHModel",
     "chisurf.core.models.pcf.parse.ParsePCFModel",
     "chisurf.core.models.stopped_flow.parse.ParseStoppedFlowModel",
+    "chisurf.core.models.stopped_flow.reaction.ReactionModel",
     "chisurf.core.models.global_model.globalfit.GlobalFitModel",
     "chisurf.core.models.parameter_transform.model.ParameterTransformModel",
     "chisurf.core.models.pch.fida_model.FidaModel",

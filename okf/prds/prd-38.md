@@ -14,7 +14,7 @@ timestamp: '2026-07-05T00:00:00Z'
 PRD-38 makes a fitting model's editor the automatic result of its computational definition instead of a hand-written per-model widget that duplicates the model's structure and welds Qt to the compute side. Each model stays in one place (parameters plus `update_model` in `chisurf/core/models`, Qt-free), its editor is described in a hand-editable `<model>.view.json` file, and the GUI renders that spec by composition via `AutoModelWidget`. A strict, AST-CI-enforced boundary keeps `core/models/**` from importing any GUI toolkit, while a string-keyed registry provides an escape hatch for bespoke custom sections. The view-spec vocabulary has grown to parameter groups, dynamic groups, curve inputs, choices, toggles, and custom sections plus plots.
 
 # Status
-In-progress (unassigned phase). Data spine, boundary test, generic renderer, live wiring, section vocabulary and every TCSPC, PDA, DEER, ICS, MFD, PCH, parse, global-fit and FCS model are done. **Two registered models remain** — `ProteinMCModelWidget` and `ReactionWidget`, both tier B — plus the tier-D `pda2c/widgets.py` cleanup and dropping `plot_classes`. The per-model backlog is the STATUS TABLE below.
+In-progress (unassigned phase). Data spine, boundary test, generic renderer, live wiring, section vocabulary and every TCSPC, PDA, DEER, ICS, MFD, PCH, parse, global-fit, FCS and stopped-flow model are done. **One registered model remains** — `ProteinMCModelWidget`, tier B+C — plus the tier-D `pda2c/widgets.py` cleanup and dropping `plot_classes`. The per-model backlog is the STATUS TABLE below.
 
 # STATUS TABLE — per-model screening
 
@@ -57,13 +57,13 @@ needs a new AutoForm section · **D** dead code.
 | deer | all 4 | ✅ | — | — |
 | ics | both | ✅ | — | — |
 | mfd | `Mfd2DModel` | ✅ | — | — |
-| pch | `PchMultiComponentModel` (`pch/widgets.py:173`), `FidaModel` (`fida_widget.py:27`) | ❌ | B | extraction — `core/models/pch/fida.py` holds functions only |
+| pch | `PchMultiComponentModel` (`pch.view.json`), `FidaModel` (`fida.view.json`) | ✅ | — | — |
 | pcf | `ParsePCFModel` (`parse.view.json`) | ✅ | — | as above |
 | stopped_flow | `ParseStoppedFlowModel` (`parse.view.json`) | ✅ | — | it had **no catalogue and could not be constructed** at all; both fixed |
-| stopped_flow | `ReactionWidget` | ❌ | C | a reaction-scheme (species + rates) section |
+| stopped_flow | `ReactionModel` (`reaction.view.json`) | ✅ | — | it was **abstract** and could not be constructed at all; now it computes |
 | structure | `ProteinMCModelWidget` (1984 LOC) | ❌ | B+C | no core `Model` subclass; also needs a per-row-settings table and a worker run/stop control |
 | global | `GlobalFitModel` (`globalfit.view.json`) | ✅ | — | — |
-| global | `ParameterTransformModel` | ❌ | A | `parameter_transform.ui` |
+| global | `ParameterTransformModel` (`parameter_transform.view.json`) | ✅ | — | — |
 
 **Tier D — dead code.** `gui/widgets/models/pda2c/widgets.py`: 9 of 10 classes are
 unreferenced outside the file (~1,590 of 2,090 LOC), but `FretRdaAxisSettingsWidget`
@@ -73,9 +73,9 @@ reading of it. `gui/widgets/models/tcspc/lifetime_mix.py::LifetimeMixModelWidget
 is unregistered. The 5 stray `.ui` files that sat inside the Qt-free
 `core/models/**` are deleted.
 
-Counts at time of writing: 42 model classes ported across 11 families; **2 legacy
-registrations remain** (ProteinMC, ReactionWidget) and **2 `.ui` files under
-`models/`** (see the table below). `gui/widgets/models/tcspc/` is down from ~5k LOC
+Counts at time of writing: 43 model classes ported across 12 families; **1 legacy
+registration remains** (ProteinMC) and **1 `.ui` file under `models/`** (see the
+table below). `gui/widgets/models/tcspc/` is down from ~5k LOC
 to an alias module plus two helper files, and `gui/widgets/models/fcs/` is now four
 deprecation shims totalling ~70 lines (from ~1,950).
 
@@ -566,11 +566,57 @@ The dye-shape model also stopped importing `chisurf.plugins.fcs.fcs_calculator`
 for its Stokes-Einstein helpers — those are thin wrappers over
 `core/fluorescence/diffusion.py`, so core now calls core.
 
-# Where to pick this up: the two remaining extractions
+**Increment 18 (the reaction scheme — and the system under it had never run) — DONE.**
+`ReactionModel` is in `core/models/stopped_flow/reaction.py` with
+`reaction.view.json`, `reaction.ui` is deleted, and the last stopped-flow
+registration is a pure model. `ReactionWidget` was **abstract**, so there is no
+before-image and functional compatibility was the bar.
 
-Two registered models still live in the GUI layer, and both are genuinely
-tier B — the compute is *in* the Qt file, so there is nothing to point a
-`view.json` at until it moves.
+Everything the `.ui` offered is declared, with no new section type:
+
+| the old widget | how it is declared |
+|---|---|
+| per-species concentration + brightness | `parameter_group_table` with `row_width: 2`, `slot_labels ["c","Q"]` and `row_labels_source` |
+| the reaction list | `table` over `reaction_rows` with `selected_attr` |
+| add / remove / clear | `button_row` over three zero-arg model methods |
+| reactions pasted as JSON | `value` `kind: "text"` bound to a `reaction_json` property |
+| scaling / background / timeshift | `parameter_group_table` |
+| autoscale | `toggle` |
+
+**Deliberate difference:** the fit range is *not* reproduced. The old widget
+embedded a whole `FittingControllerWidget` inside the model panel, duplicating the
+fit window's own control; only the `autoscale` toggle that *reads* that range is a
+model setting.
+
+**`ReactionSystem` itself had four defects, none of which a construction test could
+see** — the model above is its first real caller, because the widget that used it
+could never be opened:
+
+- **`reactions` returned a `zip`.** `odeint` calls `rate_equation` once per step
+  with that same object, and a `zip` is exhausted after the first call — so every
+  later derivative was zero and the concentrations never left their initial
+  values. *Every reaction system integrated to a flat line.* It returns a list now,
+  and the guard asserts an `A ⇌ B` system relaxes to the analytic `k_f/k_r`
+  equilibrium rather than merely "computing something".
+- **`n_species` raised `NameError`** — `reduce` was never imported and the
+  `except` only caught `TypeError`.
+- **`species_brightness` could not round-trip a list of numbers**: the setter
+  stored what it was given, the getter read `.value` off each entry.
+- **`plot()` called a matplotlib alias the module never imported**, so it raised
+  `NameError` on every call. Deleted rather than fixed — a core maths module does
+  not plot, and the model's editor already does.
+
+Rate constants are `FittingParameter`s now (they were plain `Parameter`s, i.e. not
+fittable — the hand-written editor hid this by appending its own widget-backed
+parameters instead of calling `add_reaction`), and
+`chisurf.core.models.stopped_flow` re-exports `ReactionSystem`, which is the import
+path every doctest in the module already used and which did not exist.
+
+# Where to pick this up: the last extraction, then two cleanups
+
+One registered model still lives in the GUI layer, and it is genuinely tier B —
+the compute is *in* the Qt file, so there is nothing to point a `view.json` at
+until it moves.
 
 1. **`ProteinMCModelWidget`** (`gui/widgets/models/proteinmc.py`, 1984 LOC) —
    the biggest, and the only one with **no core `Model` subclass at all**. It
@@ -579,11 +625,6 @@ tier B — the compute is *in* the Qt file, so there is nothing to point a
    and *Weight* plus open/delete buttons — see the baseline image) and a
    **worker run/stop** control, because the sampler runs in a thread and the
    editor has to be able to stop it.
-2. **`ReactionWidget`** (`gui/widgets/models/stopped_flow/stopped_flow.py` +
-   `reaction.ui`) — *abstract*, no `update_model`, so like the old stopped-flow
-   parse model it **could never be opened**; a before-image is impossible and
-   functional compatibility is the bar, not file compatibility. What core needs
-   and how to declare each control is in the section below.
 
 Then two cleanups that are not migrations: relocate `FretRdaAxisSettingsWidget`
 out of `pda2c/widgets.py` and delete the ~1,590 dead lines around it (tier D), and
@@ -627,8 +668,7 @@ afterwards. Two traps in reading the result:
 
 # The `.ui` files under `models/` — what each one is waiting on
 
-Six remain. Two are already dead; the other four each block on one named thing, so
-"port the `.ui` files" is really four separate pieces of work:
+Six existed. Five are deleted; **one remains**, and it blocks on one named thing:
 
 | `.ui` | loaded by | registered? | blocked on |
 |---|---|:--:|---|
@@ -637,7 +677,7 @@ Six remain. Two are already dead; the other four each block on one named thing, 
 | ~~`tcspc/et_model_free.ui`~~ | — | — | **deleted**; the ET model-free fit is deprecated, see [known issues](/references/known-issues.md) |
 | ~~`parameter_transform/parameter_transform.ui`~~ | — | — | **deleted**; its catalogue holds Python `code:`, which is two class attributes on the shared catalogue mixin |
 | `parse/parseWidget.ui` | `parse/widget.py::ParseFormulaWidget` | no | a `value` `kind: "expression"` (validity badge + LaTeX preview). Kept *only* for those two controls |
-| `stopped_flow/reaction.ui` | `stopped_flow.py::ReactionWidget` | yes | a core reaction model + list-backed sections — designed below |
+| ~~`stopped_flow/reaction.ui`~~ | — | — | **deleted**; `ReactionModel` + `reaction.view.json` (increment 18) |
 
 **The hand-written TCSPC widget layer is gone (increment 14).**
 `LifetimeModelWidgetBase`, `LifetimeWidget`, `ConvolveWidget`, `CorrectionsWidget`,
@@ -659,27 +699,26 @@ Two consequences that were handled in the same change, and one to know:
   ported** (increment 15). Deleting it first was a mistake: it was the one
   un-ported control of every FRET/Lifetime editor and its only implementation.
 
-# Designing the reaction editor (the last `.ui`)
+# The reaction editor, as built (increment 18)
 
-`ReactionWidget` is **abstract** — no `update_model` — so like `EtModelFreeWidget`
-and the old stopped-flow parse model it could never be opened. Functional
-compatibility is the bar, not file compatibility, so the surface to reproduce is:
+Kept as the record of what the `.ui` offered and where each control went, because
+the widget it describes is deleted and this is the only place the mapping exists.
+`ReactionWidget` was **abstract** — no `update_model` — so like the old
+stopped-flow parse model it could never be opened, and functional compatibility
+was the bar rather than file compatibility:
 
 | what the old widget offered | how to declare it |
 |---|---|
-| per-species initial concentration + brightness | `state_table` (rows are species, columns are the two lists), with `size_attr` tracking `n_species` |
-| the reaction list (`A + B -> C`, with a rate) | `table` over a `reaction_strings` source, plus `button_row` add / remove / clear over `add_reaction` / `pop` / `clear` |
+| per-species initial concentration + brightness | `parameter_group_table`, `row_width: 2` — **not** `state_table`, which binds plain float lists; these are fitting parameters and must carry Fixed/bounds columns |
+| the reaction list (`A + B -> C`, with a rate) | `table` over `reaction_rows` with `selected_attr`, plus `button_row` over the zero-arg `add_reaction_row` / `remove_selected_reaction` / `clear_reactions` |
 | reactions pasted as JSON | `value` `kind: "text"` writing a `reaction_json` property that parses and rebuilds |
 | scaling / background / timeshift | `parameter_group_table` |
-| x-range and autoscale | `value` ×2 + `toggle` |
+| x-range and autoscale | `toggle` only — the x-range is the fit window's own control and is deliberately not duplicated in the model panel |
 
-What core needs first: a `ReactionModel(ReactionSystem, Model)` in
-`core/models/stopped_flow/` that **implements `update_model`** (integrate the rate
-equations onto the fit's time axis), exposes `reaction_strings` (core already has
-`reaction_string(i)`), a settable `reaction_json`, and zero-arg
-`add_reaction_row` / `remove_selected_reaction` over the selection state — the
-same shape the global-fit editor uses, since `button_row` calls zero-arg model
-methods.
+`reaction_label(i)` writes a step with the species *names* rather than
+`ReactionSystem.reaction_string`'s indices — `1.0 * [0] -> 1.0 * [1]` is
+unreadable in a table the user is meant to check, and recognising the step is the
+whole point of naming a species.
 
 # Relationships
 - Complements PRD-23 (thin view-only widgets) and PRD-26 (declarative generation from data).

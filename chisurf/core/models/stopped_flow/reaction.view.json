@@ -1,0 +1,152 @@
+{
+  "_comment": "Editor layout for the kinetic reaction-scheme model (ReactionModel). Its predecessor ReactionWidget was abstract — no update_model — so it could never be opened and there is no before-image to compare against; functional compatibility with what its .ui offered is the bar. Deliberate difference: the fit range is NOT duplicated here. The old widget embedded a whole FittingControllerWidget in the model panel, which is the fit window's own control; only the autoscale toggle that reads that range is a model setting.",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Species",
+      "collapsible": true,
+      "collapsed": false,
+      "sections": [
+        {
+          "type": "button_row",
+          "buttons": [
+            {
+              "label": "➕ Add species",
+              "action": "add_species_row",
+              "description": "Append a species with zero starting concentration."
+            },
+            {
+              "label": "➖ Remove",
+              "action": "remove_species",
+              "description": "Drop the last species; two always remain, since a reaction needs a side each."
+            }
+          ]
+        },
+        {
+          "type": "parameter_group_table",
+          "parameters_source": "_species_parameter_rows",
+          "row_width": 2,
+          "slot_labels": ["c", "Q"],
+          "row_labels_source": "_species_row_labels",
+          "collapsible": false,
+          "description": "Concentration at t=0 and brightness per species. The observed signal is the concentrations weighted by the brightnesses, so a dark intermediate is a species with Q = 0, not an absent one."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Reactions",
+      "collapsible": true,
+      "collapsed": false,
+      "sections": [
+        {
+          "type": "table",
+          "source": "reaction_rows",
+          "selected_attr": "selected_reaction",
+          "height": 120,
+          "columns": [
+            {
+              "key": "reaction",
+              "label": "Reaction",
+              "width": 220,
+              "description": "The step, written with the species names."
+            },
+            {
+              "key": "rate",
+              "label": "k",
+              "description": "Rate constant, in units of the data's time axis."
+            }
+          ],
+          "description": "Select a row to choose which reaction the Remove button drops."
+        },
+        {
+          "type": "button_row",
+          "buttons": [
+            {
+              "label": "➕ Add step",
+              "action": "add_reaction_row",
+              "description": "Extend the chain by one unimolecular step into a new species."
+            },
+            {
+              "label": "➖ Remove",
+              "action": "remove_selected_reaction",
+              "description": "Drop the selected reaction (the last one when nothing is selected)."
+            },
+            {
+              "label": "↺ Reset",
+              "action": "clear_reactions",
+              "description": "Return to the default two-species A ⇌ B scheme."
+            }
+          ]
+        },
+        {
+          "type": "parameter_group_table",
+          "parameters_source": "_rate_parameter_rows",
+          "collapsible": false,
+          "description": "The rate constants, in reaction order — these are what the fit determines."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Signal",
+      "collapsible": true,
+      "collapsed": false,
+      "sections": [
+        {
+          "type": "toggle",
+          "attr": "autoscale",
+          "label": "Autoscale",
+          "description": "Rescale the model to the data's integral over the fit range instead of fitting the scaling factor. Useful while the scheme is still being set up."
+        },
+        {
+          "type": "parameter_group_table",
+          "parameters_source": "_signal_parameter_rows",
+          "collapsible": false,
+          "description": "Overall scaling, an additive background and a shift of the time axis (mixing dead time)."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Scheme (JSON)",
+      "collapsible": true,
+      "collapsed": true,
+      "description": "The whole scheme as text — paste one in to replace it, or copy it out to keep.",
+      "sections": [
+        {
+          "type": "value",
+          "attr": "reaction_json",
+          "kind": "text",
+          "label": "",
+          "expand": true,
+          "description": "Reactions (educts, products, stoichiometries, rate) and species (name, concentration, brightness). Text that does not parse is ignored, so a half-typed scheme cannot destroy the current one."
+        }
+      ]
+    }
+  ],
+  "plots": [
+    {
+      "key": "line",
+      "options": {
+        "scale_x": "lin",
+        "d_scaley": "lin",
+        "r_scaley": "lin",
+        "x_label": "time",
+        "y_label": "signal"
+      }
+    },
+    {
+      "key": "fit_table",
+      "options": {}
+    },
+    {
+      "key": "fit_info",
+      "options": {}
+    },
+    {
+      "key": "residual",
+      "options": {}
+    }
+  ]
+}
