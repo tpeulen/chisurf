@@ -98,7 +98,7 @@ invisible while the frame writer was in the way:
 
 **Removing pandas from the code is now an explicit goal, and it is tracked.**
 `test/pandas_import_allowlist.txt` is a shrinking list of the non-test files that
-still import it — **46 when the tracker was written**, 40 after the first pass —
+still import it — **47 when the tracker was written, 42 after the first pass** —
 and `test/test_pandas_seam.py` fails on a new importer *and* on a stale entry.
 Tests are excluded on purpose: a test building a fixture frame is interop, and
 counting those would mean the number could never honestly reach zero.

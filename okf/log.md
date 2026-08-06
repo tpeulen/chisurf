@@ -2,6 +2,16 @@
 
 ## 2026-08-06
 
+* **The pandas surface is now a tracked, shrinking number — 47 files, five off it in the first pass** ([PRD-82](prds/prd-82.md), [columnar store](subsystems/columnar-store.md)).
+
+  Nothing measured it, so it could only be argued about. `test/pandas_import_allowlist.txt` is that measurement, enforced both ways by `test/test_pandas_seam.py`: a new importer fails, and so does a **stale entry**, because a list that stops describing the tree stops being a tracker. Tests are excluded deliberately — a test building a fixture frame *is* interop, which is what pandas is kept for, so counting them would mean the number could never honestly reach zero.
+
+  **The goal is easy to measure wrong, so it is written down.** Removing pandas from the code does **not** remove the package from a solved environment: the *conda* `pdb2pqr` requires `pandas >=1.0` outright — its PyPI metadata has it only as a `test` extra, which is the trap, and is why an earlier note recorded this as "it does not leave at all" without saying which metadata it had read — and `seaborn-base` and `statsmodels` require it too. What the migration wins is that ChiSurf's own tables stop being frames, which is where the memory, the dtypes and the missing values are.
+
+  Five files came off in the first pass, and the interesting ones are the ones that were never really using it: the photon-filter wizard imported pandas and used it **zero times** (a dead import left behind when its HDF5 writer moved); the burst browser named it only in a type annotation; the BH SPC reader's `to_dataframe()` had **no callers**, and was deleted rather than made to return a dict, which would have been a method whose name lied. `read_burst_table` now reads through the columnar reader for a plain delimited file and falls back — named, not silently — for a comment preamble or a decimal comma, verified identical column-for-column and value-for-value on all 45 `.bur` fixtures — it keeps its pandas import for that fallback, so it is a sixth file *changed*, not a sixth removed.
+
+  One real addition rather than a rewrite: **`store_from_rows`** absorbs a sequence of row mappings, which is the shape an API returns and the whole reason a frame gets built in the first place. Column order is first-seen, and a key some rows lack is **masked** rather than filled — the distinction a store has and a frame does not.
+
 * **Burst selection writes one container, and two format artifacts stop travelling with it** ([photon container](subsystems/photon-container.md)).
 
   The first writer is migrated. `burst_selection` with `output_formats = ["pto"]` leaves `m000.spc` and `m000.pto` — two files where the legacy run left a folder named `countrate_All 0.2000#60/` holding six. The baseline was captured **before** the writer was touched (`test/data/baselines/burst_selection_legacy.json`), which is the half that cannot be redone, and parity is judged on columns rather than bytes: all nine survive, and the burst count is exactly the 3446 the legacy `2N+1` grid implies.

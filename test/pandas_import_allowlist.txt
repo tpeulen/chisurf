@@ -1,7 +1,7 @@
 # Files in the shipped package that still import pandas.
 #
-# This is a SHRINKING list and a tracker: 42 files at the time it was
-# written. It is not somewhere to add yourself. pandas is an interop format here
+# This is a SHRINKING list and a tracker: 47 non-test files when it was
+# written, 42 now. It is not somewhere to add yourself. pandas is an interop format here
 # -- a frame handed to a notebook, or a file only it can read -- not the storage
 # model; the storage model is the columnar store behind chisurf.core.datastore.
 #
