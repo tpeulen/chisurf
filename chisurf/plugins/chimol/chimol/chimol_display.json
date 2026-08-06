@@ -1,5 +1,5 @@
 {
-  "_version": 8,
+  "_version": 9,
   "background": "k",
   "defaults": {
     "color_mode": "by_sequence"
@@ -456,9 +456,6 @@
     "shadow_decay_factor": 0.2,
     "shadow_decay_range": 1.8,
     "gamma": 2.2,
-    "depth_cue": true,
-    "fog_start": 0.45,
-    "fog_intensity": 1.0,
     "color_blend": true,
     "color_blend_red": 0.17,
     "color_blend_green": 0.25,
@@ -475,5 +472,10 @@
         1.0
       ]
     ]
+  },
+  "depth_cue": {
+    "enabled": true,
+    "start": 0.45,
+    "intensity": 1.0
   }
 }

@@ -373,12 +373,16 @@ _SPECS: tuple[SettingSpec, ...] = (
     _spec("power", "ray.power", "float", 1.0,
           "Exponent on the headlight term; 1 is linear in the surface normal "
           "(PyMOL `power`)."),
-    _spec("depth_cue", "ray.depth_cue", "bool", True,
-          "Fade distant geometry into the background colour."),
-    _spec("fog_start", "ray.fog_start", "float", 0.45,
-          "Fraction of the depth range at which fog begins."),
-    _spec("fog", "ray.fog_intensity", "float", 1.0,
-          "Fog density."),
+    # Global, not the tracer's: both renderers read these three. See the key
+    # move in `DISPLAY_CONFIG_KEY_MOVES` for why they no longer say `ray.`.
+    _spec("depth_cue", "depth_cue.enabled", "bool", True,
+          "Fade distant geometry into the background colour, in the viewport "
+          "and in a traced image alike."),
+    _spec("fog_start", "depth_cue.start", "float", 0.45,
+          "Fraction of the depth range at which the cue begins."),
+    _spec("fog", "depth_cue.intensity", "float", 1.0,
+          "Depth-cue density: a value in (0, 1) pushes the far end of the cue "
+          "beyond the scene, 1 or more clamps it to it."),
 
     # -- Cartoon putty ------------------------------------------------------
     # A tube whose thickness carries the b-factor. Defaults are PyMOL's, from

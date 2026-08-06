@@ -1915,15 +1915,15 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
             ``fog_end`` in view units, and ``1 / (end - start)``. A scale of
             ``0`` means the cue is off, which is what the shader tests.
         """
-        cfg = _DISPLAY_CONFIG.get("ray", {}) or {}
+        cfg = _DISPLAY_CONFIG.get("depth_cue", {}) or {}
         # PyMOL's `depth_cue`, `fog` and `fog_start` are global: they govern the
         # viewport, and the tracer follows them unless `ray_trace_fog` overrides.
         # chimol has only ever applied them to the tracer, so the viewport had
         # no depth cue at all -- `fogDensity` was initialised to 0.0 and never
         # assigned from anywhere.
-        if not bool(cfg.get("depth_cue", True)):
+        if not bool(cfg.get("enabled", True)):
             return 0.0, 0.0
-        density = float(cfg.get("fog_intensity", 1.0))
+        density = float(cfg.get("intensity", 1.0))
         if density == 0.0:
             return 0.0, 0.0
 
@@ -1933,7 +1933,7 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         if back <= front:
             return 0.0, 0.0
 
-        start = (back - front) * float(cfg.get("fog_start", 0.45)) + front
+        start = (back - front) * float(cfg.get("start", 0.45)) + front
         if 0.0 < density < 1.0:
             end = start + (back - start) / density
         else:

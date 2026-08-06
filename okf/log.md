@@ -2,6 +2,14 @@
 
 ## 2026-08-06
 
+* **The settings blocker is cleared: a key can change section now, and three settings stopped having two stores** ([pymol parity](plugins/pymol-parity.md)).
+
+  The tracker's item 1a said *do this before registering anything else*, because a name registered against a store the renderer re-reads only at construction is accepted, echoed and **inert** -- which is what `surface_quality` turned out to be, four times over. It was three settings, not two.
+
+  `depth_cue` / `fog` / `fog_start` are PyMOL's and are **global**: both renderers read them. They were registered under `ray.*` from when only the tracer honoured them, so the prefix said something untrue. Moving them needed the loader extension the tracker predicted -- `DISPLAY_CONFIG_MIGRATIONS` can only change a *value* -- so `DISPLAY_CONFIG_KEY_MOVES` sits beside it, and **its rule is the mirror image**, which is the part worth remembering: a value migration moves what the user did *not* choose (it still equals the old default), a key move carries across what they *did*, and drops the old key either way so the section it left keeps no stale twin. They are `depth_cue.enabled` / `.start` / `.intensity`; config version 8 -> 9. Six tests, including one that asserts every move's destination is a key the package actually ships -- a move to a key that is not there writes a value nothing reads, which is worse than not moving it.
+
+  With 1a closed the appearance worklist (228 names PyMOL's own Python layer references) is unblocked, and the pattern every one of them must follow is `_fog_planes`: **read the configuration where the value is used**, never at construction.
+
 * **Startup died in the dynamic loader because an IDE had source-rooted another environment** ([environment & build](workflows/build-and-env.md)).
 
   `<conda python> -m chisurf` failed at `import tttrlib` with `Library not loaded: @rpath/libhdf5.320.dylib`, which reads as the known two-environments-two-HDF5s build problem and was not it — both environments held a build they could load. The extension being loaded came from the **pixi** environment while the rpath resolving its libraries came from the **conda** interpreter, whose `lib/` has `libhdf5.310`. `@rpath` is resolved against the running executable's load commands, so an extension is only loadable by the interpreter it was installed for, and `sys.path` carries no notion of which environment an entry belongs to: the import succeeds and the *load* fails.

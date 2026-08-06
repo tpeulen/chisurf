@@ -255,3 +255,70 @@ def test_a_value_the_user_chose_survives_a_multi_valued_migration():
 
     assert chosen["metaball"] == {"sigma_factor": 2.0, "iso_value": 0.30}
     assert changed == []
+
+
+# --------------------------------------------------------------------------- #
+# Keys that changed section
+# --------------------------------------------------------------------------- #
+def test_a_moved_key_lands_where_the_package_ships_it(shipped):
+    """The destination of a move must be a key the package actually has.
+
+    A move to a key that is not shipped writes a value nothing reads, which is
+    worse than not moving it: the setting looks migrated and is gone.
+    """
+    missing = []
+    for version, moves in cfg_mod.DISPLAY_CONFIG_KEY_MOVES.items():
+        assert version <= cfg_mod.DISPLAY_CONFIG_VERSION, (
+            f"key move {version} is newer than DISPLAY_CONFIG_VERSION"
+        )
+        for _old_section, _old_key, new_section, new_key, _old_default in moves:
+            if new_key not in (shipped.get(new_section) or {}):
+                missing.append(f"{new_section}.{new_key}")
+    assert not missing, "moved keys the package does not ship: " + ", ".join(missing)
+
+
+def test_a_moved_key_is_gone_from_where_it_was(shipped):
+    """Or the section it left keeps a stale twin some reader may still find."""
+    left_behind = []
+    for moves in cfg_mod.DISPLAY_CONFIG_KEY_MOVES.values():
+        for old_section, old_key, _new_section, _new_key, _old_default in moves:
+            if old_key in (shipped.get(old_section) or {}):
+                left_behind.append(f"{old_section}.{old_key}")
+    assert not left_behind, "moved keys still shipped at the old path: " + ", ".join(
+        left_behind
+    )
+
+
+def test_a_value_the_user_chose_moves_with_the_key():
+    """The whole reason a move is not just a delete."""
+    config = {"ray": {"fog_start": 0.9, "ambient": 0.14}}
+    changed = cfg_mod.apply_display_config_migrations(config, 8)
+    assert "fog_start" not in config["ray"], "the old key stayed behind"
+    assert config["depth_cue"]["start"] == 0.9, config.get("depth_cue")
+    assert any("->" in name for name in changed), changed
+    assert config["ray"]["ambient"] == 0.14, "an unrelated key was disturbed"
+
+
+def test_an_untouched_default_moves_without_being_carried():
+    """Nothing to preserve, so the new key keeps the package default.
+
+    Carrying it would be harmless today and wrong the moment the default at the
+    new path differs from the one at the old.
+    """
+    config = {"ray": {"fog_start": 0.45}, "depth_cue": {"start": 0.45}}
+    cfg_mod.apply_display_config_migrations(config, 8)
+    assert "fog_start" not in config["ray"]
+    assert config["depth_cue"]["start"] == 0.45
+
+
+def test_a_move_does_not_run_twice():
+    """A copy already stamped past the move must not be re-migrated.
+
+    The second run has nothing to move, but it would report a change and
+    rewrite the file for no reason.
+    """
+    config = {"ray": {"fog_start": 0.9}}
+    cfg_mod.apply_display_config_migrations(config, 8)
+    again = cfg_mod.apply_display_config_migrations(config, cfg_mod.DISPLAY_CONFIG_VERSION)
+    assert again == []
+    assert config["depth_cue"]["start"] == 0.9

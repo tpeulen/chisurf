@@ -96,41 +96,32 @@ setting produces**, not whether it stores.
 the settings table exists to prevent, and it is why the three cartoon settings
 above are absent rather than accepted-and-ignored.
 
-**1a. Do this before registering anything else — two settings have two stores,
-and that is what makes a name "registered but dead".** This is not a separate
-errand from the worklist above; it is the thing that would make the next twenty
-entries silently useless, so it comes first.
+**1a. DONE — the two-stores blocker is cleared, and it was three.** This was
+the thing that would have made the next twenty registrations silently useless,
+so it came first. All three are closed:
 
-* `silhouette` / `silhouette_thickness` / `depth_jump` live on the renderer's
-  `_post` object *and* in `_DISPLAY_CONFIG["silhouette"]`, which is read **only
-  in `QtGLRenderer.__init__`**. So `lighting silhouette=on` moves the picture and
-  never touches the config, while the config is a startup default a live change
-  cannot reach. `set silhouette, on` is not registered at all, and registering it
-  against a store the renderer re-reads only at construction is exactly the
-  failure `surface_quality` was. Collapse onto the config first — the pattern to
-  copy is `_fog_planes`, which reads the config where it is *used*, so there is
-  no second copy to leave stale.
-* `depth_cue` / `fog` / `fog_start` are registered against `ray.depth_cue`,
-  `ray.fog_start`, `ray.fog_intensity` and now drive **both** renderers, so the
-  `ray.` prefix reads wrong. Moving them is a **key move**, and
-  `DISPLAY_CONFIG_MIGRATIONS` only knows how to update a *default* — so this
-  needs a small loader extension (copy the old key's value when it is not the
-  old default, then drop it), not a table entry. Worth doing in the same change
-  as the bullet above, since both are one question: where does this setting live.
+* `silhouette` / `silhouette_thickness` / `depth_jump` lived on the renderer's
+  `_post` object **and** in `_DISPLAY_CONFIG["silhouette"]`, which was read only
+  in `QtGLRenderer.__init__`. `PostProcess` reads the section through properties
+  now — one store, read where it is used — so `lighting silhouette=on` and
+  `set silhouette, on` are the same write, and an already-open viewer sees it.
+  The four names are registered.
+* `depth_cue` / `fog` / `fog_start` were registered against `ray.*` while
+  driving **both** renderers. They are `depth_cue.enabled` / `.intensity` /
+  `.start` now. The move needed the loader extension this predicted:
+  `DISPLAY_CONFIG_MIGRATIONS` can only change a *value*, so
+  `DISPLAY_CONFIG_KEY_MOVES` was added beside it. Its rule is the **mirror
+  image** of a value migration and worth stating: a value migration moves what
+  the user did *not* choose (it still equals the old default), a key move
+  carries across what they *did*, and drops the old key either way so the
+  section it left keeps no stale twin.
+* the third was found by walking into it: **`bg_color` versus `ray`**, described
+  below. `bg_color` writes to the renderer and `ray` read the configuration, so
+  every traced figure came out on the background the session *started* with.
 
-**A third one was found and fixed, and it is the best illustration of the class:
-`bg_color` versus `ray`.** `bg_color` calls `viewer.set_background_color`, which
-writes to the *renderer*; `ray` read `_DISPLAY_CONFIG["background"]`, the value
-the session **started** with. Both stores were live, both were consulted, and
-neither was ever updated by the other — so `bg_color white; ray` gave a white
-viewport and a black picture, in every figure anyone has traced. Fixed by giving
-the renderer a `get_background_color` and having `ray` ask the viewer, with the
-config as the fallback for a viewer that has no renderer yet. Two traps: the
-renderer keeps **RGBA** and `_parse_background` accepted only a three-long
-sequence, so the live value fell straight through to the black fallback and the
-fix looked inert; and the guardrail samples a **corner pixel**, because a mean
-brightness moves when the molecule does and this is a question about the
-background alone.
+**The pattern to reuse** is `_fog_planes`: read the configuration where the
+value is *used*, never at construction. Everything that failed here failed by
+caching it somewhere a later `set` could not reach.
 
 **2. Rendering.** One measured defect left in the ray tracer.
 

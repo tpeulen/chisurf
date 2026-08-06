@@ -14,7 +14,7 @@ try:
 except Exception:  # pragma: no cover - moview can run without chisurf
     _cs_settings = None
 
-DISPLAY_CONFIG_VERSION: int = 8
+DISPLAY_CONFIG_VERSION: int = 9
 """Current version of the chimol_display.json schema.
 
 Increment this when keys are added, renamed, or removed, **or when a default
@@ -105,6 +105,30 @@ DISPLAY_CONFIG_MIGRATIONS: dict[int, dict[str, dict[str, tuple]]] = {
 }
 
 
+#: Settings that moved to a different section, by the version that moved them:
+#: ``{version: ((old_section, old_key, new_section, new_key, old_default), ...)}``.
+#:
+#: :data:`DISPLAY_CONFIG_MIGRATIONS` can only change a *value*, so a setting that
+#: turns out to live in the wrong place has nowhere to go: leaving it means the
+#: name reads wrong for ever, and moving it silently discards whatever the user
+#: had chosen. A move carries the value across when it is not the old default --
+#: the same "they chose this" test the value migrations use -- and drops the old
+#: key either way, so the section it left does not keep a stale twin that some
+#: reader might still find.
+DISPLAY_CONFIG_KEY_MOVES: dict[int, tuple[tuple[str, str, str, str, object], ...]] = {
+    9: (
+        # PyMOL's `depth_cue`, `fog` and `fog_start` are **global**: they govern
+        # the viewport, and the tracer follows them. They were registered under
+        # `ray.` back when only the tracer honoured them, so once the viewport
+        # gained its depth cue the prefix said something untrue about who obeys
+        # them. The feature is the depth cue; fog is how it is implemented.
+        ("ray", "depth_cue", "depth_cue", "enabled", True),
+        ("ray", "fog_start", "depth_cue", "start", 0.45),
+        ("ray", "fog_intensity", "depth_cue", "intensity", 1.0),
+    ),
+}
+
+
 _update_listeners: list[Callable[[], None]] = []
 """Registered callbacks to notify when display config is reloaded."""
 
@@ -181,6 +205,11 @@ def apply_display_config_migrations(cfg: dict, from_version: int) -> list[str]:
     A value moves only if it still equals the **old default**. If it differs,
     the user chose it and it stays -- a migration that overwrote choices would
     be worse than one that never ran.
+
+    Keys that changed *section* are handled here too, from
+    :data:`DISPLAY_CONFIG_KEY_MOVES`, and the rule is the mirror image: the
+    value is carried across when it is **not** the old default, because that is
+    what the user chose and it must not be lost with the name.
     """
     changed: list[str] = []
     for version in sorted(DISPLAY_CONFIG_MIGRATIONS):
@@ -197,6 +226,24 @@ def apply_display_config_migrations(cfg: dict, from_version: int) -> list[str]:
                 if any(_same_value(current, candidate) for candidate in _as_tuple(old)):
                     block[key] = new
                     changed.append(f"{section}.{key}")
+
+    for version in sorted(DISPLAY_CONFIG_KEY_MOVES):
+        if version <= int(from_version or 0):
+            continue
+        for old_section, old_key, new_section, new_key, old_default in (
+            DISPLAY_CONFIG_KEY_MOVES[version]
+        ):
+            source = cfg.get(old_section)
+            if not isinstance(source, dict) or old_key not in source:
+                continue
+            value = source.pop(old_key)
+            if not _same_value(value, old_default):
+                target = cfg.get(new_section)
+                if not isinstance(target, dict):
+                    target = {}
+                    cfg[new_section] = target
+                target[new_key] = value
+            changed.append(f"{old_section}.{old_key} -> {new_section}.{new_key}")
     return changed
 
 
@@ -777,6 +824,16 @@ def _load_display_config() -> dict:
             # scene under it. PyMOL has no equivalent -- it never re-centres.
             "recenter_on_frame": True,
         },
+        # PyMOL's depth_cue/fog/fog_start, which are **global**: the viewport and
+        # the ray tracer read the same three numbers, so they belong to neither.
+        "depth_cue": {
+            "enabled": True,
+            # Fraction of the fitted depth range at which the cue begins.
+            "start": 0.45,
+            # PyMOL's `fog`: a density, where a value in (0, 1) pushes the far
+            # plane of the cue beyond the scene and 1 or more clamps it to it.
+            "intensity": 1.0,
+        },
         "ray": {
             "ambient": 0.14,
             "diffuse": 0.45,
@@ -798,9 +855,6 @@ def _load_display_config() -> dict:
             "shadow_decay_factor": 0.2,
             "shadow_decay_range": 1.8,
             "gamma": 2.2,
-            "depth_cue": True,
-            "fog_start": 0.45,
-            "fog_intensity": 1.0,
             "color_blend": True,
             "color_blend_red": 0.17,
             "color_blend_green": 0.25,

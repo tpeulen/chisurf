@@ -407,9 +407,12 @@ class ExportMixin(BaseCmd):
         shadow_fudge = float(ray_cfg.get("shadow_fudge", 0.001))
         shadow_decay_factor = float(ray_cfg.get("shadow_decay_factor", 0.2))
         shadow_decay_range = float(ray_cfg.get("shadow_decay_range", 1.8))
-        depth_cue = bool(ray_cfg.get("depth_cue", True))
-        fog_start = float(ray_cfg.get("fog_start", 0.45))
-        fog_intensity = float(ray_cfg.get("fog_intensity", 1.0))
+        # The same three the viewport reads: PyMOL's depth cue is global, so
+        # a traced image and the screen must not be able to disagree about it.
+        cue_cfg = _DISPLAY_CONFIG.get("depth_cue", {}) or {}
+        depth_cue = bool(cue_cfg.get("enabled", True))
+        fog_start = float(cue_cfg.get("start", 0.45))
+        fog_intensity = float(cue_cfg.get("intensity", 1.0))
         color_blend = bool(ray_cfg.get("color_blend", True))
         color_blend_red = float(ray_cfg.get("color_blend_red", 0.17))
         color_blend_green = float(ray_cfg.get("color_blend_green", 0.25))
