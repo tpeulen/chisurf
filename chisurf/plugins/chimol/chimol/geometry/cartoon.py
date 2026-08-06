@@ -2156,26 +2156,6 @@ def _generate_cartoon_tube_arrays(
                 all_cols.append(c)
             vert_offset += v.shape[0]
 
-    # Rungs last, anchored to the trace as it is actually drawn. ``anchors`` is
-    # the smoothed array when a tube was built and the raw one otherwise (a
-    # single-residue chain has no tube but still has a base to connect).
-    if rungs:
-        anchors = (
-            bb_coords
-            if len(backbone_coords) >= 2
-            else np.asarray(backbone_coords, dtype=float)
-        )
-        for index, c1_coord, base_anchor_coord, res_color in rungs:
-            start = anchors[index]
-            for seg_a, seg_b in (
-                (start, c1_coord),
-                (c1_coord, base_anchor_coord),
-            ):
-                cyl = _generate_cylinder(seg_a, seg_b, ladder_radius, res_color)
-                if cyl is not None:
-                    add_mesh(*cyl)
-            add_mesh(*_uv_sphere(c1_coord, ladder_radius, res_color))
-
     if not all_verts:
         return None
 
@@ -2994,7 +2974,27 @@ def _generate_nucleic_cartoon_arrays(
             if backbone_arrays is not None:
                 bb_verts, bb_norms, bb_faces, bb_cols = backbone_arrays
                 add_mesh(bb_verts, bb_norms, bb_faces, bb_cols)
-    
+
+    # Rungs last, anchored to the trace as it is actually drawn. ``anchors`` is
+    # the smoothed array when a tube was built and the raw one otherwise (a
+    # single-residue chain has no tube but still has a base to connect).
+    if rungs:
+        anchors = (
+            bb_coords
+            if len(backbone_coords) >= 2
+            else np.asarray(backbone_coords, dtype=float)
+        )
+        for index, c1_coord, base_anchor_coord, res_color in rungs:
+            start = anchors[index]
+            for seg_a, seg_b in (
+                (start, c1_coord),
+                (c1_coord, base_anchor_coord),
+            ):
+                cyl = _generate_cylinder(seg_a, seg_b, ladder_radius, res_color)
+                if cyl is not None:
+                    add_mesh(*cyl)
+            add_mesh(*_uv_sphere(c1_coord, ladder_radius, res_color))
+
     if not all_verts:
         return None
 

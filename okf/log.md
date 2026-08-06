@@ -2,6 +2,16 @@
 
 ## 2026-08-06
 
+* **`fetch` was not the fault: a rung-drawing block had been pasted into the protein cartoon builder** ([PyMOL parity](plugins/pymol-parity.md)).
+
+  Reported as `fetch 1f5n` failing with *"the cached 1f5n would not load (name 'rungs' is not defined); delete it and try again"*, and the reporter's reading was that the command bar must be dispatching to Python before checking its own commands. It is not — `fetch` was dispatched correctly, loaded the cached file correctly, and then **the cartoon builder raised**, with the loader's `except` turning a rendering bug into a message about the cache. Advice to delete a file that was never the problem.
+
+  The fault is one commit old and mechanical. The previous change deferred the nucleic base connectors so they could start on the *smoothed* trace rather than on the raw atom; the block that draws them went in above the wrong `if not all_verts:` — there are two, and it landed in `_generate_cartoon_tube_arrays`, the **protein** builder, where `rungs`, `bb_coords`, `ladder_radius` and `add_mesh` do not exist. So every protein cartoon with secondary structure raised `NameError`, and nucleic acids silently lost their base connectors. The block is now in the function it was written for.
+
+  **The suite already covered this and was not run.** `test_cartoon_geometry.py` passes `ss_codes` in six tests and every one of them fails on the shipped commit — the fix restores 43 passing. The *nucleic* tests stayed green throughout, and the reason is worth keeping: the nucleic builder calls the protein one with `ss_codes=None`, which returns early two lines above the broken statement. A test that exercises the same function through a different door is not coverage of that door.
+
+  Nothing asserted the rungs are *drawn*, either — only that geometry exists near the trace, which the backbone tube satisfies on its own. The new measurement is at C1', which each rung routes through and caps: **1.41 Å** away with the block missing (the nearest thing is the base ring, across the glycosidic bond), **0.00 Å** with it present. Parametrised over smoothing, because the anchoring is what couples the two halves.
+
 * **Transfer to distributed acceptors, implemented rather than described** ([documentation browser](subsystems/documentation-browser.md)).
 
   The one remaining Lakowicz gap the user asked for (frequency-domain lifetimes and spectral relaxation were ruled out) needed code, not prose: the single-distance FRET expressions do not apply when acceptors are *spread* rather than placed — dyes in solution, probes across a membrane, intercalators along a helix — and nothing in the tree covered it. `chisurf/core/fluorescence/fret/dimensionality.py` now implements the closed-form donor decays for one, two and three dimensions, the characteristic density `C0`, and the efficiency by quadrature. `docs/concepts/distributed_acceptors.md` documents them.

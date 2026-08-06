@@ -126,6 +126,78 @@ def test_the_shipped_default_leaves_the_trace_on_the_atoms(traces):
         )
 
 
+def _nucleic_chain_inputs(atoms):
+    """(sub-array, coords, res_ids, chain_ids, colors) for one nucleic chain."""
+    names = np.char.strip(np.asarray(atoms["atom_name"]).astype(str))
+    chains = np.asarray(atoms["chain"]).astype(str)
+
+    nucleic = np.isin(names, ["C4'", "C4*"])
+    if not np.any(nucleic):
+        return None
+    keep_chain = sorted(set(chains[nucleic]))[0]
+    selected = chains == keep_chain
+    if not np.any(selected & nucleic):
+        return None
+
+    sub = atoms[selected]
+    coords = np.asarray(sub["xyz"], dtype=float)
+    res_ids = np.unique(np.asarray(sub["res_id"]))
+    chain_ids = np.array([keep_chain] * len(res_ids))
+    colors = np.tile(np.array([1.0, 1.0, 1.0, 1.0]), (len(res_ids), 1))
+    return sub, coords, res_ids, chain_ids, colors
+
+
+@pytest.mark.parametrize("cycles", [0, 2])
+def test_the_base_connectors_are_drawn(structure, cycles):
+    """Every base is connected to the trace, at any smoothing setting.
+
+    The rungs are *collected* while the residues are walked and *drawn* after
+    the trace is smoothed -- the two halves live in different loops, and
+    nothing here asserted the second half ran. It did not: the drawing block
+    was written into the protein tube builder instead, where its names do not
+    exist, so nucleic acids lost their base connectors while `cartoon` on any
+    protein with secondary structure raised ``NameError: rungs``.
+
+    Measured at C1', which each rung routes through and caps with a sphere of
+    ``ladder_radius`` (0.12). Without the rungs the nearest geometry is the
+    base ring, ~1.5 A away across the glycosidic bond, so the threshold
+    separates the two cases by an order of magnitude rather than by a margin.
+
+    Parametrised over smoothing because the anchoring is what couples the two
+    halves: a rung starts on the array the tube is swept along, so turning
+    smoothing on must move the start, never drop the rung.
+    """
+    from chisurf.plugins.chimol.chimol.geometry import cartoon
+
+    inputs = _nucleic_chain_inputs(structure)
+    if inputs is None:
+        pytest.skip("no nucleic chain selected")
+    sub, coords, res_ids, chain_ids, colors = inputs
+
+    result = cartoon._generate_nucleic_cartoon_arrays(
+        sub, coords, res_ids, chain_ids, colors,
+        config={
+            "coordinate_scale": 1.0,
+            "nucleic_ao_strength": 0.0,
+            "nucleic_smooth_cycles": cycles,
+        },
+    )
+    assert result is not None, "no nucleic cartoon was generated"
+    verts = np.asarray(result[0], dtype=float)
+
+    names = np.char.strip(np.asarray(sub["atom_name"]).astype(str))
+    sugar = coords[np.isin(names, ["C1'", "C1*"])]
+    assert len(sugar) >= 4, "fixture has too few sugars to measure"
+
+    gaps = np.array([
+        float(np.linalg.norm(verts - point, axis=1).min()) for point in sugar
+    ])
+    assert gaps.max() < 0.5, (
+        f"{int((gaps >= 0.5).sum())}/{len(gaps)} bases have no connector to the "
+        f"trace (worst gap {gaps.max():.2f} A at cycles={cycles})"
+    )
+
+
 def test_the_mesh_is_built_around_the_atoms(structure):
     """End to end: every trace atom has tube surface near it.
 
