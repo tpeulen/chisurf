@@ -62,6 +62,7 @@ def test_maps_to_dataframe_hdf5_roundtrip_and_ndxplorer():
     from chisurf.core.fluorescence.imaging import (
         maps_to_dataframe,
         nb_maps,
+        read_imaging_table,
         write_imaging_hdf5,
     )
 
@@ -73,7 +74,7 @@ def test_maps_to_dataframe_hdf5_roundtrip_and_ndxplorer():
     assert len(df) == 64
     path = os.path.join(tempfile.gettempdir(), "chisurf_nb_roundtrip.h5")
     write_imaging_hdf5(df, path)
-    back = pd.read_hdf(path, key="results")
+    back = read_imaging_table(path)
     assert len(back) == 64 and "B" in back.columns
     pytest.importorskip("ndxplorer")
     from ndxplorer.io import reader as ndx_reader
@@ -91,6 +92,7 @@ def test_add_maps_to_hdf5_enriches_existing_table_and_keeps_source():
         intensity_maps,
         maps_to_dataframe,
         read_imaging_source,
+        read_imaging_table,
         write_imaging_hdf5,
     )
 
@@ -107,7 +109,7 @@ def test_add_maps_to_hdf5_enriches_existing_table_and_keeps_source():
     m = nb_maps(stack)
     added = add_maps_to_hdf5(path, {k: m[k] for k in ("N", "B", "epsilon")})
     assert set(added) == {"N", "B", "epsilon"}
-    df = pd.read_hdf(path, key="results")
+    df = read_imaging_table(path)
     assert {"intensity", "N", "B", "epsilon"}.issubset(df.columns)
     assert len(df) == 25
     assert read_imaging_source(path) == "/data/raw.ht3"

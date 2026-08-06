@@ -392,3 +392,25 @@ def test_an_older_frame_written_file_still_reads(frame, tmp_path):
     back = read_table_frame(path)
     assert list(back.columns) == list(frame.columns)
     np.testing.assert_allclose(back["value"], frame["value"])
+
+
+def test_rewriting_a_table_does_not_leave_a_dropped_column_behind(tmp_path):
+    """The default is "this file now holds this table". Under the other mode a
+    column dropped by an in-place rewrite keeps its dataset, and comes back on
+    the next read as if the rewrite had never happened."""
+    path = tmp_path / "t.h5"
+    write_table(path, {"a": np.arange(3.0), "b": np.arange(3.0)})
+    write_table(path, {"a": np.arange(3.0)})
+
+    store = read_table(path)
+    assert [store[i].name() for i in range(store.n_columns())] == ["a"]
+
+
+def test_a_group_can_be_added_beside_an_existing_table(tmp_path):
+    """The opt-out, for a caller that means "add this to the file"."""
+    path = tmp_path / "t.h5"
+    write_table(path, {"a": np.arange(3.0)})
+    write_table(path, {"n": np.arange(2.0)}, group="/extra", replace=False)
+
+    assert [read_table(path)[i].name() for i in range(read_table(path).n_columns())] == ["a"]
+    assert read_table(path, group="/extra") is not None

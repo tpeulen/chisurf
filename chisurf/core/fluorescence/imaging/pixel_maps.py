@@ -688,28 +688,40 @@ def maps_to_dataframe(maps: dict[str, np.ndarray]):
 
 
 def write_imaging_hdf5(df, path: str, source: str | None = None) -> None:
-    """Write a per-pixel DataFrame in the standard imaging-HDF5 format.
+    """Write a per-pixel table in the standard imaging-HDF5 format.
 
-    Uses ``key='results'`` and a PyTables ``table`` layout with BLOSC
-    compression, identical to the pixel-wise MLE output, so the file is the
-    interchangeable standard imaging format (and readable by ndxplorer). When
-    *source* is given, a ``meta`` table stores a back-reference to the original
-    photon-data (TTTR) file so downstream tools (e.g. CLSM Draw) can trace back.
+    One dataset per column at the file root, which is the layout the companion
+    viewer's fast path and ndxplorer both read, and which needs no optional HDF5
+    package. When *source* is given, a ``meta`` child group holds a
+    back-reference to the original photon-data (TTTR) file so downstream tools
+    (e.g. CLSM Draw) can trace back.
+
+    The back-reference used to be a second table written in a second call, which
+    truncated the first one away; it is a child group of the same write now.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        The per-pixel table.
+    path : str
+        Target file.
+    source : str, optional
+        Path of the photon file the maps were computed from.
     """
-    df.to_hdf(path, key="results", mode="w", complevel=9, complib="blosc", format="table")
-    if source is not None:
-        import pandas as pd
+    from chisurf.core.datastore import write_table
 
-        pd.DataFrame([{"source_tttr": str(source)}]).to_hdf(
-            path, key="meta", mode="a", complevel=9, complib="blosc", format="table"
-        )
+    write_table(
+        path, df, meta={"source_tttr": str(source)} if source is not None else None
+    )
 
 
 def read_imaging_source(path: str) -> str | None:
     """Return the back-referenced source-TTTR path stored in an imaging HDF5.
 
     The back-reference is optional — most imaging files carry none — so a
-    missing ``meta`` table is not an error and reads as ``None``.
+    missing ``meta`` group is not an error and reads as ``None``. Both places it
+    has lived are looked in: the ``meta`` child group written now, and the
+    separate ``meta`` table an earlier release wrote.
 
     Parameters
     ----------
@@ -720,6 +732,17 @@ def read_imaging_source(path: str) -> str | None:
     -------
     str or None
     """
+    from chisurf.core.datastore import read_table
+
+    store = read_table(path)
+    if store is not None:
+        try:
+            if "meta" in list(store.group_names()):
+                return str(store.group("meta")["source_tttr"].numpy()[0])
+        except Exception:
+            pass
+        return None
+
     import pandas as pd
 
     try:
@@ -755,25 +778,20 @@ def read_imaging_table(path: str, key: str = "results"):
         from "I could not read what was there", because the second one silently
         discards an analysis if it is treated as the first.
     """
-    import pandas as pd
+    from chisurf.core.datastore import dataframe_from_store, read_table
 
     errors = []
+    store = read_table(path, group=key if key.startswith("/") else "/")
+    if store is not None:
+        return dataframe_from_store(store)
+    errors.append("columnar layout: no 1-D column datasets in the group")
+
     try:
+        import pandas as pd
+
         return pd.read_hdf(path, key=key)
-    except Exception as exc:  # a columnar file, or no PyTables in this env
-        errors.append(f"table layout: {exc}")
-
-    try:
-        import tttrlib
-
-        from chisurf.core.datastore import dataframe_from_store
-
-        group = key if key.startswith("/") else "/"
-        if tttrlib.read_hdf5_table_columns(str(path), group):
-            return dataframe_from_store(tttrlib.read_hdf5_table(str(path), group))
-        errors.append("columnar layout: no 1-D column datasets in the group")
     except Exception as exc:
-        errors.append(f"columnar layout: {exc}")
+        errors.append(f"frame layout: {exc}")
 
     raise OSError(f"{path} is not a readable imaging table — " + "; ".join(errors))
 

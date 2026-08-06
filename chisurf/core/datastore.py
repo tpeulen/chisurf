@@ -437,6 +437,7 @@ def write_table(
     group: str = "/",
     compression: int = 0,
     meta: Mapping[str, Any] | None = None,
+    replace: bool = True,
 ) -> None:
     """Write a table to HDF5 as one dataset per column.
 
@@ -467,6 +468,14 @@ def write_table(
         A one-row side table, written as a child group named ``meta``. This is
         where a back-reference to the photon file belongs: beside the results
         rather than as a column repeated once per row.
+    replace : bool
+        Whether the file ends up holding **this table and nothing else**, which
+        is what every writer that rewrites a table in place means. The
+        alternative keeps whatever else is in the file, and is right only for a
+        caller deliberately adding a group beside an existing one. The
+        difference is not cosmetic: an in-place rewrite that drops a column
+        leaves the old dataset behind under the other mode, and the column comes
+        back on the next read.
     """
     import tttrlib
 
@@ -476,7 +485,8 @@ def write_table(
         for name, value in meta.items():
             child.add(str(name), np.asarray([value], dtype=object))
         child.set_n_rows(1)
-    if not tttrlib.write_hdf5(str(path), store, group, int(compression)):
+    mode = tttrlib.Hdf5WriteMode_Truncate if replace else tttrlib.Hdf5WriteMode_Update
+    if not tttrlib.write_hdf5(str(path), store, group, int(compression), mode):
         raise OSError(f"could not write a table to {path}")
 
 

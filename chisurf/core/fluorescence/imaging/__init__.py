@@ -45,6 +45,7 @@ from .pixel_maps import (
     prepare_irf_hist,
     raw_irf_components,
     read_imaging_source,
+    read_imaging_table,
     shift_wrap,
     shutdown_proc_pool,
     total_line_durations,
@@ -137,4 +138,5 @@ __all__ = [
     "write_imaging_hdf5",
     "add_maps_to_hdf5",
     "read_imaging_source",
+    "read_imaging_table",
 ]
