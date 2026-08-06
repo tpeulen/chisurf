@@ -1665,3 +1665,128 @@ guides/figures/kappa2_tool.png:
     opened with defaults, then r_Dinf is set to 0.15 and r_Ainf to 0.20 -- deliberately restricted, so
     the panel shows a real distance penalty instead of the near-zero one a mobile pair gives -- and
     Compute is pressed.'
+guides/figures/maxent_nu.png:
+  caption: One broad lifetime distribution recovered at three regularization weights; the best-fitting
+    one splits it into two peaks that are not there.
+  kind: plot
+  origin: docs/guides/make_figures.py::fig_maxent_nu
+  pages:
+  - docs/concepts/maximum_entropy.md
+  recipe: Run `python docs/guides/make_figures.py`; `fig_maxent_nu()` simulates a decay from a Gaussian
+    p(tau) centred at 2.6 ns (sigma 0.55 ns), 4e4 peak counts, seed 20260806, and inverts it with the
+    plugin's own `solve_lifetime_mem` at nu = 1e-9, 1e-6 and 1e-5. Those values bracket the corner for
+    this decay -- below 1e-9 the solution grows spurious support down to 0.1 ns, above 1e-5 chi2r blows
+    up -- so changing the simulated decay means re-probing the range, not reusing these three.
+
+# ── Concept (theory) pages: docs/concepts/make_figures.py ───────────
+concepts/figures/fret_ruler.png:
+  caption: The efficiency-distance curve with its usable window, and the same relation read as
+    the amplification of an efficiency error into a distance error.
+  kind: plot
+  origin: docs/concepts/make_figures.py::fig_fret_ruler
+  pages:
+  - docs/concepts/fret.md
+  recipe: Run `python docs/concepts/make_figures.py fret_ruler`. Left panel calls the shipped
+    `distance_to_fret_efficiency` over R = 0.3-2.0 R0 with R0 = 52 A and shades 0.5-1.5 R0. Right
+    panel plots 1/[6E(1-E)] on a log axis over E = 0.02-0.98 and marks E = 0.1, 0.5, 0.9. No random
+    numbers. Regenerating after a change to the efficiency function is the point of drawing it from
+    that function rather than from the formula in the text.
+
+concepts/figures/anisotropy_decays.png:
+  caption: Anisotropy decays for free, protein-bound and hindered rotation, and the VV/VH pair each
+    one produces.
+  kind: plot
+  origin: docs/concepts/make_figures.py::fig_anisotropy_decays
+  pages:
+  - docs/concepts/anisotropy.md
+  recipe: Run `python docs/concepts/make_figures.py anisotropy_decays`. A 4 ns mono-exponential
+    magic-angle decay on 0-30 ns is passed to the shipped `vm_rt_to_vv_vh` with rotation spectra
+    [0.38, 0.5], [0.38, 12] and [0.23, 12, 0.15, 1e6] (the last is the r_inf term written as a very
+    slow rho). The right panel shows VV (solid) and VH (dashed) for the first and last only -- the
+    contrast between channels that meet and channels that never do is what it is there for. No random
+    numbers.
+
+concepts/figures/lifetime_averages.png:
+  caption: A two-component decay with both averages marked, beside the species and intensity
+    fractions of the same two species.
+  kind: plot
+  origin: docs/concepts/make_figures.py::fig_lifetime_averages
+  pages:
+  - docs/concepts/tcspc_lifetime.md
+  recipe: Run `python docs/concepts/make_figures.py lifetime_averages`. Lifetime spectrum
+    [0.5, 0.5, 0.5, 4.0] on 4096 channels of 12.2 ps, reconvolved by the shipped
+    `convolve_lifetime_spectrum` with a Gaussian IRF of 90 ps sigma at 1.2 ns. The averages and
+    fractions are computed from the spectrum, so they must keep matching the numbers in the page
+    text (2.25 ns, 3.61 ns, 11 %). No random numbers.
+
+concepts/figures/fcs_factors.png:
+  caption: A correlation curve decomposed into its diffusion and photodynamics factors.
+  kind: plot
+  origin: docs/concepts/make_figures.py::fig_fcs_factors
+  pages:
+  - docs/concepts/fcs_correlation.md
+  recipe: Run `python docs/concepts/make_figures.py fcs_factors`. Analytic 3-D Gaussian diffusion
+    (tau_D = 38 us, gamma = 5) times a triplet term (theta = 0.18, tau_trip = 3 us), amplitude 1/N
+    with N = 2, over lags 1e-7 to 1 s. The parameters match the worked calibration on the page, so
+    changing one means changing both.
+
+concepts/figures/av_distances.png:
+  caption: A distance distribution with its plain and FRET averages, and the gap between them as a
+    function of the mean, showing where it changes sign.
+  kind: plot
+  origin: docs/concepts/make_figures.py::fig_av_distances
+  pages:
+  - docs/concepts/accessible_volume.md
+  recipe: Run `python docs/concepts/make_figures.py av_distances`. Gaussian P(R) sampled on 20001
+    points over +/- 6 sigma, truncated below 1 A -- the same recipe the table on the page states, so
+    the right panel is a drawing of that table and must agree with it. Left panel uses mean 62 A,
+    sigma 12 A; right panel sweeps the mean from 30 to 85 A for sigma = 6, 10 and 15 A, with the
+    inflection at (5/7)^(1/6) R0 marked. R0 = 52 A throughout. No random numbers.
+
+concepts/figures/bva_static_line.png:
+  caption: BVA static lines for three slice sizes, with a dynamic burst population sitting above
+    them.
+  kind: plot
+  origin: docs/concepts/make_figures.py::fig_bva_static_line
+  pages:
+  - docs/concepts/bva.md
+  recipe: Run `python docs/concepts/make_figures.py bva_static_line`. The lines come from the shipped
+    `compute_static_bva_line` on 49 bins over E = 0.02-0.98 at n = 5, 10 and 20 photons per slice,
+    4000 samples -- it is a Monte Carlo, so the lines are slightly ragged by construction and a
+    perfectly smooth curve would mean the analytic form was drawn instead. The grey cloud is
+    illustrative, seeded (`default_rng(3)`), at 1.35x the n = 5 floor.
+
+concepts/figures/pch_brightness.png:
+  caption: Two photon-counting histograms with the same mean and different molecular brightness.
+  kind: plot
+  origin: docs/concepts/make_figures.py::fig_pch_brightness
+  pages:
+  - docs/concepts/pch_fida.md
+  recipe: Run `python docs/concepts/make_figures.py pch_brightness`. Calls the shipped
+    `pch_open_system` for (epsilon*T = 1.0, N = 2) and (0.5, 4) over k = 0-11 on a log axis. The two
+    give the same mean count by construction, which is the figure's whole claim; if a change makes
+    the means differ the parameters are wrong, not the plot.
+
+concepts/figures/phasor_circle.png:
+  caption: The universal semicircle with a lifetime scale and the chord a two-component pixel lies
+    on.
+  kind: plot
+  origin: docs/concepts/make_figures.py::fig_phasor_circle
+  pages:
+  - docs/concepts/imaging_flim_phasor.md
+  recipe: Run `python docs/concepts/make_figures.py phasor_circle`. Semicircle of radius 1/2 centred
+    at (1/2, 0); single-exponential points at 0.5, 1, 2, 4, 8 ns for omega = 2*pi*80 MHz; chord
+    between 0.6 and 4 ns with quarter markers. The repetition rate sets where the lifetime ticks
+    land, so changing it means re-checking that the labelled ticks still span the arc.
+
+concepts/figures/frc_thresholds.png:
+  caption: One FRC curve against three thresholds, each crossed at a different frequency.
+  kind: plot
+  origin: docs/concepts/make_figures.py::fig_frc_thresholds
+  pages:
+  - docs/concepts/frc_resolution.md
+  recipe: Run `python docs/concepts/make_figures.py frc_thresholds`. A Gaussian FRC decay
+    (q_c = 0.085 /nm) against the fixed 1/7, the 1/2-bit and the 2-sigma thresholds, with the ring
+    counts taken as 2*pi*q/dq. A crossing is reported only after the curve has been *above* the
+    threshold -- without that rule the count-dependent criteria trigger in the first ring, which is
+    the failure the page warns about and the figure must not itself commit.

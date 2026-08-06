@@ -35,7 +35,6 @@ chisurf/plugins/core/user_editor/gui
 chisurf/plugins/core/wizards/gui
 chisurf/plugins/fcs/fcs_channel_preset/gui
 chisurf/plugins/fluorescence_decay/lltf
-chisurf/plugins/fluorescence_decay/maxent_decay/gui
 chisurf/plugins/fret_line/gui
 chisurf/plugins/microscopy/clsm/gui
 chisurf/plugins/microscopy/clsm_generator/gui

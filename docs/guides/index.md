@@ -127,6 +127,7 @@ irf_estimation
 26_2d_peak_fitting
 18_tttr_simulation
 39_parameter_uncertainty
+62_maxent_decay
 60_global_analysis
 40_ai_assistant
 59_console
@@ -196,6 +197,7 @@ irf_estimation
 | [Fitting an MFD burst histogram](57_mfd_fitting.md) | `MFD` experiment, `MFD 2D` model, `chisurf.core.fluorescence.mfd` |
 | [Fusing bursts the same molecule produced](58_burst_fusion.md) | `burst_fusion` plugin, `core.fluorescence.burst.fusion`, `csc fusion` |
 | [Global analysis: linking parameters across fits](60_global_analysis.md) | `fitting.fit.link_parameter`, `core.models.global_model`, `globalview` plugin |
+| [Maximum-entropy decay analysis](62_maxent_decay.md) | `maxent_decay` plugin, `models.tcspc.maxent`, `math.regularization` |
 | [Driving ChiSurf from its console](59_console.md) | `chisurf.gui.chinsole`, `chisurf.core.console`, `cs.fits`, `%run -i` |
 | [Accurate FRET: calibration](fret_calibration.md) | `accurate_fret` plugin, `fret.calibration` |
 | [IRF estimation](irf_estimation.md) | `irf_estimation`, TCSPC nuisances |

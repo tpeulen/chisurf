@@ -20,6 +20,7 @@ alternatives are collected in :doc:`/fundamentals/conventions`.
    fret
    kappa2_orientation
    distance_distributions
+   energy_migration
    tcspc_lifetime
    anisotropy
    fcs_correlation
@@ -29,6 +30,7 @@ alternatives are collected in :doc:`/fundamentals/conventions`.
 .. toctree::
    :maxdepth: 1
 
+   maximum_entropy
    parameter_uncertainty
 
 .. rubric:: Correlation methods

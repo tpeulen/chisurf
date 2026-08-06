@@ -1599,6 +1599,7 @@ if __name__ == "__main__":
     # Fundamentals / theory pages
     fig_jablonski(); fig_lifetime_averages(); fig_stern_volmer()
     fig_energy_transfer_window(); fig_perrin(); fig_kappa2_models()
+    fig_maxent_nu()
     print("all figures written to", FIG)
 
 
@@ -1836,3 +1837,54 @@ def fig_kappa2_models():
     for name, m, sd, ram, rasd, _ in rows:
         print(f"  kappa2_models.png: {name:<16s} <k2>={m:.3f} SD={sd:.3f} "
               f"<Rapp/RDA>={ram:.4f} SD={rasd:.4f}")
+
+
+def fig_maxent_nu():
+    """What the regularization weight decides -- run through the real solver."""
+    from chisurf.plugins.fluorescence_decay.maxent_decay.core.solver import (
+        solve_lifetime_mem,
+    )
+    rng = np.random.default_rng(20260806)
+
+    dt = 0.032                                   # ns per channel
+    n = 1024
+    t = np.arange(n) * dt
+    # A narrow IRF, and a decay drawn from a genuinely broad distribution --
+    # the case where a two-exponential fit invents states that are not there.
+    irf = np.exp(-0.5 * ((t - 1.0) / 0.09) ** 2)
+    irf /= irf.sum()
+    tau_true = np.linspace(0.05, 6.0, 400)
+    p_true = np.exp(-0.5 * ((tau_true - 2.6) / 0.55) ** 2)
+    p_true /= p_true.sum()
+    pure = (p_true[:, None] * np.exp(-t[None, :] / tau_true[:, None])).sum(0)
+    conv = np.convolve(irf, pure)[:n]
+    counts = rng.poisson(conv / conv.max() * 4.0e4).astype(float)
+
+    tau = np.arange(0.05, 6.0 + 1e-9, 0.05)
+    fig, (ax, ax2) = plt.subplots(1, 2, figsize=(8.8, 3.5))
+    ax.plot(tau_true, p_true / p_true.max(), color="k", lw=2.0, ls="--",
+            label="truth")
+    # Bracketing the corner, which for this decay sits near 1e-6: below it the
+    # solution grows spurious support down to 0.1 ns, above it chi2r blows up.
+    for nu, colour in ((1e-9, "#e8590c"), (1e-6, "#2b8a3e"), (1e-5, "#3b5bdb")):
+        res = solve_lifetime_mem(
+            decay=counts, lamp=irf, dt=dt, tau=tau, nu=nu,
+            fitrange=(40, n - 1), max_iter=60,
+        )
+        p = np.asarray(res["p"], dtype=float)
+        peak = p.max() if p.max() > 0 else 1.0
+        ax.plot(tau, p / peak, lw=1.7, color=colour,
+                label=rf"$\nu$ = {nu:g}   $\chi^2_r$ = {res['chisq']:.2f}")
+        print(f"  maxent_nu.png: nu={nu:<7g} chi2={res['chisq']:.3f} "
+              f"S={res['S']:.3f} peak at tau={tau[int(np.argmax(p))]:.2f} ns")
+    ax.set_xlabel(r"$\tau$ / ns"); ax.set_ylabel(r"$p(\tau)$, normalized")
+    ax.set_xlim(0, 6); ax.legend(fontsize=7.5)
+    ax.set_title("under-, well- and over-regularized", fontsize=10)
+
+    ax2.semilogy(t, np.maximum(counts, 0.7), lw=0.8, color="0.6", label="data")
+    ax2.semilogy(t, np.maximum(conv / conv.max() * 4.0e4, 0.7), lw=1.6,
+                 color="k", label="noise-free")
+    ax2.set_xlabel("time / ns"); ax2.set_ylabel("counts")
+    ax2.set_xlim(0, 20); ax2.set_ylim(0.7, 6e4); ax2.legend(fontsize=8)
+    ax2.set_title("all three fit this decay", fontsize=10)
+    save(fig, "maxent_nu.png")

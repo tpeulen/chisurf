@@ -2,6 +2,18 @@
 
 ## 2026-08-06
 
+* **The last two theory gaps, and the tool that shows why goodness of fit cannot pick a regulariser** ([documentation browser](subsystems/documentation-browser.md)).
+
+  `concepts/maximum_entropy.md` and `concepts/energy_migration.md` close the pair recorded earlier the same day, with `guides/62_maxent_decay.md`. MEM had no theory page although `models/tcspc/maxent.py` ships two models and the `maxent_decay` plugin has a GUI, a CLI, an RPC surface and notebooks; PDDEM had a manual page but no concept, so homo-transfer — which changes neither the spectrum, nor the intensity, nor the lifetime, and is detectable only in the anisotropy — was stated nowhere.
+
+  **The MEM figure is the argument.** `fig_maxent_nu` simulates a decay from one broad Gaussian p(τ) and inverts it with the plugin's own `solve_lifetime_mem` at three regularisation weights. The under-regularised solution has the **best** χ²r of the three (0.99 against 1.03 and 2.98) and splits the single true distribution into two sharp peaks that are not there. That is the whole reason ν cannot be chosen by goodness of fit, and it is far more convincing as a picture than as a paragraph. Finding the useful range took a probe: ν = 1e-3 and 1e-1, the first values tried, were over-regularised by three orders of magnitude and pushed the peak onto the grid edge — so `figures.yaml` records that changing the simulated decay means re-probing the bracket rather than reusing these three.
+
+  **maxent_decay renovated.** Its `HelpDialog` invoked its own CLI through `CliRunner` and pasted `--help` into a `QTextEdit` — 54 lines replaced by the shared `?` modal reading `gui/help.md`, plus `gui/guide.json`. The *Help ▸ README* menu action now routes to the same modal instead of being a second help surface. Allow-list 86 → 85.
+
+  The seam guard earned its place twice: it caught `help.md` linking to a guide page that did not exist yet, and (for `kappa2_dist`) a manifest naming a legacy shim. Both are the kind of thing that would otherwise be found by a reader.
+
+  Verified: `docs-html` warning-free; render + crosslinks + seam 335 passed; the MEM plugin suite 5 passed; the renovated window grabbed offscreen and read — Guide and ? right-aligned, no control lost.
+
 * **Three theory gaps filled from the reference text, with generated figures** ([documentation browser](subsystems/documentation-browser.md)).
 
   Second pass over the Lakowicz mining. Three things ChiSurf implements had no theory page at all: the orientation factor (a `kappa2_dist` plugin, five functions in `fluorescence/anisotropy/kappa2.py`, and one paragraph in `concepts/fret.md`), distance distributions from the donor decay (four TCSPC models — Gaussian, worm-like chain, SAW-ν, Ising — whose guide pointed at the *accessible-volume* concept for want of a right one), and the symbol conventions. Now `docs/concepts/kappa2_orientation.md` and `docs/concepts/distance_distributions.md`, plus `docs/guides/61_kappa2_distribution.md`.

@@ -74,30 +74,17 @@ page and a search). Three automated numbers back that up:
    images, broken heading ids) found and fixed everything it could detect. What
    they have not had is somebody reading them for *correctness*, which is what
    `--ai` records.
-3. **Two theory gaps are still open, both mined and both unwritten.** The
-   Lakowicz pass covered the orientation factor and distance distributions;
-   these two were identified the same way — a shipped model with no concept
-   page — and not written:
-   * **Lifetime distributions and maximum entropy.** `models/tcspc/maxent.py`
-     with `maxent_lifetime.view.json` / `maxent_fret.view.json`, and the
-     `maxent_decay` plugin. The source is ch. 4 (§4.11.2 lifetime
-     distributions, §4.14 the maximum-entropy method). The point the page has
-     to make is the one a user gets wrong: a continuous distribution and two or
-     three discrete exponentials fit the same decay, and choosing between them
-     is a modelling decision, not a goodness-of-fit one.
-   * **Homo-transfer and energy migration.** `models/tcspc/pddem.py` (partial
-     donor–donor energy migration) has no concept page at all, though the
-     manual has a page on it. Source: ch. 13 (homotransfer) and ch. 15
-     (transfer to multiple acceptors in one, two or three dimensions). The
-     distinguishing fact is that homo-transfer does **not** change the
-     lifetime — donor and acceptor are the same species — so it is detected by
-     depolarization, which is why it belongs beside
-     `docs/fundamentals/polarization_and_rotation.md`.
-
-   Both plugins need the same renovation `kappa2_dist` just had: check
-   `test/plugin_help_guide_allowlist.txt`, and check whether their
-   `manifest.json` names the real module or a legacy shim — that mismatch is
-   what made the seam guard and the runtime disagree for `kappa2_dist`.
+3. **The Lakowicz pass is complete.** The two gaps recorded on 2026-08-06 are
+   written: `concepts/maximum_entropy.md` (with `guides/62_maxent_decay.md`) and
+   `concepts/energy_migration.md`. Both plugins were renovated with them —
+   `maxent_decay` lost a bespoke `HelpDialog` that pasted `--help` output into a
+   `QTextEdit`, and both are struck from `test/plugin_help_guide_allowlist.txt`
+   (87 → 85). What the pass did *not* cover, and would be the next source rather
+   than the next gap: frequency-domain lifetimes, spectral relaxation in depth,
+   and transfer to acceptors distributed in one, two or three dimensions — the
+   last is named in one paragraph of `concepts/energy_migration.md` and
+   deliberately not developed, because no ChiSurf model fits it today. Adding
+   one is what would justify the page.
 
 4. **58 plugins ship without a README** and **80 GUI plugins have no `?` page or
    guided tour** (`test/plugin_help_guide_allowlist.txt` is the shrinking

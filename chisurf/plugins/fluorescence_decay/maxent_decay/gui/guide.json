@@ -1,0 +1,47 @@
+{
+  "_comment": "Guided tour for the maximum-entropy decay tool. Steps point at the real toolbar buttons and wait for the user to press them. Read by chisurf.gui.widgets.tools.guided_tour.",
+  "steps": [
+    {
+      "title": "What this tool answers",
+      "text": "A multi-exponential fit asks <i>which two or three lifetimes?</i> — which presupposes there are two or three. This tool asks what <b>distribution</b> of decay times fits, without assuming a shape.<br/><br/>Five steps. You press the buttons; the tour only points at them.",
+      "target": {}
+    },
+    {
+      "title": "Give it a decay and an IRF",
+      "text": "MEM fits in convolved space like any other TCSPC analysis, so it needs the instrument response as well as the decay.<br/><br/><b>Refresh</b> picks up the decay from the current fit; <b>IRF</b> selects the response. An instrument response measured on a different day or at a different count rate no longer matches the data, and the mismatch will appear in the recovered distribution as structure.",
+      "target": {
+        "widget": "maxentBtnRefresh"
+      },
+      "await": {
+        "hint": "Press <b>Refresh</b>, then <b>IRF</b>."
+      }
+    },
+    {
+      "title": "Run it once, and distrust the answer",
+      "text": "Press <b>Run</b>. You get a distribution — smooth, positive, and entirely dependent on the regularization weight ν you have not chosen yet.<br/><br/>That is the honest state of it: the inversion is ill-posed, so ν is what decides how much structure you are shown. The next step is choosing it.",
+      "target": {
+        "widget": "maxentBtnRun"
+      },
+      "await": {
+        "hint": "Press <b>Run</b> and look at the recovered distribution."
+      }
+    },
+    {
+      "title": "Choose ν with the L-curve",
+      "text": "Press <b>L-curve</b>. It sweeps ν and plots residual norm against solution norm; the corner is the standard compromise — past it, more smoothness starts costing real fit quality.<br/><br/>The corner is a heuristic, not a criterion with a confidence level. It is a starting point, not an answer.",
+      "target": {
+        "widget": "maxentBtnLcurve"
+      },
+      "await": {
+        "hint": "Press <b>L-curve</b> and note where the corner falls."
+      }
+    },
+    {
+      "title": "The step that decides whether you can publish it",
+      "text": "Re-run at ν a factor of two <i>either side</i> of the corner and compare.<br/><br/>Peaks that stay put are features. Peaks that move, split or vanish are regularization artefacts, and no amount of goodness-of-fit will tell you which you have — only this sweep will.<br/><br/>Then try a different grid range and a different prior. Structure that follows the prior is the prior showing through.<br/><br/><b>Sample</b> gives spread on a derived quantity; <b>Save</b> writes the result out. Press <b>?</b> for the theory.",
+      "target": {
+        "widget": "maxentBtnRun"
+      }
+    }
+  ]
+}

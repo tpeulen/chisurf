@@ -33,59 +33,7 @@ except Exception:
     QtWidgets = QtCore = QtGui = None
 
 
-class HelpDialog(QtWidgets.QDialog):
-    """Help dialog with description and CLI reference."""
-
-    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
-        super().__init__(parent)
-        self.setWindowTitle("About MaxEnt MEM")
-        self.resize(640, 520)
-        layout = QtWidgets.QVBoxLayout(self)
-
-        text = QtWidgets.QTextEdit(self)
-        text.setReadOnly(True)
-
-        cli_text = ""
-        try:
-            from click.testing import CliRunner
-
-            from ..cli.cli import cli
-
-            runner = CliRunner()
-            result = runner.invoke(cli, ["--help"])
-            cli_text = "<pre>\n" + result.output + "</pre>"
-        except Exception as exc:
-            cli_text = f"<p>CLI help unavailable: {exc}</p>"
-
-        text.setHtml(
-            """
-            <h2>MaxEnt TCSPC lifetime/FRET MEM</h2>
-            <p>This plugin performs maximum entropy analysis of time-correlated single photon counting (TCSPC) data to recover fluorescence lifetime distributions.</p>
-
-            <h3>How it works</h3>
-            <ol>
-              <li>Load decay and IRF data</li>
-              <li>Configure analysis parameters (regularization, optimization method)</li>
-              <li>Optionally load priors or donor spectra for FRET analysis</li>
-              <li>Click <b>Run</b> to perform the MEM optimization</li>
-              <li>Optionally run sampling or analyze the L-curve</li>
-            </ol>
-
-            <h3>Output</h3>
-            <p>Results include the recovered lifetime distribution, goodness-of-fit statistics, and optional samples or prior distributions.</p>
-
-            <hr>
-            <h3>CLI Reference</h3>
-            """
-            + cli_text
-        )
-        layout.addWidget(text, 1)
-
-        buttons = QtWidgets.QDialogButtonBox(
-            QtWidgets.QDialogButtonBox.StandardButton.Ok,
-        )
-        buttons.accepted.connect(self.accept)
-        layout.addWidget(buttons)
+from chisurf.gui.widgets.tools.help_guide import attach_help_and_guide
 
 try:
     from chisurf.gui import chiplot as cp
@@ -793,13 +741,16 @@ class MaxentDecayWidget(
 
         toolbar.addSeparator()
 
-        self.btn_help = QtWidgets.QToolButton()
-        self.btn_help.setText(f"{Glyphs.INFO} Help")
-        self.btn_help.setObjectName("maxentBtnHelp")
-        self.btn_help.setAutoRaise(True)
-        self.btn_help.setToolTip("Show help and CLI reference")
-        self.btn_help.clicked.connect(self._on_help_clicked)
-        toolbar.addWidget(self.btn_help)
+        # The shared ? modal and the guided tour, from `help.md` and
+        # `guide.json` beside this file. Not a hand-written dialog, so the
+        # documentation links inside the help are live and the CLI reference
+        # lives in the guide page rather than being pasted into a QTextEdit.
+        attach_help_and_guide(
+            self,
+            toolbar,
+            title="Maximum-entropy decay — help",
+            owner=self,
+        )
 
     # ------------------------------------------------------------------ #
     #  Menu bar  (burst selector pattern)                                 #
@@ -828,9 +779,14 @@ class MaxentDecayWidget(
         help_menu.addAction(readme_action)
 
     def _on_help_clicked(self) -> None:
-        """Show the help dialog."""
-        dialog = HelpDialog(self)
-        dialog.exec_()
+        """Open the same help modal the toolbar's ``?`` opens.
+
+        The *Help* menu and the toolbar button must not be two different help
+        surfaces; the button is the one that exists, so the menu routes to it.
+        """
+        button = getattr(self, "_help_button", None)
+        if button is not None:
+            button._show()
 
         # ------------------------------------------------------------------ #
         #  Window / dock state persistence (burst selector pattern)           #
