@@ -235,6 +235,48 @@ again.** The durable fix is for the two environments to pin the same HDF5, or
 for the link step to check that the built extension actually loads in every
 environment it links into — not only in the one it installed to.
 
+## The same error with nothing wrong with the build
+
+Once each environment has a build it can load, that `libhdf5.320` message is
+*still* reachable — and then it is not a build problem at all. Read the loader's
+last line rather than its first:
+
+```
+ImportError: dlopen(<pixi env>/site-packages/_tttrlib…so):
+  Library not loaded: @rpath/libhdf5.320.dylib
+  Reason: tried: '<conda env>/bin/../lib/libhdf5.320.dylib' (no such file)
+```
+
+The extension comes from **one** environment and the rpath that has to resolve
+its libraries comes from the interpreter of **another**. `@rpath` is resolved
+against the load commands of the *running executable*, so an extension is only
+loadable by the interpreter it was installed for; the import itself succeeds,
+because `sys.path` says nothing about which environment an entry belongs to.
+
+**Nobody sets that up on purpose. An IDE does.** Marking an environment's
+`site-packages` as a *source root* makes the IDE prepend it to `PYTHONPATH` for
+every run configuration, whichever interpreter that configuration selects — and
+IntelliJ/PyCharm offers to do exactly this whenever it indexes a directory that
+looks like sources. One such root in `.idea/*.iml` is enough to make
+`<conda python> -m chisurf` load the pixi environment's photon library. The
+project's module file had accumulated **twelve**: both pixi environments, a
+rattler build tree, and nine Python 3.10 benchmark virtualenvs (one of them
+pinning an *older* photon library). Exclude those trees; never source-root them.
+
+`chisurf.__init__` no longer depends on getting that right.
+`drop_foreign_environment_paths()` in
+[`chisurf/_bundled_packages.py`](../../chisurf/_bundled_packages.py) removes any
+`sys.path` entry that is the `site-packages` **or standard library** of an
+environment other than the running interpreter's — comparing against `sys.prefix`
+and `sys.base_prefix`, so a virtual environment still reaches the system packages
+it was created with. It runs before the first ChiSurf import, because by the time
+one has happened the first compiled extension has already been resolved against
+the wrong environment. It logs what it removed and why (a foreign *standard
+library* is the worse case: it shadows the running interpreter's own modules),
+and `CHISURF_ALLOW_FOREIGN_ENVIRONMENT_PATHS=1` opts out.
+`test/test_foreign_environment_paths.py` covers the layouts, the escape hatch,
+and the end-to-end launch with a poisoned `PYTHONPATH`.
+
 # Common commands
 
 ```bash

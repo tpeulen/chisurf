@@ -13,11 +13,15 @@ import sys
 import typing
 
 # A source checkout keeps first-party companion packages below ``modules/``.
-# Bootstrap them before importing any ChiSurf module that may depend on them.
-from ._bundled_packages import bootstrap_bundled_packages as _bootstrap_bundled_packages
+# Bootstrap them before importing any ChiSurf module that may depend on them --
+# and first drop any *other* environment's site-packages a launcher put on the
+# path, because a compiled extension imported from there fails in the dynamic
+# loader rather than at the import (see the module).
+from . import _bundled_packages as _sys_path_setup
 
-_bootstrap_bundled_packages()
-del _bootstrap_bundled_packages
+_sys_path_setup.drop_foreign_environment_paths()
+_sys_path_setup.bootstrap_bundled_packages()
+del _sys_path_setup
 
 # Dependency APIs that were renamed out from under us (NumPy 2 removed np.trapz
 # and friends). Restored before anything computes with them -- see the module.
