@@ -164,6 +164,33 @@ in-flight work, so it is **banned**:
 - If a git command *would* discard work that is not yours, stop and report to the
   user instead of running it.
 
+## Traceability runs one way — source points at concepts, never at PRDs
+
+Tracking a change in OKF does **not** mean stamping the PRD number into the code
+it produced. **Shipped source must never name a PRD.** A PRD is a planning
+artifact with a lifecycle — planned → done → superseded — and its number means
+nothing to someone reading the file, who cannot follow it from where they are.
+Point at the **concept** that owns the area, which is maintained precisely
+because it describes what *is*:
+
+```python
+# See the columnar-store concept (/subsystems/columnar-store.md).   # yes
+# See PRD-82.                                                       # no
+```
+
+More often than not the reference should simply go: "this was designed
+somewhere" adds nothing the code does not already say. The traceability that
+matters lives in `okf/log.md` and the commit message, both of which *may* name
+the PRD, and in the concept the PRD updated.
+
+Scope is the shipped package `chisurf/` — Python, `view.json` view specs, YAML
+settings, shipped markdown. `okf/` is where PRDs live and `test/` documents
+process, so neither is covered. Enforced by `test/test_prd_mentions.py` against
+`test/prd_mention_allowlist.txt`, a **shrinking** list of files written before
+the rule and never somewhere to add yourself. **A file you touch is a file you
+clean**: port its PRD references to the owning concept in the same change and
+strike the line.
+
 ## Make changes traceable
 
 The point of the loop is that anyone (or any future agent) can reconstruct *what
