@@ -487,6 +487,10 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         self._background = rgba
         self.update()
 
+    def get_background_color(self) -> tuple[float, float, float, float]:
+        """The clear colour now in force, as RGBA in ``0..1``."""
+        return tuple(self._background)
+
     def set_background_image(self, source) -> None:
         """Put a picture behind the scene, or take it away.
 

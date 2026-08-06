@@ -75,13 +75,25 @@ def test_the_scripts_are_commands_not_python():
 
 
 def test_the_structures_the_demos_name_can_be_found():
-    """They say `load 148l.pdb` so they read like something a person types."""
+    """They say `load 148l.pdb` so they read like something a person types.
+
+    One demo's material is *computed* rather than shipped, and resolving its
+    name runs the simulation into a cache -- so this is also what proves the
+    generated path produces a file. Where the simulator is not installed it is
+    skipped rather than failed: that is an environment, not a broken demo.
+    """
+    from chisurf.plugins.chimol.chimol.app.demo_data import DemoDataUnavailable
+
     for key, _t, _d in DEMOS:
         for line in read_demo(key).splitlines():
             stripped = line.strip()
             if stripped.startswith("load ") and "," not in stripped:
                 name = stripped[5:].strip()
-                assert pathlib.Path(resolve_structure(name)).exists(), (
+                try:
+                    resolved = resolve_structure(name)
+                except DemoDataUnavailable as exc:
+                    pytest.skip(f"{key}: {exc}")
+                assert pathlib.Path(resolved).exists(), (
                     f"{key} loads {name}, which cannot be found"
                 )
 
@@ -130,6 +142,19 @@ def _vertices(viewer):
 @pytest.mark.parametrize("key", [key for key, _t, _d in DEMOS])
 def test_a_demo_runs_and_draws_something(window, key):
     """Every line is a real command, so this is a command-surface test."""
+    from chisurf.plugins.chimol.chimol.app.demo_data import (
+        DemoDataUnavailable,
+        GENERATED_DEMO_DATA,
+    )
+    from chisurf.plugins.chimol.chimol.app.demos import resolve_structure
+
+    for name in GENERATED_DEMO_DATA:
+        if f"load {name}" in read_demo(key):
+            try:
+                resolve_structure(name)
+            except DemoDataUnavailable as exc:
+                pytest.skip(f"{key}: {exc}")
+
     win, _shared, errors, qapp = window
     win.run_demo(key)
     for _ in range(30):

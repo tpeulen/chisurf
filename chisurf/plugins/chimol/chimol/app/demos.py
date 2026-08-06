@@ -51,6 +51,7 @@ DEMOS: tuple[tuple[str, str, str], ...] = (
     ("measure", "Measuring", "Surface area, bonds, hydrogens."),
     ("emdb_map", "EMDB density map", "Fetch a map and contour it."),
     ("npc_integrative", "NPC (integrative, PDB-IHM)", "A model made of beads, not atoms."),
+    ("biofilm", "Biofilm growth (simulated)", "Cells divide, stack and change state."),
 )
 
 
@@ -59,7 +60,20 @@ def resolve_structure(name: str) -> str:
 
     Scripts say ``load 148l.pdb`` so they read like something a person would
     type; this is what lets that work from any working directory.
+
+    One demo's material does not exist until it is computed -- see
+    :mod:`chimol.app.demo_data` -- and is generated here, on first use, so the
+    script that wants it still just says ``load``.
+
+    Raises
+    ------
+    chimol.app.demo_data.DemoDataUnavailable
+        When the file is one ChiMOL generates and generating it failed. Raised
+        rather than swallowed: the alternative is a path that is not there, which
+        reads as a missing download.
     """
+    from .demo_data import generated_demo_path
+
     candidate = pathlib.Path(name)
     if candidate.is_absolute() and candidate.exists():
         return str(candidate)
@@ -67,6 +81,9 @@ def resolve_structure(name: str) -> str:
         found = directory / candidate.name
         if found.exists():
             return str(found)
+    generated = generated_demo_path(candidate.name)
+    if generated is not None:
+        return str(generated)
     return name
 
 

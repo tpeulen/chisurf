@@ -291,3 +291,23 @@ def test_a_translucent_molecular_scene_renders(cmd, tmp_path):
     assert cmd._test_errors == [], cmd._test_errors  # type: ignore[attr-defined]
     assert out.exists()
     assert _drawn_pixels(out) > 200
+
+
+def test_the_traced_background_is_the_one_bg_color_set(cmd, tmp_path):
+    """`ray` read the configuration; `bg_color` writes to the renderer.
+
+    Two stores for one setting, so a traced figure came out on the background
+    the *session started with* however the viewport was set -- `bg_color white`
+    then `ray` gave a white viewport and a black picture. The corner is sampled
+    rather than the mean: a mean moves when the molecule does, and this is a
+    question about the background only.
+    """
+    from PIL import Image
+
+    cmd.do("as spheres")
+    cmd.do("bg_color white")
+    out = tmp_path / "white_bg.png"
+    _ray(cmd, out)
+    assert out.exists()
+    corner = np.asarray(Image.open(out).convert("RGB"))[2, 2]
+    assert corner.min() > 240, f"traced background is {tuple(corner)}, not white"

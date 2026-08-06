@@ -82,3 +82,4 @@ ordering below runs from the physical fundamentals to the specific methods.
    :maxdepth: 1
 
    photophysics_simulation
+   biofilm_growth

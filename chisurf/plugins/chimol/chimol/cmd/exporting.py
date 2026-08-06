@@ -415,8 +415,17 @@ class ExportMixin(BaseCmd):
         color_blend_green = float(ray_cfg.get("color_blend_green", 0.25))
         color_blend_blue = float(ray_cfg.get("color_blend_blue", 0.14))
 
-        bg_color = _DISPLAY_CONFIG.get("background", "k")
-        bg_rgb = self._parse_background(bg_color)
+        # The *live* background, not the configured one. `bg_color` writes to
+        # the renderer and `ray` read the configuration, so the two disagreed
+        # from the moment anyone set a background: `bg_color white; ray` traced
+        # onto black. The configuration is the fallback for a viewer that has no
+        # renderer yet, which is the only case it is right for.
+        live_background = viewer.get_background_color()
+        bg_rgb = self._parse_background(
+            live_background
+            if live_background is not None
+            else _DISPLAY_CONFIG.get("background", "k")
+        )
 
         # PyMOL's own two settings for how thick a traced line comes out; see
         # `line_radius_for_camera`.
@@ -771,8 +780,10 @@ class ExportMixin(BaseCmd):
                 return (255, 255, 255)
         try:
             items = np.asarray(spec, dtype=float).flatten()
-            if len(items) == 3:
-                return tuple(int(max(0, min(255, x * 255))) for x in items)
+            # RGBA as well as RGB: the renderer keeps an alpha, and taking only
+            # a three-long sequence sent every live background to the fallback.
+            if len(items) in (3, 4):
+                return tuple(int(max(0, min(255, x * 255))) for x in items[:3])
         except Exception:
             pass
         return (0, 0, 0)

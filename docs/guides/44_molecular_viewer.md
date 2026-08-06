@@ -193,6 +193,49 @@ Restraints, provenance and the per-frame score series come with it, and the
 trajectory drives the frame slider. Measurements follow playback: a `distance`
 is re-read from the frame on show, not frozen at the first one.
 
+#### A simulation is more than motion
+
+An MD trajectory moves atoms and changes nothing else, and for a long time every
+frame path here assumed that. An **agent simulation** does not: its particles
+appear, grow, and change what they are doing. RMF has always stored a **radius**
+and a **colour** per frame, so a file can say all three, and ChiMOL now reads
+them:
+
+| What the file says | What you see |
+| --- | --- |
+| radius 0 in this frame | the particle is not drawn — it does not exist yet |
+| a radius that grows | it grows, interpolated between stored frames |
+| a colour that changes | it changes colour without moving |
+
+Values that do not vary cost nothing: a model that states one radius and one
+colour is read into one array, with no time axis at all.
+
+Being un-drawn for lack of a radius is kept apart from being **hidden**, which
+is what the hierarchy panel's check boxes do. Switch a chain off, step the movie,
+and it stays off.
+
+```{figure} figures/chimol_biofilm_late.png
+:name: fig-chimol-biofilm
+:width: 620px
+
+A simulated biofilm at the end of its run, from **Demo ▸ Biofilm growth**. Each
+bead is one cell; the colour is its modelled oxygen state, taken from how deep it
+sits below the local top of the film. A cell never moves once it is born, so
+every colour change in the movie is a cell being **buried** by the ones that grew
+over it. Green is the aerobic surface, amber the transition, red the anoxic
+interior.
+```
+
+What the model does and — just as importantly — what it leaves out is in
+{ref}`concept-biofilm-growth`.
+
+The demo that produces this has no file to fetch: the simulator that ships beside
+ChiSurf is run on first use — a few seconds — and the result is cached in the
+settings directory, so what you watch is what the model produced on your machine.
+Change the configuration (`IMP/swarm/examples/biofilm_growth.yaml`: colony
+geometry, growth rates, the depth thresholds that set the colours) and delete the
+cached `.rmf` to see the difference.
+
 #### Choosing a resolution
 
 An IMP model is often deposited at more than one **resolution** — the same
@@ -457,11 +500,19 @@ without a lot of clicking:
 | Publication figure | Flat shading with silhouettes |
 | Trajectory + intra_fit | Why fitting makes a movie readable |
 | Measuring | Surface area, bonds, hydrogens |
+| EMDB density map | Fetch a map and contour it |
+| NPC (integrative, PDB-IHM) | A model made of beads, not atoms |
+| Biofilm growth (simulated) | Cells divide, stack and change state |
 
 Each is a plain **ChiMOL script** — one command per line — living in
 `chimol/demos/` and run exactly as `@file.pml` runs one. So a demo is also
 documentation you can read, and a development harness: a demo that stops working
 is a command that stopped working.
+
+Most name a file. **Biofilm growth** names one that does not exist until it is
+computed: the simulation runs on first use and is cached, so the demo shows a
+result rather than a picture of one. Where the simulator is not installed the
+menu entry says so instead of failing to open a file.
 
 Run one from the command line instead:
 

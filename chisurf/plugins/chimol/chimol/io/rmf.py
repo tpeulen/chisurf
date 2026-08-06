@@ -57,6 +57,25 @@ def _residue_numbers(res_nums: Sequence[int], chains: Sequence[str]) -> np.ndarr
     return filled
 
 
+def _varies(frames: np.ndarray) -> bool:
+    """Whether a ``(n_frames, ...)`` array is anything other than one repeated.
+
+    Parameters
+    ----------
+    frames : numpy.ndarray
+        Per-frame values.
+
+    Returns
+    -------
+    bool
+        ``False`` for a single frame, or when every frame equals the first.
+    """
+    # Compared against ``frames[0]``, which broadcasts. Against ``frames[:1]``
+    # it does not: ``np.array_equal`` checks shapes first, so a series that
+    # never changes reads as one that always does.
+    return bool(frames.shape[0] > 1 and not np.all(frames == frames[0]))
+
+
 class _RmfHierarchyInfo:
     """Track structural information encountered through the RMF hierarchy."""
     def __init__(self):
@@ -192,6 +211,24 @@ class _RmfLoader:
         # entry, which looks like a broken file rather than a broken reader.
         permutation = self._global_order_permutation(r)
 
+        # A radius and a colour belong to a *frame*, not to the file. RMF stores
+        # both that way and chimol read neither: radii came from whichever frame
+        # the walk happened to leave current, and the colour factory was built
+        # and never asked. A simulation whose beads grow, appear or change state
+        # says so through exactly these two, so they are read per frame and
+        # collapsed to one array only when they turn out not to vary.
+        colored_nodes = [
+            index
+            for index, node in enumerate(self.particle_nodes)
+            if self.coloredf.get_is(node)
+        ]
+        radii_frames = np.zeros((num_frames, num_particles), dtype=np.float32)
+        colors_frames = (
+            np.ones((num_frames, num_particles, 3), dtype=np.float32)
+            if colored_nodes
+            else None
+        )
+
         for f in range(num_frames):
             r.set_current_frame(RMF.FrameID(f))
             try:
@@ -199,21 +236,45 @@ class _RmfLoader:
                 frame_coords = coord_buffer[permutation]
             except Exception:
                 for i, node in enumerate(self.particle_nodes):
-                    coord_buffer[i] = self.particlef.get(node).get_coordinates()
+                    xyz = self.particlef.get(node).get_coordinates()
+                    coord_buffer[i, 0] = xyz[0]
+                    coord_buffer[i, 1] = xyz[1]
+                    coord_buffer[i, 2] = xyz[2]
                 frame_coords = coord_buffer
             frames_arr[f] = frame_coords.astype(np.float32)
+            for i, node in enumerate(self.particle_nodes):
+                radii_frames[f, i] = self.particlef.get(node).get_radius()
+            if colors_frames is not None:
+                for i in colored_nodes:
+                    # Subscripted three times rather than converted: numpy and
+                    # ``list`` both fall back to the iteration protocol on an
+                    # RMF ``Vector3``, which costs 20 us against 1.4 us for
+                    # three plain lookups. Over a trajectory that is the whole
+                    # load time -- it was 17 s of this file's 19.7 s.
+                    color = self.coloredf.get(self.particle_nodes[i]).get_rgb_color()
+                    colors_frames[f, i, 0] = color[0]
+                    colors_frames[f, i, 1] = color[1]
+                    colors_frames[f, i, 2] = color[2]
             self._extract_stat_values(
                 r.get_root_node(),
                 stat_keys,
                 rmf_frame_series,
                 rmf_frame_metadata,
             )
-            
-        # 3. Extract radii
-        radii_arr = np.zeros(num_particles, dtype=np.float32)
-        for i, node in enumerate(self.particle_nodes):
-            radii_arr[i] = self.particlef.get(node).get_radius()
-            
+
+        # 3. Radii and colours: one array when they hold still, a frame series
+        #    when they do not. Deciding here rather than at the render seam is
+        #    what lets every consumer that does not care about time keep asking
+        #    for one array.
+        radii_arr = radii_frames[0]
+        frame_radii = radii_frames if _varies(radii_frames) else None
+        colors_arr = colors_frames[0] if colors_frames is not None else None
+        frame_colors = (
+            colors_frames
+            if colors_frames is not None and _varies(colors_frames)
+            else None
+        )
+
         # 4. Extract metadata (restraints, states, PROVENANCE, BONDS, stat)
         restraints = []
         rmf_provenance = []
@@ -255,6 +316,9 @@ class _RmfLoader:
             "hierarchy": root_node,
             "frames": frames_arr,
             "radii": radii_arr,
+            "frame_radii": frame_radii,
+            "colors": colors_arr,
+            "frame_colors": frame_colors,
             "atoms": atoms_arr,
             "chain_ids": chains_arr,
             "res_ids": res_ids_arr,

@@ -160,6 +160,21 @@ class _MolViewObjectState:
     point_overlays: dict[str, dict] = field(default_factory=dict)
     frames: Optional[np.ndarray] = None
     frames_raw: Optional[np.ndarray] = None
+    #: ``(n_frames, n_rows)`` radii, when the file gives a radius per frame. A
+    #: simulation whose particles grow, or that has not created one yet, says so
+    #: here; ``None`` means the one radius in ``all_atom_radii`` holds for the
+    #: whole trajectory.
+    frame_radii: Optional[np.ndarray] = None
+    #: ``(n_frames, n_rows, 3)`` colours, when the file gives a colour per
+    #: frame. This is how a particle's *state* over time reaches the picture --
+    #: a cell that changes what it is doing changes colour without moving.
+    frame_colors: Optional[np.ndarray] = None
+    #: Rows with no size in the current frame: a bead the file has not created
+    #: yet, or one that has gone. Kept apart from ``hidden_mask`` for the reason
+    #: ``representation_mask`` is: they answer different questions, and one mask
+    #: serving both means stepping the movie silently un-hides what you switched
+    #: off. Composed in :meth:`MolView.visible_row_mask`.
+    absent_mask: Optional[np.ndarray] = None
     active_frame: int = 0
     measurements: dict[str, dict] = field(default_factory=dict)
     rmf_hierarchy: Optional[object] = None  # HierarchyNode, whoever built it

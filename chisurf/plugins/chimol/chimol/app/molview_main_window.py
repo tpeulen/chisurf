@@ -514,6 +514,7 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
 
     def run_demo(self, key: str) -> None:
         """Run a shipped demo script by name."""
+        from .demo_data import DemoDataUnavailable
         from .demos import read_demo, resolve_structure
 
         text = read_demo(key)
@@ -538,7 +539,16 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
             stripped = line.strip()
             verb, _, rest = stripped.partition(" ")
             if verb in loaders and rest.strip() and "," not in stripped:
-                lines.append(f"{verb} " + resolve_structure(rest.strip()))
+                try:
+                    resolved = resolve_structure(rest.strip())
+                except DemoDataUnavailable as exc:
+                    # One demo's material is computed rather than downloaded, so
+                    # it can fail for a reason no file dialog explains. Say the
+                    # reason: "cannot read file" would send whoever hit it
+                    # looking for a missing download.
+                    dialogs.warning(self, "Demo unavailable", str(exc))
+                    return
+                lines.append(f"{verb} " + resolved)
             else:
                 lines.append(line)
         self.run_script_text("delete all\n" + "\n".join(lines))

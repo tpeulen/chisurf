@@ -187,6 +187,14 @@ Concretely, and in priority order:
    so per-residue Python loops over three floats are the usual reason this is
    slow. Vectorise where the recurrence allows; where it genuinely does not,
    keep the loop but take NumPy out of it.
+
+   **A frame is not only coordinates.** ChiMOL is also the viewer for *agent*
+   simulations, where particles appear, grow and change what they are doing
+   without moving, so radius and colour are per-frame quantities alongside
+   position wherever the format states them. A particle with no radius in the
+   current frame does not exist in it and is not drawn — which is a separate
+   question from being *hidden*, and must not share a mask with it. PyMOL has no
+   equivalent: its states are conformations of one fixed set of atoms.
 3. **Honesty about limits.** PyMOL will happily add hydrogens to a ligand whose
    bond orders it does not know. ChiMOL says so instead.
 4. **A session you can still read in ten years.** Not a pickle of internal

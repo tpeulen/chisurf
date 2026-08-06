@@ -52,6 +52,17 @@ The findings below are what has been *closed*. This section is the open front,
 kept at the top so a new session does not have to reconstruct it. Ordered by
 what a user actually hits.
 
+**0. A trajectory that is a simulation — landed, with one thing left.** See
+*[A frame carries more than coordinates](#a-frame-carries-more-than-coordinates)*
+below. What is **open**: the depiction is spheres only, so the buried strata are
+visible from outside a mound but not through it. PyMOL's answer is `clip slab`,
+which chimol has; a cut-away demo beat was left out because a demo script runs to
+completion before `mplay` returns, so it would have to come *before* playback or
+be a second entry. Also unmeasured: whether the per-frame read is affordable on a
+model the size of the pore — it is `O(frames x particles)` Python calls, and the
+only reason it is cheap today is that a static file has one frame. If a large
+multi-frame RMF appears, measure before assuming.
+
 **1. Settings — the standout gap, and it has a measured worklist.** 790 in
 PyMOL, 55 registered here. The raw remainder (735) is misleading: most of it is
 sculpting, roving, stereo, movie, shader and session bookkeeping that does not
@@ -106,6 +117,20 @@ entries silently useless, so it comes first.
   needs a small loader extension (copy the old key's value when it is not the
   old default, then drop it), not a table entry. Worth doing in the same change
   as the bullet above, since both are one question: where does this setting live.
+
+**A third one was found and fixed, and it is the best illustration of the class:
+`bg_color` versus `ray`.** `bg_color` calls `viewer.set_background_color`, which
+writes to the *renderer*; `ray` read `_DISPLAY_CONFIG["background"]`, the value
+the session **started** with. Both stores were live, both were consulted, and
+neither was ever updated by the other — so `bg_color white; ray` gave a white
+viewport and a black picture, in every figure anyone has traced. Fixed by giving
+the renderer a `get_background_color` and having `ray` ask the viewer, with the
+config as the fallback for a viewer that has no renderer yet. Two traps: the
+renderer keeps **RGBA** and `_parse_background` accepted only a three-long
+sequence, so the live value fell straight through to the black fallback and the
+fix looked inert; and the guardrail samples a **corner pixel**, because a mean
+brightness moves when the molecule does and this is a question about the
+background alone.
 
 **2. Rendering.** One measured defect left in the ray tracer.
 
@@ -1994,6 +2019,67 @@ CGO scripting, `fab`/`fragment` building, `alias`, `log_open`.
 These are the answer to "surpass on the view", and they are cheap because they
 exploit the one structural advantage of a rebuild-time pipeline: work done once
 per geometry change is free while the camera moves.
+
+## A frame carries more than coordinates
+
+The one place chimol had to go **past** PyMOL rather than catch up with it, and
+it came from a use PyMOL does not have: an agent simulation instead of a
+molecular trajectory. An MD run moves the same atoms for the whole file. A
+growing colony does not — cells **appear**, **grow**, and **change what they are
+doing where they stand**.
+
+RMF has always stored a radius and a colour **per frame**. chimol read neither:
+
+* radii were read once, *after* the frame loop, so they came from whichever frame
+  the walk happened to leave current — the last one. Nothing failed, because
+  every file anyone had opened stated one radius;
+* `ColoredConstFactory` was constructed in the loader and **never asked**. A file
+  that states its own colours was drawn in the viewer's defaults.
+
+Both are now read per frame and collapsed to a single array when they turn out
+not to vary, so a static model grows no time axis and every consumer that does
+not care about frames keeps asking for one array.
+
+**A radius of zero is how "does not exist yet" is expressed**, because an RMF's
+node set is fixed for the whole file. That needed a third visibility mask
+(`absent_mask`), *not* a reuse of `hidden_mask`: one mask serving both questions
+means stepping the movie silently un-hides whatever the hierarchy panel switched
+off — the identical failure `representation_mask` was split out to avoid. All
+three compose in `visible_row_mask`. Zero could not simply be passed through as a
+radius either: the renderers substitute a default for a non-positive one, so
+every unborn cell would have been drawn at full size from the first frame.
+
+### Four traps, in order of how much time they cost
+
+1. **`numpy` converting a SWIG object uses the iteration protocol.** Assigning an
+   `RMF.Vector3` into an array row costs **20 us**; reading `v[0]`, `v[1]`, `v[2]`
+   costs **1.4 us**. On 60 frames x 2600 beads that was **17 s of a 19.7 s load**,
+   and the profile named `Vector3___getitem__` with 624 000 calls. The same
+   spelling was in the coordinate fallback path and was fixed with it.
+2. **`np.array_equal(frames, frames[:1])` does not broadcast.** It compares
+   shapes first, so a series that never changes reads as one that always does,
+   and every static file grew a full time axis. `np.all(frames == frames[0])`.
+3. **`IMP.rmf` cannot write what RMF can store.** `save_frame` snapshots
+   `IMP.display.Colored` when the hierarchy is added, so every frame comes back
+   the colour the model started with. Writing through RMF directly gives per-frame
+   colour and radius. This is worth knowing before designing around the
+   limitation: the simulator had built an elaborate workaround — one particle per
+   cell *per observed state*, with the unused ones parked at (-100, -100, -100) —
+   for a constraint that belongs to the bridge, not to the format.
+4. **An unborn particle still needs coordinates**, and they must be its nearest
+   ancestor **alive in that frame**, not its parent — the parent is usually
+   unborn too. Resolving one level put frame 0's invisible beads over the shape
+   the colony only reached at the end, 17 um up, where the film was 1.1 um tall.
+   Invisible and therefore harmless, until something frames the file.
+
+### The demo is generated, not shipped
+
+`Demo > Biofilm growth` has no file to fetch: the agent simulator beside ChiSurf
+is run on first use (~3 s, 2600 cells over 60 frames) and cached under the
+settings directory. That keeps the demo a *result* rather than a picture of one,
+and it is what exercises the whole path end to end. `resolve_structure` builds it;
+the failure is **raised**, not swallowed, because a path that is not there
+surfaces as "cannot read file" and sends whoever hit it looking for a download.
 
 # Working rules
 

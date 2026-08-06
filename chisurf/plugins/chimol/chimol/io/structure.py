@@ -469,6 +469,9 @@ def _parse_rmf(path: Path) -> StructurePayload:
         extras={
             "restraints": data.get("restraints"),
             "rmf_provenance": data.get("rmf_provenance"),
+            "frame_radii": data.get("frame_radii"),
+            "frame_colors": data.get("frame_colors"),
+            "bead_colors": data.get("colors"),
             "rmf_frame_series": data.get("rmf_frame_series", {}),
             "rmf_frame_metadata": data.get("rmf_frame_metadata", {}),
             "rmf_resolutions": data.get("rmf_resolutions", []),

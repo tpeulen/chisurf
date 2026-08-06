@@ -229,6 +229,73 @@ def _frame_blend(position, n_frames: int) -> tuple[int, float, int]:
     return index, blend, index + 1
 
 
+def _rgba(colors) -> np.ndarray:
+    """An ``(n, 3)`` or ``(n, 4)`` colour array as ``(n, 4)``, opaque by default.
+
+    Parameters
+    ----------
+    colors : array_like
+        Per-row RGB or RGBA in ``0..1``.
+
+    Returns
+    -------
+    numpy.ndarray
+        ``(n, 4)``.
+    """
+    arr = np.asarray(colors, dtype=float)
+    if arr.ndim == 2 and arr.shape[1] == 3:
+        return np.column_stack([arr, np.ones(arr.shape[0])])
+    return arr
+
+
+def _apply_frame_appearance(
+    state: _MolViewObjectState, idx: int, blend: float, next_idx: int
+) -> None:
+    """Take this frame's radii and colours, when the file gives them per frame.
+
+    A trajectory is usually only motion, and every path here assumed that. A
+    simulation is not: its particles can grow, change what they are doing, or
+    not exist yet, and a reader that plays only the coordinates shows a colony
+    of full-grown cells sliding into place. Radius and colour are interpolated
+    between stored frames exactly as the coordinates are, so a bead that appears
+    grows into view rather than popping.
+
+    Parameters
+    ----------
+    state : _MolViewObjectState
+        The object being stepped; updated in place.
+    idx : int
+        The stored frame at or below the position shown.
+    blend : float
+        Weight toward ``next_idx``; ``0`` on a stored frame.
+    next_idx : int
+        The frame after ``idx``.
+    """
+
+    def _at(series):
+        if series is None:
+            return None
+        arr = np.asarray(series)
+        if arr.ndim < 2 or idx >= arr.shape[0]:
+            return None
+        if blend <= 0.0 or next_idx >= arr.shape[0]:
+            return arr[idx]
+        return (1.0 - blend) * arr[idx] + blend * arr[next_idx]
+
+    radii = _at(state.frame_radii)
+    if radii is not None:
+        state.all_atom_radii = np.asarray(radii, dtype=float)
+        # A bead with no size is one the file has not created yet. Saying that
+        # with a mask rather than a zero radius matters because the renderers
+        # substitute a default for a non-positive radius -- which would draw
+        # every unborn cell at full size, all of them, from the first frame.
+        state.absent_mask = np.asarray(radii, dtype=float) <= 0.0
+
+    colors = _at(state.frame_colors)
+    if colors is not None:
+        state.colors_per_atom_override = _rgba(colors)
+
+
 def _triangle_edges(faces: np.ndarray) -> np.ndarray:
     """Unique undirected edges of a triangle list, as ``(M, 2)`` indices.
 
@@ -542,6 +609,9 @@ class MolView(QtWidgets.QWidget):
     _hidden_mask = _StateField("hidden_mask")
     _resolutions = _StateField("resolutions")
     _representation_mask = _StateField("representation_mask")
+    _absent_mask = _StateField("absent_mask")
+    _frame_radii = _StateField("frame_radii")
+    _frame_colors = _StateField("frame_colors")
     _rmf_resolutions = _StateField("rmf_resolutions")
     _restraints = _StateField("restraints")
     _rmf_provenance = _StateField("rmf_provenance")
@@ -589,6 +659,20 @@ class MolView(QtWidgets.QWidget):
                 state.rmf_frame_series = extras["rmf_frame_series"]
             if extras.get("rmf_frame_metadata") is not None:
                 state.rmf_frame_metadata = extras["rmf_frame_metadata"]
+            if extras.get("frame_radii") is not None:
+                # Scaled here, once, into the units ``all_atom_radii`` is kept
+                # in -- the frame seam that reads it has no view to ask.
+                state.frame_radii = (
+                    np.asarray(extras["frame_radii"], dtype=float)
+                    * float(self._scale_factor)
+                )
+            if extras.get("frame_colors") is not None:
+                state.frame_colors = np.asarray(extras["frame_colors"], dtype=float)
+            if extras.get("bead_colors") is not None:
+                # The file's own colours, so a model that states them is drawn
+                # as it says rather than in the viewer's default. `color` still
+                # overrides, as it does for a structure read from a PDB.
+                state.colors_per_atom_override = _rgba(extras["bead_colors"])
 
             # Frames last. `set_frames` centres and scales over the *whole*
             # trajectory, which is what stops the model jumping about as it
@@ -1754,6 +1838,8 @@ class MolView(QtWidgets.QWidget):
         except Exception:
             pass
 
+        _apply_frame_appearance(state, idx, blend, next_idx)
+
         coords_len = state.coords.shape[0] if state.coords is not None else frame.shape[0]
         all_atom_len = (
             np.asarray(state.all_atom_coords).shape[0]
@@ -2917,6 +3003,14 @@ class MolView(QtWidgets.QWidget):
 
         if not _fits(self._colors_per_atom_override):
             self._colors_per_atom_override = None
+        if not _fits(self._absent_mask):
+            self._absent_mask = None
+        # The per-frame series are indexed by *row*, so a structure whose atom
+        # count changed under them describes a different model and they go.
+        for _series in ("_frame_radii", "_frame_colors"):
+            value = getattr(self, _series)
+            if value is not None and np.asarray(value).shape[1] != n_atoms:
+                setattr(self, _series, None)
         n_residues = len(self._residue_ids) if self._residue_ids is not None else 0
         if self._cartoon_mask is None or len(self._cartoon_mask) != n_residues:
             self._cartoon_mask = None
@@ -3087,6 +3181,25 @@ class MolView(QtWidgets.QWidget):
             )
             return False
         return True
+
+    def get_background_color(self):
+        """The background now in force, as RGBA in ``0..1``, or ``None``.
+
+        ``bg_color`` writes to the renderer, so the renderer is the only place
+        that knows the answer. Anything that draws the scene by another route --
+        the ray tracer above all -- has to ask here rather than read the
+        configuration, which holds the value the session *started* with: that
+        gap is why a traced figure came out on black however the viewport was
+        set.
+        """
+        renderer = self._renderer
+        getter = getattr(renderer, "get_background_color", None) if renderer else None
+        if not callable(getter):
+            return None
+        try:
+            return getter()
+        except Exception:  # pragma: no cover - a renderer without a colour yet
+            return None
 
     def set_field_of_view(self, fov: float) -> None:
         """Set the camera's vertical field of view in degrees.
@@ -4101,13 +4214,15 @@ class MolView(QtWidgets.QWidget):
     def visible_row_mask(self, n_rows: int) -> np.ndarray | None:
         """Which rows may be drawn: everything not hidden, in the chosen depiction.
 
-        Two independent questions are answered here, and they have to be
+        Three independent questions are answered here, and they have to be
         answered together. ``hidden_mask`` is what the hierarchy panel's check
         boxes set -- the parts of the model you switched off.
         ``representation_mask`` is which depiction of it is selected, when the
-        file offers several resolutions. Compose them in one place, or picking a
-        resolution quietly un-hides what you had hidden, and every drawing path
-        has to remember to consult both.
+        file offers several resolutions. ``absent_mask`` is what does not exist
+        in the frame being shown, which a simulation states by giving a particle
+        no radius. Compose them in one place, or picking a resolution quietly
+        un-hides what you had hidden, stepping the movie does the same, and
+        every drawing path has to remember to consult all three.
 
         Parameters
         ----------
@@ -4133,6 +4248,13 @@ class MolView(QtWidgets.QWidget):
             chosen_arr = np.asarray(chosen, dtype=bool)
             if not chosen_arr.all():
                 visible = chosen_arr if visible is None else (visible & chosen_arr)
+
+        absent = self._absent_mask
+        if absent is not None and len(absent) == n_rows:
+            absent_arr = np.asarray(absent, dtype=bool)
+            if absent_arr.any():
+                present = ~absent_arr
+                visible = present if visible is None else (visible & present)
 
         return visible
 

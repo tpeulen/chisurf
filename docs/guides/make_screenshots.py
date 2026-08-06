@@ -729,6 +729,55 @@ def _grab_chimol_viewer():
     print("wrote chimol_accessibility.png")
 
 
+def _grab_chimol_biofilm():
+    """The simulated biofilm, two frames of it, ray-traced.
+
+    Generated the way the demo generates it -- the agent simulator is run and
+    ChiMOL opens its RMF -- so the figure cannot drift from what the demo shows.
+    Traced rather than grabbed for the reason the accessibility figure is: the
+    ray tracer needs no GL context, and this script has no display.
+
+    A frame early in the run and a frame at the end, because the point of the
+    demo is the difference between them.
+    """
+    from chisurf.plugins.chimol.chimol.app.demo_data import generated_demo_path
+    from chisurf.plugins.chimol.chimol.cmd.command import Cmd
+    from chisurf.plugins.chimol.chimol.io.structure import load_structure_payload
+    from chisurf.plugins.chimol.chimol.renderer.view import MolView
+
+    rmf = generated_demo_path("biofilm_growth.rmf")
+    _reader, payload = load_structure_payload(str(rmf))
+
+    view = MolView()
+    view.resize(900, 650)
+    view.add_payload(payload, name="biofilm", source_path=str(rmf))
+
+    class _Host:
+        viewer = view
+
+        def _refresh_objects_from_viewer(self):
+            pass
+
+        def windowTitle(self):
+            return "chimol"
+
+    cmd = Cmd(_Host())
+    cmd.set_message_callback(lambda _m: None)
+    cmd.set_error_callback(lambda m: print("  chimol:", m))
+    for line in (
+        "bg_color white",
+        "as spheres",
+        "frame 60",
+        "turn x, -75",
+        "zoom all, 2, 1",
+    ):
+        cmd.do(line)
+    for frame, name in ((30, "chimol_biofilm_early.png"), (60, "chimol_biofilm_late.png")):
+        cmd.do(f"frame {frame}")
+        cmd.do(f"ray {FIG / name}, 900, 650")
+        print(f"wrote {name}")
+
+
 def _grab_region_editor():
     """The shared region GUI on the CLSM tool: the list and the shapes.
 
@@ -939,6 +988,7 @@ def main():
         _grab_accurate_fret_tool,
         _grab_hmm_tool,
         _grab_chimol_viewer,
+        _grab_chimol_biofilm,
         _grab_region_editor,
         _grab_ndx_gaussian_panel,
     ):
