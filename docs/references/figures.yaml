@@ -1814,13 +1814,17 @@ guides/figures/static_quenching_mechanisms.png:
     right panel's point that the lifetime reports the dynamic part and nothing else. The printed radius
     needed to mimic K_S = 5 /M with a sphere (12.6 A) is computed, not quoted.
 guides/figures/quenching_mixtures.png:
-  caption: A two-population sample curves downward, and the modified Stern-Volmer plot returns an inflated
-    accessible fraction when the buried population is not truly inaccessible.
+  caption: Incomplete quenching and an inaccessible population are the same function - both bend F0/F
+    downward onto a plateau - and the modified plot returns an inflated fraction when the inert population
+    is not truly inert.
   kind: plot
   origin: docs/guides/make_figures.py::fig_quenching_mixtures
   pages:
   - docs/fundamentals/quenching_and_photophysics.md
-  recipe: 'Run `python docs/guides/make_figures.py`; f_a = 0.5, K_a = 5 /M, with K_b = 0 and K_b = 0.1 K_a.
+  recipe: 'Run `python docs/guides/make_figures.py`; f = 0.5, K_a = 5 /M, with K_b = 0 (which is
+    algebraically identical to incomplete static quenching with an unquenchable fraction f) and
+    K_b = 0.1 K_a. The quencher range runs to 4 M so the plateau at 1/(1-f) is actually reached -- at
+    1 M it is not, and the panel then shows a bend with nothing to bend onto.
     The quoted intercepts are least-squares fits over 1 < 1/[Q] < 8 -- a deliberately ordinary window --
     and give f_a = 0.50 and 0.74 against a truth of 0.50. Changing that window changes the second number,
     which is the point being made, so it is fitted rather than asserted.'

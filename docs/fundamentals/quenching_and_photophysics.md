@@ -87,7 +87,7 @@ which is second order in $[Q]$. The dynamic part can still be separated by
 measuring lifetimes, since $\tau_0/\tau = 1 + K_D[Q]$ regardless of the static
 term — the lifetime is blind to molecules that never emit.
 
-## Incomplete static quenching: the sphere of action
+## Upward curvature: the sphere of action
 
 Upward curvature does not prove a ground-state complex. The same shape arises
 when a quencher merely happens to be *adjacent* at the moment of excitation,
@@ -107,7 +107,8 @@ on whether the number is physical.
 :alt: intensity and lifetime Stern-Volmer plots for dynamic, sphere-of-action and complex quenching
 :width: 100%
 
-Three mechanisms, one lifetime. The intensity plots differ (left), but
+Three mechanisms that all bend the plot **upward**, and one lifetime. The
+intensity plots differ (left), but
 $\tau_0/\tau$ is the same line for all three (right) because the lifetime
 reports only the **dynamic** part — so it separates dynamic from static and then
 cannot tell a sphere of action from a ground-state complex. The 7 Å contact
@@ -139,9 +140,32 @@ titration cannot tell you which of the three mechanisms produced it, and the
 literature contains many such numbers ({cite}`gehlen2020` catalogues what each
 deviation from linearity can mean, and how many mechanisms fit each one).
 
-## Species mixtures and incomplete accessibility
+## Downward curvature: incomplete quenching and species mixtures
 
-Downward curvature is the opposite situation, and the common one in proteins:
+Everything above adds quenching and bends the plot *up*. The opposite bend has
+the opposite cause: something **limits** how much quenching is possible, so
+$F_0/F$ saturates instead of growing.
+
+### Incomplete static quenching
+
+If only a fraction $f$ of the fluorophores can be quenched at all — a limited
+number of binding sites, a complex that is not fully dark, one conformer that
+forms the complex and another that does not — then
+
+$$
+\frac{F}{F_0} = (1 - f) + \frac{f}{1 + K_S[Q]} ,
+$$
+
+so $F_0/F$ rises towards $1/(1-f)$ and stops there.
+
+The plot bends **down** onto that plateau: adding more quencher cannot
+remove emission that was never quenchable. "Incomplete" is doing real work in
+that sentence — the mechanism is ordinary static quenching, and what is
+incomplete is the *pool it can act on*.
+
+### Species mixtures
+
+The other route to the same shape, and the common one in proteins:
 **more than one emitting species, quenched at different rates**. A protein with
 several tryptophans, a dye at two labelling positions, or any sample with a
 buried and an exposed population gives
@@ -156,7 +180,18 @@ intensity-weighted mean of the $K_i$ — so an apparent $K_{SV}$ read off the
 low-$[Q]$ region is an average over species, not a property of any of them, and
 it drifts with the concentration range chosen.
 
-The limiting case — one accessible fraction and one entirely buried — is
+:::{important}
+Incomplete static quenching and a two-population mixture with an inaccessible
+fraction are **the same function**: put $K_b = 0$ in the sum above and it is the
+expression in the previous subsection with $f_a$ for $f$. No amount of curve
+fitting separates "a fraction the quencher cannot reach" from "a fraction that
+cannot form the complex" — they are distinguished by the lifetime (a mixture of
+*differently quenched* species has species-specific $\tau_i$; an unquenchable
+fraction does not), by the absorption spectrum, and by chemistry, not by the
+shape of $F_0/F$.
+:::
+
+The limiting case — one quenchable or accessible fraction and one inert — is
 resolved by the **modified Stern–Volmer** (Lehrer) plot {cite}`lehrer1971`.
 Writing $\Delta F = F_0 - F$,
 
@@ -173,12 +208,15 @@ emits.
 :alt: downward-curving Stern-Volmer plot for a two-population sample and the modified plot
 :width: 100%
 
-Left: two populations at $f_a = 0.5$ curve **downward**, away from the straight
-line a single species would give. Right: the modified plot straightens the
-$K_b = 0$ case and its intercept returns $f_a = 0.50$ exactly. The other curve is
-the same sample with the "inaccessible" fraction quenched at one tenth the rate
-— it still looks straight over a normal range, and a line fitted to it returns
-$f_a = 0.74$ for a truth of 0.50.
+Left: with half the emission unquenchable — incomplete static quenching, or an
+inaccessible population, the two are the same function — $F_0/F$ bends **down**
+onto a plateau at $1/(1-f) = 2$. More quencher cannot remove emission that was
+never quenchable. The orange curve is the same sample with that fraction
+quenched at one tenth the rate: it has no plateau, but it is still bent away
+from the straight line a single species gives. Right: the modified plot
+straightens the inert case and its intercept returns $f = 0.50$ exactly, while a
+line fitted to the leaky one over an ordinary window returns 0.74 for the same
+truth of 0.50.
 ```
 
 Three cautions, in increasing order of how often they are ignored:
@@ -327,9 +365,13 @@ identifies them:
   sphere volume can.
 - $F_0/F$ curves **upward** — static and dynamic together, or a sphere of
   action.
-- $F_0/F$ curves **downward** — more than one emitting species with different
-  accessibilities. Resolve with a modified Stern–Volmer plot, and do not believe
-  the two-class split further than the data support it.
+- $F_0/F$ curves **downward**, onto a plateau — something limits how much
+  quenching is possible: an unquenchable fraction (incomplete static quenching)
+  or a population the quencher cannot reach. The two are the same function.
+  Resolve with a modified Stern–Volmer plot, and do not believe the two-class
+  split further than the data support it.
+- $F_0/F$ curves **downward** without a plateau — species with *different*
+  quenching constants rather than one inert fraction.
 - Intensity fluctuates on microseconds with no change in the mean lifetime — the
   molecule is switching between bright and dark states: triplet, or intermittent
   PET.

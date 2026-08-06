@@ -2,6 +2,18 @@
 
 ## 2026-08-06
 
+* **"Incomplete static quenching" was the wrong name on the wrong curve** ([documentation browser](subsystems/documentation-browser.md)).
+
+  The page had a section headed *Incomplete static quenching: the sphere of action* showing **upward** curvature. Those are two different things and only one of them was in it. A sphere of action *adds* quenching and bends the plot up; quenching that is **incomplete** — a limited number of binding sites, a complex that is not fully dark, one conformer that forms it and another that does not — bends the plot **down**, because `F/F0 = (1-f) + f/(1 + K_S[Q])` rises towards `1/(1-f)` and stops. More quencher cannot remove emission that was never quenchable.
+
+  Restructured by what the curvature actually does: *Upward curvature: the sphere of action*, and *Downward curvature: incomplete quenching and species mixtures*.
+
+  **The point that restructuring exposed, and which the page had missed entirely:** incomplete static quenching and a two-population mixture with an inaccessible fraction are **the same function** — put `K_b = 0` in the mixture sum and it is the incomplete-quenching expression with `f_a` for `f`. No curve fitting separates "a fraction the quencher cannot reach" from "a fraction that cannot form the complex". They are told apart by the lifetime (differently *quenched* species have species-specific tau_i; an unquenchable fraction does not), by the absorption spectrum, and by chemistry.
+
+  The figure now shows the plateau, which needed the quencher range extended to 4 M — at 1 M it is not reached and the panel shows a bend with nothing to bend onto. `figures.yaml` records that, because it is the kind of thing a later "tidy the axis" would undo.
+
+  Two guard catches while fixing it: `\xrightarrow` is not in the mathtext renderer, so the limit had to be written in prose (`test_every_formula_in_the_documentation_typesets`), and a `figure` directive spliced mid-sentence leaks its fence (`test_no_page_in_the_tree_leaks_its_markup`).
+
 * **The FCS models left the GUI layer, and an L-curve that had always returned NaN** ([PRD-38](prds/prd-38.md), [FCS](plugins/fcs.md)).
 
   `DyeShapeFCSModel`, `MaxEntFCSModel` and `MaxEntRHModel` are in `chisurf/core/models/fcs/` (`dye_shape.py`, `maxent_models.py`) with `dye_shape.view.json` / `maxent_fcs.view.json` / `maxent_rh.view.json`; `dye_volume_widget.py` and `maxent_widget.py` are deprecation shims (~1,930 lines of Qt deleted). Three registrations off the legacy list; **two remain** (ProteinMC, ReactionWidget).

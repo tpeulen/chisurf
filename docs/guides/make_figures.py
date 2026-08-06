@@ -1984,24 +1984,33 @@ def fig_static_quenching_mechanisms():
 
 def fig_quenching_mixtures():
     """Downward curvature, the modified plot, and the f_a it inflates."""
-    q = np.linspace(0.02, 1.0, 400)
+    q = np.linspace(0.02, 4.0, 800)
     f_a, K_a = 0.5, 5.0
 
     def intensity(K_b):
         return f_a / (1 + K_a * q) + (1 - f_a) / (1 + K_b * q)
 
-    strict = intensity(0.0)                 # a truly inaccessible fraction
+    strict = intensity(0.0)                 # a truly inaccessible fraction --
+                                            # identical in form to incomplete
+                                            # static quenching with f = f_a
     leaky = intensity(0.1 * K_a)            # "inaccessible" at one tenth the rate
 
     fig, (ax, ax2) = plt.subplots(1, 2, figsize=(8.8, 3.4))
     ax.plot(q, 1 + K_a * q, lw=1.6, color="0.6", ls="--",
             label=rf"one species, $K$ = {K_a:g} M$^{{-1}}$")
-    ax.plot(q, 1 / strict, lw=2.0, color="#3b5bdb",
-            label=rf"$f_a$ = {f_a:g}, $K_b$ = 0")
+    ax.plot(q, 1 / strict, lw=2.4, color="#3b5bdb",
+            label=rf"incomplete / inert fraction ($f$ = {f_a:g})")
     ax.plot(q, 1 / leaky, lw=2.0, color="#e8590c",
-            label=rf"$f_a$ = {f_a:g}, $K_b$ = 0.1$K_a$")
+            label=rf"$K_b$ = 0.1$K_a$")
+    # The plateau is the whole point: more quencher cannot remove emission that
+    # was never quenchable.
+    ax.axhline(1 / (1 - f_a), color="#3b5bdb", lw=0.9, ls=":")
+    ax.text(2.6, 1 / (1 - f_a) + 0.12, rf"plateau at $1/(1-f)$ = {1 / (1 - f_a):g}",
+            fontsize=8, color="#3b5bdb")
     ax.set_xlabel("[Q] / M"); ax.set_ylabel(r"$F_0/F$")
-    ax.legend(fontsize=8); ax.set_title("a mixture curves downward", fontsize=10)
+    ax.set_ylim(0.9, 6.0)
+    ax.legend(fontsize=8, loc="upper left")
+    ax.set_title("both curve downward, onto a plateau", fontsize=10)
 
     # Modified (Lehrer) plot: F0/dF against 1/[Q]
     inv_q = 1.0 / q
