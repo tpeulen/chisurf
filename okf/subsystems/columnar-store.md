@@ -26,14 +26,26 @@ one four-label text column), macOS arm64:
 
 | | frame + its HDF5 writer | columnar store |
 |---|---|---|
-| in memory | 114.3 MB | **60.2 MB** |
-| write, numeric only | 0.46 s | **0.08 s** |
-| read, numeric only | 0.45 s | **0.02 s** |
+| in memory | 109.5 MB | **60.2 MB** |
+| write, numeric only | 0.071 s | **0.025 s** |
+| read, numeric only | 0.042 s | **0.011 s** |
 | file, numeric only | 64.0 MB | **56.0 MB** |
-| file, with the text column | **77.3 MB** | 100.0 MB ← the open gap |
+| write, with the text column | 0.293 s | **0.037 s** |
+| read, with the text column | 0.133 s | **0.011 s** |
+| file, with the text column | 72.6 MB | **60.0 MB** |
 
 Almost the whole memory difference is the text column: a million Python string
 objects against four strings plus a million `int32` codes.
+
+**The text column used to be where this lost**, and it was the one thing
+blocking the storage path: the HDF5 writer materialised the labels, so that
+file was 96.0 MB against the frame's 72.6 MB. Fixed at the library source — the
+dataset is now the `int32` codes and the labels are a `dictionary` attribute on
+it, so the file is self-describing and a reader that ignores the attribute
+still gets valid category codes. Both older layouts still read (variable-length
+and fixed-width strings), and codes that do not index their dictionary are read
+as the integers they literally are rather than as a column whose every access
+is out of bounds.
 
 **Dropping `pandas` is not the goal and does not follow from any of this.** It
 was measured: removing it from the recipe's run list moves the solved closure
@@ -105,9 +117,15 @@ Blanking a cell sets the mask bit instead of writing a sentinel.
 | Consumer | State |
 |---|---|
 | `DataStoreSource` in [chitable](gui-tables.md) | landed — a store backs a table widget, with a text column editing as a drop-down of its dictionary |
+| the HDF5 writers | landed — all seven, through `write_table` / `read_table` / `read_table_frame` in this module |
 | the burst-table layer and its readers | not started |
-| the HDF5 writers | blocked on the library writing a text column dictionary-encoded (see the table above — today the file goes *past* pandas) |
 | the CSV readers | blocked on a writer in the library |
+
+`write_table` is the only way a table enters HDF5 in the shipped package now,
+and `test/test_pandas_hdf5_seam.py` fails on a frame writer reappearing. Frame
+*readers* are allow-listed in `test/pandas_hdf5_read_allowlist.txt` — a
+**shrinking** record of the two places that still open the older layout so files
+from earlier releases keep working.
 
 The [burst-companion contract](burst-companions.md) is deliberately untouched:
 `burst_companion.write_companion` is numpy-only and stays the canonical writer.
@@ -119,15 +137,15 @@ preference.
 
 | Gap | Consequence here |
 |---|---|
-| A text column is written to HDF5 with its labels **materialised** | the file is larger than the pandas one it would replace — the single thing blocking the storage-path migration |
+| ~~A text column is written to HDF5 with its labels materialised~~ | **Closed.** The codes are the dataset and the dictionary is an attribute on it: 96.0 → 60.0 MB, write 0.185 → 0.037 s, read 0.191 → 0.011 s |
+| ~~A file holds one table; the writer truncates~~ | **Closed.** A store is a tree of named child groups and the file is its serialisation, which is what the imaging format (`results` plus a `meta` back-reference) needs |
+| **No reader for the frame-written layout, and none wanted here** | a library that reads photon data has no business knowing another ecosystem's container layout. Files from earlier releases are opened by `read_table_frame`, which falls back to that ecosystem's own reader and turns a missing optional package into a named `LegacyTableError` rather than an empty table |
 | No CSV writer | the reader is fast and the writer would still go through a frame |
-| No reader for the legacy frame-written HDF5 layout | files written by earlier releases must stay openable after the HDF5 table dependency goes |
 | A `Column` handed out by `add()`/`[i]` is **invalidated** by a structural change | silently blank columns; the append case is fixed at the library source but is in no built environment here yet, and removal still invalidates — worked around by never caching a proxy |
 | A boolean column has **no zero-copy view**, and decodes through a per-row Python loop | filtering a large boolean column is O(n) in Python, and a write through the returned array is silently lost |
 | `mask_numpy()` returns a **copy** | a single-cell mask change is a read-modify-write of the whole mask |
 | `set_numpy` on a text column **appends** instead of replacing | a second call doubles the column |
 | No `take`/`compact`, `concat`, `argsort`, or group-by over a dictionary column | a selection can be expressed but not *realised*; six plugins would hand-roll the same loop |
-| A file holds **one** table — the writer truncates, so a second group destroys the first | the imaging format is a `results` table plus a `meta` back-reference and cannot be written at all. Specified for implementation in the library, and scoped wider on the way: the container gains named child groups (a store becomes a tree) and the file becomes the serialisation of that tree. The reader already handles the layout — measured — so the work is write-side. |
 
 A single-cell **text** write was expected to be a gap and is not: it is
 expressible over `dictionary()` / `set_dictionary()` / `codes()`, which is what
@@ -136,21 +154,25 @@ consumer does not re-derive it.
 
 # Where to pick this up
 
-1. **The text column in HDF5.** Everything downstream is judged on the
-   comparison in the table above, and today the store loses it. Re-derive with a
-   benchmark that *includes a text column* — numeric-only the store wins by 6×
-   on write and 22× on read, and that number flatters.
-2. **Wait for data groups before the HDF5 stage.** A store is becoming a tree —
-   named child groups, each with its own columns and row count — and the file
-   becomes the serialisation of it. Writing the HDF5 stage against today's
-   one-table-per-file call would have to be redone; write it against the tree.
-3. **The burst-table layer**, then its readers, then the plugins. Each stage
-   deletes its frame conversion rather than keeping it beside the store; two
-   containers living side by side is how a second full copy of the table
-   appeared in the companion viewer before it was deleted again.
-4. **Compression default.** The library's HDF5 writer defaults to level 4, which
-   costs 2.58 s against 0.08 s on a numeric table to save 8% of the file. These
-   files are written once per analysis and read repeatedly.
+1. **The burst-table layer**, then its readers, then the plugins —
+   `core/fluorescence/burst/table.py` and `photons.py` first, since everything
+   else reads them. Each stage deletes its frame conversion rather than keeping
+   it beside the store; two containers living side by side is how a second full
+   copy of the table appeared in the companion viewer before it was deleted
+   again. The writers are done and are **not** the same job: they convert a
+   frame at the file boundary, so the frame still exists in memory everywhere.
+2. **CSV**, which needs a writer in the library. The reader is already fast and
+   without the writer half the migration is a one-way street.
+3. **The `.dstore` native file** is worth a look for anything written and read
+   only by ChiSurf. It keeps the row selection and the whole tree, needs no
+   HDF5 at all, and on a compressed table it is dramatically faster — but it is
+   not readable by anything else, so it is wrong for the burst and imaging
+   files, which are interchange formats. Measured a wash against uncompressed
+   HDF5 on bulk I/O.
+4. **A frame is still built before every write.** `write_burst_hdf5` converts
+   one at the boundary, so the memory saving in the table above is not being
+   collected yet — only the file size and the write time are. That is what
+   point 1 is for.
 
 .. seealso::
 

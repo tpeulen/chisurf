@@ -251,7 +251,7 @@ disproven. Whatever holds the Qt objects past shutdown is something else; the
 shared session-scoped `qapp` in `chisurf/plugins/conftest.py`, which overrides
 pytest-qt's own and never tears the application down, is the next thing to look at.
 
-## packaging: five pandas HDF5 writers outlived the `pytables` removal
+## packaging: five pandas HDF5 writers outlived the `pytables` removal — RESOLVED 2026-08-06
 
 **2026-08-06.** `pytables` was dropped on the grounds that its "only remaining
 use" was the MEM sampler's posterior (commit `ffeab9f0c`). It was not: pandas
@@ -377,12 +377,14 @@ for this env once nothing else is building.
 are written and **deliberately left uncommitted** — a GUI change is unfinished
 until its render has been looked at, and this one has not been.
 
-**A third repair, and the one now planned**: [PRD-82](/prds/prd-82.md) moves
-these writers onto the simulation library's columnar store, whose HDF5 table is
-one dataset per column — measured 6× faster to write and 22× faster to read on a
-numeric burst table, and half the memory in RAM. It is staged behind a reader
-for the legacy pandas layout, so the old files stay openable without pytables;
-until that lands, this issue stands as written.
+**Resolved by the third repair**: [PRD-82](/prds/prd-82.md) stage 2 moved every
+one of these onto the columnar writer — one dataset per column, no optional HDF5
+package, and with a text column *smaller* on disk than the frame file it
+replaces (60.0 MB against 72.6 MB) rather than larger. It did **not** wait for a
+reader for the legacy layout: that reader was written in the simulation library
+and reverted as out of scope there, so files from earlier releases still need
+the optional package, now behind a named `LegacyTableError`. See the storage
+entry below and [PRD-82](/prds/prd-82.md).
 
 ## Test suite: what is still red after the 2026-08-04 sweep
 
@@ -2452,21 +2454,29 @@ The durable fix is one of: pin the same HDF5 in both environments, or make the
 link step verify that the extension actually *loads* in every environment it
 links into rather than only in the one it installed to. Neither is done.
 
-## storage: seven pandas HDF5 call sites are dead in a freshly solved environment
+## storage: seven pandas HDF5 call sites are dead in a freshly solved environment — RESOLVED 2026-08-06
 
-**2026-08-06.** `pytables` is declared nowhere, and a freshly solved environment
-now genuinely has none — `to_hdf` raises `ImportError: Missing optional
-dependency 'pytables'`. Seven call sites still go through it (the burst-selection
-writer, the photon-filter wizard, `bid_to_analysis`, the H2MM ndX export, the
-imaging pixel maps, the burst-state reader and the MCMC chain writer), so all
-seven are dead there. They work in developer environments only because those
-still carry the package.
+**Resolved** by [PRD-82](../prds/prd-82.md) stage 2: all seven writers now go
+through `chisurf.core.datastore.write_table`, which writes one dataset per
+column and needs no optional HDF5 package. `to_hdf` and `HDFStore` appear
+nowhere in the shipped package and `test/test_pandas_hdf5_seam.py` fails on one
+coming back. Kept here for the part that is **still true**.
 
-Moving them onto the columnar writer is [PRD-82](../prds/prd-82.md) stage 2, and
-it is blocked on three library gaps — a text column that inflates the file, a
-legacy reader that returns an **empty store** instead of declining, and a writer
-that truncates so one file cannot hold two groups. Until then this is a real gap
-between the developer environment and a fresh one.
+**A file written by an EARLIER release still needs that optional package to
+open.** `read_table_frame` tries the columnar layout first and falls back to the
+frame reader, which needs it; where it is absent the fallback is a named
+`LegacyTableError` rather than an empty table, so the failure is legible instead
+of silent. That is no worse than before — those files were unreadable there
+either way — but it means the removal is complete for *writing* and not for
+*reading history*.
+
+A reader for the frame layout was written inside the simulation library and
+**reverted deliberately**: that library reads photon data and has no business
+knowing another ecosystem's container layout. Do not propose it there again.
+The remaining options, neither taken: convert old files on open (needs the
+package once, on a machine that has it), or read the layout in ChiSurf, which
+means a new HDF5 dependency for a legacy path. Both are worse than the named
+decline until someone has a file they actually cannot open.
 
 ## globalview: two graph builders, and they have already drifted
 

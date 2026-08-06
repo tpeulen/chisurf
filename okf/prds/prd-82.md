@@ -4,7 +4,7 @@ prd: "82"
 title: "PRD-82: The table layer onto tttrlib's DataStore — chitable first, then pandas and pytables out of the storage path"
 description: chitable, the burst tables and the HDF5 writers move onto tttrlib's DataStore one adapter at a time. The dependency count is not the argument -- pandas stays installed either way -- the arguments are half the memory, dtypes and missing values that survive a file, and the removal of pytables, which is already broken in a freshly solved environment.
 status: in-progress
-phase: "stage 1 landed"
+phase: "stages 1-2 landed"
 resource: chisurf/gui/widgets/chitable/source.py
 tags: [prd, chitable, datastore, tttrlib, pandas, pytables, dependencies, burst, hdf5, csv]
 timestamp: '2026-08-06T00:00:00Z'
@@ -12,52 +12,64 @@ timestamp: '2026-08-06T00:00:00Z'
 
 # Where to pick this up
 
-**Stage 1 has landed** (2026-08-06): `chisurf/core/datastore.py` is the Qt-free
-seam and `DataStoreSource` is chitable's fourth adapter, with 75 tests green
-across `test/test_datastore_seam.py` and `test/gui/test_chitable.py`. The
-adapter is asserted equal to `DataFrameSource` cell for cell, and does the three
-things a frame cannot: keeps a narrow dtype through an edit, blanks an integer
-cell by mask rather than by widening, and edits a text column as a drop-down of
-its dictionary. The durable description is the new
-[columnar-store concept](../subsystems/columnar-store.md) — **source may not
-name this PRD**, so that concept is what the code points at.
+**Stages 1 and 2 have landed** (2026-08-06). Stage 1 is the chitable adapter and
+the Qt-free seam; stage 2 is every HDF5 writer. `to_hdf` and `HDFStore` appear
+nowhere in the shipped package, and `test/test_pandas_hdf5_seam.py` fails on one
+reappearing — there is no allow-list for writers, because there is no file a new
+one belongs in. Frame *readers* are allow-listed and the list is shrinking
+(`test/pandas_hdf5_read_allowlist.txt`, two entries).
 
-Next is **stage 2 (HDF5)**, and it is blocked on **T1** exactly as predicted;
-nothing about that has changed. Before starting it, note what stage 1 turned up:
+The two library gaps that blocked stage 2 are closed, and one was closed the
+wrong way first and reverted — read that before proposing it again:
 
-1. **T8 was not a blocker and is off the critical path.** A single-cell text
-   write is expressible today over `dictionary()` / `set_dictionary()` /
-   `codes()`, which is what `set_cell` does. It still belongs in the library so
-   six consumers do not re-derive it, but it blocks nothing.
-2. **A borrowed `Column` is not safe to cache — and the append case is now
-   fixed at the library source but is in no built environment here.** Every
-   stage below wants to fetch columns once and keep them, so every stage meets
-   this. Rebuilding the library is what makes the fix real: `pixi run
-   build-tttrlib` could not configure on macOS at all until `hdf5` was declared
-   for every platform rather than for `win-64`/`linux-64` only, which is why the
-   shipped binary was stale. *Removal* still invalidates unevenly, so
-   `column_at()` and the never-cache rule stay regardless. Detail in
-   [known issues](../references/known-issues.md).
-3. **Two smaller library gaps**, both worked around in the seam: a boolean
-   column has no zero-copy view (it decodes through a per-row Python loop, and a
-   write through the returned array is silently lost), and `mask_numpy()`
-   returns a copy.
-4. **148 files in the shipped package still name a PRD**, tracked by
-   `test/prd_mention_allowlist.txt`. Every file this migration touches gets its
-   PRD references ported to the owning concept in the same change.
+1. **T1 (a text column materialised in HDF5) is fixed at the library source.**
+   The dataset is the `int32` codes, the labels are a `dictionary` attribute on
+   it. On the 1M-row burst table: **96.0 → 60.0 MB against the frame's 72.6 MB**,
+   write 0.185 → 0.037 s, read 0.191 → 0.011 s. Acceptance criterion 4 is met —
+   the file is *smaller*, not merely faster.
+2. **T13 (one table per file) is fixed**: a store is a tree of named child
+   groups and the file is its serialisation, so the imaging format's `results`
+   plus `meta` back-reference is one write.
+3. **T3 was attempted in the library and REVERTED, deliberately.** A reader for
+   the frame-written layout was written there — both variants, including a
+   protocol-0 pickle scan for the column names the compound dataset does not
+   carry — and it is the wrong place: a library that reads photon data has no
+   business knowing another ecosystem's container layout. **Do not put it
+   back.** Legacy files are opened by `read_table_frame`, which tries the
+   columnar layout first and that ecosystem's own reader second, and turns its
+   missing optional package into a named `LegacyTableError` rather than an empty
+   table. The consequence, and it is real: **a file written by an earlier
+   release still needs that optional package to open**, so criterion 3's second
+   half is met only where it is installed. That is unchanged from before this
+   work and is recorded in [known issues](../references/known-issues.md).
 
-Two measurements to re-derive before trusting anything here, and the trap in
-each:
+Two things the migration turned up in the burst tables themselves, both
+invisible while the frame writer was in the way:
+
+* **A burst table ends in an unnamed column** — the trailing separator of the
+  `.bur` format read as a field. HDF5 cannot name a dataset that. Nothing could
+  address the column anyway, and the frame writer stored it unreadably rather
+  than saying so. Dropped in `write_burst_hdf5`.
+* **`category_map` was write-only.** All three burst writers encoded text
+  columns as `int32` codes and put the labels in a JSON attribute that *nothing
+  in this tree ever read*, so ndX showed `Source File` and `First File` as
+  integers. A dictionary column carries its labels, so they are file names now.
+
+Next is **stage 3, the burst-table layer**, and the thing to know before
+starting: the writers convert a frame at the file boundary, so **a frame is
+still built in memory everywhere**. The file size and the write time are
+collected; the 109.5 → 60.2 MB of memory is not. `core/fluorescence/burst/
+table.py` and `photons.py` are what has to move for that, and everything else
+reads them.
+
+One measurement to re-derive rather than trust, and the trap in it:
 
 * **The dependency saving is one package, not a stack.** Solve it, do not assume
   it: `conda create --dry-run --json -c conda-forge -n probe <recipe run: list>`
   with and without `pandas` is 256 → 255. The trap is measuring in the dev env,
-  where `pdb2pqr` requires `pandas >=1.0` and it never leaves at all.
-* **The HDF5 comparison inverts on a text column.** Numeric-only, tttrlib is
-  ~6× faster to write and ~22× faster to read at compression 0; add one
-  four-label text column and its file goes *past* pandas (100 MB against 77 MB),
-  because the writer materialises the labels. Benchmark with a text column or
-  the result is flattering and wrong.
+  where `pdb2pqr` requires `pandas >=1.0` and it never leaves at all. **Removing
+  pandas remains a non-goal**; what stage 2 achieved is that the *optional HDF5*
+  package is genuinely unnecessary for anything this writes.
 
 # Summary
 
@@ -185,7 +197,7 @@ as a combo box only while its dictionary is small (`MAX_CHOICE_LABELS = 64`);
 beyond that it is free text, because a drop-down of ten thousand burst ids is
 not an editor.
 
-## Stage 2 — HDF5: the writers move, and `pytables` is actually gone
+## Stage 2 — HDF5: the writers move, and `pytables` is actually gone — **landed**
 
 **Seven** call sites, not five — `burst_selection/api/io.py` and the photon-filter
 wizard were missed in the first count. And `pytables` is not merely
@@ -232,7 +244,7 @@ than against a per-group write call.
 
 This stage therefore needs **T1**, **T3** and **T13**.
 
-## Stage 3 — the burst tables
+## Stage 3 — the burst tables — next
 
 In dependency order, each independently landable, each with the store built once
 and the frame conversion deleted rather than kept alongside:

@@ -2,6 +2,20 @@
 
 ## 2026-08-06
 
+* **Every table now enters HDF5 as columns, and the frame writers are gone** ([PRD-82](prds/prd-82.md), [columnar store](subsystems/columnar-store.md), [known issues](references/known-issues.md)).
+
+  Seven writers went through a DataFrame's HDF5 writer, which reaches an optional package a freshly solved environment does not carry — so all seven were *dead* there, and dead quietly, because every developer environment still had the package installed from before it was dropped. They write one dataset per column now, through `write_table` in [`chisurf/core/datastore.py`](../chisurf/core/datastore.py). `to_hdf` and `HDFStore` appear nowhere in the shipped package; `test/test_pandas_hdf5_seam.py` fails on one coming back, with **no allow-list for writers** because there is no file a new one belongs in. Frame *readers* are allow-listed and the list is shrinking — two entries, both legacy fallbacks.
+
+  **The one thing that blocked this was fixed in the library, not worked around.** A text column went into HDF5 as one string per row, so a written store was *larger* than the file it replaced: 96.0 MB against 72.6 MB on a 1M-row burst table with one four-label text column. The dataset is the `int32` codes now and the labels are a `dictionary` attribute on it — **60.0 MB, write 0.185 → 0.037 s, read 0.191 → 0.011 s** — so the file is smaller as well as faster, which is what acceptance criterion 4 asked for. Both older layouts still read, and codes that do not index their dictionary are read as the integers they literally are rather than as a column whose every access is out of bounds.
+
+  **A reader for the frame-written layout was written in the same library and reverted.** It worked — both variants, including a protocol-0 pickle scan for the column names the compound dataset does not carry — and it is the wrong place: a library that reads photon data has no business knowing another ecosystem's container layout. Legacy files are opened by `read_table_frame`, columnar first and that ecosystem's own reader second, with a named `LegacyTableError` where its optional package is absent instead of an empty table. **The consequence is real and is recorded**: a file from an earlier release still needs that package to open. It always did; what changed is that the failure now says so.
+
+  **Three copies of one writer became one.** The burst-selection API, the BID-to-analysis converter and the photon-filter wizard each dropped empty columns, downcast integers, narrowed floats and encoded every text column as `int32` codes with the labels in a `category_map` JSON attribute — and each probed bzip2/blosc/zlib for a compressor first. `write_burst_hdf5` is that, once, in core, and the encoding is not built at all: a store's text column *is* a dictionary plus codes.
+
+  Two defects surfaced underneath, both invisible while the frame writer was in the way. **`category_map` was write-only** — nothing in this tree ever read it back, so these files carried `Source File` and `First File` as integers with the key in an attribute no reader looked at, and ndX showed them as numbers. They are file names now. And **a burst table ends in an unnamed column**, the trailing separator of the `.bur` format read as a field; HDF5 cannot name a dataset that, nothing could address the column anyway, and the frame writer stored it unreadably rather than saying so.
+
+  Compression is dropped rather than probed: gzip costs roughly thirty times the write to save eight percent of the size, on files written once per analysis and read repeatedly. The sampling guide's "four times smaller, compressed" claim was re-measured and corrected to three times, uncompressed.
+
 * **The PyMOL checkout is now a ranked worklist, and three selection faults are fixed** ([PyMOL parity](plugins/pymol-parity.md), [reference checkouts](workflows/reference-checkouts.md)).
 
   Reported as "middle mouse too sensitive", "the rect select does not show the selection", and "selection in seq and view must correspond — always".
