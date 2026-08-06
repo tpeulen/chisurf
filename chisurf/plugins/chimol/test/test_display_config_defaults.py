@@ -127,6 +127,29 @@ def test_a_chained_migration_lands_on_the_current_default(shipped):
         )
 
 
+def test_the_selection_marker_reaches_an_existing_install(shipped):
+    """The yellow every existing copy carries becomes PyMOL's pink.
+
+    The marker was reported as invisible, and the colour was half of why. A new
+    default in the package would have reached nobody: a user copy is written
+    once and never refreshed, so a real install sits at the previous version
+    with the old value in it -- which is what the report was looking at.
+    """
+    user = {"selection": {"color": [1.0, 1.0, 0.0, 1.0]}}
+    changed = cfg_mod.apply_display_config_migrations(user, from_version=9)
+
+    assert user["selection"]["color"] == shipped["selection"]["color"]
+    assert "selection.color" in changed
+
+
+def test_a_selection_colour_the_user_picked_survives():
+    """The migration moves the old default, never a choice."""
+    user = {"selection": {"color": [0.0, 1.0, 1.0, 1.0]}}
+    cfg_mod.apply_display_config_migrations(user, from_version=9)
+
+    assert user["selection"]["color"] == [0.0, 1.0, 1.0, 1.0]
+
+
 # --------------------------------------------------------------------------- #
 # Migrating a user's copy
 # --------------------------------------------------------------------------- #

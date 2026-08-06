@@ -507,6 +507,79 @@ def test_the_middle_button_box_subtracts_and_finishes(viewport):
     assert widget._select_rect is None
 
 
+def _selection_markers(view):
+    """Every selection-marker scene object, by id, with its point count."""
+    scene = getattr(view, "_scene", None)
+    return {
+        obj.id: int(obj.geometry.positions.shape[0])
+        for obj in (scene.objects if scene is not None else [])
+        if str(obj.id) == "selection" or str(obj.id).endswith(":selection")
+    }
+
+
+def test_a_box_select_puts_markers_on_the_molecule(viewport):
+    """The reported fault: the selection was applied and nothing was drawn.
+
+    One marker per *atom* of the selected residues, as PyMOL's indicator is --
+    so the count is well above the residue count, and a box that selected
+    something cannot leave the picture unchanged.
+    """
+    from qtpy import QtCore
+
+    view, widget, qapp = viewport
+    start, end, inside = _box_around(view, widget)
+    assert len(inside) > 3
+
+    _drag(widget, qapp, start, end, QtCore.Qt.ShiftModifier)
+
+    markers = _selection_markers(view)
+    assert markers, "the selection drew nothing at all"
+    assert sum(markers.values()) > len(inside), (
+        "one marker per residue: PyMOL marks every atom of the selection"
+    )
+
+
+def test_deselecting_removes_the_markers(viewport):
+    """They stayed. Every scene object is prefixed with its object id, and the
+    marker swap filtered on the bare id `selection`, so it matched nothing:
+    the stale markers were never dropped and a fresh set was appended beside
+    them. The sequence went empty and the molecule kept its pink.
+    """
+    from qtpy import QtCore
+
+    view, widget, qapp = viewport
+    start, end, _inside = _box_around(view, widget)
+    _drag(widget, qapp, start, end, QtCore.Qt.ShiftModifier)
+    assert _selection_markers(view)
+
+    _click(widget, qapp, QtCore.QPoint(4, widget.height() - 4))
+
+    assert _selection(view) == []
+    assert _selection_markers(view) == {}, "the markers outlived the selection"
+
+
+def test_a_selection_set_from_outside_is_announced(viewport):
+    """`set_selected_residues` is what both sequence views call.
+
+    It used to assign the state and refresh the marker, emitting nothing, so a
+    residue picked in the viewport's sequence strip never reached the docked
+    sequence list -- two views of one molecule showing different selections.
+    """
+    view, _widget, qapp = viewport
+    seen = []
+    view.objectResidueSelectionChanged.connect(
+        lambda oid, idx: seen.append((oid, list(idx)))
+    )
+
+    view.set_selected_residues([3, 4, 5])
+    _pump(qapp)
+
+    assert seen, "nothing was announced"
+    assert seen[-1][1] == [3, 4, 5]
+    assert _selection(view) == [3, 4, 5]
+    assert _selection_markers(view), "and nothing was drawn"
+
+
 def test_the_middle_button_stops_panning_when_released(viewport):
     """It did not: the class defined `mouseReleaseEvent` twice.
 

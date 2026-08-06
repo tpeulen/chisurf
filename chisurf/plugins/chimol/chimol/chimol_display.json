@@ -1,5 +1,5 @@
 {
-  "_version": 9,
+  "_version": 10,
   "background": "k",
   "defaults": {
     "color_mode": "by_sequence"
@@ -312,16 +312,15 @@
   "selection": {
     "color": [
       1.0,
-      1.0,
-      0.0,
+      0.2,
+      0.6,
       1.0
     ],
-    "size_scale": 0.08,
-    "min_size": 6.0,
-    "max_size": 24.0,
-    "alpha": 0.4,
-    "click_radius_px": 8.0,
-    "px_mode": false
+    "width": 3.0,
+    "width_max": 10.0,
+    "width_scale": 2.0,
+    "width_reference_radius": 0.25,
+    "click_radius_px": 8.0
   },
   "layout": {
     "root_margins": [

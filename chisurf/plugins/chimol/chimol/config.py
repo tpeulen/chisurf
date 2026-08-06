@@ -14,7 +14,7 @@ try:
 except Exception:  # pragma: no cover - moview can run without chisurf
     _cs_settings = None
 
-DISPLAY_CONFIG_VERSION: int = 9
+DISPLAY_CONFIG_VERSION: int = 10
 """Current version of the chimol_display.json schema.
 
 Increment this when keys are added, renamed, or removed, **or when a default
@@ -100,6 +100,17 @@ DISPLAY_CONFIG_MIGRATIONS: dict[int, dict[str, dict[str, tuple]]] = {
             # to fix. Named here so the correction actually arrives.
             "sigma_factor": ((3.0, 3.5), 4.0),
             "iso_value": ((0.14, 0.12), 0.10),
+        },
+    },
+    10: {
+        "selection": {
+            # The marker became PyMOL's: pink, at every selected atom, sized by
+            # its own width rule. Shipping the new default alone would have
+            # reached nobody -- a user copy is written once and never refreshed,
+            # so every existing install keeps the yellow this replaces, which is
+            # the colour the "the selection is not visible" report was looking
+            # at.
+            "color": ([1.0, 1.0, 0.0, 1.0], [1.0, 0.2, 0.6, 1.0]),
         },
     },
 }
@@ -724,14 +735,19 @@ def _load_display_config() -> dict:
                 "default": [0.8, 0.8, 0.8, 1.0],
             },
         },
+        # PyMOL's selection indicator, name for name: `selection_width` (3),
+        # `selection_width_max` (10) and `selection_width_scale` (2.0) from its
+        # `SettingInfo.h`, and the pink its indicator pass hard-codes. The
+        # reference radius is PyMOL's `stick_radius`, which is what its width
+        # rule scales -- kept separate here because chimol's stick radius is a
+        # representation setting and this must not follow it.
         "selection": {
-            "color": [1.0, 1.0, 0.0, 1.0],
-            "size_scale": 0.08,
-            "min_size": 6.0,
-            "max_size": 24.0,
-            "alpha": 0.4,
+            "color": [1.0, 0.2, 0.6, 1.0],
+            "width": 3.0,
+            "width_max": 10.0,
+            "width_scale": 2.0,
+            "width_reference_radius": 0.25,
             "click_radius_px": 8.0,
-            "px_mode": False,
         },
         "layout": {
             "root_margins": [4, 4, 4, 4],
