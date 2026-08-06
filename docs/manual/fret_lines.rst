@@ -8,8 +8,8 @@ Understanding FRET Lines
 
 FRET lines are a fundamental tool in the analysis of Förster Resonance Energy Transfer (FRET) 
 experiments. They provide a visual and quantitative representation of the relationship between 
-two key lifetime parameters: the **fluorescence-averaged lifetime** (:math:`\tau_F`) and the 
-**species-averaged lifetime** (:math:`\tau_X`).
+two key lifetime parameters: the **fluorescence-averaged lifetime** (:math:`\tau_f`) and the 
+**species-averaged lifetime** (:math:`\tau_x`).
 
 What is a FRET Line?
 --------------------
@@ -17,14 +17,18 @@ What is a FRET Line?
 A FRET line represents the functional relationship:
 
 .. math::
-   \tau_X = f(\tau_F)
+   \tau_x = f(\tau_f)
 
 where:
 
-- :math:`\tau_F = \frac{\langle \tau^2 \rangle}{\langle \tau \rangle}` (fluorescence-averaged lifetime)
-- :math:`\tau_X = \langle \tau \rangle` (species-averaged lifetime)
+- :math:`\tau_x = \frac{\sum_i x_i \tau_i}{\sum_i x_i}` — the **species-averaged**
+  lifetime, the first moment of the lifetime distribution. It is proportional to
+  the FRET efficiency: :math:`E = 1 - \tau_x / \tau_0`.
+- :math:`\tau_f = \frac{\sum_i x_i \tau_i^2}{\sum_i x_i \tau_i}` — the
+  **fluorescence-averaged** lifetime, which is what a single-exponential fit of
+  the decay returns.
 
-For an ideal single-exponential donor fluorophore **without FRET**, :math:`\tau_F = \tau_X`, 
+For an ideal single-exponential donor fluorophore **without FRET**, :math:`\tau_f = \tau_x`, 
 and the relationship follows a 1:1 line. However, when FRET is present, this relationship 
 deviates from the 1:1 line in a characteristic manner that depends on the donor-acceptor 
 distance distribution and the FRET efficiency.
@@ -41,8 +45,8 @@ Static FRET Line
 ~~~~~~~~~~~~~~~~
 
 A **static FRET line** represents a system with a **single conformational state** where the 
-donor-acceptor distance follows a Gaussian distribution. The line shows how :math:`\tau_F` and 
-:math:`\tau_X` vary as the **mean distance** :math:`R` between donor and acceptor changes.
+donor-acceptor distance follows a Gaussian distribution. The line shows how :math:`\tau_f` and 
+:math:`\tau_x` vary as the **mean distance** :math:`R` between donor and acceptor changes.
 
 **Key characteristics:**
 
@@ -53,27 +57,34 @@ donor-acceptor distance follows a Gaussian distribution. The line shows how :mat
 
 **Mathematical basis:**
 
-For a Gaussian distance distribution with mean :math:`R` and standard deviation :math:`\sigma`,
-the FRET efficiency :math:`E` is given by:
+The line is not a closed-form curve; it is computed from the **decay the donor
+actually shows**. For a Gaussian distance distribution :math:`P(r)` with mean
+:math:`R` and width :math:`\sigma`, every distance quenches every donor
+component,
 
 .. math::
-   E(R) = \int_0^\infty P(r) \cdot \frac{R_0^6}{R_0^6 + r^6} dr
+   \tau(r, \tau_i) = \frac{\tau_i}{1 + (R_0/r)^6} ,
 
-where :math:`P(r)` is the Gaussian probability distribution and :math:`R_0` is the Förster radius.
-
-The lifetimes are then calculated as:
+so the sampled distribution and the donor's own lifetime spectrum together give
+a lifetime spectrum with amplitudes :math:`P(r)\,x_i`. The two averages are then
+taken from that spectrum:
 
 .. math::
-   \tau_X = \tau_0 \cdot (1 - E)
-   \tau_F = \frac{\tau_X^2}{\tau_0}
+   \tau_x = \frac{\sum x \tau}{\sum x}, \qquad
+   \tau_f = \frac{\sum x \tau^2}{\sum x \tau} .
 
-where :math:`\tau_0` is the donor lifetime in the absence of FRET.
+Sweeping :math:`R` traces the line. Doing it this way — rather than through
+:math:`E` and a single-exponential donor — is what makes the line correct for a
+**multi-exponential donor**, which most real donors are; the simplified relation
+:math:`\tau_f = \tau_x^2/\tau_0` holds only for a single-exponential donor
+with a delta distance distribution, and the difference is exactly the deviation
+a static line is used to detect.
 
 Dynamic FRET Line
 ~~~~~~~~~~~~~~~~~~
 
 A **dynamic FRET line** represents a system with **two (or more) exchanging conformational states**, 
-each with its own Gaussian distance distribution. The line shows how :math:`\tau_F` and :math:`\tau_X` 
+each with its own Gaussian distance distribution. The line shows how :math:`\tau_f` and :math:`\tau_x` 
 vary as the **population fraction** of the states changes.
 
 **Key characteristics:**
@@ -89,10 +100,10 @@ vary as the **population fraction** of the states changes.
 For a two-state system with fractions :math:`x_1` and :math:`x_2 = 1 - x_1`, the observed lifetimes are:
 
 .. math::
-   \tau_X = x_1 \cdot \tau_{X,1} + x_2 \cdot \tau_{X,2}
-   \tau_F = \frac{x_1 \cdot \tau_{X,1}^2 + x_2 \cdot \tau_{X,2}^2}{x_1 \cdot \tau_{X,1} + x_2 \cdot \tau_{X,2}}
+   \tau_x = x_1 \cdot \tau_{x,1} + x_2 \cdot \tau_{x,2}
+   \tau_f = \frac{x_1 \cdot \tau_{x,1}^2 + x_2 \cdot \tau_{x,2}^2}{x_1 \cdot \tau_{x,1} + x_2 \cdot \tau_{x,2}}
 
-where :math:`\tau_{X,i}` is the species-averaged lifetime of state :math:`i`.
+where :math:`\tau_{x,i}` is the species-averaged lifetime of state :math:`i`.
 
 Key Parameters
 --------------
@@ -141,8 +152,7 @@ To create a static FRET line programmatically:
 
    # Set up the R_DA axis
    chisurf.core.models.tcspc.fret.rda_axis = np.logspace(
-       start=np.log(1),
-       stop=np.log(500)
+       np.log10(1.0), np.log10(500.0), 512
    )
 
    # Create a static FRET line with R0=52, sigma=6, tau0=4
@@ -179,8 +189,7 @@ To create a dynamic FRET line with two states:
 
    # Set up the R_DA axis
    chisurf.core.models.tcspc.fret.rda_axis = np.logspace(
-       start=np.log(1),
-       stop=np.log(500)
+       np.log10(1.0), np.log10(500.0), 512
    )
 
    # Create a dynamic FRET line with two states
@@ -211,13 +220,13 @@ Both static and dynamic FRET line objects provide the following properties and m
 
 **Properties:**
 
-- ``conversion_function``: Tuple of (tau_F, tau_X) arrays
+- ``conversion_function``: Tuple of (tau_f, tau_x) arrays
 - ``conversion_function_string``: Polynomial string representation for plotting
 - ``transfer_efficency_string``: String representation of transfer efficiency
 - ``fdfa_string``: String for FD/FA ratio
 - ``fret_efficiencies``: Array of FRET efficiencies along the line
-- ``fluorescence_averaged_lifetimes``: Array of tau_F values
-- ``species_averaged_lifetimes``: Array of tau_X values
+- ``fluorescence_averaged_lifetimes``: Array of tau_f values
+- ``species_averaged_lifetimes``: Array of tau_x values
 - ``parameter_values``: Array of the varied parameter (R or x)
 - ``polynom_coefficients``: Polynomial coefficients approximating the conversion function
 
@@ -247,8 +256,8 @@ FRET lines can be visualized using matplotlib:
    tau_f, tau_x = static_fl.conversion_function
    ax.plot(tau_f, tau_x, 'b-', linewidth=2, label='Static FRET Line')
    ax.plot(tau_f, tau_f, 'r--', linewidth=1, label='1:1 line')
-   ax.set_xlabel(r'$\tau_F$ (Fluorescence-avg lifetime) [ns]')
-   ax.set_ylabel(r'$\tau_X$ (Species-avg lifetime) [ns]')
+   ax.set_xlabel(r'$\tau_f$ (Fluorescence-avg lifetime) [ns]')
+   ax.set_ylabel(r'$\tau_x$ (Species-avg lifetime) [ns]')
    ax.set_title('Static FRET Line\n$R_0$=52Å, $\sigma$=6Å, $\tau_0$=4ns')
    ax.legend()
    ax.grid(True, alpha=0.3)
@@ -269,8 +278,8 @@ For dynamic FRET lines, you can use a color gradient to show the transition:
    # Color points by state fraction
    sc = ax.scatter(tau_f, tau_x, c=x_values, cmap='viridis', s=50, alpha=0.8)
    ax.plot(tau_f, tau_f, 'r--', linewidth=1, label='1:1 line')
-   ax.set_xlabel(r'$\tau_F$ (Fluorescence-avg lifetime) [ns]')
-   ax.set_ylabel(r'$\tau_X$ (Species-avg lifetime) [ns]')
+   ax.set_xlabel(r'$\tau_f$ (Fluorescence-avg lifetime) [ns]')
+   ax.set_ylabel(r'$\tau_x$ (Species-avg lifetime) [ns]')
    ax.set_title('Dynamic FRET Line\n$R_1$=40Å, $R_2$=80Å\n$\sigma$=6Å, $\tau_0$=4ns')
    ax.legend()
    ax.grid(True, alpha=0.3)
@@ -345,8 +354,7 @@ FRET lines:
 
    # Set up the R_DA axis
    chisurf.core.models.tcspc.fret.rda_axis = np.logspace(
-       start=np.log(1),
-       stop=np.log(500)
+       np.log10(1.0), np.log10(500.0), 512
    )
 
    # Create static FRET line (R0=52, sigma=6, tau0=4)
@@ -376,8 +384,8 @@ FRET lines:
    tau_f_s, tau_x_s = static_fl.conversion_function
    ax1.plot(tau_f_s, tau_x_s, 'b-', linewidth=2, label='Static FRET Line')
    ax1.plot(tau_f_s, tau_f_s, 'r--', linewidth=1, label='1:1 line')
-   ax1.set_xlabel(r'$\tau_F$ [ns]')
-   ax1.set_ylabel(r'$\tau_X$ [ns]')
+   ax1.set_xlabel(r'$\tau_f$ [ns]')
+   ax1.set_ylabel(r'$\tau_x$ [ns]')
    ax1.set_title('Static FRET Line\n$R_0$=52Å, $\sigma$=6Å')
    ax1.legend()
    ax1.grid(True, alpha=0.3)
@@ -389,8 +397,8 @@ FRET lines:
    x_vals = dynamic_fl.parameter_values
    sc = ax2.scatter(tau_f_d, tau_x_d, c=x_vals, cmap='viridis', s=50)
    ax2.plot(tau_f_d, tau_f_d, 'r--', linewidth=1, label='1:1 line')
-   ax2.set_xlabel(r'$\tau_F$ [ns]')
-   ax2.set_ylabel(r'$\tau_X$ [ns]')
+   ax2.set_xlabel(r'$\tau_f$ [ns]')
+   ax2.set_ylabel(r'$\tau_x$ [ns]')
    ax2.set_title('Dynamic FRET Line\n$R_1$=40Å, $R_2$=80Å')
    ax2.legend()
    ax2.grid(True, alpha=0.3)
@@ -440,17 +448,20 @@ For a Gaussian distribution of distances with mean :math:`\mu` and standard devi
 .. math::
    P(r) = \frac{1}{\sigma \sqrt{2\pi}} \exp\left(-\frac{(r - \mu)^2}{2\sigma^2}\right)
 
-The species-averaged lifetime is:
+The species-averaged lifetime is the amplitude-weighted mean over the sampled
+distribution,
 
 .. math::
-   \tau_X = \langle \tau_D \rangle = \tau_0 \cdot \langle 1 - E \rangle
+   \tau_x = \frac{\sum x \tau}{\sum x} = \tau_0 \, (1 - \langle E \rangle) ,
 
-The fluorescence-averaged lifetime is:
+and the fluorescence-averaged lifetime weights each component by the number of
+photons it contributes, i.e. by :math:`x\tau`:
 
 .. math::
-   \tau_F = \frac{\langle \tau_D^2 \rangle}{\langle \tau_D \rangle}
+   \tau_f = \frac{\sum x \tau^2}{\sum x \tau} .
 
-For multi-state systems, these averages are computed as weighted sums over all states.
+For multi-state systems both sums simply run over every component of every
+state, weighted by the state fractions.
 
 Troubleshooting
 ---------------
@@ -462,8 +473,7 @@ Troubleshooting
    .. code-block:: python
    
       chisurf.core.models.tcspc.fret.rda_axis = np.logspace(
-          start=np.log(1),
-          stop=np.log(500)
+          np.log10(1.0), np.log10(500.0), 512
       )
 
 2. **AttributeError: module 'chisurf.core.fitting' has no attribute 'fit'**:

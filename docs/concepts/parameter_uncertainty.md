@@ -1,3 +1,4 @@
+(concept-parameter-uncertainty)=
 # Parameter uncertainty: priors, posteriors and sampling
 
 Fitting a model gives a *best* parameter value. What a measurement actually

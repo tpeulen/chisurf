@@ -10,11 +10,10 @@ High NA objectives cause a partial depolarization of the linearly polarized exci
 
 (a) The microscope objective is illuminated by a linearly polarized plane wave and focuses the beam onto the sample. This mode of illumination is used in confocal microscopy. (b) The linearly polarized beam is focused into the back-focal plane of the objective (widefield illumination). The sample is illuminated by a collimated plane wave. The "pupil" polarization states in the image planes are depicted using vertically polarized incident beams. Widefield illumination (b) leads to lower loss of polarization in the illumination field than focused beam illumination (a) as confirmed by optical ray tracing simulations.
 
-(Image taken from: )
 
-The correction of this phenomenon has first been described already by M. Koshioka, K. Sasaki and H. Masuhara (, , Appl. Spectrosc., 1995, 49, 224–228).
+The correction of this phenomenon has first been described already by M. Koshioka, K. Sasaki and H. Masuhara (Appl. Spectrosc., 1995, 49, 224–228, `10.1366/0003702953963652 <https://doi.org/10.1366/0003702953963652>`_).
 
-In the more recent, open access publication of Erdelyi :emphasis:`et al.` a more illustrative description can be found (Erdelyi M, Simon J, Barnard EA, Kaminski CF (2014) Analyzing Receptor Assemblies in the Cell Membrane Using Fluorescence Anisotropy Imaging with TIRF Microscopy. PLOS ONE 9(6): e100526. ).
+In the more recent, open access publication of Erdelyi :emphasis:`et al.` a more illustrative description can be found (Erdelyi M, Simon J, Barnard EA, Kaminski CF (2014) Analyzing Receptor Assemblies in the Cell Membrane Using Fluorescence Anisotropy Imaging with TIRF Microscopy. PLOS ONE 9(6): e100526, `10.1371/journal.pone.0100526 <https://doi.org/10.1371/journal.pone.0100526>`_).
 
 Next to the depolarization due to the objective, the different detection sensitivity of the parallel and perpendicular detector must be considered. In microscopy-based experiments, this so-called g-factor is often defined as the ratio of parallel (:emphasis:`Ip`) over perpendicular (:emphasis:`Is`) light, however, some software also uses the inverse definition. In either case, the g-factor should ideally lie close to 1.
 

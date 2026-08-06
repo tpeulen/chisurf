@@ -1,39 +1,89 @@
 Parameter sampling
 ------------------
 
-ChiSurf uses an affine-invariant ensemble sampler to efficiently sample over free model parameters. The sampling over the free model parameters can initiated using the "Distribution" button next to the "Fit" button in the fitting and optimization interface (:strong:`Fig.15`).
+.. seealso::
+
+   What an error bar from sampling actually means, which sampler suits which
+   posterior, and how to tell a converged run from a stuck one:
+   :ref:`concept-parameter-uncertainty` and
+   :doc:`/guides/39_parameter_uncertainty`.
+
+Optimisation returns the *best* parameter values. Sampling returns the
+**distribution** of values compatible with the data, which is what an
+uncertainty is — and, unlike the curvature at the optimum, it shows the
+correlations between parameters and survives a posterior that is not a
+paraboloid.
+
+Sampling is started with the "Distribution" button beside "Fit" in the fitting
+and optimisation interface (:strong:`Fig.15`).
 
 .. image:: _images/image_rId23.png
   :align: center
 
-:strong:`Fig.15 Sampling over variable model parameters illustrated for time-resolved fluorescence analysis.` Data and model of a fit are displayed below. Clicking on the sampling button (highlighted in orange) initiates the sampling over the free model parameters and opens a folder selection menu (bottom). During the sampling ChiSurf will become inactive and create output files (txt files) containing the sampled model parameters. The outputted files can be opened in tools for multidimensional histograms such as nDxplorer (part of ChiSurf) or Margarita (Seidel software) to visualize distributions of the sampled parameters (bottom right).
+:strong:`Fig.15 Sampling over variable model parameters, illustrated for
+time-resolved fluorescence analysis.` The data and model of the fit are shown
+below. Clicking the sampling button (highlighted in orange) samples the free
+model parameters and asks for an output folder. The chains are written there and
+can be opened in a multidimensional-histogram tool — nDXplorer, which ships with
+ChiSurf, or Margarita — to look at the distributions and their correlations
+(bottom right).
 
-The settings controlling the sampling, such as the number the number of steps, are located setup in the "sampling" section of the ChiSurf settings file (:strong:`Fig.14`).
+Defaults for the number of steps, the number of independent runs and the chain
+format live in the ``optimization.sampling`` section of the settings file
+(:strong:`Fig.14`).
 
-The sampling can also be initiated from the shell. Variable parameters of the currently active fit are sampled as follows:
+From the shell
+==============
 
 .. code-block:: python
 
   fit = cs.current_fit
-  chisurf.fitting.fit.sample_fit(fit, filename="/output_path/outfile.er4")
+  report = chisurf.core.fitting.fit.sample_fit(fit, "/output/directory")
 
-The settings of the sampling from the shell can be adjusted using the parameters of the sample_fit function (:strong:`Fig.16`).
+The second argument is a **directory**, not a file name: a timestamped
+sub-directory is created inside it holding the chains and a ``diagnostics.json``.
+The same report is returned — per-parameter mean, standard deviation, quantiles,
+effective sample size, split R-hat and autocorrelation time, plus a list of
+warnings. **Read the warnings before the numbers**: a chain that has not
+converged still produces a confident-looking standard deviation.
 
-.. code-block:: none
+The sampler is chosen with ``method``:
 
-  def sample_fit(
-  fit: Fit,
-  filename: str,
-  method: str = 'ensemble',
-  steps: int = 1000,
-  thin: int = 1,
-  chi2max: float = float("inf"),
-  n_runs: int = 10,
-  step_size: float = 0.1,
-  temp: float = 1.0,
-  **kwargs
-  )
+.. list-table::
+   :header-rows: 1
+   :widths: 16 84
 
-:strong:`Fig.16 Definition of the sample fit sample function.` The function can be used for sampling over variable fit parameters.
+   * - ``method``
+     - When to use it
+   * - ``ensemble``
+     - The default. An affine-invariant ensemble whose walkers take their scale
+       from each other, so it needs no prior knowledge of the posterior — the
+       fallback when nothing is known about it.
+   * - ``slice``
+     - The same ensemble idea without an accept/reject step: every walker moves
+       every step, at the cost of several model evaluations per step.
+   * - ``blocked``
+     - Proposes from a per-block covariance seeded by the curvature at the
+       optimum. The one to reach for on a strongly *correlated* posterior.
+   * - ``de``
+     - Proposes from the differences within a population of chains: no gradient,
+       no covariance, and so it cannot be misled by a covariance taken at the
+       wrong point. Strong on curved posteriors started away from the optimum.
+   * - ``collapsed``
+     - For a **linked global fit**: each data set's private parameters are
+       integrated out analytically and only the shared parameters are sampled.
+   * - ``mcmc``
+     - The historical diagonal random walk, kept for reproducing old analyses.
 
-Note, for an accurate analysis the sampling must be as complete as possible. For complex high dimensional models, the number of steps must be adjusted.
+Other useful arguments: ``steps`` and ``thin`` (chain length and thinning),
+``n_runs`` (independent runs, which is what makes the R-hat diagnostic
+meaningful), ``chi2max`` (reject moves above a score), and ``chain_format`` —
+``er4``, tab-separated text that any tool reads, or ``hdf5``, about a quarter of
+the size, which is what a long run needs. Both open in nDXplorer.
+
+.. note::
+
+   For a trustworthy analysis the sampling has to be *complete*. A
+   high-dimensional or strongly correlated model needs more steps than the
+   default, and the diagnostics — not the appearance of the histogram — are how
+   you know whether it got there.

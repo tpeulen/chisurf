@@ -31,9 +31,10 @@ import re
 import webbrowser
 from typing import Optional
 
-from qtpy.QtCore import Qt, QTimer, QUrl
+from qtpy.QtCore import QEvent, Qt, QTimer, QUrl
 from qtpy.QtGui import QFont, QImage, QKeySequence, QTextDocument
 from qtpy.QtWidgets import (
+    QApplication,
     QComboBox,
     QHBoxLayout,
     QLabel,
@@ -290,6 +291,9 @@ class HelpWidget(QMainWindow):
         self.tree.setIndentation(14)
         self.tree.setUniformRowHeights(True)
         self.tree.setMinimumWidth(240)
+        # The application's own font, explicitly: the tree must not drift into
+        # a different face or size from the rest of ChiSurf.
+        self.tree.setFont(QApplication.font())
         self.tree.itemClicked.connect(self._on_item_clicked)
         self.tree.itemActivated.connect(self._on_item_clicked)
         splitter.addWidget(self.tree)
@@ -471,15 +475,86 @@ class HelpWidget(QMainWindow):
         bar.addWidget(self.review_summary_label)
 
     def _setup_shortcuts(self):
-        """Keyboard: search, home and history, as a browser has them."""
+        """Keyboard: search, history, home and zoom, as a browser has them."""
         for sequence, slot in (
             (QKeySequence.Find, self.search_edit.setFocus),
             (QKeySequence.Back, self.go_back),
             (QKeySequence.Forward, self.go_forward),
             (QKeySequence("Alt+Home"), self.show_home),
+            (QKeySequence.ZoomIn, lambda: self.zoom(+1)),
+            (QKeySequence("Ctrl+="), lambda: self.zoom(+1)),
+            (QKeySequence("Ctrl++"), lambda: self.zoom(+1)),
+            (QKeySequence.ZoomOut, lambda: self.zoom(-1)),
+            (QKeySequence("Ctrl+-"), lambda: self.zoom(-1)),
+            (QKeySequence("Ctrl+0"), self.reset_zoom),
         ):
             shortcut = QShortcut(sequence, self)
             shortcut.activated.connect(slot)
+        self.viewer.viewport().installEventFilter(self)
+
+    # ── zoom ────────────────────────────────────────────────────────
+
+    #: Body text size in points, and the range the reader may take it to.
+    DEFAULT_FONT_SIZE = 10.5
+    MIN_FONT_SIZE = 7.0
+    MAX_FONT_SIZE = 24.0
+
+    @property
+    def font_size(self) -> float:
+        """Point size the pages are rendered at."""
+        return getattr(self, "_font_size", self.DEFAULT_FONT_SIZE)
+
+    def zoom(self, steps: int = 1):
+        """Make the text larger or smaller by *steps* half-point increments.
+
+        The page is re-rendered rather than scaled: its sizes are given in
+        points in the stylesheet, so ``QTextBrowser.zoomIn`` would move the
+        body text and leave every heading, table and formula where it was.
+        """
+        self.set_font_size(self.font_size + 0.5 * steps)
+
+    def reset_zoom(self):
+        """Back to the default text size."""
+        self.set_font_size(self.DEFAULT_FONT_SIZE)
+
+    def set_font_size(self, size: float):
+        """Render at *size* points, clamped, keeping the reading position."""
+        size = max(self.MIN_FONT_SIZE, min(self.MAX_FONT_SIZE, float(size)))
+        if abs(size - self.font_size) < 1e-6:
+            return
+        self._font_size = size
+        # The formulas are images sized in points, so they are re-typeset too.
+        self._math_renderer = None
+        position = self.viewer.verticalScrollBar().value()
+        maximum = max(1, self.viewer.verticalScrollBar().maximum())
+        self._reshow()
+        bar = self.viewer.verticalScrollBar()
+        bar.setValue(round(bar.maximum() * position / maximum))
+
+    def _reshow(self):
+        """Render the page that is open again, at the current size."""
+        if self.current_path is not None:
+            self._open_document_path(self.current_path)
+        elif self.search_edit.text().strip():
+            self._run_search()
+        else:
+            self._show_generated(self._home_html())
+
+    def eventFilter(self, watched, event):
+        """Ctrl/⌘ + wheel zooms, as it does in a browser."""
+        try:
+            if (
+                watched is self.viewer.viewport()
+                and event.type() == QEvent.Wheel
+                and event.modifiers() & Qt.ControlModifier
+            ):
+                delta = event.angleDelta().y()
+                if delta:
+                    self.zoom(1 if delta > 0 else -1)
+                return True
+        except Exception:
+            logger.debug("could not handle a wheel event", exc_info=True)
+        return super().eventFilter(watched, event)
 
     def _on_authoring_toggled(self, checked: bool):
         self.authoring_toolbar.setVisible(checked)
@@ -524,14 +599,20 @@ class HelpWidget(QMainWindow):
         return item
 
     def _label(self, node) -> str:
-        if node.kind == "section":
-            return f"{SECTION_ICONS.get(node.title, '📄')}  {node.title}"
+        """The row's text.
+
+        No emoji: an emoji in a tree row forces Qt to fall back to a colour
+        font for that item, and the fallback has different metrics — the whole
+        row is then set in a different face and size from the rest of the
+        application, which is what "the fonts in the navigation look weird"
+        was. Sections are told apart by weight and position instead.
+        """
         return node.title
 
     def _decorate(self, item, node, statuses, trail):
         """Attach a node's data, badge and tooltip to its tree item."""
         item.setData(0, _ROLE_KIND, node.kind)
-        if node.kind in ("section", "group"):
+        if node.kind == "section":
             font = item.font(0)
             font.setBold(True)
             item.setFont(0, font)
@@ -847,7 +928,7 @@ class HelpWidget(QMainWindow):
         """Show HTML this window generated (start page, search results)."""
         from chisurf.plugins.core.help.api import theme as _theme
 
-        css = _theme.stylesheet(self.doc_theme)
+        css = _theme.stylesheet(self.doc_theme, font_size=self.font_size)
         self._set_viewer_html(f"<html><head>{css}</head><body>{body_html}</body></html>", "", None)
 
     # ── document navigation ─────────────────────────────────────────
@@ -1037,7 +1118,9 @@ class HelpWidget(QMainWindow):
         if getattr(self, "_math_renderer", None) is None:
             from chisurf.plugins.core.help.api.mathtext import MathRenderer
 
-            self._math_renderer = MathRenderer(colour=self.doc_theme.text)
+            self._math_renderer = MathRenderer(
+                colour=self.doc_theme.text, font_size=self.font_size
+            )
         return self._math_renderer
 
     def _render(self, file_path: pathlib.Path, text: str):
@@ -1060,7 +1143,11 @@ class HelpWidget(QMainWindow):
             from chisurf.plugins.core.help.api.render import render_document
 
             html = render_document(
-                shown, file_path, theme=self.doc_theme, math=self.math_renderer
+                shown,
+                file_path,
+                theme=self.doc_theme,
+                math=self.math_renderer,
+                font_size=self.font_size,
             )
         except Exception:
             logger.debug("could not render %s", file_path, exc_info=True)

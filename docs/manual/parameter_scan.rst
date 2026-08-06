@@ -6,8 +6,8 @@ A Chi Square support plane analysis around the minimum (the fitted solution) can
 .. image:: _images/image_rId26.png
   :align: center
 
-:strong:`Fig.19 Parameter scan plots` are offered by fits of certain models. The parameter scan varies a parameter in a certain range (top) and optimizes other free model parameters to create a  curve that depends on the parameter (bottom). The resulting  curve can be used to estimate uncertainties of model parameters. Red line chi2 confidence level 95% computed with F-Calculator.
+:strong:`Fig.19 Parameter scan plots` are offered by fits of certain models. The parameter scan varies a parameter in a certain range (top) and optimizes other free model parameters to create a :math:`\chi^2_r` curve that depends on the parameter (bottom). The resulting :math:`\chi^2_r` curve can be used to estimate uncertainties of model parameters. Red line chi2 confidence level 95% computed with F-Calculator.
 
-This procedure (Support plane analysis) produces a  curve of the scanned parameter that can be used to estimate uncertainties (:strong:`Fig.19`). Upper limits of  can be computed using the F-Calculator tool (see Section 5.1, page 24).
+This procedure (Support plane analysis) produces a :math:`\chi^2_r` curve of the scanned parameter that can be used to estimate uncertainties (:strong:`Fig.19`). Upper limits of :math:`\chi^2_r` at a chosen confidence level are computed with the :doc:`FRET/F-Calculator <fcalculator>`.
 
 Reduced Chi Square

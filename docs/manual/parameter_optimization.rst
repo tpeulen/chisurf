@@ -22,62 +22,50 @@ The effect of optimizing (fitting) variable model parameters to data for a fluor
 
 :strong:`Fig.13 Optimizing variable parameters.` The Fit button (red box) optimizes the agreement between the model and the data. The middle panels display fixed and variable model parameters before and after fitting (clicking the 'Fit' button). The bottom displays the data and the model before and after fitting. The autocorrelation of the weighted deviations between the data and the model weighted by the data noise (weighted residuals) and the weighted residuals visually captures the similarity between the data and the model.
 
-.. code-block:: none
 
-  Parameters of the optimization algorithms can be defined in the optimization section of the ChiSurf settings file (optimization:
-  global_threaded_model_update: false
-  global_optimize_local_first: false
-  leastsq:
-  ftol: 1.49012e-08
-  xtol: 1.49012e-08
-  gtol: 0
-  maxfev: 0
-  epsfcn: 0
-  factor: 100
-  full_output: true
-  mem:
-  lower_bound: 1.0e-08
-  upper_bound: 10000000
-  maxiter: 150000
-  maxfun: 1500000
-  factr: 10
-  reg_scale: 1
-  sampling:
-  method: blocked
-  steps: 1000
-  thin: 1
-  chi2max: 1000000000
-  n_runs: 10
+Settings
+========
 
-:strong:`Fig.14`).
+The optimiser's own parameters live in the ``optimization`` section of the
+:doc:`settings file </reference/settings>` (:strong:`Fig.14`):
 
-.. code-block:: none
+.. code-block:: yaml
 
   optimization:
-  global_threaded_model_update: false
-  global_optimize_local_first: false
-  leastsq:
-  ftol: 1.49012e-08
-  xtol: 1.49012e-08
-  gtol: 0
-  maxfev: 0
-  epsfcn: 0
-  factor: 100
-  full_output: true
-  mem:
-  lower_bound: 1.0e-08
-  upper_bound: 10000000
-  maxiter: 150000
-  maxfun: 1500000
-  factr: 10
-  reg_scale: 1
-  sampling:
-  method: blocked
-  steps: 1000
-  thin: 1
-  chi2max: 1000000000
-  n_runs: 10
+    global_optimize_local_first: false
+    global_threaded_model_update: false
+    global_structure_aware_update: true
+    leastsq:
+      epsfcn: 1.0e-06
+      factor: 100
+      ftol: 1.49012e-08
+      full_output: true
+      gtol: 0
+      maxfev: 0
+      xtol: 1.49012e-08
+    mem:
+      factr: 10
+      lower_bound: 1.0e-08
+      maxfun: 1500000
+      maxiter: 150000
+      reg_scale: 1
+      upper_bound: 10000000
+    sampling:
+      method: blocked
+      steps: 1000
+      thin: 1
+      chi2max: 1000000000
+      n_runs: 10
 
-:strong:`Fig.14 Optimization section in settings file.` Optimization parameters for the optimization alogrithms are gathered in the optimization section of the ChiSurf settings file.
+The ``leastsq`` block is passed straight to MINPACK. One of its entries is worth
+knowing about: ``epsfcn`` sets the relative step used for the forward-difference
+Jacobian. Left at 0 — MINPACK's "use machine epsilon" — the step is far below the
+numerical accuracy of a reconvolved decay model, the Jacobian columns are then
+dominated by rounding noise, and the optimiser fails to move the lifetimes at all
+from many starting points. The shipped default is deliberately larger.
 
-The ChiSurf settings file is described in more detail in :strong:`Section 4`.
+The ``mem`` block configures the maximum-entropy (regularised) fits, and
+``sampling`` the defaults used by :doc:`parameter_sampling`.
+
+:strong:`Fig.14 Optimization section of the settings file.` Every setting is
+listed in the :doc:`settings reference </reference/settings>`.

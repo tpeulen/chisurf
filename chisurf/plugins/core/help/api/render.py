@@ -37,7 +37,9 @@ def is_rst(path) -> bool:
     return pathlib.Path(path).suffix.lower() in RST_SUFFIXES
 
 
-def render_document(text: str, path, *, theme=None, math=None) -> str | None:
+def render_document(
+    text: str, path, *, theme=None, math=None, font_size: float = 10.5
+) -> str | None:
     """Render *text* to HTML according to the format implied by *path*.
 
     Parameters
@@ -58,8 +60,8 @@ def render_document(text: str, path, *, theme=None, math=None) -> str | None:
 
     """
     if is_rst(path):
-        return render_rst(text, theme=theme, math=math)
-    return render_markdown(text, theme=theme, math=math)
+        return render_rst(text, theme=theme, math=math, font_size=font_size)
+    return render_markdown(text, theme=theme, math=math, font_size=font_size)
 
 
 def document_title(text: str, path) -> str | None:

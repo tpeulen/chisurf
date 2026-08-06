@@ -1,7 +1,7 @@
 Correlation merging
 ~~~~~~~~~~~~~~~~~~~
 
-Finally, the computed correlation curves can be merged (:strong:`Fig.30`). Before merging the correlation curves of the subsets into a joint correlation curve outliners (e.g. caused by aggregates) can be removed.
+Finally, the computed correlation curves can be merged (:strong:`Fig.30`). Before merging the correlation curves of the subsets into a joint correlation curve outliers (e.g. caused by aggregates) can be removed.
 
 .. image:: _images/image_rId42.png
   :align: center

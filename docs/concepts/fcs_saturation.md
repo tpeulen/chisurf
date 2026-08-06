@@ -1,3 +1,4 @@
+(concept-fcs-saturation)=
 # Optical saturation in FCS
 
 An FCS curve is usually fitted with a model that assumes the detection volume is

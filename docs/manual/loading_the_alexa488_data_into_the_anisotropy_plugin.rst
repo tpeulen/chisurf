@@ -63,7 +63,7 @@ Next, switch to the "analysis" ta and inspect what is displayed for the three di
 
 #. Lifetime - _vh and Lifetime - _vv: Each of them have four different sections:
 
-#. Convolve (top  left to bottom right):
+#. Convolve (top left to bottom right):
 
 #. Datapath to the IRF
 
@@ -89,7 +89,7 @@ Next, switch to the "analysis" ta and inspect what is displayed for the three di
 
 #. tBG/tMeas: to be filled when fitting single-molecule in "Burst-Integrated Fluorescence Lifetime" mode
 
-#. Corrections: Ticking this box reveals option to perform a deadtime correction (pulse  pile-up at high count rates) or to correct for differential non-linearities of the counting electronics (white light reference measurement required)
+#. Corrections: Ticking this box reveals option to perform a deadtime correction (pulse pile-up at high count rates) or to correct for differential non-linearities of the counting electronics (white light reference measurement required)
 
 #. Lifetime:
 

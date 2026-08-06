@@ -7,7 +7,7 @@ Switch back to ChiSurf2016 and load the following correlation curves form your D
 
 :emphasis:`DNA_rd.cor`: Autocorrelation of red channels in delay time window
 
-:emphasis:`DNA_PIE.cor`: Crosscorrelation of green signal in the prompt time window with  red signal in the delay time window
+:emphasis:`DNA_PIE.cor`: Crosscorrelation of green signal in the prompt time window with red signal in the delay time window
 
 Add a "3D Gauss, 1 bunching" model to your correlation functions
 

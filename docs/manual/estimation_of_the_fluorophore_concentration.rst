@@ -9,9 +9,16 @@ Confocal volume :strong:`Veff,green` :strong:`= 1.74 fL`
 
 Number of molecules in focus, :strong:`N`, from our fit: :strong:`0.76` (in average)
 
-Avogadro's number: :strong:`NA` = :strong:`6.022*1023 mol-1`
+Avogadro's number: :math:`N_A = 6.022 \times 10^{23}\ \mathrm{mol^{-1}}`
 
-The concentration  of the fluorophore is determined from the following relationship:
+The concentration :math:`c` of the fluorophore follows from the number of
+molecules in the detection volume:
+
+.. math::
+
+   c = \frac{N}{V_{\mathrm{eff}} \, N_A}
+     = \frac{0.76}{1.74 \times 10^{-15}\,\mathrm{L} \times 6.022 \times 10^{23}\,\mathrm{mol^{-1}}}
+     \approx 7.2 \times 10^{-10}\ \mathrm{M} .
 
 The approximated concentration of green calibration dye is calculated to be :strong:`cA488` :strong:`~ 0.72 nM.`
 

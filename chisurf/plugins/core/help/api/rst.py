@@ -160,7 +160,7 @@ def _register_sphinx_directives() -> None:
     _directives_registered = True
 
 
-def render_rst(text: str, *, theme=None, math=None) -> str | None:
+def render_rst(text: str, *, theme=None, math=None, font_size: float = 10.5) -> str | None:
     """Render reStructuredText to a complete, themed HTML document.
 
     Parameters
@@ -172,6 +172,8 @@ def render_rst(text: str, *, theme=None, math=None) -> str | None:
     math : MathRenderer, optional
         Shared renderer used to typeset ``:math:`` roles and ``.. math::``
         blocks, which docutils otherwise emits as raw LaTeX.
+    font_size : float, optional
+        Body text size in points.
 
     Returns
     -------
@@ -217,6 +219,12 @@ def render_rst(text: str, *, theme=None, math=None) -> str | None:
                 "file_insertion_enabled": False,
                 "raw_enabled": False,
                 "syntax_highlight": "none",
+                # Emit the LaTeX source, delimited, for our own typesetter.
+                # Docutils' default is MathML, which Qt cannot lay out: it
+                # renders the leaf text of every node, so "\tau_x" arrives as
+                # "τ x" and a fraction as its numerator and denominator side by
+                # side. Any formula in the manual was unreadable.
+                "math_output": "MathJax",
             },
         )
     except Exception:
@@ -232,7 +240,7 @@ def render_rst(text: str, *, theme=None, math=None) -> str | None:
     from chisurf.plugins.core.help.api import theme as _theme
 
     active = theme or _theme.LIGHT
-    css = _theme.stylesheet(active)
+    css = _theme.stylesheet(active, font_size=font_size)
     return f"<html><head>{css}</head><body>{body}</body></html>"
 
 

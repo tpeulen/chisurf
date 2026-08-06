@@ -20,7 +20,7 @@ Right: each data set opens in its own window.
 .. image:: _images/image_rId53.png
   :align: center
 
-Change to the "FCS" mode und load your all ":strong:`A488_ACF_prompt.cor`:emphasis:`"` (auto correlation curves of green calibration fluorophore correlated within the prompt time window) dataset(s) by "File"  "Add dataset"or simply by "drag'n'drop" into the white area.
+Switch the experiment selector to :strong:`FCS` and load all the :strong:`A488_ACF_prompt.cor` files — autocorrelation curves of the green calibration fluorophore, correlated within the prompt time window — with "File" → "Add dataset", or simply drag and drop them into the data list.
 
 .. image:: _images/image_rId54.png
   :align: center
@@ -56,9 +56,7 @@ Now change to the analysis tab in the data panel and select the "3D Gauss 1 bunc
 .. image:: _images/image_rId59.png
   :align: center
 
-This model has six parameters:
-
-The "1 Bunching" term as described by "ba" and "bt" is used to model the typical photophysical triplet blinking of many fluorophores in the µs time range.
+The model has six parameters: the correlation amplitude and thus the number of molecules in the focus (``N``), the diffusion time (``td``), the shape factor of the detection volume (``s``, the ratio of axial to lateral waist), the offset (``b``), and the amplitude and time constant of the bunching term (``ba`` and ``bt``). The "1 Bunching" term models the photophysical triplet blinking most fluorophores show in the µs range; the theory is in :ref:`concept-fcs-correlation`.
 
 Note: ChiSurf comes upon installation with a selection of pre-defined fit models, you can modify these fit models or add your own models easily.
 
@@ -74,7 +72,7 @@ Press "Fit" for fitting:
 
 We obtain a number of molecules in the focus N = 0.75, a diffusion time td = 0.073 ms (i.e. 73 µs) and triplet blinking time constant of 14.5 µs with an amplitude of 0.20. However, from the weighted residuals and the autocorrelation of the residuals, we can see a mismatch at long correlation times: This is because the absolute measurement time in this measurement was too short to reliable obtain these values.
 
-Next to the fit results, also the :emphasis:`normalized relative of the Jacobian Matrix around the solution` can be seen. This is :strong:`NOT` reflecting the :strong:`uncertainty` of the fit result, but the values might give a first hint whether the uncertainty is rather large or small. For more details on this topic, please check out the information provided on the following web page and the references cited herein:
+Next to the fit results, also the :emphasis:`normalized relative of the Jacobian Matrix around the solution` can be seen. This is :strong:`NOT` reflecting the :strong:`uncertainty` of the fit result, but the values might give a first hint whether the uncertainty is rather large or small. What that matrix does and does not say about uncertainty — and what to do instead — is :ref:`concept-parameter-uncertainty`.
 
 For a more reliable estimate on the uncertainty of the fit parameter you have two options within ChiSurf to (i) sample the χ²-surface or (ii) to run a Markov-Chain Monte-Carlo simulation, which also allows you to obtain the mutual dependencies between the fit parameter. However, this uncertainty analysis is beyond the scope of this analysis of the calibration samples and will be shown in a different tutorial.
 
@@ -92,7 +90,7 @@ Press "fit" and observe the changes:
 .. image:: _images/image_rId64.png
   :align: center
 
-Now the shape has increased to 9.76, which is very huge and would indicate a misalignment of your system. In ideal case, the shape factor should lie between 3 - 7. The other values have changed only slightly.
+The shape factor has risen to 9.76. That is high — for a well aligned confocal setup it should lie between about 3 and 7 — and on a single short measurement it is more likely to reflect the poorly determined long-lag tail than a real misalignment. The other values have changed only slightly.
 
 Now let's add the other measurements into the play and see whether a global fit of all measurements stabilizes this value.
 
@@ -164,7 +162,7 @@ N varies between 0.748 - 0.766
 .. image:: _images/image_rId70.png
   :align: center
 
-Finally, let's save the fits by either selecting "File"  "Save Fit-results"  "current fit" or by pressing "Ctrl + S".
+Finally, let's save the fits by either selecting "File" → "Save Fit-results" → "current fit" or by pressing "Ctrl + S".
 
 Caution! Saving all fits may not work, if the filenames are (a) similar and (b) the whole file path is too long. (AutoSaving uses complete path as automatic save name currently).
 

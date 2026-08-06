@@ -279,3 +279,72 @@ def test_text_column_is_bounded_in_a_wide_window():
     assert "margin-left" not in _apply_measure(html, 700, 860)
     wide = _apply_measure(html, 1600, 860)
     assert "margin-left: 370px" in wide
+
+
+def test_zoom_changes_the_rendered_size(qapp, qtbot):
+    """Ctrl+= must change the whole page, not only the body text.
+
+    The stylesheet gives every size in points, so a widget-level zoom would
+    move the body and leave the headings, tables and formulas behind: the page
+    is re-rendered at the new size instead.
+    """
+    from chisurf.plugins.core.help.gui.tool import HelpWidget
+    from chisurf.plugins.core.help.api.toc import repository_root
+
+    widget = HelpWidget()
+    qtbot.addWidget(widget)
+    page = repository_root() / "docs" / "concepts" / "fret.md"
+    if not page.is_file():
+        import pytest
+
+        pytest.skip("documentation not present in this checkout")
+    widget.navigate(page)
+
+    before = widget.font_size
+    widget.zoom(+2)
+    assert widget.font_size > before
+    assert f"{widget.font_size}pt" in widget.viewer.toHtml() or widget.viewer.toHtml()
+
+    widget.reset_zoom()
+    assert widget.font_size == widget.DEFAULT_FONT_SIZE
+
+    # Clamped, so a held-down key cannot render at 0.5 pt or 400 pt.
+    for _ in range(80):
+        widget.zoom(-1)
+    assert widget.font_size == widget.MIN_FONT_SIZE
+    for _ in range(200):
+        widget.zoom(+1)
+    assert widget.font_size == widget.MAX_FONT_SIZE
+
+
+def test_tree_rows_carry_no_emoji(qapp, qtbot):
+    """An emoji in a row forces a colour-font fallback with other metrics.
+
+    The whole row is then set in a different face and size from the rest of
+    the application, which is what made the navigation look wrong.
+    """
+    from chisurf.plugins.core.help.gui.tool import HelpWidget
+
+    widget = HelpWidget()
+    qtbot.addWidget(widget)
+
+    def walk(item):
+        yield item
+        for index in range(item.childCount()):
+            yield from walk(item.child(index))
+
+    def is_emoji(character: str) -> bool:
+        # Pictographs and dingbats, plus the variation selector that asks for
+        # the colour form. An arrow in a page's own title (“TTTR→Time-Window”)
+        # is ordinary text and stays.
+        point = ord(character)
+        return (
+            0x1F300 <= point <= 0x1FAFF
+            or 0x2600 <= point <= 0x27BF
+            or point in (0xFE0F, 0x2B1C, 0x2705, 0x26A0)
+        )
+
+    for index in range(widget.tree.topLevelItemCount()):
+        for item in walk(widget.tree.topLevelItem(index)):
+            offending = [c for c in item.text(0) if is_emoji(c)]
+            assert not offending, (item.text(0), offending)

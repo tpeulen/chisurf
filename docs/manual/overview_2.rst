@@ -4,7 +4,7 @@ Correlator: overview
 .. image:: _images/image_rId38.png
   :align: center
 
-The Correlator Plugin of ChiSurf provides an interactive user interface to functionality implemented in tttrlib () to process single photon counting data and compute correlation curves following a 6 step workflow outlined in :strong:`Fig.27.` The correlator plugin is opened from the ChiSurf plugin menu (Plugins  Correlator).
+The Correlator Plugin of ChiSurf provides an interactive user interface to functionality implemented in `tttrlib <https://github.com/fluorescence-tools/tttrlib>`_ to process single photon counting data and compute correlation curves following a 6 step workflow outlined in :strong:`Fig.27.` The correlator plugin is opened from the ChiSurf plugin menu (Plugins → Correlator).
 
 :strong:`Fig.27 Workflow to compute fluorescence correlation spectroscopy curves`. The loaded single photon counting, (1) :strong:`Data loading`, is filtered, :strong:`(2) Photon filter`, to select certain regions of the photon stream. For estimating uncertainties, the photon stream is separated into subsets, :strong:`(3) Data splitting`, and subsets of are correlated, :strong:`(4) Correlation`. To minimize artifacts correlation curves are visualized and selected, :strong:`(5) Selection`. Finally, a correlation curve is with associated uncertainties is computed, :strong:`(6) Merging`.
 

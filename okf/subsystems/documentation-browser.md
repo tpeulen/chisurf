@@ -27,14 +27,18 @@ page and a search). Three automated numbers back that up:
 
 **What is open.**
 
-1. **The manual's prose is machine-drafted and unreviewed** — 79 pages, `0
-   reviewed, 79 unreviewed` in the authoring toolbar's tally. The structure is
-   now right (chapters, distinct titles, working cross-references to the concept
-   pages); the *sentences* are still a docx conversion, and several describe an
-   older interface. `docs/manual/fit_of_a_fcs_curve.rst` is the worked example
-   of what fixing one looks like ("Open Chisurf2016" → what the window actually
-   does). Read a page, fix it, press **Mark reviewed**; the sign-off goes stale
-   automatically if the page is edited afterwards.
+1. **The manual is corrected but not yet signed off** — 79 pages, `0 reviewed`
+   in the authoring toolbar's tally. Everything a machine can find has been
+   fixed and is now guarded (`test_manual_snippets.py`): no stub pages, no
+   conversion holes, every ``chisurf.…`` name in a snippet resolves. What is
+   left needs a human with the application open — checking that each screenshot
+   still matches the interface and that each procedure still works, then
+   pressing **Mark reviewed**. The sign-off goes stale automatically if the page
+   is edited afterwards, so it is worth doing per page rather than in a batch.
+   Pages already rewritten from the source code rather than merely tidied:
+   `partial_donordonor_energy_migration`, `wormlike_chain`, `fcalculator`,
+   `fluorescence_lifetime`, `parameter_sampling`, `parameter_optimization`,
+   `introduction`, `fit_models`.
 2. **The RST manual has no `docs/manual/_images` scaling policy.** Screenshots
    are full-resolution and arrive as big blocks with a lot of air around them;
    `_constrain_image_widths` bounds the width but the vertical rhythm around a
@@ -129,6 +133,20 @@ not resolve, the reader sees the caption, not `{ref}`something``.
   brace-less `\frac12`, and newlines, which are a parse error rather than
   whitespace. Mapping `\big(`/`\big)` onto `\left`/`\right` *creates* unbalanced
   input; the size modifier is dropped instead.
+* **docutils renders maths as MathML by default, and Qt cannot lay that out.**
+  It draws the leaf text of every node instead, so `\tau_x` arrived as "τ x" and
+  a fraction as its numerator and denominator side by side — every formula in
+  the *manual* was unreadable while the Markdown pages were fine. The writer is
+  put into `math_output: MathJax`, whose delimited LaTeX our own typesetter
+  picks up.
+* **An emoji in a tree row restyles the row.** Qt falls back to a colour font
+  for the whole item, with different metrics, so the navigation was set in a
+  different face and size from the rest of the application. Sections are told
+  apart by weight, not by icon.
+* **Zoom has to re-render, not scale the widget.** Every size in the stylesheet
+  is in points, so `QTextBrowser.zoomIn` moves the body text and leaves the
+  headings, tables and formulas where they were. Ctrl+± re-renders the page at a
+  new point size and re-typesets the formulas with it.
 
 # Related
 

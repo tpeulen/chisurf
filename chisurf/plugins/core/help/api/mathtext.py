@@ -145,7 +145,20 @@ def normalise_latex(latex: str) -> str:
         text,
     )
     text = re.sub(r"\\sqrt\s*(\\[A-Za-z]+|[A-Za-z0-9])(?![A-Za-z])", r"\\sqrt{\1}", text)
-    # Braces/labels under a term: mathtext has \underset but no \underbrace.
+    # Braces/labels under a term: mathtext has \underset but no \underbrace, so
+    # ``\underbrace{X}_{label}`` becomes ``\underset{label}{X}`` -- the label
+    # stays *under* the term instead of turning into a subscript of it, which
+    # read as part of the formula.
+    text = re.sub(
+        r"\\underbrace\s*\{((?:[^{}]|\{[^{}]*\})*)\}\s*_\s*\{((?:[^{}]|\{[^{}]*\})*)\}",
+        r"\\underset{\2}{\1}",
+        text,
+    )
+    text = re.sub(
+        r"\\overbrace\s*\{((?:[^{}]|\{[^{}]*\})*)\}\s*\^\s*\{((?:[^{}]|\{[^{}]*\})*)\}",
+        r"\\overset{\2}{\1}",
+        text,
+    )
     text = re.sub(r"\\underbrace\s*\{", r"{", text)
     text = re.sub(r"\\overbrace\s*\{", r"{", text)
     text = re.sub(r"\\stackrel(?![A-Za-z])", r"\\overset", text)
@@ -414,6 +427,18 @@ class MathRenderer:
     #: Supersampling factor; the image is displayed at ``1 / _SCALE`` of its size.
     _SCALE = 2
 
+    #: Optical correction. A formula set at the body's point size *looks*
+    #: smaller than the body: the maths font's x-height is lower than the UI
+    #: font's, and a formula is read as a unit rather than as a line of text.
+    _INLINE_SCALE = 1.12
+    _DISPLAY_SCALE = 1.32
+
+    #: Glyph set. The pages are set in a sans interface font and *inline*
+    #: mathematics is real text in that font, so a serif maths face would make
+    #: the same symbol look like two different symbols depending on whether it
+    #: landed in a sentence or in a displayed equation.
+    _FONTSET = "stixsans"
+
     def __init__(self, colour: str = "#202020", font_size: float = 11.0):
         self.colour = colour
         self.font_size = float(font_size)
@@ -482,24 +507,29 @@ class MathRenderer:
         source = normalise_latex(latex)
         if not source:
             return None
-        size = self.font_size * (1.15 if display else 1.0)
+        size = self.font_size * (self._DISPLAY_SCALE if display else self._INLINE_SCALE)
         prop = FontProperties(size=size * self._SCALE)
         buffer = io.BytesIO()
         try:
-            # Drawn onto a transparent figure rather than through
-            # ``math_to_image``, which bakes in an opaque white background --
-            # on a dark page every formula arrived as a bright card.
-            figure = Figure(figsize=(0.01, 0.01), dpi=100)
-            figure.patch.set_alpha(0.0)
-            figure.text(0, 0, f"${source}$", fontproperties=prop, color=self.colour)
-            figure.savefig(
-                buffer,
-                format="png",
-                dpi=100,
-                transparent=True,
-                bbox_inches="tight",
-                pad_inches=0.02,
-            )
+            import matplotlib
+
+            # Scoped: the glyph set is a property of *this* page, and setting
+            # it globally would restyle every plot the application draws.
+            with matplotlib.rc_context({"mathtext.fontset": self._FONTSET}):
+                # Drawn onto a transparent figure rather than through
+                # ``math_to_image``, which bakes in an opaque white background
+                # -- on a dark page every formula arrived as a bright card.
+                figure = Figure(figsize=(0.01, 0.01), dpi=100)
+                figure.patch.set_alpha(0.0)
+                figure.text(0, 0, f"${source}$", fontproperties=prop, color=self.colour)
+                figure.savefig(
+                    buffer,
+                    format="png",
+                    dpi=100,
+                    transparent=True,
+                    bbox_inches="tight",
+                    pad_inches=0.02,
+                )
         except Exception:
             logger.debug("could not typeset %r", latex, exc_info=True)
             return None

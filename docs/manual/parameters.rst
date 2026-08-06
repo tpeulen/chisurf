@@ -6,16 +6,18 @@ A key attribute of parameters is their value. Parameter values are either fixed 
 .. image:: _images/image_rId19.png
   :align: center
 
-:strong:`Fig.10 Fitting parameter. (a)` Fitting parameters have a name (parameter name), can be free (variable parameter) or fixed (fixed parameter), can be linked to other parameters, bounded in region, and can have an optional uncertainty associated to them. The checkboxes next to the parameter name can be used to fix, link, bound parameters. (:strong:`b`) Bounded parameters display the lower and the upper value of the parameter below. (:strong:`c`) Parameters can be linked to other parameters using the context menu of the linking checkbox. The context menu (accessed by a right click) displays the created fits in the ChiSurf instance. The submenus of the context menu display parameter groups and parameters (red circle to the right).
+:strong:`Fig.10 Fitting parameter. (a)` Fitting parameters have a name (parameter name), can be free (variable) or fixed, can be linked to other parameters, can be bounded to a range, and can carry an optional uncertainty. The checkboxes next to the parameter name can be used to fix, link, bound parameters. (:strong:`b`) Bounded parameters display the lower and the upper value of the parameter below. (:strong:`c`) Parameters can be linked to other parameters using the context menu of the linking checkbox. The context menu (accessed by a right click) displays the created fits in the ChiSurf instance. The submenus of the context menu display parameter groups and parameters (red circle to the right).
 
-Parameter values are by modifying the parameter value displayed in the user interface (:strong:`Fig.10`, :strong:`a`). Parameters are fixed using the first checkbox of the graphical parameter control interface (:strong:`Fig.10`, :strong:`a`). The second checkbox allows to link a parameter to another parameter. The second checkbox from the left and its tooltip report on the linking state of a parameter (:strong:`Fig.10`, :strong:`a`). The third checkbox from the left enables parameter bounds (:strong:`Fig.10`, :strong:`a, b`).
+A parameter value is changed by editing the number shown in the user interface (:strong:`Fig.10`, :strong:`a`). Parameters are fixed using the first checkbox of the graphical parameter control interface (:strong:`Fig.10`, :strong:`a`). The second checkbox allows to link a parameter to another parameter. The second checkbox from the left and its tooltip report on the linking state of a parameter (:strong:`Fig.10`, :strong:`a`). The third checkbox from the left enables parameter bounds (:strong:`Fig.10`, :strong:`a, b`).
 
 Actions in the user interface on parameters can be called from the shell. In the ChiSurf shell script below, two parameters are created, values are assigned to the respective parameters, and parameters are linked to each other, to illustrate how to create and interact with parameters.
 
 .. code-block:: python
 
-  p1 = chisurf.parameter.Parameter(name='p1', value=0)
-  p2 = chisurf.parameter.Parameter(name='p2', value=0)
+  from chisurf.core.parameter import Parameter
+
+  p1 = Parameter(name='p1', value=0)
+  p2 = Parameter(name='p2', value=0)
   p1.value = 1
   p2.value = 2
   p1.link = p2

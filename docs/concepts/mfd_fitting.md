@@ -1,3 +1,4 @@
+(concept-mfd-fitting)=
 # Fitting the 2D MFD histogram
 
 The two plots that define multiparameter fluorescence detection — FRET efficiency

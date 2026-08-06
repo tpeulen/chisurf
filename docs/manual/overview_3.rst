@@ -6,7 +6,7 @@ In ChiSurf dependencies between parameters can be introduced by linking and visu
 .. image:: _images/image_rId43.png
   :align: center
 
-:strong:`Fig.31. Parameter dependency graph in time-resolved fluorescence decay analysis.` Fluorescence decays, , that describe the donor fluorescence in the absence of an acceptor in a donor only, , the donor fluorescence the presence of an acceptor, , the acceptor fluorescence in a FRET sample , and the FRET sensitized acceptor fluorescence, . Parameters and models are represented by circles. Dependencies are illustrated by arrows. Parameters dependent on other parameters are colored in green. Fixed parameters are displayed in light green. Variable parameters are highlighted in magenta.
+:strong:`Fig.31. Parameter dependency graph in time-resolved fluorescence decay analysis.` Four fluorescence decays are analysed jointly: the donor in a donor-only sample, :math:`f_{D(0)}`; the donor in the presence of an acceptor, :math:`f_{D(A)}`; the directly excited acceptor in the FRET sample, :math:`f_{A}`; and the FRET-sensitised acceptor emission, :math:`f_{A(D)}`. Parameters and models are represented by circles. Dependencies are illustrated by arrows. Parameters dependent on other parameters are colored in green. Fixed parameters are displayed in light green. Variable parameters are highlighted in magenta.
 
 .. image:: _images/image_rId44.png
   :align: center

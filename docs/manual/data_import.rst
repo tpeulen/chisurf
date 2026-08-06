@@ -4,18 +4,18 @@ Data import
 .. image:: _images/image_rId13.png
   :align: center
 
-Internally, all imported data is managed in a single list (:strong:`chisurf.imported_datasets`). Elements in that list from the class :strong:`chisurf.data.ExperimentalData`. The user interface helps populating the dataset list (:strong:`Fig.4`).
+Internally, all imported data is managed in a single list (:strong:`chisurf.imported_datasets`). Its elements are instances of :strong:`chisurf.data.ExperimentalData`. The user interface helps populating the dataset list (:strong:`Fig.4`).
 
 :strong:`Fig.4 Data reading interface.` The data reading interface consists of three regions. The dropdown menu in the first region defines the experiment type (1). The dropdown menu in the second region defines the file type for a particular experiment type (2). In the third region, the user can specify parameters for reading a particular file type (3). In the displayed example text/comma separated data of a time-correlated single photon counting (TCSPC) experiment is being read.
 
 To read data using the graphic user interface, first select the corresponding experiment type (:strong:`Fig.4`, 1). Afterwards select the file type of the experiment (:strong:`Fig.4`, 2). Before reading data, check the parameters that are passed to the data read (:strong:`Fig.4`, 3). Finally, you can load the dataset into ChiSurf, either by clicking on the ":strong:`+Data`" button using the key combination ":strong:`Ctrl+N`" (Windows, Linux) or ":strong:`⌘+N`" on macOS. Alternatively, multiple files of the same kind can be opened in a single step by selecting the respective files in a file explorer of your choice and dragging the selected files into the user interface to the dataset list (:strong:`Fig.5`).
 
-User and program actions correspond to actions in the IPython prompt.
+Every action taken in the interface has an equivalent in the shell, and is echoed there as it happens — reading a file appends the same call to the session history:
 
 .. image:: _images/image_rId14.png
   :align: center
 
-:strong:`Fig.5 Drap and drop import of datasets.` Files selected in a file explorer of your choice (here macOS Finder) can be opened by dragging selected files to the data set list.
+:strong:`Fig.5 Drag-and-drop import of datasets.` Files selected in a file explorer of your choice (here macOS Finder) can be opened by dragging selected files to the data set list.
 
 Alternatively, files can be opened programmatically using the shell:
 

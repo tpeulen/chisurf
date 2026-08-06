@@ -1,7 +1,7 @@
 Simulation details
 """"""""""""""""""
 
-The simulations of the β2AR-eGFP-IL3-CT-SNAP measurements (short: CTSNAP) were performed using Burbulator 5 (part of the MFD software package, ).
+The simulations of the β2AR-eGFP-IL3-CT-SNAP measurements (short: CTSNAP) were performed with Burbulator, part of the MFD software package.
 
 The NTSNAP construct has both fluorophore on the inner side in a membrane and we assume (i) the fluorophore to be close enough to each other to undergo FRET and (ii) the membrane receptor β2AR to show dynamics such that the fluorophores exchange between two different levels of FRET.
 
