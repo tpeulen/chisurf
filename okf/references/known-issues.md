@@ -124,6 +124,13 @@ for this env once nothing else is building.
 are written and **deliberately left uncommitted** — a GUI change is unfinished
 until its render has been looked at, and this one has not been.
 
+**A third repair, and the one now planned**: [PRD-82](/prds/prd-82.md) moves
+these writers onto the simulation library's columnar store, whose HDF5 table is
+one dataset per column — measured 6× faster to write and 22× faster to read on a
+numeric burst table, and half the memory in RAM. It is staged behind a reader
+for the legacy pandas layout, so the old files stay openable without pytables;
+until that lands, this issue stands as written.
+
 ## Test suite: what is still red after the 2026-08-04 sweep
 
 **Where to pick this up.** The suite was run **one directory (and, for

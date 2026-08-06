@@ -112,6 +112,14 @@ changes a file format another tool reads. The rule is *reimplement what is
 trivial*, and the trigger for it is the size of the package's job here, not the
 size of the package.
 
+What *is* worth doing is moving the **storage model** off it, which is a
+different question from removing the import: [PRD-82](../prds/prd-82.md) stages
+`chitable`, the burst tables and the HDF5 writers onto the simulation library's
+columnar store, keeping pandas as an interop and fallback layer. The gain there
+is not a package count — it is 114.3 → **60.2 MB** on a 1M-row burst table,
+dtypes and missing values that survive a file, and finally making the `pytables`
+removal true rather than declared.
+
 The mirror image of an undeclared *dependency* is an undeclared *import*, and it
 fails the same way: on a developer machine the package is there transitively, in
 a packaged install the plugin does not load. `test/test_declared_dependencies.py`
