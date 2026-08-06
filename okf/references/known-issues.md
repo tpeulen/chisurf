@@ -1,3 +1,50 @@
+## imaging: a 30-frame acquisition reconstructs as 29, and the flags that would fix it do not reach the reconstruction
+
+**2026-08-06.** Found by rebuilding the simulation library from source (the
+environment carried a build predating its 2026-08-05 CLSM fix, so this is
+invisible until someone rebuilds). `chisurf/plugins/microscopy/img_flow/test/
+test_img_flow.py::test_the_demo_is_a_readable_ptu_whose_flow_comes_back` fails
+on `assert stack.data.shape[0] == 30` with **29** — one full frame of a
+30-frame scan is gone.
+
+**The file is not at fault, and the edge arithmetic is right.** The demo writes
+30 frame markers and the last one is followed by a complete frame: 64 line-start
+and 64 line-stop markers. Called directly, the edge finder answers correctly —
+
+```
+get_frame_edges(tttr, 0, -1, [4], 1, 0, skip_before, skip_after, 1, -1)
+  skip_before=True  skip_after=False -> 31 edges = 30 frames   <- correct
+  skip_before=True  skip_after=True  -> 30 edges = 29 frames
+  skip_before=False skip_after=False -> 32 edges = 31 frames   (leading stub)
+```
+
+and `create_frames` makes `len(edges) - 1` frames, which is the right rule.
+
+**What is wrong is one layer up.** Constructing `CLSMImage` with those flags
+gives **29 frames for both values of `skip_before_first_frame_marker`** and 28
+for both values of `skip_after_last_frame_marker` — i.e. the count moves with one
+flag and not the other, and is one lower than the edge list implies in every
+combination. The flags are not reaching the reconstruction the edge finder sees.
+Reproduce with:
+
+```python
+from chisurf.plugins.microscopy.img_flow.demo import create_demo
+create_demo(path, n_frames=30)
+tttrlib.CLSMImage(tttrlib.TTTR(str(path)), marker_frame_start=[4],
+                  marker_line_start=1, marker_line_stop=2, marker_event_type=1,
+                  skip_before_first_frame_marker=..., channels=[0], fill=True)
+```
+
+**Trap in re-deriving it**: the demo's frame marker is routing channel **4**, not
+3 — PTU writes markers as bit positions, so the value in the file and the value
+in the docs differ. Passing `[3]` finds no frame markers at all and
+`get_frame_edges` returns an empty list, which looks like a different bug.
+
+Not fixed here because it belongs in the imaging module of the companion library
+and has nothing to do with the table work that surfaced it. The test is left
+**red rather than xfailed**: this is silent data loss — the frame simply is not
+there, and the array shape is the only thing that says so.
+
 ## PDA: the dynamic two-state fit lands just past its convergence threshold
 
 **2026-08-06.** `test/gui/test_pda2c_model_editor.py::test_dynamic_pda_recovers_
