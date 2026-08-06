@@ -126,11 +126,30 @@ def test_registries_written_before_the_ai_level_still_load(tracked_page):
 
 
 def test_the_shipped_manual_records_its_ai_review():
-    """The pass made over the manual is recorded, not merely described."""
+    """The pass made over the *manual* is recorded, not merely described.
+
+    Scoped to ``docs/manual``: review tracking covers the whole user-facing
+    documentation, and the sections that have not had their first pass yet must
+    keep showing as unreviewed rather than being quietly excluded.
+    """
     report = review.scan()
     if not report.pages:
+        pytest.skip("no documentation in this checkout")
+    manual = [page for page in report.pages if "/manual/" in page.path]
+    if not manual:
         pytest.skip("no manual in this checkout")
-    assert not report.unreviewed, [p.rel_path for p in report.unreviewed]
-    assert not report.stale, [p.rel_path for p in report.stale]
+    assert not [p.rel_path for p in manual if p.status == review.STATUS_UNREVIEWED]
+    assert not [p.rel_path for p in manual if p.status == review.STATUS_STALE]
     # And it is still honest about needing a human.
     assert not report.ok
+
+
+def test_the_rest_of_the_documentation_is_tracked_and_says_so():
+    """Concepts, guides and reference are gated too — and are still unread."""
+    report = review.scan()
+    if not report.pages:
+        pytest.skip("no documentation in this checkout")
+    directories = {page.path.split("/docs/")[-1].split("/")[0] for page in report.pages}
+    assert {"manual", "concepts", "guides", "reference"} <= directories, directories
+    # The tally is the worklist; it must not silently read as "all done".
+    assert "unreviewed" in report.summary()

@@ -104,11 +104,7 @@ its criterion is not a result.** Quote both.
 
 ## References
 
-* R. P. J. Nieuwenhuizen, K. A. Lidke, M. Bates, D. L. Puig, D. Grünwald,
-  S. Stallinga, B. Rieger, *Measuring image resolution in optical nanoscopy*,
-  Nature Methods **10** (2013) 557–562.
-* M. van Heel, M. Schatz, *Fourier shell correlation threshold criteria*,
-  Journal of Structural Biology **151** (2005) 250–262.
-* N. Banterle, K. H. Bui, E. A. Lemke, M. Beck, *Fourier ring correlation as a
-  resolution criterion for super-resolution microscopy*, Journal of Structural
-  Biology **183** (2013) 363–367.
+- {cite}`nieuwenhuizen2013`
+- {cite}`vanheel2005`
+- {cite}`banterle2013`
+

@@ -177,14 +177,8 @@ areas = atom_surface_areas(
 
 ## References
 
-- B. Lee and F. M. Richards, *The interpretation of protein structures: estimation
-  of static accessibility*, J. Mol. Biol. **55**, 379 (1971) — the accessible
-  surface and the rolling probe.
-- A. Shrake and J. A. Rupley, *Environment and exposure to solvent of protein
-  atoms. Lysozyme and insulin*, J. Mol. Biol. **79**, 351 (1973) — the dot-sampling
-  algorithm used here.
-- M. L. Connolly, *Analytical molecular surface calculation*, J. Appl. Cryst.
-  **16**, 548 (1983) — the molecular surface, for contrast.
-- A. van Oosterom and J. Strackee, *The solid angle of a plane triangle*, IEEE
-  Trans. Biomed. Eng. **30**, 125 (1983) — the spherical-excess formula used for
-  the point weights.
+- {cite}`lee1971` — the accessible surface and the rolling probe.
+- {cite}`shrake1973` — the dot-sampling algorithm used here.
+- {cite}`connolly1983` — the molecular surface, for contrast.
+- {cite}`vanoosterom1983` — the spherical-excess formula used for the point weights.
+

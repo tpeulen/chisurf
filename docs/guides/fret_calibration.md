@@ -383,9 +383,6 @@ correct → recover the true efficiencies). See
 
 ## References
 
-* B. Hellenkamp *et al.*, "Precision and accuracy of single-molecule FRET
-  measurements — a multi-laboratory benchmark study", *Nat. Methods* **15**, 669
-  (2018).
-* N. K. Lee *et al.*, "Accurate FRET measurements within single diffusing
-  biomolecules using alternating-laser excitation", *Biophys. J.* **88**, 2939
-  (2005).
+- {cite}`hellenkamp2018` — a multi-laboratory benchmark study", *Nat. Methods* **15**, 669 (2018).
+- {cite}`lee2005`
+

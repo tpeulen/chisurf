@@ -112,6 +112,7 @@ SECTION_ICONS = {
     "Fitting interface & examples": "📘",
     "Reference": "📑",
     "Plugins": "🧩",
+    "Literature": "📚",
     "About ChiSurf": "ℹ️",
     "Developing ChiSurf": "🛠",
 }
@@ -149,6 +150,15 @@ def _is_within(path: pathlib.Path, directory: pathlib.Path) -> bool:
 
 
 _IMG_TAG = re.compile(r"<img\b[^>]*>", re.IGNORECASE)
+#: ``src="/guides/figures/x.png"`` -- root-relative to ``docs/``, not to the disk.
+_ROOT_RELATIVE_SRC = re.compile(r'(src\s*=\s*["\'])/(?!/)([^"\']+)', re.IGNORECASE)
+
+
+def _docs_root_prefix() -> str:
+    """Absolute path of ``docs/`` with a trailing separator, for image sources."""
+    from chisurf.plugins.core.help.api.toc import docs_root
+
+    return f"{docs_root()}/"
 _IMG_SRC = re.compile(r'src\s*=\s*["\']([^"\']+)["\']', re.IGNORECASE)
 
 
@@ -184,6 +194,12 @@ def _constrain_image_widths(html: str, base_dir: pathlib.Path, max_width: int) -
 
     def _fix(match: "re.Match[str]") -> str:
         tag = match.group(0)
+        # A source beginning with "/" is root-relative *to the documentation*,
+        # which is how Sphinx reads it; taken as a filesystem path it points at
+        # the root of the disk and the image is simply missing.
+        tag = _ROOT_RELATIVE_SRC.sub(
+            lambda m: f'{m.group(1)}{_docs_root_prefix()}{m.group(2)}', tag
+        )
         preceding = html[: match.start()].rstrip().lower()
         # A bare block image sits between paragraphs; an inline one does not.
         is_block = preceding.endswith(("</p>", "</div>", "<div>", "</h1>", "</h2>"))
@@ -1230,12 +1246,19 @@ class HelpWidget(QMainWindow):
         match.
         """
         from chisurf.gui.widgets.tools.doc_links import expand_roles
+        from chisurf.plugins.core.help.api.bibliography import expand_citations
 
         try:
             shown = expand_roles(text, file_path.parent)
         except Exception:
             logger.debug("could not expand cross-reference roles", exc_info=True)
             shown = text
+        try:
+            # ``{cite}`key``` becomes a link to the paper, resolved against the
+            # one bibliography the website's `cite` role reads as well.
+            shown = expand_citations(shown)
+        except Exception:
+            logger.debug("could not expand citations", exc_info=True)
         try:
             from chisurf.plugins.core.help.api.render import render_document
 

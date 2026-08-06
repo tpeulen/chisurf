@@ -536,23 +536,14 @@ Two rules keep the report honest:
 
 ## References
 
-- Gelman, A. & Rubin, D. B. *Inference from iterative simulation using multiple
-  sequences.* Statistical Science **7**, 457–472 (1992).
-- Vehtari, A. *et al.* *Rank-normalization, folding, and localization: an
-  improved $\hat R$ for assessing convergence of MCMC.* Bayesian Analysis
-  **16**, 667–718 (2021).
-- Geyer, C. J. *Practical Markov chain Monte Carlo.* Statistical Science **7**,
-  473–483 (1992).
-- Haario, H., Saksman, E. & Tamminen, J. *An adaptive Metropolis algorithm.*
-  Bernoulli **7**, 223–242 (2001).
-- Goodman, J. & Weare, J. *Ensemble samplers with affine invariance.*
-  Communications in Applied Mathematics and Computational Science **5**, 65–80
-  (2010).
-- Foreman-Mackey, D. *et al.* *emcee: the MCMC hammer.* PASP **125**, 306 (2013).
-- Karamanis, M. & Beutler, F. *Ensemble slice sampling.* Statistics and
-  Computing **31**, 61 (2021).
-- Neal, R. M. *Slice sampling.* Annals of Statistics **31**, 705–767 (2003).
-- Vehtari, A., Simpson, D., Gelman, A., Yao, Y. & Gabry, J. *Pareto smoothed
-  importance sampling.* Journal of Machine Learning Research **25**, 1–58 (2024).
-- Zhang, J. & Stephens, M. A. *A new and efficient estimation method for the
-  generalized Pareto distribution.* Technometrics **51**, 316–325 (2009).
+- {cite}`gelman1992`
+- {cite}`vehtari2021`
+- {cite}`geyer1992`
+- {cite}`haario2001`
+- {cite}`goodman2010`
+- {cite}`foremanmackey2013`
+- {cite}`karamanis2021`
+- {cite}`neal2003`
+- {cite}`vehtari2024`
+- {cite}`zhang2009`
+

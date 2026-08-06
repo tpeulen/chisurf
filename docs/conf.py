@@ -40,6 +40,10 @@ extensions = [
     # Marks manual pages that no human has signed off. The hard release gate is
     # the separate `docs-check-reviewed` task.
     'review_banner',
+    # `{cite}`key`` against docs/references/bibliography.yaml — the same module
+    # the in-application help browser expands with, so a citation reads and
+    # links identically in both.
+    'cite_role',
 ]
 
 # Set to False to build the manual without human-review banners.

@@ -394,6 +394,7 @@ _SECTIONS = (
     ("Guides — how to in ChiSurf", "guides/index", "Step-by-step workflows in the real interface."),
     ("Fitting interface & examples", "manual/index", "The fitting interface itself, and complete worked examples."),
     ("Reference", "reference/index", "File formats, settings, parameters and the plugin catalogue."),
+    ("Literature", "references/index", "Every work the documentation cites, each linking to the paper."),
 )
 
 #: Files under a plugin that document the plugin for its maintainer, not its user.

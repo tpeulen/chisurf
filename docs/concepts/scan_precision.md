@@ -148,9 +148,6 @@ which no amount of averaging removes.
 
 ## References
 
-* Sanguigno, L., De Santo, I., Causa, F., Netti, P. *A closed form for
-  fluorescence correlation spectroscopy experiments in submicrometer
-  structures.* Analytical Chemistry **82**, 9663–9670 (2010).
-* Digman, M. A., Brown, C. M., Sengupta, P., Wiseman, P. W., Horwitz, A. R.,
-  Gratton, E. *Measuring fast dynamics in solutions and cells with a laser
-  scanning microscope.* Biophysical Journal **89**, 1317–1327 (2005).
+- {cite}`sanguigno2010`
+- {cite}`digman2005`
+

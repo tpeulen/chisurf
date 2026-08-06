@@ -2,6 +2,18 @@
 
 ## 2026-08-06
 
+* **Literature: one bibliography, one page, every citation a link** ([documentation browser](subsystems/documentation-browser.md)).
+
+  A paper was written out wherever it was needed — sometimes with a DOI, usually without, in a different order each time, and never in a form a reader could click. Two pages citing the same work said it differently, and nothing could list what the documentation rests on. Now **`docs/references/bibliography.yaml` is the single source** for all 69 works, a page cites one with `` {cite}`key` ``, and a **Literature** section (in the help tree and in the published site) lists every entry. The role is expanded by the *same module* in both renderers — a Sphinx role in `docs/_ext/cite_role.py`, `api/bibliography.py` in the browser — so a reference reads and links identically in the application and on the website, and there is one place to correct it.
+
+  **Each entry leads to the paper**: to its DOI where one is recorded, and otherwise to a literature search for the title. That asymmetry is deliberate — a reader who wants a paper wants a way to *get* it, and sending them to a guessed DOI is worse than sending them to a search, so a work whose identifier is not known simply does not get one invented. 65 of the 66 bullets in the pages' own reference lists were converted to keys automatically and the two that resisted were done by hand; a test fails on any citation key the bibliography does not define, and another fails when the generated page is stale.
+
+  **Three defects the audit of the whole help surface turned up, all invisible until rendered.** A heading containing a formula or code produced a **broken id** — the placeholder token was substituted inside the `id="…"` attribute and the closing quote spilled into the page, so `## Where the reference $D$ comes from` displayed as `D-comes-from">Where the reference D comes from`. Root-relative image paths (`/guides/figures/x.png`, which is how Sphinx reads them) were handed to Qt as *filesystem* paths and silently missing. And a `{doc}` target naming an `.rst` page or a directory index resolved to nothing, which is why the guides' own pointer to the concepts was dead. Shipped documentation also still carried a fragment of leaked tool markup (`</content></invoke>`) at the end of a concept page.
+
+  **Every plugin is in the catalogue now.** The generator walked `manifest.json` files only, so 13 plugins that declare themselves in code — including the FCS correlator and five TTTR tools — appeared in the menus and in the help tree while having no reference page at all. They are generated from the metadata the plugin loader actually reads, and their page says the manifest is missing rather than pretending otherwise.
+
+  **Review tracking now covers what the browser serves**: `concepts`, `guides`, `getting_started`, `reference` and `references` join `manual`. That is deliberately uncomfortable — `0 reviewed, 79 AI-reviewed, 230 unreviewed` — because the 230 have had an automated audit (stubs, holes in sentences, dead links and cross-references, missing images, markup leaks, formulas rendered as images) but not a reading for correctness, and the tally is the worklist rather than a score.
+
 * **`cell` draws the unit cell -- and drawing it showed that `symexp` had never worked** ([pymol parity](plugins/pymol-parity.md)).
 
   The box is not transcribed from anywhere: a cell is fully determined by its six parameters and `UnitCell.frac_to_real` already exists, so the twelve edges are that matrix applied to the corners of the unit cube. `cell [selection [, on|off|toggle]]`, per object because two structures in a scene can come from different crystals, with `cell_color` beside the three representation overrides.

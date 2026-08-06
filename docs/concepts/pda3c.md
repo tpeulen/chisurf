@@ -255,20 +255,10 @@ parametric bootstrap.
 
 ## References
 
-- Gopich, I. V.; Szabo, A. *FRET efficiency distributions of multistate single
-  molecules.* J. Phys. Chem. B **2010**, 114, 15221 — the multistate
-  time-averaging approximation used for dynamics.
-- Antonik, M.; Felekyan, S.; Gaiduk, A.; Seidel, C. A. M. *Separating structural
-  heterogeneities from stochastic variations in fluorescence resonance energy
-  transfer distributions via photon distribution analysis.* J. Phys. Chem. B
-  **2006**, 110, 6970 — two-colour PDA, the foundation.
-- Kalinin, S.; Felekyan, S.; Valeri, A.; Seidel, C. A. M. *Characterizing
-  multiple molecular states in single-molecule multiparameter fluorescence
-  detection by probability distribution analysis.* J. Phys. Chem. B **2008**,
-  112, 8361 — dynamic PDA.
-- Barth, A.; Voith von Voithenberg, L.; Lamb, D. C. *Quantitative single-molecule
-  three-color Förster resonance energy transfer by photon distribution analysis.*
-  J. Phys. Chem. B **2019**, 123, 6901 — three-colour PDA.
+- {cite}`gopich2010` — the multistate time-averaging approximation used for dynamics.
+- {cite}`antonik2006` — two-colour PDA, the foundation.
+- {cite}`kalinin2008`
+- {cite}`barth2019`
 
 ## See also
 

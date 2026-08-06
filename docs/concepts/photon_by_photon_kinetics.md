@@ -209,14 +209,8 @@ Two failure modes deserve naming:
 
 ## References
 
-* Gopich, I. V. & Szabo, A. *Theory of the statistics of kinetic transitions with
-  application to single-molecule enzyme catalysis.* J. Chem. Phys. **124**,
-  154712 (2006).
-* Gopich, I. V. & Szabo, A. *Decoding the pattern of photon colors in
-  single-molecule FRET.* J. Phys. Chem. B **113**, 10965–10973 (2009).
-* Chung, H. S., McHale, K., Louis, J. M. & Eaton, W. A. *Single-molecule
-  fluorescence experiments determine protein folding transition path times.*
-  Science **335**, 981–984 (2012).
-* Pirchi, M. *et al.* *Photon-by-photon hidden Markov model analysis for
-  microsecond single-molecule FRET kinetics.* J. Phys. Chem. B **120**,
-  13065–13075 (2016). — the H2MM counterpart.
+- {cite}`gopich2006`
+- {cite}`gopich2009`
+- {cite}`chung2012`
+- {cite}`pirchi2016`
+

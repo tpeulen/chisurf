@@ -217,24 +217,11 @@ dye artefacts above.
 
 ## References
 
-- T. Förster, "Zwischenmolekulare Energiewanderung und Fluoreszenz", *Annalen der
-  Physik* (1948). *The $1/R^6$ mechanism itself.*
-- N. K. Lee, A. N. Kapanidis, Y. Wang, X. Michalet, J. Mukhopadhyay,
-  R. H. Ebright and S. Weiss, "Accurate FRET measurements within single diffusing
-  biomolecules using alternating-laser excitation", *Biophysical Journal* (2005).
-  *The ALEX correction scheme and the $1/S$-vs-$E$ construction used above.*
-- A. N. Kapanidis, N. K. Lee, T. A. Laurence, S. Doose, E. Margeat and S. Weiss,
-  "Fluorescence-aided molecule sorting: analysis of structure and interactions by
-  alternating-laser excitation of single molecules", *PNAS* (2004). *Where
-  stoichiometry-based sorting is introduced.*
-- B. Hellenkamp *et al.*, "Precision and accuracy of single-molecule FRET
-  measurements — a multi-laboratory benchmark study", *Nature Methods* (2018).
-  *The reference protocol, the correction conventions, and the achievable
-  accuracy.*
-- C. Eggeling, S. Berger, L. Brand, J. R. Fries, J. Schaffer, A. Volkmer and
-  C. A. M. Seidel, "Data registration and selective single-molecule analysis using
-  multi-parameter fluorescence detection", *Journal of Biotechnology* (2001).
-  *Burst selection and multi-parameter detection.*
+- {cite}`foerster1948`
+- {cite}`lee2005`
+- {cite}`kapanidis2004`
+- {cite}`hellenkamp2018` — a multi-laboratory benchmark study", *Nature Methods* (2018). *The reference protocol, the correction conventions, and the achievable accuracy.*.
+- {cite}`eggeling2001`
 
 ## See also
 

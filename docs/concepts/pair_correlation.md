@@ -195,12 +195,8 @@ the trend.
 
 ## References
 
-- Digman, M. A. & Gratton, E. *Imaging barriers to diffusion by pair correlation
-  functions.* Biophys. J. **97**, 665–673 (2009).
-- Digman, M. A. & Gratton, E. *Scanning image correlation spectroscopy.*
-  BioEssays **34**, 377–385 (2012).
-- Hebert, B., Costantino, S. & Wiseman, P. W. *Spatiotemporal image correlation
-  spectroscopy (STICS).* Biophys. J. **88**, 3601–3614 (2005).
-- Cardarelli, F. & Gratton, E. *In vivo imaging of single-molecule translocation
-  through nuclear pore complexes by pair correlation functions.* PLoS ONE
-  **5**, e10475 (2010).
+- {cite}`digman2009`
+- {cite}`digman2012`
+- {cite}`hebert2005`
+- {cite}`cardarelli2010`
+

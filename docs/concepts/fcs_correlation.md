@@ -219,25 +219,12 @@ $\chi^2$.
 
 ## References
 
-- D. Magde, E. L. Elson and W. W. Webb, "Thermodynamic fluctuations in a reacting
-  system — measurement by fluorescence correlation spectroscopy", *Physical
-  Review Letters* (1972). *The original FCS experiment.*
-- E. L. Elson and D. Magde, "Fluorescence correlation spectroscopy. I.
-  Conceptual basis and theory", *Biopolymers* (1974). *Where the correlation
-  formalism used here is set out.*
-- R. Rigler, Ü. Mets, J. Widengren and P. Kask, "Fluorescence correlation
-  spectroscopy with high count rate and low background: analysis of translational
-  diffusion", *European Biophysics Journal* (1993). *The confocal, single-molecule
-  sensitive form of the experiment.*
-- J. Widengren, Ü. Mets and R. Rigler, "Fluorescence correlation spectroscopy of
-  triplet states in solution: a theoretical and experimental study", *Journal of
-  Physical Chemistry* (1995). *The triplet/bunching factor.*
-- P. Schwille, J. Korlach and W. W. Webb, "Fluorescence correlation spectroscopy
-  with single-molecule sensitivity on cell and model membranes", *Cytometry*
-  (1999). *2-D membrane diffusion.*
-- E. Haustein and P. Schwille, "Fluorescence correlation spectroscopy: novel
-  variations of an established technique", *Annual Review of Biophysics and
-  Biomolecular Structure* (2007). *A readable survey of the model variants.*
+- {cite}`magde1972` — the original FCS experiment.
+- {cite}`elson1974`
+- {cite}`rigler1993`
+- {cite}`widengren1995`
+- {cite}`schwille1999`
+- {cite}`haustein2007`
 
 ## See also
 

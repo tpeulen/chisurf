@@ -270,17 +270,10 @@ A defensible colocalization result is not one number but a small set:
 
 ## References
 
-- Dunn KW, Kamocka MM, McDonald JH (2011) *A practical guide to evaluating
-  colocalization in biological microscopy.* Am J Physiol Cell Physiol
-  300:C723–C742.
-- Manders EMM, Verbeek FJ, Aten JA (1993) *Measurement of co-localization of
-  objects in dual-colour confocal images.* J Microsc 169:375–382.
-- Costes SV et al. (2004) *Automatic and quantitative measurement of
-  protein-protein colocalization in live cells.* Biophys J 86:3993–4003.
-- Li Q et al. (2004) *A syntaxin 1, Gαo, and N-type calcium channel complex at a
-  presynaptic nerve terminal.* J Neurosci 24:4070–4081.
-- Bolte S, Cordelières FP (2006) *A guided tour into subcellular colocalization
-  analysis in light microscopy.* J Microsc 224:213–232.
-- van Steensel B et al. (1996) *Partial colocalization of glucocorticoid and
-  mineralocorticoid receptors in discrete compartments in nuclei of rat
-  hippocampus neurons.* J Cell Sci 109:787–792.
+- {cite}`dunn2011`
+- {cite}`manders1993`
+- {cite}`costes2004`
+- {cite}`li2004`
+- {cite}`bolte2006`
+- {cite}`vansteensel1996`
+

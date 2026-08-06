@@ -196,6 +196,17 @@ def _display_parts(display_name: str, fallback: str) -> tuple:
     return "Uncategorized", dn
 
 
+def _discovered_plugins() -> list:
+    """Every plugin the application itself discovers, manifest or not."""
+    try:
+        import chisurf.plugins as plugins_module
+
+        return list(plugins_module.iter_plugins())
+    except Exception as exc:  # pragma: no cover - docs build outside the env
+        print(f"  (plugin discovery unavailable: {exc})")
+        return []
+
+
 def _plugin_page(manifest: dict, plugin_dir: pathlib.Path, registry_params: dict) -> str:
     pid = manifest.get("id", plugin_dir.name)
     category, leaf = _display_parts(manifest.get("display_name", ""), pid)
@@ -203,6 +214,16 @@ def _plugin_page(manifest: dict, plugin_dir: pathlib.Path, registry_params: dict
     out = [f"(plugin-{pid})=", f"# {leaf}", ""]
     if manifest.get("description"):
         out += [_md(manifest["description"]), ""]
+
+    if manifest.get("_no_manifest"):
+        out += [
+            ":::{note}",
+            "This plugin declares itself in code rather than in a `manifest.json`, "
+            "so the identity below is what the plugin loader reads from the module "
+            "and there is no declared RPC surface to list.",
+            ":::",
+            "",
+        ]
 
     out += ["## Identity", "", "| Field | Value |", "| --- | --- |",
             f"| Plugin id | `{pid}` |", f"| Menu path | {category} → **{leaf}** |"]
@@ -319,6 +340,29 @@ def generate() -> None:
         category, leaf = _display_parts(manifest.get("display_name", ""), pid)
         catalogue.setdefault(category, []).append(
             (leaf, pid, manifest.get("description", ""), bool(manifest.get("menu_hidden"))))
+        written += 1
+
+    # Plugins that predate manifests are still discoverable, still appear in
+    # the menus, and were therefore in the application but not in its
+    # documentation. They are described from the metadata the loader reads
+    # (the module docstring), and their page says the manifest is missing.
+    for info in _discovered_plugins():
+        directory = pathlib.Path(info["package_dir"])
+        if (directory / "manifest.json").exists():
+            continue
+        pid = info.get("module_name") or directory.name
+        manifest = {
+            "id": pid,
+            "display_name": info.get("plugin_name", pid),
+            "description": (info.get("description") or "").strip().split("\n\n")[0],
+            "menu_hidden": bool(info.get("menu_hidden")),
+            "_no_manifest": True,
+        }
+        (plugins_dir / f"{pid}.md").write_text(
+            _plugin_page(manifest, directory, registry_params), encoding="utf-8")
+        category, leaf = _display_parts(manifest["display_name"], pid)
+        catalogue.setdefault(category, []).append(
+            (leaf, pid, manifest["description"], manifest["menu_hidden"]))
         written += 1
 
     idx = ["# Plugin catalogue", "",

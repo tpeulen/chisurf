@@ -13,6 +13,8 @@ single-molecule fluorescence data — time-correlated single-photon counting
   the actual user interface, cross-linked to the matching concept.
 * **Reference** — file formats, settings, the full plugin catalogue (every plugin
   and every parameter), and the Python API.
+* **Literature** — every work the documentation cites, each linking through to
+  the publisher's page.
 
 .. toctree::
    :maxdepth: 2
@@ -43,6 +45,12 @@ single-molecule fluorescence data — time-correlated single-photon counting
    :caption: Reference
 
    reference/index
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Literature
+
+   references/index
 
 .. toctree::
    :maxdepth: 1

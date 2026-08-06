@@ -41,11 +41,27 @@ page and a search). Three automated numbers back that up:
    `fluorescence_lifetime`, `discrete_fret_rate_constants`, `parameter_sampling`,
    `parameter_optimization`, `adding_the_membranediffusion_models`,
    `introduction`, `fit_models`.
-2. **The RST manual has no `docs/manual/_images` scaling policy.** Screenshots
+2. **The rest of the documentation has not had its first pass.** Review tracking
+   now covers `concepts`, `guides`, `getting_started`, `reference` and
+   `references` as well as `manual` — `csc help review-list` reports
+   `0 reviewed, 79 AI-reviewed, 230 unreviewed`. The 230 are not known to be
+   *wrong*: an audit over all 340 pages (stubs, holes in sentences, dead links
+   and cross-references, missing images, markup leaks, inline formulas as
+   images, broken heading ids) found and fixed everything it could detect. What
+   they have not had is somebody reading them for *correctness*, which is what
+   `--ai` records.
+3. **58 plugins ship without a README** and **80 GUI plugins have no `?` page or
+   guided tour** (`test/plugin_help_guide_allowlist.txt` is the shrinking
+   tracker for the second, owned by
+   [help buttons and guided tours](gui-help-and-guides.md)). Every plugin *is*
+   now in the catalogue: the generator used to walk `manifest.json` only, so 13
+   plugins that declare themselves in code appeared in the menus but had no
+   reference page at all.
+4. **The RST manual has no `docs/manual/_images` scaling policy.** Screenshots
    are full-resolution and arrive as big blocks with a lot of air around them;
    `_constrain_image_widths` bounds the width but the vertical rhythm around a
    block image is still loose.
-3. **Only `.md` files are indexed for cross-reference labels**
+5. **Only `.md` files are indexed for cross-reference labels**
    (`api/xref.py:ref_index`). A `(label)=` in an `.rst` page is therefore not
    findable — no page needs it yet, and adding it means teaching the index the
    reStructuredText spelling too.
@@ -65,6 +81,7 @@ documentation link anywhere in the application.
 | reStructuredText | `api/rst.py` | The manual, through bare docutils, with the Sphinx-only roles and directives registered as equivalents. |
 | Mathematics | `api/mathtext.py` | Inline LaTeX as HTML text; display LaTeX rasterised transparently through matplotlib's mathtext. |
 | Theme | `api/theme.py` | One colour set per page, taken from the running palette. |
+| Literature | `api/bibliography.py` | One entry per cited work; expands `{cite}` and says where the paper can be got. |
 | Window | `gui/tool.py` | Tree, start page, search, history, previous/next, authoring tools. |
 
 # Decisions worth keeping
@@ -110,6 +127,18 @@ a test in `test_review_levels.py`:
 Recorded from the GUI (*Authoring → 🤖 AI-reviewed*), over RPC
 (`help.review.set` with `status: "ai-reviewed"`), or in bulk from the shell:
 `csc help review-set docs/manual/*.rst --ai`.
+
+**A citation is a key, not a formatted string.** Every work the documentation
+cites lives once in `docs/references/bibliography.yaml`; a page cites it with
+`` {cite}`key` `` and the **Literature** section lists them all. The role is
+expanded by the same module in both renderers — `docs/_ext/cite_role.py` for
+Sphinx, `api/bibliography.py` for the browser — so a reference reads and links
+identically on the website and in the application, and there is one place to
+correct it. Each entry links to its **DOI**, or, when no identifier is recorded,
+to a literature search for the title: a reader who wants the paper wants a way
+to *get* it, and sending them to the wrong DOI is worse than sending them to a
+search. `build_tools/docs/make_bibliography.py` writes the page;
+`--check` fails when it is stale.
 
 **Markup that reaches the reader is a defect, not a cosmetic issue.** The
 concept pages are the most information-dense in the project and were the worst

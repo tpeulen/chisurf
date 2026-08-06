@@ -308,18 +308,9 @@ does not know.
 
 ## References
 
-- Hellenkamp B, Schmid S, Doroshenko O *et al.* (2018) *Precision and accuracy of
-  single-molecule FRET measurements — a multi-laboratory benchmark study.* Nat
-  Methods 15:669–676.
-- Lee NK, Kapanidis AN, Wang Y *et al.* (2005) *Accurate FRET measurements within
-  single diffusing biomolecules using alternating-laser excitation.* Biophys J
-  88:2939–2953.
-- Sisamakis E, Valeri A, Kalinin S, Rothwell PJ, Seidel CAM (2010)
-  *Accurate single-molecule FRET studies using multiparameter fluorescence
-  detection.* Methods Enzymol 475:455–514.
-- Kalinin S, Valeri A, Antonik M, Felekyan S, Seidel CAM (2010) *Detection of
-  structural dynamics by FRET: a photon distribution and fluorescence lifetime
-  analysis of systems with multiple states.* J Phys Chem B 114:7983–7995.
-- Barth A, Opanasyuk O, Peulen T-O *et al.* (2022) *Unraveling multi-state
-  molecular dynamics in single-molecule FRET experiments — I. Theory of
-  FRET-lines.* J Chem Phys 156:141501.
+- {cite}`hellenkamp2018` — a multi-laboratory benchmark study.* Nat Methods 15:669–676.
+- {cite}`lee2005`
+- {cite}`sisamakis2010`
+- {cite}`kalinin2010`
+- {cite}`barth2022` — I. Theory of FRET-lines.* J Chem Phys 156:141501.
+

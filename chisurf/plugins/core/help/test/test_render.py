@@ -252,3 +252,71 @@ def test_documents_dispatch_on_suffix():
 
     assert "<h1" in render_document("# Title\n", pathlib.Path("x.md"))
     assert "<h1" in render_document("Title\n=====\n", pathlib.Path("x.rst"))
+
+
+# ── citations ───────────────────────────────────────────────────────
+
+
+def test_a_citation_becomes_a_link_to_the_paper():
+    """``{cite}`key``` is the one way a page cites, in both renderers."""
+    from chisurf.plugins.core.help.api import bibliography as bib
+
+    entries = bib.bibliography()
+    if not entries:
+        pytest.skip("no bibliography in this checkout")
+    key = "magde1972"
+    assert key in entries
+    expanded = bib.expand_citations(f"See {{cite}}`{key}`.")
+    assert "doi.org" in expanded and "Magde" in expanded
+    assert "{cite}" not in expanded
+
+
+def test_a_work_without_a_doi_still_leads_somewhere():
+    """A reader wants the paper, so an entry with no identifier gets a search."""
+    from chisurf.plugins.core.help.api import bibliography as bib
+
+    entry = bib.Entry(key="x", authors="A. Author", title="Some title", year="2020")
+    url = bib.entry_url(entry)
+    assert url.startswith("https://") and "Some+title" in url
+
+
+def test_every_citation_in_the_documentation_resolves():
+    """A key with no entry would render as a dead code span."""
+    from chisurf.plugins.core.help.api import bibliography as bib
+    from chisurf.plugins.core.help.api.toc import docs_root
+
+    unknown = {}
+    for page in list(docs_root().rglob("*.md")) + list(docs_root().rglob("*.rst")):
+        if "_build" in page.parts:
+            continue
+        missing = bib.unknown_keys(page.read_text(encoding="utf-8"))
+        if missing:
+            unknown[page.name] = missing
+    assert not unknown, unknown
+
+
+def test_the_literature_page_lists_every_work():
+    """The page is generated; a work added to the bibliography must appear."""
+    from chisurf.plugins.core.help.api import bibliography as bib
+    from chisurf.plugins.core.help.api.toc import docs_root
+
+    page = docs_root() / "references" / "index.md"
+    if not page.is_file():
+        pytest.skip("no Literature page in this checkout")
+    text = page.read_text(encoding="utf-8")
+    for key, entry in bib.bibliography().items():
+        assert f"({key})=" in text, key
+        assert bib.entry_url(entry) in text, key
+
+
+def test_a_heading_with_maths_keeps_a_usable_id():
+    """A placeholder token inside an id spilled the attribute into the page."""
+    html = render_body("## Where the reference $D$ comes from\n", math=MathRenderer())
+    import re
+
+    match = re.search(r'<h2[^>]*id="([^"]*)"', html)
+    assert match, html
+    assert "<" not in match.group(1) and match.group(1) == "where-the-reference-comes-from"
+    # ...and nothing of the attribute leaked into the words the reader sees.
+    visible = re.sub(r"<[^>]+>", "", html.split("</h2>")[0])
+    assert visible.strip() == "Where the reference D comes from"

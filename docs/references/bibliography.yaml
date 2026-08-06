@@ -1,0 +1,696 @@
+# The works ChiSurf's documentation cites.
+#
+# One entry per work, keyed by <first author><year>. A page cites it with
+# {cite}`key`, which renders as a link to the paper — a DOI where one is
+# recorded, and a literature search for the title otherwise. The Literature
+# page (docs/references/index.md) is generated from this file:
+#
+#     pixi run -e docs python build_tools/docs/make_bibliography.py
+#
+# Fields: authors, title, journal, year, volume, pages, doi, url, note, topics.
+# Leave `doi` out rather than guessing one — a wrong identifier sends the reader
+# to the wrong paper, which is worse than sending them to a search.
+
+# ── FRET: mechanism, accuracy, corrections ──────────────────────────
+foerster1948:
+  authors: T. Förster
+  title: Zwischenmolekulare Energiewanderung und Fluoreszenz
+  journal: Annalen der Physik
+  year: 1948
+  volume: 437
+  pages: 55-75
+  doi: 10.1002/andp.19484370105
+  note: The 1/R^6 mechanism itself.
+  topics: [fret]
+
+hellenkamp2018:
+  authors: B. Hellenkamp, S. Schmid, O. Doroshenko, et al.
+  title: Precision and accuracy of single-molecule FRET measurements — a multi-laboratory benchmark study
+  journal: Nature Methods
+  year: 2018
+  volume: 15
+  pages: 669-676
+  doi: 10.1038/s41592-018-0085-0
+  note: The reference protocol and the correction conventions ChiSurf follows.
+  topics: [fret, smfret]
+
+lee2005:
+  authors: N. K. Lee, A. N. Kapanidis, Y. Wang, X. Michalet, J. Mukhopadhyay, R. H. Ebright, S. Weiss
+  title: Accurate FRET measurements within single diffusing biomolecules using alternating-laser excitation
+  journal: Biophysical Journal
+  year: 2005
+  volume: 88
+  pages: 2939-2953
+  note: The ALEX correction scheme and the 1/S-vs-E construction.
+  topics: [fret, smfret]
+
+kapanidis2004:
+  authors: A. N. Kapanidis, N. K. Lee, T. A. Laurence, S. Doose, E. Margeat, S. Weiss
+  title: "Fluorescence-aided molecule sorting: analysis of structure and interactions by alternating-laser excitation of single molecules"
+  journal: Proceedings of the National Academy of Sciences
+  year: 2004
+  volume: 101
+  pages: 8936-8941
+  doi: 10.1073/pnas.0401690101
+  note: Where stoichiometry-based sorting is introduced.
+  topics: [smfret]
+
+sisamakis2010:
+  authors: E. Sisamakis, A. Valeri, S. Kalinin, P. J. Rothwell, C. A. M. Seidel
+  title: Accurate single-molecule FRET studies using multiparameter fluorescence detection
+  journal: Methods in Enzymology
+  year: 2010
+  volume: 475
+  pages: 455-514
+  note: The multiparameter detection scheme and its correction factors.
+  topics: [smfret, mfd]
+
+eggeling2001:
+  authors: C. Eggeling, S. Berger, L. Brand, J. R. Fries, J. Schaffer, A. Volkmer, C. A. M. Seidel
+  title: Data registration and selective single-molecule analysis using multi-parameter fluorescence detection
+  journal: Journal of Biotechnology
+  year: 2001
+  volume: 86
+  pages: 163-180
+  note: Burst selection and multi-parameter detection.
+  topics: [smfret, mfd]
+
+peulen2017:
+  authors: T. O. Peulen, O. Opanasyuk, C. A. M. Seidel
+  title: Combining graphical and analytical methods with molecular simulations to analyze time-resolved FRET measurements of labeled macromolecules accurately
+  journal: Journal of Physical Chemistry B
+  year: 2017
+  volume: 121
+  pages: 8211-8241
+  note: FRET lines, and what they say about dynamics.
+  topics: [fret, dynamics]
+
+barth2022:
+  authors: A. Barth, O. Opanasyuk, T.-O. Peulen, et al.
+  title: Unraveling multi-state molecular dynamics in single-molecule FRET experiments — I. Theory of FRET-lines
+  journal: Journal of Chemical Physics
+  year: 2022
+  volume: 156
+  pages: "141501"
+  topics: [fret, dynamics]
+
+# ── Photon distribution analysis ────────────────────────────────────
+antonik2006:
+  authors: M. Antonik, S. Felekyan, A. Gaiduk, C. A. M. Seidel
+  title: Separating structural heterogeneities from stochastic variations in fluorescence resonance energy transfer distributions via photon distribution analysis
+  journal: Journal of Physical Chemistry B
+  year: 2006
+  volume: 110
+  pages: "6970"
+  note: Two-colour PDA, the foundation.
+  topics: [pda]
+
+kalinin2008:
+  authors: S. Kalinin, S. Felekyan, A. Valeri, C. A. M. Seidel
+  title: Characterizing multiple molecular states in single-molecule multiparameter fluorescence detection by probability distribution analysis
+  journal: Journal of Physical Chemistry B
+  year: 2008
+  volume: 112
+  pages: "8361"
+  note: Dynamic PDA.
+  topics: [pda]
+
+kalinin2010:
+  authors: S. Kalinin, A. Valeri, M. Antonik, S. Felekyan, C. A. M. Seidel
+  title: "Detection of structural dynamics by FRET: a photon distribution and fluorescence lifetime analysis of systems with multiple states"
+  journal: Journal of Physical Chemistry B
+  year: 2010
+  volume: 114
+  pages: 7983-7995
+  topics: [pda, dynamics]
+
+barth2019:
+  authors: A. Barth, L. Voith von Voithenberg, D. C. Lamb
+  title: Quantitative single-molecule three-color Förster resonance energy transfer by photon distribution analysis
+  journal: Journal of Physical Chemistry B
+  year: 2019
+  volume: 123
+  pages: "6901"
+  note: Three-colour PDA.
+  topics: [pda]
+
+nir2006:
+  authors: E. Nir, X. Michalet, K. M. Hamadani, et al.
+  title: "Shot-noise limited single-molecule FRET histograms: comparison between theory and experiments"
+  journal: Journal of Physical Chemistry B
+  year: 2006
+  volume: 110
+  pages: 22103-22124
+  doi: 10.1021/jp063483n
+  topics: [pda, smfret]
+
+# ── Dynamics: photon-by-photon and hidden Markov ────────────────────
+gopich2006:
+  authors: I. V. Gopich, A. Szabo
+  title: Theory of the statistics of kinetic transitions with application to single-molecule enzyme catalysis
+  journal: Journal of Chemical Physics
+  year: 2006
+  volume: 124
+  pages: "154712"
+  topics: [dynamics]
+
+gopich2009:
+  authors: I. V. Gopich, A. Szabo
+  title: Decoding the pattern of photon colors in single-molecule FRET
+  journal: Journal of Physical Chemistry B
+  year: 2009
+  volume: 113
+  pages: 10965-10973
+  topics: [dynamics]
+
+gopich2010:
+  authors: I. V. Gopich, A. Szabo
+  title: FRET efficiency distributions of multistate single molecules
+  journal: Journal of Physical Chemistry B
+  year: 2010
+  volume: 114
+  pages: "15221"
+  note: The multistate time-averaging approximation used for dynamics.
+  topics: [dynamics, pda]
+
+pirchi2016:
+  authors: M. Pirchi, R. Tsukanov, R. Khamis, et al.
+  title: Photon-by-photon hidden Markov model analysis for microsecond single-molecule FRET kinetics
+  journal: Journal of Physical Chemistry B
+  year: 2016
+  volume: 120
+  pages: 13065-13075
+  note: H2MM.
+  topics: [dynamics, hmm]
+
+chung2012:
+  authors: H. S. Chung, K. McHale, J. M. Louis, W. A. Eaton
+  title: Single-molecule fluorescence experiments determine protein folding transition path times
+  journal: Science
+  year: 2012
+  volume: 335
+  pages: 981-984
+  topics: [dynamics]
+
+hoffmann2011:
+  authors: A. Hoffmann, D. Nettels, J. Clark, et al.
+  title: "Quantifying heterogeneity and conformational dynamics from single molecule FRET of diffusing molecules: recurrence analysis of single particles (RASP)"
+  journal: Physical Chemistry Chemical Physics
+  year: 2011
+  volume: 13
+  pages: 1857-1871
+  doi: 10.1039/c0cp01911a
+  topics: [dynamics, smfret]
+
+# ── Fluorescence correlation spectroscopy ───────────────────────────
+magde1972:
+  authors: D. Magde, E. L. Elson, W. W. Webb
+  title: Thermodynamic fluctuations in a reacting system — measurement by fluorescence correlation spectroscopy
+  journal: Physical Review Letters
+  year: 1972
+  volume: 29
+  pages: 705-708
+  doi: 10.1103/PhysRevLett.29.705
+  note: The original FCS experiment.
+  topics: [fcs]
+
+elson1974:
+  authors: E. L. Elson, D. Magde
+  title: Fluorescence correlation spectroscopy. I. Conceptual basis and theory
+  journal: Biopolymers
+  year: 1974
+  volume: 13
+  pages: 1-27
+  doi: 10.1002/bip.1974.360130102
+  note: Where the correlation formalism used here is set out.
+  topics: [fcs]
+
+rigler1993:
+  authors: R. Rigler, Ü. Mets, J. Widengren, P. Kask
+  title: "Fluorescence correlation spectroscopy with high count rate and low background: analysis of translational diffusion"
+  journal: European Biophysics Journal
+  year: 1993
+  volume: 22
+  pages: 169-175
+  doi: 10.1007/BF00185777
+  note: The confocal, single-molecule sensitive form of the experiment.
+  topics: [fcs]
+
+widengren1995:
+  authors: J. Widengren, Ü. Mets, R. Rigler
+  title: "Fluorescence correlation spectroscopy of triplet states in solution: a theoretical and experimental study"
+  journal: Journal of Physical Chemistry
+  year: 1995
+  volume: 99
+  pages: 13368-13379
+  note: The triplet / bunching factor.
+  topics: [fcs]
+
+schwille1999:
+  authors: P. Schwille, J. Korlach, W. W. Webb
+  title: Fluorescence correlation spectroscopy with single-molecule sensitivity on cell and model membranes
+  journal: Cytometry
+  year: 1999
+  volume: 36
+  pages: 176-182
+  note: Two-dimensional membrane diffusion.
+  topics: [fcs]
+
+haustein2007:
+  authors: E. Haustein, P. Schwille
+  title: "Fluorescence correlation spectroscopy: novel variations of an established technique"
+  journal: Annual Review of Biophysics and Biomolecular Structure
+  year: 2007
+  volume: 36
+  pages: 151-169
+  note: A readable survey of the model variants.
+  topics: [fcs]
+
+boehmer2002:
+  authors: M. Böhmer, M. Wahl, H. J. Rahn, R. Erdmann, J. Enderlein
+  title: Time-resolved fluorescence correlation spectroscopy
+  journal: Chemical Physics Letters
+  year: 2002
+  volume: 353
+  pages: 439-445
+  topics: [fcs, filtered-fcs]
+
+felekyan2012:
+  authors: S. Felekyan, S. Kalinin, H. Sanabria, A. Valeri, C. A. M. Seidel
+  title: "Filtered FCS: species auto- and cross-correlation functions highlight binding and dynamics in biomolecules"
+  journal: ChemPhysChem
+  year: 2012
+  volume: 13
+  pages: 1036-1053
+  topics: [fcs, filtered-fcs]
+
+petrasek2008:
+  authors: Z. Petrášek, P. Schwille
+  title: Precise measurement of diffusion coefficients using scanning fluorescence correlation spectroscopy
+  journal: Biophysical Journal
+  year: 2008
+  volume: 94
+  pages: 1437-1448
+  topics: [fcs]
+
+siegel2013:
+  authors: A. P. Siegel, M. A. Baird, M. W. Davidson, R. N. Day
+  title: Strengths and weaknesses of recently engineered red fluorescent proteins evaluated in live cells using fluorescence correlation spectroscopy
+  journal: International Journal of Molecular Sciences
+  year: 2013
+  volume: 14
+  pages: 20340-20358
+  topics: [fcs]
+
+sanguigno2010:
+  authors: L. Sanguigno, I. De Santo, F. Causa, P. Netti
+  title: A closed form for fluorescence correlation spectroscopy experiments in submicrometer structures
+  journal: Analytical Chemistry
+  year: 2010
+  volume: 82
+  pages: 9663-9670
+  topics: [fcs, imaging]
+
+# ── Image correlation and imaging ───────────────────────────────────
+digman2005:
+  authors: M. A. Digman, C. M. Brown, P. Sengupta, P. W. Wiseman, A. R. Horwitz, E. Gratton
+  title: Measuring fast dynamics in solutions and cells with a laser scanning microscope
+  journal: Biophysical Journal
+  year: 2005
+  volume: 89
+  pages: 1317-1327
+  topics: [imaging]
+
+digman2009:
+  authors: M. A. Digman, E. Gratton
+  title: Imaging barriers to diffusion by pair correlation functions
+  journal: Biophysical Journal
+  year: 2009
+  volume: 97
+  pages: 665-673
+  doi: 10.1016/j.bpj.2009.04.048
+  topics: [imaging]
+
+digman2012:
+  authors: M. A. Digman, E. Gratton
+  title: Scanning image correlation spectroscopy
+  journal: BioEssays
+  year: 2012
+  volume: 34
+  pages: 377-385
+  topics: [imaging]
+
+hebert2005:
+  authors: B. Hebert, S. Costantino, P. W. Wiseman
+  title: Spatiotemporal image correlation spectroscopy (STICS)
+  journal: Biophysical Journal
+  year: 2005
+  volume: 88
+  pages: 3601-3614
+  doi: 10.1529/biophysj.104.054874
+  topics: [imaging]
+
+cardarelli2010:
+  authors: F. Cardarelli, E. Gratton
+  title: In vivo imaging of single-molecule translocation through nuclear pore complexes by pair correlation functions
+  journal: PLoS ONE
+  year: 2010
+  volume: 5
+  pages: e10475
+  topics: [imaging]
+
+# ── Resolution, tracking, colocalisation ────────────────────────────
+nieuwenhuizen2013:
+  authors: R. P. J. Nieuwenhuizen, K. A. Lidke, M. Bates, et al.
+  title: Measuring image resolution in optical nanoscopy
+  journal: Nature Methods
+  year: 2013
+  volume: 10
+  pages: 557-562
+  doi: 10.1038/nmeth.2448
+  topics: [imaging, resolution]
+
+vanheel2005:
+  authors: M. van Heel, M. Schatz
+  title: Fourier shell correlation threshold criteria
+  journal: Journal of Structural Biology
+  year: 2005
+  volume: 151
+  pages: 250-262
+  doi: 10.1016/j.jsb.2005.05.009
+  topics: [imaging, resolution]
+
+banterle2013:
+  authors: N. Banterle, K. H. Bui, E. A. Lemke, M. Beck
+  title: Fourier ring correlation as a resolution criterion for super-resolution microscopy
+  journal: Journal of Structural Biology
+  year: 2013
+  volume: 183
+  pages: 363-367
+  topics: [imaging, resolution]
+
+crocker1996:
+  authors: J. C. Crocker, D. G. Grier
+  title: Methods of digital video microscopy for colloidal studies
+  journal: Journal of Colloid and Interface Science
+  year: 1996
+  volume: 179
+  pages: 298-310
+  doi: 10.1006/jcis.1996.0217
+  topics: [tracking]
+
+olivomarin2002:
+  authors: J.-C. Olivo-Marin
+  title: Extraction of spots in biological images using multiscale products
+  journal: Pattern Recognition
+  year: 2002
+  volume: 35
+  pages: 1989-1996
+  topics: [tracking]
+
+jaqaman2008:
+  authors: K. Jaqaman, D. Loerke, M. Mettlen, et al.
+  title: Robust single-particle tracking in live-cell time-lapse sequences
+  journal: Nature Methods
+  year: 2008
+  volume: 5
+  pages: 695-702
+  doi: 10.1038/nmeth.1237
+  topics: [tracking]
+
+michalet2010:
+  authors: X. Michalet
+  title: "Mean square displacement analysis of single-particle trajectories with localization error: Brownian motion in an isotropic medium"
+  journal: Physical Review E
+  year: 2010
+  volume: 82
+  pages: "041914"
+  doi: 10.1103/PhysRevE.82.041914
+  topics: [tracking]
+
+chenouard2014:
+  authors: N. Chenouard, I. Smal, F. de Chaumont, et al.
+  title: Objective comparison of particle tracking methods
+  journal: Nature Methods
+  year: 2014
+  volume: 11
+  pages: 281-289
+  doi: 10.1038/nmeth.2808
+  note: The community benchmark — density, not algorithm, is the limit.
+  topics: [tracking]
+
+dunn2011:
+  authors: K. W. Dunn, M. M. Kamocka, J. H. McDonald
+  title: A practical guide to evaluating colocalization in biological microscopy
+  journal: American Journal of Physiology - Cell Physiology
+  year: 2011
+  volume: 300
+  pages: C723-C742
+  topics: [colocalisation]
+
+manders1993:
+  authors: E. M. M. Manders, F. J. Verbeek, J. A. Aten
+  title: Measurement of co-localization of objects in dual-colour confocal images
+  journal: Journal of Microscopy
+  year: 1993
+  volume: 169
+  pages: 375-382
+  topics: [colocalisation]
+
+costes2004:
+  authors: S. V. Costes, D. Daelemans, E. H. Cho, et al.
+  title: Automatic and quantitative measurement of protein-protein colocalization in live cells
+  journal: Biophysical Journal
+  year: 2004
+  volume: 86
+  pages: 3993-4003
+  topics: [colocalisation]
+
+li2004:
+  authors: Q. Li, A. Lau, T. J. Morris, et al.
+  title: A syntaxin 1, Gαo, and N-type calcium channel complex at a presynaptic nerve terminal
+  journal: Journal of Neuroscience
+  year: 2004
+  volume: 24
+  pages: 4070-4081
+  topics: [colocalisation]
+
+bolte2006:
+  authors: S. Bolte, F. P. Cordelières
+  title: A guided tour into subcellular colocalization analysis in light microscopy
+  journal: Journal of Microscopy
+  year: 2006
+  volume: 224
+  pages: 213-232
+  topics: [colocalisation]
+
+vansteensel1996:
+  authors: B. van Steensel, E. P. van Binnendijk, C. D. Hornsby, et al.
+  title: Partial colocalization of glucocorticoid and mineralocorticoid receptors in discrete compartments in nuclei of rat hippocampus neurons
+  journal: Journal of Cell Science
+  year: 1996
+  volume: 109
+  pages: 787-792
+  topics: [colocalisation]
+
+# ── Structure: surfaces and accessibility ───────────────────────────
+lee1971:
+  authors: B. Lee, F. M. Richards
+  title: "The interpretation of protein structures: estimation of static accessibility"
+  journal: Journal of Molecular Biology
+  year: 1971
+  volume: 55
+  pages: 379-400
+  doi: 10.1016/0022-2836(71)90324-X
+  note: The accessible surface and the rolling probe.
+  topics: [structure]
+
+shrake1973:
+  authors: A. Shrake, J. A. Rupley
+  title: Environment and exposure to solvent of protein atoms. Lysozyme and insulin
+  journal: Journal of Molecular Biology
+  year: 1973
+  volume: 79
+  pages: 351-371
+  doi: 10.1016/0022-2836(73)90011-9
+  note: The dot-sampling algorithm used here.
+  topics: [structure]
+
+connolly1983:
+  authors: M. L. Connolly
+  title: Analytical molecular surface calculation
+  journal: Journal of Applied Crystallography
+  year: 1983
+  volume: 16
+  pages: 548-558
+  doi: 10.1107/S0021889883010985
+  note: The molecular surface, for contrast.
+  topics: [structure]
+
+vanoosterom1983:
+  authors: A. van Oosterom, J. Strackee
+  title: The solid angle of a plane triangle
+  journal: IEEE Transactions on Biomedical Engineering
+  year: 1983
+  volume: 30
+  pages: 125-126
+  note: The spherical-excess formula used for the point weights.
+  topics: [structure]
+
+becker2010:
+  authors: N. B. Becker, A. Rosa, R. Everaers
+  title: The radial distribution function of worm-like chains
+  journal: European Physical Journal E
+  year: 2010
+  volume: 32
+  pages: 53-69
+  doi: 10.1140/epje/i2010-10596-0
+  note: The multi-piece solution ChiSurf evaluates for the worm-like chain model.
+  topics: [structure, polymer]
+
+kalinin2004:
+  authors: S. Kalinin, L. B.-Å. Johansson
+  title: Energy migration and transfer rates are invariant to modeling the fluorescence relaxation by discrete and continuous distributions of lifetimes
+  journal: Journal of Physical Chemistry B
+  year: 2004
+  volume: 108
+  pages: 3092-3097
+  doi: 10.1021/jp038041q
+  note: The PDDEM model.
+  topics: [tcspc, fret]
+
+# ── Sampling, statistics, convergence ───────────────────────────────
+gelman1992:
+  authors: A. Gelman, D. B. Rubin
+  title: Inference from iterative simulation using multiple sequences
+  journal: Statistical Science
+  year: 1992
+  volume: 7
+  pages: 457-472
+  doi: 10.1214/ss/1177011136
+  topics: [statistics]
+
+geyer1992:
+  authors: C. J. Geyer
+  title: Practical Markov chain Monte Carlo
+  journal: Statistical Science
+  year: 1992
+  volume: 7
+  pages: 473-483
+  doi: 10.1214/ss/1177011137
+  topics: [statistics]
+
+vehtari2021:
+  authors: A. Vehtari, A. Gelman, D. Simpson, B. Carpenter, P.-C. Bürkner
+  title: "Rank-normalization, folding, and localization: an improved R-hat for assessing convergence of MCMC"
+  journal: Bayesian Analysis
+  year: 2021
+  volume: 16
+  pages: 667-718
+  doi: 10.1214/20-BA1221
+  topics: [statistics]
+
+haario2001:
+  authors: H. Haario, E. Saksman, J. Tamminen
+  title: An adaptive Metropolis algorithm
+  journal: Bernoulli
+  year: 2001
+  volume: 7
+  pages: 223-242
+  topics: [statistics]
+
+goodman2010:
+  authors: J. Goodman, J. Weare
+  title: Ensemble samplers with affine invariance
+  journal: Communications in Applied Mathematics and Computational Science
+  year: 2010
+  volume: 5
+  pages: 65-80
+  doi: 10.2140/camcos.2010.5.65
+  topics: [statistics]
+
+foremanmackey2013:
+  authors: D. Foreman-Mackey, D. W. Hogg, D. Lang, J. Goodman
+  title: "emcee: the MCMC hammer"
+  journal: Publications of the Astronomical Society of the Pacific
+  year: 2013
+  volume: 125
+  pages: "306"
+  doi: 10.1086/670067
+  topics: [statistics]
+
+karamanis2021:
+  authors: M. Karamanis, F. Beutler
+  title: Ensemble slice sampling
+  journal: Statistics and Computing
+  year: 2021
+  volume: 31
+  pages: "61"
+  topics: [statistics]
+
+neal2003:
+  authors: R. M. Neal
+  title: Slice sampling
+  journal: Annals of Statistics
+  year: 2003
+  volume: 31
+  pages: 705-767
+  doi: 10.1214/aos/1056562461
+  topics: [statistics]
+
+vehtari2024:
+  authors: A. Vehtari, D. Simpson, A. Gelman, Y. Yao, J. Gabry
+  title: Pareto smoothed importance sampling
+  journal: Journal of Machine Learning Research
+  year: 2024
+  volume: 25
+  pages: 1-58
+  topics: [statistics]
+
+zhang2009:
+  authors: J. Zhang, M. A. Stephens
+  title: A new and efficient estimation method for the generalized Pareto distribution
+  journal: Technometrics
+  year: 2009
+  volume: 51
+  pages: 316-325
+  topics: [statistics]
+
+mcinnes2018:
+  authors: L. McInnes, J. Healy, J. Melville
+  title: "UMAP: uniform manifold approximation and projection for dimension reduction"
+  journal: arXiv
+  year: 2018
+  volume: "1802.03426"
+  url: https://arxiv.org/abs/1802.03426
+  topics: [statistics, exploration]
+
+campello2013:
+  authors: R. J. G. B. Campello, D. Moulavi, J. Sander
+  title: Density-based clustering based on hierarchical density estimates
+  journal: "PAKDD, Lecture Notes in Computer Science"
+  year: 2013
+  volume: 7819
+  pages: 160-172
+  topics: [statistics, exploration]
+
+koshioka1995:
+  authors: M. Koshioka, K. Sasaki, H. Masuhara
+  title: Time-dependent fluorescence depolarization analysis in three-dimensional microspectroscopy
+  journal: Applied Spectroscopy
+  year: 1995
+  volume: 49
+  pages: 224-228
+  doi: 10.1366/0003702953963652
+  note: Depolarisation by a high-NA objective — where the l1/l2 mixing factors come from.
+  topics: [anisotropy]
+
+erdelyi2014:
+  authors: M. Erdelyi, J. Simon, E. A. Barnard, C. F. Kaminski
+  title: Analyzing receptor assemblies in the cell membrane using fluorescence anisotropy imaging with TIRF microscopy
+  journal: PLoS ONE
+  year: 2014
+  volume: 9
+  pages: e100526
+  doi: 10.1371/journal.pone.0100526
+  topics: [anisotropy]

@@ -145,7 +145,10 @@ docs-screenshots = { cmd = "python docs/guides/make_screenshots.py" }
 # manual.docx. The task is kept for one-off re-imports but is NOT a docs-html dep.
 docs-manual = { cmd = "python build_tools/docs/convert_manual.py" }
 docs-clean = { cmd = "rm -rf docs/_build" }
-docs-html = { depends-on = ["docs-plugins"], cmd = "sphinx-build -E -b html docs docs/_build" }
+# The Literature page is generated from docs/references/bibliography.yaml, which
+# is the single source for every work the documentation cites.
+docs-bibliography = { cmd = "python build_tools/docs/make_bibliography.py" }
+docs-html = { depends-on = ["docs-plugins", "docs-bibliography"], cmd = "sphinx-build -E -b html docs docs/_build" }
 # Release gate: fails when a review-tracked page (docs/manual) is unreviewed or
 # has been edited since its sign-off. Sign pages off in the Help browser or with
 # `csc help review-set <path> --reviewer <name>`.

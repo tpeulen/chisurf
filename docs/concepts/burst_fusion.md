@@ -146,10 +146,6 @@ efficiency. They are recomputed on the fused folder instead.
 
 ## References
 
-- Hoffmann, A. *et al.* (2011) Quantifying heterogeneity and conformational
-  dynamics from single molecule FRET of diffusing molecules: recurrence analysis
-  of single particles (RASP). *Phys. Chem. Chem. Phys.* **13**, 1857–1871.
-  [10.1039/c0cp01911a](https://doi.org/10.1039/c0cp01911a)
-- Nir, E. *et al.* (2006) Shot-noise limited single-molecule FRET histograms:
-  comparison between theory and experiments. *J. Phys. Chem. B* **110**,
-  22103–22124. [10.1021/jp063483n](https://doi.org/10.1021/jp063483n)
+- {cite}`hoffmann2011`
+- {cite}`nir2006`
+

@@ -192,16 +192,8 @@ individual analyses have their own concept pages.
 
 ## References
 
-- Sisamakis, E., Valeri, A., Kalinin, S., Rothwell, P. J. & Seidel, C. A. M.
-  *Accurate single-molecule FRET studies using multiparameter fluorescence
-  detection.* Methods in Enzymology **475**, 455–514 (2010).
-- Kalinin, S., Valeri, A., Antonik, M., Felekyan, S. & Seidel, C. A. M.
-  *Detection of structural dynamics by FRET: a photon distribution and
-  fluorescence lifetime analysis of systems with multiple states.* J. Phys.
-  Chem. B **114**, 7983–7995 (2010).
-- McInnes, L., Healy, J. & Melville, J. *UMAP: Uniform Manifold Approximation and
-  Projection for dimension reduction.* arXiv:1802.03426 (2018).
-- Campello, R. J. G. B., Moulavi, D. & Sander, J. *Density-based clustering based
-  on hierarchical density estimates.* PAKDD, LNCS **7819**, 160–172 (2013).
-</content>
-</invoke>
+- {cite}`sisamakis2010`
+- {cite}`kalinin2010`
+- {cite}`mcinnes2018`
+- {cite}`campello2013`
+

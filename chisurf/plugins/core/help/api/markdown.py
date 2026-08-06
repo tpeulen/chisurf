@@ -182,6 +182,14 @@ class _Placeholders:
     def __init__(self):
         self._items: list[str] = []
 
+    #: Matches any token this class hands out, whoever created it.
+    _TOKEN_PATTERN = re.compile(r"xzhelpph\d+zx")
+
+    @classmethod
+    def strip_tokens(cls, text: str) -> str:
+        """Remove placeholder tokens from *text* (for ids and other attributes)."""
+        return cls._TOKEN_PATTERN.sub("", text)
+
     def add(self, html: str) -> str:
         """Store *html* and return the token standing in for it."""
         token = self._TOKEN.format(index=len(self._items))
@@ -449,7 +457,11 @@ def _prepare_markdown_with_heading_ids(text: str) -> str:
         if re.search(r"\{\s*#[-\w]+\s*\}\s*$", title):
             out_lines.append(line)
             continue
-        slug = slugify_heading(title)
+        # A heading may hold code or a formula, which are already placeholder
+        # tokens by now. A token inside the generated id gets substituted when
+        # the fragments are put back, and the replacement's own quotes then
+        # close the attribute -- the id spills into the page as visible text.
+        slug = slugify_heading(_Placeholders.strip_tokens(title))
         out_lines.append(f"{prefix} {title} " + "{" + f"#{slug}" + "}")
     return "\n".join(out_lines)
 

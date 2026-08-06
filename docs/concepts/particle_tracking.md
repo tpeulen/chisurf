@@ -173,18 +173,11 @@ gives 20 out of 20.
 
 ## References
 
-* Crocker, J. C. & Grier, D. G. *Methods of digital video microscopy for
-  colloidal studies.* J. Colloid Interface Sci. **179**, 298–310 (1996).
-* Olivo-Marin, J.-C. *Extraction of spots in biological images using multiscale
-  products.* Pattern Recognit. **35**, 1989–1996 (2002).
-* Jaqaman, K. *et al.* *Robust single-particle tracking in live-cell time-lapse
-  sequences.* Nat. Methods **5**, 695–702 (2008).
-* Michalet, X. *Mean square displacement analysis of single-particle
-  trajectories with localization error: Brownian motion in an isotropic medium.*
-  Phys. Rev. E **82**, 041914 (2010).
-* Chenouard, N. *et al.* *Objective comparison of particle tracking methods.*
-  Nat. Methods **11**, 281–289 (2014). — the community benchmark, and the source
-  of the "density, not algorithm, is the limit" conclusion.
+- {cite}`crocker1996`
+- {cite}`olivomarin2002`
+- {cite}`jaqaman2008`
+- {cite}`michalet2010`
+- {cite}`chenouard2014` — the community benchmark, and the source of the "density, not algorithm, is the limit" conclusion.
 
 ## Runnable examples
 

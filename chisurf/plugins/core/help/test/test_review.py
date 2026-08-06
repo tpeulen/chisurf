@@ -97,8 +97,11 @@ def test_unreviewing_clears_the_record(manual):
 
 def test_untracked_pages_never_block(manual):
     """Pages outside tracked directories must not gate the build."""
-    outside = manual.parent / "guides" / "guide.md"
-    outside.write_text("# Guide\n", encoding="utf-8")
+    # A directory that is deliberately *not* under review gating: developer
+    # notes are not part of the product.
+    outside = manual.parent / "development" / "note.md"
+    outside.parent.mkdir(parents=True, exist_ok=True)
+    outside.write_text("# Note\n", encoding="utf-8")
     assert not review.is_tracked(outside)
     assert not review.status_of(outside).is_blocking
 
@@ -110,8 +113,11 @@ def test_non_page_files_are_not_tracked(manual):
 
 
 def test_set_status_refuses_untracked_pages(manual):
-    outside = manual.parent / "guides" / "guide.md"
-    outside.write_text("# Guide\n", encoding="utf-8")
+    # A directory that is deliberately *not* under review gating: developer
+    # notes are not part of the product.
+    outside = manual.parent / "development" / "note.md"
+    outside.parent.mkdir(parents=True, exist_ok=True)
+    outside.write_text("# Note\n", encoding="utf-8")
     assert not review.set_status(outside, review.STATUS_REVIEWED)
 
 

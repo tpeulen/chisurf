@@ -60,8 +60,17 @@ SIGNED_STATUSES: tuple[str, ...] = (STATUS_AI_REVIEWED, STATUS_REVIEWED)
 REGISTRY_NAME = "review_status.json"
 
 #: Documentation directories under ``docs/`` whose pages require sign-off.
-#: Add a directory here to bring it under review gating.
-TRACKED_DIRS: tuple[str, ...] = ("manual",)
+#: Everything the help browser puts in front of a *user* is tracked; the
+#: developer notes under ``development/`` are not, because they are not part of
+#: the product. Add a directory here to bring it under review gating.
+TRACKED_DIRS: tuple[str, ...] = (
+    "manual",
+    "concepts",
+    "guides",
+    "getting_started",
+    "reference",
+    "references",
+)
 
 #: File suffixes treated as documentation pages.
 PAGE_SUFFIXES: tuple[str, ...] = (".rst", ".md")

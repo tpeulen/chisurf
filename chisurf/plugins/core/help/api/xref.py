@@ -196,9 +196,15 @@ def document_reference(
     if role == "term":
         return None, "", caption or label
 
-    target = resolve_document(label.lstrip("/") + ".md", base) or resolve_document(
-        label.lstrip("/"), base
-    )
+    # A ``{doc}`` target carries no suffix and may name a directory's index, so
+    # every spelling is tried: ``/concepts/index`` is an *.rst* file, and only
+    # trying ".md" left the guides' own pointer to the concepts dead.
+    stem = label.lstrip("/")
+    target = None
+    for candidate in (f"{stem}.md", f"{stem}.rst", stem, f"{stem}/index.md", f"{stem}/index.rst"):
+        target = resolve_document(candidate, base)
+        if target is not None:
+            break
     if target is None:
         return None, "", caption or label
     text = caption
