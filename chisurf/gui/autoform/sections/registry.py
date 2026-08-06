@@ -57,12 +57,12 @@ def get_section_factory(key: str) -> typing.Optional[typing.Callable[..., typing
 
 
 def resolve_plot_specs(view) -> typing.List[typing.Tuple[type, dict]]:
-    """Translate a :class:`ModelView` into legacy ``plot_classes`` tuples.
+    """Translate a :class:`ModelView` into ``(plot_class, options)`` pairs.
 
-    Returns a list of ``(plot_class, options)`` pairs compatible with the
-    existing fit-subwindow plot loader, dropping any keys that are not
-    registered. This is the compatibility bridge that lets view-spec plots flow
-    through the current plotting code unchanged.
+    This is where a view spec's plot *keys* become the classes the fit-subwindow
+    plot loader instantiates; a key with no registered class is dropped. Keeping
+    the mapping here is what lets a model name its plots without importing one —
+    the last hard dependency the compute side had on the GUI.
     """
     specs: typing.List[typing.Tuple[type, dict]] = []
     for plot in getattr(view, "plots", ()):  # PlotSpec items

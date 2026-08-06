@@ -445,13 +445,18 @@ fitting parameter, read back with `expressions.discover_parameters`. Note the
 engine deliberately omits `tau` from its constants — `tau` is the universal
 lifetime-parameter name and binding it to 2π would silently corrupt decay
 formulas — and that any remaining constant is shadowed by a symbol of the same
-name, so a collision costs at most the constant, never the data. The parse-model
-formula widget
-(`gui/widgets/models/parse/widget.py::ParseFormulaWidget`, shared by the TCSPC,
-FCS and PCF parse models) hosts an `ExpressionInput` in place of its raw text box
-— the box is kept hidden as the backing store the rest of the widget reads — so a
-mistyped or unsafe formula is caught with a clear message instead of failing at
-`eval`. (ParseModel's own evaluation is unchanged; the engine drives editing and
+name, so a collision costs at most the constant, never the data.
+
+**It is reached declaratively**: a `value` section of `kind: "expression"` renders
+an `ExpressionInput`, so *any* view spec gets a validated, previewed formula field
+with parameter discovery — not only the parse models. That is what retired
+`gui/widgets/models/parse/widget.py::ParseFormulaWidget` and the last `.ui` under
+`models/`; the badge and the LaTeX preview were the only reason that file
+survived its model becoming data-described. **Do not re-implement the check at a
+call site** — a second answer to "is this formula safe" is worse than none.
+The field takes a whole form row (`_autoform_full_row`): packed two-up beside
+another field it shrinks to showing its last few characters.
+(ParseModel's own evaluation is unchanged; the engine drives editing and
 validation, not model math.)
 
 When touching GUI code, prefer porting hand-built widgets to AutoForm + a
@@ -564,10 +569,42 @@ is not a value anyone can check), but only once nothing optional is left to drop
 `resize()` alone is refused below a layout's minimum, so the editor never narrows
 and such a test asserts nothing.
 
+## Every fitting model's editor is generated — there is no model-widget layer
+
+A fitting model is a pure, Qt-free class under `chisurf/core/models/` with a
+co-located `<model>.view.json`; `AutoModelWidget` renders that spec, and
+`gui/widgets/models/model_editor.py` is the seam the app calls
+(`build_model_editor`, `model_plot_specs`). `chisurf/gui/widgets/models/` holds the
+renderer, the registered custom sections, and **deprecation shims** — a user copy
+of `experiment_configs.yaml` *replaces* the bundled model list and a pickled
+project pins class paths, so every retired widget name still resolves, to the
+model that replaced it. `test/gui/test_model_widget_modules_import.py` is the
+guard.
+
+Three things follow from this and are easy to undo by accident:
+
+- **A model never names a plot class.** `view_spec().plots` lists registry
+  *keys*; `sections/registry.py::resolve_plot_specs` maps them to classes. The old
+  `plot_classes` attribute is gone — it was the last hard dependency from the
+  compute side onto the GUI. A model that declares no plots gets **no** plot tabs,
+  which is visible and fixable; the old fallback could hand it another model's.
+- **A model never opens a dialog.** Anything a model must *do* is a zero-arg
+  method a `button_row` calls, or an attribute a `choice`/`toggle`/`value` writes.
+  Work that takes time is a plain `threading.Thread` on the model plus a
+  `background_run` section, which owns the buttons, the bar and the repaint timer.
+- **A computed output is a parameter write.** Publishing one through
+  `get_fitting_client()` inside a bare `except` — the pattern that made four
+  models hard to extract — does nothing whenever that client is absent and says
+  nothing about it.
+
+The migration record, including what each model needed and what its port found,
+is [PRD-38](/prds/prd-38.md).
+
 ## Runtime `.ui` forms are prototyping-only (migration target: removal)
 
-The ~43 Qt Designer `.ui` files still loaded at runtime via `uic.loadUi`
-(`chisurf/gui/decorators.py:_compiled_ui_class`) are a **prototyping-era carry-over,
+The **28** Qt Designer `.ui` files still loaded at runtime via `uic.loadUi`
+(`chisurf/gui/decorators.py:_compiled_ui_class`) — down from 43, with all six
+under `models/` gone — are a **prototyping-era carry-over,
 not a supported UI layer** — AutoForm + `*.view.json` is the one intended UI
 mechanism. Each `.ui` form should be ported to a `view.json` (+ a view-model where
 it carries logic) and the `.ui` deleted; the target end-state is **zero runtime

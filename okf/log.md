@@ -2,6 +2,18 @@
 
 ## 2026-08-06
 
+* **PRD-38 is complete: no model widgets, no `plot_classes`, no `.ui` under `models/`** ([PRD-38](prds/prd-38.md), [GUI & AutoForm](subsystems/gui-autoform.md)).
+
+  The three cleanups that were left after the last extraction. `gui/widgets/models/pda2c/widgets.py` is deleted (2,090 lines): nine of its ten classes were unreferenced once the PDA models became data-described, and the tenth — `FretRdaAxisSettingsWidget` — was never a model widget at all, since the FRET distance axis is one global setting. It moved to `gui/widgets/fret_rda_axis_settings.py`, where the relocation screenshot showed its two distance spin boxes carrying a literal **tab** where the `Å` suffix belonged.
+
+  **`plot_classes` is gone (task 9).** `model_editor.py` resolves plots from `view_spec().plots` only; a model with none declared gets *no* plot tabs, which is visible and fixable — the old fallback could hand it another model's. `model_widget.py` went with it: `ModelWidget` existed to carry the metaclass that made a hand-written model widget **definable**, and there are none left.
+
+  **The equation validity badge and LaTeX preview are back**, as a `value` section of `kind: "expression"` rendering the shared `gui/widgets/expression_input.py::ExpressionInput` — so every parse editor gets the safe-AST ✓/✗ badge, the reason in a tooltip, the typeset preview, the names-and-functions reference **and** parameter discovery, from one implementation. The first attempt hand-rolled an `ast.parse` check and a matplotlib preview inside `ValueWidget`; it was thrown away on finding `ExpressionInput`, because a second answer to "is this formula safe" is worse than none. `parse/widget.py` (1,022 lines) and `parseWidget.ui` are deleted; `parse/latex.py` stays. One framework addition was needed: `_autoform_full_row`, because packed two-up beside the model picker the equation editor shrank to showing its last three characters.
+
+  **Two tests were red before this work and are fixed here.** `test_model_widget_metaclass.py` named `chisurf.gui.widgets.models.tcspc.et` as its worked example and that module was deleted in increment 14, so it had been failing since. Replaced by `test_model_widget_modules_import.py`, which asserts what still matters: every module under `gui/widgets/models` imports, and each deprecated class path resolves to a **non-widget** model with the right `name` — a path resolving to the wrong class is as broken as one that does not resolve, and just as quiet.
+
+  Final counts: 44 models across 12 families, zero legacy registrations, `.ui` forms 43 → **28** tree-wide. Not fixed and not caused here: the PDA dynamic-fit threshold (`chi2r = 1.5339` against `< 1.5`), which reproduces identically at `b5f6eec0c^` — recorded in [known issues](references/known-issues.md) with the question to answer before moving the number.
+
 * **ProteinMC left the GUI layer — the last model that could only be clicked** ([PRD-38](prds/prd-38.md)).
 
   `ProteinMCModel` (`chisurf/core/models/structure/proteinmc_model.py` + `proteinmc.view.json`) replaces the 1,984-line `ProteinMCModelWidget`, which is now 26 lines of deprecation shim. **Every registered fitting model is now a pure compute model rendered from a `*.view.json`**; what is left of PRD-38 is cleanup, not migration.

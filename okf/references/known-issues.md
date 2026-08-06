@@ -1,3 +1,17 @@
+## PDA: the dynamic two-state fit lands just past its convergence threshold
+
+**2026-08-06.** `test/gui/test_pda2c_model_editor.py::test_dynamic_pda_recovers_
+exchange_and_rejects_the_static_model` fails on `assert fit_dyn.chi2r < 1.5` with
+**chi2r = 1.5339**, deterministically — the same value on every run and on the
+commit before the PRD-38 cleanup, so it is not a flake and not caused by that
+work (verified in a detached worktree at `b5f6eec0c^`).
+
+Everything the test is *about* passes: it recovers `k_ex`, `R1`, `R2` and `x1`
+within tolerance and does reject the static model. Only the absolute goodness-of-
+fit is 2 % over the line, so the question is whether 1.5 is the right threshold
+for this fixture or whether the dynamic model leaves a small systematic residual.
+Do not "fix" it by moving the number without answering that.
+
 ## chimol: the mouse-mode block's text is clipped at the panel's column width
 
 **2026-08-06.** Seen while composing the object panel over a `ray` result on a
@@ -15,21 +29,38 @@ PyMOL sizes the internal-GUI column from the text. Reproduce with the composer
 in `chisurf/plugins/chimol/test/test_ray_keeps_the_panel.py` — paint
 `paint_screen_space` onto a `QImage` and read the bottom-right corner.
 
-## models: `ReactionWidget` (stopped flow) is registered and cannot be instantiated
+## models: `ReactionWidget` (stopped flow) could not be instantiated — RESOLVED 2026-08-06
 
-**2026-08-06.** Same defect as the ET model-free fit below:
-`ReactionWidget.__abstractmethods__` is `frozenset({'update_model'})`, so choosing
-"Reaction" in the stopped-flow model menu raises `TypeError`. **All three**
-stopped-flow / ET entries were in this state — the parse one has since been fixed
-by giving it a core model.
+**Resolved** by [PRD-38](../prds/prd-38.md) increment 18: `ReactionModel`
+(`core/models/stopped_flow/reaction.py` + `reaction.view.json`) implements
+`update_model`, `reaction.ui` is deleted, and `ReactionWidget` is a deprecation
+alias. Kept here for what the port found underneath it.
 
-It is the last `.ui` consumer under `models/` (`stopped_flow/reaction.ui`), and the
-replacement is designed in [PRD-38](../prds/prd-38.md) ("Designing the reaction
-editor"): a core `ReactionModel(ReactionSystem, Model)` that implements
-`update_model`, plus a `state_table` for the species and a `table` +
-`button_row` for the reactions. Core `ReactionSystem` already has
-`add_reaction` / `pop` / `clear` / `reaction_string` / `initial_concentrations`, so
-this is wiring rather than new science.
+`ReactionWidget.__abstractmethods__` was `frozenset({'update_model'})`, so choosing
+"Reaction" in the stopped-flow model menu raised `TypeError`. **All three**
+stopped-flow / ET entries were in that state.
+
+**Because it could never be opened, `ReactionSystem` had never really run**, and
+carried four defects the new model is the first caller to hit:
+
+* `reactions` returned a `zip`. `odeint` calls `rate_equation` once per step with
+  that same object, so it was exhausted after the first call, every later
+  derivative was zero, and **every reaction system integrated to a flat line**.
+* `n_species` raised `NameError` — `reduce` was never imported and the `except`
+  only caught `TypeError`.
+* `species_brightness` could not round-trip a list of numbers: the setter stored
+  what it was given, the getter read `.value` off each entry.
+* `plot()` called a matplotlib alias the module never imported. Deleted rather
+  than fixed.
+
+Rate constants were plain `Parameter`s, i.e. **not fittable**; the hand-written
+editor hid that by appending its own widget-backed parameters instead of calling
+`add_reaction`. The guard (`test/models/test_reaction_model.py`) asserts an
+`A ⇌ B` system relaxes to the analytic `k_f/k_r` equilibrium, not merely that it
+computes something.
+
+*General lesson: an unopenable editor hides the state of everything below it. Look
+for the missing caller, not only the missing control.*
 
 ## models: `EtModelFreeWidget` is registered and cannot be instantiated
 
@@ -66,24 +97,21 @@ Once ported, drop it from `_a_still_legacy_widget_model`'s skip in
 `test/gui/test_auto_model_widget.py` -- that helper currently steps over abstract
 widgets so the MRO tests do not report this pre-existing breakage as their own.
 
-## models: the ported parse editors have no equation validity badge or LaTeX preview
+## models: the parse editors' validity badge and LaTeX preview — RESOLVED 2026-08-06
 
-**2026-08-06.** The four parse editors are generated from JSON now
-([PRD-38](../prds/prd-38.md) increment 12) and the equation is a plain text field.
-The hand-written `ParseFormulaWidget`
-(`chisurf/gui/widgets/models/parse/widget.py`) showed two things the generated one
-does not: a ✓/✗ **validity badge** as you type, and a rendered **LaTeX preview** of
-the equation.
+**Resolved** by [PRD-38](../prds/prd-38.md): a `value` section of
+`kind: "expression"` renders the equation field through the shared
+`chisurf/gui/widgets/expression_input.py::ExpressionInput`, so **any** view spec
+now gets a formula field with the safe-AST ✓/✗ badge, the reason in a tooltip, the
+typeset LaTeX preview, the names-and-functions reference and parameter discovery
+— which is strictly more than the hand-written `ParseFormulaWidget` had.
 
-That file is kept for this reason -- it is otherwise reachable only from its own
-`__init__` and `test/gui/test_parse_widget_expression_editor.py`, and deleting it
-is what closing this gap unlocks.
+`parse/widget.py` and `parseWidget.ui` are deleted; `parse/latex.py` stays, since
+`equation_editor` and `expression_input` both use it.
 
-The pieces already exist: `chisurf/gui/widgets/expression_input.py` has the badge
-(and `chisurf/gui/widgets/models/parse/latex.py` the conversion, used by
-`equation_editor` and `expression_input` too). The clean fix is a `value`
-`kind: "expression"` -- or a small section wrapping `expression_input` -- so *any*
-view spec gets a validated, previewed formula field, not just the parse models.
+*The point worth keeping: the gap was closed by reusing the widget that already
+did it rather than re-implementing the check inside `ValueWidget`. A second
+implementation of "is this formula safe" is a second answer to that question.*
 
 ## chimol: the nucleic-acid cartoon has artifacts — RESOLVED 2026-08-06
 

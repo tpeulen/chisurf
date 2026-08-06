@@ -438,52 +438,41 @@ def test_retired_lifetime_class_paths_still_resolve_to_the_pure_model(qapp):
     assert LifetimeMixtureModel.view_spec_file == "mix_model.view.json"
 
 
-def test_legacy_widget_does_not_inherit_lifetime_plots(qapp):
-    """A legacy widget that multiply-inherits LifetimeModel must use its OWN
-    plot_classes, and view_spec() must resolve the inherited view_spec_file
-    against the *declaring* class's module (no file-not-found)."""
+def test_plots_come_only_from_the_view_spec(qapp):
+    """A model's plots are resolved from ``view_spec().plots``, nothing else.
+
+    ``plot_classes`` — a model naming GUI plot classes — is gone (PRD-38 task 9).
+    A model with no declared plots gets *no* plot tabs, which is a visible,
+    fixable state; the old fallback could hand it another model's plots instead.
+    """
     import numpy as np
     from qtpy import QtWidgets
 
     import chisurf.core.fitting.fit as fit_mod
     from chisurf.core.data import DataCurve
+    from chisurf.core.models.tcspc.lifetime import LifetimeModel
     from chisurf.gui.widgets.models.model_editor import model_plot_specs
-    widget_cls = _a_still_legacy_widget_model()
-    if widget_cls is None:
-        pytest.skip("no hand-written model widgets remain")
 
-    data = DataCurve(x=np.linspace(0, 25, 256), y=np.ones(256))
-    fit = fit_mod.Fit(model_class=widget_cls, data=data)
-    m = fit.model
-    assert isinstance(m, QtWidgets.QWidget)
+    data = DataCurve(x=np.linspace(0.05, 25, 256), y=np.ones(256))
+    model = fit_mod.Fit(model_class=LifetimeModel, data=data).model
+    assert not isinstance(model, QtWidgets.QWidget)
 
-    # view_spec() must not raise: inherited view_spec_file resolves against the
-    # module that declares it (core lifetime.py), not the FRET widget's dir.
-    spec = m.view_spec()
-    assert spec is not None
-
-    # plots come from the widget's own plot_classes (legacy branch), so a FRET
-    # window is not given the lifetime view-spec's plot set.
-    legacy = list(getattr(m, "plot_classes", []))
-    assert model_plot_specs(m) == legacy
+    declared = {plot.key for plot in model.view_spec().plots}
+    resolved = model_plot_specs(model)
+    assert resolved, "the lifetime model declares plots but none resolved"
+    assert len(resolved) <= len(declared)
+    assert not hasattr(model, "plot_classes")
 
 
-def test_build_model_editor_legacy_widget_is_identity(qapp):
-    """A legacy model that is already a QWidget is returned unchanged."""
-    from qtpy import QtWidgets
+def test_a_model_with_no_declared_plots_gets_none(qapp):
+    """No plots declared means no plot tabs — not somebody else's plots."""
+    from chisurf.gui.widgets.models.model_editor import model_plot_specs
 
-    from chisurf.gui.widgets.models.model_editor import build_model_editor, model_plot_specs
-
-    class LegacyWidgetModel(QtWidgets.QWidget):
-        plot_classes = [(QtWidgets.QWidget, {"a": 1})]
-
+    class Plotless:
         def view_spec(self):
-            raise RuntimeError("legacy widget models have no view spec")
+            raise RuntimeError("no view spec")
 
-    m = LegacyWidgetModel()
-    assert build_model_editor(m) is m
-    # falls back to plot_classes when view_spec raises / yields nothing
-    assert model_plot_specs(m) == [(QtWidgets.QWidget, {"a": 1})]
+    assert model_plot_specs(Plotless()) == []
 
 
 def test_autoform_renders_a_parameter_group_without_json(qapp):

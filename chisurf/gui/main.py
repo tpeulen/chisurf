@@ -1511,7 +1511,7 @@ class Main(
     def onOpenFretRdaAxisSettings(self):
         """Open a dialog for global FRET R_DA axis settings."""
         try:
-            from chisurf.gui.widgets.models.pda2c.widgets import FretRdaAxisSettingsWidget
+            from chisurf.gui.widgets.fret_rda_axis_settings import FretRdaAxisSettingsWidget
         except Exception as e:
             try:
                 cs.logging.error(f"Could not load FretRdaAxisSettingsWidget: {e}")
@@ -1524,7 +1524,7 @@ class Main(
                     "FRET RDA axis settings",
                     (
                         "The RDA axis settings widget could not be loaded.\n"
-                        "Please check that _gw.models.pda2c is available."
+                        "Please check that chisurf.gui.widgets is available."
                     ),
                 )
             except Exception:

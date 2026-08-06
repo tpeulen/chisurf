@@ -3,7 +3,7 @@ type: PRD
 prd: "38"
 title: "PRD-38: Model/UI Split — view-spec JSON drives auto-generated model editors"
 description: Splits a fitting model's compute definition from its editor by describing the editor in a co-located JSON view spec that a generic GUI renderer turns into the control panel.
-status: in-progress
+status: done
 phase: "unassigned"
 resource: chisurf/core/models/
 tags: [prd, gui]
@@ -14,7 +14,13 @@ timestamp: '2026-07-05T00:00:00Z'
 PRD-38 makes a fitting model's editor the automatic result of its computational definition instead of a hand-written per-model widget that duplicates the model's structure and welds Qt to the compute side. Each model stays in one place (parameters plus `update_model` in `chisurf/core/models`, Qt-free), its editor is described in a hand-editable `<model>.view.json` file, and the GUI renders that spec by composition via `AutoModelWidget`. A strict, AST-CI-enforced boundary keeps `core/models/**` from importing any GUI toolkit, while a string-keyed registry provides an escape hatch for bespoke custom sections. The view-spec vocabulary has grown to parameter groups, dynamic groups, curve inputs, choices, toggles, and custom sections plus plots.
 
 # Status
-In-progress (unassigned phase). **Every registered model is a pure compute model rendered from a `*.view.json`.** What is left is not a migration: the tier-D `pda2c/widgets.py` cleanup, dropping `plot_classes` (whose only remaining holders are those dead classes and the seam's fallback branches), and the equation validity badge + LaTeX preview that keep `parse/parseWidget.ui` alive. The per-model backlog is the STATUS TABLE below.
+**Done.** Every registered fitting model is a pure, Qt-free compute model whose
+editor is generated from a co-located `*.view.json`; no `.ui` file remains under
+`models/`, no model declares `plot_classes`, and `chisurf/gui/widgets/models/` is
+deprecation shims plus the generic renderer. The per-model record is the STATUS
+TABLE below and the increment notes; what the machinery grew along the way is in
+the [GUI & AutoForm](/subsystems/gui-autoform.md) concept, which is where to look
+first from now on.
 
 # STATUS TABLE — per-model screening
 
@@ -73,11 +79,13 @@ reading of it. `gui/widgets/models/tcspc/lifetime_mix.py::LifetimeMixModelWidget
 is unregistered. The 5 stray `.ui` files that sat inside the Qt-free
 `core/models/**` are deleted.
 
-Counts at time of writing: 44 model classes ported across 12 families; **no legacy
-registration remains** and **one `.ui` file** is left under `models/` (see the
-table below). `gui/widgets/models/tcspc/` is down from ~5k LOC to an alias module
-plus two helper files, `gui/widgets/models/fcs/` is four deprecation shims
-totalling ~70 lines (from ~1,950), and `proteinmc.py` is 26 lines (from 1,984).
+Final counts: 44 model classes across 12 families; **no legacy registration and no
+`.ui` file** remains under `models/`. `gui/widgets/models/tcspc/` is down from ~5k
+LOC to an alias module plus two helper files, `fcs/` is four shims totalling ~70
+lines (from ~1,950), `proteinmc.py` is 26 lines (from 1,984), `pda2c/` is one
+33-line `__init__` (from 2,090), and `parse/` is a shim plus the shared LaTeX
+helper (from 1,022). `model_widget.py` is gone — it existed to give a
+hand-written model widget a workable metaclass, and there are none.
 
 # Goal
 Make a fitting model's **editor the automatic result of its computational definition**. Maintain each model in one place (compute + parameters in `chisurf/core/models`), describe its editor in a **user-editable JSON file that accompanies the model**, and have the GUI render that editor generically. Eliminate the hand-written, per-model widget that today duplicates the model's structure and welds Qt to the compute side.
@@ -161,16 +169,18 @@ sections.registry.resolve_plot_specs(view) -> [(cls, options)]  # legacy bridge
 5. `AutoModelWidget` + section/plot registry + builtin registrations. — DONE
 6. Offscreen-Qt render/add-del tests + headless view-spec tests. — DONE
 7. **Live wiring**: GUI builds `AutoModelWidget(fit.model)` instead of inheriting the model; `fit_subwindow` plots via `resolve_plot_specs(view_spec())` instead of `fit.model.plot_classes`; port link/read menus + r(t) panel to registered custom sections. — DONE
-8. Migrate remaining structured models to `view.json`; delete their hand-written widgets. FCS (3), PDA (7), DEER (4), ICS (2), MFD (1) and TCSPC Lifetime + mixer are done; see the STATUS TABLE for what is left and what blocks each.
-9. Remove `plot_classes` from models once all consumers read `view_spec().plots`.
+8. Migrate every structured model to `view.json`; delete their hand-written widgets. — DONE (all 44, across 12 families; see the STATUS TABLE)
+9. Remove `plot_classes` from models once all consumers read `view_spec().plots`. — DONE (increment 20)
 10. Codify the table-rendering default and the before/after migration rule. — DONE
 
 # Definition of Done
 
-- A registered model class instantiated by `Fit` carries no Qt; the editor is a separate `AutoModelWidget`. Project save/load and fitting are unaffected.
-- Editing `lifetime.view.json` (reorder sections, retitle, add/remove a plot) changes the live editor with no Python change.
-- Custom UI (amplitude options, link/read, r(t)) works, referenced by key.
-- Boundary test green; per-model widget files for migrated models deleted.
+All met.
+
+- ✅ A registered model class instantiated by `Fit` carries no Qt; the editor is a separate `AutoModelWidget`. Project save/load and fitting are unaffected.
+- ✅ Editing `lifetime.view.json` (reorder sections, retitle, add/remove a plot) changes the live editor with no Python change.
+- ✅ Custom UI (amplitude options, link/read, r(t)) works, referenced by key.
+- ✅ Boundary test green; per-model widget files for migrated models deleted — and with them the base class (`ModelWidget`) and the last `.ui` under `models/`.
 
 # Definition of Clean
 
@@ -662,42 +672,75 @@ file is chosen, so the parametrized guard now has a short, documented
 `DATA_DEPENDENT_PARAMETER_SOURCES` set — a source that resolves and returns
 nothing yet is a data state, not a spec defect.
 
-# Where to pick this up: three cleanups, no migrations left
+**Increment 20 (the three cleanups — PRD complete) — DONE.**
 
-Every registered model is now a pure compute model rendered from a `*.view.json`.
-What remains is cleanup, in this order because each unblocks the next:
+- **`pda2c/widgets.py` deleted (2,090 lines).** Nine of its ten classes were
+  unreferenced once the PDA models became data-described. The tenth,
+  `FretRdaAxisSettingsWidget`, was never a model widget at all — the FRET distance
+  axis is one global setting — so it moved to
+  `gui/widgets/fret_rda_axis_settings.py`. Its two distance spin boxes had a
+  literal **tab** where the `Å` suffix should be, which is what the relocation
+  screenshot showed.
+- **`plot_classes` is gone (task 9).** `model_editor.py` resolves plots from
+  `view_spec().plots` only; a model with none declared gets *no* plot tabs, which
+  is a visible, fixable state — the old fallback could hand it another model's
+  plots. `model_widget.py` went with it: `ModelWidget` existed to carry the
+  metaclass that made a hand-written model widget *definable*, and there are none.
+- **The equation validity badge and LaTeX preview are back**, as a `value` section
+  of `kind: "expression"`. It renders the shared
+  `gui/widgets/expression_input.py::ExpressionInput`, so every parse editor gets
+  the safe-AST ✓/✗ badge, the reason in a tooltip, the typeset preview, the
+  names-and-functions reference **and** parameter discovery — strictly more than
+  `ParseFormulaWidget` had, from one implementation rather than two. First attempt
+  hand-rolled an `ast.parse` check and a matplotlib preview inside `ValueWidget`;
+  that was thrown away on finding `ExpressionInput`, because a second answer to
+  "is this formula safe" is worse than none. `parse/widget.py` (1,022 lines) and
+  `parseWidget.ui` are deleted; `parse/latex.py` stays — `equation_editor` uses it.
 
-1. **Relocate `FretRdaAxisSettingsWidget`** out of
-   `gui/widgets/models/pda2c/widgets.py` (`:1047`; `gui/main.py:1514` imports it)
-   and delete the ~1,590 dead lines around it — 9 of the file's 10 classes are
-   unreferenced outside it. The file is **not** a wholesale delete.
-2. **Drop `plot_classes`** (task 9). Its only remaining holders are those dead
-   pda2c classes, `model_widget.py`, and the two fallback branches in
-   `model_editor.py`; once (1) lands, nothing reads it and plots come only from
-   `view_spec().plots`.
-3. **The equation validity badge + LaTeX preview**, which are the only reason
-   `parse/parseWidget.ui` and `parse/widget.py::ParseFormulaWidget` still exist.
-   A `value` `kind: "expression"` — a line edit that colours by whether the
-   equation parses, with the rendered form beside it — gives the four parse
-   editors back the two controls they lost, and the last `.ui` under `models/`
-   goes with it. The LaTeX conversion (`gui/widgets/models/parse/latex.py`) is
-   presentation and stays GUI-side; it is also used by `equation_editor` and
-   `expression_input`, so it stays regardless.
+**One framework addition the equation field needed:** `_autoform_full_row`. Fields
+pack two per row, and packed beside the model picker the equation editor shrank to
+showing its last three characters. A field can now ask for the whole row.
 
-**Copy the shape from `core/models/pch/pch_model.py`** if a new model ever needs
-writing: parameters in lists with `label_text` on them, a
-`_species_parameter_rows` for a `row_width: 2` table, zero-arg methods for any
-`button_row`, and a `view_spec_file`. Add each model to
-`JSON_DESCRIBED_TCSPC_MODELS` in `test/gui/test_model_editor_integration.py` —
-that guard is what catches a silently dropped section.
+**Two tests were red before this work and are fixed here.**
+`test_model_widget_metaclass.py` named `chisurf.gui.widgets.models.tcspc.et` as its
+worked example, and that module was deleted in increment 14 — so the file had been
+failing since. It is replaced by `test_model_widget_modules_import.py`, which
+asserts what still matters: every module under `gui/widgets/models` imports, and
+each deprecated class path resolves to a **non-widget** model with the right
+`name` (a path resolving to the wrong class is as broken as one that does not
+resolve, and just as quiet).
 
-**The one pattern that made a model tier B**, and the thing to look for in any
-future extraction: a computed output written through `get_fitting_client()` from
-inside `update_model`, wrapped in a bare `except`. It does nothing whenever that
-client is absent and says nothing about it. FIDA's mean, PCH's component
+*Not fixed here, and not caused here:* the PDA dynamic-fit convergence threshold
+(`chi2r = 1.5339` against `< 1.5`), which reproduces identically on the commit
+before this work. Recorded in [known issues](/references/known-issues.md) with the
+measurement and the question to answer before moving the number.
+
+# Where to pick this up: nothing open — how to keep it that way
+
+PRD-38 is complete. What follows is for whoever adds or changes a model next.
+
+**Adding a model.** Copy the shape from `core/models/pch/pch_model.py`: parameters
+in lists with `label_text` on them, a `_species_parameter_rows` for a
+`row_width: 2` table, zero-arg methods for any `button_row`, and a
+`view_spec_file`. Add it to `JSON_DESCRIBED_TCSPC_MODELS` in
+`test/gui/test_model_editor_integration.py` — that parametrized guard reads the
+ERROR log `AutoForm` emits and carries on from, so it is what catches a **silently
+dropped section**. Nothing else does.
+
+**The pattern that made a model hard to extract**, and the thing to look for in
+any Qt-side compute you meet: a computed output written through
+`get_fitting_client()` from inside `update_model`, wrapped in a bare `except`. It
+does nothing whenever that client is absent — headless, or before the editor has
+registered the fit — and says nothing about it. FIDA's mean, PCH's component
 defaults, dye-shape's D / tauD / cpm and ProteinMC's inter-dye distances were all
 this. The fix is a direct parameter write; the parameter's own controller binding
 repaints it.
+
+**Deleting a registered class needs a deprecation alias.** A user copy of
+`experiment_configs.yaml` *replaces* the bundled model list and a pickled project
+pins class paths, so a path that stops resolving drops its entry from the model
+menu without saying so. `test/gui/test_model_widget_modules_import.py` asserts each
+old path still resolves to a non-widget model with the right `name`.
 
 **How to verify a GUI change here:** the before/after parity rule
 ([testing workflow](/workflows/testing.md)) with `test/gui/migration_parity.py`.
@@ -715,23 +758,21 @@ afterwards. Three traps in reading the result:
   clicked checkable `QToolButton`s, which AutoForm's headers are not, so every
   `collapsed` panel was silently missing from every pair taken with it.
 
-# The `.ui` files under `models/` — what each one is waiting on
+# The `.ui` files under `models/` — all six are gone
 
-Six existed. Five are deleted; **one remains**, and it blocks on one named thing:
-
-| `.ui` | loaded by | registered? | blocked on |
-|---|---|:--:|---|
-| ~~`tcspc/tcspc_convolve.ui`~~ | — | — | **deleted** with the hand-written widget layer |
-| ~~`tcspc/tcspcCorrections.ui`~~ | — | — | **deleted** |
-| ~~`tcspc/et_model_free.ui`~~ | — | — | **deleted**; the ET model-free fit is deprecated, see [known issues](/references/known-issues.md) |
-| ~~`parameter_transform/parameter_transform.ui`~~ | — | — | **deleted**; its catalogue holds Python `code:`, which is two class attributes on the shared catalogue mixin |
-| `parse/parseWidget.ui` | `parse/widget.py::ParseFormulaWidget` | no | a `value` `kind: "expression"` (validity badge + LaTeX preview). Kept *only* for those two controls |
-| ~~`stopped_flow/reaction.ui`~~ | — | — | **deleted**; `ReactionModel` + `reaction.view.json` (increment 18) |
+| `.ui` | what replaced it |
+|---|---|
+| ~~`tcspc/tcspc_convolve.ui`~~ | deleted with the hand-written TCSPC widget layer (increment 14) |
+| ~~`tcspc/tcspcCorrections.ui`~~ | the same |
+| ~~`tcspc/et_model_free.ui`~~ | deleted; the ET model-free fit is deregistered — it was abstract and never openable, see [known issues](/references/known-issues.md) |
+| ~~`parameter_transform/parameter_transform.ui`~~ | `parameter_transform.view.json`; its Python-`code:` catalogue turned out to be two class attributes on the shared catalogue mixin |
+| ~~`stopped_flow/reaction.ui`~~ | `ReactionModel` + `reaction.view.json` (increment 18) |
+| ~~`parse/parseWidget.ui`~~ | a `value` `kind: "expression"` over the shared `ExpressionInput` (increment 20) |
 
 **The hand-written TCSPC widget layer is gone (increment 14).**
 `LifetimeModelWidgetBase`, `LifetimeWidget`, `ConvolveWidget`, `CorrectionsWidget`,
 `GenericWidget`, `AnisotropyWidget`, `GaussianWidget` and `DiscreteDistanceWidget`
-were reachable only from each other once every TCSPC model became data-described.
+were reachable only from each other once every model became data-described.
 `chisurf/gui/widgets/models/tcspc/` now holds **only** `__init__.py` (deprecation
 aliases) plus the κ² / Förster helpers the `kappa2_controls` section calls.
 
