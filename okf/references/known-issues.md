@@ -1,3 +1,32 @@
+## okf: the update log is ~40 % duplicated entries (2026-08-06)
+
+`okf/log.md` holds **1977 entries of which 1180 are distinct** — 765 appear more
+than once, some four times, and the repeats go back months (`chimol: sessions`,
+`Parameter error estimates were wrong by √2`, `German catalogue brought to ~90 %`).
+It is not one bad commit: several instances work this file at once, each inserting
+at the same `## <date>` anchor and each committing a *view* of the file that
+overlaps the others'.
+
+Re-derive it before touching anything:
+
+```python
+# split on lines starting with "## " (date headings) or "* **" (entries),
+# then count distinct entry bodies
+```
+
+**Not fixed here, deliberately.** De-duplicating touches ~11 500 lines of a file
+that other instances are committing to *right now*, and a mechanical pass that
+drops one entry by accident is worse than the duplication. It needs a dedicated
+change made when nothing else is mid-edit, with the check being that the set of
+**distinct** entries is identical before and after.
+
+**One trap already paid for.** A first attempt at that pass, run casually while
+doing something else, cut the file from 29 265 to 17 759 lines in one write —
+because "drop exactly-duplicated blocks" is only safe if the block splitter is
+right, and there is no undo for a working-tree write. It was restored from
+`HEAD` (the file happened to be clean), but that was luck, not design: **build
+the new content, diff it against the old, and only then write.**
+
 ## testing: `fret_trajectory`'s suite crashes the interpreter *after* every test passes
 
 **2026-08-06.** `pytest chisurf/plugins/traj/fret_trajectory/` reports
