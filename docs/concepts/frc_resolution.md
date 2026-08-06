@@ -65,12 +65,12 @@ halves are no longer equivalent measurements.
 The curve decays smoothly, so "where it falls to zero" is not a number. Three
 conventions are in use, and they disagree:
 
-**Fixed 1/7** (Nieuwenhuizen et al. 2013). A constant threshold of $1/7 \approx
+**Fixed 1/7** ({cite}`nieuwenhuizen2013`). A constant threshold of $1/7 \approx
 0.143$. It is the usual choice for fluorescence images, and the only one of the
 three that does not depend on how the rings were binned or how large the image
 is.
 
-**½-bit** (van Heel & Schatz 2005). The frequency at which the accumulated
+**½-bit** ({cite}`vanheel2005`). The frequency at which the accumulated
 information suffices to interpret the structure:
 
 $$T(q) = \frac{0.2071 + 1.9102/\sqrt{n_q}}{1.2071 + 0.9102/\sqrt{n_q}},$$

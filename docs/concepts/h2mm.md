@@ -101,9 +101,9 @@ Fitting maximizes $\mathcal{L}$ at fixed $K$ with the **Baum-Welch** algorithm
   $B_{ic} \propto \sum_{t:\,c_t=c} \gamma_t(i)$.
 
 Iterating **monotonically increases** $\mathcal{L}$ to a local optimum; random
-restarts are used and the best converged fit is kept. Pirchi & Tsukanov et al.
-2016 supplied the Baum-Welch reformulation guaranteeing per-iteration
-improvement, which made H2MM practical on Gopich & Szabo's 2009 estimator.
+restarts are used and the best converged fit is kept. {cite}`pirchi2016`
+supplied the Baum-Welch reformulation guaranteeing per-iteration improvement,
+which made H2MM practical on the estimator of {cite}`gopich2009`.
 
 ## How many states — BIC and ICL
 
@@ -115,12 +115,12 @@ $$
 \mathrm{BIC} = -2\ln\mathcal{L} + p\ln n,
 $$
 
-with $p$ free parameters and $n$ photons (**Bayesian Information Criterion**;
-Lerner et al. 2018 adapted it to H2MM), and the **Integrated Complete
+with $p$ free parameters and $n$ photons (**Bayesian Information Criterion**,
+adapted to H2MM in {cite}`lerner2018`), and the **Integrated Complete
 Likelihood** ($\mathrm{ICL}$), which adds a term for the entropy of the Viterbi
 state assignment — rewarding models whose states are *cleanly separable* and
 distrusting extra states that merely overlap. Plot both against $K$ and take the
-minimum; where they disagree, ICL's separability penalty (Harris et al. 2022)
+minimum; where they disagree, ICL's separability penalty ({cite}`harris2022`)
 is the safer default.
 
 ## Outputs — reading a fitted model
@@ -228,7 +228,7 @@ the accessible rate range at roughly
 $$
 \frac{1}{\text{burst duration}} \;\lesssim\; k \;\lesssim\;
 \frac{1}{\langle\Delta t\rangle},
-\qquad\text{here } 10^{3}\ \mathrm{s^{-1}} \dots 10^{5}\ \mathrm{s^{-1}} .
+\qquad\text{here } 10^{3}\ \mathrm{s^{-1}} \dots 5\times10^{4}\ \mathrm{s^{-1}} .
 $$
 
 Faster exchange is averaged within the photon spacing and shows up as a single

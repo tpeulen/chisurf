@@ -36,7 +36,7 @@ $\gamma_2$ a shape factor of the detection volume (for a 3-D Gaussian,
 $\gamma_2 = 1/2^{3/2} \approx 0.354$). The first equation is just the mean; the
 second — the **excess variance** — is quadratic in $\epsilon T$ and only linear
 in $N$, so mean and variance together solve for both. This is the **moment /
-Number & Brightness (N&B)** route (Qian & Elson 1990): from the apparent
+Number & Brightness (N&B)** route ({cite}`qian1990`): from the apparent
 brightness $B = \mathrm{Var}(k)/\langle k\rangle$ a photon-counting detector
 gives $\epsilon T = B - 1$ and $N = \langle k\rangle/(\epsilon T)$, the classic
 N&B convention that folds $\gamma_2$ into the reported brightness (so N&B
@@ -60,8 +60,8 @@ the entire reason to build the histogram.
 
 ## Single-species PCH
 
-The full histogram follows from two nested randomizations (Chen, Müller,
-Berland & Gratton 1999). First, a single molecule sitting at position
+The full histogram follows from two nested randomizations
+({cite}`chen1999`). First, a single molecule sitting at position
 $\mathbf{r}$ emits with a local brightness $\epsilon\,\bar{PSF}(\mathbf{r})$ set
 by the point-spread function, and its photon count is Poissonian at that rate.
 Integrating over all positions weighted by the PSF-shaped detection profile

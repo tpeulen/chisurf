@@ -1,0 +1,72 @@
+{
+  "accessible_volume.md": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "a9417470c5bf3159ede89b3e03b063f64aa99c76d1798df18b3fd6643f4d5e4b",
+    "status": "ai-reviewed"
+  },
+  "anisotropy.md": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "e041304102fb6415538d4c311d41ce3e8055bf8a146dbd97cc3cf0eb56c1742e",
+    "status": "ai-reviewed"
+  },
+  "ebfret.md": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "3d55bf9e1c8da55161bd788b7d8520e6a3fd58e3db4458d1b5ce1271750d586a",
+    "status": "ai-reviewed"
+  },
+  "fcs_correlation.md": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "a86714edcb9283427e86758bf8e120fb7dde4635264dd3646ee7d846d7bb8b7b",
+    "status": "ai-reviewed"
+  },
+  "filtered_fcs.md": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "dacf392e8dee2aac6324e25300c5052b991a5e4d3161b4d4d1958008df5ae250",
+    "status": "ai-reviewed"
+  },
+  "fret.md": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "4a2baf6318449e53030be279c5090a167d13e38982ab2104baaa2e3cca6999c2",
+    "status": "ai-reviewed"
+  },
+  "h2mm.md": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "3f7a5f6ada0014ec2a4cd9b1c5e5cf68f0e075ded7ff41f47abef89a23d118bb",
+    "status": "ai-reviewed"
+  },
+  "photophysics_simulation.md": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "ad0bebf423a89c05c668a97b98509a7db40f12e26df661a47be11db2cdd709bf",
+    "status": "ai-reviewed"
+  },
+  "smfret_bursts.md": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "acf1235dec795bdb7148ec3311be98e08282e69af82457c02e269c672f62cc22",
+    "status": "ai-reviewed"
+  },
+  "tcspc_lifetime.md": {
+    "date": "2026-08-06",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "be4de56b8810b2e53947cc78241570dec396862e1d848f3e348e48d0349a9be6",
+    "status": "ai-reviewed"
+  }
+}

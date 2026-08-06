@@ -9,7 +9,7 @@ See {ref}`concept-fcs-correlation` for the FCS correlation function, the confoca
 
 The ordinary FCS models approximate the confocal detection volume by a 3-D
 Gaussian, which is only a rough description of a real confocal spot. The
-**molecule-detection function** (MDF; Enderlein et al., 2005) is a more faithful,
+**molecule-detection function** (MDF; {cite}`enderlein2005`) is a more faithful,
 semi-analytic profile — a **Gauss–Lorentz** shape built from the overlap of a
 Gaussian excitation beam and a Gaussian-imaged pinhole, whose lateral width and
 collection efficiency vary with axial position:

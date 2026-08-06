@@ -7,7 +7,7 @@ long confocal trace of one tethered molecule — is recorded as an **intensity
 rate. Each trace is a noisy staircase: the molecule sits in a conformational
 state for a while, then hops to another, and the apparent FRET efficiency jumps
 between discrete levels buried in shot and background noise. **ebFRET**
-(van de Meent et al. 2014) recovers the hidden staircase — the number of states,
+({cite}`vandemeent2014`) recovers the hidden staircase — the number of states,
 their FRET levels, and the transition rates between them — by fitting a
 Gaussian-emission hidden Markov model to the binned signal, with an
 **empirical-Bayes** prior shared across the whole set of traces so that
@@ -47,7 +47,7 @@ Classic HMM fitting (Baum-Welch / maximum likelihood, as vbFRET's predecessor
 HaMMy used) returns a single best $(\boldsymbol\pi, \mathbf{A}, \mu, \lambda)$
 and then needs an external criterion to decide $K$. It also **over-fits** short
 noisy traces: with enough states it can carve one molecule's noise into spurious
-sub-levels. vbFRET (Bronson et al. 2009) replaced point estimates with
+sub-levels. vbFRET ({cite}`bronson2009`) replaced point estimates with
 **variational Bayes**: it places conjugate priors on the parameters — a
 **Dirichlet** prior on $\boldsymbol\pi$ and on each row of $\mathbf{A}$, and a
 **Normal-Gamma** prior on each state's $(\mu_i, \lambda_i)$ — and infers full
@@ -109,7 +109,7 @@ the model that best trades fit against parsimony wins the scan directly.
 Once a model is chosen, each trace is decoded to its most-probable state path by
 the **Viterbi** algorithm, and the path is segmented into **dwells** (maximal
 same-state runs, each with a dwell time and the FRET level it sat at). The
-canonical summary is the **transition-density plot** (Blanco & Walter 2010): a
+canonical summary is the **transition-density plot** ({cite}`blanco2010`): a
 2-D histogram of FRET-before ($E_{\text{initial}}$) against FRET-after
 ($E_{\text{final}}$) at every transition, pooled over all molecules. Each
 off-diagonal peak is one interconversion $i \to j$; its position reads off the
@@ -187,10 +187,12 @@ at either end of it.
 
 - Guide: {doc}`/guides/20_ebfret_binned_hmm`; photon-by-photon alternative
   {ref}`concept-h2mm`.
-- Plugin: `chisurf/plugins/burst/burst_ebfret/` — per-trace VBEM
-  (`core/vbem.py`), empirical-Bayes prior loop (`core/ebayes.py`), Viterbi
-  decoding (`core/viterbi.py`), state scan and dwell/transition outputs
-  (`core/analysis.py`).
+- Plugin `chisurf/plugins/burst/burst_ebfret/` — per-trace VBEM
+  {src}`chisurf/plugins/burst/burst_ebfret/core/vbem.py`, empirical-Bayes prior
+  loop {src}`chisurf/plugins/burst/burst_ebfret/core/ebayes.py`, Viterbi
+  decoding {src}`chisurf/plugins/burst/burst_ebfret/core/viterbi.py`, state scan
+  and dwell/transition outputs
+  {src}`chisurf/plugins/burst/burst_ebfret/core/analysis.py#analyse`.
 - Key literature: {cite}`vandemeent2014` is ebFRET — the empirical-Bayes
   variational HMM this implements; {cite}`bronson2009` is vbFRET, the per-trace
   variational method it builds on; {cite}`blanco2010` on reading

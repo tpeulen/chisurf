@@ -1210,3 +1210,60 @@ schaffer1999:
   doi: 10.1021/jp9833597
   note: The G = S_par/S_perp convention and the l1, l2 channel-mixing correction.
   topics: [anisotropy, tcspc]
+
+lerner2018:
+  authors: E. Lerner, T. Cordes, A. Ingargiola, Y. Alhadid, S. Chung, X. Michalet, S. Weiss
+  title: Toward dynamic structural biology - two decades of single-molecule Förster resonance energy transfer
+  journal: Science
+  year: 2018
+  volume: 359
+  pages: eaan1133
+  doi: 10.1126/science.aan1133
+  note: A review of the field, including the model-selection criteria used with H2MM.
+  topics: [smfret, fret, dynamics]
+
+# ── Photon-counting histograms and intensity distributions ──────────
+
+qian1990:
+  authors: H. Qian, E. L. Elson
+  title: On the statistics of fluorescence correlation spectroscopy
+  journal: Biophysical Chemistry
+  year: 1990
+  volume: 38
+  pages: 49-57
+  doi: 10.1016/0301-4622(90)80039-A
+  note: The moment analysis behind Number & Brightness.
+  topics: [fcs, pch]
+
+chen1999:
+  authors: Y. Chen, J. D. Müller, P. T. C. So, E. Gratton
+  title: The photon counting histogram in fluorescence fluctuation spectroscopy
+  journal: Biophysical Journal
+  year: 1999
+  volume: 77
+  pages: 553-567
+  doi: 10.1016/S0006-3495(99)76912-2
+  note: PCH itself - the histogram derived from the detection profile.
+  topics: [pch, fcs]
+
+kask1999:
+  authors: P. Kask, K. Palo, D. Ullmann, K. Gall
+  title: Fluorescence-intensity distribution analysis and its application in biomolecular detection technology
+  journal: Proceedings of the National Academy of Sciences
+  year: 1999
+  volume: 96
+  pages: 13756-13761
+  doi: 10.1073/pnas.96.24.13756
+  note: FIDA - the generating-function route to the same histogram.
+  topics: [pch, fcs]
+
+kalinin2007:
+  authors: S. Kalinin, S. Felekyan, M. Antonik, C. A. M. Seidel
+  title: Probability distribution analysis of single-molecule fluorescence anisotropy and resonance energy transfer
+  journal: The Journal of Physical Chemistry B
+  year: 2007
+  volume: 111
+  pages: 10253-10262
+  doi: 10.1021/jp072293p
+  note: PDA extended to anisotropy, and the treatment of the brightness distribution.
+  topics: [pda, smfret]

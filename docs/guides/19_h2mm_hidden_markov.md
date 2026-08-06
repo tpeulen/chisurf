@@ -9,7 +9,7 @@ BIC/ICL — is explained in the concept page {ref}`concept-h2mm`.
 
 ## What it does
 
-**H2MM** (Pirchi et al. 2016; Harris et al. 2022) fits a hidden Markov model
+**H2MM** ({cite}`pirchi2016,harris2022`) fits a hidden Markov model
 directly to the **photon stream** — not to binned intensities — so it resolves
 sub-burst FRET-state dynamics down to the microsecond scale, well below the bin
 sizes an intensity-trace HMM needs. It maximises the photon-by-photon likelihood

@@ -10,7 +10,7 @@ Pages cite a work by its **key** — the name each entry is anchored under below
 and the citation renders as a link to the paper. The source of truth is
 [`bibliography.yaml`](bibliography.yaml) — add a work there and it appears here.
 
-*112 works.*
+*117 works.*
 
 
 ## FRET: mechanism, accuracy and corrections
@@ -64,6 +64,11 @@ and the citation renders as a link to the paper. The source of truth is
 **[Lee et al. (2005)](https://doi.org/10.1529/biophysj.104.054114)** — N. K. Lee, A. N. Kapanidis, Y. Wang, X. Michalet, J. Mukhopadhyay, R. H. Ebright, S. Weiss. *Accurate FRET measurements within single diffusing biomolecules using alternating-laser excitation*. Biophysical Journal **88**, 2939-2953. (2005).  
 *The ALEX correction scheme and the 1/S-vs-E construction.*
 
+(lerner2018)=
+
+**[Lerner et al. (2018)](https://doi.org/10.1126/science.aan1133)** — E. Lerner, T. Cordes, A. Ingargiola, Y. Alhadid, S. Chung, X. Michalet, S. Weiss. *Toward dynamic structural biology - two decades of single-molecule Förster resonance energy transfer*. Science **359**, eaan1133. (2018).  
+*A review of the field, including the model-selection criteria used with H2MM.*
+
 (peulen2017)=
 
 **[Peulen et al. (2017)](https://doi.org/10.1021/acs.jpcb.7b03441)** — T. O. Peulen, O. Opanasyuk, C. A. M. Seidel. *Combining graphical and analytical methods with molecular simulations to analyze time-resolved FRET measurements of labeled macromolecules accurately*. Journal of Physical Chemistry B **121**, 8211-8241. (2017).  
@@ -100,6 +105,11 @@ and the citation renders as a link to the paper. The source of truth is
 
 **[Ingargiola et al. (2016)](https://doi.org/10.1371/journal.pone.0160716)** — A. Ingargiola, E. Lerner, S. Chung, S. Weiss, X. Michalet. *FRETBursts - an open source toolkit for analysis of freely-diffusing single-molecule FRET*. PLOS ONE **11**, e0160716. (2016).  
 *The open burst-analysis toolkit, and the PyBroMo diffusion simulator beside it.*
+
+(kalinin2007)=
+
+**[Kalinin et al. (2007)](https://doi.org/10.1021/jp072293p)** — S. Kalinin, S. Felekyan, M. Antonik, C. A. M. Seidel. *Probability distribution analysis of single-molecule fluorescence anisotropy and resonance energy transfer*. The Journal of Physical Chemistry B **111**, 10253-10262. (2007).  
+*PDA extended to anisotropy, and the treatment of the brightness distribution.*
 
 (kapanidis2004)=
 
@@ -207,6 +217,11 @@ and the citation renders as a link to the paper. The source of truth is
 
 **[Böhmer et al. (2002)](https://doi.org/10.1016/s0009-2614(02)00044-1)** — M. Böhmer, M. Wahl, H. J. Rahn, R. Erdmann, J. Enderlein. *Time-resolved fluorescence correlation spectroscopy*. Chemical Physics Letters **353**, 439-445. (2002).
 
+(chen1999)=
+
+**[Chen et al. (1999)](https://doi.org/10.1016/S0006-3495(99)76912-2)** — Y. Chen, J. D. Müller, P. T. C. So, E. Gratton. *The photon counting histogram in fluorescence fluctuation spectroscopy*. Biophysical Journal **77**, 553-567. (1999).  
+*PCH itself - the histogram derived from the detection profile.*
+
 (dertinger2007)=
 
 **[Dertinger et al. (2007)](https://doi.org/10.1002/cphc.200600638)** — Thomas Dertinger, Victor Pacheco, Iris von der Hocht, Rudolf Hartmann, Ingo Gregor, Jörg Enderlein. *Two‐Focus Fluorescence Correlation Spectroscopy: A New Tool for Accurate and Absolute Diffusion Measurements*. ChemPhysChem **8**, 433-443. (2007).  
@@ -251,6 +266,11 @@ and the citation renders as a link to the paper. The source of truth is
 **[Kapusta et al. (2007)](https://doi.org/10.1007/s10895-006-0145-1)** — P. Kapusta, M. Wahl, A. Benda, M. Hof, J. Enderlein. *Fluorescence lifetime correlation spectroscopy*. Journal of Fluorescence **17**, 43-48. (2007).  
 *Lifetime filtering of correlation curves.*
 
+(kask1999)=
+
+**[Kask et al. (1999)](https://doi.org/10.1073/pnas.96.24.13756)** — P. Kask, K. Palo, D. Ullmann, K. Gall. *Fluorescence-intensity distribution analysis and its application in biomolecular detection technology*. Proceedings of the National Academy of Sciences **96**, 13756-13761. (1999).  
+*FIDA - the generating-function route to the same histogram.*
+
 (magde1972)=
 
 **[Magde et al. (1972)](https://doi.org/10.1103/PhysRevLett.29.705)** — D. Magde, E. L. Elson, W. W. Webb. *Thermodynamic fluctuations in a reacting system — measurement by fluorescence correlation spectroscopy*. Physical Review Letters **29**, 705-708. (1972).  
@@ -264,6 +284,11 @@ and the citation renders as a link to the paper. The source of truth is
 (petrasek2008)=
 
 **[Petrášek & Schwille (2008)](https://doi.org/10.1529/biophysj.107.108811)** — Z. Petrášek, P. Schwille. *Precise measurement of diffusion coefficients using scanning fluorescence correlation spectroscopy*. Biophysical Journal **94**, 1437-1448. (2008).
+
+(qian1990)=
+
+**[Qian & Elson (1990)](https://doi.org/10.1016/0301-4622(90)80039-A)** — H. Qian, E. L. Elson. *On the statistics of fluorescence correlation spectroscopy*. Biophysical Chemistry **38**, 49-57. (1990).  
+*The moment analysis behind Number & Brightness.*
 
 (rigler1993)=
 

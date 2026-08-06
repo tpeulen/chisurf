@@ -146,11 +146,13 @@ width $\sigma$ with $R_0 = 52$ Å:
 
 | $\langle R_{DA}\rangle$ | $\sigma = 3$ Å | $\sigma = 6$ Å | $\sigma = 10$ Å | $\sigma = 15$ Å |
 |---|---|---|---|---|
-| 40 Å (below $R^\ast$) | +0.3 Å | +1.1 Å | +2.4 Å | +3.7 Å |
-| 50 Å (near $R^\ast$) | −0.0 Å | −0.1 Å | −0.1 Å | +0.0 Å |
-| 65 Å (above $R^\ast$) | −0.3 Å | −1.2 Å | −2.7 Å | −4.7 Å |
+| 40 Å (below $R^\ast$) | +0.3 Å | +1.1 Å | +2.3 Å | +3.6 Å |
+| 50 Å (near $R^\ast$) | −0.0 Å | −0.1 Å | −0.0 Å | +0.0 Å |
+| 65 Å (above $R^\ast$) | −0.3 Å | −1.1 Å | −2.7 Å | −4.6 Å |
 
-(entries are $\langle R_{DA}\rangle_E - \langle R_{DA}\rangle$.)
+(Entries are $\langle R_{DA}\rangle_E - \langle R_{DA}\rangle$, computed from a
+Gaussian $P(R)$ sampled on a fine grid over $\pm 6\sigma$ and truncated below
+$R = 1$ Å.)
 
 Three things follow. To leading order the discrepancy is the Jensen term
 $\tfrac{1}{2}\sigma^2 E''$, so it grows roughly with the **square of the cloud
@@ -210,9 +212,13 @@ hands the network to an AV-restraint scoring function for docking and refinement
 
 - Guides: {doc}`/guides/23_accessible_volume` (AV workflow and API) ·
   {doc}`/guides/03_polymer_distance_distributions` (analytic $P(R)$ shapes).
-- Code: `chisurf/core/structure/av/` (`BasicAV`, `ACV`, `DynamicAV`); FRET plugin
-  `chisurf/plugins/modelling/fret/` (`core/av.py`, `core/distance.py`,
-  `core/imp_engine.py`); editor `chisurf/plugins/modelling/fps_json_editor/`.
+- Code: the AV classes
+  {src}`chisurf/core/structure/av/__init__.py#BasicAV`,
+  {src}`chisurf/core/structure/av/__init__.py#ACV` and
+  {src}`chisurf/core/structure/av/__init__.py#DynamicAV`; FRET plugin
+  {src}`chisurf/plugins/modelling/fret/core/av.py` and
+  {src}`chisurf/plugins/modelling/fret/core/distance.py`; editor
+  `chisurf/plugins/modelling/fps_json_editor/`.
 - Key literature: {cite}`sindbert2011` introduces the accessible volume and
   measures what the linker does to a distance; {cite}`kalinin2012` is the FPS
   toolkit and its benchmark; {cite}`dimura2016` reviews FRET-restrained

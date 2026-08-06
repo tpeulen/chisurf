@@ -12,7 +12,7 @@ page {ref}`concept-filtered-fcs`.
 
 When two species share the same diffusion time but differ in **fluorescence
 lifetime** (or spectrum, or polarisation), ordinary FCS cannot separate them.
-**Filtered FCS** (Enderlein & Gregor 2005; Felekyan et al. 2012) uses the
+**Filtered FCS** ({cite}`gregor2005,felekyan2012`) uses the
 micro-time (TCSPC) pattern as a fingerprint: from the species' reference decay
 patterns it computes statistical **weighting filters** such that correlating the
 filter-weighted photons yields the *species-selective* auto- and

@@ -2,6 +2,14 @@
 
 ## 2026-08-06
 
+* **Nineteen more citations written as prose, and one table that did not reproduce** ([documentation browser](subsystems/documentation-browser.md)).
+
+  Nineteen works were still cited in running text — "Pirchi & Tsukanov et al. 2016", "Chen, Müller, Berland & Gratton 1999" — across eight concept and guide pages. Each is now a key, which took five works into the bibliography that were being relied on without being recorded anywhere (`qian1990`, `chen1999`, `kask1999`, `kalinin2007`, `lerner2018`); 117 works, all but three with a verified DOI.
+
+  **The accessible-volume Jensen table was recomputed rather than trusted.** Three of its twelve cells were off by 0.1 Å, and the page did not say how it had been produced — so nobody could tell whether the disagreement was rounding or an error. The entries now match a stated computation (a Gaussian $P(R)$ on a fine grid over $\pm 6\sigma$, truncated below 1 Å) and the recipe is on the page, which is what makes a number in the documentation checkable at all.
+
+  Also corrected in H2MM: the accessible rate window was quoted as reaching $10^5\ \mathrm{s^{-1}}$ where the stated 20 µs photon spacing gives $5\times10^{4}$.
+
 * **A burst measurement had a time axis and no way to look at it** ([ndX](plugins/ndxplorer.md)).
 
   Every burst carries `Mean Macro Time (s)`, monotonic across all the `.bur` files of a measurement, and ndX drew the whole acquisition as one static 2-D histogram — which is an integral over time, so a photobleaching sample and a stable one with broader populations produce the same picture. The machinery to fix that was already in the file, wired to the wrong thing: the `Image` group box held a spin box, five transport buttons and a `QTimer` bound to an image **frame index**, and `axis_helpers` explicitly rejected any column whose name contains "time". For burst data the whole box was hidden — taking the `weight` checkbox and combo, which happened to live inside it, with it, so histogram weighting was unreachable for bursts.

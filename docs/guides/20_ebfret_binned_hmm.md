@@ -11,7 +11,7 @@ against photon-by-photon H2MM are explained in the concept page
 ## What it does
 
 Wide-field / TIRF-camera FRET gives **binned intensity-vs-time** traces rather
-than confocal photon streams. **ebFRET** (van de Meent et al. 2014) fits these
+than confocal photon streams. **ebFRET** ({cite}`vandemeent2014`) fits these
 with an empirical-Bayes Gaussian-emission HMM: an inner per-trace variational
 Bayes EM, and an outer loop that re-estimates a **shared prior** across all
 traces, so information is pooled and state counts are selected by evidence. It is

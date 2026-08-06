@@ -12,7 +12,7 @@ concept page {ref}`concept-pda2c`.
 The FRET-efficiency histogram of freely-diffusing single molecules is broadened
 by **shot noise**: even a single, perfectly static distance produces a spread of
 apparent efficiencies because each burst contains only a finite number of
-photons. **PDA** (Antonik et al. 2006; Kalinin et al. 2007) models this exactly.
+photons. **PDA** ({cite}`antonik2006,kalinin2007`) models this exactly.
 
 Given the experimental burst-size distribution $P(F)$ and a donor–acceptor
 distance (or distance distribution), PDA predicts the full two-dimensional
