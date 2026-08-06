@@ -160,3 +160,49 @@ def test_a_value_the_fit_will_not_move_is_dimmed(session):
     assert ParameterGroupTableModel._foreground("value", fixed) is not None
     assert ParameterGroupTableModel._foreground("name", fixed) is None
     assert ParameterGroupTableModel._foreground("value", free) is None
+
+
+def test_a_parameter_is_addressed_by_its_own_fit_not_its_group(qapp, monkeypatch):
+    """A grouped fit's member parameters must not be addressed by the group uid.
+
+    ``FitGroup.model`` is the **selected** member's model, so a group uid
+    resolves to whichever member happens to be selected.  Addressing a
+    parameter of any *other* member by name plus that uid wrote the value to
+    the selected member instead — silently, with ``ok: True``.
+    """
+    from chisurf.gui.widgets.fitting.parameter_widgets import (
+        FittingParameterProxyController,
+    )
+    from chisurf.server.services.parameters import set_parameter_value
+
+    x = np.arange(1, 64, dtype=np.float64)
+    curves = [
+        data.DataCurve(x=x, y=1000.0 * np.exp(-x / tau) + 1.0, ey=np.sqrt(
+            1000.0 * np.exp(-x / tau) + 1.0), name=f"decay{tau}")
+        for tau in (10.0, 20.0)
+    ]
+    fit = FitGroup(
+        data=data.DataCurveGroup(curves, name="decays"), model_class=LifetimeModel
+    )
+    monkeypatch.setattr(chisurf, "fits", [fit], raising=False)
+    members = list(fit.grouped_fits)
+    assert len(members) == 2 and fit.selected_fit_index == 0
+
+    # The parameter of the member that is *not* selected.
+    target = members[1].model.parameters_all_dict["dt"]
+    other = members[0].model.parameters_all_dict["dt"]
+    target.value, other.value = 101.0, 100.0
+
+    controller = FittingParameterProxyController(target)
+    address = controller._rpc_address(target)
+    assert address["fit_uid"] == str(members[1].unique_identifier)
+    assert address["fit_uid"] != str(fit.unique_identifier)
+
+    # Even without the UUID that normally short-circuits the lookup, the
+    # name-plus-fit path must reach the owning member.
+    legacy = {k: v for k, v in address.items() if k not in ("parameter_uid", "owner_uid")}
+    result = set_parameter_value(state=SessionState(fits=[fit]), value=999.0, **legacy)
+
+    assert result.get("ok") is True
+    assert target.value == 999.0
+    assert other.value == 100.0, "the write landed on the selected member"

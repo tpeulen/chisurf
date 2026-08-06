@@ -83,6 +83,14 @@ another one would apply it to the wrong fit. An empty or absent uid means
 "unspecified" and uses the index. Clients must therefore omit a uid they cannot
 determine rather than sending `""`.
 
+**A group uid is not a substitute for a member uid.** `FitGroup.model` is the
+*selected* member's model, so a group uid addresses whichever member is
+currently selected. Anything naming a parameter must address the **local fit
+that owns it** (`_rpc_address` sends `local_fit_uid`), or a name-based write for
+a non-selected member's parameter silently lands on the selected one. Resolving
+a parameter by `parameter_uid` avoids the question entirely and is preferred;
+the fit uid is the fallback path, and it has to be right too.
+
 # Citations
 
 [1] [ChiSurf architecture doc](/references/architecture-doc.md)

@@ -793,7 +793,14 @@ class ParameterActionsMixin:
         source = self._parameter_context(parameter) if source is None else source
         address = {
             "parameter_name": str(getattr(parameter, "name", "")),
-            "fit_uid": source.get("fit_uid") or None,
+            # Address the *local fit* that owns the parameter, not its group.
+            # ``FitGroup.model`` is the **selected** member's model, so a group
+            # uid resolves to whichever member happens to be selected: a
+            # name-based write for a parameter of any other member silently
+            # landed on the wrong member (``ok: True``, no error). The group uid
+            # remains the fallback for a parameter outside any grouped fit, and
+            # ``_parameter_context`` still records both for provenance.
+            "fit_uid": source.get("local_fit_uid") or source.get("fit_uid") or None,
             "parameter_uid": source.get("parameter_uid") or None,
             "owner_uid": source.get("owner_uid") or None,
         }
