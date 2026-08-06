@@ -2,6 +2,14 @@
 
 ## 2026-08-06
 
+* **The atomic-mass table, transcribed -- and `measure_weight` with it** ([pymol parity](plugins/pymol-parity.md)).
+
+  The blocker named earlier today is gone. `chempy.atomic_mass` is PyMOL's own IUPAC table; `analysis/make_elements.py` transcribes it into `analysis/elements.py` (109 symbols), never hand-entered and never a new dependency -- the same arrangement as the 547 space groups, and for the same reason: the transcription can be **redone and diffed** rather than trusted.
+
+  Three things it turned on. PyMOL lists every symbol **twice**, cased and upper (`He` and `HE`), and that duplication is the useful part rather than noise: a PDB element column is written both ways, and a table that knows one spelling drops every metal in half the files there are -- to *nothing*, not to an error. An unknown symbol returns `None` and is **counted**, never defaulted, because a weight quietly missing a metal is the kind of wrong number that gets published. And the table is verified by **properties plus its size**: a truncated extraction is self-consistent and passes every spot check that falls inside it, so the count is asserted alongside the IUPAC values *and* a check that masses rise across a period -- which is what catches a dropped row pairing symbols with their neighbours' masses.
+
+  `measure_weight` lands, and `measure_inertia` is **mass-weighted** as ChimeraX's is rather than reporting itself unweighted. Checked by hand where a reader can follow it: residue 1 of 148L is a methionine whose eight heavy atoms (N + 5 C + O + S) come to **122.13 Da**, and the whole polymer to **17.3 kDa** -- the hydrogen-less weight an X-ray structure should have, against ~18.7 kDa with hydrogens. That leaves four of ChimeraX's eight `measure_*` commands, of which `measure_correlation` is next.
+
 * **The documentation becomes maintainable: addresses, code links, registers, and a written refresh procedure** ([documentation browser](subsystems/documentation-browser.md)).
 
   **A link to code opens the code editor, addressed by symbol.** `` {src}`chisurf/core/fitting/fit.py#sample_fit` `` resolves by *parsing* the file, not by counting lines: a line number is correct exactly until somebody edits the file above it, and then it points at the wrong thing while still looking right, whereas a renamed symbol fails loudly and the reader is told the page is stale. The editor already open is reused and the file lands in a new tab, so following three references leaves one editor with three tabs rather than three editors. The same role renders on the website as a link into the repository browser, so one spelling serves both.

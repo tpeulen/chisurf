@@ -1321,6 +1321,52 @@ class MeasurementMixin(BaseCmd):
             f"probe {probe_radius:g} A)"
         )
 
+    def _atom_masses(self, atoms, chosen: np.ndarray):
+        """Masses of the chosen atoms, and how many elements were unrecognised.
+
+        The element column is the authority; where a structure carries none, the
+        *atom name* is not guessed from -- PyMOL's own reader derives an element
+        when it must, and inventing a second, worse guesser here would make two
+        answers to one question.
+        """
+        from ..analysis.elements import masses_for
+
+        fields = atoms.dtype.names or ()
+        if "element" not in fields:
+            return np.zeros(int(chosen.sum()), dtype=float), int(chosen.sum())
+        symbols = [str(v) for v in np.asarray(atoms["element"])[chosen]]
+        return masses_for(symbols)
+
+    @command("measure_weight", aliases=("molecular_weight",))
+    def measure_weight(self, sel: Selection = "all") -> None:
+        """Molecular weight of a selection, in daltons (ChimeraX ``measure weight``).
+
+        The masses are PyMOL's own table, transcribed by
+        ``analysis/make_elements.py`` -- taken from the reference rather than
+        from an independent list so that a weight reported here and a weight
+        reported there cannot differ by a rounding convention.
+        """
+        atoms, mask, _object_id = self._selection_atoms(sel, "measure_weight")
+        if atoms is None:
+            return
+        chosen = np.asarray(mask, dtype=bool)
+        count = int(chosen.sum())
+        if not count:
+            self._emit_error(f"measure_weight: '{sel}' matched no atoms")
+            return
+
+        weights, unknown = self._atom_masses(atoms, chosen)
+        if unknown == count:
+            self._emit_error(
+                "measure_weight: this structure carries no element symbols, so "
+                "there is nothing to weigh"
+            )
+            return
+        caveat = f" ({unknown} of unknown element, not counted)" if unknown else ""
+        self._emit_message(
+            f"measure_weight: {count} atoms weigh {weights.sum():.1f} Da{caveat}"
+        )
+
     @command("measure_center", aliases=("centroid",))
     def measure_center(self, sel: Selection = "all") -> None:
         """Centre of a selection, in Angstrom (ChimeraX ``measure center``).
@@ -1353,16 +1399,18 @@ class MeasurementMixin(BaseCmd):
         ascending and the third axis flipped if needed so the axes are
         right-handed.
 
-        **Unweighted**, and that is stated in the output rather than hidden:
-        ChimeraX weights by atomic mass, and ChiMOL has no mass table. For a
-        protein the two differ little -- carbon, nitrogen and oxygen are within
-        14 % of each other -- but "little" is not "not at all", and a number
-        whose weighting nobody can see is worse than one that says what it is.
+        **Mass-weighted**, as ChimeraX is, from the transcribed element table.
+        An element the table does not know contributes nothing and is *counted*:
+        the message says how many, because a molecular weight quietly missing a
+        metal is the kind of wrong number that gets published.
         """
+        from ..analysis.elements import masses_for
+
         atoms, mask, _object_id = self._selection_atoms(sel, "measure_inertia")
         if atoms is None:
             return
-        xyz = np.asarray(atoms["xyz"], dtype=float)[np.asarray(mask, dtype=bool)]
+        chosen = np.asarray(mask, dtype=bool)
+        xyz = np.asarray(atoms["xyz"], dtype=float)[chosen]
         if xyz.shape[0] < 3:
             self._emit_error(
                 f"measure_inertia: '{sel}' has {xyz.shape[0]} atoms; three are "
@@ -1370,10 +1418,23 @@ class MeasurementMixin(BaseCmd):
             )
             return
 
-        centre = xyz.mean(axis=0)
+        weights, unknown = self._atom_masses(atoms, chosen)
+        total = float(weights.sum())
+        if total <= 0.0:
+            self._emit_error(
+                "measure_inertia: no atom carried a recognised element, so the "
+                "tensor would have no weight at all"
+            )
+            return
+
+        # ChimeraX's moments_of_inertia: the weighted second moments, divided by
+        # the total weight, then shifted to the centre by the parallel-axis term.
+        weighted = weights.reshape(-1, 1) * xyz
+        tensor = (xyz * weighted).sum() * np.identity(3) - xyz.T @ weighted
+        tensor /= total
+        centre = weighted.sum(axis=0) / total
+        tensor -= float(np.dot(centre, centre)) * np.identity(3) - np.outer(centre, centre)
         centred = xyz - centre
-        tensor = (centred * centred).sum() * np.identity(3) - centred.T @ centred
-        tensor /= float(xyz.shape[0])
         values, vectors = np.linalg.eigh(tensor)
         order = np.argsort(values)
         values, axes = values[order], vectors[:, order].T
@@ -1383,9 +1444,10 @@ class MeasurementMixin(BaseCmd):
         extents = [
             float(np.ptp(centred @ axis)) for axis in axes
         ]
+        caveat = f"; {unknown} atoms of unknown element carried no weight" if unknown else ""
         self._emit_message(
-            "measure_inertia: unweighted (no mass table); "
-            f"centre [{centre[0]:.3f}, {centre[1]:.3f}, {centre[2]:.3f}], "
+            f"measure_inertia: mass-weighted ({total:.1f} Da){caveat}; "
+            f"centre of mass [{centre[0]:.3f}, {centre[1]:.3f}, {centre[2]:.3f}], "
             "moments "
             + ", ".join(f"{v:.4g}" for v in values)
             + "; extents along the axes "

@@ -166,15 +166,50 @@ def test_the_first_inertia_axis_lies_along_the_longest_extent(cmd):
     assert extents[0] == max(extents), f"axis 0 is not the long one: {extents}"
 
 
-def test_inertia_says_it_is_unweighted(cmd):
-    """ChimeraX weights by atomic mass and ChiMOL has no mass table.
+def test_inertia_is_mass_weighted_and_says_the_total(cmd):
+    """ChimeraX weights by atomic mass, so ChiMOL does too now that it has one.
 
-    The difference is small for a protein and it is not nothing, so the output
-    states it. A number whose weighting nobody can see is worse than one that
-    says what it is.
+    The total is reported because it is the cheap check on the weighting: a
+    protein whose mass comes out an order from expectation has an element
+    column nobody read.
     """
     said, _complained = cmd("measure_inertia all")
-    assert "unweighted" in said, said
+    assert "mass-weighted" in said, said
+    assert "centre of mass" in said, said
+
+
+def test_the_molecular_weight_matches_the_chemistry(cmd):
+    """Residue 1 of 148L is a methionine with its eight heavy atoms.
+
+    N + 5 C + O + S = 14.007 + 60.055 + 15.999 + 32.065 = 122.13 Da, and that is
+    a number a reader can check by hand -- which is the point of choosing it.
+    """
+    said, complained = cmd("measure_weight resi 1")
+    assert not complained, complained
+    assert _number(said) == 8, said
+    weight = float(re.search(r"weigh ([\d.]+) Da", said).group(1))
+    assert weight == pytest.approx(122.13, abs=0.05), said
+
+
+def test_the_whole_protein_weighs_what_a_hydrogen_less_structure_should(cmd):
+    """An X-ray structure carries no hydrogens, so the weight is the heavy-atom
+    one -- ~17.3 kDa for T4 lysozyme against ~18.7 kDa with hydrogens. Asserting
+    the smaller number is asserting that nothing was invented."""
+    said, complained = cmd("measure_weight polymer")
+    assert not complained, complained
+    weight = float(re.search(r"weigh ([\d.]+) Da", said).group(1))
+    assert 17_000 < weight < 17_600, said
+
+
+def test_atoms_of_unknown_element_are_counted_not_guessed(cmd):
+    """A weight quietly missing a metal is the kind of wrong number that gets
+    published, so the message says how many were skipped."""
+    from chisurf.plugins.chimol.chimol.analysis.elements import masses_for
+
+    masses, unknown = masses_for(["C", "N", "ZZ", "FE"])
+    assert unknown == 1
+    assert masses[2] == 0.0
+    assert masses[3] == pytest.approx(55.845)
 
 
 def test_a_selection_too_small_for_a_tensor_is_refused(cmd):

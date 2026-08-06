@@ -271,7 +271,7 @@ not**, and they group into five kinds:
 
 | Gap | Commands | Worth |
 | --- | --- | --- |
-| **Measurement** | ~~`measure_buriedarea`~~ ~~`measure_center`~~ ~~`measure_inertia`~~ · `measure_convexity` `measure_correlation` `measure_rotation` `measure_symmetry` `measure_weight` | **Three landed** (2026-08-06); five left. `measure_weight` needs an atomic-mass table ChiMOL does not have — the same shape of blocker as `valence`, and the reason `measure_inertia` reports itself as **unweighted** rather than quietly weighting by nothing. `measure_correlation` needs the map reader wired to the atom set and is the next worth doing. |
+| **Measurement** | ~~`measure_buriedarea`~~ ~~`measure_center`~~ ~~`measure_inertia`~~ ~~`measure_weight`~~ · `measure_convexity` `measure_correlation` `measure_rotation` `measure_symmetry` | **Four landed** (2026-08-06); four left. The mass table that blocked `measure_weight` is transcribed, so `measure_inertia` is mass-weighted as ChimeraX's is. `measure_correlation` needs the map reader wired to the atom set and is the next worth doing. |
 | **Colour and attributes** | `palette` `colorname` `rainbow` `defattr` `setattr` | `defattr` — assign a per-atom attribute *from a file* and colour by it — is the one that unlocks the rest, and is close to `alter` plus `spectrum b`. |
 | **Appearance** | `material` `size` `style` `tile` `axis` `windowsize` | `tile` (lay every open structure out on a grid) is the cheapest big win for comparing models, which is what ChiSurf produces. |
 | **Movie** | `crossfade` `perframe` `fly` `roll` `wobble` `time` `wait` | ChiMOL has `mplay`/`mset`/`mview`. `perframe` (run a command each frame) is the general one and would subsume several. |
@@ -2376,10 +2376,32 @@ gets wrong:
 
 `measure_inertia` transcribes `moments_of_inertia`: second moments over the
 weight, the parallel-axis shift to the centre, `eigh`, eigenvalues ascending,
-and the third axis flipped if the frame came out left-handed. It reports itself
-**unweighted** because ChiMOL has no atomic-mass table — for a protein the
-difference is small and it is not nothing, and a number whose weighting nobody
-can see is worse than one that says what it is.
+and the third axis flipped if the frame came out left-handed. It is
+**mass-weighted**, as ChimeraX's is, since the table landed.
+
+**The atomic masses came from PyMOL, with a generator, because that is the
+rule.** `chempy.atomic_mass` is PyMOL's own IUPAC table, transcribed by
+`analysis/make_elements.py` into `analysis/elements.py` — never hand-entered and
+never a new dependency, the same arrangement as the 547 space groups. Three
+things it turned on:
+
+* PyMOL lists every symbol **twice**, cased and upper (`He` and `HE`), and that
+  duplication is the useful part: a PDB element column is written both ways, and
+  a table knowing one spelling drops every metal in half the files there are —
+  to *nothing*, not to an error. The lookup is case-insensitive;
+* an unknown symbol returns `None` and is **counted**, never defaulted. A weight
+  quietly missing a metal is the kind of wrong number that gets published, so
+  both commands say how many atoms they could not weigh;
+* the table is verified by **properties plus its size**. A truncated extraction
+  is self-consistent and passes every spot check that falls inside it, so
+  `test_elements.py` asserts the count, the IUPAC values for the elements that
+  decide a protein's weight, *and* that masses rise across a period — which is
+  what catches a dropped row pairing symbols with their neighbours' masses.
+
+Checked by hand where a reader can follow it: residue 1 of 148L is a methionine,
+whose eight heavy atoms (N + 5 C + O + S) come to **122.13 Da**, and the whole
+polymer to **17.3 kDa** — the hydrogen-less weight an X-ray structure should
+have, against ~18.7 kDa with hydrogens.
 
 **How to test a quantity with nothing to compare it against.** There is no
 reference value here, so each test pins a *property*: buried area is symmetric
