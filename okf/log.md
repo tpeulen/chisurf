@@ -2,6 +2,14 @@
 
 ## 2026-08-06
 
+* **The burst table writes through the columnar seam, and the parity is byte for byte** ([PRD-82](prds/prd-82.md), [columnar store](subsystems/columnar-store.md)).
+
+  The one thing keeping `.bur` off the CSV writer was that a shortest-form writer spells an integral value in a real column `12` rather than `12.0`. The library now offers the decimal point as an option, and the seam asks for it — the same double either way, but **not the same column** to a reader inferring types from text, and an all-zero column is exactly what these tables are full of. `keep_decimal_point` defaults on, which is what makes `write_csv_table` a drop-in for the frame writer rather than a near-drop-in.
+
+  **Verified by diffing the text, not by reasoning about it** — which is how the divergence was found in the first place, with the NaN-versus-empty difference sitting right beside it where nothing else would have shown it. Every `.bur` fixture in the tree, written both ways: **45 of 45 byte-identical**, largest difference over every numeric cell on a read-back **0.0**. Nine sites moved on that evidence: the two burst-table writers, `burst_fusion`, `bid_to_analysis`, the H2MM example generator, and four owned exports the first survey missed (the single-molecule MLE tables and their joint file, the pixel-MLE per-stem CSV, and chitable's export button).
+
+  **Three writers deliberately stay on the frame writer, and the float fix does not free them.** `.bv4` (twice) and `.2c4` are *companions*: their canonical writer owns their `%.6f`, their zero interleaving and their one-row-per-burst-including-the-skipped-ones rule, and only the first of those is a formatting question. The library gained a `float_decimals` mode that would match the `%.6f` exactly, and it still does not make the CSV writer the right answer for them — converging them on `write_companion` is the job, and it is a different one.
+
 * **One measurement, one file — the PTO.MFDB profile and its seam** ([photon container](subsystems/photon-container.md), [profile](specs/pto-mfdb.md)).
 
   Analysis output was three rival containers and ~30 writers: the positional `…4` companion directories, `<source>.imaging.h5`, and `.csp`, which imaging never touched. Around them the strays — four `*_settings.json` dropped *inside* companion directories that readers then defensively skip, a cache stamp at an analysis root, `Info/datetime.txt`, appended `.mti` text, `sl5/*.json.gz`, and three independent producers of `bi4_bur/`.

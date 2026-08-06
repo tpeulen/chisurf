@@ -118,7 +118,7 @@ Blanking a cell sets the mask bit instead of writing a sentinel.
 |---|---|
 | `DataStoreSource` in [chitable](gui-tables.md) | landed — a store backs a table widget, with a text column editing as a drop-down of its dictionary |
 | the HDF5 writers | landed — all seven, through `write_table` / `read_table` / `read_table_frame` in this module |
-| the CSV writers | landed for the files ChiSurf owns — `write_csv_table`; the burst companion formats are excluded on purpose |
+| the CSV writers | landed, the `.bur` burst table included — **45 of 45 real files byte-identical** to the frame writer; only the three companion writers are excluded, and those belong to `write_companion` |
 | the burst-table layer and its readers | not started, and it is what everything else is now waiting on |
 | the CSV readers | measured and deferred: **7.6× into a store, 1.1× back into a frame** |
 

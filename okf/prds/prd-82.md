@@ -307,30 +307,34 @@ The reader is **not** migrated, and the reason is measured rather than assumed:
 DataFrame to its caller, so the win is unavailable until the burst-table layer
 holds a store. That is stage 3.
 
-**When the library's float formatting lands** — an integral float keeping its
-decimal point — the exclusion above stops applying to the burst *table*, and the
-work is then mechanical. The eight remaining frame `to_csv` sites split two
-ways, and only the first group is unblocked by that fix:
+**The float formatting landed, and the `.bur` writers moved on it.** The library
+offers the decimal point as an option (`keep_decimal_point`) plus a fixed-point
+mode (`float_decimals`, for a layout another program fixed); the seam asks for
+the decimal point, which is what makes `write_csv_table` a drop-in for the frame
+writer rather than a near-drop-in.
 
-*`.bur` — the burst table, five sites, waiting only on the float formatting:*
+Verified by diffing the text on every `.bur` fixture in the tree, written both
+ways: **45 of 45 byte-identical**, largest difference over every numeric cell on
+a read-back **0.0**. Five sites moved on that evidence — the two writers in
+`core/fio/fluorescence/burst.py`, `burst_fusion`, `bid_to_analysis` and the H2MM
+example generator — plus four owned exports the first survey missed (the
+single-molecule MLE tables and their joint file, the pixel-MLE per-stem CSV, and
+chitable's export button).
 
-* `core/fio/fluorescence/burst.py:418` and `:647`
-* `plugins/burst/burst_fusion/core/fusion.py:430`
-* `plugins/burst/bid_to_analysis/__init__.py:379`
-* `plugins/burst/burst_h2mm/examples/generate_example_data.py:88`
+**Three sites are deliberately still on the frame writer**, and the float fix
+does *not* free them:
 
-*Companions — three sites that are a different job and are **not** unblocked by
-it*, because their canonical writer is `burst_companion.write_companion`
-(`%.6f`, zero-interleaved, one row per burst including the skipped ones) and
-these bypass it:
-
-* `core/fio/fluorescence/burst.py:197` (`.bv4`)
+* `core/fio/fluorescence/burst.py:198` (`.bv4`)
 * `plugins/burst/burst_bva/core/computation.py:264` (`.bv4`)
 * `plugins/burst/burst_2cde/core/computation.py:303` (`.2c4`)
 
-Re-derive the parity before moving the first group — write one real `.bur` both
-ways and diff the text byte for byte, which is how the divergence was found
-rather than assumed.
+These are *companions*, and their canonical writer is
+`burst_companion.write_companion`, which owns their `%.6f`, their zero
+interleaving and their one-row-per-burst-including-the-skipped-ones rule. Only
+the first of those three is a formatting question, so pointing them at the CSV
+writer would be fixing the wrong thing — even now that `float_decimals` would
+match the `%.6f`. Converging them on `write_companion` is the job, and it is not
+this PRD's.
 
 The reader's *limits* are already expressed the way this PRD asked for:
 `read_csv_table` returns `None` for a file the threaded reader does not handle —
