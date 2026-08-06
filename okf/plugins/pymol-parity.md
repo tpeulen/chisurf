@@ -2072,6 +2072,35 @@ every unborn cell would have been drawn at full size from the first frame.
    the colony only reached at the end, 17 um up, where the film was 1.1 um tall.
    Invisible and therefore harmless, until something frames the file.
 
+### The camera was following the frame, and nobody had noticed
+
+`_select_state_frame` recomputed the object's centre and radius from the frame
+being shown, so the camera chased the current frame's centroid. On a molecule
+the extent barely changes and the drift reads as a gentle wander — which is why
+it survived — but on a structure that *grows* it is unmissable: playing the
+biofilm swung the scene centre from 0 to −21 to +52 scene units and the radius
+from 174 to 88 to 137, so the substratum slid about beneath a film that was
+supposed to be growing off it. It was also **hiding half of what the trajectory
+demo exists to teach**, since silently following the centroid removes exactly the
+translational drift `intra_fit` is there to remove.
+
+Not simply deleted: for a molecule wandering across a box, following it is the
+useful behaviour, and that was the user's call. It is `movie_recenter`
+(`camera.recenter_on_frame`), **on by default** because the molecular case is the
+common one, read from the config *where it is used* so a live `set` reaches an
+open viewer — the `_fog_planes` pattern, and the reason there is no second store
+to leave stale.
+
+Two things worth carrying:
+
+* `set` is **global** in chimol as in PyMOL, so a demo that changes a setting
+  leaks it into the next one. Each demo that cares now states the value it
+  wants — a demo is a scene, not an increment;
+* the centre is computed over **all rows**, not the visible ones, so a fixture
+  whose particles never move cannot exercise this at all. The first version of
+  the test asserted the camera *did* follow and passed vacuously against a
+  fixture with fixed coordinates; it needed a drift term to mean anything.
+
 ### The demo is generated, not shipped
 
 `Demo > Biofilm growth` has no file to fetch: the agent simulator beside ChiSurf

@@ -1827,16 +1827,29 @@ class MolView(QtWidgets.QWidget):
             except Exception:
                 pass
 
-        try:
-            center, radius = _compute_center_radius(
-                state.all_atom_coords
-                if frame_matches_all_atoms and state.all_atom_coords is not None
-                else state.coords
-            )
-            state.center = center
-            state.radius = float(radius)
-        except Exception:
-            pass
+        # Whether the camera follows the frame. For a molecule that wanders
+        # across a box, following its centroid is what keeps it in view; for
+        # anything that *grows*, or that is attached to something, it slides the
+        # scene out from under it -- playing the biofilm demo swung the scene
+        # centre from 0 to -21 to +52 scene units and the radius from 174 to 88
+        # to 137, so the substratum drifted about beneath a film that was
+        # supposed to be growing off it. PyMOL never re-centres; this is
+        # ChiMOL's, on by default because the molecular case is the common one.
+        #
+        # Read from the configuration *here*, where it is used, so that `set
+        # movie_recenter, off` reaches an open viewer and there is no second
+        # copy to leave stale.
+        if bool((_DISPLAY_CONFIG.get("camera") or {}).get("recenter_on_frame", True)):
+            try:
+                center, radius = _compute_center_radius(
+                    state.all_atom_coords
+                    if frame_matches_all_atoms and state.all_atom_coords is not None
+                    else state.coords
+                )
+                state.center = center
+                state.radius = float(radius)
+            except Exception:
+                pass
 
         _apply_frame_appearance(state, idx, blend, next_idx)
 

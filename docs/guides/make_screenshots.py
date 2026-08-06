@@ -766,6 +766,10 @@ def _grab_chimol_biofilm():
     cmd.set_error_callback(lambda m: print("  chimol:", m))
     for line in (
         "bg_color white",
+        # As the demo does it: the camera must not follow the frame, or the
+        # early figure is framed on the centroid of a colony a fraction of the
+        # size and the two pictures cannot be compared.
+        "set movie_recenter, off",
         "as spheres",
         "frame 60",
         "turn x, -75",

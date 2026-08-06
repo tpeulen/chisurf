@@ -214,6 +214,23 @@ Being un-drawn for lack of a radius is kept apart from being **hidden**, which
 is what the hierarchy panel's check boxes do. Switch a chain off, step the movie,
 and it stays off.
 
+#### Whether the camera follows the frame
+
+```text
+set movie_recenter, off
+```
+
+By default the camera re-centres on the frame being shown, which is what keeps a
+molecule that wanders across its box in view. For a structure that **grows**,
+that is the wrong behaviour: the camera follows the centroid, the centroid of a
+thickening film rises with it, and the substratum slides downward while the
+surface stays put — so the film appears to sink rather than to grow. Turn it off
+and the floor stays where it is.
+
+The setting is global, as `set` is in PyMOL, so a demo that changes it says so
+rather than leaving the next one to inherit it. PyMOL has no equivalent — it
+never re-centres.
+
 ```{figure} figures/chimol_biofilm_late.png
 :name: fig-chimol-biofilm
 :width: 620px

@@ -13,6 +13,11 @@
 load topol.pdb
 load_traj hgbp1_transition.dcd
 bg_color white
+# On, which is the default: the camera follows each frame, which is what keeps a
+# molecule wandering across the box in view. `set` is global in ChiMOL as it is
+# in PyMOL, so this is stated rather than assumed -- the biofilm demo turns it
+# off, and a demo is a scene, not an increment.
+set movie_recenter, on
 hide everything
 show cartoon, polymer
 count_states

@@ -24,9 +24,16 @@
 # instead -- which is what `orient; zoom; mplay` does if you write it in that
 # order -- fits the view to ten cells, and the colony then grows straight out of
 # the picture.
+#
+# `movie_recenter` off is what keeps the substratum still. On -- which is the
+# default, and what you want for a molecule wandering across a box -- the camera
+# follows the centroid of the frame being shown, and the centroid of a growing
+# film rises with it: the floor would slide downward while the surface stayed
+# put, so the film would appear to sink rather than to grow.
 delete all
 load biofilm_growth.rmf
 bg_color white
+set movie_recenter, off
 as spheres
 count_states
 frame 60

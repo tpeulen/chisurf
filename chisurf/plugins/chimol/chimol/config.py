@@ -770,6 +770,12 @@ def _load_display_config() -> dict:
             # rotates and pans the camera/plane so the object moves opposite
             # to the cursor.
             "mouse_mode": "pymol",
+            # Whether stepping a trajectory re-centres the camera on the frame
+            # being shown. On for a molecule, where it keeps a structure that
+            # wanders across the box in view; off for anything that grows or is
+            # attached to something, where following the centroid slides the
+            # scene under it. PyMOL has no equivalent -- it never re-centres.
+            "recenter_on_frame": True,
         },
         "ray": {
             "ambient": 0.14,

@@ -187,6 +187,11 @@ _SPECS: tuple[SettingSpec, ...] = (
           "Use an orthoscopic (parallel) projection instead of perspective."),
     _spec("mouse_mode", "camera.mouse_mode", "str", "pymol",
           "Drag behaviour: 'pymol' moves the object, 'chimol' moves the camera."),
+    _spec("movie_recenter", "camera.recenter_on_frame", "bool", True,
+          "Re-centre the camera on each frame as a trajectory plays. Keeps a "
+          "molecule that wanders across the box in view; turn it off for a "
+          "structure that grows, where following the centroid slides the scene "
+          "out from under it."),
 
     # -- Background ---------------------------------------------------------
     _spec("bg_rgb", "background", "color", "k",

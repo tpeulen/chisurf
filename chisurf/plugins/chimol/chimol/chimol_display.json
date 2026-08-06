@@ -438,7 +438,8 @@
     "clip_wheel_scale": 0.85,
     "field_of_view": 20.0,
     "orthoscopic": false,
-    "mouse_mode": "pymol"
+    "mouse_mode": "pymol",
+    "recenter_on_frame": true
   },
   "ray": {
     "ambient": 0.14,

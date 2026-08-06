@@ -43,9 +43,11 @@ def _write(path, *, vary: bool) -> None:
     path : pathlib.Path
         Destination.
     vary : bool
-        When true, bead ``i`` is born at frame ``i`` (radius zero before that)
-        and every bead's colour changes over the run. When false, every frame is
-        identical, which is the case the reader must collapse.
+        When true, bead ``i`` is born at frame ``i`` (radius zero before that),
+        every bead's colour changes over the run, and the whole set drifts along
+        ``x`` -- which is what a molecule wandering across a box does, and the
+        only thing a camera can follow. When false, every frame is identical,
+        which is the case the reader must collapse.
     """
     handle = RMF.create_rmf_file(str(path))
     particles = RMF.ParticleFactory(handle)
@@ -60,7 +62,8 @@ def _write(path, *, vary: bool) -> None:
         handle.add_frame(f"t{frame}", RMF.FRAME)
         for index, node in enumerate(nodes):
             particle = particles.get(node)
-            particle.set_coordinates(RMF.Vector3(3.0 * index, 0.0, 0.0))
+            drift = 2.0 * frame if vary else 0.0
+            particle.set_coordinates(RMF.Vector3(3.0 * index + drift, 0.0, 0.0))
             born = (not vary) or index <= frame
             particle.set_radius(1.0 if born else 0.0)
             shade = (frame / (N_FRAMES - 1)) if vary else 0.0
@@ -180,3 +183,54 @@ def test_hiding_survives_stepping_the_movie(varying, qapp):
     assert not mask[0], "stepping the movie un-hid a bead that was switched off"
     assert not mask[N_FRAMES - 1], "a bead not yet born was drawn"
     assert mask[1], "a living, un-hidden bead was hidden"
+
+
+# --------------------------------------------------------------------------- #
+# Whether the camera follows the frame
+# --------------------------------------------------------------------------- #
+@pytest.fixture
+def restore_recenter():
+    """Put ``movie_recenter`` back, whatever the test did to it.
+
+    ``_DISPLAY_CONFIG`` is one dict for the whole process, so a test that leaves
+    a setting changed does not fail here -- it fails somewhere else, in another
+    file, for no visible reason.
+    """
+    from chisurf.plugins.chimol.chimol.settings import get_setting, set_setting
+
+    before = get_setting("movie_recenter")
+    yield set_setting
+    set_setting("movie_recenter", before)
+
+
+def test_the_camera_follows_the_frame_when_asked_to(varying, qapp, restore_recenter):
+    """The default, and what keeps a molecule wandering across a box in view."""
+    restore_recenter("movie_recenter", True)
+    view = _view(varying, qapp)
+    centres = []
+    for frame in range(N_FRAMES):
+        view.set_current_frame(frame)
+        centres.append(float(view._get_active_state().center[0]))
+    assert len(set(np.round(centres, 6))) > 1, (
+        "the camera did not follow the frame with movie_recenter on"
+    )
+
+
+def test_the_floor_stays_put_when_it_is_turned_off(varying, qapp, restore_recenter):
+    """What a structure that *grows* needs.
+
+    Following the centroid of a growing film slides the scene out from under it:
+    the substratum drifts downward while the surface stays put, so the film
+    appears to sink rather than to grow. Measured on the biofilm demo before this
+    existed, the scene centre swung from 0 to -21 to +52 scene units.
+    """
+    restore_recenter("movie_recenter", False)
+    view = _view(varying, qapp)
+    centres = []
+    for frame in range(N_FRAMES):
+        view.set_current_frame(frame)
+        centres.append(np.asarray(view._get_active_state().center, dtype=float).copy())
+    for frame, centre in enumerate(centres[1:], start=1):
+        assert np.allclose(centre, centres[0]), (
+            f"frame {frame} moved the scene centre to {centre} from {centres[0]}"
+        )
