@@ -59,6 +59,26 @@ registered via `set_controller_factory`. The GUI configures many experiments
 with several readers each but shows only the selected one, so eager
 construction built roughly eighteen widgets to display one.
 
+**The plugin toolbar is keyed by display name, so a rename empties it quietly.**
+The `plugins.toolbar_plugins` setting lists plugins by the name shown in the
+menus. Rename a plugin and its entry stops resolving: the button is not added,
+one `Could not find module for plugin` line goes to the log, and startup carries
+on. Three of the seven shipped entries had been dead that way — `Burst
+Selection` had gained a space, `Burst MLE` and `ndX` had been shortened — so the
+toolbar had been shipping four buttons where it promised seven.
+
+Correcting the shipped list is not enough, and this is the general trap with
+anything in `settings_chisurf.yaml`: user settings are copied to `~/.chisurf`
+**once** and never refreshed, so an edit to the shipped defaults reaches new
+installs only. `find_toolbar_plugin` (`chisurf/gui/main.py`) therefore resolves
+leniently — exact name, then last-`:`-segment and module name compared without
+case or punctuation, then a *unique* prefix relationship. Ambiguity is never
+resolved: two candidates mean no match and the warning stands, because a toolbar
+button that silently opens the wrong tool is worse than a missing one. Pinned by
+`test/gui/test_toolbar_plugin_names.py`, which asserts every shipped entry
+resolves *and* that the legacy names still sitting in existing `~/.chisurf`
+files reach the right module.
+
 # Stylesheet
 
 The application stylesheet is applied once. `_apply_stylesheet`

@@ -374,14 +374,17 @@ plugins:
   statefulness:
     mode: plugin_default
     per_plugin: {}
+  # Full display names, as `iter_plugins` reports them. A renamed plugin drops
+  # its button here silently, so these are resolved leniently at load; keep them
+  # exact anyway, because leniency refuses to guess between two candidates.
   toolbar_plugins:
-    - Tools:Histogram-Microtime
-    - FCS:Correlator
-    - Single-Molecule:Burst-Selection
-    - Single-Molecule:Burst MLE Lifetime Analysis
-    - Tools:ndXplorer
-    - Tools:Screenshot
-    - Miscellaneous:F-Test
+    - Spectroscopy:Fluorescence decay:Histogram-Microtime
+    - Spectroscopy:Fluorescence Correlation Spectroscopy:Correlator
+    - Spectroscopy:Single-Molecule:Burst Selection
+    - Spectroscopy:Single-Molecule:Burst MLE
+    - Main:Tools:ndX
+    - Main:Tools:Screenshot
+    - Main:Tools:F-Test
   updater:
     ignore_updates_on_startup: false
     check_on_startup: true

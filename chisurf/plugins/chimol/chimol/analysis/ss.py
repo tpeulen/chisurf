@@ -414,7 +414,7 @@ def _compute_hbond_energy_matrix(bb: np.ndarray) -> np.ndarray:
 
 
 
-@nb.njit(nopython=True, nogil=True, cache=True)  # type: ignore[misc]
+@nb.njit(nogil=True, cache=True)  # type: ignore[misc]
 def _model_hydrogen_nb(n: np.ndarray, ca: np.ndarray, c: np.ndarray) -> np.ndarray:
     v1 = ca - n
     v2 = c - n
@@ -425,7 +425,7 @@ def _model_hydrogen_nb(n: np.ndarray, ca: np.ndarray, c: np.ndarray) -> np.ndarr
     inv_norm = 1.0 / norm
     return n + v * inv_norm
 
-@nb.njit(nopython=True, nogil=True, cache=True)  # type: ignore[misc]
+@nb.njit(nogil=True, cache=True)  # type: ignore[misc]
 def _compute_hbond_energy_matrix_nb(bb: np.ndarray) -> np.ndarray:
     n_res = bb.shape[0]
     E = np.zeros((n_res, n_res), dtype=np.float64)

@@ -44,7 +44,7 @@ def bin_photons(donor: np.ndarray, acceptor: np.ndarray, dt: float = 1e-3, tmax:
     return D.astype(np.int64), A.astype(np.int64), bins
 
 
-@njit(nopython=True)
+@njit
 def _logsumexp(a: np.ndarray) -> float:
     """
     Compute the log of the sum of exponentials of input elements in a numerically stable way.
@@ -63,7 +63,7 @@ def _logsumexp(a: np.ndarray) -> float:
     return m + np.log(np.sum(np.exp(a - m)))
 
 
-@njit(nopython=True)
+@njit
 def _log_poisson_pmf(k: int, lam: float) -> float:
     """
     Compute the log of the Poisson probability mass function.
@@ -120,7 +120,7 @@ def _compute_predictive(D_t: int, A_t: int, alphaD: np.ndarray, betaD: np.ndarra
     return pred
 
 
-@njit(nopython=True, cache=True)
+@njit(cache=True)
 def bocpd_joint_poisson_optimized(D: np.ndarray, A: np.ndarray, prior_count: float = 1.0, 
                                  prior_duration: float = 1.0, changepoint_prob: float = 1e-3, 
                                  max_run: int = 500, 

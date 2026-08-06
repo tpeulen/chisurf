@@ -4,6 +4,7 @@ import os
 import ast
 import json
 import pathlib
+import re
 import traceback
 
 import chisurf.gui
@@ -49,6 +50,66 @@ from chisurf.gui.main_helper import (
     DevMixin,
 )
 from chisurf.gui import dialogs
+
+
+def find_toolbar_plugin(plugin_infos: list, target_name: str):
+    """Resolve one ``toolbar_plugins`` entry, tolerating a renamed plugin.
+
+    The setting stores a plugin's *display* name, so every rename silently drops
+    a button from the toolbar and logs ``Could not find module for plugin`` on
+    each start — three of the seven shipped entries had been dead that way. And
+    because user settings are copied to ``~/.chisurf`` once and never refreshed,
+    correcting the shipped list alone would only ever reach new installs, which
+    is why the resolution and not just the list has to change.
+
+    Three steps, narrowing: the name as written; then a comparison of the last
+    ``:``-segment (and the module name) that ignores case and punctuation, so
+    ``Burst-Selection`` finds ``Burst Selection``; then a *unique* prefix
+    relationship in either direction, so ``ndXplorer`` finds ``ndX`` and
+    ``Burst MLE Lifetime Analysis`` finds ``Burst MLE``. Ambiguity is never
+    resolved — two candidates mean no match and the warning stands, because a
+    toolbar button that silently opens the wrong tool is worse than a missing
+    one.
+
+    Parameters
+    ----------
+    plugin_infos : list of dict
+        What ``chisurf.plugins.iter_plugins`` returned.
+    target_name : str
+        One entry of the ``plugins.toolbar_plugins`` setting.
+
+    Returns
+    -------
+    dict or None
+        The matching plugin info, or ``None`` when nothing matches unambiguously.
+    """
+    def key(name: str) -> str:
+        leaf = name.split(':')[-1].strip() if ':' in name else name
+        return re.sub(r'[^a-z0-9]', '', leaf.casefold())
+
+    target = key(target_name)
+    if not target:
+        return None
+
+    candidates = []
+    for info in plugin_infos:
+        pname = info.get('plugin_name') or info.get('module_name') or ''
+        if not pname:
+            continue
+        if pname == target_name:
+            return info
+        candidates.append((info, {key(pname), key(info.get('module_name') or '')} - {''}))
+
+    for info, keys in candidates:
+        if target in keys:
+            return info
+
+    near = [
+        info for info, keys in candidates
+        if any(k.startswith(target) or target.startswith(k) for k in keys)
+    ]
+    return near[0] if len(near) == 1 else None
+
 
 class Main(
     QtWidgets.QMainWindow,
@@ -845,17 +906,7 @@ class Main(
             plugin_infos = []
 
         def _find_plugin_info(target_name: str):
-            clean_target = target_name.split(':')[-1].strip() if ':' in target_name else target_name
-            for info in plugin_infos:
-                pname = info.get('plugin_name') or info.get('module_name') or ''
-                if not pname:
-                    continue
-                if pname == target_name:
-                    return info
-                clean = pname.split(':')[-1].strip() if ':' in pname else pname
-                if clean == clean_target:
-                    return info
-            return None
+            return find_toolbar_plugin(plugin_infos, target_name)
 
         # Load each toolbar plugin
         for plugin_name in toolbar_plugins:
