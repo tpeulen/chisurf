@@ -177,6 +177,33 @@ Panels stay on the left and the plot splits off to the right — where the Qt do
 had them, because moving a column someone reaches for without looking is a change
 with no upside.
 
+## Redraws: group and dispatch
+
+Every control that changes what is on screen calls `request_plot_update`.
+Requests inside one 40 ms window are grouped and dispatched **once**, with
+`skip_clustering` OR-ed across the batch — so a control that fires continuously
+(a dragged region, a spun value, a held key) costs one redraw per frame rather
+than one per signal. `update_plots` is called directly only where the redraw has
+to have happened before the next line runs: a load that just replaced the data,
+the explicit *Update plot* action, and the parameter throttle, which times its
+own redraw to size its next window.
+
+Two things had grown around that rule rather than through it:
+
+- **The z selector was polled, not listened to.** A 500 ms `QTimer` compared
+  `selection_z.get_range()` against the last value it had seen; the region emits
+  when it moves and nothing was connected. Measured on 200 000 bursts through
+  the real loader, a paced 1.3 s drag got **4 updates — 3.1 per second** while
+  one redraw costs ~25–40 ms. Connected to the region's live signal it is **20
+  updates — 16.3 per second**, and the poll is gone. Listening to a *live* signal
+  is cheaper than polling only because the dispatch is debounced; wired to an
+  undebounced redraw it would be one redraw per mouse move.
+- **Four handlers computed every histogram twice** — the z-axis toggle, the
+  weight check box, the weight column and dynamic selection all called
+  `update_histograms()` and then `update_plots()`, which fills them itself. The
+  same pattern had been found and fixed once before, elsewhere, so it is worth
+  grepping for the pair rather than assuming it is gone.
+
 ## Gating: one path, one answer
 
 `plot_main._collect_mask_state()` is the only place the GUI is read to decide
