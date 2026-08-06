@@ -31,6 +31,7 @@ The excited state
    absorption_and_emission
    lifetime_and_quantum_yield
    quenching_and_photophysics
+   quenching_mechanisms
 
 Orientation and transfer
 ------------------------

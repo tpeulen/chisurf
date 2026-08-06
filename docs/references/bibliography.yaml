@@ -1095,6 +1095,38 @@ ha2012:
   note: Triplet versus redox blinking, ROXS, and what dark states do to a FRET histogram.
   topics: [photophysics, smfret]
 
+seidel1996:
+  authors: C. A. M. Seidel, A. Schulz, M. H. M. Sauer
+  title: Nucleobase-specific quenching of fluorescent dyes - 1. nucleobase one-electron redox potentials and their correlation with static and dynamic quenching efficiencies
+  journal: The Journal of Physical Chemistry
+  year: 1996
+  volume: 100
+  pages: 5541-5553
+  doi: 10.1021/jp951507c
+  note: One quenching order across dyes, G > A > C ~ T, and it tracks the oxidation potentials.
+  topics: [photophysics]
+
+steenken1997:
+  authors: S. Steenken, S. V. Jovanovic
+  title: How easily oxidizable is DNA? One-electron reduction potentials of adenosine and guanosine radicals in aqueous solution
+  journal: Journal of the American Chemical Society
+  year: 1997
+  volume: 119
+  pages: 617-618
+  doi: 10.1021/ja962255b
+  note: The nucleoside redox potentials the quenching order follows.
+  topics: [photophysics]
+
+rehm1970:
+  authors: D. Rehm, A. Weller
+  title: Kinetics of fluorescence quenching by electron and H-atom transfer
+  journal: Israel Journal of Chemistry
+  year: 1970
+  volume: 8
+  pages: 259-271
+  note: The free-energy expression, and the measurement showing the rate plateaus at the diffusion limit instead of turning over.
+  topics: [photophysics]
+
 # ── Reference works, textbooks and monographs ───────────────────────
 
 lakowicz2006:

@@ -10,7 +10,7 @@ Pages cite a work by its **key** — the name each entry is anchored under below
 and the citation renders as a link to the paper. The source of truth is
 [`bibliography.yaml`](bibliography.yaml) — add a work there and it appears here.
 
-*132 works.*
+*135 works.*
 
 
 ## FRET: mechanism, accuracy and corrections
@@ -574,6 +574,21 @@ and the citation renders as a link to the paper. The source of truth is
 
 **[Mataga et al. (1956)](https://search.crossref.org/search/works?q=Solvent+effects+upon+fluorescence+spectra+and+the+dipole+moments+of+excited+molecules+Bulletin+of+the+Chemical+Society+of+Japan+1956&from_ui=yes)** — N. Mataga, Y. Kaifu, M. Koizumi. *Solvent effects upon fluorescence spectra and the dipole moments of excited molecules*. Bulletin of the Chemical Society of Japan **29**, 465-470. (1956).  
 *The independent derivation usually cited together with Lippert.*
+
+(rehm1970)=
+
+**[Rehm & Weller (1970)](https://search.crossref.org/search/works?q=Kinetics+of+fluorescence+quenching+by+electron+and+H-atom+transfer+Israel+Journal+of+Chemistry+1970&from_ui=yes)** — D. Rehm, A. Weller. *Kinetics of fluorescence quenching by electron and H-atom transfer*. Israel Journal of Chemistry **8**, 259-271. (1970).  
+*The free-energy expression, and the measurement showing the rate plateaus at the diffusion limit instead of turning over.*
+
+(seidel1996)=
+
+**[Seidel et al. (1996)](https://doi.org/10.1021/jp951507c)** — C. A. M. Seidel, A. Schulz, M. H. M. Sauer. *Nucleobase-specific quenching of fluorescent dyes - 1. nucleobase one-electron redox potentials and their correlation with static and dynamic quenching efficiencies*. The Journal of Physical Chemistry **100**, 5541-5553. (1996).  
+*One quenching order across dyes, G > A > C ~ T, and it tracks the oxidation potentials.*
+
+(steenken1997)=
+
+**[Steenken & Jovanovic (1997)](https://doi.org/10.1021/ja962255b)** — S. Steenken, S. V. Jovanovic. *How easily oxidizable is DNA? One-electron reduction potentials of adenosine and guanosine radicals in aqueous solution*. Journal of the American Chemical Society **119**, 617-618. (1997).  
+*The nucleoside redox potentials the quenching order follows.*
 
 (sternvolmer1919)=
 

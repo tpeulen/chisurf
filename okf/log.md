@@ -2,6 +2,22 @@
 
 ## 2026-08-06
 
+* **A second, deeper quenching page — and it lands on QuEst** ([documentation browser](subsystems/documentation-browser.md)).
+
+  `docs/fundamentals/quenching_mechanisms.md` sits under the phenomenological page and answers *why* a quenching constant has the value it has: the diffusion limit, whether the electron transfer is allowed once the partners meet, and the base-specific case that decides where a dye may be attached to DNA.
+
+  **A third source of upward curvature, which the first page did not have.** The Smoluchowski rate is a *steady-state* rate; immediately after excitation there is no concentration gradient, so `k(t) = k0(1 + R/sqrt(pi D t))` is large at early times. That transient effect makes the decay non-exponential for a single species with a single quencher **and** bends the Stern-Volmer plot upward — mimicking static quenching with no static component present. So upward curvature now has three candidate mechanisms, and the page says how to separate this one: it lives in the *shape* of the decay, where a complex or a sphere of action only scales it.
+
+  **Rehm-Weller**, with the part that is actually used: the excitation energy enters with a negative sign (light supplies the driving force), the Coulomb term is ~0.06 eV in acetonitrile and negligible in water, and the empirical result is that the rate **plateaus at the diffusion limit** rather than turning over — no inverted region in the bimolecular data, because the encounter is diffusion-limited long before it could be reached. Past a few tenths of an eV, quenching efficiency reports on *access*, not thermodynamics.
+
+  **Nucleobase-specific quenching** {cite}`seidel1996`: one ordering across dyes, `G > A > C ~ T`, tracking the oxidation potentials. The consequence that bites first is not the interesting one — a dye's quantum yield depends on the sequence it is attached to, so `R0 ~ Q_D^(1/6)` changes with labelling position, and a distance from a tabulated R0 is wrong in a way nothing in the fit reveals.
+
+  **The page ends where ChiSurf already is.** QuEst (`modules/quest`) and `AVDecayModel` are built on exactly these concepts: the same PET logic with the protein's own low-oxidation-potential side chains (Trp, Tyr, His, Met — the shipped table is `chisurf/core/settings/constants/structure.json`), a step-function quenching rate inside a critical distance, and a Brownian trajectory through the dye's accessible volume. The output is a **non-exponential donor decay computed from a structure** — which is the concrete form of the warning made elsewhere that a multi-exponential decay need not mean conformational states.
+
+  Three sources added: `seidel1996`, `steenken1997`, `rehm1970`. The specific redox *values* were left out rather than quoted: the numbers in circulation differ between isolated bases, nucleosides and bases in a strand, and no full text was reachable to pin which is which. The ordering is what the argument needs and the ordering is well sourced.
+
+  `docs-html` warning-free; render + crosslinks 251 passed.
+
 * **Russian is a UI language — and the language you pick now survives a restart** ([i18n](subsystems/i18n.md)).
 
   `chisurf_ru.ts`/`.qm` ship as the third translated locale and are the most complete catalogue in the tree: **3100** finished terms against 2938 (`de`) and 2878 (`fr`). Everything the German catalogue covers was translated, plus the ~290 wordy strings it does not (burst fusion, flow maps, the PSF calculator). The 356 sources left English are units, math symbols, format codes, Qt signal/objectName artifacts and shortcuts — translating those would break the UI, not localize it. Extraction ran with `--locales ru` on purpose: a plain `i18n-extract` rewrites `de`/`fr` too, and those files carry other instances' uncommitted fills in this shared tree. `ru` was already in `LANGUAGE_DISPLAY_NAMES`/`_FLAG_SPECS`, so the pickers needed no code — only the catalogue, `DEFAULT_LOCALES` and the `i18n-compile` task.

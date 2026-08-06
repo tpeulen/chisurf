@@ -363,8 +363,9 @@ identifies them:
   of action, a dark state, or bleaching. The lifetime cannot separate these from
   each other; the absorption spectrum, the temperature dependence and the fitted
   sphere volume can.
-- $F_0/F$ curves **upward** — static and dynamic together, or a sphere of
-  action.
+- $F_0/F$ curves **upward** — static and dynamic together, a sphere of action,
+  or the purely diffusive transient effect, which involves no static component
+  at all ({ref}`fundamentals-quenching-mechanisms`).
 - $F_0/F$ curves **downward**, onto a plateau — something limits how much
   quenching is possible: an unquenchable fraction (incomplete static quenching)
   or a population the quencher cannot reach. The two are the same function.
@@ -378,7 +379,11 @@ identifies them:
 
 ## See also
 
-- Previous: {ref}`fundamentals-lifetime-quantum-yield`. Next:
+- Next, in detail: {ref}`fundamentals-quenching-mechanisms` — the diffusion
+  limit and its transient effect, Rehm–Weller, nucleobase-specific quenching,
+  and the structure-based simulation ChiSurf and QuEst use instead of a bulk
+  constant.
+- Previous: {ref}`fundamentals-lifetime-quantum-yield`. Then:
   {ref}`fundamentals-polarization`.
 - Concepts: {ref}`concept-fcs-correlation` (the triplet term) ·
   {ref}`concept-fcs-saturation` (power dependence) ·
