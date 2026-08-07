@@ -350,6 +350,39 @@ def find_bursts(selected_mask: Iterable[int], max_gap: int = 4) -> np.ndarray:
     return signal_find_bursts(mask, max_gap=max_gap)
 
 
+def drop_short_bursts(start_stop: np.ndarray, min_photons: int) -> np.ndarray:
+    """Return only the bursts holding at least *min_photons* photons.
+
+    A burst-level criterion, and therefore one that has to be applied to the
+    burst list rather than inside a search: only the sliding-window
+    (``"burst"``) search enforces a photon minimum itself, so a count-rate,
+    CUSUM, Kalman, or tttrlib-registry search used to return every contiguous
+    run of selected photons -- down to two -- while the analysis folder's own
+    name (``countrate_All 0.1500#60``) claimed a minimum of 60. This is what
+    makes the claim true for every search.
+
+    Parameters
+    ----------
+    start_stop : numpy.ndarray
+        ``(n_bursts, 2)`` array of first/last photon indices, the *last* index
+        inclusive (:func:`find_bursts`).
+    min_photons : int
+        Minimum photons per burst. Values below 2 leave *start_stop* untouched
+        -- a "burst" of one photon is already dropped downstream.
+
+    Returns
+    -------
+    numpy.ndarray
+        The rows of *start_stop* whose photon count reaches *min_photons*, in
+        their original order.
+    """
+    start_stop = np.asarray(start_stop)
+    if min_photons < 2 or start_stop.size == 0:
+        return start_stop
+    counts = start_stop[:, 1].astype(np.int64) - start_stop[:, 0].astype(np.int64) + 1
+    return start_stop[counts >= int(min_photons)]
+
+
 def summarize_bursts(
     start_stop: np.ndarray,
     filename: str | Path,
@@ -500,7 +533,21 @@ def analyze_file(
         analysis_settings.photon_filter,
         burst_detection=analysis_settings.burst_detection,
     )
-    start_stop = find_bursts(selected)
+    # Both bounds come from the settings, and used not to. ``max_gap`` was left
+    # at this function's own default of 4, so a run configured to bridge nothing
+    # still bridged four photons; ``min_photons`` was applied by the
+    # sliding-window search alone, so every other search returned runs of two
+    # photons as bursts.
+    photon_filter = analysis_settings.photon_filter
+    search_gap = photon_filter.max_gap if photon_filter.use_gap_fill else 0
+    start_stop = find_bursts(selected, max_gap=search_gap)
+    # The floor of 2 is what keeps the reported ``n_bursts`` equal to the number
+    # of rows in the table: the summarizer already skips a burst whose last
+    # photon is not past its first, so counting those here reported thousands of
+    # bursts that were never written.
+    start_stop = drop_short_bursts(
+        start_stop, max(2, analysis_settings.burst_detection.min_photons)
+    )
     output_resolution = (
         float(tttr.header.macro_time_resolution)
         if macro_time_resolution is None

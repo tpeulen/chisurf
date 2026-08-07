@@ -52,7 +52,7 @@ def test_inspect_command(tmp_path: Path) -> None:
     result = CliRunner().invoke(cli_module, ["inspect", str(bur_path)])
     payload = json.loads(result.output)
     assert result.exit_code == 0
-    assert payload["n_rows"] == 9533
+    assert payload["n_rows"] == 3857
 
 
 def test_fit_gmm_command(tmp_path: Path) -> None:
@@ -66,7 +66,7 @@ def test_fit_gmm_command(tmp_path: Path) -> None:
     payload = json.loads(result.output)
     assert result.exit_code == 0
     assert payload["n_components"] == 1
-    assert len(payload["labels"]) == 9533
+    assert len(payload["labels"]) == 3857
 
 
 def test_entrypoint_is_discoverable() -> None:

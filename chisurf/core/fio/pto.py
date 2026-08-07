@@ -622,6 +622,24 @@ class Measurement:
         """UID of the instrument object, or ``0`` if the file has none."""
         return self._instrument_uid
 
+    @property
+    def instrument_uids(self) -> list[int]:
+        """UIDs of *every* instrument object, in the order they were written.
+
+        A measurement split across ten vendor files is one container holding ten
+        photon streams, and an analysis reading the container reads all of them
+        — so a result derived from it has ten parents, not one.
+        :attr:`instrument_uid` names only the first, which is the right answer
+        for "which stream is this container about" and the wrong one for "what
+        was this computed from".
+
+        Returns
+        -------
+        list of int
+            Empty when the container has no instrument object at all.
+        """
+        return [obj.uid for obj in self._f.objects() if obj.kind in _PRIMARY_KINDS]
+
     def source(self, member: str = "") -> str:
         """Return a spec that opens the photon data, for ``open_tttr``.
 
@@ -1748,8 +1766,17 @@ class Measurement:
         # `relationship_type`, so asking a file how a result related to what it
         # came from returned an integer — and the relation itself, which is the
         # whole point of an edge, was never recorded at all.
+        # Re-running an analysis updates the object in place, but its tags are
+        # appended, not replaced -- so writing every parent unconditionally made
+        # a container that had been re-analysed three times claim the same
+        # source four times over. An edge is a fact about where the result came
+        # from; recording it twice does not make it truer.
         parents = _as_uids(derived_from)
+        recorded = set(self.parents(uid))
         for parent in parents:
+            if parent in recorded:
+                continue
+            recorded.add(parent)
             self._ref(uid, _SOURCE_NODE_ID, parent)
         if parents:
             self._text(uid, _RELATIONSHIP_TYPE, relationship_type)

@@ -295,7 +295,11 @@ def write_burst_artifact(
             operation_type=operation_type,
             row_grain=row_grain,
             parameters=parameters,
-            derived_from=parents or m.instrument_uid,
+            # Every photon stream in the container, not just the first: a
+            # measurement split over ten vendor files is read as one stream, so
+            # a burst table naming only `m000.spc` as its parent leaves nine
+            # sources unreachable from the result computed out of them.
+            derived_from=parents or m.instrument_uids or m.instrument_uid,
             source_row_column=source_row_column,
             target_row_column=target_row_column,
             units=units_for(table, units),

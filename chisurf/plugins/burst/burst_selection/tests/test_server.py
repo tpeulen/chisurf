@@ -68,7 +68,7 @@ def test_inspect_bur_server_method_returns_service_shape(tmp_path: Path) -> None
     result = analyze_file(DATA_FILE, settings=real_data_settings(), output_dir=tmp_path)
     response = server_module.inspect_bur(result.output_paths["bur"])
     assert response["ok"] is True
-    assert response["result"]["n_rows"] == 9533
+    assert response["result"]["n_rows"] == 3857
 
 
 def test_register_with_service_dispatcher() -> None:
@@ -126,7 +126,7 @@ def test_zmq_client_can_call_analyze_and_fit_gmm(tmp_path: Path) -> None:
 
     assert analysis["metadata"]["n_photons"] == 174438
     assert fit["gmm"]["n_components"] == 1
-    assert len(fit["gmm"]["labels"]) == 9533
+    assert len(fit["gmm"]["labels"]) == 3857
 
 
 def test_zmq_client_can_call_inspect_bur(tmp_path: Path) -> None:
@@ -156,4 +156,4 @@ def test_zmq_client_can_call_inspect_bur(tmp_path: Path) -> None:
         server.stop()
         thread.join(timeout=2)
 
-    assert response["n_rows"] == 9533
+    assert response["n_rows"] == 3857

@@ -24,6 +24,7 @@ from chisurf.plugins.burst.burst_selection.api.models import (
 from chisurf.plugins.burst.burst_selection.api.selection import (
     analyze_file,
     apply_photon_filters,
+    drop_short_bursts,
     find_bursts,
 )
 from chisurf.plugins.burst.burst_selection.cli import cli
@@ -99,7 +100,14 @@ def test_real_bh_spc_analyze_file_matches_core_burst_dataframe(tmp_path: Path) -
     tttr = load_tttr(BH_SPC_FILE)
     settings = real_data_settings()
     selected = apply_photon_filters(tttr, settings.photon_filter)
-    start_stop = find_bursts(selected)
+    # The same two bounds `analyze_file` applies: the gap the settings ask for
+    # (not this function's default), and the photon minimum, which every search
+    # honours now rather than the sliding-window one alone.
+    start_stop = find_bursts(
+        selected,
+        max_gap=settings.photon_filter.max_gap if settings.photon_filter.use_gap_fill else 0,
+    )
+    start_stop = drop_short_bursts(start_stop, max(2, settings.burst_detection.min_photons))
     api_result = analyze_file(BH_SPC_FILE, settings=settings, output_dir=tmp_path)
     core_df = generate_burst_dataframe(
         start_stop=start_stop,
@@ -118,7 +126,7 @@ def test_real_bh_spc_analyze_file_matches_core_burst_dataframe(tmp_path: Path) -
         "n_bursts": int(len(start_stop)),
         "macro_time_resolution": float(tttr.header.macro_time_resolution),
     }
-    assert api_result.metadata["n_bursts"] == 5577
+    assert api_result.metadata["n_bursts"] == 1928
     assert Path(api_result.output_paths["bur"]).exists()
 
 
@@ -127,7 +135,7 @@ def test_real_bh_spc_cli_inspect_uses_generated_bur(bur_file: Path) -> None:
     result = CliRunner().invoke(cli, ["inspect", str(bur_file)])
     payload = json.loads(result.output)
     assert result.exit_code == 0
-    assert payload["n_rows"] == 9533
+    assert payload["n_rows"] == 3857
     assert "nphotons" in payload["feature_columns"]
 
 
@@ -140,4 +148,4 @@ def test_real_bh_spc_cli_fit_gmm_uses_generated_bur(bur_file: Path) -> None:
     payload = json.loads(result.output)
     assert result.exit_code == 0
     assert payload["n_components"] == 1
-    assert len(payload["labels"]) == 9533
+    assert len(payload["labels"]) == 3857
