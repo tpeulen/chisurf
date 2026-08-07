@@ -188,6 +188,30 @@ consumer does not re-derive it.
 
 # Where to pick this up
 
+**A strict `as_store` needs a boundary to refuse frames *at*.** Making the
+conversion reject a DataFrame is right, and it left several live call sites
+raising: `Measurement._as_store`, `deinterleave_bursts`, `write_per_source`,
+`burst_rows_for_display`, `_display_frame_set`. Each reached a store-only
+helper (`take_where`, `take_columns`, `concat_stores`) while a caller still
+handed it a frame, so the symptom is a `TypeError` from three frames down --
+which reads as a bug in the seam rather than in the call site.
+
+`chisurf.core.fio.fluorescence.burst_container.as_table` is the boundary:
+column by column so dtypes survive, and the argument handed straight back when
+it is already a store. **Two traps in using it:**
+
+* it returns the *same object* for a store, so a caller that then mutates --
+  `tagged["File Idx"] = ...` -- must `.copy()` first, or it grows a column on
+  the caller's cached table every time it runs;
+* convert at the **entry** of a function, not where the helper is reached. Two
+  of the fixes above were first placed one call too deep, which moved the frame
+  past the first `take_*` only to meet the second.
+
+`store_from_dataframe`, `dataframe_from_store` and `read_table_frame` were
+removed while callers still imported them; `burst_selection/tests/test_io.py`
+still does.
+
+
 **The burst-table layer holds a store** (2026-08-07), which was the item
 everything else waited on: reading a 200k-row burst table costs 541 ms as a
 frame, **71 ms into a store (7.6×)**, and 485 ms into a store and back to a
@@ -195,24 +219,27 @@ frame (**1.1×**) — so a consumer that converts back gains nothing, and until 
 producer moved, every port was churn. `read_bur_file`,
 `read_bur_with_companions`, the `.bur`/HDF5/CSV writers, fusion, BVA, 2CDE, the
 burst browser and the MFD preparation are all store-native now, and
-`test/pandas_import_allowlist.txt` is **47 → 11**, and is now in two labelled
-groups: 8 interop entries that hand a frame *out*, and 3 ports.
+`test/pandas_import_allowlist.txt` is **47 → 8**, all of it the interop group
+that hands a frame *out* — the PORTS group emptied the same day.
 
-1. **The three remaining ports**, none of them mechanical:
-   `burst_fcs_correlator/wizard.py` (a wide pivot feeding an untested `td4`
-   writer that also violates the companion contract — see
-   [known issues](../references/known-issues.md)),
-   `burst_mle_analysis/wizard.py` (carries its own third copy of
-   `read_burst_analysis`; delete it rather than port it) and
-   `bid_to_analysis` (reads a `.bur` back to append to it, which is what the
-   deferred CSV *reader* migration is about).
-   [PRD-82](../prds/prd-82.md) carries the detail.
-   `test/pandas_import_allowlist.txt` is the ordered worklist and
-   [PRD-82](../prds/prd-82.md) carries it, together with the four idioms that
-   fail *silently* when a store arrives where a frame was expected — `columns`
-   is the dangerous one, because a store has both `names` and `columns` and its
-   `columns` are `Column` objects, so a lookup answers "absent" rather than
-   raising. Read that list before porting one.
+1. **The three ports that emptied the tracker**, none of them mechanical:
+   `burst_fcs_correlator/wizard.py`'s `td4` writer built its row grid from the
+   bursts that *produced a result* rather than from the bursts — the bug
+   [known issues](../references/known-issues.md) had flagged — and the fix
+   (thread the true per-measurement burst count through as `burst_counts`,
+   write through `burst_companion.write_companion`) landed with the port,
+   pinned by a new layout test; `burst_mle_analysis/wizard.py` deleted its own
+   third copy of `read_burst_analysis` in favour of `read_bur_file` +
+   `deinterleave_bursts` **per file, before concatenating** (deinterleaving
+   after concatenation misaligns whenever the combined row count is even); and
+   `bid_to_analysis` moved its read-existing-`.bur`-to-append path onto
+   `read_csv_table` + `concat_stores` + `take_rows`. [PRD-82](../prds/prd-82.md)
+   carries the detail.
+   The four idioms that fail *silently* when a store arrives where a frame was
+   expected are still worth reading before touching an interop file —
+   `columns` is the dangerous one, because a store has both `names` and
+   `columns` and its `columns` are `Column` objects, so a lookup answers
+   "absent" rather than raising.
 2. **The `.dstore` native file** is worth a look for anything written and read
    only by ChiSurf. It keeps the row selection and the whole tree, needs no
    HDF5 at all, and on a compressed table it is dramatically faster — but it is

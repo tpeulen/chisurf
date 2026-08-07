@@ -343,10 +343,13 @@ def write_bva_container(
     list of str
         The containers written.
     """
-    from chisurf.core.fio.fluorescence.burst_container import write_per_source
+    from chisurf.core.fio.fluorescence.burst_container import as_table, write_per_source
 
     written = write_per_source(
-        take_columns(df, ["First File", "Proximity Ratio Mean", "Proximity Ratio Std"]),
+        take_columns(
+            as_table(df),
+            ["First File", "Proximity Ratio Mean", "Proximity Ratio Std"],
+        ),
         name="bva",
         artifact_kind="burst_table",
         operation_type="burst_variance_analysis",

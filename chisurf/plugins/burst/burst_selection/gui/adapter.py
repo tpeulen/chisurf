@@ -524,6 +524,11 @@ def burst_rows_for_display(df):
     compatibility. Those rows must remain in files, but they should not appear
     in tables, histograms, or GMM inputs.
     """
+    # Converted at the entry: the branches below reach for `take_where`, and the
+    # store-only helpers refuse a frame. Callers still hand this one either.
+    from chisurf.core.fio.fluorescence.burst_container import as_table
+
+    df = as_table(df)
     names = column_names(df)
     if row_count(df) == 0:
         return df

@@ -22,6 +22,7 @@ from typing import Any, Mapping, Sequence
 
 __all__ = [
     "BURST_COLUMN_UNITS",
+    "as_table",
     "container_for",
     "deinterleave_bursts",
     "open_measurement",
@@ -57,12 +58,25 @@ BURST_COLUMN_UNITS: dict[str, str] = {
 }
 
 
-def _from_frame(table):
+def as_table(table):
     """Return *table* as a store, converting a frame at the boundary.
 
-    Column by column, so each keeps its own dtype — which is the whole reason
-    the store exists — and so no pandas import happens for a caller that
-    already handed over a store.
+    The frame-to-store boundary for analyses that have not moved yet.
+    ``datastore.as_store`` deliberately refuses a frame — the tree is migrating
+    off them and a caller holding one is expected to have moved — but an
+    analysis that pre-selects columns before handing its result over reaches a
+    store-only helper first, and needs somewhere to convert.
+
+    Column by column, so each keeps its own dtype, and with no pandas import at
+    all for a caller that already handed over a store.
+
+    Parameters
+    ----------
+    table : tttrlib.DataStore, pandas.DataFrame or mapping of str to array
+
+    Returns
+    -------
+    tttrlib.DataStore or the argument unchanged
     """
     if not (hasattr(table, "columns") and hasattr(table, "iloc")):
         return table
@@ -147,7 +161,7 @@ def deinterleave_bursts(df):
     # holding one is expected to have moved already -- but this function's
     # contract is to accept whatever an analysis hands it, and several analyses
     # still hand it a frame.
-    out = _from_frame(df)
+    out = as_table(df)
     n = row_count(out)
 
     if n >= 3 and n % 2 == 1:
@@ -324,6 +338,10 @@ def write_per_source(
     """
     from chisurf.core.datastore import column_names, take_columns, take_where
 
+    # Converted here, at the entry point, rather than in `deinterleave_bursts`
+    # further down: the split below reaches for `take_where` first, and the
+    # store-only helpers refuse a frame.
+    df = as_table(df)
     names = column_names(df)
     if source_column not in names:
         raise KeyError(

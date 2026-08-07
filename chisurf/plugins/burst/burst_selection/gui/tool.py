@@ -1757,7 +1757,14 @@ class BurstSelectionTool(ChisurfDockTool):
             return False
         indexed_frames = []
         for index, frame in enumerate(frames):
-            tagged = frame.copy()
+            # Converted at the entry: `concat_stores` below refuses a frame, and
+            # a cached result may still be one.
+            from chisurf.core.fio.fluorescence.burst_container import as_table
+
+            # `.copy()` is load-bearing: "File Idx" is added below, and
+            # `as_table` hands a store straight back — so without it the
+            # *cached* result would grow a column every time it is displayed.
+            tagged = as_table(frame).copy()
             which = (
                 file_indices[index]
                 if file_indices is not None and index < len(file_indices)
