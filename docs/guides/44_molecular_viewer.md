@@ -937,6 +937,8 @@ count_atoms name CA within 8 of resn NAG
 count_atoms c. A and n. CA                # abbreviations
 count_atoms ss H                          # helices
 count_atoms pepseq FEML                   # a sequence motif
+count_atoms donors or acceptors           # anything that could hydrogen bond
+count_atoms byring (resn NAG)             # complete the rings it touches
 ```
 
 Atom classes are derived from *which atoms a residue contains*, not from a table
@@ -944,8 +946,14 @@ of residue names, so modified residues and unusual ligands land in the right
 class: `polymer`, `organic`, `inorganic`, `solvent`, `backbone`, `sidechain`,
 `guide`, `metals`, `hetatm`.
 
+`donors` and `acceptors` (PyMOL's `don.` and `acc.`) come from the same
+chemistry the polar-contact search uses — residue templates where there is one,
+bond angles where there is not. `byring` completes every ring an atom belongs
+to, and like PyMOL it returns **only** the rings: an atom in none is dropped, so
+`byring (name CA)` answers "the prolines".
+
 :::{tip}
-Anything ChiMOL cannot evaluate — `donors`, `byring`, `text_type` and similar —
+Anything ChiMOL cannot evaluate — `masked`, `text_type`, `flag` and similar —
 raises an error naming the reason instead of returning an empty selection. An
 empty result therefore means *your selection matched nothing*, not *this keyword
 is unimplemented*.

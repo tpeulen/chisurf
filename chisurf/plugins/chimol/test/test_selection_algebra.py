@@ -416,11 +416,8 @@ def test_pepseq_that_matches_nothing_is_empty(select):
 @pytest.mark.parametrize(
     "expression",
     [
-        "donors",          # needs assigned chemistry
-        "acceptors",
         "masked",          # no picking mask
         "protected",
-        "byring resn NAG",  # no ring perception
         "text_type CA",    # no force-field types
         "flag 1",
     ],
@@ -433,6 +430,59 @@ def test_an_unimplemented_keyword_says_so(select, expression):
     """
     with pytest.raises(UnsupportedSelection):
         select(expression)
+
+
+def test_donors_and_acceptors_are_answered_from_the_chemistry(select, atoms):
+    """These were refused as "needing assigned chemistry" that already existed.
+
+    `analysis.hbonds.type_atoms` assigns donor and acceptor flags for the
+    polar-contact search, from the residue templates and the bond angles. Only
+    the keyword was missing -- and its absence took the object menu's
+    **hydrogens > add polar** with it, since that entry is
+    `h_add (sele) and (donors or acceptors)`.
+    """
+    donors = select("donors")
+    acceptors = select("acceptors")
+    assert _count(donors) > 0
+    assert _count(acceptors) > 0
+    # Every one is a nitrogen, an oxygen or a sulfur; carbon is neither.
+    for mask in (donors, acceptors):
+        elements = {
+            str(e).strip().upper() for e in atoms["element"][mask]
+        }
+        assert elements <= {"N", "O", "S"}, elements
+
+
+def test_don_and_acc_are_pymols_spellings(select):
+    """`don.` and `acc.`, which is how PyMOL's own menu writes them."""
+    assert select("don.").tolist() == select("donors").tolist()
+    assert select("acc.").tolist() == select("acceptors").tolist()
+
+
+def test_byring_grows_to_whole_rings(select):
+    """`byring` was refused for want of a ring finder that now exists.
+
+    One atom of each phenylalanine ring comes back as six; a proline's CG comes
+    back as five, because `byring` is a question about **connectivity** and a
+    proline is as much a ring as a phenylalanine. (The pi finder's planar
+    filter is a different question and does exclude proline.)
+    """
+    assert _count(select("name CZ and resn PHE")) == 5
+    assert _count(select("byring (name CZ and resn PHE)")) == 30
+    assert _count(select("resn PRO and name CG")) == 3
+    assert _count(select("byring (resn PRO and name CG)")) == 15
+
+
+def test_byring_drops_atoms_that_are_in_no_ring(select):
+    """PyMOL clears the mask before its ring finder runs.
+
+    `SELE_RING` does `std::fill_n(base[0].sele_data(), n_atom, 0)` first, so
+    `byring (name CA)` answers "the prolines" -- the only CAs inside a ring --
+    and not "every CA, plus the prolines' rings", which is what keeping the
+    incoming mask would give.
+    """
+    assert _count(select("name CA")) > 100
+    assert _count(select("byring (name CA)")) == 15
 
 
 def test_an_unknown_name_is_an_error_not_an_empty_answer(select):

@@ -222,11 +222,11 @@ def test_showing_the_plane_adds_geometry(session):
 #: ("chimol does not read crystal cells") had both had working commands for a
 #: while, and `generate` claimed chimol could not build symmetry mates while
 #: `symexp` sat in cmd/symmetry.py under 53 tests. To the user those read
-#: exactly like a missing feature.
+#: exactly like a missing feature -- and `A > hydrogens > add` was a fourth,
+#: found the same day: `h_add` has been in cmd/editing.py the whole time.
 DISABLED_ENTRIES = {
     # No structure editing.
     "A > clean",
-    "A > hydrogens > add",
     # No per-object matrix.
     "A > drag matrix",
     "A > reset matrix",

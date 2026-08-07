@@ -544,6 +544,8 @@ class Evaluator:
         self.viewer = viewer
         self.default_object_id = default_object_id
         self._class_cache: dict[str, object] = {}
+        self._typing_cache: dict[str, object] = {}
+        self._ring_cache: dict[str, object] = {}
         #: Named selections, ``{name: {"object_id", "mask", ...}}``. A bare name
         #: in an expression resolves to the atoms it captured, exactly as a PyMOL
         #: selection object does -- ``show sticks, mysel and resi 10`` is
@@ -651,10 +653,6 @@ class Evaluator:
     #: model. Reported by name rather than silently returning nothing, so an
     #: unimplemented keyword cannot be mistaken for an empty selection.
     _UNSUPPORTED_FLAGS: dict[str, str] = {
-        "donors": "hydrogen-bond donors need assigned chemistry",
-        "acceptors": "hydrogen-bond acceptors need assigned chemistry",
-        "hba": "hydrogen-bond acceptors need assigned chemistry",
-        "hbd": "hydrogen-bond donors need assigned chemistry",
         "delocalized": "delocalised charge needs assigned chemistry",
         "fixed": "chimol has no sculpting flags",
         "restrained": "chimol has no sculpting flags",
@@ -663,6 +661,40 @@ class Evaluator:
         "center": "chimol has no pseudo-atom for the scene centre",
         "origin": "chimol has no pseudo-atom for the rotation origin",
     }
+
+    #: PyMOL's `don.`/`acc.`. These were listed
+    #: as unsupported -- "need assigned chemistry" -- while
+    #: :func:`~..analysis.hbonds.type_atoms` was already assigning exactly that
+    #: chemistry for the polar-contact search, from the residue templates and
+    #: the bond angles. The keyword was the only missing piece, and its absence
+    #: took the object menu's **hydrogens > add polar** with it.
+    _CHEMISTRY_FLAGS: dict[str, str] = {
+        "donors": "donor",
+        "acceptors": "acceptor",
+    }
+
+    def _typing(self, object_id: str):
+        """Donor/acceptor chemistry for an object, cached like the classes.
+
+        Typing walks every atom and its neighbours, so a selection naming both
+        `donors` and `acceptors` would otherwise do it twice.
+        """
+        cache = self._typing_cache
+        if object_id in cache:
+            return cache[object_id]
+        from ..analysis.hbonds import type_atoms
+
+        entry = self.viewer._objects.get(object_id)
+        state = getattr(entry, "state", None)
+        atoms = getattr(state, "atoms", None)
+        if atoms is None:
+            raise UnsupportedSelection(
+                "this object carries raw coordinates, with no atom names to "
+                "type as donors or acceptors"
+            )
+        typing = type_atoms(atoms, getattr(state, "bond_pairs", None))
+        cache[object_id] = typing
+        return typing
 
     def _classes(self, object_id: str):
         """Classify an object's atoms, caching per object.
@@ -694,6 +726,12 @@ class Evaluator:
         if name in self._UNSUPPORTED_FLAGS:
             raise UnsupportedSelection(
                 f"'{name}' is not supported: {self._UNSUPPORTED_FLAGS[name]}"
+            )
+
+        if name in self._CHEMISTRY_FLAGS:
+            typing = self._typing(object_id)
+            return np.asarray(
+                getattr(typing, self._CHEMISTRY_FLAGS[name]), dtype=bool
             )
 
         if name == "hetatm":
@@ -1218,15 +1256,60 @@ class Evaluator:
             return self._first_or_last(mask, op)
         if op == "bound_to":
             return self._eval_bound_to(mask, object_id)
-        if op in ("byring", "bycell"):
+        if op == "byring":
+            return self._expand_to_rings(mask, object_id)
+        if op == "bycell":
             raise UnsupportedSelection(
-                f"'{op}' needs ring perception, which chimol does not compute"
+                "'bycell' needs the crystal cell's contents as a selection"
             )
 
         fields = self._EXPANSION_FIELDS.get(op)
         if fields is None:
             raise UnsupportedSelection(f"unknown expansion operator '{op}'")
         return self._expand_by_field(mask, object_id, fields)
+
+    def _expand_to_rings(self, mask: np.ndarray, object_id: str) -> np.ndarray:
+        """PyMOL's ``byring``: grow to every ring containing a selected atom.
+
+        The rings are the ones :func:`~..analysis.interactions.find_rings`
+        finds -- PyMOL's own bounded walk, up to seven atoms. This was refused
+        as "needing ring perception, which chimol does not compute" until the
+        pi-interaction work computed it.
+
+        **Every** ring, not only the planar ones: `byring` is a question about
+        connectivity, and a proline or a sugar is as much a ring as a
+        phenylalanine. The planar filter belongs to the pi finder, which is
+        asking a different question.
+        """
+        if not np.any(mask):
+            return mask
+        from ..analysis.interactions import find_rings
+
+        entry = self.viewer._objects.get(object_id)
+        state = getattr(entry, "state", None)
+        atoms = getattr(state, "atoms", None)
+        if atoms is None:
+            raise UnsupportedSelection(
+                "this object carries raw coordinates, with no bonds to walk"
+            )
+
+        cache = self._ring_cache
+        rings = cache.get(object_id)
+        if rings is None:
+            rings = find_rings(len(atoms), getattr(state, "bond_pairs", None))
+            cache[object_id] = rings
+
+        # Only the rings. PyMOL clears the mask before its ring finder runs
+        # (`std::fill_n(base[0].sele_data(), n_atom, 0)` in `SELE_RING`), so a
+        # selected atom that is in no ring is **dropped** rather than kept --
+        # `byring (name CA)` answers "the prolines", not "every CA plus the
+        # prolines", which is what keeping the mask would give.
+        selected = np.asarray(mask, dtype=bool)
+        grown = np.zeros_like(selected)
+        for ring in rings:
+            if selected[ring].any():
+                grown[ring] = True
+        return grown
 
     def _expand_by_field(
         self, mask: np.ndarray, object_id: str, fields: tuple[str, ...]

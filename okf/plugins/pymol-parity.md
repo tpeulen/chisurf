@@ -712,6 +712,34 @@ with its reason, and the test fails both ways — a new disabled entry has to be
 added deliberately, and one that gains a command has to be struck. Like the
 other trackers here it is meant to **shrink**.
 
+**Three keywords and a menu entry that were waiting on work already done.**
+Continuing the sweep, in the same shape as the `origin`/`cell`/`symexp` finds:
+
+* `A ▸ hydrogens ▸ add` was disabled as "no structure editing" while **`h_add`
+  sat in `cmd/editing.py`**; it places 1325 hydrogens on 148L in 0.6 s and
+  reports the six ligands it has no template for. Both PyMOL entries are wired
+  now, *add* and *add polar*;
+* `donors` / `acceptors` (`don.`/`acc.`) were refused as "needing assigned
+  chemistry" — chemistry `analysis.hbonds.type_atoms` **was already assigning**
+  for every polar-contact search. Only the keyword was missing, and its absence
+  is what blocked *add polar*, whose command is
+  `h_add (sele) and (donors or acceptors)`. 278 donors and 261 acceptors on
+  148L, cached per object like the atom classes;
+* `byring` was refused for want of a ring finder, which the pi-interaction work
+  wrote the same day. It uses **every** ring rather than the planar ones — a
+  proline is as much a ring as a phenylalanine, and the planar filter belongs to
+  the pi finder's question, not this one. One trap from the source: PyMOL
+  *clears* the mask before its ring finder runs (`std::fill_n(...)` in
+  `SELE_RING`), so an atom in no ring is **dropped** — `byring (name CA)`
+  answers "the prolines" (15 atoms), not "every CA plus the prolines" (177).
+
+The pattern in all six is one thing: **capability and surface land separately,
+and nothing pairs them up again.** The command, the keyword or the analysis
+arrives; the menu entry or the parser branch keeps its refusal, and the refusal
+is what the user sees. Worth re-reading every "chimol cannot" string whenever
+that area is touched — `DISABLED_ENTRIES` now pins the menu half, and
+`_UNSUPPORTED_FLAGS` in `cmd/sele_parser.py` is the same list for the selector.
+
 **The clash check is PyMOL's, and it is not a command there.** It is the bump
 check inside the mutagenesis wizard: sculpting's van der Waals term, one
 iteration, with `sculpt_vdw_vis_mode` on. Transcribed from `Sculpt.cpp`, and

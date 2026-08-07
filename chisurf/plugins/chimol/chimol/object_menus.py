@@ -302,7 +302,14 @@ ACTION_MENU: tuple[MenuEntry, ...] = (
     MenuEntry("delete object", "delete {sele}", color=DESTRUCTIVE),
     SEP,
     MenuEntry("hydrogens", None, "", children=(
-        MenuEntry("add", None, _NO_EDIT),
+        MenuEntry("add", "h_add {sele}",
+                  "Place the hydrogens the residue templates say are missing. "
+                  "Worth doing before looking for ring stacking in a ligand: "
+                  "flatness is measured from the bond angles, and a ring carbon "
+                  "needs three neighbours before there is an angle to measure."),
+        MenuEntry("add polar", "h_add ({sele}) and (donors or acceptors)",
+                  "Only where a hydrogen bond could form, which is PyMOL's "
+                  "`h_add sele & (don.|acc.)`."),
         MenuEntry("remove", "remove elem H and {sele}", color=DESTRUCTIVE),
     )),
     MenuEntry("remove waters", "remove solvent and {sele}",
