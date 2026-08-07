@@ -2,6 +2,14 @@
 
 ## 2026-08-07
 
+* **Stage 4: the imaging results stop being seven files around one measurement** ([photon container](subsystems/photon-container.md)). `<source>.imaging.h5` holds exactly one thing — a per-pixel table — and that is a missing *statement* rather than a limitation of HDF5: a table that cannot say what one of its rows is can only hold one grain, and the grain it chose was the pixel. So a stack, a drift trajectory, a resolution curve, a molecule table and a track table each became a file of its own beside it, related to the measurement by a filename prefix.
+
+  Each now says its grain and shares the file: flow field at `pixel`, drift at `frame`, FRC at `curve_point`, tracks at `track` with detections at `spot` carrying the track as a key, molecules at `molecule`. A raster stays a TIFF and travels as cargo — it is worth keeping in a format every other tool reads — with its axes labelled going in, since a stack read back without them is guessed into channels whenever it has four frames or fewer.
+
+  The per-pixel tools took one change between them: they share `ImagingMapViewModel`. **A third silent-units defect surfaced there**: every imaging column is suffixed with the channel it came from (`N (ch0)`, `Mean Micro Time (green)`), so a units table keyed on the whole name matched nothing and the file came back unitless — "no unit" and "unknown unit" being written identically. Matching is by prefix now. Found by reading the output; no test would have failed.
+
+  Also recorded rather than fixed: `img_flow`'s demo PTU reads back one frame short of what it simulates. The simulator emits a frame marker at the *start* of each scan, so 30 markers close 29 frames. Whether the simulator or the reader is wrong is a question about the scanner convention — and the answer decides whether every measured file has been one frame short all along.
+
 * **Nine burst writers now write one file per measurement — and the migration found two defects in the container itself** ([photon container](subsystems/photon-container.md), [PTO.MFDB](specs/pto-mfdb.md)). `burst_mle_analysis`, `burst_fcs_correlator`, `bid_to_analysis` and `burst_analysis` join the five already across.
 
   The MLE tool had the widest legacy layout of the set: three `b?4` directories, a settings file *inside* a companion directory that every reader of that directory has to skip, the IRF and background as arrays-of-floats in JSON because there was nowhere to put a curve, and the pooled per-state fits in `Info/` — which the method that writes them documents as deliberately outside the companion system, "written as a companion it would misalign every burst after the first". Each is now an object at the grain it has: `burst`, `state`, `curve_point`.
