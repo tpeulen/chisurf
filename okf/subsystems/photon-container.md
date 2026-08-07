@@ -9,12 +9,18 @@ timestamp: '2026-08-06T00:00:00Z'
 
 # Where to pick this up
 
-1. **`burst_selection` is migrated; the other ~27 writers are not.** It writes a
-   container when `output_formats` contains `"pto"`, and its baseline is captured
-   in `test/data/baselines/burst_selection_legacy.json`. Next are
-   `bid_to_analysis` and `burst_analysis`, because both duplicate its
-   `bi4_bur/` writer and the three collapse together. Then `burst_fusion`,
-   which is the first one needing a `row_mapping` artifact.
+1. **Three writers migrated, ~11 to go.** `burst_selection` (`output_formats`
+   contains `"pto"`), `burst_bva` (`write_bva_container`) and `burst_fusion`
+   (`write_fusion_container`). The shared seam is
+   `chisurf/core/fio/fluorescence/burst_container.py` — `write_burst_artifact`
+   for one measurement, `write_per_source` for a frame covering several. Every
+   remaining writer is one call to those, so the work is now reading each
+   plugin rather than designing anything. Next: `burst_2cde` (identical shape to
+   BVA), then `burst_mle_analysis` (three colour tables plus per-state
+   lifetimes), `burst_h2mm` (dwells at their own grain), `burst_fcs_correlator`,
+   `bid_to_analysis` and `burst_analysis` (both duplicate `burst_selection`'s
+   `bi4_bur/` writer and collapse onto `write_container`).
+
 2. **Capture the legacy baseline BEFORE touching each writer.** Once a writer is
    changed its output is unrecoverable and the migration cannot be reviewed by
    anyone later. The recipe is the one used for `burst_selection`: drive the

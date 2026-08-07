@@ -9,6 +9,10 @@ from pathlib import Path
 import pandas as pd
 import tttrlib
 
+from chisurf.core.fio.fluorescence.burst_container import (
+    deinterleave_bursts,
+    write_burst_artifact,
+)
 from chisurf.core.fio.fluorescence.burst import (
     read_bur_file,
     write_burst_hdf5,
@@ -93,45 +97,6 @@ def write_bur(df: pd.DataFrame, path: str | Path) -> None:
     write_dataframe_to_bur(df, target)
 
 
-def deinterleave_bursts(df: pd.DataFrame) -> pd.DataFrame:
-    """Return the real bursts from a frame carrying the ``.bur`` interleave.
-
-    The legacy format writes ``2N+1`` physical rows — a zero row, a burst, a
-    zero row, … — because it is merged with its companions **by position** and
-    needs a fixed grid to count against. That is a property of the file, and it
-    has leaked into the in-memory frame: the blank trailing column exists only
-    to produce the trailing tab the header needs.
-
-    Neither belongs in a container, where relations are declared keys rather
-    than row positions, so a skipped burst is an absent row and a placeholder
-    would destroy that information. See [the profile](/specs/pto-mfdb.md).
-
-    The layout is documented rather than guessed at: data on odd indices, an odd
-    total row count. A frame that does not look interleaved is returned as it
-    is, so this is safe to call on anything.
-
-    Parameters
-    ----------
-    df : pandas.DataFrame
-        Burst summary table, interleaved or not.
-
-    Returns
-    -------
-    pandas.DataFrame
-        One row per burst, with any unnamed column dropped and the index reset.
-    """
-    out = df
-    interleaved = len(out) >= 3 and len(out) % 2 == 1
-    if interleaved:
-        numeric = out.select_dtypes(include="number")
-        if not numeric.empty and (numeric.iloc[0::2] == 0).all().all():
-            out = out.iloc[1::2]
-    blank = [c for c in out.columns if not str(c).strip()]
-    if blank:
-        out = out.drop(columns=blank)
-    return out.reset_index(drop=True)
-
-
 def write_container(
     source: str | Path,
     df: pd.DataFrame,
@@ -144,18 +109,16 @@ def write_container(
     One measurement is one file: the instrument data stays where it is, and the
     bursts found in it become an artifact beside it rather than a `.bur` in a
     directory whose name encodes the parameters. Re-running with the same
-    settings replaces that artifact in place; changing a setting adds one. See
-    [the profile](/specs/pto-mfdb.md).
+    settings replaces that artifact in place; changing a setting adds one.
 
     Parameters
     ----------
     source : str or Path
         The instrument file the bursts were found in.
     df : pandas.DataFrame
-        Burst summary table, one row per burst.
+        Burst summary table.
     parameters : dict, optional
-        The analysis settings. Their hash is the identity of the run, which is
-        what makes a recomputation replace rather than accumulate.
+        The analysis settings. Their hash is the identity of the run.
     out_dir : str or Path, optional
         Where the container goes. Defaults to beside *source*.
 
@@ -164,27 +127,17 @@ def write_container(
     str
         Path of the container written.
     """
-    from chisurf.core.fio.pto import Measurement, is_measurement
-
-    src = Path(source)
-    target = (Path(out_dir) if out_dir is not None else src.parent) / (src.stem + ".pto")
-
-    if is_measurement(target):
-        container = Measurement.open(target, writable=True)
-    else:
-        container = Measurement.create(src, out_dir=out_dir)
-
-    with container as m:
-        m.put_table(
-            "bursts",
-            deinterleave_bursts(df),
-            artifact_kind="burst_table",
-            operation_type="burst_selection",
-            row_grain="burst",
-            parameters=parameters,
-            derived_from=m.instrument_uid,
-        )
-    return str(target)
+    return write_burst_artifact(
+        source,
+        df,
+        name="bursts",
+        artifact_kind="burst_table",
+        operation_type="burst_selection",
+        row_grain="burst",
+        parameters=dict(parameters) if parameters else None,
+        derived_from=(),
+        out_dir=out_dir,
+    )
 
 
 def get_unique_folder_path(base_path: Path) -> Path:

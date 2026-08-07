@@ -494,6 +494,86 @@ def write_fused_analysis(
     }
 
 
+def write_fusion_container(
+    source_path,
+    measurement: MeasurementFusion,
+    frame: pd.DataFrame,
+    fused: pd.DataFrame,
+    *,
+    parameters: dict | None = None,
+) -> str:
+    """Write the fused bursts and how they were assembled, in one container.
+
+    Fusion is the case the positional companion format could not express, in
+    both directions at once. A fused burst is **coarser** than the bursts it was
+    made from, so it does not fit their grid; and it has **several parents**,
+    which a one-row-per-burst companion has no way to name. The legacy writer
+    worked around both by putting the fused bursts in a new folder and writing
+    the membership back into the *source* analysis's directory -- mutating
+    somebody else's output to carry a relation the format could not hold.
+
+    Here the membership is an artifact of its own: one row per source burst
+    naming the fused burst it went into, joined by declared key. Nothing is
+    written outside this measurement.
+
+    Parameters
+    ----------
+    source_path : str or Path
+        The instrument file the original bursts were found in.
+    measurement : MeasurementFusion
+        Carries ``labels`` -- for each source burst, the fused burst it joined.
+    frame : pandas.DataFrame
+        The source bursts.
+    fused : pandas.DataFrame
+        The fused bursts.
+    parameters : dict, optional
+        The fusion settings; their hash is the identity of the run.
+
+    Returns
+    -------
+    str
+        Path of the container written.
+    """
+    from chisurf.core.fio.fluorescence.burst_container import (
+        deinterleave_bursts,
+        open_measurement,
+    )
+
+    labels = np.asarray(measurement.labels, dtype=int)
+    rows = deinterleave_bursts(frame)
+    mapping = pd.DataFrame(
+        {
+            "source_row": np.arange(labels.size, dtype=np.int64),
+            "fused_row": labels.astype(np.int64),
+        }
+    )
+
+    with open_measurement(source_path) as m:
+        bursts = m._f.find("bursts")
+        parents = [p for p in (m.instrument_uid, bursts) if p]
+        fused_uid = m.put_table(
+            "fused bursts",
+            deinterleave_bursts(fused),
+            artifact_kind="burst_table",
+            operation_type="burst_fusion",
+            row_grain="burst",
+            parameters=parameters,
+            derived_from=parents,
+        )
+        m.put_table(
+            "fusion membership",
+            mapping,
+            artifact_kind="row_mapping",
+            operation_type="burst_fusion",
+            row_grain="pair",
+            parameters=parameters,
+            derived_from=[bursts, fused_uid] if bursts else [fused_uid],
+            source_row_column="source_row",
+            target_row_column="fused_row",
+        )
+        return str(m.path)
+
+
 def _write_source_companion(folder, measurement: MeasurementFusion, frame: pd.DataFrame) -> None:
     """Record each original burst's fused-burst membership beside the source."""
     labels = np.asarray(measurement.labels, dtype=int)

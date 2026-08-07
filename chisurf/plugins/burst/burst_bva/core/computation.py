@@ -242,6 +242,52 @@ def compute_bva(
     return df
 
 
+def write_bva_container(
+    df: pd.DataFrame,
+    *,
+    parameters: dict | None = None,
+    progress_window=None,
+) -> list[str]:
+    """Write the BVA result into each measurement's own container.
+
+    One row per burst, joined to the burst table by declared key rather than by
+    position, so the `2n+1` grid and the nameless trailing column the `.bv4`
+    needed are not reproduced -- they are what the legacy merge counted against,
+    and nothing here counts.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        BVA results, carrying ``First File`` per row.
+    parameters : dict, optional
+        The analysis settings, which used to be dropped into the companion
+        directory as ``bva_settings.json`` and then skipped on purpose by every
+        reader of that directory.
+    progress_window : optional
+        Anything with ``set_value``.
+
+    Returns
+    -------
+    list of str
+        The containers written.
+    """
+    from chisurf.core.fio.fluorescence.burst_container import write_per_source
+
+    written = write_per_source(
+        df[["First File", "Proximity Ratio Mean", "Proximity Ratio Std"]],
+        name="bva",
+        artifact_kind="burst_table",
+        operation_type="burst_variance_analysis",
+        row_grain="burst",
+        parameters=parameters,
+        derived_from="bursts",
+    )
+    if progress_window:
+        progress_window.set_value(len(written))
+    logging.info("BVA results written to %d container(s)", len(written))
+    return written
+
+
 def write_bv4_analysis(df: pd.DataFrame, analysis_folder: str = "analysis", progress_window=None):
     """Write BVA results to .bv4 files in a bv4/ subfolder."""
     bv4_folder = pathlib.Path(analysis_folder) / "bv4"

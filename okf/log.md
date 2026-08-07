@@ -2,6 +2,16 @@
 
 ## 2026-08-06
 
+* **The burst-result seam, and the two shapes the companion format could not hold** ([photon container](subsystems/photon-container.md)).
+
+  `chisurf/core/fio/fluorescence/burst_container.py` is now the one place a burst analysis writes its answer. Six writers had grown six copies of the same `2n+1` interleave; a writer now says what its rows *are* and what they came from, and the join is a declared key.
+
+  Both shapes the `…4` format could not express are now ordinary. A **dwell** is finer than a burst, so it carries the burst's key rather than being squeezed onto the burst grid. **Fusion** is coarser *and* multi-parent: `write_fusion_container` writes the fused bursts with two parents and the membership as a `row_mapping` artifact of `(source_row, fused_row)` pairs — so nothing is written into the source analysis's directory, which is what `fg4` was doing purely because the format had no way to say it.
+
+  BVA is migrated as the exemplar for the per-burst companions, and `write_per_source` splits a frame covering several measurements into one container each, refusing rather than guessing when the source column is absent — guessing would put one measurement's results in another's file.
+
+  A note for whoever runs the suites: this tree uses pytest-randomly, so a run that shuffles into a bad order surfaces pre-existing isolation leaks in the burst-selection server and CLI tests. With `-p no:randomly` it is 192 green twice; the failures are order-dependent and not what the change did.
+
 * **A corrupted container took the reader out with the OOM killer** ([photon container](subsystems/photon-container.md)).
 
   Compared PTO's EBML against libebml, the reference it borrows its element ids and framing from. Two things matched and were left alone — `CodedSizeLength`'s finite-size rule, where libebml reserves all-ones exactly as our `size_octets` does, and `EbmlSInteger`'s width ladder, which `int_elem` matches bound for bound. One did not.
