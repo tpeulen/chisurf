@@ -36,23 +36,23 @@ def trajectory_file():
 
 
 def _reference(path, kind):
-    """Return the coordinates the file itself holds, in nanometres."""
+    """Return the coordinates the file itself holds, in ångströms."""
     from chisurf.core.fio.trajectory import read_dcd, read_xtc
 
     if kind == "dcd":
         xyz, _, _ = read_dcd(str(path))
-        return xyz / 10.0                      # Angstrom on disk
+        return xyz                             # DCD is already angstroms
     xyz, _, _, _ = read_xtc(str(path))
-    return xyz                                 # XTC is already nanometres
+    return xyz * 10.0                          # XTC stores nanometres
 
 
 @pytest.mark.parametrize("path, kind, atol", [
     # The loaded coordinates must be the file's own -- not recentred, not
-    # rescaled. XTC stores nanometres and needs no conversion, so it is exact;
-    # DCD stores Angstrom and is divided by ten on the way in, and that float32
-    # division is the entire difference.
-    (DCD, "dcd", 1e-5),
-    (XTC, "xtc", 0.0),
+    # rescaled. This pair inverted when the interior became angstroms: DCD
+    # stores angstroms and now needs no conversion at all, so it is exact,
+    # while XTC is the one format still scaled and carries the float32 error.
+    (DCD, "dcd", 0.0),
+    (XTC, "xtc", 1e-4),
 ])
 def test_a_coordinate_trajectory_loads_with_a_topology(trajectory_file, path, kind, atol):
     traj = trajectory_file(str(path), topology=str(TOPOLOGY))

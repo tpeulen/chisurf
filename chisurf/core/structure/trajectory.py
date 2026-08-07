@@ -242,7 +242,7 @@ class TrajectoryFile(
         elif isinstance(p_object, chisurf.core.structure.Structure):
             structure = p_object
             loaded = traj_data.Trajectory(
-                p_object.xyz[np.newaxis] / 10.0,
+                p_object.xyz[np.newaxis],
                 _Topology(p_object.atoms),
             )
         else:
@@ -267,7 +267,7 @@ class TrajectoryFile(
         structure = chisurf.core.structure.Structure()
         if trajectory.topology is not None:
             atoms = trajectory.topology.atom_array.copy()
-            atoms["xyz"] = trajectory.xyz[0] * 10.0
+            atoms["xyz"] = trajectory.xyz[0]
             structure.atoms = atoms
         return structure
 
@@ -459,7 +459,7 @@ class TrajectoryFile(
         # Appending grows the trajectory in memory. It used to reopen the file
         # and write one frame per call, which made a Monte-Carlo run pay a file
         # round-trip per accepted move; :meth:`save` writes when asked.
-        frame = np.asarray(xyz, dtype=np.float32).reshape((1, -1, 3)) / 10.0
+        frame = np.asarray(xyz, dtype=np.float32).reshape((1, -1, 3))
         self._xyz = (frame if self._xyz is None or len(self._xyz) == 0
                      else np.append(self._xyz, frame, axis=0))
         self.time = np.arange(len(self._xyz), dtype=np.float32)
@@ -472,9 +472,9 @@ class TrajectoryFile(
                 return _traj_data.Trajectory(self._xyz[index][np.newaxis])
 
             new_frame = frame_at(-1)
-            next_drmsd = _traj_data.rmsd(new_frame, frame_at(-2)) * 10.0
+            next_drmsd = _traj_data.rmsd(new_frame, frame_at(-2))
             next_rmsd = _traj_data.rmsd(
-                new_frame, frame_at(self.rmsd_ref_state)) * 10.0
+                new_frame, frame_at(self.rmsd_ref_state))
         else:
             next_drmsd = [0.0]
             next_rmsd = [0.0]
@@ -550,7 +550,7 @@ class TrajectoryFile(
         # http://code.activestate.com/recipes/576410-lazy-lists/
         if isinstance(key, int):
             s = copy.copy(self.structure)
-            s.xyz = self._xyz[key] * 10.0
+            s.xyz = self._xyz[key]
             s.update()
             return s
 
@@ -566,7 +566,7 @@ class TrajectoryFile(
                 """Create a :class:`Structure` instance for trajectory index *i*."""
                 s = copy.copy(self.structure)
                 s._filename = self.structure.labeling_file
-                s.xyz = self._xyz[i] * 10.0
+                s.xyz = self._xyz[i]
                 s.update()
                 return s
 

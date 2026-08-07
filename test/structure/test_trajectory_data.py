@@ -25,6 +25,10 @@ DATA = pathlib.Path(__file__).resolve().parents[1] / "data/atomic_coordinates/tr
 PDB = DATA / "hgbp1/topol.pdb"
 DCD = DATA / "dcd/hgbp1_transition.dcd"
 XTC = DATA / "xtc/hgbp1_transition.xtc"
+#: Reference values, in angstroms. The length arrays were scaled by ten
+#: when the interior stopped being nanometres -- the same physical
+#: quantities, restated -- and `pairs`/`ca` are indices and were not.
+#: Every tolerance below is a length, so it was scaled with them.
 EXPECTED = np.load(DATA / "ops/ops_expected.npz")
 
 
@@ -42,15 +46,15 @@ def test_load_pairs_coordinates_with_a_topology(trajectory):
 
 def test_rmsd_matches_the_reference(trajectory):
     got = traj_ops.rmsd(trajectory, trajectory, frame=0)
-    np.testing.assert_allclose(got, EXPECTED["rmsd_all"], rtol=0, atol=1e-4)
+    np.testing.assert_allclose(got, EXPECTED["rmsd_all"], rtol=0, atol=1e-3)
     assert got[0] == pytest.approx(0.0, abs=1e-6)      # a frame against itself
 
 
 def test_rmsd_on_a_subset_matches_the_reference(trajectory):
     got = traj_ops.rmsd(trajectory, trajectory, frame=0, atom_indices=EXPECTED["ca"])
-    np.testing.assert_allclose(got, EXPECTED["rmsd_ca"], rtol=0, atol=1e-4)
+    np.testing.assert_allclose(got, EXPECTED["rmsd_ca"], rtol=0, atol=1e-3)
     # Fitting on the CA atoms alone must give a different answer from all-atom.
-    assert not np.allclose(got, EXPECTED["rmsd_all"], atol=1e-3)
+    assert not np.allclose(got, EXPECTED["rmsd_all"], atol=1e-2)
 
 
 def test_rmsd_does_not_modify_its_inputs(trajectory):
@@ -76,19 +80,19 @@ def test_rmsd_is_invariant_to_rotation_and_translation(trajectory):
     moved.xyz = (moved.xyz @ rotation.T + 12.0).astype(np.float32)
     np.testing.assert_allclose(
         traj_ops.rmsd(moved, trajectory, frame=0),
-        traj_ops.rmsd(trajectory, trajectory, frame=0), rtol=0, atol=1e-4)
+        traj_ops.rmsd(trajectory, trajectory, frame=0), rtol=0, atol=1e-3)
 
 
 def test_superpose_matches_the_reference(trajectory):
     trajectory.superpose(trajectory, frame=0)
-    np.testing.assert_allclose(trajectory.xyz, EXPECTED["superpose_all"], rtol=0, atol=1e-4)
+    np.testing.assert_allclose(trajectory.xyz, EXPECTED["superpose_all"], rtol=0, atol=1e-3)
 
 
 def test_superpose_on_a_subset_moves_every_atom(trajectory):
     # Fitting on the CA atoms must still transform the sidechains; applying the
     # rotation only to the fitted atoms would tear the molecule apart.
     trajectory.superpose(trajectory, frame=0, atom_indices=EXPECTED["ca"])
-    np.testing.assert_allclose(trajectory.xyz, EXPECTED["superpose_ca"], rtol=0, atol=1e-4)
+    np.testing.assert_allclose(trajectory.xyz, EXPECTED["superpose_ca"], rtol=0, atol=1e-3)
 
 
 def test_superpose_does_not_mirror(trajectory):
@@ -107,7 +111,7 @@ def test_superpose_does_not_mirror(trajectory):
 
 def test_compute_distances_matches_the_reference(trajectory):
     got = traj_ops.compute_distances(trajectory, EXPECTED["pairs"], periodic=False)
-    np.testing.assert_allclose(got, EXPECTED["distances"], rtol=0, atol=1e-5)
+    np.testing.assert_allclose(got, EXPECTED["distances"], rtol=0, atol=1e-4)
 
 
 def test_periodic_distances_are_refused_rather_than_ignored(trajectory):

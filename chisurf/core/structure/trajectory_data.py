@@ -213,9 +213,9 @@ class Trajectory:
 
     # -- output --------------------------------------------------------------
     def save_dcd(self, filename) -> None:
-        """Write the trajectory as a DCD (converting nanometres to Ångström)."""
+        """Write the trajectory as a DCD. Both are ångströms, so nothing scales."""
         from chisurf.core.fio.trajectory import write_dcd
-        write_dcd(filename, self.xyz * 10.0)
+        write_dcd(filename, self.xyz)
 
     def save_pdb(self, filename) -> None:
         """Write the frames as a multi-model PDB.
@@ -229,7 +229,7 @@ class Trajectory:
             raise ValueError("cannot write a PDB without a topology")
         atoms = self.topology.atom_array.copy()
         for frame in range(self.n_frames):
-            atoms["xyz"] = self.xyz[frame] * 10.0        # nm here, Angstrom in a PDB
+            atoms["xyz"] = self.xyz[frame]
             write_pdb(str(filename), atoms, append_model=frame > 0)
 
     def save(self, filename) -> None:
@@ -302,7 +302,7 @@ def compute_distances(trajectory: Trajectory, atom_pairs, periodic: bool = False
     Returns
     -------
     numpy.ndarray
-        ``(n_frames, n_pairs)`` distances, in the trajectory's units.
+        ``(n_frames, n_pairs)`` distances, in ångströms.
     """
     if periodic:
         raise NotImplementedError(
@@ -364,7 +364,6 @@ def load(filename, top=None, stride: int = None, atom_indices=None) -> Trajector
         if name.endswith(".dcd"):
             from chisurf.core.fio.trajectory import read_dcd
             xyz, _, _ = read_dcd(filename, stride=stride, atom_indices=atom_indices)
-            xyz = xyz / 10.0                     # Angstrom on disk, nm in memory
             # DCD records a first step, an interval and a timestep rather than
             # a free list of times. Rebuild the axis from those, so a strided
             # trajectory keeps its real spacing instead of counting frames.
@@ -376,12 +375,16 @@ def load(filename, top=None, stride: int = None, atom_indices=None) -> Trajector
         else:
             from chisurf.core.fio.trajectory import read_xtc
             xyz, _, _, _ = read_xtc(filename, stride=stride, atom_indices=atom_indices)
+            # XTC is the one format here that is not angstroms: GROMACS writes
+            # nanometres. Everything else -- DCD, PDB, mmCIF -- is angstroms, and
+            # so is the interior, so this is the only scale left in the reader.
+            xyz = np.asarray(xyz, dtype=np.float32) * 10.0
         if atom_indices is not None:
             topology = topology.subset(atom_indices)
         return Trajectory(xyz, topology)
 
     topology = Topology.from_file(str(filename))
-    xyz = topology.atom_array["xyz"][np.newaxis] / 10.0    # PDB is Angstrom
+    xyz = topology.atom_array["xyz"][np.newaxis]
     if atom_indices is not None:
         indices = np.asarray(atom_indices, dtype=np.intp)
         return Trajectory(xyz[:, indices], topology.subset(indices))

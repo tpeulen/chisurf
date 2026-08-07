@@ -560,8 +560,8 @@ def calc_weights_from_traj(
     r0_id = topology.select(
         "resSeq %s and name %s and chainid %s" % (r0_res, r0_atom_name, r0_chain)
     )[0]
-    r0 = traj.xyz[:, r0_id, :] * 10.0
-    coords = traj.xyz[:, atom_id, :] * 10.0 - r0
+    r0 = traj.xyz[:, r0_id, :]
+    coords = traj.xyz[:, atom_id, :] - r0
     coords_i = (coords / dg).astype(np.int32)
     npm = (ng - 1) / 2
 
@@ -619,8 +619,8 @@ def calc_distance_from_traj(traj, res_id, atom_name, chain_id, ng, dg, r0_res, r
     topology = traj.top
     atom_id = topology.select("resSeq %s and name %s and chainid %s" % (res_id, atom_name, chain_id))[0]
     r0_id = topology.select("resSeq %s and name %s and chainid %s" % (r0_res, r0_atom_name, r0_chain))[0]
-    r0 = traj.xyz[:, r0_id, :] * 10.0
-    coords = traj.xyz[:, atom_id, :] * 10.0 - r0
+    r0 = traj.xyz[:, r0_id, :]
+    coords = traj.xyz[:, atom_id, :] - r0
     distance_attach = np.linalg.norm(coords, ord=2, axis=1)
 
     # calculate the speed of leaving each of the trajectory
