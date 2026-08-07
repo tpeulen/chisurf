@@ -70,11 +70,38 @@ that area is touched:
   What is left there is genuine: `delocalized`, `flag`, `text_type`, the
   sculpting flags, the picking mask, and the `center`/`origin` pseudo-atoms.
 
-The largest real gap behind the remaining menu refusals is **bond orders**.
-`S/H ▸ valence` needs them to draw, and the *bond-order half* of
-`assign_pdb_known_residue` (`layer2/ObjectMolecule2.cpp`) is transcribable the
-same way its formal-charge half already was — C=O, ARG CZ=NH1, ASP CG=OD1, the
-nucleobases. That is the next substantial item here.
+**0-bis. Valence display: half done, and the half that is left is the wiring.**
+`S/H ▸ valence` needs bond orders. Two of the three pieces landed on
+2026-08-07 and are tested on their own; **nothing is user-visible yet**, which
+is the state to pick up from:
+
+* **done** — `analysis/bond_orders.py`, the bond-order half of
+  `assign_pdb_known_residue` transcribed (C=O for any protein residue, ARG
+  CZ=NH1 with CZ-NH2 forced back to single, the carboxylates, both histidine
+  tautomers by residue name, the Kekulé rings, the nucleobases, P=O1P).
+  `assign_bond_orders(atoms, bond_pairs)` gives **258 doubles of 1384 bonds on
+  148L in 4 ms**, 3564 of 18434 on 1RTD in 50 ms;
+* **done** — `geometry/wireframe.py`: `valence_offsets()` and an `orders=`
+  argument on `bond_line_segments`, which appends a second line *beside* each
+  double bond, offset towards the rest of the molecule so it falls **inside** a
+  ring (PyMOL's `valence_mode 1`). Verified inward on a benzene; a bond whose
+  atoms have no other neighbour falls back to any perpendicular rather than
+  drawing on top of itself. 13 tests in `test/test_bond_orders.py`;
+* **open** — the wiring, in this order:
+  1. compute the orders where bonds are inferred (`MolView._infer_bonds`, and
+     the payload path for files that carry bonds) and keep them on the object
+     state beside `bond_pairs`, or the renderer recomputes per frame;
+  2. a `valence` setting (bool) plus `valence_size` (0.06) in `_DISPLAY_CONFIG`,
+     reachable as `set valence, on`. PyMOL's own menu uses **`set_bond`**, a
+     per-bond setting chimol has no equivalent of — a global/per-object setting
+     is the chimol spelling and should be said so in the docs;
+  3. `_update_lines` passes `orders=` when the setting is on;
+  4. **sticks too, or say why not.** PyMOL draws valence in both
+     (`stick_valence_scale`); shipping lines only is a half-answer and the menu
+     entry would be lying about sticks;
+  5. strike `S > valence` and `H > valence` from `DISABLED_ENTRIES`, and
+     screenshot a tyrosine and a guanine before accepting — this is exactly the
+     kind of change that looks right in a mesh count and wrong in a picture.
 
 **0a. Anything a user types into needs a test that types into it.** Not a task
 — a standing correction, and it belongs first because it is what let two total

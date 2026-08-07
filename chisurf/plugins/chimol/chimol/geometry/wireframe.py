@@ -22,7 +22,107 @@ from __future__ import annotations
 
 import numpy as np
 
-__all__ = ["bond_line_segments", "nonbonded_crosses", "unbonded_mask"]
+__all__ = [
+    "valence_offsets","bond_line_segments", "nonbonded_crosses", "unbonded_mask"]
+
+
+def valence_offsets(
+    coords: np.ndarray,
+    bonds: np.ndarray,
+    orders: np.ndarray,
+    *,
+    size: float = 0.06,
+) -> np.ndarray | None:
+    """Where the second line of a double bond goes, per bond.
+
+    PyMOL's ``valence_mode 1``: the extra line sits **beside** the bond rather
+    than replacing it, offset perpendicular to it and *towards the rest of the
+    molecule* -- which puts it inside a ring, where it reads as a Kekule
+    structure rather than as two parallel rails. ``valence_size`` (0.06) scales
+    the offset with the bond, so it is the same fraction of every bond's length
+    however long it is.
+
+    The direction comes from the two atoms' other neighbours: their mean, made
+    perpendicular to the bond. A bond whose atoms have no other neighbour --
+    a diatomic, or a fragment -- has no plane to choose, and any perpendicular
+    is as good as another; one is picked from whichever axis is least aligned
+    with the bond, so the line is never drawn on top of the bond it doubles.
+
+    Parameters
+    ----------
+    coords : numpy.ndarray
+        ``(N, 3)`` atom positions.
+    bonds : numpy.ndarray
+        ``(B, 2)`` atom index pairs.
+    orders : numpy.ndarray
+        ``(B,)`` bond orders; only ``>= 2`` is offset.
+    size : float, optional
+        ``valence_size``, as a fraction of the bond length.
+
+    Returns
+    -------
+    numpy.ndarray or None
+        ``(B, 3)`` offsets, zero where the bond is single. ``None`` when no
+        bond is double, so a caller can skip the work entirely.
+    """
+    pts = np.asarray(coords, dtype=float)
+    pairs = np.asarray(bonds, dtype=int)
+    order_arr = np.asarray(orders, dtype=int).reshape(-1)
+    if pairs.ndim != 2 or pairs.shape[0] == 0 or order_arr.shape[0] != pairs.shape[0]:
+        return None
+    double = order_arr >= 2
+    if not double.any():
+        return None
+
+    # Mean position of everything each atom is bonded to, which is the cheapest
+    # stand-in for "the side the rest of the molecule is on".
+    sums = np.zeros_like(pts)
+    counts = np.zeros(pts.shape[0], dtype=float)
+    np.add.at(sums, pairs[:, 0], pts[pairs[:, 1]])
+    np.add.at(sums, pairs[:, 1], pts[pairs[:, 0]])
+    np.add.at(counts, pairs[:, 0], 1.0)
+    np.add.at(counts, pairs[:, 1], 1.0)
+    neighbourhood = np.divide(
+        sums, np.maximum(counts, 1.0)[:, None],
+        out=np.zeros_like(sums), where=counts[:, None] > 0,
+    )
+
+    a = pts[pairs[:, 0]]
+    b = pts[pairs[:, 1]]
+    axis = b - a
+    length = np.linalg.norm(axis, axis=1)
+    unit = np.divide(
+        axis, np.maximum(length, 1e-9)[:, None],
+        out=np.zeros_like(axis), where=length[:, None] > 1e-9,
+    )
+
+    towards = 0.5 * (
+        neighbourhood[pairs[:, 0]] + neighbourhood[pairs[:, 1]]
+    ) - 0.5 * (a + b)
+    # Perpendicular component only; the parallel part would slide the line
+    # along the bond instead of beside it.
+    towards = towards - unit * np.sum(towards * unit, axis=1)[:, None]
+
+    norm = np.linalg.norm(towards, axis=1)
+    weak = norm < 1e-6
+    if weak.any():
+        # No plane to choose from. Any perpendicular will do, so take the axis
+        # the bond is least aligned with and remove the parallel part of it.
+        fallback = np.zeros((int(weak.sum()), 3))
+        fallback[np.arange(len(fallback)), np.argmin(np.abs(unit[weak]), axis=1)] = 1.0
+        fallback = fallback - unit[weak] * np.sum(
+            fallback * unit[weak], axis=1
+        )[:, None]
+        towards[weak] = fallback
+        norm = np.linalg.norm(towards, axis=1)
+
+    direction = np.divide(
+        towards, np.maximum(norm, 1e-9)[:, None],
+        out=np.zeros_like(towards), where=norm[:, None] > 1e-9,
+    )
+    offsets = direction * (float(size) * length)[:, None]
+    offsets[~double] = 0.0
+    return offsets
 
 
 def bond_line_segments(
@@ -31,6 +131,8 @@ def bond_line_segments(
     colors: np.ndarray | None = None,
     *,
     split_at_midpoint: bool = True,
+    orders: np.ndarray | None = None,
+    valence_size: float = 0.06,
 ) -> tuple[np.ndarray, np.ndarray | None]:
     """Line segments for a wireframe over ``bonds``.
 
@@ -46,6 +148,14 @@ def bond_line_segments(
         Draw each bond as two half-segments so both atoms contribute their own
         colour, as PyMOL does. With one colour per bond the wireframe reads much
         less clearly, so this is on by default.
+    orders : numpy.ndarray, optional
+        ``(B,)`` bond orders. When given, every bond of order 2 or more gets a
+        second line beside it -- PyMOL's ``valence``. Omit it (the default) and
+        the wireframe is drawn single-bonded, which is what PyMOL does with
+        ``valence`` off.
+    valence_size : float, optional
+        How far beside, as a fraction of the bond length. PyMOL's
+        ``valence_size``.
 
     Returns
     -------
@@ -80,16 +190,24 @@ def bond_line_segments(
         if col_arr.ndim == 2 and col_arr.shape[0] == pts.shape[0]:
             col = col_arr
 
+    offsets = None
+    if orders is not None:
+        kept = np.asarray(orders, dtype=int).reshape(-1)
+        if kept.shape[0] == valid.shape[0]:
+            kept = kept[valid]
+        if kept.shape[0] == pairs.shape[0]:
+            offsets = valence_offsets(pts, pairs, kept, size=valence_size)
+
     if not split_at_midpoint:
         vertices = np.empty((pairs.shape[0] * 2, 3), dtype=float)
         vertices[0::2] = a
         vertices[1::2] = b
-        if col is None:
-            return vertices, None
-        out = np.empty((pairs.shape[0] * 2, col.shape[1]), dtype=float)
-        out[0::2] = col[pairs[:, 0]]
-        out[1::2] = col[pairs[:, 1]]
-        return vertices, out
+        out = None
+        if col is not None:
+            out = np.empty((pairs.shape[0] * 2, col.shape[1]), dtype=float)
+            out[0::2] = col[pairs[:, 0]]
+            out[1::2] = col[pairs[:, 1]]
+        return _with_valence(vertices, out, a, b, offsets, split=False)
 
     mid = 0.5 * (a + b)
     # Two segments per bond: a->mid and mid->b, so each half is one atom's colour.
@@ -99,7 +217,7 @@ def bond_line_segments(
     vertices[2::4] = mid
     vertices[3::4] = b
     if col is None:
-        return vertices, None
+        return _with_valence(vertices, None, a, b, offsets, split=True)
 
     out = np.empty((pairs.shape[0] * 4, col.shape[1]), dtype=float)
     first = col[pairs[:, 0]]
@@ -108,7 +226,45 @@ def bond_line_segments(
     out[1::4] = first
     out[2::4] = second
     out[3::4] = second
-    return vertices, out
+    return _with_valence(vertices, out, a, b, offsets, split=True)
+
+
+def _with_valence(vertices, colours, a, b, offsets, *, split: bool):
+    """Append the second line of every double bond to a finished wireframe.
+
+    Appended rather than interleaved: the extra lines are a *subset* of the
+    bonds, so they cannot share the regular stride, and a GL_LINES draw does
+    not care what order its segments arrive in.
+    """
+    if offsets is None:
+        return vertices, colours
+    double = np.any(np.abs(offsets) > 1e-12, axis=1)
+    if not double.any():
+        return vertices, colours
+
+    off = offsets[double]
+    start = a[double] + off
+    end = b[double] + off
+    if split:
+        mid = 0.5 * (start + end)
+        extra = np.empty((int(double.sum()) * 4, 3), dtype=float)
+        extra[0::4] = start
+        extra[1::4] = mid
+        extra[2::4] = mid
+        extra[3::4] = end
+    else:
+        extra = np.empty((int(double.sum()) * 2, 3), dtype=float)
+        extra[0::2] = start
+        extra[1::2] = end
+
+    vertices = np.concatenate([vertices, extra])
+    if colours is None:
+        return vertices, None
+
+    stride = 4 if split else 2
+    repeat = np.repeat(np.nonzero(double)[0], stride)
+    per_vertex = colours.reshape(-1, stride, colours.shape[1])[repeat[::stride]]
+    return vertices, np.concatenate([colours, per_vertex.reshape(-1, colours.shape[1])])
 
 
 def unbonded_mask(n_atoms: int, bonds: np.ndarray | None) -> np.ndarray:
