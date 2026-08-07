@@ -587,18 +587,18 @@ def test_a_burst_header_whose_names_contain_spaces_still_finds_the_tab():
     assert _sniff_delimiter(path) == "\t"
 
 
-def test_a_column_array_does_not_outlive_the_store_it_came_from():
-    """The zero-copy view is the point of the store and also its trap.
+def test_a_column_array_outlives_the_store_it_came_from():
+    """A contract pinned from the consumer side, after it was once broken.
 
-    ``column_values`` returns the column's own buffer for an unmasked numeric
-    column, and ``np.asarray(x, dtype=float)`` on an already-``float64`` array
-    returns *that same view* rather than a copy. A caller that lets the store go
-    out of scope is then holding freed memory, which reads back as denormal
-    garbage rather than raising — 84 of 154 rows of one burst column came back
-    as ``3.3e-319``.
+    Until 2026-08-07 an array from ``column_values`` did not hold its store
+    alive at all: the whole base chain was non-owning, so a caller that dropped
+    the store was reading freed memory — silently, as denormal garbage, with one
+    burst column reading 84 of 154 rows as ``3.3e-319``. Fixed in the library by
+    rooting the chain at an owning object.
 
-    Anything that outlives its store must copy, and this pins that the reader
-    does.
+    This can no longer fail by accident, which is the point: it is here so that a
+    regression in that ownership shows up as a failing test in the package that
+    depends on it, not as wrong numbers in someone's analysis.
     """
     from chisurf.core.fluorescence.burst.table import _read_delimited
 
@@ -610,13 +610,38 @@ def test_a_column_array_does_not_outlive_the_store_it_came_from():
     import gc
 
     gc.collect()
+    ballast = [np.full(1000, 7.0) for _ in range(50)]   # reuse any freed block
+    assert ballast
     np.testing.assert_allclose(columns["a"], expected)
     np.testing.assert_allclose(columns["b"], expected * 2)
 
 
-def test_column_values_is_a_view_so_the_warning_is_warranted():
-    """If this ever starts copying, the rule above can be relaxed — but it must
-    be noticed rather than assumed."""
+def test_a_raw_column_view_also_outlives_its_store():
+    """The library-level guarantee the one above depends on, exercised directly
+    through every accessor the fix had to cover."""
+    import gc
+
+    import tttrlib
+
+    expected = np.arange(500, dtype=float) * 3.0
+
+    def grab(pick):
+        store = tttrlib.DataStore()
+        store.add("a", expected.copy())
+        return np.asarray(pick(store).numpy(), dtype=float)
+
+    for pick in (lambda s: s[0], lambda s: s.column(0), lambda s: s.column_by_name("a")):
+        values = grab(pick)
+        gc.collect()
+        ballast = [np.full(500, 1.0) for _ in range(50)]
+        assert ballast
+        np.testing.assert_allclose(values, expected)
+
+
+def test_column_values_is_still_a_view():
+    """Zero-copy is the point of the store, and it is also why writing through
+    the array writes into the store. If this ever starts copying, both of those
+    change, and it should be noticed rather than assumed."""
     store = store_from_arrays({"x": np.arange(8, dtype=float)})
     values = column_values(store, 0)
     values[0] = 42.0
