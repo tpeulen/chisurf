@@ -120,3 +120,44 @@ def test_non_positive_budget_is_a_no_op():
 
     np.testing.assert_array_equal(x_out, x)
     np.testing.assert_array_equal(y_out, y)
+
+
+# -- the budget belongs to the plot, not to one call ---------------------------
+
+
+def test_one_curve_never_exceeds_its_budget():
+    """The docstring used to promise ``2 * max_points``; it is ``max_points``."""
+    x = np.arange(1_000_000)
+    y = np.sin(x / 1000.0)
+
+    x_out, _ = thin_for_plot(x, y, max_points=10_000)
+
+    assert len(x_out) <= 10_000
+
+
+def test_the_budget_splits_across_the_curves_sharing_a_plot():
+    """A panel drawing two layers per file must not spend the budget per curve.
+
+    This is the whole failure: every individual ``thin_for_plot`` call looked
+    correctly bounded while the plot drew several times what it was configured
+    for -- 1.5 M points became 3.3 M across a two-layer, four-diagnostic panel.
+    """
+    from chisurf.core.fio.decimate import per_curve_budget
+
+    total, n_files, n_layers = 1_500_000, 10, 2
+    budget = per_curve_budget(total, n_files * n_layers)
+
+    x = np.arange(3_000_000)
+    drawn = sum(
+        len(thin_for_plot(x, x.astype(float), max_points=budget)[0])
+        for _ in range(n_files * n_layers)
+    )
+    assert drawn <= total
+
+
+def test_the_split_never_decimates_a_curve_to_nothing():
+    """A floor, because a curve thinned to five points is not a plot."""
+    from chisurf.core.fio.decimate import MIN_CURVE_POINTS, per_curve_budget
+
+    assert per_curve_budget(1000, 500) == MIN_CURVE_POINTS
+    assert per_curve_budget(1_500_000, 0) == 1_500_000

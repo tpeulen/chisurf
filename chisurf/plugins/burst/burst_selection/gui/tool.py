@@ -26,7 +26,7 @@ import pyqtgraph as pg
 from qtpy import QtCore, QtGui, QtWidgets
 
 from chisurf.core import analysis_cache
-from chisurf.core.fio.decimate import thin_for_plot
+from chisurf.core.fio.decimate import per_curve_budget, thin_for_plot
 from chisurf.core.fio.mmcif.pdbx_metadata import get_pdbx_metadata_keys
 from mmfdb.security.base import MMFDBClientBase
 from chisurf.gui.widgets.dock_area.dock_area import DockArea
@@ -861,6 +861,12 @@ class BurstSelectionTool(ChisurfDockTool):
             QtWidgets.QSizePolicy.Policy.Expanding,
             QtWidgets.QSizePolicy.Policy.Maximum,
         )
+        # Kept so the photon range can be pushed back into the form. The form
+        # reads the hidden spin boxes when it is built; the spins are then
+        # re-clamped every time diagnostics load, and without this the boxes
+        # went on showing the value they were built with while the plots used
+        # the new one -- a displayed limit that was not the limit in force.
+        self._display_form = form
         return form
 
     def _build_histogram_controls_panel(self, parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
@@ -2243,11 +2249,17 @@ class BurstSelectionTool(ChisurfDockTool):
             show_filter = self._plot_widget_is_docked("Filter")
             show_filter_settings = self._dock_widget_is_present(getattr(self, "filter_settings_panel", None))
             d_t_visible: list[np.ndarray] = []
-            # A budget, not a hard cap (chisurf.core.fio.decimate): split across
-            # files so a multi-file batch does not draw the full budget once per
-            # file. Only the *drawn* arrays are thinned -- selection, ranges and
-            # everything else below still see the untouched, full-resolution data.
-            plot_point_budget = max(1000, self._max_plot_points() // max(1, len(diagnostics)))
+            # The budget belongs to the *plot*, so it is split across every
+            # curve drawn into it -- one per file per visible layer. Splitting
+            # by file count alone (which is what this did) let a two-layer,
+            # ten-file diagnostic draw twenty times the configured number while
+            # each individual call still looked bounded. Only the *drawn*
+            # arrays are thinned; selection, ranges and everything else below
+            # still see the untouched, full-resolution data.
+            plot_point_budget = per_curve_budget(
+                self._max_plot_points(),
+                len(diagnostics) * max(1, int(show_all_photons) + int(show_selected_photons)),
+            )
 
             if show_dt:
                 self.dt_plot.clear()
@@ -2393,7 +2405,10 @@ class BurstSelectionTool(ChisurfDockTool):
         offsets_ms = self._macro_time_offsets_ms(diagnostics)
         offset = 0
         plotted = False
-        plot_point_budget = max(1000, self._max_plot_points() // max(1, len(diagnostics)))
+        plot_point_budget = per_curve_budget(
+            self._max_plot_points(),
+            len(diagnostics) * max(1, int(show_all) + int(show_selected)),
+        )
         for file_index, diag in enumerate(diagnostics):
             selected = diag["selected"].astype(bool)
             local_start = max(0, start - offset)
@@ -2822,7 +2837,16 @@ class BurstSelectionTool(ChisurfDockTool):
             self._last_start_stop = first["start_stop"]
             self._last_diagnostic_path = first["path"]
             total_photons = sum(int(len(diag["selected"])) for diag in diagnostics)
-            self._sync_plot_range_controls(total_photons, reset=True)
+            # Reset to the whole file only when a *different* set of photons
+            # arrived. Diagnostics reload on every filter change too, and
+            # resetting there threw away a range the user had narrowed by hand
+            # -- change one setting and the plot silently went back to drawing
+            # all of them.
+            previous_total = self.__dict__.get("_diagnostic_photon_total")
+            self._diagnostic_photon_total = total_photons
+            self._sync_plot_range_controls(
+                total_photons, reset=previous_total != total_photons
+            )
             _LOG.debug("TTTR diagnostics assigned; updating plots", paths=[str(path) for path in path_list])
             self._status_bar.showMessage("Updating stacked plots...")
             self.update_burst_plots()
@@ -3033,6 +3057,18 @@ class BurstSelectionTool(ChisurfDockTool):
                 spin.setValue(value)
             if block_signals is not None:
                 block_signals(False)
+
+        # The spins are hidden; what the user reads is the "Display" form bound
+        # to them through the view-model, and it does not know they moved. Left
+        # unsynced, the form said "Last photon 100000" over a plot drawing all
+        # 1.8 million -- the range control looked like it was being ignored,
+        # because as far as anyone reading the window was concerned it was.
+        form = self.__dict__.get("_display_form")
+        if form is not None:
+            try:
+                form.sync_fields()
+            except Exception:
+                _LOG.debug("could not sync the display form to the photon range")
 
     def _set_log_dt_range(self, plot: pg.PlotWidget, d_t: np.ndarray) -> None:
         """Set a safe visible range for a log-scale dT plot."""

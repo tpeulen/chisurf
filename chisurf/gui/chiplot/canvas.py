@@ -101,6 +101,7 @@ class Plot(QtWidgets.QWidget):
         symbol_brush=None,
         symbol_pen=None,
         skip_missing=True,
+        max_points=None,
     ) -> H.Curve:
         """Draw a line (or step) curve, optionally with point markers.
 
@@ -134,11 +135,28 @@ class Plot(QtWidgets.QWidget):
             Break the line at non-finite samples (the default) instead of
             drawing a segment straight across them. A masked-out range is
             usually written as NaN and is meant to read as a gap.
+        max_points : int, optional
+            Thin the curve to about this many samples before drawing it, with
+            :func:`chisurf.core.fio.decimate.thin_for_plot` -- min/max per bin,
+            so a burst or a dip in a time-ordered trace survives. Opt-in and
+            off by default: an already-aggregated curve (a histogram, a
+            correlation) is small and must not be touched, and a *stepped*
+            curve carries bin edges whose length relationship to ``y`` thinning
+            would break, so it is left alone there too. Use it for a raw
+            per-photon series; for a plot holding several such curves, split
+            the budget with
+            :func:`chisurf.core.fio.decimate.per_curve_budget` first.
 
         Returns
         -------
         handles.Curve
         """
+        x = np.asarray(x)
+        y = np.asarray(y)
+        if max_points and not step and x.size == y.size and x.size > max_points:
+            from chisurf.core.fio.decimate import thin_for_plot
+
+            x, y = thin_for_plot(x, y, max_points=int(max_points))
         overrides = {}
         if width is not None:
             overrides["width"] = width
@@ -148,8 +166,8 @@ class Plot(QtWidgets.QWidget):
         if symbol is not None:
             sym = symbol if isinstance(symbol, H.Symbol) else H.Symbol(symbol)
         handle = self._canvas.add_curve(
-            np.asarray(x),
-            np.asarray(y),
+            x,
+            y,
             pen=S.to_pen(pen, **overrides),
             name=name,
             fill=S.to_brush(fill) if fill is not None else None,

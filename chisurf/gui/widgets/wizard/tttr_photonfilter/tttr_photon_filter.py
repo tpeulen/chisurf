@@ -698,16 +698,23 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
 
     @property
     def burst_start_stop(self):
+        """Start/stop photon indices of the bursts in the selected mask.
+
+        The same two bounds the analysis applies -- gaps up to ``max_gap`` are
+        bridged, and a burst holding fewer than ``min_ph`` photons is not a
+        burst. The photon minimum was missing here, so the Info panel's preview
+        counted every contiguous run: it announced 70497 bursts of 18 photons
+        each for a search whose result was 1099. A preview that does not agree
+        with the run it previews is worse than no preview.
         """
-        Returns the start-stop indices of bursts in the selected mask,
-        allowing for small gaps with max_gap=4 by default.
-        """
+        from chisurf.plugins.burst.burst_selection.api.selection import drop_short_bursts
+
         selected = self.selected
         max_gap = self.max_gap
-        if len(selected) > max_gap:
-            return chisurf.core.math.signal.find_bursts(selected, max_gap=max_gap)
-        else:
+        if len(selected) <= max_gap:
             return np.array([], dtype=np.uint64)
+        found = chisurf.core.math.signal.find_bursts(selected, max_gap=max_gap)
+        return drop_short_bursts(found, max(2, int(self.min_ph)))
 
     @property
     def burst_lengths(self):

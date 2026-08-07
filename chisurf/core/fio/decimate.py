@@ -18,13 +18,52 @@ from __future__ import annotations
 
 import numpy as np
 
-__all__ = ["thin_for_plot"]
+__all__ = ["thin_for_plot", "per_curve_budget"]
 
 #: Points before decimation kicks in at all. A well-behaved binned plot
 #: (a histogram, a correlation curve) never gets near this and is never
 #: touched by the caller; a raw per-photon plot of a real measurement is
 #: exactly what does.
 DEFAULT_MAX_POINTS = 1_500_000
+
+
+#: Smallest per-curve budget worth honouring. Below roughly this, thinning stops
+#: being decimation and starts being a different plot.
+MIN_CURVE_POINTS = 1000
+
+
+def per_curve_budget(
+    total: int, n_curves: int, *, minimum: int = MIN_CURVE_POINTS
+) -> int:
+    """Split a **per-plot** point budget across the curves sharing that plot.
+
+    The budget is a property of the widget, not of a call to it: what makes a
+    plot slow is the number of points Qt has to lay out and repaint in it,
+    summed over everything drawn there. Passing the whole budget to each
+    :func:`thin_for_plot` call is therefore not a budget at all -- a panel
+    drawing an all-photon and a selected-photon layer per file, over four
+    diagnostics, drew eight times the number it was configured for, and did it
+    while every individual call looked correctly bounded.
+
+    Parameters
+    ----------
+    total : int
+        The configured budget for one plot (``data_loading.max_plot_points``).
+    n_curves : int
+        How many curves will be drawn into it -- files times layers, and any
+        other multiplier the caller knows about. Values below 1 are treated as
+        1.
+    minimum : int
+        Floor, so a plot with many curves still shows each of them as something
+        other than a straight line. Going over budget here is the lesser evil:
+        the alternative is a curve decimated to nothing.
+
+    Returns
+    -------
+    int
+        Points each curve may draw.
+    """
+    return max(minimum, total // max(1, int(n_curves)))
 
 
 def thin_for_plot(x, y=None, *, max_points: int = DEFAULT_MAX_POINTS):
@@ -58,9 +97,12 @@ def thin_for_plot(x, y=None, *, max_points: int = DEFAULT_MAX_POINTS):
     -------
     tuple of numpy.ndarray, or numpy.ndarray
         ``(x_thinned, y_thinned)``, or just ``y_thinned`` when *y* was
-        omitted. Never longer than roughly ``2 * max_points`` samples
-        (two per bin), and exactly the input when it was already within
-        budget.
+        omitted. Never longer than *max_points* -- the input is split into
+        ``max_points // 2`` bins and each contributes at most two samples --
+        and exactly the input when it was already within budget.
+
+        This bounds **one** curve. A plot holding several of them is bounded by
+        splitting the budget first; see :func:`per_curve_budget`.
     """
     single = y is None
     x = np.asarray(x)

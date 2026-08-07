@@ -156,11 +156,12 @@ DEFAULTS = {
     # A namespace rather than a single flat flag, so a second guard never has
     # to avoid colliding with the first one's key.
     "drop_guards": {},
-    # Budget, not a hard cap, for chisurf.core.fio.decimate.thin_for_plot: how
-    # much of a raw per-photon plot (a time trace, a delta-time diagnostic) a
-    # single call draws before it gets thinned. Same "how much of a big file
-    # do we touch" concern as staging, which is why it lives here rather than
-    # a separate settings section.
+    # Budget for chisurf.core.fio.decimate.thin_for_plot: how many points one
+    # raw per-photon plot (a time trace, a delta-time diagnostic) draws in
+    # total, across every curve in it -- a caller with several layers splits
+    # this with `per_curve_budget` rather than spending it once per curve. Same
+    # "how much of a big file do we touch" concern as staging, which is why it
+    # lives here rather than a separate settings section.
     "max_plot_points": _DECIMATE_DEFAULT_MAX_POINTS,
 }
 
