@@ -278,3 +278,76 @@ def test_an_invented_unit_is_refused(tmp_path: Path):
             operation_type="burst_selection", row_grain="burst", derived_from=(),
             units={"x": "furlongs"},
         )
+
+
+# -- several analyses, one file ---------------------------------------------------
+
+
+def test_three_analyses_land_in_one_container(measurement: Path, tmp_path: Path):
+    """What the whole exercise is for. The legacy layout put each of these in
+    its own `…4` directory beside a `.bur`, related by filename, with a
+    settings JSON inside each that the readers then skipped on purpose."""
+    from chisurf.plugins.burst.burst_2cde.core.computation import (
+        column_for_variant,
+        write_2cde_container,
+    )
+    from chisurf.plugins.burst.burst_bva.core.computation import write_bva_container
+
+    source = str(measurement)
+    column = column_for_variant("fret")
+    write_2cde_container(
+        pd.DataFrame({"First File": [source] * 20, column: np.linspace(0, 1, 20)}),
+        "fret",
+        parameters={"tau": 50},
+    )
+    write_bva_container(
+        pd.DataFrame(
+            {
+                "First File": [source] * 20,
+                "Proximity Ratio Mean": np.linspace(0, 1, 20),
+                "Proximity Ratio Std": np.linspace(0, 0.1, 20),
+            }
+        ),
+        parameters={"window": 5},
+    )
+
+    with Measurement.open(container_for(measurement)) as m:
+        names = [o.name for o in m.artifacts()]
+        assert {"bursts", "2cde fret", "bva"} <= set(names)
+        for name, op in (
+            ("2cde fret", "burst_2cde"),
+            ("bva", "burst_variance_analysis"),
+        ):
+            uid = m._resolve(name)
+            assert m.tag(uid, "_mmfdb_operation.operation_type") == op
+            assert m.parents(uid) == [m._resolve("bursts")]
+            assert m.tag(uid, "_mmfdb_artifact.row_grain") == "burst"
+        assert m.verify() == []
+
+    # and nothing beside the measurement
+    assert sorted(p.suffix for p in measurement.parent.iterdir()) == [".pto", ".ptu"]
+
+
+def test_the_two_2cde_variants_do_not_overwrite_each_other(measurement: Path):
+    """The variant is part of the run's settings, so computing ALEX after FRET
+    adds a result rather than replacing one -- which a single `2c4/<stem>.2c4`
+    could not express at all."""
+    from chisurf.plugins.burst.burst_2cde.core.computation import (
+        column_for_variant,
+        write_2cde_container,
+    )
+
+    source = str(measurement)
+    for variant in ("fret", "alex"):
+        write_2cde_container(
+            pd.DataFrame(
+                {
+                    "First File": [source] * 20,
+                    column_for_variant(variant): np.linspace(0, 1, 20),
+                }
+            ),
+            variant,
+        )
+    with Measurement.open(container_for(measurement)) as m:
+        names = [o.name for o in m.artifacts()]
+        assert "2cde fret" in names and "2cde alex" in names

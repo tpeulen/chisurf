@@ -282,6 +282,60 @@ def _compute_file_numpy(
     return _fret_2cde_numpy(macro, mask_d, mask_a, burst_pairs, tau_ticks, kernel)
 
 
+def write_2cde_container(
+    df: pd.DataFrame,
+    variant: str = "fret",
+    *,
+    parameters: dict | None = None,
+    progress_window=None,
+) -> list[str]:
+    """Write the 2CDE result into each measurement's own container.
+
+    One row per burst, joined to the burst table by declared key. The `2n+1`
+    grid and the nameless trailing column the `.2c4` needed are not reproduced:
+    they exist so a positional merge has something to count against, and nothing
+    here counts.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Computed 2CDE values, carrying ``First File`` per row.
+    variant : str
+        ``"fret"`` or ``"alex"``. Decides the column, and is part of the run's
+        settings, so recomputing the other variant adds an artifact rather than
+        overwriting this one.
+    parameters : dict, optional
+        The analysis settings, which used to be dropped into the companion
+        directory as ``2cde_settings.json`` and then skipped on purpose by every
+        reader of that directory.
+    progress_window : optional
+        Anything with ``set_value``.
+
+    Returns
+    -------
+    list of str
+        The containers written.
+    """
+    from chisurf.core.fio.fluorescence.burst_container import write_per_source
+
+    column = column_for_variant(variant)
+    settings = {"variant": variant, **(parameters or {})}
+    written = write_per_source(
+        df[["First File", column]],
+        name=f"2cde {variant}",
+        artifact_kind="burst_table",
+        operation_type="burst_2cde",
+        row_grain="burst",
+        parameters=settings,
+        derived_from="bursts",
+        units={column: "dimensionless"},
+    )
+    if progress_window:
+        progress_window.set_value(len(written))
+    logging.info("2CDE (%s) written to %d container(s)", variant, len(written))
+    return written
+
+
 def write_2cde_analysis(df: pd.DataFrame, analysis_folder: str, variant: str = "fret",
                         progress_window=None) -> None:
     """Write per-burst 2CDE values to companion files under a ``2c4/`` subfolder.

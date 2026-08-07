@@ -33,6 +33,14 @@
 
 ## 2026-08-06
 
+* **2CDE joins the container, and two variants stop overwriting each other** ([photon container](subsystems/photon-container.md)).
+
+  The fourth writer, and the third hand-rolled `2n+1` interleave retired. Its `2cde_settings.json` — dropped inside its own `2c4/` directory, where every reader of that directory then had to skip it on purpose — becomes the run's settings.
+
+  One thing the migration gives away for free: the variant is part of the settings, so computing ALEX-2CDE after FRET-2CDE *adds* a result rather than replacing one. A single `2c4/<stem>.2c4` could not express that at all — the two variants share a file name and differ only in a column.
+
+  Three analyses now accumulate in one container with correct provenance, leaving two files on disk where the legacy layout left a `.bur` plus three companion directories.
+
 * **One table of units, and the abbreviation that did not exist** ([PRD-84](prds/prd-84.md), [profile](specs/pto-mfdb.md)).
 
   Asked whether MMFDB already had a `kilohertz` → `kHz` table: it did not, and neither does mmCIF — `ITEM_UNITS_LIST` carries a code and prose and nothing else. So every consumer that wanted to *show* a unit invented an abbreviation and every consumer that wanted to *convert* one invented a factor. In ChiSurf that was four in-band conventions that disagree: `"Duration (ms)"` suffixes, `"Tau | ns"` expression headers, and bare factor dictionaries in the DEER and FCS readers.
