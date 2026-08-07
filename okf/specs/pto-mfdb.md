@@ -120,6 +120,42 @@ So relations are declared, not counted:
 A row an analysis skipped is **absent**, not a sentinel. Absence is information;
 a placeholder row destroys it.
 
+## What a column is, and what it is in
+
+A column carries a name and a dtype, which is enough to read a table and not
+enough to understand one. A burst duration is milliseconds; a lifetime is
+nanoseconds; a TAC channel is picoseconds. Historically that was recorded only
+in the column *name*, when whoever wrote it remembered — `Duration (ms)` and
+`Tau` sit in the same table, and `Count Rate (KHz)` capitalises the kilo.
+
+So a column carries **one extensible description** rather than a growing list of
+fields, and the name is an attribute of it:
+
+```json
+{"name": "Duration", "units": "milliseconds", "item": "_mmfdb_burst.duration"}
+```
+
+The keys are `_mmfdb_column.*` items — `name`, `units`, `item`, `description` —
+and `units` takes a `_mmfdb_column.units` term. Spellings follow mmCIF's
+`ITEM_UNITS_LIST` wherever it has the unit, so `seconds` and `microseconds` are
+the community's words. That list **stops at microseconds and has no rate or
+count unit**, which leaves out most of what a fluorescence table holds, so the
+rest are defined in the MMFDB dictionary rather than invented per call site.
+
+Two rules that matter more than they look:
+
+* **The description travels with the column, not with the file.** A
+  column-subset read gets the units too, which is the whole point — a caller
+  reading two columns out of a four-gigabyte table still learns what they are.
+* **No unit means the unit is unknown.** It does not mean dimensionless.
+  `dimensionless` is a positive claim, for a ratio that genuinely has none — an
+  efficiency, an anisotropy — and a writer that is unsure says nothing instead.
+
+Units are not parsed back out of column names. That convention is what this
+replaces: it is inconsistent, it is missing on exactly the columns that need it
+most, and a regular expression over it would be the same convention with more
+machinery on top and the same blind spots.
+
 ## Provenance
 
 One operation per analysis, written as file-level tags using `_mmfdb_operation.*`

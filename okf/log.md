@@ -8,6 +8,18 @@
 
 ## 2026-08-06
 
+* **A column says what it is measured in** ([profile](specs/pto-mfdb.md), tttrlib PRD-022).
+
+  A burst duration is milliseconds, a lifetime is nanoseconds, a TAC channel is picoseconds — and the only thing that said so was the column *name*, when whoever wrote it remembered. `Duration (ms)` and `Tau` sit in the same table, and `Count Rate (KHz)` capitalises the kilo.
+
+  A `Column` now carries **one extensible description instead of a growing list of fields**, and the name is an attribute of it. The alternative was a `units` field, then a description field, then the mmCIF item — each a change to the class, the directory record, four bindings and the format version. `name()` stays a `const std::string&` because lookup is the hot path; JSON is parsed when metadata is *set*, never when a column is looked up. `.dstore` is version 2, and a version 1 file reads with empty metadata.
+
+  Units come from the dictionary like every other term. mmCIF's `ITEM_UNITS_LIST` supplies the spellings it has — `seconds`, `microseconds` — but it **stops at microseconds and has no rate or count unit**, which leaves out most of a fluorescence table, so the rest are declared in `mmfdb_column.units`. `dimensionless` is deliberately separate from saying nothing: a pure ratio having no unit and a writer not knowing the unit are different claims, and only one is safe by default.
+
+  The units of the burst columns are a written-out table, not a regular expression over the name suffix — that convention is what this replaces, and it is missing on exactly the columns that need it most. A photon index gets no unit at all, because it is not a physical quantity.
+
+  The trap: the `.dstore` directory is positional in **three** places, not two. `read_node` reads a column record, `walk_paths` steps over one without touching a blob, and both must consume the new field; missing the second shifts every column and group after the first text column, silently, and only in `store_columns`.
+
 * **The burst-result seam, and the two shapes the companion format could not hold** ([photon container](subsystems/photon-container.md)).
 
   `chisurf/core/fio/fluorescence/burst_container.py` is now the one place a burst analysis writes its answer. Six writers had grown six copies of the same `2n+1` interleave; a writer now says what its rows *are* and what they came from, and the join is a declared key.

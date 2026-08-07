@@ -21,11 +21,71 @@ from typing import Any, Iterable, Mapping, Sequence
 import pandas as pd
 
 __all__ = [
+    "BURST_COLUMN_UNITS",
     "container_for",
     "deinterleave_bursts",
     "open_measurement",
+    "units_for",
     "write_burst_artifact",
 ]
+
+#: What the columns of a burst analysis are measured in, as
+#: ``_mmfdb_column.units`` terms.
+#:
+#: Written out rather than parsed off the column names. The suffix convention is
+#: what this replaces: it is inconsistent (``Count Rate (KHz)``), absent on the
+#: columns that need it most (``Tau``, ``r Scatter``), and a regular expression
+#: over it would be the same convention with more machinery on top and the same
+#: blind spots. A table is the thing a reader can check.
+#:
+#: A column absent from here gets no unit, which means *unknown* — not
+#: dimensionless. Saying nothing and saying "this is a pure ratio" are different
+#: claims and only one of them is safe to make by default.
+BURST_COLUMN_UNITS: dict[str, str] = {
+    # Timing
+    "Duration (ms)": "milliseconds",
+    "Mean Macro Time (ms)": "milliseconds",
+    "Mean Macro Time (s)": "seconds",
+    "Fusion Lag (ms)": "milliseconds",
+    # Rates
+    "Count Rate (KHz)": "kilohertz",
+    # Counts and indices. A photon index is not a physical quantity, so it is
+    # deliberately absent rather than labelled.
+    "Number of Photons": "photons",
+    "Fused Gap Photons": "photons",
+    "Fused Bursts": "counts",
+    "Fusion Group Size": "counts",
+    # Lifetimes. These are the ones the naming convention never covered.
+    "Tau": "nanoseconds",
+    "Tau (green)": "nanoseconds",
+    "Tau (red)": "nanoseconds",
+    "Tau (yellow)": "nanoseconds",
+    "Lifetime": "nanoseconds",
+    # Ratios that genuinely have no unit.
+    "Proximity Ratio Mean": "dimensionless",
+    "Proximity Ratio Std": "dimensionless",
+    "Confidence (sigma)": "dimensionless",
+}
+
+
+def units_for(df: pd.DataFrame, extra: Mapping[str, str] | None = None) -> dict[str, str]:
+    """Return the units of the columns a frame actually has.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+    extra : mapping, optional
+        Units for columns this analysis names itself, merged over the table
+        above so a plugin can describe its own output without editing a shared
+        dictionary.
+
+    Returns
+    -------
+    dict
+        ``{column: unit}`` for the columns that have one.
+    """
+    known = {**BURST_COLUMN_UNITS, **(extra or {})}
+    return {c: known[c] for c in df.columns if c in known}
 
 
 def deinterleave_bursts(df: pd.DataFrame) -> pd.DataFrame:
@@ -120,6 +180,7 @@ def write_burst_artifact(
     derived_from: str | Sequence[str] = "bursts",
     source_row_column: str = "",
     target_row_column: str = "",
+    units: Mapping[str, str] | None = None,
     out_dir: str | Path | None = None,
 ) -> str:
     """Write one analysis result into the measurement's container.
@@ -156,6 +217,10 @@ def write_burst_artifact(
     source_row_column, target_row_column : str, optional
         The columns the parent and this table join on. Supply them whenever the
         grains differ.
+    units : mapping, optional
+        Units for columns beyond the shared table, merged over
+        :data:`BURST_COLUMN_UNITS`. A column with no entry gets no unit, which
+        means *unknown* rather than dimensionless.
     out_dir : str or Path, optional
 
     Returns
@@ -164,6 +229,7 @@ def write_burst_artifact(
         Path of the container written.
     """
     wanted = [derived_from] if isinstance(derived_from, str) else list(derived_from)
+    frame = deinterleave_bursts(df)
     with open_measurement(source, out_dir) as m:
         parents = []
         for label in wanted:
@@ -172,7 +238,7 @@ def write_burst_artifact(
                 parents.append(uid)
         m.put_table(
             name,
-            deinterleave_bursts(df),
+            frame,
             artifact_kind=artifact_kind,
             operation_type=operation_type,
             row_grain=row_grain,
@@ -180,6 +246,7 @@ def write_burst_artifact(
             derived_from=parents or m.instrument_uid,
             source_row_column=source_row_column,
             target_row_column=target_row_column,
+            units=units_for(frame, units),
         )
         return str(m.path)
 

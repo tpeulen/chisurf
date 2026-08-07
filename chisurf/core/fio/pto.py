@@ -101,6 +101,11 @@ _RELATIONSHIP_TYPE = "_mmfdb_edge.relationship_type"
 _SOURCE_ROW_COLUMN = "_mmfdb_edge.source_row_column"
 _TARGET_ROW_COLUMN = "_mmfdb_edge.target_row_column"
 
+_COLUMN_NAME = "_mmfdb_column.name"
+_COLUMN_UNITS = "_mmfdb_column.units"
+_COLUMN_ITEM = "_mmfdb_column.item"
+_COLUMN_DESCRIPTION = "_mmfdb_column.description"
+
 _CONTAINER_PROFILE = "_mmfdb_container.profile"
 _CONTAINER_PROFILE_VERSION = "_mmfdb_container.profile_version"
 _CONTAINER_PROFILE_READ_VERSION = "_mmfdb_container.profile_read_version"
@@ -462,6 +467,8 @@ class Measurement:
         derived_from: int | Sequence[int] | None = None,
         source_row_column: str = "",
         target_row_column: str = "",
+        units: Mapping[str, str] | None = None,
+        items: Mapping[str, str] | None = None,
         reserve: int | None = None,
     ) -> int:
         """Write a table, replacing any earlier run with the same settings.
@@ -489,6 +496,13 @@ class Measurement:
             Columns the parent and this table join on. Supply them whenever the
             grains differ, so the relation is declared rather than inferred
             from row counts.
+        units : mapping, optional
+            ``{column: unit}`` using ``_mmfdb_column.units`` terms — what makes
+            a number in the table mean something without the reader having to
+            know the naming convention it was written under.
+        items : mapping, optional
+            ``{column: mmCIF item name}``, so a table can be projected onto the
+            dictionary rather than matched by name.
         reserve : int, optional
             Bytes of slack left after the payload so a later, slightly larger
             run can be written in place. Defaults to a quarter of the payload.
@@ -504,6 +518,7 @@ class Measurement:
         _check_term(row_grain, _ROW_GRAIN)
 
         store = self._as_store(table)
+        self._describe_columns(store, units, items)
         run = _settings_hash(parameters)
 
         existing = self._find_run(operation_type, run, artifact_kind)
@@ -813,6 +828,46 @@ class Measurement:
         if hasattr(table, "n_rows"):
             return table
         return store_from_dataframe(table)
+
+    def _describe_columns(
+        self, store: Any, units: Mapping[str, str] | None, items: Mapping[str, str] | None
+    ) -> None:
+        """Write each column's description into the column itself.
+
+        A column carries a name and a dtype, which is enough to read it and not
+        enough to understand it: a burst duration is milliseconds and a lifetime
+        is nanoseconds, and until now that was recorded only in the column name,
+        when whoever wrote it remembered. ``Duration (ms)`` and ``Tau`` sit in
+        the same table.
+
+        The description travels with the column rather than with the file, so a
+        column-subset read gets it too.
+
+        Parameters
+        ----------
+        store : tttrlib.DataStore
+        units : mapping, optional
+            ``{column: unit}``. Each unit must be a ``_mmfdb_column.units``
+            term; a column not named here is left without one, which means the
+            unit is *unknown* rather than absent.
+        items : mapping, optional
+            ``{column: mmCIF item name}``, so a table can be projected onto the
+            dictionary instead of matched by name.
+        """
+        if not units and not items:
+            return
+        for i in range(store.n_columns()):
+            column = store[i]
+            name = column.name()
+            unit = (units or {}).get(name, "")
+            item = (items or {}).get(name, "")
+            if unit:
+                _check_term(unit, _COLUMN_UNITS)
+                column.set_attribute("units", unit)
+            if item:
+                column.set_attribute("item", item)
+            if unit or item:
+                column.set_attribute("name", name)
 
     def _find_run(self, operation_type: str, run: str, artifact_kind: str) -> int:
         """Return the UID of an earlier run with the same settings, or 0.
