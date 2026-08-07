@@ -14,9 +14,9 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 import numpy as np
-import pandas as pd
 import tttrlib
 
+from chisurf.core.datastore import store_from_rows
 from chisurf.core.fluorescence.burst.photons import (
     PhotonMeta,
     StreamDef,
@@ -82,7 +82,7 @@ def _apply_divisors(stream_idx, micro, n_base: int, divisors: int):
 
 
 def bursts_from_dataframe(
-    df: pd.DataFrame,
+    df,
     tttrs: dict[str, tttrlib.TTTR],
     streams: Sequence[StreamDef],
     time_scale: int = 1,
@@ -102,7 +102,7 @@ def bursts_from_dataframe(
 
     Parameters
     ----------
-    df : pandas.DataFrame
+    df : tttrlib.DataStore, pandas.DataFrame or mapping of str to array
         Burst table with ``First File`` / ``First Photon`` / ``Last Photon``.
     tttrs : dict
         Maps the ``First File`` value to a ``tttrlib.TTTR`` object.
@@ -196,10 +196,9 @@ def pack_simulated_bursts(times, streams, *, filename="sim.spc", gap=100_000):
 
     Returns
     -------
-    tttr, frame : tttrlib.TTTR, pandas.DataFrame
+    tttr, table : tttrlib.TTTR, tttrlib.DataStore
         The photons, and the burst table addressing them.
     """
-    import pandas as pd
     import tttrlib
 
     macro_parts, channel_parts, rows = [], [], []
@@ -220,5 +219,8 @@ def pack_simulated_bursts(times, streams, *, filename="sim.spc", gap=100_000):
 
     tttr = tttrlib.TTTR()
     tttr.append_events(macro, micro, channel, event, False, 0)
-    frame = pd.DataFrame(rows, columns=["First File", "First Photon", "Last Photon"])
-    return tttr, frame
+    table = store_from_rows(
+        [dict(zip(("First File", "First Photon", "Last Photon"), r)) for r in rows],
+        columns=["First File", "First Photon", "Last Photon"],
+    )
+    return tttr, table

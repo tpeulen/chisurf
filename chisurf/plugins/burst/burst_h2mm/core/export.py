@@ -23,7 +23,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from chisurf.core.datastore import column_names
+from chisurf.core.datastore import column_names, store_from_arrays
 from chisurf.core.fio.fluorescence.burst_companion import write_companion
 
 from .h2mm import BurstPhotons
@@ -34,10 +34,10 @@ NDX_HDF5_KEY = "results"
 
 @dataclass
 class H2mmTables:
-    """The per-photon and per-burst result tables (as pandas DataFrames)."""
+    """The per-photon and per-burst result tables, as columnar stores."""
 
-    photons: object  # pandas.DataFrame — one row per photon
-    bursts: object   # pandas.DataFrame — one row per burst
+    photons: object  # tttrlib.DataStore — one row per photon
+    bursts: object   # tttrlib.DataStore — one row per burst
 
 
 def build_tables(
@@ -92,33 +92,30 @@ def build_tables(
     H2mmTables
         ``photons`` (one row per photon) and ``bursts`` (one row per burst).
     """
-    import pandas as pd
-
     macro_s = meta.macro_time.astype(np.float64) * float(base_time_s)
-    photons = pd.DataFrame(
-        {
-            "Mean Macro Time (s)": macro_s,   # ndX auto-axis name
-            "Macro Time": meta.macro_time,
-            "Micro Time": meta.micro_time,
-            "Channel": meta.channel,
-            "Stream": data.streams.astype(np.int64),
-            "State": path.astype(np.int64),
-            "Burst": meta.burst_id,
-        }
-    )
+    photon_columns = {
+        "Mean Macro Time (s)": macro_s,   # ndX auto-axis name
+        "Macro Time": meta.macro_time,
+        "Micro Time": meta.micro_time,
+        "Channel": meta.channel,
+        "Stream": data.streams.astype(np.int64),
+        "State": path.astype(np.int64),
+        "Burst": meta.burst_id,
+    }
     # Where each photon sits in its measurement's raw arrays. ``Burst`` counts
     # only the bursts that survived extraction, so it cannot take a per-photon
     # result back to the file; this can, which is what lets another analysis
     # (the state-split MLE) slice the same photons this table describes.
     if getattr(meta, "photon_index", None) is not None:
-        photons["Photon"] = np.asarray(meta.photon_index, dtype=np.int64)
+        photon_columns["Photon"] = np.asarray(meta.photon_index, dtype=np.int64)
     if burst_sources is not None:
         # ``Photon`` restarts at 0 in every measurement, so on its own it points
         # at several photons at once. The source index disambiguates it.
         sources = np.asarray(burst_sources, dtype=np.int64)
         ids = np.asarray(meta.burst_id, dtype=np.int64)
         if sources.size and ids.max(initial=-1) < sources.size:
-            photons["Source"] = sources[ids]
+            photon_columns["Source"] = sources[ids]
+    photons = store_from_arrays(photon_columns)
 
     if stream_groups is None:
         stream_groups = [("green", (0,))]
@@ -174,8 +171,7 @@ def build_tables(
         cols["Mean FRET E"].append(
             float((occ * fret_arr).sum() / occ.sum()) if occ.sum() > 0 else np.nan)
 
-    bursts = pd.DataFrame(cols)
-    return H2mmTables(photons=photons, bursts=bursts)
+    return H2mmTables(photons=photons, bursts=store_from_arrays(cols))
 
 
 def build_dwell_table(
@@ -214,11 +210,9 @@ def build_dwell_table(
 
     Returns
     -------
-    pandas.DataFrame
+    tttrlib.DataStore
         One row per dwell.
     """
-    import pandas as pd
-
     if stream_groups is None:
         stream_groups = [("green", (0,))]
         if int(data.n_streams) > 1:
@@ -271,7 +265,7 @@ def build_dwell_table(
             edge = s0 == burst_start or s1 == burst_end
         cols["Is Edge"].append(int(bool(edge)))
 
-    return pd.DataFrame(cols)
+    return store_from_arrays(cols)
 
 
 def write_hdf5(df, path: str | pathlib.Path, key: str = NDX_HDF5_KEY) -> str:
@@ -284,7 +278,7 @@ def write_hdf5(df, path: str | pathlib.Path, key: str = NDX_HDF5_KEY) -> str:
 
     Parameters
     ----------
-    df : pandas.DataFrame
+    df : tttrlib.DataStore, pandas.DataFrame or mapping of str to array
         The table to write.
     path : str or pathlib.Path
         Target file.
@@ -417,7 +411,7 @@ def write_burst_companions(
 
     Parameters
     ----------
-    burst_df : pandas.DataFrame
+    burst_df : tttrlib.DataStore
         The burst table the analysis was built from (needs ``First File``).
     burst_rows : array_like
         Row position in *burst_df* of each analysed burst, from
@@ -438,8 +432,6 @@ def write_burst_companions(
         Every file written — empty when the row mapping is unavailable, which is
         the honest outcome for an analysis that cannot say which burst is which.
     """
-    import pandas as pd  # noqa: F401 - burst_df is a DataFrame
-
     if burst_rows is None or burst_df is None:
         return []
     if "First File" not in column_names(burst_df):
@@ -470,7 +462,7 @@ def write_burst_companions(
 
     files = np.asarray(burst_df["First File"]).astype(str)
     written = []
-    for name in pd.unique(files):
+    for name in dict.fromkeys(files.tolist()):
         # ``.bur`` tables are zero-interleaved, and the loader keeps those
         # padding rows: their "First File" reads as "0". They are not a
         # measurement and must not become a companion file.

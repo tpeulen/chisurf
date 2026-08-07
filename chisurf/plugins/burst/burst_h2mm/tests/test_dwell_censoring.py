@@ -12,6 +12,8 @@ out of the distribution.
 from __future__ import annotations
 
 import numpy as np
+
+from chisurf.core.datastore import column_names, numeric_column, row_count
 import pytest
 
 from chisurf.plugins.burst.burst_h2mm.core import h2mm
@@ -121,7 +123,7 @@ def test_the_exported_edge_flag_is_the_records_flag(analysis):
         burst_id=burst_id,
     )
     table = X.build_dwell_table(data, meta, analysis.dwells, analysis.base_time_s)
-    assert (table["Is Edge"].to_numpy() ==
+    assert (numeric_column(table, "Is Edge") ==
             np.array([int(d.is_edge) for d in analysis.dwells])).all()
 
 
@@ -187,8 +189,8 @@ def test_the_dwell_table_has_a_one_click_route_out_of_the_window(qapp):
         bundle.meta = _meta_for(data)
         w._bundle = bundle
         table = w.dwell_table()
-        assert table is not None and len(table) == len(ana.dwells)
-        assert "Is Edge" in table.columns
+        assert table is not None and row_count(table) == len(ana.dwells)
+        assert "Is Edge" in column_names(table)
     finally:
         w.close()
 

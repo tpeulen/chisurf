@@ -195,9 +195,12 @@ frame (**1.1×**) — so a consumer that converts back gains nothing, and until 
 producer moved, every port was churn. `read_bur_file`,
 `read_bur_with_companions`, the `.bur`/HDF5/CSV writers, fusion, BVA, 2CDE, the
 burst browser and the MFD preparation are all store-native now, and
-`test/pandas_import_allowlist.txt` is **47 → 20**.
+`test/pandas_import_allowlist.txt` is **47 → 11**, of which 7 are interop that
+should stay.
 
-1. **The remaining 20 files**, of which seven are interop that should stay.
+1. **The four remaining real ports** — `burst_mle_analysis/wizard.py`,
+   `burst_fcs_correlator/wizard.py`, `bid_to_analysis` and
+   `burst_analysis/api/workflow.py`, all wizards and workflow shells.
    `test/pandas_import_allowlist.txt` is the ordered worklist and
    [PRD-82](../prds/prd-82.md) carries it, together with the four idioms that
    fail *silently* when a store arrives where a frame was expected — `columns`

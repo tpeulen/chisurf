@@ -4,7 +4,7 @@ prd: "82"
 title: "PRD-82: The table layer onto tttrlib's DataStore — chitable first, then pandas and pytables out of the storage path"
 description: chitable, the burst tables and the HDF5 writers move onto tttrlib's DataStore one adapter at a time. The dependency count is not the argument -- pandas stays installed either way -- the arguments are half the memory, dtypes and missing values that survive a file, and the removal of pytables, which is already broken in a freshly solved environment.
 status: in-progress
-phase: "stages 1-4 landed; 20 files still import pandas"
+phase: "stages 1-4 landed; 11 files still import pandas"
 resource: chisurf/gui/widgets/chitable/source.py
 tags: [prd, chitable, datastore, tttrlib, pandas, pytables, dependencies, burst, hdf5, csv]
 timestamp: '2026-08-06T00:00:00Z'
@@ -18,16 +18,22 @@ burst-table layer, which is what everything else was waiting on**; stage 4 is
 CSV, whose writer is in use and whose *reader* is deliberately not migrated —
 see the measurement below.
 
-**What is left is the count, and it is 20 files.**
-`test/pandas_import_allowlist.txt` is the worklist, ordered by how much of it is
-real: seven entries are interop that should stay (`datastore.py` itself, the
-three `chitable` adapters, `table_plot.py`, `topology.py`, `evaluators/base.py`
-— each hands a frame *out* or reads a format only pandas knows). The rest are
-ordinary ports, largest first: `burst_mle_analysis/wizard.py` (11 `pd.*`),
-`sm_image_mle` (three files), `burst_h2mm/core/{decays,export,photons}.py`,
-`burst_fcs_correlator/wizard.py`, `bid_to_analysis`, `img_pixel_mle`,
-`pixel_maps.py`, `burst_selection/api/features.py`,
-`burst_analysis/api/workflow.py`.
+**What is left is the count, and it is 11 files — of which 7 should stay.**
+`test/pandas_import_allowlist.txt` is the worklist. The seven that stay are
+interop: `datastore.py` itself, the three `chitable` adapters, `table_plot.py`,
+`topology.py` and `evaluators/base.py` — each hands a frame *out* or reads a
+format only pandas knows. **Four are real ports left**:
+`burst_mle_analysis/wizard.py` (11 `pd.*`), `burst_fcs_correlator/wizard.py`,
+`bid_to_analysis/__init__.py` and `burst_analysis/api/workflow.py`.
+
+One thing they share, and it is the reason they were left for last: all four
+are **wizards and workflow shells**, where the frame is threaded through GUI
+state rather than computed and written. Expect the port to be about *where the
+table lives*, not about arithmetic.
+
+**ndX takes a store directly** — `DataSource.from_store(store)` is the
+zero-copy path and both hand-off sites in this tree now use it. Do not build a
+frame to open a window.
 
 **Read this before porting one of them — the failure mode is silence, not an
 exception.** A store has **both** `names` and `columns`, and its `columns` are
@@ -139,7 +145,7 @@ invisible while the frame writer was in the way:
 
 **Removing pandas from the code is now an explicit goal, and it is tracked.**
 `test/pandas_import_allowlist.txt` is a shrinking list of the non-test files that
-still import it — **47 when the tracker was written, 20 now** —
+still import it — **47 when the tracker was written, 11 now** —
 and `test/test_pandas_seam.py` fails on a new importer *and* on a stale entry.
 Tests are excluded on purpose: a test building a fixture frame is interop, and
 counting those would mean the number could never honestly reach zero.

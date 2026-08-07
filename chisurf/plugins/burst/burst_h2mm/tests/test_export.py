@@ -3,6 +3,13 @@
 from __future__ import annotations
 
 import numpy as np
+
+from chisurf.core.datastore import (
+    column_names,
+    column_values,
+    numeric_column,
+    row_count,
+)
 import pandas as pd
 import pytest
 
@@ -87,22 +94,23 @@ def test_build_tables_schema_and_lengths():
     )
     ph, bu = tables.photons, tables.bursts
 
-    assert len(ph) == data.n_photons
-    assert len(bu) == data.n_bursts
+    assert row_count(ph) == data.n_photons
+    assert row_count(bu) == data.n_bursts
     for col in ("Mean Macro Time (s)", "Micro Time", "Channel", "Stream", "State", "Burst"):
-        assert col in ph.columns
+        assert col in column_names(ph)
     # ndX FRET-line plot columns (its default Y axis + the per-colour mean micro time).
     for col in ("Mean Microtime (green)", "Mean Microtime (red)",
                 "Proximity ratio", "FRET efficiency"):
-        assert col in bu.columns
+        assert col in column_names(bu)
     # Measured proximity ratio is a finite fraction; mean micro time is finite (ns).
-    pr = bu["Proximity ratio"].to_numpy()
+    pr = numeric_column(bu, "Proximity ratio")
     assert np.all((pr[np.isfinite(pr)] >= 0) & (pr[np.isfinite(pr)] <= 1))
-    assert np.isfinite(bu["Mean Microtime (green)"].to_numpy()).any()
+    assert np.isfinite(numeric_column(bu, "Mean Microtime (green)")).any()
     # Every column ndX imports must be numeric (else it drops them).
-    assert all(np.issubdtype(dt, np.number) for dt in ph.dtypes)
-    assert all(np.issubdtype(dt, np.number) for dt in bu.dtypes)
-    assert set(np.unique(ph["State"])) <= {0, 1}
+    for table in (ph, bu):
+        for i in range(len(column_names(table))):
+            assert np.issubdtype(column_values(table, i).dtype, np.number)
+    assert set(np.unique(np.asarray(ph["State"]))) <= {0, 1}
 
 
 def test_ndx_hdf5_and_csv_roundtrip(tmp_path):
@@ -118,7 +126,7 @@ def test_ndx_hdf5_and_csv_roundtrip(tmp_path):
     from chisurf.core.datastore import read_table_frame
 
     back = read_table_frame(h5)
-    assert list(back.columns) == list(tables.photons.columns)
+    assert list(back.columns) == column_names(tables.photons)
     assert len(back) == data.n_photons
 
     csv = X.write_csv(tables.bursts, tmp_path / "h2mm_bursts.csv")
@@ -138,16 +146,17 @@ def test_build_dwell_table_per_dwell_rows_and_edge_flag():
         stream_groups=[("green", (0,)), ("red", (1,))], micro_time_ns=0.032,
     )
     # One row per analysis dwell.
-    assert len(dwells) == len(ana.dwells)
+    assert row_count(dwells) == len(ana.dwells)
     for col in ("Dwell", "Burst", "State", "Number of Photons", "Dwell Time (ms)",
                 "Mean Microtime (green)", "FRET efficiency", "Is Edge"):
-        assert col in dwells.columns
+        assert col in column_names(dwells)
     # Edge flag is 0/1 and every burst has at least one edge dwell (its first/last).
-    assert set(np.unique(dwells["Is Edge"])) <= {0, 1}
-    assert dwells["Is Edge"].sum() >= data.n_bursts
+    edge = numeric_column(dwells, "Is Edge")
+    assert set(np.unique(edge)) <= {0, 1}
+    assert edge.sum() >= data.n_bursts
     # States are valid and photon counts positive.
-    assert set(np.unique(dwells["State"])) <= {0, 1}
-    assert (dwells["Number of Photons"].to_numpy() > 0).all()
+    assert set(np.unique(numeric_column(dwells, "State"))) <= {0, 1}
+    assert (numeric_column(dwells, "Number of Photons") > 0).all()
 
 
 def test_write_result_tables_emits_ndx_fret_line_columns(tmp_path):

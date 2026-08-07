@@ -95,7 +95,7 @@ class IntensityViewModel(ImagingMapViewModel):
 
     def _write_hdf5(self, path: str) -> list[str]:
         """Create a fresh standard imaging HDF5 with the source back-reference."""
-        from chisurf.core.fluorescence.imaging import maps_to_dataframe, write_imaging_hdf5
+        from chisurf.core.fluorescence.imaging import maps_to_table, write_imaging_hdf5
 
-        write_imaging_hdf5(maps_to_dataframe(self._columns), path, source=self.filename or None)
+        write_imaging_hdf5(maps_to_table(self._columns), path, source=self.filename or None)
         return list(self._columns.keys())

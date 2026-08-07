@@ -44,6 +44,8 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
+from chisurf.core.datastore import store_from_arrays
+
 __all__ = [
     "StateDecays",
     "colour_groups",
@@ -261,36 +263,36 @@ def decay_table(decays: StateDecays):
 
     Returns
     -------
-    pandas.DataFrame
+    tttrlib.DataStore
     """
-    import pandas as pd
-
     n_states, n_streams, n_chan, n_bins = decays.counts.shape
-    rows = []
     centers = decays.centers
-    centers_ns = decays.centers_ns()
-    for s in range(n_states):
-        for st in range(n_streams):
-            for c in range(n_chan):
-                y = decays.counts[s, st, c]
-                if not y.any():
-                    continue
-                rows.append(
-                    pd.DataFrame(
-                        {
-                            "State": np.full(n_bins, s, dtype=np.int64),
-                            "Stream": np.full(n_bins, st, dtype=np.int64),
-                            "Channel": np.full(n_bins, decays.channels[c], dtype=np.int64),
-                            "Micro Time": centers,
-                            "Micro Time (ns)": centers_ns if decays.micro_time_ns
-                            else np.full(n_bins, np.nan),
-                            "Counts": y,
-                        }
-                    )
-                )
-    if not rows:
-        return pd.DataFrame(
-            columns=["State", "Stream", "Channel", "Micro Time", "Micro Time (ns)",
-                     "Counts"]
-        )
-    return pd.concat(rows, ignore_index=True)
+    centers_ns = (
+        decays.centers_ns() if decays.micro_time_ns else np.full(n_bins, np.nan)
+    )
+    # One block per (state, stream, channel) that saw anything, stacked once at
+    # the end rather than concatenated pairwise -- the shape is known, so there
+    # is nothing to grow.
+    keys = [
+        (s, st, c)
+        for s in range(n_states)
+        for st in range(n_streams)
+        for c in range(n_chan)
+        if decays.counts[s, st, c].any()
+    ]
+    if not keys:
+        empty = np.zeros(0)
+        return store_from_arrays({
+            "State": empty.astype(np.int64), "Stream": empty.astype(np.int64),
+            "Channel": empty.astype(np.int64), "Micro Time": centers[:0],
+            "Micro Time (ns)": empty, "Counts": empty,
+        })
+    return store_from_arrays({
+        "State": np.repeat([s for s, _, _ in keys], n_bins).astype(np.int64),
+        "Stream": np.repeat([st for _, st, _ in keys], n_bins).astype(np.int64),
+        "Channel": np.repeat(
+            [decays.channels[c] for _, _, c in keys], n_bins).astype(np.int64),
+        "Micro Time": np.tile(centers, len(keys)),
+        "Micro Time (ns)": np.tile(centers_ns, len(keys)),
+        "Counts": np.concatenate([decays.counts[k] for k in keys]),
+    })

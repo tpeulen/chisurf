@@ -11,6 +11,8 @@ simulator) is unavailable.
 from __future__ import annotations
 
 import numpy as np
+
+from chisurf.core.datastore import column_names, numeric_column
 import pytest
 
 pytest.importorskip("tttrlib")
@@ -67,9 +69,9 @@ def test_segments_and_fits_two_simulated_molecules():
         "label", "centroid_row", "centroid_col", "area", "n_photons_total",
         "tau", "gamma", "r0", "rho", "2I*",
     }
-    assert expected_cols.issubset(set(df.columns))
+    assert expected_cols.issubset(set(column_names(df)))
 
-    tau = df["tau"].to_numpy()
+    tau = numeric_column(df, "tau")
     assert np.all(np.isfinite(tau))
     assert np.all(tau > 0.0)
     # The two distinct lifetimes are recovered in the right order and ballpark.
@@ -91,7 +93,8 @@ def test_batch_fit_matches_per_molecule():
     assert batch.n_molecules == serial.n_molecules == len(MOLECULES)
     for col in ("tau", "gamma", "rho", "2I*"):
         np.testing.assert_allclose(
-            batch.dataframe[col].to_numpy(), serial.dataframe[col].to_numpy(), atol=1e-6
+            numeric_column(batch.dataframe, col),
+            numeric_column(serial.dataframe, col), atol=1e-6
         )
     # The batch path skips the per-molecule model curves; the serial path keeps them.
     assert batch.model_curves == []
@@ -131,7 +134,7 @@ def test_an_analysis_roi_confines_the_search():
     assert result.n_molecules == 1
     row, col = result.centroids[0]
     assert row < 16 and col < 16
-    assert result.dataframe["tau"].to_numpy()[0] == pytest.approx(MOLECULES[0][2], abs=0.6)
+    assert numeric_column(result.dataframe, "tau")[0] == pytest.approx(MOLECULES[0][2], abs=0.6)
 
 
 def test_a_serialised_roi_survives_the_trip_through_settings():
@@ -171,7 +174,7 @@ def test_foreground_and_background_partition_the_frame():
     assert result.background_roi(margin=4).to_mask(shape).sum() <= background.sum()
 
     # ... and the molecules are far brighter than what is left over.
-    assert result.background_rate() < result.dataframe["intensity_mean"].min()
+    assert result.background_rate() < numeric_column(result.dataframe, "intensity_mean").min()
 
 
 def test_the_result_exposes_full_region_measurements():
@@ -188,7 +191,7 @@ def test_the_result_exposes_full_region_measurements():
         assert prop.intensity_max > 0
     # The table's shape columns are those measurements, not a second opinion.
     np.testing.assert_allclose(
-        result.dataframe["area"].to_numpy(), [p.area for p in props]
+        numeric_column(result.dataframe, "area"), [p.area for p in props]
     )
 
 
@@ -204,4 +207,4 @@ def test_segmentation_preview_matches_the_fitted_segmentation():
     )
     assert preview.n_molecules == fitted.n_molecules
     np.testing.assert_array_equal(preview.label_image, fitted.label_image)
-    assert preview.dataframe["tau"].isna().all()
+    assert np.isnan(numeric_column(preview.dataframe, "tau")).all()

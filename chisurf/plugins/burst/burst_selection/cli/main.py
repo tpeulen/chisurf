@@ -7,7 +7,7 @@ from typing import Any
 
 import click
 
-from chisurf.core.datastore import read_csv_table
+from chisurf.core.datastore import column_names, read_csv_table
 from chisurf.core.fluorescence.burst.table import read_burst_table
 
 from ..api.contract import (
@@ -277,7 +277,7 @@ def inspect_cmd(bur_file: str) -> None:
         "path": bur_file,
         "n_rows": int(store.n_rows()),
         "columns": [str(store[i].name()) for i in range(store.n_columns())],
-        "feature_columns": list(features.columns),
+        "feature_columns": column_names(features),
         "n_bursts": int(store.n_rows()),
     }
     click.echo(json.dumps(summary, indent=2))

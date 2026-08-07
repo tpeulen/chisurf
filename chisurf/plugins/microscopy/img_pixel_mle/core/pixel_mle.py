@@ -31,7 +31,7 @@ from collections.abc import Callable, Sequence
 from typing import Any
 
 import numpy as np
-import pandas as pd
+from chisurf.core.datastore import store_from_arrays
 
 from chisurf.core.fluorescence.mle import Fit2xModel, Fit2xSettings
 from chisurf.core.fluorescence.mle.fit2x import parameter_names_of
@@ -169,7 +169,7 @@ class PixelMleResult:
 
     Attributes
     ----------
-    dataframe : pandas.DataFrame
+    dataframe : tttrlib.DataStore
         One row per fitted (or skipped) pixel, with coordinates and fit
         parameters (`tau`, `gamma`, `r0`, `rho`, `2I*`, ...).  This is the
         per-pixel table consumed by the imaging result maps / exporters.
@@ -180,7 +180,7 @@ class PixelMleResult:
         Number of pixels that passed the ``min_photons`` threshold.
     """
 
-    dataframe: pd.DataFrame
+    dataframe: Any
     tau: np.ndarray
     rho: np.ndarray
     n_pixels_fit: int
@@ -417,36 +417,42 @@ def fit_pixel_lifetimes(
         "Pixel Number": line_idx * n_pixel + pix_idx,
         "Number of Photons (fit window)": totals.astype(np.int64),
     }
+    def _column(fill=np.nan, values=None, dtype=float):
+        """A per-pixel column: *fill* everywhere, *values* on the fitted rows.
+
+        Replaces a frame of NaNs written into with ``.loc[fit_rows, name]`` --
+        same result, but the column is built once rather than allocated and then
+        scattered into.
+        """
+        out = np.full(n_pix_total, fill, dtype=dtype)
+        if values is not None and len(fit_rows):
+            out[fit_rows] = values
+        return out
+
     if model is Fit2xModel.FIT23:
         # Unchanged fit23 schema (byte-for-byte with the historical export).
-        df = pd.DataFrame({
+        columns = {
             **base,
-            "tau": np.nan, "gamma": np.nan, "r0": np.nan, "rho": np.nan,
-            "BIFL scatter fit?": 0, "2I*: P+2S?": 0,
-            "rS": np.nan, "rE": np.nan, "2I*": np.nan,
-        })
-        if len(fit_rows):
-            df.loc[fit_rows, "tau"] = params[:, 0]
-            df.loc[fit_rows, "gamma"] = params[:, 1]
-            df.loc[fit_rows, "r0"] = params[:, 2]
-            df.loc[fit_rows, "rho"] = params[:, 3]
-            df.loc[fit_rows, "2I*"] = params[:, 4]
-            df.loc[fit_rows, "BIFL scatter fit?"] = int(settings.soft_bifl_scatter)
-            df.loc[fit_rows, "2I*: P+2S?"] = int(settings.p2s_twoIstar)
+            "tau": _column(values=params[:, 0] if len(fit_rows) else None),
+            "gamma": _column(values=params[:, 1] if len(fit_rows) else None),
+            "r0": _column(values=params[:, 2] if len(fit_rows) else None),
+            "rho": _column(values=params[:, 3] if len(fit_rows) else None),
+            "BIFL scatter fit?": _column(
+                0, np.full(len(fit_rows), int(settings.soft_bifl_scatter)),
+                dtype=np.int64),
+            "2I*: P+2S?": _column(
+                0, np.full(len(fit_rows), int(settings.p2s_twoIstar)), dtype=np.int64),
+            "rS": _column(), "rE": _column(),
+            "2I*": _column(values=params[:, 4] if len(fit_rows) else None),
+        }
         result_cols = list(_RESULT_COLUMNS)
     else:
         # Generic schema: ``tau`` (primary lifetime) + one column per free
         # parameter named by the registry, then ``2I*``.
-        data = {**base, "tau": np.nan}
-        for nm in names:
-            data[nm] = np.nan
-        data["2I*"] = np.nan
-        df = pd.DataFrame(data)
-        if len(fit_rows):
-            df.loc[fit_rows, "tau"] = params[:, 0]
-            for j, nm in enumerate(names):
-                df.loc[fit_rows, nm] = params[:, j]
-            df.loc[fit_rows, "2I*"] = params[:, -1]
+        columns = {**base, "tau": _column(values=params[:, 0] if len(fit_rows) else None)}
+        for j, nm in enumerate(names):
+            columns[nm] = _column(values=params[:, j] if len(fit_rows) else None)
+        columns["2I*"] = _column(values=params[:, -1] if len(fit_rows) else None)
         result_cols = [
             "Y pixel", "X pixel", "Pixel Number",
             "Number of Photons (fit window)", "tau", *names, "2I*",
@@ -454,19 +460,21 @@ def fit_pixel_lifetimes(
     # Below-threshold pixels report zero photons in the fit window (matches the
     # historical schema, where intensity/count columns come from the Intensity
     # tool rather than the MLE).
-    df.loc[totals < settings.min_photons, "Number of Photons (fit window)"] = 0
+    counts = np.array(columns["Number of Photons (fit window)"])
+    counts[totals < settings.min_photons] = 0
+    columns["Number of Photons (fit window)"] = counts
     if n_frames > 1:
-        df["Z pixel"] = frame_idx
+        columns["Z pixel"] = frame_idx
         result_cols = result_cols + ["Z pixel"]
-    df = df[result_cols]
+    df = store_from_arrays({name: columns[name] for name in result_cols})
 
     if progress is not None:
         for i in range(n_frames):
             progress(i, n_frames, n_lines - 1, n_lines)
 
-    _ = n_pix_total  # documented invariant: len(df) == n_pix_total
+    # documented invariant: row_count(df) == n_pix_total
     return PixelMleResult(
-        dataframe=df.reset_index(drop=True),
+        dataframe=df,
         tau=tau_map,
         rho=rho_map,
         n_pixels_fit=int(len(fit_rows)),

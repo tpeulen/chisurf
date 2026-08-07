@@ -11,6 +11,8 @@ from __future__ import annotations
 import pathlib
 
 import numpy as np
+
+from chisurf.core.datastore import column_names, column_values, numeric_column
 import pytest
 
 from chisurf.plugins.burst.burst_h2mm.core.decays import (
@@ -125,14 +127,15 @@ def test_the_written_table_is_numeric_and_per_detector():
     d = state_decays(micro, chan, strm, st, n_states=1, groups=GROUPS, n_bins=16,
                      micro_time_ns=0.032)
     df = decay_table(d)
-    assert set(df.columns) == {
+    assert set(column_names(df)) == {
         "State", "Stream", "Channel", "Micro Time", "Micro Time (ns)", "Counts"
     }
-    assert df["Counts"].sum() == 400
-    assert sorted(df["Channel"].unique()) == [0, 1]
-    for col in df.columns:
-        assert np.issubdtype(df[col].dtype, np.number), f"{col} must be numeric"
-    assert np.allclose(df["Micro Time (ns)"], df["Micro Time"] * 0.032)
+    assert numeric_column(df, "Counts").sum() == 400
+    assert sorted(np.unique(numeric_column(df, "Channel"))) == [0, 1]
+    for i, col in enumerate(column_names(df)):
+        assert np.issubdtype(column_values(df, i).dtype, np.number), f"{col} must be numeric"
+    assert np.allclose(numeric_column(df, "Micro Time (ns)"),
+                       numeric_column(df, "Micro Time") * 0.032)
 
 
 def test_mismatched_photon_arrays_are_refused():

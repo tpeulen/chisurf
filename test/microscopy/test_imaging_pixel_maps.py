@@ -10,6 +10,8 @@ import os
 import tempfile
 
 import numpy as np
+
+from chisurf.core.datastore import column_names, row_count
 import pytest
 
 _HT3 = next(
@@ -55,12 +57,12 @@ def test_nb_maps_single_frame_is_safe():
     assert np.all(m["variance"] == 0.0)
 
 
-def test_maps_to_dataframe_hdf5_roundtrip_and_ndxplorer():
-    """maps_to_dataframe -> imaging HDF5 round-trips and loads via ndxplorer."""
+def test_maps_to_table_hdf5_roundtrip_and_ndxplorer():
+    """maps_to_table -> imaging HDF5 round-trips and loads via ndxplorer."""
     import pandas as pd
 
     from chisurf.core.fluorescence.imaging import (
-        maps_to_dataframe,
+        maps_to_table,
         nb_maps,
         read_imaging_table,
         write_imaging_hdf5,
@@ -68,10 +70,10 @@ def test_maps_to_dataframe_hdf5_roundtrip_and_ndxplorer():
 
     rng = np.random.default_rng(2)
     m = nb_maps(rng.poisson(10.0, size=(50, 8, 8)).astype(float))
-    df = maps_to_dataframe(m)
+    df = maps_to_table(m)
     # Standard imaging layout (matches pixel-wise MLE): Y pixel, X pixel, Pixel Number.
-    assert list(df.columns[:3]) == ["Y pixel", "X pixel", "Pixel Number"]
-    assert len(df) == 64
+    assert column_names(df)[:3] == ["Y pixel", "X pixel", "Pixel Number"]
+    assert row_count(df) == 64
     path = os.path.join(tempfile.gettempdir(), "chisurf_nb_roundtrip.h5")
     write_imaging_hdf5(df, path)
     back = read_imaging_table(path)
@@ -90,7 +92,7 @@ def test_add_maps_to_hdf5_enriches_existing_table_and_keeps_source():
     from chisurf.core.fluorescence.imaging import (
         add_maps_to_hdf5,
         intensity_maps,
-        maps_to_dataframe,
+        maps_to_table,
         read_imaging_source,
         read_imaging_table,
         write_imaging_hdf5,
@@ -100,7 +102,7 @@ def test_add_maps_to_hdf5_enriches_existing_table_and_keeps_source():
     stack = rng.poisson(12.0, size=(30, 5, 5)).astype(float)
     # Base "imaging HDF5" (intensity + source back-reference).
     path = os.path.join(tempfile.gettempdir(), "chisurf_enrich.h5")
-    write_imaging_hdf5(maps_to_dataframe(intensity_maps(stack)), path, source="/data/raw.ht3")
+    write_imaging_hdf5(maps_to_table(intensity_maps(stack)), path, source="/data/raw.ht3")
     assert read_imaging_source(path) == "/data/raw.ht3"
 
     # Enrich with N&B fields -> columns grow, rows unchanged, source preserved.
@@ -343,14 +345,14 @@ def test_clsm_draw_opens_imaging_hdf5_via_backref():
     from chisurf.core.fluorescence.imaging import (
         build_clsm,
         intensity_maps,
-        maps_to_dataframe,
+        maps_to_table,
         write_imaging_hdf5,
     )
     from chisurf.plugins.microscopy.clsm.gui.view_model import ClsmViewModel
 
     clsm = build_clsm(tttrlib.TTTR(_HT3), channels=[0])
     path = os.path.join(tempfile.gettempdir(), "chisurf_clsm_backref.h5")
-    write_imaging_hdf5(maps_to_dataframe(intensity_maps(clsm.get_intensity())), path, source=_HT3)
+    write_imaging_hdf5(maps_to_table(intensity_maps(clsm.get_intensity())), path, source=_HT3)
 
     vm = ClsmViewModel()
     vm.load_file(path)  # must resolve the .h5 to the source TTTR

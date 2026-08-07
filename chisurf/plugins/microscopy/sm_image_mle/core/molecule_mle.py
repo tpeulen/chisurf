@@ -21,7 +21,15 @@ from collections.abc import Callable, Sequence
 from typing import Any
 
 import numpy as np
-import pandas as pd
+from chisurf.core.datastore import (
+    as_store,
+    column_names,
+    column_values,
+    row_count,
+    store_from_arrays,
+    store_from_rows,
+    take_columns,
+)
 
 from chisurf.core.fluorescence.mle import (
     Fit2x,
@@ -157,13 +165,41 @@ class MoleculeMleSettings:
         return chs, chs
 
 
+def with_source_column(table, source) -> Any:
+    """Return *table* with a leading ``source_ptu`` column naming its file.
+
+    First, not appended: the joint TSV is read back by column order as well as
+    by name, and this is what ``DataFrame.insert(0, ...)`` used to guarantee.
+
+    Parameters
+    ----------
+    table : tttrlib.DataStore, pandas.DataFrame or mapping of str to array
+        One row per molecule.
+    source : path-like
+        The imaging file the molecules came from.
+
+    Returns
+    -------
+    tttrlib.DataStore
+    """
+    table = as_store(table)
+    names = column_names(table)
+    return take_columns(
+        store_from_arrays({
+            "source_ptu": np.full(row_count(table), str(source)),
+            **{name: column_values(table, i) for i, name in enumerate(names)},
+        }),
+        ["source_ptu", *names],
+    )
+
+
 @dataclasses.dataclass
 class MoleculeMleResult:
     """Result of a molecule-wise MLE lifetime analysis.
 
     Attributes
     ----------
-    dataframe : pandas.DataFrame
+    dataframe : tttrlib.DataStore
         One row per segmented molecule with region properties (centroid, area,
         eccentricity, ...) and fit parameters (``tau``, ``gamma``, ``r0``,
         ``rho``, ``2I*``, photon counts).
@@ -181,7 +217,7 @@ class MoleculeMleResult:
         Number of molecules fitted (rows in ``dataframe``).
     """
 
-    dataframe: pd.DataFrame
+    dataframe: Any
     intensity_image: np.ndarray
     label_image: np.ndarray
     centroids: np.ndarray
@@ -193,7 +229,7 @@ class MoleculeMleResult:
     @property
     def n_molecules(self) -> int:
         """Number of segmented and fitted molecules."""
-        return int(len(self.dataframe))
+        return row_count(self.dataframe)
 
     def molecule_rois(self, crop: bool = True) -> list:
         """Return each segmented molecule as a region of interest.
@@ -454,7 +490,7 @@ def segmentation_preview(
     rows = [{**_shape_columns(p), "tau": float("nan")} for p in props]
     centroids = [p.centroid for p in props]
     return MoleculeMleResult(
-        dataframe=pd.DataFrame(rows),
+        dataframe=store_from_rows(rows),
         intensity_image=intensity,
         label_image=labels,
         centroids=np.asarray(centroids, dtype=float).reshape(-1, 2),
@@ -769,7 +805,7 @@ def fit_molecules(
             vv_vhs.append(vv_vh)
             curves.append(model_curve if model_curve is not None else np.array([]))
 
-    dataframe = pd.DataFrame(rows)
+    dataframe = store_from_rows(rows)
     return MoleculeMleResult(
         dataframe=dataframe,
         intensity_image=intensity,

@@ -520,8 +520,8 @@ def test_extract_features_supports_chisurf_bur_columns() -> None:
         }
     )
     features = extract_features([df])
-    assert features.loc[0, "nphotons"] == 10
-    assert features.loc[1, "fret"] == 0.75
+    assert numeric_column(features, "nphotons")[0] == 10
+    assert numeric_column(features, "fret")[1] == 0.75
 
 
 def test_extract_features_derives_proximity_ratio_from_green_red() -> None:
@@ -536,7 +536,7 @@ def test_extract_features_derives_proximity_ratio_from_green_red() -> None:
         }
     )
     features = extract_features([df])
-    fret = features["fret"].to_numpy()
+    fret = numeric_column(features, "fret")
     assert fret[0] == 0.2
     assert fret[1] == 0.5
     # a burst with no green+red signal is NaN (excluded), not collapsed to 0
@@ -553,7 +553,8 @@ def test_extract_features_and_fit_gmm() -> None:
         }
     )
     features = extract_features([df])
-    assert list(features.columns) == ["nphotons", "duration", "brightness", "interphoton", "fret"]
+    assert column_names(features) == [
+        "nphotons", "duration", "brightness", "interphoton", "fret"]
     fit = fit_gmm(features, GMMSettings(covariance_type="spherical"))
     assert fit["n_components"] == 1
     assert fit["labels"] == [0, 0, 0, 0]

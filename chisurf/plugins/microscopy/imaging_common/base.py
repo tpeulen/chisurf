@@ -483,18 +483,23 @@ class ImagingMapViewModel:
         )
         self._mmfdb_persisted_signature = state
 
-    def to_dataframe(self):
-        """Return the per-pixel table as a DataFrame (shared with ndxplorer).
+    def to_table(self):
+        """Return the per-pixel table as a store (shared with ndxplorer).
 
         This is the same in-memory table written to the HDF5; the host hands it
         straight to an ndxplorer ``DataSource`` (no file round-trip) so the tool
         and ndxplorer share one dataset and updates transfer dynamically.
+
+        Returns
+        -------
+        tttrlib.DataStore or None
+            ``None`` before anything has been computed.
         """
         if not self._columns:
             return None
-        from chisurf.core.fluorescence.imaging import maps_to_dataframe
+        from chisurf.core.fluorescence.imaging import maps_to_table
 
-        return maps_to_dataframe(self._columns)
+        return maps_to_table(self._columns)
 
     def _ask_hdf5_path(self) -> str:
         try:
@@ -509,7 +514,22 @@ class ImagingMapViewModel:
 
 
 def build_ndx_data_source(df):
-    """Build an ndxplorer ``DataSource`` from an in-memory per-pixel DataFrame."""
+    """Build an ndxplorer ``DataSource`` from an in-memory per-pixel table.
+
+    Through ``from_store``, which takes the store as it is: no DataFrame is
+    built and nothing is copied, and a per-pixel table is most of the memory in
+    the process at the moment it is handed over.
+
+    Parameters
+    ----------
+    df : tttrlib.DataStore, pandas.DataFrame or mapping of str to array
+
+    Returns
+    -------
+    ndxplorer.core.data_source.DataSource
+    """
     from ndxplorer.core.data_source import DataSource
 
-    return DataSource(parameter_names=list(df.columns), data=df)
+    from chisurf.core.datastore import as_store
+
+    return DataSource.from_store(as_store(df))

@@ -8,7 +8,7 @@ the compiled extension is absent.
   intensity frame-stack (the one analysis PAM/tttrlib did not already provide).
 - :func:`phasor_maps` is a thin wrapper over the built-in
   ``tttrlib.CLSMImage.get_phasor`` (raw + optional IRF reference).
-- :func:`maps_to_dataframe` / :func:`write_imaging_hdf5` serialise per-pixel maps
+- :func:`maps_to_table` / :func:`write_imaging_hdf5` serialise per-pixel maps
   in the same layout the pixel-wise MLE writes (one dataset per column at the
   file root), which is also directly readable by ndxplorer.
 """
@@ -653,8 +653,8 @@ def phasor_frames(
     return {"g": np.nan_to_num(ph[..., 0]), "s": np.nan_to_num(ph[..., 1])}
 
 
-def maps_to_dataframe(maps: dict[str, np.ndarray]):
-    """Flatten 2-D per-pixel maps to a per-pixel-row pandas ``DataFrame``.
+def maps_to_table(maps: dict[str, np.ndarray]):
+    """Flatten 2-D per-pixel maps to a per-pixel-row table.
 
     Columns follow the pixel-wise-MLE convention: ``X pixel``, ``Y pixel`` plus
     one column per map. Rows are ordered row-major (``Y`` outer, ``X`` inner).
@@ -666,9 +666,10 @@ def maps_to_dataframe(maps: dict[str, np.ndarray]):
 
     Returns
     -------
-    pandas.DataFrame
+    tttrlib.DataStore
+        One row per pixel.
     """
-    import pandas as pd
+    from chisurf.core.datastore import store_from_arrays
 
     shapes = {np.asarray(v).shape for v in maps.values()}
     if len(shapes) != 1:
@@ -684,7 +685,7 @@ def maps_to_dataframe(maps: dict[str, np.ndarray]):
     }
     for name, arr in maps.items():
         data[name] = np.asarray(arr, dtype=float).ravel()
-    return pd.DataFrame(data)
+    return store_from_arrays(data)
 
 
 def write_imaging_hdf5(df, path: str, source: str | None = None) -> None:
@@ -701,7 +702,7 @@ def write_imaging_hdf5(df, path: str, source: str | None = None) -> None:
 
     Parameters
     ----------
-    df : pandas.DataFrame
+    df : tttrlib.DataStore, pandas.DataFrame or mapping of str to array
         The per-pixel table.
     path : str
         Target file.
@@ -809,9 +810,19 @@ def add_maps_to_hdf5(path: str, maps: dict[str, np.ndarray], key: str = "results
     """
     import os
 
-    new = maps_to_dataframe(maps)
+    from chisurf.core.datastore import (
+        column_names,
+        column_values,
+        new_store,
+        numeric_column,
+        read_table,
+        row_count,
+        store_from_arrays,
+    )
+
+    new = maps_to_table(maps)
     _keys = ("X pixel", "Y pixel", "Pixel Number")
-    add_cols = [c for c in new.columns if c not in _keys]
+    add_cols = [c for c in column_names(new) if c not in _keys]
 
     # "There is no file" and "I could not read the file" are different answers,
     # and conflating them loses data: this function REWRITES the table, so a
@@ -820,16 +831,39 @@ def add_maps_to_hdf5(path: str, maps: dict[str, np.ndarray], key: str = "results
     # success. A file that exists must be readable or this stops.
     base = None
     if os.path.exists(path):
-        base = read_imaging_table(path, key=key)
+        base = read_table(path, group=key if key.startswith("/") else "/")
+        if base is None:
+            raise OSError(
+                f"{path} is not a readable imaging table — it holds no 1-D column "
+                "datasets. A file written by an earlier release is in the frame "
+                "layout and has to be converted rather than read here."
+            )
 
-    if base is not None and {"X pixel", "Y pixel"}.issubset(base.columns):
-        # Drop any stale copies of the incoming columns, then merge by pixel.
-        base = base.drop(columns=[c for c in add_cols if c in base.columns], errors="ignore")
-        merged = base.merge(
-            new[["X pixel", "Y pixel", *add_cols]],
-            on=["X pixel", "Y pixel"],
-            how="left",
-        )
+    if base is not None and {"X pixel", "Y pixel"}.issubset(column_names(base)):
+        # A left join on the pixel coordinate, done by index rather than by a
+        # relational merge: both tables are per-pixel, so the key is a single
+        # integer and the lookup is a dict. A base pixel the new maps do not
+        # cover keeps NaN, which is what the left join gave.
+        merged = new_store()
+        base_names = column_names(base)
+        stale = set(add_cols)
+        for i, name in enumerate(base_names):
+            if name not in stale:
+                merged.add(name, np.array(column_values(base, i)))
+        merged.set_n_rows(row_count(base))
+
+        def _key(table):
+            x = numeric_column(table, "X pixel").astype(np.int64)
+            y = numeric_column(table, "Y pixel").astype(np.int64)
+            return y * (int(max(x.max(initial=0), 0)) + 1) + x
+
+        where = {int(k): i for i, k in enumerate(_key(new))}
+        rows = np.array([where.get(int(k), -1) for k in _key(base)], dtype=np.int64)
+        found = rows >= 0
+        for name in add_cols:
+            values = np.full(row_count(base), np.nan)
+            values[found] = numeric_column(new, name)[rows[found]]
+            merged.append_columns(store_from_arrays({name: values}))
     else:
         merged = new
 

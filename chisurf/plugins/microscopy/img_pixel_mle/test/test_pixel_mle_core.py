@@ -8,6 +8,8 @@ from __future__ import annotations
 import pathlib
 
 import numpy as np
+
+from chisurf.core.datastore import column_names, numeric_column, row_count
 import pytest
 
 tttrlib = pytest.importorskip("tttrlib")
@@ -58,7 +60,7 @@ def test_core_fits_flim_image_headlessly():
 
     df = result.dataframe
     # One row per pixel of the 50x50 image.
-    assert len(df) == 50 * 50
+    assert row_count(df) == 50 * 50
     assert result.tau.shape == (1, 50, 50)
 
     expected_cols = {
@@ -66,14 +68,14 @@ def test_core_fits_flim_image_headlessly():
         "tau", "gamma", "r0", "rho", "BIFL scatter fit?", "2I*: P+2S?",
         "rS", "rE", "2I*",
     }
-    assert expected_cols.issubset(set(df.columns))
+    assert expected_cols.issubset(set(column_names(df)))
 
-    fitted = df[df["Number of Photons (fit window)"] > 0]
-    assert result.n_pixels_fit == len(fitted)
+    fitted = numeric_column(df, "Number of Photons (fit window)") > 0
+    assert result.n_pixels_fit == int(fitted.sum())
     assert result.n_pixels_fit > 50  # a meaningful number of pixels were fit
 
     # Fitted lifetimes are finite and physically plausible for the image.
-    tau = fitted["tau"].to_numpy()
+    tau = numeric_column(df, "tau")[fitted]
     assert np.all(np.isfinite(tau))
     assert np.all(tau > 0.0)
     assert 0.1 < np.median(tau) < 30.0
@@ -130,15 +132,16 @@ def test_core_fits_non_fit23_models(model, init, fixed, extra_cols):
     result = fit_pixel_lifetimes_from_file(str(_FLIM_PTU), settings)
 
     df = result.dataframe
-    assert len(df) == 50 * 50
+    assert row_count(df) == 50 * 50
     assert result.tau.shape == (1, 50, 50)
-    assert {"tau", "2I*"} <= set(df.columns)
-    assert extra_cols <= set(df.columns)
+    assert {"tau", "2I*"} <= set(column_names(df))
+    assert extra_cols <= set(column_names(df))
     # fit23-only columns are gone for the other models
-    assert "rS" not in df.columns and "rE" not in df.columns and "r0" not in df.columns
+    assert not {"rS", "rE", "r0"} & set(column_names(df))
 
     assert result.n_pixels_fit > 0
-    tau = df[df["Number of Photons (fit window)"] > 0]["tau"].to_numpy()
+    tau = numeric_column(df, "tau")[
+        numeric_column(df, "Number of Photons (fit window)") > 0]
     assert np.all(np.isfinite(tau))
     assert np.all(tau > 0.0)
     assert int((result.tau > 0).sum()) == result.n_pixels_fit
@@ -150,8 +153,8 @@ def test_fast_and_loop_engines_are_equivalent():
     r_loop = fit_pixel_lifetimes_from_file(str(_FLIM_PTU), _settings(engine="loop", n_workers=1))
     r_fast = fit_pixel_lifetimes_from_file(str(_FLIM_PTU), _settings(engine="fast", n_workers=1))
     assert r_loop.n_pixels_fit == r_fast.n_pixels_fit
-    tl = r_loop.dataframe["tau"].to_numpy()
-    tf = r_fast.dataframe["tau"].to_numpy()
+    tl = numeric_column(r_loop.dataframe, "tau")
+    tf = numeric_column(r_fast.dataframe, "tau")
     assert np.allclose(tl, tf, equal_nan=True)
 
 
@@ -166,8 +169,8 @@ def test_threaded_matches_serial():
         r_par = fit_pixel_lifetimes_from_file(str(_FLIM_PTU), _settings(n_workers=2))
     finally:
         pm._MIN_ROWS_FOR_THREADS = orig
-    ts = r_ser.dataframe["tau"].to_numpy()
-    tp = r_par.dataframe["tau"].to_numpy()
+    ts = numeric_column(r_ser.dataframe, "tau")
+    tp = numeric_column(r_par.dataframe, "tau")
     assert r_ser.n_pixels_fit == r_par.n_pixels_fit
     assert np.allclose(ts, tp, equal_nan=True)
 

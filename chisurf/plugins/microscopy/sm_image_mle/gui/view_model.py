@@ -15,13 +15,26 @@ import logging
 import pathlib
 from collections.abc import Callable
 
-from chisurf.core.datastore import write_csv_table
+from chisurf.core.datastore import (
+    column_names,
+    concat_stores,
+    numeric_column,
+    read_csv_table,
+    row_count,
+    rows_from_table,
+    take_where,
+    write_csv_table,
+)
 import numpy as np
 
 from chisurf.core.roi import RegionCollection
 from chisurf.plugins.microscopy.mle_common.base import MleObserverMixin, scalar
 
-from ..core.molecule_mle import MoleculeMleResult, MoleculeMleSettings
+from ..core.molecule_mle import (
+    MoleculeMleResult,
+    MoleculeMleSettings,
+    with_source_column,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -217,11 +230,11 @@ class MoleculeMleViewModel(MleObserverMixin):
 
     # ── results accessors (AutoForm image_browser) ──
     def _flat_molecules(self) -> list[tuple[int, int]]:
-        """Flat ``(result_index, dataframe_row)`` list over every molecule."""
+        """Flat ``(result_index, table_row)`` list over every molecule."""
         return [
             (ri, row)
             for ri, result in enumerate(self.results)
-            for row in range(len(result.dataframe))
+            for row in range(row_count(result.dataframe))
         ]
 
     def _current_molecule(self):
@@ -232,7 +245,7 @@ class MoleculeMleViewModel(MleObserverMixin):
         idx = int(self.current_molecule) if 0 <= self.current_molecule < len(flat) else 0
         ri, row = flat[idx]
         result = self.results[ri]
-        return result, row, result.dataframe.iloc[row].to_dict()
+        return result, row, rows_from_table(result.dataframe)[row]
 
     def molecule_entries(self) -> list[dict]:
         """Browsable molecule entries (id = flat index; badge = fitted τ)."""
@@ -240,7 +253,7 @@ class MoleculeMleViewModel(MleObserverMixin):
         idx = 0
         for ri, result in enumerate(self.results):
             file_tag = f"F{ri + 1}·" if len(self.results) > 1 else ""
-            for rec in result.dataframe.to_dict("records"):
+            for rec in rows_from_table(result.dataframe):
                 tau = float(rec.get("tau", float("nan")))
                 # Un-fitted (preview) molecules show their area instead of τ.
                 badge = f"τ={tau:.2f} ns" if np.isfinite(tau) else f"{int(rec.get('area', 0))} px"
@@ -341,7 +354,7 @@ class MoleculeMleViewModel(MleObserverMixin):
 
     def has_results(self) -> bool:
         """Return True when there is a molecule table to export."""
-        return any(not r.dataframe.empty for r in self.results)
+        return any(row_count(r.dataframe) for r in self.results)
 
     def export_results(self, path: str) -> str:
         """Write the combined per-molecule table (all files) to *path* (TSV/CSV).
@@ -349,17 +362,16 @@ class MoleculeMleViewModel(MleObserverMixin):
         Returns the written path (empty string when there is nothing to export).
         The separator is inferred from the extension (``.csv`` → comma, else tab).
         """
-        import pandas as pd
-
-        frames = [r.dataframe for r in self.results if not r.dataframe.empty]
-        if not frames:
+        tables = [r.dataframe for r in self.results if row_count(r.dataframe)]
+        if not tables:
             self.status_text = "No molecules to export."
             self.notify("done")
             return ""
         sep = "," if str(path).lower().endswith(".csv") else "\t"
-        combined = pd.concat(frames, ignore_index=True)
+        combined = concat_stores(tables)
         write_csv_table(path, combined, delimiter=sep)
-        self.status_text = f"Exported {len(combined)} molecule(s) to {pathlib.Path(path).name}"
+        self.status_text = (
+            f"Exported {row_count(combined)} molecule(s) to {pathlib.Path(path).name}")
         self.notify("exported")
         return str(path)
 
@@ -415,8 +427,6 @@ class MoleculeMleViewModel(MleObserverMixin):
         Segments and fits each file, writes a per-file ``molecule_data.tsv`` and a
         merged ``joint_output.tsv``, and keeps the results for display.
         """
-        import pandas as pd
-
         from ..core.molecule_mle import fit_molecules_from_files
 
         ok, reason = self.can_run()
@@ -427,7 +437,7 @@ class MoleculeMleViewModel(MleObserverMixin):
 
         irf = self.irf_files[0]
         self.results = []
-        frames: list[pd.DataFrame] = []
+        frames: list = []
         for i, path in enumerate(self.files):
             self.status_text = f"Analysing {pathlib.Path(path).name} ({i + 1}/{len(self.files)})…"
             self.notify("progress")
@@ -443,11 +453,11 @@ class MoleculeMleViewModel(MleObserverMixin):
             frames.append(self._save_result(path, result))
 
         # Merged joint TSV next to the first file.
-        frames = [f for f in frames if f is not None and not f.empty]
+        frames = [f for f in frames if f is not None and row_count(f)]
         if frames:
             try:
                 joint = pathlib.Path(self.files[0]).parent / "joint_output.tsv"
-                write_csv_table(joint, pd.concat(frames, ignore_index=True))
+                write_csv_table(joint, concat_stores(frames))
             except Exception:
                 logger.debug("joint TSV export failed", exc_info=True)
 
@@ -456,16 +466,15 @@ class MoleculeMleViewModel(MleObserverMixin):
 
     @staticmethod
     def _save_result(path: str, result: MoleculeMleResult):
-        """Persist one file's result next to it (TSV + intensity); return the frame.
+        """Persist one file's result next to it (TSV + intensity); return the table.
 
         Writes ``<stem>_analysis/molecule_data.tsv`` and ``intensity.npy`` so the
         analysis can be reopened later with :meth:`load_analysis`.
         """
         df = result.dataframe
-        if df is None or df.empty:
+        if df is None or row_count(df) == 0:
             return df
-        df = df.copy()
-        df.insert(0, "source_ptu", str(path))
+        df = with_source_column(df, path)
         out_dir = pathlib.Path(path).parent / f"{pathlib.Path(path).stem}_analysis"
         out_dir.mkdir(parents=True, exist_ok=True)
         write_csv_table(out_dir / "molecule_data.tsv", df)
@@ -495,28 +504,38 @@ class MoleculeMleViewModel(MleObserverMixin):
         reopened analysis). A ``joint_output.tsv`` with several ``source_ptu``
         files is split back into one result per file.
         """
-        import pandas as pd
-
         p = pathlib.Path(tsv_path)
         if not p.exists():
             self.status_text = f"Not found: {p}"
             self.notify("done")
             return
         try:
-            df = pd.read_csv(p, sep="\t")
+            df = read_csv_table(p)
         except Exception as exc:  # noqa: BLE001 - surfaced in the status line
             self.status_text = f"Could not read {p.name}: {exc}"
             self.notify("done")
             return
+        if df is None:
+            self.status_text = f"Could not read {p.name}: not a delimited table"
+            self.notify("done")
+            return
 
         self.results = []
-        groups = df.groupby("source_ptu") if "source_ptu" in df.columns else [(str(p), df)]
+        names = column_names(df)
+        if "source_ptu" in names:
+            sources = np.asarray(df["source_ptu"]).astype(str)
+            groups = [(s, take_where(df, sources == s))
+                      for s in dict.fromkeys(sources.tolist())]
+        else:
+            groups = [(str(p), df)]
         for source, sub in groups:
-            sub = sub.reset_index(drop=True)
             intensity = self._load_intensity(p, source)
-            centroids = sub[["centroid_row", "centroid_col"]].to_numpy(dtype=float) \
-                if {"centroid_row", "centroid_col"}.issubset(sub.columns) \
-                else np.zeros((len(sub), 2))
+            centroids = (
+                np.column_stack([numeric_column(sub, "centroid_row"),
+                                 numeric_column(sub, "centroid_col")])
+                if {"centroid_row", "centroid_col"}.issubset(column_names(sub))
+                else np.zeros((row_count(sub), 2))
+            )
             self.results.append(MoleculeMleResult(
                 dataframe=sub,
                 intensity_image=intensity,

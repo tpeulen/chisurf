@@ -41,6 +41,7 @@ from qtpy.QtWidgets import (
 )
 
 from chisurf import logging
+from chisurf.core.datastore import row_count
 from chisurf.gui.misc_helpers import get_plugin_settings_path, persist_plugin_state
 from chisurf.gui.widgets.dock_area.dock_area import DockArea
 from chisurf.gui.progress import ChiSurfProgress
@@ -1135,8 +1136,8 @@ class H2mmTool(MessagesMixin, QMainWindow):
         — gate on state, duration, E/S, and drop the censored burst-edge dwells
         with the ``Is Edge`` column that is already there.
         """
-        df = self.dwell_table()
-        if df is None or df.empty:
+        table = self.dwell_table()
+        if table is None or row_count(table) == 0:
             self._status("No dwells to explore — run a fit first.")
             return False
         try:
@@ -1158,7 +1159,9 @@ class H2mmTool(MessagesMixin, QMainWindow):
             # ndX builds its plot widgets in a deferred init after the window is
             # shown; let that run first or the data lands before the UI exists.
             QApplication.processEvents()
-            win.data_source = DataSource(parameter_names=list(df.columns), data=df)
+            # from_store: the store IS the data, so nothing is copied on the
+            # way into the window.
+            win.data_source = DataSource.from_store(table)
             for name in ("recompute", "replot", "update_plots"):
                 fn = getattr(win, name, None)
                 if callable(fn):
@@ -1167,7 +1170,7 @@ class H2mmTool(MessagesMixin, QMainWindow):
             logging.warning("could not open the dwell table in ndX: %s", exc)
             self._status(f"ndX could not be opened: {exc}")
             return False
-        self._status(f"{len(df)} dwells opened in ndX.")
+        self._status(f"{row_count(table)} dwells opened in ndX.")
         return True
 
     def _uncertainty_worker(self, data, ana, settings, n_boot, task):

@@ -20,7 +20,7 @@ import os
 import pathlib
 from collections.abc import Callable
 
-from chisurf.core.datastore import write_csv_table
+from chisurf.core.datastore import numeric_column, row_count, write_csv_table
 import numpy as np
 
 from chisurf.core.fluorescence.mle.fit2x import parameter_names_of, Fit2xModel
@@ -426,7 +426,7 @@ class PixelMleViewModel(MleObserverMixin):
         lines = []
         total_fit = 0
         for name, result in zip(self.result_names, self.results):
-            taus = result.dataframe["tau"].to_numpy()
+            taus = numeric_column(result.dataframe, "tau")
             taus = taus[np.isfinite(taus)]
             median = float(np.median(taus)) if taus.size else float("nan")
             total_fit += int(result.n_pixels_fit)
@@ -549,7 +549,7 @@ class PixelMleViewModel(MleObserverMixin):
     @staticmethod
     def _write_csv(path: str, dataframe) -> None:
         """Write one file's per-pixel table next to it as ``<stem>_pixel_mle.csv``."""
-        if dataframe is None or dataframe.empty:
+        if dataframe is None or row_count(dataframe) == 0:
             return
         out_dir = os.path.dirname(path) or "."
         stem = pathlib.Path(path).stem

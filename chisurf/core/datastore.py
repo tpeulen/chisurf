@@ -74,6 +74,7 @@ import numpy as np
 __all__ = [
     "BOOL_DTYPE",
     "STRING_DTYPE",
+    "as_store",
     "clear_cell",
     "column_at",
     "column_names",
@@ -581,7 +582,7 @@ def write_table(
     """
     import tttrlib
 
-    store = _as_store(data)
+    store = as_store(data)
     if meta:
         child = store.add_group("meta")
         for name, value in meta.items():
@@ -592,7 +593,7 @@ def write_table(
         raise OSError(f"could not write a table to {path}")
 
 
-def _as_store(data: Any) -> Any:
+def as_store(data: Any) -> Any:
     """Return ``data`` as a store, converting a frame or a mapping.
 
     Parameters
@@ -744,7 +745,7 @@ def concat_stores(stores: Sequence[Any], *, inner: bool = False) -> Any:
     # Frames are accepted, as everywhere else on this seam: a migration moves
     # one producer at a time, and until the last one moves, a caller legitimately
     # holds a mixture.
-    stores = [_as_store(s) for s in stores if s is not None]
+    stores = [as_store(s) for s in stores if s is not None]
     if not stores:
         return new_store()
     try:
@@ -773,7 +774,7 @@ def take_columns(store: Any, names: Sequence[str]) -> Any:
     -------
     tttrlib.DataStore
     """
-    store = _as_store(store)
+    store = as_store(store)
     out = new_store()
     present = column_names(store)
     for name in names:
@@ -805,7 +806,7 @@ def take_rows(store: Any, rows: Any) -> Any:
     -------
     tttrlib.DataStore
     """
-    return _as_store(store).take([int(i) for i in np.asarray(rows).ravel()])
+    return as_store(store).take([int(i) for i in np.asarray(rows).ravel()])
 
 
 def take_where(store: Any, mask: Any) -> Any:
@@ -939,7 +940,7 @@ def write_csv_table(
     # the whole table to state one formatting choice.
     return tttrlib.write_csv(
         None if path is None else str(path),
-        _as_store(data),
+        as_store(data),
         delimiter=delimiter,
         header=header,
         na_rep=CSV_NA,

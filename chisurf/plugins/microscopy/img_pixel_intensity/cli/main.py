@@ -15,14 +15,14 @@ def cli(filename, channel, output):
     """Compute the per-pixel intensity map and create a standard imaging HDF5."""
     import numpy as np
 
-    from chisurf.core.fluorescence.imaging import maps_to_dataframe, write_imaging_hdf5
+    from chisurf.core.fluorescence.imaging import maps_to_table, write_imaging_hdf5
 
     result = _core.compute_intensity(filename, channels=tuple(channel))
     maps = result["maps"]
     ny, nx = result["shape"]
     click.echo(f"{nx}x{ny} px | total intensity={np.nansum(maps['intensity']):.0f}")
     if output:
-        write_imaging_hdf5(maps_to_dataframe(maps), output, source=filename)
+        write_imaging_hdf5(maps_to_table(maps), output, source=filename)
         click.echo(f"wrote {output}")
 
 

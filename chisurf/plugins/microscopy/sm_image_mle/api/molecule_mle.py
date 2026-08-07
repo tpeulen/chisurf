@@ -13,8 +13,8 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from chisurf.core.datastore import write_csv_table
-from ..core.molecule_mle import fit_molecules_from_files
+from chisurf.core.datastore import concat_stores, row_count, write_csv_table
+from ..core.molecule_mle import fit_molecules_from_files, with_source_column
 
 if TYPE_CHECKING:
     from .models import MoleculeMleRequest, MoleculeMleResult
@@ -35,14 +35,12 @@ def analyze_request(request: MoleculeMleRequest) -> MoleculeMleResult:
     MoleculeMleResult
         Per-file TSV paths, the merged joint TSV, molecule count and warnings.
     """
-    import pandas as pd
-
     from .models import MoleculeMleResult
 
     output_paths: list[str] = []
     processed: list[str] = []
     warnings: list[str] = []
-    frames: list[pd.DataFrame] = []
+    tables: list = []
 
     for file_str in request.files:
         ptu_path = Path(file_str)
@@ -64,25 +62,24 @@ def analyze_request(request: MoleculeMleRequest) -> MoleculeMleResult:
             continue
 
         df = result.dataframe
-        if df.empty:
+        if row_count(df) == 0:
             warnings.append(f"{ptu_path.name}: no molecules segmented")
             continue
 
-        df = df.copy()
-        df.insert(0, "source_ptu", str(ptu_path))
+        df = with_source_column(df, ptu_path)
         out_dir = ptu_path.parent / f"{ptu_path.stem}_analysis"
         out_dir.mkdir(parents=True, exist_ok=True)
         tsv = out_dir / "molecule_data.tsv"
         write_csv_table(tsv, df)
         output_paths.append(str(tsv))
         processed.append(file_str)
-        frames.append(df)
+        tables.append(df)
 
     joint_tsv = ""
     n_total = 0
-    if frames:
-        combined = pd.concat(frames, ignore_index=True)
-        n_total = int(len(combined))
+    if tables:
+        combined = concat_stores(tables)
+        n_total = row_count(combined)
         out_dir = Path(request.output_dir) if request.output_dir else Path(request.files[0]).parent
         out_dir.mkdir(parents=True, exist_ok=True)
         joint_path = out_dir / "joint_output.tsv"

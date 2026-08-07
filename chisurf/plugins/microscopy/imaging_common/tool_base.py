@@ -12,6 +12,7 @@ import logging
 
 from qtpy import QtCore, QtWidgets
 
+from chisurf.core.datastore import row_count
 from chisurf.gui.autoform import AutoForm
 from chisurf.gui.glyphs import Glyphs
 
@@ -184,8 +185,8 @@ class ImagingMapTool(QtWidgets.QWidget):
 
     def _open_ndxplorer(self) -> None:
         """Open (or focus) ndxplorer on this tool's shared, live per-pixel dataset."""
-        df = self.model.to_dataframe()
-        if df is None or df.empty:
+        df = self.model.to_table()
+        if df is None or row_count(df) == 0:
             self.model.results_text = "Nothing to explore — press Run first."
             self.model.notify("run")
             return
@@ -255,8 +256,8 @@ class ImagingMapTool(QtWidgets.QWidget):
         win = self._ndx_window
         if win is None or not win.isVisible():
             return
-        df = self.model.to_dataframe()
-        if df is None or df.empty:
+        df = self.model.to_table()
+        if df is None or row_count(df) == 0:
             return
         try:
             from .base import build_ndx_data_source

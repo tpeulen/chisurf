@@ -9,6 +9,8 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
+from chisurf.core.datastore import rows_from_table
+
 from ..api.features import extract_features, fit_gmm
 from ..api.io import load_tttr
 from ..api.contract import (
@@ -208,7 +210,7 @@ def inspect_bur_handler(path: str) -> dict[str, Any]:
 
     """
     try:
-        from chisurf.core.datastore import column_values, read_csv_table
+        from chisurf.core.datastore import read_csv_table
         from chisurf.core.fluorescence.burst.table import read_burst_table
 
         # The columns a caller is told about are ALL of them, text ones
@@ -263,7 +265,7 @@ def fit_gmm_handler(
             "ok": True,
             "result": {
                 "path": path,
-                "features": features.to_dict(orient="records"),
+                "features": rows_from_table(features),
                 "gmm": fit_gmm(features, gmm_settings),
             },
         }

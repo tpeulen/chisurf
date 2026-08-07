@@ -7,8 +7,14 @@ from typing import Any
 
 import numpy as np
 
-from chisurf.core.datastore import column_names, row_count
-import pandas as pd
+from chisurf.core.datastore import (
+    column_names,
+    concat_stores,
+    new_store,
+    numeric_column,
+    row_count,
+    store_from_arrays,
+)
 from sklearn.mixture import GaussianMixture
 
 from .models import GMMSettings
@@ -56,7 +62,7 @@ def _numeric(table, column: str) -> np.ndarray | None:
     return out
 
 
-def proximity_ratio(frame: pd.DataFrame) -> np.ndarray | None:
+def proximity_ratio(frame) -> np.ndarray | None:
     """Compute the burst proximity ratio PR = red / (green + red).
 
     Uses an explicit ``Proximity Ratio`` column when present, otherwise the
@@ -82,23 +88,20 @@ def proximity_ratio(frame: pd.DataFrame) -> np.ndarray | None:
     return None
 
 
-def extract_features(frames: Sequence[pd.DataFrame]) -> pd.DataFrame:
-    """Extract numerical burst features from burst summary DataFrames.
+def extract_features(frames: Sequence[Any]) -> Any:
+    """Extract numerical burst features from burst summary tables.
 
     Parameters
     ----------
-    frames : sequence of pandas.DataFrame
+    frames : sequence of tttrlib.DataStore, pandas.DataFrame or mapping
         Burst summary tables.
 
     Returns
     -------
-    pandas.DataFrame
-        Feature table with one row per burst.
+    tttrlib.DataStore
+        Feature table with one row per burst, five float columns.
     """
-    if not frames:
-        return pd.DataFrame(columns=_FEATURE_COLUMNS)
-
-    records: list[dict[str, Any]] = []
+    parts: list[Any] = []
     for frame in frames:
         if _rows(frame) == 0:
             continue
@@ -119,25 +122,30 @@ def extract_features(frames: Sequence[pd.DataFrame]) -> pd.DataFrame:
             # counts but no Proximity Ratio column) — otherwise every burst was 0.
             pr = proximity_ratio(frame)
             fret = pr if pr is not None else np.zeros(_rows(frame))
-        records.extend(
-            {
-                "nphotons": n,
-                "duration": d,
-                "brightness": b,
-                "interphoton": i,
-                "fret": f,
-            }
-            for n, d, b, i, f in zip(n_photons, duration, brightness, interphoton, fret)
-        )
-    return pd.DataFrame.from_records(records, columns=_FEATURE_COLUMNS)
+        # Column-wise, not one record per burst: the arrays are already the
+        # right shape, and building a million dicts to take them apart again was
+        # the whole cost of this function.
+        parts.append(store_from_arrays({
+            "nphotons": np.asarray(n_photons, dtype=float),
+            "duration": np.asarray(duration, dtype=float),
+            "brightness": np.asarray(brightness, dtype=float),
+            "interphoton": np.asarray(interphoton, dtype=float),
+            "fret": np.asarray(fret, dtype=float),
+        }))
+    if not parts:
+        empty = new_store()
+        for name in _FEATURE_COLUMNS:
+            empty.add(name, np.zeros(0))
+        return empty
+    return concat_stores(parts)
 
 
-def fit_gmm(features: pd.DataFrame, settings: GMMSettings | None = None) -> dict[str, Any]:
+def fit_gmm(features, settings: GMMSettings | None = None) -> dict[str, Any]:
     """Fit a Gaussian mixture model to burst features.
 
     Parameters
     ----------
-    features : pandas.DataFrame
+    features : tttrlib.DataStore, pandas.DataFrame or mapping
         Feature table.
     settings : GMMSettings, optional
         GMM settings.
@@ -148,7 +156,7 @@ def fit_gmm(features: pd.DataFrame, settings: GMMSettings | None = None) -> dict
         Fitted model summary.
     """
     gmm_settings = settings or GMMSettings()
-    if features.empty:
+    if _rows(features) == 0:
         return {
             "n_components": 0,
             "aic": np.nan,
@@ -158,7 +166,9 @@ def fit_gmm(features: pd.DataFrame, settings: GMMSettings | None = None) -> dict
             "means": [],
         }
 
-    matrix = features.to_numpy(dtype=float)
+    matrix = np.column_stack(
+        [numeric_column(features, name) for name in _FEATURE_COLUMNS]
+    )
     finite_mask = np.isfinite(matrix).all(axis=1)
     if not finite_mask.any():
         return {
