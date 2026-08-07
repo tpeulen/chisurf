@@ -7,7 +7,7 @@ import logging
 import shutil
 import time
 import warnings
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any
@@ -251,6 +251,25 @@ def _search_on_delta_filtered_stream(
     seed or extend a burst, but a burst that spans them still counts them
     downstream ("exclude from search only") because bursts are found over the
     original photon indices.
+
+    **The pre-filter can destroy the search, and that is checked here.** Every
+    burst search is ultimately a statement about inter-photon times, and the
+    interval is the same kind of statement — so on a stream the interval has
+    already thinned to bright photons, a search can find that *every* photon
+    qualifies. A sliding window asking for ``m`` consecutive photons inside
+    ``T`` is guaranteed to say yes once the interval bounds the gap below
+    ``T/m``; a search scoring against an estimated background has no background
+    left to estimate. The result is not an error: it is two or three enormous
+    "bursts" covering the measurement, with a burst count, a mean size and a
+    mean duration, all meaningless, and a real session produced 91-98% coverage
+    in 2-14 bursts this way.
+
+    So when the reduced search comes back degenerate, the search is re-run on
+    the **whole** stream and the interval is applied afterwards, where it can
+    only remove photons and never invent a burst. On data where the pre-filter
+    is healthy the two agree closely (measured on the bundled DNA measurement:
+    2318 vs 2403 runs, 1099 vs 1117 bursts at a 60-photon minimum), so the
+    fallback is the same analysis rather than a different one.
     """
     n = len(tttr)
     keep = np.flatnonzero(delta_mask)
@@ -265,7 +284,36 @@ def _search_on_delta_filtered_stream(
     )
     selected = np.zeros(n, dtype=bool)
     selected[keep[sub_selection]] = True
+
+    if _is_degenerate_selection(sub_selection):
+        chisurf.logging.warning(
+            "the delta-macro-time interval left a stream the burst search "
+            "accepted almost entirely (%.0f%% of %d photons): the interval and "
+            "the search are the same kind of criterion, so pre-filtering can "
+            "make the search a formality. Searching the unfiltered stream and "
+            "applying the interval afterwards instead.",
+            100.0 * float(np.count_nonzero(sub_selection)) / max(1, sub_selection.size),
+            int(sub_selection.size),
+        )
+        full = np.asarray(_run_burst_search(tttr, settings, burst_detection), dtype=bool)
+        return full & np.asarray(delta_mask, dtype=bool)
     return selected
+
+
+#: Fraction of a searched stream above which "a burst" has stopped meaning
+#: anything. Matches ``tttrlib_search.IMPLAUSIBLE_COVERAGE``, which reports the
+#: same condition for the registry searches; kept as a separate constant because
+#: this check covers every mode, including the ones that do not go through the
+#: registry.
+_IMPLAUSIBLE_COVERAGE = 0.9
+
+
+def _is_degenerate_selection(mask: np.ndarray) -> bool:
+    """Return whether a search accepted essentially everything it was shown."""
+    mask = np.asarray(mask)
+    if mask.size == 0:
+        return False
+    return float(np.count_nonzero(mask)) / mask.size >= _IMPLAUSIBLE_COVERAGE
 
 
 def apply_photon_filters(

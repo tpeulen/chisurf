@@ -104,3 +104,94 @@ def test_a_single_photon_run_is_never_a_burst():
     start_stop = np.array([[0, 0], [5, 9]], dtype=np.int64)
     kept = drop_short_bursts(start_stop, 2)
     assert kept.tolist() == [[5, 9]]
+
+
+# -- the pre-filter can destroy the search ------------------------------------
+
+
+def _tttrlib_settings(dt_max: float, time_window: float) -> AnalysisSettings:
+    """Sliding-window search behind a delta-macro-time interval."""
+    from chisurf.plugins.burst.burst_selection.api.models import TttrlibSearchSettings
+
+    s = AnalysisSettings()
+    s.output_formats = []
+    s.photon_filter = PhotonFilterSettings(
+        channels=[],
+        filter_active=True,
+        used_filter="tttrlib",
+        delta_macro_time_filter=DeltaMacroTimeFilterSettings(
+            dT_min=0.001, dT_max=dt_max, dT_min_active=False, dT_max_active=True
+        ),
+        tttrlib_search=TttrlibSearchSettings(
+            algorithm="sliding_window",
+            parameters={"L": 20, "m": 10, "T": time_window},
+        ),
+        max_gap=3,
+        use_gap_fill=True,
+    )
+    s.burst_detection = BurstDetectionSettings(
+        min_photons=60, photon_window=5, time_window=0.06
+    )
+    return s
+
+
+def test_a_search_the_prefilter_made_a_formality_falls_back(caplog):
+    """The interval and the search are the same kind of criterion.
+
+    A sliding window asking for ``m`` consecutive photons inside ``T`` always
+    says yes once the delta-macro-time interval has bounded the gap below
+    ``T/m``. That is not an error — it is two or three enormous "bursts" with a
+    plausible-looking count, size and duration, and a real session produced
+    91-98% coverage in 2-14 bursts this way. The whole stream is searched
+    instead, and the interval applied afterwards where it can only remove.
+    """
+    import logging
+
+    settings = _tttrlib_settings(dt_max=0.0101, time_window=0.2)
+    tttr = load_tttr(SPC)
+    with caplog.at_level(logging.WARNING):
+        selected = apply_photon_filters(
+            tttr, settings.photon_filter, burst_detection=settings.burst_detection
+        )
+    fraction = float(np.count_nonzero(selected)) / len(tttr)
+
+    assert any("pre-filtering can make the search a formality" in r.message
+               for r in caplog.records), "the fallback did not report itself"
+    assert fraction < 0.5, f"still selected {fraction:.0%} of the stream"
+    found = find_bursts(np.asarray(selected, dtype=np.uint8), max_gap=3)
+    assert len(drop_short_bursts(found, 60)) > 10
+
+
+def test_a_healthy_prefilter_is_left_alone(caplog):
+    """The fallback must not fire on settings where the pre-filter works."""
+    import logging
+
+    settings = _tttrlib_settings(dt_max=0.15, time_window=0.0005)
+    tttr = load_tttr(SPC)
+    with caplog.at_level(logging.WARNING):
+        selected = apply_photon_filters(
+            tttr, settings.photon_filter, burst_detection=settings.burst_detection
+        )
+
+    assert not any("make the search a formality" in r.message for r in caplog.records)
+    assert float(np.count_nonzero(selected)) / len(tttr) < 0.3
+
+
+def test_the_degeneracy_test_is_about_coverage_not_burst_count():
+    """One burst covering a tenth of the stream is fine; many covering all is not."""
+    from chisurf.plugins.burst.burst_selection.api.selection import (
+        _is_degenerate_selection,
+    )
+
+    sparse = np.zeros(1000, dtype=bool)
+    sparse[100:200] = True
+    assert not _is_degenerate_selection(sparse)
+
+    everything = np.ones(1000, dtype=bool)
+    assert _is_degenerate_selection(everything)
+
+    almost = np.ones(1000, dtype=bool)
+    almost[:50] = False
+    assert _is_degenerate_selection(almost)
+
+    assert not _is_degenerate_selection(np.array([], dtype=bool))
