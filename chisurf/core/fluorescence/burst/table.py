@@ -140,10 +140,12 @@ def _sniff_delimiter(path: pathlib.Path) -> str | None:
 def _read_delimited(path: pathlib.Path) -> dict[str, np.ndarray]:
     """Read a delimited burst table into ``{column: float array}``.
 
-    The threaded reader first, which handles a plain delimited file with its
-    header on the first line; anything else — a comment preamble, a decimal
-    comma, whitespace alignment — falls back to the general reader, which is
-    named rather than silent so the two cannot quietly disagree.
+    The threaded reader, which handles a plain delimited file with its header on
+    the first line. Anything else — a comment preamble, a decimal comma,
+    whitespace alignment — reads as **no columns**, and the caller raises. There
+    is deliberately no second reader behind this one: a fallback that needs an
+    optional package is a path that works on a developer's machine and fails on
+    everyone else's.
 
     Parameters
     ----------
@@ -187,15 +189,7 @@ def _read_delimited(path: pathlib.Path) -> dict[str, np.ndarray]:
             if columns:
                 return columns
 
-    import pandas as pd
-
-    frame = pd.read_csv(path, sep=None, engine="python", comment="#")
-    columns = {}
-    for name in frame.columns:
-        values = pd.to_numeric(frame[name], errors="coerce").to_numpy(dtype=float)
-        if np.any(np.isfinite(values)):
-            columns[str(name)] = values
-    return columns
+    return {}
 
 
 def columns_from_data(data) -> dict[str, np.ndarray]:

@@ -17,7 +17,6 @@ import pandas as pd
 import pytest
 
 from chisurf.core.datastore import (
-    LegacyTableError,
     clear_cell,
     column_at,
     column_values,
@@ -384,43 +383,23 @@ def test_a_file_in_neither_layout_declines_by_name(tmp_path):
     there", because treating the second as the first discards an analysis."""
     path = tmp_path / "not.h5"
     path.write_bytes(b"not an HDF5 file at all")
-    with pytest.raises(LegacyTableError):
+    with pytest.raises(OSError):
         read_table_frame(path)
 
 
-def test_an_older_frame_written_file_still_reads(frame, tmp_path):
-    """The layout every existing analysis is stored in. It needs an optional
-    package, so where that is absent this is a skip rather than a failure --
-    and the decline it produces there is covered above."""
+def test_a_frame_written_file_is_refused_rather_than_read(tmp_path):
+    """The fallback that used to open these is gone on purpose: it needs an
+    optional package a solved environment does not carry, so it worked on a
+    developer's machine and failed on everyone else's — the same defect as the
+    writers it was there to soften. Such a file is one to convert."""
     pytest.importorskip("tables")
+    frame = pd.DataFrame({"a": [1.0, 2.0]})
     path = tmp_path / "legacy.h5"
     frame.to_hdf(str(path), key="results", mode="w", format="table")
 
-    back = read_table_frame(path)
-    assert list(back.columns) == list(frame.columns)
-    np.testing.assert_allclose(back["value"], frame["value"])
-
-
-def test_rewriting_a_table_does_not_leave_a_dropped_column_behind(tmp_path):
-    """The default is "this file now holds this table". Under the other mode a
-    column dropped by an in-place rewrite keeps its dataset, and comes back on
-    the next read as if the rewrite had never happened."""
-    path = tmp_path / "t.h5"
-    write_table(path, {"a": np.arange(3.0), "b": np.arange(3.0)})
-    write_table(path, {"a": np.arange(3.0)})
-
-    store = read_table(path)
-    assert [store[i].name() for i in range(store.n_columns())] == ["a"]
-
-
-def test_a_group_can_be_added_beside_an_existing_table(tmp_path):
-    """The opt-out, for a caller that means "add this to the file"."""
-    path = tmp_path / "t.h5"
-    write_table(path, {"a": np.arange(3.0)})
-    write_table(path, {"n": np.arange(2.0)}, group="/extra", replace=False)
-
-    assert [read_table(path)[i].name() for i in range(read_table(path).n_columns())] == ["a"]
-    assert read_table(path, group="/extra") is not None
+    assert read_table(path) is None
+    with pytest.raises(OSError):
+        read_table_frame(path)
 
 
 # ── tables as delimited text ─────────────────────────────────────────────

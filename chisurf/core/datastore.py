@@ -42,12 +42,17 @@ frame writer it replaces does — and on a 1M-row burst table with one four-labe
 text column it is **0.037 s against 0.29 s to write and 60.0 MB against
 72.6 MB** on disk.
 
-Files an earlier release wrote are in the frame layout and stay readable through
-:func:`read_table_frame`, which tries the columnar layout first and the older
-one second. Where the optional package is absent the older one is a **named
-decline** (:class:`LegacyTableError`) rather than an empty table: the columnar
-reader answers a foreign file with *no columns* rather than an error, so a
-caller that only catches exceptions opens it blank and reports success.
+There is **no fallback to a frame-based reader** anywhere in this module. That
+reader needs an optional package a solved environment does not carry, so a
+fallback is a path that works on a developer's machine and fails on everyone
+else's — which is exactly how the writers this replaced went unnoticed. A file
+in the older frame layout is a file to *convert*, and :func:`read_table` says so
+by declining it.
+
+The declining is the part that needs care: handed a file it does not recognise
+the columnar reader answers with **no columns** rather than an error, so a
+caller that only catches exceptions opens it blank and reports success. Hence
+the column-count guard in :func:`read_table`.
 
 Column lifetime
 ---------------
@@ -68,7 +73,6 @@ import numpy as np
 
 __all__ = [
     "BOOL_DTYPE",
-    "LegacyTableError",
     "STRING_DTYPE",
     "clear_cell",
     "column_at",
@@ -430,18 +434,6 @@ def store_from_dataframe(df: Any) -> Any:
     return store
 
 
-class LegacyTableError(OSError):
-    """A table written by an older release that this environment cannot open.
-
-    Raised only for the one case that is genuinely unreadable: a file in the
-    frame-written HDF5 layout, in an environment without the optional package
-    that layout needs. It is deliberately **not** softened into "there is no
-    table" — a caller that merges into an existing file has to be able to tell
-    "nothing was there" from "I could not read what was there", because the
-    second one silently discards an analysis if it is treated as the first.
-    """
-
-
 def write_table(
     path: Any,
     data: Any,
@@ -759,20 +751,21 @@ def read_csv_table(path: Any, *, delimiter: str = "\t", header: bool = True) -> 
 
 
 def read_table_frame(path: Any, *, key: str = "results") -> Any:
-    """Return a table as a frame, whichever of the two layouts it is in.
+    """Return a columnar HDF5 table as a frame, for a caller that wants one.
 
-    The columnar layout first, because that is what is written now; the
-    frame-written one second, for files an earlier release produced. The second
-    needs an optional HDF5 package that a freshly solved environment does not
-    carry, so it is a **named decline** rather than a silent one:
-    :class:`LegacyTableError` says which file and why.
+    The conversion, not a second reader: the file must be in the columnar layout
+    this module writes. There is deliberately **no fallback to a frame-based
+    HDF5 reader** — that reader needs an optional package a solved environment
+    does not carry, so a fallback is a path that works on a developer's machine
+    and fails on everyone else's, which is how the writers it replaced went
+    unnoticed for so long.
 
     Parameters
     ----------
     path : path-like
         File to read.
     key : str
-        Group / key holding the table.
+        Group holding the table. The root is tried first, then ``/<key>``.
 
     Returns
     -------
@@ -780,31 +773,23 @@ def read_table_frame(path: Any, *, key: str = "results") -> Any:
 
     Raises
     ------
-    LegacyTableError
-        When the file is in the older layout and this environment cannot read
-        it, or when it is in neither layout.
+    OSError
+        When the file holds no columnar table — including when it holds a
+        frame-written one, which is a file to convert rather than a file to
+        read.
     """
-    import pandas as pd
-
     # The root first, which is where a table is written and where the burst
     # readers look; then the key as a group, for a file that puts one there.
     store = read_table(path, group=str(key) if str(key).startswith("/") else "/")
     if store is None and not str(key).startswith("/"):
         store = read_table(path, group=f"/{key}")
-    if store is not None:
-        return dataframe_from_store(store)
-
-    try:
-        return pd.read_hdf(str(path), key=key)
-    except ImportError as exc:
-        raise LegacyTableError(
-            f"{path} was written in the older frame layout, which needs the "
-            f"optional 'tables' package this environment does not have ({exc}). "
-            "Re-export it from a release that can still read it, or install "
-            "'tables' to open it once."
-        ) from exc
-    except Exception as exc:
-        raise LegacyTableError(f"{path} holds no table this can read ({exc})") from exc
+    if store is None:
+        raise OSError(
+            f"{path} holds no columnar table. A file written by an earlier "
+            "release is in the frame layout and has to be converted rather than "
+            "read here."
+        )
+    return dataframe_from_store(store)
 
 
 def _numpy_dtype(dtype: Any) -> Any:

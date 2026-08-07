@@ -9,8 +9,8 @@ the compiled extension is absent.
 - :func:`phasor_maps` is a thin wrapper over the built-in
   ``tttrlib.CLSMImage.get_phasor`` (raw + optional IRF reference).
 - :func:`maps_to_dataframe` / :func:`write_imaging_hdf5` serialise per-pixel maps
-  in the same layout the pixel-wise MLE writes (pandas ``key='results'`` table),
-  which is also directly readable by ndxplorer.
+  in the same layout the pixel-wise MLE writes (one dataset per column at the
+  file root), which is also directly readable by ndxplorer.
 """
 
 from __future__ import annotations
@@ -719,9 +719,7 @@ def read_imaging_source(path: str) -> str | None:
     """Return the back-referenced source-TTTR path stored in an imaging HDF5.
 
     The back-reference is optional — most imaging files carry none — so a
-    missing ``meta`` group is not an error and reads as ``None``. Both places it
-    has lived are looked in: the ``meta`` child group written now, and the
-    separate ``meta`` table an earlier release wrote.
+    missing ``meta`` group is not an error and reads as ``None``.
 
     Parameters
     ----------
@@ -735,28 +733,23 @@ def read_imaging_source(path: str) -> str | None:
     from chisurf.core.datastore import read_table
 
     store = read_table(path)
-    if store is not None:
-        try:
-            if "meta" in list(store.group_names()):
-                return str(store.group("meta")["source_tttr"].numpy()[0])
-        except Exception:
-            pass
+    if store is None:
         return None
-
-    import pandas as pd
-
     try:
-        return str(pd.read_hdf(path, key="meta")["source_tttr"].iloc[0])
+        if "meta" in list(store.group_names()):
+            return str(store.group("meta")["source_tttr"].numpy()[0])
     except Exception:
-        return None
+        pass
+    return None
 
 
 def read_imaging_table(path: str, key: str = "results"):
     """Return the per-pixel table of an imaging HDF5, whatever layout it is in.
 
-    Reads both layouts a ChiSurf imaging file comes in: the frame-written
-    PyTables one, and the columnar one (a group of 1-D datasets, one per
-    column) that the companion viewer's fast path reads.
+    The columnar layout — a group of 1-D datasets, one per column — which is
+    what this writes and what the companion viewer's fast path reads. A
+    frame-written file from an earlier release is refused rather than read
+    through an optional package that a solved environment does not carry.
 
     Parameters
     ----------
@@ -780,20 +773,14 @@ def read_imaging_table(path: str, key: str = "results"):
     """
     from chisurf.core.datastore import dataframe_from_store, read_table
 
-    errors = []
     store = read_table(path, group=key if key.startswith("/") else "/")
-    if store is not None:
-        return dataframe_from_store(store)
-    errors.append("columnar layout: no 1-D column datasets in the group")
-
-    try:
-        import pandas as pd
-
-        return pd.read_hdf(path, key=key)
-    except Exception as exc:
-        errors.append(f"frame layout: {exc}")
-
-    raise OSError(f"{path} is not a readable imaging table — " + "; ".join(errors))
+    if store is None:
+        raise OSError(
+            f"{path} is not a readable imaging table — it holds no 1-D column "
+            "datasets. A file written by an earlier release is in the frame "
+            "layout and has to be converted rather than read here."
+        )
+    return dataframe_from_store(store)
 
 
 def add_maps_to_hdf5(path: str, maps: dict[str, np.ndarray], key: str = "results") -> list[str]:

@@ -86,13 +86,7 @@ def read_photon_table(analysis_dir) -> dict[str, np.ndarray]:
         When neither table is present — H2MM has not run, or ran with photon
         writing switched off.
     """
-    from chisurf.core.datastore import (
-        LegacyTableError,
-        column_values,
-        read_csv_table,
-        read_table,
-        read_table_frame,
-    )
+    from chisurf.core.datastore import column_values, read_csv_table, read_table
 
     def columns_of(store) -> dict[str, np.ndarray]:
         """Copy a store's columns out.
@@ -111,25 +105,13 @@ def read_photon_table(analysis_dir) -> dict[str, np.ndarray]:
         store = read_table(h5)
         if store is not None:
             return columns_of(store)
-        try:
-            # An older run's frame-written file; the frame is the only way in.
-            frame = read_table_frame(h5)
-            return {str(c): np.asarray(frame[c]) for c in frame.columns}
-        except LegacyTableError:
-            # In an environment that cannot open that layout, falling through to
-            # the CSV is right when there is one -- it holds the same table --
-            # and the error below says so when there is not, rather than
-            # reporting the run as never having happened.
-            if not csv.is_file():
-                raise
+        # A file this cannot read is not a run that did not happen, so fall
+        # through to the CSV beside it -- it holds the same table -- rather than
+        # reporting either outcome as the other.
     if csv.is_file():
         store = read_csv_table(csv, delimiter=",")
         if store is not None:
             return columns_of(store)
-        import pandas as pd
-
-        frame = pd.read_csv(csv)
-        return {str(c): np.asarray(frame[c]) for c in frame.columns}
     raise FileNotFoundError(
         f"no H2MM photon table in {root} — run H2MM first (with 'write photons' "
         "on); a state-split fit needs the per-photon state assignment"
