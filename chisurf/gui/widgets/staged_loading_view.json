@@ -42,7 +42,7 @@
       "type": "panel",
       "title": "Plotting",
       "collapsed": false,
-      "description": "A raw per-photon plot (a time trace, a delta-time diagnostic) is thinned above this many points, keeping each bin's minimum and maximum so bursts and dips survive -- a budget, not a hard cap. An already-aggregated plot (a histogram, a correlation curve) is never touched.",
+      "description": "A raw per-photon plot (a time trace, a delta-time diagnostic) is thinned to this many points, keeping each bin's minimum and maximum so bursts and dips survive. The budget is for the whole plot and is split across the curves in it, so drawing an all-photon and a selected-photon layer does not spend it twice. An already-aggregated plot (a histogram, a correlation curve) is never touched.",
       "sections": [
         {
           "type": "value",
@@ -51,8 +51,8 @@
           "kind": "int",
           "minimum": 10000,
           "maximum": 50000000,
-          "step": 100000,
-          "description": "Raw per-photon plots are thinned above this many points. Raise it on a machine with plenty of RAM and a fast GPU; lower it if a large measurement's plots still lag."
+          "step": 10000,
+          "description": "Points one plot may draw in total. The default of 150000 is already about 100 samples per screen pixel, so raising it costs repaint time without changing what you see; lower it if a large measurement's plots still lag."
         }
       ]
     },

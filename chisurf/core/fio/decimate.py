@@ -20,11 +20,17 @@ import numpy as np
 
 __all__ = ["thin_for_plot", "per_curve_budget"]
 
-#: Points before decimation kicks in at all. A well-behaved binned plot
-#: (a histogram, a correlation curve) never gets near this and is never
-#: touched by the caller; a raw per-photon plot of a real measurement is
-#: exactly what does.
-DEFAULT_MAX_POINTS = 1_500_000
+#: Points one plot may draw, across every curve in it, before decimation kicks
+#: in. A well-behaved binned plot (a histogram, a correlation curve) never gets
+#: near this and is never touched by the caller; a raw per-photon plot of a real
+#: measurement is exactly what does.
+#:
+#: Sized against the screen rather than against the data: a plot is on the order
+#: of a thousand pixels wide, so this is already ~100 samples per pixel — far
+#: past the point where another point can change what is drawn, and min/max-per-
+#: bin means the extrema survive anyway. The earlier 1.5 M was 1000× the
+#: display's resolution, and Qt laid out and repainted every one of them.
+DEFAULT_MAX_POINTS = 150_000
 
 
 #: Smallest per-curve budget worth honouring. Below roughly this, thinning stops

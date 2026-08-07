@@ -333,6 +333,63 @@ second run of the application pays nothing for them; the eighth,
 `protein.atom_dist`, did not and now does. Re-derive with the dispatcher walk in
 `build_tools/dev_utils` or by comparing a first and second load in one process.
 
+## Burst diagnostics: what a repaint costs
+
+The window a burst-selection session lives in was taking **0.29 s per repaint**
+while the burst search behind it took 0.04 s — so the analysis was never the
+thing anyone was waiting for. The work unit here is one repaint of one plot
+widget (1500x400) holding a raw per-photon series, because that is what the
+window pays on every settings change, tab switch and resize.
+
+```bash
+QT_QPA_PLATFORM=offscreen pixi run python test/benchmarks/benchmark_burst_plots.py
+```
+
+**Environment** — Apple M1 Pro, macOS 26.5.1 (arm64), Python 3.12.13,
+pyqtgraph on Qt5. Measured 2026-08-07.
+
+| points | pen width | antialias | viewport decimation | log y | s/repaint |
+|---:|---:|:---:|:---:|:---:|---:|
+| 66,000 | 1 | no | no | no | 0.014 |
+| 66,000 | 2 | no | no | no | 0.062 |
+| 66,000 | 1 | yes | no | no | 0.023 |
+| 66,000 | 1 | no | yes | no | 0.007 |
+| 66,000 | 2 | no | yes | no | 0.024 |
+| 66,000 | 1 | no | yes | yes | 0.006 |
+| 660,000 | 1 | no | no | no | 0.136 |
+| 660,000 | 1 | no | yes | no | 0.010 |
+| 660,000 | 2 | no | yes | no | 0.044 |
+
+Three things the table says, in order of how much they matter:
+
+**Viewport decimation is the whole game.** `setDownsampling(auto=True,
+mode="peak")` with `setClipToView(True)` takes 660k points from 0.136 s to
+0.010 s — **13x** — and, more usefully, makes the cost nearly independent of the
+array: 66k and 660k differ by 40% once it is on, and by 10x when it is off. Qt
+then lays out what is *visible* rather than everything, which is also what makes
+zooming into 1% of a trace stop costing what drawing all of it costs. `peak`
+keeps each bin's extremes, for the same reason
+`chisurf.core.fio.decimate.thin_for_plot` is min/max-per-bin rather than a
+stride: a stride aliases the bursts away, which is worse than slow.
+
+**A pen one pixel wider costs 3-4x.** 0.014 -> 0.062 s undecimated, 0.010 ->
+0.044 s decimated. A Qt pen wider than a pixel is not cosmetic — it strokes an
+outline around the polyline — so a "selected photons" layer drawn at width 2 was
+paying more than the layer beneath it. Colour already distinguishes the layers.
+
+**Thinning the data is the smallest of the three**, which is the trap: it is the
+obvious lever and it moves 0.136 -> 0.014 s (10x) only when the viewport
+decimation is *off*. With it on there is almost nothing left to win. Both are
+still worth having — `thin_for_plot` bounds what is handed to Qt at all (memory,
+and the JSON that crosses an RPC boundary), the viewport bounds what Qt lays out
+— but a session that decimates the arrays and leaves the viewport alone has
+fixed the wrong half.
+
+End to end on the bundled ten-file `.spc` measurement (1.79 M photons, 1099
+bursts), with all three applied: a whole-window repaint went **0.293 s -> 0.023
+s**, five repaints 1.75 s -> 0.11 s, and "analyze then display" 2.23 s ->
+0.77 s.
+
 ## Adding a component
 
 A benchmark belongs here when a component is (a) on a path a user waits for, and

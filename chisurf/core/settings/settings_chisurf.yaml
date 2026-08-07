@@ -5,6 +5,38 @@ correlator:
   number_of_cascades: 20
   split: 6
   weighting: 0
+# How much of a large photon file ChiSurf touches: whether it is staged to a
+# local cache before reading, and how many points a raw per-photon plot draws.
+# The defaults also live in chisurf/core/fio/staging.py (DEFAULTS), which is
+# what a headless run without a settings file falls back to; this section is
+# what the "Data loading" settings panel reads and writes, and is where the
+# values belong -- a tunable that exists only in Python is a tunable nobody can
+# find.
+data_loading:
+  enabled: true
+  # Opening a vendor photon file produces the measurement's .pto container,
+  # which is what makes .pto the format ChiSurf works in rather than one it can
+  # also write. Off means a vendor file is read where it lies.
+  import_to_container: true
+  # Files smaller than this are read where they are; staging a small file costs
+  # more than it saves.
+  min_size: 33554432          # 32 MiB
+  # Sources measured slower than this over the probe are copied locally first.
+  threshold_mbps: 40.0
+  chunk_bytes: 4194304        # 4 MiB
+  probe_bytes: 16777216       # 16 MiB
+  probe_min_seconds: 0.25
+  probe_min_bytes: 4194304    # 4 MiB
+  progress_interval: 0.1
+  # Points ONE plot may draw, across every curve in it -- a caller with several
+  # layers splits this rather than spending it per curve. A plot is on the order
+  # of a thousand pixels wide, so this is already ~100 samples per pixel;
+  # raising it costs repaint time without changing what is drawn.
+  max_plot_points: 150000
+  # Per-guard "stop asking" answers for the drop guards, keyed by guard name
+  # (e.g. tttr_to_pto). Written by the guard's dialog, not by hand.
+  drop_guards: {}
+
 database:
   compression_data_limit: 102400
   embed_data: false

@@ -243,7 +243,11 @@ class BurstSelectionClient:
         try:
             from ..api.io import load_tttr
             from ..api.models import AnalysisSettings
-            from ..api.selection import apply_photon_filters, find_bursts
+            from ..api.selection import (
+                apply_photon_filters,
+                drop_short_bursts,
+                find_bursts,
+            )
             from ..api.serialization import settings_from_dict
 
             analysis_settings = settings_from_dict(settings) if settings else AnalysisSettings()
@@ -255,7 +259,19 @@ class BurstSelectionClient:
                 analysis_settings.photon_filter,
                 burst_detection=analysis_settings.burst_detection,
             )
-            start_stop = find_bursts(selected)
+            # The bounds `analyze_file` applies, applied here too. This function
+            # feeds the diagnostic plots *of the run beside it*, so a different
+            # gap (this took `find_bursts`'s own default of 4 regardless of the
+            # setting) or a missing photon minimum meant the picture and the
+            # table disagreed about which bursts exist.
+            photon_filter = analysis_settings.photon_filter
+            start_stop = find_bursts(
+                selected,
+                max_gap=photon_filter.max_gap if photon_filter.use_gap_fill else 0,
+            )
+            start_stop = drop_short_bursts(
+                start_stop, max(2, analysis_settings.burst_detection.min_photons)
+            )
             return {
                 "tttr": tttr,
                 "selected": selected,

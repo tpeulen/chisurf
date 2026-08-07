@@ -119,6 +119,19 @@ DEFAULT_BURST_BINS = 51
 DEFAULT_PLOT_MAX = 100000
 HISTOGRAM_FEATURES = [*UI_COLUMNS, PROXIMITY_RATIO_COLUMN]
 
+#: Pen width for the "selected photons" layer of a raw per-photon diagnostic.
+#:
+#: One, not two, and the reason is measured rather than aesthetic. A Qt pen
+#: wider than a pixel is not cosmetic — it strokes a real outline around the
+#: polyline — and on the same 66k-point curve that costs **3–5x** the paint
+#: time of a hairline (0.064 s vs 0.013 s undownsampled, 0.025 s vs 0.008 s
+#: with the viewport decimation on). Three such curves in a panel is the
+#: difference between a window that redraws in 30 ms and one that takes a third
+#: of a second per repaint. The layer is already distinguished by colour (cyan
+#: against yellow/orange), so the extra pixel bought nothing that was not
+#: already there.
+_SELECTED_PEN_WIDTH = 1
+
 
 def _normalize_filetype(filetype: str | None) -> str | None:
     """Normalize the detector setup file type for ``tttrlib``."""
@@ -549,15 +562,21 @@ class BurstSelectionTool(ChisurfDockTool):
             if widget is not None:
                 controls.append(widget)
 
+        # Debounced: every one of these fires a full re-search *and* a diagnostic
+        # reload (~0.9 s for 1.8 M photons), and a spin box emits `valueChanged`
+        # per keystroke and per drag step. Undebounced, typing a threshold ran
+        # the search once per digit and the window stopped answering.
+        resettle = self._debounced(self._on_filter_settings_changed, "filter")
         for control in controls:
             if isinstance(control, QtWidgets.QComboBox):
-                control.currentTextChanged.connect(self._on_filter_settings_changed)
+                control.currentTextChanged.connect(resettle)
             elif isinstance(control, QtWidgets.QCheckBox):
-                control.stateChanged.connect(self._on_filter_settings_changed)
+                control.stateChanged.connect(resettle)
             else:
-                control.valueChanged.connect(self._on_filter_settings_changed)
+                control.valueChanged.connect(resettle)
         region_selector = getattr(self.wizard, "region_selector", None)
         if region_selector is not None:
+            # Already a "finished" signal, so it needs no coalescing of its own.
             region_selector.sigRegionChangeFinished.connect(self._on_filter_settings_changed)
 
         # The generated forms have no Designer widgets to connect to: their
@@ -940,7 +959,7 @@ class BurstSelectionTool(ChisurfDockTool):
         self.mcs_bin_spin.setSingleStep(0.05)
         self.mcs_bin_spin.setValue(DEFAULT_TRACE_BIN_WIDTH_MS)
         layout.addRow("MCS bin-width", self.mcs_bin_spin)
-        self.mcs_bin_spin.valueChanged.connect(self.update_burst_plots)
+        self.mcs_bin_spin.valueChanged.connect(self._debounced(self.update_burst_plots, "plots"))
         return panel
 
     def _build_decay_controls_panel(self, parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
@@ -953,7 +972,7 @@ class BurstSelectionTool(ChisurfDockTool):
         self.decay_bins_spin.setRange(1, 9999)
         self.decay_bins_spin.setValue(DEFAULT_DECAY_BINS)
         layout.addRow("Decay bin", self.decay_bins_spin)
-        self.decay_bins_spin.valueChanged.connect(self.update_burst_plots)
+        self.decay_bins_spin.valueChanged.connect(self._debounced(self.update_burst_plots, "plots"))
         return panel
 
     def _build_burst_controls_panel(self, parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
@@ -966,7 +985,7 @@ class BurstSelectionTool(ChisurfDockTool):
         self.burst_bins_spin.setRange(3, 999)
         self.burst_bins_spin.setValue(DEFAULT_BURST_BINS)
         layout.addRow("#Burst bins", self.burst_bins_spin)
-        self.burst_bins_spin.valueChanged.connect(self.update_burst_plots)
+        self.burst_bins_spin.valueChanged.connect(self._debounced(self.update_burst_plots, "plots"))
         return panel
 
     def _plot_widget_is_docked(self, attr: str) -> bool:
@@ -1041,6 +1060,18 @@ class BurstSelectionTool(ChisurfDockTool):
         self.dt_plot.setLabel("left", "dT (ms)")
         self.dt_plot.setTitle("Delta macro-time")
         self.dt_plot.getPlotItem().setLogMode(False, True)
+
+        # The three plots that hold a raw per-photon series get the *viewport's*
+        # own decimation on top of the budget applied when the arrays are built.
+        # The two solve different halves: `thin_for_plot` bounds what is handed
+        # to Qt, and this bounds what Qt lays out for the range currently
+        # visible -- so zooming into 1% of a trace stops costing what drawing
+        # all of it costs. `peak` mode keeps each bin's extremes, the same
+        # reason `thin_for_plot` is min/max-per-bin rather than a stride.
+        for _plot in (self.dt_plot, self.filter_plot, self.mcs_plot):
+            item = _plot.getPlotItem()
+            item.setDownsampling(auto=True, mode="peak")
+            item.setClipToView(True)
 
         self.table = QtWidgets.QTableWidget(self)
         self.table.setColumnCount(len(UI_COLUMNS))
@@ -1220,12 +1251,51 @@ class BurstSelectionTool(ChisurfDockTool):
         if not self.show_channel_selection:
             self.wizard.groupBox_3.hide()
 
+    #: Quiet period, in ms, before a settings change is acted on.
+    #:
+    #: Long enough that typing "150000" into a spin box is one recompute rather
+    #: than six, and that dragging a spinner is one rather than one per step;
+    #: short enough to still feel like a direct response. Both slots behind it
+    #: are expensive on a real measurement — a full re-search is ~0.9 s and a
+    #: full redraw ~0.5 s for 1.8 M photons — so the cost of *not* coalescing is
+    #: not a stutter, it is a window that stops answering.
+    _SETTINGS_DEBOUNCE_MS = 250
+
+    def _debounced(self, slot: Any, key: str) -> Any:
+        """Return a callable that runs *slot* once, after a quiet period.
+
+        Parameters
+        ----------
+        slot : callable
+            What to run. Called with no arguments, so it can be connected to
+            signals that carry a value (``valueChanged``) without the value
+            reaching it.
+        key : str
+            Names the timer, so several controls feeding the same slot share
+            one pending call instead of each getting its own.
+
+        Returns
+        -------
+        callable
+            Connect this to the signal in place of *slot*.
+        """
+        timers = self.__dict__.setdefault("_debounce_timers", {})
+        timer = timers.get(key)
+        if timer is None:
+            timer = QtCore.QTimer(self)
+            timer.setSingleShot(True)
+            timer.setInterval(self._SETTINGS_DEBOUNCE_MS)
+            timer.timeout.connect(slot)
+            timers[key] = timer
+        return lambda *_args, _t=timer: _t.start()
+
     def _connect_action_bar(self) -> None:
         """Connect action bar control signals."""
-        self.plot_min_spin.valueChanged.connect(self.update_burst_plots)
-        self.plot_max_spin.valueChanged.connect(self.update_burst_plots)
-        self.show_all_photons_check.stateChanged.connect(self.update_burst_plots)
-        self.show_selected_photons_check.stateChanged.connect(self.update_burst_plots)
+        replot = self._debounced(self.update_burst_plots, "plots")
+        self.plot_min_spin.valueChanged.connect(replot)
+        self.plot_max_spin.valueChanged.connect(replot)
+        self.show_all_photons_check.stateChanged.connect(replot)
+        self.show_selected_photons_check.stateChanged.connect(replot)
 
     def _configure_dock_context_menu(self) -> None:
         """Configure tab context menus for closing and re-enabling diagnostic plots."""
@@ -2297,7 +2367,7 @@ class BurstSelectionTool(ChisurfDockTool):
                             plot_x,
                             plot_y,
                             pen=self._diagnostic_pen(len(d_t_visible), selected=True),
-                            width=2,
+                            width=_SELECTED_PEN_WIDTH,
                         )
                 if show_filter:
                     if show_all_photons:
@@ -2316,7 +2386,7 @@ class BurstSelectionTool(ChisurfDockTool):
                             selected_indices,
                             np.ones_like(selected_indices, dtype=float),
                             pen=self._diagnostic_pen(len(d_t_visible), selected=True),
-                            width=2,
+                            width=_SELECTED_PEN_WIDTH,
                         )
                 photon_offset += len(selected)
 
@@ -2446,13 +2516,13 @@ class BurstSelectionTool(ChisurfDockTool):
                         self.mcs_plot.plot(
                             time_selected,
                             trace_selected,
-                            pen=pg.mkPen(self._diagnostic_pen(file_index, selected=True), width=2),
+                            pen=pg.mkPen(self._diagnostic_pen(file_index, selected=True), width=_SELECTED_PEN_WIDTH),
                         )
                         plotted = True
                     else:
-                        self.mcs_plot.plot([], [], pen=pg.mkPen(self._diagnostic_pen(file_index, selected=True), width=2))
+                        self.mcs_plot.plot([], [], pen=pg.mkPen(self._diagnostic_pen(file_index, selected=True), width=_SELECTED_PEN_WIDTH))
                 except Exception:
-                    self.mcs_plot.plot([], [], pen=pg.mkPen(self._diagnostic_pen(file_index, selected=True), width=2))
+                    self.mcs_plot.plot([], [], pen=pg.mkPen(self._diagnostic_pen(file_index, selected=True), width=_SELECTED_PEN_WIDTH))
             offset += len(selected)
         if not plotted:
             self.mcs_plot.plot([], [], pen=pg.mkPen((255, 255, 255, 120), width=1))
@@ -2968,13 +3038,29 @@ class BurstSelectionTool(ChisurfDockTool):
             wizard.spinBox_3.blockSignals(False)
 
             selected_bool = selected_slice.astype(bool)
-            if self._show_all_photons():
-                wizard.plot_unselected.setData(x=indices, y=d_t)
+            # Thinned like every other raw per-photon layer. This one was
+            # handed the *whole* array and was, by measurement, the most
+            # expensive widget in the window: 0.29 s per repaint against ~0.3 ms
+            # for the tool's own dT plot beside it, which had been thinned.
+            show_all = self._show_all_photons()
+            show_selected = self._show_selected_photons()
+            budget = per_curve_budget(
+                self._max_plot_points(), max(1, int(show_all) + 2 * int(show_selected))
+            )
+            if show_all:
+                all_x, all_y = thin_for_plot(indices, d_t, max_points=budget)
+                wizard.plot_unselected.setData(x=all_x, y=all_y)
             else:
                 wizard.plot_unselected.setData([], [])
-            if self._show_selected_photons():
-                wizard.plot_selected.setData(x=indices[selected_bool], y=d_t[selected_bool])
-                wizard.plot_select.setData(x=indices, y=selected_bool.astype(np.uint8))
+            if show_selected:
+                sel_x, sel_y = thin_for_plot(
+                    indices[selected_bool], d_t[selected_bool], max_points=budget
+                )
+                wizard.plot_selected.setData(x=sel_x, y=sel_y)
+                flag_x, flag_y = thin_for_plot(
+                    indices, selected_bool.astype(np.uint8), max_points=budget
+                )
+                wizard.plot_select.setData(x=flag_x, y=flag_y)
             else:
                 wizard.plot_selected.setData([], [])
                 wizard.plot_select.setData([], [])
