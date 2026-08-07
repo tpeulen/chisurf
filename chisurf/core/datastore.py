@@ -76,14 +76,17 @@ __all__ = [
     "STRING_DTYPE",
     "clear_cell",
     "column_at",
+    "column_names",
     "column_values",
     "concat_stores",
     "dataframe_from_store",
     "is_missing",
     "new_store",
+    "numeric_column",
     "read_csv_table",
     "read_table",
     "read_table_frame",
+    "row_count",
     "set_cell",
     "store_from_arrays",
     "store_from_dataframe",
@@ -344,6 +347,93 @@ def set_cell(store: Any, row: int, index: int, value: Any) -> bool:
     return True
 
 
+def column_names(table: Any) -> list[str]:
+    """Return a table's column names, whatever kind of table it is.
+
+    A store has **both** ``names`` and ``columns``, and its ``columns`` are
+    ``Column`` objects rather than names — so asking for ``columns`` first
+    matches nothing and every lookup quietly answers "absent". ``names`` first.
+
+    Parameters
+    ----------
+    table : mapping, tttrlib.DataStore, or pandas.DataFrame
+
+    Returns
+    -------
+    list of str
+    """
+    names = getattr(table, "names", None)
+    if names is None:
+        names = getattr(table, "columns", None)
+    if names is None:
+        names = list(table.keys())
+    return [str(n) for n in names]
+
+
+def row_count(table: Any) -> int:
+    """Return a table's number of **rows**, whatever kind of table it is.
+
+    ``len()`` is the trap this exists for: it is the row count of a frame and
+    the *column* count of a mapping, and a store may not define it at all. Code
+    written against one silently answers the wrong question for another — a
+    3-column table reads as 3 rows, an empty table reads as non-empty, and
+    neither raises.
+
+    Parameters
+    ----------
+    table : mapping, tttrlib.DataStore, or pandas.DataFrame
+
+    Returns
+    -------
+    int
+    """
+    n_rows = getattr(table, "n_rows", None)
+    if callable(n_rows):
+        return int(n_rows())
+    names = column_names(table)
+    return len(np.asarray(table[names[0]])) if names else 0
+
+def numeric_column(table: Any, name: str) -> np.ndarray:
+    """Return one column of any column-addressable table as ``float64``.
+
+    The replacement for ``to_numeric(frame[name], errors="coerce")``: a value
+    that is not a number becomes ``NaN`` rather than raising, and a column that
+    is not there is all-``NaN`` rather than a ``KeyError`` — which is what the
+    burst code around it already expected.
+
+    Works on a frame, a ``{name: array}`` mapping, or a store's columns, because
+    none of the arithmetic that follows cares which it got.
+
+    Parameters
+    ----------
+    table : mapping, tttrlib.DataStore, or pandas.DataFrame
+        The table.
+    name : str
+        Column name.
+
+    Returns
+    -------
+    numpy.ndarray
+        ``float64``, one entry per row.
+    """
+    # A store has BOTH `names` and `columns`, and its `columns` are Column
+    # objects, not names -- so asking for `columns` first silently answers with
+    # something that matches nothing, and every lookup returns "absent" rather
+    # than failing. Ask for `names` first.
+    if name not in column_names(table):
+        return np.full(row_count(table), np.nan, dtype=float)
+
+    values = np.asarray(table[name])
+    if values.dtype.kind in "fiub":
+        return values.astype(float)
+    out = np.full(len(values), np.nan, dtype=float)
+    for i, value in enumerate(values):
+        try:
+            out[i] = float(value)
+        except (TypeError, ValueError):
+            pass
+    return out
+
 def store_from_arrays(columns: Mapping[str, Any] | Sequence[tuple]) -> Any:
     """Build a store from named arrays, keeping every dtype.
 
@@ -524,7 +614,9 @@ def _as_store(data: Any) -> Any:
 
 
 
-def store_from_rows(rows: Sequence[Mapping[str, Any]]) -> Any:
+def store_from_rows(
+    rows: Sequence[Mapping[str, Any]], columns: Sequence[str] | None = None
+) -> Any:
     """Build a store from a sequence of row mappings.
 
     The row-oriented shape an API hands back, and the one that otherwise goes
@@ -540,19 +632,26 @@ def store_from_rows(rows: Sequence[Mapping[str, Any]]) -> Any:
     ----------
     rows : sequence of mapping
         One mapping per row.
+    columns : sequence of str, optional
+        Column order, as a frame constructor's ``columns=`` argument. Names no
+        row carries become an all-missing column, which is how a caller keeps a
+        table's shape fixed regardless of what the rows happened to have.
 
     Returns
     -------
     tttrlib.DataStore
     """
     rows = list(rows)
-    names: list[str] = []
-    seen: set[str] = set()
-    for row in rows:
-        for name in row:
-            if name not in seen:
-                seen.add(name)
-                names.append(str(name))
+    if columns is not None:
+        names = [str(c) for c in columns]
+    else:
+        names = []
+        seen: set[str] = set()
+        for row in rows:
+            for name in row:
+                if name not in seen:
+                    seen.add(name)
+                    names.append(str(name))
 
     store = new_store()
     if not rows:
@@ -597,7 +696,7 @@ def concat_stores(stores: Sequence[Any], *, inner: bool = False) -> Any:
 
     Parameters
     ----------
-    stores : sequence of tttrlib.DataStore
+    stores : sequence of tttrlib.DataStore, pandas.DataFrame or mapping
         The tables to stack. An empty sequence gives an empty store.
     inner : bool
         Keep only the columns every store has, rather than the union.
@@ -615,7 +714,10 @@ def concat_stores(stores: Sequence[Any], *, inner: bool = False) -> Any:
     """
     import tttrlib
 
-    stores = [s for s in stores if s is not None]
+    # Frames are accepted, as everywhere else on this seam: a migration moves
+    # one producer at a time, and until the last one moves, a caller legitimately
+    # holds a mixture.
+    stores = [_as_store(s) for s in stores if s is not None]
     if not stores:
         return new_store()
     try:

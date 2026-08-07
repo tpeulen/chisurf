@@ -24,6 +24,7 @@ from chisurf.core.datastore import (
     dataframe_from_store,
     is_missing,
     new_store,
+    numeric_column,
     read_csv_table,
     read_table,
     read_table_frame,
@@ -750,3 +751,23 @@ def test_take_materialises_a_selection_a_mask_can_only_describe():
 def test_take_rows_keeps_the_order_asked_for():
     store = store_from_arrays({"n": np.arange(5, dtype=np.int32)})
     np.testing.assert_array_equal(take_rows(store, [3, 0, 1])["n"].numpy(), [3, 0, 1])
+
+
+def test_numeric_column_finds_a_stores_columns_by_name():
+    """A store has BOTH ``names`` and ``columns``, and its ``columns`` are Column
+    objects rather than names. Asking for ``columns`` first matches nothing, so
+    every lookup answers "absent" — which this function reports as all-NaN, not
+    as an error. A whole statistics block came back NaN that way."""
+    store = store_from_arrays({"Number of Photons": np.array([10.0, 20.0, 30.0])})
+    np.testing.assert_array_equal(numeric_column(store, "Number of Photons"), [10.0, 20.0, 30.0])
+    assert np.isnan(numeric_column(store, "not a column")).all()
+
+
+def test_numeric_column_coerces_the_same_way_for_frame_mapping_and_store():
+    values = ["1", "x", "3"]
+    expected = [1.0, np.nan, 3.0]
+    frame = pd.DataFrame({"a": values})
+    mapping = {"a": np.array(values, dtype=object)}
+    store = store_from_arrays({"a": np.array(values, dtype=object)})
+    for table in (frame, mapping, store):
+        np.testing.assert_array_equal(numeric_column(table, "a"), expected)

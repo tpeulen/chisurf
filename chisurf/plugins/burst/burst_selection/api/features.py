@@ -6,6 +6,8 @@ from collections.abc import Sequence
 from typing import Any
 
 import numpy as np
+
+from chisurf.core.datastore import column_names, row_count
 import pandas as pd
 from sklearn.mixture import GaussianMixture
 
@@ -21,45 +23,13 @@ _FEATURE_COLUMNS = [
 
 
 def _names(table) -> tuple[str, ...]:
-    """Return a table's column names, whatever the table is.
-
-    A burst table reaches this API as a frame, as ``{name: array}`` from
-    :func:`~chisurf.core.fluorescence.burst.table.read_burst_table`, or as a
-    columnar store's columns. All three are column-addressable, and none of the
-    arithmetic below cares which it got — so the accessors ask for names rather
-    than for a type.
-
-    Parameters
-    ----------
-    table : mapping or pandas.DataFrame
-        The burst table.
-
-    Returns
-    -------
-    tuple of str
-    """
-    names = getattr(table, "columns", None)
-    return tuple(str(n) for n in (names if names is not None else table.keys()))
+    """Return a table's column names. \see chisurf.core.datastore.column_names."""
+    return tuple(column_names(table))
 
 
 def _rows(table) -> int:
-    """Return a table's row count.
-
-    ``len()`` is the trap: it is the row count of a frame and the *column* count
-    of a mapping, so a helper written against one silently answers the wrong
-    question for the other.
-
-    Parameters
-    ----------
-    table : mapping or pandas.DataFrame
-        The burst table.
-
-    Returns
-    -------
-    int
-    """
-    names = _names(table)
-    return len(np.asarray(table[names[0]])) if names else 0
+    """Return a table's row count. \see chisurf.core.datastore.row_count."""
+    return row_count(table)
 
 
 def _feature_column(table, preferred: str, fallback: str) -> np.ndarray:

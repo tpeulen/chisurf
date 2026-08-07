@@ -36,9 +36,16 @@ from collections import OrderedDict
 from collections.abc import Sequence
 from typing import Any
 
-from chisurf.core.datastore import write_csv_table
 import numpy as np
-import pandas as pd
+
+from chisurf.core.datastore import (
+    column_names as _column_names,
+    concat_stores,
+    numeric_column,
+    row_count,
+    store_from_arrays,
+    write_csv_table,
+)
 
 from chisurf.core.fio.fluorescence.burst import (
     generate_burst_dataframe,
@@ -110,7 +117,7 @@ def analysis_root(analysis_folder) -> pathlib.Path:
     return folder
 
 
-def data_rows(frame: pd.DataFrame) -> pd.DataFrame:
+def data_rows(frame):
     """Drop the interleaved zero rows of a ``.bur`` table.
 
     The ``2n + 1`` zero-interleaved layout is a storage convention, not data:
@@ -118,21 +125,21 @@ def data_rows(frame: pd.DataFrame) -> pd.DataFrame:
     rather than a measurement. Fusion reasons about bursts, so it works on the
     ``n`` real rows and lets the writer re-interleave.
     """
-    if "First File" not in frame.columns:
+    if "First File" not in _column_names(frame):
         return frame.reset_index(drop=True)
     keep = ~frame["First File"].map(is_sentinel_file_reference)
     return frame.loc[keep].reset_index(drop=True)
 
 
-def read_measurements(analysis_folder) -> OrderedDict[str, pd.DataFrame]:
+def read_measurements(analysis_folder) -> OrderedDict:
     """Read every ``.bur`` of a folder as ``{stem: burst rows}``."""
-    frames: OrderedDict[str, pd.DataFrame] = OrderedDict()
+    frames: OrderedDict = OrderedDict()
     for path in bur_files(analysis_folder):
         frames[path.stem] = data_rows(read_bur_file(path))
     return frames
 
 
-def burst_times_s(frame: pd.DataFrame) -> np.ndarray:
+def burst_times_s(frame) -> np.ndarray:
     """Per-burst arrival times in seconds, from the burst table's own column.
 
     The mean macro time is used — the same quantity the ``P_same`` curve is
@@ -140,16 +147,16 @@ def burst_times_s(frame: pd.DataFrame) -> np.ndarray:
     appears to mean when it is applied to a pair of bursts.
     """
     for column, scale in (("Mean Macro Time (ms)", 1e-3), ("Mean Macro Time (s)", 1.0)):
-        if column in frame.columns:
-            return pd.to_numeric(frame[column], errors="coerce").to_numpy(dtype=float) * scale
+        if column in _column_names(frame):
+            return numeric_column(frame, column) * scale
     raise FusionError("burst table has no 'Mean Macro Time' column")
 
 
-def proximity_ratios(frame: pd.DataFrame) -> np.ndarray | None:
+def proximity_ratios(frame) -> np.ndarray | None:
     """Per-burst proximity ratio of a burst table, or ``None`` when unavailable."""
     from chisurf.plugins.burst.burst_selection.api.features import proximity_ratio
 
-    if len(frame) == 0:
+    if row_count(frame) == 0:
         return None
     return proximity_ratio(frame)
 
@@ -217,8 +224,8 @@ def analyze(analysis_folder, settings: FusionSettings | None = None) -> FusionAn
             )
         )
 
-    before = pd.concat([m.source for m in measurements], ignore_index=True)
-    after = pd.concat([m.fused for m in measurements], ignore_index=True)
+    before = concat_stores([m.source for m in measurements])
+    after = concat_stores([m.fused for m in measurements])
     # Labels of different measurements collide; offset them so the pooled
     # group-size statistics count each measurement's groups separately.
     offset = 0
@@ -262,7 +269,7 @@ def capped_window(tau_max_s: float, settings: FusionSettings) -> float:
     return float(tau_max_s)
 
 
-def _ratio_statistics(before: pd.DataFrame, after: pd.DataFrame) -> dict[str, Any]:
+def _ratio_statistics(before, after) -> dict[str, Any]:
     """Proximity-ratio mean/std/count before and after fusion."""
     out: dict[str, Any] = {}
     for name, frame in (("before", before), ("after", after)):
@@ -333,7 +340,7 @@ def _detector_definition(
 
 
 def _merged_intervals(
-    frame: pd.DataFrame, labels: np.ndarray, n_photons: int
+    frame, labels: np.ndarray, n_photons: int
 ) -> tuple[list[tuple[int, int]], list[np.ndarray]]:
     """Fused ``(first, last)`` photon intervals and the rows each came from.
 
@@ -342,8 +349,8 @@ def _merged_intervals(
     companion built from the group list rather than the emitted rows would then
     be one row long and misalign every burst after it.
     """
-    first = pd.to_numeric(frame["First Photon"], errors="coerce").to_numpy(dtype=float)
-    last = pd.to_numeric(frame["Last Photon"], errors="coerce").to_numpy(dtype=float)
+    first = numeric_column(frame, "First Photon")
+    last = numeric_column(frame, "Last Photon")
     intervals: list[tuple[int, int]] = []
     kept: list[np.ndarray] = []
     for rows in group_slices(labels):
@@ -400,7 +407,7 @@ def write_fused_analysis(
         frame = measurement.source
         if len(frame) == 0:
             continue
-        source_name = str(frame["First File"].iloc[0])
+        source_name = str(np.asarray(frame["First File"])[0])
         det, win, resolution, container = _detector_definition(
             analysis, source_name, detectors, windows
         )
@@ -497,8 +504,8 @@ def write_fused_analysis(
 def write_fusion_container(
     source_path,
     measurement: MeasurementFusion,
-    frame: pd.DataFrame,
-    fused: pd.DataFrame,
+    frame,
+    fused,
     *,
     parameters: dict | None = None,
 ) -> str:
@@ -541,7 +548,7 @@ def write_fusion_container(
 
     labels = np.asarray(measurement.labels, dtype=int)
     rows = deinterleave_bursts(frame)
-    mapping = pd.DataFrame(
+    mapping = store_from_arrays(
         {
             "source_row": np.arange(labels.size, dtype=np.int64),
             "fused_row": labels.astype(np.int64),
@@ -574,7 +581,7 @@ def write_fusion_container(
         return str(m.path)
 
 
-def _write_source_companion(folder, measurement: MeasurementFusion, frame: pd.DataFrame) -> None:
+def _write_source_companion(folder, measurement: MeasurementFusion, frame) -> None:
     """Record each original burst's fused-burst membership beside the source."""
     labels = np.asarray(measurement.labels, dtype=int)
     if labels.size == 0:
@@ -598,10 +605,10 @@ def _write_source_companion(folder, measurement: MeasurementFusion, frame: pd.Da
 def _write_fused_companion(
     target,
     measurement: MeasurementFusion,
-    frame: pd.DataFrame,
+    frame,
     intervals: Sequence[tuple[int, int]],
     kept: Sequence[np.ndarray],
-    fused: pd.DataFrame,
+    fused,
 ) -> None:
     """Record how each fused burst was assembled, beside the fused bursts.
 
@@ -614,12 +621,10 @@ def _write_fused_companion(
     """
     if not intervals:
         return
-    counts = pd.to_numeric(frame["Number of Photons"], errors="coerce").to_numpy(dtype=float)
+    counts = numeric_column(frame, "Number of Photons")
     rows = []
     fused_rows = data_rows(fused)
-    span_photons = pd.to_numeric(
-        fused_rows["Number of Photons"], errors="coerce"
-    ).to_numpy(dtype=float)
+    span_photons = numeric_column(fused_rows, "Number of Photons")
     for i, group in enumerate(kept):
         signal = float(np.nansum(counts[group]))
         span = float(span_photons[i]) if i < span_photons.size else signal

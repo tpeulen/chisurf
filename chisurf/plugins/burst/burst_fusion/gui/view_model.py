@@ -25,6 +25,8 @@ from typing import Any
 
 import numpy as np
 
+from chisurf.core.datastore import column_names, concat_stores, numeric_column, row_count
+
 logger = logging.getLogger(__name__)
 
 _VIEW_JSON = pathlib.Path(__file__).parent / "fusion.view.json"
@@ -451,14 +453,13 @@ class FusionViewModel:
         """Before/after histogram overlay of one burst-table column."""
         if self._analysis is None:
             return []
-        import pandas as pd
 
         out = []
         for name, colour, frames in self._sides():
-            values = pd.concat(frames, ignore_index=True)
-            if column not in values.columns:
+            values = concat_stores(frames)
+            if column not in column_names(values):
                 continue
-            numbers = pd.to_numeric(values[column], errors="coerce").to_numpy(dtype=float)
+            numbers = numeric_column(values, column)
             if log:
                 numbers = np.log10(np.clip(numbers, 1e-3, None))
             centers, density = self._histogram(numbers, bins, limits)
@@ -469,13 +470,12 @@ class FusionViewModel:
         """Proximity-ratio histogram before and after fusion."""
         if self._analysis is None:
             return []
-        import pandas as pd
 
         from ..core.fusion import proximity_ratios
 
         out = []
         for name, colour, frames in self._sides():
-            frame = pd.concat(frames, ignore_index=True)
+            frame = concat_stores(frames)
             values = proximity_ratios(frame)
             if values is None:
                 continue
@@ -525,19 +525,18 @@ class FusionViewModel:
         """
         if self._analysis is None:
             return []
-        import pandas as pd
 
         from ..core.fusion import proximity_ratios
 
         stats = self._analysis.statistics
         (_, _, before_frames), (_, _, after_frames) = self._sides()
-        before = pd.concat(before_frames, ignore_index=True)
-        after = pd.concat(after_frames, ignore_index=True)
+        before = concat_stores(before_frames)
+        after = concat_stores(after_frames)
 
         def _finite(frame, column):
-            if column not in frame.columns:
+            if column not in column_names(frame):
                 return np.zeros(0)
-            values = pd.to_numeric(frame[column], errors="coerce").to_numpy(dtype=float)
+            values = numeric_column(frame, column)
             return values[np.isfinite(values)]
 
         def _row(name, before_value, after_value):
@@ -572,7 +571,7 @@ class FusionViewModel:
             ratios.append(values[np.isfinite(values)])
 
         return [
-            _row("Bursts", len(before), len(after)),
+            _row("Bursts", row_count(before), row_count(after)),
             _row(
                 "PR mean",
                 float(ratios[0].mean()) if ratios[0].size else float("nan"),

@@ -335,8 +335,8 @@ def _burst_edges(frame, index) -> tuple:
     and ``Duration (ms)`` their separation, so the two together give the burst's
     edges exactly — no photon access needed.
     """
-    mean = float(frame["Mean Macro Time (ms)"].iloc[index])
-    dur = float(frame["Duration (ms)"].iloc[index])
+    mean = float(np.asarray(frame["Mean Macro Time (ms)"])[index])
+    dur = float(np.asarray(frame["Duration (ms)"])[index])
     return mean - 0.5 * dur, mean + 0.5 * dur
 
 
@@ -367,10 +367,25 @@ def fuse_burst_frame(frame, labels: np.ndarray):
         (fragments merged) and ``Fusion Gap (ms)`` (time inside the fused burst
         that no fragment covered).
     """
-    import pandas as pd
+    from chisurf.core.datastore import (
+        column_names as _column_names,
+        numeric_column,
+        store_from_rows,
+    )
 
-    columns = list(frame.columns)
+    columns = _column_names(frame)
     groups = group_slices(labels)
+
+    # Coerce each column ONCE, not once per group per column: this loop runs
+    # over every fused group, and the coercion does not depend on the group.
+    numeric: dict[str, np.ndarray] = {}
+
+    def values_of(name: str) -> np.ndarray:
+        """The column as float64, computed on first use and kept."""
+        if name not in numeric:
+            numeric[name] = numeric_column(frame, name)
+        return numeric[name]
+
     rows: list[dict[str, Any]] = []
 
     detectors = [
@@ -382,52 +397,48 @@ def fuse_burst_frame(frame, labels: np.ndarray):
 
     for rows_of_group in groups:
         first, last = int(rows_of_group[0]), int(rows_of_group[-1])
-        block = frame.iloc[rows_of_group]
         out: dict[str, Any] = {}
 
         start_ms, _ = _burst_edges(frame, first)
         _, stop_ms = _burst_edges(frame, last)
         duration = stop_ms - start_ms
-        photons = float(pd.to_numeric(block["Number of Photons"], errors="coerce").sum())
+        photons = float(np.nansum(values_of("Number of Photons")[rows_of_group]))
 
         covered = 0.0
         for i in rows_of_group:
             a, b = _burst_edges(frame, int(i))
             covered += b - a
 
-        out["First Photon"] = int(pd.to_numeric(block["First Photon"]).min())
-        out["Last Photon"] = int(pd.to_numeric(block["Last Photon"]).max())
+        out["First Photon"] = int(np.nanmin(values_of("First Photon")[rows_of_group]))
+        out["Last Photon"] = int(np.nanmax(values_of("Last Photon")[rows_of_group]))
         out["Duration (ms)"] = duration
         out["Mean Macro Time (ms)"] = 0.5 * (start_ms + stop_ms)
         out["Number of Photons"] = photons
         out["Count Rate (KHz)"] = photons / duration if duration > 0 else np.nan
         if "Confidence (sigma)" in columns:
             out["Confidence (sigma)"] = float(
-                pd.to_numeric(block["Confidence (sigma)"], errors="coerce").max()
+                np.nanmax(values_of("Confidence (sigma)")[rows_of_group])
             )
         for column in ("First File", "Last File"):
             if column in columns:
-                out[column] = block[column].iloc[0] if column == "First File" else block[column].iloc[-1]
+                raw = np.asarray(frame[column])
+                out[column] = raw[first] if column == "First File" else raw[last]
 
         for det in detectors:
-            counts = pd.to_numeric(block[f"Number of Photons ({det})"], errors="coerce")
-            total = float(counts.sum())
+            counts = values_of(f"Number of Photons ({det})")[rows_of_group]
+            total = float(np.nansum(counts))
             out[f"Number of Photons ({det})"] = total
 
-            seen = pd.to_numeric(block[f"First Photon ({det})"], errors="coerce")
+            seen = values_of(f"First Photon ({det})")[rows_of_group]
             has = seen >= 0
             if has.any():
                 out[f"First Photon ({det})"] = int(seen[has].min())
-                lasts = pd.to_numeric(block[f"Last Photon ({det})"], errors="coerce")
+                lasts = values_of(f"Last Photon ({det})")[rows_of_group]
                 out[f"Last Photon ({det})"] = int(lasts[has].max())
                 # The detector's own span: from the earliest to the latest
                 # fragment in which it saw anything.
-                det_durations = pd.to_numeric(
-                    block[f"Duration ({det}) (ms)"], errors="coerce"
-                )
-                det_means = pd.to_numeric(
-                    block[f"Mean Macrotime ({det}) (ms)"], errors="coerce"
-                )
+                det_durations = values_of(f"Duration ({det}) (ms)")[rows_of_group]
+                det_means = values_of(f"Mean Macrotime ({det}) (ms)")[rows_of_group]
                 starts = det_means - 0.5 * det_durations
                 stops = det_means + 0.5 * det_durations
                 det_start = float(starts[has].min())
@@ -447,31 +458,35 @@ def fuse_burst_frame(frame, labels: np.ndarray):
 
             micro_column = f"Mean Microtime ({det}) (ns)"
             if micro_column in columns:
-                micro = pd.to_numeric(block[micro_column], errors="coerce")
-                weights = counts.to_numpy(dtype=float)
-                valid = np.isfinite(micro.to_numpy(dtype=float)) & (weights > 0)
+                micro = values_of(micro_column)[rows_of_group]
+                weights = counts
+                valid = np.isfinite(micro) & (weights > 0)
                 out[micro_column] = (
-                    float(np.average(micro.to_numpy(dtype=float)[valid], weights=weights[valid]))
+                    float(np.average(micro[valid], weights=weights[valid]))
                     if valid.any()
                     else 0.0
                 )
 
         for column in window_columns:
-            rates = pd.to_numeric(block[column], errors="coerce").to_numpy(dtype=float)
-            weights = pd.to_numeric(block["Duration (ms)"], errors="coerce").to_numpy(dtype=float)
+            rates = values_of(column)[rows_of_group]
+            weights = values_of("Duration (ms)")[rows_of_group]
             valid = np.isfinite(rates) & (rates >= 0) & (weights > 0)
             out[column] = float(np.average(rates[valid], weights=weights[valid])) if valid.any() else -1.0
 
         for column in columns:
             if column not in out:
-                values = pd.to_numeric(block[column], errors="coerce")
-                out[column] = float(values.mean()) if values.notna().any() else block[column].iloc[0]
+                values = values_of(column)[rows_of_group]
+                finite = values[np.isfinite(values)]
+                out[column] = (
+                    float(finite.mean()) if finite.size
+                    else np.asarray(frame[column])[first]
+                )
 
         out["Fusion Size"] = int(len(rows_of_group))
         out["Fusion Gap (ms)"] = max(duration - covered, 0.0)
         rows.append(out)
 
-    fused = pd.DataFrame(rows, columns=columns + ["Fusion Size", "Fusion Gap (ms)"])
+    fused = store_from_rows(rows, columns=columns + ["Fusion Size", "Fusion Gap (ms)"])
     return fused
 
 
@@ -492,27 +507,31 @@ def fusion_statistics(before, after, labels: np.ndarray) -> dict[str, Any]:
         photon count on both sides. Proximity-ratio statistics are added by the
         caller, which owns the definition of the ratio.
     """
-    import pandas as pd
+    from chisurf.core.datastore import (
+        column_names as _column_names,
+        numeric_column,
+        row_count,
+    )
 
     labels = np.asarray(labels, dtype=int)
     sizes = np.bincount(labels) if labels.size else np.zeros(0, dtype=int)
     fused = sizes[sizes > 1] if sizes.size else sizes
 
     def _stats(frame, column: str) -> dict[str, float]:
-        if column not in frame.columns or len(frame) == 0:
+        if column not in _column_names(frame):
             return {"mean": float("nan"), "median": float("nan")}
-        values = pd.to_numeric(frame[column], errors="coerce").to_numpy(dtype=float)
+        values = numeric_column(frame, column)
         values = values[np.isfinite(values)]
         if values.size == 0:
             return {"mean": float("nan"), "median": float("nan")}
         return {"mean": float(values.mean()), "median": float(np.median(values))}
 
     return {
-        "n_bursts_before": int(len(before)),
-        "n_bursts_after": int(len(after)),
+        "n_bursts_before": int(row_count(before)),
+        "n_bursts_after": int(row_count(after)),
         "n_fused_groups": int(fused.size),
         "n_bursts_in_fused_groups": int(fused.sum()) if fused.size else 0,
-        "fused_fraction": float(fused.sum() / len(before)) if len(before) else 0.0,
+        "fused_fraction": float(fused.sum() / row_count(before)) if row_count(before) else 0.0,
         "largest_group": int(sizes.max()) if sizes.size else 0,
         "mean_group_size": float(sizes.mean()) if sizes.size else 0.0,
         "duration_ms": {
