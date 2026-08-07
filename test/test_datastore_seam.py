@@ -664,3 +664,20 @@ def test_a_frame_built_from_a_store_survives_that_store():
     frame = frame_from_a_local_store()
     gc.collect()
     np.testing.assert_array_equal(frame["x"].to_numpy(), np.arange(2000, dtype=float))
+
+
+def test_an_integer_column_from_rows_stays_an_integer():
+    """Not cosmetic: these rows are written straight out as text, so an integer
+    becoming a float changes a shipped file format that other programs parse.
+    Caught by an MMFDB round-trip expecting "10" and getting "10.0"."""
+    text = write_csv_table(None, [{"n": 0, "m": 10}, {"n": 1, "m": 20}])
+    assert text.splitlines()[1:] == ["0\t10", "1\t20"]
+
+
+def test_a_none_value_from_rows_is_missing_not_zero():
+    """A key a row lacks and a key whose value is None mean the same thing —
+    not measured. Masking only the first turned the second into a silent 0."""
+    store = store_from_rows([{"a": 1, "b": None}, {"a": 2, "b": 3}])
+    assert not store["b"].valid(0)
+    assert store["b"].valid(1)
+    assert write_csv_table(None, [{"a": 1, "b": None}]).splitlines()[1] == "1\t"

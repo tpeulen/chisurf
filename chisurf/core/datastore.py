@@ -555,13 +555,24 @@ def store_from_rows(rows: Sequence[Mapping[str, Any]]) -> Any:
     if not rows:
         return store
     for name in names:
-        present = np.array([name in row for row in rows], dtype=bool)
         raw = [row.get(name) for row in rows]
+        # A key a row lacks and a key whose value is None are the same thing
+        # here: not measured. The old expression masked only the first, and the
+        # second silently became 0.
+        present = np.array([v is not None for v in raw], dtype=bool)
         if any(isinstance(v, str) for v in raw if v is not None):
             values = np.array(["" if v is None else str(v) for v in raw], dtype=object)
+        elif all(
+            isinstance(v, (bool, int)) and not isinstance(v, bool) or isinstance(v, np.integer)
+            for v in raw
+            if v is not None
+        ) and any(v is not None for v in raw):
+            # An integer column stays one. Forcing float here is not cosmetic:
+            # these rows are written straight out as text, and "10" becoming
+            # "10.0" changes a shipped file format that other programs parse.
+            values = np.array([0 if v is None else int(v) for v in raw], dtype=np.int64)
         else:
             values = np.array([np.nan if v is None else v for v in raw], dtype=float)
-            present &= np.isfinite(values) | ~np.isnan(values)
         store.add(name, values)
         if not present.all():
             column = store[store.n_columns() - 1]

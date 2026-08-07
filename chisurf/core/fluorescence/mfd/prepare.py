@@ -41,7 +41,6 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import numpy as np
-import pandas as pd
 
 from chisurf.core.fio.fluorescence.burst import DETECTOR_SENTINEL
 from chisurf.core.fio.fluorescence.burst_manifest import (
@@ -499,7 +498,7 @@ def burst_directory(folder: pathlib.Path | str) -> tuple[pathlib.Path, pathlib.P
     return analysis_dir, bur_dir
 
 
-def detector_names(frame: pd.DataFrame) -> tuple[str, ...]:
+def detector_names(frame) -> tuple[str, ...]:
     """Return the detector names a burst table carries, in column order.
 
     Taken from the ``Number of Photons (<detector>)`` columns, which every writer
@@ -507,7 +506,7 @@ def detector_names(frame: pd.DataFrame) -> tuple[str, ...]:
 
     Parameters
     ----------
-    frame : pandas.DataFrame
+    frame : pandas.DataFrame or mapping of str to array
         A burst table.
 
     Returns
@@ -523,7 +522,7 @@ def detector_names(frame: pd.DataFrame) -> tuple[str, ...]:
     return tuple(names)
 
 
-def photon_index_convention(frame: pd.DataFrame) -> PhotonIndexConvention:
+def photon_index_convention(frame) -> PhotonIndexConvention:
     """Detect whether ``Last Photon`` is counted inside ``Number of Photons``.
 
     Both current writer paths emit ``Number of Photons = Last − First + 1``. Folders
@@ -533,7 +532,7 @@ def photon_index_convention(frame: pd.DataFrame) -> PhotonIndexConvention:
 
     Parameters
     ----------
-    frame : pandas.DataFrame
+    frame : pandas.DataFrame or mapping of str to array
         A burst table with the sentinel rows already removed.
 
     Returns
@@ -722,7 +721,7 @@ def _streams_from_manifest(
     return out
 
 
-def window_columns(frame: pd.DataFrame) -> list[tuple[int, int]]:
+def window_columns(frame) -> list[tuple[int, int]]:
     """Return the micro-time windows a burst table names in its own headers.
 
     The ``.bur`` writer emits one column per (window, detector) pair, headed
@@ -733,7 +732,7 @@ def window_columns(frame: pd.DataFrame) -> list[tuple[int, int]]:
 
     Parameters
     ----------
-    frame : pandas.DataFrame
+    frame : pandas.DataFrame or mapping of str to array
         A burst table.
 
     Returns
@@ -753,7 +752,7 @@ def window_columns(frame: pd.DataFrame) -> list[tuple[int, int]]:
 
 
 def infer_streams(
-    frame: pd.DataFrame,
+    frame,
     names: Sequence[str],
     tttrs: Mapping[str, Any],
     convention: PhotonIndexConvention,
@@ -779,7 +778,7 @@ def infer_streams(
 
     Parameters
     ----------
-    frame : pandas.DataFrame
+    frame : pandas.DataFrame or mapping of str to array
         The burst table, sentinel rows removed.
     names : sequence of str
         Detector names to infer.
@@ -941,7 +940,7 @@ def _detector_masks(
 
 
 def _mean_micro_time_from_photons(
-    frame: pd.DataFrame,
+    frame,
     streams: Sequence[StreamDef],
     tttrs: Mapping[str, Any],
     convention: PhotonIndexConvention,

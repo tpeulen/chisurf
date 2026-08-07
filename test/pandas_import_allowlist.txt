@@ -1,7 +1,7 @@
 # Files in the shipped package that still import pandas.
 #
 # This is a SHRINKING list and a tracker: 47 non-test files when it was
-# written, 34 now. It is not somewhere to add yourself. pandas is an interop format here
+# written, 31 now. It is not somewhere to add yourself. pandas is an interop format here
 # -- a frame handed to a notebook, or a file only it can read -- not the storage
 # model; the storage model is the columnar store behind chisurf.core.datastore.
 #
@@ -16,11 +16,9 @@
 
 chisurf/core/datastore.py
 chisurf/core/fio/fluorescence/burst.py
-chisurf/core/fio/fluorescence/burst_container.py
 chisurf/core/fluorescence/burst/fusion.py
 chisurf/core/fluorescence/burst/photons.py
 chisurf/core/fluorescence/imaging/pixel_maps.py
-chisurf/core/fluorescence/mfd/prepare.py
 chisurf/core/structure/topology.py
 chisurf/gui/plots/table_plot.py
 chisurf/gui/widgets/chitable/filters.py
@@ -39,7 +37,6 @@ chisurf/plugins/burst/burst_h2mm/core/export.py
 chisurf/plugins/burst/burst_h2mm/core/photons.py
 chisurf/plugins/burst/burst_mle_analysis/wizard.py
 chisurf/plugins/burst/burst_selection/api/features.py
-chisurf/plugins/burst/burst_selection/api/io.py
 chisurf/plugins/burst/burst_selection/api/selection.py
 chisurf/plugins/burst/burst_selection/gui/adapter.py
 chisurf/plugins/burst/burst_selection/gui/tool.py

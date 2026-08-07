@@ -65,7 +65,7 @@ def units_for(df: pd.DataFrame, extra: Mapping[str, str] | None = None) -> dict[
 
     Parameters
     ----------
-    df : pandas.DataFrame
+    df : pandas.DataFrame or mapping of str to array
     extra : mapping, optional
         Units for columns this analysis names itself, which win over both.
 

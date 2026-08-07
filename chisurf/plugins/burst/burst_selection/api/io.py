@@ -5,8 +5,6 @@ from __future__ import annotations
 import zipfile
 from collections.abc import Sequence
 from pathlib import Path
-
-import pandas as pd
 import tttrlib
 
 from chisurf.core.fio.fluorescence.burst_container import (
@@ -66,7 +64,7 @@ def load_tttr(
     )
 
 
-def read_bur(path: str | Path) -> pd.DataFrame:
+def read_bur(path: str | Path):
     """Read a ChiSurf ``.bur`` file into a pandas DataFrame.
 
     Parameters
@@ -82,12 +80,12 @@ def read_bur(path: str | Path) -> pd.DataFrame:
     return read_bur_file(path)
 
 
-def write_bur(df: pd.DataFrame, path: str | Path) -> None:
+def write_bur(df, path: str | Path) -> None:
     """Write a burst summary DataFrame as a ChiSurf ``.bur`` file.
 
     Parameters
     ----------
-    df : pandas.DataFrame
+    df : pandas.DataFrame or mapping of str to array
         Burst summary table.
     path : str or Path
         Output path.
@@ -99,7 +97,7 @@ def write_bur(df: pd.DataFrame, path: str | Path) -> None:
 
 def write_container(
     source: str | Path,
-    df: pd.DataFrame,
+    df,
     *,
     parameters: dict | None = None,
     out_dir: str | Path | None = None,
@@ -115,7 +113,7 @@ def write_container(
     ----------
     source : str or Path
         The instrument file the bursts were found in.
-    df : pandas.DataFrame
+    df : pandas.DataFrame or mapping of str to array
         Burst summary table.
     parameters : dict, optional
         The analysis settings. Their hash is the identity of the run.
@@ -171,7 +169,7 @@ def get_unique_folder_path(base_path: Path) -> Path:
 
 
 def write_hdf5(
-    dataframes: Sequence[pd.DataFrame],
+    dataframes: Sequence,
     path: str | Path,
     complib: str | None = None,
 ) -> None:
@@ -186,7 +184,7 @@ def write_hdf5(
 
     Parameters
     ----------
-    dataframes : sequence of pandas.DataFrame
+    dataframes : sequence of column-addressable tables
         Burst summary tables to combine.
     path : str or Path
         Output ``.h5`` path.
