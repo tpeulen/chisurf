@@ -1148,6 +1148,10 @@ class _PgGrid(base.GridCanvas):
         """Advance the implicit insertion cursor to the next row."""
         self._w.nextRow()
 
+    def clear(self) -> None:
+        """Remove every panel and reset the insertion cursor."""
+        self._w.clear()
+
     def set_column_stretch(self, column: int, factor: float) -> None:
         """Set the relative width of a grid column."""
         self._w.ci.layout.setColumnStretchFactor(int(column), int(round(factor)))

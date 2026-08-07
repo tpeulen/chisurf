@@ -419,6 +419,15 @@ class GridCanvas(abc.ABC):
         """Advance the implicit insertion cursor to the next row."""
 
     @abc.abstractmethod
+    def clear(self) -> None:
+        """Remove every panel, and reset the insertion cursor to the first cell.
+
+        A grid whose panel *count* depends on the data — one decay per detector,
+        one map per channel — has to be emptied before it is rebuilt, or the
+        previous selection's panels stay below the new ones.
+        """
+
+    @abc.abstractmethod
     def set_column_stretch(self, column: int, factor: float) -> None:
         """Set the relative width of a grid column."""
 

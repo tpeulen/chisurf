@@ -8,7 +8,6 @@ chisurf/gui/widgets/wizard/tttr_photonfilter/tttr_photon_filter.py
 chisurf/gui/widgets/wizard/tttr_photonfilter/tttr_photon_filter_plots.py
 chisurf/plugins/burst/burst_h2mm/gui/tool.py
 chisurf/plugins/burst/burst_h2mm/tests/test_gui.py
-chisurf/plugins/burst/burst_mle_analysis/wizard.py
 chisurf/plugins/burst/burst_selection/gui/tool.py
 chisurf/plugins/core/acq/__init__.py
 chisurf/plugins/core/acq/gui/tool.py

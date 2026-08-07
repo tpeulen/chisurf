@@ -13,7 +13,7 @@ from typing import Union
 
 from qtpy import QtWidgets, QtCore
 from qtpy.QtWidgets import QFileDialog
-import pyqtgraph as pg
+from chisurf.gui import chiplot
 import numpy as np
 from types import SimpleNamespace
 import pandas as pd
@@ -655,6 +655,10 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         written_dirs = set()
         wrote_settings_for = set()
         written_files: list[Path] = []
+        # {stem: {detector: table}} — the same tables the ``b?4`` files hold,
+        # kept so the container can be written once per measurement rather than
+        # once per (measurement, detector) group.
+        by_stem: dict[str, dict[str, typing.Any]] = {}
 
         def maybe_pump_ui(k: int) -> None:
             # Throttle UI event processing
@@ -693,7 +697,9 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
 
             # Build zero-interleaved matrix efficiently (reindex tolerates a
             # model that did not emit every column — missing → NaN).
-            arr = df_g.reindex(columns=cols).to_numpy(dtype=float, copy=False)
+            fits = df_g.reindex(columns=cols)
+            by_stem.setdefault(stem, {})[det] = fits
+            arr = fits.to_numpy(dtype=float, copy=False)
             out = np.zeros((arr.shape[0] * 2 + 1, arr.shape[1]), dtype=float)
             out[1::2] = arr  # fill odd rows with data
 
@@ -722,9 +728,57 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
                 return
 
         progress.close()
+        written_files += self.write_containers(by_stem, files_by_stem)
         folder_list = ", ".join(sorted(written_dirs)) if written_dirs else "(no data)"
         self._set_status(f"Burst-fit results saved in folders: {folder_list}")
         return written_files
+
+    def write_containers(self, by_stem, files_by_stem) -> list[Path]:
+        """Write each measurement's fits, pooled state fits, IRF and background.
+
+        The five legacy destinations collapse to one object per thing, each at
+        its own grain — see
+        :mod:`chisurf.plugins.burst.burst_mle_analysis.core.export`. The pooled
+        state lifetimes and the IRF go to *every* measurement of the batch
+        because that is what they describe: one pooled fit over all the files,
+        one instrument response used by all of them.
+
+        A failure here must not lose the ``b?4`` files that were already
+        written, so it is reported and the legacy paths are still returned.
+
+        Parameters
+        ----------
+        by_stem : mapping
+            ``{file stem: {detector: table}}``.
+        files_by_stem : mapping
+            ``{file stem: instrument file path}``.
+
+        Returns
+        -------
+        list of Path
+            The containers written.
+        """
+        from chisurf.plugins.burst.burst_mle_analysis.core.export import (
+            write_mle_container,
+        )
+
+        settings = self.batch_settings()
+        experiment = self.experiment_settings()
+        written: list[Path] = []
+        for stem, tables in by_stem.items():
+            source = files_by_stem.get(stem)
+            if source is None:
+                continue
+            try:
+                written.append(Path(write_mle_container(
+                    source, tables,
+                    state_rows=self.state_lifetimes,
+                    experiment=experiment,
+                    parameters=settings,
+                )))
+            except Exception as exc:
+                cs.logging.warning(f"Could not write the container for {stem}: {exc}")
+        return written
 
     @property
     def scatter_count_rate(self) -> float:
@@ -2093,12 +2147,11 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         dets = list(self.channel_definer.detectors.keys())
         for det in dets:
             # create a new subplot
-            p = self.burst_layout.addPlot(title=f"Detector: {det}")
-            p.setLabel('bottom', 'Micro‐time channel')
-            p.setLabel('left', 'Counts')
-            p.setLogMode(x=False, y=True)
-            p.setYRange(-1, 2)
-            p.showGrid(x=True, y=True)
+            p = self.burst_layout.add_plot(title=f"Detector: {det}")
+            p.set_labels(bottom='Micro‐time channel', left='Counts')
+            p.set_log(x=False, y=True)
+            p.set_ylim(-1, 2)
+            p.grid(x=True, y=True)
 
             info = self.channel_definer.detectors[det]
             chs = info['chs']
@@ -2120,10 +2173,10 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             data = np.hstack([cp, cs_hist])
 
             # plot it
-            p.plot(data, pen=None, symbol='o', symbolSize=4)
+            p.scatter(np.arange(data.size), data, size=4)
 
             # move to next row in the grid
-            self.burst_layout.nextRow()
+            self.burst_layout.next_row()
 
     # ── Programmatic UI (replaces the former wizard.ui) ────────────────────
     @staticmethod
@@ -2773,31 +2826,42 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         self.verticalLayout_plots.addWidget(self.groupBox_combined_plot)
 
         # Plot for IRF, Model, and Data
-        self.combined_plot = pg.PlotWidget()
+        self.combined_plot = chiplot.Plot()
 
         # Weighted‐residuals plot
-        self.residual_plot = pg.PlotWidget()
+        self.residual_plot = chiplot.Plot()
         # insert it *above* the decay plot, give it stretch=1 (residual)
         self.verticalLayout_combined_plot.insertWidget(
             0, self.residual_plot, 1
         )
-        self.residual_plot.setLabel('left', 'Weighted residuals')
+        self.residual_plot.set_labels(left='Weighted residuals')
         # link the x‐axes so they pan/zoom together
-        self.residual_plot.setXLink(self.combined_plot)
-        # optional: show grid
-        self.residual_plot.showGrid(x=True, y=True)
+        self.residual_plot.link_x(self.combined_plot)
+        self.residual_plot.grid(x=True, y=True)
 
         # Data plot, give it stretch=3 (combined)
         self.verticalLayout_combined_plot.addWidget(self.combined_plot, 3)
-        self.combined_plot.setLabel('bottom', 'Time (ch.)')
-        self.combined_plot.setLabel('left', 'Intensity')
-        self.combined_plot.setLogMode(y=True)
-        self.combined_plot.setYRange(-1, 5)
+        self.combined_plot.set_labels(bottom='Time (ch.)', left='Intensity')
+        self.combined_plot.set_log(y=True)
+        self.combined_plot.set_ylim(-1, 5)
         # A legend so the four overlaid curves (data, model, IRF, background) are
         # identifiable. Created once and re-populated on each replot: the plot is
         # cleared every fit, so without an explicit legend.clear() the rows would
-        # accumulate a duplicate set per fit. Each plot() call below passes name=.
-        self.combined_legend = self.combined_plot.addLegend(offset=(10, 10))
+        # accumulate a duplicate set per fit. Each line() call below passes name=.
+        self.combined_plot.legend(offset=(10, 10))
+
+        # One decay panel per detector for the burst under inspection.
+        # ``inspect_bursts`` has always drawn into ``self.burst_layout``, and
+        # nothing ever created it: the call site sits inside a bare
+        # ``except Exception: pass``, so the panel raised AttributeError on its
+        # first line and the failure was swallowed. The feature has therefore
+        # never rendered. Creating the grid here is the whole fix.
+        self.groupBox_burst_plot = QtWidgets.QGroupBox("Inspected burst")
+        layout = QtWidgets.QVBoxLayout(self.groupBox_burst_plot)
+        layout.setContentsMargins(0, 0, 0, 0)
+        self.burst_layout = chiplot.Grid()
+        layout.addWidget(self.burst_layout)
+        self.verticalLayout_plots.addWidget(self.groupBox_burst_plot)
 
     def update_variable_fit_parameters(self):
         # A fit parameter changed -> rebuild the fit and re-run so the plot stays
@@ -3259,13 +3323,24 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         self.pass_photon_threshold(data)
         self.decay_of_current_file = data
 
-    def update_fit_ui(self, res: dict):
+    def update_fit_ui(self, res):
+        """Write a finished fit into the result column of the parameter panel.
+
+        Takes a :class:`~chisurf.core.fluorescence.mle.fit2x.Fit2xResult`. It
+        used to subscript ``res`` as a mapping, which the estimators stopped
+        returning: every fit raised ``'Fit2xResult' object is not
+        subscriptable`` on the line after the plot was drawn, so the curves
+        appeared and the numbers beside them never updated.
+
+        The anisotropies are read **by name**, not from ``x[6]``/``x[7]``.
+        Those slots no longer exist — the free parameters and the derived
+        result columns were separated precisely so that no caller has to know a
+        per-estimator layout — and reading them positionally is what the split
+        was meant to stop.
+        """
         # Use property setters to avoid direct widget access and keep side-effects consistent
-        try:
-            x = res.get('x', res['x'])
-        except Exception:
-            x = res['x']
-        two = float(res['twoIstar']) if 'twoIstar' in res else None
+        x = np.asarray(res.x, dtype=float)
+        two = float(res.twoIstar)
 
         # Non-fit23 models write to the registry-driven editor, by schema order.
         if self.fit_model != "fit23" and getattr(self, "_dyn_params", None):
@@ -3273,21 +3348,21 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             form = getattr(self, "_dyn_form", None)
             if form is not None:
                 form.refresh_plots()
-            if two is not None and hasattr(self, "doubleSpinBox_dyn_score"):
+            if hasattr(self, "doubleSpinBox_dyn_score"):
                 self.doubleSpinBox_dyn_score.setValue(two)
             return
 
         # fit23: the authored rows (tau/gamma/r0/rho + anisotropy extras).
-        self.tau_result = float(x[0])
-        self.gamma_result = float(x[1])
-        self.r0_result = float(x[2])
-        self.rho_result = float(x[3])
-        if two is not None:
-            self.twoIstar_result = two
-        if len(x) > 6:
-            self.r_scatter_result = float(x[6])
-        if len(x) > 7:
-            self.r_exp_result = float(x[7])
+        values = res.as_dict()
+        self.tau_result = float(res.tau)
+        self.gamma_result = float(res.gamma)
+        self.r0_result = float(values.get("r0", float("nan")))
+        self.rho_result = float(values.get("rho", float("nan")))
+        self.twoIstar_result = two
+        # NaN when the estimator does not report it, which is the honest answer
+        # and what ``result`` already returns.
+        self.r_scatter_result = float(res.r_scatter)
+        self.r_exp_result = float(res.r_experimental)
 
     def update_window_combobox(self):
         dets = list(self.channel_definer.detectors.keys())
@@ -4043,11 +4118,10 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         # clear both panels
         self.combined_plot.clear()
         self.residual_plot.clear()
-        # The legend survives clear(); empty it so the replotted curves below add
-        # exactly one row each rather than stacking a fresh set every fit.
-        legend = getattr(self, "combined_legend", None)
-        if legend is not None:
-            legend.clear()
+        # The legend survives clear(); ask for it again so the replotted curves
+        # below add exactly one row each rather than stacking a fresh set every
+        # fit — chiplot's legend() replaces the previous box.
+        self.combined_plot.legend(offset=(10, 10))
         sb, eb = self.micro_time_range
 
         # only plot if we actually loaded IRF *and* BG for this detector
@@ -4086,12 +4160,11 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             cap = float(np.nanmax(data_rng)) * 10.0
             if cap > 0:
                 model_disp = np.clip(model_disp, 0.0, cap)
-        self.combined_plot.plot(data_rng,
-                                pen=None,
-                                symbol='o',
-                                symbolSize=3,
-                                name='Data (VV|VH)')
-        self.combined_plot.plot(model_disp, pen='g', name='Model (fit)')
+        channels = np.arange(data_rng.size)
+        self.combined_plot.scatter(channels, data_rng, size=3,
+                                   name='Data (VV|VH)')
+        self.combined_plot.line(channels, model_disp, pen='g',
+                                name='Model (fit)')
 
         # Plot IRF & BG within per-channel windows
         irf_full = self.irf.astype(np.float64, copy=True)
@@ -4123,8 +4196,10 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         # The tail fit does not deconvolve the IRF, so an IRF overlay would be
         # misleading (and may be a synthetic fallback of the wrong length).
         if self.fit_model != "tail":
-            self.combined_plot.plot(irf_rng, pen='r', name='IRF')
-        self.combined_plot.plot(bg_rng, pen='b', name='Background')
+            self.combined_plot.line(np.arange(irf_rng.size), irf_rng,
+                                    pen='r', name='IRF')
+        self.combined_plot.line(np.arange(bg_rng.size), bg_rng,
+                                pen='b', name='Background')
 
         # compute & plot weighted residuals
         data = np.asarray(view.data, dtype=float)
@@ -4135,7 +4210,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         resid[mask] = (data[mask] - model[mask]) / np.sqrt(data[mask])
 
         # draw residuals in the top panel only within per-channel ranges
-        pen = pg.mkPen(color=(200, 20, 20), width=1)
+        pen = chiplot.to_pen((200, 20, 20), width=1)
         resid = np.asarray(resid)
         n = len(resid) // 2
         vv_sb, vv_eb, vh_sb, vh_eb = self._get_channel_ranges_bins()
@@ -4143,10 +4218,8 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         vh_sb = max(0, int(vh_sb)); vh_eb = min(n, int(vh_eb)) if vh_eb is not None else n
         resid_rng = np.hstack([resid[0:n][vv_sb:vv_eb], resid[n:2*n][vh_sb:vh_eb]])
 
-        self.residual_plot.plot(resid_rng,
-                                pen=pen,
-                                symbol='o',
-                                symbolSize=3)
+        self.residual_plot.line(np.arange(resid_rng.size), resid_rng,
+                                pen=pen, symbol='o', symbol_size=3)
 
         # Pin both plots to sane ranges. A background-dominated or diverged fit
         # can make the model / scaled background span ~1e±27, which explodes
@@ -4163,17 +4236,17 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         import math
         d = np.asarray(data_rng, dtype=float)
         d = d[np.isfinite(d) & (d > 0)]
-        vb = self.combined_plot.getViewBox()
+        # Setting an explicit range is itself what turns the axis' auto-range
+        # off, so there is nothing to disable first.
         try:
-            vb.enableAutoRange(axis=vb.YAxis, enable=False)
             if d.size:
                 lo = math.log10(max(float(d.min()) * 0.5, 1e-2))
                 hi = math.log10(float(d.max()) * 3.0)
                 if hi <= lo:
                     hi = lo + 1.0
-                self.combined_plot.setYRange(lo, hi, padding=0.0)
+                self.combined_plot.set_ylim(lo, hi, padding=0.0)
             else:
-                self.combined_plot.setYRange(-1, 5, padding=0.0)
+                self.combined_plot.set_ylim(-1, 5, padding=0.0)
         except Exception:
             pass
 
@@ -4181,12 +4254,10 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         """Clamp the residual view to a symmetric band so a bad fit can't run off."""
         r = np.asarray(resid_rng, dtype=float)
         r = r[np.isfinite(r)]
-        vb = self.residual_plot.getViewBox()
         try:
-            vb.enableAutoRange(axis=vb.YAxis, enable=False)
             span = float(np.nanpercentile(np.abs(r), 99)) if r.size else 5.0
             span = max(span, 5.0)
-            self.residual_plot.setYRange(-span, span, padding=0.05)
+            self.residual_plot.set_ylim(-span, span, padding=0.05)
         except Exception:
             pass
 

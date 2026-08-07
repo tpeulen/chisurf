@@ -153,3 +153,60 @@ def test_no_wizard_code_reads_curves_off_the_fitter():
         "read the fitted curves from self._fit_view, not from the fitter:\n"
         + "\n".join(offenders)
     )
+
+
+def test_a_result_is_read_by_name_and_not_subscripted():
+    """The same class of bug, one layer on: the *result* is not a mapping.
+
+    ``update_fit_ui`` subscripted ``res`` — ``res['x']``, ``'twoIstar' in
+    res`` — which the estimators stopped returning when the typed
+    :class:`Fit2xResult` replaced the dict. Every fit therefore raised
+    ``'Fit2xResult' object is not subscriptable`` on the line *after* the plot
+    was drawn, so the curves updated and the numbers beside them did not.
+
+    It also read the anisotropies from ``x[6]``/``x[7]``. Those slots do not
+    exist: the free parameters and the derived result columns were separated
+    precisely so that no caller has to know a per-estimator layout, and reading
+    them positionally is what the split was meant to stop.
+    """
+    settings = _settings()
+    fitter = Fit2x(settings, model=Fit2xModel.FIT23)
+    result = fitter.fit(
+        _decay(settings), initial_values=[2.0, 0.0, 0.38, 1.2],
+        fixed=[0, -1, -1, -1], include_model=True,
+    )
+
+    with pytest.raises(TypeError):
+        result["x"]                       # the shape the call site assumed
+
+    assert np.asarray(result.x).size >= 4
+    assert np.isfinite(float(result.twoIstar))
+    assert "rho" in result.as_dict()
+    # NaN when the estimator does not report it -- a value either way, so the
+    # panel never has to guess from the length of x.
+    for value in (result.r_scatter, result.r_experimental):
+        assert isinstance(float(value), float)
+
+
+def test_the_wizard_does_not_subscript_a_fit_result():
+    """A guard for the call sites, since the end-to-end test is skipped here."""
+    import re
+
+    source = (
+        pathlib.Path(__file__).resolve().parents[1] / "wizard.py"
+    ).read_text()
+
+    offenders = []
+    for n, line in enumerate(source.splitlines(), start=1):
+        code = line.split("#", 1)[0]
+        # Named keys only: `res` is also a DataFrame in the export path, where
+        # subscripting it is exactly right.
+        if re.search(r"\bres\[[\"'](x|twoIstar|fixed|results|model_curve)[\"']\]", code) \
+                or re.search(r"[\"'](x|twoIstar)[\"']\s+in\s+res\b", code):
+            offenders.append(f"{n}: {line.strip()}")
+
+    assert not offenders, (
+        "a Fit2xResult is read by attribute (res.x, res.twoIstar, "
+        "res.as_dict(), res.result(name)), never subscripted:\n"
+        + "\n".join(offenders)
+    )

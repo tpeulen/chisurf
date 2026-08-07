@@ -1022,6 +1022,14 @@ class Grid(QtWidgets.QWidget):
         """Advance the implicit insertion cursor to the next row."""
         self._grid.next_row()
 
+    def clear(self) -> None:
+        """Remove every panel, and reset the insertion cursor to the first cell.
+
+        Panels obtained from :meth:`add_plot` before this call are gone; a
+        rebuild must ask for new ones.
+        """
+        self._grid.clear()
+
     @property
     def native(self):
         """The backend grid object (escape hatch; avoid in new code)."""
