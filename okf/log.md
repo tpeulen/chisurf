@@ -2,6 +2,36 @@
 
 ## 2026-08-07
 
+* **[PRD-86](prds/prd-86.md) scoped: an in-tree segmentation core to finish
+  closing scikit-image out of imaging.** Asked whether `scikit-image` could be
+  dropped outright (a natural follow-on to the same-day `pdb2pqr` removal):
+  no — `chisurf/plugins/microscopy/sm_image_mle/core/molecule_mle.py`'s
+  `segment_molecules` is the plugin's real segmentation pipeline (Gaussian
+  smooth, Otsu threshold, clear-border, distance-transform watershed seeded
+  on local maxima) and imports `skimage` unconditionally with no fallback;
+  `chisurf/core/fluorescence/imaging/colocalization/objects.py`'s
+  `_watershed_split` uses the same `peak_local_max`/`watershed` pair but
+  already degrades gracefully via `try/except ImportError`, which is the
+  target shape both should reach. Of the four functions actually called,
+  Gaussian smoothing needs no port (`scipy.ndimage.gaussian_filter` already
+  does it — `objects.py` already calls it directly elsewhere); Otsu and
+  border-clearing are small; local-maxima and marker-controlled watershed are
+  the real work, sized against the in-tree `marching_cubes.py` port rather
+  than against `pdb2pqr`'s single geometrically-determined atom — the two
+  are the same *pattern* (own the numerics, prove parity, drop the
+  dependency) but not the same *size*, stated plainly in the PRD so it is not
+  underscoped by analogy. `chisurf.core.roi.props` already did exactly this
+  for `skimage.measure.regionprops` (property-for-property, parity-tested
+  against the real implementation in `test/core/test_regionprops.py`), so the
+  new module (`chisurf/core/roi/segmentation.py`, proposed) has both a
+  worked template and a natural home beside it. Also found and fixed while
+  scoping, unrelated to the port itself: `chisurf/plugins/microscopy/clsm/api/clsm.py`
+  did `import skimage as ski; ski.io.imsave(...)` for every non-`.npy` output
+  — the exact retired-`imageio` path `test_no_module_imports_skimage_io`
+  bans, slipped past the guard's regex via the aliased import. `.tif`/`.tiff`
+  now goes through `chisurf.core.fio.image.imwrite`; anything else (a
+  preview, not a measurement) through Pillow, already a dependency.
+
 * **[PRD-82](prds/prd-82.md): the last 3 pandas ports landed, and one of them
   fixed a real data-corruption bug on the way** ([columnar
   store](subsystems/columnar-store.md), [burst
@@ -95,6 +125,14 @@
   in one growing file: an audit of the plugins that plot raw `macro_times`/`micro_times`
   at full resolution, and a shared decimation budget on `chiplot`'s `line`/`scatter`
   so those plots stop trying to draw millions of points.
+
+* **A curve stops being five formats** ([photon container](subsystems/photon-container.md), [PTO.MFDB](specs/pto-mfdb.md)). The consolidation the `.pto` switch made visible: ChiSurf reads about a dozen curve formats — which is *correct*, an instrument writes one and a collaborator's software another — but it was **writing** five. A decay could be saved as CSV, as YAML, through `save_xy`, through the vv/vh stack, or through an FCS writer.
+
+  All five are the same five arrays: x, y, and optionally the two uncertainties and the mask. What differs between a decay, a correlation and an anisotropy is what the axes *mean* — and not one of the five could say. **An FCS lag axis is milliseconds and a TCSPC axis is nanoseconds; reading one for the other gives a diffusion time wrong by a factor of a million, with no error anywhere.** Only one of the five kept the mask, which is also part of the result: which points a fit ignored is not decoration.
+
+  A curve is now a `curve_point` artifact — `Measurement.put_curve`/`get_curve`, and `DataCurve.save`/`load` route through it. `ex`/`ey`/`mask` are written **only when they carry information**, because a zero uncertainty is a claim and a curve that never had one should not make it. The readers that know the axis now record it, since that is the only place the knowledge exists.
+
+  The rule is a split by *direction*, not a count, and it is written into the spec and the concept page: readers are free, writers are one per kind of thing, and everything else is an import source or an export the user asks for by name. `test/test_formats_are_consolidated.py` holds the shrinking allow-list and pins that the reader count must *not* shrink — so the guard can never be satisfied by deleting import paths.
 
 * **`.pto` is the default now, not an option** ([photon container](subsystems/photon-container.md), [PTO.MFDB](specs/pto-mfdb.md)). Stated as an objective: `.pto` is ChiSurf's file type for TTTR data. A vendor file is an *import source* — `staging.import_measurement` turns one into its container, the file-open widget calls it, and `AnalysisSettings.output_formats` defaults to `["pto"]`. The original is never moved, altered or deleted, and stays byte-for-byte recoverable.
 
