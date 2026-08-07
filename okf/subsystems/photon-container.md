@@ -9,6 +9,31 @@ timestamp: '2026-08-06T00:00:00Z'
 
 # Where to pick this up
 
+**A container is addressed like a folder, and that is one scheme.**
+`chisurf.core.fio.analysis_path` is the only place that knows the grammar
+(`m000.pto/countrate_All 0.2000#60`), and it is deliberately not about bursts —
+`read_tables` / `write_tables` / `list_runs` / `export_tree` are what a tool
+calls instead of sniffing for a suffix. Three plugins had grown their own `.pto`
+branch before it, each with its own idea of which of several analyses it meant.
+A run is named inside the container exactly as the folder layout names its
+directory, so the two layouts are the same thing seen from either side.
+
+Consequences worth not re-deriving:
+
+* **Unpacking is the whole conversion.** `extract` returns the instrument files
+  byte for byte *and* one folder per analysis as CSV. `disassemble` writes only
+  what the container was packed from — it had been dumping the analysis blobs
+  beside the vendor file, producing a file named `bursts` that nothing opens.
+* **Inside, the tables are binary columns**; text is for leaving. That is what
+  makes opening a container of many analyses cheap.
+* **`Measurement._resolve` accepts a bare table name.** `get_store("bursts")`
+  still finds `"<run>/bursts"`, which is what keeps every caller written before
+  runs existed working.
+* **`disassemble` creates the directories a name implies.** tttrlib's writer
+  takes an object name as a relative path but does not make its parents, so the
+  first name with a slash in it fails; filed in tttrlib's `BUGS.md`.
+
+
 0. **An end-to-end run on 2026-08-07 (ten `.spc` → one `.pto` → burst search →
    ndX, plus a CLSM `.ptu` → `.pto` → imaging) found four container-level
    faults. Three are fixed; the fourth is upstream.** They are listed first
