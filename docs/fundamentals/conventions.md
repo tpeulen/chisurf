@@ -124,23 +124,69 @@ multiparameter experiment:
 
 ## Units
 
-ChiSurf works in nanoseconds for lifetimes and correlation times, and uses
-per-molecule (Boltzmann) rather than molar (gas-constant) forms of
+Every number ChiSurf holds is a plain number in a fixed unit. Nothing carries a
+unit with it and nothing converts behind your back, so the table below is the
+whole contract — a value you type into a field, read off a plot or find in a
+file is in the unit given here.
+
+| Quantity | Unit |
+|---|---|
+| Fluorescence lifetime $\tau$, decay time axis | nanoseconds |
+| Rotational correlation time $\rho$ | nanoseconds |
+| FCS correlation time, diffusion time $\tau_D$ | **milliseconds** |
+| Burst duration, macro time | milliseconds |
+| Micro-time (TAC) resolution | picoseconds |
+| Macro-time resolution | nanoseconds |
+| Count rate | kilohertz |
+| $R_0$, $R_{DA}$, distance distributions | ångström |
+| Atomic coordinates, radius of gyration | ångström |
+| Wavelength | nanometres |
+
+Two of these surprise people, and both are deliberate.
+
+**Times are not all the same.** A fluorescence lifetime is nanoseconds and an
+FCS correlation time is milliseconds, because that is what each field publishes;
+forcing one unit on both would make one of them a number with six leading zeros.
+The unit follows the *quantity*, not the dimension — $\tau$, $\rho$ and $\tau_D$
+are all times and are not all in the same unit.
+
+Note the two things called a correlation time. The **rotational** correlation
+time $\rho$ of an anisotropy decay shares the decay's nanosecond axis; the
+**translational** diffusion time $\tau_D$ of an FCS curve is milliseconds. They
+differ by roughly six orders of magnitude and are easy to conflate by name
+alone.
+
+**Lengths are all ångström.** Structures, Förster radii, fitted distances and
+distance distributions alike. Coordinates were once held in nanometres
+internally, which meant a distance computed from coordinates and a distance
+fitted from a decay could differ by a factor of ten with nothing to warn you;
+they no longer do. The one file format that is genuinely nanometres is
+**GROMACS XTC**, and it is converted on the way in — every other structure
+format ChiSurf reads (PDB, mmCIF, DCD) is already ångström.
+
+ChiSurf uses per-molecule (Boltzmann) rather than molar (gas-constant) forms of
 thermodynamic relations.
 
-Distances are the exception to any single rule. The Förster radius formula is
-evaluated with $J$ in M⁻¹ cm⁻¹ nm⁴ and the prefactor $0.02108$, which yields
-$R_0$ in nanometres ({ref}`concept-fret`) — but
-{src}`chisurf/core/fluorescence/fret/forster.py#forster_radius` converts and
-returns ångström, and structural code works in ångström throughout because that
-is what PDB files carry. Check the units of an $R_0$ before combining it with a
-distance from anywhere else. Literature formulas in ångström use a prefactor of
-$9.78\times10^3$, and some are written for $J$ in M⁻¹ cm³, differing by powers
-of ten that are easy to miss.
+:::{warning}
+The Förster-radius formula is evaluated with $J$ in M⁻¹ cm⁻¹ nm⁴ and the
+prefactor $0.02108$, which yields $R_0$ in **nanometres**
+({ref}`concept-fret`); {src}`chisurf/core/fluorescence/fret/forster.py#forster_radius`
+converts and returns ångström. Literature formulas written in ångström use a
+prefactor of $9.78\times10^3$, and some are written for $J$ in M⁻¹ cm³. The
+difference is a power of ten and is easy to miss — check the units of an $R_0$
+before combining it with a distance from anywhere else.
+:::
 
 Spectra carry a units convention too: an emission spectrum per unit wavelength
 and the same spectrum per unit wavenumber have different shapes, and the overlap
 integral is defined on one of them ({ref}`fundamentals-absorption-emission`).
+
+### Units in saved files
+
+A ChiSurf photon container (`.pto`) records the unit of every column beside the
+column itself, so a table read back says what its numbers are without relying on
+the column name. Names like `Duration (ms)` are still written for people and for
+older tools, but they are no longer the only record.
 
 ## See also
 

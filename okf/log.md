@@ -33,6 +33,16 @@
 
 ## 2026-08-06
 
+* **The units are written down where a user reads them, and one of them was wrong** ([conventions](../docs/fundamentals/conventions.md)).
+
+  `docs/fundamentals/conventions.md` said ChiSurf "works in nanoseconds for lifetimes and correlation times". An FCS correlation time is **milliseconds** — that was a user-facing factual error, and exactly the kind a translation table exists to prevent. The section now carries the whole table and says plainly that nothing converts behind your back, so the table *is* the contract.
+
+  Two things it now disambiguates. **Times are not all the same**: τ is ns, τ_D is ms, and the unit follows the quantity rather than the dimension. And there are **two things called a correlation time** — the rotational ρ of an anisotropy decay shares the ns axis, the translational τ_D of an FCS curve is ms, six orders of magnitude apart and easy to conflate by name alone.
+
+  "Distances are the exception to any single rule" is also gone, because they no longer are: lengths are ångström everywhere, structures included.
+
+  **chimol needed no change and is the evidence.** It already said "XTC is nanometres; the rest of ChiSurf/Moview works in Angstrom", read DCD as "already Angstrom", and kept its VdW radii in Å. So before this, chimol and `TrajectoryData` read the *same DCD file* to different units — chimol Å, the core nm. They agree now.
+
 * **No nanometres for structures — mmCIF is authoritative, and it says ångströms** ([PRD-84](prds/prd-84.md)).
 
   Checked rather than assumed: mmCIF declares `angstroms` on `_atom_site.Cartn_x`, and upstream flrCIF declares it on `_flr_fret_distance_restraint.distance` and `_flr_fret_model_distance.distance`. PDB is Å, DCD is Å, the AV code is Å, every FRET distance is Å. Coordinates in memory were **nanometres**, which was mdtraj's convention and nothing else's — and mdtraj has been retired since PRD-80, so nothing in the stack wanted nm at all.

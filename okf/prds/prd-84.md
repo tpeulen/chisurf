@@ -87,7 +87,8 @@ instead of a pattern somebody has to notice.
 | Quantity | Internal unit | Where this is already true |
 | --- | --- | --- |
 | Fluorescence lifetime, decay time axis | **nanoseconds** | `core/models/tcspc/lifetime.py` — starting values, bounds and prose are all ns |
-| FCS/FCCS correlation time, diffusion time | **milliseconds** | `core/models/fcs/` — `τ_D[ms]`, `t_d,min[ms]`, bunching `b_t[ms]` |
+| FCS correlation time, diffusion time τ_D | **milliseconds** | `core/models/fcs/` — `τ_D[ms]`, `t_d,min[ms]`, bunching `b_t[ms]` |
+| Rotational correlation time ρ | **nanoseconds** | `core/models/tcspc/anisotropy.py` — shares the decay's ns axis, and is *not* the FCS correlation time |
 | Burst duration, macro time | **milliseconds** | burst tables: `Duration (ms)`, `Mean Macro Time (ms)` |
 | TAC / micro time resolution | **picoseconds** | `_mmfdb_setup.micro_time_resolution` |
 | Macro time resolution | **nanoseconds** | `_mmfdb_setup.macro_time_resolution` |
