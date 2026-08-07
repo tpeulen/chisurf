@@ -578,8 +578,13 @@ def test_mmfdb_only_output_runs_batch_analysis(tmp_path: Path, monkeypatch: obje
     assert "No output format selected." not in summary_text
 
 
-def test_mmfdb_only_output_keeps_zip_controls_disabled() -> None:
-    """MMFDB-only output should not expose packaging controls for file outputs."""
+def test_a_container_source_keeps_the_folder_controls_disabled() -> None:
+    """Zipping and removing act on the companion *folder*.
+
+    A `.pto` measurement keeps its bursts inside itself, so there is no folder
+    for either control to act on. They used to be gated on an output-format
+    checkbox; the format is decided by the input now, so the gate is too.
+    """
 
     class FakeCheck:
         """Minimal checkbox stand-in with mutable state."""
@@ -598,8 +603,7 @@ def test_mmfdb_only_output_keeps_zip_controls_disabled() -> None:
             self.enabled = enabled
 
     tool = BurstSelectionTool.__new__(BurstSelectionTool)
-    tool.csv_output_check = FakeCheck(False)
-    tool.hdf_output_check = FakeCheck(False)
+    tool.__dict__["_file_paths"] = [Path("m000.pto")]
     tool.mmfdb_output_check = FakeCheck(True)
     tool.zip_output_check = FakeCheck(True)
     tool.remove_folder_check = FakeCheck(True)
@@ -609,7 +613,57 @@ def test_mmfdb_only_output_keeps_zip_controls_disabled() -> None:
     assert tool.zip_output_check.enabled is False
     assert tool.zip_output_check.checked is False
     assert tool.remove_folder_check.enabled is False
-    assert tool.remove_folder_check.checked is False
+
+
+def test_a_vendor_source_leaves_the_folder_controls_available() -> None:
+    """There is a folder to zip when the source cannot hold the results."""
+
+    class FakeCheck:
+        """Minimal checkbox stand-in with mutable state."""
+
+        def __init__(self, checked: bool) -> None:
+            self.checked = checked
+            self.enabled = True
+
+        def isChecked(self) -> bool:
+            return self.checked
+
+        def setChecked(self, checked: bool) -> None:
+            self.checked = checked
+
+        def setEnabled(self, enabled: bool) -> None:
+            self.enabled = enabled
+
+    tool = BurstSelectionTool.__new__(BurstSelectionTool)
+    tool.__dict__["_file_paths"] = [Path("m000.spc")]
+    tool.mmfdb_output_check = FakeCheck(False)
+    tool.zip_output_check = FakeCheck(True)
+    tool.remove_folder_check = FakeCheck(False)
+
+    BurstSelectionTool._sync_output_format_controls(tool)
+
+    assert tool.zip_output_check.enabled is True
+    assert tool.zip_output_check.checked is True
+
+
+def test_the_destination_follows_the_input() -> None:
+    """`.pto` in, `.pto` out; anything else gets the companion folder.
+
+    Called against a plain namespace rather than a half-built tool: the method
+    reads one attribute, and `BurstSelectionTool.__new__` without `__init__`
+    raises from PyQt when it is collected.
+    """
+    from types import SimpleNamespace
+
+    decide = BurstSelectionTool._output_formats_for_inputs
+    assert decide(SimpleNamespace(_file_paths=[Path("m000.pto")])) == ["pto"]
+    assert decide(SimpleNamespace(_file_paths=[Path("m000.spc")])) == ["bur"]
+    # Each measurement still gets the one destination it can use.
+    assert decide(
+        SimpleNamespace(_file_paths=[Path("a.pto"), Path("b.ptu")])
+    ) == ["pto", "bur"]
+    # Nothing loaded: the container, which is what a fresh panel should say.
+    assert decide(SimpleNamespace(_file_paths=[])) == ["pto"]
 
 
 def test_selected_file_paths_support_multiple_selection() -> None:

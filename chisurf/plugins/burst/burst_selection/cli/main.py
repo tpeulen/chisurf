@@ -174,16 +174,16 @@ def analyze(
         )
         return
 
-    # A `.bur`/`.hdf5` companion needs somewhere to be written: either an
-    # explicit --output-dir or the legacy burstwise folder. Without one of the
-    # two the request is honoured for `pto` only and the other formats are
-    # dropped -- so resolve it here rather than let the run report success
-    # having written nothing the caller asked for.
-    wants_folder = bool({"bur", "hdf5"} & set(settings.output_formats))
+    # A `.bur` companion needs somewhere to be written: either an explicit
+    # --output-dir or the legacy burstwise folder. Without one of the two the
+    # request is honoured for `pto` only and the companion is dropped -- so
+    # resolve it here rather than let the run report success having written
+    # nothing the caller asked for.
+    wants_folder = "bur" in settings.output_formats
     legacy = legacy_output if legacy_output is not None else (wants_folder and not output_dir)
     if wants_folder and not legacy and not output_dir:
         raise click.UsageError(
-            "--format bur/hdf5 needs somewhere to write: pass --output-dir, or "
+            "--format bur needs somewhere to write: pass --output-dir, or "
             "--legacy-output for the burstwise companion folder."
         )
 

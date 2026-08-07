@@ -87,12 +87,18 @@ def proximity_ratio_from_frame(frame):
 
 def analysis_settings_from_wizard(wizard: Any) -> AnalysisSettings:
     """Create API analysis settings from a BurstSelectionTool instance."""
-    # Always the container; the legacy folder is an extra beside it.
+    # Always the container; the legacy folder is an extra beside it. The two
+    # extras are read defensively because they are *extras*: a caller that has
+    # no output-format checkboxes at all (the settings round-trip, a headless
+    # driver) still has settings worth building, and requiring the widgets made
+    # this raise `AttributeError` instead of returning them.
+    def _checked(name: str) -> bool:
+        box = getattr(wizard, name, None)
+        return bool(box is not None and box.isChecked())
+
     output_formats = ["pto"]
-    if wizard.checkBox_FileCSV.isChecked():
+    if _checked("checkBox_FileCSV"):
         output_formats.append("bur")
-    if wizard.checkBox_FileMFDHDF.isChecked():
-        output_formats.append("hdf5")
     settings = AnalysisSettings(
         output_formats=output_formats,
         zip_output=bool(wizard.checkBox_ZipOutput.isChecked()),
@@ -310,7 +316,11 @@ def apply_analysis_settings_to_wizard(wizard: Any, settings: Any) -> list[str]:
     def _check(widget_name: str, value: Any) -> None:
         widget = getattr(wizard, widget_name, None)
         if widget is None or value is None:
-            if value is not None:
+            # A missing widget is only a *loss* when there was something to
+            # restore into it. Reporting `False` against a wizard that has no
+            # such checkbox says a setting was dropped when nothing was: there
+            # is nothing to uncheck, and the caller reads this list as damage.
+            if value:
                 skipped.append(widget_name)
             return
         try:
@@ -326,10 +336,10 @@ def apply_analysis_settings_to_wizard(wizard: Any, settings: Any) -> list[str]:
         except Exception as exc:
             skipped.append(f"{label}: {exc}")
 
-    formats = data.get("output_formats")
-    if formats is not None:
-        _check("checkBox_FileCSV", "bur" in formats)
-        _check("checkBox_FileMFDHDF", "hdf5" in formats)
+    # `output_formats` is deliberately *not* restored: where the results go is
+    # decided by what was loaded (a `.pto` keeps them, anything else gets the
+    # companion folder), so there is no control to put it back into and a
+    # stored value from an older project must not override the input.
     _check("checkBox_ZipOutput", data.get("zip_output"))
     _check("checkBox_RemoveFolder", data.get("remove_folder"))
 

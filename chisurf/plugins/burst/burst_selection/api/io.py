@@ -13,7 +13,6 @@ from chisurf.core.fio.fluorescence.burst_container import (
 )
 from chisurf.core.fio.fluorescence.burst import (
     read_bur_file,
-    write_burst_hdf5,
     write_dataframe_to_bur,
 )
 
@@ -166,36 +165,6 @@ def get_unique_folder_path(base_path: Path) -> Path:
         if not _name_taken(candidate):
             return candidate
         counter += 1
-
-
-def write_hdf5(
-    dataframes: Sequence,
-    path: str | Path,
-    complib: str | None = None,
-) -> None:
-    """Write one or more burst DataFrames to a columnar HDF5 file.
-
-    One dataset per column, in the column's own dtype, with a text column stored
-    as its dictionary codes and labels. That replaces the hand-rolled encoding
-    this used to do -- ``int32`` category codes plus a ``category_map`` JSON
-    attribute -- with the same thing done by the container, so ``Source File``
-    and ``First File`` come back as file names rather than as integers whose key
-    nothing in this tree ever read.
-
-    Parameters
-    ----------
-    dataframes : sequence of column-addressable tables
-        Burst summary tables to combine.
-    path : str or Path
-        Output ``.h5`` path.
-    complib : str, optional
-        Ignored, and kept so callers do not have to change. These files are
-        written once per analysis and read repeatedly, and compressing them
-        costs roughly thirty times the write to save eight percent of the size.
-    """
-    target = Path(path)
-    target.parent.mkdir(parents=True, exist_ok=True)
-    write_burst_hdf5(dataframes, target)
 
 
 def zip_output_folder(output_folder: Path, zip_path: str | Path | None = None) -> Path:

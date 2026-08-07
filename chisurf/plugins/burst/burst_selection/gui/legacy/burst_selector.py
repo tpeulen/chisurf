@@ -525,8 +525,6 @@ class BurstSelectionTool(QtWidgets.QMainWindow):
         # First, save the selection (ensures all bursts are processed)
         # Determine which output types to use based on the state of both checkboxes
         output_types = set()
-        if self.checkBox_FileMFDHDF.isChecked():
-            output_types.add("hdf5")
         if self.checkBox_FileCSV.isChecked():
             output_types.add("bur")
             

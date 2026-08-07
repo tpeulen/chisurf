@@ -686,6 +686,25 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
             )
             s = np.logical_and(s, sel)
 
+        elif self.used_filter == 'tttrlib':
+            # The registry searches had no branch here at all, so selecting one
+            # left this property returning the delta-macro-time interval and
+            # nothing else — and the Info panel then reported *that* as the
+            # bursts. On the bundled measurement it announced 2739 bursts of 170
+            # photons above a run that found 1130: not a disagreement between
+            # two implementations of one search, but a panel that was not
+            # running a search.
+            from chisurf.core.fluorescence.burst.tttrlib_search import (
+                tttrlib_burst_filter,
+            )
+
+            sel = tttrlib_burst_filter(
+                tttr=tttr,
+                algorithm=self.tttrlib_algorithm,
+                parameters=self.tttrlib_parameters,
+            )
+            s = np.logical_and(s, np.asarray(sel, dtype=bool))
+
         # Apply invert logic if the invert checkbox is checked (for all filter modes)
         # First check top-level setting, then fall back to count_rate_filter for backward compatibility
         if self.settings.get('invert_filter', False) and self.used_filter != 'count_rate':

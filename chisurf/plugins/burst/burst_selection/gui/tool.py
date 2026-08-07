@@ -912,35 +912,26 @@ class BurstSelectionTool(ChisurfDockTool):
         group_layout.setSpacing(2)
         format_layout = QtWidgets.QHBoxLayout()
         format_layout.setSpacing(2)
-        # The container is not a choice: it is where a measurement's results
-        # live. Shown, disabled, and checked, so the panel says what happens
-        # rather than leaving the user to infer it from the absence of a box.
-        self.pto_output_check = QtWidgets.QCheckBox("Container (.pto)", group)
-        self.pto_output_check.setChecked(True)
-        self.pto_output_check.setEnabled(False)
-        self.pto_output_check.setToolTip(
-            "The bursts are written into the measurement's own .pto file, "
-            "beside the photons. Always on."
+        # Where the results go is not a choice: it follows the input. A `.pto`
+        # already holds the photons, so the bursts go in beside them; anything
+        # else has nowhere to put them and gets the tab-separated companion
+        # folder external tools read. Three checkboxes offering combinations of
+        # the two (plus an MFD-HDF5 that had been disabled for a long time) let
+        # a run be configured to write the same bursts in two places, or in
+        # none, and the label is the honest thing to show instead.
+        self.output_destination_label = QtWidgets.QLabel("", group)
+        self.output_destination_label.setToolTip(
+            "A .pto measurement keeps its bursts inside itself; a vendor file "
+            "gets the bi4_bur/ companion folder beside it."
         )
-        self.csv_output_check = QtWidgets.QCheckBox("Seidel folder", group)
-        self.csv_output_check.setToolTip(
-            "Also write the legacy bi4_bur/ companion folder, for tools that "
-            "read it."
-        )
-        self.hdf_output_check = QtWidgets.QCheckBox("MFD-HDF", group)
-        self.hdf_output_check.setEnabled(False)
         self.mmfdb_output_check = QtWidgets.QCheckBox("MMFDB", group)
         self.zip_output_check = QtWidgets.QCheckBox("Zip Output", group)
         self.remove_folder_check = QtWidgets.QCheckBox("Remove Folder", group)
-        format_layout.addWidget(self.pto_output_check)
-        format_layout.addWidget(self.csv_output_check)
-        format_layout.addWidget(self.hdf_output_check)
+        format_layout.addWidget(self.output_destination_label)
         format_layout.addWidget(self.mmfdb_output_check)
         format_layout.addWidget(self.zip_output_check)
         format_layout.addWidget(self.remove_folder_check)
         group_layout.addLayout(format_layout)
-        self.csv_output_check.stateChanged.connect(self._sync_output_format_controls)
-        self.hdf_output_check.stateChanged.connect(self._sync_output_format_controls)
         self.mmfdb_output_check.stateChanged.connect(self._sync_output_format_controls)
         self.zip_output_check.stateChanged.connect(self._sync_output_format_controls)
         layout.addWidget(group)
@@ -1572,25 +1563,21 @@ class BurstSelectionTool(ChisurfDockTool):
 
         threshold = int(self.wizard.min_ph)
         time_window = float(self.wizard.spinBox.value() if hasattr(self.wizard, 'spinBox') else DEFAULT_TIME_WINDOW_MS) / 1000.0
-        if used_filter in (BurstFilterMode.BURST, BurstFilterMode.BOCPD, BurstFilterMode.KALMAN, BurstFilterMode.CUSUM):
-            burst_detection = BurstDetectionSettings(
-                min_photons=threshold,
-                photon_window=self.wizard.ph_window,
-                time_window=time_window,
-            )
-        else:
-            burst_detection = BurstDetectionSettings(
-                min_photons=DEFAULT_MIN_PHOTONS,
-                photon_window=self.wizard.ph_window,
-                time_window=time_window,
-            )
+        # The number in the "Min photons" box, whatever the mode. It used to be
+        # honoured for the sliding-window/CUSUM/Kalman modes and replaced by the
+        # constant 60 for count-rate and the tttrlib registry searches -- back
+        # when it was a *search* parameter that only some searches took. It is a
+        # burst-level criterion now (`drop_short_bursts`), so every mode has one,
+        # and substituting a constant meant the control did nothing in the two
+        # most-used modes: the Info panel previewed the user's number and the run
+        # used 60, which is 2739 bursts against 1130 on the same measurement.
+        burst_detection = BurstDetectionSettings(
+            min_photons=threshold,
+            photon_window=self.wizard.ph_window,
+            time_window=time_window,
+        )
 
-        # Always the container; the rest are extras written beside it.
-        output_formats = ["pto"]
-        if self.csv_output_check.isChecked():
-            output_formats.append("bur")
-        if self.hdf_output_check.isChecked():
-            output_formats.append("hdf5")
+        output_formats = self._output_formats_for_inputs()
 
         photon_filter = photon_filter_settings_from_wizard(self.wizard)
 
@@ -2818,6 +2805,11 @@ class BurstSelectionTool(ChisurfDockTool):
         # Auto-select first file if available (after unblocking signals)
         if self.file_list.count() > 0:
             self.file_list.setCurrentRow(0)
+        # The destination follows the input, so it changes when the input does.
+        try:
+            self._sync_output_format_controls()
+        except (AttributeError, RuntimeError):
+            pass
 
     def _on_file_selected(self) -> None:
         """Handle file selection in the file list and generate plots for the selected file."""
@@ -3171,11 +3163,54 @@ class BurstSelectionTool(ChisurfDockTool):
         except Exception:
             plot.setYRange(lower, upper, padding=0.02)
 
+    def _output_formats_for_inputs(self) -> list[str]:
+        """Return where this run's results go, decided by what was loaded.
+
+        Not a setting. A `.pto` is the measurement *and* everything computed
+        from it, so its bursts belong inside it and a folder beside it would be
+        a second copy that disagrees the moment either is re-run. Anything else
+        has nowhere to put them and gets the tab-separated `bi4_bur/` companion
+        the external tools read.
+
+        Returns
+        -------
+        list of str
+            ``["pto"]`` or ``["bur"]``. A mixed selection gets both, because
+            each measurement still gets the one destination it can use.
+        """
+        from chisurf.core.fio.pto import SUFFIX
+
+        paths = list(self._file_paths or [])
+        if not paths:
+            return ["pto"]
+        containers = [p for p in paths if Path(p).suffix.lower() == SUFFIX]
+        formats = []
+        if containers:
+            formats.append("pto")
+        if len(containers) != len(paths):
+            formats.append("bur")
+        return formats
+
     def _sync_output_format_controls(self) -> None:
-        """Synchronize output-format checkboxes."""
-        has_file_output_format = self.csv_output_check.isChecked() or self.hdf_output_check.isChecked()
-        self.zip_output_check.setEnabled(has_file_output_format)
-        if not has_file_output_format:
+        """Say where the results will go, and gate the folder-only extras.
+
+        Zipping and removing apply to the companion *folder*; with a `.pto`
+        source there is no folder, so they have nothing to act on.
+        """
+        formats = self._output_formats_for_inputs()
+        writes_folder = "bur" in formats
+        label = self.__dict__.get("output_destination_label")
+        if label is not None:
+            if not self._file_paths:
+                label.setText("Results go to: the measurement's .pto")
+            elif writes_folder and "pto" in formats:
+                label.setText("Results go to: each .pto, and a folder per vendor file")
+            elif writes_folder:
+                label.setText("Results go to: a bi4_bur/ folder beside each file")
+            else:
+                label.setText("Results go to: the measurement's own .pto")
+        self.zip_output_check.setEnabled(writes_folder)
+        if not writes_folder:
             self.zip_output_check.setChecked(False)
         self.remove_folder_check.setEnabled(self.zip_output_check.isChecked())
         if not self.zip_output_check.isChecked():

@@ -233,7 +233,12 @@ def test_restoring_from_a_real_analysis_folder(wizard, tmp_path):
     staged.write_bytes(spc.read_bytes())
     analysis = tmp_path / "analysis"
     analysis.mkdir()
-    sel.analyze_file(str(staged), output_dir=str(analysis),
+    # The manifest lives beside the `.bur`, so the run has to write one: the
+    # default destination is the measurement's own container, which records its
+    # settings in the container instead.
+    settings = sel.AnalysisSettings()
+    settings.output_formats = ["bur"]
+    sel.analyze_file(str(staged), settings=settings, output_dir=str(analysis),
                      mti_output_dir=str(analysis))
 
     wizard.burst_finder.min_ph = 1

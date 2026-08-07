@@ -37,7 +37,6 @@ from .io import (
     load_tttr,
     write_bur,
     write_container,
-    write_hdf5,
     zip_output_folder,
 )
 from .serialization import to_jsonable
@@ -236,84 +235,43 @@ def _run_burst_search(
     raise ValueError(f"Unsupported filter mode: {settings.used_filter}")
 
 
-def _search_on_delta_filtered_stream(
+def _search_and_apply_interval(
     tttr: tttrlib.TTTR,
     delta_mask: np.ndarray,
     settings: PhotonFilterSettings,
     burst_detection: BurstDetectionSettings | None,
 ) -> np.ndarray:
-    """Run the burst search on the delta-macro-time-filtered stream, in original space.
+    """Search the whole stream, then let the delta-macro-time interval remove.
 
-    The delta-macro-time interval is applied to the *photon stream the search
-    sees*: a reduced ``tttrlib`` object (``get_tttr_by_selection``) built from the
-    photons inside the interval is searched, and the detected photons are mapped
-    back to the full index space. Photons the interval excluded therefore cannot
-    seed or extend a burst, but a burst that spans them still counts them
-    downstream ("exclude from search only") because bursts are found over the
-    original photon indices.
+    The interval used to be applied the other way round -- as a *pre-filter*,
+    building a reduced ``tttrlib`` object from the photons inside it and
+    searching that. The reasoning was that a photon the interval excluded should
+    not be able to seed a burst, which is true; the consequence was not
+    anticipated. Every burst search is ultimately a statement about
+    inter-photon times, and the interval is the same kind of statement, so on
+    the reduced stream the search can find that *every* photon qualifies: a
+    sliding window asking for ``m`` consecutive photons inside ``T`` is
+    guaranteed to say yes once the interval has bounded the gap below ``T/m``,
+    and a search scoring against an estimated background has no background left
+    to estimate.
 
-    **The pre-filter can destroy the search, and that is checked here.** Every
-    burst search is ultimately a statement about inter-photon times, and the
-    interval is the same kind of statement — so on a stream the interval has
-    already thinned to bright photons, a search can find that *every* photon
-    qualifies. A sliding window asking for ``m`` consecutive photons inside
-    ``T`` is guaranteed to say yes once the interval bounds the gap below
-    ``T/m``; a search scoring against an estimated background has no background
-    left to estimate. The result is not an error: it is two or three enormous
-    "bursts" covering the measurement, with a burst count, a mean size and a
-    mean duration, all meaningless, and a real session produced 91-98% coverage
-    in 2-14 bursts this way.
+    That does not fail. It returns two or three enormous "bursts" covering the
+    measurement, with a burst count, a mean size and a mean duration that all
+    look like an analysis. A real session produced **8 bursts** in the written
+    table while the panel above it said 866 -- and the panel was right, because
+    the photon-filter wizard has always done it this way round.
 
-    So when the reduced search comes back degenerate, the search is re-run on
-    the **whole** stream and the interval is applied afterwards, where it can
-    only remove photons and never invent a burst. On data where the pre-filter
-    is healthy the two agree closely (measured on the bundled DNA measurement:
-    2318 vs 2403 runs, 1099 vs 1117 bursts at a 60-photon minimum), so the
-    fallback is the same analysis rather than a different one.
+    Measured on the bundled DNA measurement (sliding window, dT <= 0.0101 ms,
+    60-photon minimum): searching first gives **801 bursts of mean 136.5
+    photons**, pre-filtering gives 745 of mean 138.6 where it works at all --
+    the same analysis when the pre-filter is healthy, and the only one that
+    survives when it is not.
+
+    The interval keeps its meaning: a photon outside it is not selected, so it
+    cannot extend a burst. What it can no longer do is invent one.
     """
-    n = len(tttr)
-    keep = np.flatnonzero(delta_mask)
-    if keep.size == n:
-        # Nothing removed — search the whole stream (no copy).
-        return np.asarray(_run_burst_search(tttr, settings, burst_detection), dtype=bool)
-    if keep.size == 0:
-        return np.zeros(n, dtype=bool)
-    reduced = tttr.get_tttr_by_selection(keep.astype(np.int32))
-    sub_selection = np.asarray(
-        _run_burst_search(reduced, settings, burst_detection), dtype=bool
-    )
-    selected = np.zeros(n, dtype=bool)
-    selected[keep[sub_selection]] = True
-
-    if _is_degenerate_selection(sub_selection):
-        chisurf.logging.warning(
-            "the delta-macro-time interval left a stream the burst search "
-            "accepted almost entirely (%.0f%% of %d photons): the interval and "
-            "the search are the same kind of criterion, so pre-filtering can "
-            "make the search a formality. Searching the unfiltered stream and "
-            "applying the interval afterwards instead.",
-            100.0 * float(np.count_nonzero(sub_selection)) / max(1, sub_selection.size),
-            int(sub_selection.size),
-        )
-        full = np.asarray(_run_burst_search(tttr, settings, burst_detection), dtype=bool)
-        return full & np.asarray(delta_mask, dtype=bool)
-    return selected
-
-
-#: Fraction of a searched stream above which "a burst" has stopped meaning
-#: anything. Matches ``tttrlib_search.IMPLAUSIBLE_COVERAGE``, which reports the
-#: same condition for the registry searches; kept as a separate constant because
-#: this check covers every mode, including the ones that do not go through the
-#: registry.
-_IMPLAUSIBLE_COVERAGE = 0.9
-
-
-def _is_degenerate_selection(mask: np.ndarray) -> bool:
-    """Return whether a search accepted essentially everything it was shown."""
-    mask = np.asarray(mask)
-    if mask.size == 0:
-        return False
-    return float(np.count_nonzero(mask)) / mask.size >= _IMPLAUSIBLE_COVERAGE
+    selection = np.asarray(_run_burst_search(tttr, settings, burst_detection), dtype=bool)
+    return selection & np.asarray(delta_mask, dtype=bool)
 
 
 def apply_photon_filters(
@@ -350,18 +308,18 @@ def apply_photon_filters(
         mask.flip()
         selected = np.logical_and(selected, mask.get_mask())
 
-    # The delta-macro-time interval is a photon-stream pre-filter, not a mask
-    # AND-ed onto the burst-search result. AND-ing it afterwards was a no-op in
-    # practice — burst photons already have a small inter-photon gap, so the
-    # interval never removed any of them. As a pre-filter it gates which photons
-    # the search *sees* (see _search_on_delta_filtered_stream); with no search it
-    # is the selection itself.
+    # The delta-macro-time interval is a mask AND-ed onto the burst-search
+    # result, and the search runs on the whole stream. It used to be the other
+    # way round -- the interval reduced the stream first and the search saw only
+    # what survived -- on the reasoning that an excluded photon should not be
+    # able to seed a burst. See :func:`_search_and_apply_interval` for what that
+    # did instead. With no search running, the interval is the selection itself.
     delta_mask = _delta_macro_time_mask(tttr, settings.delta_macro_time_filter)
 
     used_filter = BurstFilterMode(settings.used_filter)
 
     if settings.filter_active:
-        selection = _search_on_delta_filtered_stream(
+        selection = _search_and_apply_interval(
             tttr, delta_mask, settings, burst_detection
         )
         selected = np.logical_and(selected, selection)
@@ -494,6 +452,31 @@ def legacy_output_folder_name(settings: AnalysisSettings) -> str:
         f"{settings.photon_filter.delta_macro_time_filter.dT_max:.4f}"
         f"#{settings.burst_detection.min_photons}"
     )
+
+
+def _all_containers(paths) -> bool:
+    """Return whether every input is already a `.pto` measurement container.
+
+    The test for "does this run need a folder at all". A container is the
+    measurement *and* everything computed from it, so results belong inside it;
+    a vendor file has nowhere to put them and still needs the legacy layout for
+    the tools that read one.
+
+    Parameters
+    ----------
+    paths : sequence
+        The analysis inputs.
+
+    Returns
+    -------
+    bool
+        ``False`` for an empty list -- nothing to decide about, and defaulting
+        to "container" there would silently suppress a folder someone asked for.
+    """
+    from chisurf.core.fio.pto import SUFFIX
+
+    paths = list(paths or [])
+    return bool(paths) and all(Path(p).suffix.lower() == SUFFIX for p in paths)
 
 
 def _prepare_legacy_output_folder(request: AnalysisRequest) -> Path | None:
@@ -691,20 +674,40 @@ def analyze_request(
         "n_selected": 0,
         "n_photons": 0,
     }
-    # The legacy layout *is* the `.bur` plus its `Info/` sidecars -- that is what
-    # a reader (ndX) opens the folder for. Asking for the folder while asking for
-    # no format that goes in it produced a directory holding two Info files and
-    # nothing else, freshly numbered on every run, which ndX then refused with
-    # "No .bur files in 'bi4_bur' or 'bur'". So the request implies the format.
-    if request.legacy_output and not ({"bur", "hdf5"} & set(request.settings.output_formats)):
+    # A measurement that is already a container gets **no folder at all**. The
+    # container holds the photons and every result computed from them, which is
+    # the whole point of it; writing a parameter-named directory beside it puts
+    # the same bursts in two places, freshly numbered on every run, and the two
+    # then disagree the moment one of them is re-run. `.pto` in, `.pto` out.
+    legacy_output = request.legacy_output and not _all_containers(request.files)
+    if request.legacy_output and not legacy_output:
+        chisurf.logging.info(
+            "burst selection: the source is a .pto container, so the results go "
+            "into it rather than into a burstwise folder beside it"
+        )
+    # Where a folder *is* written, the legacy layout is the `.bur` plus its
+    # `Info/` sidecars -- that is what a reader (ndX) opens the folder for.
+    # Asking for the folder while asking for no format that goes in it produced
+    # a directory holding two Info files and nothing else, which ndX refused
+    # with "No .bur files in 'bi4_bur' or 'bur'". So the request implies the
+    # format.
+    if legacy_output and "bur" not in request.settings.output_formats:
         request.settings.output_formats = list(request.settings.output_formats) + ["bur"]
-    legacy_output_folder = _prepare_legacy_output_folder(request) if request.legacy_output else None
+    # Only where a folder was asked for and suppressed: the results still have
+    # to land somewhere, and for a container that somewhere is the container. An
+    # explicitly empty `output_formats` means "write nothing" and stays that.
+    if (
+        request.legacy_output
+        and not legacy_output
+        and "pto" not in request.settings.output_formats
+    ):
+        request.settings.output_formats = list(request.settings.output_formats) + ["pto"]
+    legacy_output_folder = _prepare_legacy_output_folder(request) if legacy_output else None
     bur_output_dir = (
         legacy_output_folder / "bi4_bur"
         if legacy_output_folder is not None and "bur" in request.settings.output_formats
         else request.output_dir
     )
-    hdf5_frames: list = []
     batch_macro_time_resolution: float | None = None
     total_files = len(request.files)
 
@@ -724,10 +727,6 @@ def analyze_request(
         frames.update(result.dataframes)
         output_paths.update(result.output_paths)
         output_paths_by_file.update(result.output_paths_by_file)
-        if legacy_output_folder is not None and "hdf5" in request.settings.output_formats:
-            frame = store_from_rows(result.dataframes.get(str(path), []))
-            frame["Source File"] = str(path)
-            hdf5_frames.append(frame)
         if "pto" in request.settings.output_formats:
             container = write_container(
                 path,
@@ -747,23 +746,6 @@ def analyze_request(
         _write_legacy_output_info(request, legacy_output_folder)
         output_paths["output_folder"] = str(legacy_output_folder)
         metadata["output_folder"] = str(legacy_output_folder)
-        if "hdf5" in request.settings.output_formats and hdf5_frames:
-            # Deprecated. The name carries a timestamp, so every re-run leaves
-            # another file nobody reads, and the container holds the same table
-            # with the provenance this never had. Kept working for pipelines
-            # that still ask for it; the `.bur` companions stay because external
-            # tools read those, and this had no such consumer.
-            warnings.warn(
-                "burst-selection HDF5 output is deprecated: use output_formats "
-                "'pto' for the measurement's container, or 'bur' for the legacy "
-                "companion layout.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            hdf5_dir = legacy_output_folder / "hdf5"
-            hdf5_path = hdf5_dir / f"burst_data_{time.strftime('%Y%m%d-%H%M%S')}.h5"
-            write_hdf5(hdf5_frames, hdf5_path)
-            output_paths["hdf5"] = str(hdf5_path)
         if request.settings.zip_output:
             zip_path = zip_output_folder(legacy_output_folder)
             output_paths["zip"] = str(zip_path)

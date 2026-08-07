@@ -149,11 +149,14 @@ class AnalysisSettings:
     gmm : GMMSettings
         Optional Gaussian mixture model settings.
     output_formats : list of str
-        Output formats to write. Defaults to ``["pto"]`` — the bursts go into
-        the measurement's own container beside the instrument file, which is
-        ChiSurf's format for photon data. ``"bur"`` writes the legacy companion
-        folder as well and is kept because external tools read it; ``"hdf5"``
-        is deprecated.
+        Where the bursts go. There are two destinations and they are not a
+        preference: ``"pto"`` puts them into the measurement's own container
+        beside the instrument file, which is ChiSurf's format for photon data,
+        and ``"bur"`` writes the tab-separated legacy companion folder for the
+        external tools that read one. A `.pto` source takes the first; anything
+        else has nowhere to put them and takes the second. An MFD-HDF5 output
+        also existed and is gone — it had one writer, no reader, and a
+        timestamped name that left a new file nobody opened on every re-run.
     zip_output : bool
         Whether legacy output folders should be zipped after processing.
     remove_folder : bool

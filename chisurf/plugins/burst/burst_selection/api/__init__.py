@@ -25,7 +25,6 @@ from .io import (
     load_tttr,
     read_bur,
     write_bur,
-    write_hdf5,
     zip_output_folder,
 )
 from .models import (
@@ -98,6 +97,5 @@ __all__ = [
     "summarize_dataframes",
     "to_jsonable",
     "write_bur",
-    "write_hdf5",
     "zip_output_folder",
 ]
