@@ -33,6 +33,18 @@
 
 ## 2026-08-06
 
+* **A container explains itself, and says what the measurement was** ([profile](specs/pto-mfdb.md) 1.1).
+
+  Two requirements that change what a `.pto` *is*.
+
+  **The file explains how to read itself.** The first object is a plain-ASCII README — not documentation about the format, but the format telling a reader what it is: that this is EBML, how an element is framed, which element IDs matter *by number*, what the kinds and encodings mean, and how to get the instrument file back (find the `tttr_photon_stream` object, write its `FileData` out, check the recorded SHA-256). The reason is not tidiness: a container outlives the software that wrote it, and the person who needs it most is the one for whom the library will not install. A specification in another repository is no use to them.
+
+  One correction made while testing: it is the first *object*, not the first byte. PTO reserves space for its two indexes ahead of everything, so the text starts around 16 kB in and is found with `strings`, not `head -c 4096`. I had claimed the latter in a docstring before measuring it.
+
+  **The measurement describes itself, not only its provenance.** Provenance says a burst table came from a photon stream by a burst search; it does not say which sample, which dyes, which instrument. A container may now carry a `sample_metadata` object — an mmCIF block, flrCIF/PDBx/`mmfdb_*`, carried whole rather than flattened into tags, because a category with several rows is a loop and a tag is a name/value pair. Every name is checked against the dictionaries first: prose in a field that looks structured is worse than an absent field. A measurement with nothing to say writes nothing, because an empty block would claim it was described.
+
+  Also fixed on the way: `deinterleave_bursts` had been moved onto the DataStore seam by the table migration and called `take_columns`, which is store-only by contract, on a frame — so dropping the legacy blank column raised `KeyError: 0`. It handles both shapes now, without converting one to the other just to drop a column.
+
 * **The units are written down where a user reads them, and one of them was wrong** ([conventions](../docs/fundamentals/conventions.md)).
 
   `docs/fundamentals/conventions.md` said ChiSurf "works in nanoseconds for lifetimes and correlation times". An FCS correlation time is **milliseconds** — that was a user-facing factual error, and exactly the kind a translation table exists to prevent. The section now carries the whole table and says plainly that nothing converts behind your back, so the table *is* the contract.

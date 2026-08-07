@@ -11,7 +11,7 @@ timestamp: '2026-08-06T00:00:00Z'
 > [data IO](/subsystems/data-io.md) and [burst companions](/subsystems/burst-companions.md);
 > the gap is in the [assessment](assessment.md).
 
-**Profile version 1.0.** Profiles PTO 1.0 (`DocType "pto"`). Read version 1.
+**Profile version 1.1.** Profiles PTO 1.0 (`DocType "pto"`). Read version 1.
 
 # Purpose
 
@@ -70,7 +70,10 @@ Segment
   SeekHead ×2       the atomic commit
   Info              Title, WritingApp, SegmentUUID
   Attachments
-    AttachedFile    THE INSTRUMENT FILE — first, verbatim, immutable
+    AttachedFile    THE README — first object, ASCII, how to read this file
+  Attachments
+    AttachedFile    THE INSTRUMENT FILE — verbatim, immutable
+  Attachments       the measurement's mmCIF metadata, when it has any
   Attachments       every derived artifact, appended, each with its own reserve
   Tags              artifacts, operations, edges, version stamps
   PtoAnnotations    notes for people
@@ -79,6 +82,54 @@ Segment
 The instrument payload is the **first** object and is never rewritten, so its
 offset is stable for the life of the file and no recomputation can disturb it.
 Reserve belongs to the derived objects, which are the ones that change.
+
+## The file explains itself
+
+The **first object is a plain-ASCII README**, `artifact_kind = readme`,
+`data_format = text`. It is not documentation *about* the format; it is the
+format telling a reader what it is, in the file, in compact language:
+
+* that this is EBML (RFC 8794), and how an element is framed, so the bytes can
+  be walked by hand;
+* which element IDs matter, by number, so no table is needed elsewhere;
+* what the kinds and encodings mean, and that `dstore` is a columnar table with
+  a described header;
+* **how to get the original instrument file back** — find the
+  `tttr_photon_stream` object, write its `FileData` to a file, check it against
+  the recorded SHA-256;
+* that nothing is compressed, encrypted, or stored outside the file.
+
+The reason is not tidiness. A container outlives the software that wrote it, and
+the person who needs it most is the one for whom the library will not install.
+A specification in another repository is no use to them; a paragraph at the
+front of the file is.
+
+It is the first *object*, not the first byte — the container reserves space for
+its two indexes ahead of everything, so the text begins some kilobytes in and is
+found with `strings` rather than `head -c 4096`. Nothing can precede it without
+changing the container format, which this profile does not do.
+
+## What the measurement is
+
+Provenance says a burst table came from a photon stream by a burst search. It
+does not say which sample, which dyes, which buffer, which instrument — and a
+file that cannot answer those is a record of a *computation*, not of a
+*measurement*.
+
+So a container may carry an object of `artifact_kind = sample_metadata`,
+`data_format = cif`: an mmCIF block in the same vocabulary as everything else —
+flrCIF for samples, probes and conditions, PDBx where it applies, `mmfdb_*` for
+what neither covers. It is carried **whole**, as a block, rather than flattened
+into tags, because a category with several rows (two probes, three detector
+channels) is a loop and a tag is a name/value pair.
+
+Two rules:
+
+* **Every name is checked against the dictionaries before it is written.** Prose
+  in a field that looks structured is worse than an absent field, because a
+  later reader cannot tell the two apart.
+* **A measurement with nothing to say says nothing.** No empty block is written.
+  An empty one would claim the measurement was described when it was not.
 
 ## An object is an artifact
 
@@ -183,8 +234,10 @@ unknown tags are skipped, exactly as EBML already treats unknown elements.
 
 # Rules
 
-1. The instrument file is the first object, is stored verbatim, and is never
-   updated or removed.
+1. The first object is a plain-ASCII README describing the container and how to
+   recover the instrument file from it.
+11. The instrument file is the first *payload* object, is stored verbatim, and is
+   never updated or removed.
 2. Every object carries `artifact_id`, `checksum` and `checksum_algorithm`.
    Extraction verifies the checksum and fails on mismatch.
 3. Opening a file never hashes a payload. Verification is explicit.

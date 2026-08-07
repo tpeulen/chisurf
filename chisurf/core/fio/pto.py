@@ -58,7 +58,7 @@ __all__ = [
 PROFILE = "PTO.MFDB"
 
 #: Version of the profile this module writes.
-PROFILE_VERSION = "1.0"
+PROFILE_VERSION = "1.1"
 
 #: Minimum profile version required to read what this module writes. A reader
 #: implementing less than this must refuse the file rather than misread it.
@@ -116,6 +116,70 @@ _CONTAINER_DICTIONARY_HASH = "_mmfdb_container.dictionary_hash"
 
 #: ``data_format`` for a payload written as a tttrlib columnar store.
 _DSTORE = "dstore"
+
+
+#: The plain-text preamble every container carries as its first object.
+#:
+#: A container is only useful for as long as something can read it. The library
+#: that wrote this may not be installed, may not build, or may not exist; the
+#: format is EBML and therefore walkable by hand, but only if the reader knows
+#: that. So the file says so itself, in ASCII, before anything else in it.
+#:
+#: Deliberately terse and deliberately not Markdown: it is meant to be read
+#: with `strings file.pto | head -40`, or in a hex editor, by someone who has
+#: this file and nothing else. It is the first *object*, not the first bytes —
+#: the container's two index reserves come before it, so it begins around 16 kB
+#: in rather than at zero.
+README = """\
+PTO.MFDB CONTAINER -- one measurement, one file.
+Profile {profile} v{profile_version}; container {container} v{container_version}.
+
+WHAT THIS IS
+  An EBML document (RFC 8794), DocType "pto". Same framing as Matroska, and it
+  reuses Matroska element IDs where the meaning matches. Every element is
+  ID + SIZE + DATA; both ID and SIZE are variable-length integers whose leading
+  1-bit gives the byte count. Unknown IDs are skipped by SIZE, so a partial
+  reader still walks the whole file.
+
+HOW TO READ IT WITHOUT THIS LIBRARY
+  1. EBML header (0x1A45DFA3), then one Segment (0x18538067).
+  2. Inside Segment: two SeekHead (0x114D9B74) indexes. The live one is the one
+     with the greater PtoGeneration (0x1E54F010) whose CRC-32 verifies. If
+     neither does, walk Segment's children in order -- every element carries its
+     own size, so the index is an optimisation, not the truth.
+  3. Each object is an Attachments (0x1941A469) holding one AttachedFile
+     (0x61A7): FileUID 0x46AE, PtoKind 0x1E54F001, PtoEncoding 0x1E54F002,
+     FileName 0x466E, FileData 0x465C. The payload is FileData's bytes, verbatim.
+  4. Tags (0x1254C367) carry metadata. A Tag targets an object by
+     TagAttachmentUID (0x63C6); TagName (0x45A3) is an mmCIF item name and the
+     value is one of TagString (0x4487) or PtoTag* (0x1E54F02x).
+
+WHAT THE OBJECTS ARE
+  PtoKind says what an object is for; PtoEncoding says how to decode it. Both
+  are terms from the MMFDB mmCIF dictionary, not free text.
+    readme            this text
+    tttr_photon_stream  the instrument file, byte-for-byte as recorded
+    sample_metadata   the measurement's mmCIF/flrCIF metadata block
+    burst_table, dwell_table, pixel_map, ...  results, encoding "dstore"
+  Encoding "dstore" is a columnar table: magic "TTTRSTOR", a 48-byte header
+  (version, flags, directory offset+size, file size, FNV-1a of the directory),
+  then blobs, then the directory. Columns are contiguous little-endian arrays.
+  Encoding "ptu"/"spc"/"ht3"/... is the vendor file unchanged -- write FileData
+  to a file and any reader of that format opens it.
+
+RECOVERING THE ORIGINAL DATA
+  Find the AttachedFile whose PtoKind is tttr_photon_stream and write its
+  FileData to a file. That is the instrument file as recorded, bit for bit; its
+  _mmfdb_artifact.checksum tag is the SHA-256 to verify against. Nothing in this
+  container is a lossy re-encoding of it.
+
+WHAT IS NOT HERE
+  No compression. No encryption. No external references: every byte a reader
+  needs is in this file.
+
+Full specification: doc/formats/pto.rst (container) and the PTO.MFDB profile
+(this layer) in the ChiSurf knowledge bundle, okf/specs/pto-mfdb.md.
+"""
 
 #: Instrument container suffix -> ``_mmfdb_artifact.data_format`` term. A
 #: suffix this does not know is carried as ``unknown`` rather than guessed at:
@@ -381,6 +445,7 @@ class Measurement:
 
         self = cls(handle, target)
         self._stamp_versions()
+        self._add_readme()
         self._instrument_uid = self._add_instrument(raw)
         return self
 
@@ -546,6 +611,80 @@ class Measurement:
             target_row_column=target_row_column,
         )
         return uid
+
+    def put_metadata(
+        self,
+        metadata: Mapping[str, Mapping[str, Any]] | str,
+        *,
+        name: str = "metadata",
+    ) -> int:
+        """Record what the measurement *is*, beside what was done to it.
+
+        Provenance says a burst table came from a photon stream by a burst
+        search. It does not say which sample, which dyes, which buffer, which
+        instrument — and a file that cannot answer those is not a record of a
+        measurement, it is a record of a computation.
+
+        The metadata is written as an mmCIF block, so it is the same vocabulary
+        the rest of the container uses and the same one a deposition wants. It
+        is carried whole rather than flattened into tags: a category with
+        several rows — two probes, three detector channels — is a loop, and tags
+        are name/value pairs.
+
+        Nothing is invented or inferred. A caller that has no sample metadata
+        passes none, and the container simply has no such object; an empty block
+        would claim the measurement was described when it was not.
+
+        Parameters
+        ----------
+        metadata : mapping or str
+            Either ``{category: {item: value}}`` — for example
+            ``{"flr_sample": {"sample_description": "Cy3B-Cy5 dsDNA"}}`` — or a
+            ready-made mmCIF text block, which is written as it is.
+        name : str, optional
+            Label for the object.
+
+        Returns
+        -------
+        int
+            The object UID.
+
+        Raises
+        ------
+        PtoMfdbError
+            If a category or item is not in the loaded dictionaries. The point
+            of using mmCIF here is that the words mean something; an undeclared
+            one would be prose in a field that looks structured.
+        """
+        self._require_writable()
+        text = metadata if isinstance(metadata, str) else _metadata_to_cif(metadata)
+        payload = text.encode("utf-8")
+        uid = self._f.add("sample_metadata", "cif", name, payload)
+        if not uid:
+            raise PtoMfdbError(f"could not write {name}: {self._f.error()}")
+        self._describe(
+            uid,
+            data_format="cif",
+            checksum=hashlib.sha256(payload).hexdigest(),
+            size_bytes=len(payload),
+            mime_type="chemical/x-cif",
+        )
+        return uid
+
+    def metadata(self) -> str:
+        """Return the measurement's mmCIF metadata block, or ``""``.
+
+        Returns
+        -------
+        str
+            The block as written. Empty when the container carries none, which
+            means the measurement was never described — not that it has no
+            sample.
+        """
+        for obj in self._f.objects():
+            if obj.kind == "sample_metadata":
+                return bytes(self._f.read(obj.uid)).decode("utf-8", "replace")
+        return ""
 
     def put_blob(
         self,
@@ -923,6 +1062,42 @@ class Measurement:
         self._text(0, _CONTAINER_DICTIONARY_VERSION, extension_dictionary_version())
         self._text(0, _CONTAINER_DICTIONARY_HASH, extension_dictionary_hash())
 
+    def _add_readme(self) -> int:
+        """Write the plain-text preamble, before anything else.
+
+        First on purpose. A container outlives the software that wrote it, and
+        the thing a person needs when the library will not install is not a
+        specification somewhere else — it is a paragraph at the start of the
+        file saying what the bytes are. ASCII, so ``strings`` finds it.
+
+        First *object*, which is not the first byte: PTO reserves space for its
+        two indexes at the head of the Segment, so this begins some kilobytes
+        in. Nothing can precede it without changing the container format, which
+        is not ours to change.
+
+        Returns
+        -------
+        int
+            The object UID.
+        """
+        text = README.format(
+            profile=PROFILE,
+            profile_version=PROFILE_VERSION,
+            container=CONTAINER_FORMAT,
+            container_version=CONTAINER_FORMAT_VERSION,
+        ).encode("ascii", "replace")
+        uid = self._f.add("readme", "text", "README", text)
+        if not uid:
+            raise PtoMfdbError(f"could not write the preamble: {self._f.error()}")
+        self._describe(
+            uid,
+            data_format="text",
+            checksum=hashlib.sha256(text).hexdigest(),
+            size_bytes=len(text),
+            mime_type="text/plain; charset=us-ascii",
+        )
+        return uid
+
     def _add_instrument(self, raw: Path) -> int:
         """Embed the instrument file verbatim as the first object."""
         checksum, size = _sha256_of_path(raw)
@@ -1052,6 +1227,69 @@ class Measurement:
             self._ref(uid, _RELATIONSHIP_TYPE, parent)
         self._text(uid, _SOURCE_ROW_COLUMN, source_row_column)
         self._text(uid, _TARGET_ROW_COLUMN, target_row_column)
+
+
+def _metadata_to_cif(metadata: Mapping[str, Mapping[str, Any]]) -> str:
+    """Render ``{category: {item: value}}`` as an mmCIF block.
+
+    Every name is checked against the loaded dictionaries first. Writing an
+    undeclared one would put prose in a field that looks structured, which is
+    worse than leaving it out — a later reader cannot tell the two apart.
+
+    Parameters
+    ----------
+    metadata : mapping
+        ``{category: {item: value}}``, categories without the leading
+        underscore.
+
+    Returns
+    -------
+    str
+        An mmCIF data block.
+
+    Raises
+    ------
+    PtoMfdbError
+        On an undeclared category or item.
+    """
+    global _VOCABULARY
+    if _VOCABULARY is None:
+        _VOCABULARY = _vocabulary()
+
+    lines = ["data_measurement", "#"]
+    for category, items in metadata.items():
+        cat = category.lstrip("_")
+        if _VOCABULARY.get_category(cat) is None:
+            raise PtoMfdbError(
+                f"{cat!r} is not a category in the loaded dictionaries; add it "
+                "to the MMFDB extension before writing it"
+            )
+        for item, value in items.items():
+            full = f"_{cat}.{item}"
+            if _VOCABULARY.get_item(full) is None:
+                raise PtoMfdbError(f"{full!r} is not a declared item")
+            lines.append(f"{full}   {_cif_value(value)}")
+        lines.append("#")
+    return "\n".join(lines) + "\n"
+
+
+def _cif_value(value: Any) -> str:
+    """Quote a value the way mmCIF needs it.
+
+    ``None`` becomes ``.`` — mmCIF's "not applicable" — rather than an empty
+    string, which would read as a value that happens to be blank.
+    """
+    if value is None:
+        return "."
+    text = str(value)
+    if not text:
+        return "."
+    if any(c in text for c in " \t'\"") or text.startswith(("_", "#", ";")):
+        if "\n" in text:
+            return "\n;" + text + "\n;"
+        quote = "'" if '"' not in text else '"'
+        return f"{quote}{text}{quote}"
+    return text
 
 
 def _as_uids(value: int | Sequence[int] | None) -> Iterator[int]:

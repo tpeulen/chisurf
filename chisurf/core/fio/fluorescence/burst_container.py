@@ -15,6 +15,8 @@ finer or coarser than the bursts is ordinary rather than impossible. See
 
 from __future__ import annotations
 
+import numpy as np
+
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
@@ -113,18 +115,38 @@ def deinterleave_bursts(df):
 
     Returns
     -------
-    pandas.DataFrame
-        One row per result, with any unnamed column dropped and the index reset.
+    tttrlib.DataStore
+        One row per result, with any unnamed column dropped.
     """
+    from chisurf.core.datastore import (
+        column_names,
+        numeric_column,
+        row_count,
+        take_columns,
+        take_rows,
+    )
+
     out = df
-    if len(out) >= 3 and len(out) % 2 == 1:
-        numeric = out.select_dtypes(include="number")
-        if not numeric.empty and (numeric.iloc[0::2] == 0).all().all():
-            out = out.iloc[1::2]
-    blank = [c for c in out.columns if not str(c).strip()]
-    if blank:
-        out = out.drop(columns=blank)
-    return out.reset_index(drop=True)
+    n = row_count(out)
+    is_store = hasattr(out, "n_rows")
+
+    if n >= 3 and n % 2 == 1:
+        even = np.arange(0, n, 2)
+        numeric = [numeric_column(out, name) for name in column_names(out)]
+        numeric = [v for v in numeric if np.isfinite(v).any()]
+        if numeric and all(np.all(v[even] == 0) for v in numeric):
+            odd = np.arange(1, n, 2)
+            out = take_rows(out, odd) if is_store else out.iloc[odd]
+
+    named = [c for c in column_names(out) if str(c).strip()]
+    if len(named) != len(column_names(out)):
+        # take_columns and take_rows are store-only by contract; a frame is
+        # sliced as a frame. Both shapes arrive here -- the plugins hand over
+        # frames and the store migration hands over stores -- and converting one
+        # to the other just to drop a column would copy the whole table.
+        out = take_columns(out, named) if is_store else out[named]
+
+    return out if is_store else out.reset_index(drop=True)
 
 
 def container_for(source: str | Path, out_dir: str | Path | None = None) -> Path:

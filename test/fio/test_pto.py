@@ -360,3 +360,77 @@ def test_disassembly_puts_every_object_back_on_disk(tmp_path: Path, measurement:
     assert written
     assert (tmp_path / "apart" / "m000.ptu").exists()
     assert _sha256(tmp_path / "apart" / "m000.ptu") == _sha256(tmp_path / "m000.ptu")
+
+
+# -- the file explains itself ------------------------------------------------------
+
+
+def test_a_container_carries_a_plain_text_explanation_of_itself(measurement: Path):
+    """A container outlives the software that wrote it. When the library will
+    not install, what a person needs is not a specification somewhere else but a
+    paragraph in the file saying what the bytes are."""
+    with Measurement.open(measurement) as m:
+        first = m.artifacts()[0]
+        assert first.kind == "readme", "the preamble is not the first object"
+        text = bytes(m._f.read(first.uid))
+
+    text.decode("ascii")                     # ASCII, not UTF-8, on purpose
+    body = text.decode("ascii")
+    for expected in (
+        "EBML",                              # what the framing is
+        "0x1A45DFA3",                        # where to start
+        "PtoKind",                           # how an object says what it is
+        "tttr_photon_stream",                # how to find the original data
+        "SHA-256",                           # how to verify it
+    ):
+        assert expected in body, f"the preamble does not mention {expected}"
+
+
+def test_the_explanation_is_findable_in_the_raw_bytes(measurement: Path):
+    """`strings file.pto` has to show it, or it is documentation nobody reaches."""
+    raw = measurement.read_bytes()
+    assert b"PTO.MFDB CONTAINER" in raw
+    # First object, but not the first byte: the container reserves space for its
+    # two indexes ahead of it, so this asserts "near the front", not "at zero".
+    assert raw.index(b"PTO.MFDB CONTAINER") < 64 * 1024
+
+
+# -- what the measurement is, not only what was done to it ---------------------------
+
+
+def test_the_measurement_can_describe_itself(tmp_path: Path, measurement: Path):
+    """Provenance says a burst table came from a photon stream. It does not say
+    which sample, which dyes, which instrument -- and a file that cannot answer
+    those is a record of a computation, not of a measurement."""
+    with Measurement.open(measurement, writable=True) as m:
+        m.put_metadata(
+            {
+                "flr_sample": {"sample_description": "Cy3B-Cy5 dsDNA", "num_of_probes": 2},
+                "flr_instrument": {"details": "MicroTime 200"},
+            }
+        )
+
+    with Measurement.open(measurement) as m:
+        block = m.metadata()
+        assert block.startswith("data_")
+        assert "_flr_sample.sample_description   'Cy3B-Cy5 dsDNA'" in block
+        assert "_flr_instrument.details" in block
+        obj = [o for o in m.artifacts() if o.kind == "sample_metadata"][0]
+        assert obj.encoding == "cif"
+
+
+def test_metadata_the_dictionary_does_not_declare_is_refused(measurement: Path):
+    """The point of mmCIF here is that the words mean something. Prose in a
+    field that looks structured is worse than no field."""
+    with Measurement.open(measurement, writable=True) as m:
+        with pytest.raises(PtoMfdbError, match="not a declared item"):
+            m.put_metadata({"flr_sample": {"invented_item": 1}})
+        with pytest.raises(PtoMfdbError, match="not a category"):
+            m.put_metadata({"not_a_category": {"x": 1}})
+
+
+def test_a_measurement_with_nothing_to_say_says_nothing(measurement: Path):
+    """An empty block would claim the measurement was described when it was not."""
+    with Measurement.open(measurement) as m:
+        assert m.metadata() == ""
+        assert not [o for o in m.artifacts() if o.kind == "sample_metadata"]
