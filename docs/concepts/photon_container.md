@@ -165,6 +165,32 @@ m000.spc [tttr_photon_stream]
 photons it came from is a result nobody can check, so that is a property the
 tests assert over a real container rather than a synthesised one.
 
+## Looking inside one
+
+Everything above is recorded whether or not anyone reads it. The **PTO
+Inspector** (*Tools → File tools → PTO Inspector*) is the window that does: the objects in the
+file, the payload as a table or a curve, the settings, and the provenance drawn
+as a **graph** rather than a list.
+
+The graph is not a presentation choice. A result with two parents — a lifetime
+fit uses the bursts *and* the background — cannot be drawn as an indented tree
+without either duplicating a node or dropping an edge, and the duplicated node is
+usually the interesting one: a node reached by two paths is what "the background
+correction was used here as well" looks like.
+
+The inspector also closes the one gap the container cannot close by itself.
+A `.pto` records the **operation** that produced a result and deliberately never
+names the *program*: a term naming a ChiSurf plugin would make the file
+unreadable by anything else, which is the whole point of taking every name from
+the dictionaries. So the index runs the other way — each tool declares in its
+manifest which `operation_types` it performs, and the inspector's **▶ Open tool**
+looks the selected artifact's operation up in that index and opens the matching
+window on the same file. A step no installed tool claims says so, which is the
+honest answer for a container carrying a result another program computed.
+
+See {doc}`Inspecting a container </guides/63_pto_inspector>` for the walkthrough
+and the headless equivalents.
+
 ## Re-running
 
 The identity of a result is the hash of the settings that produced it. Run the

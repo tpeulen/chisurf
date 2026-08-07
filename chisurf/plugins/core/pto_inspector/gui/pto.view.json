@@ -1,0 +1,116 @@
+{
+  "_comment": "PTO inspector. AutoForm over PtoInspectorViewModel. Left: the file, what it is, and every object in it. Right: four docks answering the four questions a container gets asked — how did this come to be (the provenance graph), what are the numbers (the table), what does it look like (the curve), and what exactly was recorded (the details, including the settings that are the recipe). Open / verify / open-the-tool live in the host toolbar.",
+  "sections": [
+    {
+      "type": "dock_area",
+      "title": "PTO inspector",
+      "split": "horizontal",
+      "sizes": [38, 62],
+      "persist": "pto_inspector",
+      "sections": [
+        {
+          "type": "panel",
+          "title": "Container",
+          "n_col": 1,
+          "sections": [
+            {
+              "type": "custom",
+              "key": "data_source",
+              "options": {
+                "attr": "filename",
+                "call": "set_filename",
+                "label": "Container",
+                "filter": "Photon containers (*.pto);;All files (*)",
+                "extensions": [".pto"],
+                "mmfdb_kinds": ["raw_measurement", "raw_data"],
+                "guards": ["tttr_to_pto"],
+                "description": "The .pto to inspect — one measurement in one file: the instrument data verbatim, and every result computed from it beside it. Dropping a vendor photon file offers to pack it into a container first."
+              }
+            },
+            {
+              "type": "info",
+              "source": "summary_html",
+              "max_height": 180,
+              "description": "What the file is: its size, the profile and dictionary revision it was written against, and how many objects it holds."
+            },
+            {
+              "type": "table",
+              "title": "Objects",
+              "source": "artifact_rows",
+              "selected_call": "select_row",
+              "activated_call": "open_row",
+              "expand": true,
+              "columns": [
+                {"key": "name", "label": "Name", "width": 115, "description": "The label the object was written under. Labels need not be unique — identity is the UID."},
+                {"key": "kind", "label": "Kind", "width": 100, "description": "An _mmfdb_artifact.artifact_kind term: what sort of thing this is, from the dictionary rather than from a file extension."},
+                {"key": "operation", "label": "Operation", "width": 115, "description": "The _mmfdb_operation.operation_type that produced it. Empty means it was carried rather than computed — the instrument file, the README, the sample metadata."},
+                {"key": "grain", "label": "Grain", "width": 60, "description": "What one row is. This is what lets a dwell table and a burst table live in one file: they are finer and coarser than each other, and nothing is joined by position."},
+                {"key": "rows", "label": "Rows", "width": 48, "description": "Number of rows, for a payload that has rows."},
+                {"key": "size", "label": "Size", "width": 55, "description": "Payload size on disk."},
+                {"key": "parents", "label": "←", "width": 26, "description": "How many objects this was derived from. More than one is normal: a lifetime fit uses the bursts and the background."}
+              ],
+              "description": "Every object in the container, in the order it was written. Click one to describe it; the graph, the table and the curve all follow the selection."
+            }
+          ]
+        },
+        {
+          "type": "dock_area",
+          "title": "Views",
+          "split": "vertical",
+          "sizes": [36, 20, 16, 28],
+          "sections": [
+            {
+              "type": "custom",
+              "key": "node_graph",
+              "title": "Provenance",
+              "options": {
+                "source": "provenance_graph",
+                "selected_call": "select_node",
+                "activated_call": "open_node",
+                "height": 260,
+                "description": "How everything in this file came to be. The instrument file is on the left and the last thing computed is on the right; an arrow is a recorded derivation, not a guess from file names. A node with two incoming arrows genuinely has two parents. Double-click a node to open the tool that performs its step."
+              }
+            },
+            {
+              "type": "custom",
+              "key": "store_table",
+              "title": "Data",
+              "options": {
+                "source": "current_store",
+                "height": 200,
+                "description": "The selected object's payload. Column headers carry the unit the column itself states, so a duration in milliseconds cannot be read as seconds."
+              }
+            },
+            {
+              "type": "plot",
+              "title": "Curve",
+              "source": "curve_series",
+              "axes_source": "curve_axes",
+              "legend": true,
+              "description": "The selected object drawn, when it is a curve — a decay, a correlation, an anisotropy, an IRF, a model or a residual. The axes take their units and their scale from the stored columns."
+            },
+            {
+              "type": "panel",
+              "title": "Details",
+              "n_col": 1,
+              "sections": [
+                {
+                  "type": "info",
+                  "source": "detail_html",
+                  "description": "Everything recorded about the selected object, including the settings — which are the identity of the run, not a label on it: changing one produces a new artifact rather than overwriting this one."
+                },
+                {
+                  "type": "info",
+                  "title": "Lineage",
+                  "source": "lineage_html",
+                  "max_height": 220,
+                  "description": "The path from this object back to the primary data, with every operation and every setting in between. This is what makes a derived number reproducible rather than merely labelled."
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

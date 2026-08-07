@@ -14,8 +14,36 @@ so ChiSurf's own plumbing is packaged as plugins too.
 
 ## Where to pick this up
 
-The open front here is **Global View** (see
-[below](#global-view-the-parameter-network) for what it now is).
+Two open fronts: the **PTO inspector**'s operation index, and **Global View**
+(see [below](#global-view-the-parameter-network) for what it now is).
+
+### PTO inspector
+
+1. **Four shipped operations have no tool claiming them**, so ▶ Open tool is
+   correctly but unhelpfully dark on a lot of real containers:
+   `tcspc_histogram_computation`, `tcspc_fitting`, `fcs_correlation` and
+   `population_selection` (the last is claimed by `ndxplorer`, the first three by
+   nobody). Re-derive the list with
+   `python -c "from chisurf.core.plugin.operations import operation_index; print(sorted(operation_index()))"`
+   and diff it against the writers:
+   `grep -rn 'operation_type=' chisurf/ --include=*.py | grep -v /test`.
+   The **trap** is that the first three are not written by a plugin at all — they
+   come from `chisurf/core/experiments/**/reader.py` and the fit machinery, which
+   have no manifest to declare `operation_types` in. Deciding where a
+   non-plugin step declares itself is the actual blocker, and it blocks more than
+   this button: it is the same question as "which tool owns a fit window".
+2. **`bid_to_analysis` and `fcs_correlator` have no `manifest.json`** (legacy
+   AST-metadata plugins), so they cannot declare an operation either. Both write
+   one (`import`, `fcs_correlation`).
+3. **The graph is laid out by insertion order within a layer**, so edges cross
+   more than they need to on a container with a dozen artifacts. A barycentre
+   pass over `provenance_graph()` would fix it and is self-contained — the
+   layering (longest-path) is already right and must not change.
+4. *Not tried:* rendering the `.pto`'s README and mmCIF metadata payloads. The
+   view model already reads them (`payload_text`), but no section shows them; an
+   `info` section bound to it is the whole change.
+
+### Global View
 
 1. **Delete the server's copy of the graph builder.** Two implementations of one
    contract: `chisurf/plugins/core/globalview/api/graph.py` and
@@ -60,6 +88,7 @@ The open front here is **Global View** (see
 | `core/globalview` | Main:Tools:Global View | Interactive network graph of parameter relationships across fits — see [below](#global-view-the-parameter-network). |
 | `core/help` | Help:Documentation | Documentation browser and editor (Markdown + the reStructuredText user manual), with human-review sign-off tracking. |
 | `core/lightpath_simulator` | Spectroscopy:Light Path Simulator | Compute crosstalk and R₀ overlap integrals for an optical path. |
+| `core/pto_inspector` | TTTR:PTO Inspector (`menu_hidden`, in the `filetools` hub) | Reads a `.pto` back: every object with its kind/operation/grain, the payload as a chitable or a chiplot curve, the recorded settings, and the provenance **DAG** rendered through the node-editor viewer. **▶ Open tool** resolves an artifact's `operation_type` to the plugin that performs it (see [the operation index](#which-tool-performs-which-step)) and opens it on the same file. Headless: `csg_pto_inspect`. |
 | `sample_database` | Legacy:Sample Database | Retired prerelease MMFDB surface; active work belongs in `core/mmfdb_admin`. |
 | `ai_settings` | Tools:AI Settings | Root-level AI provider/backend configuration tool. |
 
@@ -183,3 +212,72 @@ be switched off, in which case the status bar says when the picture is stale.
 - **Two graph builders exist** — the plugin's and the server's `graph.build`
   service — and they have already drifted once. Fixes must land in both until
   they are unified; see [known issues](/references/known-issues.md).
+
+## Reading a `.pto` back
+
+`core/pto_inspector` is the read side of [the photon container](/specs/pto-mfdb.md).
+The writer records the artifact list, the grains, the operations, the complete
+settings and the derivation edges; until this tool nothing read any of it back
+for a person.
+
+It is a thin plugin by construction: `core.py` is Qt-free (open, list, read a
+payload, build the graph), `gui/view_model.py` holds the selection, and
+`gui/pto.view.json` is an AutoForm spec over two new **general** sections. The
+tool contributes no widget code of its own.
+
+### The provenance view is a graph, and had to be
+
+An indented tree cannot draw a container's provenance without lying about it: a
+burst-wise lifetime fit is derived from the bursts **and** from the background,
+so a tree must either repeat a node or drop an edge — and a node reached by two
+paths is the interesting one, because that is what "the background correction was
+used here as well" looks like.
+
+`provenance_graph()` therefore emits the [node-editor](/subsystems/graph.md)
+JSON schema and the read-only viewer draws it. Two details are load-bearing:
+
+- **Layers are longest-path, not shortest.** A node drawn beside its nearer
+  parent has an edge running backwards. Pinned by
+  `test_a_node_is_drawn_right_of_every_parent`.
+- **A root has no input port.** A drawn-but-unconnected port reads as a missing
+  parent.
+- **Nodes are circles, not boxes** (`"shape": "circle"`, added to the node editor
+  for this). These nodes hold nothing — they name a thing and its connections —
+  and a page of titled boxes reads as a form where a page of circles reads as a
+  network. It is also what makes a twelve-artifact chain fit without scrolling:
+  a box is 210x80, a circle 42.
+
+### Which tool performs which step
+
+A `.pto` records the `operation_type` and deliberately never names the program —
+a term naming a ChiSurf plugin would defeat the tool-agnostic vocabulary. The
+inverse lives in the manifests: `operation_types` (new manifest field) is a
+plugin's declaration of the steps it performs, and
+`chisurf.core.plugin.operations` builds `{operation_type: [manifest]}` by reading
+manifests — no import, no Qt, and no list maintained anywhere but in the plugins.
+25 operations are claimed today; the mapping is many-to-many on purpose (several
+tools legitimately produce a `model_fitting` result).
+
+A guardrail asserts every declared term is a real
+`_mmfdb_operation.operation_type`: an invented one would sit in the index
+unreachable, and the symptom would be a button that never lights up.
+
+### Traps this area has already sprung
+
+- **Rebuilding the graph on selection.** The model reports the current selection
+  through `meta.focus`, so the graph dict differs on every click; reloading on
+  that reset the zoom and recentred the view each time the user selected
+  anything. The section compares `(nodes, edges)` only, and `select()` uses
+  `ensureVisible`, not `centerOn`.
+- **A store's units were dropped by every table.** A column states its unit
+  (`column.attribute("units")`) and `DataStoreSource` built `label=name`, so a
+  duration in milliseconds and a lifetime in nanoseconds looked alike. Fixed in
+  the shared table, so every chitable over a store gained it at once.
+- **`"spectral"` was the node editor's default `port_type`** — a name from one
+  graph's domain — and it was *drawn* beside every port of every untyped graph.
+  The untyped sentinel is now `""`; compatibility is unchanged.
+- **A hub swallowed the `?` and the Guide.** `embed_mainwindow` rebuilt the
+  button row from toolbar actions and skipped any action with no text — which is
+  exactly what `toolbar.addWidget` produces. Every aggregated tool had lost both.
+  Widget-actions are re-hosted now, and shown *after* the row is installed,
+  because the reparent carries Qt's hidden state with it.

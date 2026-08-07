@@ -12,5 +12,6 @@
     "gui": "chisurf.plugins.microscopy.img_pixel_micro_time.gui.tool:ImgPixelMicroTimeTool",
     "cli": "img-pixel-micro-time=chisurf.plugins.microscopy.img_pixel_micro_time.cli:cli"
   },
+  "operation_types": ["pixel_lifetime_fitting"],
   "menu_hidden": true
 }

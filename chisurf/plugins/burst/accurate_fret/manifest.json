@@ -13,5 +13,6 @@
     "cli": "accurate-fret=chisurf.plugins.burst.accurate_fret.cli:cli",
     "services": "chisurf.plugins.burst.accurate_fret.backend.services:register_services"
   },
+  "operation_types": ["calibration"],
   "menu_hidden": false
 }

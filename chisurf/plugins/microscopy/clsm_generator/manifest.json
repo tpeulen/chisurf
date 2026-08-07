@@ -22,5 +22,6 @@
   "entrypoints": {
     "gui": "chisurf.plugins.microscopy.clsm_generator.gui.tool:ClsmGeneratorTool"
   },
+  "operation_types": ["measurement_import"],
   "menu_hidden": true
 }

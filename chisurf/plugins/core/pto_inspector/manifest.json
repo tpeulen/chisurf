@@ -1,0 +1,22 @@
+{
+  "id": "pto_inspector",
+  "version": "1.0.0",
+  "display_name": "TTTR:PTO Inspector",
+  "description": "Inspect a .pto photon container: every object in it, the provenance graph that says how each came to be, the payload as a table or a curve, and the settings that are the recipe. Double-click a step to open the tool that performs it.",
+  "authors": ["Thomas-Otavio Peulen"],
+  "categories": ["TTTR"],
+  "icon": "🔎",
+  "state_namespace": "pto_inspector",
+  "statefulness": {
+    "enabled": true,
+    "window": {
+      "enabled": true,
+      "settings_key": "pto_inspector_window"
+    }
+  },
+  "entrypoints": {
+    "gui": "chisurf.plugins.core.pto_inspector.gui.tool:PtoInspectorTool",
+    "cli": "csg_pto_inspect=chisurf.plugins.core.pto_inspector.cli.main:cli"
+  },
+  "menu_hidden": true
+}

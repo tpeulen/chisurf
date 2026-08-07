@@ -10,7 +10,7 @@ generator: build_tools/docs/generate_plugin_docs.py
 
 Every discoverable ChiSurf plugin, grouped by its menu category. Each page gives the plugin's identity, its editable parameters, and its JSON-RPC surface.
 
-Of the **126 plugins**, **55** build their interface from declarative AutoForm specs and get a full per-parameter table on their page; the remainder use custom Qt widgets, so their controls are described in each plugin's guide while every named fit/model parameter is defined once in the **[parameter glossary](../parameters.md)**.
+Of the **127 plugins**, **56** build their interface from declarative AutoForm specs and get a full per-parameter table on their page; the remainder use custom Qt widgets, so their controls are described in each plugin's guide while every named fit/model parameter is defined once in the **[parameter glossary](../parameters.md)**.
 
 ```{toctree}
 :hidden:
@@ -19,7 +19,7 @@ Of the **126 plugins**, **55** build their interface from declarative AutoForm s
 *
 ```
 
-**126 plugins** across 27 categories.
+**127 plugins** across 27 categories.
 
 ## Analysis → Kinetics
 
@@ -222,7 +222,8 @@ Of the **126 plugins**, **55** build their interface from declarative AutoForm s
 | --- | --- |
 | [Correlate](tttr_correlate.md) | This plugin provides a graphical interface for calculating correlation functions from Time-Tagged Time-Resolved (TTTR) data. |
 | [Generate Decay](tttr_histogram.md) | TTTR Histogram (Generate Decay) |
-| [⇄ .pto](tttr_to_pto.md) | Convert between a vendor photon file (.ptu, .spc, .ht3, ...) and ChiSurf's own .pto container, in either direction. Drop a vendor file to pack it into a .pto beside it; drop a .pto to unpack the vendor file(s) it embeds back out. Whichever direction, the dropped file is kept and the result is verified byte-for-byte before anything is ever deleted. Packing is also offered as a one-time nag wherever a plugin drops a vendor file to load it as the working measurement. |
+| [PTO Inspector](pto_inspector.md) *(hidden)* | Inspect a .pto photon container: every object in it, the provenance graph that says how each came to be, the payload as a table or a curve, and the settings that are the recipe. Double-click a step to open the tool that performs it. |
+| [⇄ .pto](tttr_to_pto.md) *(hidden)* | Convert between a vendor photon file (.ptu, .spc, .ht3, ...) and ChiSurf's own .pto container, in either direction. Drop a vendor file to pack it into a .pto beside it; drop a .pto to unpack the vendor file(s) it embeds back out. Whichever direction, the dropped file is kept and the result is verified byte-for-byte before anything is ever deleted. Packing is also offered as a one-time nag wherever a plugin drops a vendor file to load it as the working measurement. |
 
 ## TTTR → Editor
 
@@ -236,7 +237,7 @@ Of the **126 plugins**, **55** build their interface from declarative AutoForm s
 | Plugin | Summary |
 | --- | --- |
 | [AI Settings](ai_settings.md) *(hidden)* | AI Settings plugin for configuring API providers and backends. |
-| [Converter](converter.md) | Unified converter hub: TTTR Split/Convert, TTTR→Time-Window BIDs and BID→Analysis. |
+| [File tools](filetools.md) | Everything that acts on a file rather than on the physics inside it: TTTR split/convert, packing and unpacking a .pto container, reading one back, time-window BIDs, BID→Analysis, and the TTTR header editor. |
 | [MMFDB Admin](mmfdb_admin.md) | Manage the Multiparametric Fluorescence Database (MMFDB): samples, experiments, setups, raw/processed data, provenance, and project archives. |
 | [Open Project](project_browser.md) | Browse, save, restore, export, and import Chisurf projects using the MMFDB database with version control. |
 | [TTTR Tools](tttr_toolbox.md) | Unified TTTR toolbox: ALEX Creator, Micro-time Shifter, TTTR Header Editor and Split/Convert. |

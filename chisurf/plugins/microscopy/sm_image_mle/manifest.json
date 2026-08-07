@@ -24,6 +24,7 @@
     "cli": "sm-image-mle=chisurf.plugins.microscopy.sm_image_mle.cli:cli",
     "services": "chisurf.plugins.microscopy.sm_image_mle.backend.services:register_services"
   },
+  "operation_types": ["molecule_localization"],
   "rpc_methods": [
     {
       "name": "sm_image_mle.analyze.run",

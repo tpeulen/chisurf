@@ -19,6 +19,7 @@
     "cli": "chisurf.plugins.burst.burst_fusion.cli.main:cli",
     "services": "chisurf.plugins.burst.burst_fusion.backend.services:register_services"
   },
+  "operation_types": ["burst_fusion"],
   "rpc_methods": [
     {
       "name": "burst_fusion.jobs.analyze",

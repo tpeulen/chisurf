@@ -33,6 +33,7 @@ already have a burst list or a decay, jump straight to the analysis you need.
 34_exporting_burst_data
 35_combining_repeats
 53_reusing_results
+63_pto_inspector
 ```
 
 ## smFRET: efficiency, stoichiometry and corrections
@@ -200,6 +201,7 @@ irf_estimation
 | [Image resolution: measuring it from the image itself](51_frc_resolution.md) | `img_frc` plugin, `imaging.frc` |
 | [Sending a gated burst population to FCS, TCSPC, PDA or PCH](52_send_bursts_to_analysis.md) | ndX bridge, `*.from_bursts` services |
 | [Reusing results: when a step recomputes](53_reusing_results.md) | `chisurf.core.analysis_cache`, burst workflow steps |
+| [Inspecting a container: what is in a .pto](63_pto_inspector.md) | `pto_inspector` plugin, `core.fio.pto`, `core.plugin.operations`, `csg_pto_inspect` |
 | [Hidden Markov models of binned traces](54_hidden_markov_models.md) | `hmm` plugin, `chisurf.core.math.hmm`, `csc hmm` |
 | [Pair correlation and flow maps: where molecules go](55_pair_correlation.md) | `experiments.ics.pair_correlation`, `experiments.ics.flow_map` |
 | [FCS saturation and focal-volume expansion](56_fcs_saturation.md) | `fcs_saturation` calculator, `FCS (kinetics)` model, `chisurf.core.fluorescence.fcs.saturation` |

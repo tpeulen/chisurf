@@ -15,5 +15,7 @@
   },
   "entrypoints": {
     "gui": "chisurf.plugins.core.tttr_to_pto.gui.tool:TttrToPtoTool"
-  }
+  },
+  "operation_types": ["measurement_import"],
+  "menu_hidden": true
 }

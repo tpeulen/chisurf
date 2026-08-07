@@ -142,7 +142,6 @@ chisurf/plugins/pch/test/test_gui_dock_tool.py
 chisurf/plugins/spectra_downloader/tests/test_register_component.py
 chisurf/plugins/traj/traj_convert/view_model.py
 chisurf/plugins/traj/traj_tools/test/test_construction_smoke.py
-chisurf/plugins/tttr/converter/__init__.py
 chisurf/plugins/tttr/tttr_image_browser/gui/tool.py
 chisurf/plugins/tttr/tttr_image_browser/test/test_widgets.py
 chisurf/plugins/tttr/tttr_microtime_shifter/__init__.py

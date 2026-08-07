@@ -18,6 +18,7 @@
     "cli": "chisurf.plugins.burst.burst_bva.cli.main:cli",
     "services": "chisurf.plugins.burst.burst_bva.backend.services:register_services"
   },
+  "operation_types": ["burst_variance_analysis"],
   "rpc_methods": [
     {
       "name": "burst_bva.jobs.compute",

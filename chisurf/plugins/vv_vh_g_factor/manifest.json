@@ -19,6 +19,7 @@
     "cli": "vv-vh-g-factor=chisurf.plugins.vv_vh_g_factor.cli:cli",
     "services": "chisurf.plugins.vv_vh_g_factor.backend.services:register_services"
   },
+  "operation_types": ["calibration"],
   "rpc_methods": [
     {
       "name": "vv_vh_g_factor.calculate",

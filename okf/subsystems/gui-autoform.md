@@ -20,6 +20,42 @@ seam, not a plotting library directly.
 (`*.view.json`) instead of hand-built Qt widgets. This is part of the PRD-40
 model/UI split, backed by data specs in `chisurf/core/dataspec/`.
 
+Two general sections make a *graph* and a *store* declarable, and both were
+added for the [PTO inspector](/plugins/core-tools.md) while belonging to nobody
+in particular:
+
+- **`node_graph`** — a read-only node-editor graph bound to a model method
+  returning the [node-editor](/subsystems/graph.md) JSON. Anything whose
+  structure is a directed graph (a provenance chain, a pipeline, an evaluation
+  network) could until now only be drawn as a list or a tree, and both lie the
+  same way: a node reached by two paths is either duplicated or one of its edges
+  is dropped. `selected_call` / `activated_call` bind selection and double-click
+  back to the model. **Trap:** the section compares `(nodes, edges)` and ignores
+  `meta`, because a model reporting its selection through `meta.focus` hands back
+  a different dict on every click, and reloading on that resets the zoom. A node
+  whose config says `"shape": "circle"` is drawn as a coloured circle with its
+  name beneath it (see [the node editor](/subsystems/graph.md)), which is the
+  right shape for a graph whose nodes *name* things rather than hold editors.
+- **`store_table`** — a `ChiTableWidget` bound straight to a `tttrlib.DataStore`.
+  The built-in `table` section takes a list of row mappings, which is right for a
+  few dozen records and wrong for data: materialising a 100k-row burst table as
+  dicts costs more than reading it did. Column units need no option — a store
+  column states its own unit and [the shared table](/subsystems/gui-tables.md)
+  now reads it into the header.
+
+`plot` gained **`axes_source`**, a model method returning
+`{"x_label", "y_label", "log_x", "log_y"}`, re-read on refresh: a browser whose
+plot shows an FCS lag axis in milliseconds on a log scale and then a decay axis
+in nanoseconds on a linear one cannot state either in JSON, and labelling both
+`x` is how the two get confused. `table` gained **`selected_call`** (the row dict
+on every selection change, `{}` when cleared) — a master list driving a detail
+panel is the commonest table idiom there is, and `selected_attr` covered it only
+for a model willing to expose a reacting property setter.
+
+A section rendered as a **dock-area child no longer draws its own caption**: the
+dock tab already carries the title, so a `custom` section in a dock used to put
+"Provenance" directly under a tab reading "Provenance".
+
 Notable section types the framework supports include `image` (3D stacks with
 click-pick / markers / on-image text labels / ROI), `image_browser` (a
 navigable entry list — files, molecules, frames — beside that `image` canvas,

@@ -65,7 +65,7 @@ except Exception:
 # Plugin name in menu
 name = "Tools:Converter:BID→Analysis"
 
-# Aggregated into the Converter hub (tttr/converter); hidden as a top-level
+# Aggregated into the File tools hub (tttr/filetools); hidden as a top-level
 # menu entry but still importable and standalone-launchable.
 menu_hidden = True
 

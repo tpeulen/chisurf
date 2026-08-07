@@ -12,5 +12,6 @@
     "gui": "chisurf.plugins.microscopy.img_pixel_intensity.gui.tool:ImgPixelIntensityTool",
     "cli": "img-pixel-intensity=chisurf.plugins.microscopy.img_pixel_intensity.cli:cli"
   },
+  "operation_types": ["image_analysis"],
   "menu_hidden": true
 }

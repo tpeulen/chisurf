@@ -23,6 +23,7 @@
     "cli": "img-frc=chisurf.plugins.microscopy.img_frc.cli:cli",
     "services": "chisurf.plugins.microscopy.img_frc.backend.services:register_services"
   },
+  "operation_types": ["resolution_estimation"],
   "rpc_methods": [
     {
       "name": "img_frc.resolution.compute",

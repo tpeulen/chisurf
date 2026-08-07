@@ -2,6 +2,84 @@
 
 ## 2026-08-07
 
+* **A `.pto` can now be read back — and four silent GUI defects found while doing
+  it.** The container has recorded its artifact list, grains, operations,
+  complete settings and derivation edges since it was written; nothing read any
+  of that back for a person. New `chisurf/plugins/core/pto_inspector`: a Qt-free
+  `core.py` (open, list, read a payload, build the graph), a view model, and an
+  AutoForm spec — no widget code of its own. Headless equivalent
+  `csg_pto_inspect` (`list` / `show` / `lineage` / `graph` / `verify` /
+  `export`). 42 tests.
+
+  **The provenance view is a graph because a tree would lie.** A burst-wise
+  lifetime fit is derived from the bursts *and* the background, so an indented
+  tree must duplicate a node or drop an edge. `provenance_graph()` emits the
+  node-editor JSON and the read-only viewer draws it; layers are **longest**-path
+  (shortest puts a node beside its nearer parent, with an edge running
+  backwards), and a root gets **no input port** (an unconnected port reads as a
+  missing parent). Both pinned.
+
+  **Jumping from a result to the tool that made it** closes the one gap the
+  container cannot: it records the `operation_type` and deliberately never names
+  the program. New manifest field `operation_types` + `chisurf.core.plugin.operations`
+  invert it by reading manifests — 25 operations declared across 26 plugins. A
+  guardrail asserts every declared term is a real `_mmfdb_operation.operation_type`,
+  because an invented one would sit unreachable in the index and the only symptom
+  would be a button that never lights up.
+
+  **New general AutoForm sections** (neither specific to this tool): `node_graph`
+  (any directed graph, bound to a model method) and `store_table` (a
+  `ChiTableWidget` bound straight to a `DataStore` — the built-in `table` takes
+  row dicts, and materialising a 100k-row burst table as dicts costs more than
+  reading it did). `plot` gained `axes_source` (a browser cannot state in JSON
+  that one artifact is an FCS lag axis in ms on a log scale and the next a decay
+  in ns on a linear one); `table` gained `selected_call`; a section rendered as a
+  dock-area child no longer draws its own caption over the tab already carrying
+  it.
+
+  **Four defects found by looking at the rendered window, none of which failed or
+  warned:**
+  1. **A menu entry for a manifest-only plugin did nothing.** `run_plugin_from_dir`
+     executed `wizard.py` or `__init__.py` as a macro and never consulted
+     `entrypoints.gui`; every plugin written to the current standard has an
+     `__init__.py` that only imports, so the click was a no-op — silently, since
+     the launcher swallows every exception. Reported by the user for **`.pto`
+     convert**, which had been dead this way. Fixed at the root (manifest first,
+     macro as fallback) + `test/gui/test_plugin_launcher.py`, which also asserts
+     every shipped GUI entry point resolves (114 cases).
+  2. **A hub swallowed the `?` and the Guide.** `embed_mainwindow` rebuilt the
+     button row from toolbar actions and skipped any with no text — exactly what
+     `toolbar.addWidget` produces. Widget-actions are re-hosted now and shown
+     *after* the row is installed, because the reparent carries Qt's hidden state
+     with it (showing them earlier looked identical to the bug).
+  3. **Every table dropped the unit its store stated.** A column carries
+     `attribute("units")`; `DataStoreSource` built `label=name`, so a duration in
+     ms and a lifetime in ns looked alike. Fixed in the shared table — every
+     chitable over a store gained `tau_green [ns]` at once.
+  4. **`"spectral"` was the node editor's default `port_type`** and was *drawn*
+     beside every port of every untyped graph. The untyped sentinel is `""` now;
+     compatibility is unchanged (untyped still matches only untyped).
+
+  **Node shapes.** The node editor gained `"shape": "circle"` — a coloured circle
+  with its name beneath it instead of a titled box, ports at the waist so edges
+  run centre-to-centre. A box is right for a node that *holds* something; these
+  hold nothing, and a page of titled boxes reads as a form where a page of
+  circles reads as a network. It is also what makes a twelve-artifact chain fit
+  without scrolling (210x80 → 42). `boundingRect` had to be widened for the
+  external label, or `fit_all` clips the bottom row's names.
+
+  See [core tools](/plugins/core-tools.md), [AutoForm](/subsystems/gui-autoform.md),
+  [PTO.MFDB](/specs/pto-mfdb.md), `docs/guides/63_pto_inspector.md`.
+
+* **`tttr/converter` renamed to `tttr/filetools` and given the container tools.**
+  The hub held TTTR Split/Convert, Time-Window BIDs and BID→Analysis; "Converter"
+  no longer covered what belongs there. Now **File tools** (`Tools:File tools`),
+  adding ⇄ .pto, the PTO Inspector and the TTTR header editor — the tools that
+  act on a *file* rather than on the physics inside it. New members are
+  `menu_hidden` like the existing ones. The rename struck one line from the
+  **shrinking** PRD-mention allow-list. Regenerated the plugin catalogue.
+  See [TTTR plugins](/plugins/tttr.md).
+
 * **End-to-end run of the burst and imaging pipelines over `.pto`, on the CLI
   and in the GUI — ten defects, none of which failed or warned.** Driven the
   way a user would: the ten `bh_spc132_sm_dna` `.spc` files dropped and

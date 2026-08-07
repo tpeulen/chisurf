@@ -13,6 +13,7 @@
     "cli": "img-pixel-phasor=chisurf.plugins.microscopy.img_pixel_phasor.cli:cli",
     "services": "chisurf.plugins.microscopy.img_pixel_phasor.backend.services:register_services"
   },
+  "operation_types": ["phasor_analysis"],
   "rpc_methods": [
     {
       "name": "phasor.describe",

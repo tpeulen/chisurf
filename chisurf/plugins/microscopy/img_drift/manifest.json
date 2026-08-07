@@ -11,5 +11,6 @@
   "entrypoints": {
     "gui": "chisurf.plugins.microscopy.img_drift.gui.tool:ImgDriftTool",
     "cli": "img-drift=chisurf.plugins.microscopy.img_drift.cli:cli"
-  }
+  },
+  "operation_types": ["drift_correction"]
 }

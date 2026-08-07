@@ -25,6 +25,7 @@
     "cli": "microtime-shift=chisurf.plugins.tttr.tttr_microtime_shifter.cli.main:cli",
     "services": "chisurf.plugins.tttr.tttr_microtime_shifter.backend.services:register_services"
   },
+  "operation_types": ["microtime_shift"],
   "rpc_methods": [
     {
       "name": "microtime_shift.apply",

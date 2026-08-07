@@ -17,5 +17,6 @@
     "gui": "chisurf.plugins.burst.burst_background:BurstBackgroundEstimator",
     "cli": "burst-background=chisurf.plugins.burst.burst_background.cli:cli"
   },
+  "operation_types": ["background_correction"],
   "menu_hidden": true
 }

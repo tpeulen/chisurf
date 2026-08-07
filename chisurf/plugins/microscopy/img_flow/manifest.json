@@ -23,6 +23,7 @@
     "cli": "img-flow=chisurf.plugins.microscopy.img_flow.cli:cli",
     "services": "chisurf.plugins.microscopy.img_flow.backend.services:register_services"
   },
+  "operation_types": ["flow_field_estimation"],
   "rpc_methods": [
     {
       "name": "img_flow.map.compute",

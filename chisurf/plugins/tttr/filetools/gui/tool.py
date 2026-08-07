@@ -1,11 +1,20 @@
-"""ConverterTool — unified converter hub using NavigationPanelTool.
+"""FileToolsTool — the hub for everything that acts on a *file*.
 
 A single window with a left navigation list and a lazily-loaded right panel
-area. Each panel embeds one of the existing conversion tools **unchanged**:
+area. Each panel embeds one of the existing file tools **unchanged**:
 
     1. TTTR Split / Convert     — PTUSplitter
     2. TTTR → Time Windows      — TTTRTimeWindowTool
     3. BID → Analysis           — BidToAnalysisGUI
+    4. ⇄ .pto                   — TttrToPtoTool
+    5. PTO Inspector            — PtoInspectorTool
+    6. TTTR header editor       — TagsEditor
+
+They belong together because they are the same *kind* of operation: none of
+them measures anything. They move a measurement between containers, read one
+back, or correct what a vendor wrote into a header — which is why the packing
+and unpacking of a ``.pto``, and the window that reads one, sit beside the
+format converters rather than beside the analyses.
 
 Panels are imported lazily inside their factory functions so the combined
 window opens fast and a sub-tool whose heavy dependencies are missing only
@@ -27,23 +36,23 @@ from chisurf.gui.widgets.navigation import NavigationPanelTool, load_panels_json
 # ``load_panels_json`` helper (lazy entrypoint factories; ``embed`` flattens
 # QMainWindow tools). Adding a tool is a single JSON entry — no Python.
 
-_PANEL_SPEC, CONVERTER_PANELS = load_panels_json(pathlib.Path(__file__).with_name("panels.json"))
+_PANEL_SPEC, FILETOOLS_PANELS = load_panels_json(pathlib.Path(__file__).with_name("panels.json"))
 
 
-class ConverterTool(NavigationPanelTool):
-    """Unified converter hub with a left-navigation panel."""
+class FileToolsTool(NavigationPanelTool):
+    """Unified file-tools hub with a left-navigation panel."""
 
     def __init__(self, parent=None):
         super().__init__(
-            title=_PANEL_SPEC.get("title", f"{Glyphs.LOOP} Converter"),
-            panels=CONVERTER_PANELS,
+            title=_PANEL_SPEC.get("title", f"{Glyphs.LOOP} File tools"),
+            panels=FILETOOLS_PANELS,
             parent=parent,
             minimum_size=(900, 600),
-            initial_size=(1200, 750),
-            navigation_width=220,
+            initial_size=(1300, 800),
+            navigation_width=240,
             searchable=False,
-            settings_key="converter",
+            settings_key="filetools",
         )
 
 
-__all__ = ["ConverterTool"]
+__all__ = ["FileToolsTool"]

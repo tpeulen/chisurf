@@ -1,0 +1,51 @@
+{
+  "_comment": "Data-driven panel list for the File tools hub. Each entry names a tool by its GUI entrypoint (module:Class); the hub lazily imports and instantiates it. Set \"embed\": true for QMainWindow tools that must be flattened into a plain panel. Add a tool by adding an entry here — no Python needed. Order runs from the format-level operations (convert, split) through the container (pack, read) to the metadata (header).",
+  "title": "🗂️ File tools",
+  "panels": [
+    {
+      "name": "TTTR Split / Convert",
+      "icon": "✂️",
+      "role": "split_convert",
+      "entrypoint": "chisurf.plugins.tttr.tttr_splitter.gui.tool:PTUSplitter",
+      "description": "Split large TTTR files into segments and convert between container formats."
+    },
+    {
+      "name": "⇄ .pto",
+      "icon": "📦",
+      "role": "tttr_to_pto",
+      "entrypoint": "chisurf.plugins.core.tttr_to_pto.gui.tool:TttrToPtoTool",
+      "embed": true,
+      "description": "Pack a vendor photon file into a .pto container, or unpack the vendor file back out of one. Either direction keeps the dropped file and verifies the result byte-for-byte before anything is deleted."
+    },
+    {
+      "name": "PTO Inspector",
+      "icon": "🔎",
+      "role": "pto_inspector",
+      "entrypoint": "chisurf.plugins.core.pto_inspector.gui.tool:PtoInspectorTool",
+      "embed": true,
+      "description": "Read a .pto back: every object in it, the payload as a table or a curve, the settings that are the recipe, and the provenance drawn as a graph. Opens the tool that performs a step."
+    },
+    {
+      "name": "TTTR header",
+      "icon": "🏷️",
+      "role": "tttr_header_edit",
+      "entrypoint": "chisurf.plugins.tttr.tttr_header_edit.gui.tool:TagsEditor",
+      "description": "View and edit the header tags of any TTTR file tttrlib can read — correcting metadata a vendor wrote, and adding tags of your own."
+    },
+    {
+      "name": "TTTR → Time Windows",
+      "icon": "⏱️",
+      "role": "tttr_time_windows",
+      "entrypoint": "chisurf.plugins.tttr.tttr_time_windows.gui.tool:TTTRTimeWindowTool",
+      "embed": true,
+      "description": "Split TTTR files into fixed-duration time-window BID (.bst) files."
+    },
+    {
+      "name": "BID → Analysis",
+      "icon": "📁",
+      "role": "bid_to_analysis",
+      "entrypoint": "chisurf.plugins.burst.bid_to_analysis:BidToAnalysisGUI",
+      "description": "Convert burst-ID (BID) files into a burstwise analysis folder next to the TTTR data."
+    }
+  ]
+}

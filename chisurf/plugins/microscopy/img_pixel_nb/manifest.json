@@ -12,5 +12,6 @@
     "gui": "chisurf.plugins.microscopy.img_pixel_nb.gui.tool:ImgPixelNBTool",
     "cli": "img-pixel-nb=chisurf.plugins.microscopy.img_pixel_nb.cli:cli"
   },
+  "operation_types": ["number_and_brightness"],
   "menu_hidden": true
 }

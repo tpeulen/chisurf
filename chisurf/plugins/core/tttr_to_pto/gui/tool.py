@@ -5,7 +5,7 @@ asks permission before converting a file dropped on someone else's tool; this
 widget *is* the explicit "convert" action a guard would otherwise ask
 permission for, for people who already know which direction they want and do
 not want to be asked. It is also distinct from the settings-heavy
-``tttr/converter`` hub, which transcodes between vendor container formats and
+``tttr/filetools`` hub, which transcodes between vendor container formats and
 has nothing to do with `.pto`.
 
 Works **both ways**, telling the two apart by what was dropped: a vendor file

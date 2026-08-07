@@ -1,0 +1,65 @@
+{
+  "_comment": "Guided tour for the PTO inspector. Steps point at real controls and wait for the user to press them. Read by chisurf.gui.widgets.tools.guided_tour.",
+  "steps": [
+    {
+      "title": "What a .pto is",
+      "text": "One measurement, <b>one file</b>. The instrument file goes in byte-for-byte and is never decoded into a second copy beside itself; every result computed from it — bursts, decays, correlations, fits, selections — is written beside it, each carrying the operation and the settings that produced it.<br/><br/>This window only reads. Eight steps, about a minute; you press the buttons.",
+      "target": {}
+    },
+    {
+      "title": "Open a container",
+      "text": "Any <code>.pto</code> — browse for one, drag it onto this window, or pick it from the database. Dropping a <b>vendor</b> photon file (PTU, HT3, SPC) offers to pack it into a container first.",
+      "target": {
+        "attr": "filename"
+      },
+      "await": {
+        "hint": "Choose a <code>.pto</code>, by <b>📂 Browse</b> or by dropping one on the window."
+      }
+    },
+    {
+      "title": "What is in it",
+      "text": "One row per object, in the order it was written. The columns are the container's own vocabulary: <b>kind</b> is what sort of thing this is, <b>operation</b> is what produced it (empty means it was carried rather than computed), and <b>grain</b> says what one row <i>is</i>.<br/><br/>Grain is the load-bearing one — nothing in a container is joined by position, so a dwell table and a burst table can live in the same file.<br/><br/>Click a row. Everything on the right follows the selection.",
+      "target": {
+        "title": "Objects"
+      }
+    },
+    {
+      "title": "How it got there",
+      "text": "The provenance graph. Instrument file on the left, the last thing computed on the right, and every arrow a <b>recorded</b> derivation — not an inference from folder names.<br/><br/>Look for a node with <b>two</b> incoming arrows: a lifetime fit uses the bursts <i>and</i> the background. That is the case a tree view cannot draw without duplicating a node or dropping an edge, and it is why this is a graph.",
+      "target": {
+        "title": "Provenance"
+      }
+    },
+    {
+      "title": "The numbers",
+      "text": "A tabular payload opens in the shared table — sort, filter, hide columns, search, export. The headers carry the unit the <b>column itself</b> states, so a duration in milliseconds cannot be read as seconds.<br/><br/>A curve opens in <b>Curve</b> instead, with its axis units and scale taken from the stored columns: an FCS lag axis is milliseconds on a log scale and a decay axis is nanoseconds on a linear one.",
+      "target": {
+        "title": "Data"
+      }
+    },
+    {
+      "title": "The settings are the identity",
+      "text": "The details panel lists everything recorded — and the <b>settings</b> are not a label on the run: their hash <i>is</i> the run. Recomputing with the same settings rewrites that artifact in place; changing one produces a new artifact.<br/><br/>That is why nothing accumulates in a container and why no parameter ever has to be encoded in a file name.",
+      "target": {
+        "title": "Details"
+      }
+    },
+    {
+      "title": "Open the tool that made it",
+      "text": "A container records the <b>operation</b>, never the program — naming a ChiSurf plugin in the file would have made it unreadable by anything else.<br/><br/>So the index runs the other way: each tool declares which operations it performs, and this button opens the matching one <i>on this same file</i>. A double-click on a graph node does the same. A step no installed tool claims says so plainly.",
+      "target": {
+        "action": "Open tool"
+      }
+    },
+    {
+      "title": "Before you delete the original",
+      "text": "<b>🔍 Verify</b> re-hashes every payload and compares it against the checksum recorded beside it. Do this before deleting an original file: <i>restorable</i> without verification is only <i>probably restorable</i>.<br/><br/>The <b>?</b> button beside this guide has the long version.",
+      "target": {
+        "action": "Verify"
+      },
+      "await": {
+        "hint": "Press <b>🔍 Verify</b>."
+      }
+    }
+  ]
+}
