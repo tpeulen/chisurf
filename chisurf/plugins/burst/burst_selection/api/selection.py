@@ -643,6 +643,13 @@ def analyze_request(
         "n_selected": 0,
         "n_photons": 0,
     }
+    # The legacy layout *is* the `.bur` plus its `Info/` sidecars -- that is what
+    # a reader (ndX) opens the folder for. Asking for the folder while asking for
+    # no format that goes in it produced a directory holding two Info files and
+    # nothing else, freshly numbered on every run, which ndX then refused with
+    # "No .bur files in 'bi4_bur' or 'bur'". So the request implies the format.
+    if request.legacy_output and not ({"bur", "hdf5"} & set(request.settings.output_formats)):
+        request.settings.output_formats = list(request.settings.output_formats) + ["bur"]
     legacy_output_folder = _prepare_legacy_output_folder(request) if request.legacy_output else None
     bur_output_dir = (
         legacy_output_folder / "bi4_bur"
