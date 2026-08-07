@@ -198,6 +198,15 @@ def column_values(store: Any, index: int, *, masked_as_nan: bool = True) -> np.n
     -------
     numpy.ndarray
         A zero-copy view for an unmasked numeric column; a new array otherwise.
+
+    Warnings
+    --------
+    That view is the **store's own buffer**, and it does not outlive the store.
+    ``np.asarray(values, dtype=float)`` on an already-``float64`` array returns
+    the same view rather than a copy, so a caller that keeps the array after
+    dropping the store is reading freed memory — which comes back as denormal
+    garbage rather than as an error. Anything that outlives its store must
+    ``np.array(..., copy=True)``.
     """
     column = column_at(store, index)
     values = column.numpy()

@@ -9,6 +9,8 @@ what a foreign or older file does instead of reading as an empty table.
 from __future__ import annotations
 
 import io
+import pathlib
+import tempfile
 
 import numpy as np
 import pandas as pd
@@ -543,3 +545,118 @@ def test_rows_write_straight_to_csv(tmp_path):
 
 def test_an_empty_row_list_is_an_empty_table(tmp_path):
     assert store_from_rows([]).n_rows() == 0
+
+
+# ── the columnar reader, with the fallback instrumented ──────────────────
+
+
+def test_burst_tables_read_columnar_and_agree_with_the_frame_reader(monkeypatch):
+    """Parity AND coverage, because parity alone can pass for the wrong reason.
+
+    ``read_burst_table`` falls back to the frame reader for a file the threaded
+    one declines. A parity test that only compares the answers is therefore
+    satisfied when the fallback ran for *every* file — which is exactly what
+    happened once: a delimiter sniffer that preferred the most frequent
+    character chose the space over the tab, because burst column names contain
+    spaces, so nothing took the columnar path and the check compared pandas
+    against pandas.
+
+    So this counts the fallbacks and asserts there were none.
+    """
+    import glob
+
+    import pandas as pd
+
+    from chisurf.core.fluorescence.burst import table as burst_table
+
+    paths = sorted(glob.glob("modules/ndxplorer/test/mfd/**/*.bur", recursive=True))
+    if not paths:
+        pytest.skip("no .bur fixtures available")
+
+    reference = pd.read_csv
+    fallbacks = {"n": 0}
+
+    def counting_read_csv(*args, **kwargs):
+        fallbacks["n"] += 1
+        return reference(*args, **kwargs)
+
+    monkeypatch.setattr(pd, "read_csv", counting_read_csv)
+
+    for path in paths:
+        columns = burst_table.read_burst_table(path)
+        frame = reference(path, sep="\t")
+        for name in columns:
+            np.testing.assert_allclose(
+                columns[name], frame[name].to_numpy(dtype=float),
+                equal_nan=True, err_msg=f"{path}:{name}",
+            )
+        assert len(next(iter(columns.values()))) == len(frame), path
+
+    assert fallbacks["n"] == 0, (
+        f"{fallbacks['n']} of {len(paths)} burst tables went through the frame "
+        "reader -- the columnar path is not being exercised, so the comparison "
+        "above proves nothing"
+    )
+
+
+def test_a_burst_header_whose_names_contain_spaces_still_finds_the_tab():
+    """The defect above, in one line: precedence, not frequency."""
+    from chisurf.core.fluorescence.burst.table import _sniff_delimiter
+
+    path = pathlib.Path(tempfile.mkdtemp()) / "wide.bur"
+    path.write_text("Duration (ms)\tMean Macro Time (ms)\tCount Rate (KHz)\n1\t2\t3\n")
+    assert _sniff_delimiter(path) == "\t"
+
+
+def test_a_column_array_does_not_outlive_the_store_it_came_from():
+    """The zero-copy view is the point of the store and also its trap.
+
+    ``column_values`` returns the column's own buffer for an unmasked numeric
+    column, and ``np.asarray(x, dtype=float)`` on an already-``float64`` array
+    returns *that same view* rather than a copy. A caller that lets the store go
+    out of scope is then holding freed memory, which reads back as denormal
+    garbage rather than raising — 84 of 154 rows of one burst column came back
+    as ``3.3e-319``.
+
+    Anything that outlives its store must copy, and this pins that the reader
+    does.
+    """
+    from chisurf.core.fluorescence.burst.table import _read_delimited
+
+    path = pathlib.Path(tempfile.mkdtemp()) / "t.bur"
+    expected = np.arange(1000, dtype=float) * 3.0
+    path.write_text("a\tb\n" + "".join(f"{v}\t{v * 2}\n" for v in expected))
+
+    columns = _read_delimited(path)          # the store is dropped in here
+    import gc
+
+    gc.collect()
+    np.testing.assert_allclose(columns["a"], expected)
+    np.testing.assert_allclose(columns["b"], expected * 2)
+
+
+def test_column_values_is_a_view_so_the_warning_is_warranted():
+    """If this ever starts copying, the rule above can be relaxed — but it must
+    be noticed rather than assumed."""
+    store = store_from_arrays({"x": np.arange(8, dtype=float)})
+    values = column_values(store, 0)
+    values[0] = 42.0
+    assert column_values(store, 0)[0] == 42.0, "no longer a view; revisit the copies"
+
+
+def test_a_frame_built_from_a_store_survives_that_store():
+    """``read_table_frame`` builds a frame from a store that dies on the next
+    line, so this is load-bearing — and it holds only because the frame
+    constructor copies a dict of arrays, which is its behaviour rather than its
+    promise. If a future version stops copying, this fails here instead of
+    silently corrupting every table read through the seam.
+    """
+    import gc
+
+    def frame_from_a_local_store():
+        store = store_from_arrays({"x": np.arange(2000, dtype=float)})
+        return dataframe_from_store(store)
+
+    frame = frame_from_a_local_store()
+    gc.collect()
+    np.testing.assert_array_equal(frame["x"].to_numpy(), np.arange(2000, dtype=float))

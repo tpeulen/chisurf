@@ -175,7 +175,13 @@ def _read_delimited(path: pathlib.Path) -> dict[str, np.ndarray]:
                 # than by trying to cast it and catching the failure.
                 if column.dtype in (STRING_DTYPE, BOOL_DTYPE):
                     continue
-                values = np.asarray(column_values(store, index), dtype=float).ravel()
+                # np.array, not np.asarray: column_values hands back a
+                # ZERO-COPY VIEW into the store's buffer, and asarray on an
+                # already-float64 array returns that same view. The store is
+                # local to this function, so the arrays would outlive the memory
+                # they point at -- reading back as denormal garbage, not as an
+                # error. 84 of 154 rows of "First Photon" came back wrong.
+                values = np.array(column_values(store, index), dtype=float).ravel()
                 if values.size and np.any(np.isfinite(values)):
                     columns[str(column.name())] = values
             if columns:
