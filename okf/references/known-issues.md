@@ -2700,4 +2700,33 @@ object's current ones across. If so, one fix closes both, and the test should
 assert the *masks* as well as the view state, since a rebuilt object with
 default visibility is indistinguishable from a correct one in a mesh count.
 
-Not fixed here: reported after the session's work was committed.
+**Tried to fix, and it does not reproduce through the command path.** Measured
+on 148L, driving the whole flow as commands (`wizard mutagenesis` → `target` →
+`rotamer, next` → `apply` → `done`) and printing the 18-float view state and
+the per-atom masks after each:
+
+* the view is **identical at every step**, apply included — position
+  `[0, 0, -467.83]`, near/far/fov `[1.65, 660.39, -20]`. So `apply` being
+  unwrapped is *not* the cause, and wrapping it would fix nothing;
+* the masks resize correctly: `sticks_mask` goes 1363 → 1370 with the atom
+  count when a THR becomes a TRP, rather than being dropped or left stale;
+* the water half could not be exercised at all — **148L carries no waters**
+  (`tot=0`), so a fixture with solvent is needed to see it.
+
+That leaves the **GUI interaction path**, which is what the report came from
+and what none of this touched. Two candidates worth taking first:
+
+* the mouse mode itself. In 3-Button Viewing, `SnglClk` is **Cent** — a single
+  click centres on the atom under the cursor. Picking the residue to mutate is
+  a click, so the "reset" may be the mouse mode doing exactly what the panel
+  says it does, and the fix (if any) is that picking *for the wizard* should
+  not re-centre;
+* whatever the object menu's **H** button emits for waters, followed by
+  `_refresh_objects_from_viewer` after apply. The command spelling is
+  `hide everything, solvent`; a bare `hide solvent` is rejected
+  ("Unsupported representation for show/hide: solvent"), so the two paths may
+  not be setting the same state.
+
+Reproduce with a structure that has waters, driving the GUI rather than the
+command line — the standing correction in the parity concept applies: a test
+that calls the handler cannot see what the widget does.
