@@ -9,19 +9,22 @@ timestamp: '2026-08-06T00:00:00Z'
 
 # Where to pick this up
 
-1. **Four writers migrated, ~10 to go.** `burst_selection` (`output_formats`
-   contains `"pto"`), `burst_bva` (`write_bva_container`), `burst_2cde`
-   (`write_2cde_container`) and `burst_fusion` (`write_fusion_container`). The
-   shared seam is
+1. **Five writers migrated, ~9 to go.** `burst_selection` (`output_formats`
+   contains `"pto"`), `burst_bva`, `burst_2cde`, `burst_fusion` and `burst_h2mm`
+   (`write_h2mm_container`, bursts *and* dwells). The shared seam is
    `chisurf/core/fio/fluorescence/burst_container.py` — `write_burst_artifact`
    for one measurement, `write_per_source` for a frame covering several. Every
    remaining writer is one call to those, so the work is now reading each
    plugin rather than designing anything. Next: `burst_mle_analysis` (three
-   colour tables plus per-state lifetimes), `burst_h2mm` (dwells at their own
-   grain, the case the `bh4` + five loose files exist for),
-   `burst_fcs_correlator`, then `bid_to_analysis` and `burst_analysis` — both
-   duplicate `burst_selection`'s `bi4_bur/` writer and collapse onto
-   `write_container`.
+   colour tables plus per-state lifetimes), `burst_fcs_correlator`, then
+   `bid_to_analysis` and `burst_analysis` — both duplicate `burst_selection`'s
+   `bi4_bur/` writer and collapse onto `write_container`. Then **stage 4**, the
+   imaging writers, which need no new design: a per-pixel map is a table at
+   `pixel` grain and a stack is an `image` object.
+   
+   The migrated writers add the container path beside the legacy one rather
+   than replacing it; switching the default over is a separate, deliberate
+   step once the whole set is across.
 
 2. **Capture the legacy baseline BEFORE touching each writer.** Once a writer is
    changed its output is unrecoverable and the migration cannot be reviewed by

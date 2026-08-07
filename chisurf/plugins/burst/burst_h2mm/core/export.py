@@ -332,6 +332,69 @@ H2MM_COMPANION_COLUMNS = [
 ]
 
 
+def write_h2mm_container(
+    source,
+    burst_df,
+    dwell_df=None,
+    *,
+    parameters: dict | None = None,
+) -> str:
+    """Write the H2MM result into the measurement's container, at both grains.
+
+    H2MM is the analysis the burst-companion format could not hold, and its own
+    docstring says why: ``h2mm_bursts.csv`` is indexed by a *compacted* burst
+    number — the bursts H2MM kept — and "one dropped burst shifts every later
+    row", so it cannot be joined back to the burst table at all. The `bh4`
+    companion exists to work around that, and the dwells, the state decays and
+    the state-annotated photons live in four more files outside the format
+    because a dwell is not a burst.
+
+    Here a dwell table is simply *finer*: it declares `dwell` grain and carries
+    the burst key it already has, so the join is stated rather than counted and
+    a compacted index is no longer a problem to be avoided.
+
+    Parameters
+    ----------
+    source : str or Path
+        The instrument file, or the container.
+    burst_df : table
+        Per-burst H2MM results.
+    dwell_df : table, optional
+        Per-dwell results from :func:`build_dwell_table`, carrying ``Burst``.
+    parameters : dict, optional
+        The model settings; their hash is the identity of the run.
+
+    Returns
+    -------
+    str
+        Path of the container written.
+    """
+    from chisurf.core.fio.fluorescence.burst_container import write_burst_artifact
+
+    written = write_burst_artifact(
+        source, burst_df,
+        name="h2mm", artifact_kind="burst_table",
+        operation_type="photon_hmm", row_grain="burst",
+        parameters=parameters, derived_from="bursts",
+    )
+    if dwell_df is not None and len(dwell_df):
+        write_burst_artifact(
+            source, dwell_df,
+            name="h2mm dwells", artifact_kind="dwell_table",
+            operation_type="photon_hmm", row_grain="dwell",
+            parameters=parameters, derived_from="h2mm",
+            source_row_column="Burst",
+            units={
+                "Dwell Time (ms)": "milliseconds",
+                "Mean Macro Time (s)": "seconds",
+                "FRET efficiency": "dimensionless",
+                "Proximity ratio": "dimensionless",
+                "Number of Photons": "photons",
+            },
+        )
+    return written
+
+
 def write_burst_companions(
     burst_df,
     burst_rows,

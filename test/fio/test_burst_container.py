@@ -351,3 +351,32 @@ def test_the_two_2cde_variants_do_not_overwrite_each_other(measurement: Path):
     with Measurement.open(container_for(measurement)) as m:
         names = [o.name for o in m.artifacts()]
         assert "2cde fret" in names and "2cde alex" in names
+
+
+def test_h2mm_writes_bursts_and_dwells_at_their_own_grains(measurement: Path):
+    """The analysis the companion format could not hold. Its own docstring says
+    why: h2mm_bursts.csv is indexed by a compacted burst number, so "one dropped
+    burst shifts every later row" and it cannot be joined back at all."""
+    from chisurf.plugins.burst.burst_h2mm.core.export import write_h2mm_container
+
+    bursts = pd.DataFrame({"H2MM State": np.tile([0, 1], 10)})
+    dwells = pd.DataFrame(
+        {
+            "Dwell": np.arange(30),
+            "Burst": np.repeat(np.arange(10), 3),   # compacted: only 10 of 20
+            "State": np.tile([0, 1, 0], 10),
+            "Dwell Time (ms)": np.linspace(0.1, 3.0, 30),
+            "FRET efficiency": np.linspace(0, 1, 30),
+        }
+    )
+    write_h2mm_container(measurement, bursts, dwells, parameters={"states": 2})
+
+    with Measurement.open(container_for(measurement)) as m:
+        dwell_uid = m._resolve("h2mm dwells")
+        assert m.tag(dwell_uid, "_mmfdb_artifact.row_grain") == "dwell"
+        assert m.tag(dwell_uid, "_mmfdb_edge.source_row_column") == "Burst"
+        assert m.parents(dwell_uid) == [m._resolve("h2mm")]
+        assert len(m.get_table("h2mm dwells")) == 30
+        # A compacted burst index is fine now: the join is declared, not counted.
+        assert len(m.get_table("h2mm")) == 20
+        assert m.verify() == []

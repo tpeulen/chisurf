@@ -33,6 +33,12 @@
 
 ## 2026-08-06
 
+* **H2MM: bursts and dwells, each at its own grain** ([photon container](subsystems/photon-container.md)).
+
+  The fifth writer, and the one the whole design was aimed at. H2MM's own docstring stated the defect: `h2mm_bursts.csv` is indexed by a *compacted* burst number — only the bursts H2MM kept — so "one dropped burst shifts every later row" and it cannot be joined back to a burst folder at all. The `bh4` companion exists to work around that, and the dwells, state decays and state-annotated photons live in four more files outside the format because a dwell is not a burst.
+
+  A dwell table is simply *finer*. It declares `dwell` grain and carries the `Burst` key it already had, so the join is stated rather than counted — and a compacted index stops being something to avoid. Units come with it: dwell time in ms, macro time in s, efficiency dimensionless.
+
 * **A container explains itself, and says what the measurement was** ([profile](specs/pto-mfdb.md) 1.1).
 
   Two requirements that change what a `.pto` *is*.
