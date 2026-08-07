@@ -76,6 +76,38 @@ must. **The round trip is lossy in that one direction**, and it is documented
 rather than hidden. Code moved onto a store has to say which of the two it
 means: a masked cell is *not* visible to `np.isnan`.
 
+## The column *data* is borrowed too, and that is the sharper edge
+
+The proxy hazard below is documented and worked around. The **array** has the
+same lifetime and is easier to get wrong, because the guard against it is one
+word:
+
+* `column_values` returns the column's own buffer for an unmasked numeric
+  column — the zero-copy view that is the point of the store;
+* `np.asarray(values, dtype=float)` on an already-`float64` array returns **that
+  same view**, not a copy. `np.array` copies.
+
+So an array that outlives its store is reading freed memory, and it **does not
+raise**: it comes back as denormal garbage. Measured when the burst reader hit
+it — 84 of 154 rows of `First Photon` read as `3.3e-319` instead of `2755`, and
+a synthetic case reads `[0, 3, 0, 9]` for `[0, 3, 6, 9]`, correct values
+alternating with reused memory.
+
+**The rule: anything that outlives its store copies.** Three tests in
+`test/test_datastore_seam.py` pin it — that the reader's arrays survive their
+store, that `column_values` still *is* a view (so the rule can be relaxed
+deliberately if that ever changes rather than assumed away), and that a frame
+built from a store survives it, which `read_table_frame` depends on and which
+holds only because the frame constructor copies a dict of arrays.
+
+**And it was invisible to a parity test that compared answers.** The check that
+should have caught it passed while the columnar reader was never running: a
+delimiter sniffer preferring the most frequent character chose the space over
+the tab, because burst column names contain spaces, so every file went down the
+frame fallback and the test compared pandas against pandas. A parity test over a
+seam with a fallback has to **count the fallbacks and assert there were none**,
+or it proves nothing.
+
 ## A column proxy is borrowed, and it dangles silently
 
 A `Column` obtained from a store — from `add()`, from `store[i]` — is a borrowed
