@@ -311,3 +311,49 @@ def test_the_traced_background_is_the_one_bg_color_set(cmd, tmp_path):
     assert out.exists()
     corner = np.asarray(Image.open(out).convert("RGB"))[2, 2]
     assert corner.min() > 240, f"traced background is {tuple(corner)}, not white"
+
+
+# --------------------------------------------------------------------------- #
+# How it is framed
+# --------------------------------------------------------------------------- #
+def test_the_default_size_is_the_scene_column_not_the_widget(window):
+    """`ray` with no size must trace what the viewport shows.
+
+    The viewport is not the widget: the panel owns a column on the right and
+    the sequence viewer a band at the top, and the scene is drawn into what is
+    left. Tracing the widget's full size traces a *wider* field than is on
+    screen, so the molecule comes out smaller and pushed towards the side the
+    panel is on -- measured on a 998x583 widget, 59 % of the image width
+    against the viewport's 70 %. PyMOL takes the default "from the current
+    viewpoint" and means the same rectangle.
+    """
+    view = window.viewer.view
+    view.resize(900, 600)
+    scene_w, scene_h = view.scene_pixel_size()
+    ratio = view.devicePixelRatioF()
+
+    assert (scene_w, scene_h) == (
+        round(view.scene_width() * ratio),
+        round(view.scene_height() * ratio),
+    )
+    gui = view._internal_gui
+    if gui is not None and gui.visible and gui.docked:
+        assert scene_w < round(view.width() * ratio), (
+            "the panel's column is being traced as if it were scene"
+        )
+
+
+def test_one_size_preserves_the_current_aspect(cmd, tmp_path, window):
+    """PyMOL: "the missing value is scaled so as to preserve the current
+    aspect ratio". A fixed 4:3 traces a different field from the one on
+    screen for every window that is not 4:3, which is most of them."""
+    from PIL import Image
+
+    view = window.viewer.view
+    scene_w, scene_h = view.scene_pixel_size()
+    expected = max(1, round(240 * scene_h / scene_w))
+
+    out = tmp_path / "aspect.png"
+    _ray(cmd, out, size="240")
+    assert out.exists(), cmd._test_errors  # type: ignore[attr-defined]
+    assert Image.open(out).size == (240, expected)

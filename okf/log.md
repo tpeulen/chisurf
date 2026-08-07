@@ -1,5 +1,11 @@
 # Update Log
 
+## 2026-08-07
+
+* **`ray` framed the widget instead of the viewport** ([pymol-parity](plugins/pymol-parity.md), [molecular viewer guide](../docs/guides/44_molecular_viewer.md)). Standing item 0c, open since 2026-08-06 and inherited by every headless screenshot of chimol: `orient` then `ray` put the molecule off-centre and small. Neither the camera nor the tracer was wrong — `ray` with no size defaulted to the **whole GL widget**, while the viewport draws the scene into what is left after the panel's column and the sequence viewer's band. The trace therefore covered a wider field than the screen and centred the molecule in it. Measured on a 998x583 widget: **59 %** of the traced width against **70 %** on screen, displaced towards the panel. PyMOL's default is taken "from the current viewpoint", which is that rectangle; its second rule was also wrong here — given one dimension the other must "preserve the current aspect ratio", and chimol used a fixed 4:3. `MolView.scene_pixel_size()` now answers it in device pixels, so a default trace and a screenshot match on a retina display. After the fix the traced bounding box agrees with the viewport's to **0.003 of the frame** in every direction.
+  A trap for whoever measures this next: use a **colour** mask, not a brightness threshold. The viewport grab contains the panel's chrome, which is bright and reaches the edges, so a `> 25` mask reports the molecule's box as the whole image and the two framings look identical when they are not.
+  Two tests in `chisurf/plugins/chimol/test/test_ray_command.py`; 56 pass across the ray and export suites.
+
 ## 2026-08-06
 
 * **The burst-result seam, and the two shapes the companion format could not hold** ([photon container](subsystems/photon-container.md)).

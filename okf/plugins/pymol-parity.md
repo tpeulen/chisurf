@@ -123,11 +123,30 @@ the test has to **send the event to the widget**, as
 `test_mouse_selection.py`'s viewport tests do, not call the handler. Two of the
 three box-select faults found the same day were of this shape.
 
-**0c. `ray` does not frame like the viewport.** Unresolved, seen again on
-2026-08-06: `orient` then `ray` puts the molecule off-centre and small in the
-traced image while the viewport is framed correctly. Not chased — noted here
-because every headless screenshot of chimol inherits it, so a badly framed
-reference image is not evidence of a geometry bug.
+**0c. `ray` framed the widget, not the viewport — fixed 2026-08-07.** The
+symptom was "`orient` then `ray` puts the molecule off-centre and small", and
+it was neither the camera nor the tracer: `ray` with no size defaulted to the
+**whole GL widget**, while the viewport draws the scene into what is left after
+the panel's column and the sequence viewer's band. So the trace covered a wider
+field than the screen, and centred the molecule in it, while the viewport
+centres it in the narrower column. Measured on a 998x583 widget: the molecule
+filled **59 %** of the traced width against **70 %** on screen, and sat right of
+where the user saw it.
+
+PyMOL says the default is taken "from the current viewpoint", which is that same
+rectangle, and adds a second rule chimol also had wrong: given one dimension the
+other "is scaled so as to preserve the current aspect ratio" — chimol used a
+fixed 4:3. `MolView.scene_pixel_size()` now answers the question in device
+pixels (so a default trace and a screenshot match on a retina display) and
+`ray` uses it for both. After: the molecule's bounding box agrees with the
+viewport's to **0.003 of the frame** in every direction; the residual coverage
+difference (0.110 vs 0.088) is shading and anti-aliasing, not framing. Two tests
+in `test_ray_command.py`.
+
+A measurement trap worth keeping: judging this needs the colour mask, not a
+brightness threshold. The viewport grab contains the panel's chrome, which is
+bright and reaches the edges, so a `> 25` mask reports the molecule's bounding
+box as the whole image and both framings look identical.
 
 **0d. "It got dark" is a camera report, and "it is slow" is rarely arithmetic.**
 Two standing corrections from the mutagenesis wizard, both of which cost an hour

@@ -667,6 +667,29 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         strip = gui.sequence_height() if gui is not None else 0.0
         return max(int(self.height() - strip), 1)
 
+    def scene_pixel_size(self) -> tuple[int, int]:
+        """The scene column in **device** pixels — what a capture of it holds.
+
+        `ray` with no size has to reproduce what is on screen, and what is on
+        screen is this rectangle, not the widget: the panel owns a column and
+        the sequence viewer a band, and tracing the widget's full size traces a
+        wider field than the viewport shows. Measured on a 998x583 widget with
+        the panel docked, that put the molecule at 59 % of the image width
+        against the viewport's 70 %, and moved it right, because the viewport
+        centres the scene in its column while the trace centred it in the
+        image. PyMOL has the same rectangle and the same rule -- "default width
+        and height are taken from the current viewpoint".
+
+        Device pixels rather than logical ones so a default trace and a
+        screenshot of the same window come out the same size on a retina
+        display, where they differ by a factor of two.
+        """
+        ratio = float(getattr(self, "devicePixelRatioF", lambda: 1.0)() or 1.0)
+        return (
+            max(int(round(self.scene_width() * ratio)), 1),
+            max(int(round(self.scene_height() * ratio)), 1),
+        )
+
     #: Below this many pixels the scene column is not a viewport, it is a widget
     #: that has not been laid out yet. Chosen well under any usable window and
     #: well over the 1-pixel floor `scene_width` clamps to.

@@ -174,6 +174,41 @@ class ExportMixin(BaseCmd):
         else:
             self._emit_error(f"Failed to write PNG {path}")
 
+    @staticmethod
+    def _scene_pixel_size(viewer) -> tuple[int, int]:
+        """The size of the rectangle the viewport draws the scene into.
+
+        Asks the GL widget, which is the only thing that knows how much of
+        itself the panel and the sequence strip have taken. Falls back to the
+        widget's own size, and then to 800x600, so a viewer without a real
+        widget -- the mock the tests use, a headless session -- still traces
+        something rather than refusing.
+        """
+        default = (800, 600)
+        renderer = getattr(viewer, "_renderer", None)
+        widget = None
+        if renderer is not None and hasattr(renderer, "widget"):
+            try:
+                widget = renderer.widget()
+            except Exception:
+                widget = None
+        if widget is None:
+            return default
+        sizer = getattr(widget, "scene_pixel_size", None)
+        if callable(sizer):
+            try:
+                width, height = sizer()
+                if width > 0 and height > 0:
+                    return int(width), int(height)
+            except Exception:
+                pass
+        try:
+            if widget.width() > 0 and widget.height() > 0:
+                return int(widget.width()), int(widget.height())
+        except Exception:
+            pass
+        return default
+
     @command("ray")
     def ray(self, *tokens: str) -> None:
         """Ray-trace the current scene.
@@ -215,23 +250,27 @@ class ExportMixin(BaseCmd):
         else:
             nums = []
 
+        # What the viewport actually shows, which is the scene *column* and not
+        # the widget -- the panel has a column of its own and the sequence
+        # viewer a band. PyMOL: "default width and height are taken from the
+        # current viewpoint. If one is specified but not the other, then the
+        # missing value is scaled so as to preserve the current aspect ratio."
+        scene_w, scene_h = self._scene_pixel_size(viewer)
+
         explicit_size = False
         if len(nums) >= 2 and nums[0] > 0 and nums[1] > 0:
             width, height = nums[0], nums[1]
             explicit_size = True
         elif len(nums) >= 1 and nums[0] > 0:
             width = nums[0]
-            height = max(1, int(width * 0.75))
+            # The current aspect, not a fixed 4:3. A hard-coded 0.75 traces a
+            # different field from the one on screen for every window that is
+            # not 4:3, which is most of them.
+            height = max(1, int(round(width * scene_h / max(scene_w, 1))))
             explicit_size = True
 
         if not explicit_size:
-            try:
-                renderer = getattr(viewer, "_renderer", None)
-                widget = renderer.widget() if renderer is not None and hasattr(renderer, "widget") else None
-                if widget is not None and widget.width() > 0 and widget.height() > 0:
-                    width, height = int(widget.width()), int(widget.height())
-            except Exception:
-                pass
+            width, height = scene_w, scene_h
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         if output_path:

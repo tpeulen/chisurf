@@ -1495,7 +1495,15 @@ deletion.
 ```text
 png figure.png, 1200, 900    # the viewport as displayed
 ray render.png, 1200, 900    # ray-traced, with real shadows
+ray                          # ...at the size of the viewport
+ray 1600                     # ...1600 wide, at the viewport's aspect
 ```
+
+Sizes follow PyMOL's rule. With none given the trace is the size of the **scene
+column** — the viewport minus the panel's column and the sequence viewer's band,
+which is the rectangle the molecule is drawn into — so the picture is framed
+exactly as it is on screen. Give one dimension and the other preserves the
+current aspect; give both and you get what you asked for, framed to that aspect.
 
 `ray` traces **the scene you are looking at**: cartoon, sticks, spheres, surface
 and wireframe all reach the image, and a wireframe becomes round-capped
