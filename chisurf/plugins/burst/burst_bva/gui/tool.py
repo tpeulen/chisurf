@@ -7,7 +7,6 @@ import pathlib
 from typing import Dict, Tuple
 
 import numpy as np
-import pandas as pd
 from qtpy.QtCore import QSettings, QSize, Qt, QTimer
 from qtpy.QtWidgets import (
     QCheckBox,
@@ -113,8 +112,10 @@ class BVATool(ChisurfDockTool):
         self.analysis_folder: pathlib.Path | None = None
         self.file_type = "SPC-130"
         self.bva_settings = {}
-        self._df: pd.DataFrame | None = None
-        self._burst_df: pd.DataFrame | None = None
+        # Column-addressable tables: a frame today, a columnar store once
+        # the burst layer moves. Nothing here depends on which.
+        self._df = None
+        self._burst_df = None
         self._tttrs: list | None = None
         # What the displayed result was computed from, so an identical request
         # (a panel revisit, another Next) does not recompute it.

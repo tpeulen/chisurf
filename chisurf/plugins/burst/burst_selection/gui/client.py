@@ -9,7 +9,6 @@ import logging
 from pathlib import Path
 from typing import Any
 
-import pandas as pd
 
 from chisurf.core.plugin.client import InProcessClient
 
@@ -137,12 +136,12 @@ class BurstSelectionClient:
             )
         return svc_result.get("result", {})
 
-    def save_bur(self, dataframe: pd.DataFrame, path: Path) -> None:
+    def save_bur(self, dataframe, path: Path) -> None:
         """Save a burst DataFrame as a .bur file.
 
         Parameters
         ----------
-        dataframe : pd.DataFrame
+        dataframe : pandas.DataFrame or mapping of str to array
             Burst data to save.
         path : Path
             Output path.

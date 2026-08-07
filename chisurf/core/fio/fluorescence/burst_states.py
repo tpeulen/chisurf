@@ -58,11 +58,17 @@ def h2mm_output_dir(analysis_dir) -> pathlib.Path:
     return root
 
 
-def read_photon_table(analysis_dir):
-    """Load H2MM's per-photon table, HDF5 for preference and CSV otherwise.
+def read_photon_table(analysis_dir) -> dict[str, np.ndarray]:
+    """Load H2MM's per-photon table as ``{column: array}``.
 
-    Which of the two exists depends on the formats the run was asked for, so
-    both are tried rather than one assumed.
+    HDF5 for preference and CSV otherwise: which exists depends on the formats
+    the run was asked for, so both are tried rather than one assumed.
+
+    Columns rather than a frame because that is all this table is ever used as —
+    ``Photon``, ``State`` and ``Source`` are read straight into numpy by
+    :func:`state_arrays`, its only caller — and because a per-photon table is
+    the biggest one this package handles, so building a frame around it is a
+    second copy at the moment it is largest.
 
     Parameters
     ----------
@@ -71,7 +77,8 @@ def read_photon_table(analysis_dir):
 
     Returns
     -------
-    pandas.DataFrame
+    dict
+        Column name to array. Empty when the table has no rows.
 
     Raises
     ------
@@ -79,24 +86,50 @@ def read_photon_table(analysis_dir):
         When neither table is present — H2MM has not run, or ran with photon
         writing switched off.
     """
-    import pandas as pd
+    from chisurf.core.datastore import (
+        LegacyTableError,
+        column_values,
+        read_csv_table,
+        read_table,
+        read_table_frame,
+    )
 
-    from chisurf.core.datastore import LegacyTableError, read_table_frame
+    def columns_of(store) -> dict[str, np.ndarray]:
+        """Copy a store's columns out.
+
+        ``np.array``, not ``np.asarray``: a column's array is a view into the
+        store's buffer, and the store dies with this function.
+        """
+        return {
+            str(store[i].name()): np.array(column_values(store, i))
+            for i in range(store.n_columns())
+        }
 
     root = h2mm_output_dir(analysis_dir)
     h5, csv = root / "h2mm_photons.h5", root / "h2mm_photons.csv"
     if h5.is_file():
+        store = read_table(h5)
+        if store is not None:
+            return columns_of(store)
         try:
-            return read_table_frame(h5)
+            # An older run's frame-written file; the frame is the only way in.
+            frame = read_table_frame(h5)
+            return {str(c): np.asarray(frame[c]) for c in frame.columns}
         except LegacyTableError:
-            # An older run's file, in an environment that cannot open that
-            # layout. Falling through to the CSV is right when there is one --
-            # it holds the same table -- and the error below says so when there
-            # is not, rather than reporting the run as never having happened.
+            # In an environment that cannot open that layout, falling through to
+            # the CSV is right when there is one -- it holds the same table --
+            # and the error below says so when there is not, rather than
+            # reporting the run as never having happened.
             if not csv.is_file():
                 raise
     if csv.is_file():
-        return pd.read_csv(csv)
+        store = read_csv_table(csv, delimiter=",")
+        if store is not None:
+            return columns_of(store)
+        import pandas as pd
+
+        frame = pd.read_csv(csv)
+        return {str(c): np.asarray(frame[c]) for c in frame.columns}
     raise FileNotFoundError(
         f"no H2MM photon table in {root} — run H2MM first (with 'write photons' "
         "on); a state-split fit needs the per-photon state assignment"
@@ -132,7 +165,7 @@ def state_arrays(analysis_dir, sizes: dict[str, int]) -> tuple[dict[str, np.ndar
         joins it back to the raw arrays.
     """
     table = read_photon_table(analysis_dir)
-    if "Photon" not in table.columns:
+    if "Photon" not in table:
         raise ValueError(
             "the H2MM photon table has no 'Photon' column, so its states cannot "
             "be matched to the measurement's photons — re-run H2MM"
@@ -141,7 +174,8 @@ def state_arrays(analysis_dir, sizes: dict[str, int]) -> tuple[dict[str, np.ndar
         stem: np.full(int(size), UNASSIGNED, dtype=np.int8)
         for stem, size in sizes.items()
     }
-    if not len(table):
+    # len() of a mapping is its COLUMN count; the row count is a column's.
+    if not len(table["Photon"]):
         return out, 0
 
     photon = np.asarray(table["Photon"], dtype=np.int64)
@@ -149,7 +183,7 @@ def state_arrays(analysis_dir, sizes: dict[str, int]) -> tuple[dict[str, np.ndar
     n_states = int(state.max()) + 1
 
     order = _source_order(analysis_dir, list(sizes))
-    if "Source" in table.columns:
+    if "Source" in table:
         source = np.asarray(table["Source"], dtype=np.int64)
     elif len(sizes) == 1:
         # One measurement: every photon is its own, no disambiguation needed.
