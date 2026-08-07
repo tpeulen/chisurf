@@ -403,3 +403,60 @@ def test_the_salt_bridges_reach_the_viewport(cmd):
     positions = np.asarray(entry["positions"])
     assert positions.ndim == 2 and positions.shape[1] == 3
     assert positions.shape[0] % 2 == 0 and positions.shape[0] >= 2
+
+
+# --------------------------------------------------------------------------- #
+# Between chains
+# --------------------------------------------------------------------------- #
+def test_interchain_distances_collects_every_chain_pair(cmd):
+    """One measurement over all pairs, which is what PyMOL's helper builds.
+
+    chimol's named measurements *replace* rather than append, so the
+    accumulation `util.interchain_distances` gets from calling `distance` in a
+    loop has to happen before the drawing -- hence `_distance_segments`.
+    """
+    command, window = cmd
+    command.do("interchain_distances ic, all, 4.0")
+    assert command._errors == [], command._errors
+    summary = [m for m in command._messages if "ic:" in m]
+    assert summary, command._messages
+    assert "chain pair" in summary[-1]
+
+
+def test_one_chain_is_reported_rather_than_drawn(cmd):
+    """A selection inside one chain has no interface, and says so.
+
+    148L is chain E (protein) plus chain S (the ligand and waters), so the
+    single-chain case has to be asked for -- and the answer must be a message,
+    not an empty measurement left on screen looking like "no contacts".
+    """
+    command, window = cmd
+    command.do("interchain_distances solo, chain E, 4.0")
+    assert command._errors == [], command._errors
+    assert any("one chain" in m for m in command._messages), command._messages
+    assert "solo" not in window.viewer._measurements
+
+
+def test_the_origin_menu_entry_runs(cmd):
+    """`origin` has existed for a while; the menu said it did not.
+
+    A menu entry disabled with a reason that is no longer true is the same
+    failure as a wrong tooltip -- it tells the user a capability is missing.
+    """
+    command, _window = cmd
+    command.do("origin resi 54")
+    assert command._errors == [], command._errors
+    assert any("rotating about" in m for m in command._messages)
+
+
+def test_the_disulfide_expression_is_a_selection_chimol_can_evaluate():
+    """PyMOL's own expression, which needs `byres` and `bound_to`.
+
+    The entry is the expression, so the thing worth testing is that the
+    selection engine answers it -- and that it narrows to *bridged* cysteines
+    rather than every one of them.
+    """
+    from chisurf.plugins.chimol.chimol.object_menus import _DISULFIDE_SHOW
+
+    assert "bound_to" in _DISULFIDE_SHOW and "byres" in _DISULFIDE_SHOW
+    assert _DISULFIDE_SHOW.count("{sele}") == 2

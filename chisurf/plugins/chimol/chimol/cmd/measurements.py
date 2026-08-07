@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import Counter
+from itertools import combinations
 from shlex import split as shlex_split
 
 import numpy as np
@@ -390,9 +391,6 @@ class MeasurementMixin(BaseCmd):
         cutoff: float, mode: int, label: bool, quiet: bool,
     ) -> None:
         """Build a many-segment measurement for one of PyMOL's distance modes."""
-        from ..analysis.hbonds import HBondCriteria, find_hydrogen_bonds
-        from ..config import _DISPLAY_CONFIG
-
         try:
             combined = self._combined_atom_table(viewer, sele1, sele2)
         except ValueError as exc:
@@ -402,34 +400,68 @@ class MeasurementMixin(BaseCmd):
             self._emit_error("distance: selection matched no atoms")
             return
         atoms, bond_pairs, mask1, mask2, _names = combined
+
+        try:
+            positions, labels, summary = self._distance_segments(
+                atoms, bond_pairs, mask1, mask2, cutoff=cutoff, mode=mode
+            )
+        except ValueError as exc:
+            self._emit_error(str(exc))
+            return
+
+        self._finish_distance_set(
+            viewer, meas_name, positions, labels,
+            label=label, quiet=quiet, summary=summary,
+        )
+
+    def _distance_segments(
+        self, atoms, bond_pairs, mask1, mask2, *, cutoff: float, mode: int,
+        typing=None,
+    ):
+        """The segments one distance mode finds, without drawing them.
+
+        Separated from :meth:`_distance_set` because ``interchain_distances``
+        runs the same mode over every pair of chains and collects the lot into
+        **one** measurement -- PyMOL accumulates into a named distance object
+        across calls, and chimol's named measurements replace rather than
+        append, so the accumulation has to happen before the drawing.
+
+        Returns
+        -------
+        tuple
+            ``(positions, labels, summary)`` -- positions is ``(2N, 3)``, two
+            rows per segment.
+
+        Raises
+        ------
+        ValueError
+            When the selections are empty for a mode that needs both sides.
+        """
+        from ..analysis.hbonds import HBondCriteria, find_hydrogen_bonds
+        from ..config import _DISPLAY_CONFIG
+
         xyz = np.asarray(atoms["xyz"], dtype=float)
 
         if mode == 4:
             if not mask1.any() or not mask2.any():
-                self._emit_error("distance: selection matched no atoms")
-                return
+                raise ValueError("distance: selection matched no atoms")
             c1 = xyz[mask1].mean(axis=0)
             c2 = xyz[mask2].mean(axis=0)
             dist = float(np.linalg.norm(c1 - c2))
-            self._finish_distance_set(
-                viewer, meas_name, np.array([c1, c2]), [f"{dist:.3f}"],
-                label=label, quiet=quiet,
-                summary=f"distance {meas_name or ''}: centroids {dist:.3f}",
+            return (
+                np.array([c1, c2]), [f"{dist:.3f}"], f"centroids {dist:.3f}"
             )
-            return
 
         if mode in (5, 6, 7, 9, 10):
-            self._interaction_set(
-                viewer, meas_name, atoms, bond_pairs, mask1, mask2,
-                mode=mode, label=label, quiet=quiet,
+            return self._interaction_segments(
+                atoms, bond_pairs, mask1, mask2, mode=mode
             )
-            return
 
         if mode == 2:
             criteria = HBondCriteria.from_config()
             bonds = find_hydrogen_bonds(
                 atoms, bond_pairs, mask1, mask2, criteria=criteria,
-                cutoff=cutoff if cutoff >= 0 else None,
+                cutoff=cutoff if cutoff >= 0 else None, typing=typing,
             )
             if criteria.from_proton:
                 # PyMOL draws from the proton when there is a real one; a
@@ -447,11 +479,7 @@ class MeasurementMixin(BaseCmd):
                 pairs[0::2] = starts
                 pairs[1::2] = ends
             labels = [f"{b.distance:.1f}" for b in bonds]
-            self._finish_distance_set(
-                viewer, meas_name, pairs, labels, label=label, quiet=quiet,
-                summary=f"{len(bonds)} polar contacts",
-            )
-            return
+            return pairs, labels, f"{len(bonds)} polar contacts"
 
         # Modes 0, 1 and 3: plain interatomic distances.
         exclusion = 0
@@ -476,10 +504,7 @@ class MeasurementMixin(BaseCmd):
             flat[2 * k] = xyz[i]
             flat[2 * k + 1] = xyz[j]
             labels.append(f"{float(np.linalg.norm(xyz[i] - xyz[j])):.1f}")
-        self._finish_distance_set(
-            viewer, meas_name, flat, labels, label=label, quiet=quiet,
-            summary=f"{len(pairs_idx)} distances",
-        )
+        return flat, labels, f"{len(pairs_idx)} distances"
 
     @staticmethod
     def _contact_pairs(
@@ -545,10 +570,9 @@ class MeasurementMixin(BaseCmd):
         "salt-bridge": "salt bridges",
     }
 
-    def _interaction_set(
-        self, viewer, meas_name, atoms, bond_pairs, mask1, mask2, *,
-        mode: int, label: bool, quiet: bool,
-    ) -> None:
+    def _interaction_segments(
+        self, atoms, bond_pairs, mask1, mask2, *, mode: int,
+    ):
         """Draw one of the three interaction finders as a distance set.
 
         These are separate detectors rather than variants of the polar-contact
@@ -588,10 +612,7 @@ class MeasurementMixin(BaseCmd):
         else:
             summary = f"{len(hits)} {self._INTERACTION_NAMES[kind]}"
 
-        self._finish_distance_set(
-            viewer, meas_name, positions, labels,
-            label=label, quiet=quiet, summary=summary,
-        )
+        return positions, labels, summary
 
     def _finish_distance_set(
         self, viewer, meas_name, positions, labels, *,
@@ -629,6 +650,122 @@ class MeasurementMixin(BaseCmd):
         viewer._update_view()
         if not quiet:
             self._emit_message(f"distance {name}: {summary}")
+
+    @command("interchain_distances")
+    def interchain_distances(
+        self,
+        *seles: str,
+        cutoff: float = -1.0,
+        mode: int = 0,
+        label: int = 0,
+        quiet: int = 0,
+        reset: int = 1,
+    ) -> None:
+        """Distances between every pair of chains, in one measurement.
+
+        PyMOL's ``util.interchain_distances name, selection [, cutoff [, mode]]``
+        -- what its **A ▸ find ▸ any contacts ▸ between chains** entries call.
+        It runs the ordinary distance search over each pair of chains in turn
+        and collects them all under one name, which is exactly the question
+        "where do these chains touch": running it on the whole selection instead
+        buries the interface under every contact inside each chain.
+
+        Parameters
+        ----------
+        *seles : str
+            ``name, selection``. A trailing number is read as ``cutoff``.
+        cutoff : float, optional
+            Contact radius. Negative lets the mode decide.
+        mode : int, optional
+            Any mode :meth:`distance` accepts; ``2`` gives interchain polar
+            contacts, which is the other entry PyMOL's menu offers.
+        label, quiet, reset : int, optional
+            As for :meth:`distance`.
+        """
+        window, viewer = self._require_window_and_viewer()
+        if viewer is None:
+            return
+
+        args = [str(a).strip() for a in seles if str(a).strip()]
+        trailing: list[float] = []
+        while len(args) > 2 and _is_number(args[-1]) and len(trailing) < 2:
+            trailing.insert(0, float(args.pop()))
+        if trailing:
+            cutoff = trailing[0]
+            if len(trailing) > 1:
+                mode = int(trailing[1])
+        if len(args) == 1:
+            args = [args[0], "all"]
+        if len(args) != 2:
+            self._emit_error(
+                "Usage: interchain_distances name, selection [, cutoff [, mode]]"
+            )
+            return
+
+        meas_name, selection = args
+        try:
+            combined = self._combined_atom_table(viewer, selection, selection)
+        except ValueError as exc:
+            self._emit_error(str(exc))
+            return
+        if combined is None:
+            self._emit_error("interchain_distances: selection matched no atoms")
+            return
+        atoms, bond_pairs, mask, _mask2, _names = combined
+
+        chains = np.char.strip(np.asarray(atoms["chain"]).astype(str))
+        present = sorted({c for c in chains[mask] if c})
+        if len(present) < 2:
+            self._emit_message(
+                f"interchain_distances: {selection} spans one chain; nothing "
+                "to compare"
+            )
+            self._finish_distance_set(
+                viewer, meas_name, np.empty((0, 3)), [],
+                label=bool(label), quiet=True, summary="one chain",
+            )
+            return
+
+        # Type the molecule once. The polar-contact search does it per call,
+        # and over 28 chain pairs of a 17784-atom structure that is 28 passes
+        # over every atom for an answer that cannot change between them:
+        # measured 5.4 s, against 1.7 s for the plain contact search.
+        typing = None
+        if int(mode) == 2:
+            from ..analysis.hbonds import type_atoms
+
+            typing = type_atoms(atoms, bond_pairs)
+
+        blocks: list[np.ndarray] = []
+        labels: list[str] = []
+        for first, second in combinations(present, 2):
+            side1 = mask & (chains == first)
+            side2 = mask & (chains == second)
+            if not side1.any() or not side2.any():
+                continue
+            try:
+                positions, pair_labels, _summary = self._distance_segments(
+                    atoms, bond_pairs, side1, side2,
+                    cutoff=float(cutoff), mode=int(mode), typing=typing,
+                )
+            except ValueError:
+                continue
+            if len(positions):
+                blocks.append(np.asarray(positions, dtype=float))
+                labels.extend(pair_labels)
+
+        merged = (
+            np.concatenate(blocks) if blocks else np.empty((0, 3), dtype=float)
+        )
+        pairs = len(present) * (len(present) - 1) // 2
+        self._finish_distance_set(
+            viewer, meas_name, merged, labels,
+            label=bool(label), quiet=bool(quiet),
+            summary=(
+                f"{merged.shape[0] // 2} contacts over {pairs} chain pairs "
+                f"({', '.join(present)})"
+            ),
+        )
 
     @command("pi_interactions")
     def pi_interactions(

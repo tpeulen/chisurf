@@ -101,8 +101,9 @@ ACTION_MENU: tuple[MenuEntry, ...] = (
     MenuEntry("zoom", "zoom {sele}"),
     MenuEntry("orient", "orient {sele}"),
     MenuEntry("center", "center {sele}"),
-    MenuEntry("origin", None, "Chimol rotates about the scene centre; "
-                              "a per-object origin is not implemented."),
+    MenuEntry("origin", "origin {sele}",
+              "Rotate about this selection's centre. Nothing appears to happen "
+              "until you rotate: the pivot moves, the picture is preserved."),
     SEP,
     MenuEntry("drag matrix", None, _NO_MATRIX),
     MenuEntry("reset matrix", None, _NO_MATRIX),
@@ -188,9 +189,21 @@ ACTION_MENU: tuple[MenuEntry, ...] = (
                       "(not ({sele})) and not solvent, mode=2, label=0"),
         )),
         MenuEntry("any contacts", None, "", children=(
-            MenuEntry("between chains within 3.0A", None,
-                      "Chimol has no interchain-distance helper yet; "
-                      "`distance name, chain A, chain B, 3.0` does it by hand."),
+            # PyMOL offers the same three radii, each running
+            # `util.interchain_distances` -- every pair of chains in turn,
+            # collected under one name. The whole selection at once would bury
+            # the interface under every contact inside each chain.
+            *(
+                MenuEntry(
+                    f"between chains within {radius:.1f}A",
+                    "interchain_distances {sele}_interchain_any, {sele}, "
+                    f"{radius:.1f}",
+                )
+                for radius in (3.0, 3.5, 4.0)
+            ),
+            MenuEntry("between chains (polar)",
+                      "interchain_distances {sele}_interchain_polar, {sele}, "
+                      "-1, 2"),
             MenuEntry("within selection, 4.0A",
                       "distance {sele}_contacts, {sele}, {sele}, 4.0, "
                       "mode=3, label=0"),
@@ -304,6 +317,13 @@ _NO_CELL = "Chimol does not read crystal cells."
 _NO_FLAG = "Chimol has no per-atom flags yet."
 _NO_VALENCE = "Chimol does not draw bond valences."
 
+#: PyMOL's disulfide expression, verbatim from menu.py. The `bound_to` is the
+#: whole of it: without it this shows every cysteine, bridged or not.
+_DISULFIDE_SHOW = (
+    "show REP, (byres ((({sele}) and resn CYS+CYX and name SG) and "
+    "bound_to (({sele}) and resn CYS+CYX and name SG))) and name CA+CB+SG"
+)
+
 
 def _rep_action(action: str) -> tuple[MenuEntry, ...]:
     """PyMOL's ``rep_action`` table, shared by the Show and Hide menus."""
@@ -406,7 +426,15 @@ SHOW_MENU: tuple[MenuEntry, ...] = (
     MenuEntry("organic", "show spheres, organic and {sele}"),
     MenuEntry("main chain", "show sticks, name N+CA+C+O and {sele}"),
     MenuEntry("side chain", "show sticks, not name N+CA+C+O and {sele}"),
-    MenuEntry("disulfides", None, "Chimol cannot find disulfides yet."),
+    # PyMOL's own expression, from menu.py: the SG atoms that are bonded to
+    # another SG, widened to their residues and then narrowed to the three
+    # atoms that draw the bridge. `bound_to` is what makes it a *disulfide*
+    # rather than every cysteine in the structure.
+    MenuEntry("disulfides", None, "", children=(
+        MenuEntry("lines", _DISULFIDE_SHOW.replace("REP", "lines")),
+        MenuEntry("sticks", _DISULFIDE_SHOW.replace("REP", "sticks")),
+        MenuEntry("spheres", _DISULFIDE_SHOW.replace("REP", "spheres")),
+    )),
     SEP,
     MenuEntry("valence", None, _NO_VALENCE),
 ) + _chimol_extra_reps("show")

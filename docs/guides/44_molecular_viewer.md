@@ -1124,6 +1124,22 @@ The contacts themselves are exactly the ones `distance ..., mode=2` finds, with
 the same settings. The grouping is what is added; PyMOL has no notion of a
 network, so this is not something a PyMOL script can be compared against.
 
+### Where two chains touch
+
+`interchain_distances` runs a distance search over **every pair of chains** and
+collects the lot under one name — PyMOL's `util.interchain_distances`, and what
+its **A ▸ find ▸ any contacts ▸ between chains** entries call:
+
+```text
+interchain_distances ic, all, 4.0        # any contact within 4 A, across chains
+interchain_distances ic, all, -1, 2      # ...polar contacts instead
+```
+
+The point is what it leaves out. Asking for contacts in the whole selection at
+once buries the interface under every contact *inside* each chain; this asks
+only the cross-chain question. A selection that spans one chain says so rather
+than drawing an empty measurement.
+
 ### Salt bridges, halogen bonds and pi interactions
 
 Three more finders, each with its own criteria rather than a variation on the

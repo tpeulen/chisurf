@@ -661,6 +661,29 @@ built geometry rather than on a structure: 148L has no halogen at all, and a
 bound that is two-sided (the 90–170° acceptor angle) cannot be shown to have
 both halves by a structure that happens to pass.
 
+**Three more `find`/`A` entries, and one that was lying — 2026-08-07.**
+`interchain_distances` (PyMOL's `util.interchain_distances`) runs a distance
+search over every pair of chains and collects them under one name; on 1RTD's
+eight chains that is 28 pairs, 141 contacts at 4 Å or 190 polar ones. It needed
+`_distance_set` split into `_distance_segments`, because PyMOL accumulates into
+a named distance object across calls and chimol's named measurements *replace*
+— so the accumulation has to happen before the drawing. Typing the molecule
+once for the polar mode rather than once per pair took it from **5.4 s to 2.4
+s**; the per-call `type_atoms` was 28 passes over 17784 atoms for an answer that
+cannot change between them.
+
+`disulfides` is PyMOL's own selection expression verbatim — `byres` over the
+`SG` atoms that are `bound_to` another `SG`, narrowed to `CA+CB+SG` — which
+chimol's selector already answers. The `bound_to` is the whole of it: without
+it the entry shows every cysteine.
+
+And **`origin` was disabled with a reason that had stopped being true.** The
+command has existed in `rendering.py` for some time; the menu said "chimol
+rotates about the scene centre, a per-object origin is not implemented". That
+is the same failure as a wrong tooltip — it tells the user a capability is
+missing — and it is worth a sweep rather than a fix: a disabled entry is only
+honest while its reason still holds, and nothing re-checks them.
+
 **The clash check is PyMOL's, and it is not a command there.** It is the bump
 check inside the mutagenesis wizard: sculpting's van der Waals term, one
 iteration, with `sculpt_vdw_vis_mode` on. Transcribed from `Sculpt.cpp`, and
