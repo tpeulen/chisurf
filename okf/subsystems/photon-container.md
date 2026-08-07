@@ -9,6 +9,24 @@ timestamp: '2026-08-06T00:00:00Z'
 
 # Where to pick this up
 
+**The container mirrors the folder tree 1:1, and that is the whole claim.**
+An artifact is named exactly as the file would be —
+`countrate_All 0.2000#60/bi4_bur/m000.bur` — and holds what that file holds,
+the 2N+1 interleave included. Unpacking writes it back at the same relative
+path; a *reader* takes the padding off, which is the same stride the folder
+reader applies to the same rows. Storing a trimmed table instead (which is what
+it did first) is what made the two layouts two formats that had to be kept in
+step by hand. Verified by running the same ten `.spc` files both ways: **10/10
+`.bur` byte-identical**, 7446 bursts either way (`test/fio/test_analysis_path.py`).
+
+The last difference to fall was the interesting one: every number matched and
+`First File` said `m000.pto` where the folder said `m000.spc`. That column names
+what a burst was found *in*, which is the measurement, not the box — a reader
+resolving `tttrs[row["First File"]]` against an unpacked folder would look for a
+`.pto` that is not there beside the `.spc` it just recovered. A container names
+the instrument file it holds; one stacking several vendor files keeps its own
+name, because those bursts really do span the set.
+
 **A container is addressed like a folder, and that is one scheme.**
 `chisurf.core.fio.analysis_path` is the only place that knows the grammar
 (`m000.pto/countrate_All 0.2000#60`), and it is deliberately not about bursts —
