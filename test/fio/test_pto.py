@@ -212,6 +212,64 @@ def test_rerunning_with_the_same_settings_replaces_the_result(measurement: Path)
         assert len(m.get_table("bursts")) == 41, "the replacement was not written"
 
 
+def test_one_run_may_write_several_results_of_the_same_kind(measurement: Path):
+    """Replacing is keyed on the *output*, not only on the run.
+
+    One analysis routinely emits several artifacts of one kind: an MLE fit
+    writes one table per detector, all of them ``fit_result`` from one
+    operation with one settings hash. Keyed on the settings alone they are all
+    "the same run", so each write replaces the last and a three-detector
+    analysis ends with one table — silently, because replacing is the intended
+    behaviour and nothing distinguishes it from the collision.
+    """
+    with Measurement.open(measurement, writable=True) as m:
+        before = m._f.n_objects()
+        for detector in ("green", "yellow", "red"):
+            m.put_table(
+                f"mle {detector}",
+                _bursts(7),
+                artifact_kind="fit_result",
+                operation_type="burst_lifetime_fitting",
+                row_grain="burst",
+                parameters={"model": "fit23"},
+                derived_from=m.instrument_uid,
+            )
+        assert m._f.n_objects() == before + 3
+
+    with Measurement.open(measurement) as m:
+        for detector in ("green", "yellow", "red"):
+            assert len(m.get_table(f"mle {detector}")) == 7
+
+
+def test_replacing_a_result_leaves_the_container_readable(measurement: Path):
+    """A grown result moves, and the space it left has to stay walkable.
+
+    The relocation frees the old run, and the next element written into that
+    hole carves its front — the remainder is then the old payload's tail with
+    no element header over it. The file is fine until something reopens it, at
+    which point it reports damage at an offset in the middle of itself. Every
+    ``put_table`` writes tags afterwards, so an ordinary re-run with a bigger
+    result was enough to trigger it.
+    """
+    with Measurement.open(measurement, writable=True) as m:
+        m.put_table(
+            "bursts", _bursts(3),
+            artifact_kind="burst_table", operation_type="burst_selection",
+            row_grain="burst", parameters={"min_photons": 60},
+            derived_from=m.instrument_uid,
+        )
+    with Measurement.open(measurement, writable=True) as m:
+        m.put_table(
+            "bursts", _bursts(20000),
+            artifact_kind="burst_table", operation_type="burst_selection",
+            row_grain="burst", parameters={"min_photons": 60},
+            derived_from=m.instrument_uid,
+        )
+    with Measurement.open(measurement) as m:
+        assert len(m.get_table("bursts")) == 20000
+        assert m.verify() == []
+
+
 def test_changing_a_setting_produces_a_new_result(measurement: Path):
     with Measurement.open(measurement, writable=True) as m:
         before = m._f.n_objects()

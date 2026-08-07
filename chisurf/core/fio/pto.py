@@ -586,7 +586,7 @@ class Measurement:
         self._describe_columns(store, units, items)
         run = _settings_hash(parameters)
 
-        existing = self._find_run(operation_type, run, artifact_kind)
+        existing = self._find_run(operation_type, run, artifact_kind, name)
         tttrlib = _tttrlib()
         if existing:
             if not tttrlib.pto_update_store(self._f, existing, store):
@@ -1008,13 +1008,23 @@ class Measurement:
             if unit or item:
                 column.set_attribute("name", name)
 
-    def _find_run(self, operation_type: str, run: str, artifact_kind: str) -> int:
-        """Return the UID of an earlier run with the same settings, or 0.
+    def _find_run(
+        self, operation_type: str, run: str, artifact_kind: str, name: str
+    ) -> int:
+        """Return the UID of the same output of an earlier identical run, or 0.
 
-        This is what makes a recomputation replace rather than accumulate.
+        This is what makes a recomputation replace rather than accumulate — and
+        the *name* is part of the identity, not decoration. One run routinely
+        emits several artifacts of the same kind: an MLE fit writes one table
+        per detector, all of them ``fit_result`` from one
+        ``burst_lifetime_fitting`` with one settings hash. Keyed on the
+        settings alone they are all "the same run", so each write replaces the
+        last and a two-detector analysis ends with one table — silently, because
+        replacing is the intended behaviour and nothing distinguishes it from
+        the collision.
         """
         for obj in self._f.objects():
-            if obj.kind != artifact_kind:
+            if obj.kind != artifact_kind or obj.name != name:
                 continue
             if self.tag(obj.uid, _OPERATION_TYPE) != operation_type:
                 continue
