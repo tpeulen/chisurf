@@ -18,8 +18,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
-import pandas as pd
-
 __all__ = [
     "BURST_COLUMN_UNITS",
     "container_for",
@@ -29,39 +27,28 @@ __all__ = [
     "write_burst_artifact",
 ]
 
-#: What the columns of a burst analysis are measured in, as
-#: ``_mmfdb_column.units`` terms.
+#: Units for burst columns whose **name does not already carry one**.
 #:
-#: Written out rather than parsed off the column names. The suffix convention is
-#: what this replaces: it is inconsistent (``Count Rate (KHz)``), absent on the
-#: columns that need it most (``Tau``, ``r Scatter``), and a regular expression
-#: over it would be the same convention with more machinery on top and the same
-#: blind spots. A table is the thing a reader can check.
+#: Deliberately short. Most burst columns say their unit in the label —
+#: ``Duration (ms)``, ``Count Rate (KHz)`` — and :func:`units_for` reads those
+#: through :func:`chisurf.core.units.split_label`, so listing them here as well
+#: would be the duplication this exists to remove. What is left is the columns
+#: the convention never covered, which are the ones that mattered: a lifetime,
+#: and the ratios that have no unit at all.
 #:
-#: A column absent from here gets no unit, which means *unknown* — not
-#: dimensionless. Saying nothing and saying "this is a pure ratio" are different
-#: claims and only one of them is safe to make by default.
+#: A column named in neither place gets no unit, which means the unit is
+#: *unknown* — not dimensionless. Those are different claims and only one is
+#: safe to make by default.
 BURST_COLUMN_UNITS: dict[str, str] = {
-    # Timing
-    "Duration (ms)": "milliseconds",
-    "Mean Macro Time (ms)": "milliseconds",
-    "Mean Macro Time (s)": "seconds",
-    "Fusion Lag (ms)": "milliseconds",
-    # Rates
-    "Count Rate (KHz)": "kilohertz",
-    # Counts and indices. A photon index is not a physical quantity, so it is
-    # deliberately absent rather than labelled.
-    "Number of Photons": "photons",
-    "Fused Gap Photons": "photons",
-    "Fused Bursts": "counts",
-    "Fusion Group Size": "counts",
-    # Lifetimes. These are the ones the naming convention never covered.
     "Tau": "nanoseconds",
     "Tau (green)": "nanoseconds",
     "Tau (red)": "nanoseconds",
     "Tau (yellow)": "nanoseconds",
     "Lifetime": "nanoseconds",
-    # Ratios that genuinely have no unit.
+    "Number of Photons": "photons",
+    "Fused Gap Photons": "photons",
+    "Fused Bursts": "counts",
+    "Fusion Group Size": "counts",
     "Proximity Ratio Mean": "dimensionless",
     "Proximity Ratio Std": "dimensionless",
     "Confidence (sigma)": "dimensionless",
@@ -71,24 +58,38 @@ BURST_COLUMN_UNITS: dict[str, str] = {
 def units_for(df: pd.DataFrame, extra: Mapping[str, str] | None = None) -> dict[str, str]:
     """Return the units of the columns a frame actually has.
 
+    Read from the label first — ``Duration (ms)`` and ``Tau | ns`` both say
+    their unit, and the vocabulary that resolves those spellings is the
+    dictionary's, not a second table kept in step by hand. Only the columns the
+    convention never covered are looked up in :data:`BURST_COLUMN_UNITS`.
+
     Parameters
     ----------
     df : pandas.DataFrame
     extra : mapping, optional
-        Units for columns this analysis names itself, merged over the table
-        above so a plugin can describe its own output without editing a shared
-        dictionary.
+        Units for columns this analysis names itself, which win over both.
 
     Returns
     -------
     dict
         ``{column: unit}`` for the columns that have one.
     """
-    known = {**BURST_COLUMN_UNITS, **(extra or {})}
-    return {c: known[c] for c in df.columns if c in known}
+    from chisurf.core.units import split_label
+
+    out: dict[str, str] = {}
+    for column in df.columns:
+        name = str(column)
+        _, code = split_label(name)
+        if not code:
+            code = BURST_COLUMN_UNITS.get(name, "")
+        if extra and name in extra:
+            code = extra[name]
+        if code:
+            out[name] = code
+    return out
 
 
-def deinterleave_bursts(df: pd.DataFrame) -> pd.DataFrame:
+def deinterleave_bursts(df):
     """Return the real rows from a frame carrying the ``.bur`` interleave.
 
     The legacy format writes ``2N+1`` physical rows — a zero row, a burst, a
@@ -107,7 +108,7 @@ def deinterleave_bursts(df: pd.DataFrame) -> pd.DataFrame:
 
     Parameters
     ----------
-    df : pandas.DataFrame
+    df : pandas.DataFrame or mapping of str to array
         A results table, interleaved or not.
 
     Returns
@@ -170,7 +171,7 @@ def open_measurement(source: str | Path, out_dir: str | Path | None = None) -> A
 
 def write_burst_artifact(
     source: str | Path,
-    df: pd.DataFrame,
+    df,
     *,
     name: str,
     artifact_kind: str,
@@ -193,7 +194,7 @@ def write_burst_artifact(
     ----------
     source : str or Path
         The instrument file the bursts came from, or the container itself.
-    df : pandas.DataFrame
+    df : pandas.DataFrame or mapping of str to array
         The result. Passed through :func:`deinterleave_bursts`, so a frame that
         still carries the legacy padding is accepted and the padding is not
         written.
@@ -252,7 +253,7 @@ def write_burst_artifact(
 
 
 def write_per_source(
-    df: pd.DataFrame,
+    df,
     *,
     source_column: str = "First File",
     **kwargs: Any,
@@ -265,7 +266,7 @@ def write_per_source(
 
     Parameters
     ----------
-    df : pandas.DataFrame
+    df : pandas.DataFrame or mapping of str to array
         The result, carrying *source_column*.
     source_column : str, optional
         Column holding the instrument-file path per row.

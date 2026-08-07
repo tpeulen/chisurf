@@ -33,6 +33,18 @@
 
 ## 2026-08-06
 
+* **One table of units, and the abbreviation that did not exist** ([PRD-84](prds/prd-84.md), [profile](specs/pto-mfdb.md)).
+
+  Asked whether MMFDB already had a `kilohertz` → `kHz` table: it did not, and neither does mmCIF — `ITEM_UNITS_LIST` carries a code and prose and nothing else. So every consumer that wanted to *show* a unit invented an abbreviation and every consumer that wanted to *convert* one invented a factor. In ChiSurf that was four in-band conventions that disagree: `"Duration (ms)"` suffixes, `"Tau | ns"` expression headers, and bare factor dictionaries in the DEER and FCS readers.
+
+  `_mmfdb_units` is now the one table — code, symbol, SI factor, SI unit — and `chisurf/core/units.py` is the only thing that reads it. The burst unit table halved as a result: most columns already say their unit in the label, so `units_for` reads it through the seam and only the columns the convention never covered (`Tau`, the ratios) are listed.
+
+  **A correction to the previous entry.** I claimed mmCIF "stops at microseconds and has no rate or count unit". That was read off the visible excerpt; the parser could not read a data-block-level `loop_`, which is exactly how mmCIF carries the table. It can now, and the real list is 78 codes including `nanoseconds`, `femtoseconds`, `hertz` and `counts` — **15 of our 28 are already its own**. Its gap is odd rather than sweeping: `nanoseconds` and `femtoseconds` but neither `milliseconds` nor `picoseconds`, and no concentration, rate multiple or count of photons. Those 13 we declare.
+
+  Two spellings for one unit are also gone: `_mmfdb_setup.macro_time_resolution` declared `ns`, which is not an `ITEM_UNITS_LIST` code at all and clashed with the long form. Trap for the next person: `mmfdb_workflow_ext.dic` has no `save_` terminators, so a loop appended after the last item is parsed as *that item's enumerations* rather than as a table.
+
+  The rest of the stack — fitting parameters, plot axes, model definitions, every reader — is [PRD-84](prds/prd-84.md), under one rule: unitless inside, units at every boundary a person or a file sees. Explicitly not a unit-aware numeric type, and explicitly not units inside the fitting engine.
+
 * **A column says what it is measured in** ([profile](specs/pto-mfdb.md), tttrlib PRD-022).
 
   A burst duration is milliseconds, a lifetime is nanoseconds, a TAC channel is picoseconds — and the only thing that said so was the column *name*, when whoever wrote it remembered. `Duration (ms)` and `Tau` sit in the same table, and `Count Rate (KHz)` capitalises the kilo.

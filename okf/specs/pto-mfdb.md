@@ -137,10 +137,15 @@ fields, and the name is an attribute of it:
 
 The keys are `_mmfdb_column.*` items — `name`, `units`, `item`, `description` —
 and `units` takes a `_mmfdb_column.units` term. Spellings follow mmCIF's
-`ITEM_UNITS_LIST` wherever it has the unit, so `seconds` and `microseconds` are
-the community's words. That list **stops at microseconds and has no rate or
-count unit**, which leaves out most of what a fluorescence table holds, so the
-rest are defined in the MMFDB dictionary rather than invented per call site.
+`ITEM_UNITS_LIST` wherever it has the unit — 15 of the 28 are already its own,
+including `nanoseconds` and `counts`. Its 78 codes have an odd gap: it carries
+`nanoseconds` and `femtoseconds` but neither `milliseconds` nor `picoseconds`,
+and no concentration, rate multiple or count of photons. Those 13 are defined in
+the MMFDB dictionary rather than invented per call site.
+
+The symbol a person reads — `ns`, `kHz` — is `_mmfdb_units.symbol`, in the same
+table, with the SI factor beside it. Nothing else may carry an abbreviation: a
+display that invents one is how `Count Rate (KHz)` came to capitalise the kilo.
 
 Two rules that matter more than they look:
 
