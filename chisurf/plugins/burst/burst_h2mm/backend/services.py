@@ -9,6 +9,8 @@ from typing import Any
 
 import numpy as np
 
+from chisurf.core.datastore import column_names
+
 from ..api.contract import (
     METHOD_COMPUTE,
     METHOD_DESCRIBE_CONTRACT,
@@ -179,12 +181,12 @@ def _burst_sources(burst_df, burst_rows):
 
     if burst_df is None or burst_rows is None:
         return [], None
-    if "First File" not in getattr(burst_df, "columns", []):
+    if "First File" not in column_names(burst_df):
         return [], None
     rows = np.asarray(burst_rows, dtype=np.int64)
     if rows.size == 0:
         return [], None
-    files = np.asarray(burst_df["First File"].astype(str))
+    files = np.asarray(burst_df["First File"]).astype(str)
     names: list[str] = []
     index: dict[str, int] = {}
     out = np.zeros(rows.size, dtype=np.int64)
@@ -218,7 +220,7 @@ def _write_state_tttr(result, bundle, out_dir, burst_df, burst_rows) -> None:
         logger.warning("state TTTR output requested but the source photons are "
                        "not available - skipped")
         return
-    if "First File" not in getattr(burst_df, "columns", []):
+    if "First File" not in column_names(burst_df):
         logger.warning("state TTTR output needs the burst table's 'First File' "
                        "column to know which measurement each photon came from "
                        "- skipped")
@@ -230,7 +232,7 @@ def _write_state_tttr(result, bundle, out_dir, burst_df, burst_rows) -> None:
     try:
         written = write_state_tttr(
             meta, ana.path, np.asarray(bundle.data.streams), tttrs,
-            burst_rows, list(burst_df["First File"].astype(str)),
+            burst_rows, list(np.asarray(burst_df["First File"]).astype(str)),
             out_dir,
             model=ana.best.model,
             decoder=str(getattr(ana, "decoder", "viterbi")),
@@ -530,7 +532,9 @@ def _load_tttrs(df, data_dir: pathlib.Path, file_type: str):
 
     data_dir = pathlib.Path(data_dir)
     tttrs: dict[str, Any] = {}
-    for ff in df["First File"].unique():
+    # dict.fromkeys, not Series.unique: the burst table is a store now, and both
+    # keep first-appearance order.
+    for ff in dict.fromkeys(np.asarray(df["First File"]).tolist()):
         if _is_empty_tttr_reference(ff):
             continue
         if ff in tttrs:

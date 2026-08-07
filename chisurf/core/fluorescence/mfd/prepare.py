@@ -42,6 +42,7 @@ from typing import Any
 
 import numpy as np
 
+from chisurf.core.datastore import column_names, row_count, take_where
 from chisurf.core.fio.fluorescence.burst import DETECTOR_SENTINEL
 from chisurf.core.fio.fluorescence.burst_manifest import (
     read_analysis_manifest,
@@ -506,7 +507,7 @@ def detector_names(frame) -> tuple[str, ...]:
 
     Parameters
     ----------
-    frame : pandas.DataFrame or mapping of str to array
+    frame : tttrlib.DataStore, pandas.DataFrame or mapping of str to array
         A burst table.
 
     Returns
@@ -515,7 +516,7 @@ def detector_names(frame) -> tuple[str, ...]:
     """
     pattern = re.compile(r"^Number of Photons \((?P<name>[^)]+)\)$")
     names = []
-    for column in frame.columns:
+    for column in column_names(frame):
         match = pattern.match(str(column).strip())
         if match:
             names.append(match.group("name"))
@@ -532,16 +533,16 @@ def photon_index_convention(frame) -> PhotonIndexConvention:
 
     Parameters
     ----------
-    frame : pandas.DataFrame or mapping of str to array
+    frame : tttrlib.DataStore, pandas.DataFrame or mapping of str to array
         A burst table with the sentinel rows already removed.
 
     Returns
     -------
     PhotonIndexConvention
     """
-    first = frame["First Photon"].to_numpy(dtype=np.int64)
-    last = frame["Last Photon"].to_numpy(dtype=np.int64)
-    counted = frame["Number of Photons"].to_numpy(dtype=np.int64)
+    first = np.asarray(frame["First Photon"]).astype(np.int64)
+    last = np.asarray(frame["Last Photon"]).astype(np.int64)
+    counted = np.asarray(frame["Number of Photons"]).astype(np.int64)
     if counted.size == 0:
         return PhotonIndexConvention(inclusive=True, agreement=1.0)
     span = last - first
@@ -732,7 +733,7 @@ def window_columns(frame) -> list[tuple[int, int]]:
 
     Parameters
     ----------
-    frame : pandas.DataFrame or mapping of str to array
+    frame : tttrlib.DataStore, pandas.DataFrame or mapping of str to array
         A burst table.
 
     Returns
@@ -742,7 +743,7 @@ def window_columns(frame) -> list[tuple[int, int]]:
     """
     pattern = re.compile(r"\|\s*(\d+)\s*-\s*(\d+)\s*$")
     out: list[tuple[int, int]] = []
-    for column in frame.columns:
+    for column in column_names(frame):
         match = pattern.search(str(column))
         if match:
             window = (int(match.group(1)), int(match.group(2)))
@@ -798,9 +799,9 @@ def infer_streams(
         ``None`` when any detector could not be reproduced, so the caller can fall
         back and report rather than proceed on a partial answer.
     """
-    files = frame["First File"].to_numpy(dtype=object)
-    first = frame["First Photon"].to_numpy(dtype=np.int64)
-    last = frame["Last Photon"].to_numpy(dtype=np.int64)
+    files = np.asarray(frame["First File"]).astype(object)
+    first = np.asarray(frame["First Photon"]).astype(np.int64)
+    last = np.asarray(frame["Last Photon"]).astype(np.int64)
     stop_offset = convention.stop_offset
 
     rows = np.nonzero(np.array([f in tttrs for f in files]))[0]
@@ -847,7 +848,7 @@ def infer_streams(
 
     resolved: list[StreamDef] = []
     for name in names:
-        truth = frame[f"Number of Photons ({name})"].to_numpy(dtype=np.int64)[rows]
+        truth = np.asarray(frame[f"Number of Photons ({name})"]).astype(np.int64)[rows]
         found = None
         for channels in candidates_channels:
             for window in windows:
@@ -956,14 +957,14 @@ def _mean_micro_time_from_photons(
         ``(n_bursts, n_streams)`` arrays; ``mean_ns`` is NaN where the detector has
         no photons.
     """
-    n = len(frame)
+    n = row_count(frame)
     k = len(streams)
     mean_ns = np.full((n, k), np.nan)
     counts = np.zeros((n, k), dtype=np.int64)
 
-    first = frame["First Photon"].to_numpy(dtype=np.int64)
-    last = frame["Last Photon"].to_numpy(dtype=np.int64)
-    files = frame["First File"].to_numpy(dtype=object)
+    first = np.asarray(frame["First Photon"]).astype(np.int64)
+    last = np.asarray(frame["Last Photon"]).astype(np.int64)
+    files = np.asarray(frame["First File"]).astype(object)
     stop_offset = convention.stop_offset
 
     cache: dict[str, tuple[np.ndarray, np.ndarray, float]] = {}
@@ -1043,11 +1044,11 @@ def prepare_burst_folder(
     # The .bur format interleaves an all-zero sentinel row between bursts so that
     # the "…4" companions align to it by position. Those rows are not bursts.
     real = ~np.array(
-        [is_sentinel_file_reference(v) for v in frame["First File"].to_numpy(object)]
+        [is_sentinel_file_reference(v) for v in np.asarray(frame["First File"]).astype(object)]
     )
     rows = np.nonzero(real)[0].astype(np.int64)
     n_sentinel = int(real.size - rows.size)
-    frame = frame.loc[real].reset_index(drop=True)
+    frame = take_where(frame, real)
 
     names = detector_names(frame)
     if not names:
@@ -1075,28 +1076,28 @@ def prepare_burst_folder(
         stream_origin = "caller"
 
     counts = np.column_stack(
-        [frame[f"Number of Photons ({n})"].to_numpy(dtype=np.int64) for n in names]
+        [np.asarray(frame[f"Number of Photons ({n})"]).astype(np.int64) for n in names]
     )
     span_ms = np.column_stack(
-        [frame[f"Duration ({n}) (ms)"].to_numpy(dtype=float) for n in names]
+        [np.asarray(frame[f"Duration ({n}) (ms)"]).astype(float) for n in names]
     )
     span_is_sentinel = span_ms <= DETECTOR_SENTINEL / 2.0
     spans = np.where(span_is_sentinel, 0.0, span_ms) * 1e-3
 
-    duration = frame["Duration (ms)"].to_numpy(dtype=float) * 1e-3
-    total_counts = frame["Number of Photons"].to_numpy(dtype=np.int64)
-    first_photon = frame["First Photon"].to_numpy(dtype=np.int64)
-    last_photon = frame["Last Photon"].to_numpy(dtype=np.int64)
+    duration = np.asarray(frame["Duration (ms)"]).astype(float) * 1e-3
+    total_counts = np.asarray(frame["Number of Photons"]).astype(np.int64)
+    first_photon = np.asarray(frame["First Photon"]).astype(np.int64)
+    last_photon = np.asarray(frame["Last Photon"]).astype(np.int64)
     if not convention.inclusive:
         last_photon = last_photon - 1
-    file_key = frame["First File"].to_numpy(dtype=object)
+    file_key = np.asarray(frame["First File"]).astype(object)
 
     micro_columns = [f"Mean Microtime ({n}) (ns)" for n in names]
-    has_micro_columns = all(c in frame.columns for c in micro_columns)
+    has_micro_columns = all(c in column_names(frame) for c in micro_columns)
 
     summary: dict[str, Any] = {
         "n_sentinel_rows": n_sentinel,
-        "n_bursts": int(len(frame)),
+        "n_bursts": row_count(frame),
         "stream_origin": stream_origin,
         "count_agreement": {},
         "n_empty": {
@@ -1144,7 +1145,7 @@ def prepare_burst_folder(
 
     if has_micro_columns:
         mean_micro_time = np.column_stack(
-            [frame[c].to_numpy(dtype=float) for c in micro_columns]
+            [np.asarray(frame[c]).astype(float) for c in micro_columns]
         )
         mean_micro_time = np.where(
             mean_micro_time <= DETECTOR_SENTINEL / 2.0, np.nan, mean_micro_time

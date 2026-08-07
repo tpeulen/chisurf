@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import json
 import pathlib
-from typing import Optional
 
 import click
 
+from chisurf.core.datastore import numeric_column, row_count
 from chisurf.plugins.burst.burst_bva.api.models import BvaSettings
 from chisurf.plugins.burst.burst_bva.core.computation import (
     read_burst_analysis,
@@ -73,7 +73,7 @@ def compute(
 
     click.echo(f"Reading burst data from {af} ...")
     df, tttrs = read_burst_analysis(af, file_type, pattern=pattern)
-    click.echo(f"Found {len(df)} bursts across {len(tttrs)} TTTR file(s)")
+    click.echo(f"Found {row_count(df)} bursts across {len(tttrs)} TTTR file(s)")
 
     click.echo("Computing BVA ...")
     df_v = compute_bva(
@@ -86,8 +86,8 @@ def compute(
         number_of_photons_per_slice=settings.number_of_photons_per_slice,
     )
 
-    df_selected = df_v[df_v["Proximity Ratio Std"] > 0.0]
-    click.echo(f"Valid bursts (Std > 0): {len(df_selected)} / {len(df_v)} total")
+    n_valid = int((numeric_column(df_v, "Proximity Ratio Std") > 0.0).sum())
+    click.echo(f"Valid bursts (Std > 0): {n_valid} / {row_count(df_v)} total")
 
     click.echo(f"Writing BV4 files to {out_dir} ...")
     write_bv4_analysis(df_v, str(out_dir.parent))

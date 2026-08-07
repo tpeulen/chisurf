@@ -27,7 +27,6 @@ from collections import OrderedDict
 import numpy as np
 import tttrlib
 
-import chisurf as cs
 from chisurf.core.datastore import (
     column_names,
     concat_stores,
@@ -171,45 +170,6 @@ def write_mti_summary(
         mti_file.write(f"{filename}\t{max_macro_time:.6f}\n")
 
 
-def write_bv4_analysis(df, analysis_folder: str = "analysis"):
-    """
-    Writes Burst Variance Analysis (BVA) results to .bv4 files in a 'bv4' subfolder inside the
-    specified analysis folder. Each TTTR file will have a corresponding .bv4 file containing
-    the mean and standard deviation of the proximity ratio for each burst.
-
-    Parameters
-    ----------
-    df : tttrlib.DataStore
-        The DataFrame containing burst data with columns 'First File', 'Proximity Ratio Mean',
-        and 'Proximity Ratio Std'.
-    analysis_folder : str, optional
-        The path to the folder where the 'bv4' subfolder will be created. Default is 'analysis'.
-    """
-    # Use pathlib to create the analysis/bv4 folder if it doesn't exist
-    bv4_folder = pathlib.Path(analysis_folder) / "bv4"
-    bv4_folder.mkdir(parents=True, exist_ok=True)
-
-    # Iterate through the DataFrame and write results to individual .bv4 files
-    # write_companion owns the layout: the "…4" directory, the %.6f and the zero
-    # interleaving. Building those here, one measurement at a time, is how a
-    # companion drifts from the contract that merges it.
-    from chisurf.core.fio.fluorescence.burst_companion import write_companion
-
-    files = np.asarray(df["First File"])
-    means = numeric_column(df, "Proximity Ratio Mean")
-    stds = numeric_column(df, "Proximity Ratio Std")
-    for tttr_file in dict.fromkeys(files):
-        keep = files == tttr_file
-        write_companion(
-            analysis_folder,
-            "bv4",
-            pathlib.Path(str(tttr_file)).stem,
-            ["Mean Proximity Ratio", "Standard Deviation"],
-            np.column_stack([means[keep], stds[keep]]),
-        )
-    cs.logging.info("BVA results written beside %s", analysis_folder)
-
-
 def get_indices_in_ranges(rout, mt, chs, micro_time_ranges):
     """Find photon indices matching routing channels and micro-time ranges.
 
@@ -266,7 +226,6 @@ def write_bur_file_old(bur_filename, start_stop, filename, tttr, windows, detect
     :param detectors: Dictionary {det_name: {"chs": [...], "micro_time_ranges": [(mt_start, mt_stop), ...]}}
     """
     import numpy as np
-    import pandas as pd
 
     # Unpack arrays and resolution
     n_ph = len(tttr)

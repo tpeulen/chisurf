@@ -16,6 +16,7 @@ from pathlib import Path
 import numpy as np
 from qtpy import QtCore, QtWidgets
 
+from chisurf.core.datastore import column_names, column_values, is_missing, row_count
 from chisurf.gui import chiplot as cp
 from chisurf.gui.autoform.sections.registry import register_section
 from chisurf.gui.widgets.collapsible_box import CollapsibleBox
@@ -25,26 +26,33 @@ logger = logging.getLogger(__name__)
 
 
 class _BurstTableModel(QtCore.QAbstractTableModel):
-    """Qt table model over a DataFrame with a gating row-mask."""
+    """Qt table model over a columnar burst table with a gating row-mask."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        #: The burst table, as whatever column-addressable object the
-        #: caller has -- a frame today, a store once the burst layer moves.
-        self._df = None
+        #: The burst table, a ``tttrlib.DataStore``.
+        self._table = None
+        self._names: list[str] = []
+        #: One array per column, held so that painting a cell is an index into a
+        #: numpy array rather than a store lookup per cell.
+        self._columns: list[np.ndarray] = []
         self._rows: np.ndarray | None = None
 
-    def set_dataframe(self, df):
+    def set_table(self, table):
         self.beginResetModel()
-        self._df = df
-        self._rows = np.arange(len(df), dtype=int) if df is not None else None
+        self._table = table
+        self._names = column_names(table) if table is not None else []
+        self._columns = [
+            column_values(table, i) for i in range(len(self._names))
+        ] if table is not None else []
+        self._rows = np.arange(row_count(table), dtype=int) if table is not None else None
         self.endResetModel()
 
     def set_mask(self, mask):
-        if self._df is None:
+        if self._table is None:
             return
         mask = np.asarray(mask, dtype=bool)
-        if mask.shape[0] != len(self._df):
+        if mask.shape[0] != row_count(self._table):
             return
         self.beginResetModel()
         self._rows = np.where(mask)[0]
@@ -55,37 +63,36 @@ class _BurstTableModel(QtCore.QAbstractTableModel):
             return view_row
         try:
             return int(self._rows[view_row])
-        except Exception:
+        except IndexError:
             return None
 
     def rowCount(self, parent=QtCore.QModelIndex()):  # noqa: N802
-        if parent.isValid() or self._df is None or self._rows is None:
+        if parent.isValid() or self._table is None or self._rows is None:
             return 0
         return int(self._rows.size)
 
     def columnCount(self, parent=QtCore.QModelIndex()):  # noqa: N802
-        if parent.isValid() or self._df is None:
+        if parent.isValid() or self._table is None:
             return 0
-        return int(self._df.shape[1])
+        return len(self._names)
 
     def data(self, index, role=QtCore.Qt.DisplayRole):
-        if (not index.isValid() or self._df is None or self._rows is None
+        if (not index.isValid() or self._table is None or self._rows is None
                 or role not in (QtCore.Qt.DisplayRole, QtCore.Qt.EditRole)):
             return None
         try:
-            value = self._df.iat[int(self._rows[index.row()]), index.column()]
-        except Exception:
+            value = self._columns[index.column()][int(self._rows[index.row()])]
+        except IndexError:
             return None
-        return f"{value:.4g}" if isinstance(value, float) else str(value)
+        if is_missing(value):
+            return ""
+        return f"{value:.4g}" if isinstance(value, (float, np.floating)) else str(value)
 
     def headerData(self, section, orientation, role=QtCore.Qt.DisplayRole):  # noqa: N802
-        if role != QtCore.Qt.DisplayRole or self._df is None:
+        if role != QtCore.Qt.DisplayRole or self._table is None:
             return None
         if orientation == QtCore.Qt.Horizontal:
-            try:
-                return str(self._df.columns[section])
-            except Exception:
-                return None
+            return self._names[section] if 0 <= section < len(self._names) else None
         return str(section + 1)
 
 
@@ -146,16 +153,22 @@ class _ControlsSection(QtWidgets.QWidget):
         grid = QtWidgets.QGridLayout(grid_w)
         grid.setContentsMargins(2, 2, 2, 2)
 
+        # A spin box's own size hint is wide enough that four of them plus their
+        # labels overflow the panel, and the overflow lands on the *labels*: the
+        # grid clips "E max" and "Size max" off the right edge rather than
+        # shrinking the boxes. Capped, so the labels always fit.
         def _f():
             s = QtWidgets.QDoubleSpinBox()
             s.setRange(0.0, 1.0)
             s.setSingleStep(0.01)
             s.setDecimals(3)
+            s.setMaximumWidth(90)
             return s
 
         def _i():
             s = QtWidgets.QSpinBox()
             s.setRange(0, 10_000_000)
+            s.setMaximumWidth(90)
             return s
 
         self.e_min, self.e_max = _f(), _f()
@@ -170,6 +183,7 @@ class _ControlsSection(QtWidgets.QWidget):
             grid.addWidget(a, row, 1)
             grid.addWidget(QtWidgets.QLabel(lbl_b), row, 2)
             grid.addWidget(b, row, 3)
+        grid.setColumnStretch(4, 1)
         box.add_widget(grid_w)
         form.addWidget(box)
 
@@ -304,7 +318,7 @@ class _TableSection(QtWidgets.QWidget):
 
     def _refresh(self, load: bool) -> None:
         if load:
-            self._tmodel.set_dataframe(self._model.dataframe)
+            self._tmodel.set_table(self._model.table)
         if self._model.mask is not None:
             self._tmodel.set_mask(self._model.mask)
         self._status.setText(self._model.status_text())

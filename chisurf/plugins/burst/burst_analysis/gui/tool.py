@@ -1094,7 +1094,7 @@ class BurstAnalysisTool(NavigationPanelTool):
 
     def _apply_context_to_browser(self, widget: QtWidgets.QWidget) -> None:
         """Load upstream burst results in Burst Browser."""
-        if self.workflow_context.burst_folder is None or getattr(widget, "_df", None) is not None:
+        if self.workflow_context.burst_folder is None or getattr(widget, "table", None) is not None:
             return
         try:
             widget.load_folder(self.workflow_context.burst_folder)

@@ -762,8 +762,10 @@ def take_columns(store: Any, names: Sequence[str]) -> Any:
 
     Parameters
     ----------
-    store : tttrlib.DataStore
-        The table to take from.
+    store : tttrlib.DataStore, pandas.DataFrame or mapping
+        The table to take from. Converted first, as everywhere on this seam: a
+        migration moves one producer at a time, and until the last one moves a
+        caller legitimately holds a mixture.
     names : sequence of str
         Column names.
 
@@ -771,6 +773,7 @@ def take_columns(store: Any, names: Sequence[str]) -> Any:
     -------
     tttrlib.DataStore
     """
+    store = _as_store(store)
     out = new_store()
     present = column_names(store)
     for name in names:
@@ -793,7 +796,7 @@ def take_rows(store: Any, rows: Any) -> Any:
 
     Parameters
     ----------
-    store : tttrlib.DataStore
+    store : tttrlib.DataStore, pandas.DataFrame or mapping
         The table to take from.
     rows : array-like of int
         Row positions.
@@ -802,7 +805,7 @@ def take_rows(store: Any, rows: Any) -> Any:
     -------
     tttrlib.DataStore
     """
-    return store.take([int(i) for i in np.asarray(rows).ravel()])
+    return _as_store(store).take([int(i) for i in np.asarray(rows).ravel()])
 
 
 def take_where(store: Any, mask: Any) -> Any:
@@ -897,9 +900,13 @@ def write_csv_table(
     owns their ``%.6f``, their zero interleaving and their one-row-per-burst
     rule, none of which is a formatting question.
 
-    Non-finite floats are masked rather than written as ``nan``, so a missing
-    value comes out as the empty field a frame writes and this module's reader
-    takes back as missing. Infinities are values, not gaps, and are left alone.
+    A ``NaN`` is written as the same empty field a masked cell gets, because
+    that is what a frame's writer produces and what :func:`read_csv_table` takes
+    back as missing. The two are *not* the same thing to a store — a mask says
+    "not measured", a ``NaN`` says the number is not a number — and CSV has one
+    blank field for both, so the choice belongs at this boundary and nowhere
+    else. Infinities are values with an exact text that reads back as itself,
+    and are left alone.
 
     Parameters
     ----------
@@ -924,83 +931,22 @@ def write_csv_table(
     """
     import tttrlib
 
-    store = _as_store(data)
-    # On a copy: masking is how a NaN reaches the file as an empty field, and
-    # doing it in place would mean WRITING A TABLE CHANGES IT -- every NaN row
-    # coming back marked "not measured" afterwards. Verified before the copy was
-    # added: has_mask() went False -> True across a write.
-    if _has_non_finite(store):
-        store = _mask_non_finite(store.copy())
+    # nan_rep, not a pre-pass over the columns: the writer says what a NaN is
+    # written as, so nothing here has to touch the table to express it. What it
+    # replaced masked every NaN before writing, and the mask is PART OF THE
+    # TABLE -- doing it in place meant writing a table changed it (has_mask()
+    # went False -> True across a write), and doing it on a copy meant copying
+    # the whole table to state one formatting choice.
     return tttrlib.write_csv(
         None if path is None else str(path),
-        store,
+        _as_store(data),
         delimiter=delimiter,
         header=header,
         na_rep=CSV_NA,
+        nan_rep=CSV_NA,
         columns=None if columns is None else list(columns),
         keep_decimal_point=keep_decimal_point,
     )
-
-
-def _has_non_finite(store: Any) -> bool:
-    """Whether any float column holds a ``NaN``.
-
-    Asked first so the copy in :func:`write_csv_table` is only paid for by the
-    tables that need it.
-
-    Parameters
-    ----------
-    store : tttrlib.DataStore
-
-    Returns
-    -------
-    bool
-    """
-    for index in range(store.n_columns()):
-        column = column_at(store, index)
-        if column.dtype in (STRING_DTYPE, BOOL_DTYPE):
-            continue
-        values = np.asarray(column.numpy())
-        if values.dtype.kind == "f" and np.isnan(values).any():
-            return True
-    return False
-
-
-def _mask_non_finite(store: Any) -> Any:
-    """Mark ``NaN`` entries of every float column as missing, in place.
-
-    A store says "missing" with its validity mask and a frame says it with
-    ``NaN``, so a frame converted straight across writes the literal text
-    ``nan`` where the frame's own writer would have written an empty field.
-    This puts the two back in step at the CSV boundary only — an HDF5 write
-    keeps the ``NaN``, because there it is a value the reader gets back
-    unchanged.
-
-    Parameters
-    ----------
-    store : tttrlib.DataStore
-        Store to adjust.
-
-    Returns
-    -------
-    tttrlib.DataStore
-        The same store.
-    """
-    for index in range(store.n_columns()):
-        column = column_at(store, index)
-        if column.dtype in (STRING_DTYPE, BOOL_DTYPE):
-            continue
-        values = np.asarray(column.numpy())
-        if values.dtype.kind != "f":
-            continue
-        missing = np.isnan(values)
-        if not missing.any():
-            continue
-        valid = ~missing
-        if column.has_mask():
-            valid &= column.mask_numpy().astype(bool)
-        column.set_mask(np.ascontiguousarray(valid, dtype=np.uint8))
-    return store
 
 
 def read_csv_table(path: Any, *, delimiter: str = "\t", header: bool = True) -> Any:

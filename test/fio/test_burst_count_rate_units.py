@@ -12,6 +12,8 @@ never be below the rate of any single detector inside it.
 from __future__ import annotations
 
 import numpy as np
+
+from chisurf.core.datastore import rows_from_table
 import pandas as pd
 import pytest
 
@@ -75,7 +77,7 @@ def test_the_total_count_rate_is_kilohertz(two_photon_burst: _FakeTTTR) -> None:
         include_interleaved_zeros=False,
     )
 
-    row = df.iloc[0]
+    row = rows_from_table(df)[0]
     assert row["Duration (ms)"] == pytest.approx(1.0)
     assert row["Number of Photons"] == 2
     assert row["Count Rate (KHz)"] == pytest.approx(2.0)
@@ -94,7 +96,7 @@ def test_the_total_rate_is_at_least_every_detector_rate(
         include_interleaved_zeros=False,
     )
 
-    row = df.iloc[0]
+    row = rows_from_table(df)[0]
     total = row["Count Rate (KHz)"]
     assert total == pytest.approx(10 / 9e-3)
     for det_name in DETECTORS:
@@ -124,7 +126,8 @@ def test_both_writers_agree_on_the_count_rate(two_photon_burst: _FakeTTTR, tmp_p
         windows=WINDOWS,
         detectors=DETECTORS,
         include_interleaved_zeros=False,
-    ).iloc[0]
+    )
+    fast = rows_from_table(fast)[0]
 
     assert legacy["Count Rate (KHz)"] == pytest.approx(2.0)
     assert fast["Count Rate (KHz)"] == pytest.approx(legacy["Count Rate (KHz)"])

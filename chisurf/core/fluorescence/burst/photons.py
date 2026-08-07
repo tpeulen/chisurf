@@ -179,7 +179,7 @@ def extract_burst_photons(
 
     Parameters
     ----------
-    df : pandas.DataFrame
+    df : tttrlib.DataStore or pandas.DataFrame
         Burst table with ``First File`` / ``First Photon`` / ``Last Photon``.
         ``Last Photon`` is **inclusive**, as written by
         :mod:`chisurf.core.fio.fluorescence.burst`.
@@ -351,7 +351,7 @@ def load_tttrs_for_dataframe(
 
     Parameters
     ----------
-    df : pandas.DataFrame
+    df : tttrlib.DataStore or pandas.DataFrame
         Burst table with a ``First File`` column.
     data_dir : path-like
         Directory the relative ``First File`` names resolve against.
@@ -379,7 +379,10 @@ def load_tttrs_for_dataframe(
 
     data_dir = pathlib.Path(data_dir)
     tttrs: dict[str, tttrlib.TTTR] = {}
-    for ff in df["First File"].unique():
+    # dict.fromkeys, not Series.unique: a store's column is not a Series, and
+    # both keep first-appearance order -- which is what makes the *first* entry
+    # the first real measurement rather than the alphabetically smallest.
+    for ff in dict.fromkeys(np.asarray(df["First File"]).tolist()):
         if ff in tttrs or is_sentinel_file_reference(ff):
             continue
         candidate = pathlib.Path(ff)

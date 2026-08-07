@@ -21,6 +21,8 @@ from __future__ import annotations
 import pathlib
 
 import numpy as np
+
+from chisurf.core.datastore import take_where
 import pytest
 
 from chisurf.core.fluorescence.burst.photons import StreamDef
@@ -177,13 +179,13 @@ def test_counts_and_spans_agree_with_the_table(preparation):
 
     frame = load_bur_dataframe(sorted((ANALYSIS / "bi4_bur").glob("*.bur")))
     real = ~np.array(
-        [is_sentinel_file_reference(v) for v in frame["First File"].to_numpy(object)]
+        [is_sentinel_file_reference(v) for v in np.asarray(frame["First File"])]
     )
-    frame = frame.loc[real].reset_index(drop=True)
+    frame = take_where(frame, real)
     for i, name in enumerate(preparation.channels):
         assert np.array_equal(
             preparation.counts[:, i],
-            frame[f"Number of Photons ({name})"].to_numpy(np.int64),
+            np.asarray(frame[f"Number of Photons ({name})"]).astype(np.int64),
         )
 
 

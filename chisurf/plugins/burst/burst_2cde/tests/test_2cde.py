@@ -13,6 +13,7 @@ import pytest
 
 import tttrlib
 
+from chisurf.core.datastore import column_names
 from chisurf.plugins.burst.burst_2cde.core import computation as core
 
 
@@ -136,8 +137,8 @@ def test_read_burst_analysis_skips_json_sidecar_and_isolates_bi4_bur(tmp_path, m
 
     # 2CDE's path: only the burst tables, never the bv4 sidecars.
     df, tttrs = bva_core.read_burst_analysis(tmp_path, "SPC-130", pattern="bi4_bur")
-    assert "First File" in df.columns
-    assert list(df["First File"]) == ["m000.spc"] * 4
+    assert "First File" in column_names(df)
+    assert list(np.asarray(df["First File"])) == ["m000.spc"] * 4
     assert list(tttrs) == ["m000.spc"]
 
 

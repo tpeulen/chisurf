@@ -3,12 +3,19 @@
 from __future__ import annotations
 
 import pathlib
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 import numpy as np
 
-from chisurf.core.datastore import numeric_column, row_count
-import pandas as pd
+from chisurf.core.datastore import (
+    column_names,
+    concat_stores,
+    new_store,
+    numeric_column,
+    row_count,
+    store_from_arrays,
+    take_columns,
+)
 
 try:
     from chisurf import logging
@@ -35,49 +42,109 @@ def read_burst_analysis(
         tttr_file_type: str,
         pattern: str = 'b*4*',
         row_stride: int = 2
-) -> Tuple[pd.DataFrame, Dict[str, tttrlib.TTTR]]:
-    """Read burst analysis data files and return DataFrame + TTTR dict."""
+) -> Tuple[Any, Dict[str, tttrlib.TTTR]]:
+    """Read a burst-analysis folder as one table, plus the photon streams it names.
 
+    The burst table and its ``…4`` companions are stacked *row-wise* within a
+    directory and put *column-wise* beside each other across directories — the
+    positional merge the
+    [burst-companion contract](/subsystems/burst-companions.md) describes, which
+    is why the row stride matters: a companion carries a zero row between every
+    two bursts.
+
+    Parameters
+    ----------
+    paris_path : pathlib.Path
+        The burst-analysis folder holding ``bi4_bur`` and the companions.
+    tttr_file_type : str
+        Container type for :class:`tttrlib.TTTR`.
+    pattern : str
+        Which sub-directories to merge.
+    row_stride : int
+        Take every *n*-th line after the header, dropping the interleaved zero
+        rows.
+
+    Returns
+    -------
+    table : tttrlib.DataStore
+        One row per burst.
+    tttrs : dict of str to tttrlib.TTTR
+        The measurements the ``First File`` column names, opened once each.
+    """
     data_path = paris_path.parent
-    dfs = []
-    is_first_file = True
-    for path in paris_path.glob(pattern):
-        frames = []
+    table = new_store()
+    for path in sorted(paris_path.glob(pattern)):
+        parts = []
         for fn in sorted(path.glob('*')):
             # Skip non-burst sidecars (e.g. a ``bva_settings.json`` written into
-            # ``bv4/``) — reading them as a tab table corrupts the merged frame.
+            # ``bv4/``) — reading them as a tab table corrupts the merged table.
             if not fn.is_file() or fn.suffix.lower() in {'.json', '.yaml', '.yml'}:
                 continue
-            with open(fn) as f:
-                t = f.read().splitlines()
-                h = t[0].rstrip('\t').split('\t')
-                d = [line.rstrip('\t').split('\t') for line in t[2::row_stride]]
-                frames.append(pd.DataFrame(d, columns=h))
-        if frames:
-            dfs.append(pd.concat(frames, ignore_index=True))
-    df = pd.concat(dfs, axis=1)
-
-    for column in df.columns:
-        try:
-            df[column] = pd.to_numeric(df[column])
-        except ValueError:
-            if not is_first_file:
-                logging.info(f"read_burst_analysis: Could not convert {column} to numeric")
-        is_first_file = False
+            parts.append(_read_strided(fn, row_stride))
+        if not parts:
+            continue
+        group = concat_stores(parts)
+        if row_count(table) == 0:
+            table = group
+            continue
+        # Column-wise, by position: a companion contributes the columns the
+        # burst table does not already have, and a name it shares is the same
+        # measurement read twice.
+        fresh = [c for c in column_names(group) if c not in column_names(table)]
+        table.append_columns(take_columns(group, fresh))
 
     tttrs: Dict[str, tttrlib.TTTR] = {}
-    for ff in df['First File']:
+    for ff in np.asarray(table['First File']):
         if ff not in tttrs:
             # ``ff`` is a filename string; coerce defensively so a stray numeric
             # value can't raise ``PosixPath / float`` on the path join.
-            fn = str(data_path / str(ff))
-            tttrs[ff] = tttrlib.TTTR(fn, tttr_file_type)
+            tttrs[ff] = tttrlib.TTTR(str(data_path / str(ff)), tttr_file_type)
 
-    return df, tttrs
+    return table, tttrs
+
+
+def _read_strided(path: pathlib.Path, row_stride: int) -> Any:
+    """Read one tab-delimited burst file, keeping every *row_stride*-th data row.
+
+    Parameters
+    ----------
+    path : pathlib.Path
+        The file.
+    row_stride : int
+        Stride over the lines after the header, starting at the first burst row.
+
+    Returns
+    -------
+    tttrlib.DataStore
+        Columns typed from their text: numeric where every entry parses, text
+        otherwise.
+    """
+    lines = path.read_text().splitlines()
+    names = lines[0].rstrip('\t').split('\t')
+    rows = [line.rstrip('\t').split('\t') for line in lines[2::row_stride]]
+    # Padded rather than reshaped: a short line is a truncated file, and a
+    # reshape would silently roll its fields into the next burst's row.
+    text = np.array(
+        [row[:len(names)] + [""] * (len(names) - len(row)) for row in rows], dtype=object
+    ).reshape(len(rows), len(names))
+    columns = {}
+    for i, name in enumerate(names):
+        values = text[:, i]
+        # Integer first: a photon index is an int64 in the store and stays one,
+        # where widening it to float costs the dtype for nothing.
+        for dtype in (np.int64, float):
+            try:
+                columns[name] = values.astype(dtype)
+                break
+            except (ValueError, OverflowError):
+                continue
+        else:
+            columns[name] = values.astype(str)
+    return store_from_arrays(columns)
 
 
 def _compute_bva_tttrlib(
-        df: pd.DataFrame,
+        table: Any,
         tttrs: Dict[str, tttrlib.TTTR],
         donor_channels,
         donor_micro_time_ranges,
@@ -87,25 +154,25 @@ def _compute_bva_tttrlib(
         number_of_photons_per_slice: int,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Fast path: per-burst proximity-ratio mean/std via the tttrlib C++ BVA
-    (parallel over bursts). Returns arrays aligned to ``df`` row order."""
-    col_ff = df.columns.get_loc("First File")
-    col_fp = df.columns.get_loc("First Photon")
-    col_lp = df.columns.get_loc("Last Photon")
+    (parallel over bursts). Returns arrays aligned to ``table`` row order."""
+    files = np.asarray(table["First File"])
+    firsts = numeric_column(table, "First Photon")
+    lasts = numeric_column(table, "Last Photon")
 
-    n = len(df)
+    n = row_count(table)
     means = np.full(n, np.nan)
     stds = np.full(n, np.nan)
 
     # Group burst rows by their source file, preserving original row indices.
     per_file: Dict[str, Tuple[List[int], List[int]]] = {}
-    for i, row in enumerate(df.itertuples(index=False, name=None)):
-        ff = row[col_ff]
+    for i in range(n):
+        ff = files[i]
         if ff not in tttrs:
             continue
         rows_idx, bursts = per_file.setdefault(ff, ([], []))
         rows_idx.append(i)
-        bursts.append(int(row[col_fp]))
-        bursts.append(int(row[col_lp]))
+        bursts.append(int(firsts[i]))
+        bursts.append(int(lasts[i]))
 
     to_pairs = lambda rs: [(int(a), int(b)) for a, b in rs]
     for ff, (rows_idx, bursts) in per_file.items():
@@ -125,7 +192,7 @@ def _compute_bva_tttrlib(
 
 
 def compute_bva(
-        df: pd.DataFrame,
+        df: Any,
         tttrs: Dict[str, tttrlib.TTTR],
         donor_channels: List[int] = (0, 8),
         donor_micro_time_ranges: List[Tuple[int, int]] = ((0, 4096),),
@@ -134,7 +201,7 @@ def compute_bva(
         minimum_window_length: float = 0.01,
         number_of_photons_per_slice: int = -1,
         progress_window=None,
-) -> pd.DataFrame:
+) -> Any:
     """Compute BVA: proximity ratio mean and std per burst.
 
     Uses the fast tttrlib C++ ``BVA`` engine (parallel over bursts) when
@@ -147,19 +214,20 @@ def compute_bva(
                 acceptor_channels, acceptor_micro_time_ranges,
                 minimum_window_length, number_of_photons_per_slice,
             )
-            df['Proximity Ratio Mean'] = means
-            df['Proximity Ratio Std'] = stds
+            df.append_columns(store_from_arrays({
+                'Proximity Ratio Mean': means, 'Proximity Ratio Std': stds,
+            }))
             if progress_window:
-                progress_window.set_value(len(df))
+                progress_window.set_value(row_count(df))
             return df
         except Exception as e:  # pragma: no cover - fall back to numpy
             logging.info(f"compute_bva: tttrlib BVA path failed ({e}); using numpy")
 
     # Results are addressed by *original* row index, exactly as the C++ path
-    # does: a ``.bur`` frame is interleaved (every other row is a sentinel whose
+    # does: a ``.bur`` table is interleaved (every other row is a sentinel whose
     # ``First File`` names no measurement), and appending only for the rows that
-    # were processed would hand back a shorter column than the frame is long.
-    n_rows = len(df)
+    # were processed would hand back a shorter column than the table is long.
+    n_rows = row_count(df)
     prox_means = np.full(n_rows, np.nan)
     proxt_stds = np.full(n_rows, np.nan)
 
@@ -240,13 +308,14 @@ def compute_bva(
         if progress_window:
             progress_window.set_value(i + 1)
 
-    df['Proximity Ratio Mean'] = prox_means
-    df['Proximity Ratio Std'] = proxt_stds
+    df.append_columns(store_from_arrays({
+        'Proximity Ratio Mean': prox_means, 'Proximity Ratio Std': proxt_stds,
+    }))
     return df
 
 
 def write_bva_container(
-    df: pd.DataFrame,
+    df: Any,
     *,
     parameters: dict | None = None,
     progress_window=None,
@@ -260,7 +329,7 @@ def write_bva_container(
 
     Parameters
     ----------
-    df : pandas.DataFrame
+    df : tttrlib.DataStore
         BVA results, carrying ``First File`` per row.
     parameters : dict, optional
         The analysis settings, which used to be dropped into the companion
@@ -277,7 +346,7 @@ def write_bva_container(
     from chisurf.core.fio.fluorescence.burst_container import write_per_source
 
     written = write_per_source(
-        df[["First File", "Proximity Ratio Mean", "Proximity Ratio Std"]],
+        take_columns(df, ["First File", "Proximity Ratio Mean", "Proximity Ratio Std"]),
         name="bva",
         artifact_kind="burst_table",
         operation_type="burst_variance_analysis",
@@ -291,28 +360,39 @@ def write_bva_container(
     return written
 
 
-def write_bv4_analysis(df: pd.DataFrame, analysis_folder: str = "analysis", progress_window=None):
-    """Write BVA results to .bv4 files in a bv4/ subfolder."""
-    bv4_folder = pathlib.Path(analysis_folder) / "bv4"
-    bv4_folder.mkdir(parents=True, exist_ok=True)
+def write_bv4_analysis(df: Any, analysis_folder: str = "analysis", progress_window=None):
+    """Write BVA results to ``.bv4`` files in a ``bv4/`` subfolder.
 
-    groups = list(df.groupby("First File"))
-    for i, (tttr_file, group) in enumerate(groups, start=1):
-        tttr_stem = pathlib.Path(tttr_file).stem
-        # Name the companion after the .bur stem (``m000.bur`` -> ``m000.bv4``) so
-        # per-stem consumers (ndX, the burst browser) join it to the burst
-        # table. The historic ``_0`` sub-file suffix broke that stem match.
-        bv4_filename = bv4_folder / f"{tttr_stem}.bv4"
+    Parameters
+    ----------
+    df : tttrlib.DataStore
+        BVA results, one row per burst, carrying ``First File``.
+    analysis_folder : str
+        The burst-analysis folder the ``bv4`` directory goes beside.
+    progress_window : optional
+        Anything with ``set_value``.
+    """
+    # write_companion owns the layout -- the "…4" directory, the %.6f and the
+    # zero interleaving. Building it here, one measurement at a time, is how a
+    # companion drifts from the contract that merges it back.
+    from chisurf.core.fio.fluorescence.burst_companion import write_companion
 
-        mini_df = group[['Proximity Ratio Mean', 'Proximity Ratio Std']].copy()
-        n = len(mini_df)
-        columns_list = list(mini_df.columns) + [""]
-        new_df = pd.DataFrame(np.zeros((2 * n + 1, len(columns_list))), columns=columns_list)
-        new_df[""] = ""
-        new_df.loc[1::2, mini_df.columns] = mini_df.values
-        new_df.to_csv(bv4_filename, sep='\t', index=False)
-
+    files = np.asarray(df["First File"])
+    means = numeric_column(df, "Proximity Ratio Mean")
+    stds = numeric_column(df, "Proximity Ratio Std")
+    # Name the companion after the .bur stem (``m000.bur`` -> ``m000.bv4``) so
+    # per-stem consumers (ndX, the burst browser) join it to the burst table.
+    # The historic ``_0`` sub-file suffix broke that stem match.
+    for i, tttr_file in enumerate(dict.fromkeys(files), start=1):
+        keep = files == tttr_file
+        write_companion(
+            analysis_folder,
+            "bv4",
+            pathlib.Path(str(tttr_file)).stem,
+            ["Proximity Ratio Mean", "Proximity Ratio Std"],
+            np.column_stack([means[keep], stds[keep]]),
+        )
         if progress_window:
             progress_window.set_value(i)
 
-    logging.info(f"BVA results written to {bv4_folder}")
+    logging.info("BVA results written to %s", pathlib.Path(analysis_folder) / "bv4")

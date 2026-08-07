@@ -21,6 +21,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from chisurf.core.datastore import column_names, row_count
 from chisurf.core.fio.pto import Measurement
 from chisurf.plugins.burst.burst_selection.api.io import deinterleave_bursts
 from chisurf.plugins.burst.burst_selection.api.models import (
@@ -177,15 +178,15 @@ def test_deinterleave_takes_the_odd_rows():
         {"a": [0, 1, 0, 2, 0], "b": [0.0, 1.5, 0.0, 2.5, 0.0], "": [""] * 5}
     )
     out = deinterleave_bursts(frame)
-    assert list(out["a"]) == [1, 2]
-    assert list(out.columns) == ["a", "b"]
+    assert list(np.asarray(out["a"])) == [1, 2]
+    assert column_names(out) == ["a", "b"]
 
 
-def test_deinterleave_leaves_a_plain_frame_alone():
+def test_deinterleave_leaves_a_plain_table_alone():
     frame = pd.DataFrame({"a": [1, 2, 3], "b": [1.0, 2.0, 3.0]})
     out = deinterleave_bursts(frame)
-    assert len(out) == 3
-    assert list(out["a"]) == [1, 2, 3]
+    assert row_count(out) == 3
+    assert list(np.asarray(out["a"])) == [1, 2, 3]
 
 
 def test_deinterleave_keeps_a_genuine_zero_burst():
@@ -193,5 +194,5 @@ def test_deinterleave_keeps_a_genuine_zero_burst():
     are the padding, and the check is on those."""
     frame = pd.DataFrame({"a": [0, 0, 0, 5, 0], "b": [0.0, 0.0, 0.0, 5.0, 0.0]})
     out = deinterleave_bursts(frame)
-    assert len(out) == 2
-    assert list(out["a"]) == [0, 5]
+    assert row_count(out) == 2
+    assert list(np.asarray(out["a"])) == [0, 5]

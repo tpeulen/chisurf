@@ -8,6 +8,12 @@ gating state (E/S/size ranges, selected detector, histogram column, selection
 mode). It computes the gating mask and the histogram data. All Qt concerns (table
 view, plot, combos, foldable panels, docks) live in ``gui/sections.py`` + the
 AutoForm rendered from ``burst_browser.view.json``.
+
+The table is a columnar store, not a data frame — see the
+[columnar store concept](/subsystems/columnar-store.md). A folder of ten
+measurements is stacked into one store, and every column this asks for is
+already numeric, so the whole gating path is plain numpy over
+:func:`~chisurf.core.datastore.numeric_column`.
 """
 
 from __future__ import annotations
@@ -16,10 +22,18 @@ import json
 import logging
 import pathlib
 from collections.abc import Callable
+from typing import Any
 
 import numpy as np
-import pandas as pd
 
+from chisurf.core.datastore import (
+    column_names,
+    concat_stores,
+    numeric_column,
+    row_count,
+    store_from_arrays,
+    take_where,
+)
 from chisurf.core.fio.fluorescence import burst as burstio
 
 logger = logging.getLogger(__name__)
@@ -40,7 +54,8 @@ class BurstBrowserViewModel:
 
     def __init__(self) -> None:
         # Data state.
-        self.dataframe: pd.DataFrame | None = None
+        #: The burst table, as a ``tttrlib.DataStore``.
+        self.table: Any = None
         self.mask: np.ndarray | None = None
         self.path_text: str = "No data loaded"
         self._col_E: str | None = None
@@ -93,10 +108,8 @@ class BurstBrowserViewModel:
     def detector_options(self) -> list[str]:
         """Detector names for the combo (``All`` + names from columns/setup)."""
         dets: set[str] = set()
-        df = self.dataframe
-        if df is not None:
-            for c in df.columns:
-                s = str(c)
+        if self.table is not None:
+            for s in column_names(self.table):
                 if s.startswith("Number of Photons (") and ")" in s:
                     name = s.split("Number of Photons (", 1)[1].split(")", 1)[0]
                     # "Number of Photons (fit window) (green)" yields "fit window",
@@ -112,16 +125,16 @@ class BurstBrowserViewModel:
 
     def hist_column_options(self) -> list[str]:
         """Histogram-column choices — global first, then detector-scoped columns."""
-        df = self.dataframe
-        if df is None:
+        if self.table is None:
             return []
+        names = column_names(self.table)
         preferred: list[str] = []
         for col in ("E", "S", "Number of Photons"):
-            if col in df.columns and col not in preferred:
+            if col in names and col not in preferred:
                 preferred.append(col)
 
         sel_det = None if self.detector in ("", _ALL) else str(self.detector)
-        for c in map(str, df.columns):
+        for c in names:
             if c in preferred:
                 continue
             if sel_det:
@@ -131,7 +144,7 @@ class BurstBrowserViewModel:
                     preferred.append(c)
             elif "Count Rate" in c or "Number of Photons (" in c:
                 preferred.append(c)
-        return preferred or list(map(str, df.columns))
+        return preferred or names
 
     def on_detector_changed(self, value: str) -> None:
         """Detector combo changed — keep it and re-derive the column choices."""
@@ -145,9 +158,9 @@ class BurstBrowserViewModel:
     def load_bur(self, path) -> None:
         """Load a single ``.bur`` file (with its ``…4`` companions)."""
         path = pathlib.Path(path)
-        df = burstio.read_bur_with_companions(path)
+        table = burstio.read_bur_with_companions(path)
         self.path_text = str(path)
-        self._prepare_dataframe(df)
+        self._prepare_table(table)
         self._load_setup_info(path.parent)
         self.refresh()
         self.notify("data")
@@ -162,78 +175,76 @@ class BurstBrowserViewModel:
         if not bur_files:
             logger.info("No .bur files found in: %s", folder)
             return
-        dfs: list[pd.DataFrame] = []
+        parts: list[Any] = []
         for fn in bur_files:
             try:
                 part = burstio.read_bur_with_companions(fn)
-                part["burst_file"] = fn.name
-                dfs.append(part)
+                # A dictionary-encoded text column: one string per file, not one
+                # per burst, however many measurements are stacked.
+                part.append_columns(
+                    store_from_arrays({"burst_file": np.full(row_count(part), fn.name)})
+                )
+                parts.append(part)
             except Exception as exc:
                 logger.warning("BurstBrowser: failed to read %s: %s", fn, exc)
-        if not dfs:
+        if not parts:
             logger.info("No .bur files could be read.")
             return
-        df = pd.concat(dfs, ignore_index=True)
+        table = concat_stores(parts)
         self.path_text = f"{folder} ({len(bur_files)} .bur)"
-        self._prepare_dataframe(df)
+        self._prepare_table(table)
         self._load_setup_info(folder)
         self.refresh()
         self.notify("data")
 
     # ── data prep (E / S / size columns + gating ranges) ───────────────
-    def _prepare_dataframe(self, df: pd.DataFrame) -> None:
-        df = df.copy()
-        if "Number of Photons" in df.columns:
-            try:
-                n = pd.to_numeric(df["Number of Photons"], errors="coerce")
-                df = df[n > 0].reset_index(drop=True)
-            except Exception:
-                pass
+    def _prepare_table(self, table: Any) -> None:
+        names = column_names(table)
+        if "Number of Photons" in names:
+            table = take_where(table, numeric_column(table, "Number of Photons") > 0)
 
         self._col_E = self._col_S = self._col_size = None
         self.have_E = self.have_S = False
         red_col = green_col = None
+        derived: dict[str, np.ndarray] = {}
 
-        if "E" in df.columns:
+        if "E" in names:
             self._col_E, self.have_E = "E", True
-        elif "Proximity Ratio" in df.columns:
+        elif "Proximity Ratio" in names:
             self._col_E, self.have_E = "Proximity Ratio", True
         else:
-            photon_cols = [c for c in df.columns if "Number of Photons (" in c]
+            photon_cols = [c for c in names if "Number of Photons (" in c]
             red_candidates = [c for c in photon_cols if "red" in c.lower()]
             green_candidates = [c for c in photon_cols if "green" in c.lower()]
             if red_candidates and green_candidates:
                 red_col, green_col = red_candidates[0], green_candidates[0]
-                try:
-                    red = pd.to_numeric(df[red_col], errors="coerce")
-                    green = pd.to_numeric(df[green_col], errors="coerce")
-                    denom = red + green
-                    with np.errstate(divide="ignore", invalid="ignore"):
-                        df["E"] = np.where(denom > 0, red / denom, np.nan)
-                    self._col_E, self.have_E = "E", True
-                except Exception:
-                    logger.warning("BurstBrowser: failed to compute E")
-
-        if "S" in df.columns:
-            self._col_S, self.have_S = "S", True
-        elif self.have_E and red_col and green_col and "Number of Photons" in df.columns:
-            try:
-                nd = pd.to_numeric(df[green_col], errors="coerce")
-                na = pd.to_numeric(df[red_col], errors="coerce")
-                total = pd.to_numeric(df["Number of Photons"], errors="coerce")
+                red = numeric_column(table, red_col)
+                green = numeric_column(table, green_col)
+                denom = red + green
                 with np.errstate(divide="ignore", invalid="ignore"):
-                    df["S"] = np.where(total > 0, (nd + na) / total, np.nan)
-                self._col_S, self.have_S = "S", True
-            except Exception:
-                logger.warning("BurstBrowser: failed to compute S")
+                    derived["E"] = np.where(denom > 0, red / denom, np.nan)
+                self._col_E, self.have_E = "E", True
 
-        if "Number of Photons" in df.columns:
+        if "S" in names:
+            self._col_S, self.have_S = "S", True
+        elif self.have_E and red_col and green_col and "Number of Photons" in names:
+            nd = numeric_column(table, green_col)
+            na = numeric_column(table, red_col)
+            total = numeric_column(table, "Number of Photons")
+            with np.errstate(divide="ignore", invalid="ignore"):
+                derived["S"] = np.where(total > 0, (nd + na) / total, np.nan)
+            self._col_S, self.have_S = "S", True
+
+        if derived:
+            table.append_columns(store_from_arrays(derived))
+
+        if "Number of Photons" in names:
             self._col_size = "Number of Photons"
         else:
-            cands = [c for c in df.columns if "Number of Photons" in c]
+            cands = [c for c in names if "Number of Photons" in c]
             self._col_size = cands[0] if cands else None
 
-        self.dataframe = df
+        self.table = table
         self.selected_indices = []
 
         # Seed the gating ranges from the data.
@@ -248,17 +259,13 @@ class BurstBrowserViewModel:
         self.hist_column = cols[0] if cols else ""
 
     def _col_range(self, col, lo, hi, *, as_int):
-        df = self.dataframe
-        if not col or df is None or col not in df.columns:
+        if not col or self.table is None or col not in column_names(self.table):
             return lo, hi
-        try:
-            v = pd.to_numeric(df[col], errors="coerce")
-            if not np.isfinite(v).any():
-                return lo, hi
-            vmin = float(np.nanmin(v))
-            vmax = float(np.nanmax(v))
-        except Exception:
+        v = numeric_column(self.table, col)
+        if not np.isfinite(v).any():
             return lo, hi
+        vmin = float(np.nanmin(v))
+        vmax = float(np.nanmax(v))
         if as_int:
             vmin, vmax = max(0, int(vmin)), int(vmax)
         if vmin >= vmax:
@@ -267,36 +274,33 @@ class BurstBrowserViewModel:
 
     # ── gating ─────────────────────────────────────────────────────────
     def _recompute_mask(self) -> None:
-        df = self.dataframe
-        if df is None:
+        if self.table is None:
             self.mask = None
             return
-        mask = np.ones(len(df), dtype=bool)
+        names = column_names(self.table)
+        mask = np.ones(row_count(self.table), dtype=bool)
         for have, col, lo, hi in (
             (self.have_E, self._col_E, self.e_min, self.e_max),
             (self.have_S, self._col_S, self.s_min, self.s_max),
             (self._col_size is not None, self._col_size, self.size_min, self.size_max),
         ):
-            if have and col and col in df.columns:
-                try:
-                    c = pd.to_numeric(df[col], errors="coerce").to_numpy()
-                    mask &= np.isfinite(c) & (c >= float(lo)) & (c <= float(hi))
-                except Exception:
-                    pass
+            if have and col and col in names:
+                c = numeric_column(self.table, col)
+                mask &= np.isfinite(c) & (c >= float(lo)) & (c <= float(hi))
         self.mask = mask
 
     def status_text(self) -> str:
         """One-line 'N / total selected' summary for the status bar."""
-        if self.dataframe is None or self.mask is None:
+        if self.table is None or self.mask is None:
             return "No data loaded"
-        return f"Bursts: {int(self.mask.sum())} / {int(len(self.dataframe))} selected"
+        return f"Bursts: {int(self.mask.sum())} / {row_count(self.table)} selected"
 
     def masked_row_indices(self) -> np.ndarray:
-        """Base-frame indices passing the gate (all rows if no mask yet)."""
-        if self.dataframe is None:
+        """Table row indices passing the gate (all rows if no mask yet)."""
+        if self.table is None:
             return np.zeros(0, dtype=int)
         if self.mask is None:
-            return np.arange(len(self.dataframe))
+            return np.arange(row_count(self.table))
         return np.where(self.mask)[0]
 
     # ── histogram ──────────────────────────────────────────────────────
@@ -306,30 +310,25 @@ class BurstBrowserViewModel:
         Uses the table selection when ``use_selection`` is on, else all gated
         bursts. Returns ``None`` when there is nothing to plot.
         """
-        df = self.dataframe
-        if df is None:
+        if self.table is None:
             return None
         col = self.hist_column
-        if not col or col not in df.columns:
+        if not col or col not in column_names(self.table):
             return None
         if self.use_selection:
-            rows = list(self.selected_indices)
-            if not rows:
-                return None
+            rows = np.asarray(self.selected_indices, dtype=int)
         else:
-            rows = self.masked_row_indices().tolist()
-            if not rows:
-                return None
-        try:
-            data = pd.to_numeric(df.loc[rows, col], errors="coerce").dropna().to_numpy()
-        except Exception:
+            rows = self.masked_row_indices()
+        if rows.size == 0:
             return None
+        # Not-finite rather than not-a-number: an infinity survived the frame's
+        # dropna() and then made np.histogram refuse the whole column, so the
+        # plot went blank rather than dropping the one row.
+        data = numeric_column(self.table, col)[rows]
+        data = data[np.isfinite(data)]
         if data.size == 0:
             return None
-        try:
-            counts, edges = np.histogram(data, bins=60)
-        except Exception:
-            return None
+        counts, edges = np.histogram(data, bins=60)
         if counts.size == 0:
             return None
         centers = 0.5 * (edges[:-1] + edges[1:])

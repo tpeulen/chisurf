@@ -1,9 +1,9 @@
-"""RF-805: the NumPy BVA fallback must stay aligned to the burst frame.
+"""The NumPy BVA fallback must stay aligned to the burst table.
 
-A ``.bur`` frame is interleaved — every other row is a sentinel whose
+A ``.bur`` table is interleaved — every other row is a sentinel whose
 ``First File`` names no measurement — so the fallback skips roughly half the
 rows. It used to *append* one value per processed row, which made the result
-column shorter than the frame and raised on assignment (or, worse, silently
+column shorter than the table and raised on assignment (or, worse, silently
 misaligned one burst's result onto another). The values must be addressed by
 original row index, as the tttrlib path already does.
 """
@@ -11,10 +11,10 @@ original row index, as the tttrlib path already does.
 from __future__ import annotations
 
 import numpy as np
-import pandas as pd
 import pytest
 import tttrlib
 
+from chisurf.core.datastore import numeric_column, row_count, store_from_arrays
 from chisurf.plugins.burst.burst_bva.core.computation import compute_bva
 
 
@@ -40,33 +40,33 @@ class _Tttr:
 
 
 @pytest.fixture()
-def interleaved_frame() -> pd.DataFrame:
-    """Build an interleaved burst frame: two real bursts, two sentinel rows."""
-    return pd.DataFrame(
+def interleaved_table():
+    """Build an interleaved burst table: two real bursts, two sentinel rows."""
+    return store_from_arrays(
         {
-            "First File": ["m000.spc", "0", "m000.spc", "0"],
-            "First Photon": [0, 0, 4, 0],
-            "Last Photon": [4, 0, 8, 0],
+            "First File": np.array(["m000.spc", "0", "m000.spc", "0"]),
+            "First Photon": np.array([0, 0, 4, 0]),
+            "Last Photon": np.array([4, 0, 8, 0]),
         }
     )
 
 
-def test_numpy_fallback_keeps_sentinel_rows(monkeypatch, interleaved_frame) -> None:
-    """Rows whose file is absent keep the frame length and come back as NaN."""
+def test_numpy_fallback_keeps_sentinel_rows(monkeypatch, interleaved_table) -> None:
+    """Rows whose file is absent keep the table length and come back as NaN."""
     monkeypatch.delattr(tttrlib, "BVA", raising=False)
     tttrs = {"m000.spc": _Tttr([0, 1, 0, 1, 1, 1, 0, 1])}
 
     df = compute_bva(
-        interleaved_frame,
+        interleaved_table,
         tttrs,
         donor_channels=[0],
         acceptor_channels=[1],
         number_of_photons_per_slice=2,
     )
 
-    means = df["Proximity Ratio Mean"].to_numpy()
-    stds = df["Proximity Ratio Std"].to_numpy()
-    assert len(means) == len(interleaved_frame)
+    means = numeric_column(df, "Proximity Ratio Mean")
+    stds = numeric_column(df, "Proximity Ratio Std")
+    assert len(means) == row_count(interleaved_table)
     # The two sentinel rows carry no result, and the two real bursts keep their
     # own row — a shifted result would put 0.75 on row 1.
     assert np.isnan(means[1]) and np.isnan(means[3])

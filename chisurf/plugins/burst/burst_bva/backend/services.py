@@ -6,6 +6,8 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
+from chisurf.core.datastore import numeric_column, row_count
+
 from ..api.contract import (
     METHOD_COMPUTE_BVA,
     METHOD_DESCRIBE_CONTRACT,
@@ -97,10 +99,10 @@ def compute_bva_handler(
             write_bv4_analysis(df_v, str(resolved_folder))
             output_paths["bv4_folder"] = str(resolved_folder / "bv4")
 
-        valid = int((df_v["Proximity Ratio Std"] > 0).sum()) if "Proximity Ratio Std" in df_v else 0
+        valid = int((numeric_column(df_v, "Proximity Ratio Std") > 0).sum())
         result = BvaResult(
             files=sorted(str(path) for path in tttrs.keys()),
-            n_bursts_total=int(len(df_v)),
+            n_bursts_total=row_count(df_v),
             n_bursts_valid=valid,
             output_paths=output_paths,
             settings_applied=asdict(bva_settings),

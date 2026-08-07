@@ -18,7 +18,7 @@ from __future__ import annotations
 import numpy as np
 
 from pathlib import Path
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any, Mapping, Sequence
 
 __all__ = [
     "BURST_COLUMN_UNITS",
@@ -57,8 +57,8 @@ BURST_COLUMN_UNITS: dict[str, str] = {
 }
 
 
-def units_for(df: pd.DataFrame, extra: Mapping[str, str] | None = None) -> dict[str, str]:
-    """Return the units of the columns a frame actually has.
+def units_for(df, extra: Mapping[str, str] | None = None) -> dict[str, str]:
+    """Return the units of the columns a table actually has.
 
     Read from the label first — ``Duration (ms)`` and ``Tau | ns`` both say
     their unit, and the vocabulary that resolves those spellings is the
@@ -67,7 +67,7 @@ def units_for(df: pd.DataFrame, extra: Mapping[str, str] | None = None) -> dict[
 
     Parameters
     ----------
-    df : pandas.DataFrame or mapping of str to array
+    df : tttrlib.DataStore, pandas.DataFrame or mapping of str to array
     extra : mapping, optional
         Units for columns this analysis names itself, which win over both.
 
@@ -76,11 +76,11 @@ def units_for(df: pd.DataFrame, extra: Mapping[str, str] | None = None) -> dict[
     dict
         ``{column: unit}`` for the columns that have one.
     """
+    from chisurf.core.datastore import column_names
     from chisurf.core.units import split_label
 
     out: dict[str, str] = {}
-    for column in df.columns:
-        name = str(column)
+    for name in column_names(df):
         _, code = split_label(name)
         if not code:
             code = BURST_COLUMN_UNITS.get(name, "")
@@ -92,12 +92,12 @@ def units_for(df: pd.DataFrame, extra: Mapping[str, str] | None = None) -> dict[
 
 
 def deinterleave_bursts(df):
-    """Return the real rows from a frame carrying the ``.bur`` interleave.
+    """Return the real rows from a table carrying the ``.bur`` interleave.
 
     The legacy format writes ``2N+1`` physical rows — a zero row, a burst, a
     zero row, … — because it is merged with its companions **by position** and
     needs a fixed grid to count against. That is a property of the file, and it
-    has leaked into the in-memory frames the analyses pass around: the blank
+    has leaked into the in-memory tables the analyses pass around: the blank
     trailing column exists only to produce the trailing tab the header needs.
 
     Neither belongs in a container, where relations are declared keys rather
@@ -105,12 +105,12 @@ def deinterleave_bursts(df):
     would only destroy the information that it was skipped.
 
     The layout is documented rather than guessed at — data on odd indices, an
-    odd total — and a frame that does not look interleaved comes back unchanged,
+    odd total — and a table that does not look interleaved comes back unchanged,
     so this is safe to call on anything.
 
     Parameters
     ----------
-    df : pandas.DataFrame or mapping of str to array
+    df : tttrlib.DataStore, pandas.DataFrame or mapping of str to array
         A results table, interleaved or not.
 
     Returns
@@ -128,25 +128,19 @@ def deinterleave_bursts(df):
 
     out = df
     n = row_count(out)
-    is_store = hasattr(out, "n_rows")
 
     if n >= 3 and n % 2 == 1:
         even = np.arange(0, n, 2)
         numeric = [numeric_column(out, name) for name in column_names(out)]
         numeric = [v for v in numeric if np.isfinite(v).any()]
         if numeric and all(np.all(v[even] == 0) for v in numeric):
-            odd = np.arange(1, n, 2)
-            out = take_rows(out, odd) if is_store else out.iloc[odd]
+            out = take_rows(out, np.arange(1, n, 2))
 
-    named = [c for c in column_names(out) if str(c).strip()]
-    if len(named) != len(column_names(out)):
-        # take_columns and take_rows are store-only by contract; a frame is
-        # sliced as a frame. Both shapes arrive here -- the plugins hand over
-        # frames and the store migration hands over stores -- and converting one
-        # to the other just to drop a column would copy the whole table.
-        out = take_columns(out, named) if is_store else out[named]
-
-    return out if is_store else out.reset_index(drop=True)
+    # Always through take_columns, even when nothing is dropped: it is what
+    # converts a caller's frame, and returning the argument unchanged would make
+    # the return type depend on whether the table happened to have a blank
+    # column.
+    return take_columns(out, [c for c in column_names(out) if str(c).strip()])
 
 
 def container_for(source: str | Path, out_dir: str | Path | None = None) -> Path:
@@ -216,8 +210,8 @@ def write_burst_artifact(
     ----------
     source : str or Path
         The instrument file the bursts came from, or the container itself.
-    df : pandas.DataFrame or mapping of str to array
-        The result. Passed through :func:`deinterleave_bursts`, so a frame that
+    df : tttrlib.DataStore, pandas.DataFrame or mapping of str to array
+        The result. Passed through :func:`deinterleave_bursts`, so a table that
         still carries the legacy padding is accepted and the padding is not
         written.
     name : str
@@ -252,7 +246,7 @@ def write_burst_artifact(
         Path of the container written.
     """
     wanted = [derived_from] if isinstance(derived_from, str) else list(derived_from)
-    frame = deinterleave_bursts(df)
+    table = deinterleave_bursts(df)
     with open_measurement(source, out_dir) as m:
         parents = []
         for label in wanted:
@@ -261,7 +255,7 @@ def write_burst_artifact(
                 parents.append(uid)
         m.put_table(
             name,
-            frame,
+            table,
             artifact_kind=artifact_kind,
             operation_type=operation_type,
             row_grain=row_grain,
@@ -269,7 +263,7 @@ def write_burst_artifact(
             derived_from=parents or m.instrument_uid,
             source_row_column=source_row_column,
             target_row_column=target_row_column,
-            units=units_for(frame, units),
+            units=units_for(table, units),
         )
         return str(m.path)
 
@@ -282,13 +276,13 @@ def write_per_source(
 ) -> list[str]:
     """Split a result by its source file and write each into its own container.
 
-    A burst analysis run over a folder produces one frame covering several
-    measurements, and one measurement is one container — so the frame is split
+    A burst analysis run over a folder produces one table covering several
+    measurements, and one measurement is one container — so the table is split
     on the column naming the file each row came from.
 
     Parameters
     ----------
-    df : pandas.DataFrame or mapping of str to array
+    df : tttrlib.DataStore, pandas.DataFrame or mapping of str to array
         The result, carrying *source_column*.
     source_column : str, optional
         Column holding the instrument-file path per row.
@@ -307,14 +301,20 @@ def write_per_source(
         which measurement a row belongs to, and guessing would put results in
         the wrong file.
     """
-    if source_column not in df.columns:
+    from chisurf.core.datastore import column_names, take_columns, take_where
+
+    names = column_names(df)
+    if source_column not in names:
         raise KeyError(
-            f"{source_column!r} is not in the frame, so the rows cannot be "
+            f"{source_column!r} is not in the table, so the rows cannot be "
             "attributed to a measurement"
         )
+    sources = np.asarray(df[source_column])
+    keep = [c for c in names if c != source_column]
     written: list[str] = []
-    for path, group in df.groupby(source_column, sort=False):
-        written.append(
-            write_burst_artifact(str(path), group.drop(columns=[source_column]), **kwargs)
-        )
+    # dict.fromkeys, not a sort: the groups come back in the order the
+    # measurements were read, which is the order a progress bar counts in.
+    for path in dict.fromkeys(sources.tolist()):
+        group = take_columns(take_where(df, sources == path), keep)
+        written.append(write_burst_artifact(str(path), group, **kwargs))
     return written

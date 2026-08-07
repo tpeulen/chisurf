@@ -11,6 +11,8 @@ biased low by ``N / (N + 1)``.
 from __future__ import annotations
 
 import numpy as np
+
+from chisurf.core.datastore import row_count, rows_from_table
 import pandas as pd
 import pytest
 
@@ -76,8 +78,8 @@ def test_burst_dataframe_counts_the_photon_at_the_stop_index(
         include_interleaved_zeros=False,
     )
 
-    assert len(df) == 1
-    row = df.iloc[0]
+    assert row_count(df) == 1
+    row = rows_from_table(df)[0]
     assert row["First Photon"] == 0
     assert row["Last Photon"] == 9
     assert row["Number of Photons"] == 10
@@ -101,8 +103,8 @@ def test_burst_dataframe_may_end_on_the_last_photon(burst_stream: _FakeTTTR) -> 
         include_interleaved_zeros=False,
     )
 
-    assert len(df) == 1
-    assert df.iloc[0]["Number of Photons"] == len(burst_stream)
+    assert row_count(df) == 1
+    assert rows_from_table(df)[0]["Number of Photons"] == len(burst_stream)
 
 
 def test_write_bur_file_old_uses_the_same_convention(

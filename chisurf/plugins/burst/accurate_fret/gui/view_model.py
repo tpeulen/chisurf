@@ -14,6 +14,8 @@ from collections.abc import Callable
 
 import numpy as np
 
+from chisurf.core.datastore import column_names
+
 from .. import core as _core
 
 logger = logging.getLogger(__name__)
@@ -155,7 +157,7 @@ class AccurateFretViewModel:
         if data is None:
             return "The ndX window holds no burst data."
         columns: dict[str, np.ndarray] = {}
-        for name in list(getattr(data, "columns", data.keys() if hasattr(data, "keys") else [])):
+        for name in column_names(data):
             try:
                 values = np.asarray(data[name], dtype=float).ravel()
             except Exception:

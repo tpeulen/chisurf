@@ -49,9 +49,9 @@ class BurstBrowserWidget(QtWidgets.QWidget):
 
     # -- public API kept for the workflow shell (_apply_context_to_browser) ---
     @property
-    def _df(self):
-        """The loaded burst DataFrame (or ``None``) — the shell checks this."""
-        return self.model.dataframe
+    def table(self):
+        """The loaded burst table (or ``None``) — the shell checks this."""
+        return self.model.table
 
     def load_folder(self, folder) -> None:
         """Load every ``.bur`` (+ companions) under *folder*."""

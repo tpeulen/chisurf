@@ -25,6 +25,7 @@ from qtpy.QtWidgets import (
 )
 
 from chisurf import logging
+from chisurf.core.datastore import numeric_column, row_count
 from chisurf.gui import chiplot as cp
 from chisurf.gui.misc_helpers import (
     get_plugin_settings_path,
@@ -710,7 +711,7 @@ class BVATool(ChisurfDockTool):
                 self.analysis_folder, self.file_type, pattern="bi4_bur",
             )
 
-        task.set_range(0, len(burst_df))
+        task.set_range(0, row_count(burst_df))
         task.set_text("Computing BVA...")
         df_v = core.compute_bva(
             burst_df, tttrs,
@@ -719,7 +720,7 @@ class BVATool(ChisurfDockTool):
         )
 
         if write_output:
-            task.set_range(0, len(df_v.groupby("First File")))
+            task.set_range(0, len(set(np.asarray(df_v["First File"]).tolist())))
             task.set_text("Writing BV4 files...")
             try:
                 core.write_bv4_analysis(
@@ -748,21 +749,39 @@ class BVATool(ChisurfDockTool):
         if self._running_fingerprint is not None:
             self._result_cache.remember(self._running_fingerprint)
 
-        df_selected = df_v[df_v["Proximity Ratio Std"] > 0.0]
+        x, y = self._valid_bursts(df_v)
         n_photons = self.bva_settings.get("number_of_photons_per_slice", 10)
         if n_photons < 0:
             n_photons = 100
         self._plot_2d_histogram(
-            df_selected["Proximity Ratio Mean"].values,
-            df_selected["Proximity Ratio Std"].values,
-            bins_x=self.sb_bins_x.value(),
-            bins_y=self.sb_bins_y.value(),
+            x, y, bins_x=self.sb_bins_x.value(), bins_y=self.sb_bins_y.value(),
         )
         self._plot_static_line(n_photons)
-        self._tb_info.setText(f"{len(df_selected)} / {len(df_v)} bursts")
+        self._tb_info.setText(f"{x.size} / {row_count(df_v)} bursts")
         self._status(
-            f"Done \u2013 {len(df_selected)} bursts with Std > 0 on {len(df_v)} total"
+            f"Done \u2013 {x.size} bursts with Std > 0 on {row_count(df_v)} total"
         )
+
+    @staticmethod
+    def _valid_bursts(table):
+        """Return the (mean, std) of the bursts BVA could measure.
+
+        A burst too short to slice keeps a zero standard deviation, which is the
+        sentinel the companion contract asks for -- one row per burst including
+        the skipped ones -- and is not a measurement to plot.
+
+        Parameters
+        ----------
+        table : tttrlib.DataStore
+            The BVA result.
+
+        Returns
+        -------
+        x, y : numpy.ndarray
+        """
+        std = numeric_column(table, "Proximity Ratio Std")
+        keep = std > 0.0
+        return numeric_column(table, "Proximity Ratio Mean")[keep], std[keep]
 
     def _on_param_changed(self):
         if not self._auto_update_cb.isChecked():
@@ -779,9 +798,7 @@ class BVATool(ChisurfDockTool):
         if not self._auto_update_cb.isChecked():
             return
         if self._df is not None:
-            df_selected = self._df[self._df["Proximity Ratio Std"] > 0.0]
-            x = df_selected["Proximity Ratio Mean"].values
-            y = df_selected["Proximity Ratio Std"].values
+            x, y = self._valid_bursts(self._df)
             self._plot_2d_histogram(
                 x, y,
                 bins_x=self.sb_bins_x.value(),

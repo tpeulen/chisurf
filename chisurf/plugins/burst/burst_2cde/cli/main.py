@@ -6,7 +6,9 @@ import json
 import pathlib
 
 import click
+import numpy as np
 
+from chisurf.core.datastore import numeric_column, row_count
 from chisurf.plugins.burst.burst_2cde.api.models import TwoCdeSettings
 from chisurf.plugins.burst.burst_2cde.core.computation import (
     column_for_variant,
@@ -61,7 +63,7 @@ def compute(
 
     click.echo(f"Reading burst data from {af} ...")
     df, tttrs = read_burst_analysis(af, file_type, pattern=pattern)
-    click.echo(f"Found {len(df)} bursts across {len(tttrs)} TTTR file(s)")
+    click.echo(f"Found {row_count(df)} bursts across {len(tttrs)} TTTR file(s)")
 
     click.echo(f"Computing {variant.upper()}-2CDE ({kernel}) ...")
     df_v = compute_2cde(
@@ -73,9 +75,8 @@ def compute(
         tau=settings.tau, kernel=settings.kernel, variant=settings.variant,
     )
     column = column_for_variant(variant)
-    import numpy as np
-    valid = int(np.isfinite(df_v[column]).sum())
-    click.echo(f"Valid bursts: {valid} / {len(df_v)} total")
+    valid = int(np.isfinite(numeric_column(df_v, column)).sum())
+    click.echo(f"Valid bursts: {valid} / {row_count(df_v)} total")
 
     out_root = pathlib.Path(output) if output else af
     write_2cde_analysis(df_v, str(out_root), variant=variant)

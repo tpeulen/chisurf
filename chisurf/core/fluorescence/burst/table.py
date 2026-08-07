@@ -20,6 +20,8 @@ import pathlib
 
 import numpy as np
 
+from chisurf.core.datastore import column_names
+
 __all__ = ["COLUMN_HINTS", "guess_columns", "read_burst_table", "columns_from_data"]
 
 #: Column-name fragments (lower case) identifying each channel role. Matched in
@@ -212,11 +214,8 @@ def columns_from_data(data) -> dict[str, np.ndarray]:
     """
     if data is None:
         return {}
-    names = getattr(data, "columns", None)
-    if names is None:
-        names = data.keys() if hasattr(data, "keys") else []
     columns: dict[str, np.ndarray] = {}
-    for name in list(names):
+    for name in column_names(data):
         try:
             values = np.asarray(data[name], dtype=float).ravel()
         except Exception:

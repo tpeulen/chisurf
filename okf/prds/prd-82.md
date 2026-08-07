@@ -4,7 +4,7 @@ prd: "82"
 title: "PRD-82: The table layer onto tttrlib's DataStore — chitable first, then pandas and pytables out of the storage path"
 description: chitable, the burst tables and the HDF5 writers move onto tttrlib's DataStore one adapter at a time. The dependency count is not the argument -- pandas stays installed either way -- the arguments are half the memory, dtypes and missing values that survive a file, and the removal of pytables, which is already broken in a freshly solved environment.
 status: in-progress
-phase: "stages 1-2 landed"
+phase: "stages 1-4 landed; 20 files still import pandas"
 resource: chisurf/gui/widgets/chitable/source.py
 tags: [prd, chitable, datastore, tttrlib, pandas, pytables, dependencies, burst, hdf5, csv]
 timestamp: '2026-08-06T00:00:00Z'
@@ -12,10 +12,50 @@ timestamp: '2026-08-06T00:00:00Z'
 
 # Where to pick this up
 
-**Stages 1, 2 and the writer half of 4 have landed** (2026-08-06). Stage 1 is
-the chitable adapter and the Qt-free seam; stage 2 is every HDF5 writer; stage 4
-is CSV, and the *reader* half of it is deliberately not done — see below, it is
-measured and it belongs with stage 3.
+**Stages 1, 2, 3 and 4 have landed** (2026-08-07). Stage 1 is the chitable
+adapter and the Qt-free seam; stage 2 is every HDF5 writer; **stage 3 is the
+burst-table layer, which is what everything else was waiting on**; stage 4 is
+CSV, whose writer is in use and whose *reader* is deliberately not migrated —
+see the measurement below.
+
+**What is left is the count, and it is 20 files.**
+`test/pandas_import_allowlist.txt` is the worklist, ordered by how much of it is
+real: seven entries are interop that should stay (`datastore.py` itself, the
+three `chitable` adapters, `table_plot.py`, `topology.py`, `evaluators/base.py`
+— each hands a frame *out* or reads a format only pandas knows). The rest are
+ordinary ports, largest first: `burst_mle_analysis/wizard.py` (11 `pd.*`),
+`sm_image_mle` (three files), `burst_h2mm/core/{decays,export,photons}.py`,
+`burst_fcs_correlator/wizard.py`, `bid_to_analysis`, `img_pixel_mle`,
+`pixel_maps.py`, `burst_selection/api/features.py`,
+`burst_analysis/api/workflow.py`.
+
+**Read this before porting one of them — the failure mode is silence, not an
+exception.** A store has **both** `names` and `columns`, and its `columns` are
+`Column` objects rather than names. So:
+
+* `if x in df.columns` does not raise where you wrote it. It evaluates an array
+  and dies with *"the truth value of an array with more than one element is
+  ambiguous"* two frames away;
+* `getattr(df, "columns", [])` and `getattr(df, "columns", df.keys())` are
+  **worse** — they match nothing, every lookup answers "absent", and the caller
+  reports an empty table with no error at all. Four sites were on this form and
+  would have shown a burst table with no numeric columns;
+* `len(df)` is rows for a frame, columns for a mapping, and may not exist on a
+  store;
+* `Series.unique()`, `.to_numpy()`, `.dropna()`, `.iloc`, `.loc`, `.groupby` and
+  `.reset_index` have no `Column` equivalent.
+
+The answers are all in `chisurf.core.datastore`: `column_names`, `row_count`,
+`numeric_column`, `take_rows`, `take_where`, `take_columns`, `concat_stores`,
+`rows_from_table`. `dict.fromkeys(np.asarray(col).tolist())` replaces
+`.unique()` and keeps first-appearance order, which is load-bearing wherever the
+*first* measurement's header supplies a resolution.
+
+**The `…4` companions are down to one writer.** `.bv4`, `.2c4` and the fusion
+companions all go through `burst_companion.write_companion`. Two `.bv4` writers
+existed until 2026-08-07, with **different column names** — the core one was
+dead and has been deleted. Anything new writing a companion uses that function;
+see [burst companions](../subsystems/burst-companions.md).
 
 `to_hdf` and `HDFStore` appear nowhere in the shipped package, and
 `test/test_pandas_hdf5_seam.py` fails on one reappearing — there is no
@@ -33,11 +73,10 @@ burst table:
 | into a store and back to a frame | 485 ms (**1.1×**) |
 
 The speed is in *not being a frame*. A consumer that still wants a DataFrame
-gains essentially nothing, so migrating the ~10 `pd.read_csv` sites that read
-`.bur` files would be churn until the burst-table layer holds a store. That is
-stage 3, and this is the argument for doing it. Same shape as the write side:
-`write_burst_hdf5` converts a frame at the file boundary, so the file size and
-the write time are collected and the **109.5 → 60.2 MB of memory is not**.
+gains essentially nothing, so migrating the `pd.read_csv` sites that read `.bur`
+files was churn until the burst-table layer held a store. **That is stage 3 and
+it has landed**, which is what makes the rest of the list worth porting rather
+than converting back at every boundary.
 
 The read parity itself is settled and good: on a real `.bur`, tttrlib and pandas
 agree on shape, on every value, and on **all 16 dtypes** — the only difference is
@@ -81,8 +120,10 @@ looking like a float column to a reader inferring types from text — and an
 all-zero column is exactly what a companion carries for the bursts an analysis
 skipped. `.bur`, `.bv4` and `.2c4` are merged column-wise by position by other
 programs. Their canonical writer, `burst_companion.write_companion`, already
-formats them `%.6f`; the `to_csv` call sites that bypass it should converge on
-*that*, which is a separate job from this PRD.
+formats them `%.6f`, and **every companion writer now goes through it** — the
+`.bv4` writer was the last one building the layout by hand, and while moving it
+a *second*, dead `.bv4` writer with different column names came to light and was
+deleted.
 
 Two things the migration turned up in the burst tables themselves, both
 invisible while the frame writer was in the way:
@@ -98,7 +139,7 @@ invisible while the frame writer was in the way:
 
 **Removing pandas from the code is now an explicit goal, and it is tracked.**
 `test/pandas_import_allowlist.txt` is a shrinking list of the non-test files that
-still import it — **47 when the tracker was written, 42 after the first pass** —
+still import it — **47 when the tracker was written, 20 now** —
 and `test/test_pandas_seam.py` fails on a new importer *and* on a stale entry.
 Tests are excluded on purpose: a test building a fixture frame is interop, and
 counting those would mean the number could never honestly reach zero.

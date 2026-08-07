@@ -188,31 +188,39 @@ consumer does not re-derive it.
 
 # Where to pick this up
 
-**One number sets the order of everything below.** Reading a 200k-row burst
-table costs 541 ms as a frame, **71 ms into a store (7.6×)**, and 485 ms into a
-store and back to a frame (**1.1×**). The speed is in *not being a frame*. Every
-remaining consumer hands a DataFrame to its caller, so nothing else is worth
-migrating until the burst-table layer holds a store.
+**The burst-table layer holds a store** (2026-08-07), which was the item
+everything else waited on: reading a 200k-row burst table costs 541 ms as a
+frame, **71 ms into a store (7.6×)**, and 485 ms into a store and back to a
+frame (**1.1×**) — so a consumer that converts back gains nothing, and until the
+producer moved, every port was churn. `read_bur_file`,
+`read_bur_with_companions`, the `.bur`/HDF5/CSV writers, fusion, BVA, 2CDE, the
+burst browser and the MFD preparation are all store-native now, and
+`test/pandas_import_allowlist.txt` is **47 → 20**.
 
-1. **The burst-table layer**, then its readers, then the plugins —
-   `core/fluorescence/burst/table.py` and `photons.py` first, since everything
-   else reads them. Each stage deletes its frame conversion rather than keeping
-   it beside the store; two containers living side by side is how a second full
-   copy of the table appeared in the companion viewer before it was deleted
-   again. The writers are done and are **not** the same job: they convert a
-   frame at the file boundary, so the frame still exists in memory everywhere.
-2. **CSV**, which needs a writer in the library. The reader is already fast and
-   without the writer half the migration is a one-way street.
-3. **The `.dstore` native file** is worth a look for anything written and read
+1. **The remaining 20 files**, of which seven are interop that should stay.
+   `test/pandas_import_allowlist.txt` is the ordered worklist and
+   [PRD-82](../prds/prd-82.md) carries it, together with the four idioms that
+   fail *silently* when a store arrives where a frame was expected — `columns`
+   is the dangerous one, because a store has both `names` and `columns` and its
+   `columns` are `Column` objects, so a lookup answers "absent" rather than
+   raising. Read that list before porting one.
+2. **The `.dstore` native file** is worth a look for anything written and read
    only by ChiSurf. It keeps the row selection and the whole tree, needs no
    HDF5 at all, and on a compressed table it is dramatically faster — but it is
    not readable by anything else, so it is wrong for the burst and imaging
    files, which are interchange formats. Measured a wash against uncompressed
    HDF5 on bulk I/O.
-4. **A frame is still built before every write.** `write_burst_hdf5` converts
-   one at the boundary, so the memory saving in the table above is not being
-   collected yet — only the file size and the write time are. That is what
-   point 1 is for.
+3. **The CSV *reader* is deliberately not migrated.** Same measurement as
+   above from the other side: 7.6× into a store, 1.1× into a store and back to
+   a frame. It is worth doing for a consumer that has already moved, and worth
+   nothing for one that has not — so it follows point 1 rather than leading it.
+4. **`write_csv_table` no longer copies the table to write it.** The library's
+   `nan_rep` says what a `NaN` is written as, which is a question `na_rep` does
+   not answer: `na_rep` covers a cell the *mask* says was never measured, and a
+   `NaN` is a value. Before it existed this masked every non-finite entry
+   first — and the mask is part of the table, so doing it in place meant
+   **writing a table changed it**. Kept here because the shape recurs: any
+   formatting choice expressed by editing the table is the same bug.
 
 .. seealso::
 

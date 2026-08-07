@@ -23,6 +23,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from chisurf.core.datastore import column_names
 from chisurf.core.fio.fluorescence.burst_companion import write_companion
 
 from .h2mm import BurstPhotons
@@ -441,7 +442,7 @@ def write_burst_companions(
 
     if burst_rows is None or burst_df is None:
         return []
-    if "First File" not in getattr(burst_df, "columns", []):
+    if "First File" not in column_names(burst_df):
         return []
     rows = np.asarray(burst_rows, dtype=np.int64)
     if rows.size == 0:
@@ -467,7 +468,7 @@ def write_burst_companions(
         mean_e[b] = float((occ * fret_arr).sum() / occ.sum()) if occ.sum() else np.nan
         photons[b] = float(seg.size)
 
-    files = np.asarray(burst_df["First File"].astype(str))
+    files = np.asarray(burst_df["First File"]).astype(str)
     written = []
     for name in pd.unique(files):
         # ``.bur`` tables are zero-interleaved, and the loader keeps those

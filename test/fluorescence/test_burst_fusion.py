@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from chisurf.core.datastore import row_count, rows_from_table
 from chisurf.core.fluorescence.burst.fusion import (
     fuse_burst_frame,
     fusion_statistics,
@@ -23,6 +24,11 @@ from chisurf.core.fluorescence.burst.recurrence import (
     pair_statistics,
     same_molecule_probability,
 )
+
+
+def _row(table, index: int) -> dict:
+    """One row of a store as a mapping, which is what ``.iloc[i]`` used to give."""
+    return rows_from_table(table)[index]
 
 
 def _poisson_stream(rate_hz: float, duration_s: float, seed: int = 0) -> np.ndarray:
@@ -188,8 +194,8 @@ def test_fuse_burst_frame_merges_indices_span_and_counts():
     labels = np.array([0, 0, 1])
     fused = fuse_burst_frame(frame, labels)
 
-    assert len(fused) == 2
-    first = fused.iloc[0]
+    assert row_count(fused) == 2
+    first = _row(fused, 0)
     assert first["First Photon"] == 100
     assert first["Last Photon"] == 249
     assert first["Number of Photons"] == 100  # signal photons of both fragments
@@ -200,16 +206,16 @@ def test_fuse_burst_frame_merges_indices_span_and_counts():
     assert first["Fusion Size"] == 2
     assert first["Fusion Gap (ms)"] == pytest.approx(2.0)
     # The untouched burst keeps its own numbers.
-    assert fused.iloc[1]["Number of Photons"] == 100
-    assert fused.iloc[1]["Fusion Size"] == 1
-    assert fused.iloc[1]["Fusion Gap (ms)"] == pytest.approx(0.0)
+    assert _row(fused, 1)["Number of Photons"] == 100
+    assert _row(fused, 1)["Fusion Size"] == 1
+    assert _row(fused, 1)["Fusion Gap (ms)"] == pytest.approx(0.0)
 
 
 def test_fuse_burst_frame_handles_a_detector_that_saw_nothing():
     """``-1`` means "this detector saw no photon", not "photon minus one"."""
     frame = _burst_frame()
     fused = fuse_burst_frame(frame, np.array([0, 0, 1]))
-    first = fused.iloc[0]
+    first = _row(fused, 0)
 
     # Red saw photons in the first fragment only: the sentinel row must not drag
     # the fused first/last photon to -1, nor the counts.
@@ -223,7 +229,7 @@ def test_fused_mean_micro_time_is_photon_weighted():
     """30 photons at 2 ns and 10 at 4 ns average to 2.5 ns, not 3 ns."""
     frame = _burst_frame()
     fused = fuse_burst_frame(frame, np.array([0, 0, 1]))
-    assert fused.iloc[0]["Mean Microtime (green) (ns)"] == pytest.approx(2.5)
+    assert _row(fused, 0)["Mean Microtime (green) (ns)"] == pytest.approx(2.5)
 
 
 def test_fusion_statistics_counts_what_was_fused():

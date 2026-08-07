@@ -12,6 +12,7 @@ import logging
 import pathlib
 
 import numpy as np
+from chisurf.core.datastore import numeric_column, row_count
 from chisurf.gui import chiplot as cp
 from qtpy import QtCore, QtWidgets
 
@@ -366,7 +367,7 @@ class BurstTwoCdeTool(ChisurfDockTool):
         df, tttrs = core.read_burst_analysis(
             pathlib.Path(folder), settings["file_type"], pattern="bi4_bur"
         )
-        task.set_range(0, len(df))
+        task.set_range(0, row_count(df))
         task.set_text("Computing 2CDE …")
         df = core.compute_2cde(
             df, tttrs,
@@ -417,7 +418,7 @@ class BurstTwoCdeTool(ChisurfDockTool):
         self._set_status(f"Error: {exc}")
 
     def _draw(self, df, column) -> None:
-        vals = df[column].to_numpy(dtype=float)
+        vals = numeric_column(df, column)
         finite = np.isfinite(vals)
         e = proximity_ratio(df) if proximity_ratio is not None else None
         self._plot.clear()
@@ -432,4 +433,4 @@ class BurstTwoCdeTool(ChisurfDockTool):
             self._plot.line(0.5 * (x[:-1] + x[1:]), y)
             self._plot.set_labels(bottom=column)
         self._set_status(
-            f"{column}: {int(finite.sum())} / {len(df)} bursts valid")
+            f"{column}: {int(finite.sum())} / {row_count(df)} bursts valid")

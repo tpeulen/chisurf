@@ -23,6 +23,8 @@ pins:
 from __future__ import annotations
 
 import numpy as np
+
+from chisurf.core.datastore import column_names, numeric_column, rows_from_table
 import pandas as pd
 import pytest
 
@@ -116,7 +118,7 @@ def test_fast_writer_reports_the_mean_micro_time(two_colour_burst, detector, mic
         [(0, 5)], "m000.ptu", two_colour_burst, WINDOWS, DETECTORS,
         include_interleaved_zeros=False,
     )
-    value = frame[f"Mean Microtime ({detector}) (ns)"].iloc[0]
+    value = numeric_column(frame, f"Mean Microtime ({detector}) (ns)")[0]
     assert value == pytest.approx(_expected_ns(micro_channels))
 
 
@@ -140,7 +142,7 @@ def test_both_writers_agree(tmp_path, two_colour_burst):
     old = _data_rows(pd.read_csv(out, sep="\t"))
     for detector in DETECTORS:
         column = f"Mean Microtime ({detector}) (ns)"
-        assert fast[column].iloc[0] == pytest.approx(old[column].iloc[0])
+        assert numeric_column(fast, column)[0] == pytest.approx(old[column].iloc[0])
 
 
 def test_detector_without_photons_gets_the_shared_sentinel(green_only_burst):
@@ -148,7 +150,7 @@ def test_detector_without_photons_gets_the_shared_sentinel(green_only_burst):
         [(0, 2)], "m000.ptu", green_only_burst, WINDOWS, DETECTORS,
         include_interleaved_zeros=False,
     )
-    row = frame.iloc[0]
+    row = rows_from_table(frame)[0]
     assert row["Mean Microtime (red) (ns)"] == DETECTOR_SENTINEL
     # the same sentinel the neighbouring per-detector columns already use
     assert row["Duration (red) (ms)"] == DETECTOR_SENTINEL
@@ -163,7 +165,7 @@ def test_header_without_a_resolution_writes_the_sentinel_not_raw_channels(two_co
         include_interleaved_zeros=False,
     )
     for detector in DETECTORS:
-        assert frame[f"Mean Microtime ({detector}) (ns)"].iloc[0] == DETECTOR_SENTINEL
+        assert numeric_column(frame, f"Mean Microtime ({detector}) (ns)")[0] == DETECTOR_SENTINEL
 
 
 def test_the_addition_is_positionally_non_breaking(two_colour_burst):
@@ -177,7 +179,7 @@ def test_the_addition_is_positionally_non_breaking(two_colour_burst):
         [(0, 5)], "m000.ptu", two_colour_burst, WINDOWS, DETECTORS,
         include_interleaved_zeros=False,
     )
-    columns = list(frame.columns)
+    columns = column_names(frame)
 
     legacy = [
         "First Photon", "Last Photon", "Duration (ms)", "Mean Macro Time (ms)",

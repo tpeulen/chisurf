@@ -11,6 +11,8 @@ cannot creep back in and quietly shorten every burst by one photon.
 from __future__ import annotations
 
 import numpy as np
+
+from chisurf.core.datastore import numeric_column, row_count
 import pandas as pd
 import pytest
 
@@ -127,7 +129,7 @@ def test_matches_the_writers_photon_count(tttrs):
     streams = [StreamDef("all", list(CHANNELS), [])]
     times, _, rows = extract_burst_photons(df, tttrs, streams, min_photons=1, with_rows=True)
 
-    declared = df["Number of Photons"].to_numpy()[rows]
+    declared = numeric_column(df, "Number of Photons")[rows]
     assert len(times) == len(start_stop)
     np.testing.assert_array_equal([t.size for t in times], declared)
 
@@ -142,6 +144,6 @@ def test_interleaved_sentinel_rows_are_not_bursts(tttrs):
         windows={},
         detectors={"green": {"chs": [0, 8], "micro_time_ranges": [(0, 1024)]}},
     )
-    assert len(df) > 1  # interleaved zero rows are present
+    assert row_count(df) > 1  # interleaved zero rows are present
     times, _ = extract_burst_photons(df, tttrs, default_streams(), min_photons=1)
     assert len(times) == 1
