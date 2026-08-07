@@ -2,7 +2,7 @@
 type: PRD
 prd: "84"
 title: "PRD-84: Units all the way out — parameters, axes and files that say what they mean"
-description: A number in ChiSurf is a bare float. Its unit lives in a column name, an axis label, a docstring, or nowhere, and four different in-band conventions encode it. The container now carries units per column; this concept is the rest of the stack — fitting parameters, plot axes, model definitions and every reader — with one rule: unitless inside, units at every boundary a person or a file sees.
+description: A number in ChiSurf is a bare float and stays one. The interior has a fixed, declared unit per quantity — ns for lifetimes, ms for correlation times, nm for coordinates — enforced by convention and review rather than at runtime, so unit awareness costs nothing to compute. Units are carried as metadata at the boundaries a person or a file sees, and nothing checks or converts on the hot path.
 status: planned
 phase: "vocabulary landed (mmfdb_units, PTO.MFDB column units); parameters, axes and readers open"
 resource: chisurf/core/units.py
@@ -39,9 +39,71 @@ file it came from, with nothing that notices.
 The photon container now carries a unit per column, from a vocabulary the
 dictionary declares. This concept is the rest of the stack, under one rule:
 
-> **Unitless inside. Units at every boundary.** The arrays a model computes on
-> and the numbers a solver moves are plain floats in a declared unit, and stay
-> that way. Everything a *person* or a *file* sees says what it is in.
+> **One fixed internal unit per quantity, declared and never checked. Units as
+> metadata at every boundary.** The arrays a model computes on and the numbers a
+> solver moves are plain floats in a unit this document fixes, and stay that
+> way. Nothing multiplies, wraps, validates or dispatches on a unit at runtime.
+> Everything a *person* or a *file* sees carries what it is in, as metadata
+> alongside the number.
+
+# Cost, and what is deliberately not done
+
+**Unit awareness must be free.** A fit evaluates a model tens of thousands of
+times; a correlation curve is built from millions of photons. Anything that
+touches a number on that path is not worth what it buys, and the things that
+would touch it are exactly the things a units library sells:
+
+| Not done | Why |
+| --- | --- |
+| A unit-aware numeric type (`pint`, a `float` wrapper, a unit-carrying dtype) | every kernel and every C++ boundary would unwrap it, and the ones that forgot would be the ones that mattered |
+| Runtime dimension checking | the check would run per evaluation to catch a mistake that is made once, in source |
+| Conversion inside a model or a solver | a conversion on the hot path is a multiply per element for a constant known at authoring time |
+| Deriving that a rate is one-over-a-time | nothing composes units; the table says what each thing is |
+
+**So the internal units are a convention, not a mechanism.** They are fixed
+below, stated in each model's docstring and parameter declaration, and checked by
+review — the same way array shapes and dtypes are. The runtime cost of the whole
+scheme is: a string stored beside a column when a file is written, and a string
+read back when one is opened. Zero on the compute path, by construction.
+
+`convert()` exists for **boundaries** — a reader that finds microseconds in a
+file when the interior wants milliseconds. It is called once per read, not once
+per evaluation, and it raises on a cross-quantity conversion because a boundary
+is exactly where that mistake is worth catching.
+
+# The internal units
+
+One unit per quantity, everywhere inside ChiSurf. These are not new: they are
+what the tree already does, written down so that "already does" becomes a rule
+instead of a pattern somebody has to notice.
+
+| Quantity | Internal unit | Where this is already true |
+| --- | --- | --- |
+| Fluorescence lifetime, decay time axis | **nanoseconds** | `core/models/tcspc/lifetime.py` — starting values, bounds and prose are all ns |
+| FCS/FCCS correlation time, diffusion time | **milliseconds** | `core/models/fcs/` — `τ_D[ms]`, `t_d,min[ms]`, bunching `b_t[ms]` |
+| Burst duration, macro time | **milliseconds** | burst tables: `Duration (ms)`, `Mean Macro Time (ms)` |
+| TAC / micro time resolution | **picoseconds** | `_mmfdb_setup.micro_time_resolution` |
+| Macro time resolution | **nanoseconds** | `_mmfdb_setup.macro_time_resolution` |
+| Count rate | **kilohertz** | burst tables: `Count Rate (KHz)` |
+| Atomic coordinates in memory | **nanometres** | `core/structure/trajectory_data.py` converts `× 10` on the way to a PDB |
+| Distances a user reads (R_DA, R₀, R_g) | **ångströms** | FRET distances and radii of gyration are reported in Å |
+| Concentration | **nanomolar** | to confirm in stage 6; a reader currently decides |
+| Wavelength | **nanometres** | spectra are nm throughout |
+
+Two of these disagree with each other on purpose and it is worth being explicit
+about why:
+
+* **Coordinates are nm inside and Å at the boundary.** `trajectory_data.py`
+  already does exactly this — `xyz * 10.0  # nm here, Angstrom in a PDB` — and
+  it is the pattern this whole concept generalises: the interior picks one unit,
+  the boundary states another, and the conversion happens once, visibly, at the
+  edge.
+* **Lifetimes are ns and correlation times are ms.** Both are times, and a naive
+  "one time unit" rule would force one of the two communities to work in numbers
+  with six leading zeros. The unit is per *quantity*, not per dimension.
+
+A quantity not in this table has no fixed internal unit yet, and adding one is a
+change to this table first.
 
 # Problem / motivation
 
@@ -88,7 +150,8 @@ So this is not a "choose a units library" problem. It is a plumbing problem.
 
 # Goals
 
-1. A `FittingParameter` knows its unit, and a fit result carries it.
+1. A `FittingParameter` *records* its unit, as metadata. Reading it costs an
+   attribute access; nothing consults it during a fit.
 2. Every `DataCurve` axis knows its unit; a plot axis label is *derived*, never
    typed.
 3. Every reader records the unit it read, and every writer records the unit it
@@ -97,8 +160,10 @@ So this is not a "choose a units library" problem. It is a plumbing problem.
    rather than in prose.
 5. One vocabulary — `_mmfdb_units` — and one seam, `chisurf/core/units.py`.
    Nothing else holds a unit table, a symbol, or a conversion factor.
-6. Converting between incompatible quantities raises. Silently returning the
-   value is how a millisecond becomes a nanosecond.
+6. Converting between incompatible quantities raises — at a **boundary**, where
+   conversion happens once per file. Silently returning the value is how a
+   millisecond becomes a nanosecond.
+7. Nothing on the compute path reads, checks or converts a unit.
 
 # Non-goals
 
@@ -107,6 +172,10 @@ So this is not a "choose a units library" problem. It is a plumbing problem.
   smaller objection; the real one is that every model, every kernel and every
   C++ boundary would have to unwrap it, and the ones that forgot would be the
   ones that mattered.
+- **Runtime unit checking, anywhere on the compute path.** Not in a model, not
+  in a solver, not on parameter assignment. The internal units are fixed by the
+  table above and held by review, exactly as array shapes are. A check that runs
+  per evaluation to catch a mistake made once in source is the wrong trade.
 - **Units inside the fitting engine.** A solver moves unitless numbers in a
   declared unit and must keep doing so. Dimensional analysis in a Jacobian is
   a way to make a fit slower and wrong.
@@ -189,14 +258,22 @@ Stages 3–6 are independent of each other and can land in any order after 2.
 5. Conversion between different quantities raises.
 6. Units are recorded, never inferred from a name — except when *reading* a
    legacy file, which is what `split_label` is for.
-7. The fitting engine stays unitless.
+7. The fitting engine stays unitless, and so does every model interior: the
+   unit is fixed by the internal-units table, not carried with the number.
+8. No unit operation runs per evaluation. Conversions happen at boundaries,
+   once per file or once per user action.
 
 # Verification
 
 * A guardrail test that no module outside `chisurf/core/units.py` defines a unit
   symbol table or a conversion factor — the shrinking-allowlist pattern, seeded
   with the four that exist.
-* Linking parameters of different quantities raises, tested.
+* A benchmark asserting the compute path is untouched: fitting the same model
+  before and after, with the unit metadata populated, within noise. The claim is
+  zero cost, so it is measured rather than asserted.
+* A test that every model's declared parameter units agree with the
+  internal-units table — read from the declarations, not from the running fit,
+  so it costs nothing at runtime.
 * A round trip: read a file with units, fit, write a container, read it back,
   and assert the unit survived every hop.
 * A GUI screenshot per touched tool: an axis label that used to be typed is now
