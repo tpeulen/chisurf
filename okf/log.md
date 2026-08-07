@@ -2,6 +2,52 @@
 
 ## 2026-08-07
 
+* **[PRD-87](prds/prd-87.md) scoped: `chisurf.core.ml`, and what it would take
+  to end scikit-learn.** Asked what the tree actually uses of `scikit-learn`.
+  Five files import it; between them they touch **four estimators** —
+  `GaussianMixture` (3 burst-selection files, 1-D *and* 5-D), `MLPRegressor` +
+  `StandardScaler` (the H2MM surrogate), and, in the companion photon-data
+  exploration tool, `KMeans`, `PCA`/`IncrementalPCA` and `HDBSCAN`. Nothing
+  reaches for pipelines, model selection, metrics, sparse input or `n_jobs`, so
+  the used surface is exhaustively tabulated in the PRD and is the ceiling on
+  what may be written. The `pixi.toml` comment justifying the dependency is
+  already stale: it claims "PCA for the parameter decomposition" as a chisurf
+  use, and **no PCA is reached from `chisurf/` at all**.
+  **The finding that reframes it**: most of the code is already in the tree,
+  sealed as private helpers inside a module about something else.
+  `chisurf/core/math/hmm.py` holds `COVARIANCE_TYPES` (scikit-learn's exact four
+  spellings), `_log_gaussian_density` (Cholesky log-density for all four), and
+  `_kmeanspp_seed`/`_kmeans_lloyd`/`_kmeans` — k-means++ with `n_init` restarts
+  and inertia selection, which *is* `KMeans` — each written with a comment about
+  keeping that module free of a machine-learning dependency, in a tree that
+  installs one. Counting the companion tool's `GaussianMixtureFixedEM` (written
+  because `GaussianMixture` **cannot fix a subset of means or covariances**),
+  there are **four implementations of two algorithms**, none sharing a line.
+  Convergence is therefore the first argument and the package count the second.
+  **Measured**, solving the recipe's `run:` list on conda-forge with and without
+  `scikit-learn hdbscan`: **256 → 251** packages — `scikit-learn`, `hdbscan`,
+  `joblib`, `narwhals`, `threadpoolctl` — and **46 MB** installed. But the
+  dependency **does not leave when chisurf stops importing it**: `hdbscan`
+  requires `scikit-learn>=0.20`, and the companion tool's HDBSCAN path falls
+  back *to* `sklearn.cluster.HDBSCAN` when the standalone package is absent — a
+  knot that cannot be cut from either end. HDBSCAN (mutual-reachability MST,
+  condensed tree, excess-of-mass) is the one genuinely new algorithm and is
+  named in the PRD as the honest place the work may stop, with stages 1–4 still
+  worth landing on their own merits.
+  Organising decision, per the request: **mirror scikit-learn's own package
+  layout and public attribute spellings** (`chisurf/core/ml/{mixture,cluster,
+  decomposition,preprocessing,neural_network}/`), so each call site changes by
+  one import line — and so `SurrogateModel.to_json` keeps working, since it
+  reads `coefs_`/`intercepts_`/`out_activation_` and transposes `(n_in, n_out)`
+  to row-major for the C++ engine; a rename there breaks the export **silently**
+  (valid JSON, wrong numbers). Two traps recorded for whoever implements: the
+  companion tool's `get_gmm()` reads like a sixth call site and is **dead**
+  (grep the accessor, not the import), and zsh does not word-split an unquoted
+  variable, so a package list built as one string makes the dependency solve
+  fail with `CondaValueError` instead of returning a count.
+  Nothing implemented; `chisurf/core/ml/` does not exist yet.
+
+
 * **[PRD-86](prds/prd-86.md) scoped: an in-tree segmentation core to finish
   closing scikit-image out of imaging.** Asked whether `scikit-image` could be
   dropped outright (a natural follow-on to the same-day `pdb2pqr` removal):
