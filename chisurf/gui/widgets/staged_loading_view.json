@@ -40,6 +40,24 @@
     },
     {
       "type": "panel",
+      "title": "Plotting",
+      "collapsed": false,
+      "description": "A raw per-photon plot (a time trace, a delta-time diagnostic) is thinned above this many points, keeping each bin's minimum and maximum so bursts and dips survive -- a budget, not a hard cap. An already-aggregated plot (a histogram, a correlation curve) is never touched.",
+      "sections": [
+        {
+          "type": "value",
+          "attr": "max_plot_points",
+          "label": "Max points per plot",
+          "kind": "int",
+          "minimum": 10000,
+          "maximum": 50000000,
+          "step": 100000,
+          "description": "Raw per-photon plots are thinned above this many points. Raise it on a machine with plenty of RAM and a fast GPU; lower it if a large measurement's plots still lag."
+        }
+      ]
+    },
+    {
+      "type": "panel",
       "title": "Advanced",
       "collapsed": true,
       "description": "Fine-tuning for the probe and copy loop. The defaults are appropriate for most setups.",

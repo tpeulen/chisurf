@@ -1093,6 +1093,106 @@ def test_shared_photon_toggles_apply_to_dt_and_filter_plots() -> None:
     assert tool.filter_plot.plots[0]["args"][1].tolist() == [0.0, 0.0, 0.0, 0.0]
 
 
+def test_dt_and_filter_plots_are_thinned_for_a_large_measurement(monkeypatch) -> None:
+    """A merged multi-file .pto can hand this millions of photons at once.
+
+    Regression: before chisurf.core.fio.decimate, `update_burst_plots` handed
+    every visible photon straight to pyqtgraph's `.plot()` -- fine for one
+    small vendor file, but the exact thing a merged .pto (several files
+    packed into one measurement) or a long acquisition made common, and
+    Qt laying out / repainting millions of points is where the reported lag
+    in Burst Selection came from.
+    """
+    from chisurf.plugins.burst.burst_selection.gui.tool import BurstSelectionTool
+
+    class FakeCheck:
+        """Minimal checkbox stand-in."""
+
+        def __init__(self, checked: bool) -> None:
+            self.checked = checked
+
+        def isChecked(self) -> bool:
+            return self.checked
+
+    class FakeSpinBox:
+        """Minimal spin box stand-in."""
+
+        def __init__(self, value: int) -> None:
+            self._value = value
+
+        def value(self) -> int:
+            return self._value
+
+        def setValue(self, value: int) -> None:
+            self._value = value
+
+        def setRange(self, _minimum: int, _maximum: int) -> None:
+            return
+
+        def blockSignals(self, _blocked: bool) -> None:
+            return
+
+    class FakePlot:
+        """Plot stand-in that records plot calls."""
+
+        def __init__(self) -> None:
+            self.plots: list[dict[str, object]] = []
+
+        def clear(self) -> None:
+            self.plots.clear()
+
+        def plot(self, *args: object, **kwargs: object) -> None:
+            self.plots.append({"args": args, "kwargs": kwargs})
+
+        def setYRange(self, *_args: object, **_kwargs: object) -> None:
+            return
+
+    class FakeHeader:
+        """TTTR header stand-in."""
+
+        macro_time_resolution = 0.001
+
+    n_photons = 2_000_000
+
+    class FakeTTTR:
+        """TTTR stand-in with a huge, evenly-spaced macro-time stream."""
+
+        header = FakeHeader()
+        macro_times = np.arange(n_photons, dtype=np.int64)
+
+    tool = BurstSelectionTool.__new__(BurstSelectionTool)
+    tool._last_tttr = FakeTTTR()
+    tool._last_selected = np.ones(n_photons, dtype=bool)
+    tool._last_start_stop = np.array([[0, n_photons - 1]])
+    tool.plot_min_spin = FakeSpinBox(0)
+    tool.plot_max_spin = FakeSpinBox(n_photons - 1)
+    tool.dt_plot = FakePlot()
+    tool.filter_plot = FakePlot()
+    tool.filter_settings_panel = None
+    tool.show_all_photons_check = FakeCheck(True)
+    tool.show_selected_photons_check = FakeCheck(True)
+    tool._diagnostic_plot_features = {
+        "Filter": {"initial_enabled": True, "check": FakeCheck(True), "widget": tool.filter_plot},
+        "MCS": {"initial_enabled": False, "check": FakeCheck(False), "widget": object()},
+        "Decay": {"initial_enabled": False, "check": FakeCheck(False), "widget": object()},
+        "Burst length": {"initial_enabled": False, "check": FakeCheck(False), "widget": object()},
+    }
+    tool._closed_diagnostic_plots = set()
+    tool._status_bar = type("FakeStatusBar", (), {"showMessage": lambda self, message: None})()
+
+    budget = 10_000
+    monkeypatch.setattr(BurstSelectionTool, "_max_plot_points", staticmethod(lambda: budget))
+
+    BurstSelectionTool.update_burst_plots(tool)
+
+    all_calls = tool.dt_plot.plots + tool.filter_plot.plots
+    assert all_calls, "the fixture must actually exercise the plotting calls"
+    for call in all_calls:
+        drawn = len(call["args"][0])
+        assert drawn <= 2 * budget, f"drew {drawn} points against a budget of {budget}"
+        assert drawn < n_photons
+
+
 def test_shared_photon_toggles_apply_to_decay_plot() -> None:
     """Decay plotting should compute only enabled photon layers."""
 

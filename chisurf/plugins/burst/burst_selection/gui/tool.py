@@ -26,6 +26,7 @@ import pyqtgraph as pg
 from qtpy import QtCore, QtGui, QtWidgets
 
 from chisurf.core import analysis_cache
+from chisurf.core.fio.decimate import thin_for_plot
 from chisurf.core.fio.mmcif.pdbx_metadata import get_pdbx_metadata_keys
 from mmfdb.security.base import MMFDBClientBase
 from chisurf.gui.widgets.dock_area.dock_area import DockArea
@@ -2230,6 +2231,11 @@ class BurstSelectionTool(ChisurfDockTool):
             show_filter = self._plot_widget_is_docked("Filter")
             show_filter_settings = self._dock_widget_is_present(getattr(self, "filter_settings_panel", None))
             d_t_visible: list[np.ndarray] = []
+            # A budget, not a hard cap (chisurf.core.fio.decimate): split across
+            # files so a multi-file batch does not draw the full budget once per
+            # file. Only the *drawn* arrays are thinned -- selection, ranges and
+            # everything else below still see the untouched, full-resolution data.
+            plot_point_budget = max(1000, self._max_plot_points() // max(1, len(diagnostics)))
 
             if show_dt:
                 self.dt_plot.clear()
@@ -2254,24 +2260,31 @@ class BurstSelectionTool(ChisurfDockTool):
                 if show_dt and d_t.size:
                     d_t_visible.append(d_t)
                     if show_all_photons:
-                        self.dt_plot.plot(global_indices, d_t, pen=self._diagnostic_pen(len(d_t_visible)), width=1)
+                        plot_x, plot_y = thin_for_plot(global_indices, d_t, max_points=plot_point_budget)
+                        self.dt_plot.plot(plot_x, plot_y, pen=self._diagnostic_pen(len(d_t_visible)), width=1)
                     if show_selected_photons:
+                        plot_x, plot_y = thin_for_plot(
+                            global_indices[selected_slice], d_t[selected_slice], max_points=plot_point_budget
+                        )
                         self.dt_plot.plot(
-                            global_indices[selected_slice],
-                            d_t[selected_slice],
+                            plot_x,
+                            plot_y,
                             pen=self._diagnostic_pen(len(d_t_visible), selected=True),
                             width=2,
                         )
                 if show_filter:
                     if show_all_photons:
+                        thinned_indices = thin_for_plot(global_indices, max_points=plot_point_budget)
                         self.filter_plot.plot(
-                            global_indices,
-                            np.zeros_like(global_indices, dtype=float),
+                            thinned_indices,
+                            np.zeros_like(thinned_indices, dtype=float),
                             pen=self._diagnostic_pen(len(d_t_visible)),
                             stepMode=False,
                         )
                     if show_selected_photons:
-                        selected_indices = global_indices[selected_slice]
+                        selected_indices = thin_for_plot(
+                            global_indices[selected_slice], max_points=plot_point_budget
+                        )
                         self.filter_plot.plot(
                             selected_indices,
                             np.ones_like(selected_indices, dtype=float),
@@ -2368,6 +2381,7 @@ class BurstSelectionTool(ChisurfDockTool):
         offsets_ms = self._macro_time_offsets_ms(diagnostics)
         offset = 0
         plotted = False
+        plot_point_budget = max(1000, self._max_plot_points() // max(1, len(diagnostics)))
         for file_index, diag in enumerate(diagnostics):
             selected = diag["selected"].astype(bool)
             local_start = max(0, start - offset)
@@ -2380,8 +2394,10 @@ class BurstSelectionTool(ChisurfDockTool):
                 try:
                     range_indices = np.arange(local_start, local_stop)
                     trace_all = tttr[range_indices].get_intensity_trace(time_window_length=bin_width)
+                    time_all = np.arange(len(trace_all)) * bin_width + offsets_ms[file_index] / 1000.0
+                    time_all, trace_all = thin_for_plot(time_all, trace_all, max_points=plot_point_budget)
                     self.mcs_plot.plot(
-                        np.arange(len(trace_all)) * bin_width + offsets_ms[file_index] / 1000.0,
+                        time_all,
                         trace_all,
                         pen=pg.mkPen(self._diagnostic_pen(file_index), width=1),
                     )
@@ -2393,8 +2409,12 @@ class BurstSelectionTool(ChisurfDockTool):
                 try:
                     if selected_indices.size:
                         trace_selected = tttr[selected_indices].get_intensity_trace(time_window_length=bin_width)
+                        time_selected = np.arange(len(trace_selected)) * bin_width + offsets_ms[file_index] / 1000.0
+                        time_selected, trace_selected = thin_for_plot(
+                            time_selected, trace_selected, max_points=plot_point_budget
+                        )
                         self.mcs_plot.plot(
-                            np.arange(len(trace_selected)) * bin_width + offsets_ms[file_index] / 1000.0,
+                            time_selected,
                             trace_selected,
                             pen=pg.mkPen(self._diagnostic_pen(file_index, selected=True), width=2),
                         )
@@ -2961,6 +2981,14 @@ class BurstSelectionTool(ChisurfDockTool):
         macro_times = tttr.macro_times
         d_t = np.diff(macro_times, prepend=macro_times[0] - offset_ticks)
         return d_t * tttr.header.macro_time_resolution * 1000.0
+
+    @staticmethod
+    def _max_plot_points() -> int:
+        """Return the configured decimation budget (``data_loading.max_plot_points``)."""
+        from chisurf.core.fio import staging
+        from chisurf.core.fio.decimate import DEFAULT_MAX_POINTS
+
+        return int(staging._settings().get("max_plot_points", DEFAULT_MAX_POINTS))
 
     def _sync_plot_range_controls(self, n_photons: int, reset: bool = False) -> None:
         """Clamp toolbar photon range controls to the current diagnostics.

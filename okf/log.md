@@ -2,6 +2,44 @@
 
 ## 2026-08-07
 
+* **[PRD-85](prds/prd-85.md) Part B started: `thin_for_plot`, wired into
+  Burst Selection's raw per-photon plots.** Cause and effect, same session:
+  Part A's `tttr_to_pto` guard made merging several `.spc` files into one
+  `.pto` easy, and the very next real use of that container — opening it in
+  `burst_selection` — hit exactly the lag Part B's motivation predicted. The
+  "dT"/"Filter" diagnostic plots in `update_burst_plots`, and the MCS
+  intensity trace in `_update_mcs_plot`, drew every visible photon straight
+  into pyqtgraph; a merged or simply long measurement made that millions of
+  points per repaint.
+  `chisurf/core/fio/decimate.py` adds `thin_for_plot(x, y, max_points=...)`:
+  **min/max-per-bin**, not a plain stride — splitting into `max_points // 2`
+  bins and keeping each bin's min and max sample in original order is what
+  keeps a burst or a dip in a time-ordered trace visible after thinning; a
+  stride only stays honest for a genuinely unordered cloud (a phasor
+  scatter), not a trace. Budget lives at `data_loading.max_plot_points`
+  (default 1.5M, a new "Plotting" panel in `staged_loading_view.json`) —
+  a budget, not a hard cap, split across files in a multi-file diagnostic so
+  the sum stays near the setting rather than `setting × file count`.
+  Decay (microtime histogram) and burst-length (per-burst duration
+  histogram) plots were checked and left alone: already aggregated, not
+  raw per-photon — exactly the "not every hit is a bug" case the PRD's
+  Scope B.3 called out.
+  **Wired directly at burst_selection's own pyqtgraph calls, not through
+  chiplot** — that file isn't ported to chiplot yet, and bundling that
+  migration into a performance fix would have been a much larger, riskier
+  change than what was asked; surfacing this as `chiplot.Plot.line`'s opt-in
+  `max_points` (the PRD's original plan) is still open for whichever plugin
+  gets to chiplot first. The other seven plugins Scope B.3 named
+  (`tttr_correlate`, `trace_browser`, `tttr_histogram`,
+  `tttr_count_rate_analysis`, `fcs_filter_calculator`, `flc_2d`,
+  `clsm_generator`) are unaudited.
+  Tests: `test/fio/test_decimate.py` (10: budget pass-through, a spike and a
+  dip both surviving thinning, order preserved, single-array form, empty/
+  non-positive-budget edge cases) and a `burst_selection` regression feeding
+  `update_burst_plots` 2,000,000 synthetic photons against a 10,000-point
+  budget and asserting every `.plot()` call stays within it — 210 passed
+  together with the rest of the burst_selection suite.
+
 * **[PRD-85](prds/prd-85.md) `tttr_to_pto` follow-up: default to keep-original,
   merge a multi-file drop into one `.pto`, never convert a `.set` on its
   own.** Three direct corrections to the guard/tool landed the same day:

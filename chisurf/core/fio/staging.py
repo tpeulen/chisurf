@@ -41,6 +41,8 @@ from collections.abc import Callable
 from pathlib import Path
 from time import perf_counter
 
+from chisurf.core.fio.decimate import DEFAULT_MAX_POINTS as _DECIMATE_DEFAULT_MAX_POINTS
+
 __all__ = [
     "CONTAINER_SELECTOR",
     "CancelCallback",
@@ -154,6 +156,12 @@ DEFAULTS = {
     # A namespace rather than a single flat flag, so a second guard never has
     # to avoid colliding with the first one's key.
     "drop_guards": {},
+    # Budget, not a hard cap, for chisurf.core.fio.decimate.thin_for_plot: how
+    # much of a raw per-photon plot (a time trace, a delta-time diagnostic) a
+    # single call draws before it gets thinned. Same "how much of a big file
+    # do we touch" concern as staging, which is why it lives here rather than
+    # a separate settings section.
+    "max_plot_points": _DECIMATE_DEFAULT_MAX_POINTS,
 }
 
 

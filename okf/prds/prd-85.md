@@ -12,19 +12,42 @@ timestamp: '2026-08-07T00:00:00Z'
 
 ## Where to pick this up
 
-Part A (the mechanism and its one guard) is done and tested; Part B
-(decimated plotting for a stacked container) has not been started.
+Part A (the mechanism and its one guard) is done and tested. Part B's
+decimation utility exists and is wired into the one plugin that actually
+paged live: `burst_selection`. It is **not yet in `chiplot`** or the other
+seven listed plugins.
 
-1. **Part B is the remaining, larger half.** Nothing in `chiplot` or the
-   listed plugins (`tttr_correlate/gui.py`, `trace_browser`, `tttr_histogram`,
-   `tttr_count_rate_analysis/gui/view_model.py`,
-   `fcs_filter_calculator/gui_parts/*`, `flc_2d/gui/{tool,client}.py`,
-   `burst_selection/gui/tool.py`, `clsm_generator/gui/view_model.py`) has been
-   audited yet. First task is confirming which of those plot a **raw
-   per-photon** scatter/line (in scope) versus an already-aggregated
-   histogram/correlation curve (not) — see Scope B.3 — before writing
-   `chisurf.core.fio.decimate.thin_for_plot`.
-2. **The pre-unification drop-zone audit (A.5) is not exhaustive.** Wired so
+1. **`chisurf.core.fio.decimate.thin_for_plot` exists, tested, min/max-per-bin**
+   (`test/fio/test_decimate.py`) — built and wired directly into
+   `burst_selection/gui/tool.py`'s raw per-photon plots (the "dT"/"Filter"
+   diagnostic plots in `update_burst_plots`, and the MCS intensity trace in
+   `_update_mcs_plot`) after a real session hit the lag this PRD predicted:
+   dropping 11 `.spc` files merged into one `.pto` (the `tttr_to_pto` guard,
+   Part A) made a burst-selection diagnostic plot draw millions of points at
+   once. Budget is `data_loading.max_plot_points` (default 1.5M, an AutoForm
+   "Plotting" panel in `staged_loading_view.json`), split across files in a
+   multi-file diagnostic so the sum stays near budget rather than
+   `budget × file_count`. **Decay and burst-length plots were audited and
+   left alone** — already aggregated (a microtime histogram, a per-burst
+   duration histogram), not raw per-photon, exactly the "not every hit is a
+   bug" case Scope B.3 called out.
+2. **Wired directly at `burst_selection`'s own pyqtgraph calls, not through
+   `chiplot`.** `burst_selection/gui/tool.py` is not on chiplot yet (`self.dt_plot`
+   etc. are raw `pg.PlotWidget`s) — porting it there is a separate, larger
+   change (see [chiplot](/subsystems/chiplot.md)'s own allow-list) that this
+   fix deliberately did not bundle in. `thin_for_plot` takes plain arrays, so
+   it works the same whichever plotting call ends up using it; **surfacing it
+   as `chiplot.Plot.line`'s opt-in `max_points`** (the original Scope B.2) is
+   still open, and is the natural point to revisit once a plugin using it is
+   actually on chiplot.
+3. **The other seven plugins Scope B.3 named are still unaudited**:
+   `tttr_correlate/gui.py`, `trace_browser`, `tttr_histogram`,
+   `tttr_count_rate_analysis/gui/view_model.py`, `fcs_filter_calculator/gui_parts/*`,
+   `flc_2d/gui/{tool,client}.py`, `clsm_generator/gui/view_model.py`. First
+   task for each is the same confirmation `burst_selection` just went
+   through: which of its plots are raw per-photon (call `thin_for_plot`
+   directly, same pattern) versus already-aggregated (leave alone).
+4. **The pre-unification drop-zone audit (A.5) is not exhaustive.** Wired so
    far: `burst_background`, `burst_irf_bg`, `tttr_count_rate_analysis` (via
    the `path_list` `guards` option in their view.json), `burst_analysis` and
    `tttr_microtime_shifter` (via the `PathListWidget` `guards` kwarg), and
@@ -37,7 +60,7 @@ Part A (the mechanism and its one guard) is done and tested; Part B
    `chisurf/gui/widgets/fio/fio.py` (both load a vendor file only through a
    `QFileDialog`, not a drop, so `apply_drop_guards` has nothing to hook —
    would need drop support added first, which is out of this PRD's scope).
-3. **A guided tour was deliberately skipped** for the bare drop-only tool
+5. **A guided tour was deliberately skipped** for the bare drop-only tool
    (`tttr_to_pto/gui/tool.py`) — it is one drop target with a self-explanatory
    label and tooltip, and CLAUDE.md's guided-tour rule exists for panels dense
    enough that order-of-operations is not obvious. Revisit only if the tool
@@ -80,9 +103,12 @@ must not try to draw an unbounded photon stream point-for-point.
 
 In progress. Part A (Scope §A: the drop-guard registry, the `tttr_to_pto`
 guard, the bare two-way drop tool, and wiring into the genuine measurement
-drop zones) is done and tested — see [Where to pick this up](#where-to-pick-this-up)
-for exactly what was and was not wired. Part B (Scope §B: decimated plotting
-for a stacked container) has not been started.
+drop zones) is done and tested. Part B (Scope §B: decimated plotting for a
+stacked container) has its core utility (`thin_for_plot`) done and tested,
+and wired into the one plugin (`burst_selection`) that actually hit the lag
+this PRD predicted; `chiplot` and the other seven listed plugins are
+untouched — see [Where to pick this up](#where-to-pick-this-up) for exactly
+what was and was not wired.
 
 # Motivation
 

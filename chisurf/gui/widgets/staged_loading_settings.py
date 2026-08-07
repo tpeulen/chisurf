@@ -88,6 +88,15 @@ class DataLoadingSettingsModel:
     def probe_mb(self, value: float) -> None:
         self._save("probe_bytes", int(round(float(value) * _MIB)))
 
+    @property
+    def max_plot_points(self) -> int:
+        """Budget for chisurf.core.fio.decimate.thin_for_plot."""
+        return int(self._cfg()["max_plot_points"])
+
+    @max_plot_points.setter
+    def max_plot_points(self, value: int) -> None:
+        self._save("max_plot_points", int(value))
+
 
 class DataLoadingSettingsWidget(QtWidgets.QWidget):
     """Renders :class:`DataLoadingSettingsModel` via :class:`AutoForm`."""
