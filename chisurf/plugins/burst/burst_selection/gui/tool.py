@@ -17,6 +17,7 @@ from chisurf.core.datastore import (
     new_store,
     numeric_column,
     row_count,
+    rows_from_table,
     store_from_rows,
     take_columns,
     write_csv_table,
@@ -171,8 +172,7 @@ def histogram_data_from_frame(frame, feature: str) -> np.ndarray:
         if data is not None:
             return data[np.isfinite(data)]
     data = numeric_column(burst_rows_for_display(frame), feature)
-    data = data[np.isfinite(data)]
-    return data.to_numpy(dtype=float)
+    return data[np.isfinite(data)]
 
 
 class MetadataDialog(QtWidgets.QDialog):
@@ -2668,9 +2668,16 @@ class BurstSelectionTool(ChisurfDockTool):
             self.update_histogram()
 
     def _populate_feature_combo(self, frame) -> None:
-        """Populate the feature combo from DataFrame columns."""
+        """Populate the feature combo from a GUI table's column names.
+
+        ``column_names(frame)``, not ``frame.columns``: a store's ``columns``
+        are ``Column`` objects, not name strings, and comparing one against a
+        combo-box item's plain string with ``!=`` raises "truth value of an
+        array is ambiguous" the moment the two lists are the same length (a
+        combo already populated from an earlier selection).
+        """
         current = self.feature_combo.currentText()
-        columns = list(frame.columns)
+        columns = column_names(frame)
         if columns != [self.feature_combo.itemText(index) for index in range(self.feature_combo.count())]:
             self.feature_combo.blockSignals(True)
             self.feature_combo.clear()
@@ -2800,12 +2807,21 @@ class BurstSelectionTool(ChisurfDockTool):
             self._status_bar.showMessage(f"Error loading {first_path.name}: {exc}")
 
     def _fill_table(self, frame) -> None:
-        """Fill the table widget from a GUI DataFrame."""
-        self.table.setRowCount(len(frame))
-        for row_index, row in enumerate(frame.to_numpy()):
-            for column_index, value in enumerate(row):
+        """Fill the table widget from a GUI table (a DataStore, not a DataFrame).
+
+        A store keeps each column's own dtype -- unlike a pandas
+        ``DataFrame.to_numpy()``, which upcasts a whole int+float table to one
+        float64 array. Every numeric cell (int or float) is shown through the
+        numeric ``DisplayRole`` here for the same reason that upcast existed:
+        so an integer column (e.g. photon counts) still sorts and right-aligns
+        as a number instead of rendering as left-aligned text.
+        """
+        rows = rows_from_table(frame)
+        self.table.setRowCount(row_count(frame))
+        for row_index, row in enumerate(rows):
+            for column_index, value in enumerate(row.values()):
                 item = QtWidgets.QTableWidgetItem()
-                if isinstance(value, (float, np.floating)):
+                if isinstance(value, (int, float, np.integer, np.floating)):
                     item.setData(QtCore.Qt.ItemDataRole.DisplayRole, float(value))
                 else:
                     item.setText(str(value))
@@ -3209,10 +3225,11 @@ class BurstSelectionTool(ChisurfDockTool):
         lines.append("")
         lines.append("# Burst data")
         lines.append("loop_")
-        for col in self._last_frame.columns:
+        names = column_names(self._last_frame)
+        for col in names:
             lines.append(f"_{col}")
-        for _, row in self._last_frame.iterrows():
-            lines.append("\t".join(str(v) for v in row.values))
+        for row in rows_from_table(self._last_frame):
+            lines.append("\t".join(str(row[name]) for name in names))
         Path(path).write_text("\n".join(lines))
 
     def open_batch_dialog(self) -> None:

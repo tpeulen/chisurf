@@ -514,6 +514,8 @@ class BurstSelectionTool(QtWidgets.QMainWindow):
         Calls save_selection first to store burst selections,
         then loads and processes the saved burst files for display.
         """
+        from chisurf.core.datastore import column_names
+
         tttr_files = self.burst_finder.settings.get('tttr_filenames', [])
         logger.debug("process_all_files: tttr_filenames count=%d types=%s", len(tttr_files) if tttr_files else 0, list({type(f).__name__ for f in (tttr_files or [])}))
         if not tttr_files:
@@ -567,7 +569,8 @@ class BurstSelectionTool(QtWidgets.QMainWindow):
                 continue
 
             # Ensure all expected columns exist
-            missing_cols = [col for col in burst_gui.UI_COLUMNS if col not in df.columns]
+            present = column_names(df)
+            missing_cols = [col for col in burst_gui.UI_COLUMNS if col not in present]
             for col in missing_cols:
                 df[col] = 0
 
@@ -583,7 +586,7 @@ class BurstSelectionTool(QtWidgets.QMainWindow):
             final_df = burst_gui.combine_ui_dataframes(accumulated_results)
             self.current_df = final_df
             # self.populate_table(final_df)
-            new_columns = final_df.columns.tolist()
+            new_columns = column_names(final_df)
             # only refresh if it's different
             existing = [self.comboBox.itemText(i) for i in range(self.comboBox.count())]
             if existing != new_columns:
@@ -641,7 +644,7 @@ class BurstSelectionTool(QtWidgets.QMainWindow):
         self.plotWidget.set_labels(bottom=selected_feature, left='Frequency')
 
         # Calculate histogram
-        filtered_data = data.dropna()[1::2].values
+        filtered_data = data[~np.isnan(data)][1::2]
 
         # Ensure min_val is less than max_val
         if min_val >= max_val:

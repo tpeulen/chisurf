@@ -121,6 +121,100 @@ def test_histogram_data_ignores_interleaved_zero_rows() -> None:
     assert histogram_data_from_frame(frame, "Proximity Ratio").tolist() == [0.1, 0.3]
 
 
+def test_histogram_data_for_a_plain_column_is_a_plain_array() -> None:
+    """A non-Proximity-Ratio feature takes the generic numeric_column path.
+
+    Regression: this used to end in `.to_numpy(dtype=float)` on a value
+    `numeric_column` already returns as a plain `numpy.ndarray` (not a
+    pandas Series) -- broken since `numeric_column` was written, but never
+    caught because every other histogram test here asks for "Proximity
+    Ratio", which takes the early-return branch above instead.
+    """
+    frame = pd.DataFrame(
+        {
+            "Number of Photons": [0, 10, 0, 20],
+            "Proximity Ratio": [0.0, 0.1, 0.0, 0.3],
+        }
+    )
+    result = histogram_data_from_frame(frame, "Number of Photons")
+    assert isinstance(result, np.ndarray)
+    assert result.tolist() == [10.0, 20.0]
+
+
+def test_fill_table_reads_the_datastore_make_ui_dataframe_returns(qapp) -> None:
+    """_fill_table must work on a real DataStore, not a pandas DataFrame.
+
+    Regression: `make_ui_dataframe` returns a `DataStore`
+    (`chisurf.core.datastore.store_from_arrays`), and `_fill_table` called
+    `frame.to_numpy()` on it -- a pandas-only method -- which raised
+    `'DataStore' object has no attribute 'to_numpy'` the moment a user
+    selected any file in Burst Selection. Every other test in this file
+    replaces `_fill_table` with a mock, so nothing exercised the real
+    implementation. Found live.
+    """
+    from qtpy import QtCore, QtWidgets
+
+    from chisurf.core.datastore import store_from_arrays
+
+    frame = store_from_arrays(
+        {
+            "Number of Photons": np.array([10, 20], dtype=np.int32),
+            "Proximity Ratio": np.array([0.2, 0.3], dtype=np.float64),
+        }
+    )
+
+    tool = BurstSelectionTool.__new__(BurstSelectionTool)
+    tool.table = QtWidgets.QTableWidget()
+    tool.table.setColumnCount(2)
+
+    tool_module.BurstSelectionTool._fill_table(tool, frame)
+
+    assert tool.table.rowCount() == 2
+    assert tool.table.item(0, 0).data(QtCore.Qt.ItemDataRole.DisplayRole) == 10.0
+    assert tool.table.item(1, 1).data(QtCore.Qt.ItemDataRole.DisplayRole) == 0.3
+
+
+def test_populate_feature_combo_survives_a_same_length_refresh(qapp) -> None:
+    """Re-populating with the same column count must not compare Column objects.
+
+    Regression: `list(frame.columns)` returns `Column` objects, not name
+    strings; comparing that list against the combo's current items with
+    `!=` is fine when the lengths differ (a plain `True`) but raises "truth
+    value of an array is ambiguous" the moment the two lists are the same
+    length and Python falls back to per-element `==`. That only bites on
+    the *second* selection of a file with the same feature set -- found
+    live, selecting a second file in Burst Selection right after the
+    `_fill_table` bug above was fixed.
+    """
+    from qtpy import QtWidgets
+
+    from chisurf.core.datastore import store_from_arrays
+
+    tool = BurstSelectionTool.__new__(BurstSelectionTool)
+    tool.feature_combo = QtWidgets.QComboBox()
+
+    frame = store_from_arrays(
+        {
+            "Number of Photons": np.array([10, 20], dtype=np.int32),
+            "Proximity Ratio": np.array([0.2, 0.3], dtype=np.float64),
+        }
+    )
+    BurstSelectionTool._populate_feature_combo(tool, frame)
+    first_items = [tool.feature_combo.itemText(i) for i in range(tool.feature_combo.count())]
+
+    # Same column names, same count -> exercises the length-equal comparison.
+    second = store_from_arrays(
+        {
+            "Number of Photons": np.array([30], dtype=np.int32),
+            "Proximity Ratio": np.array([0.4], dtype=np.float64),
+        }
+    )
+    BurstSelectionTool._populate_feature_combo(tool, second)
+
+    assert first_items == ["Number of Photons", "Proximity Ratio"]
+    assert [tool.feature_combo.itemText(i) for i in range(tool.feature_combo.count())] == first_items
+
+
 def test_make_ui_dataframe_computes_proximity_ratio() -> None:
     """The histogram feature list should include computed proximity ratios."""
     frame = pd.DataFrame(

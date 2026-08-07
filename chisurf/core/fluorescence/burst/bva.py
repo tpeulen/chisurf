@@ -1,6 +1,7 @@
 import numpy as np
 from typing import List, Tuple, Dict
 
+from chisurf.core.datastore import row_count, rows_from_table
 from chisurf.core.progress import progress
 
 
@@ -87,8 +88,8 @@ def compute_bva(
 
     Parameters:
     ----------
-    df : pd.DataFrame
-        The DataFrame containing burst data with columns 'First File', 'Last File', 'First Photon', and 'Last Photon'.
+    df : chisurf.core.datastore table
+        The burst table, with columns 'First File', 'Last File', 'First Photon', and 'Last Photon'.
     tttrs : Dict[str, 'tttrlib.TTTR']
         Dictionary containing TTTR (Time Tagging and Time Resolved) data for each burst indexed by 'First File'.
     donor_channels : List[int], optional
@@ -107,15 +108,17 @@ def compute_bva(
 
     Returns:
     -------
-    pd.DataFrame
-        Updated DataFrame with added columns for proximity ratio mean ('Proximity Ratio Mean') and
+    chisurf.core.datastore table
+        *df*, with added columns for proximity ratio mean ('Proximity Ratio Mean') and
         standard deviation ('Proximity Ratio Std') for each burst.
     """
     # Initialize lists to store the proximity ratio statistics
     proximity_ratios_mean, proximity_ratios_sd = list(), list()
 
-    # Iterate through rows using iterrows()
-    for index, row in progress(df.iterrows(), total=df.shape[0], desc="BVA bursts"):
+    # Iterate through rows -- `df` is a chisurf.core.datastore table, not a
+    # pandas DataFrame, so row-wise iteration goes through rows_from_table()
+    # rather than the pandas-only iterrows().
+    for row in progress(rows_from_table(df), total=row_count(df), desc="BVA bursts"):
         # Select tttr data of burst out of dictionary
         ff, fl = row['First File'], row['Last File']
         tttr = tttrs[ff]
