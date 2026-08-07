@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import Counter
 from shlex import split as shlex_split
 
 import numpy as np
@@ -173,10 +174,16 @@ class MeasurementMixin(BaseCmd):
           hydrogen-bond test in :mod:`~chimol.analysis.hbonds`;
         * ``3`` -- like ``0``, but excluding atoms within ``distance_exclusion``
           bonds of each other;
-        * ``4`` -- one distance, between the two selections' centroids.
+        * ``4`` -- one distance, between the two selections' centroids;
+        * ``5`` / ``6`` / ``7`` -- **pi interactions**: both kinds, ring-ring
+          stacking only, or cation-ring only;
+        * ``9`` -- **halogen bonds**;
+        * ``10`` -- **salt bridges**.
 
         Modes 0, 1 and 3 measure between *atoms* and can produce a great many
-        lines; ``2`` is the one the presets and the **A ▸ find** menu use.
+        lines; ``2`` is the one the presets and the **A ▸ find** menu use. The
+        interaction modes have criteria of their own and ignore ``cutoff`` --
+        see :mod:`~chimol.analysis.interactions`.
 
         With one atom on each side and no mode, this is the two-atom measurement
         it has always been -- so ``distance 14/CA, 29/CA`` is unchanged.
@@ -411,6 +418,13 @@ class MeasurementMixin(BaseCmd):
             )
             return
 
+        if mode in (5, 6, 7, 9, 10):
+            self._interaction_set(
+                viewer, meas_name, atoms, bond_pairs, mask1, mask2,
+                mode=mode, label=label, quiet=quiet,
+            )
+            return
+
         if mode == 2:
             criteria = HBondCriteria.from_config()
             bonds = find_hydrogen_bonds(
@@ -511,6 +525,74 @@ class MeasurementMixin(BaseCmd):
                 seen.add(key)
         return sorted(seen)
 
+    #: PyMOL's distance modes for the three interaction finders, and what each
+    #: one asks for. 5 is both pi kinds, which is what `pi_interactions` runs.
+    _INTERACTION_MODES = {
+        5: "pi",
+        6: "pi-pi",
+        7: "pi-cation",
+        9: "halogen-bond",
+        10: "salt-bridge",
+    }
+
+    #: What to call each in the summary line. Spelled out rather than an ``s``
+    #: appended to the mode's key, which reported "0 pi-pis".
+    _INTERACTION_NAMES = {
+        "pi": "pi interactions",
+        "pi-pi": "pi-pi interactions",
+        "pi-cation": "pi-cation interactions",
+        "halogen-bond": "halogen bonds",
+        "salt-bridge": "salt bridges",
+    }
+
+    def _interaction_set(
+        self, viewer, meas_name, atoms, bond_pairs, mask1, mask2, *,
+        mode: int, label: bool, quiet: bool,
+    ) -> None:
+        """Draw one of the three interaction finders as a distance set.
+
+        These are separate detectors rather than variants of the polar-contact
+        test, so each has its own criteria object; see
+        :mod:`~chimol.analysis.interactions`, which transcribes them. A pi
+        interaction ends at a **ring centre**, which is not an atom -- the
+        finder returns points for that reason and they are drawn as they come.
+        """
+        from ..analysis.interactions import (
+            find_halogen_bonds,
+            find_pi_interactions,
+            find_salt_bridges,
+        )
+
+        kind = self._INTERACTION_MODES[int(mode)]
+        if kind == "salt-bridge":
+            hits = find_salt_bridges(atoms, mask1, mask2)
+        elif kind == "halogen-bond":
+            hits = find_halogen_bonds(atoms, bond_pairs, mask1, mask2)
+        else:
+            hits = find_pi_interactions(
+                atoms, bond_pairs, mask1, mask2,
+                pipi=kind in ("pi", "pi-pi"),
+                pication=kind in ("pi", "pi-cation"),
+            )
+
+        positions = np.empty((len(hits) * 2, 3), dtype=float)
+        for index, hit in enumerate(hits):
+            positions[2 * index] = hit.start
+            positions[2 * index + 1] = hit.end
+        labels = [f"{hit.distance:.1f}" for hit in hits]
+
+        if kind == "pi" and hits:
+            counts = Counter(hit.kind for hit in hits)
+            detail = ", ".join(f"{n} {k}" for k, n in sorted(counts.items()))
+            summary = f"{len(hits)} pi interactions ({detail})"
+        else:
+            summary = f"{len(hits)} {self._INTERACTION_NAMES[kind]}"
+
+        self._finish_distance_set(
+            viewer, meas_name, positions, labels,
+            label=label, quiet=quiet, summary=summary,
+        )
+
     def _finish_distance_set(
         self, viewer, meas_name, positions, labels, *,
         label: bool, quiet: bool, summary: str,
@@ -547,6 +629,63 @@ class MeasurementMixin(BaseCmd):
         viewer._update_view()
         if not quiet:
             self._emit_message(f"distance {name}: {summary}")
+
+    @command("pi_interactions")
+    def pi_interactions(
+        self,
+        *seles: str,
+        label: int = 0,
+        quiet: int = 0,
+        reset: int = 1,
+    ) -> None:
+        """Find ring stacking and cation-ring contacts.
+
+        PyMOL's ``pi_interactions name, sele1 [, sele2]``, which is what its
+        **A ▸ find ▸ pi interactions ▸ all** entry calls -- the same finder as
+        ``distance ..., mode=5``, under the name PyMOL gives it. With one
+        selection both sides are that selection, so ``pi_interactions pi, all``
+        answers "what stacks against what in this structure".
+
+        Parameters
+        ----------
+        *seles : str
+            ``[name,] sele1 [, sele2]``.
+        label : int, optional
+            1 writes the distance on each dash. Off by default: a stacking
+            distance between two ring *centres* is rarely the number wanted,
+            and a nucleic structure produces dozens of them.
+        quiet : int, optional
+            1 suppresses the summary line.
+        reset : int, optional
+            Accepted for PyMOL compatibility; a named measurement is always
+            replaced here.
+        """
+        window, viewer = self._require_window_and_viewer()
+        if viewer is None:
+            return
+
+        args = [str(a).strip() for a in seles if str(a).strip()]
+        if not args:
+            self._emit_error("Usage: pi_interactions name, sele1 [, sele2]")
+            return
+        if len(args) == 1:
+            args = [args[0], "all"]
+        if len(args) == 2:
+            # One selection means "within it", which is `same` in PyMOL's menu.
+            args = [args[0], args[1], args[1]]
+
+        try:
+            meas_name, sele_parts = self._parse_measurement_selections(
+                args, expected_count=2, cmd="pi_interactions"
+            )
+        except ValueError as exc:
+            self._emit_error(str(exc))
+            return
+
+        self._distance_set(
+            viewer, meas_name, sele_parts[0], sele_parts[1],
+            cutoff=-1.0, mode=5, label=bool(label), quiet=bool(quiet),
+        )
 
     @command("angle")
     def angle(self, *seles: str) -> None:

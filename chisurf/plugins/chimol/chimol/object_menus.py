@@ -149,10 +149,10 @@ ACTION_MENU: tuple[MenuEntry, ...] = (
         SEP,
         MenuEntry("default", "preset default, {sele}"),
     )),
-    # PyMOL's `find` submenu, from menu.py::find/polar. Only the polar-contact
-    # arm is transcribed: halogen bonds, salt bridges and pi interactions are
-    # separate detectors (`distance` modes 6-10) rather than variations on this
-    # one, and each is left visible-and-disabled rather than dropped.
+    # PyMOL's `find` submenu, from menu.py::find/polar, halogen_bond and
+    # salt_bridge. The polar-contact arm is one detector; halogen bonds, salt
+    # bridges and pi interactions are three more (`distance` modes 5-10), and
+    # each keeps the command PyMOL's own menu sends.
     MenuEntry("find", None, "", children=(
         MenuEntry("polar contacts", None, "", children=(
             MenuEntry("within selection",
@@ -195,12 +195,33 @@ ACTION_MENU: tuple[MenuEntry, ...] = (
                       "distance {sele}_contacts, {sele}, {sele}, 4.0, "
                       "mode=3, label=0"),
         )),
-        MenuEntry("halogen-bond interactions", None,
-                  "Chimol has no halogen-bond detector (`distance mode=9`)."),
-        MenuEntry("salt-bridge interactions", None,
-                  "Chimol has no salt-bridge detector (`distance mode=10`)."),
-        MenuEntry("pi interactions", None,
-                  "Chimol has no pi-stacking detector (`distance mode=5-7`)."),
+        MenuEntry("halogen-bond interactions",
+                  "distance {sele}_halogen_bond, {sele}, {sele}, "
+                  "mode=9, label=0",
+                  "A halogen donating through its sigma hole (D-X...A, nearly "
+                  "straight) or accepting side-on (D-H...X-B, 90-170 degrees). "
+                  "PyMOL's halogen_bond_* criteria."),
+        MenuEntry("salt-bridge interactions",
+                  "distance {sele}_salt_bridge, {sele}, {sele}, "
+                  "mode=10, label=0",
+                  "Oppositely charged heavy atoms within 5 A. The charges come "
+                  "from residue nomenclature -- ARG NH1, LYS NZ, ASP OD2, GLU "
+                  "OE2, a nucleotide's OP2 -- so a plain HIS is neutral."),
+        MenuEntry("pi interactions", None, "", children=(
+            MenuEntry("all",
+                      "pi_interactions {sele}_pi_interactions, {sele}",
+                      "Ring stacking and cation-ring contacts together."),
+            MenuEntry("pi-pi",
+                      "distance {sele}_pi_pi, {sele}, {sele}, mode=6, label=0",
+                      "Rings stacked face-to-face (within 4.4 A, normals "
+                      "within 30 degrees) or edge-to-face (within 5.5 A, "
+                      "normals over 60 degrees apart)."),
+            MenuEntry("pi-cation",
+                      "distance {sele}_pi_cation, {sele}, {sele}, "
+                      "mode=7, label=0",
+                      "A positive charge over a ring's face: within 6.6 A of "
+                      "the centre and 30 degrees of the ring's axis."),
+        )),
         # Below PyMOL's own entries, never among them: the target's rule is
         # that extensions are additive, so a PyMOL user finds their menu where
         # they left it. PyMOL groups nothing -- it returns a bundle of dashes

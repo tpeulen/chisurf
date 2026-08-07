@@ -1056,6 +1056,9 @@ distance com, chain A, chain B, mode=4 # one line, centroid to centroid
 | 2 | polar contacts (hydrogen bonds) |
 | 3 | like 0, but skipping atoms within `distance_exclusion` bonds |
 | 4 | one distance, between the two selections' centroids |
+| 5 / 6 / 7 | pi interactions: both kinds / ring-ring only / cation-ring only |
+| 9 | halogen bonds |
+| 10 | salt bridges |
 
 The **A ▸ find ▸ polar contacts** submenu is the same command, pre-written for
 the usual questions (within the selection, side chains only, to solvent, across
@@ -1120,6 +1123,54 @@ interface network worth a second look.
 The contacts themselves are exactly the ones `distance ..., mode=2` finds, with
 the same settings. The grouping is what is added; PyMOL has no notion of a
 network, so this is not something a PyMOL script can be compared against.
+
+### Salt bridges, halogen bonds and pi interactions
+
+Three more finders, each with its own criteria rather than a variation on the
+polar-contact test, reached the way PyMOL reaches them — a `distance` mode, and
+an entry in **A ▸ find**:
+
+```text
+distance sb, all, all, mode=10       # salt bridges
+distance hal, all, all, mode=9       # halogen bonds
+pi_interactions pi, all              # ring stacking and cation-ring, together
+distance pp, all, all, mode=6        # ...ring-ring only
+distance pc, all, all, mode=7        # ...cation-ring only
+```
+
+A **salt bridge** is two non-hydrogen atoms of opposite formal charge within
+5 Å. There is no angle term — the accuracy lives entirely in the charges, and a
+PDB file does not carry them. They come from residue nomenclature, PyMOL's own
+table, and it is deliberately asymmetric: only `OD2` of an aspartate, only `OE2`
+of a glutamate, only `NH1` of an arginine (with `NH2` pinned to zero), plus
+`NZ`, `OXT` and a nucleotide's `OP2`. Charging both oxygens of a carboxylate
+would double-count every bridge. **A plain `HIS` is neutral** — a histidine
+counts only under the protonated names `HIP`, `HISP` or `HISH`, because its
+protonation state is a decision PyMOL declines to make for you, and so does
+this. A charge in the file always wins over the table.
+
+A **halogen bond** is checked both ways round. With the halogen donating
+(D–X···A–B) the sigma hole is on the far side of its own bond, so D–X···A has to
+be nearly straight (≥ 140°). With the halogen accepting (D–H···X–B) it offers a
+lone pair side-on, so the H···X–B angle is bounded on *both* sides (90–170°) —
+a straight-through approach there would be the sigma hole, not a lone pair.
+
+**Pi interactions** reduce each planar ring to a centre and a normal. Ring-ring
+is face-to-face (centres within 4.4 Å, normals within 30°) or edge-to-face
+(within 5.5 Å, normals more than 60° apart), and a pair whose normals both point
+*across* the line joining the centres is dropped as coplanar — two rings side by
+side in one plane are as close as a stacked pair and are not stacked. Pi-cation
+is a cone, not a sphere: within 6.6 Å of the centre **and** 30° of the ring's
+axis.
+
+:::{note}
+A ring counts when its atoms are planar, and chimol reads planarity from the
+residue templates because it has no bond orders. Every aromatic side chain and
+every nucleobase is therefore found — 18 rings in T4 lysozyme, counting each
+tryptophan's two — but an **untemplated ligand's** aromatic ring is not, and
+neither its stacking nor a cation over it will be reported. PyMOL has bond
+orders from its own chemistry pass and does find those.
+:::
 
 ### Clashes
 

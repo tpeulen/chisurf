@@ -109,8 +109,8 @@ are the shape of the remaining work:
   `ObjectVolume.cpp`;
 * **data**: `CifMoleculeReader.cpp` + `CifBondDict.h`, which together unblock
   `valence`; `AtomInfo.cpp`; `ObjectMolecule.cpp`;
-* **one small file that closes three menu entries**: `layer3/Interactions.h`,
-  the halogen-bond, salt-bridge and pi-interaction criteria.
+* ~~**one small file that closes three menu entries**: `layer3/Interactions.h`~~
+  — done 2026-08-07, see *the three disabled `find` entries are closed* below.
 
 **0b-bis. A unit test that calls the widget's handler directly cannot see a
 dead event path.** Standing correction, from 2026-08-06 and the same family as
@@ -608,6 +608,58 @@ makes an interface network worth a second look. Three water policies, because
 either default is misleading: a water may **bridge** two halves, be **excluded**
 (the protein's own network), or be all there is (**only**, the wire). ChimeraX
 does not name a network either; its `hbonds` returns a list.
+
+**The three disabled `find` entries are closed — 2026-08-07.** Halogen bonds,
+salt bridges and pi interactions were the *"one small file that closes three
+menu entries"* on the A-list, and `layer3/Interactions.{h,cpp}` is indeed the
+whole of it: the criteria are literals and the algorithms are a page each. They
+are reached exactly as PyMOL reaches them — `distance ... mode=9` / `mode=10` /
+`mode=5,6,7`, plus the `pi_interactions` command its own menu calls — so the
+menu entries carry PyMOL's command strings unchanged.
+
+The load-bearing part is not any of the three finders: it is **formal charge**.
+A salt bridge is *"two heavy atoms of opposite formal charge within 5 Å"* and a
+pi-cation needs *"formal charge above zero"*, and a PDB file carries neither.
+PyMOL fills it in from nomenclature while it connects the molecule
+(`assign_pdb_known_residue`), and that table is transcribed rather than
+re-derived because its asymmetries are the correctness:
+
+* **one** oxygen of a carboxylate (`OD2`, `OE2`) and **one** nitrogen of a
+  guanidinium (`NH1`, with `NH2` pinned to zero — PyMOL's own PYMOL-5019 fix).
+  Charging both halves is the obvious improvement and it double-counts every
+  bridge;
+* **a plain `HIS` is neutral.** Only `HIP`/`HISP`/`HISH` carry the charge, so a
+  HIS–ASP pair is not reported. That is a protonation-state decision PyMOL
+  declines to make, and inheriting the refusal is the right call;
+* nucleotide `OP2`/`O2P`, which is what makes DNA phosphate contacts findable.
+
+Measured: 148L gives **10 salt bridges** (2.8–4.8 Å) and 1RTD **129**, with 71
+pi interactions of which 17 are face-to-face — consecutive and cross-strand DNA
+bases at 3.5–4.2 Å, which is base stacking and is the check that the pi arm
+works. 148L has **no** pi-pi at all: its closest aromatic pair is 5.9 Å apart,
+past the 5.5 Å bound, so zero is the right answer and a finder that reported
+something there would be wrong.
+
+Two things worth keeping:
+
+* **the vector conventions are a silent trap.** `TestHalogenBondDonor` takes
+  X→A and X→D, both pointing *away* from the atom whose angle is measured.
+  Reversing either measures 180 minus the angle meant, which passes a bent
+  geometry and rejects a straight one — and it reads perfectly plausibly. It
+  was caught only because the test built its geometry from the angle it wanted;
+* **a ring is planar because a template says so.** chimol has no bond orders,
+  and a two-neighbour carbon carries no angle that separates sp2 from sp3
+  (`atom_geometry_from_angles` returns "" for it), so planarity comes from the
+  residue templates. Every aromatic side chain and nucleobase is found — 18
+  rings in 148L, counting each TRP's two — but an **untemplated ligand's**
+  aromatic ring is not, so neither its stacking nor a cation over it is
+  reported. PyMOL, with its chemistry pass, does find those. This is the next
+  thing to fix here, and the fix is bond orders, not a wider ring finder.
+
+22 tests in `test_interaction_finders.py`. The angle criteria are tested on
+built geometry rather than on a structure: 148L has no halogen at all, and a
+bound that is two-sided (the 90–170° acceptor angle) cannot be shown to have
+both halves by a structure that happens to pass.
 
 **The clash check is PyMOL's, and it is not a command there.** It is the bump
 check inside the mutagenesis wizard: sculpting's van der Waals term, one
