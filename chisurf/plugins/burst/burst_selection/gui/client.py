@@ -63,6 +63,7 @@ class BurstSelectionClient:
         selected_setup: str | None = None,
         legacy_parameters: dict[str, Any] | None = None,
         mmfdb: dict[str, Any] | None = None,
+        progress_callback: Any = None,
     ) -> dict[str, Any]:
         """Run burst selection analysis over files.
 
@@ -90,6 +91,14 @@ class BurstSelectionClient:
             Additional legacy metadata fields.
         mmfdb : dict, optional
             MMFDB archival context.
+        progress_callback : callable, optional
+            Called as ``progress_callback(done, total, path)`` after each
+            file finishes. **In-process convenience only** — it rides along
+            as a live Python object in ``params`` rather than a JSON-RPC
+            argument, which only ``InProcessClient`` (no real serialization
+            boundary) can carry; a genuine remote ``ZmqClient`` would need
+            polling-based progress instead, so this is silently dropped by
+            passing ``None`` (the default) when talking to one.
 
         Returns
         -------
@@ -126,6 +135,8 @@ class BurstSelectionClient:
             params["legacy_parameters"] = legacy_parameters
         if mmfdb is not None:
             params["mmfdb"] = mmfdb
+        if progress_callback is not None:
+            params["progress_callback"] = progress_callback
         svc_result = self._client.call(
             "burst_selection.jobs.analyze_files", params
         )

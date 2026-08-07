@@ -7,7 +7,7 @@ import logging
 import shutil
 import time
 import warnings
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any
@@ -564,13 +564,23 @@ def analyze_file(
     )
 
 
-def analyze_request(request: AnalysisRequest) -> AnalysisResult:
+def analyze_request(
+    request: AnalysisRequest,
+    *,
+    progress_callback: Callable[[int, int, str], None] | None = None,
+) -> AnalysisResult:
     """Run burst selection for a complete analysis request.
 
     Parameters
     ----------
     request : AnalysisRequest
         Analysis request.
+    progress_callback : callable, optional
+        Called as ``progress_callback(done, total, path)`` after each file
+        finishes -- one file is the natural chunk here, so a batch reports
+        real incremental progress instead of a single opaque call the caller
+        can only watch as a busy spinner. Not used for cancellation: this is
+        report-only, called directly and never expected to raise.
 
     Returns
     -------
@@ -594,8 +604,9 @@ def analyze_request(request: AnalysisRequest) -> AnalysisResult:
     )
     hdf5_frames: list = []
     batch_macro_time_resolution: float | None = None
+    total_files = len(request.files)
 
-    for path in request.files:
+    for file_index, path in enumerate(request.files):
         result = analyze_file(
             path,
             settings=request.settings,
@@ -627,6 +638,8 @@ def analyze_request(request: AnalysisRequest) -> AnalysisResult:
         metadata["n_bursts"] += int(result.metadata.get("n_bursts", 0))
         metadata["n_selected"] += int(result.metadata.get("n_selected", 0))
         metadata["n_photons"] += int(result.metadata.get("n_photons", 0))
+        if progress_callback is not None:
+            progress_callback(file_index + 1, total_files, str(path))
 
     if legacy_output_folder is not None:
         _write_legacy_output_info(request, legacy_output_folder)

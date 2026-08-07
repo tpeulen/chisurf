@@ -2018,14 +2018,26 @@ class BurstSelectionTool(ChisurfDockTool):
         ChiSurfProgress.run(
             self, f"Processing {len(self._file_paths)} file(s)...",
             self._analysis_worker, args=(list(self._file_paths), request),
-            maximum=0, title="Burst Selection", owner=self,
+            maximum=len(self._file_paths), title="Burst Selection", owner=self,
             on_result=lambda result: self._analysis_finished(result, settings),
             on_error=self.Error.analysis_failed,
         )
 
     def _analysis_worker(self, paths, request, task):
-        """Worker: one backend call for the whole batch. No GUI here."""
-        return self._client.analyze_files(paths, **request)
+        """Worker: one backend call for the whole batch, reporting per-file progress.
+
+        One file is the natural chunk on this path: the backend call reports
+        after each file finishes rather than only at the very end, so a
+        multi-file batch shows the bar actually advancing instead of a single
+        busy spinner for the whole run. A single very large (e.g. merged
+        multi-measurement) file still reports only once, at completion --
+        the burst search itself has no internal chunking to report through.
+        """
+
+        def _on_file_done(done: int, total: int, path: str) -> None:
+            task.set_progress(done, f"{Path(path).name} ({done}/{total})")
+
+        return self._client.analyze_files(paths, progress_callback=_on_file_done, **request)
 
     def _analysis_finished(self, result: dict, settings: AnalysisSettings) -> None:
         """Back on the GUI thread with the batch result: build frames and plots."""

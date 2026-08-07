@@ -1652,3 +1652,44 @@ def test_plugin_uses_migrated_gui_by_default() -> None:
     """The plugin-level switch should select the migrated GUI."""
     assert USE_LEGACY_GUI is False
     assert BurstSelectionTool.__name__ == "BurstSelectionTool"
+
+
+def test_analysis_worker_reports_per_file_progress_to_the_task() -> None:
+    """The batch worker must give the task real per-file progress, not silence.
+
+    Regression: `_analysis_worker` used to make a single opaque backend call
+    with nothing reporting in between, so a multi-file batch showed a busy
+    spinner (`maximum=0`) for its whole duration -- exactly the "somehow
+    blocked" feel a merged/long-running batch produces even though the work
+    was already off the GUI thread.
+    """
+
+    class FakeTask:
+        """Minimal `TaskHandle` stand-in that records what it was told."""
+
+        def __init__(self) -> None:
+            self.progress_calls: list[tuple[int, object]] = []
+
+        def set_progress(self, value: int, text: object = None) -> None:
+            self.progress_calls.append((value, text))
+
+    class FakeClient:
+        """Client stub that drives the given progress_callback like the real one."""
+
+        def analyze_files(self, file_paths, progress_callback=None, **kwargs):
+            total = len(file_paths)
+            for i, path in enumerate(file_paths):
+                if progress_callback is not None:
+                    progress_callback(i + 1, total, str(path))
+            return {"dataframes": {}, "metadata": {}}
+
+    tool = BurstSelectionTool.__new__(BurstSelectionTool)
+    tool._client = FakeClient()
+    task = FakeTask()
+
+    tool._analysis_worker(["a.spc", "b.spc"], {}, task)
+
+    assert task.progress_calls == [
+        (1, "a.spc (1/2)"),
+        (2, "b.spc (2/2)"),
+    ]

@@ -372,6 +372,57 @@ def test_analyze_request_reuses_first_macro_time_resolution(monkeypatch) -> None
     assert calls == [None, 0.001]
 
 
+def test_analyze_request_reports_progress_per_file(monkeypatch) -> None:
+    """One file is the chunk: progress must advance between files, not just at the end.
+
+    Regression: a multi-file batch went through the GUI as a single opaque
+    backend call with an indeterminate spinner. One file finishing is exactly
+    the granularity a caller (the GUI's TaskHandle) can turn into a real,
+    advancing progress bar.
+    """
+
+    def fake_analyze_file(path: str, **kwargs: object):
+        return selection_module.AnalysisResult(
+            files=[path],
+            dataframes={path: []},
+            metadata={"n_photons": 1, "n_selected": 1, "n_bursts": 0},
+        )
+
+    monkeypatch.setattr(selection_module, "analyze_file", fake_analyze_file)
+
+    progress_calls: list[tuple[int, int, str]] = []
+    selection_module.analyze_request(
+        AnalysisRequest(
+            files=["first.spc", "second.spc", "third.spc"],
+            settings=AnalysisSettings(output_formats=[]),
+        ),
+        progress_callback=lambda done, total, path: progress_calls.append((done, total, path)),
+    )
+
+    assert progress_calls == [
+        (1, 3, "first.spc"),
+        (2, 3, "second.spc"),
+        (3, 3, "third.spc"),
+    ]
+
+
+def test_analyze_request_with_no_progress_callback_is_unchanged(monkeypatch) -> None:
+    """The default (no callback) must behave exactly as before."""
+
+    def fake_analyze_file(path: str, **kwargs: object):
+        return selection_module.AnalysisResult(
+            files=[path], dataframes={path: []}, metadata={},
+        )
+
+    monkeypatch.setattr(selection_module, "analyze_file", fake_analyze_file)
+
+    result = selection_module.analyze_request(
+        AnalysisRequest(files=["only.spc"], settings=AnalysisSettings(output_formats=[]))
+    )
+
+    assert result.files == ["only.spc"]
+
+
 def test_analyze_file_duration_uses_macro_time_resolution_override() -> None:
     """Output burst durations should use the supplied macro-time resolution."""
     settings = real_data_settings()

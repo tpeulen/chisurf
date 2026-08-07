@@ -109,6 +109,7 @@ def analyze_files_handler(
     mmfdb: dict[str, Any] | None = None,
     mmfdb_db: "MMFDBClientBase | None" = None,
     mmfdb_session: "SessionContext | None" = None,
+    progress_callback: "Callable[[int, int, str], None] | None" = None,
 ) -> dict[str, Any]:
     """Run Burst Selection analysis over TTTR files.
 
@@ -136,6 +137,10 @@ def analyze_files_handler(
         Additional legacy Info metadata.
     mmfdb : dict, optional
         MMFDB archival context.
+    progress_callback : callable, optional
+        Called as ``progress_callback(done, total, path)`` after each file --
+        an in-process-only convenience (see :func:`..api.selection.analyze_request`),
+        never part of the JSON-RPC parameter contract.
 
     Returns
     -------
@@ -159,7 +164,11 @@ def analyze_files_handler(
                 "mmfdb": mmfdb or {},
             }
         )
-        result = analyze_request(request)
+        result = (
+            analyze_request(request, progress_callback=progress_callback)
+            if progress_callback is not None
+            else analyze_request(request)
+        )
         if request.mmfdb.enabled:
             registration = BurstMMFDBPipeline(
                 db=mmfdb_db,

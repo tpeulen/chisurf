@@ -1,3 +1,59 @@
+## Burst Selection's progress bar cannot advance within a single large file
+
+**2026-08-07.** `analyze_request` (`chisurf/plugins/burst/burst_selection/api/selection.py`)
+now reports progress **per file** to the GUI's `TaskHandle` (one file
+finishing is the chunk it can report on), which fixed the busy-spinner feel
+of a multi-file batch. It does **not** help a single very large file — a
+merged multi-measurement `.pto` (easy to produce since the `tttr_to_pto`
+drop guard landed the same day, see [PRD-85](/prds/prd-85.md)) or simply a
+long acquisition still reports only once, at completion, because
+`apply_photon_filters`/`find_bursts` inside `analyze_file` are each one
+vectorized call over the whole photon stream with no internal chunking.
+
+Not fixed here because it is a correctness risk, not a wiring gap: splitting
+a burst search into windows requires carrying detector/burst-in-progress
+state across window boundaries correctly, or a burst near a window edge
+either gets cut in two or double-counted. `tttrlib`'s burst-search
+implementations (`chisurf/core/fluorescence/burst/tttrlib_search.py`,
+registry-driven) are compiled and offer no progress callback to hook into
+either. Whoever picks this up should first check whether a newer `tttrlib`
+exposes incremental/streaming burst search before attempting to chunk the
+input in Python.
+
+Separately, the fix deliberately did **not** thread
+`TaskHandle.progress_window()`'s cancellation-aware `set_value` through this
+path (only report-only `progress_callback`): `chisurf/server/dispatcher.py`'s
+`ServiceDispatcher.dispatch` catches `except Exception` broadly and converts
+*any* exception — including the `concurrent.futures.CancelledError` a
+cancelled `progress_window.set_value()` raises — into an ordinary
+`{"ok": False, "error_code": "INTERNAL_ERROR"}` result. `BurstSelectionClient.analyze_files`
+then raises a plain `RuntimeError` from that, so cancelling a burst search
+would show as a scary error message instead of the silent stop the rest of
+the app gives you via `run_in_background`'s `CancelledError` handling. Giving
+burst_selection real mid-search cancellation needs the dispatcher to let
+`CancelledError` (or some other user-cancel signal) propagate instead of
+being folded into a generic error — a dispatcher-level change, not a
+burst_selection one, and worth checking whether any other RPC service
+already depends on the current blanket-catch behaviour before changing it.
+
+## Two `ParameterGroupTable*` GUI tests fail headless, unrelated to anything they test
+
+**2026-08-07.** `test/gui/test_paired_table_layout.py::test_the_list_style_stacks_a_wide_component`
+and `test/gui/test_parameter_table_wheel.py::test_a_long_table_can_still_be_scrolled`
+fail deterministically under `QT_QPA_PLATFORM=offscreen`, both against a
+`QtWarningMsg: This plugin does not support propagateSizeHints()` warning —
+the first as a row-count mismatch after a delete (`4` instead of `2`), the
+second as a scrollbar that never gains a range (`0 > 0`). Both look like the
+offscreen platform plugin not computing real widget/viewport geometry, not a
+behavioural regression: `chisurf/gui/autoform/sections/parameter_table.py`
+(the module both tests exercise) imports only
+`chisurf.gui.widgets.chitable.delegates`, which has no import of
+`chitable.source` or `chitable.filters` at all — verified by grep, not by
+reverting anything, since the working tree is shared with other sessions.
+Found incidentally while checking chitable's own test suite for regressions
+after removing chitable's module-level pandas import; not investigated
+further because neither file was touched.
+
 ## img_flow: the demo PTU is one frame short of what it simulates
 
 `test_the_demo_is_a_readable_ptu_whose_flow_comes_back` asks `create_demo` for
@@ -22,39 +78,47 @@ marker. If it does, the simulator is wrong; if it does not, the reader is, and
 every measured file has been one frame short all along — which would be the
 more interesting answer.
 
-## burst FCS: the `td4` companion is written on the bursts that produced a result, not on the bursts
+## RESOLVED — burst FCS: the `td4` companion was written on the bursts that produced a result, not on the bursts
 
-`_save_td4_results` in `chisurf/plugins/burst/burst_fcs_correlator/wizard.py`
-builds its row grid from the correlations it computed, then zero-interleaves
-that. The [burst-companion contract](../subsystems/burst-companions.md) requires
-**one row per burst of the measurement, including the ones the analysis
-skipped** — because the file is merged onto the burst table *by position*.
+**Discovered 2026-08-07, fixed the same day.** `_save_td4_results` in
+`chisurf/plugins/burst/burst_fcs_correlator/wizard.py` built its row grid from
+the correlations it computed, then zero-interleaved that. The
+[burst-companion contract](../subsystems/burst-companions.md) requires **one
+row per burst of the measurement, including the ones the analysis skipped** —
+because the file is merged onto the burst table *by position*.
 
-The function's own docstring already states the consequence, which is why this
-is recorded rather than discovered: "a burst the correlator skipped is a missing
-row there rather than a blank one, so every burst after it is merged against the
-wrong burst's diffusion time — silently, because the shape and the column names
-stay right and only the attribution is wrong."
+The function's own docstring already stated the consequence, which is why this
+was recorded rather than merely discovered: "a burst the correlator skipped is
+a missing row there rather than a blank one, so every burst after it is merged
+against the wrong burst's diffusion time — silently, because the shape and the
+column names stay right and only the attribution is wrong."
 
 Two further deviations in the same function:
 
-* it writes the layout **by hand** (`out[1::2]`, `'\t'.join(cols) + '\t\n'`,
-  `%.6f`) rather than through `burst_companion.write_companion`. That is the
-  same divergence the `.bv4` writer had until 2026-08-07, and it is what lets a
-  companion drift from the contract that merges it;
-* the container written beside it (`_write_container`) is **correct** — it
-  carries `Burst Index` as a declared key — so the two artefacts of the same run
-  disagree, and only the keyed one can be trusted.
+* it wrote the layout **by hand** (`out[1::2]`, `'\t'.join(cols) + '\t\n'`,
+  `%.6f`) rather than through `burst_companion.write_companion`. That was the
+  same divergence the `.bv4` writer had until 2026-08-07;
+* the container written beside it (`_write_container`) was already **correct**
+  — it carries `Burst Index` as a declared key, and is unaffected by this fix.
 
-**Fixing it needs the burst count**, which the correlator does not currently
-hold: emitting one row per burst means reading the `.bur` table for the grid.
-That is why this was not fixed alongside the `.bv4` convergence — it is a
-behaviour change with no test coverage on the writer at all
-(`_save_td4_results` is untested), not a mechanical port. Write the layout test
-first.
+**The fix needed the burst count**, which the correlator did not hold at the
+point the row grid was built. It turned out to already be available higher up:
+`local_idx` (the row's `Burst Index`) comes from `enumerate(ranges)` where
+`ranges` is the *full* per-measurement burst list `parse_bur_file`/
+`parse_bst_file` returns — so `len(ranges)` is exactly the true grid size, no
+second `.bur` read needed. `_run_burstwise_fcs` now threads that through as
+`burst_counts: {(Burst Folder, First Stem): n_bursts}`, and
+`_save_td4_results` allocates a full `(n_bursts, n_cols)` grid, fills in the
+computed rows at their true `Burst Index` position, and writes it through
+`burst_companion.write_companion` (which also fixed the by-hand layout). The
+sparse, results-only table still goes to `_write_container` unchanged, since
+its declared-key join was already correct.
 
-Discovered 2026-08-07 while porting the last pandas importers; the file is one
-of the three remaining real ports in [PRD-82](../prds/prd-82.md).
+Pinned by `chisurf/plugins/burst/burst_fcs_correlator/test/test_td4_writer.py`
+(the layout test the original note asked for): a skipped burst reads back as a
+sentinel row, not a missing one, and a computed burst keeps its true row
+position rather than being compacted upward. Landed alongside the last three
+[PRD-82](../prds/prd-82.md) pandas ports.
 
 ## acquisition: the SPC-130 record decoder exists twice, because the library exposes its own only behind a file reader
 

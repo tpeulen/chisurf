@@ -2,6 +2,43 @@
 
 ## 2026-08-07
 
+* **Burst Selection's batch progress bar advances per file instead of a
+  single busy spinner.** The GUI-thread freeze this used to cause was
+  already fixed (the batch runs off the GUI thread via
+  `chisurf.gui.task.run_in_background`); what was left was `analyze_files`
+  passing `maximum=0` and making one opaque backend call, so a multi-file
+  run showed an indeterminate spinner for its whole duration regardless —
+  read as "somehow blocked" even though the app was live.
+  `analyze_request` (`api/selection.py`) gained an optional
+  `progress_callback(done, total, path)`, called after each file — one file
+  is the natural chunk on this path, mirroring the `progress_window`
+  convention `burst_bva/core/computation.py` already uses. Threaded through
+  `analyze_files_handler` and `BurstSelectionClient.analyze_files` as an
+  **in-process-only** convenience (a live Python object riding along in
+  `params`, never serialized — `InProcessClient` has no wire boundary to
+  cross; a real `ZmqClient` silently gets none, the same as before). The
+  GUI's `_analysis_worker` now sets `maximum=len(self._file_paths)` and
+  reports `task.set_progress(done, "<file> (done/total)")` per file.
+  **What this does not fix**: a single very large file (a merged multi-file
+  `.pto`, exactly what `tttr_to_pto` just made easy to produce) still
+  reports only once, at completion — the burst search itself
+  (`apply_photon_filters`/`find_bursts` in `api/selection.py`) has no
+  internal chunking to report through, and windowing it would risk burst
+  boundaries at chunk edges, which was judged too risky to attempt in this
+  pass. Left as a known gap, not silently — see the fix's OKF resume note.
+  Deliberately did **not** thread `TaskHandle.progress_window()`'s
+  cancellation-checking `set_value` through this path: the RPC dispatcher's
+  blanket `except Exception` (`chisurf/server/dispatcher.py`) turns a
+  `CancelledError` into an ordinary `{"ok": False, ...}` error result, which
+  would have surfaced cancelling a search as a scary error message instead
+  of the silent stop the rest of the app gives you — report-only progress
+  sidesteps that gap rather than papering over it.
+  Tests: `chisurf/plugins/burst/burst_selection/tests/test_api.py` (+2:
+  per-file callback order, no-callback path unchanged) and `test_new_gui.py`
+  (+1: `_analysis_worker` reports through to a fake `TaskHandle`) — 203
+  passed together with the rest of the burst_selection/burst_analysis
+  suites.
+
 * **[PRD-85](prds/prd-85.md) Part B started: `thin_for_plot`, wired into
   Burst Selection's raw per-photon plots.** Cause and effect, same session:
   Part A's `tttr_to_pto` guard made merging several `.spc` files into one
