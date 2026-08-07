@@ -137,10 +137,20 @@ def compute_representation(
         out = pathlib.Path(output_path)
         if out.suffix == ".npy":
             np.save(out, image)
-        else:
-            import skimage as ski
+        elif out.suffix.lower() in (".tif", ".tiff"):
+            from chisurf.core.fio import image as fio_image
 
-            ski.io.imsave(str(out), current)
+            fio_image.imwrite(out, current)
+        else:
+            # A preview picture, not a measurement -- Pillow, not the TIFF-only
+            # science seam. skimage.io would have routed through the retired
+            # imageio dependency (test_no_module_imports_skimage_io).
+            from PIL import Image
+
+            data = np.asarray(current, dtype=float)
+            data_range = data.max() - data.min()
+            scaled = (data - data.min()) / data_range if data_range > 0 else np.zeros_like(data)
+            Image.fromarray((scaled * 255).astype(np.uint8)).save(out)
         saved = str(out)
 
     result = RepresentationResult(
