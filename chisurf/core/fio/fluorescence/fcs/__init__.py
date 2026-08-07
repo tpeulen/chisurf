@@ -277,11 +277,15 @@ def read_fcs(
                 except Exception:
                     pass
     for r in ds:
-        data_sets.append(
-            chisurf.core.data.DataCurve(
-                **make_curve_kwargs(r)
-            )
-        )
+        curve = chisurf.core.data.DataCurve(**make_curve_kwargs(r))
+        # An FCS lag axis is milliseconds and G is dimensionless. Nothing about
+        # the numbers says so, and a curve saved without it is a curve whose
+        # axis has to be guessed from the reader that happened to produce it.
+        curve.X_UNITS = "milliseconds"
+        curve.Y_UNITS = "dimensionless"
+        curve.ARTIFACT_KIND = "fcs_correlation"
+        curve.OPERATION_TYPE = "fcs_correlation"
+        data_sets.append(curve)
 
     # Log summary of this FCS import, including effective noise model.
     try:

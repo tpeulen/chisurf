@@ -31,6 +31,27 @@ timestamp: '2026-08-06T00:00:00Z'
    names a vendor photon format without the container. The guard was worth
    writing: it found **eight** more dialogs after the ones found by hand.
 
+0b. **Formats are consolidated by *direction*, and that is the rule to keep.**
+   Readers are free — an instrument writes one format and a collaborator's
+   software another, and ChiSurf reads about a dozen curve formats, six of which
+   cannot write at all. Writers are **one per kind of thing**: a measurement is
+   a `.pto`, a curve is a `curve_point` artifact, a table is an artifact at its
+   grain, a raster is a TIFF carried inside, a project is a `.csp`, deposition
+   metadata is mmCIF. Everything else is an import source or an export the user
+   asks for by name.
+
+   `Measurement.put_curve`/`get_curve` is the curve seam, and `DataCurve.save`/
+   `load` route through it. `test/test_formats_are_consolidated.py` holds a
+   **shrinking** allow-list of modules still permitted to write a curve their
+   own way — and pins that the *reader* count must not shrink, so the guard can
+   never be satisfied by deleting import paths.
+
+   **What is left here:** `save_xy`, `write_vv_vh` and the three FCS writers are
+   still on that allow-list. They are exports rather than defaults now, and each
+   can come off once its callers ask for the export explicitly. Check the
+   callers before removing one: `write_vv_vh` in particular is read by tools
+   outside ChiSurf.
+
 1. **Stages 3 and 4 are done; three writers are left, and they are the odd
    ones.** Every burst analysis and every imaging tool writes into the
    measurement's container. What remains is

@@ -48,6 +48,40 @@ PTO, it never contradicts it.
 - **Drift is detectable.** A file records the dictionary revision its terms came
   from, so a later reader can tell a renamed term from a typo.
 
+# What ChiSurf writes, and what it only reads
+
+The problem this profile closes is not that ChiSurf reads many formats — it must,
+because instruments and other programs write many, and a reader is an import
+path that costs nothing. It is that ChiSurf **wrote** many, for things that are
+one thing.
+
+The split is by direction, not by count:
+
+| what | ChiSurf writes | why not a file of its own |
+|---|---|---|
+| a measurement — photons and everything derived from them | `.pto` | the pieces are related, and a filename convention cannot say so |
+| a curve — decay, correlation, anisotropy, IRF, model, residual | a `curve_point` artifact | five arrays and two units; the differences between curve types are what the *units* and the *kind* say |
+| a table — bursts, dwells, pixels, molecules, tracks, states | an artifact at its grain | the grain is the difference; the storage is not |
+| a raster | TIFF, carried inside the container | a scientific raster stays readable by every other tool |
+| a project — datasets, fits, a session | `.csp` | a different scope: many measurements |
+| metadata for deposition | mmCIF | an export, in the vocabulary this profile already uses |
+
+Everything else — the `…4` companion family, `<source>.imaging.h5`, `kristine`,
+`pycorrfit`, Photon-HDF5, CSV, the vv/vh stack — is an **import source** or an
+**export the user asks for by name**. Both are fine and both stay. What is not
+fine is a *new* way for ChiSurf to write something that already has a home.
+
+Before this, a curve could be saved as CSV, as YAML, through `save_xy`, through
+the vv/vh stack, or through one of the FCS writers: five ChiSurf-authored ways
+to write the same five arrays, **none of which could say what the x axis was
+in**. An FCS lag axis is milliseconds and a TCSPC axis is nanoseconds; nothing
+about the numbers says which, and reading one for the other is a mistake that
+surfaces as a diffusion time wrong by a factor of a million rather than as an
+error.
+
+`test/test_formats_are_consolidated.py` holds a **shrinking** allow-list of the
+modules still permitted to write a curve in a format of their own.
+
 # Target architecture
 
 ## Layering

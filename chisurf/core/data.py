@@ -10,6 +10,14 @@ import chisurf.core.base
 import chisurf.core.curve
 import chisurf.core.fio
 import chisurf.core.fio.ascii
+from chisurf.core.fio.pto import SUFFIX, is_measurement as _is_measurement
+from chisurf.core.fio.staging import CONTAINER_SELECTOR
+
+
+def _is_container(filename) -> bool:
+    """Whether *filename* names a photon container, member selector and all."""
+    path, _, _ = str(filename).partition(CONTAINER_SELECTOR)
+    return _is_measurement(path)
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -402,6 +410,9 @@ class DataCurve(chisurf.core.curve.Curve, ExperimentalData):
         **kwargs
             Additional arguments passed to the file reader.
         """
+        if _is_container(filename):
+            self._load_container(filename)
+            return
         if file_type == 'csv':
             csv = chisurf.core.fio.ascii.Csv()
             csv.load(
@@ -474,7 +485,9 @@ class DataCurve(chisurf.core.curve.Curve, ExperimentalData):
             End index for a slice of the data to save.
         """
         self.filename = filename
-        if file_type == "csv":
+        if file_type in ("pto", "container") or str(filename).endswith(SUFFIX):
+            self._save_container(filename, xmin=xmin, xmax=xmax)
+        elif file_type == "csv":
             csv = chisurf.core.fio.ascii.Csv()
             # self[xmin:xmax] now returns (x, y, ex, ey, mask)
             x, y, ex, ey, mask = self[xmin:xmax]
@@ -488,6 +501,79 @@ class DataCurve(chisurf.core.curve.Curve, ExperimentalData):
                 file_type=file_type,
                 verbose=verbose
             )
+
+    #: What this curve *is*, as an ``_mmfdb_artifact.artifact_kind`` term, and
+    #: what produced it, as an ``_mmfdb_operation.operation_type`` term.
+    #:
+    #: The honest general pair. A subclass that knows better — a decay, a
+    #: correlation, an anisotropy — should say so, because that is the field a
+    #: reader consults to know what it is looking at.
+    ARTIFACT_KIND = "model_curve"
+    OPERATION_TYPE = "analysis"
+
+    #: Units of the two axes, as ``_mmfdb_column.units`` terms.
+    #:
+    #: Empty means *unknown*, which is the truthful default: an FCS lag axis is
+    #: milliseconds and a TCSPC axis is nanoseconds, nothing about the numbers
+    #: says which, and guessing is a mistake that never shows up as an error.
+    X_UNITS = ""
+    Y_UNITS = ""
+
+    def _save_container(self, filename, *, xmin=None, xmax=None) -> None:
+        """Write this curve into a container as a ``curve_point`` artifact.
+
+        One shape for every curve ChiSurf writes, in the same file as the
+        measurement it came from. What this replaces is five ChiSurf-authored
+        ways to write the same five arrays — CSV, YAML, ``save_xy``, the vv/vh
+        stack and the FCS writers — none of which could say what the x axis was
+        in, and only one of which kept the mask.
+        """
+        from chisurf.core.fio.pto import Measurement, is_measurement
+
+        x, y, ex, ey, mask = self[xmin:xmax]
+        path = pathlib.Path(filename)
+        opener = (
+            Measurement.open(path, writable=True) if is_measurement(path)
+            else Measurement.create_empty(path)
+        )
+        with opener as m:
+            m.put_curve(
+                self.name or path.stem,
+                x, y,
+                artifact_kind=self.ARTIFACT_KIND,
+                operation_type=self.OPERATION_TYPE,
+                # Written only when they carry information. A curve whose ex is
+                # all zeros is saying "no x uncertainty", and a curve that never
+                # had one should not say that.
+                ex=ex if np.any(ex) else None,
+                ey=ey if np.any(ey) else None,
+                mask=mask if not np.all(mask) else None,
+                x_units=self.X_UNITS,
+                y_units=self.Y_UNITS,
+            )
+
+    def _load_container(self, filename) -> None:
+        """Read this curve back out of a container."""
+        from chisurf.core.fio.pto import Measurement
+
+        path, _, member = str(filename).partition(CONTAINER_SELECTOR)
+        with Measurement.open(path) as m:
+            names = [o.name for o in m.artifacts()
+                     if m.tag(o.uid, "_mmfdb_artifact.row_grain") == "curve_point"]
+            if not names:
+                raise ValueError(f"{path} holds no curve")
+            if member and member not in names:
+                raise ValueError(
+                    f"{path} has no curve {member!r}; it holds {', '.join(names)}"
+                )
+            curve = m.get_curve(member or names[0])
+        self.set_data(
+            x=curve["x"],
+            y=curve["y"],
+            ex=curve.get("ex"),
+            ey=curve.get("ey"),
+            mask=curve.get("mask"),
+        )
 
     def set_data(
             self,

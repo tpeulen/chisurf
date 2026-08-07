@@ -366,6 +366,25 @@ def is_measurement(path: str | Path) -> bool:
         return False
 
 
+def _payload_bytes(store: Any) -> int:
+    """Approximate serialised size of a store, for sizing the reserve.
+
+    Approximate on purpose: the exact size is only known after writing, and the
+    reserve is a heuristic. Counts each column's buffer; a dictionary-encoded
+    text column is counted by its codes, which is what dominates.
+    """
+    import numpy as np
+
+    total = 0
+    for i in range(store.n_columns()):
+        column = store[i]
+        try:
+            total += int(np.asarray(column.numpy()).nbytes)
+        except Exception:
+            total += int(store.n_rows()) * 8
+    return total
+
+
 class Measurement:
     """One measurement: the instrument data, and everything computed from it.
 
@@ -455,6 +474,44 @@ class Measurement:
         self._stamp_versions()
         self._add_readme()
         self._instrument_uid = self._add_instrument(raw, artifact_kind)
+        return self
+
+    @classmethod
+    def create_empty(cls, path: str | Path, *, title: str = "") -> "Measurement":
+        """Start a container with no instrument file in it.
+
+        For the results that genuinely have no measurement behind them: a curve
+        typed in or computed from a model, a simulated decay, a fit exported on
+        its own. Everything else should go through :meth:`create`, so the
+        photons the results came from are in the same file as the results.
+
+        Parameters
+        ----------
+        path : str or Path
+            The container to create.
+        title : str, optional
+            Human title. Defaults to the file's stem.
+
+        Returns
+        -------
+        Measurement
+
+        Raises
+        ------
+        PtoMfdbError
+            If the container cannot be created.
+        """
+        target = Path(path)
+        target.parent.mkdir(parents=True, exist_ok=True)
+
+        handle = _tttrlib().PtoFile()
+        if not handle.create(str(target), title or target.stem):
+            raise PtoMfdbError(f"could not create {target}: {handle.error()}")
+        handle.set_writing_app(_writing_app())
+
+        self = cls(handle, target)
+        self._stamp_versions()
+        self._add_readme()
         return self
 
     @classmethod
@@ -601,8 +658,17 @@ class Measurement:
                 raise PtoMfdbError(f"could not update {name}: {self._f.error()}")
             uid = existing
         else:
-            rows = int(store.n_rows())
-            slack = reserve if reserve is not None else max(8192, rows * 64)
+            # A quarter of the payload, which is what the docstring has always
+            # said. The code said `rows * 64` -- 64 bytes of slack per row, on
+            # the assumption that a row is about that wide. A burst row is; a
+            # curve row is four float64, so a 4096-point decay got 256 KiB of
+            # slack around a 128 KiB payload and the container came out three
+            # times the size of the numbers in it.
+            #
+            # A fraction of the payload is the honest rule: slack exists so a
+            # slightly larger *re-run* fits where the old one was, and "slightly
+            # larger" is proportional to the result, not to its row count.
+            slack = reserve if reserve is not None else max(8192, _payload_bytes(store) // 4)
             uid = tttrlib.pto_add_store(self._f, artifact_kind, name, store, slack)
             if not uid:
                 raise PtoMfdbError(f"could not write {name}: {self._f.error()}")
@@ -619,6 +685,142 @@ class Measurement:
             target_row_column=target_row_column,
         )
         return uid
+
+    #: The columns a curve is stored as, in order.
+    #:
+    #: One shape for every curve ChiSurf handles — a TCSPC decay, an FCS
+    #: correlation, an anisotropy, an IRF, a residual, a model. They differ in
+    #: what the axes *mean*, which is what the units and the artifact kind say;
+    #: they do not differ in being a curve, and giving each its own file format
+    #: is what produced five ChiSurf-authored ways to write the same five
+    #: arrays.
+    CURVE_COLUMNS = ("x", "y", "ex", "ey", "mask")
+
+    def put_curve(
+        self,
+        name: str,
+        x: Any,
+        y: Any,
+        *,
+        artifact_kind: str,
+        operation_type: str,
+        ex: Any = None,
+        ey: Any = None,
+        mask: Any = None,
+        x_units: str = "",
+        y_units: str = "",
+        parameters: Mapping[str, Any] | None = None,
+        derived_from: int | Sequence[int] | None = None,
+        reserve: int | None = None,
+    ) -> int:
+        """Write a curve — a decay, a correlation, an anisotropy, an IRF.
+
+        A curve is a table at ``curve_point`` grain, so it needs no machinery of
+        its own: it is stored, replaced, described and read back exactly like
+        every other result, and the axes carry their units the same way every
+        other column does.
+
+        That is the point of putting it here. A curve is the second most common
+        thing ChiSurf handles after photons, and it had **no canonical form** —
+        `DataCurve.save` chose between CSV and YAML, `save_xy` wrote a third
+        shape, `write_vv_vh` a fourth, and the FCS writers a fifth. Five ways to
+        write the same five arrays, none of which could say what the x axis was
+        in.
+
+        Parameters
+        ----------
+        name : str
+            Label for the object. Must be distinct from the other objects this
+            run writes.
+        x, y : array_like
+            The curve.
+        artifact_kind : str
+            An ``_mmfdb_artifact.artifact_kind`` term — ``tcspc_decay``,
+            ``fcs_correlation``, ``anisotropy_curve``, ``irf_curve``,
+            ``model_curve``, ``residual``…
+        operation_type : str
+            An ``_mmfdb_operation.operation_type`` term.
+        ex, ey : array_like, optional
+            Uncertainties. Omitted rather than written as zeros: a zero
+            uncertainty is a claim, and "not measured" is a different one.
+        mask : array_like, optional
+            Which points are used. Written when given, because *which points a
+            fit ignored* is part of the result and is exactly what a bare
+            two-column export loses.
+        x_units, y_units : str, optional
+            ``_mmfdb_column.units`` terms. An FCS lag axis is milliseconds and a
+            TCSPC axis is nanoseconds; nothing about the numbers says which, and
+            reading the wrong one is not an error that shows up as an error.
+        parameters : mapping, optional
+            Settings. Their hash is the identity of the run.
+        derived_from : int or sequence of int, optional
+        reserve : int, optional
+
+        Returns
+        -------
+        int
+            The object UID.
+        """
+        import numpy as np
+
+        from chisurf.core.datastore import store_from_arrays
+
+        columns: dict[str, Any] = {
+            "x": np.asarray(x, dtype=float).ravel(),
+            "y": np.asarray(y, dtype=float).ravel(),
+        }
+        for key, values in (("ex", ex), ("ey", ey), ("mask", mask)):
+            if values is None:
+                continue
+            columns[key] = np.asarray(values, dtype=float).ravel()
+
+        lengths = {len(v) for v in columns.values()}
+        if len(lengths) > 1:
+            raise PtoMfdbError(
+                f"the curve's columns have different lengths ({sorted(lengths)}); "
+                "a curve is one table, not several arrays that happen to be "
+                "written together"
+            )
+
+        return self.put_table(
+            name,
+            store_from_arrays(columns),
+            artifact_kind=artifact_kind,
+            operation_type=operation_type,
+            row_grain="curve_point",
+            parameters=parameters,
+            derived_from=derived_from,
+            units={k: v for k, v in (("x", x_units), ("y", y_units)) if v},
+            reserve=reserve,
+        )
+
+    def get_curve(self, ref: int | str) -> dict:
+        """Read a curve back, with its axes' units.
+
+        Parameters
+        ----------
+        ref : int or str
+            Object UID, or a name to look up.
+
+        Returns
+        -------
+        dict
+            ``{"x", "y"}`` always; ``"ex"``, ``"ey"``, ``"mask"`` when they were
+            written; and ``"x_units"``, ``"y_units"`` — empty when the unit is
+            *unknown*, which is not the same as dimensionless.
+        """
+        from chisurf.core.datastore import column_names, numeric_column
+
+        store = self.get_store(ref)
+        present = set(column_names(store))
+        out: dict = {
+            key: numeric_column(store, key)
+            for key in self.CURVE_COLUMNS
+            if key in present
+        }
+        out["x_units"] = self.column_units(store, "x")
+        out["y_units"] = self.column_units(store, "y")
+        return out
 
     def put_metadata(
         self,

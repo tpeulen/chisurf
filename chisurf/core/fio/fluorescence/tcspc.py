@@ -75,6 +75,19 @@ def _annotate_anisotropy_meta(data_group, g_factor, l1, l2, source: str):
         pass
 
 
+def _describe(curve) -> None:
+    """Say what a decay is and what its axes are in.
+
+    ``x`` is ``arange(n) * dt`` and ``dt`` is nanoseconds, so the axis is
+    nanoseconds — a fact the numbers do not carry and that a reader would
+    otherwise have to infer from which function produced the curve.
+    """
+    curve.X_UNITS = "nanoseconds"
+    curve.Y_UNITS = "counts"
+    curve.ARTIFACT_KIND = "tcspc_decay"
+    curve.OPERATION_TYPE = "tcspc_curve_load"
+
+
 def read_tcspc_csv(
         filename: str = None,
         skiprows: int = None,
@@ -363,6 +376,7 @@ def read_tcspc_csv(
                     **kwargs
                 )
                 data.filename = filename
+                _describe(data)
                 data_curves.append(data)
         else:
             # Fallback for single dataset
@@ -377,6 +391,7 @@ def read_tcspc_csv(
                 **kwargs
             )
             data.filename = filename
+            _describe(data)
             data_curves.append(data)
     elif is_vv_vh and polarization in ['vv', 'vh', 'vm']:
         # For single polarization data
@@ -395,6 +410,7 @@ def read_tcspc_csv(
                     **kwargs
                 )
                 data.filename = filename
+                _describe(data)
                 data_curves.append(data)
         else:
             name = f'{fn} {pol_name}'
@@ -408,6 +424,7 @@ def read_tcspc_csv(
                 **kwargs
             )
             data.filename = filename
+            _describe(data)
             data_curves.append(data)
     else:
         # Original naming logic for non-vv_vh or other cases
@@ -427,6 +444,7 @@ def read_tcspc_csv(
                 **kwargs
             )
             data.filename = filename
+            _describe(data)
             data_curves.append(data)
     data_group = chisurf.core.data.DataCurveGroup(data_curves, filename)
     _annotate_anisotropy_meta(

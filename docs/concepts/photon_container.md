@@ -84,6 +84,45 @@ matter by number, and how to recover the instrument file. Find it with
 version to be intelligible is a file with an expiry date; this one can be taken
 apart by hand.
 
+## What ChiSurf writes, and what it only reads
+
+ChiSurf reads a lot of formats, and should: your instrument writes one, your
+collaborator's software writes another, and a reader costs nothing. What it
+*writes* is short:
+
+| what | where it goes |
+|---|---|
+| a measurement — photons and everything derived | `.pto` |
+| a curve — decay, correlation, anisotropy, IRF | inside the `.pto`, as a curve |
+| a table — bursts, pixels, molecules, tracks | inside the `.pto`, at its own grain |
+| a raster | a TIFF, carried inside the `.pto` |
+| a project — datasets, fits, a session | `.csp` |
+| metadata for deposition | mmCIF |
+
+Everything else — the `…4` folders, `.imaging.h5`, kristine, PyCorrFit,
+Photon-HDF5, CSV — is either something ChiSurf **imports** or something you
+**export on purpose**. Both still work.
+
+The case worth explaining is the curve, because it looks like it should be a
+file. A decay, a correlation and an anisotropy are all five arrays — x, y, and
+optionally the two uncertainties and the mask — and what actually differs
+between them is what the axes *mean*. Giving each its own file format produced
+five ways to write the same five arrays, none of which recorded the units, and
+only one of which kept the mask.
+
+The mask matters more than it looks: **which points a fit ignored is part of the
+result**, and a two-column export silently discards it. So does the unit. An FCS
+lag axis is milliseconds and a TCSPC axis is nanoseconds; nothing about the
+numbers says which, and reading one for the other gives a diffusion time wrong
+by a factor of a million — with no error anywhere.
+
+```python
+from chisurf.core.data import DataCurve
+
+curve.save("measurement.pto")     # into the measurement it came from
+curve.load("measurement.pto")     # or "measurement.pto|decay" to name one
+```
+
 ## Re-running
 
 The identity of a result is the hash of the settings that produced it. Run the
