@@ -36,19 +36,29 @@ def test_gui_tool_is_a_dock_tool(qapp):
 
 
 def test_gui_dropped_tttr_file_is_loaded(qapp, tmp_path):
-    """A dropped photon-stream file takes the toolbar action's load path."""
+    """A dropped photon-stream file takes the toolbar action's load path.
+
+    What gets loaded is what the drop *guard* returns, not what was dropped:
+    this drop zone opts into ``tttr_to_pto``, so a vendor file becomes the
+    measurement's container on the way in. An empty file cannot be converted,
+    so the guard leaves it alone and the two coincide here -- asserted against
+    the guard's answer rather than the dropped path, because pinning the
+    dropped path would make this test fail the moment the conversion works.
+    """
+    from chisurf.gui.widgets.dropguard import apply_drop_guards
     from chisurf.plugins.pch.gui.tool import PCHApp
 
     dropped = tmp_path / "run.ptu"
     dropped.write_bytes(b"")
+    expected = apply_drop_guards(None, [str(dropped)], ["tttr_to_pto"])
 
     widget = PCHApp()
     try:
         loaded: list[str] = []
         widget._client.load_tttr = lambda path: loaded.append(path) or {"n_photons": 7}
         widget.on_paths_dropped([dropped])
-        assert loaded == [str(dropped)]
-        assert widget._filename == str(dropped)
+        assert loaded == expected
+        assert widget._filename == expected[0]
         assert widget.action_compute.isEnabled()
         assert not widget.Information.unsupported_drop.is_shown
     finally:

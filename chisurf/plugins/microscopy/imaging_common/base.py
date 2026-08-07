@@ -503,6 +503,30 @@ class ImagingMapViewModel:
 
         return add_maps_to_hdf5(path, self._columns)
 
+    def artifact_name(self) -> str:
+        """Name this tool's table carries inside the container.
+
+        A label a reader sees, so it says what the result *is*. The fallback
+        used to be ``type(self).__name__``, which put ``IntensityViewModel`` --
+        a Python class name, and a GUI one at that -- into the measurement's
+        own file for every tool without a ``WINDOW_KIND``. Renaming the class
+        would then have renamed the artifact in every file written before it.
+
+        Returns
+        -------
+        str
+        """
+        if self.WINDOW_KIND:
+            return self.WINDOW_KIND
+        stem = type(self).__name__
+        for suffix in ("ViewModel", "Model", "Tool"):
+            if stem.endswith(suffix):
+                stem = stem[: -len(suffix)]
+        # ``ImgPixelIntensity`` -> ``img_pixel_intensity``: the naming every
+        # other artifact in the file uses.
+        out = "".join(f"_{c.lower()}" if c.isupper() else c for c in stem).lstrip("_")
+        return out or "pixel_map"
+
     def write_container(self) -> str:
         """Write this tool's per-pixel maps into the measurement's container.
 
@@ -533,7 +557,7 @@ class ImagingMapViewModel:
 
         return write_burst_artifact(
             self.filename, table,
-            name=self.WINDOW_KIND or type(self).__name__,
+            name=self.artifact_name(),
             artifact_kind="pixel_map",
             operation_type=self.OPERATION_TYPE,
             row_grain=self.ROW_GRAIN,

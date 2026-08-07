@@ -80,7 +80,7 @@ from .adapter import (
     proximity_ratio_from_frame,
 )
 from .client import BurstSelectionClient
-from chisurf.core.fio.staging import TTTR_FILE_FILTER
+from chisurf.core.fio.staging import TTTR_EXTENSIONS, TTTR_FILE_FILTER
 from .gmm_settings_dialog import DEFAULT_GMM_SETTINGS, GMMSettingsDialog
 
 # Curated common keys shown first; then all PDBx keys are appended.
@@ -254,7 +254,10 @@ class MetadataDialog(QtWidgets.QDialog):
 class BatchProcessingDialog(QtWidgets.QDialog):
     """Dialog for adding folders containing TTTR files."""
 
-    allowed_extensions = {".ht3", ".ptu", ".spc", ".hdf", ".h5"}
+    #: Straight from the reader's own list, so a folder of `.pto`
+    #: containers is not silently empty here while the file dialog beside
+    #: it offers `.pto` first.
+    allowed_extensions = set(TTTR_EXTENSIONS)
 
     def __init__(self, parent: BurstSelectionTool) -> None:
         """Initialize the batch folder dialog."""
@@ -1917,7 +1920,7 @@ class BurstSelectionTool(ChisurfDockTool):
                     sorted(
                         child.resolve()
                         for child in path.iterdir()
-                        if child.is_file() and child.suffix.lower() in {".spc", ".ht3", ".ptu", ".hdf", ".h5"}
+                        if child.is_file() and child.suffix.lower() in TTTR_EXTENSIONS
                     )
                 )
             else:

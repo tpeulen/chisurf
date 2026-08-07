@@ -33,8 +33,13 @@ def _load_tttr_handler(
     **kwargs: Any,
 ) -> dict[str, Any]:
     try:
-        import tttrlib
-        tttr = tttrlib.TTTR(filename)
+        # Through the staging seam, not tttrlib directly: this plugin's drop
+        # zone runs the `tttr_to_pto` guard, so what it is handed is usually a
+        # container -- and `open_tttr` is what resolves one to its stream, stages
+        # a slow source with progress, and applies the TAC-linearization LUTs.
+        from chisurf.core.fio.staging import open_tttr
+
+        tttr = open_tttr(filename)
         routing = sorted(set(int(c) for c in tttr.routing_channels))
         return {
             "ok": True,
@@ -62,8 +67,9 @@ def _compute_handler(
     **kwargs: Any,
 ) -> dict[str, Any]:
     try:
-        import tttrlib
-        tttr = tttrlib.TTTR(filename)
+        from chisurf.core.fio.staging import open_tttr
+
+        tttr = open_tttr(filename)
         channels = channels or [0, 2]
         mask = np.isin(tttr.routing_channels, channels)
         bin_t = bin_time_us * 1e-6

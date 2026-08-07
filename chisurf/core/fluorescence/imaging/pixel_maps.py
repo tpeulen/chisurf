@@ -146,7 +146,16 @@ _CLSM_MAX = 16
 
 
 def get_tttr(filename: str) -> Any:
-    """Return a cached ``tttrlib.TTTR`` for *filename* (loads once per session)."""
+    """Return a cached ``tttrlib.TTTR`` for *filename* (loads once per session).
+
+    Opened through :func:`chisurf.core.fio.staging.open_tttr`, not
+    ``tttrlib.TTTR`` directly. That function is where ChiSurf knows how to open
+    a photon file -- it stages a slow or networked source locally with progress,
+    resolves a container to the stream inside it, and applies the per-channel
+    TAC-linearization LUTs. Reaching past it meant every per-pixel lifetime and
+    phasor map was computed from *un-linearized* micro-times whenever the
+    measurement had a LUT: not a failure, just quietly the wrong number.
+    """
     key = str(filename)
     with _CACHE_LOCK:
         tttr = _TTTR_CACHE.get(key)
@@ -154,9 +163,9 @@ def get_tttr(filename: str) -> Any:
             _TTTR_CACHE.move_to_end(key)
             return tttr
     # Load outside the lock (slow) so a prefill load never blocks the UI thread.
-    import tttrlib
+    from chisurf.core.fio.staging import open_tttr
 
-    tttr = tttrlib.TTTR(key)
+    tttr = open_tttr(key)
     with _CACHE_LOCK:
         _TTTR_CACHE[key] = tttr
         while len(_TTTR_CACHE) > _TTTR_MAX:

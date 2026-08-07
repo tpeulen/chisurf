@@ -13,6 +13,7 @@ from qtpy import QtCore, QtGui, QtWidgets
 import chisurf
 from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.navigation import NavigationPanelTool
+from chisurf.core.fio.staging import TTTR_EXTENSIONS as _TTTR_EXTENSIONS
 from chisurf.gui.widgets.wizard.tttr_channeldefinition.setup_client import (
     DetectorSetupClient,
 )
@@ -51,7 +52,9 @@ class BurstWorkflowContext:
 class BurstDataSelectionWidget(QtWidgets.QWidget):
     """Workflow-local raw TTTR file/folder selector."""
 
-    TTTR_EXTENSIONS = {".spc", ".ht3", ".ptu", ".hdf", ".h5", ".hdf5", ".pt3", ".t3r"}
+    # The reader's list, not a copy of it that drifted: this one had every
+    # vendor format and not ChiSurf's own container.
+    TTTR_EXTENSIONS = set(_TTTR_EXTENSIONS)
 
     class _FileListModel:
         """Adapter the shared ``path_list`` widget binds to.
