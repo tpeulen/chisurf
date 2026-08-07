@@ -989,11 +989,6 @@ class Measurement:
     def get_store(self, ref: int | str) -> Any:
         """Read a table back as a store, with its column descriptions intact.
 
-        Prefer this to :meth:`get_table`. A column's unit and mmCIF item are
-        attributes *of the column*, and pandas has nowhere to put them — so a
-        frame is the one shape of this table that cannot say a duration is
-        milliseconds, which is the thing writing the units was for.
-
         A column's unit and mmCIF item are attributes *of the column*, which is
         exactly what makes a store the right shape here — a duration can say it
         is milliseconds.
@@ -1018,36 +1013,6 @@ class Measurement:
         store = new_store()
         _tttrlib().pto_read_store(self._f, uid, store)
         return store
-
-    def get_table(self, ref: int | str) -> Any:
-        """Read a table back as a :class:`pandas.DataFrame`.
-
-        The convenience shape, for callers that already speak pandas. It
-        **drops the column descriptions** — see :meth:`get_store`, which does
-        not.
-
-        Parameters
-        ----------
-        ref : int or str
-            An object UID, or a name to look up.
-
-        Returns
-        -------
-        pandas.DataFrame
-
-        Raises
-        ------
-        PtoMfdbError
-            If there is no such object.
-        """
-        import pandas as pd
-
-        from chisurf.core.datastore import column_names, numeric_column
-
-        store = self.get_store(ref)
-        return pd.DataFrame(
-            {name: numeric_column(store, name) for name in column_names(store)}
-        )
 
     def tag(self, uid: int, item: str, default: Any = "") -> Any:
         """Return one tag value from an object, by mmCIF item name.

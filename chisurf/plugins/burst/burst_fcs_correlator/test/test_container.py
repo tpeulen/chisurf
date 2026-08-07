@@ -56,7 +56,7 @@ def source(tmp_path: Path) -> Path:
 def test_a_skipped_burst_leaves_a_gap_and_not_a_shift(source: Path):
     written = write_fcs_container(source, _table(), parameters=SETTINGS)
     with Measurement.open(written) as m:
-        table = m.get_table("burst fcs")
+        table = m.get_store("burst fcs")
         assert list(numeric_column(table, "Burst Index")) == [0, 1, 3, 7]
         # The value still belongs to burst 7, not to the fourth row of a grid.
         index = list(numeric_column(table, "Burst Index")).index(7)
@@ -75,8 +75,8 @@ def test_a_diffusion_time_says_it_is_milliseconds(source: Path):
     """A pair name in the suffix is not a unit, so the label cannot carry one."""
     written = write_fcs_container(source, _table(), parameters=SETTINGS)
     with Measurement.open(written) as m:
-        # get_store, not get_table: a unit is an attribute of the column, and a
-        # frame has nowhere to keep one.
+        # A unit is an attribute of the column, so the table comes back as a
+        # store — a frame has nowhere to keep one.
         table = m.get_store("burst fcs")
         units = {
             name: m.column_units(table, name) for name in column_names(table)

@@ -20,6 +20,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from chisurf.core.datastore import row_count
+
 from chisurf.core.fio.pto import (
     PROFILE,
     PROFILE_VERSION,
@@ -209,7 +211,7 @@ def test_rerunning_with_the_same_settings_replaces_the_result(measurement: Path)
         assert m._f.n_objects() == before
 
     with Measurement.open(measurement) as m:
-        assert len(m.get_table("bursts")) == 41, "the replacement was not written"
+        assert row_count(m.get_store("bursts")) == 41, "the replacement was not written"
 
 
 def test_one_run_may_write_several_results_of_the_same_kind(measurement: Path):
@@ -238,7 +240,7 @@ def test_one_run_may_write_several_results_of_the_same_kind(measurement: Path):
 
     with Measurement.open(measurement) as m:
         for detector in ("green", "yellow", "red"):
-            assert len(m.get_table(f"mle {detector}")) == 7
+            assert row_count(m.get_store(f"mle {detector}")) == 7
 
 
 def test_replacing_a_result_leaves_the_container_readable(measurement: Path):
@@ -266,7 +268,7 @@ def test_replacing_a_result_leaves_the_container_readable(measurement: Path):
             derived_from=m.instrument_uid,
         )
     with Measurement.open(measurement) as m:
-        assert len(m.get_table("bursts")) == 20000
+        assert row_count(m.get_store("bursts")) == 20000
         assert m.verify() == []
 
 
@@ -324,9 +326,9 @@ def test_a_column_still_says_its_unit_when_it_is_read_back(measurement: Path):
     """A unit that can be written and not read is one only the writer believes.
 
     The unit is an attribute of the column, so it survives ``get_store`` and
-    not ``get_table`` — pandas has nowhere to keep it. That is worth pinning in
-    both directions, because the frame is the shape most callers reach for and
-    it is the one that silently drops the answer.
+    which is what makes a store the right shape for a table read out of a
+    container: a frame has nowhere to keep a per-column unit, and that is why
+    the seam hands back a store.
     """
     with Measurement.open(measurement, writable=True) as m:
         m.put_table(

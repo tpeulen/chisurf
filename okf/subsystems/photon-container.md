@@ -139,8 +139,9 @@ timestamp: '2026-08-06T00:00:00Z'
      a test passing.
 
    **Four read-side gaps closed, all one shape — a writer with no reader.**
-   `get_store` (a unit is an attribute of the *column*, so `get_table`'s frame
-   is the one shape of a table that cannot carry one), `column_units`,
+   `get_store` (a unit is an attribute of the *column*, and a frame has nowhere
+   to keep one — which is why `get_table` was retired with PRD-82 rather than
+   kept as a convenience), `column_units`,
    `column_item`, `get_blob`. **When adding a writer, add its reader in the same
    change** — this kept recurring because writing is where the design attention
    goes.

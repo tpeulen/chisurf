@@ -21,6 +21,7 @@ from chisurf.core.fio.fluorescence.burst_container import (
     write_burst_artifact,
     write_per_source,
 )
+from chisurf.core.datastore import column_names, numeric_column, row_count
 from chisurf.core.fio.pto import Measurement
 
 DATA = Path(__file__).resolve().parents[1] / "data"
@@ -86,7 +87,7 @@ def test_a_finer_grained_result_carries_its_key(measurement: Path):
     )
     with Measurement.open(container_for(measurement)) as m:
         uid = m._resolve("dwells")
-        assert len(m.get_table("dwells")) == 20
+        assert row_count(m.get_store("dwells")) == 20
         assert m.tag(uid, "_mmfdb_artifact.row_grain") == "dwell"
         assert m.tag(uid, "_mmfdb_edge.source_row_column") == "burst"
 
@@ -122,10 +123,12 @@ def test_a_coarser_result_maps_many_source_rows_to_one(measurement: Path):
     with Measurement.open(container_for(measurement)) as m:
         fused_uid = m._resolve("fused bursts")
         assert len(m.parents(fused_uid)) == 2, "a fused burst has several parents"
-        mapping = m.get_table("fusion membership")
-        assert len(mapping) == labels.size
+        mapping = m.get_store("fusion membership")
+        assert row_count(mapping) == labels.size
         # every source burst is accounted for, and the many-to-one is recoverable
-        assert mapping.groupby("fused_row")["source_row"].count().tolist() == [2, 3, 1, 14]
+        fused = numeric_column(mapping, "fused_row").astype(int)
+        counts = [int((fused == which).sum()) for which in sorted(set(fused.tolist()))]
+        assert counts == [2, 3, 1, 14]
         assert m.tag(m._resolve("fusion membership"), "_mmfdb_edge.target_row_column") == (
             "fused_row"
         )
@@ -163,10 +166,10 @@ def test_a_frame_covering_several_files_goes_to_several_containers(tmp_path: Pat
     )
     assert len(written) == 2
     with Measurement.open(container_for(a)) as m:
-        assert len(m.get_table("bva")) == 3
-        assert "First File" not in m.get_table("bva").columns
+        assert row_count(m.get_store("bva")) == 3
+        assert "First File" not in column_names(m.get_store("bva"))
     with Measurement.open(container_for(b)) as m:
-        assert len(m.get_table("bva")) == 2
+        assert row_count(m.get_store("bva")) == 2
 
 
 def test_a_frame_with_no_source_column_is_refused(tmp_path: Path):
@@ -192,9 +195,9 @@ def test_the_legacy_padding_is_stripped_on_the_way_in(measurement: Path):
         operation_type="burst_variance_analysis", row_grain="burst",
     )
     with Measurement.open(container_for(measurement)) as m:
-        out = m.get_table("padded")
-    assert len(out) == 2
-    assert list(out.columns) == ["a", "b"]
+        out = m.get_store("padded")
+    assert row_count(out) == 2
+    assert column_names(out) == ["a", "b"]
 
 
 def test_deinterleave_keeps_a_genuine_zero_row():
@@ -376,7 +379,7 @@ def test_h2mm_writes_bursts_and_dwells_at_their_own_grains(measurement: Path):
         assert m.tag(dwell_uid, "_mmfdb_artifact.row_grain") == "dwell"
         assert m.tag(dwell_uid, "_mmfdb_edge.source_row_column") == "Burst"
         assert m.parents(dwell_uid) == [m._resolve("h2mm")]
-        assert len(m.get_table("h2mm dwells")) == 30
+        assert row_count(m.get_store("h2mm dwells")) == 30
         # A compacted burst index is fine now: the join is declared, not counted.
-        assert len(m.get_table("h2mm")) == 20
+        assert row_count(m.get_store("h2mm")) == 20
         assert m.verify() == []

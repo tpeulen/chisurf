@@ -362,7 +362,13 @@ class MoleculeMleViewModel(MleObserverMixin):
         Returns the written path (empty string when there is nothing to export).
         The separator is inferred from the extension (``.csv`` → comma, else tab).
         """
-        tables = [r.dataframe for r in self.results if row_count(r.dataframe)]
+        from chisurf.core.fio.fluorescence.burst_container import as_table
+
+        # Through the frame boundary: `concat_stores` refuses a frame, and a
+        # result computed before the store migration is still one.
+        tables = [
+            as_table(r.dataframe) for r in self.results if row_count(r.dataframe)
+        ]
         if not tables:
             self.status_text = "No molecules to export."
             self.notify("done")

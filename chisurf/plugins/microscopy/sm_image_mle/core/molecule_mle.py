@@ -182,7 +182,11 @@ def with_source_column(table, source) -> Any:
     -------
     tttrlib.DataStore
     """
-    table = as_store(table)
+    # Through the frame boundary: the docstring accepts a frame and `as_store`
+    # refuses one, so the conversion belongs here rather than in the caller.
+    from chisurf.core.fio.fluorescence.burst_container import as_table
+
+    table = as_store(as_table(table))
     names = column_names(table)
     return take_columns(
         store_from_arrays({
