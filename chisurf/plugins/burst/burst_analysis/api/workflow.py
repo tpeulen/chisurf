@@ -43,6 +43,13 @@ from typing import Any, Sequence
 from wsgiref.simple_server import WSGIRequestHandler, WSGIServer, make_server
 
 import numpy as np
+
+from chisurf.core.datastore import (
+    column_names,
+    numeric_column,
+    row_count,
+    take_where,
+)
 import pandas as pd
 
 # Full micro-time acceptance when a stream declares no window (SPC is 12-bit).
@@ -193,13 +200,13 @@ class Bva:
 
     Attributes
     ----------
-    table : pandas.DataFrame
+    table : tttrlib.DataStore
         Per-burst table with ``Proximity Ratio Mean`` / ``Proximity Ratio Std``.
     photons_per_slice : int
         Photons per sub-burst slice used for the shot-noise static line.
     """
 
-    table: pd.DataFrame
+    table: Any
     photons_per_slice: int
 
     @property
@@ -216,8 +223,8 @@ class Bva:
 
         grid = np.linspace(0.001, 0.999, 200)
         _, static_std = compute_static_bva_line(grid, self.photons_per_slice)
-        means = self.table["Proximity Ratio Mean"].to_numpy(dtype=float)
-        stds = self.table["Proximity Ratio Std"].to_numpy(dtype=float)
+        means = numeric_column(self.table, "Proximity Ratio Mean")
+        stds = numeric_column(self.table, "Proximity Ratio Std")
         expected = np.interp(means, grid, static_std)
         valid = ~np.isnan(means) & ~np.isnan(stds)
         if not valid.any():
@@ -257,13 +264,13 @@ class TwoCde:
 
     Attributes
     ----------
-    table : pandas.DataFrame
+    table : tttrlib.DataStore
         Per-burst table with a ``FRET-2CDE`` or ``ALEX-2CDE`` column.
     variant : str
         ``"fret"`` or ``"alex"``.
     """
 
-    table: pd.DataFrame
+    table: Any
     variant: str = "fret"
 
     @property
@@ -274,7 +281,7 @@ class TwoCde:
     @property
     def mean_2cde(self) -> float:
         """Mean 2CDE value across all bursts (finite entries only)."""
-        return float(np.nanmean(self.table[self.column].to_numpy(dtype=float)))
+        return float(np.nanmean(numeric_column(self.table, self.column)))
 
     def dynamic_fraction(self, threshold: float = 12.0) -> float:
         """Fraction of bursts whose FRET-2CDE exceeds ``threshold``.
@@ -282,7 +289,7 @@ class TwoCde:
         FRET-2CDE is ~10 for static bursts and larger under ms dynamics, so a
         threshold slightly above 10 separates the dynamic sub-population.
         """
-        vals = self.table[self.column].to_numpy(dtype=float)
+        vals = numeric_column(self.table, self.column)
         finite = vals[np.isfinite(vals)]
         if finite.size == 0:
             return 0.0
@@ -292,14 +299,14 @@ class TwoCde:
         """Draw the 2CDE histogram (and E-vs-2CDE scatter when E is available)."""
         import matplotlib.pyplot as plt
 
-        vals = self.table[self.column].to_numpy(dtype=float)
+        vals = numeric_column(self.table, self.column)
         finite = np.isfinite(vals)
         e_col = next((c for c in ("Proximity Ratio Mean", "E", "Efficiency")
                       if c in self.table), None)
         if ax is None:
             _, ax = plt.subplots(figsize=(6, 5))
         if e_col is not None:
-            e = self.table[e_col].to_numpy(dtype=float)
+            e = numeric_column(self.table, e_col)
             m = finite & np.isfinite(e)
             ax.scatter(e[m], vals[m], s=8, alpha=0.25, color="#1f77b4")
             ax.set_xlabel("Proximity ratio (apparent FRET)")
@@ -418,7 +425,7 @@ class H2mm:
     analysis: Any
 
     @property
-    def scan(self) -> pd.DataFrame:
+    def scan(self):
         """Return the model-selection scan (state count, log-lik, BIC, ICL)."""
         return pd.DataFrame(
             [
@@ -566,7 +573,7 @@ class IrfBackground:
         return {name: d.background_khz for name, d in self.per_detector.items()}
 
     @property
-    def table(self) -> pd.DataFrame:
+    def table(self):
         """One row per detector: background rate and non-burst/burst photon counts."""
         return pd.DataFrame(
             [
@@ -616,7 +623,7 @@ class Bursts:
         Source measurement filenames.
     dataset_uuids : list of str
         MMFDB object handles the bursts were selected from.
-    table : pandas.DataFrame
+    table : tttrlib.DataStore
         Combined per-burst summary table.
     setup : Setup
         Detector setup used for selection and analysis.
@@ -624,7 +631,7 @@ class Bursts:
 
     names: list[str]
     dataset_uuids: list[str]
-    table: pd.DataFrame
+    table: Any
     setup: Setup
     _tttrs: dict[str, Any] = field(repr=False, default_factory=dict)
     _search: dict[str, Any] = field(repr=False, default_factory=dict)
@@ -709,12 +716,12 @@ class Bursts:
 
     def __len__(self) -> int:
         """Return the number of bursts."""
-        return len(self.table)
+        return row_count(self.table)
 
     def __repr__(self) -> str:
         """Return a short human summary."""
         sources = ", ".join(self.names)
-        return f"<Bursts: {len(self.table)} bursts from {sources}>"
+        return f"<Bursts: {row_count(self.table)} bursts from {sources}>"
 
     def bva(
         self,
@@ -823,7 +830,7 @@ class Bursts:
         if e is None:
             for col in ("Proximity Ratio Mean", "E", "Efficiency"):
                 if col in self.table:
-                    e = self.table[col].to_numpy(dtype=float)
+                    e = numeric_column(self.table, col)
                     break
         if e is None:
             raise ValueError(
@@ -837,7 +844,7 @@ class Bursts:
         )
         if time_col is None:
             raise ValueError("recurrence(): burst table has no 'Mean Macro Time' column.")
-        times = self.table[time_col].to_numpy(dtype=float)
+        times = numeric_column(self.table, time_col)
         if time_col.endswith("(ms)"):
             times = times / 1e3
 
@@ -1287,8 +1294,12 @@ class BurstWorkflow:
 
         table = load_bur_dataframe(bur_paths)
         real_names = {p.name for p in local_paths}
-        # Keep only real burst rows (drop interleaved zero separators).
-        table = table[table["First File"].isin(real_names)].reset_index(drop=True)
+        # Keep only real burst rows (drop interleaved zero separators, whose
+        # "First File" is the sentinel "0" rather than a measurement).
+        table = take_where(
+            table,
+            [str(v) in real_names for v in np.asarray(table["First File"])],
+        )
         tttrs = {p.name: load_tttr(p, filetype=setup.file_type) for p in local_paths}
         return Bursts(
             names=[p.name for p in local_paths],

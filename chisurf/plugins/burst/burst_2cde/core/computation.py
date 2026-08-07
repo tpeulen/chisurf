@@ -13,7 +13,8 @@ import pathlib
 from typing import Dict, List, Tuple
 
 import numpy as np
-import pandas as pd
+
+from chisurf.core.datastore import numeric_column, row_count
 
 try:
     from chisurf import logging
@@ -145,7 +146,7 @@ def _macro_ticks(tttr: "tttrlib.TTTR", tau_seconds: float) -> float:
 
 
 def compute_2cde(
-    df: pd.DataFrame,
+    df,
     tttrs: Dict[str, "tttrlib.TTTR"],
     donor_channels: List[int] = (0, 8),
     donor_micro_time_ranges: List[Tuple[int, int]] = ((0, 32768),),
@@ -157,7 +158,7 @@ def compute_2cde(
     acceptor_excitation_channels: List[int] | None = None,
     acceptor_excitation_micro_time_ranges: List[Tuple[int, int]] | None = None,
     progress_window=None,
-) -> pd.DataFrame:
+):
     """Compute the per-burst 2CDE feature and add it as a dataframe column.
 
     Parameters
@@ -189,21 +190,22 @@ def compute_2cde(
         ``df`` with a ``FRET-2CDE`` or ``ALEX-2CDE`` column added.
     """
     column = column_for_variant(variant)
-    n = len(df)
+    n = row_count(df)
     values = np.full(n, np.nan)
 
-    col_ff = df.columns.get_loc("First File")
-    col_fp = df.columns.get_loc("First Photon")
-    col_lp = df.columns.get_loc("Last Photon")
+    # The three columns once, as arrays, rather than a tuple per burst.
+    files = np.asarray(df["First File"])
+    firsts = numeric_column(df, "First Photon")
+    lasts = numeric_column(df, "Last Photon")
 
     per_file: Dict[str, Tuple[List[int], List[Tuple[int, int]]]] = {}
-    for i, row in enumerate(df.itertuples(index=False, name=None)):
-        ff = row[col_ff]
+    for i in range(n):
+        ff = files[i]
         if ff not in tttrs:
             continue
         rows_idx, bursts = per_file.setdefault(ff, ([], []))
         rows_idx.append(i)
-        bursts.append((int(row[col_fp]), int(row[col_lp])))
+        bursts.append((int(firsts[i]), int(lasts[i])))
 
     a_ex_ch = acceptor_channels if acceptor_excitation_channels is None else acceptor_excitation_channels
     a_ex_mtr = (acceptor_micro_time_ranges if acceptor_excitation_micro_time_ranges is None
@@ -283,7 +285,7 @@ def _compute_file_numpy(
 
 
 def write_2cde_container(
-    df: pd.DataFrame,
+    df,
     variant: str = "fret",
     *,
     parameters: dict | None = None,
@@ -336,7 +338,7 @@ def write_2cde_container(
     return written
 
 
-def write_2cde_analysis(df: pd.DataFrame, analysis_folder: str, variant: str = "fret",
+def write_2cde_analysis(df, analysis_folder: str, variant: str = "fret",
                         progress_window=None) -> None:
     """Write per-burst 2CDE values to companion files under a ``2c4/`` subfolder.
 
@@ -345,16 +347,19 @@ def write_2cde_analysis(df: pd.DataFrame, analysis_folder: str, variant: str = "
     / ``2c4`` …). Per-stem consumers — ndX and the burst browser — join it
     to the burst table by stem, so it must match the ``.bur`` name (no ``_0``).
     """
+    from chisurf.core.fio.fluorescence.burst_companion import write_companion
+
     column = column_for_variant(variant)
-    out = pathlib.Path(analysis_folder) / "2c4"
-    out.mkdir(parents=True, exist_ok=True)
-    for i, (tttr_file, group) in enumerate(df.groupby("First File"), start=1):
-        stem = pathlib.Path(tttr_file).stem
-        n = len(group)
-        frame = pd.DataFrame(np.zeros((2 * n + 1, 2)), columns=[column, ""])
-        frame[""] = ""
-        frame.loc[1::2, [column]] = group[[column]].values
-        frame.to_csv(out / f"{stem}.2c4", sep="\t", index=False)
+    files = np.asarray(df["First File"])
+    values = numeric_column(df, column)
+    # write_companion owns the layout -- the "…4" directory, the %.6f, and the
+    # zero interleaving. This used to build all three by hand, one measurement
+    # at a time, which is how a companion drifts from the contract that merges
+    # it.
+    for i, tttr_file in enumerate(dict.fromkeys(files), start=1):
+        stem = pathlib.Path(str(tttr_file)).stem
+        rows = values[files == tttr_file].reshape(-1, 1)
+        write_companion(analysis_folder, "2c4", stem, [column], rows)
         if progress_window:
             progress_window.set_value(i)
-    logging.info(f"2CDE results written to {out}")
+    logging.info("2CDE results written beside %s", analysis_folder)

@@ -6,6 +6,8 @@ import pathlib
 from typing import Dict, List, Tuple
 
 import numpy as np
+
+from chisurf.core.datastore import numeric_column, row_count
 import pandas as pd
 
 try:
@@ -170,14 +172,15 @@ def compute_bva(
         tttr_arrays[ff] = (micro_arr, channel_arr, macro_arr)
         time_calibrations[ff] = tttr.header.tag('MeasDesc_GlobalResolution')['value']
 
-    col_ff = df.columns.get_loc("First File")
-    col_fp = df.columns.get_loc("First Photon")
-    col_lp = df.columns.get_loc("Last Photon")
+    # The three columns once, as arrays, rather than a tuple per burst.
+    files = np.asarray(df["First File"])
+    firsts = numeric_column(df, "First Photon")
+    lasts = numeric_column(df, "Last Photon")
 
-    for i, row in enumerate(df.itertuples(index=False, name=None)):
-        ff = row[col_ff]
-        first_photon = int(row[col_fp])
-        last_photon = int(row[col_lp])
+    for i in range(row_count(df)):
+        ff = files[i]
+        first_photon = int(firsts[i])
+        last_photon = int(lasts[i])
         if ff not in tttr_arrays:
             continue
 

@@ -44,6 +44,7 @@ from chisurf.core.datastore import (
     numeric_column,
     row_count,
     store_from_arrays,
+    take_where,
     write_csv_table,
 )
 
@@ -126,9 +127,12 @@ def data_rows(frame):
     ``n`` real rows and lets the writer re-interleave.
     """
     if "First File" not in _column_names(frame):
-        return frame.reset_index(drop=True)
-    keep = ~frame["First File"].map(is_sentinel_file_reference)
-    return frame.loc[keep].reset_index(drop=True)
+        return frame
+    keep = np.array(
+        [not is_sentinel_file_reference(v) for v in np.asarray(frame["First File"])],
+        dtype=bool,
+    )
+    return take_where(frame, keep)
 
 
 def read_measurements(analysis_folder) -> OrderedDict:

@@ -1,4 +1,6 @@
 import numpy as np
+
+from chisurf.core.datastore import column_names, numeric_column, row_count, take_rows
 import pandas as pd
 from qtpy import QtWidgets
 
@@ -45,12 +47,12 @@ def test_read_bur_with_companions_merges_bv4_and_2c4(tmp_path):
     write_2cde_analysis(src, str(tmp_path), variant="fret")  # -> 2c4/m000.2c4
 
     merged = burstio.read_bur_with_companions(burd / "m000.bur")
-    assert "Proximity Ratio Std" in merged.columns   # from BVA
-    assert COLUMN_FRET_2CDE in merged.columns          # from 2CDE
+    assert "Proximity Ratio Std" in column_names(merged)   # from BVA
+    assert COLUMN_FRET_2CDE in column_names(merged)          # from 2CDE
     # Values land on the burst (odd) rows of the interleaved table.
-    odd = merged.iloc[1::2].reset_index(drop=True)
-    assert np.allclose(odd["Proximity Ratio Std"].to_numpy(), src["Proximity Ratio Std"])
-    assert np.allclose(odd[COLUMN_FRET_2CDE].to_numpy(), src[COLUMN_FRET_2CDE])
+    odd = take_rows(merged, np.arange(1, row_count(merged), 2))
+    assert np.allclose(numeric_column(odd, "Proximity Ratio Std"), src["Proximity Ratio Std"])
+    assert np.allclose(numeric_column(odd, COLUMN_FRET_2CDE), src[COLUMN_FRET_2CDE])
 
 
 def test_read_bur_with_companions_without_companions(tmp_path):
@@ -65,5 +67,5 @@ def test_read_bur_with_companions_without_companions(tmp_path):
     ).to_csv(burd / "m000.bur", sep="\t", index=False)
 
     merged = burstio.read_bur_with_companions(burd / "m000.bur")
-    assert "Proximity Ratio Std" not in merged.columns
-    assert list(merged.columns) == ["First Photon", "Last Photon"]
+    assert "Proximity Ratio Std" not in column_names(merged)
+    assert column_names(merged) == ["First Photon", "Last Photon"]

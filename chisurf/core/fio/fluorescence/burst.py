@@ -795,13 +795,22 @@ def read_bur_file(bur_path):
 
     Returns
     -------
-    pd.DataFrame
-        DataFrame containing the burst data.
+    tttrlib.DataStore
+        One column per field, in the column's own dtype, with the text columns
+        dictionary-encoded. Read the columns with
+        :func:`chisurf.core.datastore.numeric_column` (or ``np.asarray`` for a
+        text one); ask :func:`~chisurf.core.datastore.row_count` for the number
+        of bursts, because ``len()`` does not answer that for a store.
     """
+    from chisurf.core.datastore import read_csv_table
+
     bur_path = pathlib.Path(bur_path)
     if not bur_path.exists():
         raise FileNotFoundError(bur_path)
-    return pd.read_csv(bur_path, sep="\t")
+    store = read_csv_table(bur_path, delimiter="\t")
+    if store is None:
+        raise OSError(f"{bur_path} is not a tab-delimited burst table")
+    return store
 
 
 #: Per-burst companion files in the ``…4`` family, keyed to each ``.bur`` by stem:
@@ -821,7 +830,7 @@ def _companion_base(bur_path: pathlib.Path) -> pathlib.Path:
     return parent.parent if parent.name.lower() in ("bi4_bur", "bur") else parent
 
 
-def _read_companion_table(path: pathlib.Path) -> pd.DataFrame:
+def _read_companion_table(path: pathlib.Path):
     """Read one ``…4`` companion file as a plain per-row table.
 
     ``.bur`` files and their ``…4`` companions share the same Seidel/PARIS
@@ -830,16 +839,26 @@ def _read_companion_table(path: pathlib.Path) -> pd.DataFrame:
     by position — the zero rows line up. Empty/unnamed trailing columns are
     dropped and values are coerced to numeric.
     """
-    frame = pd.read_csv(path, sep="\t")
-    keep = [
-        c for c in frame.columns
-        if str(c).strip() and not str(c).startswith("Unnamed")
-    ]
-    frame = frame[keep]
-    return frame.apply(pd.to_numeric, errors="coerce")
+    from chisurf.core.datastore import (
+        column_names,
+        numeric_column,
+        read_csv_table,
+        store_from_arrays,
+    )
+
+    store = read_csv_table(path, delimiter="\t")
+    if store is None:
+        raise OSError(f"{path} is not a tab-delimited companion table")
+    return store_from_arrays(
+        {
+            name: numeric_column(store, name)
+            for name in column_names(store)
+            if name.strip() and not name.startswith("Unnamed")
+        }
+    )
 
 
-def read_bur_with_companions(bur_path, endings=None) -> pd.DataFrame:
+def read_bur_with_companions(bur_path, endings=None):
     """Read a ``.bur`` file and column-merge its ``…4`` companions by stem.
 
     For a burst table ``<analysis>/bi4_bur/<stem>.bur`` this joins any
@@ -860,6 +879,8 @@ def read_bur_with_companions(bur_path, endings=None) -> pd.DataFrame:
         (:data:`BURST_COMPANION_ENDINGS`) unioned with any sibling directory whose
         name ends in ``4`` (so future companions merge with no code change).
     """
+    from chisurf.core.datastore import column_names, row_count, take_columns
+
     bur_path = pathlib.Path(bur_path)
     df = read_bur_file(bur_path)
     base = _companion_base(bur_path)
@@ -881,11 +902,12 @@ def read_bur_with_companions(bur_path, endings=None) -> pd.DataFrame:
             extra = _read_companion_table(companion)
         except Exception:
             continue
-        if len(extra) != len(df):
+        if row_count(extra) != row_count(df):
             continue
-        for col in extra.columns:
-            if col and col not in df.columns:
-                df[col] = extra[col].values
+        # New columns only: the .bur's own values win a name clash.
+        fresh = [c for c in column_names(extra) if c and c not in column_names(df)]
+        if fresh:
+            df.append_columns(take_columns(extra, fresh))
     return df
 
 

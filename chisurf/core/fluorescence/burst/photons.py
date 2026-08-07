@@ -25,7 +25,8 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 
 import numpy as np
-import pandas as pd
+
+from chisurf.core.datastore import concat_stores, numeric_column, row_count
 import tttrlib
 
 __all__ = [
@@ -166,7 +167,7 @@ class PhotonMeta:
 
 
 def extract_burst_photons(
-    df: pd.DataFrame,
+    df,
     tttrs: dict[str, tttrlib.TTTR],
     streams: Sequence[StreamDef],
     time_scale: int = 1,
@@ -214,9 +215,11 @@ def extract_burst_photons(
     rows : numpy.ndarray
         Only when ``with_rows`` — the ``df`` row position of each kept burst.
     """
-    col_ff = df.columns.get_loc("First File")
-    col_fp = df.columns.get_loc("First Photon")
-    col_lp = df.columns.get_loc("Last Photon")
+    # The three columns once, as arrays, rather than a tuple per row: this
+    # loop runs over every burst of a measurement.
+    files = np.asarray(df["First File"])
+    firsts = numeric_column(df, "First Photon")
+    lasts = numeric_column(df, "Last Photon")
 
     cache: dict[str, tuple[np.ndarray, np.ndarray, np.ndarray]] = {}
     for ff, tttr in tttrs.items():
@@ -232,12 +235,12 @@ def extract_burst_photons(
     chan_out: list[np.ndarray] = []
     index_out: list[np.ndarray] = []
     rows_out: list[int] = []
-    for position, row in enumerate(df.itertuples(index=False, name=None)):
-        ff = row[col_ff]
+    for position in range(row_count(df)):
+        ff = files[position]
         if ff not in cache:
             continue
-        first = int(row[col_fp])
-        last = int(row[col_lp])
+        first = int(firsts[position])
+        last = int(lasts[position])
         # ``Last Photon`` is the burst's last photon *inclusive* (that is what
         # the ``.bur`` writer stores: ``Number of Photons == last - first + 1``),
         # so every slice runs to ``last + 1`` and ``last == first`` is a legal
@@ -283,8 +286,8 @@ def extract_burst_photons(
     return times_out, streams_out
 
 
-def load_bur_dataframe(paths: Sequence[str | pathlib.Path]) -> pd.DataFrame:
-    """Read and concatenate one or more ``.bur`` files into a DataFrame.
+def load_bur_dataframe(paths: Sequence[str | pathlib.Path]):
+    """Read and stack one or more ``.bur`` files into one burst table.
 
     Parameters
     ----------
@@ -293,7 +296,9 @@ def load_bur_dataframe(paths: Sequence[str | pathlib.Path]) -> pd.DataFrame:
 
     Returns
     -------
-    pandas.DataFrame
+    tttrlib.DataStore
+        The rows of every file, stacked. Columns line up by name, so tables
+        written by different runs combine even when their column order differs.
 
     Raises
     ------
@@ -305,7 +310,7 @@ def load_bur_dataframe(paths: Sequence[str | pathlib.Path]) -> pd.DataFrame:
     frames = [read_bur_file(p) for p in paths]
     if not frames:
         raise ValueError("no .bur files provided")
-    return pd.concat(frames, ignore_index=True)
+    return concat_stores(frames)
 
 
 def is_sentinel_file_reference(value: object) -> bool:
@@ -333,7 +338,7 @@ def is_sentinel_file_reference(value: object) -> bool:
 
 
 def load_tttrs_for_dataframe(
-    df: pd.DataFrame,
+    df,
     data_dir: str | pathlib.Path,
     file_type: str = "SPC-130",
 ) -> dict[str, tttrlib.TTTR]:

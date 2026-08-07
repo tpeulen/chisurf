@@ -15,6 +15,8 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+from chisurf.core.datastore import column_names, numeric_column
+
 tttrlib = pytest.importorskip("tttrlib")
 pytest.importorskip("mmfdb")
 
@@ -38,7 +40,7 @@ def analyzed(tmp_path_factory):
     )
     bursts = wf.select_bursts(sim.handle, setup=sim.setup, min_photons=40)
     bva = bursts.bva("green", "red")
-    pr = bva.table["Proximity Ratio Mean"].to_numpy(dtype=float)
+    pr = numeric_column(bva.table, "Proximity Ratio Mean")
     pr = pr[np.isfinite(pr)]
     try:
         yield sim, pr

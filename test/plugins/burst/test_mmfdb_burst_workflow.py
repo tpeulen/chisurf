@@ -16,6 +16,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from chisurf.core.datastore import column_names, numeric_column
+
 import chisurf
 
 # The workflow needs the compiled TTTR reader and the standalone MMFDB package.
@@ -64,7 +66,7 @@ def test_select_bursts_across_multiple_datasets(workflow):
     bursts = workflow.select_bursts(handles, min_photons=20)
     assert len(bursts) > 0
     assert bursts.names == [f.name for f in DATA_FILES]
-    assert "First Photon" in bursts.table.columns
+    assert "First Photon" in column_names(bursts.table)
 
 
 def test_explicit_setup_matches_default(workflow):
@@ -118,7 +120,7 @@ def test_bva_reports_a_sensible_proximity_ratio(workflow):
     bursts = workflow.select_bursts(handles, min_photons=20)
 
     bva = bursts.bva()
-    assert {"Proximity Ratio Mean", "Proximity Ratio Std"} <= set(bva.table.columns)
+    assert {"Proximity Ratio Mean", "Proximity Ratio Std"} <= set(column_names(bva.table))
     assert 0.0 < bva.mean_proximity_ratio < 1.0
     assert 0.0 <= bva.dynamic_fraction <= 1.0
 

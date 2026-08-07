@@ -91,6 +91,7 @@ __all__ = [
     "store_from_arrays",
     "store_from_dataframe",
     "store_from_rows",
+    "take_columns",
     "take_rows",
     "take_where",
     "write_csv_table",
@@ -725,6 +726,37 @@ def concat_stores(stores: Sequence[Any], *, inner: bool = False) -> Any:
     except Exception as exc:  # the library names the offending column
         raise ValueError(str(exc)) from exc
 
+
+def take_columns(store: Any, names: Sequence[str]) -> Any:
+    """Return a new store holding only ``names``, in that order.
+
+    The column-wise counterpart of :func:`take_rows`, for putting a subset of
+    one table beside another — a burst companion contributes its new columns and
+    not the ones the burst table already has.
+
+    Parameters
+    ----------
+    store : tttrlib.DataStore
+        The table to take from.
+    names : sequence of str
+        Column names.
+
+    Returns
+    -------
+    tttrlib.DataStore
+    """
+    out = new_store()
+    present = column_names(store)
+    for name in names:
+        if name not in present:
+            continue
+        column = column_at(store, present.index(name))
+        # np.array: these outlive nothing here, but the copy keeps the new store
+        # independent of the one it came from, which is what a caller expects of
+        # a "new store" rather than a view.
+        out.add(str(name), np.array(column_values(store, present.index(name))))
+    out.set_n_rows(row_count(store))
+    return out
 
 def take_rows(store: Any, rows: Any) -> Any:
     """Return a new store holding ``rows``, in that order.

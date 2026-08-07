@@ -13,6 +13,8 @@ import json
 import pathlib
 
 import numpy as np
+
+from chisurf.core.datastore import column_names, row_count
 import pytest
 
 from chisurf.plugins.burst.burst_fusion.api.models import FusionSettings
@@ -106,11 +108,11 @@ def test_the_demo_is_cached_not_rebuilt(demo, tmp_path):
 def test_the_demo_bursts_are_readable_by_the_ordinary_reader(demo):
     frames = read_measurements(demo["folder"])
     assert frames
-    total = sum(len(frame) for frame in frames.values())
+    total = sum(row_count(frame) for frame in frames.values())
     assert total == demo["bursts"]
     frame = next(iter(frames.values()))
     for detector in demo_detectors():
-        assert f"Number of Photons ({detector})" in frame.columns
+        assert f"Number of Photons ({detector})" in column_names(frame)
 
 
 def test_describe_states_the_truth_next_to_the_result(demo):

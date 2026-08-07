@@ -13,6 +13,8 @@ import pathlib
 import shutil
 
 import numpy as np
+
+from chisurf.core.datastore import column_names, numeric_column, row_count
 import pytest
 
 from chisurf.core.fio.fluorescence.burst import read_bur_file, read_bur_with_companions
@@ -59,8 +61,8 @@ def test_reads_every_measurement_without_the_zero_rows(folder):
     for stem, frame in frames.items():
         raw = read_bur_file(folder / "bi4_bur" / f"{stem}.bur")
         # 2n + 1 interleaved on disk, n bursts in memory.
-        assert len(frame) == (len(raw) - 1) // 2
-        assert (frame["First File"] == f"{stem}.spc").all()
+        assert row_count(frame) == (row_count(raw) - 1) // 2
+        assert set(np.asarray(frame["First File"])) == {f"{stem}.spc"}
 
 
 def test_analyze_reports_a_window_and_fewer_bursts(folder):
@@ -108,13 +110,16 @@ def test_written_folder_is_a_burst_folder(folder, tmp_path):
     # Every emitted table carries the full .bur column set, regenerated from the
     # photons (not copied), and keeps the 2n+1 interleaved layout.
     frame = read_bur_file(target / "bi4_bur" / "m000.bur")
-    assert len(frame) % 2 == 1
+    assert row_count(frame) % 2 == 1
     for column in ("First Photon", "Number of Photons (green)", "Mean Microtime (red) (ns)"):
-        assert column in frame.columns
+        assert column in column_names(frame)
 
     rows = data_rows(frame)
-    assert (rows["Number of Photons"] == rows["Last Photon"] - rows["First Photon"] + 1).all()
-    assert rows["First Photon"].is_monotonic_increasing
+    photons = numeric_column(rows, "Number of Photons")
+    first = numeric_column(rows, "First Photon")
+    last = numeric_column(rows, "Last Photon")
+    np.testing.assert_array_equal(photons, last - first + 1)
+    assert np.all(np.diff(first) >= 0)
 
 
 def test_fused_bursts_span_their_fragments(folder):
@@ -127,12 +132,16 @@ def test_fused_bursts_span_their_fragments(folder):
     labels = np.asarray(result.measurements[0].labels)
     emitted = data_rows(read_bur_file(target / "bi4_bur" / "m000.bur"))
 
+    source_first = numeric_column(source, "First Photon")
+    source_last = numeric_column(source, "Last Photon")
+    emitted_first = numeric_column(emitted, "First Photon")
+    emitted_last = numeric_column(emitted, "Last Photon")
     for label in range(min(5, labels.max() + 1)):
-        group = source[labels == label]
-        match = emitted[emitted["First Photon"] == int(group["First Photon"].min())]
-        if match.empty:  # a degenerate one-photon burst the writer skips
+        in_group = labels == label
+        hit = np.nonzero(emitted_first == int(source_first[in_group].min()))[0]
+        if hit.size == 0:  # a degenerate one-photon burst the writer skips
             continue
-        assert int(match.iloc[0]["Last Photon"]) == int(group["Last Photon"].max())
+        assert int(emitted_last[hit[0]]) == int(source_last[in_group].max())
 
 
 def test_companions_follow_the_contract_and_merge(folder):
@@ -147,18 +156,18 @@ def test_companions_follow_the_contract_and_merge(folder):
 
     # One row per burst, so the positional merge lines up.
     merged = read_bur_with_companions(target / "bi4_bur" / "m000.bur")
-    assert "Fused Bursts" in merged.columns
-    assert "Fused Gap Photons" in merged.columns
+    assert "Fused Bursts" in column_names(merged)
+    assert "Fused Gap Photons" in column_names(merged)
     rows = data_rows(merged)
-    assert (rows["Fused Bursts"] >= 1).all()
-    assert rows["Fused Bursts"].max() > 1
+    assert np.all(numeric_column(rows, "Fused Bursts") >= 1)
+    assert numeric_column(rows, "Fused Bursts").max() > 1
 
     source_merged = read_bur_with_companions(folder / "bi4_bur" / "m000.bur")
-    assert "Fusion Group" in source_merged.columns
+    assert "Fusion Group" in column_names(source_merged)
     source_rows = data_rows(source_merged)
-    assert len(source_rows) == len(result.measurements[0].source)
+    assert row_count(source_rows) == row_count(result.measurements[0].source)
     np.testing.assert_allclose(
-        source_rows["Fusion Group"].to_numpy(dtype=float),
+        numeric_column(source_rows, "Fusion Group"),
         np.asarray(result.measurements[0].labels, dtype=float),
     )
 
