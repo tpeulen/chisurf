@@ -422,6 +422,87 @@ def _primary_uid(handle: Any) -> int:
     return 0
 
 
+class _WriteLock:
+    """One writer at a time, per container, across processes.
+
+    Nothing stopped two processes opening the same container for writing at
+    once. Both succeeded instantly, neither was told, and the last one to
+    commit decided what the file said -- which is how a burst table came to
+    hold rows no single code path produces. A running ChiSurf and a script (or
+    two tools inside one session) reaching the same measurement is not an
+    exotic case; it is the ordinary one.
+
+    An advisory `flock` on a sidecar rather than on the container itself: the
+    container is opened and rewritten by the C++ writer, and a lock held on a
+    file that gets replaced underneath is not a lock. Advisory because that is
+    what `flock` is -- it binds the writers that ask, which is all of them,
+    here.
+
+    **Fails immediately rather than waiting.** A writer that blocks looks
+    exactly like a writer that hung, and a burst search that takes a minute
+    gives no way to tell them apart; being told which file, and by which
+    process, is what makes it actionable.
+    """
+
+    #: Sidecar holding the lock. Beside the container, not inside it.
+    SUFFIX = ".lock"
+
+    def __init__(self, path: Path) -> None:
+        self._path = Path(str(path) + self.SUFFIX)
+        self._handle = None
+
+    def acquire(self) -> None:
+        """Take the lock, or say who has it.
+
+        Raises
+        ------
+        PtoMfdbError
+            If another process holds it.
+        """
+        import fcntl
+        import os
+
+        try:
+            handle = open(self._path, "a+")
+        except OSError:
+            # An unwritable directory is not a reason to refuse a write the
+            # filesystem may still allow; the lock is best-effort protection,
+            # not a permission system.
+            logger.debug("no writer lock for %s", self._path, exc_info=True)
+            return
+        try:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            handle.seek(0)
+            holder = handle.read().strip() or "another process"
+            handle.close()
+            raise PtoMfdbError(
+                f"{self._path.with_suffix('')} is open for writing by "
+                f"{holder}. Close it there, or wait for that write to finish: "
+                "two writers would each overwrite the other's results."
+            ) from None
+        handle.seek(0)
+        handle.truncate()
+        handle.write(f"pid {os.getpid()}")
+        handle.flush()
+        self._handle = handle
+
+    def release(self) -> None:
+        """Drop the lock and remove the sidecar."""
+        import contextlib
+        import fcntl
+
+        handle, self._handle = self._handle, None
+        if handle is None:
+            return
+        with contextlib.suppress(OSError):
+            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+        with contextlib.suppress(OSError):
+            handle.close()
+        with contextlib.suppress(OSError):
+            self._path.unlink()
+
+
 class Measurement:
     """One measurement: the instrument data, and everything computed from it.
 
@@ -448,6 +529,8 @@ class Measurement:
         self._path = Path(path)
         self._writable = bool(writable)
         self._instrument_uid = 0
+        #: Writer lock, when this handle holds one. See :class:`_WriteLock`.
+        self._lock = None
 
     # -- construction ---------------------------------------------------------
 
@@ -592,10 +675,16 @@ class Measurement:
         PtoMfdbError
             If the file is not a container, or cannot be opened.
         """
+        lock = _WriteLock(Path(path)) if writable else None
+        if lock is not None:
+            lock.acquire()
         handle = _tttrlib().PtoFile()
         if not handle.open(str(path), writable):
+            if lock is not None:
+                lock.release()
             raise PtoMfdbError(f"could not open {path}: {handle.error()}")
         self = cls(handle, Path(path), writable=writable)
+        self._lock = lock
         self._instrument_uid = _primary_uid(handle)
         return self
 
@@ -605,10 +694,20 @@ class Measurement:
     def __exit__(self, exc_type, exc, tb) -> bool:
         # A read-only handle has nothing to commit, and asking it to would
         # turn an ordinary read into an error on the way out of the block.
-        if exc_type is None and self._writable:
-            self.commit()
-        self.close()
+        try:
+            if exc_type is None and self._writable:
+                self.commit()
+            self.close()
+        finally:
+            self._release_lock()
         return False
+
+    def _release_lock(self) -> None:
+        """Drop the writer lock, if this handle holds one."""
+        lock = getattr(self, "_lock", None)
+        if lock is not None:
+            self._lock = None
+            lock.release()
 
     # -- identity -------------------------------------------------------------
 
@@ -1425,8 +1524,16 @@ class Measurement:
             raise PtoMfdbError(f"could not commit {self._path}: {self._f.error()}")
 
     def close(self) -> None:
-        """Release the file handle."""
-        self._f.close()
+        """Release the file handle, and the writer lock with it.
+
+        Both, and in that order: a lock outliving the handle it protects would
+        block the next writer for as long as the process lives, which is a
+        worse failure than the one it exists to prevent.
+        """
+        try:
+            self._f.close()
+        finally:
+            self._release_lock()
 
     # -- internals ------------------------------------------------------------
 
