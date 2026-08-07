@@ -2,6 +2,39 @@
 
 ## 2026-08-07
 
+* **[PRD-85](prds/prd-85.md) Part A landed: drop guards, and the `tttr_to_pto`
+  conversion they were built to wire up.** `chisurf/gui/widgets/dropguard.py`
+  adds a small registry (`DropGuard`/`register_drop_guard`/`apply_drop_guards`)
+  shaped exactly like the existing AutoForm section registry — a drop zone
+  opts in **by name** (`guards=[...]` on the `data_source`/`path_list`
+  sections, or a direct `apply_drop_guards` call in a hand-rolled
+  `dropEvent`); naming none is inert and behaves exactly as before.
+  The one guard shipped, `tttr_to_pto` (`chisurf/plugins/core/tttr_to_pto/`),
+  closes the gap the PRD found: `pto.Measurement.create` was correct and
+  completely unwired, so a dropped `.ptu` was read where it lay, forever.
+  Offers convert-and-keep (default) / convert-and-delete (only after the
+  copy verifies) / use-as-dropped, once, with a "remember my choice" tick
+  persisted per-guard as a tri-state (`data_loading.drop_guards.tttr_to_pto`);
+  headless runs never see the dialog and default to the safe answer. Wired
+  opt-in at the drop zones that genuinely load a measurement: `burst_background`,
+  `burst_irf_bg`, `tttr_count_rate_analysis` (view.json `guards` option),
+  `burst_analysis`, `tttr_microtime_shifter` (`PathListWidget` kwarg), and the
+  hand-rolled drop handlers in `experiments/pch.py`,
+  `tcspc_tttr_reader_control_widget.py`, and the `pch` plugin.
+  **Extended past the original ask**: the plugin's bare drop-only tool works
+  **both ways** — drop a vendor file to pack it into a `.pto`, or drop a
+  `.pto` to unpack the vendor file(s) it embeds back out
+  (`Measurement.disassemble`, checksum-verified) — since a one-way tool would
+  have left "get my vendor file back" with no dedicated entry point.
+  Screenshotted headlessly (the tool and the nag dialog) and read before
+  calling it done. Part B (a `chiplot` decimation budget for photon-level
+  plots of a stacked container) is untouched — see the PRD's
+  [resume note](prds/prd-85.md#where-to-pick-this-up).
+  Tests: `test/test_dropguard.py` (6), `chisurf/plugins/core/tttr_to_pto/test/`
+  (13), `test/gui/test_path_list_section.py` (+2), `test/gui/test_data_source_section.py`
+  (2, new file) — 80 passed together with the pre-existing `.pto`/manifest/PRD-mention
+  suites.
+
 * **[PRD-82](prds/prd-82.md): pandas eliminated from the tree entirely, not
   just from the storage path.** Scope changed mid-PRD, on direct instruction
   ("no pandas AT ALL! replace all pandas with tttrlib dstore"), superseding

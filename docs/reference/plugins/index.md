@@ -10,7 +10,7 @@ generator: build_tools/docs/generate_plugin_docs.py
 
 Every discoverable ChiSurf plugin, grouped by its menu category. Each page gives the plugin's identity, its editable parameters, and its JSON-RPC surface.
 
-Of the **125 plugins**, **55** build their interface from declarative AutoForm specs and get a full per-parameter table on their page; the remainder use custom Qt widgets, so their controls are described in each plugin's guide while every named fit/model parameter is defined once in the **[parameter glossary](../parameters.md)**.
+Of the **126 plugins**, **55** build their interface from declarative AutoForm specs and get a full per-parameter table on their page; the remainder use custom Qt widgets, so their controls are described in each plugin's guide while every named fit/model parameter is defined once in the **[parameter glossary](../parameters.md)**.
 
 ```{toctree}
 :hidden:
@@ -19,7 +19,7 @@ Of the **125 plugins**, **55** build their interface from declarative AutoForm s
 *
 ```
 
-**125 plugins** across 27 categories.
+**126 plugins** across 27 categories.
 
 ## Analysis → Kinetics
 
@@ -222,6 +222,7 @@ Of the **125 plugins**, **55** build their interface from declarative AutoForm s
 | --- | --- |
 | [Correlate](tttr_correlate.md) | This plugin provides a graphical interface for calculating correlation functions from Time-Tagged Time-Resolved (TTTR) data. |
 | [Generate Decay](tttr_histogram.md) | TTTR Histogram (Generate Decay) |
+| [⇄ .pto](tttr_to_pto.md) | Convert between a vendor photon file (.ptu, .spc, .ht3, ...) and ChiSurf's own .pto container, in either direction. Drop a vendor file to pack it into a .pto beside it; drop a .pto to unpack the vendor file(s) it embeds back out. Whichever direction, the dropped file is kept and the result is verified byte-for-byte before anything is ever deleted. Packing is also offered as a one-time nag wherever a plugin drops a vendor file to load it as the working measurement. |
 
 ## TTTR → Editor
 

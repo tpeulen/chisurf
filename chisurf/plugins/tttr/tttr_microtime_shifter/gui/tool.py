@@ -190,6 +190,7 @@ class MicrotimeShifterTool(ChisurfDockTool):
             mmfdb_kinds=["raw_measurement", "processed_data"],
             mmfdb_scope="mine",
             select_first=True,
+            guards=["tttr_to_pto"],
         )
         self.file_list.selectionChanged.connect(self._on_file_selection)
         self.files_layout.addWidget(self.file_list, 1)

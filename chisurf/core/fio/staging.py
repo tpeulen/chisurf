@@ -149,6 +149,11 @@ DEFAULTS = {
     "probe_min_seconds": DEFAULT_PROBE_MIN_SECONDS,
     "probe_min_bytes": DEFAULT_PROBE_MIN_BYTES,
     "progress_interval": DEFAULT_PROGRESS_INTERVAL,
+    # Per-guard persisted "stop asking" choices for
+    # chisurf.gui.widgets.dropguard, keyed by guard name (e.g. "tttr_to_pto").
+    # A namespace rather than a single flat flag, so a second guard never has
+    # to avoid colliding with the first one's key.
+    "drop_guards": {},
 }
 
 

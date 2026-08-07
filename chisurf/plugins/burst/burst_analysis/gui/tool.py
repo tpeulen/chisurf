@@ -94,6 +94,7 @@ class BurstDataSelectionWidget(QtWidgets.QWidget):
             mmfdb=True,
             mmfdb_kinds=["raw_data", "raw_measurement", "external_reference"],
             mmfdb_scope="all",
+            guards=["tttr_to_pto"],
         )
         layout.addWidget(self.file_list, 1)
 

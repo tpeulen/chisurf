@@ -430,8 +430,12 @@ class PCHController(reader.ExperimentReaderController, QtWidgets.QWidget):
 
     def dropEvent(self, event: QtGui.QDropEvent) -> None:
         if event.mimeData().hasUrls():
+            from chisurf.gui.widgets.dropguard import apply_drop_guards
+
             urls = [u for u in event.mimeData().urls() if u.isLocalFile()]
-            paths = [pathlib.Path(str(u.toLocalFile())) for u in urls]
+            dropped = [str(u.toLocalFile()) for u in urls]
+            resolved = apply_drop_guards(self, dropped, ["tttr_to_pto"])
+            paths = [pathlib.Path(p) for p in resolved]
             if paths:
                 try:
                     self._preview_file_list = paths

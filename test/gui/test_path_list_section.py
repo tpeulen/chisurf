@@ -262,3 +262,59 @@ def test_the_section_advertises_itself_for_sync(qapp):
     w = PathListWidget(model, "files")
     assert getattr(w, "AUTOFORM_REFRESH", False) is True
     assert callable(getattr(w, "sync", None))
+
+
+# -- drop guards (chisurf.gui.widgets.dropguard) -----------------------------
+#
+# A section names no guards by default, so every test above (all of which
+# construct a plain PathListWidget) is itself a regression check that nothing
+# changed for the common case. These pin the opt-in behaviour specifically.
+
+_SPC = (
+    Path(__file__).resolve().parents[2]
+    / "chisurf"
+    / "plugins"
+    / "burst"
+    / "burst_selection"
+    / "tests"
+    / "data"
+    / "bh_spc132_sm_dna"
+    / "m000.spc"
+)
+
+
+def test_no_guards_option_leaves_a_dropped_vendor_file_untouched(qapp, tmp_path):
+    """The default: naming no guard is exactly today's behaviour."""
+    sample = tmp_path / "m000.ptu"
+    sample.write_bytes(b"not a real container")
+    model = _Model()
+    w = PathListWidget(model, "files")
+
+    w._on_dropped([sample])
+
+    assert model.files == [str(sample)]
+    assert not sample.with_suffix(".pto").exists()
+
+
+@pytest.mark.skipif(not _SPC.exists(), reason="no BH SPC test data")
+def test_guards_option_converts_a_dropped_vendor_file(qapp, tmp_path, monkeypatch):
+    """``guards=["tttr_to_pto"]`` runs the guard on a drop before committing."""
+    from chisurf.core.fio import staging
+
+    cfg = dict(staging.DEFAULTS)
+    cfg["drop_guards"] = {"tttr_to_pto": "always_keep"}
+    monkeypatch.setattr(staging, "_settings", lambda: cfg)
+    monkeypatch.setattr(
+        "chisurf.plugins.core.tttr_to_pto.gui.guard.set_data_loading_settings",
+        lambda *a, **k: True,
+    )
+
+    sample = tmp_path / _SPC.name
+    sample.write_bytes(_SPC.read_bytes())
+    model = _Model()
+    w = PathListWidget(model, "files", guards=["tttr_to_pto"])
+
+    w._on_dropped([sample])
+
+    assert model.files == [str(sample.with_suffix(".pto"))]
+    assert sample.exists()  # always_keep: the source survives

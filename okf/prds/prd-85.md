@@ -3,12 +3,45 @@ type: PRD
 prd: "85"
 title: "PRD-85: Drop guards — an opt-in nag-before-commit pattern for file drops, first applied to .pto conversion"
 description: A dropped file is committed as-is everywhere in ChiSurf today; nothing gets a chance to say "wait, first...". This PRD adds a general, registry-based drop-guard pattern — mirroring the existing AutoForm section-registry decorator — that a drop zone opts into by name, each guard free to ask about something different and to apply to only some drop zones, never all of them. The concrete first guard closes a real gap: the Qt-free function that would import a dropped vendor photon file (.ptu/.spc/.ht3/...) into ChiSurf's own .pto container exists (pto.Measurement.create / staging.import_measurement) and is called from nowhere in the tree. Wired through the new pattern, plus a zero-setting drop-only tool for people who just want the container. Because a .pto stacks the raw stream plus every derived table in one growing file, the second half audits and fixes photon-level plots (scatter/trace views reading macro_times/micro_times directly) that were sized for a lone vendor file and must not try to draw millions of raw points at once.
-status: planned
-phase: "scoped; not started"
-resource: chisurf/core/fio/staging.py
+status: in-progress
+phase: "Part A (drop-guard pattern + tttr_to_pto) landed; Part B (decimation) not started"
+resource: chisurf/gui/widgets/dropguard.py
 tags: [prd, tttr, pto, data-loading, gui, plugins, plotting, chiplot]
 timestamp: '2026-08-07T00:00:00Z'
 ---
+
+## Where to pick this up
+
+Part A (the mechanism and its one guard) is done and tested; Part B
+(decimated plotting for a stacked container) has not been started.
+
+1. **Part B is the remaining, larger half.** Nothing in `chiplot` or the
+   listed plugins (`tttr_correlate/gui.py`, `trace_browser`, `tttr_histogram`,
+   `tttr_count_rate_analysis/gui/view_model.py`,
+   `fcs_filter_calculator/gui_parts/*`, `flc_2d/gui/{tool,client}.py`,
+   `burst_selection/gui/tool.py`, `clsm_generator/gui/view_model.py`) has been
+   audited yet. First task is confirming which of those plot a **raw
+   per-photon** scatter/line (in scope) versus an already-aggregated
+   histogram/correlation curve (not) — see Scope B.3 — before writing
+   `chisurf.core.fio.decimate.thin_for_plot`.
+2. **The pre-unification drop-zone audit (A.5) is not exhaustive.** Wired so
+   far: `burst_background`, `burst_irf_bg`, `tttr_count_rate_analysis` (via
+   the `path_list` `guards` option in their view.json), `burst_analysis` and
+   `tttr_microtime_shifter` (via the `PathListWidget` `guards` kwarg), and
+   the hand-rolled `dropEvent`s in `chisurf/gui/widgets/experiments/pch.py`,
+   `chisurf/gui/widgets/experiments/tcspc/tcspc_tttr_reader_control_widget.py`,
+   and `chisurf/plugins/pch/gui/tool.py` (`on_paths_dropped`). Deliberately
+   **not** wired: `bid_to_analysis/__init__.py` (its drop zone accepts
+   `.bid`/`.bst`/`.txt`, never a vendor photon file — the PRD's original list
+   was wrong about this one); `burst_selection/gui/tool.py` and
+   `chisurf/gui/widgets/fio/fio.py` (both load a vendor file only through a
+   `QFileDialog`, not a drop, so `apply_drop_guards` has nothing to hook —
+   would need drop support added first, which is out of this PRD's scope).
+3. **A guided tour was deliberately skipped** for the bare drop-only tool
+   (`tttr_to_pto/gui/tool.py`) — it is one drop target with a self-explanatory
+   label and tooltip, and CLAUDE.md's guided-tour rule exists for panels dense
+   enough that order-of-operations is not obvious. Revisit only if the tool
+   grows a second control.
 
 # Summary
 
@@ -45,7 +78,11 @@ must not try to draw an unbounded photon stream point-for-point.
 
 # Status
 
-Planned. Scope identified against the real seams below; no code written yet.
+In progress. Part A (Scope §A: the drop-guard registry, the `tttr_to_pto`
+guard, the bare two-way drop tool, and wiring into the genuine measurement
+drop zones) is done and tested — see [Where to pick this up](#where-to-pick-this-up)
+for exactly what was and was not wired. Part B (Scope §B: decimated plotting
+for a stacked container) has not been started.
 
 # Motivation
 

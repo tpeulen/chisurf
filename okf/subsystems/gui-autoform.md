@@ -171,6 +171,59 @@ was invisible to it: the form appended a trailing stretch, the panel stayed at
 its minimum, and the height a table or plot asked for went to the gap underneath.
 A panel whose subtree contains an expanding widget is marked expanding itself.
 
+# Drop guards: nag, transform, or refuse before a dropped path commits
+
+Every drop zone used to go straight from `dropEvent` to committing the raw
+path. `chisurf/gui/widgets/dropguard.py` adds a small registry — shaped like
+this file's own `register_section`/`get_section_factory` on purpose — that a
+drop zone opts into **by name**, so different drop zones can disagree about
+what should nag them, or name nothing and behave exactly as before:
+
+- `DropGuard` — `applies(path) -> bool` (cheap, no I/O beyond a suffix/header
+  check) and `resolve(parent, paths) -> list[str]` (shown only the paths
+  `applies()` accepted; returns what to actually commit — a converted path,
+  the original, or fewer entries than it was given when a guard declines a
+  path outright). `resolve` owns its own dialog, if any.
+- `register_drop_guard(name)` registers an instance, a subclass, or a
+  zero-arg factory.
+- `apply_drop_guards(parent, paths, guard_names=())` is the one call a drop
+  zone's `dropEvent` makes. `guard_names` defaults to `()` — inert, shows
+  nothing, returns `paths` unchanged — which is what makes the pattern
+  opt-in rather than a hidden global hook. Guards run in order; each only
+  ever sees (and can only ever transform or drop) the paths its own
+  `applies()` accepted, so two guards compose without interfering.
+- `path_list` and `data_source` (above) both gained a `guards` option
+  (`{"guards": ["tttr_to_pto"]}`) applied only on an actual drag-and-drop —
+  never on a browsed or database-picked file, since browsing is already a
+  deliberate choice. Pre-unification hand-rolled `dropEvent` handlers call
+  `apply_drop_guards` directly instead.
+
+The one guard ChiSurf ships is `tttr_to_pto`
+(`chisurf/plugins/core/tttr_to_pto/`): dropping a vendor photon file
+(`.ptu`/`.spc`/`.ht3`/...) onto a drop zone that opted in offers converting it
+into a `.pto` container — convert-and-keep (default), convert-and-delete
+(only after the copy verifies), or use-as-dropped — once, with a "remember my
+choice" tick persisted per-guard as a tri-state under
+`data_loading.drop_guards.tttr_to_pto` (`ask`/`always_keep`/`always_delete`/
+`never`). A non-interactive run never sees the dialog: `ChiSurfMessageBox.choice`'s
+headless default is `asis` (use as dropped), so an unattended run is never
+blocked on a prompt nobody is there to answer — the dict order still puts
+"keep" first, for the person who *is* there. The plugin also ships a bare,
+prompt-free drop tool (`gui/tool.py`) that works **both ways** from what was
+dropped: a vendor file is packed into a `.pto`; a `.pto` is unpacked back to
+the vendor file(s) it embeds (`Measurement.disassemble`, checksum-verified).
+See [photon container](/subsystems/photon-container.md) for what a `.pto`
+holds and why opening a vendor file should produce one.
+
+Wired opt-in so far at the drop zones that genuinely load a measurement
+(burst background/IRF estimation, count-rate analysis, burst analysis, the
+microtime shifter, the PCH tool, the TCSPC/PCH experiment readers) — not
+every widget that merely inspects a vendor file in passing. Auditing the
+remaining pre-unification vendor-file call sites and giving `chiplot` a
+decimation budget for the photon-level plots a stacked `.pto` makes an
+every-session concern are open follow-ups (see
+[PRD-85](/prds/prd-85.md)'s "Where to pick this up").
+
 # Reporting to the user: one message box, one progress bar
 
 Two things every long-running or fallible tool must do — say that something went

@@ -383,8 +383,12 @@ class PCHApp(ChisurfDockTool):
         """
         for path in paths:
             if path.suffix.lower() in TTTR_SUFFIXES:
+                from chisurf.gui.widgets.dropguard import apply_drop_guards
+
                 self.Information.unsupported_drop.clear()
-                self._load_path(str(path))
+                resolved = apply_drop_guards(self, [str(path)], ["tttr_to_pto"])
+                if resolved:
+                    self._load_path(resolved[0])
                 return
         if paths:
             self.Information.unsupported_drop()

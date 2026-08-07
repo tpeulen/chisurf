@@ -21,7 +21,8 @@
               "type": "custom",
               "key": "path_list",
               "target": "files",
-              "options": {"title": "TTTR files (drop files or folders)", "add_folders": true}
+              "options": {"title": "TTTR files (drop files or folders)", "add_folders": true,
+                          "guards": ["tttr_to_pto"]}
             },
             {"type": "custom", "key": "count_rate_run"}
           ]

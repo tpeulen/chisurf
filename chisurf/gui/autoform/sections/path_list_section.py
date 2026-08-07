@@ -16,7 +16,11 @@ change. Dropped folders are expanded recursively to files whose extension is in
 (list), ``add_folders`` (bool, default True), ``dialog_filter`` (file-dialog
 filter string), ``title`` (header label), ``mmfdb`` (bool, default True) — offer a
 "select from the MMFDB database" button beside the file/folder buttons, ``mmfdb_kinds``
-(list) and ``mmfdb_scope`` (str) to pre-filter that picker.
+(list) and ``mmfdb_scope`` (str) to pre-filter that picker, ``guards`` (list of
+str) — names of drop guards (:mod:`chisurf.gui.widgets.dropguard`) to run on
+**dropped** paths before they are added, e.g. ``["tttr_to_pto"]``; empty by
+default, and never applied to files added via the toolbar/dialog/database
+buttons, only to a drag-and-drop.
 
 Because every file selector now routes through this one section, adding the MMFDB
 button here is what gives *every* ``path_list`` "select from database" for free —
@@ -120,6 +124,10 @@ class PathListWidget(QtWidgets.QWidget):
         # the default recursive extension-filtered scan when a folder is added
         # (e.g. a burst-analysis folder that maps to specific BUR/BST index files).
         self._folder_expander = options.get("folder_expander")
+        # Drop guards (chisurf.gui.widgets.dropguard) run only on a drag-and-drop,
+        # never on files added via the toolbar/dialog/database buttons -- browsing
+        # to a file is already a deliberate choice, a drop is not.
+        self._guards = tuple(str(g) for g in (options.get("guards") or ()))
         # In checkable mode entries default to *checked*; only unchecked paths are
         # tracked, so the check state survives the widget's full-list refreshes.
         self._unchecked: set[str] = set()
@@ -288,10 +296,15 @@ class PathListWidget(QtWidgets.QWidget):
     # ── actions ─────────────────────────────────────────────────────────
     def _on_dropped(self, paths: list) -> None:
         strs = [str(p) for p in paths]
+        expanded = self._expand(strs)
+        if self._guards:
+            from chisurf.gui.widgets.dropguard import apply_drop_guards
+
+            expanded = apply_drop_guards(self, expanded, self._guards)
         if self._replace_on_drop:
-            self._commit(self._expand(strs))  # replace the list with the dropped set
+            self._commit(expanded)  # replace the list with the dropped set
         else:
-            self._add(strs)
+            self._commit(self._current() + expanded)
 
     def _add_files(self) -> None:
         files, _ = QtWidgets.QFileDialog.getOpenFileNames(

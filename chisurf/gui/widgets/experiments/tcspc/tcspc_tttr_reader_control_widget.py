@@ -409,12 +409,17 @@ class TCSPCTTTRReaderControlWidget(
         if event.mimeData().hasUrls():
             urls = [u for u in event.mimeData().urls() if u.isLocalFile()]
             if urls:
-                path = pathlib.Path(str(urls[0].toLocalFile()))
-                self._preview_filename = path
-                try:
-                    self._load_preview_from_file(path)
-                except Exception:
-                    pass
+                from chisurf.gui.widgets.dropguard import apply_drop_guards
+
+                dropped = str(urls[0].toLocalFile())
+                resolved = apply_drop_guards(self, [dropped], ["tttr_to_pto"])
+                if resolved:
+                    path = pathlib.Path(resolved[0])
+                    self._preview_filename = path
+                    try:
+                        self._load_preview_from_file(path)
+                    except Exception:
+                        pass
             event.acceptProposedAction()
         else:
             super().dropEvent(event)

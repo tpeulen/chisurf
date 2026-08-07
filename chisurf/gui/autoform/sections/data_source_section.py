@@ -32,6 +32,11 @@ Options:
 * ``extensions`` (list of str) — accepted drop suffixes (default: everything).
 * ``mmfdb`` (bool, default ``True``) — show the database button.
 * ``mmfdb_kinds`` (list) / ``mmfdb_scope`` (str) — pre-filter the dataset picker.
+* ``guards`` (list of str) — names of drop guards
+  (:mod:`chisurf.gui.widgets.dropguard`) to run on a **dropped** file before
+  it is committed, e.g. ``["tttr_to_pto"]`` to offer converting a dropped
+  vendor photon file. Empty by default -- a browsed or database-picked file
+  never goes through a guard, only a drop does.
 """
 
 from __future__ import annotations
@@ -71,6 +76,7 @@ class DataSourceSection(QtWidgets.QWidget):
         self._mmfdb = bool(options.get("mmfdb", True))
         self._mmfdb_kinds = options.get("mmfdb_kinds")
         self._mmfdb_scope = str(options.get("mmfdb_scope", "all"))
+        self._guards = tuple(str(g) for g in (options.get("guards") or ()))
 
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -194,10 +200,18 @@ class DataSourceSection(QtWidgets.QWidget):
             event.acceptProposedAction()
 
     def dropEvent(self, event) -> None:  # noqa: N802 (Qt signature)
-        """Adopt the first dropped file."""
+        """Adopt the first dropped file, after any named drop guards run."""
         for url in event.mimeData().urls():
             if url.isLocalFile() and self._accepts(url.toLocalFile()):
-                self._commit(url.toLocalFile())
+                path = url.toLocalFile()
+                if self._guards:
+                    from chisurf.gui.widgets.dropguard import apply_drop_guards
+
+                    resolved = apply_drop_guards(self, [path], self._guards)
+                    if not resolved:
+                        break
+                    path = resolved[0]
+                self._commit(path)
                 break
         event.acceptProposedAction()
 
