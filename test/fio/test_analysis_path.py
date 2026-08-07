@@ -293,3 +293,67 @@ def test_the_burst_table_names_the_measurement_not_the_box(tmp_path: Path):
 
     named = {str(v) for v in np.asarray(read_burst_table(container)["First File"])}
     assert named == {SPC.name}
+
+
+def test_a_merged_container_produces_a_sane_burst_table(tmp_path: Path):
+    """Several vendor files packed into one container are one measurement.
+
+    A real session left a container whose burst table held five "bursts" of
+    ~1500 photons each, with `Duration (ms)` at 0.0 beside a photon count of
+    1951 and `Mean Macro Time (ms)` at 7.1e12 — a time 10 million times longer
+    than the measurement. Every one of those is individually representable, so
+    nothing rejected the table; it is only implausible taken together.
+
+    The photon stream itself was fine (monotonic, 707 s over eleven files), so
+    the guard is on the *table*: durations that fit inside the measurement,
+    macro times that do too, and a burst that has photons having a duration.
+    """
+    import numpy as np
+
+    from chisurf.core.fio.fluorescence.burst_tree import read_burst_table
+    from chisurf.core.fio.staging import open_tttr
+    from chisurf.plugins.burst.burst_selection.api.models import (
+        AnalysisRequest,
+        AnalysisSettings,
+        BurstDetectionSettings,
+        DeltaMacroTimeFilterSettings,
+        PhotonFilterSettings,
+    )
+    from chisurf.plugins.burst.burst_selection.api.selection import analyze_request
+    from chisurf.plugins.core.tttr_to_pto import api as pto_api
+
+    sources = sorted(DATA.glob("m00*.spc"))
+    assert len(sources) >= 3, "need several vendor files to merge"
+    for src in sources:
+        (tmp_path / src.name).write_bytes(src.read_bytes())
+    container = pto_api.convert(sorted(tmp_path.glob("*.spc")))
+
+    settings = AnalysisSettings()
+    settings.output_formats = ["pto"]
+    settings.photon_filter = PhotonFilterSettings(
+        channels=[], filter_active=True, used_filter="count_rate",
+        delta_macro_time_filter=DeltaMacroTimeFilterSettings(dT_min=0.0, dT_max=0.2),
+    )
+    settings.burst_detection = BurstDetectionSettings(
+        min_photons=60, photon_window=10, time_window=1e-3
+    )
+    result = analyze_request(
+        AnalysisRequest(files=[str(container)], settings=settings, legacy_output=False)
+    )
+
+    tttr = open_tttr(str(container))
+    macro = np.asarray(tttr.macro_times, dtype=np.int64)
+    span_ms = (macro.max() - macro.min()) * tttr.header.macro_time_resolution * 1e3
+
+    table = read_burst_table(container)
+    assert row_count(table) == result.metadata["n_bursts"]
+    assert row_count(table) > 100, "a merged measurement is not five bursts"
+
+    photons = np.asarray(table["Number of Photons"], dtype=float)
+    duration = np.asarray(table["Duration (ms)"], dtype=float)
+    centre = np.asarray(table["Mean Macro Time (ms)"], dtype=float)
+
+    assert duration.max() < span_ms, "a burst outlasted the measurement"
+    assert centre.max() <= span_ms, "a burst sits outside the measurement"
+    assert np.all(duration[photons > 1] > 0), "photons but no duration"
+    assert photons.mean() < 1000, "these are the whole trace, not bursts"
