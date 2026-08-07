@@ -23,7 +23,14 @@ timestamp: '2026-08-07T00:00:00Z'
    (`core/experiments/deer/csv_loader.py`), `DARK_RATE_UNITS`
    (`core/fluorescence/fcs/saturation.py`). Each is a small table that disagrees
    with the others about spelling.
-3. **Do not add conversion to the fitting engine.** The engine's numbers are
+3. **One duplicate is still there.** `_flr_chisurf_parameter.R0` and
+   `.r0` are the same parameter declared twice — same description, both bound to
+   the SQL column `r0`. Both now carry `angstroms`, but removing one is a
+   vocabulary *removal* and needs the alias mechanism
+   (MMFDB REQUIREMENTS 2.3, "write canonical, read both"), so it belongs with
+   the `flr_chisurf_parameter` → `flr_fit_parameter` rename rather than on its
+   own.
+4. **Do not add conversion to the fitting engine.** The engine's numbers are
    unitless by design and must stay that way — see *Non-goals*. Every attempt to
    make a solver unit-aware ends with units inside a Jacobian.
 
@@ -85,8 +92,9 @@ instead of a pattern somebody has to notice.
 | TAC / micro time resolution | **picoseconds** | `_mmfdb_setup.micro_time_resolution` |
 | Macro time resolution | **nanoseconds** | `_mmfdb_setup.macro_time_resolution` |
 | Count rate | **kilohertz** | burst tables: `Count Rate (KHz)` |
+| FRET distances — R_DA, R₀, and every distance distribution | **ångströms** | `core/fluorescence/fret/calibration.py` (`R_0` = 52.0, bounds 1–200), `species_decay.py` (`# R0 (Å)`), `forster.py` returns `R0_angstrom` |
 | Atomic coordinates in memory | **nanometres** | `core/structure/trajectory_data.py` converts `× 10` on the way to a PDB |
-| Distances a user reads (R_DA, R₀, R_g) | **ångströms** | FRET distances and radii of gyration are reported in Å |
+| Radius of gyration, structural distances a user reads | **ångströms** | `core/structure/structure.py` reports R_g in Å |
 | Concentration | **nanomolar** | to confirm in stage 6; a reader currently decides |
 | Wavelength | **nanometres** | spectra are nm throughout |
 
@@ -101,6 +109,14 @@ about why:
 * **Lifetimes are ns and correlation times are ms.** Both are times, and a naive
   "one time unit" rule would force one of the two communities to work in numbers
   with six leading zeros. The unit is per *quantity*, not per dimension.
+* **FRET distances are ångströms and coordinates are nanometres.** Both are
+  lengths, and this is the same rule again rather than an inconsistency to tidy
+  up. A Förster radius is 52 Å and a distance distribution is drawn in Å because
+  that is what the field publishes; a coordinate array is nm because that is what
+  the trajectory formats and the structure code use. Unifying them would make one
+  of the two read wrong to everyone who works in it. **Anything computing a FRET
+  observable from coordinates converts once, explicitly, at that call** — it is a
+  boundary between two quantities, not a mistake.
 
 A quantity not in this table has no fixed internal unit yet, and adding one is a
 change to this table first.
@@ -130,6 +146,12 @@ prevents:
 
 * A lifetime fitted against a decay whose x-axis is nanoseconds, exported to a
   file whose reader assumes picoseconds. Both numbers are plausible.
+* **Found while writing this.** `_flr_fret_forster_radius.forster_radius`
+  carried a default of `5.0` and no unit — upstream flrCIF declares none — in a
+  field every ChiSurf consumer reads as ångströms, where a Förster radius is
+  40–70. It was a nanometre number in an ångström field, and nothing could have
+  noticed. Declared `angstroms` and corrected to `50.0`, the same physical
+  quantity.
 * A burst duration in milliseconds compared against a diffusion time in
   microseconds, because both columns are called "time".
 * A rate entered in a GUI field labelled `1/us` and stored as `1/s`.

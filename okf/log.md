@@ -33,6 +33,16 @@
 
 ## 2026-08-06
 
+* **FRET distances are ångströms, and one of them was a nanometre** ([PRD-84](prds/prd-84.md)).
+
+  R_DA, R₀ and every distance distribution are ångströms *internally*, not just where a user reads them — verified in the code rather than assumed: `calibration.py` starts R₀ at 52.0 with bounds 1–200, `species_decay.py` says `# R0 (Å)`, and `forster.py` returns `R0_angstrom`. The PRD table had framed Å as a display convention, which was wrong.
+
+  So coordinates are nm and FRET distances are Å — both lengths, and the same "per quantity, not per dimension" rule that already makes lifetimes ns and correlation times ms. Unifying them would make one of the two read wrong to everyone who works in it. Anything computing a FRET observable from coordinates converts once, explicitly, at that call: a boundary between two quantities, not a mistake.
+
+  **Writing it down found a live one.** `_flr_fret_forster_radius.forster_radius` had a default of `5.0` and no declared unit — upstream flrCIF declares none either — in a field every consumer reads as ångströms, where a Förster radius is 40–70. A nanometre number sitting in an ångström field, and nothing in the stack could have noticed. Declared `angstroms` and corrected to `50.0`, the same physical quantity.
+
+  Still open: `_flr_chisurf_parameter.R0` and `.r0` are the same parameter declared twice, both bound to the column `r0`. Both carry the unit now; removing one is a vocabulary removal needing the alias mechanism, so it goes with the `flr_fit_parameter` rename.
+
 * **2CDE joins the container, and two variants stop overwriting each other** ([photon container](subsystems/photon-container.md)).
 
   The fourth writer, and the third hand-rolled `2n+1` interleave retired. Its `2cde_settings.json` — dropped inside its own `2c4/` directory, where every reader of that directory then had to skip it on purpose — becomes the run's settings.
