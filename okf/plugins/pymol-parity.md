@@ -52,6 +52,30 @@ The findings below are what has been *closed*. This section is the open front,
 kept at the top so a new session does not have to reconstruct it. Ordered by
 what a user actually hits.
 
+**0. The refusals are the worklist — six were stale in one day (2026-08-07).**
+Start here, because it is the cheapest parity there is: chimol repeatedly has
+the capability and still tells the user it does not. Six found in one sweep —
+`origin`, `cell` (which was also *broken*, resolving symmetry differently from
+`symexp`), `generate ▸ symmetry mates`, `A ▸ hydrogens ▸ add`,
+`donors`/`acceptors`, `byring` — every one refusing on behalf of a command,
+keyword or analysis that already existed. **Capability and surface land
+separately and nothing pairs them up again.**
+
+Two lists hold the remaining refusals and both are worth re-reading whenever
+that area is touched:
+
+* `DISABLED_ENTRIES` in `test/test_menu_coverage.py` — 21 menu leaves. The test
+  fails both ways, so one that gains a command has to be struck;
+* `_UNSUPPORTED_FLAGS` in `cmd/sele_parser.py` — the selector's equivalent.
+  What is left there is genuine: `delocalized`, `flag`, `text_type`, the
+  sculpting flags, the picking mask, and the `center`/`origin` pseudo-atoms.
+
+The largest real gap behind the remaining menu refusals is **bond orders**.
+`S/H ▸ valence` needs them to draw, and the *bond-order half* of
+`assign_pdb_known_residue` (`layer2/ObjectMolecule2.cpp`) is transcribable the
+same way its formal-charge half already was — C=O, ARG CZ=NH1, ASP CG=OD1, the
+nucleobases. That is the next substantial item here.
+
 **0a. Anything a user types into needs a test that types into it.** Not a task
 — a standing correction, and it belongs first because it is what let two total
 failures sit behind a green suite. Every test of the command layer drove
