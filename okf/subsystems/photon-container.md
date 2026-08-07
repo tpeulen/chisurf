@@ -8,7 +8,26 @@ timestamp: '2026-08-06T00:00:00Z'
 ---
 
 # Where to pick this up
-1. **Derivatives go into the measurement's `.pto`, and the provenance has to
+1. **The provenance graphs are NOT all verified — [PRD-88](/prds/prd-88.md)
+   owns that.** `build_tools/dev_utils/lineage_audit.py` drives the real writers
+   and reports every artifact that cannot reach the primary data. Run it before
+   trusting a new writer:
+
+   ```
+   QT_QPA_PLATFORM=offscreen python -m build_tools.dev_utils.lineage_audit
+   ```
+
+   It stands at **25 artifacts, 2 incomplete** — `img_tracking` has no fixture,
+   and a standalone curve legitimately has no measurement behind it. **Nested
+   chains have no coverage at all**; the chain table in the PRD is the worklist.
+
+   The defect it found is the shape to expect: `instrument_uid` was recovered on
+   reopen by matching a single artifact kind, so a container whose source is not
+   photons had no primary, and writers falling back to it recorded no parent.
+   **Invisible except across an open** — a writer that creates the container in
+   the same call never asks again.
+
+2. **Derivatives go into the measurement's `.pto`, and the provenance has to
    reconstruct the path back to the primary data.** Stated as an objective:
    "when there is a .pto file the derivatives must end up in the .pto (with
    according provenance data, for reconstruction of the path). the provenance
@@ -19,7 +38,7 @@ timestamp: '2026-08-06T00:00:00Z'
    `test_every_derived_object_in_a_real_container_can_be_traced`.
 
 
-2. **`.pto` is now the default, and that is a user objective rather than a
+3. **`.pto` is now the default, and that is a user objective rather than a
    preference** — "in the end .pto (mfdb) should be the main filetype for tttr
    data in chisurf (this is objective)". A vendor file is an *import source*:
    `staging.import_measurement` turns one into its container, leaving the
@@ -50,7 +69,7 @@ timestamp: '2026-08-06T00:00:00Z'
    names a vendor photon format without the container. The guard was worth
    writing: it found **eight** more dialogs after the ones found by hand.
 
-3. **Provenance has to reconstruct the path, and a writer that records partial
+4. **Provenance has to reconstruct the path, and a writer that records partial
    settings breaks that silently.** Every derived object carries three tags:
    `_mmfdb_edge.source_node_id` (one per parent), `relationship_type` (a term,
    plus the join columns when grains differ), and `operation_type` with the
@@ -69,7 +88,7 @@ timestamp: '2026-08-06T00:00:00Z'
    test walks a *real* container, not a synthesised one, so a writer that
    forgets fails there.
 
-4. **Formats are consolidated by *direction*, and that is the rule to keep.**
+5. **Formats are consolidated by *direction*, and that is the rule to keep.**
    Readers are free — an instrument writes one format and a collaborator's
    software another, and ChiSurf reads about a dozen curve formats, six of which
    cannot write at all. Writers are **one per kind of thing**: a measurement is
@@ -90,7 +109,7 @@ timestamp: '2026-08-06T00:00:00Z'
    callers before removing one: `write_vv_vh` in particular is read by tools
    outside ChiSurf.
 
-5. **Stages 3 and 4 are done; three writers are left, and they are the odd
+6. **Stages 3 and 4 are done; three writers are left, and they are the odd
    ones.** Every burst analysis and every imaging tool writes into the
    measurement's container. What remains is
    `tttr/{tttr_time_windows,trace_browser,intensity_trace}` — browsers rather
@@ -159,7 +178,7 @@ timestamp: '2026-08-06T00:00:00Z'
      padding knows it is there and should say so rather than let it be detected
      — see `bid_to_analysis._write_container(interleaved=...)`.
 
-6. **Capture the legacy baseline BEFORE touching each writer.** Once a writer is
+7. **Capture the legacy baseline BEFORE touching each writer.** Once a writer is
    changed its output is unrecoverable and the migration cannot be reviewed by
    anyone later. The recipe is the one used for `burst_selection`: drive the
    headless API with the legacy flag, record every path with its size, sha256
@@ -167,7 +186,7 @@ timestamp: '2026-08-06T00:00:00Z'
    `test/data/baselines/`. Judge parity on **columns, not bytes** — the
    container deliberately stores a table where the folder stored a padded text
    grid.
-7. **The interleave is a file-format artifact and must not travel.** A `.bur`
+8. **The interleave is a file-format artifact and must not travel.** A `.bur`
    holds `2N+1` rows — a zero row, a burst, a zero row — because companions are
    merged by *counting*, and it carries a nameless trailing column to produce
    the header's trailing tab. Both leak into the in-memory frames the analyses
@@ -176,15 +195,15 @@ timestamp: '2026-08-06T00:00:00Z'
    safe; one that reaches past it is not, and a placeholder row silently
    destroys the information that a burst was absent. The trap is that the frame
    *looks* like data.
-8. **`export_seidel` is not written yet.** It is `PtoFile.disassemble()` plus
+9. **`export_seidel` is not written yet.** It is `PtoFile.disassemble()` plus
    the existing `burst_companion.write_companion` — it must go through that
    function and never hand-roll the `2n+1` interleave, which is the mistake
    four current writers make. It is **lossy by construction** for anything not
    at burst grain and must say so.
-9. **`read_bur_with_companions` has no PTO branch yet.** That is the single
+10. **`read_bur_with_companions` has no PTO branch yet.** That is the single
    seam `burst_browser` and ndX read through, so adding it there gives both
    PTO support without touching either.
-10. **Streaming landed in the library** (tttrlib PRD-020): `add_file`,
+11. **Streaming landed in the library** (tttrlib PRD-020): `add_file`,
    ranged reads, row windows and cues. The seam already prefers `add_file`, so
    embedding no longer holds a file in memory — the known-issues note for it is
    closed.

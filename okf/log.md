@@ -2,6 +2,58 @@
 
 ## 2026-08-07
 
+* **[PRD-82](prds/prd-82.md): pandas eliminated from the tree entirely, not
+  just from the storage path.** Scope changed mid-PRD, on direct instruction
+  ("no pandas AT ALL! replace all pandas with tttrlib dstore"), superseding
+  the PRD's own non-goal. Beyond the 3 ports logged earlier today: deleted
+  `chisurf.core.datastore.store_from_dataframe`/`dataframe_from_store`
+  (`as_store`'s catch-all is now a `TypeError`, not a pandas conversion);
+  deleted `Measurement.get_table` (`get_store` had every real caller
+  already); deleted chitable's `DataFrameSource`/`edit_dataframe`/
+  `show_dataframe`/`set_dataframe`, replaced by `edit_store`/`show_store`/
+  `ChiTableWidget.set_store`/`.to_store()` on `DataStoreSource`, and
+  `kind_from_dtype`/`is_na` in `chitable/source.py` are pure numpy now (no
+  pandas fallback, because nothing produces a pandas extension dtype any
+  more); renamed `read_table_frame` → `read_results_table`, returning a
+  store; ported `pixel_maps.read_imaging_table` and two notebook-facing
+  properties in `burst_analysis/api/workflow.py` (`H2mm.scan`,
+  `DetectorIrfBackground.table`) to return stores. `chisurf/` now imports
+  pandas *nowhere*, confirmed by AST scan (module-level and local, zero
+  hits) — `test/test_pandas_seam.py` was rewritten from a shrinking-allowlist
+  tracker to a flat "must be empty" assertion, and
+  `test/pandas_import_allowlist.txt` is deleted.
+
+  **Found and fixed on the way:** `store_from_rows` had no boolean branch —
+  `bool` is an `int` subclass in Python, the int branch already excluded it
+  on purpose, but nothing caught it going out, so a boolean column silently
+  became `1.0`/`0.0`. Fixed at the source; it is what lets a store built from
+  row-dicts drive chitable's checkbox delegate automatically (the case
+  `table_plot.py`'s `on_show_model` needed once it stopped going through
+  `DataFrameSource`).
+
+  **The dependency actually left, this time.** `pandas` is struck from
+  `pixi.toml [dependencies]`, `pyproject.toml`, and
+  `rattler-recipe/recipe.yaml`; `conda create --dry-run` against the recipe's
+  `run:` list moves the solved closure **256 → 255**, with nothing else in
+  chisurf's own recipe pulling it back in transitively (the earlier note
+  about `seaborn`/`statsmodels` requiring it does not apply to this recipe).
+  It stays declared in `pixi.toml [feature.test.dependencies]` for the
+  handful of tests that use it as an independent oracle (compare chisurf's
+  own CSV writer against `pandas.to_csv`, byte for byte) or to build a file
+  an external tool actually wrote — test-only interop, never reaching the
+  packaged app. `test/test_declared_dependencies.py` was taught to recognise
+  that section, or those tests would have failed "undeclared import" the
+  moment the package-wide declaration was struck.
+
+  A concurrent session was mid-flight on adjacent fallout from the same
+  `as_store` change (`Measurement._as_store`, `deinterleave_bursts`,
+  `write_per_source`, `burst_rows_for_display`, `_display_frame_set` in
+  `burst_container.py`) — both sides landed independently and the combined
+  `chisurf/plugins/burst` suite (530 tests) and `test/microscopy` suite (74,
+  4 of which needed the same `.columns`/`len()` → `column_names`/`row_count`
+  port `read_imaging_table` returning a store now requires) pass clean
+  together.
+
 * **[PRD-87](prds/prd-87.md) scoped: `chisurf.core.ml`, and what it would take
   to end scikit-learn.** Asked what the tree actually uses of `scikit-learn`.
   Five files import it; between them they touch **four estimators** —
@@ -171,6 +223,14 @@
   in one growing file: an audit of the plugins that plot raw `macro_times`/`micro_times`
   at full resolution, and a shared decimation budget on `chiplot`'s `line`/`scatter`
   so those plots stop trying to draw millions of points.
+
+* **[PRD-88](prds/prd-88.md): the provenance graphs were tested on one synthetic chain, so an audit was written — it found 6 of 26 artifacts broken** ([photon container](subsystems/photon-container.md)). Asked whether every provenance graph reconstructs, the honest answer was no: one two-step chain, one multi-parent case, and a "walk everything" check against a fixture holding a single derived artifact. None of the ~20 migrated writers had been exercised for lineage.
+
+  `build_tools/dev_utils/lineage_audit.py` drives the **real** writers against real files and asks, of every artifact, whether it names its operation, its settings and its parents and whether the walk reaches the primary data. ~200 lines, an hour, and it found four broken cells sharing one root cause: `instrument_uid` was recovered on `open()` by matching a **single** artifact kind. A container whose source is not photons — ebFRET starts from binned traces, and `create` takes an `artifact_kind` precisely so a `.dat` is not called a photon stream — came back with no primary, so a writer passing `derived_from=()` recorded **no parent at all** and everything after it chained to a sibling.
+
+  **The property that hid it will recur:** a writer that *creates* the container in the same call has the uid from `create` and never asks again. It only shows on **reopen** — which is what a second analysis on the same measurement does, and what no test did. Fixed; 6 → 2, and both remaining are decisions rather than bugs (a tracking writer with no fixture, and a standalone curve that legitimately has no measurement behind it — which raises whether a container with no primary is well-formed, since "legitimately primary" and "lost its parent" are indistinguishable today).
+
+  The PRD defines the matrix — 11 source kinds including the sidecar-carrying SPC and the generated sources, ~20 writers with their artifact counts and grains — and the **nested chains that have no coverage at all**: 5-deep fan-in through burst fusion, a raster mid-chain in imaging, calibration as a second relation type, and the reopen path where the defect lived.
 
 * **Provenance that reconstructs the path, not a label saying which tool ran** ([photon container](subsystems/photon-container.md), [PTO.MFDB](specs/pto-mfdb.md)). Derivatives land in the measurement's `.pto`, and each one now records three facts rather than two: **what it came from** (`_mmfdb_edge.source_node_id`, one tag per parent), **how it relates to it** (`relationship_type` — a term, plus the join columns), and **what was done with the complete settings**.
 
