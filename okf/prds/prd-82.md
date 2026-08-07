@@ -18,22 +18,38 @@ burst-table layer, which is what everything else was waiting on**; stage 4 is
 CSV, whose writer is in use and whose *reader* is deliberately not migrated —
 see the measurement below.
 
-**What is left is the count, and it is 11 files — of which 7 should stay.**
-`test/pandas_import_allowlist.txt` is the worklist. The seven that stay are
-interop: `datastore.py` itself, the three `chitable` adapters, `table_plot.py`,
-`topology.py` and `evaluators/base.py` — each hands a frame *out* or reads a
-format only pandas knows. **Four are real ports left**:
-`burst_mle_analysis/wizard.py` (11 `pd.*`), `burst_fcs_correlator/wizard.py`,
-`bid_to_analysis/__init__.py` and `burst_analysis/api/workflow.py`.
+**What is left is 11 files, and only 3 are work.**
+`test/pandas_import_allowlist.txt` is the worklist and is now in **two labelled
+groups**, because a bare count overstates what is left. The 8 *interop* entries
+hand a frame **out** or read a format only pandas knows — `datastore.py` itself,
+the three `chitable` adapters, `table_plot.py`, `topology.py`,
+`evaluators/base.py`, and `burst_analysis/api/workflow.py`, which is the
+notebook-facing façade for bench scientists and where a frame is the right
+answer.
 
-One thing they share, and it is the reason they were left for last: all four
-are **wizards and workflow shells**, where the frame is threaded through GUI
-state rather than computed and written. Expect the port to be about *where the
-table lives*, not about arithmetic.
+The **3 ports**, and why none is mechanical — this is the part worth reading
+before starting one:
 
-**ndX takes a store directly** — `DataSource.from_store(store)` is the
-zero-copy path and both hand-off sites in this tree now use it. Do not build a
-frame to open a window.
+1. `burst_fcs_correlator/wizard.py` — a wide pivot (`groupby` on two keys,
+   `set_index`, `reindex`) feeding a **`td4` writer that is untested and
+   violates the companion contract**: its row grid is built from the bursts that
+   produced a result, not from the bursts, so a skipped burst shifts every later
+   diffusion time onto the wrong burst. Written up in
+   [known issues](../references/known-issues.md). Fixing it needs the burst
+   count, which the correlator does not hold — so it is a behaviour change, and
+   the layout test comes first.
+2. `burst_mle_analysis/wizard.py` — carries its **own third copy** of
+   `read_burst_analysis` (BVA has one, `photons.load_bur_dataframe` is the
+   shared one). The fix is to delete it and use the shared reader, not to port
+   it; the copy also carries a nullable-`Int64` dtype spec and an
+   `iloc[::row_stride]` de-interleave that `deinterleave_bursts` already does.
+3. `bid_to_analysis/__init__.py` — reads a `.bur` back in order to append to it,
+   which is the one thing the CSV *reader* migration is deliberately deferred
+   on (see the measurement below).
+
+**ndX takes a store directly** — `DataSource.from_store(store)` is the zero-copy
+path and both hand-off sites in this tree now use it. Do not build a frame to
+open a window.
 
 **Read this before porting one of them — the failure mode is silence, not an
 exception.** A store has **both** `names` and `columns`, and its `columns` are

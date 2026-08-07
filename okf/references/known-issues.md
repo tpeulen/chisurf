@@ -1,3 +1,37 @@
+## burst FCS: the `td4` companion is written on the bursts that produced a result, not on the bursts
+
+`_save_td4_results` in `chisurf/plugins/burst/burst_fcs_correlator/wizard.py`
+builds its row grid from the correlations it computed, then zero-interleaves
+that. The [burst-companion contract](../subsystems/burst-companions.md) requires
+**one row per burst of the measurement, including the ones the analysis
+skipped** — because the file is merged onto the burst table *by position*.
+
+The function's own docstring already states the consequence, which is why this
+is recorded rather than discovered: "a burst the correlator skipped is a missing
+row there rather than a blank one, so every burst after it is merged against the
+wrong burst's diffusion time — silently, because the shape and the column names
+stay right and only the attribution is wrong."
+
+Two further deviations in the same function:
+
+* it writes the layout **by hand** (`out[1::2]`, `'\t'.join(cols) + '\t\n'`,
+  `%.6f`) rather than through `burst_companion.write_companion`. That is the
+  same divergence the `.bv4` writer had until 2026-08-07, and it is what lets a
+  companion drift from the contract that merges it;
+* the container written beside it (`_write_container`) is **correct** — it
+  carries `Burst Index` as a declared key — so the two artefacts of the same run
+  disagree, and only the keyed one can be trusted.
+
+**Fixing it needs the burst count**, which the correlator does not currently
+hold: emitting one row per burst means reading the `.bur` table for the grid.
+That is why this was not fixed alongside the `.bv4` convergence — it is a
+behaviour change with no test coverage on the writer at all
+(`_save_td4_results` is untested), not a mechanical port. Write the layout test
+first.
+
+Discovered 2026-08-07 while porting the last pandas importers; the file is one
+of the three remaining real ports in [PRD-82](../prds/prd-82.md).
+
 ## acquisition: the SPC-130 record decoder exists twice, because the library exposes its own only behind a file reader
 
 **2026-08-06.** `_process_bh_spc_records_numba` in
