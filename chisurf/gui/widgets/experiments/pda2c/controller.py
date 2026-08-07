@@ -1,5 +1,7 @@
 import pathlib
 
+import numpy as np
+
 import tttrlib
 
 import chisurf as cs
@@ -89,6 +91,65 @@ def _format_micro_time_ranges(value) -> str:
     if isinstance(value, int):
         return f"{value}-{value}"
     return ""
+
+
+#: The four ``.bur`` columns a burst slice needs, lower-cased. A burst table's
+#: header capitalisation varies between the programs that write one, so every
+#: lookup here is case-insensitive.
+_BUR_REQUIRED = ("first photon", "last photon", "first file", "last file")
+
+
+def read_bur_bursts(path):
+    """Return ``(file names, starts, stops)`` for the usable bursts of a ``.bur``.
+
+    One reader for what the two callers below both need, and the only place that
+    knows the format's quirks:
+
+    * the header's capitalisation is not fixed, so columns are matched
+      lower-cased;
+    * a burst whose ``First File`` and ``Last File`` disagree spans two
+      measurements and has no single photon stream to slice, so it is dropped —
+      as is a burst naming no file at all, which is what the interleaved
+      separator rows carry;
+    * ``Last Photon`` is inclusive in the format and exclusive in a Python
+      slice, hence ``stop = last + 1``.
+
+    Parameters
+    ----------
+    path : pathlib.Path
+        The ``.bur`` file.
+
+    Returns
+    -------
+    tuple of (numpy.ndarray, numpy.ndarray, numpy.ndarray) or None
+        File names as text, and integer start/stop photon indices. ``None`` when
+        the file cannot be read or does not carry the four columns.
+    """
+    from chisurf.core.datastore import column_values, read_csv_table
+
+    store = read_csv_table(path, delimiter="\t")
+    if store is None:
+        return None
+    # np.array, not np.asarray: these outlive the store, which dies here.
+    columns = {
+        str(store[i].name()).strip().lower(): np.array(column_values(store, i))
+        for i in range(store.n_columns())
+    }
+    if not all(name in columns for name in _BUR_REQUIRED):
+        return None
+
+    first_file = np.array([str(v).strip() for v in columns["first file"]], dtype=object)
+    last_file = np.array([str(v).strip() for v in columns["last file"]], dtype=object)
+    keep = (first_file == last_file) & (first_file != "")
+    if not keep.any():
+        return None
+
+    try:
+        starts = np.asarray(columns["first photon"], dtype=float)[keep].astype(np.int64)
+        stops = np.asarray(columns["last photon"], dtype=float)[keep].astype(np.int64) + 1
+    except (TypeError, ValueError):
+        return None
+    return first_file[keep], starts, stops
 
 
 class _PdaDetectorWidget(QtWidgets.QWidget):
@@ -778,10 +839,6 @@ class Pda2cTTTRWidget(
         Build a mapping file -> list of (start, stop_exclusive) photon indices based on rows
         where First File == Last File == file name. Bursts spanning multiple files are ignored.
         """
-        try:
-            import pandas as pd
-        except Exception:
-            return {}
         slices = {}
         # Helper: locate a bur directory near a given TTTR file
         def find_bur_dir(tttr_path: pathlib.Path):
@@ -813,30 +870,12 @@ class Pda2cTTTRWidget(
         tttr_names = {pathlib.Path(f).name: f for f in tttr_files}
         for bur_dir, bur_list in bur_cache.items():
             for bur_path in bur_list:
-                try:
-                    required = {'first photon', 'last photon', 'first file', 'last file'}
-                    df = pd.read_csv(
-                        bur_path,
-                        sep='\t',
-                        usecols=lambda c: c.lower() in required
-                    )
-                except Exception:
+                bursts = read_bur_bursts(bur_path)
+                if bursts is None:
                     continue
-                # Normalize columns to lower
-                cols_map = {c.lower(): c for c in df.columns}
-                req = ['first photon','last photon','first file','last file']
-                if not all(c in cols_map for c in req):
-                    continue
-                fp_col = cols_map['first photon']
-                lp_col = cols_map['last photon']
-                ff_col = cols_map['first file']
-                lf_col = cols_map['last file']
-                for _, row in df.iterrows():
+                names, starts, stops = bursts
+                for first_file, a, b in zip(names, starts, stops):
                     try:
-                        first_file = str(row[ff_col]).strip()
-                        last_file = str(row[lf_col]).strip()
-                        if not first_file or first_file != last_file:
-                            continue
                         # match exact name (as listed in BUR) to a TTTR file name
                         if first_file not in tttr_names:
                             # try to match by stem + any extension (already chosen files have fixed ext)
@@ -851,12 +890,9 @@ class Pda2cTTTRWidget(
                                     first_file, str(bur_path)
                                 )
                                 continue
-                        # parse indices (floats in BUR -> ints)
-                        a = int(float(row[fp_col]))
-                        b_inc = int(float(row[lp_col]))
-                        # convert to python slice convention: stop exclusive
-                        b = b_inc + 1
-                        slices.setdefault(tttr_names[first_file], []).append((a, b))
+                        slices.setdefault(tttr_names[first_file], []).append(
+                            (int(a), int(b))
+                        )
                     except Exception:
                         continue
         return self._merge_intervals(slices)
@@ -869,11 +905,6 @@ class Pda2cTTTRWidget(
         Optimized: index TTTR files once per root and do O(1) lookups per BUR row.
         Returns: (tttr_files_list, burst_slices_dict)
         """
-        try:
-            import pandas as pd
-        except Exception:
-            return [], {}
-
         # For each BUR file, determine the most likely TTTR folder(s) once.
         # We follow the convention that BUR tables live in a "bi4_bur"/"bur" folder
         # somewhere below the TTTR data. In practice, TTTR files are often stored in
@@ -1025,48 +1056,13 @@ class Pda2cTTTRWidget(
                 if not bur_path.is_file():
                     continue
 
-                # Read BUR file (case-insensitive columns)
-                try:
-                    required = {'first photon', 'last photon', 'first file', 'last file'}
-                    df = pd.read_csv(
-                        bur_path,
-                        sep='\t',
-                        usecols=lambda c: c.lower() in required
-                    )
-                except Exception:
+                # Read the BUR's bursts: the file each names, and its photon
+                # range. read_bur_bursts already drops the rows this cannot use
+                # -- a burst spanning two measurements, or naming none.
+                bursts = read_bur_bursts(bur_path)
+                if bursts is None:
                     continue
-
-                cols_map = {c.lower(): c for c in df.columns}
-                req = ['first photon', 'last photon', 'first file', 'last file']
-                if not all(c in cols_map for c in req):
-                    continue
-
-                fp_col = cols_map['first photon']
-                lp_col = cols_map['last photon']
-                ff_col = cols_map['first file']
-                lf_col = cols_map['last file']
-
-                # Filter rows: First File == Last File and non-empty
-                df = df.dropna(subset=[ff_col, lf_col])
-                if df.empty:
-                    continue
-
-                file_series = df[ff_col].astype(str).str.strip()
-                same_file = file_series == df[lf_col].astype(str).str.strip()
-                df = df.loc[same_file]
-                file_series = file_series.loc[df.index]
-                if df.empty:
-                    continue
-
-                # Pre-compute integer photon index ranges once per BUR
-                try:
-                    start_series = df[fp_col].astype(float).astype('int64')
-                    stop_series = df[lp_col].astype(float).astype('int64') + 1
-                except Exception:
-                    continue
-                df = df.copy()
-                df['_pda_start'] = start_series
-                df['_pda_stop'] = stop_series
+                file_names, start_series, stop_series = bursts
 
                 # Determine analysis root for this BUR (one level above bi4_bur/bur
                 # if present, otherwise the BUR's parent directory).
@@ -1113,15 +1109,8 @@ class Pda2cTTTRWidget(
                         except Exception:
                             pass
                     key = str(bur_tttr)
-                    try:
-                        starts = df['_pda_start'].tolist()
-                        stops = df['_pda_stop'].tolist()
-                    except Exception:
-                        try:
-                            starts = start_series.tolist()
-                            stops = stop_series.tolist()
-                        except Exception:
-                            starts = stops = []
+                    starts = start_series.tolist()
+                    stops = stop_series.tolist()
                     if starts:
                         burst_slices.setdefault(key, []).extend(zip(starts, stops))
                         try:
@@ -1135,7 +1124,7 @@ class Pda2cTTTRWidget(
                 # This covers less common layouts where a BUR file may reference
                 # multiple TTTR files.
                 resolved_cache = {}
-                for name_str in file_series.unique():
+                for name_str in dict.fromkeys(file_names):
                     if not name_str:
                         resolved_cache[name_str] = None
                         continue
@@ -1165,8 +1154,10 @@ class Pda2cTTTRWidget(
                             pass
 
                 # Map each row to its resolved TTTR file key (string path or None)
-                resolved_keys = file_series.map(lambda s: resolved_cache.get(s))
-                mask_valid = resolved_keys.notna()
+                resolved_keys = np.array(
+                    [resolved_cache.get(name) for name in file_names], dtype=object
+                )
+                mask_valid = np.array([k is not None for k in resolved_keys])
                 if not mask_valid.any():
                     # All referenced TTTRs missing for this BUR (ignoring pure indices)
                     for missing_name, key in resolved_cache.items():
@@ -1178,18 +1169,16 @@ class Pda2cTTTRWidget(
                             )
                     continue
 
-                valid_df = df.loc[mask_valid]
-                valid_keys = resolved_keys.loc[mask_valid]
-
-                # Group by resolved TTTR file and aggregate slices vectorized per group
-                for key, group in valid_df.groupby(valid_keys):
+                # Group by resolved TTTR file and aggregate the slices per group
+                valid_keys = resolved_keys[mask_valid]
+                valid_starts = start_series[mask_valid]
+                valid_stops = stop_series[mask_valid]
+                for key in dict.fromkeys(valid_keys):
                     if not key:
                         continue
-                    try:
-                        starts = group['_pda_start'].tolist()
-                        stops = group['_pda_stop'].tolist()
-                    except Exception:
-                        continue
+                    in_group = valid_keys == key
+                    starts = valid_starts[in_group].tolist()
+                    stops = valid_stops[in_group].tolist()
                     if not starts:
                         continue
                     burst_slices.setdefault(key, []).extend(zip(starts, stops))
