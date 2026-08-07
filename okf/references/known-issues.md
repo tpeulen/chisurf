@@ -23,39 +23,6 @@ that says *which* key — SQLite will report it with
 `PRAGMA foreign_key_check` after the failure — because the same message will
 otherwise be re-diagnosed from scratch every time.
 
-## The Info preview and the burst search are two implementations of one search
-
-**2026-08-07.** The photon-filter wizard's Info panel
-(`chisurf/gui/widgets/wizard/tttr_photonfilter/tttr_photon_filter.py`) computes
-its own `selected` mask and its own `burst_start_stop`; the analysis computes
-them again in `burst_selection/api/selection.py::apply_photon_filters`. On the
-bundled `bh_spc132_sm_dna` measurement, driven headlessly with the tttrlib
-sliding-window search (`L=20, m=10, T=0.0005`, `dT_max` 0.15 ms, merge gap 3,
-`min_photons` 60), the panel announces **2739** bursts where the run returns
-**1099**.
-
-Half of the original gap was the panel not applying the photon minimum at all
-— it counted every contiguous run, announcing "70497 bursts, 18.0 photons each"
-above a search that returned 1099 — and that half is fixed: `burst_start_stop`
-now applies `drop_short_bursts(found, max(2, min_ph))`, the same bound the
-analysis applies, and the panel reads 2739/170.1.
-
-The remaining 2739 vs 1099 is the *masks* disagreeing, not the bounds. Measured
-with the analysis's own functions on the same file and settings:
-
-```
-apply_photon_filters      -> 257753 of 1791775 photons selected
-find_bursts(max_gap=0|3)  -> 2318 runs; min_photons=60 -> 1099
-```
-
-2318 is already below the panel's 2739 *before* any minimum is applied, so the
-panel's `selected` is a different mask — the two paths build the delta-macro-
-time pre-filter, the channel/micro-time masks and the gap fill in their own
-order. Not fixed here because the fix is to delete one of them: the panel
-should call `apply_photon_filters`, which means moving the panel's settings
-onto `PhotonFilterSettings` first. Whoever does it should pin the two against
-each other on this fixture rather than trusting either number.
-
 ## `NUMBA_NUM_THREADS` collides when the fio suite runs as a whole
 
 **2026-08-07.** `test/fio/test_vv_vh.py::test_vv_vh_spectrum_equals_concatenated_components`

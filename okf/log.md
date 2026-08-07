@@ -104,6 +104,33 @@
   one. The warning's own suggestion — zero `min_contrast`/`min_significance` —
   was tried and does not cover this: `sliding_window` has no such parameters.
 
+  **"No bursts" that was three faults and a stale folder.** The panel said 866
+  bursts of 135 photons; the table below it had 8, and BVA read 8. (a) The
+  wizard's `selected` had a branch per built-in search mode and **none for the
+  tttrlib registry searches** — so with one selected it returned the
+  delta-macro-time interval and nothing else, and the Info panel reported that
+  as bursts. (b) The interval was a *pre-filter*, and it is the same kind of
+  statement as the search: a sliding window asking for `m` consecutive photons
+  inside `T` always says yes once the gap is bounded below `T/m`. The search
+  runs on the whole stream now and the interval is AND-ed after, which is what
+  the panel always did — 801 bursts of mean 136.5 against 745 of 138.6 where the
+  pre-filter worked at all. (c) `min_photons` took the user's value for three
+  modes and the constant 60 for the other two. The preview and the run now
+  report the same number, verified in the window: Info 1130, `n_bursts` 1130.
+  This **closes** the "two implementations of one search" known-issue filed
+  earlier the same day — the diagnosis in it was wrong, the panel was not
+  running a second implementation, it was not running one at all.
+
+  **Where results go stopped being a choice.** A `.pto` source writes **no
+  folder**: the container holds the photons and everything computed from them,
+  and a parameter-named directory beside it is a second copy that disagrees the
+  moment either is re-run. Otherwise the tab-separated `bi4_bur/` companion,
+  which is what external tools read. The output-format checkboxes are gone (they
+  could configure a run to write the same bursts twice, or nowhere) and the
+  panel states the destination instead. The MFD-HDF5 output is removed outright
+  — one writer, no reader, and a timestamped name that left a new file nobody
+  opened on every re-run.
+
   Recorded rather than fixed, in [known issues](/references/known-issues.md):
   the wizard's Info preview is a *second implementation* of the burst search
   (2739 vs 1099 on the same file and settings, with the bounds now equal — the
