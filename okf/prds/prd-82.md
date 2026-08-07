@@ -4,7 +4,7 @@ prd: "82"
 title: "PRD-82: The table layer onto tttrlib's DataStore — chitable first, then pandas and pytables out of the storage path"
 description: chitable, the burst tables and the HDF5 writers move onto tttrlib's DataStore one adapter at a time. The dependency count is not the argument -- pandas stays installed either way -- the arguments are half the memory, dtypes and missing values that survive a file, and the removal of pytables, which is already broken in a freshly solved environment.
 status: in-progress
-phase: "stages 1-4 landed; 11 files still import pandas"
+phase: "stages 1-4 + all 3 ports landed; pandas import surface is the 8-file interop group by design. Open: acceptance criteria 3 (legacy pandas-HDF5 reader, T3) and 6 (memory saving unmeasured past 113 rows)"
 resource: chisurf/gui/widgets/chitable/source.py
 tags: [prd, chitable, datastore, tttrlib, pandas, pytables, dependencies, burst, hdf5, csv]
 timestamp: '2026-08-06T00:00:00Z'
@@ -18,34 +18,47 @@ burst-table layer, which is what everything else was waiting on**; stage 4 is
 CSV, whose writer is in use and whose *reader* is deliberately not migrated —
 see the measurement below.
 
-**What is left is 11 files, and only 3 are work.**
-`test/pandas_import_allowlist.txt` is the worklist and is now in **two labelled
-groups**, because a bare count overstates what is left. The 8 *interop* entries
-hand a frame **out** or read a format only pandas knows — `datastore.py` itself,
-the three `chitable` adapters, `table_plot.py`, `topology.py`,
-`evaluators/base.py`, and `burst_analysis/api/workflow.py`, which is the
-notebook-facing façade for bench scientists and where a frame is the right
-answer.
+**The 3 remaining ports have landed** (2026-08-07). What is left is 8 files,
+and all 8 are the *interop* group — `test/pandas_import_allowlist.txt` dropped
+its PORTS section entirely. Those entries hand a frame **out** or read a format
+only pandas knows — `datastore.py` itself, the three `chitable` adapters,
+`table_plot.py`, `topology.py`, `evaluators/base.py`, and
+`burst_analysis/api/workflow.py`, which is the notebook-facing façade for bench
+scientists and where a frame is the right answer. None of them is expected to
+move; see the non-goals below.
 
-The **3 ports**, and why none is mechanical — this is the part worth reading
-before starting one:
+The 3 ports, and why none was mechanical — kept for whoever needs the same
+pattern elsewhere:
 
 1. `burst_fcs_correlator/wizard.py` — a wide pivot (`groupby` on two keys,
-   `set_index`, `reindex`) feeding a **`td4` writer that is untested and
-   violates the companion contract**: its row grid is built from the bursts that
-   produced a result, not from the bursts, so a skipped burst shifts every later
-   diffusion time onto the wrong burst. Written up in
-   [known issues](../references/known-issues.md). Fixing it needs the burst
-   count, which the correlator does not hold — so it is a behaviour change, and
-   the layout test comes first.
-2. `burst_mle_analysis/wizard.py` — carries its **own third copy** of
+   `set_index`, `reindex`) fed a **`td4` writer that was untested and violated
+   the companion contract**: its row grid was built from the bursts that
+   produced a result, not from the bursts, so a skipped burst shifted every
+   later diffusion time onto the wrong burst. Fixed alongside the port —
+   `_run_burstwise_fcs` already enumerates each measurement's *full* burst list
+   (`ranges`) to assign `Burst Index`, so `len(ranges)` was threaded through as
+   `burst_counts` and the writer now allocates the true one-row-per-burst grid
+   before routing it through `burst_companion.write_companion`. Pinned by
+   `burst_fcs_correlator/test/test_td4_writer.py`; the known-issues entry is
+   marked resolved.
+2. `burst_mle_analysis/wizard.py` — carried its **own third copy** of
    `read_burst_analysis` (BVA has one, `photons.load_bur_dataframe` is the
-   shared one). The fix is to delete it and use the shared reader, not to port
-   it; the copy also carries a nullable-`Int64` dtype spec and an
-   `iloc[::row_stride]` de-interleave that `deinterleave_bursts` already does.
-3. `bid_to_analysis/__init__.py` — reads a `.bur` back in order to append to it,
-   which is the one thing the CSV *reader* migration is deliberately deferred
-   on (see the measurement below).
+   shared one). Deleted in favour of `read_bur_file` + `deinterleave_bursts` per
+   file (not `photons.load_bur_dataframe` directly — deinterleaving *after*
+   concatenating several files misaligns whenever the combined row count comes
+   out even, since each file's own interleave parity is independent). Verified
+   byte-for-byte against the old pandas path on a real 10-file, 2980-row burst
+   folder (every column, not just the two spot-checked in the PRD body).
+   `self.df_bursts` itself is a store now, not a frame — every `.iloc`/`.loc`/
+   `.groupby`/`.reindex` call site in the file (30 of them) moved onto
+   `chisurf.core.datastore` or plain dict/numpy grouping.
+3. `bid_to_analysis/__init__.py` — read a `.bur` back in order to append to it.
+   `photons.load_bur_dataframe` and `deinterleave_bursts` are still the general
+   answer for a *fresh* read, but the append path merges an *existing on-disk*
+   `.bur` with an in-memory store, which is exactly `read_csv_table` +
+   `concat_stores` + `take_rows` (to drop the new table's leading zero row) —
+   the CSV-reader migration stage 4 deferred, now landed for this one call site.
+   Pinned by `bid_to_analysis/test/test_bur_append.py`.
 
 **ndX takes a store directly** — `DataSource.from_store(store)` is the zero-copy
 path and both hand-off sites in this tree now use it. Do not build a frame to
@@ -167,16 +180,22 @@ Tests are excluded on purpose: a test building a fixture frame is interop, and
 counting those would mean the number could never honestly reach zero.
 
 What that does **not** do, stated because it is easy to measure wrong: it does
-not remove the package from a solved environment. The *conda* `pdb2pqr` requires
-`pandas >=1.0` outright, and `seaborn-base` and `statsmodels` require it too. Its
-*PyPI* metadata has pandas only as a `test` extra, which is the trap — an
-earlier version of this note said "it does not leave at all" without recording
-which metadata it had read. Re-derive with
+not remove the package from a solved environment on its own. `seaborn-base` and
+`statsmodels` still require it. (The *conda* `pdb2pqr` recipe used to pin
+`pandas >=1.0` too, and was the reason an earlier measurement found pandas would
+not leave the dev env at all; its PyPI metadata had pandas only as a `test`
+extra, which was the trap that produced the "it does not leave at all" note
+below without recording which metadata it had read. `pdb2pqr` itself is now
+gone — ProteinMC's statistical hydrogen-bond potential only ever needed the
+backbone amide H, which `chisurf.core.structure.Structure.protonate` now builds
+in-tree from ideal sp2/tetrahedral geometry instead of shelling out to an
+all-atom protonation tool — so this is one blocker fewer, not the whole
+argument.) Re-derive with
 `conda create --dry-run --json -c conda-forge -n probe <recipe run: list>` with
-and without `pandas` (256 → 255 when last measured). What the migration wins is
-that **ChiSurf's own tables stop being frames**, which is where the memory, the
-dtypes and the missing values are, and which is worth having whether or not the
-package is installed.
+and without `pandas` (256 → 255 when last measured, before `pdb2pqr` left).
+What the migration wins is that **ChiSurf's own tables stop being frames**,
+which is where the memory, the dtypes and the missing values are, and which is
+worth having whether or not the package is installed.
 
 `store_from_rows` was added for the shape that makes a frame appear in the first
 place — a sequence of row mappings, as an API returns. First-seen column order,
@@ -200,13 +219,18 @@ for the ChiSurf side of the same tables.
 
 ## The dependency argument is the weakest one, and it should be stated plainly
 
-Measured 2026-08-06 against the recipe's `run:` list: dropping `pandas` moves
+Measured 2026-08-06 against the recipe's `run:` list: dropping `pandas` moved
 the closure **256 → 255**. It is worth exactly itself — `python-dateutil`
 belongs to matplotlib and the Jupyter client, `pytz`/`python-tzdata` to `arrow`
-— and in the dev environment it would not leave at all, because `pdb2pqr`
-requires `pandas >=1.0`. **Removing pandas is not the goal of this PRD** and
-should not be used to justify it. What *is* achievable, and worth doing on its
-own merits:
+— and at the time, in the dev environment, it would not leave at all, because
+`pdb2pqr` required `pandas >=1.0`. `pdb2pqr` has since been dropped outright:
+ProteinMC's statistical hydrogen-bond potential only ever needed one hydrogen
+per residue (the backbone amide `H`), which
+`chisurf.core.structure.Structure.protonate` now builds in-tree from ideal
+geometry instead of shelling out to an all-atom protonation tool, so that
+particular blocker is gone — the closure count above is due for a
+re-measurement. **Removing pandas is not the goal of this PRD** and should not
+be used to justify it. What *is* achievable, and worth doing on its own merits:
 
 * **`pytables` genuinely leaves.** It has already been dropped from every
   dependency declaration ([PRD-80](prd-80.md)), while five live, unguarded
@@ -355,7 +379,7 @@ than against a per-group write call.
 
 This stage therefore needs **T1**, **T3** and **T13**.
 
-## Stage 3 — the burst tables — next
+## Stage 3 — the burst tables — landed
 
 In dependency order, each independently landable, each with the store built once
 and the frame conversion deleted rather than kept alongside:
@@ -366,6 +390,16 @@ and the frame conversion deleted rather than kept alongside:
 3. `burst_selection` (15 files — the largest single consumer), `burst_h2mm`
    (10), `burst_2cde`, `burst_bva`, `burst_fusion`, `burst_browser`;
 4. `core/fluorescence/mfd/prepare.py`, the two microscopy MLE plugins.
+
+**1 and 2 landed as planned.** By the time 3 and 4 were reached, none of those
+consumers imported pandas directly any more — they read through the layer 1/2
+already put in place — so there was nothing left on the tracker for them
+specifically. What *did* remain outside this numbered list, discovered only
+once the allowlist was down to single digits, were three call sites that built
+their own pandas frame straight from a `.bur` file rather than going through
+the burst-table layer: `burst_fcs_correlator/wizard.py`,
+`burst_mle_analysis/wizard.py`, `bid_to_analysis/__init__.py`. Those are the
+three ports in the resume section above, and they landed 2026-08-07.
 
 The [burst-companion contract](../subsystems/burst-companions.md) is **not
 affected**: `burst_companion.write_companion` is numpy-only and stays the

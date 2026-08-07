@@ -83,14 +83,12 @@ ml = [
 # Features the application detects at runtime and works without: density-based
 # clustering in ndXplorer (scikit-learn's own HDBSCAN is the fallback), fast
 # histogramming, syntax highlighting, the LaTeX view of a parse model (an
-# in-tree AST converter is the fallback), the external notebook server, and
-# structure preparation for ProteinMC.
+# in-tree AST converter is the fallback), and the external notebook server.
 full = [
     "hdbscan",
     "Pygments",
     "latexify-py",
     "notebook<7",
-    "pdb2pqr",
 ]
 dev = [
     "python-lsp-server>=1.14",
@@ -274,3 +272,10 @@ python_version = "3.10"
 ignore_missing_imports = true
 warn_unused_ignores = true
 show_error_codes = true
+# The cookiecutter plugin scaffold is a Jinja templated skeleton
+# ({{cookiecutter.plugin_name}} placeholder dir names are not valid packages),
+# not code mypy should descend into.
+exclude = [
+    "chisurf/plugins/cookiecutter-chisurf-plugin/",
+    "^chisurf/plugins/cookiecutter-chisurf-plugin$",
+]

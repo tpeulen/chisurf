@@ -150,11 +150,12 @@ requirements:
     - packaging             # version comparisons in the startup shim
     - pillow                # PNG/JPEG/RGB-TIFF reader; TIFF stacks go through
                             # tttrlib's bundled libtiff instead
-    # Deliberately NOT declared: pdb2pqr (+14 packages, including an HTTP stack)
-    # is needed only to prepare structures for ProteinMC, which says so and
-    # points at the conda package; and latexify-py, whose conda build stops at
+    # Deliberately NOT declared: latexify-py, whose conda build stops at
     # Python 3.11 -- the parse-model LaTeX view falls back to its in-tree
-    # converter. See okf/references/known-issues.md.
+    # converter. See okf/references/known-issues.md. (pdb2pqr used to be here
+    # too, for ProteinMC structure preparation -- it needed only one
+    # geometrically-determined backbone atom, now built in-tree instead, so
+    # the dependency is gone rather than merely undeclared.)
     - ${{ "hdf5" if win }}
 
 # `import chisurf` is deliberately the whole test. It is cheap and it is the one

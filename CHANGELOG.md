@@ -23,6 +23,15 @@
   - Fixed a regression in `build-osx-app.sh` where `PYTHONPATH: unbound variable` caused CI failures by quoting the launcher heredoc delimiter.
   - Hardened the `ChiSurf` launcher to use absolute paths for `PYTHONPATH` and `QT_PLUGIN_PATH`, ensuring the bundle remains self-contained regardless of the current working directory.
 
+### Removed
+
+- **Dropped the `pdb2pqr` dependency.** ProteinMC's statistical hydrogen-bond
+  potential only ever used one hydrogen per residue — the backbone amide
+  `H` — from the structures `pdb2pqr` protonated. `Structure.protonate()`
+  now builds that atom in-tree from ideal geometry instead of shelling out
+  to an external all-atom protonation tool, so `pdb2pqr` is no longer a
+  dependency (removed from `pixi.toml` and the `full` extra).
+
 ### Changed
 
 - **MMFDB: `flr_sample` is now the canonical sample-name source (flrCIF/pdbx-aligned)** ⚠️ *breaking*:

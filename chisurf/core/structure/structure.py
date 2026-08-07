@@ -5,7 +5,6 @@ import copy
 import os
 import tempfile
 
-import warnings
 import numpy as np
 
 import chisurf.core.fio
@@ -17,6 +16,143 @@ clusterCriteria = [
     'inconsistent',
     'distance'
 ]
+
+
+def add_backbone_amide_hydrogens(
+        atoms: np.ndarray,
+        bond_length: float = 1.01,
+        max_peptide_bond: float = 1.45
+) -> np.ndarray:
+    """Return *atoms* with a backbone amide hydrogen appended per residue.
+
+    Every non-proline residue keeps exactly one atom named ``H`` -- proline's
+    secondary amine has none, and that is the only atom this codebase's
+    reduced (backbone + amide-H) representation ever looks up (see
+    ``chisurf.core.structure.protein.residue_atoms_internal`` and
+    :class:`chisurf.core.structure.potential.potentials.HPotential`, the
+    statistical hydrogen-bond potential it exists for).
+
+    Where the preceding residue's carbonyl carbon is known and really bonded
+    (same chain, C(i-1)-N(i) within *max_peptide_bond*), the amide nitrogen
+    is sp2 and its two known substituents fix the third: the N-H direction is
+    the negated sum of the unit vectors to C(i-1) and CA(i), in their shared
+    plane. At a chain start or a break in the numbering, there is no such
+    C(i-1) -- the real N-terminus there is a charged NH3+ with no single
+    fixed H orientation anyway (they rotate freely, and an all-atom tool
+    only fixes one by optimizing against nearby acceptors) -- so a
+    representative direction is built instead from an ideal tetrahedral
+    frame around N using only CA and C of the same residue.
+
+    Parameters
+    ----------
+    atoms : np.ndarray
+        Structured atom array (``chisurf.core.fio.structure.coordinates.atom_dtype``).
+    bond_length : float
+        N-H bond length in Angstrom.
+    max_peptide_bond : float
+        Maximum C(i-1)-N(i) distance treated as a real peptide bond.
+
+    Returns
+    -------
+    np.ndarray
+        *atoms* with one row appended per residue that received a new ``H``.
+    """
+    if atoms.size == 0:
+        return atoms
+
+    tetrahedral_cos = -1.0 / 3.0
+    tetrahedral_sin = (1.0 - tetrahedral_cos ** 2) ** 0.5
+
+    residues: list[tuple[str, int, list[int]]] = []
+    index_by_key: dict[tuple[str, int], int] = {}
+    for i in range(atoms.size):
+        key = (str(atoms['chain'][i]), int(atoms['res_id'][i]))
+        pos = index_by_key.get(key)
+        if pos is None:
+            index_by_key[key] = len(residues)
+            residues.append([str(atoms['res_name'][i]), key, [i]])
+        else:
+            residues[pos][2].append(i)
+
+    new_rows = []
+    prev_chain = None
+    prev_c_xyz = None
+    for res_name, (chain, res_id), idx in residues:
+        res_atoms = atoms[idx]
+        names = res_atoms['atom_name']
+
+        def get_xyz(name: str, _names=names, _res_atoms=res_atoms):
+            mask = _names == name
+            return _res_atoms['xyz'][mask][0] if mask.any() else None
+
+        n_xyz = get_xyz('N')
+        ca_xyz = get_xyz('CA')
+        c_xyz = get_xyz('C')
+        has_h = bool((names == 'H').any())
+
+        h_dir = None
+        if (
+            not has_h
+            and res_name.strip().upper() != 'PRO'
+            and n_xyz is not None
+            and ca_xyz is not None
+        ):
+            if (
+                prev_c_xyz is not None
+                and chain == prev_chain
+                and np.linalg.norm(n_xyz - prev_c_xyz) <= max_peptide_bond
+            ):
+                dir_c = n_xyz - prev_c_xyz
+                dir_ca = n_xyz - ca_xyz
+                dir_c /= np.linalg.norm(dir_c)
+                dir_ca /= np.linalg.norm(dir_ca)
+                candidate = -(dir_c + dir_ca)
+                candidate_norm = np.linalg.norm(candidate)
+                if candidate_norm > 1e-6:
+                    h_dir = candidate / candidate_norm
+            elif c_xyz is not None:
+                # Chain start (or a break in the numbering): no bonded C(i-1)
+                # to fix the amide plane, so build one representative
+                # tetrahedral N-H direction from CA and C of this residue.
+                z_axis = ca_xyz - n_xyz
+                z_axis /= np.linalg.norm(z_axis)
+                ref = c_xyz - ca_xyz
+                x_axis = ref - np.dot(ref, z_axis) * z_axis
+                x_norm = np.linalg.norm(x_axis)
+                if x_norm > 1e-6:
+                    x_axis /= x_norm
+                    candidate = tetrahedral_cos * z_axis + tetrahedral_sin * x_axis
+                    candidate_norm = np.linalg.norm(candidate)
+                    if candidate_norm > 1e-6:
+                        h_dir = candidate / candidate_norm
+
+        if h_dir is not None:
+            row = np.zeros(1, dtype=atoms.dtype)
+            row['chain'] = chain
+            row['res_id'] = res_id
+            row['res_name'] = res_name
+            row['atom_name'] = 'H'
+            row['element'] = 'H'
+            row['xyz'] = n_xyz + bond_length * h_dir
+            new_rows.append(row)
+
+        prev_chain = chain
+        prev_c_xyz = c_xyz
+
+    if not new_rows:
+        return atoms
+
+    added = np.concatenate(new_rows)
+    next_i = int(atoms['i'].max()) + 1 if atoms.size else 0
+    next_atom_id = int(atoms['atom_id'].max()) + 1 if atoms.size else 0
+    added['i'] = np.arange(next_i, next_i + added.size)
+    added['atom_id'] = np.arange(next_atom_id, next_atom_id + added.size)
+    try:
+        import chisurf.core.common
+        added['mass'] = chisurf.core.common.atom_weights['H']
+    except (ImportError, KeyError):
+        pass
+    return np.concatenate([atoms, added])
 
 
 class Structure(chisurf.core.base.Base):
@@ -101,6 +237,7 @@ class Structure(chisurf.core.base.Base):
             protonate: bool = False,
             keep_water: bool = False,
             only_standard_residues: bool = True,
+            radii: str = "charmm",
             **kwargs
     ):
         """Initialize a :class:`Structure` from a PDB file, PDB id, or copy.
@@ -111,6 +248,13 @@ class Structure(chisurf.core.base.Base):
             Keep water molecules. The default drops them, which suits the
             modelling code; a viewer that must show the deposited model as
             deposited asks for them.
+        radii : {"charmm", "vdw"}
+            Which radius the atoms carry, and which reader runs. ``"vdw"``
+            takes the native PDB parser -- ~50x faster on a 9315-atom structure
+            -- and gives the element's van der Waals radius, which is what a
+            viewer draws with. ``"charmm"`` keeps IMP's per-atom-type Rmin, and
+            stays the default because the accessible-volume code sizes its
+            probes with it.
         only_standard_residues : bool
             Drop ligands, sugars and modified residues. On by default for the
             same reason.
@@ -147,6 +291,7 @@ class Structure(chisurf.core.base.Base):
                     verbose=self.verbose,
                     keep_water=keep_water,
                     only_standard_residues=only_standard_residues,
+                    radii=radii,
                 )
                 self.filename = p_object
             elif len(p_object) == 4:
@@ -365,14 +510,17 @@ class Structure(chisurf.core.base.Base):
         )
 
     def protonate(self) -> None:
-        """This method previously used PDB2PQR to protonate the structure.
-        It is now a no-op as the htmd-pdb2pqr dependency has been removed.
+        """Add the backbone amide hydrogen every residue can carry.
+
+        ChiSurf's statistical hydrogen-bond potential (:class:`HPotential`,
+        ``chisurf.core.structure.potential.potentials``) only ever looks up one
+        hydrogen per residue -- the backbone amide N-H named ``H`` -- so a full
+        all-atom protonation tool is more than the codebase needs. This builds
+        exactly that atom from ideal sp2 nitrogen geometry, in place, and skips
+        residues that cannot have one: proline (secondary amine) and the first
+        residue of a chain (a charged N-terminus has no plain ``H``).
         """
-        warnings.warn(
-            "The protonate method is no longer functional as the htmd-pdb2pqr dependency has been removed. "
-            "No protonation will be performed.",
-            UserWarning
-        )
+        self.atoms = add_backbone_amide_hydrogens(self.atoms)
 
     def update(
             self,

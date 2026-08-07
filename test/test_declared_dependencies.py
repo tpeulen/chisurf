@@ -32,8 +32,6 @@ _IMPORT_NAMES = {
     "scikit-learn": "sklearn",
     "pyopengl": "OpenGL",
     "msgpack-python": "msgpack",
-    "pyarrow-core": "pyarrow",
-    "boost-histogram": "boost_histogram",
     "typing-extensions": "typing_extensions",
     "pillow": "PIL",
     "latexify-py": "latexify",
@@ -111,8 +109,6 @@ _BUILD_ONLY = {
 _NOT_SHIPPED = {
     "latexify-py": "conda-forge has no Python 3.12 build; the parse-model LaTeX "
                    "view falls back to its in-tree converter",
-    "pdb2pqr": "+14 packages including an HTTP stack, for structure preparation "
-               "that ProteinMC asks for by name when it is missing",
 }
 
 #: In the released package but not the dev env, with the reason.
@@ -131,7 +127,6 @@ _PYPI_NAMES = {
     "pyqt": "pyqt5",
     "pytables": "tables",
     "msgpack-python": "msgpack",
-    "pyarrow-core": "pyarrow",
 }
 
 

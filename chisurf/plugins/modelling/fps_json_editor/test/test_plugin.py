@@ -444,8 +444,7 @@ class TestDirectLabelingPotentialScoreSet:
     """The model's DirectLabelingPotential must respect score_set."""
 
     def test_all_distances_when_empty_score_set(self, tmp_json, payload_with_score_sets):
-        # Cannot fully instantiate (needs pdb2pqr), but we can test the filtering
-        # by checking the payload-processing logic directly.
+        # Test the payload-processing logic directly, without a structure.
         filtered = filter_distances_by_score_set(payload_with_score_sets, "")
         assert set(filtered.keys()) == {"d1", "d2", "d3"}
 

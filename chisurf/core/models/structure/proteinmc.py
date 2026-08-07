@@ -6,8 +6,6 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 import json
 from pathlib import Path
-import shutil
-import subprocess
 import tempfile
 import time
 from typing import Any, Optional
@@ -107,7 +105,7 @@ def load_structure(source: str | Path | ProteinCentroid) -> ProteinCentroid:
     source_text = str(source)
     if len(source_text) == 4 and not Path(source_text).exists():
         _patch_rcsb_fetch_url()
-    return ProteinCentroid(_pdb2pqr_structure_file(source_text))
+    return ProteinCentroid(_protonated_structure_file(source_text))
 
 
 def _patch_rcsb_fetch_url() -> None:
@@ -123,35 +121,21 @@ def _patch_rcsb_fetch_url() -> None:
     coordinates.fetch_pdb_string = fetch_pdb_string
 
 
-def _pdb2pqr_structure_file(source: str) -> str:
-    """Return a pdb2pqr-protonated PQR file."""
-    executable = shutil.which("pdb2pqr") or shutil.which("pdb2pqr30")
-    if executable is None:
-        raise RuntimeError(
-            "ProteinMC requires pdb2pqr for structure preparation. "
-            "Install the conda-forge pdb2pqr package."
-        )
+def _protonated_structure_file(source: str) -> str:
+    """Return a temporary PDB file with backbone amide hydrogens added.
+
+    ProteinMC's statistical hydrogen-bond potential only ever looks up one
+    hydrogen per residue -- the backbone amide ``H`` -- so structure
+    preparation builds that atom in-tree via :meth:`Structure.protonate`
+    rather than shelling out to an external all-atom protonation tool.
+    """
     if len(source) != 4 and not Path(source).exists():
         raise FileNotFoundError(source)
-    input_file = _standard_residue_pdb(source)
-    handle, output_file = tempfile.mkstemp(suffix="_proteinmc.pqr")
-    import os
-
-    os.close(handle)
-    cmd = [executable, "--ff=PARSE", input_file, output_file]
-    try:
-        subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-    except subprocess.CalledProcessError as exc:
-        Path(output_file).unlink(missing_ok=True)
-        message = exc.stderr.strip() or exc.stdout.strip() or str(exc)
-        raise RuntimeError(f"pdb2pqr failed while preparing ProteinMC input: {message}") from exc
-    finally:
-        Path(input_file).unlink(missing_ok=True)
-    return output_file
+    return _standard_residue_pdb(source)
 
 
 def _standard_residue_pdb(source: str) -> str:
-    """Write a temporary PDB containing only standard amino-acid residues."""
+    """Write a temporary, protonated PDB containing only standard amino-acid residues."""
     structure = Structure(source)
     atoms = structure.atoms
     atoms = atoms[np.array([_as_text(v) in _STANDARD_RESIDUES for v in atoms["res_name"]])]
@@ -173,6 +157,7 @@ def _standard_residue_pdb(source: str) -> str:
         raise ValueError("No complete standard amino-acid residues found in structure")
     atoms = atoms[np.logical_or.reduce(keep_masks)]
     structure.atoms = atoms
+    structure.protonate()
     handle, filename = tempfile.mkstemp(suffix="_proteinmc_standard.pdb")
     import os
 

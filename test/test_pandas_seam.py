@@ -21,12 +21,16 @@ The count in the list header is the tracker. It is not somewhere to add
 yourself.
 
 **What removing pandas from the code does and does not achieve.** It does not
-remove the package from a solved environment: the conda ``pdb2pqr`` requires
-``pandas >=1.0`` outright (its PyPI metadata has it only as a test extra, which
-is why this is easy to measure wrong), and ``seaborn-base`` and ``statsmodels``
-require it too. What it achieves is that ChiSurf's own tables stop being frames
-— which is where the memory, the dtypes and the missing values are won, and
-those are worth having whether or not the package is installed.
+remove the package from a solved environment on its own: ``seaborn-base`` and
+``statsmodels`` still require it. (The conda ``pdb2pqr`` recipe used to pin
+``pandas >=1.0`` too, and was the reason an earlier measurement found pandas
+would not leave the dev env at all — ``pdb2pqr`` itself was dropped instead,
+since ProteinMC's statistical hydrogen-bond potential only ever needed the
+backbone amide H, which is now built in-tree from ideal geometry.) What
+removing pandas from the code achieves regardless is that ChiSurf's own tables
+stop being frames — which is where the memory, the dtypes and the missing
+values are won, and those are worth having whether or not the package is
+installed.
 """
 
 from __future__ import annotations

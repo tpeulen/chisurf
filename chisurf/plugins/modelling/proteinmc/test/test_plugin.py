@@ -2,12 +2,11 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-import shutil
 from types import SimpleNamespace
 
-from click.testing import CliRunner
 import numpy as np
 import pytest
+from click.testing import CliRunner
 
 from chisurf.plugins.modelling.proteinmc.cli import cli
 from chisurf.plugins.modelling.proteinmc.model import (
@@ -17,13 +16,7 @@ from chisurf.plugins.modelling.proteinmc.model import (
     normalize_settings,
 )
 
-
 PDB_148L = Path("test/data/atomic_coordinates/pdb_files/148l.pdb")
-
-
-def _require_pdb2pqr() -> None:
-    if shutil.which("pdb2pqr") is None and shutil.which("pdb2pqr30") is None:
-        pytest.skip("ProteinMC structure preparation requires pdb2pqr")
 
 
 def _labeling_json(structure, path: Path) -> Path:
@@ -77,14 +70,7 @@ def test_normalize_settings_maps_legacy_keys() -> None:
     assert settings["move_map"] == [1, 0]
 
 
-def test_load_structure_requires_pdb2pqr(monkeypatch) -> None:
-    monkeypatch.setattr("shutil.which", lambda name: None)
-    with pytest.raises(RuntimeError, match="requires pdb2pqr"):
-        load_structure(PDB_148L)
-
-
 def test_runner_settings_override_settings_file(tmp_path: Path) -> None:
-    _require_pdb2pqr()
     settings_file = tmp_path / "settings.json"
     settings_file.write_text(json.dumps({"n_iter": 10, "pdbOut": 10}), encoding="utf-8")
     runner = ProteinMCRunner(
@@ -98,7 +84,6 @@ def test_runner_settings_override_settings_file(tmp_path: Path) -> None:
 
 
 def test_direct_labeling_potential_scores_148l(tmp_path: Path) -> None:
-    _require_pdb2pqr()
     structure = load_structure(PDB_148L)
     labeling_file = _labeling_json(structure, tmp_path / "labeling.fps.json")
     potential = DirectLabelingPotential(structure, labeling_file)
@@ -106,7 +91,6 @@ def test_direct_labeling_potential_scores_148l(tmp_path: Path) -> None:
 
 
 def test_runner_writes_rmf3_readable_by_chimol(tmp_path: Path) -> None:
-    _require_pdb2pqr()
     pytest.importorskip("RMF")
     pytest.importorskip("IMP")
     from chisurf.plugins.chimol.chimol.io.rmf import load_rmf_full
@@ -116,8 +100,14 @@ def test_runner_writes_rmf3_readable_by_chimol(tmp_path: Path) -> None:
     output = tmp_path / "proteinmc.rmf3"
     runner = ProteinMCRunner(
         PDB_148L,
-        labeling_file=labeling_file,
-        settings={"n_iter": 3, "n_out": 1, "pdbOut": 1, "potentials": []},
+        settings={
+            "n_iter": 3,
+            "n_out": 1,
+            "pdbOut": 1,
+            "potentials": [
+                {"name": "dye", "weight": 1.0, "settings": {"labeling_file": str(labeling_file)}},
+            ],
+        },
         output_file=output,
     )
     result = runner.run()
@@ -130,7 +120,6 @@ def test_runner_writes_rmf3_readable_by_chimol(tmp_path: Path) -> None:
 
 
 def test_rmf_writer_replaces_blank_chain_ids(tmp_path: Path) -> None:
-    _require_pdb2pqr()
     pytest.importorskip("RMF")
     pytest.importorskip("IMP")
     from chisurf.plugins.modelling.proteinmc.rmf import ProteinMCRmfWriter
@@ -183,7 +172,6 @@ def test_rmf_writer_writes_pmi_stat_metadata(tmp_path: Path) -> None:
 
 
 def test_cli_writes_rmf3(tmp_path: Path) -> None:
-    _require_pdb2pqr()
     pytest.importorskip("RMF")
     pytest.importorskip("IMP")
     output = tmp_path / "cli.rmf3"

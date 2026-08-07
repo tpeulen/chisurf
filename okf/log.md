@@ -2,6 +2,100 @@
 
 ## 2026-08-07
 
+* **[PRD-82](prds/prd-82.md): the last 3 pandas ports landed, and one of them
+  fixed a real data-corruption bug on the way** ([columnar
+  store](subsystems/columnar-store.md), [burst
+  companions](subsystems/burst-companions.md)). `burst_mle_analysis/wizard.py`,
+  `burst_fcs_correlator/wizard.py` and `bid_to_analysis/__init__.py` were the
+  three non-mechanical files left on `test/pandas_import_allowlist.txt`; the
+  allow-list is down to the 8-file interop group and stays there by design
+  (pandas is kept as the notebook/chitable/legacy-format boundary, not the
+  storage model).
+
+  `burst_mle_analysis`'s `read_burst_analysis` carried its own third copy of
+  the burst-folder reader (BVA has one, `photons.load_bur_dataframe` is the
+  shared one); deleted in favour of `read_bur_file` + `deinterleave_bursts`
+  **per file, before concatenating** — deinterleaving after concatenation
+  misaligns whenever the combined row count happens to come out even, since
+  each file's own zero/data interleave parity is independent of how many
+  files are stacked. Verified byte-for-byte against the removed pandas path on
+  a real 10-file, 2980-row burst folder (every column, not just the ones
+  spot-checked). `self.df_bursts` is a store now; the other 30 `.iloc`/`.loc`/
+  `.groupby`/`.reindex` call sites in the file moved onto
+  `chisurf.core.datastore` or plain dict/numpy grouping.
+
+  `burst_fcs_correlator`'s `_save_td4_results` was the writer flagged in
+  [known issues](references/known-issues.md) two commits ago: its row grid was
+  built from the bursts that *produced a result*, so a burst the correlator
+  skipped was a missing row rather than a sentinel one, and every later
+  burst's diffusion time landed one row too early. The fix turned out not to
+  need a second `.bur` read — `_run_burstwise_fcs` already enumerates each
+  measurement's full burst list (`ranges`) to assign `Burst Index`, so
+  `len(ranges)` is threaded through as `burst_counts` and the writer now
+  allocates the true one-row-per-burst grid before routing it through
+  `burst_companion.write_companion` (replacing the by-hand `%.6f`/tab layout).
+  Pinned by a new layout test, `test_td4_writer.py`, since the function had
+  none.
+
+  `bid_to_analysis` read an existing `.bur` back with `pandas.read_csv` to
+  append newly-imported bursts to it — the one CSV-reader call site stage 4
+  deliberately deferred, because reading into a frame only to convert it back
+  was measured at 1.1× (see the PRD's 541 ms → 71 ms → 485 ms table). Now
+  `read_csv_table` + `concat_stores` + `take_rows` (to drop the new table's
+  leading zero row before the join). Pinned by `test_bur_append.py`, which
+  re-runs the converter on an extended `.bid` and checks the existing rows
+  survive the round trip untouched with the new ones appended after them.
+
+* **`pdb2pqr` dropped: ProteinMC's H-bond potential only ever needed one atom
+  from it.** `HPotential` (`chisurf.core.structure.potential.potentials`) is a
+  statistical, backbone-only hydrogen-bond potential over a *centroid*
+  representation (`ProteinCentroid`: N/CA/C/O/CB plus one hydrogen per
+  residue) — verified against the numba kernel it calls
+  (`IMP.cgmol.statpot._kernels._hbond_kernel`, which indexes exactly one atom
+  named `H` per residue) and the coarse-graining code that unconditionally
+  requires that atom for every non-proline residue
+  (`chisurf.core.structure.protein.calc_internal_coordinates_bb`). Shelling
+  out to a full all-atom protonation tool for one geometrically-determined
+  backbone amide N-H was solving a much bigger problem than the one that
+  existed. `chisurf.core.structure.Structure.protonate` — previously a no-op
+  stub left over from an unrelated, already-removed `htmd`-pdb2pqr dependency
+  — now builds that atom directly: the amide nitrogen is sp2, so with its two
+  known substituents (the preceding residue's carbonyl C and this residue's
+  CA) the third bond direction is their negated unit-vector sum; a chain
+  start or a numbering break (no bonded C(i-1)) falls back to a representative
+  tetrahedral direction from CA and C of the same residue, matching what an
+  all-atom tool would have approximated for a genuinely rotationally-free
+  NH3+. `pdb2pqr` is removed from `pixi.toml`, the `full` extra in
+  `pyproject.toml`, and the `_NOT_SHIPPED` allowance in
+  `test/test_declared_dependencies.py`. Side effect worth recording:
+  [PRD-82](prds/prd-82.md)'s pandas-removal argument had one blocker named
+  explicitly — the conda `pdb2pqr` recipe pinned `pandas >=1.0`, so pandas
+  "would not leave the dev env at all" — and that blocker is now gone; the
+  256 → 255 closure measurement predates this change and is due for a
+  re-run. Both `proteinmc.py` copies (`chisurf/core/models/structure/` and
+  `chisurf/plugins/modelling/proteinmc/`) were updated in parallel; a
+  pre-existing, unrelated bug found while testing this
+  (`ProteinMCRunner.__init__` had no `labeling_file` parameter, so the one
+  test exercising it via that kwarg could never have passed) was fixed in the
+  same change.
+
+* **[PRD-85](prds/prd-85.md) scoped: a general drop-guard pattern, first applied to `.pto`
+  conversion, plus subsampled plots for stacked containers.** No drop zone gets a
+  chance to object or transform before a dropped path is committed. Revised mid-scoping
+  from a single hardwired ".pto nag on every TTTR drop" into a small registry
+  (`register_drop_guard`/`apply_drop_guards`, mirroring the existing AutoForm section
+  registry) that a drop zone opts into **by name** — not every drop zone should nag,
+  and different ones should be able to nag about different things. The one concrete
+  guard shipped, `tttr_to_pto`, wraps the correct-but-unwired conversion path
+  (`pto.Measurement.create` / `staging.import_measurement` — a repo-wide grep for
+  `import_measurement(` finds only its own definition) and offers convert-now
+  (original kept or deleted) or use-as-dropped, once, dismissably, at whichever drop
+  zones opt in — plus a separate zero-setting drop-only tool with no guard in front
+  of it. Also scoped, because a `.pto` stacks the raw stream and every derived table
+  in one growing file: an audit of the plugins that plot raw `macro_times`/`micro_times`
+  at full resolution, and a shared decimation budget on `chiplot`'s `line`/`scatter`
+  so those plots stop trying to draw millions of points.
+
 * **Stage 4: the imaging results stop being seven files around one measurement** ([photon container](subsystems/photon-container.md)). `<source>.imaging.h5` holds exactly one thing — a per-pixel table — and that is a missing *statement* rather than a limitation of HDF5: a table that cannot say what one of its rows is can only hold one grain, and the grain it chose was the pixel. So a stack, a drift trajectory, a resolution curve, a molecule table and a track table each became a file of its own beside it, related to the measurement by a filename prefix.
 
   Each now says its grain and shares the file: flow field at `pixel`, drift at `frame`, FRC at `curve_point`, tracks at `track` with detections at `spot` carrying the track as a key, molecules at `molecule`. A raster stays a TIFF and travels as cargo — it is worth keeping in a format every other tool reads — with its axes labelled going in, since a stack read back without them is guessed into channels whenever it has four frames or fewer.

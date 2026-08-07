@@ -104,12 +104,16 @@ for it (the kernel that replaced it is also 22× faster). `pyarrow-core` was
 worth a real **37**.
 
 `pandas` is the same story and is **not a removal candidate**, measured
-2026-08-06: taking it out of the recipe's `run:` list moves the closure 256 →
-255 — it is worth exactly **itself**. Its usual companions stay behind for other
-owners (`python-dateutil` for matplotlib and the Jupyter client, `pytz` and
-`python-tzdata` for `arrow`), and in the **dev env it would not leave at all**,
-because `pdb2pqr` requires `pandas >=1.0`. Against that single package stands
-the port: 69 importing files, 31 of them at module scope, 202 `DataFrame`
+2026-08-06 (before `pdb2pqr` left, see below — due for a re-run): taking it out
+of the recipe's `run:` list moved the closure 256 → 255 — it is worth exactly
+**itself**. Its usual companions stay behind for other owners
+(`python-dateutil` for matplotlib and the Jupyter client, `pytz` and
+`python-tzdata` for `arrow`). At the time, in the **dev env it would not leave
+at all**, because `pdb2pqr` required `pandas >=1.0`; `pdb2pqr` has since been
+dropped outright (structure preparation for ProteinMC's H-bond potential is
+now built in-tree from ideal geometry — see the entry below), so that
+particular blocker is gone. Against pandas itself still stands the port: 69
+importing files, 31 of them at module scope, 202 `DataFrame`
 constructions, and an API surface — `groupby`, `merge`, `query`, `describe`,
 `quantile`, `Categorical`, `read_csv`/`to_csv`, `HDFStore` — that is not the
 page of code the reimplementation rule is about. Two of those uses are
@@ -137,7 +141,10 @@ lists must agree with each other: what the dev env declares the conda package
 ships, and what the conda runtime has the wheel declares too (as a requirement,
 or as an extra when the code detects it and works without it). Every deliberate
 difference is named in the test with its reason — `micromamba` ships but is not
-a wheel dependency, `pdb2pqr` and `latexify-py` are dev-env-only. An import
+a wheel dependency, `latexify-py` is dev-env-only (no conda-forge Python 3.12
+build; `pdb2pqr` used to be the other dev-env-only entry here, until the tool
+it was declared for — structure preparation for ProteinMC — turned out to need
+only a geometrically-determined backbone atom, built in-tree instead). An import
 inside a `try`, a function or an `if` is an optional feature the code is expected
 to survive without, and is deliberately not policed. So a package that is genuinely
 optional gets one of two homes: a guarded import (`psutil` for the system
