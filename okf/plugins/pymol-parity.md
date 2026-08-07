@@ -684,6 +684,29 @@ is the same failure as a wrong tooltip — it tells the user a capability is
 missing — and it is worth a sweep rather than a fix: a disabled entry is only
 honest while its reason still holds, and nothing re-checks them.
 
+**The disabled entries are now an inventory, because three of them were
+lying.** A greyed-out entry with a reason is the honest way to show a gap — but
+it is honest only while the reason still holds, and **nothing re-checks them**.
+Sweeping the 26 disabled leaves on 2026-08-07 found three that had had working
+commands for some time: `origin` ("chimol rotates about the scene centre"),
+`generate ▸ symmetry mates` ("chimol cannot generate symmetry mates", while
+`symexp` sat in `cmd/symmetry.py` under 53 tests) and `S/H ▸ cell` ("chimol does
+not read crystal cells"). To a user those read exactly like missing features.
+
+The `cell` one was worse than stale: the command existed and **did not work**.
+It tested `state.symmetry` directly instead of going through `_symmetry_for`,
+which is the resolver that falls back to the file's `CRYST1` record and then to
+the space-group table — so `cell` only ever drew after an explicit
+`set_symmetry` while `symexp`, on the same object, expanded straight from the
+file. Two paths to one answer, and the wrong one reported the record as missing
+while it sat in the file on screen. Fixed by resolving and writing the result
+back, since the renderer reads `state.symmetry` too.
+
+`DISABLED_ENTRIES` in `test_menu_coverage.py` now pins the set: 22 leaves, each
+with its reason, and the test fails both ways — a new disabled entry has to be
+added deliberately, and one that gains a command has to be struck. Like the
+other trackers here it is meant to **shrink**.
+
 **The clash check is PyMOL's, and it is not a command there.** It is the bump
 check inside the mutagenesis wizard: sculpting's van der Waals term, one
 iteration, with `sculpt_vdw_vis_mode` on. Transcribed from `Sculpt.cpp`, and

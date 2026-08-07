@@ -207,3 +207,101 @@ def test_showing_the_plane_adds_geometry(session):
     assert len(renderer._draw_data) > before
     renderer.set_grid_visible(False)
     assert len(renderer._draw_data) == before
+
+
+# --------------------------------------------------------------------------- #
+# The disabled entries are an inventory, and it shrinks
+# --------------------------------------------------------------------------- #
+#: Every menu leaf that is deliberately greyed out, with the reason it is. This
+#: list is a **tracker and it only shrinks** -- it is not somewhere to add an
+#: entry you did not want to wire up.
+#:
+#: It exists because a disabled entry is only honest while its reason still
+#: holds, and nothing re-checks them. Three were found stale on 2026-08-07 in
+#: one sitting: `origin` ("chimol rotates about the scene centre") and `cell`
+#: ("chimol does not read crystal cells") had both had working commands for a
+#: while, and `generate` claimed chimol could not build symmetry mates while
+#: `symexp` sat in cmd/symmetry.py under 53 tests. To the user those read
+#: exactly like a missing feature.
+DISABLED_ENTRIES = {
+    # No structure editing.
+    "A > clean",
+    "A > hydrogens > add",
+    # No per-object matrix.
+    "A > drag matrix",
+    "A > reset matrix",
+    "A > drag coordinates",
+    # One solid surface: no surface_type, no per-object transparency.
+    "A > preset > ligand sites > solid (better)",
+    "A > preset > ligand sites > transparent surface",
+    "A > preset > ligand sites > transparent (better)",
+    "A > preset > ligand sites > dot surface",
+    "A > preset > ligand sites > mesh surface",
+    # No Poisson-Boltzmann solver.
+    "A > generate > vacuum electrostatics",
+    # Frames are the timeline panel's; no atom masking; no per-object motion.
+    "A > state",
+    "A > masking",
+    "A > movement",
+    # No per-atom flags, no bond orders.
+    "S > flag ignore",
+    "S > valence",
+    "H > flag ignore",
+    "H > valence",
+    # No user-defined atom properties; colour is per object and selection.
+    "L > other properties",
+    "C > by rep",
+    "C > auto",
+}
+
+
+def _disabled_leaves():
+    """Every leaf entry with no command, as ``"A > preset > ..."`` paths."""
+    from chisurf.plugins.chimol.chimol.object_menus import OBJECT_MENUS
+
+    def walk(entries, path):
+        for entry in entries:
+            if entry.is_separator:
+                continue
+            if entry.children:
+                yield from walk(entry.children, path + (entry.label,))
+            elif entry.command is None:
+                yield " > ".join(path + (entry.label,))
+
+    found = set()
+    for key, _title, menu in OBJECT_MENUS:
+        found.update(walk(menu, (key,)))
+    return found
+
+
+def test_the_disabled_entries_are_the_inventory():
+    """Wiring one up means striking its line here; nothing else may appear."""
+    found = _disabled_leaves()
+    new = found - DISABLED_ENTRIES
+    assert not new, (
+        f"new disabled menu entries: {sorted(new)} -- wire them up, or add them "
+        "here with the reason, knowing this list is meant to shrink"
+    )
+    closed = DISABLED_ENTRIES - found
+    assert not closed, (
+        f"these entries now have commands: {sorted(closed)} -- strike them "
+        "from DISABLED_ENTRIES"
+    )
+
+
+def test_every_disabled_entry_says_why():
+    """A greyed-out row with no tooltip is indistinguishable from a bug."""
+    from chisurf.plugins.chimol.chimol.object_menus import OBJECT_MENUS
+
+    def walk(entries, path):
+        for entry in entries:
+            if entry.is_separator:
+                continue
+            if entry.children:
+                yield from walk(entry.children, path + (entry.label,))
+            elif entry.command is None:
+                yield " > ".join(path + (entry.label,)), entry.note
+
+    for key, _title, menu in OBJECT_MENUS:
+        for where, note in walk(menu, (key,)):
+            assert note.strip(), f"{where} is disabled with no reason given"

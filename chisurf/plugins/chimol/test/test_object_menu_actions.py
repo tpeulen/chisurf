@@ -186,6 +186,18 @@ def _fill(template: str) -> str:
     return line
 
 
+#: Errors that are the fixture's fault rather than the entry's. The sweep runs
+#: every entry against one small solvated fragment, and a few entries ask the
+#: structure a question it cannot answer -- there is no CRYST1 record in it, so
+#: the symmetry entries have nothing to expand or draw and say so. Refusing
+#: with a reason *is* the correct behaviour there, and it is covered properly in
+#: `test_symmetry.py` against a file that does carry a cell.
+#:
+#: Keep this narrow: it is a list of *messages*, not of entries, so it cannot
+#: quietly excuse a different failure of the same command.
+_FIXTURE_CANNOT_ANSWER = ("carries no unit cell",)
+
+
 @pytest.mark.parametrize("template", _runnable())
 def test_a_menu_entry_runs(window, template):
     """Every entry with a command must run without reporting an error.
@@ -204,7 +216,13 @@ def test_a_menu_entry_runs(window, template):
     for _ in range(5):
         app.processEvents()
 
-    assert errors == [], f"{template!r} -> {errors[-1] if errors else ''}"
+    unexpected = [
+        e for e in errors
+        if not any(reason in e for reason in _FIXTURE_CANNOT_ANSWER)
+    ]
+    assert unexpected == [], (
+        f"{template!r} -> {unexpected[-1] if unexpected else ''}"
+    )
 
 
 @pytest.mark.parametrize("entry", _disabled())

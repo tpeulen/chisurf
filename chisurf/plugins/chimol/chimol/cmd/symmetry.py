@@ -365,8 +365,25 @@ class SymmetryMixin(BaseCmd):
             cell_state = entry.state
             symmetry = getattr(cell_state, "symmetry", None) or {}
             if symmetry.get("cell") is None:
-                without.append(entry.name)
-                continue
+                # Ask the resolver, which reads the file's CRYST1 and the
+                # space-group table. Reading `state.symmetry` alone was the
+                # whole test here, so `cell` only ever worked after an explicit
+                # `set_symmetry` while `symexp` -- which does resolve -- worked
+                # straight from the file. Two paths to one answer, and the
+                # message from the wrong one said the record was missing when
+                # it was in the file being displayed. The result is written
+                # back, because the renderer reads `state.symmetry` too.
+                found_cell, group, operators, _source = self._symmetry_for(
+                    viewer, object_id
+                )
+                if found_cell is None:
+                    without.append(entry.name)
+                    continue
+                symmetry = dict(symmetry)
+                symmetry.update(
+                    cell=found_cell, space_group=group, operators=operators
+                )
+                cell_state.symmetry = symmetry
             if wanted in ("on", "1", "true"):
                 value = True
             elif wanted in ("off", "0", "false"):

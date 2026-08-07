@@ -567,3 +567,68 @@ def test_the_origin_shifts_the_whole_box():
     at_origin = cell_corners(cell)
     moved = cell_corners(cell, origin=[5.0, -2.0, 1.0])
     assert np.allclose(moved - at_origin, [5.0, -2.0, 1.0])
+
+
+# --------------------------------------------------------------------------- #
+# `cell` resolves the same way `symexp` does
+# --------------------------------------------------------------------------- #
+@pytest.fixture
+def qapp():
+    from qtpy import QtWidgets
+
+    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+
+
+@pytest.fixture
+def crystal_cmd(qapp, tmp_path):
+    """A window with 1RTD -- a file that carries its own CRYST1 record."""
+    import shutil
+
+    from chisurf.plugins.chimol.chimol.app.molview_main_window import (
+        MolViewPluginWindow,
+    )
+    from chisurf.plugins.chimol.chimol.cmd.command import Cmd
+
+    if not _CRYSTAL.is_file():
+        pytest.skip("no crystal fixture")
+    pdb = tmp_path / "1rtd.pdb"
+    shutil.copyfile(_CRYSTAL, pdb)
+
+    window = MolViewPluginWindow()
+    window._load_structure_from_path(pdb, name="1rtd")
+    command = Cmd(window)
+    errors: list[str] = []
+    messages: list[str] = []
+    command.set_error_callback(errors.append)
+    command.set_message_callback(messages.append)
+    command._errors = errors
+    command._messages = messages
+    return command, window
+
+
+def test_cell_reads_the_file_like_symexp_does(crystal_cmd):
+    """`cell` tested ``state.symmetry`` and nothing else.
+
+    So it worked only after an explicit `set_symmetry`, while `symexp` -- which
+    goes through ``_symmetry_for`` and falls back to the file's CRYST1 and then
+    the space-group table -- worked straight from the file. Two paths to one
+    answer, and the message from the wrong one said the record was missing
+    while it sat in the file on screen.
+    """
+    command, window = crystal_cmd
+    command.do("cell all, on")
+    assert command._errors == [], command._errors
+    assert any("drawn for" in m for m in command._messages), command._messages
+
+    entry = next(iter(window.viewer._objects.values()))
+    assert entry.state.show_cell is True
+    # ...and the resolution is written back, because the renderer reads it too.
+    assert (entry.state.symmetry or {}).get("cell") is not None
+
+
+def test_cell_off_hides_it_again(crystal_cmd):
+    command, window = crystal_cmd
+    command.do("cell all, on")
+    command.do("cell all, off")
+    entry = next(iter(window.viewer._objects.values()))
+    assert entry.state.show_cell is False

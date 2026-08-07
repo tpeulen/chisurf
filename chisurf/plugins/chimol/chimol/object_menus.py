@@ -262,8 +262,24 @@ ACTION_MENU: tuple[MenuEntry, ...] = (
         MenuEntry("super to ...", "super {sele}, {text}",
                   prompt=("Super", "Superpose onto which object?")),
     )),
-    MenuEntry("generate", None, "Chimol cannot generate symmetry mates or "
-                                "surfaces as new objects yet."),
+    # PyMOL's `mol_generate`. Its "selection" and "vacuum electrostatics" arms
+    # are absent -- the first duplicates chimol's own selection commands, the
+    # second needs a Poisson-Boltzmann solver chimol does not ship. Symmetry
+    # mates are the arm that matters and `symexp` has been there for a while;
+    # this entry claimed otherwise until 2026-08-07.
+    MenuEntry("generate", None, "", children=(
+        MenuEntry("symmetry mates", None, "", children=tuple(
+            MenuEntry(
+                f"within {radius:g} A",
+                "symexp {sele}_, {sele}, " + f"{radius:g}, 1",
+                "One object per mate, named for the operator and the lattice "
+                "translation that made it.",
+            )
+            for radius in (4, 5, 6, 8, 12, 20, 50)
+        )),
+        MenuEntry("vacuum electrostatics", None,
+                  "Chimol has no Poisson-Boltzmann solver."),
+    )),
     SEP,
     MenuEntry("assign sec. struc.", "dss"),
     SEP,
@@ -313,7 +329,6 @@ ACTION_MENU: tuple[MenuEntry, ...] = (
 _LINES_NOTE = "Chimol's lines are the backbone trace, not per-bond wireframe."
 _NB_NOTE = "Mapped to the non-polymer atoms, which is what PyMOL's nonbonded "\
            "glyphs mark."
-_NO_CELL = "Chimol does not read crystal cells."
 _NO_FLAG = "Chimol has no per-atom flags yet."
 _NO_VALENCE = "Chimol does not draw bond valences."
 
@@ -342,7 +357,12 @@ def _rep_action(action: str) -> tuple[MenuEntry, ...]:
         MenuEntry("cartoon", f"{action} cartoon, {{sele}}"),
         SEP,
         MenuEntry("label", f"{action} labels, {{sele}}"),
-        MenuEntry("cell", None, _NO_CELL),
+        # Not a representation of the atoms, so not part of show/hide -- the
+        # `cell` command takes on/off. An object with no CRYST1 record has no
+        # cell and says so, which is more use than an empty `show cell`.
+        MenuEntry("cell", "cell {sele}, " + ("on" if action == "show" else "off"),
+                  "The crystallographic unit cell as a wireframe box, in the "
+                  "object's own frame. Needs a CRYST1 record."),
         SEP,
         MenuEntry("dots", f"{action} dots, {{sele}}"),
         MenuEntry("spheres", f"{action} spheres, {{sele}}"),
