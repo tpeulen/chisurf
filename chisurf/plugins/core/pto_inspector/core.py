@@ -344,9 +344,15 @@ class PtoInspection:
             return None
 
     def text(self, uid: int) -> str:
-        """Read a text payload (README, mmCIF metadata) back as a string."""
+        """Read a text payload (README, mmCIF metadata) back as a string.
+
+        Through :meth:`~chisurf.core.fio.pto.Measurement.get_blob`, which
+        verifies the recorded checksum on the way out — a reader that shows a
+        damaged payload as if it were intact is worse than one that shows
+        nothing.
+        """
         try:
-            return bytes(self.measurement._f.read(int(uid))).decode("utf-8", "replace")
+            return self.measurement.get_blob(int(uid)).decode("utf-8", "replace")
         except Exception:
             logger.debug("reading text %s failed", uid, exc_info=True)
             return ""
