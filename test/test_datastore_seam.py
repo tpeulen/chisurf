@@ -20,6 +20,7 @@ from chisurf.core.datastore import (
     clear_cell,
     column_at,
     column_values,
+    concat_stores,
     dataframe_from_store,
     is_missing,
     new_store,
@@ -30,6 +31,8 @@ from chisurf.core.datastore import (
     store_from_arrays,
     store_from_dataframe,
     store_from_rows,
+    take_rows,
+    take_where,
     write_csv_table,
     write_table,
 )
@@ -681,3 +684,69 @@ def test_a_none_value_from_rows_is_missing_not_zero():
     assert not store["b"].valid(0)
     assert store["b"].valid(1)
     assert write_csv_table(None, [{"a": 1, "b": None}]).splitlines()[1] == "1\t"
+
+
+# ── combining and subsetting ─────────────────────────────────────────────
+
+
+def test_concat_keeps_the_integer_dtype_a_frame_would_widen():
+    """The whole argument for stacking stores rather than frames. A column one
+    side lacks leaves its rows *not measured*; a frame has to widen int64 to
+    float64 to hold the NaN, and the dtype cannot be recovered afterwards."""
+    a = store_from_arrays({"n": np.array([1, 2], dtype=np.int32)})
+    b = store_from_arrays({"n": np.array([3], dtype=np.int32), "extra": np.array([1.5])})
+
+    out = concat_stores([a, b])
+    assert out.n_rows() == 3
+    assert out["n"].numpy().dtype == np.int32
+    assert not out["extra"].valid(0)
+    assert out["extra"].valid(2)
+
+
+def test_concat_lines_columns_up_by_name_not_position():
+    """Two runs need not have written their columns in the same order."""
+    a = store_from_arrays({"a": np.array([1.0]), "b": np.array([2.0])})
+    b = store_from_arrays({"b": np.array([20.0]), "a": np.array([10.0])})
+
+    out = concat_stores([a, b])
+    np.testing.assert_array_equal(out["a"].numpy(), [1.0, 10.0])
+    np.testing.assert_array_equal(out["b"].numpy(), [2.0, 20.0])
+
+
+def test_concat_refuses_a_dtype_conflict_by_name():
+    """Not promoted. Widening a float32 to meet a float64 loses the dtype the
+    store exists to keep, and would do it silently."""
+    a = store_from_arrays({"n": np.array([1], dtype=np.int32)})
+    b = store_from_arrays({"n": np.array([1.0])})
+    with pytest.raises(ValueError, match="n"):
+        concat_stores([a, b])
+
+
+def test_concat_of_nothing_is_an_empty_table():
+    assert concat_stores([]).n_rows() == 0
+    assert concat_stores([None]).n_rows() == 0
+
+
+def test_inner_join_keeps_only_the_shared_columns():
+    a = store_from_arrays({"a": np.array([1.0]), "only_a": np.array([1.0])})
+    b = store_from_arrays({"a": np.array([2.0]), "only_b": np.array([2.0])})
+    out = concat_stores([a, b], inner=True)
+    assert [out[i].name() for i in range(out.n_columns())] == ["a"]
+
+
+def test_take_materialises_a_selection_a_mask_can_only_describe():
+    """The reason filtering a table used to need a frame."""
+    store = store_from_arrays(
+        {"n": np.array([1, 2, 3], dtype=np.int32),
+         "lbl": np.array(["x", "y", "z"], dtype=object)}
+    )
+    out = take_where(store, np.array([True, False, True]))
+    assert out.n_rows() == 2
+    np.testing.assert_array_equal(out["n"].numpy(), [1, 3])
+    assert list(out["lbl"].numpy()) == ["x", "z"]
+    assert out["n"].numpy().dtype == np.int32
+
+
+def test_take_rows_keeps_the_order_asked_for():
+    store = store_from_arrays({"n": np.arange(5, dtype=np.int32)})
+    np.testing.assert_array_equal(take_rows(store, [3, 0, 1])["n"].numpy(), [3, 0, 1])

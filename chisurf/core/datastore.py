@@ -77,6 +77,7 @@ __all__ = [
     "clear_cell",
     "column_at",
     "column_values",
+    "concat_stores",
     "dataframe_from_store",
     "is_missing",
     "new_store",
@@ -87,6 +88,8 @@ __all__ = [
     "store_from_arrays",
     "store_from_dataframe",
     "store_from_rows",
+    "take_rows",
+    "take_where",
     "write_csv_table",
     "write_table",
 ]
@@ -579,6 +582,84 @@ def store_from_rows(rows: Sequence[Mapping[str, Any]]) -> Any:
             column.set_mask(np.ascontiguousarray(present, dtype=np.uint8))
     store.set_n_rows(len(rows))
     return store
+
+def concat_stores(stores: Sequence[Any], *, inner: bool = False) -> Any:
+    """Stack stores row-wise, the way a burst folder is combined.
+
+    The operation a frame was being built for: several measurements read
+    separately and put together. Columns line up **by name**, not by position,
+    because two runs need not have listed them in the same order.
+
+    A column missing from one side keeps its dtype and its rows are marked
+    *not measured*. That is the whole advantage over a frame here and it is not
+    a small one — a frame has to widen an ``int64`` column to ``float64`` to
+    hold a ``NaN``, and the dtype cannot be recovered afterwards.
+
+    Parameters
+    ----------
+    stores : sequence of tttrlib.DataStore
+        The tables to stack. An empty sequence gives an empty store.
+    inner : bool
+        Keep only the columns every store has, rather than the union.
+
+    Returns
+    -------
+    tttrlib.DataStore
+
+    Raises
+    ------
+    ValueError
+        When a column has a different dtype in two stores. It is not promoted:
+        widening a float32 to meet a float64 loses the dtype the store exists to
+        keep, and does it silently.
+    """
+    import tttrlib
+
+    stores = [s for s in stores if s is not None]
+    if not stores:
+        return new_store()
+    try:
+        return tttrlib.concat(stores, join="inner" if inner else "outer")
+    except Exception as exc:  # the library names the offending column
+        raise ValueError(str(exc)) from exc
+
+
+def take_rows(store: Any, rows: Any) -> Any:
+    """Return a new store holding ``rows``, in that order.
+
+    Materialises a selection, which is what a mask alone cannot do — the reason
+    filtering a table used to need a frame. A copy, not a view; column order,
+    dtypes, dictionaries and validity all come across.
+
+    Parameters
+    ----------
+    store : tttrlib.DataStore
+        The table to take from.
+    rows : array-like of int
+        Row positions.
+
+    Returns
+    -------
+    tttrlib.DataStore
+    """
+    return store.take([int(i) for i in np.asarray(rows).ravel()])
+
+
+def take_where(store: Any, mask: Any) -> Any:
+    """Return a new store holding the rows where ``mask`` is true.
+
+    Parameters
+    ----------
+    store : tttrlib.DataStore
+        The table to filter.
+    mask : array-like of bool
+        One entry per row.
+
+    Returns
+    -------
+    tttrlib.DataStore
+    """
+    return take_rows(store, np.nonzero(np.asarray(mask, dtype=bool).ravel())[0])
 
 def read_table(path: Any, *, group: str = "/") -> Any:
     """Return a columnar HDF5 table as a store, or ``None`` if it is not one.
