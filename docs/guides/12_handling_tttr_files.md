@@ -67,14 +67,20 @@ photons = open_tttr("measurement.pto|measurement.ptu")
 Several tools that load a vendor file as the working measurement (Burst
 Background, Burst IRF & Background, Count Rate Analysis, Burst Analysis, the
 Microtime Shifter, the PCH tool, the TCSPC/PCH readers) offer to convert it
-the moment you drop it: **Convert, keep original** / **Convert, delete
+the moment you drop it: **Convert, keep original** (the default — it never
+deletes anything, so an unattended/headless run takes this answer too and
+is never blocked on a prompt nobody is there to answer) / **Convert, delete
 original** (only after the new container's checksum verifies) / **Use as
-dropped**, once, with a "remember my choice" tick. An unattended/headless run
-never sees the dialog and takes the safe answer — nothing is converted.
+dropped**, once, with a "remember my choice" tick. Drop several files
+belonging to the same split measurement (`m000.spc`, `m001.spc`, ...)
+together and they are embedded into **one** `.pto`, in lexical order by
+file name, not one container per file; a Becker & Hickl `.spc`'s `.set`
+sidecar is always picked up automatically and never converted on its own.
 
 For converting outside those tools — or for turning a `.pto` back into the
-vendor file it embeds — use the standalone **TTTR ⇄ .pto** tool: one drop
-target, no options, works either direction depending on what you drop.
+vendor file(s) it embeds — use the standalone **TTTR ⇄ .pto** tool: one drop
+target, no options, works either direction depending on what you drop, and
+packs multiple dropped vendor files the same way.
 
 ```python
 from chisurf.plugins.core.tttr_to_pto import api

@@ -123,6 +123,29 @@ def test_a_becker_hickl_sidecar_travels_with_its_primary(tmp_path: Path):
     assert _sha256(out) == _sha256(raw)
 
 
+def test_create_embeds_several_files_in_one_container_lexically_sorted(tmp_path: Path):
+    """A measurement split across several vendor files is one .pto, in name order.
+
+    Passed out of order on purpose -- ``create`` must sort by file name
+    itself rather than trust caller/iteration order, which a directory
+    listing or a drag-and-drop does not guarantee.
+    """
+    raw_a = tmp_path / "m000.ptu"
+    raw_b = tmp_path / "m001.ptu"
+    shutil.copy(PTU, raw_a)
+    shutil.copy(PTU, raw_b)
+
+    with Measurement.create([raw_b, raw_a]) as m:
+        first_uid = m.instrument_uid
+
+    target = tmp_path / "m000.pto"  # named after the lexically-first file
+    assert target.exists()
+    with Measurement.open(target) as m:
+        assert m.instrument_uid == first_uid  # lexically-first is primary
+        names = [o.name for o in m.artifacts()]
+        assert "m000.ptu" in names and "m001.ptu" in names
+
+
 # -- transparency --------------------------------------------------------------
 
 

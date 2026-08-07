@@ -50,6 +50,7 @@ __all__ = [
     "PROFILE_READ_VERSION",
     "PROFILE_VERSION",
     "PtoMfdbError",
+    "SIDECAR_ONLY_EXTENSIONS",
     "SUFFIX",
     "is_measurement",
 ]
@@ -204,6 +205,17 @@ _FORMAT_BY_SUFFIX = {
 #: primary is not decodable alone. A Becker & Hickl ``.spc`` keeps half its
 #: header in a ``.set`` beside it.
 _SIDECAR_SUFFIXES = {".spc": (".set",)}
+
+#: Suffixes that only ever exist *beside* a primary instrument file, never as
+#: one on their own -- the flattened set of :data:`_SIDECAR_SUFFIXES`' values.
+#: A dropped/selected ``.set`` is never itself something to embed as a
+#: measurement: :meth:`Measurement._add_instrument` finds and embeds it
+#: automatically (by looking beside its ``.spc``), so callers deciding what
+#: counts as "a vendor file" should exclude these rather than double-embed or
+#: try to open one as a primary in its own right.
+SIDECAR_ONLY_EXTENSIONS: frozenset[str] = frozenset(
+    suffix for suffixes in _SIDECAR_SUFFIXES.values() for suffix in suffixes
+)
 
 
 class PtoMfdbError(RuntimeError):
@@ -442,35 +454,45 @@ class Measurement:
     @classmethod
     def create(
         cls,
-        raw_path: str | Path,
+        raw_path: str | Path | Sequence[str | Path],
         *,
         out_dir: str | Path | None = None,
         title: str = "",
         artifact_kind: str = "tttr_photon_stream",
     ) -> "Measurement":
-        """Start a container from an instrument file.
+        """Start a container from one or more instrument files.
 
-        The instrument file is copied in **verbatim** as the first object and is
-        never rewritten afterwards, so its offset is stable for the life of the
-        container and no recomputation can disturb it. The original on disk is
-        left alone.
+        Each instrument file is copied in **verbatim** and is never rewritten
+        afterwards, so its offset is stable for the life of the container and
+        no recomputation can disturb it. The originals on disk are left alone.
 
         Parameters
         ----------
-        raw_path : str or Path
-            The instrument file (``.ptu``, ``.spc``, ``.ht3``, ...).
+        raw_path : str or Path, or a sequence of them
+            The instrument file (``.ptu``, ``.spc``, ``.ht3``, ...). A
+            measurement split across several vendor files — a long
+            acquisition rolled over into `m000.spc`, `m001.spc`, ... — is
+            given as a sequence and embedded **all into the same container**,
+            in lexical order by file name; that order is what makes "one
+            measurement, one file" true for a split recording instead of
+            producing one container per file. Order is fixed here rather than
+            left to caller iteration order, which a directory listing or a
+            drag-and-drop does not guarantee. A ``.spc``'s ``.set`` sidecar
+            is picked up automatically per file (see
+            :meth:`_add_instrument`) and must not be passed explicitly.
         out_dir : str or Path, optional
-            Directory for the container. Defaults to beside *raw_path*, which
-            is wrong for read-only source media and right everywhere else.
+            Directory for the container. Defaults to beside the first
+            (lexically) instrument file, which is wrong for read-only source
+            media and right everywhere else.
         title : str, optional
-            Human title. Defaults to the instrument file's stem.
+            Human title. Defaults to the first instrument file's stem.
         artifact_kind : str, optional
-            What the source *is*, as an ``_mmfdb_artifact.artifact_kind`` term.
-            Defaults to a photon stream, which is what nearly every measurement
-            here starts as — but not all of them: an ebFRET run starts from
-            binned traces, and calling those a photon stream would be a
-            statement about the file that is simply false, in the one field a
-            reader consults to decide how to open it.
+            What each source *is*, as an ``_mmfdb_artifact.artifact_kind``
+            term. Defaults to a photon stream, which is what nearly every
+            measurement here starts as — but not all of them: an ebFRET run
+            starts from binned traces, and calling those a photon stream
+            would be a statement about the file that is simply false, in the
+            one field a reader consults to decide how to open it.
 
         Returns
         -------
@@ -479,26 +501,37 @@ class Measurement:
         Raises
         ------
         PtoMfdbError
-            If the container cannot be created.
+            If no instrument file is given, one does not exist, or the
+            container cannot be created.
         """
-        raw = Path(raw_path)
-        if not raw.exists():
-            raise PtoMfdbError(f"no such instrument file: {raw}")
+        raw_paths = (
+            [Path(raw_path)]
+            if isinstance(raw_path, (str, Path))
+            else sorted((Path(p) for p in raw_path), key=lambda p: p.name)
+        )
+        if not raw_paths:
+            raise PtoMfdbError("create() needs at least one instrument file")
+        for raw in raw_paths:
+            if not raw.exists():
+                raise PtoMfdbError(f"no such instrument file: {raw}")
 
-        target_dir = Path(out_dir) if out_dir is not None else raw.parent
+        first = raw_paths[0]
+        target_dir = Path(out_dir) if out_dir is not None else first.parent
         target_dir.mkdir(parents=True, exist_ok=True)
-        target = target_dir / (raw.stem + SUFFIX)
+        target = target_dir / (first.stem + SUFFIX)
 
         tttrlib = _tttrlib()
         handle = tttrlib.PtoFile()
-        if not handle.create(str(target), title or raw.stem):
+        if not handle.create(str(target), title or first.stem):
             raise PtoMfdbError(f"could not create {target}: {handle.error()}")
         handle.set_writing_app(_writing_app())
 
         self = cls(handle, target)
         self._stamp_versions()
         self._add_readme()
-        self._instrument_uid = self._add_instrument(raw, artifact_kind)
+        self._instrument_uid = self._add_instrument(first, artifact_kind)
+        for raw in raw_paths[1:]:
+            self._add_instrument(raw, artifact_kind)
         return self
 
     @classmethod

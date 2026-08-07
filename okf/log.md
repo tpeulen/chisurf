@@ -2,6 +2,33 @@
 
 ## 2026-08-07
 
+* **[PRD-85](prds/prd-85.md) `tttr_to_pto` follow-up: default to keep-original,
+  merge a multi-file drop into one `.pto`, never convert a `.set` on its
+  own.** Three direct corrections to the guard/tool landed the same day:
+  (1) the dialog's (and the headless auto-answer's) default is now
+  **convert, keep original** rather than use-as-dropped — it never deletes
+  anything, so unlike "delete" it is safe to take unattended, and there is
+  no longer a tension between "the button a person expects" and "the
+  answer a headless run may take" the way there was choosing "use as
+  dropped" as the safe default. (2) `pto.Measurement.create` now accepts a
+  *sequence* of instrument files and embeds all of them into **one**
+  container, sorted lexically by name regardless of the order they were
+  passed in — a measurement split across `m000.spc`, `m001.spc`, ... is one
+  recording, not one `.pto` per file; `tttr_to_pto.api.convert` and the
+  guard/tool were updated to pass the whole dropped batch through in one
+  call rather than converting each path independently. (3) added
+  `pto.SIDECAR_ONLY_EXTENSIONS` (today just `.set`) and excluded it from
+  `applies()`/`_accepts()` everywhere: a Becker & Hickl `.set` is
+  undecodable alone and was already picked up automatically beside its
+  `.spc` by `_add_instrument`'s existing sidecar lookup, so a `.set`
+  dropped (alone, or alongside its `.spc`) must never be treated as its own
+  convertible file. Tests: `test/fio/test_pto.py` (+1, multi-file lexical
+  order), `chisurf/plugins/core/tttr_to_pto/test/` (+4: multi-file convert,
+  `.set` sidecar pickup, multi-file guard merge, orphan `.set` never
+  applies), `test_guard.py`'s headless-default test rewritten for the new
+  answer — 115 passed together with the existing `.pto`/manifest/PRD-mention
+  suites.
+
 * **[PRD-85](prds/prd-85.md) Part A landed: drop guards, and the `tttr_to_pto`
   conversion they were built to wire up.** `chisurf/gui/widgets/dropguard.py`
   adds a small registry (`DropGuard`/`register_drop_guard`/`apply_drop_guards`)

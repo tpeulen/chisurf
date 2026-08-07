@@ -201,19 +201,24 @@ what should nag them, or name nothing and behave exactly as before:
 The one guard ChiSurf ships is `tttr_to_pto`
 (`chisurf/plugins/core/tttr_to_pto/`): dropping a vendor photon file
 (`.ptu`/`.spc`/`.ht3`/...) onto a drop zone that opted in offers converting it
-into a `.pto` container — convert-and-keep (default), convert-and-delete
-(only after the copy verifies), or use-as-dropped — once, with a "remember my
-choice" tick persisted per-guard as a tri-state under
-`data_loading.drop_guards.tttr_to_pto` (`ask`/`always_keep`/`always_delete`/
-`never`). A non-interactive run never sees the dialog: `ChiSurfMessageBox.choice`'s
-headless default is `asis` (use as dropped), so an unattended run is never
-blocked on a prompt nobody is there to answer — the dict order still puts
-"keep" first, for the person who *is* there. The plugin also ships a bare,
-prompt-free drop tool (`gui/tool.py`) that works **both ways** from what was
-dropped: a vendor file is packed into a `.pto`; a `.pto` is unpacked back to
-the vendor file(s) it embeds (`Measurement.disassemble`, checksum-verified).
-See [photon container](/subsystems/photon-container.md) for what a `.pto`
-holds and why opening a vendor file should produce one.
+into a `.pto` container — **convert-and-keep** (the default, both for the
+dialog and headlessly: it never deletes anything, so it is the one answer
+that is always safe to take unattended), convert-and-delete (only after the
+copy verifies), or use-as-dropped — once, with a "remember my choice" tick
+persisted per-guard as a tri-state under `data_loading.drop_guards.tttr_to_pto`
+(`ask`/`always_keep`/`always_delete`/`never`). Several files dropped together
+(a measurement split across `m000.spc`, `m001.spc`, ...) are embedded into
+**one** container, in lexical order by file name
+(`Measurement.create`'s multi-file form) — not one `.pto` per file. A
+Becker & Hickl `.spc`'s `.set` sidecar (`pto.SIDECAR_ONLY_EXTENSIONS`) is
+never itself a candidate: `applies()` excludes it, and `_add_instrument`
+picks it up automatically beside its `.spc` regardless of whether it was
+dropped at all — dropping `.set` alone is inert. The plugin also ships a
+bare, prompt-free drop tool (`gui/tool.py`) that works **both ways** from
+what was dropped: vendor file(s) are packed into one `.pto`; a `.pto` is
+unpacked back to the vendor file(s) it embeds (`Measurement.disassemble`,
+checksum-verified). See [photon container](/subsystems/photon-container.md)
+for what a `.pto` holds and why opening a vendor file should produce one.
 
 Wired opt-in so far at the drop zones that genuinely load a measurement
 (burst background/IRF estimation, count-rate analysis, burst analysis, the

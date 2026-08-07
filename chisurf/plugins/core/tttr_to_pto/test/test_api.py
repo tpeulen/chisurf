@@ -17,17 +17,17 @@ import pytest
 
 from chisurf.plugins.core.tttr_to_pto import api
 
-ROOT = Path(__file__).resolve().parents[4]
-SPC = (
-    ROOT
+DATA = (
+    Path(__file__).resolve().parents[4]
     / "plugins"
     / "burst"
     / "burst_selection"
     / "tests"
     / "data"
     / "bh_spc132_sm_dna"
-    / "m000.spc"
 )
+SPC = DATA / "m000.spc"
+SPC2 = DATA / "m001.spc"
 
 pytestmark = pytest.mark.skipif(not SPC.exists(), reason="no BH SPC test data")
 
@@ -87,3 +87,35 @@ def test_extract_recovers_the_original_bytes(tmp_path):
 
     assert instrument_file.exists()
     assert instrument_file.read_bytes() == original_bytes
+
+
+@pytest.mark.skipif(not SPC2.exists(), reason="no second BH SPC test file")
+def test_convert_embeds_multiple_files_in_one_container(tmp_path):
+    """A measurement split across several vendor files is one .pto, not several."""
+    a = tmp_path / SPC.name
+    a.write_bytes(SPC.read_bytes())
+    b = tmp_path / SPC2.name
+    b.write_bytes(SPC2.read_bytes())
+
+    # Passed out of lexical order -- convert() must sort by name regardless.
+    target = api.convert([b, a], keep_original=True)
+
+    assert target == tmp_path / (SPC.stem + ".pto")  # named after the lexically-first file
+    assert a.exists() and b.exists()
+
+    recovered = api.extract(target)
+    recovered_names = {p.name for p in recovered}
+    assert {a.name, b.name} <= recovered_names
+
+
+def test_convert_picks_up_the_spc_set_sidecar_automatically(tmp_path):
+    """A .set beside a .spc is embedded without being named explicitly."""
+    source = tmp_path / SPC.name
+    source.write_bytes(SPC.read_bytes())
+    sidecar = source.with_suffix(".set")
+    sidecar.write_bytes(b"fake bh settings header")
+
+    target = api.convert(source, keep_original=True)
+
+    recovered = api.extract(target)
+    assert any(p.name == sidecar.name for p in recovered)

@@ -6,13 +6,19 @@ Registered under the name ``"tttr_to_pto"`` in
 or the same keyword on ``PathListWidget``); nothing else in the registry or in
 ``apply_drop_guards`` knows this guard, or `.pto`, exists.
 
-Offers **Convert, keep original** / **Convert, delete original** / **Use as
-dropped**, once, with a "remember my choice" tick box that persists a
-tri-state (``ask`` / ``always_keep`` / ``always_delete`` / ``never``) under
-``data_loading.drop_guards.tttr_to_pto``. Headless/non-interactive runs never
-see the dialog and take the safe answer -- use the file as dropped, convert
-nothing -- so an unattended run is never blocked on a prompt nobody is there
-to answer.
+Offers **Convert, keep original** (the default, both for a real dialog and
+headlessly -- it never deletes anything, so it is always the safe answer) /
+**Convert, delete original** / **Use as dropped**, once, with a "remember my
+choice" tick box that persists a tri-state (``ask`` / ``always_keep`` /
+``always_delete`` / ``never``) under ``data_loading.drop_guards.tttr_to_pto``.
+
+When several vendor files are dropped together (a measurement split across
+`m000.spc`, `m001.spc`, ...), all of them are embedded into **one** `.pto`,
+in lexical order by file name -- not one container per file -- via
+:func:`chisurf.plugins.core.tttr_to_pto.api.convert`'s multi-file form. A
+dropped `.set` is never itself a candidate: it is a Becker & Hickl `.spc`'s
+sidecar, undecodable alone, and gets embedded automatically alongside its
+`.spc` regardless of whether it was dropped at all.
 """
 
 from __future__ import annotations
@@ -21,7 +27,7 @@ import logging
 from pathlib import Path
 
 from chisurf.core.fio import staging
-from chisurf.core.fio.pto import is_measurement
+from chisurf.core.fio.pto import SIDECAR_ONLY_EXTENSIONS, is_measurement
 from chisurf.core.settings.settings_utils import set_data_loading_settings
 from chisurf.gui import dialogs
 from chisurf.gui.widgets.dropguard import DropGuard, register_drop_guard
@@ -54,40 +60,47 @@ def _remember(value: str) -> None:
     set_data_loading_settings({"drop_guards": drop_guards})
 
 
-def _convert_one(path: str, *, keep_original: bool) -> str:
+def _convert_batch(paths: list[str], *, keep_original: bool) -> list[str]:
+    """Embed every path in *paths* into one `.pto`, or fall back to *paths*."""
     from chisurf.plugins.core.tttr_to_pto import api
 
     try:
-        return str(api.convert(path, keep_original=keep_original))
+        return [str(api.convert(paths, keep_original=keep_original))]
     except Exception:
-        logger.exception("tttr_to_pto: could not convert %s, using it as dropped", path)
-        return path
+        logger.exception("tttr_to_pto: could not convert %r, using them as dropped", paths)
+        return list(paths)
 
 
 @register_drop_guard("tttr_to_pto")
 class TttrToPtoGuard(DropGuard):
-    """Offer to convert a dropped vendor photon file into a `.pto` container."""
+    """Offer to convert dropped vendor photon file(s) into one `.pto` container."""
 
     def applies(self, path: str) -> bool:
-        """Care about vendor-suffixed files that are not already a container."""
+        """Care about vendor-suffixed files that are not a container or sidecar."""
         suffix = Path(path).suffix.lower()
+        if suffix in SIDECAR_ONLY_EXTENSIONS:
+            return False
         return suffix in staging.VENDOR_EXTENSIONS and not is_measurement(path)
 
     def resolve(self, parent, paths: list[str]) -> list[str]:
-        """Convert, per the persisted choice or a one-time dialog."""
+        """Convert the whole dropped batch into one `.pto`, or leave it as dropped."""
         remembered = _choice()
         if remembered == "never":
             return list(paths)
         if remembered in ("always_keep", "always_delete"):
-            keep = remembered == "always_keep"
-            return [_convert_one(p, keep_original=keep) for p in paths]
+            return _convert_batch(paths, keep_original=(remembered == "always_keep"))
 
-        # "ask": one dialog for the whole dropped batch. `default="asis"` is
-        # deliberately the *headless* answer (never converts unattended); the
-        # dict order below still puts "keep" first, the option an interactive
-        # user is expected to want most often.
-        names = ", ".join(Path(p).name for p in paths)
+        names = ", ".join(sorted(Path(p).name for p in paths))
         plural = "s" if len(paths) > 1 else ""
+        informative = (
+            "A .pto keeps the instrument data and every result computed "
+            "from it in one file. Your original is never touched unless "
+            "you choose to delete it, and only after the copy verifies."
+        )
+        if len(paths) > 1:
+            informative = (
+                "All dropped files are embedded into one .pto, in name order. "
+            ) + informative
         answer = dialogs.ChiSurfMessageBox.choice(
             parent,
             "Convert to .pto?",
@@ -97,16 +110,12 @@ class TttrToPtoGuard(DropGuard):
                 "delete": "Convert, delete original",
                 "asis": "Use as dropped",
             },
-            default="asis",
-            informative=(
-                "A .pto keeps the instrument data and every result computed "
-                "from it in one file. Your original is never touched unless "
-                "you choose to delete it, and only after the copy verifies."
-            ),
+            default="keep",  # never deletes anything -- safe headlessly too.
+            informative=informative,
             checkbox="Remember my choice",
         )
         if answer.checked and answer.key in _REMEMBER_AS:
             _remember(_REMEMBER_AS[answer.key])
         if answer.key in ("keep", "delete"):
-            return [_convert_one(p, keep_original=(answer.key == "keep")) for p in paths]
-        return list(paths)  # "asis", dismissed, or headless
+            return _convert_batch(paths, keep_original=(answer.key == "keep"))
+        return list(paths)  # "asis" or dismissed

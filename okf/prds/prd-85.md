@@ -156,14 +156,19 @@ for a stacked container) has not been started.
      unlinking the vendor file — deleting only after the embedded copy is confirmed
      byte-identical;
    - a `DropGuard` implementation registered as `@register_drop_guard("tttr_to_pto")`:
-     `applies()` is `suffix in staging.VENDOR_EXTENSIONS and not staging.is_measurement(path)`;
-     `resolve()` shows `ChiSurfMessageBox.choice` (`chisurf/gui/dialogs.py:516`) with
-     three options — **Convert, keep original** (default) / **Convert, delete
-     original** / **Use as dropped** — plus its built-in `checkbox`
-     ("don't ask again" / persist-as-default), and calls `api.convert` for whichever
-     the user picked. Headless/CI runs take the safe default (use as dropped, no
-     conversion) per the existing `ChiSurfMessageBox` contract — never blocks an
-     unattended run.
+     `applies()` is `suffix in staging.VENDOR_EXTENSIONS and suffix not in
+     pto.SIDECAR_ONLY_EXTENSIONS and not staging.is_measurement(path)` — a Becker &
+     Hickl `.set` is never itself a candidate, since it is undecodable alone and is
+     picked up automatically beside its `.spc`; `resolve()` shows
+     `ChiSurfMessageBox.choice` (`chisurf/gui/dialogs.py:516`) with three options —
+     **Convert, keep original** (default, both for the dialog and headlessly: it
+     never deletes anything, so it is the one answer that is always safe to take
+     unattended) / **Convert, delete original** / **Use as dropped** — plus its
+     built-in `checkbox` ("remember my choice"), and calls `api.convert` for
+     whichever the user picked. Files dropped together are embedded into **one**
+     container in lexical order by name (`Measurement.create`'s multi-file form) —
+     a measurement split across `m000.spc`, `m001.spc`, ... is one recording, not
+     one `.pto` per file.
    This is the *only* code that knows about `.pto` conversion; the registry and
    `apply_drop_guards` know nothing about it.
 4. **A persisted "stop asking" is per-guard, not one flat flag.** The checkbox in a

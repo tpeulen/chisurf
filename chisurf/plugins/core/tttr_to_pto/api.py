@@ -4,8 +4,9 @@ Two directions, both already implemented by
 :class:`chisurf.core.fio.pto.Measurement` and both verified by checksum before
 anything is ever deleted:
 
-- :func:`convert` -- pack a vendor file (``.ptu``, ``.spc``, ``.ht3``, ...)
-  into a `.pto` container.
+- :func:`convert` -- pack one or more vendor files (``.ptu``, ``.spc``,
+  ``.ht3``, ...) into a single `.pto` container, e.g. a measurement split
+  across several vendor files.
 - :func:`extract` -- the reverse: recover the embedded vendor file(s) from an
   existing `.pto`.
 
@@ -16,6 +17,7 @@ exists exactly once.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 from chisurf.core.fio.pto import Measurement, PtoMfdbError
@@ -23,19 +25,25 @@ from chisurf.core.fio.pto import Measurement, PtoMfdbError
 __all__ = ["convert", "extract"]
 
 
-def convert(path: str | Path, *, keep_original: bool = True, out_dir=None) -> Path:
-    """Import *path* into a `.pto` container beside it.
+def convert(
+    path: str | Path | Sequence[str | Path], *, keep_original: bool = True, out_dir=None
+) -> Path:
+    """Import one or more vendor files into a single `.pto` container.
 
     Parameters
     ----------
-    path : str or pathlib.Path
-        The vendor photon file (``.ptu``, ``.spc``, ``.ht3``, ...).
+    path : str or pathlib.Path, or a sequence of them
+        The vendor photon file (``.ptu``, ``.spc``, ``.ht3``, ...), or several
+        belonging to the same split measurement -- all embedded into the
+        **same** container, in lexical order by file name
+        (:meth:`chisurf.core.fio.pto.Measurement.create`).
     keep_original : bool
-        When ``False``, the vendor file is deleted -- but only once the
-        freshly written container's own checksum verifies clean, so a
-        corrupted write never costs the source.
+        When ``False``, every vendor file passed in is deleted -- but only
+        once the freshly written container's own checksum verifies clean, so
+        a corrupted write never costs a source.
     out_dir : str or pathlib.Path, optional
-        Directory for the container. Defaults to beside *path*.
+        Directory for the container. Defaults to beside the first
+        (lexically) vendor file.
 
     Returns
     -------
@@ -45,21 +53,23 @@ def convert(path: str | Path, *, keep_original: bool = True, out_dir=None) -> Pa
     Raises
     ------
     PtoMfdbError
-        If the container fails its own checksum verification. The source is
-        left untouched in that case, regardless of *keep_original*.
+        If the container fails its own checksum verification. Every source
+        is left untouched in that case, regardless of *keep_original*.
     """
-    raw = Path(path)
-    with Measurement.create(raw, out_dir=out_dir) as measurement:
+    raw_paths = [Path(path)] if isinstance(path, (str, Path)) else [Path(p) for p in path]
+    with Measurement.create(raw_paths, out_dir=out_dir) as measurement:
         target = measurement.path
 
     if not keep_original:
         with Measurement.open(target, writable=False) as check:
             problems = check.verify()
         if problems:
+            sources = ", ".join(str(p) for p in raw_paths)
             raise PtoMfdbError(
-                f"{target} failed verification, keeping {raw}: " + "; ".join(problems)
+                f"{target} failed verification, keeping {sources}: " + "; ".join(problems)
             )
-        raw.unlink()
+        for raw in raw_paths:
+            raw.unlink()
     return target
 
 
