@@ -2663,3 +2663,41 @@ the fixture needs a registry where no exact match exists (`["Lifetime ",
 "Lifetime mixer"]`, as it effectively was before). Left alone here because the
 file has another instance's uncommitted edits in it.
 
+
+## Mutagenesis resets the view, and hidden waters come back
+
+**2026-08-07**, reported by the user against the state-based wizard
+(`03a04ca07`). Two defects, both about state the wizard is not preserving.
+
+**1. The view is reset.** Something in the mutagenesis flow still moves the
+camera. The build and the rotamer step are each wrapped in
+`_wizard_keeps_the_camera` (`cmd/interactions.py`), and
+`test_the_wizard_never_moves_the_camera` asserts `get_view_state()` is
+unchanged across `wizard target` and two `wizard rotamer, next` — so the path
+that does it is **not** one of those two, and the guardrail passes while the
+user sees the fault. Candidates, in the order worth checking:
+
+* `wizard apply` and `wizard clear`/`done` — neither is wrapped. Apply
+  rebuilds the source object, which is exactly the operation that re-derives
+  the scene centre and radius;
+* `_wizard_delete_preview` — removing an object changes the scene bounds the
+  same way adding one does;
+* entering the wizard at all (`wizard mutagenesis`), or the residue pick that
+  precedes it.
+
+Take the measurement the same way the earlier camera bug was finally caught:
+`get_view_state()` before and after **each** command in a full session
+(`wizard mutagenesis` → pick → `target` → step → `apply` → `done`), not only
+the two already covered. Note the trap recorded in the parity concept: the
+symptom reads as *darkness* in a screenshot, because the molecule recedes
+rather than the lighting changing.
+
+**2. Hidden waters reappear.** Visibility set before the wizard runs is lost —
+`hide solvent` (or any scoped `hide`) comes back on. Almost certainly the same
+root cause as the first: whatever rebuilds the source object on Apply is
+restoring the representation masks from the payload rather than carrying the
+object's current ones across. If so, one fix closes both, and the test should
+assert the *masks* as well as the view state, since a rebuilt object with
+default visibility is indistinguishable from a correct one in a mesh count.
+
+Not fixed here: reported after the session's work was committed.
