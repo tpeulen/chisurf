@@ -1180,12 +1180,18 @@ is a cone, not a sphere: within 6.6 Å of the centre **and** 30° of the ring's
 axis.
 
 :::{note}
-A ring counts when its atoms are planar, and chimol reads planarity from the
-residue templates because it has no bond orders. Every aromatic side chain and
-every nucleobase is therefore found — 18 rings in T4 lysozyme, counting each
-tryptophan's two — but an **untemplated ligand's** aromatic ring is not, and
-neither its stacking nor a cation over it will be reported. PyMOL has bond
-orders from its own chemistry pass and does find those.
+A ring counts when its atoms are planar, and planarity comes from the residue
+templates or from the bond angles. Every aromatic side chain and every
+nucleobase is found — 18 rings in T4 lysozyme, counting each tryptophan's two —
+and so is a **ligand's** ring *when the structure carries its hydrogens*: three
+neighbours are enough to measure flatness from.
+
+Without hydrogens a ligand ring is missed, because a two-neighbour carbon
+carries no angle that separates sp2 from sp3 and a PDB file has no bond orders
+to say. **PyMOL behaves identically here** — its `ObjectMoleculeGetAtomGeometry`
+returns "unknown" for two neighbours too, and its chemistry pass has the same
+nothing to work from. Load the hydrogenated structure if the ligand's stacking
+is the question.
 :::
 
 ### Clashes

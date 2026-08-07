@@ -37,10 +37,11 @@ def _atoms(rows) -> np.ndarray:
 
 
 #: A phenylalanine's ring, in the order that closes it. The residue matters:
-#: planarity comes from the residue templates, because a two-neighbour carbon
-#: carries no angle that separates sp2 from sp3 and chimol has no bond orders.
-#: An *untemplated* aromatic ring -- a ligand's -- is therefore not found, which
-#: is a real limitation and is recorded as one rather than papered over here.
+#: planarity comes from the residue templates here, because these rings are
+#: built without hydrogens and a two-neighbour carbon carries no angle that
+#: separates sp2 from sp3. An untemplated ring needs its hydrogens to be found
+#: -- see `test_a_ligand_ring_needs_its_hydrogens`, which measures both halves.
+#: PyMOL has the same limitation, for the same reason.
 PHE_RING = ("CG", "CD1", "CE1", "CZ", "CE2", "CD2")
 
 
@@ -207,6 +208,50 @@ def test_parallel_rings_are_face_to_face():
 
     assert [hit.kind for hit in hits] == ["face-to-face"]
     assert hits[0].distance == pytest.approx(3.5, abs=1e-6)
+
+
+def test_a_ligand_ring_needs_its_hydrogens():
+    """An untemplated ring is found when the file carries its hydrogens.
+
+    Planarity is measured from the bond angles, and three neighbours are what
+    it takes: with the ring hydrogens present the cross products agree and the
+    carbons type planar; without them a ring carbon has two neighbours, which
+    carries no angle that separates sp2 from sp3.
+
+    **PyMOL is the same** -- `ObjectMoleculeGetAtomGeometry` runs the cross
+    products only for three neighbours, detects linear for two, and returns
+    unknown otherwise, and its chemistry pass has no bond orders to consume for
+    a PDB ligand. So this is a property of the input, not a gap against PyMOL,
+    and the answer for a user is to load the hydrogenated structure.
+    """
+    def benzene(z, resi, hydrogens):
+        rows = [
+            (f"C{k}", "LIG", resi, "C",
+             (1.4 * np.cos(2 * np.pi * k / 6), 1.4 * np.sin(2 * np.pi * k / 6), z))
+            for k in range(6)
+        ]
+        bonds = [(k, (k + 1) % 6) for k in range(6)]
+        if hydrogens:
+            rows += [
+                (f"H{k}", "LIG", resi, "H",
+                 (2.5 * np.cos(2 * np.pi * k / 6),
+                  2.5 * np.sin(2 * np.pi * k / 6), z))
+                for k in range(6)
+            ]
+            bonds += [(k, 6 + k) for k in range(6)]
+        return rows, bonds
+
+    for hydrogens, expected in ((False, []), (True, ["face-to-face"])):
+        lower, lower_bonds = benzene(0.0, 1, hydrogens)
+        upper, upper_bonds = benzene(3.5, 2, hydrogens)
+        offset = len(lower)
+        atoms = _atoms(lower + upper)
+        bonds = lower_bonds + [(i + offset, j + offset) for i, j in upper_bonds]
+
+        hits = inter.find_pi_interactions(atoms, bonds, pication=False)
+        assert [hit.kind for hit in hits] == expected, (
+            f"hydrogens={hydrogens}"
+        )
 
 
 def test_rings_side_by_side_in_one_plane_are_not_stacked():

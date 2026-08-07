@@ -647,14 +647,19 @@ Two things worth keeping:
   Reversing either measures 180 minus the angle meant, which passes a bent
   geometry and rejects a straight one — and it reads perfectly plausibly. It
   was caught only because the test built its geometry from the angle it wanted;
-* **a ring is planar because a template says so.** chimol has no bond orders,
-  and a two-neighbour carbon carries no angle that separates sp2 from sp3
-  (`atom_geometry_from_angles` returns "" for it), so planarity comes from the
-  residue templates. Every aromatic side chain and nucleobase is found — 18
-  rings in 148L, counting each TRP's two — but an **untemplated ligand's**
-  aromatic ring is not, so neither its stacking nor a cation over it is
-  reported. PyMOL, with its chemistry pass, does find those. This is the next
-  thing to fix here, and the fix is bond orders, not a wider ring finder.
+* **a ring is planar because a template says so, or because its hydrogens make
+  it measurable.** A two-neighbour carbon carries no angle that separates sp2
+  from sp3, so a ligand ring in a hydrogen-less PDB is missed. The first reading
+  of this recorded it as a chimol gap against PyMOL — **it is not**. Checked
+  against the source afterwards: `ObjectMoleculeGetAtomGeometry` returns
+  *unknown* for two neighbours in PyMOL too (only `nn == 3` runs the cross
+  products, `nn == 2` detects linear and nothing else), and
+  `InferChemFromBonds` has no bond orders to consume for a PDB ligand either.
+  Measured on built geometry: two stacked benzenes give **0 planar atoms and no
+  stacking without hydrogens, 12 planar atoms and a face-to-face pair with
+  them**. So the answer for a user is to load the hydrogenated structure, not to
+  wait for bond orders — and the *real* open item is `h_add`, which chimol does
+  not have (A ▸ hydrogens ▸ add is one of the 22 disabled entries).
 
 22 tests in `test_interaction_finders.py`. The angle criteria are tested on
 built geometry rather than on a structure: 148L has no halogen at all, and a
