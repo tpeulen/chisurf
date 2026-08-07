@@ -43,41 +43,18 @@ already in memory, in 0.66 ms (457 M records/s). Different work — one includes
 the file read — and both far faster than anything downstream needs. The copy
 exists because there is no entry point.
 
-## photon container: adding an instrument file reads it whole into memory
+## RESOLVED — photon container: adding an instrument file read it whole into memory
 
-**2026-08-06.** `chisurf/core/fio/pto.py::Measurement.create` embeds the
-instrument file verbatim, which is what makes a `.pto` restorable. It has to do
-that through `PtoFile.add(kind, encoding, name, bytes)` — the only input path
-tttrlib exposes — so an 8 GiB PTU becomes an 8 GiB Python `bytes` before it is
-written. The seam warns above 256 MiB rather than failing, and everything below
-that is unaffected, so this bites exactly the case the container exists for.
+**2026-08-06, fixed 2026-08-07.** `Measurement.create` embeds the instrument
+file verbatim, and the only input path tttrlib exposed took bytes, so an 8 GiB
+PTU became an 8 GiB Python `bytes` before it was written.
 
-**It is not a format problem and needs no spec change.** `PtoFile::add` already
-writes the element header first and then streams the payload in a single
-`m.f.write(data, n)` — the comment above it says as much ("a gigabyte never goes
-through a buffer"). Only that one call needs to become a read/write loop over a
-`FILE*`; the slot bookkeeping, the reserve and the on-disk bytes are identical.
-`extract()` already streams in the other direction and is the model.
-
-**Tracked** as Part 5 of `modules/tttrlib/PRDs/PRD-020-pto-streaming-and-targeted-reads.md`,
-which scopes it together with the read-side half of the same weakness: a PTO
-payload can only be read whole, and the column-subset and read-at-an-offset
-paths that `io_store` already has are the one combination it does not expose.
-
-**The fix**, in `modules/tttrlib`:
-
-- `modules/io/pto/include/io_pto.h` + `src/io_pto.cpp` — add
-  `std::uint64_t add_file(kind, encoding, name, const std::string& path, reserve = 0)`
-  beside `add`, sizing the payload with `std::filesystem::file_size` and
-  streaming it in blocks;
-- `ext/python/Pto.i` — nothing to do beyond exposing it; the argument is a
-  `std::string`, so the existing bytes typemap is not involved;
-- rebuild and reinstall into the `arm64` environment.
-
-`Measurement._add_payload_from_path` already prefers `add_file` when the library
-offers it, so the seam picks the streaming path up with no chisurf-side change
-the moment tttrlib ships it. `test/fio/test_pto.py` covers the round trip either
-way.
+Fixed in the library rather than worked around here: tttrlib PRD-020 added
+`PtoFile::add_file`, which writes the same header and streams the payload in
+blocks. `_add_payload_from_path` already preferred it when present, so the seam
+picked it up with no chisurf-side change. The same PRD closed the read half —
+column subsets and row windows of an embedded store, ranged byte reads, and
+cues for positioning in a photon stream.
 
 ## imaging: a 30-frame acquisition reconstructs as 29, and the flags that would fix it do not reach the reconstruction
 

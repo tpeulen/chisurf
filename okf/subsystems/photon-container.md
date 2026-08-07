@@ -32,23 +32,24 @@ timestamp: '2026-08-06T00:00:00Z'
 3. **The interleave is a file-format artifact and must not travel.** A `.bur`
    holds `2N+1` rows — a zero row, a burst, a zero row — because companions are
    merged by *counting*, and it carries a nameless trailing column to produce
-   the header's trailing tab. Both leak into the in-memory frame that
-   `analyze_file` returns. `deinterleave_bursts` in the plugin's `api/io.py`
-   strips them; anything else writing a burst frame into a container must do the
-   same, or a placeholder row silently destroys the information that a burst was
-   absent. The trap is that the frame *looks* like data.
-3. **`export_seidel` is not written yet.** It is `PtoFile.disassemble()` plus
+   the header's trailing tab. Both leak into the in-memory frames the analyses
+   pass around. `deinterleave_bursts` in `burst_container.py` strips them and
+   `write_burst_artifact` calls it, so a writer that goes through the seam is
+   safe; one that reaches past it is not, and a placeholder row silently
+   destroys the information that a burst was absent. The trap is that the frame
+   *looks* like data.
+4. **`export_seidel` is not written yet.** It is `PtoFile.disassemble()` plus
    the existing `burst_companion.write_companion` — it must go through that
    function and never hand-roll the `2n+1` interleave, which is the mistake
    four current writers make. It is **lossy by construction** for anything not
    at burst grain and must say so.
-4. **`read_bur_with_companions` has no PTO branch yet.** That is the single
+5. **`read_bur_with_companions` has no PTO branch yet.** That is the single
    seam `burst_browser` and ndX read through, so adding it there gives both
    PTO support without touching either.
-5. **Embedding a multi-gigabyte file still reads it into memory** — tttrlib has
-   no streaming `add_file`. The exact fix is in
-   [known issues](/references/known-issues.md); the seam already prefers
-   `add_file` when the library offers it, so nothing here changes when it lands.
+6. **Streaming landed in the library** (tttrlib PRD-020): `add_file`,
+   ranged reads, row windows and cues. The seam already prefers `add_file`, so
+   embedding no longer holds a file in memory — the known-issues note for it is
+   closed.
 
 # What it is
 
