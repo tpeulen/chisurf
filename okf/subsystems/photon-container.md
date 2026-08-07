@@ -31,6 +31,25 @@ timestamp: '2026-08-06T00:00:00Z'
    names a vendor photon format without the container. The guard was worth
    writing: it found **eight** more dialogs after the ones found by hand.
 
+0a. **Provenance has to reconstruct the path, and a writer that records partial
+   settings breaks that silently.** Every derived object carries three tags:
+   `_mmfdb_edge.source_node_id` (one per parent), `relationship_type` (a term,
+   plus the join columns when grains differ), and `operation_type` with the
+   **complete** `settings_json`. `Measurement.lineage()` walks to the instrument
+   file; `describe_lineage()` renders it.
+
+   **The trap that produced this:** `source_node_id` exists in the database
+   schema and was never declared in the dictionary, so the writer put the parent
+   UID under `relationship_type` — and the relation was never recorded at all,
+   while `tag(uid, relationship_type)` returned an integer. Fixed in
+   `mmfdb_flr_ext.dic` 1.7; `parents()` reads both spellings so older containers
+   still resolve. **When a tag's value looks like the wrong type, check the
+   dictionary before the writer.**
+
+   A partial settings record is worse than none — it looks reproducible. The
+   test walks a *real* container, not a synthesised one, so a writer that
+   forgets fails there.
+
 0b. **Formats are consolidated by *direction*, and that is the rule to keep.**
    Readers are free — an instrument writes one format and a collaborator's
    software another, and ChiSurf reads about a dozen curve formats, six of which

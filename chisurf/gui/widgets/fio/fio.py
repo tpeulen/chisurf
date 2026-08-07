@@ -15,6 +15,7 @@ import chisurf.gui.widgets
 #: the reader is a dialog that hides files ChiSurf can open — which is how
 #: `.pto` came to be absent from every one of them while being the format they
 #: all produce. `.pto` is first; the vendor formats after it are import sources.
+from chisurf.core.fio.pto import SUFFIX  # noqa: E402
 from chisurf.core.fio.staging import TTTR_FILE_FILTER  # noqa: E402,F401
 
 
@@ -155,14 +156,22 @@ class SpcFileWidget(
             )
             filenames = [str(filename)]
 
-        # Opening a vendor recording produces the measurement's container, which
-        # is what makes `.pto` the format ChiSurf works in rather than one it can
-        # also write. The vendor file is left where it is and stays byte-for-byte
-        # recoverable from the container; nothing is moved and nothing is
-        # deleted. A container, or an unwritable directory, comes back unchanged.
+        # Prefer the measurement's container when one is already there, and
+        # create nothing when it is not.
+        #
+        # Opening a file must not write beside it. Someone browsing a colleague's
+        # folder, or a test opening a fixture, has not asked for a file to appear
+        # in that directory -- and the container is created the moment there is a
+        # *result* to put in it, which is where the writers already do it. There
+        # is also no honest `file_type` to pass on: a container is not a
+        # `bh132`, so importing on open would hand the reader a routine that no
+        # longer describes the path.
         from chisurf.core.fio.staging import import_measurement
 
-        filenames = [str(import_measurement(name)) for name in filenames]
+        filenames = [str(import_measurement(name, create=False)) for name in filenames]
+        if any(str(name).endswith(SUFFIX) for name in filenames):
+            # The container names the routine it holds.
+            file_type = None
         self.lineEdit_2.setText(str(filenames[0]))
         self.filenames = filenames
         # Drop the previous measurement before reading the next one: a TTTR

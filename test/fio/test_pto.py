@@ -546,3 +546,121 @@ def test_a_measurement_with_nothing_to_say_says_nothing(measurement: Path):
     with Measurement.open(measurement) as m:
         assert m.metadata() == ""
         assert not [o for o in m.artifacts() if o.kind == "sample_metadata"]
+
+
+# -- provenance: reconstructing the path ---------------------------------------
+
+
+def test_a_derived_result_records_how_it_relates_to_the_primary(measurement: Path):
+    """The parent and the *relation* are two facts, and both are recorded.
+
+    They used to be one: the parent's UID was written under
+    ``_mmfdb_edge.relationship_type``, so asking a file how a result related to
+    what it came from returned an integer — and the relation itself, which is
+    the whole point of an edge, was never recorded at all.
+    """
+    with Measurement.open(measurement, writable=True) as m:
+        uid = m.put_table(
+            "dwells",
+            pd.DataFrame({"burst": np.repeat(np.arange(8), 2)}),
+            artifact_kind="dwell_table",
+            operation_type="photon_hmm",
+            row_grain="dwell",
+            parameters={"states": 2},
+            derived_from=m._resolve("bursts"),
+            source_row_column="burst",
+            target_row_column="Number of Photons",
+        )
+
+    with Measurement.open(measurement) as m:
+        step = m.provenance(uid)
+        assert step["relationship"] == "derived_from"
+        assert step["parents"] == [m._resolve("bursts")]
+        assert step["source_row_column"] == "burst"
+        # Settings come back parsed, so a caller can check them rather than
+        # re-parse JSON that may not be JSON.
+        assert step["settings"] == {"states": 2}
+        assert step["operation"] == "photon_hmm"
+        assert step["software"].startswith("chisurf")
+        assert step["dictionary"]
+
+
+def test_the_path_back_to_the_photons_is_reconstructible(measurement: Path):
+    """Every operation and every setting between a number and the raw data.
+
+    This is what makes a derived result reproducible rather than merely
+    labelled: the lineage ends at the instrument file, and each step says what
+    was run, with which settings, by which version.
+    """
+    with Measurement.open(measurement, writable=True) as m:
+        m.put_table(
+            "dwells",
+            pd.DataFrame({"burst": np.arange(8)}),
+            artifact_kind="dwell_table",
+            operation_type="photon_hmm",
+            row_grain="dwell",
+            parameters={"states": 3},
+            derived_from=m._resolve("bursts"),
+            source_row_column="burst",
+        )
+
+    with Measurement.open(measurement) as m:
+        path = m.lineage("dwells")
+        assert [s["name"] for s in path][-1] == m._f.object(m.instrument_uid).name
+        assert [s["operation"] for s in path[:-1]] == ["photon_hmm", "burst_selection"]
+        # Every step that ran something says what it ran with.
+        for step in path:
+            if step["operation"]:
+                assert step["settings"], f"{step['name']} recorded no settings"
+
+        text = m.describe_lineage("dwells")
+        assert "photon_hmm" in text and "states = 3" in text
+
+
+def test_several_parents_are_all_walked(measurement: Path):
+    """A fused burst genuinely has more than one source."""
+    with Measurement.open(measurement, writable=True) as m:
+        first = m._resolve("bursts")
+        second = m.put_table(
+            "second selection",
+            _bursts(6),
+            artifact_kind="burst_table",
+            operation_type="burst_selection",
+            row_grain="burst",
+            parameters={"min_photons": 90},
+            derived_from=m.instrument_uid,
+        )
+        m.put_table(
+            "fused",
+            _bursts(4),
+            artifact_kind="burst_table",
+            operation_type="burst_fusion",
+            row_grain="burst",
+            parameters={"window": 1.5},
+            derived_from=[first, second],
+        )
+
+    with Measurement.open(measurement) as m:
+        names = {s["name"] for s in m.lineage("fused")}
+        assert {"fused", "bursts", "second selection"} <= names
+        assert m.provenance(m._resolve("fused"))["parents"] == [first, second]
+
+
+def test_every_derived_object_in_a_real_container_can_be_traced(measurement: Path):
+    """A result that cannot say where it came from is a result nobody can check.
+
+    Walks whatever the fixture holds rather than a synthetic case, so a writer
+    that forgets its parent or its settings fails here.
+    """
+    with Measurement.open(measurement) as m:
+        primary = {m.instrument_uid}
+        for obj in m.artifacts():
+            if obj.uid in primary or obj.kind in ("readme", "sample_metadata"):
+                continue
+            step = m.provenance(obj.uid)
+            assert step["operation"], f"{obj.name} does not say what produced it"
+            assert step["settings"], f"{obj.name} records no settings"
+            assert step["parents"], f"{obj.name} does not say what it came from"
+            assert m.lineage(obj.uid)[-1]["uid"] in primary, (
+                f"{obj.name} does not trace back to the primary data"
+            )

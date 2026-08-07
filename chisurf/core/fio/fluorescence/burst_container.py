@@ -57,6 +57,22 @@ BURST_COLUMN_UNITS: dict[str, str] = {
 }
 
 
+def _from_frame(table):
+    """Return *table* as a store, converting a frame at the boundary.
+
+    Column by column, so each keeps its own dtype — which is the whole reason
+    the store exists — and so no pandas import happens for a caller that
+    already handed over a store.
+    """
+    if not (hasattr(table, "columns") and hasattr(table, "iloc")):
+        return table
+    from chisurf.core.datastore import store_from_arrays
+
+    return store_from_arrays(
+        {str(name): table[name].to_numpy() for name in table.columns}
+    )
+
+
 def units_for(df, extra: Mapping[str, str] | None = None) -> dict[str, str]:
     """Return the units of the columns a table actually has.
 
@@ -126,7 +142,12 @@ def deinterleave_bursts(df):
         take_rows,
     )
 
-    out = df
+    # A frame is converted here rather than deeper down. `as_store` deliberately
+    # has no pandas fallback -- the tree is moving off frames and a caller
+    # holding one is expected to have moved already -- but this function's
+    # contract is to accept whatever an analysis hands it, and several analyses
+    # still hand it a frame.
+    out = _from_frame(df)
     n = row_count(out)
 
     if n >= 3 and n % 2 == 1:

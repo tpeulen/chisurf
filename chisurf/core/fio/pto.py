@@ -98,6 +98,7 @@ _DICTIONARY_VERSION = "_mmfdb_operation.dictionary_version"
 _DICTIONARY_HASH = "_mmfdb_operation.dictionary_hash"
 
 _RELATIONSHIP_TYPE = "_mmfdb_edge.relationship_type"
+_SOURCE_NODE_ID = "_mmfdb_edge.source_node_id"
 _SOURCE_ROW_COLUMN = "_mmfdb_edge.source_row_column"
 _TARGET_ROW_COLUMN = "_mmfdb_edge.target_row_column"
 
@@ -595,6 +596,7 @@ class Measurement:
         row_grain: str,
         parameters: Mapping[str, Any] | None = None,
         derived_from: int | Sequence[int] | None = None,
+        relationship_type: str = "derived_from",
         source_row_column: str = "",
         target_row_column: str = "",
         units: Mapping[str, str] | None = None,
@@ -608,9 +610,9 @@ class Measurement:
         name : str
             Label for the object. Labels need not be unique; identity is the
             artifact id.
-        table : pandas.DataFrame or tttrlib.DataStore
-            The data. A frame is converted through the columnar seam, so dtypes
-            and per-column validity masks survive.
+        table : tttrlib.DataStore, mapping of str to array-like, or sequence of row mappings
+            The data. Anything that is not already a store is converted through
+            :func:`chisurf.core.datastore.as_store`.
         artifact_kind : str
             A ``_mmfdb_artifact.artifact_kind`` term.
         operation_type : str
@@ -681,6 +683,7 @@ class Measurement:
             parameters=parameters,
             run=run,
             derived_from=derived_from,
+            relationship_type=relationship_type,
             source_row_column=source_row_column,
             target_row_column=target_row_column,
         )
@@ -991,6 +994,10 @@ class Measurement:
         frame is the one shape of this table that cannot say a duration is
         milliseconds, which is the thing writing the units was for.
 
+        A column's unit and mmCIF item are attributes *of the column*, which is
+        exactly what makes a store the right shape here — a duration can say it
+        is milliseconds.
+
         Parameters
         ----------
         ref : int or str
@@ -1033,9 +1040,14 @@ class Measurement:
         PtoMfdbError
             If there is no such object.
         """
-        from chisurf.core.datastore import dataframe_from_store
+        import pandas as pd
 
-        return dataframe_from_store(self.get_store(ref))
+        from chisurf.core.datastore import column_names, numeric_column
+
+        store = self.get_store(ref)
+        return pd.DataFrame(
+            {name: numeric_column(store, name) for name in column_names(store)}
+        )
 
     def tag(self, uid: int, item: str, default: Any = "") -> Any:
         """Return one tag value from an object, by mmCIF item name.
@@ -1083,11 +1095,139 @@ class Measurement:
         list of int
         """
         tttrlib = _tttrlib()
+        # `_RELATIONSHIP_TYPE` is read as well as `_SOURCE_NODE_ID`: a container
+        # written before the two were separated carries the parent UID under the
+        # relation's name, and refusing to read it would orphan every result in
+        # those files.
         return [
             t.u
             for t in self._f.tags_for(uid)
-            if t.name == _RELATIONSHIP_TYPE and t.type == tttrlib.PtoType_UID
+            if t.type == tttrlib.PtoType_UID
+            and t.name in (_SOURCE_NODE_ID, _RELATIONSHIP_TYPE)
         ]
+
+    def provenance(self, uid: int) -> dict:
+        """Return everything recorded about how one object came to be.
+
+        One step of the path. :meth:`lineage` walks the whole of it.
+
+        Parameters
+        ----------
+        uid : int
+            Object UID.
+
+        Returns
+        -------
+        dict
+            ``name``, ``kind``, ``grain``, ``operation``, ``settings`` (the
+            parsed settings, not the JSON text), ``settings_hash``, ``software``,
+            ``dictionary``, ``relationship``, ``parents``, and the join columns.
+        """
+        settings_text = self.tag(uid, _SETTINGS_JSON)
+        try:
+            settings = json.loads(settings_text) if settings_text else {}
+        except json.JSONDecodeError:
+            # Recorded, unparseable: hand back the text rather than pretend
+            # there were no settings. A caller checking completeness must be
+            # able to tell "none recorded" from "recorded and damaged".
+            settings = {"_unparsed": settings_text}
+
+        obj = self._f.object(uid)
+        return {
+            "uid": uid,
+            "name": obj.name,
+            "kind": obj.kind,
+            "grain": self.tag(uid, _ROW_GRAIN),
+            "operation": self.tag(uid, _OPERATION_TYPE),
+            "settings": settings,
+            "settings_hash": self.tag(uid, _SETTINGS_HASH),
+            "software": (
+                f"{self.tag(uid, _SOFTWARE_PACKAGE)} "
+                f"{self.tag(uid, _SOFTWARE_VERSION)}".strip()
+            ),
+            "dictionary": self.tag(uid, _DICTIONARY_VERSION),
+            "relationship": self.tag(uid, _RELATIONSHIP_TYPE),
+            "source_row_column": self.tag(uid, _SOURCE_ROW_COLUMN),
+            "target_row_column": self.tag(uid, _TARGET_ROW_COLUMN),
+            "parents": self.parents(uid),
+        }
+
+    def lineage(self, ref: int | str) -> list[dict]:
+        """Reconstruct the path from an object back to the primary data.
+
+        The answer to "where did this number come from". Each step is a
+        :meth:`provenance` record, ordered from the object asked about to the
+        instrument file, so every operation and every setting between the two is
+        in the list — which is what makes a derived result reproducible rather
+        than merely labelled.
+
+        A result with several parents branches: a fused burst genuinely has more
+        than one source, and every branch is walked.
+
+        Parameters
+        ----------
+        ref : int or str
+            Object UID, or a name to look up.
+
+        Returns
+        -------
+        list of dict
+            Breadth-first from *ref* towards the primary data. Each object
+            appears once however many paths reach it.
+        """
+        start = self._resolve(ref)
+        seen = {start}
+        order = [start]
+        queue = [start]
+        while queue:
+            current = queue.pop(0)
+            for parent in self.parents(current):
+                if parent in seen:
+                    continue
+                seen.add(parent)
+                order.append(parent)
+                queue.append(parent)
+        return [self.provenance(uid) for uid in order]
+
+    def describe_lineage(self, ref: int | str) -> str:
+        """Return :meth:`lineage` as readable text.
+
+        For a person looking at a file and asking what is in it, and for a
+        traceback that has to say what a number was made of.
+
+        Parameters
+        ----------
+        ref : int or str
+
+        Returns
+        -------
+        str
+        """
+        lines = []
+        for step in self.lineage(ref):
+            head = f"{step['name']} [{step['kind']}"
+            if step["grain"]:
+                head += f", one row per {step['grain']}"
+            head += "]"
+            lines.append(head)
+            if step["operation"]:
+                lines.append(f"    by {step['operation']} ({step['software']})")
+            for key in sorted(step["settings"]):
+                lines.append(f"      {key} = {step['settings'][key]!r}")
+            if step["parents"]:
+                names = ", ".join(
+                    self._f.object(p).name for p in step["parents"]
+                )
+                joined = ""
+                if step["source_row_column"]:
+                    joined = (
+                        f" on {step['source_row_column']}"
+                        f" = {step['target_row_column'] or step['source_row_column']}"
+                    )
+                lines.append(
+                    f"    {step['relationship'] or 'derived_from'} {names}{joined}"
+                )
+        return "\n".join(lines)
 
     # -- getting back out -----------------------------------------------------
 
@@ -1247,11 +1387,22 @@ class Measurement:
         return uid
 
     def _as_store(self, table: Any) -> Any:
-        from chisurf.core.datastore import store_from_dataframe
+        """Return *table* as a store.
 
+        A frame is converted here, column by column so each keeps its dtype.
+        ``as_store`` deliberately refuses frames — the tree is moving off them —
+        but this seam is what every analysis writes through, and several still
+        hold one.
+        """
         if hasattr(table, "n_rows"):
             return table
-        return store_from_dataframe(table)
+        from chisurf.core.datastore import as_store, store_from_arrays
+
+        if hasattr(table, "columns") and hasattr(table, "iloc"):
+            return store_from_arrays(
+                {str(name): table[name].to_numpy() for name in table.columns}
+            )
+        return as_store(table)
 
     def _describe_columns(
         self, store: Any, units: Mapping[str, str] | None, items: Mapping[str, str] | None
@@ -1537,6 +1688,7 @@ class Measurement:
         parameters: Mapping[str, Any] | None = None,
         run: str = "",
         derived_from: int | Sequence[int] | None = None,
+        relationship_type: str = "derived_from",
         source_row_column: str = "",
         target_row_column: str = "",
     ) -> None:
@@ -1572,8 +1724,16 @@ class Measurement:
                     json.dumps(dict(parameters), sort_keys=True, default=str),
                 )
 
-        for parent in _as_uids(derived_from):
-            self._ref(uid, _RELATIONSHIP_TYPE, parent)
+        # The parent and the *relation* are two facts and are recorded as two
+        # tags. They used to be one: the parent's UID was written under
+        # `relationship_type`, so asking a file how a result related to what it
+        # came from returned an integer — and the relation itself, which is the
+        # whole point of an edge, was never recorded at all.
+        parents = _as_uids(derived_from)
+        for parent in parents:
+            self._ref(uid, _SOURCE_NODE_ID, parent)
+        if parents:
+            self._text(uid, _RELATIONSHIP_TYPE, relationship_type)
         self._text(uid, _SOURCE_ROW_COLUMN, source_row_column)
         self._text(uid, _TARGET_ROW_COLUMN, target_row_column)
 

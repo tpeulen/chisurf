@@ -702,7 +702,7 @@ def write_imaging_hdf5(df, path: str, source: str | None = None) -> None:
 
     Parameters
     ----------
-    df : tttrlib.DataStore, pandas.DataFrame or mapping of str to array
+    df : tttrlib.DataStore or mapping of str to array
         The per-pixel table.
     path : str
         Target file.
@@ -761,7 +761,7 @@ def read_imaging_table(path: str, key: str = "results"):
 
     Returns
     -------
-    pandas.DataFrame
+    tttrlib.DataStore
 
     Raises
     ------
@@ -772,7 +772,7 @@ def read_imaging_table(path: str, key: str = "results"):
         from "I could not read what was there", because the second one silently
         discards an analysis if it is treated as the first.
     """
-    from chisurf.core.datastore import dataframe_from_store, read_table
+    from chisurf.core.datastore import read_table
 
     store = read_table(path, group=key if key.startswith("/") else "/")
     if store is None:
@@ -781,7 +781,7 @@ def read_imaging_table(path: str, key: str = "results"):
             "datasets. A file written by an earlier release is in the frame "
             "layout and has to be converted rather than read here."
         )
-    return dataframe_from_store(store)
+    return store
 
 
 def add_maps_to_hdf5(path: str, maps: dict[str, np.ndarray], key: str = "results") -> list[str]:

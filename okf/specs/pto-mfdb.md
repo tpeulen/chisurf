@@ -258,6 +258,35 @@ settings **replaces** its artifact in place; changing a setting produces a new
 one. This is what keeps one file from accumulating, and it removes the need to
 encode parameters in a folder name.
 
+### The path must be reconstructible
+
+Provenance here is not a label saying which tool ran. It is enough to answer
+*where did this number come from*, which means three things have to be present
+on every derived object:
+
+1. **What it came from** — `_mmfdb_edge.source_node_id`, one tag per parent.
+   Several is normal; a fused burst has more than one source.
+2. **How it relates to it** — `_mmfdb_edge.relationship_type`, a dictionary
+   term (`derived_from`, `calibrated_by`, `maps_rows_of`…), plus the join
+   columns when the grains differ.
+3. **What was done, with what** — `operation_type` and the **complete**
+   `settings_json`, not a summary of it. A partial settings record is worse
+   than none: it looks reproducible and is not.
+
+These are three facts and are stored as three tags. They were briefly two: the
+parent's UID was written *under* `relationship_type`, because
+`source_node_id` — a column that has existed in the database schema since the
+table was first created — was never declared in the dictionary. Asking a file
+how a result related to what it came from therefore returned an integer, and
+the relation itself was never recorded at all. Declared in
+`mmfdb_flr_ext.dic` 1.7.
+
+`Measurement.lineage(ref)` walks it, breadth-first from an object to the
+instrument file; `describe_lineage` renders that as text. A container in which
+some derived object cannot reach the primary data is malformed, and
+`test/fio/test_pto.py` checks every object in a real container rather than a
+synthesised one.
+
 ## Versions a file carries
 
 Four, as file-level tags, because four things drift independently: the PTO

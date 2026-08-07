@@ -123,6 +123,48 @@ curve.save("measurement.pto")     # into the measurement it came from
 curve.load("measurement.pto")     # or "measurement.pto|decay" to name one
 ```
 
+## Where did this number come from
+
+Every derived result records three things, and the third is the one that makes
+it more than a label:
+
+1. **what it came from** — the artifact, or several of them;
+2. **how it relates to it** — `derived_from`, `calibrated_by`, and the columns
+   the two tables join on when their grains differ;
+3. **what was done, with the complete settings** — not a summary. A partial
+   settings record is worse than none, because it looks reproducible.
+
+So a container can be asked to reconstruct the whole path from a number back to
+the photons:
+
+```python
+from chisurf.core.fio.pto import Measurement
+
+with Measurement.open("m000.pto") as m:
+    print(m.describe_lineage("gs rates"))
+```
+
+```
+gs rates [parameter_table, one row per pair]
+    by model_fitting (chisurf 26.dev5008)
+      n_states = 2
+    derived_from gs states on State = From
+gs states [fit_result, one row per state]
+    by model_fitting (chisurf 26.dev5008)
+      n_states = 2
+    derived_from bursts
+bursts [burst_table, one row per burst]
+    by burst_selection (chisurf 26.dev5008)
+      burst_detection = {'min_photons': 60, 'photon_window': 10, ...}
+      photon_filter = {...}
+    derived_from m000.spc
+m000.spc [tttr_photon_stream]
+```
+
+`lineage()` returns the same thing as data. A result that cannot reach the
+photons it came from is a result nobody can check, so that is a property the
+tests assert over a real container rather than a synthesised one.
+
 ## Re-running
 
 The identity of a result is the hash of the settings that produced it. Run the
