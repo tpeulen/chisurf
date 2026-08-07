@@ -8,13 +8,32 @@ timestamp: '2026-08-06T00:00:00Z'
 ---
 
 # Where to pick this up
+1. **Derivatives go into the measurement's `.pto`, and the provenance has to
+   reconstruct the path back to the primary data.** Stated as an objective:
+   "when there is a .pto file the derivatives must end up in the .pto (with
+   according provenance data, for reconstruction of the path). the provenance
+   must contain all settings how the derived data relates to the primary data."
 
-0. **`.pto` is now the default, and that is a user objective rather than a
+   Every writer goes through `container_for` / `open_measurement`, so an
+   existing container is always the target. What each writes is checked by
+   `test_every_derived_object_in_a_real_container_can_be_traced`.
+
+
+2. **`.pto` is now the default, and that is a user objective rather than a
    preference** — "in the end .pto (mfdb) should be the main filetype for tttr
    data in chisurf (this is objective)". A vendor file is an *import source*:
-   `staging.import_measurement` turns one into its container (leaving the
-   original untouched), `SpcFileWidget.onLoadSample` calls it, and
-   `AnalysisSettings.output_formats` defaults to `["pto"]`.
+   `staging.import_measurement` turns one into its container, leaving the
+   original untouched, and `AnalysisSettings.output_formats` defaults to
+   `["pto"]`.
+
+   **Opening a file creates nothing.** `onLoadSample` calls
+   `import_measurement(create=False)`: it prefers an existing container and
+   otherwise reads the vendor file where it lies. Importing on *open* wrote a
+   `.pto` into the repo's own test-data directory, and handed the reader the
+   caller's `file_type="bh132"` — which no longer described the path. Someone
+   browsing a colleague's folder has not asked for a file to appear in it. The
+   container is created when there is a **result** to put in it, which is where
+   every writer already does it.
 
    **What the flip broke, and it is the shape to expect again:** three callers
    *consume* a `.bur` they had been getting for free — `burst_fusion`'s demo
@@ -31,7 +50,7 @@ timestamp: '2026-08-06T00:00:00Z'
    names a vendor photon format without the container. The guard was worth
    writing: it found **eight** more dialogs after the ones found by hand.
 
-0a. **Provenance has to reconstruct the path, and a writer that records partial
+3. **Provenance has to reconstruct the path, and a writer that records partial
    settings breaks that silently.** Every derived object carries three tags:
    `_mmfdb_edge.source_node_id` (one per parent), `relationship_type` (a term,
    plus the join columns when grains differ), and `operation_type` with the
@@ -50,7 +69,7 @@ timestamp: '2026-08-06T00:00:00Z'
    test walks a *real* container, not a synthesised one, so a writer that
    forgets fails there.
 
-0b. **Formats are consolidated by *direction*, and that is the rule to keep.**
+4. **Formats are consolidated by *direction*, and that is the rule to keep.**
    Readers are free — an instrument writes one format and a collaborator's
    software another, and ChiSurf reads about a dozen curve formats, six of which
    cannot write at all. Writers are **one per kind of thing**: a measurement is
@@ -71,7 +90,7 @@ timestamp: '2026-08-06T00:00:00Z'
    callers before removing one: `write_vv_vh` in particular is read by tools
    outside ChiSurf.
 
-1. **Stages 3 and 4 are done; three writers are left, and they are the odd
+5. **Stages 3 and 4 are done; three writers are left, and they are the odd
    ones.** Every burst analysis and every imaging tool writes into the
    measurement's container. What remains is
    `tttr/{tttr_time_windows,trace_browser,intensity_trace}` — browsers rather
@@ -139,7 +158,7 @@ timestamp: '2026-08-06T00:00:00Z'
      padding knows it is there and should say so rather than let it be detected
      — see `bid_to_analysis._write_container(interleaved=...)`.
 
-2. **Capture the legacy baseline BEFORE touching each writer.** Once a writer is
+6. **Capture the legacy baseline BEFORE touching each writer.** Once a writer is
    changed its output is unrecoverable and the migration cannot be reviewed by
    anyone later. The recipe is the one used for `burst_selection`: drive the
    headless API with the legacy flag, record every path with its size, sha256
@@ -147,7 +166,7 @@ timestamp: '2026-08-06T00:00:00Z'
    `test/data/baselines/`. Judge parity on **columns, not bytes** — the
    container deliberately stores a table where the folder stored a padded text
    grid.
-3. **The interleave is a file-format artifact and must not travel.** A `.bur`
+7. **The interleave is a file-format artifact and must not travel.** A `.bur`
    holds `2N+1` rows — a zero row, a burst, a zero row — because companions are
    merged by *counting*, and it carries a nameless trailing column to produce
    the header's trailing tab. Both leak into the in-memory frames the analyses
@@ -156,15 +175,15 @@ timestamp: '2026-08-06T00:00:00Z'
    safe; one that reaches past it is not, and a placeholder row silently
    destroys the information that a burst was absent. The trap is that the frame
    *looks* like data.
-4. **`export_seidel` is not written yet.** It is `PtoFile.disassemble()` plus
+8. **`export_seidel` is not written yet.** It is `PtoFile.disassemble()` plus
    the existing `burst_companion.write_companion` — it must go through that
    function and never hand-roll the `2n+1` interleave, which is the mistake
    four current writers make. It is **lossy by construction** for anything not
    at burst grain and must say so.
-5. **`read_bur_with_companions` has no PTO branch yet.** That is the single
+9. **`read_bur_with_companions` has no PTO branch yet.** That is the single
    seam `burst_browser` and ndX read through, so adding it there gives both
    PTO support without touching either.
-6. **Streaming landed in the library** (tttrlib PRD-020): `add_file`,
+10. **Streaming landed in the library** (tttrlib PRD-020): `add_file`,
    ranged reads, row windows and cues. The seam already prefers `add_file`, so
    embedding no longer holds a file in memory — the known-issues note for it is
    closed.
