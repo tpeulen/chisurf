@@ -1,3 +1,27 @@
+## img_flow: the demo PTU is one frame short of what it simulates
+
+`test_the_demo_is_a_readable_ptu_whose_flow_comes_back` asks `create_demo` for
+30 frames and `load_image_stack` reports 29. Pre-existing and deterministic —
+it reproduces with no local changes to the plugin.
+
+The cause is the marker convention rather than a lost frame. `demo.py` calls
+`engine.run_scan(scanner)` once per frame and the simulator emits a frame
+marker at the **start** of each, so 30 markers arrive. A CLSM reader builds a
+frame from one marker to the next, which makes 30 markers 29 closed frames; the
+last frame's photons are in the file with nothing to terminate them.
+
+Not fixed here because the fix is not local. Emitting a 31st marker by running
+one more scan would add that scan's photons too, so closing the last frame
+means either a simulator API for a trailing marker (tttrlib's `SimScanner`) or
+a reader that treats end-of-file as a frame boundary. Which of those is right is
+a question about the simulator, not about this plugin, and changing the demo
+changes both the guided tour's data and `expected_profile`.
+
+Worth checking first: whether a real PTU from a scanner has a trailing frame
+marker. If it does, the simulator is wrong; if it does not, the reader is, and
+every measured file has been one frame short all along — which would be the
+more interesting answer.
+
 ## burst FCS: the `td4` companion is written on the bursts that produced a result, not on the bursts
 
 `_save_td4_results` in `chisurf/plugins/burst/burst_fcs_correlator/wizard.py`

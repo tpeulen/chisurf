@@ -72,6 +72,25 @@ def analyze_request(request: MoleculeMleRequest) -> MoleculeMleResult:
         tsv = out_dir / "molecule_data.tsv"
         write_csv_table(tsv, df)
         output_paths.append(str(tsv))
+        # And into the measurement's own file. A molecule is not a pixel, so
+        # this table could never be a column in `<source>.imaging.h5` and became
+        # a `_analysis/` directory of its own; here it is a table at `molecule`
+        # grain in the same container as everything else measured on this file.
+        try:
+            from chisurf.core.fio.fluorescence.imaging_container import (
+                write_imaging_table,
+            )
+
+            write_imaging_table(
+                ptu_path, df,
+                name="molecules",
+                artifact_kind="localization_table",
+                operation_type="molecule_localization",
+                row_grain="molecule",
+                parameters=dataclasses.asdict(request.settings),
+            )
+        except Exception as exc:
+            warnings.append(f"{ptu_path.name}: container not written ({exc})")
         processed.append(file_str)
         tables.append(df)
 

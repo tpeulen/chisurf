@@ -345,3 +345,77 @@ def analyse(
     if progress is not None:
         progress(1.0, "done")
     return result
+
+
+def write_container(source, result, *, parameters=None, out_dir=None) -> str:
+    """Write a tracking run into the measurement's container.
+
+    Three grains, and the reason a track table could never be a per-pixel HDF5
+    column: a *detection* belongs to a frame, a *track* is a set of detections
+    across frames, and the transport fit describes all of them. The detections
+    carry the track they were linked into as a key, so the two tables join on a
+    declared column instead of on the order they happen to be written in.
+
+    Parameters
+    ----------
+    source : str or pathlib.Path
+        The image or photon file, or the container itself.
+    result : TrackingResult
+        The run to record.
+    parameters : dict, optional
+        The settings. Their hash is the identity of the run.
+    out_dir : str or pathlib.Path, optional
+
+    Returns
+    -------
+    str
+        Path of the container written.
+    """
+    from chisurf.core.datastore import store_from_arrays, store_from_rows
+    from chisurf.core.fio.fluorescence.imaging_container import write_imaging_table
+
+    rows = result.tracks_table()
+    written = write_imaging_table(
+        source, store_from_rows(rows) if rows else store_from_arrays({}),
+        name="tracks",
+        artifact_kind="track_table",
+        operation_type="particle_tracking",
+        row_grain="track",
+        parameters=parameters,
+        units={"track": "dimensionless", "length": "counts",
+               "first": "dimensionless", "last": "dimensionless",
+               "net": "pixels"},
+        out_dir=out_dir,
+    )
+
+    identifiers, frames, xs, ys = [], [], [], []
+    for identifier in result.tracks.ids():
+        track_frames, positions = result.tracks.track(identifier)
+        identifiers.extend([int(identifier)] * int(track_frames.size))
+        frames.extend(np.asarray(track_frames, dtype=np.int64).tolist())
+        xs.extend(np.asarray(positions[:, 1], dtype=float).tolist())
+        ys.extend(np.asarray(positions[:, 0], dtype=float).tolist())
+    if identifiers:
+        write_imaging_table(
+            source,
+            store_from_arrays({
+                # The key. A detection is finer than a track, so the join is
+                # declared rather than counted.
+                "Track": np.array(identifiers, dtype=np.int64),
+                "Frame": np.array(frames, dtype=np.int64),
+                "x": np.array(xs, dtype=float),
+                "y": np.array(ys, dtype=float),
+            }),
+            name="track detections",
+            artifact_kind="localization_table",
+            operation_type="particle_tracking",
+            row_grain="spot",
+            parameters=parameters,
+            derived_from="tracks",
+            source_row_column="track",
+            target_row_column="Track",
+            units={"Track": "dimensionless", "Frame": "dimensionless",
+                   "x": "pixels", "y": "pixels"},
+            out_dir=out_dir,
+        )
+    return written

@@ -329,3 +329,74 @@ def write_stack_tiff(data: np.ndarray, path: str) -> str:
     # into channels whenever it is four frames or fewer.
     imwrite(out, arr.astype(np.float32), axes="TCYX" if arr.ndim == 4 else "TYX")
     return str(out)
+
+
+def write_container(
+    source,
+    shifts,
+    corrected=None,
+    *,
+    parameters: dict | None = None,
+    out_dir=None,
+) -> str:
+    """Write a drift correction into the measurement's container.
+
+    Two grains, and neither is a pixel — which is why both had to leave
+    `<source>.imaging.h5` as files of their own. A shift belongs to a *frame*;
+    the corrected movie is a raster and stays a TIFF, carried as cargo.
+
+    Parameters
+    ----------
+    source : str or pathlib.Path
+        The image or photon file, or the container itself.
+    shifts : array_like
+        ``(n_frames, 2)`` of ``(dy, dx)`` shifts in pixels.
+    corrected : numpy.ndarray, optional
+        The drift-corrected stack.
+    parameters : dict, optional
+        The settings. Their hash is the identity of the run.
+    out_dir : str or pathlib.Path, optional
+
+    Returns
+    -------
+    str
+        Path of the container written.
+    """
+    from chisurf.core.datastore import store_from_arrays
+    from chisurf.core.fio.fluorescence.imaging_container import (
+        write_image,
+        write_imaging_table,
+    )
+
+    sh = np.asarray(shifts, dtype=float)
+    written = write_imaging_table(
+        source,
+        store_from_arrays({
+            "Frame": np.arange(len(sh), dtype=np.int64),
+            "dx": sh[:, 1],
+            "dy": sh[:, 0],
+            "Magnitude": np.hypot(sh[:, 0], sh[:, 1]),
+        }),
+        name="drift",
+        artifact_kind="drift_trajectory",
+        operation_type="drift_correction",
+        row_grain="frame",
+        parameters=parameters,
+        units={"Frame": "dimensionless", "dx": "pixels", "dy": "pixels",
+               "Magnitude": "pixels"},
+        out_dir=out_dir,
+    )
+    if corrected is not None:
+        arr = np.asarray(corrected)
+        if arr.ndim == 4 and arr.shape[1] == 1:
+            arr = arr[:, 0]
+        written = write_image(
+            source, arr.astype(np.float32),
+            name="drift corrected",
+            operation_type="drift_correction",
+            axes="TCYX" if arr.ndim == 4 else "TYX",
+            parameters=parameters,
+            derived_from="drift",
+            out_dir=out_dir,
+        )
+    return written

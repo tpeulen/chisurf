@@ -197,6 +197,10 @@ class ImagingMapViewModel:
                 self.pipeline_sink(source=self.filename or None, hdf5=path)
         except Exception:
             logger.debug("auto-persist to imaging HDF5 failed", exc_info=True)
+        try:
+            self.write_container()
+        except Exception:
+            logger.debug("auto-persist to the container failed", exc_info=True)
 
     # ── AutoForm accessors ──
     def results_html(self) -> str:
@@ -242,6 +246,58 @@ class ImagingMapViewModel:
     # ── compute (subclass) ──
     #: Window analysis kind dispatched to the core worker ("nb"/"phasor").
     WINDOW_KIND: str | None = None
+
+    #: What this tool *did*, as an ``_mmfdb_operation.operation_type`` term.
+    #:
+    #: Recorded in the measurement's container beside the maps, so a per-pixel
+    #: lifetime and a per-pixel phasor are distinguishable as analyses rather
+    #: than only as column names. The default is the honest general term; a
+    #: subclass with a specific one should say so.
+    OPERATION_TYPE: str = "image_analysis"
+
+    #: What one row of this tool's table *is*, as an
+    #: ``_mmfdb_artifact.row_grain`` term. Every per-pixel map is a pixel.
+    ROW_GRAIN: str = "pixel"
+
+    #: Units for the columns this tool produces, ``{name: unit}``, matched by
+    #: **prefix**.
+    #:
+    #: A prefix and not the whole name, because every imaging column is
+    #: suffixed with the channel it came from — ``N (ch0)``, ``B (ch1)``,
+    #: ``Mean Micro Time (green)``. Listing the products would mean listing one
+    #: entry per channel of every file anyone opens, so an exact-match table
+    #: silently matches nothing and every column comes back unitless.
+    #:
+    #: A column matching no prefix gets no unit, which means the unit is
+    #: *unknown* — not dimensionless.
+    COLUMN_UNITS: dict = {}
+
+    def _column_units(self, names) -> dict:
+        """Return ``{column: unit}`` for the columns a prefix rule recognises.
+
+        Parameters
+        ----------
+        names : iterable of str
+
+        Returns
+        -------
+        dict
+        """
+        fixed = {
+            "X pixel": "pixels", "Y pixel": "pixels", "Z pixel": "pixels",
+            "Pixel Number": "dimensionless", "Frame": "dimensionless",
+        }
+        out: dict[str, str] = {}
+        for name in names:
+            text = str(name)
+            if text in fixed:
+                out[text] = fixed[text]
+                continue
+            for prefix, unit in self.COLUMN_UNITS.items():
+                if text == prefix or text.startswith(f"{prefix} ("):
+                    out[text] = unit
+                    break
+        return out
 
     def _window_params(self) -> dict:
         """Extra worker params (phasor overrides with frequency/irf/n_ph_min)."""
@@ -446,6 +502,49 @@ class ImagingMapViewModel:
         from chisurf.core.fluorescence.imaging import add_maps_to_hdf5
 
         return add_maps_to_hdf5(path, self._columns)
+
+    def write_container(self) -> str:
+        """Write this tool's per-pixel maps into the measurement's container.
+
+        The one place every imaging tool crosses, so this migrates all of them
+        at once — the maps are the same table `to_table` already builds and
+        ndxplorer already reads.
+
+        What it replaces is `<source>.imaging.h5`, a file that can hold exactly
+        one thing: a per-pixel table. A curve, a vector field, a track table or
+        a stack has nowhere to go in it, which is why each of those grew its own
+        output beside it. Here a map is a table at `pixel` grain and everything
+        else is a table at *its* grain, so nothing has to leave the file.
+
+        Returns
+        -------
+        str
+            Path of the container written, or ``""`` when there was nothing to
+            write or no source file to attach it to.
+        """
+        table = self.to_table()
+        if table is None or not self.filename:
+            return ""
+        from chisurf.core.datastore import column_names
+        from chisurf.core.fio.fluorescence.burst_container import (
+            units_for,
+            write_burst_artifact,
+        )
+
+        return write_burst_artifact(
+            self.filename, table,
+            name=self.WINDOW_KIND or type(self).__name__,
+            artifact_kind="pixel_map",
+            operation_type=self.OPERATION_TYPE,
+            row_grain=self.ROW_GRAIN,
+            parameters={
+                "kind": self.WINDOW_KIND,
+                "detectors": self.detectors,
+                **self._window_params(),
+            },
+            derived_from=(),
+            units=units_for(table, self._column_units(column_names(table))),
+        )
 
     def _register_hdf5_snapshot(self, path: str) -> None:
         """Register the just-written HDF5 when an MMFDB client is bound."""

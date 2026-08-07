@@ -455,3 +455,77 @@ def write_csv(analysis: FlowAnalysis, path: str | pathlib.Path,
         writer.writeheader()
         writer.writerows(rows)
     return str(path)
+
+
+def write_container(source, analysis, *, parameters=None, out_dir=None) -> str:
+    """Write a velocity field into the measurement's container.
+
+    A tile is not a pixel, so the field had nowhere to go in
+    `<source>.imaging.h5`. Here it is a table at `pixel` grain — one row per
+    tile centre — plus the time-averaged image the arrows belong on, which is
+    a raster and travels as a TIFF.
+
+    ``NaN`` marks a refused tile and is written as such rather than dropped: a
+    tile whose correlation peak left its own bounds fits a confident line
+    through a sign-flipped displacement, so *which* tiles were refused is part
+    of the answer.
+
+    Parameters
+    ----------
+    source : str or pathlib.Path
+        The image or photon file, or the container itself.
+    analysis : FlowAnalysis
+        The field to record.
+    parameters : dict, optional
+        The settings. Their hash is the identity of the run.
+    out_dir : str or pathlib.Path, optional
+
+    Returns
+    -------
+    str
+        Path of the container written.
+    """
+    from chisurf.core.datastore import store_from_arrays
+    from chisurf.core.fio.fluorescence.imaging_container import (
+        write_image,
+        write_imaging_table,
+    )
+
+    written = write_imaging_table(
+        source,
+        store_from_arrays({
+            "x": np.asarray(analysis.x, dtype=float).ravel(),
+            "y": np.asarray(analysis.y, dtype=float).ravel(),
+            "vx": np.asarray(analysis.vx, dtype=float).ravel(),
+            "vy": np.asarray(analysis.vy, dtype=float).ravel(),
+            "Speed": np.asarray(analysis.speed, dtype=float).ravel(),
+            "Quality": np.asarray(analysis.quality, dtype=float).ravel(),
+            "Amplitude": np.asarray(analysis.amplitude, dtype=float).ravel(),
+        }),
+        name="flow",
+        artifact_kind="velocity_field",
+        operation_type="flow_field_estimation",
+        row_grain="pixel",
+        parameters=dict(parameters or {}, method=analysis.method,
+                        n_escaped=int(analysis.n_escaped)),
+        units={
+            "x": "micrometres", "y": "micrometres",
+            # µm/s has no term of its own; the components are recorded with the
+            # length unit their magnitude is in and the frame time is in the
+            # settings, which is what makes them reconstructible.
+            "Quality": "dimensionless", "Amplitude": "dimensionless",
+        },
+        out_dir=out_dir,
+    )
+    image = np.asarray(analysis.image)
+    if image.size:
+        written = write_image(
+            source, image.astype(np.float32),
+            name="flow image",
+            operation_type="flow_field_estimation",
+            axes="YX",
+            parameters=parameters,
+            derived_from="flow",
+            out_dir=out_dir,
+        )
+    return written

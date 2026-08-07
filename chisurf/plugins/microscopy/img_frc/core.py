@@ -347,3 +347,58 @@ __all__ = [
     "halves",
     "write_csv",
 ]
+
+
+def write_container(source, analysis, *, parameters: dict | None = None, out_dir=None) -> str:
+    """Write an FRC resolution curve into the measurement's container.
+
+    A curve is one row per frequency, not one row per pixel, so it had nowhere
+    to go in `<source>.imaging.h5` and became an `_frc.csv` beside it. Here it
+    is a table at `curve_point` grain, and the resolution it implies is a
+    column rather than a number in a filename.
+
+    Parameters
+    ----------
+    source : str or pathlib.Path
+        The image file, or the container itself.
+    analysis : FrcAnalysis
+        The run to record.
+    parameters : dict, optional
+        The settings. Their hash is the identity of the run.
+    out_dir : str or pathlib.Path, optional
+
+    Returns
+    -------
+    str
+        Path of the container written.
+    """
+    from chisurf.core.datastore import store_from_arrays
+    from chisurf.core.fio.fluorescence.imaging_container import write_imaging_table
+
+    frequency = np.asarray(analysis.frequency, dtype=float)
+    # The frequency axis is per nanometre or per pixel depending on whether a
+    # pixel size was given, and the unit is the *analysis*'s answer -- not
+    # something to infer from the column name, which is how the CSV header
+    # carried it.
+    per_nm = getattr(analysis, "unit", "px") == "nm"
+    return write_imaging_table(
+        source,
+        store_from_arrays({
+            "Frequency": frequency,
+            "Correlation": np.nan_to_num(
+                np.asarray(analysis.correlation, dtype=float)
+            ),
+            "Threshold": np.asarray(analysis.threshold, dtype=float),
+            "Ring Pixels": np.asarray(analysis.counts, dtype=float),
+        }),
+        name="frc",
+        artifact_kind="resolution_curve",
+        operation_type="resolution_estimation",
+        row_grain="curve_point",
+        parameters=dict(parameters or {}, frequency_unit="1/nm" if per_nm else "1/px"),
+        units={
+            "Correlation": "dimensionless", "Threshold": "dimensionless",
+            "Ring Pixels": "counts",
+        },
+        out_dir=out_dir,
+    )

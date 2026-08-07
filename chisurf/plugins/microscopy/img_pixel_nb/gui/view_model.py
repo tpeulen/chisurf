@@ -18,6 +18,9 @@ class NBViewModel(ImagingMapViewModel):
 
     HDF5_ACTION_LABEL = "➕ Add N&B to HDF5"
     WINDOW_KIND = "nb"
+    OPERATION_TYPE = "number_and_brightness"
+    #: N is a molecule count, B and epsilon are counts per molecule per dwell.
+    COLUMN_UNITS = {"N": "counts", "B": "counts", "epsilon": "counts"}
 
     def __init__(self) -> None:
         super().__init__(_VIEW_JSON)

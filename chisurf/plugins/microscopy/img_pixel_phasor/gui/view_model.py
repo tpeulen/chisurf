@@ -23,6 +23,11 @@ class PhasorImgViewModel(ImagingMapViewModel):
 
     HDF5_ACTION_LABEL = "➕ Add phasor to HDF5"
     WINDOW_KIND = "phasor"
+    OPERATION_TYPE = "phasor_analysis"
+    #: g and s are the coordinates of a point on the universal circle, so they
+    #: are genuinely dimensionless -- a claim, not an absence.
+    COLUMN_UNITS = {"g": "dimensionless", "s": "dimensionless",
+                    "tau_phi": "nanoseconds", "tau_m": "nanoseconds"}
     #: Phasor-plot extent (data coords). Widened past the universal circle
     #: (g∈[0,1], s∈[0,0.5]) so noisy pixels near the edges are not clipped.
     PHASOR_G_RANGE = (-0.1, 1.1)

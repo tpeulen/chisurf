@@ -185,6 +185,7 @@ class ClsmGeneratorViewModel:
             else:
                 tttr.write(str(p))
             self._save_intensity_tif(p)
+            self._write_container(p)
         except Exception as exc:  # noqa: BLE001 - surfaced in the status line
             logger.debug("save failed", exc_info=True)
             self.status_text = f"Save failed: {exc}"
@@ -193,6 +194,34 @@ class ClsmGeneratorViewModel:
         self.status_text = f"Saved photon stream to {p.name}"
         self.notify("saved")
         return str(p)
+
+    def _write_container(self, path: pathlib.Path) -> None:
+        """Put the generated stream and its intensity raster in one file.
+
+        The generator writes a photon stream *and* a `<stem>_intensity.tif`
+        beside it, and the pair is related only by the filename — rename either
+        and the ground truth the stream was simulated from is separated from
+        the stream. A simulated measurement is the one case where losing that
+        link costs the most, because the raster *is* the answer being tested
+        against.
+
+        Nothing is written for a `.npz` save: that is an array dump, not a
+        measurement.
+        """
+        if path.suffix.lower() == ".npz":
+            return
+        try:
+            from chisurf.core.fio.fluorescence.imaging_container import write_image
+
+            write_image(
+                path, np.asarray(self._sim.intensity, dtype=np.float32),
+                name="intensity",
+                artifact_kind="image_data",
+                operation_type="measurement_import",
+                axes="YX",
+            )
+        except Exception:
+            logger.debug("container export skipped", exc_info=True)
 
     def _save_intensity_tif(self, path: pathlib.Path) -> None:
         try:

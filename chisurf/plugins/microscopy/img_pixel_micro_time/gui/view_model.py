@@ -19,6 +19,14 @@ class MicroTimeViewModel(ImagingMapViewModel):
 
     HDF5_ACTION_LABEL = "➕ Add mean micro-time to HDF5"
     WINDOW_KIND = "mean_micro_time"
+    OPERATION_TYPE = "pixel_lifetime_fitting"
+    #: A mean micro time is a time, and saying so is the point: the column name
+    #: has never carried the unit and every consumer assumed nanoseconds.
+    COLUMN_UNITS = {
+        "Mean Micro Time": "nanoseconds",
+        "Mean Micro Time (green)": "nanoseconds",
+        "Mean Micro Time (red)": "nanoseconds",
+    }
 
     def __init__(self) -> None:
         super().__init__(_VIEW_JSON)
