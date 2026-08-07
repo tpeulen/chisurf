@@ -386,6 +386,30 @@ def _payload_bytes(store: Any) -> int:
     return total
 
 
+#: Kinds an object may have when it is the measurement the file is *about*.
+#:
+#: More than one, because not every measurement starts as photons: an ebFRET run
+#: starts from binned traces, and calling those a photon stream would be false
+#: in the one field a reader consults. Matching a single kind on reopen lost the
+#: primary for every such container — so nothing derived from it could name a
+#: parent, and its lineage stopped one step short of the data.
+_PRIMARY_KINDS = ("tttr_photon_stream", "trace_data", "image_data", "raw_measurement")
+
+
+def _primary_uid(handle: Any) -> int:
+    """Return the UID of the object a container is *about*, or ``0``.
+
+    The **first** object of a primary kind. Order is what makes this
+    unambiguous: the profile puts the source first and never rewrites it, so the
+    earliest match is the source rather than something derived that happens to
+    share a kind — an `image_data` raster written by a later analysis, say.
+    """
+    for obj in handle.objects():
+        if obj.kind in _PRIMARY_KINDS:
+            return obj.uid
+    return 0
+
+
 class Measurement:
     """One measurement: the instrument data, and everything computed from it.
 
@@ -539,10 +563,7 @@ class Measurement:
         if not handle.open(str(path), writable):
             raise PtoMfdbError(f"could not open {path}: {handle.error()}")
         self = cls(handle, Path(path), writable=writable)
-        for obj in handle.objects():
-            if obj.kind == "tttr_photon_stream":
-                self._instrument_uid = obj.uid
-                break
+        self._instrument_uid = _primary_uid(handle)
         return self
 
     def __enter__(self) -> "Measurement":
