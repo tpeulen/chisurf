@@ -4,7 +4,7 @@ prd: "85"
 title: "PRD-85: Drop guards — an opt-in nag-before-commit pattern for file drops, first applied to .pto conversion"
 description: A dropped file is committed as-is everywhere in ChiSurf today; nothing gets a chance to say "wait, first...". This PRD adds a general, registry-based drop-guard pattern — mirroring the existing AutoForm section-registry decorator — that a drop zone opts into by name, each guard free to ask about something different and to apply to only some drop zones, never all of them. The concrete first guard closes a real gap: the Qt-free function that would import a dropped vendor photon file (.ptu/.spc/.ht3/...) into ChiSurf's own .pto container exists (pto.Measurement.create / staging.import_measurement) and is called from nowhere in the tree. Wired through the new pattern, plus a zero-setting drop-only tool for people who just want the container. Because a .pto stacks the raw stream plus every derived table in one growing file, the second half audits and fixes photon-level plots (scatter/trace views reading macro_times/micro_times directly) that were sized for a lone vendor file and must not try to draw millions of raw points at once.
 status: in-progress
-phase: "Part A (drop-guard pattern + tttr_to_pto) landed; Part B (decimation) not started"
+phase: "Part A landed; Part B: budget semantics fixed and the range controls with them, chiplot seam opt-in; seven plugins unaudited"
 resource: chisurf/gui/widgets/dropguard.py
 tags: [prd, tttr, pto, data-loading, gui, plugins, plotting, chiplot]
 timestamp: '2026-08-07T00:00:00Z'
@@ -12,12 +12,59 @@ timestamp: '2026-08-07T00:00:00Z'
 
 ## Where to pick this up
 
-Part A (the mechanism and its one guard) is done and tested. Part B's
-decimation utility exists and is wired into the one plugin that actually
-paged live: `burst_selection`. It is **not yet in `chiplot`** or the other
-seven listed plugins.
+Part A is done. Part B was re-driven end to end on 2026-08-07 — ten `.spc`
+DNA files dropped, converted, searched, opened in ndX, and the window read —
+which changed what the remaining work is. Take these in order:
 
-1. **`chisurf.core.fio.decimate.thin_for_plot` exists, tested, min/max-per-bin**
+1. **The "photon limit" complaint was three faults, all fixed; the seven
+   plugins are still the open front.** What the window showed: `Last photon`
+   reading `100000` over a dT plot drawing 1.8 M. The field is an AutoForm
+   section bound *through a view-model* to a hidden spin box, and the form
+   reads the spin **when it is built** — every later re-clamp went unseen.
+   Anything else binding a view-model to a widget the tool also writes to
+   directly has the same shape; `sync_fields()` is the fix and there is now a
+   caller of it in `burst_selection/gui/tool.py`. The second fault was that
+   diagnostics reload on *every* filter change and reloaded with `reset=True`,
+   discarding a hand-narrowed range. The third: `max_plot_points` is the budget
+   for a **plot**, and was being spent once per curve — split by file count
+   alone, so a two-layer panel drew twice what it was configured for while each
+   `thin_for_plot` call looked correctly bounded. Measured on the merged
+   container: dT 1.45 M → 0.97 M, MCS 1.85 M → 1.10 M, budget 1.5 M.
+   `per_curve_budget(total, files × layers)` is the helper; the trap in
+   re-deriving this is that a *per-call* assertion passes throughout.
+2. **`chiplot.Plot.line` now takes `max_points`** (opt-in, off by default,
+   skipped for a stepped curve whose bin edges thinning would break). This was
+   Scope B.2 and it is done — so the plugins in item 3 can be ported
+   through the seam rather than calling `thin_for_plot` directly.
+3. **The seven plugins Scope B.3 named are still unaudited**, but the first
+   pass is cheaper than it looks: `tttr_correlate/gui.py:461` and
+   `tttr_histogram/gui.py:96` already draw through `chiplot.Plot.line`, and
+   both draw *aggregated* curves (a correlation, a histogram) — leave them
+   alone. `trace_browser` does not plot per-photon data itself; it delegates to
+   `intensity_trace`. That leaves `intensity_trace`,
+   `tttr_count_rate_analysis/gui/view_model.py`, `fcs_filter_calculator`,
+   `flc_2d`, and `clsm_generator` genuinely unchecked.
+4. **Decimating the arrays was the *smallest* of the three levers, and that is
+   the trap this PRD walked into.** Benchmarked
+   (`test/benchmarks/benchmark_burst_plots.py`): thinning wins 10x only while
+   pyqtgraph's own viewport decimation is off, and once
+   `setDownsampling(auto, "peak")` + `setClipToView(True)` are on, a 660k-point
+   curve repaints in 0.010 s regardless. **Any plugin audited under item 3 must
+   get both** — `thin_for_plot` bounds what Qt is handed (memory, and the
+   payload if it crosses RPC), the viewport bounds what Qt lays out. A plugin
+   that only gets the first has fixed the wrong half. The single most expensive
+   widget in the burst window turned out to be the photon-filter wizard's dT
+   plot, which had *neither*: 0.29 s a repaint, against 0.3 ms for the thinned
+   plot beside it. A per-pixel pen width over 1 costs another 3-4x.
+5. **`thin_for_plot`'s docstring was wrong about its own bound** — it promised
+   "never longer than roughly `2 * max_points`" while returning at most
+   `max_points`. Anyone sizing a budget against the docstring was sizing it
+   2× too small. Fixed; mentioned because the same off-by-a-factor may sit in
+   whatever called it.
+
+The original Part-B notes, still accurate:
+
+6. **`chisurf.core.fio.decimate.thin_for_plot` exists, tested, min/max-per-bin**
    (`test/fio/test_decimate.py`) — built and wired directly into
    `burst_selection/gui/tool.py`'s raw per-photon plots (the "dT"/"Filter"
    diagnostic plots in `update_burst_plots`, and the MCS intensity trace in
@@ -31,23 +78,23 @@ seven listed plugins.
    left alone** — already aggregated (a microtime histogram, a per-burst
    duration histogram), not raw per-photon, exactly the "not every hit is a
    bug" case Scope B.3 called out.
-2. **Wired directly at `burst_selection`'s own pyqtgraph calls, not through
+7. **Wired directly at `burst_selection`'s own pyqtgraph calls, not through
    `chiplot`.** `burst_selection/gui/tool.py` is not on chiplot yet (`self.dt_plot`
    etc. are raw `pg.PlotWidget`s) — porting it there is a separate, larger
    change (see [chiplot](/subsystems/chiplot.md)'s own allow-list) that this
    fix deliberately did not bundle in. `thin_for_plot` takes plain arrays, so
-   it works the same whichever plotting call ends up using it; **surfacing it
-   as `chiplot.Plot.line`'s opt-in `max_points`** (the original Scope B.2) is
-   still open, and is the natural point to revisit once a plugin using it is
-   actually on chiplot.
-3. **The other seven plugins Scope B.3 named are still unaudited**:
+   it works the same whichever plotting call ends up using it. **Superseded in
+   part**: `chiplot.Plot.line` now takes the opt-in `max_points` (item 2
+   above), so the seam exists; porting this plugin onto chiplot is still a
+   separate change.
+8. **The other seven plugins Scope B.3 named are still unaudited**:
    `tttr_correlate/gui.py`, `trace_browser`, `tttr_histogram`,
    `tttr_count_rate_analysis/gui/view_model.py`, `fcs_filter_calculator/gui_parts/*`,
    `flc_2d/gui/{tool,client}.py`, `clsm_generator/gui/view_model.py`. First
    task for each is the same confirmation `burst_selection` just went
    through: which of its plots are raw per-photon (call `thin_for_plot`
    directly, same pattern) versus already-aggregated (leave alone).
-4. **The pre-unification drop-zone audit (A.5) is not exhaustive.** Wired so
+9. **The pre-unification drop-zone audit (A.5) is not exhaustive.** Wired so
    far: `burst_background`, `burst_irf_bg`, `tttr_count_rate_analysis` (via
    the `path_list` `guards` option in their view.json), `burst_analysis` and
    `tttr_microtime_shifter` (via the `PathListWidget` `guards` kwarg), and
@@ -60,7 +107,7 @@ seven listed plugins.
    `chisurf/gui/widgets/fio/fio.py` (both load a vendor file only through a
    `QFileDialog`, not a drop, so `apply_drop_guards` has nothing to hook —
    would need drop support added first, which is out of this PRD's scope).
-5. **A guided tour was deliberately skipped** for the bare drop-only tool
+10. **A guided tour was deliberately skipped** for the bare drop-only tool
    (`tttr_to_pto/gui/tool.py`) — it is one drop target with a self-explanatory
    label and tooltip, and CLAUDE.md's guided-tour rule exists for panels dense
    enough that order-of-operations is not obvious. Revisit only if the tool

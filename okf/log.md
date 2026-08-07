@@ -2,6 +2,97 @@
 
 ## 2026-08-07
 
+* **End-to-end run of the burst and imaging pipelines over `.pto`, on the CLI
+  and in the GUI — ten defects, none of which failed or warned.** Driven the
+  way a user would: the ten `bh_spc132_sm_dna` `.spc` files dropped and
+  converted (1.79 M photons, 642 s, one 12 MB container), searched, opened in
+  ndX; separately `Leica_SP5.ptu` converted and run through the imaging tool.
+  Every finding below came from *reading the output* — a window screenshot, a
+  container listing, a folder tree — rather than from a test going red.
+
+  **The search ignored two of the settings it was given, and misreported a
+  third.** `min_photons` was enforced by the sliding-window search alone
+  (which passes it to `tttrlib`); every other mode returned whatever contiguous
+  runs the photon mask happened to have, down to two photons. On this
+  measurement: **44126 bursts, median 14 photons**, in a folder named
+  `countrate_All 0.1500#60`. Applied at burst level for every search now →
+  **4621** (7.2/s over 642 s). `max_gap` never reached `find_bursts`, which
+  kept its own default of 4, so a run configured to bridge nothing bridged
+  four. `n_bursts` counted bursts the summarizer then dropped, so the reported
+  number was not the number of rows written; both ends agree by construction
+  now. Guardrails: `test_search_bounds.py` (7).
+
+  **Two provenance faults in the container.** A burst table computed from ten
+  photon streams recorded `m000.spc` as its only parent (`instrument_uid` is
+  the *first* stream) — nine sources unreachable from the result. And because
+  tags are appended while a re-run updates the table in place, three re-runs
+  left the same parent recorded four times. `Measurement.instrument_uids` and
+  a dedupe in `_describe`; `test_container_provenance.py` (3). Filed upstream
+  in tttrlib's `BUGS.md`: nothing distinguishes two runs of the same analysis
+  to a reader — every one of them is called `bursts`.
+
+  **"Plots do not respect photon limits" was three separate faults.** The
+  window read `Last photon 100000` over a dT plot drawing 1.8 M: the AutoForm
+  field is bound through a view-model to a hidden spin box and reads it *at
+  build time*, so every later re-clamp went unseen. A range narrowed by hand
+  was then discarded on the next filter change, because diagnostics reload with
+  `reset=True`. And `max_plot_points` — the budget for a *plot* — was spent
+  once per curve: split by file count alone, a two-layer panel drew twice what
+  it was configured for while each `thin_for_plot` call looked correctly
+  bounded. Measured: dT 1.45 M → 0.97 M, MCS 1.85 M → 1.10 M against a 1.5 M
+  budget. `per_curve_budget` is the helper; `chiplot.Plot.line` gained the
+  opt-in `max_points` this needed (PRD-85 Scope B.2, now done).
+  `test_photon_range_controls.py` (3), `test_decimate.py` (+3).
+
+  **The end of the pipeline led nowhere.** A default GUI run asked for the
+  legacy folder while asking for no format that goes in it, so it produced a
+  freshly-numbered directory holding two `Info/` files — which ndX refused with
+  "No .bur files in 'bi4_bur' or 'bur'", and the tool's own "to ndX" button had
+  nothing to hand over. Requesting the layout requests the format now. ndX
+  itself had no `.pto` reader at all, so the format the pipeline produces could
+  not be opened by the viewer it feeds: `ndxplorer/io/pto_reader.py`
+  (ndxplorer 1af57f8), pinned against the same run's `.bur` — 1099 bursts
+  either way.
+
+  **The imaging tools read photons behind ChiSurf's back.** `pixel_maps.get_tttr`
+  and the PCH backend called `tttrlib.TTTR(path)` directly, bypassing
+  `staging.open_tttr` — so no staging, and no TAC-linearization LUTs: every
+  per-pixel lifetime and phasor map of a measurement with a LUT was computed
+  from un-linearized micro-times. A per-pixel map also went into the container
+  under `IntensityViewModel`, a GUI class name in the measurement's own format.
+  And two burst file lists hard-coded a vendor-extension set that omitted
+  `.pto`, so a folder of containers added nothing while the dialog beside them
+  offered `.pto` first.
+
+  **The lag was not the point budget, and the benchmark said so.** Profiled per
+  stage, then per widget: the burst search over 1.79 M photons is 0.04 s while
+  one whole-window repaint was **0.29 s** — and all of it was a single
+  `PlotWidget`, the filter-settings dT plot inside the photon-filter wizard,
+  the one raw per-photon plot nobody had audited. It was handed all 1.79 M
+  points untouched while the tool's own dT plot beside it, thinned, painted in
+  0.3 ms. Three knobs measured against each other
+  (`test/benchmarks/benchmark_burst_plots.py`, and a section in
+  [benchmarks](../docs/development/benchmarks.md)): **viewport decimation is the
+  whole game** (`setDownsampling(auto, peak)` + `setClipToView`, 660k points
+  0.136 → 0.010 s, and the cost stops depending on the array size); **a pen one
+  pixel wider costs 3–4×** because a Qt pen over a pixel strokes a real outline;
+  and **thinning the arrays is the smallest of the three** — the obvious lever,
+  and it only wins when the viewport decimation is off. End to end: repaint
+  0.293 → 0.023 s, five repaints 1.75 → 0.11 s, analyze-then-display 2.23 →
+  0.77 s. Also coalesced the settings controls behind a 250 ms timer (each
+  `valueChanged` — one per digit typed — ran ~0.9 s of search and redraw), and
+  gave `load_diagnostics` the same two search bounds as `analyze_file`, which it
+  had been disagreeing with. `data_loading.max_plot_points` is 150000 now, and
+  the whole `data_loading` section is written into the shipped
+  `settings_chisurf.yaml` rather than living only as a Python dict.
+
+  Recorded rather than fixed, in [known issues](/references/known-issues.md):
+  the wizard's Info preview is a *second implementation* of the burst search
+  (2739 vs 1099 on the same file and settings, with the bounds now equal — the
+  masks differ); and `NUMBA_NUM_THREADS` collides when `test/fio` runs as a
+  directory, pre-existing. Resume points: [PRD-85](/prds/prd-85.md) and
+  [the photon container](/subsystems/photon-container.md).
+
 * **Burst Selection's batch progress bar advances per file instead of a
   single busy spinner.** The GUI-thread freeze this used to cause was
   already fixed (the batch runs off the GUI thread via

@@ -8,6 +8,47 @@ timestamp: '2026-08-06T00:00:00Z'
 ---
 
 # Where to pick this up
+
+0. **An end-to-end run on 2026-08-07 (ten `.spc` → one `.pto` → burst search →
+   ndX, plus a CLSM `.ptu` → `.pto` → imaging) found four container-level
+   faults. Three are fixed; the fourth is upstream.** They are listed first
+   because each one is invisible from the result and each was found by *reading
+   the file*, not by a test failing.
+
+   * **A merged measurement recorded one parent.** `instrument_uid` is the
+     *first* photon stream, and `write_burst_artifact` used it — so a burst
+     table computed from ten streams named `m000.spc` alone and nine sources
+     were unreachable from it. `Measurement.instrument_uids` (all of them) is
+     the fix. Re-derive with `describe_lineage`: it printed
+     `derived_from m000.spc` and now prints all ten.
+   * **Tags are appended, never replaced, so parent edges accumulated.** Three
+     re-runs left the same uid recorded four times, because a re-run updates
+     the table *in place* and re-describes it. `_describe` dedupes against
+     `parents(uid)` now. **Suspect the scalar tags too** — an object described
+     three times may hold three `row_grain` values with readers taking the
+     first; not yet measured.
+   * **A GUI class name reached the file format.** Imaging tools without a
+     `WINDOW_KIND` fell back to `type(self).__name__`, so the intensity map was
+     stored as `IntensityViewModel`. `ImagingMapViewModel.artifact_name()` makes
+     it `intensity`. Renaming a Python class must not rename an artifact in
+     every file already written.
+   * **Nothing distinguishes two runs of the same analysis to a reader.**
+     Changing a setting adds an object rather than replacing one — deliberately
+     — and every one of them is called `bursts`. A reader doing the obvious
+     thing (read them all, concat) lines up 4621, 2318 and 1099 rows against
+     each other and pads. ndX's new `.pto` reader works around it by taking the
+     last object of the right `operation_type`; that leans on `objects()`
+     returning write order, which the container does not promise. Filed in
+     tttrlib's `BUGS.md` — a `superseded_by` edge or a `current` flag is what
+     would remove the guesswork. `Measurement.metadata()` also comes back `""`
+     for a container written by `create()`.
+
+   Also confirmed clean, so it is not re-derived: **the `.pto` round-trip is
+   exact for CLSM markers** — `Leica_SP5.ptu` packed and read back gives
+   byte-identical event types, marker counts and `CLSMImage` geometry. The
+   `no complete frames; salvaging …` warning that comes with it is a
+   `CLSMImage` marker-configuration matter and the raw `.ptu` shows it too.
+
 1. **The provenance graphs are NOT all verified — [PRD-88](/prds/prd-88.md)
    owns that.** `build_tools/dev_utils/lineage_audit.py` drives the real writers
    and reports every artifact that cannot reach the primary data. Run it before
