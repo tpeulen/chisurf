@@ -100,6 +100,7 @@ def write_container(
     *,
     parameters: dict | None = None,
     out_dir: str | Path | None = None,
+    run: str = "",
 ) -> str:
     """Write the burst table into the measurement's own container.
 
@@ -118,16 +119,26 @@ def write_container(
         The analysis settings. Their hash is the identity of the run.
     out_dir : str or Path, optional
         Where the container goes. Defaults to beside *source*.
+    run : str, optional
+        Name of this analysis inside the container -- the same string the
+        legacy layout uses for its directory. A container holds several
+        analyses of one measurement and they are addressed the way a folder's
+        are (``m000.pto/countrate_All 0.1500#60``); see
+        :mod:`chisurf.core.fio.fluorescence.burst_tree`. Empty stores the table
+        at the top level, which is what a container written before runs were
+        named looks like.
 
     Returns
     -------
     str
         Path of the container written.
     """
+    from chisurf.core.fio.fluorescence.burst_tree import run_artifact_name
+
     return write_burst_artifact(
         source,
         df,
-        name="bursts",
+        name=run_artifact_name(run),
         artifact_kind="burst_table",
         operation_type="burst_selection",
         row_grain="burst",

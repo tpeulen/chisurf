@@ -753,7 +753,12 @@ class BurstAnalysisTool(NavigationPanelTool):
             if self._fused_folder is not None and folder == self._fusion_source:
                 folder = self._fused_folder
             self.workflow_context.burst_folder = folder
-            self.workflow_context.bur_files = sorted(folder.glob("**/*.bur"))
+            # A container *is* the burst source, so it has no `.bur` files to
+            # list — and `glob` on a file returns nothing rather than raising,
+            # which would have left this silently empty either way.
+            self.workflow_context.bur_files = (
+                sorted(folder.glob("**/*.bur")) if folder.is_dir() else []
+            )
 
     def _folder_from_selection_result(self, result: object) -> Path | None:
         """Return an output folder from a burst-selection result payload."""
@@ -777,13 +782,33 @@ class BurstAnalysisTool(NavigationPanelTool):
         return None
 
     def _materialize_burst_handoff(self, widget: QtWidgets.QWidget) -> Path | None:
-        """Write cached burst frames to legacy ``bi4_bur`` handoff layout."""
+        """Give the later steps something to read the bursts from.
+
+        For a `.pto` source that is the container itself: it already holds the
+        bursts, beside the photons they were found in, and every downstream read
+        goes through ``read_burst_analysis``, which opens one. Writing a
+        ``burst_analysis_handoff/`` folder of `.bur` files there put the same
+        results in a second place — and the second place went stale the moment
+        the selection was re-run, which is how a step came to report **8 bursts**
+        from a handoff folder while the panel above it showed hundreds.
+
+        Anything else still gets the folder: a vendor file has nowhere to keep
+        the bursts, and the legacy layout is what the readers understand.
+        """
         frames_by_file = getattr(widget, "_last_frames_by_file", None)
         if not frames_by_file:
             return None
         raw_files = self.workflow_context.raw_files or [Path(path) for path in frames_by_file.keys()]
         if not raw_files:
             return None
+
+        from chisurf.core.fio.pto import SUFFIX
+
+        containers = [p for p in raw_files if Path(p).suffix.lower() == SUFFIX]
+        if containers and len(containers) == len(raw_files):
+            # One container is one measurement; the later steps take the first
+            # and read the rest from their own file the same way.
+            return Path(containers[0])
 
         output_folder = raw_files[0].parent / "burst_analysis_handoff"
         bur_folder = output_folder / "bi4_bur"

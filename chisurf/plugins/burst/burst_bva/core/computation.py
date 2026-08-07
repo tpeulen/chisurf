@@ -70,7 +70,30 @@ def read_burst_analysis(
         One row per burst.
     tttrs : dict of str to tttrlib.TTTR
         The measurements the ``First File`` column names, opened once each.
+
+    Notes
+    -----
+    A `.pto` measurement container is read instead of a folder when one is
+    passed, through the shared reader. The whole positional merge above — the
+    row stride, the column-wise stacking — is bookkeeping for a padded text
+    grid, and a container has none of it: the companions are tables joined by
+    declared parentage. Without this branch the burst workflow had to write a
+    `burst_analysis_handoff/` folder of `.bur` files just so this call had a
+    directory, which put the same results in a second place that then went
+    stale.
     """
+    from chisurf.core.fio.fluorescence.burst_tree import is_container_path
+
+    paris_path = pathlib.Path(paris_path)
+    # A run inside a container ('m000.pto/countrate_All 0.2000#60') is a path
+    # that does not exist on disk, so `is_file()` answers about the wrong thing.
+    if is_container_path(paris_path):
+        from chisurf.core.fio.fluorescence.burst import (
+            _read_burst_analysis_from_container,
+        )
+
+        return _read_burst_analysis_from_container(paris_path)
+
     data_path = paris_path.parent
     table = new_store()
     for path in sorted(paris_path.glob(pattern)):

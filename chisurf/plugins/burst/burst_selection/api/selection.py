@@ -728,14 +728,25 @@ def analyze_request(
         output_paths.update(result.output_paths)
         output_paths_by_file.update(result.output_paths_by_file)
         if "pto" in request.settings.output_formats:
+            run = legacy_output_folder_name(request.settings)
             container = write_container(
                 path,
                 store_from_rows(result.dataframes.get(str(path), [])),
                 parameters=to_jsonable(request.settings),
                 out_dir=request.output_dir,
+                # Named the way the folder layout names its directory, so a
+                # container holding several analyses of one measurement is
+                # addressed exactly as a folder of them is:
+                # `m000.pto/countrate_All 0.1500#60`.
+                run=run,
             )
             output_paths.setdefault("pto", container)
             output_paths_by_file.setdefault(str(path), {})["pto"] = container
+            # The path a downstream step is pointed at. It reads like a folder
+            # because that is the point; `burst_tree` resolves it.
+            analysis_path = f"{container}/{run}" if run else container
+            output_paths.setdefault("output_folder", analysis_path)
+            output_paths_by_file.setdefault(str(path), {})["output_folder"] = analysis_path
         metadata["n_bursts"] += int(result.metadata.get("n_bursts", 0))
         metadata["n_selected"] += int(result.metadata.get("n_selected", 0))
         metadata["n_photons"] += int(result.metadata.get("n_photons", 0))

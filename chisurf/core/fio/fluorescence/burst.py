@@ -652,6 +652,75 @@ def write_bur_file_fast(bur_filename, start_stop, filename, tttr, windows, detec
 
 write_bur_file = write_bur_file_fast
 
+def _read_burst_analysis_from_container(path: pathlib.Path) -> tuple:
+    """Return ``(bursts, {name: TTTR})`` for one analysis in a `.pto`.
+
+    The container equivalent of reading a burstwise folder, so every downstream
+    burst analysis (BVA, 2CDE, H2MM, the MLEs) reaches the bursts through the
+    call it already makes. Without it those steps could only open a directory,
+    which is why the burst workflow was writing a `burst_analysis_handoff/`
+    folder of `.bur` files to hand one over — a second copy of results that
+    already existed in the file the photons came from, and one that went stale
+    the moment the selection was re-run.
+
+    The *path* handling is not here: which container, which run, and what a
+    missing run should say are one scheme for every analysis and live in
+    :mod:`chisurf.core.fio.analysis_path`. What is here is the burst-shaped
+    part — that the companions join the search side by side, and that a caller
+    indexing ``tttrs[row["First File"]]`` has to resolve.
+
+    Parameters
+    ----------
+    path : pathlib.Path
+        A `.pto`, or one analysis inside it
+        (``m000.pto/countrate_All 0.2000#60``). Without a run the most recent
+        analysis is taken.
+
+    Returns
+    -------
+    tuple
+        ``(store, tttrs)``.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the container holds no burst table, or none under the named run.
+    """
+    from chisurf.core.fio.analysis_path import read_tables
+    from chisurf.core.fio.fluorescence.burst_tree import OPERATION, TABLE
+    from chisurf.core.fio.analysis_path import split_container_path
+    from chisurf.core.fio.staging import open_tttr
+
+    container, _run = split_container_path(path)
+    tables = read_tables(path, operation=OPERATION)
+    df = tables.get(TABLE)
+    if df is None:
+        # A run whose only tables are companions: nothing to hang them on.
+        raise FileNotFoundError(
+            f"{pathlib.Path(path).name} holds no burst table: run a burst "
+            "search first, or point this at an analysis folder if one exists."
+        )
+
+    # Per-burst results computed from that search join it side by side — the
+    # container's answer to the `…4` companions, matched on row count because
+    # that is the contract those companions are written under.
+    for name, companion in tables.items():
+        if name == TABLE or row_count(companion) != row_count(df):
+            continue
+        df.append_columns(companion, tttrlib.DataStore.OnDuplicate_KeepFirst)
+
+    # One container is one measurement, however many vendor files were packed
+    # into it, so every burst points at the same photon stream. Keyed by each
+    # distinct `First File` value so a caller's lookup resolves whichever name
+    # the search recorded.
+    tttr = open_tttr(str(container))
+    names = set()
+    if "First File" in column_names(df):
+        names = {str(v) for v in np.asarray(df["First File"]).tolist()}
+    names.add(container.name)
+    return df, {name: tttr for name in names}
+
+
 def read_burst_analysis(
         paris_path: pathlib.Path,
         tttr_file_type: str,
@@ -727,6 +796,15 @@ def read_burst_analysis(
                 tttr = tttrlib.TTTR(fn, tttr_file_type)
                 tttrs[ff] = tttr
         return tttrs
+
+    from chisurf.core.fio.fluorescence.burst_tree import is_container_path
+
+    paris_path = pathlib.Path(paris_path)
+    # A `.pto` is addressed like a folder, so the path may name a run inside it
+    # ('m000.pto/countrate_All 0.2000#60') and is not a file on disk. Asking
+    # `is_file()` therefore answers about the wrong thing.
+    if is_container_path(paris_path):
+        return _read_burst_analysis_from_container(paris_path)
 
     info_path = paris_path / 'Info'
     data_path = paris_path.parent
@@ -911,7 +989,7 @@ def write_burst_hdf5(dataframes, path) -> None:
 
     Parameters
     ----------
-    dataframes : sequence of pandas.DataFrame
+    dataframes : sequence of tttrlib.DataStore
         Burst summary tables. They are concatenated; an empty sequence writes an
         empty table rather than failing, which is what a run that selected
         nothing produces.

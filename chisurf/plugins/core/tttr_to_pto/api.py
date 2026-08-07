@@ -73,29 +73,55 @@ def convert(
     return target
 
 
-def extract(path: str | Path, *, out_dir=None) -> list[Path]:
-    """Recover the embedded vendor file(s) from a `.pto` container.
+def extract(path: str | Path, *, out_dir=None, results: bool = True) -> list[Path]:
+    """Unpack a `.pto` back into the files it was packed from, plus its results.
 
-    The read half of :func:`convert` -- the other direction of the same
-    conversion. Delegates to :meth:`Measurement.disassemble`, which writes the
-    instrument bytes back out exactly and verifies the checksum while doing
-    it, so "the original is recoverable" is a checked claim rather than an
-    intention.
+    The read half of :func:`convert`, and the whole of it: a container holds the
+    instrument data *and* every analysis run against it, so unpacking one that
+    returned only the vendor files would leave the results locked in the format
+    they were meant to be recoverable from. What comes out is what a session
+    working in folders would have on disk —
+
+    ::
+
+        m000.spc                                     the original, byte for byte
+        countrate_All 0.2000#60/bi4_bur/m000.bur     one folder per analysis
+        sliding_window_All 0.0101#60/bi4_bur/m000.bur
+
+    — tab-separated text, the format the external tools read. Inside the
+    container the same tables are stored as binary columns, which is what makes
+    them cheap to open; text is for leaving.
+
+    The vendor half delegates to :meth:`Measurement.disassemble`, which writes
+    the instrument bytes back out exactly and verifies the checksum while doing
+    it, so "the original is recoverable" stays a checked claim.
 
     Parameters
     ----------
     path : str or pathlib.Path
         A `.pto` container.
     out_dir : str or pathlib.Path, optional
-        Directory to write the recovered file(s) into. Defaults to beside
-        *path*.
+        Directory to unpack into. Defaults to beside *path*.
+    results : bool
+        Write the analysis folders as well. ``False`` recovers only the
+        instrument files -- for a caller that wants the original and nothing
+        else, e.g. to hand it to an instrument's own software.
 
     Returns
     -------
     list of pathlib.Path
-        The recovered instrument file(s) -- normally one, but a container
-        that stacks more than one measurement writes each of them back out.
+        Everything written: the instrument file(s) first -- normally one, but a
+        container stacking several measurements writes each of them back out --
+        then one `.bur` per analysis found.
     """
+    from chisurf.core.fio.analysis_path import export_tree
+
     target_dir = Path(out_dir) if out_dir is not None else Path(path).parent
     with Measurement.open(path, writable=False) as measurement:
-        return measurement.disassemble(target_dir)
+        written = list(measurement.disassemble(target_dir))
+    if results:
+        # One call, and it knows nothing about bursts: a container's analyses
+        # are addressed and unpacked by one scheme, so an analysis that has
+        # never heard of `.pto` is unpacked by it too.
+        written.extend(export_tree(path, target_dir))
+    return written

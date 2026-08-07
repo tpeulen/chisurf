@@ -1371,11 +1371,18 @@ class Measurement:
         return out
 
     def disassemble(self, directory: str | Path) -> list[Path]:
-        """Take the container apart into ordinary files.
+        """Recover the files the container was packed *from*.
 
-        Sidecars land beside what they belong to, which is what a Becker &
-        Hickl ``.spc`` needs: its reader looks for the ``.set`` next to it and
-        would otherwise silently read half a header.
+        The instrument data and its sidecars, byte for byte and checksum-
+        verified — a Becker & Hickl ``.spc`` needs its ``.set`` beside it or its
+        reader silently reads half a header, so both come back.
+
+        **Results are not written here.** An analysis inside the container is a
+        table of binary columns, and dumping that blob next to the vendor file
+        gives a file nothing can open; the text form belongs to
+        :func:`chisurf.core.fio.analysis_path.export_tree`, which writes one
+        folder per analysis. Unpacking a measurement means calling both, which
+        is what :func:`chisurf.plugins.core.tttr_to_pto.api.extract` does.
 
         Parameters
         ----------
@@ -1385,12 +1392,29 @@ class Measurement:
         -------
         list of Path
             The files written.
+
+        Raises
+        ------
+        PtoMfdbError
+            If the container holds no instrument file to recover.
         """
         out = Path(directory)
         out.mkdir(parents=True, exist_ok=True)
-        written = [Path(p) for p in self._f.disassemble(str(out))]
+        written: list[Path] = []
+        for obj in self._f.objects():
+            # A derived result says what produced it; an instrument file does
+            # not. That is the whole distinction, and it does not depend on
+            # keeping a list of kinds in step with the writers.
+            if self.tag(obj.uid, _OPERATION_TYPE):
+                continue
+            if obj.kind == "readme":
+                continue
+            written.append(self.extract(obj.uid, out / str(obj.name)))
         if not written:
-            raise PtoMfdbError(f"could not disassemble into {out}: {self._f.error()}")
+            raise PtoMfdbError(
+                f"could not disassemble into {out}: no instrument file in "
+                f"{self._path.name}"
+            )
         return written
 
     # -- lifecycle ------------------------------------------------------------
@@ -1415,10 +1439,24 @@ class Measurement:
             )
 
     def _resolve(self, ref: int | str) -> int:
+        """Return the UID *ref* names, by uid or by name.
+
+        A name may be given without its run: an analysis is stored as
+        ``<run>/<table>`` (a container is addressed like a folder — see
+        :mod:`chisurf.core.fio.analysis_path`), and asking for ``"bursts"``
+        means "the burst table", which is what every caller that predates runs
+        was already asking. The most recently written match wins, which is the
+        same rule reading a container without naming a run follows.
+        """
         if isinstance(ref, int):
             uid = ref
         else:
             uid = self._f.find(ref)
+            if not uid:
+                suffix = f"/{ref}"
+                for obj in self._f.objects():
+                    if str(obj.name).endswith(suffix):
+                        uid = obj.uid
         if not uid or not self._f.has(uid):
             raise PtoMfdbError(f"no object {ref!r} in {self._path}")
         return uid
