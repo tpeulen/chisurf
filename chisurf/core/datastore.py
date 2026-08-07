@@ -90,6 +90,7 @@ __all__ = [
     "row_count",
     "rows_from_table",
     "set_cell",
+    "set_constant",
     "store_from_arrays",
     "store_from_dataframe",
     "store_from_rows",
@@ -465,6 +466,42 @@ def store_from_arrays(columns: Mapping[str, Any] | Sequence[tuple]) -> Any:
             raise ValueError(f"column {name!r} has {len(array)} rows, expected {lengths.pop()}")
         store.add(str(name), array)
     return store
+
+
+def set_constant(table: Any, name: str, value: Any) -> Any:
+    """Add (or replace) a column holding one value in every row.
+
+    The store-and-frame spelling of ``df[name] = value``, which is one of the
+    few places the two containers differ in a way that *raises*: a frame
+    broadcasts a scalar over its rows, a store's ``__setitem__`` wants an array
+    and fails on a 0-d one. Several call sites tagging a burst table with its
+    source file did exactly that, and the ones wrapped in a bare ``except``
+    simply stopped writing the column when the table became a store.
+
+    A text value becomes a dictionary-encoded column — one string plus N codes,
+    not N strings — which is the shape that made a store worth having for
+    exactly this kind of column.
+
+    Parameters
+    ----------
+    table : tttrlib.DataStore, pandas.DataFrame or mapping of str to array
+    name : str
+        Column name.
+    value : object
+        The value every row gets.
+
+    Returns
+    -------
+    tttrlib.DataStore, pandas.DataFrame or mapping
+        *table*, modified in place.
+    """
+    n = row_count(table)
+    if isinstance(value, str):
+        table[str(name)] = [value] * n
+    else:
+        array = np.asarray(value)
+        table[str(name)] = np.full(n, array, dtype=array.dtype)
+    return table
 
 
 def _is_text(values: Any) -> bool:

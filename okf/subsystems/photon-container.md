@@ -9,22 +9,52 @@ timestamp: '2026-08-06T00:00:00Z'
 
 # Where to pick this up
 
-1. **Five writers migrated, ~9 to go.** `burst_selection` (`output_formats`
-   contains `"pto"`), `burst_bva`, `burst_2cde`, `burst_fusion` and `burst_h2mm`
-   (`write_h2mm_container`, bursts *and* dwells). The shared seam is
+1. **Nine writers migrated, ~5 to go.** `burst_selection` (`output_formats`
+   contains `"pto"`), `burst_bva`, `burst_2cde`, `burst_fusion`, `burst_h2mm`
+   (bursts *and* dwells), `burst_mle_analysis` (per-detector fits, pooled state
+   fits, IRF/background curves), `burst_fcs_correlator`, `bid_to_analysis`
+   (`output_types` contains `"pto"`) and `burst_analysis` (collapsed onto
+   `burst_selection`'s `write_container`). The shared seam is
    `chisurf/core/fio/fluorescence/burst_container.py` — `write_burst_artifact`
    for one measurement, `write_per_source` for a frame covering several. Every
-   remaining writer is one call to those, so the work is now reading each
-   plugin rather than designing anything. Next: `burst_mle_analysis` (three
-   colour tables plus per-state lifetimes), `burst_fcs_correlator`, then
-   `bid_to_analysis` and `burst_analysis` — both duplicate `burst_selection`'s
-   `bi4_bur/` writer and collapse onto `write_container`. Then **stage 4**, the
-   imaging writers, which need no new design: a per-pixel map is a table at
-   `pixel` grain and a stack is an `image` object.
-   
+   remaining writer is one call to those, so the work is reading each plugin
+   rather than designing anything. Left: `burst_gs`, `burst_background`,
+   `burst_ebfret`, `accurate_fret`, `tttr/{tttr_time_windows,trace_browser,
+   intensity_trace}`. Then **stage 4**, the imaging writers, which need no new
+   design: a per-pixel map is a table at `pixel` grain and a stack is an
+   `image` object.
+
    The migrated writers add the container path beside the legacy one rather
    than replacing it; switching the default over is a separate, deliberate
    step once the whole set is across.
+
+   **Two defects the migration itself exposed, both fixed, both worth knowing
+   because the same shape will recur:**
+
+   * *Replacing was keyed on the run, not on the output.* `_find_run` matched
+     on (operation type, artifact kind, settings hash). One run routinely
+     writes several artifacts of one kind — an MLE fit writes one table per
+     detector, all `fit_result`, all one settings hash — so each `put_table`
+     found the previous one and overwrote it, and a three-detector analysis
+     ended with one table. Silent, because replacing is the *intended*
+     behaviour and nothing distinguishes it from the collision. The object's
+     name is now part of the key. **Any writer emitting more than one artifact
+     per run must give them distinct names.**
+   * *A relocated result corrupted the container.* Growing a result past its
+     reserve relocates it; the freed run is one `Void`, and the next element
+     written into that hole carved its front without re-heading the remainder,
+     leaving the old payload's tail undeclared. Every `put_table` writes tags
+     straight afterwards, so an ordinary re-run with a bigger result destroyed
+     the file — and only on the *next* open, which is why the existing
+     "the space a moved object left is reused" test passed either way: it never
+     reopened. Fixed in tttrlib's `allocate`/`allocate_aligned`
+     (`12a8e6ba`); the chisurf-side guard is
+     `test_replacing_a_result_leaves_the_container_readable`.
+
+   **Three read-side gaps closed, all the same shape — a writer with no
+   reader:** `get_store` (units live on the *column*, so `get_table`'s frame is
+   the one shape that cannot carry them), `column_units`/`column_item`, and
+   `get_blob`. When adding a writer, add its reader in the same change.
 
 2. **Capture the legacy baseline BEFORE touching each writer.** Once a writer is
    changed its output is unrecoverable and the migration cannot be reviewed by

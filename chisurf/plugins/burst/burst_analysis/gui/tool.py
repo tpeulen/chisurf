@@ -10,6 +10,7 @@ from typing import Any
 
 from qtpy import QtCore, QtGui, QtWidgets
 
+import chisurf
 from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.navigation import NavigationPanelTool
 from chisurf.gui.widgets.wizard.tttr_channeldefinition.setup_client import (
@@ -784,7 +785,10 @@ class BurstAnalysisTool(NavigationPanelTool):
         bur_folder = output_folder / "bi4_bur"
         bur_folder.mkdir(parents=True, exist_ok=True)
 
-        from chisurf.plugins.burst.burst_selection.api.io import write_bur
+        from chisurf.plugins.burst.burst_selection.api.io import (
+            write_bur,
+            write_container,
+        )
 
         for raw_path in raw_files:
             frame = frames_by_file.get(raw_path.resolve())
@@ -793,6 +797,20 @@ class BurstAnalysisTool(NavigationPanelTool):
             if frame is None:
                 continue
             write_bur(frame, bur_folder / f"{raw_path.stem}.bur")
+            # The same bursts, in the measurement's own file. The handoff
+            # folder is a bridge between two steps of one session and is
+            # rewritten each time; the container is where they keep living, and
+            # it goes through the shared writer rather than growing a third
+            # copy of the `bi4_bur` layout.
+            try:
+                write_container(
+                    raw_path, frame,
+                    parameters=self.workflow_context.to_payload(),
+                )
+            except Exception as exc:
+                chisurf.logging.warning(
+                    f"Could not write the container for {raw_path}: {exc}"
+                )
 
         payload = self.workflow_context.to_payload()
         payload["raw_files"] = [str(path) for path in raw_files]

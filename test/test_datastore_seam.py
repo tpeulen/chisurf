@@ -784,3 +784,34 @@ def test_writing_a_table_does_not_change_it():
     assert write_csv_table(None, store).splitlines()[1:] == ["1.0", "", "3.0"]
     assert not store["x"].has_mask()
     assert store["x"].valid(1)
+
+
+def test_a_constant_column_is_the_same_in_every_container():
+    """``df[name] = "x"`` is one of the few places a store and a frame differ
+    in a way that *raises*: a frame broadcasts the scalar, a store's
+    ``__setitem__`` wants an array and dies on a 0-d one. Call sites tagging a
+    burst table with its source file did exactly that, and the ones inside a
+    bare ``except`` simply stopped writing the column when the table became a
+    store — a silent loss, not a crash."""
+    from chisurf.core.datastore import row_count, set_constant
+
+    for table in (
+        pd.DataFrame({"a": [1, 2, 3]}),
+        store_from_arrays({"a": np.array([1, 2, 3])}),
+    ):
+        set_constant(table, "source", "m000.spc")
+        set_constant(table, "index", 7)
+        assert row_count(table) == 3
+        assert list(np.asarray(table["source"])) == ["m000.spc"] * 3
+        np.testing.assert_array_equal(numeric_column(table, "index"), [7, 7, 7])
+
+
+def test_a_constant_text_column_is_dictionary_encoded():
+    """One string plus N codes, not N strings — the shape that makes a store
+    worth having for exactly this kind of column."""
+    from chisurf.core.datastore import STRING_DTYPE, set_constant
+
+    store = set_constant(
+        store_from_arrays({"a": np.arange(1000)}), "source", "m000.spc"
+    )
+    assert store["source"].dtype == STRING_DTYPE

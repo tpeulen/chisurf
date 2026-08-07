@@ -902,6 +902,51 @@ class Measurement:
                 )
         return problems
 
+    def get_blob(self, ref: int | str) -> bytes:
+        """Read an opaque payload back into memory, verifying it.
+
+        The read half of :meth:`put_blob`. :meth:`extract` could already put one
+        on disk, which is the right thing for a multi-gigabyte photon stream and
+        the wrong thing for the small documents a container carries — a `.bid`
+        selection, a settings file, a rendered image — where a temporary file is
+        only a temporary file to clean up.
+
+        The checksum is checked here as it is in :meth:`extract`, because
+        "recoverable" without verification is only "probably recoverable".
+
+        Parameters
+        ----------
+        ref : int or str
+            Object UID or name.
+
+        Returns
+        -------
+        bytes
+
+        Raises
+        ------
+        PtoMfdbError
+            If there is no such object, the read fails, or the payload does not
+            match its recorded checksum.
+        """
+        import hashlib
+
+        uid = self._resolve(ref)
+        data = self._f.read(uid)
+        if data is None:
+            raise PtoMfdbError(f"could not read {ref}: {self._f.error()}")
+        data = bytes(data)
+
+        recorded = self.tag(uid, _CHECKSUM)
+        if recorded:
+            actual = hashlib.sha256(data).hexdigest()
+            if actual != recorded:
+                raise PtoMfdbError(
+                    f"{ref} does not match its recorded checksum "
+                    f"({recorded[:16]}… expected, {actual[:16]}… found)"
+                )
+        return data
+
     def extract(self, ref: int | str, destination: str | Path) -> Path:
         """Write one object back out as a file of its own, verifying it.
 

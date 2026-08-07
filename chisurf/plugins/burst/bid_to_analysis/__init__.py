@@ -21,7 +21,7 @@ import os
 import pathlib
 import time
 import json
-from chisurf.core.datastore import write_csv_table
+from chisurf.core.datastore import set_constant as _set_constant, write_csv_table
 import numpy as np
 import zipfile
 import pandas as pd
@@ -351,13 +351,16 @@ def _per_file_process(bid_path: pathlib.Path, output_dir: pathlib.Path, windows:
         include_interleaved_zeros=("bur" in output_types),
     )
 
-    # Tag bursts with BID origin information
-    try:
-        df["BID File"] = bid_path.name
-        df["BID Index"] = int(bid_index)
-    except Exception:
-        # Be tolerant if df is None or immutable
-        pass
+    # Tag bursts with BID origin information.
+    #
+    # Spelled out per row rather than assigned as a scalar: `df` is a store now,
+    # and a store's __setitem__ takes an array where a frame broadcast a scalar.
+    # The assignment used to sit inside a bare `except Exception: pass`, so
+    # after the migration it raised on the first line and both columns silently
+    # stopped being written -- a burst table that no longer said which BID file
+    # produced it, and nothing to notice by.
+    _set_constant(df, "BID File", bid_path.name)
+    _set_constant(df, "BID Index", int(bid_index))
 
     # BUR output
     bur_path = None
@@ -392,6 +395,12 @@ def _per_file_process(bid_path: pathlib.Path, output_dir: pathlib.Path, windows:
             max_macro_time_s = 0.0
         write_mti_summary(tttr_path, output_dir, max_macro_time_s, append=True)
 
+    if "pto" in output_types:
+        _write_container(
+            tttr_path, bid_path, df, bid_index,
+            interleaved=("bur" in output_types),
+        )
+
     # SL5 output
     selected = None
     if "sl5" in output_types:
@@ -402,11 +411,79 @@ def _per_file_process(bid_path: pathlib.Path, output_dir: pathlib.Path, windows:
     # For HDF5 collection
     if df is not None:
         df_copy = df.copy()
-        df_copy['Source File'] = str(tttr_path)
+        _set_constant(df_copy, 'Source File', str(tttr_path))
     else:
         df_copy = df
 
     return bur_path, tttr, detectors, windows, df_copy, selected
+
+
+def _write_container(
+    tttr_path: pathlib.Path,
+    bid_path: pathlib.Path,
+    df,
+    bid_index: int,
+    *,
+    interleaved: bool = False,
+) -> None:
+    """Write the imported bursts, and the `.bid` they were imported from.
+
+    A BID selection is not a burst search: the burst boundaries were decided by
+    another program and this reads them in. So the `.bid` goes into the
+    container as a blob, and the burst table is derived from it — the container
+    then holds everything needed to say where these bursts came from, which a
+    `bi4_bur/` folder beside an unmentioned `.bid` never did.
+
+    Parameters
+    ----------
+    tttr_path : pathlib.Path
+        The instrument file the bursts index into.
+    bid_path : pathlib.Path
+        The burst-ID file that defined them.
+    df : tttrlib.DataStore or None
+        The burst table.
+    bid_index : int
+        Which selection within the BID file this is.
+    interleaved : bool
+        Whether *df* still carries the ``.bur`` padding rows.
+
+        Stated rather than detected. :func:`deinterleave_bursts` recognises the
+        layout by finding zeros on the even rows, and the BID columns tagged
+        onto this table are constant over *every* row — padding included — so
+        the padding is not all-zero and the heuristic correctly concludes the
+        table is not padded. The caller knows, because it asked for the padding
+        in the first place.
+    """
+    from chisurf.core.datastore import row_count, take_rows
+    from chisurf.core.fio.fluorescence.burst_container import (
+        open_measurement,
+        units_for,
+    )
+
+    if df is None or not row_count(df):
+        return
+    table = take_rows(df, np.arange(1, row_count(df), 2)) if interleaved else df
+    try:
+        with open_measurement(tttr_path) as m:
+            source = m.put_blob(
+                bid_path.name,
+                bid_path.read_bytes(),
+                artifact_kind="burst_selection",
+                data_format="bin",
+            )
+            m.put_table(
+                "bursts", table,
+                artifact_kind="burst_table",
+                operation_type="import",
+                row_grain="burst",
+                parameters={"bid_file": bid_path.name, "bid_index": int(bid_index)},
+                derived_from=source,
+                units=units_for(table),
+            )
+    except Exception as exc:
+        logging.warning(
+            f"Could not write the container for {tttr_path}: {exc}"
+        )
 
 
 def convert_bid_file(
