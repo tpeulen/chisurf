@@ -25,11 +25,13 @@ from . import (
     quiver_section,  # noqa: F401  (registers the "quiver" section)
     rate_matrix_section,  # noqa: F401  (registers the "rate_matrix" section)
     level_histogram_section,  # noqa: F401  (registers "level_histogram")
+    node_graph_section,  # noqa: F401  (registers the "node_graph" section)
     region_list_section,  # noqa: F401  (registers the "region_list" section)
     scalar_table_section,  # noqa: F401  (registers the "scalar_table" section)
     setup_selector_section,  # noqa: F401  (registers the "setup_selector" section)
     state_scheme_section,  # noqa: F401  (registers the "state_scheme" section)
     state_table_section,  # noqa: F401  (registers the "state_table" section)
+    store_table_section,  # noqa: F401  (registers the "store_table" section)
     waterfall_section,  # noqa: F401  (registers the "waterfall" section)
 )
 from .registry import (

@@ -356,6 +356,58 @@ def run_macro(
         sys.path = original_sys_path
 
 
+def _show_manifest_gui(main_window, plugin_dir) -> bool:
+    """Open a plugin through its manifest's ``entrypoints.gui``, if it has one.
+
+    The manifest is the declared way a plugin says what its window *is*, and the
+    launcher used to ignore it entirely: it executed ``wizard.py`` or the
+    plugin's ``__init__.py`` as a macro, which is how the older plugins open
+    themselves. A plugin that ships a manifest and a widget class -- the current
+    standard -- has an ``__init__.py`` that only imports and documents, so
+    executing it did exactly nothing and the menu entry was dead. Silently: the
+    whole launcher is wrapped in ``except``, so there was not even a log line.
+
+    Returns
+    -------
+    bool
+        Whether the plugin was opened here. ``False`` means "no manifest GUI
+        entry point", and the legacy macro path takes over.
+    """
+    from chisurf.core.plugin.manifest import load_manifest
+
+    manifest = load_manifest(pathlib.Path(plugin_dir) / "manifest.json")
+    entry = getattr(getattr(manifest, "entrypoints", None), "gui", None) if manifest else None
+    if not entry:
+        return False
+
+    module_path, _, attr = entry.partition(":")
+    try:
+        module = importlib.import_module(module_path)
+        factory = getattr(module, attr) if attr else module
+        widget = factory()
+    except Exception as exc:
+        cs.logging.error(f"Could not open the GUI entry point {entry!r}: {exc}")
+        return False
+
+    try:
+        from chisurf.core.plugin.registry import apply_manifest_statefulness
+
+        apply_manifest_statefulness(widget, manifest)
+    except Exception as exc:
+        cs.logging.warning(f"Statefulness for {manifest.id} could not be applied: {exc}")
+
+    # Held on the main window, or Qt collects the window the moment this returns
+    # -- the same reason the macro path keeps a per-plugin globals dict.
+    if not hasattr(main_window, "_plugin_windows"):
+        main_window._plugin_windows = {}
+    main_window._plugin_windows[str(plugin_dir)] = widget
+
+    widget.show()
+    widget.raise_()
+    widget.activateWindow()
+    return True
+
+
 def run_plugin_from_dir(main_window, plugin_dir_to_use):
     """Run a plugin given its directory using toolbar/menu logic."""
     try:
@@ -372,6 +424,11 @@ def run_plugin_from_dir(main_window, plugin_dir_to_use):
         if context is None:
             context = {"__name__": "plugin"}
             main_window._plugin_contexts[plugin_key] = context
+
+        # The manifest first: it is the declared entry point, and a plugin that
+        # has one does not open itself by being imported.
+        if _show_manifest_gui(main_window, plugin_dir_to_use):
+            return
 
         # Check if wizard.py exists
         if wizard_path.exists():

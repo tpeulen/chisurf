@@ -491,6 +491,11 @@ class TableSection(Section):
     activated_call: str = ""
     #: Optional model attribute updated with the selected row dict.
     selected_attr: str = ""
+    #: Optional model method called with the row dict whenever the selection
+    #: changes (``{}`` when it is cleared). A master list driving a detail panel
+    #: is the commonest table idiom there is, and ``selected_attr`` covers it only
+    #: for a model willing to expose a property setter that reacts.
+    selected_call: str = ""
     #: Minimum table height in pixels.
     height: int = 0
     #: Let the table fill the spare vertical space of its panel/dock instead of
@@ -534,6 +539,13 @@ class PlotSection(Section):
     source: str = ""
     x_label: str = ""
     y_label: str = ""
+    #: Optional model method returning ``{"x_label", "y_label", "log_x", "log_y"}``
+    #: (any subset), re-read on every refresh. For a plot whose axes depend on the
+    #: data rather than on the spec: a browser showing an FCS lag axis in
+    #: milliseconds on a log scale, then a decay axis in nanoseconds on a linear
+    #: one, cannot state either in JSON, and an axis labelled ``x`` in both is how
+    #: the two get confused.
+    axes_source: str = ""
     #: Maximum plot height in pixels (0 = unconstrained).
     height: int = 0
     log_x: bool = False

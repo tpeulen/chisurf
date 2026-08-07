@@ -77,20 +77,51 @@ def embed_mainwindow(mw: QtWidgets.QWidget) -> QtWidgets.QWidget:
     button_row = QtWidgets.QHBoxLayout()
     button_row.setContentsMargins(6, 4, 6, 0)
     n_buttons = 0
+    has_spacer = False
+    adopted: list[QtWidgets.QWidget] = []
     for act in actions:
-        if act is None or act.isSeparator() or not act.text().strip():
+        if act is None or act.isSeparator():
             continue
         if id(act) in seen:
             continue
         seen.add(id(act))
+
+        # A toolbar entry added as a *widget* carries no action text, so
+        # filtering on text alone dropped it. That is how every aggregated tool
+        # lost its ``?`` and its **Guide**: both are added with
+        # ``toolbar.addWidget`` (along with the expanding spacer that
+        # right-aligns them), so a tool documented and toured perfectly well on
+        # its own arrived inside a hub with no way to reach either.
+        widget = act.defaultWidget() if isinstance(act, QtWidgets.QWidgetAction) else None
+        if widget is not None:
+            button_row.addWidget(widget)
+            adopted.append(widget)
+            if widget.sizePolicy().horizontalPolicy() == QtWidgets.QSizePolicy.Expanding:
+                has_spacer = True
+            else:
+                n_buttons += 1
+            continue
+
+        if not act.text().strip():
+            continue
         btn = QtWidgets.QToolButton()
         btn.setDefaultAction(act)
         btn.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
         button_row.addWidget(btn)
         n_buttons += 1
     if n_buttons:
-        button_row.addStretch(1)
+        # The tool's own spacer already pushes the trailing widgets right; a
+        # second stretch would fight it and re-centre the row.
+        if not has_spacer:
+            button_row.addStretch(1)
         layout.addLayout(button_row)
+        # Only now is the row installed on a widget and the adopted widgets
+        # actually reparented -- and the reparent is what carries Qt's hidden
+        # state over from the toolbar. Showing them before this point sets the
+        # flag on a widget that is then re-hidden, which looked exactly like the
+        # bug it was meant to fix: the buttons take up space and draw nothing.
+        for widget in adopted:
+            widget.setVisible(True)
 
     central = mw.centralWidget()
     if central is not None:

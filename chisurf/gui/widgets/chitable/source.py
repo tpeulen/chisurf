@@ -638,15 +638,59 @@ class DataStoreSource(TableSource):
             labels = tuple(str(label) for label in column.dictionary())
             if editable and 0 < len(labels) <= MAX_CHOICE_LABELS:
                 delegate, choices = "choice", labels
+        label, tooltip = self._label_for(column, name)
         return ColumnSpec(
             key=name,
-            label=name,
+            label=label,
             kind=kind,
             editable=editable,
             colorize=colorize,
             delegate=delegate,
             choices=choices,
+            tooltip=tooltip,
         )
+
+    @staticmethod
+    def _label_for(column: Any, name: str) -> tuple[str, str]:
+        """Return the header text and tooltip for one column.
+
+        A store column can state its unit and its prose (a container writes both
+        -- see :meth:`chisurf.core.fio.pto.Measurement.column_units`), and the
+        table used to show neither: every header was the bare column name, so a
+        duration in milliseconds and a lifetime in nanoseconds looked alike and
+        the convention in the *name* was the only thing left to read them by.
+        That is precisely what recording the unit was meant to end.
+
+        Parameters
+        ----------
+        column : tttrlib.Column
+        name : str
+            The column's name, already read.
+
+        Returns
+        -------
+        tuple of str
+            ``(header, tooltip)``. The header gains ``" [symbol]"`` when the
+            column states a unit that has one, and is the bare name otherwise --
+            a unit the dictionary has no symbol for is not worth an empty pair of
+            brackets.
+        """
+        try:
+            code = str(column.attribute("units") or "")
+            description = str(column.attribute("description") or "")
+        except Exception:  # a column type without attributes
+            return name, ""
+        label = name
+        if code:
+            from chisurf.core.units import symbol
+
+            unit = symbol(code)
+            if unit and f"[{unit}]" not in name:
+                label = f"{name} [{unit}]"
+        tooltip = description
+        if code and code not in tooltip:
+            tooltip = f"{tooltip}\n({code})".strip() if tooltip else f"in {code}"
+        return label, tooltip
 
     def _column(self, col: int) -> Any:
         """Return a freshly fetched column proxy.

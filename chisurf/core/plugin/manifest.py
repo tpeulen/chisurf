@@ -77,6 +77,14 @@ class PluginManifest:
     rpc_methods: list[RPCMethodSpec] = field(default_factory=list)
     events: list[dict[str, Any]] = field(default_factory=list)
 
+    #: ``_mmfdb_operation.operation_type`` terms this tool is the analysis step for.
+    #: A result in a ``.pto`` records the operation that produced it but not the
+    #: program that ran it -- deliberately, because the container is tool-agnostic.
+    #: This is the reverse index: it lets a reader of a container get back to the
+    #: tool that would recompute the step, which is the difference between reading
+    #: a result and continuing the analysis.
+    operation_types: list[str] = field(default_factory=list)
+
     dependencies: dict[str, str] = field(default_factory=dict)
 
     #: Mark a tool as experimental / not yet validated. Hosts (e.g. the meta-tool shell)
@@ -178,6 +186,7 @@ class PluginManifest:
             entrypoints=entrypoints,
             rpc_methods=methods,
             events=data.get("events", []),
+            operation_types=data.get("operation_types", []),
             dependencies=data.get("dependencies", {}),
             experimental=data.get("experimental", False),
             experimental_message=tr(data.get("experimental_message", "")),
@@ -233,6 +242,7 @@ class PluginManifest:
                 for m in self.rpc_methods
             ],
             "events": list(self.events),
+            "operation_types": list(self.operation_types),
             "dependencies": dict(self.dependencies),
             "experimental": self.experimental,
             "experimental_message": self.experimental_message,
@@ -366,6 +376,11 @@ _MANIFEST_SCHEMA = {
                     "description": {"type": "string"},
                 },
             },
+        },
+        "operation_types": {
+            "type": "array",
+            "items": {"type": "string", "minLength": 1},
+            "uniqueItems": True,
         },
         "dependencies": {
             "type": "object",

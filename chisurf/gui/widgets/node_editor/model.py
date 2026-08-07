@@ -16,7 +16,13 @@ class PortSpec:
     # ``fixed`` marks the port as fixed (non-variable), and ``min_value`` /
     # ``max_value`` allow bounded ranges for numeric ports. All fields are
     # optional so existing graphs that only specify names continue to work.
-    port_type: str = "spectral"
+    #
+    # Empty means **untyped**, and the port then draws no type label. The
+    # default used to be the literal ``"spectral"`` -- a name from one graph's
+    # domain -- so every port of every graph that stated no type was drawn with
+    # the word "spectral" beside it. Compatibility is unchanged: an untyped port
+    # matches only another untyped one, exactly as two "spectral" ports did.
+    port_type: str = ""
     fixed: bool = False
     min_value: float | None = None
     max_value: float | None = None

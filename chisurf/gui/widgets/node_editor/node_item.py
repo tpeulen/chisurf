@@ -38,12 +38,34 @@ class NodeGraphicsItem(QtWidgets.QGraphicsPathItem):
         self.proxy: Optional[QtWidgets.QGraphicsProxyWidget] = None
         self.port_items: List[NodePortGraphicsItem] = []
 
-        # Geometry constants
-        self.width = width
+        # Geometry constants. A graph may state a node's geometry in its config
+        # so that a *whole authored graph* can be compact: a node carrying no
+        # content widget (a provenance step, a pipeline stage) still gets a
+        # 60-pixel empty body by default, and a dozen of those turn a graph that
+        # would fit into one that has to be scrolled.
+        config = model.config if isinstance(getattr(model, "config", None), dict) else {}
+        self.width = float(config.get("width", width) or width)
         self.title_height = title_height
-        self.min_body_height = min_body_height
+        self.min_body_height = float(
+            config.get("min_body_height", min_body_height) or min_body_height
+        )
         self.radius = radius
         self.collapsed = collapsed
+
+        # A node may be drawn as a **circle with its label beneath it** rather
+        # than as a titled box. A box is right for a node that *holds* something
+        # -- an editor, a value, a set of typed ports. It is the wrong shape for
+        # a node that only names a thing and its connections, which is what a
+        # network of derivations, parameters or states is: a page of boxes reads
+        # as a form, where a page of circles reads as a graph, and the graph is
+        # the point.
+        self.shape_kind = str(config.get("shape", "box") or "box")
+        self.diameter = float(config.get("diameter", 44.0) or 44.0)
+        if self.is_circle:
+            # There is no title *bar* on a circle -- the label sits outside it --
+            # so every geometry helper that offsets by the title height must see
+            # zero, or the ports and the body land below the shape.
+            self.title_height = 0.0
 
         # Track width before collapse so we can restore it when expanding.
         self._width_before_collapse: Optional[float] = None
@@ -88,7 +110,38 @@ class NodeGraphicsItem(QtWidgets.QGraphicsPathItem):
         self.update()
 
     # ----- Geometry and painting -----------------------------------------
+    @property
+    def is_circle(self) -> bool:
+        """Whether this node is drawn as a circle with an external label."""
+        return self.shape_kind == "circle"
+
+    #: Space reserved beneath a circle for its label, in scene units.
+    LABEL_BAND = 20.0
+
+    #: Label width as a multiple of the diameter. A graph's column pitch is what
+    #: really bounds this: wider elides less and collides sooner, so a layout
+    #: setting a tighter pitch should shrink the circle rather than this.
+    LABEL_WIDTH_FACTOR = 3.8
+
+    def boundingRect(self) -> QtCore.QRectF:  # noqa: N802 (Qt override)
+        """Include the external label, which is painted outside the path.
+
+        ``QGraphicsPathItem`` bounds the *path*, and a circle's label is drawn
+        below it — so without this the text is clipped at the circle's edge and
+        the scene's ``fit_all`` cuts the bottom row's labels off entirely.
+        """
+        rect = super().boundingRect()
+        if not self.is_circle:
+            return rect
+        pad = self.diameter  # generous: a long name is wider than its circle
+        return rect.adjusted(-pad, 0.0, pad, self.LABEL_BAND + 4.0)
+
     def _build_path(self):
+        if self.is_circle:
+            path = QtGui.QPainterPath()
+            path.addEllipse(QtCore.QRectF(0.0, 0.0, self.diameter, self.diameter))
+            self.setPath(path)
+            return
         if self.collapsed:
             body_height = 18
         else:
@@ -150,6 +203,16 @@ class NodeGraphicsItem(QtWidgets.QGraphicsPathItem):
 
     def _layout_ports(self):
         if not self.port_items:
+            return
+        if self.is_circle:
+            # One anchor per side, at the circle's waist: edges then leave and
+            # arrive on the line joining two centres, which is what makes a
+            # network read as a network rather than as boxes joined at corners.
+            middle = self.diameter / 2.0
+            for i, _ in enumerate(self.inputs):
+                self.port_items[i].setPos(0.0, middle)
+            for j, _ in enumerate(self.outputs):
+                self.port_items[len(self.inputs) + j].setPos(self.diameter, middle)
             return
         if self.collapsed:
             y_start_offset = float(theme_metric("node_port_y_start_collapsed", 4.0))
@@ -217,6 +280,10 @@ class NodeGraphicsItem(QtWidgets.QGraphicsPathItem):
         self.setZValue(max_z + 1.0)
 
     def set_collapsed(self, collapsed: bool):
+        # A circle carries no body to fold away, so collapsing one would only
+        # hide its ports and leave the edges hanging off nothing.
+        if self.is_circle:
+            return
         if self.collapsed == collapsed:
             return
 
@@ -256,6 +323,13 @@ class NodeGraphicsItem(QtWidgets.QGraphicsPathItem):
         self.set_collapsed(not self.collapsed)
 
     def hoverMoveEvent(self, event: QtWidgets.QGraphicsSceneHoverEvent):
+        # A circle has no edges to grab: resizing it would only make a
+        # bigger circle, and the cursor changing over one is a promise
+        # nothing keeps.
+        if self.is_circle:
+            self.unsetCursor()
+            super().hoverMoveEvent(event)
+            return
         rect = self.path().boundingRect()
         pos = event.pos()
         at_right = rect.width() - self._resize_margin <= pos.x() <= rect.width() + self._resize_margin
@@ -283,8 +357,17 @@ class NodeGraphicsItem(QtWidgets.QGraphicsPathItem):
     def mousePressEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent):
         rect = self.path().boundingRect()
         pos = event.pos()
-        at_right = rect.width() - self._resize_margin <= pos.x() <= rect.width() + self._resize_margin
-        at_bottom = rect.height() - self._resize_margin <= pos.y() <= rect.height() + self._resize_margin
+        if self.is_circle:
+            at_right = at_bottom = False
+        else:
+            at_right = (
+                rect.width() - self._resize_margin <= pos.x() <= rect.width() + self._resize_margin
+            )
+            at_bottom = (
+                rect.height() - self._resize_margin
+                <= pos.y()
+                <= rect.height() + self._resize_margin
+            )
         if event.button() == QtCore.Qt.LeftButton:
             # On primary-button press, bring this node to the front so it
             # visually sits above others while being interacted with.
@@ -398,7 +481,69 @@ class NodeGraphicsItem(QtWidgets.QGraphicsPathItem):
                 return
         super().mouseReleaseEvent(event)
 
+    def _node_color(self, key: str, fallback) -> QtGui.QColor:
+        """Return a per-node colour override from the model config, or *fallback*."""
+        config = getattr(self.model, "config", None)
+        if isinstance(config, dict):
+            rgb = config.get(key)
+            if rgb is not None:
+                try:
+                    return QtGui.QColor(int(rgb[0]), int(rgb[1]), int(rgb[2]))
+                except Exception:
+                    pass
+        return fallback
+
+    def _paint_circle(self, painter: QtGui.QPainter) -> None:
+        """Draw the node as a filled circle with its name beneath it."""
+        rect = self.path().boundingRect()
+        painter.setRenderHint(QtGui.QPainter.Antialiasing)
+
+        base = self._node_color(
+            "title_color", theme_color("node_title_top", (70, 130, 175))
+        )
+        grad = QtGui.QRadialGradient(rect.center(), rect.width() / 2.0)
+        grad.setColorAt(0.0, base.lighter(125))
+        grad.setColorAt(1.0, base.darker(115))
+
+        border = (
+            theme_color("node_border_selected", (90, 180, 255))
+            if self.isSelected()
+            else base.darker(160)
+        )
+        pen = QtGui.QPen(border, 2.4 if self.isSelected() else 1.4)
+        pen.setCosmetic(True)
+        painter.setPen(pen)
+        painter.setBrush(grad)
+        painter.drawEllipse(rect)
+
+        label = str(self.title or "")
+        if not label:
+            return
+        font = painter.font()
+        font.setPointSizeF(max(6.0, font.pointSizeF() - 1.0))
+        painter.setFont(font)
+        painter.setPen(
+            QtGui.QPen(theme_color("node_title_text", (235, 235, 235)))
+        )
+        # Wide enough for a long name, and elided rather than wrapped: two lines
+        # under every circle turns the gaps between rows into text.
+        text_rect = QtCore.QRectF(
+            rect.center().x() - self.LABEL_WIDTH_FACTOR * self.diameter / 2.0,
+            rect.bottom() + 2.0,
+            self.LABEL_WIDTH_FACTOR * self.diameter,
+            self.LABEL_BAND,
+        )
+        metrics = QtGui.QFontMetricsF(font)
+        painter.drawText(
+            text_rect,
+            QtCore.Qt.AlignHCenter | QtCore.Qt.AlignTop,
+            metrics.elidedText(label, QtCore.Qt.ElideMiddle, int(text_rect.width())),
+        )
+
     def paint(self, painter: QtGui.QPainter, option, widget=None):
+        if self.is_circle:
+            self._paint_circle(painter)
+            return
         rect = self.path().boundingRect()
         title_rect = QtCore.QRectF(rect.x(), rect.y(), rect.width(), self.title_height)
         body_rect = QtCore.QRectF(

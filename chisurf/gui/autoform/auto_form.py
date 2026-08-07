@@ -487,8 +487,8 @@ class AutoForm(QtWidgets.QWidget):
             return getattr(widget, "_autoform_inner", widget)
         return None
 
-    def _build_section(self, section: vs.Section):
-        widget = self._build_section_widget(section)
+    def _build_section(self, section: vs.Section, *, caption: bool = True):
+        widget = self._build_section_widget(section, caption=caption)
         if widget is not None:
             # Recorded so :meth:`section_widget` can find a built section by the
             # name the view spec gave it, rather than by widget type.
@@ -497,7 +497,7 @@ class AutoForm(QtWidgets.QWidget):
             self._section_widgets.append((section, widget))
         return widget
 
-    def _build_section_widget(self, section: vs.Section):
+    def _build_section_widget(self, section: vs.Section, *, caption: bool = True):
         if isinstance(section, vs.PanelSection):
             return self._build_panel(section)
         if isinstance(section, vs.DynamicGroupSection):
@@ -549,7 +549,7 @@ class AutoForm(QtWidgets.QWidget):
         if isinstance(section, vs.ParameterGroupSection):
             return self._build_parameter_group(section)
         if isinstance(section, vs.CustomSection):
-            return self._build_custom(section)
+            return self._build_custom(section, caption=caption)
         logging.warning(f"AutoModelWidget: unknown section type {type(section).__name__}")
         return None
 
@@ -849,7 +849,9 @@ class AutoForm(QtWidgets.QWidget):
                     widget.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
                     widget.setWidget(inner)
                 else:
-                    widget = self._build_section(child)
+                    # The dock tab already carries the child's title; a section
+                    # that would draw its own caption must not repeat it.
+                    widget = self._build_section(child, caption=False)
             except Exception:
                 widget = None
             if widget is None:
@@ -1052,7 +1054,7 @@ class AutoForm(QtWidgets.QWidget):
 
         return CurveInputWidget(self.model, section)
 
-    def _build_custom(self, section: vs.CustomSection):
+    def _build_custom(self, section: vs.CustomSection, *, caption: bool = True):
         factory = get_section_factory(section.key)
         if factory is None:
             logging.warning(f"AutoModelWidget: no custom section registered for {section.key!r}")
@@ -1077,21 +1079,27 @@ class AutoForm(QtWidgets.QWidget):
         # unlabelled drop boxes and nothing said which took the IRF. The widget
         # supplies its own frame, so the caption is a plain label above it rather
         # than a second box around it.
-        if not section.title:
+        # ``caption=False`` is passed by a host that already shows the section's
+        # title -- a dock tab carries it on the tab itself, and rendering it a
+        # second time inside the panel put "Provenance" directly under the tab
+        # reading "Provenance".
+        if not section.title or not caption:
             return widget
         holder = QtWidgets.QWidget()
         layout = QtWidgets.QVBoxLayout(holder)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(2)
-        caption = QtWidgets.QLabel(_literal_title(section.title))
-        caption.setStyleSheet("font-weight: bold;")
+        caption_label = QtWidgets.QLabel(_literal_title(section.title))
+        caption_label.setStyleSheet("font-weight: bold;")
         # A label grows into spare vertical space like any other widget, and it
         # centres its text while doing so: next to a height-capped widget the
         # caption drifts into the middle of the panel, far from what it names.
-        caption.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
+        caption_label.setSizePolicy(
+            QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed
+        )
         if section.description:
-            caption.setToolTip(section.description)
-        layout.addWidget(caption)
+            caption_label.setToolTip(section.description)
+        layout.addWidget(caption_label)
         layout.addWidget(widget)
         # The hosting panel gives spare vertical space to expanding sections, and
         # that marker lives on the inner widget — carry it out to the wrapper,

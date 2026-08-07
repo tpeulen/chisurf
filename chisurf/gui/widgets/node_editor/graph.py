@@ -7,14 +7,15 @@ from typing import Any, Dict, List
 class PortDef:
     name: str
     is_output: bool
-    port_type: str = "spectral"
+    #: Empty means untyped; see :class:`~.model.PortSpec`.
+    port_type: str = ""
 
     @staticmethod
     def from_dict(d: dict) -> "PortDef":
         return PortDef(
             name=d["name"],
             is_output=d.get("is_output", False),
-            port_type=d.get("type", d.get("port_type", "spectral")),
+            port_type=d.get("type", d.get("port_type", "")),
         )
 
     def to_dict(self) -> dict:
@@ -24,7 +25,7 @@ class PortDef:
         }
 
     def to_entry(self) -> Any:
-        if self.port_type == "spectral" or not self.port_type:
+        if not self.port_type:
             return self.name
         return {
             "name": self.name,

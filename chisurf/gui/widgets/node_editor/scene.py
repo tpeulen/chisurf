@@ -237,8 +237,8 @@ class NodeScene(QtWidgets.QGraphicsScene):
         if src_port.spec.is_output == tgt_port.spec.is_output:
             return False
 
-        src_type = getattr(src_port.spec, "port_type", "spectral") or "spectral"
-        tgt_type = getattr(tgt_port.spec, "port_type", "spectral") or "spectral"
+        src_type = getattr(src_port.spec, "port_type", "") or ""
+        tgt_type = getattr(tgt_port.spec, "port_type", "") or ""
 
         # 'any' type connects to anything
         if src_type == "any" or tgt_type == "any":

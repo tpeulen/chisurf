@@ -986,11 +986,18 @@ class TableWidget(QtWidgets.QTableWidget):
             widget = widget.parent()
 
     def _on_selection_changed(self) -> None:
-        attr = getattr(self._section, "selected_attr", "")
-        if not attr:
-            return
         row = self.currentRow()
-        setattr(self._model, attr, self._row_dict(row) if row >= 0 else {})
+        payload = self._row_dict(row) if row >= 0 else {}
+        attr = getattr(self._section, "selected_attr", "")
+        if attr:
+            setattr(self._model, attr, payload)
+        call = getattr(self._section, "selected_call", "")
+        if call:
+            fn = getattr(self._model, call, None)
+            if callable(fn):
+                fn(payload)
+            else:
+                logging.warning(f"TableWidget: model has no callable {call!r}")
 
     def _activate_current_row(self) -> None:
         call = getattr(self._section, "activated_call", "")
@@ -1666,7 +1673,42 @@ class PlotWidget(QtWidgets.QWidget):
                     # Markers only: a transparent pen leaves the points unjoined.
                     kw["pen"] = (0, 0, 0, 0)
             self.plot.line(s.get("x", []), s.get("y", []), **kw)
+        self._apply_axes()
         self._apply_ranges()
+
+    def _apply_axes(self) -> None:
+        """Apply the data-dependent axis labels and scales, when declared.
+
+        A plot whose source can hand back different *quantities* — one artifact a
+        correlation in milliseconds, the next a decay in nanoseconds — cannot
+        state its axes in the spec, and labelling both "x" is exactly how a lag
+        axis gets read as a time axis.
+        """
+        name = getattr(self._section, "axes_source", "")
+        if not name:
+            return
+        source = getattr(self._model, name, None)
+        if source is None:
+            logging.warning(f"PlotWidget: axes_source {name!r} is not on the model")
+            return
+        try:
+            axes = (source() if callable(source) else source) or {}
+        except Exception as exc:  # pragma: no cover - source is model-defined
+            logging.warning(f"PlotWidget: axes_source {name!r} failed: {exc}")
+            return
+        if not isinstance(axes, dict):
+            return
+        if "x_label" in axes or "y_label" in axes:
+            self.plot.set_labels(
+                bottom=axes.get("x_label") or self._section.x_label or None,
+                left=axes.get("y_label") or self._section.y_label or None,
+            )
+        if "log_x" in axes or "log_y" in axes:
+            log_x = bool(axes.get("log_x", getattr(self._section, "log_x", False)))
+            log_y = bool(axes.get("log_y", self._section.log_y))
+            self.plot.set_log(x=log_x, y=log_y)
+            self._log_axes = tuple((("bottom",) if log_x else ()) + (("left",) if log_y else ()))
+            self._thin_log_ticks()
 
 class LCurveWidget(QtWidgets.QWidget):
     """Reusable L-curve view (residual vs solution norm, log-log, corner marked).
