@@ -9,9 +9,18 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
-from chisurf.core.datastore import write_csv_table
 import numpy as np
-import pandas as pd
+
+from chisurf.core.datastore import (
+    column_names,
+    concat_stores,
+    new_store,
+    numeric_column,
+    row_count,
+    store_from_rows,
+    take_columns,
+    write_csv_table,
+)
 import pyqtgraph as pg
 from qtpy import QtCore, QtGui, QtWidgets
 
@@ -154,13 +163,14 @@ def default_analysis_settings() -> AnalysisSettings:
     )
 
 
-def histogram_data_from_frame(frame: pd.DataFrame, feature: str) -> np.ndarray:
+def histogram_data_from_frame(frame, feature: str) -> np.ndarray:
     """Return numeric histogram data excluding Margarita zero separator rows."""
     if feature == PROXIMITY_RATIO_COLUMN:
         data = proximity_ratio_from_frame(burst_rows_for_display(frame))
         if data is not None:
-            return data.dropna().to_numpy(dtype=float)
-    data = pd.to_numeric(burst_rows_for_display(frame)[feature], errors="coerce").dropna()
+            return data[np.isfinite(data)]
+    data = numeric_column(burst_rows_for_display(frame), feature)
+    data = data[np.isfinite(data)]
     return data.to_numpy(dtype=float)
 
 
@@ -361,9 +371,9 @@ class BurstSelectionTool(ChisurfDockTool):
         )
         self._file_paths: list[Path] = []
         self._last_result: dict[str, Any] | None = None
-        self._last_bur_frames: list[pd.DataFrame] = []
-        self._last_frames_by_file: dict[Path, pd.DataFrame] = {}
-        self._last_frame: pd.DataFrame | None = None
+        self._last_bur_frames: list = []
+        self._last_frames_by_file: dict = {}
+        self._last_frame = None
         self._last_settings: AnalysisSettings | None = None
         self._last_tttr: Any | None = None
         self._last_selected: np.ndarray | None = None
@@ -1508,16 +1518,16 @@ class BurstSelectionTool(ChisurfDockTool):
             legacy_parameters.setdefault("decay_coarse", self.wizard.decay_coarse)
         return legacy_parameters
 
-    def _frame_from_result(self, path: Path, dataframes: dict[str, Any]) -> pd.DataFrame:
+    def _frame_from_result(self, path: Path, dataframes: dict[str, Any]) :
         """Return the burst table for ``path`` from an analysis result."""
         keys = (str(path), str(path.resolve()), str(path.name))
         for key in keys:
             raw_frames = dataframes.get(key)
             if raw_frames:
-                return pd.DataFrame(raw_frames)
-        return pd.DataFrame()
+                return store_from_rows(raw_frames)
+        return new_store()
 
-    def _frame_for_path(self, path: Path) -> pd.DataFrame | None:
+    def _frame_for_path(self, path: Path) :
         """Return a cached burst table for ``path`` when available."""
         resolved = path.resolve()
         if resolved in self._last_frames_by_file:
@@ -1722,26 +1732,34 @@ class BurstSelectionTool(ChisurfDockTool):
 
     def _display_frame_set(
         self,
-        frames: list[pd.DataFrame],
+        frames: list,
         settings: AnalysisSettings,
         file_indices: list[int] | None = None,
     ) -> bool:
         """Display stacked burst tables and histogram data for selected files."""
         if not frames:
             return False
-        indexed_frames: list[pd.DataFrame] = []
+        indexed_frames = []
         for index, frame in enumerate(frames):
-            frame_copy = frame.copy()
-            frame_copy["File Idx"] = file_indices[index] if file_indices is not None and index < len(file_indices) else index
-            indexed_frames.append(frame_copy)
-        combined = pd.concat(indexed_frames, ignore_index=True)
-        if "File Idx" not in combined.columns:
-            combined.insert(0, "File Idx", 0)
-        else:
-            file_idx = combined.pop("File Idx")
-            combined.insert(0, "File Idx", file_idx)
+            tagged = frame.copy()
+            which = (
+                file_indices[index]
+                if file_indices is not None and index < len(file_indices)
+                else index
+            )
+            tagged["File Idx"] = np.full(row_count(tagged), which, dtype=np.int64)
+            indexed_frames.append(tagged)
+        combined = concat_stores(indexed_frames)
         ui_frame = make_ui_dataframe(combined)
-        ui_frame = ui_frame[[column for column in UI_COLUMNS if column in ui_frame.columns] + [column for column in ui_frame.columns if column not in UI_COLUMNS]]
+        # "File Idx" first, then the UI columns in their declared order, then
+        # whatever else the table carries.
+        present = column_names(ui_frame)
+        order = (
+            [c for c in ("File Idx",) if c in present]
+            + [c for c in UI_COLUMNS if c in present and c != "File Idx"]
+            + [c for c in present if c not in UI_COLUMNS and c != "File Idx"]
+        )
+        ui_frame = take_columns(ui_frame, order)
         self._last_frame = ui_frame
         self._last_settings = settings
         self._last_bur_frames = frames
@@ -1757,7 +1775,7 @@ class BurstSelectionTool(ChisurfDockTool):
             return False
         return self._display_frame_set([frame], settings, [self._file_index_for_path(path)])
 
-    def _analyze_file_frame(self, path: Path, settings: AnalysisSettings) -> tuple[pd.DataFrame, dict[str, Any]]:
+    def _analyze_file_frame(self, path: Path, settings: AnalysisSettings) -> tuple:
         """Analyze one selected file and cache its burst table."""
         settings_dict = asdict(settings) if settings else {}
         windows = getattr(self.wizard, "windows", None)
@@ -1791,7 +1809,7 @@ class BurstSelectionTool(ChisurfDockTool):
 
     def _analyze_selected_files(self, paths: list[Path], settings: AnalysisSettings) -> None:
         """Analyze and stack burst tables for multiple selected files."""
-        frames: list[pd.DataFrame] = []
+        frames: list = []
         metadata: dict[str, Any] = {"n_files": 0, "n_bursts": 0, "n_photons": 0, "n_selected": 0}
         for path in paths:
             frame, file_metadata = self._analyze_file_frame(path, settings)
@@ -1807,7 +1825,7 @@ class BurstSelectionTool(ChisurfDockTool):
 
     def _update_selected_files(self, paths: list[Path], settings: AnalysisSettings) -> None:
         """Update cached results or analyze selected files, then load diagnostics."""
-        frames: list[pd.DataFrame] = []
+        frames: list = []
         missing: list[Path] = []
         for path in paths:
             frame = self._frame_for_path(path)
@@ -1988,8 +2006,8 @@ class BurstSelectionTool(ChisurfDockTool):
     def _analysis_finished(self, result: dict, settings: AnalysisSettings) -> None:
         """Back on the GUI thread with the batch result: build frames and plots."""
         self._last_service_result = result
-        frames: list[pd.DataFrame] = []
-        frames_by_file: dict[Path, pd.DataFrame] = {}
+        frames: list = []
+        frames_by_file: dict = {}
         metadata: dict[str, Any] = {
             "n_files": len(self._file_paths), "n_bursts": 0,
             "n_photons": 0, "n_selected": 0,
@@ -2006,7 +2024,7 @@ class BurstSelectionTool(ChisurfDockTool):
         metadata["n_files"] = len(frames)
 
         if frames:
-            combined = pd.concat(frames, ignore_index=True)
+            combined = concat_stores(frames)
             self._last_frames_by_file = frames_by_file
             self._last_frame = combined
             self._last_settings = settings
@@ -2093,7 +2111,7 @@ class BurstSelectionTool(ChisurfDockTool):
         )
         if not path:
             return
-        combined = pd.concat(self._last_bur_frames, ignore_index=True)
+        combined = concat_stores(self._last_bur_frames)
         self._client.save_bur(combined, Path(path))
         self.summary.setPlainText(f"Saved {path}")
 
@@ -2125,7 +2143,7 @@ class BurstSelectionTool(ChisurfDockTool):
             self.gmm_summary.clear()
             return
         feature = self.feature_combo.currentText()
-        if feature not in self._last_frame.columns:
+        if feature not in column_names(self._last_frame):
             self.histogram_plot.clear()
             return
         data = histogram_data_from_frame(self._last_frame, feature)
@@ -2521,7 +2539,7 @@ class BurstSelectionTool(ChisurfDockTool):
         if self._last_frame is None:
             return
         feature = self.feature_combo.currentText()
-        if feature not in self._last_frame.columns:
+        if feature not in column_names(self._last_frame):
             return
         data = histogram_data_from_frame(self._last_frame, feature)
         if data.size == 0:
@@ -2626,7 +2644,7 @@ class BurstSelectionTool(ChisurfDockTool):
         if self._last_frame is not None:
             self.update_histogram()
 
-    def _populate_feature_combo(self, frame: pd.DataFrame) -> None:
+    def _populate_feature_combo(self, frame) -> None:
         """Populate the feature combo from DataFrame columns."""
         current = self.feature_combo.currentText()
         columns = list(frame.columns)
@@ -2758,7 +2776,7 @@ class BurstSelectionTool(ChisurfDockTool):
             self.summary.append(f"Diagnostic plots unavailable for {first_path}: {exc}")
             self._status_bar.showMessage(f"Error loading {first_path.name}: {exc}")
 
-    def _fill_table(self, frame: pd.DataFrame) -> None:
+    def _fill_table(self, frame) -> None:
         """Fill the table widget from a GUI DataFrame."""
         self.table.setRowCount(len(frame))
         for row_index, row in enumerate(frame.to_numpy()):

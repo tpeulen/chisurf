@@ -9,7 +9,16 @@ from pathlib import Path
 from typing import Any, Optional
 
 import numpy as np
-import pandas as pd
+
+from chisurf.core.datastore import (
+    column_names,
+    concat_stores,
+    numeric_column,
+    read_csv_table,
+    row_count,
+    store_from_arrays,
+    take_where,
+)
 
 from ..api.models import (
     AnalysisSettings,
@@ -41,22 +50,30 @@ UI_COLUMNS = [
 PROXIMITY_RATIO_COLUMN = "Proximity Ratio"
 
 
-def _numeric_series(frame: pd.DataFrame, column: str) -> pd.Series | None:
-    """Return a numeric series for ``column`` when present."""
-    if column not in frame.columns:
+def _numeric_series(frame, column: str):
+    """Return ``column`` as floats when present, else ``None``."""
+    if column not in column_names(frame):
         return None
-    return pd.to_numeric(frame[column], errors="coerce")
+    return numeric_column(frame, column)
 
 
-def _ratio_series(numerator: pd.Series, denominator: pd.Series) -> pd.Series:
-    """Return a ratio series with invalid denominators masked."""
-    return (numerator / denominator.where(denominator > 0)).replace([np.inf, -np.inf], np.nan)
+def _ratio_series(numerator, denominator):
+    """Return ``numerator / denominator``, ``NaN`` where the denominator is
+    not positive — a burst with no signal has no ratio, and 0/0 must not
+    become 0."""
+    with np.errstate(divide="ignore", invalid="ignore"):
+        out = np.divide(
+            numerator, denominator,
+            out=np.full(len(numerator), np.nan, dtype=float),
+            where=denominator > 0,
+        )
+    return out
 
 
-def proximity_ratio_from_frame(frame: pd.DataFrame) -> pd.Series | None:
-    """Compute or return a proximity-ratio series when source columns exist."""
-    if PROXIMITY_RATIO_COLUMN in frame.columns:
-        return pd.to_numeric(frame[PROXIMITY_RATIO_COLUMN], errors="coerce")
+def proximity_ratio_from_frame(frame):
+    """Compute or return the proximity ratio when source columns exist."""
+    if PROXIMITY_RATIO_COLUMN in column_names(frame):
+        return numeric_column(frame, PROXIMITY_RATIO_COLUMN)
     red = _numeric_series(frame, "Number of Photons (red)")
     green = _numeric_series(frame, "Number of Photons (green)")
     if red is not None and green is not None:
@@ -407,12 +424,38 @@ def bur_file_path(file_path: str | Path, target_path: str) -> Path:
     return file_path.parent / target_path / "bi4_bur" / f"{file_path.stem}.bur"
 
 
-def load_burst_dataframe(file_path: str | Path, target_path: str) -> pd.DataFrame | None:
+def _read_bur_member(handle):
+    """Read a ``.bur`` that lives inside a zip.
+
+    The threaded reader takes a *path*, not a file object, so a zip member has
+    to reach the disk first. Handing it the open member instead would stringify
+    the wrapper and read nothing, with no error.
+
+    Parameters
+    ----------
+    handle : file-like
+        An open zip member, in binary mode.
+
+    Returns
+    -------
+    tttrlib.DataStore or None
+    """
+    import tempfile
+
+    with tempfile.NamedTemporaryFile(suffix=".bur", delete=False) as scratch:
+        scratch.write(handle.read())
+        name = scratch.name
+    try:
+        return read_csv_table(name, delimiter="\t")
+    finally:
+        Path(name).unlink(missing_ok=True)
+
+def load_burst_dataframe(file_path: str | Path, target_path: str):
     """Load a saved ``.bur`` file, including zip fallback paths used by the GUI."""
     file_path = Path(file_path)
     direct = bur_file_path(file_path, target_path)
     if direct.exists():
-        return pd.read_csv(direct, sep="\t")
+        return read_csv_table(direct, delimiter="\t")
 
     zip_file_path = file_path.parent / target_path / f"{target_path}.zip"
     alt_zip_paths = [
@@ -440,57 +483,68 @@ def load_burst_dataframe(file_path: str | Path, target_path: str) -> pd.DataFram
         for bur_filename in bur_filenames:
             try:
                 with zip_file.open(bur_filename) as bur_file:
-                    return pd.read_csv(io.TextIOWrapper(bur_file), sep="\t")
+                    return _read_bur_member(bur_file)
             except KeyError:
                 continue
         matching = [name for name in all_files if name.endswith(f"{file_path.stem}.bur")]
         if matching:
             with zip_file.open(matching[0]) as bur_file:
-                return pd.read_csv(io.TextIOWrapper(bur_file), sep="\t")
+                return _read_bur_member(bur_file)
     return None
 
 
-def make_ui_dataframe(df: pd.DataFrame) -> pd.DataFrame:
-    """Create the limited DataFrame currently shown by the GUI."""
-    ui_df = burst_rows_for_display(df)
-    for column in UI_COLUMNS:
-        if column not in ui_df.columns:
-            ui_df[column] = 0
-    ui_df = ui_df[UI_COLUMNS].copy()
-    proximity_ratio = proximity_ratio_from_frame(ui_df)
+def make_ui_dataframe(df):
+    """Create the limited table the GUI shows."""
+    rows = burst_rows_for_display(df)
+    n = row_count(rows)
+    present = column_names(rows)
+    columns = {
+        name: (numeric_column(rows, name) if name in present else np.zeros(n))
+        for name in UI_COLUMNS
+    }
+    # From the zero-filled columns, not from the source rows: a table missing
+    # the red/green counts still gets a Proximity Ratio column (of zeros), and
+    # the GUI's feature list is built from what is here.
+    proximity_ratio = proximity_ratio_from_frame(columns)
     if proximity_ratio is not None:
-        ui_df[PROXIMITY_RATIO_COLUMN] = proximity_ratio.fillna(0).round(6)
-    return ui_df
+        columns[PROXIMITY_RATIO_COLUMN] = np.round(
+            np.nan_to_num(proximity_ratio, nan=0.0), 6
+        )
+    return store_from_arrays(columns)
 
 
-def burst_rows_for_display(df: pd.DataFrame) -> pd.DataFrame:
+def burst_rows_for_display(df):
     """Return burst rows for GUI display, excluding Margarita zero separators.
 
     The ChiSurf/Margarita ``.bur`` format writes interleaved all-zero rows for
     compatibility. Those rows must remain in files, but they should not appear
     in tables, histograms, or GMM inputs.
     """
-    if df.empty:
-        return df.copy()
-    if "Number of Photons" in df.columns:
-        n_photons = pd.to_numeric(df["Number of Photons"], errors="coerce").fillna(0)
-        return df.loc[n_photons > 0].copy()
-    if {"Number of Photons (red)", "Number of Photons (green)"} <= set(df.columns):
-        red = pd.to_numeric(df["Number of Photons (red)"], errors="coerce").fillna(0)
-        green = pd.to_numeric(df["Number of Photons (green)"], errors="coerce").fillna(0)
-        return df.loc[(red + green) > 0].copy()
-    numeric = df.select_dtypes(include=["number"])
-    if numeric.empty:
-        return df.copy()
-    return df.loc[~numeric.fillna(0).eq(0).all(axis=1)].copy()
+    names = column_names(df)
+    if row_count(df) == 0:
+        return df
+    if "Number of Photons" in names:
+        photons = np.nan_to_num(numeric_column(df, "Number of Photons"))
+        return take_where(df, photons > 0)
+    if {"Number of Photons (red)", "Number of Photons (green)"} <= set(names):
+        red = np.nan_to_num(numeric_column(df, "Number of Photons (red)"))
+        green = np.nan_to_num(numeric_column(df, "Number of Photons (green)"))
+        return take_where(df, (red + green) > 0)
+    # No photon-count column: a row is a separator when every numeric column of
+    # it is zero.
+    numeric = [np.nan_to_num(numeric_column(df, n)) for n in names]
+    numeric = [v for v in numeric if np.isfinite(v).any()]
+    if not numeric:
+        return df
+    return take_where(df, ~np.all(np.vstack(numeric) == 0, axis=0))
 
 
-def combine_ui_dataframes(frames: Iterable[pd.DataFrame]) -> pd.DataFrame | None:
-    """Concatenate GUI DataFrames when any frames contain rows."""
+def combine_ui_dataframes(frames: Iterable):
+    """Stack the GUI tables, or ``None`` when there are none."""
     frames = list(frames)
     if not frames:
         return None
-    return pd.concat(frames, ignore_index=True)
+    return concat_stores(frames)
 
 
 def analyze_file_for_wizard(
@@ -515,11 +569,11 @@ def gmm_settings_from_wizard(wizard: Any) -> dict[str, Any]:
     return dict(wizard.gmm_settings)
 
 
-def selected_histogram_data(current_df: pd.DataFrame, selected_feature: str) -> np.ndarray:
+def selected_histogram_data(current_df, selected_feature: str) -> np.ndarray:
     """Return numeric histogram data for the selected GUI feature."""
     if selected_feature == PROXIMITY_RATIO_COLUMN:
         data = proximity_ratio_from_frame(current_df)
         if data is not None:
-            return data.dropna().to_numpy(dtype=float)
-    data = pd.to_numeric(burst_rows_for_display(current_df)[selected_feature], errors="coerce").dropna()
-    return data.to_numpy(dtype=float)
+            return data[np.isfinite(data)]
+    data = numeric_column(burst_rows_for_display(current_df), selected_feature)
+    return data[np.isfinite(data)]

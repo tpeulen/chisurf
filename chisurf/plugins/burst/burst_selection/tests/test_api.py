@@ -5,6 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
+
+from chisurf.core.datastore import column_names, numeric_column, row_count
 import pandas as pd
 import pytest
 
@@ -359,7 +361,7 @@ def test_analyze_file_duration_uses_macro_time_resolution_override() -> None:
 
     native_df = make_ui_dataframe(pd.DataFrame(native.dataframes[str(BH_SPC_FILE)]))
     overridden_df = make_ui_dataframe(pd.DataFrame(overridden.dataframes[str(BH_SPC_FILE)]))
-    assert overridden_df["Duration (ms)"].iloc[0] == native_df["Duration (ms)"].iloc[0] * 2.0
+    assert numeric_column(overridden_df, "Duration (ms)")[0] == numeric_column(native_df, "Duration (ms)")[0] * 2.0
 
 
 def test_summarize_bursts_matches_core_helper() -> None:
@@ -461,7 +463,7 @@ def test_make_ui_dataframe_adds_proximity_ratio() -> None:
         }
     )
     ui_df = make_ui_dataframe(df)
-    assert ui_df["Proximity Ratio"].iloc[0] == 0.5
+    assert numeric_column(ui_df, "Proximity Ratio")[0] == 0.5
 
 
 def test_make_ui_dataframe_ignores_margarita_zero_rows() -> None:
@@ -483,9 +485,9 @@ def test_make_ui_dataframe_ignores_margarita_zero_rows() -> None:
     ui_df = make_ui_dataframe(df)
 
     assert len(df) == 4
-    assert visible["Number of Photons"].tolist() == [10, 20]
-    assert ui_df["Number of Photons"].tolist() == [10, 20]
-    assert ui_df["Proximity Ratio"].tolist() == [0.4, 0.4]
+    assert numeric_column(visible, "Number of Photons").tolist() == [10, 20]
+    assert numeric_column(ui_df, "Number of Photons").tolist() == [10, 20]
+    assert numeric_column(ui_df, "Proximity Ratio").tolist() == [0.4, 0.4]
 
 
 def test_extract_features_supports_chisurf_bur_columns() -> None:

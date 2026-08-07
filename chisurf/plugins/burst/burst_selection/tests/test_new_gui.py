@@ -6,6 +6,8 @@ from dataclasses import asdict
 from pathlib import Path
 
 import numpy as np
+
+from chisurf.core.datastore import column_names, numeric_column
 import pandas as pd
 
 from mmfdb.models import SampleDefinition
@@ -130,9 +132,9 @@ def test_make_ui_dataframe_computes_proximity_ratio() -> None:
 
     ui_frame = make_ui_dataframe(frame)
 
-    assert "Proximity Ratio" in ui_frame.columns
-    assert ui_frame["Proximity Ratio"].round(6).tolist() == [0.2, 3 / 10]
-    assert "Proximity Ratio" in list(ui_frame.columns)
+    assert "Proximity Ratio" in column_names(ui_frame)
+    assert np.round(numeric_column(ui_frame, "Proximity Ratio"), 6).tolist() == [0.2, 3 / 10]
+    assert "Proximity Ratio" in column_names(ui_frame)
 
 
 def test_histogram_data_uses_computed_proximity_ratio() -> None:
@@ -159,12 +161,12 @@ def test_show_selected_file_result_updates_selected_table_and_histogram() -> Non
     tool = BurstSelectionTool.__new__(BurstSelectionTool)
     tool._last_frames_by_file = {path.resolve(): frame}
     tool._fill_table = lambda df: calls.append(f"table:{len(df)}") if df is not None else calls.append("table:0")
-    tool._populate_feature_combo = lambda df: calls.append(f"features:{len(df.columns)}")
+    tool._populate_feature_combo = lambda df: calls.append(f"features:{len(column_names(df))}")
     tool.update_histogram = lambda: calls.append("histogram")
 
     BurstSelectionTool._show_selected_file_result(tool, path, settings)
 
-    assert tool._last_frame["Number of Photons"].tolist() == [10, 20]
+    assert numeric_column(tool._last_frame, "Number of Photons").tolist() == [10, 20]
     assert tool._last_bur_frames == [frame]
     assert tool._last_settings is settings
     assert calls == ["table:2", "features:10", "histogram"]
@@ -212,7 +214,7 @@ def test_analyze_selected_file_updates_selected_table_and_histogram() -> None:
     tool._status_bar = type("FakeStatusBar", (), {"showMessage": lambda self, message: None})()
     tool.summary = type("FakeSummary", (), {"setPlainText": lambda self, text: None})()
     tool._fill_table = lambda df: calls.append(f"table:{len(df)}") if df is not None else calls.append("table:0")
-    tool._populate_feature_combo = lambda df: calls.append(f"features:{len(df.columns)}")
+    tool._populate_feature_combo = lambda df: calls.append(f"features:{len(column_names(df))}")
     tool.update_histogram = lambda: calls.append("histogram")
     calls: list[str] = []
 
@@ -222,8 +224,8 @@ def test_analyze_selected_file_updates_selected_table_and_histogram() -> None:
     assert client.calls[0]["legacy_output"] is False
     assert client.calls[0]["selected_setup"] == "Test setup"
     assert client.calls[0]["legacy_parameters"] == {"decay_coarse": 8}
-    assert tool._last_frames_by_file[path.resolve()]["Number of Photons"].tolist() == [12]
-    assert tool._last_bur_frames[0]["Number of Photons"].tolist() == [12]
+    assert numeric_column(tool._last_frames_by_file[path.resolve()], "Number of Photons").tolist() == [12]
+    assert numeric_column(tool._last_bur_frames[0], "Number of Photons").tolist() == [12]
     assert calls == ["table:1", "features:10", "histogram"]
 
 
@@ -555,13 +557,13 @@ def test_update_selected_files_stacks_cached_results() -> None:
     tool = BurstSelectionTool.__new__(BurstSelectionTool)
     tool._last_frames_by_file = {path_a.resolve(): frame_a, path_b.resolve(): frame_b}
     tool._fill_table = lambda df: calls.append(f"table:{len(df)}")
-    tool._populate_feature_combo = lambda df: calls.append(f"features:{len(df.columns)}")
+    tool._populate_feature_combo = lambda df: calls.append(f"features:{len(column_names(df))}")
     tool.update_histogram = lambda: calls.append("histogram")
     tool._load_tttr_for_plots = lambda selected_paths, current_settings: calls.append(f"diagnostics:{selected_paths[0].name}")
 
     BurstSelectionTool._update_selected_files(tool, [path_a, path_b], settings)
 
-    assert tool._last_frame["Number of Photons"].tolist() == [10, 20]
+    assert numeric_column(tool._last_frame, "Number of Photons").tolist() == [10, 20]
     assert tool._last_bur_frames == [frame_a, frame_b]
     assert calls == ["table:2", "features:10", "histogram", "diagnostics:a.spc"]
 
