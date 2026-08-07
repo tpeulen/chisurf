@@ -6,7 +6,7 @@ from pathlib import Path
 
 import numpy as np
 
-from chisurf.core.datastore import column_names, numeric_column, row_count
+from chisurf.core.datastore import row_count, store_from_rows, column_names, numeric_column, row_count
 import pandas as pd
 import pytest
 
@@ -70,6 +70,26 @@ def real_data_settings() -> AnalysisSettings:
         time_window=1e-3,
     )
     return settings
+
+
+
+def assert_tables_equal(left, right):
+    """Compare two column-addressable tables, column for column.
+
+    The replacement for ``assert_frame_equal`` now that the burst layer produces
+    stores. It checks the same things that mattered here -- the column names in
+    order, the row count, and every value -- and nothing that did not (an index a
+    store does not have).
+    """
+    assert column_names(left) == column_names(right)
+    assert row_count(left) == row_count(right)
+    for name in column_names(left):
+        a, b = np.asarray(left[name]), np.asarray(right[name])
+        if a.dtype.kind in "fiu" and b.dtype.kind in "fiu":
+            np.testing.assert_allclose(a.astype(float), b.astype(float),
+                                       equal_nan=True, err_msg=name)
+        else:
+            assert list(a) == list(b), name
 
 
 def test_contract_descriptor_defines_workflow_io() -> None:
@@ -379,7 +399,7 @@ def test_summarize_bursts_matches_core_helper() -> None:
         detectors={},
         include_interleaved_zeros=True,
     )
-    pd.testing.assert_frame_equal(api_df, core_df)
+    assert_tables_equal(api_df, core_df)
 
 
 def test_burst_dataframe_has_confidence_column() -> None:
@@ -407,12 +427,12 @@ def test_burst_dataframe_has_confidence_column() -> None:
         include_interleaved_zeros=False,
     )
 
-    assert "Confidence (sigma)" in df.columns
+    assert "Confidence (sigma)" in column_names(df)
     # Position is fixed relative to the other static columns.
-    cols = list(df.columns)
+    cols = column_names(df)
     assert cols.index("Confidence (sigma)") == cols.index("Count Rate (KHz)") + 1
 
-    confidence = df["Confidence (sigma)"].to_numpy(dtype=float)
+    confidence = numeric_column(df, "Confidence (sigma)")
     assert np.isfinite(confidence).all()
     if hasattr(tttr, "burst_confidence"):
         # A real detection over background scores above zero for at least one burst.
@@ -447,7 +467,7 @@ def test_burst_dataframe_confidence_matches_tttrlib_per_burst() -> None:
     flat = [int(v) for pair in start_stop for v in pair[:2]]
     expected = np.asarray(tttr.burst_confidence(flat), dtype=float)
     np.testing.assert_allclose(
-        df["Confidence (sigma)"].to_numpy(dtype=float), expected
+        numeric_column(df, "Confidence (sigma)"), expected
     )
 
 

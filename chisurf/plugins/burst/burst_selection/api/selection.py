@@ -13,7 +13,8 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-import pandas as pd
+
+from chisurf.core.datastore import rows_from_table, store_from_rows
 import tttrlib
 
 import chisurf
@@ -356,7 +357,7 @@ def summarize_bursts(
     windows: dict[str, tuple[int, int]] | None = None,
     detectors: dict[str, dict[str, Any]] | None = None,
     macro_time_resolution: float | None = None,
-) -> pd.DataFrame:
+):
     """Generate a ChiSurf-compatible burst summary DataFrame.
 
     Parameters
@@ -551,7 +552,7 @@ def analyze_file(
 
     return AnalysisResult(
         files=[str(path)],
-        dataframes={str(path): df.to_dict(orient="records")},
+        dataframes={str(path): rows_from_table(df)},
         metadata={
             "n_photons": int(len(tttr)),
             "n_selected": int(np.count_nonzero(selected)),
@@ -591,7 +592,7 @@ def analyze_request(request: AnalysisRequest) -> AnalysisResult:
         if legacy_output_folder is not None and "bur" in request.settings.output_formats
         else request.output_dir
     )
-    hdf5_frames: list[pd.DataFrame] = []
+    hdf5_frames: list = []
     batch_macro_time_resolution: float | None = None
 
     for path in request.files:
@@ -611,13 +612,13 @@ def analyze_request(request: AnalysisRequest) -> AnalysisResult:
         output_paths.update(result.output_paths)
         output_paths_by_file.update(result.output_paths_by_file)
         if legacy_output_folder is not None and "hdf5" in request.settings.output_formats:
-            frame = pd.DataFrame(result.dataframes.get(str(path), []))
+            frame = store_from_rows(result.dataframes.get(str(path), []))
             frame["Source File"] = str(path)
             hdf5_frames.append(frame)
         if "pto" in request.settings.output_formats:
             container = write_container(
                 path,
-                pd.DataFrame(result.dataframes.get(str(path), [])),
+                store_from_rows(result.dataframes.get(str(path), [])),
                 parameters=to_jsonable(request.settings),
                 out_dir=request.output_dir,
             )

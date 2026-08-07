@@ -25,11 +25,19 @@ import pathlib
 from collections import OrderedDict
 
 import numpy as np
-import pandas as pd
 import tttrlib
 
 import chisurf as cs
-from chisurf.core.datastore import write_csv_table
+from chisurf.core.datastore import (
+    column_names,
+    concat_stores,
+    new_store,
+    numeric_column,
+    row_count,
+    store_from_arrays,
+    store_from_rows,
+    write_csv_table,
+)
 
 #: Sentinel written for a per-detector column a burst has no photons in. Matches
 #: the ``-1.0`` the duration and rate columns already use, so a reader that
@@ -163,7 +171,7 @@ def write_mti_summary(
         mti_file.write(f"{filename}\t{max_macro_time:.6f}\n")
 
 
-def write_bv4_analysis(df: pd.DataFrame, analysis_folder: str = "analysis"):
+def write_bv4_analysis(df, analysis_folder: str = "analysis"):
     """
     Writes Burst Variance Analysis (BVA) results to .bv4 files in a 'bv4' subfolder inside the
     specified analysis folder. Each TTTR file will have a corresponding .bv4 file containing
@@ -171,7 +179,7 @@ def write_bv4_analysis(df: pd.DataFrame, analysis_folder: str = "analysis"):
 
     Parameters
     ----------
-    df : pd.DataFrame
+    df : tttrlib.DataStore
         The DataFrame containing burst data with columns 'First File', 'Proximity Ratio Mean',
         and 'Proximity Ratio Std'.
     analysis_folder : str, optional
@@ -182,22 +190,24 @@ def write_bv4_analysis(df: pd.DataFrame, analysis_folder: str = "analysis"):
     bv4_folder.mkdir(parents=True, exist_ok=True)
 
     # Iterate through the DataFrame and write results to individual .bv4 files
-    for _, row in df.iterrows():
-        # Create the corresponding .bv4 file name based on the 'First File' column
-        tttr_stem = pathlib.Path(row['First File']).stem
-        bv4_filename = bv4_folder / f"{tttr_stem}.bv4"
+    # write_companion owns the layout: the "…4" directory, the %.6f and the zero
+    # interleaving. Building those here, one measurement at a time, is how a
+    # companion drifts from the contract that merges it.
+    from chisurf.core.fio.fluorescence.burst_companion import write_companion
 
-        # Prepare a mini DataFrame with the required columns for the .bv4 file
-        data = {
-            'Mean Proximity Ratio': [row['Proximity Ratio Mean']],
-            'Standard Deviation': [row['Proximity Ratio Std']]  # Standard deviation
-        }
-        bv4_df = pd.DataFrame(data)
-
-        # Write the mini DataFrame to a .bv4 file using tab as the separator
-        bv4_df.to_csv(bv4_filename, sep='\t', index=False)
-
-    cs.logging.info(f"BVA results have been written to .bv4 files in the '{bv4_folder}' directory.")
+    files = np.asarray(df["First File"])
+    means = numeric_column(df, "Proximity Ratio Mean")
+    stds = numeric_column(df, "Proximity Ratio Std")
+    for tttr_file in dict.fromkeys(files):
+        keep = files == tttr_file
+        write_companion(
+            analysis_folder,
+            "bv4",
+            pathlib.Path(str(tttr_file)).stem,
+            ["Mean Proximity Ratio", "Standard Deviation"],
+            np.column_stack([means[keep], stds[keep]]),
+        )
+    cs.logging.info("BVA results written beside %s", analysis_folder)
 
 
 def get_indices_in_ranges(rout, mt, chs, micro_time_ranges):
@@ -412,11 +422,7 @@ def write_bur_file_old(bur_filename, start_stop, filename, tttr, windows, detect
     # ---------------------------------------------------------
     # Build DataFrame and write TSV, ensuring header is always present
     # ---------------------------------------------------------
-    if summary_rows:
-        summary_df = pd.DataFrame(summary_rows)
-    else:
-        summary_df = pd.DataFrame(columns=header_keys)
-    write_csv_table(bur_filename, summary_df)
+    write_csv_table(bur_filename, store_from_rows(summary_rows, columns=header_keys))
 
 
 def generate_burst_dataframe(
@@ -462,7 +468,7 @@ def generate_burst_dataframe(
         
     Returns
     --------
-    pd.DataFrame
+    tttrlib.DataStore
         DataFrame containing burst summary information.
     """
     file_name_only = pathlib.Path(filename).name
@@ -630,8 +636,17 @@ def generate_burst_dataframe(
         if include_interleaved_zeros:
             out.append(zero_row.copy())
 
-    # build DataFrame
-    return pd.DataFrame(out, columns=cols)
+    # Rows in, columns out: the store is column-oriented, and transposing here
+    # is what keeps every column its own dtype instead of one object array.
+    values = list(zip(*out)) if out else [()] * len(cols)
+    return store_from_arrays(
+        {
+            name: np.array(column, dtype=object)
+            if any(isinstance(v, str) for v in column)
+            else np.asarray(column)
+            for name, column in zip(cols, values)
+        }
+    )
 
 
 def write_dataframe_to_bur(df, bur_filename):
@@ -640,7 +655,7 @@ def write_dataframe_to_bur(df, bur_filename):
     
     Parameters
     -----------
-    df : pd.DataFrame
+    df : tttrlib.DataStore
         DataFrame containing burst summary information.
     bur_filename : str or pathlib.Path
         Path to the output .bur file.
@@ -683,7 +698,7 @@ def read_burst_analysis(
         tttr_file_type: str,
         pattern: str = 'b*4*',
         row_stride: int = 1
-) -> (pd.DataFrame, dict[str, tttrlib.TTTR]):
+) -> tuple:
     """
     Reads and processes burst analysis data files from a specified directory,
     constructs a pandas DataFrame with the concatenated data, and populates a
@@ -710,7 +725,7 @@ def read_burst_analysis(
 
     Returns
     -------
-    Tuple[pd.DataFrame, Dict[str, tttrlib.TTTR]]
+    tuple
         A tuple containing:
         - A pandas DataFrame with the concatenated data from all matched files.
         - A dictionary with keys as filenames (from the 'First File' column) and values
@@ -758,27 +773,35 @@ def read_burst_analysis(
     data_path = paris_path.parent
 
     dfs = list()
-    is_first_file = True  # Flag to track the first file
     for path in paris_path.glob(pattern):
-        frames = list()
+        stacked = list()
         for fn in sorted(path.glob('*')):
             with open(fn) as f:
-                t = f.readlines()
-                t = [line.rstrip('\n') for line in t]  # Remove trailing newlines
-                h = t[0].split('\t')
-                d = [[x for x in l.split('\t')] for l in t[2::row_stride]]
-                frames.append(pd.DataFrame(d, columns=h))
-        dfs.append(pd.concat(frames))
-    df = pd.concat(dfs, axis=1)
+                t = [line.rstrip('\n') for line in f.readlines()]
+            header = t[0].split('\t')
+            rows = [line.split('\t') for line in t[2::row_stride]]
+            columns = list(zip(*rows)) if rows else [()] * len(header)
+            stacked.append(
+                store_from_arrays(
+                    {name: np.array(col, dtype=object)
+                     for name, col in zip(header, columns)}
+                )
+            )
+        dfs.append(concat_stores(stacked))
+    # Each directory describes the SAME bursts, so they go side by side.
+    df = dfs[0] if dfs else new_store()
+    for other in dfs[1:]:
+        df.append_columns(other, tttrlib.DataStore.OnDuplicate_KeepFirst)
 
-    # Loop through each column and attempt to convert to numeric
-    for column in df.columns:
-        try:
-            df[column] = pd.to_numeric(df[column])
-        except ValueError:
-            if not is_first_file:  # Ignore conversion errors only for the first file
-                cs.logging.warning(f"read_burst_analysis: Could not convert {column} to numeric")
-        is_first_file = False  # After processing the first file, set flag to False
+    # Everything arrived as text; a column that is numeric becomes numeric, and
+    # one that is not stays as it is rather than failing the whole read.
+    typed = new_store()
+    for name in column_names(df):
+        values = np.asarray(df[name])
+        numbers = numeric_column(df, name)
+        typed.add(name, values if np.isnan(numbers).all() and values.size else numbers)
+    typed.set_n_rows(row_count(df))
+    df = typed
 
     tttrs = dict()
     update_tttr_dict(data_path, tttrs)
@@ -936,23 +959,24 @@ def write_burst_hdf5(dataframes, path) -> None:
     path : str or pathlib.Path
         Target ``.h5`` file.
     """
-    from chisurf.core.datastore import store_from_dataframe, write_table
+    from chisurf.core.datastore import write_table
 
-    frames = list(dataframes)
-    combined = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
-    # An all-empty column carries nothing and costs a dataset; the frame writer
-    # dropped these too.
-    combined = combined.dropna(axis=1, how="all").copy()
-    # A burst table ends in an UNNAMED column -- the trailing separator of the
-    # `.bur` format read as a field. A dataset needs a name, and nothing can ask
-    # for this one anyway: `read_bur_with_companions` already skips it by the
-    # same test. The frame writer stored it, unreadably, rather than saying so.
-    combined = combined[[c for c in combined.columns if str(c).strip()]]
-
-    for column in combined.select_dtypes(include=["integer"]).columns:
-        kind = "unsigned" if (combined[column] >= 0).all() else "integer"
-        combined[column] = pd.to_numeric(combined[column], downcast=kind)
-    for column in combined.select_dtypes(include=["floating"]).columns:
-        combined[column] = combined[column].astype(np.float32)
-
-    write_table(path, store_from_dataframe(combined))
+    combined = concat_stores(list(dataframes))
+    out = new_store()
+    for name in column_names(combined):
+        # A burst table ends in an UNNAMED column -- the trailing separator of
+        # the `.bur` format read as a field. HDF5 cannot name a dataset that,
+        # and nothing can ask for the column anyway.
+        if not name.strip():
+            continue
+        values = np.asarray(combined[name])
+        if values.dtype.kind == "f":
+            # An all-empty column carries nothing and costs a dataset.
+            if not np.isfinite(values).any():
+                continue
+            values = values.astype(np.float32)
+        elif values.dtype.kind in "iu":
+            values = values.astype(np.uint32 if (values >= 0).all() else np.int32)
+        out.add(name, values)
+    out.set_n_rows(row_count(combined))
+    write_table(path, out)

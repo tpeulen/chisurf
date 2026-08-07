@@ -6,6 +6,8 @@ import json
 from pathlib import Path
 
 import numpy as np
+
+from chisurf.core.datastore import column_names, numeric_column, row_count, store_from_rows
 import pandas as pd
 import pytest
 from click.testing import CliRunner
@@ -60,6 +62,26 @@ def bur_file(tmp_path: Path) -> Path:
     return Path(result.output_paths["bur"])
 
 
+
+def assert_tables_equal(left, right):
+    """Compare two column-addressable tables, column for column.
+
+    The replacement for ``assert_frame_equal`` now that the burst layer produces
+    stores. It checks the same things that mattered here -- the column names in
+    order, the row count, and every value -- and nothing that did not (an index a
+    store does not have).
+    """
+    assert column_names(left) == column_names(right)
+    assert row_count(left) == row_count(right)
+    for name in column_names(left):
+        a, b = np.asarray(left[name]), np.asarray(right[name])
+        if a.dtype.kind in "fiu" and b.dtype.kind in "fiu":
+            np.testing.assert_allclose(a.astype(float), b.astype(float),
+                                       equal_nan=True, err_msg=name)
+        else:
+            assert list(a) == list(b), name
+
+
 def test_real_bh_spc_channel_mask_uses_stream_channels() -> None:
     """The bundled BH SPC example uses stream channels 0/8 green and 1/9 red."""
     tttr = load_tttr(BH_SPC_FILE)
@@ -84,9 +106,9 @@ def test_real_bh_spc_analyze_file_matches_core_burst_dataframe(tmp_path: Path) -
         detectors={},
         include_interleaved_zeros=True,
     )
-    api_df = pd.DataFrame(api_result.dataframes[str(BH_SPC_FILE)])
+    api_df = store_from_rows(api_result.dataframes[str(BH_SPC_FILE)])
 
-    pd.testing.assert_frame_equal(api_df, core_df)
+    assert_tables_equal(api_df, core_df)
     assert api_result.metadata == {
         "n_photons": 174438,
         "n_selected": 126887,

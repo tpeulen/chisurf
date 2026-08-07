@@ -771,3 +771,15 @@ def test_numeric_column_coerces_the_same_way_for_frame_mapping_and_store():
     store = store_from_arrays({"a": np.array(values, dtype=object)})
     for table in (frame, mapping, store):
         np.testing.assert_array_equal(numeric_column(table, "a"), expected)
+
+
+def test_writing_a_table_does_not_change_it():
+    """Masking is how a NaN reaches the file as an empty field, and doing it in
+    place meant *writing* a table marked every NaN row "not measured"
+    afterwards. Measured before the fix: has_mask() went False -> True across a
+    write, and the caller's next read of that column saw missing values it never
+    put there."""
+    store = store_from_arrays({"x": np.array([1.0, np.nan, 3.0])})
+    assert write_csv_table(None, store).splitlines()[1:] == ["1.0", "", "3.0"]
+    assert not store["x"].has_mask()
+    assert store["x"].valid(1)

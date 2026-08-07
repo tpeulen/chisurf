@@ -87,6 +87,7 @@ __all__ = [
     "read_table",
     "read_table_frame",
     "row_count",
+    "rows_from_table",
     "set_cell",
     "store_from_arrays",
     "store_from_dataframe",
@@ -615,6 +616,31 @@ def _as_store(data: Any) -> Any:
 
 
 
+def rows_from_table(table: Any) -> list[dict[str, Any]]:
+    """Return a table as a list of row mappings — the inverse of
+    :func:`store_from_rows`.
+
+    For the boundaries that are row-oriented because something else demands it:
+    a JSON-RPC payload, a service result, anything crossing a process. Not for
+    computation — a per-row dict of a million-row table is a million dicts, and
+    the column arrays are right there.
+
+    Parameters
+    ----------
+    table : mapping, tttrlib.DataStore, or pandas.DataFrame
+
+    Returns
+    -------
+    list of dict
+    """
+    names = column_names(table)
+    columns = [np.asarray(table[name]) for name in names]
+    return [
+        {name: column[i].item() if hasattr(column[i], "item") else column[i]
+         for name, column in zip(names, columns)}
+        for i in range(row_count(table))
+    ]
+
 def store_from_rows(
     rows: Sequence[Mapping[str, Any]], columns: Sequence[str] | None = None
 ) -> Any:
@@ -898,7 +924,13 @@ def write_csv_table(
     """
     import tttrlib
 
-    store = _mask_non_finite(_as_store(data))
+    store = _as_store(data)
+    # On a copy: masking is how a NaN reaches the file as an empty field, and
+    # doing it in place would mean WRITING A TABLE CHANGES IT -- every NaN row
+    # coming back marked "not measured" afterwards. Verified before the copy was
+    # added: has_mask() went False -> True across a write.
+    if _has_non_finite(store):
+        store = _mask_non_finite(store.copy())
     return tttrlib.write_csv(
         None if path is None else str(path),
         store,
@@ -908,6 +940,30 @@ def write_csv_table(
         columns=None if columns is None else list(columns),
         keep_decimal_point=keep_decimal_point,
     )
+
+
+def _has_non_finite(store: Any) -> bool:
+    """Whether any float column holds a ``NaN``.
+
+    Asked first so the copy in :func:`write_csv_table` is only paid for by the
+    tables that need it.
+
+    Parameters
+    ----------
+    store : tttrlib.DataStore
+
+    Returns
+    -------
+    bool
+    """
+    for index in range(store.n_columns()):
+        column = column_at(store, index)
+        if column.dtype in (STRING_DTYPE, BOOL_DTYPE):
+            continue
+        values = np.asarray(column.numpy())
+        if values.dtype.kind == "f" and np.isnan(values).any():
+            return True
+    return False
 
 
 def _mask_non_finite(store: Any) -> Any:
