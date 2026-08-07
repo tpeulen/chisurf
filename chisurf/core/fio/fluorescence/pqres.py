@@ -5,7 +5,6 @@ import struct
 from typing import Dict, Any, List
 
 import numpy as np
-import pandas as pd
 
 import chisurf.core.data
 import chisurf.core.fio
@@ -16,7 +15,7 @@ class PQResReader:
     """
     Reader for PicoQuant SymPhoTime .pqres result files (PTU-style header).
     Parses metadata tags and decodes values into native Python types.
-    Provides NumPy and pandas integration for curve access.
+    Provides NumPy curve access.
     """
 
     tyEmpty8 = 0xFFFF0008
@@ -166,25 +165,6 @@ class PQResReader:
                         "Weight": np.array(self.tags.get(f"{base}WeightY", [])),
                     }
         return curves
-
-    def get_curves_as_dataframe(self) -> Dict[str, pd.DataFrame]:
-        """
-        Returns:
-            Dict[str, pd.DataFrame]: Each key is a curve name, value is a DataFrame with columns:
-            'X', 'Y', and optionally 'StdDev', 'Weight'
-        """
-        df_dict = {}
-        for name, curve in self.get_curves().items():
-            data = {
-                "X": curve["X"],
-                "Y": curve["Y"]
-            }
-            if curve["StdDev"].size:
-                data["StdDev"] = curve["StdDev"]
-            if curve["Weight"].size:
-                data["Weight"] = curve["Weight"]
-            df_dict[name] = pd.DataFrame(data)
-        return df_dict
 
     def __repr__(self):
         """Return a string representation of the PQResReader."""
