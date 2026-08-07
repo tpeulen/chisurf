@@ -208,16 +208,24 @@ def inspect_bur_handler(path: str) -> dict[str, Any]:
 
     """
     try:
-        import pandas as pd
+        from chisurf.core.datastore import column_values, read_csv_table
+        from chisurf.core.fluorescence.burst.table import read_burst_table
 
-        df = pd.read_csv(path, sep="\t")
+        # The columns a caller is told about are ALL of them, text ones
+        # included -- "First File" is a column of this file whatever its dtype.
+        # The summary is computed from the numeric ones, which is what
+        # read_burst_table returns.
+        store = read_csv_table(path)
+        if store is None:
+            raise OSError(f"{path} is not a delimited burst table")
+        columns = [str(store[i].name()) for i in range(store.n_columns())]
         return {
             "ok": True,
             "result": {
                 "path": path,
-                "n_rows": int(len(df)),
-                "columns": list(df.columns),
-                "summary": summarize_dataframes([df]),
+                "n_rows": int(store.n_rows()),
+                "columns": columns,
+                "summary": summarize_dataframes([read_burst_table(path)]),
             },
         }
     except Exception as exc:
@@ -246,9 +254,9 @@ def fit_gmm_handler(
 
     """
     try:
-        import pandas as pd
+        from chisurf.core.fluorescence.burst.table import read_burst_table
 
-        df = pd.read_csv(path, sep="\t")
+        df = read_burst_table(path)
         gmm_settings = settings_from_dict({"gmm": settings or {}}).gmm
         features = extract_features([df])
         return {

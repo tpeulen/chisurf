@@ -126,9 +126,15 @@ def _sniff_delimiter(path: pathlib.Path) -> str | None:
         return None
     if not header or header.lstrip().startswith("#"):
         return None
-    counts = {sep: header.count(sep) for sep in ("\t", ",", ";", " ")}
-    best = max(counts, key=counts.get)
-    return best if counts[best] > 0 else None
+    # Precedence, not a count. Burst-table column names contain spaces --
+    # "Duration (ms)", "Mean Macro Time (ms)" -- so on a wide header the spaces
+    # outnumber the tabs and "most frequent character wins" picks the space,
+    # which parses every row as one field. A real separator, if present, is
+    # always the separator.
+    for candidate in ("\t", ",", ";"):
+        if candidate in header:
+            return candidate
+    return " " if " " in header else None
 
 
 def _read_delimited(path: pathlib.Path) -> dict[str, np.ndarray]:
@@ -149,7 +155,12 @@ def _read_delimited(path: pathlib.Path) -> dict[str, np.ndarray]:
     dict
         Numeric columns keyed by their header name.
     """
-    from chisurf.core.datastore import column_values, read_csv_table
+    from chisurf.core.datastore import (
+        BOOL_DTYPE,
+        STRING_DTYPE,
+        column_values,
+        read_csv_table,
+    )
 
     delimiter = _sniff_delimiter(path)
     if delimiter is not None:
@@ -157,10 +168,16 @@ def _read_delimited(path: pathlib.Path) -> dict[str, np.ndarray]:
         if store is not None:
             columns = {}
             for index in range(store.n_columns()):
-                name = str(store[index].name())
+                column = store[index]
+                # A burst table carries text columns -- "First File", "Last
+                # File" -- and this returns numeric ones. The reader has already
+                # typed them, so a text column is skipped by its dtype rather
+                # than by trying to cast it and catching the failure.
+                if column.dtype in (STRING_DTYPE, BOOL_DTYPE):
+                    continue
                 values = np.asarray(column_values(store, index), dtype=float).ravel()
                 if values.size and np.any(np.isfinite(values)):
-                    columns[name] = values
+                    columns[str(column.name())] = values
             if columns:
                 return columns
 

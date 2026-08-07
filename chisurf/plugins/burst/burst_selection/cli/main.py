@@ -6,7 +6,9 @@ import json
 from typing import Any
 
 import click
-import pandas as pd
+
+from chisurf.core.datastore import read_csv_table
+from chisurf.core.fluorescence.burst.table import read_burst_table
 
 from ..api.contract import (
     analysis_request_from_payload,
@@ -263,14 +265,20 @@ def contract_cmd() -> None:
 @click.argument("bur_file", type=click.Path(exists=True, dir_okay=False))
 def inspect_cmd(bur_file: str) -> None:
     """Inspect a saved ``.bur`` file."""
-    df = pd.read_csv(bur_file, sep="\t")
+    # All the columns, text ones included; the features come from the numeric
+    # ones. len() on a column mapping is the column count, not the row count --
+    # which is exactly the mistake this shape invites.
+    store = read_csv_table(bur_file)
+    if store is None:
+        raise click.ClickException(f"{bur_file} is not a delimited burst table")
+    df = read_burst_table(bur_file)
     features = extract_features([df])
     summary = {
         "path": bur_file,
-        "n_rows": int(len(df)),
-        "columns": list(df.columns),
+        "n_rows": int(store.n_rows()),
+        "columns": [str(store[i].name()) for i in range(store.n_columns())],
         "feature_columns": list(features.columns),
-        "n_bursts": int(len(df)),
+        "n_bursts": int(store.n_rows()),
     }
     click.echo(json.dumps(summary, indent=2))
 
@@ -281,7 +289,7 @@ def inspect_cmd(bur_file: str) -> None:
 @click.option("--settings", "settings_json", default=None, help="Inline JSON GMM settings.")
 def fit_gmm_cmd(bur_file: str, settings_file: str | None, settings_json: str | None) -> None:
     """Fit a Gaussian mixture model to burst features from BUR_FILE."""
-    df = pd.read_csv(bur_file, sep="\t")
+    df = read_burst_table(bur_file)
     settings = settings_from_dict({"gmm": (load_json_file(settings_file) or json.loads(settings_json or "{}"))})
     features = extract_features([df])
     result = fit_gmm(features, settings.gmm)

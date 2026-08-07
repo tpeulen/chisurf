@@ -5,29 +5,41 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 import numpy as np
-import pandas as pd
+
+from chisurf.plugins.burst.burst_selection.api.features import _names, _rows
 
 
-def summarize_dataframes(frames: Sequence[pd.DataFrame]) -> dict[str, float]:
+def summarize_dataframes(frames: Sequence) -> dict[str, float]:
     """Compute summary statistics for burst summary tables.
 
     Parameters
     ----------
-    frames : sequence of pandas.DataFrame
-        Burst summary tables.
+    frames : sequence of mapping or pandas.DataFrame
+        Burst summary tables. Anything column-addressable — a frame, a
+        ``{name: array}`` mapping, a columnar store — since none of the
+        arithmetic here depends on which.
 
     Returns
     -------
     dict
         Summary statistics.
     """
-    n_bursts = sum(len(frame) for frame in frames)
-    n_photons = sum(float(frame["nphotons"].sum()) for frame in frames if "nphotons" in frame)
-    durations = [frame["duration"].to_numpy(dtype=float) for frame in frames if "duration" in frame]
-    brightness = [
-        (frame["nphotons"] / np.maximum(frame["duration"], np.finfo(float).eps)).to_numpy(dtype=float)
+    n_bursts = sum(_rows(frame) for frame in frames)
+    n_photons = sum(
+        float(np.asarray(frame["nphotons"], dtype=float).sum())
         for frame in frames
-        if "nphotons" in frame and "duration" in frame
+        if "nphotons" in _names(frame)
+    )
+    durations = [
+        np.asarray(frame["duration"], dtype=float)
+        for frame in frames
+        if "duration" in _names(frame)
+    ]
+    brightness = [
+        np.asarray(frame["nphotons"], dtype=float)
+        / np.maximum(np.asarray(frame["duration"], dtype=float), np.finfo(float).eps)
+        for frame in frames
+        if "nphotons" in _names(frame) and "duration" in _names(frame)
     ]
     all_durations = np.concatenate(durations) if durations else np.array([], dtype=float)
     all_brightness = np.concatenate(brightness) if brightness else np.array([], dtype=float)

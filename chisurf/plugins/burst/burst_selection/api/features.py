@@ -20,18 +20,70 @@ _FEATURE_COLUMNS = [
 ]
 
 
-def _feature_column(frame: pd.DataFrame, preferred: str, fallback: str) -> pd.Series:
-    """Return a feature column using API or ChiSurf display names."""
-    if preferred in frame:
-        return frame[preferred]
-    return frame[fallback]
+def _names(table) -> tuple[str, ...]:
+    """Return a table's column names, whatever the table is.
+
+    A burst table reaches this API as a frame, as ``{name: array}`` from
+    :func:`~chisurf.core.fluorescence.burst.table.read_burst_table`, or as a
+    columnar store's columns. All three are column-addressable, and none of the
+    arithmetic below cares which it got — so the accessors ask for names rather
+    than for a type.
+
+    Parameters
+    ----------
+    table : mapping or pandas.DataFrame
+        The burst table.
+
+    Returns
+    -------
+    tuple of str
+    """
+    names = getattr(table, "columns", None)
+    return tuple(str(n) for n in (names if names is not None else table.keys()))
 
 
-def _numeric(frame: pd.DataFrame, column: str) -> np.ndarray | None:
+def _rows(table) -> int:
+    """Return a table's row count.
+
+    ``len()`` is the trap: it is the row count of a frame and the *column* count
+    of a mapping, so a helper written against one silently answers the wrong
+    question for the other.
+
+    Parameters
+    ----------
+    table : mapping or pandas.DataFrame
+        The burst table.
+
+    Returns
+    -------
+    int
+    """
+    names = _names(table)
+    return len(np.asarray(table[names[0]])) if names else 0
+
+
+def _feature_column(table, preferred: str, fallback: str) -> np.ndarray:
+    """Return a feature column as floats, by API or ChiSurf display name."""
+    name = preferred if preferred in _names(table) else fallback
+    return np.asarray(table[name], dtype=float)
+
+
+def _numeric(table, column: str) -> np.ndarray | None:
     """Return a numeric array for ``column`` when present, else ``None``."""
-    if column not in frame.columns:
+    if column not in _names(table):
         return None
-    return pd.to_numeric(frame[column], errors="coerce").to_numpy(dtype=float)
+    values = np.asarray(table[column])
+    if values.dtype.kind in "fiu":
+        return values.astype(float)
+    # Text that is not a number becomes NaN rather than raising, which is what
+    # the frame path did with errors="coerce".
+    out = np.full(len(values), np.nan, dtype=float)
+    for i, v in enumerate(values):
+        try:
+            out[i] = float(v)
+        except (TypeError, ValueError):
+            pass
+    return out
 
 
 def proximity_ratio(frame: pd.DataFrame) -> np.ndarray | None:
@@ -55,7 +107,7 @@ def proximity_ratio(frame: pd.DataFrame) -> np.ndarray | None:
         if red is not None and green is not None:
             total = red + green
             return np.divide(
-                red, total, out=np.full(len(frame), np.nan, dtype=float), where=total > 0
+                red, total, out=np.full(_rows(frame), np.nan, dtype=float), where=total > 0
             )
     return None
 
@@ -78,10 +130,10 @@ def extract_features(frames: Sequence[pd.DataFrame]) -> pd.DataFrame:
 
     records: list[dict[str, Any]] = []
     for frame in frames:
-        if frame.empty:
+        if _rows(frame) == 0:
             continue
-        n_photons = _feature_column(frame, "nphotons", "Number of Photons").to_numpy(dtype=float)
-        duration = _feature_column(frame, "duration", "Duration (ms)").to_numpy(dtype=float)
+        n_photons = _feature_column(frame, "nphotons", "Number of Photons")
+        duration = _feature_column(frame, "duration", "Duration (ms)")
         brightness = n_photons / np.maximum(duration, np.finfo(float).eps)
         interphoton = np.divide(
             duration,
@@ -89,14 +141,14 @@ def extract_features(frames: Sequence[pd.DataFrame]) -> pd.DataFrame:
             out=np.zeros_like(duration, dtype=float),
             where=n_photons > 1.0,
         )
-        if "fret" in frame:
-            fret = frame["fret"].to_numpy(dtype=float)
+        if "fret" in _names(frame):
+            fret = np.asarray(frame["fret"], dtype=float)
         else:
             # Derive the proximity ratio from green/red photon counts when there is
             # no explicit column (generate_burst_dataframe records per-detector
             # counts but no Proximity Ratio column) — otherwise every burst was 0.
             pr = proximity_ratio(frame)
-            fret = pr if pr is not None else np.zeros(len(frame))
+            fret = pr if pr is not None else np.zeros(_rows(frame))
         records.extend(
             {
                 "nphotons": n,
