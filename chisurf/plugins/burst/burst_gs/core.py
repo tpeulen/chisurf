@@ -141,6 +141,12 @@ def load_photons(
         "macro_time_resolution": macro_time_resolution,
         "stream_names": [s.name for s in stream_defs],
         "photons_per_stream": counts.tolist(),
+        # The measurements themselves, not the `.bur` tables that point at
+        # them: a result belongs beside the photons it was fitted to, and a
+        # `.bur` lives one directory down in `bi4_bur/`.
+        "tttr_files": [
+            str(getattr(tttr, "filename", "")) for tttr in tttrs.values()
+        ],
     }
     return bursts, info
 
@@ -605,3 +611,108 @@ def compare_with_h2mm(bursts: gs.PhotonBursts, fit: gs.GsFitResult,
         return out
     except Exception as exc:
         return {"error": f"the H2MM cross-check failed: {exc}"}
+
+
+def write_container(
+    source: str | pathlib.Path,
+    analysis: GsAnalysis,
+    *,
+    parameters: dict | None = None,
+    out_dir: str | pathlib.Path | None = None,
+) -> str:
+    """Write a Gopich–Szabo kinetic fit into the measurement's container.
+
+    Three grains, because a kinetic fit genuinely has three. A FRET efficiency
+    belongs to a *state*; a rate belongs to a *pair* of states; a Viterbi label
+    belongs to a *photon*. The CSV export flattens all of them into
+    ``quantity,value`` rows named ``k_12_per_s`` and ``E_1`` — readable, and not
+    a table anything can join, sort or plot.
+
+    Parameters
+    ----------
+    source : str or pathlib.Path
+        The instrument file, or the container itself.
+    analysis : GsAnalysis
+        The run to record.
+    parameters : dict, optional
+        The settings. Their hash is the identity of the run.
+    out_dir : str or pathlib.Path, optional
+
+    Returns
+    -------
+    str
+        Path of the container written.
+    """
+    from chisurf.core.datastore import store_from_arrays
+    from chisurf.core.fio.fluorescence.burst_container import write_burst_artifact
+
+    fit = analysis.fit
+    efficiencies = np.atleast_1d(np.asarray(fit.efficiencies, dtype=float))
+    n = int(fit.rate_matrix.shape[0])
+
+    # The goodness-of-fit numbers describe the whole model, so they repeat down
+    # the state table rather than living in a header nothing can query.
+    states = {
+        "State": np.arange(n, dtype=np.int32),
+        "E": (
+            efficiencies if efficiencies.size == n
+            else np.full(n, float("nan"))
+        ),
+        "log_likelihood": np.full(n, float(fit.log_likelihood)),
+        "bic": np.full(n, float(fit.bic)),
+        "aic": np.full(n, float(fit.aic)),
+    }
+    written = write_burst_artifact(
+        source, store_from_arrays(states),
+        name="gs states",
+        artifact_kind="fit_result",
+        operation_type="model_fitting",
+        row_grain="state",
+        parameters=parameters,
+        derived_from="bursts",
+        units={"State": "dimensionless", "E": "dimensionless",
+               "log_likelihood": "dimensionless", "bic": "dimensionless",
+               "aic": "dimensionless"},
+        out_dir=out_dir,
+    )
+
+    # K[target, source] -- the column convention the kinetics module uses, and
+    # the one worth naming here because the transpose is silently plausible.
+    pairs = [(s, t) for s in range(n) for t in range(n) if s != t]
+    if pairs:
+        write_burst_artifact(
+            source,
+            store_from_arrays({
+                "From": np.array([s for s, _ in pairs], dtype=np.int32),
+                "To": np.array([t for _, t in pairs], dtype=np.int32),
+                "k": np.array(
+                    [float(fit.rate_matrix[t, s]) for s, t in pairs], dtype=float
+                ),
+            }),
+            name="gs rates",
+            artifact_kind="parameter_table",
+            operation_type="model_fitting",
+            row_grain="pair",
+            parameters=parameters,
+            derived_from="gs states",
+            source_row_column="State",
+            target_row_column="From",
+            units={"From": "dimensionless", "To": "dimensionless", "k": "hertz"},
+            out_dir=out_dir,
+        )
+
+    path = np.asarray(analysis.state_path)
+    if path.size:
+        write_burst_artifact(
+            source,
+            store_from_arrays({"State": path.astype(np.int32)}),
+            name="gs state path",
+            artifact_kind="state_trajectory",
+            operation_type="model_fitting",
+            row_grain="photon",
+            parameters=parameters,
+            derived_from="gs states",
+            units={"State": "dimensionless"},
+            out_dir=out_dir,
+        )
+    return written

@@ -372,3 +372,118 @@ def export_csv(path: str | pathlib.Path, result: CalibrationResult) -> None:
         fh.write("\n".join(header_lines) + "\n")
         fh.write(",".join(columns) + "\n")
         np.savetxt(fh, data, delimiter=",", fmt="%.6g")
+
+
+def write_container(
+    source: str | pathlib.Path,
+    result: CalibrationResult,
+    *,
+    parameters: dict | None = None,
+    out_dir: str | pathlib.Path | None = None,
+) -> str:
+    """Write the corrected per-burst values into the measurement's container.
+
+    Two objects, because there are two grains. The corrected ``E``, ``S``,
+    lifetime and distance are per *burst*; the correction factors and the
+    populations they were fitted from are per *population*, and a table with
+    one row per population cannot be a companion — which is why
+    :func:`export_csv` puts the calibration in ``#`` comment lines, where it is
+    readable and not queryable.
+
+    The factors are the reason to keep them: an accurate ``E`` means nothing
+    without the α, β, γ, δ and R₀ it was computed with, and a file that carries
+    the values and not the calibration is a file whose numbers cannot be
+    checked or recomputed.
+
+    Parameters
+    ----------
+    source : str or pathlib.Path
+        The instrument file the bursts came from, or the container itself.
+    result : CalibrationResult
+        The run to record.
+    parameters : dict, optional
+        The settings. Their hash is the identity of the run.
+    out_dir : str or pathlib.Path, optional
+
+    Returns
+    -------
+    str
+        Path of the container written.
+    """
+    from chisurf.core.datastore import store_from_arrays
+    from chisurf.core.fio.fluorescence.burst_container import write_burst_artifact
+
+    columns: dict[str, np.ndarray] = {
+        "Burst Index": np.arange(len(result.efficiency), dtype=np.int64),
+        "E": np.asarray(result.efficiency, dtype=float),
+        # -2 acceptor-only, -1 donor-only, 0… a FRET sub-population. An integer
+        # column, so the sentinels stay exact.
+        "Population": np.asarray(result.labels, dtype=np.int32),
+    }
+    units = {
+        "Burst Index": "dimensionless", "E": "dimensionless",
+        "Population": "dimensionless",
+    }
+    for name, values, unit in (
+        ("S", result.stoichiometry, "dimensionless"),
+        ("Tau (donor)", result.tau_f, "nanoseconds"),
+        ("R_DA", result.distance, "angstroms"),
+    ):
+        if values is not None:
+            columns[name] = np.asarray(values, dtype=float)
+            units[name] = unit
+
+    written = write_burst_artifact(
+        source, store_from_arrays(columns),
+        name="accurate fret",
+        artifact_kind="analysis_result",
+        operation_type="calibration",
+        row_grain="burst",
+        parameters=parameters,
+        derived_from="bursts",
+        source_row_column="Burst Index",
+        target_row_column="Burst Index",
+        units=units,
+        out_dir=out_dir,
+    )
+
+    populations = result.calibration.populations
+    if populations:
+        keys = ("label", "n", "E", "sigma_E", "S", "tau_f", "distance",
+                "sigma_distance", "deviation")
+        rows = {
+            key: np.asarray(
+                [p.get(key, float("nan")) for p in populations], dtype=float
+            )
+            for key in keys
+            if any(key in p for p in populations)
+        }
+        # The factors are constant over the populations, and that is the point:
+        # they describe the calibration all of them share, so every row can be
+        # read on its own without a header comment to go and find.
+        for key in ("alpha", "beta", "gamma", "delta", "r0"):
+            rows[key] = np.full(
+                len(populations), float(result.factors.get(key, float("nan")))
+            )
+        write_burst_artifact(
+            source, store_from_arrays(rows),
+            name="accurate fret calibration",
+            artifact_kind="parameter_table",
+            operation_type="calibration",
+            row_grain="species",
+            parameters=parameters,
+            derived_from="accurate fret",
+            source_row_column="Population",
+            target_row_column="label",
+            units={
+                "distance": "angstroms", "sigma_distance": "angstroms",
+                "r0": "angstroms", "tau_f": "nanoseconds",
+                "E": "dimensionless", "sigma_E": "dimensionless",
+                "S": "dimensionless", "deviation": "dimensionless",
+                "alpha": "dimensionless", "beta": "dimensionless",
+                "gamma": "dimensionless", "delta": "dimensionless",
+                "label": "dimensionless", "n": "counts",
+            },
+            out_dir=out_dir,
+        )
+    return written

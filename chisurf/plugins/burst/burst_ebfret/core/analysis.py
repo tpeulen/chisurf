@@ -221,3 +221,130 @@ def analyse(
         scan=scan,
         fit=fit,
     )
+
+
+def write_container(
+    source,
+    analysis: EbfretAnalysis,
+    *,
+    parameters: dict | None = None,
+    out_dir=None,
+) -> str:
+    """Write an ebFRET analysis into the measurement's container.
+
+    Three grains, and the dwell table is the one that matters: it is *finer*
+    than a trace and carries the trace it belongs to as a key, which is the
+    shape no companion format could hold. The same shape as H2MM's dwells, for
+    the same reason.
+
+    Parameters
+    ----------
+    source : str or pathlib.Path
+        The instrument file, or the container itself.
+    analysis : EbfretAnalysis
+        The run to record.
+    parameters : dict, optional
+        The settings. Their hash is the identity of the run.
+    out_dir : str or pathlib.Path, optional
+
+    Returns
+    -------
+    str
+        Path of the container written.
+    """
+    from chisurf.core.datastore import store_from_arrays
+    from chisurf.core.fio.fluorescence.burst_container import (
+        container_for,
+        write_burst_artifact,
+    )
+    from chisurf.core.fio.pto import Measurement, is_measurement
+
+    # ebFRET starts from binned traces, not photons, so the source is created
+    # here rather than through the shared opener -- which would embed the `.dat`
+    # under `tttr_photon_stream` and say something about the file that is false
+    # in the one field a reader consults to decide how to open it.
+    target = container_for(source)
+    if not is_measurement(target):
+        # As a context manager, because `close()` alone does not commit: the
+        # README and the traces would be written and then dropped, and the
+        # container would come back holding only the tables added afterwards.
+        with Measurement.create(source, artifact_kind="trace_data"):
+            pass
+    source = target
+
+    states = analysis.states
+    written = write_burst_artifact(
+        source,
+        store_from_arrays({
+            "State": np.array([s.index for s in states], dtype=np.int32),
+            "E": np.array([s.mean for s in states], dtype=float),
+            "Std": np.array([s.std for s in states], dtype=float),
+            "Precision": np.array([s.precision for s in states], dtype=float),
+            "Occupancy": np.array([s.occupancy for s in states], dtype=float),
+            # The evidence is a property of the model, so it repeats down the
+            # table rather than living in a header nothing can query.
+            "Evidence": np.full(len(states), float(analysis.evidence)),
+        }),
+        name="ebfret states",
+        artifact_kind="fit_result",
+        operation_type="model_fitting",
+        row_grain="state",
+        parameters=parameters,
+        derived_from="bursts",
+        units={
+            "State": "dimensionless", "E": "dimensionless",
+            "Std": "dimensionless", "Precision": "dimensionless",
+            "Occupancy": "dimensionless", "Evidence": "dimensionless",
+        },
+        out_dir=out_dir,
+    )
+
+    counts = np.asarray(analysis.transition_counts, dtype=float)
+    if counts.size:
+        n = counts.shape[0]
+        pairs = [(s, t) for s in range(n) for t in range(n)]
+        write_burst_artifact(
+            source,
+            store_from_arrays({
+                "From": np.array([s for s, _ in pairs], dtype=np.int32),
+                "To": np.array([t for _, t in pairs], dtype=np.int32),
+                "Count": np.array([counts[s, t] for s, t in pairs], dtype=float),
+            }),
+            name="ebfret transitions",
+            artifact_kind="parameter_table",
+            operation_type="model_fitting",
+            row_grain="pair",
+            parameters=parameters,
+            derived_from="ebfret states",
+            source_row_column="State",
+            target_row_column="From",
+            units={"From": "dimensionless", "To": "dimensionless",
+                   "Count": "counts"},
+            out_dir=out_dir,
+        )
+
+    dwells = analysis.dwells
+    if dwells:
+        write_burst_artifact(
+            source,
+            store_from_arrays({
+                # The key. A dwell subdivides a trace, so the join is declared
+                # rather than counted -- exactly H2MM's dwell case.
+                "Trace": np.array([d.trace for d in dwells], dtype=np.int32),
+                "State": np.array([d.state for d in dwells], dtype=np.int32),
+                "Start": np.array([d.start for d in dwells], dtype=np.int64),
+                "Length": np.array([d.length for d in dwells], dtype=np.int64),
+            }),
+            name="ebfret dwells",
+            artifact_kind="dwell_table",
+            operation_type="model_fitting",
+            row_grain="dwell",
+            parameters=parameters,
+            derived_from="ebfret states",
+            source_row_column="State",
+            target_row_column="State",
+            units={"Trace": "dimensionless", "State": "dimensionless",
+                   "Start": "dimensionless", "Length": "dimensionless"},
+            out_dir=out_dir,
+        )
+    return written

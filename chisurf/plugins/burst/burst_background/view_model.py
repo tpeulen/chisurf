@@ -152,7 +152,79 @@ class BackgroundViewModel:
             f"{len(self.diagnostics)} file(s), "
             f"{len({n for b in self.backgrounds.values() for n in b})} detector(s) estimated."
         )
+        self._write_containers()
         self.notify("computed")
+
+    def _write_containers(self) -> None:
+        """Record each file's background rates beside its photons.
+
+        A background rate is a property *of a measurement*, and until now it
+        lived only in this window: every later step that needs one — an MLE
+        fit, a burst search, an accurate-FRET correction — takes it as a number
+        the user types in again, with nothing recording that the two came from
+        the same estimate.
+
+        One row per detector, at `channel` grain, plus the inter-photon-time
+        histogram the rate was fitted from, so the estimate can be checked
+        rather than believed.
+
+        A failure here must not lose the estimate on screen.
+        """
+        from chisurf.core.datastore import store_from_arrays
+        from chisurf.core.fio.fluorescence.burst_container import (
+            write_burst_artifact,
+        )
+
+        for path, diags in self.diagnostics.items():
+            if not diags:
+                continue
+            names = list(diags)
+            try:
+                write_burst_artifact(
+                    path,
+                    store_from_arrays({
+                        "Detector": np.array(names, dtype=object),
+                        "Rate": np.array(
+                            [float(diags[n].rate_khz) for n in names], dtype=float
+                        ),
+                        "Amplitude": np.array(
+                            [float(diags[n].amplitude) for n in names], dtype=float
+                        ),
+                    }),
+                    name="background",
+                    artifact_kind="background_data",
+                    operation_type="background_correction",
+                    row_grain="channel",
+                    parameters=self._channels(),
+                    derived_from=(),
+                    units={"Rate": "kilohertz", "Amplitude": "counts"},
+                )
+                for name in names:
+                    diag = diags[name]
+                    if not len(diag.centers):
+                        continue
+                    write_burst_artifact(
+                        path,
+                        store_from_arrays({
+                            "Interphoton Time": np.asarray(diag.centers, dtype=float),
+                            "Counts": np.asarray(diag.counts, dtype=float),
+                            "Model": np.asarray(diag.model, dtype=float),
+                            "In Tail": np.asarray(diag.tail_mask, dtype=bool),
+                        }),
+                        name=f"background histogram {name}",
+                        artifact_kind="background_data",
+                        operation_type="background_correction",
+                        row_grain="curve_point",
+                        parameters=self._channels(),
+                        derived_from="background",
+                        units={
+                            "Interphoton Time": "milliseconds",
+                            "Counts": "counts", "Model": "counts",
+                        },
+                    )
+            except Exception:
+                logger.debug("could not write the container for %s", path,
+                             exc_info=True)
 
     def has_results(self) -> bool:
         """Whether an estimate has produced results."""

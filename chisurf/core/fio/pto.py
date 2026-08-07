@@ -402,6 +402,7 @@ class Measurement:
         *,
         out_dir: str | Path | None = None,
         title: str = "",
+        artifact_kind: str = "tttr_photon_stream",
     ) -> "Measurement":
         """Start a container from an instrument file.
 
@@ -419,6 +420,13 @@ class Measurement:
             is wrong for read-only source media and right everywhere else.
         title : str, optional
             Human title. Defaults to the instrument file's stem.
+        artifact_kind : str, optional
+            What the source *is*, as an ``_mmfdb_artifact.artifact_kind`` term.
+            Defaults to a photon stream, which is what nearly every measurement
+            here starts as — but not all of them: an ebFRET run starts from
+            binned traces, and calling those a photon stream would be a
+            statement about the file that is simply false, in the one field a
+            reader consults to decide how to open it.
 
         Returns
         -------
@@ -446,7 +454,7 @@ class Measurement:
         self = cls(handle, target)
         self._stamp_versions()
         self._add_readme()
-        self._instrument_uid = self._add_instrument(raw)
+        self._instrument_uid = self._add_instrument(raw, artifact_kind)
         return self
 
     @classmethod
@@ -1234,13 +1242,16 @@ class Measurement:
         )
         return uid
 
-    def _add_instrument(self, raw: Path) -> int:
+    def _add_instrument(
+        self, raw: Path, artifact_kind: str = "tttr_photon_stream"
+    ) -> int:
         """Embed the instrument file verbatim as the first object."""
+        _check_term(artifact_kind, _ARTIFACT_KIND)
         checksum, size = _sha256_of_path(raw)
         data_format = _FORMAT_BY_SUFFIX.get(raw.suffix.lower(), "unknown")
 
         uid = self._add_payload_from_path(
-            "tttr_photon_stream", data_format, raw.name, raw
+            artifact_kind, data_format, raw.name, raw
         )
         self._describe(
             uid,

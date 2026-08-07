@@ -442,8 +442,46 @@ class AccurateFretViewModel:
         if progress:
             progress(1.0, "Done")
         self.results_text = self._result.calibration.report()
+        self._write_container()
         self.notify("result")
         return True
+
+    def _write_container(self) -> None:
+        """Record the corrected values beside the photons they came from.
+
+        Not on an explicit export: an accurate ``E`` is only accurate with
+        respect to the α, β, γ, δ and R₀ it was computed with, so a run whose
+        calibration is only in the window is a run whose numbers cannot be
+        checked afterwards. ``export_csv`` puts the factors in ``#`` comment
+        lines, which is readable and not queryable, and only if someone
+        remembers to press Save.
+
+        A failure here must not lose the result the user is looking at.
+        """
+        if self._result is None or not self.filename or self.filename.startswith("<"):
+            return
+        from chisurf.plugins.burst.accurate_fret import core as _c
+
+        try:
+            _c.write_container(
+                self.filename, self._result,
+                # The inputs that decide the answer, so a re-run with the same
+                # ones replaces this rather than adding beside it.
+                parameters={
+                    "donor_lifetime": self.donor_lifetime,
+                    "forster_radius": self.forster_radius,
+                    "linker_sigma": self.linker_sigma,
+                    "background": [self.background_dd, self.background_da,
+                                   self.background_aa],
+                    "gamma_source": self.gamma_source,
+                    "n_bootstrap": self.n_bootstrap,
+                    "use_priors": self.use_priors,
+                    "max_fret_populations": self.max_fret_populations,
+                    "min_population": self.min_population,
+                },
+            )
+        except Exception:
+            logger.debug("could not write the container", exc_info=True)
 
     # ── tables / text ──
     def factor_rows(self) -> list[dict]:

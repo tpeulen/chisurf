@@ -220,8 +220,44 @@ class BurstGsViewModel:
             return False
 
         self.results_text = self._analysis.report()
+        self._write_container()
         self.notify("computed")
         return True
+
+    def _write_container(self) -> None:
+        """Record the fit beside the photons it was fitted to.
+
+        Nothing is written for a simulated run: there is no measurement for it
+        to belong to, and inventing one would put a synthetic fit in a real
+        file.
+
+        A failure here must not lose the fit the user is looking at.
+        """
+        if self._analysis is None:
+            return
+        # The measurement, not the `.bur`: a `.bur` lives in `bi4_bur/`, one
+        # directory below the photons, and the container belongs beside them.
+        files = [p for p in (self._info or {}).get("tttr_files", []) if p]
+        if not files:
+            return
+        from chisurf.plugins.burst.burst_gs import core as _c
+
+        try:
+            _c.write_container(
+                files[0], self._analysis,
+                # The inputs that decide the answer, so a re-run with the same
+                # ones replaces this rather than adding beside it.
+                parameters={
+                    "n_states": int(self.n_states),
+                    "initial_rate": float(self.initial_rate),
+                    "fix_efficiencies": bool(self.fix_efficiencies),
+                    "method": str(self.method),
+                    "max_iterations": int(self.max_iterations),
+                    "min_photons": int(self.min_photons),
+                },
+            )
+        except Exception:
+            logger.debug("could not write the container", exc_info=True)
 
     # ── view sources ──
     def results_html(self) -> str:
