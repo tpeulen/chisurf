@@ -1,3 +1,28 @@
+## Registering a dropped measurement in MMFDB fails on a foreign key
+
+**2026-08-07.** Dropping eleven `.spc` files into the burst workflow, with the
+`tttr_to_pto` guard converting them, stores the object and then fails to
+register it:
+
+```
+INFO  mmfdb.store.object_store - Stored new object: a3dbd6be... (13227189 bytes)
+ERROR mmfdb.store.transactions - Database transaction failed and was rolled back: FOREIGN KEY constraint failed
+ERROR root - MMFDB RPC failed: raw_data.register: FOREIGN KEY constraint failed
+```
+
+The object store keeps the blob; the metadata row is rolled back — so the
+container is on disk and MMFDB does not know about it, which is the state that
+makes "open it in ndX from MMFDB" fail later with nothing to point at. The
+analysis itself continues, so nothing surfaces in the window.
+
+Not diagnosed here: the failing constraint is not named in the message, and
+`raw_data.register` lives in the **mmfdb repository** (`modules/mmfdb` is a
+symlink to its own checkout), where the fix and its test belong. Whoever picks
+it up should first turn the bare `FOREIGN KEY constraint failed` into a message
+that says *which* key — SQLite will report it with
+`PRAGMA foreign_key_check` after the failure — because the same message will
+otherwise be re-diagnosed from scratch every time.
+
 ## The Info preview and the burst search are two implementations of one search
 
 **2026-08-07.** The photon-filter wizard's Info panel

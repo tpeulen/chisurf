@@ -86,6 +86,24 @@
   the whole `data_loading` section is written into the shipped
   `settings_chisurf.yaml` rather than living only as a Python dict.
 
+  **A search the pre-filter had made a formality, and the burst table nobody
+  could believe.** From a real session over eleven files: "no bursts or very
+  few" in the table while the trace plot plainly showed hundreds. Not a writing
+  bug — the search genuinely returned 91-98% of the stream in 2-14 enormous
+  "bursts", with a plausible count, mean size and mean duration. The
+  delta-macro-time interval and the burst search are the same kind of statement,
+  and the interval is applied as a *pre-filter*: a sliding window asking for `m`
+  consecutive photons inside `T` is guaranteed to say yes once the interval has
+  bounded the gap below `T/m`. `tttrlib_search._warn_if_degenerate` already
+  logged it and named a remedy, but a warning in a log is not a result — the
+  analysis wrote the degenerate table anyway. The condition is acted on now: the
+  search re-runs on the *unfiltered* stream and the interval is applied
+  afterwards, where it can only remove photons. Where the pre-filter is healthy
+  the two agree (2318 vs 2403 runs, 1099 vs 1117 bursts on the bundled
+  measurement), so the fallback is the same analysis rather than a different
+  one. The warning's own suggestion — zero `min_contrast`/`min_significance` —
+  was tried and does not cover this: `sliding_window` has no such parameters.
+
   Recorded rather than fixed, in [known issues](/references/known-issues.md):
   the wizard's Info preview is a *second implementation* of the burst search
   (2739 vs 1099 on the same file and settings, with the bounds now equal — the
