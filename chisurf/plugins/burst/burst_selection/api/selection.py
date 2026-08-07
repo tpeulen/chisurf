@@ -511,6 +511,41 @@ def _write_legacy_output_info(request: AnalysisRequest, output_folder: Path) -> 
         fp.write(f"Date: {time.strftime('%Y-%m-%d')}\nTime: {time.strftime('%H:%M:%S')}\n")
 
 
+def _measurement_name(path) -> Path:
+    """Return the name a burst table should record for *path*.
+
+    A vendor file names itself. A container names the instrument file it holds
+    -- there is only ever one measurement in a container, and that measurement
+    is the `.spc`/`.ptu` it was packed from, not the box it is packed in. A
+    container stacking several vendor files (one split measurement) has no
+    single answer and keeps its own name, which is honest: those bursts really
+    do span the set.
+
+    Parameters
+    ----------
+    path : str or pathlib.Path
+
+    Returns
+    -------
+    pathlib.Path
+        A name, not a path to open — only its ``.name`` reaches the table.
+    """
+    path = Path(path)
+    if path.suffix.lower() != ".pto":
+        return path
+    try:
+        from chisurf.core.fio.pto import Measurement
+
+        with Measurement.open(path, writable=False) as measurement:
+            embedded = [
+                m.name for m in measurement.artifacts()
+                if m.uid in measurement.instrument_uids
+            ]
+    except Exception:  # noqa: BLE001 - naming must never fail an analysis
+        return path
+    return path.with_name(embedded[0]) if len(embedded) == 1 else path
+
+
 def analyze_file(
     path: str | Path,
     *,
@@ -586,7 +621,15 @@ def analyze_file(
     )
     df = summarize_bursts(
         start_stop,
-        path,
+        # The *measurement's* name, which for a container is the instrument
+        # file inside it rather than the container itself. `First File` names
+        # what a burst was found in, and a reader resolving it against an
+        # unpacked folder would otherwise look for an `m000.pto` that is not
+        # there beside the `m000.spc` it just recovered. It is also what makes
+        # the analysis of a container and of the vendor file it holds produce
+        # byte-identical tables, which is the claim `.pto` has to be able to
+        # make about the folder it replaces.
+        _measurement_name(path),
         tttr,
         windows=windows or {},
         detectors=detectors or {},

@@ -41,6 +41,8 @@ __all__ = [
     "is_container_path",
     "split_container_path",
     "artifact_name",
+    "bur_artifact_name",
+    "BUR_DIR",
     "split_artifact_name",
     "list_runs",
     "read_tables",
@@ -153,6 +155,37 @@ def artifact_name(run: str, table: str) -> str:
     return f"{run}{SEPARATOR}{table}" if run else table
 
 
+#: The directory a burst table lives in, inside a run. Kept because the
+#: container mirrors the folder tree 1:1 -- an artifact is named exactly as the
+#: file would be, so unpacking reproduces the layout and a reader that globs
+#: `bi4_bur/*.bur` finds the same thing either side.
+BUR_DIR = "bi4_bur"
+
+
+def bur_artifact_name(run: str, stem: str) -> str:
+    """Return the name a measurement's `.bur` is stored under inside a container.
+
+    Parameters
+    ----------
+    run : str
+        The analysis's name — the folder layout's directory name.
+    stem : str
+        The measurement's stem, as the `.bur` file is named after it.
+
+    Returns
+    -------
+    str
+
+    Examples
+    --------
+    >>> bur_artifact_name("countrate_All 0.2000#60", "m000")
+    'countrate_All 0.2000#60/bi4_bur/m000.bur'
+    >>> bur_artifact_name("", "m000")
+    'bi4_bur/m000.bur'
+    """
+    return artifact_name(run, f"{BUR_DIR}{SEPARATOR}{stem}.bur")
+
+
 def split_artifact_name(name: str) -> tuple[str, str]:
     """Split an artifact name into ``(run, table)`` — the inverse of the above.
 
@@ -172,8 +205,18 @@ def split_artifact_name(name: str) -> tuple[str, str]:
     >>> split_artifact_name("bursts")
     ('', 'bursts')
     """
-    run, separator, table = str(name).rpartition(SEPARATOR)
-    return (run, table) if separator else ("", str(name))
+    text = str(name)
+    # `<run>/bi4_bur/<stem>.bur` is one table in one run, not a run called
+    # `<run>/bi4_bur`: the directory is part of the table's name because the
+    # container mirrors the folder tree.
+    marker = f"{SEPARATOR}{BUR_DIR}{SEPARATOR}"
+    if marker in text:
+        run, _, table = text.partition(marker)
+        return run, f"{BUR_DIR}{SEPARATOR}{table}"
+    if text.startswith(f"{BUR_DIR}{SEPARATOR}"):
+        return "", text
+    run, separator, table = text.rpartition(SEPARATOR)
+    return (run, table) if separator else ("", text)
 
 
 def list_runs(path, *, operation: str = "") -> list[str]:
@@ -386,9 +429,16 @@ def export_tree(container, out_dir=None) -> list[pathlib.Path]:
         except FileNotFoundError:
             continue
         folder = target / (run or path.stem)
-        folder.mkdir(parents=True, exist_ok=True)
         for name, table in tables.items():
-            out = folder / f"{name}.csv"
+            # The name *is* the relative path -- `bi4_bur/m000.bur` comes back
+            # out as `bi4_bur/m000.bur`, so unpacking reproduces the folder the
+            # container replaced rather than an approximation of it. A table
+            # stored under a bare name gets `.csv`, because it had no file.
+            relative = pathlib.PurePosixPath(name)
+            out = folder / pathlib.Path(*relative.parts)
+            if not out.suffix:
+                out = out.with_suffix(".csv")
+            out.parent.mkdir(parents=True, exist_ok=True)
             write_csv_table(out, table)
             written.append(out)
     return written

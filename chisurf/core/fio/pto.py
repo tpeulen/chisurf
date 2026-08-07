@@ -1453,9 +1453,15 @@ class Measurement:
         else:
             uid = self._f.find(ref)
             if not uid:
+                # A name may be given without its run, and the burst table is
+                # stored under the name its file has -- `<run>/bi4_bur/m000.bur`
+                # -- because the container mirrors the folder tree. Asking for
+                # "bursts" means "the burst table", which is what every caller
+                # written before either of those was already asking.
                 suffix = f"/{ref}"
                 for obj in self._f.objects():
-                    if str(obj.name).endswith(suffix):
+                    name = str(obj.name)
+                    if name.endswith(suffix) or (ref == "bursts" and name.endswith(".bur")):
                         uid = obj.uid
         if not uid or not self._f.has(uid):
             raise PtoMfdbError(f"no object {ref!r} in {self._path}")

@@ -234,6 +234,7 @@ def write_burst_artifact(
     target_row_column: str = "",
     units: Mapping[str, str] | None = None,
     out_dir: str | Path | None = None,
+    deinterleave: bool = True,
 ) -> str:
     """Write one analysis result into the measurement's container.
 
@@ -281,7 +282,12 @@ def write_burst_artifact(
         Path of the container written.
     """
     wanted = [derived_from] if isinstance(derived_from, str) else list(derived_from)
-    table = deinterleave_bursts(df)
+    # The zero rows are file-format padding and a *result* has no use for them
+    # -- unless the object being written is the file itself. A container storing
+    # `<run>/bi4_bur/<stem>.bur` holds what that file holds, row for row, so
+    # unpacking reproduces it and a reader that has always applied the stride
+    # keeps applying it. See `chisurf.core.fio.analysis_path`.
+    table = deinterleave_bursts(df) if deinterleave else as_table(df)
     with open_measurement(source, out_dir) as m:
         parents = []
         for label in wanted:

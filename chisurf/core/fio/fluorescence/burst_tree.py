@@ -32,6 +32,7 @@ __all__ = [
     "split_artifact_name",
     "run_artifact_name",
     "read_tables",
+    "read_burst_table",
     "list_runs",
 ]
 
@@ -79,3 +80,29 @@ def list_runs(container) -> list[str]:
     list of str
     """
     return _list_runs(container, operation=OPERATION)
+
+
+def read_burst_table(path):
+    """Return the burst table at *path*, de-interleaved, or ``None``.
+
+    The burst-shaped view of :func:`chisurf.core.fio.analysis_path.read_tables`:
+    the container stores the `.bur` under the name that file has, so a caller
+    wanting "the bursts" should not have to know that, nor that the file's zero
+    rows come off on the way out.
+
+    Parameters
+    ----------
+    path : str or pathlib.Path
+        A container, or one analysis inside it.
+
+    Returns
+    -------
+    tttrlib.DataStore or None
+    """
+    from chisurf.core.fio.fluorescence.burst_container import deinterleave_bursts
+
+    tables = read_tables(path, operation=OPERATION)
+    for name, table in tables.items():
+        if name.endswith(".bur") or name == TABLE:
+            return deinterleave_bursts(table)
+    return None

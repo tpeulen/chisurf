@@ -133,12 +133,17 @@ def write_container(
     str
         Path of the container written.
     """
-    from chisurf.core.fio.fluorescence.burst_tree import run_artifact_name
+    from chisurf.core.fio.analysis_path import bur_artifact_name
 
     return write_burst_artifact(
         source,
         df,
-        name=run_artifact_name(run),
+        # The name a `.bur` would have had in the folder, and the table exactly
+        # as that file holds it -- interleave and all. A container mirrors the
+        # tree it replaces, so unpacking reproduces the file and a reader that
+        # has always applied the row stride keeps applying it.
+        name=bur_artifact_name(run, Path(source).stem),
+        deinterleave=False,
         artifact_kind="burst_table",
         operation_type="burst_selection",
         row_grain="burst",

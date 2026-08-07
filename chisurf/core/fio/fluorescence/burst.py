@@ -691,9 +691,20 @@ def _read_burst_analysis_from_container(path: pathlib.Path) -> tuple:
     from chisurf.core.fio.analysis_path import split_container_path
     from chisurf.core.fio.staging import open_tttr
 
+    from chisurf.core.fio.fluorescence.burst_container import deinterleave_bursts
+
     container, _run = split_container_path(path)
     tables = read_tables(path, operation=OPERATION)
-    df = tables.get(TABLE)
+    # The container stores the `.bur` as that file holds it, interleave and all,
+    # so the padding comes off here -- the same stride the folder reader applies
+    # to the same rows. Storing the file 1:1 is what makes the two layouts
+    # interchangeable; a table that had been trimmed on the way in could not
+    # reproduce the file on the way out.
+    df = None
+    for name, table in tables.items():
+        if name.endswith(".bur") or name == TABLE:
+            df = deinterleave_bursts(table)
+            break
     if df is None:
         # A run whose only tables are companions: nothing to hang them on.
         raise FileNotFoundError(
@@ -705,7 +716,10 @@ def _read_burst_analysis_from_container(path: pathlib.Path) -> tuple:
     # container's answer to the `…4` companions, matched on row count because
     # that is the contract those companions are written under.
     for name, companion in tables.items():
-        if name == TABLE or row_count(companion) != row_count(df):
+        if name.endswith(".bur") or name == TABLE:
+            continue
+        companion = deinterleave_bursts(companion)
+        if row_count(companion) != row_count(df):
             continue
         df.append_columns(companion, tttrlib.DataStore.OnDuplicate_KeepFirst)
 
