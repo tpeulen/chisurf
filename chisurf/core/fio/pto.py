@@ -773,8 +773,41 @@ class Measurement:
             out.append(obj)
         return out
 
+    def get_store(self, ref: int | str) -> Any:
+        """Read a table back as a store, with its column descriptions intact.
+
+        Prefer this to :meth:`get_table`. A column's unit and mmCIF item are
+        attributes *of the column*, and pandas has nowhere to put them — so a
+        frame is the one shape of this table that cannot say a duration is
+        milliseconds, which is the thing writing the units was for.
+
+        Parameters
+        ----------
+        ref : int or str
+            An object UID, or a name to look up.
+
+        Returns
+        -------
+        tttrlib.DataStore
+
+        Raises
+        ------
+        PtoMfdbError
+            If there is no such object.
+        """
+        from chisurf.core.datastore import new_store
+
+        uid = self._resolve(ref)
+        store = new_store()
+        _tttrlib().pto_read_store(self._f, uid, store)
+        return store
+
     def get_table(self, ref: int | str) -> Any:
         """Read a table back as a :class:`pandas.DataFrame`.
+
+        The convenience shape, for callers that already speak pandas. It
+        **drops the column descriptions** — see :meth:`get_store`, which does
+        not.
 
         Parameters
         ----------
@@ -790,12 +823,9 @@ class Measurement:
         PtoMfdbError
             If there is no such object.
         """
-        from chisurf.core.datastore import dataframe_from_store, new_store
+        from chisurf.core.datastore import dataframe_from_store
 
-        uid = self._resolve(ref)
-        store = new_store()
-        _tttrlib().pto_read_store(self._f, uid, store)
-        return dataframe_from_store(store)
+        return dataframe_from_store(self.get_store(ref))
 
     def tag(self, uid: int, item: str, default: Any = "") -> Any:
         """Return one tag value from an object, by mmCIF item name.
@@ -1007,6 +1037,57 @@ class Measurement:
                 column.set_attribute("item", item)
             if unit or item:
                 column.set_attribute("name", name)
+
+    @staticmethod
+    def column_units(table: Any, name: str) -> str:
+        """Return the unit a column was written with, or ``""``.
+
+        The read half of :meth:`_describe_columns`. A unit that can be written
+        and not read is a unit that only the writer believes in — and every
+        consumer would otherwise be back to inferring millisecondsness from a
+        column name, which is what recording it was meant to end.
+
+        The empty string means the unit is **unknown**, not dimensionless.
+        Those are different claims and a caller must be able to tell them
+        apart, so a genuinely dimensionless column carries the
+        ``dimensionless`` term rather than nothing.
+
+        Parameters
+        ----------
+        table : tttrlib.DataStore
+            A table read back from a container.
+        name : str
+            Column name.
+
+        Returns
+        -------
+        str
+            A ``_mmfdb_column.units`` term, or ``""``.
+        """
+        for i in range(table.n_columns()):
+            column = table[i]
+            if column.name() == name:
+                return str(column.attribute("units") or "")
+        return ""
+
+    @staticmethod
+    def column_item(table: Any, name: str) -> str:
+        """Return the mmCIF item name a column was projected onto, or ``""``.
+
+        Parameters
+        ----------
+        table : tttrlib.DataStore
+        name : str
+
+        Returns
+        -------
+        str
+        """
+        for i in range(table.n_columns()):
+            column = table[i]
+            if column.name() == name:
+                return str(column.attribute("item") or "")
+        return ""
 
     def _find_run(
         self, operation_type: str, run: str, artifact_kind: str, name: str

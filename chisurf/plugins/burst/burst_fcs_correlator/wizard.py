@@ -27,6 +27,7 @@ import numpy as np
 import pandas as pd
 import tttrlib
 
+import chisurf
 from chisurf.gui import QtWidgets, QtCore
 from chisurf.gui import chiplot as cp
 from chisurf.core.models.fcs.maxent import fcs_maxent
@@ -1447,6 +1448,43 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
 
         return pd.DataFrame(rows)
 
+    def _write_container(self, group: pd.DataFrame, table: pd.DataFrame) -> None:
+        """Write one group's diffusion times into its measurement's container.
+
+        The container carries ``Burst Index`` as a declared key, which is the
+        one thing the ``td4`` companion beside it cannot do: that file is merged
+        onto the burst table by counting rows, while its grid is built from the
+        bursts that *produced a result*. A burst the correlator skipped is a
+        missing row there rather than a blank one, so every burst after it is
+        merged against the wrong burst's diffusion time — silently, because the
+        shape and the column names stay right and only the attribution is
+        wrong.
+
+        Parameters
+        ----------
+        group : pandas.DataFrame
+            The rows for one (burst folder, file), carrying ``First File``.
+        table : pandas.DataFrame
+            The wide table: ``Burst Index`` plus one column per pair.
+        """
+        from chisurf.plugins.burst.burst_fcs_correlator.core.export import (
+            write_fcs_container,
+        )
+
+        try:
+            source = str(group['First File'].iloc[0])
+        except (KeyError, IndexError):
+            return
+        try:
+            # The same mapping the settings file records, so a re-run with the
+            # same settings replaces its result instead of adding beside it.
+            write_fcs_container(source, table,
+                                parameters=self._export_settings_dict())
+        except Exception as exc:
+            chisurf.logging.warning(
+                f"Could not write the container for {source}: {exc}"
+            )
+
     def _save_td4_results(self, result_df: pd.DataFrame) -> None:
         """Write diffusion times to td4-style files in the burst analysis folder.
 
@@ -1533,6 +1571,7 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
 
                 value_cols = [c for c in wide_df.columns if c.startswith('td_')]
                 cols = ["Burst Index"] + value_cols
+                wide = wide_df
 
                 try:
                     arr = wide_df[cols].to_numpy(dtype=float, copy=False)
@@ -1547,11 +1586,14 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
                     df_for_save = df_for_save.rename(columns={'td_peak_ms': 'td_peak'})
                 value_cols = [c for c in df_for_save.columns if c.startswith('td_')]
                 cols = ["Burst Index"] + value_cols
+                wide = df_for_save
 
                 try:
                     arr = df_for_save[cols].to_numpy(dtype=float, copy=False)
                 except Exception:
                     continue
+
+            self._write_container(df_g, wide[cols])
 
             out = np.zeros((arr.shape[0] * 2 + 1, arr.shape[1]), dtype=float)
             out[1::2] = arr

@@ -320,6 +320,60 @@ def test_a_finer_grained_table_declares_its_grain_and_its_key(
         assert m.parents(uid) == [m._resolve("bursts")]
 
 
+def test_a_column_still_says_its_unit_when_it_is_read_back(measurement: Path):
+    """A unit that can be written and not read is one only the writer believes.
+
+    The unit is an attribute of the column, so it survives ``get_store`` and
+    not ``get_table`` — pandas has nowhere to keep it. That is worth pinning in
+    both directions, because the frame is the shape most callers reach for and
+    it is the one that silently drops the answer.
+    """
+    with Measurement.open(measurement, writable=True) as m:
+        m.put_table(
+            "timed",
+            pd.DataFrame(
+                {
+                    "Duration": np.linspace(0.1, 3.0, 8),
+                    "Tau": np.linspace(1.0, 4.0, 8),
+                    "Ratio": np.linspace(0.0, 1.0, 8),
+                }
+            ),
+            artifact_kind="burst_table",
+            operation_type="burst_selection",
+            row_grain="burst",
+            parameters={"units": True},
+            derived_from=m.instrument_uid,
+            units={
+                "Duration": "milliseconds",
+                "Tau": "nanoseconds",
+                "Ratio": "dimensionless",
+            },
+        )
+
+    with Measurement.open(measurement) as m:
+        store = m.get_store("timed")
+        assert m.column_units(store, "Duration") == "milliseconds"
+        assert m.column_units(store, "Tau") == "nanoseconds"
+        # Dimensionless is a claim; "" would mean the unit is unknown.
+        assert m.column_units(store, "Ratio") == "dimensionless"
+        assert m.column_units(store, "nope") == ""
+
+
+def test_an_invented_unit_is_refused(measurement: Path):
+    """The vocabulary is the dictionary's, the same as everywhere else."""
+    with Measurement.open(measurement, writable=True) as m:
+        with pytest.raises(PtoMfdbError):
+            m.put_table(
+                "bad units",
+                _bursts(4),
+                artifact_kind="burst_table",
+                operation_type="burst_selection",
+                row_grain="burst",
+                derived_from=m.instrument_uid,
+                units={"Number of Photons": "furlongs"},
+            )
+
+
 def test_an_artifact_may_have_several_parents(measurement: Path):
     """Fusing bursts produces a row made of more than one source, so the edge
     arity has to be able to say so."""
