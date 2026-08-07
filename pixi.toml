@@ -55,10 +55,6 @@ numba = "*"
 # the burbulator library and the Cython extensions -- is retired, tttrlib
 # builds against the C++17 standard library instead, and no built extension
 # in the tree or in the local modules records a libboost load command.
-# pdb2pqr was dropped: ProteinMC's statistical H-bond potential only ever
-# needs the backbone amide H, which chisurf.core.structure.Structure.protonate
-# now builds from ideal sp2 geometry instead of shelling out to an all-atom
-# protonation tool (which pulled in pandas as a hard conda dependency).
 ipython = "*"
 notebook = "<7"
 pyopengl = "*"

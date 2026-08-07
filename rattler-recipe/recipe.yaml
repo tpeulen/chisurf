@@ -152,10 +152,7 @@ requirements:
                             # tttrlib's bundled libtiff instead
     # Deliberately NOT declared: latexify-py, whose conda build stops at
     # Python 3.11 -- the parse-model LaTeX view falls back to its in-tree
-    # converter. See okf/references/known-issues.md. (pdb2pqr used to be here
-    # too, for ProteinMC structure preparation -- it needed only one
-    # geometrically-determined backbone atom, now built in-tree instead, so
-    # the dependency is gone rather than merely undeclared.)
+    # converter. See okf/references/known-issues.md.
     - ${{ "hdf5" if win }}
 
 # `import chisurf` is deliberately the whole test. It is cheap and it is the one
