@@ -21,10 +21,16 @@ import os
 import pathlib
 import time
 import json
-from chisurf.core.datastore import set_constant as _set_constant, write_csv_table
+from chisurf.core.datastore import (
+    concat_stores,
+    read_csv_table,
+    row_count,
+    set_constant as _set_constant,
+    take_rows,
+    write_csv_table,
+)
 import numpy as np
 import zipfile
-import pandas as pd
 
 import chisurf as cs
 from chisurf import logging
@@ -75,9 +81,7 @@ icon = "🔗"
 #: does not raise: the library prints to stderr and hands back an object with
 #: zero photons. The container is detected from the file instead, which is what
 #: ``tttrlib`` is good at, so nothing needs to be guessed from a suffix.
-_TTTR_EXTENSIONS: Tuple[str, ...] = (
-    ".ptu", ".phu", ".ht3", ".ht2", ".pt3", ".t3r", ".spc", ".h5", ".hdf5",
-)
+from chisurf.core.fio.staging import TTTR_EXTENSIONS as _TTTR_EXTENSIONS
 
 
 def _find_tttr_by_stem(start_dir: pathlib.Path, bid_stem: str) -> Optional[pathlib.Path]:
@@ -278,7 +282,7 @@ def _write_sl5(output_dir: pathlib.Path, tttr_path: pathlib.Path, filetype: str,
         f.write(json.dumps(data))
 
 
-def _write_hdf5_combined(output_dir: pathlib.Path, dataframes: List[pd.DataFrame]) -> None:
+def _write_hdf5_combined(output_dir: pathlib.Path, dataframes: List) -> None:
     """Write the combined burst tables to one columnar HDF5 file.
 
     The encoding this used to build by hand -- integers downcast, floats
@@ -292,7 +296,7 @@ def _write_hdf5_combined(output_dir: pathlib.Path, dataframes: List[pd.DataFrame
     ----------
     output_dir : pathlib.Path
         Analysis output folder; the file goes in its ``hdf5`` subfolder.
-    dataframes : list of pandas.DataFrame
+    dataframes : list of tttrlib.DataStore
         Per-measurement burst tables.
     """
     from chisurf.core.fio.fluorescence.burst import write_burst_hdf5
@@ -330,8 +334,7 @@ def zip_output_folder(output_folder: pathlib.Path) -> Optional[pathlib.Path]:
     return zip_path
 
 
-def _per_file_process(bid_path: pathlib.Path, output_dir: pathlib.Path, windows: Optional[dict], detectors: Optional[dict], output_types: Set[str], bid_index: int = 1) -> Tuple[pathlib.Path, 'tttrlib.TTTR', dict, dict, 'pd.DataFrame', np.ndarray]:
-    import pandas as pd
+def _per_file_process(bid_path: pathlib.Path, output_dir: pathlib.Path, windows: Optional[dict], detectors: Optional[dict], output_types: Set[str], bid_index: int = 1) -> Tuple[pathlib.Path, 'tttrlib.TTTR', dict, dict, 'tttrlib.DataStore', np.ndarray]:
     bid_path = pathlib.Path(bid_path)
     stem = bid_path.stem
     tttr_path = _find_tttr_by_stem(bid_path.parent, stem)
@@ -372,14 +375,14 @@ def _per_file_process(bid_path: pathlib.Path, output_dir: pathlib.Path, windows:
         try:
             include_zeros = True  # we used include_interleaved_zeros when creating df
             if bur_path.exists():
-                try:
-                    existing_df = pd.read_csv(bur_path, sep='\t')
-                except Exception:
-                    existing_df = None
+                existing_store = read_csv_table(bur_path, delimiter='\t')
                 # Avoid duplicate leading zero-row when appending: drop first row of the new df
-                df_to_append = df.iloc[1:].copy() if include_zeros and len(df) > 0 else df
-                if existing_df is not None:
-                    combined = pd.concat([existing_df, df_to_append], ignore_index=True, sort=False)
+                df_to_append = (
+                    take_rows(df, np.arange(1, row_count(df)))
+                    if include_zeros and row_count(df) > 0 else df
+                )
+                if existing_store is not None:
+                    combined = concat_stores([existing_store, df_to_append])
                     write_csv_table(bur_path, combined)
                 else:
                     write_dataframe_to_bur(df_to_append, str(bur_path))
@@ -522,7 +525,7 @@ def convert_bid_file(
 
     # Default outputs
     if output_types is None:
-        output_types = {"bur"}
+        output_types = {"pto"}
 
     # Process this single file
     bur_path, tttr, dets, wins, df, selected = _per_file_process(bid_path, output_dir, windows, detectors, output_types, bid_index=bid_index)
@@ -568,10 +571,10 @@ def convert_many(
     output_dir = _prepare_output_dir(first_tttr, analysis_folder, target_path, unique_folder)
 
     if output_types is None:
-        output_types = {"bur"}
+        output_types = {"pto"}
 
     bur_paths: List[pathlib.Path] = []
-    dfs_for_hdf5: List[pd.DataFrame] = []
+    dfs_for_hdf5: List = []
     tttr_paths_for_info: List[pathlib.Path] = []
 
     for i, p in enumerate(bid_paths, start=1):

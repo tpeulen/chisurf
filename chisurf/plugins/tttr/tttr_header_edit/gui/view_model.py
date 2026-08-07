@@ -28,7 +28,7 @@ _VIEW_JSON = pathlib.Path(__file__).parent / "header.view.json"
 
 #: File-dialog filter listing the containers :mod:`tttrlib` can auto-detect.
 OPEN_FILTER = (
-    "TTTR files (*.ptu *.ht3 *.spc *.hdf5 *.h5);;"
+    "TTTR files (*.pto *.ptu *.ht3 *.spc *.hdf5 *.h5);;"
     "PicoQuant PTU (*.ptu);;PicoQuant HT3 (*.ht3);;"
     "Becker&Hickl SPC (*.spc);;Photon-HDF5 (*.hdf5 *.h5);;"
     "All files (*)"

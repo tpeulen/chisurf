@@ -96,6 +96,14 @@
   at full resolution, and a shared decimation budget on `chiplot`'s `line`/`scatter`
   so those plots stop trying to draw millions of points.
 
+* **`.pto` is the default now, not an option** ([photon container](subsystems/photon-container.md), [PTO.MFDB](specs/pto-mfdb.md)). Stated as an objective: `.pto` is ChiSurf's file type for TTTR data. A vendor file is an *import source* — `staging.import_measurement` turns one into its container, the file-open widget calls it, and `AnalysisSettings.output_formats` defaults to `["pto"]`. The original is never moved, altered or deleted, and stays byte-for-byte recoverable.
+
+  **The file dialogs were the invisible half of this.** Every one of them listed the vendor formats and not `.pto` — so the format ChiSurf produced was the one format its own Open dialogs hid. There is now a single `TTTR_FILE_FILTER` beside the reader, and a guard that fails on any dialog naming a vendor photon format without the container. Writing the guard was worth it twice over: it found **eight** more dialogs after the ones found by reading, and it caught a false positive (`(spc_output_path, "m*.spc")` is a tuple, not a filter) that a looser rule would have "fixed".
+
+  **What the flip broke is the shape to expect from the next one.** Three callers *consume* a `.bur` they had been getting for free: burst fusion's demo (the tool reads a `bi4_bur/` folder — that is what it is for), the burst-analysis workflow API (hands back `roles["bur"]`), and the tests that exercise the legacy reader. Each asks for `["pto", "bur"]` explicitly now. Before flipping a default, grep for who *reads* the legacy artifact, not who writes it.
+
+  Also: a new concept page, [The photon container](../docs/concepts/photon_container.md), and the TTTR guide now opens with what the format is and what it replaces.
+
 * **Stage 4: the imaging results stop being seven files around one measurement** ([photon container](subsystems/photon-container.md)). `<source>.imaging.h5` holds exactly one thing — a per-pixel table — and that is a missing *statement* rather than a limitation of HDF5: a table that cannot say what one of its rows is can only hold one grain, and the grain it chose was the pixel. So a stack, a drift trajectory, a resolution curve, a molecule table and a track table each became a file of its own beside it, related to the measurement by a filename prefix.
 
   Each now says its grain and shares the file: flow field at `pixel`, drift at `frame`, FRC at `curve_point`, tracks at `track` with detections at `spot` carrying the track as a key, molecules at `molecule`. A raster stays a TIFF and travels as cargo — it is worth keeping in a format every other tool reads — with its axes labelled going in, since a stack read back without them is guessed into channels whenever it has four frames or fewer.

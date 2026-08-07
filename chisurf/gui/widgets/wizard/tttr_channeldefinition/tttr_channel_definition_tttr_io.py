@@ -122,7 +122,9 @@ def read_from_tttr_file(page):
         page,
         "Open TTTR or SPC File",
         "",
-        "All Files (*);;TTTR Files (*.ptu *.ht3 *.pt3);;SPC Files (*.spc *.set)"
+        "All Files (*);;Photon data (*.pto *.ptu *.ht3 *.pt3 *.spc *.set);;"
+        "Photon container (*.pto);;TTTR Files (*.ptu *.ht3 *.pt3);;"
+        "SPC Files (*.spc *.set)"
     )
     if not path:
         return

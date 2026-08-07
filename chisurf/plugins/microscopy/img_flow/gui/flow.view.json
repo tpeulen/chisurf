@@ -20,7 +20,7 @@
                 "attr": "filename",
                 "call": "set_filename",
                 "label": "Image",
-                "filter": "Images and photon streams (*.tif *.tiff *.png *.ptu *.ht3 *.spc);;All files (*)",
+                "filter": "Images and photon streams (*.pto *.tif *.tiff *.png *.ptu *.ht3 *.spc);;All files (*)",
                 "mmfdb_kinds": [
                   "raw_data",
                   "raw_measurement"

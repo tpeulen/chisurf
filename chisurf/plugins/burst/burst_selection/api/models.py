@@ -149,10 +149,11 @@ class AnalysisSettings:
     gmm : GMMSettings
         Optional Gaussian mixture model settings.
     output_formats : list of str
-        Output formats to write. ``"pto"`` writes the bursts into the
-        measurement's own container beside the instrument file, which is the
-        target layout; ``"bur"`` and ``"hdf5"`` write the legacy folder and are
-        kept so existing pipelines and external tools keep working.
+        Output formats to write. Defaults to ``["pto"]`` — the bursts go into
+        the measurement's own container beside the instrument file, which is
+        ChiSurf's format for photon data. ``"bur"`` writes the legacy companion
+        folder as well and is kept because external tools read it; ``"hdf5"``
+        is deprecated.
     zip_output : bool
         Whether legacy output folders should be zipped after processing.
     remove_folder : bool
@@ -164,7 +165,7 @@ class AnalysisSettings:
     photon_filter: PhotonFilterSettings = field(default_factory=PhotonFilterSettings)
     burst_detection: BurstDetectionSettings = field(default_factory=BurstDetectionSettings)
     gmm: GMMSettings = field(default_factory=GMMSettings)
-    output_formats: list[str] = field(default_factory=lambda: ["bur"])
+    output_formats: list[str] = field(default_factory=lambda: ["pto"])
     zip_output: bool = False
     remove_folder: bool = False
 

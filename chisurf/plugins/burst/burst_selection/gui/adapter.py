@@ -87,7 +87,10 @@ def proximity_ratio_from_frame(frame):
 
 def analysis_settings_from_wizard(wizard: Any) -> AnalysisSettings:
     """Create API analysis settings from a BurstSelectionTool instance."""
-    output_formats = ["bur"]
+    # Always the container; the legacy folder is an extra beside it.
+    output_formats = ["pto"]
+    if wizard.checkBox_FileCSV.isChecked():
+        output_formats.append("bur")
     if wizard.checkBox_FileMFDHDF.isChecked():
         output_formats.append("hdf5")
     settings = AnalysisSettings(
@@ -325,6 +328,7 @@ def apply_analysis_settings_to_wizard(wizard: Any, settings: Any) -> list[str]:
 
     formats = data.get("output_formats")
     if formats is not None:
+        _check("checkBox_FileCSV", "bur" in formats)
         _check("checkBox_FileMFDHDF", "hdf5" in formats)
     _check("checkBox_ZipOutput", data.get("zip_output"))
     _check("checkBox_RemoveFolder", data.get("remove_folder"))

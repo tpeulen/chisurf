@@ -20,7 +20,9 @@ from .client import MicrotimeShifterClient
 from chisurf.gui import dialogs
 
 #: TTTR file extensions the shifter accepts (used by the unified file list).
-_TTTR_EXTENSIONS = [".spc", ".ht3", ".ptu", ".hdf", ".h5"]
+# From the reading seam, so the picker offers exactly what the reader opens --
+# `.pto` first.
+from chisurf.core.fio.staging import TTTR_EXTENSIONS as _TTTR_EXTENSIONS
 
 
 class _FileListModel:

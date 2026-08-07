@@ -78,6 +78,7 @@ from .adapter import (
     proximity_ratio_from_frame,
 )
 from .client import BurstSelectionClient
+from chisurf.core.fio.staging import TTTR_FILE_FILTER
 from .gmm_settings_dialog import DEFAULT_GMM_SETTINGS, GMMSettingsDialog
 
 # Curated common keys shown first; then all PDBx keys are appended.
@@ -882,13 +883,27 @@ class BurstSelectionTool(ChisurfDockTool):
         group_layout.setSpacing(2)
         format_layout = QtWidgets.QHBoxLayout()
         format_layout.setSpacing(2)
-        self.csv_output_check = QtWidgets.QCheckBox("CSV", group)
-        self.csv_output_check.setChecked(True)
+        # The container is not a choice: it is where a measurement's results
+        # live. Shown, disabled, and checked, so the panel says what happens
+        # rather than leaving the user to infer it from the absence of a box.
+        self.pto_output_check = QtWidgets.QCheckBox("Container (.pto)", group)
+        self.pto_output_check.setChecked(True)
+        self.pto_output_check.setEnabled(False)
+        self.pto_output_check.setToolTip(
+            "The bursts are written into the measurement's own .pto file, "
+            "beside the photons. Always on."
+        )
+        self.csv_output_check = QtWidgets.QCheckBox("Seidel folder", group)
+        self.csv_output_check.setToolTip(
+            "Also write the legacy bi4_bur/ companion folder, for tools that "
+            "read it."
+        )
         self.hdf_output_check = QtWidgets.QCheckBox("MFD-HDF", group)
         self.hdf_output_check.setEnabled(False)
         self.mmfdb_output_check = QtWidgets.QCheckBox("MMFDB", group)
         self.zip_output_check = QtWidgets.QCheckBox("Zip Output", group)
         self.remove_folder_check = QtWidgets.QCheckBox("Remove Folder", group)
+        format_layout.addWidget(self.pto_output_check)
         format_layout.addWidget(self.csv_output_check)
         format_layout.addWidget(self.hdf_output_check)
         format_layout.addWidget(self.mmfdb_output_check)
@@ -1490,7 +1505,8 @@ class BurstSelectionTool(ChisurfDockTool):
                 time_window=time_window,
             )
 
-        output_formats = []
+        # Always the container; the rest are extras written beside it.
+        output_formats = ["pto"]
         if self.csv_output_check.isChecked():
             output_formats.append("bur")
         if self.hdf_output_check.isChecked():
@@ -1875,7 +1891,7 @@ class BurstSelectionTool(ChisurfDockTool):
             self,
             "Select TTTR files",
             "",
-            "TTTR files (*.spc *.ht3 *.ptu *.hdf *.h5);;All files (*)",
+            TTTR_FILE_FILTER,
         )
         self._add_paths([Path(path) for path in paths])
 

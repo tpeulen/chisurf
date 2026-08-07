@@ -12,6 +12,7 @@ from chisurf.gui import QtWidgets
 from chisurf.gui import chiplot as cp
 from chisurf.gui.widgets.sample_picker import show_sample_picker_dialog
 from chisurf.gui.widgets.wizard.tttr_channeldefinition import load_detector_setups
+from chisurf.core.fio.staging import TTTR_FILE_FILTER
 
 
 class _TcspcTttrDetectorWidget(QtWidgets.QWidget):
@@ -339,7 +340,7 @@ class TCSPCTTTRReaderControlWidget(
             return pathlib.Path(fn_prev)
         fn = cs.gui.widgets.open_files(
             description='TCSPC TTTR file',
-            file_type='TTTR files (*.ptu *.ht3 *.spc *.phu *.photonhdf5);;All files (*.*)',
+            file_type=TTTR_FILE_FILTER,
             working_path=None,
         )
         if isinstance(fn, (list, tuple)):

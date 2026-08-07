@@ -289,6 +289,11 @@ def _run_burst_search(source: pathlib.Path, settings: dict) -> pathlib.Path:
     bur_dir.mkdir(parents=True, exist_ok=True)
 
     analysis_settings = AnalysisSettings()
+    # Explicitly the legacy folder as well as the container. Burst fusion reads
+    # a `bi4_bur/` directory -- that is what the tool is *for*, and what the
+    # demo has to produce for the tour to have anything to open. The default is
+    # the container alone.
+    analysis_settings.output_formats = ["pto", "bur"]
     analysis_settings.burst_detection.min_photons = int(SEARCH["min_photons"])
     analysis_settings.burst_detection.photon_window = int(SEARCH["photon_window"])
     analysis_settings.burst_detection.time_window = float(SEARCH["time_window_ms"]) * 1e-3

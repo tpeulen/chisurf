@@ -53,8 +53,14 @@ STREAM_CHANNELS = [0, 1, 8, 9]
 
 
 def real_data_settings() -> AnalysisSettings:
-    """Return deterministic settings for the bundled BH SPC example."""
+    """Return deterministic settings for the bundled BH SPC example.
+
+    Asks for ``"bur"`` explicitly. The default is ``["pto"]`` — the
+    measurement's own container — and these tests read the *legacy* companion,
+    so they have to say they need one written.
+    """
     settings = AnalysisSettings()
+    settings.output_formats = ["pto", "bur"]
     settings.photon_filter = PhotonFilterSettings(
         channels=STREAM_CHANNELS,
         filter_active=False,

@@ -42,16 +42,54 @@ from pathlib import Path
 from time import perf_counter
 
 __all__ = [
-    "StagingCancelled",
-    "ProgressCallback",
+    "CONTAINER_SELECTOR",
     "CancelCallback",
+    "ProgressCallback",
+    "StagingCancelled",
+    "TTTR_EXTENSIONS",
+    "TTTR_FILE_FILTER",
+    "VENDOR_EXTENSIONS",
+    "format_rate",
+    "import_measurement",
+    "open_tttr",
+    "split_container_spec",
     "stage_path_if_slow",
     "staged_source",
-    "open_tttr",
-    "format_rate",
-    "split_container_spec",
-    "CONTAINER_SELECTOR",
 ]
+
+#: The vendor formats ChiSurf reads photons from.
+#:
+#: **Import sources, not the working format.** Each is a recording as some
+#: instrument's software wrote it; opening one produces the measurement's
+#: container, inside which those exact bytes are kept and remain recoverable.
+VENDOR_EXTENSIONS: tuple[str, ...] = (
+    ".ptu", ".phu", ".ht3", ".ht2", ".pt3", ".pt2", ".t3r",
+    ".spc", ".set", ".hdf5", ".h5", ".photons", ".cz-raw", ".sm",
+)
+
+#: Every extension a photon measurement may arrive as, **container first**.
+#:
+#: Order is the point: this seeds the file-dialog filters, and the first entry
+#: is what a dialog offers by default. `.pto` is ChiSurf's format for TTTR data;
+#: everything after it is something to import.
+TTTR_EXTENSIONS: tuple[str, ...] = (".pto",) + VENDOR_EXTENSIONS
+
+
+def _filter(label: str, extensions) -> str:
+    return f"{label} ({' '.join('*' + e for e in extensions)})"
+
+
+#: Qt file-dialog filter for opening photon data.
+#:
+#: One definition, because a dialog that lists a different set from the reader
+#: is a dialog that hides files ChiSurf can open — which is how `.pto` was
+#: absent from every one of them while being the format they all produce.
+TTTR_FILE_FILTER: str = ";;".join((
+    _filter("Photon data", TTTR_EXTENSIONS),
+    _filter("Photon container", (".pto",)),
+    _filter("Vendor photon files", VENDOR_EXTENSIONS),
+    "All files (*)",
+))
 
 # --- Tunables ---------------------------------------------------------------
 # Defaults may be overridden via the ``data_loading`` section of
@@ -99,6 +137,11 @@ class StagingCancelled(Exception):
 #: (``chisurf/gui/widgets/staged_loading_view.json``); keep the two in sync.
 DEFAULTS = {
     "enabled": True,
+    # Opening a vendor photon file produces the measurement's container, which
+    # is what makes `.pto` the format ChiSurf works in rather than one it can
+    # also write. Off means a vendor file is read where it lies and results go
+    # to the legacy layouts.
+    "import_to_container": True,
     "min_size": DEFAULT_MIN_SIZE,
     "threshold_mbps": DEFAULT_THRESHOLD_MBPS,
     "chunk_bytes": DEFAULT_CHUNK_BYTES,
@@ -447,6 +490,69 @@ _CONTAINER_ALIASES = {
     "HDF5": "PHOTON-HDF5",
     "PHOTONHDF5": "PHOTON-HDF5",
 }
+
+
+def import_measurement(src, *, out_dir=None, create: bool | None = None):
+    """Return the container for *src*, importing a vendor file into one.
+
+    The seam that makes `.pto` the format ChiSurf works in rather than one it
+    can also write. A vendor file is a *recording*, in whatever the instrument's
+    software emits; opening it here produces the measurement's container with
+    those exact bytes inside it, and everything computed afterwards goes in the
+    same file instead of into directories beside it.
+
+    Nothing is lost and nothing is moved: the vendor file stays where it is,
+    byte-for-byte recoverable from the container
+    (:meth:`~chisurf.core.fio.pto.Measurement.disassemble`), and deleting the
+    original is the user's decision, never this function's.
+
+    Parameters
+    ----------
+    src : str or pathlib.Path
+        A vendor photon file, or a container (returned unchanged).
+    out_dir : str or pathlib.Path, optional
+        Where the container goes. Defaults to beside *src* — wrong for
+        read-only source media, right everywhere else.
+    create : bool, optional
+        Whether to create the container when it does not exist yet. Defaults to
+        the ``data_loading.import_to_container`` setting, which is on.
+
+        Passing ``False`` asks only "is there one?": the answer is the existing
+        container or *src* unchanged. That is what a read-only inspection wants,
+        and what a caller must pass when it is looking at someone else's file.
+
+    Returns
+    -------
+    pathlib.Path
+        The container, or *src* when there is none and none was created.
+    """
+    from chisurf.core.fio.pto import Measurement, SUFFIX, is_measurement
+
+    path, _ = split_container_spec(src)
+    if is_measurement(path):
+        return path
+
+    target_dir = Path(out_dir) if out_dir is not None else path.parent
+    target = target_dir / (path.stem + SUFFIX)
+    if is_measurement(target):
+        return target
+
+    if create is None:
+        create = bool(_settings().get("import_to_container", True))
+    if not create or not path.exists():
+        return path
+
+    try:
+        with Measurement.create(path, out_dir=out_dir):
+            pass
+    except Exception as exc:
+        # An unwritable directory is the ordinary case here -- data on a
+        # read-only share, or a colleague's folder -- and it must not stop the
+        # file being read. The vendor path still works; only the container does
+        # not exist.
+        logging.info("could not import %s into a container: %s", path, exc)
+        return path
+    return target
 
 
 def supported_container_types() -> tuple:

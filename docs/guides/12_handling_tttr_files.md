@@ -25,6 +25,43 @@ common container formats through **tttrlib** — PicoQuant PTU, HydraHarp HT3,
 Becker&Hickl SPC, and Photon-HDF5 — normalising them all to the same tag list, so
 downstream code is format-agnostic.
 
+## One measurement, one file
+
+**ChiSurf's own file type for photon data is `.pto`.** A vendor file is a
+*recording*, in whatever your instrument's software writes; opening one in
+ChiSurf produces `<name>.pto` beside it, and every result computed afterwards —
+bursts, lifetimes, correlations, per-pixel maps — goes into that same file.
+
+Three things follow, and they are the reason for the change:
+
+- **Nothing is scattered.** A measurement used to grow a `bi4_bur/` folder, a
+  `bg4/`, a `bv4/`, a `td4/`, an `.imaging.h5`, a handful of `Info/` files and
+  several CSVs, all related to each other only by being named alike. Rename the
+  folder and the relationship is gone. Now there is one file to copy, archive or
+  send.
+- **Nothing is lost.** Your original file goes in **byte-for-byte** and comes
+  back identical — `Measurement.disassemble` writes it out and verifies its
+  SHA-256 while doing so. The `.pto` is the size of the raw data plus the
+  results, not twice the raw data, because the photons are read *in place* out
+  of it rather than decoded into a second copy.
+- **Your original is not touched.** It stays where it is. Deleting it is your
+  decision; ChiSurf never makes it.
+
+The vendor file still works everywhere a `.pto` does — nothing stops you opening
+a `.ptu` directly. And the legacy `…4` folders are still *read*; they are now
+written only when you ask for them (in Burst Selection, tick **Seidel folder**),
+for the external tools that expect them.
+
+```python
+from chisurf.core.fio.staging import import_measurement, open_tttr
+
+container = import_measurement("measurement.ptu")   # -> measurement.pto
+photons = open_tttr(container)                      # the same photons
+
+# one member of a container, by name
+photons = open_tttr("measurement.pto|measurement.ptu")
+```
+
 ## In ChiSurf
 
 ```python
@@ -46,6 +83,9 @@ hist, edges = np.histogram(sel.micro_times, bins=d.number_of_micro_time_channels
 # export to the interoperable Photon-HDF5 format
 d.write("measurement.photon-hdf5")
 ```
+
+`tttrlib.TTTR` opens a `.pto` as readily as a `.ptu` — the container names the
+member it holds, so nothing above changes when the path does.
 
 TTTR utility plugins (`chisurf/plugins/tttr/`) provide GUI tools for conversion,
 splitting, header editing, time-window gating and micro-time linearisation.
@@ -81,5 +121,7 @@ Micro-time histograms from a TTTR file.
 
 ## See also
 
+- [The photon container](../concepts/photon_container.md) — what a `.pto`
+  holds, how a result says what one of its rows is, and how to take one apart.
 - `chisurf/core/fio/fluorescence/` and the `tttrlib.TTTR` reader; plugins in `chisurf/plugins/tttr/`.
 - Tools: the **TTTR Toolbox** (`chisurf/plugins/tttr/tttr_toolbox/`) converts, splits and edits headers; **Microtime Shifter** (`chisurf/plugins/tttr/tttr_microtime_shifter/`) moves a detector's TAC axis; **ALEX Creator** (`chisurf/plugins/tttr/ptu_alex_creator/`) writes an alternating-excitation file; **Count Rate Analysis** (`chisurf/plugins/tttr/tttr_count_rate_analysis/`) compares detectors across many files; **Histogram-Microtime** (`chisurf/plugins/tttr/microtime_histogram/`) builds the decay; and **TTTR→Time-Window BIDs** (`chisurf/plugins/tttr/tttr_time_windows/`) turns fixed windows into burst ids.

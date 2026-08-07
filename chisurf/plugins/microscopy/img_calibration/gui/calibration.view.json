@@ -16,7 +16,7 @@
              "options_source": "window_names", "call": "refresh_display",
              "description": "Detector to calibrate (settings are per detector)."},
             {"type": "custom", "key": "path_list", "target": "sel_irf_files", "title": "IRF files (this detector)",
-             "options": {"add_folders": false, "dialog_filter": "TTTR (*.ptu *.ht3 *.spc *.pt3);;All files (*)"},
+             "options": {"add_folders": false, "dialog_filter": "Photon data (*.pto *.ptu *.ht3 *.spc *.pt3);;All files (*)"},
              "description": "IRF TTTR file(s) for this detector (summed); carried to Phasor + pixel-wise MLE. Drag-drop to add."},
             {"type": "value", "attr": "sel_conv_start", "kind": "int", "label": "Conv start",
              "minimum": 0, "maximum": 1000000, "call": "refresh_display",

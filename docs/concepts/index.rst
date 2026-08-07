@@ -31,6 +31,7 @@ alternatives are collected in :doc:`/fundamentals/conventions`.
 .. toctree::
    :maxdepth: 1
 
+   global_analysis
    maximum_entropy
    parameter_uncertainty
 
@@ -77,6 +78,13 @@ alternatives are collected in :doc:`/fundamentals/conventions`.
    :maxdepth: 1
 
    multidimensional_exploration
+
+.. rubric:: Data and provenance
+
+.. toctree::
+   :maxdepth: 1
+
+   photon_container
 
 .. rubric:: Structure & imaging
 

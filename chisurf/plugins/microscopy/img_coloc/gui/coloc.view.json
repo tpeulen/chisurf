@@ -19,7 +19,7 @@
                          "description": "Detector setup whose named windows (green, red, …) become the pickable image channels — the same vocabulary as the rest of ChiSurf. Setups are created in the Detector Def tool. Leave it empty to use the raw detector channels stored in the file; it does not apply to camera images."}},
             {"type": "custom", "key": "data_source",
              "options": {"attr": "filename", "call": "set_filename", "label": "Image",
-                         "filter": "Images and photon streams (*.tif *.tiff *.png *.ptu *.ht3 *.spc);;All files (*)",
+                         "filter": "Images and photon streams (*.pto *.tif *.tiff *.png *.ptu *.ht3 *.spc);;All files (*)",
                          "mmfdb_kinds": ["raw_data", "raw_measurement"],
                          "description": "The image to analyse: a TIFF stack, or a photon-stream file (PTU/HT3/…) reconstructed into a confocal-scan image — one channel per detector window of the setup above, or per raw routing channel when no setup is picked. Browse the disk, load a dataset registered in the database, or drop a file here."}},
             {"type": "choice", "attr": "channel_a", "label": "Channel A", "options_source": "channel_names", "call": "refresh_display",

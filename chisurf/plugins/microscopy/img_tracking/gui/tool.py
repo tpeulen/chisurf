@@ -122,7 +122,7 @@ class ImgTrackingTool(ChisurfDockTool):
         """Ask for an image stack and load it."""
         path, _ = QtWidgets.QFileDialog.getOpenFileName(
             self, "Open image stack", "",
-            "Images and photon streams (*.tif *.tiff *.ptu *.ht3 *.spc *.hdf *.h5);;All files (*)",
+            "Images and photon streams (*.pto *.tif *.tiff *.ptu *.ht3 *.spc *.hdf *.h5);;All files (*)",
         )
         if path:
             self.model.set_filename(path)

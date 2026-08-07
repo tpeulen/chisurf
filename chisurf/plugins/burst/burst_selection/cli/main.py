@@ -69,7 +69,11 @@ def cli(ctx: click.Context, version: bool) -> None:
 @click.option("--filetype", default=None, help="Explicit TTTR file type for tttrlib.")
 @click.option("--settings-file", type=click.Path(exists=True), help="JSON file with analysis settings.")
 @click.option("--output-dir", type=click.Path(file_okay=False), help="Directory for generated .bur files.")
-@click.option("--format", "output_formats", multiple=True, default=("bur",), show_default=True, help="Output format: bur.")
+@click.option("--format", "output_formats", multiple=True, default=("pto",),
+              show_default=True,
+              help="'pto' writes the bursts into the measurement's own "
+                   "container beside the photons; 'bur' also writes the legacy "
+                   "companion folder, for tools that read it.")
 @click.option("--min-photons", default=60, show_default=True, type=int, help="Minimum photons per burst.")
 @click.option("--photon-window", default=10, show_default=True, type=int, help="Photon window size.")
 @click.option("--time-window", default=1e-3, show_default=True, type=float, help="Burst time window in seconds.")

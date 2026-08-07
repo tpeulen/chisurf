@@ -196,3 +196,47 @@ def test_deinterleave_keeps_a_genuine_zero_burst():
     out = deinterleave_bursts(frame)
     assert row_count(out) == 2
     assert list(np.asarray(out["a"])) == [0, 5]
+
+
+# -- the default ---------------------------------------------------------------
+
+
+def test_the_container_is_what_an_analysis_writes_by_default(tmp_path: Path):
+    """`.pto` is ChiSurf's format for photon data, not one option among several.
+
+    A default that produced the legacy folder made the container something a
+    caller had to know to ask for, which is the opposite of the arrangement: a
+    measurement's results belong in the measurement's file, and the `…4`
+    directories are an export for tools that read them.
+    """
+    source = tmp_path / SPC.name
+    source.write_bytes(SPC.read_bytes())
+
+    settings = AnalysisSettings()
+    assert settings.output_formats == ["pto"]
+
+    result = analyze_request(
+        AnalysisRequest(files=[str(source)], settings=settings, legacy_output=False)
+    )
+    written = Path(result.output_paths["pto"])
+    assert written == source.with_suffix(".pto")
+    with Measurement.open(written) as m:
+        assert row_count(m.get_store("bursts")) > 0
+
+
+def test_the_legacy_folder_is_written_only_when_it_is_asked_for(tmp_path: Path):
+    source = tmp_path / SPC.name
+    source.write_bytes(SPC.read_bytes())
+
+    result = analyze_request(
+        AnalysisRequest(files=[str(source)], settings=AnalysisSettings(),
+                        legacy_output=True)
+    )
+    assert "bur" not in result.output_paths
+
+    settings = AnalysisSettings()
+    settings.output_formats = ["pto", "bur"]
+    result = analyze_request(
+        AnalysisRequest(files=[str(source)], settings=settings, legacy_output=True)
+    )
+    assert "bur" in result.output_paths

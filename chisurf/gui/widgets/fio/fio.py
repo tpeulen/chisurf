@@ -9,12 +9,13 @@ import chisurf.gui.decorators
 import chisurf.core.structure
 import chisurf.gui.widgets
 
-#: File dialog filter covering the TTTR containers the reader supports. The
-#: reader detects the container from the file, so the filter is a convenience
-#: rather than a choice of format.
-TTTR_FILE_FILTER = (
-    "TTTR files (*.ptu *.ht3 *.spc *.h5 *.hdf5 *.set);;All files (*.*)"
-)
+#: File dialog filter for photon data, re-exported from the reading seam.
+#:
+#: Defined once beside the reader, because a dialog listing a different set from
+#: the reader is a dialog that hides files ChiSurf can open — which is how
+#: `.pto` came to be absent from every one of them while being the format they
+#: all produce. `.pto` is first; the vendor formats after it are import sources.
+from chisurf.core.fio.staging import TTTR_FILE_FILTER  # noqa: E402,F401
 
 
 class SpcFileWidget(
@@ -154,6 +155,14 @@ class SpcFileWidget(
             )
             filenames = [str(filename)]
 
+        # Opening a vendor recording produces the measurement's container, which
+        # is what makes `.pto` the format ChiSurf works in rather than one it can
+        # also write. The vendor file is left where it is and stays byte-for-byte
+        # recoverable from the container; nothing is moved and nothing is
+        # deleted. A container, or an unwritable directory, comes back unchanged.
+        from chisurf.core.fio.staging import import_measurement
+
+        filenames = [str(import_measurement(name)) for name in filenames]
         self.lineEdit_2.setText(str(filenames[0]))
         self.filenames = filenames
         # Drop the previous measurement before reading the next one: a TTTR

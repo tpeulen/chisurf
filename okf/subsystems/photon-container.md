@@ -9,6 +9,28 @@ timestamp: '2026-08-06T00:00:00Z'
 
 # Where to pick this up
 
+0. **`.pto` is now the default, and that is a user objective rather than a
+   preference** — "in the end .pto (mfdb) should be the main filetype for tttr
+   data in chisurf (this is objective)". A vendor file is an *import source*:
+   `staging.import_measurement` turns one into its container (leaving the
+   original untouched), `SpcFileWidget.onLoadSample` calls it, and
+   `AnalysisSettings.output_formats` defaults to `["pto"]`.
+
+   **What the flip broke, and it is the shape to expect again:** three callers
+   *consume* a `.bur` they had been getting for free — `burst_fusion`'s demo
+   (the tool reads a `bi4_bur/` folder; that is what it is *for*),
+   `burst_analysis`'s workflow API (hands back `roles["bur"]`), and the tests
+   that exercise the legacy reader. Each now asks for `["pto", "bur"]`
+   explicitly, which is the honest statement. Before flipping any other
+   default, grep for who reads the legacy artifact rather than who writes it.
+
+   **The file dialogs were the invisible half.** Every one of them listed the
+   vendor formats and not `.pto`, so the format ChiSurf produced was the one
+   format its own Open dialogs hid. `staging.TTTR_FILE_FILTER` is now the single
+   definition and `test/test_pto_is_the_default.py` fails on any dialog that
+   names a vendor photon format without the container. The guard was worth
+   writing: it found **eight** more dialogs after the ones found by hand.
+
 1. **Stages 3 and 4 are done; three writers are left, and they are the odd
    ones.** Every burst analysis and every imaging tool writes into the
    measurement's container. What remains is

@@ -15,6 +15,7 @@ from chisurf.gui import dialogs
 from chisurf.gui.widgets.tools.help_guide import attach_help_and_guide
 
 from .client import FlcClient
+from chisurf.core.fio.staging import TTTR_FILE_FILTER
 
 _GUI_DIR = pathlib.Path(__file__).parent
 logger = logging.getLogger(__name__)
@@ -318,7 +319,7 @@ class FlcTwoDTool(QtWidgets.QMainWindow):
             self,
             "Open TTTR file",
             "",
-            "TTTR (*.ptu *.ht3 *.pt3 *.spc *.h5 *.hdf5);;All files (*)",
+            TTTR_FILE_FILTER,
         )
         if not path:
             return
@@ -344,7 +345,7 @@ class FlcTwoDTool(QtWidgets.QMainWindow):
             self,
             "Open IRF (TTTR) file",
             "",
-            "TTTR (*.ptu *.ht3 *.pt3 *.spc *.h5 *.hdf5);;All files (*)",
+            TTTR_FILE_FILTER,
         )
         if not path:
             return

@@ -1264,6 +1264,10 @@ class BurstWorkflow:
         local_paths = [self._fetch(handle) for handle in handles]
 
         settings = AnalysisSettings()
+        # The container *and* the legacy file: this method hands back
+        # `roles["bur"]` to its caller, so a `.bur` has to exist. The default is
+        # the container alone.
+        settings.output_formats = ["pto", "bur"]
         settings.photon_filter = PhotonFilterSettings(
             channels=setup.all_routing_channels(),
             filter_active=filter_active,

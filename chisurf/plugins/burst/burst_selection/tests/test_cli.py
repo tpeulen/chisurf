@@ -24,8 +24,14 @@ STREAM_CHANNELS = [0, 1, 8, 9]
 
 
 def real_data_settings() -> AnalysisSettings:
-    """Return deterministic settings for the bundled BH SPC example."""
+    """Return deterministic settings for the bundled BH SPC example.
+
+    Asks for ``"bur"`` explicitly. The default is ``["pto"]`` — the
+    measurement's own container — and these tests read the *legacy* companion,
+    so they have to say they need one written.
+    """
     settings = AnalysisSettings()
+    settings.output_formats = ["pto", "bur"]
     settings.photon_filter = PhotonFilterSettings(
         channels=STREAM_CHANNELS,
         filter_active=False,
@@ -163,6 +169,10 @@ def test_analyze_mmfdb_registers_raw_sample_and_group(tmp_path: Path) -> None:
                 "--filetype", "SPC-130",
                 "--detectors-json", str(det_json),
                 "--min-photons", "20",
+                # The default is the container alone; this test is about the
+                # MMFDB registration of the *legacy folder group*, so it has to
+                # ask for the folder.
+                "--format", "pto", "--format", "bur",
                 "--mmfdb",
                 "--db", str(db_path),
                 "--token", token,

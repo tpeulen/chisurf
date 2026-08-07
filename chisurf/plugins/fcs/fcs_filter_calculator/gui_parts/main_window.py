@@ -334,7 +334,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
     def _add_total_dialog(self) -> None:
         paths, _ = QtWidgets.QFileDialog.getOpenFileNames(
             self, "Select mixed total decay", "",
-            "Decay files (*.txt *.dat *.csv *.spc *.ptu *.ht3 *.tttr);;All files (*)",
+            "Decay files (*.pto *.txt *.dat *.csv *.spc *.ptu *.ht3 *.tttr);;All files (*)",
         )
         if paths:
             self._set_total_paths([pathlib.Path(path) for path in paths])

@@ -17,7 +17,7 @@ Declare it in a view spec::
 
     {"type": "custom", "key": "data_source",
      "options": {"attr": "filename", "call": "set_filename",
-                 "label": "Image", "filter": "Images (*.tif *.ptu);;All files (*)",
+                 "label": "Image", "filter": "Images and photon data (*.pto *.tif *.ptu);;All files (*)",
                  "mmfdb_kinds": ["raw_measurement"]}}
 
 Options:
