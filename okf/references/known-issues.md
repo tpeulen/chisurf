@@ -1,3 +1,29 @@
+## 33 of the MMFDB suite's failures are test-order contamination, not defects
+
+**Found 2026-08-10** while adding three enumeration terms to
+`mmfdb_flr_ext.dic` for the region/spot container contract
+([PRD-92](/prds/prd-92.md)) and checking what that broke. `pytest tests` in
+`modules/mmfdb` reports **33 failed / 757 passed**, concentrated in four files:
+`test_mmfdb_user_management.py` (14), `test_security_architecture.py` (10),
+`test_zip_archive_export.py` (6), plus one each in `test_fdb_general.py`,
+`test_fdb_setups.py`, `test_mmcif_database_resolver.py`.
+
+**Every one of them passes when its file is run alone** — the two largest were
+checked directly (`test_mmfdb_user_management.py` + `test_security_architecture.py`
+→ 40 passed), as was `test_zip_archive_export.py` (6 passed). So the suite is
+carrying process-wide state between files, most likely an auth/session or
+database singleton, in the same family as the `_DISPLAY_CONFIG` contamination
+already recorded for ChiMOL: one test's leftovers break *other files*, which is
+why bisecting with `-k` finds nothing.
+
+**Not fixed here**, and not caused by the dictionary change (that adds three
+enum values and a comment; the failures are in user management, security and
+zip export, none of which read the enumeration). Recorded because the number is
+large enough to look like a regression to whoever runs the suite next, and
+because it means the suite currently cannot tell a real breakage from this
+noise. Whoever fixes it should bisect by explicit node ids across *files*, not
+within one.
+
 ## The OpenGL point glyph renders at half the size it is asked for
 
 **Found 2026-08-10** while porting point geometry to the WebGPU backend, by
