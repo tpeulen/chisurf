@@ -281,10 +281,20 @@ pixels. Auto-range drops anything more than `_AUTORANGE_DECADES` (9) below the
 peak; panning and zooming still reach it.
 
 The gestures are pyqtgraph's, because that is what the hands using this
-application already know: left drag pans, or draws a zoom rectangle under the
-`leftButtonPan` preference the other backend reads; right drag scales about the
-point it started from (1.02 per pixel, x inverted); the wheel zooms about the
-cursor; and the corner **[A]** button restores auto-range.
+application already know: left **and middle** drag the view — pan, or a zoom
+rectangle under the `leftButtonPan` preference the other backend reads; right
+drag scales about the point it started from (1.02 per pixel, x inverted); the
+wheel zooms about the cursor; and the corner **[A]** button restores
+auto-range.
+
+The middle button is not a footnote. pyqtgraph handles it in the *same branch*
+as the left one (`ViewBox.mouseDragEvent` tests
+`button in [LeftButton, MiddleButton]`, and `GraphicsView` pans on either), and
+it is how a user pans without giving up a left drag that has been rebound to a
+zoom rectangle. Its *items* are the other half of the rule: `LinearRegionItem`
+returns unless the button is the left one, so a middle drag pans **across** a
+fit range rather than dragging it. Only the left button grabs a region, a marker
+or the corner button here, for the same reason.
 
 **The context menu belongs to a right *click*, not to a right press**, and that
 distinction is not cosmetic. Qt's default policy raises the menu from the press;

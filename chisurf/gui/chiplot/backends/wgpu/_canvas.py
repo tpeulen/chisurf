@@ -738,13 +738,27 @@ class _WgpuCanvas(base.Canvas):
         except Exception:
             return True
 
+    @staticmethod
+    def _is_view_drag_button(button) -> bool:
+        """Whether a button drives the view's pan / zoom-rectangle gesture.
+
+        Left **and middle**, exactly as pyqtgraph has it: its ``ViewBox``
+        handles the two in one branch, and its ``GraphicsView`` pans on either.
+        The middle button is how a user pans without giving up a left-drag
+        that has been rebound to a zoom rectangle.
+        """
+        return button in (QtCore.Qt.LeftButton, QtCore.Qt.MiddleButton)
+
     def _mouse_press(self, event):
         """Route a press: the corner button, a draggable handle, pan, or scale.
 
         The button semantics are pyqtgraph's, because that is what the hands
-        using this application already know: left drags (pan, or a zoom
-        rectangle under the ``leftButtonPan`` preference), right drags scale
-        about the point it started from, and the wheel zooms about the cursor.
+        using this application already know: left and middle drag the view
+        (pan, or a zoom rectangle under the ``leftButtonPan`` preference),
+        right drags scale about the point it started from, and the wheel zooms
+        about the cursor. Only the *left* button grabs a region, a marker or
+        the corner button — pyqtgraph's items ignore the middle one, so a
+        middle drag pans across a fit range instead of moving it.
         """
         px, py = self._event_pos(event)
         w, h = self._widget.width(), self._widget.height()
@@ -769,15 +783,17 @@ class _WgpuCanvas(base.Canvas):
                     px, py, w, h, self._margins)
             return
 
-        if event.button() != QtCore.Qt.LeftButton:
+        if not self._is_view_drag_button(event.button()):
             return
 
-        dx, dy = self._view.pixel_to_data(px, py, w, h, self._margins)
-        hd, part = self._hit_draggable(px, py)
-        if hd is not None:
-            anchor = dx if getattr(hd, "_orientation", None) is H.Orientation.VERTICAL else dy
-            self._drag = (hd, part, anchor)
-            return
+        if event.button() == QtCore.Qt.LeftButton:
+            dx, dy = self._view.pixel_to_data(px, py, w, h, self._margins)
+            hd, part = self._hit_draggable(px, py)
+            if hd is not None:
+                anchor = (dx if getattr(hd, "_orientation", None) is H.Orientation.VERTICAL
+                          else dy)
+                self._drag = (hd, part, anchor)
+                return
         if not self._interactive_mouse:
             return
         if self._left_button_pans():
@@ -801,7 +817,7 @@ class _WgpuCanvas(base.Canvas):
             if not was_drag:
                 self._raise_context_menu(event, px, py)
             return
-        if event.button() != QtCore.Qt.LeftButton:
+        if not self._is_view_drag_button(event.button()):
             return
         self._press_button = None
         self._press_pos = None
@@ -824,8 +840,10 @@ class _WgpuCanvas(base.Canvas):
                 if not moved:
                     w, h = self._widget.width(), self._widget.height()
                     dx, dy = self._view.pixel_to_data(px, py, w, h, self._margins)
+                    name = ("middle" if event.button() == QtCore.Qt.MiddleButton
+                            else "left")
                     for cb in self._click_callbacks:
-                        cb(dx, dy, "left")
+                        cb(dx, dy, name)
 
     def _apply_rubber_band(self, band) -> None:
         """Set the view to a dragged rectangle, ignoring an accidental flick."""

@@ -488,6 +488,41 @@ def test_a_right_click_menus_and_a_right_drag_scales(qapp):
     assert canvas.get_range() != before
 
 
+def test_the_middle_button_drives_the_view_like_the_left_one(qapp):
+    """Pyqtgraph handles left and middle in one branch; so does this.
+
+    ``ViewBox.mouseDragEvent`` tests ``button in [LeftButton, MiddleButton]``
+    and ``GraphicsView`` pans on either. The middle button is how a user pans
+    without giving up a left drag that has been rebound to a zoom rectangle.
+    """
+    canvas = _interactive_canvas()
+    before = canvas.get_range()[0]
+    canvas._mouse_press(_FakeMouse((200, 150), QtCore.Qt.MiddleButton))
+    canvas._mouse_move(_FakeMouse((240, 150), buttons=QtCore.Qt.MiddleButton))
+    canvas._mouse_release(_FakeMouse((240, 150), QtCore.Qt.MiddleButton))
+    assert canvas.get_range()[0] != before
+
+
+def test_a_middle_drag_does_not_grab_a_region(qapp):
+    """Only the left button moves an item, which is pyqtgraph's rule too.
+
+    ``LinearRegionItem.mouseDragEvent`` returns unless the button is the left
+    one, so a middle drag pans *across* a fit range rather than dragging it.
+    """
+    canvas = _interactive_canvas()
+    canvas.set_range(x=(0.0, 50.0), y=(1.0, 1000.0))
+    region = canvas.add_region((10.0, 20.0), orientation=H.Orientation.VERTICAL,
+                               movable=True, brush=S.to_brush("#26a29844"),
+                               pen=S.to_pen("#26a298"))
+    before = tuple(region.bounds)
+    edge, _ = canvas._view.data_to_pixel(10.0, 500.0, 400, 300, canvas._margins)
+    canvas._mouse_press(_FakeMouse((edge, 150), QtCore.Qt.MiddleButton))
+    assert canvas._drag is None
+    canvas._mouse_move(_FakeMouse((edge + 40, 150), buttons=QtCore.Qt.MiddleButton))
+    canvas._mouse_release(_FakeMouse((edge + 40, 150), QtCore.Qt.MiddleButton))
+    assert tuple(region.bounds) == before
+
+
 def test_the_pointer_leaving_cancels_a_drag(qapp):
     """A press whose release happens elsewhere must not persist."""
     canvas = _interactive_canvas()
