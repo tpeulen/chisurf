@@ -1,7 +1,7 @@
 ---
 type: Subsystem
 title: "Regions of interest"
-description: The shared ROI geometry in chisurf/core/roi — one class answering both point membership (gating) and pixel rasterisation (imaging), plus scikit-image-compatible region properties, with boolean composition, JSON persistence and a segmentation bridge.
+description: The shared ROI geometry in chisurf/core/roi — one class answering both point membership (gating) and pixel rasterisation (imaging), plus the region properties and segmentation primitives that replaced scikit-image, with boolean composition, JSON persistence and a segmentation bridge.
 resource: chisurf/core/roi/
 tags: [subsystems, roi, imaging, gating, segmentation]
 timestamp: '2026-07-25T00:00:00Z'
@@ -151,6 +151,34 @@ what a segmentation holding a few thousand molecules actually costs.
 Caveat worth carrying: on regions a few pixels across the discrete perimeter is
 biased in both directions, so `circularity` can exceed 1 (a 7x7 square scores
 1.07). It sorts single molecules; it does not measure them.
+
+## Making a label image in the first place
+
+`segmentation.py` holds the five functions that come *before* the measuring, and
+between them they are the whole of what the imaging tools needed from
+scikit-image: `gaussian`, `threshold_otsu`, `clear_border`, `peak_local_max` and
+`watershed`. Names and signatures are the library's, for the subset actually
+used, so a ported call site changes by an import line. Where a parameter is not
+implemented — compactness, watershed lines, automatic markers — it **raises**:
+a segmentation that quietly used a different neighbourhood than was asked for is
+not something a later assertion catches.
+
+Two details are load-bearing and easy to undo:
+
+* **The watershed's priority queue is keyed on `(value, age)`**, where age is
+  the order of entry onto the queue. That one tie-break does two jobs — a pixel
+  joins the neighbour it is steepest towards, and a *plateau* is divided evenly
+  between the markers either side of it instead of going wholesale to whichever
+  was queued first.
+* **The neighbour offsets are ordered by Euclidean distance from the centre**,
+  with a stable sort, so equidistant neighbours keep the structuring element's
+  own C order. Because every push takes the next age, that ordering *is* how a
+  plateau is divided. A first version ordered them by raveled offset instead;
+  it produced a valid segmentation with the right number of labels and agreed
+  with the library on 99.8% of pixels — disagreeing on exactly the plateaus.
+  That is the shape of failure this module has to be tested against, which is
+  why `test/core/test_segmentation.py` compares the *whole pipeline* on random
+  blob fields rather than checking one fixture.
 
 ## Consumers
 

@@ -386,11 +386,16 @@ def segment_molecules(
         Integer label image (0 = background), same shape as ``intensity``.
     """
     from scipy import ndimage as ndi
-    from skimage import filters
-    from skimage.feature import peak_local_max
-    from skimage.segmentation import clear_border, watershed
 
-    smoothed = filters.gaussian(intensity.astype(float), sigma=seg_sigma)
+    from chisurf.core.roi.segmentation import (
+        clear_border,
+        gaussian,
+        peak_local_max,
+        threshold_otsu,
+        watershed,
+    )
+
+    smoothed = gaussian(intensity.astype(float), sigma=seg_sigma)
     if smoothed.max() <= 0:
         return np.zeros(intensity.shape, dtype=np.int32)
 
@@ -403,7 +408,7 @@ def segment_molecules(
     if seg_threshold > 0:
         thresh = seg_threshold
     else:
-        thresh = filters.threshold_otsu(smoothed if inside is None else smoothed[inside])
+        thresh = threshold_otsu(smoothed if inside is None else smoothed[inside])
     binary = clear_border(smoothed > thresh)
     if inside is not None:
         binary &= inside

@@ -1,6 +1,42 @@
 # Update Log
 
 ## 2026-08-10
+* **scikit-image is out too, and it cost five functions.** The tree imported it from
+  exactly two shipped files — object colocalization and molecule MLE — for
+  `gaussian`, `threshold_otsu`, `clear_border`, `peak_local_max` and `watershed`;
+  `regionprops` had already been reimplemented in
+  [`chisurf/core/roi/props.py`](../chisurf/core/roi/props.py) and marching cubes in
+  chimol. The five now live in
+  [`chisurf/core/roi/segmentation.py`](../chisurf/core/roi/segmentation.py) under
+  scikit-image's own names and signatures, so each call site changed by an import
+  line. Struck from `pixi.toml`, `pyproject.toml`, `rattler-recipe/recipe.yaml`,
+  `build_tools/setup_runtime.sh` and `test/settings/test_py314.toml`; `skimage` is in
+  `RETIRED` in [the guardrail](../test/test_no_retired_dependency_imports.py), with the
+  two parity suites exempted because they are what keeps proving the replacement.
+
+  **The watershed is the one with a trap in it, and it is not the algorithm.** Its
+  priority queue is keyed on `(value, age)` where age is the order of entry, and that
+  single tie-break is what divides a *plateau* evenly between the markers either side
+  rather than handing it to whichever was queued first. Which means the order the
+  neighbour offsets are visited in — which reads like an implementation detail — is
+  part of the algorithm. scikit-image orders them by Euclidean distance from the
+  centre with a stable sort, so equidistant neighbours keep the structuring element's
+  C order. A first version here ordered them by raveled offset instead: right number
+  of labels, valid segmentation, **99.8% of pixels identical** — and every plateau
+  wrong. Nothing downstream would have caught that, which is why
+  [`test/core/test_segmentation.py`](../test/core/test_segmentation.py) compares the
+  *whole pipeline* against the library on random blob fields instead of checking one
+  fixture, and pins the ordering rule directly.
+
+  Parity is exact, not close: `gaussian` bit-identical, `threshold_otsu` the same
+  float, `clear_border` and `peak_local_max` the same arrays over five parameter
+  settings, and the watershed the same label image over 24 configurations of seed and
+  connectivity. Where a parameter is not implemented — `compactness`,
+  `watershed_line`, automatic markers — it **raises** rather than being ignored,
+  because a segmentation that quietly used a different neighbourhood than was asked
+  for is exactly what no later assertion catches. The reference checkout is annotated
+  at `junk/scikit-image/` (taken / skipped / why), insertions only.
+
 * **chigame: a wgpu 2-D game engine in-tree, proven by porting pong off `QPainter`; PRD-91 rewritten as Lumis Quest.**
   New subsystem concept [subsystems/chigame](subsystems/chigame.md) and a rewritten
   [prds/prd-91](prds/prd-91.md). The engine (`chisurf/gui/chigame/`) renders through **WebGPU**
