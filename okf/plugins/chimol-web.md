@@ -7,7 +7,108 @@ tags: [plugins, structure, viewer, webgpu, wgsl, web, pyodide, compute]
 timestamp: '2026-08-10T00:00:00Z'
 ---
 
-# Where to pick this up
+# HANDOVER — start here (2026-08-10)
+
+**Goal.** ChiMOL must run in a browser embedded via JavaScript. WebGPU is the
+only graphics+compute API spanning macOS desktop, Linux/Windows and the browser,
+so desktop and web share **one WGSL source** rather than maintaining two
+renderers, two shader dialects and two copies of every kernel. Phases 0 and 1 are
+done; Phase 2 (replacing the desktop OpenGL renderer) is part-built.
+
+**Environment.** Run everything in the `arm64` conda env with
+`PYTHONPATH="modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:."`.
+`wgpu` 0.32.0 and `rendercanvas` 2.7.2 are pip-installed there but **not declared**
+— the chigame agent owns `pixi.toml`/`pyproject.toml` and is adding them; do not
+edit those two files, coordinate on the agent board.
+
+**The one command you need.** Every remaining feature is accepted or rejected by
+looking at a GL|WGSL pair:
+
+```
+QT_QPA_PLATFORM=offscreen python -m chisurf.plugins.chimol.test.compare_wgsl \
+    cartoon sticks surface transparency
+```
+
+It writes `chimol/test/renders/wgsl/compare_sheet.png`, one row per scene,
+GL on the left and WGSL on the right. Baselines and their cameras live in
+`chimol/test/renders/gl_baseline/` (23 scenes, `manifest.json`).
+
+**USER RULES, both learned the hard way this session:**
+1. **Always produce PNGs.** Never report a rendering result as an IoU, a mean
+   brightness or a table of RGB values. Three times a scalar pointed the wrong
+   way and the picture settled it in seconds. Send images with `SendUserFile`.
+2. **The WGSL look is the target, not the baseline.** The user judged it better
+   than the OpenGL render. Do not tune the material back toward GL. Parity means
+   *feature inventory* — every representation, setting and cue present and
+   controllable — not pixel agreement.
+
+## Do these next, in order
+
+1. **Metaball: "not flubber enough" (user request, untouched).** There is **no
+   metaball scene in the baseline**, so there is nothing to judge against — add
+   one to `SCENES` in `test/capture_gl_baseline.py`, re-capture, *then* tune.
+   Existing knobs in `chimol_display.json`: `sigma_factor 4.0` (fusion — merges
+   beads into smooth lobes, the main lever), `alpha 0.55`, `shininess 96`,
+   `specular_strength 0.85`, `rim_strength 0.55`, `iso_value 0.1`. Prior tuning
+   is recorded in [pymol-parity](/plugins/pymol-parity.md): 9.0 sigma was tried
+   and rejected as "a featureless egg", so the useful range is narrow.
+2. **White-background darkness (open bug).** Against a white background the WGSL
+   cartoon renders markedly darker than the baseline; against black they match.
+   Model shading must not depend on the clear colour, so something is either
+   compositing against it or deriving a term from it. Suspect the fog term (the
+   background is passed as `fogColor`) or the environment/matcap. Reproduce:
+   `compare_wgsl bg_white cartoon` — row 1 wrong, row 2 fine.
+3. **Impostors.** Sphere and capped-cylinder impostors were prototyped and proven
+   in Phase 0 (148L at **2 triangles/atom** with per-fragment depth, reusing the
+   raytracer's own analytic capsule intersection) but are **not yet in
+   `wgpu_backend.py`**, which draws only `kind == "mesh"`. Wiring them in is the
+   biggest single visual win: the tessellated sphere path costs 374,112 triangles
+   on 148L against ~2,770.
+4. **Remaining features**, each with a `compare_wgsl` pair: depth cue/fog,
+   silhouettes, labels (`kind == "text"`, currently skipped entirely).
+5. **Then embed in the Qt dock.** `rendercanvas`'s `QRenderWidget` is verified
+   embeddable under PyQt5 (870×485 in a real dock layout). Only after that does
+   `qtgl.py` get retired.
+
+## Things that are settled — do not re-litigate
+
+- **The camera is correct.** IoU 0.981 with the matrices as written, once cropped
+  by `scene_rect`. Transposing the rotation gives 0.274, flip-x 0.367, flip-y
+  0.341. An earlier "the model is mirrored" conclusion was a mis-guessed crop.
+- **Colours are correct**, including `spectrum count`'s rainbow.
+- **Ambient occlusion is respected**, and the on/off switch matches GL in both
+  backends. It arrives twice — pre-multiplied into vertex colours *and* as a
+  separate attribute damping ambient/rim/environment — which is what the GL
+  shader does too.
+- **Backgrounds and transparency work** as of `6464a2274`.
+
+## Traps that cost real time here
+
+- **Always attach `cmd.set_error_callback`.** A harness that drops it turns a
+  refused command into a rendering difference two layers away. ~100 commands ran
+  silently refusing before this was noticed.
+- **Crop by `scene_rect`**, never guess. The object panel is a right-hand column
+  and the sequence viewer a top band, both drawn *inside* the GL widget.
+- **A lit-pixel IoU counts a white background as lit**, so it reads ~0.12 on a
+  correct render. The image is the artifact; the number is a hint.
+- **Discard the first framebuffer grab** after a rebuild — it can come back as
+  uninitialised noise and poison any brightness comparison.
+- **Bind the `QApplication`.** An unreferenced `QApplication([])` is collected and
+  the next `QWidget` aborts the interpreter with no Python traceback.
+- **Compare order-independent summaries** (area, centroid, bbox) for meshes, not
+  sorted rounded centroids — f32-vs-f64 flips ties and reports a correct kernel
+  as wrong.
+
+## Session commits
+
+`0b90174d9` Phase 0 gates · `58996c37c` GL baselines · `58db3aea4` AO switch fix ·
+`756e2df06` settings-kind test · `fa7377580` SceneSink · `79b3d6811` pack.py ·
+`128cc86ab` WGSL renderer · `78780b602` scene_rect · `2842d8e30` is_empty fix ·
+`ee39098a6` compare harness · `6464a2274` transparency + background
+
+# Detail and history
+
+# Where to pick this up (earlier, superseded by the handover above)
 
 **Phase 0 is complete — all three gates passed (2026-08-10). Nothing in
 `chisurf/plugins/chimol/` has been modified yet.** Prototypes live in the session
