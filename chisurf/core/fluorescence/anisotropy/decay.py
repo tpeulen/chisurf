@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-import numba as nb
 import numpy as np
 
 import chisurf.core.math
 from chisurf import typing
 
 
-@nb.jit(nopython=True)
 def vm_rt_to_vv_vh(
         times: np.array,
         vm: np.array,
@@ -109,12 +107,17 @@ def vm_rt_to_vv_vh(
            Fluorescence Depolarization Analysis in Three-Dimensional
            Microspectroscopy", Applied Spectroscopy, 1995, vol. 49, pp. 224-228.
     """
-    rt = np.zeros_like(vm)
-    n_anisotropies = int(anisotropy_spectrum.shape[0] // 2)
-    for i in range(n_anisotropies):
-        b = anisotropy_spectrum[2 * i]
-        rho = anisotropy_spectrum[2 * i + 1]
-        rt += b * np.exp(-times / rho)
+    # r(t) = sum_i b_i exp(-t / rho_i), summed as one matrix-vector product
+    # over the interleaved (b, rho) pairs.
+    amplitudes = np.asarray(anisotropy_spectrum[0::2], dtype=np.float64)
+    correlation_times = np.asarray(anisotropy_spectrum[1::2], dtype=np.float64)
+    n_anisotropies = min(amplitudes.size, correlation_times.size)
+    if n_anisotropies:
+        rt = np.exp(
+            -np.outer(times, 1.0 / correlation_times[:n_anisotropies])
+        ) @ amplitudes[:n_anisotropies]
+    else:
+        rt = np.zeros_like(vm)
     # Schaffer/Eggeling, the same forward model tttrlib fits (DecayFit23:
     # x_vv[2] = r0 (2 - 3 l1), x_vh[0] = 1/g, x_vh[2] = r0 (-1 + 3 l2)/g):
     #
@@ -127,9 +130,17 @@ def vm_rt_to_vv_vh(
     # (`vv(1-l1) + vh l1`, Koshioka 1995). That is a *different* meaning for
     # l1/l2, and it does not invert with the correction the rest of the stack
     # applies: a round trip with both a non-unit G and non-zero l1/l2 came back
-    # at 0.274 and 0.318 against a truth of 0.300. In this parameterisation the
-    # round trip is exact -- numerator and denominator of the correction both
-    # collapse to 3 vm (1 - l1 - l2), for any l1, l2 and G.
+    # at 0.274 and 0.318 against a truth of 0.300.
+    #
+    # Note what the *uncorrected* inversion (vv - G vh) / (vv + 2 G vh) does and
+    # does not recover here. The numerator collapses to 3 vm r (1 - l1 - l2),
+    # but the denominator is 3 vm + 3 vm r (2 l2 - l1) -- not the same factor --
+    # so that formula returns r exactly for **any G** and only for
+    # l1 = l2 = 0. Measured: G = 1.7 with l1 = l2 = 0 gives 0.300000 against a
+    # truth of 0.300; G = 1.7, l1 = 0.05, l2 = 0.08 gives 0.252662. Recovering r
+    # when the depolarisation factors are non-zero needs the l1/l2 terms in the
+    # correction, which is what the fitting stack applies -- it is not a defect
+    # in the pair built here.
     vv_j = vm * (1.0 + (2.0 - 3.0 * l1) * rt)
     vh_j = vm * (1.0 - (1.0 - 3.0 * l2) * rt) / g_factor
     return vv_j, vh_j

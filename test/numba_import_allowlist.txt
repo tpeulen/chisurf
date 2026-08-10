@@ -30,7 +30,6 @@
 # behind it, and where to pick the work up.
 
 # ── numpy ────────────────────────────────────────────────────────────────────
-chisurf/core/fluorescence/anisotropy/decay.py
 chisurf/core/fluorescence/anisotropy/kappa2.py
 chisurf/core/math/linalg/__init__.py
 chisurf/plugins/modelling/fret/core/olga_greedy.py
