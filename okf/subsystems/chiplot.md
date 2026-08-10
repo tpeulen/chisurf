@@ -24,6 +24,27 @@ at runtime and can be swapped without touching a single call site.
 | `backends/opengl/` | superseded by `backends/wgpu/`; kept until the WebGPU backend has been through the plot families |
 | `_passthrough.py` | the migration safety net and its gap recorder |
 
+`ImageView` is the image half of the same idea, and it carries two capabilities
+that used to be re-implemented per tool. `add_region(roi)` draws a
+[region](/subsystems/roi.md) of any shape — every caller that had one was
+converting it to `kind`/`pos`/`size` by hand, differently, and an ellipse's
+radius-versus-diameter convention was wrong in more than one of them. It honours
+the region's **rotation**, which matters because a Gaussian gate on a correlated
+population is a tilted ellipse and an axis-aligned one is a *different gate* that
+looks perfectly reasonable on screen. `enable_picking()` turns clicks into a
+`picked` signal carrying a fitted spot: the gesture belongs to the thing being
+clicked, while deciding where the spot actually is belongs to
+`chisurf.core.roi.picking`. Before both, a tool that wanted either reached past
+this seam for the click and did the geometry itself.
+
+Two things about `ImageView` are worth knowing before writing a test against it.
+pyqtgraph keeps a **process-wide** ViewBox registry and, when one view is
+destroyed, walks the *other* views' context menus to update it — so letting
+views go at interpreter shutdown aborts the process *after* every test has
+passed; dispose them while the event loop is alive. And the backend rotates an
+ellipse about `pos` rather than about its centre, so a rotation has to put the
+centre back by hand.
+
 `Plot` is verb-first: `plot.line(x, y, pen="red")`, `plot.scatter`, `plot.bars`,
 `plot.image`, `plot.region(...).on_change(cb)`, `plot.vline` / `plot.hline`,
 `plot.arrow`, `plot.text`, `plot.set_labels`, `plot.set_log`, `plot.export_csv` /

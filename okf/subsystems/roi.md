@@ -120,6 +120,49 @@ consumer looks trivial and is not: a label image is also a valid mask, so
 sending it to the mask reader merges every object into one region, silently.
 The shared loader decides from the file's own content.
 
+## Making a region by clicking one
+
+`picking.py` is the third way a region gets made, beside a batch detector and a
+drawn shape. A threshold finds every object or none; a person looking at a field
+or a parameter plane can see the one that matters and the three that are
+artefacts.
+
+**The click is a seed, never the answer.** It lands a pixel or two off centre,
+and a region built on it inherits that as a biased centroid and a brightness
+measured over the wrong pixels. So the click selects a neighbourhood and a fit
+decides:
+
+* `fit_gaussian_spot(image, y, x, window=…)` — on a **raster**. The brightest
+  pixel in the window seeds a 2-D Gaussian; `spot_roi` turns the fit into an
+  ellipse of `2σ`. Measured: a click at `(22, 26)` on a spot planted at
+  `(20, 24)` returns `(20.00, 24.00)`, and a spot of `σ = 1.2 × 2.6 px` comes
+  back at `1.2 × 2.6`.
+* `fit_gaussian_cluster(points, x, y, radius=…)` — on a **point cloud**, which
+  is what a parameter plane carries. It **re-centres**: a first pass takes the
+  points within the radius of the click, the next takes those within the radius
+  of *that* mean. Without it a click on the shoulder of a population returns a
+  centre on the shoulder and a covariance inflated by the empty half of the disc
+  it sampled. `cluster_roi` goes through `ellipse_from_covariance`, so a picked
+  gate and a drawn one are the same ellipse.
+
+**A pick that does not converge is refused, with a reason.** An ellipse placed
+where a fit failed looks exactly like one placed where it succeeded, and the
+difference surfaces later as a number nobody can explain. The refusals are the
+interesting part: a fit that did not converge; a centre that wandered further
+than half the window (it locked onto the *neighbouring* spot — the fit converged
+beautifully, on the wrong thing); no peak above background; a width that fills
+the window; too few points for a covariance to mean anything.
+
+Two conventions are load-bearing and were each got wrong once before the tests
+caught them. `EllipseROI.angle` is in **radians** — a re-derivation in degrees is
+a gate rotated by a factor of 57 — and the capture radius is a **setting**, not
+something fitted, because a density has no edge: the same cloud is one
+population or three depending on how far one is willing to look.
+
+The gesture that produces the click belongs to the plotting layer
+([chiplot](/subsystems/chiplot.md)), the science of deciding where the thing is
+belongs here, and the plugins consume the result.
+
 ## Measuring a region
 
 `props.py` answers the third question — *what is it?* — with
