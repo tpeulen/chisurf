@@ -20,10 +20,12 @@ unrelated change unreviewable.
   for exactly the no-exchange limit a dynamic fit is compared against. The
   in-tree path computes it correctly (-3.6651629274966204). A rejected scheme
   now falls through instead of answering `-inf`.
-  **Follow-up in the photon library:** `set_scheme` should accept a zero rate
-  matrix rather than be worked around here. Until it does, the no-exchange
-  limit runs on the in-tree implementation, which is worth knowing when that
-  implementation is eventually replaced.
+  **Filed in the photon library** (`BUGS.md`, "set_scheme rejects any
+  disconnected kinetic scheme") — and it is broader than the zero matrix: any
+  scheme with a repeated zero eigenvalue is refused, including a three-state
+  model with one non-exchanging state. It must be fixed there, not here; the
+  ChiSurf fall-through logs a warning naming the defect so it cannot quietly
+  become permanent, and the warning stops once the library accepts the scheme.
 
 Three more, found the same way and with the same verdict:
 `test/fitting/test_fit_state.py::test_fret_gaussian_model_get_set_state_preserves_gaussians`,
@@ -236,12 +238,12 @@ genuinely `1.0` for both the window and the GL widget, and
 `GL_ALIASED_POINT_SIZE_RANGE` is `[1, 64]`, so neither scaling nor clamping
 explains it. Apple's GL-over-Metal sprite path is the remaining suspect.
 
-**Not fixed here, deliberately.** The fix would change what `qtgl` draws and
-invalidate the `dots` baseline in the same change that uses that baseline as a
-reference. The WebGPU renderer already draws the documented size (8 px for
-`size = 8`), so this is a difference the port *corrects*; it is recorded here so
-the next person comparing the two does not read the correct half as a regression.
-Whoever retires `qtgl` retires this with it.
+**Resolved by deletion (2026-08-10).** `qtgl.py` is gone, so nothing draws the
+half-size glyph any more. The entry stays because the *baseline* does: the
+frozen `dots_view.png` in `test/renders/gl_baseline/` still shows a 4 px dot,
+and `compare_wgsl dots` therefore shows the WGSL renderer drawing a glyph twice
+the size of the reference. That row is **correct and expected** — do not "fix"
+the renderer toward the baseline.
 
 ## `test/gui` crashes the interpreter mid-run, and 20 of its failures are contamination
 
@@ -410,12 +412,12 @@ genuinely `1.0` for both the window and the GL widget, and
 `GL_ALIASED_POINT_SIZE_RANGE` is `[1, 64]`, so neither scaling nor clamping
 explains it. Apple's GL-over-Metal sprite path is the remaining suspect.
 
-**Not fixed here, deliberately.** The fix would change what `qtgl` draws and
-invalidate the `dots` baseline in the same change that uses that baseline as a
-reference. The WebGPU renderer already draws the documented size (8 px for
-`size = 8`), so this is a difference the port *corrects*; it is recorded here so
-the next person comparing the two does not read the correct half as a regression.
-Whoever retires `qtgl` retires this with it.
+**Resolved by deletion (2026-08-10).** `qtgl.py` is gone, so nothing draws the
+half-size glyph any more. The entry stays because the *baseline* does: the
+frozen `dots_view.png` in `test/renders/gl_baseline/` still shows a 4 px dot,
+and `compare_wgsl dots` therefore shows the WGSL renderer drawing a glyph twice
+the size of the reference. That row is **correct and expected** — do not "fix"
+the renderer toward the baseline.
 
 ## `test/gui` crashes the interpreter mid-run, and 20 of its failures are contamination
 

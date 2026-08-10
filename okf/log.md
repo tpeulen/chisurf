@@ -1,6 +1,9 @@
 # Update Log
 
 ## 2026-08-10
+* **The Gopich-Szabo `-inf` is a photon-library bug, filed there — and it is broader and more ordinary than the degenerate case it first looked like.** Root-caused rather than worked around: `GopichSzabo::set_scheme` returns false whenever the rate matrix has a **repeated zero eigenvalue**, which is not just the all-zero no-exchange limit but **any disconnected scheme** — including a plain three-state model where one state does not exchange with the other two, which is a scheme a user would reasonably fit. Characterised rather than guessed: a *one-way* scheme is accepted, and a perturbation of **1e-12** makes the all-zero case pass, so the trigger is exact degeneracy and not ill-conditioning. Two of the three stages under `eigendecompose` already guard the zero case (`balance` skips zero rows/columns, `compute_eigenvectors` maps a zero `anorm` to 1.0), which leaves `francis_qr` or `zinv` — inverse iteration solves the *same* exactly-singular system for every vector of a repeated eigenvalue, so the basis comes back rank deficient. Filed in the photon library's `BUGS.md` with a runnable reproduction, the acceptance table above, and the expected value ChiSurf reproduces to 16 digits.
+  **And the ChiSurf side now reports it instead of absorbing it.** Falling through quietly is how a workaround becomes permanent: results would be right, the library defect invisible, and nobody would ever fix it. The fall-through stays — a *setup* failure must never be reported as an impossible model — but it logs a warning naming the library bug, so the defect stays a library bug rather than turning into a ChiSurf behaviour, and the warning stops appearing when the library is fixed.
+
 * **The OpenGL renderer is deleted: chimol draws with WGSL and nothing else.**
   `renderer/qtgl.py` (2,932 lines) and `renderer/postprocess.py` (452) are gone.
   A machine with no WebGPU adapter gets `SceneSink` — scenes assembled, nothing

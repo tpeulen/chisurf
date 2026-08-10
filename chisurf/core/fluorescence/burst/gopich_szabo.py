@@ -76,6 +76,7 @@ reimplemented here, not copied.
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from collections.abc import Sequence
 
@@ -521,14 +522,18 @@ def log_likelihood(bursts: PhotonBursts, rate_matrix, emission) -> float:
         )
     # Delegate to the photon library's C++ engine when it can take the scheme.
     #
-    # A rejected scheme is *not* an impossible model. `set_scheme` returns False
-    # for an all-zero rate matrix -- the no-exchange limit, which is precisely
-    # the static mixture a dynamic fit is compared against -- and this used to
-    # answer `-inf` there, telling the optimiser the parameters were forbidden
-    # when the likelihood is perfectly well defined and the in-tree path
-    # computes it correctly. Conflating "the engine would not take it" with
-    # "the model is impossible" is what made that silent; a setup failure now
-    # falls through like any other unavailability.
+    # A rejected scheme is *not* an impossible model, and this used to answer
+    # `-inf` when the engine refused one -- telling the optimiser the parameters
+    # were forbidden where the likelihood is perfectly well defined. A setup
+    # failure now falls through like any other unavailability.
+    #
+    # It also *says so*. The known cause is a defect in the library
+    # (`set_scheme` rejects any scheme with a repeated zero eigenvalue -- the
+    # no-exchange limit, or a state that does not exchange with the rest), filed
+    # against it with a reproduction. Falling through quietly would fix the
+    # symptom here and leave that defect invisible, which is how a workaround
+    # becomes permanent; the warning is what keeps it a library bug rather than
+    # a ChiSurf behaviour, and it stops appearing when the library is fixed.
     try:
         import tttrlib as _ttl
         if hasattr(_ttl, 'GopichSzabo'):
@@ -543,6 +548,13 @@ def log_likelihood(bursts: PhotonBursts, rate_matrix, emission) -> float:
                 return float(gs.log_likelihood(
                     bursts.times, bursts.colors, bursts.offsets
                 ))
+            logging.warning(
+                "the compiled Gopich-Szabo engine rejected a %d-state scheme; "
+                "falling back to the slower in-tree likelihood. This is a "
+                "library defect, not a property of the model -- see BUGS.md, "
+                "'set_scheme rejects any disconnected kinetic scheme'.",
+                int(np.asarray(rate_matrix).shape[0]),
+            )
     except Exception:
         pass  # fall through to the in-tree implementation
 
