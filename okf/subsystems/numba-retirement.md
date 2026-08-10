@@ -162,6 +162,20 @@ any apparent movement by swapping the old file back in and re-measuring in the
 same session; the general.py port did that and came out at 0.637 s vs 0.636 s
 with byte-identical evaluation counts.
 
+## A defect in the photon library is filed there, not worked around here
+
+**USER RULE.** When a port uncovers a bug in the compiled library, it goes in
+that repo's `BUGS.md` with a runnable reproduction and is **fixed there**. A
+ChiSurf-side patch that makes the symptom go away is not a fix — it is how a
+library defect becomes permanent, because the results come out right and nobody
+ever looks again.
+
+Where ChiSurf still needs a fall-back for correctness in the meantime, the
+fall-back **says so**: `gopich_szabo.log_likelihood` logs a warning naming the
+filed bug when the compiled engine refuses a scheme. Silence is what turns a
+temporary path into an architectural one, and the warning disappears by itself
+once the library is fixed.
+
 ## Bugs the ports have found
 
 Kept here because they are the argument for doing this carefully rather than
