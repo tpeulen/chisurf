@@ -28,7 +28,9 @@ in-tree, `hdbscan` and scikit-learn must both stay declared, so the manifest
 (sixth bullet in Definition of done) and the package-count prize are gated on
 stage 5. The companion tool keeps its `_SklearnHdbscanShim` and the ndxplorer
 test suite must run with the fixed tttrlib wheel build, which was broken in
-this env (`Mat.h:1034` undeclared `var`, unrelated to this PRD).
+this env (`Mat.h:1034` undeclared `var`, unrelated to this PRD). Full
+handover with traps and measurements:
+[`okf/handover/prd-87-ml-port.md`](../handover/prd-87-ml-port.md).
 
 What is worth knowing before touching anything:
 
