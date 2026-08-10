@@ -695,6 +695,18 @@ class MolView(QtWidgets.QWidget):
                 resolution_default_mask=payload.resolution_default_mask,
             )
 
+            # Real coordinates have landed, so the entry that received them is no
+            # longer the placeholder a fresh viewer keeps for pre-load settings.
+            # Nothing else cleared the flag, so a viewer built by calling this
+            # directly -- the CLI, a test, the headless path -- reported
+            # `is_empty()` True with a structure loaded, and every command that
+            # guards on it refused. `show cartoon` does not guard, which is why
+            # geometry appeared while `color` and `spectrum` answered "nothing is
+            # loaded" and the difference showed up as a colourless render.
+            active_entry = self._objects.get(self._active_object_id)
+            if active_entry is not None:
+                active_entry.placeholder = False
+
             extras = getattr(payload, "extras", None) or {}
             state = self._get_active_state()
             if extras.get("restraints"):

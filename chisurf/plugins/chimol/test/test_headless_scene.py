@@ -175,3 +175,47 @@ def test_scene_sink_builds_a_scene_without_a_widget(qapp):
         if o.geometry.indices is not None
     )
     assert triangles > 0, "a cartoon with no triangles is not a cartoon"
+
+
+def test_apply_payload_makes_the_viewer_non_empty(qapp):
+    """A viewer with a structure must not report itself empty.
+
+    ``is_empty()`` is what every colouring and selection command guards on. A
+    fresh viewer keeps a *placeholder* entry so settings made before the first
+    load survive it, and ``apply_payload`` filled that entry without clearing the
+    flag -- so a viewer built by calling it directly (the CLI, a test, the
+    headless path) held a structure and still answered "nothing is loaded".
+
+    ``show`` does not guard on it, which is what made the symptom so misleading:
+    geometry appeared, and only the colour was missing.
+    """
+    from pathlib import Path
+
+    from chisurf.plugins.chimol.chimol.cmd.command import Cmd
+    from chisurf.plugins.chimol.chimol.io.structure import load_structure_payload
+    from chisurf.plugins.chimol.chimol.renderer.headless import SceneSink
+    from chisurf.plugins.chimol.chimol.renderer.view import MolView
+
+    viewer = MolView(renderer_factory=SceneSink)
+    _structure, payload = load_structure_payload(_PDB)
+    viewer.apply_payload(payload)
+    assert not viewer.is_empty(), "a loaded viewer reports itself empty"
+
+    cmd = Cmd(None)
+    cmd.set_window(_WindowStub(viewer))
+    errors: list[str] = []
+    cmd.set_error_callback(errors.append)
+    for line in ["show cartoon", "color red", "spectrum count"]:
+        cmd.do(line)
+    assert not any("nothing is loaded" in e for e in errors), (
+        f"a colouring command refused on a loaded viewer: {errors}"
+    )
+
+    scene = viewer._scene
+    colours = np.concatenate(
+        [o.geometry.colors for o in scene.objects if o.geometry.colors is not None]
+    )
+    # spectrum count must produce a *range*, not one flat colour
+    assert colours[:, :3].std(axis=0).max() > 0.05, (
+        "spectrum produced a uniform colour, so it did not run"
+    )
