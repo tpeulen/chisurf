@@ -1,6 +1,75 @@
 # Update Log
 
 ## 2026-08-10
+* **chigame phase 2 complete: all five arcade games are on the engine, off `QPainter`.**
+  `tetris`, `minesweeper` and `number_quest` ported, joining pong and breakout. Each was verified against
+  a before/after pair in `plugins/misc/games/test/renders/`. **Tetris** needed its logic lifted *out* of
+  the `QFrame` — the piece table, board size and scoring are unchanged, but the whole simulation now steps
+  with no Qt; the seven tetrominoes are spectral packets so a filled well reads as an accumulated
+  spectrum. **Minesweeper** and **number_quest** already had Qt-free cores, so those are *view* ports and
+  their rules are untouched: minesweeper becomes a detector array scanned for hot pixels, and
+  number_quest becomes lifetime estimation, where the hidden 1..100 reads as 0.1..10.0 ns, the estimate is
+  drawn as the decay it implies, past guesses stay as a faint trace, and "higher/lower" becomes
+  "longer/shorter". Guessing a hidden value by narrowing an interval *is* what fitting a parameter does.
+  **What the five ports were for — the engine gaps they exposed:** every one of them needed layout room
+  the first draft did not give it, and **text clipped at a view edge three separate times** (breakout's
+  lives, tetris' two help lines, number_quest's status line). Worse, minesweeper sized its camera from the
+  board's **height alone** — which fits the square Beginner preset and cuts the 30-column Expert board
+  straight off the sides; a view has to be sized from the widest thing in it, not the tallest, and there
+  is now a test that asserts exactly that. Local multiplayer needed a second controller rather than more
+  actions (`GameHost.add_player`). A gamepad has no key auto-repeat, so three of the five implement repeat
+  themselves. And **nothing needed a mouse**: minesweeper was expected to force pointer picking and
+  instead showed that a cursor which is *game state* is exact by construction and trivially scriptable —
+  there is not one synthetic pointer event in the tests.
+  All three `QMainWindow` exceptions for the games are **struck** from the shrinking allow-list in
+  `test/test_tool_window_base.py`; the games block there is now empty. `tetris/sound.py` deleted,
+  superseded by `chigame.audio`.
+  Suites: 87 passed (games plugins, `test_chigame`, tool-window base).
+
+* **scikit-image mined rather than merely dropped, and nine more functions taken.**
+  Removing a library is not the same as deciding its remaining two hundred functions
+  are worthless, and the risk after a removal is that nobody looks again. So the
+  checkout was gone through subpackage by subpackage, with a verdict and a priority
+  each: [scikit-image mining](references/scikit-image-mining.md). Verdicts split four
+  ways — already covered, take, take later, not ours — and the "take later" entries
+  carry the capability they would unlock rather than just a name, so they read as
+  decisions rather than oversights. Eleven files in `junk/scikit-image/` now carry
+  `CHISURF-REVIEWED` / `TAKEN` / `SKIPPED` headers; insertions only.
+
+  Nine functions landed in
+  [`chisurf/core/roi/segmentation.py`](../chisurf/core/roi/segmentation.py):
+  `remove_small_objects`, `remove_small_holes`, `relabel_sequential`,
+  `expand_labels`, `find_boundaries`, `find_contours`, `difference_of_gaussians`,
+  `white_tophat`, and the multi-scale spot detectors `blob_dog` / `blob_log`. All
+  nine agree with the library exactly, over several seeds and every parameter mode.
+
+  **Three earn their place immediately, and one of them was a bug.** Molecule MLE
+  removed small labels with a Python loop that compared the whole frame once per
+  label; measured on a field of 92,016 components that is **17–24 s against 15 ms**
+  (1100–1550×) — though on a sparse field the two are a wash at 2 ms, because the
+  loop only pays when a label is actually removed, so the pathological case is a
+  crowded field, which is exactly what `min_area` exists for. The same call site then
+  left **gaps in the label numbering**, and every consumer that reads a label image as
+  "1 to max" — `regionprops` among them — reports regions that own no pixel;
+  `relabel_sequential` closes them. And `blob_log`/`blob_dog` are a capability the
+  tree did not have: the particle tracker finds spots at one fixed scale, while these
+  build a scale space and return each spot's *width* as well as its position, which is
+  what an image of unknown focus needs.
+
+  Two details from the reference were worth the reading. `find_boundaries(mode=
+  'outer')` is **not** "the background half of the boundary": two objects that touch
+  have no background between them, so it also marks pixels inside an object adjacent
+  to a *different* object, or an outline would draw the pair as one blob. And
+  scikit-image's `remove_small_objects(min_size=)` is mid-deprecation and its meaning
+  *moved* during it — in the installed version `min_size=n` behaves as "at most n"
+  rather than "fewer than n" — so ours takes the classic strict reading and the tests
+  compare against the stable `max_size` spelling rather than pinning a moving target.
+
+  Highest-priority remainder, recorded with what it needs: Richardson–Lucy
+  deconvolution (wants a PSF source, which is the real work), `rolling_ball`
+  background, and SSIM for the render-regression tests — which today compare images by
+  mean pixel difference and so cannot tell a one-pixel shift from a corrupted render.
+
 * **scikit-image mined rather than merely dropped, and nine more functions taken.**
   Removing a library is not the same as deciding its remaining two hundred functions
   are worthless, and the risk after a removal is that nobody looks again. So the

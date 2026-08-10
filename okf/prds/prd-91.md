@@ -15,24 +15,21 @@ sibling: none
 # Where to pick this up
 
 **Design settled 2026-08-10 across ~30 decisions (see "Decision record" at the
-end). Implementation is at Phase 1.**
+end). Implementation is at Phase 3.**
 
 Next, in order:
 
-1. **Phase 1 — `chisurf/gui/chigame/` + pong.** The engine seam and the first
-   port. The engine record is [chigame](../subsystems/chigame.md); read that
-   before touching rendering. Gate: pong runs on wgpu inside a ChiSurf dock and
-   a headless PNG of it has been *looked at*, not just asserted non-empty.
-2. **Phase 2 — the remaining four ports**, each chosen to force one engine
-   capability: breakout (sprite batching), tetris (grid + text), minesweeper
-   (picking), number_quest (UI/menus). A port that needs an engine feature gets
-   the feature added to chigame, never worked around in the game.
-3. **Phase 3 — the overworld.** Toctree → regions → villages → rooms, seeded by
+1. ✅ **Phases 1 and 2 done.** The engine is in `chisurf/gui/chigame/` and **all
+   five arcade games run on it**, off `QPainter`, each verified against a
+   before/after screenshot pair. The engine record is
+   [chigame](../subsystems/chigame.md) — read it before touching rendering, and
+   read its "what the ports taught" list before laying out a new screen.
+2. **Phase 3 — the overworld.** Toctree → regions → villages → rooms, seeded by
    page path. No AI yet, no combat: walking, camera, villages, fog.
-4. **Phase 4 — combat.** Spectral tactics, the roster from `spectra.db`, gear,
+3. **Phase 4 — combat.** Spectral tactics, the roster from `spectra.db`, gear,
    loot. Still no AI: the game must be fun with the model switched off, and if
    it is not, no amount of AI will save it.
-5. **Phase 5 — the AI layer**, then 6 (crafting, mini-games, factions, story),
+4. **Phase 5 — the AI layer**, then 6 (crafting, mini-games, factions, story),
    then 7 (farm, network).
 
 **Known deviation, deliberately left**: the shipped `lumis_quest/gui/tool.py` is
@@ -454,8 +451,8 @@ stop if this stalls.
 
 | Phase | Delivers | Proves |
 |---|---|---|
-| 1 | `chigame` + **pong** | Engine seam, InputMap, audio, offscreen capture |
-| 2 | **breakout, tetris, minesweeper, number_quest** | Batching, grid+text, picking, menus |
+| 1 ✅ | `chigame` + **pong** | Engine seam, InputMap, audio, offscreen capture |
+| 2 ✅ | **breakout, tetris, minesweeper, number_quest** | Batching, grid+text, picking, menus |
 | 3 | Overworld from the toctree, villages, fog | Map generation, walking, camera |
 | 4 | Combat, roster, gear, loot | The game is fun without a model |
 | 5 | AI layer, both flagging interfaces, spoils flow | Grounding, safety |

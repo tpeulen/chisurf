@@ -13,16 +13,38 @@ timestamp: '2026-08-10T00:00:00Z'
 first consumer, the `pong` port. Read [PRD-91](../prds/prd-91.md) for what the
 engine is ultimately for.
 
+**Phases 1 and 2 are done: all five arcade games are on the engine**, off
+`QPainter`, each verified against a before/after screenshot pair in
+`chisurf/plugins/misc/games/test/renders/`.
+
 Next, in order:
 
-1. **Finish the Phase-1 surface** — scene, camera, batcher, `InputMap`,
-   `AssetPack`, audio, offscreen capture — and land `pong` on it.
-2. **Four more ports, each forcing one capability**: breakout (sprite batching
-   under load), tetris (tilemap grid + text), minesweeper (picking), number_quest
-   (menu/UI). A port that needs something the engine lacks gets the engine
-   extended — never a workaround inside the game. That rule is the whole point of
-   porting them.
-3. **Then the consumer that motivated it**: the top-down world of Lumis Quest.
+1. **The consumer that motivated the engine**: the top-down world of Lumis Quest
+   ([PRD-91](../prds/prd-91.md)) — toctree → regions → villages → rooms, then
+   combat, then the AI layer.
+2. **A gamepad backend** behind the existing `InputMap`. Nothing is installed
+   (this Qt5 build has no `QtGamepad`; Qt6 removed it), and every game is already
+   written against the abstract actions, so this is additive.
+3. **A second `AssetPack`** would be the real proof that the seam holds. The
+   procedural pack is the only implementation today, so "swappable" is so far an
+   argument rather than a demonstration.
+
+**What the five ports actually taught**, since that was their purpose:
+
+- Every one of them needed *layout* room the first draft did not give it. Text
+  clipped at a view edge three separate times (breakout's lives, tetris' help
+  lines, number_quest's status line), and minesweeper sized its camera from the
+  board's **height** alone, which fits the square Beginner preset and cuts the
+  30-column Expert one straight off the sides. A view has to be sized from the
+  widest thing in it, not the tallest.
+- Local multiplayer needed a second controller, not more actions
+  (`GameHost.add_player`).
+- A gamepad has no key auto-repeat, so any game with a held direction has to
+  implement repeat itself. Three of the five do.
+- Nothing needed a mouse. Minesweeper was expected to force pointer picking and
+  instead showed that a **cursor which is game state** is both exact by
+  construction and trivially scriptable — there are no synthetic pointer events
+  anywhere in the tests.
 
 # What it is
 
