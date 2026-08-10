@@ -198,13 +198,25 @@ timestamp: '2026-08-10T00:00:00Z'
    none is needed: the binning ndxplorer actually does happens inside the
    histogram. **No new compiled kernel is required, and none should be written.**
 
-   **What is left is a lie to the user, not dead code.** ndxplorer's settings
-   dialog still offers a `Use Numba JIT Compilation` checkbox, backed by
-   `NDXPLORER_USE_NUMBA` and a `use_numba` config field, and
-   `fast_histogram` still takes `use_numba` parameters it documents as "accepted
-   and ignored". Removing a dialog control needs the before/after screenshot pair
-   this project requires, with the *before* captured first — recorded with the
-   full inventory in [known-issues](../references/known-issues.md).
+   **The settings surface is gone too** (`6593d06`): the
+   `Use Numba JIT Compilation` checkbox, `NDXPLORER_USE_NUMBA`, the
+   `use_numba` config field and the key in the shipped `mfd.settings.json`, the
+   `use_numba` parameters on `fast_histogram_1d/2d` documented as "accepted and
+   ignored", and the stale claims that `performance.py` "uses Numba acceleration
+   when available". A checkbox controlling nothing is not dead code — it is a
+   false statement to the user, who toggles it and concludes the setting does
+   not help rather than that it does not exist. Verified with the before/after
+   grab pair: exactly one control lost, no gains, layout intact.
+
+   **The verification that mattered was rendering from an isolated
+   `git worktree`, not from the shared tree.** Doing so caught a real break in
+   `db52784`: it deleted `compute_histogram1d_adaptive` after a caller check run
+   against the *working tree*, where a peer had already dropped the import —
+   at `HEAD` the import was still there, so the committed tree raised
+   `ImportError` on any `ndxplorer.ui` import. Fixed in `cbebc9c`.
+   **A working tree containing other people's uncommitted work does not verify
+   your commit**; `git worktree add --detach <sha>` to a scratch path does, and
+   costs one command.
 7. **`kappa2.py` closes Route 1, and blocking is what made it win.** All four
    kernels are NumPy and the `k2` grids are **bit-exact**; the histograms differ
    by `3e-14` relative, from summation order alone. Timings (median of 7):

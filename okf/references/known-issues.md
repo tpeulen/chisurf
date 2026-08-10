@@ -3413,41 +3413,6 @@ templates here would be work thrown away at that port. **Check whether
 `IMP.cgmol` already handles nucleic acids before writing any**; if it does, this
 closes by deletion.
 
-## ndxplorer: a settings checkbox offers "Use Numba JIT Compilation", and numba is gone
-
-**2026-08-10.** ndxplorer no longer imports numba anywhere — the histogram
-kernels, the gate kernels and the digitize kernel have all been removed, the last
-of them in `c7b1523`. What is left is the **user-facing surface that still offers
-to configure it**:
-
-| where | what |
-| --- | --- |
-| `ui/performance_settings_dialog.py:117` | a `QCheckBox("Use Numba JIT Compilation")` with a tooltip, wired to load and save |
-| `utils/performance_config.py:45,57` | `use_numba: bool = True` and `NDXPLORER_USE_NUMBA` |
-| `ui/performance_settings_dialog.py:330` | writes `NDXPLORER_USE_NUMBA` back to the environment |
-| `utils/fast_histogram.py:116,163` | `use_numba` parameters, documented as "accepted and ignored" |
-| `utils/performance.py:178,199,325` | three call sites passing `use_numba=True` |
-
-This is worse than dead code: a checkbox that claims to control acceleration and
-controls nothing is a **statement to the user that is false**, and someone
-debugging a slow session will toggle it and conclude the setting does not help
-rather than that it does not exist.
-
-Not fixed in the same change for one reason, stated so it does not look like an
-oversight: removing a control from a dialog is a GUI change, and this project
-requires a **before/after pair of headless screenshots read by the agent**, judged
-on control inventory (`okf/workflows/testing.md`). The before-half has to be
-captured *before* the checkbox is deleted or the baseline is unrecoverable. That
-is a bounded job, not a large one — grab `PerformanceSettingsDialog` offscreen,
-delete the checkbox and the config field together (they cannot go separately: the
-dialog reads `config.use_numba`), drop the three `use_numba=True` call sites and
-the two ignored parameters, then grab it again and confirm every other control
-survived.
-
-`use_fast_histogram`, `parallel_histogram` and `histogram_threads` sit in the same
-config and are worth checking at the same time — `parallel_histogram` in
-particular, since the thread pool it named was removed in `db52784`.
-
 ## `pixi.toml` requires `wgpu`, and the lock file has never contained it
 
 **2026-08-10.** Re-recorded after being removed from this file without a fix —
