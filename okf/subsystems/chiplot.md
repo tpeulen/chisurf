@@ -345,6 +345,27 @@ handed the string straight to `QColor`. Alpha became red and the colour came
 back opaque — which is why a translucent teal band rendered olive. Parsed here
 now, before Qt sees it, and covered by `test_eight_digit_hex_is_rrggbbaa`.
 
+## A panel's floor, and the golden split
+
+The two are the same problem seen from opposite ends: how little room a panel
+will accept, and how the room is shared.
+
+**The floor is a small constant, not the current margins.** Margins are measured
+during a paint; a layout asks for `minimumSizeHint` *before* the first one, and
+Qt's default size constraint then freezes whatever it got onto the parent
+widget. A panel therefore stayed stuck at a fully-labelled plot's floor even
+after hiding its axes — and three stacked strips at 62-99 px each need more than
+a short fit window has, so the splitter refused to shrink and the *data* panel
+was what got clipped, axis and all. Three panels now fit in 109 px.
+
+**The stack is split at the golden ratio**: the data panel takes
+`φ/(1+φ) ≈ 0.618`, the two residual strips share the rest. Setting absolute
+sizes once is not enough — a splitter rescales them and the proportion drifts —
+so it is re-applied on every resize, until `splitterMoved` says the user has
+chosen a split of their own, after which theirs stands. Measured at 1.619 /
+1.613 / 1.625 for window heights of 600 / 400 / 260; below about 200 px the
+strips reach their floor and the ratio necessarily gives way.
+
 # Where to pick this up — the WebGPU backend
 
 `backends/wgpu/` draws every family the A/B script exercises (decay on a log

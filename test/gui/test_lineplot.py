@@ -2,7 +2,8 @@ import json
 from pathlib import Path
 
 import numpy as np
-from qtpy import QtWidgets
+import pytest
+from qtpy import QtCore, QtWidgets
 
 import chisurf.core.plot_transforms as plot_transforms
 from chisurf.gui.plots.lineplot.lineplot import (
@@ -329,3 +330,38 @@ def test_the_stacked_panels_can_be_folded():
     """
     src = _lineplot_source()
     assert "area.setChildrenCollapsible(True)" in src
+
+
+def test_the_data_panel_takes_the_golden_share(qtbot):
+    """Split the stack so data : (a.corr + w.res) is the golden ratio.
+
+    Absolute sizes do not survive a resize -- the splitter rescales them and the
+    proportion drifts -- so the ratio is re-applied on every resize until the
+    user drags a handle. Exercised on a bare splitter because the arithmetic,
+    not the plot, is what can go wrong.
+    """
+    splitter = QtWidgets.QSplitter(QtCore.Qt.Vertical)
+    for _ in range(3):
+        pane = QtWidgets.QWidget()
+        pane.setMinimumHeight(1)
+        splitter.addWidget(pane)
+    splitter.setChildrenCollapsible(True)
+    qtbot.addWidget(splitter)
+
+    class _Stub:
+        GOLDEN_DATA_FRACTION = LinePlot.GOLDEN_DATA_FRACTION
+        plot_splitter = splitter
+
+    for height in (600, 400, 260):
+        splitter.resize(400, height)
+        LinePlot._apply_golden_split(_Stub())
+        acorr, wres, data = splitter.sizes()
+        assert data / (acorr + wres) == pytest.approx(1.618, abs=0.05)
+        assert acorr == pytest.approx(wres, abs=1)
+
+
+def test_a_dragged_split_is_not_overwritten():
+    """Once the user chooses a split, resizing keeps it."""
+    src = _lineplot_source()
+    assert "splitterMoved.connect(self._on_splitter_moved)" in src
+    assert "_split_is_users" in src

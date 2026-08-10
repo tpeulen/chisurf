@@ -47,6 +47,12 @@ _EDGE_PAD = 6
 _TICK_LEN = 4
 _TICK_GAP = 4
 
+#: The floor a panel refuses to shrink past. Deliberately small — see
+#: ``_PlotWidget.minimumSizeHint`` for why it cannot be derived from the
+#: margins, and why a large one clips the plot that matters most.
+_MIN_PANEL_W = 60
+_MIN_PANEL_H = 40
+
 _AXIS_COLOR = QtGui.QColor(170, 170, 175)
 _GRID_COLOR = (0.62, 0.62, 0.66)
 #: How close to the pointer (in pixels) a draggable edge must be to grab it.
@@ -203,15 +209,23 @@ class _PlotWidget(QtWidgets.QWidget):
         return QtCore.QSize(600, 450)
 
     def minimumSizeHint(self) -> QtCore.QSize:
-        """Enough room for the axis chrome plus a usable data area.
+        """Return the chrome plus just enough room to draw in.
 
-        The old floor was a flat 50x50, which is smaller than the margins the
-        ticks and labels need — the axes would draw over each other rather than
-        the panel refusing to shrink.
+        A floor is needed — a flat 50x50 is smaller than the margins the ticks
+        and labels need, and the axes would draw over each other — but it must
+        stay *small*. Three stacked panels each demanding a comfortable minimum
+        add up to more than a short window has, and the splitter then refuses
+        to shrink them: the data panel is what gets clipped, axis and all. The
+        allowance beyond the chrome is therefore token, and how much room a
+        panel really gets is left to the layout.
         """
-        margins = self._canvas._margins
-        return QtCore.QSize(margins.left + margins.right + 60,
-                            margins.top + margins.bottom + 50)
+        # A constant, not the current margins. Margins are measured during a
+        # paint, and a layout asks for this *before* the first one — then Qt's
+        # default size constraint freezes whatever it got onto the parent
+        # widget. The panel was therefore stuck at the floor for a
+        # fully-labelled plot even after hiding its axes, which is what kept
+        # three stacked strips from fitting a short window.
+        return QtCore.QSize(_MIN_PANEL_W, _MIN_PANEL_H)
 
     def paintEvent(self, event):
         """Render the data area on the GPU, then draw the chrome."""

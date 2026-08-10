@@ -488,6 +488,29 @@ def test_a_right_click_menus_and_a_right_drag_scales(qapp):
     assert canvas.get_range() != before
 
 
+def test_a_panel_can_shrink_far_enough_to_stack(qapp):
+    """Three panels must fit a short window without one being clipped.
+
+    The floor cannot come from the current margins: those are measured during a
+    paint, a layout asks for the minimum before the first one, and Qt's default
+    size constraint then freezes whatever it got onto the parent widget. A panel
+    stayed stuck at a fully-labelled plot's floor even after hiding its axes,
+    and three of those add up to more than a short window has.
+    """
+    canvas = _canvas()
+    floor = canvas.widget().minimumSizeHint()
+    assert floor.height() <= 40
+    # Three stacked panels and two handles have to fit a short fit window.
+    assert 3 * floor.height() + 8 <= 140
+
+    labelled = _canvas()
+    labelled.set_labels(left="counts", bottom="t / ns")
+    labelled.widget().resize(400, 300)
+    labelled.widget().grab()
+    assert labelled.widget().minimumSizeHint().height() == floor.height(), (
+        "the floor must not depend on what the panel happens to draw")
+
+
 def test_margins_follow_the_axes_that_are_actually_drawn(qapp):
     """A hidden axis costs padding, not a reserved inset.
 
@@ -710,10 +733,9 @@ def test_panel_asks_for_the_same_room_as_the_other_backend(qapp):
     canvas = _canvas()
     hint = canvas.widget().sizeHint()
     assert (hint.width(), hint.height()) == (600, 450)
-    floor = canvas.widget().minimumSizeHint()
-    margins = canvas._margins
-    assert floor.width() > margins.left + margins.right
-    assert floor.height() > margins.top + margins.bottom
+    # The *floor* is deliberately not derived from the chrome; see
+    # test_a_panel_can_shrink_far_enough_to_stack.
+    assert canvas.widget().minimumSizeHint().height() < hint.height()
 
 
 def test_an_empty_log_axis_does_not_span_three_hundred_decades(qapp):
