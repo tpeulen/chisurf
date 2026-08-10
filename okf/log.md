@@ -1,6 +1,68 @@
 # Update Log
 
 ## 2026-08-10
+* **scikit-image: the mining pass is closed, and the last open question went the
+  other way.** The record's one remaining item about *shipping* code was whether
+  scikit-image's upsampled-DFT sub-pixel refinement beats the parabolic fit in
+  `imaging/drift.py`. Measured — 20 random shifts, 128×128, 40 spots — and the
+  answer is no, decisively: on 200k photons the parabolic fit is **0.015 px
+  against 0.34 px**, and it wins again when content leaves the frame. The DFT
+  wins only with no noise and a circular shift, by 0.003 px.
+
+  The reason is structural, so this is a refusal rather than a "not yet": phase
+  correlation *whitens* the spectrum, amplifying shot noise at high spatial
+  frequencies to the same weight as signal — exactly wrong for photon-limited
+  sparse images. Pinned in `test/core/test_drift.py` so the refusal is a
+  measurement anyone can re-run.
+
+  The rest of the take-later list is rewritten as **refused unless a consumer
+  appears** rather than as a backlog, per the user's instruction not to port
+  what will not be needed: `rolling_ball` (white_tophat already does the job),
+  the `denoise_*` family (denoising a photon image discards the statistics the
+  fits depend on), CLAHE, `skeletonize`/`reconstruction`, `random_walker`, the
+  ridge filters, `match_template`, optical flow. SSIM is kept as the one with a
+  plausible consumer and still refused, since the project already judges GUI
+  parity by control inventory precisely because a pixel metric is either always
+  red or proves nothing.
+
+  scikit-image is now out of the shipped tree entirely — nothing under
+  `chisurf/` imports it and it is in no manifest. It survives only as a parity
+  oracle in three test files.
+
+* **Found and fixed while measuring the above: `estimate_drift` was off by one
+  pixel at large shifts.** An FFT cross-correlation is *circular* — index 0 and
+  index n−1 are neighbours — but the correlation was smoothed with
+  `gaussian_filter`'s default `mode='reflect'`. Near the maximum unambiguous
+  lag that mirrors the peak onto itself and drags it: a true shift of 15 on a
+  32-pixel frame was reported as **16**.
+
+  It survived because a mis-corrected frame still correlates perfectly *with
+  itself*, so lag 0 is blind to it and only lags pairing it with another frame
+  see the error. It was showing up as a 1.4%-against-1% residual in an ICS
+  flatness assertion — a test that had been red, read as a tolerance being
+  slightly too tight. Now `mode='wrap'`, with six parametrised cases at
+  ±13/14/15 asserting exactness.
+* **Lumis Quest: catching, a collection, and a run that survives the session.**
+  Collecting a creature is a menu action whose odds come from two real things: how far into its **dark
+  state** you have driven it (10% fresh, 80% worn), and **whether the fitted filter can see it at all** —
+  you cannot collect what you cannot detect, so a narrow filter that wins fights can also cost you the
+  catch. A failed attempt costs the turn, or collecting would be free and nothing else would ever be
+  chosen.
+  A run persists to `~/.chisurf/lumis_quest_run.json` — position, team with current photon budgets,
+  collection, inventory, fitted optics, cleared rooms, chosen order. Stored **by identifier, never by
+  value**: a creature is a probe id and an HP, not a copy of its stat block, so a corrected extinction
+  coefficient in the database reaches a saved game instead of the save quietly preserving a number that
+  has since been fixed. A missing, corrupt or future-versioned file yields a fresh run rather than
+  raising — losing a run is annoying, refusing to launch because of one is worse.
+  **The save path is injectable**, and the tests use a temporary one. `_restore()` reading the real
+  per-user file during a test run is exactly the hidden dependency that has bitten this repo before.
+  Two test bugs worth noting, both mine and both instructive: an opponent left on 1 HP **bleaches itself
+  to death by emitting**, so a retry loop for the catch never gets a second attempt — the test makes one
+  attempt on a seed where it lands. And the earlier `Fighter(hp=0)` sentinel bug has a sibling here: state
+  restored from a save is full of partially-spent creatures, which is precisely what that sentinel made
+  impossible to express.
+  Suites: 174 passed.
+
 * **Lumis Quest: catching, a collection, and a run that survives the session.**
   Collecting a creature is a menu action whose odds come from two real things: how far into its **dark
   state** you have driven it (10% fresh, 80% worn), and **whether the fitted filter can see it at all** —

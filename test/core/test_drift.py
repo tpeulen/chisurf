@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
+from scipy import ndimage
 
 from chisurf.core.fluorescence.imaging.drift import (
     apply_drift,
@@ -174,3 +175,68 @@ def test_uncorrected_drift_masquerades_as_decorrelation():
     # Corrected: flat to a few percent, and higher at every non-zero lag.
     assert g_after[1] > g_before[1] and g_after[2] > g_before[2]
     np.testing.assert_allclose(g_after, g_after[0], rtol=0.01)
+
+
+def test_the_parabolic_refinement_beats_phase_correlation_on_photon_data():
+    """Why `drift.py` does not use an upsampled-DFT refinement.
+
+    Phase correlation *whitens* the spectrum, so shot noise at high spatial
+    frequencies is amplified to the same weight as signal — precisely wrong for
+    a photon-limited sparse image. Measured over 20 random shifts, the parabolic
+    fit on the un-whitened cross-correlation is ~20× more accurate on counted
+    photons, and the whitened one wins only when there is no noise at all.
+
+    Pinned so the refusal is a measurement rather than an opinion, and so that
+    anyone proposing the swap has a harness to re-run.
+    """
+    skreg = pytest.importorskip("skimage.registration")
+
+    rng = np.random.default_rng(0)
+    rows, columns = np.indices((128, 128))
+    base = np.zeros((128, 128))
+    for y, x, amplitude in rng.uniform([8, 8, 50], [120, 120, 400], (40, 3)):
+        base += amplitude * np.exp(
+            -((columns - x) ** 2 + (rows - y) ** 2) / 8.0
+        )
+
+    parabolic, whitened = [], []
+    for _ in range(20):
+        dy, dx = rng.uniform(-3, 3, 2)
+        moved = ndimage.shift(base, (dy, dx), order=3, mode="constant")
+        frames = [
+            rng.poisson(np.clip(f, 0, None) / np.clip(f, 0, None).sum() * 200_000).astype(float)
+            for f in (base, moved)
+        ]
+        estimate = estimate_drift(np.stack(frames), subpixel=True)[1]
+        reference = -skreg.phase_cross_correlation(*frames, upsample_factor=100)[0]
+        parabolic.append(np.hypot(estimate[0] - dy, estimate[1] - dx))
+        whitened.append(np.hypot(reference[0] - dy, reference[1] - dx))
+
+    assert np.mean(parabolic) < 0.05
+    assert np.mean(parabolic) < np.mean(whitened) / 5
+
+
+@pytest.mark.parametrize("shift", [13, 14, 15, -13, -14, -15])
+def test_a_shift_near_the_unambiguous_limit_is_still_exact(shift):
+    """The lag axis is circular, and smoothing has to know that.
+
+    An FFT cross-correlation is periodic: index 0 and index n-1 are neighbours,
+    not edges. Smoothing it with the default `reflect` mirrors the peak back
+    onto itself, and a peak near the maximum unambiguous lag gets dragged by a
+    whole pixel — a true shift of 15 on a 32-pixel frame was read as 16.
+
+    That is invisible in the obvious test, because a mis-corrected frame still
+    correlates perfectly *with itself*: only lags that pair it with another
+    frame see the error, which is how this survived as a 1.4% residual in an
+    ICS flatness check rather than as an obviously wrong shift.
+    """
+    rng = np.random.default_rng(3)
+    rows, columns = np.mgrid[0:32, 0:32]
+    base = 50.0 * np.exp(
+        -((rows - 16) ** 2 + (columns - 16) ** 2) / (2 * 5.0**2)
+    ) + rng.poisson(5.0, (32, 32))
+    stack = np.stack([base, np.roll(base, (shift, 0), axis=(0, 1))])
+
+    assert estimate_drift(stack)[1, 0] == float(shift)
+    corrected, _ = correct_drift(stack)
+    np.testing.assert_array_equal(corrected[1], corrected[0])

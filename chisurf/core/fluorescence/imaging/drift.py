@@ -173,7 +173,14 @@ def estimate_drift(
             np.real(np.fft.ifft2(np.fft.fft2(a) * np.conj(np.fft.fft2(b))))
         )
         if gaussian_filter is not None:
-            corr = gaussian_filter(corr, smooth)
+            # Wrap, not the default reflect: an FFT cross-correlation is
+            # *circular*, so the lag axis has no edge — index 0 and index n-1
+            # are neighbours. Reflecting there mirrors the peak back onto
+            # itself, and a peak near the maximum unambiguous lag gets dragged
+            # by a whole pixel. On a 32-pixel frame a true shift of 15 was
+            # reported as 16, which then misaligns that frame in every
+            # correlation it takes part in.
+            corr = gaussian_filter(corr, smooth, mode="wrap")
         dy, dx = _peak_shift(corr, subpixel)
         # The correlation peak sits at the offset that maps the frame onto the
         # reference, i.e. the correction. Negate it so the returned number is

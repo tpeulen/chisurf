@@ -136,7 +136,14 @@ _ALLOWED_PREFIXES = {
     "hdbscan": ("test/benchmarks/",),
     # Same reason: the region-measurement and segmentation suites are what keep
     # proving those replacements agree with the library, pixel for pixel.
-    "skimage": ("test/core/test_regionprops.py", "test/core/test_segmentation.py"),
+    "skimage": (
+        "test/core/test_regionprops.py",
+        "test/core/test_segmentation.py",
+        # Deconvolution is the third: the compiled Richardson-Lucy is asserted
+        # equal to the reference to 1e-12, which is the claim that makes
+        # dropping the library safe rather than merely possible.
+        "test/core/test_restoration.py",
+    ),
 }
 
 #: Packaging manifests that describe the chisurf runtime. Deliberately only
