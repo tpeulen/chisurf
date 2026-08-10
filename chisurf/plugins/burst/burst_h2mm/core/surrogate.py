@@ -24,9 +24,13 @@ over-determine the model (many bursts).  A trained surrogate is specific to a
 trained on; it does not ship pretrained.  Train one with :func:`train_surrogate`
 and cache it, or fall back to EM (:func:`~.h2mm.fit_states`).
 
-This module has **no Qt / ChiSurf dependency** and uses only ``numpy`` and
-``scikit-learn`` (already a ChiSurf dependency); if scikit-learn is unavailable
+This module has **no Qt / ChiSurf-GUI dependency** and uses only ``numpy`` plus
+the in-tree estimators of :mod:`chisurf.core.ml` (``MLPRegressor``,
+``StandardScaler``); if those are unavailable
 :func:`surrogate_available` returns ``False`` and callers fall back to EM.
+The in-tree port keeps scikit-learn's attribute names (``coefs_``,
+``intercepts_``, ``out_activation_``) so the exported JSON contract does not
+change.
 """
 
 from __future__ import annotations
@@ -49,8 +53,8 @@ from .h2mm import (
 )
 
 try:
-    from sklearn.neural_network import MLPRegressor
-    from sklearn.preprocessing import StandardScaler
+    from chisurf.core.ml.neural_network import MLPRegressor
+    from chisurf.core.ml.preprocessing import StandardScaler
 
     _HAVE_SKLEARN = True
 except Exception:  # pragma: no cover - exercised only without scikit-learn

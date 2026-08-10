@@ -15,7 +15,7 @@ from chisurf.core.datastore import (
     row_count,
     store_from_arrays,
 )
-from sklearn.mixture import GaussianMixture
+from chisurf.core.ml import GaussianMixture
 
 from .models import GMMSettings
 

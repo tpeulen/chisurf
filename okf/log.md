@@ -1,5 +1,270 @@
 # Update Log
 
+## 2026-08-10
+* **[PRD-87](prds/prd-87.md) stages 1-4 landed: `chisurf.core.ml` in-tree scikit-learn port (except HDBSCAN).** Built
+  `chisurf/core/ml/{base,_gaussian,mixture,cluster,decomposition,preprocessing,neural_network}` mirroring sklearn's
+  public spellings: `GaussianMixture` (four covariance types, `n_init`, `aic`/`bic`, `score_samples`) with the
+  companion tool's constrained-EM absorbed as `fix_means`/`fix_covariances` masks (a locked value stays byte-exact);
+  `KMeans` (kmeans++ + Lloyd moved verbatim out of `chisurf/core/math/hmm.py`, which now imports
+  `chisurf.core.ml.cluster._kmeans`); `PCA`/`IncrementalPCA` (covariance eigendecomposition + batch moments;
+  `svd_flip` sign convention); `StandardScaler`; `MLPRegressor` (Adam with bias correction + early stopping).
+  Ported all three burst-selection GMM call sites (`api/features.py`, `gui/tool.py`,
+  `gui/legacy/burst_selector.py`), the H2MM surrogate (`burst_h2mm/core/surrogate.py` → new MLP/Scaler), and the
+  companion tool (`ndxplorer`): `get_kmeans`/`get_pca` → `chisurf.core.ml`, dead `get_gmm` deleted,
+  `GaussianMixtureFixedEM` now a thin wrapper over `GaussianMixture`. Parity proven in `test/ml/test_parity.py`
+  (11 tests, `importorskip("sklearn")`): GMM 1-D exactly, 5-D on separated blobs, KMeans inertia, PCA evr+loadings
+  up to sign, IncrementalPCA, StandardScaler; plus fixed-mask hold tests. `test_declared_dependencies.py` and
+  `test_no_retired_dependency_imports.py` still pass with sklearn declared (needed for HDBSCAN stage 5).
+  **Left for stage 5:** HDBSCAN in-tree (the only genuinely new algorithm); only then can `hdbscan`+`scikit-learn`
+  leave `pixi.toml`/`pyproject.toml` (incl. the `ml` extra)/recipe/TEST_PKGS and `sklearn` join `RETIRED`.
+  Env note: tttrlib wheel build broken (`modules/math/include/Mat.h:1034` undeclared `var`, pre-existing), so the
+  ndxplorer + burst GUI suites could not run here; the surrogate `test_surrogate_tttrlib.py` C++ round-trip and
+  burst-selection tests need a fixed tttrlib wheel.
+
+
+* **External Jupyter notebook server removed (agent board claim, done).** The
+  GUI no longer spawns `python -m notebook` at startup. Removed from
+  `chisurf/gui/__init__.py`: `launch_jupyter_process`/`get_free_port`, the
+  `start_jupyter` and `populate_notebooks` stages, the `populate_notebooks`
+  menu builder, the `plugin_menu_action` global and the `shutdown_services`
+  aboutToQuit hook. Removed the `gui.start_jupyter` / `gui.populate_notebooks`
+  post-show services from `30_gui_post_show.json` and their
+  `start_jupyter`/`populate_notebooks` entrypoints from
+  `chisurf/startup/gui_services.py`. Removed the ribbon Notebooks category
+  (`_create_notebooks_category` in `ribbon_plugins.py` and its `ribbon_base.py`
+  call), the `__jupyter_process__`/`__jupyter_address__` globals, the dead
+  `settings.notebook_path` constant, the `start_jupyter_on_startup` setting and
+  its BETA override in `chisurf/core/settings/__init__.py`. Dependencies: the
+  `notebook<7` pin is gone from pixi.toml/pyproject.toml (full extra)/recipe;
+  `nbformat` is declared directly (runtime: pixi, pyproject deps, recipe run)
+  because the code editor imports it lazily, and `nbconvert`+`ipykernel` were
+  added to the pixi `test` feature so the slow example-notebook tests keep a
+  kernel. Docs: dropped the `start_jupyter_on_startup` note from `docs/index.md`
+  and the settings reference. Tests: service-list and enabled_if assertions
+  updated in `test/startup/test_services.py` and `test/gui/test_startup_services.py`,
+  `notebook` struck from `_EXTRA_ALLOWED` in `test/test_declared_dependencies.py`,
+  and a new guardrail `test/test_no_external_jupyter_server.py` fails if the
+  services, setting or entrypoints creep back. OKF: RF-1005 (the inert
+  `start_jupyter_on_startup` beta override) marked FIXED, prd-81 phase updated
+  (the notebook-server question it left open is now answered: removed),
+  `known-issues.md` and `build-and-env.md` refreshed. The in-tree notebook
+  editor (`chisurf/plugins/core/code_editor/`, nbformat + chinsole, no server)
+  is unaffected. Pre-existing and not fixed here: the `test` env cannot build
+  `tttrlib` (companion repo fails on AppleClang 17 + OpenMP `var` undeclared in
+  `Mat.h`), which breaks ~20 settings tests at collection/runtime.
+
+## 2026-08-09
+
+* **Notebook editor polish (agent board: notebook editor UX pass).** Cell
+  management refactored to rebuild the stack from `self._cells`
+  (`_rebuild_stack`) so gap buttons and cells always match the model — add,
+  remove and insert-between (`after_index`) now go through one path, and
+  orphaned `＋` gap buttons are hidden + `deleteLater`'d on every rebuild.
+  Shell output and rich displays are mirrored into the attached `Chinsole`
+  terminal (`_on_write`/`_on_display` also route to `self.terminal`, `run_cell`
+  wraps the run in `pump.begin_cell()`/`end_cell()`, source echoed as
+  `In[n]`). Markdown cells render on run (Ctrl/Shift+Enter through `run_cell`),
+  and double-click-to-edit was restored with a `_MarkdownView` subclass —
+  this Qt build's `QTextBrowser` has no `doubleClicked` signal, which had
+  broken every notebook construction at `NotebookCell` init. Running a markdown
+  cell intentionally leaves the notebook clean (source unchanged). Added 4
+  tests (markdown render w/o dirty, insert-between + gap rebuild, terminal
+  echo, busy marker); 13 notebook tests green, 63 across the code_editor suite.
+  Note: `QApplication.processEvents()` does not flush `QToolButton.deleteLater`
+  in tests — use `sendPostedEvents(None, QEvent.DeferredDelete)`. Resume point
+  (incl. pending visual verification of offscreen grabs) in
+  `okf/plugins/profiles/code-editor.md`.
+
+## 2026-08-09
+
+* **Plot settings plugin.** Created `chisurf/plugins/core/plot_settings/` — a
+  hand-built settings panel for everything under `gui.plot`. Backend combo
+  (pyqtgraph/opengl), color pickers (`ColorButton` with `QColorDialog`) for
+  all plot colors, spin boxes for line width / transparency, checkboxes for
+  grid/legend/title/axis, pyqtgraph config (antialias/background/foreground/
+  left-button-pan), and a live preview that renders a sample TCSPC decay.
+  Apply writes to the in-memory `cs_settings` dict; Save persists to
+  `settings_chisurf.yaml`. 7 plugin tests pass.
+* **chiplot downsampling fix.** The lineplot decimation path crashed the whole
+  Fit plot for pyqtgraph: `setDownsampling` was called with `mode=`, but
+  pyqtgraph's `PlotDataItem` name for the reduction strategy is `method` (it
+  is `mode` only on the panel-level `PlotItem`). The crash aborted plot
+  construction so axis labels never rendered and the tool reported "Failed to
+  create plot". Fixed the chiplot backend to forward `mode`→`method`, and
+  corrected three call sites that had called chiplot's snake_case
+  `set_downsampling`/`set_clip_to_view` on raw pyqtgraph `PlotItem`s
+  (burst-selection tool, tttr photonfilter plots, intensity-trace), where the
+  native `setDownsampling`/`setClipToView` is the API that exists.
+
+* **PRD-64 Phase 5+ — UX parity tests + context-menu forwarding.** Added
+  11 UX-parity tests (`test/gui/test_chiplot_opengl.py`) covering context
+  menu, autoscale, export CSV, menu toggles, signals, view control, and
+  chaining — matching the pyqtgraph backend's test suite. Fixed the GL
+  widget's `contextMenuEvent` to forward to the parent `Plot` widget so
+  chiplot's menu logic (Export CSV/image, Auto-range, custom actions)
+  applies. Updated PRD-64 with a UX-parity section and the chimol
+  convergence plan (chimol swaps its standalone GL renderer onto chiplot's
+  contract as a follow-up to Phase 5+).
+
+* **PRD-64 Phase 5+ — OpenGL backend scaffold landed.** Created
+  `chisurf/gui/chiplot/backends/opengl/` with a full implementation of the
+  `base.py` contract: `_glcore.py` (Qt-free GLSL shaders, `ViewTransform`,
+  tick helpers), `_handles.py` (all handle protocols), `_canvas.py`
+  (`_GlCanvas`/`_GlGrid`/`_GlImageView` on `QOpenGLWidget`),
+  `__init__.py` (`OpenGLBackend` factory). Registered in the backend
+  selection registry alongside pyqtgraph; selectable via
+  `CHISURF_PLOT_BACKEND=opengl` or the new `gui.plot.backend` setting
+  (defaults to `pyqtgraph`). Added `available_backends()` to the public API.
+  Backend resolution now checks env var → settings → default. Extended
+  `test_backend_contract_matches_implementation` to check both backends;
+  added 18 OpenGL-specific tests (`test/gui/test_chiplot_opengl.py`). A/B
+  screenshot comparison script (`test/gui/chiplot_ab_screenshots.py`)
+  generates paired pyqtgraph/opengl PNGs. Rendering follows chimol's
+  pattern (Qt GL wrappers + PyOpenGL draw calls). Curves, bars, regions
+  render; scatter/image have known macOS GL issues documented in the chiplot
+  concept's "Where to pick this up" section.
+
+* **PRD-25 — H3 single sample read path landed.** `sample_manager.get_sample`
+  now delegates to the canonical schema-driven `MFDatabase.get_sample` instead
+  of a hand-written column-subset SELECT. 24 sample tests pass.
+
+* **Phase 1 "Where to pick this up" sections added.** PRD-17, 18, 19, 25, 27
+  each gained a concrete next-steps section so the next session knows exactly
+  what remains: PRD-18/17 boundary caller threading, PRD-19 core-table DDL
+  swap (needs UNIQUE/AUTOINCREMENT in the generator), PRD-25 N2 units + H1
+  audit, PRD-27 remaining in-place mutation audit.
+
+* **PRD-19 — dictionary completed for 6 core tables; CHECK generation landed.**
+  Added 48 missing column definitions to `mmfdb_flr_ext.dic` so all 6 core
+  tables have complete metadata. `DictionarySchemaMap` validates every
+  dictionary item maps to a live column. Extended `_column_def()` to emit
+  CHECK constraints from `_item_enumeration`. 31 tests pass.
+
+* **PRD-27 — reconstructability proven; operation status now logs transitions.**
+  Three `update_*_status` sites now call `transition_state` alongside the
+  backward-compat UPDATE. Added `test_reconstructability.py` (3 tests):
+  lifecycle state is reconstructable, tombstone deletes preserve records,
+  operation transitions are recorded.
+
+* **PRD-25 — N1 typed IDs landed.** Added 7 `NewType` ID aliases in `models.py`.
+
+* **PRD-18 — handler-level db_path injection landed (Phase 1 start).** All 6
+  mmfdb backend service modules now accept `db_path: str = ""` and capture it
+  once at registration via a module-level `_resolved_db_path` with lazy
+  fallback. 148 `MFDatabase(resolve_database_path())` calls in the floating
+  zone replaced. The boundary callers (~20 `chisurf/` files) still call
+  `resolve_database_path()` directly and are the remaining work. 754 mmfdb
+  tests pass.
+
+* **PRD-10 closed — file-group membership landed.** Added the
+  `mmfdb_artifact_member` table (dictionary-declared in `mmfdb_flr_ext.dic`,
+  DDL-generated in `schema.py`, SCHEMA_VERSION bumped to 49 with migration
+  `_migrate_v49_artifact_member`). Added `register_raw_measurement_group()`
+  in `result_registry.py` and `list_artifact_members()` /
+  `artifact_member_count()` in `queries/users.py`. `browse_datasets` now
+  returns a `member_count` column via a correlated subquery.
+  `DatasetSelection` carries `member_count`. 23 dataset browser tests + 9
+  architecture tests pass. This was the last Phase 0 item.
+
+* **PRD-36 — 15 dockable-tool migrations.** Migrated HelpWidget,
+  CodeEditorWindow, TraceBrowserTool, BurstFcsTool, PhasorCalculatorTool,
+  FlcTwoDTool, TTRLutToolsWidget, LightPathSimulatorWidget, HydroProTool,
+  IRFEstimatorTool, H2mmTool (dropped redundant MessagesMixin — base
+  provides it), MLELifetimeAnalysisWizard, LLTFGUIWizard,
+  FRETPairSelectionWindow, and the FRET pair selection window onto
+  `ChisurfDockTool`. Only `ProjectBrowserTool` (eager DB init) and
+  `chimol` (deferred to PRD-57) remain as `QMainWindow` subclass tools.
+
+* **PRD-72 closed — standalone MFD preparation plugin landed.** Created
+  `chisurf/plugins/burst/mfd_prepare/` with all four surfaces of the PRD-09
+  layered-plugin pattern: api (PrepareRequest/PrepareResult + JSON contract),
+  CLI (`csc mfd-prepare prepare/contract`), RPC backend
+  (`mfd_prepare.prepare/describe`), and GUI (`MfdPrepareTool` dockable tool).
+  Also added `csc mfd-prepare fit` (PRD-71 staging 6 CLI). 9 tests pass.
+  All 10 items of PRD-72 now landed.
+
+* **PRD status sweep — 10 PRDs marked done, 2 promoted from draft.** Every 🚧
+  in-progress and ✏️ draft PRD was assessed against the codebase: each file was read,
+  its Definition-of-Done / remaining-items checked, and the claims verified by
+  searching the tree. The result:
+
+  **Marked ✅ done (were 🚧 or 📋):** PRD-04 (burst pipeline MMFDB — all DoD items met,
+  review outcomes confirm "all blockers resolved"), PRD-06 (fluorophore DB — 21 seeded
+  dyes, 10 R0 pairs, verification workflow, AI triage, approved-only downstream; every
+  "open" DoD item was implemented), PRD-40 (declarative dataset-to-editor — the AutoForm
+  system driving every model panel), PRD-50 (PDA family — all 6 models, error surfaces,
+  consistency check, MCMC), PRD-56 (companion-tool RPC + phasor — GUI panel, RPC client,
+  phasor services all shipped), PRD-59 (pluggable auth — local + LDAP + CLI + hardening,
+  phase field itself said "landed"), PRD-60 (neural H2MM surrogate — Python + C++ engine,
+  GUI/CLI wiring, cross-validated), PRD-63 (i18n — 11/12 DoD checked, 6 locales vs 3
+  planned), PRD-65 (three-colour PDA — all 6 stages, docs, A/B verified to machine
+  precision), PRD-detector-setup (`SetupSelector` widget + AutoForm section).
+
+  **Promoted ✏️→🚧:** PRD-57 (ChiMOL — Tiers 0–3 landed, substantial implementation)
+  and PRD-71 (2D MFD fitting — stages 1–5 landed, milestone 1a passed on real data).
+
+  **Stale content fixed:** PRD-36 tracker updated (25 tools on base, not 19; `globalview`
+  removed from backlog — already migrated; 6 missing tools added to Done). PRD-43 DoD
+  checkboxes updated to reflect the delivered `mmfdb_event_log` design (the opaque-blob
+  plan was superseded by a stronger table design the PRD itself endorses). PRD-85 index
+  description updated (chiplot seam is done, not "not yet").
+
+  **Confirmed genuinely open:** PRD-02c, PRD-05, PRD-10, PRD-17, PRD-18, PRD-19, PRD-23,
+  PRD-25, PRD-26, PRD-27, PRD-28, PRD-51, PRD-58, PRD-64, PRD-66, PRD-72, PRD-83, PRD-85
+  (all verified in-progress with real open items). All ✏️ draft PRDs (37, 41, 45, 47, 48,
+  49, 73, 75, 76, 77) confirmed as genuine design-only with zero or minimal implementation.
+
+* **PRD second-pass — 3 closed, 1 obsoleted, remaining triaged.** A deeper pass
+  over every non-done PRD (frontmatter + DoD + codebase verification) found four
+  whose earlier "genuinely open" status no longer holds:
+
+  **Marked ✅ done:** PRD-05 (calibration provenance — all checked DoD items
+  complete and tested; the 3 unchecked items are explicitly deferred with
+  documented rationale), PRD-39 (sequence provenance — body already recorded
+  "all tasks complete 2026-06-27" with every DoD box checked; frontmatter was
+  stale at `planned`), PRD-43 (GUI operation history — all DoD checkboxes
+  checked; the `mmfdb_event_log` table + dual-write + round-trip test satisfy
+  the Definition of Done; remaining undo/redo edges are tracked enhancements,
+  not DoD gates).
+
+  **Marked ⛔ obsolete:** PRD-52 (phasor-FLIM imaging & particle tracking — the
+  stub's scope was fully delivered under PRD-55, PRD-56, the `img_pixel_phasor`
+  plugin, and the `img_tracking` plugin; spectral phasor remains under PRD-54).
+
+  **Full triage recorded:** all 88 PRDs assessed. The remaining open set is:
+  17 in-progress (10, 17, 18, 19, 23, 25, 26, 27, 36, 51, 57, 58, 64,
+  66, 71, 72, 83, 85), 9 draft (37, 41, 45, 47, 48, 49, 73, 75, 76, 77), 2 stub
+  (53, 54), and 10 planned (08, 29, 30, 33, 34, 35, 84, 86, 87, 88).
+
+* **PRD-02c closed — description drift guardrail.** The alignment script
+  (`align_flrcif_parameters.py`) now **updates existing** saveframe
+  descriptions, not just appends missing ones: `process()` compares each
+  registry description against the parsed dictionary text and rewrites the
+  `_item_description.description` block when they differ
+  (`update_dic_descriptions`). Two entries that had drifted (`ics.alpha`,
+  `rics.frame_dur`) are now in sync. A drift guardrail test
+  (`test_registry_and_dictionary_descriptions_do_not_drift`) enforces
+  agreement going forward. 19/19 tests pass.
+
+* **PRD-28 closed — Direction B (send current result to ndX).** Added a
+  toolbar action to Burst Selection that resolves the last analysis output
+  path and calls `send_path_to_ndxplorer`. The helper existed but was never
+  called; both directions of the round trip are now wired. 5/5 tests pass.
+
+* **PRD-85 closed — plugin audit complete.** All seven Scope-B.3 plugins
+  audited: none has raw per-photon plots (all draw already-aggregated data).
+  `intensity_trace`'s binned-trace plots gained `setDownsampling(auto=True,
+  mode='peak')` + `setClipToView(True)` (inherited by `trace_browser`), the
+  only plots large enough to lag without viewport decimation.
+
+* **PRD-66 — `data_table` AutoForm section registered.** Created
+  `chisurf/gui/autoform/sections/data_table_section.py`: a generalization of
+  `store_table` that auto-detects whether the model method returns a
+  DataStore, a list of dict-records, or named arrays, and binds accordingly.
+  One unchecked DoD item remains (migrating `_BurstTableModel` and other
+  hand-rolled plugin tables onto chitable). PRD-24 index glyph corrected
+  (📋→✅, frontmatter was already `done`).
+
 ## 2026-08-07
 
 * **A `.pto` can now be read back — and four silent GUI defects found while doing

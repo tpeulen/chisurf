@@ -2704,7 +2704,7 @@ class BurstSelectionTool(ChisurfDockTool):
 
     def _gmm_model(self, n_components: int):
         """Build a GaussianMixture using the configured advanced settings."""
-        from sklearn.mixture import GaussianMixture
+        from chisurf.core.ml import GaussianMixture
 
         s = self.gmm_settings
         return GaussianMixture(
@@ -2720,7 +2720,7 @@ class BurstSelectionTool(ChisurfDockTool):
     def _plot_gmm(self, data: np.ndarray, min_value: float, max_value: float, counts: np.ndarray) -> None:
         """Fit and plot an optional Gaussian mixture model."""
         try:
-            from sklearn.mixture import GaussianMixture  # noqa: F401  (availability check)
+            from chisurf.core.ml import GaussianMixture  # noqa: F401  (availability check)
         except Exception as exc:
             self.gmm_summary.setPlainText(f"GMM fitting failed: {exc}")
             return
@@ -3334,6 +3334,13 @@ class BurstSelectionTool(ChisurfDockTool):
         ndx_action.triggered.connect(self._open_in_ndxplorer)
         toolbar.addAction(ndx_action)
 
+        send_ndx_action = QtWidgets.QAction("→ ndX (current)", self)
+        send_ndx_action.setToolTip(
+            "Send the current burst-selection result to ndX"
+        )
+        send_ndx_action.triggered.connect(self._send_current_to_ndxplorer)
+        toolbar.addAction(send_ndx_action)
+
         # The shared ``?`` + **Guide** pair, replacing a hand-rolled dialog that
         # carried this tool's help as HTML inside the source file. Help now lives
         # in ``help.md`` beside this module, where it is editable without
@@ -3371,6 +3378,44 @@ class BurstSelectionTool(ChisurfDockTool):
             )
         except Exception as exc:
             self._status_bar.showMessage(f"Could not open ndX: {exc}")
+
+    def _send_current_to_ndxplorer(self) -> None:
+        """Send the current burst-selection result to ndX (PRD-28 Direction B).
+
+        Resolves the output path from the last analysis result and hands it
+        to ndX via :func:`send_path_to_ndxplorer`. No MMFDB picker, no file
+        round-trip: the just-produced burst output is opened directly.
+        """
+        try:
+            from chisurf.plugins.ndxplorer.mmfdb_launcher import send_path_to_ndxplorer
+
+            path = self._current_burst_output_path()
+            if not path:
+                self._status_bar.showMessage(
+                    "No burst output to send: run an analysis first."
+                )
+                return
+            send_path_to_ndxplorer(path, parent=self)
+        except Exception as exc:
+            self._status_bar.showMessage(f"Could not send to ndX: {exc}")
+
+    def _current_burst_output_path(self) -> str | None:
+        """Return the directory or file path of the last burst output."""
+        result = getattr(self, "_last_service_result", None)
+        if not isinstance(result, dict):
+            return None
+        output_paths = result.get("output_paths", {})
+        for key in ("output_folder", "bur", "zip"):
+            p = output_paths.get(key)
+            if p:
+                return str(p)
+        by_file = result.get("output_paths_by_file", {})
+        for _file, roles in by_file.items():
+            for key in ("output_folder", "bur"):
+                p = roles.get(key)
+                if p:
+                    return str(p)
+        return None
 
     def _show_metadata_dialog(self) -> None:
         """Show metadata dialog for editing analysis metadata."""

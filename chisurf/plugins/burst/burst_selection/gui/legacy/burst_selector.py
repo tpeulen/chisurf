@@ -11,10 +11,10 @@ from qtpy import QtCore, QtGui, QtWidgets
 
 from chisurf.gui import chiplot as cp
 from chisurf.gui.glyphs import Glyphs
-from chisurf.gui.widgets.chitable import edit_dataframe
+from chisurf.gui.widgets.chitable import edit_store
 
 import numpy as np
-from sklearn.mixture import GaussianMixture
+from chisurf.core.ml import GaussianMixture
 
 import chisurf.gui.decorators
 import chisurf.gui.widgets
@@ -347,7 +347,7 @@ class BurstSelectionTool(QtWidgets.QMainWindow):
             )
             return
 
-        edited = edit_dataframe(self.current_df, parent=self, title="Burst Results")
+        edited = edit_store(self.current_df, parent=self, title="Burst Results")
         if edited is None:
             return
         self.current_df = edited
@@ -799,8 +799,8 @@ class BurstSelectionTool(QtWidgets.QMainWindow):
                 self.plainTextEdit.setPlainText(err_msg)
 
                 # Additional debug info
-                if hasattr(e, '__module__') and 'sklearn' in e.__module__:
-                    logging.info(f"This appears to be a scikit-learn error. Check data format and GMM parameters.")
+                if hasattr(e, '__module__') and 'chisurf.core.ml' in e.__module__:
+                    logging.info(f"This appears to be a GMM fitting error. Check data format and GMM parameters.")
                     if len(filtered_data) < k:
                         logging.info(f"Not enough data points ({len(filtered_data)}) for {k} components. Try reducing the number of components.")
         else:

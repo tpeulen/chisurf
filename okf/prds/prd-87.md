@@ -3,17 +3,34 @@ type: PRD
 prd: "87"
 title: "PRD-87: chisurf.core.ml — the four estimators the tree actually uses, and the end of scikit-learn"
 description: scikit-learn is installed for four estimators reached from five files, and the tree already contains most of them as private helpers inside the HMM module. This PRD extracts them into one sklearn-shaped namespace so the call sites change by an import line, absorbs the constrained EM the companion exploration tool wrote because scikit-learn could not do it, and names HDBSCAN as the one algorithm that is genuinely new work.
-status: planned
-phase: "planned; stages 1-3 are chisurf-side, 4-5 land in the companion tool's repo, and stage 5 is where this may honestly stop"
+status: in-progress
+phase: "stages 1-4 implemented (chisurf-side done; companion tool call sites re-pointed); stage 5 (HDBSCAN) deliberately deferred and scikit-learn+manifest removals gated on it"
 resource: chisurf/core/ml/
 tags: [prd, dependencies, math, ml, gmm, kmeans, pca, burst-selection, h2mm, ndxplorer]
 timestamp: '2026-08-07T00:00:00Z'
+updated: '2026-08-09T00:00:00Z'
 ---
 
 # Where to pick this up
 
-Nothing has been implemented. The work starts at stage 1 below. What is worth
-knowing before touching anything:
+**Implemented (2026-08-09): stages 1–4.** `chisurf/core/ml/` exists with the
+full layout; all three burst-selection call sites import it; the HMM shares the
+kmeans + Gaussian density implementations; the companion tool uses
+`chisurf.core.ml` for KMeans/PCA/IncrementalPCA and its private
+`GaussianMixtureFixedEM` is absorbed into `GaussianMixture`'s `fix_means` /
+`fix_covariances` masks (with `covs_`/`converged_` aliases). Numeric parity with
+scikit-learn is proven in `test/ml/test_parity.py` (11 tests, `importorskip`).
+The MLP recreates Adam + early stopping and passes the surrogate's JSON
+round-trip and task bar.
+
+**What remains (all one stage): stage 5 — HDBSCAN.** Until HDBSCAN is written
+in-tree, `hdbscan` and scikit-learn must both stay declared, so the manifest
+(sixth bullet in Definition of done) and the package-count prize are gated on
+stage 5. The companion tool keeps its `_SklearnHdbscanShim` and the ndxplorer
+test suite must run with the fixed tttrlib wheel build, which was broken in
+this env (`Mat.h:1034` undeclared `var`, unrelated to this PRD).
+
+What is worth knowing before touching anything:
 
 1. **The cross-section is four estimators, and it is smaller than the import
    count suggests.** Five files import scikit-learn; between them they touch
@@ -244,15 +261,15 @@ Three rules make the layout load-bearing rather than decorative:
 
 # Definition of done
 
-- [ ] `chisurf/core/ml/` exists with the layout above and no dependency on the library
-- [ ] `GaussianMixture` (four covariance types, `n_init`, `reg_covar`, `aic`/`bic`) + `StandardScaler`
-- [ ] Fixed-mean / fixed-covariance masks, with a test that a fixed value does not move
-- [ ] All three burst-selection call sites ported; the legacy selector ported or deleted
-- [ ] `_kmeans*` moved out of `hmm.py`; `hmm.py` imports `chisurf.core.ml.cluster`
-- [ ] `MLPRegressor` written **or** the surrogate's training path deleted, with the choice recorded
-- [ ] `to_json` still produces a schema the C++ engine reads, proven by the round-trip test
-- [ ] Companion tool: `PCA`/`IncrementalPCA`, `KMeans` re-pointed, `GaussianMixtureFixedEM` absorbed, dead `get_gmm` deleted
-- [ ] HDBSCAN implemented, **or** the decline recorded in known issues with the reason
+- [x] `chisurf/core/ml/` exists with the layout above and no dependency on the library
+- [x] `GaussianMixture` (four covariance types, `n_init`, `reg_covar`, `aic`/`bic`) + `StandardScaler`
+- [x] Fixed-mean / fixed-covariance masks, with a test that a fixed value does not move
+- [x] All three burst-selection call sites ported; the legacy selector ported or deleted
+- [x] `_kmeans*` moved out of `hmm.py`; `hmm.py` imports `chisurf.core.ml.cluster`
+- [x] `MLPRegressor` written **or** the surrogate's training path deleted, with the choice recorded (written)
+- [x] `to_json` still produces a schema the C++ engine reads, proven by the round-trip test
+- [x] Companion tool: `PCA`/`IncrementalPCA`, `KMeans` re-pointed, `GaussianMixtureFixedEM` absorbed, dead `get_gmm` deleted
+- [ ] HDBSCAN implemented, **or** the decline recorded in known issues with the reason (deferred: stage 5 untouched)
 - [ ] `scikit-learn`, `hdbscan` and the `ml` extra struck from every manifest and from `TEST_PKGS`
 - [ ] `sklearn` added to `RETIRED` in the guardrail test
 - [ ] Package count re-measured and written down here
