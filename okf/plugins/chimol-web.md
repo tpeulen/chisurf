@@ -98,7 +98,35 @@ Next, in order:
    | 10000 | 0.304 0.267 0.331 (grey) | 0.140 0.272 0.012 (green) |
    | 19907 | 0.254 0.549 0.946 (blue) | 0.639 0.111 0.035 (red) |
 
-   **It is not an ordering bug — that has been tested and ruled out.** See
+   **RESOLVED — it was never a renderer bug.** The user identified it from the
+   picture in one line: the two images use *different colour spectra*, nothing is
+   reversed. Chasing that down: in the headless replay, `color grey80`,
+   `spectrum b` and `spectrum count` all produce **byte-identical** colour arrays,
+   and `test/renders/wgsl/plain_vs_spectrum.png` shows the GL column responding to
+   all three while the WGSL column is the same image three times. The renderer was
+   faithfully drawing an uncoloured scene.
+
+   The cause, once the error callback was finally hooked: `color` and `spectrum`
+   were returning **"nothing is loaded -- use 'load <file>' or 'fetch <id>'
+   first"**. A `MolView` built directly with `apply_payload` and a minimal window
+   stub gets geometry — `show cartoon` works against that same viewer — but the
+   command layer's *is-anything-loaded* check reads state the stub does not set,
+   so the colour commands refuse. That inconsistency is worth fixing on its own:
+   two commands disagreeing about whether a viewer has a structure is the kind of
+   split that will bite the CLI and the browser path too.
+
+   **The process lesson, which cost most of the time:** the replay ran ~100
+   commands without `set_error_callback`, so every refusal was silent and the
+   symptom surfaced as a rendering difference. `capture_gl_baseline.py` hooks both
+   callbacks and collects them into the manifest; any harness driving `Cmd` must
+   do the same. See [[always-produce-pngs]] — the numbers said "mirrored camera"
+   and "reversed ordering", and both were wrong; the four-panel image said
+   "different palette" immediately.
+
+   Superseded analysis below, kept because the ruling-out is what made the real
+   cause findable.
+
+   **Not an ordering bug — tested and ruled out.** See
    `test/renders/wgsl/colour_diagnosis.png`: four panels, GL baseline | WGSL
    as-is | WGSL with the colour array reversed | WGSL unlit. Reversing merely
    swaps which side is orange and which is blue; it does not restore the rainbow.
