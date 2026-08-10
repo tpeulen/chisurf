@@ -651,6 +651,26 @@ and the citation renders as a link to the paper. The source of truth is
 **[Braak & Vrugt (2008)](https://doi.org/10.1007/s11222-008-9104-9)** — Cajo J. F. ter Braak, Jasper A. Vrugt. *Differential Evolution Markov Chain with snooker updater and fewer chains*. Statistics and Computing **18**, 435-446. (2008).  
 *DE-MC with a snooker update and fewer chains.*
 
+(richardson1972)=
+
+**[Richardson (1972)](https://doi.org/10.1364/JOSA.62.000055)** — W. H. Richardson. *Bayesian-based iterative method of image restoration*. Journal of the Optical Society of America **62**, 55-59. (1972).  
+*The iterative Poisson-likelihood restoration, derived from Bayes' theorem.*
+
+(lucy1974)=
+
+**[Lucy (1974)](https://doi.org/10.1086/111605)** — L. B. Lucy. *An iterative technique for the rectification of observed distributions*. The Astronomical Journal **79**, 745. (1974).  
+*The same iteration, arrived at independently.*
+
+(biggs1997)=
+
+**[Biggs & Andrews (1997)](https://doi.org/10.1364/AO.36.001766)** — D. S. C. Biggs, M. Andrews. *Acceleration of iterative image restoration algorithms*. Applied Optics **36**, 1766-1775. (1997).  
+*Vector extrapolation for Richardson-Lucy: the same path, larger steps.*
+
+(zhang2007)=
+
+**[Zhang et al. (2007)](https://doi.org/10.1364/AO.46.001819)** — B. Zhang, J. Zerubia, J.-C. Olivo-Marin. *Gaussian approximations of fluorescence microscope point-spread function models*. Applied Optics **46**, 1819-1829. (2007).  
+*Where sigma = 0.21 lambda / NA comes from, and how far it can be trusted.*
+
 (campello2013)=
 
 **[Campello et al. (2013)](https://doi.org/10.1007/978-3-642-37456-2_14)** — R. J. G. B. Campello, D. Moulavi, J. Sander. *Density-based clustering based on hierarchical density estimates*. PAKDD, Lecture Notes in Computer Science **7819**, 160-172. (2013).

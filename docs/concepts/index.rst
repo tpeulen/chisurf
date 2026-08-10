@@ -79,6 +79,7 @@ alternatives are collected in :doc:`/fundamentals/conventions`.
 
    multidimensional_exploration
    density_clustering
+   deconvolution
 
 .. rubric:: Data and provenance
 

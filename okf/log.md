@@ -1,6 +1,50 @@
 # Update Log
 
 ## 2026-08-10
+* **Deconvolution: the engine is compiled, and the PSF source was already here.**
+  The top item on the [scikit-image mining](references/scikit-image-mining.md)
+  take-later list was Richardson–Lucy, with the note that "the algorithm is twenty
+  lines; the PSF source is the real work". The PSF source turned out to be in the tree
+  already — the **PSF determination** plugin fits sub-resolution beads and reports σ per
+  axis, which is exactly what a kernel builder wants — so the work was the engine.
+
+  It lives in the photon library, `modules/math/Deconvolution.{h,cpp}` over the vendored
+  FFT: `richardson_lucy` (2-D and 3-D) and `wiener_deconvolve`. The microscope-facing
+  half is [`chisurf/core/fluorescence/imaging/restoration.py`](../chisurf/core/fluorescence/imaging/restoration.py)
+  — `gaussian_psf` from a measured σ, and `psf_sigma_from_optics` for
+  σ_xy ≈ 0.21 λ/NA and σ_z ≈ 0.66 λn/NA². Numerically identical to the reference to
+  **1e-12** across three PSF shapes, three iteration counts and both ranks, and
+  1.3–2.6× faster per iteration.
+
+  **Richardson–Lucy is the right estimator here for a reason worth stating**: it is the
+  maximum-likelihood solution under *Poisson* noise, which is not an approximation to a
+  photon-limited image's noise but literally its noise, and it keeps the estimate
+  non-negative and flux-conserving by construction. The Wiener filter is included as the
+  linear alternative and deliberately not the default — measured on sparse spots it does
+  sharpen the peaks (125 → 260, truth 286) and it rings negative between them, so its
+  *total* error is worse than the blurred image it started from. That comparison is in
+  the tests rather than asserted in prose.
+
+  **The finding that changes how it should be used**: the iteration count is the
+  regularisation, not a convergence knob. On a noisy frame the error against the truth
+  traces a U — 0.24 at 5 iterations, **0.10 at 20**, 0.21 at 100, 0.41 at 400 — so past
+  the optimum the image keeps looking sharper while getting further from the truth.
+  Biggs–Andrews acceleration is included and **off by default** because measurement says
+  what it is: a step-size change, not a better estimator. Thirty accelerated iterations
+  land where four hundred plain ones do, which reaches the optimum in about five instead
+  of twenty and sails past it just as fast. Both curves are pinned in
+  `test/core/test_restoration.py`, because a single-call test would hide exactly this.
+
+  The one implementation detail that is a compatibility surface: the "same"-mode crop
+  offset, `(m - 1) / 2` per axis. An FFT convolution is circular, so the transform runs
+  on a padded grid and is cut back afterwards; off by one and the output is the right
+  image shifted by a pixel, which looks entirely plausible. One test asserts it directly
+  for symmetric and asymmetric kernels because nothing else would catch it.
+
+  New: [`docs/concepts/deconvolution.md`](../docs/concepts/deconvolution.md),
+  `test/core/test_restoration.py` (26), tttrlib `test_deconvolution.py` (11), and four
+  citations in the reference list.
+
 * **Lumis Quest phase 3: the documentation is now a place you can walk.**
   `lumis_quest/api/world.py` generates the overworld from the docs' **own toctrees** (the curated order a
   human authored, not the filesystem's) and the per-directory review sidecars; `gui/overworld.py` draws it

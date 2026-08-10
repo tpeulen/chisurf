@@ -40,7 +40,7 @@ The checkout is `junk/scikit-image/`, annotated in place with
 | `filters` | `gaussian`, `threshold_otsu`, `difference_of_gaussians`, `sobel`, `frangi`/`sato`/`meijering`, `threshold_local`, `median` | **Take** (partly) | First two came with the removal; `difference_of_gaussians` is **taken** (it is what band-passes a spot image). Ridge filters are take-later — they are for filaments, which the imaging tools do not yet analyse. |
 | `morphology` | `remove_small_objects`, `remove_small_holes`, `white_tophat`, `skeletonize`, `binary_*`, `h_maxima`, `reconstruction` | **Take** (partly) | `remove_small_objects` / `remove_small_holes` / `white_tophat` **taken**; the binary operators are `scipy.ndimage` one-liners already. `skeletonize` and `reconstruction` are take-later. |
 | `feature` | `blob_log`, `blob_dog`, `blob_doh`, `peak_local_max`, `canny`, `match_template`, `structure_tensor`, `graycomatrix` | **Take** (partly) | `peak_local_max` came with the removal; **`blob_log`/`blob_dog` taken** — multi-scale spot detection is what a single-molecule image wants and the tree had only a fixed-scale à trous detector. `match_template` is take-later. The descriptor zoo (ORB, SIFT, BRIEF, HOG, Haar, LBP, daisy, fisher_vector) is **not ours**. |
-| `restoration` | `richardson_lucy`, `rolling_ball`, `denoise_tv_chambolle`, `denoise_nl_means`, `wiener`, `estimate_sigma` | **Take later** — highest priority of the remainder | Deconvolution with a measured PSF is the single most valuable thing left in the library for confocal work, and `rolling_ball` is the standard answer to uneven illumination. Neither has a consumer today; both would need one designing. |
+| `restoration` | `richardson_lucy`, `rolling_ball`, `denoise_tv_chambolle`, `denoise_nl_means`, `wiener`, `estimate_sigma` | **Taken** (deconvolution); rest take-later | `richardson_lucy` and `wiener` are done — the engine is compiled in the photon library's `math` module and the microscope-facing half is `chisurf.core.fluorescence.imaging.restoration`. The PSF source turned out to be already here: the **PSF determination** plugin fits beads and reports σ per axis, which is exactly the kernel builder's input. `rolling_ball` remains the top of the remainder; the `denoise_*` family below it. |
 | `registration` | `phase_cross_correlation`, `optical_flow_*` | **Already covered**, with a caveat | [`imaging/drift.py`](/../chisurf/core/fluorescence/imaging/drift.py) does FFT cross-correlation with a parabolic sub-pixel refinement. scikit-image's *upsampled-DFT* refinement is more accurate at high upsampling; worth a measurement before deciding, not a port on faith. Optical flow is take-later (non-rigid drift). |
 | `exposure` | `equalize_adapthist` (CLAHE), `rescale_intensity`, `match_histograms` | **Take later** | Display-side, not analysis-side: CLAHE would improve how a CLSM frame *looks* in the image widgets. `rescale_intensity` is three lines and is already written inline in several places — worth collecting when someone touches them. |
 | `metrics` | `structural_similarity`, `peak_signal_noise_ratio`, `normalized_mutual_information`, `adapted_rand_error`, `variation_of_information` | **Take later** | SSIM has an unusual consumer: the render-regression tests, which currently compare images by mean pixel difference and therefore cannot tell a shifted image from a corrupted one. The segmentation-comparison metrics would earn their place the moment a second segmenter exists to compare against. |
@@ -73,10 +73,12 @@ Landed in [`chisurf/core/roi/segmentation.py`](/../chisurf/core/roi/segmentation
 
 In priority order, and each with what it unlocks rather than just a name:
 
-1. **`richardson_lucy` deconvolution** (`restoration`). Needs a PSF source —
-   either measured from beads or computed from NA and wavelength — which is the
-   real work; the algorithm itself is twenty lines. Would serve CLSM and the
-   single-molecule image tools directly.
+1. ~~`richardson_lucy` deconvolution~~ — **done**. The PSF source I expected to
+   be the real work was already in the tree: the PSF determination plugin fits
+   beads and reports σ per axis. The engine is compiled
+   (`tttrlib modules/math/Deconvolution.cpp`), exact against the reference to
+   1e-12, and the concept page is
+   [`docs/concepts/deconvolution.md`](/../docs/concepts/deconvolution.md).
 2. **`rolling_ball` background** (`restoration`). `white_tophat`, taken here, is
    the cheap approximation of it; the rolling ball is the one people expect and
    cite.
