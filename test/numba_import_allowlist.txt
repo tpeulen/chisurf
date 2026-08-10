@@ -31,7 +31,6 @@
 
 # ── numpy ────────────────────────────────────────────────────────────────────
 chisurf/core/fluorescence/anisotropy/kappa2.py
-chisurf/plugins/modelling/fret/core/olga_greedy.py
 modules/ndxplorer/ndxplorer/utils/performance_optimizations.py
 modules/ndxplorer/ndxplorer/utils/vectorized_ops.py
 

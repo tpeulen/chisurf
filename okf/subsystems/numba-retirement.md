@@ -10,7 +10,7 @@ timestamp: '2026-08-10T00:00:00Z'
 # Where to pick this up
 
 1. **The tracker is `test/numba_import_allowlist.txt`** and it only shrinks.
-   Every entry carries its route. **24 chisurf-owned files remain** of the 48 this work covers. ChiMOL's 11 are **excluded from the guard entirely** — the WebGPU port removes them on its own schedule, and listing them here only made this test fail nine times in one session with news about someone else's progress;
+   Every entry carries its route. **23 chisurf-owned files remain** of the 48 this work covers. ChiMOL's 11 are **excluded from the guard entirely** — the WebGPU port removes them on its own schedule, and listing them here only made this test fail nine times in one session with news about someone else's progress;
    `test/test_numba_seam.py` fails both on a new importer and on a stale entry,
    so the list cannot drift from the tree.
 2. **Route `tttrlib`: next is `plugins/fluorescence_decay/maxent_decay/core/solver.py`**
@@ -109,7 +109,40 @@ timestamp: '2026-08-10T00:00:00Z'
    `rotate_point` sliced the quaternion vector part as `quaternion[1:3]` — two
    elements — so it read past the end inside `cross3`. It has no callers and
    never ran; under numba that read memory instead of raising.
-5. **A `tttrlib` route is a hypothesis, not a verdict — diff the maths first.**
+5. **`olga_greedy.py` is done, and the port found a wrong answer that had been
+   shipping.** The FRET experiment-planning weight is the chi-squared
+   right-tail, `Q(nu/2, chi2/2)`. Olga takes its closed-form expansion from
+   Boost, whose half-integer branch loops `for (n = 2; n < a; ++n)` with `a` a
+   half-integer; the port wrote `range(2, int(a))`, and `int(2.5)` is `2` — so
+   it ran **one term short for every odd `ndof`**, returning `0.3903934` where
+   the truth is `0.6987524`. `ndof` is the number of pairs chosen so far, so it
+   is odd on every other greedy step, and this weight is precisely what decides
+   which pair looks most informative. Fixed, vectorised, and checked against
+   `scipy.special.gammaincc` over `ndof` 1..1001 (`4e-15`).
+
+   Three things worth carrying forward:
+   - **`scipy.special.gammaincc` is the same function but must not carry the
+     common path** — it is general-purpose and measured **18× slower** end to
+     end on the `(candidates, n, n)` arrays. It settles *correctness*; the
+     few-term series carries *speed*. The one place it is now used is `a > 100`,
+     where Olga substituted a normal approximation good to only `1.3e-2` and the
+     series would need ~200 terms.
+   - **Cost of the port: 2.9–4× slower** (0.035→0.140 s at 60×120, 0.461→1.327 s
+     at 120×300). Accepted because this is a one-shot planning wizard, not a fit
+     loop — and it removes a `parallel=True`, the decorator that latches
+     `NUMBA_NUM_THREADS`. If it ever needs to be fast, the route is `tttr-c`.
+   - **I wrote the in-place-scaling bug myself** while chasing that gap:
+     scaling `chisq` by a half with `out=` halved the *caller's* chi-squared
+     accumulator, so the decay curve stopped decaying while the selection still
+     looked plausible. It is the same defect this project filed against a
+     library's CDF sampler. Pinned now by
+     `test_the_weight_does_not_modify_the_chi_squared_it_is_given`.
+
+   Pre-existing and **not** caused by this: six failures in
+   `plugins/modelling/fret/test/test_examples.py` (olga example JSON, AVs on
+   PDB, project save/load, CLI info, FastAPI endpoints), verified identical with
+   `HEAD`'s file swapped back in.
+6. **A `tttrlib` route is a hypothesis, not a verdict — diff the maths first.**
    Two files routed to `tttrlib` turned out to be route `numpy`, because
    ChiSurf's version is *deliberately better than the C one* and delegating
    would have been a silent regression:
@@ -123,7 +156,7 @@ timestamp: '2026-08-10T00:00:00Z'
    under the decorator. So: read both implementations before delegating, and
    when they differ, work out *which* is right rather than assuming the
    compiled one is.
-6. **`_hdbscan.py` splits — measured, so do not re-derive.** The compiled
+7. **`_hdbscan.py` splits — measured, so do not re-derive.** The compiled
    kernel covers only the first two stages (`core_distances`,
    `mutual_reachability_mst`); `single_linkage`, `condense_tree` and
    `label_points` are **not** in the photon library. Timed on the *compiled*
@@ -139,7 +172,7 @@ timestamp: '2026-08-10T00:00:00Z'
    same reason, but **measure before delegating** — it is the hmmlearn
    replacement and is 1.1–18× faster per E-step, so a regression there is a
    visible loss.
-7. **`gopich_szabo.py` has a red test that is not the port's fault.**
+8. **`gopich_szabo.py` has a red test that is not the port's fault.**
    `test_no_exchange_reduces_to_a_static_mixture` returns `-inf` where
    `-3.665` is expected — `-inf` is the numba kernel's own numerical-failure
    sentinel. Check whether `tttrlib.GopichSzabo` gives the expected value
@@ -147,7 +180,7 @@ timestamp: '2026-08-10T00:00:00Z'
    [known-issues](../references/known-issues.md) with four unrelated
    `mfd_burst_roundtrip` failures, so the retirement's test runs are not read
    as having caused them.
-8. **ChiMOL is out of scope and out of the guard.** `test_numba_seam.py` skips
+9. **ChiMOL is out of scope and out of the guard.** `test_numba_seam.py` skips
    `chisurf/plugins/chimol/` via `_EXCLUDED_PREFIXES`, and the allow-list no
    longer names those files. They belong to the WebGPU port; when it lands
    them, nothing here needs touching.

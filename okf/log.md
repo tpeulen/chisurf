@@ -1,6 +1,33 @@
 # Update Log
 
 ## 2026-08-10
+* **The FRET pair-selection weight has been wrong for every odd number of
+  degrees of freedom.** Retiring numba from `plugins/modelling/fret/core/olga_greedy.py`
+  meant reading its chi-squared right-tail expansion, `Q(nu/2, chi2/2)`. Olga
+  copies the closed form from Boost, whose half-integer branch loops
+  `for (n = 2; n < a; ++n)` with `a` a half-integer; the port wrote
+  `range(2, int(a))`, and `int(2.5)` is `2` -- **one term short every time**, and
+  zero iterations where Boost runs one. At `ndof = 5, chisq = 3.008` it returned
+  `0.3903934` for a true `0.6987524`: not a rounding error, very nearly half.
+  `ndof` is the number of pairs chosen so far, so it was wrong on **every other
+  greedy step**, and this weight is exactly what decides which FRET pair looks
+  most informative. Fixed, vectorised, and checked against
+  `scipy.special.gammaincc` over `ndof` 1..1001 (`4e-15`); on the benchmark case
+  the selection is unchanged but the precision-decay curve moves at every odd
+  step (`2.30e-2` to `1.12e-1` at step 5). Three things the fix taught, all
+  recorded in the concept: `gammaincc` is the *same function* but **18x slower**
+  end to end on `(candidates, n, n)` arrays, so it settles correctness while the
+  few-term series carries speed -- except at `a > 100`, where Olga substituted a
+  normal approximation good to only `1.3e-2` and the exact call is now
+  affordable; the port costs **2.9-4x** in wall clock, accepted because this is a
+  one-shot planning wizard rather than a fit loop, and it removes a
+  `parallel=True` (the decorator that latches `NUMBA_NUM_THREADS`); and while
+  chasing that gap I introduced the in-place-scaling bug myself -- halving
+  `chisq` with `out=` halved the *caller's* accumulator, so the decay curve
+  stopped decaying while the selection still looked plausible, which is the same
+  defect this project filed against a library's CDF sampler. Now pinned by a
+  test, along with the odd-`ndof` weights, `Q(a, 0) = 1` on the diagonal, and
+  chunked-vs-single candidate scoring.
 * **A surface build is 50 ms now, and two of the three things that made it so
   were not what I expected.** Following the residency work above, the two
   remaining CPU costs were attacked and measured rather than assumed.
@@ -2111,7 +2138,6 @@
 * **Picking is a chiplot capability now, and ndX picks populations the same way** ([chiplot](subsystems/chiplot.md), [ROI](subsystems/roi.md), [PRD-92](prds/prd-92.md) §5.5). A gesture belongs to the thing being clicked, so `ImageView` gained `enable_picking()` — clicks become a `picked` signal carrying a fitted spot — and `add_region(roi)`, which draws a `chisurf.core.roi.ROI` of any shape. Before this, every tool that wanted either reached past the plotting seam for the click and re-implemented the conversion. The fit itself moved out of the spot-finder plugin into `chisurf/core/roi/picking.py`, because what it produces is a **region**: `core.roi` decides where a spot is, chiplot offers the gesture, plugins consume the result. **ndX gets the same gesture on a point cloud**, which is what its planes carry: `pick_population` clicks a population and returns the `RegionDataSelection` that describes it, through `fit_gaussian_cluster` (which *re-centres* — a click on the shoulder otherwise returns a centre on the shoulder and a covariance inflated by the empty half of the disc it sampled) and the `ellipse_from_covariance` its Gaussian gates already used. **Two things measurement decided.** The covariance-to-ellipse conversion already existed in `core/roi/selections.py`, and my first draft re-derived it — in *degrees*, where `EllipseROI.angle` is radians; reusing the helper is what avoided shipping a gate rotated by a factor of 57. And `add_region` ignored the rotation entirely, which for ndX's tilted gates draws a different gate that looks perfectly reasonable, so the backend's ellipse can now rotate and holds its centre while doing it (pyqtgraph rotates about `pos`). Also recorded, because it aborts the interpreter after every test has passed: destroying a chiplot `ImageView` at shutdown makes pyqtgraph walk the *other* views' context menus and touch deleted C++ combos — dispose them while the event loop is alive.
 * **The decay panel's display rules are one module, and every one of them is a bad-fit rule** — `chisurf/core/fluorescence/mle/display.py` + 15 tests, the first half of sharing the MLE layout between burst-wise and region-wise fitting ([MLE lifetime fitting](subsystems/mle-lifetime-fitting.md), [PRD-92](prds/prd-92.md)). A burst and a region are the same measurement under different membership rules — photons into a VV|VH stack, a single-lifetime MLE, then data/model/IRF/background with weighted residuals sharing the time axis — so the two tools were about to have two copies of a display that is *not* decoration. Each rule exists because the obvious version looks fine on a good fit and becomes unreadable on a bad one, which is exactly when someone is looking at it: a **diverged** model is clipped to ten times the data's maximum, because plotted raw it takes a log view to 1e6 and hides the data; the IRF and background are **area**-normalised rather than peak-normalised, because one hot bin otherwise sets the scale for the whole curve; the y-range is pinned to the **data**, because a background-dominated fit can span 1e±27 and an auto-range obligingly shows all of it; and the residual band is the **99th percentile** with a floor, because one catastrophic channel otherwise flattens every other residual into a line through zero. Two traps are now impossible rather than merely avoided: the VV and VH halves get **separate** windows (slicing the concatenated array as one glues one channel's tail to the other's rise, and looks plausible), and residuals are computed on the **full** stacks before windowing (windowing first pairs a data channel with whichever model channel happens to sit at the same offset). Divergence can also be *told* rather than inferred — a parameter pinned at its bound is a fact about the fit, where a large drawn amplitude is only a symptom, and the two do not always coincide.
 * **The decay panel is one widget now, and extracting it found the burst tool's y-range had been wrong** — `chisurf/gui/widgets/decay_panel.py` draws a `DecayCurves` and nothing else, so what to draw stays decided in the Qt-free module beside it. Residuals on top at a third of the height, sharing the time axis with the decay below, because a systematic deviation is *about* a channel and reading it against a different x-range is worse than not showing it. **The defect the extraction exposed:** `chiplot`'s `set_range` takes **data units on every axis** and does the log conversion itself, while the burst tool computed `math.log10(...)` first — so the range was logged twice, the panel showed a few counts, and the decay sat off the top of its own view. It is a regression from the pyqtgraph→chiplot migration, where log10 *had* been the right thing to pass, and it survived because a wrongly-ranged log plot still looks like a plot. Caught by rendering the shared panel on a synthetic 2.6 ns decay and reading the picture: data clipped out of view, model invisible, IRF two vertical spikes. `decay_ylim` now returns counts, says so, and both tools go through it — the burst suite (43 tests) passes against the shared implementation, which is the parity check the extraction is for.
-
 ## 2026-08-09
 
 * **Notebook editor polish (agent board: notebook editor UX pass).** Cell
