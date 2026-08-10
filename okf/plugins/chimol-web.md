@@ -205,12 +205,10 @@ stops matching is a question, not a failure. `capture_gl_baseline.py` keeps
    in two stages (k nearest, then a bound check that almost never escalates),
    which is why the replacement is faster than the compiled code it replaces.
 
-   **`shade_from_atoms` is the one that got materially worse** and is the first
-   candidate for the GPU: it is a per-vertex gather with no cross-vertex
-   dependence. 135 ms of its 151 is the pair enumeration plus eight scatter-adds
-   over 750k pairs; a dense `(vertices, k)` reformulation was tried and measured
-   *slower* (193 ms), so the ragged form is the right CPU shape and the next
-   move is a compute shader, not more numpy.
+   **Three of them now run on the GPU instead**, which is the point of having
+   done the CPU port first — see **Scene kernels on the GPU** below. What was
+   15× slower than numba is 1.4× *faster* than it, and the surface build that
+   was the whole reason to care is 2.8× faster end to end.
 
    **The one behaviour change, and how it was paid for.** `directional_occlusion`
    stepped along the shadow ray in strides of `shadow_distance` and searched a
@@ -701,6 +699,65 @@ which is the direction that matters. But 4–19× is not the 229× the distance 
 gave — MC is atomic- and bandwidth-bound rather than compute-bound. **That is the
 point of the gate: the GPU route generalises, but not uniformly, so each kernel
 must be routed by measurement rather than by category.**
+
+# Scene kernels on the GPU
+
+Three of the ported kernels are per-vertex gathers with no cross-vertex
+dependence, and they now run as WGSL compute shaders on the same WebGPU stack
+the renderer draws with — `renderer/compute.py` plus `wgsl/grid.wgsl`,
+`shade_atoms.wgsl`, `occlusion.wgsl`, `distance_grid.wgsl`. The shaders are
+plain WGSL a browser compiles unchanged, and they compose the same way the
+render shaders do: `grid.wgsl` is prepended by concatenation, because WGSL has
+no `#include` and that is the browser's rule too.
+
+| kernel | numba (was) | NumPy/scipy | WGSL compute | |
+|---|---|---|---|---|
+| `shade_from_atoms`, 40k verts × 11k atoms | 10 ms | 151 ms | **14 ms** | 11× the CPU route |
+| `occlusion_from_spheres`, same | — | 1,139 ms | **16 ms** | **70×** |
+| sphere distance grid, 96³ × 11k atoms | 3,236 ms | 484 ms | **11 ms** | **43×** (294× on numba) |
+| whole SES surface build, 148L at 128³ | — | 550 ms | **201 ms** | 2.8× |
+
+Agreement is to ~5×10⁻⁶ absolute against the NumPy route (f32 against f64), and
+the rendered frame is **identical**: a six-representation sheet built each way
+differs in zero pixels above a threshold of 6, with a maximum single-channel
+difference of 1.
+
+**One spatial index, built in NumPy, shared by all three.** A uniform grid whose
+cell is the query radius, so 27 cells is provably enough and no kernel needs a
+ring expansion or a host round trip. Building it is a sort and a prefix sum.
+
+**What is deliberately still on the CPU.** The neighbour *counts*, the bond
+pairs and the marching-cubes topology, because those must be exact and integer —
+an f32 GPU route would make a count differ by one at a boundary. The density
+splat, because at 14 ms it is not the bottleneck. And `nearest`, which is a
+global nearest-neighbour query the k-d tree already answers; it is now filled
+only where the weight sum is zero, which on a normal surface means no work at
+all and was worth more than moving it.
+
+**Three traps this cost, worth not repaying:**
+
+- **Compile the shader once.** The first version created the shader module and
+  the pipeline on every call, and the distance-grid kernel came out **2.4×
+  slower than the CPU route it replaces** — a number that reads as "the kernel
+  is wrong" and is really "the measurement included the compiler". Modules and
+  pipelines are cached by source and binding shape.
+- **A ring scan needs a horizon.** A voxel in the empty corner of a bounding box
+  is 60 Å from the nearest atom, so the "everything unsearched is at least
+  `r·cell` away" bound needs fifteen rings to catch up. The grid is only read
+  near the isosurface, so both routes clamp at 8 Å — *both*, so they agree by
+  construction rather than by luck. 8 Å with a 6 Å cell won over all eight
+  combinations measured; 4 Å cells at a 16 Å horizon are less than half as fast,
+  because the ring count dominates, not the sphere count.
+- **The first dispatch of a process pays ~730 ms of shader compilation.** It is
+  once, and only if a surface or metaball is built, but it means the *first*
+  surface after launch is slower than the CPU route and every one after it is
+  much faster. Do not benchmark a single build.
+
+`compute.backend` in `chimol_display.json` (display-config **version 13**) is
+`auto` / `gpu` / `cpu`, and `CHIMOL_COMPUTE` overrides it — which is what makes
+the parity tests possible, since they run the *public* entry point twice with
+each side forced.
+
 
 # Kernel routing
 

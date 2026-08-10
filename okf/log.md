@@ -1,6 +1,42 @@
 # Update Log
 
 ## 2026-08-10
+* **Three chimol scene kernels moved to WGSL compute, and the frame did not
+  change by a pixel.** The CPU port above was the precondition, not the
+  destination: a standalone page opened from `file://` may have no adapter, so
+  every GPU kernel needs a CPU route beside it, and now that every kernel *has*
+  one the compute shaders go on top rather than instead. `renderer/compute.py`
+  plus `wgsl/{grid,shade_atoms,occlusion,distance_grid}.wgsl` -- plain WGSL a
+  browser compiles unchanged, composed by concatenation because WGSL has no
+  `#include`, which is the same rule the render shaders already follow.
+  Measured against the NumPy route: `shade_from_atoms` 151 -> **14 ms** (and 1.4x
+  *faster* than the numba it replaced), `occlusion_from_spheres` 1,139 -> **16 ms**
+  (70x), the sphere distance grid 484 -> **11 ms** (43x, and 294x on the original
+  numba). A whole SES surface build on 148L at 128^3 goes 550 -> **201 ms**.
+  Agreement is 5e-6 absolute (f32 against f64) and the rendered six-representation
+  sheet is identical: zero pixels differ above a threshold of 6, maximum single
+  channel difference 1.
+  **All three share one spatial index** -- a uniform grid whose cell is the query
+  radius, so 27 cells is provably enough -- built in NumPy as a sort and a prefix
+  sum, which keeps the shaders free of any data-dependent host round trip.
+  **What stays on the CPU is a decision, not an omission:** the neighbour counts,
+  the bond pairs and the marching-cubes topology, because those must be exact and
+  integer and an f32 route would differ by one at a boundary; the density splat,
+  because 14 ms is not a bottleneck; and `nearest`, which the k-d tree already
+  answers and which is now computed only where the weight sum is zero -- on a
+  normal surface, no work at all.
+  **Three traps, all of which first read as "the GPU is not worth it".** The
+  shader module and pipeline were being created *per call*, and the distance grid
+  came out 2.4x slower than the CPU route -- the measurement included the
+  compiler. A ring scan needs a **horizon** or a voxel in an empty corner takes
+  fifteen rings to satisfy its own bound; both routes clamp at 8 A so they agree
+  by construction, and 8 A with a 6 A cell won over all eight combinations tried.
+  And the *first* dispatch of a process pays ~730 ms of shader compilation, so a
+  single-build benchmark says the opposite of the truth.
+  `compute.backend` (display-config **version 13**) is `auto`/`gpu`/`cpu` and
+  `CHIMOL_COMPUTE` overrides it, which is what lets the parity tests run the
+  public entry point twice with each side forced.
+
 * **Three more files off numba, and one of them was cubic.** `plugins/traj/fret_trajectory/traj2fret.py`, `plugins/traj/traj_remove_clashes/view_model.py`, `core/models/fcs/maxent.py`. `integrate_rate_traj` re-added the same elements for every window *and* every lag; a prefix sum turns each window sum into a difference and the sum over windows into two slice sums, so it is one pass per lag rather than one per (window, lag) pair — agreement 4.9e-14. `below_min_distance`'s nested loops break out of both the moment a close pair is found, so the answer per frame is a plain "does any pair clash": 0/300 mismatches, atom subsets included. Frames stay a Python loop **deliberately** — the pairwise matrix is `n_atoms²` and building it for every frame at once is what would run a real trajectory out of memory.
   **That one fixes a red test.** `test_below_min_distance_kernel` fails at HEAD because the numba kernel could not type-infer its own default argument — `np.arange(...)` is int64, the `atom_list` it is chosen against is int32, and the ternary between them will not compile — so passing an explicit atom list raised. The vectorised version has no such constraint. Verified by swap-and-restore: HEAD fails **three** tests in that file, this fails **two**, and the remaining two are recorded as pre-existing.
   `maxent.py`'s MEM iteration was already almost entirely NumPy under the decorator; only the clamps and the prior normalisation were loops. Renamed `_quickfit_mem_iteration_numba` → `_quickfit_mem_iteration`, since the old name was now a claim the code no longer makes.
@@ -1901,7 +1937,6 @@
 * **Click a spot and a Gaussian says where it actually is** — [PRD-92](prds/prd-92.md) §5.5, `spot_finder/core/picking.py` + 11 tests. A threshold finds every spot or none; a person looking at a field can see the one that matters and the three that are artefacts, so picking is the third way regions get made, beside the batch detector and a drawn region. **The click is a seed, never the answer**: a click lands a pixel or two off centre, and a region built on it inherits that as a biased centroid and a brightness measured over the wrong pixels — so the click selects a window, the brightest pixel in it seeds a 2-D Gaussian, and the fit decides the centre and the width. Asserted by planting a spot at a known place and clicking *beside* it: click (22, 26) → fit (20.00, 24.00), and the widths come back 1.2/2.6 px for a spot planted at 1.2/2.6. That also makes a picked region comparable to a detected one — `log`/`dog` report a width from a scale space, this reports one from a fit, and both report a **measurement** rather than a setting. **A pick that does not converge is refused with a reason**, because an ellipse placed where a fit failed looks exactly like one placed where it succeeded: four refusals, including the one that matters most — a click between two spots whose fit locks onto the wrong one is rejected on the distance it travelled, not accepted because it converged. Picks are a *proposal* on a third overlay until **Add picks** rasterises them into the label image, and only where nothing was found already: a pick is a spot the detector missed, not a second claim on pixels it already owns. Found while wiring it: the panel's buttons had **no `request_*` handlers at all** — the earlier screenshot could not show it because the harness called `run()` directly rather than pressing anything.
 
 * **Picking is a chiplot capability now, and ndX picks populations the same way** ([chiplot](subsystems/chiplot.md), [ROI](subsystems/roi.md), [PRD-92](prds/prd-92.md) §5.5). A gesture belongs to the thing being clicked, so `ImageView` gained `enable_picking()` — clicks become a `picked` signal carrying a fitted spot — and `add_region(roi)`, which draws a `chisurf.core.roi.ROI` of any shape. Before this, every tool that wanted either reached past the plotting seam for the click and re-implemented the conversion. The fit itself moved out of the spot-finder plugin into `chisurf/core/roi/picking.py`, because what it produces is a **region**: `core.roi` decides where a spot is, chiplot offers the gesture, plugins consume the result. **ndX gets the same gesture on a point cloud**, which is what its planes carry: `pick_population` clicks a population and returns the `RegionDataSelection` that describes it, through `fit_gaussian_cluster` (which *re-centres* — a click on the shoulder otherwise returns a centre on the shoulder and a covariance inflated by the empty half of the disc it sampled) and the `ellipse_from_covariance` its Gaussian gates already used. **Two things measurement decided.** The covariance-to-ellipse conversion already existed in `core/roi/selections.py`, and my first draft re-derived it — in *degrees*, where `EllipseROI.angle` is radians; reusing the helper is what avoided shipping a gate rotated by a factor of 57. And `add_region` ignored the rotation entirely, which for ndX's tilted gates draws a different gate that looks perfectly reasonable, so the backend's ellipse can now rotate and holds its centre while doing it (pyqtgraph rotates about `pos`). Also recorded, because it aborts the interpreter after every test has passed: destroying a chiplot `ImageView` at shutdown makes pyqtgraph walk the *other* views' context menus and touch deleted C++ combos — dispose them while the event loop is alive.
-
 ## 2026-08-09
 
 * **Notebook editor polish (agent board: notebook editor UX pass).** Cell

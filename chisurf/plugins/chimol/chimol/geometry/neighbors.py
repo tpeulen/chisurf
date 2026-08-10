@@ -255,11 +255,14 @@ def shade_from_atoms(verts, atoms, atom_colors, sigmas, cutoff):
 
     Notes
     -----
-    ``nearest`` is now the *globally* closest atom. The cell list this replaces
-    searched only the query cell and its 26 neighbours and returned ``-1`` when
-    all of them were empty — and the caller indexes ``atom_colors`` with it, so
-    a vertex further than one cell from every atom was painted with the colour
-    of the **last** atom in the structure rather than the nearest one.
+    ``nearest`` is filled **only where ``wsum`` is zero** and is ``-1``
+    elsewhere, because that is the only place any caller reads it — and finding
+    the globally nearest atom for every vertex cost more than the whole gather
+    once the gather moved to the GPU. Where it is filled it is the true global
+    nearest: the cell list this replaces searched only the query cell and its 26
+    neighbours and returned ``-1`` when all of them were empty, which the caller
+    then used as an index, painting such vertices with the **last** atom's
+    colour.
     """
     v = _as_points(verts)
     a = _as_points(atoms)
@@ -270,14 +273,19 @@ def shade_from_atoms(verts, atoms, atom_colors, sigmas, cutoff):
     out_col = np.zeros((nv, 4), dtype=np.float64)
     grad = np.zeros((nv, 3), dtype=np.float64)
     wsum = np.zeros(nv, dtype=np.float64)
-    nearest = np.full(nv, -1, dtype=np.int64)
     if nv == 0 or a.shape[0] == 0 or not np.isfinite(cutoff) or cutoff <= 0.0:
-        return out_col, wsum, grad, nearest
+        return out_col, wsum, grad, np.full(nv, -1, dtype=np.int64)
+
+    # The gather is per-vertex and independent, which is the one shape a GPU is
+    # unambiguously better at.
+    from ..renderer.compute import shade_from_atoms as _shade_on_gpu  # noqa: PLC0415
+
+    accelerated = _shade_on_gpu(v, a, col, sig, float(cutoff))
+    if accelerated is not None:
+        out_col, wsum, grad = accelerated
+        return out_col, wsum, grad, _nearest_where_starved(v, a, wsum)
 
     atom_tree = cKDTree(a)
-    _, nearest = atom_tree.query(v, k=1, workers=_WORKERS)
-    nearest = np.asarray(nearest, dtype=np.int64)
-
     strict = float(np.nextafter(float(cutoff), 0.0))
     pairs = cKDTree(v).sparse_distance_matrix(
         atom_tree, strict, output_type="ndarray"
@@ -285,7 +293,7 @@ def shade_from_atoms(verts, atoms, atom_colors, sigmas, cutoff):
     vi = pairs["i"]
     ai = pairs["j"]
     if vi.size == 0:
-        return out_col, wsum, grad, nearest
+        return out_col, wsum, grad, _nearest_where_starved(v, a, wsum)
 
     delta = v[vi] - a[ai]
     d2 = np.einsum("ij,ij->i", delta, delta)
@@ -306,7 +314,39 @@ def shade_from_atoms(verts, atoms, atom_colors, sigmas, cutoff):
         out_col[:, channel] = _accumulate(weighted_colors[:, channel])
     for axis in range(3):
         grad[:, axis] = _accumulate(weighted_delta[:, axis])
-    return out_col, wsum, grad, nearest
+    return out_col, wsum, grad, _nearest_where_starved(v, a, wsum)
+
+
+def _nearest_where_starved(verts, atoms, wsum) -> np.ndarray:
+    """Closest atom to each vertex that no atom reached, ``-1`` for the rest.
+
+    Parameters
+    ----------
+    verts : numpy.ndarray
+        ``(n, 3)`` mesh vertices.
+    atoms : numpy.ndarray
+        ``(m, 3)`` atom positions.
+    wsum : numpy.ndarray
+        ``(n,)`` accumulated Gaussian weight per vertex.
+
+    Returns
+    -------
+    numpy.ndarray
+        ``(n,)`` int64 atom indices.
+
+    Notes
+    -----
+    Restricting the query to the starved rows is not a micro-optimisation: on a
+    surface where every vertex has atoms inside the cutoff — the normal case —
+    it does no work at all, where querying every vertex cost more than the
+    weighted sum itself once that moved to the GPU.
+    """
+    nearest = np.full(verts.shape[0], -1, dtype=np.int64)
+    starved = np.flatnonzero(wsum <= 0.0)
+    if starved.size:
+        _, found = cKDTree(atoms).query(verts[starved], k=1, workers=_WORKERS)
+        nearest[starved] = np.asarray(found, dtype=np.int64)
+    return nearest
 
 
 __all__ = [

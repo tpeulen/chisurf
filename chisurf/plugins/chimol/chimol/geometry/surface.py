@@ -167,6 +167,20 @@ def _distance_to_spheres(points, radii, grid, origin, spacing):
     distance evaluations, 35 s, for one 96³ grid on a 11k-atom structure.
     """
     nx, ny, nz = grid.shape
+    horizon = max(_DISTANCE_HORIZON, 4.0 * spacing)
+
+    # One dispatch per voxel, each an independent ring scan -- the same
+    # arithmetic as below with the search order fixed by the grid instead of by
+    # a k-d tree. `None` means no adapter or too small to be worth it.
+    from ..renderer.compute import distance_to_spheres  # noqa: PLC0415
+
+    accelerated = distance_to_spheres(
+        points, radii, grid.shape, origin, spacing, horizon
+    )
+    if accelerated is not None:
+        grid[...] = accelerated
+        return
+
     tree = cKDTree(points)
     radius_max = float(radii.max())
     count = points.shape[0]
@@ -186,10 +200,27 @@ def _distance_to_spheres(points, radii, grid, origin, spacing):
         block = np.stack(
             np.meshgrid(ax[begin:end], ay, az, indexing="ij"), axis=-1
         ).reshape(-1, 3)
-        grid[begin:end] = _nearest_sphere_surface(
-            tree, points, radii, radius_max, count, block
+        grid[begin:end] = np.minimum(
+            _nearest_sphere_surface(tree, points, radii, radius_max, count, block),
+            horizon,
         ).reshape(end - begin, ny, nz)
 
+
+#: Distances beyond this are reported as exactly this, by both routes.
+#:
+#: The grid is only ever read near the isosurface -- at a level of one probe
+#: radius -- so what a voxel 60 A from the nearest atom reports cannot reach the
+#: mesh: a cell whose corners are all beyond the horizon does not straddle the
+#: level. Clamping is not a shortcut for the CPU route, which is exact either
+#: way; it exists because the GPU route's ring scan otherwise needs fifteen
+#: rings for such a voxel, which measured *slower than the CPU route*. Applying
+#: it on both sides is what keeps them equal.
+#:
+#: 8 Å with a 6 Å cell was the best of the eight combinations measured, on
+#: both a 1.4k-atom protein at 128³ (39.6× the CPU route) and a synthetic
+#: 11k-atom cloud at 96³ (33.8×). Doubling it to 16 costs a third of that and
+#: buys nothing: no level a probe radius can reach comes near either bound.
+_DISTANCE_HORIZON = 8.0
 
 #: How many spheres to consider per voxel before checking whether that was
 #: enough. Eight covers every voxel of a protein at vdW radii; the escalation

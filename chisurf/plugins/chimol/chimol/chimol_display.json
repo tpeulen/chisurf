@@ -1,5 +1,5 @@
 {
-  "_version": 12,
+  "_version": 13,
   "renderer": {
     "backend": "wgpu"
   },
@@ -413,6 +413,9 @@
       0.4,
       1.0
     ]
+  },
+  "compute": {
+    "backend": "auto"
   },
   "label": {
     "color": [

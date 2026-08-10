@@ -14,7 +14,7 @@ try:
 except Exception:  # pragma: no cover - moview can run without chisurf
     _cs_settings = None
 
-DISPLAY_CONFIG_VERSION: int = 12
+DISPLAY_CONFIG_VERSION: int = 13
 """Current version of the chimol_display.json schema.
 
 Increment this when keys are added, renamed, or removed, **or when a default
@@ -878,6 +878,15 @@ def _load_display_config() -> dict:
             # Toward the light source; PyMOL's `light` default (-0.4, -0.4,
             # -1) is the direction it travels, so this is its negation.
             "shadow_direction": [0.4, 0.4, 1.0],
+        },
+        "compute": {
+            # Where the scene-building kernels run. "auto" dispatches the
+            # per-vertex ones to WGSL compute when an adapter exists and the
+            # mesh is big enough to pay for the round trip, and falls back to
+            # NumPy otherwise; "cpu" and "gpu" force one side, which is what a
+            # parity test needs. The GPU works in f32 and the CPU route in f64,
+            # so the two agree to about 1e-6 relative rather than to the bit.
+            "backend": "auto",
         },
         "label": {
             # PyMOL draws labels in the foreground colour, white on black.

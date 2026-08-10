@@ -67,6 +67,16 @@ def _cosine_coverage_occlusion(
     if n == 0 or centers.shape[0] == 0 or max_distance <= 0.0:
         return total
 
+    # Per-vertex and independent: the pair enumeration the CPU route needs is an
+    # artefact of NumPy's shape, not of the problem.
+    from ..renderer.compute import occlusion_from_spheres as _occlusion_on_gpu  # noqa: PLC0415
+
+    accelerated = _occlusion_on_gpu(
+        points, normals, centers, radii, float(max_distance), float(strength)
+    )
+    if accelerated is not None:
+        return accelerated
+
     d_max2 = max_distance * max_distance
     for start, stop, vi, ci in blocked_cross_pairs(points, centers, max_distance):
         delta = centers[ci] - points[start:stop][vi]
