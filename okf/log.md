@@ -1,6 +1,36 @@
 # Update Log
 
 ## 2026-08-10
+* **Lumis Quest phase 4: there is a game now, and its combat is photophysics.**
+  `api/roster.py` reads the bestiary out of the shipped `spectra.db`: **472 creatures**, 366 of them fully
+  measured, sorted by emission so the roster itself reads as a spectrum. Brightness (ec x qy) is attack,
+  photostability is HP, emission maximum is both type and colour. **Degrade, never fabricate** — only a
+  third of the database carries a complete stat set, so a creature missing one is marked estimated and
+  takes a class default rather than being handed an invented quantum yield.
+  **The type chart is the real overlap integral**, computed from the stored emission and absorption
+  spectra (696 probes have both, as float64 blobs). Measured: a 520 nm donor is **x0.50** against a blue
+  absorber and **x2.00** against one absorbing at 567 nm. That is FRET, straight out of the data.
+  `api/battle.py` is the fight, and every mechanic is a real thing a dye does: **emitting bleaches you**
+  (and a high quantum yield costs more, so the brightest creature hits hardest and burns out soonest),
+  the **bench cuts both ways** — a partner absorbing under your emission relays the shot (FRET combo) and
+  the same overlap in reverse is your own team absorbing it (crosstalk) — and the **triplet state** shelves
+  a creature for a turn. Encounters trigger from the overworld at a wild building, are **seeded by the
+  page's address** so a place keeps its guardian, and difficulty picks *which* creature guards it rather
+  than only how much HP it has.
+  **Three defects found while playing it, not while writing it**: the battle log read **backwards** (the
+  opponent's reply was recorded before the shot that provoked it); raw brightness against raw
+  photostability settled a fight in **two hits**, leaving no room for swapping, combos or the triplet state
+  to matter at all; and `Fighter(hp=0)` **silently reset to full health**, because the sentinel conflated
+  "not specified" with "zero" — which made an already-bleached creature impossible to construct, i.e.
+  exactly what a team between fights is full of.
+  Also: five encounter tests were **skipping** because the temporary corpus lies outside the tracked
+  directories and its pages never come back wild. Skipping left the whole encounter path untested; the
+  tests set the state they are about instead. 62 pass in the plugin with no skips.
+  Open: gear and loot (the light-path crafting layer), and healing — photon budgets persist between
+  fights, so a FRAP clinic is what turns attrition into the real difficulty. One encounter is three-on-one
+  and should be winnable; the run is where the danger belongs.
+  Suites: 142 passed.
+
 * **Lumis Quest looks like a 16-bit game now: pixel art, and a cast that spans the hub.**
   **Iris is a character, not a marker** — a glowing photon core for a body, with head, hair, face, arms,
   legs, boots and **a sword** — and **Lumi is a dog**: four legs, ears, snout, tail, the same glow,

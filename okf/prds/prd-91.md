@@ -39,9 +39,17 @@ Next, in order:
    The map covers every non-index page (asserted per section), and there are
    currently **no orphans**: the "Unlinked" village exists as a guard for a
    future one, not because the corpus has any today.
-3. **Phase 4 — combat.** Spectral tactics, the roster from `spectra.db`, gear,
-   loot. Still no AI: the game must be fun with the model switched off, and if
-   it is not, no amount of AI will save it.
+3. ✅ **Phase 4 landed — combat, and it is photophysics.** `api/roster.py` reads
+   **472 creatures** from `spectra.db` (366 fully measured); `api/battle.py` is
+   the turn-based fight; encounters trigger from the overworld and the battle
+   screen is drawn over it. Measured: a 520 nm donor is **x0.50** against a
+   blue absorber and **x2.00** against one absorbing at 567 nm -- the type
+   chart is the real overlap integral, not a designed table. Still **no AI**,
+   deliberately.
+   Open here: **gear and loot** (the light-path crafting layer), and healing --
+   photon budgets persist between fights, so the FRAP clinic is what turns
+   attrition into the actual difficulty. A single encounter is three-on-one and
+   should be winnable; the run is where the danger lives.
 4. **Phase 5 — the AI layer**, then 6 (crafting, mini-games, factions, story),
    then 7 (farm, network).
 

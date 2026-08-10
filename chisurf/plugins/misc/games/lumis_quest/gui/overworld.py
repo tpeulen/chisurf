@@ -24,6 +24,8 @@ from chisurf.gui.chigame.input import Action
 
 from ...characters import IRIS, LUMI, draw as draw_character
 from ..api import tiles as T
+from ..api import battle as battle_api
+from ..api import roster as roster_api
 from ..api.story import Story
 from ..api.world import SCOUTED, SETTLED, WILD, World, build_world
 from . import pixelart
@@ -95,6 +97,36 @@ TILE_COLORS = {
     T.VOID: (0.020, 0.022, 0.028, 1.0),
 }
 
+def _wrap(text: str, width: int) -> list[str]:
+    """Break a line to fit the battle panel.
+
+    Parameters
+    ----------
+    text : str
+        The line.
+    width : int
+        Maximum characters per line.
+
+    Returns
+    -------
+    list of str
+        One or more lines.
+    """
+    words = text.split()
+    lines: list[str] = []
+    current = ""
+    for word in words:
+        candidate = f"{current} {word}".strip()
+        if len(candidate) > width and current:
+            lines.append(current)
+            current = word
+        else:
+            current = candidate
+    if current:
+        lines.append(current)
+    return lines
+
+
 BINDINGS = {
     "ArrowUp": Action.UP,
     "ArrowDown": Action.DOWN,
@@ -161,6 +193,14 @@ class OverworldGame(chigame.Game):
         self.walking = False
         self._walk_clock = 0.0
 
+        # The team's photon budgets persist between fights: a single encounter
+        # is winnable three-on-one, so the danger is attrition across a run.
+        self.pool = [c for c in roster_api.load_roster() if not c.estimated]
+        self.team = [battle_api.Fighter(c) for c in roster_api.starters()]
+        self.battle: battle_api.Battle | None = None
+        self.menu_index = 0
+        self.encounter_room = None
+
         start = self.world.spawn()
         self.iris = [float(start[0]), float(start[1])]
         self.lumi = [self.iris[0] - LUMI_TRAIL, self.iris[1]]
@@ -199,8 +239,14 @@ class OverworldGame(chigame.Game):
         keys : chisurf.gui.chigame.input.InputMap
             Controller state.
         """
+        if self.battle is not None:
+            self._battle_input(keys)
+            return
+
         if keys.just_pressed(Action.MENU):
             self.show_map = not self.show_map
+        if keys.just_pressed(Action.SHOULDER_L):
+            self._try_encounter()
 
         dx, dy = keys.axis()
         self.walking = bool(dx or dy)
@@ -217,10 +263,10 @@ class OverworldGame(chigame.Game):
                 self.facing = "right" if dx > 0 else "left"
             self._walk_clock += dt
 
-        if keys.is_held(Action.SHOULDER_L):
-            self.view_height = min(self.view_height * (1.0 + 1.9 * dt), VIEW_MAX)
         if keys.is_held(Action.SHOULDER_R):
             self.view_height = max(self.view_height * (1.0 - 1.9 * dt), VIEW_MIN)
+        elif keys.is_held(Action.CANCEL):
+            self.view_height = min(self.view_height * (1.0 + 1.9 * dt), VIEW_MAX)
 
         self.story.observe(self.here)
 
@@ -241,6 +287,72 @@ class OverworldGame(chigame.Game):
         camera.center[0] += (centre[0] - camera.center[0]) * blend
         camera.center[1] += (centre[1] - camera.center[1]) * blend
         camera.height += (height - camera.height) * blend
+
+    def _try_encounter(self) -> None:
+        """Start a fight with whatever guards the nearest wild building.
+
+        Only wild rooms hold a guardian: a page somebody has already read is a
+        village you walk through, not a place that fights you.
+        """
+        room = self.here
+        if room is None or room.state != WILD or not self.pool:
+            return
+        x, y = room.position
+        if math.hypot(x - self.iris[0], y - self.iris[1]) > T.TILE * 2.2:
+            return
+        if not any(fighter.alive for fighter in self.team):
+            return
+        self.encounter_room = room
+        self.menu_index = 0
+        self.battle = battle_api.Battle(
+            self.team,
+            battle_api.wild_opponent(room.address, room.remoteness, self.pool),
+        )
+
+    def _battle_input(self, keys) -> None:
+        """Drive the encounter menu from the pad.
+
+        Parameters
+        ----------
+        keys : chisurf.gui.chigame.input.InputMap
+            Controller state.
+        """
+        fight = self.battle
+        if fight is None:
+            return
+        if fight.finished:
+            if keys.just_pressed(Action.CONFIRM) or keys.just_pressed(Action.CANCEL):
+                self.battle = None
+                self.encounter_room = None
+            return
+
+        options = self._battle_options()
+        if keys.just_pressed(Action.DOWN):
+            self.menu_index = (self.menu_index + 1) % len(options)
+        if keys.just_pressed(Action.UP):
+            self.menu_index = (self.menu_index - 1) % len(options)
+        if keys.just_pressed(Action.CONFIRM):
+            options[self.menu_index][1]()
+        elif keys.just_pressed(Action.CANCEL):
+            fight.flee()
+
+    def _battle_options(self):
+        """The menu, as label/action pairs.
+
+        Returns
+        -------
+        list of tuple
+            One entry per choice, in display order.
+        """
+        fight = self.battle
+        options = [("Emit", fight.attack)]
+        for index, fighter in enumerate(fight.team):
+            if index != fight.active_index and fighter.alive:
+                options.append(
+                    (f"Send {fighter.creature.name}", lambda i=index: fight.swap(i))
+                )
+        options.append(("Withdraw", fight.flee))
+        return options
 
     def _walk(self, dx: float, dy: float) -> None:
         """Move Iris, sliding along anything solid.
@@ -335,7 +447,10 @@ class OverworldGame(chigame.Game):
         self._sprite(scene, f"iris_{self._sheet_facing()}_{frame}", self.iris,
                      T.TILE * 1.15, mirror=self.facing == "left")
 
-        self._draw_hud(scene, camera, half)
+        if self.battle is not None:
+            self._draw_battle(scene, camera, half)
+        else:
+            self._draw_hud(scene, camera, half)
 
     def _sheet_facing(self) -> str:
         """Which drawn facing to use for Iris.
@@ -496,6 +611,111 @@ class OverworldGame(chigame.Game):
                            emission_nm=SCOUTED_NM)
             self._sprite(scene, f"house_{room.state}", (x, y), T.TILE,
                          tint=HOUSE_TINT[room.state])
+
+    def _draw_battle(self, scene, camera, half) -> None:
+        """Draw the encounter over the world.
+
+        Parameters
+        ----------
+        scene : chisurf.gui.chigame.scene.Scene
+            Frame under construction.
+        camera : chisurf.gui.chigame.render.Camera
+            The view.
+        half : numpy.ndarray
+            Half-extent in world units.
+        """
+        fight = self.battle
+        cx, cy = float(camera.center[0]), float(camera.center[1])
+        width, height = half[0] * 2.0, half[1] * 2.0
+        scale = camera.height / VIEW_HEIGHT
+
+        # Near-opaque: an encounter has to be readable, and the terrain showing
+        # through the numbers is worse than losing the view of it for a moment.
+        scene.draw("ui", "panel", at=(cx, cy), size=(width * 0.94, height * 0.92),
+                   color=(0.055, 0.065, 0.085, 0.985))
+
+        # The opponent, drawn in the colour it actually emits.
+        enemy = fight.opponent
+        top = cy - half[1] * 0.52
+        scene.draw("photon", "enemy", at=(cx + half[0] * 0.46, top + 6.0 * scale),
+                   size=(15.0 * scale, 15.0 * scale),
+                   emission_nm=enemy.creature.emission_nm)
+        scene.text(enemy.creature.name, at=(cx - half[0] * 0.10, top - 14.0 * scale),
+                   height=13.0 * scale, align="center", color=(0.90, 0.88, 0.82, 1.0))
+        self._bar(scene, (cx - half[0] * 0.10, top + 4.0 * scale), 130.0 * scale, 7.0 * scale,
+                  enemy.hp / max(enemy.creature.max_hp, 1), (0.90, 0.42, 0.38, 1.0))
+        scene.text(f"{enemy.creature.emission_nm:.0f} nm   hp {enemy.hp}",
+                   at=(cx - half[0] * 0.10, top + 18.0 * scale),
+                   height=9.0 * scale, align="center", color=(0.52, 0.56, 0.64, 1.0))
+
+        # Your active creature.
+        active = fight.active
+        low = cy + half[1] * 0.10
+        scene.draw("photon", "mine", at=(cx - half[0] * 0.48, low + 6.0 * scale),
+                   size=(14.0 * scale, 14.0 * scale),
+                   emission_nm=active.creature.emission_nm)
+        scene.text(active.creature.name, at=(cx + half[0] * 0.10, low - 14.0 * scale),
+                   height=13.0 * scale, align="center", color=(0.82, 0.90, 0.96, 1.0))
+        self._bar(scene, (cx + half[0] * 0.10, low + 4.0 * scale), 130.0 * scale, 7.0 * scale,
+                  active.hp / max(active.creature.max_hp, 1), (0.40, 0.85, 0.70, 1.0))
+        scene.text(f"{active.creature.emission_nm:.0f} nm   hp {active.hp}",
+                   at=(cx + half[0] * 0.10, low + 18.0 * scale),
+                   height=9.0 * scale, align="center", color=(0.52, 0.56, 0.64, 1.0))
+
+        # The last two things that happened, newest at the bottom.
+        # Wrapped to the panel: a single long line ran off both edges, and the
+        # interesting half of it ("barely couples for 16") was the half cut off.
+        lines: list[str] = []
+        for turn in fight.log[-2:]:
+            lines.extend(_wrap(turn.text, 52))
+        for offset, line in enumerate(lines[-3:]):
+            scene.text(line, at=(cx, cy + half[1] * 0.30 + offset * 12.0 * scale),
+                       height=10.0 * scale, align="center", color=(0.74, 0.78, 0.86, 1.0))
+
+        if fight.finished:
+            outcome = "The light holds." if fight.won else (
+                "You withdraw." if fight.fled else "Your team is spent."
+            )
+            scene.text(outcome, at=(cx, cy + half[1] * 0.60), height=15.0 * scale,
+                       align="center", color=(0.90, 0.84, 0.52, 1.0))
+            scene.text("Confirm to continue", at=(cx, cy + half[1] * 0.70),
+                       height=10.0 * scale, align="center", color=(0.50, 0.54, 0.62, 1.0))
+            return
+
+        for index, (label, _) in enumerate(self._battle_options()):
+            selected = index == self.menu_index
+            y = cy + half[1] * 0.56 + index * 13.0 * scale
+            if selected:
+                scene.draw("ui", "selected", at=(cx - half[0] * 0.34, y),
+                           size=(7.0 * scale, 7.0 * scale))
+            scene.text(label, at=(cx - half[0] * 0.29, y), height=11.0 * scale,
+                       color=(0.94, 0.92, 0.86, 1.0) if selected else (0.56, 0.60, 0.68, 1.0))
+
+    def _bar(self, scene, at, width: float, height: float, fraction: float, colour) -> None:
+        """Draw a proportion bar.
+
+        Parameters
+        ----------
+        scene : chisurf.gui.chigame.scene.Scene
+            Frame under construction.
+        at : tuple of float
+            Centre in world units.
+        width, height : float
+            Size in world units.
+        fraction : float
+            0..1 filled.
+        colour : tuple of float
+            Fill colour.
+        """
+        fraction = max(0.0, min(float(fraction), 1.0))
+        scene.draw("ui", "bar", at=at, size=(width, height), color=(0.16, 0.17, 0.20, 1.0))
+        if fraction > 0.0:
+            scene.draw(
+                "ui", "bar",
+                at=(at[0] - width * (1.0 - fraction) * 0.5, at[1]),
+                size=(width * fraction, height),
+                color=colour,
+            )
 
     def _draw_hud(self, scene, camera, half) -> None:
         """Draw the readouts, pinned to the camera rather than the world.

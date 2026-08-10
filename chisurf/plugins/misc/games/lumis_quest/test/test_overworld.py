@@ -206,3 +206,94 @@ def test_it_renders(qapp, tmp_path):
     except Exception as error:  # pragma: no cover - depends on the machine
         pytest.skip(f"no usable GPU adapter: {error}")
     assert frame.shape == (240, 320, 4)
+
+
+@pytest.fixture
+def wild_room(game):
+    """A room forced into the wild state.
+
+    The temporary corpus lies outside the tracked directories, so its pages do
+    not come back wild on their own -- and skipping on that left the whole
+    encounter path untested. The state is what these tests are about, so they
+    set it.
+    """
+    if not game.pool:
+        pytest.skip("spectra.db is not present in this install")
+    room = game.world.rooms[0]
+    room.state = "wild"
+    return room
+
+
+def test_only_a_wild_building_holds_a_guardian(game, wild_room):
+    """A page somebody has read is a village you walk through, not a fight."""
+    wild = wild_room
+
+    # Standing far away starts nothing, even at a wild room.
+    game.iris = [wild.position[0] + 400.0, wild.position[1]]
+    game._try_encounter()
+    assert game.battle is None
+
+    game.iris = [wild.position[0], wild.position[1] + tiles.TILE]
+    game._try_encounter()
+    assert game.battle is not None
+    assert game.encounter_room is wild
+
+
+def test_the_same_page_always_holds_the_same_guardian(game, wild_room):
+    """A wild encounter that reshuffles every visit is a slot machine."""
+    wild = wild_room
+
+    game.iris = [wild.position[0], wild.position[1] + tiles.TILE]
+    game._try_encounter()
+    first = game.battle.opponent.creature.name
+    game.battle = None
+    game._try_encounter()
+    assert game.battle.opponent.creature.name == first
+
+
+def test_the_battle_menu_is_driven_by_the_pad(game, wild_room):
+    """Every choice is reachable from the nine actions, with no text entry."""
+    wild = wild_room
+    game.iris = [wild.position[0], wild.position[1] + tiles.TILE]
+    game._try_encounter()
+
+    labels = [label for label, _ in game._battle_options()]
+    assert labels[0] == "Emit" and labels[-1] == "Withdraw"
+
+    game.host.keys.tap(Action.DOWN)
+    game.update(1 / 60, game.host.keys)
+    game.host.keys.end_frame()
+    assert game.menu_index == 1
+
+    # Cancel withdraws, and the encounter then dismisses on Confirm.
+    game.host.keys.tap(Action.CANCEL)
+    game.update(1 / 60, game.host.keys)
+    game.host.keys.end_frame()
+    assert game.battle.finished and game.battle.fled
+
+    game.host.keys.tap(Action.CONFIRM)
+    game.update(1 / 60, game.host.keys)
+    assert game.battle is None
+
+
+def test_walking_is_suspended_during_an_encounter(game, wild_room):
+    """The pad drives the menu, not Iris."""
+    wild = wild_room
+    game.iris = [wild.position[0], wild.position[1] + tiles.TILE]
+    game._try_encounter()
+
+    before = list(game.iris)
+    game.host.keys.press(Action.DOWN)
+    for _ in range(30):
+        game.update(1 / 60, game.host.keys)
+    assert game.iris == before
+
+
+def test_a_spent_team_cannot_start_a_fight(game, wild_room):
+    """Attrition is the danger, so a bleached team has to stop."""
+    wild = wild_room
+    for fighter in game.team:
+        fighter.hp = 0
+    game.iris = [wild.position[0], wild.position[1] + tiles.TILE]
+    game._try_encounter()
+    assert game.battle is None
