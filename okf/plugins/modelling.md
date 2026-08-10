@@ -49,6 +49,10 @@ modules (`av.py`, `clash.py`, `distance.py`, `engine.py`, `docking.py`,
   evaluators serialize under an `Evaluators` key. The GUI `LabelStructure` widget
   is owned by `fps_json_editor` and imported by `fret/wizard.py`; they share one
   live Python dict via a `fps_json_payload` getter/setter (no file round-trip).
+  Placement note (2026-08-10): the labelling UI **belongs in ChiMOL** and sits
+  here only because ChiMOL is not ready to host it yet — see the deferred-scope
+  section of [ChiMOL — Target](/specs/chimol.md); the `fps_json_payload` seam is
+  what the eventual move rides on.
 - **Evaluators** live in `fret/evaluators/` (positions, distance, fret_efficiency,
   chi2, residuals, geometry, av_metrics), all deriving from an `Evaluator` ABC
   with JSON round-trip and DataFrame/CSV export.

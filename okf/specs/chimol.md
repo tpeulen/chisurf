@@ -250,6 +250,18 @@ would have given them. Progress against that is tracked in
 [pymol-parity](/plugins/pymol-parity.md), which holds the measured gap, the tier
 list and the findings — this concept holds only the target.
 
+## Deferred scope — the labelling plugin belongs here
+
+Ruled 2026-08-10: the labelling plugin (the `LabelStructure` widget owned by
+`modelling/fps_json_editor`, imported by `modelling/fret`'s wizard) **should be
+part of ChiMOL** — placing a dye on a structure is structural work done while
+looking at the structure, and it belongs in the viewer. It lives in
+`modelling/` today only because ChiMOL is not ready to host it. Once ChiMOL
+has hardened, move it in. Until then: no new labelling UI grows outside
+ChiMOL's eventual reach, and the `fps_json_payload` getter/setter seam (one
+live dict, no file round-trip) is the interface the move will ride on — keep
+it intact.
+
 ## Testing
 
 Beyond the [testing workflow](/workflows/testing.md), two rules this effort has
