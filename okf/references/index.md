@@ -9,6 +9,7 @@
 * [MMFDB LIMS diagnosis](mmfdb-lims-diagnosis.md) - LIMS gap analysis and prior-art comparison behind the provenance/LIMS PRDs (12–15).
 * [Node/workflow-toolkit lessons](orange3-lessons.md) - Architecture lessons from an established visual node/workflow analysis toolkit, mapped to PRDs.
 * [Orange3 mining — dataflow, widget-framework & testing patterns](orange3-mining.md) - Second pass over the same toolkit beyond its data model: write-locked data, the background-task mixin, declared widget messages, contract test mixins, VizRank, the report system, data-matched settings and the safe-expression layer, ranked against what chisurf has today.
+* [scikit-image mining](scikit-image-mining.md) - Subpackage-by-subpackage verdict on what is worth taking from scikit-image now that it is not a dependency, what is already here, and what to take next.
 * [What ChiSurf took from Orange3](orange3-adopted.md) - The three ideas actually harvested — write-locked data, the background-task contract, declared widget messages — where each lives now, how it was translated, and where ChiSurf deliberately departs from the original.
 * [ELN crosslinking & info-management lessons](eln-crosslinking-lessons.md) - What a mature ELN's auth/linking/tagging/metadata model teaches MMFDB; adopted metadata→edge materialization + resolvable audit labels, deferred a tags layer.
 * [Modelling / ProteinMC roadmap](modelling-roadmap.md) - Durable modelling/simulation roadmap notes salvaged from a personal worklist.
@@ -40,3 +41,4 @@
 * [VV/VH stacked-decay format (historically "jordi")](vv-vh-decay-format.md) - Descriptive name, layout, and API for the stacked polarization-resolved decay format; records the historic "jordi" name for discoverability.
 * [UI terminology glossary](ui-glossary.md) - The canonical spelling for each recurring user-facing concept, and the rejected variants; the source-language authority for the translation kit and for harmonising interfaces.
 * [Automatic differentiation for fitting — measured assessment](autodiff-assessment.md) - Why exposing tttrlib's forward-mode autodiff to ChiSurf would not help: the finite-difference Jacobian is already accurate to 1e-6 with an identical LM step direction, and the differentiable C++ kernel is 5–15% of a model evaluation.
+* [IMP ecosystem](imp-ecosystem.md) — the four checkouts behind the fluorescence-modelling stack (chisurf, imp.bff, imp-tricks, tttrlib), which repository owns which symbol, and the scope boundaries between them.

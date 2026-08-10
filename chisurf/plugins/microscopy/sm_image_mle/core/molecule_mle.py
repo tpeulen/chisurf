@@ -386,11 +386,18 @@ def segment_molecules(
         Integer label image (0 = background), same shape as ``intensity``.
     """
     from scipy import ndimage as ndi
-    from skimage import filters
-    from skimage.feature import peak_local_max
-    from skimage.segmentation import clear_border, watershed
 
-    smoothed = filters.gaussian(intensity.astype(float), sigma=seg_sigma)
+    from chisurf.core.roi.segmentation import (
+        clear_border,
+        gaussian,
+        peak_local_max,
+        relabel_sequential,
+        remove_small_objects,
+        threshold_otsu,
+        watershed,
+    )
+
+    smoothed = gaussian(intensity.astype(float), sigma=seg_sigma)
     if smoothed.max() <= 0:
         return np.zeros(intensity.shape, dtype=np.int32)
 
@@ -403,7 +410,7 @@ def segment_molecules(
     if seg_threshold > 0:
         thresh = seg_threshold
     else:
-        thresh = filters.threshold_otsu(smoothed if inside is None else smoothed[inside])
+        thresh = threshold_otsu(smoothed if inside is None else smoothed[inside])
     binary = clear_border(smoothed > thresh)
     if inside is not None:
         binary &= inside
@@ -419,10 +426,14 @@ def segment_molecules(
     labels = watershed(-distance, markers, mask=binary)
 
     if min_area > 1:
-        counts = np.bincount(labels.ravel())
-        for lab, count in enumerate(counts):
-            if lab != 0 and count < min_area:
-                labels[labels == lab] = 0
+        # One bincount and one lookup, not a full-frame comparison per label:
+        # a crowded field holds thousands of molecules and the loop this
+        # replaces was O(n_labels x frame).
+        labels = remove_small_objects(labels, min_area)
+    # Removing labels leaves gaps in the numbering, and a gap is not cosmetic --
+    # every consumer that reads a label image as "1 to max", regionprops
+    # included, then reports empty regions that no pixel belongs to.
+    labels, _, _ = relabel_sequential(labels)
     return labels.astype(np.int32)
 
 
