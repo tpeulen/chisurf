@@ -50,6 +50,9 @@ class RunState:
         Addresses of rooms whose guardian has been beaten.
     order : str or None
         The order the player committed to, if any.
+    tutorial : list of str
+        Teaching steps already completed, so the banners appear once per
+        player rather than once per session.
     """
 
     position: tuple[float, float] = (0.0, 0.0)
@@ -60,6 +63,7 @@ class RunState:
     detector_id: int | None = None
     cleared: list[str] = dataclasses.field(default_factory=list)
     order: str | None = None
+    tutorial: list[str] = dataclasses.field(default_factory=list)
 
     def as_dict(self) -> dict:
         """Serialise to plain JSON types.
@@ -79,6 +83,7 @@ class RunState:
             "detector_id": self.detector_id,
             "cleared": list(self.cleared),
             "order": self.order,
+            "tutorial": list(self.tutorial),
         }
 
     def save(self, path: pathlib.Path | None = None) -> pathlib.Path:
@@ -136,6 +141,7 @@ class RunState:
                 detector_id=raw.get("detector_id"),
                 cleared=[str(value) for value in raw.get("cleared", [])],
                 order=raw.get("order"),
+                tutorial=[str(value) for value in raw.get("tutorial", [])],
             )
         except (TypeError, ValueError):
             return cls()

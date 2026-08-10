@@ -40,6 +40,13 @@ GAME_PANELS = [
         "class_path": "chisurf.plugins.misc.games.breakout.breakout",
         "class_name": "Breakout",
     },
+    {
+        "name": "Lumis Quest",
+        "icon": "📜",
+        "description": "A top-down RPG where the documentation is the world: collect real fluorophores, craft optics, and improve the docs you explore.",
+        "class_path": "chisurf.plugins.misc.games.lumis_quest.gui.tool",
+        "class_name": "LumisQuestWidget",
+    },
 ]
 
 

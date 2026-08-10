@@ -1,6 +1,29 @@
 # Update Log
 
 ## 2026-08-10
+* **Lumis Quest teaches itself, the orders are people, and the villages are
+  towns — the three open fronts of the PRD-91 handover are closed.** An
+  in-world `Tutorial` beside `Story` (`api/tutorial.py`): seven one-line
+  banners in first-run order, each completing **on game state** exactly as
+  story beats do, latching, persisting in the save, and naming keys from the
+  live bindings so the text survives a scheme switch. A placed story cast
+  (`npcs._story_cast`): Merel/Halden/Sable, one emissary per order in a land
+  matching their doctrine, fixed, doctrine-tinted, four screens of dialogue —
+  and `story.choose` is now wired to *talking* (pledge on Confirm, walk away
+  on Cancel); before this no in-play path could choose an order at all. Plus a
+  named recovery warden per clinic. Villages went from storage racks to towns:
+  `ROOM_PITCH` 2→3 with a 2-tile wall margin, townsfolk scaled to compound
+  area rather than review state (keepers stay one-per-settled-page). Measured:
+  world 368x282 = 103,776 tiles, build 0.31 s, median frame 3.3–4.4 ms at
+  960x540. **Three defects only the screenshots caught**: the bottom-band HUD
+  bled through the 0.97-alpha dialogue panel as ghost text (dialogue now owns
+  the band), two-line wrap cut the orders' beliefs mid-sentence (three now),
+  and a beast spawned *inside* a compound because `_open_spot` accepted FLOOR
+  — wildlife placement and beast wandering now use `WILD_GROUND`, keeping
+  "inside the walls nothing fights you" true. 18 new tests (171 total pass);
+  guide updated (`docs/guides/71_lumis_quest.md`); resume point rewritten in
+  [prd-91](prds/prd-91.md).
+
 * **Handover written for the chimol WGSL port.** The resume point is the
   `HANDOVER — start here (2026-08-11)` section of
   [chimol-web](plugins/chimol-web.md), which replaces the previous one (kept
@@ -82,6 +105,35 @@
   and the κ² GUI helper now reach IMP, which is optional here. Leaving a class on an exception list after it
   stops deviating is itself an error; IMP says "Exception PathMapHeader is not really a show exception".
   ChiSurf FRET suite unchanged at 6 failed / 122 passed; imp.bff 14/14.
+
+* **Five more files off numba — and "delegate to the compiled kernel" turned out to be the wrong answer twice.** `tcspc/corrections.py::add_pile_up_to_model` and `tcspc/tcspc.py::rescale_w_bg` were both routed to tttrlib on the strength of the name matching. Reading the two implementations side by side says otherwise: **ChiSurf's are deliberately better and delegating would have been a silent regression.** The pile-up correction caps the detection probability strictly below one, bails out when Coates' eq. 4 is undefined instead of returning NaN, and uses the analytic `p → 0` limit in empty channels — where the C version substitutes 1.0 into the denominator and therefore **zeroes the model** in every channel without a photon. `rescale_w_bg` guards on a *finite* weight (an empty channel can carry an infinite one and would otherwise poison the whole sum), omits the C version's `1e-12` floor on the squared weight, and does not rescale the model in place as a side effect. Both bodies were already pure NumPy under the decorator, so both are route `numpy`. The rule that follows is now in the concept: **a `tttrlib` route is a hypothesis; diff the maths before acting on it.**
+  `pddem` also vectorised — a stream compaction over the Cartesian product whose emission order is pair-major with the two branches adjacent, reproduced by interleaving along a trailing axis of length two. Getting that wrong reorders the spectrum without changing any value, which no amplitude check would catch, so the parity harness compares shape *and* order: 300 cases, zero mismatches, with zero-amplitude and zero-lifetime pairs exercised.
+  **The lifetime-fitting plugin stops carrying its own forward model.** `lltf/core/{convolve,scaling}.py` held four numba kernels that were character-for-character the shared ones, docstrings aside — and the copy's `convolve_lifetime_spectrum` called the **numba** kernel where the shared one calls the compiled SIMD path, so the tool paid a JIT compile on first evaluation and ran the slower kernel after it, and inherited the final-channel defect fixed yesterday. Both modules are now thin re-exports.
+  **That merge surfaced a divergence a passing test could not see.** The plugin's `rescale_w_bg` indexed its weights as `w[i - start]` — pre-sliced — while the shared one indexes `w[i]` like every other array it is handed. The two agree **only when `start == 0`**, and `start=0` is the only way `test_rescale_w_bg_weights.py` ever called them, so the guard asserting "the LLTF copy uses the same convention" was true by construction. The caller now builds full-length weights, and the test asserts *identity* plus an offset window — with a third assertion that the offset window actually changes the answer, so it cannot pass for the wrong reason again.
+  One more pre-existing red test recorded (`test_detector_setups`), verified failing in isolation and against HEAD.
+
+* **Lumis Quest handover: the systems are done, the population and the teaching are not.**
+  Resume point written into [prd-91](prds/prd-91.md) — three open fronts, in order. **(1) There is no
+  tutorial**, and `guide.json` is not one: it is the `?` modal, which a player has to know to press before
+  they know anything, and the prologue is story rather than instruction. Build a `Tutorial` beside
+  `Story`, completing on **game state** (`phase`, `here`, `battle`, `challenge`, `resting`) exactly as
+  story beats do, drawn as a banner — the Qt `guided_tour` helper is the wrong shape for a screen with no
+  widgets. **(2) No NPC is tied to the story**: the three orders exist only as data, so "choose an order"
+  is a menu row rather than a meeting; a small placed cast is needed (an emissary per order in a land that
+  suits their doctrine, a healer at each clinic) with `Npc` growing multi-line dialogue and an `on_talk`.
+  **(3) Villages are too small**: `_village_size` puts buildings on every other tile, a grid of doors with
+  a one-tile alley — nowhere to stand and nowhere to put anyone who is not a keeper. Widening the pitch to
+  3 was started and **not applied**; the note records the cost (the map is already 318x240, and a pitch of
+  3 grows every region by about half again) so the next session measures build time and frame after.
+  Also recorded as a trap, because it bit twice: **the temp-index commit recipe makes the working copy
+  drift**. It correctly avoids stealing another instance's staged work, but it rebases onto HEAD while the
+  on-disk file accumulates separately — `okf/log.md` fell 10 entries behind, known-issues 6 — and the
+  *main* index goes stale so freshly committed files show as **staged deletions** that anyone committing
+  that index would delete. `git reset -- <your paths>` after every such commit, and diff shared files
+  against HEAD. Both were repaired: known-issues restored from HEAD (nothing was working-only), and the
+  log had **one uncommitted entry belonging to another instance** which was spliced on rather than
+  overwritten.
+
 * **Lumis Quest: a premise, an opening, a loading screen, and options — the things a game has.**
   The story is one idea taken seriously: **everything alive carries light**. A creature's brightness is
   how hard it strikes, emitting spends it, one driven dark can be carried home — and knowledge is the same
@@ -104,11 +156,6 @@
   Also added `finish_loading()` — the staged loader exists so a player sees progress; a test or a headless
   capture wants the world on the next line.
   Suites: 240 passed.
-
-* **The TCSPC convolution is one implementation now, and deleting the numba twin *fixed* a bug rather than merely removing a dependency.** `tcspc/convolve.py` carried three numba kernels beside thin tttrlib wrappers for the same maths. The guard that was supposed to keep the two in step — `test_periodic_convolution_reference.py` — **had been failing, three assertions of nine**, including the one written specifically to catch a missing final-channel tail. Rather than pick a side, I settled it against an **independent brute-force periodic convolution** (pulse train summed in closed form, trapezoid applied directly, sharing no code with either): at the final channel the numba twin gives **2.2e-53 where the truth is 1.55e-27** for two lifetimes, and is **200× low** at 128, while the C kernel reproduces the reference. The twin never gave the last channel its inter-pulse tail. Production already used the C path (`per` is the default mode), so only the simulator changes — and it changes to the correct answer.
-  The file now holds `convolve_lifetime_spectrum` (→ `fconv`), `convolve_lifetime_spectrum_periodic` (→ `fconv_per_cs`) and a new `convolve_decay` (→ `sconv`, which is byte-identical to the deleted kernel except that it does not apply the channel width, so the scaling is applied here). 101 lines of commented-out numba corpses went with them. `convolve_decay` also zero-fills outside `[start, stop)` where the numba version left `np.empty_like` garbage; both call sites pass the full range, so nothing depended on it.
-  **The reference test was rewritten to assert the surviving implementation is *right*, not that two implementations agree** — the only question left once there is one. Two things it learned that the next such comparison will need: the kernel's **channel 0** uses its own start convention (~1.94× a plain trapezoid's half-weighted first term — *characterised, not derived*, and pinned as such), and a brute force that does not model the **IRF's own periodic wrap** is not a valid reference for a response with weight at the far end. The old `test_irf_is_not_read_out_of_bounds` was asserting the absence of exactly that wrap, which is why it could not pass: for a periodic convolution, wrapping is the point.
-  Two more pre-existing red tests found and recorded rather than swept up (`test_fit_state`, `test_pcf_experiment`), verified against HEAD by swap-and-restore.
 
 * **The TCSPC convolution is one implementation now, and deleting the numba twin *fixed* a bug rather than merely removing a dependency.** `tcspc/convolve.py` carried three numba kernels beside thin tttrlib wrappers for the same maths. The guard that was supposed to keep the two in step — `test_periodic_convolution_reference.py` — **had been failing, three assertions of nine**, including the one written specifically to catch a missing final-channel tail. Rather than pick a side, I settled it against an **independent brute-force periodic convolution** (pulse train summed in closed form, trapezoid applied directly, sharing no code with either): at the final channel the numba twin gives **2.2e-53 where the truth is 1.55e-27** for two lifetimes, and is **200× low** at 128, while the C kernel reproduces the reference. The twin never gave the last channel its inter-pulse tail. Production already used the C path (`per` is the default mode), so only the simulator changes — and it changes to the correct answer.
   The file now holds `convolve_lifetime_spectrum` (→ `fconv`), `convolve_lifetime_spectrum_periodic` (→ `fconv_per_cs`) and a new `convolve_decay` (→ `sconv`, which is byte-identical to the deleted kernel except that it does not apply the channel width, so the scaling is applied here). 101 lines of commented-out numba corpses went with them. `convolve_decay` also zero-fills outside `[start, stop)` where the numba version left `np.empty_like` garbage; both call sites pass the full range, so nothing depended on it.

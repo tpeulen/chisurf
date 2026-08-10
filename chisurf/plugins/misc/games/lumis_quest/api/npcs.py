@@ -2,12 +2,21 @@
 
 A map with nothing moving on it is a diagram. This is what makes it a place.
 
-Three kinds, and each is derived rather than sprinkled:
+Six kinds, and each is derived rather than sprinkled:
 
 * **Villagers** stand outside settled buildings. That is not decoration -- the
   design has always been that reviewing a page *turns a wild room into a
   villager*, so the population of a village is literally how much of that
   section somebody has read. A ghost town is a section nobody has touched.
+* **Townsfolk** live in the compounds regardless of review state, scaled to the
+  village's size rather than to its pages -- a walled town with exactly as many
+  people as sign-offs is a spreadsheet wearing houses. The keeper-per-settled-
+  page rule stays intact; these are the people around it.
+* **Healers** keep the recovery station just inside every gate. One fixed,
+  named person per clinic, so the place that heals you has someone in it.
+* **Emissaries** are the story cast: one per order, standing in a land whose
+  character suits their doctrine. Talking to one is how an order is chosen --
+  a doctrine you pledge to is a person you met, not a menu row.
 * **Animals** wander the open ground inside a land's borders. They are the only
   thing here that means nothing at all, and that is deliberate: a world in which
   every single object is a metric is exhausting to walk through.
@@ -24,6 +33,7 @@ from __future__ import annotations
 import dataclasses
 import math
 
+from .story import ORDERS
 from .tiles import CLINIC, FLOOR, GRASS, ROAD, TILE, is_blocking
 
 #: What a villager might say. Chosen by page address, so a given villager always
@@ -51,8 +61,51 @@ ANIMALS = (
     ("hare", "It watches you from a safe distance."),
 )
 
+#: Townsfolk who are not keepers: a village the size of a town needs people in
+#: it who are not a review metric. Chosen by seed, so a given village always
+#: has the same smith.
+TOWNSFOLK = (
+    ("the smith", "Optics want grinding. Bring me glass and I will put an edge on it."),
+    ("a child", "Have you seen the hound glow? Everyone says Lumi can smell light."),
+    ("the gatekeeper", "The gate stays open. It is readers we are short of, not doors."),
+    ("the gardener", "A tended page keeps its colour. Same as anything planted."),
+    ("the carter", "I haul between villages. The dark stretches get longer every year."),
+    ("the lamplighter", "I light what I can reach. The high shelves need someone like you."),
+)
+
+#: What the healer at every recovery station says.
+HEALER_LINES = (
+    "This pad rekindles a spent team. Stand on it a while.",
+    "Bleached is not gone. Light comes back, if you give it somewhere quiet.",
+    "Fill your team before the wilds. Attrition is what kills probes, not beasts.",
+)
+
+#: The story cast: one emissary per order, in a land whose character suits the
+#: doctrine. Directories are tried in order; a corpus missing them all still
+#: gets its emissary somewhere (see :func:`_story_cast`).
+EMISSARY_NAMES = {
+    "rigour": "Merel, Voice of Rigour",
+    "clarity": "Halden, Voice of Clarity",
+    "discovery": "Sable, Voice of Discovery",
+}
+EMISSARY_LANDS = {
+    "rigour": ("reference", "manual", "development"),
+    "clarity": ("guides", "fundamentals", "getting_started"),
+    "discovery": ("references", "concepts"),
+}
+
+#: Kinds that stand where they are placed. A keeper keeps their page, a healer
+#: keeps their station, and a story character you have to find again must not
+#: have wandered off.
+FIXED = frozenset({"villager", "healer", "emissary"})
+
 #: Tiles an NPC may stand on.
 WALKABLE = frozenset({GRASS, ROAD, FLOOR, CLINIC})
+
+#: Where wildlife may stand: the open country only. A beast on a village floor
+#: would break the one safety rule the map teaches -- inside the walls, nothing
+#: fights you.
+WILD_GROUND = frozenset({GRASS, ROAD})
 
 
 def _seed(text: str) -> int:
@@ -81,7 +134,8 @@ class Npc:
     Attributes
     ----------
     kind : str
-        ``villager``, ``animal`` or ``beast``.
+        ``villager``, ``townsfolk``, ``healer``, ``emissary``, ``animal`` or
+        ``beast``.
     name : str
         Display name.
     x, y : float
@@ -91,11 +145,18 @@ class Npc:
     radius : float
         How far it strays from home.
     line : str
-        What it says when spoken to.
+        What it says when spoken to. For someone with more to say this is the
+        first of :attr:`lines`.
     facing : str
         ``down``, ``up``, ``left`` or ``right``.
     address : str
         For a villager, the page they keep.
+    lines : tuple of str
+        Full dialogue, one screen per entry. Empty means :attr:`line` is all
+        of it.
+    role : str
+        What talking to them means to the game: ``""`` for flavour,
+        ``healer``, or ``emissary:<order>``.
     """
 
     kind: str
@@ -107,7 +168,20 @@ class Npc:
     line: str
     facing: str = "down"
     address: str = ""
+    lines: tuple[str, ...] = ()
+    role: str = ""
     _phase: float = 0.0
+
+    @property
+    def dialogue(self) -> tuple[str, ...]:
+        """Everything they have to say, in order.
+
+        Returns
+        -------
+        tuple of str
+            :attr:`lines` when there are any, else the single :attr:`line`.
+        """
+        return self.lines if self.lines else (self.line,)
 
     def distance_to(self, x: float, y: float) -> float:
         """Distance to a point.
@@ -169,12 +243,48 @@ def populate(world) -> list[Npc]:
                     )
                 )
 
-            # One or two animals per village, on the open ground outside it.
+            # Townsfolk, scaled to the compound's size rather than to how many
+            # pages are settled: the keeper-per-page rule is the one thing on
+            # the map that means something, and these are the people around it.
             col, row, width, height = village.rect
+            interior = max(0, (width - 2) * (height - 2))
+            for index in range(min(5, max(1, interior // 48))):
+                seed = _seed(f"{village.name}:townsfolk:{index}")
+                name, line = TOWNSFOLK[seed % len(TOWNSFOLK)]
+                spot = _open_spot(
+                    world,
+                    col + 2 + (seed % max(1, width - 4)),
+                    row + 2 + ((seed >> 8) % max(1, height - 4)),
+                    seed,
+                    span=3,
+                )
+                if spot is None:
+                    continue
+                people.append(
+                    Npc(kind="townsfolk", name=name, x=spot[0], y=spot[1], home=spot,
+                        radius=TILE * 1.2, line=line,
+                        _phase=(seed % 1000) / 1000.0 * math.tau)
+                )
+
+            # The healer, at the recovery station just inside the gate. The
+            # place that heals you should have someone in it who says so.
+            clinic_col, clinic_row = village.clinic
+            seed = _seed(f"{village.name}:healer")
+            spot = _open_spot(world, clinic_col + 1, clinic_row, seed, span=3)
+            if spot is not None:
+                people.append(
+                    Npc(kind="healer", name="the recovery warden",
+                        x=spot[0], y=spot[1], home=spot, radius=0.0,
+                        line=HEALER_LINES[0], lines=HEALER_LINES, role="healer",
+                        _phase=(seed % 1000) / 1000.0 * math.tau)
+                )
+
+            # One or two animals per village, on the open ground outside it.
             for index in range(1 + (_seed(village.name) % 2)):
                 seed = _seed(f"{village.name}:animal:{index}")
                 kind, line = ANIMALS[seed % len(ANIMALS)]
-                spot = _open_spot(world, col + width // 2, row + height + 3 + index * 2, seed)
+                spot = _open_spot(world, col + width // 2, row + height + 3 + index * 2,
+                                  seed, allowed=WILD_GROUND)
                 if spot is None:
                     continue
                 people.append(
@@ -194,6 +304,7 @@ def populate(world) -> list[Npc]:
                 rcol + 3 + (seed % max(1, rwidth - 6)),
                 rrow + 3 + ((seed >> 8) % max(1, rheight - 6)),
                 seed,
+                allowed=WILD_GROUND,
             )
             if spot is None:
                 continue
@@ -203,11 +314,68 @@ def populate(world) -> list[Npc]:
                     line="It does not want to talk.",
                     _phase=(seed % 1000) / 1000.0 * math.tau)
             )
+
+    people.extend(_story_cast(world))
     return people
 
 
-def _open_spot(world, col: int, row: int, seed: int, span: int = 5):
-    """Find a walkable tile near a target cell.
+def _story_cast(world) -> list[Npc]:
+    """Place the named story characters: one emissary per order.
+
+    Each stands outside the gate of the first village in a land whose character
+    suits their doctrine -- Rigour among the exact and largely unread, Clarity
+    on the road worn smooth by learners, Discovery at the markers pointing
+    elsewhere. Talking to one is how an order is chosen; :mod:`.story` holds
+    what they believe.
+
+    Parameters
+    ----------
+    world : chisurf.plugins.misc.games.lumis_quest.api.world.World
+        The world to place them in.
+
+    Returns
+    -------
+    list of Npc
+        One fixed emissary per order, fewer if the world has nowhere to stand.
+    """
+    if not world.regions:
+        return []
+    by_name = {region.name: region for region in world.regions}
+    cast: list[Npc] = []
+    for index, (key, order) in enumerate(ORDERS.items()):
+        region = next(
+            (by_name[name] for name in EMISSARY_LANDS.get(key, ()) if name in by_name),
+            world.regions[index % len(world.regions)],
+        )
+        village = next(
+            (v for v in region.villages if v.name == "The Unlinked"), None
+        ) if key == "discovery" else None
+        village = village or (region.villages[0] if region.villages else None)
+        if village is None:
+            continue
+        gate_col, gate_row = village.gate
+        seed = _seed(f"emissary:{key}")
+        spot = _open_spot(world, gate_col - 2, gate_row + 1, seed, span=5)
+        if spot is None:
+            continue
+        lines = (
+            f"I am {EMISSARY_NAMES[key]}. I speak for {order['name']}.",
+            order["belief"],
+            f"Our creed: {order['creed']}",
+            f"What we want is {order['wants']}.",
+        )
+        cast.append(
+            Npc(kind="emissary", name=EMISSARY_NAMES[key],
+                x=spot[0], y=spot[1], home=spot, radius=0.0,
+                line=lines[0], lines=lines, role=f"emissary:{key}",
+                _phase=(seed % 1000) / 1000.0 * math.tau)
+        )
+    return cast
+
+
+def _open_spot(world, col: int, row: int, seed: int, span: int = 5,
+               allowed: frozenset[int] = WALKABLE):
+    """Find a standable tile near a target cell.
 
     Parameters
     ----------
@@ -219,17 +387,20 @@ def _open_spot(world, col: int, row: int, seed: int, span: int = 5):
         Deterministic offset.
     span : int, optional
         How far to search.
+    allowed : frozenset of int, optional
+        Tiles that qualify. Wildlife passes :data:`WILD_GROUND` so a beast can
+        never end up standing on a village floor.
 
     Returns
     -------
     tuple of float or None
-        World coordinates, or ``None`` when nothing walkable is near.
+        World coordinates, or ``None`` when nothing suitable is near.
     """
     for step in range(span * span):
         dx = (step + seed) % span - span // 2
         dy = (step // span + seed // 7) % span - span // 2
         c, r = col + dx, row + dy
-        if world.tile_at(c, r) in WALKABLE:
+        if world.tile_at(c, r) in allowed:
             return ((c + 0.5) * TILE, (r + 0.5) * TILE)
     return None
 
@@ -258,19 +429,23 @@ def update(people: list[Npc], world, dt: float, clock: float,
         How far to bother.
     """
     for npc in people:
-        if npc.kind == "villager":
+        if npc.kind in FIXED:
             continue  # they stand where they stand
         if near is not None and npc.distance_to(*near) > radius:
             continue
-        speed = 14.0 if npc.kind == "animal" else 22.0
+        speed = {"animal": 14.0, "townsfolk": 9.0}.get(npc.kind, 22.0)
         angle = npc._phase + clock * (0.35 if npc.kind == "animal" else 0.22)
         dx = math.cos(angle) * speed * dt
         dy = math.sin(angle * 1.3) * speed * dt
 
-        if not _blocked(world, npc.x + dx, npc.y) and \
+        # A beast may never wander onto village ground, even through a gate:
+        # inside the walls, nothing fights you, and that rule is worth more
+        # than a beast's freedom of movement.
+        ground = WILD_GROUND if npc.kind == "beast" else WALKABLE
+        if world.tile_at(int((npc.x + dx) // TILE), int(npc.y // TILE)) in ground and \
                 abs(npc.x + dx - npc.home[0]) < npc.radius:
             npc.x += dx
-        if not _blocked(world, npc.x, npc.y + dy) and \
+        if world.tile_at(int(npc.x // TILE), int((npc.y + dy) // TILE)) in ground and \
                 abs(npc.y + dy - npc.home[1]) < npc.radius:
             npc.y += dy
         npc.facing = ("right" if dx > 0 else "left") if abs(dx) > abs(dy) else (

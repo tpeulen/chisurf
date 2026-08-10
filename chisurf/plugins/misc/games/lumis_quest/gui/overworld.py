@@ -33,7 +33,8 @@ from ..api import providers as providers_api
 from ..api import review_bridge
 from ..api import rig as rig_api
 from ..api import save as save_api
-from ..api.story import PROLOGUE, Story
+from ..api import tutorial as tutorial_api
+from ..api.story import ORDERS, PROLOGUE, Story
 from ..api.world import SCOUTED, SETTLED, WILD, World, build_world
 from . import pixelart
 
@@ -89,6 +90,15 @@ HOUSE_TINT = {
 
 #: Frames per second of the walk cycle.
 WALK_FPS = 6.0
+
+#: An emissary is tinted -- and haloed -- in the colour of their doctrine, so
+#: the three are tellable apart from across a field.
+EMISSARY_NM = {"rigour": 620.0, "clarity": 470.0, "discovery": 530.0}
+EMISSARY_TINT = {
+    "rigour": (1.00, 0.82, 0.66, 1.0),
+    "clarity": (0.72, 0.88, 1.00, 1.0),
+    "discovery": (0.74, 1.00, 0.80, 1.0),
+}
 
 #: Kept for the map view, where a sprite is smaller than a pixel.
 TILE_COLORS = {
@@ -236,6 +246,7 @@ class OverworldGame(chigame.Game):
         """Prepare a bare game so the loading screen has something to draw."""
         self.world = self._pending if self._pending is not None else World()
         self.story = Story(self.world)
+        self.tutorial = tutorial_api.Tutorial()
         self.people = []
         self.iris = [0.0, 0.0]
         self.lumi = [0.0, 0.0]
@@ -362,8 +373,13 @@ class OverworldGame(chigame.Game):
         self.verdict = None
         self._guardian_nm: dict[str, float] = {}
         self.resting = False
-        # The world was a diagram until something lived on it.
+        # The world was a diagram until something lived on it. Dialogue is a
+        # sequence of screens now, and talking to an emissary can end in a
+        # pledge -- so speaking carries an index and two extra stages.
         self.speaking = None
+        self.speaking_index = 0
+        self.pledging = False
+        self.pledge_ack = None
 
 
     def _restore(self) -> None:
@@ -392,6 +408,11 @@ class OverworldGame(chigame.Game):
         self.inventory = [parts[probe_id] for probe_id in state.inventory if probe_id in parts]
         self.loadout = save_api.restore_loadout(state, self.gear_pool)
         self.cleared = set(state.cleared)
+        self.tutorial = tutorial_api.Tutorial(set(state.tutorial))
+        if not state.tutorial and state.cleared:
+            # A save from before the tutorial existed, on a run that has
+            # already cleared rooms: this player does not need teaching.
+            self.tutorial.finish()
         if state.order:
             try:
                 self.story.choose(state.order)
@@ -417,6 +438,7 @@ class OverworldGame(chigame.Game):
             detector_id=self.loadout.detector.probe_id if self.loadout.detector else None,
             cleared=sorted(self.cleared),
             order=self.story.chosen_order,
+            tutorial=sorted(self.tutorial.done),
         )
 
     def save_run(self) -> None:
@@ -465,6 +487,10 @@ class OverworldGame(chigame.Game):
                     self.phase = "play"
             return
 
+        # The teaching sequence watches the same state the story does, and it
+        # watches through battles too -- half its steps complete inside one.
+        self.tutorial.observe(self)
+
         if self.battle is not None:
             self._battle_input(keys)
             return
@@ -477,13 +503,15 @@ class OverworldGame(chigame.Game):
             self.menu_row = 0
             return
         if self.speaking is not None:
-            if keys.just_pressed(Action.CONFIRM) or keys.just_pressed(Action.CANCEL):
-                self.speaking = None
+            self._dialogue_input(keys)
             return
         if keys.just_pressed(Action.SHOULDER_L):
             neighbour = npcs_api.nearest(self.people, *self.iris)
             if neighbour is not None and neighbour.kind != "beast":
                 self.speaking = neighbour
+                self.speaking_index = 0
+                self.pledging = False
+                self.pledge_ack = None
             else:
                 self._try_encounter()
 
@@ -537,6 +565,44 @@ class OverworldGame(chigame.Game):
         camera.center[0] += (centre[0] - camera.center[0]) * blend
         camera.center[1] += (centre[1] - camera.center[1]) * blend
         camera.height += (height - camera.height) * blend
+
+    def _dialogue_input(self, keys) -> None:
+        """Step through whoever is talking, one screen at a time.
+
+        An emissary's dialogue ends in a decision: pledge to their order, or
+        walk away. ``story.choose`` is wired to *this* -- a doctrine you serve
+        is a person you met, not a menu row.
+
+        Parameters
+        ----------
+        keys : chisurf.gui.chigame.input.InputMap
+            Controller state.
+        """
+        if keys.just_pressed(Action.CANCEL):
+            self.speaking = None
+            self.pledging = False
+            self.pledge_ack = None
+            return
+        if not keys.just_pressed(Action.CONFIRM):
+            return
+        if self.pledge_ack is not None:
+            self.speaking = None
+            self.pledge_ack = None
+            return
+        npc = self.speaking
+        if self.pledging:
+            order = npc.role.split(":", 1)[1]
+            self.story.choose(order)
+            self.pledging = False
+            self.pledge_ack = f"You pledge to {ORDERS[order]['name']}."
+            return
+        self.speaking_index += 1
+        if self.speaking_index < len(npc.dialogue):
+            return
+        if npc.role.startswith("emissary:") and self.story.chosen_order is None:
+            self.pledging = True
+            return
+        self.speaking = None
 
     #: The tabs of the pause menu, in order.
     TABS = ("MAP", "RIG", "PARTY", "MODE", "OPTIONS")
@@ -1049,11 +1115,18 @@ class OverworldGame(chigame.Game):
                 continue
             if abs(npc.y - camera.center[1]) > half[1] + T.TILE:
                 continue
+            tint = (1.0, 1.0, 1.0, 1.0)
             if npc.kind == "beast":
                 scene.draw("photon", "halo", at=(npc.x, npc.y),
                            size=(T.TILE * 0.9, T.TILE * 0.9), emission_nm=405.0)
+            elif npc.kind == "emissary":
+                doctrine = npc.role.split(":", 1)[-1]
+                scene.draw("photon", "halo", at=(npc.x, npc.y),
+                           size=(T.TILE * 1.1, T.TILE * 1.1),
+                           emission_nm=EMISSARY_NM.get(doctrine, 488.0))
+                tint = EMISSARY_TINT.get(doctrine, tint)
             self._sprite(scene, f"{npc.kind}_{frame_index}", (npc.x, npc.y), T.TILE,
-                         mirror=npc.facing == "left")
+                         mirror=npc.facing == "left", tint=tint)
 
         # The glow under each of them is the photon they are; the sprite on top
         # is the body that photon wears.
@@ -1531,6 +1604,34 @@ class OverworldGame(chigame.Game):
                 color=colour,
             )
 
+    #: How a raw key name reads on a banner.
+    KEY_LABELS = {" ": "Space", "ArrowUp": "Up", "ArrowDown": "Down",
+                  "ArrowLeft": "Left", "ArrowRight": "Right"}
+
+    def _key_labels(self) -> dict[str, str]:
+        """Resolve the active scheme's keys for the tutorial placeholders.
+
+        Read from the live bindings rather than hard-coded, so a banner stays
+        true after the player switches control schemes.
+
+        Returns
+        -------
+        dict
+            ``talk``, ``menu``, ``confirm``, ``cancel`` to a key name.
+        """
+        def label(action: Action) -> str:
+            for key, bound in self.host.keys.bindings.items():
+                if bound is action:
+                    return self.KEY_LABELS.get(key, key.capitalize() if len(key) > 1 else key.upper())
+            return "?"
+
+        return {
+            "talk": label(Action.SHOULDER_L),
+            "menu": label(Action.MENU),
+            "confirm": label(Action.CONFIRM),
+            "cancel": label(Action.CANCEL),
+        }
+
     def _draw_hud(self, scene, camera, half) -> None:
         """Draw the readouts, pinned to the camera rather than the world.
 
@@ -1570,6 +1671,35 @@ class OverworldGame(chigame.Game):
                     height=9.5 * scale, color=(0.44, 0.46, 0.52, 1.0),
                 )
 
+        # Dialogue owns the bottom band outright: the beat, the banner and the
+        # loot line all live there too, and drawn first they bled through the
+        # panel as ghost text behind whoever was talking.
+        if self.speaking is not None:
+            npc = self.speaking
+            if self.pledge_ack is not None:
+                text = self.pledge_ack
+                hint = "Confirm to go on"
+            elif self.pledging:
+                order = ORDERS[npc.role.split(":", 1)[1]]
+                text = f"Will you serve {order['name']}?"
+                hint = "Confirm to pledge   Cancel to walk away"
+            else:
+                text = npc.dialogue[min(self.speaking_index, len(npc.dialogue) - 1)]
+                hint = "Confirm to go on"
+            scene.draw("ui", "panel", at=(camera.center[0], bottom - 46.0 * scale),
+                       size=(half[0] * 1.7, 62.0 * scale),
+                       color=(0.055, 0.065, 0.085, 0.97))
+            scene.text(npc.name, at=(camera.center[0], bottom - 66.0 * scale),
+                       height=11.0 * scale, align="center", color=(0.90, 0.84, 0.60, 1.0))
+            for offset, line in enumerate(_wrap(text, 46)[:3]):
+                scene.text(line, at=(camera.center[0], bottom - 50.0 * scale
+                                     + offset * 12.0 * scale),
+                           height=10.0 * scale, align="center",
+                           color=(0.82, 0.86, 0.92, 1.0))
+            scene.text(hint, at=(camera.center[0], bottom - 10.0 * scale),
+                       height=9.0 * scale, align="center", color=(0.48, 0.52, 0.60, 1.0))
+            return
+
         beat = self.story.current
         if beat is not None:
             # Along the bottom, above the room name: the top band already holds
@@ -1578,6 +1708,17 @@ class OverworldGame(chigame.Game):
                 beat.headline,
                 at=(camera.center[0], bottom - 48.0 * scale),
                 height=10.5 * scale, align="center", color=(0.62, 0.70, 0.80, 1.0),
+            )
+
+        step = self.tutorial.current
+        if step is not None:
+            # One line, in the reward gold, above everything else along the
+            # bottom. It names the next real control and waits for the real
+            # press -- it never presses anything for the player.
+            scene.text(
+                step.teach.format(**self._key_labels()),
+                at=(camera.center[0], bottom - 76.0 * scale),
+                height=10.5 * scale, align="center", color=(0.95, 0.86, 0.50, 1.0),
             )
 
         scene.text(
@@ -1610,21 +1751,6 @@ class OverworldGame(chigame.Game):
                 at=(camera.center[0], bottom - 62.0 * scale),
                 height=10.0 * scale, align="center", color=(0.90, 0.84, 0.52, 1.0),
             )
-
-        if self.speaking is not None:
-            scene.draw("ui", "panel", at=(camera.center[0], bottom - 46.0 * scale),
-                       size=(half[0] * 1.7, 54.0 * scale),
-                       color=(0.055, 0.065, 0.085, 0.97))
-            scene.text(self.speaking.name, at=(camera.center[0], bottom - 62.0 * scale),
-                       height=11.0 * scale, align="center", color=(0.90, 0.84, 0.60, 1.0))
-            for offset, line in enumerate(_wrap(self.speaking.line, 46)[:2]):
-                scene.text(line, at=(camera.center[0], bottom - 46.0 * scale
-                                     + offset * 12.0 * scale),
-                           height=10.0 * scale, align="center",
-                           color=(0.82, 0.86, 0.92, 1.0))
-            scene.text("Confirm to go on", at=(camera.center[0], bottom - 18.0 * scale),
-                       height=9.0 * scale, align="center", color=(0.48, 0.52, 0.60, 1.0))
-            return
 
         room = self.here
         if room is not None:

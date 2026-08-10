@@ -14,10 +14,73 @@ sibling: none
 
 # Where to pick this up
 
-**Design settled 2026-08-10 across ~30 decisions (see "Decision record" at the
-end). Implementation is at Phase 4.**
+**Handover, 2026-08-10 (second session).** The three population-and-teaching
+fronts of the earlier handover are **done and verified on screenshots**; the
+game now teaches itself, the orders are people you meet, and the villages are
+towns. What remains is depth and reach, not playability.
 
-Next, in order:
+## What landed this session
+
+1. ✅ **The in-world tutorial** (`api/tutorial.py`). Seven one-line banners in
+   first-run order — walk → speak → enter a gate → stand on the recovery pad →
+   face a beast → take a turn → answer the page — drawn in the reward gold at
+   the bottom of the HUD. Every step completes **on game state** exactly as
+   story beats do, latches once witnessed, and persists in the save
+   (`RunState.tutorial`); a pre-tutorial save with cleared rooms skips the
+   whole sequence. Banner text names keys via `{talk}`/`{confirm}` placeholders
+   resolved from the **live** bindings, so it stays true after a scheme switch.
+   *Trap:* the tutorial observes at the top of `update`, so a press is
+   witnessed on the following frame — a test that taps and asserts must run
+   one extra frame.
+2. ✅ **The story cast** (`npcs._story_cast`). Merel (Rigour, The Great
+   Library), Halden (Clarity, The Pilgrim Road), Sable (Discovery, the
+   references/Cairns land, preferring an "The Unlinked" village) — fixed
+   positions outside a gate, doctrine-coloured halo and tint, four screens of
+   dialogue composed from `story.ORDERS`. **`story.choose` is wired to
+   talking**: the dialogue ends in "Will you serve …?", Confirm pledges,
+   Cancel walks away with the choice open. Before this there was *no* path to
+   choose an order in play at all — only the save-restore path called
+   `choose()`. Also one named **recovery warden** per clinic. `Npc` grew
+   `lines: tuple[str, ...]` and `role: str` (dispatch on role, not callbacks —
+   it serialises and tests cleanly).
+3. ✅ **Villages are towns** (`ROOM_PITCH = 3`, `VILLAGE_MARGIN = 2` in
+   `api/world.py`, formula `(n-1)*pitch + 2*(1+margin) + 1`). Streets are two
+   tiles, a perimeter street rings the walls, and **townsfolk** (smith, child,
+   gatekeeper…) scale with compound area (`interior // 48`, cap 5), not with
+   review state — an all-wild village still has people in it. Keepers stay
+   one-per-settled-page. Measured after: world 368x282 = 103,776 tiles
+   (was 76,320), **build 0.31 s**, **median frame 3.3–4.4 ms (~230–305 fps)**
+   at 960x540 inside the largest compound.
+
+**Three defects only the screenshots caught** (all fixed, do not reintroduce):
+
+- **Bottom-band draw order.** The story beat, tutorial banner and loot line are
+  drawn along the bottom; the dialogue panel is 0.97-alpha and sat *after* them
+  in `_draw_hud`, so they bled through as ghost text behind whoever was
+  talking. Dialogue now owns the bottom band outright — panel first, return.
+- **Dialogue wrapped to 2 lines cut the orders' beliefs mid-sentence.** The
+  panel takes 3 lines now and grew to fit.
+- **A beast spawned inside a village compound** — `_open_spot` accepted any
+  walkable tile and FLOOR qualifies. Wildlife placement and beast wandering now
+  use `WILD_GROUND` (grass/road only), because "inside the walls nothing fights
+  you" is the one safety rule the map teaches.
+
+## The open fronts, in the order they matter
+
+1. **Keeper dialogue is still canned** (Part 3 wants it from the page: summary
+   line + "did you know" trivia, cached under the page `sha256`). The
+   `lines`/`dialogue` machinery this session added is exactly the surface it
+   needs — generate the lines, hand them to the villager.
+2. **The five new mini-games** (Part 7) and the **lore OKF bundle** (Part 8)
+   from phase 6 do not exist. The mini-games matter mostly as latency cover if
+   the model provider ever defaults on.
+3. **Phase 7 — the farm and the network** — is unbuilt. The ZMQ trap from the
+   earlier handover stands: REQ/REP is lock-step, live positions go over PUB.
+4. **No gamepad backend exists**, so "gamepad-playable" is still untested on a
+   gamepad; and the shipped question generator tests *attention* rather than
+   understanding (the model-backed provider is wired, opt-in, off by default).
+
+## What is already done, and where the traps are
 
 1. ✅ **Phases 1 and 2 done.** The engine is in `chisurf/gui/chigame/` and **all
    five arcade games run on it**, off `QPainter`, each verified against a
@@ -108,14 +171,9 @@ Next, in order:
    — **nothing is ever written into `docs/`**, because this is a shared working
    tree — and export refuses any finding whose page has changed since it was
    made.
-4. **Phase 5 — the AI layer**, then 6 (crafting, mini-games, factions, story),
-   then 7 (farm, network).
-
-**Known deviation, deliberately left**: the shipped `lumis_quest/gui/tool.py` is
-still the first draft's XP/streak/achievement panel, and it contains a **free-text
-path field** — which the no-text-entry rule forbids. It is a placeholder that
-Phase 5 replaces wholesale; do not invest in fixing it, but do not copy its
-input model either.
+7. ✅ **The tutorial, the story cast and the village rework** — see "What
+   landed this session" above. `gui/tool.py` is no longer the first draft's
+   XP panel; it hosts the overworld and its free-text field is gone.
 
 **Traps already identified, do not rediscover them:**
 
@@ -146,6 +204,15 @@ input model either.
 - **The mean room position is not the centre of the world.** `reference` holds
   145 of the 377 rooms, so averaging drags a fit-to-world view into it and
   clips everything else; use the bounding box.
+- **The temp-index commit recipe makes your working copy drift.** Committing via
+  a temporary `GIT_INDEX_FILE` (HEAD + only your hunks) is the right way not to
+  steal another instance's staged work, but it rebases onto HEAD each time while
+  the on-disk file keeps accumulating separately. `okf/log.md` fell **10 entries
+  behind** and `okf/references/known-issues.md` **6**. Worse, the *main* index
+  goes stale against the new HEAD, so files you have just committed show as
+  **staged deletions** — and anyone committing that index would delete them.
+  After every such commit: `git reset -- <your paths>`, and diff your working
+  copy of any shared file against HEAD.
 - **REQ/REP is lock-step.** The existing `ZmqServer` (`chisurf/server/transport/zmq.py`)
   pairs REP with PUB. Many clients on one REP socket serialise, which is fine
   for turn-based play and trading and wrong for live avatar positions. Those go

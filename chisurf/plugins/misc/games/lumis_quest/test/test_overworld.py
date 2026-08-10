@@ -600,6 +600,117 @@ def test_a_fresh_run_opens_with_the_story_and_a_resumed_one_does_not(qapp, tmp_p
     assert resumed.phase == "play", "a resumed run skips the opening"
 
 
+def test_an_order_is_chosen_by_talking_to_an_emissary(game):
+    """A doctrine you serve is a person you met, not a menu row.
+
+    The full flow: stand beside an emissary, talk through their case, be asked,
+    pledge. ``story.choose`` fires only at the end, and walking away leaves the
+    choice unmade.
+    """
+    emissary = next(n for n in game.people if n.kind == "emissary")
+    game.iris = [emissary.x, emissary.y + 10.0]
+    assert game.story.chosen_order is None
+
+    game.host.keys.tap(Action.SHOULDER_L)
+    game.update(1 / 60, game.host.keys)
+    game.host.keys.end_frame()
+    assert game.speaking is emissary
+
+    # Confirm through every screen of their dialogue.
+    for _ in range(len(emissary.dialogue)):
+        assert game.story.chosen_order is None, "no pledge before the question"
+        game.host.keys.tap(Action.CONFIRM)
+        game.update(1 / 60, game.host.keys)
+        game.host.keys.end_frame()
+    assert game.pledging, "the dialogue must end in the question"
+
+    game.host.keys.tap(Action.CONFIRM)
+    game.update(1 / 60, game.host.keys)
+    game.host.keys.end_frame()
+    order = emissary.role.split(":", 1)[1]
+    assert game.story.chosen_order == order
+    assert game.pledge_ack, "the pledge is acknowledged in their voice"
+
+    game.host.keys.tap(Action.CONFIRM)
+    game.update(1 / 60, game.host.keys)
+    game.host.keys.end_frame()
+    assert game.speaking is None
+
+
+def test_walking_away_from_an_emissary_leaves_the_choice_open(game):
+    """Cancel is walking away, and the order can still be chosen later."""
+    emissary = next(n for n in game.people if n.kind == "emissary")
+    game.iris = [emissary.x, emissary.y + 10.0]
+    game.host.keys.tap(Action.SHOULDER_L)
+    game.update(1 / 60, game.host.keys)
+    game.host.keys.end_frame()
+    assert game.speaking is emissary
+
+    game.host.keys.tap(Action.CANCEL)
+    game.update(1 / 60, game.host.keys)
+    game.host.keys.end_frame()
+    assert game.speaking is None
+    assert game.story.chosen_order is None
+
+
+def test_the_tutorial_teaches_walking_first_and_advances_on_real_state(game):
+    """The banner points at the next real thing and waits for the real press."""
+    assert game.tutorial.current.key == "walk"
+
+    game.host.keys.press(Action.DOWN)
+    for _ in range(60):
+        game.update(1 / 60, game.host.keys)
+    game.host.keys.release(Action.DOWN)
+    game.host.keys.end_frame()
+    assert "walk" in game.tutorial.done
+    assert game.tutorial.current.key == "speak"
+
+    # Speaking to anyone -- the healer inside the gate will do -- retires it.
+    someone = next(n for n in game.people if n.kind != "beast")
+    game.iris = [someone.x, someone.y + 10.0]
+    game.host.keys.tap(Action.SHOULDER_L)
+    game.update(1 / 60, game.host.keys)
+    game.host.keys.end_frame()
+    # The tutorial watches at the top of the frame, so the press it waits for
+    # is witnessed on the frame after it lands.
+    game.update(1 / 60, game.host.keys)
+    assert "speak" in game.tutorial.done
+
+
+def test_the_tutorial_persists_with_the_run(game, tmp_path):
+    """Teaching happens once per player, not once per session."""
+    from chisurf.plugins.misc.games.lumis_quest.api import save as save_api
+
+    game.tutorial.done = {"walk", "speak"}
+    game.save_run()
+    state = save_api.RunState.load(game._save_path)
+    assert state.tutorial == ["speak", "walk"]
+
+
+def test_a_pre_tutorial_save_with_progress_skips_the_teaching(game):
+    """A run that has cleared rooms does not need telling how to walk."""
+    from chisurf.plugins.misc.games.lumis_quest.api import save as save_api
+
+    if not game.pool:
+        pytest.skip("spectra.db is not present in this install")
+    save_api.RunState(
+        position=(100.0, 100.0),
+        team=[(f.creature.probe_id, f.hp) for f in game.team],
+        cleared=["docs/guides/p0.md"],
+    ).save(game._save_path)
+    game._restore()
+    assert game.tutorial.complete
+
+
+def test_the_tutorial_banner_names_the_active_keys(game):
+    """A banner that says the wrong key is worse than no banner."""
+    labels = game._key_labels()
+    assert labels["talk"] == "Q"
+    step = game.tutorial.current
+    assert step is not None
+    step.teach.format(**labels)  # must not raise mid-frame
+
+
 def test_the_options_tab_changes_the_controls_and_the_speed(game):
     """Adjustable, and every scheme covers every action."""
     from chisurf.plugins.misc.games.lumis_quest.gui.overworld import SCHEMES

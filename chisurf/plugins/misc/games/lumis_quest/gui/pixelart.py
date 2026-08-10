@@ -156,6 +156,49 @@ _VILLAGER_B = [
     "....qQQQQQq.....", "....qq...qq.....", "....zz...zz.....", "................",
 ]
 
+#: Townsfolk: a tunic and workaday browns -- people, not keepers.
+_TOWNSFOLK_A = [
+    "................", "................", ".....zzzzz......", "....zsssssz.....",
+    "....zsisisz.....", "....zsssssz.....", ".....sssss......", "....dDDDDDd.....",
+    "...sdDDDDDds....", "...sdDDDDDds....", "....dDDDDDd.....", "....dd...dd.....",
+    "....dd...dd.....", "....ee...ee.....", "................", "................",
+]
+_TOWNSFOLK_B = [
+    "................", "................", ".....zzzzz......", "....zsssssz.....",
+    "....zsisisz.....", "....zsssssz.....", ".....sssss......", "....dDDDDDd.....",
+    "...sdDDDDDds....", "....dDDDDDd.....", "....dDDDDDd.....", ".....dd.dd......",
+    "....dd...dd.....", "...ee.....ee....", "................", "................",
+]
+
+#: The healer: a pale hooded robe with the recovery-glow cross on the chest.
+_HEALER_A = [
+    "................", "................", ".....jjjjj......", "....jsssssj.....",
+    "....jsisisj.....", "....jsssssj.....", ".....sssss......", "....jJJJJJj.....",
+    "...jJJcccJJj....", "...jJJcCcJJj....", "....jJcccJj.....", "....jJJJJJj.....",
+    "....jJJJJJj.....", "....jj...jj.....", "....zz...zz.....", "................",
+]
+_HEALER_B = [
+    "................", "................", ".....jjjjj......", "....jsssssj.....",
+    "....jsisisj.....", "....jsssssj.....", ".....sssss......", "....jJJJJJj.....",
+    "...jJJcCcJJj....", "...jJJcccJJj....", "....jJcccJj.....", "....jJJJJJj.....",
+    "....jJJJJJj.....", ".....jj.jj......", "...zz.....zz....", "................",
+]
+
+#: An emissary: a hooded violet robe and a staff. One drawing serves all three
+#: orders; the renderer tints it in the doctrine's colour.
+_EMISSARY_A = [
+    "................", "................", ".....AAAAA......", "....AsssssA.....",
+    "....AsisisA.....", "....AsssssA.....", ".....sssss...L..", "....aAAAAAa..y..",
+    "...aAAAAAAAa.y..", "...aAAAAAAAasy..", "...aAAAAAAAa.y..", "....aAAAAAa..y..",
+    "....aAAAAAa..y..", "....aa...aa..y..", "....zz...zz.....", "................",
+]
+_EMISSARY_B = [
+    "................", "................", ".....AAAAA......", "....AsssssA.....",
+    "....AsisisA.....", "....AsssssA.....", ".....sssss...L..", "....aAAAAAa..y..",
+    "...aAAAAAAAa.y..", "...aAAAAAAAasy..", "...aAAAAAAAa.y..", "....aAAAAAa..y..",
+    "....aAAAAAa..y..", ".....aa.aa...y..", "...zz.....zz....", "................",
+]
+
 #: An animal: a small pale four-legged thing that crops the grass.
 _ANIMAL_A = [
     "................", "................", "................", "................",
@@ -261,6 +304,9 @@ SPRITES: dict[str, list[str]] = {
     "lumi_down_0": _LUMI_DOWN_A, "lumi_down_1": _LUMI_DOWN_B,
     "lumi_right_0": _LUMI_RIGHT_A, "lumi_right_1": _LUMI_RIGHT_B,
     "villager_0": _VILLAGER_A, "villager_1": _VILLAGER_B,
+    "townsfolk_0": _TOWNSFOLK_A, "townsfolk_1": _TOWNSFOLK_B,
+    "healer_0": _HEALER_A, "healer_1": _HEALER_B,
+    "emissary_0": _EMISSARY_A, "emissary_1": _EMISSARY_B,
     "animal_0": _ANIMAL_A, "animal_1": _ANIMAL_B,
     "beast_0": _BEAST_A, "beast_1": _BEAST_B,
 }

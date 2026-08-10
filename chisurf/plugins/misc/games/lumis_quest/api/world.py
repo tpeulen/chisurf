@@ -65,6 +65,16 @@ SETTLED = "settled"
 #: Buildings per row inside a village compound before it wraps.
 VILLAGE_COLUMNS = 5
 
+#: Tiles from one building to the next inside a compound. At 2 the buildings sat
+#: on every other tile -- a grid of doors with a one-tile alley between them, and
+#: nowhere to stand or to put anyone who is not a page-keeper. At 3 a village has
+#: streets, at the cost of every region growing by roughly half.
+ROOM_PITCH = 3
+
+#: Tiles of open floor between the wall and the nearest building, so a compound
+#: has a perimeter street rather than houses jammed against the wall.
+VILLAGE_MARGIN = 2
+
 #: Villages per row inside a region before it wraps.
 REGION_COLUMNS = 3
 
@@ -520,8 +530,9 @@ def _collect(node: toc.Node, depth: int = 0) -> list[tuple[toc.Node, int]]:
 def _village_size(room_count: int) -> tuple[int, int]:
     """Compound size in tiles for a given number of buildings.
 
-    Buildings sit on every other interior tile so there is always a lane to walk
-    between them; the compound adds a wall ring around that.
+    Buildings sit every :data:`ROOM_PITCH` tiles so there are streets to walk
+    and ground to stand on; the compound adds a floor margin and a wall ring
+    around that.
 
     Parameters
     ----------
@@ -535,7 +546,12 @@ def _village_size(room_count: int) -> tuple[int, int]:
     """
     columns = min(max(room_count, 1), VILLAGE_COLUMNS)
     rows = max(1, math.ceil(room_count / VILLAGE_COLUMNS))
-    return (columns * 2 + 3, rows * 2 + 3)
+    # Wall, margin, then buildings a pitch apart, then margin and wall again.
+    span = 2 * (1 + VILLAGE_MARGIN)
+    return (
+        (columns - 1) * ROOM_PITCH + span + 1,
+        (rows - 1) * ROOM_PITCH + span + 1,
+    )
 
 
 def _address(path: pathlib.Path, repo_root: pathlib.Path) -> str:
@@ -687,8 +703,10 @@ def build_world(docs_root: pathlib.Path | None = None, seed: str = "") -> World:
                         depth=depth,
                         state=_state_for(node.path),
                         tile=(
-                            col + 2 + (page_index % VILLAGE_COLUMNS) * 2,
-                            row + 2 + (page_index // VILLAGE_COLUMNS) * 2,
+                            col + 1 + VILLAGE_MARGIN
+                            + (page_index % VILLAGE_COLUMNS) * ROOM_PITCH,
+                            row + 1 + VILLAGE_MARGIN
+                            + (page_index // VILLAGE_COLUMNS) * ROOM_PITCH,
                         ),
                     )
                 )

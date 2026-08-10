@@ -53,6 +53,35 @@ gamepad. There is no typing anywhere.
 | Cancel | Backspace | Zoom out; back |
 | Menu | Tab | Open the menu (MAP, RIG, PARTY, MODE) |
 
+## Your first minutes
+
+A fresh run teaches itself: a gold line along the bottom of the screen names
+the next real thing to do — walk, speak to someone, find a gate, stand on the
+recovery pad, face a beast, take a turn, answer the page — and waits for you to
+actually do it. The banners never press anything for you, and once a lesson is
+learned it never comes back; the sequence is stored with your run, not with the
+session.
+
+The villages are inhabited. **Keepers** stand outside pages somebody has
+reviewed — that population *is* the review state. Around them live townsfolk
+who are not a metric at all, a **recovery warden** at the pad inside every
+gate, and — in three particular lands — the emissaries of the orders.
+
+## The three orders
+
+Three orders disagree about what the Fading is, and choosing one decides what
+counts as winning your run. You choose by **meeting them**, not from a menu:
+
+- **Merel, Voice of Rigour** stands at a gate in The Great Library. Rigour
+  holds that light which misleads is worse than dark.
+- **Halden, Voice of Clarity** waits on The Pilgrim Road. Clarity holds that
+  the light is fine and the doors have closed.
+- **Sable, Voice of Discovery** keeps to the unlinked places. Discovery holds
+  that the worst dark was never lit at all.
+
+Talk to one (**Q**), hear their case out, and you will be asked to pledge.
+Cancel walks away with the choice still open.
+
 ## Playing
 
 1. **Walk to a dark building** and press **Q**. Only unread pages have guardians.
@@ -65,8 +94,10 @@ gamepad. There is no typing anywhere.
    easier to capture, and you cannot collect what your filter cannot see.
 4. **Answer the page's question.** Beating the guardian is spectroscopy; it says
    nothing about whether you read the page.
-5. **Recover** at the station just inside any village gate. Photon budgets carry
-   between fights, so attrition across a run is the real difficulty.
+5. **Recover** at the station just inside any village gate — the warden there
+   will tell you the same. Photon budgets carry between fights, so attrition
+   across a run is the real difficulty. Beasts never pass a village wall: inside
+   the gate, nothing fights you.
 
 ## Training mode and expert mode
 

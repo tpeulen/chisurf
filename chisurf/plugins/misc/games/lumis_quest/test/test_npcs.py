@@ -154,6 +154,63 @@ def test_you_can_only_speak_to_someone_within_reach(world):
     assert npcs.nearest(people, villager.x + 900.0, villager.y) is None
 
 
+def test_the_story_cast_is_placed_named_and_fixed(world):
+    """One emissary per order, standing somewhere, saying more than one thing.
+
+    The orders were data in ``story.py`` and nobody in the world spoke for
+    them, so "choose an order" was a menu row rather than a meeting.
+    """
+    people = npcs.populate(world)
+    emissaries = [n for n in people if n.kind == "emissary"]
+    assert {n.role for n in emissaries} == {
+        "emissary:rigour", "emissary:clarity", "emissary:discovery"
+    }
+    for emissary in emissaries:
+        assert len(emissary.dialogue) >= 3, "an emissary has a case to make"
+        assert emissary.name, "a story character has a name"
+        assert not npcs._blocked(world, emissary.x, emissary.y)
+
+    # Fixed: a story character you must find again has not wandered off.
+    before = [(n.x, n.y) for n in emissaries]
+    for step in range(60):
+        npcs.update(people, world, 1 / 30, step / 30.0,
+                    near=(emissaries[0].x, emissaries[0].y), radius=1e9)
+    assert [(n.x, n.y) for n in emissaries] == before
+
+
+def test_every_clinic_has_its_healer(world):
+    """The place that heals you has someone in it who says so."""
+    people = npcs.populate(world)
+    healers = [n for n in people if n.kind == "healer"]
+    assert len(healers) == len(world.villages)
+    for healer in healers:
+        assert healer.role == "healer"
+        assert len(healer.dialogue) >= 2
+        assert not npcs._blocked(world, healer.x, healer.y)
+
+
+def test_townsfolk_scale_with_the_village_not_the_review_state(world):
+    """A wholly unread section still has people living in it.
+
+    The keeper-per-settled-page rule stays -- these are the people around it,
+    or a walled town is a spreadsheet wearing houses.
+    """
+    assert all(room.state == WILD for room in world.rooms)
+    people = npcs.populate(world)
+    townsfolk = [n for n in people if n.kind == "townsfolk"]
+    assert townsfolk, "an all-wild village must not be empty of people"
+    for person in townsfolk:
+        assert not npcs._blocked(world, person.x, person.y)
+
+
+def test_dialogue_falls_back_to_the_single_line(world):
+    """A villager with one thing to say still has dialogue."""
+    for room in world.rooms[:1]:
+        room.state = SETTLED
+    villager = next(n for n in npcs.populate(world) if n.kind == "villager")
+    assert villager.dialogue == (villager.line,)
+
+
 def test_a_villager_in_a_neglected_village_says_so(world):
     """A ghost town knows it is one."""
     world.rooms[0].state = SETTLED
