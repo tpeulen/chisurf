@@ -131,12 +131,9 @@ mutual-reachability spanning tree, the condensed tree and the excess-of-mass
 selection. Three things move the number and only one of them is the sample
 count:
 
-* **`d`, the number of features**, decides whether the k-d tree prunes at all.
-  Past about ten features a bounding box overlaps the query ball in nearly every
-  direction, the tree visits most of itself on every query, and the textbook
-  `O(n²)` Prim wins outright. Both kernels are compiled and
-  `KDTree::tree_is_worthwhile` picks between them; they return the *same* tree,
-  bit for bit, which is what makes the switch invisible to a caller.
+* **`d`, the number of features**, decides how well the k-d tree prunes. A
+  bounding box overlaps the query ball in more and more directions as `d` grows,
+  so the search degrades towards a scan — gracefully, but it degrades.
 * **`min_samples`**, the neighbour rank for the core distance, sets how loose the
   pruning bound is. Larger core distances prune less, so a more conservative
   clustering is also a slower one.
@@ -152,58 +149,59 @@ package, so the reference is called with one fewer.
 
 **Environment for this table** — Apple M1 Pro, macOS 26.5.1 (arm64), Python
 3.12.13, `min_cluster_size=15`, `min_samples=5`. Measured 2026-08-10 on a
-machine that was **not idle** (load average ~20 from unrelated work), so read the
-*ratios*, which are stable, rather than the absolute seconds, which are inflated
-by roughly a factor of two across every row alike.
+machine that was **not idle** (load average ~30 from unrelated work), so read the
+*ratios*, which are stable across runs, rather than the absolute seconds, which
+are inflated by roughly a factor of three across every row alike.
 
 | case | implementation | fit [s] | clusters |
 | --- | --- | ---: | ---: |
-| n=5,000 d=2 | chisurf | 0.013 | 20 |
-| n=5,000 d=2 | hdbscan | 0.159 | 20 |
-| n=5,000 d=2 | scikit-learn | 0.104 | 20 |
-| n=5,000 d=2 | chisurf (no compiled kernel) | 0.234 | 20 |
-| n=20,000 d=2 | chisurf | 0.082 | 82 |
-| n=20,000 d=2 | hdbscan | 21.963 | 83 |
-| n=20,000 d=2 | scikit-learn | 4.787 | 84 |
-| n=20,000 d=2 | chisurf (no compiled kernel) | 6.529 | 82 |
-| n=100,000 d=2 | chisurf | 0.867 | 1186 |
-| n=100,000 d=2 | hdbscan | 6.123 | 1186 |
-| n=100,000 d=2 | scikit-learn | 91.257 | 1188 |
-| n=20,000 d=3 | chisurf | 0.157 | 60 |
-| n=20,000 d=3 | hdbscan | 3.597 | 57 |
-| n=20,000 d=3 | scikit-learn | 4.355 | 58 |
-| n=20,000 d=3 | chisurf (no compiled kernel) | 6.040 | 60 |
-| n=100,000 d=3 | chisurf | 1.183 | 275 |
-| n=100,000 d=3 | hdbscan | 9.619 | 271 |
-| n=100,000 d=3 | scikit-learn | 131.603 | 274 |
-| n=20,000 d=8 | chisurf | 2.046 | 7 |
-| n=20,000 d=8 | hdbscan | 7.250 | 8 |
-| n=20,000 d=8 | scikit-learn | 6.260 | 7 |
-| n=20,000 d=8 | chisurf (no compiled kernel) | 9.754 | 7 |
-| n=20,000 d=16 | chisurf | 13.688 | 4 |
-| n=20,000 d=16 | hdbscan | 8.264 | 4 |
-| n=20,000 d=16 | scikit-learn | 21.826 | 4 |
-| n=20,000 d=16 | chisurf (no compiled kernel) | 13.933 | 4 |
+| n=5,000 d=2 | chisurf | 0.019 | 20 |
+| n=5,000 d=2 | hdbscan | 0.138 | 20 |
+| n=5,000 d=2 | scikit-learn | 0.138 | 20 |
+| n=5,000 d=2 | chisurf (no compiled kernel) | 0.152 | 20 |
+| n=20,000 d=2 | chisurf | 0.097 | 82 |
+| n=20,000 d=2 | hdbscan | 25.445 | 83 |
+| n=20,000 d=2 | scikit-learn | 4.763 | 84 |
+| n=20,000 d=2 | chisurf (no compiled kernel) | 5.979 | 82 |
+| n=100,000 d=2 | chisurf | 1.018 | 1186 |
+| n=100,000 d=2 | hdbscan | 2.772 | 1186 |
+| n=100,000 d=2 | scikit-learn | 73.998 | 1188 |
+| n=20,000 d=3 | chisurf | 0.061 | 60 |
+| n=20,000 d=3 | hdbscan | 0.731 | 57 |
+| n=20,000 d=3 | scikit-learn | 2.360 | 58 |
+| n=20,000 d=3 | chisurf (no compiled kernel) | 3.120 | 60 |
+| n=100,000 d=3 | chisurf | 0.634 | 275 |
+| n=100,000 d=3 | hdbscan | 6.379 | 271 |
+| n=100,000 d=3 | scikit-learn | 83.684 | 274 |
+| n=20,000 d=8 | chisurf | 1.656 | 7 |
+| n=20,000 d=8 | hdbscan | 5.056 | 8 |
+| n=20,000 d=8 | scikit-learn | 8.942 | 7 |
+| n=20,000 d=8 | chisurf (no compiled kernel) | 8.475 | 7 |
+| n=20,000 d=16 | chisurf | 8.644 | 4 |
+| n=20,000 d=16 | hdbscan | 8.679 | 4 |
+| n=20,000 d=16 | scikit-learn | 25.952 | 4 |
+| n=20,000 d=16 | chisurf (no compiled kernel) | 24.010 | 4 |
 
 Read three things out of it:
 
 1. **In the range a burst feature space actually occupies — two to eight columns
-   — the compiled path is 3.5× to 268× ahead of `hdbscan`** and 3× to 108× ahead
-   of scikit-learn. The largest gaps are where the reference implementations
-   change strategy: `hdbscan` switches algorithm somewhere between 20,000 and
-   100,000 points, which is why its 20,000-point two-dimensional case is *slower
-   in absolute terms* than its 100,000-point one; and scikit-learn's Prim is
-   `O(n²)` throughout, which is what the 131 s at 100,000 points is.
-2. **At sixteen features `hdbscan` is still ahead**, by about 1.7×. It has a
-   dual-tree traversal that prunes the query side of the search as well; this
-   implementation prunes only the reference side, and switches to Prim once the
-   tree stops paying for itself at all. Sixteen columns is not a shape the burst
-   tools produce, so the gap is recorded rather than closed — the OKF concept
-   says what closing it takes.
-3. **The compiled kernel is worth 5× to 80×** over the in-tree fallback, and the
+   — the compiled path is 3× to 262× ahead of `hdbscan`** and 5× to 130× ahead
+   of scikit-learn. The extreme entries are where the reference implementations
+   change strategy rather than where this one is clever: `hdbscan` switches
+   algorithm somewhere between 20,000 and 100,000 points, which is why its
+   20,000-point two-dimensional case is *slower in absolute terms* than its
+   100,000-point one; and scikit-learn's Prim is `O(n²)` throughout, which is
+   what the 84 s at 100,000 points is.
+2. **At sixteen features it is a dead heat** (8.64 s against 8.68 s), where an
+   earlier version of this kernel was 1.7× *behind*. What closed it was not the
+   dual-tree traversal `hdbscan` uses — that was implemented and turned out
+   slower here, because its shared candidate state confines it to one core — but
+   moving the candidate comparison out of squared-distance space. That removed a
+   square root per candidate from the inner loop and, incidentally, fixed a
+   tie-break bug; see the [OKF concept](../../okf/subsystems/machine-learning.md).
+3. **The compiled kernel is worth 3× to 60×** over the in-tree fallback, and the
    fallback is what runs when the photon library is not importable. Both produce
-   identical labels; only the time differs. At sixteen features the two converge,
-   because both are then running the same `O(n²)` Prim.
+   identical labels; only the time differs.
 
 ## Ensemble samplers
 

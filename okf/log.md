@@ -58,6 +58,31 @@
   [`docs/concepts/density_clustering.md`](../docs/concepts/density_clustering.md) (the method),
   `test/ml/test_hdbscan.py` and `test/benchmarks/benchmark_clustering.py`.
 
+  **Follow-up the same day: the clustering kernel was comparing candidate edges in
+  squared-distance space, and that was a tie-break bug.** Accumulating the squared
+  distance and stopping once it passes `(best × alpha)²` is the fast form and it is
+  wrong at exactly the values this depends on — the threshold derives from a weight
+  that is itself a square root, and `sqrt(x)·sqrt(x)` is not `x`, so an edge that
+  *ties* reads as one unit in the last place too far and is skipped. The endpoint
+  tie-break never sees it and the kernel returns a different, perfectly valid,
+  spanning tree: the one thing the total edge order exists to prevent. It hid
+  because the kernels still agreed on most fixtures; what exposed it was writing
+  the reference implementation's **dual-tree traversal** and finding it disagreed
+  with Prim at a total weight identical to 8.5e-14. The guard is now swept over
+  five dimensions, three seeds and two sizes.
+
+  Two consequences. Removing the squaring took work out of the inner loop, and with
+  it the reason the dimension dispatch existed — Borůvka now beats Prim at every
+  dimension measured up to thirty-two, so `tree_is_worthwhile` is gone and `mst_prim`
+  stays only as the obviously-correct kernel the fast one is checked against. And the
+  dual-tree traversal itself was **removed**: correct, and slower here at every
+  dimension, because its candidate edges are shared mutable state across one
+  recursion, so it runs on one core while the per-point search uses eight. Measured
+  end to end, sixteen features went from **1.7× behind `hdbscan` to a dead heat**
+  (8.64 s against 8.68 s) and two to eight features are 3×–262× ahead. The reference
+  checkout is annotated at `junk/hdbscan/hdbscan/_hdbscan_boruvka.pyx` with what was
+  taken, what was skipped, and why.
+
 * **The notebook kernel is a window panel, and a screenshot without the theme is not evidence.** The
   notebook's `Chinsole` moved out from under the cells into a **Kernel** dock of `CodeEditorWindow`,
   tabbed with Diagnostics and Output; every panel of that window is now the new shared

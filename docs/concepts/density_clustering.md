@@ -24,10 +24,10 @@ that belongs to nothing must be allowed to say so.
 
 ## Why not k-means
 
-{ref}`k-means <concept-density-clustering>` — used elsewhere in ChiSurf where
-its assumptions do hold — asks for the number of clusters, gives every point a
-label, and finds clusters that are round and of similar size, because it
-minimises within-cluster squared distance. A burst population is often none of
+k-means — used elsewhere in ChiSurf where its assumptions do hold, notably to
+initialise a hidden Markov model's states — asks for the number of clusters,
+gives every point a label, and finds clusters that are round and of similar
+size, because it minimises within-cluster squared distance. A burst population is often none of
 those: a dynamic exchange between two states populates a *curve* in the
 E–τ plane, not a ball; a rare population is small next to a common one; and a
 quarter of the events may be junk.

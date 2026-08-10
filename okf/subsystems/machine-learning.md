@@ -39,19 +39,37 @@ fails if it comes back. What is worth knowing before touching it:
    `test_only_tied_weights_can_make_the_two_differ` — feed scikit-learn's own
    dendrogram in and the labels and probabilities match exactly, for every
    configuration and every dimension.
-3. **The crossover between the two MST kernels is measured, not guessed.**
-   A k-d tree prunes while the bounding boxes are tight; past about ten
-   dimensions it visits most of itself on every query and the textbook `O(n²)`
-   Prim wins outright (3× at sixteen dimensions). `KDTree::tree_is_worthwhile`
-   is that dividing line and `default_leaf_size` the matching leaf size. Two
-   things were tried above the crossover and **reverted**: a brute-force
-   neighbour search for the core distances (slower than the tree even at
-   sixteen dimensions — the tree stops paying for the *spanning tree* long
-   before it stops paying for the *neighbour search*), and a parallel Prim
-   (an OpenMP barrier per round costs more than the round; a spin barrier was
-   faster in isolation but burns every core for the duration, which a library
-   called from a GUI must not do).
-4. **`parallel=True` is banned in this package.** A numba kernel with
+3. **The candidate comparison happens in distance space, and moving it there
+   was a bug fix, not a tidy-up.** The fast form — accumulate the squared
+   distance and stop once it passes `(best × alpha)²` — is wrong at exactly the
+   values this depends on, because `best` is itself a square root and
+   `sqrt(x) · sqrt(x)` is not `x`. An edge that *ties* then reads as one unit in
+   the last place too far and is skipped, the endpoint tie-break never sees it,
+   and the kernel returns a different — perfectly valid — spanning tree. It hid
+   for a while because the kernels still agreed on most fixtures; the guard is
+   now swept over several shapes, sizes and seeds.
+4. **There is no dimension crossover any more, and the history matters.** Prim
+   used to be faster than Borůvka above about ten features, and the code
+   dispatched between them. Once the comparison moved into distance space —
+   which also removed the squaring from the inner loop — Borůvka won at every
+   dimension measured, up to thirty-two, so the dispatch is gone. `mst_prim`
+   stays as the obviously-correct kernel the fast one is checked against, and
+   `default_leaf_size` still varies with the dimension.
+5. **Three things were implemented against the reference, measured, and
+   removed.** All three are recorded in the source, because each is the kind of
+   idea someone re-derives:
+   - a **dual-tree traversal**, which prunes the query side as well and is what
+     keeps the reference implementation fast in high dimensions. Correct, and
+     slower here at every dimension, for a reason unrelated to the traversal:
+     its candidate edges are shared mutable state across one recursion, so it
+     runs on one core while the per-point search uses eight.
+   - a **brute-force neighbour search** above the old crossover — slower than
+     the tree even at sixteen dimensions. The tree stops paying for the
+     *spanning tree* long before it stops paying for the *neighbour search*.
+   - a **parallel Prim**: an OpenMP barrier per round costs more than the round
+     it separates, and a spin barrier, though faster in isolation, burns every
+     core for the duration, which a library called from a GUI must not do.
+6. **`parallel=True` is banned in this package.** A numba kernel with
    `parallel=True` launches numba's thread pool on first call, after which
    `NUMBA_NUM_THREADS` can no longer be set — and the settings bootstrap sets it
    from a preference. The fallback kernels here are single-threaded on purpose;
@@ -95,11 +113,12 @@ numba; they are not the cost.
 ## The compiled kernel
 
 `modules/math/{include/Cluster.h,src/Cluster.cpp}` in the photon library: a
-k-d tree with k-nearest-neighbour queries, a Borůvka minimum spanning tree over
-the mutual-reachability graph, and a Prim fallback above the dimension
-crossover. It is there rather than here because a k-d tree over an `(n × d)`
-table is wanted in several places at once — burst feature spaces, localisation
-tables, density clustering — and one implementation is the point.
+k-d tree with k-nearest-neighbour queries and a Borůvka minimum spanning tree
+over the mutual-reachability graph, with Prim beside it as the
+obviously-correct kernel the fast one is checked against. It is there rather
+than here because a k-d tree over an `(n × d)` table is wanted in several places
+at once — burst feature spaces, localisation tables, density clustering — and
+one implementation is the point.
 
 Three optimisations carry the Borůvka, and removing any of them costs an order
 of magnitude:
@@ -133,11 +152,6 @@ for the same reason:
   kernel** on the same data. Both are valid; only one can be this library's
   answer. A shortcut whose agreement with the total edge order cannot be
   established does not get to decide which.
-
-The gap that remains is the reference implementation's **dual-tree traversal**,
-which propagates a bound up the *query* tree as well. That is why it is still
-ahead above roughly ten features — and why the MST switches to Prim there
-instead.
 
 Performance against the packages this replaced is tracked in
 [benchmarks](/../docs/development/benchmarks.md).
