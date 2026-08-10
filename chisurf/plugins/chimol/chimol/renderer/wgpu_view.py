@@ -3,9 +3,11 @@
 What this is
 ------------
 :class:`WgpuRenderer` is a drop-in for :class:`~.qtgl.QtGLRenderer`: the viewer
-picks it with ``MolView(renderer_factory=WgpuRenderer)``, or by setting
-``CHIMOL_RENDERER=wgpu``. It satisfies the same contract, holds the same camera,
-and draws the same scene -- through the same WGSL a browser will compile.
+uses it **by default**. It satisfies the same contract as the OpenGL renderer,
+holds the same camera and draws the same scene -- through the same WGSL a
+browser will compile. ``CHIMOL_RENDERER=opengl`` (or ``renderer.backend`` in the
+display config) goes back to :class:`~.qtgl.QtGLRenderer`, and so does a machine
+where no WebGPU adapter can be created.
 
 Why it is small
 ---------------
@@ -21,14 +23,17 @@ three constants that did.
 
 What it does not do yet
 -----------------------
-Picking, the silhouette post-pass, and 3-D labels. The in-viewport chrome -- the
-object panel and the sequence strip -- *is* here, composited as a textured quad
-at the end of the render pass rather than painted over the surface; see
+The object panel's pop-up menus and the wizard beyond hover/click/drag routing.
+Everything else the OpenGL renderer draws is here: the molecule, the object
+panel, the sequence strip, 3-D labels, the depth-outline silhouette, and atom
+picking. The chrome and the labels are composited as a textured quad at the end
+of the render pass rather than painted over the surface -- see
 :mod:`.gui_overlay` for why the two obvious Qt arrangements do not work.
 """
 from __future__ import annotations
 
 import os
+from dataclasses import dataclass
 from typing import Optional
 
 import numpy as np
@@ -39,7 +44,19 @@ from .camera_state import DEFAULT_VIEWPORT, CameraState
 from .pack import pack_scene
 from .scene import Scene
 
-__all__ = ["WgpuRenderer", "renderer_factory_from_env", "is_available"]
+__all__ = [
+    "DEFAULT_BACKEND",
+    "WgpuRenderer",
+    "is_available",
+    "renderer_factory_from_env",
+    "selected_backend",
+]
+
+#: The backend chimol uses when nothing says otherwise. WGSL is the one source
+#: the desktop and the browser share; OpenGL remains reachable through
+#: ``CHIMOL_RENDERER=opengl`` or ``renderer.backend`` in the display config, and
+#: is used automatically wherever WebGPU cannot start.
+DEFAULT_BACKEND = "wgpu"
 
 #: Wheel notch to distance ratio. Multiplicative so one step feels the same on a
 #: peptide and on a ribosome; PyMOL's own zoom is a ratio for the same reason.
@@ -64,28 +81,80 @@ def is_available() -> bool:
         return False
 
 
+def selected_backend() -> str:
+    """Which backend the user asked for: ``"wgpu"`` or ``"opengl"``.
+
+    ``CHIMOL_RENDERER`` wins, then the ``renderer.backend`` display-config key,
+    then the default -- which is **wgpu**. The environment variable stays
+    because it is what makes a bug report reproducible either way without
+    editing a config file.
+    """
+    from ..config import _DISPLAY_CONFIG
+
+    choice = os.environ.get("CHIMOL_RENDERER", "").strip().lower()
+    if not choice:
+        section = _DISPLAY_CONFIG.get("renderer")
+        if isinstance(section, dict):
+            choice = str(section.get("backend", "")).strip().lower()
+    return choice or DEFAULT_BACKEND
+
+
 def renderer_factory_from_env(default=None):
-    """Return the renderer class ``CHIMOL_RENDERER`` selects, or ``default``.
+    """Return the renderer class the configuration selects, or ``default``.
 
-    ``wgpu`` picks this backend, anything else (or nothing) leaves the caller's
-    default in place. An environment variable rather than a config key for now,
-    because this is how the port is being *exercised* -- the choice becomes a
-    display-config setting when it stops being an experiment.
+    ``default`` is the OpenGL renderer, and it is returned for any choice other
+    than ``wgpu`` **and** whenever this machine cannot make a WebGPU adapter --
+    a window with nothing in it is worse than the old backend, and a laptop
+    without a usable adapter must still open the viewer.
 
-    Falls back to ``default`` with a warning when WebGPU asks for a backend the
-    machine cannot give, since the alternative is a window with nothing in it.
+    Falling back is logged rather than silent: "chimol looks different today" is
+    a much harder question to answer than "chimol said it fell back".
     """
     import logging
 
-    if os.environ.get("CHIMOL_RENDERER", "").strip().lower() != "wgpu":
+    if selected_backend() != "wgpu":
         return default
     if not is_available():
         logging.getLogger(__name__).warning(
-            "CHIMOL_RENDERER=wgpu but no WebGPU adapter is available; "
+            "the WebGPU renderer was selected but no adapter is available; "
             "falling back to the OpenGL renderer"
         )
         return default
     return WgpuRenderer
+
+
+@dataclass
+class Label:
+    """One 3-D label: a world position, its text, and its colour."""
+
+    pos: np.ndarray
+    text: str
+    color: tuple
+
+
+def _collect_labels(packed) -> list:
+    """Pull ``kind == "text"`` geometry out of a packed scene.
+
+    Labels are the one thing in a scene that is not geometry at all -- a string
+    at a point -- so they leave the GPU path here and rejoin it as glyphs in the
+    composited chrome image.
+    """
+    labels: list[Label] = []
+    if packed is None:
+        return labels
+    for obj in packed.objects:
+        geom = obj.geometry
+        if geom.kind != "text":
+            continue
+        texts = geom.meta.get("labels", [])
+        positions = np.asarray(geom.positions, dtype=float)
+        colours = geom.colors
+        for i in range(min(len(texts), positions.shape[0])):
+            rgba = (1.0, 1.0, 1.0, 1.0)
+            if colours is not None and i < colours.shape[0]:
+                rgba = tuple(float(c) for c in colours[i][:4])
+            labels.append(Label(positions[i], str(texts[i]), rgba))
+    return labels
 
 
 def _make_widget_base():
@@ -122,11 +191,32 @@ class WgpuRenderer(_make_widget_base(), CameraState, Renderer):
         )
 
         self._packed = None
+        #: Everything this frame draws: the scene's objects, plus the grid when
+        #: it is visible. See :meth:`_rebuild_draw_data`.
+        self._draw_data: list = []
+        self._labels: list[Label] = []
         self._last_pos: Optional[QtCore.QPoint] = None
+        self._press_pos: Optional[QtCore.QPoint] = None
         self._panning = False
         #: Whether the press was consumed by the panel, so the drag belongs to
         #: it rather than to the camera.
         self._gui_grab = False
+        #: A traced frame shown over the scene column, or None for the live view.
+        self._ray_image = None
+        self._background_source = None
+        #: The rubber-band selection box while it is being dragged, in widget
+        #: pixels. Chrome like the panel and the labels, so it is composited with
+        #: them: it has to appear in a grab of the viewport for a screenshot to
+        #: show what was selected.
+        self._select_rect: Optional[QtCore.QRect] = None
+        self._drag_selecting = False
+        self._drag_start: Optional[QtCore.QPoint] = None
+        self._drag_button = None
+        self._drag_action: Optional[str] = None
+        self._drag_modifiers = QtCore.Qt.NoModifier
+        self._press_mods = QtCore.Qt.NoModifier
+        self._press_button = None
+        self._right_dragged = False
 
         # The object panel and the sequence strip, composited as a textured
         # quad at the end of the render pass -- see :mod:`.gui_overlay` for the
@@ -210,20 +300,63 @@ class WgpuRenderer(_make_widget_base(), CameraState, Renderer):
         return self
 
     def set_scene(self, scene: Optional[Scene]) -> None:
-        """Store the scene and pack it for upload.
+        """Store the scene, pack it for upload, and collect its labels.
 
         Packing here rather than per frame: it normalises dtypes and validates
         indices, which is work proportional to the scene and not to the frame
         rate. A 374k-triangle space-fill repacked every frame is the difference
         between a viewer and a slideshow.
         """
+        # A traced frame is a still of a scene that no longer exists, and
+        # leaving it up means the viewport shows a picture of something the
+        # commands have already changed.
+        self.clear_ray_image()
         self.scene = scene
         self._packed = pack_scene(scene) if scene is not None else None
+        self._labels = _collect_labels(self._packed)
+        self._rebuild_draw_data()
         self.update()
 
     def clear(self) -> None:
         """Drop the scene and repaint."""
         self.set_scene(None)
+
+    def set_grid_visible(self, visible: bool) -> None:
+        """Show or hide the ground grid, and rebuild what is drawn.
+
+        The flag alone proves nothing -- it is the draw list that has to change,
+        and a setter that only records the flag is how a menu item comes to
+        toggle a value nothing reads.
+        """
+        CameraState.set_grid_visible(self, visible)
+        self._rebuild_draw_data()
+        self.update()
+
+    def configure_grid(self, size: float, spacing: float) -> None:
+        """Set the grid's extent and spacing, and rebuild it."""
+        CameraState.configure_grid(self, size, spacing)
+        self._rebuild_draw_data()
+        self.update()
+
+    def _rebuild_draw_data(self) -> None:
+        """The list of things this frame draws: the scene, plus the grid.
+
+        Held rather than derived per frame so that "is the grid being drawn?"
+        has an answer that does not require rendering, and so the grid's
+        geometry -- which depends on the scene's radius, not on the camera -- is
+        built when the scene changes rather than sixty times a second.
+        """
+        from .pack import PackedObject
+
+        objects = list(self._packed.objects) if self._packed is not None else []
+        if self._grid_visible:
+            radius = self._packed.radius if self._packed is not None else self._target_radius
+            grid = self._build_grid_draw_data(radius)
+            if grid is not None:
+                objects.append(
+                    PackedObject(id="grid", geometry=grid, render_mode="overlay")
+                )
+        self._draw_data = objects
 
     def update(self) -> None:  # type: ignore[override]
         """Ask for a repaint.
@@ -240,7 +373,7 @@ class WgpuRenderer(_make_widget_base(), CameraState, Renderer):
 
     def set_background_color(self, color) -> None:
         """Store the clear colour and repaint."""
-        super().set_background_color(color)
+        CameraState.set_background_color(self, color)
         self.update()
 
     def resizeEvent(self, event) -> None:  # noqa: N802 - Qt naming
@@ -254,20 +387,27 @@ class WgpuRenderer(_make_widget_base(), CameraState, Renderer):
     def scene_width(self) -> int:
         """Width left for the molecule once the object panel has its column.
 
+        In the **widget's** logical pixels, not the surface's device ones. Two
+        different sizes live in this class and confusing them is a real bug: the
+        contract (framing, picking, the panel's own layout) is logical, and only
+        the GPU target is in device pixels. Reporting the surface size here made
+        the aspect ratio stale until the first ``resizeEvent``, so a viewer that
+        had been resized but not shown framed for the wrong shape.
+
         The panel is a *column*, not an overlay: drawn on top it would hide the
         molecule it describes, and the part it hides is the part you just moved
         out from under it. An undocked panel floats, and takes no column.
         """
         gui = self._internal_gui
         if gui is None or not (gui.visible and gui.docked):
-            return max(self._width, 1)
-        return max(self._width - int(gui.column_width * self._ratio()), 1)
+            return max(int(self.width()), 1)
+        return max(int(self.width()) - int(gui.column_width), 1)
 
     def scene_height(self) -> int:
-        """Height left once the sequence strip has its band."""
+        """Height left once the sequence strip has its band, in logical pixels."""
         gui = self._internal_gui
         strip = int(gui.sequence_height()) if gui is not None else 0
-        return max(self._height - int(strip * self._ratio()), 1)
+        return max(int(self.height()) - strip, 1)
 
     def _ratio(self) -> float:
         """Device pixels per logical pixel.
@@ -289,10 +429,14 @@ class WgpuRenderer(_make_widget_base(), CameraState, Renderer):
         band falls out of a shorter viewport with no offset. That difference is
         exactly the kind that renders correctly upside down.
         """
-        gui = self._internal_gui
         ratio = self._ratio()
-        strip = int((gui.sequence_height() if gui is not None else 0) * ratio)
-        return (0.0, float(strip), float(self.scene_width()), float(self.scene_height()))
+        strip = (self.height() - self.scene_height()) * ratio
+        return (
+            0.0,
+            float(strip),
+            float(self.scene_width() * ratio),
+            float(self.scene_height() * ratio),
+        )
 
     def resize_viewport(self, width: int, height: int) -> None:
         """Set the viewport for both the camera and the GPU renderer.
@@ -306,20 +450,12 @@ class WgpuRenderer(_make_widget_base(), CameraState, Renderer):
         self.update()
 
     def _background_rgb(self) -> tuple[float, float, float]:
-        """The clear colour as linear RGB, whatever form it was stored in.
+        """The clear colour as linear RGB.
 
-        By shape, not by ``isinstance(tuple, list)``: the command layer's colour
-        parser returns a **numpy array**, which is neither, and a test against
-        those two types silently fell through to black -- ``bg_color white`` did
-        nothing and reported success.
+        Resolved once by :meth:`~.camera_state.CameraState.set_background_color`,
+        so this is only a narrowing from RGBA.
         """
-        from ..colors import as_rgba
-
-        raw = self._background
-        rgba = as_rgba(raw)
-        if rgba is None:
-            return (0.0, 0.0, 0.0)
-        return tuple(float(c) for c in rgba[:3])
+        return tuple(float(c) for c in self.get_background_color()[:3])
 
     # -- drawing -------------------------------------------------------------
 
@@ -332,7 +468,7 @@ class WgpuRenderer(_make_widget_base(), CameraState, Renderer):
 
         texture = self._context.get_current_texture()
         background = self._background_rgb()
-        if self._packed is None or not self._packed.objects:
+        if not self._draw_data:
             # Still clear: a viewer with nothing loaded shows its background,
             # not whatever was in the buffer.
             self._gpu.render_into(
@@ -344,7 +480,7 @@ class WgpuRenderer(_make_widget_base(), CameraState, Renderer):
             return
         self._gpu.render_into(
             texture.create_view(),
-            self._packed,
+            self._frame_scene(),
             self.get_view_state(),
             background=background,
             lighting=self._resolved_rig(),
@@ -354,23 +490,228 @@ class WgpuRenderer(_make_widget_base(), CameraState, Renderer):
         )
 
     def _chrome_image(self) -> Optional[np.ndarray]:
-        """The panel and strip as a premultiplied RGBA image, or ``None``.
+        """The panel, strip and 3-D labels as a premultiplied RGBA image.
 
         Repainted per frame rather than cached. It is a few hundred glyphs
         against a scene of tens of thousands of triangles, and every attempt at
         a dirty flag here has the same failure mode as the sequence colours the
         panel itself re-reads every frame: colouring is a *command*, there is no
         signal for it, and a cache invalidated by the events anyone thinks of
-        goes stale on the one they did not.
+        goes stale on the one they did not. Labels move with the camera anyway,
+        so on the frames that matter it would be invalidated every time.
         """
         from .gui_overlay import paint_chrome
 
         gui = self._internal_gui
-        if gui is None:
+        if gui is None and not self._labels:
             return None
         return paint_chrome(
-            gui, self._controller, self._width, self._height, self._ratio()
+            gui,
+            self._controller,
+            self._width,
+            self._height,
+            self._ratio(),
+            labels=self._labels,
+            project=self.project_to_screen,
+            # First, so everything else is chrome drawn *over* the traced frame
+            # exactly as it is drawn over the live scene.
+            ray_image=self._ray_image,
+            ray_rect=self.ray_image_rect(),
+            select_rect=self._select_rect,
         )
+
+    # -- the traced frame ----------------------------------------------------
+
+    def scene_pixel_size(self) -> tuple[int, int]:
+        """The size ``ray`` traces at when given none.
+
+        The *scene column*, not the widget: the panel owns a column and the
+        sequence viewer a band, so tracing the widget's full size traces a wider
+        field than the viewport shows -- measured once at 59 % of the image width
+        against the viewport's 70 %, and shifted right, because the viewport
+        centres the scene in its column while the trace centred it in the image.
+        PyMOL has the same rectangle and the same rule.
+
+        Device pixels rather than logical ones, so a default trace and a
+        screenshot of the same window come out the same size on a retina
+        display, where they otherwise differ by a factor of two.
+        """
+        ratio = self._ratio()
+        return (
+            max(int(round(self.scene_width() * ratio)), 1),
+            max(int(round(self.scene_height() * ratio)), 1),
+        )
+
+    def ray_image_rect(self) -> QtCore.QRect:
+        """Where a traced frame is shown: the scene column, under the strip.
+
+        Exposed rather than computed inline so the containment can be asserted
+        exactly. A pixel probe cannot: the panel's background is semi-transparent
+        and would darken an out-of-bounds image rather than replace it.
+        """
+        return QtCore.QRect(
+            0, self.scene_origin_y(), self.scene_width(), max(self.scene_height(), 1)
+        )
+
+    def show_ray_image(self, image) -> bool:
+        """Display a traced frame over the scene, keeping the chrome.
+
+        Over the *scene column only*, which is the whole point: a traced image
+        stretched across the widget puts the picture where the chrome goes, and
+        the panel is what tells you which object you are looking at.
+        """
+        if image is None or (hasattr(image, "isNull") and image.isNull()):
+            return False
+        self._ray_image = image
+        self.update()
+        return True
+
+    def clear_ray_image(self) -> bool:
+        """Drop the traced frame and go back to the live view."""
+        if self._ray_image is None:
+            return False
+        self._ray_image = None
+        self.update()
+        return True
+
+    def get_background_image(self):
+        """The backdrop source the viewer last set, if any."""
+        return self._background_source
+
+    def set_background_image(self, source) -> None:
+        """Set a backdrop behind the molecule.
+
+        Transparency is invisible against one flat colour: a surface at alpha
+        0.4 over black is merely a darker surface, because there is nothing
+        behind it for the eye to catch. Give the background structure and the
+        same surface reads as glass immediately.
+
+        Parameters
+        ----------
+        source : str, QImage, numpy.ndarray or None
+            A name from :data:`~.backdrop.BACKDROPS`, a path, an image already
+            in hand, or ``None`` / ``"off"`` to clear it.
+
+        Raises
+        ------
+        ValueError
+            If a path was given and cannot be read -- a background that silently
+            does not appear is indistinguishable from one that is not supported.
+        """
+        from qtpy import QtGui
+
+        if source is None or (
+            isinstance(source, str) and source.strip().lower() in ("", "off", "none")
+        ):
+            self._background_source = source
+            self._background_image = None
+            self.update()
+            return
+
+        image = None
+        if isinstance(source, QtGui.QImage):
+            image = source
+        elif isinstance(source, np.ndarray):
+            from .qtgl import _image_from_rgb
+
+            image = _image_from_rgb(source)
+        elif isinstance(source, str):
+            from .backdrop import BACKDROPS
+
+            if source.strip().lower() not in BACKDROPS:
+                loaded = QtGui.QImage(source)
+                if loaded.isNull():
+                    raise ValueError(f"cannot read background image: {source}")
+                image = loaded
+            # A named backdrop is generated at paint time, at the widget's size.
+
+        # Recorded only once the source has resolved: setting it up front leaves
+        # a refused path as the reported background, so `bg_image` names a
+        # picture that never loaded and is not on screen.
+        self._background_source = source
+        self._background_image = image
+        self.update()
+
+    # -- the ground grid -----------------------------------------------------
+
+    #: How many grid lines span the scene, whatever its size.
+    GRID_LINES_ACROSS = 20
+
+    def _build_grid_draw_data(self, radius: float):
+        """Build the ground grid as line geometry, or ``None`` if it is degenerate.
+
+        The spacing is derived from the extent rather than taken as an absolute.
+        ``grid.spacing`` is 1.0 in *scene* units while a protein's radius is a
+        couple of hundred, so a fixed spacing draws ~415 lines each way: an
+        aliased grey sheet that buries the molecule instead of a reference plane
+        behind it.
+        """
+        import math
+
+        from .pack import PackedGeometry
+
+        half = max(float(self._grid[0]), float(radius) * 1.2)
+        spacing = max(
+            float(self._grid[1]), 2.0 * half / float(max(1, self.GRID_LINES_ACROSS))
+        )
+        if spacing <= 0.0:
+            return None
+        lines = []
+        n = int(math.ceil(half / spacing))
+        for i in range(-n, n + 1):
+            x = i * spacing
+            lines.append([[x, -half, 0.0], [x, half, 0.0]])
+            lines.append([[-half, x, 0.0], [half, x, 0.0]])
+        if not lines:
+            return None
+        positions = np.asarray(lines, dtype=np.float32).reshape(-1, 3)
+        # Faint: it is a reference, not a subject. At full strength a grid drawn
+        # across the molecule competes with it for attention.
+        colors = np.tile(
+            np.array([0.55, 0.55, 0.55, 0.5], dtype=np.float32), (positions.shape[0], 1)
+        )
+        return PackedGeometry(
+            kind="line", positions=positions, colors=colors, meta={"width": 1.0}
+        )
+
+    # -- screen-space chrome -------------------------------------------------
+
+    def paint_screen_space(self, painter) -> None:
+        """Draw everything that lives in screen space into ``painter``.
+
+        The traced frame, the labels, the panel, the sequence strip and the
+        selection box, in that order -- the same order and the same code the
+        composited chrome uses, because a screenshot helper that paints them a
+        second way is a second thing to keep at parity.
+        """
+        from .gui_overlay import paint_chrome_into
+
+        paint_chrome_into(
+            painter,
+            self._internal_gui,
+            self._controller,
+            int(self.width()),
+            int(self.height()),
+            labels=self._labels,
+            project=self.project_to_screen,
+            ray_image=self._ray_image,
+            ray_rect=self.ray_image_rect(),
+            select_rect=self._select_rect,
+        )
+
+    # -- labels --------------------------------------------------------------
+
+    def project_to_screen(self, points):
+        """Project scene points to widget pixels; see :class:`CameraState`.
+
+        Inherited unchanged, and that is worth stating: :meth:`scene_width` and
+        :meth:`scene_height` report the *widget's* logical pixels, so the shared
+        projection already speaks the same units as Qt's mouse events and a
+        ``QPainter``. Mixing in the surface's device pixels here is a factor of
+        two on a retina display -- the difference between hitting an atom and
+        hitting the one beside it.
+        """
+        return CameraState.project_to_screen(self, points)
 
     def _resolved_rig(self):
         """The configured light rig with the viewer's overrides applied.
@@ -383,37 +724,130 @@ class WgpuRenderer(_make_widget_base(), CameraState, Renderer):
         rig = resolve_light_rig()
         overrides = {
             CHIMERAX_NAMES[name]: float(value)
-            for name, value in self.lighting_state.items()
+            for name, value in self.lighting_parameters().items()
             if name in CHIMERAX_NAMES
         }
         return rig.replace(**overrides) if overrides else rig
 
-    def grab_image(self) -> np.ndarray:
+    def grab_image(self, chrome: bool = True) -> np.ndarray:
         """Render the current view offscreen and return ``(h, w, 3)`` uint8.
 
         A window's own framebuffer cannot be read back portably, and a
         screenshot helper that pastes a widget grab captures the compositor's
         idea of the surface rather than the render. Re-rendering through the
         same code into an offscreen target gives the frame itself.
+
+        Parameters
+        ----------
+        chrome : bool, optional
+            Include the panel, the sequence strip and the labels -- i.e. produce
+            what the window actually shows. The first version of this omitted
+            them, which made a labels screenshot come back with the molecule and
+            no labels: the feature looked unimplemented when only the grab was
+            incomplete. Pass ``False`` for the bare molecule, which is what a
+            comparison against the OpenGL baseline's scene column wants.
         """
         from .wgpu_backend import WgpuMeshRenderer
 
         offscreen = WgpuMeshRenderer(
             self._gpu.width, self._gpu.height, device=self._gpu.device
         )
-        packed = self._packed if self._packed is not None else pack_scene(None)
         return offscreen.render(
-            packed,
+            self._frame_scene(),
             self.get_view_state(),
             background=self._background_rgb(),
             lighting=self._resolved_rig(),
             target_radius=self._target_radius,
+            viewport=self._scene_viewport() if chrome else None,
+            overlay=self._chrome_image() if chrome else None,
+        )
+
+    def _frame_scene(self):
+        """The packed scene this frame draws, grid included."""
+        from .pack import PackedScene
+
+        base = self._packed
+        return PackedScene(
+            objects=list(self._draw_data),
+            center=base.center if base is not None else np.zeros(3, dtype=np.float32),
+            radius=base.radius if base is not None else 1.0,
         )
 
     # -- mouse ---------------------------------------------------------------
 
+    #: The mode-table actions that drag a selection box. `box` is Maestro's
+    #: plain-left cell, and it is the one an ad-hoc handler forgets -- the block
+    #: on screen draws `Box` and the drag rotates the camera instead.
+    _BOX_ACTIONS = ("+box", "-box", "sele", "box")
+
+    #: Click actions the viewer knows how to act on.
+    _CLICK_ACTIONS = ("+/-", "sele", "pkat", "+box", "-box", "orig")
+
+    #: Manhattan pixels a press may wander and still count as a click.
+    CLICK_SLOP = 4
+
+    def _action_for(self, button, modifiers) -> str:
+        """What this button and these modifiers do, per the mode table.
+
+        Asked of the same table the mouse-mode block on screen draws, so what
+        the panel promises and what the mouse does cannot drift apart. Deriving
+        it here instead is how the block came to advertise a subtract-box that
+        panned the camera.
+        """
+        from ..mouse_modes import action_of
+
+        try:
+            return action_of(self._internal_gui.mouse_mode, button, modifiers)
+        except Exception:
+            return "none"
+
+    def _start_box_drag(self, event, modifiers) -> bool:
+        """Begin a selection box if this press is bound to one.
+
+        Shared by every button, because which button carries a box is the mode
+        table's business, not the handler's: ``+Box`` is shift-left, ``-Box`` is
+        shift-middle in the three-button modes and shift-right in the
+        two-button ones.
+        """
+        action = self._action_for(event.button(), modifiers)
+        if action not in self._BOX_ACTIONS:
+            return False
+        self._drag_selecting = True
+        self._drag_start = event.pos()
+        self._drag_modifiers = modifiers
+        self._drag_action = action
+        self._drag_button = event.button()
+        self._select_rect = QtCore.QRect(self._drag_start, QtCore.QSize(0, 0))
+        self.update()
+        event.accept()
+        return True
+
+    def _end_box_drag(self, event) -> None:
+        """Apply the dragged box and clear it, whatever it ended up enclosing."""
+        rect = self._select_rect or QtCore.QRect()
+        self._select_rect = None
+        self._drag_selecting = False
+        self._drag_start = None
+        self._drag_button = None
+        self.update()
+        if self._controller is None:
+            self._drag_action = None
+            return
+        if rect.width() > 2 and rect.height() > 2:
+            self._controller.handle_rect_selection(
+                rect, self._drag_modifiers, self._drag_action
+            )
+        elif self._drag_action is not None:
+            # A box that was never dragged is a **click**, and it has to act
+            # like one: ctrl-shift-left is `Sele`, so the press claims it as a
+            # rubber band, and a plain ctrl-shift *click* -- which is how anyone
+            # coming from PyMOL selects a residue -- then falls through a
+            # zero-size rectangle and does nothing at all.
+            self._controller.handle_mouse_click(event, self._drag_action)
+        self._drag_action = None
+
     def mousePressEvent(self, event) -> None:  # noqa: N802 - Qt naming
-        """Offer the press to the panel, then begin a camera drag.
+        """Route a press: the panel first, then the mode table.
 
         The panel is offered it *first*, as in qtgl: otherwise a click meant for
         a menu also starts rotating the molecule, and the model spins away under
@@ -421,6 +855,9 @@ class WgpuRenderer(_make_widget_base(), CameraState, Renderer):
         """
         pos = event.pos()
         gui = self._internal_gui
+        # About to move the camera or pick, so a traced still stops being true.
+        if gui is None or not gui.wants(float(pos.x()), float(pos.y())):
+            self.clear_ray_image()
         if gui is not None and gui.mouse_press(
             float(pos.x()),
             float(pos.y()),
@@ -432,19 +869,46 @@ class WgpuRenderer(_make_widget_base(), CameraState, Renderer):
             event.accept()
             return
 
-        self._last_pos = pos
         modifiers = event.modifiers()
-        self._panning = bool(
-            event.button() == QtCore.Qt.MiddleButton
-            or (
-                event.button() == QtCore.Qt.LeftButton
-                and modifiers & QtCore.Qt.ShiftModifier
-            )
-        )
-        event.accept()
+        if event.button() == QtCore.Qt.RightButton:
+            # The right button carries a box too -- `-Box` is shift-right in the
+            # two-button modes -- so the table is asked before the press is
+            # deferred, or that cell of the block names a gesture nothing starts.
+            if self._start_box_drag(event, modifiers):
+                return
+            # Defer: a right *drag* dollies; a right *click* is a click.
+            self._last_pos = pos
+            self._press_pos = pos
+            self._press_mods = modifiers
+            self._press_button = event.button()
+            event.accept()
+            return
+
+        if event.button() in (QtCore.Qt.LeftButton, QtCore.Qt.MiddleButton):
+            action = self._action_for(event.button(), modifiers)
+            if action == "move":
+                self._panning = True
+                self._last_pos = pos
+                event.accept()
+                return
+            if self._start_box_drag(event, modifiers):
+                return
+            # A non-box press is a candidate click, or the start of a drag that
+            # rotates. PyMOL decides on *release*: a press that never dragged
+            # fires the `single_*` cell, so the click action and the drag action
+            # can differ.
+            self._press_pos = pos
+            self._press_mods = modifiers
+            self._press_button = event.button()
+            self._last_pos = pos
+            event.accept()
+            return
+
+        self._last_pos = pos
+        super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event) -> None:  # noqa: N802 - Qt naming
-        """Orbit, pan or dolly, following the decision the press made.
+        """Drag the box, the panel, or the camera -- whatever the press began.
 
         Keyed on what the press decided rather than re-derived from the button:
         deriving it here is what once made ctrl-left rotate when the mode table
@@ -466,39 +930,126 @@ class WgpuRenderer(_make_widget_base(), CameraState, Renderer):
                 event.accept()
                 return
 
+        if self._drag_selecting and self._drag_start is not None:
+            self._select_rect = QtCore.QRect(self._drag_start, pos).normalized()
+            self.update()
+            event.accept()
+            return
+
         if self._last_pos is None or not event.buttons():
             return
-        last, cur = self._last_pos, event.pos()
-        ratio = float(self.devicePixelRatioF())
+        last = self._last_pos
         if self._panning:
-            self.pan((cur.x() - last.x()) * ratio, (cur.y() - last.y()) * ratio)
+            ratio = self._ratio()
+            self.pan((pos.x() - last.x()) * ratio, (pos.y() - last.y()) * ratio)
         elif event.buttons() & QtCore.Qt.RightButton:
             # Right drag dollies, as PyMOL's `cButModeTransZ` does.
-            self.dolly(WHEEL_STEP ** ((cur.y() - last.y()) / 40.0))
+            self._right_dragged = True
+            self.dolly(WHEEL_STEP ** ((pos.y() - last.y()) / 40.0))
         else:
-            self.orbit(
-                (last.x() * ratio, last.y() * ratio),
-                (cur.x() * ratio, cur.y() * ratio),
-            )
-        self._last_pos = cur
+            self.orbit((last.x(), last.y()), (pos.x(), pos.y()))
+        self._last_pos = pos
         self.update()
         event.accept()
 
     def mouseReleaseEvent(self, event) -> None:  # noqa: N802 - Qt naming
-        """End the drag, in the panel and in the camera."""
-        if self._internal_gui is not None:
-            self._internal_gui.release()
+        """End the gesture, and turn a press that never moved into a click."""
+        if self._panning:
+            self._panning = False
+            self._last_pos = None
+            self._press_pos = None
+            event.accept()
+            return
+
+        if self._gui_grab:
+            self._gui_grab = False
+            if self._internal_gui is not None:
+                self._internal_gui.release()
             self.update()
-        self._gui_grab = False
+            event.accept()
+            return
+
+        if self._drag_selecting and event.button() == self._drag_button:
+            self._end_box_drag(event)
+            event.accept()
+            return
+
+        press, self._press_pos = self._press_pos, None
         self._last_pos = None
-        self._panning = False
+        if press is not None and self._controller is not None:
+            delta = event.pos() - press
+            if abs(delta.x()) <= self.CLICK_SLOP and abs(delta.y()) <= self.CLICK_SLOP:
+                self._handle_click(event)
+        self._right_dragged = False
         event.accept()
 
-    def wheelEvent(self, event) -> None:  # noqa: N802 - Qt naming
-        """Dolly the camera, by a ratio per notch."""
-        delta = event.angleDelta().y()
-        if not delta:
+    def _handle_click(self, event) -> None:
+        """Fire the mode table's *click* cell for the press that just ended.
+
+        PyMOL keeps a separate row for clicks, so a press that never dragged can
+        mean something other than the drag it would have been -- plain left
+        drags (`Rota`) but clicks (`+/-`). Where that row says nothing, the
+        modified cell the press resolved still applies: ctrl-middle is `PkAt`
+        whether or not it moved.
+        """
+        from ..mouse_modes import click_action_of
+
+        mode = self._internal_gui.mouse_mode if self._internal_gui else "viewing"
+        try:
+            click = click_action_of(mode, self._press_button, self._press_mods)
+        except Exception:
+            click = "none"
+        if click in ("none", "", None):
+            click = self._action_for(self._press_button, self._press_mods)
+        if click not in self._CLICK_ACTIONS:
             return
-        self.dolly(WHEEL_STEP ** (-delta / 120.0))
+        try:
+            self._controller.handle_mouse_click(event, click)
+        except Exception:  # pragma: no cover - a viewer that refuses the click
+            return
+        self.update()
+
+    def keyPressEvent(self, event) -> None:  # noqa: N802 - Qt naming
+        """Offer the key to the viewer before Qt's default handling."""
+        handler = getattr(self._controller, "handle_key_event", None)
+        if callable(handler):
+            try:
+                if handler(event):
+                    self.update()
+                    event.accept()
+                    return
+            except Exception:  # pragma: no cover - viewer-side refusal
+                pass
+        super().keyPressEvent(event)
+
+    def wheelEvent(self, event) -> None:  # noqa: N802 - Qt naming
+        """Dolly the camera, or move the clipping slab when shift is held.
+
+        Whichever axis carries the delta: **macOS turns shift+scroll into a
+        horizontal scroll** before the application sees it, so a shifted wheel
+        arrives with ``angleDelta().y() == 0`` and everything in ``x()``.
+        Reading only ``y`` is why shift+wheel did nothing on a Mac while a
+        synthetic event in a test -- which sets ``y`` -- worked perfectly.
+        """
+        angle = event.angleDelta()
+        raw = angle.y() if angle.y() else angle.x()
+        if not raw:
+            return
+        steps = int(raw / 120.0)
+        if steps == 0:
+            # A trackpad sends many small deltas rather than 120-unit notches;
+            # truncating them to zero makes the gesture do nothing at all.
+            steps = 1 if raw > 0 else -1
+
+        # The camera is about to move, so a traced still stops being true.
+        self.clear_ray_image()
+        modifiers = event.modifiers()
+        if modifiers & (QtCore.Qt.ShiftModifier | QtCore.Qt.ControlModifier):
+            # Ctrl is PyMOL's `MvSZ`: the camera goes with the slab, so it stays
+            # put against the molecule and the view dollies instead.
+            if self.move_slab(steps, dolly=bool(modifiers & QtCore.Qt.ControlModifier)):
+                self.announce_clipping()
+        else:
+            self.dolly(WHEEL_STEP ** (-steps))
         self.update()
         event.accept()

@@ -44,12 +44,16 @@ def qt_app():
 
 
 class TestFactorySelection:
-    """``CHIMOL_RENDERER`` picks the backend, and never leaves the viewer blank."""
+    """The configuration picks the backend, and never leaves the viewer blank."""
 
-    def test_unset_keeps_the_default(self, monkeypatch):
+    def test_unset_selects_wgpu(self, monkeypatch):
+        """Nothing configured means the WGSL renderer -- that is the default."""
         monkeypatch.delenv("CHIMOL_RENDERER", raising=False)
-        sentinel = object()
-        assert wgpu_view.renderer_factory_from_env(sentinel) is sentinel
+        monkeypatch.setattr(wgpu_view, "is_available", lambda: True)
+        from chisurf.plugins.chimol.chimol.config import _DISPLAY_CONFIG
+
+        monkeypatch.setitem(_DISPLAY_CONFIG, "renderer", {})
+        assert wgpu_view.renderer_factory_from_env(object()) is wgpu_view.WgpuRenderer
 
     def test_another_value_keeps_the_default(self, monkeypatch):
         monkeypatch.setenv("CHIMOL_RENDERER", "opengl")
@@ -200,3 +204,234 @@ class TestItDrawsTheSamePictureAsTheComparisonHarness:
         assert image.shape[2] == 3
         red = (image[..., 0].astype(int) - image[..., 2]) > 30
         assert red.sum() > 100, "the triangle did not draw"
+
+
+class TestTheDefaultBackend:
+    """WGSL is what chimol uses unless something says otherwise."""
+
+    def test_the_default_is_wgpu(self, monkeypatch):
+        monkeypatch.delenv("CHIMOL_RENDERER", raising=False)
+        from chisurf.plugins.chimol.chimol.config import _DISPLAY_CONFIG
+
+        monkeypatch.setitem(_DISPLAY_CONFIG, "renderer", {})
+        assert wgpu_view.selected_backend() == "wgpu"
+        assert wgpu_view.DEFAULT_BACKEND == "wgpu"
+
+    def test_the_shipped_config_says_so_too(self):
+        """The default must be visible where a user would look for it."""
+        import json
+        import pathlib
+
+        import chisurf.plugins.chimol.chimol as chimol_pkg
+
+        path = pathlib.Path(chimol_pkg.__file__).with_name("chimol_display.json")
+        shipped = json.loads(path.read_text())
+        assert shipped["renderer"]["backend"] == "wgpu"
+
+    def test_the_config_can_choose_opengl(self, monkeypatch):
+        monkeypatch.delenv("CHIMOL_RENDERER", raising=False)
+        from chisurf.plugins.chimol.chimol.config import _DISPLAY_CONFIG
+
+        monkeypatch.setitem(_DISPLAY_CONFIG, "renderer", {"backend": "opengl"})
+        assert wgpu_view.selected_backend() == "opengl"
+        sentinel = object()
+        assert wgpu_view.renderer_factory_from_env(sentinel) is sentinel
+
+    def test_the_environment_overrides_the_config(self, monkeypatch):
+        """What makes a bug report reproducible without editing a config file."""
+        from chisurf.plugins.chimol.chimol.config import _DISPLAY_CONFIG
+
+        monkeypatch.setitem(_DISPLAY_CONFIG, "renderer", {"backend": "opengl"})
+        monkeypatch.setenv("CHIMOL_RENDERER", "wgpu")
+        assert wgpu_view.selected_backend() == "wgpu"
+
+
+class TestLabels:
+    """``kind == "text"`` geometry, which leaves the GPU path and returns as glyphs."""
+
+    def test_text_geometry_becomes_labels(self):
+        from chisurf.plugins.chimol.chimol.renderer.pack import (
+            PackedGeometry,
+            PackedObject,
+            PackedScene,
+        )
+
+        geom = PackedGeometry(
+            kind="text",
+            positions=np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]], dtype=np.float32),
+            colors=np.array(
+                [[1.0, 0.0, 0.0, 1.0], [0.0, 1.0, 0.0, 1.0]], dtype=np.float32
+            ),
+            meta={"labels": ["ALA", "GLY"]},
+        )
+        labels = wgpu_view._collect_labels(
+            PackedScene([PackedObject("l", geom)], radius=1.0)
+        )
+        assert [label.text for label in labels] == ["ALA", "GLY"]
+        assert labels[0].color == (1.0, 0.0, 0.0, 1.0)
+
+    def test_more_positions_than_texts_is_not_an_error(self):
+        """A builder that emits a position per atom and a text per residue."""
+        from chisurf.plugins.chimol.chimol.renderer.pack import (
+            PackedGeometry,
+            PackedObject,
+            PackedScene,
+        )
+
+        geom = PackedGeometry(
+            kind="text",
+            positions=np.zeros((5, 3), dtype=np.float32),
+            meta={"labels": ["one"]},
+        )
+        labels = wgpu_view._collect_labels(
+            PackedScene([PackedObject("l", geom)], radius=1.0)
+        )
+        assert len(labels) == 1
+
+    def test_labels_are_drawn_into_the_chrome(self, renderer):
+        """A label that is collected but never painted is not a label."""
+        from chisurf.plugins.chimol.chimol.renderer.gui_overlay import paint_chrome
+
+        renderer._internal_gui.visible = False
+        centre = np.array(renderer._target, dtype=float)
+        labels = [wgpu_view.Label(centre, "XXXXXXXX", (1.0, 1.0, 1.0, 1.0))]
+        blank = paint_chrome(renderer._internal_gui, None, 400, 300, 1.0)
+        with_label = paint_chrome(
+            renderer._internal_gui, None, 400, 300, 1.0,
+            labels=labels, project=lambda pts: (
+                np.array([200.0]), np.array([150.0]), np.array([True])
+            ),
+        )
+        renderer._internal_gui.visible = True
+        assert with_label[..., 3].sum() > blank[..., 3].sum()
+
+
+class TestSilhouette:
+    """The depth-outline post-pass."""
+
+    def test_off_by_default(self):
+        from chisurf.plugins.chimol.chimol.renderer.wgpu_backend import WgpuMeshRenderer
+        from chisurf.plugins.chimol.chimol.renderer.view_state import unpack_view_state
+        from chisurf.plugins.chimol.chimol.renderer.view_state import pack_view_state
+
+        state = unpack_view_state(
+            pack_view_state(np.eye(3), 50.0, (0, 0, 0), 1.0, 100.0, 20.0)
+        )
+        assert WgpuMeshRenderer._silhouette_params(state, {}) is None
+
+    def test_enabled_resolves_the_linearising_ratio(self):
+        """`depth_jump` is a fraction of the scene, which needs near/far."""
+        from chisurf.plugins.chimol.chimol.renderer.view_state import (
+            pack_view_state,
+            unpack_view_state,
+        )
+        from chisurf.plugins.chimol.chimol.renderer.wgpu_backend import WgpuMeshRenderer
+
+        state = unpack_view_state(
+            pack_view_state(np.eye(3), 50.0, (0, 0, 0), 2.0, 200.0, 20.0)
+        )
+        params = WgpuMeshRenderer._silhouette_params(state, {"enabled": True})
+        assert params is not None
+        assert params["near_far"] == pytest.approx(2.0 / 200.0)
+        assert params["thickness"] == pytest.approx(1.0)
+
+    def test_it_changes_the_picture(self, renderer):
+        """Off and on must differ, and by outlines rather than by everything.
+
+        A settings test that only asserts "the image changed" passes an
+        implementation that changed it for the wrong reason -- which is how an
+        inverted occlusion switch survived here once.
+        """
+        from chisurf.plugins.chimol.chimol.renderer.scene import (
+            Geometry,
+            Scene,
+            SceneObject,
+        )
+        from chisurf.plugins.chimol.chimol.renderer.view_state import pack_view_state
+
+        # Two offset quads, so there is an internal depth step to outline.
+        quads, indices = [], []
+        for k, z in enumerate((0.0, -6.0)):
+            base = 4 * k
+            dx = 3.0 * k
+            quads += [
+                [-6.0 + dx, -6.0, z], [6.0 + dx, -6.0, z],
+                [6.0 + dx, 6.0, z], [-6.0 + dx, 6.0, z],
+            ]
+            indices += [base, base + 1, base + 2, base, base + 2, base + 3]
+        geom = Geometry(
+            kind="mesh",
+            positions=np.array(quads, dtype=np.float32),
+            normals=np.tile(np.array([[0.0, 0.0, 1.0]], dtype=np.float32), (8, 1)),
+            colors=np.tile(np.array([[0.7, 0.7, 0.7, 1.0]], dtype=np.float32), (8, 1)),
+            indices=np.array(indices, dtype=np.int32),
+        )
+        renderer.set_scene(Scene(objects=[SceneObject(id="q", geometry=geom)]))
+        renderer.set_view_state(
+            pack_view_state(np.eye(3), 60.0, (0.0, 0.0, 0.0), 1.0, 200.0, 20.0)
+        )
+        renderer._internal_gui.visible = False
+        try:
+            from chisurf.plugins.chimol.chimol.renderer.pack import pack_scene
+            from chisurf.plugins.chimol.chimol.renderer.wgpu_backend import (
+                WgpuMeshRenderer,
+            )
+
+            offscreen = WgpuMeshRenderer(400, 400, device=renderer._gpu.device)
+            packed = pack_scene(renderer.scene)
+            view = renderer.get_view_state()
+            # White, deliberately: the outline's default colour is black, and
+            # on the default black background a working silhouette is
+            # invisible -- which reads as "it drew nothing".
+            white = (1.0, 1.0, 1.0)
+            off = offscreen.render(
+                packed, view, background=white, silhouette={"enabled": False}
+            )
+            on = offscreen.render(
+                packed, view, background=white,
+                silhouette={"enabled": True, "thickness": 2.0},
+            )
+        finally:
+            renderer._internal_gui.visible = True
+
+        changed = (np.abs(off.astype(int) - on.astype(int)).sum(2) > 30)
+        assert changed.any(), "the silhouette drew nothing"
+        # Outlines are thin: a pass that repainted the whole quad is not one.
+        assert changed.mean() < 0.25, "the silhouette changed far too much"
+
+
+class TestPickingProjection:
+    """Where a click lands, which is the projection the frame was drawn with."""
+
+    def test_a_point_at_the_target_projects_to_the_scene_centre(self, renderer):
+        renderer._internal_gui.visible = False
+        try:
+            renderer.look_at(np.zeros(3))
+            renderer.set_view_state(
+                __import__(
+                    "chisurf.plugins.chimol.chimol.renderer.view_state",
+                    fromlist=["pack_view_state"],
+                ).pack_view_state(np.eye(3), 60.0, (0.0, 0.0, 0.0), 1.0, 200.0, 20.0)
+            )
+            x, y, visible = renderer.project_to_screen(np.zeros((1, 3)))
+            # Read inside the block: with the panel back on, `scene_width` is a
+            # column narrower and the expected centre moves with it.
+            expected = renderer.scene_width() / renderer._ratio() / 2
+        finally:
+            renderer._internal_gui.visible = True
+        assert bool(visible[0])
+        assert x[0] == pytest.approx(expected, rel=0.02)
+
+    def test_the_strip_offsets_the_projection(self, renderer):
+        """A y measured from the widget's top is off by the strip's height."""
+        assert renderer.scene_origin_y() == renderer._height - renderer.scene_height()
+
+    def test_a_point_behind_the_camera_is_not_visible(self, renderer):
+        from chisurf.plugins.chimol.chimol.renderer.view_state import pack_view_state
+
+        renderer.set_view_state(
+            pack_view_state(np.eye(3), 60.0, (0.0, 0.0, 0.0), 1.0, 200.0, 20.0)
+        )
+        # Well behind the eye, which sits 60 in front of the target.
+        _x, _y, visible = renderer.project_to_screen(np.array([[0.0, 0.0, 200.0]]))
+        assert not bool(visible[0])

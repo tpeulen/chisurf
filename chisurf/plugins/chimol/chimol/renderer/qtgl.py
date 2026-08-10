@@ -1009,6 +1009,15 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         gl.glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         self._create_program()
 
+    def resize_viewport(self, width: int, height: int) -> None:
+        """Follow a new viewport size, backend-neutrally.
+
+        The name the *contract* uses: ``resizeGL`` is Qt's OpenGL hook and means
+        nothing to a WebGPU widget, so anything that needs to tell a renderer
+        its viewport changed -- a test, a dock layout -- calls this instead.
+        """
+        self.resizeGL(int(width), int(height))
+
     def resizeGL(self, width: int, height: int) -> None:
         """Follow the widget's new size: the viewport, and the framing with it.
 

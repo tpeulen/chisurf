@@ -11,6 +11,41 @@
   **And a correction to yesterday's own baseline**: the 16 384-channel `GaussianModel` row said **2.983 s**; it is **0.61 s**. The first run of the benchmark in a fresh process is uniformly slow — process-wide numba cache and loader page-cache effects the per-case warm-up does not cover — and taking it as truth would have credited this port with a fivefold speedup it did not produce. Attributed properly by swapping `HEAD`'s numba file back in and re-profiling: **0.637 s vs 0.636 s, and byte-identical evaluation counts** (99/118/47), so the port is performance-neutral, exactly as its measured ~4% share predicted. Table corrected and the trap written into both the page and the script.
   Also recorded rather than swept up: five red tests in `test/fluorescence` (four `mfd_burst_roundtrip`, one `gopich_szabo`) that fail identically with the pre-change file in place — in [known-issues](references/known-issues.md), with the swap-and-restore evidence, so the retirement's test results are not read as having caused them.
 
+* **WGSL is chimol's default renderer, and flipping the switch is what found the
+  rest of the gap.** `renderer.backend` defaults to `wgpu`; `CHIMOL_RENDERER=opengl`
+  or the config key goes back, and so does a machine with no adapter (logged,
+  not silent). With OpenGL in front every hole in the WGSL path was invisible.
+  The moment it became the default, **31 tests failed and each named something
+  real**: clipping was entirely absent (`configure_camera` was a no-op, so `clip`
+  and shift+wheel did nothing); `origin` was inert, storing a pivot without
+  moving the one the camera orbits or absorbing the difference into the view
+  offset; `set_lighting` accepted typos and put its silhouette values in a
+  private dict rather than the config both renderers read; backgrounds stayed
+  strings, so `bg_color white` reached the clear as `'k'`; `lighting_state` was
+  an attribute where the contract is a method; the **mouse-mode table** was
+  never consulted, so box select, ctrl-left pan and ctrl-shift-middle pivot were
+  unreachable while the block on screen advertised them; a traced frame had
+  nowhere to go, so `ray` could not show its result; and the ground grid was
+  configured and never drawn.
+
+  All ported, with the camera half in `renderer/camera_state.py` where both
+  non-GL backends share it. **Two of those tests were measuring the OpenGL
+  widget's accidental geometry rather than the framing rule** — an unshown
+  `QOpenGLWidget` reports 100x30, so the aspect guard read "no window" and
+  PyMOL's portrait correction never ran; they now construct the case they claim
+  to cover, and the fixture is given a real landscape viewport.
+
+  Landed with it: **3-D labels** (`kind == "text"`, painted into the composited
+  chrome), the **depth-outline silhouette** as a second WGSL pass sampling the
+  depth buffer the first wrote, and **atom picking** — which required teaching
+  `view_matrix` about the camera-space shift it had been dropping, the term that
+  makes `origin` preserve the picture.
+
+  Suites: 1055 passed, 17 skipped across the chimol renderer surface. Still open,
+  and the reason `qtgl.py` is not deleted: the object panel's pop-up menus and
+  the wizard, beyond hover/click/drag routing.
+  [chimol-web](plugins/chimol-web.md)
+
 * **[PRD-23](prds/prd-23.md) Task 3 finished, and the guard found a loader bug in the infrastructure.**
   One discovery-driven test replaces 114 hand-written smoke tests:
   `test/gui/test_every_tool_constructs.py` reads every plugin manifest and builds each tool that
@@ -1502,6 +1537,7 @@
 
 * **The fit stopped segmenting, and the proof had to be captured before the code was deleted** — [PRD-92](prds/prd-92.md) stage 3. `sm_image_mle` is now `microscopy/region_mle` (`Imaging:Lifetime:Region MLE`, CLI `region-mle`, RPC `region_mle.*`), and `fit_regions` **resolves** the regions it is handed rather than deriving its own: `resolve_labels` takes the container the spot finder wrote, a label array, or a list of regions, and *raises* — naming the spot finder — when given none, because an empty result would be the same silence in a new place. The preview and the fit now call that one function, so "what is previewed is what is fitted" is structural instead of a promise two code paths make separately. `region_photon_indices(clsm, labels)` is the named seam between imaging and spectroscopy, and it walks the occupied pixels once rather than re-walking the frame per region. **The equivalence is proven, not asserted.** The baseline was captured *first* (`region_mle/test/data/`: the intensity image, the labels the old watershed produced, the per-region VV/VH histograms, the parameters the estimator returned) because the code that produced it is deleted by the change the test exists to check, and `simulate_clsm_molecules` is unseeded so it cannot be recaptured. `test_equivalence.py` then shows the spot finder's `single_molecule` workflow reproducing the old segmentation **pixel for pixel** and the estimator returning the same parameters from the same histograms. **Two things only the screenshot caught**, per the never-implement-a-GUI-blind rule: the panel still said "Each molecule is segmented and fitted", which the tool no longer does, and the results tab rendered **black with a stray ellipse** — that second one was a real defect, not stale prose. `AutoForm`'s image section builds a chiplot canvas with `_PgImageView.__new__(...)` and assigns `_iv` by hand, which skips `__init__` and therefore skipped the item list added to it later; every `add_roi` raised `AttributeError`, no overlay drew, and nothing said so. Fixed with a supported `_PgImageView.wrap(image_view)` constructor — the section still reaches past the chiplot seam for this one method, which is the real defect and belongs on a chiplot canvas the widget owns.
 
+* **The Spot Finder is a panel of Image Tools, directly above Region MLE** ([PRD-92](prds/prd-92.md) §5.1/§5.3, [imaging](plugins/imaging.md)). The toolbox's order *is* the workflow — Drift sits before the per-pixel steps because alignment precedes measurement — and detection precedes fitting for the same reason, so the two panels are adjacent and in that order. The GUI is AutoForm over a Qt-free view model on the shell the imaging MLE tools already share, so it behaves like the panel below it: same Preview/Detect/Export events, same embedded mode, same shared-setup adapters. **The workflow selector is the load-bearing control and it replaces the settings wholesale** — picking a recipe and keeping the previous recipe's threshold is exactly how a "workflow" becomes decorative, so a test asserts that switching to `camera_spots` moves `method`, `max_sigma` *and* discards a threshold left over from before. Three things the screenshots caught and the tests could not: `"kind": "choice"` is not a section type, so Workflow and Method rendered as **free-text boxes** until they became real `choice` sections with `options_source`; the `table` section wants **row mappings and declared columns**, not a `DataStore`, so the Run tab was an empty strip; and the read-only overlay wants a `RegionCollection`, not a list of ROIs, which raised `AttributeError: 'EllipseROI' object has no attribute 'roi'` on the first render. The Run tab is where the batch rule becomes visible to a person: one row per input, `ok`/`empty`/`failed`/`skipped`, with the reason beside it.
 ## 2026-08-09
 
 * **Notebook editor polish (agent board: notebook editor UX pass).** Cell

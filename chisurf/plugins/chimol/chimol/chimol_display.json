@@ -1,5 +1,8 @@
 {
   "_version": 11,
+  "renderer": {
+    "backend": "wgpu"
+  },
   "background": "k",
   "defaults": {
     "color_mode": "by_sequence"

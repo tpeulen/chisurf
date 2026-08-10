@@ -7,6 +7,48 @@ tags: [plugins, structure, viewer, webgpu, wgsl, web, pyodide, compute]
 timestamp: '2026-08-10T00:00:00Z'
 ---
 
+# WGSL is chimol's default renderer (2026-08-10)
+
+`renderer.backend` defaults to `wgpu`, so the viewport is
+`renderer/wgpu_view.py::WgpuRenderer` unless `CHIMOL_RENDERER=opengl` says
+otherwise -- and automatically when a machine has no WebGPU adapter, which is
+logged rather than silent.
+
+**Flipping the default is what found the rest of the gap.** With OpenGL in
+front, every hole in the WGSL path was invisible; the moment it became the
+default, 31 tests failed and each one named something real:
+
+- **clipping** was entirely absent (`configure_camera` was a no-op), so `clip`
+  and shift+wheel did nothing;
+- **`origin` was inert** -- `set_origin` stored the pivot without moving the one
+  the camera orbits or absorbing the difference into the view offset, so the
+  camera kept turning about the old point;
+- **`set_lighting` accepted anything**, including typos, and its three
+  silhouette values went into a private dict instead of the config both
+  renderers read;
+- **backgrounds stayed strings**, so `bg_color white` reached the clear as `'k'`;
+- **`lighting_state` was an attribute** where the contract is a method;
+- the **mouse-mode table** was not consulted at all: box select, ctrl-left pan
+  and ctrl-shift-middle pivot were unreachable, and the block on screen
+  advertised gestures nothing started;
+- the **traced frame** had nowhere to go, and `ray` could not show its result;
+- the **ground grid** was configured and never drawn.
+
+All of that is ported, and the camera half of it lives in
+`renderer/camera_state.py` where both non-GL backends share it. Two of the
+tests were themselves measuring the OpenGL widget's accidental geometry rather
+than the framing rule -- an unshown `QOpenGLWidget` reports 100x30, so the
+aspect guard read "no window" and the portrait correction never ran; they now
+construct the case they claim to cover.
+
+**Also landed:** 3-D labels (`kind == "text"`, painted into the composited
+chrome), the depth-outline **silhouette** as a second WGSL pass sampling the
+depth buffer, and **atom picking** through `project_to_screen` -- which required
+teaching `view_matrix` about the camera-space shift it had been dropping.
+
+**Still open, and why `qtgl.py` is not deleted yet:** the object panel's pop-up
+menus and the wizard, beyond hover/click/drag routing.
+
 # chimol runs on WGSL (2026-08-10)
 
 `CHIMOL_RENDERER=wgpu python -m chisurf.plugins.chimol` opens the real
@@ -31,9 +73,8 @@ trackball moved there too, and `qtgl` now delegates to it: two viewers whose
 drags turn the molecule by different amounts are two different programs, and no
 screenshot comparison catches it because every individual frame is correct.
 
-**Not there yet:** picking, the silhouette post-pass, 3-D labels, and the panel's
-menus and wizard beyond hover/click/drag routing. `qtgl.py` is therefore still
-the default and is not retired.
+**Not there yet at the time:** picking, the silhouette post-pass and 3-D labels
+— all three landed with the default flip above.
 
 # HANDOVER — start here (2026-08-10)
 

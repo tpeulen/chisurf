@@ -81,14 +81,30 @@ def perspective(fovy_deg: float, aspect: float, near: float, far: float) -> np.n
     return m
 
 
-def view_matrix(rotation: np.ndarray, target: np.ndarray, distance: float) -> np.ndarray:
-    """Build the view matrix from PyMOL's rotation, target and distance."""
+def view_matrix(
+    rotation: np.ndarray,
+    target: np.ndarray,
+    distance: float,
+    shift: Optional[Sequence[float]] = None,
+) -> np.ndarray:
+    """Build the view matrix from PyMOL's rotation, target, distance and shift.
+
+    The camera-space offset is applied **after** the rotation, which slides the
+    image without moving the pivot. That separation is the whole of ``origin``:
+    it is what lets the molecule rotate about a chosen atom while that atom sits
+    off-centre. Dropping it -- which this did until the widget needed picking --
+    silently re-centres every view that used ``origin``, and the give-away is
+    that a click lands where the molecule *would* be without it.
+    """
     r = np.eye(4, dtype=np.float32)
     r[:3, :3] = np.asarray(rotation, dtype=np.float32).reshape(3, 3)
     t = np.eye(4, dtype=np.float32)
     t[:3, 3] = -np.asarray(target, dtype=np.float32).reshape(3)
     back = np.eye(4, dtype=np.float32)
-    back[2, 3] = -float(distance)
+    offset = np.zeros(3) if shift is None else np.asarray(shift, dtype=float).reshape(3)
+    back[0, 3] = float(offset[0])
+    back[1, 3] = float(offset[1])
+    back[2, 3] = float(offset[2]) - float(distance)
     return back @ r @ t
 
 
@@ -159,6 +175,12 @@ class WgpuMeshRenderer:
                 )
         self._overlay_pipeline = None
         self._overlay_layout = None
+        self._silhouette_pipeline = None
+
+    #: Size of the shared uniform block, in floats: four 4x4 matrices and six
+    #: vec4s. Named because the chrome pass has to bind a block it never reads,
+    #: and a short buffer there is a validation error rather than a blank frame.
+    UNIFORM_FLOATS = 4 * 16 + 6 * 4
 
     #: Vertex layout and topology per geometry kind. ``attributes`` are
     #: ``(format, float count)`` in order; the stride follows from them, so a
@@ -383,13 +405,9 @@ class WgpuMeshRenderer:
                 bind_group_layouts=[self._bind_layout, self._overlay_layout]
             ),
             vertex={"module": module, "entry_point": "vs_overlay", "buffers": []},
-            depth_stencil={
-                "format": wgpu.TextureFormat.depth24plus,
-                # Chrome sits in front of everything and is not part of the
-                # scene's depth: writing it would punch a hole for nothing.
-                "depth_write_enabled": False,
-                "depth_compare": wgpu.CompareFunction.always,
-            },
+            # No depth attachment: this runs in the second pass, which samples
+            # the depth buffer the first one wrote and therefore cannot have it
+            # attached.
             fragment={
                 "module": module,
                 "entry_point": "fs_overlay",
@@ -420,6 +438,167 @@ class WgpuMeshRenderer:
             mag_filter=wgpu.FilterMode.nearest, min_filter=wgpu.FilterMode.nearest
         )
         return self._overlay_pipeline
+
+    def _build_silhouette_pipeline(self):
+        """Build the depth-outline pipeline, once, on first use."""
+        wgpu = self._wgpu
+        if self._silhouette_pipeline is not None:
+            return self._silhouette_pipeline
+
+        self._silhouette_uniform_layout = self.device.create_bind_group_layout(
+            entries=[
+                {
+                    "binding": 0,
+                    "visibility": wgpu.ShaderStage.FRAGMENT,
+                    "buffer": {"type": wgpu.BufferBindingType.uniform},
+                }
+            ]
+        )
+        self._silhouette_depth_layout = self.device.create_bind_group_layout(
+            entries=[
+                {
+                    "binding": 0,
+                    "visibility": wgpu.ShaderStage.FRAGMENT,
+                    # A depth texture, not a colour one: sampling it as `float`
+                    # is a validation error, and the message names the binding
+                    # rather than the format.
+                    "texture": {"sample_type": wgpu.TextureSampleType.depth},
+                },
+                {
+                    "binding": 1,
+                    "visibility": wgpu.ShaderStage.FRAGMENT,
+                    "sampler": {"type": wgpu.SamplerBindingType.non_filtering},
+                },
+            ]
+        )
+        module = self.device.create_shader_module(code=load_wgsl("silhouette.wgsl"))
+        self._silhouette_pipeline = self.device.create_render_pipeline(
+            layout=self.device.create_pipeline_layout(
+                bind_group_layouts=[
+                    self._silhouette_uniform_layout,
+                    self._silhouette_depth_layout,
+                ]
+            ),
+            vertex={"module": module, "entry_point": "vs_outline", "buffers": []},
+            fragment={
+                "module": module,
+                "entry_point": "fs_outline",
+                "targets": [
+                    {
+                        "format": self.format,
+                        "blend": {
+                            "color": {
+                                "src_factor": wgpu.BlendFactor.src_alpha,
+                                "dst_factor": wgpu.BlendFactor.one_minus_src_alpha,
+                                "operation": wgpu.BlendOperation.add,
+                            },
+                            "alpha": {
+                                "src_factor": wgpu.BlendFactor.one,
+                                "dst_factor": wgpu.BlendFactor.one_minus_src_alpha,
+                                "operation": wgpu.BlendOperation.add,
+                            },
+                        },
+                    }
+                ],
+            },
+            primitive={"topology": wgpu.PrimitiveTopology.triangle_list},
+        )
+        self._silhouette_sampler = self.device.create_sampler(
+            mag_filter=wgpu.FilterMode.nearest, min_filter=wgpu.FilterMode.nearest
+        )
+        return self._silhouette_pipeline
+
+    @staticmethod
+    def _silhouette_params(state, config: Optional[dict]) -> Optional[dict]:
+        """Resolve the outline settings, or ``None`` when it is switched off.
+
+        ``None`` reads the live ``silhouette`` display-config section, which is
+        the same store ``set silhouette, on`` writes and the OpenGL post-pass
+        reads -- one store, read where it is used, is what makes the setting
+        mean something rather than being accepted and inert.
+        """
+        if config is None:
+            from ..config import _DISPLAY_CONFIG
+
+            section = _DISPLAY_CONFIG.get("silhouette")
+            config = section if isinstance(section, dict) else {}
+        if not bool(config.get("enabled", False)):
+            return None
+        near, far = max(float(state.near), 1e-6), max(float(state.far), 1e-5)
+        return {
+            "depth_jump": float(config.get("depth_jump", 0.03)),
+            # The near/far ratio is what linearises the depth comparison, so
+            # `depth_jump` stays a fraction of the scene at every distance.
+            "near_far": near / far,
+            "thickness": float(config.get("thickness", 1.0)),
+            "color": tuple(
+                float(c) for c in config.get("color", [0.0, 0.0, 0.0, 1.0])
+            ),
+        }
+
+    def _draw_silhouette(self, render_pass, depth_texture, params: dict) -> list:
+        """Draw the depth outline; returns the resources to keep alive."""
+        wgpu = self._wgpu
+        pipeline = self._build_silhouette_pipeline()
+        data = np.array(
+            [
+                params["depth_jump"], params["near_far"], params["thickness"], 0.0,
+                *params["color"],
+                1.0 / max(self.width, 1), 1.0 / max(self.height, 1), 0.0, 0.0,
+            ],
+            dtype=np.float32,
+        )
+        ubo = self.device.create_buffer_with_data(
+            data=data, usage=wgpu.BufferUsage.UNIFORM
+        )
+        uniforms = self.device.create_bind_group(
+            layout=self._silhouette_uniform_layout,
+            entries=[
+                {"binding": 0, "resource": {"buffer": ubo, "offset": 0, "size": ubo.size}}
+            ],
+        )
+        depth = self.device.create_bind_group(
+            layout=self._silhouette_depth_layout,
+            entries=[
+                {"binding": 0, "resource": depth_texture.create_view()},
+                {"binding": 1, "resource": self._silhouette_sampler},
+            ],
+        )
+        render_pass.set_pipeline(pipeline)
+        render_pass.set_bind_group(0, uniforms)
+        render_pass.set_bind_group(1, depth)
+        render_pass.draw(6, 1, 0, 0)
+        return [ubo, uniforms, depth]
+
+    def _draw_overlay(self, render_pass, overlay: np.ndarray) -> list:
+        """Composite the chrome image; returns the resources to keep alive."""
+        wgpu = self._wgpu
+        pipeline = self._build_overlay_pipeline()
+        texture = self.upload_overlay(overlay)
+        bind = self.device.create_bind_group(
+            layout=self._overlay_layout,
+            entries=[
+                {"binding": 0, "resource": texture.create_view()},
+                {"binding": 1, "resource": self._overlay_sampler},
+            ],
+        )
+        # The chrome ignores the uniform block, but group 0 is declared by the
+        # shared prelude every shader carries, so it must still be bound.
+        ubo = self.device.create_buffer_with_data(
+            data=np.zeros(self.UNIFORM_FLOATS, dtype=np.float32),
+            usage=wgpu.BufferUsage.UNIFORM,
+        )
+        group0 = self.device.create_bind_group(
+            layout=self._bind_layout,
+            entries=[
+                {"binding": 0, "resource": {"buffer": ubo, "offset": 0, "size": ubo.size}}
+            ],
+        )
+        render_pass.set_pipeline(pipeline)
+        render_pass.set_bind_group(0, group0)
+        render_pass.set_bind_group(1, bind)
+        render_pass.draw(6, 1, 0, 0)
+        return [texture, bind, ubo, group0]
 
     def upload_overlay(self, image: np.ndarray):
         """Upload a premultiplied RGBA chrome image and return its texture.
@@ -519,6 +698,9 @@ class WgpuMeshRenderer:
         lighting: Optional[LightRig] = None,
         depth_cue: Optional[dict] = None,
         target_radius: Optional[float] = None,
+        viewport: Optional[Sequence[float]] = None,
+        overlay: Optional[np.ndarray] = None,
+        silhouette: Optional[dict] = None,
     ) -> np.ndarray:
         """Render ``scene`` from ``view_state`` and return an ``(h, w, 3)`` uint8 image.
 
@@ -567,6 +749,9 @@ class WgpuMeshRenderer:
             lighting=lighting,
             depth_cue=depth_cue,
             target_radius=target_radius,
+            viewport=viewport,
+            overlay=overlay,
+            silhouette=silhouette,
         )
         raw = self.device.queue.read_texture(
             {"texture": colour_tex, "origin": (0, 0, 0)},
@@ -589,6 +774,7 @@ class WgpuMeshRenderer:
         target_radius: Optional[float] = None,
         viewport: Optional[Sequence[float]] = None,
         overlay: Optional[np.ndarray] = None,
+        silhouette: Optional[dict] = None,
     ) -> None:
         """Draw ``scene`` into an existing texture view.
 
@@ -630,7 +816,7 @@ class WgpuMeshRenderer:
         )
         vw, vh = max(vw, 1.0), max(vh, 1.0)
 
-        view = view_matrix(state.rotation, state.target, state.distance)
+        view = view_matrix(state.rotation, state.target, state.distance, state.shift)
         # The aspect is the *scene column's*, not the surface's: projecting with
         # the full width and then drawing into a narrower viewport stretches the
         # same picture into less room, which is the squashed molecule a panel
@@ -650,10 +836,15 @@ class WgpuMeshRenderer:
         radius = scene.radius if target_radius is None else float(target_radius)
         fog_end, fog_scale = fog_planes(state.distance, radius, depth_cue)
 
+        # Sampleable, because the silhouette pass reads it. A depth attachment
+        # cannot be sampled while it is attached, so the outline is a *second*
+        # pass -- which is also why the chrome is composited there and not here.
         depth_tex = self.device.create_texture(
             size=(self.width, self.height, 1),
             format=wgpu.TextureFormat.depth24plus,
-            usage=wgpu.TextureUsage.RENDER_ATTACHMENT,
+            usage=(
+                wgpu.TextureUsage.RENDER_ATTACHMENT | wgpu.TextureUsage.TEXTURE_BINDING
+            ),
         )
 
         encoder = self.device.create_command_encoder()
@@ -753,37 +944,28 @@ class WgpuMeshRenderer:
             rp.set_index_buffer(ibo, wgpu.IndexFormat.uint32)
             rp.draw_indexed(int(geom.indices.size), 1, 0, 0, 0)
 
-        if overlay is not None and overlay.size:
-            # Over the *whole* target, not the scene viewport: the chrome's
-            # column and strip are precisely the parts the viewport excluded.
-            rp.set_viewport(0.0, 0.0, float(self.width), float(self.height), 0.0, 1.0)
-            pipeline = self._build_overlay_pipeline()
-            texture = self.upload_overlay(overlay)
-            bind = self.device.create_bind_group(
-                layout=self._overlay_layout,
-                entries=[
-                    {"binding": 0, "resource": texture.create_view()},
-                    {"binding": 1, "resource": self._overlay_sampler},
+        rp.end()
+
+        # -- second pass: the silhouette, then the chrome ---------------------
+        # Separate, because the outline samples the depth buffer the first pass
+        # wrote and a depth attachment cannot be sampled while attached. The
+        # chrome rides along rather than taking a third pass, and it goes last:
+        # an outline drawn over the object panel would trace the panel.
+        outline = self._silhouette_params(state, silhouette)
+        if outline is not None or (overlay is not None and overlay.size):
+            rp2 = encoder.begin_render_pass(
+                color_attachments=[
+                    {
+                        "view": target_view,
+                        "load_op": wgpu.LoadOp.load,
+                        "store_op": wgpu.StoreOp.store,
+                    }
                 ],
             )
-            # The chrome ignores the uniform block, but group 0 is declared by
-            # the shared prelude every shader carries, so it must be bound.
-            ubo = self.device.create_buffer_with_data(
-                data=self._uniforms(
-                    mvp, view, proj, normal_matrix, fog_end, fog_scale,
-                    background, False, 1.0, point_scale, False, light,
-                ),
-                usage=wgpu.BufferUsage.UNIFORM,
-            )
-            group0 = self.device.create_bind_group(
-                layout=self._bind_layout,
-                entries=[{"binding": 0, "resource": {"buffer": ubo, "offset": 0, "size": ubo.size}}],
-            )
-            keep += [texture, bind, ubo, group0]
-            rp.set_pipeline(pipeline)
-            rp.set_bind_group(0, group0)
-            rp.set_bind_group(1, bind)
-            rp.draw(6, 1, 0, 0)
+            if outline is not None:
+                keep += self._draw_silhouette(rp2, depth_tex, outline)
+            if overlay is not None and overlay.size:
+                keep += self._draw_overlay(rp2, overlay)
+            rp2.end()
 
-        rp.end()
         self.device.queue.submit([encoder.finish()])

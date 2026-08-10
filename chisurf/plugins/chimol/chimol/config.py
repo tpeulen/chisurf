@@ -497,6 +497,10 @@ def _load_display_config() -> dict:
 
     default = {
         "_version": DISPLAY_CONFIG_VERSION,
+        # Which backend draws the viewport. `wgpu` is the WGSL renderer that the
+        # desktop and the browser share; `opengl` is the older one, and is used
+        # automatically anyway wherever no WebGPU adapter can be created.
+        "renderer": {"backend": "wgpu"},
         "background": "k",
         "defaults": {
             "color_mode": "by_sequence",

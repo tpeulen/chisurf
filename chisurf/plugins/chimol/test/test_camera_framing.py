@@ -43,6 +43,14 @@ def view(qapp):
 
     v = MolView()
     v.resize(800, 600)
+    # The *renderer* is given a real landscape viewport, not left at whatever
+    # size Qt gives an unshown widget. Without this the fixture measures the
+    # backend's default geometry rather than the framing rule: the OpenGL widget
+    # reports 100x30 (a scene column of 1 pixel, which the aspect guard reads as
+    # "no window") while the WebGPU one reports 640x480 (portrait once the panel
+    # takes its column, so PyMOL's portrait correction fires). Same code, two
+    # different answers, neither of them about framing.
+    v._renderer.resize(1000, 600)
     v.add_structure(
         _read_full_model(cs_struct.Structure, _PDB_148L),
         name="148l",
@@ -301,8 +309,12 @@ def test_a_widget_that_was_never_laid_out_frames_square(view):
     window.
     """
     renderer = view._renderer
+    # Constructed, not hoped for. This used to rely on the OpenGL widget
+    # happening to report 100x30 before layout -- which the WebGPU widget does
+    # not, so the test silently stopped covering the guard rather than failing.
+    renderer.resize(int(renderer._internal_gui.column_width) + 1, 30)
     assert renderer.scene_width() < renderer._MIN_MEASURABLE_SCENE, (
-        "the fixture no longer reproduces an unlaid-out widget"
+        "the degenerate viewport was not reproduced"
     )
     assert renderer._aspect() == 1.0
 
@@ -331,12 +343,12 @@ def test_a_portrait_resize_re_derives_the_distance(view):
     assert renderer._aspect() > 1.0
 
     renderer.resize(400, 900)
-    renderer.resizeGL(400, 900)
+    renderer.resize_viewport(400, 900)
     assert renderer._aspect() < 1.0
     assert _distance(view) > landscape, "the camera did not pull back"
 
     renderer.resize(900, 600)
-    renderer.resizeGL(900, 600)
+    renderer.resize_viewport(900, 600)
     assert _distance(view) == pytest.approx(landscape, rel=1e-9), (
         "returning to the original shape did not restore the original framing"
     )
@@ -348,7 +360,7 @@ def test_a_resize_that_keeps_the_shape_costs_nothing(view):
     renderer.resize(900, 600)
     view.zoom()
     before = _distance(view)
-    renderer.resizeGL(900, 600)
+    renderer.resize_viewport(900, 600)
     assert _distance(view) == pytest.approx(before, rel=1e-12)
 
 
@@ -367,9 +379,9 @@ def test_a_resize_preserves_a_hand_zoomed_view(view):
     hand_zoomed = _distance(view)
 
     renderer.resize(400, 900)
-    renderer.resizeGL(400, 900)
+    renderer.resize_viewport(400, 900)
     renderer.resize(900, 600)
-    renderer.resizeGL(900, 600)
+    renderer.resize_viewport(900, 600)
     assert _distance(view) == pytest.approx(hand_zoomed, rel=1e-9), (
         "the round trip discarded the hand-zoomed distance"
     )

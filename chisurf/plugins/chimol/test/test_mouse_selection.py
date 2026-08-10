@@ -670,13 +670,16 @@ def test_ctrl_shift_middle_moves_the_pivot(viewport):
 
     view, widget, qapp = viewport
     _index, point = _atom_point(view, widget)
-    before = np.asarray(widget._pan_offset, dtype=float).copy()
+    # The *pivot*, asked for by name. `_pan_offset` is how the OpenGL backend
+    # happens to store it; `get_origin` is what both backends answer, and a test
+    # that reaches for the one cannot check the other.
+    before = np.asarray(widget.get_origin(), dtype=float).copy()
     _click(
         widget, qapp, point,
         QtCore.Qt.ControlModifier | QtCore.Qt.ShiftModifier,
         button=QtCore.Qt.MiddleButton,
     )
-    after = np.asarray(widget._pan_offset, dtype=float)
+    after = np.asarray(widget.get_origin(), dtype=float)
     assert not np.allclose(before, after), "the pivot did not move"
     assert _selection(view) == [], "`Orig` is not a selection action"
 
