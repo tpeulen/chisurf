@@ -27,6 +27,7 @@ from ..api import tiles as T
 from ..api import battle as battle_api
 from ..api import gear as gear_api
 from ..api import roster as roster_api
+from ..api import providers as providers_api
 from ..api import review_bridge
 from ..api import rig as rig_api
 from ..api import save as save_api
@@ -228,6 +229,11 @@ class OverworldGame(chigame.Game):
         self.menu_tab = 0
         self.menu_row = 0
         self.mode = review_bridge.TRAINING
+        # Off by default. A configured provider would otherwise mean the first
+        # visit to every page makes a network call mid-encounter, which is both
+        # a surprise and a stall. Opt in from the MODE tab; the cache means only
+        # the first visit to a page ever pays for it.
+        self.use_model = False
         self.challenge = None
         self.challenge_hash = ""
         self.verdict = None
@@ -433,7 +439,11 @@ class OverworldGame(chigame.Game):
                 f"{f.creature.name}  {f.hp}/{f.creature.max_hp}" for f in self.team
             ] + [c.name for c in self.collection]
         if tab == "MODE":
-            return [review_bridge.TRAINING, review_bridge.EXPERT]
+            return [
+                review_bridge.TRAINING,
+                review_bridge.EXPERT,
+                f"questions: {'model' if self.use_model else 'offline'}",
+            ]
         return []
 
     def _menu_confirm(self) -> None:
@@ -443,7 +453,10 @@ class OverworldGame(chigame.Game):
             self.show_map = not self.show_map
             self.menu_open = False
         elif tab == "MODE":
-            self.mode = (review_bridge.TRAINING, review_bridge.EXPERT)[self.menu_row]
+            if self.menu_row < 2:
+                self.mode = (review_bridge.TRAINING, review_bridge.EXPERT)[self.menu_row]
+            else:
+                self.use_model = not self.use_model
         elif tab == "RIG" and self.inventory:
             part = self.inventory[min(self.menu_row, len(self.inventory) - 1)]
             # Fitting into the rig and fitting the single filter are the same
@@ -580,7 +593,10 @@ class OverworldGame(chigame.Game):
         """
         if self.challenge is not None or self.verdict is not None:
             return
-        questions, content_hash = review_bridge.challenge_for(room.path)
+        questions, content_hash = review_bridge.challenge_for(
+            room.path,
+            provider=providers_api.best_available(prefer_model=self.use_model),
+        )
         if not questions:
             # A stub has nothing to ask. That is not a pass: it simply cannot
             # be signed off this way, and saying so is better than pretending.

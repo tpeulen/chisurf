@@ -30,7 +30,8 @@ import pathlib
 
 from chisurf.plugins.core.help.api import review
 
-from .challenge import Challenge, generate
+from .challenge import Challenge
+from . import providers
 
 #: The two ways to play.
 TRAINING = "training"
@@ -57,8 +58,20 @@ class Verdict:
     reason: str
 
 
-def challenge_for(path, count: int = 1) -> tuple[list[Challenge], str]:
+def challenge_for(
+    path,
+    count: int = 1,
+    provider=None,
+    cache_dir=None,
+    use_cache: bool = True,
+) -> tuple[list[Challenge], str]:
     """Build the challenge a page puts to the player.
+
+    Cached under the page's content hash, so an encounter is reproducible and
+    self-invalidates the moment the page changes. A provider that returns
+    nothing -- an unconfigured model, a page it could not handle -- falls back
+    to the deterministic one, because the game never refuses to run for want of
+    a model.
 
     Parameters
     ----------
@@ -66,6 +79,13 @@ def challenge_for(path, count: int = 1) -> tuple[list[Challenge], str]:
         The page.
     count : int, optional
         How many questions.
+    provider : object, optional
+        Something with ``generate(text, content_hash, count)``. Defaults to the
+        best available.
+    cache_dir : pathlib.Path, optional
+        Where encounters are cached. Tests pass a temporary one.
+    use_cache : bool, optional
+        Set ``False`` to always regenerate.
 
     Returns
     -------
@@ -79,7 +99,19 @@ def challenge_for(path, count: int = 1) -> tuple[list[Challenge], str]:
     except OSError:
         return [], ""
     content_hash = review.content_hash(text)
-    return generate(text, content_hash, count=count), content_hash
+
+    if use_cache:
+        stored = providers.cached(content_hash, cache_dir)
+        if stored:
+            return stored[:count], content_hash
+
+    chosen = provider if provider is not None else providers.best_available()
+    found = chosen.generate(text, content_hash, count)
+    if not found and not isinstance(chosen, providers.DeterministicProvider):
+        found = providers.DeterministicProvider().generate(text, content_hash, count)
+    if use_cache:
+        providers.store(content_hash, found, cache_dir)
+    return found, content_hash
 
 
 def clear_page(

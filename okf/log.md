@@ -1,6 +1,29 @@
 # Update Log
 
 ## 2026-08-10
+* **Lumis Quest: the model-backed question provider, behind the same grounding gate as everything else.**
+  Three providers, interchangeable, because the property that matters is not who wrote the question — it
+  is that **every question passes the same check**. `DeterministicProvider` needs no model.
+  `AgentProvider` asks the configured language model. `RecordedProvider` replays captured output so the
+  model path is testable with **no key, no network and no nondeterminism** — and it is **re-verified on
+  replay**, so a fixture cannot smuggle an ungrounded question past a check that production would apply.
+  The gate is `verify_span`: a challenge whose quoted sentence is not in the page is **discarded and
+  counted**. That is the failure a model actually makes here — quoting confidently from a page that does
+  not contain the sentence — and nothing downstream can tell the difference, so the check is code rather
+  than trust. A model returning prose, the wrong shape, or an out-of-range answer index is rejected, not
+  raised on.
+  Encounters are **cached under the page `sha256`**, so a page is generated once, replays identically, and
+  **regenerates the moment it changes**. A corrupt cache entry is ignored rather than being worse than no
+  cache.
+  **The model is off by default**, and that is deliberate: `best_available()` resolves to `agent` on this
+  machine, so leaving it on would have meant the first visit to every page makes a network call
+  mid-encounter — a surprise and a stall. It is opt-in from the MODE tab, and the cache means only the
+  first visit to a page ever pays.
+  **A test-isolation bug of mine, worth recording**: the "unconfigured model" test asserted the absence of
+  a provider rather than forcing it, so it passed or failed depending on whose machine ran it. The
+  condition is monkeypatched now.
+  Suites: 214 passed.
+
 * **Lumis Quest: a pause menu with tabs, and the crafting screen it makes room for.**
   The rig existed and was tested but nothing assembled one, because there was no button left: **nine
   actions is the whole controller** and the overworld had spent all of them (walk, sprint, encounter, zoom

@@ -441,3 +441,29 @@ def test_the_party_tab_swaps_a_collected_creature_in(game):
 
     assert spare in [f.creature for f in game.team]
     assert len(game.team) == 3, "the party size is fixed; a swap is a swap"
+
+
+def test_the_model_is_off_by_default(game):
+    """A configured provider must not silently add a network call to play.
+
+    The first visit to every page would otherwise stall mid-encounter on a
+    machine that happens to have an AI provider set up.
+    """
+    from chisurf.plugins.misc.games.lumis_quest.api import providers
+
+    assert game.use_model is False
+    assert isinstance(
+        providers.best_available(prefer_model=game.use_model),
+        providers.DeterministicProvider,
+    )
+
+
+def test_the_mode_tab_can_opt_into_the_model(game):
+    """Opting in is a deliberate act, on the same screen as the mode switch."""
+    game.menu_open = True
+    game.menu_tab = game.TABS.index("MODE")
+    game.menu_row = 2
+    game._menu_confirm()
+    assert game.use_model is True
+    game._menu_confirm()
+    assert game.use_model is False
