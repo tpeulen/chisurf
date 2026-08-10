@@ -1,3 +1,72 @@
+## A simulated photon stream cannot be persisted, and the HDF5 path aborts the process
+
+**Found 2026-08-10** while capturing a pre-split baseline for
+[PRD-92](/prds/prd-92.md), which wanted the simulated CLSM stream stored beside
+the labels it produced so an equivalence test could re-derive the whole chain
+rather than its two ends.
+
+**`TTTR.write` itself is fine**, including the `"PTO"` container: a stream read
+from a real file (`m000.spc`, 174,438 photons) writes a 1.2 MB `.pto` and a
+1.2 MB `.spc`, both returning `True`. The limitation is specific to a stream
+**built in memory** — what `simulate_clsm_molecules` returns. It carries
+`get_tttr_record_type() == -1`, `TTTRHeader.ensure_minimal_tags(header, 20, n)`
+does not give it one, and PTO header writing is not implemented in the installed
+build (`Error in TTTR::write, writing of headers not implemented`). The write
+then returns `False` and leaves a **0-byte file**, with nothing raised — so a
+caller that does not check the return value gets an empty container and
+discovers it later.
+
+**The HDF5 path is worse and is a separate defect.** `tttr.write(path)` with the
+HDF5 default `abort()`s the interpreter — the installed tttrlib was compiled
+against HDF5 headers 1.14.6 and links a 2.1.1 library, and the library's version
+check kills the process rather than raising. A dependency mismatch should not be
+able to end a user's session.
+
+Neither is worked around in ChiSurf, and neither should be: **ChiSurf persists
+to `.mmfdb.pto`**, and the container writers (`Measurement.create`,
+`write_imaging_table`, `write_image`, `write_regions`) all embed files that
+already exist on disk, so nothing in the shipped tree hits either path. It is
+recorded because the *tests* want it — a simulated measurement that cannot be
+stored is a fixture that has to be a pile of derived arrays instead — and
+because the next person to try will spend the same half hour on `record type -1`.
+
+Fix belongs in tttrlib: a record type for in-memory streams (or a PTO header
+writer), and an HDF5 version check that raises instead of aborting.
+
+## `test/gui/test_chiplot.py` segfaults in the shared working tree, and not from chiplot
+
+**Found 2026-08-10** while landing the WebGPU plot backend. `pytest
+test/gui/test_chiplot.py` reports **56 passed** and then dies with
+`Fatal Python error: Segmentation fault` during garbage collection, inside a
+pyqtgraph `ViewBox` weakref lambda or an `InfiniteLine.boundingRect`. Rate in
+the working tree: **5–8 of 8 runs**.
+
+**It is not the chiplot changes.** A clean `git worktree` at HEAD carrying the
+*entire* WebGPU backend, its 31 tests, the pyqtgraph SI-prefix and legend fixes,
+and every uncommitted chiplot source edit (`canvas.py`, `handles.py`,
+`backends/base.py`, `backends/pyqtgraph_backend.py`) runs the four chiplot-related
+suites **0 crashes in 8 runs**. Adding the working tree's `chisurf/gui/__init__.py`
+and settings edits on top: still 0 in 6. The trigger is one of the other several
+dozen files another agent instance has in flight, and it was not found.
+
+**The trap, which cost most of a session.** The crash is a *latent* pyqtgraph
+teardown defect — abandoned panels whose finalizers touch Qt objects C++ has
+already deleted — so it fires inside **whatever happens to allocate next**, and
+the traceback names that caller. It pointed at the WebGPU driver's cffi
+initialisation, then at a legend, then at an axis. Each looked like a specific
+bug in the code being written. Two rules follow:
+
+* **Never add a `gc.collect()` to "fix" it.** Doing so converts a probabilistic
+  crash into a deterministic one at the collect site, and the new site looks
+  even more like the culprit.
+* **Bisect in a clean worktree, not by editing the shared tree.** Six A/B
+  measurements at 6–8 runs each were run against a baseline that was already
+  crashing, so every one of them was noise. The clean-worktree comparison
+  settled it in two runs.
+
+Whoever owns the in-flight change should re-measure; until then, run
+`test/gui/test_chiplot.py` in its own pytest invocation.
+
 ## `test/gui/test_chiplot.py` segfaults in the shared working tree, and not from chiplot
 
 **Found 2026-08-10** while landing the WebGPU plot backend. `pytest
