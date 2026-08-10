@@ -116,88 +116,147 @@ screenshot comparison catches it because every individual frame is correct.
 **Not there yet at the time:** picking, the silhouette post-pass and 3-D labels
 — all three landed with the default flip above.
 
-# HANDOVER — start here (2026-08-10)
+# HANDOVER — start here (2026-08-11)
 
-**Goal.** ChiMOL must run in a browser embedded via JavaScript. WebGPU is the
-only graphics+compute API spanning macOS desktop, Linux/Windows and the browser,
-so desktop and web share **one WGSL source** rather than maintaining two
-renderers, two shader dialects and two copies of every kernel. Phases 0 and 1 are
-done; Phase 2 (replacing the desktop OpenGL renderer) is part-built.
+**Where this stands.** The desktop port is **done**: chimol draws with WGSL and
+the OpenGL renderer is deleted (`76df2fcfd`). Everything below is what is left,
+in the order the user asked for it. The browser half — the whole point of using
+WebGPU — has not been started.
 
-**Environment.** Run everything in the `arm64` conda env with
+**Environment.** The `arm64` conda env, with
 `PYTHONPATH="modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:."`.
-`wgpu` 0.32.0 and `rendercanvas` 2.7.2 are pip-installed there but **not declared**
-— the chigame agent owns `pixi.toml`/`pyproject.toml` and is adding them; do not
-edit those two files, coordinate on the agent board.
+`wgpu` 0.32.0 and `rendercanvas` 2.7.2 are declared in `pixi.toml` /
+`pyproject.toml` (the chigame agent added them).
 
-**The one command you need.** Every remaining feature is accepted or rejected by
-looking at a GL|WGSL pair:
+**The two commands you need.**
 
 ```
+# the molecule, against the frozen OpenGL baselines
 QT_QPA_PLATFORM=offscreen python -m chisurf.plugins.chimol.test.compare_wgsl \
     cartoon sticks surface transparency
+
+# the real window, which is the only thing that shows the chrome
+PYTHONPATH=... python -m chisurf.plugins.chimol      # needs a window server
 ```
 
-It writes `chimol/test/renders/wgsl/compare_sheet.png`, one row per scene,
-GL on the left and WGSL on the right. Baselines and their cameras live in
-`chimol/test/renders/gl_baseline/` (23 scenes, `manifest.json`).
+**The baselines are frozen and cannot be re-taken.** `qtgl.py` is gone, so the
+22 PNGs in `test/renders/gl_baseline/` are the only evidence of what chimol
+looked like under OpenGL. `compare_wgsl` still replays each scene's commands and
+camera against them, which makes them a **regression reference**: a row that
+stops matching is a question, not a failure. `capture_gl_baseline.py` keeps
+`SCENES`, `RESET` and `missing_resets` for that reason and refuses to run.
 
-**USER RULES, both learned the hard way this session:**
+**USER RULES, all learned the hard way here:**
 1. **Always produce PNGs.** Never report a rendering result as an IoU, a mean
-   brightness or a table of RGB values. Three times a scalar pointed the wrong
-   way and the picture settled it in seconds. Send images with `SendUserFile`.
-2. **The WGSL look is the target, not the baseline.** The user judged it better
-   than the OpenGL render. Do not tune the material back toward GL. Parity means
-   *feature inventory* — every representation, setting and cue present and
-   controllable — not pixel agreement.
+   brightness or a table of RGB values. Four times now a scalar pointed the
+   wrong way and the picture settled it in seconds — most sharply when a
+   lit-pixel IoU read **1.000** for a frame that was plainly wrong, because a
+   white background counts as lit. Send images with `SendUserFile`.
+2. **The WGSL look is the target, not the baseline.** Parity means *feature
+   inventory* — every representation, setting and cue present and controllable
+   — not pixel agreement.
+3. **Flip the switch to find the gap.** A parallel implementation that is not
+   the default is not tested, however green its own suite is. Making WGSL the
+   default turned 31 silent holes into 31 named failures in one run; nothing
+   else had surfaced any of them.
 
 ## Do these next, in order
 
-1. **Metaball: "not flubber enough" (user request, untouched).** There is **no
-   metaball scene in the baseline**, so there is nothing to judge against — add
-   one to `SCENES` in `test/capture_gl_baseline.py`, re-capture (the capture now
-   takes scene names, so this costs one scene and leaves the other 23 alone),
-   *then* tune. Existing knobs in `chimol_display.json`: `sigma_factor 4.0`
-   (fusion — merges beads into smooth lobes, the main lever), `alpha 0.55`,
-   `shininess 96`, `specular_strength 0.85`, `rim_strength 0.55`,
-   `iso_value 0.1`. Prior tuning is recorded in
-   [pymol-parity](/plugins/pymol-parity.md): 9.0 sigma was tried and rejected as
-   "a featureless egg", so the useful range is narrow.
-2. ✅ **Done — "white-background darkness" was a contaminated baseline.** See
-   *The bug that was not in the renderer* below; the four affected baselines are
-   re-captured and `compare_wgsl bg_white bg_grey_spectrum cartoon
-   nucleic_cartoon` now matches on all four rows.
-3. ✅ **Done — impostors, lines and points are in `wgpu_backend.py`.** It routes
-   by geometry `kind` through three pipelines (`mesh`, `impostor`, `line`), all
-   sharing one `shade()` from `wgsl/shading.wgsl`, which `load_wgsl` prepends —
-   WGSL has no `#include` and a second copy of the shading model is the drift
-   this port keeps finding. Sphere impostors are **two triangles per sphere**,
-   built as a view-space quad from `@builtin(vertex_index)` with no vertex
-   buffer, and they **write `frag_depth` from the ray-sphere hit**, so they
-   interpenetrate where GL's point sprites are flat billboards. Measured
-   against the tessellated spheres they replace, same scene, same camera:
-   **120 triangles against 19,200 (160×), silhouette IoU > 0.97**, guarded by
-   `test_wgsl_parity.py::TestImpostorsOnTheGpu`.
-4. **What is left of the feature list.** Done since: depth cue/fog (`depth_cue.py`),
-   transparency's Fresnel alpha curve, `two_sided_lighting` (which is **per
-   object** metadata, not a frame-wide flag — taking it as one flag made the
-   `two_sided_on` row compare identical to the row without it, a test that could
-   only pass). Still open: **silhouettes** (the `postprocess.py` pass), **labels**
-   (`kind == "text"`, skipped entirely — `pipeline_for` returns `None` and a test
-   pins that as a known gap), and **wide lines** (`meta["width"]`; WebGPU's
-   `line-list` is 1 px only, so a width needs expanding to quads).
-5. **The atomic sphere path still emits a mesh.** `balls.impostor_min_atoms`
-   applies to *beads* only, so `spheres_impostor` and `spheres_mesh` produce
-   **byte-identical** 374,112-triangle geometry and neither baseline exercises
-   the impostor path. Routing atomic spheres through it is the 374,112 → ~2,770
-   win, and it is a change to the scene builder (`renderer/view.py`), not to this
-   backend — which means it changes what **GL** draws too, and needs its
-   baselines re-captured in the same change. There is still no bead-model
-   baseline scene; the impostor path is currently proven by a synthetic scene
-   rather than by a captured one.
-6. **Then embed in the Qt dock.** `rendercanvas`'s `QRenderWidget` is verified
-   embeddable under PyQt5 (870×485 in a real dock layout). Only after that does
-   `qtgl.py` get retired.
+1. **Remove the numba JITs (user request, not started).** The measurement:
+   **29 `njit` call sites** in `chimol/`, concentrated in
+   `renderer/bvh.py` (4), `geometry/neighbors.py` (4), `renderer/raytracer.py`
+   (3), `geometry/marching_cubes.py` (2), `analysis/ss.py` (2), with single
+   users in `geometry/{surface,cartoon,ambient,bonds,guide_frames}.py` and
+   `app/picking.py`. Re-derive with
+   `grep -rn "nb.njit\|njit(" chisurf/plugins/chimol/chimol/`.
+
+   **What this blocks:** numba does not exist in Pyodide, so every one of these
+   is a wall between chimol and the browser — this item and item 2 are the same
+   item seen from two ends.
+
+   **Approaches already measured and rejected — do not repeat them:** a no-op
+   `njit` shim (exactly `NUMBA_DISABLE_JIT=1`) is **300–680× slower**
+   (`count_within_radius` on hGBP1 6.7 ms → 3,516 ms; the 64³ EDT 9.6 ms →
+   6,496 ms), and mypyc cannot rescue it — **1.04×** on numpy code, because it
+   unboxes Python natives and cannot see a numpy buffer, so `arr[i]` stays a
+   `PyObject_GetItem`. The routing that *is* supported is in **Kernel routing**
+   below: WGSL compute where it is data-parallel (distance grid **229×**,
+   marching cubes 4–19×), scipy's compiled equivalents where one exists
+   (`cKDTree` 19.6 ms vs numba 6.7; `ndimage.distance_transform_edt` 32.6 vs
+   9.6 — 3–6× off numba is nothing for one-shot scene construction), then
+   Pythran, then C99 with `-msimd128`.
+
+   **The trap:** a CPU route is **mandatory** for every GPU kernel, because a
+   standalone HTML opened from `file://` may have no WebGPU adapter at all.
+   Also expect `NUMBA_NUM_THREADS` contamination while you work — several
+   unrelated chimol tests fail with *"cannot set NUMBA_NUM_THREADS once the
+   threads have been launched"* purely from test ordering; re-run the file
+   alone before believing a failure.
+
+2. **Begin the JS/browser port (user request, not started).** The groundwork is
+   deliberate and already in place: `wgsl/` composes by **concatenation**
+   (`load_wgsl` prepends `shading.wgsl`), which is the browser's rule too; the
+   chrome and the labels are a **premultiplied RGBA image composited inside the
+   render pass**, not Qt widgets, which is the only form a browser can use; and
+   `renderer/camera_state.py` holds the camera with no Qt in it.
+
+   **Open question to answer first, not skip:** whether `rendercanvas`'s
+   **`pyodide` backend** collapses the two drivers into one. It exists. If it
+   does, the browser driver may not need to be JavaScript at all, and that
+   decision shapes everything after it.
+
+   **Second question:** the sRGB mismatch. The surface format is
+   `rgba8unorm-srgb` in a browser; the desktop deliberately uses non-sRGB so it
+   matches the frozen baselines. A clear value of 0.09 comes back as 85 rather
+   than 23 if this is not handled explicitly — and it is invisible except by
+   looking at the image.
+
+3. **Metaball "not flubber enough" (user request, still untouched).** There is
+   **no metaball scene in the frozen baselines**, and now there never can be —
+   so this is judged against the current render alone, or against a new
+   WGSL-only reference pair you capture yourself. Knobs in
+   `chimol_display.json`: `sigma_factor 4.0` (fusion — merges beads into smooth
+   lobes, the main lever), `alpha 0.55`, `shininess 96`,
+   `specular_strength 0.85`, `rim_strength 0.55`, `iso_value 0.1`.
+   **Tried and rejected:** `sigma_factor` 9.0 ("a featureless egg") and 6.5 (the
+   surface encloses ~93,700 Å³ around a protein whose own envelope is ~25,000,
+   and no `iso_value` pulls it back — even 0.95 bottoms out at 71,400). 3.0 and
+   3.5 wrap a helical bundle too tightly. The useful range is narrow; see
+   [pymol-parity](/plugins/pymol-parity.md).
+
+4. **Atomic spheres are still tessellated.** `balls.impostor_min_atoms` applies
+   to *beads* only, so `show spheres` on an atomic structure emits **374,112
+   triangles** on 148L where the impostor path would emit ~2,770 — measured, and
+   the impostor path itself is verified at **120 triangles against 19,200 with
+   silhouette IoU > 0.97** (`test_wgsl_parity.py::TestImpostorsOnTheGpu`). The
+   change is in the **scene builder** (`renderer/view.py::_update_atoms`), not
+   in the backend. It is now *cheaper* than it was: with OpenGL gone there is no
+   second renderer to keep in step, and the baselines it would have invalidated
+   are frozen anyway — so the comparison to make is before/after in WGSL.
+
+5. **Wide lines.** `meta["width"]` is ignored: WebGPU's `line-list` is 1 px
+   only, so a width needs expanding to quads in `line.wgsl`. `lines` and
+   `ribbon` are the representations that carry it.
+
+6. **An open question for the user, not a defect.** The off-axis key light plus
+   fill that `wgpu_backend`'s old hardcoded `DEFAULT_LIGHTING` accidentally
+   described is plausibly the *"the WGSL render looks better"* recorded earlier
+   — it models a ribbon where the configured head-on rig lights it flatly. It is
+   now a **setting**, not a backend's private constant, so if that look is
+   wanted it belongs in `chimol_display.json`'s `lighting` section. Asked twice;
+   not yet answered.
+
+## What is deliberately not on that list
+
+- **`test_screenshot_helper.py` still exercises a `QOpenGLWidget`.** That is
+  `screenshot.py`'s generic GL-compositing path, not chimol's renderer — it is
+  dead for chimol but still correct for any GL widget. Left alone on purpose.
+- **The `dots` glyph is twice the size of the frozen baseline's.** The baseline
+  is *wrong*: OpenGL drew a 4 px dot for a requested `gl_PointSize` of 8, with
+  dpr 1.0 and a point-size range of [1, 64] ruling out scaling and clamping.
+  The WGSL renderer draws the documented size. Recorded in
+  [known-issues](/references/known-issues.md); do not "fix" it toward the
+  baseline.
 
 ## The bug that was not in the renderer (2026-08-10)
 
@@ -263,6 +322,24 @@ renderers get it.
 
 ## Traps that cost real time here
 
+- **A parallel implementation that is not the default is not tested.** The WGSL
+  renderer had its own green suite and 31 holes in it, every one invisible until
+  the default flipped. If you are building a replacement for anything here, the
+  cheapest test you have is making it the default and reading the failures.
+- **A grab taken before the first present is a black viewport, not a broken
+  renderer.** `request_draw` only schedules, and pumping Qt's event loop does
+  not help. `test/screenshot.py::force_render_canvases` forces every canvas;
+  `shoot()` calls it.
+- **A translucent Qt child cannot overlay a presented GPU surface.** Uncleared
+  backing store composited over the frame turns a rainbow cartoon
+  salmon-and-blue — which reads exactly like a channel-order bug; clearing it
+  makes the molecule vanish, because the child *covers* the surface. Composite
+  inside the render pass.
+- **Two different pixel sizes live in the widget.** The contract (framing,
+  picking, the panel's layout) is in **logical** pixels; only the GPU target is
+  in device pixels. Reporting the surface size from `scene_width()` left the
+  aspect stale until the first `resizeEvent`.
+
 - **Always attach `cmd.set_error_callback`.** A harness that drops it turns a
   refused command into a rendering difference two layers away. ~100 commands ran
   silently refusing before this was noticed.
@@ -312,16 +389,28 @@ renderers get it.
   sorted rounded centroids — f32-vs-f64 flips ties and reports a correct kernel
   as wrong.
 
-## Session commits
+## Commits, in order
 
-`0b90174d9` Phase 0 gates · `58996c37c` GL baselines · `58db3aea4` AO switch fix ·
-`756e2df06` settings-kind test · `fa7377580` SceneSink · `79b3d6811` pack.py ·
+**Session 1 (Phase 0–2 groundwork).** `0b90174d9` Phase 0 gates ·
+`58996c37c` GL baselines · `58db3aea4` AO switch fix · `756e2df06`
+settings-kind test · `fa7377580` SceneSink · `79b3d6811` pack.py ·
 `128cc86ab` WGSL renderer · `78780b602` scene_rect · `2842d8e30` is_empty fix ·
 `ee39098a6` compare harness · `6464a2274` transparency + background
 
+**Session 2 (the port lands).**
+`1b5a4821d` the contaminated baseline, `depth_cue.py` + `lighting.py` ·
+`4aa10d023` impostors, lines, points; `shading.wgsl` prelude ·
+`da5a1f7d9` the viewport runs on WGSL (`wgpu_view.py`, `camera_state.py`,
+`gui_overlay.py`) · `8fda1ded5` WGSL becomes the default, and the 31 gaps that
+exposed · `76df2fcfd` **the OpenGL renderer is deleted**.
+
 # Detail and history
 
-# Where to pick this up (earlier, superseded by the handover above)
+# Where to pick this up (2026-08-10, superseded twice — history only)
+
+*Kept for the measurements and the ruled-out approaches in it. Every "next
+step" it names is either done or restated in the handover at the top; read that
+one.*
 
 **Phase 0 is complete — all three gates passed (2026-08-10). Nothing in
 `chisurf/plugins/chimol/` has been modified yet.** Prototypes live in the session

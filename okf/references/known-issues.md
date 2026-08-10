@@ -398,27 +398,6 @@ because it means the suite currently cannot tell a real breakage from this
 noise. Whoever fixes it should bisect by explicit node ids across *files*, not
 within one.
 
-## The OpenGL point glyph renders at half the size it is asked for
-
-**Found 2026-08-10** while porting point geometry to the WebGPU backend, by
-comparing the same scene through both renderers.
-
-`dots` on 148L carries `meta["size"] = 8.0`. `qtgl` sets both `gl_PointSize` and
-`glPointSize` to `size * devicePixelRatioF()`, and the fragment shader keeps the
-inscribed circle of the sprite, so the dot should be **8 px across**. Measured on
-`test/renders/gl_baseline/dots_view.png`, the modal lit run per row is **4 px**
-(2,112 rows at 4, tailing off by 8). Ruled out: the device pixel ratio is
-genuinely `1.0` for both the window and the GL widget, and
-`GL_ALIASED_POINT_SIZE_RANGE` is `[1, 64]`, so neither scaling nor clamping
-explains it. Apple's GL-over-Metal sprite path is the remaining suspect.
-
-**Resolved by deletion (2026-08-10).** `qtgl.py` is gone, so nothing draws the
-half-size glyph any more. The entry stays because the *baseline* does: the
-frozen `dots_view.png` in `test/renders/gl_baseline/` still shows a 4 px dot,
-and `compare_wgsl dots` therefore shows the WGSL renderer drawing a glyph twice
-the size of the reference. That row is **correct and expected** — do not "fix"
-the renderer toward the baseline.
-
 ## `test/gui` crashes the interpreter mid-run, and 20 of its failures are contamination
 
 **2026-08-10.** `pytest test/gui` dies with `Bus error: 10` (exit 138) at around
