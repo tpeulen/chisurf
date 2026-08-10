@@ -79,8 +79,18 @@ Next, in order:
    term out of the page's own prose. It tests attention rather than
    understanding, which is **weaker than the design intends** — a model-backed
    provider drops in behind the same grounding check, and the check is the part
-   that matters. Still open: the light-path *crafting* layer, and the
-   AI-authored challenge and edit-proposal flow.
+   that matters.
+5. ✅ **Crafting landed, and it runs through the existing simulator.** `api/rig.py`
+   assembles an excitation filter, dichroic, emission filter and detector into a
+   path. Its **Förster radius comes from the light-path simulator's own
+   `calculate_r0`** rather than being re-derived, so a crafted rig and a real
+   instrument description cannot disagree about the physics. Measured on the
+   shipped catalogue: a rig tuned to 610 nm collects its acceptor at 0.145 and a
+   519 nm donor at 0.012, giving **8.2% bleedthrough**, with **R0 = 55.7 A** --
+   all realistic numbers.
+   Still open: a **crafting screen** (the rig exists and is tested, but nothing
+   in the GUI assembles one yet), and the AI-authored challenge and
+   edit-proposal flow.
 4. **Phase 5 — the AI layer**, then 6 (crafting, mini-games, factions, story),
    then 7 (farm, network).
 

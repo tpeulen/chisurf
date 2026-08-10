@@ -1,6 +1,25 @@
 # Update Log
 
 ## 2026-08-10
+* **Lumis Quest: crafting, and it runs through the light-path simulator rather than around it.**
+  `api/rig.py` assembles an excitation filter, a dichroic, an emission filter and a detector into a path.
+  Its **Förster radius comes from the existing simulator's own `calculate_r0`**, not from a re-derivation
+  here — a crafted rig in the game and an instrument described in the Light Path Simulator are the same
+  object, and they must not disagree about the physics. That was a standing PRD claim; it is now true.
+  Measured on the shipped catalogue: a rig tuned to 610 nm collects its acceptor at **0.145** and a 519 nm
+  donor at **0.012**, i.e. **8.2% bleedthrough**, with **R0 = 55.7 A**. All realistic.
+  **Two modelling errors of mine, both caught by looking at the numbers rather than by the tests passing.**
+  A dichroic was multiplied in as plain transmission — but it does not absorb what it fails to transmit, it
+  **reflects** it, and a real path collects one arm or the other. Every assembled rig therefore went blind
+  at exactly the wavelengths its beamsplitter was chosen to steer, which reads as a balance problem and was
+  physics. And multiplying four curves scaled the whole response down, so a **complete rig scored worse
+  than a bare eye everywhere**; a path is more *selective* with more elements, not dimmer, so the response
+  is normalised by the path's own peak.
+  One naming error too: `crosstalk` returned 1.0 for the creature the rig was tuned for. That number is
+  **collection efficiency**; it is only crosstalk when read against the *other* member of a pair. It is
+  named for what it measures now, with a separate `crosstalk(donor, acceptor)` for the leakage.
+  Suites: 196 passed.
+
 * **Lumis Quest phase 5: the game finally touches the documentation.**
   Until now this taught spectroscopy beautifully and did **nothing** for the corpus. Clearing a room now
   asks the page **its own question**, because beating the guardian is spectroscopy and says nothing about
