@@ -98,15 +98,23 @@ class SpotFinderSettings:
         Otsu level is computed from the region's own pixels — the point of
         restricting an analysis to one cell is that the rest of the frame does
         not set its threshold. Accepts the serialised form, so it survives RPC.
+    workflow : str, optional
+        Name of the workflow these settings came from
+        (:mod:`..core.workflow`). Recorded with the detection so a stored
+        result says which recipe produced it.
     """
 
+    #: The defaults below **are** the ``single_molecule`` workflow, which is the
+    #: standard one: constructing settings with no arguments and loading the
+    #: shipped document must give the same detection, and a test says so. Change
+    #: one and change the other.
     method: str = "watershed"
 
     sigma: float = 1.0
     threshold: float = -1.0
     peak_footprint_size: int = 6
 
-    min_area: int = 2
+    min_area: int = 1
     max_area: int = 0
     clear_border: bool = True
 
@@ -116,6 +124,11 @@ class SpotFinderSettings:
     overlap: float = 0.5
 
     roi: Any = None
+
+    #: Name of the workflow these settings came from, carried into the
+    #: container's parameters so a stored detection says which recipe made it
+    #: rather than only what the recipe evaluated to.
+    workflow: str = "single_molecule"
 
     def analysis_roi(self):
         """Return :attr:`roi` as a :class:`~chisurf.core.roi.ROI`, or ``None``.

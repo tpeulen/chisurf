@@ -1,0 +1,23 @@
+{
+  "workflow": "camera_spots",
+  "version": 1,
+  "description": "Diffraction-limited spots on a camera, where the width is unknown and hot pixels are not. A Laplacian-of-Gaussian scale space measures each spot's own sigma instead of assuming one, and min_area of 2 rejects the single-pixel defects a threshold cannot tell from a molecule. Set min_sigma and max_sigma from the optics: a diffraction-limited spot has sigma of about 0.21 * lambda / NA, in pixels.",
+  "name": "spots",
+  "settings": {
+    "method": "log",
+    "threshold": 0.05,
+    "min_sigma": 1.0,
+    "max_sigma": 4.0,
+    "num_sigma": 12,
+    "overlap": 0.5,
+    "min_area": 2,
+    "max_area": 0,
+    "clear_border": true
+  },
+  "inputs": {
+    "frame": -1
+  },
+  "output": {
+    "write": true
+  }
+}

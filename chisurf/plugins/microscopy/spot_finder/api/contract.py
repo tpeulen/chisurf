@@ -14,12 +14,16 @@ PLUGIN_ID = "spot_finder"
 CONTRACT_VERSION = "1.0.0"
 
 METHOD_DETECT = f"{PLUGIN_ID}.detect.run"
+METHOD_WORKFLOWS = f"{PLUGIN_ID}.workflow.list"
+METHOD_PREPARE_WORKFLOW = f"{PLUGIN_ID}.workflow.prepare"
 METHOD_CONTRACT = f"{PLUGIN_ID}.contract.describe"
 
 __all__ = [
     "PLUGIN_ID",
     "CONTRACT_VERSION",
     "METHOD_DETECT",
+    "METHOD_WORKFLOWS",
+    "METHOD_PREPARE_WORKFLOW",
     "METHOD_CONTRACT",
     "contract_descriptor",
     "service_success",
@@ -30,5 +34,7 @@ __all__ = [
 def contract_descriptor() -> dict[str, Any]:
     """Return a dict describing the plugin RPC contract."""
     return build_contract_descriptor(
-        PLUGIN_ID, CONTRACT_VERSION, [METHOD_DETECT, METHOD_CONTRACT]
+        PLUGIN_ID,
+        CONTRACT_VERSION,
+        [METHOD_DETECT, METHOD_WORKFLOWS, METHOD_PREPARE_WORKFLOW, METHOD_CONTRACT],
     )

@@ -1,0 +1,20 @@
+{
+  "workflow": "objects",
+  "version": 1,
+  "description": "Large, well-separated objects — cells, nuclei, vesicles — where splitting is the wrong instinct. Connected components of the thresholded image, with no watershed: a watershed can only ever over-split an object that nothing is touching, and an object cut in two is two wrong answers rather than one. min_area rejects debris; set max_area to drop the aggregates that dominate a brightness histogram.",
+  "name": "objects",
+  "settings": {
+    "method": "threshold",
+    "sigma": 2.0,
+    "threshold": -1.0,
+    "min_area": 25,
+    "max_area": 0,
+    "clear_border": true
+  },
+  "inputs": {
+    "frame": -1
+  },
+  "output": {
+    "write": true
+  }
+}

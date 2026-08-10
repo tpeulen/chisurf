@@ -4,7 +4,7 @@ prd: "92"
 title: "PRD-92: Spot finding is not lifetime fitting — a region-property MLE fed by a spot finder that persists its regions"
 description: sm_image_mle segments, measures, gathers photons and fits inside one 897-line core, and fit_molecules re-runs the segmentation itself, so the regions cannot be inspected, corrected, reused or produced by anything else. Split it — a spot-finder plugin that detects spots and writes region properties into the .pto container, and a region-property MLE that reads them. The seam is the container, not a function call; the load-bearing question is that a region table of scalars cannot say which photons belong to a region; and both halves are batch tools, so the two batch loops that exist today (with different persistence, and a `continue` for every failure) become one Qt-free runner with a run table that has a row per input whatever happened to it.
 status: in-progress
-phase: "stages 1-2 landed (container contract; spot_finder core, batch runner, CLI, RPC); rename, GUIs, docs open"
+phase: "stages 1-2 landed (container contract; spot_finder core, JSON workflows, batch runner, CLI, RPC); rename, GUIs, docs open"
 resource: chisurf/plugins/microscopy/sm_image_mle/
 tags: [prd, imaging, roi, mle, spot-detection, pto, provenance, plugins, microscopy]
 timestamp: '2026-08-10T00:00:00Z'
@@ -273,9 +273,63 @@ second format later.
   additions.
 * **CLI** `spot-finder`, **RPC** `spot_finder.detect.run`, per the plugin
   standard.
+* **Workflows are JSON documents, and the standard one is single-molecule
+  segmentation** (§5.4). A detection is a recipe, and a recipe that exists only
+  as a command line cannot be versioned, shared, reviewed or attached to a
+  result.
 * **`guide.json`** and a `?` help page, both required by the project rules —
   with a `demo.py` that generates a field of known spots so the tour can be
   walked without the user's own file.
+
+## 5.4 Workflows — the run as a document
+
+A detection is a recipe: which detector, at what threshold, over which files,
+written under which name. A recipe that exists only as a command line cannot be
+versioned, shared, reviewed, or attached to the result it produced — so the same
+run can be written down, and `spot-finder run recipe.json` is the same operation
+as `spot-finder detect`.
+
+```json
+{
+  "workflow": "single_molecule",
+  "settings": {"min_area": 4},
+  "inputs": {"files": ["field_01.ptu"]}
+}
+```
+
+Four decisions, each of which is the interesting half:
+
+* **The standard workflow is `single_molecule`, and it is the default.** Not a
+  neutral one: the shipped document is the watershed pipeline the molecule-wise
+  MLE has always segmented with, so a detection made here and fitted downstream
+  reproduces what the combined tool did. That is what makes the equivalence test
+  in stage 3 a fair comparison rather than a coincidence.
+* **The dataclass defaults *are* that document**, and a test asserts it field by
+  field. Otherwise `spot-finder detect` and `single_molecule.json` are two
+  answers to the same question, and the drift between them is invisible.
+* **A document names a base and overrides only what differs.** A user's file is
+  short and says what is unusual about their sample rather than restating twelve
+  defaults it does not care about.
+* **An unknown key is refused — in the document, in the settings, and over
+  RPC.** A file carrying `min_size` where the setting is `min_area` must fail
+  loudly, because the alternative is the worst outcome available: the run
+  succeeds, at the default, and records a parameter that never took effect. The
+  same rule makes `--workflow` mean something on the command line: an option the
+  user did not type does not override the workflow's value (Click's parameter
+  source, not the option's default, decides).
+
+Shipped: `single_molecule` (the standard), `camera_spots` (a LoG scale space,
+for widefield spots of unknown width, `min_area` 2 to reject hot pixels), and
+`objects` (connected components, no splitting — a watershed can only over-split
+an object nothing is touching). `spot-finder workflows` lists them, `show`
+prints one to start from, and `detect --save-workflow` turns a tuned run into a
+document that reruns identically.
+
+The **cross-plugin** sense of the word is served too: `spot_finder.workflow.prepare`
+takes the `workflow_context` the burst tools already pass (`raw_files`,
+`channel_settings`) and returns the request it would run, without running it —
+so the detector inherits the channels an earlier step settled on instead of
+re-deriving a second answer to a question already answered.
 
 ## 5.2 `microscopy/region_mle` — renamed from `sm_image_mle`
 
@@ -437,6 +491,10 @@ GUI writes its own persistence path.
   - [x] The blob detectors report the **width** they measured, and it separates
         a narrow spot from a broad one.
   - [x] A confined search computes its threshold from the region's own pixels.
+  - [x] JSON workflows (§5.4): three shipped documents with `single_molecule`
+        as the standard and the default, `run` / `workflows` / `show` /
+        `--save-workflow`, `workflow.list` + `workflow.prepare` RPC, and a test
+        that the dataclass defaults *are* the standard document field by field.
   - [x] Beyond the DoD: the batch half of §6 landed here rather than waiting —
         one loop behind the CLI and the RPC service, a run table with one row
         per input whatever happened to it, cancel, and a dry run. What remains

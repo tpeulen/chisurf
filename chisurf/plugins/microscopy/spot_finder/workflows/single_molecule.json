@@ -1,0 +1,21 @@
+{
+  "workflow": "single_molecule",
+  "version": 1,
+  "description": "Single molecules on a coverslip, imaged confocally. The standard workflow: Gaussian-smooth, Otsu-threshold, drop objects touching the frame edge, and split molecules that touch by a distance-transform watershed seeded on local maxima. These are the settings molecule-wise MLE has always segmented with, so a detection made here and fitted downstream reproduces what the combined tool did.",
+  "name": "spots",
+  "settings": {
+    "method": "watershed",
+    "sigma": 1.0,
+    "threshold": -1.0,
+    "peak_footprint_size": 6,
+    "min_area": 1,
+    "max_area": 0,
+    "clear_border": true
+  },
+  "inputs": {
+    "frame": -1
+  },
+  "output": {
+    "write": true
+  }
+}

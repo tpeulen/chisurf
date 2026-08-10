@@ -64,9 +64,13 @@
             "type": "string",
             "description": "Directory for the containers; beside each file by default."
           },
+          "workflow": {
+            "type": "string",
+            "description": "Workflow to start from — a shipped name or a document. Default: single_molecule, the standard segmentation."
+          },
           "settings": {
             "type": "object",
-            "description": "Detection settings (method, threshold, area limits, spot widths, region)."
+            "description": "Overrides on the workflow's settings (method, threshold, area limits, spot widths, region). An unknown key is refused, not ignored."
           }
         }
       },
@@ -75,6 +79,53 @@
       },
       "long_running": true,
       "cancelable": true
+    },
+    {
+      "name": "spot_finder.workflow.list",
+      "summary": "Return the shipped detection workflows, the standard one first.",
+      "params_schema": {},
+      "result_schema": {
+        "type": "object"
+      },
+      "long_running": false,
+      "cancelable": false
+    },
+    {
+      "name": "spot_finder.workflow.prepare",
+      "summary": "Resolve detection inputs from a cross-plugin workflow context, without running.",
+      "params_schema": {
+        "type": "object",
+        "properties": {
+          "workflow_context": {
+            "type": "object",
+            "description": "Handoff from an earlier step: raw_files, channel_settings."
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Files, overriding the context's own."
+          },
+          "workflow": {
+            "type": "string",
+            "description": "Workflow to start from. Default: single_molecule."
+          },
+          "settings": {
+            "type": "object",
+            "description": "Overrides on the workflow's settings."
+          },
+          "out_dir": {
+            "type": "string",
+            "description": "Directory for the containers."
+          }
+        }
+      },
+      "result_schema": {
+        "type": "object"
+      },
+      "long_running": false,
+      "cancelable": false
     },
     {
       "name": "spot_finder.contract.describe",
