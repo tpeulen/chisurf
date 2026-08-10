@@ -15,15 +15,16 @@ scratchpad; the numbers below are the record.
 
 Next, in order:
 
-1. **Capture every OpenGL render baseline before touching `renderer/qtgl.py`.**
-   This is unrecoverable if skipped — once the GL renderer is replaced the
-   reference cannot be recreated, and a migration without a before-half cannot be
-   reviewed by anyone later. Use
-   [`test/screenshot.py`](chisurf/plugins/chimol/test/screenshot.py) (it correctly
-   refuses `QT_QPA_PLATFORM=offscreen`, where GL returns black) on fixed
-   scenes+cameras for: background/backdrop, meshes + lighting, spheres, sticks,
-   transparency, `two_sided_lighting`, depth cue/fog, silhouettes, labels,
-   cartoon, surface.
+1. ✅ **Done — GL baselines captured (2026-08-10).** 23 scenes, 46 PNGs, in
+   `chisurf/plugins/chimol/test/renders/gl_baseline/`, by
+   [`test/capture_gl_baseline.py`](chisurf/plugins/chimol/test/capture_gl_baseline.py).
+   Each scene records the **18-float camera** in `manifest.json`, so the WebGPU
+   half replays `set_view` and produces a directly comparable frame; each also
+   records its full command sequence including a `RESET` preamble, so scenes are
+   independent of run order. **One gap remains**: the point-sprite impostor path
+   is not covered, because `balls.impostor_min_atoms` applies to *beads*, not to
+   atomic `show spheres` — that baseline needs a bead/integrative model and is
+   still to do.
 2. **Phase 1 — `SceneSink`.** `_update_view` opens with
    `if self._renderer is None: return`, and the Qt chrome after renderer
    construction (`renderer/view.py:2479`) is one contiguous block guarded by
@@ -148,6 +149,37 @@ Route each kernel, cheapest first:
 
 **A CPU route is mandatory for every GPU kernel**, because standalone HTML opened
 from `file://` may have no WebGPU adapter.
+
+# What the baseline capture itself found
+
+Four defects, three of them in the capture path and one in the renderer. Each is
+worth more than the images, because each made a wrong answer look right.
+
+- **`shoot()` ignored `QImage.save()`'s return value.** The disk filled mid-run,
+  8 of 20 scenes were never written, and every one of them printed `[ok]`. Now
+  `screenshot.py:_save` raises on a null image, a failed write, or a file that
+  comes back implausibly small.
+- **A restored dock layout handed the 3-D view a 1280×90 strip**, so the molecule
+  was a speck under a full-width sequence bar. A pixel floor does not catch this —
+  a strip is wide. `screenshot.py:assert_view_usable` now checks size *and*
+  aspect and refuses; it fired on the second structure for real. Root cause fixed
+  by pointing `CHISURF_SETTINGS_DIR` at a scratch dir, and by pumping the event
+  loop until the viewport settles rather than once.
+- **Scenes leaked state into each other.** The first space-fill baseline came out
+  rainbow because `spectrum count` from an earlier scene was still in effect —
+  which reads as a property of the sphere representation and is not one. Fixed
+  with an explicit `RESET` list; keep it in step with what the scenes perturb.
+- **A settings scene is unreadable without a matched control.** Diffing
+  `silhouette` against `cartoon` said 11.53 % of pixels changed, which looks like
+  a working silhouette and was really the colour difference. Against a control
+  differing by the setting alone it is **2.08 %**, and the amplified difference
+  image shows thin strokes at depth discontinuities — a real outline. *More*
+  change would have been the failure, exactly as the earlier FBO work recorded.
+
+The renderer defect — ambient occlusion applied when it is switched **off** — is
+written up in [known-issues](/references/known-issues.md) and deliberately not
+fixed in the same change, because fixing it changes what the renderer draws and
+would invalidate the baselines being captured alongside it.
 
 # Traps found so far
 

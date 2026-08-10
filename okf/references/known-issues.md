@@ -1,3 +1,46 @@
+## ChiMOL ambient occlusion is wired the wrong way round, and two settings are dead
+
+**2026-08-10.** Found while capturing the OpenGL render baselines before the
+WebGPU port ([chimol-web](/plugins/chimol-web.md)). All three were measured with
+matched A/B pairs that differ by one setting, not read off the source.
+
+**1. `occlusion.enabled` is inverted.** The only gate is
+`chimol/renderer/view.py:5441`:
+
+```python
+if not bool((_DISPLAY_CONFIG.get("occlusion") or {}).get("enabled", True)):
+    occ_ca = _estimate_ambient_occlusion(...)
+```
+
+so ambient occlusion is computed when occlusion is switched **off**. Measured on
+148L cartoon against a plain control: `enabled=on` is **0.00 %** different from
+no-AO-at-all, `enabled=off` is **9.35 %** different with a max channel delta of
+188. Turning the feature on turns it off.
+
+The same line is the only gate in the file: the other three
+`_estimate_ambient_occlusion` call sites (`view.py:5785, 6265, 7817`) are
+**ungated entirely**, so sticks/surface/bead AO ignores the setting in both
+directions. Fixing the `not` alone would therefore change cartoon only and leave
+the setting still lying about the other three.
+
+**Not fixed in the same change deliberately**: the fix changes what the renderer
+draws, and it would invalidate the GL baselines being captured in that very
+change — the baselines have to record what ships today, or the WebGPU port has
+nothing to be compared against. It wants its own before/after pair.
+
+**2. `sticks.ambient_occlusion` gates nothing.** It is registered, reachable via
+`set sticks.ambient_occlusion, on`, and stores a value that no code reads — the
+real key is `occlusion.enabled`. Measured: **0 pixels** change. Another instance
+of "the setting is registered" and "the setting works" being different claims.
+
+**3. `balls.impostor_min_atoms` does not apply to atomic spheres.** Not a defect —
+`view.py:6026` reads it from `balls_cfg` and the docstring says *beads* — but it
+means `show spheres` on a PDB never takes the point-sprite impostor path, so a
+baseline for that path needs a bead/integrative model. Recorded because two
+sphere scenes captured with `balls.impostor_min_atoms` at 100000 and at 10 came
+out **bit-identical**, which looks like a broken setting until you find the
+docstring.
+
 ## Registering a dropped measurement in MMFDB fails on a foreign key
 
 **2026-08-07.** Dropping eleven `.spc` files into the burst workflow, with the

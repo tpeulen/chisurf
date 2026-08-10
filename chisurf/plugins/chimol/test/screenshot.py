@@ -128,6 +128,64 @@ def grab_gl(widget: QtWidgets.QWidget, size: tuple[int, int] | None = None) -> Q
     return image
 
 
+def assert_view_usable(
+    widget: QtWidgets.QWidget,
+    *,
+    min_px: int = 200,
+    min_aspect: float = 0.35,
+) -> tuple[int, int]:
+    """Refuse a 3-D viewport too small or too misshapen to judge anything from.
+
+    A restored dock layout can hand the 3-D view a sliver -- a 1280x90 strip, or
+    in the worst case a single pixel column when the scene column is narrower
+    than the panel beside it. Nothing raises: the grab succeeds, the PNG is
+    written, and the molecule is a speck under a full-width sequence bar. Every
+    assertion taken against that image passes and means nothing.
+
+    A plain size check does not catch it, because a strip is comfortably wider
+    than any pixel floor. The shape has to be checked too.
+
+    Parameters
+    ----------
+    widget : QtWidgets.QWidget
+        The window or widget containing the ``QOpenGLWidget``.
+    min_px : int
+        Smallest acceptable width and height, in device pixels.
+    min_aspect : float
+        Smallest acceptable ratio of the short side to the long side.
+
+    Returns
+    -------
+    tuple of int
+        The usable ``(width, height)``.
+
+    Raises
+    ------
+    RuntimeError
+        If there is no GL widget, or its viewport is too small or too extreme to
+        produce a reviewable image.
+    """
+    targets = _gl_children(widget)
+    if not targets:
+        raise RuntimeError("no QOpenGLWidget to measure")
+    gl = targets[0]
+    w, h = gl.width(), gl.height()
+    if w < min_px or h < min_px:
+        raise RuntimeError(
+            f"3-D viewport is {w}x{h}; needs at least {min_px}x{min_px}. A "
+            f"persisted dock layout is the usual cause -- set CHISURF_SETTINGS_DIR "
+            f"to a scratch directory so the window starts from a known layout."
+        )
+    aspect = min(w, h) / max(w, h)
+    if aspect < min_aspect:
+        raise RuntimeError(
+            f"3-D viewport is {w}x{h} (aspect {aspect:.2f} < {min_aspect}); that "
+            f"is a strip, not a view. The molecule will be a speck and the image "
+            f"is not reviewable."
+        )
+    return w, h
+
+
 def grab_window(widget: QtWidgets.QWidget, size: tuple[int, int] | None = None) -> QtGui.QImage:
     """Grab the whole window, with the 3-D view pasted into its place.
 
@@ -206,10 +264,46 @@ def shoot(
 
     if area in ("all", "window"):
         path = out / f"{name}_window.png"
-        grab_window(widget, size).save(str(path))
+        _save(grab_window(widget, size), path)
         written["window"] = path
     if area in ("all", "view"):
         path = out / f"{name}_view.png"
-        grab_gl(widget, size).save(str(path))
+        _save(grab_gl(widget, size), path)
         written["view"] = path
     return written
+
+
+def _save(image: QtGui.QImage, path: pathlib.Path) -> None:
+    """Write ``image`` to ``path``, raising rather than reporting a silent success.
+
+    ``QImage.save`` reports failure by returning ``False``; it does not raise. A
+    caller that ignores the return value announces every shot as taken while the
+    disk is full, and the gap is only noticed later by counting files -- which is
+    exactly how a set of migration baselines came back missing its most important
+    scenes with nothing in the log to say so.
+
+    Parameters
+    ----------
+    image : QtGui.QImage
+        The grabbed image.
+    path : pathlib.Path
+        Destination PNG.
+
+    Raises
+    ------
+    RuntimeError
+        If the image is null, or the write failed, or the file did not appear
+        with a plausible size.
+    """
+    if image.isNull():
+        raise RuntimeError(f"refusing to write a null image to {path}")
+    if not image.save(str(path)):
+        raise RuntimeError(
+            f"QImage.save failed for {path} (disk full, or the directory is not "
+            f"writable); {image.width()}x{image.height()}"
+        )
+    if not path.exists() or path.stat().st_size < 1024:
+        raise RuntimeError(
+            f"{path} is missing or implausibly small after save "
+            f"({path.stat().st_size if path.exists() else 'absent'} bytes)"
+        )
