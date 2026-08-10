@@ -1,68 +1,20 @@
-"""
-Scaling functions for lifetime fitting.
+"""Scaling a model decay onto measured counts, for the lifetime-fitting tool.
 
-This module provides functions for scaling model decays to experimental decays.
+``rescale_w_bg`` used to be a private numba copy of the shared one in
+:mod:`chisurf.core.fluorescence.tcspc.tcspc`; it is re-exported from there now,
+so there is one weighted least-squares solution in the tree rather than two that
+can disagree. Only :func:`scale_model_to_data` is genuinely local: it is the
+convenience layer that builds Poisson weights and applies the factor, which the
+shared function deliberately does not do.
 """
 
 from __future__ import annotations
+
 import numpy as np
-import numba as nb
 
+from chisurf.core.fluorescence.tcspc.tcspc import rescale_w_bg  # noqa: F401
 
-@nb.jit(nopython=True, nogil=True)
-def rescale_w_bg(
-        model_decay: np.array,
-        experimental_decay: np.array,
-        experimental_weights: np.array,
-        experimental_background: float,
-        start: int,
-        stop: int
-) -> float:
-    """Computes a scaling factor that scales a model decay to an
-    experimental decay on a defined range.
-
-    Parameters
-    ----------
-    model_decay : numpy.array
-        Model decay for that a scaling factor is computed.
-    experimental_decay : numpy.array
-        Experimental decay to which the model decay provided by `model_decay`
-        is scaled by the returned floating number
-    experimental_weights : numpy.array
-        Weights of the experimental decay that are used scale the model to
-        the experiment. These are **inverse** errors (``w = 1 / sigma``), so
-        each channel enters the sums with ``w**2 = 1 / sigma**2``.
-    experimental_background : float
-        Constant offset in the experimental data that is subtracted from the
-        experimental decay
-    start : int
-        Start index that defines the range in which the model decay is scaled
-        to the experimental decay
-    stop : int
-        Stop index that defines the range in which the model decay is scaled
-        to the experimental decay.
-
-    Returns
-    -------
-    float
-        The scaling factor that was used to scale the model function to the
-        experimental decay.
-    """
-    sum_nom = 0.0
-    sum_denom = 0.0
-    w = experimental_weights
-    e = experimental_decay
-    b = experimental_background
-    m = model_decay
-    for i in range(start, stop):
-        if e[i] > 0.0 and np.isfinite(w[i - start]):
-            wsq = w[i - start] * w[i - start]
-            sum_nom += m[i] * (e[i] - b) * wsq
-            sum_denom += m[i] * m[i] * wsq
-    scale = 0.0
-    if sum_denom != 0.0:
-        scale = sum_nom / sum_denom
-    return scale
+__all__ = ["rescale_w_bg", "scale_model_to_data"]
 
 
 def scale_model_to_data(
@@ -79,7 +31,7 @@ def scale_model_to_data(
     Parameters
     ----------
     model_decay : numpy.array
-        Model decay to scale
+        Model decay to scale. **Modified in place** by the returned factor.
     experimental_decay : numpy.array
         Experimental decay to scale to
     start : int
@@ -97,10 +49,16 @@ def scale_model_to_data(
         Scaling factor
     """
     if use_weights:
-        # Calculate weights assuming Poisson noise
-        weights = 1.0 / np.sqrt(np.maximum(experimental_decay[start:stop], 1.0))
-
-        # Use the rescale_w_bg function
+        # Poisson weights, floored at one count so an empty channel gets a
+        # finite weight rather than dividing by zero.
+        #
+        # Built over the **whole** decay, not the fit window. The local copy of
+        # `rescale_w_bg` this used to call indexed its weights as `w[i - start]`
+        # -- a pre-sliced array -- while the shared one indexes `w[i]` like
+        # every other array it is handed. The two agree only when `start == 0`,
+        # which is exactly how the guard test called them, so the divergence was
+        # invisible. One convention now: weights are indexed like the decay.
+        weights = 1.0 / np.sqrt(np.maximum(experimental_decay, 1.0))
         scale = rescale_w_bg(
             model_decay=model_decay,
             experimental_decay=experimental_decay,

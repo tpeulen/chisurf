@@ -22,9 +22,11 @@ unrelated change unreviewable.
   is already preferred when available — check whether the compiled path gives
   the expected value before debugging the kernel that is being deleted.
 
-Two more in `test/fitting`, found the same way and with the same verdict:
-`test_fit_state.py::test_fret_gaussian_model_get_set_state_preserves_gaussians`
-and `test_pcf_experiment.py::test_pcf_config_block_present`.
+Three more, found the same way and with the same verdict:
+`test/fitting/test_fit_state.py::test_fret_gaussian_model_get_set_state_preserves_gaussians`,
+`test/fitting/test_pcf_experiment.py::test_pcf_config_block_present` and
+`test/models/test_detector_setups.py::test_a_missing_setups_file_never_blocks_a_headless_run`
+(the last fails in isolation too, so it is not test-order contamination).
 
 None of these is a regression from the numba retirement, and none should be
 counted as one when that work reports its test results.
