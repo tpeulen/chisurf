@@ -2,7 +2,7 @@
 type: PRD
 prd: "92"
 title: "PRD-92: Spot finding is not lifetime fitting — a region-property MLE fed by a spot finder that persists its regions"
-description: sm_image_mle segments, measures, gathers photons and fits inside one 897-line core, and fit_molecules re-runs the segmentation itself, so the regions cannot be inspected, corrected, reused or produced by anything else. Split it — a spot-finder plugin that detects spots and writes region properties into the .pto container, and a region-property MLE that reads them. The seam is the container, not a function call, and the load-bearing question is that a region table of scalars cannot say which photons belong to a region.
+description: sm_image_mle segments, measures, gathers photons and fits inside one 897-line core, and fit_molecules re-runs the segmentation itself, so the regions cannot be inspected, corrected, reused or produced by anything else. Split it — a spot-finder plugin that detects spots and writes region properties into the .pto container, and a region-property MLE that reads them. The seam is the container, not a function call; the load-bearing question is that a region table of scalars cannot say which photons belong to a region; and both halves are batch tools, so the two batch loops that exist today (with different persistence, and a `continue` for every failure) become one Qt-free runner with a run table that has a row per input whatever happened to it.
 status: draft
 phase: "scoped from the existing code; nothing implemented"
 resource: chisurf/plugins/microscopy/sm_image_mle/
@@ -35,7 +35,13 @@ what it unblocks.
    regions it is handed, and after the split it will be handed regions from a
    detector it does not know about. Doing the rename first means the split is
    written against the final names.
-4. **Reuse, do not re-derive, the estimator half (§6).** `Fit2x` /
+4. **Batch is a stage of its own, not a loop around the new cores (§6).** Read
+   §6's inventory before touching it: there are *two* batch loops today with
+   different persistence (the GUI one writes no container), every failure mode
+   is a `continue` that shortens the result silently, and the IRF is rebuilt
+   once per file from the same measurement. Replacing the loop without fixing
+   those reproduces them in two plugins instead of one.
+5. **Reuse, do not re-derive, the estimator half (§5.2).** `Fit2x` /
    `fit_many` / `assemble_vv_vh` / the IRF preparation / the `min_photons`
    sentinel path are all shared machinery already
    ([MLE lifetime fitting](/subsystems/mle-lifetime-fitting.md)); the region
@@ -115,8 +121,12 @@ photons in them.
   them, and fitting *exactly* the regions it was given.
 * A region table that is a **file format**, not an in-memory object: readable by
   the next session, by a different tool, and by a person.
-* No change to the estimator. The 2I\* / `Fit23` path, the VV/VH assembly, the
-  IRF preparation and the batching stay as they are.
+* **Both stages batch, and batch separately** (§6) — detect over a hundred
+  fields, review what was found, then fit — through *one* runner shared by the
+  GUI, the CLI and the RPC service, where today there are two loops that persist
+  different things.
+* No change to the estimator. The 2I\* / `Fit23` path, the VV/VH assembly and
+  the IRF preparation stay as they are.
 
 ## Non-goals
 
@@ -156,9 +166,12 @@ useful to a person and useless to the fit.
 
 # 4. The container contract
 
-Written through the existing generic seam —
-`chisurf/core/fio/analysis_path.py::write_tables` already takes
-`artifact_kind` / `operation_type` / `row_grain`, so no new writer is needed:
+Written through the seam the plugin already uses —
+`chisurf/core/fio/fluorescence/imaging_container.py::write_imaging_table`, which
+takes `artifact_kind` / `operation_type` / `row_grain` and, crucially,
+`derived_from` plus `source_row_column` / `target_row_column`. So no new writer
+is needed, and the fit table's rows can be linked to the region table's rows by
+`label` rather than by position:
 
 ```
 artifact_kind  = "region_table"     (scalars)  /  "image_data"  (label raster)
@@ -171,7 +184,10 @@ failure mode is identical:
 
 * **One row per detected region, including regions the fit skipped.** A region
   below `min_photons` gets a sentinel row (NaN parameters), never a missing row.
-  Anything that later merges a fit result against this table merges by position.
+  Anything that later merges a fit result against this table merges by position
+  unless it is given a key — and `write_imaging_table`'s
+  `source_row_column="label"` / `target_row_column="label"` is that key, so use
+  it and the position rule becomes a belt rather than the only brace.
 * **`label` is first and is the raster key**, contiguous from 1, after
   `relabel_sequential`.
 * **Column names are namespaced by origin** — `region.area`,
@@ -246,7 +262,103 @@ encodes elsewhere (Drift before the per-pixel steps because alignment precedes
 measurement). Running Region MLE with no regions available offers to run the
 detector — the hand-off is a container path, not a shared object.
 
-# 6. Stages and Definition of Done
+# 6. Batch — the half that is not a for-loop
+
+Both plugins are batch tools. Neither is a batch tool *by accident*: a field of
+molecules is one measurement, an experiment is a hundred of them, and the whole
+point of persisting the regions is that the two stages can be batched
+**separately** — detect over a hundred fields, look at what was found, then fit.
+That is impossible today, because detection is not a thing that can be run on
+its own.
+
+What is there now is worth reading before writing the replacement, because it is
+not one loop:
+
+* **There are two batch implementations with different behaviour.**
+  `api/molecule_mle.py::analyze_request` loops over `request.files` and is what
+  the CLI and the RPC service call. `gui/view_model.py::run()` loops over
+  `self.files` and is what the GUI calls. They are not the same: the API path
+  writes the result into the measurement's container via `write_imaging_table`;
+  the GUI path writes `<stem>_analysis/molecule_data.tsv` + `intensity.npy` and
+  **never writes the container at all**. So whether a batch leaves provenance
+  behind depends on which surface the user ran it from, and nothing says so.
+* **Every failure mode is a `continue`.** A file that raised, and a file that
+  segmented zero molecules, are both dropped from the result — the joint table
+  is simply shorter. The GUI path is worse: it overwrites `status_text` per
+  failure, so a batch of a hundred files with ninety failures shows the
+  *ninetieth* reason and no count. This is the same silent-shortening family as
+  the burst-companion rule, one level up: **a missing row that should have been
+  a sentinel row.**
+* **The joint table's location depends on the order of the file list.** With no
+  `output_dir`, `joint_output.tsv` is written next to `request.files[0]`.
+* **The joint table keys measurements by a string path.** `with_source_column`
+  puts `source_ptu` first, and `load_analysis` splits a joint TSV back up by
+  that column — so the identity of a measurement in a batch is a file path that
+  is stale the moment anything is moved.
+* **Shared work is repeated per file.** Each iteration does
+  `dataclasses.replace(request.settings)` from the original settings, whose
+  `irf` is `None`, so `build_irf_vv_vh` **and** `compute_g_factor` re-run for
+  every file from the same IRF measurement with the same window. The comment
+  explains the copy (do not carry an IRF across files with different windows) —
+  correct in the general case, and the window is a *setting*, identical across
+  the batch, so N identical IRF builds is the normal case.
+* **No parallelism and no cancel.** Files are independent and the loop is
+  serial; `manifest.json` declares `long_running: true, cancelable: false`,
+  which for a hundred-field batch means the only way to stop is to kill the
+  process.
+
+## 6.1 What the split should do about it
+
+* **One batch runner, Qt-free, in the core** — `core/batch.py`, used by the GUI,
+  the CLI and the RPC service alike. The GUI's job is a progress bar and a
+  cancel button, not a second loop with different persistence. This is also what
+  makes batch behaviour headlessly testable, which the view-model loop is not.
+* **A batch returns a run table: one row per input, always.** Columns
+  `input`, `measurement_uid`, `status` (`ok` / `empty` / `failed` / `skipped`),
+  `n_regions`, `n_fitted`, `reason`. A file that failed is a row, a file with
+  zero spots is a row saying zero. `len(run_table) == len(inputs)` is an
+  invariant, and it is the batch-level restatement of the sentinel-row rule.
+  The run table is itself written into… nothing — it is per-batch, not per
+  measurement, so it is returned and, when the caller asked for a folder,
+  written there.
+* **Results go into each measurement's own container**, one file per
+  measurement, per the `.pto` rule. A batch does not have an output file; it has
+  N outputs, each beside its own data.
+* **A cross-measurement table is a derived view, not a format.**
+  `read_regions(paths)` / `read_fits(paths)` concatenate N containers into one
+  table with a leading `measurement_uid` (the container's own identity) plus
+  `label`, and `source` kept as a *convenience* column rather than the key. That
+  is what feeds population-level plots, and it is rebuilt from the containers
+  rather than being a file that can go stale.
+* **The two stages batch independently, over different inputs.** Stage A's
+  inputs are measurements; stage B's inputs are *region tables*. So a fit batch
+  can mix fields whose spots were found with different detectors or settings —
+  legal, useful (a field that needed a lower threshold does not force the whole
+  experiment onto it), and recorded, because each fit artifact names the
+  detection artifact it consumed via `derived_from`.
+* **Shared preparation is computed once per batch.** The IRF VV/VH histogram,
+  the background and the G-factor are a function of
+  `(irf_file, micro_time_range, micro_time_binning, shifts,
+  irf_threshold_fraction)`; build them once per distinct key and reuse. The
+  per-file copy stays — the bug it prevents is real — but it copies a *prepared*
+  IRF instead of rebuilding one.
+* **Parallel over inputs, with cancel and per-file progress.** Files are
+  independent; `chisurf/core/fluorescence/mle/parallel.py` already threads the
+  fit itself, and the outer loop threads over files (the inner batch fit releases
+  the GIL in C++). `cancelable` becomes `true` in both manifests, and progress is
+  `(index, n_inputs, current_name)` rather than a status string that the next
+  file overwrites.
+
+## 6.2 Batch in the GUIs
+
+Both panels take a `path_list` of inputs (the shared AutoForm section, which is
+already how every file list in the tree works) and show the run table as a
+`chitable` with the failures visible rather than counted. The spot finder's
+batch is "detect over this list and let me look at the run table before I
+commit"; the region MLE's batch is "fit everything that was detected". Neither
+GUI writes its own persistence path.
+
+# 7. Stages and Definition of Done
 
 * **Stage 1 — the contract.** `write_spots` / `read_spots` + the artifact pair,
   with a round-trip test on a synthetic label field.
@@ -266,13 +378,30 @@ detector — the hand-off is a container path, not a shared object.
         run, to the last significant figure. This is the test that says the
         split changed nothing scientific.
   - [ ] No `seg_*` field survives in `RegionMleSettings`.
-* **Stage 4 — GUIs.** Both, screenshot-verified headlessly in a realistic state
+* **Stage 4 — batch (§6).** One Qt-free runner in the core, replacing both
+  existing loops.
+  - [ ] `len(run_table) == len(inputs)` on a batch containing a file that
+        raises, a file with zero spots and a file that fits — three rows, three
+        statuses, nothing dropped.
+  - [ ] The GUI, the CLI and the RPC service produce byte-identical container
+        artifacts from the same input list (today the GUI writes none).
+  - [ ] The IRF is prepared once for a batch of *n* files sharing one IRF
+        measurement and one window — asserted by counting `build_irf_vv_vh`
+        calls, not by timing.
+  - [ ] A detection batch and a fit batch run as two separate invocations over
+        the same file set, with the fit consuming what the detection wrote.
+  - [ ] A fit batch over region tables produced with *different* detection
+        settings succeeds, and each fit artifact's `derived_from` names the
+        detection it used.
+  - [ ] Cancelling a batch mid-run leaves every already-finished measurement's
+        container complete and the run table marking the rest `skipped`.
+* **Stage 5 — GUIs.** Both, screenshot-verified headlessly in a realistic state
   per the project rule, with a before/after control inventory against today's
   `sm_image_mle` panel — the migration is a port and the baseline must be
   captured **before** the rename lands.
   - [ ] Every control of the current panel is present in one of the two new
         panels, or listed as a deliberate removal.
-* **Stage 5 — docs and tours.** `docs/concepts/spot_detection.md`, a numbered
+* **Stage 6 — docs and tours.** `docs/concepts/spot_detection.md`, a numbered
   guide, `guide.json` + `help.md` for both plugins, catalogue regenerated,
   [imaging](/plugins/imaging.md), [ROI](/subsystems/roi.md) and
   [MLE lifetime fitting](/subsystems/mle-lifetime-fitting.md) updated.
