@@ -153,7 +153,7 @@ class SpotFinderViewModel(MleObserverMixin):
         not converge is **refused with a reason** rather than dropping an
         ellipse where nothing was found.
         """
-        from ..core.picking import fit_gaussian_spot
+        from chisurf.core.roi import fit_gaussian_spot
 
         image = self.detection_image()
         if image is None:

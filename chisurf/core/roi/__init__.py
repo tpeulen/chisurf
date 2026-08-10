@@ -22,6 +22,11 @@ A third question follows once a region exists — **what is it?** — and
 same call signature, same property names, same algorithms and therefore the
 same numbers — extended to measure a bare mask or a drawn :class:`ROI` as
 readily as a label image, and to hand the measured region back as a ROI.
+
+And a fourth comes *before* all of them — **where are the regions?** —
+answered by :mod:`chisurf.core.roi.segmentation`: smooth, threshold, drop the
+border objects, seed, flood. Between the two modules they are everything the
+imaging tools used to import scikit-image for.
 """
 
 from __future__ import annotations
@@ -39,12 +44,13 @@ from .io import (
     save_label_image,
     save_rois,
 )
-from .selections import (
-    collection_from_selections,
-    ellipse_from_covariance,
-    excluded_mask,
-    interval_roi,
-    roi_from_selection,
+from .picking import (
+    PickedCluster,
+    PickedSpot,
+    cluster_roi,
+    fit_gaussian_cluster,
+    fit_gaussian_spot,
+    spot_roi,
 )
 from .props import (
     INTENSITY_PROPERTIES,
@@ -68,8 +74,21 @@ from .roi import (
     rois_to_labels,
     union_of,
 )
+from .selections import (
+    collection_from_selections,
+    ellipse_from_covariance,
+    excluded_mask,
+    interval_roi,
+    roi_from_selection,
+)
 
 __all__ = [
+    "PickedCluster",
+    "PickedSpot",
+    "cluster_roi",
+    "fit_gaussian_cluster",
+    "fit_gaussian_spot",
+    "spot_roi",
     # geometry
     "ROI",
     "RectangleROI",

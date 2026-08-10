@@ -2,8 +2,12 @@
 
 A threshold finds every spot or none; a person looking at a field can see the
 one that matters and the three that are artefacts. So the picker is the third
-way in, beside a batch detector and a drawn region: click, and the spot under
-the cursor becomes a region.
+way a region gets made, beside a batch detector and a drawn shape: click, and
+the spot under the cursor becomes a region.
+
+It lives here, with the rest of the ROI subsystem, because what it produces is
+a **region** — the plotting layer offers the gesture and a plugin consumes the
+result, but neither owns the science of deciding where a spot is.
 
 The click is the *seed*, never the answer. A click lands a pixel or two off
 centre, and a region built on it would be off centre too — with a biased
@@ -25,7 +29,14 @@ import dataclasses
 
 import numpy as np
 
-__all__ = ["PickedSpot", "fit_gaussian_spot", "spot_roi"]
+__all__ = [
+    "PickedCluster",
+    "PickedSpot",
+    "cluster_roi",
+    "fit_gaussian_cluster",
+    "fit_gaussian_spot",
+    "spot_roi",
+]
 
 #: How many sigmas the region's radius covers. Two takes ~86% of a 2-D
 #: Gaussian's photons, which is the usual compromise: wider drags in background
@@ -206,4 +217,137 @@ def spot_roi(spot: PickedSpot, name: str = "", *, radius_sigmas: float = SIGMA_T
         max(1.0, radius_sigmas * float(spot.sigma_x)),
         max(1.0, radius_sigmas * float(spot.sigma_y)),
         name=name or "picked",
+    )
+
+
+# ---------------------------------------------------------------------------
+# The same gesture on a point cloud
+# ---------------------------------------------------------------------------
+@dataclasses.dataclass
+class PickedCluster:
+    """One clicked population on a plane of points, as the fit found it.
+
+    The point-cloud twin of :class:`PickedSpot`. An image has a value at every
+    pixel and a population has a *density*, so what is fitted is a mean and a
+    covariance rather than an amplitude and a width — but the principle is the
+    same one: the click is a seed and the fit decides.
+
+    Attributes
+    ----------
+    mu : numpy.ndarray
+        Fitted centre, ``(x, y)`` in the plane's own units.
+    cov : numpy.ndarray
+        ``(2, 2)`` covariance of the points that belong to it.
+    n_points : int
+        How many points the estimate rests on. A gate fitted to nine points is
+        a gate to distrust, and this is what says so.
+    success : bool
+    reason : str
+    """
+
+    mu: np.ndarray
+    cov: np.ndarray
+    n_points: int = 0
+    success: bool = False
+    reason: str = ""
+
+
+def fit_gaussian_cluster(points, x, y, *, radius: float, iterations: int = 3,
+                         min_points: int = 10) -> PickedCluster:
+    """Fit a 2-D Gaussian to the population clicked at ``(x, y)``.
+
+    Where :func:`fit_gaussian_spot` fits pixel values, this fits point density,
+    which is what a parameter plane carries: a burst or a molecule is a point,
+    a population is a cloud of them, and a gate around one is an ellipse of
+    constant Mahalanobis distance.
+
+    The estimate **re-centres**. A first pass takes the points within *radius*
+    of the click and their mean; the next pass takes the points within the same
+    radius of *that* mean, and so on. A click on the shoulder of a population
+    otherwise returns a centre on the shoulder, and a covariance inflated by the
+    empty half of the disc it sampled.
+
+    Parameters
+    ----------
+    points : array-like
+        ``(N, 2)`` or ``(2, N)`` coordinates on the plane, in the same units as
+        the click. Non-finite rows are dropped.
+    x, y : float
+        Where the user clicked.
+    radius : float
+        Capture radius, in plane units. It is a *setting* rather than something
+        fitted, because a density has no edge — the same cloud is one population
+        or three depending on how far one is willing to look.
+    iterations : int, optional
+        Re-centring passes.
+    min_points : int, optional
+        Fewer points than this refuses the pick: a covariance from a handful of
+        points is noise with an ellipse drawn round it.
+
+    Returns
+    -------
+    PickedCluster
+    """
+    data = np.asarray(points, dtype=float)
+    if data.ndim != 2:
+        raise ValueError(f"expected a 2-D array of points, got shape {data.shape}")
+    if data.shape[0] == 2 and data.shape[1] != 2:
+        data = data.T
+    data = data[np.isfinite(data).all(axis=1)]
+
+    centre = np.array([float(x), float(y)])
+    if data.size == 0:
+        return PickedCluster(centre, np.zeros((2, 2)), reason="no points on this plane")
+
+    inside = np.zeros(len(data), dtype=bool)
+    for _ in range(max(1, int(iterations))):
+        inside = np.hypot(*(data - centre).T) <= float(radius)
+        if inside.sum() < max(2, min_points):
+            break
+        centre = data[inside].mean(axis=0)
+
+    n = int(inside.sum())
+    if n < max(2, min_points):
+        return PickedCluster(
+            centre, np.zeros((2, 2)), n_points=n,
+            reason=f"only {n} point(s) within {radius:g} of the click — "
+                   "widen the radius or click where the population is",
+        )
+
+    cov = np.cov(data[inside].T)
+    if not np.isfinite(cov).all() or np.linalg.det(cov) <= 0:
+        return PickedCluster(
+            centre, np.zeros((2, 2)), n_points=n,
+            reason="the points are collinear — no ellipse describes them",
+        )
+    return PickedCluster(mu=centre, cov=np.asarray(cov, dtype=float),
+                         n_points=n, success=True)
+
+
+def cluster_roi(cluster: PickedCluster, name: str = "", *, sigma: float = 2.0):
+    """Return the ellipse of constant Mahalanobis distance around a cluster.
+
+    Parameters
+    ----------
+    cluster : PickedCluster
+        A converged fit.
+    name : str, optional
+        Region name.
+    sigma : float, optional
+        How many standard deviations the ellipse encloses.
+
+    Returns
+    -------
+    chisurf.core.roi.EllipseROI
+        Oriented along the covariance's principal axes — an axis-aligned
+        ellipse around a correlated population either leaks in the corners or
+        cuts the population's own diagonal off. The conversion is
+        :func:`chisurf.core.roi.ellipse_from_covariance`, which the exploration
+        tool's Gaussian gates already go through: one implementation, so a gate
+        drawn here and a gate drawn there are the same ellipse.
+    """
+    from chisurf.core.roi.selections import ellipse_from_covariance
+
+    return ellipse_from_covariance(
+        cluster.mu, cluster.cov, sigma=sigma, name=name or "picked"
     )

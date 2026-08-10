@@ -13,10 +13,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from chisurf.plugins.microscopy.spot_finder.core.picking import (
-    fit_gaussian_spot,
-    spot_roi,
-)
+from chisurf.core.roi import fit_gaussian_spot, spot_roi
 
 
 def _field(cy=20.0, cx=24.0, sigma_y=1.8, sigma_x=1.8, amplitude=300.0,

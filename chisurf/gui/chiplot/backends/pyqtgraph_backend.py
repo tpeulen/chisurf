@@ -725,7 +725,7 @@ class _Text(_Item):
 
 
 
-def _roi_item(kind, pos, size, pen, movable, rotatable, points):
+def _roi_item(kind, pos, size, pen, movable, rotatable, points, angle=0.0):
     """Build the pyqtgraph ROI item for a region shape.
 
     Shared by the image view and the plot canvas: a region carries no axes, so
@@ -735,7 +735,18 @@ def _roi_item(kind, pos, size, pen, movable, rotatable, points):
     if kind == "circle":
         return pg.CircleROI(list(pos), list(size), pen=_pen(pen), movable=movable)
     if kind == "ellipse":
-        return pg.EllipseROI(list(pos), list(size), pen=_pen(pen), movable=movable)
+        # Rotation matters here and not for a circle: a Gaussian gate on a
+        # correlated population is a *tilted* ellipse, and drawing it
+        # axis-aligned either leaks in the corners or cuts the population's own
+        # diagonal off. pyqtgraph rotates about `pos`, so the centre has to be
+        # held still by hand.
+        item = pg.EllipseROI(list(pos), list(size), pen=_pen(pen), movable=movable,
+                             rotatable=rotatable)
+        if angle:
+            centre = item.pos() + item.size() * 0.5
+            item.setAngle(float(angle), center=(0.5, 0.5))
+            item.setPos(centre - item.size() * 0.5, finish=False)
+        return item
     if kind == "polygon":
         # A polygon is defined by its vertices, not a corner and a size; the box
         # is only the fallback when no vertices were given.
@@ -1321,7 +1332,7 @@ class _PgImageView(base.ImageViewCanvas):
         self._added: list = []
 
     @classmethod
-    def wrap(cls, image_view) -> "_PgImageView":
+    def wrap(cls, image_view) -> _PgImageView:
         """Return a canvas driving an image view somebody else created.
 
         For a widget that already owns its ``pg.ImageView`` and wants the
@@ -1413,10 +1424,10 @@ class _PgImageView(base.ImageViewCanvas):
 
     def add_roi(
         self, *, kind="rect", pos=(0.0, 0.0), size=(10.0, 10.0), pen, movable=True,
-        rotatable=False, points=None
+        rotatable=False, points=None, angle=0.0
     ) -> H.Roi:
         """Add a region-of-interest to the view."""
-        roi = _roi_item(kind, pos, size, pen, movable, rotatable, points)
+        roi = _roi_item(kind, pos, size, pen, movable, rotatable, points, angle)
         view = self._iv.getView()
         view.addItem(roi)
         self._added.append(roi)
