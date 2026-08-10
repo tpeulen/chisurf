@@ -304,12 +304,23 @@ Measured 2026-08-10.
 
 | Channels | Model | Fit [s] | Evaluations | Per evaluation [µs] |
 | ---: | --- | ---: | ---: | ---: |
-| 1 024 | LifetimeModel | 0.013 | 109 | 117.0 |
-| 1 024 | GaussianModel | 0.034 | 47 | 726.7 |
-| 4 096 | LifetimeModel | 0.037 | 201 | 184.1 |
-| 4 096 | GaussianModel | 0.241 | 118 | 2 046.3 |
-| 16 384 | LifetimeModel | 0.108 | 187 | 575.8 |
-| 16 384 | GaussianModel | 2.983 | 99 | 30 136.3 |
+| 1 024 | LifetimeModel | 0.013 | 109 | 117.7 |
+| 1 024 | GaussianModel | 0.031 | 47 | 656.7 |
+| 4 096 | LifetimeModel | 0.035 | 201 | 174.5 |
+| 4 096 | GaussianModel | 0.204 | 118 | 1 725.5 |
+| 16 384 | LifetimeModel | 0.082 | 187 | 439.5 |
+| 16 384 | GaussianModel | 0.610 | 99 | 6 160.3 |
+
+**Discard the first run in a fresh process — all of it, not just the first
+row.** The table above replaces one taken from a cold process, in which *every*
+cell was slow and the 16 384-channel `GaussianModel` read **2.983 s** against the
+0.61 s it actually costs — a fivefold error, large enough to credit a later
+change with a speedup it did not produce. The per-case warm-up inside the script
+does not cover it: the contamination is process-wide (numba's on-disk cache and
+the loader's own page cache), not per case. Take numbers from a second or third
+run of the script in a warmed checkout, and if a change appears to move a fit by
+more than a few percent, re-measure the *old* code in the same session before
+believing it.
 
 **Time a fit costs, and what to conclude from it.** The convolution is 40–60% of
 a fit and is already the photon library's compiled SIMD kernel — `per` is the

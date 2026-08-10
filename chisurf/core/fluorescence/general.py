@@ -1,14 +1,12 @@
 from __future__ import annotations
 from chisurf import typing
 
-import numba as nb
 import numpy as np
 
 import scipy.optimize
 
 import chisurf.core.math.datatools
 
-@nb.jit(nopython=True)
 def rate_constant_to_lifetime(
         rate_constant: float,
         lifetime: float
@@ -92,7 +90,6 @@ def combine_interleaved_spectra(
     return np.hstack(re)
 
 
-@nb.jit(nopython=True)
 def fret_induced_donor_decay(
         fd0: np.ndarray,
         fda: np.ndarray
@@ -180,7 +177,6 @@ def fluorescence_averaged_lifetime(
 
 
 
-@nb.jit(nopython=True)
 def distance_to_fret_rate_constant(
         r: np.ndarray,
         forster_radius: float,
@@ -308,35 +304,57 @@ def kappa2_to_distance_ratio(k2_amp: np.ndarray, k2_val: np.ndarray, n_bins: int
     return r_ratio, interpolated_weights, k2_mean
 
 
-@nb.jit(nopython=True)
 def _fast_convolve_loop(r_da, amp_r_da, r_ratio, weights_ratio, r_edges):
-    """Numba-optimized loop for fast convolution.
-    
-    Accumulates shifted distance histograms weighted by ratio distribution.
+    """Accumulate shifted distance histograms weighted by a ratio distribution.
+
+    Every ``(r_da, r_ratio)`` pair contributes its product to a bin of
+    ``r_edges``, weighted by the product of the two amplitudes.
+
+    Parameters
+    ----------
+    r_da : numpy.ndarray
+        Donor-acceptor distances.
+    amp_r_da : numpy.ndarray
+        Amplitude of each distance.
+    r_ratio : numpy.ndarray
+        ``R_app / R_DA`` ratio values.
+    weights_ratio : numpy.ndarray
+        Weight of each ratio; non-positive weights contribute nothing.
+    r_edges : numpy.ndarray
+        Bin edges of the output histogram.
+
+    Returns
+    -------
+    numpy.ndarray
+        Weighted histogram over ``r_edges``, of length ``len(r_edges) - 1``.
+
+    Notes
+    -----
+    The bins are **right-closed** -- a value equal to an interior edge falls in
+    the bin below it, and a value equal to ``r_edges[0]`` falls outside the
+    histogram entirely. That is ``searchsorted(...) - 1``, not
+    :func:`numpy.histogram`, whose bins are left-closed; the two disagree
+    exactly at the edges, and the smallest product here *is* ``r_edges[0]`` by
+    construction, so the difference is reachable rather than theoretical.
     """
     n_bins = len(r_edges) - 1
-    r_app_hist = np.zeros(n_bins)
-    
-    # Loop over ratio curve elements
-    for i in range(len(r_ratio)):
-        ratio = r_ratio[i]
-        weight = weights_ratio[i]
-        
-        if weight > 0:
-            # Shift distances by this ratio value
-            # Manually bin the shifted distances
-            for j in range(len(r_da)):
-                r_shifted = r_da[j] * ratio
-                amp = amp_r_da[j] * weight
-                
-                # Find which bin this shifted distance belongs to
-                if r_shifted >= r_edges[0] and r_shifted <= r_edges[-1]:
-                    # Binary search for bin
-                    bin_idx = np.searchsorted(r_edges, r_shifted) - 1
-                    if bin_idx >= 0 and bin_idx < n_bins:
-                        r_app_hist[bin_idx] += amp
-    
-    return r_app_hist
+    contributing = weights_ratio > 0
+    if not contributing.any():
+        return np.zeros(n_bins)
+
+    shifted = r_da[:, None] * r_ratio[None, contributing]
+    amplitude = amp_r_da[:, None] * weights_ratio[None, contributing]
+
+    index = np.searchsorted(r_edges, shifted) - 1
+    inside = (
+        (shifted >= r_edges[0])
+        & (shifted <= r_edges[-1])
+        & (index >= 0)
+        & (index < n_bins)
+    )
+    return np.bincount(
+        index[inside], weights=amplitude[inside], minlength=n_bins
+    ).astype(float)
 
 
 def convolve_distance_with_k2_ratio(
@@ -405,7 +423,6 @@ def convolve_distance_with_k2_ratio(
         return r_app_centers[mask], r_app_hist[mask]
 
 
-@nb.jit(nopython=True)
 def distance_to_fret_efficiency(distance: float, forster_radius: float) -> float:
     """
 
@@ -420,7 +437,6 @@ def distance_to_fret_efficiency(distance: float, forster_radius: float) -> float
     return 1.0 / (1.0 + (distance / forster_radius) ** 6)
 
 
-@nb.jit(nopython=True)
 def lifetime_to_fret_efficiency(
         tau: float,
         tau0: float
@@ -438,7 +454,6 @@ def lifetime_to_fret_efficiency(
     return 1 - tau / tau0
 
 
-@nb.jit(nopython=True)
 def fret_efficiency_to_distance(
         fret_efficiency: float,
         forster_radius: float
@@ -457,7 +472,6 @@ def fret_efficiency_to_distance(
     return (1 / fret_efficiency - 1) ** (1.0 / 6.0) * forster_radius
 
 
-@nb.jit(nopython=True)
 def fret_efficiency_to_lifetime(
         fret_efficiency: float,
         tau0: float
@@ -924,13 +938,16 @@ def rates2lifetimes_new(
 rates2lifetimes = rates2lifetimes_new
 
 
-@nb.jit(nopython=True)
 def calculate_fluorescence_decay(
         lifetime_spectrum: np.ndarray,
         time_axis: np.ndarray,
         normalize: bool = True
 ) -> typing.Tuple[np.ndarray, np.ndarray]:
     """Converts a interleaved lifetime spectrum into a intensity model_decay
+
+    ``lifetime_spectrum`` is never modified. It used to be: ``normalize`` scaled
+    the amplitudes through a strided *view* of the caller's array, so asking for
+    a decay silently renormalised the spectrum that was passed in.
 
     :param lifetime_spectrum: interleaved lifetime spectrum
     :param time_axis: time-axis
@@ -949,15 +966,19 @@ def calculate_fluorescence_decay(
     >>> lifetime_spectrum = structure.av_lifetime_spectrum(donor_lifetime_spectrum, donor_description, acceptor_description)  # doctest: +SKIP
     >>> time_axis, model_decay = calculate_fluorescence_decay(lifetime_spectrum, time_axis)  # doctest: +SKIP
     """
-    decay = np.zeros_like(time_axis)
-    am = lifetime_spectrum[0::2]
+    amplitudes = np.asarray(lifetime_spectrum[0::2], dtype=float)
+    lifetimes = np.asarray(lifetime_spectrum[1::2], dtype=float)
     if normalize:
-        am /= am.sum()
-    ls = lifetime_spectrum[1::2]
-    for amplitude, lifetime in zip(am, ls):
-        if lifetime == 0:
-            continue
-        decay += np.exp(-time_axis / lifetime) * amplitude
+        # A copy, not `am /= am.sum()`: the slice is a view into the caller's
+        # array and dividing in place rewrote their spectrum.
+        amplitudes = amplitudes / amplitudes.sum()
+
+    contributing = lifetimes != 0
+    if not contributing.any():
+        return time_axis, np.zeros_like(time_axis)
+
+    rates = 1.0 / lifetimes[contributing]
+    decay = np.exp(-np.outer(time_axis, rates)) @ amplitudes[contributing]
     return time_axis, decay
 
 

@@ -1,3 +1,30 @@
+## Five red tests in `test/fluorescence`, unrelated to what found them
+
+**Found 2026-08-10** while porting `chisurf/core/fluorescence/general.py` off
+numba. They fail identically with the pre-change file in place — verified by
+swapping `git show HEAD:...general.py` in, re-running, and restoring — so they
+are **not** caused by that work, and fixing them inside it would have made an
+unrelated change unreviewable.
+
+* `test_mfd_burst_roundtrip.py` — all four tests die at
+  `chisurf/core/fluorescence/mfd/prepare.py:491` with
+  `FileNotFoundError: no .bur tables under <tmpdir>/burst-pipeline0`. The
+  pipeline the fixture runs produces no `.bur` output at all, so every
+  assertion downstream of it is untested rather than passing. Whatever changed
+  in the burst writer, the reader is reporting it correctly; the fixture is the
+  thing to look at first.
+* `test_gopich_szabo.py::test_no_exchange_reduces_to_a_static_mixture` — the
+  likelihood comes back `-inf` where `-3.66516292749662` is expected. `-inf` is
+  the numba kernel's own numerical-failure sentinel
+  (`_total_log_likelihood` breaks out and returns it), so this is the guarded
+  path firing, not an assertion drifting. Note this module is due to be
+  delegated to `tttrlib.GopichSzabo`, whose branch at `gopich_szabo.py:522-537`
+  is already preferred when available — check whether the compiled path gives
+  the expected value before debugging the kernel that is being deleted.
+
+Neither is a regression from the numba retirement, and neither should be
+counted as one when that work reports its test results.
+
 ## Stale generated plugin reference pages after the `sm_image_mle` rename
 
 **Found 2026-08-10** while adding a guide, by running

@@ -24,6 +24,15 @@ the kernels are what a fit costs. They are not, and this measures it:
 So the table below is the baseline a numba removal is judged against, and the
 bar it has to clear is "no slower", not "not much slower".
 
+**Discard the first run in a fresh process.** The per-case warm-up below covers
+JIT compilation and first-call caches *within* a run, but not the process-wide
+costs — numba's on-disk cache, the loader's page cache — and a cold first run
+came out uniformly slow, with one cell reading 2.983 s against the 0.61 s it
+actually costs. That is large enough to credit an unrelated change with a
+fivefold speedup. Run the script twice and use the second table; if a change
+appears to move a fit by more than a few percent, re-measure the old code in the
+same session before believing it.
+
 Run standalone for a markdown table to paste into
 ``docs/development/benchmarks.md``::
 
