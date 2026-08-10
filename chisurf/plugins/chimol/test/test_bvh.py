@@ -23,9 +23,11 @@ import numpy as np
 import pytest
 
 from chisurf.plugins.chimol.chimol.renderer import compute
+from chisurf.plugins.chimol.chimol.renderer import bvh as bvh_module
 from chisurf.plugins.chimol.chimol.renderer.bvh import (
     _MAX_LEAF,
     build_bvh,
+    build_bvh_cached,
     primitive_bounds,
 )
 
@@ -232,6 +234,59 @@ def test_an_empty_scene_builds_a_usable_tree():
         np.zeros((1, 3)), np.array([[0.0, 0.0, 1.0]]),
     )
     assert prim[0] == -1
+
+
+# --------------------------------------------------------------------------- #
+# The cache returns the same tree, and only when it should
+# --------------------------------------------------------------------------- #
+def test_the_cache_is_hit_for_an_identical_scene():
+    """A second render of unchanged geometry must not rebuild the tree.
+
+    On a traced solvent surface the build is 70 % of the render, and `ray` is a
+    command people run again after changing a light or a colour. A cached tree
+    and a rebuilt one are indistinguishable from the outside, so the build
+    counter is the only way to see this working.
+    """
+    rng = np.random.default_rng(21)
+    centers, radii, tris = _random_scene(rng, 200, 200)
+    lower, upper = primitive_bounds(centers, radii, tris)
+
+    before = bvh_module.build_count
+    first = build_bvh_cached(lower, upper, _MAX_LEAF)
+    assert bvh_module.build_count == before + 1
+    again = build_bvh_cached(lower.copy(), upper.copy(), _MAX_LEAF)
+    assert bvh_module.build_count == before + 1, "a rebuilt tree, not a cached one"
+    # The same arrays, not merely equal ones -- a copy would defeat the point.
+    for a, b in zip(first, again):
+        assert a is b
+
+
+def test_the_cache_notices_a_moved_molecule():
+    """Identity would never match and a shape check would match too often."""
+    rng = np.random.default_rng(22)
+    centers, radii, tris = _random_scene(rng, 200, 200)
+    lower, upper = primitive_bounds(centers, radii, tris)
+    build_bvh_cached(lower, upper, _MAX_LEAF)
+
+    moved_lower, moved_upper = primitive_bounds(centers + 3.0, radii, tris + 3.0)
+    before = bvh_module.build_count
+    build_bvh_cached(moved_lower, moved_upper, _MAX_LEAF)
+    assert bvh_module.build_count == before + 1
+
+    # Same geometry, different leaf size, is a different tree.
+    before = bvh_module.build_count
+    build_bvh_cached(lower, upper, _MAX_LEAF * 2)
+    assert bvh_module.build_count == before + 1
+
+
+def test_a_cached_tree_is_the_tree_build_bvh_would_have_made():
+    rng = np.random.default_rng(23)
+    centers, radii, tris = _random_scene(rng, 300, 300)
+    lower, upper = primitive_bounds(centers, radii, tris)
+    for cached, direct in zip(
+        build_bvh_cached(lower, upper, _MAX_LEAF), build_bvh(lower, upper, _MAX_LEAF)
+    ):
+        assert np.array_equal(cached, direct)
 
 
 # --------------------------------------------------------------------------- #

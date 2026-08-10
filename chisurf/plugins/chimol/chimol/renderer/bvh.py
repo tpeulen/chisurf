@@ -35,6 +35,9 @@ tree: ``prim < n_spheres`` is a sphere, and anything above it is triangle
 
 from __future__ import annotations
 
+import hashlib
+from collections import OrderedDict
+
 import numpy as np
 
 #: Primitives a leaf may hold. Small leaves mean a deeper tree and more box
@@ -219,6 +222,64 @@ def build_bvh(prim_min, prim_max, max_leaf):
         node_count[:n_nodes].astype(np.int32),
         order.astype(np.int32),
     )
+
+
+#: Trees kept from earlier calls, newest last. Two is enough for the case this
+#: exists for -- re-rendering one scene -- and bounds the memory: a tree over
+#: 85k primitives is roughly 10 MB of node arrays.
+_TREE_CACHE: "OrderedDict[tuple, tuple]" = OrderedDict()
+_CACHE_LIMIT = 2
+
+#: Incremented on every real build. Nothing reads it but the test that checks the
+#: cache is actually being hit -- which cannot be seen from the outside
+#: otherwise, since a cached tree and a rebuilt one are the same tree.
+build_count = 0
+
+
+def build_bvh_cached(prim_min, prim_max, max_leaf):
+    """:func:`build_bvh`, reusing the tree when the primitives are unchanged.
+
+    Parameters
+    ----------
+    prim_min, prim_max : numpy.ndarray
+        Per-primitive bounding box, shape ``(P, 3)``.
+    max_leaf : int
+        Primitives a leaf may hold before the node is split.
+
+    Returns
+    -------
+    tuple of numpy.ndarray
+        As :func:`build_bvh`.
+
+    Notes
+    -----
+    On a traced solvent surface the build is **70 % of the render** -- 241 ms of
+    345 ms for 85k triangles -- and `ray` is a command people run again after
+    changing a light or a colour, with the geometry untouched. Hashing the bounds
+    costs a millisecond or two against a build of hundreds.
+
+    Keyed on the *content*, not on object identity: the caller rebuilds these
+    arrays from the scene every time, so identity would never match, and a shape
+    check alone would hand back the wrong tree for a moved molecule.
+    """
+    global build_count
+    lower = np.ascontiguousarray(prim_min, dtype=np.float64)
+    upper = np.ascontiguousarray(prim_max, dtype=np.float64)
+    key = (
+        lower.shape, int(max_leaf),
+        hashlib.blake2b(lower.tobytes(), digest_size=16).digest(),
+        hashlib.blake2b(upper.tobytes(), digest_size=16).digest(),
+    )
+    hit = _TREE_CACHE.get(key)
+    if hit is not None:
+        _TREE_CACHE.move_to_end(key)
+        return hit
+    build_count += 1
+    tree = build_bvh(lower, upper, max_leaf)
+    _TREE_CACHE[key] = tree
+    while len(_TREE_CACHE) > _CACHE_LIMIT:
+        _TREE_CACHE.popitem(last=False)
+    return tree
 
 
 def primitive_bounds(centers, radii, tri_vertices):

@@ -7,7 +7,7 @@ from typing import List, Optional, Tuple
 import numpy as np
 
 from . import compute
-from .bvh import _MAX_LEAF, build_bvh, primitive_bounds
+from .bvh import _MAX_LEAF, build_bvh_cached, primitive_bounds
 from .view_state import unpack_view_state
 
 @dataclass
@@ -253,7 +253,7 @@ def trace(
     # with the tree it is one more descent, so the second tree is not an
     # optimisation any more, only a thing that made the picture wrong.
     prim_min, prim_max = primitive_bounds(centers, radii_arr, tverts)
-    scene_bvh = build_bvh(prim_min, prim_max, _MAX_LEAF)
+    scene_bvh = build_bvh_cached(prim_min, prim_max, _MAX_LEAF)
     ray_scene = compute.RayScene(centers, radii_arr, tverts, scene_bvh)
 
     sphere_rgba = np.concatenate([colors_arr, sph_alpha_arr[:, None]], axis=1)

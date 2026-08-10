@@ -1,6 +1,27 @@
 # Update Log
 
 ## 2026-08-10
+* **A re-render of a traced surface went 904 ms -> 169 ms, by not rebuilding a
+  tree that had not changed.** On a real solvent surface -- 85,092 triangles at
+  640x480 ssaa2 -- the BVH build is **241 ms of a 345 ms render**, and `ray` is a
+  command people run again after changing a light or a colour. `build_bvh_cached`
+  keys the tree on the *content* of the primitive bounds: identity would never
+  match, because the caller rebuilds those arrays from the scene every time, and
+  a shape check would hand back the wrong tree for a moved molecule. Hashing 85k
+  bounds costs a millisecond or two against a build of hundreds. Changing a
+  colour still hits the cache; moving the molecule does not. `bvh.build_count`
+  exists only so a test can see it working -- a cached tree and a rebuilt one are
+  otherwise indistinguishable, which is exactly the kind of optimisation that
+  quietly stops working.
+  **The first render is still 241 ms of build**, and the step change for it is a
+  Karras LBVH (one Morton sort, all internal nodes determined independently, node
+  bounds from a sparse table); written up, not attempted.
+  **A leaf-size sweep was attempted three times and is not reportable.** Another
+  agent's suite held the machine at load 33-44 and the build times came back
+  non-monotonic in the leaf size -- 690/817/513/215/322 ms for work that can only
+  decrease. Interleaving the repeats and taking the min per configuration did not
+  rescue it. Recorded rather than guessed at: re-run it quiet.
+
 * **The FRET pair-selection weight has been wrong for every odd number of
   degrees of freedom.** Retiring numba from `plugins/modelling/fret/core/olga_greedy.py`
   meant reading its chi-squared right-tail expansion, `Q(nu/2, chi2/2)`. Olga
@@ -2139,7 +2160,6 @@
 * **The decay panel's display rules are one module, and every one of them is a bad-fit rule** — `chisurf/core/fluorescence/mle/display.py` + 15 tests, the first half of sharing the MLE layout between burst-wise and region-wise fitting ([MLE lifetime fitting](subsystems/mle-lifetime-fitting.md), [PRD-92](prds/prd-92.md)). A burst and a region are the same measurement under different membership rules — photons into a VV|VH stack, a single-lifetime MLE, then data/model/IRF/background with weighted residuals sharing the time axis — so the two tools were about to have two copies of a display that is *not* decoration. Each rule exists because the obvious version looks fine on a good fit and becomes unreadable on a bad one, which is exactly when someone is looking at it: a **diverged** model is clipped to ten times the data's maximum, because plotted raw it takes a log view to 1e6 and hides the data; the IRF and background are **area**-normalised rather than peak-normalised, because one hot bin otherwise sets the scale for the whole curve; the y-range is pinned to the **data**, because a background-dominated fit can span 1e±27 and an auto-range obligingly shows all of it; and the residual band is the **99th percentile** with a floor, because one catastrophic channel otherwise flattens every other residual into a line through zero. Two traps are now impossible rather than merely avoided: the VV and VH halves get **separate** windows (slicing the concatenated array as one glues one channel's tail to the other's rise, and looks plausible), and residuals are computed on the **full** stacks before windowing (windowing first pairs a data channel with whichever model channel happens to sit at the same offset). Divergence can also be *told* rather than inferred — a parameter pinned at its bound is a fact about the fit, where a large drawn amplitude is only a symptom, and the two do not always coincide.
 * **The decay panel is one widget now, and extracting it found the burst tool's y-range had been wrong** — `chisurf/gui/widgets/decay_panel.py` draws a `DecayCurves` and nothing else, so what to draw stays decided in the Qt-free module beside it. Residuals on top at a third of the height, sharing the time axis with the decay below, because a systematic deviation is *about* a channel and reading it against a different x-range is worse than not showing it. **The defect the extraction exposed:** `chiplot`'s `set_range` takes **data units on every axis** and does the log conversion itself, while the burst tool computed `math.log10(...)` first — so the range was logged twice, the panel showed a few counts, and the decay sat off the top of its own view. It is a regression from the pyqtgraph→chiplot migration, where log10 *had* been the right thing to pass, and it survived because a wrongly-ranged log plot still looks like a plot. Caught by rendering the shared panel on a synthetic 2.6 ns decay and reading the picture: data clipped out of view, model invisible, IRF two vertical spikes. `decay_ylim` now returns counts, says so, and both tools go through it — the burst suite (43 tests) passes against the shared implementation, which is the parity check the extraction is for.
 * **Region MLE draws the burst tool's decay, per ROI** — the `decay_panel` AutoForm section plus `current_region_curves`, so a `view.json` gets the whole two-panel view in one line and the region tool's flat single-curve plot is retired. This is the point the shared layout was for: a burst and a region are the same measurement under different membership rules, and now they are the same picture under the same rules — data, model, area-matched IRF, background, weighted residuals above sharing the time axis. **90 passed, 20 skipped** across region MLE, burst MLE and the display module together, which is the parity claim: the burst wizard draws through the shared implementation and its own suite still agrees. Two things the screenshot caught that nothing else would: the dock tab read **"Panel 3"** because the section carried no title, and a batch run (`fit_many`, which keeps no per-region model) has a decay and no curve over it — the panel now shows the data with honestly-zero residuals rather than an empty axis or a stale neighbour's fit. The section clears on "nothing selected" for the same reason: a stale decay beside a fresh table row is a number and a picture that disagree.
-
 ## 2026-08-09
 
 * **Notebook editor polish (agent board: notebook editor UX pass).** Cell

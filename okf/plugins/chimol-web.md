@@ -169,25 +169,50 @@ stops matching is a question, not a failure. `capture_gl_baseline.py` keeps
    `GpuVolume` from one kernel to the next instead of copying an 8 MB grid out
    and back in between each pair.
 
-   **The BVH build is still the CPU-side bottleneck of a large trace**, and it
-   did not yield to the obvious fixes. Two were tried and measured:
+   **The BVH build is the CPU-side bottleneck of a large trace, and the honest
+   state of it is: measured, partly improved, and not finished.** On a *real*
+   traced solvent surface — 85,092 triangles, 640×480 ssaa2 — the build is
+   **241 ms of a 345 ms render, 70 %**. That is the number to design against; a
+   synthetic triangle soup at 320×240 understates it.
+
+   Two fixes were tried and measured:
 
    - the per-level `lexsort` → a **spatial-midpoint split with a `cumsum`
-     partition**, which is O(n) instead of O(n log n) per level and made **no
-     difference** — the sort was not where the time went;
+     partition**, O(n) instead of O(n log n) per level: **no difference.** The
+     sort was not where the time went;
    - three `(n, 3)` float64 gathers per level → **one packed `(n, 12)` float32
-     gather** (upper bound and upper centroid stored negated, so one
-     `minimum.reduceat` yields all four bounds). That one was real: **79 → 59
-     ms**, because the gathers were 21 ms of a 52 ms build and the node bounds go
-     to the shader as f32 anyway.
+     gather** (upper bound and upper centroid negated, so one `minimum.reduceat`
+     yields all four bounds): **79 → 59 ms** on the 32k case. The gathers were
+     21 ms of a 52 ms build and the node bounds go to the shader as f32 anyway.
 
-   Net: **~72–80 ms → ~55–65 ms** for 32k triangles. Both changes are kept — the
-   partition moves fewer bytes and the tree is equally good — but neither is the
-   step change, and the reason is structural: the build walks the whole primitive
-   array **17 times**, once per level. The step change is a **Karras LBVH**: one
-   Morton-code sort, after which every internal node's range and split are
-   determined independently and therefore vectorise into two or three passes
-   total. Lower tree quality, far fewer passes; not attempted.
+   Both are kept. Neither is the step change, and the reason is structural: the
+   build walks the whole primitive array **17 times**, once per level.
+
+   **What removed it for the case that matters is not making it faster but not
+   doing it.** `build_bvh_cached` keys the tree on the *content* of the primitive
+   bounds — identity would never match, since the caller rebuilds those arrays
+   from the scene every time, and a shape check would hand back the wrong tree
+   for a moved molecule. Hashing 85k bounds costs a millisecond or two against a
+   build of hundreds. Re-rendering the same geometry: **904 ms → 169 ms**,
+   measured within one process so the machine's load affects both sides equally.
+   Changing a colour or a light still hits the cache; moving the molecule does
+   not. `bvh.build_count` exists only so a test can see this working, because a
+   cached tree and a rebuilt one are otherwise indistinguishable.
+
+   **Still open: the first render.** The step change there is a **Karras LBVH** —
+   one Morton-code sort, after which every internal node's range and split are
+   determined independently and vectorise into two or three passes, with node
+   bounds from a sparse table (log n elementwise `minimum`s over the sorted
+   boxes, no gather). It needs `node_meta` to carry an explicit right-child index
+   instead of assuming siblings are adjacent, and a leaf-collapse pass. Estimated
+   ~40 ms against 241, at some cost in tree quality. Not attempted.
+
+   **A leaf-size sweep (4/8/16/32/64) was attempted three times and is not
+   reportable.** Another agent's suite pushed the machine to load 33–44 and the
+   build times came back non-monotonic in the leaf size — 690/817/513/215/322 ms
+   for work that can only decrease. Interleaving the repeats and taking the min
+   per configuration did not rescue it. Re-run it on a quiet machine before
+   believing any leaf size but the current 4.
 
    **Welding got its own win.** `_triangle_edges` was 45 ms, half of it
    `np.unique(..., return_inverse=True)` sorting 330k edge ids to find 55k
