@@ -568,15 +568,29 @@ def _microtime_component(
     micro_time_range: tuple[int, int],
     binning: int,
 ) -> np.ndarray:
-    """Binned micro-time histogram for a channel subset, sliced to the window."""
+    """Binned micro-time histogram for a channel subset, sliced to the window.
+
+    The length is **asked for**, not inferred. ``minlength=-1`` lets the file's
+    header decide, and a header that under-reports its micro-time channels —
+    a simulated stream says 1, and so does the PTU written from one — then
+    yields a histogram shorter than the window, which slices down to a couple
+    of bins. The caller knows the window; saying so is what makes this
+    independent of whether the header was written properly.
+    """
     start, stop = micro_time_range
     raw_start, raw_stop = start * binning, stop * binning
     mt = tttr.micro_times
     ch = tttr.routing_channels
     mask = (mt >= raw_start) & (mt <= raw_stop) & np.isin(ch, list(channels))
     sub = tttr[np.where(mask)[0]]
-    hist, _ = sub.get_microtime_histogram(binning, minlength=-1)
-    return hist[start:stop].astype(np.float64)
+    hist, _ = sub.get_microtime_histogram(binning, minlength=int(raw_stop))
+    hist = np.asarray(hist, dtype=np.float64)
+    if hist.size < stop:
+        # Still short (an empty channel gives an empty histogram): pad, so the
+        # VV/VH layout keeps its shape and a missing detector reads as zeros
+        # rather than as a differently-sized array nothing downstream expects.
+        hist = np.pad(hist, (0, stop - hist.size))
+    return hist[start:stop]
 
 
 

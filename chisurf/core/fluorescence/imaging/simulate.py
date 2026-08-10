@@ -413,6 +413,77 @@ def simulate_irf_measurement(
     )
 
 
+def clsm_from_scan(tttr, n_pixel: int, channels=(0, 1)):
+    """Rebuild the scanned image from a stream that came back off disk.
+
+    The marker layout is the scanner's, not something a reader can infer: the
+    simulator writes frame/line/pixel markers on specific channels, and
+    ``CLSMImage``'s auto-detection does not find them in a written PTU — it
+    returns a ``(1, 0)`` image and zero photons, which looks like an empty
+    measurement rather than a misread one. Reconstructing through the same
+    settings the scan used is the whole fix, and it belongs here so that a
+    fixture and the code that made it cannot drift apart.
+
+    Parameters
+    ----------
+    tttr : tttrlib.TTTR
+        The stream, freshly opened from a file or still in memory.
+    n_pixel : int
+        Scan grid side, as simulated.
+    channels : sequence of int
+        Routing channels to fill.
+
+    Returns
+    -------
+    tttrlib.CLSMImage
+    """
+    import tttrlib
+
+    clsm = tttrlib.CLSMImage(
+        tttr_data=tttr, marker_frame_start=[4], marker_line_start=1,
+        marker_line_stop=2, n_pixel_per_line=int(n_pixel),
+        use_pixel_markers=True, marker_pixel=8,
+        settings={"n_lines": int(n_pixel)},
+    )
+    clsm.fill(tttr, channels=list(channels))
+    return clsm
+
+
+def write_mixture_ptu(sim, path) -> str:
+    """Write a simulated scan out as a PTU.
+
+    PTU because it is what the writer supports for a stream built in memory:
+    the PTO writer has no header support for one, so the ordinary route to a
+    container is a vendor file first and ``Measurement.create`` after. See
+    ``okf/references/known-issues.md``.
+
+    Parameters
+    ----------
+    sim : SimulatedMixture
+        The simulated scan to persist.
+    path : str or pathlib.Path
+        Where to write it.
+
+    Returns
+    -------
+    str
+        The path written.
+
+    Raises
+    ------
+    RuntimeError
+        If the writer refused, rather than leaving a zero-byte file behind for
+        the next reader to discover.
+    """
+    import pathlib
+
+    target = pathlib.Path(path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    if not sim.tttr.write(str(target), "PTU"):
+        raise RuntimeError(f"tttrlib refused to write {target}")
+    return str(target)
+
+
 def _coerce_blobs(blobs) -> list:
     """Return *blobs* as :class:`Blob` instances."""
     out = []
