@@ -119,10 +119,7 @@ requirements:
     - pyqt
     - pyqtgraph
     - matplotlib
-    # scikit-image was dropped: regionprops lives in chisurf.core.roi.props and
-    # the five segmentation primitives the imaging tools used (gaussian,
-    # threshold_otsu, clear_border, peak_local_max, watershed) in
-    # chisurf.core.roi.segmentation.
+    - scikit-image
     # deprecation removed: chisurf.core.decorators.deprecated is the in-tree
     # replacement for the decorator, warning classes and docstring note.
     - pandas

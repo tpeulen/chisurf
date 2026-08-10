@@ -1,3 +1,36 @@
+## 20 file types in `chisurf/` are missing from an installed distribution
+
+**Found 2026-08-10** while adding `*.wgsl` for the chigame shader, which had the
+same defect and would have shipped broken.
+
+`[tool.setuptools.package-data]` is an allow-list of globs. Any extension not in
+it is **not copied into an installed copy**, and nothing warns: the package keeps
+working from a source checkout, so the failure only ever appears for someone who
+installed it.
+
+The ones that matter, because shipped code loads them at runtime:
+
+* **`.ico`, `.icns`, `.bmp`, `.qrc`** — GUI icons and the Qt resource manifest;
+* **`.ini`, `.yml`** — device configuration (the PicoQuant TCSPC device files)
+  and plugin example configuration;
+* **`.xlsx`, `.xlsm`, `.gnumeric`** — the potential-energy databases under
+  `core/structure/potential/database/`;
+* **`.c`, `.cpp`, `.h`** — the bundled AV kernel sources.
+
+The rest (`.dcd`, `.pdb`, `.pml`, `.pdf`, `.pdat`, `.mti`, `.spc`, `.rmf3`,
+`.bur`) are fixtures and reference material, so they matter less — but the sweep
+does not distinguish, and neither does an install.
+
+**Not fixed here** because the correct pattern differs per family: some want a
+package-data glob, some belong in a fixture directory that is not installed at
+all, and the `.qrc`/icon set may want compiling rather than copying. Deciding
+that is a packaging change, not a side effect of adding a shader.
+
+**Guarded**: `test/test_package_data_covers_shipped_files.py` holds these as a
+**shrinking** `KNOWN_UNCOVERED` list and fails on any *newly* uncovered type, so
+this cannot grow silently. A companion test fails when an entry becomes stale.
+The fix for each is to add a pattern to `pyproject.toml` and strike the line.
+
 ## ✅ FIXED — ChiMOL ambient occlusion was wired the wrong way round
 
 **Fixed 2026-08-10.** Kept here because the *first* diagnosis below was wrong in

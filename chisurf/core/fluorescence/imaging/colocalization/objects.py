@@ -181,9 +181,13 @@ def _watershed_split(binary: np.ndarray) -> np.ndarray:
     """Split touching objects with a distance-transform watershed."""
     from scipy import ndimage
 
-    from chisurf.core.roi.segmentation import peak_local_max, watershed
-
     distance = ndimage.distance_transform_edt(binary)
+    try:
+        from skimage.feature import peak_local_max
+        from skimage.segmentation import watershed
+    except ImportError:  # pragma: no cover - optional dependency
+        labels, _ = ndimage.label(binary)
+        return labels
     coordinates = peak_local_max(distance, labels=binary, min_distance=2, exclude_border=False)
     markers = np.zeros(binary.shape, dtype=int)
     for i, (y, x) in enumerate(coordinates, start=1):

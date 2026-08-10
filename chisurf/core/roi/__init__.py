@@ -22,11 +22,6 @@ A third question follows once a region exists — **what is it?** — and
 same call signature, same property names, same algorithms and therefore the
 same numbers — extended to measure a bare mask or a drawn :class:`ROI` as
 readily as a label image, and to hand the measured region back as a ROI.
-
-And a fourth comes *before* all of them — **where are the regions?** —
-answered by :mod:`chisurf.core.roi.segmentation`: smooth, threshold, drop the
-border objects, seed, flood. Between the two modules they are everything the
-imaging tools used to import scikit-image for.
 """
 
 from __future__ import annotations

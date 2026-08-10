@@ -97,12 +97,6 @@ RETIRED = {
         "hdbscan",
         "use chisurf.core.ml.cluster.HDBSCAN",
     ),
-    "skimage": (
-        "scikit-image",
-        "use chisurf.core.roi (regionprops, regionprops_table) and "
-        "chisurf.core.roi.segmentation (gaussian, threshold_otsu, clear_border, "
-        "peak_local_max, watershed)",
-    ),
 }
 
 #: Further distribution names that install the same retired module, checked by
@@ -134,9 +128,6 @@ _ALLOWED_PREFIXES = {
     # must be allowed to.
     "sklearn": ("test/ml/", "test/benchmarks/"),
     "hdbscan": ("test/benchmarks/",),
-    # Same reason: the region-measurement and segmentation suites are what keep
-    # proving those replacements agree with the library, pixel for pixel.
-    "skimage": ("test/core/test_regionprops.py", "test/core/test_segmentation.py"),
 }
 
 #: Packaging manifests that describe the chisurf runtime. Deliberately only

@@ -1,420 +1,467 @@
-import sys
+"""Breakout, on the chigame engine.
+
+Ported from a hand-written ``QPainter`` board. Rules, speeds, level layout and
+scoring carry over unchanged; what changes is that it draws through
+:mod:`chisurf.gui.chigame` and is driven by the abstract controller.
+
+Breakout is the engine's batching test: eighty bricks, a paddle, a ball and a
+particle shower all resolve to a single instanced draw call.
+"""
+
+from __future__ import annotations
+
 import math
 import random
-from qtpy.QtCore import Qt, QBasicTimer, QRectF, QPointF, QSize
-from qtpy.QtGui import QPainter, QColor, QFont, QBrush, QPen, QLinearGradient, QRadialGradient
-from qtpy.QtWidgets import QFrame, QApplication, QMainWindow
+
+from qtpy import QtWidgets
+
+from chisurf.gui import chigame
+from chisurf.gui.chigame.input import Action
 
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
-except ImportError:
-    persist_plugin_state = lambda n: lambda c: c
+except ImportError:  # pragma: no cover - stand-alone use
 
-try:
-    from chisurf.plugins.misc.games.breakout.sound import SoundManager
-except ImportError:
-    class SoundManager:
-        def __init__(self): self._muted = True
-        @property
-        def muted(self): return self._muted
-        @muted.setter
-        def muted(self, value): pass
-        def toggle(self): pass
-        def play(self, name): pass
-        def ensure_sounds(self): pass
+    def persist_plugin_state(name):
+        """Return an identity decorator when the host is unavailable."""
+        return lambda cls: cls
 
-W = 800
-H = 650
 
-PaddleW = 100
-PaddleH = 16
-PaddleY = H - 40
+#: Play field in world units, at the original board's pixel dimensions so every
+#: speed and size below carries over without rescaling.
+W = 800.0
+H = 650.0
 
-BallSize = 12
-BaseBallSpeed = 5.5
+PADDLE_W = 100.0
+PADDLE_H = 16.0
+PADDLE_Y = H - 40.0
+PADDLE_SPEED = 520.0
 
-BrickRows = 8
-BrickCols = 10
-BrickW = (W - 60) // BrickCols
-BrickH = 22
-BrickTop = 50
+BALL_SIZE = 12.0
+BASE_BALL_SPEED = 330.0
 
-Lives = 3
+BRICK_ROWS = 8
+BRICK_COLS = 10
+BRICK_W = (W - 60.0) / BRICK_COLS
+BRICK_H = 22.0
+BRICK_TOP = 50.0
+BRICK_PAD = 30.0
 
-RowColors = [
-    QColor(255, 60, 60),
-    QColor(255, 120, 40),
-    QColor(255, 200, 40),
-    QColor(100, 220, 60),
-    QColor(60, 180, 255),
-    QColor(100, 100, 255),
-    QColor(180, 80, 255),
-    QColor(255, 80, 200),
+LIVES = 3
+
+#: One colour per row, and how many hits each row takes. The top three rows are
+#: tougher, which is what makes clearing downward feel like progress.
+ROW_COLORS = [
+    (1.00, 0.24, 0.24),
+    (1.00, 0.47, 0.16),
+    (1.00, 0.78, 0.16),
+    (0.39, 0.86, 0.24),
+    (0.24, 0.71, 1.00),
+    (0.39, 0.39, 1.00),
+    (0.71, 0.31, 1.00),
+    (1.00, 0.31, 0.78),
 ]
+ROW_HARDNESS = [2, 2, 2, 1, 1, 1, 1, 1]
 
-RowHardness = [2, 2, 2, 1, 1, 1, 1, 1]
+BINDINGS = {
+    "ArrowLeft": Action.LEFT,
+    "ArrowRight": Action.RIGHT,
+    "a": Action.LEFT,
+    "d": Action.RIGHT,
+    " ": Action.CONFIRM,
+    "Enter": Action.CONFIRM,
+    "p": Action.MENU,
+    "r": Action.CANCEL,
+    "m": Action.SHOULDER_R,
+}
 
 
 class Brick:
-    def __init__(self, x, y, w, h, color, hp):
-        self.rect = QRectF(x, y, w, h)
+    """One brick.
+
+    Parameters
+    ----------
+    x, y : float
+        Centre in world units.
+    w, h : float
+        Size in world units.
+    color : tuple of float
+        sRGB RGB.
+    hp : int
+        Hits remaining.
+    """
+
+    def __init__(self, x, y, w, h, color, hp) -> None:
+        self.x = x
+        self.y = y
+        self.w = w
+        self.h = h
         self.color = color
-        self.max_hp = hp
         self.hp = hp
-        self.alive = True
+        self.max_hp = hp
 
-    def hit(self):
+    @property
+    def alive(self) -> bool:
+        """Whether the brick is still standing.
+
+        Returns
+        -------
+        bool
+            True while it has hits left.
+        """
+        return self.hp > 0
+
+    def hit(self) -> bool:
+        """Take one hit.
+
+        Returns
+        -------
+        bool
+            True when this hit destroyed the brick.
+        """
         self.hp -= 1
-        if self.hp <= 0:
-            self.alive = False
-            return True
-        return False
-
-    def draw(self, painter):
-        if not self.alive:
-            return
-        ratio = self.hp / self.max_hp
-        c = QColor(self.color)
-        if self.hp < self.max_hp:
-            c = c.lighter(130)
-        grad = QLinearGradient(self.rect.topLeft(), self.rect.bottomLeft())
-        grad.setColorAt(0, c.lighter(140))
-        grad.setColorAt(1, c)
-        painter.setBrush(QBrush(grad))
-        painter.setPen(QPen(c.darker(150), 1))
-        painter.drawRoundedRect(self.rect, 3, 3)
+        return self.hp <= 0
 
 
 class Particle:
-    def __init__(self, x, y, color):
+    """A brick fragment.
+
+    Parameters
+    ----------
+    x, y : float
+        Starting position.
+    vx, vy : float
+        Velocity in world units per second.
+    color : tuple of float
+        sRGB RGB.
+    life : float, optional
+        Lifetime in seconds.
+    """
+
+    def __init__(self, x, y, vx, vy, color, life: float = 0.45) -> None:
         self.x = x
         self.y = y
-        self.vx = random.uniform(-3, 3)
-        self.vy = random.uniform(-4, -1)
+        self.vx = vx
+        self.vy = vy
         self.color = color
-        self.life = 20
+        self.life = life
+        self.max_life = life
 
-    def update(self):
-        self.x += self.vx
-        self.y += self.vy
-        self.vy += 0.15
-        self.life -= 1
+    def update(self, dt: float) -> None:
+        """Advance the fragment.
 
-    def draw(self, painter):
-        if self.life <= 0:
-            return
-        alpha = int(255 * self.life / 20)
-        c = QColor(self.color)
-        c.setAlpha(alpha)
-        painter.setPen(Qt.NoPen)
-        painter.setBrush(QBrush(c))
-        painter.drawEllipse(QPointF(self.x, self.y), 3, 3)
+        Parameters
+        ----------
+        dt : float
+            Seconds elapsed.
+        """
+        self.x += self.vx * dt
+        self.y += self.vy * dt
+        self.vy += 700.0 * dt
+        self.life -= dt
 
 
-class BreakoutBoard(QFrame):
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.setFocusPolicy(Qt.StrongFocus)
-        self.setMouseTracking(True)
-        self.setFixedSize(W, H)
+class BreakoutGame(chigame.Game):
+    """The rules and the drawing, free of Qt and of GPU objects."""
 
-        self.sound = SoundManager()
+    title = "Breakout"
+    background = (0.055, 0.055, 0.11, 1.0)
+    music_context = "overworld"
 
-        self.paddleX = (W - PaddleW) / 2
-        self.ballPos = QPointF(W / 2, PaddleY - BallSize)
-        self.ballVel = QPointF(0, 0)
+    def setup(self, host) -> None:
+        """Bind the controller and start a game.
 
+        Parameters
+        ----------
+        host : chisurf.gui.chigame.game.GameHost
+            The host running this game.
+        """
+        self.host = host
+        host.keys.bindings = dict(BINDINGS)
+        host.camera.center[:] = (W * 0.5, H * 0.5)
+        host.camera.height = H
+        self.restart()
+
+    def restart(self) -> None:
+        """Reset score, level and lives, and build the first level."""
         self.score = 0
-        self.lives = Lives
         self.level = 1
-        self.isStarted = False
-        self.isPaused = False
-        self.serve = True
-        self.ball_stuck = True
+        self.lives = LIVES
+        self.paused = False
+        self.muted = False
+        self.message: str | None = None
+        self.init_level()
 
-        self.particles = []
-        self.flash = 0
+    def init_level(self) -> None:
+        """Lay out the brick grid and re-serve."""
+        self.bricks: list[Brick] = []
+        self.particles: list[Particle] = []
+        for row in range(BRICK_ROWS):
+            color = ROW_COLORS[row % len(ROW_COLORS)]
+            hp = ROW_HARDNESS[row % len(ROW_HARDNESS)]
+            for col in range(BRICK_COLS):
+                x = BRICK_PAD + col * BRICK_W + BRICK_W * 0.5
+                y = BRICK_TOP + row * (BRICK_H + 4.0) + BRICK_H * 0.5
+                self.bricks.append(Brick(x, y, BRICK_W - 8.0, BRICK_H, color, hp))
+        self.paddle_x = W * 0.5
+        self.serve()
 
-        self.bricks = []
-        self.timer = QBasicTimer()
-        self.keys_held = set()
+    def serve(self) -> None:
+        """Stick the ball to the paddle and wait for a launch."""
+        self.stuck = True
+        self.ball_x = self.paddle_x
+        self.ball_y = PADDLE_Y - PADDLE_H * 0.5 - BALL_SIZE * 0.5
+        self.ball_vx = 0.0
+        self.ball_vy = 0.0
 
-        self.initLevel()
-
-    def initLevel(self):
-        self.bricks.clear()
-        self.particles.clear()
-        pad = 30
-        for r in range(BrickRows):
-            color = RowColors[r % len(RowColors)]
-            hp = RowHardness[r % len(RowHardness)]
-            for c in range(BrickCols):
-                x = pad + c * BrickW + 4
-                y = BrickTop + r * (BrickH + 4)
-                self.bricks.append(Brick(x, y, BrickW - 8, BrickH, color, hp))
-        self.paddleX = (W - PaddleW) / 2
-        self.serveBall()
-
-    def serveBall(self):
-        self.serve = True
-        self.ball_stuck = True
-        self.ballPos = QPointF(self.paddleX + PaddleW / 2 - BallSize / 2, PaddleY - BallSize)
-
-    def launchBall(self):
+    def launch(self) -> None:
+        """Send the ball upward at a random angle."""
         angle = random.uniform(-math.pi / 4, math.pi / 4)
-        direction = 1 if random.choice([True, False]) else -1
-        self.ballVel = QPointF(
-            math.cos(angle) * BaseBallSpeed * direction,
-            -abs(math.sin(angle) * BaseBallSpeed)
-        )
-        self.serve = False
-        self.ball_stuck = False
-        self.sound.play('launch')
+        direction = random.choice((-1.0, 1.0))
+        self.ball_vx = math.cos(angle) * BASE_BALL_SPEED * direction
+        self.ball_vy = -abs(math.sin(angle) * BASE_BALL_SPEED) - BASE_BALL_SPEED * 0.6
+        self.stuck = False
+        self._sfx("launch", 540.0)
 
-    def start(self):
-        self.score = 0
-        self.lives = Lives
-        self.level = 1
-        self.sound.ensure_sounds()
-        self.initLevel()
-        self.timer.start(16, self)
-        self.isStarted = True
-        self.isPaused = False
+    def _sfx(self, name: str, frequency: float) -> None:
+        """Play a sound effect unless muted.
 
-    def gameOver(self, won=False):
-        self.timer.stop()
-        self.isStarted = False
-        self.sound.play('game_over')
-        self.update()
+        Parameters
+        ----------
+        name : str
+            Effect name.
+        frequency : float
+            Pitch in Hz.
+        """
+        if not self.muted:
+            self.host.audio.sfx(name, frequency)
 
-    def spawnParticles(self, x, y, color, count=15):
+    def spawn_particles(self, x, y, color, count: int = 15) -> None:
+        """Emit brick fragments.
+
+        Parameters
+        ----------
+        x, y : float
+            Impact point.
+        color : tuple of float
+            sRGB RGB.
+        count : int, optional
+            Number of fragments.
+        """
         for _ in range(count):
-            self.particles.append(Particle(x, y, color))
+            angle = random.uniform(0, math.tau)
+            speed = random.uniform(60.0, 280.0)
+            self.particles.append(
+                Particle(x, y, math.cos(angle) * speed, math.sin(angle) * speed, color)
+            )
 
-    def keyPressEvent(self, event):
-        k = event.key()
-        if k == Qt.Key_P:
-            if not self.isStarted:
-                return
-            self.isPaused = not self.isPaused
-            if self.isPaused:
-                self.timer.stop()
+    def update(self, dt: float, keys) -> None:
+        """Advance one frame.
+
+        Parameters
+        ----------
+        dt : float
+            Seconds elapsed.
+        keys : chisurf.gui.chigame.input.InputMap
+            Controller state.
+        """
+        if keys.just_pressed(Action.MENU):
+            self.paused = not self.paused
+        if keys.just_pressed(Action.CANCEL):
+            self.restart()
+            return
+        if keys.just_pressed(Action.SHOULDER_R):
+            self.muted = not self.muted
+        if self.message is not None:
+            if keys.just_pressed(Action.CONFIRM):
+                self.restart()
+            return
+        if self.paused:
+            return
+
+        half = PADDLE_W * 0.5
+        self.paddle_x = min(
+            max(self.paddle_x + keys.axis()[0] * PADDLE_SPEED * dt, half), W - half
+        )
+
+        if self.stuck:
+            self.ball_x = self.paddle_x
+            if keys.just_pressed(Action.CONFIRM):
+                self.launch()
+        else:
+            self._move_ball(dt)
+
+        for particle in self.particles:
+            particle.update(dt)
+        self.particles = [p for p in self.particles if p.life > 0.0]
+
+    def _move_ball(self, dt: float) -> None:
+        """Advance the ball and resolve every collision.
+
+        Parameters
+        ----------
+        dt : float
+            Seconds elapsed.
+        """
+        self.ball_x += self.ball_vx * dt
+        self.ball_y += self.ball_vy * dt
+        radius = BALL_SIZE * 0.5
+
+        if self.ball_x - radius <= 0.0:
+            self.ball_x = radius
+            self.ball_vx = abs(self.ball_vx)
+            self._sfx("wall", 420.0)
+        elif self.ball_x + radius >= W:
+            self.ball_x = W - radius
+            self.ball_vx = -abs(self.ball_vx)
+            self._sfx("wall", 420.0)
+        if self.ball_y - radius <= 0.0:
+            self.ball_y = radius
+            self.ball_vy = abs(self.ball_vy)
+            self._sfx("wall", 420.0)
+
+        # Paddle: the strike point steers the bounce, as in the original.
+        if (
+            self.ball_vy > 0.0
+            and abs(self.ball_y - PADDLE_Y) <= (PADDLE_H + BALL_SIZE) * 0.5
+            and abs(self.ball_x - self.paddle_x) <= (PADDLE_W + BALL_SIZE) * 0.5
+        ):
+            offset = (self.ball_x - self.paddle_x) / (PADDLE_W * 0.5)
+            speed = math.hypot(self.ball_vx, self.ball_vy)
+            angle = offset * 1.0
+            self.ball_vx = math.sin(angle) * speed
+            self.ball_vy = -abs(math.cos(angle) * speed)
+            self.ball_y = PADDLE_Y - (PADDLE_H + BALL_SIZE) * 0.5
+            self._sfx("paddle", 660.0)
+
+        self._hit_bricks()
+
+        if self.ball_y - radius > H:
+            self.lives -= 1
+            self._sfx("lost", 180.0)
+            if self.lives <= 0:
+                self.message = "Game over"
             else:
-                self.timer.start(16, self)
-            self.update()
-            return
-        if k == Qt.Key_R:
-            self.start()
-            return
-        if k == Qt.Key_M:
-            self.sound.toggle()
-            status = 'ON' if not self.sound.muted else 'OFF'
-            self.parent().statusBar().showMessage(f'Sound: {status} — Press M to toggle')
-            return
-        self.keys_held.add(k)
-        if k == Qt.Key_Space:
-            if self.ball_stuck:
-                self.launchBall()
-        super(BreakoutBoard, self).keyPressEvent(event)
+                self.serve()
 
-    def keyReleaseEvent(self, event):
-        self.keys_held.discard(event.key())
-        super(BreakoutBoard, self).keyReleaseEvent(event)
-
-    def mouseMoveEvent(self, event):
-        if self.isStarted:
-            mx = event.x() - PaddleW / 2
-            self.paddleX = max(0, min(W - PaddleW, mx))
-            if self.ball_stuck:
-                self.ballPos.setX(self.paddleX + PaddleW / 2 - BallSize / 2)
-
-    def timerEvent(self, event):
-        if event.timerId() != self.timer.timerId():
-            return
-        if self.isPaused:
-            return
-        if not self.isStarted:
-            return
-        move_step = 6
-        if Qt.Key_Left in self.keys_held:
-            self.paddleX = max(0, self.paddleX - move_step)
-        if Qt.Key_Right in self.keys_held:
-            self.paddleX = min(W - PaddleW, self.paddleX + move_step)
-        if self.ball_stuck:
-            self.ballPos.setX(self.paddleX + PaddleW / 2 - BallSize / 2)
-            self.update()
-            return
-
-        self.ballPos += self.ballVel
-        bx, by = self.ballPos.x(), self.ballPos.y()
-        bvx, bvy = self.ballVel.x(), self.ballVel.y()
-        bs = BallSize
-
-        if by <= 0:
-            self.ballPos.setY(0)
-            self.ballVel.setY(abs(bvy))
-            self.sound.play('wall_bounce')
-        if bx <= 0:
-            self.ballPos.setX(0)
-            self.ballVel.setX(abs(bvx))
-            self.sound.play('wall_bounce')
-        if bx + bs >= W:
-            self.ballPos.setX(W - bs)
-            self.ballVel.setX(-abs(bvx))
-            self.sound.play('wall_bounce')
-
-        pr = QRectF(self.paddleX, PaddleY, PaddleW, PaddleH)
-        br = QRectF(bx, by, bs, bs)
-        if br.intersects(pr) and bvy > 0:
-            offset = ((bx + bs / 2) - (self.paddleX + PaddleW / 2)) / (PaddleW / 2)
-            speed = math.hypot(bvx, bvy)
-            speed = min(speed + 0.2, BaseBallSpeed * 2.5)
-            angle = offset * math.pi / 2.5
-            self.ballVel = QPointF(math.sin(angle) * speed, -abs(math.cos(angle) * speed))
-            self.ballPos.setY(PaddleY - bs)
-            self.sound.play('paddle_hit')
-            self.spawnParticles(bx + bs / 2, PaddleY, QColor(255, 255, 200), 6)
-
-        hit_any = False
+    def _hit_bricks(self) -> None:
+        """Break the first brick the ball overlaps and bounce off it."""
+        radius = BALL_SIZE * 0.5
         for brick in self.bricks:
             if not brick.alive:
                 continue
-            if br.intersects(brick.rect):
-                dx1 = bx + bs - brick.rect.left()
-                dx2 = brick.rect.right() - bx
-                dy1 = by + bs - brick.rect.top()
-                dy2 = brick.rect.bottom() - by
-                min_dx = min(dx1, dx2)
-                min_dy = min(dy1, dy2)
-                if min_dx < min_dy:
-                    self.ballVel.setX(-bvx)
-                else:
-                    self.ballVel.setY(-bvy)
-                destroyed = brick.hit()
-                if destroyed:
-                    self.score += 10 * (brick.max_hp + 1)
-                    self.spawnParticles(
-                        brick.rect.center().x(), brick.rect.center().y(),
-                        brick.color, 12
-                    )
-                    self.sound.play('brick_break')
-                else:
-                    self.spawnParticles(
-                        brick.rect.center().x(), brick.rect.center().y(),
-                        brick.color, 4
-                    )
-                hit_any = True
-                break
-
-        if hit_any:
-            speed = math.hypot(self.ballVel.x(), self.ballVel.y())
-            speed = min(speed, BaseBallSpeed * 2.5)
-            self.ballVel = self.ballVel / math.hypot(self.ballVel.x(), self.ballVel.y()) * speed
-
-        if by + bs >= H:
-            self.lives -= 1
-            if self.lives > 0:
-                self.serveBall()
+            if (
+                abs(self.ball_x - brick.x) > brick.w * 0.5 + radius
+                or abs(self.ball_y - brick.y) > brick.h * 0.5 + radius
+            ):
+                continue
+            # Bounce off whichever face was actually crossed: comparing the
+            # overlap depths is what stops the ball tunnelling along a row.
+            overlap_x = brick.w * 0.5 + radius - abs(self.ball_x - brick.x)
+            overlap_y = brick.h * 0.5 + radius - abs(self.ball_y - brick.y)
+            if overlap_x < overlap_y:
+                self.ball_vx = -self.ball_vx
             else:
-                self.gameOver(False)
-                self.update()
+                self.ball_vy = -self.ball_vy
+            if brick.hit():
+                self.score += 10 * brick.max_hp
+                self.spawn_particles(brick.x, brick.y, brick.color)
+                self._sfx("break", 780.0)
+            else:
+                self._sfx("crack", 520.0)
+            break
 
-        alive = sum(1 for b in self.bricks if b.alive)
-        if alive == 0:
+        if all(not brick.alive for brick in self.bricks):
             self.level += 1
-            self.sound.play('level_up')
-            self.initLevel()
+            self.init_level()
 
-        for p in self.particles[:]:
-            p.update()
-            if p.life <= 0:
-                self.particles.remove(p)
+    def draw(self, scene) -> None:
+        """Queue the frame.
 
-        self.update()
-
-    def paintEvent(self, event):
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
-
-        bg = QLinearGradient(0, 0, 0, H)
-        bg.setColorAt(0, QColor(8, 8, 30))
-        bg.setColorAt(1, QColor(18, 18, 50))
-        painter.fillRect(self.rect(), QBrush(bg))
-
+        Parameters
+        ----------
+        scene : chisurf.gui.chigame.scene.Scene
+            Frame under construction.
+        """
         for brick in self.bricks:
-            brick.draw(painter)
+            if not brick.alive:
+                continue
+            # A damaged brick reads as dimmer, so hardness is visible.
+            shade = 1.0 if brick.hp >= brick.max_hp else 0.55
+            scene.draw(
+                "ui", "bar",
+                at=(brick.x, brick.y),
+                size=(brick.w, brick.h),
+                color=(*[c * shade for c in brick.color], 1.0),
+            )
 
-        pg = QLinearGradient(0, PaddleY, 0, PaddleY + PaddleH)
-        pg.setColorAt(0, QColor(180, 220, 255))
-        pg.setColorAt(1, QColor(80, 140, 255))
-        painter.setBrush(QBrush(pg))
-        painter.setPen(QPen(QColor(200, 230, 255), 1))
-        painter.drawRoundedRect(int(self.paddleX), PaddleY, PaddleW, PaddleH, 6, 6)
-
-        bg_ball = QRadialGradient(BallSize / 2, BallSize / 2, BallSize / 2)
-        bg_ball.setColorAt(0, QColor(255, 255, 255))
-        bg_ball.setColorAt(0.6, QColor(255, 255, 180))
-        bg_ball.setColorAt(1, QColor(200, 200, 100))
-        painter.setBrush(QBrush(bg_ball))
-        painter.setPen(Qt.NoPen)
-        painter.drawEllipse(
-            int(self.ballPos.x()), int(self.ballPos.y()),
-            BallSize, BallSize
+        scene.draw(
+            "ui", "bar",
+            at=(self.paddle_x, PADDLE_Y),
+            size=(PADDLE_W, PADDLE_H),
+            color=(0.42, 0.66, 1.0, 1.0),
         )
 
-        for p in self.particles:
-            p.draw(painter)
+        for particle in self.particles:
+            fade = max(particle.life / particle.max_life, 0.0)
+            scene.draw(
+                "ui", "spark",
+                at=(particle.x, particle.y),
+                size=(4.0 * fade + 2.0, 4.0 * fade + 2.0),
+                color=(*particle.color, fade),
+            )
 
-        painter.setPen(QColor(200, 200, 220))
-        painter.setFont(QFont('Arial', 14, QFont.Bold))
-        painter.drawText(15, 25, f"Score: {self.score}")
-        painter.drawText(W // 2 - 40, 25, f"Level: {self.level}")
-        painter.drawText(W - 100, 25, f"Lives: {'♥' * self.lives}")
+        scene.draw("dye", "ball", at=(self.ball_x, self.ball_y),
+                   size=(BALL_SIZE, BALL_SIZE), emission_nm=575.0)
 
-        if not self.isStarted:
-            painter.fillRect(self.rect(), QColor(0, 0, 0, 180))
-            painter.setPen(QColor(255, 255, 200))
-            painter.setFont(QFont('Arial', 36, QFont.Bold))
-            if self.lives <= 0:
-                painter.drawText(self.rect(), Qt.AlignCenter, f"Game Over!\nScore: {self.score}\nPress R to restart")
-            else:
-                painter.drawText(self.rect(), Qt.AlignCenter,
-                                 "Breakout\n\nPress R to start")
-        elif self.isPaused:
-            painter.fillRect(self.rect(), QColor(0, 0, 0, 160))
-            painter.setPen(QColor(255, 255, 255))
-            painter.setFont(QFont('Arial', 36, QFont.Bold))
-            painter.drawText(self.rect(), Qt.AlignCenter, "PAUSED")
+        scene.text(f"Score: {self.score}", at=(14.0, 20.0), height=18.0)
+        scene.text(f"Level: {self.level}", at=(W * 0.5, 20.0), height=18.0, align="center")
+        scene.text("Lives:", at=(W - 76.0, 20.0), height=18.0, align="right")
+        for index in range(self.lives):
+            scene.draw(
+                "ui", "life",
+                at=(W - 62.0 + index * 20.0, 20.0),
+                size=(13.0, 13.0),
+                color=(1.0, 0.32, 0.42, 1.0),
+            )
 
-        elif self.ball_stuck:
-            painter.setPen(QColor(200, 220, 255))
-            painter.setFont(QFont('Arial', 14))
-            painter.drawText(W // 2 - 80, H // 2 + 40, "Press SPACE or click to launch")
+        if self.stuck and self.message is None and not self.paused:
+            scene.text("Confirm to launch", at=(W * 0.5, H * 0.45), height=22.0,
+                       align="center", color=(0.80, 0.83, 0.95, 1.0))
+        if self.paused:
+            scene.text("PAUSED", at=(W * 0.5, H * 0.45), height=44.0,
+                       align="center", color=(1.0, 0.85, 0.30, 1.0))
+        if self.message is not None:
+            scene.draw("ui", "panel", at=(W * 0.5, H * 0.5), size=(420.0, 110.0))
+            scene.text(self.message, at=(W * 0.5, H * 0.5 - 14.0), height=34.0,
+                       align="center", color=(1.0, 0.85, 0.30, 1.0))
+            scene.text("Confirm to play again", at=(W * 0.5, H * 0.5 + 24.0), height=16.0,
+                       align="center")
+
+        scene.text(
+            "Left/Right move   Confirm launch   Menu pause   Cancel restart   R sound"
+            + ("   [muted]" if self.muted else ""),
+            at=(W * 0.5, H - 12.0), height=14.0, align="center",
+            color=(0.58, 0.61, 0.75, 1.0),
+        )
 
 
 @persist_plugin_state("breakout")
-class Breakout(QMainWindow):
-    def __init__(self, parent=None):
+class Breakout(QtWidgets.QWidget):
+    """Dockable container hosting the game.
+
+    Parameters
+    ----------
+    parent : QWidget, optional
+        Parent widget.
+    """
+
+    def __init__(self, parent=None) -> None:
         super().__init__(parent)
-        self.initUI()
-
-    def initUI(self):
-        self.board = BreakoutBoard(self)
-        self.setCentralWidget(self.board)
-        self.board.setFocus()
-        self.statusBar().showMessage(
-            '← → mouse | SPACE launch | P pause | R restart | M sound')
-        self.setFixedSize(W, H)
-        self.setWindowTitle('Breakout')
-
-    def closeEvent(self, event):
-        self.board.timer.stop()
-        event.accept()
-        self.deleteLater()
-
-
-if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    game = Breakout()
-    game.show()
-    sys.exit(app.exec())
+        self.setWindowTitle("Breakout")
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        self.game = BreakoutGame()
+        canvas, self.host = chigame.create_widget(self.game, parent=self)
+        layout.addWidget(canvas)
+        self.resize(820, 690)

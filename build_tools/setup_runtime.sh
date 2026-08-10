@@ -39,6 +39,7 @@ DEPS=(
     "scipy"
     "pandas"
     "matplotlib"
+    "scikit-image"
     "pyqt"
     "numba"
     "typing-extensions"

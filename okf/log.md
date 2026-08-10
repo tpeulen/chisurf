@@ -1,6 +1,33 @@
 # Update Log
 
 ## 2026-08-10
+* **chigame phase 2 begins: breakout ported, and a packaging gap that would have shipped the engine broken.**
+  `breakout` is off `QPainter` and on [chigame](subsystems/chigame.md) — the batching test, with eighty
+  bricks, a paddle, a ball and a particle shower resolving to **one instanced draw call**. Rules, speeds,
+  the 8x10 grid, the per-row hardness (the top three rows take two hits) and scoring carry over unchanged.
+  Proven by a before/after pair in `plugins/misc/games/test/renders/`; **all four remaining baselines
+  (breakout, tetris, minesweeper, number_quest) were captured up front**, because that half is
+  unrecoverable once a widget is replaced. Two parity gaps the image caught and the assertions did not:
+  the bricks and paddle had lost their rounded corners (a `ui` name with no pack variant falls through to
+  a plain rect), and **lives rendered as `***`** — the glyph atlas is ASCII-only, so the original's hearts
+  had silently become asterisks. Hearts are now drawn as pips rather than typed, which is a substitution
+  rather than a loss. Mouse steering is deliberately dropped: the controller is the nine actions.
+  **`*.wgsl` was missing from `[tool.setuptools.package-data]`** — chigame reads its shader from disk when
+  the render pipeline is built, so the engine worked perfectly from a source checkout and would have
+  raised on any *installed* copy. Fixed, and generalised into
+  `test/test_package_data_covers_shipped_files.py`, which sweeps every non-Python file under `chisurf/`
+  against the package-data globs. That sweep found **20 further uncovered file types that were already
+  broken** — `.ico`/`.icns`/`.bmp`/`.qrc` icons, `.ini`/`.yml` device and plugin configuration, the
+  `.xlsx`/`.xlsm`/`.gnumeric` potential-energy databases, the bundled `.c`/`.cpp`/`.h` AV sources. They are
+  held in a **shrinking** `KNOWN_UNCOVERED` list with a companion test that fails when an entry goes stale,
+  and recorded in [known-issues](references/known-issues.md): the right pattern differs per family (glob,
+  move to a non-installed fixture directory, or compile rather than copy), so deciding it is a packaging
+  change and not a side effect of adding a shader.
+  `Breakout` is a plain `QWidget` now, so its exception is **struck** from the shrinking `QMainWindow`
+  allow-list — caught by that file's own anti-rot test, not by hand. `breakout/sound.py` deleted,
+  superseded by `chigame.audio`.
+  Suites: 54 passed (games plugins, `test_chigame`, tool-window base, packaging guard, relative imports).
+
 * **scikit-image is out too, and it cost five functions.** The tree imported it from
   exactly two shipped files — object colocalization and molecule MLE — for
   `gaussian`, `threshold_otsu`, `clear_border`, `peak_local_max` and `watershed`;
