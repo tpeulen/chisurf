@@ -91,6 +91,7 @@ _MIME_TYPE = "_mmfdb_artifact.mime_type"
 _FILE_PATH = "_mmfdb_artifact.file_path"
 
 _OPERATION_TYPE = "_mmfdb_operation.operation_type"
+_ALGORITHM = "_mmfdb_operation.algorithm"
 _SETTINGS_JSON = "_mmfdb_operation.settings_json"
 _SETTINGS_HASH = "_mmfdb_operation.settings_hash"
 _SOFTWARE_PACKAGE = "_mmfdb_operation.software_package"
@@ -765,6 +766,7 @@ class Measurement:
         artifact_kind: str,
         operation_type: str,
         row_grain: str,
+        algorithm: str = "",
         parameters: Mapping[str, Any] | None = None,
         derived_from: int | Sequence[int] | None = None,
         relationship_type: str = "derived_from",
@@ -790,6 +792,16 @@ class Measurement:
             A ``_mmfdb_operation.operation_type`` term.
         row_grain : str
             A ``_mmfdb_artifact.row_grain`` term — what one row *is*.
+        algorithm : str, optional
+            An ``_mmfdb_operation.algorithm`` term — *which* estimator produced
+            this, where ``operation_type`` says only what kind of thing it is.
+            The type is deliberately coarse because it is the join key: every
+            per-burst lifetime is ``burst_lifetime_fitting``, so a reader finds
+            them all without knowing how any of them worked. That is exactly
+            wrong for the reader who does care — an MLE lifetime, a phasor
+            lifetime and a moment-derived one have different bias and must not
+            be pooled — so the estimator is recorded separately.
+            Omitted means *unrecorded*, never "the usual one".
         parameters : mapping, optional
             The analysis settings. Their hash is the identity of the run.
         derived_from : int or sequence of int, optional
@@ -819,6 +831,8 @@ class Measurement:
         _check_term(artifact_kind, _ARTIFACT_KIND)
         _check_term(operation_type, _OPERATION_TYPE)
         _check_term(row_grain, _ROW_GRAIN)
+        if algorithm:
+            _check_term(algorithm, _ALGORITHM)
 
         store = self._as_store(table)
         self._describe_columns(store, units, items)
@@ -851,6 +865,7 @@ class Measurement:
             data_format=_DSTORE,
             row_grain=row_grain,
             operation_type=operation_type,
+            algorithm=algorithm,
             parameters=parameters,
             run=run,
             derived_from=derived_from,
@@ -1873,6 +1888,7 @@ class Measurement:
         mime_type: str = "",
         file_path: str = "",
         operation_type: str = "",
+        algorithm: str = "",
         parameters: Mapping[str, Any] | None = None,
         run: str = "",
         derived_from: int | Sequence[int] | None = None,
@@ -1900,6 +1916,7 @@ class Measurement:
 
         if operation_type:
             self._text(uid, _OPERATION_TYPE, operation_type)
+            self._text(uid, _ALGORITHM, algorithm)
             self._text(uid, _SETTINGS_HASH, run)
             self._text(uid, _SOFTWARE_PACKAGE, _writing_app().split()[0])
             self._text(uid, _SOFTWARE_VERSION, _writing_app().split()[-1])

@@ -191,6 +191,14 @@ def split_label(label: str) -> tuple[str, str]:
     ----------
     label : str
 
+    A label may carry both conventions at once, and one in this tree does: a
+    burst table's window rate is ``"S prompt green (kHz) | 0-2048"``, where the
+    bar separates a *range* rather than a unit and the unit is in the brackets
+    before it. So a bar whose right-hand side is not a unit falls through to the
+    bracket on its left-hand side, instead of ending the search. Reading the
+    whole label as a suffix cannot find it — the regex is anchored at the end,
+    and the label ends in the range.
+
     Returns
     -------
     tuple of (str, str)
@@ -203,6 +211,11 @@ def split_label(label: str) -> tuple[str, str]:
         code = canonical(rest)
         if code:
             return name.strip(), code
+        match = _SUFFIX.match(name.strip())
+        if match:
+            code = canonical(match.group("unit"))
+            if code:
+                return label.strip(), code
 
     match = _SUFFIX.match(label)
     if match:

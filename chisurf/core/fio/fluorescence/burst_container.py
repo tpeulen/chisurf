@@ -15,6 +15,8 @@ finer or coarser than the bursts is ordinary rather than impossible. See
 
 from __future__ import annotations
 
+import re
+
 import numpy as np
 
 from pathlib import Path
@@ -55,6 +57,11 @@ BURST_COLUMN_UNITS: dict[str, str] = {
     "Proximity Ratio Mean": "dimensionless",
     "Proximity Ratio Std": "dimensionless",
     "Confidence (sigma)": "dimensionless",
+    # A 2CDE value is a score on a fixed scale (~10 for a static burst), not a
+    # measurement in anything -- which is `dimensionless`, and is a different
+    # claim from the unit being unknown.
+    "FRET 2CDE": "dimensionless",
+    "ALEX 2CDE": "dimensionless",
 }
 
 
@@ -87,6 +94,19 @@ def as_table(table):
     )
 
 
+#: ``Number of Photons (green)`` -> ``Number of Photons``. Only a *trailing*
+#: bracket, and only when what is inside it is not itself a unit — by the time
+#: this runs :func:`~chisurf.core.units.split_label` has already claimed the
+#: labels whose bracket is a unit, so anything left is a detector or a window.
+_QUALIFIER = re.compile(r"^(?P<name>.*?)\s*[(\[][^)\]]+[)\]]\s*$")
+
+
+def _unqualified(name: str) -> str:
+    """Return *name* without a trailing parenthesised qualifier."""
+    match = _QUALIFIER.match(name)
+    return match.group("name").strip() if match else name
+
+
 def units_for(df, extra: Mapping[str, str] | None = None) -> dict[str, str]:
     """Return the units of the columns a table actually has.
 
@@ -114,6 +134,14 @@ def units_for(df, extra: Mapping[str, str] | None = None) -> dict[str, str]:
         _, code = split_label(name)
         if not code:
             code = BURST_COLUMN_UNITS.get(name, "")
+        if not code:
+            # A per-detector column is the same quantity as the one it
+            # qualifies, and the table above keys on the exact name — so
+            # `Number of Photons` was photons and `Number of Photons (green)`,
+            # in the same row, was unitless. The qualifier is dropped and the
+            # table asked again, which is also what stops this table needing one
+            # row per detector name it has never heard of.
+            code = BURST_COLUMN_UNITS.get(_unqualified(name), "")
         if extra and name in extra:
             code = extra[name]
         if code:
@@ -228,6 +256,7 @@ def write_burst_artifact(
     artifact_kind: str,
     operation_type: str,
     row_grain: str = "burst",
+    algorithm: str = "",
     parameters: Mapping[str, Any] | None = None,
     derived_from: str | Sequence[str] = "bursts",
     source_row_column: str = "",
@@ -260,6 +289,11 @@ def write_burst_artifact(
         An ``_mmfdb_artifact.row_grain`` term — what one row *is*. Defaults to
         ``"burst"``; an analysis producing dwells or fused bursts must say so,
         because that is what makes the join resolvable.
+    algorithm : str, optional
+        An ``_mmfdb_operation.algorithm`` term — which estimator produced this.
+        ``operation_type`` is the coarse join key (every per-burst lifetime is
+        ``burst_lifetime_fitting``); this is what tells an MLE lifetime from a
+        phasor one, which have different bias and must not be pooled.
     parameters : mapping, optional
         Settings. Their hash is the identity of the run.
     derived_from : str or sequence of str, optional
@@ -300,6 +334,7 @@ def write_burst_artifact(
             artifact_kind=artifact_kind,
             operation_type=operation_type,
             row_grain=row_grain,
+            algorithm=algorithm,
             parameters=parameters,
             # Every photon stream in the container, not just the first: a
             # measurement split over ten vendor files is read as one stream, so
