@@ -1,6 +1,18 @@
 # Update Log
 
 ## 2026-08-10
+* **Lumis Quest: a pause menu with tabs, and the crafting screen it makes room for.**
+  The rig existed and was tested but nothing assembled one, because there was no button left: **nine
+  actions is the whole controller** and the overworld had spent all of them (walk, sprint, encounter, zoom
+  in, zoom out, map). Chording more onto them was the wrong answer. Everything extra now lives behind
+  **one pause menu with tabs** — MAP, RIG, PARTY, MODE — which is what this kind of game does anyway and
+  which freed the bindings instead of stacking them.
+  **RIG** fits a found part into its own slot and shows the assembled path with its live response;
+  **PARTY** swaps a collected creature into the party for the most spent slot, so a collection is
+  something you can field rather than a list; **MODE** is the one switch that decides whether anything is
+  signed off at all.
+  Suites: 116 in the plugin.
+
 * **Lumis Quest: crafting, and it runs through the light-path simulator rather than around it.**
   `api/rig.py` assembles an excitation filter, a dichroic, an emission filter and a detector into a path.
   Its **Förster radius comes from the existing simulator's own `calculate_r0`**, not from a re-derivation

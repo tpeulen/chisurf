@@ -88,9 +88,14 @@ Next, in order:
    shipped catalogue: a rig tuned to 610 nm collects its acceptor at 0.145 and a
    519 nm donor at 0.012, giving **8.2% bleedthrough**, with **R0 = 55.7 A** --
    all realistic numbers.
-   Still open: a **crafting screen** (the rig exists and is tested, but nothing
-   in the GUI assembles one yet), and the AI-authored challenge and
-   edit-proposal flow.
+   ✅ **The crafting screen landed too**, and it forced a better shape: nine
+   actions is the whole controller and the overworld had spent all of them, so
+   every extra screen lives behind **one pause menu with tabs** -- MAP, RIG,
+   PARTY, MODE -- which is the convention this kind of game uses anyway. The
+   RIG tab fits found parts into their own slots and shows the assembled path's
+   live response; PARTY swaps a collected creature into the party; MODE is the
+   one switch that decides whether anything is signed off.
+   Still open: the AI-authored challenge and edit-proposal flow.
 4. **Phase 5 — the AI layer**, then 6 (crafting, mini-games, factions, story),
    then 7 (farm, network).
 

@@ -164,10 +164,21 @@ def test_the_land_is_named_where_she_stands(game):
 
 def test_menu_toggles_a_map_that_fits_the_world(game):
     """The map view frames everything rather than guessing a height."""
+    # The map lives behind the pause menu now: Menu opens it, the MAP tab is
+    # first, and Confirm toggles the map and closes the menu.
     game.host.keys.tap(Action.MENU)
+    game.update(1 / 60, game.host.keys)
+    game.host.keys.end_frame()
+    assert game.menu_open
+
+    game.host.keys.tap(Action.CONFIRM)
+    game.update(1 / 60, game.host.keys)
+    game.host.keys.end_frame()
+    assert game.show_map is True and not game.menu_open
+
     # `update` is driven directly here, so this test owns the frame boundary
     # that GameHost.frame() would otherwise call. Without it `just_pressed`
-    # stays latched and the toggle fires on every iteration.
+    # stays latched and a toggle fires on every iteration.
     for step in range(120):
         game.update(1 / 30, game.host.keys)
         game.host.keys.end_frame()
@@ -354,3 +365,79 @@ def test_recovery_only_happens_at_the_clinic(game):
     if game.resting:
         pytest.skip("that spot happens to be a clinic")
     assert all(f.hp == 5 for f in game.team)
+
+
+def test_the_menu_has_tabs_and_closes(game):
+    """Nine actions is the whole controller, so every screen lives behind Menu."""
+    game.host.keys.tap(Action.MENU)
+    game.update(1 / 60, game.host.keys)
+    game.host.keys.end_frame()
+    assert game.menu_open and game.TABS[game.menu_tab] == "MAP"
+
+    game.host.keys.tap(Action.SHOULDER_R)
+    game.update(1 / 60, game.host.keys)
+    game.host.keys.end_frame()
+    assert game.TABS[game.menu_tab] == "RIG"
+
+    game.host.keys.tap(Action.CANCEL)
+    game.update(1 / 60, game.host.keys)
+    game.host.keys.end_frame()
+    assert not game.menu_open
+
+
+def test_walking_is_suspended_while_the_menu_is_open(game):
+    """The pad drives the menu, not Iris."""
+    game.menu_open = True
+    before = list(game.iris)
+    game.host.keys.press(Action.DOWN)
+    for _ in range(30):
+        game.update(1 / 60, game.host.keys)
+    assert game.iris == before
+
+
+def test_the_mode_tab_switches_between_training_and_expert(game):
+    """The one switch that decides whether anything is signed off."""
+    from chisurf.plugins.misc.games.lumis_quest.api import review_bridge
+
+    game.menu_open = True
+    game.menu_tab = game.TABS.index("MODE")
+    game.menu_row = 1
+    game._menu_confirm()
+    assert game.mode == review_bridge.EXPERT
+
+    game.menu_row = 0
+    game._menu_confirm()
+    assert game.mode == review_bridge.TRAINING
+
+
+def test_the_rig_tab_fits_a_found_part(game):
+    """Crafting is assembling a path from what you have found."""
+    if not game.gear_pool:
+        pytest.skip("spectra.db is not present in this install")
+    part = next(p for p in game.gear_pool if p.slot == "emission")
+    game.inventory.append(part)
+
+    game.menu_open = True
+    game.menu_tab = game.TABS.index("RIG")
+    game.menu_row = 0
+    game._menu_confirm()
+
+    assert game.rig.emission is part, "the part must land in its own slot"
+    assert game.loadout.emission is part, "and fit as the single filter too"
+
+
+def test_the_party_tab_swaps_a_collected_creature_in(game):
+    """A collection you cannot field is a list."""
+    if not game.pool:
+        pytest.skip("spectra.db is not present in this install")
+    spare = next(c for c in game.pool if c not in [f.creature for f in game.team])
+    game.collection.append(spare)
+    game.team[0].hp = 1  # the most spent slot is the one replaced
+
+    game.menu_open = True
+    game.menu_tab = game.TABS.index("PARTY")
+    game.menu_row = len(game.team)  # first collected creature
+    game._menu_confirm()
+
+    assert spare in [f.creature for f in game.team]
+    assert len(game.team) == 3, "the party size is fixed; a swap is a swap"

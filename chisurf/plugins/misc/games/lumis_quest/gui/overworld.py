@@ -28,6 +28,7 @@ from ..api import battle as battle_api
 from ..api import gear as gear_api
 from ..api import roster as roster_api
 from ..api import review_bridge
+from ..api import rig as rig_api
 from ..api import save as save_api
 from ..api.story import Story
 from ..api.world import SCOUTED, SETTLED, WILD, World, build_world
@@ -218,6 +219,14 @@ class OverworldGame(chigame.Game):
         self.cleared: set[str] = set()
         self.collection: list = []
         # Training teaches; expert reviews. They must not grant the same thing.
+        self.rig = rig_api.Rig()
+        # One menu with tabs, rather than more chords. Nine actions is the whole
+        # controller, and the overworld had already spent all of them -- so
+        # every extra screen has to live behind Menu, which is the convention
+        # this kind of game uses anyway.
+        self.menu_open = False
+        self.menu_tab = 0
+        self.menu_row = 0
         self.mode = review_bridge.TRAINING
         self.challenge = None
         self.challenge_hash = ""
@@ -325,17 +334,15 @@ class OverworldGame(chigame.Game):
             self._battle_input(keys)
             return
 
+        if self.menu_open:
+            self._menu_input(keys)
+            return
         if keys.just_pressed(Action.MENU):
-            self.show_map = not self.show_map
+            self.menu_open = True
+            self.menu_row = 0
+            return
         if keys.just_pressed(Action.SHOULDER_L):
             self._try_encounter()
-        if keys.just_pressed(Action.SHOULDER_R) and not keys.is_held(Action.CANCEL):
-            pass  # zoom; the mode toggle is deliberate and lives on Menu+Confirm
-        if keys.just_pressed(Action.CONFIRM) and keys.is_held(Action.MENU):
-            self.mode = (
-                review_bridge.EXPERT if self.mode == review_bridge.TRAINING
-                else review_bridge.TRAINING
-            )
 
         dx, dy = keys.axis()
         self.walking = bool(dx or dy)
@@ -377,6 +384,80 @@ class OverworldGame(chigame.Game):
         camera.center[0] += (centre[0] - camera.center[0]) * blend
         camera.center[1] += (centre[1] - camera.center[1]) * blend
         camera.height += (height - camera.height) * blend
+
+    #: The tabs of the pause menu, in order.
+    TABS = ("MAP", "RIG", "PARTY", "MODE")
+
+    def _menu_input(self, keys) -> None:
+        """Drive the pause menu.
+
+        Parameters
+        ----------
+        keys : chisurf.gui.chigame.input.InputMap
+            Controller state.
+        """
+        if keys.just_pressed(Action.CANCEL) or keys.just_pressed(Action.MENU):
+            self.menu_open = False
+            return
+        if keys.just_pressed(Action.SHOULDER_R):
+            self.menu_tab = (self.menu_tab + 1) % len(self.TABS)
+            self.menu_row = 0
+            return
+        if keys.just_pressed(Action.SHOULDER_L):
+            self.menu_tab = (self.menu_tab - 1) % len(self.TABS)
+            self.menu_row = 0
+            return
+
+        rows = self._menu_rows()
+        if rows:
+            if keys.just_pressed(Action.DOWN):
+                self.menu_row = (self.menu_row + 1) % len(rows)
+            if keys.just_pressed(Action.UP):
+                self.menu_row = (self.menu_row - 1) % len(rows)
+        if keys.just_pressed(Action.CONFIRM):
+            self._menu_confirm()
+
+    def _menu_rows(self) -> list[str]:
+        """The lines the current tab offers.
+
+        Returns
+        -------
+        list of str
+            Selectable rows; empty for a tab that only displays.
+        """
+        tab = self.TABS[self.menu_tab]
+        if tab == "RIG":
+            return [part.summary for part in self.inventory] or ["nothing found yet"]
+        if tab == "PARTY":
+            return [
+                f"{f.creature.name}  {f.hp}/{f.creature.max_hp}" for f in self.team
+            ] + [c.name for c in self.collection]
+        if tab == "MODE":
+            return [review_bridge.TRAINING, review_bridge.EXPERT]
+        return []
+
+    def _menu_confirm(self) -> None:
+        """Act on the selected row."""
+        tab = self.TABS[self.menu_tab]
+        if tab == "MAP":
+            self.show_map = not self.show_map
+            self.menu_open = False
+        elif tab == "MODE":
+            self.mode = (review_bridge.TRAINING, review_bridge.EXPERT)[self.menu_row]
+        elif tab == "RIG" and self.inventory:
+            part = self.inventory[min(self.menu_row, len(self.inventory) - 1)]
+            # Fitting into the rig and fitting the single filter are the same
+            # act from the player's side, so both happen.
+            self.rig.fit(part)
+            self.equip(part)
+        elif tab == "PARTY":
+            # Swap a collected creature into the party for the selected slot.
+            index = self.menu_row - len(self.team)
+            if 0 <= index < len(self.collection) and self.team:
+                creature = self.collection.pop(index)
+                spent = min(range(len(self.team)), key=lambda i: self.team[i].hp)
+                self.collection.append(self.team[spent].creature)
+                self.team[spent] = battle_api.Fighter(creature)
 
     def _rest(self, dt: float) -> None:
         """Recover photons while standing on a recovery station.
@@ -682,6 +763,8 @@ class OverworldGame(chigame.Game):
 
         if self.battle is not None:
             self._draw_battle(scene, camera, half)
+        elif self.menu_open:
+            self._draw_menu(scene, camera, half)
         else:
             self._draw_hud(scene, camera, half)
 
@@ -962,6 +1045,69 @@ class OverworldGame(chigame.Game):
                            size=(7.0 * scale, 7.0 * scale))
             scene.text(label, at=(cx - half[0] * 0.29, y), height=11.0 * scale,
                        color=(0.94, 0.92, 0.86, 1.0) if selected else (0.56, 0.60, 0.68, 1.0))
+
+    def _draw_menu(self, scene, camera, half) -> None:
+        """Draw the pause menu.
+
+        Parameters
+        ----------
+        scene : chisurf.gui.chigame.scene.Scene
+            Frame under construction.
+        camera : chisurf.gui.chigame.render.Camera
+            The view.
+        half : numpy.ndarray
+            Half-extent in world units.
+        """
+        cx, cy = float(camera.center[0]), float(camera.center[1])
+        width, height = half[0] * 2.0, half[1] * 2.0
+        scale = camera.height / VIEW_HEIGHT
+        scene.draw("ui", "panel", at=(cx, cy), size=(width * 0.94, height * 0.92),
+                   color=(0.055, 0.065, 0.085, 0.985))
+
+        for index, label in enumerate(self.TABS):
+            selected = index == self.menu_tab
+            x = cx - half[0] * 0.62 + index * half[0] * 0.40
+            scene.text(label, at=(x, cy - half[1] * 0.62), height=12.0 * scale,
+                       align="center",
+                       color=(0.95, 0.86, 0.50, 1.0) if selected else (0.45, 0.49, 0.56, 1.0))
+
+        tab = self.TABS[self.menu_tab]
+        top = cy - half[1] * 0.44
+
+        if tab == "RIG":
+            for offset, slot in enumerate(rig_api.SLOTS):
+                part = getattr(self.rig, slot)
+                scene.text(f"{slot:<11}{part.name if part else '--'}",
+                           at=(cx - half[0] * 0.62, top + offset * 13.0 * scale),
+                           height=10.5 * scale, color=(0.78, 0.84, 0.90, 1.0))
+            probe = 560.0
+            scene.text(
+                f"path {self.rig.summary}" if self.rig.parts else "bare path",
+                at=(cx - half[0] * 0.62, top + 60.0 * scale), height=9.5 * scale,
+                color=(0.55, 0.62, 0.70, 1.0),
+            )
+            scene.text(
+                f"response at {probe:.0f} nm  {self.rig.response(probe):.2f}",
+                at=(cx - half[0] * 0.62, top + 74.0 * scale), height=9.5 * scale,
+                color=(0.55, 0.62, 0.70, 1.0),
+            )
+
+        rows = self._menu_rows()
+        start = top + (92.0 if tab == "RIG" else 0.0) * scale
+        window = rows[max(0, self.menu_row - 6): max(0, self.menu_row - 6) + 8]
+        base = max(0, self.menu_row - 6)
+        for offset, row in enumerate(window):
+            selected = base + offset == self.menu_row
+            y = start + offset * 13.0 * scale
+            if selected:
+                scene.draw("ui", "selected", at=(cx - half[0] * 0.66, y),
+                           size=(7.0 * scale, 7.0 * scale))
+            scene.text(row, at=(cx - half[0] * 0.62, y), height=10.5 * scale,
+                       color=(0.94, 0.92, 0.86, 1.0) if selected else (0.56, 0.60, 0.68, 1.0))
+
+        scene.text("L/R tab   Up/Down choose   Confirm use   Cancel close",
+                   at=(cx, cy + half[1] * 0.66), height=9.5 * scale, align="center",
+                   color=(0.48, 0.52, 0.60, 1.0))
 
     def _bar(self, scene, at, width: float, height: float, fraction: float, colour) -> None:
         """Draw a proportion bar.
