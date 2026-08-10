@@ -416,3 +416,51 @@ def test_a_defective_rate_matrix_backs_the_optimiser_off():
     chain[1, 0] = chain[2, 1] = 1e3
     value = gs.log_likelihood(bursts, chain, gs.emission_from_efficiencies([0.2, 0.5, 0.8]))
     assert value == float("-inf")
+
+
+def test_a_rejected_scheme_falls_through_instead_of_reporting_impossible():
+    """A compiled engine that will not take the scheme must not answer ``-inf``.
+
+    ``-inf`` is reserved for a model that genuinely has no likelihood -- the
+    defective generator above. A *setup* failure is a different thing, and
+    conflating the two is how the no-exchange limit came to report "forbidden"
+    for parameters whose likelihood is perfectly well defined: the photon
+    library's ``set_scheme`` returns False for an all-zero rate matrix, and the
+    delegation used to return ``-inf`` on that.
+
+    The failure mode this pins is silent by construction -- the optimiser sees a
+    finite value everywhere else and a wall at the static limit -- so the test
+    forces the rejection rather than waiting for a version of the library that
+    happens to exhibit it.
+    """
+    bursts = gs.PhotonBursts.from_lists(
+        [np.array([0.0, 1e-5, 2e-5, 3e-5])],
+        [np.array([0, 1, 0, 1], dtype=np.int32)],
+        2,
+    )
+    emission = gs.emission_from_efficiencies([0.2, 0.8])
+    rates = np.array([[0.0, 1e3], [1e3, 0.0]])
+
+    reference = gs.log_likelihood(bursts, rates, emission)
+    assert np.isfinite(reference)
+
+    tttrlib = pytest.importorskip("tttrlib")
+    if not hasattr(tttrlib, "GopichSzabo"):
+        pytest.skip("the compiled engine is not present to reject anything")
+
+    class _Rejecting(tttrlib.GopichSzabo):
+        """Stands in for a library build that will not accept this scheme."""
+
+        def set_scheme(self, *args, **kwargs):
+            return False
+
+    original = tttrlib.GopichSzabo
+    tttrlib.GopichSzabo = _Rejecting
+    try:
+        fallen_through = gs.log_likelihood(bursts, rates, emission)
+    finally:
+        tttrlib.GopichSzabo = original
+
+    assert fallen_through == pytest.approx(reference, rel=1e-9), (
+        "a rejected scheme did not fall through to the in-tree implementation"
+    )

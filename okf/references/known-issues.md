@@ -13,18 +13,23 @@ unrelated change unreviewable.
   assertion downstream of it is untested rather than passing. Whatever changed
   in the burst writer, the reader is reporting it correctly; the fixture is the
   thing to look at first.
-* `test_gopich_szabo.py::test_no_exchange_reduces_to_a_static_mixture` — the
-  likelihood comes back `-inf` where `-3.66516292749662` is expected. `-inf` is
-  the numba kernel's own numerical-failure sentinel
-  (`_total_log_likelihood` breaks out and returns it), so this is the guarded
-  path firing, not an assertion drifting. Note this module is due to be
-  delegated to `tttrlib.GopichSzabo`, whose branch at `gopich_szabo.py:522-537`
-  is already preferred when available — check whether the compiled path gives
-  the expected value before debugging the kernel that is being deleted.
+* ~~`test_gopich_szabo.py::test_no_exchange_reduces_to_a_static_mixture`~~ —
+  **fixed 2026-08-10.** It was not the numba kernel: the compiled
+  `GopichSzabo.set_scheme` returns False for an all-zero rate matrix and the
+  delegation turned that setup failure into `-inf`, i.e. "impossible model",
+  for exactly the no-exchange limit a dynamic fit is compared against. The
+  in-tree path computes it correctly (-3.6651629274966204). A rejected scheme
+  now falls through instead of answering `-inf`.
+  **Follow-up in the photon library:** `set_scheme` should accept a zero rate
+  matrix rather than be worked around here. Until it does, the no-exchange
+  limit runs on the in-tree implementation, which is worth knowing when that
+  implementation is eventually replaced.
 
-Two more in `test/fitting`, found the same way and with the same verdict:
-`test_fit_state.py::test_fret_gaussian_model_get_set_state_preserves_gaussians`
-and `test_pcf_experiment.py::test_pcf_config_block_present`.
+Three more, found the same way and with the same verdict:
+`test/fitting/test_fit_state.py::test_fret_gaussian_model_get_set_state_preserves_gaussians`,
+`test/fitting/test_pcf_experiment.py::test_pcf_config_block_present` and
+`test/models/test_detector_setups.py::test_a_missing_setups_file_never_blocks_a_headless_run`
+(the last fails in isolation too, so it is not test-order contamination).
 
 None of these is a regression from the numba retirement, and none should be
 counted as one when that work reports its test results.
