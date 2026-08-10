@@ -1,3 +1,45 @@
+## `pixi` cannot solve the default environment: `wgpu` is named `wgpu-py` on conda-forge
+
+**Found 2026-08-10** while rebuilding the photon library. Every `pixi run`
+against the default environment fails before doing anything:
+
+```
+× failed to solve requirements of environment 'default' for platform 'osx-arm64'
+╰─▶ Cannot solve the request because of: No candidates were found for wgpu *.
+```
+
+So `pixi run build-extensions`, `pixi run test`, `pixi run chisurf` — **every
+task** — are unavailable, and a rebuild has to be driven by hand through
+`build_tools/build_tttrlib.py`, which is how the `CONDA_PREFIX` / HDF5 mishap
+below happened.
+
+**The cause is a name, not a missing package.** `pixi.toml:78` declares
+`wgpu = "*"` under `[dependencies]`, i.e. as a conda package. conda-forge ships
+it as **`wgpu-py`** — the *import* name is `wgpu`, the *package* name is not:
+
+```
+$ conda search -c conda-forge wgpu
+wgpu-py    0.32.0  pyh7428d3b_0  conda-forge      # note the name
+$ conda search -c conda-forge rendercanvas
+rendercanvas   2.7.2  pyhd8ed1ab_0  conda-forge   # this one is fine as declared
+```
+
+`rendercanvas` (`pixi.toml:79`) resolves as declared and is not the problem.
+
+**Two candidate fixes**, for whoever owns the chigame/WebGPU work:
+
+1. Rename the conda dependency to `wgpu-py = "*"`. Keeps it a conda package,
+   which is what the surrounding block intends.
+2. Move `wgpu` to `[pypi-dependencies]` beside `latexify-py` (`pixi.toml:110`),
+   where the file already keeps "PyPI-only runtime deps".
+
+(1) is almost certainly right — the package *does* exist on conda-forge, so the
+comment above the entry ("no conda package exists") would not apply.
+
+The declarations were added deliberately and correctly in intent —
+`pyproject.toml` lists `wgpu`, which is right there because pip resolves the
+PyPI name. Only the conda spelling is wrong.
+
 ## Five red tests in `test/fluorescence`, unrelated to what found them
 
 **Found 2026-08-10** while porting `chisurf/core/fluorescence/general.py` off

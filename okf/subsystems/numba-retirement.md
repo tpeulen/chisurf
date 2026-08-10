@@ -10,7 +10,7 @@ timestamp: '2026-08-10T00:00:00Z'
 # Where to pick this up
 
 1. **The tracker is `test/numba_import_allowlist.txt`** and it only shrinks.
-   Every entry carries its route. **32 of the original 59 files remain** — 18 ported by this work, 9 struck by the ChiMOL WebGPU port, which shrinks the same list;
+   Every entry carries its route. **30 chisurf-owned files remain** of the 48 this work covers. ChiMOL's 11 are **excluded from the guard entirely** — the WebGPU port removes them on its own schedule, and listing them here only made this test fail nine times in one session with news about someone else's progress;
    `test/test_numba_seam.py` fails both on a new importer and on a stale entry,
    so the list cannot drift from the tree.
 2. **Route `tttrlib`: next is `plugins/fluorescence_decay/maxent_decay/core/solver.py`**
@@ -74,8 +74,10 @@ timestamp: '2026-08-10T00:00:00Z'
    [known-issues](../references/known-issues.md) with four unrelated
    `mfd_burst_roundtrip` failures, so the retirement's test runs are not read
    as having caused them.
-6. **ChiMOL's 11 files are not this work's.** They are allow-listed under a
-   `chimol` route and belong to the WebGPU port claimed on the agent board.
+6. **ChiMOL is out of scope and out of the guard.** `test_numba_seam.py` skips
+   `chisurf/plugins/chimol/` via `_EXCLUDED_PREFIXES`, and the allow-list no
+   longer names those files. They belong to the WebGPU port; when it lands
+   them, nothing here needs touching.
 
 ## Why it is going
 
@@ -238,8 +240,9 @@ mechanically.
 | | Files | Kernels |
 | --- | ---: | ---: |
 | At the start | 59 | 186 |
-| Ported so far | 27 | ~78 |
-| Remaining | 32 | ~108 |
+| Ported so far | 18 | ~55 |
+| Remaining | 30 | ~100 |
+| ChiMOL (excluded, owned elsewhere) | 11 | 29 |
 
 Done: `fluorescence/general.py`, `math/datatools.py`, `math/statistics.py`,
 `math/signal.py`, `fluorescence/burst/utils.py`, `math/reaction/_reaction.py`,

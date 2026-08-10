@@ -5,7 +5,10 @@
 # The end state is an empty list, after which numba leaves the manifests and
 # joins RETIRED in test/test_no_retired_dependency_imports.py.
 #
-# Each entry carries the route it takes, because "port it" means five
+# ChiMOL is not on this list and is not scanned: its kernels are being removed
+# by the WebGPU port, a separate effort with its own tracking.
+#
+# Each entry carries the route it takes, because "port it" means four
 # different things here and picking the wrong one is how a fast kernel becomes
 # a slow one:
 #
@@ -22,8 +25,6 @@
 #   wgsl    -- large uniform 3-D grid, one-shot, independent per voxel. Goes to
 #              a WGSL compute shader via chisurf/core/gpu (and retires the dead
 #              pyopencl path with it).
-#   chimol  -- owned by the in-progress chimol WebGPU port (okf/agent-board.md).
-#              Not this work's to touch; struck by that effort.
 #
 # See okf/subsystems/numba-retirement.md for the full routing, the measurements
 # behind it, and where to pick the work up.
@@ -67,7 +68,3 @@ chisurf/core/roi/segmentation.py
 chisurf/plugins/burst/burst_h2mm/core/h2mm.py
 chisurf/plugins/fcs/flc_2d/api.py
 chisurf/plugins/fcs/flc_2d/core.py
-
-# ── chimol (owned by the WebGPU port, okf/agent-board.md) ───────────────────
-chisurf/plugins/chimol/chimol/renderer/bvh.py
-chisurf/plugins/chimol/chimol/renderer/raytracer.py
