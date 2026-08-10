@@ -24,7 +24,14 @@ Next, in order:
    before/after screenshot pair. The engine record is
    [chigame](../subsystems/chigame.md) — read it before touching rendering, and
    read its "what the ports taught" list before laying out a new screen.
-2. ✅ **Phase 3 done — the overworld exists and is walkable.** `api/world.py`
+2. ✅ **Phase 3 done — a real, huge, pixel-art overworld you can walk.**
+   **318 x 240 = 76,320 tiles** (5724 x 4320 world units) of painted terrain:
+   grass, woodland, rock, water you cannot cross without a bridge, roads gate to
+   gate, and villages that are **walled compounds with a gate**. Iris and Lumi
+   are 16x16 sprites with facings and a two-frame walk cycle. Collision is real
+   and pinned by tests. Measured: **1.3 ms/frame (795 fps)**; the world builds in
+   ~0.9 s. See Part 11b for the cast and the art.
+2b. ✅ **Older note — the overworld's first form.** `api/world.py`
    derives it from the docs' own toctrees and the review sidecars;
    `gui/overworld.py` draws it and walks Iris (with Lumi trailing) around it.
    **Measured against the real corpus: 7 regions, 47 villages, 377 rooms — 269
@@ -398,6 +405,51 @@ waveform generators plus ADSR, a track as JSON note data, synthesised once at lo
 
 **Music ships inside the AssetPack** (Part 12), so swapping the pack swaps the
 soundtrack along with the art.
+
+## Part 11b — the cast: Iris, Lumi, and the pixel-art look
+
+**Iris and Lumi are photons, and they are shared across the whole games hub**
+(`chisurf/plugins/misc/games/characters.py`). The same two characters are the
+ball in Pong, the probe in Breakout and the pair who walk Lumis Quest. That
+works because a photon is the one thing which legitimately appears in a detector
+array, a spectrometer, a lifetime measurement *and* a walk across a map — so one
+cast spans the hub without the conceit straining. A character who exists in only
+one game is a mascot; a character you meet again somewhere else is a character.
+
+- **Iris** is the probe: the quantum you send in and follow. She is drawn as a
+  proper character rather than a marker — **a glowing photon core for a body**,
+  with head, hair, face, arms, legs, boots and **a sword**. Her colour is her
+  current wavelength, so when something re-emits her she changes; that is not a
+  costume change, it is what happened to her. 488 nm to start, because it is a
+  real laser line and bright enough to follow on a dark field.
+- **Lumi** is the companion, and **Lumi is a dog** — four legs, ears, snout,
+  tail, the same glow, trotting after Iris. Green at 520 nm, and never
+  re-emitted, so Lumi is the constant a player orients by while Iris changes.
+
+### The art is 16-bit pixel art, authored as string art
+
+The look is SNES-era pixel art, not flat colour. Two decisions make that
+possible without shipping binaries:
+
+1. **The engine grew a sprite path.** `chigame` has an RGBA sprite atlas on its
+   own binding with a **nearest-neighbour sampler** and hard alpha — pixel art
+   that is linearly interpolated is not pixel art, and a soft edge puts a halo
+   around every sprite against the tile behind it. This is also the second
+   `AssetPack`-shaped consumer, which is what finally makes "the look is
+   swappable" a demonstration rather than an argument.
+2. **Sprites are string art in the source** — one character per pixel, one row
+   per line, in `lumis_quest/gui/pixelart.py`. A PNG in the tree is opaque:
+   nobody can see in a diff that a sprite changed, let alone how. This way
+   changing Iris' sword is changing two characters on one line, and the guard
+   tests can assert things a binary cannot expose — that no sprite is short a
+   row, that every pixel names a defined colour, that her back view has no eyes
+   while her hands still show, that Lumi has separated legs, and that the second
+   walk frame actually differs from the first.
+
+Terrain is dithered rather than flat (a single flat colour per tile is exactly
+what makes generated art look generated), and each material carries a light and
+a dark tone so it reads as form. Facings are drawn three times, not four: the
+left view is the right view with its uv rectangle reversed.
 
 ## Part 12 — look, and swapping it
 

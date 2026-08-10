@@ -26,6 +26,7 @@ from ...characters import IRIS, LUMI, draw as draw_character
 from ..api import tiles as T
 from ..api.story import Story
 from ..api.world import SCOUTED, SETTLED, WILD, World, build_world
+from . import pixelart
 
 #: Emission wavelengths that stand for the two lit room states.
 SCOUTED_NM = 488.0
@@ -46,14 +47,40 @@ LUMI_TRAIL = 26.0
 BODY = 5.0
 
 #: View heights: walking, and the range the shoulders zoom over.
-VIEW_HEIGHT = 420.0
+VIEW_HEIGHT = 330.0
 VIEW_MIN = 240.0
 VIEW_MAX = 3000.0
 
 #: Beyond this the view is a map and per-tile detail becomes noise.
 MAP_THRESHOLD = 1400.0
 
-#: Flat colours per tile kind, sRGB. Terrain is muted so anything lit reads.
+#: Tile kind -> sprite in the pixel-art atlas.
+TILE_SPRITES = {
+    T.WATER: "water",
+    T.GRASS: "grass",
+    T.TREE: "tree",
+    T.ROCK: "rock",
+    T.ROAD: "road",
+    T.FLOOR: "floor",
+    T.WALL: "wall",
+    T.GATE: "gate",
+    T.BRIDGE: "bridge",
+    T.BUILDING: "grass",   # the house is drawn over it, tinted by state
+    T.VOID: "water",
+}
+
+#: A house is one drawing, tinted by whether anyone has read the page. Dark for
+#: untouched, cool for scouted-but-unconfirmed, warm for settled.
+HOUSE_TINT = {
+    WILD: (0.42, 0.44, 0.50, 1.0),
+    SCOUTED: (0.70, 0.90, 1.00, 1.0),
+    SETTLED: (1.00, 0.96, 0.80, 1.0),
+}
+
+#: Frames per second of the walk cycle.
+WALK_FPS = 6.0
+
+#: Kept for the map view, where a sprite is smaller than a pixel.
 TILE_COLORS = {
     T.WATER: (0.055, 0.085, 0.145, 1.0),
     T.GRASS: (0.115, 0.180, 0.130, 1.0),
@@ -123,6 +150,17 @@ class OverworldGame(chigame.Game):
             self._palette[kind] = colour
         self.scene_batch = host.batch
 
+        # The pixel-art atlas: authored as string art, packed and uploaded once.
+        image, self._uvs = pixelart.build_atlas()
+        host.batch.set_sprites(pixelart.upload(host.ctx.device, image))
+        self._tile_uv = np.zeros((max(TILE_SPRITES) + 1, 4), dtype=np.float32)
+        for kind, sprite in TILE_SPRITES.items():
+            self._tile_uv[kind] = self._uvs[sprite]
+
+        self.facing = "down"
+        self.walking = False
+        self._walk_clock = 0.0
+
         start = self.world.spawn()
         self.iris = [float(start[0]), float(start[1])]
         self.lumi = [self.iris[0] - LUMI_TRAIL, self.iris[1]]
@@ -165,10 +203,19 @@ class OverworldGame(chigame.Game):
             self.show_map = not self.show_map
 
         dx, dy = keys.axis()
-        if dx or dy:
+        self.walking = bool(dx or dy)
+        if self.walking:
             length = math.hypot(dx, dy) or 1.0
             speed = WALK_SPEED * (SPRINT if keys.is_held(Action.CONFIRM) else 1.0)
             self._walk(dx / length * speed * dt, dy / length * speed * dt)
+            # Vertical facing wins on a diagonal, which is the convention every
+            # game of this shape uses: it keeps the sprite from flickering
+            # between two facings while walking a diagonal.
+            if dy:
+                self.facing = "down" if dy > 0 else "up"
+            elif dx:
+                self.facing = "right" if dx > 0 else "left"
+            self._walk_clock += dt
 
         if keys.is_held(Action.SHOULDER_L):
             self.view_height = min(self.view_height * (1.0 + 1.9 * dt), VIEW_MAX)
@@ -277,11 +324,75 @@ class OverworldGame(chigame.Game):
                     height=10.0, align="center", color=(0.52, 0.56, 0.64, 1.0),
                 )
 
-        draw_character(scene, LUMI, tuple(self.lumi), 9.0)
-        scene.draw("aura", "iris-ring", at=tuple(self.iris), size=(26.0, 26.0))
-        draw_character(scene, IRIS, tuple(self.iris), 13.0)
+        # The glow under each of them is the photon they are; the sprite on top
+        # is the body that photon wears.
+        frame = int(self._walk_clock * WALK_FPS) % 2 if self.walking else 0
+        scene.draw("photon", "halo", at=tuple(self.lumi), size=(T.TILE * 0.7, T.TILE * 0.7),
+                   emission_nm=LUMI.wavelength_nm)
+        self._sprite(scene, f"lumi_{self._facing_for('lumi')}_{frame}", self.lumi, T.TILE)
+        scene.draw("photon", "halo", at=tuple(self.iris), size=(T.TILE * 0.9, T.TILE * 0.9),
+                   emission_nm=IRIS.wavelength_nm)
+        self._sprite(scene, f"iris_{self._sheet_facing()}_{frame}", self.iris,
+                     T.TILE * 1.15, mirror=self.facing == "left")
 
         self._draw_hud(scene, camera, half)
+
+    def _sheet_facing(self) -> str:
+        """Which drawn facing to use for Iris.
+
+        Returns
+        -------
+        str
+            ``left`` reuses the ``right`` artwork mirrored, so the atlas holds
+            three facings rather than four.
+        """
+        return "right" if self.facing in ("left", "right") else self.facing
+
+    def _facing_for(self, who: str) -> str:
+        """Which drawn facing to use for a follower.
+
+        Parameters
+        ----------
+        who : str
+            Character key.
+
+        Returns
+        -------
+        str
+            ``down`` or ``right``; Lumi has no back view.
+        """
+        return "right" if self.facing in ("left", "right") else "down"
+
+    def _sprite(self, scene, name: str, at, size: float, mirror: bool = False,
+                tint=(1.0, 1.0, 1.0, 1.0)) -> None:
+        """Draw one pixel-art sprite.
+
+        Parameters
+        ----------
+        scene : chisurf.gui.chigame.scene.Scene
+            Frame under construction.
+        name : str
+            Sprite name in the atlas.
+        at : sequence of float
+            Centre in world units.
+        size : float
+            Edge length in world units.
+        mirror : bool, optional
+            Flip horizontally. Swapping the uv rectangle's ends mirrors the
+            artwork, which is why the atlas needs no left-facing sprites.
+        tint : tuple of float, optional
+            Multiplied into the artwork; white leaves it alone.
+        """
+        u0, v0, u1, v1 = self._uvs[name]
+        if mirror:
+            u0, u1 = u1, u0
+        scene.batch.add(
+            pos=(float(at[0]), float(at[1])),
+            size=(size, size),
+            color=tint,
+            shape=chigame.SPRITE,
+            uv=(u0, v0, u1, v1),
+        )
 
     def _visible_tiles(self, camera, half) -> tuple[int, int, int, int]:
         """Grid range covering the view.
@@ -336,18 +447,24 @@ class OverworldGame(chigame.Game):
         ys = (row0 + np.arange(rows) * step + step / 2) * T.TILE
         grid_x, grid_y = np.meshgrid(xs, ys)
 
-        colors = self._palette[window.reshape(-1)]
-        count = colors.shape[0]
+        flat = window.reshape(-1)
+        count = flat.shape[0]
         instances = np.zeros((count, chigame.FLOATS_PER_INSTANCE), dtype=np.float32)
         instances[:, 0] = grid_x.reshape(-1)
         instances[:, 1] = grid_y.reshape(-1)
         instances[:, 2] = size
         instances[:, 3] = size
-        instances[:, 4:8] = colors
-        instances[:, 8] = chigame.RECT
+        if as_map:
+            # A sprite smaller than a pixel is noise, so the map view falls back
+            # to one flat colour per tile.
+            instances[:, 4:8] = self._palette[flat]
+            instances[:, 8] = chigame.RECT
+            instances[:, 12:16] = (0.0, 0.0, 1.0, 1.0)
+        else:
+            instances[:, 4:8] = 1.0
+            instances[:, 8] = chigame.SPRITE
+            instances[:, 12:16] = self._tile_uv[flat]
         instances[:, 11] = 0.0          # hard edges: this is a tile grid
-        instances[:, 14] = 1.0
-        instances[:, 15] = 1.0
 
         # Buildings are drawn with the rooms so their state can colour them.
         keep = window.reshape(-1) != T.BUILDING
@@ -372,21 +489,13 @@ class OverworldGame(chigame.Game):
             if abs(y - camera.center[1]) > half[1] + T.TILE:
                 continue
             if room.state == SETTLED:
-                scene.draw("photon", "halo", at=(x, y), size=(T.TILE, T.TILE),
+                scene.draw("photon", "halo", at=(x, y), size=(T.TILE * 1.5, T.TILE * 1.5),
                            emission_nm=SETTLED_NM)
-                scene.draw("villager", room.address, at=(x, y),
-                           size=(T.TILE * 0.8, T.TILE * 0.8))
             elif room.state == SCOUTED:
-                scene.draw("photon", "halo", at=(x, y), size=(T.TILE * 0.8, T.TILE * 0.8),
+                scene.draw("photon", "halo", at=(x, y), size=(T.TILE * 1.1, T.TILE * 1.1),
                            emission_nm=SCOUTED_NM)
-                scene.draw("ui", "scouted", at=(x, y), size=(T.TILE * 0.8, T.TILE * 0.8),
-                           color=(0.17, 0.32, 0.38, 1.0))
-            else:
-                scene.draw("wall", room.address, at=(x, y),
-                           size=(T.TILE * 0.82, T.TILE * 0.82))
-                scene.draw("mount", room.address, at=(x, y - T.TILE * 0.30),
-                           size=(T.TILE * 0.86, T.TILE * 0.22),
-                           color=(0.30, 0.24, 0.20, 1.0))
+            self._sprite(scene, f"house_{room.state}", (x, y), T.TILE,
+                         tint=HOUSE_TINT[room.state])
 
     def _draw_hud(self, scene, camera, half) -> None:
         """Draw the readouts, pinned to the camera rather than the world.
@@ -409,30 +518,32 @@ class OverworldGame(chigame.Game):
         total = max(len(self.world.rooms), 1)
         scene.text(
             f"settled {counts[SETTLED]}/{total}   scouted {counts[SCOUTED]}   wild {counts[WILD]}",
-            at=(left + 14.0 * scale, top + 16.0 * scale),
-            height=11.0 * scale, color=(0.55, 0.60, 0.68, 1.0),
+            at=(left + 14.0 * scale, top + 54.0 * scale),
+            height=10.0 * scale, color=(0.55, 0.60, 0.68, 1.0),
         )
 
         land = self.land
         if land is not None:
             scene.text(
                 land.title,
-                at=(left + 14.0 * scale, top + 36.0 * scale),
+                at=(left + 14.0 * scale, top + 20.0 * scale),
                 height=15.0 * scale, color=(0.82, 0.78, 0.62, 1.0),
             )
             if land.subtitle:
                 scene.text(
                     land.subtitle,
-                    at=(left + 14.0 * scale, top + 52.0 * scale),
+                    at=(left + 14.0 * scale, top + 36.0 * scale),
                     height=9.5 * scale, color=(0.44, 0.46, 0.52, 1.0),
                 )
 
         beat = self.story.current
         if beat is not None:
+            # Along the bottom, above the room name: the top band already holds
+            # the counts and the land, and all three collided there.
             scene.text(
                 beat.headline,
-                at=(camera.center[0], top + 20.0 * scale),
-                height=11.0 * scale, align="center", color=(0.62, 0.70, 0.80, 1.0),
+                at=(camera.center[0], bottom - 48.0 * scale),
+                height=10.5 * scale, align="center", color=(0.62, 0.70, 0.80, 1.0),
             )
 
         room = self.here

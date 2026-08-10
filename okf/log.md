@@ -1,6 +1,30 @@
 # Update Log
 
 ## 2026-08-10
+* **Lumis Quest looks like a 16-bit game now: pixel art, and a cast that spans the hub.**
+  **Iris is a character, not a marker** — a glowing photon core for a body, with head, hair, face, arms,
+  legs, boots and **a sword** — and **Lumi is a dog**: four legs, ears, snout, tail, the same glow,
+  trotting after her. Both are 16x16 sprites with three drawn facings (left is right, mirrored by
+  reversing its uv rectangle) and a two-frame walk cycle. They are **shared across the whole games hub**
+  (`games/characters.py`): the same two are the ball in Pong and the probe in Breakout. That holds together
+  because a photon is the one thing that legitimately appears in a detector array, a spectrometer, a
+  lifetime measurement *and* a walk across a map.
+  **The engine grew a sprite path**: an RGBA atlas on its own binding with a **nearest-neighbour sampler**
+  and hard alpha. Pixel art that is linearly interpolated is not pixel art, and a soft edge haloes every
+  sprite against the tile behind it. This is also the second consumer of the `AssetPack` shape, which is
+  what turns "the look is swappable" from an argument into a demonstration.
+  **The sprites are string art in the source** (`lumis_quest/gui/pixelart.py`) — one character per pixel,
+  one row per line. A PNG in the tree is opaque: nobody can see in a diff that a sprite changed, let alone
+  how. This way changing Iris' sword is two characters on one line, and the guards can assert what a binary
+  cannot expose: no sprite short a row, every pixel a defined colour, her back view with no eyes but her
+  hands still showing, Lumi's legs actually separated, and the second walk frame genuinely different from
+  the first. Terrain is dithered with two tones per material, because a flat fill per tile is exactly what
+  makes generated art look generated.
+  Also fixed: the counts, the land name and the story beat were all written into the same band at the top
+  of the screen and collided; the beat moved to the bottom. The camera pulled in (view height 420 -> 330)
+  so a 16-pixel sprite reads as a character rather than a speck.
+  Suites: 121 passed.
+
 * **Scope boundaries for the four-repository stack, settled and partly enforced.**
   New concept [references/imp-ecosystem](references/imp-ecosystem.md), folded in from a bundle that had
   been started in `../imp` — the stack now has **one** knowledge base, this one, and `AGENTS.md` in `imp`,

@@ -42,4 +42,3 @@
 * [UI terminology glossary](ui-glossary.md) - The canonical spelling for each recurring user-facing concept, and the rejected variants; the source-language authority for the translation kit and for harmonising interfaces.
 * [Automatic differentiation for fitting — measured assessment](autodiff-assessment.md) - Why exposing tttrlib's forward-mode autodiff to ChiSurf would not help: the finite-difference Jacobian is already accurate to 1e-6 with an identical LM step direction, and the differentiable C++ kernel is 5–15% of a model evaluation.
 * [IMP ecosystem](imp-ecosystem.md) — the four checkouts behind the fluorescence-modelling stack (chisurf, imp.bff, imp-tricks, tttrlib), which repository owns which symbol, and the scope boundaries between them.
-* [IMP ecosystem](imp-ecosystem.md) — the four checkouts behind the fluorescence-modelling stack (chisurf, imp.bff, imp-tricks, tttrlib), which repository owns which symbol, and the scope boundaries between them.

@@ -21,6 +21,7 @@ RING = 3.0
 GLYPH = 4.0
 GLOW = 5.0
 TRI = 6.0
+SPRITE = 7.0
 
 #: Floats per instance. Mirrors the ``Instance`` struct's std430 layout.
 FLOATS_PER_INSTANCE = 16
@@ -159,6 +160,11 @@ class SpriteBatch:
         self._sampler = self._device.create_sampler(
             mag_filter=wgpu.FilterMode.linear, min_filter=wgpu.FilterMode.linear
         )
+        # Point sampling, because pixel art that is interpolated is not pixel
+        # art. This is the whole difference between a 16-bit look and a blur.
+        self._sprite_sampler = self._device.create_sampler(
+            mag_filter=wgpu.FilterMode.nearest, min_filter=wgpu.FilterMode.nearest
+        )
         self._layout = self._device.create_bind_group_layout(
             entries=[
                 {
@@ -181,10 +187,22 @@ class SpriteBatch:
                     "visibility": wgpu.ShaderStage.FRAGMENT,
                     "sampler": {"type": wgpu.SamplerBindingType.filtering},
                 },
+                {
+                    "binding": 4,
+                    "visibility": wgpu.ShaderStage.FRAGMENT,
+                    "texture": {"sample_type": wgpu.TextureSampleType.float},
+                },
+                {
+                    "binding": 5,
+                    "visibility": wgpu.ShaderStage.FRAGMENT,
+                    "sampler": {"type": wgpu.SamplerBindingType.non_filtering},
+                },
             ]
         )
+        self._sprite_view = None
         self._pipeline = self._build_pipeline()
         self.set_atlas(None)
+        self.set_sprites(None)
 
     def _build_pipeline(self):
         """Compile the shader and build the render pipeline.
@@ -245,6 +263,30 @@ class SpriteBatch:
                 (1, 1, 1),
             )
         self._atlas_view = texture.create_view()
+        self._bind_group = None
+
+    def set_sprites(self, texture) -> None:
+        """Bind the colour atlas that ``SPRITE`` instances sample.
+
+        Parameters
+        ----------
+        texture : wgpu.GPUTexture or None
+            An RGBA atlas. ``None`` installs a 1x1 opaque white texture, so a
+            game that draws no sprites still has a valid binding.
+        """
+        if texture is None:
+            texture = self._device.create_texture(
+                size=(1, 1, 1),
+                format=wgpu.TextureFormat.rgba8unorm,
+                usage=wgpu.TextureUsage.TEXTURE_BINDING | wgpu.TextureUsage.COPY_DST,
+            )
+            self._device.queue.write_texture(
+                {"texture": texture},
+                np.full((1, 1, 4), 255, dtype=np.uint8).tobytes(),
+                {"bytes_per_row": 4, "rows_per_image": 1},
+                (1, 1, 1),
+            )
+        self._sprite_view = texture.create_view()
         self._bind_group = None
 
     def clear(self) -> None:
@@ -387,6 +429,8 @@ class SpriteBatch:
                     },
                     {"binding": 2, "resource": self._atlas_view},
                     {"binding": 3, "resource": self._sampler},
+                    {"binding": 4, "resource": self._sprite_view},
+                    {"binding": 5, "resource": self._sprite_sampler},
                 ],
             )
 

@@ -14,6 +14,7 @@ const SHAPE_RING:    f32 = 3.0;
 const SHAPE_GLYPH:   f32 = 4.0;
 const SHAPE_GLOW:    f32 = 5.0;
 const SHAPE_TRI:     f32 = 6.0;
+const SHAPE_SPRITE:  f32 = 7.0;
 
 struct Camera {
     // World-space point at the centre of the view.
@@ -39,6 +40,11 @@ struct Instance {
 @group(0) @binding(1) var<storage, read> instances: array<Instance>;
 @group(0) @binding(2) var atlas: texture_2d<f32>;
 @group(0) @binding(3) var atlas_sampler: sampler;
+// The pixel-art atlas is a separate binding from the glyph atlas: it carries
+// colour rather than coverage, and it must be point-sampled or the whole look
+// dissolves into mush at any zoom.
+@group(0) @binding(4) var sprites: texture_2d<f32>;
+@group(0) @binding(5) var sprite_sampler: sampler;
 
 struct VertexOut {
     @builtin(position) clip: vec4<f32>,
@@ -140,6 +146,15 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
         let falloff = pow(1.0 - r, max(param, 0.001) * 4.0);
         alpha = falloff;
         rgb = rgb * (1.0 + falloff * 0.6);
+    } else if (shape == SHAPE_SPRITE) {
+        let texel = textureSample(sprites, sprite_sampler, in.uv);
+        // Hard alpha: pixel art has no partial edges, and keeping them would
+        // put a halo around every sprite against the tile behind it.
+        if (texel.a < 0.5) {
+            discard;
+        }
+        // The instance colour tints; white leaves the artwork alone.
+        return vec4<f32>(srgb_to_linear(texel.rgb * in.color.rgb), in.color.a);
     } else if (shape == SHAPE_TRI) {
         // Upward triangle: apex at the top edge, base along the bottom. World Y
         // grows downward, so the apex is at local y = -1 and the half-width
