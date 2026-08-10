@@ -14,4 +14,5 @@
 * [Trajectory tools](trajectory.md) - molecular-dynamics trajectory conversion, alignment, energy, FRET, and clash/topology utilities.
 * [Sample, spectra & curation](sample-spectra.md) - sample database, spectra downloader, PCH, VV/VH calibration, and AI settings.
 * [ChiMOL vs PyMOL parity](pymol-parity.md) - Measured gap between the built-in molecular viewer and PyMOL, with a prioritised route to replacing it.
+* [ChiMOL in the browser](chimol-web.md) - one WGSL codebase for desktop and web; WebGPU is the only graphics+compute API spanning macOS, Linux/Windows and the browser.
 * [Core tools](core-tools.md) - setup, onboarding, MMFDB admin, user editor and other infrastructure plugins.

@@ -31223,3 +31223,26 @@
 * **Migration**: Moved the former top-level `SPECS/` target specs into the OKF bundle as the [specs](/specs/index.md) group — `overview`, `core`, `rpc`, `mmfdb`, `plugins`, the [assessment](/specs/assessment.md) backlog, and the [template](/specs/template.md). Converted each to an OKF concept (frontmatter + bundle-relative links) and cross-linked the target specs to their current-state concepts. Removed `SPECS/`.
 * **Initialization**: Created the ChiSurf OKF bundle — root [index](/index.md), [overview](/overview.md), and the `architecture/`, `subsystems/`, `workflows/`, and `references/` groups.
 
+* **ChiMOL must also run in a browser, and that decides the renderer: WebGPU, one WGSL source.**
+  New concept [plugins/chimol-web](plugins/chimol-web.md). The obvious shape — keep the OpenGL desktop
+  renderer and add a second WebGL one in JS — was rejected after measurement, because it means two
+  renderers, two GLSL dialects and two implementations of every kernel forever. The fact that settles it:
+  **macOS caps OpenGL at 4.1 and compute shaders need 4.3**, so `GL_COMPUTE_SHADER` raises on this machine;
+  WebGL2 has no compute either (WebGL 2.0 Compute was removed from Chromium). WebGPU is the only API
+  spanning macOS, Linux/Windows and the browser. All three Phase-0 gates passed and **no file under
+  `chisurf/plugins/chimol/` was modified**: `wgpu-py` 0.32.0 embeds as a PyQt5 *subwidget* (870×485 in a real
+  dock layout) on Metal; instanced sphere and capped-cylinder impostors render 148L at **2 triangles per
+  atom** with per-fragment depth (the current GL point-sprite path never writes `gl_FragDepth`, so its
+  spheres are flat billboards), reusing the raytracer's own analytic capsule intersection; and marching
+  cubes as a compute kernel returns **exact** triangle counts against the numba version (32588 = 32588 at
+  96³) with surface area agreeing to 1.7e-09, at 4–19×. Two bonuses that fix long-standing pain:
+  `rendercanvas.offscreen` yields real pixels where GL returns black under `QT_QPA_PLATFORM=offscreen`, and
+  `win.grab()` captures the 3-D surface *and* the Qt chrome together, which the GL path cannot.
+  Kernel routing is by measurement, not category: the distance grid is **229×** on the GPU but marching
+  cubes only 4–19× (atomic-bound, not compute-bound). For Pyodide, a no-op `njit` shim is dead
+  (**300–680×** slower) and mypyc cannot rescue it (**1.04×** on numpy code — it unboxes Python natives, not
+  numpy buffers), so CPU leftovers go to scipy's compiled routines or Pythran/C99 with `-msimd128`.
+  Traps recorded in the concept: the WebGPU surface is **sRGB** while GL's default framebuffer is not, so
+  every colour washes out unless handled; and mesh equality must not be checked by sorting rounded
+  centroids, which reports a correct kernel as wrong. Side-finding logged separately —
+  `surface._compute_distance_grid_nb` is brute-force O(voxels × atoms), **35 s** on hGBP1 at 96³ today.
