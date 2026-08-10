@@ -69,6 +69,12 @@ unrelated change unreviewable.
   ChiSurf fall-through logs a warning naming the defect so it cannot quietly
   become permanent, and the warning stops once the library accepts the scheme.
 
+Two in `traj_remove_clashes` -- `test_save_clash_free_drops_clashing_frames`
+and `test_kept_frames_keep_their_source_times` -- fail at HEAD as well. (A
+third in that file, `test_below_min_distance_kernel`, failed at HEAD and now
+passes: the numba kernel could not type-infer its own `atom_list` ternary, so
+the vectorised replacement fixed it.)
+
 Three more, found the same way and with the same verdict:
 `test/fitting/test_fit_state.py::test_fret_gaussian_model_get_set_state_preserves_gaussians`,
 `test/fitting/test_pcf_experiment.py::test_pcf_config_block_present` and

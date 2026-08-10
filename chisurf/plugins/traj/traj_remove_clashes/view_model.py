@@ -27,7 +27,6 @@ import pathlib
 import time
 from collections.abc import Callable
 
-import numba as nb
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -35,7 +34,6 @@ logger = logging.getLogger(__name__)
 _VIEW_JSON = pathlib.Path(__file__).parent / "remove_clashes.view.json"
 
 
-@nb.jit(nopython=True)
 def below_min_distance(
     xyz: np.ndarray,
     min_distance: float,
@@ -63,30 +61,18 @@ def below_min_distance(
     n_atoms = atoms.shape[0]
     min_distance2 = min_distance**2.0
 
+    # The nested loops break out of both the moment one close pair is found, so
+    # the answer per frame is a plain "does any pair clash" and `re` never
+    # exceeds one. Frames stay a Python loop: the pairwise matrix is
+    # n_atoms**2, and building it for every frame at once is what would run a
+    # trajectory out of memory.
     for i_frame in range(n_frames):
-        for i in range(n_atoms):
-            i_atom = atoms[i]
-            x1 = xyz[i_frame, i_atom, 0]
-            y1 = xyz[i_frame, i_atom, 1]
-            z1 = xyz[i_frame, i_atom, 2]
-
-            for j in range(i + 1, n_atoms):
-                j_atom = atoms[j]
-
-                x2 = xyz[i_frame, j_atom, 0]
-                y2 = xyz[i_frame, j_atom, 1]
-                z2 = xyz[i_frame, j_atom, 2]
-
-                dx = (x1 - x2) ** 2
-                dy = (y1 - y2) ** 2
-                dz = (z1 - z2) ** 2
-
-                if dx + dy + dz < min_distance2:
-                    re[i_frame] += 1
-                    break
-
-            if re[i_frame] > 0:
-                break
+        selected = xyz[i_frame][atoms]
+        delta = selected[:, None, :] - selected[None, :, :]
+        distance2 = np.einsum("ijk,ijk->ij", delta, delta)
+        # Only i < j, so a point is not compared with itself.
+        if np.any(np.triu(distance2 < min_distance2, k=1)):
+            re[i_frame] = 1
     return re
 
 

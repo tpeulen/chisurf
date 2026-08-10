@@ -10,7 +10,7 @@ timestamp: '2026-08-10T00:00:00Z'
 # Where to pick this up
 
 1. **The tracker is `test/numba_import_allowlist.txt`** and it only shrinks.
-   Every entry carries its route. **30 chisurf-owned files remain** of the 48 this work covers. ChiMOL's 11 are **excluded from the guard entirely** — the WebGPU port removes them on its own schedule, and listing them here only made this test fail nine times in one session with news about someone else's progress;
+   Every entry carries its route. **28 chisurf-owned files remain** of the 48 this work covers. ChiMOL's 11 are **excluded from the guard entirely** — the WebGPU port removes them on its own schedule, and listing them here only made this test fail nine times in one session with news about someone else's progress;
    `test/test_numba_seam.py` fails both on a new importer and on a stale entry,
    so the list cannot drift from the tree.
 2. **Route `tttrlib`: next is `plugins/fluorescence_decay/maxent_decay/core/solver.py`**
@@ -240,8 +240,8 @@ mechanically.
 | | Files | Kernels |
 | --- | ---: | ---: |
 | At the start | 59 | 186 |
-| Ported so far | 18 | ~55 |
-| Remaining | 30 | ~100 |
+| Ported so far | 20 | ~57 |
+| Remaining | 28 | ~98 |
 | ChiMOL (excluded, owned elsewhere) | 11 | 29 |
 
 Done: `fluorescence/general.py`, `math/datatools.py`, `math/statistics.py`,

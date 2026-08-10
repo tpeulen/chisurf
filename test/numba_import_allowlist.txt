@@ -36,8 +36,6 @@ chisurf/core/math/linalg/__init__.py
 chisurf/core/models/fcs/maxent.py
 chisurf/plugins/modelling/fret/core/olga_greedy.py
 chisurf/plugins/pch/api/algorithms.py
-chisurf/plugins/traj/fret_trajectory/traj2fret.py
-chisurf/plugins/traj/traj_remove_clashes/view_model.py
 modules/ndxplorer/ndxplorer/utils/performance_optimizations.py
 modules/ndxplorer/ndxplorer/utils/vectorized_ops.py
 

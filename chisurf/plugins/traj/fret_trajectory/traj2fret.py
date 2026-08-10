@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 from chisurf.core.structure import trajectory_data as md
-import numba as nb
 import numpy as np
 
 import chisurf.core.fluorescence
@@ -63,7 +62,6 @@ def traj2anisotropy(
     return t, r
 
 
-@nb.jit(nopython=True)
 def integrate_rate_traj(
         k: np.ndarray,
         t_step: float,
@@ -79,9 +77,22 @@ def integrate_rate_traj(
     n_t_max = int(t_max / t_step)
     sk = np.zeros(n_t_max, dtype=np.float64)
     frame_max = k.shape[0] - k.shape[0] % n_t_max
-    for frame_i in range(0, frame_max - n_t_max):
-        for dt_i in range(0, n_t_max):
-            sk[dt_i] += k[frame_i: frame_i + dt_i].sum()
+    n_windows = frame_max - n_t_max
+    if n_windows <= 0:
+        return sk
+
+    # The inner `k[f : f + dt].sum()` re-adds the same elements for every
+    # window and every lag, which makes the original cubic in the trajectory
+    # length. A prefix sum turns each window sum into a difference,
+    # `C[f + dt] - C[f]`, and the sum over windows into two slice sums -- so
+    # this is now one pass per lag rather than one pass per (window, lag) pair.
+    cumulative = np.zeros(k.shape[0] + 1, dtype=np.float64)
+    np.cumsum(k, out=cumulative[1:])
+
+    base = cumulative[:n_windows].sum()
+    for dt_i in range(n_t_max):
+        sk[dt_i] = cumulative[dt_i:dt_i + n_windows].sum() - base
+
     sk /= k.shape[0]
     return sk * t_step
 
