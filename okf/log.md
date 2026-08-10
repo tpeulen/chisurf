@@ -1,6 +1,41 @@
 # Update Log
 
 ## 2026-08-10
+* **`arm64` now runs IMP built from source, and the FRET failure was never the missing class it looked like.**
+  New concept [workflows/imp-local-build](workflows/imp-local-build.md). The conda `imp` 2.24 package ships an
+  **empty** `IMP.bff.restraints`, so `arm64` was rebuilt on IMP **2.25** (`develop-345e71cb9a`) from
+  `/Users/tpeulen/dev/imp` with `modules/bff` symlinked at the `../imp.bff` checkout — conda `imp` removed,
+  one `.pth` putting `cmake-build-arm64/lib` on `sys.path` and setting `IMP_DATA` (a build tree compiles
+  `/usr/local/share/IMP` in, so without it every data lookup raises). RMF and ihm are consumed as *system*
+  dependencies because `site-packages` always precedes `.pth` entries; `cereal` was a missing prerequisite
+  and is installed. **Rebuilds land with no re-install, verified both ways:** IMP symlinks module Python
+  into the build tree, so an edit in `../imp.bff` is live in the env with no build step at all, and a C++
+  edit needs only `ninja`, because the extensions reference their dylibs by absolute path.
+  imp.bff did not compile at first — its vendored `numpy.i` predates SWIG 4.3's third `is_void` argument to
+  `SWIG_Python_AppendOutput`; fixed on a new imp.bff branch `dev` (`124f6bc`, version-adaptive macro, not pushed).
+  **The suite did not move: still 16 failed / 112 passed**, and that is the finding.
+  10 failures are still `AVNetworkRestraintWrapper`, which the local build *does* provide — the class is
+  **shadowed** by `modules/imp-tricks/src/sitecustomize.py`, which inserts imp-tricks at the front of
+  `IMP.bff.__path__`, and a subpackage resolves to the first match, so imp-tricks' `restraints` replaces
+  imp.bff's instead of merging. Same interpreter, same build, dropping one `PYTHONPATH` entry flips it.
+  [known-issues](references/known-issues.md) corrected accordingly ("an IMP API that moved" → shadowing), and
+  [workflows/testing](workflows/testing.md) no longer claims IMP 2.24 from conda or that the IMP-gated tests
+  pass.
+* **The shadow is fixed in imp-tricks, and the FRET suite is 6 failed / 122 passed.**
+  imp-tricks `5967e77`. `sitecustomize` put its own tree first on `IMP.bff.__path__`, and a subpackage
+  resolves to the *first* matching directory and stops — so its `IMP/bff/restraints/` replaced imp.bff's
+  outright, submodules and exported names alike, while its own `__init__` described the classes as
+  "non-breaking additions to IMP.bff". Now a subpackage found in both trees gets the two directories
+  unioned into one `__path__` (local first, precedence unchanged) and the shadowed `__init__` is
+  evaluated against the live package so its public names are adopted; nothing local is overwritten and
+  it recurses to any depth. `AVNetworkRestraintWrapper`, `SimpleAVNetworkRestraint`,
+  `DirectLabelingRestraint`, `LabelingSite` and `AVMeasurement` now all resolve from one package.
+  All ten wrapper failures cleared; the six that remain are `test_examples.py` wanting the absent
+  `../olga` checkout. **The transferable lesson**: a missing attribute had been recorded as an upstream
+  API removal without anyone checking whether something on `sys.path` stood in front of it —
+  `IMP.bff.__path__` had two entries the whole time. Print `__path__`/`__file__` before believing a
+  name was deleted.
+  Also repaired: IMP's git hooks invoked `envs/IMP_BUILD/bin/python3.12`, an environment deleted long ago.
 * **chigame phase 2 begins: breakout ported, and a packaging gap that would have shipped the engine broken.**
   `breakout` is off `QPainter` and on [chigame](subsystems/chigame.md) — the batching test, with eighty
   bricks, a paddle, a ball and a particle shower resolving to **one instanced draw call**. Rules, speeds,

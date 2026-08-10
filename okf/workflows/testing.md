@@ -11,11 +11,21 @@ timestamp: '2026-07-05T00:00:00Z'
 
 Run all tests and any `python`/`pytest` in the project's **`arm64` conda env**,
 never conda `base`. It provides the full stack the suite needs: the Qt bindings,
-the compiled C++ extensions, and **IMP + IMP.bff** (`IMP` 2.24, `has_imp()` → True).
+the compiled C++ extensions, and **IMP + IMP.bff** (`has_imp()` → True).
+Since 2026-08-10 that IMP is **not** the conda package but a local build of IMP
+**2.25** (`develop`) from `/Users/tpeulen/dev/imp`, with `modules/bff` symlinked
+at the `../imp.bff` checkout and the build tree wired in by a single `.pth` —
+see [IMP from source](imp-local-build.md). The conda `imp` package is removed
+from the env; re-installing it would shadow the build.
 Because IMP is present, the IMP-gated tests (the FRET plugin's
-`refine`/`errors`/docking, `test_imp_engine.py`, `test_dock_project.py`) **run and
-pass here** — a `skipif not has_imp()` test only skips on a machine that lacks IMP,
-not in `arm64`.
+`refine`/`errors`/docking, `test_imp_engine.py`, `test_dock_project.py`) **run
+here** — a `skipif not has_imp()` test only skips on a machine that lacks IMP,
+not in `arm64`. As of 2026-08-10 they also **pass**: the FRET plugin suite is
+6 failed / 122 passed, and the six are `test_examples.py` wanting the absent
+`../olga` checkout. Until that date ten failed on
+`IMP.bff.restraints.AVNetworkRestraintWrapper` — not because IMP lacked it, but
+because `modules/imp-tricks/src` shadowed the package that has it; see
+[IMP from source](imp-local-build.md#what-the-build-fixed-and-what-it-did-not).
 
 ```bash
 source ~/.zshrc && conda activate arm64      # activate first

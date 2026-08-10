@@ -2648,11 +2648,39 @@ with all labels under 256 cannot show the 16-bit path, and a selection test that
 builds a second object cannot show any of defects 3 and 4 — the table edits gates
 **in place**, so the tests have to as well.
 
-## `IMP.bff.restraints.AVNetworkRestraintWrapper` is gone, and the FRET docking suite with it
+## ~~`IMP.bff.restraints.AVNetworkRestraintWrapper` is gone~~ — it was shadowed. Fixed 2026-08-10
+
+> **RESOLVED 2026-08-10, and the diagnosis below was wrong.** The wrapper is not
+> "an IMP API that moved" and it never went anywhere: it is in imp.bff at
+> `pyext/src/restraints/AVNetworkRestraint.py:69`, and the local IMP 2.25 build
+> now in `arm64` exposes it. It was **shadowed**.
+> `modules/imp-tricks/src/sitecustomize.py` inserted imp-tricks' own tree at the
+> *front* of `IMP.bff.__path__`; imp-tricks ships its own `IMP/bff/restraints/`
+> package, and a subpackage resolves to the **first** matching directory and
+> stops — so imp.bff's `restraints` was unreachable, submodules and exported
+> names alike. imp-tricks' own `__init__` calls its classes "non-breaking
+> additions to `IMP.bff`", which is exactly what they were not.
+>
+> Fixed in **imp-tricks** (`5967e77`), where it belonged: a subpackage found in
+> both trees now gets the two directories unioned into one `__path__` (local
+> first, so precedence is unchanged), and the shadowed `__init__` is evaluated
+> against the live package so its public names are adopted. Nothing local is
+> overwritten, and it recurses to any depth.
+>
+> **FRET suite: 16 failed / 112 passed → 6 failed / 122 passed.** All ten
+> `AVNetworkRestraintWrapper` failures are gone. The six that remain are all
+> `test_examples.py` and want `/Users/tpeulen/dev/olga`, a sibling checkout not
+> on this machine; they say nothing about the code. Full write-up in
+> [workflows/imp-local-build](../workflows/imp-local-build.md#what-the-build-fixed-and-what-it-did-not).
+>
+> **The lesson worth keeping**: "the attribute is missing" was recorded as an
+> upstream API removal without anyone checking whether something on `sys.path`
+> was standing in front of it. `IMP.bff.__path__` had two entries the whole
+> time, and printing it would have ended the question in one line.
 
 **Found 2026-08-05** while porting the FRET modelling plugin off mdtraj. Not
-caused by that port — the failures are an IMP API that moved — but the port is
-how they were noticed, so they are written down rather than left.
+caused by that port — but the port is how they were noticed, so they are written
+down rather than left.
 
 **The measurement.** In the `arm64` env with IMP 2.24:
 
@@ -2670,11 +2698,13 @@ trajectory code:
 | `FileNotFoundError: /Users/tpeulen/dev/olga/doc/data/T4L/screening_tutorial.fps.json` | 3 (`test_examples.py`) |
 
 The second is a sibling checkout that is simply not present on this machine, so
-those three say nothing about the code. The first is real: the wrapper the
-engine builds its restraint network with no longer exists under that name.
-Whoever fixes it should check whether it was renamed or whether the restraint
-is now assembled differently — and fix it in **imp-tricks**, where it lives,
-not by working around it here.
+those three say nothing about the code. The first is real, and the correction
+above says why: the wrapper exists, but `IMP.bff.restraints` resolves to
+imp-tricks' package rather than imp.bff's. Fix it in **imp-tricks** — either
+re-export `AVNetworkRestraintWrapper` from its
+`IMP/bff/restraints/__init__.py`, or make `sitecustomize` merge same-named
+subpackages instead of letting the first entry on `__path__` win — not by
+working around it here.
 
 **A trap in re-measuring this.** A `git worktree` at HEAD is *not* a usable
 baseline for this suite: `modules/` holds symlinks to sibling checkouts and is
