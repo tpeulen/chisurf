@@ -2,11 +2,11 @@
 type: PRD
 prd: "97"
 title: "PRD-97: FRET docking is imp.bff's — the engine, the AV backend and the one fps.json"
-description: ChiSurf's FRET plugin holds 4,014 lines of docking algorithm that import IMP and nothing of ChiSurf, plus the most elaborate of three fps.json readers in the stack. The algorithms move to imp.bff and ChiSurf calls them; the session, GUI and screening workflow stay.
+description: ChiSurf's FRET plugin holds 4,014 lines of docking algorithm that import IMP and nothing of ChiSurf, plus the most elaborate of three fps.json readers. The algorithms move to imp.bff and ChiSurf calls them; imp.bff becomes the home for the data schemas -- legacy C# FPS, both fps.json dialects and what supersedes them -- authored once and derived, the way mmfdb derives its schema from the flrCIF dictionary.
 status: draft
 phase: "scoped and measured; nothing moved yet"
 resource: chisurf/plugins/modelling/fret/core
-tags: [prd, scope, architecture, imp.bff, fret, docking, fps-json]
+tags: [prd, scope, architecture, imp.bff, fret, docking, fps-json, schema, flrcif, mmfdb]
 timestamp: '2026-08-10T00:00:00Z'
 ---
 
@@ -90,13 +90,87 @@ Not tidiness. Three things follow from the algorithm living in the application:
    accessible-volume paths, and the one that picks between them lives furthest
    from the other two.
 
+# imp.bff houses the data schemas, the way mmfdb houses its own
+
+The three readers above are a symptom. The rule underneath is that **imp.bff is
+where the fluorescence-structure data schemas live** — every dialect of
+fps.json, the legacy formats that preceded it, and whatever supersedes it — and
+that it does so on mmfdb's model rather than by accumulating parsers.
+
+**mmfdb's model, which is the one to copy.** The mmCIF/flrCIF dictionary is the
+*single authored artifact*; the SQL schema is **derived** from it.
+`mmfdb/schema/schema_from_dictionary.py` generates the DDL from `_mmfdb_schema`
+bridge attributes, and `dictionary_schema_map.py` registers local entries for
+fields ChiSurf stores that upstream flrCIF does not define. Nobody hand-writes a
+table and hopes it matches. That is exactly the discipline three fps.json
+readers lack.
+
+**There are already two fps.json dialects, and they differ.** Measured:
+
+| | ChiSurf `hiv_rt.fps.json` | imp.bff `template_av_position.fps.json` |
+|---|---|---|
+| shape | `Positions` (11) + `Distances` (20) | flat, one position |
+| per-position keys | `linker_length`, `linker_width`, `radius1/2/3`, `simulation_grid_resolution`, … | the same **plus** `allowed_sphere_radius`, `anchor_atoms`, `chain_weighting`, `contact_volume_thickness`, `contact_volume_trapped_fraction`, `min_sphere_volume_fraction`, `simulation_type`, `strip_mask` |
+
+The imp.bff template carries accessible **contact** volume parameters the
+ChiSurf example has no field for. So a file written by one is not fully
+readable by the other, and neither is wrong — there is simply no definition
+saying which fields exist.
+
+## What imp.bff has to house
+
+1. **The legacy C# FPS formats.** `read_old_lps_txt` and
+   `read_old_distances_txt` in ChiSurf's `io.py` read labelling positions and
+   experimental distances from the original C# FPS `.txt` files. These come
+   along: a format nobody can still read is data that has been lost, and these
+   are the files a decade of measurements live in. Read support only — nothing
+   should write them again.
+2. **fps.json as it is**, both dialects, with the union of their fields defined
+   rather than discovered.
+3. **The advanced `.fps.json` that supersedes it.** Design it as a schema first,
+   not as a parser: the fields the AV and contact-volume machinery actually
+   take, the distance types and their error model, and the provenance of a
+   measurement — which is where it meets mmfdb.
+
+## The alignment with mmfdb, concretely
+
+fps.json describes labelling positions and distance measurements on a
+structure. mmfdb already models exactly that, in flrCIF terms, because
+[PRD-02c](prd-02c.md) mapped ChiSurf's parameter short names onto canonical
+flrCIF dictionary items. So:
+
+* **Where flrCIF defines an item, the schema uses that name.** A labelling
+  position and a FRET distance are dictionary concepts, not imp.bff inventions.
+* **Where it does not, imp.bff authors the definition** and it is registered the
+  way mmfdb registers its local entries — visible, in one file, rather than
+  implied by a reader.
+* **Readers and writers are checked against the definition**, so a new dialect
+  is a change to one artifact rather than a change to three parsers that then
+  have to be reconciled by review.
+
+The payoff is the same one mmfdb already gets: an fps.json can round-trip
+through the metadata store and come back as the same measurement, because both
+sides name the same things. Today that mapping is done by whichever code path
+happens to be reading.
+
+## Not in scope here
+
+This does not make imp.bff depend on mmfdb, and it does not move mmfdb.
+mmfdb is ChiSurf's metadata store and stays there; what is shared is the
+*vocabulary*, which is flrCIF's and is upstream of both.
+
 # Stages
 
-**Stage 1 — one fps.json reader.** Move `io.py`'s fps.json read/write into
-imp.bff, delete `pyext/src/fps.py`'s duplicate, and have the C++ reader and the
-Python reader agree by construction — ideally by the C++ one being the only
-parser and the Python side calling it. Verify on the fps.json files already in
-the tree, including the legacy formats, before deleting anything.
+**Stage 0 — write the schema down.** Before any parser moves: one definition
+covering the union of both dialects, with flrCIF item names where flrCIF has
+them and authored entries where it does not. Everything after this is checked
+against it.
+
+**Stage 1 — one fps.json reader, plus the legacy formats.** Move `io.py`'s
+fps.json read/write and the two C# FPS `.txt` readers into imp.bff, delete
+`pyext/src/fps.py`'s duplicate, and have the C++ and Python readers agree by
+construction — ideally the C++ one being the only parser. Verify against the
+schema and on the fps.json files already in the tree before deleting anything.
 
 **Stage 2 — the engine and the AV backend.** `imp_engine.py` and `av.py` move
 as they are; ChiSurf imports them. No behaviour change, and the FRET suite is
@@ -127,7 +201,11 @@ Not before.
 
 # Definition of done
 
-* One fps.json reader in the stack, in imp.bff.
+* One fps.json reader in the stack, in imp.bff, checked against one written
+  schema.
+* The legacy C# FPS `.txt` formats still readable, from imp.bff.
+* Every field either carries a flrCIF item name or an authored definition; none
+  is implied only by a parser.
 * `chisurf/plugins/modelling/fret/core` contains no file that imports IMP.
 * FRET docking runs from IMP alone, with no ChiSurf installed.
 * The ChiSurf FRET suite is unchanged: same pass count, same six `../olga`
