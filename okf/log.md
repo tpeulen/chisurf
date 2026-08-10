@@ -1,6 +1,71 @@
 # Update Log
 
 ## 2026-08-10
+* **Lumis Quest: gear, loot and healing — and a filter that genuinely blinds you.**
+  `api/gear.py` reads **673 real optical parts** out of the same `spectra.db` (333 emission filters, 172
+  dichroics, 100 excitation, 68 detectors), each with its **measured transmission curve**. So equipment is
+  not invented either: an emission filter in the game is a real Chroma or Thorlabs part doing what it does
+  on a bench. A filter is not "+3 damage" — it decides **what you can see**. Fitted optics multiply your
+  shot by what they pass, and a creature whose band the filter blocks is **not drawn on the map at all**,
+  which is what makes re-walking cleared ground with different optics show you things that were always
+  there. Loot is **seeded by the page** (no farming a building for rerolls), and a remoter room yields a
+  **narrower** filter: better inside its band, useless outside it.
+  **FRAP is a place.** A recovery station sits just inside every village gate, because photon budgets
+  persist between fights: without somewhere to recover, a run is a one-way slide into a bleached team.
+  One encounter is three-on-one and should be winnable — attrition across the run is where the danger
+  belongs, and that is now a mechanic rather than an intention.
+  **The defect worth recording**: the blocked-response floor was **0.25 against a 0.22 visibility
+  threshold**, so a wrong filter could never hide anything and the entire loot loop silently did nothing.
+  The numbers looked plausible and the code read correctly; only asking "what is invisible?" exposed it.
+  Floor now 0.08 against a 0.25 threshold, pinned by a regression test.
+  Suites: 162 passed.
+
+* **chimol runs on WGSL: the real window, the real chrome, on Metal.**
+  `CHIMOL_RENDERER=wgpu` puts `renderer/wgpu_view.py::WgpuRenderer` in the
+  viewport of the actual application window -- molecule, object panel, sequence
+  strip and mouse-mode block, all through the WGSL in `renderer/wgsl/`.
+  Screenshot-verified across cartoon / sticks / lines / spheres / surface /
+  transparency, and the camera it reports for `orient` is the OpenGL baseline's
+  to seven figures. It falls back to OpenGL when there is no adapter.
+
+  **The window and the offscreen comparison are one code path**, not two that
+  agree: `render_into` is what both call and `render` is a thin wrapper that
+  allocates a target and reads it back. So a picture verified against the GL
+  baseline is *the* picture the window shows. Everything a renderer holds
+  rather than draws moved to `renderer/camera_state.py`, shared with
+  `SceneSink`; PyMOL's trackball went with it and `qtgl` delegates, because two
+  viewers whose drags turn the molecule by different amounts are two different
+  programs and no screenshot comparison catches that -- every frame is
+  individually correct.
+
+  **The chrome cost two rejected designs, both of which looked like renderer
+  bugs.** `InternalGui` paints with a `QPainter` and always did; only its host
+  was GL-specific. A translucent child widget over the WebGPU surface composited
+  its *uncleared backing store* over the frame and turned a rainbow cartoon
+  salmon-and-blue -- indistinguishable from a channel-order bug. Clearing the
+  backing store made the molecule vanish entirely, because a Qt child covers a
+  presented surface rather than blending with it. It is now painted to a
+  premultiplied RGBA image and composited as a textured quad inside the render
+  pass, which is the only form a browser could use and what `kind == "text"`
+  labels will need.
+
+  **A black viewport in a screenshot was the shutter, not the renderer.**
+  `request_draw` only schedules and pumping Qt's loop does not help, because the
+  canvas decides when to draw. `screenshot.py::force_render_canvases` forces
+  every canvas before the grab and `shoot()` calls it.
+
+  **`sticks.ambient_occlusion`'s removal reached the baselines.** Its `set` line
+  in the capture preamble began raising "Unknown setting" -- surfaced instantly
+  by the error callback the harness attaches. Dropped the line and the scene
+  that documented the dead setting, then re-captured all 22: **every remaining
+  PNG came back byte-identical**, which both proves the baselines reproducible
+  and confirms the setting gated nothing.
+
+  Not there yet, and `qtgl.py` is therefore still the default: picking, the
+  silhouette post-pass, 3-D labels, and the panel's menus and wizard beyond
+  hover/click/drag routing. Suites: 248 passed, 9 skipped.
+  [chimol-web](plugins/chimol-web.md)
+
 * **chimol runs on WGSL: the real window, the real chrome, on Metal.**
   `CHIMOL_RENDERER=wgpu` puts `renderer/wgpu_view.py::WgpuRenderer` in the
   viewport of the actual application window -- molecule, object panel, sequence

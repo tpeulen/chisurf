@@ -297,3 +297,58 @@ def test_a_spent_team_cannot_start_a_fight(game, wild_room):
     game.iris = [wild.position[0], wild.position[1] + tiles.TILE]
     game._try_encounter()
     assert game.battle is None
+
+
+def test_a_cleared_room_yields_gear_once(game, wild_room):
+    """Loot is seeded by the page, and a room cannot be farmed."""
+    if not game.gear_pool:
+        pytest.skip("spectra.db is not present in this install")
+    game._award_loot(wild_room)
+    assert len(game.inventory) == 1
+    first = game.inventory[0].name
+
+    game._award_loot(wild_room)
+    assert len(game.inventory) == 1, "the same room paid out twice"
+    assert game.inventory[0].name == first
+
+
+def test_fitting_a_filter_changes_what_is_visible(game):
+    """The loot loop: different optics, different world."""
+    if not game.gear_pool:
+        pytest.skip("spectra.db is not present in this install")
+    narrow = min(
+        (p for p in game.gear_pool if p.slot == "emission" and p.bandwidth_nm > 5),
+        key=lambda p: p.bandwidth_nm,
+    )
+    game.equip(narrow)
+    assert game.loadout.emission is narrow
+    assert game.loadout.sees(narrow.center_nm)
+    assert not game.loadout.sees(narrow.center_nm + 120.0)
+
+
+def test_standing_on_a_clinic_recovers_the_team(game):
+    """Photon budgets persist between fights, so recovery is a place you go."""
+    village = game.world.villages[0]
+    col, row = village.clinic
+    assert game.world.tile_at(col, row) == tiles.CLINIC
+
+    for fighter in game.team:
+        fighter.hp = 1
+    game.iris = [(col + 0.5) * tiles.TILE, (row + 0.5) * tiles.TILE]
+    for _ in range(120):
+        game.update(1 / 60, game.host.keys)
+    assert game.resting
+    assert all(f.hp > 1 for f in game.team)
+
+
+def test_recovery_only_happens_at_the_clinic(game):
+    """Otherwise attrition is not a constraint at all."""
+    for fighter in game.team:
+        fighter.hp = 5
+    room = game.world.rooms[0]
+    game.iris = [room.position[0], room.position[1] + tiles.TILE * 3]
+    for _ in range(60):
+        game.update(1 / 60, game.host.keys)
+    if game.resting:
+        pytest.skip("that spot happens to be a clinic")
+    assert all(f.hp == 5 for f in game.team)

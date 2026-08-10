@@ -25,6 +25,7 @@ from chisurf.gui.chigame.input import Action
 from ...characters import IRIS, LUMI, draw as draw_character
 from ..api import tiles as T
 from ..api import battle as battle_api
+from ..api import gear as gear_api
 from ..api import roster as roster_api
 from ..api.story import Story
 from ..api.world import SCOUTED, SETTLED, WILD, World, build_world
@@ -67,6 +68,7 @@ TILE_SPRITES = {
     T.WALL: "wall",
     T.GATE: "gate",
     T.BRIDGE: "bridge",
+    T.CLINIC: "clinic",
     T.BUILDING: "grass",   # the house is drawn over it, tinted by state
     T.VOID: "water",
 }
@@ -93,6 +95,7 @@ TILE_COLORS = {
     T.WALL: (0.300, 0.290, 0.270, 1.0),
     T.GATE: (0.360, 0.300, 0.180, 1.0),
     T.BRIDGE: (0.260, 0.215, 0.150, 1.0),
+    T.CLINIC: (0.30, 0.42, 0.38, 1.0),
     T.BUILDING: (0.230, 0.225, 0.215, 1.0),
     T.VOID: (0.020, 0.022, 0.028, 1.0),
 }
@@ -201,6 +204,14 @@ class OverworldGame(chigame.Game):
         self.menu_index = 0
         self.encounter_room = None
 
+        self.gear_pool = gear_api.load_gear()
+        self.loadout = gear_api.starting_loadout(self.gear_pool)
+        self.inventory: list = []
+        self.last_loot = None
+        self.cleared: set[str] = set()
+        self._guardian_nm: dict[str, float] = {}
+        self.resting = False
+
         start = self.world.spawn()
         self.iris = [float(start[0]), float(start[1])]
         self.lumi = [self.iris[0] - LUMI_TRAIL, self.iris[1]]
@@ -268,6 +279,7 @@ class OverworldGame(chigame.Game):
         elif keys.is_held(Action.CANCEL):
             self.view_height = min(self.view_height * (1.0 + 1.9 * dt), VIEW_MAX)
 
+        self._rest(dt)
         self.story.observe(self.here)
 
         # Lumi moves toward a point behind Iris rather than to Iris, so the two
@@ -288,6 +300,55 @@ class OverworldGame(chigame.Game):
         camera.center[1] += (centre[1] - camera.center[1]) * blend
         camera.height += (height - camera.height) * blend
 
+    def _rest(self, dt: float) -> None:
+        """Recover photons while standing on a recovery station.
+
+        Fluorescence recovery after photobleaching, as a place you walk to.
+        Budgets persist between fights, so without somewhere to recover a run
+        is a one-way slide into a bleached team.
+
+        Parameters
+        ----------
+        dt : float
+            Seconds elapsed.
+        """
+        col = int(self.iris[0] // T.TILE)
+        row = int(self.iris[1] // T.TILE)
+        self.resting = self.world.tile_at(col, row) == T.CLINIC
+        if not self.resting:
+            return
+        for fighter in self.team:
+            if fighter.hp < fighter.creature.max_hp:
+                fighter.hp = min(
+                    fighter.creature.max_hp,
+                    fighter.hp + max(1, int(fighter.creature.max_hp * 0.6 * dt)),
+                )
+
+    def guardian_nm(self, room) -> float:
+        """Emission wavelength of whatever guards a room.
+
+        Cached, because the map asks this of every visible room every frame and
+        the answer never changes for a given page.
+
+        Parameters
+        ----------
+        room : Room
+            The room.
+
+        Returns
+        -------
+        float
+            Wavelength in nm, or 0 when there is no roster to draw from.
+        """
+        if not self.pool:
+            return 0.0
+        cached = self._guardian_nm.get(room.address)
+        if cached is None:
+            guardian = battle_api.wild_opponent(room.address, room.remoteness, self.pool)
+            cached = guardian.creature.emission_nm
+            self._guardian_nm[room.address] = cached
+        return cached
+
     def _try_encounter(self) -> None:
         """Start a fight with whatever guards the nearest wild building.
 
@@ -307,6 +368,7 @@ class OverworldGame(chigame.Game):
         self.battle = battle_api.Battle(
             self.team,
             battle_api.wild_opponent(room.address, room.remoteness, self.pool),
+            loadout=self.loadout,
         )
 
     def _battle_input(self, keys) -> None:
@@ -321,6 +383,8 @@ class OverworldGame(chigame.Game):
         if fight is None:
             return
         if fight.finished:
+            if fight.won and self.encounter_room is not None:
+                self._award_loot(self.encounter_room)
             if keys.just_pressed(Action.CONFIRM) or keys.just_pressed(Action.CANCEL):
                 self.battle = None
                 self.encounter_room = None
@@ -335,6 +399,36 @@ class OverworldGame(chigame.Game):
             options[self.menu_index][1]()
         elif keys.just_pressed(Action.CANCEL):
             fight.flee()
+
+    def _award_loot(self, room) -> None:
+        """Give the player what a cleared room yields, once.
+
+        Parameters
+        ----------
+        room : Room
+            The room that was cleared.
+        """
+        if room.address in self.cleared:
+            return
+        self.cleared.add(room.address)
+        part = gear_api.loot_for(room.address, room.remoteness, self.gear_pool)
+        if part is None:
+            return
+        self.inventory.append(part)
+        self.last_loot = part
+
+    def equip(self, part) -> None:
+        """Fit a piece of gear into its slot.
+
+        Parameters
+        ----------
+        part : chisurf.plugins.misc.games.lumis_quest.api.gear.Gear
+            What to fit.
+        """
+        if part.slot == "emission":
+            self.loadout.emission = part
+        elif part.slot == "detector":
+            self.loadout.detector = part
 
     def _battle_options(self):
         """The menu, as label/action pairs.
@@ -432,7 +526,7 @@ class OverworldGame(chigame.Game):
                 _, row, _, _ = village.rect
                 scene.text(
                     village.name.upper(),
-                    at=(vx, row * T.TILE - 9.0),
+                    at=(vx, row * T.TILE - 14.0),
                     height=10.0, align="center", color=(0.52, 0.56, 0.64, 1.0),
                 )
 
@@ -603,6 +697,16 @@ class OverworldGame(chigame.Game):
                 continue
             if abs(y - camera.center[1]) > half[1] + T.TILE:
                 continue
+            if room.state == WILD and self.pool:
+                # A creature the fitted filter blocks is not rendered as itself:
+                # this is the loot loop, and it is why re-walking cleared ground
+                # with different optics shows you things that were always there.
+                nm = self.guardian_nm(room)
+                if nm and not self.loadout.sees(nm):
+                    self._sprite(scene, "house_wild", (x, y), T.TILE,
+                                 tint=(0.16, 0.17, 0.20, 1.0))
+                    continue
+
             if room.state == SETTLED:
                 scene.draw("photon", "halo", at=(x, y), size=(T.TILE * 1.5, T.TILE * 1.5),
                            emission_nm=SETTLED_NM)
@@ -764,6 +868,24 @@ class OverworldGame(chigame.Game):
                 beat.headline,
                 at=(camera.center[0], bottom - 48.0 * scale),
                 height=10.5 * scale, align="center", color=(0.62, 0.70, 0.80, 1.0),
+            )
+
+        scene.text(
+            self.loadout.summary,
+            at=(left + 14.0 * scale, top + 70.0 * scale),
+            height=9.5 * scale, color=(0.62, 0.70, 0.66, 1.0),
+        )
+        if self.resting:
+            scene.text(
+                "recovering",
+                at=(left + 14.0 * scale, top + 84.0 * scale),
+                height=9.5 * scale, color=(0.45, 0.90, 0.75, 1.0),
+            )
+        if self.last_loot is not None:
+            scene.text(
+                f"found {self.last_loot.summary}",
+                at=(camera.center[0], bottom - 62.0 * scale),
+                height=10.0 * scale, align="center", color=(0.90, 0.84, 0.52, 1.0),
             )
 
         room = self.here

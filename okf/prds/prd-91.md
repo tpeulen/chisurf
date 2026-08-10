@@ -46,10 +46,20 @@ Next, in order:
    blue absorber and **x2.00** against one absorbing at 567 nm -- the type
    chart is the real overlap integral, not a designed table. Still **no AI**,
    deliberately.
-   Open here: **gear and loot** (the light-path crafting layer), and healing --
-   photon budgets persist between fights, so the FRAP clinic is what turns
-   attrition into the actual difficulty. A single encounter is three-on-one and
-   should be winnable; the run is where the danger lives.
+   ✅ **Gear, loot and healing landed too.** `api/gear.py` reads **673 real
+   optical parts** from the same database (333 emission filters, 172 dichroics,
+   100 excitation, 68 detectors), each with its measured transmission curve. A
+   filter is not "+3 damage": it decides **what you can see**. Fitted optics
+   multiply your shot by what they pass, and a creature the filter blocks is
+   **not drawn on the map at all** -- so re-walking cleared ground with different
+   optics shows you what was always there. Loot is seeded by the page (no
+   farming for rerolls) and a remoter room yields a **narrower**, more selective
+   filter: better in its band, useless outside it. **FRAP is a place**: a
+   recovery station just inside every village gate, because photon budgets
+   persist between fights and attrition is where the difficulty lives.
+   Still open: the light-path *crafting* layer (assembling a rig from parts
+   through the existing simulator, rather than only fitting one), and catching
+   creatures to grow the team.
 4. **Phase 5 — the AI layer**, then 6 (crafting, mini-games, factions, story),
    then 7 (farm, network).
 

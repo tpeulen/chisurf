@@ -42,6 +42,7 @@ from chisurf.plugins.core.help.api import review, toc
 from .names import region_name
 from .tiles import (
     BRIDGE,
+    CLINIC,
     BUILDING,
     FLOOR,
     GATE,
@@ -192,12 +193,15 @@ class Village:
         ``(col, row, width, height)`` of the compound, walls included.
     gate : tuple of int
         Grid cell of the gate in the wall.
+    clinic : tuple of int
+        Grid cell of the recovery station, just inside the gate.
     """
 
     name: str
     rooms: list[Room] = dataclasses.field(default_factory=list)
     rect: tuple[int, int, int, int] = (0, 0, 0, 0)
     gate: tuple[int, int] = (0, 0)
+    clinic: tuple[int, int] = (0, 0)
 
     @property
     def position(self) -> tuple[float, float]:
@@ -715,6 +719,7 @@ def _translate_region(region: Region, col: int, row: int) -> None:
         vcol, vrow, vwidth, vheight = village.rect
         village.rect = (vcol + col, vrow + row, vwidth, vheight)
         village.gate = (village.gate[0] + col, village.gate[1] + row)
+        village.clinic = (village.clinic[0] + col, village.clinic[1] + row)
         for room in village.rooms:
             room.tile = (room.tile[0] + col, room.tile[1] + row)
 
@@ -844,6 +849,14 @@ def _paint_village(grid: list[list[int]], village: Village) -> None:
     gate_col, gate_row = village.gate
     if 0 <= gate_row < len(grid) and 0 <= gate_col < len(grid[0]):
         grid[gate_row][gate_col] = GATE
+    # A recovery station just inside the gate. Photon budgets persist between
+    # fights, so somewhere to recover is what turns a run into a loop rather
+    # than a one-way slide into a bleached team.
+    clinic_row = gate_row - 1
+    if 0 <= clinic_row < len(grid) and 0 <= gate_col < len(grid[0]):
+        if grid[clinic_row][gate_col] != BUILDING:
+            grid[clinic_row][gate_col] = CLINIC
+    village.clinic = (gate_col, clinic_row)
 
     for room in village.rooms:
         x, y = room.tile

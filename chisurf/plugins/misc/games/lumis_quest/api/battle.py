@@ -135,10 +135,14 @@ class Battle:
     opponent_power : float, optional
         Multiplier on the opponent's damage. It fights alone, with no bench to
         relay or absorb, so parity on paper is a walkover in practice.
+    loadout : chisurf.plugins.misc.games.lumis_quest.api.gear.Loadout, optional
+        Fitted optics. Omitted means an unfiltered eye: nothing amplified and
+        nothing blocked.
     """
 
     def __init__(self, team: list[Fighter], opponent: Fighter,
-                 rng: random.Random | None = None, opponent_power: float = 1.6) -> None:
+                 rng: random.Random | None = None, opponent_power: float = 1.6,
+                 loadout=None) -> None:
         if not team:
             raise ValueError("a battle needs at least one creature")
         self.team = team
@@ -146,6 +150,10 @@ class Battle:
         # A wild creature has no bench and no combo, so it hits harder per shot
         # to make up for it; without this the player simply cannot lose.
         self.opponent_power = opponent_power
+        # What is fitted decides how much of your own light is collected. A
+        # filter that blocks your creature's band makes it nearly useless --
+        # which is what makes gear a choice rather than a stat stick.
+        self.loadout = loadout
         self.rng = rng or random.Random()
         self.active_index = 0
         self.log: list[Turn] = []
@@ -227,6 +235,8 @@ class Battle:
                 crosstalk = max(crosstalk, overlap(mate.creature, attacker.creature))
 
         gain = 1.0 + COMBO_GAIN * combo - CROSSTALK_COST * crosstalk
+        if self.loadout is not None:
+            gain *= self.loadout.response(attacker.creature.emission_nm)
         spread = self.rng.uniform(0.85, 1.15)
         damage = max(
             1,

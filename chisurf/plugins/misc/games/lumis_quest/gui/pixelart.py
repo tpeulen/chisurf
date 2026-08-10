@@ -111,6 +111,12 @@ TERRAIN: dict[str, list[str]] = {
         "XoOOoooooooOOooX", "XooooooooooooooX", "XooooooooooooooX", "XoOOoooooooOOooX",
         "XooooooooooooooX", "XooooooooooooooX", "XoOOoooooooOOooX", "XXXXXXXXXXXXXXXX",
     ],
+    "clinic": [
+        "ffffffffffffffff", "ffffffffffffffff", "fffFFFFFFFFFFfff", "ffFccccccccccFff",
+        "ffFcccccccccccff", "ffFcccCCCCcccccf", "ffFcccCCCCcccccf", "ffFCCCCCCCCCCccf",
+        "ffFCCCCCCCCCCccf", "ffFcccCCCCcccccf", "ffFcccCCCCcccccf", "ffFcccccccccccff",
+        "ffFccccccccccFff", "fffFFFFFFFFFFfff", "ffffffffffffffff", "ffffffffffffffff",
+    ],
     "bridge": [
         "wwwwwwwwwwwwwwww", "oooooooooooooooo", "OOOOOOOOOOOOOOOO", "oooooooooooooooo",
         "oooooooooooooooo", "OOOOOOOOOOOOOOOO", "oooooooooooooooo", "oooooooooooooooo",

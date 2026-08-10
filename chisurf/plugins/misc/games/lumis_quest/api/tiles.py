@@ -23,6 +23,7 @@ WALL = 7
 GATE = 8
 BUILDING = 9
 BRIDGE = 10
+CLINIC = 11
 
 #: Tiles that stop a walker. A gate is a hole in a wall, so it is *not* here.
 BLOCKING = frozenset({VOID, WATER, TREE, ROCK, WALL, BUILDING})
@@ -40,6 +41,7 @@ NAMES = {
     GATE: "gate",
     BUILDING: "building",
     BRIDGE: "bridge",
+    CLINIC: "clinic",
 }
 
 #: World units per tile.
