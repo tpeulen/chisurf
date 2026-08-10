@@ -33,13 +33,13 @@
 chisurf/core/fluorescence/anisotropy/kappa2.py
 chisurf/core/math/linalg/__init__.py
 chisurf/plugins/modelling/fret/core/olga_greedy.py
-chisurf/plugins/pch/api/algorithms.py
 modules/ndxplorer/ndxplorer/utils/performance_optimizations.py
 modules/ndxplorer/ndxplorer/utils/vectorized_ops.py
 
 # ── tttrlib (already shipping; delegate) ─────────────────────────────────────
 chisurf/core/fluorescence/burst/gopich_szabo.py
 chisurf/core/math/hmm.py
+chisurf/plugins/pch/api/algorithms.py
 chisurf/core/ml/cluster/_hdbscan.py
 chisurf/plugins/core/acq/gui/tool.py
 chisurf/plugins/fluorescence_decay/maxent_decay/core/solver.py

@@ -36,7 +36,21 @@ timestamp: '2026-08-10T00:00:00Z'
    `rescale_w`, `add_pile_up_to_model`, `histogram1D_double`,
    `histogram1D_int`, `decode_records`, `GopichSzabo`, `HMM`/`HmmModel`/
    `HmmVB`, `maxent_invert`, `solve_tcspc_mem_lifetime`, `OptsCluster`.
-3. **A `tttrlib` route is a hypothesis, not a verdict — diff the maths first.**
+3. **`plugins/pch/api/algorithms.py` was mis-routed and has been moved to
+   `tttrlib`** — the library ships PCH and I had it down as `numpy`:
+   `pch_single_species(k_max, brightness, n_grid=1000, x_max=5.0)`,
+   `pch_mixture(k_max, brightnesses, avg_numbers)`,
+   `pch_open_system(k_max, brightness, avg_n, max_n=30)`,
+   `fida_pch(k_max, species_flat, n_species, background, profile_flat, ...)`.
+   `compute_p1` looks like `pch_single_species` and `convolve_pch_numba` like
+   the N-fold step inside `pch_mixture`/`pch_open_system` — **but diff the maths
+   before delegating** (rule below). Two specifics to check: `compute_p1`
+   carries the `x**2` shell weight of a *3-D* Gaussian (its docstring records
+   that dropping it gives `2**-0.5` instead of `gamma_2 = 2**-1.5`), and its
+   `p1[0]` is the complement of the `k >= 1` terms, which folds the
+   `4 pi w^3 / V_0` prefactor into the reference volume. If the library's
+   normalisation differs, `avgN` changes meaning rather than value.
+4. **A `tttrlib` route is a hypothesis, not a verdict — diff the maths first.**
    Two files routed to `tttrlib` turned out to be route `numpy`, because
    ChiSurf's version is *deliberately better than the C one* and delegating
    would have been a silent regression:
@@ -50,7 +64,7 @@ timestamp: '2026-08-10T00:00:00Z'
    under the decorator. So: read both implementations before delegating, and
    when they differ, work out *which* is right rather than assuming the
    compiled one is.
-4. **`_hdbscan.py` splits — measured, so do not re-derive.** The compiled
+5. **`_hdbscan.py` splits — measured, so do not re-derive.** The compiled
    kernel covers only the first two stages (`core_distances`,
    `mutual_reachability_mst`); `single_linkage`, `condense_tree` and
    `label_points` are **not** in the photon library. Timed on the *compiled*
@@ -66,7 +80,7 @@ timestamp: '2026-08-10T00:00:00Z'
    same reason, but **measure before delegating** — it is the hmmlearn
    replacement and is 1.1–18× faster per E-step, so a regression there is a
    visible loss.
-5. **`gopich_szabo.py` has a red test that is not the port's fault.**
+6. **`gopich_szabo.py` has a red test that is not the port's fault.**
    `test_no_exchange_reduces_to_a_static_mixture` returns `-inf` where
    `-3.665` is expected — `-inf` is the numba kernel's own numerical-failure
    sentinel. Check whether `tttrlib.GopichSzabo` gives the expected value
@@ -74,7 +88,7 @@ timestamp: '2026-08-10T00:00:00Z'
    [known-issues](../references/known-issues.md) with four unrelated
    `mfd_burst_roundtrip` failures, so the retirement's test runs are not read
    as having caused them.
-6. **ChiMOL is out of scope and out of the guard.** `test_numba_seam.py` skips
+7. **ChiMOL is out of scope and out of the guard.** `test_numba_seam.py` skips
    `chisurf/plugins/chimol/` via `_EXCLUDED_PREFIXES`, and the allow-list no
    longer names those files. They belong to the WebGPU port; when it lands
    them, nothing here needs touching.
