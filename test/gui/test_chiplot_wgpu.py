@@ -359,6 +359,63 @@ def test_image_texture_is_not_re_uploaded_when_only_the_view_moves(qapp):
 
 
 # ---------------------------------------------------------------------------
+# Chrome typography and handle liveness
+# ---------------------------------------------------------------------------
+
+def test_chrome_sizes_are_ordered_and_floored(qapp):
+    """Ticks smallest, title largest, nothing below the readable floor."""
+    tick = S.chrome_font_size("tick")
+    label = S.chrome_font_size("label")
+    title = S.chrome_font_size("title")
+    assert tick < label < title
+    assert tick >= 6
+
+
+def test_chrome_follows_the_configured_size(qapp, monkeypatch):
+    """``gui.plot.font_size`` wins over the application font when set."""
+    from chisurf.core import settings as core_settings
+
+    plot = core_settings.cs_settings.setdefault("gui", {}).setdefault("plot", {})
+    previous = plot.get("font_size", 0)
+    try:
+        plot["font_size"] = 20
+        assert S.chrome_base_size() == 20
+        assert S.chrome_font_size("tick") == 17
+        # A tiny base still cannot produce unreadable chrome.
+        plot["font_size"] = 4
+        assert S.chrome_font_size("tick") == 6
+    finally:
+        plot["font_size"] = previous
+
+
+def test_handles_report_liveness(qapp):
+    """A handle reports whether it can still be drawn to.
+
+    ``is_alive`` is the backend-neutral answer call sites used to get from
+    pyqtgraph internals — which reported "dead" here and silently skipped the
+    update it guarded.
+    """
+    canvas = _canvas()
+    text = canvas.add_text("hi", (0.0, 0.0), color="#ffffff")
+    assert text.is_alive() is True
+    text.remove()
+    assert text.is_alive() is False
+
+
+def test_anchored_text_is_measured_over_all_its_lines(qapp):
+    """A multi-line label sizes its box from the widest line and the line count.
+
+    The fit-quality overlay is three lines; drawn from a single-line measure it
+    came out as one run-together row in a box the wrong shape.
+    """
+    canvas = _canvas()
+    text = canvas.add_text("a\nbb\nccc", (10.0, 10.0), color="#ffffff",
+                           anchored=True)
+    assert text.text.count("\n") == 2
+    assert text.is_alive()
+
+
+# ---------------------------------------------------------------------------
 # Rendering (needs an adapter)
 # ---------------------------------------------------------------------------
 

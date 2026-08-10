@@ -73,6 +73,22 @@ class Handle(Protocol):
         """Remove the element from its plot."""
         ...
 
+    def is_alive(self) -> bool:
+        """Whether the handle can still be drawn to.
+
+        A panel can be torn down while a call site still holds handles to what
+        was on it, and touching one afterwards is a crash rather than an
+        exception. Call sites were answering this by reaching through
+        ``native`` for renderer internals — a check that silently reported
+        "dead" on any other backend, so the thing it guarded (a fit-quality
+        overlay, say) simply never updated.
+
+        Returns
+        -------
+        bool
+        """
+        ...
+
     @property
     def native(self):
         """The backend-specific object (escape hatch; avoid in new code)."""

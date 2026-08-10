@@ -192,6 +192,32 @@ its two residual strips — `alpha` is opacity, not an on/off flag, so once the
 foreground became visible those panels filled with solid stripes. It had been
 invisible for exactly as long as the axes were.
 
+## Chrome typography is one policy, not two defaults
+
+The two backends sized their axis text independently: pyqtgraph inherited the
+**application** font (13 pt — a UI size, on a residual strip eighty pixels
+tall), and the native one hardcoded 8 pt. Switching backend visibly changed
+every plot, and neither followed the user's font preference.
+`style.chrome_font(role)` is now the single answer — `chrome_base_size()` takes
+`gui.plot.font_size`, or the application font when that is 0 — with ticks 3 pt
+under the base, labels 2 pt, and a 6 pt floor. Both backends call it.
+
+Two native-backend parity defects surfaced while comparing the two:
+
+* **Anchored text was placed against the widget**, not the plot rectangle, and
+  its vertical anchor was inverted (`1 - ay` instead of `ay`). The fit-quality
+  overlay's `(100, 0)` therefore landed in the axis margin and was clipped
+  away. Anchored means "offset from the data area's top-left", as the other
+  backend's parenting implies.
+* **Text was drawn single-line.** The overlay is three lines (range, chi2r,
+  Durbin-Watson) and `drawText(QPointF, ...)` runs them together.
+
+And one call-site defect the comparison exposed: `LinePlot._metrics_text_alive`
+asked pyqtgraph's `textItem` through `.native` whether the overlay still
+existed. Any other backend answers "no", so the overlay was created and then
+never written. `Handle.is_alive()` is the chiplot query both backends
+implement; reach for it rather than for a renderer's liveness internals.
+
 # Where to pick this up — the WebGPU backend
 
 `backends/wgpu/` draws every family the A/B script exercises (decay on a log

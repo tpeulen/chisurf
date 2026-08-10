@@ -104,6 +104,33 @@ def _brush(brush: S.Brush | None):
     return pg.mkBrush(brush.color.as_tuple())
 
 
+def _apply_chrome_font(plot_item) -> None:
+    """Size a panel's axis text from chiplot's chrome policy.
+
+    pyqtgraph draws ticks and axis labels in the *application* font, which is a
+    UI size (13 pt here) and far too large for a residual strip eighty pixels
+    tall; the native backend hardcoded 8. Neither followed a policy, so the two
+    renderers disagreed and neither tracked the user's font preference. Both go
+    through :func:`~chisurf.gui.chiplot.style.chrome_font` now.
+    """
+    tick = S.chrome_font("tick")
+    label_pt = S.chrome_font_size("label")
+    for side in ("bottom", "left", "right", "top"):
+        try:
+            axis = plot_item.getAxis(side)
+        except Exception:
+            continue
+        try:
+            axis.setStyle(tickFont=tick)
+            # labelStyle survives a later ``setLabel(text)`` with no keywords,
+            # which is how ``set_labels`` calls it.
+            axis.labelStyle = {**getattr(axis, "labelStyle", {}),
+                               "font-size": f"{label_pt}pt"}
+            axis._updateLabel()
+        except Exception:
+            pass
+
+
 def _same_color(a, b) -> bool:
     """Whether two pyqtgraph colour specs resolve to the same RGB."""
     try:
@@ -206,6 +233,22 @@ class _Item:
     def remove(self) -> None:
         """Remove the item from its plot."""
         self._pi.removeItem(self._native)
+
+    def is_alive(self) -> bool:
+        """Whether the wrapped item (and its text child, if any) still exists."""
+        try:
+            import sip
+        except ImportError:
+            return True
+        for obj in (self._native, getattr(self._native, "textItem", None)):
+            if obj is None:
+                continue
+            try:
+                if sip.isdeleted(obj):
+                    return False
+            except Exception:
+                continue
+        return True
 
     @property
     def native(self):
@@ -718,6 +761,7 @@ class _PgCanvas(base.Canvas):
         # A grid panel shares one host widget with its siblings, so widget-level
         # styling (background) must stay with the canvas that owns the widget.
         self._owns_host = owns_host
+        _apply_chrome_font(self._pi)
         # pyqtgraph auto-prefixes axis ticks, which turns a FRET axis spanning
         # 0..1 into "200 400 600 800" under a "(x0.001)" label, and a log axis
         # into "(x1e+27)" nonsense — the tick values there are exponents, not

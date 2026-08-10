@@ -88,6 +88,16 @@ class _HandleBase:
         """Remove this handle from its canvas."""
         self._canvas._remove_handle(self)
 
+    def is_alive(self) -> bool:
+        """Whether this handle is still attached to a canvas that can draw it."""
+        canvas = getattr(self, "_canvas", None)
+        if canvas is None:
+            return False
+        try:
+            return self in canvas._handles
+        except Exception:
+            return False
+
     @property
     def native(self):
         """The renderer-level object — this handle itself; there is no other."""
@@ -905,34 +915,48 @@ class _Text(_HandleBase):
         if not self._visible:
             return
         if self._anchored:
-            px, py = self._pos[0], self._pos[1]
+            # A screen-pinned label is offset from the **plot rectangle's**
+            # top-left, not the widget's: the other backend parents it to the
+            # plot item, and the fit-quality overlay's (100, 0) means "just
+            # inside the top of the data area". Measured from the widget it
+            # lands in the axis margin and is clipped away entirely.
+            ix, iy, _, _ = margins.plot_rect(w, h)
+            px, py = ix + self._pos[0], iy + self._pos[1]
         else:
             px, py = view.data_to_pixel(self._pos[0], self._pos[1], w, h, margins)
         if not (math.isfinite(px) and math.isfinite(py)):
             return
         c = self._color if isinstance(self._color, S.Color) else S.to_color(self._color)
         r, g, b, a = c.as_tuple()
-        font = painter.font()
-        font.setPointSize(9)
-        painter.setFont(font)
+        painter.setFont(S.chrome_font("label"))
         fm = painter.fontMetrics()
-        tw = fm.horizontalAdvance(self._text)
-        th = fm.height()
+        # Multi-line, because the labels that matter are: the fit-quality
+        # overlay is three lines of range / chi2r / Durbin-Watson, and
+        # ``drawText(QPointF, ...)`` runs them together on one.
+        lines = str(self._text).splitlines() or [""]
+        tw = max((fm.horizontalAdvance(line) for line in lines), default=0)
+        th = fm.height() * len(lines)
+        # Anchor (0, 0) is the text's top-left at the position and (1, 1) its
+        # bottom-right, matching the other backend. Subtracting ``1 - ay``
+        # flipped the vertical sense, so every default-anchored label sat a
+        # whole line above where it was asked for.
         ax, ay = self._anchor
         tx = px - ax * tw
-        ty = py - (1 - ay) * th
+        ty = py - ay * th
+        box = QtCore.QRectF(tx - 3, ty - 2, tw + 6, th + 4)
         if self._fill is not None:
             brush = self._fill if isinstance(self._fill, S.Brush) else S.to_brush(self._fill)
             fr, fg, fb, fa = brush.color.as_tuple()
-            painter.fillRect(QtCore.QRectF(tx - 2, ty - 2, tw + 4, th + 4),
-                             QtGui.QColor(fr, fg, fb, fa))
+            painter.fillRect(box, QtGui.QColor(fr, fg, fb, fa))
         if self._border is not None:
             pen = self._border if isinstance(self._border, S.Pen) else S.to_pen(self._border)
             br, bg, bb, ba = pen.color.as_tuple()
             painter.setPen(QtGui.QColor(br, bg, bb, ba))
-            painter.drawRect(QtCore.QRectF(tx - 2, ty - 2, tw + 4, th + 4))
+            painter.drawRect(box)
         painter.setPen(QtGui.QColor(r, g, b, a))
-        painter.drawText(QtCore.QPointF(tx, ty + fm.ascent()), self._text)
+        for i, line in enumerate(lines):
+            painter.drawText(
+                QtCore.QPointF(tx, ty + i * fm.height() + fm.ascent()), line)
 
 
 # ---------------------------------------------------------------------------

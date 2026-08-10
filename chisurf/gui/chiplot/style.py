@@ -359,3 +359,72 @@ def int_color(index: int, count: int = 9) -> Color:
     hue = (index % count) / float(max(count, 1))
     qc = QtGui.QColor.fromHsvF(hue % 1.0, 1.0, 1.0, 1.0)
     return Color(qc.red(), qc.green(), qc.blue(), qc.alpha())
+
+
+# ---------------------------------------------------------------------------
+# Chrome typography
+# ---------------------------------------------------------------------------
+
+#: How far each piece of axis chrome sits from the base size, in points.
+#: Ticks are the smallest because there are the most of them and they repeat;
+#: a title is the only text that should compete with the data.
+_CHROME_OFFSETS = {"tick": -3, "label": -2, "title": 0, "legend": -3}
+
+#: Never shrink chrome below this; smaller stops being readable on any display.
+_MIN_CHROME_PT = 6
+
+
+def chrome_base_size() -> int:
+    """Return the point size plot chrome is derived from.
+
+    ``gui.plot.font_size`` wins when set; otherwise the application font,
+    because a plot whose ticks ignore the UI font looks like a screenshot
+    pasted into the window — which is exactly what the two backends did to each
+    other, one following the 13 pt application font and the other hardcoding 8.
+
+    Returns
+    -------
+    int
+        Base size in points.
+    """
+    try:
+        from chisurf.core.settings import cs_settings
+
+        configured = int(cs_settings.get("gui", {}).get("plot", {}).get("font_size", 0) or 0)
+        if configured > 0:
+            return configured
+    except Exception:
+        pass
+    try:
+        from qtpy import QtWidgets
+
+        app = QtWidgets.QApplication.instance()
+        if app is not None and app.font().pointSize() > 0:
+            return int(app.font().pointSize())
+    except Exception:
+        pass
+    return 11
+
+
+def chrome_font_size(role: str = "tick") -> int:
+    """Return the point size for one piece of axis chrome.
+
+    Parameters
+    ----------
+    role : str
+        ``"tick"``, ``"label"``, ``"title"`` or ``"legend"``.
+
+    Returns
+    -------
+    int
+        Point size, never below :data:`_MIN_CHROME_PT`.
+    """
+    return max(chrome_base_size() + _CHROME_OFFSETS.get(role, 0), _MIN_CHROME_PT)
+
+
+def chrome_font(role: str = "tick", *, bold: bool = False) -> QtGui.QFont:
+    """Return a :class:`~qtpy.QtGui.QFont` for one piece of axis chrome."""
+    font = QtGui.QFont()
+    font.setPointSize(chrome_font_size(role))
+    font.setBold(bold)
+    return font

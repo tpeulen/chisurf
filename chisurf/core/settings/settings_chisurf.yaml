@@ -140,6 +140,11 @@ gui:
     # feature set emulated over Metal). The env var CHISURF_PLOT_BACKEND
     # overrides this at startup.
     backend: pyqtgraph
+    # Base point size for axis chrome (ticks, labels, title, legend). 0 derives
+    # it from the application font, which is what keeps a plot from looking
+    # like a screenshot pasted into the window. Ticks are drawn 3 pt smaller,
+    # axis labels 2 pt, and nothing goes below 6 pt.
+    font_size: 0
     colors:
       active_transparency: 1
       auto_corr: "#ff00ff"

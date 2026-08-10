@@ -27,7 +27,6 @@ from ..api import tiles as T
 from ..api import battle as battle_api
 from ..api import gear as gear_api
 from ..api import roster as roster_api
-from ..api import review_bridge
 from ..api import save as save_api
 from ..api.story import Story
 from ..api.world import SCOUTED, SETTLED, WILD, World, build_world
@@ -217,11 +216,6 @@ class OverworldGame(chigame.Game):
         self.last_loot = None
         self.cleared: set[str] = set()
         self.collection: list = []
-        # Training teaches; expert reviews. They must not grant the same thing.
-        self.mode = review_bridge.TRAINING
-        self.challenge = None
-        self.challenge_hash = ""
-        self.verdict = None
         self._guardian_nm: dict[str, float] = {}
         self.resting = False
 
@@ -329,13 +323,6 @@ class OverworldGame(chigame.Game):
             self.show_map = not self.show_map
         if keys.just_pressed(Action.SHOULDER_L):
             self._try_encounter()
-        if keys.just_pressed(Action.SHOULDER_R) and not keys.is_held(Action.CANCEL):
-            pass  # zoom; the mode toggle is deliberate and lives on Menu+Confirm
-        if keys.just_pressed(Action.CONFIRM) and keys.is_held(Action.MENU):
-            self.mode = (
-                review_bridge.EXPERT if self.mode == review_bridge.TRAINING
-                else review_bridge.TRAINING
-            )
 
         dx, dy = keys.axis()
         self.walking = bool(dx or dy)
@@ -465,15 +452,9 @@ class OverworldGame(chigame.Game):
                 self._award_loot(self.encounter_room)
                 if fight.caught is not None and fight.caught not in self.collection:
                     self.collection.append(fight.caught)
-                self._begin_challenge(self.encounter_room)
-
-            if self.challenge is not None:
-                self._challenge_input(keys)
-                return
             if keys.just_pressed(Action.CONFIRM) or keys.just_pressed(Action.CANCEL):
                 self.battle = None
                 self.encounter_room = None
-                self.verdict = None
             return
 
         options = self._battle_options()
@@ -485,59 +466,6 @@ class OverworldGame(chigame.Game):
             options[self.menu_index][1]()
         elif keys.just_pressed(Action.CANCEL):
             fight.flee()
-
-    def _begin_challenge(self, room) -> None:
-        """Put the page's own question, once, after its guardian is beaten.
-
-        Beating the guardian is spectroscopy and says nothing about whether
-        anyone read the page. This is the half that does.
-
-        Parameters
-        ----------
-        room : Room
-            The room that was cleared.
-        """
-        if self.challenge is not None or self.verdict is not None:
-            return
-        questions, content_hash = review_bridge.challenge_for(room.path)
-        if not questions:
-            # A stub has nothing to ask. That is not a pass: it simply cannot
-            # be signed off this way, and saying so is better than pretending.
-            self.verdict = review_bridge.Verdict(
-                False, "Too little here to question.", "unavailable"
-            )
-            return
-        self.challenge = questions[0]
-        self.challenge_hash = content_hash
-        self.menu_index = 0
-
-    def _challenge_input(self, keys) -> None:
-        """Drive the question menu.
-
-        Parameters
-        ----------
-        keys : chisurf.gui.chigame.input.InputMap
-            Controller state.
-        """
-        options = self.challenge.options
-        if keys.just_pressed(Action.DOWN):
-            self.menu_index = (self.menu_index + 1) % len(options)
-        if keys.just_pressed(Action.UP):
-            self.menu_index = (self.menu_index - 1) % len(options)
-        if keys.just_pressed(Action.CANCEL):
-            self.challenge = None
-            self.verdict = review_bridge.Verdict(False, "You leave it unread.", "wrong")
-            return
-        if not keys.just_pressed(Action.CONFIRM):
-            return
-
-        room = self.encounter_room
-        self.verdict = review_bridge.clear_page(
-            room.path, self.mode, self.challenge, self.menu_index, self.challenge_hash
-        )
-        if self.verdict.signed_off:
-            room.state = SETTLED
-        self.challenge = None
 
     def _award_loot(self, room) -> None:
         """Give the player what a cleared room yields, once.
@@ -915,35 +843,6 @@ class OverworldGame(chigame.Game):
             scene.text(line, at=(cx, cy + half[1] * 0.30 + offset * 12.0 * scale),
                        height=10.0 * scale, align="center", color=(0.74, 0.78, 0.86, 1.0))
 
-        if self.challenge is not None:
-            scene.text("The page puts its question", at=(cx, cy - half[1] * 0.30),
-                       height=12.0 * scale, align="center", color=(0.86, 0.84, 0.70, 1.0))
-            for offset, line in enumerate(_wrap(self.challenge.prompt, 54)[:4]):
-                scene.text(line, at=(cx, cy - half[1] * 0.18 + offset * 12.0 * scale),
-                           height=10.5 * scale, align="center", color=(0.80, 0.84, 0.90, 1.0))
-            for index, option in enumerate(self.challenge.options):
-                selected = index == self.menu_index
-                y = cy + half[1] * 0.30 + index * 13.0 * scale
-                if selected:
-                    scene.draw("ui", "selected", at=(cx - half[0] * 0.34, y),
-                               size=(7.0 * scale, 7.0 * scale))
-                scene.text(option, at=(cx - half[0] * 0.29, y), height=11.0 * scale,
-                           color=(0.94, 0.92, 0.86, 1.0) if selected
-                           else (0.56, 0.60, 0.68, 1.0))
-            scene.text(f"[{self.mode}]  Cancel to leave it unread",
-                       at=(cx, cy + half[1] * 0.62), height=9.5 * scale, align="center",
-                       color=(0.50, 0.54, 0.62, 1.0))
-            return
-
-        if self.verdict is not None:
-            scene.text(self.verdict.message, at=(cx, cy), height=14.0 * scale,
-                       align="center",
-                       color=(0.45, 0.90, 0.70, 1.0) if self.verdict.signed_off
-                       else (0.86, 0.72, 0.45, 1.0))
-            scene.text("Confirm to continue", at=(cx, cy + half[1] * 0.20),
-                       height=10.0 * scale, align="center", color=(0.50, 0.54, 0.62, 1.0))
-            return
-
         if fight.finished:
             outcome = "The light holds." if fight.won else (
                 "You withdraw." if fight.fled else "Your team is spent."
@@ -1042,13 +941,6 @@ class OverworldGame(chigame.Game):
             self.loadout.summary,
             at=(left + 14.0 * scale, top + 70.0 * scale),
             height=9.5 * scale, color=(0.62, 0.70, 0.66, 1.0),
-        )
-        scene.text(
-            f"[{self.mode}]",
-            at=(left + 14.0 * scale, top + 112.0 * scale),
-            height=9.5 * scale,
-            color=(0.90, 0.78, 0.45, 1.0) if self.mode == review_bridge.EXPERT
-            else (0.50, 0.56, 0.64, 1.0),
         )
         if self.collection:
             scene.text(

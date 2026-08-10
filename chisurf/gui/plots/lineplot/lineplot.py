@@ -1233,30 +1233,22 @@ class LinePlot(plotbase.Plot):
         self.plot_controller.set_reference_modes(modes)
 
     def _metrics_text_alive(self) -> bool:
-        """Return True when the overlay TextItem and backing Qt objects are alive."""
+        """Return True when the overlay text handle can still be drawn to.
 
+        This used to reach through ``.native`` for pyqtgraph's ``textItem`` and
+        ask sip whether it had been deleted, which answers "dead" on any other
+        renderer — so the fit-quality overlay was created and then never
+        written on the native backend. ``Handle.is_alive`` is the chiplot query
+        that both backends answer.
+        """
         text_handle = getattr(self, "text", None)
         if text_handle is None:
             return False
-
-        # self.text is a chiplot Text handle; the backing Qt item is .native.
-        text_item = getattr(text_handle, "native", text_handle)
         try:
-            if sip.isdeleted(text_item):  # type: ignore[arg-type]
-                return False
+            return bool(text_handle.is_alive())
         except Exception:
-            pass
-
-        backing_text_item = getattr(text_item, "textItem", None)
-        if backing_text_item is None:
-            return False
-        try:
-            if sip.isdeleted(backing_text_item):  # type: ignore[arg-type]
-                return False
-        except Exception:
-            pass
-
-        return True
+            # A handle predating the query, or one whose backend cannot say.
+            return True
 
     def _build_metrics_overlay_text(self, current_fit) -> str:
         """Build a plain-text variant of the metrics overlay.

@@ -150,6 +150,20 @@ def test_configure_refuses_an_invisible_axis(qapp):
         pg.setConfigOptions(foreground=previous)
 
 
+def test_handle_is_alive_tracks_the_native_item(qapp):
+    """``Handle.is_alive`` replaces reaching through ``.native`` for sip checks.
+
+    A call site that asked pyqtgraph directly got "dead" from every other
+    backend, so the thing it guarded — the fit-quality overlay — was created
+    and then never written there.
+    """
+    plot = cp.Plot()
+    curve = plot.line([0, 1, 2], [0, 1, 0], pen="red")
+    assert curve.is_alive() is True
+    text = plot.text("hi", (1.0, 0.5))
+    assert text.is_alive() is True
+
+
 def test_menu_enabled_reads_back(qapp):
     """``set_menu_enabled`` has a read side that needs no renderer spelling."""
     plot = cp.Plot()

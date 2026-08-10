@@ -345,9 +345,7 @@ class _WgpuCanvas(base.Canvas):
 
     def _measure_margins(self, painter: QtGui.QPainter, w: int, h: int) -> None:
         """Widen the left inset to fit the widest y tick label."""
-        font = painter.font()
-        font.setPointSize(8)
-        fm = QtGui.QFontMetrics(font)
+        fm = QtGui.QFontMetrics(S.chrome_font("tick"))
         labels = self._tick_labels("left")
         widest = max((fm.horizontalAdvance(t) for t in labels), default=0)
         self._margins.left = max(_LEFT_MARGIN, widest + 14 + (16 if self._ylabel else 0))
@@ -388,8 +386,7 @@ class _WgpuCanvas(base.Canvas):
         painter.setPen(QtGui.QPen(_AXIS_COLOR, 1))
         painter.drawRect(QtCore.QRectF(ix + 0.5, iy + 0.5, pw - 1, ph - 1))
 
-        font = painter.font()
-        font.setPointSize(8)
+        font = S.chrome_font("tick")
         painter.setFont(font)
         fm = painter.fontMetrics()
 
@@ -430,7 +427,7 @@ class _WgpuCanvas(base.Canvas):
                     QtCore.QRectF(ix - tw - 7, py - fm.height() / 2, tw, fm.height()),
                     QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter, label)
 
-        font.setPointSize(9)
+        font = S.chrome_font("label")
         painter.setFont(font)
         if self._xlabel:
             painter.drawText(QtCore.QRectF(ix, h - 19, pw, 18),
@@ -443,9 +440,7 @@ class _WgpuCanvas(base.Canvas):
                              QtCore.Qt.AlignCenter, self._ylabel)
             painter.restore()
         if self._title:
-            font.setPointSize(10)
-            font.setBold(True)
-            painter.setFont(font)
+            painter.setFont(S.chrome_font("title", bold=True))
             painter.drawText(QtCore.QRectF(ix, 2, pw, self._margins.top - 2),
                              QtCore.Qt.AlignCenter, self._title)
 
@@ -470,10 +465,7 @@ class _WgpuCanvas(base.Canvas):
         if not entries:
             return
         ix, iy, pw, ph = self._margins.plot_rect(w, h)
-        font = painter.font()
-        font.setPointSize(8)
-        font.setBold(False)
-        painter.setFont(font)
+        painter.setFont(S.chrome_font("legend"))
         fm = painter.fontMetrics()
         row = fm.height() + 3
         text_w = max(fm.horizontalAdvance(n) for n, _ in entries)
