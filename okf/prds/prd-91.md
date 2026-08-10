@@ -15,7 +15,7 @@ sibling: none
 # Where to pick this up
 
 **Design settled 2026-08-10 across ~30 decisions (see "Decision record" at the
-end). Implementation is at Phase 3.**
+end). Implementation is at Phase 4.**
 
 Next, in order:
 
@@ -24,8 +24,14 @@ Next, in order:
    before/after screenshot pair. The engine record is
    [chigame](../subsystems/chigame.md) — read it before touching rendering, and
    read its "what the ports taught" list before laying out a new screen.
-2. **Phase 3 — the overworld.** Toctree → regions → villages → rooms, seeded by
-   page path. No AI yet, no combat: walking, camera, villages, fog.
+2. ✅ **Phase 3 done — the overworld exists and is walkable.** `api/world.py`
+   derives it from the docs' own toctrees and the review sidecars;
+   `gui/overworld.py` draws it and walks Iris (with Lumi trailing) around it.
+   **Measured against the real corpus: 7 regions, 47 villages, 377 rooms — 269
+   wild, 78 scouted, 30 settled** — built in ~340 ms, positions deterministic.
+   The map covers every non-index page (asserted per section), and there are
+   currently **no orphans**: the "Unlinked" village exists as a guard for a
+   future one, not because the corpus has any today.
 3. **Phase 4 — combat.** Spectral tactics, the roster from `spectra.db`, gear,
    loot. Still no AI: the game must be fun with the model switched off, and if
    it is not, no amount of AI will save it.
@@ -57,6 +63,16 @@ input model either.
   `WgpuContextToBitmap` context rather than a surface context. That is the
   correct path for headless capture, but it is **not** the same code path as a
   real window — a screenshot test proves the scene, not the swapchain.
+- **Layout must be anchored to the *nominal* grid, not to where rooms land.**
+  Regions were re-anchored to their rooms' bounding box, so adding one page
+  whose jitter lowered the minimum slid the entire region — the "a new page is
+  a new building, not a reshuffle" property silently failed. A test pins it.
+- **Village pitch must follow village height.** A 30-room village is six rows
+  of rooms (264 units) against a 260-unit fixed spacing, so villages sat on top
+  of each other in the map view.
+- **The mean room position is not the centre of the world.** `reference` holds
+  145 of the 377 rooms, so averaging drags a fit-to-world view into it and
+  clips everything else; use the bounding box.
 - **REQ/REP is lock-step.** The existing `ZmqServer` (`chisurf/server/transport/zmq.py`)
   pairs REP with PUB. Many clients on one REP socket serialise, which is fine
   for turn-based play and trading and wrong for live avatar positions. Those go
@@ -453,7 +469,7 @@ stop if this stalls.
 |---|---|---|
 | 1 ✅ | `chigame` + **pong** | Engine seam, InputMap, audio, offscreen capture |
 | 2 ✅ | **breakout, tetris, minesweeper, number_quest** | Batching, grid+text, picking, menus |
-| 3 | Overworld from the toctree, villages, fog | Map generation, walking, camera |
+| 3 ✅ | Overworld from the toctree, villages, fog | Map generation, walking, camera |
 | 4 | Combat, roster, gear, loot | The game is fun without a model |
 | 5 | AI layer, both flagging interfaces, spoils flow | Grounding, safety |
 | 6 | Crafting, five mini-games, factions, story, lore bundle | Depth |

@@ -1,6 +1,74 @@
 # Update Log
 
 ## 2026-08-10
+* **Lumis Quest phase 3: the documentation is now a place you can walk.**
+  `lumis_quest/api/world.py` generates the overworld from the docs' **own toctrees** (the curated order a
+  human authored, not the filesystem's) and the per-directory review sidecars; `gui/overworld.py` draws it
+  and walks **Iris**, with **Lumi** trailing behind her. No combat and no AI: the world has to be worth
+  walking before anything is layered on it. The plugin's window is the overworld now, replacing the first
+  draft's XP panel and its forbidden free-text field.
+  **Measured on the real corpus**: 7 regions, 47 villages, **377 rooms — 269 wild, 78 scouted, 30
+  settled**, built in ~340 ms with deterministic positions. Coverage is asserted section by section
+  (concepts 43, guides 68, fundamentals 12, development 30 — matching the files on disk exactly), because
+  a page missing from the world is a page the game can never send anyone to and nothing else would notice.
+  The corpus currently has **no orphans**: the "Unlinked" village is a guard for a future one.
+  Fog is review state and the **three states stay three things** — untouched, AI-scouted, human-settled.
+  Collapsing the middle one would hide the exact frontier the game exists to work. Village ground
+  brightens with the fraction of its pages settled, so a neglected section is a visible ghost town, and
+  remoteness weights review debt above depth so the gradient points where the corpus needs attention.
+  **Three layout bugs, two of which only the screenshots showed:**
+  regions were re-anchored to their rooms' bounding box, so **adding one page whose jitter lowered the
+  minimum slid the whole region** — the "a new page is a new building, not a reshuffle" property failed
+  silently, and is now pinned by a test that adds a page and asserts every other position is byte-equal.
+  Villages used a fixed 260-unit pitch while a 30-room village is 264 units tall, so they **sat on top of
+  each other**. And the map view centred on the *mean* room position, which `reference` (145 of 377 rooms)
+  drags the view into — the bounding box is what has to be centred, and the fit has to be computed from
+  the world's **width** as well as its height.
+  Also fixed while writing the tests: driving `Game.update` directly without `InputMap.end_frame` leaves
+  `just_pressed` latched, so a toggle fires every iteration. That is the host's job in normal play; a test
+  that steps `update` itself owns the frame boundary.
+  Suites: 108 passed.
+
+* **The WGSL renderer's "too dark against white" was a contaminated baseline, not a shading bug.**
+  The symptom was specific enough to look like a real defect — the WebGPU cartoon
+  matched the OpenGL baseline against black and rendered markedly darker against
+  white — and specific enough to send the search into the one place a background
+  colour legitimately reaches shading: the fog term. It was none of that.
+  `capture_gl_baseline.py`'s `RESET` preamble did not restore `occlusion.enabled`,
+  and `occlusion_enabled_off` runs immediately *before* `bg_white`, so **five
+  baselines were photographed with ambient occlusion switched off** while the
+  WebGPU replay had it on, correctly. The decisive artefact was a three-panel PNG
+  — GL | WGSL AO-on | WGSL AO-off — where panel 3 lands on panel 1. Packed colours
+  carry occlusion pre-multiplied, so grey80 arrives at a mean of 0.455 with AO on
+  and 0.856 with it off; that ratio *is* the whole difference. `labels` was the
+  control nobody planned: it re-captured byte-identical, because sticks have no AO
+  path at all. Re-captured `bg_white`, `bg_grey_spectrum`, `nucleic_cartoon` and
+  `large_spheres`; the other eighteen are untouched, which is now possible because
+  the capture takes scene names and merges into the existing manifest instead of
+  rewriting all 23.
+
+  **Two constants had been transcribed between backends rather than shared, and
+  both are now single-sourced** — the hunt found them even though neither was the
+  cause. `renderer/depth_cue.py` holds PyMOL's `SceneSetFog` planes, and
+  `renderer/lighting.py` holds the light rig; `qtgl` and `wgpu_backend` both read
+  them. The WebGPU backend had been carrying a hand-written `DEFAULT_LIGHTING`
+  dict described as "matching the OpenGL backend's defaults" that matched nothing:
+  a key light 25 degrees off-axis where the configured one points straight down
+  the camera, `fill=0.45` where the configuration asks for **no fill light at
+  all**, and `ambient=0.28` against 0.45. It also added the environment reflection
+  at a flat 10 % where GL blends it through a Fresnel `mix` weighted by specular
+  strength. A second backend that re-reads the same config section with its own
+  defaults is not a second reader — it is a fork.
+
+  **The guard is the point:** "keep the two lists in step" was already written in
+  a comment above `RESET`, and a comment did not keep them in step.
+  `missing_resets()` diffs the settings the scenes assign against the ones the
+  preamble restores, `main()` refuses to open a window when it is non-empty, and
+  `test/test_wgsl_parity.py` fails on it without a GPU. Suites: 97 passed,
+  9 skipped (lighting, occlusion switch, display-config, settings, headless scene,
+  the new parity guards).
+  [chimol-web](plugins/chimol-web.md)
+
 * **The WGSL renderer's "too dark against white" was a contaminated baseline, not a shading bug.**
   The symptom was specific enough to look like a real defect — the WebGPU cartoon
   matched the OpenGL baseline against black and rendered markedly darker against

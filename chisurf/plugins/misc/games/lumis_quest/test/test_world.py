@@ -1,0 +1,183 @@
+"""The overworld is derived from the documentation, deterministically.
+
+These tests build small worlds from fixtures rather than the installed corpus,
+so they stay fast and do not change meaning when someone reviews a page. Two
+tests do touch the real docs, because "it covers every page" is only worth
+asserting against the real thing.
+"""
+
+from __future__ import annotations
+
+import pathlib
+
+import pytest
+
+from chisurf.plugins.misc.games.lumis_quest.api import world as world_api
+from chisurf.plugins.misc.games.lumis_quest.api.world import (
+    SCOUTED,
+    SETTLED,
+    WILD,
+    Room,
+    World,
+    build_world,
+)
+
+
+def _docs(tmp_path: pathlib.Path) -> pathlib.Path:
+    """Write a miniature documentation tree.
+
+    Parameters
+    ----------
+    tmp_path : pathlib.Path
+        Temporary directory.
+
+    Returns
+    -------
+    pathlib.Path
+        The docs root.
+    """
+    root = tmp_path / "docs"
+    section = root / "guides"
+    section.mkdir(parents=True)
+    (section / "one.md").write_text("# One\n\nText.\n", encoding="utf-8")
+    (section / "two.md").write_text("# Two\n\nText.\n", encoding="utf-8")
+    (section / "index.md").write_text(
+        "# Guides\n\n```{toctree}\n:maxdepth: 1\n\none\ntwo\n```\n", encoding="utf-8"
+    )
+    return root
+
+
+def test_a_page_becomes_a_room(tmp_path):
+    """Every linked page appears exactly once, with its own title."""
+    world = build_world(_docs(tmp_path))
+    titles = sorted(room.title for room in world.rooms)
+    assert titles == ["One", "Two"]
+    assert len(world.regions) == 1 and world.regions[0].name == "guides"
+
+
+def test_the_layout_is_stable_across_builds(tmp_path):
+    """Positions are seeded by path, so the map does not move between runs.
+
+    ``hash()`` is salted per process; using it would reshuffle the world every
+    time the game started.
+    """
+    docs = _docs(tmp_path)
+    first = {room.address: room.position for room in build_world(docs).rooms}
+    second = {room.address: room.position for room in build_world(docs).rooms}
+    assert first == second
+
+
+def test_adding_a_page_does_not_move_the_others(tmp_path):
+    """A new page is a new building, not a reshuffle."""
+    docs = _docs(tmp_path)
+    before = {room.address: room.position for room in build_world(docs).rooms}
+
+    (docs / "guides" / "three.md").write_text("# Three\n", encoding="utf-8")
+    (docs / "guides" / "index.md").write_text(
+        "# Guides\n\n```{toctree}\n:maxdepth: 1\n\none\ntwo\nthree\n```\n", encoding="utf-8"
+    )
+    after = {room.address: room.position for room in build_world(docs).rooms}
+
+    assert set(after) - set(before) == {"docs/guides/three.md"}
+    for address, position in before.items():
+        assert after[address] == position, address
+
+
+def test_an_unlinked_page_still_gets_a_room(tmp_path):
+    """An orphan is the one page nothing links to, so the map must carry it.
+
+    Leaving it out would make it the only thing the game can never send a
+    player to -- exactly the page most in need of attention.
+    """
+    docs = _docs(tmp_path)
+    (docs / "guides" / "orphan.md").write_text("# Orphan\n", encoding="utf-8")
+    world = build_world(docs)
+    assert "Orphan" in {room.title for room in world.rooms}
+    assert "The Unlinked" in {village.name for village in world.villages}
+
+
+def test_villages_do_not_overlap(tmp_path):
+    """A village's pitch must follow its own height, not a fixed spacing.
+
+    A 30-room village is six rows of rooms; at a fixed pitch it sat on top of
+    the village below it.
+    """
+    docs = tmp_path / "docs"
+    section = docs / "reference"
+    section.mkdir(parents=True)
+    entries = []
+    for index in range(60):
+        (section / f"p{index:02d}.md").write_text(f"# Page {index}\n", encoding="utf-8")
+        entries.append(f"p{index:02d}")
+    groups = "\n\n".join(
+        "## Group %d\n\n```{toctree}\n\n%s\n```" % (g, "\n".join(entries[g * 20:(g + 1) * 20]))
+        for g in range(3)
+    )
+    (section / "index.md").write_text(f"# Reference\n\n{groups}\n", encoding="utf-8")
+
+    world = build_world(docs)
+    assert len(world.villages) >= 2
+    positions = [room.position for room in world.rooms]
+    assert len(set(positions)) == len(positions), "two rooms share a position"
+
+
+def test_review_state_maps_to_three_distinct_world_states():
+    """Absent, ai-reviewed and reviewed must not collapse into each other."""
+    assert len({WILD, SCOUTED, SETTLED}) == 3
+    village = world_api.Village(name="v", rooms=[
+        Room("a", pathlib.Path("a"), "a", 1, SETTLED, (0.0, 0.0)),
+        Room("b", pathlib.Path("b"), "b", 1, WILD, (1.0, 0.0)),
+    ])
+    assert village.prosperity == pytest.approx(0.5)
+
+
+def test_remoteness_rewards_review_debt_over_depth():
+    """The gradient must point at unreviewed pages, not merely deep ones."""
+    deep_but_settled = Room("a", pathlib.Path("a"), "a", 5, SETTLED, (0.0, 0.0))
+    shallow_but_wild = Room("b", pathlib.Path("b"), "b", 0, WILD, (0.0, 0.0))
+    assert shallow_but_wild.remoteness > deep_but_settled.remoteness
+
+
+def test_bounds_and_nearest_room():
+    """The helpers the map view depends on."""
+    world = World()
+    assert world.bounds() == (0.0, 0.0, 1.0, 1.0)
+    assert world.nearest_room((0.0, 0.0)) is None
+
+    region = world_api.Region(name="r", title="R")
+    region.villages.append(world_api.Village(name="v", rooms=[
+        Room("near", pathlib.Path("a"), "a", 1, WILD, (10.0, 10.0)),
+        Room("far", pathlib.Path("b"), "b", 1, WILD, (500.0, 500.0)),
+    ]))
+    world.regions.append(region)
+    assert world.bounds() == (10.0, 10.0, 500.0, 500.0)
+    assert world.nearest_room((0.0, 0.0)).title == "near"
+
+
+@pytest.mark.parametrize("directory", ["concepts", "guides", "fundamentals"])
+def test_the_real_corpus_is_covered_page_for_page(directory):
+    """Every non-index page in a section becomes a room.
+
+    A page missing from the world is a page the game can never send anyone to,
+    and nothing else would notice.
+    """
+    from chisurf.plugins.core.help.api import toc
+
+    docs = toc.docs_root()
+    section = docs / directory
+    if not section.is_dir():
+        pytest.skip(f"{directory} is not present in this install")
+
+    on_disk = {
+        path.resolve()
+        for path in section.rglob("*")
+        if path.suffix in {".md", ".rst"} and not path.name.startswith("index.")
+    }
+    world = build_world(docs)
+    in_world = {
+        room.path.resolve()
+        for region in world.regions
+        if region.name == directory
+        for room in region.rooms
+    }
+    assert on_disk - in_world == set(), sorted(str(p) for p in (on_disk - in_world))[:5]
