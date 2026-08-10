@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import fnmatch
 import pathlib
+import subprocess
 import tomllib
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -58,6 +59,7 @@ KNOWN_UNCOVERED = {
     ".ini", ".yml",              # device and plugin configuration
     ".pdat",                     # the fortune database
     ".mti", ".spc", ".rmf3", ".bur",  # measurement fixtures
+    ".tif",                      # imaging fixtures under a plugin's test/ tree
     ".bmp",                      # one more icon the installed copy would lack
 }
 
@@ -79,6 +81,37 @@ def _patterns() -> list[str]:
     return patterns
 
 
+def _git_ignored(paths: list[pathlib.Path]) -> set[pathlib.Path]:
+    """Which of these git ignores.
+
+    An ignored file is not shipped, so it has no business failing a packaging
+    check. This matters in practice: opening the bundled SQLite database
+    read-write leaves ``.db-wal``/``.db-shm`` beside it, both gitignored, and
+    the sweep failed on transient artifacts nobody would ever package.
+
+    Parameters
+    ----------
+    paths : list of pathlib.Path
+        Candidates, relative to the repository root.
+
+    Returns
+    -------
+    set of pathlib.Path
+        The ignored subset; empty when git is unavailable.
+    """
+    if not paths:
+        return set()
+    try:
+        result = subprocess.run(
+            ["git", "check-ignore", "--stdin"],
+            input="\n".join(str(path) for path in paths),
+            capture_output=True, text=True, cwd=ROOT, check=False,
+        )
+    except OSError:
+        return set()
+    return {pathlib.Path(line) for line in result.stdout.splitlines() if line}
+
+
 def _shipped_data_files() -> list[pathlib.Path]:
     """Every candidate data file under the package.
 
@@ -96,7 +129,8 @@ def _shipped_data_files() -> list[pathlib.Path]:
         if path.suffix in IGNORED_SUFFIXES or path.name.startswith("."):
             continue
         found.append(path.relative_to(ROOT))
-    return found
+    ignored = _git_ignored(found)
+    return [path for path in found if path not in ignored]
 
 
 def test_every_shipped_data_extension_has_a_package_data_pattern():

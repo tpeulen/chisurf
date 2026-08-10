@@ -1,6 +1,15 @@
 # Update Log
 
 ## 2026-08-10
+* **The packaging guard was failing on files git ignores — fixed, and it had caught something real.**
+  Opening the bundled `spectra.db` read-write leaves `.db-wal`/`.db-shm` beside it. Both are **gitignored**
+  and neither is ever packaged, but the sweep in `test/test_package_data_covers_shipped_files.py` walked
+  the tree directly and did not know that, so a transient SQLite artifact failed a packaging check. The
+  sweep now asks `git check-ignore` and skips what git ignores. The stray artifacts were removed; the game
+  code itself opens the database with `mode=ro` and never creates them — they came from ad-hoc probing.
+  Worth noting the guard did its job twice over: it also surfaced `.tif`, which is a genuine imaging
+  fixture type under a plugin's `test/` tree, now recorded in the shrinking `KNOWN_UNCOVERED` list.
+
 * **Lumis Quest: flagging — expert mode can now say what is *wrong*, not only that a page is fine.**
   Signing off says "this is fine". A finding is the other half: **a span plus a category**. Pick the
   sentence at fault with the pad, then one of eight fixed faults (undefined symbol, wrong units, missing
