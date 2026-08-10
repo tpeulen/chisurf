@@ -88,6 +88,15 @@ RETIRED = {
         "qtconsole",
         "use chisurf.gui.chinsole",
     ),
+    "sklearn": (
+        "scikit-learn",
+        "use chisurf.core.ml (GaussianMixture, KMeans, PCA, IncrementalPCA, "
+        "StandardScaler, MLPRegressor, HDBSCAN)",
+    ),
+    "hdbscan": (
+        "hdbscan",
+        "use chisurf.core.ml.cluster.HDBSCAN",
+    ),
 }
 
 #: Further distribution names that install the same retired module, checked by
@@ -110,6 +119,15 @@ _ALLOWED = {"test/test_no_retired_dependency_imports.py"}
 #: Paths exempt from one module's import check, with the reason.
 _ALLOWED_PREFIXES = {
     "requests": ("chisurf/plugins/spectra_downloader/download/",),
+    # The parity suite compares chisurf.core.ml against scikit-learn *where it
+    # happens to be installed* (`pytest.importorskip`), and the benchmark times
+    # the replacement against both packages it replaced. That is the only way to
+    # keep proving the port is a drop-in and still worth its speed now that
+    # neither library is in any manifest. Nothing shipped may import them — that
+    # is what this guardrail is for — but the tests that prove the replacement
+    # must be allowed to.
+    "sklearn": ("test/ml/", "test/benchmarks/"),
+    "hdbscan": ("test/benchmarks/",),
 }
 
 #: Packaging manifests that describe the chisurf runtime. Deliberately only

@@ -236,7 +236,7 @@ class GaussianMixture(BaseEstimator):
         if self.init_params == "kmeans" and self.means_init is None:
             from ..cluster import _kmeans  # local: avoids a circular import
 
-            _, labels = _kmeans(
+            _, labels, _, _ = _kmeans(
                 X, n_components, rng, n_init=1, max_iter=100, tol=1e-4
             )
             means = np.vstack(
@@ -289,7 +289,7 @@ class GaussianMixture(BaseEstimator):
         try:
             from ..cluster import _kmeans  # local import to avoid cycles
 
-            _, labels = _kmeans(X, n_components, rng, n_init=1, max_iter=50, tol=1e-4)
+            _, labels, _, _ = _kmeans(X, n_components, rng, n_init=1, max_iter=50, tol=1e-4)
             reg = self.reg_covar
             full = np.zeros((n_components, X.shape[1], X.shape[1]))
             for c in range(n_components):

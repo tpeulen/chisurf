@@ -59,14 +59,10 @@ ipython = "*"
 notebook = "<7"
 pyopengl = "*"
 python-docx = "*"
-# scikit-learn: k-means and GMM for burst selection and ndXplorer clustering,
-# PCA for the parameter decomposition, and the H2MM surrogate. (hmmlearn was
-# dropped: chisurf.core.math.hmm now provides the Gaussian HMM in-tree.)
-scikit-learn = "*"
-# HDBSCAN: density-based clustering in ndXplorer. scikit-learn has shipped its
-# own implementation since 1.3 and the code falls back to it, but the standalone
-# package is faster and supports prediction data, so ship it.
-hdbscan = "*"
+# scikit-learn and hdbscan were dropped: every estimator the tree reached for —
+# GMM, k-means, PCA/IncrementalPCA, StandardScaler, the surrogate's MLP, and
+# HDBSCAN — now lives in chisurf.core.ml, over a compiled k-d tree / Borůvka
+# kernel in the photon library. See okf/subsystems/machine-learning.md.
 pygments = "*"
 sqlalchemy = ">=2.0"
 # Imported directly, so declared directly rather than left to arrive with

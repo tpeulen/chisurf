@@ -8,6 +8,7 @@
 * [Fluorescence domain](fluorescence-domain.md) - Shared fluorescence math and algorithms used by models and plugins.
 * [Fitting engine](fitting.md) - Fit/FitGroup, weighted residuals, global analysis, error analysis, and sampling.
 * [Hidden Markov models](hidden-markov-models.md) - The in-tree Gaussian HMM (fused compiled E-step, data-driven initialisation, SQUAREM acceleration) and the shared analysis seam every state-reporting tool calls.
+* [Machine learning estimators](machine-learning.md) - chisurf.core.ml: the in-tree GaussianMixture/KMeans/HDBSCAN/PCA/StandardScaler/MLPRegressor, and the compiled k-d tree and Borůvka MST the density clustering runs on.
 * [Fitting models](models.md) - TCSPC/FCS/PDA/PCH/DEER/RICS/structure models and data-described editors.
 * [MLE lifetime fitting (fit2x)](mle-lifetime-fitting.md) - The tttrlib Fit23/24/25/26 Poisson-MLE engine and the dt/period/background/gamma input contract shared by burst and imaging fits.
 * [Parameters](parameters.md) - Scalar parameters, bounds, links, dependency graph, and fit degrees of freedom.

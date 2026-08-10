@@ -48,10 +48,9 @@ dependencies = [
     "scipy",
     # Imported at module scope in shipped code and previously left out of this
     # list: pandas by dozens of modules starting with the burst reader,
-    # scikit-learn by the burst-selection API, PyOpenGL by the molecular view,
+    # PyOpenGL by the molecular view,
     # scikit-image by the CLSM and single-molecule image tools.
     "pandas",
-    "scikit-learn>=1.0.0",
     "scikit-image",
     "PyOpenGL",
     "labellib",
@@ -75,17 +74,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# Kept as a name people may already install with; scikit-learn is a required
-# dependency now, so this extra adds nothing on top of it.
-ml = [
-    "scikit-learn>=1.0.0",
-]
 # Features the application detects at runtime and works without: density-based
-# clustering in ndXplorer (scikit-learn's own HDBSCAN is the fallback), fast
+# clustering in ndXplorer, fast
 # histogramming, syntax highlighting, the LaTeX view of a parse model (an
 # in-tree AST converter is the fallback), and the external notebook server.
 full = [
-    "hdbscan",
     "Pygments",
     "latexify-py",
     "notebook<7",

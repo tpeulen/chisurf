@@ -1,6 +1,63 @@
 # Update Log
 
 ## 2026-08-10
+* **[PRD-87](prds/prd-87.md) closed: HDBSCAN is in the tree, and scikit-learn is out of every manifest.**
+  The last of the six estimators — the only one that was genuinely new work — is
+  [`chisurf/core/ml/cluster/_hdbscan.py`](../chisurf/core/ml/cluster/_hdbscan.py): core distances, the
+  mutual-reachability minimum spanning tree, the condensed tree and the excess-of-mass selection, with the
+  estimator surface scikit-learn spells (`labels_`, `probabilities_`, `cluster_persistence_`) plus the
+  standalone package's `prediction_data`, accepted and ignored so no call site had to change. The
+  expensive half is compiled, in the photon library's `math` module: a new
+  `Cluster.{h,cpp}` with a k-d tree, a Borůvka MST over the mutual-reachability graph, and Prim above the
+  dimension where a tree stops pruning. `scikit-learn`, `hdbscan` and the `ml` extra are struck from
+  `pixi.toml`, `pyproject.toml`, `rattler-recipe/recipe.yaml` and `build_installer.py`'s `TEST_PKGS`; both
+  names are now in `RETIRED` in [the guardrail](../test/test_no_retired_dependency_imports.py), and
+  ndXplorer's `_SklearnHdbscanShim` — plus a second, private `import hdbscan` in its plotting helpers that
+  disagreed with the shared getter about whether clustering was available at all — are gone.
+
+  **The invariant that holds it together is the edge order.** A mutual-reachability weight is very often a
+  *core distance*, and one core distance is the weight of every edge it dominates, so hundreds of edges
+  share a value and the minimum spanning tree is not unique — Borůvka and Prim return different, equally
+  valid trees, which changes the dendrogram and with it the cluster count. Two implementations that
+  disagree depending on whether a compiled library happened to import is exactly the silent failure this
+  tree is written to avoid, so the order is **total**: weight, then the sorted endpoint pair. Under a total
+  order the MST is unique and every correct algorithm returns the same one. The second half of the
+  guarantee is `-ffp-contract=off` on `Cluster.cpp`: one unit in the last place from a fused multiply-add
+  is enough to break a tie the other way. `test_compiled_and_fallback_kernels_agree` asserts bit equality
+  of the dendrograms, and the two rules are stated in the source where they can be found before they are
+  removed.
+
+  Parity with scikit-learn is exact where the weights are generic and approximate where they tie, which is
+  the honest statement and is measured: given scikit-learn's *own* dendrogram, this labelling and these
+  probabilities match it exactly for every configuration and every dimension
+  (`test_only_tied_weights_can_make_the_two_differ`), and the sorted MST weights — an invariant of the
+  graph, not of the algorithm — agree to twelve digits. Also fixed here: scikit-learn's own
+  `epsilon_search` raises `TypeError` on a tree whose leaf is the root; this one answers.
+
+  Three optimisations carry the Borůvka and each is worth an order of magnitude: descending into the nearer
+  child first (a traversal that does not go towards the query point establishes no bound and walks the
+  whole tree), seeding the search from the k nearest neighbours already computed for the core distances,
+  and carrying each point's candidate edge across rounds (a point's external neighbours only shrink, so
+  last round's winner is still the winner if it is still outside). Two things were tried above the
+  dimension crossover and **reverted**, both recorded in
+  [machine learning](subsystems/machine-learning.md): a brute-force neighbour search (slower than the tree
+  even at sixteen dimensions) and a parallel Prim (an OpenMP barrier costs more than the round it
+  separates; a spin barrier was faster in isolation but burns every core, which a library called from a
+  GUI must not do). `parallel=True` is likewise banned in `chisurf.core.ml`: it launches numba's thread
+  pool on first call, after which the settings bootstrap can no longer set `NUMBA_NUM_THREADS`.
+
+  **Two pre-existing breakages in the companion photon library, found by building it and fixed there.**
+  `FIND_PACKAGE(OpenMP)` fails under AppleClang, and the build then turned OpenMP off for the *entire*
+  library with one WARNING — every `#pragma omp` a comment and every parallel kernel at a fraction of its
+  speed, on every macOS build. It now finds the libomp that conda and Homebrew both ship. And
+  `TTTRLIB_VEC_REDUCTION(var)` expanded its parameter inside a string literal, so `_Pragma` emitted a
+  pragma naming a variable literally called `var` and every OpenMP build of the matrix header failed on
+  it. The `cli` module also included `io_csv_writer.h` without declaring `io_csv`.
+
+  New: [machine learning](subsystems/machine-learning.md) (OKF concept),
+  [`docs/concepts/density_clustering.md`](../docs/concepts/density_clustering.md) (the method),
+  `test/ml/test_hdbscan.py` and `test/benchmarks/benchmark_clustering.py`.
+
 * **The notebook kernel is a window panel, and a screenshot without the theme is not evidence.** The
   notebook's `Chinsole` moved out from under the cells into a **Kernel** dock of `CodeEditorWindow`,
   tabbed with Diagnostics and Output; every panel of that window is now the new shared

@@ -118,6 +118,93 @@ is worth keeping:
    easy targets it costs a few extra maps (a cycle is three of them), which is
    why the plain-EM row is there for comparison.
 
+## Density-based clustering (HDBSCAN)
+
+`chisurf.core.ml.cluster.HDBSCAN` — density-based clustering of a burst or pixel
+table. This replaced two external packages, `hdbscan` and `scikit-learn`, both
+of which are the references it has to beat. See the
+[concept page](../concepts/density_clustering.md) for the method and the
+[OKF concept](../../okf/subsystems/machine-learning.md) for the implementation.
+
+The work unit is a **complete clustering**: core distances, the
+mutual-reachability spanning tree, the condensed tree and the excess-of-mass
+selection. Three things move the number and only one of them is the sample
+count:
+
+* **`d`, the number of features**, decides whether the k-d tree prunes at all.
+  Past about ten features a bounding box overlaps the query ball in nearly every
+  direction, the tree visits most of itself on every query, and the textbook
+  `O(n²)` Prim wins outright. Both kernels are compiled and
+  `KDTree::tree_is_worthwhile` picks between them; they return the *same* tree,
+  bit for bit, which is what makes the switch invisible to a caller.
+* **`min_samples`**, the neighbour rank for the core distance, sets how loose the
+  pruning bound is. Larger core distances prune less, so a more conservative
+  clustering is also a slower one.
+* **Whether the compiled kernel is present.** The in-tree numba fallback is
+  `O(n²)` Prim and single-threaded by design (a `parallel=True` numba kernel
+  would launch numba's thread pool and lock `NUMBA_NUM_THREADS` for the
+  process). It is a row of the table so the gap is visible rather than assumed.
+
+The cluster count is next to every time, because a clustering that disagrees is
+not a comparison. Note the convention difference: `min_samples` counts the point
+itself here and in scikit-learn, and does not in the standalone `hdbscan`
+package, so the reference is called with one fewer.
+
+**Environment for this table** — Apple M1 Pro, macOS 26.5.1 (arm64), Python
+3.12.13, `min_cluster_size=15`, `min_samples=5`. Measured 2026-08-10 on a
+machine that was **not idle** (load average ~20 from unrelated work), so read the
+*ratios*, which are stable, rather than the absolute seconds, which are inflated
+by roughly a factor of two across every row alike.
+
+| case | implementation | fit [s] | clusters |
+| --- | --- | ---: | ---: |
+| n=5,000 d=2 | chisurf | 0.013 | 20 |
+| n=5,000 d=2 | hdbscan | 0.159 | 20 |
+| n=5,000 d=2 | scikit-learn | 0.104 | 20 |
+| n=5,000 d=2 | chisurf (no compiled kernel) | 0.234 | 20 |
+| n=20,000 d=2 | chisurf | 0.082 | 82 |
+| n=20,000 d=2 | hdbscan | 21.963 | 83 |
+| n=20,000 d=2 | scikit-learn | 4.787 | 84 |
+| n=20,000 d=2 | chisurf (no compiled kernel) | 6.529 | 82 |
+| n=100,000 d=2 | chisurf | 0.867 | 1186 |
+| n=100,000 d=2 | hdbscan | 6.123 | 1186 |
+| n=100,000 d=2 | scikit-learn | 91.257 | 1188 |
+| n=20,000 d=3 | chisurf | 0.157 | 60 |
+| n=20,000 d=3 | hdbscan | 3.597 | 57 |
+| n=20,000 d=3 | scikit-learn | 4.355 | 58 |
+| n=20,000 d=3 | chisurf (no compiled kernel) | 6.040 | 60 |
+| n=100,000 d=3 | chisurf | 1.183 | 275 |
+| n=100,000 d=3 | hdbscan | 9.619 | 271 |
+| n=100,000 d=3 | scikit-learn | 131.603 | 274 |
+| n=20,000 d=8 | chisurf | 2.046 | 7 |
+| n=20,000 d=8 | hdbscan | 7.250 | 8 |
+| n=20,000 d=8 | scikit-learn | 6.260 | 7 |
+| n=20,000 d=8 | chisurf (no compiled kernel) | 9.754 | 7 |
+| n=20,000 d=16 | chisurf | 13.688 | 4 |
+| n=20,000 d=16 | hdbscan | 8.264 | 4 |
+| n=20,000 d=16 | scikit-learn | 21.826 | 4 |
+| n=20,000 d=16 | chisurf (no compiled kernel) | 13.933 | 4 |
+
+Read three things out of it:
+
+1. **In the range a burst feature space actually occupies — two to eight columns
+   — the compiled path is 3.5× to 268× ahead of `hdbscan`** and 3× to 108× ahead
+   of scikit-learn. The largest gaps are where the reference implementations
+   change strategy: `hdbscan` switches algorithm somewhere between 20,000 and
+   100,000 points, which is why its 20,000-point two-dimensional case is *slower
+   in absolute terms* than its 100,000-point one; and scikit-learn's Prim is
+   `O(n²)` throughout, which is what the 131 s at 100,000 points is.
+2. **At sixteen features `hdbscan` is still ahead**, by about 1.7×. It has a
+   dual-tree traversal that prunes the query side of the search as well; this
+   implementation prunes only the reference side, and switches to Prim once the
+   tree stops paying for itself at all. Sixteen columns is not a shape the burst
+   tools produce, so the gap is recorded rather than closed — the OKF concept
+   says what closing it takes.
+3. **The compiled kernel is worth 5× to 80×** over the in-tree fallback, and the
+   fallback is what runs when the photon library is not importable. Both produce
+   identical labels; only the time differs. At sixteen features the two converge,
+   because both are then running the same `O(n²)` Prim.
+
 ## Ensemble samplers
 
 `chisurf.core.fitting.ensemble` — the affine-invariant ensemble samplers behind

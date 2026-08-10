@@ -3,82 +3,40 @@ type: PRD
 prd: "87"
 title: "PRD-87: chisurf.core.ml — the four estimators the tree actually uses, and the end of scikit-learn"
 description: scikit-learn is installed for four estimators reached from five files, and the tree already contains most of them as private helpers inside the HMM module. This PRD extracts them into one sklearn-shaped namespace so the call sites change by an import line, absorbs the constrained EM the companion exploration tool wrote because scikit-learn could not do it, and names HDBSCAN as the one algorithm that is genuinely new work.
-status: in-progress
-phase: "stages 1-4 implemented (chisurf-side done; companion tool call sites re-pointed); stage 5 (HDBSCAN) deliberately deferred and scikit-learn+manifest removals gated on it"
+status: done
+phase: "all six stages implemented; scikit-learn and hdbscan struck from every manifest, guardrail in place, HDBSCAN written over a compiled k-d tree / Boruvka kernel"
 resource: chisurf/core/ml/
 tags: [prd, dependencies, math, ml, gmm, kmeans, pca, burst-selection, h2mm, ndxplorer]
 timestamp: '2026-08-07T00:00:00Z'
-updated: '2026-08-09T00:00:00Z'
+updated: '2026-08-10T00:00:00Z'
 ---
 
 # Where to pick this up
 
-**Implemented (2026-08-09): stages 1–4.** `chisurf/core/ml/` exists with the
-full layout; all three burst-selection call sites import it; the HMM shares the
-kmeans + Gaussian density implementations; the companion tool uses
-`chisurf.core.ml` for KMeans/PCA/IncrementalPCA and its private
-`GaussianMixtureFixedEM` is absorbed into `GaussianMixture`'s `fix_means` /
-`fix_covariances` masks (with `covs_`/`converged_` aliases). Numeric parity with
-scikit-learn is proven in `test/ml/test_parity.py` (11 tests, `importorskip`).
-The MLP recreates Adam + early stopping and passes the surrogate's JSON
-round-trip and task bar.
+**Complete (2026-08-10).** Nothing in `chisurf/` imports scikit-learn;
+`scikit-learn`, `hdbscan` and the `ml` extra are struck from `pixi.toml`,
+`pyproject.toml`, `rattler-recipe/recipe.yaml` and `build_installer.py`'s
+`TEST_PKGS`, and `sklearn`/`hdbscan` are in `RETIRED` in
+[the guardrail](/../test/test_no_retired_dependency_imports.py). The living
+description is the OKF concept
+[machine learning](/subsystems/machine-learning.md) — read that first; this file
+is the design record.
 
-**What remains (all one stage): stage 5 — HDBSCAN.** Until HDBSCAN is written
-in-tree, `hdbscan` and scikit-learn must both stay declared, so the manifest
-(sixth bullet in Definition of done) and the package-count prize are gated on
-stage 5. The companion tool keeps its `_SklearnHdbscanShim` and the ndxplorer
-test suite must run with the fixed tttrlib wheel build, which was broken in
-this env (`Mat.h:1034` undeclared `var`, unrelated to this PRD). Full
-handover with traps and measurements:
-[`okf/handover/prd-87-ml-port.md`](../handover/prd-87-ml-port.md).
+Stage 5 (HDBSCAN) landed as `chisurf/core/ml/cluster/_hdbscan.py` plus a
+compiled kernel in the photon library (`modules/math/Cluster.{h,cpp}`: k-d tree,
+Borůvka MST, Prim above the dimension crossover). Two invariants hold the whole
+thing together and are easy to undo — the **total edge order** and
+**`-ffp-contract=off`** on the compiled translation unit; without both, the
+compiled and fallback kernels return different cluster counts on the same data.
+The reasoning, the measured crossover, and the two approaches tried and reverted
+are in the OKF concept.
 
-What is worth knowing before touching anything:
-
-1. **The cross-section is four estimators, and it is smaller than the import
-   count suggests.** Five files import scikit-learn; between them they touch
-   `GaussianMixture`, `MLPRegressor`, `StandardScaler`, `KMeans`, `PCA` and
-   `IncrementalPCA` — and nothing else. No `Pipeline`, no `model_selection`, no
-   `metrics`, no `preprocessing` beyond the one scaler, no sparse input, no
-   `n_jobs`. Re-derive with
-   `grep -rn "from sklearn\|import sklearn" --include="*.py" chisurf/ modules/ndxplorer/`.
-   *Trap*: `modules/ndxplorer/ndxplorer/utils/lazy_imports.py` has a
-   `get_gmm()` that reads like a sixth call site and is **dead** — nothing
-   calls it, because that tool fits mixtures with its own constrained EM.
-   Grepping for the import overcounts; grep for the accessor.
-2. **Most of the code is already written, in a place nothing can reach it.**
-   `chisurf/core/math/hmm.py` privately holds `COVARIANCE_TYPES` (the same four
-   spellings scikit-learn uses), `_log_gaussian_density` (Cholesky log-density
-   for all four), `_kmeanspp_seed` / `_kmeans_lloyd` / `_kmeans` (k-means++ with
-   `n_init` restarts and inertia selection — that *is* `KMeans`), `_logsumexp`,
-   and `aic`/`bic` on the estimator. This is the reason the PRD exists and the
-   reason it is smaller than "reimplement scikit-learn": the estimators are in
-   the tree, sealed behind leading underscores in a module about something else.
-3. **The dependency does not leave when chisurf stops importing it.** `hdbscan`
-   requires `scikit-learn>=0.20`, and the companion tool's HDBSCAN path *falls
-   back to* `sklearn.cluster.HDBSCAN` when the standalone package is absent.
-   The two are a knot — dropping one by keeping the other is not available in
-   either direction. Stages 1–4 are therefore worth doing on their own merits
-   (one implementation instead of four, a constrained fit the library cannot
-   do), and the package-count prize is gated entirely on stage 5.
-4. **The measurement, and how to retake it.** Solve the recipe's `run:` list on
-   conda-forge with and without `scikit-learn hdbscan`:
-   **256 → 251 packages**, the five being `scikit-learn`, `hdbscan`, `joblib`,
-   `narwhals`, `threadpoolctl`. Installed payload for the three with a directory
-   is **46 MB** (scikit-learn 42, joblib 3, hdbscan 2), measured on this
-   machine's environment, not on a packaged install. Use `conda create --dry-run
-   --json` and count `actions.LINK`; the JSON carries no sizes, so disk has to be
-   measured separately. *Shell trap*: zsh does not word-split an unquoted
-   variable, so a package list built into one string arrives as a single
-   malformed spec and the solve fails with `CondaValueError` rather than
-   returning a count — build the list as a bash array.
-5. **The exported surrogate is a compatibility surface, not an internal
-   detail.** `SurrogateModel.to_json` writes the simulation library's
-   `tttrlib.neural_net` schema by reading `net.coefs_`, `net.intercepts_`,
-   `net.activation` and `net.out_activation_`, and transposing every weight
-   matrix from `(n_in, n_out)` to row-major `(n_out, n_in)`. A replacement MLP
-   that renames any of those, or that stores weights already transposed, breaks
-   the C++ engine **silently** — the JSON still validates, the numbers are
-   wrong. `test_surrogate_tttrlib.py` is the guard and must keep passing.
+Fixed on the way, both in the companion photon library and both pre-existing:
+`FIND_PACKAGE(OpenMP)` fails under AppleClang, which silently turned OpenMP
+**off for the entire library** on macOS (every `#pragma omp` a comment, the
+parallel kernels at an eighth of their speed, one WARNING in the log); and the
+`cli` module included `io_csv_writer.h` without declaring `io_csv`, so the
+module system refused it.
 
 # Why
 
@@ -271,10 +229,17 @@ Three rules make the layout load-bearing rather than decorative:
 - [x] `MLPRegressor` written **or** the surrogate's training path deleted, with the choice recorded (written)
 - [x] `to_json` still produces a schema the C++ engine reads, proven by the round-trip test
 - [x] Companion tool: `PCA`/`IncrementalPCA`, `KMeans` re-pointed, `GaussianMixtureFixedEM` absorbed, dead `get_gmm` deleted
-- [ ] HDBSCAN implemented, **or** the decline recorded in known issues with the reason (deferred: stage 5 untouched)
-- [ ] `scikit-learn`, `hdbscan` and the `ml` extra struck from every manifest and from `TEST_PKGS`
-- [ ] `sklearn` added to `RETIRED` in the guardrail test
-- [ ] Package count re-measured and written down here
+- [x] HDBSCAN implemented, over a compiled k-d tree / Borůvka kernel with a numba Prim fallback
+- [x] `scikit-learn`, `hdbscan` and the `ml` extra struck from every manifest and from `TEST_PKGS`
+- [x] `sklearn` and `hdbscan` added to `RETIRED` in the guardrail test
+- [x] Package count re-measured and written down here: solving the recipe's `run:`
+  list on conda-forge gives **192 packages without `scikit-learn hdbscan` and 197
+  with** (measured 2026-08-10; `conda create --dry-run --json`, counting
+  `actions.LINK`). The five are `scikit-learn`, `hdbscan`, `joblib`, `narwhals`
+  and `threadpoolctl` — the same five this PRD predicted. The absolute numbers
+  are lower than the 251/256 recorded when the PRD was written because the
+  runtime list has shrunk in between; the **difference of five** is the figure
+  this stage bought.
 
 See also: [hidden Markov models](/subsystems/hidden-markov-models.md) for the
 module the estimators are currently hiding in,

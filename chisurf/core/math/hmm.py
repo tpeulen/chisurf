@@ -1118,7 +1118,7 @@ class GaussianHMM:
 
         centers, labels = (None, None)
         if any(needs.values()):
-            centers, labels = _kmeans(X, self.n_components, rng)
+            centers, labels, _, _ = _kmeans(X, self.n_components, rng)
 
         if needs["m"]:
             self.means_ = centers
