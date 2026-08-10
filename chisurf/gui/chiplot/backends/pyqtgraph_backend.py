@@ -11,6 +11,8 @@ sibling module with the same classes; no call site changes.
 
 from __future__ import annotations
 
+import warnings
+
 import numpy as np
 import pyqtgraph as pg
 from qtpy import QtCore, QtWidgets
@@ -100,6 +102,24 @@ def _brush(brush: S.Brush | None):
     if brush is None:
         return pg.mkBrush(None)
     return pg.mkBrush(brush.color.as_tuple())
+
+
+def _same_color(a, b) -> bool:
+    """Whether two pyqtgraph colour specs resolve to the same RGB."""
+    try:
+        ca, cb = pg.mkColor(a), pg.mkColor(b)
+    except Exception:
+        return False
+    return ca.getRgb()[:3] == cb.getRgb()[:3]
+
+
+def _is_dark(color) -> bool:
+    """Whether a pyqtgraph colour spec is dark enough to want light chrome."""
+    try:
+        r, g, b = pg.mkColor(color).getRgb()[:3]
+    except Exception:
+        return True
+    return (0.299 * r + 0.587 * g + 0.114 * b) < 128
 
 
 def _colormap(cmap: S.Colormap | None):
@@ -1455,8 +1475,28 @@ class PyQtGraphBackend(base.Backend):
         return _PgVolumeView(**opts)
 
     def configure(self, **global_opts) -> None:
-        """Apply process-wide pyqtgraph options."""
-        pg.setConfigOptions(**global_opts)
+        """Apply process-wide pyqtgraph options, refusing an invisible axis.
+
+        ``foreground`` equal to ``background`` draws every axis line, tick and
+        label in the background colour: the panel keeps reserving the space, so
+        the plot looks like it simply *has* no axes rather than like a colour
+        setting. Nobody chooses that on purpose, and it is easy to arrive at by
+        accident — a settings dialog whose colour list starts at ``"k"`` saves
+        black on the black default, and user settings are copied to
+        ``~/.chisurf`` once and never refreshed, so the file keeps it for good.
+        Substituting a contrasting foreground repairs the running application
+        without touching anyone's file.
+        """
+        opts = dict(global_opts)
+        fg, bg = opts.get("foreground"), opts.get("background")
+        if fg is not None and bg is not None and _same_color(fg, bg):
+            opts["foreground"] = "w" if _is_dark(bg) else "k"
+            warnings.warn(
+                f"chiplot: plot foreground {fg!r} matches the background — every "
+                f"axis would be invisible; using {opts['foreground']!r} instead. "
+                f"Fix it in Plot settings.",
+                RuntimeWarning, stacklevel=2)
+        pg.setConfigOptions(**opts)
 
     def raw_module(self):
         """Return the ``pyqtgraph`` module (the passthrough fall-through target)."""

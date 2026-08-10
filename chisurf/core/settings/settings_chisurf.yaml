@@ -148,7 +148,10 @@ gui:
       irf: "#4284f5"
       model: "#d400cd"
       region_selector: "#26a298"
-      region_selector_alpha: 100
+      # Opacity of the fit-range band, 0-255. It covers the whole selected
+      # range, so anything much above this reads as a fill rather than as a
+      # highlight and the data underneath is hard to follow.
+      region_selector_alpha: 50
       residuals: "#df0101"
     enable_grid: true
     enable_region_selector: true

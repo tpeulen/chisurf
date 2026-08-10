@@ -164,6 +164,34 @@ change that touches one of these files ports it in the same change and strikes
 the line, rather than noting it — which is what keeps a shrinking list actually
 shrinking. See the repository's `CLAUDE.md`.
 
+## A foreground matching the background hides every axis
+
+Reported as "plot missing axes, or colors wrong", and it was neither a missing
+axis nor a plot bug: `gui.plot.pyqtgraph_config` resolved to
+`foreground: k` on `background: k`, so every axis line, tick and label was drawn
+in black on black. The panel still **reserves** their space, which is what makes
+it read as *having no axes* rather than as a colour setting — and why it
+survived in two shipped panels.
+
+Three things kept it alive, all worth knowing:
+
+* the Plot-settings dialog's foreground combo listed `"k"` first, so a save that
+  never loaded a value wrote black;
+* the dialog's live preview did not apply the chosen colours, so it looked
+  correct while writing the opposite;
+* user settings are copied to `~/.chisurf` **once and never refreshed**, so a
+  file that acquired it kept it, and changing the shipped default fixes nobody.
+
+The fix is therefore in code, not in settings: `PyQtGraphBackend.configure`
+substitutes a contrasting foreground and warns
+(`test_configure_refuses_an_invisible_axis`). The dialog now orders the combo
+sanely and pushes the options before rendering its preview.
+
+The same investigation turned up `LinePlot` passing `alpha=1.0` to `grid()` on
+its two residual strips — `alpha` is opacity, not an on/off flag, so once the
+foreground became visible those panels filled with solid stripes. It had been
+invisible for exactly as long as the axes were.
+
 # Where to pick this up — the WebGPU backend
 
 `backends/wgpu/` draws every family the A/B script exercises (decay on a log

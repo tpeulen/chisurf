@@ -965,10 +965,14 @@ class LinePlot(plotbase.Plot):
         if cs.core.settings.gui['plot']['enable_grid']:
             if cs.core.settings.gui['plot']['show_data_grid']:
                 plots['main_plot'].grid(x=True, y=True, alpha=0.5)
+            # ``alpha`` is the grid's opacity, not an on/off flag — these two
+            # panels asked for 1.0 and drew solid foreground-coloured stripes
+            # across a strip only eighty pixels tall, burying the residuals.
+            # It went unnoticed while the foreground was black on black.
             if cs.core.settings.gui['plot']['show_residual_grid']:
-                plots['top_left_plot'].grid(x=True, y=True, alpha=1.0)
+                plots['top_left_plot'].grid(x=True, y=True, alpha=0.25)
             if cs.core.settings.gui['plot']['show_acorr_grid']:
-                plots['top_right_plot'].grid(x=True, y=True, alpha=1.0)
+                plots['top_right_plot'].grid(x=True, y=True, alpha=0.25)
         # Axis labels: always show for clarity
         plots['top_left_plot'].set_labels(left="w.res.")
         plots['top_right_plot'].set_labels(left="a.corr.")
@@ -1047,9 +1051,8 @@ class LinePlot(plotbase.Plot):
         """
         line = target_plot.line([0.0], [0.0], pen=pen_color, width=lw, name=name)
         if auto_downsample or clip_to_view:
-            native = line.native
-            native.setDownsampling(auto=auto_downsample)
-            native.setClipToView(clip_to_view)
+            line.set_downsampling(auto=auto_downsample)
+            line.set_clip_to_view(clip_to_view)
         return line
 
     def add_plot(

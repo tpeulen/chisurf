@@ -14,7 +14,6 @@ native backend has its own suite in ``test_chiplot_wgpu.py``.
 
 from __future__ import annotations
 
-
 import os
 
 import numpy as np
@@ -121,6 +120,34 @@ def test_passthrough_reaches_the_host_widget(qapp):
     # An attribute on neither object is still an error, not a silent None.
     with pytest.raises(AttributeError):
         plot.definitelyNotAPyqtgraphMethod
+
+
+def test_configure_refuses_an_invisible_axis(qapp):
+    """A foreground matching the background is corrected, loudly.
+
+    It draws every axis line, tick and label in the background colour while the
+    panel still reserves their space, so the plot reads as *having no axes*
+    rather than as a colour setting — and it is easy to arrive at by accident,
+    then permanent, because user settings are copied to ~/.chisurf once and
+    never refreshed. Two real panels shipped that way.
+    """
+    import pyqtgraph as pg
+
+    previous = pg.getConfigOption("foreground")
+    try:
+        with pytest.warns(RuntimeWarning, match="invisible"):
+            cp.configure(background="k", foreground="k")
+        assert pg.getConfigOption("foreground") == "w"
+
+        with pytest.warns(RuntimeWarning, match="invisible"):
+            cp.configure(background="w", foreground="w")
+        assert pg.getConfigOption("foreground") == "k"
+
+        # A contrasting pair is passed through untouched.
+        cp.configure(background="k", foreground="d")
+        assert pg.getConfigOption("foreground") == "d"
+    finally:
+        pg.setConfigOptions(foreground=previous)
 
 
 def test_menu_enabled_reads_back(qapp):
