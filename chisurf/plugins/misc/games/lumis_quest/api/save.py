@@ -53,6 +53,17 @@ class RunState:
     tutorial : list of str
         Teaching steps already completed, so the banners appear once per
         player rather than once per session.
+    has_lumi : bool
+        Whether the hound has been found and befriended. Defaults True so a
+        save from before the waking act keeps its companion.
+    story_seen : list of str
+        Story beats the player has witnessed, so a resumed run does not
+        replay its own opening.
+    pledge_baseline : int or None
+        Cleared-rooms-in-doctrine-lands at the moment of pledging.
+    lab : list
+        Growing cultures, ``[probe_id, planted_at, duration]`` per plot —
+        wall-clock timestamps, because maturation is real time.
     """
 
     position: tuple[float, float] = (0.0, 0.0)
@@ -64,6 +75,10 @@ class RunState:
     cleared: list[str] = dataclasses.field(default_factory=list)
     order: str | None = None
     tutorial: list[str] = dataclasses.field(default_factory=list)
+    has_lumi: bool = True
+    story_seen: list[str] = dataclasses.field(default_factory=list)
+    pledge_baseline: int | None = None
+    lab: list = dataclasses.field(default_factory=list)
 
     def as_dict(self) -> dict:
         """Serialise to plain JSON types.
@@ -84,6 +99,10 @@ class RunState:
             "cleared": list(self.cleared),
             "order": self.order,
             "tutorial": list(self.tutorial),
+            "has_lumi": bool(self.has_lumi),
+            "story_seen": list(self.story_seen),
+            "pledge_baseline": self.pledge_baseline,
+            "lab": [list(row) for row in self.lab],
         }
 
     def save(self, path: pathlib.Path | None = None) -> pathlib.Path:
@@ -142,6 +161,10 @@ class RunState:
                 cleared=[str(value) for value in raw.get("cleared", [])],
                 order=raw.get("order"),
                 tutorial=[str(value) for value in raw.get("tutorial", [])],
+                has_lumi=bool(raw.get("has_lumi", True)),
+                story_seen=[str(value) for value in raw.get("story_seen", [])],
+                pledge_baseline=raw.get("pledge_baseline"),
+                lab=[list(row) for row in raw.get("lab", [])],
             )
         except (TypeError, ValueError):
             return cls()

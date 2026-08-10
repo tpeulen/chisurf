@@ -16,7 +16,10 @@ the creatures are real fluorophores read from the spectra database ChiSurf
 ships. It teaches spectroscopy whether or not you ever review anything, and in
 expert mode it signs pages off through ChiSurf's own review gate.
 
-Open it from **Tools → Miscellaneous → Games → Lumis Quest**.
+Open it from **Tools → Miscellaneous → Games → Lumis Quest**. The game opens
+on a title screen: **Continue** resumes a saved run, **New Journey** starts
+over (it asks before erasing a run), and the controls scheme can be switched
+right there.
 
 ## The world you are looking at
 
@@ -29,6 +32,7 @@ Three states, and they are three different things:
 | On the map | Means |
 |---|---|
 | A dark building | Nobody has read this page |
+| A **withered**, brown building | It *was* signed off — then the page changed underneath. Doc rot, visible. |
 | A faintly lit building | An agent scouted it; **no human has confirmed it** |
 | A warm, glowing building | Settled — a person read it and vouched for it |
 
@@ -51,16 +55,26 @@ gamepad. There is no typing anywhere.
 | Shoulder L | Q | Start an encounter; flag a problem |
 | Shoulder R | E | Zoom in; next menu tab |
 | Cancel | Backspace | Zoom out; back |
-| Menu | Tab | Open the menu (MAP, RIG, PARTY, MODE) |
+| Menu | Tab | Open the pack (MAP, RIG, PARTY, LAB, MODE, OPTIONS) |
 
 ## Your first minutes
 
-A fresh run teaches itself: a gold line along the bottom of the screen names
-the next real thing to do — walk, speak to someone, find a gate, stand on the
-recovery pad, face a beast, take a turn, answer the page — and waits for you to
-actually do it. The banners never press anything for you, and once a lesson is
-learned it never comes back; the sequence is stored with your run, not with the
-session.
+A new journey opens like a story: five cards of what the Fading is, and then
+you **wake in the grass** with Bram, the last keeper, standing over you. He
+points you at two things — a dim hound lying where the road bends, and the
+village gate. Find the hound and speak to it (**Q**) and **Lumi joins you**;
+your companion is met, not issued.
+
+From there the run teaches itself: a gold line along the bottom of the screen
+names the next real thing to do — walk, speak to someone, find a gate, stand
+on the recovery pad, open your pack (**Tab**), face a beast, take a turn,
+answer the page — and waits for you to actually do it. The banners never press
+anything for you, and once a lesson is learned it never comes back; the
+sequence is stored with your run, not with the session.
+
+The arc continues past the opening: pledge to an order, then **do its work** —
+clear rooms in your order's own lands — and the run ends on a dawn told in
+your doctrine's voice.
 
 The villages are inhabited. **Keepers** stand outside pages somebody has
 reviewed — that population *is* the review state. Around them live townsfolk
@@ -143,7 +157,22 @@ A filter is not "+3 damage". It decides **what you can see**: a creature whose
 band it blocks is not drawn on the map at all. Swap filters, walk back through
 ground you have already cleared, and things appear that were always there.
 
-## The questions, and why you can trust them
+## The lab bench
+
+Dyes are cultured, not only caught. The **LAB** tab plants a collected
+creature as a culture, and the culture matures on a **real-world clock** —
+fluorescent-protein maturation genuinely takes tens of minutes to hours, so
+the growth timer is a physical property, not an invented wait. Come back
+later (the clock runs across sessions), harvest, and a fresh, unbleached copy
+joins your collection. Planting never consumes the original: a creature is a
+template, not an ingredient.
+
+The other half of the farm is the map itself: a page that changes under its
+sign-off **withers** — the brown, rotten building — and stays withered until
+somebody re-tends it. Doc rot is crop rot, and it is visible from across the
+world.
+
+## Voices, questions, and why you can trust them
 
 Every question is **grounded**: it quotes a sentence, and that sentence is
 checked against the page before you are ever shown it. A quote that is not in
@@ -157,6 +186,17 @@ with no model at all, so the game works offline.
 
 Questions are cached under the page's content hash, so a page asks the same
 thing every visit and asks something new the moment it changes.
+
+The same switch also gives the inhabitants **voices**: with the model on, a
+keeper speaks as someone who has read and vouched for their own page, an
+emissary argues their doctrine, a smith complains about glass — each character
+voiced from their own backstory. The same discipline applies as for
+questions: every reply passes a gate in code (line count, length, no breaking
+character), a refused reply falls back to the authored lines, voices are
+fetched once and cached, and **nothing ever blocks a frame on the network** —
+the first conversation uses the authored lines while the voice is found in
+the background. The scripted opening (Bram, the dim hound) is never
+model-voiced, so the story cannot drift.
 
 ## See also
 

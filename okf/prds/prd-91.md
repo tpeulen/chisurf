@@ -14,12 +14,32 @@ sibling: none
 
 # Where to pick this up
 
-**Handover, 2026-08-10 (second session).** The three population-and-teaching
-fronts of the earlier handover are **done and verified on screenshots**; the
-game now teaches itself, the orders are people you meet, and the villages are
-towns. What remains is depth and reach, not playability.
+**Handover, 2026-08-10 (third pass, same day).** On top of the
+population-and-teaching pass below, the game now has a **front door and a
+whole arc**: a title screen (Continue / New Journey / controls), a scripted
+awakening in the Link's-Awakening register (wake in the grass with Bram the
+last keeper over you; **Lumi is found dim in the world and joins you**, never
+issued at the door), a doctrine act (clear `WORK_GOAL` rooms in your order's
+own lands, counted from the pledge) ending in a per-order dawn epilogue, a
+**16-bit art pass** (3-tone materials with outlines, lit vs dark windows,
+grass/water variants chosen per tile, water animated by time, drop shadows
+under every walker, pale town floors against dark walls), the **farm layer**
+(LAB tab: cultures mature on a real-world clock spanning sessions; STALE
+pages render as a distinct **WITHERED** state — doc rot visible as crop rot),
+and **model-voiced NPCs**: `api/personas.py` builds a backstory per character
+(keeper from their page, emissary from their doctrine, townsfolk from their
+role), fetches through the same provider seam as questions, gates every reply
+in code, caches per voice, and never blocks a frame — authored lines stand
+until the voice is found in the background. Off by default behind the same
+MODE-tab switch as questions; the scripted opening is never model-voiced.
 
-## What landed this session
+**Traps from this pass:** the dialogue panel wraps at 46 chars — an authored
+line over ~180 chars truncates even at 4 lines, so keep NPC lines short; the
+chigame text path has no em-dash glyph (use `--`); and the shared `arm64` env
+broke mid-session (self-referential tttrlib symlinks, see the board) — the
+suite runs green via `PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 … -p pytestqt.plugin`.
+
+## What landed in the second session
 
 1. ✅ **The in-world tutorial** (`api/tutorial.py`). Seven one-line banners in
    first-run order — walk → speak → enter a gate → stand on the recovery pad →
@@ -67,15 +87,16 @@ towns. What remains is depth and reach, not playability.
 
 ## The open fronts, in the order they matter
 
-1. **Keeper dialogue is still canned** (Part 3 wants it from the page: summary
-   line + "did you know" trivia, cached under the page `sha256`). The
-   `lines`/`dialogue` machinery this session added is exactly the surface it
-   needs — generate the lines, hand them to the villager.
+1. **Offline keeper dialogue is still canned** (Part 3 wants it from the page:
+   summary line + "did you know" trivia, cached under the page `sha256`). The
+   model voices cover this *when the model is on*; the deterministic fallback
+   still speaks from the shared greeting bank. `Npc.lines` is the surface.
 2. **The five new mini-games** (Part 7) and the **lore OKF bundle** (Part 8)
-   from phase 6 do not exist. The mini-games matter mostly as latency cover if
-   the model provider ever defaults on.
-3. **Phase 7 — the farm and the network** — is unbuilt. The ZMQ trap from the
-   earlier handover stands: REQ/REP is lock-step, live positions go over PUB.
+   from phase 6 do not exist. The mini-games matter more now that voices can
+   be model-fetched — they are the designed latency cover.
+3. **Phase 7's network half** is unbuilt (the farm half landed: LAB cultures +
+   withered plots). The ZMQ trap stands: REQ/REP is lock-step, live positions
+   go over PUB.
 4. **No gamepad backend exists**, so "gamepad-playable" is still untested on a
    gamepad; and the shipped question generator tests *attention* rather than
    understanding (the model-backed provider is wired, opt-in, off by default).

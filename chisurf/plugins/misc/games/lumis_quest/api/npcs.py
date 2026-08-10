@@ -33,7 +33,7 @@ from __future__ import annotations
 import dataclasses
 import math
 
-from .story import ORDERS
+from .story import ORDER_LANDS, ORDERS
 from .tiles import CLINIC, FLOOR, GRASS, ROAD, TILE, is_blocking
 
 #: What a villager might say. Chosen by page address, so a given villager always
@@ -88,16 +88,14 @@ EMISSARY_NAMES = {
     "clarity": "Halden, Voice of Clarity",
     "discovery": "Sable, Voice of Discovery",
 }
-EMISSARY_LANDS = {
-    "rigour": ("reference", "manual", "development"),
-    "clarity": ("guides", "fundamentals", "getting_started"),
-    "discovery": ("references", "concepts"),
-}
+#: Each order's emissary stands in the first of the order's own lands — the
+#: same lands its doctrine work is counted against.
+EMISSARY_LANDS = ORDER_LANDS
 
 #: Kinds that stand where they are placed. A keeper keeps their page, a healer
 #: keeps their station, and a story character you have to find again must not
-#: have wandered off.
-FIXED = frozenset({"villager", "healer", "emissary"})
+#: have wandered off. The dim hound waits where it lies until befriended.
+FIXED = frozenset({"villager", "healer", "emissary", "lumi"})
 
 #: Tiles an NPC may stand on.
 WALKABLE = frozenset({GRASS, ROAD, FLOOR, CLINIC})
@@ -317,6 +315,78 @@ def populate(world) -> list[Npc]:
 
     people.extend(_story_cast(world))
     return people
+
+
+#: What the keeper says over you when you come to. The last line hands the
+#: player their first goal, so the scene ends pointed somewhere.
+ELDER_LINES = (
+    "So. The probe is awake. I am Bram; I keep what is left of the lamps here.",
+    "You were sent from the Wellspring, the way light is sent -- suddenly, and "
+    "without being asked. The Fading has reached even this road.",
+    "A hound of light came through before you and would not leave. It is lying "
+    "out where the road bends, nearly spent. It has been waiting for someone "
+    "to follow.",
+    "Find it first. Then find the village -- the gate is the gap in the south "
+    "wall, and the lamps inside still hold. Go.",
+)
+
+#: What passes between Iris and the dim hound. No words on its side, of course.
+LUMI_LINES = (
+    "The hound is barely an ember. It lifts its head, and something in its "
+    "glow steadies as it looks at you.",
+    "It knows what you are. It gets to its feet, shakes the dark off its "
+    "coat, and its light comes back green and full.",
+    "Lumi will follow you now. Where light has been, the hound can smell it.",
+)
+
+
+def awakening_cast(world) -> tuple[tuple[float, float], list[Npc]]:
+    """Stage the waking scene: where Iris comes to, and who is there.
+
+    A run does not start mid-stride: Iris wakes in the open with the keeper
+    Bram standing over her, and the dim hound lies further along the road,
+    waiting to be found. Both stand fixed; both are placed off the first
+    village's gate so the scene points at the world's first door.
+
+    Parameters
+    ----------
+    world : chisurf.plugins.misc.games.lumis_quest.api.world.World
+        The world to stage in.
+
+    Returns
+    -------
+    tuple
+        ``(waking_spot, [elder, lumi])`` in world units. An empty world gives
+        ``((0, 0), [])``.
+    """
+    village = next((v for region in world.regions for v in region.villages), None)
+    if village is None:
+        return ((0.0, 0.0), [])
+    gate_col, gate_row = village.gate
+
+    spot = _open_spot(world, gate_col, gate_row + 6, _seed("waking"),
+                      span=7, allowed=WILD_GROUND) or (
+        (gate_col + 0.5) * TILE, (gate_row + 1.5) * TILE)
+    cast: list[Npc] = []
+
+    elder_spot = _open_spot(world, int(spot[0] // TILE) - 1, int(spot[1] // TILE),
+                            _seed("elder"), span=5, allowed=WILD_GROUND)
+    if elder_spot is not None:
+        cast.append(
+            Npc(kind="villager", name="Bram, the last keeper",
+                x=elder_spot[0], y=elder_spot[1], home=elder_spot, radius=0.0,
+                line=ELDER_LINES[0], lines=ELDER_LINES, role="elder")
+        )
+
+    lumi_spot = _open_spot(world, gate_col + 3, gate_row + 9, _seed("dim-hound"),
+                           span=7, allowed=WILD_GROUND)
+    if lumi_spot is not None:
+        cast.append(
+            Npc(kind="lumi", name="a dim hound",
+                x=lumi_spot[0], y=lumi_spot[1], home=lumi_spot, radius=0.0,
+                line=LUMI_LINES[0], lines=LUMI_LINES, role="lumi")
+        )
+    return (spot, cast)
 
 
 def _story_cast(world) -> list[Npc]:

@@ -62,6 +62,22 @@ PALETTE: dict[str, tuple[int, int, int, int]] = {
     "u": (70, 190, 110, 255),
     "U": (140, 245, 170, 255),
     "p": (24, 40, 30, 255),
+    # The 16-bit pass: a material is three tones and an edge, not a fill.
+    "1": (28, 58, 36, 255),      # grass deep shade
+    "2": (88, 142, 80, 255),     # grass light blade
+    "3": (204, 184, 96, 255),    # meadow flower
+    "4": (14, 34, 68, 255),      # water deep
+    "6": (62, 112, 162, 255),    # water high
+    "7": (156, 204, 232, 255),   # water sparkle
+    "8": (52, 44, 34, 255),      # timber dark
+    "9": (255, 214, 120, 255),   # lit window glow
+    "E": (30, 27, 24, 255),      # outline / darkest edge
+    "I": (176, 96, 72, 255),     # roof light
+    "K": (92, 44, 40, 255),      # roof shadow
+    "S": (206, 198, 184, 255),   # plaster light
+    "Z": (104, 62, 30, 255),     # door wood
+    "5": (10, 14, 10, 110),      # soft drop shadow
+    "0": (10, 14, 10, 55),       # softer shadow edge
 }
 
 #: Pixels per sprite. 16x16 is the era's own size for a character sprite.
@@ -69,77 +85,107 @@ SIZE = 16
 
 _ = "................"
 
-#: Terrain. Dithered rather than flat, so a field of grass has texture.
+#: Terrain, 16-bit style: every material is three tones and an edge, with two
+#: variants where a repeating tile would betray the grid (grass) and two
+#: frames where stillness would betray the water.
 TERRAIN: dict[str, list[str]] = {
     "grass": [
-        "gggGgggggGgggggg", "ggggggggggggGggg", "gGgggggggggggggg", "gggggggGgggggggg",
-        "ggggGggggggggGgg", "gggggggggGgggggg", "gGgggggggggggggg", "ggggggggggggGggg",
-        "gggGgggggggggggg", "ggggggggGggggggg", "gggggggggggGgggg", "gGgggggggggggggg",
-        "gggggGggggggggGg", "ggggggggggggggpg".replace("p", "g"), "ggGggggggggggggg", "gggggggggGgggggg",
+        "gggGg1gggggGgggg", "g2ggggggg2gggg1g", "g2gggGgggGgg3ggg", "gggg1ggg2ggggggg",
+        "gGgggg2gGgggg2gg", "gggGgggg2ggGgggg", "g1ggggggggg1gggg", "gggg2Ggggggggg1g",
+        "gg2gGggg2gggGggg", "ggggggg1ggggGggg", "gGgg1ggggg2ggggg", "gggggggGg2gggg1g",
+        "g2ggGgggggggGggg", "gggggg1ggGgggggg", "ggG3ggggggggg2gg", "gggggggg1ggggggg",
+    ],
+    "grass2": [
+        "g1ggggGggggg2ggg", "gggg2ggggGgggggg", "gGgggg1ggg2ggGgg", "gg2ggggGgggggg1g",
+        "ggggGggg2ggg3ggg", "g1gggg2ggggGgggg", "ggGggggggg1ggggg", "gg3ggGgg2ggggGgg",
+        "gggggggggg2ggg1g", "g2gGgg1ggggggggg", "ggggggggGgg2gggg", "gGg2gggggggggGgg",
+        "gggggGgg1ggg2ggg", "g2ggggggggGggggg", "gggg1ggg2ggggg3g", "ggGggggggg1ggggg",
     ],
     "water": [
-        "wwwwwwwwwwwwwwww", "wwwWWwwwwwwwwwww", "wwwwwwwwwwwWWwww", "wwwwwwwwwwwwwwww",
-        "wwwwwwwWWwwwwwww", "wwwwwwwwwwwwwwww", "wWWwwwwwwwwwwwww", "wwwwwwwwwwwwWWww",
-        "wwwwwwwwwwwwwwww", "wwwwwwwwWWwwwwww", "wwwwwwwwwwwwwwww", "wwWWwwwwwwwwwwww",
-        "wwwwwwwwwwwWWwww", "wwwwwwwwwwwwwwww", "wwwwwWWwwwwwwwww", "wwwwwwwwwwwwwwww",
+        "wwww4wwwwwww4www", "ww6Wwwww4ww7Wwww", "w4ww6wwwwwwwww4w", "wwwwwww6Wwwwwwww",
+        "w7W6wwwwww4wwwww", "wwwwww4wwwww6Www", "w4wwwwwwww6wwww4", "wwww6W7wwwwwwwww",
+        "wwwwwwwww4www6ww", "w6wwww4wwwww7Www", "wwww6Wwwwwwwwwww", "w4wwwwwww6wwww4w",
+        "wwwwww7W6wwwwwww", "ww6wwwwwww4wwwww", "w4wwww4wwwww6Www", "wwwwwwwwwwwwwwww",
+    ],
+    "water2": [
+        "www6wwww4wwwwww4", "w4wwwww7Wwww6www", "wwww6Wwwwwwwww4w", "w7Wwwwww4ww6wwww",
+        "wwwww4wwwwwwwW6w", "w6wwwwww6Wwwwwww", "wwww4wwwwwww4www", "wwwwwww6ww7Wwwww",
+        "w4w6Wwwwwwwwww6w", "wwwwwww4w6wwwwww", "ww7Wwwwwwwww6Www", "wwwwww6wwww4wwww",
+        "w6wwwwwwwW7wwww4", "wwww4wwwwwwww6ww", "wW6wwwww4wwwwwww", "wwwwwwwwwwwwwwww",
     ],
     "tree": [
-        "ggggggggggggggpg".replace("p", "g"), "gggggvvvvvgggggg", "ggggvvVVVvvggggg", "gggvvVVVVVvvgggg",
-        "gggvVVVVVVVvgggg", "ggvvVVVVVVVvvggg", "gggvVVVVVVVvgggg", "gggvvVVVVVvvgggg",
-        "ggggvvVVVvvggggg", "gggggvvvvvgggggg", "ggggggnnnngggggg", "ggggggnnnngggggg",
-        "gggggnnnnnngggg" + "g", "ggggghhhhhhggggg", "gggggghhhhgggggg", "gggggggggggggggg",
+        "ggggg2vvvv1ggggg", "ggg1vv2VVvvvggg" + "g", "ggvv2VVVVVVvv1gg", "gvv2VVVVVVVVvvgg",
+        "gv2VVVVVVVVVVvgg", "gv2VVVVVVVVvVvg" + "g", "gvVVVVVVVvVVVvgg", "gvvVVVVVVVVvvvgg",
+        "ggvvVVVvVVVvvggg", "gg1vvvVVvvvv1ggg", "gggg1vvvvv1ggggg", "gggggEnnEg1ggggg",
+        "gggg1EnnEg2ggggg", "ggg55EnnE55ggggg", "gg5hhhhhhhh5gggg", "ggg55555555ggggg",
     ],
     "rock": [
-        "gggggggggggggggg", "ggggggrrrrgggggg", "gggggrRRRRrggggg", "ggggrRRRRRRrgggg",
-        "gggrRRRRRRRRrggg", "gggrRRRRRRRRrggg", "ggrRRRRRRRRRRrgg", "ggrRRRRRRRRRRrgg",
-        "gggrRRRRRRRRrggg", "gggrrRRRRRRrrggg", "ggggrrrrrrrrgggg", "gggggrrrrrrggggg",
-        "gggggghhhhgggggg", "gggggggggggggggg", "gggggggggggggggg", "gggggggggggggggg",
+        "gggggggggggggggg", "gggggg1rrr1ggggg", "gggggrRRRRr1gggg", "ggg1rRRXXRRrgggg",
+        "gggrRRXXXRRRr1gg", "ggrRRXXXRRRRRrgg", "ggrRRXRRRRRrRrgg", "ggrRRRRRRrrRrggg",
+        "gg1rRRRRRRRrrggg", "gggrrRRrRRrr1ggg", "gggg1rrrrrr5gggg", "ggg55rrrr55ggggg",
+        "gg5hhhhhhhh5gggg", "ggg555555555gggg", "gggggggggggggggg", "gggggggggggggggg",
     ],
     "road": [
-        "dddDdddddddDdddd", "ddddddddDddddddd", "dDdddddddddddddd", "ddddddDddddddddd",
-        "ddddddddddddDddd", "dddDdddddddddddd", "ddddddddDddddddd", "dddddddddddddDdd",
-        "dDdddddddddddddd", "ddddDdddddddddddd"[:16], "dddddddddDdddddd", "ddddddddddddDddd",
-        "ddDddddddddddddd", "dddddddDdddddddd", "ddddddddddDddddd", "dddDdddddddddddd",
+        "dddDdd1ddddDdddd", "ddDddddddnddddDd", "dddddd8dddddDddd", "dDdddddDdd1ddddd",
+        "ddddnddddddddDdd", "dddDddd1dDdddddd", "dDddddddddddd8dd", "dddddDddndddDddd",
+        "dd1ddddddDdddddd", "ddddDd8ddddd1ddd", "dDddddddDddddddD", "dddd1ddddddnDddd",
+        "ddDdddDdd8dddddd", "dddddddddddDd1dd", "d8dDdd1ddddddddd", "ddddddddDddddndd",
     ],
     "floor": [
-        "ffffffffffffffff", "fFFFfffFFFfffFFf", "ffffffffffffffff", "fffFFFfffFFFffff",
-        "ffffffffffffffff", "fFFFfffFFFfffFFf", "ffffffffffffffff", "fffFFFfffFFFffff",
-        "ffffffffffffffff", "fFFFfffFFFfffFFf", "ffffffffffffffff", "fffFFFfffFFFffff",
-        "ffffffffffffffff", "fFFFfffFFFfffFFf", "ffffffffffffffff", "fffFFFfffFFFffff",
+        "DSSDdDSSSDdDSSSD", "SSSSdSSSSSdSSSSS", "DSSDdDSSSDdDSSSD", "dddddddddddddddd",
+        "SDdDSSSDdDSSSDdS", "SSdSSSSSdSSSSSdS", "SDdDSSSDdDSSSDdS", "dddddddddddddddd",
+        "DSSDdDSSSDdDSSSD", "SSSSdSSSSSdSSSSS", "DSSDdDSSSDdDSSSD", "dddddddddddddddd",
+        "SDdDSSSDdDSSSDdS", "SSdSSSSSdSSSSSdS", "SDdDSSSDdDSSSDdS", "dddddddddddddddd",
     ],
     "wall": [
-        "XXXXXXXXXXXXXXXX", "XxxxxxxXxxxxxxxX", "XxxxxxxXxxxxxxxX", "XXXXXXXXXXXXXXXX",
-        "xxxXxxxxxxxXxxxx", "xxxXxxxxxxxXxxxx", "XXXXXXXXXXXXXXXX", "XxxxxxxXxxxxxxxX",
-        "XxxxxxxXxxxxxxxX", "XXXXXXXXXXXXXXXX", "xxxXxxxxxxxXxxxx", "xxxXxxxxxxxXxxxx",
-        "XXXXXXXXXXXXXXXX", "XxxxxxxXxxxxxxxX", "XxxxxxxXxxxxxxxX", "XXXXXXXXXXXXXXXX",
+        "SSSSSSSSSSSSSSSS", "XxxXxxxXxxxXxxxX", "XxxXxxxXxxxXxxxX", "EEEEEEEEEEEEEEEE",
+        "xXxxxXxxxXxxxXxx", "xXxxxXxxxXxxxXxx", "EEEEEEEEEEEEEEEE", "XxxXxxxXxxxXxxxX",
+        "XxxXxxxXxxxXxxxX", "EEEEEEEEEEEEEEEE", "xXxxxXxxxXxxxXxx", "xXxxxXxxxXxxxXxx",
+        "EEEEEEEEEEEEEEEE", "XxxXxxxXxxxXxxxX", "XxxXxxxXxxxXxxxX", "EEEEEEEEEEEEEEEE",
     ],
     "gate": [
-        "XXXXXXXXXXXXXXXX", "XooooooooooooooX", "XoOOoooooooOOooX", "XooooooooooooooX",
-        "XoooooooooooooOX"[:16], "XoOOoooooooOOooX", "XooooooooooooooX", "XooooooooooooooX",
-        "XoOOoooooooOOooX", "XooooooooooooooX", "XooooooooooooooX", "XoOOoooooooOOooX",
-        "XooooooooooooooX", "XooooooooooooooX", "XoOOoooooooOOooX", "XXXXXXXXXXXXXXXX",
+        "SSSSSSSSSSSSSSSS", "XEZZZZZZZZZZZZEX", "XEZoZZoZZoZZoZEX", "XEZZZZZZZZZZZZEX",
+        "XEZZ8ZZZZZ8ZZZEX", "XEZoZZoZZoZZoZEX", "XEZZZZZZZZZZZZEX", "XEZZZ8ZZZ8ZZZZEX",
+        "XEZoZZoZZoZZoZEX", "XEZZZZZZZZZZZZEX", "XEZ8ZZZZZZZ8ZZEX", "XEZoZZoZZoZZoZEX",
+        "XEZZZZZZZZZZZZEX", "XEZZZ8ZZZ8ZZZZEX", "XEZoZZoZZoZZoZEX", "SSSSSSSSSSSSSSSS",
     ],
     "clinic": [
-        "ffffffffffffffff", "ffffffffffffffff", "fffFFFFFFFFFFfff", "ffFccccccccccFff",
-        "ffFcccccccccccff", "ffFcccCCCCcccccf", "ffFcccCCCCcccccf", "ffFCCCCCCCCCCccf",
-        "ffFCCCCCCCCCCccf", "ffFcccCCCCcccccf", "ffFcccCCCCcccccf", "ffFcccccccccccff",
-        "ffFccccccccccFff", "fffFFFFFFFFFFfff", "ffffffffffffffff", "ffffffffffffffff",
+        "DSSDdDSSSDdDSSSD", "SSSSdSSSSSdSSSSS", "SSEEEEEEEEEEEESS", "SEECccccccccEESS",
+        "SECcccccccccCESS", "SECccc7CCcccCESS", "SECcccCCCCccCESS", "SECC7CCCCCC7CESS",
+        "SECCCCCCCC7CCESS", "SECcccCCCCccCESS", "SECccc7CccccCESS", "SECcccccccccCESS",
+        "SEECccccccccEESS", "SSEEEEEEEEEEEESS", "SSdSSSSSdSSSSSdS", "dddddddddddddddd",
     ],
     "bridge": [
-        "wwwwwwwwwwwwwwww", "oooooooooooooooo", "OOOOOOOOOOOOOOOO", "oooooooooooooooo",
-        "oooooooooooooooo", "OOOOOOOOOOOOOOOO", "oooooooooooooooo", "oooooooooooooooo",
-        "OOOOOOOOOOOOOOOO", "oooooooooooooooo", "oooooooooooooooo", "OOOOOOOOOOOOOOOO",
-        "oooooooooooooooo", "oooooooooooooooo", "OOOOOOOOOOOOOOOO", "wwwwwwwwwwwwwwww",
+        "w4ww6Wwww4ww6www", "nEooOooEooOooEon", "nEOOOOOEOOOOOEOn", "nEoooooEoooooEon",
+        "nEoOoooEoOoooEon", "nEoooooEoooooEon", "nEEEEEEEEEEEEEEn", "nEOoooOEOoooOEon",
+        "nEoooooEoooooEon", "nEoooOoEooOooEon", "nEEEEEEEEEEEEEEn", "nEooOooEoOoooEon",
+        "nEOOOOOEOOOOOEOn", "nEoooooEoooooEon", "w6ww4wwww6Ww4www", "wwww4ww6wwww4www",
     ],
 }
 
-#: A building, drawn three times: dark (nobody has read the page), lit but
-#: unconfirmed (an agent scouted it), and settled (a person vouched for it).
-_HOUSE = [
-    "................", ".......bb.......", "......bBBb......", ".....bBBBBb.....",
-    "....bBBBBBBb....", "...bBBBBBBBBb...", "..bBBBBBBBBBBb..", ".bbbbbbbbbbbbbb.",
-    "..mmmmmmmmmmmm..", "..mMMmmmmmmMMm..", "..mMMmmmmmmMMm..", "..mmmmmkkmmmmm..",
-    "..mmmmmkkmmmmm..", "..mmmmmkkmmmmm..", "..hhhhhkkhhhhh..", "................",
+#: The buildings: a dark cottage (nobody has read the page -- shuttered, no
+#: light in the windows) and a lit one (the windows glow). State tints do the
+#: rest: wild is cold, withered is a sick brown, scouted cool, settled warm.
+_HOUSE_DARK = [
+    "................", ".......KK.......", "......KIbK......", ".....KIbbbK.....",
+    "....KIbbbbbK....", "...KIbbbbbbbK...", "..KIbbbbbbbbbK..", ".KIbbbbbbbbbbbK.",
+    ".KKKKKKKKKKKKKK.", ".EmSmmmmmmmmSmE.", ".EmMEEmmmmEEMmE.", ".EmMEEmmmmEEMmE.",
+    ".EmmmmmZZmmmmmE.", ".EmmmmmZZmmmmmE.", ".Emmmmm88mmmmmE.", ".55555555555555.",
+]
+_HOUSE_LIT = [
+    "................", ".......KK.......", "......KIbK......", ".....KIbbbK.....",
+    "....KIbbbbbK....", "...KIbbbbbbbK...", "..KIbbbbbbbbbK..", ".KIbbbbbbbbbbbK.",
+    ".KKKKKKKKKKKKKK.", ".EmSmmmmmmmmSmE.", ".EmM99mmmm99MmE.", ".EmM99mmmm99MmE.",
+    ".EmmmmmZZmmmmmE.", ".EmmmmmZ9mmmmmE.", ".Emmmmm88mmmmmE.", ".55555555555555.",
+]
+
+#: A soft ground shadow, drawn under everyone who walks. Nothing anchors a
+#: sprite to the ground like the shadow it casts.
+_SHADOW = [
+    "................", "................", "................", "................",
+    "................", "................", "................", "................",
+    "................", "................", "................", "......0000......",
+    "....00555500....", "...055555555 0..".replace(" ", "5"), "....00555500....", "......0000......",
 ]
 
 #: A villager: a robed keeper standing outside the page they look after.
@@ -295,14 +341,19 @@ _LUMI_DOWN_B = [
 #: Every sprite, by name. Terrain first so a tile lookup is a dict hit.
 SPRITES: dict[str, list[str]] = {
     **TERRAIN,
-    "house_wild": _HOUSE,
-    "house_scouted": _HOUSE,
-    "house_settled": _HOUSE,
+    "house_wild": _HOUSE_DARK,
+    "house_withered": _HOUSE_DARK,
+    "house_scouted": _HOUSE_LIT,
+    "house_settled": _HOUSE_LIT,
+    "shadow": _SHADOW,
     "iris_down_0": _IRIS_DOWN_A, "iris_down_1": _IRIS_DOWN_B,
     "iris_up_0": _IRIS_UP_A, "iris_up_1": _IRIS_UP_B,
     "iris_right_0": _IRIS_RIGHT_A, "iris_right_1": _IRIS_RIGHT_B,
     "lumi_down_0": _LUMI_DOWN_A, "lumi_down_1": _LUMI_DOWN_B,
     "lumi_right_0": _LUMI_RIGHT_A, "lumi_right_1": _LUMI_RIGHT_B,
+    # The dim hound waiting in the grass is drawn through the NPC path, which
+    # names sprites by kind: these alias the down-facing frames.
+    "lumi_0": _LUMI_DOWN_A, "lumi_1": _LUMI_DOWN_B,
     "villager_0": _VILLAGER_A, "villager_1": _VILLAGER_B,
     "townsfolk_0": _TOWNSFOLK_A, "townsfolk_1": _TOWNSFOLK_B,
     "healer_0": _HEALER_A, "healer_1": _HEALER_B,

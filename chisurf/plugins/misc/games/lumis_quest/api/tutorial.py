@@ -50,6 +50,7 @@ STEPS: tuple[Step, ...] = (
     Step("speak", "Someone is always near a gate. Stand close and press {talk} to speak."),
     Step("enter", "A village is entered by its gate -- the gap in the south wall."),
     Step("rest", "The glowing pad inside the gate recovers a spent team. Stand on it."),
+    Step("menu", "{menu} opens your pack: map, rig, party, mode, options."),
     Step("fight", "Dark houses are guarded. Walk close and press {talk} to face one."),
     Step("turn", "Emit to strike with your dye's own light. {confirm} chooses."),
     Step("answer", "A beaten guardian is not a read page. Answer what the page asks."),
@@ -155,6 +156,8 @@ class Tutorial:
             return tile in (GATE, FLOOR, CLINIC)
         if step.key == "rest":
             return bool(game.resting)
+        if step.key == "menu":
+            return bool(game.menu_open)
         if step.key == "fight":
             return game.battle is not None
         if step.key == "turn":

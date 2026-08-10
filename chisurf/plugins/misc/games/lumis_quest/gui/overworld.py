@@ -16,6 +16,7 @@ nobody can see.
 from __future__ import annotations
 
 import math
+import time
 
 import numpy as np
 
@@ -32,10 +33,12 @@ from ..api import roster as roster_api
 from ..api import providers as providers_api
 from ..api import review_bridge
 from ..api import rig as rig_api
+from ..api import farm as farm_api
+from ..api import personas as personas_api
 from ..api import save as save_api
 from ..api import tutorial as tutorial_api
-from ..api.story import ORDERS, PROLOGUE, Story
-from ..api.world import SCOUTED, SETTLED, WILD, World, build_world
+from ..api.story import EPILOGUES, ORDERS, PROLOGUE, Story, cleared_in_lands
+from ..api.world import SCOUTED, SETTLED, WILD, WITHERED, World, build_world
 from . import pixelart
 
 #: Emission wavelengths that stand for the two lit room states.
@@ -81,11 +84,14 @@ TILE_SPRITES = {
 }
 
 #: A house is one drawing, tinted by whether anyone has read the page. Dark for
-#: untouched, cool for scouted-but-unconfirmed, warm for settled.
+#: untouched, cool for scouted-but-unconfirmed, warm for settled — and a sick
+#: brown for withered, the plot that was tended and has rotted under its
+#: sign-off. Crop rot the gardener cannot see is crop rot nobody fixes.
 HOUSE_TINT = {
-    WILD: (0.42, 0.44, 0.50, 1.0),
-    SCOUTED: (0.70, 0.90, 1.00, 1.0),
-    SETTLED: (1.00, 0.96, 0.80, 1.0),
+    WILD: (0.62, 0.64, 0.72, 1.0),
+    WITHERED: (0.72, 0.58, 0.40, 1.0),
+    SCOUTED: (0.78, 0.92, 1.00, 1.0),
+    SETTLED: (1.00, 0.97, 0.84, 1.0),
 }
 
 #: Frames per second of the walk cycle.
@@ -282,9 +288,11 @@ class OverworldGame(chigame.Game):
             self.lumi = [self.iris[0] - LUMI_TRAIL, self.iris[1]]
             self.host.camera.center[:] = self.iris
             self.host.camera.height = self.view_height
-            # A run that has been played already does not need telling what the
-            # Fading is; a fresh one does.
-            self.phase = "play" if self._resume is not None else "prologue"
+            # Every run opens on the title: a game has a front door, and the
+            # door is where Continue, a new journey and the controls live.
+            self.phase = "title"
+            self.title_index = 0
+            self.title_confirm_new = False
             return
         self.load_step += 1
         self.load_note = self.LOAD_STAGES[min(self.load_step, len(self.LOAD_STAGES) - 1)]
@@ -299,14 +307,87 @@ class OverworldGame(chigame.Game):
         Parameters
         ----------
         skip_prologue : bool, optional
-            Also step past the opening cards.
+            Also step past the title and the opening: continue a saved run, or
+            start straight into play with the companion already at heel. False
+            stops at the title screen, where a real session begins.
         """
         guard = 0
         while self.phase == "loading" and guard < 32:
             self._load_next()
             guard += 1
-        if skip_prologue and self.phase == "prologue":
-            self.phase = "play"
+        if skip_prologue and self.phase == "title":
+            if self._resume is not None:
+                self._continue_run()
+            else:
+                self._quick_start()
+
+    def _continue_run(self) -> None:
+        """Resume the saved run from the title."""
+        self.phase = "play"
+
+    def _quick_start(self) -> None:
+        """Start playing without the opening -- the test and capture path.
+
+        The scripted awakening exists for players; a harness that wants a
+        walkable world on the next line gets the pre-arc state: companion at
+        heel, waking already witnessed.
+        """
+        self.story.has_lumi = True
+        self.story.witness("wake")
+        self.phase = "play"
+
+    def _begin_journey(self) -> None:
+        """Start a fresh run: the opening cards, then the waking scene.
+
+        Resets everything a run owns, stages the awakening cast, and hands
+        the player to the prologue. The old save is overwritten at once --
+        the title menu asked before letting it get this far.
+        """
+        self.team = [battle_api.Fighter(c) for c in roster_api.starters()]
+        self.collection = []
+        self.inventory = []
+        self.loadout = gear_api.starting_loadout(self.gear_pool)
+        self.rig = rig_api.Rig()
+        self.lab = farm_api.Lab()
+        self.cleared = set()
+        self.last_loot = None
+        self.mode = review_bridge.TRAINING
+        self.story = Story(self.world)
+        self.tutorial = tutorial_api.Tutorial()
+        self.menu_open = False
+        self.speaking = None
+        self._resume = None
+
+        self.people = [npc for npc in self.people if npc.role not in ("elder", "lumi")]
+        spot, cast = npcs_api.awakening_cast(self.world)
+        self.people.extend(cast)
+        self.iris = [float(spot[0]), float(spot[1])]
+        self.lumi = list(self.iris)
+        self.host.camera.center[:] = self.iris
+
+        self.save_run()
+        self.prologue_index = 0
+        self._wake_pending = True
+        self.phase = "prologue"
+
+    def _after_prologue(self) -> None:
+        """Leave the opening cards for the world.
+
+        A fresh journey wakes with the keeper already speaking -- the scene
+        the cards were setting up. A replayed opening returns to play as it
+        always did.
+        """
+        self.phase = "play"
+        if not getattr(self, "_wake_pending", False):
+            return
+        self._wake_pending = False
+        elder = next((npc for npc in self.people if npc.role == "elder"), None)
+        if elder is not None:
+            self.speaking = elder
+            self.speaking_index = 0
+            self.pledging = False
+            self.pledge_ack = None
+            self._speaking_lines = None
 
     def _prepare_visuals(self) -> None:
         """Build the atlas and the palettes."""
@@ -326,6 +407,12 @@ class OverworldGame(chigame.Game):
         self._tile_uv = np.zeros((max(TILE_SPRITES) + 1, 4), dtype=np.float32)
         for kind, sprite in TILE_SPRITES.items():
             self._tile_uv[kind] = self._uvs[sprite]
+        # Variant table: same as the base, except where a second drawing
+        # exists. Grass alternates by position so the field does not read as a
+        # grid; water alternates by position *and* time so it moves.
+        self._tile_uv_alt = self._tile_uv.copy()
+        self._tile_uv_alt[T.GRASS] = self._uvs["grass2"]
+        self._tile_uv_alt[T.WATER] = self._uvs["water2"]
 
         self.facing = "down"
         self.walking = False
@@ -380,6 +467,21 @@ class OverworldGame(chigame.Game):
         self.speaking_index = 0
         self.pledging = False
         self.pledge_ack = None
+        #: Model-voiced dialogue for the current speaker, when the model is on
+        #: and has already found this character's voice; None speaks the
+        #: authored lines.
+        self._speaking_lines = None
+        #: Fetches and gates character voices off the frame loop. Built lazily
+        #: so a run with the model off never touches provider settings.
+        self._director = None
+        # The bench: cultures maturing on a real-world clock.
+        self.lab = farm_api.Lab()
+        # Title-screen state.
+        self.title_index = 0
+        self.title_confirm_new = False
+        self._has_save = False
+        self._wake_pending = False
+        self.epilogue_index = 0
 
 
     def _restore(self) -> None:
@@ -390,6 +492,7 @@ class OverworldGame(chigame.Game):
         """
         self._resume = None
         state = save_api.RunState.load(self._save_path)
+        self._has_save = bool(state.team)
         if not state.team:
             return
         creatures = save_api.creatures_by_id(self.pool)
@@ -413,11 +516,19 @@ class OverworldGame(chigame.Game):
             # A save from before the tutorial existed, on a run that has
             # already cleared rooms: this player does not need teaching.
             self.tutorial.finish()
+        self.lab = farm_api.Lab.from_rows(state.lab)
+        self.story.has_lumi = state.has_lumi
+        self.story.seen = set(state.story_seen)
+        if not state.story_seen:
+            # A save from before the waking act: this run has already begun,
+            # so it does not replay its own opening.
+            self.story.witness("wake")
         if state.order:
             try:
                 self.story.choose(state.order)
             except KeyError:
                 pass
+            self.story.pledge_baseline = state.pledge_baseline
         if state.position != (0.0, 0.0):
             self._resume = state.position
 
@@ -439,6 +550,10 @@ class OverworldGame(chigame.Game):
             cleared=sorted(self.cleared),
             order=self.story.chosen_order,
             tutorial=sorted(self.tutorial.done),
+            has_lumi=self.story.has_lumi,
+            story_seen=sorted(self.story.seen),
+            pledge_baseline=self.story.pledge_baseline,
+            lab=self.lab.as_rows(),
         )
 
     def save_run(self) -> None:
@@ -480,16 +595,40 @@ class OverworldGame(chigame.Game):
         if self.phase == "loading":
             self._load_next()
             return
+        if self.phase == "title":
+            self._title_input(keys)
+            return
         if self.phase == "prologue":
             if keys.just_pressed(Action.CONFIRM) or keys.just_pressed(Action.CANCEL):
                 self.prologue_index += 1
                 if self.prologue_index >= len(PROLOGUE) or keys.just_pressed(Action.CANCEL):
+                    self._after_prologue()
+            return
+        if self.phase == "epilogue":
+            if keys.just_pressed(Action.CONFIRM) or keys.just_pressed(Action.CANCEL):
+                self.epilogue_index += 1
+                if self.epilogue_index >= len(self._epilogue_cards()):
+                    self.story.witness("dawn")
                     self.phase = "play"
             return
 
         # The teaching sequence watches the same state the story does, and it
         # watches through battles too -- half its steps complete inside one.
         self.tutorial.observe(self)
+
+        # The doctrine work counts cleared rooms in the order's own lands;
+        # clears live in the run, so the story is fed rather than left to ask.
+        if self.story.chosen_order is not None:
+            self.story.doctrine_count = cleared_in_lands(
+                self.cleared, self.story.chosen_order
+            )
+            beat = self.story.current
+            if (beat is not None and beat.key == "the-dawn"
+                    and self.battle is None and not self.menu_open
+                    and self.speaking is None):
+                self.epilogue_index = 0
+                self.phase = "epilogue"
+                return
 
         if self.battle is not None:
             self._battle_input(keys)
@@ -512,6 +651,7 @@ class OverworldGame(chigame.Game):
                 self.speaking_index = 0
                 self.pledging = False
                 self.pledge_ack = None
+                self._speaking_lines = self._voice_lines(neighbour)
             else:
                 self._try_encounter()
 
@@ -549,13 +689,15 @@ class OverworldGame(chigame.Game):
                     break
 
         # Lumi moves toward a point behind Iris rather than to Iris, so the two
-        # never collapse into one blob.
-        to_lumi = (self.iris[0] - self.lumi[0], self.iris[1] - self.lumi[1])
-        distance = math.hypot(*to_lumi)
-        if distance > LUMI_TRAIL:
-            move = min((distance - LUMI_TRAIL) * 6.0 * dt, distance)
-            self.lumi[0] += to_lumi[0] / distance * move
-            self.lumi[1] += to_lumi[1] / distance * move
+        # never collapse into one blob. Before the hound is befriended it is
+        # not at heel at all -- it lies out in the world, waiting to be found.
+        if self.story.has_lumi:
+            to_lumi = (self.iris[0] - self.lumi[0], self.iris[1] - self.lumi[1])
+            distance = math.hypot(*to_lumi)
+            if distance > LUMI_TRAIL:
+                move = min((distance - LUMI_TRAIL) * 6.0 * dt, distance)
+                self.lumi[0] += to_lumi[0] / distance * move
+                self.lumi[1] += to_lumi[1] / distance * move
 
         camera = self.host.camera
         blend = min(CAMERA_LAG * dt, 1.0)
@@ -566,12 +708,61 @@ class OverworldGame(chigame.Game):
         camera.center[1] += (centre[1] - camera.center[1]) * blend
         camera.height += (height - camera.height) * blend
 
+    def _dialogue_lines(self) -> tuple[str, ...]:
+        """What the current speaker actually says.
+
+        Returns
+        -------
+        tuple of str
+            The model's voiced lines when the model is on and has found this
+            character's voice, else the authored dialogue.
+        """
+        if self._speaking_lines:
+            return self._speaking_lines
+        return self.speaking.dialogue
+
+    def _voice_lines(self, npc) -> tuple[str, ...] | None:
+        """Ask the director for a model voice, without ever blocking.
+
+        Parameters
+        ----------
+        npc : chisurf.plugins.misc.games.lumis_quest.api.npcs.Npc
+            Who is about to speak.
+
+        Returns
+        -------
+        tuple of str or None
+            Gated model lines if already fetched; ``None`` speaks the authored
+            lines while the voice is (maybe) being found in the background.
+        """
+        if not self.use_model:
+            return None
+        land = self.land
+        village = min(
+            self.world.villages,
+            key=lambda v: (v.position[0] - npc.x) ** 2 + (v.position[1] - npc.y) ** 2,
+            default=None,
+        ) if self.world.villages else None
+        persona = personas_api.persona_for(
+            npc,
+            land_title=land.title if land is not None else "",
+            prosperity=village.prosperity if village is not None else None,
+            counts=self.world.counts(),
+        )
+        if persona is None:
+            return None
+        if self._director is None:
+            self._director = personas_api.DialogueDirector()
+        return self._director.lines_for(persona)
+
     def _dialogue_input(self, keys) -> None:
         """Step through whoever is talking, one screen at a time.
 
-        An emissary's dialogue ends in a decision: pledge to their order, or
-        walk away. ``story.choose`` is wired to *this* -- a doctrine you serve
-        is a person you met, not a menu row.
+        The scripted roles resolve here: the elder's words witness the waking
+        beat, the dim hound joins you, and an emissary's dialogue ends in a
+        decision -- pledge to their order, or walk away. ``story.choose`` is
+        wired to *this*: a doctrine you serve is a person you met, not a menu
+        row.
 
         Parameters
         ----------
@@ -582,30 +773,111 @@ class OverworldGame(chigame.Game):
             self.speaking = None
             self.pledging = False
             self.pledge_ack = None
+            self._speaking_lines = None
             return
         if not keys.just_pressed(Action.CONFIRM):
             return
         if self.pledge_ack is not None:
             self.speaking = None
             self.pledge_ack = None
+            self._speaking_lines = None
             return
         npc = self.speaking
         if self.pledging:
             order = npc.role.split(":", 1)[1]
-            self.story.choose(order)
+            self.story.choose(
+                order, baseline=cleared_in_lands(self.cleared, order)
+            )
             self.pledging = False
             self.pledge_ack = f"You pledge to {ORDERS[order]['name']}."
             return
         self.speaking_index += 1
-        if self.speaking_index < len(npc.dialogue):
+        if self.speaking_index < len(self._dialogue_lines()):
             return
-        if npc.role.startswith("emissary:") and self.story.chosen_order is None:
+        if npc.role == "elder":
+            # The keeper has said his piece: the waking is witnessed, and the
+            # scene has pointed the player at the hound and the gate.
+            self.story.witness("wake")
+        elif npc.role == "lumi":
+            # The hound joins. From here it trails Iris, and the arc moves on.
+            self.story.has_lumi = True
+            self.people = [other for other in self.people if other is not npc]
+            self.lumi = [npc.x, npc.y]
+        elif npc.role.startswith("emissary:") and self.story.chosen_order is None:
             self.pledging = True
             return
         self.speaking = None
+        self._speaking_lines = None
+
+    def _title_rows(self) -> list[str]:
+        """The title menu, top to bottom.
+
+        Returns
+        -------
+        list of str
+            Continue appears only when there is a run to continue; starting
+            over on top of one asks before it erases.
+        """
+        rows = []
+        if self._has_save:
+            rows.append("Continue")
+        rows.append(
+            "New Journey -- erase the saved run?"
+            if self.title_confirm_new and self._has_save
+            else "New Journey"
+        )
+        rows.append(f"controls: {self.scheme}")
+        return rows
+
+    def _title_input(self, keys) -> None:
+        """Drive the title menu.
+
+        Parameters
+        ----------
+        keys : chisurf.gui.chigame.input.InputMap
+            Controller state.
+        """
+        rows = self._title_rows()
+        if keys.just_pressed(Action.DOWN):
+            self.title_index = (self.title_index + 1) % len(rows)
+            self.title_confirm_new = False
+        if keys.just_pressed(Action.UP):
+            self.title_index = (self.title_index - 1) % len(rows)
+            self.title_confirm_new = False
+        if keys.just_pressed(Action.CANCEL):
+            self.title_confirm_new = False
+        if not keys.just_pressed(Action.CONFIRM):
+            return
+
+        row = self.title_index - (1 if self._has_save else 0)
+        if row == -1:
+            self._continue_run()
+        elif row == 0:
+            # Starting over discards a run; with one on disk that takes a
+            # second, separate press to mean it.
+            if self._has_save and not self.title_confirm_new:
+                self.title_confirm_new = True
+            else:
+                self.title_confirm_new = False
+                self._begin_journey()
+        else:
+            names = list(SCHEMES)
+            self.scheme = names[(names.index(self.scheme) + 1) % len(names)]
+            self.host.keys.bindings = dict(SCHEMES[self.scheme])
+
+    def _epilogue_cards(self) -> tuple[tuple[str, str], ...]:
+        """The dawn, in the chosen order's voice.
+
+        Returns
+        -------
+        tuple
+            ``(title, body)`` cards; a fallback card if somehow no order.
+        """
+        cards = EPILOGUES.get(self.story.chosen_order or "")
+        return cards or (("The Dawn", "Where you worked, the lamps hold."),)
 
     #: The tabs of the pause menu, in order.
-    TABS = ("MAP", "RIG", "PARTY", "MODE", "OPTIONS")
+    TABS = ("MAP", "RIG", "PARTY", "LAB", "MODE", "OPTIONS")
 
     def _menu_input(self, keys) -> None:
         """Drive the pause menu.
@@ -686,11 +958,25 @@ class OverworldGame(chigame.Game):
                 "regenerate the wilderness",
                 "watch the opening again",
             ]
+        if tab == "LAB":
+            now = time.time()
+            rows = []
+            names = save_api.creatures_by_id(self.pool)
+            for plot in self.lab.plots:
+                name = getattr(names.get(plot.probe_id), "name", f"#{plot.probe_id}")
+                rows.append(
+                    f"{name}  READY -- harvest"
+                    if plot.ready(now)
+                    else f"{name}  maturing {plot.progress(now):.0%}"
+                )
+            if self.lab.can_plant():
+                rows.extend(f"culture {c.name}" for c in self.collection)
+            return rows or ["collect a creature, then culture it here"]
         if tab == "MODE":
             return [
                 review_bridge.TRAINING,
                 review_bridge.EXPERT,
-                f"questions: {'model' if self.use_model else 'offline'}",
+                f"model voices & questions: {'on' if self.use_model else 'off'}",
             ]
         return []
 
@@ -711,6 +997,20 @@ class OverworldGame(chigame.Game):
             # act from the player's side, so both happen.
             self.rig.fit(part)
             self.equip(part)
+        elif tab == "LAB":
+            now = time.time()
+            if self.menu_row < len(self.lab.plots):
+                probe_id = self.lab.harvest(self.menu_row, now)
+                if probe_id is not None:
+                    # A mature culture is a fresh, unbleached copy; the
+                    # planted creature was a template and is still yours.
+                    creatures = save_api.creatures_by_id(self.pool)
+                    if probe_id in creatures:
+                        self.collection.append(creatures[probe_id])
+            else:
+                index = self.menu_row - len(self.lab.plots)
+                if 0 <= index < len(self.collection) and self.lab.can_plant():
+                    self.lab.plant(self.collection[index].probe_id, now)
         elif tab == "OPTIONS":
             self._options_confirm()
         elif tab == "PARTY":
@@ -778,7 +1078,7 @@ class OverworldGame(chigame.Game):
         village you walk through, not a place that fights you.
         """
         room = self.here
-        if room is None or room.state != WILD or not self.pool:
+        if room is None or room.state not in (WILD, WITHERED) or not self.pool:
             return
         x, y = room.position
         if not force and math.hypot(x - self.iris[0], y - self.iris[1]) > T.TILE * 2.2:
@@ -1087,7 +1387,7 @@ class OverworldGame(chigame.Game):
         width, height = self.host.ctx.size
         half = camera.half_extent(width / max(height, 1))
 
-        if self.phase in ("loading", "prologue"):
+        if self.phase in ("loading", "prologue", "title", "epilogue"):
             self._draw_curtain(scene, camera, half)
             return
 
@@ -1125,15 +1425,27 @@ class OverworldGame(chigame.Game):
                            size=(T.TILE * 1.1, T.TILE * 1.1),
                            emission_nm=EMISSARY_NM.get(doctrine, 488.0))
                 tint = EMISSARY_TINT.get(doctrine, tint)
+            elif npc.kind == "lumi":
+                # The dim hound: an ember of the glow it will have at heel.
+                scene.draw("photon", "halo", at=(npc.x, npc.y),
+                           size=(T.TILE * 0.5, T.TILE * 0.5),
+                           emission_nm=LUMI.wavelength_nm)
+                tint = (0.55, 0.62, 0.55, 1.0)
+            self._sprite(scene, "shadow", (npc.x, npc.y + 2.0), T.TILE)
             self._sprite(scene, f"{npc.kind}_{frame_index}", (npc.x, npc.y), T.TILE,
                          mirror=npc.facing == "left", tint=tint)
 
         # The glow under each of them is the photon they are; the sprite on top
-        # is the body that photon wears.
+        # is the body that photon wears. No hound at heel until it is found.
         frame = int(self._walk_clock * WALK_FPS) % 2 if self.walking else 0
-        scene.draw("photon", "halo", at=tuple(self.lumi), size=(T.TILE * 0.7, T.TILE * 0.7),
-                   emission_nm=LUMI.wavelength_nm)
-        self._sprite(scene, f"lumi_{self._facing_for('lumi')}_{frame}", self.lumi, T.TILE)
+        if self.story.has_lumi:
+            self._sprite(scene, "shadow", (self.lumi[0], self.lumi[1] + 2.0), T.TILE)
+            scene.draw("photon", "halo", at=tuple(self.lumi),
+                       size=(T.TILE * 0.7, T.TILE * 0.7),
+                       emission_nm=LUMI.wavelength_nm)
+            self._sprite(scene, f"lumi_{self._facing_for('lumi')}_{frame}",
+                         self.lumi, T.TILE)
+        self._sprite(scene, "shadow", (self.iris[0], self.iris[1] + 3.0), T.TILE * 1.15)
         scene.draw("photon", "halo", at=tuple(self.iris), size=(T.TILE * 0.9, T.TILE * 0.9),
                    emission_nm=IRIS.wavelength_nm)
         self._sprite(scene, f"iris_{self._sheet_facing()}_{frame}", self.iris,
@@ -1272,7 +1584,18 @@ class OverworldGame(chigame.Game):
         else:
             instances[:, 4:8] = 1.0
             instances[:, 8] = chigame.SPRITE
-            instances[:, 12:16] = self._tile_uv[flat]
+            # Two drawings per organic material, chosen by position so the
+            # field never reads as a repeating grid -- and water additionally
+            # flips with time, which is what makes it read as water.
+            gx = col0 + np.arange(cols) * step
+            gy = row0 + np.arange(rows) * step
+            checker = ((((gx[None, :] * 7 + gy[:, None] * 13) >> 1) & 1)
+                       .astype(bool).reshape(-1))
+            ripple = bool(int(self._clock * 1.6) & 1)
+            swap = checker ^ ((flat == T.WATER) & ripple)
+            instances[:, 12:16] = np.where(
+                swap[:, None], self._tile_uv_alt[flat], self._tile_uv[flat]
+            )
         instances[:, 11] = 0.0          # hard edges: this is a tile grid
 
         # Buildings are drawn with the rooms so their state can colour them.
@@ -1297,7 +1620,7 @@ class OverworldGame(chigame.Game):
                 continue
             if abs(y - camera.center[1]) > half[1] + T.TILE:
                 continue
-            if room.state == WILD and self.pool:
+            if room.state in (WILD, WITHERED) and self.pool:
                 # A creature the fitted filter blocks is not rendered as itself:
                 # this is the loot loop, and it is why re-walking cleared ground
                 # with different optics shows you things that were always there.
@@ -1496,6 +1819,50 @@ class OverworldGame(chigame.Game):
                        size=(14.0 * scale, 14.0 * scale), emission_nm=488.0)
             return
 
+        if self.phase == "title":
+            scene.draw("photon", "halo", at=(cx, cy - 62.0 * scale),
+                       size=(46.0 * scale, 46.0 * scale), emission_nm=488.0)
+            scene.text("LUMIS QUEST", at=(cx, cy - 62.0 * scale), height=24.0 * scale,
+                       align="center", color=(0.92, 0.86, 0.60, 1.0))
+            scene.text("the documentation is the world",
+                       at=(cx, cy - 40.0 * scale), height=10.0 * scale,
+                       align="center", color=(0.52, 0.58, 0.66, 1.0))
+            for index, row in enumerate(self._title_rows()):
+                selected = index == self.title_index
+                y = cy + (index * 16.0 - 2.0) * scale
+                if selected:
+                    scene.draw("ui", "selected", at=(cx - 92.0 * scale, y),
+                               size=(7.0 * scale, 7.0 * scale))
+                scene.text(row, at=(cx, y), height=12.0 * scale, align="center",
+                           color=(0.94, 0.92, 0.86, 1.0) if selected
+                           else (0.55, 0.59, 0.66, 1.0))
+            labels = self._key_labels()
+            scene.text("Up/Down choose   Confirm select",
+                       at=(cx, cy + half[1] * 0.56), height=9.5 * scale,
+                       align="center", color=(0.46, 0.50, 0.58, 1.0))
+            scene.text(f"in the world, {labels['menu']} opens your pack",
+                       at=(cx, cy + half[1] * 0.66), height=9.5 * scale,
+                       align="center", color=(0.42, 0.46, 0.54, 1.0))
+            return
+
+        if self.phase == "epilogue":
+            cards = self._epilogue_cards()
+            title, body = cards[min(self.epilogue_index, len(cards) - 1)]
+            scene.draw("photon", "halo", at=(cx, cy - 70.0 * scale),
+                       size=(30.0 * scale, 30.0 * scale), emission_nm=575.0)
+            scene.text(title, at=(cx, cy - 66.0 * scale), height=17.0 * scale,
+                       align="center", color=(0.95, 0.88, 0.58, 1.0))
+            lines = _wrap(body, 42)
+            top = cy - 6.0 * scale - (len(lines) - 1) * 7.0 * scale
+            for offset, line in enumerate(lines):
+                scene.text(line, at=(cx, top + offset * 14.0 * scale),
+                           height=11.0 * scale, align="center",
+                           color=(0.82, 0.86, 0.92, 1.0))
+            scene.text(f"{self.epilogue_index + 1} / {len(cards)}    Confirm to go on",
+                       at=(cx, cy + half[1] * 0.62), height=9.5 * scale,
+                       align="center", color=(0.46, 0.50, 0.58, 1.0))
+            return
+
         title, body = PROLOGUE[min(self.prologue_index, len(PROLOGUE) - 1)]
         scene.text(title, at=(cx, cy - 66.0 * scale), height=17.0 * scale,
                    align="center", color=(0.88, 0.82, 0.58, 1.0))
@@ -1649,10 +2016,21 @@ class OverworldGame(chigame.Game):
         bottom = camera.center[1] + half[1]
         scale = camera.height / VIEW_HEIGHT
 
+        # A quiet backing behind the readouts: light text on the pale town
+        # floor was unreadable, and a HUD you cannot read is not a HUD.
+        scene.draw("ui", "panel",
+                   at=(left + 95.0 * scale, top + 62.0 * scale),
+                   size=(200.0 * scale, 124.0 * scale),
+                   color=(0.02, 0.025, 0.035, 0.45))
+
         counts = self.world.counts()
         total = max(len(self.world.rooms), 1)
+        tally = (f"settled {counts[SETTLED]}/{total}   scouted {counts[SCOUTED]}"
+                 f"   wild {counts[WILD]}")
+        if counts[WITHERED]:
+            tally += f"   withered {counts[WITHERED]}"
         scene.text(
-            f"settled {counts[SETTLED]}/{total}   scouted {counts[SCOUTED]}   wild {counts[WILD]}",
+            tally,
             at=(left + 14.0 * scale, top + 54.0 * scale),
             height=10.0 * scale, color=(0.55, 0.60, 0.68, 1.0),
         )
@@ -1684,19 +2062,20 @@ class OverworldGame(chigame.Game):
                 text = f"Will you serve {order['name']}?"
                 hint = "Confirm to pledge   Cancel to walk away"
             else:
-                text = npc.dialogue[min(self.speaking_index, len(npc.dialogue) - 1)]
+                lines = self._dialogue_lines()
+                text = lines[min(self.speaking_index, len(lines) - 1)]
                 hint = "Confirm to go on"
-            scene.draw("ui", "panel", at=(camera.center[0], bottom - 46.0 * scale),
-                       size=(half[0] * 1.7, 62.0 * scale),
+            scene.draw("ui", "panel", at=(camera.center[0], bottom - 50.0 * scale),
+                       size=(half[0] * 1.7, 76.0 * scale),
                        color=(0.055, 0.065, 0.085, 0.97))
-            scene.text(npc.name, at=(camera.center[0], bottom - 66.0 * scale),
+            scene.text(npc.name, at=(camera.center[0], bottom - 76.0 * scale),
                        height=11.0 * scale, align="center", color=(0.90, 0.84, 0.60, 1.0))
-            for offset, line in enumerate(_wrap(text, 46)[:3]):
-                scene.text(line, at=(camera.center[0], bottom - 50.0 * scale
+            for offset, line in enumerate(_wrap(text, 46)[:4]):
+                scene.text(line, at=(camera.center[0], bottom - 60.0 * scale
                                      + offset * 12.0 * scale),
                            height=10.0 * scale, align="center",
                            color=(0.82, 0.86, 0.92, 1.0))
-            scene.text(hint, at=(camera.center[0], bottom - 10.0 * scale),
+            scene.text(hint, at=(camera.center[0], bottom - 8.0 * scale),
                        height=9.0 * scale, align="center", color=(0.48, 0.52, 0.60, 1.0))
             return
 
@@ -1704,8 +2083,12 @@ class OverworldGame(chigame.Game):
         if beat is not None:
             # Along the bottom, above the room name: the top band already holds
             # the counts and the land, and all three collided there.
+            headline = beat.headline
+            if beat.key == "the-work" and self.story.work_progress is not None:
+                done, goal = self.story.work_progress
+                headline += f"   {done}/{goal}"
             scene.text(
-                beat.headline,
+                headline,
                 at=(camera.center[0], bottom - 48.0 * scale),
                 height=10.5 * scale, align="center", color=(0.62, 0.70, 0.80, 1.0),
             )

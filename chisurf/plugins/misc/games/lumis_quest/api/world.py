@@ -57,8 +57,12 @@ from .tiles import (
     is_blocking,
 )
 
-#: Room states, in increasing order of settledness.
+#: Room states, in increasing order of settledness. WITHERED is the garden
+#: half of the farm layer: a page whose content moved under its sign-off is
+#: not merely wild again — it is a plot that was tended and has rotted, and
+#: doc rot should be visible from across the map.
 WILD = "wild"
+WITHERED = "withered"
 SCOUTED = "scouted"
 SETTLED = "settled"
 
@@ -193,7 +197,7 @@ class Room:
         float
             Higher means more rewarding to reach.
         """
-        debt = {WILD: 1.0, SCOUTED: 0.5, SETTLED: 0.0}[self.state]
+        debt = {WILD: 1.0, WITHERED: 1.0, SCOUTED: 0.5, SETTLED: 0.0}[self.state]
         return 0.65 * debt + 0.35 * (min(self.depth, 5) / 5.0)
 
 
@@ -411,7 +415,7 @@ class World:
         dict
             Keys :data:`WILD`, :data:`SCOUTED`, :data:`SETTLED`.
         """
-        tally = {WILD: 0, SCOUTED: 0, SETTLED: 0}
+        tally = {WILD: 0, WITHERED: 0, SCOUTED: 0, SETTLED: 0}
         for room in self.rooms:
             tally[room.state] += 1
         return tally
@@ -499,8 +503,11 @@ def _state_for(path: pathlib.Path) -> str:
         return SETTLED
     if status == review.STATUS_AI_REVIEWED:
         return SCOUTED
-    # STATUS_STALE is deliberately wild again: the page moved under a sign-off,
-    # so whatever was approved is no longer what is there.
+    if status == review.STATUS_STALE:
+        # The page moved under a sign-off: a plot that was tended and has
+        # rotted. It fights like a wild room but must not look like one --
+        # crop rot the gardener cannot see is crop rot nobody fixes.
+        return WITHERED
     return WILD
 
 

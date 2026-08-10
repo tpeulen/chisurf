@@ -34,14 +34,15 @@ class _Game:
         self.iris = [0.0, 0.0]
         self.speaking = None
         self.resting = False
+        self.menu_open = False
         self.battle = None
         self.verdict = None
 
 
 def test_the_steps_come_in_first_run_order():
-    """Walk, meet someone, get inside, recover, fight, act, answer."""
+    """Walk, meet someone, get inside, recover, the pack, fight, act, answer."""
     keys = [step.key for step in tutorial.STEPS]
-    assert keys == ["walk", "speak", "enter", "rest", "fight", "turn", "answer"]
+    assert keys == ["walk", "speak", "enter", "rest", "menu", "fight", "turn", "answer"]
 
 
 def test_walking_is_the_first_lesson_and_takes_real_distance():
@@ -76,6 +77,8 @@ def _advance_to(guide: tutorial.Tutorial, game: _Game, key: str) -> None:
             game.iris = [5.5 * TILE, 5.5 * TILE]
         elif step == "rest":
             game.resting = True
+        elif step == "menu":
+            game.menu_open = True
         elif step == "fight":
             game.battle = _Battle()
         elif step == "turn":
@@ -99,6 +102,10 @@ def test_each_step_waits_for_its_own_evidence():
     assert guide.current.key == "rest"
 
     game.resting = True
+    guide.observe(game)
+    assert guide.current.key == "menu"
+
+    game.menu_open = True
     guide.observe(game)
     assert guide.current.key == "fight"
 

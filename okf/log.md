@@ -1,6 +1,32 @@
 # Update Log
 
 ## 2026-08-10
+* **Lumis Quest gets a front door, a real arc, 16-bit art, a farm, and
+  model-voiced inhabitants.** A title screen (Continue / New Journey with an
+  erase-confirm / controls) replaces booting straight onto a field. Act Zero
+  is a scripted awakening: Iris comes to in the grass with Bram, the last
+  keeper, standing over her, and **Lumi is found dim where the road bends and
+  joins after being spoken to** -- a companion met, not issued. Act Two closes
+  the arc: `WORK_GOAL` rooms cleared in the pledged order's own lands (counted
+  from the pledge, `cleared_in_lands`), ending in a per-order dawn epilogue.
+  The art went 16-bit: three tones and an outline per material, pale cobbled
+  town floors against dark walls, cottages with roofs and windows that are lit
+  or dark by review state, per-tile grass/water variants (water animated by
+  time), drop shadows under every walker. The farm layer landed: a LAB tab
+  where cultures mature on a **real-world clock** across sessions
+  (`api/farm.py`, FP-maturation band 15--90 min), and STALE pages render as a
+  distinct **withered** state -- doc rot as visible crop rot. NPCs can be
+  **model-voiced with backstories** (`api/personas.py`): keeper personas from
+  their page, emissaries from their doctrine, fetched through the same
+  provider seam as questions, gated in code, cached per voice, fetched off the
+  frame loop, off by default; the scripted opening is never model-voiced.
+  Screenshot pass caught: dialogue truncation at 3 wrapped lines (now 4),
+  shrub-like trees and a floor indistinguishable from walls (both repainted),
+  HUD text unreadable over pale floors (translucent backing), and a missing
+  em-dash glyph in the text path. 191 tests pass; the arm64 env broke
+  mid-session under another instance (self-referential tttrlib symlinks,
+  posted on the board) -- suites run via `PYTEST_DISABLE_PLUGIN_AUTOLOAD=1`.
+
 * **PRD-94 registered: an AV must be a Gaussian that means it.** imp.bff's `AV` decorator *derives* from `IMP::core::Gaussian` (`AV.h:111`) and `resample()` writes the mean into XYZ, but nothing in the repository ever calls `set_gaussian()` — every accessible volume reports an identity covariance whatever its shape. Scoping also found the mean itself is biased: `get_mean_position()` seeds its weight sum at `1.0` unconditionally (`AV.cpp:117`), so with `include_source=false` the density-weighted mean is divided by `1+Σw`, and with `true` the source enters the numerator once but the denominator twice. [PRD-94](/prds/prd-94.md) requires the density-weighted first and second moments of `PathMap::get_xyz_density()` (source excluded — the Gaussian describes the dye cloud) written through `algebra::get_gaussian_from_covariance` → `set_gaussian` at the end of every `resample()`; no new math in imp.bff, and per [PRD-93](/prds/prd-93.md) the work is imp.bff-only.
 
 * **Placement ruling: the labelling plugin belongs in ChiMOL.** The `LabelStructure` widget (`modelling/fps_json_editor`, imported by `modelling/fret`'s wizard) sits in `modelling/` only because ChiMOL is not ready to host it; once ChiMOL hardens, it moves. Recorded in the [ChiMOL target](/specs/chimol.md)'s new deferred-scope section and beside the widget's entry in [modelling](/plugins/modelling.md); the `fps_json_payload` getter/setter seam is what the move rides on, so it stays intact in the meantime.

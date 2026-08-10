@@ -59,9 +59,9 @@ PROLOGUE: tuple[tuple[str, str], ...] = (
     ),
     (
         "Lumi",
-        "The hound at your heel is made of the same light, and does not spend "
-        "it. Lumi can smell where light has been — which is how you will find "
-        "the places it has left.",
+        "Somewhere out in the grass is a hound made of the same light, and it "
+        "does not spend what it carries. It can smell where light has been. "
+        "Find it, and it will find the rest.",
     ),
 )
 
@@ -125,6 +125,46 @@ class Beat:
     goal: str
 
 
+#: Which lands each order calls its own. Doctrine work (Act Two) is counted
+#: against these, and each order's emissary stands in the first of them.
+ORDER_LANDS: dict[str, tuple[str, ...]] = {
+    "rigour": ("reference", "manual", "development"),
+    "clarity": ("guides", "fundamentals", "getting_started"),
+    "discovery": ("references", "concepts"),
+}
+
+#: Rooms to clear for your order after pledging. Small on purpose: a run must
+#: be finishable in a humane number of sessions, and the corpus is the real
+#: unbounded task this arc exists to break into wins.
+WORK_GOAL = 3
+
+#: The waking act. A run does not start mid-stride with a companion already at
+#: heel — you come to in the wild with someone standing over you, and the hound
+#: is out there to be found. A journey earns its company.
+ACT_ZERO: list[Beat] = [
+    Beat(
+        key="wake",
+        headline="Wake. Someone is standing over you.",
+        body=(
+            "Grass, sky, and a stranger's voice. You were sent here as a "
+            "probe, and probes arrive the way light does — suddenly, and "
+            "without luggage. The keeper crouched beside you has been waiting."
+        ),
+        goal="Hear the keeper out.",
+    ),
+    Beat(
+        key="the-hound",
+        headline="Something glows faintly in the grass.",
+        body=(
+            "A hound of light, run down to an ember, curled where the road "
+            "bends. It does not spend what it carries, so if it is dim, it has "
+            "been alone in the dark a long time. It lifts its head as you come "
+            "near."
+        ),
+        goal="Find the dim hound and speak to it.",
+    ),
+]
+
 #: The opening act, shared by all three orders. Short on purpose: the player
 #: chooses a doctrine at the end of it, and that choice only means something
 #: once they have seen what the world is actually like.
@@ -172,9 +212,64 @@ ACT_ONE: list[Beat] = [
             "be served first, and whichever you serve decides what counts as "
             "having won."
         ),
-        goal="Choose an order.",
+        goal="Find an emissary and pledge to an order.",
     ),
 ]
+
+#: The doctrine act. Pledging is a promise; this is the keeping of it. The
+#: work counts *cleared rooms in your order's own lands*, mode-independent, so
+#: training and expert runs both have an arc to finish.
+ACT_TWO: list[Beat] = [
+    Beat(
+        key="the-work",
+        headline="Your order has work for you.",
+        body=(
+            "A pledge is words until ground changes hands. Your order's lands "
+            "hold rooms nobody has faced; clear them, and the doctrine you "
+            "chose stops being an opinion."
+        ),
+        goal=f"Clear {WORK_GOAL} rooms in your order's lands.",
+    ),
+    Beat(
+        key="the-dawn",
+        headline="The dark has given ground. Come see.",
+        body=(
+            "Not everywhere, and not for good. But where you worked, the lamps "
+            "hold — and a land that has watched light leave for years has "
+            "watched it come back."
+        ),
+        goal="Witness the dawn.",
+    ),
+]
+
+#: Every beat, in the order a run walks them.
+BEATS: list[Beat] = [*ACT_ZERO, *ACT_ONE, *ACT_TWO]
+
+#: The closing cards, one set per doctrine, shown when the work is done.
+EPILOGUES: dict[str, tuple[tuple[str, str], ...]] = {
+    "rigour": (
+        ("The Dawn", "The lamps you lit do not flicker. Every one of them "
+         "stands over ground that was checked before it was trusted, and "
+         "Merel walks the shelves without a taper for the first time in years."),
+        ("The Dawn", "Rigour does not celebrate. But tonight the order's "
+         "ledger closes with more light than it opened with, and that has not "
+         "been written in a long while."),
+    ),
+    "clarity": (
+        ("The Dawn", "Doors stand open along the Pilgrim Road. A stranger "
+         "arriving tonight would find the way in five minutes -- which is, "
+         "Halden says, the only measure that was ever worth taking."),
+        ("The Dawn", "The light was there all along. What you built were "
+         "doors, and the Fading walks past a door it cannot close."),
+    ),
+    "discovery": (
+        ("The Dawn", "The map has fewer blank places. Sable stands at a cairn "
+         "that now points somewhere, in ground that was never dark -- only "
+         "unwritten, which is the dark nobody counts."),
+        ("The Dawn", "What you found was always there. Now it is *findable*, "
+         "and that is the difference between a world and a rumour of one."),
+    ),
+}
 
 
 class Story:
@@ -195,6 +290,15 @@ class Story:
         self.world = world
         self.chosen_order: str | None = None
         self.seen: set[str] = set()
+        #: The hound is found in the world, not issued at the door. A journey
+        #: earns its company.
+        self.has_lumi = False
+        #: Cleared-rooms-in-doctrine-lands at the moment of pledging, so the
+        #: work beat counts what was done *for* the order, not before it.
+        self.pledge_baseline: int | None = None
+        #: The same count, now — fed by the game each frame (clears live in
+        #: the run, not in the world).
+        self.doctrine_count = 0
 
     @property
     def current(self) -> Beat | None:
@@ -203,12 +307,26 @@ class Story:
         Returns
         -------
         Beat or None
-            ``None`` once the opening act is complete and an order is chosen.
+            ``None`` once the arc is walked to its end.
         """
-        for beat in ACT_ONE:
+        for beat in BEATS:
             if not self.is_complete(beat):
                 return beat
         return None
+
+    @property
+    def work_progress(self) -> tuple[int, int] | None:
+        """How far the doctrine work has come.
+
+        Returns
+        -------
+        tuple of int or None
+            ``(done, goal)`` while on the work beat; ``None`` before a pledge.
+        """
+        if self.chosen_order is None:
+            return None
+        done = max(0, self.doctrine_count - (self.pledge_baseline or 0))
+        return (min(done, WORK_GOAL), WORK_GOAL)
 
     def is_complete(self, beat: Beat) -> bool:
         """Whether a beat's condition is satisfied by the world.
@@ -223,6 +341,10 @@ class Story:
         bool
             True when the world already shows what the beat asks for.
         """
+        if beat.key == "wake":
+            return "wake" in self.seen
+        if beat.key == "the-hound":
+            return self.has_lumi
         if beat.key == "arrival":
             return "arrival" in self.seen
         if beat.key == "first-light":
@@ -231,6 +353,11 @@ class Story:
             return self.world.counts()[SCOUTED] > 0 and "the-frontier" in self.seen
         if beat.key == "the-choice":
             return self.chosen_order is not None
+        if beat.key == "the-work":
+            progress = self.work_progress
+            return progress is not None and progress[0] >= progress[1]
+        if beat.key == "the-dawn":
+            return "dawn" in self.seen
         return False
 
     def witness(self, key: str) -> None:
@@ -259,13 +386,17 @@ class Story:
         elif room.state == SCOUTED:
             self.witness("the-frontier")
 
-    def choose(self, order: str) -> None:
+    def choose(self, order: str, baseline: int | None = None) -> None:
         """Commit to an order.
 
         Parameters
         ----------
         order : str
             One of the keys of :data:`ORDERS`.
+        baseline : int, optional
+            Cleared-rooms-in-doctrine-lands at this moment, so the work beat
+            starts from zero. Omitted keeps whatever baseline is already set
+            (a restored run passes the saved one separately).
 
         Raises
         ------
@@ -275,6 +406,8 @@ class Story:
         if order not in ORDERS:
             raise KeyError(f"unknown order: {order!r}")
         self.chosen_order = order
+        if baseline is not None:
+            self.pledge_baseline = baseline
 
     @property
     def order(self) -> dict[str, str] | None:
@@ -286,3 +419,28 @@ class Story:
             ``None`` before a choice is made.
         """
         return ORDERS[self.chosen_order] if self.chosen_order else None
+
+
+def cleared_in_lands(cleared, order: str | None) -> int:
+    """Count cleared rooms lying in an order's own lands.
+
+    Parameters
+    ----------
+    cleared : iterable of str
+        Repository-relative page addresses, e.g. ``docs/guides/11_burst.md``.
+    order : str or None
+        An :data:`ORDERS` key.
+
+    Returns
+    -------
+    int
+        How many cleared addresses fall inside :data:`ORDER_LANDS` for the
+        order. Zero for no order.
+    """
+    lands = ORDER_LANDS.get(order or "", ())
+    count = 0
+    for address in cleared:
+        parts = address.split("/")
+        if len(parts) >= 2 and parts[1] in lands:
+            count += 1
+    return count

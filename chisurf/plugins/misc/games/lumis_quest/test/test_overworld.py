@@ -566,12 +566,17 @@ def test_loading_is_staged_so_the_screen_appears_before_the_work(qapp, tmp_path)
         if game.phase != "loading":
             break
         host.frame(1 / 60)
-    assert game.phase in ("prologue", "play")
+    assert game.phase == "title", "loading ends at the front door"
     assert game.world.rooms and game.people is not None
 
 
-def test_a_fresh_run_opens_with_the_story_and_a_resumed_one_does_not(qapp, tmp_path):
-    """A run already played does not need telling what the Fading is."""
+def test_the_title_screen_offers_a_new_journey_and_then_a_continue(qapp, tmp_path):
+    """The game has a front door: the title menu.
+
+    A fresh install offers New Journey (which opens on the story); a machine
+    with a saved run puts Continue first, and continuing skips the opening
+    entirely — a run already played does not need telling what the Fading is.
+    """
     from chisurf.gui import chigame
     from chisurf.plugins.misc.games.lumis_quest.api import save as save_api
     from chisurf.plugins.misc.games.lumis_quest.gui.overworld import OverworldGame
@@ -586,10 +591,19 @@ def test_a_fresh_run_opens_with_the_story_and_a_resumed_one_does_not(qapp, tmp_p
     fresh = OverworldGame(world=build_world(docs), save_path=run, docs_root=docs)
     chigame.GameHost(fresh, context, with_text=False, with_audio=False)
     fresh.finish_loading(skip_prologue=False)
-    assert fresh.phase == "prologue"
+    assert fresh.phase == "title"
+    assert fresh._title_rows()[0] == "New Journey", "no save, nothing to continue"
 
     if not fresh.pool:
         pytest.skip("spectra.db is not present in this install")
+
+    # New Journey opens on the prologue, and the run begins without Lumi.
+    fresh.host.keys.tap(Action.CONFIRM)
+    fresh.update(1 / 60, fresh.host.keys)
+    fresh.host.keys.end_frame()
+    assert fresh.phase == "prologue"
+    assert not fresh.story.has_lumi, "the hound is found, not issued"
+
     fresh.iris = [123.0, 456.0]
     fresh.save_run()
     assert save_api.RunState.load(run).position == (123.0, 456.0)
@@ -597,7 +611,114 @@ def test_a_fresh_run_opens_with_the_story_and_a_resumed_one_does_not(qapp, tmp_p
     resumed = OverworldGame(world=build_world(docs), save_path=run, docs_root=docs)
     chigame.GameHost(resumed, context, with_text=False, with_audio=False)
     resumed.finish_loading(skip_prologue=False)
-    assert resumed.phase == "play", "a resumed run skips the opening"
+    assert resumed.phase == "title"
+    assert resumed._title_rows()[0] == "Continue"
+
+    resumed.host.keys.tap(Action.CONFIRM)
+    resumed.update(1 / 60, resumed.host.keys)
+    resumed.host.keys.end_frame()
+    assert resumed.phase == "play", "continuing skips the opening"
+
+
+def test_new_journey_over_a_saved_run_asks_before_erasing(qapp, tmp_path):
+    """Starting over is destructive, so it takes a second press to mean it."""
+    from chisurf.gui import chigame
+    from chisurf.plugins.misc.games.lumis_quest.gui.overworld import OverworldGame
+
+    try:
+        context = chigame.create_offscreen(size=(160, 120))
+    except Exception as error:  # pragma: no cover - depends on the machine
+        pytest.skip(f"no usable GPU adapter: {error}")
+
+    docs = _docs(tmp_path)
+    run = tmp_path / "run.json"
+    played = OverworldGame(world=build_world(docs), save_path=run, docs_root=docs)
+    chigame.GameHost(played, context, with_text=False, with_audio=False)
+    played.finish_loading()
+    if not played.pool:
+        pytest.skip("spectra.db is not present in this install")
+    played.save_run()
+
+    game = OverworldGame(world=build_world(docs), save_path=run, docs_root=docs)
+    chigame.GameHost(game, context, with_text=False, with_audio=False)
+    game.finish_loading(skip_prologue=False)
+    assert game.phase == "title"
+
+    # Move to New Journey and confirm once: the row becomes a question.
+    game.host.keys.tap(Action.DOWN)
+    game.update(1 / 60, game.host.keys)
+    game.host.keys.end_frame()
+    game.host.keys.tap(Action.CONFIRM)
+    game.update(1 / 60, game.host.keys)
+    game.host.keys.end_frame()
+    assert game.phase == "title", "one press must not erase a run"
+    assert "erase" in game._title_rows()[1]
+
+    game.host.keys.tap(Action.CONFIRM)
+    game.update(1 / 60, game.host.keys)
+    game.host.keys.end_frame()
+    assert game.phase == "prologue", "the second press means it"
+
+
+def test_the_awakening_scene_is_staged_and_the_hound_joins(qapp, tmp_path):
+    """Wake with the keeper speaking; find the dim hound; it joins.
+
+    The Act Zero contract: Lumi is not at heel from frame one, the elder's
+    words witness the waking beat, and befriending the hound completes its
+    beat and starts the trail.
+    """
+    from chisurf.gui import chigame
+    from chisurf.plugins.misc.games.lumis_quest.gui.overworld import OverworldGame
+
+    try:
+        context = chigame.create_offscreen(size=(160, 120))
+    except Exception as error:  # pragma: no cover - depends on the machine
+        pytest.skip(f"no usable GPU adapter: {error}")
+
+    docs = _docs(tmp_path)
+    game = OverworldGame(world=build_world(docs), save_path=tmp_path / "run.json",
+                         docs_root=docs)
+    chigame.GameHost(game, context, with_text=False, with_audio=False)
+    game.finish_loading(skip_prologue=False)
+    if not game.pool:
+        pytest.skip("spectra.db is not present in this install")
+
+    game._begin_journey()
+    assert game.phase == "prologue"
+
+    # Skip the cards: the keeper should already be speaking over Iris.
+    game.host.keys.tap(Action.CANCEL)
+    game.update(1 / 60, game.host.keys)
+    game.host.keys.end_frame()
+    assert game.phase == "play"
+    assert game.speaking is not None and game.speaking.role == "elder"
+    assert game.story.current.key == "wake"
+
+    # Hear him out: the waking is witnessed when he has said his piece.
+    for _ in range(len(game.speaking.dialogue)):
+        game.host.keys.tap(Action.CONFIRM)
+        game.update(1 / 60, game.host.keys)
+        game.host.keys.end_frame()
+    assert game.speaking is None
+    assert "wake" in game.story.seen
+    assert game.story.current.key == "the-hound"
+
+    # Find the dim hound and speak to it: it joins, and the beat completes.
+    hound = next(npc for npc in game.people if npc.role == "lumi")
+    game.iris = [hound.x, hound.y + 10.0]
+    game.host.keys.tap(Action.SHOULDER_L)
+    game.update(1 / 60, game.host.keys)
+    game.host.keys.end_frame()
+    assert game.speaking is hound
+    for _ in range(len(hound.dialogue)):
+        game.host.keys.tap(Action.CONFIRM)
+        game.update(1 / 60, game.host.keys)
+        game.host.keys.end_frame()
+    assert game.story.has_lumi, "the hound joins when its scene is played out"
+    assert all(npc.role != "lumi" for npc in game.people)
+    current = game.story.current
+    assert current is None or current.key not in ("wake", "the-hound"), \
+        "Act Zero is over once the hound is at heel"
 
 
 def test_an_order_is_chosen_by_talking_to_an_emissary(game):

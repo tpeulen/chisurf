@@ -144,7 +144,9 @@ def test_an_empty_world_is_safe_to_query():
     assert world.bounds() == (0.0, 0.0, 0.0, 0.0)
     assert world.nearest_room((0.0, 0.0)) is None
     assert world.region_at(0.0, 0.0) is None
-    assert world.counts() == {WILD: 0, SCOUTED: 0, SETTLED: 0}
+    assert world.counts() == {
+        WILD: 0, world_api.WITHERED: 0, SCOUTED: 0, SETTLED: 0
+    }
 
 
 def test_nearest_room_finds_the_closest_building():
