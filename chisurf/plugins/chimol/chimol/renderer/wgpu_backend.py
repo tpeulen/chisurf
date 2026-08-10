@@ -134,7 +134,21 @@ class WgpuMeshRenderer:
         )
         # position(3) normal(3) colour(4) occlusion(1) = 11 floats, interleaved.
         stride = 11 * 4
-        self.pipeline = self.device.create_render_pipeline(
+        self._pipelines: dict[bool, object] = {}
+        for depth_write in (True, False):
+            self._pipelines[depth_write] = self._make_pipeline(
+                module, layout, stride, depth_write
+            )
+        # Opaque geometry writes depth; transparent geometry does not, or the
+        # near face of a translucent shell occludes the far face of the same
+        # shell and the surface reads solid.
+        self.pipeline = self._pipelines[True]
+        self.pipeline_blend = self._pipelines[False]
+
+    def _make_pipeline(self, module, layout, stride, depth_write):
+        """Build the render pipeline, with or without depth writes."""
+        wgpu = self._wgpu
+        return self.device.create_render_pipeline(
             layout=layout,
             vertex={
                 "module": module,
@@ -154,13 +168,32 @@ class WgpuMeshRenderer:
             },
             depth_stencil={
                 "format": wgpu.TextureFormat.depth24plus,
-                "depth_write_enabled": True,
+                "depth_write_enabled": depth_write,
                 "depth_compare": wgpu.CompareFunction.less,
             },
             fragment={
                 "module": module,
                 "entry_point": "fs_main",
-                "targets": [{"format": self.format}],
+                "targets": [
+                    {
+                        "format": self.format,
+                        # Straight alpha over the destination. Without this a
+                        # surface at `transparency 0.5` draws solid, and the
+                        # setting looks unimplemented rather than unblended.
+                        "blend": {
+                            "color": {
+                                "src_factor": wgpu.BlendFactor.src_alpha,
+                                "dst_factor": wgpu.BlendFactor.one_minus_src_alpha,
+                                "operation": wgpu.BlendOperation.add,
+                            },
+                            "alpha": {
+                                "src_factor": wgpu.BlendFactor.one,
+                                "dst_factor": wgpu.BlendFactor.one_minus_src_alpha,
+                                "operation": wgpu.BlendOperation.add,
+                            },
+                        },
+                    }
+                ],
             },
             primitive={
                 "topology": wgpu.PrimitiveTopology.triangle_list,
@@ -304,14 +337,35 @@ class WgpuMeshRenderer:
                 "depth_store_op": wgpu.StoreOp.store,
             },
         )
-        rp.set_pipeline(self.pipeline)
-
         keep = []  # buffers must outlive the pass
-        for obj in scene.objects:
+
+        def _opacity(obj) -> float:
+            return 1.0 if obj.material is None else float(obj.material.opacity)
+
+        # Opaque first, then transparent. Blending is order-dependent: drawing a
+        # translucent surface before the geometry behind it composites it against
+        # the background instead of against what it should veil.
+        drawable = [
+            o
+            for o in scene.objects
+            if o.geometry.kind == "mesh"
+            and o.geometry.indices is not None
+            and o.geometry.indices.size
+        ]
+        ordered = sorted(
+            drawable,
+            key=lambda o: (_opacity(o) < 1.0 or o.render_mode == "transparent"),
+        )
+
+        current = None
+        for obj in ordered:
             geom = obj.geometry
-            if geom.kind != "mesh" or geom.indices is None or not geom.indices.size:
-                continue
-            opacity = 1.0 if obj.material is None else float(obj.material.opacity)
+            opacity = _opacity(obj)
+            blended = opacity < 1.0 or obj.render_mode == "transparent"
+            pipeline = self.pipeline_blend if blended else self.pipeline
+            if pipeline is not current:
+                rp.set_pipeline(pipeline)
+                current = pipeline
             data = self.interleave(geom)
             vbo = self.device.create_buffer_with_data(
                 data=data, usage=wgpu.BufferUsage.VERTEX

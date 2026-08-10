@@ -68,11 +68,16 @@ def background_for(viewer) -> tuple[float, float, float]:
     raw = getattr(getattr(viewer, "_renderer", None), "_background", None)
     if isinstance(raw, str):
         return _NAMED_BACKGROUNDS.get(raw.strip().lower(), (0.0, 0.0, 0.0))
-    if isinstance(raw, (tuple, list)) and len(raw) >= 3:
+    # Any sequence, not just tuple/list: `bg_color` stores a numpy array, which
+    # is neither, so an isinstance check against those two silently fell through
+    # to black and made a working command look like a missing feature.
+    if raw is not None and not isinstance(raw, (str, bytes)):
         try:
-            return tuple(float(c) for c in raw[:3])
+            values = [float(c) for c in np.asarray(raw).ravel()[:3]]
         except (TypeError, ValueError):
             return (0.0, 0.0, 0.0)
+        if len(values) == 3:
+            return tuple(values)
     return (0.0, 0.0, 0.0)
 
 
