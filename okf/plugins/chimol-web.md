@@ -25,7 +25,33 @@ Next, in order:
    is not covered, because `balls.impostor_min_atoms` applies to *beads*, not to
    atomic `show spheres` — that baseline needs a bead/integrative model and is
    still to do.
-2. **Phase 1 — `SceneSink`.** `_update_view` opens with
+2. ✅ **Done — Phase 1, `SceneSink` (2026-08-10, `fa7377580`).**
+   `renderer/headless.py` builds the scene and rasterises nothing;
+   `MolView(renderer_factory=SceneSink)` selects it. Two assumptions went with
+   it: the Qt chrome was guarded on the renderer *existing* rather than on it
+   being a `QWidget`, so a windowless backend fell into the branch that sets
+   `self._renderer = None`; and `Renderer.widget()` returning a `QWidget` is the
+   assumption a second backend cannot meet — it returns `None` now and the
+   viewer handles that. Verified under `QT_QPA_PLATFORM=offscreen`, where GL has
+   no context at all: cartoon 19,908 verts / 39,032 tris, sticks 33,216, spheres
+   374,112, surface 55,832 — **and the CPU ray tracer renders that same scene**,
+   so two windowless backends already share one scene and one camera. The sticks
+   figure independently reproduces the 33,216 triangles recorded for 148L, which
+   is the measure of what instanced impostors replace (my WGSL prototype: 2,770
+   for the sphere rep, ~135× fewer).
+   `test/test_headless_scene.py` compares the two backends **array by array**
+   across four representations — no GPU needed, and it fails on the specific
+   array that changed. Trap it caught: `SceneSink` first copied the Qt backend's
+   habit of widening the far plane to protect depth precision, which broke
+   `set_view_state(get_view_state())` at slot 16 (166.78 → 1167.82). There is no
+   depth buffer here, and a camera that does not survive a round trip cannot
+   reproduce a frame.
+   **Not yet done in this phase:** `app/cli.py:_make_cmd` still uses
+   `MockWindow`; switching it to a real `MolView(renderer_factory=SceneSink)` is
+   what finally lets `chimol cli` render, and should shrink or delete
+   `testing/mock_viewer.py`.
+
+3. **Superseded — the original Phase 1 note.** `_update_view` opens with
    `if self._renderer is None: return`, and the Qt chrome after renderer
    construction (`renderer/view.py:2479`) is one contiguous block guarded by
    `if renderer is not None:`. That single early return is the only reason the
