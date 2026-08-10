@@ -2,7 +2,6 @@ from chisurf import typing
 
 import logging
 
-import numba as nb
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -195,7 +194,6 @@ def kappasq_all_delta_new(
     return k2scale, k2hist, ks
 
 
-@nb.jit(nopython=True)
 def kappasq_all_delta(
         delta: float,
         sD2: float,
@@ -265,37 +263,58 @@ def kappasq_all_delta(
     # Define beta1 and phi arrays (in radians)
     beta1 = np.arange(0.001, np.pi / 2.0, step * np.pi / 180.0, dtype=np.float64)
     phi = np.arange(0.001, 2.0 * np.pi, step * np.pi / 180.0, dtype=np.float64)
-    n = beta1.shape[0]
-    m = phi.shape[0]
-    rda_vec = np.array([1, 0, 0], dtype=np.float64)
-
-    # Allocate arrays for kappa² and histogram
-    k2 = np.zeros((n, m), dtype=np.float64)
-    k2hist = np.zeros(n_bins - 1, dtype=np.float64)
 
     # Define histogram bin edges
     k2_step = (k2_max - k2_min) / (n_bins - 1)
     k2scale = np.arange(k2_min, k2_max + 1e-14, k2_step, dtype=np.float64)
-    for i in range(n):
-        d1 = np.array([np.cos(beta1[i]), 0, np.sin(beta1[i])])
-        n1 = np.array([-np.sin(beta1[i]), 0, np.cos(beta1[i])])
-        n2 = np.array([0, 1, 0])
-        for j in range(m):
-            d2 = (n1 * np.cos(phi[j]) + n2 * np.sin(phi[j])) * np.sin(delta) + d1 * np.cos(delta)
-            beta2 = np.arccos(np.abs(np.dot(d2, rda_vec)))
-            k2[i, j] = kappasq(
-                delta=delta,
-                sD2=sD2,
-                sA2=sA2,
-                beta1=beta1[i],
-                beta2=beta2
-            )
-        y, _ = np.histogram(k2[i, :], bins=k2scale)
-        k2hist += y * np.sin(beta1[i])
+
+    # d1, n1 and n2 form an orthonormal frame per beta1; d2 sweeps the cone of
+    # half-angle delta about d1 as phi runs. Written as outer products over
+    # (beta1, phi) rather than as a double loop -- at the default step of 0.25
+    # degrees that is 360 x 1440 = 518,400 evaluations, and the loop form spent
+    # all of its time in Python rather than in the arithmetic.
+    cos_b1 = np.cos(beta1)[:, None]
+    sin_b1 = np.sin(beta1)[:, None]
+    cos_phi = np.cos(phi)[None, :]
+    sin_phi = np.sin(phi)[None, :]
+
+    # d2 = (n1 cos(phi) + n2 sin(phi)) sin(delta) + d1 cos(delta); only the
+    # x-component is needed, because R_DA is the x-axis and beta2 is the angle
+    # against it. n1 = (-sin b1, 0, cos b1) and n2 = (0, 1, 0), so n2 does not
+    # contribute to x at all.
+    sin_delta = np.sin(delta)
+    cos_delta = np.cos(delta)
+
+    k2 = np.empty((beta1.size, phi.size), dtype=np.float64)
+    k2hist = np.zeros(k2scale.size - 1, dtype=np.float64)
+
+    # Blocked over beta1 rather than done in one shot: `kappasq` allocates about
+    # a dozen temporaries the size of its input, and at the default 0.25-degree
+    # step the full grid is 360 x 1440, so the one-shot form streams ~4 MB
+    # through cache a dozen times over. Blocks keep the working set resident.
+    # The histogram is weighted by sin(beta1), the solid-angle element, which is
+    # constant along a row.
+    block = 32
+    for start in range(0, beta1.size, block):
+        stop = min(start + block, beta1.size)
+        d2_x = (-sin_b1[start:stop] * cos_phi) * sin_delta + cos_b1[start:stop] * cos_delta
+        np.clip(d2_x, -1.0, 1.0, out=d2_x)
+        np.abs(d2_x, out=d2_x)
+        beta2 = np.arccos(d2_x)
+        rows = kappasq(
+            delta=delta,
+            sD2=sD2,
+            sA2=sA2,
+            beta1=np.broadcast_to(beta1[start:stop, None], beta2.shape),
+            beta2=beta2
+        )
+        k2[start:stop] = rows
+        weights = np.broadcast_to(np.sin(beta1[start:stop])[:, None], rows.shape)
+        counts, _ = np.histogram(rows.ravel(), bins=k2scale, weights=weights.ravel())
+        k2hist += counts
     return k2scale, k2hist, k2
 
 
-@nb.jit(nopython=True)
 def kappasq_all(
         sD2: float,
         sA2: float,
@@ -357,40 +376,38 @@ def kappasq_all(
            Acids via Foerster Resonance Energy Transfer: Implications of Dye Linker
            Length and Rigidity", J. Am. Chem. Soc., 2011.
     """
-    k2 = np.zeros(n_samples, dtype=np.float64)
     step = (k2_max - k2_min) / (n_bins - 1)
     k2scale = np.arange(k2_min, k2_max + 1e-14, step, dtype=np.float64)
-    k2hist = np.zeros(k2scale.shape[0] - 1, dtype=np.float64)
-    for i in range(n_samples):
-        # Normally distributed components give a direction uniform on the
-        # sphere. ``np.random.random`` fills the unit *cube* with non-negative
-        # components, so both dipoles were confined to one octant: the angle
-        # between them averaged 34 degrees instead of 90 and never exceeded
-        # 90. The mean orientation factor must be 2/3 whatever the order
-        # parameters are; with cube sampling it fell to 0.46 at S2 = 0.8, and
-        # the distribution was far too narrow -- which understates exactly the
-        # distance uncertainty this function exists to quantify.
-        d1 = np.random.randn(3)
-        d2 = np.random.randn(3)
-        n1 = np.linalg.norm(d1)
-        n2 = np.linalg.norm(d2)
-        # Assumption: connecting vector R_DA is along the x-axis (R_DA = [1,0,0])
-        delta = np.arccos(np.dot(d1, d2) / (n1 * n2))
-        beta1 = np.arccos(d1[0] / n1)
-        beta2 = np.arccos(d2[0] / n2)
-        k2[i] = kappasq(
-            delta=delta,
-            sD2=sD2,
-            sA2=sA2,
-            beta1=beta1,
-            beta2=beta2
-        )
-    y, _ = np.histogram(k2, bins=k2scale)
-    k2hist += y
-    return k2scale, k2hist, k2
+
+    # Normally distributed components give a direction uniform on the sphere.
+    # ``np.random.random`` fills the unit *cube* with non-negative components, so
+    # both dipoles were confined to one octant: the angle between them averaged
+    # 34 degrees instead of 90 and never exceeded 90. The mean orientation factor
+    # must be 2/3 whatever the order parameters are; with cube sampling it fell
+    # to 0.46 at S2 = 0.8, and the distribution was far too narrow -- which
+    # understates exactly the distance uncertainty this function exists to
+    # quantify.
+    #
+    # Drawn as (n_samples, 2, 3) rather than two arrays: C order makes that the
+    # same sequence as alternating ``randn(3)`` draws inside a loop, so a seeded
+    # run reproduces the per-sample form exactly rather than merely in
+    # distribution.
+    draws = np.random.randn(n_samples, 2, 3)
+    d1 = draws[:, 0, :]
+    d2 = draws[:, 1, :]
+    n1 = np.linalg.norm(d1, axis=1)
+    n2 = np.linalg.norm(d2, axis=1)
+
+    # Assumption: connecting vector R_DA is along the x-axis (R_DA = [1,0,0])
+    delta = np.arccos(np.clip(np.sum(d1 * d2, axis=1) / (n1 * n2), -1.0, 1.0))
+    beta1 = np.arccos(np.clip(d1[:, 0] / n1, -1.0, 1.0))
+    beta2 = np.arccos(np.clip(d2[:, 0] / n2, -1.0, 1.0))
+
+    k2 = kappasq(delta=delta, sD2=sD2, sA2=sA2, beta1=beta1, beta2=beta2)
+    k2hist, _ = np.histogram(k2, bins=k2scale)
+    return k2scale, k2hist.astype(np.float64), k2
 
 
-@nb.jit(nopython=True)
 def kappa_distance(
         d1: np.array,
         d2: np.array,
@@ -437,13 +454,13 @@ def kappa_distance(
     1.0
     """
     # Donor dipole endpoints
-    d11 = d1[0]
-    d12 = d1[1]
-    d13 = d1[2]
+    d11 = d1[..., 0]
+    d12 = d1[..., 1]
+    d13 = d1[..., 2]
 
-    d21 = d2[0]
-    d22 = d2[1]
-    d23 = d2[2]
+    d21 = d2[..., 0]
+    d22 = d2[..., 1]
+    d23 = d2[..., 2]
 
     # Distance between donor endpoints
     dD21 = np.sqrt((d11 - d21) ** 2 + (d12 - d22) ** 2 + (d13 - d23) ** 2)
@@ -459,13 +476,13 @@ def kappa_distance(
     dM3 = d13 + dD21 * muD3 / 2.0
 
     # Acceptor dipole endpoints
-    a11 = a1[0]
-    a12 = a1[1]
-    a13 = a1[2]
+    a11 = a1[..., 0]
+    a12 = a1[..., 1]
+    a13 = a1[..., 2]
 
-    a21 = a2[0]
-    a22 = a2[1]
-    a23 = a2[2]
+    a21 = a2[..., 0]
+    a22 = a2[..., 1]
+    a23 = a2[..., 2]
 
     # Distance between acceptor endpoints
     dA21 = np.sqrt((a11 - a21) ** 2 + (a12 - a22) ** 2 + (a13 - a23) ** 2)
@@ -638,10 +655,21 @@ def calculate_kappa_distance(
 
     for i_frame in range(n_frames):
         try:
-            d, k = kappa_distance(
-                xyz[i_frame, aid1], xyz[i_frame, aid2],
-                xyz[i_frame, aia1], xyz[i_frame, aia2]
-            )
+            # A degenerate dipole divides by a zero separation. This used to be
+            # caught as a raised ``ZeroDivisionError``, which only worked while
+            # the kernel was numba-compiled -- ``nopython`` raises there, while
+            # NumPy's float division returns ``nan`` and warns. The NaN still
+            # reached the output either way, so the arrays stayed correct and
+            # only the log line silently stopped being written. Testing the
+            # result is what the caller actually means, and it does not depend
+            # on which layer does the arithmetic.
+            with np.errstate(invalid='ignore', divide='ignore'):
+                d, k = kappa_distance(
+                    xyz[i_frame, aid1], xyz[i_frame, aid2],
+                    xyz[i_frame, aia1], xyz[i_frame, aia2]
+                )
+            if not (np.isfinite(d) and np.isfinite(k)):
+                raise ValueError("degenerate dipole")
             ks[i_frame] = k
             ds[i_frame] = d
         except Exception:
@@ -649,7 +677,6 @@ def calculate_kappa_distance(
     return ds, ks
 
 
-@nb.jit(nopython=True)
 def kappasq(
         delta: float,
         sD2: float,

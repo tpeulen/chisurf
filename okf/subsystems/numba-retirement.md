@@ -10,7 +10,7 @@ timestamp: '2026-08-10T00:00:00Z'
 # Where to pick this up
 
 1. **The tracker is `test/numba_import_allowlist.txt`** and it only shrinks.
-   Every entry carries its route. **22 chisurf-owned files remain** of the 48 this work covers. ChiMOL's 11 are **excluded from the guard entirely** — the WebGPU port removes them on its own schedule, and listing them here only made this test fail nine times in one session with news about someone else's progress;
+   Every entry carries its route. **21 chisurf-owned files remain**, and **route `numpy` is now empty -- Phase 1 is done** of the 48 this work covers. ChiMOL's 11 are **excluded from the guard entirely** — the WebGPU port removes them on its own schedule, and listing them here only made this test fail nine times in one session with news about someone else's progress;
    `test/test_numba_seam.py` fails both on a new importer and on a stale entry,
    so the list cannot drift from the tree.
 2. **Route `tttrlib`: next is `plugins/fluorescence_decay/maxent_decay/core/solver.py`**
@@ -176,7 +176,38 @@ timestamp: '2026-08-10T00:00:00Z'
    folded this kernel's own `isfinite` guard away and sent `NaN` to bin `0`, a
    real bin at the left edge of the plot; and it bought nothing, since the body
    is comparisons and integer arithmetic.
-7. **A `tttrlib` route is a hypothesis, not a verdict — diff the maths first.**
+7. **`kappa2.py` closes Route 1, and blocking is what made it win.** All four
+   kernels are NumPy and the `k2` grids are **bit-exact**; the histograms differ
+   by `3e-14` relative, from summation order alone. Timings (median of 7):
+
+   | | numba | NumPy |
+   | --- | --- | --- |
+   | `kappasq_all(20000)` | 20.8 ms | **9.6 ms** |
+   | `kappasq_all_delta(step=0.25)` | 72.1 ms | **60.0 ms** |
+
+   `kappasq_all_delta` was **269.9 ms** written as one flat `(360, 1440)` grid —
+   *worse* than numba — and became 60 ms by **blocking the beta1 rows 32 at a
+   time**. `kappasq` allocates about a dozen temporaries the size of its input,
+   so the one-shot form streams ~4 MB through cache a dozen times over. That is
+   the same lesson as `linalg` from the other side: vectorising is necessary but
+   the working set still has to fit.
+
+   Two details worth not re-deriving:
+   - **The RNG order can be preserved exactly.** `np.random.randn(n, 2, 3)` in C
+     order is the same sequence as alternating `randn(3)` draws inside a loop,
+     so `kappasq_all` reproduces the per-sample result under a fixed seed rather
+     than only in distribution. (Parity must be checked against the *un-jitted*
+     original — numba's `np.random` is a separate stream.)
+   - **A caught `ZeroDivisionError` was load-bearing and is gone.**
+     `calculate_kappa_distance` logged a skipped frame by catching the exception
+     a degenerate dipole raises — which only worked while the kernel was
+     compiled, because `nopython` raises where NumPy returns `nan` and warns.
+     The NaN reached the output either way, so the arrays stayed right and
+     **only the log line silently stopped**. Now the result is tested for
+     finiteness, which is what the caller meant and does not depend on which
+     layer does the arithmetic. Watch for this shape elsewhere: numba raising on
+     `0.0/0.0` is a behavioural difference no parity test on values will catch.
+8. **A `tttrlib` route is a hypothesis, not a verdict — diff the maths first.**
    Two files routed to `tttrlib` turned out to be route `numpy`, because
    ChiSurf's version is *deliberately better than the C one* and delegating
    would have been a silent regression:
@@ -190,7 +221,7 @@ timestamp: '2026-08-10T00:00:00Z'
    under the decorator. So: read both implementations before delegating, and
    when they differ, work out *which* is right rather than assuming the
    compiled one is.
-8. **`_hdbscan.py` splits — measured, so do not re-derive.** The compiled
+9. **`_hdbscan.py` splits — measured, so do not re-derive.** The compiled
    kernel covers only the first two stages (`core_distances`,
    `mutual_reachability_mst`); `single_linkage`, `condense_tree` and
    `label_points` are **not** in the photon library. Timed on the *compiled*
@@ -206,7 +237,7 @@ timestamp: '2026-08-10T00:00:00Z'
    same reason, but **measure before delegating** — it is the hmmlearn
    replacement and is 1.1–18× faster per E-step, so a regression there is a
    visible loss.
-9. **`gopich_szabo.py` has a red test that is not the port's fault.**
+10. **`gopich_szabo.py` has a red test that is not the port's fault.**
    `test_no_exchange_reduces_to_a_static_mixture` returns `-inf` where
    `-3.665` is expected — `-inf` is the numba kernel's own numerical-failure
    sentinel. Check whether `tttrlib.GopichSzabo` gives the expected value
@@ -214,7 +245,7 @@ timestamp: '2026-08-10T00:00:00Z'
    [known-issues](../references/known-issues.md) with four unrelated
    `mfd_burst_roundtrip` failures, so the retirement's test runs are not read
    as having caused them.
-10. **ChiMOL is out of scope and out of the guard.** `test_numba_seam.py` skips
+11. **ChiMOL is out of scope and out of the guard.** `test_numba_seam.py` skips
    `chisurf/plugins/chimol/` via `_EXCLUDED_PREFIXES`, and the allow-list no
    longer names those files. They belong to the WebGPU port; when it lands
    them, nothing here needs touching.

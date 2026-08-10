@@ -1,6 +1,27 @@
 # Update Log
 
 ## 2026-08-10
+* **Route 1 is finished, and the last file needed blocking rather than
+  vectorising.** `anisotropy/kappa2.py`'s four kernels are NumPy; the `k2` grids
+  are **bit-exact** and the histograms agree to `3e-14` relative, from summation
+  order alone. Both are now *faster* than the compiled versions --
+  `kappasq_all(20000)` 20.8 to **9.6 ms**, `kappasq_all_delta(step=0.25)` 72.1 to
+  **60.0 ms** -- but the second was **269.9 ms** written as one flat
+  `(360, 1440)` grid, i.e. worse than numba, and only came right when the beta1
+  rows were **blocked 32 at a time**: `kappasq` allocates about a dozen
+  temporaries the size of its input, so the one-shot form streams ~4 MB through
+  cache a dozen times over. Taken with the `linalg` result, the pair is the
+  whole rule -- vectorising is necessary, and the working set still has to fit.
+  Two things recorded so they are not re-derived: `np.random.randn(n, 2, 3)` in C
+  order **is** the sequence of alternating `randn(3)` draws, so a seeded Monte
+  Carlo loop reproduces per-sample rather than merely in distribution; and
+  `calculate_kappa_distance` logged its skipped frames by catching the
+  `ZeroDivisionError` a degenerate dipole raises, which worked only while the
+  kernel was compiled -- `nopython` raises where NumPy returns `nan` and warns.
+  The NaN reached the output either way, so the arrays stayed correct and **only
+  the log line silently stopped being written**. It now tests the result for
+  finiteness. That shape is worth watching for: numba raising on `0.0/0.0` is a
+  behavioural difference that no parity test on values will catch.
 * **A numba file that was already dead, and one that measurement sent back.**
   ndxplorer's `utils/performance_optimizations.py` still carried a
   `try: import numba` whose `nb` and `_HAVE_NUMBA` were referenced nowhere, plus

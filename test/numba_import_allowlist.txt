@@ -29,8 +29,7 @@
 # See okf/subsystems/numba-retirement.md for the full routing, the measurements
 # behind it, and where to pick the work up.
 
-# ── numpy ────────────────────────────────────────────────────────────────────
-chisurf/core/fluorescence/anisotropy/kappa2.py
+# ── numpy: EMPTY. Route 1 is done; every remaining entry needs real work.
 
 # ── tttrlib (already shipping; delegate) ─────────────────────────────────────
 chisurf/core/fluorescence/burst/gopich_szabo.py
