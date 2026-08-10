@@ -4,7 +4,7 @@ prd: "93"
 title: "PRD-93: The clean four-repository split — tttrlib, imp.bff, imp-tricks, chisurf"
 description: The scope boundaries are settled and three of them are enforced by tests, but the code has not moved. This PRD is the ordered work to make the tree match the rule — cgdye out of imp-tricks, κ² consolidated in imp.bff, decay finished off, and chisurf's 38k-line fluorescence library migrating by attrition.
 status: in-progress
-phase: "stage 0 and stage 2 done (boundaries + guards; cgdye and the rotamer library are in imp.bff); stage 1 next"
+phase: "stages 0-2 done (boundaries, guards, cgdye + rotamer library, externals dropped, kappa-squared consolidated, IMP mandatory); stages 3-4 open"
 resource: okf/references/imp-ecosystem.md
 tags: [prd, scope, architecture, imp.bff, imp-tricks, tttrlib, migration]
 timestamp: '2026-08-10T00:00:00Z'
@@ -12,21 +12,49 @@ timestamp: '2026-08-10T00:00:00Z'
 
 # Where to pick this up
 
-**Stages 0 and 2 are done.** The boundaries are settled and written up in
-[references/imp-ecosystem](/references/imp-ecosystem.md); three of them are
-enforced by tests, each verified to *fail* on a deliberate violation. **cgdye
-now lives in imp.bff** (`imp.bff` `8fac573`, `imp-tricks` `34cf4de`) together
-with `fps.py` and the FRETpredict rotamer library, which was the open question
-and turned out to be **data**: 45 MB / 227 files now shipping as IMP module data
-at `imp.bff/data/rotamer_library`, reached through
-`IMP.bff.get_data_path("rotamer_library")` by every loader. Registry loads 34
-entries; IMP.bff tests 13/13; ChiSurf's FRET suite unchanged at 6 failed / 122
-passed.
+**Stages 0, 1 and 2 are done.** What remains is stage 3 (a measurement) and
+stage 4 (attrition, deliberately never a single move).
 
-Next: **stage 1**, entirely unblocked and mostly small, plus one item stage 2
-uncovered — cgdye's own externals (`Bio`, `MDAnalysis`, `click`, `numba`) are
-not yet declared or guarded, and IMP.bff's conda-forge runtime dependency list
-is a public contract.
+Done, with the commits:
+
+| | |
+|---|---|
+| boundaries settled, 3 rules enforced by tests | chisurf `789117879`, `1ec04bc24` |
+| cgdye + fps.py + 45 MB rotamer library into imp.bff | imp.bff `8fac573`, imp-tricks `34cf4de` |
+| cgdye's externals dropped to IMP + numpy + click | imp.bff `46f49c0`, `1ac2073` |
+| decay wrapper deprecated; 4 value classes fixed | imp.bff `1a14a22` |
+| κ² whole in imp.bff; PathMapHeader made a value | imp.bff `47a08b7`, chisurf `987b0d977` |
+| IMP mandatory in chisurf, declared in all 3 manifests | chisurf `c0a610e17` |
+| memory: AV PathMap leak, 8 operator leaks, 3 double-free hazards | imp.bff `5ae7716` |
+
+imp.bff `dev` is pushed to `Fluorescence-Tools/IMP.bff`; everything else is
+local.
+
+**Stage 3 — the AV duplication, ~2.4k lines.** Still in imp-tricks under
+`IMP/bff/`: `av` (1391 lines), `restraints` (469), `label` (344),
+`distance_metrics.py` (261), `polymer.py` (212), `distributions.py` (169).
+These are *additions*, so the add-never-replace guard passes and nothing is
+broken — but AV is structure, and structure is imp.bff's. The open question is
+not where it belongs but whether the Python `BasicAV`/`ACV` are a faster path
+to the same answer as the C++ `AV`/`PathMap` or a genuinely different one
+(point-cloud AV, accessible *contact* volume with trapped fraction). **Measure
+before moving.**
+
+**Stage 4 — chisurf's `core/fluorescence`, 38,384 lines.** Unchanged in size,
+and that is the plan: it moves by attrition, not by a migration. The rule binds
+new code now; existing code moves when it is already being touched. κ²'s two
+functions are the only thing that has left so far, and they left because they
+were touched.
+
+**Standing hazards, both bit during this work:**
+
+* Running `ctest` from the imp.bff *source* directory leaves `CMakeCache.txt`,
+  `CMakeFiles/` and `Testing/` there, and IMP refuses an in-source build. Build
+  and test from `imp/cmake-build-arm64`.
+* Two sessions committing in one chisurf worktree delete each other's new files:
+  a commit builds its tree from the *shared* index, so a file another session
+  committed but never added there is dropped by your next commit. Sync the
+  shared index after any isolated commit.
 
 # Why
 
