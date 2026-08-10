@@ -81,13 +81,27 @@ def test_the_decay_range_follows_the_data_not_everything_drawn():
 
     lo, hi = decay_ylim(data)
 
-    assert 10 ** lo == pytest.approx(0.5, rel=0.1)
-    assert 10 ** hi == pytest.approx(300.0, rel=0.1)
+    assert lo == pytest.approx(0.5)
+    assert hi == pytest.approx(300.0)
+
+
+def test_the_decay_range_is_in_counts_not_log10():
+    """A log axis converts for itself, so pre-logging the range logs it twice.
+
+    That is not hypothetical — it is what the burst tool did, and it put the
+    decay off the top of its own panel while the axis showed a few counts.
+    """
+    data = np.array([6.0, 2000.0])
+
+    lo, hi = decay_ylim(data)
+
+    assert hi > 1000.0, "a range in log10 would be about 3.8"
+    assert 1.0 < lo < 10.0
 
 
 def test_an_empty_decay_falls_back_rather_than_raising():
-    assert decay_ylim(np.zeros(5)) == (-1.0, 5.0)
-    assert decay_ylim(np.array([np.nan, -3.0])) == (-1.0, 5.0)
+    assert decay_ylim(np.zeros(5)) == (0.1, 1.0e5)
+    assert decay_ylim(np.array([np.nan, -3.0])) == (0.1, 1.0e5)
 
 
 def test_one_catastrophic_residual_does_not_set_the_scale():

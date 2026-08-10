@@ -26,7 +26,6 @@ Nothing here imports Qt. The widget that draws it is
 from __future__ import annotations
 
 import dataclasses
-import math
 
 import numpy as np
 
@@ -127,13 +126,18 @@ def weighted_residuals(data, model):
     return residuals
 
 
-def decay_ylim(data, *, fallback=(-1.0, 5.0)):
-    """Return ``(lo, hi)`` **log10** limits pinned to the data's own range.
+def decay_ylim(data, *, fallback=(0.1, 1.0e5)):
+    """Return ``(lo, hi)`` limits **in counts**, pinned to the data's own range.
 
     Anchoring to the data rather than to everything drawn is what keeps the
     panel readable when the model or the scaled background has run away: an
     auto-ranged log axis will happily show 1e-277 to 1e27 and reduce the decay
     to a flat line at the top.
+
+    **Counts, not log10.** ``chiplot``'s ``set_ylim`` takes data units on every
+    axis and does the log conversion itself, so handing it log10 values logs
+    them twice and produces a view a few counts high — which is what the burst
+    tool was doing, and why the decay sat off the top of its own panel.
 
     Parameters
     ----------
@@ -145,15 +149,15 @@ def decay_ylim(data, *, fallback=(-1.0, 5.0)):
     Returns
     -------
     tuple of float
-        Limits for a log-scaled axis.
+        Limits in counts, for an axis that may be log-scaled.
     """
     values = np.asarray(data, dtype=float)
     values = values[np.isfinite(values) & (values > 0)]
     if not values.size:
         return fallback
-    lo = math.log10(max(float(values.min()) * 0.5, 1e-2))
-    hi = math.log10(float(values.max()) * 3.0)
-    return (lo, hi if hi > lo else lo + 1.0)
+    lo = max(float(values.min()) * 0.5, 1e-2)
+    hi = float(values.max()) * 3.0
+    return (lo, hi if hi > lo else lo * 10.0)
 
 
 def residual_ylim(residuals, *, minimum: float = 5.0, percentile: float = 99.0):
@@ -199,8 +203,10 @@ class DecayCurves:
         statement the fit did not make.
     residuals : numpy.ndarray
         Weighted residuals over the same window.
-    decay_ylim, residual_ylim : tuple of float
-        Pinned ranges for the two panels.
+    decay_ylim : tuple of float
+        Pinned range for the decay panel, **in counts**.
+    residual_ylim : tuple of float
+        Pinned symmetric band for the residual panel.
     diverged : bool
         Whether the model was clipped for display.
     """
@@ -211,7 +217,7 @@ class DecayCurves:
     residuals: np.ndarray
     irf: np.ndarray | None = None
     background: np.ndarray | None = None
-    decay_ylim: tuple = (-1.0, 5.0)
+    decay_ylim: tuple = (0.1, 1.0e5)
     residual_ylim: tuple = (-5.0, 5.0)
     diverged: bool = False
 
