@@ -10,7 +10,7 @@ timestamp: '2026-08-10T00:00:00Z'
 # Where to pick this up
 
 1. **The tracker is `test/numba_import_allowlist.txt`** and it only shrinks.
-   Every entry carries its route. **21 chisurf-owned files remain**, and **route `numpy` is now empty -- Phase 1 is done** of the 48 this work covers. ChiMOL's 11 are **excluded from the guard entirely** — the WebGPU port removes them on its own schedule, and listing them here only made this test fail nine times in one session with news about someone else's progress;
+   Every entry carries its route. **20 chisurf-owned files remain**, and **route `numpy` is now empty -- Phase 1 is done** of the 48 this work covers. ChiMOL's 11 are **excluded from the guard entirely** — the WebGPU port removes them on its own schedule, and listing them here only made this test fail nine times in one session with news about someone else's progress;
    `test/test_numba_seam.py` fails both on a new importer and on a stale entry,
    so the list cannot drift from the tree.
 2. **Route `tttrlib`: next is `plugins/fluorescence_decay/maxent_decay/core/solver.py`**
@@ -142,8 +142,8 @@ timestamp: '2026-08-10T00:00:00Z'
    `plugins/modelling/fret/test/test_examples.py` (olga example JSON, AVs on
    PDB, project save/load, CLI info, FastAPI endpoints), verified identical with
    `HEAD`'s file swapped back in.
-6. **ndxplorer: one file was already dead, the other is re-routed to `tttr-c`
-   on measurement.** `utils/performance_optimizations.py` kept a
+6. **ndxplorer is numba-free, and both files came off the list without a
+   kernel being ported.** `utils/performance_optimizations.py` kept a
    `try: import numba` whose `nb` and `_HAVE_NUMBA` were referenced nowhere, plus
    `compute_histogram1d_adaptive` / `Histogram1DComputation` with **zero callers**
    and a `used_numba` field hard-coded `False`. All deleted.
@@ -162,9 +162,21 @@ timestamp: '2026-08-10T00:00:00Z'
    now, together, after checking neither has a caller in either repository.
    **Grep the file you are editing, not only the rest of the tree.**
 
-   `utils/vectorized_ops.py::digitize_parallel` **stays on numba for now** —
-   route changed from `numpy` to `tttr-c`. Measured, 2,000,000 points, so this
-   does not need re-deriving:
+   `utils/vectorized_ops.py::digitize_parallel` is **deleted**, not ported —
+   and the route I first gave it was wrong. I re-routed it `numpy` → `tttr-c` to
+   protect "ndxplorer's interactive redraw path", which I never checked: grepping
+   for callers found **none anywhere in either repository except the function's
+   own tests**. Nothing in ndxplorer digitizes at all; binning happens inside
+   `utils/fast_histogram`, which is tttrlib's C++ fill. The accelerator was
+   carrying a function the application never called.
+
+   **That is the same mistake twice in one file** — asserting a caller
+   relationship from a grep that excluded the place the caller actually was, then
+   from no grep at all. Both times the wrong answer was the comfortable one
+   (delete it / keep it fast). Check callers before routing, not after.
+
+   The measurement is kept in the source as a comment so the kernel is not
+   rebuilt on the same reasoning. 2,000,000 points:
 
    | | 64 bins | 512 bins |
    | --- | --- | --- |
@@ -181,15 +193,18 @@ timestamp: '2026-08-10T00:00:00Z'
    goes. This is ndxplorer's interactive redraw path (2 M points), so 4-10× is
    not affordable.
 
-   **tttrlib has no digitize**: `dir(tttrlib)` offers `histogram*`,
-   `bincount1D`, `make_bin_edges_double` — all of which *count*, none of which
-   returns a per-point bin index. The kernel to add is exactly the loop that is
-   there now: parallel binary search over increasing edges returning
-   `int64`, `0` below the first edge and `len(bins)` above the last one and for
-   a `NaN`. **Not `fastmath`** — the flag asserts no operand is a `NaN`, which
-   folded this kernel's own `isfinite` guard away and sent `NaN` to bin `0`, a
-   real bin at the left edge of the plot; and it bought nothing, since the body
-   is comparisons and integer arithmetic.
+   tttrlib has no digitize to delegate to — `histogram*`, `bincount1D` and
+   `make_bin_edges_double` all *count*, none returns a per-point bin index — but
+   none is needed: the binning ndxplorer actually does happens inside the
+   histogram. **No new compiled kernel is required, and none should be written.**
+
+   **What is left is a lie to the user, not dead code.** ndxplorer's settings
+   dialog still offers a `Use Numba JIT Compilation` checkbox, backed by
+   `NDXPLORER_USE_NUMBA` and a `use_numba` config field, and
+   `fast_histogram` still takes `use_numba` parameters it documents as "accepted
+   and ignored". Removing a dialog control needs the before/after screenshot pair
+   this project requires, with the *before* captured first — recorded with the
+   full inventory in [known-issues](../references/known-issues.md).
 7. **`kappa2.py` closes Route 1, and blocking is what made it win.** All four
    kernels are NumPy and the `k2` grids are **bit-exact**; the histograms differ
    by `3e-14` relative, from summation order alone. Timings (median of 7):

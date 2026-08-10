@@ -1,223 +1,38 @@
-## A simulated molecule emits 500× more photons when it has neighbours
+## A simulated molecule's photon yield depends on its *index*, not its physics
 
-**Found 2026-08-10** while building a polarisation-resolved mixture as a test
-set for segmentation and region-wise MLE ([PRD-92](/prds/prd-92.md)). The
-fixture is blocked on it: per-blob photon counts that vary by 500× for identical
-settings would make a test set that looks reasonable and encodes nonsense.
+**Found 2026-08-10** while building the mixture test set for segmentation and
+region-wise MLE ([PRD-92](/prds/prd-92.md)).
 
-Measured with `simulate_molecule_mixture` (tttrlib `SimEngine`, 48×48 scan,
-`dwell = 0.6`, `psf_w0 = 0.5`, two channels):
+In tttrlib's `SimEngine`, the photons a fluorophore emits are a fixed function
+of the order it was added to the system. Measured with identical species,
+identical brightness and identical lifetimes:
 
-* **one molecule at a time**, swept over a 5×5 grid of positions:
-  **20–45 photons**, essentially uniform — position does not matter;
-* **four molecules together** at `(12,12)`, `(34,14)`, `(18,34)`, `(36,36)`:
-  **20 / 1411 / 16406 / 10216**. Three of them emit 50–500× what the same
-  molecule emits alone, and the photons land *at* the molecule (a 7×7 patch
-  captures them), so this is not misattribution to the wrong pixel.
+| index | 0 | 1 | 2 | 3 | 4 | 5 |
+|---|---|---|---|---|---|---|
+| photons | 659 | 32,336 | 169,099 | 97,421 | 473 | 2,947 |
 
-Ruled out, each by measurement rather than by reasoning:
+The numbers do not move when the molecules are placed anywhere else on the
+grid, and adding more molecules extends the sequence without changing the
+earlier entries — `n=2` gives `[659, 32336]`, `n=6` gives the whole row above.
+A molecule measured **alone** yields 20–45 photons wherever it is put, so the
+index is doing all the work.
 
-* **the lifetime** — identical counts for `τ = 2.0 ns` everywhere and for a
-  1.0 / 3.6 / 2.2 / 0.6 mixture;
-* **the species layout** — one shared species with four fluorophores pointing at
-  it gives the same numbers as one species per blob;
-* **`independent_molecules`** — `True`, `False` and the default are identical;
-* **the excitation PSF** — widening `psf_w0` from 0.3 to 0.7 scales all four by
-  about 2.3× and leaves the ratios untouched.
+Ruled out by measurement rather than by reasoning: the lifetime (a uniform-τ
+field gives the same row as a mixed one), the species layout (one shared
+species with four fluorophores equals one species each), `independent_molecules`
+(`True`/`False`/default identical), and the excitation PSF (widening it 2.3×
+scales every entry and leaves the ratios alone). The photons land *at* the
+molecule, so this is not misattribution to the wrong pixel.
 
-So the yield depends on *how many other molecules are in the system*, in a way
-that is not the optics and not the photophysics. The remaining suspects are in
-the engine's per-molecule activation and coasting logic
-(`active_margin`, `coast_safety`, `min_coast_windows`, `per_molecule_skip`,
-`focus_threshold`), which decide how many integration windows each molecule is
-alive for.
+**Compensated, visibly, in one place.** `test/data/mixture/make_mixture.py`
+scales each blob's brightness by the measured per-index yield, which is linear
+and exact (60294 / 59958 / 64110 / 74950 photons for a target of 60000). It is
+written in the fixture generator rather than inside the simulator so that
+deleting it is a one-line change once the engine is fixed — and so that nobody
+reads the even test field as evidence the simulator produces one.
 
-**Not worked around.** The obvious workaround — tuning per-blob `brightness`
-until the field looks even — would bake an unexplained calibration into a
-fixture and hide the defect behind it. `simulate_clsm_molecules` (one channel,
-two molecules) is affected in principle too; its existing test survives because
-it only asserts that both molecules are *found*, not how bright they are.
-
-Fix belongs in tttrlib's `SimEngine`.
-
-## `pixi` cannot solve the default environment: `wgpu` is named `wgpu-py` on conda-forge
-
-**Found 2026-08-10** while rebuilding the photon library. Every `pixi run`
-against the default environment fails before doing anything:
-
-```
-× failed to solve requirements of environment 'default' for platform 'osx-arm64'
-╰─▶ Cannot solve the request because of: No candidates were found for wgpu *.
-```
-
-So `pixi run build-extensions`, `pixi run test`, `pixi run chisurf` — **every
-task** — are unavailable, and a rebuild has to be driven by hand through
-`build_tools/build_tttrlib.py`, which is how the `CONDA_PREFIX` / HDF5 mishap
-below happened.
-
-**The cause is a name, not a missing package.** `pixi.toml:78` declares
-`wgpu = "*"` under `[dependencies]`, i.e. as a conda package. conda-forge ships
-it as **`wgpu-py`** — the *import* name is `wgpu`, the *package* name is not:
-
-```
-$ conda search -c conda-forge wgpu
-wgpu-py    0.32.0  pyh7428d3b_0  conda-forge      # note the name
-$ conda search -c conda-forge rendercanvas
-rendercanvas   2.7.2  pyhd8ed1ab_0  conda-forge   # this one is fine as declared
-```
-
-`rendercanvas` (`pixi.toml:79`) resolves as declared and is not the problem.
-
-**Two candidate fixes**, for whoever owns the chigame/WebGPU work:
-
-1. Rename the conda dependency to `wgpu-py = "*"`. Keeps it a conda package,
-   which is what the surrounding block intends.
-2. Move `wgpu` to `[pypi-dependencies]` beside `latexify-py` (`pixi.toml:110`),
-   where the file already keeps "PyPI-only runtime deps".
-
-(1) is almost certainly right — the package *does* exist on conda-forge, so the
-comment above the entry ("no conda package exists") would not apply.
-
-The declarations were added deliberately and correctly in intent —
-`pyproject.toml` lists `wgpu`, which is right there because pip resolves the
-PyPI name. Only the conda spelling is wrong.
-
-## Five red tests in `test/fluorescence`, unrelated to what found them
-
-**Found 2026-08-10** while porting `chisurf/core/fluorescence/general.py` off
-numba. They fail identically with the pre-change file in place — verified by
-swapping `git show HEAD:...general.py` in, re-running, and restoring — so they
-are **not** caused by that work, and fixing them inside it would have made an
-unrelated change unreviewable.
-
-* `test_mfd_burst_roundtrip.py` — all four tests die at
-  `chisurf/core/fluorescence/mfd/prepare.py:491` with
-  `FileNotFoundError: no .bur tables under <tmpdir>/burst-pipeline0`. The
-  pipeline the fixture runs produces no `.bur` output at all, so every
-  assertion downstream of it is untested rather than passing. Whatever changed
-  in the burst writer, the reader is reporting it correctly; the fixture is the
-  thing to look at first.
-* ~~`test_gopich_szabo.py::test_no_exchange_reduces_to_a_static_mixture`~~ —
-  **fixed 2026-08-10.** It was not the numba kernel: the compiled
-  `GopichSzabo.set_scheme` returns False for an all-zero rate matrix and the
-  delegation turned that setup failure into `-inf`, i.e. "impossible model",
-  for exactly the no-exchange limit a dynamic fit is compared against. The
-  in-tree path computes it correctly (-3.6651629274966204). A rejected scheme
-  now falls through instead of answering `-inf`.
-  **Filed in the photon library** (`BUGS.md`, "set_scheme rejects any
-  disconnected kinetic scheme") — and it is broader than the zero matrix: any
-  scheme with a repeated zero eigenvalue is refused, including a three-state
-  model with one non-exchanging state. It must be fixed there, not here; the
-  ChiSurf fall-through logs a warning naming the defect so it cannot quietly
-  become permanent, and the warning stops once the library accepts the scheme.
-
-Two in `traj_remove_clashes` -- `test_save_clash_free_drops_clashing_frames`
-and `test_kept_frames_keep_their_source_times` -- fail at HEAD as well. (A
-third in that file, `test_below_min_distance_kernel`, failed at HEAD and now
-passes: the numba kernel could not type-infer its own `atom_list` ternary, so
-the vectorised replacement fixed it.)
-
-Three more, found the same way and with the same verdict:
-`test/fitting/test_fit_state.py::test_fret_gaussian_model_get_set_state_preserves_gaussians`,
-`test/fitting/test_pcf_experiment.py::test_pcf_config_block_present` and
-`test/models/test_detector_setups.py::test_a_missing_setups_file_never_blocks_a_headless_run`
-(the last fails in isolation too, so it is not test-order contamination).
-
-None of these is a regression from the numba retirement, and none should be
-counted as one when that work reports its test results.
-
-## Stale generated plugin reference pages after the `sm_image_mle` rename
-
-**Found 2026-08-10** while adding a guide, by running
-`chisurf/plugins/core/help/test/test_docs_crosslinks.py`. Three of its
-assertions fail, and **none of them is caused by the change that found them**:
-
-* `docs/reference/plugins/sm_image_mle.md` describes a plugin that no longer
-  exists — `chisurf/plugins/microscopy/sm_image_mle/` is gone, renamed to
-  `region_mle`. The page is **generated**
-  (`generator: build_tools/docs/generate_plugin_docs.py`) and no
-  `region_mle.md` has been generated to replace it, so the reference section
-  documents a plugin nobody can open and omits the one that exists.
-* `docs/reference/plugins/region_properties.md` points at the same dead path.
-* `docs/guides/64_notebooks.md` links to no concept page, and
-  `docs/concepts/deconvolution.md` trips the third assertion.
-
-**The fix is one command** — `pixi run -e docs docs-plugins` — but it rewrites
-every plugin reference page at once, which cannot land cleanly inside an
-unrelated change. Whoever owns the `region_mle` rename should run it and delete
-the stale page; the two link failures want a concept cross-reference adding.
-
-## RESOLVED 2026-08-10 — importing chisurf broke every subprocess that draws an icon
-
-**The symptom** was a bus error that made no sense: constructing
-`CodeEditorWindow` in a subprocess crashed *deterministically* when the parent
-was pytest and *never* when the same snippet was run from a shell. Not memory,
-not the disk, not `QT_PLUGIN_PATH` — each of those was tested and cleared.
-
-**The cause** was `chisurf/core/settings/env_bootstrap.py`, imported by
-`chisurf.core.settings` and therefore by everything: on macOS it prepended the
-environment's `lib` to **`DYLD_LIBRARY_PATH`** as well as to
-`DYLD_FALLBACK_LIBRARY_PATH`. Those two are not variants of one idea:
-
-- `DYLD_FALLBACK_LIBRARY_PATH` is consulted *after* normal resolution fails, so
-  it can rescue a library that would not be found and cannot displace one that
-  would;
-- `DYLD_LIBRARY_PATH` is searched *first*, so it overrides what each extension
-  module was linked against.
-
-dyld reads both once, at process start. So setting `DYLD_LIBRARY_PATH` did
-nothing for the process that set it — and silently re-pointed library
-resolution for **every child it spawned**. In such a child, Qt's font engine
-binds to the wrong library and the first `create_text_icon` call bus-errors
-(`chisurf/plugins/icon_utils.py`), taking down anything that draws an emoji
-icon: a spawned tool, a headless render, `csc`, a per-tool test.
-
-**Fixed** by keeping only the fallback variable. Verified: the icon renders with
-neither variable and with the fallback alone, and crashes with
-`DYLD_LIBRARY_PATH` — and `test/fio` + `test/core` still pass 1629 tests with
-zero loader errors afterwards, so nothing depended on the override. Guarded by
-`test/test_env_bootstrap_dyld.py`.
-
-**Not** the cause of the separate `test/gui` crash below: that suite still
-segfaults without either variable.
-
-## Every plugin GUI tool constructs, except mmfdb_admin, which blocks
-
-**2026-08-10.** Measured by building all 114 tools the manifests declare, each
-in its own process: **111 construct, 1 blocks, 2 failed** (both since fixed —
-see below). None opens a metadata-store connection while constructing, so
-PRD-23's read-only-construction rule holds everywhere else.
-
-**`mmfdb_admin` performs four blocking RPCs while building** — `mmfdb.status`
-twice (its Overview panel, loaded eagerly by the navigation shell),
-`mmfdb.users.list` (the admin gate in `_verify_admin_access`) and
-`mmfdb.security.auth.login` (`_ensure_authenticated`), both called directly
-from `__init__`. With no server up each waits out the 5 s client timeout, so
-opening the tool freezes for ~20 s and looks like a hang.
-
-Not fixed here, deliberately: `_verify_admin_access` is a permission gate, and
-deciding where it should fire when the tool is opened without a server is a
-design call inside a security-sensitive tool, not a mechanical deferral. The
-shape of the fix is the one used for `ProjectBrowserTool` — post the work
-instead of doing it in `__init__` — plus a lazy Overview panel.
-
-Tracked by `BLOCKING` in `test/gui/test_every_tool_constructs.py`; that test
-fails if the tool starts constructing cleanly, so the entry cannot outlive the
-defect.
-
-**Two tools segfault while constructing** — `psf_calculator` (in
-`PSFComputation.run`, the vectorial PSF scheduled on a `QThreadPool` worker from
-`__init__`) and `lightpath_simulator` (aborts, then segfaults). Both reproduce
-standalone, not only under pytest, and both start background work during
-construction — the side effect the read-only-construction rule forbids, and the
-likely mechanism: the worker outlives the objects it touches. Tracked by
-`CRASHING` in the same test.
-
-**Fixed in passing:** `acq` (SM Acquisition) crashed with
-`AttributeError: 'NoneType' object has no attribute '_acquisition_manager'` —
-it keyed "are we inside chisurf?" on `import chisurf` succeeding, which it
-always does, rather than on `chisurf.cs` existing, which it does not until the
-main window is built.
+Fix belongs in tttrlib's `SimEngine`, in whatever indexes per-molecule
+excitation or RNG streams.
 
 ## A simulated photon stream cannot be persisted, and the HDF5 path aborts the process
 
@@ -3597,3 +3412,38 @@ that molecular modelling has migrated to imp-tricks. Adding nucleotide
 templates here would be work thrown away at that port. **Check whether
 `IMP.cgmol` already handles nucleic acids before writing any**; if it does, this
 closes by deletion.
+
+## ndxplorer: a settings checkbox offers "Use Numba JIT Compilation", and numba is gone
+
+**2026-08-10.** ndxplorer no longer imports numba anywhere — the histogram
+kernels, the gate kernels and the digitize kernel have all been removed, the last
+of them in `c7b1523`. What is left is the **user-facing surface that still offers
+to configure it**:
+
+| where | what |
+| --- | --- |
+| `ui/performance_settings_dialog.py:117` | a `QCheckBox("Use Numba JIT Compilation")` with a tooltip, wired to load and save |
+| `utils/performance_config.py:45,57` | `use_numba: bool = True` and `NDXPLORER_USE_NUMBA` |
+| `ui/performance_settings_dialog.py:330` | writes `NDXPLORER_USE_NUMBA` back to the environment |
+| `utils/fast_histogram.py:116,163` | `use_numba` parameters, documented as "accepted and ignored" |
+| `utils/performance.py:178,199,325` | three call sites passing `use_numba=True` |
+
+This is worse than dead code: a checkbox that claims to control acceleration and
+controls nothing is a **statement to the user that is false**, and someone
+debugging a slow session will toggle it and conclude the setting does not help
+rather than that it does not exist.
+
+Not fixed in the same change for one reason, stated so it does not look like an
+oversight: removing a control from a dialog is a GUI change, and this project
+requires a **before/after pair of headless screenshots read by the agent**, judged
+on control inventory (`okf/workflows/testing.md`). The before-half has to be
+captured *before* the checkbox is deleted or the baseline is unrecoverable. That
+is a bounded job, not a large one — grab `PerformanceSettingsDialog` offscreen,
+delete the checkbox and the config field together (they cannot go separately: the
+dialog reads `config.use_numba`), drop the three `use_numba=True` call sites and
+the two ignored parameters, then grab it again and confirm every other control
+survived.
+
+`use_fast_histogram`, `parallel_histogram` and `histogram_threads` sit in the same
+config and are worth checking at the same time — `parallel_histogram` in
+particular, since the thread pool it named was removed in `db52784`.
