@@ -58,8 +58,32 @@ Next, in order:
    existing headless CLI can run commands but not build a `Scene`. A null renderer
    plus a `renderer_factory` argument fixes it — not a refactor. Gate it with a
    test asserting the Qt path and `SceneSink` produce bit-identical arrays.
-3. **Phase 2 — the desktop WGSL renderer**, feature by feature, each proven by a
-   screenshot pair against the captured GL baseline.
+3. 🔄 **Phase 2 — in progress.** Landed: `renderer/pack.py` (`79b3d6811`) and
+   `renderer/wgsl/mesh.wgsl` + `renderer/wgpu_backend.py` (`128cc86ab`). The
+   WGSL renderer draws 148L cartoon on Metal and **the fold, orientation and
+   cartoon geometry match the baseline**, so replaying `set_view` across backends
+   works.
+
+   **Next, and it must come before any parity claim: build the comparison
+   harness.** The GL `view` grab is 1278 px wide and contains the sequence strip
+   across the top and the object panel down the right, so the molecule column is
+   *not* the whole image — an IoU or a pixel diff taken against it measures the
+   crop, not the shading. I measured 0.362 and 0.277 for two rotation
+   conventions and neither number means anything until the scene column's
+   offset and size are read from the renderer rather than guessed. The manifest
+   already records the camera; it should also record the scene-column rectangle.
+
+   **Then: explain the colour difference.** Side by side, the GL baseline shows
+   the `spectrum count` rainbow running blue→green→yellow→orange→red across the
+   fold while the WGSL image puts blue on one side and orange on the other with a
+   grey wash between. Candidates, none yet tested: vertex colours read at the
+   wrong offset in the interleaved buffer; the environment/ambient terms washing
+   saturation out; or a genuine handedness difference. Transposing the rotation
+   made the silhouette overlap *worse*, so it is probably not that.
+
+   Then the rest of the feature list, each proven by a screenshot pair:
+   impostor spheres and capped cylinders (prototyped in Phase 0), transparency,
+   `two_sided_lighting`, depth cue, silhouettes, labels.
 
 Open questions deliberately not yet answered: whether `rendercanvas`'s **`pyodide`
 backend** (it exists — see below) collapses the two drivers into one; and how the
