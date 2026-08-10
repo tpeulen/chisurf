@@ -13,12 +13,24 @@ timestamp: '2026-08-10T00:00:00Z'
    Every entry carries its route. **47 of the original 59 files remain**;
    `test/test_numba_seam.py` fails both on a new importer and on a stale entry,
    so the list cannot drift from the tree.
-2. **Route `tttrlib` is under way.** `core/fluorescence/tcspc/convolve.py` is
-   done — and deleting its numba twin *fixed a bug*, see below. **Next are the
-   LLTF duplicates** (`plugins/fluorescence_decay/lltf/core/{convolve,scaling}.py`,
-   5 kernels), which are copies of the very functions just deleted: they should
-   import from `chisurf.core.fluorescence.tcspc` rather than be ported, and they
-   carry the same final-channel defect until they do.
+2. **Route `tttrlib`: next is `plugins/fluorescence_decay/maxent_decay/core/solver.py`**
+   (3 kernels) — the strongest remaining candidate, already checked. Its own
+   docstrings call them "Numba port of … from `fsconv2.c`", which is the same C
+   source the photon library compiles, and the signatures line up exactly:
+
+   | local | tttrlib |
+   | --- | --- |
+   | `_fconv_single_shot(lampsh, dt, amps, taus, stop)` | `tcspc_fconv_single_shot(lampsh, dt, amps, taus, stop)` |
+   | `_fconv_periodic(lampsh, dt, amps, taus, start, stop, period)` | `tcspc_fconv_periodic(lampsh, dt, amps, taus, start, stop, period)` |
+   | `_shift_lamp(lamp, ts_channels) -> lampsh` | `shift_lamp(lamp, lampsh, ts, out_value)` (out-parameter form) |
+
+   **Still diff the maths before switching** — that rule was earned three times
+   over (see below), and `_fconv_periodic` has a `while lampsh[lamp_start] == 0`
+   scan for the first non-zero IRF channel that the C version may or may not
+   share. Call sites: `solver.py:387, 392, 402, 432, 434, 488, 498, 508`.
+
+   Done already: `tcspc/convolve.py` (deleting its numba twin *fixed* a bug) and
+   the LLTF copies, which are now re-exports.
    Verified present in tttrlib 0.27.0 — do not re-derive: `fconv`,
    `fconv_per_cs`, `sconv`, `fconv_ref`, `shift_lamp`, `rescale_w_bg`,
    `rescale_w`, `add_pile_up_to_model`, `histogram1D_double`,
@@ -161,6 +173,20 @@ costs — enough to credit an unrelated change with a fivefold speedup. Attribut
 any apparent movement by swapping the old file back in and re-measuring in the
 same session; the general.py port did that and came out at 0.637 s vs 0.636 s
 with byte-identical evaluation counts.
+
+## Open upstream: the Gopich-Szabo scheme rejection
+
+Filed in the photon library's `BUGS.md` (commit `511d654a7`) and **owned by
+another agent** — do not fix it here. `GopichSzabo::set_scheme` refuses any
+scheme with a repeated zero eigenvalue: the all-zero no-exchange limit, or any
+scheme with a state that does not exchange with the rest (a plain three-state
+model with one isolated state is enough).
+
+**What to check when it lands:** the warning in
+`gopich_szabo.log_likelihood` stops firing; `test_gopich_szabo.py` passes
+through the *compiled* path rather than the fall-through; and the
+[known-issues](../references/known-issues.md) entry can close. The fall-through
+itself stays either way — a setup failure is not an impossible model.
 
 ## A defect in the photon library is filed there, not worked around here
 
