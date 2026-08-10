@@ -3447,3 +3447,26 @@ survived.
 `use_fast_histogram`, `parallel_histogram` and `histogram_threads` sit in the same
 config and are worth checking at the same time — `parallel_histogram` in
 particular, since the thread pool it named was removed in `db52784`.
+
+## `pixi.toml` requires `wgpu`, and the lock file has never contained it
+
+**2026-08-10.** Re-recorded after being removed from this file without a fix —
+the entry went, the condition did not.
+
+* `pixi.toml:78` declares `wgpu = "*"` as a conda dependency.
+* `grep -c wgpu pixi.lock` returns **0**. The lock has no such package at all,
+  so it predates that line and is stale against the manifest.
+* `pixi run --frozen <task>` therefore still works — it ignores the manifest and
+  uses the lock as-is. **Plain `pixi run` re-solves**, which is where this bites.
+
+On conda-forge the package providing the `wgpu` Python module is named
+**`wgpu-py`**; `wgpu` is a different (Rust) package. If the solve is failing,
+that rename is the reason and the fix is one word in `pixi.toml`. Confirm with a
+full `pixi install` before changing it — this entry deliberately stops short of
+claiming the solve fails, because that was not re-measured here, only that the
+lock cannot satisfy the manifest.
+
+It matters out of proportion to its size: `pixi` is the single sanctioned
+environment and build tool, every CI workflow uses it, and `build-extensions` is
+a `depends-on` of every `test*` task. A broken default solve takes the whole
+sanctioned test path with it, and `--frozen` masks that locally.
