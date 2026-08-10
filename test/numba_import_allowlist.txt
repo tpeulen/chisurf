@@ -31,8 +31,6 @@
 
 # ── numpy ────────────────────────────────────────────────────────────────────
 chisurf/core/fluorescence/anisotropy/kappa2.py
-modules/ndxplorer/ndxplorer/utils/performance_optimizations.py
-modules/ndxplorer/ndxplorer/utils/vectorized_ops.py
 
 # ── tttrlib (already shipping; delegate) ─────────────────────────────────────
 chisurf/core/fluorescence/burst/gopich_szabo.py
@@ -61,3 +59,4 @@ chisurf/core/roi/segmentation.py
 chisurf/plugins/burst/burst_h2mm/core/h2mm.py
 chisurf/plugins/fcs/flc_2d/api.py
 chisurf/plugins/fcs/flc_2d/core.py
+modules/ndxplorer/ndxplorer/utils/vectorized_ops.py

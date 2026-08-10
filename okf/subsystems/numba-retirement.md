@@ -10,7 +10,7 @@ timestamp: '2026-08-10T00:00:00Z'
 # Where to pick this up
 
 1. **The tracker is `test/numba_import_allowlist.txt`** and it only shrinks.
-   Every entry carries its route. **23 chisurf-owned files remain** of the 48 this work covers. ChiMOL's 11 are **excluded from the guard entirely** — the WebGPU port removes them on its own schedule, and listing them here only made this test fail nine times in one session with news about someone else's progress;
+   Every entry carries its route. **22 chisurf-owned files remain** of the 48 this work covers. ChiMOL's 11 are **excluded from the guard entirely** — the WebGPU port removes them on its own schedule, and listing them here only made this test fail nine times in one session with news about someone else's progress;
    `test/test_numba_seam.py` fails both on a new importer and on a stale entry,
    so the list cannot drift from the tree.
 2. **Route `tttrlib`: next is `plugins/fluorescence_decay/maxent_decay/core/solver.py`**
@@ -142,7 +142,41 @@ timestamp: '2026-08-10T00:00:00Z'
    `plugins/modelling/fret/test/test_examples.py` (olga example JSON, AVs on
    PDB, project save/load, CLI info, FastAPI endpoints), verified identical with
    `HEAD`'s file swapped back in.
-6. **A `tttrlib` route is a hypothesis, not a verdict — diff the maths first.**
+6. **ndxplorer: one file was already dead, the other is re-routed to `tttr-c`
+   on measurement.** `utils/performance_optimizations.py` kept a
+   `try: import numba` whose `nb` and `_HAVE_NUMBA` were referenced nowhere, plus
+   `compute_histogram1d_adaptive` / `Histogram1DComputation` with **zero callers**
+   and a `used_numba` field hard-coded `False`. All deleted.
+
+   `utils/vectorized_ops.py::digitize_parallel` **stays on numba for now** —
+   route changed from `numpy` to `tttr-c`. Measured, 2,000,000 points, so this
+   does not need re-deriving:
+
+   | | 64 bins | 512 bins |
+   | --- | --- | --- |
+   | numba `prange` binary search | **7.2 ms** | **20.1 ms** |
+   | uniform-bin arithmetic + rounding correction | 68.9 ms | 88.3 ms |
+   | `np.searchsorted(side='right')` | 111.4 ms | 275.5 ms |
+   | `np.digitize` | 168.5 ms | 139.4 ms |
+
+   All four agree **exactly**, including `NaN` and `±inf` (`np.digitize` on
+   increasing bins *is* `searchsorted(side='right')`). The uniform-bin
+   arithmetic path is exact too — verified over 400 randomised trials that place
+   points on every bin edge and on both `nextafter` neighbours of each — but its
+   rounding correction needs two full-array gathers, and that is where the time
+   goes. This is ndxplorer's interactive redraw path (2 M points), so 4-10× is
+   not affordable.
+
+   **tttrlib has no digitize**: `dir(tttrlib)` offers `histogram*`,
+   `bincount1D`, `make_bin_edges_double` — all of which *count*, none of which
+   returns a per-point bin index. The kernel to add is exactly the loop that is
+   there now: parallel binary search over increasing edges returning
+   `int64`, `0` below the first edge and `len(bins)` above the last one and for
+   a `NaN`. **Not `fastmath`** — the flag asserts no operand is a `NaN`, which
+   folded this kernel's own `isfinite` guard away and sent `NaN` to bin `0`, a
+   real bin at the left edge of the plot; and it bought nothing, since the body
+   is comparisons and integer arithmetic.
+7. **A `tttrlib` route is a hypothesis, not a verdict — diff the maths first.**
    Two files routed to `tttrlib` turned out to be route `numpy`, because
    ChiSurf's version is *deliberately better than the C one* and delegating
    would have been a silent regression:
@@ -156,7 +190,7 @@ timestamp: '2026-08-10T00:00:00Z'
    under the decorator. So: read both implementations before delegating, and
    when they differ, work out *which* is right rather than assuming the
    compiled one is.
-7. **`_hdbscan.py` splits — measured, so do not re-derive.** The compiled
+8. **`_hdbscan.py` splits — measured, so do not re-derive.** The compiled
    kernel covers only the first two stages (`core_distances`,
    `mutual_reachability_mst`); `single_linkage`, `condense_tree` and
    `label_points` are **not** in the photon library. Timed on the *compiled*
@@ -172,7 +206,7 @@ timestamp: '2026-08-10T00:00:00Z'
    same reason, but **measure before delegating** — it is the hmmlearn
    replacement and is 1.1–18× faster per E-step, so a regression there is a
    visible loss.
-8. **`gopich_szabo.py` has a red test that is not the port's fault.**
+9. **`gopich_szabo.py` has a red test that is not the port's fault.**
    `test_no_exchange_reduces_to_a_static_mixture` returns `-inf` where
    `-3.665` is expected — `-inf` is the numba kernel's own numerical-failure
    sentinel. Check whether `tttrlib.GopichSzabo` gives the expected value
@@ -180,7 +214,7 @@ timestamp: '2026-08-10T00:00:00Z'
    [known-issues](../references/known-issues.md) with four unrelated
    `mfd_burst_roundtrip` failures, so the retirement's test runs are not read
    as having caused them.
-9. **ChiMOL is out of scope and out of the guard.** `test_numba_seam.py` skips
+10. **ChiMOL is out of scope and out of the guard.** `test_numba_seam.py` skips
    `chisurf/plugins/chimol/` via `_EXCLUDED_PREFIXES`, and the allow-list no
    longer names those files. They belong to the WebGPU port; when it lands
    them, nothing here needs touching.

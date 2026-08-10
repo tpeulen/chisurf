@@ -1,6 +1,29 @@
 # Update Log
 
 ## 2026-08-10
+* **A numba file that was already dead, and one that measurement sent back.**
+  ndxplorer's `utils/performance_optimizations.py` still carried a
+  `try: import numba` whose `nb` and `_HAVE_NUMBA` were referenced nowhere, plus
+  `compute_histogram1d_adaptive` and its result type with **zero callers** and a
+  `used_numba` field hard-coded `False` -- all deleted, and the file leaves the
+  allow-list without a kernel being ported -- though that edit stays
+  *uncommitted*, because `modules/ndxplorer` is a nested repo whose copy already
+  held a peer's uncommitted removal of the numba histogram kernels, and deleting
+  the import without their half would break the file. `utils/vectorized_ops.py` went the
+  other way: it is **re-routed from `numpy` to `tttr-c`**, because the numbers
+  say NumPy cannot carry it. On 2,000,000 points the numba `prange` binary
+  search runs in **7.2 / 20.1 ms** (64 / 512 bins) against 68.9 / 88.3 ms for
+  uniform-bin arithmetic, 111.4 / 275.5 ms for `np.searchsorted(side='right')`,
+  and 168.5 / 139.4 ms for `np.digitize` -- and this is the interactive redraw
+  path. All four agree *exactly*, `NaN` and `±inf` included, and the arithmetic
+  path was verified over 400 randomised trials placing points on every bin edge
+  and both `nextafter` neighbours of each; its cost is the two full-array
+  gathers its rounding correction needs. tttrlib has no digitize to delegate to
+  (`histogram*`, `bincount1D`, `make_bin_edges_double` all *count*; none returns
+  a per-point bin index), so the kernel to add is the loop that is already
+  there -- and **not** with `fastmath`, the flag that folded this kernel's own
+  `isfinite` guard away and sent `NaN` to bin `0`, a real bin at the left edge
+  of the plot.
 * **A re-render of a traced surface went 904 ms -> 169 ms, by not rebuilding a
   tree that had not changed.** On a real solvent surface -- 85,092 triangles at
   640x480 ssaa2 -- the BVH build is **241 ms of a 345 ms render**, and `ray` is a
