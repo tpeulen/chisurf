@@ -19,7 +19,7 @@ lifetime fit in chisurf funnels through the same engine:
 | Burst-MLE (interactive preview) | `burst_mle_analysis/wizard.py` → `tttrlib.Fit23` directly |
 | Burst-MLE (batch run / replay) | `burst_mle_analysis` → `Fit2xSettings` → `fit_matrix` |
 | Pixel-wise FLIM | `img_pixel_mle` → `Fit2xSettings` → `fit_map`/`fit_matrix` |
-| Molecule-wise imaging | `sm_image_mle` → `Fit2xSettings` |
+| Region-wise imaging | `region_mle` → `Fit2xSettings`, fitting the regions `spot_finder` found |
 
 Because they share one engine, **a fitting bug found in one consumer is a bug in
 all of them.** The problems below were first diagnosed in the burst-MLE wizard
@@ -40,6 +40,38 @@ the consumers stop re-implementing them:
   fit silently ran at `g=1, l1=l2=0` (see §3).
 - `interpolate_shift(arr, shift)` (`irf.py`): the sub-bin IRF shift, previously
   copied verbatim into all three tools.
+- `display.py` — **what a fit looks like, decided without a screen.**
+  `decay_curves(data, model, …)` returns everything a decay panel draws:
+  per-half windows, an area-matched IRF and background, weighted residuals, and
+  pinned ranges. Every rule in it exists because the obvious version looks fine
+  on a good fit and unreadable on a bad one — a **diverged** model clipped to
+  10× the data (raw, it takes a log view to 1e6 and hides the decay); overlays
+  **area**-normalised, never peak-normalised (one hot bin otherwise sets the
+  scale); the y-range pinned to the **data** (a background-dominated fit spans
+  1e±27 and the auto-range shows all of it); the residual band the **99th
+  percentile with a floor** (one bad channel otherwise flattens every other
+  residual). Two traps are structural rather than remembered: VV and VH get
+  **separate** windows, and residuals are computed on the **full** stacks before
+  windowing.
+
+  Two conventions are worth stating because each was got wrong once. The decay
+  range is **in counts** — `chiplot`'s `set_ylim` takes data units on every axis
+  and log-converts itself, so pre-logging logs twice, which is what put the burst
+  tool's decay off the top of its own panel. And divergence can be **told**
+  rather than inferred: a parameter pinned at its bound is a fact about the fit,
+  where a large drawn amplitude is only a symptom.
+
+The Qt side is `chisurf/gui/widgets/decay_panel.py` (`DecayPanel`) and the
+`decay_panel` AutoForm section, so a `view.json` gets the whole two-panel view —
+residuals above, decay below, x-linked — in one line. The burst-wise wizard and
+the region-wise tool draw the same picture from the same rules; the burst suite
+passing against the shared implementation is what says the extraction changed
+nothing.
+
+The plugin-scaffolding layer (`gui/tool.py`, `gui/view_model.py`, `api/`, `cli/`)
+of the two imaging tools is still largely duplicated; a shared `AutoFormMleTool`
+/ `MleViewModelBase` base is a pending refactor.
+
 
 The plugin-scaffolding layer (`gui/tool.py`, `gui/view_model.py`, `api/`, `cli/`)
 of the two imaging tools is still largely duplicated; a shared `AutoFormMleTool`

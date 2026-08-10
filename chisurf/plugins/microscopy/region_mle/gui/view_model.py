@@ -277,6 +277,45 @@ class RegionMleViewModel(MleObserverMixin):
         rec = cur[2]
         return [(0, float(rec.get("centroid_row", 0.0)), float(rec.get("centroid_col", 0.0)))]
 
+    def current_region_curves(self):
+        """Return the selected region's fit as a :class:`DecayCurves`.
+
+        The same object the burst-wise tool's panel draws, so a region's decay
+        and a burst's decay are one picture with one set of display rules —
+        including the ones that only matter when the fit went wrong (a clipped
+        runaway model, an area-matched IRF, a range pinned to the data).
+
+        Returns
+        -------
+        chisurf.core.fluorescence.mle.display.DecayCurves or None
+            ``None`` when nothing is selected or the run kept no curves, which
+            clears the panel rather than leaving the previous region's decay
+            beside a table row it does not belong to.
+        """
+        from chisurf.core.fluorescence.mle.display import decay_curves
+
+        cur = self._current_molecule()
+        if cur is None:
+            return None
+        result, row, _rec = cur
+        if row >= len(result.vv_vh_vectors):
+            return None
+        data = np.asarray(result.vv_vh_vectors[row], dtype=float)
+        if row < len(result.model_curves):
+            model = np.asarray(result.model_curves[row], dtype=float)
+        else:
+            # A batch run fits with `fit_many` and keeps no per-region model, so
+            # there is a decay to show and no curve over it. Better than
+            # nothing: the data alone, with residuals that are honestly zero.
+            model = np.zeros_like(data)
+        if model.size != data.size:
+            model = np.zeros_like(data)
+        return decay_curves(
+            data, model,
+            irf=self.settings.irf,
+            background=self.settings.background,
+        )
+
     def current_molecule_decay(self) -> list[dict]:
         """Return data + fitted-model decay series for the selected molecule."""
         cur = self._current_molecule()
