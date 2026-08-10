@@ -274,10 +274,13 @@ second format later.
   geometry, and no pixel's photons may be counted for two regions.
 * **Persistence**: `write_spots(container, result, settings)` → the artifact pair
   of §4. `read_spots(path)` → the same object, so a saved detection reopens.
-* **GUI**: AutoForm over the shared `image` section with the label overlay and
-  markers (`autoform-image-3d` already does overlays and click-picking), the
-  region table in a `chitable`, and the shared region list for hand-drawn
-  additions.
+* **GUI**: AutoForm over the shared image browser with the label overlay and
+  markers, the region table, and the shared region list for hand-drawn
+  additions. A panel of **Image Tools, directly above Region MLE** — the
+  toolbox's order is the workflow, and detection precedes fitting for the same
+  reason alignment precedes measurement.
+* **Picking is the third way in** (§5.5), beside the batch detector and a drawn
+  region: click a spot and a 2-D Gaussian says where it actually is.
 * **CLI** `spot-finder`, **RPC** `spot_finder.detect.run`, per the plugin
   standard.
 * **Workflows are JSON documents, and the standard one is single-molecule
@@ -337,6 +340,34 @@ takes the `workflow_context` the burst tools already pass (`raw_files`,
 `channel_settings`) and returns the request it would run, without running it —
 so the detector inherits the channels an earlier step settled on instead of
 re-deriving a second answer to a question already answered.
+
+## 5.5 Picking — the click is a seed, the fit is the answer
+
+A threshold finds every spot or none. A person looking at a field can see the
+one that matters and the three that are artefacts, so the picker is the third
+way regions get made.
+
+**The click is never the answer.** A click lands a pixel or two off centre, and
+a region built on it inherits that as a biased centroid and a brightness
+measured over the wrong pixels. So the click selects a window, the brightest
+pixel in the window seeds a 2-D Gaussian, and the *fit* decides the centre and
+the width. That is also what makes a picked region comparable to a detected
+one: `log`/`dog` report a spot's width from a scale space and this reports it
+from a fit, but both report a **measurement** rather than a setting.
+
+**A pick that does not converge is refused, with a reason.** An ellipse placed
+where a fit failed looks exactly like one placed where it succeeded, and the
+difference surfaces later as a lifetime nobody can explain. Four refusals, each
+with its own message: the fit did not converge; the fitted centre wandered
+further than half the window (it locked onto the *neighbouring* spot); no peak
+above background; a width that fills the window, which is a fit spread over the
+patch rather than a spot in it.
+
+Picks are a **proposal** until *Add picks* makes them regions — a third overlay,
+distinct from the drawn analysis region (a control) and the detected regions (a
+result). Adding them rasterises the fitted ellipses into the label image only
+where nothing was found already: a pick is a spot the detector missed, not a
+second claim on pixels it already owns.
 
 ## 5.2 `microscopy/region_mle` — renamed from `sm_image_mle`
 

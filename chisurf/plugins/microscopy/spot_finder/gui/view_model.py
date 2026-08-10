@@ -53,6 +53,12 @@ class SpotFinderViewModel(MleObserverMixin):
         self.frame: int = -1
         self.name: str = "spots"
         self.write_results: bool = True
+        #: Where the user last clicked on the canvas, as ``(z, y, x)``.
+        self.picked_point: tuple = (0, 0, 0)
+        #: Spots picked by clicking, each refined by a Gaussian fit.
+        self.picked: list = []
+        #: Window the pick fit sees, in pixels.
+        self.pick_window: int = 9
         self._observers: list[Callable[[str], None]] = []
 
     def view_spec(self):
@@ -136,6 +142,104 @@ class SpotFinderViewModel(MleObserverMixin):
             for props in regionprops(result.labels, result.intensity):
                 collection.add(props.as_ellipse(f"{tag}Region {props.label}"))
         return collection
+
+    # ── picking: click a spot, and let a Gaussian say where it is ──
+    def pick_spot(self) -> None:
+        """Fit a Gaussian to the spot under the last click and keep it.
+
+        Bound to the canvas's ``on_pick``. The click seeds the fit and the fit
+        decides the answer, so a click two pixels off centre still produces a
+        region centred on the spot rather than on the cursor. A fit that does
+        not converge is **refused with a reason** rather than dropping an
+        ellipse where nothing was found.
+        """
+        from ..core.picking import fit_gaussian_spot
+
+        image = self.detection_image()
+        if image is None:
+            self.status_text = "Nothing to pick in yet — detect or preview first."
+            self.notify("done")
+            return
+
+        _z, y, x = self.picked_point
+        spot = fit_gaussian_spot(np.asarray(image), y, x, window=self.pick_window)
+        if not spot.success:
+            self.status_text = f"No spot picked: {spot.reason}."
+            self.notify("done")
+            return
+
+        self.picked.append(spot)
+        self.status_text = (
+            f"Picked spot at ({spot.y:.1f}, {spot.x:.1f}), σ = {spot.sigma:.2f} px "
+            f"({len(self.picked)} picked)."
+        )
+        self.notify("results")
+
+    def pick_help(self) -> str:
+        """One line telling the user the gesture, on the panel that offers it."""
+        if self.picked:
+            return (
+                f"<i><b>{len(self.picked)}</b> spot(s) picked. "
+                "<b>Add picks</b> makes them regions of this detection.</i>"
+            )
+        return (
+            "<i>Click the image on the <b>Regions</b> tab to pick a spot the "
+            "detector missed; a Gaussian fit refines the click.</i>"
+        )
+
+    def clear_picked(self) -> None:
+        """Forget every picked spot."""
+        self.picked = []
+        self.status_text = "Picked spots cleared."
+        self.notify("results")
+
+    def picked_regions(self) -> RegionCollection:
+        """Return the picked spots as regions, for the overlay."""
+        collection = RegionCollection(combine="or", name="picked")
+        for index, spot in enumerate(self.picked, start=1):
+            collection.add(spot.to_roi(f"Picked {index}"))
+        return collection
+
+    def picked_markers(self) -> list:
+        """Return the fitted centres of the picked spots as ``(z, y, x)`` markers."""
+        return [(0, float(s.y), float(s.x)) for s in self.picked]
+
+    def add_picked_to_detection(self) -> None:
+        """Add the picked spots to the current detection, as regions of its own.
+
+        A picked spot is a region like any other once it exists — it is written
+        through the same contract, fitted by the same tool — so this rasterises
+        the fitted ellipses into the label image and re-measures. Picks land
+        *after* the detected regions, so their labels are the high ones and a
+        table read before and after is still aligned on the rest.
+        """
+        result = self._current_result()
+        if result is None or not self.picked:
+            self.status_text = "Nothing to add."
+            self.notify("done")
+            return
+
+        from chisurf.core.fio.fluorescence.region_container import region_table
+        from chisurf.core.roi.segmentation import relabel_sequential
+
+        labels = np.array(result.labels, copy=True)
+        next_label = int(labels.max()) + 1
+        for spot in self.picked:
+            mask = spot.to_roi().to_mask(labels.shape)
+            # Only where nothing was found already: a pick is a spot the
+            # detector missed, not a claim on pixels it already owns.
+            mask &= labels == 0
+            if not mask.any():
+                continue
+            labels[mask] = next_label
+            next_label += 1
+
+        labels, _f, _i = relabel_sequential(labels)
+        result.labels = labels.astype(np.int32)
+        result.table = region_table(result.labels, result.intensity)
+        self.picked = []
+        self.status_text = f"{result.n_regions} region(s) after adding the picks."
+        self.notify("results")
 
     # ── what the browser shows ──
     def region_entries(self) -> list[dict]:
@@ -300,6 +404,27 @@ class SpotFinderViewModel(MleObserverMixin):
     def _progress(self, index: int, total: int, name: str) -> None:
         self.status_text = f"Detecting {name} ({index + 1}/{total})…"
         self.notify("progress")
+
+    # ── button actions: ask the host, so the UI never blocks on a click ──
+    def request_run(self) -> None:
+        """Button action: start the detection on a worker thread."""
+        self.notify("start_run")
+
+    def request_preview(self) -> None:
+        """Button action: preview the first file on a worker thread."""
+        self.notify("start_preview")
+
+    def request_export(self) -> None:
+        """Button action: ask the host for a path and export the region table."""
+        self.notify("start_export")
+
+    def request_add_picks(self) -> None:
+        """Button action: turn the picked spots into regions of this detection."""
+        self.notify("start_add_picks")
+
+    def request_clear_picks(self) -> None:
+        """Button action: forget every picked spot."""
+        self.notify("start_clear_picks")
 
     def export_results(self, path: str) -> None:
         """Write the combined region table of every file to *path*."""

@@ -31,7 +31,7 @@ class SpotFinderTool(AutoFormMleTool):
             embedded=embedded,
             min_size=(640, 420),
         )
-        self.region_overlay, self.found_overlay = self._connect_regions()
+        self.region_overlay, self.found_overlay, self.picked_overlay = self._connect_regions()
 
     def _connect_regions(self):
         """Draw the analysis region on the field, and the found regions beside it.
@@ -53,15 +53,19 @@ class SpotFinderTool(AutoFormMleTool):
         regions = RegionOverlay(canvas, lambda: self.model.regions,
                                 on_change=self.model.apply_regions)
         found = RegionOverlay(canvas, self.model.region_regions, movable=False)
+        # A third overlay, because a pick is neither of the other two: it is not
+        # a control the user drags, and it is not yet part of the detection —
+        # it is a proposal, and all of them stay visible until they are added.
+        picked = RegionOverlay(canvas, self.model.picked_regions, movable=False)
         editor.changed.connect(self.model.apply_regions)
         editor.changed.connect(regions.refresh)
         editor.selectionChanged.connect(regions.select)
         regions.refresh()
-        return regions, found
+        return regions, found, picked
 
     def _refresh_region_overlays(self) -> None:
         """Redraw both overlays — the field or the detection has changed."""
-        for overlay in (self.region_overlay, self.found_overlay):
+        for overlay in (self.region_overlay, self.found_overlay, self.picked_overlay):
             if overlay is not None:
                 overlay.refresh()
 
@@ -73,7 +77,15 @@ class SpotFinderTool(AutoFormMleTool):
         if event == "start_export":
             self._export()
             return True
-        if event in ("done", "preview", "results"):
+        if event == "start_add_picks":
+            self.model.add_picked_to_detection()
+            self._refresh()
+            return True
+        if event == "start_clear_picks":
+            self.model.clear_picked()
+            self._refresh()
+            return True
+        if event in ("done", "preview", "results", "picked"):
             self._refresh_region_overlays()
         return False
 

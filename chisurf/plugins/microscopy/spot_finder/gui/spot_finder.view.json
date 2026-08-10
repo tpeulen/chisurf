@@ -53,6 +53,15 @@
               {"type": "toggle", "attr": "clear_border", "label": "Clear border",
                "description": "Drop regions touching the frame edge. A partly-imaged object has a truncated area and a biased centroid — but on a crowded field this can remove most of the data."}
             ]},
+            {"type": "panel", "title": "Pick by clicking", "n_col": 2, "collapsed": true, "sections": [
+              {"type": "info", "source": "pick_help", "height": 46},
+              {"type": "value", "attr": "pick_window", "kind": "int", "label": "Fit window (px)", "minimum": 5, "maximum": 99,
+               "description": "Side of the square the fit sees. Wide enough to hold background as well as the spot — a window cropped to the spot has no baseline — and narrow enough not to contain the neighbouring spot, which is what pulls a fit sideways."},
+              {"type": "button_row", "buttons": [
+                {"label": "➕ Add picks", "action": "request_add_picks", "description": "Turn the picked spots into regions of this detection, so they are written and fitted like any other."},
+                {"label": "🗑 Clear picks", "action": "request_clear_picks", "description": "Forget every picked spot."}
+              ]}
+            ]},
             {"type": "button_row", "buttons": [
               {"label": "👁️ Preview", "action": "request_preview", "description": "Detect in the first file only, writing nothing — for tuning against the region count."},
               {"label": "▶ Detect", "action": "request_run", "description": "Detect in every selected file and write each result into its own measurement container."},
@@ -65,9 +74,10 @@
            "entries_source": "region_entries", "entry_attr": "current_region",
            "info_source": "current_region_info", "filter": true,
            "markers_source": "current_region_marker",
+           "select_attr": "picked_point", "on_pick": "pick_spot",
            "colormap": true, "default_colormap": "inferno", "list_width": 200
          },
-         "description": "Browse what was found; the canvas marks the selected region and the panel shows its measurements."},
+         "description": "Browse what was found; the canvas marks the selected region and the panel shows its measurements. **Click the image to pick a spot the detector missed** — the click seeds a 2-D Gaussian fit, and the fit decides where the spot is and how wide it is."},
         {"type": "table", "title": "Run", "source": "run_entries", "expand": true,
          "columns": [
            {"key": "input", "label": "File", "width": 220, "description": "The input, whatever became of it."},
