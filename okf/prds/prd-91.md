@@ -35,6 +35,12 @@ Next, in order:
 5. **Phase 5 — the AI layer**, then 6 (crafting, mini-games, factions, story),
    then 7 (farm, network).
 
+**Known deviation, deliberately left**: the shipped `lumis_quest/gui/tool.py` is
+still the first draft's XP/streak/achievement panel, and it contains a **free-text
+path field** — which the no-text-entry rule forbids. It is a placeholder that
+Phase 5 replaces wholesale; do not invest in fixing it, but do not copy its
+input model either.
+
 **Traps already identified, do not rediscover them:**
 
 - `spectra.db`'s `optical_properties` is an **EAV table** — `property_name` /

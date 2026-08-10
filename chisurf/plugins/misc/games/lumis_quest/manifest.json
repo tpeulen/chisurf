@@ -1,0 +1,15 @@
+{
+  "id": "lumis_quest",
+  "version": "1.0.0",
+  "display_name": "Lumis Quest",
+  "description": "Turn documentation review into an engaging game: XP, streaks, quests, and achievements.",
+  "authors": ["ChiSurf contributors"],
+  "categories": ["Tools", "Miscellaneous"],
+  "entrypoints": {
+    "gui": "chisurf.plugins.misc.games.lumis_quest.gui.tool:LumisQuestWidget"
+  },
+  "dependencies": {},
+  "menu_hidden": true,
+  "deprecated": false,
+  "demo": false
+}
