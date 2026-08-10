@@ -5,6 +5,7 @@ Functions related to random numbers
 from math import sqrt
 
 import numpy as np
+import tttrlib
 from scipy.stats import norm
 
 
@@ -29,15 +30,7 @@ def weighted_choice(weights, n=1):
 
     http://eli.thegreenplace.net/2010/01/22/weighted-random-generation-in-python/
     """
-    totals = np.cumsum(np.asarray(weights, dtype=np.float64))
-    running_total = totals[-1] if totals.size else 0.0
-
-    # One draw per output, in the order the loop drew them, so a seeded
-    # generator produces the same stream. The linear scan for the first total
-    # at or above the draw is a searchsorted: side="left" returns the first
-    # index with totals[i] >= rnd, which is the loop's `rnd <= totals[i]`.
-    draws = np.random.ranf(n) * running_total
-    return np.searchsorted(totals, draws, side="left").astype(np.uint32)
+    return tttrlib.weighted_choice(np.asarray(weights, dtype=np.float64), int(n))
 
 
 def brownian(
@@ -47,7 +40,7 @@ def brownian(
         delta: float,
         out=None
 ):
-    """\
+    r"""
     Generate an instance of Brownian motion (i.e. the Wiener process):
 
     .. math::
@@ -173,21 +166,10 @@ def random_numbers(
     >>> hy, hx = np.histogram(rn, bins=4096, range=(0, 10))
     >>> p.plot(hx[1:], hy)
     """
-    cdf_values = np.asarray(cdf_values, dtype=np.float64)
-    if norm_cdf:
-        # A copy, not `cdf_values /= cdf_values[-1]`: that divided through the
-        # caller's array, so drawing from a CDF normalised it as a side effect
-        # and a second draw from the same object sampled a different
-        # distribution.
-        cdf_values = cdf_values / cdf_values[-1]
-
-    draws = np.random.random_sample(n)
-    index = np.searchsorted(cdf_values, draws, side="left")
-
-    # The loop left an entry at zero where no CDF value reached the draw (`tr`
-    # starts as zeros and the inner loop simply never fired), so an
-    # out-of-range index maps to 0.0 rather than to the last axis point.
-    tr = np.zeros(n, dtype=dtype)
-    found = index < cdf_values.size
-    tr[found] = np.asarray(cdf_axis)[index[found]]
-    return tr
+    samples = tttrlib.sample_from_cdf(
+        np.asarray(cdf_axis, dtype=np.float64),
+        np.asarray(cdf_values, dtype=np.float64),
+        int(n),
+        bool(norm_cdf),
+    )
+    return samples.astype(dtype, copy=False)
