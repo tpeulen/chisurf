@@ -1,6 +1,25 @@
 # Update Log
 
 ## 2026-08-10
+* **Lumis Quest: flagging — expert mode can now say what is *wrong*, not only that a page is fine.**
+  Signing off says "this is fine". A finding is the other half: **a span plus a category**. Pick the
+  sentence at fault with the pad, then one of eight fixed faults (undefined symbol, wrong units, missing
+  citation, contradicts, stale screenshot, dead link, unstated assumption, notation drift). Because the
+  game is gamepad-playable there is no typing, and that turns out to be a feature: the record is
+  machine-checkable, it points at an exact sentence, and two people flagging the same problem produce the
+  **same** record — which prose never does.
+  **Nothing is ever written into `docs/`.** Findings pool in the per-user directory, because several
+  agents and the user hold uncommitted edits in this tree at once and a game that wrote into the
+  documentation during play would silently destroy work. Export is a separate, explicit act, and it
+  **refuses any finding whose page has changed** since it was made — a stale finding points at a sentence
+  that has moved or gone, and a report full of those is worse than a short accurate one.
+  Two layout defects the screenshots caught: the post-fight screens were drawn *after* the combatants, so
+  the HP bars and creature names showed through the flag list; and the category description, right-aligned
+  beside its key, landed on top of the longer keys. Both fixed.
+  Also: the overworld test fixture wrote **stub pages**, so the challenge and flagging tests skipped — the
+  same "a skip leaves the path untested" trap as before. The fixture has real prose now and nothing skips.
+  Suites: 224 passed.
+
 * **Lumis Quest: the model-backed question provider, behind the same grounding gate as everything else.**
   Three providers, interchangeable, because the property that matters is not who wrote the question — it
   is that **every question passes the same check**. `DeterministicProvider` needs no model.

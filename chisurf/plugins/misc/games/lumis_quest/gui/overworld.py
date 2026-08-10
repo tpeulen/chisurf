@@ -25,6 +25,7 @@ from chisurf.gui.chigame.input import Action
 from ...characters import IRIS, LUMI, draw as draw_character
 from ..api import tiles as T
 from ..api import battle as battle_api
+from ..api import findings as findings_api
 from ..api import gear as gear_api
 from ..api import roster as roster_api
 from ..api import providers as providers_api
@@ -234,6 +235,14 @@ class OverworldGame(chigame.Game):
         # a surprise and a stall. Opt in from the MODE tab; the cache means only
         # the first visit to a page ever pays for it.
         self.use_model = False
+        # Flagging: a span picked with the pad, then a category. No typing, and
+        # the record is machine-checkable rather than prose.
+        self.flagging = False
+        self.flag_spans: list[str] = []
+        self.flag_span_index = 0
+        self.flag_category_index = 0
+        self.flag_stage = "span"
+        self.findings_path = None
         self.challenge = None
         self.challenge_hash = ""
         self.verdict = None
@@ -561,6 +570,9 @@ class OverworldGame(chigame.Game):
                     self.collection.append(fight.caught)
                 self._begin_challenge(self.encounter_room)
 
+            if self.flagging:
+                self._flag_input(keys)
+                return
             if self.challenge is not None:
                 self._challenge_input(keys)
                 return
@@ -625,6 +637,9 @@ class OverworldGame(chigame.Game):
             self.challenge = None
             self.verdict = review_bridge.Verdict(False, "You leave it unread.", "wrong")
             return
+        if keys.just_pressed(Action.SHOULDER_L) and self.mode == review_bridge.EXPERT:
+            self._begin_flag()
+            return
         if not keys.just_pressed(Action.CONFIRM):
             return
 
@@ -635,6 +650,87 @@ class OverworldGame(chigame.Game):
         if self.verdict.signed_off:
             room.state = SETTLED
         self.challenge = None
+
+    def _begin_flag(self) -> None:
+        """Start reporting a defect instead of answering.
+
+        Signing off says "this is fine". This is the other half.
+        """
+        from ..api.challenge import _sentences
+
+        room = self.encounter_room
+        if room is None:
+            return
+        try:
+            text = room.path.read_text(encoding="utf-8")
+        except OSError:
+            return
+        spans = _sentences(text)
+        if not spans:
+            self.verdict = review_bridge.Verdict(
+                False, "Nothing here specific enough to flag.", "unavailable"
+            )
+            self.challenge = None
+            return
+        self.flag_spans = spans[:40]
+        self.flag_span_index = 0
+        self.flag_category_index = 0
+        self.flag_stage = "span"
+        self.flagging = True
+        self.challenge = None
+
+    def _flag_input(self, keys) -> None:
+        """Pick a span, then a category.
+
+        Parameters
+        ----------
+        keys : chisurf.gui.chigame.input.InputMap
+            Controller state.
+        """
+        if keys.just_pressed(Action.CANCEL):
+            if self.flag_stage == "category":
+                self.flag_stage = "span"
+                return
+            self.flagging = False
+            return
+
+        if self.flag_stage == "span":
+            if keys.just_pressed(Action.DOWN):
+                self.flag_span_index = (self.flag_span_index + 1) % len(self.flag_spans)
+            if keys.just_pressed(Action.UP):
+                self.flag_span_index = (self.flag_span_index - 1) % len(self.flag_spans)
+            if keys.just_pressed(Action.CONFIRM):
+                self.flag_stage = "category"
+            return
+
+        if keys.just_pressed(Action.DOWN):
+            self.flag_category_index = (
+                self.flag_category_index + 1
+            ) % len(findings_api.CATEGORIES)
+        if keys.just_pressed(Action.UP):
+            self.flag_category_index = (
+                self.flag_category_index - 1
+            ) % len(findings_api.CATEGORIES)
+        if keys.just_pressed(Action.CONFIRM):
+            self._record_finding()
+
+    def _record_finding(self) -> None:
+        """Pool the finding. Nothing is written into the documentation."""
+        room = self.encounter_room
+        if room is None:
+            self.flagging = False
+            return
+        finding = findings_api.Finding(
+            address=room.address,
+            content_hash=self.challenge_hash or findings_api.current_hash(room.path),
+            span=self.flag_spans[self.flag_span_index],
+            category=findings_api.CATEGORIES[self.flag_category_index][0],
+        )
+        findings_api.add(finding, self.findings_path)
+        self.flagging = False
+        self.verdict = review_bridge.Verdict(
+            False, f"Recorded: {finding.category}.", "flagged"
+        )
 
     def _award_loot(self, room) -> None:
         """Give the player what a cleared room yields, once.
@@ -976,6 +1072,77 @@ class OverworldGame(chigame.Game):
         scene.draw("ui", "panel", at=(cx, cy), size=(width * 0.94, height * 0.92),
                    color=(0.055, 0.065, 0.085, 0.985))
 
+        if self.flagging:
+            if self.flag_stage == "span":
+                scene.text("Which sentence is at fault?", at=(cx, cy - half[1] * 0.44),
+                           height=12.0 * scale, align="center",
+                           color=(0.90, 0.80, 0.55, 1.0))
+                base = max(0, self.flag_span_index - 2)
+                for offset, span in enumerate(self.flag_spans[base:base + 5]):
+                    selected = base + offset == self.flag_span_index
+                    y = cy - half[1] * 0.26 + offset * 26.0 * scale
+                    for line_no, line in enumerate(_wrap(span, 58)[:2]):
+                        scene.text(line, at=(cx, y + line_no * 11.0 * scale),
+                                   height=9.5 * scale, align="center",
+                                   color=(0.95, 0.93, 0.86, 1.0) if selected
+                                   else (0.45, 0.49, 0.56, 1.0))
+            else:
+                scene.text("What is wrong with it?", at=(cx, cy - half[1] * 0.44),
+                           height=12.0 * scale, align="center",
+                           color=(0.90, 0.80, 0.55, 1.0))
+                for index, (key, description) in enumerate(findings_api.CATEGORIES):
+                    selected = index == self.flag_category_index
+                    y = cy - half[1] * 0.24 + index * 13.0 * scale
+                    if selected:
+                        scene.draw("ui", "selected", at=(cx - half[0] * 0.52, y),
+                                   size=(7.0 * scale, 7.0 * scale))
+                    scene.text(f"{key}", at=(cx - half[0] * 0.47, y),
+                               height=10.5 * scale,
+                               color=(0.94, 0.92, 0.86, 1.0) if selected
+                               else (0.56, 0.60, 0.68, 1.0))
+
+            if self.flag_stage == "category":
+                # On its own line: right-aligning it beside the key put the two
+                # on top of each other for the longer descriptions.
+                _, description = findings_api.CATEGORIES[self.flag_category_index]
+                scene.text(description, at=(cx, cy + half[1] * 0.42),
+                           height=10.0 * scale, align="center",
+                           color=(0.66, 0.70, 0.78, 1.0))
+            scene.text("Up/Down choose   Confirm select   Cancel back",
+                       at=(cx, cy + half[1] * 0.66), height=9.5 * scale, align="center",
+                       color=(0.48, 0.52, 0.60, 1.0))
+            return
+
+        if self.challenge is not None:
+            scene.text("The page puts its question", at=(cx, cy - half[1] * 0.30),
+                       height=12.0 * scale, align="center", color=(0.86, 0.84, 0.70, 1.0))
+            for offset, line in enumerate(_wrap(self.challenge.prompt, 54)[:4]):
+                scene.text(line, at=(cx, cy - half[1] * 0.18 + offset * 12.0 * scale),
+                           height=10.5 * scale, align="center", color=(0.80, 0.84, 0.90, 1.0))
+            for index, option in enumerate(self.challenge.options):
+                selected = index == self.menu_index
+                y = cy + half[1] * 0.30 + index * 13.0 * scale
+                if selected:
+                    scene.draw("ui", "selected", at=(cx - half[0] * 0.34, y),
+                               size=(7.0 * scale, 7.0 * scale))
+                scene.text(option, at=(cx - half[0] * 0.29, y), height=11.0 * scale,
+                           color=(0.94, 0.92, 0.86, 1.0) if selected
+                           else (0.56, 0.60, 0.68, 1.0))
+            scene.text(f"[{self.mode}]  L flag a problem   Cancel to leave it unread",
+                       at=(cx, cy + half[1] * 0.62), height=9.5 * scale, align="center",
+                       color=(0.50, 0.54, 0.62, 1.0))
+            return
+
+        if self.verdict is not None:
+            scene.text(self.verdict.message, at=(cx, cy), height=14.0 * scale,
+                       align="center",
+                       color=(0.45, 0.90, 0.70, 1.0) if self.verdict.signed_off
+                       else (0.86, 0.72, 0.45, 1.0))
+            scene.text("Confirm to continue", at=(cx, cy + half[1] * 0.20),
+                       height=10.0 * scale, align="center", color=(0.50, 0.54, 0.62, 1.0))
+            return
+
+
         # The opponent, drawn in the colour it actually emits.
         enemy = fight.opponent
         top = cy - half[1] * 0.52
@@ -1013,35 +1180,6 @@ class OverworldGame(chigame.Game):
         for offset, line in enumerate(lines[-3:]):
             scene.text(line, at=(cx, cy + half[1] * 0.30 + offset * 12.0 * scale),
                        height=10.0 * scale, align="center", color=(0.74, 0.78, 0.86, 1.0))
-
-        if self.challenge is not None:
-            scene.text("The page puts its question", at=(cx, cy - half[1] * 0.30),
-                       height=12.0 * scale, align="center", color=(0.86, 0.84, 0.70, 1.0))
-            for offset, line in enumerate(_wrap(self.challenge.prompt, 54)[:4]):
-                scene.text(line, at=(cx, cy - half[1] * 0.18 + offset * 12.0 * scale),
-                           height=10.5 * scale, align="center", color=(0.80, 0.84, 0.90, 1.0))
-            for index, option in enumerate(self.challenge.options):
-                selected = index == self.menu_index
-                y = cy + half[1] * 0.30 + index * 13.0 * scale
-                if selected:
-                    scene.draw("ui", "selected", at=(cx - half[0] * 0.34, y),
-                               size=(7.0 * scale, 7.0 * scale))
-                scene.text(option, at=(cx - half[0] * 0.29, y), height=11.0 * scale,
-                           color=(0.94, 0.92, 0.86, 1.0) if selected
-                           else (0.56, 0.60, 0.68, 1.0))
-            scene.text(f"[{self.mode}]  Cancel to leave it unread",
-                       at=(cx, cy + half[1] * 0.62), height=9.5 * scale, align="center",
-                       color=(0.50, 0.54, 0.62, 1.0))
-            return
-
-        if self.verdict is not None:
-            scene.text(self.verdict.message, at=(cx, cy), height=14.0 * scale,
-                       align="center",
-                       color=(0.45, 0.90, 0.70, 1.0) if self.verdict.signed_off
-                       else (0.86, 0.72, 0.45, 1.0))
-            scene.text("Confirm to continue", at=(cx, cy + half[1] * 0.20),
-                       height=10.0 * scale, align="center", color=(0.50, 0.54, 0.62, 1.0))
-            return
 
         if fight.finished:
             outcome = "The light holds." if fight.won else (

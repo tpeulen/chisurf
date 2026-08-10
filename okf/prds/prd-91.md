@@ -95,7 +95,19 @@ Next, in order:
    RIG tab fits found parts into their own slots and shows the assembled path's
    live response; PARTY swaps a collected creature into the party; MODE is the
    one switch that decides whether anything is signed off.
-   Still open: the AI-authored challenge and edit-proposal flow.
+6. ✅ **The AI layer and the findings flow landed — PRD complete.** Three
+   interchangeable question providers (deterministic, agent, recorded) all pass
+   the **same** grounding gate: a challenge whose quoted span is not in the page
+   is discarded and counted. Encounters cache under the page `sha256`. The model
+   is **off by default** and opt-in from the MODE tab, because a configured
+   provider would otherwise put a network call in the middle of every first
+   encounter.
+   Expert mode's other half is **flagging**: pick the sentence at fault with the
+   pad, then one of eight fixed categories. No typing, and the record is
+   machine-checkable rather than prose. Findings pool in the per-user directory
+   — **nothing is ever written into `docs/`**, because this is a shared working
+   tree — and export refuses any finding whose page has changed since it was
+   made.
 4. **Phase 5 — the AI layer**, then 6 (crafting, mini-games, factions, story),
    then 7 (farm, network).
 

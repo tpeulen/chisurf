@@ -34,9 +34,21 @@ def _docs(tmp_path: pathlib.Path) -> pathlib.Path:
     root = tmp_path / "docs"
     section = root / "guides"
     section.mkdir(parents=True)
+    # Real prose, not stubs: a page too thin to question leaves the challenge
+    # and flagging paths skipped, which is how they went untested before.
+    body = (
+        "The fundamental anisotropy of a fluorophore describes how much "
+        "polarisation memory survives the excited-state lifetime, and it is "
+        "bounded above by two fifths for a single absorbing dipole.\n\n"
+        "Rotational correlation time governs how quickly that memory is lost, "
+        "so a larger molecule tumbling slowly retains polarisation for longer "
+        "than a small one in the same solvent.\n"
+    )
     names = [f"p{index}" for index in range(8)]
     for name in names:
-        (section / f"{name}.md").write_text(f"# {name.upper()}\n", encoding="utf-8")
+        (section / f"{name}.md").write_text(
+            f"# {name.upper()}\n\n{body}", encoding="utf-8"
+        )
     listing = "\n".join(names)
     (section / "index.md").write_text(
         f"# Guides\n\n```{{toctree}}\n:maxdepth: 1\n\n{listing}\n```\n", encoding="utf-8"
@@ -467,3 +479,57 @@ def test_the_mode_tab_can_opt_into_the_model(game):
     assert game.use_model is True
     game._menu_confirm()
     assert game.use_model is False
+
+
+def test_flagging_records_a_span_and_a_category(game, wild_room, tmp_path):
+    """Expert mode's other half: saying what is *not* fine."""
+    from chisurf.plugins.misc.games.lumis_quest.api import findings, review_bridge
+
+    game.findings_path = tmp_path / "findings.json"
+    game.mode = review_bridge.EXPERT
+    game.encounter_room = wild_room
+    questions, content_hash = review_bridge.challenge_for(
+        wild_room.path, cache_dir=tmp_path / "cache"
+    )
+    if not questions:
+        pytest.skip("this fixture page is too thin to question")
+    game.challenge, game.challenge_hash = questions[0], content_hash
+
+    game._begin_flag()
+    if not game.flagging:
+        pytest.skip("this fixture page has nothing specific enough to flag")
+    assert game.flag_stage == "span"
+
+    game.host.keys.tap(Action.CONFIRM)
+    game._flag_input(game.host.keys)
+    game.host.keys.end_frame()
+    assert game.flag_stage == "category"
+
+    game.host.keys.tap(Action.CONFIRM)
+    game._flag_input(game.host.keys)
+    assert not game.flagging
+
+    pool = findings.load(game.findings_path)
+    assert len(pool) == 1
+    assert pool[0].address == wild_room.address
+    assert pool[0].category in dict(findings.CATEGORIES)
+    assert pool[0].span, "a finding points at an exact sentence"
+
+
+def test_flagging_is_expert_only(game, wild_room, tmp_path):
+    """Training teaches; it does not file defects."""
+    from chisurf.plugins.misc.games.lumis_quest.api import review_bridge
+
+    game.findings_path = tmp_path / "findings.json"
+    game.mode = review_bridge.TRAINING
+    game.encounter_room = wild_room
+    questions, content_hash = review_bridge.challenge_for(
+        wild_room.path, cache_dir=tmp_path / "cache"
+    )
+    if not questions:
+        pytest.skip("this fixture page is too thin to question")
+    game.challenge, game.challenge_hash = questions[0], content_hash
+
+    game.host.keys.tap(Action.SHOULDER_L)
+    game._challenge_input(game.host.keys)
+    assert not game.flagging, "the flag interface is expert-only"
