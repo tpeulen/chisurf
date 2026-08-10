@@ -187,7 +187,44 @@ class TestPipelineRouting:
 class TestWgslSource:
     """The shared source, without compiling it."""
 
-    def test_every_entry_point_gets_the_prelude(self):
+    #: Which prelude each shader is composed with, and which are preludes
+    #: themselves. Written out rather than globbed, so that adding a shader
+    #: without deciding which family it belongs to fails this file rather than
+    #: silently getting the wrong prelude -- which is how `raytrace.wgsl` came to
+    #: be concatenated with the *render* shading model and to declare a second
+    #: `fn shade` that nothing noticed for two commits.
+    FAMILIES = {
+        "shading.wgsl": None,   # the render prelude
+        "grid.wgsl": None,      # the compute prelude
+        "bvh.wgsl": None,       # the ray prelude
+        "mesh.wgsl": "render",
+        "impostor.wgsl": "render",
+        "line.wgsl": "render",
+        "overlay.wgsl": "render",
+        "silhouette.wgsl": "render",
+        "shade_atoms.wgsl": "compute",
+        "occlusion.wgsl": "compute",
+        "shadow_rays.wgsl": "compute",
+        "distance_grid.wgsl": "compute",
+        "edt.wgsl": "compute",
+        "mc_active.wgsl": "compute",
+        "mc_vertices.wgsl": "compute",
+        "volume_ops.wgsl": "compute",
+        "raytrace.wgsl": "ray",
+        "bvh_probe.wgsl": "ray",
+    }
+
+    def test_every_shader_is_classified(self):
+        """A new shader must say which prelude it takes."""
+        from chisurf.plugins.chimol.chimol.renderer.wgpu_backend import WGSL_DIR
+
+        present = {p.name for p in WGSL_DIR.glob("*.wgsl")}
+        assert present == set(self.FAMILIES), (
+            f"unclassified: {sorted(present - set(self.FAMILIES))}; "
+            f"missing: {sorted(set(self.FAMILIES) - present)}"
+        )
+
+    def test_every_render_entry_point_gets_the_shading_prelude(self):
         """One shading function, prepended -- not one copy per pipeline.
 
         WGSL has no ``#include``, so the composition is concatenation, and the
@@ -196,21 +233,51 @@ class TestWgslSource:
         """
         from chisurf.plugins.chimol.chimol.renderer.wgpu_backend import (
             WGSL_DIR,
-            WGSL_PRELUDE,
             load_wgsl,
         )
 
-        entry_points = sorted(
-            p.name for p in WGSL_DIR.glob("*.wgsl") if p.name != WGSL_PRELUDE
-        )
-        assert entry_points, "no entry-point shaders found"
-        for name in entry_points:
+        names = [n for n, family in self.FAMILIES.items() if family == "render"]
+        assert names, "no render entry points found"
+        for name in names:
             source = load_wgsl(name)
             assert source.count("struct Uniforms") == 1, name
             assert "@group(0) @binding(0)" in source, name
             assert source.count("fn shade(") == 1, name
             raw = (WGSL_DIR / name).read_text()
             assert "fn shade(" not in raw, f"{name} declares its own shading model"
+
+    def test_every_compute_entry_point_gets_the_grid_prelude(self):
+        """The cell-list walk is shared the same way the shading model is."""
+        from chisurf.plugins.chimol.chimol.renderer.compute import (
+            COMPUTE_PRELUDE,
+            WGSL_DIR,
+            load_compute_wgsl,
+        )
+
+        names = [n for n, family in self.FAMILIES.items() if family == "compute"]
+        assert names
+        for name in names:
+            source = load_compute_wgsl(name)
+            assert source.count("struct GridInfo") == 1, name
+            assert source.count("fn cell_of(") == 1, name
+            raw = (WGSL_DIR / name).read_text()
+            assert "fn cell_of(" not in raw, f"{name} declares its own grid walk"
+        assert (WGSL_DIR / COMPUTE_PRELUDE).exists()
+
+    def test_every_ray_entry_point_gets_the_bvh_prelude(self):
+        """`closest_hit` exists once, so the probe tests the tracer's own."""
+        from chisurf.plugins.chimol.chimol.renderer.compute import (
+            WGSL_DIR,
+            load_ray_wgsl,
+        )
+
+        names = [n for n, family in self.FAMILIES.items() if family == "ray"]
+        assert names
+        for name in names:
+            source = load_ray_wgsl(name)
+            assert source.count("fn closest_hit(") == 1, name
+            raw = (WGSL_DIR / name).read_text()
+            assert "fn closest_hit(" not in raw, f"{name} declares its own traversal"
 
 
 @pytest.mark.slow

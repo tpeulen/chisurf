@@ -1,6 +1,35 @@
 # Update Log
 
 ## 2026-08-10
+* **Rotating a quarter-million beads went 21 ms a frame to 1.7 ms, and the
+  molecule was never the problem.** Reported as "NPC demo super slow, can hardly
+  rotate". Measured: 9.6 ms rasterising the chrome (panel, sequence strip,
+  labels), 4.2 ms uploading that 12.9 MB image, 7 ms rebuilding an interleaved
+  vertex array that had not changed and 2.4 ms re-uploading it -- **66 % of the
+  frame was chrome** and almost all the rest was work repeated identically sixty
+  times a second. Object count barely mattered (1 object 22.4 ms, 32 objects
+  24.4 ms), so this is not a scene-complexity problem.
+  Three caches: the vertex buffer per geometry (keyed on array *addresses* --
+  the builder makes new arrays whenever anything changes, and hashing tens of
+  megabytes a frame would cost more than it saves), the overlay texture on a
+  sampled signature, and the chrome image **on a timer rather than a dirty
+  flag**. The timer is deliberate: a dirty flag here has a failure mode already
+  written into the code it replaces -- the panel re-reads sequence colours every
+  frame because colouring is a command with no signal -- and a timer cannot go
+  permanently stale. GUI interaction still invalidates immediately, and a scene
+  with 3-D labels repaints every frame because labels move with the camera.
+  The rendered representation sheet is **byte-identical** afterwards, maximum
+  channel difference 0.
+  **Two test bugs surfaced, both only at a device pixel ratio above 1**:
+  `test_wgpu_view` compared the framebuffer height against a widget height and
+  divided a widget width by the ratio to predict a projection that answers in
+  widget pixels. Third time today the widget's two pixel sizes have produced a
+  wrong answer that looked like a real difference.
+  **And `test_wgsl_parity` had been red for two commits without being run** -- it
+  globbed every `.wgsl` and prepended the *render* prelude, which stopped being
+  true when the compute shaders moved in. The families are written out now, with
+  a test that fails if a new shader is not classified.
+
 * **Route 1 is finished, and the last file needed blocking rather than
   vectorising.** `anisotropy/kappa2.py`'s four kernels are NumPy; the `k2` grids
   are **bit-exact** and the histograms agree to `3e-14` relative, from summation

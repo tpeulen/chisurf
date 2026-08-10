@@ -420,15 +420,25 @@ class TestPickingProjection:
             x, y, visible = renderer.project_to_screen(np.zeros((1, 3)))
             # Read inside the block: with the panel back on, `scene_width` is a
             # column narrower and the expected centre moves with it.
-            expected = renderer.scene_width() / renderer._ratio() / 2
+            #
+            # No ratio here. `project_to_screen` answers in *widget* pixels and
+            # `scene_width` is a widget width, so dividing by the device pixel
+            # ratio converts a quantity that was never physical -- which is
+            # invisible on a 1x display and off by exactly 2x on a Retina one.
+            expected = renderer.scene_width() / 2
         finally:
             renderer._internal_gui.visible = True
         assert bool(visible[0])
         assert x[0] == pytest.approx(expected, rel=0.02)
 
     def test_the_strip_offsets_the_projection(self, renderer):
-        """A y measured from the widget's top is off by the strip's height."""
-        assert renderer.scene_origin_y() == renderer._height - renderer.scene_height()
+        """A y measured from the widget's top is off by the strip's height.
+
+        Both terms in widget pixels. ``_height`` is the *framebuffer* height and
+        mixing it with ``scene_height`` here made this assert 960 - 480 on a
+        Retina display, where the answer is 480 - 480.
+        """
+        assert renderer.scene_origin_y() == renderer.height() - renderer.scene_height()
 
     def test_a_point_behind_the_camera_is_not_visible(self, renderer):
         from chisurf.plugins.chimol.chimol.renderer.view_state import pack_view_state

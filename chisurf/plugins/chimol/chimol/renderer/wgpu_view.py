@@ -33,6 +33,7 @@ of the render pass rather than painted over the surface -- see
 from __future__ import annotations
 
 import os
+import time
 from dataclasses import dataclass
 from typing import Optional
 
@@ -56,6 +57,12 @@ __all__ = [
 #: browser share, and since the OpenGL renderer was removed it is the only
 #: drawing backend there is -- the setting survives because a second one
 #: (a browser canvas, a headless tracer) is the point of the arrangement.
+#: How long a painted chrome image may be reused. Long enough that a drag stops
+#: repainting it sixty times a second, short enough that a stale panel is never
+#: something anyone notices -- and short enough that "it went stale" cannot
+#: become a bug report, which a dirty flag could.
+CHROME_INTERVAL = 0.1
+
 DEFAULT_BACKEND = "wgpu"
 
 #: Wheel notch to distance ratio. Multiplicative so one step feels the same on a
@@ -192,6 +199,9 @@ class WgpuRenderer(_make_widget_base(), CameraState, Renderer):
         )
 
         self._packed = None
+        self._chrome_cache = None
+        self._chrome_key = None
+        self._chrome_painted = 0.0
         #: Everything this frame draws: the scene's objects, plus the grid when
         #: it is visible. See :meth:`_rebuild_draw_data`.
         self._draw_data: list = []
@@ -315,6 +325,9 @@ class WgpuRenderer(_make_widget_base(), CameraState, Renderer):
         self.scene = scene
         self._packed = pack_scene(scene) if scene is not None else None
         self._labels = _collect_labels(self._packed)
+        # A new scene means new geometry and a new panel; the buffers cached for
+        # the old one are dead weight and the chrome must not be a frame behind.
+        self._chrome_cache = None
         self._rebuild_draw_data()
         self.update()
 
@@ -493,19 +506,72 @@ class WgpuRenderer(_make_widget_base(), CameraState, Renderer):
     def _chrome_image(self) -> Optional[np.ndarray]:
         """The panel, strip and 3-D labels as a premultiplied RGBA image.
 
-        Repainted per frame rather than cached. It is a few hundred glyphs
-        against a scene of tens of thousands of triangles, and every attempt at
-        a dirty flag here has the same failure mode as the sequence colours the
-        panel itself re-reads every frame: colouring is a *command*, there is no
-        signal for it, and a cache invalidated by the events anyone thinks of
-        goes stale on the one they did not. Labels move with the camera anyway,
-        so on the frames that matter it would be invalidated every time.
+        Returns
+        -------
+        numpy.ndarray or None
+            ``(h, w, 4)`` premultiplied RGBA, or ``None`` when there is no chrome
+            to draw.
+
+        Notes
+        -----
+        Repainted on a **timer**, not on a dirty flag, and the distinction is the
+        whole design. A dirty flag here has a known failure mode -- the panel
+        re-reads the sequence colours every frame because colouring is a
+        *command* and there is no signal for it, so a cache invalidated by the
+        events anyone thinks of goes stale on the one they did not. A timer
+        cannot go permanently stale: the worst case is a panel
+        :data:`CHROME_INTERVAL` behind, which is imperceptible and, crucially,
+        self-correcting.
+
+        What that buys: painting this was **9.6 ms of a 21 ms frame** with a
+        quarter of a million beads on screen, and nothing in it can change while
+        a drag is in progress. Labels are the exception -- they move with the
+        camera -- so a scene that has any is painted every frame as before.
         """
         from .gui_overlay import paint_chrome
 
         gui = self._internal_gui
         if gui is None and not self._labels:
             return None
+
+        now = time.monotonic()
+        fresh = (
+            self._chrome_cache is not None
+            and not self._labels
+            and self._chrome_key == (self._width, self._height, self._ratio())
+            and now - self._chrome_painted < CHROME_INTERVAL
+        )
+        if fresh:
+            return self._chrome_cache
+
+        image = self._paint_chrome_now(paint_chrome)
+        self._chrome_cache = image
+        self._chrome_key = (self._width, self._height, self._ratio())
+        self._chrome_painted = now
+        return image
+
+    def invalidate_chrome(self) -> None:
+        """Force the next frame to repaint the chrome.
+
+        For the caller that knows it changed something and does not want to wait
+        out :data:`CHROME_INTERVAL` -- a command that recolours the sequence, or
+        a panel click.
+        """
+        self._chrome_cache = None
+
+    def _paint_chrome_now(self, paint_chrome) -> Optional[np.ndarray]:
+        """Rasterise the chrome, unconditionally.
+
+        Parameters
+        ----------
+        paint_chrome : callable
+            The painter from :mod:`.gui_overlay`.
+
+        Returns
+        -------
+        numpy.ndarray or None
+        """
+        gui = self._internal_gui
         return paint_chrome(
             gui,
             self._controller,
@@ -930,11 +996,13 @@ class WgpuRenderer(_make_widget_base(), CameraState, Renderer):
             if gui is not None and gui.is_dragging() and gui.drag(
                 float(pos.x()), float(pos.y())
             ):
+                self.invalidate_chrome()
                 self.update()
             event.accept()
             return
         if gui is not None and not event.buttons():
             if gui.mouse_move(float(pos.x()), float(pos.y())):
+                self.invalidate_chrome()
                 self.update()
             if gui.wants(float(pos.x()), float(pos.y())):
                 event.accept()
@@ -980,6 +1048,7 @@ class WgpuRenderer(_make_widget_base(), CameraState, Renderer):
             self._gui_grab = False
             if self._internal_gui is not None:
                 self._internal_gui.release()
+            self.invalidate_chrome()
             self.update()
             event.accept()
             return

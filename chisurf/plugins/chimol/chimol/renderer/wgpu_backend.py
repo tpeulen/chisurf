@@ -22,6 +22,7 @@ the shading matches, not whether a widget hosts it.
 from __future__ import annotations
 
 import pathlib
+from collections import OrderedDict
 from typing import Optional, Sequence
 
 import numpy as np
@@ -108,6 +109,44 @@ def view_matrix(
     return back @ r @ t
 
 
+
+#: Above this many bytes an overlay is compared by a sampled signature rather
+#: than by its whole content. Hashing 12.9 MB per frame would cost more than the
+#: upload it saves.
+_OVERLAY_HASH_LIMIT = 1 << 20
+
+#: How much interleaved vertex data to keep. A quarter-million beads is 8.4 MB,
+#: so this holds a large scene and its predecessor without holding every scene
+#: anyone has looked at.
+_VERTEX_CACHE_BYTES = 256 << 20
+
+
+def _fast_signature(data: np.ndarray) -> tuple:
+    """A cheap stand-in for the content of a large image.
+
+    Parameters
+    ----------
+    data : numpy.ndarray
+        Contiguous uint8 image.
+
+    Returns
+    -------
+    tuple
+        Shape, total, and a strided sample. Enough to notice a repainted panel
+        and cheap enough to compute every frame.
+
+    Notes
+    -----
+    Sampling, not hashing: a full hash of a retina-sized overlay costs more than
+    the upload it is meant to avoid. The failure mode is a chrome change this
+    misses, which would show as a stale panel for as long as the change lasts --
+    so the caller *also* repaints on a timer, and the two together bound the
+    staleness without either having to be exact.
+    """
+    flat = data.reshape(-1)
+    return (data.shape, int(flat[::4099].sum()), bytes(flat[::65536][:512]))
+
+
 class WgpuMeshRenderer:
     """Draw the mesh objects of a packed scene, offscreen.
 
@@ -148,6 +187,14 @@ class WgpuMeshRenderer:
         # A window passes whatever format its surface was configured with, and
         # the pipelines are built for it.
         self.format = format or wgpu.TextureFormat.rgba8unorm
+        #: Interleaved vertex data, per geometry. A rotating camera redraws the
+        #: same geometry sixty times a second, and rebuilding the interleaved
+        #: array and re-uploading it was 9 ms of a 21 ms frame on a
+        #: quarter-million beads. Keyed on the arrays' identity *and* their
+        #: buffer addresses, and holding a reference to the geometry so its
+        #: `id` cannot be recycled under the entry.
+        self._vertex_cache: "OrderedDict[tuple, tuple]" = OrderedDict()
+        self._overlay_cache = None
 
         self._bind_layout = self.device.create_bind_group_layout(
             entries=[
@@ -600,6 +647,86 @@ class WgpuMeshRenderer:
         render_pass.draw(6, 1, 0, 0)
         return [texture, bind, ubo, group0]
 
+    @staticmethod
+    def _geometry_signature(geom, kind: str) -> tuple:
+        """What must be unchanged for a cached vertex buffer to still be right.
+
+        Parameters
+        ----------
+        geom : PackedGeometry
+            The geometry about to be drawn.
+        kind : str
+            Which interleave it takes.
+
+        Returns
+        -------
+        tuple
+
+        Notes
+        -----
+        Array *addresses*, not contents. The scene builder produces new arrays
+        whenever anything changes -- numpy operations do not write in place --
+        so an address is a sound identity and hashing tens of megabytes per
+        frame would cost more than the work it saves. In-place mutation of an
+        array a geometry already holds would defeat it; nothing in the builder
+        does that, and `clear_caches` is there for anything that starts to.
+        """
+        def address(array):
+            return None if array is None else (array.ctypes.data, array.shape)
+
+        return (
+            id(geom), kind,
+            address(geom.positions), address(geom.colors), address(geom.radii),
+            address(geom.normals), address(geom.indices),
+            geom.meta.get("size"), bool(geom.meta.get("world_radius", False)),
+        )
+
+    def _vertex_buffer(self, geom, kind: str):
+        """The interleaved vertex buffer for a geometry, built once.
+
+        Parameters
+        ----------
+        geom : PackedGeometry
+            Geometry to draw.
+        kind : str
+            ``"impostor"``, ``"line"`` or ``"mesh"``.
+
+        Returns
+        -------
+        wgpu.GPUBuffer
+        """
+        wgpu = self._wgpu
+        key = self._geometry_signature(geom, kind)
+        hit = self._vertex_cache.get(key)
+        if hit is not None:
+            self._vertex_cache.move_to_end(key)
+            return hit[1]
+
+        if kind == "impostor":
+            data = self.interleave_impostors(geom)
+        elif kind == "line":
+            data = self.interleave_lines(geom)
+        else:
+            data = self.interleave(geom)
+        buffer = self.device.create_buffer_with_data(
+            data=data, usage=wgpu.BufferUsage.VERTEX
+        )
+        self._vertex_cache[key] = (geom, buffer, data.nbytes)
+        held = sum(entry[2] for entry in self._vertex_cache.values())
+        while len(self._vertex_cache) > 1 and held > _VERTEX_CACHE_BYTES:
+            _, evicted = self._vertex_cache.popitem(last=False)
+            held -= evicted[2]
+        return buffer
+
+    def clear_caches(self) -> None:
+        """Drop every cached buffer and texture.
+
+        For a caller that mutates geometry arrays in place, and for tests that
+        want the next frame to be built from scratch.
+        """
+        self._vertex_cache.clear()
+        self._overlay_cache = None
+
     def upload_overlay(self, image: np.ndarray):
         """Upload a premultiplied RGBA chrome image and return its texture.
 
@@ -615,6 +742,13 @@ class WgpuMeshRenderer:
         wgpu = self._wgpu
         data = np.ascontiguousarray(image, dtype=np.uint8)
         height, width = data.shape[:2]
+        # The chrome is 12.9 MB at a retina viewport and is usually the *same*
+        # 12.9 MB as last frame -- the panel cannot change while the camera is
+        # being dragged. Re-uploading it was 4.2 ms of a 21 ms frame.
+        signature = (width, height, data.tobytes() if data.nbytes <= _OVERLAY_HASH_LIMIT
+                     else _fast_signature(data))
+        if self._overlay_cache is not None and self._overlay_cache[0] == signature:
+            return self._overlay_cache[1]
         texture = self.device.create_texture(
             size=(width, height, 1),
             format=wgpu.TextureFormat.rgba8unorm,
@@ -626,6 +760,7 @@ class WgpuMeshRenderer:
             {"bytes_per_row": width * 4, "rows_per_image": height},
             (width, height, 1),
         )
+        self._overlay_cache = (signature, texture)
         return texture
 
     def resize(self, width: int, height: int) -> None:
@@ -893,15 +1028,7 @@ class WgpuMeshRenderer:
                 rp.set_pipeline(pipeline)
                 current = pipeline
 
-            if kind == "impostor":
-                data = self.interleave_impostors(geom)
-            elif kind == "line":
-                data = self.interleave_lines(geom)
-            else:
-                data = self.interleave(geom)
-            vbo = self.device.create_buffer_with_data(
-                data=data, usage=wgpu.BufferUsage.VERTEX
-            )
+            vbo = self._vertex_buffer(geom, kind)
             ubo = self.device.create_buffer_with_data(
                 data=self._uniforms(
                     mvp, view, proj, normal_matrix, fog_end, fog_scale,
@@ -922,7 +1049,9 @@ class WgpuMeshRenderer:
                 layout=self._bind_layout,
                 entries=[{"binding": 0, "resource": {"buffer": ubo, "offset": 0, "size": ubo.size}}],
             )
-            keep += [vbo, ubo, bind]
+            # `vbo` is owned by the cache and must not be dropped with the
+            # frame; `ubo` and `bind` change every frame and must be.
+            keep += [ubo, bind]
             rp.set_bind_group(0, bind)
             rp.set_vertex_buffer(0, vbo)
 

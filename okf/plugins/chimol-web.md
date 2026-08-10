@@ -728,6 +728,46 @@ rendered frame is **identical**: a six-representation sheet built each way
 differs in zero pixels above a threshold of 6. The traced image differs from the
 numba tracer's in 0.012 % of pixels, all on silhouette edges.
 
+**The interactive frame was 66 % chrome.** Rotating a quarter-million-bead model
+cost 21 ms a frame at a Retina viewport, and the molecule was the smaller half of
+it: 9.6 ms rasterising the panel, the sequence strip and the labels, plus 4.2 ms
+uploading that 12.9 MB image, plus 7 ms rebuilding an interleaved vertex array
+that had not changed and 2.4 ms re-uploading it. Three caches, all in
+`wgpu_backend` and `wgpu_view`, took the frame to **1.7 ms** — and the rendered
+sheet is byte-identical to the reference, max channel difference 0.
+
+- **The vertex buffer** is cached per geometry, keyed on the *addresses* of its
+  arrays rather than their contents: the scene builder makes new arrays whenever
+  anything changes, so an address is a sound identity and hashing tens of
+  megabytes a frame would cost more than the work it saves. The entry holds the
+  geometry, so its `id` cannot be recycled underneath it.
+- **The overlay texture** is cached on a sampled signature of the image, not a
+  hash — a full hash of 12.9 MB every frame costs more than the upload.
+- **The chrome image is repainted on a timer, not a dirty flag**, and that is the
+  whole design. A dirty flag here has a known failure mode, written into the
+  function it replaces: the panel re-reads the sequence colours every frame
+  because colouring is a *command* with no signal, so a cache invalidated by the
+  events anyone thinks of goes stale on the one they did not. A timer cannot go
+  permanently stale — worst case the panel is 100 ms behind, and it corrects
+  itself. GUI interaction calls `invalidate_chrome()` so a click still feels
+  immediate, and a scene with 3-D labels is painted every frame as before,
+  because labels move with the camera.
+
+**Two test bugs that only exist at a device pixel ratio above 1.** `test_wgpu_view`
+compared `scene_origin_y()` against `_height - scene_height()` — the framebuffer
+height against a widget height — and divided a widget width by the ratio to
+predict a projection that answers in widget pixels. Both are invisible on a 1x
+display and off by exactly 2x on a Retina one. This is the third time today the
+two pixel sizes in this widget have produced a wrong answer that looked like a
+real difference; the others were a render comparison and a leaf-size sweep.
+
+**And a test that had been red for two commits without being run.**
+`test_wgsl_parity` globbed every `.wgsl` in the directory and prepended the
+*render* prelude to each, which stopped being true the moment compute shaders
+moved in — `raytrace.wgsl` was being concatenated with the shading model and
+declaring a second `fn shade`. The shader families are now written out
+explicitly, with a test that fails if a new shader is not classified.
+
 **`GpuVolume` is what removed the transport.** Every one of those kernels
 already ran on the GPU; the *grid* did not stay there. `volume_ops.wgsl` does the
 threshold, the scale and the root in place so the SES seed and the unit
