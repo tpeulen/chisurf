@@ -174,8 +174,18 @@ def _triangle_edges(active, case_of_active, cell_shape, dims, edge_map, tri_tabl
     corner = corner + edge_map[edge, 1:]
 
     identifier = ((axis * nx + corner[:, 0]) * ny + corner[:, 1]) * nz + corner[:, 2]
-    unique, inverse = np.unique(identifier, return_inverse=True)
-    return unique, inverse.reshape(-1, 3).astype(np.int64)
+
+    # `np.unique(..., return_inverse=True)` would sort 330k ids to find 55k
+    # distinct ones. The ids are dense and bounded -- three per grid node -- so a
+    # mark-and-number pass over that range is cheaper: `flatnonzero` returns them
+    # already ascending, which is the order `unique` would have given, so the
+    # vertex numbering is unchanged.
+    marked = np.zeros(3 * nx * ny * nz, dtype=bool)
+    marked[identifier] = True
+    unique = np.flatnonzero(marked)
+    slot = np.zeros(marked.size, dtype=np.int32)
+    slot[unique] = np.arange(unique.size, dtype=np.int32)
+    return unique, slot[identifier].reshape(-1, 3).astype(np.int64)
 
 
 def _place_vertices(grid, level, unique, dims):

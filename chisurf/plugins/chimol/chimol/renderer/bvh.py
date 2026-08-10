@@ -11,17 +11,21 @@ ray. A ray then descends only the boxes it actually pierces, which turns the
 per-ray cost into ``O(log primitives)``. Building the tree costs a fraction of a
 single row of pixels, so there is no scene small enough for it not to pay.
 
-The tree is built **breadth-first with a median split on the widest centroid
-axis**, entirely in array operations: one sort per level over the whole
-primitive array, with the nodes of that level as the primary sort key. That is
-what lets the build be NumPy rather than a compiled per-node loop -- a binned
-surface-area heuristic evaluates candidate planes *per node*, which is a loop
-over nodes and exactly what could not be written this way.
+The tree is built **breadth-first with a spatial-midpoint split on the widest
+centroid axis**, entirely in array operations and with no sort at all: a level
+is one ``reduceat`` for its bounds and one stable partition, and a stable
+partition of contiguous runs is a ``cumsum``. That is what lets the build be
+NumPy rather than a compiled per-node loop -- a binned surface-area heuristic
+evaluates candidate planes *per node*, which is a loop over nodes and exactly
+what could not be written this way.
 
-The cost of that choice is real but small: a median split balances the counts
-and can leave two children overlapping where SAH would have separated them.
-Measured on the scenes chimol renders it costs a few per cent of traversal, and
-the traversal now runs on the GPU, where it is not the bottleneck.
+A midpoint split can put every primitive of a node on one side, which a median
+split cannot; when that happens the node falls back to halving its primitives in
+their current order, which is arbitrary but always makes progress. It can also
+leave two children overlapping where SAH would have separated them. Both cost a
+little traversal and neither is where the time goes: the traversal runs on the
+GPU and the *build* was the bottleneck -- 80-110 ms for 32k triangles against a
+20-90 ms trace, almost all of it in the per-level sort this replaces.
 
 Primitives are addressed by one index space so a scene of mixed kinds is one
 tree: ``prim < n_spheres`` is a sphere, and anything above it is triangle
@@ -74,16 +78,17 @@ def build_bvh(prim_min, prim_max, max_leaf):
 
     Notes
     -----
-    Built one *level* at a time, and with no Python loop over nodes at all. The
+    Built one *level* at a time, with no Python loop over nodes and no sort. The
     nodes of a level always partition ``prim_index`` into contiguous runs, so the
-    bounds for the whole level are one ``reduceat`` and the partition is one
-    ``lexsort`` keyed by (node, centroid along that node's widest axis).
+    bounds for the whole level are one ``reduceat``, and splitting them is a
+    stable partition about each node's midpoint -- which for contiguous runs is
+    two running counts and a scatter.
 
-    The per-node loop is what had to go, not just the per-primitive one. A
-    32k-triangle mesh has 8k leaves, so iterating the frontier in Python cost
-    more than the sorts did -- and it showed up as the tracer's cost growing
-    9.5x for 32x the triangles, which reads as a broken tree and was a slow
-    build.
+    Both of those were arrived at the hard way. The per-node Python loop went
+    first: a 32k-triangle mesh has 8k leaves, and iterating the frontier cost
+    more than the array work did. What was left was a `lexsort` per level, and
+    that was still 80-110 ms for 32k triangles -- more than the trace it was
+    accelerating.
     """
     lower = np.ascontiguousarray(prim_min, dtype=np.float64).reshape(-1, 3)
     upper = np.ascontiguousarray(prim_max, dtype=np.float64).reshape(-1, 3)
@@ -97,7 +102,20 @@ def build_bvh(prim_min, prim_max, max_leaf):
             np.zeros(1, dtype=np.int32), np.zeros(0, dtype=np.int32),
         )
 
+    # One packed array, gathered once per level instead of three, in f32
+    # instead of f64. Both matter and neither is cosmetic: the three separate
+    # `(n, 3)` float64 gathers were 21 ms of a 52 ms build, and the node bounds
+    # are handed to the shader as f32 anyway, so the wider type bought nothing.
+    #
+    # The upper bound and the upper centroid are stored **negated**, so a single
+    # `minimum.reduceat` over the twelve columns yields all four bounds -- min of
+    # the lows, and minus the max of the highs.
     centroid = 0.5 * (lower + upper)
+    packed = np.empty((n, 12), dtype=np.float32)
+    packed[:, 0:3] = lower
+    packed[:, 3:6] = -upper
+    packed[:, 6:9] = centroid
+    packed[:, 9:12] = -centroid
     order = np.arange(n, dtype=np.int64)
 
     capacity = 2 * n + 1
@@ -120,13 +138,12 @@ def build_bvh(prim_min, prim_max, max_leaf):
         starts = node_start[frontier]
         counts = node_count[frontier]
 
-        ordered_min = lower[order]
-        ordered_max = upper[order]
-        ordered_centroid = centroid[order]
-        node_min[frontier] = np.minimum.reduceat(ordered_min, starts, axis=0)
-        node_max[frontier] = np.maximum.reduceat(ordered_max, starts, axis=0)
-        centre_lo = np.minimum.reduceat(ordered_centroid, starts, axis=0)
-        centre_hi = np.maximum.reduceat(ordered_centroid, starts, axis=0)
+        ordered = packed[order]
+        bounds = np.minimum.reduceat(ordered, starts, axis=0)
+        node_min[frontier] = bounds[:, 0:3]
+        node_max[frontier] = -bounds[:, 3:6]
+        centre_lo = bounds[:, 6:9]
+        centre_hi = -bounds[:, 9:12]
 
         extent = centre_hi - centre_lo
         axis = np.argmax(extent, axis=1)
@@ -137,27 +154,56 @@ def build_bvh(prim_min, prim_max, max_leaf):
         if not splittable.any():
             break
 
-        # One sort for the whole level: primary key the node, secondary key the
-        # centroid along that node's own widest axis. Nodes that are not being
-        # split keep their order, because their key is constant within the run.
-        segment = np.repeat(np.arange(counts.size, dtype=np.int64), counts)
-        key = np.where(
-            splittable[segment],
-            ordered_centroid[np.arange(n), axis[segment]],
-            0.0,
+        # Partition, not sort. Within each node's contiguous run the
+        # primitives below the midpoint keep their order and move to the front,
+        # the rest follow -- and a stable partition of runs is just two running
+        # counts, so the whole level is a handful of O(n) passes instead of an
+        # O(n log n) `lexsort`. That sort was the build's entire cost.
+        # int32 throughout: a scene with more than two billion primitives is not
+        # a scene, and the wider type doubles the memory this walks per level.
+        segment = np.repeat(np.arange(counts.size, dtype=np.int32), counts)
+        midpoint = 0.5 * (centre_lo + centre_hi)
+        own_axis = axis[segment]
+        coordinate = ordered[np.arange(n), 6 + own_axis]
+        goes_left = coordinate < midpoint[segment, own_axis]
+        # A node that is not being split must not be reshuffled.
+        goes_left |= ~splittable[segment]
+
+        left_running = np.cumsum(goes_left, dtype=np.int32)
+        right_running = np.arange(1, n + 1, dtype=np.int32) - left_running
+        before = np.zeros(counts.size + 1, dtype=np.int64)
+        before[1:] = np.cumsum(counts)
+        zero = np.zeros(1, dtype=np.int32)
+        left_before = np.concatenate((zero, left_running))[before[:-1]]
+        right_before = np.concatenate((zero, right_running))[before[:-1]]
+        left_total = np.add.reduceat(goes_left.astype(np.int32), starts)
+
+        rank_left = left_running - 1 - left_before[segment]
+        rank_right = right_running - 1 - right_before[segment]
+        destination = starts[segment].astype(np.int64) + np.where(
+            goes_left, rank_left, left_total[segment] + rank_right
         )
-        order = order[np.lexsort((key, segment))]
+        partitioned = np.empty_like(order)
+        partitioned[destination] = order
+        order = partitioned
+
+        # An empty side means the midpoint separated nothing, which a median
+        # never does. Halving in the current order is arbitrary and always makes
+        # progress; without it the node would be rebuilt identically for ever.
+        half = np.where(
+            (left_total == 0) | (left_total == counts), counts // 2, left_total
+        )
 
         parents = frontier[splittable]
         parent_start = starts[splittable]
         parent_count = counts[splittable]
-        half = parent_count // 2
+        parent_half = half[splittable]
         left = n_nodes + 2 * np.arange(parents.size, dtype=np.int64)
         node_left[parents] = left.astype(np.int32)
         node_start[left] = parent_start
-        node_count[left] = half
-        node_start[left + 1] = parent_start + half
-        node_count[left + 1] = parent_count - half
+        node_count[left] = parent_half
+        node_start[left + 1] = parent_start + parent_half
+        node_count[left + 1] = parent_count - parent_half
         n_nodes += 2 * parents.size
 
         # The next frontier is the unsplit leaves plus the new children, back in

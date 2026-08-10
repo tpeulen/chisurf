@@ -169,19 +169,41 @@ stops matching is a question, not a failure. `capture_gl_baseline.py` keeps
    `GpuVolume` from one kernel to the next instead of copying an 8 MB grid out
    and back in between each pair.
 
-   **What is left is the BVH build**, the CPU-side bottleneck of a large trace:
-   1.5 ms for 1k triangles but **80–110 ms for 32k**, against a 20–90 ms trace.
-   It is a `lexsort` per level over the whole primitive array; a midpoint split
-   needs only a stable partition, which is `cumsum` rather than a sort. Note the
-   trap that hides it: at 320×240 the build dominates a GPU trace, so the tree's
-   own scaling test read 9.5× for a 32× increase and failed one run in three
-   while the tree was perfectly good. Measure the tree where tracing dominates.
+   **The BVH build is still the CPU-side bottleneck of a large trace**, and it
+   did not yield to the obvious fixes. Two were tried and measured:
 
-   **And `_triangle_edges` is now the largest single piece of a surface build** —
-   the triangle table and the `np.unique` that welds the vertices, roughly half
-   of the ~60 ms. Welding on the GPU needs an `atomicCompareExchange` claim per
-   grid edge and a compaction; it is the obvious next kernel and it was not
-   attempted.
+   - the per-level `lexsort` → a **spatial-midpoint split with a `cumsum`
+     partition**, which is O(n) instead of O(n log n) per level and made **no
+     difference** — the sort was not where the time went;
+   - three `(n, 3)` float64 gathers per level → **one packed `(n, 12)` float32
+     gather** (upper bound and upper centroid stored negated, so one
+     `minimum.reduceat` yields all four bounds). That one was real: **79 → 59
+     ms**, because the gathers were 21 ms of a 52 ms build and the node bounds go
+     to the shader as f32 anyway.
+
+   Net: **~72–80 ms → ~55–65 ms** for 32k triangles. Both changes are kept — the
+   partition moves fewer bytes and the tree is equally good — but neither is the
+   step change, and the reason is structural: the build walks the whole primitive
+   array **17 times**, once per level. The step change is a **Karras LBVH**: one
+   Morton-code sort, after which every internal node's range and split are
+   determined independently and therefore vectorise into two or three passes
+   total. Lower tree quality, far fewer passes; not attempted.
+
+   **Welding got its own win.** `_triangle_edges` was 45 ms, half of it
+   `np.unique(..., return_inverse=True)` sorting 330k edge ids to find 55k
+   distinct ones. The ids are dense and bounded — three per grid node — so a
+   mark-and-number pass over that range replaces it, and `flatnonzero` returns
+   them already ascending, which is the order `unique` gave, so the vertex
+   numbering is unchanged. **45 → 34 ms.**
+
+   **Welding on the GPU was designed and not built.** It needs an
+   `atomicCompareExchange` claim per grid edge, and the natural one-pass form
+   spins waiting for the winning thread to publish its index — which has no
+   forward-progress guarantee across workgroups. The spin-free shape is three
+   passes (mark, number the marked, map), 25 MB of slot array at 128³, and it
+   assigns vertex indices in arbitrary order, so determinism has to be restored
+   by a host-side sort and a re-gather. Roughly 20 ms of prize against that; the
+   analysis is here so the next attempt starts from it.
 
 2. **Begin the JS/browser port (user request, not started).** The groundwork is
    deliberate and already in place: `wgsl/` composes by **concatenation**
@@ -665,15 +687,15 @@ WGSL a browser compiles unchanged, composed by concatenation because WGSL has no
 | route | time |
 |---|---|
 | NumPy/scipy only | 983–1,397 ms |
-| GPU kernels, grid round-tripping | 153–321 ms |
-| GPU kernels, **grid resident** | **62–134 ms** |
+| GPU kernels, grid round-tripping | 129–321 ms |
+| GPU kernels, **grid resident** | **50–51 ms** |
 
-Those absolutes were taken at load averages 13–20 — another agent was running a
-suite — so read them as an upper bound. The *ratio* is what held steady across
-runs: keeping the grid on the device is worth **2–3.5×** on top of having the
-kernels there at all, and the pair together is roughly **15×** the pure-NumPy
-route. Do not compare a single build against a single build; see the
-shader-compilation trap below.
+Those absolutes were taken at load averages 12–20 — another agent was running a
+suite — so read them as an upper bound; the ratios held steady across runs.
+Keeping the grid on the device is worth **~2.5×** on top of having the kernels
+there at all, and the pair together is roughly **20×** the pure-NumPy route. Do
+not compare a single build against a single build; see the shader-compilation
+trap below.
 
 Agreement with the NumPy route is ~5×10⁻⁶ absolute (f32 against f64) and the
 rendered frame is **identical**: a six-representation sheet built each way

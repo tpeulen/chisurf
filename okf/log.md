@@ -1,6 +1,35 @@
 # Update Log
 
 ## 2026-08-10
+* **A surface build is 50 ms now, and two of the three things that made it so
+  were not what I expected.** Following the residency work above, the two
+  remaining CPU costs were attacked and measured rather than assumed.
+  **The BVH build did not yield to the obvious fix.** Replacing the per-level
+  `lexsort` with a spatial-midpoint split and a `cumsum` partition -- O(n)
+  instead of O(n log n) per level -- made *no difference*: the sort was not where
+  the time went. What was: three `(n, 3)` float64 gathers per level, 21 ms of a
+  52 ms build. One packed `(n, 12)` float32 gather instead (upper bound and upper
+  centroid negated so a single `minimum.reduceat` yields all four bounds) took it
+  79 -> 59 ms. Net ~72-80 -> ~55-65 ms for 32k triangles. Both changes are kept,
+  neither is a step change, and the reason is structural -- the build walks the
+  whole primitive array 17 times, once per level. The step change is a Karras
+  LBVH, where every internal node is determined independently after one Morton
+  sort; not attempted.
+  **Welding did yield.** `_triangle_edges` was 45 ms, half of it
+  `np.unique(..., return_inverse=True)` sorting 330k edge ids to find 55k
+  distinct ones. The ids are dense and bounded -- three per grid node -- so a
+  mark-and-number pass replaces it, and `flatnonzero` returns them ascending,
+  which is the order `unique` gave, so the vertex numbering is unchanged.
+  45 -> 34 ms.
+  **Welding on the GPU was designed and deliberately not built**, and the
+  analysis is recorded so the next attempt starts from it: the natural one-pass
+  form spins waiting for the winning thread to publish its index, which has no
+  forward-progress guarantee across workgroups; the spin-free shape is three
+  passes, 25 MB of slot array at 128^3, and arbitrary vertex ordering that a
+  host-side sort has to undo. ~20 ms of prize against that.
+  **Whole SES build on 148L at 128^3: 983-1,397 ms pure NumPy, 129-321 ms with
+  the grid round-tripping, 50-51 ms now.** Same mesh every time.
+
 * **The 3-vector helpers left numba bit-exact, and that alone would have been a
   4.9x regression.** `core/math/linalg` is NumPy now and every kernel matches
   the compiled version to `0.0e+00`. But the kernel was never the thing to
