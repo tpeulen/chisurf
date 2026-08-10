@@ -720,36 +720,46 @@ def _generate_surface_mesh_edt(
         spacing *= scale
         dims_float = np.ceil(extent / spacing).astype(int) + 1
 
-    dims = np.maximum(dims_float, 3)
-    grid = np.zeros(tuple(int(x) for x in dims), dtype=np.float32)
+    if method not in ("sas", "ses"):
+        return None
+
+    dims = tuple(int(x) for x in np.maximum(dims_float, 3))
     origin = mins.astype(np.float32)
+    points = pts_arr.astype(np.float32).astype(np.float64)
+    radii64 = radii_arr.astype(np.float32).astype(np.float64)
 
-    _distance_to_spheres(
-        pts_arr.astype(np.float32).astype(np.float64),
-        radii_arr.astype(np.float32).astype(np.float64),
-        grid,
-        origin.astype(np.float64),
-        float(spacing),
+    # The whole pipeline -- distance grid, threshold, distance transform,
+    # isosurface -- runs on the device with the grid never coming back. Each of
+    # those already ran there; what did not was the *grid*, which was copied out
+    # and in again between every pair, twice over at 8 MB. See `GpuVolume`.
+    resident, level = _resident_field(
+        points, radii64, dims, origin, spacing, method, probe_radius
     )
-
-    if method == "sas":
-        # For SAS: we run on -grid (higher inside) at level -probe_radius.
-        grid_to_mesh = -grid
-        level = -float(probe_radius)
-    elif method == "ses":
-        # For SES: B_forbidden = (D < r_p)
-        # 1 inside forbidden region, 0 inside allowed region
-        forbidden = (grid < float(probe_radius)).astype(np.uint8)
-        # Distance to nearest 0 (allowed region), scaled to physical units.
-        grid_to_mesh = _distance_transform_edt(forbidden).astype(np.float32) * float(spacing)
-        level = float(probe_radius)
+    if resident is not None:
+        verts, faces, norms = _marching_cubes(
+            None, level, (spacing, spacing, spacing), volume=resident
+        )
     else:
-        return None
-
-    if level <= grid_to_mesh.min() or level >= grid_to_mesh.max():
-        return None
-
-    verts, faces, norms = _marching_cubes(grid_to_mesh, level, (spacing, spacing, spacing))
+        grid = np.zeros(dims, dtype=np.float32)
+        _distance_to_spheres(
+            points, radii64, grid, origin.astype(np.float64), float(spacing)
+        )
+        if method == "sas":
+            # For SAS: we run on -grid (higher inside) at level -probe_radius.
+            grid_to_mesh = -grid
+            level = -float(probe_radius)
+        else:
+            # For SES: B_forbidden = (D < r_p), 1 inside the forbidden region;
+            # the distance to the nearest 0 is then in physical units.
+            forbidden = (grid < float(probe_radius)).astype(np.uint8)
+            grid_to_mesh = _distance_transform_edt(forbidden).astype(np.float32) \
+                * float(spacing)
+            level = float(probe_radius)
+        if level <= grid_to_mesh.min() or level >= grid_to_mesh.max():
+            return None
+        verts, faces, norms = _marching_cubes(
+            grid_to_mesh, level, (spacing, spacing, spacing)
+        )
     if verts.shape[0] == 0:
         return None
 
@@ -761,6 +771,71 @@ def _generate_surface_mesh_edt(
     # Swap winding order to CCW
     faces = faces[:, [0, 2, 1]]
     return verts, faces, norms
+
+
+
+def _resident_field(points, radii, dims, origin, spacing, method, probe_radius):
+    """Build the field the isosurface is taken from, entirely on the device.
+
+    Parameters
+    ----------
+    points : numpy.ndarray
+        ``(n, 3)`` sphere centres.
+    radii : numpy.ndarray
+        ``(n,)`` sphere radii.
+    dims : tuple of int
+        Voxel counts.
+    origin : numpy.ndarray
+        World position of voxel ``(0, 0, 0)``.
+    spacing : float
+        Voxel edge length.
+    method : str
+        ``"sas"`` or ``"ses"``.
+    probe_radius : float
+        Solvent probe radius.
+
+    Returns
+    -------
+    tuple
+        ``(volume, level)``, or ``(None, 0.0)`` when the device route is
+        unavailable — in which case the caller runs the same chain in NumPy.
+
+    Notes
+    -----
+    The early "does the level even cross this grid" check the NumPy path makes is
+    not repeated here, because answering it needs the volume's min and max and
+    that is a copy back for one comparison. Marching cubes finds no crossings in
+    that case and the caller returns ``None`` just the same.
+    """
+    from ..renderer import compute  # noqa: PLC0415
+
+    horizon = max(_DISTANCE_HORIZON, 4.0 * spacing)
+    field = compute.distance_to_spheres(
+        points, radii, dims, origin.astype(np.float64), float(spacing), horizon,
+        resident=True,
+    )
+    if field is None:
+        return None, 0.0
+
+    if method == "sas":
+        # Higher inside, so the surface sits at minus the probe radius.
+        return compute.scale_volume(field, -1.0), -float(probe_radius)
+
+    # SES: seed the transform where the probe cannot reach, and measure out of
+    # it. The seed is produced in the form the transform wants -- zero at the
+    # seeds, a stand-in for infinity elsewhere -- so no mask ever exists.
+    # Note the direction. `forbidden = distance < probe` is where the probe
+    # cannot reach, and the transform measures *out of the allowed region* --
+    # so the seeds are the voxels the probe can reach and the forbidden ones
+    # start at infinity. Getting this backwards does not fail, it grows the
+    # surface: 46,558 vertices where there should be 42,562.
+    seed = compute.threshold_volume(
+        field, float(probe_radius), compute._EDT_BIG, 0.0
+    )
+    squared = compute.distance_transform_edt(seed, resident=True)
+    if squared is None:
+        return None, 0.0
+    return compute.root_scale_volume(squared, float(spacing)), float(probe_radius)
 
 
 def _get_surface_atom_mask(

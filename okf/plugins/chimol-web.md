@@ -162,31 +162,26 @@ stops matching is a question, not a failure. `capture_gl_baseline.py` keeps
 
 ## Do these next, in order
 
-1. **numba is gone from chimol, and the compute is on the GPU.** Nothing under
-   `chisurf/plugins/chimol/` imports numba;
-   `test/test_no_numba.py`'s `ALLOWED` set is **empty** and a companion test
-   fails if anything is put back into it. The ray tracer was the last holdout
-   and is now `wgsl/bvh.wgsl` + `wgsl/raytrace.wgsl`, with the BVH built by a
-   level-wise NumPy median split.
+1. **numba is gone from chimol, the compute is on the GPU, and the grid stays
+   there.** Nothing under `chisurf/plugins/chimol/` imports numba;
+   `test/test_no_numba.py`'s `ALLOWED` set is **empty**. The surface pipeline —
+   distance grid → threshold → distance transform → marching cubes — now passes a
+   `GpuVolume` from one kernel to the next instead of copying an 8 MB grid out
+   and back in between each pair.
 
-   **What is left here is one thing, and it is not a kernel:** the grid does not
-   stay resident on the GPU. The distance grid is computed there, read back,
-   uploaded again for the distance transform, read back, and uploaded a third
-   time if marching cubes wants it. That round trip is the whole reason
-   `compute.marching_cubes_active` — which is written, correct and tested — is
-   **deliberately not wired in**: measured end to end it is *slower* than the
-   NumPy pass it would replace (132 ms against 114 ms at 128³). Chain the three
-   with the grid resident and it stops being negative. See **Scene kernels on
-   the GPU**.
+   **What is left is the BVH build**, the CPU-side bottleneck of a large trace:
+   1.5 ms for 1k triangles but **80–110 ms for 32k**, against a 20–90 ms trace.
+   It is a `lexsort` per level over the whole primitive array; a midpoint split
+   needs only a stable partition, which is `cumsum` rather than a sort. Note the
+   trap that hides it: at 320×240 the build dominates a GPU trace, so the tree's
+   own scaling test read 9.5× for a 32× increase and failed one run in three
+   while the tree was perfectly good. Measure the tree where tracing dominates.
 
-   **The other measured cost is the BVH build**, which is now the CPU-side
-   bottleneck of a large trace: 1.5 ms for 1k triangles but **80–110 ms for
-   32k**, against a 20–90 ms trace. It is a `lexsort` per level over the whole
-   primitive array; a midpoint split needs only a stable partition, which is
-   `cumsum` rather than a sort. Note the trap that hides it: at 320×240 the
-   build dominates, so the tree's own scaling test read 9.5× for a 32× increase
-   and failed one run in three while the tree was perfectly good. Measure the
-   tree where tracing dominates.
+   **And `_triangle_edges` is now the largest single piece of a surface build** —
+   the triangle table and the `np.unique` that welds the vertices, roughly half
+   of the ~60 ms. Welding on the GPU needs an `atomicCompareExchange` claim per
+   grid edge and a compaction; it is the obvious next kernel and it was not
+   attempted.
 
 2. **Begin the JS/browser port (user request, not started).** The groundwork is
    deliberate and already in place: `wgsl/` composes by **concatenation**
@@ -663,12 +658,51 @@ WGSL a browser compiles unchanged, composed by concatenation because WGSL has no
 | `directional_occlusion`, 40k verts × 11k atoms | — | 830 ms | **29 ms** | 29× |
 | euclidean distance transform, 128³ | — | 328 ms | **32 ms** | 10× |
 | `shade_from_atoms`, 40k verts × 11k atoms | 10 ms (numba) | 151 ms | **14 ms** | 11× |
-| whole SES surface build, 148L at 128³ | — | 550 ms | **~180 ms** | 3× |
+
+**The whole SES surface build on 148L at 128³, three ways, identical mesh
+(42,562 vertices / 85,092 faces) each time:**
+
+| route | time |
+|---|---|
+| NumPy/scipy only | 983–1,397 ms |
+| GPU kernels, grid round-tripping | 153–321 ms |
+| GPU kernels, **grid resident** | **62–134 ms** |
+
+Those absolutes were taken at load averages 13–20 — another agent was running a
+suite — so read them as an upper bound. The *ratio* is what held steady across
+runs: keeping the grid on the device is worth **2–3.5×** on top of having the
+kernels there at all, and the pair together is roughly **15×** the pure-NumPy
+route. Do not compare a single build against a single build; see the
+shader-compilation trap below.
 
 Agreement with the NumPy route is ~5×10⁻⁶ absolute (f32 against f64) and the
 rendered frame is **identical**: a six-representation sheet built each way
 differs in zero pixels above a threshold of 6. The traced image differs from the
 numba tracer's in 0.012 % of pixels, all on silhouette edges.
+
+**`GpuVolume` is what removed the transport.** Every one of those kernels
+already ran on the GPU; the *grid* did not stay there. `volume_ops.wgsl` does the
+threshold, the scale and the root in place so the SES seed and the unit
+conversion never touch the host, `mc_active.wgsl` reports each crossing's **case**
+alongside its cell so the host never reads the grid back to recover it, and
+`mc_vertices.wgsl` both places each welded vertex on its edge and samples the
+gradient there — replacing `numpy.gradient` over the whole volume plus a
+host-side trilinear sample, which was 31 ms of a 107 ms marching cubes spent
+building three 8 MB arrays to read a few tens of thousands of values out of.
+
+**Two defects that came out of building it, both silent:**
+
+- **The transform's seed has a direction and it is easy to get backwards.**
+  `forbidden = distance < probe` is where the probe *cannot* reach, and the
+  transform measures out of the region it *can*, so the seeds are the reachable
+  voxels. Inverted, nothing fails — the surface *grows*, 46,558 vertices where
+  there should be 42,562. The test pins the counts exactly, because they are
+  combinatorial and an `allclose` would shrug at it.
+- **The crossing buffer was sized on a guess.** A quarter of the cells is
+  "generous" for a closed surface and an SES field at coarse spacing beat it; the
+  scan then returned `None` mid-chain and the host fell through to a CPU path
+  holding no grid at all. It retries at the exact count the shader reported now,
+  and the fallback reads the volume back rather than crashing on `None`.
 
 **One spatial index, built in NumPy, shared by the field kernels.** A uniform
 grid whose cell is the query radius, so 27 cells is provably enough. Building it

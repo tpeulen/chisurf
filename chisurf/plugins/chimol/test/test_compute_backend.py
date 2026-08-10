@@ -159,14 +159,13 @@ def test_the_distance_transform_agrees(backend):
     assert np.allclose(on_cpu, on_gpu, atol=1e-5)
 
 
-def test_the_marching_cubes_scan_agrees_even_though_it_is_not_used(backend):
-    """Correct, tested, and deliberately not wired in.
+def test_the_marching_cubes_scan_finds_the_same_cells_and_cases(backend):
+    """The crossings, and the corner-sign case of each.
 
-    Finding the crossings on the GPU measured *slower* end to end than the NumPy
-    pass it would replace, because the grid has to be uploaded for it. It is kept
-    because the reason it loses is one round trip rather than the kernel — chain
-    the distance grid, the transform and this with the grid resident and it stops
-    being negative. Groundwork rots without a test.
+    The case travels back with the cell on purpose. Without it the host would
+    have to read the grid to recover it — which is the one thing the resident
+    chain exists to avoid, and which made an earlier version of this dispatch
+    *slower* end to end than the NumPy pass it replaces.
     """
     rng = np.random.default_rng(4)
     axes = [np.linspace(-1.0, 1.0, n) for n in (64, 62, 60)]
@@ -176,6 +175,7 @@ def test_the_marching_cubes_scan_agrees_even_though_it_is_not_used(backend):
 
     got = backend("gpu", compute.marching_cubes_active, grid, level)
     assert got is not None
+    cells, cases = got
 
     corners = np.array([
         [0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0],
@@ -187,7 +187,40 @@ def test_the_marching_cubes_scan_agrees_even_though_it_is_not_used(backend):
     for bit, (ox, oy, oz) in enumerate(corners):
         case |= inside[ox:ox + nx - 1, oy:oy + ny - 1, oz:oz + nz - 1] << bit
     want = np.flatnonzero(((case != 0) & (case != 255)).ravel())
-    assert np.array_equal(got, want)
+    assert np.array_equal(cells, want)
+    assert np.array_equal(cases, case.ravel()[want])
+
+
+def test_the_resident_chain_builds_the_same_surface(backend, cloud):
+    """Distance grid → threshold → transform → isosurface, on the device.
+
+    The whole chain already ran on the GPU; what did not was the *grid*, which
+    was copied out and back in between every pair. Keeping it resident is worth
+    doing only if the mesh is identical, and identical is the right word here —
+    the vertex and face counts must match exactly, not approximately, because
+    they are combinatorial rather than numerical.
+
+    The direction of the threshold is what this catches. ``forbidden`` is where
+    the probe *cannot* reach and the transform measures out of the region it
+    can, so the seeds are the reachable voxels. Inverting that does not fail; it
+    grows the surface, 46,558 vertices where there should be 42,562.
+    """
+    atoms, _ = cloud
+    radii = np.full(atoms.shape[0], 1.7)
+    common = dict(method="ses", probe_radius=1.4, grid_spacing=0.8, max_dim=64)
+
+    on_cpu = backend("cpu", surface._generate_surface_mesh_edt, atoms, radii, **common)
+    on_gpu = backend("gpu", surface._generate_surface_mesh_edt, atoms, radii, **common)
+    assert on_cpu is not None and on_gpu is not None
+
+    assert on_cpu[0].shape == on_gpu[0].shape, "vertex count"
+    assert on_cpu[1].shape == on_gpu[1].shape, "face count"
+    assert np.array_equal(on_cpu[1], on_gpu[1]), "topology"
+    assert np.allclose(on_cpu[0], on_gpu[0], atol=1e-3), "positions"
+    # Normals come from the gradient, which the GPU samples from the resident
+    # volume instead of from three full-volume NumPy arrays. Same rule, so the
+    # same answer to f32.
+    assert np.allclose(on_cpu[2], on_gpu[2], atol=2e-3), "normals"
 
 
 def test_a_tiny_problem_stays_on_the_cpu(cloud):

@@ -116,21 +116,19 @@ _TRI_TABLE = _load_tri_table()
 _AXIS_STEP = np.eye(3, dtype=np.int64)
 
 
-def _mc_kernel(grid, level, corners, edge_corners, edge_map, tri_table):
-    """Triangulate a scalar grid, returning welded vertices in index units.
+def _triangle_edges(active, case_of_active, cell_shape, dims, edge_map, tri_table):
+    """Grid-edge ids per triangle corner, welded, plus the face list.
 
     Parameters
     ----------
-    grid : numpy.ndarray
-        ``(nx, ny, nz)`` scalar field.
-    level : float
-        Iso value; a corner counts as inside when its value is ``< level``.
-    corners : numpy.ndarray
-        ``(8, 3)`` cube-corner offsets.
-    edge_corners : numpy.ndarray
-        ``(12, 2)`` the corners each cube edge joins. Unused here — the edge is
-        identified by its grid-global axis and lower corner instead — and kept
-        so the signature still describes the Lorensen–Cline tables.
+    active : numpy.ndarray
+        Flat indices of the cells the surface crosses, ascending.
+    case_of_active : numpy.ndarray
+        Corner-sign case of each.
+    cell_shape : tuple of int
+        ``(nx-1, ny-1, nz-1)``.
+    dims : tuple of int
+        ``(nx, ny, nz)``.
     edge_map : numpy.ndarray
         ``(12, 4)`` axis and lower-corner offset of each cube edge.
     tri_table : numpy.ndarray
@@ -139,7 +137,7 @@ def _mc_kernel(grid, level, corners, edge_corners, edge_map, tri_table):
     Returns
     -------
     tuple
-        ``(verts, faces)`` in grid-index units.
+        ``(unique_edge_ids, faces)``.
 
     Notes
     -----
@@ -147,29 +145,10 @@ def _mc_kernel(grid, level, corners, edge_corners, edge_map, tri_table):
     edge share the vertex on it — that is what makes the output a connected mesh
     with skimage's vertex count rather than three loose vertices per triangle.
     Identifying the edge globally also removes the interpolation's dependence on
-    which cell reached it first: the value is read at the edge's lower corner and
-    its neighbour along the axis, whichever cube corner that happens to be.
+    which cell reached it first, which is what lets the placement happen
+    somewhere else entirely: on the GPU, from a volume the host never sees.
     """
-    nx, ny, nz = grid.shape
-    cell_shape = (nx - 1, ny - 1, nz - 1)
-
-    # Deliberately NumPy, and there is a working compute shader for it that is
-    # deliberately not called -- see `compute.marching_cubes_active`. Finding the
-    # crossings on the GPU measured *slower* end to end (132 ms against 114 ms at
-    # 128^3), because the 8 MB grid has to be uploaded for it and the eight
-    # shifted comparisons below are already fast. It pays only once the grid stops
-    # making the round trip at all.
-    inside = grid < level
-    case = np.zeros(cell_shape, dtype=np.int64)
-    for bit in range(8):
-        ox, oy, oz = corners[bit]
-        case |= inside[ox:ox + nx - 1, oy:oy + ny - 1, oz:oz + nz - 1] << bit
-    active = np.flatnonzero(((case != 0) & (case != 255)).ravel())
-    case_of_active = case.ravel()[active]
-
-    if active.size == 0:
-        return np.zeros((0, 3), dtype=np.float64), np.zeros((0, 3), dtype=np.int64)
-
+    nx, ny, nz = dims
     rows = tri_table[case_of_active]
     cells = []
     triangles = []
@@ -183,7 +162,7 @@ def _mc_kernel(grid, level, corners, edge_corners, edge_map, tri_table):
         cells.append(active[used])
         triangles.append(rows[used, column:column + 3])
     if not cells:
-        return np.zeros((0, 3), dtype=np.float64), np.zeros((0, 3), dtype=np.int64)
+        return np.zeros(0, dtype=np.int64), np.zeros((0, 3), dtype=np.int64)
 
     cell_index = np.concatenate(cells)
     edge_index = np.concatenate(triangles)
@@ -196,8 +175,29 @@ def _mc_kernel(grid, level, corners, edge_corners, edge_map, tri_table):
 
     identifier = ((axis * nx + corner[:, 0]) * ny + corner[:, 1]) * nz + corner[:, 2]
     unique, inverse = np.unique(identifier, return_inverse=True)
-    faces = inverse.reshape(-1, 3).astype(np.int64)
+    return unique, inverse.reshape(-1, 3).astype(np.int64)
 
+
+def _place_vertices(grid, level, unique, dims):
+    """Interpolate each welded vertex onto its grid edge, on the host.
+
+    Parameters
+    ----------
+    grid : numpy.ndarray
+        ``(nx, ny, nz)`` scalar field.
+    level : float
+        Iso value.
+    unique : numpy.ndarray
+        Grid-edge ids.
+    dims : tuple of int
+        ``(nx, ny, nz)``.
+
+    Returns
+    -------
+    numpy.ndarray
+        ``(m, 3)`` positions in grid-index units.
+    """
+    nx, ny, nz = dims
     volume = nx * ny * nz
     vaxis = unique // volume
     rest = unique % volume
@@ -213,22 +213,56 @@ def _mc_kernel(grid, level, corners, edge_corners, edge_map, tri_table):
     span = above - below
     # A flat edge has no crossing to locate; the midpoint is what the tables
     # assume, and dividing by the span would be a division by zero.
-    mu = np.where(np.abs(span) < 1e-12, 0.5, (level - below) / np.where(span == 0.0, 1.0, span))
-    verts = lower.astype(np.float64) + mu[:, None] * _AXIS_STEP[vaxis]
-    return verts, faces
+    mu = np.where(
+        np.abs(span) < 1e-12, 0.5,
+        (level - below) / np.where(span == 0.0, 1.0, span),
+    )
+    return lower.astype(np.float64) + mu[:, None] * _AXIS_STEP[vaxis]
 
 
-def marching_cubes(grid, level, spacing=(1.0, 1.0, 1.0)):
+def _cell_cases(grid, level, corners):
+    """Every cell's corner-sign case, and the ones the surface crosses.
+
+    Parameters
+    ----------
+    grid : numpy.ndarray
+        ``(nx, ny, nz)`` scalar field.
+    level : float
+        Iso value.
+    corners : numpy.ndarray
+        ``(8, 3)`` cube-corner offsets.
+
+    Returns
+    -------
+    tuple
+        ``(active, case_of_active)``.
+    """
+    nx, ny, nz = grid.shape
+    inside = grid < level
+    case = np.zeros((nx - 1, ny - 1, nz - 1), dtype=np.int64)
+    for bit in range(8):
+        ox, oy, oz = corners[bit]
+        case |= inside[ox:ox + nx - 1, oy:oy + ny - 1, oz:oz + nz - 1] << bit
+    active = np.flatnonzero(((case != 0) & (case != 255)).ravel())
+    return active, case.ravel()[active]
+
+
+def marching_cubes(grid, level, spacing=(1.0, 1.0, 1.0), volume=None):
     """Extract an isosurface mesh from a scalar grid.
 
     Parameters
     ----------
     grid : numpy.ndarray
-        Scalar field of shape ``(nx, ny, nz)``.
+        Scalar field of shape ``(nx, ny, nz)``. May be ``None`` when ``volume``
+        is given and the host has no copy.
     level : float
         Iso value; a corner is "inside" when its value is ``< level``.
     spacing : tuple of float
         Physical size of a voxel along each axis.
+    volume : chimol.renderer.compute.GpuVolume, optional
+        The same field, already on the device. When present the grid is never
+        touched by the host: the crossings, the interpolation and the normals all
+        read it where it is.
 
     Returns
     -------
@@ -238,27 +272,57 @@ def marching_cubes(grid, level, spacing=(1.0, 1.0, 1.0)):
         trilinearly interpolated grid gradient and point toward increasing value.
         Empty arrays are returned when the surface does not cross the grid.
     """
-    g = np.ascontiguousarray(grid, dtype=np.float64)
+    empty = (
+        np.zeros((0, 3), dtype=np.float64),
+        np.zeros((0, 3), dtype=np.int64),
+        np.zeros((0, 3), dtype=np.float64),
+    )
+    dims = tuple(volume.shape) if volume is not None else np.asarray(grid).shape
+    if len(dims) != 3 or min(dims) < 2:
+        return empty
     level = float(level)
-    if g.ndim != 3 or min(g.shape) < 2:
-        return (
-            np.zeros((0, 3), dtype=np.float64),
-            np.zeros((0, 3), dtype=np.int64),
-            np.zeros((0, 3), dtype=np.float64),
-        )
 
-    verts, faces = _mc_kernel(g, level, _CORNERS, _EDGE_CORNERS, _EDGE_MAP, _TRI_TABLE)
+    verts = None
+    normals = None
+    if volume is not None:
+        from ..renderer import compute  # noqa: PLC0415
+
+        scan = compute.marching_cubes_active(volume, level)
+        if scan is not None:
+            active, case_of_active = scan
+            unique, faces = _triangle_edges(
+                active, case_of_active,
+                tuple(n - 1 for n in dims), dims, _EDGE_MAP, _TRI_TABLE,
+            )
+            if unique.size == 0:
+                return empty
+            placed = compute.isosurface_vertices(volume, unique, level)
+            if placed is not None:
+                verts, normals = placed
+
+    if verts is None:
+        # A device route that declined mid-chain leaves the host without a grid,
+        # so read the volume back rather than crash on `None`. It is the slow
+        # path twice over and it is also the only correct thing to do.
+        if grid is None:
+            grid = volume.read()
+        g = np.ascontiguousarray(grid, dtype=np.float64)
+        active, case_of_active = _cell_cases(g, level, _CORNERS)
+        if active.size == 0:
+            return empty
+        unique, faces = _triangle_edges(
+            active, case_of_active,
+            tuple(n - 1 for n in dims), dims, _EDGE_MAP, _TRI_TABLE,
+        )
+        if unique.size == 0:
+            return empty
+        verts = _place_vertices(g, level, unique, dims)
+        # Vertex normals from the interpolated grid gradient (points up-gradient).
+        gx, gy, gz = np.gradient(g)
+        normals = _sample_gradient(gx, gy, gz, verts)
 
     if verts.shape[0] == 0:
-        return (
-            np.zeros((0, 3), dtype=np.float64),
-            np.zeros((0, 3), dtype=np.int64),
-            np.zeros((0, 3), dtype=np.float64),
-        )
-
-    # Vertex normals from the interpolated grid gradient (points up-gradient).
-    gx, gy, gz = np.gradient(g)
-    normals = _sample_gradient(gx, gy, gz, verts)
+        return empty
 
     sp = np.asarray(spacing, dtype=np.float64)
     verts = verts * sp

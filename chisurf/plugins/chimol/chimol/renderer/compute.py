@@ -388,6 +388,7 @@ class _Job:
         self._next_slot = 0
         self._output = None
         self._output_slot = -1
+        self._skip_read = False
         self._output_shape: tuple = ()
         self._output_dtype = np.float32
 
@@ -476,6 +477,26 @@ class _Job:
         )
         return self
 
+    def into(self, volume: "GpuVolume", slot: int) -> "_Job":
+        """Write into an existing resident buffer and skip the readback.
+
+        Parameters
+        ----------
+        volume : GpuVolume
+            Destination; must be large enough for what the shader writes.
+        slot : int
+            Binding index of the shader's output.
+
+        Returns
+        -------
+        _Job
+        """
+        self._output = volume.buffer
+        self._output_slot = int(slot)
+        self._next_slot = max(self._next_slot, int(slot) + 1)
+        self._skip_read = True
+        return self
+
     def run(self, work_items: int) -> np.ndarray:
         """Dispatch and read the output back.
 
@@ -540,6 +561,8 @@ class _Job:
         pass_.end()
         self.device.queue.submit([encoder.finish()])
 
+        if self._skip_read:
+            return None
         raw = self.device.queue.read_buffer(self._output)
         return np.frombuffer(raw, dtype=self._output_dtype).reshape(self._output_shape)
 
@@ -682,7 +705,8 @@ def occlusion_from_spheres(points, normals, centers, radii, max_distance, streng
 DISTANCE_CELL = 6.0
 
 
-def distance_to_spheres(points, radii, shape, origin, spacing, horizon):
+def distance_to_spheres(points, radii, shape, origin, spacing, horizon,
+                        resident=False):
     """Signed distance from each voxel centre to the nearest sphere surface.
 
     Parameters
@@ -700,10 +724,13 @@ def distance_to_spheres(points, radii, shape, origin, spacing, horizon):
     horizon : float
         Distances beyond this are reported as exactly this. The caller applies
         the same clamp to its own route, so the two agree by construction.
+    resident : bool, optional
+        Return a :class:`GpuVolume` instead of copying the grid back, so the
+        next kernel in the chain can read it where it already is.
 
     Returns
     -------
-    numpy.ndarray or None
+    numpy.ndarray or GpuVolume or None
         ``(nx, ny, nz)`` float32 distances, or ``None`` when the GPU route is
         unavailable or not worth taking.
 
@@ -747,8 +774,12 @@ def distance_to_spheres(points, radii, shape, origin, spacing, horizon):
             .add_input(grid.order)
             .add_uniform(info)
             .add_uniform(voxel)
-            .output((count,), np.float32)
         )
+        if resident:
+            out = new_volume(shape)
+            job.into(out, 5).run(count)
+            return out
+        job.output((count,), np.float32, slot=5)
         return np.asarray(job.run(count)).reshape(shape)
     except ShaderError:
         raise
@@ -848,19 +879,27 @@ _EDT_BIG = 1.0e20
 _EDT_MIN_VOXELS = 250_000
 
 
-def distance_transform_edt(mask):
+def distance_transform_edt(mask, resident=False):
     """Euclidean distance, in voxels, to the nearest zero voxel.
 
     Parameters
     ----------
-    mask : numpy.ndarray
-        ``(nx, ny, nz)`` volume whose zeros are the seeds.
+    mask : numpy.ndarray or GpuVolume
+        ``(nx, ny, nz)`` volume whose zeros are the seeds. A resident volume is
+        read as a *seed field* already — zero where the transform measures from
+        and :data:`_EDT_BIG` elsewhere — rather than as a mask, because that is
+        the form the threshold kernel produces and re-deriving it would mean a
+        round trip.
+    resident : bool, optional
+        Return the **squared** distances as a :class:`GpuVolume` instead of
+        copying their root back. The root and the unit conversion are then one
+        more pass rather than a host-side pass over the whole grid.
 
     Returns
     -------
-    numpy.ndarray or None
-        ``(nx, ny, nz)`` float32 distances, or ``None`` when the GPU route is
-        unavailable or not worth taking.
+    numpy.ndarray or GpuVolume or None
+        Distances, or ``None`` when the GPU route is unavailable or not worth
+        taking.
 
     Notes
     -----
@@ -872,23 +911,29 @@ def distance_transform_edt(mask):
     """
     import wgpu
 
-    volume = np.ascontiguousarray(mask)
-    if volume.ndim != 3:
-        return None
-    dims = volume.shape
+    if isinstance(mask, GpuVolume):
+        dims = mask.shape
+    else:
+        volume = np.ascontiguousarray(mask)
+        if volume.ndim != 3:
+            return None
+        dims = volume.shape
     count = int(np.prod(dims))
     if _declines(count, _EDT_MIN_VOXELS) or count == 0:
         return None
 
     dev = device()
-    seed = np.where(volume != 0, np.float32(_EDT_BIG), np.float32(0.0)).astype(np.float32)
     usage = (wgpu.BufferUsage.STORAGE | wgpu.BufferUsage.COPY_SRC
              | wgpu.BufferUsage.COPY_DST)
     try:
-        buffers = [
-            dev.create_buffer_with_data(data=seed.reshape(-1), usage=usage),
-            dev.create_buffer(size=count * 4, usage=usage),
-        ]
+        if isinstance(mask, GpuVolume):
+            first = mask.buffer
+        else:
+            seed = np.where(
+                volume != 0, np.float32(_EDT_BIG), np.float32(0.0)
+            ).astype(np.float32)
+            first = dev.create_buffer_with_data(data=seed.reshape(-1), usage=usage)
+        buffers = [first, dev.create_buffer(size=count * 4, usage=usage)]
         # One scratch pair, sized for the longest line any axis will ask for.
         widest = max(dims)
         lines = max(count // max(min(dims), 1), 1)
@@ -946,6 +991,8 @@ def distance_transform_edt(mask):
             pass_.end()
         dev.queue.submit([encoder.finish()])
 
+        if resident:
+            return GpuVolume(buffers[3 % 2], dims)
         raw = dev.queue.read_buffer(buffers[3 % 2])
     except ShaderError:
         raise
@@ -966,17 +1013,21 @@ def marching_cubes_active(grid, level):
 
     Parameters
     ----------
-    grid : numpy.ndarray
+    grid : numpy.ndarray or GpuVolume
         ``(nx, ny, nz)`` scalar field.
     level : float
         Iso value; a corner counts as inside when its value is ``< level``.
 
     Returns
     -------
-    numpy.ndarray or None
-        Flat indices into the ``(nx-1, ny-1, nz-1)`` cell array, ascending, or
-        ``None`` when the GPU route is unavailable, not worth taking, or the
-        surface turned out to cross more cells than the output was sized for.
+    tuple of numpy.ndarray or None
+        ``(cells, cases)`` — flat indices into the ``(nx-1, ny-1, nz-1)`` cell
+        array, ascending, and the corner-sign case of each. ``None`` when the GPU
+        route is unavailable, not worth taking, or the surface turned out to
+        cross more cells than the output was sized for.
+
+        The case travels with the cell so the host never has to read the grid
+        back to recover it, which is what makes the resident chain worth having.
 
     Notes
     -----
@@ -1007,34 +1058,84 @@ def marching_cubes_active(grid, level):
     """
     import wgpu
 
-    field = np.ascontiguousarray(grid, dtype=np.float32)
-    if field.ndim != 3 or min(field.shape) < 2:
+    resident = isinstance(grid, GpuVolume)
+    shape = grid.shape if resident else np.asarray(grid).shape
+    if len(shape) != 3 or min(shape) < 2:
         return None
-    cells = tuple(n - 1 for n in field.shape)
-    total = int(np.prod(cells))
+    cells_shape = tuple(n - 1 for n in shape)
+    total = int(np.prod(cells_shape))
     if _declines(total, _MC_MIN_CELLS) or total == 0:
         return None
 
     dev = device()
     # A closed surface through a volume crosses O(n^2) of its O(n^3) cells, so a
-    # tenth is generous; overflow is detected and falls back rather than
-    # truncating, because a truncated surface is a hole nobody would notice.
-    capacity = min(total, max(total // 8, 4096))
+    # quarter is generous -- but "generous" is a guess about the field, and a
+    # porous one at coarse spacing beats it. Overflow is detected and retried at
+    # the exact size the counter reported rather than dropped, because a
+    # truncated surface is a hole nobody would notice.
+    capacity = min(total, max(total // 4, 4096))
+    for _ in range(2):
+        found, cells = _scan_cells(dev, grid, resident, shape, cells_shape, level,
+                                   total, capacity)
+        if found is None:
+            return None
+        if found <= capacity:
+            return cells
+        capacity = min(total, found)
+    return None
+
+
+def _scan_cells(dev, grid, resident, shape, cells, level, total, capacity):
+    """One marching-cubes scan dispatch.
+
+    Parameters
+    ----------
+    dev : object
+        The wgpu device.
+    grid : numpy.ndarray or GpuVolume
+        The field.
+    resident : bool
+        Whether ``grid`` is already on the device.
+    shape : tuple of int
+        Voxel counts.
+    cells : tuple of int
+        Cell counts, one fewer per axis.
+    level : float
+        Iso value.
+    total : int
+        ``prod(cells)``.
+    capacity : int
+        Crossings the output is sized for.
+
+    Returns
+    -------
+    tuple
+        ``(found, result)``. ``found`` is the number of crossings the shader
+        counted, which may exceed ``capacity``; ``result`` is ``None`` in that
+        case and the ``(cells, cases)`` pair otherwise. ``(None, None)`` on
+        failure.
+    """
+    import wgpu
+
     try:
         info = np.zeros(8, dtype=np.uint32)
-        info[0:3] = np.asarray(field.shape, dtype=np.uint32)
+        info[0:3] = np.asarray(shape, dtype=np.uint32)
         info.view(np.float32)[3] = np.float32(level)
         info[4:7] = np.asarray(cells, dtype=np.uint32)
         info[7] = np.uint32(capacity)
 
-        grid_buffer = dev.create_buffer_with_data(
-            data=field.reshape(-1), usage=wgpu.BufferUsage.STORAGE
-        )
+        if resident:
+            grid_buffer = grid.buffer
+        else:
+            field = np.ascontiguousarray(grid, dtype=np.float32)
+            grid_buffer = dev.create_buffer_with_data(
+                data=field.reshape(-1), usage=wgpu.BufferUsage.STORAGE
+            )
         info_buffer = dev.create_buffer_with_data(
             data=info, usage=wgpu.BufferUsage.UNIFORM
         )
         out_buffer = dev.create_buffer(
-            size=(capacity + 1) * 4,
+            size=(2 * capacity + 1) * 4,
             usage=wgpu.BufferUsage.STORAGE | wgpu.BufferUsage.COPY_SRC,
         )
 
@@ -1073,15 +1174,299 @@ def marching_cubes_active(grid, level):
             dev.queue.read_buffer(out_buffer, 0, 4), dtype=np.uint32
         )[0])
         if found == 0:
-            return np.zeros(0, dtype=np.int64)
+            return 0, (np.zeros(0, dtype=np.int64), np.zeros(0, dtype=np.int64))
         if found > capacity:
-            return None
-        raw = dev.queue.read_buffer(out_buffer, 4, found * 4)
+            return found, None
+        raw = dev.queue.read_buffer(out_buffer, 4, found * 8)
+    except ShaderError:
+        raise
+    except Exception:
+        return None, None
+    pairs = np.frombuffer(raw, dtype=np.uint32).reshape(-1, 2).astype(np.int64)
+    order = np.argsort(pairs[:, 0], kind="stable")
+    return found, (pairs[order, 0].copy(), pairs[order, 1].copy())
+
+
+# --------------------------------------------------------------------------- #
+# Volumes that stay on the device
+# --------------------------------------------------------------------------- #
+class GpuVolume:
+    """A scalar grid living in a GPU buffer, with its shape.
+
+    Parameters
+    ----------
+    buffer : object
+        A wgpu buffer holding ``prod(shape)`` float32 values in C order.
+    shape : tuple of int
+        ``(nx, ny, nz)``.
+
+    Notes
+    -----
+    The surface pipeline is distance grid → threshold → distance transform →
+    marching cubes, and each of those already ran on the GPU while the *grid*
+    made the round trip between every pair: 8 MB back, 8 MB up, twice over. That
+    transport is why the marching-cubes scan measured *slower* than the NumPy
+    pass it replaced — the kernel was fine and the transfers were not. Passing
+    this instead of an array is what removes them.
+
+    :meth:`read` is the one place a volume comes back, and callers should treat
+    it as expensive.
+    """
+
+    def __init__(self, buffer, shape) -> None:
+        self.buffer = buffer
+        self.shape = tuple(int(n) for n in shape)
+
+    @property
+    def count(self) -> int:
+        """Number of voxels."""
+        return int(np.prod(self.shape))
+
+    def read(self) -> np.ndarray:
+        """Copy the volume back to the host.
+
+        Returns
+        -------
+        numpy.ndarray
+            ``shape``-shaped float32.
+        """
+        raw = device().queue.read_buffer(self.buffer)
+        return np.frombuffer(raw, dtype=np.float32).reshape(self.shape)
+
+
+def _volume_usage():
+    """Buffer usage flags a resident volume needs."""
+    import wgpu
+
+    return (wgpu.BufferUsage.STORAGE | wgpu.BufferUsage.COPY_SRC
+            | wgpu.BufferUsage.COPY_DST)
+
+
+def new_volume(shape) -> GpuVolume:
+    """Allocate an uninitialised resident volume.
+
+    Parameters
+    ----------
+    shape : tuple of int
+        ``(nx, ny, nz)``.
+
+    Returns
+    -------
+    GpuVolume
+    """
+    count = int(np.prod(shape))
+    return GpuVolume(
+        device().create_buffer(size=max(count, 1) * 4, usage=_volume_usage()),
+        shape,
+    )
+
+
+def upload_volume(array) -> GpuVolume:
+    """Put a grid on the device.
+
+    Parameters
+    ----------
+    array : numpy.ndarray
+        ``(nx, ny, nz)`` scalar field.
+
+    Returns
+    -------
+    GpuVolume
+    """
+    data = np.ascontiguousarray(array, dtype=np.float32)
+    return GpuVolume(
+        device().create_buffer_with_data(
+            data=data.reshape(-1), usage=_volume_usage()
+        ),
+        data.shape,
+    )
+
+
+def as_volume(grid) -> GpuVolume:
+    """Return ``grid`` as a resident volume, uploading only if it is an array.
+
+    Parameters
+    ----------
+    grid : GpuVolume or numpy.ndarray
+
+    Returns
+    -------
+    GpuVolume
+    """
+    return grid if isinstance(grid, GpuVolume) else upload_volume(grid)
+
+
+def _volume_op(entry: str, volume: GpuVolume, params) -> GpuVolume:
+    """Run one whole-volume kernel from ``volume_ops.wgsl``.
+
+    Parameters
+    ----------
+    entry : str
+        Entry point name.
+    volume : GpuVolume
+        Input.
+    params : numpy.ndarray
+        The eight-word ``VolumeInfo`` uniform.
+
+    Returns
+    -------
+    GpuVolume
+        A new volume; the input is left alone.
+    """
+    import wgpu
+
+    dev = device()
+    out = new_volume(volume.shape)
+    module = _module(dev, (WGSL_DIR / "volume_ops.wgsl").read_text())
+    layout = dev.create_bind_group_layout(entries=[
+        {"binding": 0, "visibility": wgpu.ShaderStage.COMPUTE,
+         "buffer": {"type": wgpu.BufferBindingType.read_only_storage}},
+        {"binding": 1, "visibility": wgpu.ShaderStage.COMPUTE,
+         "buffer": {"type": wgpu.BufferBindingType.uniform}},
+        {"binding": 2, "visibility": wgpu.ShaderStage.COMPUTE,
+         "buffer": {"type": wgpu.BufferBindingType.storage}},
+    ])
+    key = (id(module), entry)
+    pipeline = _PIPELINES.get(key)
+    if pipeline is None:
+        pipeline = dev.create_compute_pipeline(
+            layout=dev.create_pipeline_layout(bind_group_layouts=[layout]),
+            compute={"module": module, "entry_point": entry},
+        )
+        _PIPELINES[key] = pipeline
+    uniform = dev.create_buffer_with_data(data=params, usage=wgpu.BufferUsage.UNIFORM)
+    group = dev.create_bind_group(layout=layout, entries=[
+        {"binding": 0, "resource": {"buffer": volume.buffer}},
+        {"binding": 1, "resource": {"buffer": uniform}},
+        {"binding": 2, "resource": {"buffer": out.buffer}},
+    ])
+    encoder = dev.create_command_encoder()
+    pass_ = encoder.begin_compute_pass()
+    pass_.set_pipeline(pipeline)
+    pass_.set_bind_group(0, group)
+    pass_.dispatch_workgroups((volume.count + WORKGROUP - 1) // WORKGROUP)
+    pass_.end()
+    dev.queue.submit([encoder.finish()])
+    return out
+
+
+def threshold_volume(volume: GpuVolume, level, low, high) -> GpuVolume:
+    """``low`` where the volume is below ``level``, ``high`` elsewhere.
+
+    Parameters
+    ----------
+    volume : GpuVolume
+        Input.
+    level : float
+        Comparison threshold.
+    low, high : float
+        Output values.
+
+    Returns
+    -------
+    GpuVolume
+    """
+    params = np.zeros(8, dtype=np.uint32)
+    params[0] = np.uint32(volume.count)
+    params.view(np.float32)[1] = np.float32(level)
+    params.view(np.float32)[2] = np.float32(low)
+    params.view(np.float32)[3] = np.float32(high)
+    return _volume_op("threshold", volume, params)
+
+
+def scale_volume(volume: GpuVolume, factor, offset=0.0) -> GpuVolume:
+    """``volume * factor + offset``.
+
+    Parameters
+    ----------
+    volume : GpuVolume
+        Input.
+    factor, offset : float
+        Affine coefficients.
+
+    Returns
+    -------
+    GpuVolume
+    """
+    params = np.zeros(8, dtype=np.uint32)
+    params[0] = np.uint32(volume.count)
+    params.view(np.float32)[4] = np.float32(factor)
+    params.view(np.float32)[5] = np.float32(offset)
+    return _volume_op("scale", volume, params)
+
+
+def root_scale_volume(volume: GpuVolume, factor, offset=0.0) -> GpuVolume:
+    """``sqrt(volume) * factor + offset``, in one pass.
+
+    Parameters
+    ----------
+    volume : GpuVolume
+        Squared distances, as the transform produces them.
+    factor, offset : float
+        Affine coefficients applied after the root.
+
+    Returns
+    -------
+    GpuVolume
+    """
+    params = np.zeros(8, dtype=np.uint32)
+    params[0] = np.uint32(volume.count)
+    params.view(np.float32)[4] = np.float32(factor)
+    params.view(np.float32)[5] = np.float32(offset)
+    return _volume_op("root_scale", volume, params)
+
+
+def isosurface_vertices(volume: GpuVolume, edge_ids, level):
+    """Position and gradient of each welded marching-cubes vertex.
+
+    Parameters
+    ----------
+    volume : GpuVolume
+        The scalar field the surface is extracted from.
+    edge_ids : numpy.ndarray
+        One grid-edge id per vertex, as ``axis * nx*ny*nz + flat lower node``.
+    level : float
+        Iso value.
+
+    Returns
+    -------
+    tuple of numpy.ndarray or None
+        ``(positions, gradients)`` in grid-index units, or ``None`` without a
+        device.
+
+    Notes
+    -----
+    This is what replaces ``numpy.gradient`` over the whole volume followed by a
+    trilinear sample at the vertices — 31 ms of the 107 a 128³ marching cubes
+    took, spent building three 8 MB arrays to read a few tens of thousands of
+    values out of. The gradient is computed only where a vertex actually is.
+    """
+    if device() is None:
+        return None
+    ids = np.ascontiguousarray(edge_ids, dtype=np.uint32).reshape(-1)
+    if ids.size == 0:
+        return np.zeros((0, 3), dtype=np.float64), np.zeros((0, 3), dtype=np.float64)
+
+    info = np.zeros(8, dtype=np.uint32)
+    info[0:3] = np.asarray(volume.shape, dtype=np.uint32)
+    info.view(np.float32)[3] = np.float32(level)
+    info[4] = np.uint32(ids.size)
+    try:
+        job = _Job(load_compute_wgsl("mc_vertices.wgsl"), "main")
+        job._bound.append((0, volume.buffer, False))
+        job._next_slot = 1
+        packed = (
+            job.bind(1, ids)
+            .bind(2, info, uniform=True)
+            .output((ids.size, 8), np.float32, slot=3)
+            .run(ids.size)
+        )
     except ShaderError:
         raise
     except Exception:
         return None
-    return np.sort(np.frombuffer(raw, dtype=np.uint32).astype(np.int64))
+    out = np.asarray(packed, dtype=np.float64)
+    return out[:, 0:3].copy(), out[:, 4:7].copy()
 
 
 # --------------------------------------------------------------------------- #
@@ -1336,6 +1721,14 @@ def raytrace(scene: RayScene, camera, lights, sphere_colors, tri_normals,
 
 __all__ = [
     "BACKEND_ENV",
+    "GpuVolume",
+    "as_volume",
+    "isosurface_vertices",
+    "new_volume",
+    "root_scale_volume",
+    "scale_volume",
+    "threshold_volume",
+    "upload_volume",
     "DISTANCE_CELL",
     "MIN_WORK_ITEMS",
     "RayScene",

@@ -22,7 +22,9 @@ struct CellInfo {
 
 @group(0) @binding(0) var<storage, read> grid: array<f32>;
 @group(0) @binding(1) var<uniform> info: CellInfo;
-// Element 0 is the count; the rest are cell indices.
+// Element 0 is the count; then two words per crossing, the cell and its case.
+// The case travels with the cell so the host never has to read the grid to
+// recover it -- which is the whole point of the volume staying resident.
 @group(0) @binding(2) var<storage, read_write> crossings: array<atomic<u32>>;
 
 @compute @workgroup_size(64)
@@ -59,6 +61,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     }
     let slot = atomicAdd(&crossings[0], 1u);
     if (slot < info.capacity) {
-        atomicStore(&crossings[slot + 1u], cell);
+        atomicStore(&crossings[slot * 2u + 1u], cell);
+        atomicStore(&crossings[slot * 2u + 2u], mask);
     }
 }

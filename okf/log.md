@@ -1,6 +1,41 @@
 # Update Log
 
 ## 2026-08-10
+* **The grid stays on the GPU now, and a surface build costs a fifteenth of
+  what it did.** Every kernel in the surface pipeline -- distance grid,
+  threshold, distance transform, marching cubes -- already ran on the device;
+  what did not was the *grid*, which was copied out and back in between each
+  pair, twice over at 8 MB. `GpuVolume` passes it along instead. Supporting it:
+  `volume_ops.wgsl` (threshold / scale / root-scale in place, so the SES seed
+  and the unit conversion never touch the host), `mc_active.wgsl` now reporting
+  each crossing's **case** beside its cell so the host never reads the grid to
+  recover it, and `mc_vertices.wgsl`, which places each welded vertex on its edge
+  *and* samples the gradient there -- replacing `numpy.gradient` over the whole
+  volume plus a host-side trilinear sample, 31 ms of a 107 ms marching cubes
+  spent building three 8 MB arrays to read a few tens of thousands of values out
+  of.
+  **Measured three ways on 148L at 128^3, identical mesh (42,562 vertices /
+  85,092 faces) each time: NumPy/scipy 983-1,397 ms, GPU kernels with the grid
+  round-tripping 153-321 ms, GPU kernels with the grid resident 62-134 ms.**
+  Those absolutes were taken at load averages 13-20 with another agent running a
+  suite, so they are an upper bound; the *ratio* held across runs -- residency is
+  worth 2-3.5x on top of having the kernels there at all. This also retires the
+  finding recorded earlier today that the marching-cubes scan was slower than the
+  NumPy pass it replaced: it was, and the round trip was why.
+  **Two silent defects came out of building it.** The transform's seed has a
+  direction: `forbidden = distance < probe` is where the probe *cannot* reach and
+  the transform measures out of the region it *can*, so the seeds are the
+  reachable voxels -- inverted, nothing fails and the surface *grows*, 46,558
+  vertices where there should be 42,562. And the crossing buffer was sized on a
+  guess (a quarter of the cells), which an SES field at coarse spacing beat; the
+  scan then returned `None` mid-chain and the host fell through to a CPU path
+  holding no grid at all. It retries at the exact count now, and the fallback
+  reads the volume back rather than crashing on `None`.
+  **What is left:** the BVH build (80-110 ms for 32k triangles, a `lexsort` per
+  level where a midpoint split needs only a `cumsum`) and `_triangle_edges`, now
+  the largest single piece of a surface build -- welding on the GPU needs an
+  `atomicCompareExchange` claim per grid edge and was not attempted.
+
 * **"Why not replace nlohmann with cereal" — answered from the code, and a real bug found on the way.** The challenge was fair and the answer is now a section of [PRD-95](/prds/prd-95.md): cereal is a serializer (structure declared by types), nlohmann is a DOM (structure discovered at runtime), and `FPSReaderWriter` performs four operations an archive cannot express — path navigation with a runtime key (`fps_json_["χ²"][score_set_]["distances"]`), iteration over user-invented keys, `.value(key, default)` tolerance on every field, and subtree extraction of content no C++ type models. cereal's own JSON for `std::map` is a key/value-pair *array*, not a `{name: {…}}` object, so even the modeled parts of the FPS wire format would need `getNodeName()` loops against `cereal::rapidjson` — an internal namespace — and cereal *vendors rapidjson anyway*, so the swap removes no parser from the build. **The bug**: `AV::set_av_parameter` (`AV.cpp:208-210`) does `set_radius2(r[0]); set_radius3(r[0])` — radius2 and radius3 are read from the file into `r[1]`/`r[2]` and then silently overwritten with radius1's value, so every three-radius AV built from fps.json is a one-radius AV. Needs a fix in imp.bff.
 
 * **PRD-95 registered: cereal aligned with IMP, and JSON a human can read.** Scoping measured the port as further along than assumed — nine imp.bff headers already archive, the SWIG pickle macros are in place, and `AVNetworkRestraint`/`PathMapTile` already follow the conventions page's hard rules — but `grep` finds **zero `CEREAL_NVP`** in the tree, so JSON output today is `value0`/`value1` keyed by member order. Two architectural facts bound the design: IMP's polymorphic registry is hard-wired to `cereal::Binary*Archive` (`object_macros.h:98-107`), so JSON is per-class direct archiving, not registry work; and the arm64 env's cereal already ships `archives/json.hpp`, so there is no new dependency. [PRD-95](/prds/prd-95.md): NVP-name every field (free for the binary pickle format — binary archives ignore names, and a before/after pickle test enforces it), a `_get_as_json`/`_set_from_json` `%extend` mirror of the kernel's binary pair, golden `.json` files that make member names API, the two-JSONs rule (`fps.json` frozen-key interchange stays nlohmann), and `PathMap` honestly blocked on `IMP::em::SampledDensityMap` — unblock is an upstream PR.
@@ -1990,7 +2025,6 @@
 
 * **Picking is a chiplot capability now, and ndX picks populations the same way** ([chiplot](subsystems/chiplot.md), [ROI](subsystems/roi.md), [PRD-92](prds/prd-92.md) §5.5). A gesture belongs to the thing being clicked, so `ImageView` gained `enable_picking()` — clicks become a `picked` signal carrying a fitted spot — and `add_region(roi)`, which draws a `chisurf.core.roi.ROI` of any shape. Before this, every tool that wanted either reached past the plotting seam for the click and re-implemented the conversion. The fit itself moved out of the spot-finder plugin into `chisurf/core/roi/picking.py`, because what it produces is a **region**: `core.roi` decides where a spot is, chiplot offers the gesture, plugins consume the result. **ndX gets the same gesture on a point cloud**, which is what its planes carry: `pick_population` clicks a population and returns the `RegionDataSelection` that describes it, through `fit_gaussian_cluster` (which *re-centres* — a click on the shoulder otherwise returns a centre on the shoulder and a covariance inflated by the empty half of the disc it sampled) and the `ellipse_from_covariance` its Gaussian gates already used. **Two things measurement decided.** The covariance-to-ellipse conversion already existed in `core/roi/selections.py`, and my first draft re-derived it — in *degrees*, where `EllipseROI.angle` is radians; reusing the helper is what avoided shipping a gate rotated by a factor of 57. And `add_region` ignored the rotation entirely, which for ndX's tilted gates draws a different gate that looks perfectly reasonable, so the backend's ellipse can now rotate and holds its centre while doing it (pyqtgraph rotates about `pos`). Also recorded, because it aborts the interpreter after every test has passed: destroying a chiplot `ImageView` at shutdown makes pyqtgraph walk the *other* views' context menus and touch deleted C++ combos — dispose them while the event loop is alive.
 * **The decay panel's display rules are one module, and every one of them is a bad-fit rule** — `chisurf/core/fluorescence/mle/display.py` + 15 tests, the first half of sharing the MLE layout between burst-wise and region-wise fitting ([MLE lifetime fitting](subsystems/mle-lifetime-fitting.md), [PRD-92](prds/prd-92.md)). A burst and a region are the same measurement under different membership rules — photons into a VV|VH stack, a single-lifetime MLE, then data/model/IRF/background with weighted residuals sharing the time axis — so the two tools were about to have two copies of a display that is *not* decoration. Each rule exists because the obvious version looks fine on a good fit and becomes unreadable on a bad one, which is exactly when someone is looking at it: a **diverged** model is clipped to ten times the data's maximum, because plotted raw it takes a log view to 1e6 and hides the data; the IRF and background are **area**-normalised rather than peak-normalised, because one hot bin otherwise sets the scale for the whole curve; the y-range is pinned to the **data**, because a background-dominated fit can span 1e±27 and an auto-range obligingly shows all of it; and the residual band is the **99th percentile** with a floor, because one catastrophic channel otherwise flattens every other residual into a line through zero. Two traps are now impossible rather than merely avoided: the VV and VH halves get **separate** windows (slicing the concatenated array as one glues one channel's tail to the other's rise, and looks plausible), and residuals are computed on the **full** stacks before windowing (windowing first pairs a data channel with whichever model channel happens to sit at the same offset). Divergence can also be *told* rather than inferred — a parameter pinned at its bound is a fact about the fit, where a large drawn amplitude is only a symptom, and the two do not always coincide.
-
 ## 2026-08-09
 
 * **Notebook editor polish (agent board: notebook editor UX pass).** Cell
