@@ -1,6 +1,71 @@
 # Update Log
 
 ## 2026-08-10
+* **Lumis Quest phase 5: the game finally touches the documentation.**
+  Until now this taught spectroscopy beautifully and did **nothing** for the corpus. Clearing a room now
+  asks the page **its own question**, because beating the guardian is spectroscopy and says nothing about
+  whether anyone read the page. In *expert* mode a correct answer calls
+  `review.set_status(..., reviewer_kind="human")`; in *training* mode nothing is ever signed off —
+  learning fluorescence and clearing review debt are different jobs and must not grant the same thing.
+  The guards are the review system's own, not a second invented set: a wrong answer signs nothing, no
+  challenge signs nothing, an **edit mid-encounter is refused on the content hash** (the same rule that
+  already downgrades a stale review), and an untracked page is refused outright. The game never writes to
+  `docs/` itself — it calls the existing review API, which owns the sidecars.
+  Questions are **span-grounded and keyed by the page `sha256`**, so an encounter is reproducible,
+  self-invalidating and testable with **no model at all**. The generator ships deterministic and
+  model-free: it blanks a distinctive term out of the page's own prose. **79 of 80 sampled pages are
+  questionable.** It tests attention rather than understanding, which is weaker than the design intends —
+  a model-backed provider drops in behind the same grounding check, and the check is the half that matters.
+  **The defect worth recording**: `_sentences` strips markup to build a question, and `verify_span` then
+  compared that stripped sentence against the **raw** page — so grounding rejected *every* challenge on any
+  page containing an equation or a code span. The only symptom was a page that asked nothing, which reads
+  exactly like "this page is a stub". Both sides are normalised now. Three further prompt-quality filters
+  followed from actually looking at the output: LaTeX inline formulas, MyST/RST roles (`{src}`+backticks
+  left the bare word "src" in three places in one prompt), and bullet lists flattened into comma-separated
+  fragments — none of which a line-level filter catches, because they sit inside ordinary paragraphs.
+  Suites: 187 passed.
+
+* **scikit-image: the mining pass is closed, and the last open question went the
+  other way.** The record's one remaining item about *shipping* code was whether
+  scikit-image's upsampled-DFT sub-pixel refinement beats the parabolic fit in
+  `imaging/drift.py`. Measured — 20 random shifts, 128×128, 40 spots — and the
+  answer is no, decisively: on 200k photons the parabolic fit is **0.015 px
+  against 0.34 px**, and it wins again when content leaves the frame. The DFT
+  wins only with no noise and a circular shift, by 0.003 px.
+
+  The reason is structural, so this is a refusal rather than a "not yet": phase
+  correlation *whitens* the spectrum, amplifying shot noise at high spatial
+  frequencies to the same weight as signal — exactly wrong for photon-limited
+  sparse images. Pinned in `test/core/test_drift.py` so the refusal is a
+  measurement anyone can re-run.
+
+  The rest of the take-later list is rewritten as **refused unless a consumer
+  appears** rather than as a backlog, per the user's instruction not to port
+  what will not be needed: `rolling_ball` (white_tophat already does the job),
+  the `denoise_*` family (denoising a photon image discards the statistics the
+  fits depend on), CLAHE, `skeletonize`/`reconstruction`, `random_walker`, the
+  ridge filters, `match_template`, optical flow. SSIM is kept as the one with a
+  plausible consumer and still refused, since the project already judges GUI
+  parity by control inventory precisely because a pixel metric is either always
+  red or proves nothing.
+
+  scikit-image is now out of the shipped tree entirely — nothing under
+  `chisurf/` imports it and it is in no manifest. It survives only as a parity
+  oracle in three test files.
+
+* **Found and fixed while measuring the above: `estimate_drift` was off by one
+  pixel at large shifts.** An FFT cross-correlation is *circular* — index 0 and
+  index n−1 are neighbours — but the correlation was smoothed with
+  `gaussian_filter`'s default `mode='reflect'`. Near the maximum unambiguous
+  lag that mirrors the peak onto itself and drags it: a true shift of 15 on a
+  32-pixel frame was reported as **16**.
+
+  It survived because a mis-corrected frame still correlates perfectly *with
+  itself*, so lag 0 is blind to it and only lags pairing it with another frame
+  see the error. It was showing up as a 1.4%-against-1% residual in an ICS
+  flatness assertion — a test that had been red, read as a tolerance being
+  slightly too tight. Now `mode='wrap'`, with six parametrised cases at
+  ±13/14/15 asserting exactness.
 * **scikit-image: the mining pass is closed, and the last open question went the
   other way.** The record's one remaining item about *shipping* code was whether
   scikit-image's upsampled-DFT sub-pixel refinement beats the parabolic fit in
