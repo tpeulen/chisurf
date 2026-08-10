@@ -25,8 +25,8 @@
 #   chimol  -- owned by the in-progress chimol WebGPU port (okf/agent-board.md).
 #              Not this work's to touch; struck by that effort.
 #
-# See okf/subsystems/<numba-retirement concept> for the full routing and the
-# measurements behind it.
+# See okf/subsystems/numba-retirement.md for the full routing, the measurements
+# behind it, and where to pick the work up.
 
 # ── numpy ────────────────────────────────────────────────────────────────────
 chisurf/core/fluorescence/anisotropy/decay.py
