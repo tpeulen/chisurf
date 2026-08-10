@@ -415,6 +415,90 @@ def test_anchored_text_is_measured_over_all_its_lines(qapp):
     assert text.is_alive()
 
 
+class _FakeMouse:
+    """A mouse event good enough for the canvas handlers."""
+
+    def __init__(self, pos, button=QtCore.Qt.NoButton, buttons=None):
+        self._pos = QtCore.QPointF(*pos)
+        self._button = button
+        self._buttons = button if buttons is None else buttons
+
+    def position(self):
+        return self._pos
+
+    def button(self):
+        return self._button
+
+    def buttons(self):
+        return self._buttons
+
+    def globalPos(self):
+        return self._pos.toPoint()
+
+
+def _interactive_canvas():
+    canvas = _canvas()
+    canvas.add_curve(np.linspace(0, 50, 128),
+                     1000.0 * np.exp(-np.linspace(0, 50, 128) / 5.0) + 1.0,
+                     pen=S.to_pen("orange"))
+    canvas.widget().resize(400, 300)
+    canvas.auto_range()
+    return canvas
+
+
+def test_a_swallowed_release_does_not_leave_the_panel_dragging(qapp):
+    """The bug the context menu caused, and the guard that ends the class.
+
+    The menu used to be raised by Qt from the *press*; it runs modally, so the
+    release went to the menu and never reached the panel. ``_scaling`` stayed
+    set, and from then on every plain mouse move zoomed the view. A move with
+    no button held now cancels whatever the panel thought it was doing.
+    """
+    canvas = _interactive_canvas()
+    before = canvas.get_range()
+    canvas._mouse_press(_FakeMouse((200, 150), QtCore.Qt.RightButton))
+    # the release is swallowed; the user simply moves the mouse afterwards
+    for i in range(6):
+        canvas._mouse_move(_FakeMouse((210 + 8 * i, 150 + 5 * i)))
+    assert canvas._scaling is False
+    assert canvas._press_button is None
+    assert canvas.get_range() == before
+
+
+def test_a_right_click_menus_and_a_right_drag_scales(qapp):
+    """Pyqtgraph's distinction: the menu belongs to a click, not to a press."""
+    canvas = _interactive_canvas()
+    raised = []
+    canvas._raise_context_menu = lambda ev, px, py: raised.append((px, py))
+
+    before = canvas.get_range()
+    canvas._mouse_press(_FakeMouse((200, 150), QtCore.Qt.RightButton))
+    canvas._mouse_move(_FakeMouse((202, 151), buttons=QtCore.Qt.RightButton))
+    canvas._mouse_release(_FakeMouse((202, 151), QtCore.Qt.RightButton))
+    assert len(raised) == 1, "a right click under the drag threshold is a click"
+    assert canvas.get_range() == before
+
+    raised.clear()
+    canvas._mouse_press(_FakeMouse((200, 150), QtCore.Qt.RightButton))
+    for i in range(8):
+        canvas._mouse_move(_FakeMouse((200 + 6 * i, 150 + 3 * i),
+                                      buttons=QtCore.Qt.RightButton))
+    canvas._mouse_release(_FakeMouse((248, 174), QtCore.Qt.RightButton))
+    assert not raised, "a right drag must not also open the menu"
+    assert canvas.get_range() != before
+
+
+def test_the_pointer_leaving_cancels_a_drag(qapp):
+    """A press whose release happens elsewhere must not persist."""
+    canvas = _interactive_canvas()
+    canvas._mouse_press(_FakeMouse((200, 150), QtCore.Qt.LeftButton))
+    canvas._cancel_interaction()
+    assert canvas._panning is False
+    assert canvas._press_button is None
+    assert canvas._rubber is None
+    assert canvas._drag is None
+
+
 def test_set_range_takes_data_units_on_a_log_axis(qapp):
     """The same contract the other backend now honours (data, not exponents)."""
     canvas = _canvas()

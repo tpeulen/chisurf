@@ -46,6 +46,11 @@ _GRID_COLOR = (0.62, 0.62, 0.66)
 #: How close to the pointer (in pixels) a draggable edge must be to grab it.
 _GRAB_PX = 6.0
 
+#: Pixels a press must travel before it counts as a drag rather than a click.
+#: pyqtgraph's ``GraphicsScene`` uses 5, and the distinction is what decides
+#: whether a right button raises the context menu or scales the view.
+_DRAG_PX = 5.0
+
 #: Decades below the peak a logarithmic auto-range will show. Past this the
 #: samples are the tail of the arithmetic rather than of the measurement.
 _AUTORANGE_DECADES = 9.0
@@ -172,6 +177,12 @@ class _PlotWidget(QtWidgets.QWidget):
                            QtWidgets.QSizePolicy.Expanding)
         self.setFocusPolicy(QtCore.Qt.WheelFocus)
         self.setAttribute(QtCore.Qt.WA_OpaquePaintEvent, True)
+        # The menu is raised from a right *click* on release, the way
+        # pyqtgraph does it — see _mouse_release. Letting Qt raise it from the
+        # press instead is what broke dragging: the menu runs modally and
+        # swallows the release, so the scale-drag never ended and every later
+        # mouse move went on scaling the view.
+        self.setContextMenuPolicy(QtCore.Qt.PreventContextMenu)
 
     def sizeHint(self) -> QtCore.QSize:
         """Ask for the same room a pyqtgraph panel asks for.
@@ -218,6 +229,11 @@ class _PlotWidget(QtWidgets.QWidget):
         """Forward to the canvas."""
         self._canvas._mouse_move(event)
 
+    def leaveEvent(self, event):
+        """Drop any in-progress drag when the pointer leaves the panel."""
+        self._canvas._cancel_interaction()
+        super().leaveEvent(event)
+
     def mouseDoubleClickEvent(self, event):
         """Reset the view to auto-range, matching the other backend."""
         self._canvas.auto_range()
@@ -227,14 +243,8 @@ class _PlotWidget(QtWidgets.QWidget):
         self._canvas._wheel(event)
 
     def contextMenuEvent(self, event):
-        """Let the owning chiplot ``Plot`` build the menu when there is one."""
-        parent = self.parent()
-        while parent is not None:
-            if hasattr(parent, "contextMenuEvent") and hasattr(parent, "_series"):
-                parent.contextMenuEvent(event)
-                return
-            parent = parent.parent()
-        self._canvas._context_menu(event)
+        """Ignored: the menu is raised on a right click, not by Qt's policy."""
+        event.ignore()
 
 
 # ---------------------------------------------------------------------------
@@ -283,6 +293,9 @@ class _WgpuCanvas(base.Canvas):
         self._scaling = False
         self._scale_last: tuple[float, float] | None = None
         self._scale_anchor: tuple[float, float] | None = None
+        self._press_button = None
+        self._press_pos: tuple[float, float] | None = None
+        self._dragged = False
         self._rubber: tuple[float, float, float, float] | None = None
         self._auto_btn_rect = None
         self._drag: tuple[Any, str, float] | None = None
@@ -650,6 +663,31 @@ class _WgpuCanvas(base.Canvas):
         except AttributeError:
             return float(event.x()), float(event.y())
 
+    def _cancel_interaction(self) -> None:
+        """Forget any in-progress press, drag, pan, scale or rubber band.
+
+        Called whenever the panel can no longer trust that it will see the
+        matching release — the pointer leaving, or a move arriving with no
+        button held. Without it a swallowed release leaves the panel scaling
+        for the rest of the session: the context menu used to run modally from
+        the *press*, so the release went to the menu and every later mouse move
+        went on zooming.
+        """
+        self._panning = False
+        self._pan_start = None
+        self._pan_range_start = None
+        self._scaling = False
+        self._scale_last = None
+        self._scale_anchor = None
+        self._press_button = None
+        self._press_pos = None
+        self._dragged = False
+        if self._rubber is not None:
+            self._rubber = None
+            self._widget.update()
+        if self._drag is not None:
+            self._drag = None
+
     def _hit_draggable(self, px: float, py: float):
         """Return ``(handle, part)`` for a draggable edge under the pointer."""
         w, h = self._widget.width(), self._widget.height()
@@ -716,9 +754,16 @@ class _WgpuCanvas(base.Canvas):
                 self.auto_range()
                 return
 
+        self._press_button = event.button()
+        self._press_pos = (px, py)
+        self._dragged = False
+
         if event.button() == QtCore.Qt.RightButton:
+            # Recorded, not started. A right button that never moves is a
+            # click and raises the menu; one that moves is a scale drag. That
+            # is pyqtgraph's distinction, and making it here is what stops a
+            # menu from opening in the middle of a drag.
             if self._interactive_mouse:
-                self._scaling = True
                 self._scale_last = (px, py)
                 self._scale_anchor = self._view.pixel_to_data(
                     px, py, w, h, self._margins)
@@ -746,12 +791,21 @@ class _WgpuCanvas(base.Canvas):
         """Finish a scale, a zoom rectangle, a handle drag, or a pan."""
         px, py = self._event_pos(event)
         if event.button() == QtCore.Qt.RightButton:
+            was_drag = self._dragged
             self._scaling = False
             self._scale_last = None
             self._scale_anchor = None
+            self._press_button = None
+            self._press_pos = None
+            self._dragged = False
+            if not was_drag:
+                self._raise_context_menu(event, px, py)
             return
         if event.button() != QtCore.Qt.LeftButton:
             return
+        self._press_button = None
+        self._press_pos = None
+        self._dragged = False
         if self._rubber is not None:
             band, self._rubber = self._rubber, None
             self._apply_rubber_band(band)
@@ -786,6 +840,25 @@ class _WgpuCanvas(base.Canvas):
     def _mouse_move(self, event):
         """Report the cursor position, and drag whatever is grabbed."""
         px, py = self._event_pos(event)
+
+        # A move with nothing held means the press this panel is still tracking
+        # ended somewhere it could not see — a modal menu, another widget, a
+        # window switch. Anything else leaves the panel dragging forever.
+        try:
+            buttons = event.buttons()
+        except Exception:
+            buttons = None
+        if buttons is not None and buttons == QtCore.Qt.NoButton:
+            if (self._panning or self._scaling or self._rubber is not None
+                    or self._drag is not None or self._press_button is not None):
+                self._cancel_interaction()
+
+        if (self._press_pos is not None and not self._dragged
+                and (abs(px - self._press_pos[0]) >= _DRAG_PX
+                     or abs(py - self._press_pos[1]) >= _DRAG_PX)):
+            self._dragged = True
+            if self._press_button == QtCore.Qt.RightButton and self._interactive_mouse:
+                self._scaling = True
         w, h = self._widget.width(), self._widget.height()
         dx, dy = self._view.pixel_to_data(px, py, w, h, self._margins)
         for cb in self._mouse_move_callbacks:
@@ -884,17 +957,54 @@ class _WgpuCanvas(base.Canvas):
         return [center + (rng[0] - center) * factor,
                 center + (rng[1] - center) * factor]
 
-    def _context_menu(self, event):
+    @staticmethod
+    def _global_pos(event, widget, px: float, py: float):
+        """Return the event's screen position, across Qt bindings."""
+        for name in ("globalPosition", "globalPos"):
+            getter = getattr(event, name, None)
+            if getter is None:
+                continue
+            try:
+                value = getter()
+            except Exception:
+                continue
+            return value.toPoint() if hasattr(value, "toPoint") else value
+        return widget.mapToGlobal(QtCore.QPoint(int(px), int(py)))
+
+    def _raise_context_menu(self, event, px: float, py: float) -> None:
+        """Show the menu for a right *click*, the way pyqtgraph does.
+
+        Raised from the release, and only when the press did not turn into a
+        drag — a menu that opens from the press runs modally and eats the
+        release, which left the panel scaling for good.
+        """
+        if not self._menu_enabled:
+            return
+        global_pos = self._global_pos(event, self._widget, px, py)
+        parent = self._widget.parent()
+        while parent is not None:
+            if hasattr(parent, "contextMenuEvent") and hasattr(parent, "_series"):
+                menu_event = QtGui.QContextMenuEvent(
+                    QtGui.QContextMenuEvent.Mouse,
+                    QtCore.QPoint(int(px), int(py)), global_pos)
+                parent.contextMenuEvent(menu_event)
+                return
+            parent = parent.parent()
+        self._context_menu(global_pos)
+
+    def _context_menu(self, global_pos):
         """Show the backend's own menu (used when no chiplot Plot hosts us)."""
         if not self._menu_enabled:
             return
+        if hasattr(global_pos, "globalPos"):  # an event was passed
+            global_pos = global_pos.globalPos()
         menu = QtWidgets.QMenu(self._widget)
         for label, cb in self._menu_actions:
             menu.addAction(label).triggered.connect(cb)
         if self._menu_actions:
             menu.addSeparator()
         menu.addAction("Auto range").triggered.connect(self.auto_range)
-        menu.exec_(event.globalPos())
+        menu.exec_(global_pos)
 
     def _fire_range_changed(self):
         """Notify listeners and propagate to linked panels."""

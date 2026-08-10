@@ -284,7 +284,23 @@ The gestures are pyqtgraph's, because that is what the hands using this
 application already know: left drag pans, or draws a zoom rectangle under the
 `leftButtonPan` preference the other backend reads; right drag scales about the
 point it started from (1.02 per pixel, x inverted); the wheel zooms about the
-cursor; and the corner **[A]** button restores auto-range. That button matters
+cursor; and the corner **[A]** button restores auto-range.
+
+**The context menu belongs to a right *click*, not to a right press**, and that
+distinction is not cosmetic. Qt's default policy raises the menu from the press;
+the menu runs modally, so the release goes to the menu and never reaches the
+panel — leaving it scaling for the rest of the session, so afterwards every
+plain mouse move zoomed the view. The panel sets `PreventContextMenu` and raises
+the menu itself on release, when the press travelled less than `_DRAG_PX`
+(5 px, pyqtgraph's `GraphicsScene` threshold). A right drag scales and raises
+nothing.
+
+The general guard matters more than that one fix: **a move with no button held
+cancels whatever the panel thought it was doing** (`_cancel_interaction`, also
+called from `leaveEvent`). A press whose release lands somewhere else — a modal
+dialog, another widget, a window switch — is otherwise indistinguishable from a
+drag that never ends, and the same shape of bug would come back through any of
+those routes. That button matters
 more than it looks — a view panned away from its data otherwise has no
 discoverable way back, since "double-click somewhere" is not one.
 
