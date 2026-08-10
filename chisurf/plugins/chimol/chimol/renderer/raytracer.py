@@ -4,15 +4,10 @@ import math
 from dataclasses import dataclass
 from typing import List, Optional, Tuple
 
-# Numba is required, not optional. The pure-NumPy twin that used to stand in for
-# it was a second implementation of the same tracer that nothing exercised while
-# numba was installed -- and it was silently broken for exactly that reason: the
-# transparency work landed in both, and only the compiled one was ever run.
-# A fallback nobody runs is not a safety net, it is an untested branch.
-import numba as _nb
 import numpy as np
 
-from .bvh import _MAX_LEAF, STACK_SIZE, build_bvh, closest_hit, primitive_bounds
+from . import compute
+from .bvh import _MAX_LEAF, build_bvh, primitive_bounds
 from .view_state import unpack_view_state
 
 @dataclass
@@ -63,504 +58,24 @@ def _camera_from_view_state(view: List[float]) -> RayCamera:
 
 
 # ------------------------------------------------------------------ #
-# Numba-accelerated kernel
+# The tracer runs as a WGSL compute shader
 # ------------------------------------------------------------------ #
+#: Raised when there is no adapter to trace on.
+class NoComputeDevice(RuntimeError):
+    """The tracer needs a WebGPU device and this machine has none.
 
-_JIT_SPECDICT = {
-    "nopython": True,
-    "fastmath": True,
-    "cache": True,
-    "parallel": True,
-}
-
-@_nb.njit(**_JIT_SPECDICT)
-def _jit_trace(
-    centers: np.ndarray,
-    radii: np.ndarray,
-    col_rgb: np.ndarray,
-    sph_alpha: np.ndarray,
-    tri_vertices: np.ndarray,
-    tri_vnormals: np.ndarray,
-    tri_colors: np.ndarray,
-    tri_alpha: np.ndarray,
-    scene_node_min: np.ndarray,
-    scene_node_max: np.ndarray,
-    scene_node_left: np.ndarray,
-    scene_node_start: np.ndarray,
-    scene_node_count: np.ndarray,
-    scene_prim_index: np.ndarray,
-    cam_origin: np.ndarray,
-    cam_forward: np.ndarray,
-    cam_up: np.ndarray,
-    fov_radians: float,
-    light_dirs: np.ndarray,
-    width: int,
-    height: int,
-    ssaa: int,
-    bg_r: int,
-    bg_g: int,
-    bg_b: int,
-    ambient: float,
-    diffuse: float,
-    specular: float,
-    shininess: float,
-    direct_spec: float,
-    direct_spec_power: float,
-    reflect_power: float,
-    direct: float,
-    direct_power: float,
-    legacy_lighting: float,
-    shadow_enabled: int,
-    shadow_fudge: float,
-    shadow_decay_factor: float,
-    shadow_decay_range: float,
-    depth_cue_enabled: int,
-    fog_start: float,
-    fog_intensity: float,
-    fog_front: float,
-    fog_inv_range: float,
-    progress: np.ndarray,
-    cancel: np.ndarray,
-    max_layers: int,
-) -> np.ndarray:
-    """JIT-compiled ray tracing kernel with sphere + triangle support.
-
-    Each ray walks *through* the scene rather than stopping at the first
-    surface: every hit contributes its alpha and the remainder is passed
-    along, so a translucent surface shows what is behind it. ``max_layers``
-    bounds that walk -- a closed surface with a cartoon inside needs three
-    or four, and the walk also stops on its own once the remaining
-    transmittance cannot change a byte.
+    Notes
+    -----
+    There is deliberately no CPU tracer behind this. chimol's *renderer* is
+    WebGPU, so a session that can display a molecule can also trace one — a
+    second implementation here would be a large body of shading code that
+    nothing ever runs, which is exactly how the previous pure-NumPy twin came to
+    be silently broken while every test passed.
     """
-    n_spheres: int = centers.shape[0]
-    rw: int = int(width * ssaa)
-    rh: int = int(height * ssaa)
-    n_lights: int = light_dirs.shape[0]
-
-    right = np.cross(cam_forward, cam_up)
-    rn = _jit_length(right)
-    if rn < 1e-9:
-        right = np.array([1.0, 0.0, 0.0], dtype=np.float64)
-    else:
-        right[0] /= rn
-        right[1] /= rn
-        right[2] /= rn
-    fw = cam_forward.copy()
-    up = np.cross(right, fw)
-    un = _jit_length(up)
-    up[0] /= un
-    up[1] /= un
-    up[2] /= un
-
-    half_h = math.tan(fov_radians * 0.5)
-    aspect = float(rw) / float(max(rh, 1))
-    half_w = half_h * aspect
-
-    out = np.zeros((height, width, 3), dtype=np.float64)
-    accum = np.zeros((height, width), dtype=np.float64)
-
-    bg_f = float(bg_r) / 255.0
-    bg_g_f = float(bg_g) / 255.0
-    bg_b_f = float(bg_b) / 255.0
-
-    ldirs = np.zeros((n_lights, 3), dtype=np.float64)
-    for li in range(n_lights):
-        ld = light_dirs[li]
-        ln = math.sqrt(ld[0]*ld[0] + ld[1]*ld[1] + ld[2]*ld[2])
-        if ln < 1e-9:
-            ln = 1.0
-        ldirs[li, 0] = ld[0] / ln
-        ldirs[li, 1] = ld[1] / ln
-        ldirs[li, 2] = ld[2] / ln
-
-    spec_per_light = 1.0 / pow(float(max(n_lights - 1, 1)), 0.6)
-    legacy = max(0.0, min(1.0, legacy_lighting))
-
-    for py in _nb.prange(rh):
-        if py == 0 or py == rh - 1:
-            if cancel[0] != 0:
-                continue
-        # One scratch stack per row. Allocated inside the parallel loop so each
-        # thread gets its own, and outside the pixel loop so a row's worth of
-        # rays share it -- the primary walk has finished before the shadow walk
-        # starts, so they cannot both be using it.
-        stack = np.empty(STACK_SIZE, dtype=np.int32)
-        for px in range(rw):
-            u = (float(px) + 0.5) / float(max(rw - 1, 1)) - 0.5
-            v = 0.5 - (float(py) + 0.5) / float(max(rh - 1, 1))
-
-            dir_x = fw[0] + right[0] * u * 2.0 * half_w + up[0] * v * 2.0 * half_h
-            dir_y = fw[1] + right[1] * u * 2.0 * half_w + up[1] * v * 2.0 * half_h
-            dir_z = fw[2] + right[2] * u * 2.0 * half_w + up[2] * v * 2.0 * half_h
-            dlen = math.sqrt(dir_x * dir_x + dir_y * dir_y + dir_z * dir_z)
-            if dlen < 1e-9:
-                dlen = 1.0
-            dir_x /= dlen
-            dir_y /= dlen
-            dir_z /= dlen
-
-            rox, roy, roz = cam_origin[0], cam_origin[1], cam_origin[2]
-
-            acc_r = 0.0
-            acc_g = 0.0
-            acc_b = 0.0
-            trans = 1.0
-            t_min = 1e-6
-            any_hit = False
-            for _layer in range(max_layers):
-                # One descent of the tree finds the nearest of both kinds: the
-                # scene BVH holds spheres and triangles in one index space, so
-                # this replaces a sweep of every primitive in the scene.
-                best_t, best_prim = closest_hit(
-                    rox, roy, roz, dir_x, dir_y, dir_z,
-                    t_min, np.inf,
-                    scene_node_min, scene_node_max, scene_node_left,
-                    scene_node_start, scene_node_count, scene_prim_index,
-                    n_spheres, centers, radii, tri_vertices,
-                    -1, stack,
-                )
-                if best_prim < 0:
-                    break
-                best_is_tri = best_prim >= n_spheres
-                if best_is_tri:
-                    best_id = best_prim - n_spheres
-                else:
-                    best_id = best_prim
-
-                # ---- hit point & normal ------
-                hx = rox + dir_x * best_t
-                hy = roy + dir_y * best_t
-                hz = roz + dir_z * best_t
-
-                if best_is_tri:
-                    # Interpolate vertex normal via barycentric coords
-                    ti = best_id
-                    v0x = tri_vertices[ti, 0, 0]
-                    v0y = tri_vertices[ti, 0, 1]
-                    v0z = tri_vertices[ti, 0, 2]
-                    v1x = tri_vertices[ti, 1, 0]
-                    v1y = tri_vertices[ti, 1, 1]
-                    v1z = tri_vertices[ti, 1, 2]
-                    v2x = tri_vertices[ti, 2, 0]
-                    v2y = tri_vertices[ti, 2, 1]
-                    v2z = tri_vertices[ti, 2, 2]
-
-                    # Compute barycentric coords of hit point
-                    e1x = v1x - v0x
-                    e1y = v1y - v0y
-                    e1z = v1z - v0z
-                    e2x = v2x - v0x
-                    e2y = v2y - v0y
-                    e2z = v2z - v0z
-                    ppx = hx - v0x
-                    ppy = hy - v0y
-                    ppz = hz - v0z
-                    d00 = e1x*e1x + e1y*e1y + e1z*e1z
-                    d01 = e1x*e2x + e1y*e2y + e1z*e2z
-                    d11 = e2x*e2x + e2y*e2y + e2z*e2z
-                    d20 = ppx*e1x + ppy*e1y + ppz*e1z
-                    d21 = ppx*e2x + ppy*e2y + ppz*e2z
-                    denom = d00 * d11 - d01 * d01
-                    if abs(denom) > 1e-12:
-                        u_bc = (d11 * d20 - d01 * d21) / denom
-                        v_bc = (d00 * d21 - d01 * d20) / denom
-                    else:
-                        u_bc = 0.0
-                        v_bc = 0.0
-                    w_bc = 1.0 - u_bc - v_bc
-
-                    n0x = tri_vnormals[ti, 0, 0]
-                    n0y = tri_vnormals[ti, 0, 1]
-                    n0z = tri_vnormals[ti, 0, 2]
-                    n1x = tri_vnormals[ti, 1, 0]
-                    n1y = tri_vnormals[ti, 1, 1]
-                    n1z = tri_vnormals[ti, 1, 2]
-                    n2x = tri_vnormals[ti, 2, 0]
-                    n2y = tri_vnormals[ti, 2, 1]
-                    n2z = tri_vnormals[ti, 2, 2]
-
-                    nx = w_bc * n0x + u_bc * n1x + v_bc * n2x
-                    ny = w_bc * n0y + u_bc * n1y + v_bc * n2y
-                    nz = w_bc * n0z + u_bc * n1z + v_bc * n2z
-                    nl = math.sqrt(nx*nx + ny*ny + nz*nz)
-                    if nl < 1e-9:
-                        nl = 1.0
-                    nx /= nl
-                    ny /= nl
-                    nz /= nl
-
-                    cr = tri_colors[ti, 0]
-                    cg = tri_colors[ti, 1]
-                    cb = tri_colors[ti, 2]
-                else:
-                    nx = hx - centers[best_id, 0]
-                    ny = hy - centers[best_id, 1]
-                    nz = hz - centers[best_id, 2]
-                    nl = math.sqrt(nx * nx + ny * ny + nz * nz)
-                    if nl < 1e-9:
-                        nl = 1.0
-                    nx /= nl
-                    ny /= nl
-                    nz /= nl
-                    cr = col_rgb[best_id, 0]
-                    cg = col_rgb[best_id, 1]
-                    cb = col_rgb[best_id, 2]
-
-                vx = cam_origin[0] - hx
-                vy = cam_origin[1] - hy
-                vz = cam_origin[2] - hz
-                vl = math.sqrt(vx * vx + vy * vy + vz * vz) + 1e-9
-                vx /= vl
-                vy /= vl
-                vz /= vl
-
-                reflect_sum = 0.0
-                spec_sum = 0.0
-
-                for li in range(n_lights):
-                    lx = ldirs[li, 0]
-                    ly = ldirs[li, 1]
-                    lz = ldirs[li, 2]
-
-                    if shadow_enabled:
-                        # The surface the ray leaves from is skipped by its
-                        # own unified index, so this is right for a triangle as
-                        # well as a sphere. It used to pass `best_id`
-                        # unconditionally, which on a triangle hit excluded
-                        # whichever sphere happened to share that index.
-                        lit = _jit_shadow_soft(
-                            hx + lx * shadow_fudge,
-                            hy + ly * shadow_fudge,
-                            hz + lz * shadow_fudge,
-                            lx, ly, lz,
-                            centers, radii, tri_vertices,
-                            scene_node_min, scene_node_max, scene_node_left,
-                            scene_node_start, scene_node_count,
-                            scene_prim_index,
-                            n_spheres, best_prim,
-                            shadow_decay_factor, shadow_decay_range,
-                            stack,
-                        )
-                    else:
-                        lit = 1.0
-
-                    n_dot_l = nx * lx + ny * ly + nz * lz
-                    if n_dot_l < 0.0:
-                        n_dot_l = 0.0
-                    if n_dot_l > 1.0:
-                        n_dot_l = 1.0
-
-                    if lit > 0.0 and n_dot_l > 0.0:
-                        reflect_sum += lit * pow(n_dot_l, reflect_power)
-
-                    if lit > 0.0 and n_dot_l > 0.0:
-                        hnx = lx + vx
-                        hny = ly + vy
-                        hnz = lz + vz
-                        hn = math.sqrt(hnx*hnx + hny*hny + hnz*hnz)
-                        if hn > 1e-9:
-                            hnx /= hn
-                            hny /= hn
-                            hnz /= hn
-                            n_dot_h = nx*hnx + ny*hny + nz*hnz
-                            if n_dot_h < 0.0:
-                                n_dot_h = 0.0
-                            if n_dot_h > 1.0:
-                                n_dot_h = 1.0
-                            spec_sum += lit * pow(n_dot_h, shininess)
-
-                reflect_norm = reflect_sum / float(max(n_lights, 1))
-
-                n_dot_v = nx * vx + ny * vy + nz * vz
-                if n_dot_v < 0.0:
-                    n_dot_v = 0.0
-                if n_dot_v > 1.0:
-                    n_dot_v = 1.0
-                direct_cmp = pow(n_dot_v, direct_spec_power)
-
-                if legacy > 0.0:
-                    n_dot_l0 = nx * ldirs[0, 0] + ny * ldirs[0, 1] + nz * ldirs[0, 2]
-                    if n_dot_l0 < 0.0:
-                        n_dot_l0 = 0.0
-                    legacy_bright = ambient + diffuse * n_dot_l0
-                else:
-                    legacy_bright = 0.0
-
-                # PyMOL's brightness has **two** diffuse terms and chimol had
-                # only one (`layer1/Ray.cpp`):
-                #
-                #   bright = ambient
-                #          + ((1-direct_shade) + direct_shade*lit) * direct * direct_cmp
-                #          + lreflect * reflect_cmp
-                #
-                # `direct_cmp` is `pow(surfnormal[2], power)` -- the normal's z in
-                # camera space, so `direct` is a **headlight**: a surface facing
-                # the viewer is lit whatever the lamps are doing. `reflect` is
-                # the lamp-driven term, divided over the lights ("divide up the
-                # reflected light component over all lights"), which is what
-                # `reflect_norm` already is.
-                #
-                # Without the headlight the ceiling was ambient + diffuse =
-                # 0.14 + 0.45 = 0.59, and only where a lamp faced the surface
-                # squarely; PyMOL's is 0.14 + 0.45 + 0.45, clamped to 1. That
-                # missing 0.45 is why a traced image came out far darker than
-                # the viewport it was meant to reproduce.
-                bright = ambient + direct * pow(n_dot_v, direct_power) \
-                    + diffuse * reflect_norm
-                if legacy > 0.0:
-                    bright = bright * (1.0 - legacy) + legacy_bright * legacy
-                if bright < 0.0:
-                    bright = 0.0
-                if bright > 1.0:
-                    bright = 1.0
-
-                excess = direct_spec * direct_cmp + specular * spec_sum * spec_per_light
-                if excess < 0.0:
-                    excess = 0.0
-                if excess > 1.0:
-                    excess = 1.0
-
-                cr_out = cr * bright + excess
-                cg_out = cg * bright + excess
-                cb_out = cb * bright + excess
-
-                if depth_cue_enabled and fog_inv_range > 0.0:
-                    nd = (best_t - fog_front) * fog_inv_range
-                    if nd > fog_start:
-                        ffact = (nd - fog_start) / (1.0 - fog_start) * fog_intensity
-                        if ffact > 1.0:
-                            ffact = 1.0
-                        if ffact > 0.0:
-                            cr_out = cr_out * (1.0 - ffact) + bg_f * ffact
-                            cg_out = cg_out * (1.0 - ffact) + bg_g_f * ffact
-                            cb_out = cb_out * (1.0 - ffact) + bg_b_f * ffact
-
-                # Front-to-back compositing. `trans` is how much of what lies
-                # behind still reaches the eye; each layer takes its alpha out
-                # of it. Stopping at the first surface -- which is what this
-                # did -- renders a `transparency 0.6` shell as solid.
-                a_hit = 1.0
-                if best_is_tri:
-                    a_hit = tri_alpha[best_id]
-                else:
-                    a_hit = sph_alpha[best_id]
-                if a_hit < 0.0:
-                    a_hit = 0.0
-                if a_hit > 1.0:
-                    a_hit = 1.0
-                acc_r += trans * a_hit * cr_out
-                acc_g += trans * a_hit * cg_out
-                acc_b += trans * a_hit * cb_out
-                any_hit = True
-                trans *= (1.0 - a_hit)
-                # Below ~1/255 the next layer cannot change a byte, so the walk
-                # stops rather than paying for surfaces nobody will see.
-                if trans < 0.004:
-                    break
-                # Step past this surface, or the next search finds it again.
-                t_min = best_t + 1e-4
-
-            if not any_hit:
-                continue
-            # Whatever is still transmitted is background, exactly as the
-            # viewport blends it.
-            cr_out = acc_r + trans * bg_f
-            cg_out = acc_g + trans * bg_g_f
-            cb_out = acc_b + trans * bg_b_f
-
-            oy = py // ssaa
-            ox = px // ssaa
-            out[oy, ox, 0] += cr_out
-            out[oy, ox, 1] += cg_out
-            out[oy, ox, 2] += cb_out
-            accum[oy, ox] += 1.0
-
-    img = np.zeros((height, width, 3), dtype=np.uint8)
-    for y in range(height):
-        for x in range(width):
-            w = accum[y, x]
-            if w < 0.5:
-                r = bg_r
-                g = bg_g
-                b = bg_b
-            else:
-                inv = 1.0 / w
-                r = int(out[y, x, 0] * inv * 255.0)
-                g = int(out[y, x, 1] * inv * 255.0)
-                b = int(out[y, x, 2] * inv * 255.0)
-                if r > 255: r = 255
-                if g > 255: g = 255
-                if b > 255: b = 255
-                if r < 0: r = 0
-                if g < 0: g = 0
-                if b < 0: b = 0
-            img[y, x, 0] = np.uint8(r)
-            img[y, x, 1] = np.uint8(g)
-            img[y, x, 2] = np.uint8(b)
-    return img
-
-@_nb.njit(fastmath=True, cache=True)
-def _jit_length(v: np.ndarray) -> float:
-    return math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2])
-
-@_nb.njit(fastmath=True, cache=True)
-def _jit_shadow_soft(
-    hx: float, hy: float, hz: float,
-    lx: float, ly: float, lz: float,
-    centers: np.ndarray,
-    radii: np.ndarray,
-    tri_vertices: np.ndarray,
-    node_min: np.ndarray,
-    node_max: np.ndarray,
-    node_left: np.ndarray,
-    node_start: np.ndarray,
-    node_count: np.ndarray,
-    prim_index: np.ndarray,
-    n_spheres: int,
-    skip_idx: int,
-    decay_factor: float,
-    decay_range: float,
-    stack: np.ndarray,
-) -> float:
-    """How much of one light reaches a point: 1 fully lit, 0 fully shadowed.
-
-    Every primitive casts, which is what PyMOL does. This used to walk a
-    sphere-only tree, so a cartoon -- the display chimol and PyMOL both start
-    with -- cast no shadow at all and ``ray_shadow`` did nothing on it. Testing
-    the whole scene was unaffordable while a shadow ray cost a sweep of it; with
-    the BVH it is one more descent.
-
-    The occluder taken is the **nearest** one. PyMOL does the same, and only
-    when the decay is on -- ``nearest_shadow = (shadow_decay != _0)`` in
-    ``layer1/Ray.cpp`` -- because the decay is a function of how far the
-    occluder is, so any other occluder answers a different question. This used
-    to return whichever sphere came first in the array, which made how soft a
-    shadow came out depend on the order the scene happened to be built in.
-    """
-    if node_count.shape[0] == 0:
-        return 1.0
-    t, prim = closest_hit(
-        hx, hy, hz, lx, ly, lz,
-        1e-6, np.inf,
-        node_min, node_max, node_left, node_start, node_count, prim_index,
-        n_spheres, centers, radii, tri_vertices,
-        skip_idx, stack,
-    )
-    if prim < 0:
-        return 1.0
-    if decay_factor > 0.0:
-        d = t - decay_range
-        if d <= 0.0:
-            return 1.0
-        occlusion = 1.0 - math.exp(-d * decay_factor)
-        if occlusion >= 1.0:
-            return 0.0
-        return 1.0 - occlusion
-    return 0.0
 
 
 # ------------------------------------------------------------------ #
-# Public API (falls back if Numba unavailable)
+# Public API
 # ------------------------------------------------------------------ #
 
 
@@ -739,30 +254,48 @@ def trace(
     # optimisation any more, only a thing that made the picture wrong.
     prim_min, prim_max = primitive_bounds(centers, radii_arr, tverts)
     scene_bvh = build_bvh(prim_min, prim_max, _MAX_LEAF)
+    ray_scene = compute.RayScene(centers, radii_arr, tverts, scene_bvh)
 
-    img = _jit_trace(
-        centers, radii_arr, colors_arr, sph_alpha_arr,
-        tverts, tnorms, tcols, talpha,
-        *scene_bvh,
-        camera.origin.astype(np.float64).copy(),
-        camera.forward.astype(np.float64).copy(),
-        camera.up.astype(np.float64).copy(),
-        float(fov_rad),
-        lds,
-        int(width), int(height), int(ssaa),
-        int(bg_r), int(bg_g), int(bg_b),
-        float(ambient), float(diffuse), float(specular), float(shininess),
-        float(direct_specular), float(direct_specular_power),
-        float(reflect_power), float(direct), float(direct_power),
-        float(legacy_lighting),
-        int(shadow), float(shadow_fudge),
-        float(shadow_decay_factor), float(shadow_decay_range),
-        int(depth_cue), float(fog_start), float(fog_intensity),
-        float(front), float(fog_inv_range),
-        progress,
-        cancel,
-        int(max(1, max_layers)),
+    sphere_rgba = np.concatenate([colors_arr, sph_alpha_arr[:, None]], axis=1)
+    tri_rgba = np.concatenate([tcols, talpha[:n_tri, None]], axis=1) if n_tri else \
+        np.zeros((0, 4), dtype=np.float64)
+
+    background = np.array([bg_r, bg_g, bg_b], dtype=np.float64) / 255.0
+    settings = {
+        "width": int(width), "height": int(height), "ssaa": int(ssaa),
+        "max_layers": int(max(1, max_layers)),
+        "background": background,
+        "ambient": float(ambient), "diffuse": float(diffuse),
+        "specular": float(specular), "shininess": float(shininess),
+        "direct_specular": float(direct_specular),
+        "direct_specular_power": float(direct_specular_power),
+        "reflect_power": float(reflect_power),
+        "direct": float(direct), "direct_power": float(direct_power),
+        "legacy": float(legacy_lighting),
+        "shadow_enabled": bool(shadow), "shadow_fudge": float(shadow_fudge),
+        "shadow_decay_factor": float(shadow_decay_factor),
+        "shadow_decay_range": float(shadow_decay_range),
+        "depth_cue_enabled": bool(depth_cue),
+        "fog_start": float(fog_start), "fog_intensity": float(fog_intensity),
+        "fog_front": float(front), "fog_inv_range": float(fog_inv_range),
+    }
+
+    frame = compute.raytrace(
+        ray_scene, camera, lds, sphere_rgba, tnorms, tri_rgba, settings
     )
+    if frame is None:
+        raise NoComputeDevice(
+            "the ray tracer needs a WebGPU adapter and none could be obtained"
+        )
+    progress[0] = int(height)
+
+    # A pixel nothing was hit in keeps the background exactly, rather than a
+    # rounded version of it -- the shader reports the hit mask so the host does
+    # not have to compare against a colour that may have been gamma-adjusted.
+    rgb = np.clip(frame[:, :, :3] * 255.0, 0.0, 255.0)
+    img = np.where(
+        frame[:, :, 3:4] > 0.5, rgb, np.array([bg_r, bg_g, bg_b], dtype=np.float64)
+    ).astype(np.uint8)
 
     if color_blend:
         img = _apply_color_blend(img, color_blend_red, color_blend_green, color_blend_blue,

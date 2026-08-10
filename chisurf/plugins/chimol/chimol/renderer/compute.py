@@ -40,6 +40,11 @@ WGSL_DIR = pathlib.Path(__file__).with_name("wgsl")
 #: composition is concatenation — the same rule the render shaders use.
 COMPUTE_PRELUDE = "grid.wgsl"
 
+#: Prelude for every shader that casts a ray: the BVH layout, its traversal, and
+#: the two primitive intersections. Bindings 0-6 belong to it, so an entry point
+#: that uses it starts its own at 7.
+RAY_PRELUDE = "bvh.wgsl"
+
 #: Threads per workgroup. 64 is the portable choice: it is a multiple of both
 #: the 32-lane and 64-lane wave sizes in circulation, so no backend runs a
 #: partly-empty wave.
@@ -54,6 +59,21 @@ MIN_WORK_ITEMS = 20_000
 #: ``cpu`` disables every kernel here; ``gpu`` skips the size threshold so a
 #: small case still dispatches, which is what makes a parity test meaningful.
 BACKEND_ENV = "CHIMOL_COMPUTE"
+
+class ShaderError(RuntimeError):
+    """A WGSL shader failed to compile.
+
+    Notes
+    -----
+    Never caught by the kernels here, on purpose. Everything else they can fail
+    at -- no adapter, an allocation that will not fit -- is a legitimate reason
+    to hand the work back to NumPy, and the ``except`` clauses do exactly that.
+    A shader that does not compile is not that: it is a bug in code that was
+    edited, and letting it become a quiet CPU fallback is how a broken shader
+    survives a full test run. Two reserved-keyword collisions (`meta`, `active`)
+    were found this way and would otherwise have been found by nobody.
+    """
+
 
 _DEVICE: object | None = None
 _DEVICE_TRIED = False
@@ -87,13 +107,17 @@ def backend() -> str:
     return choice if choice in ("auto", "gpu", "cpu") else "auto"
 
 
-def _declines(work_items: int) -> bool:
+def _declines(work_items: int, minimum: int | None = None) -> bool:
     """Whether the GPU route should stand aside for this problem size.
 
     Parameters
     ----------
     work_items : int
         Number of invocations the dispatch would launch.
+    minimum : int, optional
+        Override :data:`MIN_WORK_ITEMS` for a kernel whose CPU route is unusually
+        strong. The distance transform is the case: scipy's is compiled and
+        separable, so it stays ahead until the grid is large.
 
     Returns
     -------
@@ -104,7 +128,8 @@ def _declines(work_items: int) -> bool:
         return True
     if device() is None:
         return True
-    return choice != "gpu" and work_items < MIN_WORK_ITEMS
+    floor = MIN_WORK_ITEMS if minimum is None else int(minimum)
+    return choice != "gpu" and work_items < floor
 
 
 def device():
@@ -162,6 +187,21 @@ def load_compute_wgsl(name: str) -> str:
     if name == COMPUTE_PRELUDE:
         return source
     return (WGSL_DIR / COMPUTE_PRELUDE).read_text() + "\n" + source
+
+
+def load_ray_wgsl(name: str) -> str:
+    """Read a ray shader, prefixed with the BVH prelude.
+
+    Parameters
+    ----------
+    name : str
+        File name inside the ``wgsl`` directory.
+
+    Returns
+    -------
+    str
+    """
+    return (WGSL_DIR / RAY_PRELUDE).read_text() + "\n" + (WGSL_DIR / name).read_text()
 
 
 @dataclass
@@ -283,9 +323,40 @@ def _module(dev, shader: str):
     key = hash(shader)
     module = _MODULES.get(key)
     if module is None:
-        module = dev.create_shader_module(code=shader)
+        try:
+            module = dev.create_shader_module(code=shader)
+        except Exception as failure:
+            raise ShaderError(str(failure)) from failure
         _MODULES[key] = module
     return module
+
+
+def shader_compiled(name: str) -> bool:
+    """Whether a shader has already been compiled in this process.
+
+    Parameters
+    ----------
+    name : str
+        File name inside the ``wgsl`` directory.
+
+    Returns
+    -------
+    bool
+        False before the first dispatch that uses it, and after nothing else.
+
+    Notes
+    -----
+    Only useful for telling a user that the wait they are about to have is a
+    compile rather than the work -- which is worth saying, because the first
+    dispatch of a process is the slowest thing this module does.
+    """
+    try:
+        source = load_ray_wgsl(name) if name != COMPUTE_PRELUDE else load_compute_wgsl(name)
+    except OSError:
+        return False
+    if hash(source) in _MODULES:
+        return True
+    return hash(load_compute_wgsl(name)) in _MODULES
 
 
 class _Job:
@@ -297,6 +368,13 @@ class _Job:
         WGSL source, prelude already applied.
     entry_point : str
         Compute entry point name.
+
+    Notes
+    -----
+    Bindings may be given explicitly, because the ray shaders share a prelude
+    that fixes bindings 0-6 for the scene and the tree, and each entry point adds
+    its own above that. :meth:`add_input` and :meth:`add_uniform` keep the simple
+    sequential form for the kernels that do not.
     """
 
     def __init__(self, shader: str, entry_point: str) -> None:
@@ -306,34 +384,58 @@ class _Job:
         self.device = device()
         self.module = _module(self.device, shader)
         self.entry_point = entry_point
-        self._inputs: list = []
+        self._bound: list = []
+        self._next_slot = 0
         self._output = None
+        self._output_slot = -1
         self._output_shape: tuple = ()
         self._output_dtype = np.float32
 
-    def add_input(self, array: np.ndarray) -> "_Job":
-        """Upload a read-only storage buffer.
+    def bind(self, slot: int, array: np.ndarray, *, uniform: bool = False) -> "_Job":
+        """Upload one buffer at an explicit binding slot.
 
         Parameters
         ----------
+        slot : int
+            Binding index, matching the shader.
         array : numpy.ndarray
             Contiguous data; its dtype and layout must match the shader's.
+        uniform : bool, optional
+            Whether this is a uniform rather than a read-only storage buffer.
 
         Returns
         -------
         _Job
         """
         wgpu = self._wgpu
+        usage = wgpu.BufferUsage.UNIFORM if uniform else wgpu.BufferUsage.STORAGE
+        # A zero-length storage array cannot be bound, and an empty scene is a
+        # perfectly ordinary thing to trace -- one padding element keeps the
+        # binding valid while the counts in the uniform keep the shader off it.
         data = np.ascontiguousarray(array)
-        self._inputs.append(
-            self.device.create_buffer_with_data(
-                data=data, usage=wgpu.BufferUsage.STORAGE
-            )
-        )
+        if data.size == 0:
+            data = np.zeros((1,) + data.shape[1:], dtype=data.dtype)
+        buffer = self.device.create_buffer_with_data(data=data, usage=usage)
+        self._bound.append((int(slot), buffer, uniform))
+        self._next_slot = max(self._next_slot, int(slot) + 1)
         return self
 
+    def add_input(self, array: np.ndarray) -> "_Job":
+        """Upload a read-only storage buffer at the next free slot.
+
+        Parameters
+        ----------
+        array : numpy.ndarray
+            Contiguous data.
+
+        Returns
+        -------
+        _Job
+        """
+        return self.bind(self._next_slot, array)
+
     def add_uniform(self, array: np.ndarray) -> "_Job":
-        """Upload a uniform buffer.
+        """Upload a uniform buffer at the next free slot.
 
         Parameters
         ----------
@@ -344,16 +446,9 @@ class _Job:
         -------
         _Job
         """
-        wgpu = self._wgpu
-        data = np.ascontiguousarray(array)
-        self._inputs.append(
-            self.device.create_buffer_with_data(
-                data=data, usage=wgpu.BufferUsage.UNIFORM
-            )
-        )
-        return self
+        return self.bind(self._next_slot, array, uniform=True)
 
-    def output(self, shape: tuple, dtype=np.float32) -> "_Job":
+    def output(self, shape: tuple, dtype=np.float32, slot: int | None = None) -> "_Job":
         """Declare the writable storage buffer the shader fills.
 
         Parameters
@@ -362,6 +457,8 @@ class _Job:
             Shape of the result.
         dtype : numpy.dtype
             Element type.
+        slot : int, optional
+            Binding index; defaults to the next free slot.
 
         Returns
         -------
@@ -370,7 +467,9 @@ class _Job:
         wgpu = self._wgpu
         self._output_shape = shape
         self._output_dtype = dtype
-        size = int(np.prod(shape)) * np.dtype(dtype).itemsize
+        self._output_slot = self._next_slot if slot is None else int(slot)
+        self._next_slot = max(self._next_slot, self._output_slot + 1)
+        size = max(int(np.prod(shape)), 1) * np.dtype(dtype).itemsize
         self._output = self.device.create_buffer(
             size=size,
             usage=wgpu.BufferUsage.STORAGE | wgpu.BufferUsage.COPY_SRC,
@@ -394,10 +493,9 @@ class _Job:
         wgpu = self._wgpu
         entries = []
         layout_entries = []
-        for slot, buffer in enumerate(self._inputs):
-            is_uniform = bool(buffer.usage & wgpu.BufferUsage.UNIFORM)
+        for slot, buffer, uniform in self._bound:
             kind = (
-                wgpu.BufferBindingType.uniform if is_uniform
+                wgpu.BufferBindingType.uniform if uniform
                 else wgpu.BufferBindingType.read_only_storage
             )
             layout_entries.append({
@@ -406,13 +504,14 @@ class _Job:
                 "buffer": {"type": kind},
             })
             entries.append({"binding": slot, "resource": {"buffer": buffer}})
-        slot = len(self._inputs)
         layout_entries.append({
-            "binding": slot,
+            "binding": self._output_slot,
             "visibility": wgpu.ShaderStage.COMPUTE,
             "buffer": {"type": wgpu.BufferBindingType.storage},
         })
-        entries.append({"binding": slot, "resource": {"buffer": self._output}})
+        entries.append({
+            "binding": self._output_slot, "resource": {"buffer": self._output}
+        })
 
         # The layout and the pipeline depend only on the *shape* of the
         # bindings, never on the data, so both are cached with the module.
@@ -509,6 +608,8 @@ def shade_from_atoms(verts, atoms, atom_colors, sigmas, cutoff) -> Optional[tupl
             .output((v.shape[0], 8), np.float32)
         )
         packed = job.run(v.shape[0])
+    except ShaderError:
+        raise
     except Exception:
         return None
 
@@ -566,6 +667,8 @@ def occlusion_from_spheres(points, normals, centers, radii, max_distance, streng
             .output((p.shape[0],), np.float32)
         )
         return np.asarray(job.run(p.shape[0]), dtype=np.float64)
+    except ShaderError:
+        raise
     except Exception:
         return None
 
@@ -647,20 +750,608 @@ def distance_to_spheres(points, radii, shape, origin, spacing, horizon):
             .output((count,), np.float32)
         )
         return np.asarray(job.run(count)).reshape(shape)
+    except ShaderError:
+        raise
     except Exception:
         return None
+
+
+
+def directional_occlusion(points, normals, centers, radii, direction,
+                          max_distance, softness, strength):
+    """Shadowing of one key light, per vertex, on the GPU.
+
+    Parameters
+    ----------
+    points, normals : numpy.ndarray
+        ``(n, 3)`` vertices and unit normals.
+    centers : numpy.ndarray
+        ``(m, 3)`` occluder centres.
+    radii : numpy.ndarray
+        ``(m,)`` occluder radii.
+    direction : numpy.ndarray
+        Unit vector pointing **toward** the light.
+    max_distance : float
+        How far along the ray to look.
+    softness : float
+        Multiplies each occluder radius when deciding how near a graze counts.
+    strength : float
+        Scales the accumulated blockage before the exponential.
+
+    Returns
+    -------
+    numpy.ndarray or None
+        ``(n,)`` shadowing in ``[0, 1)``, or ``None`` when the GPU route is
+        unavailable or not worth taking.
+    """
+    p = np.ascontiguousarray(points, dtype=np.float64)
+    c = np.ascontiguousarray(centers, dtype=np.float64)
+    r = np.ascontiguousarray(radii, dtype=np.float64).reshape(-1)
+    if _declines(p.shape[0]) or p.shape[0] == 0 or c.shape[0] == 0:
+        return None
+    if not np.isfinite(max_distance) or max_distance <= 0.0:
+        return None
+    reach = float((r * softness).max())
+    if reach <= 0.0:
+        return None
+
+    # The cell is *twice* the step, and that factor is the whole correctness
+    # argument. A sphere claimed by step `s` sits up to one step further along
+    # the ray and up to one reach off it, and the light is not axis-aligned -- so
+    # its displacement from the sample point can be a full `step + reach` on
+    # every axis at once. Only a cell at least that large keeps it inside the
+    # sample's 3x3x3 neighbourhood. With cell = step this missed a handful of
+    # occluders per frame: 20 vertices out of 40k, invisible in the mean and
+    # 0.39 out of 1.0 on the vertices it hit.
+    grid = build_grid(c, 2.0 * reach)
+    info = np.zeros(12, dtype=np.uint32)
+    info[0:3] = grid.origin.view(np.uint32)
+    info[3] = np.float32(grid.inv_cell).view(np.uint32)
+    info[4:7] = grid.dims.astype(np.uint32)
+    info[7] = np.uint32(p.shape[0])
+
+    light = np.asarray(direction, dtype=np.float64).reshape(3)
+    ray = np.zeros(8, dtype=np.uint32)
+    ray.view(np.float32)[0:3] = light
+    ray.view(np.float32)[3] = np.float32(max_distance)
+    ray.view(np.float32)[4] = np.float32(reach)
+    ray[5] = np.uint32(int(np.ceil(max_distance / reach)))
+    ray.view(np.float32)[6] = np.float32(softness)
+    ray.view(np.float32)[7] = np.float32(strength)
+
+    try:
+        job = (
+            _Job(load_compute_wgsl("shadow_rays.wgsl"), "main")
+            .bind(0, _vec4(p, 0.0))
+            .bind(1, _vec4(np.ascontiguousarray(normals, dtype=np.float64), 0.0))
+            .bind(2, _vec4(c, r))
+            .bind(3, grid.start)
+            .bind(4, grid.order)
+            .bind(5, info, uniform=True)
+            .bind(6, ray, uniform=True)
+            .output((p.shape[0],), np.float32, slot=7)
+        )
+        return np.asarray(job.run(p.shape[0]), dtype=np.float64)
+    except ShaderError:
+        raise
+    except Exception:
+        return None
+
+
+#: Stands in for infinity in the distance transform, matching ``edt.wgsl``.
+_EDT_BIG = 1.0e20
+
+#: Voxels below which the distance transform stays on scipy. Its CPU route is
+#: compiled and separable and therefore unusually strong: measured, the GPU is
+#: 2x *slower* at 27k voxels and 12.9x faster at 2.1M, with the crossing well
+#: above the module's usual threshold.
+_EDT_MIN_VOXELS = 250_000
+
+
+def distance_transform_edt(mask):
+    """Euclidean distance, in voxels, to the nearest zero voxel.
+
+    Parameters
+    ----------
+    mask : numpy.ndarray
+        ``(nx, ny, nz)`` volume whose zeros are the seeds.
+
+    Returns
+    -------
+    numpy.ndarray or None
+        ``(nx, ny, nz)`` float32 distances, or ``None`` when the GPU route is
+        unavailable or not worth taking.
+
+    Notes
+    -----
+    Three dispatches, one per axis, encoded into a single command buffer -- the
+    passes are dependent, but a dependency inside one submission needs no host
+    round trip and the driver orders them. Source and destination swap between
+    axes because the transform cannot run in place: the parabola that wins at
+    position ``q`` may be centred to the right of it.
+    """
+    import wgpu
+
+    volume = np.ascontiguousarray(mask)
+    if volume.ndim != 3:
+        return None
+    dims = volume.shape
+    count = int(np.prod(dims))
+    if _declines(count, _EDT_MIN_VOXELS) or count == 0:
+        return None
+
+    dev = device()
+    seed = np.where(volume != 0, np.float32(_EDT_BIG), np.float32(0.0)).astype(np.float32)
+    usage = (wgpu.BufferUsage.STORAGE | wgpu.BufferUsage.COPY_SRC
+             | wgpu.BufferUsage.COPY_DST)
+    try:
+        buffers = [
+            dev.create_buffer_with_data(data=seed.reshape(-1), usage=usage),
+            dev.create_buffer(size=count * 4, usage=usage),
+        ]
+        # One scratch pair, sized for the longest line any axis will ask for.
+        widest = max(dims)
+        lines = max(count // max(min(dims), 1), 1)
+        slots = lines * (widest + 1)
+        hull = dev.create_buffer(size=slots * 4, usage=wgpu.BufferUsage.STORAGE)
+        boundary = dev.create_buffer(size=slots * 4, usage=wgpu.BufferUsage.STORAGE)
+
+        module = _module(dev, load_compute_wgsl("edt.wgsl"))
+        layout = dev.create_bind_group_layout(entries=[
+            {"binding": 0, "visibility": wgpu.ShaderStage.COMPUTE,
+             "buffer": {"type": wgpu.BufferBindingType.read_only_storage}},
+            {"binding": 1, "visibility": wgpu.ShaderStage.COMPUTE,
+             "buffer": {"type": wgpu.BufferBindingType.storage}},
+            {"binding": 2, "visibility": wgpu.ShaderStage.COMPUTE,
+             "buffer": {"type": wgpu.BufferBindingType.storage}},
+            {"binding": 3, "visibility": wgpu.ShaderStage.COMPUTE,
+             "buffer": {"type": wgpu.BufferBindingType.uniform}},
+            {"binding": 4, "visibility": wgpu.ShaderStage.COMPUTE,
+             "buffer": {"type": wgpu.BufferBindingType.storage}},
+        ])
+        key = (id(module), "edt")
+        pipeline = _PIPELINES.get(key)
+        if pipeline is None:
+            pipeline = dev.create_compute_pipeline(
+                layout=dev.create_pipeline_layout(bind_group_layouts=[layout]),
+                compute={"module": module, "entry_point": "main"},
+            )
+            _PIPELINES[key] = pipeline
+
+        encoder = dev.create_command_encoder()
+        for axis in range(3):
+            length = int(dims[axis])
+            axis_lines = count // max(length, 1)
+            info = np.zeros(8, dtype=np.uint32)
+            info[0:3] = np.asarray(dims, dtype=np.uint32)
+            info[3] = np.uint32(axis)
+            info[4] = np.uint32(length)
+            info[5] = np.uint32(axis_lines)
+            uniform = dev.create_buffer_with_data(
+                data=info, usage=wgpu.BufferUsage.UNIFORM
+            )
+            group = dev.create_bind_group(layout=layout, entries=[
+                {"binding": 0, "resource": {"buffer": buffers[axis % 2]}},
+                {"binding": 1, "resource": {"buffer": hull}},
+                {"binding": 2, "resource": {"buffer": boundary}},
+                {"binding": 3, "resource": {"buffer": uniform}},
+                {"binding": 4, "resource": {"buffer": buffers[(axis + 1) % 2]}},
+            ])
+            pass_ = encoder.begin_compute_pass()
+            pass_.set_pipeline(pipeline)
+            pass_.set_bind_group(0, group)
+            pass_.dispatch_workgroups(
+                (axis_lines + WORKGROUP - 1) // WORKGROUP
+            )
+            pass_.end()
+        dev.queue.submit([encoder.finish()])
+
+        raw = dev.queue.read_buffer(buffers[3 % 2])
+    except ShaderError:
+        raise
+    except Exception:
+        return None
+    squared = np.frombuffer(raw, dtype=np.float32).reshape(dims)
+    return np.sqrt(squared)
+
+
+#: Cells below which finding the crossings stays in NumPy. Eight shifted
+#: comparisons over a small grid are already fast, and a dispatch plus two
+#: readbacks is about a millisecond.
+_MC_MIN_CELLS = 200_000
+
+
+def marching_cubes_active(grid, level):
+    """Indices of the cells the isosurface crosses, sorted.
+
+    Parameters
+    ----------
+    grid : numpy.ndarray
+        ``(nx, ny, nz)`` scalar field.
+    level : float
+        Iso value; a corner counts as inside when its value is ``< level``.
+
+    Returns
+    -------
+    numpy.ndarray or None
+        Flat indices into the ``(nx-1, ny-1, nz-1)`` cell array, ascending, or
+        ``None`` when the GPU route is unavailable, not worth taking, or the
+        surface turned out to cross more cells than the output was sized for.
+
+    Notes
+    -----
+    **Not currently called.** It is correct, it is tested, and end to end it is
+    *slower* than the NumPy pass it would replace: 132 ms against 114 ms for a
+    128³ surface build, because the 8 MB grid has to be uploaded for it while
+    eight shifted comparisons in NumPy are already fast, and because the host
+    then has to recompute the case for the surviving cells that the full NumPy
+    pass produced for free.
+
+    It is kept because the *reason* it loses is one round trip, not the kernel.
+    The distance grid and the distance transform both already run on the GPU, so
+    the grid is produced there, read back, and uploaded again twice over. Chain
+    those three with the grid resident and this becomes free rather than
+    negative — that is the shape of the win, and this is its groundwork.
+
+    Sorted on return because the compaction is an ``atomicAdd`` and therefore
+    arbitrary in order. The mesh would be identical either way -- the triangles
+    are the same set -- but the *vertex numbering* would change between runs, and
+    a mesh that cannot be compared to a stored one is much less useful than one
+    that can.
+
+    Two sizes matter and both were got wrong first. The output buffer is sized to
+    a fraction of the cell count, not to it: a surface crosses a few per cent of
+    a volume, and allocating one slot per cell made this 8 MB. And only the
+    *used* prefix is read back, which needs the counter read first -- reading the
+    whole buffer cost more than the NumPy pass the dispatch replaces.
+    """
+    import wgpu
+
+    field = np.ascontiguousarray(grid, dtype=np.float32)
+    if field.ndim != 3 or min(field.shape) < 2:
+        return None
+    cells = tuple(n - 1 for n in field.shape)
+    total = int(np.prod(cells))
+    if _declines(total, _MC_MIN_CELLS) or total == 0:
+        return None
+
+    dev = device()
+    # A closed surface through a volume crosses O(n^2) of its O(n^3) cells, so a
+    # tenth is generous; overflow is detected and falls back rather than
+    # truncating, because a truncated surface is a hole nobody would notice.
+    capacity = min(total, max(total // 8, 4096))
+    try:
+        info = np.zeros(8, dtype=np.uint32)
+        info[0:3] = np.asarray(field.shape, dtype=np.uint32)
+        info.view(np.float32)[3] = np.float32(level)
+        info[4:7] = np.asarray(cells, dtype=np.uint32)
+        info[7] = np.uint32(capacity)
+
+        grid_buffer = dev.create_buffer_with_data(
+            data=field.reshape(-1), usage=wgpu.BufferUsage.STORAGE
+        )
+        info_buffer = dev.create_buffer_with_data(
+            data=info, usage=wgpu.BufferUsage.UNIFORM
+        )
+        out_buffer = dev.create_buffer(
+            size=(capacity + 1) * 4,
+            usage=wgpu.BufferUsage.STORAGE | wgpu.BufferUsage.COPY_SRC,
+        )
+
+        module = _module(dev, load_compute_wgsl("mc_active.wgsl"))
+        layout = dev.create_bind_group_layout(entries=[
+            {"binding": 0, "visibility": wgpu.ShaderStage.COMPUTE,
+             "buffer": {"type": wgpu.BufferBindingType.read_only_storage}},
+            {"binding": 1, "visibility": wgpu.ShaderStage.COMPUTE,
+             "buffer": {"type": wgpu.BufferBindingType.uniform}},
+            {"binding": 2, "visibility": wgpu.ShaderStage.COMPUTE,
+             "buffer": {"type": wgpu.BufferBindingType.storage}},
+        ])
+        key = (id(module), "mc_active")
+        pipeline = _PIPELINES.get(key)
+        if pipeline is None:
+            pipeline = dev.create_compute_pipeline(
+                layout=dev.create_pipeline_layout(bind_group_layouts=[layout]),
+                compute={"module": module, "entry_point": "main"},
+            )
+            _PIPELINES[key] = pipeline
+        group = dev.create_bind_group(layout=layout, entries=[
+            {"binding": 0, "resource": {"buffer": grid_buffer}},
+            {"binding": 1, "resource": {"buffer": info_buffer}},
+            {"binding": 2, "resource": {"buffer": out_buffer}},
+        ])
+
+        encoder = dev.create_command_encoder()
+        pass_ = encoder.begin_compute_pass()
+        pass_.set_pipeline(pipeline)
+        pass_.set_bind_group(0, group)
+        pass_.dispatch_workgroups((total + WORKGROUP - 1) // WORKGROUP)
+        pass_.end()
+        dev.queue.submit([encoder.finish()])
+
+        found = int(np.frombuffer(
+            dev.queue.read_buffer(out_buffer, 0, 4), dtype=np.uint32
+        )[0])
+        if found == 0:
+            return np.zeros(0, dtype=np.int64)
+        if found > capacity:
+            return None
+        raw = dev.queue.read_buffer(out_buffer, 4, found * 4)
+    except ShaderError:
+        raise
+    except Exception:
+        return None
+    return np.sort(np.frombuffer(raw, dtype=np.uint32).astype(np.int64))
+
+
+# --------------------------------------------------------------------------- #
+# Ray casting
+# --------------------------------------------------------------------------- #
+def _pack_triangles(tri_vertices) -> np.ndarray:
+    """Flatten ``(T, 3, 3)`` corners into the ``(3T, 4)`` the shader indexes.
+
+    Parameters
+    ----------
+    tri_vertices : numpy.ndarray
+        ``(T, 3, 3)`` triangle corners.
+
+    Returns
+    -------
+    numpy.ndarray
+        ``(3T, 4)`` float32; ``w`` is unused padding, because a WGSL storage
+        array of ``vec3<f32>`` has a 16-byte stride anyway.
+    """
+    tri = np.ascontiguousarray(tri_vertices, dtype=np.float64).reshape(-1, 3)
+    out = np.zeros((tri.shape[0], 4), dtype=np.float32)
+    out[:, :3] = tri
+    return out
+
+
+class RayScene:
+    """A scene uploaded once and cast against many times.
+
+    Parameters
+    ----------
+    centers : numpy.ndarray
+        ``(S, 3)`` sphere centres.
+    radii : numpy.ndarray
+        ``(S,)`` sphere radii.
+    tri_vertices : numpy.ndarray
+        ``(T, 3, 3)`` triangle corners.
+    tree : tuple
+        The BVH, as :func:`chimol.renderer.bvh.build_bvh` returns it.
+
+    Notes
+    -----
+    Holding the packed arrays rather than re-deriving them per dispatch is what
+    lets the tracer and the traversal probe share one upload, and what keeps a
+    progressive render from re-uploading the geometry per tile.
+    """
+
+    def __init__(self, centers, radii, tri_vertices, tree) -> None:
+        node_min, node_max, node_left, node_start, node_count, prim_index = tree
+        self.n_spheres = int(np.asarray(radii).reshape(-1).shape[0])
+        self.n_prims = int(prim_index.shape[0])
+
+        self.spheres = _vec4(
+            np.asarray(centers, dtype=np.float64).reshape(-1, 3),
+            np.asarray(radii, dtype=np.float64).reshape(-1),
+        )
+        self.tri_verts = _pack_triangles(tri_vertices)
+        self.node_lo = np.zeros((node_min.shape[0], 4), dtype=np.float32)
+        self.node_lo[:, :3] = node_min
+        self.node_hi = np.zeros((node_max.shape[0], 4), dtype=np.float32)
+        self.node_hi[:, :3] = node_max
+        self.node_meta = np.zeros((node_left.shape[0], 4), dtype=np.int32)
+        self.node_meta[:, 0] = node_left
+        self.node_meta[:, 1] = node_start
+        self.node_meta[:, 2] = node_count
+        self.prim_index = prim_index.astype(np.uint32)
+
+    def info(self, work_items: int, n_lights: int) -> np.ndarray:
+        """The ``SceneInfo`` uniform for one dispatch.
+
+        Parameters
+        ----------
+        work_items : int
+            Invocations the dispatch will launch.
+        n_lights : int
+            Number of light directions bound.
+
+        Returns
+        -------
+        numpy.ndarray
+            Four ``uint32``.
+        """
+        return np.array(
+            [self.n_spheres, self.n_prims, int(work_items), int(n_lights)],
+            dtype=np.uint32,
+        )
+
+    def bind_into(self, job: "_Job", work_items: int, n_lights: int) -> "_Job":
+        """Bind the scene and the tree at the prelude's fixed slots 0-6.
+
+        Parameters
+        ----------
+        job : _Job
+            The dispatch to bind into.
+        work_items : int
+            Invocations the dispatch will launch.
+        n_lights : int
+            Number of light directions bound.
+
+        Returns
+        -------
+        _Job
+        """
+        return (
+            job.bind(0, self.spheres)
+            .bind(1, self.tri_verts)
+            .bind(2, self.node_lo)
+            .bind(3, self.node_hi)
+            .bind(4, self.node_meta)
+            .bind(5, self.prim_index)
+            .bind(6, self.info(work_items, n_lights), uniform=True)
+        )
+
+
+def closest_hit(scene: RayScene, origins, directions, t_min=1e-6, skip=-1):
+    """Nearest primitive each ray meets, through the shader the tracer uses.
+
+    Parameters
+    ----------
+    scene : RayScene
+        The uploaded scene and tree.
+    origins : array_like
+        ``(n, 3)`` ray origins.
+    directions : array_like
+        ``(n, 3)`` unit directions.
+    t_min : float or array_like, optional
+        Hits at or before this are ignored.
+    skip : int or array_like, optional
+        One primitive per ray to exclude, or ``-1``.
+
+    Returns
+    -------
+    tuple of numpy.ndarray or None
+        ``(t, prim)``; ``t`` is ``inf`` and ``prim`` is ``-1`` where nothing was
+        met. ``None`` when there is no device.
+
+    Notes
+    -----
+    This exists so the traversal can be checked against an exhaustive search
+    directly rather than only through a rendered image — and because it shares
+    ``closest_hit`` with the tracer through the prelude, checking it checks the
+    real thing rather than a copy.
+    """
+    if device() is None:
+        return None
+    o = np.ascontiguousarray(origins, dtype=np.float64).reshape(-1, 3)
+    d = np.ascontiguousarray(directions, dtype=np.float64).reshape(-1, 3)
+    count = o.shape[0]
+    if count == 0:
+        return np.zeros(0), np.zeros(0, dtype=np.int64)
+
+    job = _Job(load_ray_wgsl("bvh_probe.wgsl"), "main")
+    scene.bind_into(job, count, 1)
+    packed = (
+        job.bind(7, _vec4(o, t_min))
+        .bind(8, _vec4(d, skip))
+        .output((count, 2), np.float32, slot=9)
+        .run(count)
+    )
+    distance = packed[:, 0].astype(np.float64)
+    prim = np.rint(packed[:, 1]).astype(np.int64)
+    distance[prim < 0] = np.inf
+    return distance, prim
+
+
+#: Field order of the ``TraceInfo`` uniform, as 4-byte words. Written out rather
+#: than derived, because WGSL's alignment rules put ``vec3`` on a 16-byte
+#: boundary and a silently mismatched offset here shows up as a plausible but
+#: wrong picture rather than as an error.
+_TRACE_WORDS = 36
+
+
+def raytrace(scene: RayScene, camera, lights, sphere_colors, tri_normals,
+             tri_colors, settings):
+    """Render the scene with the compute tracer.
+
+    Parameters
+    ----------
+    scene : RayScene
+        The uploaded scene and tree.
+    camera : object
+        Anything with ``origin``, ``forward``, ``up`` and ``fov_degrees``.
+    lights : numpy.ndarray
+        ``(L, 3)`` unit directions toward each light.
+    sphere_colors : numpy.ndarray
+        ``(S, 4)`` RGB plus alpha per sphere.
+    tri_normals : numpy.ndarray
+        ``(T, 3, 3)`` per-vertex normals.
+    tri_colors : numpy.ndarray
+        ``(T, 4)`` RGB plus alpha per triangle.
+    settings : dict
+        The shading and framing parameters; see the shader's ``TraceInfo``.
+
+    Returns
+    -------
+    numpy.ndarray or None
+        ``(height, width, 4)`` float32 — linear RGB and a hit mask — or ``None``
+        when there is no device.
+    """
+    if device() is None:
+        return None
+    width = int(settings["width"])
+    height = int(settings["height"])
+    pixels = width * height
+    if pixels == 0:
+        return None
+
+    light = np.ascontiguousarray(lights, dtype=np.float64).reshape(-1, 3)
+    words = np.zeros(_TRACE_WORDS, dtype=np.uint32)
+    as_float = words.view(np.float32)
+    as_float[0:3] = np.asarray(camera.origin, dtype=np.float32)
+    as_float[3] = np.radians(float(camera.fov_degrees))
+    as_float[4:7] = np.asarray(camera.forward, dtype=np.float32)
+    words[7] = np.uint32(max(int(settings["ssaa"]), 1))
+    as_float[8:11] = np.asarray(camera.up, dtype=np.float32)
+    words[11] = np.uint32(max(int(settings["max_layers"]), 1))
+    as_float[12:15] = np.asarray(settings["background"], dtype=np.float32)
+    as_float[15] = settings["ambient"]
+    words[16] = np.uint32(width)
+    words[17] = np.uint32(height)
+    as_float[18] = settings["diffuse"]
+    as_float[19] = settings["specular"]
+    as_float[20] = settings["shininess"]
+    as_float[21] = settings["direct_specular"]
+    as_float[22] = settings["direct_specular_power"]
+    as_float[23] = settings["reflect_power"]
+    as_float[24] = settings["direct"]
+    as_float[25] = settings["direct_power"]
+    as_float[26] = settings["legacy"]
+    as_float[27] = settings["shadow_fudge"]
+    words[28] = np.uint32(bool(settings["shadow_enabled"]))
+    words[29] = np.uint32(bool(settings["depth_cue_enabled"]))
+    as_float[30] = settings["shadow_decay_factor"]
+    as_float[31] = settings["shadow_decay_range"]
+    as_float[32] = settings["fog_start"]
+    as_float[33] = settings["fog_intensity"]
+    as_float[34] = settings["fog_front"]
+    as_float[35] = settings["fog_inv_range"]
+
+    job = _Job(load_ray_wgsl("raytrace.wgsl"), "main")
+    scene.bind_into(job, pixels, light.shape[0])
+    out = (
+        job.bind(7, np.ascontiguousarray(sphere_colors, dtype=np.float32).reshape(-1, 4))
+        .bind(8, _pack_triangles(tri_normals))
+        .bind(9, np.ascontiguousarray(tri_colors, dtype=np.float32).reshape(-1, 4))
+        .bind(10, _vec4(light, 0.0))
+        .bind(11, words, uniform=True)
+        .output((pixels, 4), np.float32, slot=12)
+        .run(pixels)
+    )
+    return np.asarray(out).reshape(height, width, 4)
 
 
 __all__ = [
     "BACKEND_ENV",
     "DISTANCE_CELL",
     "MIN_WORK_ITEMS",
+    "RayScene",
     "backend",
+    "closest_hit",
     "distance_to_spheres",
+    "distance_transform_edt",
+    "load_ray_wgsl",
+    "marching_cubes_active",
+    "raytrace",
+    "shader_compiled",
     "UniformGrid",
     "available",
     "build_grid",
     "device",
+    "directional_occlusion",
     "load_compute_wgsl",
     "occlusion_from_spheres",
     "shade_from_atoms",

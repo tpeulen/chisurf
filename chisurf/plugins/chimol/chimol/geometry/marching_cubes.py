@@ -151,17 +151,26 @@ def _mc_kernel(grid, level, corners, edge_corners, edge_map, tri_table):
     its neighbour along the axis, whichever cube corner that happens to be.
     """
     nx, ny, nz = grid.shape
+    cell_shape = (nx - 1, ny - 1, nz - 1)
+
+    # Deliberately NumPy, and there is a working compute shader for it that is
+    # deliberately not called -- see `compute.marching_cubes_active`. Finding the
+    # crossings on the GPU measured *slower* end to end (132 ms against 114 ms at
+    # 128^3), because the 8 MB grid has to be uploaded for it and the eight
+    # shifted comparisons below are already fast. It pays only once the grid stops
+    # making the round trip at all.
     inside = grid < level
-    case = np.zeros((nx - 1, ny - 1, nz - 1), dtype=np.int64)
+    case = np.zeros(cell_shape, dtype=np.int64)
     for bit in range(8):
         ox, oy, oz = corners[bit]
         case |= inside[ox:ox + nx - 1, oy:oy + ny - 1, oz:oz + nz - 1] << bit
-
     active = np.flatnonzero(((case != 0) & (case != 255)).ravel())
+    case_of_active = case.ravel()[active]
+
     if active.size == 0:
         return np.zeros((0, 3), dtype=np.float64), np.zeros((0, 3), dtype=np.int64)
 
-    rows = tri_table[case.ravel()[active]]
+    rows = tri_table[case_of_active]
     cells = []
     triangles = []
     # Five triangle slots per case, terminated by -1; a whole slot at a time is
@@ -179,7 +188,7 @@ def _mc_kernel(grid, level, corners, edge_corners, edge_map, tri_table):
     cell_index = np.concatenate(cells)
     edge_index = np.concatenate(triangles)
 
-    ci, cj, ck = np.unravel_index(cell_index, case.shape)
+    ci, cj, ck = np.unravel_index(cell_index, cell_shape)
     corner = np.repeat(np.stack((ci, cj, ck), axis=1), 3, axis=0)
     edge = edge_index.reshape(-1)
     axis = edge_map[edge, 0]

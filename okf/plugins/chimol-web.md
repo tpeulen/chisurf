@@ -162,85 +162,31 @@ stops matching is a question, not a failure. `capture_gl_baseline.py` keeps
 
 ## Do these next, in order
 
-1. **Finish removing the numba JITs — 22 of 29 done, 7 left.** What remains is
-   the CPU ray tracer and nothing else: `renderer/bvh.py` (4) and
-   `renderer/raytracer.py` (3). Everything in `geometry/`, `analysis/` and
-   `app/` is numba-free, and
-   [`test/test_no_numba.py`](/plugins/chimol-web.md) keeps it that way against a
-   **shrinking** `ALLOWED` list holding exactly those two files. A second test
-   in the same module fails if a file on the list stops importing numba and is
-   not struck off, so the list cannot record work as outstanding after it is
-   done.
+1. **numba is gone from chimol, and the compute is on the GPU.** Nothing under
+   `chisurf/plugins/chimol/` imports numba;
+   `test/test_no_numba.py`'s `ALLOWED` set is **empty** and a companion test
+   fails if anything is put back into it. The ray tracer was the last holdout
+   and is now `wgsl/bvh.wgsl` + `wgsl/raytrace.wgsl`, with the BVH built by a
+   level-wise NumPy median split.
 
-   **What is left is not the same kind of problem.** The 22 were expressions
-   that vectorise or loops with a compiled equivalent. `closest_hit` is a
-   per-ray descent of a BVH carrying its own traversal stack, and `_jit_trace`
-   is a per-pixel loop around it with shading, transparency layers and shadow
-   rays inside — there is no numpy spelling of that. It needs either a
-   wavefront restructuring (rays in batches, a stack array per ray, "while any
-   ray still has a node to pop") or a WGSL compute pass, and by the trap below
-   a CPU route is still mandatory whichever is chosen.
+   **What is left here is one thing, and it is not a kernel:** the grid does not
+   stay resident on the GPU. The distance grid is computed there, read back,
+   uploaded again for the distance transform, read back, and uploaded a third
+   time if marching cubes wants it. That round trip is the whole reason
+   `compute.marching_cubes_active` — which is written, correct and tested — is
+   **deliberately not wired in**: measured end to end it is *slower* than the
+   NumPy pass it would replace (132 ms against 114 ms at 128³). Chain the three
+   with the grid resident and it stops being negative. See **Scene kernels on
+   the GPU**.
 
-   **What the 22 cost, measured** (numba → new, on this machine):
-
-   | kernel | numba | now | |
-   |---|---|---|---|
-   | sphere distance grid, 96³ × 11k atoms | 3,236 ms | **450 ms** | **7.2× faster** |
-   | sphere distance grid, 64³ × 2.5k atoms | 236 ms | **97 ms** | 2.4× faster |
-   | marching cubes, 96³ | 138–280 ms | 126–144 ms | about even |
-   | `count_within_radius`, 11k points | 7.0 ms | 7.2 ms | even |
-   | euclidean distance transform, 64³ | 8.1 ms | 22 ms | 2.8× slower |
-   | gaussian / wyvill density splat | 0.5–1.8 ms | 14 ms | slower, and irrelevant |
-   | `shade_from_atoms`, 40k verts × 11k atoms | 10 ms | 151 ms | **15× slower** |
-   | `directional_occlusion`, 148L | 7 ms | 66 ms | 9× slower |
-
-   Every one of them is exact: the parity harness compared each against the
-   committed numba kernel in one process and the density grids, the distance
-   grid, the EDT and the neighbour queries agree to the last bit, marching
-   cubes to identical triangle *and* vertex counts and identical surface area.
-
-   **The distance grid was the side-finding, and it is fixed.** It was O(voxels
-   × atoms) with no spatial index — 8.2×10⁹ distance evaluations for one 96³
-   grid. It is now an *additively weighted* nearest-neighbour query done exactly
-   in two stages (k nearest, then a bound check that almost never escalates),
-   which is why the replacement is faster than the compiled code it replaces.
-
-   **Three of them now run on the GPU instead**, which is the point of having
-   done the CPU port first — see **Scene kernels on the GPU** below. What was
-   15× slower than numba is 1.4× *faster* than it, and the surface build that
-   was the whole reason to care is 2.8× faster end to end.
-
-   **The one behaviour change, and how it was paid for.** `directional_occlusion`
-   stepped along the shadow ray in strides of `shadow_distance` and searched a
-   3×3×3 cell neighbourhood at each stride — and consecutive neighbourhoods
-   overlap, so an occluder in a shared cell was accumulated **two or three
-   times**. Measured on 148L the accumulated blockage was 2.79× too large at the
-   median (2.0 at p10, 3.0 at p90), varying per vertex with how the cells
-   happened to fall. The kernel now counts each occluder once, and display-config
-   **version 12** carries `occlusion.shadow_strength` 1.0 → 2.8 so the rendered
-   depth is unchanged: a before/after pair with the old kernel monkeypatched in
-   for the first half differs by 2.18 % of pixels and is indistinguishable by
-   eye. A test pins the single-count value exactly, because the threshold it
-   replaced (`> 0.8`, unreachable at strength 1) had been calibrated on the bug.
-
-   Two other defects fell out of the same work: `_build_bond_pairs` was an O(n²)
-   double loop run *twice* (count, then fill) and is now output-sensitive; and
-   `shade_from_atoms`'s `nearest` was searched only in the query cell and its 26
-   neighbours, returning `-1` when all were empty — which the caller used as an
-   index, painting such vertices with the **last** atom's colour.
-
-   **Approaches already measured and rejected — do not repeat them:** a no-op
-   `njit` shim (exactly `NUMBA_DISABLE_JIT=1`) is **300–680× slower**
-   (`count_within_radius` on hGBP1 6.7 ms → 3,516 ms; the 64³ EDT 9.6 ms →
-   6,496 ms), and mypyc cannot rescue it — **1.04×** on numpy code, because it
-   unboxes Python natives and cannot see a numpy buffer, so `arr[i]` stays a
-   `PyObject_GetItem`. The routing that *is* supported is in **Kernel routing**
-   below.
-
-   **The trap:** a CPU route is **mandatory** for every GPU kernel, because a
-   standalone HTML opened from `file://` may have no WebGPU adapter at all —
-   which is why the CPU port came first and the compute shaders go on top of it,
-   not instead of it.
+   **The other measured cost is the BVH build**, which is now the CPU-side
+   bottleneck of a large trace: 1.5 ms for 1k triangles but **80–110 ms for
+   32k**, against a 20–90 ms trace. It is a `lexsort` per level over the whole
+   primitive array; a midpoint split needs only a stable partition, which is
+   `cumsum` rather than a sort. Note the trap that hides it: at 320×240 the
+   build dominates, so the tree's own scaling test read 9.5× for a 32× increase
+   and failed one run in three while the tree was perfectly good. Measure the
+   tree where tracing dominates.
 
 2. **Begin the JS/browser port (user request, not started).** The groundwork is
    deliberate and already in place: `wgsl/` composes by **concatenation**
@@ -702,56 +648,74 @@ must be routed by measurement rather than by category.**
 
 # Scene kernels on the GPU
 
-Three of the ported kernels are per-vertex gathers with no cross-vertex
-dependence, and they now run as WGSL compute shaders on the same WebGPU stack
-the renderer draws with — `renderer/compute.py` plus `wgsl/grid.wgsl`,
-`shade_atoms.wgsl`, `occlusion.wgsl`, `distance_grid.wgsl`. The shaders are
-plain WGSL a browser compiles unchanged, and they compose the same way the
-render shaders do: `grid.wgsl` is prepended by concatenation, because WGSL has
-no `#include` and that is the browser's rule too.
+Everything data-parallel in chimol's scene building and all of its ray tracing
+now runs as WGSL compute on the same WebGPU stack the renderer draws with —
+`renderer/compute.py` plus `wgsl/{grid,shade_atoms,occlusion,shadow_rays,
+distance_grid,edt,mc_active,bvh,bvh_probe,raytrace}.wgsl`. The shaders are plain
+WGSL a browser compiles unchanged, composed by concatenation because WGSL has no
+`#include` — the same rule the render shaders follow.
 
-| kernel | numba (was) | NumPy/scipy | WGSL compute | |
+| kernel | before | NumPy/scipy | WGSL compute | |
 |---|---|---|---|---|
-| `shade_from_atoms`, 40k verts × 11k atoms | 10 ms | 151 ms | **14 ms** | 11× the CPU route |
-| `occlusion_from_spheres`, same | — | 1,139 ms | **16 ms** | **70×** |
-| sphere distance grid, 96³ × 11k atoms | 3,236 ms | 484 ms | **11 ms** | **43×** (294× on numba) |
-| whole SES surface build, 148L at 128³ | — | 550 ms | **201 ms** | 2.8× |
+| **ray tracer**, 640×480 ssaa2, shadows, 1.3k spheres + 328 tris | 12.5–15.6 s (numba) | — | **60–75 ms** | **170–260×** |
+| `occlusion_from_spheres`, 40k verts × 11k atoms | — | 1,139 ms | **16 ms** | 70× |
+| sphere distance grid, 96³ × 11k atoms | 3,236 ms (numba) | 484 ms | **11 ms** | 43× / 294× |
+| `directional_occlusion`, 40k verts × 11k atoms | — | 830 ms | **29 ms** | 29× |
+| euclidean distance transform, 128³ | — | 328 ms | **32 ms** | 10× |
+| `shade_from_atoms`, 40k verts × 11k atoms | 10 ms (numba) | 151 ms | **14 ms** | 11× |
+| whole SES surface build, 148L at 128³ | — | 550 ms | **~180 ms** | 3× |
 
-Agreement is to ~5×10⁻⁶ absolute against the NumPy route (f32 against f64), and
-the rendered frame is **identical**: a six-representation sheet built each way
-differs in zero pixels above a threshold of 6, with a maximum single-channel
-difference of 1.
+Agreement with the NumPy route is ~5×10⁻⁶ absolute (f32 against f64) and the
+rendered frame is **identical**: a six-representation sheet built each way
+differs in zero pixels above a threshold of 6. The traced image differs from the
+numba tracer's in 0.012 % of pixels, all on silhouette edges.
 
-**One spatial index, built in NumPy, shared by all three.** A uniform grid whose
-cell is the query radius, so 27 cells is provably enough and no kernel needs a
-ring expansion or a host round trip. Building it is a sort and a prefix sum.
+**One spatial index, built in NumPy, shared by the field kernels.** A uniform
+grid whose cell is the query radius, so 27 cells is provably enough. Building it
+is a sort and a prefix sum.
 
-**What is deliberately still on the CPU.** The neighbour *counts*, the bond
-pairs and the marching-cubes topology, because those must be exact and integer —
-an f32 GPU route would make a count differ by one at a boundary. The density
-splat, because at 14 ms it is not the bottleneck. And `nearest`, which is a
-global nearest-neighbour query the k-d tree already answers; it is now filled
-only where the weight sum is zero, which on a normal surface means no work at
-all and was worth more than moving it.
+**`bvh.wgsl` is a prelude, not a copy.** `raytrace.wgsl` and `bvh_probe.wgsl` are
+both that file plus an entry point, which is what makes the probe worth having:
+`test_bvh.py` compares the *same* `closest_hit` the tracer runs against an
+exhaustive Python search, so the tree is tested rather than the picture.
 
-**Three traps this cost, worth not repaying:**
+**There is deliberately no CPU ray tracer.** chimol's renderer is WebGPU, so a
+session that can display a molecule can trace one; `NoComputeDevice` is raised
+rather than falling back. A second shading implementation would be a large body
+of code nothing ever runs — which is exactly how the previous pure-NumPy twin
+came to be silently broken while every test passed.
 
-- **Compile the shader once.** The first version created the shader module and
-  the pipeline on every call, and the distance-grid kernel came out **2.4×
-  slower than the CPU route it replaces** — a number that reads as "the kernel
-  is wrong" and is really "the measurement included the compiler". Modules and
-  pipelines are cached by source and binding shape.
-- **A ring scan needs a horizon.** A voxel in the empty corner of a bounding box
-  is 60 Å from the nearest atom, so the "everything unsearched is at least
-  `r·cell` away" bound needs fifteen rings to catch up. The grid is only read
-  near the isosurface, so both routes clamp at 8 Å — *both*, so they agree by
-  construction rather than by luck. 8 Å with a 6 Å cell won over all eight
-  combinations measured; 4 Å cells at a 16 Å horizon are less than half as fast,
-  because the ring count dominates, not the sphere count.
-- **The first dispatch of a process pays ~730 ms of shader compilation.** It is
-  once, and only if a surface or metaball is built, but it means the *first*
-  surface after launch is slower than the CPU route and every one after it is
-  much faster. Do not benchmark a single build.
+**What stays on the CPU, on purpose.** The neighbour counts, the bond pairs and
+the marching-cubes topology, because those must be exact and integer and an f32
+route would differ by one at a boundary. The density splat, because 14 ms is not
+a bottleneck. And `nearest`, which the k-d tree already answers and which is now
+computed only where the weight sum is zero — on a normal surface, no work at all.
+
+**Traps, each of which first read as "the GPU is not worth it":**
+
+- **Compile the shader once.** Creating the module and pipeline per call made the
+  distance grid **2.4× slower than the CPU route** — the measurement included the
+  compiler. Cached by source and binding shape now.
+- **A ring scan needs a horizon.** A voxel in an empty bounding-box corner is
+  60 Å from the nearest atom, so the "everything unsearched is at least `r·cell`
+  away" bound needs fifteen rings. Both routes clamp at 8 Å, so they agree by
+  construction; 8 Å with a 6 Å cell won over all eight combinations measured.
+- **The first dispatch of a process pays ~730 ms of shader compilation.** Once,
+  and only if a surface is built — but never benchmark a single build.
+- **A cell must be larger than the step it is walked in.** The shadow kernel lets
+  one ray step claim each occluder (`floor(along / step)`); with cell = step that
+  claim was sometimes unreachable, because the light is not axis-aligned and the
+  displacement can be a full `step + reach` on every axis at once. It dropped 20
+  vertices out of 40k — nothing in the mean, 0.39 out of 1.0 where it hit.
+- **Do not swallow a shader compile error.** The kernels return `None` to mean
+  "hand this back to NumPy", which is right for *no adapter* and catastrophic for
+  *this shader does not compile*: a broken kernel then passes the whole suite as
+  a silent CPU fallback. `compute.ShaderError` is re-raised by every kernel. Two
+  reserved-keyword collisions (`meta`, `active`) were found this way.
+- **Read back only what was written.** The marching-cubes scan allocated one
+  output slot per cell (8 MB) and read all of it; sized to a fraction and read as
+  a counter-then-prefix it is a third of that — and still not enough to pay for
+  the upload, which is the finding above.
 
 `compute.backend` in `chimol_display.json` (display-config **version 13**) is
 `auto` / `gpu` / `cpu`, and `CHIMOL_COMPUTE` overrides it — which is what makes

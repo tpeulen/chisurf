@@ -166,6 +166,17 @@ def _ray_blockage(
     if reach_max <= 0.0:
         return total
 
+    # Per-vertex and independent, and the dedup rule the CPU route spends a
+    # `np.unique` on is a single comparison in the shader.
+    from ..renderer.compute import directional_occlusion as _shadow_on_gpu  # noqa: PLC0415
+
+    accelerated = _shadow_on_gpu(
+        points, normals, centers, radii, direction,
+        float(max_distance), float(softness), float(strength),
+    )
+    if accelerated is not None:
+        return accelerated
+
     # Only vertices facing the light can be shadowed; the diffuse term already
     # darkens the rest, and dropping them here shrinks every query below.
     facing = np.flatnonzero(normals @ direction > 0.0)

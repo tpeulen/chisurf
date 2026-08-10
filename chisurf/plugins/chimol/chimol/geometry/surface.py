@@ -288,8 +288,19 @@ def _distance_transform_edt(forbidden: np.ndarray) -> np.ndarray:
     -------
     numpy.ndarray
         Distance to the nearest zero, in voxel units.
+
+    Notes
+    -----
+    Separable and exact either way: scipy's is the same Felzenszwalb transform,
+    and the GPU route is the same three passes with one invocation per line.
     """
-    return _scipy_edt(np.ascontiguousarray(forbidden).astype(np.uint8))
+    mask = np.ascontiguousarray(forbidden).astype(np.uint8)
+    from ..renderer.compute import distance_transform_edt as _edt_on_gpu  # noqa: PLC0415
+
+    accelerated = _edt_on_gpu(mask)
+    if accelerated is not None:
+        return accelerated
+    return _scipy_edt(mask)
 
 
 

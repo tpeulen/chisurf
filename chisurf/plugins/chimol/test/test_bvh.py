@@ -1,45 +1,45 @@
 """The BVH must change *which* primitives a ray tests, and nothing else.
 
-An acceleration structure is the one kind of optimisation that fails silently:
-a ray that never visits the box holding the triangle it should have hit does not
-crash, it draws the thing behind it. So the property pinned here is not speed
-but agreement -- the tree must return exactly what testing every primitive
-returns, for every ray.
+An acceleration structure is the one kind of optimisation that fails silently: a
+ray that never visits the box holding the triangle it should have hit does not
+crash, it draws the thing behind it. So the property pinned here is not speed but
+agreement -- the tree must return exactly what testing every primitive returns,
+for every ray.
 
 The exhaustive search below is deliberately a *second* implementation, which is
 normally this codebase's dominant failure mode. In a test it is the point: it is
-the oracle, it is three lines long, and it has no way to learn the tree's
-mistakes. It reuses only the primitive intersection itself, which is what both
-paths are supposed to share.
+the oracle, it is short, and it has no way to learn the tree's mistakes. It
+shares nothing with the tree, not even the intersection code, because the
+traversal now lives in WGSL and the oracle has to stay readable in Python.
 
-The last test is the guard that the tree is still wired into the tracer at all.
-Deleting it would leave every test above passing -- an exhaustive search returns
-the same answers, just 150 times slower -- so cost is asserted separately.
+Traversal is reached through ``compute.closest_hit``, which runs the *same*
+``closest_hit`` function the tracer runs -- both shaders are the BVH prelude plus
+an entry point -- so what this exercises is the real thing rather than a copy.
 """
 
 from __future__ import annotations
 
-import time
-
 import numpy as np
 import pytest
 
+from chisurf.plugins.chimol.chimol.renderer import compute
 from chisurf.plugins.chimol.chimol.renderer.bvh import (
     _MAX_LEAF,
-    STACK_SIZE,
-    _moller_trumbore,
     build_bvh,
-    closest_hit,
     primitive_bounds,
 )
 
-
-def _stack() -> np.ndarray:
-    return np.empty(STACK_SIZE, dtype=np.int32)
+pytestmark = pytest.mark.skipif(
+    not compute.available(), reason="no WebGPU adapter on this machine"
+)
 
 
 def _tree(centers, radii, tris):
     return build_bvh(*primitive_bounds(centers, radii, tris), _MAX_LEAF)
+
+
+def _scene(centers, radii, tris):
+    return compute.RayScene(centers, radii, tris, _tree(centers, radii, tris))
 
 
 def _exhaustive(ro, d, t_min, centers, radii, tris):
@@ -50,25 +50,35 @@ def _exhaustive(ro, d, t_min, centers, radii, tris):
         if r <= 0.0:
             continue
         oc = ro - centers[i]
-        b = 2.0 * oc @ d
+        half_b = oc @ d
         c = oc @ oc - r * r
-        disc = b * b - 4.0 * c
+        disc = half_b * half_b - c
         if disc < 0.0:
             continue
-        sq = np.sqrt(disc)
-        t = (-b - sq) * 0.5
+        root = np.sqrt(disc)
+        t = -half_b - root
         if t <= t_min:
-            t = (-b + sq) * 0.5
+            t = -half_b + root
         if t_min < t < best_t:
             best_t, best_prim = t, i
     for j in range(tris.shape[0]):
-        t = _moller_trumbore(
-            ro[0], ro[1], ro[2], d[0], d[1], d[2],
-            tris[j, 0, 0], tris[j, 0, 1], tris[j, 0, 2],
-            tris[j, 1, 0], tris[j, 1, 1], tris[j, 1, 2],
-            tris[j, 2, 0], tris[j, 2, 1], tris[j, 2, 2],
-        )
-        if t > t_min and t < best_t:
+        v0, v1, v2 = tris[j]
+        e1, e2 = v1 - v0, v2 - v0
+        pvec = np.cross(d, e2)
+        det = e1 @ pvec
+        if abs(det) < 1e-12:
+            continue
+        inv = 1.0 / det
+        tvec = ro - v0
+        u = (tvec @ pvec) * inv
+        if u < 0.0 or u > 1.0:
+            continue
+        qvec = np.cross(tvec, e1)
+        v = (d @ qvec) * inv
+        if v < 0.0 or u + v > 1.0:
+            continue
+        t = (e2 @ qvec) * inv
+        if t >= 1e-6 and t_min < t < best_t:
             best_t, best_prim = t, centers.shape[0] + j
     return best_t, best_prim
 
@@ -94,21 +104,26 @@ def _random_scene(rng, n_spheres, n_tris):
 def test_tree_agrees_with_exhaustive_search(n_spheres, n_tris):
     rng = np.random.default_rng(20260805)
     centers, radii, tris = _random_scene(rng, n_spheres, n_tris)
-    tree = _tree(centers, radii, tris)
-    stack = _stack()
+    scene = _scene(centers, radii, tris)
+
+    origins = rng.uniform(-30, 30, (400, 3))
+    directions = rng.normal(size=(400, 3))
+    directions /= np.linalg.norm(directions, axis=1)[:, None]
+    got_t, got_prim = compute.closest_hit(scene, origins, directions, 1e-6)
 
     mismatches = []
-    for _ in range(400):
-        ro = rng.uniform(-30, 30, 3)
-        d = rng.normal(size=3)
-        d /= np.linalg.norm(d)
-        want_t, want_prim = _exhaustive(ro, d, 1e-6, centers, radii, tris)
-        got_t, got_prim = closest_hit(
-            ro[0], ro[1], ro[2], d[0], d[1], d[2], 1e-6, np.inf,
-            *tree, n_spheres, centers, radii, tris, -1, stack,
+    for k in range(origins.shape[0]):
+        want_t, want_prim = _exhaustive(
+            origins[k], directions[k], 1e-6, centers, radii, tris
         )
-        if got_prim != want_prim or not np.isclose(got_t, want_t, atol=1e-9, equal_nan=True):
-            mismatches.append((want_prim, got_prim, want_t, got_t))
+        # f32 in the shader against f64 here, so the distance is compared with a
+        # tolerance; the *primitive* must match exactly, since picking a
+        # different surface is the failure this test exists for.
+        agree = want_prim == got_prim[k] and (
+            want_prim < 0 or np.isclose(want_t, got_t[k], rtol=2e-5, atol=2e-4)
+        )
+        if not agree:
+            mismatches.append((want_prim, int(got_prim[k]), want_t, float(got_t[k])))
 
     assert not mismatches, f"{len(mismatches)} rays disagreed, e.g. {mismatches[:3]}"
 
@@ -117,32 +132,30 @@ def test_a_ray_that_meets_nothing_reports_nothing():
     centers = np.zeros((1, 3))
     radii = np.array([1.0])
     tris = np.zeros((0, 3, 3))
-    t, prim = closest_hit(
-        0.0, 0.0, 50.0, 0.0, 1.0, 0.0, 1e-6, np.inf,
-        *_tree(centers, radii, tris), 1, centers, radii, tris, -1, _stack(),
+    t, prim = compute.closest_hit(
+        _scene(centers, radii, tris),
+        np.array([[0.0, 0.0, 50.0]]), np.array([[0.0, 1.0, 0.0]]),
     )
-    assert prim == -1
-    assert np.isinf(t)
+    assert prim[0] == -1
+    assert np.isinf(t[0])
 
 
 def test_an_axis_aligned_triangle_is_not_lost():
     """A flat box and a ray in its plane is where a slab test produces a NaN.
 
-    A cartoon is full of exactly axis-aligned triangles, so the bounds are
-    padded at build time; without that padding ``0 * inf`` makes the comparison
-    false and the triangle silently leaves the picture.
+    A cartoon is full of exactly axis-aligned triangles, so the bounds are padded
+    at build time; without that padding ``0 * inf`` makes the comparison false
+    and the triangle silently leaves the picture.
     """
     tris = np.array([[[-1.0, 0.0, -1.0], [1.0, 0.0, -1.0], [0.0, 0.0, 1.0]]])
     centers = np.zeros((0, 3))
     radii = np.zeros(0)
-    tree = _tree(centers, radii, tris)
-    # Straight down onto the y = 0 plane the triangle lies in.
-    t, prim = closest_hit(
-        0.0, 5.0, 0.0, 0.0, -1.0, 0.0, 1e-6, np.inf,
-        *tree, 0, centers, radii, tris, -1, _stack(),
+    t, prim = compute.closest_hit(
+        _scene(centers, radii, tris),
+        np.array([[0.0, 5.0, 0.0]]), np.array([[0.0, -1.0, 0.0]]),
     )
-    assert prim == 0
-    assert t == pytest.approx(5.0)
+    assert prim[0] == 0
+    assert t[0] == pytest.approx(5.0, abs=1e-4)
 
 
 def test_skip_excludes_exactly_one_primitive():
@@ -150,17 +163,19 @@ def test_skip_excludes_exactly_one_primitive():
     centers = np.array([[0.0, 0.0, 0.0], [0.0, 0.0, -4.0]])
     radii = np.array([1.0, 1.0])
     tris = np.zeros((0, 3, 3))
-    tree = _tree(centers, radii, tris)
-    args = (0.0, 0.0, 10.0, 0.0, 0.0, -1.0, 1e-6, np.inf)
-    _, near = closest_hit(*args, *tree, 2, centers, radii, tris, -1, _stack())
-    _, far = closest_hit(*args, *tree, 2, centers, radii, tris, 0, _stack())
-    assert near == 0
-    assert far == 1
+    scene = _scene(centers, radii, tris)
+    origin = np.array([[0.0, 0.0, 10.0]])
+    direction = np.array([[0.0, 0.0, -1.0]])
+    _, near = compute.closest_hit(scene, origin, direction, skip=-1)
+    _, far = compute.closest_hit(scene, origin, direction, skip=0)
+    assert near[0] == 0
+    assert far[0] == 1
 
 
 # --------------------------------------------------------------------------- #
-# Tree invariants
+# Tree invariants -- these need no device
 # --------------------------------------------------------------------------- #
+@pytest.mark.skipif(False, reason="pure CPU")
 def test_every_primitive_is_owned_by_exactly_one_leaf():
     rng = np.random.default_rng(7)
     centers, radii, tris = _random_scene(rng, 150, 150)
@@ -194,15 +209,29 @@ def test_a_node_encloses_both_of_its_children():
             assert np.all(node_max[node] >= node_max[child] - 1e-9)
 
 
+def test_a_leaf_is_never_larger_than_the_cap_unless_it_has_to_be():
+    """Median splitting must actually reduce the leaves it can reduce.
+
+    A build that stopped splitting early would still pass every agreement test
+    above -- an exhaustive search returns the same answers -- so the shape of the
+    tree is asserted separately from what it finds.
+    """
+    rng = np.random.default_rng(13)
+    centers, radii, tris = _random_scene(rng, 500, 500)
+    _, _, node_left, _, node_count, _ = _tree(centers, radii, tris)
+    leaves = node_count[node_left < 0]
+    assert leaves.max() <= _MAX_LEAF
+    assert leaves.sum() == 1000
+
+
 def test_an_empty_scene_builds_a_usable_tree():
     empty_c, empty_r = np.zeros((0, 3)), np.zeros(0)
     empty_t = np.zeros((0, 3, 3))
-    tree = _tree(empty_c, empty_r, empty_t)
-    _, prim = closest_hit(
-        0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1e-6, np.inf,
-        *tree, 0, empty_c, empty_r, empty_t, -1, _stack(),
+    _, prim = compute.closest_hit(
+        _scene(empty_c, empty_r, empty_t),
+        np.zeros((1, 3)), np.array([[0.0, 0.0, 1.0]]),
     )
-    assert prim == -1
+    assert prim[0] == -1
 
 
 # --------------------------------------------------------------------------- #
@@ -212,24 +241,30 @@ def test_an_empty_scene_builds_a_usable_tree():
 def test_cost_grows_far_slower_than_the_triangle_count():
     """Thirty-two times the triangles must not cost thirty-two times the time.
 
-    Every test above passes just as well against an exhaustive search, so this
-    is the one that fails if the tree is removed from the tracer. The margin is
-    deliberately loose -- a factor of 8 against a linear factor of 32 -- so a
-    loaded machine cannot make it flake while a lost BVH still cannot slip
-    through.
+    Every test above passes just as well against an exhaustive search, so this is
+    the one that fails if the tree is removed from the tracer. The margin is
+    deliberately loose so a loaded machine cannot make it flake while a lost BVH
+    still cannot slip through.
 
-    Measured at a resolution a render actually uses. Building the tree *is*
-    linear in the primitive count, so on a thumbnail the build dominates and the
-    ratio approaches the linear one for reasons that have nothing to do with
-    traversal -- at 96x96 this same comparison reads 8.6x.
+    The first call of the process compiles the shader, which costs far more than
+    either render, so both sizes are rendered once before either is timed.
+
+    Measured at a resolution where *tracing* dominates. At 320x240 it no longer
+    does: the traversal is on the GPU and the tree build is NumPy on the host, so
+    at 32k triangles the build is 80 ms against a 20 ms trace and the ratio
+    hovers on the threshold -- the test failed one run in three while the tree
+    was perfectly good. What it is for is the tree, so it has to be measured
+    where the tree is what costs.
     """
+    import time
+
     from chisurf.plugins.chimol.chimol.renderer.raytracer import (
         RayCamera,
         Sphere,
         trace,
     )
 
-    def render(n_tris: int) -> float:
+    def scene_kwargs(n_tris: int) -> dict:
         rng = np.random.default_rng(3)
         anchors = rng.uniform(-8, 8, (n_tris, 1, 3))
         tris = anchors + rng.uniform(-0.4, 0.4, (n_tris, 3, 3))
@@ -239,23 +274,52 @@ def test_cost_grows_far_slower_than_the_triangle_count():
             up=np.array([0.0, 1.0, 0.0]),
             far_clip=80.0,
         )
-        kw = dict(
+        return dict(
             spheres=[], camera=camera,
             light_directions=np.array([[0.0, 0.0, 1.0]]),
-            width=320, height=240, ssaa=1, shadow=False,
+            width=960, height=720, ssaa=1, shadow=False,
             tri_vertices=tris,
             tri_vnormals=np.tile(np.array([0.0, 0.0, 1.0]), (n_tris, 3, 1)),
             tri_colors=np.full((n_tris, 3), 0.7),
         )
-        trace(**kw)  # warm the JIT; the first call compiles
-        t0 = time.perf_counter()
-        trace(**kw)
-        return time.perf_counter() - t0
 
-    small = render(1_000)
-    large = render(32_000)
+    small_kw, large_kw = scene_kwargs(1_000), scene_kwargs(32_000)
+    trace(**small_kw)
+    trace(**large_kw)
+
+    t0 = time.perf_counter()
+    trace(**small_kw)
+    small = time.perf_counter() - t0
+    t0 = time.perf_counter()
+    trace(**large_kw)
+    large = time.perf_counter() - t0
+
     assert large < small * 8.0, (
         f"32x the triangles cost {large / max(small, 1e-9):.1f}x the time "
         f"({small:.3f}s -> {large:.3f}s); the ray tracer looks like it is "
         "testing every primitive again"
     )
+
+
+def test_the_tracer_says_so_when_there_is_no_device(monkeypatch):
+    """No adapter is an error with a name, not a silent CPU path.
+
+    There is deliberately no CPU tracer: chimol's renderer is WebGPU, so a
+    session that can display a molecule can trace one, and a second shading
+    implementation would be a large body of code nothing ever runs.
+    """
+    from chisurf.plugins.chimol.chimol.renderer import raytracer
+
+    monkeypatch.setattr(compute, "raytrace", lambda *a, **k: None)
+    with pytest.raises(raytracer.NoComputeDevice):
+        raytracer.trace(
+            spheres=[raytracer.Sphere(center=np.zeros(3), radius=1.0,
+                                      color=np.ones(3))],
+            camera=raytracer.RayCamera(
+                origin=np.array([0.0, 0.0, 10.0]),
+                forward=np.array([0.0, 0.0, -1.0]),
+                up=np.array([0.0, 1.0, 0.0]),
+            ),
+            light_directions=np.array([[0.0, 0.0, 1.0]]),
+            width=8, height=8, ssaa=1,
+        )

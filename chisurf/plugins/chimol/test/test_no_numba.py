@@ -23,15 +23,11 @@ import pytest
 
 CHIMOL = pathlib.Path(__file__).resolve().parents[1] / "chimol"
 
-#: Not yet ported. Both are the CPU ray tracer: `closest_hit` is a per-ray
-#: descent of a BVH with its own traversal stack, and `_jit_trace` is a
-#: per-pixel loop around it. Neither is a kernel that vectorises by rewriting an
-#: expression -- they need the tracer restructured into ray batches, or moved to
-#: a WGSL compute pass with a CPU route beside it.
-ALLOWED = {
-    "renderer/bvh.py",
-    "renderer/raytracer.py",
-}
+#: Empty, and it stays that way. The ray tracer was the last holdout: its
+#: traversal and its shading are `wgsl/bvh.wgsl` and `wgsl/raytrace.wgsl` now,
+#: and the BVH build is a level-wise NumPy median split. Nothing in `chimol/`
+#: imports numba.
+ALLOWED: set[str] = set()
 
 
 def _imports_numba(path: pathlib.Path) -> bool:

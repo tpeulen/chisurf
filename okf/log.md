@@ -1,6 +1,46 @@
 # Update Log
 
 ## 2026-08-10
+* **chimol has no numba left, and its ray tracer runs 170-260x faster as a
+  compute shader.** The tracer was the last holdout: `closest_hit` is `wgsl/bvh.wgsl`
+  now, the shading is `wgsl/raytrace.wgsl`, and the BVH is built by a level-wise
+  NumPy median split -- one `reduceat` for a whole level's bounds and one
+  `lexsort` for its partition, with no Python loop over nodes at all.
+  `test_no_numba.py`'s allow-list is **empty**, and a companion test fails if
+  anything is added back to it.
+  **Measured on a real 1.3k-atom protein at 640x480 ssaa2 with shadows: 12.5-15.6 s
+  -> 60-75 ms, so 170-260x depending on what else the machine is doing.** The images are indistinguishable -- 0.012 % of pixels differ by
+  more than 4, all of them on silhouette edges -- and the traversal is checked
+  against an exhaustive Python search over 400 random rays per scene, 0
+  disagreements. That check is worth something because `raytrace.wgsl` and
+  `bvh_probe.wgsl` are the *same prelude* plus an entry point, so the test
+  exercises the tracer's own traversal rather than a copy of it.
+  **Three more kernels went the same way** and the surface pipeline with them:
+  the euclidean distance transform (328 -> 32 ms at 128^3, three separable passes
+  with one invocation per line), the cast-shadow term (830 -> 29 ms), and the
+  ambient term (1,139 -> 16 ms). A whole SES surface build on 148L at 128^3 is
+  550 -> ~180 ms.
+  **There is deliberately no CPU ray tracer.** chimol's renderer is WebGPU, so a
+  session that can display a molecule can trace one; `NoComputeDevice` is raised
+  rather than falling back, because a second body of shading code that nothing
+  runs is exactly how the previous pure-NumPy twin came to be silently broken
+  while every test passed.
+  **Two things were measured and *not* taken.** Marching cubes as a compute
+  kernel is written, correct and tested -- and 132 ms against 114 ms end to end,
+  because the 8 MB grid has to be uploaded for it. It is kept unwired with the
+  reason recorded: what loses is one round trip, not the kernel, and chaining
+  distance-grid -> transform -> marching cubes with the grid resident is the
+  shape of that win. And the BVH build is now the CPU-side bottleneck of a large
+  trace (80-110 ms for 32k triangles); a midpoint split would replace its
+  per-level sort with a `cumsum`.
+  **The trap worth repeating loudest:** the kernels return `None` to mean "hand
+  this back to NumPy", which is right for *no adapter* and catastrophic for *this
+  shader does not compile* -- a broken kernel then passes the entire suite as a
+  quiet CPU fallback. `compute.ShaderError` is re-raised by every one of them
+  now. Two reserved-keyword collisions (`meta`, `active`) were found that way,
+  the second after it had already silently disabled a kernel for a full test run.
+  Full write-up in [plugins/chimol-web](plugins/chimol-web.md).
+
 * **`plugins/pch/api/algorithms.py` was routed `numpy` and should be `tttrlib` — the library ships PCH.** Caught by checking the library *before* rewriting, which is the habit the fit23 correction earned: `pch_single_species(k_max, brightness, n_grid, x_max)`, `pch_mixture(k_max, brightnesses, avg_numbers)`, `pch_open_system(k_max, brightness, avg_n, max_n)`, `fida_pch(...)`. `compute_p1` looks like the first and `convolve_pch_numba` like the N-fold step inside the other two. Re-routed rather than ported, with the two things that decide whether the delegation is safe written down: `compute_p1` carries the `x**2` **shell weight of a 3-D Gaussian** — its docstring records that dropping it yields `2^-1/2` instead of `gamma_2 = 2^-3/2` — and its `p1[0]` is the *complement* of the `k >= 1` terms, which folds the `4 pi w^3 / V_0` prefactor into the reference volume. If the library normalises differently, `avgN` changes **meaning**, not value, and no amplitude check would catch it.
 
 * **Correction to the entry above: the original `vm_rt_to_vv_vh` comment was right, and my "fix" to it was wrong.** I tested the round trip with the naive `(Sp - G Ss) / (Sp + 2 G Ss)`, found it off at non-zero l1/l2, and rewrote the comment to say the claim did not hold. It does. `l1`, `l2` and `g` are DecayFit23's, and so is the matching inversion (`DecayFit23.cpp`, `anisotropy_denominator`):

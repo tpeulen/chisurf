@@ -482,17 +482,15 @@ class ExportMixin(BaseCmd):
         cancel = np.zeros(1, dtype=np.int64)
         total_rows = height * max(1, ssaa_val)
 
-        # A first render after an update spends most of its time compiling the
-        # tracer, not tracing. It is ~30 s against ~0.5 s for the render itself,
-        # it is cached afterwards (under `~/.chisurf/cache`), and it recurs only
-        # when the kernel changes -- but with nothing said, it reads as "ray is
-        # slow" and the number a user reports is the compile. So say it.
-        from ..renderer.raytracer import _jit_trace
+        # The first render of a session compiles the tracer's shader, which is a
+        # fraction of a second rather than the ~30 s the numba build cost -- but
+        # it is still the largest part of a small render, and with nothing said
+        # it reads as "ray is slow". The note is cheap; say it once.
+        from ..renderer import compute
 
-        if not _jit_trace.signatures:
+        if not compute.shader_compiled("raytrace.wgsl"):
             self._emit_message(
-                "ray: compiling the renderer -- one-off after an update, "
-                "about 30 s; later renders take about a second"
+                "ray: compiling the tracer -- once per session, well under a second"
             )
 
         if use_scene_path:
