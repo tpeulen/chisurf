@@ -291,6 +291,57 @@ not undo it. But on the real BH SPC-132 DNA measurement the scale is 0.95 at
 simulator's — and there the correction is a small one. Read the scale on your own
 data rather than expecting the table's shift.
 
+## TCSPC fitting: where a fit spends its time
+
+**Work unit:** one complete fit from the default seed, via
+`chisurf.core.fluorescence.decay_fit_model.build_lifetime_fit` /
+`build_fret_fit` on a Poisson-sampled synthetic decay. Best of three, after a
+throwaway fit so JIT compilation and first-call cache fills land outside the
+measurement. Re-derive with
+`PYTHONPATH=. python test/benchmarks/benchmark_fit_hot_path.py`.
+
+Measured 2026-08-10.
+
+| Channels | Model | Fit [s] | Evaluations | Per evaluation [µs] |
+| ---: | --- | ---: | ---: | ---: |
+| 1 024 | LifetimeModel | 0.013 | 109 | 117.0 |
+| 1 024 | GaussianModel | 0.034 | 47 | 726.7 |
+| 4 096 | LifetimeModel | 0.037 | 201 | 184.1 |
+| 4 096 | GaussianModel | 0.241 | 118 | 2 046.3 |
+| 16 384 | LifetimeModel | 0.108 | 187 | 575.8 |
+| 16 384 | GaussianModel | 2.983 | 99 | 30 136.3 |
+
+**Time a fit costs, and what to conclude from it.** The convolution is 40–60% of
+a fit and is already the photon library's compiled SIMD kernel — `per` is the
+default mode. Reading `Parameter.value` is the next largest item: 27 340 reads in
+a 1 024-channel lifetime fit, more total time than the convolution's own body.
+Everything else is small.
+
+**Count the evaluations, not the iterations.** The optimiser's iteration count
+treats a whole Jacobian sweep as one step, so it understates the work by roughly
+the number of free parameters; `Convolve.convolve` is called once per model
+evaluation and is the honest counter. Re-running an already-converged `Fit`
+starts at the optimum and exits after a couple of dozen evaluations — about a
+fortieth of a real fit — so a benchmark that reuses the fit object measures the
+exit condition rather than the fitting.
+
+### Is it numba?
+
+No — and here that is not a small effect but the whole picture. A 1 024-channel
+two-component `LifetimeModel` fit calls **no numba kernel at all**, which
+`test_a_lifetime_fit_calls_no_numba_kernel` now pins. In a `GaussianModel` fit
+the numba-backed kernels (`distribution2rates`, `rates2lifetimes_new`,
+`combine_distributions`) come to about **4%** of the fit, while numba's own
+dispatcher type-resolution (`numba/core/types/abstract.py:__hash__`, 1 470
+calls) profiles *above* them.
+
+That inversion is the argument: those kernels operate on arrays of
+`2 * n_components` elements, and at that size the JIT dispatch costs more than
+the arithmetic it dispatches to. Removing the decorator makes them faster.
+Contrast [Reading a PDB](#is-it-numba) below, where the JIT premium is a real
+but one-off 0.076 s — the cost of numba is per-call on small arrays and
+per-process on large ones, and only the first kind is worth acting on.
+
 ## ChiMOL ray tracing
 
 **Work unit:** one `ray` render — the call a user waits on after typing the
