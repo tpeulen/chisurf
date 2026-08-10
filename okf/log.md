@@ -1,6 +1,8 @@
 # Update Log
 
 ## 2026-08-10
+* **PRD-95 registered: cereal aligned with IMP, and JSON a human can read.** Scoping measured the port as further along than assumed — nine imp.bff headers already archive, the SWIG pickle macros are in place, and `AVNetworkRestraint`/`PathMapTile` already follow the conventions page's hard rules — but `grep` finds **zero `CEREAL_NVP`** in the tree, so JSON output today is `value0`/`value1` keyed by member order. Two architectural facts bound the design: IMP's polymorphic registry is hard-wired to `cereal::Binary*Archive` (`object_macros.h:98-107`), so JSON is per-class direct archiving, not registry work; and the arm64 env's cereal already ships `archives/json.hpp`, so there is no new dependency. [PRD-95](/prds/prd-95.md): NVP-name every field (free for the binary pickle format — binary archives ignore names, and a before/after pickle test enforces it), a `_get_as_json`/`_set_from_json` `%extend` mirror of the kernel's binary pair, golden `.json` files that make member names API, the two-JSONs rule (`fps.json` frozen-key interchange stays nlohmann), and `PathMap` honestly blocked on `IMP::em::SampledDensityMap` — unblock is an upstream PR.
+
 * **chimol has no numba left, and its ray tracer runs 170-260x faster as a
   compute shader.** The tracer was the last holdout: `closest_hit` is `wgsl/bvh.wgsl`
   now, the shading is `wgsl/raytrace.wgsl`, and the BVH is built by a level-wise
