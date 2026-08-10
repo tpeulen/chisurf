@@ -103,6 +103,10 @@ requirements:
   run:
     - python 3.12.*
     - numpy
+    # Mandatory: the FRET modelling plugin imports IMP unguarded (engine, AV
+    # backend, structure I/O, kappa-squared). >=2.25 because 2.24 ships an
+    # empty IMP.bff.restraints, so AVNetworkRestraintWrapper is missing there.
+    - imp >=2.25
     - typing-extensions >=4.14
     - pyyaml
     # msgpack-python provides `import msgpack` (the plain `msgpack` conda pkg is

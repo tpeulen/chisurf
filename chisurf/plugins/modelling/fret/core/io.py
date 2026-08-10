@@ -169,16 +169,11 @@ def write_rmf(
 # Structure loading (IMP.atom)
 # ---------------------------------------------------------------------------
 
-_HAS_IMP_ATOM = False
-try:
-    import IMP
-    import IMP.algebra
-    import IMP.atom
-    import IMP.core
-
-    _HAS_IMP_ATOM = True
-except ImportError:
-    pass
+# IMP is a mandatory dependency of ChiSurf.
+import IMP
+import IMP.algebra
+import IMP.atom
+import IMP.core
 
 
 def load_structure(pdb_path: str | os.PathLike) -> np.ndarray:
@@ -186,8 +181,6 @@ def load_structure(pdb_path: str | os.PathLike) -> np.ndarray:
 
     Requires ``IMP.atom``.
     """
-    if not _HAS_IMP_ATOM:
-        raise RuntimeError("IMP.atom required for structure loading")
     model = IMP.Model()
     hier = IMP.atom.read_pdb(str(pdb_path), model, IMP.atom.NonWaterPDBSelector())
     atoms = IMP.atom.get_leaves(hier)
@@ -206,8 +199,6 @@ def load_structure_with_particles(pdb_path: str | os.PathLike):
 
     Requires ``IMP.atom``.
     """
-    if not _HAS_IMP_ATOM:
-        raise RuntimeError("IMP.atom required for structure loading")
     model = IMP.Model()
     hier = IMP.atom.read_pdb(str(pdb_path), model, IMP.atom.NonWaterPDBSelector())
     leaves = IMP.atom.get_leaves(hier)

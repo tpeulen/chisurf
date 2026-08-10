@@ -45,12 +45,15 @@ dependencies = [
     "pyqtgraph",
     "numba",
     "numpy",
+    # Mandatory; see pixi.toml for why the floor is 2.25.
+    "imp>=2.25",
     "scipy",
     # Imported at module scope in shipped code and previously left out of this
-    # list: pandas by dozens of modules starting with the burst reader,
-    # PyOpenGL by the molecular view,
-    # scikit-image by the CLSM and single-molecule image tools.
-    "pandas",
+    # list: PyOpenGL by the molecular view.
+    # pandas, scikit-learn and scikit-image are deliberately NOT here:
+    # chisurf.core.datastore (tttrlib.DataStore) is the storage model everywhere
+    # in the tree, every estimator the tree uses is in chisurf.core.ml, and the
+    # region measurements and segmentation primitives are in chisurf.core.roi.
     "PyOpenGL",
     # WebGPU, used by the chigame engine (chisurf.gui.chigame). wgpu is the
     # graphics API; rendercanvas is the per-platform surface and the offscreen
@@ -66,6 +69,9 @@ dependencies = [
     "markdown",
     "msgpack>=1.1.2",
     "ipython",
+    # Backs the shipped notebook editor (lazy import); declared directly since
+    # it used to arrive transitively via the removed `notebook` dependency.
+    "nbformat",
     "click",
     "pyzmq>=25.0",
     "ruff>=0.4",
@@ -78,14 +84,14 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# Features the application detects at runtime and works without: density-based
-# clustering in ndXplorer, fast
-# histogramming, syntax highlighting, the LaTeX view of a parse model (an
-# in-tree AST converter is the fallback), and the external notebook server.
+# Features the application detects at runtime and works without: fast
+# histogramming, syntax highlighting, and the LaTeX view of a parse model (an
+# in-tree AST converter is the fallback). The external notebook server and its
+# `notebook` dependency were removed in 2026-08; scikit-learn and hdbscan in the
+# same way, once chisurf.core.ml held every estimator the tree reaches for.
 full = [
     "Pygments",
     "latexify-py",
-    "notebook<7",
 ]
 dev = [
     "python-lsp-server>=1.14",

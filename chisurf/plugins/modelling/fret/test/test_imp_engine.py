@@ -12,11 +12,6 @@ import pytest
 
 from chisurf.plugins.modelling.fret.core import imp_engine
 
-pytestmark = pytest.mark.skipif(
-    not imp_engine.has_imp(),
-    reason="IMP with the bff module (IMP.bff.AV) is not installed",
-)
-
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _EX = os.path.normpath(os.path.join(_HERE, "..", "examples", "fps_hiv_rt"))
 _PROTEIN = os.path.join(_EX, "protein_1R0A.pdb")

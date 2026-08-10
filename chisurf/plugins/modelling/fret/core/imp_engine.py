@@ -25,7 +25,7 @@ The single input format is ``fps.json`` (produced/edited by the
 it natively for scoring, so the path is passed straight through.
 
 All public functions raise a clear :class:`RuntimeError` when ``IMP``/``IMP.bff``
-is unavailable (see :func:`require_imp`).
+is unavailable.
 
 References
 ----------
@@ -42,56 +42,24 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Sequence, Tuple
 
 # ---------------------------------------------------------------------------
-# Optional IMP import (hard requirement for this engine, soft at import time)
+# IMP is a mandatory dependency of ChiSurf
 # ---------------------------------------------------------------------------
+# It is imported unguarded on purpose. A try/except here bought nothing: the
+# engine cannot do anything without IMP, so a soft import only moved the
+# failure from the import line to the first call, with a worse message.
 
-_IMP_IMPORT_ERROR: Optional[BaseException] = None
-try:  # pragma: no cover - import guard
-    import IMP
-    import IMP.algebra
-    import IMP.atom
-    import IMP.core
-    import IMP.container
-    import IMP.bff
-    import IMP.bff.restraints
-    import IMP.rmf
-    import IMP.pmi
-    import IMP.pmi.tools
-    import IMP.pmi.macros
-    import RMF
-
-    _HAS_IMP = bool(hasattr(IMP.bff, "AV"))
-except Exception as exc:  # pragma: no cover - import guard
-    _HAS_IMP = False
-    _IMP_IMPORT_ERROR = exc
-
-
-_REQUIRE_MSG = (
-    "FRET docking requires IMP with the bff module (IMP.bff.AV / "
-    "AVNetworkRestraint), IMP.pmi and IMP.rmf. Install a conda-forge `imp` "
-    ">= 2.23 build that ships bff into the active environment, e.g.\n"
-    "    conda install -c conda-forge 'imp>=2.23'\n"
-    "and verify with `python -c \"import IMP.bff; IMP.bff.AV\"`."
-)
-
-
-def require_imp() -> None:
-    """Raise a helpful :class:`RuntimeError` if IMP/IMP.bff is unavailable.
-
-    Raises
-    ------
-    RuntimeError
-        When IMP, IMP.bff, IMP.pmi or IMP.rmf cannot be imported.
-    """
-    if not _HAS_IMP:
-        raise RuntimeError(f"{_REQUIRE_MSG}\n\nOriginal import error: {_IMP_IMPORT_ERROR!r}")
-
-
-def has_imp() -> bool:
-    """Return ``True`` when the IMP/IMP.bff backend is importable."""
-    return _HAS_IMP
-
-
+import IMP
+import IMP.algebra
+import IMP.atom
+import IMP.core
+import IMP.container
+import IMP.bff
+import IMP.bff.restraints
+import IMP.rmf
+import IMP.pmi
+import IMP.pmi.tools
+import IMP.pmi.macros
+import RMF
 
 
 def _ensure_output_dir(output_dir: str) -> str:
@@ -197,77 +165,76 @@ def _clash_container(model, root, *, coarse=True, bead_radius=2.5):
 # Derivative-enabled mean-distance restraint (drives gradient minimisation)
 # ---------------------------------------------------------------------------
 
-if _HAS_IMP:
 
-    class MeanDistanceRestraint(IMP.Restraint):
-        """FRET mean-position distance restraint *with* Cartesian derivatives.
+class MeanDistanceRestraint(IMP.Restraint):
+    """FRET mean-position distance restraint *with* Cartesian derivatives.
 
-        The model distance is the plain point-to-point separation ``d_mp`` of the
-        two AV-mean particles; the (cached, hence cheap) FRET transfer function
-        converts it to the modelled observable every evaluation and scores it with
-        the measurement's asymmetric chi2 — the same scoring as the Monte-Carlo
-        path. IMP.bff's ``AVMeanDistanceRestraint`` leaves the derivative
-        accumulator untouched (sample-only); this subclass adds gradients so an
-        IMP optimiser can dock by minimisation.
+    The model distance is the plain point-to-point separation ``d_mp`` of the
+    two AV-mean particles; the (cached, hence cheap) FRET transfer function
+    converts it to the modelled observable every evaluation and scores it with
+    the measurement's asymmetric chi2 — the same scoring as the Monte-Carlo
+    path. IMP.bff's ``AVMeanDistanceRestraint`` leaves the derivative
+    accumulator untouched (sample-only); this subclass adds gradients so an
+    IMP optimiser can dock by minimisation.
 
-        IMP trick for the gradient: the score depends on the coordinates only
-        through ``d_mp``, so take ``dScore/d_mp`` numerically (a cheap 1-D central
-        difference through the cached transfer function) and map it onto the two
-        particles analytically via ``d(d_mp)/dx = ±r̂``, accumulating with
-        :meth:`IMP.core.XYZ.add_to_derivatives`.
-        """
+    IMP trick for the gradient: the score depends on the coordinates only
+    through ``d_mp``, so take ``dScore/d_mp`` numerically (a cheap 1-D central
+    difference through the cached transfer function) and map it onto the two
+    particles analytically via ``d(d_mp)/dx = ±r̂``, accumulating with
+    :meth:`IMP.core.XYZ.add_to_derivatives`.
+    """
 
-        def __init__(self, m, measurement, p1, p2, forster_radius, distance_type, sigma):
-            IMP.Restraint.__init__(self, m, "MeanDistanceRestraint%1%")
-            self.meas = measurement
-            self.dtype = int(distance_type)
-            # p1/p2 may be IMP.bff.AV decorators or plain XYZ particles.
-            self.d1 = IMP.core.XYZ(p1)
-            self.d2 = IMP.core.XYZ(p2)
-            self._particles = [
-                p.get_particle() if hasattr(p, "get_particle") else p for p in (p1, p2)
-            ]
-            self.dc = _get_converter(forster_radius, sigma)
+    def __init__(self, m, measurement, p1, p2, forster_radius, distance_type, sigma):
+        IMP.Restraint.__init__(self, m, "MeanDistanceRestraint%1%")
+        self.meas = measurement
+        self.dtype = int(distance_type)
+        # p1/p2 may be IMP.bff.AV decorators or plain XYZ particles.
+        self.d1 = IMP.core.XYZ(p1)
+        self.d2 = IMP.core.XYZ(p2)
+        self._particles = [
+            p.get_particle() if hasattr(p, "get_particle") else p for p in (p1, p2)
+        ]
+        self.dc = _get_converter(forster_radius, sigma)
 
-        def _score(self, d_mp):
-            return float(self.meas.score_model(self.dc(d_mp, self.dtype)))
+    def _score(self, d_mp):
+        return float(self.meas.score_model(self.dc(d_mp, self.dtype)))
 
-        def unprotected_evaluate(self, da):
-            r = self.d1.get_coordinates() - self.d2.get_coordinates()
-            d_mp = r.get_magnitude()
-            score = self._score(d_mp)
-            if da and d_mp > 1e-7:
-                eps = 1e-3
-                dsc = (self._score(d_mp + eps) - self._score(d_mp - eps)) / (2.0 * eps)
-                f = dsc / d_mp
-                grad = IMP.algebra.Vector3D(r[0] * f, r[1] * f, r[2] * f)
-                self.d1.add_to_derivatives(grad, da)
-                self.d2.add_to_derivatives(grad * -1.0, da)
-            return score
+    def unprotected_evaluate(self, da):
+        r = self.d1.get_coordinates() - self.d2.get_coordinates()
+        d_mp = r.get_magnitude()
+        score = self._score(d_mp)
+        if da and d_mp > 1e-7:
+            eps = 1e-3
+            dsc = (self._score(d_mp + eps) - self._score(d_mp - eps)) / (2.0 * eps)
+            f = dsc / d_mp
+            grad = IMP.algebra.Vector3D(r[0] * f, r[1] * f, r[2] * f)
+            self.d1.add_to_derivatives(grad, da)
+            self.d2.add_to_derivatives(grad * -1.0, da)
+        return score
 
-        def do_get_inputs(self):
-            return self._particles
+    def do_get_inputs(self):
+        return self._particles
 
-    class _ScoreLogger(IMP.OptimizerState):
-        """Append ``frame,score`` rows during minimisation for live plotting."""
+class _ScoreLogger(IMP.OptimizerState):
+    """Append ``frame,score`` rows during minimisation for live plotting."""
 
-        def __init__(self, m, scoring_function, path):
-            IMP.OptimizerState.__init__(self, m, "ScoreLogger")
-            self._sf = scoring_function
-            self._fh = open(path, "w")
-            self._fh.write("frame,score\n")
-            self._step = 0
+    def __init__(self, m, scoring_function, path):
+        IMP.OptimizerState.__init__(self, m, "ScoreLogger")
+        self._sf = scoring_function
+        self._fh = open(path, "w")
+        self._fh.write("frame,score\n")
+        self._step = 0
 
-        def do_update(self, call_number):
-            self._fh.write(f"{self._step},{self._sf.evaluate(False)}\n")
-            self._fh.flush()
-            self._step += 1
+    def do_update(self, call_number):
+        self._fh.write(f"{self._step},{self._sf.evaluate(False)}\n")
+        self._fh.flush()
+        self._step += 1
 
-        def close(self):
-            try:
-                self._fh.close()
-            except Exception:
-                pass
+    def close(self):
+        try:
+            self._fh.close()
+        except Exception:
+            pass
 
 
 # ---------------------------------------------------------------------------
@@ -508,7 +475,6 @@ def build_assembly(
     -------
     _Assembly
     """
-    require_imp()
     if not pdb_paths:
         raise ValueError("At least one PDB file is required.")
     for p in pdb_paths:
@@ -755,7 +721,6 @@ def score(
     -------
     DockingResult
     """
-    require_imp()
     asm = build_assembly(
         pdb_paths, fps_json_path,
         score_set=score_set, mean_position_restraint=mean_position_restraint,
@@ -800,7 +765,6 @@ def dock(
     -------
     DockingResult
     """
-    require_imp()
     params = params or DockingParameters()
     _ensure_output_dir(output_dir)
 
@@ -916,7 +880,6 @@ def dock_minimize(
     -------
     DockingResult
     """
-    require_imp()
     params = params or DockingParameters()
     _ensure_output_dir(output_dir)
 
@@ -1155,7 +1118,6 @@ def refine(
     -------
     DockingResult
     """
-    require_imp()
     _ensure_output_dir(output_dir)
     asm = build_assembly(
         pdb_paths, fps_json_path,
@@ -1207,7 +1169,6 @@ def screen(
     list of (path, score)
         Sorted ascending by score (best first).
     """
-    require_imp()
     pdbs: List[str] = []
     for item in pdb_inputs:
         if os.path.isdir(item):
@@ -1280,7 +1241,6 @@ def estimate_errors(
         "trial_details": [{trial, score, n_distances, output_dir, best_pdb,
         score_csv, stat_file}], "best_trial", "n_workers"}``.
     """
-    require_imp()
     import statistics
 
     _ensure_output_dir(output_dir)

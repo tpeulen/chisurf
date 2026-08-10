@@ -39,7 +39,7 @@ def info_backends():
         elif hasattr(av._ll, "version"):
             ll_ver = av._ll.version
         ll_avail += f"  (version: {ll_ver})"
-    imp_avail = "AVAILABLE" if av._HAS_IMP_BFF else "not available"
+    imp_avail = "AVAILABLE"  # IMP is a mandatory dependency
     
     click.echo("AV backends:")
     click.echo(f"  LabelLib : {ll_avail}")

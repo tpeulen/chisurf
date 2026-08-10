@@ -25,6 +25,12 @@ python = "3.12.*"
 # must be present here and not only in the `build` feature.
 pip = ">=26.0.1,<27"
 numpy = "*"
+# IMP is a mandatory runtime dependency: the FRET modelling plugin's engine,
+# accessible-volume backend, structure I/O and kappa-squared correction all
+# import it unguarded. Pinned >=2.25 because 2.24's IMP.bff.restraints ships
+# empty, so AVNetworkRestraintWrapper -- which the docking engine calls -- is
+# absent there. See okf/references/imp-ecosystem.md.
+imp = ">=2.25"
 typing-extensions = ">=4.14"
 pyyaml = "*"
 markdown = "*"
@@ -51,7 +57,9 @@ matplotlib = "*"
 # pictures, not measurements: chimol's render export and the docs figure tooling.
 pillow = "*"
 # deprecation was dropped: chisurf.core.decorators.deprecated replaces it.
-pandas = "*"
+# pandas was dropped: chisurf.core.datastore (tttrlib.DataStore) is the
+# storage model everywhere in the tree now, and nothing shipped imports
+# pandas any more (PRD-82).
 scipy = "*"
 numba = "*"
 # boost-cpp was dropped: nothing links it. The C++ that used to want Boost --
@@ -59,7 +67,10 @@ numba = "*"
 # builds against the C++17 standard library instead, and no built extension
 # in the tree or in the local modules records a libboost load command.
 ipython = "*"
-notebook = "<7"
+# nbformat backs the shipped notebook editor (chisurf/plugins/core/code_editor),
+# which imports it lazily on first use. It used to arrive transitively via
+# `notebook`, removed with the external Jupyter server in 2026-08.
+nbformat = "*"
 pyopengl = "*"
 # WebGPU: the graphics API behind chisurf.gui.chigame, and the platform surface
 # plumbing (Qt embedding, offscreen rendering) that goes with it. Both were only
@@ -122,6 +133,16 @@ cmake-build-extension = ">=0.6.1,<0.7"
 pytest = "*"
 pytest-cov = "*"
 pytest-qt = "*"
+# Test-only: a handful of tests use pandas as an independent oracle (compare
+# chisurf's own CSV writer against pandas.DataFrame.to_csv) or to simulate a
+# file an external tool wrote. The shipped package imports it nowhere
+# (PRD-82), which is why this lives here and not in [dependencies].
+pandas = "*"
+# Test-only notebook execution (test/plugins/burst/test_mmfdb_example_notebooks.py):
+# nbconvert + ipykernel were dragged in by the `notebook` runtime dependency,
+# removed in 2026-08; the slow example-notebook test still needs them.
+nbconvert = "*"
+ipykernel = "*"
 
 [feature.dev.dependencies]
 ruff = "*"

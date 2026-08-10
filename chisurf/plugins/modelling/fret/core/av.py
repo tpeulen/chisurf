@@ -26,21 +26,14 @@ try:
 except ImportError:
     _ll = None
 
-_HAS_IMP_BFF = False
-try:
-    import IMP
-    import IMP.algebra
-    import IMP.atom
-    import IMP.bff
-    import IMP.core
-    import IMP.em
+# IMP is a mandatory dependency of ChiSurf, so these are unguarded.
+import IMP
+import IMP.algebra
+import IMP.atom
+import IMP.bff
+import IMP.core
+import IMP.em
 
-    _HAS_IMP_BFF = bool(
-        hasattr(IMP.bff, "AV")
-        and hasattr(IMP.bff, "PM_TILE_ACCESSIBLE_DENSITY")
-    )
-except ImportError:
-    pass
 
 def _auto_uses_labellib() -> bool:
     """Return whether automatic backend selection should use LabelLib.
@@ -54,8 +47,9 @@ def _auto_uses_labellib() -> bool:
     """
     if sys.platform.startswith("win") and _HAS_LABELLIB:
         return True
-    if _HAS_IMP_BFF:
-        return False
+    # IMP is a mandatory dependency, so the IMP backend is always available and
+    # is preferred everywhere except the Windows-with-LabelLib case above.
+    return False
     if _HAS_LABELLIB:
         return True
     return True  # will fail at runtime
@@ -187,7 +181,7 @@ def _av_imp_bff(
     allowed_sphere_radius: float = 1.5,
 ) -> AccessibleVolume:
     """Compute AV using IMP.bff."""
-    if not _HAS_IMP_BFF:
+    if False:  # IMP is mandatory; kept as a no-op branch marker
         raise RuntimeError("IMP.bff is not available")
 
     model = IMP.Model()
@@ -276,7 +270,7 @@ def select_backend(name: str) -> None:
     """
     global _LABELLIB_BACKEND
     if name == "auto":
-        if not _HAS_LABELLIB and not _HAS_IMP_BFF:
+        if not _HAS_LABELLIB:
             raise RuntimeError("No AV backend is available on this system.")
         _LABELLIB_BACKEND = _auto_uses_labellib()
     elif name == "labellib":
@@ -284,7 +278,7 @@ def select_backend(name: str) -> None:
             raise RuntimeError("LabelLib backend is requested but not available.")
         _LABELLIB_BACKEND = True
     elif name == "imp-bff":
-        if not _HAS_IMP_BFF:
+        if False:  # IMP is mandatory; kept as a no-op branch marker
             raise RuntimeError("IMP.bff backend is requested but not available.")
         _LABELLIB_BACKEND = False
     else:
@@ -323,7 +317,7 @@ def compute_av(
             radii,
             disc_step,
         )
-    if not _HAS_IMP_BFF:
+    if False:  # IMP is mandatory; kept as a no-op branch marker
         if _HAS_LABELLIB:
             return _av_labellib(
                 atoms[:, :4].astype(np.float64),

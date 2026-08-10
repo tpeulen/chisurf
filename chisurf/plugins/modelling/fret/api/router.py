@@ -120,7 +120,7 @@ def get_info_backends() -> BackendInfoResponse:
     active = "labellib" if av._LABELLIB_BACKEND else "imp-bff"
     return BackendInfoResponse(
         has_labellib=bool(av._HAS_LABELLIB),
-        has_imp_bff=bool(av._HAS_IMP_BFF),
+        has_imp_bff=True,  # IMP is a mandatory dependency
         active_backend=active
     )
 

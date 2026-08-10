@@ -27,7 +27,7 @@ def backend_info() -> Dict:
     return OperationResult(
         status="ok",
         operation="backend_info",
-        data={"has_imp_bff": imp_engine.has_imp()},
+        data={"has_imp_bff": True},  # IMP is a mandatory dependency
     ).to_dict()
 
 

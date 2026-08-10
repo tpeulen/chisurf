@@ -106,7 +106,6 @@ def test_ensure_fps_json_accepts_csharp_txt():
     assert imp_engine.ensure_fps_json(out, pdbs) == out
 
 
-@pytest.mark.skipif(not imp_engine.has_imp(), reason="IMP/IMP.bff not installed")
 def test_dock_project_runs(tmp_path):
     from chisurf.plugins.modelling.fret.api import operations as ops
 
@@ -128,7 +127,6 @@ def _pdbs_and_fps():
     return proj.pdb_paths, proj.fps_json
 
 
-@pytest.mark.skipif(not imp_engine.has_imp(), reason="IMP/IMP.bff not installed")
 def test_capture_reapply_reconstructs_pose(tmp_path):
     """Save, reload and apply reproduce the docked reference frames exactly."""
     pdbs, fps = _pdbs_and_fps()
@@ -155,7 +153,6 @@ def test_capture_reapply_reconstructs_pose(tmp_path):
         assert abs(dot - 1.0) < 1e-4  # same rotation (quaternion sign-agnostic)
 
 
-@pytest.mark.skipif(not imp_engine.has_imp(), reason="IMP/IMP.bff not installed")
 def test_continue_from_poses_does_not_restart(tmp_path):
     """Resuming from saved poses continues (score no worse than the docked state)."""
     from chisurf.plugins.modelling.fret.api import operations as ops
