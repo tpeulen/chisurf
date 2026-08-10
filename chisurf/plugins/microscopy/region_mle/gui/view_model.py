@@ -386,6 +386,55 @@ class RegionMleViewModel(MleObserverMixin):
         """Button action: ask the host to preview the segmentation on a worker."""
         self.notify("start_preview")
 
+    def request_demo(self) -> None:
+        """Button action: generate and load the demo on a worker thread."""
+        self.notify("start_demo")
+
+    def load_demo(self) -> str:
+        """Load a field whose regions have known lifetimes, ready to fit.
+
+        BLOCKING — call from a worker thread. It generates (or reuses) the same
+        demo the Spot Finder's tour uses, **and runs the standard detection on
+        it**, so this panel can be learned on its own: a tour that cannot be
+        walked without first visiting another tool is a tour most people abandon
+        at step two.
+
+        Returns
+        -------
+        str
+            Path of the demo scan.
+        """
+        from chisurf.plugins.microscopy.spot_finder.api.models import SpotFinderRequest
+        from chisurf.plugins.microscopy.spot_finder.api.spot_finder import detect_request
+        from chisurf.plugins.microscopy.spot_finder.demo import create_demo, truth_table
+
+        self.status_text = "Simulating a field with known lifetimes…"
+        self.notify("progress")
+        sample, irf = create_demo()
+
+        self.status_text = "Detecting the regions (the standard workflow)…"
+        self.notify("progress")
+        detect_request(SpotFinderRequest(files=[str(sample)], name="spots"))
+
+        truth = truth_table()
+        self.files = [str(sample)]
+        self.irf_files = [str(irf)]
+        self.settings.detector_chs = [0, 1]
+        self.settings.micro_time_range = (0, int(truth["n_micro"]))
+        self.settings.micro_time_binning = 1
+        self.settings.regions = str(sample)
+        self.settings.region_set = "spots"
+        self.settings.min_photons = 100
+        self.settings.fix_r0 = True
+        self.settings.fix_rho = True
+        taus = ", ".join(f"{tau:g}" for *_xy, tau in truth["blobs"])
+        self.status_text = (
+            f"Demo ready: {len(truth['blobs'])} regions detected, true lifetimes "
+            f"{taus} ns. Press Run."
+        )
+        self.notify("results")
+        return str(sample)
+
     def request_export(self) -> None:
         """Button action: ask the host for a path and export the molecule table."""
         self.notify("start_export")

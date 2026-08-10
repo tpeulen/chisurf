@@ -57,6 +57,7 @@
               {"type": "toggle", "attr": "soft_bifl_scatter", "label": "BIFL scatter", "description": "Reduce Istar by the background contribution."}
             ]},
             {"type": "button_row", "buttons": [
+              {"label": "🧪 Load demo", "action": "request_demo", "description": "Simulate a field whose regions have known lifetimes, detect them with the standard workflow, and fill this panel in — so a fitted lifetime can be checked against an answer."},
               {"label": "👁️ Preview", "action": "request_preview", "description": "Measure the regions about to be fitted, without fitting them — the same regions the run uses."},
               {"label": "▶ Run", "action": "request_run", "description": "Fit every detected region in every selected file; writes molecule_data.tsv + joint_output.tsv."},
               {"label": "💾 Export", "action": "request_export", "description": "Export the combined per-molecule table (all files) to a TSV/CSV."}

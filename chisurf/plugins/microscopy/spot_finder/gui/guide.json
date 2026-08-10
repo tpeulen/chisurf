@@ -1,0 +1,71 @@
+{
+  "_comment": "Guided tour for the Spot Finder. Steps point at real controls and wait for the user to press them — there is deliberately no 'do it for me' button, because someone who watched a button being pressed has not learned where it is. Read by chisurf.gui.widgets.tools.guided_tour.",
+  "steps": [
+    {
+      "title": "What this tool does, and what it does not",
+      "text": "The Spot Finder answers one question: <b>which pixels are an object</b>. It finds molecules, beads or cells in an image and writes them — with their pixels — into the measurement's own file.<br/><br/>It fits nothing. The lifetimes come from <b>Region MLE</b>, the panel below this one, which fits the regions found here. Splitting them is the point: a detection you can look at, correct and re-use, and a fit that answers for exactly the regions it was given.<br/><br/>Eight steps, about two minutes. You press the buttons; the tour only points at them.",
+      "target": {}
+    },
+    {
+      "title": "Start with data whose answer you know",
+      "text": "A segmentation is hard to judge the first time: regions appear over an image and there is nothing to compare them with.<br/><br/>So start with a <b>simulated</b> field — four objects at known places, with lifetimes of 1.0, 3.6, 2.2 and 0.6 ns, recorded on two detectors with the IRF measurement that belongs to them. It is a real photon stream written as an ordinary PTU, so nothing about the rest of the tour is a special case.",
+      "target": {
+        "action": "Load demo"
+      },
+      "await": {
+        "hint": "Press <b>🧪 Load demo</b>. The first time it simulates the scan, which takes a few seconds; afterwards the cached file is reused."
+      }
+    },
+    {
+      "title": "The workflow is the recipe, not a pile of numbers",
+      "text": "<b>single_molecule</b> is the standard one, and it is what the demo needs: smooth, threshold automatically, split objects that touch. It is the same pipeline the lifetime fit has always been run on, which is why a detection made here can be compared with older work.<br/><br/>Picking a workflow replaces <i>every</i> setting below with that recipe's. The fields are then your deviations from it — <b>camera_spots</b> measures each spot's own width for widefield data, <b>objects</b> does not split at all, which is right for cells.",
+      "target": {
+        "attr": "workflow"
+      }
+    },
+    {
+      "title": "Look before you commit",
+      "text": "<b>Preview</b> detects in the first file only and writes nothing. It is how the settings get tuned: change a threshold, preview again, and watch the region count rather than guessing.",
+      "target": {
+        "action": "Preview"
+      },
+      "await": {
+        "hint": "Press <b>👁️ Preview</b>, then open the <b>Regions</b> tab to see what was found."
+      }
+    },
+    {
+      "title": "Four objects, outlined by what was measured",
+      "text": "Each region is drawn as the ellipse with the <i>same second moments</i> as the object — its centroid, its axis lengths, its orientation. That is what makes the outline worth looking at: it shows what was measured, so a bad segmentation is visible rather than merely reported.<br/><br/>The list gives every region its area. Click one and the panel below shows its measurements.",
+      "target": {
+        "title": "Regions"
+      }
+    },
+    {
+      "title": "Click anything the detector missed",
+      "text": "A threshold finds every object or none; you can see the one that matters. <b>Click the image</b> and a 2-D Gaussian is fitted to whatever is under the cursor — the click only seeds it, and the fit decides where the spot is and how wide it is, so a click two pixels off still lands on the object.<br/><br/>A fit that does not converge is refused with a reason. Nothing is placed where nothing was found.",
+      "target": {
+        "title": "Pick by clicking"
+      },
+      "await": {
+        "hint": "Optional: on the <b>Regions</b> tab, click a spot. Then press <b>➕ Add picks</b> to make the picks part of the detection."
+      }
+    },
+    {
+      "title": "Detect, and the regions are written down",
+      "text": "<b>Detect</b> runs every selected file and writes each result into <i>that measurement's own</i> container — a label image and a table of measurements, joined by the region's label. Nothing is written beside the data as a loose file, and re-running the same settings replaces rather than accumulates.<br/><br/>Give the detection a <b>name</b> and two attempts on the same field can be compared instead of one overwriting the other.",
+      "target": {
+        "action": "Detect"
+      },
+      "await": {
+        "hint": "Press <b>▶ Detect</b>."
+      }
+    },
+    {
+      "title": "Every file gets a row, whatever happened to it",
+      "text": "The <b>Run</b> tab has one row per input — <i>ok</i>, <i>empty</i>, <i>failed</i> or <i>skipped</i> — with the reason beside it. A file that found nothing says so; it never quietly leaves the list, because a batch that reports ninety of a hundred files looks exactly like a batch of ninety.<br/><br/>Now open <b>Region MLE</b>, below this panel: it fits the regions you just wrote, and the demo's lifetimes are 1.0, 3.6, 2.2 and 0.6 ns to compare against.",
+      "target": {
+        "title": "Run"
+      }
+    }
+  ]
+}

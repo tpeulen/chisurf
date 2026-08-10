@@ -5,45 +5,54 @@ so the answer is known — which is the only way to tell a segmentation that fou
 four objects from one that found four things, and a fit that recovered a
 lifetime from one that returned a number.
 
-Two PTUs in ``test/data/mixture``: the scan, and the IRF measurement that
-belongs to it (a simulated scatterer through the same optics, the same two
-channels and the same micro-time axis, so the fit is not handed a noiseless IRF
-against noisy data). They are files rather than a fixture built per run because
-the simulator is seeded and the result is therefore worth pinning: a test set
-that differs between runs cannot be compared against, and a fit that recovers
-the truth only sometimes is not evidence of anything.
+Two PTUs: the scan, and the IRF measurement that belongs to it (a simulated
+scatterer through the same optics, the same two channels and the same
+micro-time axis, so the fit is not handed a noiseless IRF against noisy data).
+
+They are **generated, not committed**. The simulator is seeded, so the files are
+reproducible — which is what a test set has to be — and generating them keeps
+two megabytes of binary out of the history and, more usefully, keeps the fixture
+and the code that makes it from drifting apart: it is the *same* generator the
+tools' guided tour calls, so a demo that stops working fails here first.
 """
 
 from __future__ import annotations
-
-from pathlib import Path
 
 import numpy as np
 import pytest
 
 pytest.importorskip("tttrlib")
 
-DATA = Path(__file__).resolve().parents[1] / "data" / "mixture"
-SAMPLE = DATA / "mixture.ptu"
-IRF = DATA / "mixture_irf.ptu"
-
-pytestmark = pytest.mark.skipif(not SAMPLE.exists(), reason="no mixture test set")
+from chisurf.plugins.microscopy.spot_finder.demo import DEMO_BLOBS, truth_table
 
 #: What was simulated: (ix, iy, tau). The image is indexed (row=iy, col=ix).
-BLOBS = ((14, 14, 1.0), (34, 14, 3.6), (14, 34, 2.2), (34, 34, 0.6))
-N_PIXEL = 48
-N_MICRO = 128
-DT = 0.064
+BLOBS = DEMO_BLOBS
+_TRUTH = truth_table()
+N_PIXEL = _TRUTH["n_pixel"]
+N_MICRO = _TRUTH["n_micro"]
+DT = _TRUTH["dt"]
+
+
+@pytest.fixture(scope="session")
+def demo_files(tmp_path_factory):
+    """Generate the test set once per session, into a scratch directory."""
+    from chisurf.core.fluorescence.imaging.simulate import have_simulator
+    from chisurf.plugins.microscopy.spot_finder.demo import create_demo
+
+    if not have_simulator():
+        pytest.skip("tttrlib was built without the photon simulator")
+    return create_demo(tmp_path_factory.mktemp("mixture"))
 
 
 @pytest.fixture(scope="module")
-def scan():
+def scan(demo_files):
     """Return the sample scan, reconstructed the way the scanner wrote it."""
     import tttrlib
 
     from chisurf.core.fluorescence.imaging.simulate import clsm_from_scan
 
-    tttr = tttrlib.TTTR(str(SAMPLE))
+    sample, _irf = demo_files
+    tttr = tttrlib.TTTR(str(sample))
     return tttr, clsm_from_scan(tttr, N_PIXEL)
 
 
@@ -106,7 +115,7 @@ def test_the_standard_workflow_finds_every_blob(intensity):
         assert distance < 2.0, f"nothing within 2 px of the blob at ({iy}, {ix})"
 
 
-def test_the_region_fit_recovers_each_blob_s_lifetime(scan, intensity):
+def test_the_region_fit_recovers_each_blob_s_lifetime(scan, intensity, demo_files):
     """The claim the whole pipeline exists to support, end to end.
 
     Detect the regions, hand them to the fit, and check the lifetimes against
@@ -132,7 +141,7 @@ def test_the_region_fit_recovers_each_blob_s_lifetime(scan, intensity):
     detect.clear_border = False
     labels, _extra = detect_labels(intensity, detect)
 
-    irf_tttr = tttrlib.TTTR(str(IRF))
+    irf_tttr = tttrlib.TTTR(str(demo_files[1]))
     irf_full, background = build_irf_vv_vh(
         irf_tttr, detector_chs=[0, 1], micro_time_range=(0, N_MICRO),
         micro_time_binning=1,
@@ -180,7 +189,7 @@ def test_the_region_fit_recovers_each_blob_s_lifetime(scan, intensity):
         )
 
 
-def test_the_lifetimes_are_told_apart(scan, intensity):
+def test_the_lifetimes_are_told_apart(scan, intensity, demo_files):
     """Recovering four lifetimes means ordering them, not landing near a mean."""
     import tttrlib
 
@@ -201,7 +210,7 @@ def test_the_lifetimes_are_told_apart(scan, intensity):
     detect.clear_border = False
     labels, _extra = detect_labels(intensity, detect)
     irf_full, background = build_irf_vv_vh(
-        tttrlib.TTTR(str(IRF)), detector_chs=[0, 1],
+        tttrlib.TTTR(str(demo_files[1])), detector_chs=[0, 1],
         micro_time_range=(0, N_MICRO), micro_time_binning=1,
     )
     result = fit_regions(

@@ -1,0 +1,58 @@
+{
+  "_comment": "Guided tour for Region MLE. Steps point at real controls and wait for the user to press them — there is deliberately no 'do it for me' button, because someone who watched a button being pressed has not learned where it is. Read by chisurf.gui.widgets.tools.guided_tour.",
+  "steps": [
+    {
+      "title": "One lifetime per region, and none of them found here",
+      "text": "This tool fits a <b>single fluorescence lifetime per region</b> by Poisson maximum likelihood — the 2I* estimator, on the parallel and perpendicular decays together.<br/><br/>It does <b>not</b> segment. The regions come from the <b>Spot Finder</b>, the panel above, or from a saved label image. That separation is deliberate: a fit that finds its own regions cannot be shown what it is about to fit, which is exactly how a tuned preview and the run that followed it stopped agreeing.<br/><br/>Seven steps, about two minutes.",
+      "target": {}
+    },
+    {
+      "title": "Start with lifetimes you already know",
+      "text": "A fitted lifetime is a number with nothing to check it against. So start with a <b>simulated</b> field: four objects with lifetimes of 1.0, 3.6, 2.2 and 0.6 ns, its own IRF measurement, and the standard detection already run over it.<br/><br/>Everything below is then filled in the way a real analysis would fill it, and the answers are known.",
+      "target": {
+        "action": "Load demo"
+      },
+      "await": {
+        "hint": "Press <b>🧪 Load demo</b>. It simulates the field (a few seconds the first time), detects the regions, and fills this panel in."
+      }
+    },
+    {
+      "title": "The IRF is a measurement, not a shape",
+      "text": "The instrument response is measured on the <i>same</i> optics and detectors as the sample — here a simulated scatterer with the same micro-time axis. It is what lets the fit deconvolve rather than assume.<br/><br/>A fit given an analytic, noiseless IRF against noisy data is being handed an advantage no measurement provides, which is why the demo simulates one instead of drawing a Gaussian.",
+      "target": {
+        "title": "IRF file"
+      }
+    },
+    {
+      "title": "Which detection to fit",
+      "text": "A measurement can hold more than one detection — the same field segmented two ways, to be compared. <b>Detection</b> names which one this fit answers for, and the fit answers for exactly those regions and no others.<br/><br/><b>Min photons</b> is the honesty threshold: a region below it is not fitted, and keeps a row with NaN parameters rather than vanishing. A missing row would silently shift every result after it when tables are merged.",
+      "target": {
+        "title": "Regions"
+      }
+    },
+    {
+      "title": "What is being fitted, and what is held",
+      "text": "τ is the lifetime; γ is the scatter fraction; r0 and ρ describe the anisotropy. For a first look, <b>fix r0 and ρ</b> — with a few thousand photons per region the data cannot support four free parameters, and freeing them buys a worse-determined τ rather than more information.<br/><br/>l1 and l2 are the polarisation mixing corrections of the objective, and belong with the detector setup rather than with the sample.",
+      "target": {
+        "title": "Fit (Fit23)"
+      }
+    },
+    {
+      "title": "Look at the regions before fitting them",
+      "text": "<b>Preview</b> measures the regions about to be fitted without fitting them — area, brightness, the background rate around them. It resolves the regions through the <i>same call</i> the run uses, so what is previewed is what is fitted; there is no second segmentation to disagree with it.",
+      "target": {
+        "action": "Preview"
+      },
+      "await": {
+        "hint": "Press <b>👁️ Preview</b>, then press <b>▶ Run</b> to fit."
+      }
+    },
+    {
+      "title": "Read the decay, not only the number",
+      "text": "Open the <b>Decay</b> tab and select a region. You get the data, the fitted model, the IRF and the background on a log axis, with the <b>weighted residuals</b> above sharing the time axis — so a systematic deviation lines up with the channel that caused it. It is the same panel the burst-wise MLE draws, because a region and a burst are the same measurement under different membership rules.<br/><br/>Check the fitted τ against the demo's 1.0, 3.6, 2.2 and 0.6 ns. The long ones come back a few percent low, and that is real: a 3.6 ns decay is not finished inside this simulation's 8.2 ns excitation period.",
+      "target": {
+        "title": "Decay"
+      }
+    }
+  ]
+}

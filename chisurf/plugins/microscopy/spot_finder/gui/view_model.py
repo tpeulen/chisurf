@@ -418,6 +418,37 @@ class SpotFinderViewModel(MleObserverMixin):
         """Button action: ask the host for a path and export the region table."""
         self.notify("start_export")
 
+    def request_demo(self) -> None:
+        """Button action: generate and load the demo field on a worker thread."""
+        self.notify("start_demo")
+
+    def load_demo(self) -> str:
+        """Generate a field whose objects have known lifetimes, and select it.
+
+        BLOCKING — call from a worker thread. The first run simulates the scan
+        (a few seconds); afterwards a cached pair is reused, checked against the
+        settings it was made with rather than merely existing.
+
+        Returns
+        -------
+        str
+            Path of the demo scan.
+        """
+        from ..demo import create_demo, truth_table
+
+        self.status_text = "Simulating a field with known lifetimes…"
+        self.notify("progress")
+        sample, _irf = create_demo()
+        self.files = [str(sample)]
+        truth = truth_table()
+        taus = ", ".join(f"{tau:g}" for *_xy, tau in truth["blobs"])
+        self.status_text = (
+            f"Demo loaded: {len(truth['blobs'])} objects with lifetimes "
+            f"{taus} ns. Press Detect."
+        )
+        self.notify("results")
+        return str(sample)
+
     def request_add_picks(self) -> None:
         """Button action: turn the picked spots into regions of this detection."""
         self.notify("start_add_picks")

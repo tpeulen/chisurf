@@ -74,6 +74,9 @@ class SpotFinderTool(AutoFormMleTool):
         if event == "start_preview":
             self._start_job(self.model.preview)
             return True
+        if event == "start_demo":
+            self._start_job(self.model.load_demo)
+            return True
         if event == "start_export":
             self._export()
             return True

@@ -63,6 +63,7 @@
               ]}
             ]},
             {"type": "button_row", "buttons": [
+              {"label": "🧪 Load demo", "action": "request_demo", "description": "Simulate a field whose objects have known lifetimes and load it, so a detection can be checked against an answer instead of trusted."},
               {"label": "👁️ Preview", "action": "request_preview", "description": "Detect in the first file only, writing nothing — for tuning against the region count."},
               {"label": "▶ Detect", "action": "request_run", "description": "Detect in every selected file and write each result into its own measurement container."},
               {"label": "💾 Export", "action": "request_export", "description": "Export the combined region table (all files) to a TSV/CSV."}

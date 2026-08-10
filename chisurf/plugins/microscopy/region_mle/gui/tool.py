@@ -68,9 +68,12 @@ class RegionMleTool(AutoFormMleTool):
                 overlay.refresh()
 
     def handle_event(self, event: str) -> bool:
-        """The region preview runs on a worker; export prompts on the UI thread."""
+        """Run the preview and the demo on a worker; prompt for export on the UI thread."""
         if event == "start_preview":
             self._start_job(self.model.preview_regions)
+            return True
+        if event == "start_demo":
+            self._start_job(self.model.load_demo)
             return True
         if event == "start_export":
             self._export()
