@@ -429,3 +429,120 @@ def test_terminal_toggle_gives_its_height_to_the_cells(app):
     nb_ed.terminal_button.setChecked(True)
     QtWidgets.QApplication.processEvents()
     assert nb_ed.terminal.isVisible()
+
+
+# ----------------------------------------------------------------------
+# the kernel terminal is a window dock, beside Diagnostics and Output
+# ----------------------------------------------------------------------
+
+
+def _window(app, path=None):
+    """Return a shown CodeEditorWindow, optionally with *path* open."""
+    from chisurf.plugins.core.code_editor.window import CodeEditorWindow
+
+    window = CodeEditorWindow(can_load=False, enable_lsp=None)
+    window.resize(1100, 800)
+    window.show()
+    if path is not None:
+        window.editor.open_file(str(path))
+    for _ in range(3):
+        QtWidgets.QApplication.processEvents()
+    return window
+
+
+def test_window_forwards_editor_options_without_choking_qmainwindow(app):
+    """Editor-only kwargs must not reach QMainWindow, which rejects them."""
+    window = _window(app)
+    assert window.editor is not None
+
+
+def test_every_panel_is_a_chisurf_dock(app):
+    """All of the editor's panels share the one dock class."""
+    from chisurf.gui.widgets.tools.chisurf_dock import ChisurfDock
+
+    window = _window(app)
+    docks = [
+        window.file_dock,
+        window.symbol_dock,
+        window.diagnostics_dock,
+        window.output_dock,
+        window.kernel_dock,
+        window.agent_dock,
+    ]
+    assert all(isinstance(dock, ChisurfDock) for dock in docks)
+    assert len({dock.objectName() for dock in docks}) == len(docks)
+
+
+def test_kernel_dock_sits_with_diagnostics_and_output(app, notebook_path):
+    """The kernel terminal is a bottom panel tabbed with the other two."""
+    window = _window(app, notebook_path)
+    assert window.dockWidgetArea(window.kernel_dock) == QtCore.Qt.BottomDockWidgetArea
+    siblings = window.tabifiedDockWidgets(window.kernel_dock)
+    assert window.output_dock in siblings
+    assert window.diagnostics_dock in siblings
+
+
+def test_kernel_dock_holds_the_open_notebooks_terminal(app, notebook_path):
+    """The notebook keeps its shell; the dock shows that notebook's console."""
+    window = _window(app, notebook_path)
+    notebooks = [
+        window.editor.tab_widget.widget(i)
+        for i in range(window.editor.tab_widget.count())
+        if isinstance(window.editor.tab_widget.widget(i), NotebookEditor)
+    ]
+    assert notebooks
+    notebook = notebooks[0]
+    assert window._kernel_stack.currentWidget() is notebook.terminal
+    assert notebook.terminal.shell is notebook._shell
+    # The notebook no longer paints the terminal itself.
+    assert notebook.terminal.parent() is not notebook
+
+
+def test_kernel_dock_follows_the_active_tab(app, notebook_path, tmp_path):
+    """Two notebooks means two kernels; the dock shows the one in front."""
+    second = tmp_path / "second.ipynb"
+    nbformat.write(
+        nbformat.v4.new_notebook(cells=[nbformat.v4.new_code_cell(source="y = 1")]), second
+    )
+    window = _window(app, notebook_path)
+    window.editor.open_file(str(second))
+    for _ in range(3):
+        QtWidgets.QApplication.processEvents()
+    notebooks = [
+        window.editor.tab_widget.widget(i)
+        for i in range(window.editor.tab_widget.count())
+        if isinstance(window.editor.tab_widget.widget(i), NotebookEditor)
+    ]
+    assert len(notebooks) == 2
+    for index in range(window.editor.tab_widget.count()):
+        widget = window.editor.tab_widget.widget(index)
+        window.editor.tab_widget.setCurrentIndex(index)
+        QtWidgets.QApplication.processEvents()
+        if isinstance(widget, NotebookEditor):
+            assert window._kernel_stack.currentWidget() is widget.terminal
+
+
+def test_terminal_button_toggles_the_dock_when_hosted(app, notebook_path):
+    """A hosted notebook forwards the toggle instead of resizing its splitter."""
+    window = _window(app, notebook_path)
+    notebooks = [
+        window.editor.tab_widget.widget(i)
+        for i in range(window.editor.tab_widget.count())
+        if isinstance(window.editor.tab_widget.widget(i), NotebookEditor)
+    ]
+    notebook = notebooks[0]
+    window.kernel_dock.show_raised()
+    QtWidgets.QApplication.processEvents()
+    notebook.terminal_button.setChecked(False)
+    QtWidgets.QApplication.processEvents()
+    assert not window.kernel_dock.isVisible()
+    notebook.terminal_button.setChecked(True)
+    QtWidgets.QApplication.processEvents()
+    assert window.kernel_dock.isVisible()
+
+
+def test_kernel_dock_is_disabled_without_a_notebook(app):
+    """A plain text tab has no kernel, and the dock says so instead of lying."""
+    window = _window(app)
+    assert not window.kernel_dock.isEnabled()
+    assert window._kernel_stack.currentWidget() is window._kernel_placeholder

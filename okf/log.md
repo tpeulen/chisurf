@@ -1,6 +1,21 @@
 # Update Log
 
 ## 2026-08-10
+* **The notebook kernel is a window panel, and a screenshot without the theme is not evidence.** The
+  notebook's `Chinsole` moved out from under the cells into a **Kernel** dock of `CodeEditorWindow`,
+  tabbed with Diagnostics and Output; every panel of that window is now the new shared
+  [`ChisurfDock`](../chisurf/gui/widgets/tools/chisurf_dock.py) rather than a bare `QDockWidget`, so they
+  share one title bar, one feature set and one object-name scheme. The dock is backed by a stack that
+  follows the active tab, because each notebook owns its own shell. Fixed on the way:
+  `CodeEditorWindow.__init__` forwarded every `**kwarg` to both `QMainWindow` *and* `CodeEditor`, so
+  `CodeEditorWindow(can_load=False)` raised `TypeError`. The second half is a lesson about how the last
+  pass was verified: those grabs used the bare Qt palette, under which the per-cell insert `＋` looked
+  like a hairline. Under the app's own `dark.qss` — `QToolButton { background-color: #694545; border: 1px
+  solid #000 }` — a full-width one between every pair of cells is a thick maroon separator bar, and
+  `CellOutput`'s hardcoded `#1a1a1a` text is unreadable on a dark background. The grabber now applies the
+  real stylesheet (`--style`, default `dark.qss`) and grabs the whole window; the chrome buttons set
+  `background: transparent` explicitly, the insert button is small and centred instead of full-width, and
+  the output panel takes its colours from `theme_from_settings()`. 32 tests (7 new, on the docks).
 * **Notebook editor layout: every surface is sized to what it holds.** The [code editor
   profile](plugins/profiles/code-editor.md) carries the detail. Measured on the demo notebook the new
   `build_tools/dev_utils/grab_notebook_editor.py` writes, the cell stack went **1091px → 929px** with no

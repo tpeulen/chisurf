@@ -70,27 +70,69 @@ def _write_notebook(path: pathlib.Path) -> pathlib.Path:
     return path
 
 
+def _apply_style(app, name: str) -> None:
+    """Apply the app's real stylesheet, the way ``chisurf.gui.setup_style`` does.
+
+    Grabbing under the bare Qt palette is what let a ``QToolButton`` whose
+    background the theme paints maroon look like a hairline in a screenshot and
+    like a thick separator bar in the running application.
+
+    Parameters
+    ----------
+    app : QtWidgets.QApplication
+    name : str
+        A file name under ``chisurf/gui/styles`` (``dark.qss``), or ``"none"``.
+    """
+    if not name or name == "none":
+        return
+    import chisurf
+
+    styles = pathlib.Path(chisurf.__file__).resolve().parent / "gui" / "styles"
+    theme = styles / name
+    if not theme.is_file():
+        print(f"no such style: {theme}")
+        return
+    shared = sorted((styles / "widgets").glob("*.qss")) if (styles / "widgets").is_dir() else []
+    text = "\n\n".join(
+        [path.read_text(encoding="utf-8") for path in shared] + [theme.read_text(encoding="utf-8")]
+    )
+    app.setStyleSheet(text)
+
+
 def main() -> int:
     """Grab the notebook editor and its host window; return a process code."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", default="/tmp/notebook_editor", help="output PNG prefix")
     parser.add_argument("--width", type=int, default=1180)
     parser.add_argument("--height", type=int, default=880)
+    parser.add_argument(
+        "--style",
+        default="dark.qss",
+        help=(
+            "stylesheet from chisurf/gui/styles to apply, as the running app does; "
+            "'none' grabs the bare Qt palette"
+        ),
+    )
     args = parser.parse_args()
 
     from qtpy import QtCore, QtWidgets
 
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+    _apply_style(app, args.style)
 
-    from chisurf.plugins.core.code_editor.editor import CodeEditor
     from chisurf.plugins.core.code_editor.notebook_editor import NotebookEditor
+    from chisurf.plugins.core.code_editor.window import CodeEditorWindow
 
     tmp = pathlib.Path(tempfile.mkdtemp(prefix="nbgrab-"))
     nb_path = _write_notebook(tmp / "demo.ipynb")
 
-    host = CodeEditor(can_load=False, enable_lsp=None)
-    host.resize(args.width, args.height)
-    host.show()
+    # The full window, not the bare CodeEditor: the kernel terminal is one of
+    # the window's docks now, so a grab of the editor widget alone cannot show
+    # where it sits relative to Diagnostics and Output.
+    window = CodeEditorWindow(can_load=False, enable_lsp=None)
+    window.resize(args.width, args.height)
+    window.show()
+    host = window.editor
     host.open_file(str(nb_path))
 
     notebook = None
@@ -113,6 +155,10 @@ def main() -> int:
 
     out = pathlib.Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
+    window.kernel_dock.show_raised()
+    for _ in range(3):
+        app.processEvents()
+    window.grab().save(f"{out}_window.png")
     host.grab().save(f"{out}_host.png")
     notebook.grab().save(f"{out}_widget.png")
 
@@ -120,15 +166,16 @@ def main() -> int:
     container = notebook.container
     container.grab().save(f"{out}_cells.png")
 
+    print(f"{out}_window.png {window.width()}x{window.height()}")
     print(f"{out}_host.png   {host.width()}x{host.height()}")
     print(f"{out}_widget.png {notebook.width()}x{notebook.height()}")
     print(f"{out}_cells.png  {container.width()}x{container.height()}")
 
-    _grab_edge_cases(app, host, notebook, out, args)
+    _grab_edge_cases(app, window, notebook, out, args)
     return 0
 
 
-def _grab_edge_cases(app, host, notebook, out: pathlib.Path, args) -> None:
+def _grab_edge_cases(app, window, notebook, out: pathlib.Path, args) -> None:
     """Grab the states a happy-path notebook never shows.
 
     A traceback, output long enough to be clamped and scroll, a markdown cell
@@ -157,16 +204,16 @@ def _grab_edge_cases(app, host, notebook, out: pathlib.Path, args) -> None:
     for _ in range(6):
         app.processEvents()
         QtCore.QThread.msleep(20)
-    host.grab().save(f"{out}_states.png")
+    window.grab().save(f"{out}_states.png")
     notebook.container.grab().save(f"{out}_states_cells.png")
 
-    host.resize(560, args.height)
+    window.resize(620, args.height)
     for _ in range(6):
         app.processEvents()
         QtCore.QThread.msleep(20)
-    host.grab().save(f"{out}_narrow.png")
-    print(f"{out}_states.png {host.width()}x{host.height()}")
-    print(f"{out}_narrow.png {host.width()}x{host.height()}")
+    window.grab().save(f"{out}_narrow.png")
+    print(f"{out}_states.png {out}")
+    print(f"{out}_narrow.png {window.width()}x{window.height()}")
 
 
 if __name__ == "__main__":

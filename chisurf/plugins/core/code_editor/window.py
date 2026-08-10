@@ -5,6 +5,8 @@ import pathlib
 from qtpy import QtCore, QtGui, QtWidgets
 
 from chisurf.gui.glyphs import Glyphs
+from chisurf.gui.widgets.tools.chisurf_dock import ChisurfDock
+from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
 from chisurf.plugins.core.code_editor.editor import (
     CodeEditor,
     get_editor_settings,
@@ -13,8 +15,11 @@ from chisurf.plugins.core.code_editor.editor import (
 from chisurf.plugins.icon_utils import create_emoji_icon
 
 
-class CodeEditorWindow(QtWidgets.QMainWindow):
+class CodeEditorWindow(ChisurfDockTool):
     """Full code editor plugin window built around the shared ``CodeEditor``."""
+
+    #: Keyword arguments that belong to the embedded editor, not to the window.
+    _EDITOR_KWARGS = ("language", "can_load", "enable_lsp", "show_tab_bar")
 
     def __init__(
         self,
@@ -23,11 +28,18 @@ class CodeEditorWindow(QtWidgets.QMainWindow):
         project_root: str | pathlib.Path | None = None,
         **kwargs,
     ):
+        # The editor's own options must not reach QMainWindow, which raises
+        # TypeError on the first one it does not recognise.
+        editor_kwargs = {
+            name: kwargs.pop(name) for name in self._EDITOR_KWARGS if name in kwargs
+        }
         super().__init__(*args, **kwargs)
         self.setWindowTitle("Code Editor")
         self.resize(1200, 800)
 
-        self.editor = CodeEditor(filename=filename, project_root=project_root, **kwargs)
+        self.editor = CodeEditor(
+            filename=filename, project_root=project_root, **editor_kwargs, **kwargs
+        )
         self.setCentralWidget(self.editor)
         self.actions = self.editor.create_actions(self)
 
@@ -40,36 +52,58 @@ class CodeEditorWindow(QtWidgets.QMainWindow):
         self.editor.lspStatusChanged.connect(self._update_lsp_status)
 
     def _create_docks(self) -> None:
-        """Create dock widgets for the full editor window."""
-        self.file_dock = QtWidgets.QDockWidget("Project", self)
-        self.file_dock.setObjectName("code_editor_project_dock")
-        self.file_dock.setWidget(self.editor.project_browser_widget())
+        """Create the window's panels, all of them ChiSurf docks.
+
+        Every panel the editor shows beside the tabs is a :class:`ChisurfDock`
+        so they share one title bar, one set of features and one object-name
+        scheme -- including the notebook kernel terminal, which is a panel of
+        this window like Diagnostics and Output rather than something bolted
+        under one tab's cells.
+        """
+        self.file_dock = ChisurfDock(
+            "Project", self.editor.project_browser_widget(), self, namespace="code_editor"
+        )
         self.addDockWidget(QtCore.Qt.LeftDockWidgetArea, self.file_dock)
 
-        self.symbol_dock = QtWidgets.QDockWidget("Symbols", self)
-        self.symbol_dock.setObjectName("code_editor_symbols_dock")
-        self.symbol_dock.setWidget(self.editor.symbol_outline_widget())
+        self.symbol_dock = ChisurfDock(
+            "Symbols", self.editor.symbol_outline_widget(), self, namespace="code_editor"
+        )
         self.addDockWidget(QtCore.Qt.LeftDockWidgetArea, self.symbol_dock)
         self.tabifyDockWidget(self.file_dock, self.symbol_dock)
         self.file_dock.raise_()
 
-        self.diagnostics_dock = QtWidgets.QDockWidget("Diagnostics", self)
-        self.diagnostics_dock.setObjectName("code_editor_diagnostics_dock")
-        self.diagnostics_dock.setWidget(self.editor.diagnostics_widget())
+        self.diagnostics_dock = ChisurfDock(
+            "Diagnostics", self.editor.diagnostics_widget(), self, namespace="code_editor"
+        )
         self.addDockWidget(QtCore.Qt.BottomDockWidgetArea, self.diagnostics_dock)
 
-        self.output_dock = QtWidgets.QDockWidget("Output", self)
-        self.output_dock.setObjectName("code_editor_output_dock")
-        self.output_dock.setWidget(self.editor.output_console_widget())
+        self.output_dock = ChisurfDock(
+            "Output", self.editor.output_console_widget(), self, namespace="code_editor"
+        )
         self.addDockWidget(QtCore.Qt.BottomDockWidgetArea, self.output_dock)
         self.tabifyDockWidget(self.diagnostics_dock, self.output_dock)
+
+        self._kernel_stack = QtWidgets.QStackedWidget(self)
+        self._kernel_placeholder = QtWidgets.QLabel(
+            "Open a notebook to get a kernel terminal.", self._kernel_stack
+        )
+        self._kernel_placeholder.setAlignment(QtCore.Qt.AlignCenter)
+        self._kernel_placeholder.setEnabled(False)
+        self._kernel_stack.addWidget(self._kernel_placeholder)
+        self.kernel_dock = ChisurfDock(
+            "Kernel", self._kernel_stack, self, namespace="code_editor"
+        )
+        self.addDockWidget(QtCore.Qt.BottomDockWidgetArea, self.kernel_dock)
+        self.tabifyDockWidget(self.output_dock, self.kernel_dock)
         self.output_dock.raise_()  # show output by default
 
-        self.agent_dock = QtWidgets.QDockWidget("Agent", self)
-        self.agent_dock.setObjectName("code_editor_agent_dock")
-        self.agent_dock.setWidget(self.editor.agent_panel)
+        self.agent_dock = ChisurfDock(
+            "Agent", self.editor.agent_panel, self, namespace="code_editor"
+        )
         self.addDockWidget(QtCore.Qt.RightDockWidgetArea, self.agent_dock)
         self.agent_dock.hide()
+
+        self._adopt_notebook_terminals()
         try:
             self.actions["agent"].triggered.disconnect()
         except (TypeError, RuntimeError):
@@ -105,12 +139,61 @@ class CodeEditorWindow(QtWidgets.QMainWindow):
             navigate_menu.addAction(self.actions[name])
 
         view_menu = self.menuBar().addMenu("View")
-        for dock in [self.file_dock, self.symbol_dock, self.diagnostics_dock, self.output_dock, self.agent_dock]:
-            view_menu.addAction(dock.toggleViewAction())
+        for dock in [
+            self.file_dock,
+            self.symbol_dock,
+            self.diagnostics_dock,
+            self.output_dock,
+            self.kernel_dock,
+            self.agent_dock,
+        ]:
+            view_menu.addAction(dock.toggle_action())
 
         run_menu = self.menuBar().addMenu("Run")
         run_menu.addAction(self.actions["run"])
         run_menu.addAction(self.actions["ruff"])
+
+    # ------------------------------------------------------------------
+    # the notebook kernel terminal, hosted as a dock
+    # ------------------------------------------------------------------
+
+    def _adopt_notebook_terminals(self) -> None:
+        """Follow the tab bar so the Kernel dock always shows the live kernel.
+
+        Each notebook owns its own in-process shell, so there is one terminal
+        per notebook tab and the dock shows whichever tab is in front.
+        """
+        self.editor.tab_widget.currentChanged.connect(
+            lambda _index: self._sync_kernel_dock()
+        )
+        self.editor.tab_widget.tabCloseRequested.connect(
+            lambda _index: QtCore.QTimer.singleShot(0, self._sync_kernel_dock)
+        )
+        self._sync_kernel_dock()
+
+    def _sync_kernel_dock(self) -> None:
+        """Show the current notebook tab's terminal in the Kernel dock."""
+        from chisurf.plugins.core.code_editor.notebook_editor import NotebookEditor
+
+        current = self.editor.tab_widget.currentWidget()
+        if not isinstance(current, NotebookEditor):
+            self._kernel_stack.setCurrentWidget(self._kernel_placeholder)
+            self.kernel_dock.setEnabled(False)
+            return
+        self.kernel_dock.setEnabled(True)
+        terminal = current.take_terminal()
+        if self._kernel_stack.indexOf(terminal) < 0:
+            self._kernel_stack.addWidget(terminal)
+            current.terminalVisibilityRequested.connect(self._on_kernel_requested)
+        self._kernel_stack.setCurrentWidget(terminal)
+        current.set_terminal_checked(self.kernel_dock.isVisible())
+
+    def _on_kernel_requested(self, visible: bool) -> None:
+        """Show or hide the Kernel dock from a notebook's toolbar toggle."""
+        if visible:
+            self.kernel_dock.show_raised()
+        else:
+            self.kernel_dock.hide()
 
     def _populate_notebooks_menu(self, file_menu: QtWidgets.QMenu) -> None:
         """Add the File > Open Notebook submenu listing shipped notebooks."""

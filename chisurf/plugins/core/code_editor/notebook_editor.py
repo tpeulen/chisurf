@@ -64,7 +64,7 @@ from chisurf import logging
 from chisurf.core.console import ansi as _ansi
 from chisurf.core.console.history import HistoryManager
 from chisurf.core.console.shell import Shell
-from chisurf.gui.chinsole.theme import resolve_theme
+from chisurf.gui.chinsole.theme import theme_from_settings
 from chisurf.plugins.core.code_editor.text_editor import (
     TextEditor,
     get_editor_settings,
@@ -213,15 +213,16 @@ class CellOutput(QtWidgets.QTextEdit):
             "pre { white-space: pre-wrap; font-family: monospace; }"
         )
 
-        palette = self.palette()
-        palette.setColor(QtGui.QPalette.Base, QtGui.QColor("#f4f4f4"))
-        palette.setColor(QtGui.QPalette.Text, QtGui.QColor("#1a1a1a"))
-        self.setPalette(palette)
-
-        # The cell's output panel is a light surface, so a traceback's ANSI
-        # colours are resolved against the light palette rather than the
-        # console's dark one.
-        self._theme = resolve_theme("chisurf-light")
+        # The panel takes the console's theme rather than a hardcoded light
+        # one: it shows the same streams as the terminal below, and a fixed
+        # ``#1a1a1a`` on a dark theme is unreadable text on a dark background.
+        self._theme = theme_from_settings()
+        self.setStyleSheet(
+            "QTextEdit {"
+            f" background: {self._theme.background};"
+            f" color: {self._theme.foreground};"
+            " border: none; }"
+        )
         self._ansi = _ansi.AnsiParser()
         self._records: list[tuple] = []
         self._images: list[tuple[str, QtGui.QImage, dict]] = []
@@ -257,7 +258,9 @@ class CellOutput(QtWidgets.QTextEdit):
         cursor.movePosition(QtGui.QTextCursor.End)
         base = QtGui.QTextCharFormat()
         base.setForeground(
-            QtGui.QColor(self._theme.stderr_fg if kind == "stderr" else "#1a1a1a")
+            QtGui.QColor(
+                self._theme.stderr_fg if kind == "stderr" else self._theme.foreground
+            )
         )
         for event in self._ansi.feed(text):
             if isinstance(event, _ansi.Text):
@@ -408,10 +411,14 @@ class CellOutput(QtWidgets.QTextEdit):
         execution_count : int or None
         """
         if "image/png" in data:
-            self.append_image(_as_bytes(data["image/png"]), "png", "image/png", metadata.get("image/png"))
+            self.append_image(
+                _as_bytes(data["image/png"]), "png", "image/png", metadata.get("image/png")
+            )
             return
         if "image/jpeg" in data:
-            self.append_image(_as_bytes(data["image/jpeg"]), "jpeg", "image/jpeg", metadata.get("image/jpeg"))
+            self.append_image(
+                _as_bytes(data["image/jpeg"]), "jpeg", "image/jpeg", metadata.get("image/jpeg")
+            )
             return
         if "image/svg+xml" in data:
             self.append_svg(data["image/svg+xml"])
@@ -618,9 +625,7 @@ class CellOutput(QtWidgets.QTextEdit):
         QtCore.QTimer.singleShot(0, self.fit_to_content)
 
     def _trim_old_blocks(self) -> None:
-        """Keep the widget's document bounded so a runaway print loop cannot
-        wedge the cell.
-        """
+        """Bound the document so a runaway print loop cannot wedge the cell."""
         doc = self.document()
         while doc.blockCount() > self._max_blocks:
             cursor = QtGui.QTextCursor(doc)
@@ -692,10 +697,15 @@ class NotebookCell(QtWidgets.QWidget):
         self.setObjectName("notebook_cell")
         # Without this a stylesheet border on a bare QWidget is never painted.
         self.setAttribute(QtCore.Qt.WA_StyledBackground, True)
+        # The gutter buttons must be flat: the app theme fills and borders every
+        # QToolButton, and two filled chips beside every cell is chrome the eye
+        # has to step over on the way to the code.
         self.setStyleSheet(
             "QWidget#notebook_cell { border-bottom: 1px solid palette(mid); }"
-            "QToolButton#notebook_cell_button { color: #777; border: none; }"
-            "QToolButton#notebook_cell_button:hover { color: #111; }"
+            "QToolButton#notebook_cell_button"
+            " { background: transparent; border: none; color: palette(mid); }"
+            "QToolButton#notebook_cell_button:hover"
+            " { background: palette(highlight); color: palette(highlighted-text); }"
         )
 
         layout = QtWidgets.QHBoxLayout(self)
@@ -968,6 +978,9 @@ class NotebookEditor(QtWidgets.QWidget):
     definitionRequested(str, int, int)
     runStateChanged(bool)
     cellAdded(object)
+    terminalVisibilityRequested(bool)
+        Emitted instead of showing the terminal inline once a host has taken
+        it with :meth:`take_terminal`.
     """
 
     textChanged = QtCore.Signal()
@@ -977,6 +990,7 @@ class NotebookEditor(QtWidgets.QWidget):
     definitionRequested = QtCore.Signal(str, int, int)
     runStateChanged = QtCore.Signal(bool)
     cellAdded = QtCore.Signal(object)
+    terminalVisibilityRequested = QtCore.Signal(bool)
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
@@ -985,6 +999,7 @@ class NotebookEditor(QtWidgets.QWidget):
         self._cells: list[NotebookCell] = []
         self._active_cell: NotebookCell | None = None
         self._focus_cell: NotebookCell | None = None
+        self._terminal_detached = False
         self._source_nb: dict | None = None
 
         self._beacon = QtGui.QTextDocument(self)
@@ -1099,13 +1114,46 @@ class NotebookEditor(QtWidgets.QWidget):
         return bar
 
     def _on_terminal_toggled(self, visible: bool) -> None:
-        """Show or hide the attached terminal, giving the cells its height."""
+        """Show or hide the terminal, wherever it currently lives.
+
+        A hosted notebook does not own the terminal's geometry -- the host put
+        it in a dock beside its other panels -- so the request is forwarded and
+        the host decides. Standalone, the notebook shows it in its own splitter.
+        """
         if self.terminal is None:
+            return
+        if self._terminal_detached:
+            self.terminalVisibilityRequested.emit(visible)
             return
         self.terminal.setVisible(visible)
         if visible and self.splitter.sizes()[1] == 0:
             total = sum(self.splitter.sizes()) or self.height()
             self.splitter.setSizes([max(1, total - 130), 130])
+
+    def take_terminal(self) -> QtWidgets.QWidget:
+        """Hand the kernel terminal to a host that will dock it elsewhere.
+
+        The notebook keeps owning the :class:`Shell`; only the widget moves.
+        After this the notebook's own splitter pane is gone and the toolbar's
+        terminal toggle is forwarded as :attr:`terminalVisibilityRequested`.
+
+        Returns
+        -------
+        QtWidgets.QWidget
+            The :class:`~chisurf.gui.chinsole.Chinsole` this notebook runs on.
+        """
+        if not self._terminal_detached:
+            self._terminal_detached = True
+            self.terminal.setParent(None)
+            self.splitter.setSizes([self.height(), 0])
+        return self.terminal
+
+    def set_terminal_checked(self, visible: bool) -> None:
+        """Reflect the host dock's visibility on the toolbar button."""
+        if self.terminal_button.isChecked() != visible:
+            self.terminal_button.blockSignals(True)
+            self.terminal_button.setChecked(visible)
+            self.terminal_button.blockSignals(False)
 
     def restart_kernel(self) -> None:
         """Replace the shell with a fresh one and clear every prompt.
@@ -1151,7 +1199,10 @@ class NotebookEditor(QtWidgets.QWidget):
         terminal = Chinsole(
             ConsoleConfig(
                 role=ConsoleRole.INTERACTIVE,
-                banner="Notebook kernel — commands typed here share variables with the cells above.\n",
+                banner=(
+                    "Notebook kernel — commands typed here share variables"
+                    " with the cells above.\n"
+                ),
                 history_path=False,
             ),
             parent=self,
@@ -1177,7 +1228,9 @@ class NotebookEditor(QtWidgets.QWidget):
                 widget.deleteLater()
         for index, cell in enumerate(self._cells):
             if index > 0:
-                self.stack.addWidget(self._make_insert_button(index))
+                self.stack.addWidget(
+                    self._make_insert_button(index), 0, QtCore.Qt.AlignHCenter
+                )
             self.stack.addWidget(cell)
         self.stack.addWidget(self.add_row)
         self.stack.addStretch(1)
@@ -1193,17 +1246,19 @@ class NotebookEditor(QtWidgets.QWidget):
         button.setObjectName("notebook_insert_button")
         button.setText("＋")
         button.setAutoRaise(True)
-        button.setFixedHeight(9)
-        button.setSizePolicy(
-            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed
-        )
+        button.setFixedSize(26, 11)
         font = button.font()
         font.setPointSizeF(max(6.0, font.pointSizeF() - 3.0))
         button.setFont(font)
+        # An explicit transparent background is not decoration: the app theme
+        # gives every QToolButton a filled, bordered background, and a
+        # full-width one of those between each pair of cells reads as a thick
+        # separator bar rather than as an affordance.
         button.setStyleSheet(
-            "QToolButton#notebook_insert_button { color: #bbb; border: none; }"
+            "QToolButton#notebook_insert_button"
+            " { background: transparent; border: none; color: palette(mid); }"
             "QToolButton#notebook_insert_button:hover"
-            " { color: #333; background: palette(midlight); }"
+            " { background: palette(highlight); color: palette(highlighted-text); }"
         )
         button.setToolTip("Insert a code cell between these two cells")
         button.clicked.connect(
@@ -1403,7 +1458,10 @@ class NotebookEditor(QtWidgets.QWidget):
         _ensure_nbformat()
         self._clear_cells()
         nb = nbformat.v4.new_notebook()
-        nb.metadata.setdefault("kernelspec", {"display_name": "Python 3", "language": "python", "name": "python3"})
+        nb.metadata.setdefault(
+            "kernelspec",
+            {"display_name": "Python 3", "language": "python", "name": "python3"},
+        )
         nb.metadata.setdefault("language_info", {"name": "python"})
         nb.cells = [nbformat.v4.new_code_cell(source="")]
         self._source_nb = nb
@@ -1581,7 +1639,9 @@ class NotebookEditor(QtWidgets.QWidget):
 
     def _write_busy(self, cell: NotebookCell) -> None:
         """Tell the user a cell is still running."""
-        cell.output.append_text("the notebook is still running a cell; wait for it to finish\n", kind="stderr")
+        cell.output.append_text(
+            "the notebook is still running a cell; wait for it to finish\n", kind="stderr"
+        )
         cell.output.setVisible(True)
 
     def _cell_source_name(self, index: int) -> str:
