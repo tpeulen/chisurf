@@ -696,7 +696,11 @@ def _load_display_config() -> dict:
             "segments_circle": 12,
             "max_bonds": 20000,
             "bond_max_length": 1.9,
-            "ambient_occlusion": False,
+            # `ambient_occlusion` used to live here. It was a second switch for
+            # something `occlusion.enabled` already governs: registered,
+            # reachable through `set sticks.ambient_occlusion`, stored on change,
+            # and read by nothing. Removed rather than wired up, because sticks
+            # bake no occlusion at all -- there was nothing for it to turn on.
         },
         "colors": {
             "base": [0.8, 0.8, 1.0, 1.0],

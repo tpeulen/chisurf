@@ -1,4 +1,41 @@
-## ChiMOL ambient occlusion is wired the wrong way round, and two settings are dead
+## ✅ FIXED — ChiMOL ambient occlusion was wired the wrong way round
+
+**Fixed 2026-08-10.** Kept here because the *first* diagnosis below was wrong in
+an instructive way, and because one gap remains.
+
+**What it actually was.** Not a stray `not`. The coarse per-residue estimate at
+`view.py` is a deliberate **fallback** for when the fine per-vertex bake does not
+run — its own comment says running both would darken the cartoon twice — but it
+was gated on `not enabled` while the fine bake contributed *nothing* to a tube
+cartoon. So the fallback was the only occlusion a cartoon ever received, and it
+appeared exactly when the user asked for none. Flipping the `not`, which is what
+the first diagnosis proposed, would have deleted the only working AO.
+
+**The fix.** `_occlusion_enabled()` is now the single reader of
+`occlusion.enabled`; `_estimate_ambient_occlusion` is wrapped in `view.py` so all
+**six** call sites honour it (only one consulted it before, and five shaded
+regardless); and the coarse path asks `_per_vertex_occlusion_available()` rather
+than a second, disagreeing condition — which preserves the no-double-darkening
+intent in both directions. `sticks.ambient_occlusion` is deleted: a second switch
+for the same concept, read by nothing, and sticks bake no occlusion for it to
+turn on. Guarded by `test/test_occlusion_switch.py`, which asserts **both**
+directions — a test that only checks "the image changed" passes an inverted
+switch, which is how this survived.
+
+Measured after, on lit pixels only: cartoon 91.05 on / 142.66 off, spheres 109.74
+/ 158.96, surface 106.78 / 109.49 — on darkens in every case.
+
+**Still open: `sticks` has no ambient-occlusion path at all** (toggling the switch
+changes exactly 0 pixels). That is a missing feature, not a broken switch, and it
+is why `sticks` is excluded from the guardrail's parametrisation.
+
+**Two measurement traps worth keeping.** The first grab after a rebuild can be a
+partially initialised framebuffer that comes back as *noise* — it poisoned a
+brightness comparison until the image was looked at, and the fix is to discard one
+grab. And the background is most of the frame, so a mean over the whole image
+dilutes an inverted switch into what looks like rounding; compare lit pixels only.
+
+## Superseded first diagnosis, and the other two settings
 
 **2026-08-10.** Found while capturing the OpenGL render baselines before the
 WebGPU port ([chimol-web](/plugins/chimol-web.md)). All three were measured with

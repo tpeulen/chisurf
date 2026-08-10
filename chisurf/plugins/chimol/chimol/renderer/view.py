@@ -37,7 +37,7 @@ from ..geometry import (
     _build_trace_ups,
     backbone_index_map,
     _compute_center_radius,
-    _estimate_ambient_occlusion,
+    _estimate_ambient_occlusion as _estimate_ambient_occlusion_raw,
     directional_occlusion,
     occlusion_from_spheres,
     _extract_ca_trace,
@@ -73,6 +73,42 @@ logger = logging.getLogger(__name__)
 # and its surface/metaball density sigmas match the structured path once the
 # coordinates are scaled by ``_scale_factor``.
 _DEFAULT_ATOM_RADIUS_A = 1.5
+
+
+def _estimate_ambient_occlusion(*args, **kwargs):
+    """Per-point ambient occlusion, honouring the global switch.
+
+    Six representations bake occlusion through this name and only one of them
+    consulted ``occlusion.enabled`` -- so turning occlusion off left sticks,
+    balls, beads and both surface paths shading exactly as before. Gating here
+    rather than at each call site means the switch governs all of them and a new
+    representation cannot forget to ask.
+
+    Returns
+    -------
+    numpy.ndarray or None
+        The occlusion array, or ``None`` when occlusion is switched off. Callers
+        already treat ``None`` as "no occlusion available".
+    """
+    if not _occlusion_enabled():
+        return None
+    return _estimate_ambient_occlusion_raw(*args, **kwargs)
+
+
+def _occlusion_enabled() -> bool:
+    """Whether ambient occlusion is switched on.
+
+    One reader for one key. Every representation that bakes occlusion asks this
+    rather than reaching into the config itself: the three that did not were
+    applying occlusion whatever the setting said, and the one that did read it
+    read it backwards, so the switch did the opposite of what it promised.
+
+    Returns
+    -------
+    bool
+        The ``occlusion.enabled`` flag, defaulting to ``True``.
+    """
+    return bool((_DISPLAY_CONFIG.get("occlusion") or {}).get("enabled", True))
 
 
 def _get_picking_module():
@@ -5169,6 +5205,36 @@ class MolView(QtWidgets.QWidget):
             )
         return pts, rad
 
+    def _per_vertex_occlusion_available(self) -> bool:
+        """Whether the fine per-vertex bake will actually shade a mesh.
+
+        Mirrors :meth:`_shade_by_occlusion`'s preconditions so a caller can ask,
+        *before* a mesh exists, whether that mesh will come back shaded. The
+        coarse per-residue estimate is the fallback for precisely this question
+        and must not run alongside the fine bake, or the geometry darkens twice.
+
+        Keeping the two in one place is the point: they were separate conditions
+        that disagreed, which is how switching occlusion off became the only way
+        to see any.
+
+        Returns
+        -------
+        bool
+            ``True`` when a call to :meth:`_shade_by_occlusion` would return a
+            non-``None`` occlusion array.
+        """
+        if getattr(self, "_draft_quality", False):
+            return False
+        cfg = _DISPLAY_CONFIG.get("occlusion") or {}
+        if not bool(cfg.get("enabled", True)):
+            return False
+        if float(cfg.get("darkness", 0.7)) <= 0.0:
+            return False
+        try:
+            return self._occlusion_occluders() is not None
+        except Exception:
+            return False
+
     def _shade_by_occlusion(
         self,
         verts: np.ndarray,
@@ -5434,11 +5500,19 @@ class MolView(QtWidgets.QWidget):
         if colors_for_tube is not None:
             colors_for_tube = colors_for_tube[mask]
 
-        # The per-residue neighbour count below is superseded by the per-vertex
+        # The per-residue neighbour count here is superseded by the per-vertex
         # occlusion applied to the finished mesh, which is normal-aware and an
-        # order of magnitude finer. Running both would darken the cartoon twice.
+        # order of magnitude finer. Running both would darken the cartoon twice,
+        # so this is a *fallback* -- it runs only when the fine bake will not.
+        #
+        # It was gated on `not enabled`, which made switching occlusion **off**
+        # the only way to see any: the fine bake contributes nothing to a tube
+        # cartoon, so the fallback was the sole source of shading and appeared
+        # exactly when the user asked for none. Asking "is occlusion on, and is
+        # the fine bake going to run?" gets both directions right, and keeps the
+        # mutual exclusion the comment above is about.
         occ_ca = None
-        if not bool((_DISPLAY_CONFIG.get("occlusion") or {}).get("enabled", True)):
+        if _occlusion_enabled() and not self._per_vertex_occlusion_available():
             try:
                 occ_ca = _estimate_ambient_occlusion(
                     coords_cartoon,
@@ -5790,6 +5864,11 @@ class MolView(QtWidgets.QWidget):
                 max_neighbors=int(balls_cfg.get("ao_max_neighbors", 24)),
             )
         except Exception:
+            return rgb
+        if occ is None:
+            # Occlusion is switched off, or the estimate declined. Unshaded is
+            # the right answer; `np.asarray(None)` is 0-d and the shape check
+            # below would raise on it.
             return rgb
         occ = np.asarray(occ, dtype=float)
         if occ.shape[0] != pts.shape[0]:

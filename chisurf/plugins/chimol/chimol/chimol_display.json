@@ -184,8 +184,7 @@
     "radius": 0.15,
     "segments_circle": 12,
     "max_bonds": 20000,
-    "bond_max_length": 1.9,
-    "ambient_occlusion": false
+    "bond_max_length": 1.9
   },
   "colors": {
     "base": [
