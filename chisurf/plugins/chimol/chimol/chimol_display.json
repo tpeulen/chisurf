@@ -1,5 +1,5 @@
 {
-  "_version": 11,
+  "_version": 12,
   "renderer": {
     "backend": "wgpu"
   },
@@ -407,7 +407,7 @@
     "shadow_darkness": 0.45,
     "shadow_softness": 1.6,
     "shadow_distance": 20.0,
-    "shadow_strength": 1.0,
+    "shadow_strength": 2.8,
     "shadow_direction": [
       0.4,
       0.4,

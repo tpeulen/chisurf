@@ -34,11 +34,6 @@ except Exception:  # pragma: no cover - standalone/file-path loading (see tests)
     build_guide_frames = None  # type: ignore[assignment]
     sample_cartoon_curve = None  # type: ignore[assignment]
 
-# Numba is required. The `_HAVE_NUMBA` guard it replaces made every kernel
-# here optional and every fallback beside it unexercised -- which is how the
-# ray tracer's pure-NumPy twin came to be silently broken while every test
-# passed.
-import numba as nb
 
 # Two consecutive ribbon normals count as a genuine 180-degree flip (rather
 # than an honest rotation of the ribbon) only when they are close to
@@ -51,87 +46,96 @@ _ANTIPARALLEL_DOT = 0.9
 _ARROW_BREADTH_SCALE = 2.2
 
 
-#: Whether it is safe to write numba's on-disk cache from this module.
-#:
-#: A cached entry records the name of the module that compiled it, and numba
-#: re-*imports* that name when it loads the entry back. This file is also loaded
-#: by path (``spec_from_file_location``) by the standalone render tests, where
-#: the name is a synthetic one no import can resolve. The cache key does not
-#: include the module name, so the entry that load wrote was then handed to
-#: ordinary runs -- and ``add_structure`` on any protein died in numba's own
-#: cache loader with ``ModuleNotFoundError: No module named '<dynamic>'``.
-#:
-#: ``__package__`` is the parent package on a real import and empty on a
-#: by-path load, which is exactly the distinction that matters here.
-_NB_CACHE = bool(__package__)
 
+def _extrude_rings(path, side, up, scale, shape_verts, shape_norms,
+                   verts, norms):
+    """Place every ring vertex and its normal, writing into ``verts``/``norms``.
 
+    Parameters
+    ----------
+    path : numpy.ndarray
+        ``(m, 3)`` ring centres along the extrusion.
+    side, up : numpy.ndarray
+        ``(m, 3)`` the two cross-section axes at each ring.
+    scale : numpy.ndarray
+        ``(m, 2)`` half-breadth along ``side`` and ``up``.
+    shape_verts, shape_norms : numpy.ndarray
+        ``(s, 3)`` cross-section outline and its outward normals; only
+        components 1 and 2 are read, component 0 being along the path.
+    verts, norms : numpy.ndarray
+        ``(m * s, 3)`` outputs, filled ring by ring.
 
-@nb.jit(nopython=True, nogil=True, cache=_NB_CACHE)  # type: ignore[misc]
-def _extrude_rings_nb(path, side, up, scale, shape_verts, shape_norms,
-                      verts, norms):
-    """Place every ring vertex and its normal, with no temporaries.
-
-    The NumPy form of this broadcasts to ``(m, s, 3)``, which is the right
-    shape for the arithmetic and the wrong one for the sizes involved: a
-    cartoon extrudes about sixty segments per frame, each a handful of rings
-    of a dozen vertices, so the per-call dispatch and the intermediate
-    allocations cost more than the multiplications do.
+    Notes
+    -----
+    Normals transform by the inverse transpose, i.e. the reciprocal of each axis
+    scale — without it a flared arrowhead is lit as if it were still the
+    un-flared rectangle.
     """
     m = path.shape[0]
     s = shape_verts.shape[0]
-    for i in range(m):
-        px, py, pz = path[i, 0], path[i, 1], path[i, 2]
-        sx, sy, sz = side[i, 0], side[i, 1], side[i, 2]
-        ux, uy, uz = up[i, 0], up[i, 1], up[i, 2]
-        ks, ku = scale[i, 0], scale[i, 1]
-        # Normals transform by the inverse transpose, i.e. the reciprocal of
-        # each axis scale -- without it a flared arrowhead is lit as if it
-        # were still the un-flared rectangle.
-        inv_s = 1.0 / ks if abs(ks) > 1e-9 else 1.0
-        inv_u = 1.0 / ku if abs(ku) > 1e-9 else 1.0
-        base = i * s
-        for j in range(s):
-            a = shape_verts[j, 1] * ks
-            b = shape_verts[j, 2] * ku
-            row = base + j
-            verts[row, 0] = px + a * sx + b * ux
-            verts[row, 1] = py + a * sy + b * uy
-            verts[row, 2] = pz + a * sz + b * uz
-            na = shape_norms[j, 1] * inv_s
-            nb_ = shape_norms[j, 2] * inv_u
-            nx = na * sx + nb_ * ux
-            ny = na * sy + nb_ * uy
-            nz = na * sz + nb_ * uz
-            length = math.sqrt(nx * nx + ny * ny + nz * nz)
-            if length > 1e-10:
-                nx /= length
-                ny /= length
-                nz /= length
-            norms[row, 0] = nx
-            norms[row, 1] = ny
-            norms[row, 2] = nz
+    if m == 0 or s == 0:
+        return
 
-@nb.jit(nopython=True, nogil=True, cache=_NB_CACHE)  # type: ignore[misc]
-def _propagate_ups_nb(tangents, hint, has_hint, ups):
+    breadth = shape_verts[None, :, 1] * scale[:, 0:1]
+    height = shape_verts[None, :, 2] * scale[:, 1:2]
+    ring = (path[:, None, :]
+            + breadth[:, :, None] * side[:, None, :]
+            + height[:, :, None] * up[:, None, :])
+    verts[: m * s] = ring.reshape(m * s, 3)
+
+    # `np.where` would evaluate both branches, so a zero scale still divides by
+    # zero and warns before the result is discarded. A guarded `divide` writes
+    # only where the condition holds.
+    inverse_side = np.ones_like(scale[:, 0:1])
+    np.divide(1.0, scale[:, 0:1], out=inverse_side, where=np.abs(scale[:, 0:1]) > 1e-9)
+    inverse_up = np.ones_like(scale[:, 1:2])
+    np.divide(1.0, scale[:, 1:2], out=inverse_up, where=np.abs(scale[:, 1:2]) > 1e-9)
+    normal = (
+        (shape_norms[None, :, 1] * inverse_side)[:, :, None] * side[:, None, :]
+        + (shape_norms[None, :, 2] * inverse_up)[:, :, None] * up[:, None, :]
+    )
+    length = np.linalg.norm(normal, axis=2, keepdims=True)
+    np.divide(normal, length, out=normal, where=length > 1e-10)
+    norms[: m * s] = normal.reshape(m * s, 3)
+
+
+def _transport_ups(tangents, hint, has_hint, ups):
     """Parallel transport along the path: genuinely sequential, so a loop.
 
-    Each up vector is carried from the one before it, which is the whole
-    point of parallel transport and the reason this cannot be vectorised.
-    Compiled instead.
+    Parameters
+    ----------
+    tangents : numpy.ndarray
+        ``(m, 3)`` unit tangents along the path.
+    hint : numpy.ndarray
+        ``(m, 3)`` preferred up-vector per step, tried before the carried one.
+    has_hint : bool
+        Whether ``hint`` holds anything.
+    ups : numpy.ndarray
+        ``(m, 3)`` output, written in place.
+
+    Notes
+    -----
+    Each up vector is carried from the one before it, which is the whole point
+    of parallel transport and the reason this cannot be vectorised. The loop
+    runs on Python floats pulled out of the arrays once: indexing a numpy array
+    element by element is what made the earlier version slow, not the
+    arithmetic.
     """
     m = tangents.shape[0]
     have_prev = False
     px = py = pz = 0.0
+    tangent_rows = tangents.tolist()
+    hint_rows = hint.tolist() if has_hint else None
+    out_rows = []
     for i in range(m):
-        tx, ty, tz = tangents[i, 0], tangents[i, 1], tangents[i, 2]
+        tx, ty, tz = tangent_rows[i]
         ox = oy = oz = 0.0
         found = False
         for source in range(2):
             if source == 0:
                 if not has_hint:
                     continue
-                vx, vy, vz = hint[i, 0], hint[i, 1], hint[i, 2]
+                vx, vy, vz = hint_rows[i]
             else:
                 if not have_prev:
                     continue
@@ -169,11 +173,11 @@ def _propagate_ups_nb(tangents, hint, has_hint, ups):
                 ox, oy, oz = 0.0, 1.0, 0.0
         if have_prev and (px * ox + py * oy + pz * oz) < 0.0:
             ox, oy, oz = -ox, -oy, -oz
-        ups[i, 0] = ox
-        ups[i, 1] = oy
-        ups[i, 2] = oz
+        out_rows.append((ox, oy, oz))
         px, py, pz = ox, oy, oz
         have_prev = True
+    if out_rows:
+        ups[:m] = out_rows
 
 
 def _batch_cross(a: np.ndarray, b: np.ndarray) -> np.ndarray:
@@ -462,7 +466,7 @@ def _propagate_ups(
             hint = None
 
     ups = np.empty((m, 3), dtype=float)
-    _propagate_ups_nb(
+    _transport_ups(
         np.ascontiguousarray(tangents),
         np.ascontiguousarray(hint if hint is not None else tangents),
         hint is not None,
@@ -725,7 +729,7 @@ def _extrude_shape(
             scale = np.repeat(scale_in.reshape(-1, 1)[:m], 2, axis=1)
         else:
             scale = scale_in[:m, :2]
-    _extrude_rings_nb(
+    _extrude_rings(
         np.ascontiguousarray(path, dtype=float),
         np.ascontiguousarray(side, dtype=float),
         np.ascontiguousarray(up, dtype=float),

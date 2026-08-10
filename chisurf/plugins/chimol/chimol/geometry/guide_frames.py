@@ -35,34 +35,52 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
-# Numba is required. The `_HAVE_NUMBA` guard it replaces made every kernel
-# here optional and every fallback beside it unexercised -- which is how the
-# ray tracer's pure-NumPy twin came to be silently broken while every test
-# passed.
-import numba as nb
 import numpy as np
 
 
-@nb.jit(nopython=True, nogil=True, cache=True)  # type: ignore[misc]
-def _flip_sweep_nb(out, candidates, normals, interior):
-    """PyMOL's flip-consistency sweep: pick, per residue, whichever of the
-    two candidate orientations agrees with the neighbour already decided.
+def _flip_sweep(out, candidates, normals, interior):
+    """PyMOL's flip-consistency sweep, in place.
 
-    Sequential by nature -- each step reads the neighbour it just wrote --
-    so there is nothing to vectorise, and at three floats per residue the
-    NumPy version spent its time on dispatch. Compiled instead.
+    Pick, per residue, whichever of the candidate orientations agrees with the
+    neighbour already decided.
+
+    Parameters
+    ----------
+    out : numpy.ndarray
+        ``(n, 3)`` orientations; read one step behind and written in place.
+    candidates : numpy.ndarray
+        ``(n, c, 3)`` the orientations to choose between at each residue.
+    normals : numpy.ndarray
+        ``(n, 3)`` segment directions; ``normals[a - 1]`` is the axis the choice
+        at ``a`` is measured around.
+    interior : numpy.ndarray
+        ``(n,)`` bool; residues the sweep may rewrite.
+
+    Notes
+    -----
+    Sequential by nature — each step reads the neighbour it just wrote — so
+    there is nothing to vectorise. It runs on Python floats pulled out of the
+    arrays once, rather than on numpy scalars: at three floats per residue the
+    per-element numpy dispatch is the entire cost, and a chain is a few hundred
+    residues long.
     """
     n = out.shape[0]
+    if n < 3:
+        return
+    rows = out.tolist()
+    picks = candidates.tolist()
+    axes = normals.tolist()
+    flags = interior.tolist()
     for a in range(1, n - 1):
-        if not interior[a]:
+        if not flags[a]:
             continue
-        ax, ay, az = normals[a - 1, 0], normals[a - 1, 1], normals[a - 1, 2]
+        ax, ay, az = axes[a - 1]
         if ax == 0.0 and ay == 0.0 and az == 0.0:
             continue
         axis_len = math.sqrt(ax * ax + ay * ay + az * az)
         ax, ay, az = ax / axis_len, ay / axis_len, az / axis_len
 
-        ox, oy, oz = out[a - 1, 0], out[a - 1, 1], out[a - 1, 2]
+        ox, oy, oz = rows[a - 1]
         along = ox * ax + oy * ay + oz * az
         px, py, pz = ox - along * ax, oy - along * ay, oz - along * az
         plen = math.sqrt(px * px + py * py + pz * pz)
@@ -71,9 +89,7 @@ def _flip_sweep_nb(out, candidates, normals, interior):
 
         best = -1.0e308
         chosen = 0
-        for c in range(candidates.shape[1]):
-            cx, cy, cz = (candidates[a, c, 0], candidates[a, c, 1],
-                          candidates[a, c, 2])
+        for c, (cx, cy, cz) in enumerate(picks[a]):
             along = cx * ax + cy * ay + cz * az
             qx, qy, qz = cx - along * ax, cy - along * ay, cz - along * az
             qlen = math.sqrt(qx * qx + qy * qy + qz * qz)
@@ -83,9 +99,10 @@ def _flip_sweep_nb(out, candidates, normals, interior):
             if score > best:
                 best = score
                 chosen = c
-        out[a, 0] = candidates[a, chosen, 0]
-        out[a, 1] = candidates[a, chosen, 1]
-        out[a, 2] = candidates[a, chosen, 2]
+        rows[a] = picks[a][chosen]
+        out[a, 0] = rows[a][0]
+        out[a, 1] = rows[a][1]
+        out[a, 2] = rows[a][2]
 
 
 __all__ = [
@@ -312,7 +329,7 @@ def refine_normals(
     # so it stays a loop. The arithmetic is on plain floats, though: at three
     # components per residue, the four NumPy calls this used to make per step
     # were almost entirely call overhead and temporary arrays.
-    _flip_sweep_nb(
+    _flip_sweep(
         out,
         np.ascontiguousarray(candidates),
         np.ascontiguousarray(normals, dtype=float),

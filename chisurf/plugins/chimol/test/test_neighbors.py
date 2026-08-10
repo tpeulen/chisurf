@@ -1,7 +1,10 @@
-"""Tests for the numba cell-list neighbour queries and the EDT (no scipy).
+"""Tests for the radius neighbour queries and the EDT.
 
-Each kernel is checked against a brute-force NumPy reference, so the suite has no
-scipy / scikit-image dependency.
+Each query is checked against the full distance matrix. That reference is
+deliberately the dumbest possible one — no index, no cutoff, no cleverness — so
+a bug in the k-d tree route cannot also be a bug in what it is compared against.
+The boundary conventions differ between queries and are part of what is pinned:
+:func:`count_within_radius` is strict, :func:`within_distance_mask` inclusive.
 """
 
 from __future__ import annotations
@@ -9,7 +12,10 @@ from __future__ import annotations
 import numpy as np
 
 from chisurf.plugins.chimol.chimol.geometry.neighbors import (
+    blocked_cross_pairs,
     count_within_radius,
+    cross_pairs_within,
+    self_pairs_within,
     shade_from_atoms,
     within_distance_mask,
 )
@@ -60,6 +66,74 @@ def test_shade_from_atoms_matches_brute_force():
         else:
             ref[i] = colors[int(np.argmin(dd))]
     assert np.allclose(mesh, ref, atol=1e-9)
+
+
+def test_count_within_radius_is_strict_at_the_boundary():
+    """A point at exactly the radius does not count.
+
+    Grid-aligned input is where this stops being hypothetical -- a
+    marching-cubes vertex set has exact distances in it -- and the queries below
+    it were calibrated against a cell list that tested ``d2 < r2``.
+    """
+    pts = np.array([[0.0, 0.0, 0.0], [3.0, 0.0, 0.0], [2.999, 0.0, 0.0]])
+    # The 0-1 pair sits exactly on the radius and is excluded; 0-2 and 1-2 are
+    # inside it. Widen the radius by a hair and the excluded pair joins in.
+    assert np.array_equal(count_within_radius(pts, 3.0), [1, 1, 2])
+    assert np.array_equal(count_within_radius(pts, 3.0001), [2, 2, 2])
+
+
+def test_within_distance_mask_is_inclusive_at_the_boundary():
+    coords = np.array([[0.0, 0.0, 0.0], [5.0, 0.0, 0.0]])
+    targets = np.array([[0.0, 0.0, 0.0]])
+    assert np.array_equal(within_distance_mask(coords, targets, 5.0), [True, True])
+    assert np.array_equal(within_distance_mask(coords, targets, 4.999), [True, False])
+
+
+def test_self_pairs_within_matches_brute_force():
+    rng = np.random.default_rng(4)
+    pts = rng.standard_normal((600, 3)) * 12.0
+    r = 3.0
+    got = self_pairs_within(pts, r)
+
+    d2 = np.sum((pts[:, None, :] - pts[None, :, :]) ** 2, axis=2)
+    upper = np.triu(np.ones_like(d2, dtype=bool), k=1)
+    ref = np.argwhere(upper & (d2 <= r * r))
+    assert np.array_equal(got, ref)
+
+
+def test_cross_pairs_within_matches_brute_force_and_keeps_zero_distances():
+    rng = np.random.default_rng(5)
+    a = rng.standard_normal((200, 3)) * 8.0
+    b = np.concatenate([rng.standard_normal((150, 3)) * 8.0, a[:5]])
+    r = 2.5
+    i, j = cross_pairs_within(a, b, r)
+
+    d2 = np.sum((a[:, None, :] - b[None, :, :]) ** 2, axis=2)
+    ref = np.argwhere(d2 <= r * r)
+    got = np.stack((i, j), axis=1)
+    order = np.lexsort((got[:, 1], got[:, 0]))
+    assert np.array_equal(got[order], ref)
+    # The five duplicated points sit at distance zero, which a sparse-matrix
+    # output type would drop as a structural zero.
+    assert (d2[got[:, 0], got[:, 1]] == 0.0).sum() == 5
+
+
+def test_blocked_cross_pairs_covers_every_pair_whatever_the_budget():
+    rng = np.random.default_rng(6)
+    a = rng.standard_normal((400, 3)) * 6.0
+    b = rng.standard_normal((300, 3)) * 6.0
+    r = 3.0
+    expected = np.argwhere(
+        np.sum((a[:, None, :] - b[None, :, :]) ** 2, axis=2) <= r * r
+    )
+
+    for budget in (17, 1000, 10_000_000):
+        rows = []
+        for start, _stop, i, j in blocked_cross_pairs(a, b, r, budget=budget):
+            rows.append(np.stack((i + start, j), axis=1))
+        got = np.concatenate(rows) if rows else np.zeros((0, 2), dtype=np.int64)
+        order = np.lexsort((got[:, 1], got[:, 0]))
+        assert np.array_equal(got[order], expected), f"budget={budget}"
 
 
 def test_distance_transform_edt_matches_brute_force():

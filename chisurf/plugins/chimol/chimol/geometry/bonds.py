@@ -1,64 +1,35 @@
 from __future__ import annotations
 
-from typing import Optional
-
-# Numba is required. The `_HAVE_NUMBA` guard it replaces made every kernel
-# here optional and every fallback beside it unexercised -- which is how the
-# ray tracer's pure-NumPy twin came to be silently broken while every test
-# passed.
-import numba as nb
 import numpy as np
 
-
-@nb.jit(nopython=True, nogil=True, cache=True)  # type: ignore[misc]
-def _build_bond_pairs_nb(pts: np.ndarray, max_length: float) -> np.ndarray:
-    n = pts.shape[0]
-    r2 = max_length * max_length
-    if n < 2 or r2 <= 0.0:
-        return np.zeros((0, 2), dtype=np.int64)
-
-    count = 0
-    for i in range(n - 1):
-        x0 = pts[i, 0]
-        y0 = pts[i, 1]
-        z0 = pts[i, 2]
-        for j in range(i + 1, n):
-            dx = pts[j, 0] - x0
-            dy = pts[j, 1] - y0
-            dz = pts[j, 2] - z0
-            if dx * dx + dy * dy + dz * dz <= r2:
-                count += 1
-
-    if count == 0:
-        return np.zeros((0, 2), dtype=np.int64)
-
-    out = np.empty((count, 2), dtype=np.int64)
-    k = 0
-    for i in range(n - 1):
-        x0 = pts[i, 0]
-        y0 = pts[i, 1]
-        z0 = pts[i, 2]
-        for j in range(i + 1, n):
-            dx = pts[j, 0] - x0
-            dy = pts[j, 1] - y0
-            dz = pts[j, 2] - z0
-            if dx * dx + dy * dy + dz * dz <= r2:
-                out[k, 0] = i
-                out[k, 1] = j
-                k += 1
-
-    return out
+from .neighbors import self_pairs_within
 
 
 def _build_bond_pairs(coords: np.ndarray, max_length: float) -> np.ndarray:
     """Return an array of (i, j) index pairs for simple covalent bonds.
 
     Bonds are inferred purely from distance using a cutoff ``max_length`` in
-    the *raw* coordinate frame. A simple grid-based neighbor search is used
-    so the cost grows roughly linearly with the number of atoms. This is a
-    lightweight approximation similar in spirit to pyball's stick geometry.
-    """
+    the *raw* coordinate frame.
 
+    Parameters
+    ----------
+    coords : numpy.ndarray
+        ``(n, 3)`` positions.
+    max_length : float
+        Inclusive distance cutoff.
+
+    Returns
+    -------
+    numpy.ndarray
+        ``(m, 2)`` index pairs with ``i < j``, ordered by ``i`` then ``j``.
+
+    Notes
+    -----
+    This used to be an O(n²) numba double loop that ran *twice* — once to count
+    the pairs and once to fill them. The neighbour query behind it is a k-d
+    tree, so the cost is now output-sensitive: a 100k-atom structure no longer
+    evaluates 5×10⁹ distances to find its ~10⁵ bonds.
+    """
     pts = np.asarray(coords, dtype=float)
     if pts.ndim != 2 or pts.shape[0] < 2:
         return np.zeros((0, 2), dtype=int)
@@ -67,51 +38,7 @@ def _build_bond_pairs(coords: np.ndarray, max_length: float) -> np.ndarray:
     if not np.isfinite(r) or r <= 0.0:
         return np.zeros((0, 2), dtype=int)
 
-    n = pts.shape[0]
-    if n > 1:
-        return _build_bond_pairs_nb(pts, r)
-
-    cell = r
-    inv_cell = 1.0 / cell
-
-    centered = pts - pts.mean(axis=0)
-    ijk = np.floor(centered * inv_cell).astype(np.int32)
-
-    grid: dict[tuple[int, int, int], list[int]] = {}
-    for idx, key in enumerate(map(tuple, ijk)):
-        grid.setdefault(key, []).append(idx)
-
-    neighbor_offsets = [
-        (dx, dy, dz)
-        for dx in (-1, 0, 1)
-        for dy in (-1, 0, 1)
-        for dz in (-1, 0, 1)
-    ]
-
-    r2 = r * r
-    bonds: list[tuple[int, int]] = []
-
-    for i, key in enumerate(map(tuple, ijk)):
-        ix, iy, iz = key
-        cand_idx: list[int] = []
-        for dx, dy, dz in neighbor_offsets:
-            cand_idx.extend(grid.get((ix + dx, iy + dy, iz + dz), []))
-
-        if not cand_idx:
-            continue
-
-        pi = pts[i]
-        for j in cand_idx:
-            if j <= i:
-                continue
-            d = pts[j] - pi
-            if float(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]) <= r2:
-                bonds.append((i, j))
-
-    if not bonds:
-        return np.zeros((0, 2), dtype=int)
-
-    return np.asarray(bonds, dtype=int)
+    return self_pairs_within(pts, r)
 
 
 #: ``connect_cutoff`` in ``layer1/SettingInfo.h``: how far *beyond* the mean of two

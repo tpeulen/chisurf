@@ -3,46 +3,8 @@ from __future__ import annotations
 import math
 from typing import Optional
 
-# Numba is required. The `_HAVE_NUMBA` guard it replaces made every kernel
-# here optional and every fallback beside it unexercised -- which is how the
-# ray tracer's pure-NumPy twin came to be silently broken while every test
-# passed.
-import numba as nb
 import numpy as np
 from qtpy import QtCore, QtGui
-
-
-@nb.jit(nopython=True, nogil=True, cache=True)
-def _pick_from_ray_nb(
-    pts: np.ndarray,
-    cam: np.ndarray,
-    ray_dir: np.ndarray,
-    thresh2: float,
-) -> int:
-    n = pts.shape[0]
-    best_i = -1
-    best_d2 = thresh2
-    for i in range(n):
-        x0 = pts[i, 0]
-        y0 = pts[i, 1]
-        z0 = pts[i, 2]
-        vx = x0 - cam[0]
-        vy = y0 - cam[1]
-        vz = z0 - cam[2]
-        proj = vx * ray_dir[0] + vy * ray_dir[1] + vz * ray_dir[2]
-        if proj <= 0.0:
-            continue
-        cx = cam[0] + proj * ray_dir[0]
-        cy = cam[1] + proj * ray_dir[1]
-        cz = cam[2] + proj * ray_dir[2]
-        dx = x0 - cx
-        dy = y0 - cy
-        dz = z0 - cz
-        d2 = dx * dx + dy * dy + dz * dz
-        if d2 < best_d2:
-            best_d2 = d2
-            best_i = i
-    return best_i
 
 
 def _project_points_to_screen(

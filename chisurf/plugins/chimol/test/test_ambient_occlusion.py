@@ -14,14 +14,51 @@ import pathlib
 import numpy as np
 import pytest
 
-from chisurf.plugins.chimol.chimol.geometry.ambient import (
-    _occlusion_from_spheres_numpy,
-    occlusion_from_spheres,
-)
+from chisurf.plugins.chimol.chimol.geometry.ambient import occlusion_from_spheres
 
 _ORIGIN = np.array([[0.0, 0.0, 0.0]])
 _UP = np.array([[0.0, 0.0, 1.0]])
 _DOWN = np.array([[0.0, 0.0, -1.0]])
+
+
+def _brute_force_occlusion(points, normals, centers, radii, max_distance, strength):
+    """The whole ``(N, M)`` distance matrix, with no spatial index at all.
+
+    Parameters
+    ----------
+    points, normals : numpy.ndarray
+        ``(N, 3)`` vertices and unit normals.
+    centers : numpy.ndarray
+        ``(M, 3)`` occluder centres.
+    radii : numpy.ndarray
+        ``(M,)`` occluder radii.
+    max_distance, strength : float
+        As :func:`occlusion_from_spheres`.
+
+    Returns
+    -------
+    numpy.ndarray
+        ``(N,)`` occlusion in ``[0, 1]``.
+
+    Notes
+    -----
+    This lives in the test rather than beside the implementation on purpose. It
+    used to be a second production code path, which meant the thing that was
+    supposed to check the fast route was itself unexercised outside this file —
+    the same shape of mistake as a fallback that is never taken. Here it is
+    unambiguously a reference: quadratic, obvious, and impossible to reach by
+    accident.
+    """
+    v = centers[None, :, :] - points[:, None, :]
+    d2 = np.einsum("ijk,ijk->ij", v, v)
+    with np.errstate(invalid="ignore", divide="ignore"):
+        d = np.sqrt(d2)
+        cos_theta = np.einsum("ijk,ik->ij", v, normals) / d
+        sin_a = np.minimum(radii[None, :] / d, 1.0)
+        cov = 1.0 - np.sqrt(np.maximum(1.0 - sin_a * sin_a, 0.0))
+    valid = (d2 < max_distance ** 2) & (d2 > 1e-12) & (d > radii[None, :]) & (cos_theta > 0.0)
+    contrib = np.where(valid, cos_theta * cov, 0.0)
+    return np.clip(1.0 - np.exp(-strength * contrib.sum(axis=1)), 0.0, 1.0)
 
 
 def _occ(normals, centers, radii, **kw) -> float:
@@ -114,9 +151,9 @@ def test_max_distance_bounds_what_is_considered():
 
 
 # --------------------------------------------------------------------------- #
-# The two implementations must agree
+# The indexed route must agree with the unindexed one
 # --------------------------------------------------------------------------- #
-def test_the_numba_and_numpy_paths_agree():
+def test_the_indexed_and_brute_force_paths_agree():
     rng = np.random.default_rng(0)
     points = rng.normal(size=(500, 3)) * 5.0
     normals = rng.normal(size=(500, 3))
@@ -127,7 +164,7 @@ def test_the_numba_and_numpy_paths_agree():
     fast = occlusion_from_spheres(
         points, normals, centers, radii, max_distance=8.0, strength=1.3
     )
-    reference = _occlusion_from_spheres_numpy(
+    reference = _brute_force_occlusion(
         points, normals, centers, radii, 8.0, 1.3
     )
     assert np.allclose(fast, reference, atol=1e-12)
@@ -342,8 +379,7 @@ def _shadow(normals, centers, radii, **kw) -> float:
         _ORIGIN, normals, np.atleast_2d(centers), np.atleast_1d(radii),
         _LIGHT, **kw
     )
-    if result is None:
-        pytest.skip("numba unavailable; directional shadowing is numba-only")
+    assert result is not None
     return float(result[0])
 
 
@@ -352,7 +388,18 @@ def test_an_open_sky_casts_no_shadow():
 
 
 def test_an_occluder_on_the_light_ray_shadows():
-    assert _shadow(_UP, [0.0, 0.0, 5.0], 2.0, max_distance=20.0) > 0.8
+    """One occluder squarely on the ray blocks exactly once.
+
+    A sphere the ray passes through the centre of contributes ``blocked = 1``,
+    so the shadow is ``1 - exp(-strength)``. The threshold here used to be
+    ``> 0.8``, which no single contribution can reach at ``strength = 1`` — it
+    was calibrated against a cell list that stepped along the ray in strides of
+    ``max_distance`` and searched overlapping 3×3×3 neighbourhoods, counting the
+    same occluder two or three times. Pinning the exact value is what stops that
+    from being re-introduced as "the shadows look stronger".
+    """
+    lit = _shadow(_UP, [0.0, 0.0, 5.0], 2.0, max_distance=20.0)
+    assert lit == pytest.approx(1.0 - math.exp(-1.0))
 
 
 def test_an_occluder_beside_the_ray_does_not():

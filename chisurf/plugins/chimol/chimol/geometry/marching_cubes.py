@@ -1,18 +1,19 @@
-"""Self-contained marching cubes (NumPy + optional numba).
+"""Self-contained marching cubes, vectorised over cells.
 
 ChiMOL's surface/metaball/AV representations need to extract an isosurface mesh
 from a scalar grid. The scientific stack normally supplies this
-(``skimage.measure.marching_cubes``), but this codebase is being narrowed to
-depend only on IMP (plus NumPy/numba) — scipy and scikit-image are not permitted
-runtime dependencies. IMP *can* produce an isosurface
-(``IMP.display.IsosurfaceGeometry``) but its CGAL mesher is ~2 s for a 60³ grid,
-far too slow for interactive rendering.
+(``skimage.measure.marching_cubes``), which is a large dependency for one
+function; IMP *can* produce an isosurface (``IMP.display.IsosurfaceGeometry``)
+but its CGAL mesher is ~2 s for a 60³ grid, far too slow for interactive
+rendering.
 
 This module is the standard Lorensen–Cline marching cubes with the canonical
-edge/triangle tables. The per-cell work is a numba kernel; a NumPy fallback keeps
-it importable without numba. Vertex normals are taken from the trilinearly
-interpolated grid gradient (as ``skimage`` does), so the output is a drop-in for
-the ``(verts, faces, normals)`` the renderer expects.
+edge/triangle tables. Every cell is processed at once with array operations
+rather than in a per-cell loop, which is what lets it be plain NumPy: the case
+index is a bit-packed comparison over eight shifted views of the grid, and the
+triangle table is applied by fancy indexing. Vertex normals are taken from the
+trilinearly interpolated grid gradient (as ``skimage`` does), so the output is a
+drop-in for the ``(verts, faces, normals)`` the renderer expects.
 
 Corner / edge numbering (Lorensen–Cline):
 
@@ -24,11 +25,6 @@ Corner / edge numbering (Lorensen–Cline):
 
 from __future__ import annotations
 
-# Numba is required. The `_HAVE_NUMBA` guard it replaces made every kernel
-# here optional and every fallback beside it unexercised -- which is how the
-# ray tracer's pure-NumPy twin came to be silently broken while every test
-# passed.
-import numba as _nb
 import numpy as np
 
 # Corner offsets in (x, y, z).
@@ -115,86 +111,102 @@ def _load_tri_table() -> np.ndarray:
 _TRI_TABLE = _load_tri_table()
 
 
-@_nb.njit(cache=True)  # type: ignore[misc]
-def _mc_count(grid, level, corners, tri_table):
-    nx, ny, nz = grid.shape
-    n_tri = 0
-    for ci in range(nx - 1):
-        for cj in range(ny - 1):
-            for ck in range(nz - 1):
-                idx = 0
-                for c in range(8):
-                    if grid[ci + corners[c, 0], cj + corners[c, 1], ck + corners[c, 2]] < level:
-                        idx |= 1 << c
-                if idx == 0 or idx == 255:
-                    continue
-                t = 0
-                while tri_table[idx, t] != -1:
-                    n_tri += 1
-                    t += 3
-    return n_tri
+#: Unit step along each grid axis, for turning an edge id back into the pair of
+#: corners it joins.
+_AXIS_STEP = np.eye(3, dtype=np.int64)
 
-@_nb.njit(cache=True)  # type: ignore[misc]
-def _mc_fill(grid, level, corners, edge_corners, edge_map, tri_table, n_tri):
-    # Exact allocation from the counting pass avoids the huge worst-case
-    # (n_cells * 5) buffer that dominated runtime for large grids.
-    verts = np.empty((n_tri * 3, 3), dtype=np.float64)
-    faces = np.empty((n_tri, 3), dtype=np.int64)
-    nx, ny, nz = grid.shape
-    # Weld vertices via a per-grid-edge index so adjacent cells share the
-    # vertex on their common edge (matches skimage's vertex count and gives
-    # a connected mesh rather than 3 loose verts per triangle).
-    edge_vid = np.full(3 * nx * ny * nz, -1, dtype=np.int64)
-    nv = 0
-    nf = 0
-    cv = np.empty(8, dtype=np.float64)
-    for ci in range(nx - 1):
-        for cj in range(ny - 1):
-            for ck in range(nz - 1):
-                idx = 0
-                for c in range(8):
-                    vx = grid[ci + corners[c, 0], cj + corners[c, 1], ck + corners[c, 2]]
-                    cv[c] = vx
-                    if vx < level:
-                        idx |= 1 << c
-                if idx == 0 or idx == 255:
-                    continue
-                t = 0
-                while tri_table[idx, t] != -1:
-                    for kk in range(3):
-                        e = tri_table[idx, t + kk]
-                        axis = edge_map[e, 0]
-                        ei = ci + edge_map[e, 1]
-                        ej = cj + edge_map[e, 2]
-                        ek = ck + edge_map[e, 3]
-                        gid = ((axis * nx + ei) * ny + ej) * nz + ek
-                        vid = edge_vid[gid]
-                        if vid == -1:
-                            a = edge_corners[e, 0]
-                            b = edge_corners[e, 1]
-                            va = cv[a]
-                            vb = cv[b]
-                            denom = vb - va
-                            if denom < 1e-12 and denom > -1e-12:
-                                mu = 0.5
-                            else:
-                                mu = (level - va) / denom
-                            verts[nv, 0] = ci + corners[a, 0] + mu * (corners[b, 0] - corners[a, 0])
-                            verts[nv, 1] = cj + corners[a, 1] + mu * (corners[b, 1] - corners[a, 1])
-                            verts[nv, 2] = ck + corners[a, 2] + mu * (corners[b, 2] - corners[a, 2])
-                            vid = nv
-                            edge_vid[gid] = vid
-                            nv += 1
-                        faces[nf, kk] = vid
-                    nf += 1
-                    t += 3
-    return verts[:nv], faces[:nf]
 
 def _mc_kernel(grid, level, corners, edge_corners, edge_map, tri_table):
-    n_tri = _mc_count(grid, level, corners, tri_table)
-    if n_tri == 0:
+    """Triangulate a scalar grid, returning welded vertices in index units.
+
+    Parameters
+    ----------
+    grid : numpy.ndarray
+        ``(nx, ny, nz)`` scalar field.
+    level : float
+        Iso value; a corner counts as inside when its value is ``< level``.
+    corners : numpy.ndarray
+        ``(8, 3)`` cube-corner offsets.
+    edge_corners : numpy.ndarray
+        ``(12, 2)`` the corners each cube edge joins. Unused here — the edge is
+        identified by its grid-global axis and lower corner instead — and kept
+        so the signature still describes the Lorensen–Cline tables.
+    edge_map : numpy.ndarray
+        ``(12, 4)`` axis and lower-corner offset of each cube edge.
+    tri_table : numpy.ndarray
+        ``(256, 16)`` edge triples per case, ``-1`` padded.
+
+    Returns
+    -------
+    tuple
+        ``(verts, faces)`` in grid-index units.
+
+    Notes
+    -----
+    Vertices are welded by *grid* edge, not by cube edge, so two cells sharing an
+    edge share the vertex on it — that is what makes the output a connected mesh
+    with skimage's vertex count rather than three loose vertices per triangle.
+    Identifying the edge globally also removes the interpolation's dependence on
+    which cell reached it first: the value is read at the edge's lower corner and
+    its neighbour along the axis, whichever cube corner that happens to be.
+    """
+    nx, ny, nz = grid.shape
+    inside = grid < level
+    case = np.zeros((nx - 1, ny - 1, nz - 1), dtype=np.int64)
+    for bit in range(8):
+        ox, oy, oz = corners[bit]
+        case |= inside[ox:ox + nx - 1, oy:oy + ny - 1, oz:oz + nz - 1] << bit
+
+    active = np.flatnonzero(((case != 0) & (case != 255)).ravel())
+    if active.size == 0:
         return np.zeros((0, 3), dtype=np.float64), np.zeros((0, 3), dtype=np.int64)
-    return _mc_fill(grid, level, corners, edge_corners, edge_map, tri_table, n_tri)
+
+    rows = tri_table[case.ravel()[active]]
+    cells = []
+    triangles = []
+    # Five triangle slots per case, terminated by -1; a whole slot at a time is
+    # five array operations instead of a loop over cells.
+    for slot in range(tri_table.shape[1] // 3):
+        column = slot * 3
+        used = rows[:, column] != -1
+        if not used.any():
+            continue
+        cells.append(active[used])
+        triangles.append(rows[used, column:column + 3])
+    if not cells:
+        return np.zeros((0, 3), dtype=np.float64), np.zeros((0, 3), dtype=np.int64)
+
+    cell_index = np.concatenate(cells)
+    edge_index = np.concatenate(triangles)
+
+    ci, cj, ck = np.unravel_index(cell_index, case.shape)
+    corner = np.repeat(np.stack((ci, cj, ck), axis=1), 3, axis=0)
+    edge = edge_index.reshape(-1)
+    axis = edge_map[edge, 0]
+    corner = corner + edge_map[edge, 1:]
+
+    identifier = ((axis * nx + corner[:, 0]) * ny + corner[:, 1]) * nz + corner[:, 2]
+    unique, inverse = np.unique(identifier, return_inverse=True)
+    faces = inverse.reshape(-1, 3).astype(np.int64)
+
+    volume = nx * ny * nz
+    vaxis = unique // volume
+    rest = unique % volume
+    vi = rest // (ny * nz)
+    rest = rest % (ny * nz)
+    vj = rest // nz
+    vk = rest % nz
+    lower = np.stack((vi, vj, vk), axis=1)
+    upper = lower + _AXIS_STEP[vaxis]
+
+    below = grid[lower[:, 0], lower[:, 1], lower[:, 2]]
+    above = grid[upper[:, 0], upper[:, 1], upper[:, 2]]
+    span = above - below
+    # A flat edge has no crossing to locate; the midpoint is what the tables
+    # assume, and dividing by the span would be a division by zero.
+    mu = np.where(np.abs(span) < 1e-12, 0.5, (level - below) / np.where(span == 0.0, 1.0, span))
+    verts = lower.astype(np.float64) + mu[:, None] * _AXIS_STEP[vaxis]
+    return verts, faces
 
 
 def marching_cubes(grid, level, spacing=(1.0, 1.0, 1.0)):

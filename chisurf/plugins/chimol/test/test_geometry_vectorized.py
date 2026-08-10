@@ -263,22 +263,22 @@ def test_build_frames_parity():
         assert np.allclose(_ref_frames(tang, ups), _build_frames(tang, ups), atol=1e-9)
 
 
-def test_ambient_occlusion_cell_list_matches_brute_force():
-    """The O(n) cell-list AO must be bit-identical to the O(n^2) reference.
+def test_ambient_occlusion_matches_brute_force():
+    """The indexed AO must be bit-identical to the O(n^2) reference.
 
-    The public estimator dispatches to the cell list; the numba double loop is
-    the exact reference. They must agree across sparse and dense point clouds
-    and different radius/cap settings.
-
-    The skip that used to guard this is gone with `_HAVE_NUMBA`: numba is a hard
-    requirement, so there is no configuration in which this comparison does not
-    run.
+    The estimator counts neighbours through a k-d tree; the full distance matrix
+    is the exact reference. They must agree across sparse and dense point clouds
+    and different radius/cap settings — including the strict ``<`` boundary,
+    which is why the reference below uses ``<`` and not ``<=``.
     """
     rng = np.random.default_rng(5)
     for n, r, mn in [(500, 4.0, 32), (1500, 6.0, 24), (400, 3.0, 16), (3000, 5.0, 32)]:
         pts = rng.standard_normal((n, 3)) * 15.0
         got = ambient._estimate_ambient_occlusion(pts, r, mn)
-        ref = np.clip(ambient._estimate_ambient_occlusion_nb(pts, r, mn), 0.0, 1.0)
+        delta = pts[:, None, :] - pts[None, :, :]
+        inside = np.einsum("ijk,ijk->ij", delta, delta) < r * r
+        np.fill_diagonal(inside, False)
+        ref = np.clip(inside.sum(axis=1) / float(mn), 0.0, 1.0)
         assert got is not None
         assert np.array_equal(got, ref), f"AO mismatch n={n} r={r}: {np.abs(got - ref).max()}"
 

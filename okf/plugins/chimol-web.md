@@ -162,17 +162,74 @@ stops matching is a question, not a failure. `capture_gl_baseline.py` keeps
 
 ## Do these next, in order
 
-1. **Remove the numba JITs (user request, not started).** The measurement:
-   **29 `njit` call sites** in `chimol/`, concentrated in
-   `renderer/bvh.py` (4), `geometry/neighbors.py` (4), `renderer/raytracer.py`
-   (3), `geometry/marching_cubes.py` (2), `analysis/ss.py` (2), with single
-   users in `geometry/{surface,cartoon,ambient,bonds,guide_frames}.py` and
-   `app/picking.py`. Re-derive with
-   `grep -rn "nb.njit\|njit(" chisurf/plugins/chimol/chimol/`.
+1. **Finish removing the numba JITs — 22 of 29 done, 7 left.** What remains is
+   the CPU ray tracer and nothing else: `renderer/bvh.py` (4) and
+   `renderer/raytracer.py` (3). Everything in `geometry/`, `analysis/` and
+   `app/` is numba-free, and
+   [`test/test_no_numba.py`](/plugins/chimol-web.md) keeps it that way against a
+   **shrinking** `ALLOWED` list holding exactly those two files. A second test
+   in the same module fails if a file on the list stops importing numba and is
+   not struck off, so the list cannot record work as outstanding after it is
+   done.
 
-   **What this blocks:** numba does not exist in Pyodide, so every one of these
-   is a wall between chimol and the browser — this item and item 2 are the same
-   item seen from two ends.
+   **What is left is not the same kind of problem.** The 22 were expressions
+   that vectorise or loops with a compiled equivalent. `closest_hit` is a
+   per-ray descent of a BVH carrying its own traversal stack, and `_jit_trace`
+   is a per-pixel loop around it with shading, transparency layers and shadow
+   rays inside — there is no numpy spelling of that. It needs either a
+   wavefront restructuring (rays in batches, a stack array per ray, "while any
+   ray still has a node to pop") or a WGSL compute pass, and by the trap below
+   a CPU route is still mandatory whichever is chosen.
+
+   **What the 22 cost, measured** (numba → new, on this machine):
+
+   | kernel | numba | now | |
+   |---|---|---|---|
+   | sphere distance grid, 96³ × 11k atoms | 3,236 ms | **450 ms** | **7.2× faster** |
+   | sphere distance grid, 64³ × 2.5k atoms | 236 ms | **97 ms** | 2.4× faster |
+   | marching cubes, 96³ | 138–280 ms | 126–144 ms | about even |
+   | `count_within_radius`, 11k points | 7.0 ms | 7.2 ms | even |
+   | euclidean distance transform, 64³ | 8.1 ms | 22 ms | 2.8× slower |
+   | gaussian / wyvill density splat | 0.5–1.8 ms | 14 ms | slower, and irrelevant |
+   | `shade_from_atoms`, 40k verts × 11k atoms | 10 ms | 151 ms | **15× slower** |
+   | `directional_occlusion`, 148L | 7 ms | 66 ms | 9× slower |
+
+   Every one of them is exact: the parity harness compared each against the
+   committed numba kernel in one process and the density grids, the distance
+   grid, the EDT and the neighbour queries agree to the last bit, marching
+   cubes to identical triangle *and* vertex counts and identical surface area.
+
+   **The distance grid was the side-finding, and it is fixed.** It was O(voxels
+   × atoms) with no spatial index — 8.2×10⁹ distance evaluations for one 96³
+   grid. It is now an *additively weighted* nearest-neighbour query done exactly
+   in two stages (k nearest, then a bound check that almost never escalates),
+   which is why the replacement is faster than the compiled code it replaces.
+
+   **`shade_from_atoms` is the one that got materially worse** and is the first
+   candidate for the GPU: it is a per-vertex gather with no cross-vertex
+   dependence. 135 ms of its 151 is the pair enumeration plus eight scatter-adds
+   over 750k pairs; a dense `(vertices, k)` reformulation was tried and measured
+   *slower* (193 ms), so the ragged form is the right CPU shape and the next
+   move is a compute shader, not more numpy.
+
+   **The one behaviour change, and how it was paid for.** `directional_occlusion`
+   stepped along the shadow ray in strides of `shadow_distance` and searched a
+   3×3×3 cell neighbourhood at each stride — and consecutive neighbourhoods
+   overlap, so an occluder in a shared cell was accumulated **two or three
+   times**. Measured on 148L the accumulated blockage was 2.79× too large at the
+   median (2.0 at p10, 3.0 at p90), varying per vertex with how the cells
+   happened to fall. The kernel now counts each occluder once, and display-config
+   **version 12** carries `occlusion.shadow_strength` 1.0 → 2.8 so the rendered
+   depth is unchanged: a before/after pair with the old kernel monkeypatched in
+   for the first half differs by 2.18 % of pixels and is indistinguishable by
+   eye. A test pins the single-count value exactly, because the threshold it
+   replaced (`> 0.8`, unreachable at strength 1) had been calibrated on the bug.
+
+   Two other defects fell out of the same work: `_build_bond_pairs` was an O(n²)
+   double loop run *twice* (count, then fill) and is now output-sensitive; and
+   `shade_from_atoms`'s `nearest` was searched only in the query cell and its 26
+   neighbours, returning `-1` when all were empty — which the caller used as an
+   index, painting such vertices with the **last** atom's colour.
 
    **Approaches already measured and rejected — do not repeat them:** a no-op
    `njit` shim (exactly `NUMBA_DISABLE_JIT=1`) is **300–680× slower**
@@ -180,18 +237,12 @@ stops matching is a question, not a failure. `capture_gl_baseline.py` keeps
    6,496 ms), and mypyc cannot rescue it — **1.04×** on numpy code, because it
    unboxes Python natives and cannot see a numpy buffer, so `arr[i]` stays a
    `PyObject_GetItem`. The routing that *is* supported is in **Kernel routing**
-   below: WGSL compute where it is data-parallel (distance grid **229×**,
-   marching cubes 4–19×), scipy's compiled equivalents where one exists
-   (`cKDTree` 19.6 ms vs numba 6.7; `ndimage.distance_transform_edt` 32.6 vs
-   9.6 — 3–6× off numba is nothing for one-shot scene construction), then
-   Pythran, then C99 with `-msimd128`.
+   below.
 
    **The trap:** a CPU route is **mandatory** for every GPU kernel, because a
-   standalone HTML opened from `file://` may have no WebGPU adapter at all.
-   Also expect `NUMBA_NUM_THREADS` contamination while you work — several
-   unrelated chimol tests fail with *"cannot set NUMBA_NUM_THREADS once the
-   threads have been launched"* purely from test ordering; re-run the file
-   alone before believing a failure.
+   standalone HTML opened from `file://` may have no WebGPU adapter at all —
+   which is why the CPU port came first and the compute shaders go on top of it,
+   not instead of it.
 
 2. **Begin the JS/browser port (user request, not started).** The groundwork is
    deliberate and already in place: `wgsl/` composes by **concatenation**

@@ -1,6 +1,57 @@
 # Update Log
 
 ## 2026-08-10
+* **22 of chimol's 29 numba kernels are gone, and the slowest one got 7x
+  faster.** numba does not exist in Pyodide, so every `njit` in `chimol/` was a
+  wall between the renderer and the browser port that shares its WGSL with the
+  desktop; the whole of `geometry/`, `analysis/` and `app/` is now numba-free
+  and only the CPU ray tracer (`renderer/bvh.py`, `renderer/raytracer.py`)
+  remains, held by a shrinking allow-list in
+  `chisurf/plugins/chimol/test/test_no_numba.py` -- with a second test that
+  fails if a file on the list stops needing it, so the list cannot outlive the
+  work. The routing was by measurement, not by category: `cKDTree` and
+  `ndimage.distance_transform_edt` where an exact compiled equivalent exists,
+  vectorised NumPy where the loop was avoidable (marching cubes is now one
+  bit-packed comparison over eight shifted views), and plain Python floats where
+  the recurrence is sequential and a chain is a few hundred residues long. Each
+  was compared against the committed numba kernel *in one process*: the density
+  grids, the distance grid, the EDT and the neighbour queries agree to the last
+  bit, marching cubes to identical triangle and vertex counts and identical
+  surface area.
+  **The side-finding is fixed rather than recorded again.** The sphere distance
+  grid was O(voxels x atoms) with no spatial index -- 8.2e9 distance evaluations
+  for one 96^3 grid, 3.2 s. It is an *additively weighted* nearest-neighbour
+  query (`min(d_i - r_i)`, so the nearest sphere is not necessarily the answer),
+  now done exactly in two stages: the k nearest give a candidate, and every
+  sphere outside that set is at least `d_k` away and so cannot beat
+  `d_k - r_max`. On real radii nothing escalates. **450 ms**, and the same
+  numbers to the bit.
+  **One behaviour changed, and was paid for in the config.**
+  `directional_occlusion` stepped along the shadow ray in strides of
+  `shadow_distance` and searched a 3x3x3 cell neighbourhood at each stride --
+  and consecutive neighbourhoods *overlap*, so an occluder in a shared cell was
+  counted two or three times. On 148L the accumulated blockage was 2.79x too
+  large at the median and varied per vertex (2.0 at p10, 3.0 at p90) with how
+  the cells happened to fall. Display-config **version 12** carries
+  `occlusion.shadow_strength` 1.0 -> 2.8 so the rendered depth is unchanged: a
+  before/after with the old kernel monkeypatched in for the first half differs
+  by 2.18 % of pixels and is indistinguishable by eye. The test that would have
+  caught the double count had been calibrated on it (`> 0.8`, which no single
+  contribution can reach at strength 1) and now pins the exact value.
+  **Two more defects fell out of the same reading.** `_build_bond_pairs` was an
+  O(n^2) double loop run *twice*, once to count and once to fill, and is now
+  output-sensitive. And `shade_from_atoms` searched for the nearest atom only in
+  the query cell and its 26 neighbours, returning `-1` when all were empty --
+  which the caller used as an index, so a vertex far from every atom was painted
+  with the **last** atom's colour rather than the nearest one.
+  **A third, found by rendering:** `show mesh` raised `AttributeError` on the
+  WebGPU renderer because the metaball builder put a plain `dict` where
+  `SceneObject.material` is typed `Optional[Material]`, and the backend reads
+  `.opacity` off it to decide the transparent pass. It is a `Material` now, and
+  carries the metaball's own alpha into the sort order for the first time.
+  Recorded in [plugins/chimol-web](plugins/chimol-web.md), whose "do these next"
+  now starts from what is left rather than from all of it.
+
 * **`pixi` cannot solve the default environment, so every `pixi run` task is unavailable** — filed in [known-issues](references/known-issues.md). `pixi.toml:78` declares `wgpu = "*"` under `[dependencies]`, but conda-forge ships the package as **`wgpu-py`**: the *import* name is `wgpu`, the *package* name is not. `rendercanvas` beside it resolves fine, so the block is right in intent and wrong in one word. Until it is fixed, `build-extensions`, `test` and `chisurf` all fail before doing anything, and a rebuild has to be driven by hand — which is how the `CONDA_PREFIX`/HDF5 mishap recorded above happened. Two candidate fixes are in the entry; renaming to `wgpu-py` is almost certainly the right one, since the package does exist on conda-forge.
 * **ChiMOL is now excluded from the numba guard rather than allow-listed in it.** Its files were being ported by the WebGPU effort at a steady clip, and every one that landed made `test_allowlist_has_no_stale_entries` fail — nine times in one session — which is *news about someone else's progress*, not a signal about this work. `test_numba_seam.py` skips `chisurf/plugins/chimol/` outright now, and the allow-list no longer names those files. The scope is stated honestly in the concept: 30 chisurf-owned files remain of the 48 this work covers, with ChiMOL's 11 tracked by the port that owns them.
 

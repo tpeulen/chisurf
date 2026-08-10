@@ -14,7 +14,7 @@ try:
 except Exception:  # pragma: no cover - moview can run without chisurf
     _cs_settings = None
 
-DISPLAY_CONFIG_VERSION: int = 11
+DISPLAY_CONFIG_VERSION: int = 12
 """Current version of the chimol_display.json schema.
 
 Increment this when keys are added, renamed, or removed, **or when a default
@@ -111,6 +111,23 @@ DISPLAY_CONFIG_MIGRATIONS: dict[int, dict[str, dict[str, tuple]]] = {
             # the colour the "the selection is not visible" report was looking
             # at.
             "color": ([1.0, 1.0, 0.0, 1.0], [1.0, 0.2, 0.6, 1.0]),
+        },
+    },
+    12: {
+        "occlusion": {
+            # Not a change of look: a change of arithmetic that had to be paid
+            # for somewhere. The cast-shadow kernel used to step along the
+            # shadow ray in strides of `shadow_distance` and search a 3x3x3 cell
+            # neighbourhood at each stride -- and consecutive neighbourhoods
+            # overlap, so an occluder in a shared cell was accumulated two or
+            # three times. Measured on 148L the accumulated blockage came out
+            # 2.79x too large at the median (2.0 at p10, 3.0 at p90), varying
+            # per vertex with how the cells happened to fall.
+            #
+            # The kernel now counts each occluder once. Carrying the strength
+            # keeps every existing scene looking as it did, rather than making
+            # a correctness fix arrive as "the shadows went pale".
+            "shadow_strength": (1.0, 2.8),
         },
     },
 }
@@ -855,7 +872,9 @@ def _load_display_config() -> dict:
             "shadow_darkness": 0.45,
             "shadow_softness": 1.6,
             "shadow_distance": 20.0,
-            "shadow_strength": 1.0,
+            # 2.8 rather than 1.0 because the kernel stopped counting each
+            # occluder two or three times; see the version-12 migration.
+            "shadow_strength": 2.8,
             # Toward the light source; PyMOL's `light` default (-0.4, -0.4,
             # -1) is the direction it travels, so this is its negation.
             "shadow_direction": [0.4, 0.4, 1.0],

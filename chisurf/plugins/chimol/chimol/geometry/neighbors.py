@@ -1,243 +1,319 @@
-"""Uniform-grid (cell-list) neighbour queries — NumPy/numba, no scipy.
+"""Radius neighbour queries — the one spatial primitive chimol builds on.
 
-ChiMOL's surface colouring, surface-atom masking and distance-based selection
-previously leaned on ``scipy.spatial.cKDTree``. This module provides the same
-queries with a numba cell list (cell size = query radius, so every point within
-the radius lies in the query cell or one of its 26 neighbours), keeping the
-renderer dependent only on IMP / NumPy / numba.
+Every "what is near what" question in the renderer routes through this module:
+ambient occlusion counts neighbours, bond inference enumerates close pairs,
+surface colouring gathers atoms around a mesh vertex, and distance selections
+mask coordinates against a target set. They were four hand-written uniform-grid
+cell lists in four files; they are now four calls to :mod:`scipy.spatial`'s
+compiled k-d tree.
+
+Why not the cell lists
+----------------------
+They were numba kernels, and numba does not exist in Pyodide — so each one was a
+wall between chimol and the browser. The cheap way out is dead: a no-op ``njit``
+shim (exactly ``NUMBA_DISABLE_JIT=1``) runs 300–680× slower, and no
+whole-program Python→WASM compiler closes that, because it cannot see through a
+numpy buffer. ``cKDTree`` is compiled, ships in Pyodide, and lands within a small
+factor of the numba cell list — nothing for work done once per scene rebuild.
+
+The k-d tree is also *better* than what it replaces for non-uniform input. A
+cell list sized to the query radius degenerates when density varies (one cell
+holding most of the points), which is exactly what a coarse-grained bead model
+next to an all-atom chain looks like.
+
+Boundary conventions are preserved from the kernels they replace and differ
+between queries — :func:`count_within_radius` is strict, :func:`within_distance_mask`
+is inclusive. That is not tidy, but it is what the callers were calibrated
+against, and ``nextafter`` makes strictness exact rather than approximate.
 """
 
 from __future__ import annotations
 
-# Numba is required. The `_HAVE_NUMBA` guard it replaces made every kernel
-# here optional and every fallback beside it unexercised -- which is how the
-# ray tracer's pure-NumPy twin came to be silently broken while every test
-# passed.
-import numba as _nb
 import numpy as np
+from scipy.spatial import cKDTree
+
+#: Pass to every ``cKDTree`` query that accepts it. The tree releases the GIL,
+#: so this is a real speedup on the vertex counts a marching-cubes surface
+#: produces.
+_WORKERS = -1
 
 
-@_nb.njit(cache=True, nogil=True)  # type: ignore[misc]
-def _build_cells(pts, cell):
+def _as_points(values) -> np.ndarray:
+    """Return ``values`` as a contiguous ``(n, 3)`` float array.
+
+    Parameters
+    ----------
+    values : array_like
+        Anything convertible to coordinates.
+
+    Returns
+    -------
+    numpy.ndarray
+        ``(n, 3)`` float64, empty when the input is not point-shaped.
+    """
+    arr = np.ascontiguousarray(values, dtype=np.float64)
+    if arr.ndim != 2 or arr.shape[1] != 3:
+        return np.zeros((0, 3), dtype=np.float64)
+    return arr
+
+
+def count_within_radius(points, radius) -> np.ndarray:
+    """Return the number of *other* points strictly within ``radius`` of each.
+
+    Parameters
+    ----------
+    points : array_like
+        ``(n, 3)`` positions.
+    radius : float
+        Query radius; a point at exactly this distance does **not** count.
+
+    Returns
+    -------
+    numpy.ndarray
+        ``(n,)`` int64 counts, excluding the point itself.
+    """
+    pts = _as_points(points)
     n = pts.shape[0]
-    minx = miny = minz = 1.0e30
-    maxx = maxy = maxz = -1.0e30
-    for i in range(n):
-        x = pts[i, 0]
-        y = pts[i, 1]
-        z = pts[i, 2]
-        if x < minx:
-            minx = x
-        if x > maxx:
-            maxx = x
-        if y < miny:
-            miny = y
-        if y > maxy:
-            maxy = y
-        if z < minz:
-            minz = z
-        if z > maxz:
-            maxz = z
-    inv = 1.0 / cell
-    nx = int((maxx - minx) * inv) + 1
-    ny = int((maxy - miny) * inv) + 1
-    nz = int((maxz - minz) * inv) + 1
-    head = np.full(nx * ny * nz, -1, dtype=np.int64)
-    nxt = np.empty(n, dtype=np.int64)
-    for i in range(n):
-        ix = int((pts[i, 0] - minx) * inv)
-        iy = int((pts[i, 1] - miny) * inv)
-        iz = int((pts[i, 2] - minz) * inv)
-        c = (ix * ny + iy) * nz + iz
-        nxt[i] = head[c]
-        head[c] = i
-    return head, nxt, minx, miny, minz, nx, ny, nz, inv
+    if n == 0 or not np.isfinite(radius) or radius <= 0.0:
+        return np.zeros(n, dtype=np.int64)
+    # The cell lists this replaces tested `d2 < r2`. The largest float below
+    # `radius` turns the tree's inclusive query into that exact test, rather
+    # than an approximation of it that differs on grid-aligned input -- which
+    # a marching-cubes vertex set is.
+    strict = float(np.nextafter(float(radius), 0.0))
+    tree = cKDTree(pts)
+    counts = tree.query_ball_point(pts, strict, return_length=True, workers=_WORKERS)
+    return np.asarray(counts, dtype=np.int64) - 1
 
-@_nb.njit(cache=True, nogil=True)  # type: ignore[misc]
-def _count_within_radius_nb(pts, radius):
+
+def within_distance_mask(coords, targets, dist) -> np.ndarray:
+    """Mask of ``coords`` lying within ``dist`` of any point in ``targets``.
+
+    Parameters
+    ----------
+    coords : array_like
+        ``(n, 3)`` positions to test.
+    targets : array_like
+        ``(m, 3)`` positions to measure against.
+    dist : float
+        Cutoff, inclusive.
+
+    Returns
+    -------
+    numpy.ndarray
+        ``(n,)`` bool.
+    """
+    pts = _as_points(coords)
+    tgt = _as_points(targets)
     n = pts.shape[0]
-    counts = np.zeros(n, dtype=np.int64)
-    if n <= 1 or radius <= 0.0:
-        return counts
-    head, nxt, minx, miny, minz, nx, ny, nz, inv = _build_cells(pts, radius)
-    r2 = radius * radius
-    for i in range(n):
-        xi = pts[i, 0]
-        yi = pts[i, 1]
-        zi = pts[i, 2]
-        ix = int((xi - minx) * inv)
-        iy = int((yi - miny) * inv)
-        iz = int((zi - minz) * inv)
-        cnt = 0
-        for dx in range(-1, 2):
-            jx = ix + dx
-            if jx < 0 or jx >= nx:
-                continue
-            for dy in range(-1, 2):
-                jy = iy + dy
-                if jy < 0 or jy >= ny:
-                    continue
-                for dz in range(-1, 2):
-                    jz = iz + dz
-                    if jz < 0 or jz >= nz:
-                        continue
-                    j = head[(jx * ny + jy) * nz + jz]
-                    while j != -1:
-                        if j != i:
-                            ddx = pts[j, 0] - xi
-                            ddy = pts[j, 1] - yi
-                            ddz = pts[j, 2] - zi
-                            if ddx * ddx + ddy * ddy + ddz * ddz < r2:
-                                cnt += 1
-                        j = nxt[j]
-        counts[i] = cnt
-    return counts
-
-@_nb.njit(cache=True, nogil=True)  # type: ignore[misc]
-def _within_distance_mask_nb(coords, targets, dist):
-    n = coords.shape[0]
-    mask = np.zeros(n, dtype=np.bool_)
-    m = targets.shape[0]
-    if n == 0 or m == 0 or dist <= 0.0:
-        return mask
-    head, nxt, minx, miny, minz, nx, ny, nz, inv = _build_cells(coords, dist)
-    d2 = dist * dist
-    for t in range(m):
-        tx = targets[t, 0]
-        ty = targets[t, 1]
-        tz = targets[t, 2]
-        ix = int((tx - minx) * inv)
-        iy = int((ty - miny) * inv)
-        iz = int((tz - minz) * inv)
-        for dx in range(-1, 2):
-            jx = ix + dx
-            if jx < 0 or jx >= nx:
-                continue
-            for dy in range(-1, 2):
-                jy = iy + dy
-                if jy < 0 or jy >= ny:
-                    continue
-                for dz in range(-1, 2):
-                    jz = iz + dz
-                    if jz < 0 or jz >= nz:
-                        continue
-                    j = head[(jx * ny + jy) * nz + jz]
-                    while j != -1:
-                        ddx = coords[j, 0] - tx
-                        ddy = coords[j, 1] - ty
-                        ddz = coords[j, 2] - tz
-                        if ddx * ddx + ddy * ddy + ddz * ddz <= d2:
-                            mask[j] = True
-                        j = nxt[j]
-    return mask
-
-# Parallel over vertices. Each iteration writes only to its own row of
-# `out_col`/`grad`/`wsum`/`nearest`, so there is nothing to synchronise --
-# and this one kernel was 87% of a metaball build (0.65 s of 0.75 s on one
-# nuclear-pore spoke) while running on a single core.
-@_nb.njit(cache=True, nogil=True, parallel=True)  # type: ignore[misc]
-def _shade_from_atoms_nb(verts, atoms, colors, sigmas, cutoff):
-    nv = verts.shape[0]
-    out_col = np.zeros((nv, 4), dtype=np.float64)
-    grad = np.zeros((nv, 3), dtype=np.float64)
-    wsum = np.zeros(nv, dtype=np.float64)
-    nearest = np.full(nv, -1, dtype=np.int64)
-    na = atoms.shape[0]
-    if na == 0 or cutoff <= 0.0:
-        return out_col, wsum, grad, nearest
-    head, nxt, minx, miny, minz, nx, ny, nz, inv = _build_cells(atoms, cutoff)
-    c2 = cutoff * cutoff
-    for i in _nb.prange(nv):
-        vx = verts[i, 0]
-        vy = verts[i, 1]
-        vz = verts[i, 2]
-        ix = int((vx - minx) * inv)
-        iy = int((vy - miny) * inv)
-        iz = int((vz - minz) * inv)
-        if ix < 0:
-            ix = 0
-        elif ix >= nx:
-            ix = nx - 1
-        if iy < 0:
-            iy = 0
-        elif iy >= ny:
-            iy = ny - 1
-        if iz < 0:
-            iz = 0
-        elif iz >= nz:
-            iz = nz - 1
-        best = 1.0e30
-        bidx = -1
-        for dx in range(-1, 2):
-            jx = ix + dx
-            if jx < 0 or jx >= nx:
-                continue
-            for dy in range(-1, 2):
-                jy = iy + dy
-                if jy < 0 or jy >= ny:
-                    continue
-                for dz in range(-1, 2):
-                    jz = iz + dz
-                    if jz < 0 or jz >= nz:
-                        continue
-                    j = head[(jx * ny + jy) * nz + jz]
-                    while j != -1:
-                        ddx = vx - atoms[j, 0]
-                        ddy = vy - atoms[j, 1]
-                        ddz = vz - atoms[j, 2]
-                        dd = ddx * ddx + ddy * ddy + ddz * ddz
-                        if dd < best:
-                            best = dd
-                            bidx = j
-                        if dd < c2:
-                            s = sigmas[j]
-                            s2 = s * s
-                            w = np.exp(-dd / (2.0 * s2))
-                            out_col[i, 0] += w * colors[j, 0]
-                            out_col[i, 1] += w * colors[j, 1]
-                            out_col[i, 2] += w * colors[j, 2]
-                            out_col[i, 3] += w * colors[j, 3]
-                            wsum[i] += w
-                            inv_s2 = 1.0 / s2
-                            grad[i, 0] += ddx * inv_s2 * w
-                            grad[i, 1] += ddy * inv_s2 * w
-                            grad[i, 2] += ddz * inv_s2 * w
-                        j = nxt[j]
-        nearest[i] = bidx
-    return out_col, wsum, grad, nearest
+    if n == 0 or tgt.shape[0] == 0 or not np.isfinite(dist) or dist <= 0.0:
+        return np.zeros(n, dtype=bool)
+    # One nearest-target distance per coordinate answers the question directly;
+    # enumerating the pairs would build a list only to throw it away.
+    nearest, _ = cKDTree(tgt).query(pts, k=1, workers=_WORKERS)
+    return np.asarray(nearest) <= float(dist)
 
 
-def count_within_radius(points, radius):
-    """Return the number of other points within ``radius`` of each point."""
-    pts = np.ascontiguousarray(points, dtype=np.float64)
-    if pts.ndim != 2 or pts.shape[0] == 0 or radius <= 0.0:
-        return np.zeros(pts.shape[0] if pts.ndim == 2 else 0, dtype=np.int64)
-    return _count_within_radius_nb(pts, float(radius))
+def cross_pairs_within(points, others, radius) -> tuple[np.ndarray, np.ndarray]:
+    """Enumerate every ``(point, other)`` pair no further apart than ``radius``.
+
+    Parameters
+    ----------
+    points : array_like
+        ``(n, 3)`` positions.
+    others : array_like
+        ``(m, 3)`` positions.
+    radius : float
+        Cutoff, inclusive.
+
+    Returns
+    -------
+    tuple of numpy.ndarray
+        ``(i, j)`` index arrays into ``points`` and ``others``. Pairs at zero
+        distance are included — a sparse-matrix output type would drop them as
+        structural zeros, which is why this uses the record-array form.
+    """
+    pts = _as_points(points)
+    oth = _as_points(others)
+    empty = (np.zeros(0, dtype=np.int64), np.zeros(0, dtype=np.int64))
+    if pts.shape[0] == 0 or oth.shape[0] == 0:
+        return empty
+    if not np.isfinite(radius) or radius <= 0.0:
+        return empty
+    pairs = cKDTree(pts).sparse_distance_matrix(
+        cKDTree(oth), float(radius), output_type="ndarray"
+    )
+    return pairs["i"].astype(np.int64), pairs["j"].astype(np.int64)
 
 
-def within_distance_mask(coords, targets, dist):
-    """Boolean mask of ``coords`` lying within ``dist`` of any ``targets`` point."""
-    c = np.ascontiguousarray(coords, dtype=np.float64)
-    t = np.ascontiguousarray(targets, dtype=np.float64)
-    if c.ndim != 2 or c.shape[0] == 0 or t.ndim != 2 or t.shape[0] == 0 or dist <= 0.0:
-        return np.zeros(c.shape[0] if c.ndim == 2 else 0, dtype=bool)
-    return np.asarray(_within_distance_mask_nb(c, t, float(dist)))
+def blocked_cross_pairs(points, others, radius, *, budget: int = 4_000_000):
+    """Yield ``(start, stop, i, j)`` pair blocks so the pair array stays bounded.
+
+    Parameters
+    ----------
+    points : array_like
+        ``(n, 3)`` query positions.
+    others : array_like
+        ``(m, 3)`` positions to pair against.
+    radius : float
+        Cutoff, inclusive.
+    budget : int, optional
+        Soft ceiling on the number of pairs held at once.
+
+    Yields
+    ------
+    tuple
+        ``(start, stop, i, j)`` — the half-open range of ``points`` this block
+        covers, and index arrays into ``points`` and ``others``.
+
+    Notes
+    -----
+    A 12 Å occlusion radius over a 40k-vertex mesh in an all-atom structure is
+    roughly 2.4×10⁷ pairs; materialising them all costs gigabytes for work that
+    reduces to one number per vertex. The neighbour counts are queried first —
+    cheap, and parallel — so the block sizes follow the actual density rather
+    than a guess about it.
+    """
+    pts = _as_points(points)
+    oth = _as_points(others)
+    n = pts.shape[0]
+    if n == 0 or oth.shape[0] == 0 or not np.isfinite(radius) or radius <= 0.0:
+        return
+    tree = cKDTree(oth)
+    counts = np.asarray(
+        tree.query_ball_point(pts, float(radius), return_length=True, workers=_WORKERS),
+        dtype=np.int64,
+    )
+    cumulative = np.cumsum(counts)
+    total = int(cumulative[-1])
+    if total == 0:
+        return
+    block_count = max(1, -(-total // max(1, int(budget))))
+    targets = np.arange(1, block_count) * max(1, int(budget))
+    splits = np.searchsorted(cumulative, targets) + 1
+    bounds = np.unique(np.clip(np.concatenate(([0], splits, [n])), 0, n))
+    for start, stop in zip(bounds[:-1], bounds[1:]):
+        if counts[start:stop].sum() == 0:
+            continue
+        pairs = cKDTree(pts[start:stop]).sparse_distance_matrix(
+            tree, float(radius), output_type="ndarray"
+        )
+        yield int(start), int(stop), pairs["i"].astype(np.int64), pairs["j"].astype(np.int64)
+
+
+def self_pairs_within(points, radius) -> np.ndarray:
+    """Enumerate every unordered pair of ``points`` no further apart than ``radius``.
+
+    Parameters
+    ----------
+    points : array_like
+        ``(n, 3)`` positions.
+    radius : float
+        Cutoff, inclusive.
+
+    Returns
+    -------
+    numpy.ndarray
+        ``(k, 2)`` int64 index pairs with ``i < j``, ordered by ``i`` then ``j``.
+    """
+    pts = _as_points(points)
+    if pts.shape[0] < 2 or not np.isfinite(radius) or radius <= 0.0:
+        return np.zeros((0, 2), dtype=np.int64)
+    first, second = cross_pairs_within(pts, pts, radius)
+    keep = first < second
+    out = np.empty((int(keep.sum()), 2), dtype=np.int64)
+    out[:, 0] = first[keep]
+    out[:, 1] = second[keep]
+    order = np.lexsort((out[:, 1], out[:, 0]))
+    return out[order]
 
 
 def shade_from_atoms(verts, atoms, atom_colors, sigmas, cutoff):
     """Gaussian-weighted colour and gradient normal at each vertex from atoms.
 
-    Returns ``(colors, wsum, grad, nearest)`` where ``colors`` is the unnormalised
-    Gaussian-weighted RGBA sum, ``wsum`` the weight sum, ``grad`` the density
-    gradient, and ``nearest`` the index of the closest atom (for vertices with no
-    atom inside ``cutoff``). Callers normalise ``colors`` by ``wsum`` and derive
-    the shading normal as ``-grad / |grad|``.
+    Parameters
+    ----------
+    verts : array_like
+        ``(n, 3)`` mesh vertices.
+    atoms : array_like
+        ``(m, 3)`` atom positions.
+    atom_colors : array_like
+        ``(m, 4)`` RGBA per atom.
+    sigmas : array_like
+        ``(m,)`` Gaussian width per atom.
+    cutoff : float
+        Atoms beyond this contribute nothing.
+
+    Returns
+    -------
+    tuple
+        ``(colors, wsum, grad, nearest)`` — the unnormalised Gaussian-weighted
+        RGBA sum, the weight sum, the density gradient, and the index of the
+        closest atom. Callers normalise ``colors`` by ``wsum`` and derive the
+        shading normal as ``-grad / |grad|``; ``nearest`` is what they fall back
+        to where ``wsum`` is zero.
+
+    Notes
+    -----
+    ``nearest`` is now the *globally* closest atom. The cell list this replaces
+    searched only the query cell and its 26 neighbours and returned ``-1`` when
+    all of them were empty — and the caller indexes ``atom_colors`` with it, so
+    a vertex further than one cell from every atom was painted with the colour
+    of the **last** atom in the structure rather than the nearest one.
     """
-    v = np.ascontiguousarray(verts, dtype=np.float64)
-    a = np.ascontiguousarray(atoms, dtype=np.float64)
-    col = np.ascontiguousarray(atom_colors, dtype=np.float64)
-    sg = np.ascontiguousarray(sigmas, dtype=np.float64)
-    return _shade_from_atoms_nb(v, a, col, sg, float(cutoff))
+    v = _as_points(verts)
+    a = _as_points(atoms)
+    nv = v.shape[0]
+    col = np.ascontiguousarray(atom_colors, dtype=np.float64).reshape(-1, 4)
+    sig = np.ascontiguousarray(sigmas, dtype=np.float64).reshape(-1)
+
+    out_col = np.zeros((nv, 4), dtype=np.float64)
+    grad = np.zeros((nv, 3), dtype=np.float64)
+    wsum = np.zeros(nv, dtype=np.float64)
+    nearest = np.full(nv, -1, dtype=np.int64)
+    if nv == 0 or a.shape[0] == 0 or not np.isfinite(cutoff) or cutoff <= 0.0:
+        return out_col, wsum, grad, nearest
+
+    atom_tree = cKDTree(a)
+    _, nearest = atom_tree.query(v, k=1, workers=_WORKERS)
+    nearest = np.asarray(nearest, dtype=np.int64)
+
+    strict = float(np.nextafter(float(cutoff), 0.0))
+    pairs = cKDTree(v).sparse_distance_matrix(
+        atom_tree, strict, output_type="ndarray"
+    )
+    vi = pairs["i"]
+    ai = pairs["j"]
+    if vi.size == 0:
+        return out_col, wsum, grad, nearest
+
+    delta = v[vi] - a[ai]
+    d2 = np.einsum("ij,ij->i", delta, delta)
+    s2 = sig[ai] * sig[ai]
+    weight = np.exp(-d2 / (2.0 * s2))
+
+    # Many pairs share a vertex, so this is a scatter-*add*: fancy-index
+    # assignment would keep only the last pair per vertex. `np.bincount` is the
+    # fast form of that -- `np.add.at` is the unbuffered ufunc path and runs an
+    # order of magnitude slower on the millions of pairs a surface produces.
+    def _accumulate(values: np.ndarray) -> np.ndarray:
+        return np.bincount(vi, weights=values, minlength=nv)[:nv]
+
+    wsum = _accumulate(weight)
+    weighted_colors = weight[:, None] * col[ai]
+    weighted_delta = (weight / s2)[:, None] * delta
+    for channel in range(4):
+        out_col[:, channel] = _accumulate(weighted_colors[:, channel])
+    for axis in range(3):
+        grad[:, axis] = _accumulate(weighted_delta[:, axis])
+    return out_col, wsum, grad, nearest
 
 
-__all__ = ["count_within_radius", "within_distance_mask", "shade_from_atoms"]
+__all__ = [
+    "blocked_cross_pairs",
+    "count_within_radius",
+    "cross_pairs_within",
+    "self_pairs_within",
+    "shade_from_atoms",
+    "within_distance_mask",
+]

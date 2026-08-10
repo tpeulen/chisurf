@@ -60,7 +60,7 @@ from .chimol_state import (
     _StateField,
     copy_state,
 )
-from .scene import Geometry, Scene, SceneObject
+from .scene import Geometry, Material, Scene, SceneObject
 from .undo import UndoRing
 from .view_state import framing_centre, framing_radius
 
@@ -7730,12 +7730,23 @@ class MolView(QtWidgets.QWidget):
         surface_max_neighbors = int(cfg.get("surface_max_neighbors", 20))
 
         lighting_cfg = _DISPLAY_CONFIG.get("lighting", {})
-        material = {
-            "shininess": float(cfg.get("shininess", lighting_cfg.get("shininess", 38.0))),
-            "specular_strength": float(cfg.get("specular_strength", lighting_cfg.get("specular_strength", 0.18))),
-            "rim_strength": float(cfg.get("rim_strength", lighting_cfg.get("rim_strength", 0.18))),
-            "rim_power": float(cfg.get("rim_power", lighting_cfg.get("rim_power", 2.4))),
-        }
+        # A `Material`, not the dict this used to be. `SceneObject.material` is
+        # typed `Optional[Material]` and the backend reads `.opacity` off it to
+        # decide whether the object belongs in the transparent pass -- so a dict
+        # here did not merely mistype the field, it raised `AttributeError` the
+        # first time a metaball reached the WebGPU renderer, and left the
+        # metaball's own alpha out of the sort order before that.
+        material = Material(
+            shininess=float(cfg.get("shininess", lighting_cfg.get("shininess", 38.0))),
+            specular=float(
+                cfg.get("specular_strength", lighting_cfg.get("specular_strength", 0.18))
+            ),
+            rim_strength=float(
+                cfg.get("rim_strength", lighting_cfg.get("rim_strength", 0.18))
+            ),
+            rim_power=float(cfg.get("rim_power", lighting_cfg.get("rim_power", 2.4))),
+            opacity=alpha,
+        )
 
         if self._all_atom_coords is not None:
             pts_all = np.asarray(self._all_atom_coords, dtype=float)

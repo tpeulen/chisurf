@@ -19,164 +19,15 @@ screen-space estimate does.
 
 from __future__ import annotations
 
-import math
 from typing import Optional
 
-# Numba is required. The `_HAVE_NUMBA` guard it replaces made every kernel
-# here optional and every fallback beside it unexercised -- which is how the
-# ray tracer's pure-NumPy twin came to be silently broken while every test
-# passed.
-import numba as nb
 import numpy as np
+from scipy.spatial import cKDTree
 
-#: Whether it is safe to write numba's on-disk cache from this module. See the
-#: same constant in ``cartoon.py`` for what goes wrong when it is not: this file
-#: is loaded by path as well, and a cache entry keyed to a name nothing can
-#: import breaks the *next ordinary run*, not the one that wrote it.
-_NB_CACHE = bool(__package__)
+from .neighbors import blocked_cross_pairs, count_within_radius
 
 
-
-@nb.jit(nopython=True, nogil=True, cache=_NB_CACHE)  # type: ignore[misc]
-def _estimate_ambient_occlusion_nb(
-    pts: np.ndarray,
-    radius: float,
-    max_neighbors: int,
-) -> np.ndarray:
-    """Brute-force O(n^2) reference occlusion count (exact).
-
-    Retained as the correctness reference and as a fallback; production uses
-    the O(n) cell-list variant below.
-    """
-    n = pts.shape[0]
-    occ = np.zeros(n, dtype=np.float64)
-    r2 = radius * radius
-    if n <= 1 or r2 <= 0.0:
-        return occ
-
-    for i in range(n):
-        count = 0
-        x0 = pts[i, 0]
-        y0 = pts[i, 1]
-        z0 = pts[i, 2]
-        for j in range(n):
-            if i == j:
-                continue
-            dx = pts[j, 0] - x0
-            dy = pts[j, 1] - y0
-            dz = pts[j, 2] - z0
-            if dx * dx + dy * dy + dz * dz < r2:
-                count += 1
-                if max_neighbors > 0 and count >= max_neighbors:
-                    break
-
-        if max_neighbors > 0:
-            if count > max_neighbors:
-                count = max_neighbors
-            occ[i] = float(count) / float(max_neighbors)
-
-    return occ
-
-@nb.jit(nopython=True, nogil=True, cache=_NB_CACHE)  # type: ignore[misc]
-def _estimate_ambient_occlusion_grid_nb(
-    pts: np.ndarray,
-    radius: float,
-    max_neighbors: int,
-) -> np.ndarray:
-    """O(n) occlusion count via a uniform cell list (cell size = radius).
-
-    Exact — every point within ``radius`` falls in the query point's cell or
-    one of the 26 adjacent cells — but linear in the number of points for the
-    near-uniform density of a marching-cubes surface, versus the O(n^2)
-    double loop that dominated metaball/surface builds. Bit-identical to
-    :func:`_estimate_ambient_occlusion_nb`.
-    """
-    n = pts.shape[0]
-    occ = np.zeros(n, dtype=np.float64)
-    r2 = radius * radius
-    if n <= 1 or r2 <= 0.0 or max_neighbors <= 0:
-        return occ
-
-    minx = miny = minz = 1.0e30
-    maxx = maxy = maxz = -1.0e30
-    for i in range(n):
-        x = pts[i, 0]
-        y = pts[i, 1]
-        z = pts[i, 2]
-        if x < minx:
-            minx = x
-        if x > maxx:
-            maxx = x
-        if y < miny:
-            miny = y
-        if y > maxy:
-            maxy = y
-        if z < minz:
-            minz = z
-        if z > maxz:
-            maxz = z
-
-    inv = 1.0 / radius
-    nx = int((maxx - minx) * inv) + 1
-    ny = int((maxy - miny) * inv) + 1
-    nz = int((maxz - minz) * inv) + 1
-    ncells = nx * ny * nz
-
-    # Linked-list buckets: head[cell] -> point, nxt[point] -> next point.
-    head = np.full(ncells, -1, dtype=np.int64)
-    nxt = np.empty(n, dtype=np.int64)
-    cix = np.empty(n, dtype=np.int64)
-    ciy = np.empty(n, dtype=np.int64)
-    ciz = np.empty(n, dtype=np.int64)
-    for i in range(n):
-        ix = int((pts[i, 0] - minx) * inv)
-        iy = int((pts[i, 1] - miny) * inv)
-        iz = int((pts[i, 2] - minz) * inv)
-        cix[i] = ix
-        ciy[i] = iy
-        ciz[i] = iz
-        c = (ix * ny + iy) * nz + iz
-        nxt[i] = head[c]
-        head[c] = i
-
-    for i in range(n):
-        ix = cix[i]
-        iy = ciy[i]
-        iz = ciz[i]
-        x0 = pts[i, 0]
-        y0 = pts[i, 1]
-        z0 = pts[i, 2]
-        count = 0
-        for dx in range(-1, 2):
-            jx = ix + dx
-            if jx < 0 or jx >= nx:
-                continue
-            for dy in range(-1, 2):
-                jy = iy + dy
-                if jy < 0 or jy >= ny:
-                    continue
-                for dz in range(-1, 2):
-                    jz = iz + dz
-                    if jz < 0 or jz >= nz:
-                        continue
-                    j = head[(jx * ny + jy) * nz + jz]
-                    while j != -1:
-                        if j != i:
-                            ddx = pts[j, 0] - x0
-                            ddy = pts[j, 1] - y0
-                            ddz = pts[j, 2] - z0
-                            if ddx * ddx + ddy * ddy + ddz * ddz < r2:
-                                count += 1
-                        j = nxt[j]
-        if count > max_neighbors:
-            count = max_neighbors
-        occ[i] = float(count) / float(max_neighbors)
-
-    return occ
-
-
-@nb.jit(nopython=True, nogil=True, cache=_NB_CACHE)  # type: ignore[misc]
-def _occlusion_from_spheres_nb(
+def _cosine_coverage_occlusion(
     points: np.ndarray,
     normals: np.ndarray,
     centers: np.ndarray,
@@ -189,110 +40,59 @@ def _occlusion_from_spheres_nb(
     Each occluder contributes the fraction of the hemisphere it covers,
     ``1 - cos(alpha)`` with ``sin(alpha) = r / d``, weighted by the cosine
     between the surface normal and the direction to it. Contributions are
-    combined as ``1 - exp(-strength * sum)`` rather than added, which keeps
-    the result in [0, 1) and stops a dense neighbourhood from saturating to
-    pure black the way a plain sum would.
+    combined as ``1 - exp(-strength * sum)`` rather than added, which keeps the
+    result in [0, 1) and stops a dense neighbourhood from saturating to pure
+    black the way a plain sum would.
 
-    Occluders are bucketed into a uniform cell list of side
-    ``max_distance``, so the cost is linear in the number of vertices rather
-    than quadratic against the atom count.
+    Parameters
+    ----------
+    points, normals : numpy.ndarray
+        ``(n, 3)`` vertices and unit normals.
+    centers : numpy.ndarray
+        ``(m, 3)`` occluder centres.
+    radii : numpy.ndarray
+        ``(m,)`` occluder radii.
+    max_distance : float
+        Occluders further away than this are ignored.
+    strength : float
+        Scales the accumulated coverage before the exponential.
+
+    Returns
+    -------
+    numpy.ndarray
+        ``(n,)`` occlusion in ``[0, 1)``.
     """
     n = points.shape[0]
-    occ = np.zeros(n, dtype=np.float64)
-    m = centers.shape[0]
-    if n == 0 or m == 0 or max_distance <= 0.0:
-        return occ
-
-    minx = miny = minz = 1.0e30
-    maxx = maxy = maxz = -1.0e30
-    for j in range(m):
-        x = centers[j, 0]
-        y = centers[j, 1]
-        z = centers[j, 2]
-        if x < minx:
-            minx = x
-        if x > maxx:
-            maxx = x
-        if y < miny:
-            miny = y
-        if y > maxy:
-            maxy = y
-        if z < minz:
-            minz = z
-        if z > maxz:
-            maxz = z
-
-    inv = 1.0 / max_distance
-    nx = int((maxx - minx) * inv) + 1
-    ny = int((maxy - miny) * inv) + 1
-    nz = int((maxz - minz) * inv) + 1
-
-    head = np.full(nx * ny * nz, -1, dtype=np.int64)
-    nxt = np.empty(m, dtype=np.int64)
-    for j in range(m):
-        jx = int((centers[j, 0] - minx) * inv)
-        jy = int((centers[j, 1] - miny) * inv)
-        jz = int((centers[j, 2] - minz) * inv)
-        c = (jx * ny + jy) * nz + jz
-        nxt[j] = head[c]
-        head[c] = j
+    total = np.zeros(n, dtype=np.float64)
+    if n == 0 or centers.shape[0] == 0 or max_distance <= 0.0:
+        return total
 
     d_max2 = max_distance * max_distance
-    for i in range(n):
-        px = points[i, 0]
-        py = points[i, 1]
-        pz = points[i, 2]
-        nx_i = normals[i, 0]
-        ny_i = normals[i, 1]
-        nz_i = normals[i, 2]
+    for start, stop, vi, ci in blocked_cross_pairs(points, centers, max_distance):
+        delta = centers[ci] - points[start:stop][vi]
+        d2 = np.einsum("ij,ij->i", delta, delta)
+        radius = radii[ci]
+        with np.errstate(invalid="ignore", divide="ignore"):
+            d = np.sqrt(d2)
+            cos_theta = np.einsum("ij,ij->i", delta, normals[start:stop][vi]) / d
+            sin_a = radius / d
+        # A vertex sitting inside an occluder is its own surface, not something
+        # blocking it -- and `d2 > 1e-12` keeps a coincident pair out of the
+        # division above.
+        keep = (d2 < d_max2) & (d2 > 1.0e-12) & (d > radius) & (cos_theta > 0.0)
+        coverage = 1.0 - np.sqrt(np.maximum(1.0 - sin_a * sin_a, 0.0))
+        contribution = np.where(keep, cos_theta * coverage, 0.0)
+        total[start:stop] += np.bincount(vi, weights=contribution, minlength=stop - start)
 
-        ix = int((px - minx) * inv)
-        iy = int((py - miny) * inv)
-        iz = int((pz - minz) * inv)
-
-        total = 0.0
-        for dx in range(-1, 2):
-            jx = ix + dx
-            if jx < 0 or jx >= nx:
-                continue
-            for dy in range(-1, 2):
-                jy = iy + dy
-                if jy < 0 or jy >= ny:
-                    continue
-                for dz in range(-1, 2):
-                    jz = iz + dz
-                    if jz < 0 or jz >= nz:
-                        continue
-                    j = head[(jx * ny + jy) * nz + jz]
-                    while j != -1:
-                        vx = centers[j, 0] - px
-                        vy = centers[j, 1] - py
-                        vz = centers[j, 2] - pz
-                        d2 = vx * vx + vy * vy + vz * vz
-                        if d2 < d_max2 and d2 > 1.0e-12:
-                            d = math.sqrt(d2)
-                            r = radii[j]
-                            # A vertex sitting inside an occluder is its own
-                            # surface, not something blocking it.
-                            if d > r:
-                                cos_theta = (
-                                    vx * nx_i + vy * ny_i + vz * nz_i
-                                ) / d
-                                if cos_theta > 0.0:
-                                    sin_a = r / d
-                                    cov = 1.0 - math.sqrt(
-                                        1.0 - sin_a * sin_a
-                                    )
-                                    total += cos_theta * cov
-                        j = nxt[j]
-
-        occ[i] = 1.0 - math.exp(-strength * total)
-
-    return occ
+    return 1.0 - np.exp(-strength * total)
 
 
-@nb.jit(nopython=True, nogil=True, cache=_NB_CACHE)  # type: ignore[misc]
-def _directional_occlusion_nb(
+#: Ray samples are spaced one occluder reach apart, so a sphere near the ray is
+#: within ``sqrt(1.25) * reach`` of some sample. Rounded up for float slack.
+_RAY_SAMPLE_MARGIN = 1.15
+
+
+def _ray_blockage(
     points: np.ndarray,
     normals: np.ndarray,
     centers: np.ndarray,
@@ -311,98 +111,94 @@ def _directional_occlusion_nb(
 
     Occluders behind the vertex, or that the vertex sits inside, are skipped:
     the first are irrelevant and the second is the surface itself.
+
+    Parameters
+    ----------
+    points, normals : numpy.ndarray
+        ``(n, 3)`` vertices and unit normals.
+    centers : numpy.ndarray
+        ``(m, 3)`` occluder centres.
+    radii : numpy.ndarray
+        ``(m,)`` occluder radii.
+    direction : numpy.ndarray
+        Unit vector pointing **toward** the light.
+    max_distance : float
+        How far along the ray to look.
+    softness : float
+        Multiplies each occluder radius when deciding how near a graze counts.
+    strength : float
+        Scales the accumulated blockage before the exponential.
+
+    Returns
+    -------
+    numpy.ndarray
+        ``(n,)`` shadowing in ``[0, 1)``.
+
+    Notes
+    -----
+    The cell list this replaces stepped along the ray in strides of
+    ``max_distance`` and searched a 3×3×3 cell neighbourhood at each stride, and
+    those neighbourhoods **overlap** — so an occluder sitting in a shared cell
+    was accumulated two or three times and the shadow it cast was that much too
+    deep. Sampling at the occluder reach and taking the unique
+    ``(vertex, occluder)`` pairs both fixes that and shrinks the candidate set:
+    a shadow ray only ever cares about spheres within a couple of Angstrom of
+    it, not about everything within ``max_distance``.
     """
     n = points.shape[0]
-    shadow = np.zeros(n, dtype=np.float64)
+    total = np.zeros(n, dtype=np.float64)
     m = centers.shape[0]
     if n == 0 or m == 0 or max_distance <= 0.0:
-        return shadow
+        return total
 
-    lx, ly, lz = direction[0], direction[1], direction[2]
+    reach = radii * softness
+    reach_max = float(reach.max())
+    if reach_max <= 0.0:
+        return total
 
-    minx = miny = minz = 1.0e30
-    maxx = maxy = maxz = -1.0e30
-    for j in range(m):
-        if centers[j, 0] < minx:
-            minx = centers[j, 0]
-        if centers[j, 0] > maxx:
-            maxx = centers[j, 0]
-        if centers[j, 1] < miny:
-            miny = centers[j, 1]
-        if centers[j, 1] > maxy:
-            maxy = centers[j, 1]
-        if centers[j, 2] < minz:
-            minz = centers[j, 2]
-        if centers[j, 2] > maxz:
-            maxz = centers[j, 2]
+    # Only vertices facing the light can be shadowed; the diffuse term already
+    # darkens the rest, and dropping them here shrinks every query below.
+    facing = np.flatnonzero(normals @ direction > 0.0)
+    if facing.size == 0:
+        return total
 
-    inv = 1.0 / max_distance
-    nx = int((maxx - minx) * inv) + 1
-    ny = int((maxy - miny) * inv) + 1
-    nz = int((maxz - minz) * inv) + 1
-    head = np.full(nx * ny * nz, -1, dtype=np.int64)
-    nxt = np.empty(m, dtype=np.int64)
-    for j in range(m):
-        jx = int((centers[j, 0] - minx) * inv)
-        jy = int((centers[j, 1] - miny) * inv)
-        jz = int((centers[j, 2] - minz) * inv)
-        c = (jx * ny + jy) * nz + jz
-        nxt[j] = head[c]
-        head[c] = j
+    tree = cKDTree(centers)
+    step = reach_max
+    sample_count = int(np.ceil(max_distance / step)) + 1
+    query_radius = reach_max * _RAY_SAMPLE_MARGIN
 
-    # The ray only ever moves toward the light, so walking cells along it
-    # visits far fewer than a full neighbourhood search would.
-    steps = int(max_distance / max_distance) + 2
-    for i in range(n):
-        px = points[i, 0]
-        py = points[i, 1]
-        pz = points[i, 2]
-        if normals[i, 0] * lx + normals[i, 1] * ly + normals[i, 2] * lz <= 0.0:
-            # Facing away: the diffuse term already darkens this.
+    seen: list[np.ndarray] = []
+    origins = points[facing]
+    for sample in range(sample_count):
+        along = min(sample * step, max_distance)
+        probes = origins + direction * along
+        found = tree.query_ball_point(probes, query_radius, workers=-1)
+        counts = np.fromiter((len(f) for f in found), dtype=np.int64, count=facing.size)
+        if counts.sum() == 0:
             continue
+        flat = np.concatenate([np.asarray(f, dtype=np.int64) for f in found if f])
+        seen.append(np.stack((np.repeat(facing, counts), flat)))
+    if not seen:
+        return total
 
-        total = 0.0
-        for s in range(steps):
-            cx = px + lx * max_distance * s
-            cy = py + ly * max_distance * s
-            cz = pz + lz * max_distance * s
-            ix = int((cx - minx) * inv)
-            iy = int((cy - miny) * inv)
-            iz = int((cz - minz) * inv)
-            for dx in range(-1, 2):
-                jx = ix + dx
-                if jx < 0 or jx >= nx:
-                    continue
-                for dy in range(-1, 2):
-                    jy = iy + dy
-                    if jy < 0 or jy >= ny:
-                        continue
-                    for dz in range(-1, 2):
-                        jz = iz + dz
-                        if jz < 0 or jz >= nz:
-                            continue
-                        j = head[(jx * ny + jy) * nz + jz]
-                        while j != -1:
-                            vx = centers[j, 0] - px
-                            vy = centers[j, 1] - py
-                            vz = centers[j, 2] - pz
-                            along = vx * lx + vy * ly + vz * lz
-                            if along > 0.0 and along < max_distance:
-                                r = radii[j]
-                                ox = vx - along * lx
-                                oy = vy - along * ly
-                                oz = vz - along * lz
-                                perp2 = ox * ox + oy * oy + oz * oz
-                                reach = r * softness
-                                if perp2 < reach * reach:
-                                    d2 = vx * vx + vy * vy + vz * vz
-                                    if d2 > r * r:
-                                        blocked = 1.0 - math.sqrt(perp2) / reach
-                                        total += blocked * blocked
-                            j = nxt[j]
-        shadow[i] = 1.0 - math.exp(-strength * total)
+    candidates = np.unique(np.concatenate(seen, axis=1).T, axis=0)
+    vi = candidates[:, 0]
+    ci = candidates[:, 1]
 
-    return shadow
+    delta = centers[ci] - points[vi]
+    along = delta @ direction
+    perpendicular = delta - along[:, None] * direction
+    perp2 = np.einsum("ij,ij->i", perpendicular, perpendicular)
+    radius = radii[ci]
+    span = reach[ci]
+    d2 = np.einsum("ij,ij->i", delta, delta)
+    keep = (along > 0.0) & (along < max_distance) & (perp2 < span * span) & (d2 > radius * radius)
+    if not keep.any():
+        return total
+    blocked = 1.0 - np.sqrt(perp2[keep]) / span[keep]
+    total += np.bincount(vi[keep], weights=blocked * blocked, minlength=n)
+
+    return 1.0 - np.exp(-strength * total)
 
 
 def occlusion_from_spheres(
@@ -469,42 +265,9 @@ def occlusion_from_spheres(
     if not np.isfinite(max_distance) or max_distance <= 0.0:
         return None
 
-    occ = _occlusion_from_spheres_nb(
+    occ = _cosine_coverage_occlusion(
         pts, nrm, ctr, rad, float(max_distance), float(strength)
     )
-    return np.clip(occ, 0.0, 1.0)
-
-def _occlusion_from_spheres_numpy(
-    points: np.ndarray,
-    normals: np.ndarray,
-    centers: np.ndarray,
-    radii: np.ndarray,
-    max_distance: float,
-    strength: float,
-) -> np.ndarray:
-    """Numba-free fallback for :func:`occlusion_from_spheres`.
-
-    Chunked over vertices so the ``(chunk, M)`` distance matrix stays bounded
-    regardless of how many vertices the mesh has.
-    """
-    n = points.shape[0]
-    occ = np.zeros(n, dtype=float)
-    chunk = max(1, int(4_000_000 // max(centers.shape[0], 1)))
-    d_max2 = max_distance * max_distance
-
-    for start in range(0, n, chunk):
-        stop = min(start + chunk, n)
-        v = centers[None, :, :] - points[start:stop, None, :]
-        d2 = np.einsum("ijk,ijk->ij", v, v)
-        with np.errstate(invalid="ignore", divide="ignore"):
-            d = np.sqrt(d2)
-            cos_theta = np.einsum("ijk,ik->ij", v, normals[start:stop]) / d
-            sin_a = np.minimum(radii[None, :] / d, 1.0)
-            cov = 1.0 - np.sqrt(np.maximum(1.0 - sin_a * sin_a, 0.0))
-        valid = (d2 < d_max2) & (d2 > 1e-12) & (d > radii[None, :]) & (cos_theta > 0.0)
-        contrib = np.where(valid, cos_theta * cov, 0.0)
-        occ[start:stop] = 1.0 - np.exp(-strength * contrib.sum(axis=1))
-
     return np.clip(occ, 0.0, 1.0)
 
 
@@ -581,13 +344,10 @@ def directional_occlusion(
         if rad.shape[0] != ctr.shape[0]:
             return None
 
-    try:
-        shadow = _directional_occlusion_nb(  # type: ignore[name-defined]
-            pts, nrm, ctr, rad, light,
-            float(max_distance), float(softness), float(strength),
-        )
-    except Exception:
-        return None
+    shadow = _ray_blockage(
+        pts, nrm, ctr, rad, light,
+        float(max_distance), float(softness), float(strength),
+    )
     return np.clip(shadow, 0.0, 1.0)
 
 
@@ -596,6 +356,29 @@ def _estimate_ambient_occlusion(
     radius: float = 4.0,
     max_neighbors: int = 32,
 ) -> Optional[np.ndarray]:
+    """Crowding at each point, as a fraction of ``max_neighbors``.
+
+    Parameters
+    ----------
+    points : numpy.ndarray
+        ``(n, 3)`` positions.
+    radius : float, optional
+        Neighbours strictly inside this radius are counted.
+    max_neighbors : int, optional
+        The count that reads as fully occluded; larger counts clamp to it.
+
+    Returns
+    -------
+    numpy.ndarray or None
+        ``(n,)`` occlusion in ``[0, 1]``, or ``None`` for non-point input.
+
+    Notes
+    -----
+    IMP's ``NearestNeighbor3D.get_in_ball`` was evaluated and rejected here: it
+    silently drops interior neighbours — it is an approximate search — and
+    ``GridClosePairsFinder`` materialises every close pair, which blows up on
+    the tens of thousands of vertices a marching-cubes surface produces.
+    """
     pts = np.asarray(points, dtype=float)
     if pts.ndim != 2 or pts.shape[0] == 0:
         return None
@@ -607,17 +390,11 @@ def _estimate_ambient_occlusion(
     r = float(radius)
     if not np.isfinite(r) or r <= 0.0:
         return None
+    if max_neighbors <= 0:
+        return np.zeros(n, dtype=float)
 
-    # Preferred: the O(n) numba cell list. This replaces a former numba O(n^2)
-    # double loop that was the single dominant cost of the metaball/surface
-    # representations on the tens of thousands of vertices a marching-cubes
-    # surface produces. (IMP's ``NearestNeighbor3D.get_in_ball`` was evaluated
-    # and rejected: it silently drops interior neighbours -- an approximate
-    # search -- and ``GridClosePairsFinder`` materialises every close pair, which
-    # blows up on dense meshes. scipy is deliberately not used: it is not a
-    # dependency here.)
-    occ_grid = _estimate_ambient_occlusion_grid_nb(pts, r, int(max_neighbors))
-    return np.clip(occ_grid, 0.0, 1.0)
+    counts = count_within_radius(pts, r)
+    return np.clip(counts / float(max_neighbors), 0.0, 1.0)
 
 __all__ = [
     "_estimate_ambient_occlusion",
