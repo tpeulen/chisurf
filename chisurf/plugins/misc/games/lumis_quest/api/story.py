@@ -1,24 +1,27 @@
-"""The story spine, and how it reads the world.
+"""The story: the Fading, the three orders, and why any of it is worth walking.
 
-Until now the answer to "where is the story?" was "phase six", which is not an
-answer -- a world with no reason to walk it is a map. This is the authored
-spine: three orders who disagree about what knowledge is *for*, and a sequence
-of beats whose progress is measured against the real corpus rather than against
-a flag the game sets for itself.
+The premise is one idea taken seriously. **Everything alive in this world
+carries light.** A person, a hound, a thing in the long grass — each holds a
+quantum of it, absorbs it, and gives it back changed. That is not a metaphor
+laid over the mechanics; it *is* the mechanics. A creature's brightness is how
+hard it can strike. Emitting spends it. A creature driven dark can be carried
+home.
 
-Two rules keep it honest:
+And knowledge is the same substance. A page somebody has read and vouched for
+is **lit**, and its keeper stands outside it. A page nobody has opened is dark,
+and something has moved into it. That is why the map looks the way it does.
+
+**The Fading** is the premise's consequence: light is leaving. Not dramatically —
+a lamp at a time, a page at a time, until a whole land is dark and nobody
+remembers it was ever otherwise. You are **Iris**, a probe: a photon given a
+body and sent in to find where it is going. **Lumi** is a hound of light, who
+can smell where light has been.
+
+Two rules keep the arc honest, and they are the same two as before:
 
 * **A beat completes because the documentation changed**, not because the player
-  pressed something. Every beat's condition is a query over the world -- pages
-  settled, a land's villages tended, the unlinked found. You cannot advance the
-  story without improving the docs, which is the whole point.
-* **The spine is data.** It is a list of beats here, and the per-page prose is
-  generated later against a page's own content. Nothing about the arc is
-  computed at run time, so it can be read, reviewed and argued with.
-
-The three orders are the doctrines a player eventually chooses between; the
-opening act is shared, because a choice offered before the world means anything
-is a menu, not a decision.
+  pressed something. Every condition is a query over the world.
+* **The spine is data**, so it can be read, reviewed and argued with.
 """
 
 from __future__ import annotations
@@ -27,25 +30,75 @@ import dataclasses
 
 from .world import SCOUTED, SETTLED, World
 
-#: The three orders, and what each believes documentation is for.
+#: The opening. Shown once, on a fresh run, before the world appears -- so a
+#: player arrives knowing what they are looking at rather than deducing it.
+PROLOGUE: tuple[tuple[str, str], ...] = (
+    (
+        "The Fading",
+        "Everything alive here carries light. A person, a hound, a thing in the "
+        "long grass — each holds a little, spends it, and gives back what is "
+        "left, changed.",
+    ),
+    (
+        "The Fading",
+        "Knowledge is the same substance. A page somebody has read and vouched "
+        "for burns steadily, and its keeper stands at the door. A page nobody "
+        "has opened goes dark, and something moves into the dark.",
+    ),
+    (
+        "The Fading",
+        "Lately the light has been leaving. Not all at once — a lamp at a time, "
+        "a page at a time, until a whole land has gone quiet and no one recalls "
+        "it was ever otherwise.",
+    ),
+    (
+        "Iris",
+        "You are a probe: a single quantum given a body and sent in to find "
+        "where it is going. You will be spent doing it. That is what a probe "
+        "is for.",
+    ),
+    (
+        "Lumi",
+        "The hound at your heel is made of the same light, and does not spend "
+        "it. Lumi can smell where light has been — which is how you will find "
+        "the places it has left.",
+    ),
+)
+
+#: The three orders. They agree the light is going and disagree entirely about
+#: what to do, which is what makes choosing one a decision rather than a menu.
 ORDERS: dict[str, dict[str, str]] = {
     "rigour": {
         "name": "The Order of Rigour",
-        "creed": "A claim without its derivation is a rumour.",
-        "wants": "every derivation checked, every symbol defined, every source cited",
-        "critical": "an unstated assumption, a wrong unit, a missing citation",
+        "creed": "Light that misleads is worse than dark.",
+        "wants": "every derivation checked, every symbol defined, every source named",
+        "critical": "an unstated assumption, a wrong unit, a claim with nothing behind it",
+        "belief": (
+            "They hold that a page lit wrongly is a lamp hung over a pit. Better "
+            "an honest dark than a light that walks people off the edge."
+        ),
     },
     "clarity": {
         "name": "The Order of Clarity",
-        "creed": "Knowledge nobody can reach is knowledge nobody has.",
-        "wants": "a newcomer at the door and through it in five minutes",
-        "critical": "a term used before it is defined, a jump nobody explains",
+        "creed": "Light nobody can reach is light nobody has.",
+        "wants": "a stranger at the door and through it in five minutes",
+        "critical": "a term used before it is defined, a step nobody explains",
+        "belief": (
+            "They hold that the Fading is not a loss of light but a loss of "
+            "doors. The knowledge is still burning; it is only that nobody can "
+            "get to it any more."
+        ),
     },
     "discovery": {
         "name": "The Order of Discovery",
         "creed": "What is unwritten is not therefore unimportant.",
         "wants": "the gaps found, the unlinked mapped, the silence named",
         "critical": "an orphan, a dead link, a hole in the tree",
+        "belief": (
+            "They hold that the worst dark was never lit at all — and that "
+            "counting the lamps you already have is how a world quietly agrees "
+            "to stop looking."
+        ),
     },
 }
 
@@ -72,50 +125,52 @@ class Beat:
     goal: str
 
 
-#: The opening act, shared by all three orders. It is deliberately short: the
-#: player is choosing a doctrine at the end of it, and that choice is only
-#: meaningful once they have seen what the world is actually like.
+#: The opening act, shared by all three orders. Short on purpose: the player
+#: chooses a doctrine at the end of it, and that choice only means something
+#: once they have seen what the world is actually like.
 ACT_ONE: list[Beat] = [
     Beat(
         key="arrival",
-        headline="Lumi is dimming. Find someone who is still keeping records.",
+        headline="Lumi is dimming. Find ground that is still lit.",
         body=(
-            "You are Iris, a probe photon, and you were sent in to look at "
-            "something. Whatever it was, the record of it is gone. Lumi -- the "
-            "small light that came with you -- is running down, and the lands "
-            "that once held the knowledge have gone dark in patches."
+            "You arrive somewhere that was recently brighter. Lumi is running "
+            "down faster than a hound of light should, which means the Fading "
+            "is not distant history here — it is happening around you."
         ),
-        goal="Reach a village whose buildings are still lit.",
+        goal="Reach a village whose buildings are still burning.",
     ),
     Beat(
         key="first-light",
-        headline="Settled ground still exists. Learn what keeps it lit.",
+        headline="Lit ground still exists. Learn what keeps it burning.",
         body=(
-            "A settled page is one a person has read and vouched for. There are "
-            "far fewer than there should be, and the difference between a lit "
-            "building and a dark one is simply whether anyone came."
+            "A lit page is one a person read and vouched for, and its keeper is "
+            "standing at the door. There are far fewer keepers than doors. The "
+            "difference between a lamp and a dark house is only ever whether "
+            "somebody came."
         ),
-        goal="Stand in a village where at least one building is settled.",
+        goal="Stand in a village where at least one house is lit.",
     ),
     Beat(
         key="the-frontier",
-        headline="Something has been through here ahead of you.",
+        headline="Something walked this ground ahead of you.",
         body=(
-            "Some buildings are half-lit: scouted, not settled. An agent walked "
-            "this ground and wrote down what it saw, but no person has confirmed "
-            "any of it. That band of half-light is the frontier, and it is where "
-            "the three orders stop agreeing with each other."
+            "Some houses are half-lit — a cold, borrowed glow with nobody at the "
+            "door. Something passed through, read what was there and wrote down "
+            "what it saw, and no person has confirmed a word of it. That band of "
+            "half-light is the frontier, and it is where the three orders stop "
+            "agreeing with one another."
         ),
-        goal="Find scouted ground -- a building lit but unconfirmed.",
+        goal="Find half-lit ground — a house burning with nobody keeping it.",
     ),
     Beat(
         key="the-choice",
-        headline="Three orders will each tell you what to do about it.",
+        headline="Three orders will each tell you what the Fading is.",
         body=(
-            "Rigour wants the derivations checked. Clarity wants the door made "
-            "wide enough to walk through. Discovery wants the unwritten found. "
-            "They cannot all be served first, and whichever you serve changes "
-            "what counts as a victory."
+            "Rigour says the light is going because too much of it lies. "
+            "Clarity says the light is fine and the doors have closed. "
+            "Discovery says the worst dark was never lit at all. They cannot all "
+            "be served first, and whichever you serve decides what counts as "
+            "having won."
         ),
         goal="Choose an order.",
     ),
@@ -126,9 +181,9 @@ class Story:
     """Tracks which beat the world is on.
 
     Progress is *derived*: the story asks the world what state it is in rather
-    than being told by the game. That means a beat cannot be advanced by
-    fiddling with the UI, only by the corpus actually changing -- and that a
-    saved game does not need to store how far along the arc it is.
+    than being told by the game. A beat cannot be advanced by fiddling with the
+    interface, only by the corpus actually changing — and a saved game does not
+    need to record how far along the arc it is.
 
     Parameters
     ----------
@@ -179,7 +234,7 @@ class Story:
         return False
 
     def witness(self, key: str) -> None:
-        """Record that the player has seen something a beat asks for.
+        """Record that the player has seen what a beat asks for.
 
         Parameters
         ----------

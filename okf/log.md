@@ -1,6 +1,34 @@
 # Update Log
 
 ## 2026-08-10
+* **Lumis Quest: a premise, an opening, a loading screen, and options — the things a game has.**
+  The story is one idea taken seriously: **everything alive carries light**. A creature's brightness is
+  how hard it strikes, emitting spends it, one driven dark can be carried home — and knowledge is the same
+  substance, so a page somebody vouched for *burns* and one nobody opened goes dark. **The Fading** is
+  that premise's consequence. Iris is a probe, spent finding where the light goes; Lumi is a hound who can
+  smell where it has been. The three orders now disagree about what the Fading *is* rather than merely
+  about style. A fresh run opens on five cards of it; **a resumed run skips them**.
+  **Loading is staged.** Building the world takes ~0.65 s, and doing it inside `setup` meant the window
+  appeared already frozen with nothing on it. The stages run one per frame with a progress bar, and the
+  **first stage deliberately does no work** — without that the heaviest stage still runs before anything
+  is drawn, and the loading screen appears only after the freeze it exists to explain.
+  **An OPTIONS tab**: three control schemes (arrows, WASD, left-handed — each asserted to cover all nine
+  actions), walk speed, default zoom, replay the opening, and **regenerate the wilderness**. Regeneration
+  redraws terrain only: which lands exist and where every page stands comes from the documentation and
+  **must not move**, because a player who has learned where a page lives should not lose that by asking
+  for new scenery. 4,384 of 76,320 tiles change; every building stays put.
+  **A real gap the regeneration test exposed**: a game handed a prebuilt world had no idea which corpus it
+  came from, so regenerating silently rebuilt from the *installed* documentation instead. `docs_root` is
+  threaded through now.
+  Also added `finish_loading()` — the staged loader exists so a player sees progress; a test or a headless
+  capture wants the world on the next line.
+  Suites: 240 passed.
+
+* **The TCSPC convolution is one implementation now, and deleting the numba twin *fixed* a bug rather than merely removing a dependency.** `tcspc/convolve.py` carried three numba kernels beside thin tttrlib wrappers for the same maths. The guard that was supposed to keep the two in step — `test_periodic_convolution_reference.py` — **had been failing, three assertions of nine**, including the one written specifically to catch a missing final-channel tail. Rather than pick a side, I settled it against an **independent brute-force periodic convolution** (pulse train summed in closed form, trapezoid applied directly, sharing no code with either): at the final channel the numba twin gives **2.2e-53 where the truth is 1.55e-27** for two lifetimes, and is **200× low** at 128, while the C kernel reproduces the reference. The twin never gave the last channel its inter-pulse tail. Production already used the C path (`per` is the default mode), so only the simulator changes — and it changes to the correct answer.
+  The file now holds `convolve_lifetime_spectrum` (→ `fconv`), `convolve_lifetime_spectrum_periodic` (→ `fconv_per_cs`) and a new `convolve_decay` (→ `sconv`, which is byte-identical to the deleted kernel except that it does not apply the channel width, so the scaling is applied here). 101 lines of commented-out numba corpses went with them. `convolve_decay` also zero-fills outside `[start, stop)` where the numba version left `np.empty_like` garbage; both call sites pass the full range, so nothing depended on it.
+  **The reference test was rewritten to assert the surviving implementation is *right*, not that two implementations agree** — the only question left once there is one. Two things it learned that the next such comparison will need: the kernel's **channel 0** uses its own start convention (~1.94× a plain trapezoid's half-weighted first term — *characterised, not derived*, and pinned as such), and a brute force that does not model the **IRF's own periodic wrap** is not a valid reference for a response with weight at the far end. The old `test_irf_is_not_read_out_of_bounds` was asserting the absence of exactly that wrap, which is why it could not pass: for a periodic convolution, wrapping is the point.
+  Two more pre-existing red tests found and recorded rather than swept up (`test_fit_state`, `test_pcf_experiment`), verified against HEAD by swap-and-restore.
+
 * **The TCSPC convolution is one implementation now, and deleting the numba twin *fixed* a bug rather than merely removing a dependency.** `tcspc/convolve.py` carried three numba kernels beside thin tttrlib wrappers for the same maths. The guard that was supposed to keep the two in step — `test_periodic_convolution_reference.py` — **had been failing, three assertions of nine**, including the one written specifically to catch a missing final-channel tail. Rather than pick a side, I settled it against an **independent brute-force periodic convolution** (pulse train summed in closed form, trapezoid applied directly, sharing no code with either): at the final channel the numba twin gives **2.2e-53 where the truth is 1.55e-27** for two lifetimes, and is **200× low** at 128, while the C kernel reproduces the reference. The twin never gave the last channel its inter-pulse tail. Production already used the C path (`per` is the default mode), so only the simulator changes — and it changes to the correct answer.
   The file now holds `convolve_lifetime_spectrum` (→ `fconv`), `convolve_lifetime_spectrum_periodic` (→ `fconv_per_cs`) and a new `convolve_decay` (→ `sconv`, which is byte-identical to the deleted kernel except that it does not apply the channel width, so the scaling is applied here). 101 lines of commented-out numba corpses went with them. `convolve_decay` also zero-fills outside `[start, stop)` where the numba version left `np.empty_like` garbage; both call sites pass the full range, so nothing depended on it.
   **The reference test was rewritten to assert the surviving implementation is *right*, not that two implementations agree** — the only question left once there is one. Two things it learned that the next such comparison will need: the kernel's **channel 0** uses its own start convention (~1.94× a plain trapezoid's half-weighted first term — *characterised, not derived*, and pinned as such), and a brute force that does not model the **IRF's own periodic wrap** is not a valid reference for a response with weight at the far end. The old `test_irf_is_not_read_out_of_bounds` was asserting the absence of exactly that wrap, which is why it could not pass: for a periodic convolution, wrapping is the point.

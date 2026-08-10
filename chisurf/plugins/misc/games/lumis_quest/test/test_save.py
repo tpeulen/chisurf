@@ -90,6 +90,7 @@ def test_the_game_uses_the_save_path_it_was_given(qapp, tmp_path):
     run = tmp_path / "run.json"
     game = OverworldGame(world=build_world(tmp_path / "docs"), save_path=run)
     chigame.GameHost(game, context, with_text=False, with_audio=False)
+    game.finish_loading()
     game.iris = [321.0, 654.0]
     game.save_run()
 

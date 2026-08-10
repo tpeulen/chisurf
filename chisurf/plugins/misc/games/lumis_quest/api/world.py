@@ -303,6 +303,8 @@ class World:
     #: window out of this every frame; doing that over lists of ints is most of
     #: a frame's budget once the world is tens of thousands of tiles.
     array: np.ndarray = dataclasses.field(default_factory=lambda: np.zeros((0, 0), np.uint8))
+    #: Salts the terrain only; the structure is always the documentation's.
+    seed: str = ""
 
     @property
     def height(self) -> int:
@@ -613,7 +615,7 @@ def _read_groups(directory: pathlib.Path) -> list[tuple[str, list[tuple[toc.Node
     return groups
 
 
-def build_world(docs_root: pathlib.Path | None = None) -> World:
+def build_world(docs_root: pathlib.Path | None = None, seed: str = "") -> World:
     """Generate the overworld from the documentation tree.
 
     Parameters
@@ -621,6 +623,12 @@ def build_world(docs_root: pathlib.Path | None = None) -> World:
     docs_root : pathlib.Path, optional
         Documentation root. Defaults to the one the help browser reads, so the
         game and the help window always describe the same corpus.
+    seed : str, optional
+        Salts the terrain. The *structure* -- which lands exist, which villages,
+        which buildings -- always comes from the documentation and never moves;
+        only the wilderness between them is redrawn. That is the useful thing to
+        regenerate: a player who has learned where a page lives should not lose
+        that by asking for new scenery.
 
     Returns
     -------
@@ -630,6 +638,7 @@ def build_world(docs_root: pathlib.Path | None = None) -> World:
     root = pathlib.Path(docs_root) if docs_root is not None else toc.docs_root()
     repo_root = root.parent
     world = World()
+    world.seed = seed
     if not root.is_dir():
         return world
 
@@ -751,7 +760,7 @@ def _paint(world: World) -> None:
     grid = [[WATER for _ in range(width)] for _ in range(height)]
 
     for region in world.regions:
-        _paint_region(grid, region)
+        _paint_region(grid, region, world.seed)
     _paint_bridges(grid, world.regions)
     for region in world.regions:
         _paint_roads(grid, region)
@@ -766,7 +775,7 @@ def _paint(world: World) -> None:
     world.array = np.asarray(grid, dtype=np.uint8)
 
 
-def _paint_region(grid: list[list[int]], region: Region) -> None:
+def _paint_region(grid: list[list[int]], region: Region, world_seed: str = "") -> None:
     """Lay a land's ground: grass, with woodland and rock scattered over it.
 
     Parameters
@@ -777,7 +786,7 @@ def _paint_region(grid: list[list[int]], region: Region) -> None:
         The region to paint.
     """
     col, row, width, height = region.rect
-    salt = _seed(region.name) & 0xFFFFFFFF
+    salt = _seed(region.name + world_seed) & 0xFFFFFFFF
     for y in range(row, row + height):
         for x in range(col, col + width):
             if not (0 <= y < len(grid) and 0 <= x < len(grid[0])):

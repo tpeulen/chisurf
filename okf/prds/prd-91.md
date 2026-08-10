@@ -220,6 +220,29 @@ cannot grant human sign-off**.
 
 ---
 
+## Part 0b — the premise, and how a run opens
+
+**Everything alive in this world carries light.** A person, a hound, a thing in
+the long grass — each holds a quantum of it, spends it, and gives back what is
+left, changed. That is not a metaphor over the mechanics; it *is* them: a
+creature's brightness is how hard it strikes, emitting spends it, and one driven
+dark can be carried home. Knowledge is the same substance — a page somebody
+read and vouched for **burns**, with its keeper at the door; one nobody opened
+goes dark, and something moves into the dark.
+
+**The Fading** is that premise's consequence: light is leaving, a lamp at a
+time, until a land is quiet and nobody recalls it was otherwise. **Iris** is a
+probe — a quantum given a body, sent to find where it goes, and spent doing it.
+**Lumi** is a hound of light who can smell where light has been.
+
+The three orders (Part 8) disagree about what the Fading *is*: Rigour says the
+light is going because too much of it lies; Clarity says the light is fine and
+the doors have closed; Discovery says the worst dark was never lit at all.
+
+A fresh run opens on five cards of this before the world appears, so a player
+arrives knowing what they are looking at. **A resumed run skips it** — a run
+already played does not need telling.
+
 ## Part 1 — two modes
 
 The game has two modes over one world, one save and one engine.

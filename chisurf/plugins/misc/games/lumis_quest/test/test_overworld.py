@@ -69,9 +69,13 @@ def game(qapp, tmp_path):
         context = chigame.create_offscreen(size=(240, 180))
     except Exception as error:  # pragma: no cover - depends on the machine
         pytest.skip(f"no usable GPU adapter: {error}")
-    instance = OverworldGame(world=build_world(_docs(tmp_path)),
-                             save_path=tmp_path / "run.json")
+    docs = _docs(tmp_path)
+    instance = OverworldGame(world=build_world(docs), save_path=tmp_path / "run.json",
+                             docs_root=docs)
     chigame.GameHost(instance, context, with_text=False, with_audio=False)
+    # The loader is staged so a player sees progress; a test wants the world on
+    # the next line.
+    instance.finish_loading()
     return instance
 
 
@@ -533,3 +537,102 @@ def test_flagging_is_expert_only(game, wild_room, tmp_path):
     game.host.keys.tap(Action.SHOULDER_L)
     game._challenge_input(game.host.keys)
     assert not game.flagging, "the flag interface is expert-only"
+
+
+def test_loading_is_staged_so_the_screen_appears_before_the_work(qapp, tmp_path):
+    """Building the world takes over a second.
+
+    Doing it inside setup means the window appears already frozen with nothing
+    on it, so the stages run one per frame -- and the first stage is deliberately
+    empty, or the heaviest one still runs before anything is drawn.
+    """
+    from chisurf.gui import chigame
+    from chisurf.plugins.misc.games.lumis_quest.gui.overworld import OverworldGame
+
+    try:
+        context = chigame.create_offscreen(size=(160, 120))
+    except Exception as error:  # pragma: no cover - depends on the machine
+        pytest.skip(f"no usable GPU adapter: {error}")
+
+    game = OverworldGame(world=build_world(_docs(tmp_path)),
+                         save_path=tmp_path / "run.json")
+    host = chigame.GameHost(game, context, with_text=False, with_audio=False)
+    assert game.phase == "loading" and game.load_step == 0
+
+    host.frame(1 / 60)
+    assert game.load_step == 1, "the first stage must do no work"
+
+    for _ in range(10):
+        if game.phase != "loading":
+            break
+        host.frame(1 / 60)
+    assert game.phase in ("prologue", "play")
+    assert game.world.rooms and game.people is not None
+
+
+def test_a_fresh_run_opens_with_the_story_and_a_resumed_one_does_not(qapp, tmp_path):
+    """A run already played does not need telling what the Fading is."""
+    from chisurf.gui import chigame
+    from chisurf.plugins.misc.games.lumis_quest.api import save as save_api
+    from chisurf.plugins.misc.games.lumis_quest.gui.overworld import OverworldGame
+
+    try:
+        context = chigame.create_offscreen(size=(160, 120))
+    except Exception as error:  # pragma: no cover - depends on the machine
+        pytest.skip(f"no usable GPU adapter: {error}")
+
+    docs = _docs(tmp_path)
+    run = tmp_path / "run.json"
+    fresh = OverworldGame(world=build_world(docs), save_path=run, docs_root=docs)
+    chigame.GameHost(fresh, context, with_text=False, with_audio=False)
+    fresh.finish_loading(skip_prologue=False)
+    assert fresh.phase == "prologue"
+
+    if not fresh.pool:
+        pytest.skip("spectra.db is not present in this install")
+    fresh.iris = [123.0, 456.0]
+    fresh.save_run()
+    assert save_api.RunState.load(run).position == (123.0, 456.0)
+
+    resumed = OverworldGame(world=build_world(docs), save_path=run, docs_root=docs)
+    chigame.GameHost(resumed, context, with_text=False, with_audio=False)
+    resumed.finish_loading(skip_prologue=False)
+    assert resumed.phase == "play", "a resumed run skips the opening"
+
+
+def test_the_options_tab_changes_the_controls_and_the_speed(game):
+    """Adjustable, and every scheme covers every action."""
+    from chisurf.plugins.misc.games.lumis_quest.gui.overworld import SCHEMES
+
+    for keys in SCHEMES.values():
+        assert set(keys.values()) == set(Action), "a scheme must reach every action"
+
+    game.menu_open = True
+    game.menu_tab = game.TABS.index("OPTIONS")
+    game.menu_row = 0
+    before = game.scheme
+    game._menu_confirm()
+    assert game.scheme != before
+    assert game.host.keys.bindings == SCHEMES[game.scheme]
+
+    game.menu_row = 1
+    speed = game.walk_speed
+    game._menu_confirm()
+    assert game.walk_speed != speed
+
+
+def test_regenerating_redraws_the_wilderness_but_not_the_world(game):
+    """A player who has learned where a page lives must not lose that."""
+    rooms = {room.address: room.tile for room in game.world.rooms}
+    lands = [region.title for region in game.world.regions]
+
+    game.menu_open = True
+    game.menu_tab = game.TABS.index("OPTIONS")
+    game.menu_row = 3
+    game._menu_confirm()
+    assert game.phase == "loading" and not game.menu_open
+
+    game._pending = None
+    game.finish_loading()
+    assert [r.title for r in game.world.regions] == lands
+    assert {room.address: room.tile for room in game.world.rooms} == rooms

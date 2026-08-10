@@ -33,7 +33,7 @@ from ..api import providers as providers_api
 from ..api import review_bridge
 from ..api import rig as rig_api
 from ..api import save as save_api
-from ..api.story import Story
+from ..api.story import PROLOGUE, Story
 from ..api.world import SCOUTED, SETTLED, WILD, World, build_world
 from . import pixelart
 
@@ -136,6 +136,31 @@ def _wrap(text: str, width: int) -> list[str]:
     return lines
 
 
+#: Selectable control schemes. Rebinding every key individually needs raw-key
+#: capture the abstract controller deliberately does not expose, so the option
+#: offered is the one players actually want: a whole scheme at once.
+SCHEMES: dict[str, dict[str, Action]] = {
+    "arrows": {
+        "ArrowUp": Action.UP, "ArrowDown": Action.DOWN,
+        "ArrowLeft": Action.LEFT, "ArrowRight": Action.RIGHT,
+        "Shift": Action.CONFIRM, " ": Action.CONFIRM,
+        "q": Action.SHOULDER_L, "e": Action.SHOULDER_R,
+        "Backspace": Action.CANCEL, "Tab": Action.MENU,
+    },
+    "wasd": {
+        "w": Action.UP, "s": Action.DOWN, "a": Action.LEFT, "d": Action.RIGHT,
+        " ": Action.CONFIRM, "Shift": Action.CONFIRM,
+        "q": Action.SHOULDER_L, "e": Action.SHOULDER_R,
+        "Backspace": Action.CANCEL, "Tab": Action.MENU,
+    },
+    "left-handed": {
+        "i": Action.UP, "k": Action.DOWN, "j": Action.LEFT, "l": Action.RIGHT,
+        " ": Action.CONFIRM, "Enter": Action.CONFIRM,
+        "u": Action.SHOULDER_L, "o": Action.SHOULDER_R,
+        "Backspace": Action.CANCEL, "Tab": Action.MENU,
+    },
+}
+
 BINDINGS = {
     "ArrowUp": Action.UP,
     "ArrowDown": Action.DOWN,
@@ -164,19 +189,31 @@ class OverworldGame(chigame.Game):
     save_path : pathlib.Path, optional
         Where the run is stored. Omitted uses the per-user file; tests pass a
         temporary one so they never touch a real save.
+    docs_root : pathlib.Path, optional
+        Corpus to rebuild from when the wilderness is regenerated. Omitted uses
+        the documentation the help browser reads.
     """
 
     title = "Lumis Quest"
     background = (0.020, 0.024, 0.030, 1.0)
     music_context = "overworld"
 
-    def __init__(self, world: World | None = None, save_path=None) -> None:
+    def __init__(self, world: World | None = None, save_path=None, docs_root=None) -> None:
         self._world = world
+        # Where to rebuild from. Without it a game handed a prebuilt world has
+        # no idea which corpus it came from, and regenerating silently switches
+        # to the installed documentation instead.
+        self._docs_root = docs_root
         # Injectable so a test never reads or writes the player's real run.
         self._save_path = save_path
 
     def setup(self, host) -> None:
-        """Bind the controller, build the world and place Iris.
+        """Bind the controller and start loading.
+
+        The world is **not** built here. Building it takes over a second, and
+        doing that inside setup means the window appears already frozen with
+        nothing on it. The stages run one per frame instead, so the first thing
+        drawn is a loading screen that says what is happening.
 
         Parameters
         ----------
@@ -185,8 +222,84 @@ class OverworldGame(chigame.Game):
         """
         self.host = host
         host.keys.bindings = dict(BINDINGS)
-        self.world = self._world if self._world is not None else build_world()
+        self.scheme = "arrows"
+        self.walk_speed = WALK_SPEED
+        self.phase = "loading"
+        self.load_step = 0
+        self.load_note = "waking"
+        self.prologue_index = 0
+        self.seed = ""
+        self._pending = self._world
+        self._boot()
+
+    def _boot(self) -> None:
+        """Prepare a bare game so the loading screen has something to draw."""
+        self.world = self._pending if self._pending is not None else World()
         self.story = Story(self.world)
+        self.people = []
+        self.iris = [0.0, 0.0]
+        self.lumi = [0.0, 0.0]
+        self._clock = 0.0
+
+    #: What each loading stage is called, in order.
+    #: The first is deliberately empty work. Without it the heaviest stage runs
+    #: before anything has been drawn, and the loading screen appears only after
+    #: the freeze it exists to explain.
+    LOAD_STAGES = ("waking", "reading the archive", "raising the lands",
+                   "waking the living", "recalling your run")
+
+    def _load_next(self) -> None:
+        """Run one loading stage.
+
+        Split so that each is a frame the player sees rather than one long
+        freeze with nothing on screen.
+        """
+        if self.load_step == 0:
+            pass  # a frame with nothing to do, so the screen is on before the work
+        elif self.load_step == 1:
+            if self._pending is None:
+                self.world = build_world(self._docs_root, seed=self.seed)
+            self.story = Story(self.world)
+        elif self.load_step == 2:
+            self._prepare_visuals()
+        elif self.load_step == 3:
+            self.people = npcs_api.populate(self.world)
+        elif self.load_step == 4:
+            self._restore()
+            start = self.world.spawn() if self._resume is None else self._resume
+            self.iris = [float(start[0]), float(start[1])]
+            self.lumi = [self.iris[0] - LUMI_TRAIL, self.iris[1]]
+            self.host.camera.center[:] = self.iris
+            self.host.camera.height = self.view_height
+            # A run that has been played already does not need telling what the
+            # Fading is; a fresh one does.
+            self.phase = "play" if self._resume is not None else "prologue"
+            return
+        self.load_step += 1
+        self.load_note = self.LOAD_STAGES[min(self.load_step, len(self.LOAD_STAGES) - 1)]
+
+    def finish_loading(self, skip_prologue: bool = True) -> None:
+        """Run every loading stage at once.
+
+        The staged loader exists so a player sees progress rather than a frozen
+        window. A caller that does not need to *watch* it -- a test, a headless
+        capture -- wants the world ready on the next line instead.
+
+        Parameters
+        ----------
+        skip_prologue : bool, optional
+            Also step past the opening cards.
+        """
+        guard = 0
+        while self.phase == "loading" and guard < 32:
+            self._load_next()
+            guard += 1
+        if skip_prologue and self.phase == "prologue":
+            self.phase = "play"
+
+    def _prepare_visuals(self) -> None:
+        """Build the atlas and the palettes."""
+        host = self.host
         self.view_height = VIEW_HEIGHT
         self.show_map = False
 
@@ -250,16 +363,8 @@ class OverworldGame(chigame.Game):
         self._guardian_nm: dict[str, float] = {}
         self.resting = False
         # The world was a diagram until something lived on it.
-        self.people = npcs_api.populate(self.world)
         self.speaking = None
-        self._clock = 0.0
 
-        self._restore()
-        start = self.world.spawn() if self._resume is None else self._resume
-        self.iris = [float(start[0]), float(start[1])]
-        self.lumi = [self.iris[0] - LUMI_TRAIL, self.iris[1]]
-        host.camera.center[:] = self.iris
-        host.camera.height = self.view_height
 
     def _restore(self) -> None:
         """Load a saved run, if there is one.
@@ -350,6 +455,16 @@ class OverworldGame(chigame.Game):
         keys : chisurf.gui.chigame.input.InputMap
             Controller state.
         """
+        if self.phase == "loading":
+            self._load_next()
+            return
+        if self.phase == "prologue":
+            if keys.just_pressed(Action.CONFIRM) or keys.just_pressed(Action.CANCEL):
+                self.prologue_index += 1
+                if self.prologue_index >= len(PROLOGUE) or keys.just_pressed(Action.CANCEL):
+                    self.phase = "play"
+            return
+
         if self.battle is not None:
             self._battle_input(keys)
             return
@@ -376,7 +491,7 @@ class OverworldGame(chigame.Game):
         self.walking = bool(dx or dy)
         if self.walking:
             length = math.hypot(dx, dy) or 1.0
-            speed = WALK_SPEED * (SPRINT if keys.is_held(Action.CONFIRM) else 1.0)
+            speed = self.walk_speed * (SPRINT if keys.is_held(Action.CONFIRM) else 1.0)
             self._walk(dx / length * speed * dt, dy / length * speed * dt)
             # Vertical facing wins on a diagonal, which is the convention every
             # game of this shape uses: it keeps the sprite from flickering
@@ -424,7 +539,7 @@ class OverworldGame(chigame.Game):
         camera.height += (height - camera.height) * blend
 
     #: The tabs of the pause menu, in order.
-    TABS = ("MAP", "RIG", "PARTY", "MODE")
+    TABS = ("MAP", "RIG", "PARTY", "MODE", "OPTIONS")
 
     def _menu_input(self, keys) -> None:
         """Drive the pause menu.
@@ -455,6 +570,33 @@ class OverworldGame(chigame.Game):
         if keys.just_pressed(Action.CONFIRM):
             self._menu_confirm()
 
+    def _options_confirm(self) -> None:
+        """Act on the selected option."""
+        row = self.menu_row
+        if row == 0:
+            names = list(SCHEMES)
+            self.scheme = names[(names.index(self.scheme) + 1) % len(names)]
+            self.host.keys.bindings = dict(SCHEMES[self.scheme])
+        elif row == 1:
+            self.walk_speed = 120.0 if self.walk_speed >= 260.0 else self.walk_speed + 35.0
+        elif row == 2:
+            self.view_height = VIEW_MIN if self.view_height >= 600.0 else self.view_height + 90.0
+        elif row == 3:
+            # Only the wilderness is redrawn. Which lands exist and where each
+            # page stands comes from the documentation and must not move: a
+            # player who has learned where something lives should not lose that
+            # by asking for new scenery.
+            self.seed = f"{self.seed}+" if self.seed else "regenerated"
+            self._pending = None
+            self.menu_open = False
+            self.phase = "loading"
+            self.load_step = 0
+            self.load_note = self.LOAD_STAGES[0]
+        elif row == 4:
+            self.menu_open = False
+            self.prologue_index = 0
+            self.phase = "prologue"
+
     def _menu_rows(self) -> list[str]:
         """The lines the current tab offers.
 
@@ -470,6 +612,14 @@ class OverworldGame(chigame.Game):
             return [
                 f"{f.creature.name}  {f.hp}/{f.creature.max_hp}" for f in self.team
             ] + [c.name for c in self.collection]
+        if tab == "OPTIONS":
+            return [
+                f"controls: {self.scheme}",
+                f"walk speed: {self.walk_speed:.0f}",
+                f"default zoom: {self.view_height:.0f}",
+                "regenerate the wilderness",
+                "watch the opening again",
+            ]
         if tab == "MODE":
             return [
                 review_bridge.TRAINING,
@@ -495,6 +645,8 @@ class OverworldGame(chigame.Game):
             # act from the player's side, so both happen.
             self.rig.fit(part)
             self.equip(part)
+        elif tab == "OPTIONS":
+            self._options_confirm()
         elif tab == "PARTY":
             # Swap a collected creature into the party for the selected slot.
             index = self.menu_row - len(self.team)
@@ -868,8 +1020,12 @@ class OverworldGame(chigame.Game):
         camera = self.host.camera
         width, height = self.host.ctx.size
         half = camera.half_extent(width / max(height, 1))
-        as_map = camera.height > MAP_THRESHOLD
 
+        if self.phase in ("loading", "prologue"):
+            self._draw_curtain(scene, camera, half)
+            return
+
+        as_map = camera.height > MAP_THRESHOLD
         self._draw_tiles(scene, camera, half, as_map)
         self._draw_rooms(scene, camera, half)
 
@@ -1237,6 +1393,52 @@ class OverworldGame(chigame.Game):
             scene.text(label, at=(cx - half[0] * 0.29, y), height=11.0 * scale,
                        color=(0.94, 0.92, 0.86, 1.0) if selected else (0.56, 0.60, 0.68, 1.0))
 
+    def _draw_curtain(self, scene, camera, half) -> None:
+        """Draw the loading screen and the opening.
+
+        Parameters
+        ----------
+        scene : chisurf.gui.chigame.scene.Scene
+            Frame under construction.
+        camera : chisurf.gui.chigame.render.Camera
+            The view.
+        half : numpy.ndarray
+            Half-extent in world units.
+        """
+        cx, cy = float(camera.center[0]), float(camera.center[1])
+        scale = camera.height / VIEW_HEIGHT
+        scene.draw("ui", "panel", at=(cx, cy), size=(half[0] * 2.4, half[1] * 2.4),
+                   color=(0.020, 0.024, 0.032, 1.0))
+
+        if self.phase == "loading":
+            scene.text("LUMIS QUEST", at=(cx, cy - 26.0 * scale), height=20.0 * scale,
+                       align="center", color=(0.88, 0.82, 0.58, 1.0))
+            scene.text(self.load_note, at=(cx, cy + 6.0 * scale), height=11.0 * scale,
+                       align="center", color=(0.52, 0.58, 0.66, 1.0))
+            done = min(self.load_step, len(self.LOAD_STAGES))
+            self._bar(scene, (cx, cy + 26.0 * scale), 160.0 * scale, 5.0 * scale,
+                      done / len(self.LOAD_STAGES), (0.45, 0.85, 0.75, 1.0))
+            # A pilot light, so the screen is never simply still.
+            scene.draw("photon", "spark", at=(cx, cy - 58.0 * scale),
+                       size=(14.0 * scale, 14.0 * scale), emission_nm=488.0)
+            return
+
+        title, body = PROLOGUE[min(self.prologue_index, len(PROLOGUE) - 1)]
+        scene.text(title, at=(cx, cy - 66.0 * scale), height=17.0 * scale,
+                   align="center", color=(0.88, 0.82, 0.58, 1.0))
+        # Centred and wrapped to the view: left-aligning a 52-character line ran
+        # it off the right edge, and the last words of every card were lost.
+        lines = _wrap(body, 42)
+        top = cy - 6.0 * scale - (len(lines) - 1) * 7.0 * scale
+        for offset, line in enumerate(lines):
+            scene.text(line, at=(cx, top + offset * 14.0 * scale),
+                       height=11.0 * scale, align="center",
+                       color=(0.80, 0.84, 0.90, 1.0))
+        scene.text(f"{self.prologue_index + 1} / {len(PROLOGUE)}    "
+                   "Confirm to go on, Cancel to skip",
+                   at=(cx, cy + half[1] * 0.62), height=9.5 * scale, align="center",
+                   color=(0.46, 0.50, 0.58, 1.0))
+
     def _draw_menu(self, scene, camera, half) -> None:
         """Draw the pause menu.
 
@@ -1255,10 +1457,13 @@ class OverworldGame(chigame.Game):
         scene.draw("ui", "panel", at=(cx, cy), size=(width * 0.94, height * 0.92),
                    color=(0.055, 0.065, 0.085, 0.985))
 
+        # Spread across the panel rather than at a fixed pitch: a fixed one fit
+        # four tabs and clipped the fifth off the edge.
+        span = half[0] * 1.5
         for index, label in enumerate(self.TABS):
             selected = index == self.menu_tab
-            x = cx - half[0] * 0.62 + index * half[0] * 0.40
-            scene.text(label, at=(x, cy - half[1] * 0.62), height=12.0 * scale,
+            x = cx - span * 0.5 + (index + 0.5) * span / len(self.TABS)
+            scene.text(label, at=(x, cy - half[1] * 0.62), height=11.0 * scale,
                        align="center",
                        color=(0.95, 0.86, 0.50, 1.0) if selected else (0.45, 0.49, 0.56, 1.0))
 
