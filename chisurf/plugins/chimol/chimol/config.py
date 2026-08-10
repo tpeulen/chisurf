@@ -1047,7 +1047,7 @@ def _merge_in_place(target: dict, fresh: dict) -> None:
     """Make *target* hold *fresh*, without replacing the dict itself.
 
     Ten modules -- including the two that draw, `renderer.view` and
-    `renderer.qtgl` -- hold this config by name (``from ..config import
+    `renderer.wgpu_view` -- hold this config by name (``from ..config import
     _DISPLAY_CONFIG``). Rebinding the module global, which is what this used to
     do, left every one of them pointing at the dict from *before* the reload:
     the settings were reloaded and the renderer went on drawing from the old

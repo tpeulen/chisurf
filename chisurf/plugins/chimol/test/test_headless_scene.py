@@ -101,13 +101,22 @@ def qapp():
 
 @pytest.mark.parametrize("script", SCRIPTS, ids=lambda s: s[1].replace(" ", "_"))
 def test_headless_scene_matches_qt_scene(qapp, script):
-    """A SceneSink viewer and a Qt viewer must assemble identical geometry."""
+    """A windowless viewer and a windowed one must assemble identical geometry.
+
+    Against the WebGPU widget, which is the renderer that draws: the comparison
+    used to be against the OpenGL one, and when that was removed the obvious
+    move -- deleting the test with it -- would have thrown away the only check
+    that scene assembly does not depend on having a window.
+    """
     pytest.importorskip("chisurf.core.structure")
+    from chisurf.plugins.chimol.chimol.renderer import wgpu_view
     from chisurf.plugins.chimol.chimol.renderer.headless import SceneSink
-    from chisurf.plugins.chimol.chimol.renderer.qtgl import QtGLRenderer
+
+    if not wgpu_view.is_available():
+        pytest.skip("no WebGPU adapter")
 
     head_scene, head_viewer = _build_scene(SceneSink, script, qapp)
-    qt_scene, qt_viewer = _build_scene(QtGLRenderer, script, qapp)
+    qt_scene, qt_viewer = _build_scene(wgpu_view.WgpuRenderer, script, qapp)
 
     head = _scene_fingerprint(head_scene)
     qt = _scene_fingerprint(qt_scene)

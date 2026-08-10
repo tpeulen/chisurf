@@ -1,18 +1,24 @@
-"""Capture the OpenGL renderer's output, feature by feature, before it is replaced.
+"""The OpenGL renderer's output, feature by feature -- the migration's before-half.
 
-Why this exists
----------------
-The desktop renderer is moving from OpenGL to WebGPU/WGSL so that the desktop and
-the browser can share one shader source (see
-[chimol-web](okf/plugins/chimol-web.md)). A migration is proven by a before/after
-pair, not by an after -- and the before-half of *this* migration is unrecoverable:
-once ``renderer/qtgl.py`` is replaced there is no way to re-photograph what the
-OpenGL renderer looked like, and nobody can review the port afterwards.
+**The capture is retired. The images are not.** ``renderer/qtgl.py`` has been
+removed, so nothing here can photograph anything any more; what remains is the
+*definition* of what was photographed -- the scene list, the reset preamble, and
+the guard that keeps them in step -- beside 22 frozen PNGs and the camera each
+was taken with in ``renders/gl_baseline/manifest.json``.
 
-So this script photographs every render feature through the current GL renderer
-and, next to each image, records the exact camera it was taken with. The 18-float
-PyMOL view tuple is Qt-free and shared by every backend, so the replacement can
-replay ``set_view`` and produce a directly comparable frame.
+Why it is kept rather than deleted
+----------------------------------
+A migration is proven by a before/after pair, not by an after, and the
+before-half of this one is now genuinely unrecoverable. Those images are the
+only evidence of what chimol looked like under OpenGL, and
+``test/compare_wgsl.py`` still replays each scene's commands and camera through
+the WGSL renderer to put the two side by side. That makes them a **regression
+reference**: the day a WGSL change makes one of those rows stop matching, the
+question is whether the change was intended.
+
+``SCENES`` and ``RESET`` stay live for the same reason -- ``missing_resets`` is
+what caught five baselines being photographed with ambient occlusion switched
+off, and the same class of leak can still contaminate a comparison run.
 
 What is judged
 --------------
@@ -29,44 +35,14 @@ what it replaces have to exist as a baseline.
 
 Use
 ---
-    # needs a logged-in window server -- NOT QT_QPA_PLATFORM=offscreen, which
-    # cannot create a GL context and yields black
-    python -m chisurf.plugins.chimol.test.capture_gl_baseline
+Nothing to run. To compare the WGSL renderer against these images::
 
-Naming scenes re-captures only those and leaves the rest of the images and the
-rest of the manifest alone::
-
-    python -m chisurf.plugins.chimol.test.capture_gl_baseline bg_white labels
+    QT_QPA_PLATFORM=offscreen python -m chisurf.plugins.chimol.test.compare_wgsl \
+        cartoon sticks surface transparency
 """
 from __future__ import annotations
 
-import json
-import os
 import pathlib
-import sys
-import tempfile
-import traceback
-from typing import Optional, Sequence
-
-def isolate_settings() -> None:
-    """Point this run's settings at a scratch directory.
-
-    Must run before anything builds a QSettings *or* loads the display config:
-    the main window persists its dock layout, and a restored one hands the 3-D
-    view a strip (see ``assert_view_usable`` in ``screenshot.py``). It also keeps
-    a capture run from writing the user's real preferences.
-
-    Called from :func:`main` rather than at import, because a test module that
-    imports :data:`SCENES` or :func:`missing_resets` must not thereby change the
-    environment for every test that runs after it. It did: importing this module
-    moved ``CHISURF_SETTINGS_DIR`` to a fresh directory, another chimol test read
-    the display config from there instead of from the user's, and the difference
-    surfaced three tests later as an unrelated assertion about occlusion keys.
-    """
-    os.environ.setdefault(
-        "CHISURF_SETTINGS_DIR",
-        tempfile.mkdtemp(prefix="chimol_baseline_settings_"),
-    )
 
 _HERE = pathlib.Path(__file__).resolve().parent
 _DATA = _HERE.parents[3] / "test" / "data" / "atomic_coordinates" / "pdb_files"
@@ -198,168 +174,8 @@ def missing_resets() -> set[str]:
     return perturbed - _settings_in(RESET)
 
 
-def main(only: Optional[Sequence[str]] = None) -> int:
-    """Capture the baselines, or just the named ones.
-
-    Parameters
-    ----------
-    only : sequence of str, optional
-        Scene names to re-capture. The rest keep the images and manifest entries
-        they already have, which is the point: a baseline that did not need
-        re-taking should stay byte-identical, so a later diff shows the scenes
-        that actually changed and not the run-to-run noise of all 23.
-
-    Returns
-    -------
-    int
-        Process exit status.
-    """
-    # refuses the offscreen platform, where GL has no context and yields black
-    from .screenshot import assert_view_usable, ensure_app, shoot
-
-    isolate_settings()
-
-    # Before a window opens, not after 23 scenes: a capture run that leaks a
-    # setting produces images that look fine and are wrong, and the wrongness
-    # surfaces weeks later as a difference in whatever renderer is compared next.
-    absent = missing_resets()
-    if absent:
-        print(f"RESET does not restore: {', '.join(sorted(absent))}")
-        return 2
-
-    app = ensure_app()
-    from chisurf.plugins.chimol.chimol.app.molview_main_window import MolViewPluginWindow
-    from chisurf.plugins.chimol.chimol.cmd import cmd as shared
-
-    _OUT.mkdir(parents=True, exist_ok=True)
-    manifest: dict[str, dict] = {}
-    manifest_path = _OUT / "manifest.json"
-    if only and manifest_path.exists():
-        manifest = json.loads(manifest_path.read_text())
-    wanted = set(only or ())
-    if wanted - {name for name, _s, _c in SCENES}:
-        print(f"unknown scene(s): {', '.join(sorted(wanted - {n for n, _s, _c in SCENES}))}")
-        return 2
-
-    loaded: str | None = None
-    win = None
-
-    for name, structure, script in SCENES:
-        if wanted and name not in wanted:
-            continue
-        try:
-            if win is None or structure != loaded:
-                if win is not None:
-                    win.close()
-                win = MolViewPluginWindow()
-                win.resize(1280, 860)
-                win.show()
-                for _ in range(12):
-                    app.processEvents()
-                # a Path, not a str: _make_object_name() calls .stem on it
-                win._load_structure_from_path(_DATA / structure)
-                for _ in range(25):
-                    app.processEvents()
-                shared.set_window(win)
-                loaded = structure
-
-                # Loading redistributes the docks, and the 3-D view can be left
-                # a strip for several event cycles before the layout settles --
-                # long enough that a single settle pass photographs the strip.
-                # Re-assert the window size and pump until the viewport is sane.
-                for _ in range(40):
-                    try:
-                        vw, vh = assert_view_usable(win)
-                        break
-                    except RuntimeError:
-                        win.resize(1280, 860)
-                        for _ in range(10):
-                            app.processEvents()
-                else:
-                    # Still wrong after settling: refuse. A baseline taken from a
-                    # strip is worse than a missing one, because it looks real.
-                    vw, vh = assert_view_usable(win)
-                print(f"     viewport {vw}x{vh}")
-
-            errors: list[str] = []
-            messages: list[str] = []
-            shared.set_message_callback(messages.append)
-            shared.set_error_callback(errors.append)
-
-            # Reset first, then the scene. Errors from the reset are collected
-            # too -- a reset line that silently fails leaves state behind and
-            # the leak reappears as an unexplained difference in one image.
-            for line in RESET + script:
-                shared.do(line)
-                for _ in range(12):
-                    app.processEvents()
-
-            view = ""
-            try:
-                view = shared.get_view() or ""
-            except Exception as exc:  # pragma: no cover - diagnostic only
-                errors.append(f"get_view failed: {exc!r}")
-
-            paths = shoot(win, name, directory=_OUT, size=(1280, 860), area="all")
-
-            # Where the molecule actually is inside the `_view` grab. The panel
-            # is a right-hand *column* and the sequence viewer a top *band*, both
-            # drawn inside the GL widget, so the framebuffer is wider and taller
-            # than the scene. Without this a diff against the PNG measures the
-            # crop rather than the shading -- two silhouette overlaps taken that
-            # way came out 0.362 and 0.277 and meant nothing.
-            scene_rect = None
-            try:
-                r = win.viewer._renderer
-                fb_w, fb_h = r.width(), r.height()
-                sw, sh = r.scene_width(), r.scene_height()
-                # device pixels, since that is what grabFramebuffer returns
-                ratio = float(getattr(win, "devicePixelRatioF", lambda: 1.0)())
-                scene_rect = {
-                    "x": 0,
-                    "y": int(round((fb_h - sh) * ratio)),
-                    "width": int(round(sw * ratio)),
-                    "height": int(round(sh * ratio)),
-                    "framebuffer": [int(round(fb_w * ratio)), int(round(fb_h * ratio))],
-                    "device_pixel_ratio": ratio,
-                }
-            except Exception as exc:  # pragma: no cover - diagnostic only
-                errors.append(f"scene_rect unavailable: {exc!r}")
-
-            manifest[name] = {
-                "structure": structure,
-                # the molecule's rectangle within <name>_view.png
-                "scene_rect": scene_rect,
-                # the full sequence, so the after-half replays exactly this
-                "reset": RESET,
-                "script": script,
-                # replay with `set_view <view>` to reproduce this exact frame
-                "view": view,
-                "errors": errors,
-                "files": {k: v.name for k, v in paths.items()},
-            }
-            flag = f"  !! {len(errors)} error(s)" if errors else ""
-            print(f"[ok] {name:20s} {structure:12s}{flag}")
-            for e in errors:
-                print(f"        {e}")
-        except Exception:
-            manifest[name] = {"structure": structure, "script": script,
-                              "failed": traceback.format_exc(limit=3)}
-            print(f"[FAIL] {name}")
-            traceback.print_exc(limit=3)
-
-    if win is not None:
-        win.close()
-    manifest_path.write_text(json.dumps(manifest, indent=2))
-    # Counted over what this run captured, not over the merged manifest: a
-    # scoped re-capture that reported "23/5" would read as a wild success.
-    captured = {n for n, _s, _c in SCENES if not wanted or n in wanted}
-    n_ok = sum(1 for k in captured if "failed" not in manifest.get(k, {"failed": 1}))
-    n_err = sum(1 for k in captured if manifest.get(k, {}).get("errors"))
-    print(f"\n{n_ok}/{len(captured)} scenes captured, {n_err} with command errors")
-    print(f"-> {_OUT}")
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main(sys.argv[1:]))
+if __name__ == "__main__":  # pragma: no cover - there is nothing left to run
+    raise SystemExit(
+        "the OpenGL renderer this captured no longer exists; these baselines "
+        "are frozen. Use test/compare_wgsl.py to compare against them."
+    )

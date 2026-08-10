@@ -7,6 +7,42 @@ tags: [plugins, structure, viewer, webgpu, wgsl, web, pyodide, compute]
 timestamp: '2026-08-10T00:00:00Z'
 ---
 
+# The OpenGL renderer is gone (2026-08-10)
+
+`renderer/qtgl.py` (2,932 lines) and `renderer/postprocess.py` (452) are
+deleted. chimol draws with WGSL and nothing else; a machine with no WebGPU
+adapter gets `SceneSink`, which builds scenes and rasterises nothing — honest
+about having no window rather than opening an empty one, and logged.
+
+**What had to move first, because deleting a file does not delete what only
+lived in it:**
+
+- the mouse-mode helpers (`normalize_mouse_mode`, `rotation_delta_multiplier`,
+  `pan_delta_multiplier`) → `mouse_modes.py`, beside the table they describe;
+- `_image_from_rgb` → `gui_overlay.image_from_rgb`, and it now **copies**: a
+  QImage over a numpy buffer is a view, and the array is routinely a temporary.
+
+**What the deletion cost, and the decision about it.** `capture_gl_baseline.py`
+photographed the reference the WGSL renderer is judged against, and its renderer
+no longer exists — so the 22 baselines are now **frozen and unrecoverable**. The
+script is kept rather than deleted: `SCENES`, `RESET` and `missing_resets` stay
+live (that guard is what caught five contaminated baselines), `compare_wgsl`
+still replays each scene against the frozen images, and `main()` is replaced by
+a message saying why there is nothing to run. Those PNGs are the only evidence
+of what chimol looked like under OpenGL.
+
+**Tests that only existed to compare the two backends were repointed, not
+deleted** — `test_headless_scene` compares `SceneSink` against the *WebGPU*
+widget now, which is the same question (does scene assembly depend on having a
+window?) asked of the renderer that draws.
+
+Found on the way and fixed where it lives: **chitable's search box raised on any
+table with a vector column.** `_stringify` called `arr.astype(str)`, which
+cannot format an object cell holding a list — a colour like `[0, 0, 0, 1]` — so
+typing one character into the settings filter raised `ValueError: setting an
+array element with a sequence`, naming neither the column nor the row. Nothing
+to do with this port; it just had never been searched.
+
 # WGSL is chimol's default renderer (2026-08-10)
 
 `renderer.backend` defaults to `wgpu`, so the viewport is
@@ -46,8 +82,12 @@ chrome), the depth-outline **silhouette** as a second WGSL pass sampling the
 depth buffer, and **atom picking** through `project_to_screen` -- which required
 teaching `view_matrix` about the camera-space shift it had been dropping.
 
-**Still open, and why `qtgl.py` is not deleted yet:** the object panel's pop-up
-menus and the wizard, beyond hover/click/drag routing.
+**The panel's pop-up menus and wizard work too** — the press carries Qt's
+double-click flag (the panel opens menus on `DblClk`, and dropping the flag
+leaves every menu unreachable while single clicks keep working, so the panel
+looks alive and inert), an open menu owns the pointer, and the wheel scrolls a
+menu or the sequence strip before it reaches the camera. Verified by opening the
+Action menu and photographing it.
 
 # chimol runs on WGSL (2026-08-10)
 

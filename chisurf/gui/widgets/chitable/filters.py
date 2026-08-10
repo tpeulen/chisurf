@@ -19,15 +19,47 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import numpy as np
-import pandas as pd
 
-from chisurf.gui.widgets.chitable.source import TableSource
+from chisurf.gui.widgets.chitable.source import TableSource, is_na
 
 #: Predicates understood by :class:`ColumnFilter`.
 TEXT_OPS = ("contains", "not_contains", "equals", "not_equals", "startswith", "endswith", "regex")
 NUMERIC_OPS = ("gt", "ge", "lt", "le", "between", "outside")
 NULL_OPS = ("isnull", "notnull")
 ALL_OPS = TEXT_OPS + NUMERIC_OPS + NULL_OPS
+
+
+def _stringify(arr: np.ndarray) -> np.ndarray:
+    """Every value as ``str()`` would render it, vectorised.
+
+    Parameters
+    ----------
+    arr : numpy.ndarray
+
+    Returns
+    -------
+    numpy.ndarray
+        Fixed-width unicode array, so :mod:`numpy.char` can vectorise the text
+        predicates below.
+
+    Notes
+    -----
+    ``astype(str)`` raises on an **object** column holding sequences -- a colour
+    stored as ``[0.0, 0.0, 0.0, 1.0]``, which is an ordinary cell in a settings
+    table. numpy tries to broadcast the list into the output element rather than
+    formatting it, and the message ("setting an array element with a sequence")
+    names neither the column nor the row. So typing a single character into the
+    search box raised, and the table's filter was unusable on any table with a
+    vector column.
+    """
+    try:
+        return arr.astype(str)
+    except (ValueError, TypeError):
+        # Element-wise, which is what `str()` on each cell means. Only reached
+        # for object columns, where the vectorised path was never doing
+        # anything cheaper.
+        flat = [str(value) for value in arr.ravel().tolist()]
+        return np.array(flat, dtype=str).reshape(arr.shape)
 
 #: Human-readable labels for the filter popup.
 OP_LABELS = {
@@ -135,7 +167,17 @@ class ColumnCache:
         elif arr.dtype.kind == "b":
             out = arr.astype("float64")
         else:
-            out = pd.to_numeric(pd.Series(arr), errors="coerce").to_numpy(dtype="float64")
+            try:
+                # The common case -- every entry already parses -- at C speed.
+                out = arr.astype("float64")
+            except (TypeError, ValueError):
+                # A genuinely mixed column: coerce what parses, NaN the rest.
+                out = np.full(arr.shape, np.nan, dtype="float64")
+                for i, v in enumerate(arr):
+                    try:
+                        out[i] = float(v)
+                    except (TypeError, ValueError):
+                        pass
         self._numeric[col] = out
         return out
 
@@ -157,8 +199,7 @@ class ColumnCache:
         if arr is None:
             self._lower[col] = None
             return None
-        series = pd.Series(arr).astype(str).str.lower()
-        out = series.to_numpy(dtype=object)
+        out = np.char.lower(_stringify(arr))
         self._lower[col] = out
         return out
 
@@ -223,8 +264,8 @@ class ColumnFilter:
             raw = cache.raw(self.column)
             if raw is None:
                 return keep
-            null = pd.isna(pd.Series(raw)).to_numpy(dtype=bool)
-            empty = pd.Series(raw).astype(str).str.strip().eq("").to_numpy(dtype=bool)
+            null = np.array([is_na(v) for v in raw], dtype=bool)
+            empty = np.char.strip(_stringify(raw)) == ""
             blank = null | empty
             return blank if self.op == "isnull" else ~blank
 
@@ -261,30 +302,30 @@ class ColumnFilter:
             raw = cache.raw(self.column)
             if raw is None:
                 return keep
-            series = pd.Series(raw).astype(str)
+            arr = _stringify(raw)
         else:
             lowered = cache.lower(self.column)
             if lowered is None:
                 return keep
-            series = pd.Series(lowered)
+            arr = lowered
             pattern = pattern.lower()
 
         try:
             if self.op == "contains":
-                return series.str.contains(pattern, regex=False, na=False).to_numpy(dtype=bool)
+                return np.char.find(arr, pattern) >= 0
             if self.op == "not_contains":
-                return ~series.str.contains(pattern, regex=False, na=False).to_numpy(dtype=bool)
+                return np.char.find(arr, pattern) < 0
             if self.op == "equals":
-                return series.eq(pattern).to_numpy(dtype=bool)
+                return arr == pattern
             if self.op == "not_equals":
-                return ~series.eq(pattern).to_numpy(dtype=bool)
+                return arr != pattern
             if self.op == "startswith":
-                return series.str.startswith(pattern, na=False).to_numpy(dtype=bool)
+                return np.char.startswith(arr, pattern)
             if self.op == "endswith":
-                return series.str.endswith(pattern, na=False).to_numpy(dtype=bool)
+                return np.char.endswith(arr, pattern)
             if self.op == "regex":
-                re.compile(pattern)
-                return series.str.contains(pattern, regex=True, na=False).to_numpy(dtype=bool)
+                compiled = re.compile(pattern)
+                return np.array([bool(compiled.search(s)) for s in arr], dtype=bool)
         except (re.error, ValueError, TypeError):
             return keep
         return keep
@@ -399,8 +440,7 @@ class FilterSpec:
                 lowered = cache.lower(col)
                 if lowered is None:
                     continue
-                hit = pd.Series(lowered).str.contains(text, regex=False, na=False)
-                any_hit |= hit.to_numpy(dtype=bool)
+                any_hit |= np.char.find(lowered, text) >= 0
             keep &= any_hit
 
         for cf in self.columns:

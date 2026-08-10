@@ -55,7 +55,7 @@ def _project_points_to_screen(
     ----------
     coords : numpy.ndarray
         ``(n, 3)`` positions in scene space.
-    view : chimol.renderer.qtgl.QtGLRenderer
+    view : chimol.renderer.wgpu_view.WgpuRenderer
         The widget that draws them.
 
     Returns
@@ -203,7 +203,7 @@ def pick_atom_from_click(
     ----------
     coords : np.ndarray
         (N, 3) array of atom coordinates.
-    view : QtGLRenderer
+    view : WgpuRenderer
         The GL view widget.
     ev : QtGui.QMouseEvent
         The mouse event.

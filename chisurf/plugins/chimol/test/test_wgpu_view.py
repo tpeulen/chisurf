@@ -44,33 +44,33 @@ def qt_app():
 
 
 class TestFactorySelection:
-    """The configuration picks the backend, and never leaves the viewer blank."""
+    """Which renderer the viewer builds, now that there is no OpenGL one."""
 
-    def test_unset_selects_wgpu(self, monkeypatch):
-        """Nothing configured means the WGSL renderer -- that is the default."""
-        monkeypatch.delenv("CHIMOL_RENDERER", raising=False)
+    def test_wgpu_when_an_adapter_exists(self, monkeypatch):
         monkeypatch.setattr(wgpu_view, "is_available", lambda: True)
-        from chisurf.plugins.chimol.chimol.config import _DISPLAY_CONFIG
+        assert wgpu_view.default_renderer() is wgpu_view.WgpuRenderer
 
-        monkeypatch.setitem(_DISPLAY_CONFIG, "renderer", {})
-        assert wgpu_view.renderer_factory_from_env(object()) is wgpu_view.WgpuRenderer
+    def test_without_an_adapter_it_is_the_scene_sink(self, monkeypatch):
+        """A scene-only backend, not a blank window and not a crash.
 
-    def test_another_value_keeps_the_default(self, monkeypatch):
-        monkeypatch.setenv("CHIMOL_RENDERER", "opengl")
-        sentinel = object()
-        assert wgpu_view.renderer_factory_from_env(sentinel) is sentinel
+        There is no OpenGL renderer to fall back to any more, so the honest
+        answer for a machine that cannot draw is a renderer that says so by
+        having no widget -- the viewer already handles that, because
+        ``SceneSink`` is what makes headless scene assembly work.
+        """
+        from chisurf.plugins.chimol.chimol.renderer.headless import SceneSink
 
-    def test_wgpu_selects_this_backend_when_it_can_run(self, monkeypatch):
-        monkeypatch.setenv("CHIMOL_RENDERER", "wgpu")
-        monkeypatch.setattr(wgpu_view, "is_available", lambda: True)
-        assert wgpu_view.renderer_factory_from_env(object()) is wgpu_view.WgpuRenderer
-
-    def test_falls_back_when_there_is_no_adapter(self, monkeypatch):
-        """A window with nothing in it is worse than the old renderer."""
-        monkeypatch.setenv("CHIMOL_RENDERER", "wgpu")
         monkeypatch.setattr(wgpu_view, "is_available", lambda: False)
-        sentinel = object()
-        assert wgpu_view.renderer_factory_from_env(sentinel) is sentinel
+        assert wgpu_view.default_renderer() is SceneSink
+
+    def test_the_refusal_is_logged(self, monkeypatch, caplog):
+        """"chimol shows nothing today" is harder to answer than a log line."""
+        import logging
+
+        monkeypatch.setattr(wgpu_view, "is_available", lambda: False)
+        with caplog.at_level(logging.WARNING):
+            wgpu_view.default_renderer()
+        assert any("no WebGPU adapter" in r.message for r in caplog.records)
 
 
 class TestRendererContract:
@@ -228,14 +228,18 @@ class TestTheDefaultBackend:
         shipped = json.loads(path.read_text())
         assert shipped["renderer"]["backend"] == "wgpu"
 
-    def test_the_config_can_choose_opengl(self, monkeypatch):
+    def test_the_setting_still_reports_a_choice(self, monkeypatch):
+        """The key survives the OpenGL removal, and it should.
+
+        A second *drawing* backend is the whole point of the arrangement -- a
+        browser canvas is the next one -- so the setting stays even while
+        ``wgpu`` is the only value that draws anything today.
+        """
         monkeypatch.delenv("CHIMOL_RENDERER", raising=False)
         from chisurf.plugins.chimol.chimol.config import _DISPLAY_CONFIG
 
-        monkeypatch.setitem(_DISPLAY_CONFIG, "renderer", {"backend": "opengl"})
-        assert wgpu_view.selected_backend() == "opengl"
-        sentinel = object()
-        assert wgpu_view.renderer_factory_from_env(sentinel) is sentinel
+        monkeypatch.setitem(_DISPLAY_CONFIG, "renderer", {"backend": "something"})
+        assert wgpu_view.selected_backend() == "something"
 
     def test_the_environment_overrides_the_config(self, monkeypatch):
         """What makes a bug report reproducible without editing a config file."""

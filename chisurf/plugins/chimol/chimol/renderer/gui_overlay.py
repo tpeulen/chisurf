@@ -24,6 +24,7 @@ from __future__ import annotations
 from qtpy import QtCore, QtGui
 
 __all__ = [
+    "image_from_rgb",
     "paint_chrome",
     "paint_chrome_into",
     "paint_labels",
@@ -137,6 +138,29 @@ def paint_labels(painter, labels, project) -> int:
         drawn += 1
     painter.restore()
     return drawn
+
+
+def image_from_rgb(array) -> "QtGui.QImage":
+    """Wrap an ``(h, w, 3|4)`` uint8 array as a QImage, copied.
+
+    Copied deliberately: a QImage over a numpy buffer is a view, and the array
+    is routinely a temporary -- the image then renders whatever replaced it.
+    """
+    import numpy as np
+
+    data = np.ascontiguousarray(array)
+    if data.dtype != np.uint8:
+        data = np.clip(data, 0.0, 1.0)
+        data = (data * 255.0).astype(np.uint8)
+    if data.ndim != 3 or data.shape[2] not in (3, 4):
+        raise ValueError(f"expected (h, w, 3) or (h, w, 4), got {data.shape}")
+    height, width, channels = data.shape
+    fmt = (
+        QtGui.QImage.Format_RGB888 if channels == 3 else QtGui.QImage.Format_RGBA8888
+    )
+    return QtGui.QImage(
+        data.tobytes(), width, height, width * channels, fmt
+    ).copy()
 
 
 def paint_ray_image(painter, image, rect) -> bool:

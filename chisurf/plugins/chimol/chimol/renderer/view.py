@@ -60,7 +60,6 @@ from .chimol_state import (
     _StateField,
     copy_state,
 )
-from .qtgl import QtGLRenderer
 from .scene import Geometry, Scene, SceneObject
 from .undo import UndoRing
 from .view_state import framing_centre, framing_radius
@@ -2526,15 +2525,13 @@ class MolView(QtWidgets.QWidget):
 
         # The backend is chosen here, not assumed. `SceneSink` builds the scene
         # and rasterises nothing, which is what lets scene assembly run without
-        # a display; a browser backend arrives the same way. `CHIMOL_RENDERER`
-        # selects the WebGPU backend, which draws from the WGSL a browser will
-        # compile -- and falls back to OpenGL when the machine has no adapter,
-        # because a window with nothing in it is worse than the old renderer.
+        # a display; a browser backend arrives the same way. The default is the
+        # WGSL renderer, which draws from the same shaders a browser compiles.
         factory = renderer_factory
         if factory is None:
-            from .wgpu_view import renderer_factory_from_env
+            from .wgpu_view import default_renderer
 
-            factory = renderer_factory_from_env(QtGLRenderer)
+            factory = default_renderer()
         try:
             renderer = factory(controller=self, parent=self)
         except Exception:
@@ -3398,7 +3395,7 @@ class MolView(QtWidgets.QWidget):
 
         Delegates to the renderer, which re-frames the scene so the molecule
         keeps its on-screen size (see
-        :meth:`~.qtgl.QtGLRenderer.set_field_of_view`).
+        :meth:`~.camera_state.CameraState.set_field_of_view`).
         """
         renderer = self._renderer
         if renderer is None:
@@ -4687,7 +4684,7 @@ class MolView(QtWidgets.QWidget):
             "+/-": "toggle",
             "pkat": "pick",
             # A box action that was clicked rather than dragged is the same
-            # operation on one atom -- see the release handler in `qtgl`.
+            # operation on one atom -- see the release handler in `wgpu_view`.
             "+box": "add",
             "-box": "subtract",
         }.get(action, "toggle")
@@ -8815,7 +8812,7 @@ class MolView(QtWidgets.QWidget):
         not show the selection", which is what a scatter of thin rings over a
         cartoon looks like. A real silhouette needs the selected geometry's
         depth rendered to a texture and the existing outline shader
-        (``postprocess._OUTLINE_FRAGMENT``) run over it; until that second depth
+        (``wgsl/silhouette.wgsl``) run over it; until that second depth
         target exists, PyMOL's marker is the honest option.
         """
         centers = self._selection_atom_positions(coords)
@@ -8874,7 +8871,7 @@ class MolView(QtWidgets.QWidget):
         never shown has no viewport, and `_aspect` read 1/30 off the one-pixel
         column that left, putting the camera thirty times too far away. Refitting
         on every rebuild hid that, because the last rebuild landed after the
-        widget had a size. With :meth:`QtGLRenderer._aspect` fixed there is
+        widget had a size. With :meth:`CameraState._aspect` fixed there is
         nothing left to hide.
 
         Parameters

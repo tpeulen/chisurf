@@ -2,12 +2,12 @@
 
 What this is
 ------------
-:class:`WgpuRenderer` is a drop-in for :class:`~.qtgl.QtGLRenderer`: the viewer
-uses it **by default**. It satisfies the same contract as the OpenGL renderer,
-holds the same camera and draws the same scene -- through the same WGSL a
-browser will compile. ``CHIMOL_RENDERER=opengl`` (or ``renderer.backend`` in the
-display config) goes back to :class:`~.qtgl.QtGLRenderer`, and so does a machine
-where no WebGPU adapter can be created.
+:class:`WgpuRenderer` is chimol's renderer: the viewer
+draws chimol's viewport, and since the OpenGL renderer was removed it is the
+only backend that draws at all -- through the same WGSL a browser will compile.
+A machine with no WebGPU adapter gets :class:`~.headless.SceneSink`, which
+builds scenes and rasterises nothing: honest about having no window, rather
+than opening an empty one.
 
 Why it is small
 ---------------
@@ -47,15 +47,15 @@ from .scene import Scene
 __all__ = [
     "DEFAULT_BACKEND",
     "WgpuRenderer",
+    "default_renderer",
     "is_available",
-    "renderer_factory_from_env",
     "selected_backend",
 ]
 
-#: The backend chimol uses when nothing says otherwise. WGSL is the one source
-#: the desktop and the browser share; OpenGL remains reachable through
-#: ``CHIMOL_RENDERER=opengl`` or ``renderer.backend`` in the display config, and
-#: is used automatically wherever WebGPU cannot start.
+#: The backend chimol draws with. WGSL is the one source the desktop and the
+#: browser share, and since the OpenGL renderer was removed it is the only
+#: drawing backend there is -- the setting survives because a second one
+#: (a browser canvas, a headless tracer) is the point of the arrangement.
 DEFAULT_BACKEND = "wgpu"
 
 #: Wheel notch to distance ratio. Multiplicative so one step feels the same on a
@@ -99,27 +99,28 @@ def selected_backend() -> str:
     return choice or DEFAULT_BACKEND
 
 
-def renderer_factory_from_env(default=None):
-    """Return the renderer class the configuration selects, or ``default``.
+def default_renderer():
+    """The renderer class the viewer builds when it is given none.
 
-    ``default`` is the OpenGL renderer, and it is returned for any choice other
-    than ``wgpu`` **and** whenever this machine cannot make a WebGPU adapter --
-    a window with nothing in it is worse than the old backend, and a laptop
-    without a usable adapter must still open the viewer.
+    :class:`WgpuRenderer` when this machine can create a WebGPU adapter, and
+    :class:`~.headless.SceneSink` when it cannot -- a scene-only backend, which
+    is honest about having no window rather than opening an empty one. There is
+    no OpenGL renderer to fall back to any more; the WGSL one replaced it.
 
-    Falling back is logged rather than silent: "chimol looks different today" is
-    a much harder question to answer than "chimol said it fell back".
+    The refusal is logged rather than silent: "chimol shows nothing today" is a
+    much harder question to answer than "chimol said it had no adapter".
     """
     import logging
 
-    if selected_backend() != "wgpu":
-        return default
     if not is_available():
         logging.getLogger(__name__).warning(
-            "the WebGPU renderer was selected but no adapter is available; "
-            "falling back to the OpenGL renderer"
+            "no WebGPU adapter is available; chimol will build scenes but draw "
+            "nothing. Check that `wgpu` and `rendercanvas` are installed and "
+            "that this machine has a supported GPU."
         )
-        return default
+        from .headless import SceneSink
+
+        return SceneSink
     return WgpuRenderer
 
 
@@ -612,9 +613,9 @@ class WgpuRenderer(_make_widget_base(), CameraState, Renderer):
         if isinstance(source, QtGui.QImage):
             image = source
         elif isinstance(source, np.ndarray):
-            from .qtgl import _image_from_rgb
+            from .gui_overlay import image_from_rgb
 
-            image = _image_from_rgb(source)
+            image = image_from_rgb(source)
         elif isinstance(source, str):
             from .backdrop import BACKDROPS
 
@@ -863,6 +864,11 @@ class WgpuRenderer(_make_widget_base(), CameraState, Renderer):
             float(pos.y()),
             right=event.button() == QtCore.Qt.RightButton,
             modifiers=event.modifiers(),
+            # The panel opens its menus on a *double* click (`DblClk Menu` in
+            # the mouse-mode block), and Qt delivers that as its own event type.
+            # Dropping the flag leaves every menu in the panel unreachable while
+            # single clicks keep working, so the panel looks alive and inert.
+            double=event.type() == QtCore.QEvent.MouseButtonDblClick,
         ):
             self._gui_grab = True
             self.update()
@@ -907,6 +913,10 @@ class WgpuRenderer(_make_widget_base(), CameraState, Renderer):
         self._last_pos = pos
         super().mousePressEvent(event)
 
+    def mouseDoubleClickEvent(self, event) -> None:  # noqa: N802 - Qt naming
+        """A double click is a press that says so; the panel opens menus on it."""
+        self.mousePressEvent(event)
+
     def mouseMoveEvent(self, event) -> None:  # noqa: N802 - Qt naming
         """Drag the box, the panel, or the camera -- whatever the press began.
 
@@ -929,6 +939,11 @@ class WgpuRenderer(_make_widget_base(), CameraState, Renderer):
             if gui.wants(float(pos.x()), float(pos.y())):
                 event.accept()
                 return
+        elif gui is not None and gui.has_menu():
+            # An open menu owns the pointer. Rotating the molecule under it is
+            # never what a drag across a menu meant.
+            event.accept()
+            return
 
         if self._drag_selecting and self._drag_start is not None:
             self._select_rect = QtCore.QRect(self._drag_start, pos).normalized()
@@ -1040,6 +1055,25 @@ class WgpuRenderer(_make_widget_base(), CameraState, Renderer):
             # A trackpad sends many small deltas rather than 120-unit notches;
             # truncating them to zero makes the gesture do nothing at all.
             steps = 1 if raw > 0 else -1
+
+        pos = event.position() if hasattr(event, "position") else event.posF()
+        gui = self._internal_gui
+        if gui is not None:
+            # Over an open menu the wheel scrolls the menu -- PyMOL's `CPopUp`
+            # takes the scroll buttons. A menu longer than the window is the
+            # ordinary case for the Action menu on a small viewport, and zooming
+            # the molecule underneath it is never what was meant.
+            if gui.has_menu():
+                if gui.scroll_menu(pos.x(), pos.y(), steps):
+                    self.update()
+                event.accept()
+                return
+            # Over the sequence, the wheel scrolls the sequence.
+            if gui.sequence_visible and gui.sequence_strip_contains(pos.x(), pos.y()):
+                if gui.scroll_sequence(-steps * 5):
+                    self.update()
+                event.accept()
+                return
 
         # The camera is about to move, so a traced still stops being true.
         self.clear_ray_image()

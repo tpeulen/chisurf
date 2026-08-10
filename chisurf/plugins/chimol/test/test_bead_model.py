@@ -323,15 +323,16 @@ def test_impostor_point_scale_matches_the_ray_tracer(qapp_chimol):
     pixels, which is the same projection the ray tracer builds its ray grid
     from -- so a GL impostor and a ray-traced sphere are the same size.
     """
-    from chisurf.plugins.chimol.chimol.renderer.qtgl import QtGLRenderer
+    from chisurf.plugins.chimol.chimol.renderer import wgpu_view
 
-    renderer = QtGLRenderer(controller=None)
+    if not wgpu_view.is_available():
+        pytest.skip("no WebGPU adapter")
+    renderer = wgpu_view.WgpuRenderer(controller=None)
     renderer.resize(800, 600)
     renderer._fov = 45.0
 
-    scale = renderer._point_scale()
-    ratio = float(renderer.devicePixelRatioF())
-    height = 600.0 * ratio
+    height = float(renderer._gpu.height)
+    scale = renderer._gpu.point_scale(45.0, height=height)
     assert scale == pytest.approx(0.5 * height / math.tan(math.radians(22.5)))
 
     r, d = 12.0, 300.0
@@ -342,31 +343,42 @@ def test_impostor_point_scale_matches_the_ray_tracer(qapp_chimol):
 
 
 def test_world_radius_reaches_the_draw_call(qapp_chimol):
-    """The flag is what tells the shader the radius is not a pixel count."""
-    from chisurf.plugins.chimol.chimol.renderer.qtgl import QtGLRenderer
-    from chisurf.plugins.chimol.chimol.renderer.scene import Geometry, SceneObject
+    """The flag is what tells the shader the radius is not a pixel count.
 
-    renderer = QtGLRenderer(controller=None)
+    Read off the packed instance data rather than a draw-call object: the
+    WebGPU backend has no per-object draw record, and the question the test is
+    really asking -- does a bead's radius survive as a *distance in the model*
+    -- is answered by the number that reaches the GPU.
+    """
+    from chisurf.plugins.chimol.chimol.renderer.pack import pack_geometry
+    from chisurf.plugins.chimol.chimol.renderer.scene import Geometry
+    from chisurf.plugins.chimol.chimol.renderer.wgpu_backend import WgpuMeshRenderer
+
     pts = np.zeros((3, 3), dtype=float)
-    geom = Geometry(
-        kind="points",
-        positions=pts,
-        colors=np.ones((3, 4)),
-        radii=np.full(3, 5.0),
-        meta={"glyph": "sphere", "world_radius": True},
-    )
-    draw = renderer._geometry_to_draw_data(SceneObject(id="beads", geometry=geom))
-    assert draw is not None and draw.world_radius is True
-
-    plain = renderer._geometry_to_draw_data(
-        SceneObject(
-            id="dots",
-            geometry=Geometry(kind="points", positions=pts, colors=np.ones((3, 4)),
-                              meta={"glyph": "sphere"}),
+    beads = pack_geometry(
+        Geometry(
+            kind="points",
+            positions=pts,
+            colors=np.ones((3, 4)),
+            radii=np.full(3, 5.0),
+            meta={"glyph": "sphere", "world_radius": True},
         )
     )
-    assert plain is not None and plain.world_radius is False
-    renderer.deleteLater()
+    assert beads.meta.get("world_radius") is True
+    # A model radius is used as given -- not halved, which is what a pixel
+    # diameter would be.
+    assert np.allclose(WgpuMeshRenderer.interleave_impostors(beads)[:, 3], 5.0)
+
+    dots = pack_geometry(
+        Geometry(
+            kind="points",
+            positions=pts,
+            colors=np.ones((3, 4)),
+            meta={"glyph": "sphere", "size": 8.0},
+        )
+    )
+    assert not dots.meta.get("world_radius", False)
+    assert np.allclose(WgpuMeshRenderer.interleave_impostors(dots)[:, 3], 4.0)
 
 
 # --------------------------------------------------------------------------- #

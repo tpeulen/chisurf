@@ -1,6 +1,44 @@
 # Update Log
 
 ## 2026-08-10
+* **The OpenGL renderer is deleted: chimol draws with WGSL and nothing else.**
+  `renderer/qtgl.py` (2,932 lines) and `renderer/postprocess.py` (452) are gone.
+  A machine with no WebGPU adapter gets `SceneSink` — scenes assembled, nothing
+  rasterised — which is honest about having no window rather than opening an
+  empty one, and says so in the log.
+
+  **Deleting a file does not delete what only lived in it.** The mouse-mode
+  helpers moved to `mouse_modes.py` beside the table they describe, and
+  `_image_from_rgb` to `gui_overlay.image_from_rgb`, where it now *copies*: a
+  QImage over a numpy buffer is a view and the array is routinely a temporary.
+
+  **What it cost.** `capture_gl_baseline.py` photographed the reference the WGSL
+  renderer is judged against, so the 22 baselines are now **frozen and
+  unrecoverable**. The script is kept rather than deleted — `SCENES`, `RESET`
+  and `missing_resets` stay live (that guard caught five contaminated
+  baselines), `compare_wgsl` still replays each scene against the frozen
+  images, and `main()` is replaced by a message saying why there is nothing to
+  run. Tests that existed only to compare the two backends were **repointed,
+  not deleted**: `test_headless_scene` now asks the same question — does scene
+  assembly depend on having a window? — of the renderer that actually draws.
+
+  **The panel's menus and wizard landed first**, because they were the last
+  thing keeping `qtgl` alive: the press carries Qt's double-click flag (the
+  panel opens menus on `DblClk`, and dropping the flag leaves every menu
+  unreachable while single clicks keep working — alive and inert), an open menu
+  owns the pointer, and the wheel scrolls a menu or the sequence strip before it
+  reaches the camera.
+
+  Found on the way, unrelated, fixed where it lives: **chitable's search box
+  raised on any table with a vector column.** `_stringify` called
+  `arr.astype(str)`, which cannot format an object cell holding a list — a
+  colour like `[0, 0, 0, 1]` — so one character in the settings filter raised
+  `ValueError: setting an array element with a sequence`, naming neither the
+  column nor the row.
+
+  Suites: **2270 passed, 32 skipped** across the whole chimol test tree.
+  [chimol-web](plugins/chimol-web.md)
+
 * **A red test blamed on a numba kernel was the *compiled* path all along — and the bug was worse than the failure looked.** `test_no_exchange_reduces_to_a_static_mixture` returned `-inf` where `-3.665` is expected, which reads like the numba kernel's own numerical-failure sentinel firing. It is not: the in-tree implementation computes the right answer to 16 digits. **`tttrlib.GopichSzabo.set_scheme` returns False for an all-zero rate matrix**, and the delegation turned that *setup* failure into `-inf` — telling the optimiser the parameters are **forbidden** for precisely the no-exchange limit that a dynamic fit is compared against, where the likelihood is perfectly well defined. Conflating "the engine would not take this scheme" with "this model is impossible" is what made it silent: every other point in parameter space returns a finite value, so the surface simply has a wall at the static limit. A rejected scheme now falls through like any other unavailability. The guard forces the rejection with a subclass rather than waiting for a library build that happens to exhibit it, because the failure mode is invisible by construction. Root cause recorded as a photon-library follow-up: `set_scheme` should accept a zero rate matrix rather than be worked around here.
   **That is the third time this session that "delegate to the compiled kernel" was the wrong instinct**, after the pile-up correction and the weighted rescale. The pattern is consistent enough to state: a same-named C function is a *candidate*, and the deciding question is which implementation is right, not which is compiled.
   **`_hdbscan.py` measured and split rather than ported.** The compiled kernel covers only the first two stages; `single_linkage`, `condense_tree` and `label_points` are not in the photon library at all. Timed on the compiled path they are **43% of a run** (n=100,000: MST 117.6 ms, single-linkage 25.4 ms, condense+label 65.1 ms), so three of the seven kernels go by making the compiled path required and the other four are route `tttr-c` — union-find with path halving, a BFS over a dendrogram and a dynamic compaction, none of which NumPy expresses and all of which are hot. Recorded so the next session does not re-measure.

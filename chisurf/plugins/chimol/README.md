@@ -58,7 +58,8 @@ python -m chisurf.plugins.chimol
   or an external DSSP binary is unavailable.
 - Key modules:
   - `chimol/app/molview_main_window.py`: UI wiring (Qt docks, sequence, object list).
-  - `chimol/renderer/qtgl.py`: Qt native OpenGL renderer.
+  - `chimol/renderer/wgpu_view.py`: the Qt viewport, drawn with WebGPU from the
+    shared WGSL in `chimol/renderer/wgsl/`.
   - `chimol/geometry/cartoon.py`: cartoon geometry generation.
   - `chimol/config.py`: display configuration loading and defaults.
 - For standalone development, ensure `QT_API` is set (e.g., `PySide6` or `PyQt5`).

@@ -588,3 +588,49 @@ def wheel_action_of(mode: str, modifiers) -> str:
     """Return the action code the wheel carries under *modifiers*."""
     bindings = MODE_BINDINGS.get(mode, {})
     return str(bindings.get(("w", modifier_of(modifiers)), "none")).lower()
+
+
+def normalize_mouse_mode(mode) -> str:
+    """Return a valid rotation-style name.
+
+    Parameters
+    ----------
+    mode : Any
+        Candidate value, typically ``"pymol"`` or ``"chimol"``.
+
+    Returns
+    -------
+    str
+        ``"pymol"`` or ``"chimol"``; anything unrecognised falls back to
+        ``"pymol"``.
+    """
+    return "chimol" if str(mode).lower().strip() == "chimol" else "pymol"
+
+
+def rotation_delta_multiplier(mouse_mode: str) -> float:
+    """The sign a left drag's rotation carries, by rotation style.
+
+    In PyMOL-style rotation the *object* appears to follow the cursor; in
+    chimol-style rotation the camera does, so the object turns the other way.
+
+    Returns
+    -------
+    float
+        ``-1.0`` for PyMOL-style object rotation, ``1.0`` for chimol-style
+        camera rotation.
+    """
+    return -1.0 if mouse_mode == "pymol" else 1.0
+
+
+def pan_delta_multiplier(mouse_mode: str) -> float:
+    """The sign a pan carries, by rotation style.
+
+    In PyMOL-style panning the object follows the cursor; in chimol-style
+    panning the camera does, so the object moves opposite to it.
+
+    Returns
+    -------
+    float
+        ``1.0`` for PyMOL-style object panning, ``-1.0`` for chimol-style.
+    """
+    return 1.0 if mouse_mode == "pymol" else -1.0
