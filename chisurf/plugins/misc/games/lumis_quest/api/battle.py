@@ -45,6 +45,10 @@ COMBO_GAIN = 0.55
 #: How much crosstalk with your own bench costs, at full overlap.
 CROSSTALK_COST = 0.35
 
+#: Catching, at a fresh opponent and at a fully bleached one.
+CATCH_FLOOR = 0.10
+CATCH_CEILING = 0.80
+
 
 @dataclasses.dataclass
 class Fighter:
@@ -160,6 +164,7 @@ class Battle:
         self.finished = False
         self.won = False
         self.fled = False
+        self.caught: Creature | None = None
 
     @property
     def active(self) -> Fighter:
@@ -292,6 +297,50 @@ class Battle:
             return self._record(Turn(f"{self.team[index].creature.name} is fully bleached."))
         self.active_index = index
         turn = self._record(Turn(f"{self.active.creature.name} steps forward."))
+        self._opponent_turn()
+        return turn
+
+    def catch_chance(self) -> float:
+        """Odds of collecting the opponent right now.
+
+        Two things decide it, and both are real. A dye driven far into its dark
+        state is easier to collect than a fresh one -- so wearing it down is the
+        way in. And you cannot collect what you cannot detect: if the fitted
+        filter blocks its band, the odds collapse whatever its health.
+
+        Returns
+        -------
+        float
+            0..1.
+        """
+        wear = 1.0 - self.opponent.hp / max(self.opponent.creature.max_hp, 1)
+        chance = CATCH_FLOOR + (CATCH_CEILING - CATCH_FLOOR) * max(0.0, min(wear, 1.0))
+        if self.loadout is not None:
+            seen = min(self.loadout.response(self.opponent.creature.emission_nm), 1.0)
+            chance *= 0.25 + 0.75 * seen
+        return max(0.0, min(chance, 1.0))
+
+    def catch(self) -> Turn:
+        """Try to collect the opponent. Costs the turn either way.
+
+        Returns
+        -------
+        Turn
+            What happened. On success the encounter ends with ``caught`` set.
+        """
+        if self.finished:
+            return self._record(Turn("The encounter is already over."))
+        chance = self.catch_chance()
+        if self.rng.random() < chance:
+            self.caught = self.opponent.creature
+            self.finished = True
+            self.won = True
+            return self._record(
+                Turn(f"{self.opponent.creature.name} settles into the collection.")
+            )
+        turn = self._record(
+            Turn(f"{self.opponent.creature.name} slips the trap ({chance:.0%}).")
+        )
         self._opponent_turn()
         return turn
 

@@ -46,3 +46,19 @@ class LumisQuestWidget(QtWidgets.QWidget):
         canvas, self.host = chigame.create_widget(self.game, parent=self)
         layout.addWidget(canvas)
         self.resize(900, 640)
+
+    def closeEvent(self, event) -> None:
+        """Save the run on the way out.
+
+        Parameters
+        ----------
+        event : QCloseEvent
+            The close event.
+        """
+        try:
+            self.game.save_run()
+        except Exception:
+            # A save that fails must not stop the window closing; the run is
+            # worth less than the application staying responsive.
+            pass
+        super().closeEvent(event)

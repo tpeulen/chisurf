@@ -185,3 +185,68 @@ def test_a_real_encounter_from_the_shipped_data_resolves():
         fight.attack()
     assert fight.finished
     assert fight.log and all(turn.text for turn in fight.log)
+
+
+def test_a_worn_opponent_is_easier_to_collect(pair):
+    """Driving a dye into its dark state is how you collect it."""
+    donor, acceptor = pair
+    fresh = battle.Battle([battle.Fighter(donor)], battle.Fighter(acceptor))
+    worn = battle.Battle(
+        [battle.Fighter(donor)],
+        battle.Fighter(acceptor, hp=max(1, acceptor.max_hp // 8)),
+    )
+    assert worn.catch_chance() > fresh.catch_chance()
+    assert 0.0 <= fresh.catch_chance() <= 1.0
+
+
+def test_you_cannot_collect_what_you_cannot_see(pair):
+    """A filter that blocks its band collapses the odds, whatever its health."""
+    from chisurf.plugins.misc.games.lumis_quest.api import gear
+
+    donor, acceptor = pair
+    worn = battle.Fighter(acceptor, hp=1)
+
+    import numpy as np
+
+    blind = gear.Gear(
+        probe_id=-40, name="blind", slot="emission",
+        curve=np.exp(-0.5 * ((gear.GRID - 420.0) / 8.0) ** 2),
+    )
+    seeing = gear.Gear(
+        probe_id=-41, name="seeing", slot="emission",
+        curve=np.exp(-0.5 * ((gear.GRID - acceptor.emission_nm) / 20.0) ** 2),
+    )
+    blocked = battle.Battle([battle.Fighter(donor)], worn,
+                            loadout=gear.Loadout(emission=blind))
+    visible = battle.Battle([battle.Fighter(donor)], battle.Fighter(acceptor, hp=1),
+                            loadout=gear.Loadout(emission=seeing))
+    assert visible.catch_chance() > blocked.catch_chance() * 2
+
+
+def test_a_successful_catch_ends_the_encounter(pair):
+    """And records what was caught."""
+    donor, acceptor = pair
+    # One attempt on a seed where it lands. Retrying in a loop does not work:
+    # a failed catch gives the opponent its turn, and an opponent on 1 HP
+    # bleaches itself to nothing by emitting, ending the fight before a second
+    # attempt.
+    fight = battle.Battle([battle.Fighter(donor)], battle.Fighter(acceptor, hp=1),
+                          rng=random.Random(1))
+    assert fight.catch_chance() > 0.7
+    fight.catch()
+    assert fight.caught is acceptor
+    assert fight.finished and fight.won
+
+
+def test_a_failed_catch_costs_the_turn(pair):
+    """Otherwise collecting is free and nothing else is ever chosen."""
+    donor, acceptor = pair
+    me = battle.Fighter(donor)
+    fight = battle.Battle([me], battle.Fighter(acceptor, hp=9999), rng=random.Random(1),
+                          opponent_power=3.0)
+    before = me.hp
+    for _ in range(4):
+        fight.catch()
+        if fight.caught is not None:
+            pytest.skip("caught on an unlucky seed")
+    assert me.hp < before

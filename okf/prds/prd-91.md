@@ -57,9 +57,18 @@ Next, in order:
    filter: better in its band, useless outside it. **FRAP is a place**: a
    recovery station just inside every village gate, because photon budgets
    persist between fights and attrition is where the difficulty lives.
-   Still open: the light-path *crafting* layer (assembling a rig from parts
-   through the existing simulator, rather than only fitting one), and catching
-   creatures to grow the team.
+   ✅ **Catching and persistence landed.** Collecting a creature is a menu
+   action whose odds come from two real things: how far into its dark state you
+   have driven it, and **whether the fitted filter can see it at all** -- you
+   cannot collect what you cannot detect. A run persists to
+   `~/.chisurf/lumis_quest_run.json`, stored **by identifier rather than by
+   value**, so a corrected extinction coefficient in the database reaches a
+   saved game instead of the save freezing a number that has since been fixed.
+   Still open: the light-path *crafting* layer (assembling a rig from several
+   parts through the existing simulator, rather than fitting one filter), and
+   **Phase 5** -- clearing a room still does not touch `review_status.json`,
+   which is the piece that makes the game improve the docs rather than only be
+   about them.
 4. **Phase 5 — the AI layer**, then 6 (crafting, mini-games, factions, story),
    then 7 (farm, network).
 

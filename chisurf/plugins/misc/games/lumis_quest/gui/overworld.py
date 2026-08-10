@@ -27,6 +27,7 @@ from ..api import tiles as T
 from ..api import battle as battle_api
 from ..api import gear as gear_api
 from ..api import roster as roster_api
+from ..api import save as save_api
 from ..api.story import Story
 from ..api.world import SCOUTED, SETTLED, WILD, World, build_world
 from . import pixelart
@@ -155,14 +156,19 @@ class OverworldGame(chigame.Game):
     world : chisurf.plugins.misc.games.lumis_quest.api.world.World, optional
         A prebuilt world. Omitted builds one from the installed documentation;
         tests pass a small one instead.
+    save_path : pathlib.Path, optional
+        Where the run is stored. Omitted uses the per-user file; tests pass a
+        temporary one so they never touch a real save.
     """
 
     title = "Lumis Quest"
     background = (0.020, 0.024, 0.030, 1.0)
     music_context = "overworld"
 
-    def __init__(self, world: World | None = None) -> None:
+    def __init__(self, world: World | None = None, save_path=None) -> None:
         self._world = world
+        # Injectable so a test never reads or writes the player's real run.
+        self._save_path = save_path
 
     def setup(self, host) -> None:
         """Bind the controller, build the world and place Iris.
@@ -209,14 +215,73 @@ class OverworldGame(chigame.Game):
         self.inventory: list = []
         self.last_loot = None
         self.cleared: set[str] = set()
+        self.collection: list = []
         self._guardian_nm: dict[str, float] = {}
         self.resting = False
 
-        start = self.world.spawn()
+        self._restore()
+        start = self.world.spawn() if self._resume is None else self._resume
         self.iris = [float(start[0]), float(start[1])]
         self.lumi = [self.iris[0] - LUMI_TRAIL, self.iris[1]]
         host.camera.center[:] = self.iris
         host.camera.height = self.view_height
+
+    def _restore(self) -> None:
+        """Load a saved run, if there is one.
+
+        Everything is stored by identifier, so a creature whose stats have since
+        been corrected in the database comes back with the corrected ones.
+        """
+        self._resume = None
+        state = save_api.RunState.load(self._save_path)
+        if not state.team:
+            return
+        creatures = save_api.creatures_by_id(self.pool)
+        team = [
+            battle_api.Fighter(creatures[probe_id], hp=hp)
+            for probe_id, hp in state.team
+            if probe_id in creatures
+        ]
+        if not team:
+            return
+        self.team = team
+        self.collection = [
+            creatures[probe_id] for probe_id in state.collection if probe_id in creatures
+        ]
+        parts = save_api.gear_by_id(self.gear_pool)
+        self.inventory = [parts[probe_id] for probe_id in state.inventory if probe_id in parts]
+        self.loadout = save_api.restore_loadout(state, self.gear_pool)
+        self.cleared = set(state.cleared)
+        if state.order:
+            try:
+                self.story.choose(state.order)
+            except KeyError:
+                pass
+        if state.position != (0.0, 0.0):
+            self._resume = state.position
+
+    def snapshot(self) -> save_api.RunState:
+        """Capture the run for saving.
+
+        Returns
+        -------
+        chisurf.plugins.misc.games.lumis_quest.api.save.RunState
+            The current run.
+        """
+        return save_api.RunState(
+            position=(float(self.iris[0]), float(self.iris[1])),
+            team=[(f.creature.probe_id, int(f.hp)) for f in self.team],
+            collection=[c.probe_id for c in self.collection],
+            inventory=[part.probe_id for part in self.inventory],
+            emission_id=self.loadout.emission.probe_id if self.loadout.emission else None,
+            detector_id=self.loadout.detector.probe_id if self.loadout.detector else None,
+            cleared=sorted(self.cleared),
+            order=self.story.chosen_order,
+        )
+
+    def save_run(self) -> None:
+        """Write the run to disk."""
+        self.snapshot().save(self._save_path)
 
     @property
     def here(self):
@@ -385,6 +450,8 @@ class OverworldGame(chigame.Game):
         if fight.finished:
             if fight.won and self.encounter_room is not None:
                 self._award_loot(self.encounter_room)
+                if fight.caught is not None and fight.caught not in self.collection:
+                    self.collection.append(fight.caught)
             if keys.just_pressed(Action.CONFIRM) or keys.just_pressed(Action.CANCEL):
                 self.battle = None
                 self.encounter_room = None
@@ -439,7 +506,7 @@ class OverworldGame(chigame.Game):
             One entry per choice, in display order.
         """
         fight = self.battle
-        options = [("Emit", fight.attack)]
+        options = [("Emit", fight.attack), (f"Collect ({fight.catch_chance():.0%})", fight.catch)]
         for index, fighter in enumerate(fight.team):
             if index != fight.active_index and fighter.alive:
                 options.append(
@@ -875,10 +942,16 @@ class OverworldGame(chigame.Game):
             at=(left + 14.0 * scale, top + 70.0 * scale),
             height=9.5 * scale, color=(0.62, 0.70, 0.66, 1.0),
         )
+        if self.collection:
+            scene.text(
+                f"collected {len(self.collection)}",
+                at=(left + 14.0 * scale, top + 84.0 * scale),
+                height=9.5 * scale, color=(0.72, 0.78, 0.62, 1.0),
+            )
         if self.resting:
             scene.text(
                 "recovering",
-                at=(left + 14.0 * scale, top + 84.0 * scale),
+                at=(left + 14.0 * scale, top + 98.0 * scale),
                 height=9.5 * scale, color=(0.45, 0.90, 0.75, 1.0),
             )
         if self.last_loot is not None:

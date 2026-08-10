@@ -57,7 +57,8 @@ def game(qapp, tmp_path):
         context = chigame.create_offscreen(size=(240, 180))
     except Exception as error:  # pragma: no cover - depends on the machine
         pytest.skip(f"no usable GPU adapter: {error}")
-    instance = OverworldGame(world=build_world(_docs(tmp_path)))
+    instance = OverworldGame(world=build_world(_docs(tmp_path)),
+                             save_path=tmp_path / "run.json")
     chigame.GameHost(instance, context, with_text=False, with_audio=False)
     return instance
 
@@ -200,8 +201,9 @@ def test_it_renders(qapp, tmp_path):
     """A frame comes out with the world drawn on it."""
     try:
         frame = chigame.capture(
-            OverworldGame(world=build_world(_docs(tmp_path))), size=(320, 240),
-            frames=3, with_audio=False
+            OverworldGame(world=build_world(_docs(tmp_path)),
+                          save_path=tmp_path / "run.json"),
+            size=(320, 240), frames=3, with_audio=False
         )
     except Exception as error:  # pragma: no cover - depends on the machine
         pytest.skip(f"no usable GPU adapter: {error}")
