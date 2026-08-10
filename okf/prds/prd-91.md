@@ -64,11 +64,23 @@ Next, in order:
    `~/.chisurf/lumis_quest_run.json`, stored **by identifier rather than by
    value**, so a corrected extinction coefficient in the database reaches a
    saved game instead of the save freezing a number that has since been fixed.
-   Still open: the light-path *crafting* layer (assembling a rig from several
-   parts through the existing simulator, rather than fitting one filter), and
-   **Phase 5** -- clearing a room still does not touch `review_status.json`,
-   which is the piece that makes the game improve the docs rather than only be
-   about them.
+4. ✅ **Phase 5, the review bridge — the game touches the docs now.** Beating a
+   guardian is spectroscopy and says nothing about whether anyone read the
+   page, so **clearing a room asks the page its own question**. In *expert*
+   mode a correct answer calls `review.set_status(..., reviewer_kind="human")`;
+   in *training* mode nothing is ever signed off. The guards are the review
+   system's own: a wrong answer signs nothing, no challenge signs nothing, an
+   **edit mid-encounter is refused on the content hash**, and an untracked page
+   is refused outright.
+   Questions are **span-grounded and keyed by the page's `sha256`** — the same
+   hash the sidecar stores — so an encounter is reproducible, self-invalidating
+   and testable with no model. **79 of 80 sampled pages are questionable.**
+   The generator here is deterministic and model-free: it blanks a distinctive
+   term out of the page's own prose. It tests attention rather than
+   understanding, which is **weaker than the design intends** — a model-backed
+   provider drops in behind the same grounding check, and the check is the part
+   that matters. Still open: the light-path *crafting* layer, and the
+   AI-authored challenge and edit-proposal flow.
 4. **Phase 5 — the AI layer**, then 6 (crafting, mini-games, factions, story),
    then 7 (farm, network).
 
