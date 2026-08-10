@@ -488,6 +488,75 @@ def test_a_right_click_menus_and_a_right_drag_scales(qapp):
     assert canvas.get_range() != before
 
 
+def test_margins_follow_the_axes_that_are_actually_drawn(qapp):
+    """A hidden axis costs padding, not a reserved inset.
+
+    Every inset used to be a constant with a floor. A residual strip hides its
+    bottom axis and is only eighty pixels tall, so a reserved bottom margin was
+    a third of the panel spent on nothing — and a stack of them became the band
+    of empty space between plots.
+    """
+    full = _canvas()
+    full.set_labels(left="counts", bottom="t / ns")
+    full.widget().resize(400, 90)
+    full.widget().grab()
+
+    bare = _canvas()
+    bare.set_axis_visible("bottom", False)
+    bare.set_axis_visible("left", False)
+    bare.widget().resize(400, 90)
+    bare.widget().grab()
+
+    assert bare._margins.bottom < full._margins.bottom
+    assert bare._margins.left < full._margins.left
+    # The bare panel keeps only breathing room on each side.
+    assert bare._margins.bottom <= 8 and bare._margins.left <= 8
+    full_h = 90 - full._margins.top - full._margins.bottom
+    bare_h = 90 - bare._margins.top - bare._margins.bottom
+    assert bare_h > full_h
+
+
+def test_hovering_a_region_highlights_it_like_pyqtgraph(qapp):
+    """The edge under the pointer turns red; the band brightens.
+
+    pyqtgraph's defaults exactly: ``InfiniteLine`` hovers to red at the line's
+    own width, and ``LinearRegionItem`` doubles its brush alpha. That highlight
+    is the only thing telling a user an edge can be dragged at all.
+    """
+    from chisurf.gui.chiplot.backends.wgpu._handles import hover_brush, hover_pen
+
+    pen = S.to_pen("#26a298", width=2)
+    hovered = hover_pen(pen)
+    assert hovered.color.as_tuple() == (255, 0, 0, 255)
+    assert hovered.width == pen.width
+
+    brush = S.to_brush("#26a29832")
+    assert hover_brush(brush).color.a == min(brush.color.a * 2, 255)
+    opaque = S.to_brush("#26a298")
+    assert hover_brush(opaque).color.a == 255
+
+    canvas = _interactive_canvas()
+    canvas.set_range(x=(0.0, 50.0), y=(1.0, 1000.0))
+    region = canvas.add_region((10.0, 30.0), orientation=H.Orientation.VERTICAL,
+                               movable=True, brush=S.to_brush("#26a29832"),
+                               pen=S.to_pen("#26a298"))
+    edge, _ = canvas._view.data_to_pixel(10.0, 500.0, 400, 300, canvas._margins)
+    inside, _ = canvas._view.data_to_pixel(20.0, 500.0, 400, 300, canvas._margins)
+    outside, _ = canvas._view.data_to_pixel(45.0, 500.0, 400, 300, canvas._margins)
+
+    canvas._update_hover(edge, 150)
+    assert region._hover == "low"
+    canvas._update_hover(inside, 150)
+    assert region._hover == "body"
+    canvas._update_hover(outside, 150)
+    assert region._hover is None
+
+    # Nothing highlights mid-drag; the answer is already known then.
+    canvas._drag = (region, "low", 10.0)
+    canvas._update_hover(edge, 150)
+    assert region._hover is None
+
+
 def test_the_middle_button_drives_the_view_like_the_left_one(qapp):
     """Pyqtgraph handles left and middle in one branch; so does this.
 

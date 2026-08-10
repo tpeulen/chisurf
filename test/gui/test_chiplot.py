@@ -71,6 +71,20 @@ def test_style_coercion():
     assert cp.int_color(0) != cp.int_color(3)
 
 
+def test_eight_digit_hex_is_rrggbbaa():
+    """``#rrggbbaa`` as documented, not Qt's ``#aarrggbb``.
+
+    Qt reads an eight-digit hex as alpha-first, so handing the string straight
+    to ``QColor`` swapped alpha into red and returned an opaque colour:
+    ``#ff000080`` — red, half transparent — came back as dark blue at full
+    alpha, and a translucent region band rendered olive.
+    """
+    assert cp.to_color("#ff000080").as_tuple() == (255, 0, 0, 128)
+    assert cp.to_color("#26a29832").as_tuple() == (38, 162, 152, 50)
+    # Six digits are unchanged, and stay opaque.
+    assert cp.to_color("#26a298").as_tuple() == (38, 162, 152, 255)
+
+
 def test_plot_draw_all_families(qapp):
     x = np.linspace(0, 10, 50)
     y = np.sin(x)

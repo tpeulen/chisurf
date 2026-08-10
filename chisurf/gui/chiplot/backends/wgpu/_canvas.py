@@ -41,6 +41,12 @@ _BOTTOM_MARGIN = 38
 _TOP_MARGIN = 10
 _RIGHT_MARGIN = 14
 
+#: Breathing room on a side that draws nothing, and the two pieces of an axis
+#: that does: the tick mark itself and the gap before its label.
+_EDGE_PAD = 6
+_TICK_LEN = 4
+_TICK_GAP = 4
+
 _AXIS_COLOR = QtGui.QColor(170, 170, 175)
 _GRID_COLOR = (0.62, 0.62, 0.66)
 #: How close to the pointer (in pixels) a draggable edge must be to grab it.
@@ -401,13 +407,38 @@ class _WgpuCanvas(base.Canvas):
             self._paint_legend(painter, w, h)
 
     def _measure_margins(self, painter: QtGui.QPainter, w: int, h: int) -> None:
-        """Widen the left inset to fit the widest y tick label."""
-        fm = QtGui.QFontMetrics(S.chrome_font("tick"))
-        labels = self._tick_labels("left")
-        widest = max((fm.horizontalAdvance(t) for t in labels), default=0)
-        self._margins.left = max(_LEFT_MARGIN, widest + 14 + (16 if self._ylabel else 0))
-        self._margins.bottom = _BOTTOM_MARGIN if self._xlabel else _BOTTOM_MARGIN - 14
-        self._margins.top = _TOP_MARGIN + (18 if self._title else 0)
+        """Size each inset from what that side actually draws.
+
+        Every inset used to be a constant with a floor, whether or not the side
+        had anything on it. A residual strip hides its bottom axis and is only
+        eighty pixels tall, so a reserved 24-pixel bottom margin was a third of
+        the panel spent on nothing — and a stack of them turned into the band of
+        empty space between plots. Measure the text instead: a hidden axis costs
+        a couple of pixels of breathing room and no more.
+        """
+        tick_fm = QtGui.QFontMetrics(S.chrome_font("tick"))
+        label_fm = QtGui.QFontMetrics(S.chrome_font("label"))
+
+        if self._axis_visible.get("left", True):
+            labels = self._tick_labels("left")
+            widest = max((tick_fm.horizontalAdvance(t) for t in labels), default=0)
+            left = widest + _TICK_GAP + _TICK_LEN
+        else:
+            left = _EDGE_PAD
+        if self._ylabel:
+            left += label_fm.height() + 2
+        self._margins.left = int(max(left, _EDGE_PAD))
+
+        if self._axis_visible.get("bottom", True):
+            bottom = tick_fm.height() + _TICK_GAP + _TICK_LEN
+        else:
+            bottom = _EDGE_PAD
+        if self._xlabel:
+            bottom += label_fm.height() + 2
+        self._margins.bottom = int(bottom)
+
+        self._margins.top = int(_EDGE_PAD + (label_fm.height() + 4 if self._title else 0))
+        self._margins.right = int(_EDGE_PAD)
 
     def _tick_values(self, side: str) -> list[float]:
         """Return the tick positions for one axis."""
@@ -663,6 +694,27 @@ class _WgpuCanvas(base.Canvas):
         except AttributeError:
             return float(event.x()), float(event.y())
 
+    def _update_hover(self, px: float, py: float) -> bool:
+        """Mark the draggable part under the pointer; return whether it moved.
+
+        pyqtgraph highlights what a press would grab — the line under the
+        cursor turns red and a region's band brightens — and that is the only
+        thing telling a user an edge is draggable at all. Nothing is highlighted
+        mid-drag: the answer is already known then.
+        """
+        target, part = (None, None)
+        if self._drag is None and not self._panning and not self._scaling:
+            target, part = self._hit_draggable(px, py)
+        changed = False
+        with self._lock:
+            handles = list(self._handles)
+        for hd in handles:
+            setter = getattr(hd, "set_hover", None)
+            if setter is None:
+                continue
+            changed |= bool(setter(part if hd is target else None))
+        return changed
+
     def _cancel_interaction(self) -> None:
         """Forget any in-progress press, drag, pan, scale or rubber band.
 
@@ -687,6 +739,12 @@ class _WgpuCanvas(base.Canvas):
             self._widget.update()
         if self._drag is not None:
             self._drag = None
+        with self._lock:
+            handles = list(self._handles)
+        for hd in handles:
+            setter = getattr(hd, "set_hover", None)
+            if setter is not None:
+                setter(None)
 
     def _hit_draggable(self, px: float, py: float):
         """Return ``(handle, part)`` for a draggable edge under the pointer."""
@@ -902,6 +960,9 @@ class _WgpuCanvas(base.Canvas):
             self._rubber = (x0, y0, px, py)
             self._widget.update()
             return
+
+        if self._update_hover(px, py):
+            self._widget.update()
 
         if self._drag is not None:
             hd, part, anchor = self._drag

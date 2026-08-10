@@ -317,3 +317,15 @@ def test_apply_presets_to_mode_list_conversion():
     updated = LinePlot._apply_presets_to_mode(mode, raw_preset)
     assert updated.y_range == (0, 1)
     assert updated.y_padding == 0.05
+
+
+def test_the_stacked_panels_can_be_folded():
+    """Dragging a splitter handle onto a panel collapses it.
+
+    ``DockSplitter`` turns collapsing off for docks, where a pane that vanishes
+    is a pane the user cannot get back. Here the handle stays on screen and the
+    drag reverses, so a residual strip can be folded away when the data panel
+    needs the room.
+    """
+    src = _lineplot_source()
+    assert "area.setChildrenCollapsible(True)" in src

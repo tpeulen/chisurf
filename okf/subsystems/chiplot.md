@@ -320,6 +320,31 @@ a pixel position, and a drag keeps delivering mouse events after the cursor has
 left the panel, so the unclamped version raised
 `OverflowError: (34, 'Result too large')` out of the move handler.
 
+## Space, hover, and an eight-digit hex that was not the colour asked for
+
+**Insets are measured, not reserved.** Each was a constant with a floor,
+whether or not the side drew anything: a residual strip hides its bottom axis
+and is eighty pixels tall, so a reserved bottom margin was a third of the panel
+spent on nothing, and a stack of them became the band of empty space between
+plots. A hidden axis now costs a few pixels of breathing room and no more —
+measured, a strip gains 37 px of plot height out of 90.
+
+**Hovering highlights what a press would grab**, which is the only thing that
+tells a user an edge is draggable. pyqtgraph's defaults exactly: the line under
+the pointer takes a red pen at its own width (`InfiniteLine`), and a region's
+band doubles its brush alpha (`LinearRegionItem`). Nothing highlights mid-drag.
+
+**The fit panels fold.** `DockSplitter` disables collapsing — right for docks,
+where a vanished pane cannot be got back — so the stacked plot enables it on its
+own splitter: dragging a handle onto a panel folds it away and the drag
+reverses.
+
+**`to_color("#ff000080")` returned opaque dark blue.** Qt reads an eight-digit
+hex as `#AARRGGBB`; this module documents `#RRGGBBAA`, the CSS spelling, and
+handed the string straight to `QColor`. Alpha became red and the colour came
+back opaque — which is why a translucent teal band rendered olive. Parsed here
+now, before Qt sees it, and covered by `test_eight_digit_hex_is_rrggbbaa`.
+
 # Where to pick this up — the WebGPU backend
 
 `backends/wgpu/` draws every family the A/B script exercises (decay on a log

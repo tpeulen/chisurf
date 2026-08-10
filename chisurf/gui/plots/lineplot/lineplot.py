@@ -902,6 +902,11 @@ class LinePlot(plotbase.Plot):
         # by default (settings gui.plot.hideTitle), so a plain DockSplitter is a
         # faithful replacement; the panels' x-axes are linked above.
         area = DockSplitter(QtCore.Qt.Vertical)
+        # Collapsible, so a panel can be folded away by dragging its handle
+        # onto the next one. DockSplitter turns this off for docks, where a
+        # pane that vanishes is a pane the user cannot get back; here the
+        # handle stays on screen and the drag reverses.
+        area.setChildrenCollapsible(True)
         area.addWidget(p2)  # A.corr. residuals
         area.addWidget(p1)  # Residuals
         area.addWidget(p3)  # Data

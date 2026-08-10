@@ -32,6 +32,28 @@ _DASH_PATTERNS: dict[S.LineStyle, tuple[float, ...] | None] = {
 }
 
 
+#: pyqtgraph's default hover pen for a movable line: red, at the line's own
+#: width (``InfiniteLine.__init__`` -> ``setHoverPen(color=(255, 0, 0))``).
+_HOVER_COLOR = S.Color(255, 0, 0)
+
+
+def hover_pen(pen: S.Pen) -> S.Pen:
+    """Return *pen* as pyqtgraph draws it while the pointer is over the line."""
+    base = pen if pen is not None else S.Pen()
+    return S.Pen(color=_HOVER_COLOR, width=base.width, style=base.style,
+                 cosmetic=base.cosmetic)
+
+
+def hover_brush(brush: S.Brush) -> S.Brush:
+    """Return *brush* as pyqtgraph draws it while the pointer is over the body.
+
+    ``LinearRegionItem`` doubles the alpha and clamps it, which is what makes a
+    band visibly "live" without changing its colour.
+    """
+    colour = brush.color
+    return S.Brush(colour.with_alpha(min(colour.a * 2, 255)))
+
+
 def _rgba(color: S.Color, alpha: float = 1.0) -> tuple[float, float, float, float]:
     """Convert a chiplot colour to float RGBA in ``[0, 1]``."""
     r, g, b, a = color.as_tuple()
@@ -55,6 +77,15 @@ class _HandleBase:
         self._visible = True
         self._z = 0.0
         self._name: str | None = None
+        #: Which part the pointer is over, or ``None``. See :func:`hover_pen`.
+        self._hover: str | None = None
+
+    def set_hover(self, part: str | None) -> bool:
+        """Record which part the pointer is over; return whether it changed."""
+        if self._hover == part:
+            return False
+        self._hover = part
+        return True
 
     @property
     def visible(self) -> bool:
@@ -668,10 +699,21 @@ class _Region(_HandleBase):
         x0, y0, x1, y1 = self._corners()
         quad = _gpu.quad_geometry(x0, y0, x1, y1)
         tris = self._ndc(ctx, quad[:, 0], quad[:, 1]).astype(np.float32)
-        out = [_gpu.solid(tris, _rgba(self._brush.color))]
-        ring = np.array([[x0, y0], [x1, y0], [x1, y1], [x0, y1]])
-        pts = self._ndc(ctx, ring[:, 0], ring[:, 1])
-        out.extend(self._stroke(ctx, pts, self._pen, closed=True))
+        brush = hover_brush(self._brush) if self._hover else self._brush
+        out = [_gpu.solid(tris, _rgba(brush.color))]
+
+        # The two edges are separate strokes so the hovered one can carry the
+        # hover pen on its own — pyqtgraph highlights the line under the
+        # pointer, not the whole outline.
+        vertical = self._orientation is H.Orientation.VERTICAL
+        lo, hi = sorted(self._bounds)
+        for part, value in (("low", lo), ("high", hi)):
+            if vertical:
+                edge = np.array([[value, y0], [value, y1]])
+            else:
+                edge = np.array([[x0, value], [x1, value]])
+            pen = hover_pen(self._pen) if self._hover == part else self._pen
+            out.extend(self._stroke(ctx, self._ndc(ctx, edge[:, 0], edge[:, 1]), pen))
         return out
 
 
@@ -722,7 +764,8 @@ class _Marker(_HandleBase):
         else:
             xs = np.array(vr.x_range, dtype=np.float64)
             ys = np.array([self._value, self._value])
-        return self._stroke(ctx, self._ndc(ctx, xs, ys), self._pen)
+        pen = hover_pen(self._pen) if self._hover else self._pen
+        return self._stroke(ctx, self._ndc(ctx, xs, ys), pen)
 
 
 # ---------------------------------------------------------------------------
