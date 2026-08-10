@@ -323,6 +323,22 @@ class Canvas(abc.ABC):
         Default no-op; backends with axis chrome override it.
         """
 
+    def set_downsampling(self, *, auto: bool = True, mode: str = "peak") -> None:
+        """Enable/disable automatic downsampling of dense curves on this panel.
+
+        A renderer performance hint for very large series. ``mode`` selects
+        the reduction strategy (``"peak"`` preserves extrema; ``"subsample"``
+        takes evenly spaced points). Backends without downsampling may ignore
+        this.
+        """
+
+    def set_clip_to_view(self, clip: bool = True) -> None:
+        """Hint the backend to skip drawing samples outside the visible range.
+
+        A renderer performance hint for large series. Backends without view
+        culling may ignore this.
+        """
+
     def link_x(self, other: Canvas) -> None:
         """Link this panel's x-axis to ``other`` so they pan/zoom together.
 

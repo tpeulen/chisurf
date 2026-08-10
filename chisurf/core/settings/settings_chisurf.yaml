@@ -135,6 +135,11 @@ gui:
     - 350
   fit_progress_close_delay_ms: 200
   plot:
+    # Plotting backend: "pyqtgraph" (default, CPU/QPainter) or "wgpu" (the
+    # native GPU renderer; WebGPU, not OpenGL, which macOS caps at a 2.1
+    # feature set emulated over Metal). The env var CHISURF_PLOT_BACKEND
+    # overrides this at startup.
+    backend: pyqtgraph
     colors:
       active_transparency: 1
       auto_corr: "#ff00ff"

@@ -1,3 +1,37 @@
+## `test/gui/test_chiplot.py` segfaults in the shared working tree, and not from chiplot
+
+**Found 2026-08-10** while landing the WebGPU plot backend. `pytest
+test/gui/test_chiplot.py` reports **56 passed** and then dies with
+`Fatal Python error: Segmentation fault` during garbage collection, inside a
+pyqtgraph `ViewBox` weakref lambda or an `InfiniteLine.boundingRect`. Rate in
+the working tree: **5–8 of 8 runs**.
+
+**It is not the chiplot changes.** A clean `git worktree` at HEAD carrying the
+*entire* WebGPU backend, its 31 tests, the pyqtgraph SI-prefix and legend fixes,
+and every uncommitted chiplot source edit (`canvas.py`, `handles.py`,
+`backends/base.py`, `backends/pyqtgraph_backend.py`) runs the four chiplot-related
+suites **0 crashes in 8 runs**. Adding the working tree's `chisurf/gui/__init__.py`
+and settings edits on top: still 0 in 6. The trigger is one of the other several
+dozen files another agent instance has in flight, and it was not found.
+
+**The trap, which cost most of a session.** The crash is a *latent* pyqtgraph
+teardown defect — abandoned panels whose finalizers touch Qt objects C++ has
+already deleted — so it fires inside **whatever happens to allocate next**, and
+the traceback names that caller. It pointed at the WebGPU driver's cffi
+initialisation, then at a legend, then at an axis. Each looked like a specific
+bug in the code being written. Two rules follow:
+
+* **Never add a `gc.collect()` to "fix" it.** Doing so converts a probabilistic
+  crash into a deterministic one at the collect site, and the new site looks
+  even more like the culprit.
+* **Bisect in a clean worktree, not by editing the shared tree.** Six A/B
+  measurements at 6–8 runs each were run against a baseline that was already
+  crashing, so every one of them was noise. The clean-worktree comparison
+  settled it in two runs.
+
+Whoever owns the in-flight change should re-measure; until then, run
+`test/gui/test_chiplot.py` in its own pytest invocation.
+
 ## 33 of the MMFDB suite's failures are test-order contamination, not defects
 
 **Found 2026-08-10** while adding three enumeration terms to

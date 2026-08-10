@@ -152,6 +152,38 @@ class Curve(Handle, Protocol):
         """
         ...
 
+    def set_downsampling(self, *, auto: bool = True, mode: str = "peak") -> None:
+        """Enable/disable automatic downsampling of dense curves.
+
+        A renderer hint for very large series: when ``auto`` is ``True`` the
+        backend may reduce the number of points drawn to what the viewport
+        can show, keeping the visual shape. ``mode`` selects the reduction
+        strategy (``"peak"`` preserves extrema; ``"subsample"`` takes evenly
+        spaced points). Backends without downsampling may ignore this.
+
+        Parameters
+        ----------
+        auto : bool
+            Whether to downsample automatically.
+        mode : str
+            Reduction strategy (``"peak"`` or ``"subsample"``).
+        """
+        ...
+
+    def set_clip_to_view(self, clip: bool = True) -> None:
+        """Hint the backend to skip drawing samples outside the visible range.
+
+        A renderer performance hint for large series: when ``True`` the
+        backend may cull points that fall outside the current view. Backends
+        without view culling may ignore this.
+
+        Parameters
+        ----------
+        clip : bool
+            Whether to clip drawing to the visible view.
+        """
+        ...
+
 
 @runtime_checkable
 class Scatter(Handle, Protocol):

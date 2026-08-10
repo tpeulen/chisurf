@@ -1,11 +1,19 @@
 """Construction + behaviour tests for the chiplot plotting API.
 
 These run headlessly (offscreen Qt) and exercise the whole public surface
-against the default (pyqtgraph) backend, so a backend swap can be validated by
-re-running the same tests.
+against the **pyqtgraph** backend. A large share of them reach through
+``.native`` on purpose — the passthrough seam, ``PlotDataItem.opts``,
+``LinearRegionItem.setRegion`` — because that seam is what keeps not-yet-ported
+call sites working, and it is pyqtgraph's by definition.
+
+So the backend is pinned here rather than taken from the environment: with
+``CHISURF_PLOT_BACKEND`` set to a native renderer these would fail on the
+absence of pyqtgraph internals, which says nothing about that renderer. The
+native backend has its own suite in ``test_chiplot_wgpu.py``.
 """
 
 from __future__ import annotations
+
 
 import os
 
@@ -22,6 +30,29 @@ pytest.importorskip("pyqtgraph")
 from qtpy import QtWidgets  # noqa: E402
 
 from chisurf.gui import chiplot as cp  # noqa: E402
+from chisurf.gui.chiplot import backends as _backends  # noqa: E402
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _pyqtgraph_backend():
+    """Pin this module to the pyqtgraph backend, whatever the environment says.
+
+    These tests assert on pyqtgraph internals; with ``CHISURF_PLOT_BACKEND``
+    pointing at a native renderer they would fail on the absence of those
+    internals, which says nothing about that renderer.
+    """
+    previous = _backends._active
+    previous_env = os.environ.get("CHISURF_PLOT_BACKEND")
+    os.environ["CHISURF_PLOT_BACKEND"] = "pyqtgraph"
+    _backends._active = None
+    try:
+        yield
+    finally:
+        _backends._active = previous
+        if previous_env is None:
+            os.environ.pop("CHISURF_PLOT_BACKEND", None)
+        else:
+            os.environ["CHISURF_PLOT_BACKEND"] = previous_env
 
 
 @pytest.fixture(scope="module")
@@ -911,18 +942,34 @@ def test_backend_contract_matches_implementation():
     when a user opens the tool ("Can't instantiate abstract class _PgCanvas
     without an implementation for abstract method 'add_arrow'"), taking every
     chiplot panel in the application down with it.
+
+    Both the pyqtgraph backend and the OpenGL backend are checked here, so a
+    half-landed contract breaks the test, not every plot panel.
     """
     import inspect
 
     from chisurf.gui.chiplot.backends import base
     from chisurf.gui.chiplot.backends import pyqtgraph_backend as pgb
 
-    for abstract, concrete in (
+    pairs: list[tuple[type, type]] = [
         (base.Canvas, pgb._PgCanvas),
         (base.GridCanvas, pgb._PgGrid),
         (base.ImageViewCanvas, pgb._PgImageView),
         (base.Backend, pgb.PyQtGraphBackend),
-    ):
+    ]
+
+    try:
+        from chisurf.gui.chiplot.backends import opengl as glb
+        pairs.extend([
+            (base.Canvas, glb._GlCanvas),
+            (base.GridCanvas, glb._GlGrid),
+            (base.ImageViewCanvas, glb._GlImageView),
+            (base.Backend, glb.OpenGLBackend),
+        ])
+    except Exception:
+        pass
+
+    for abstract, concrete in pairs:
         unimplemented = sorted(getattr(concrete, "__abstractmethods__", ()))
         assert not unimplemented, f"{concrete.__name__} does not implement {unimplemented}"
         for name, method in vars(abstract).items():

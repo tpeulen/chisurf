@@ -884,6 +884,24 @@ class Plot(QtWidgets.QWidget):
         self._canvas.link_y(other._canvas)
         return self
 
+    def set_downsampling(self, *, auto: bool = True, mode: str = "peak") -> Plot:
+        """Enable/disable automatic downsampling of dense curves on this panel.
+
+        A renderer performance hint for very large series. ``mode`` selects
+        the reduction strategy (``"peak"`` preserves extrema; ``"subsample"``
+        takes evenly spaced points). Returns ``self``.
+        """
+        self._canvas.set_downsampling(auto=auto, mode=mode)
+        return self
+
+    def set_clip_to_view(self, clip: bool = True) -> Plot:
+        """Hint the backend to skip drawing samples outside the visible range.
+
+        A renderer performance hint for large series. Returns ``self``.
+        """
+        self._canvas.set_clip_to_view(clip)
+        return self
+
     @property
     def canvas(self):
         """The backend :class:`~chisurf.gui.chiplot.backends.base.Canvas`."""

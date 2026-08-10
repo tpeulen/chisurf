@@ -20,6 +20,8 @@ at runtime and can be swapped without touching a single call site.
 | `style.py` | `Color`, `Pen`, `Brush`, `Colormap`, `LineStyle` and the coercers `to_color` / `to_pen` / `to_brush` / `colormap` / `to_colormap` / `int_color` |
 | `backends/base.py` | the abstract `Canvas`/`Backend` contract a renderer must satisfy |
 | `backends/pyqtgraph_backend.py` | the only module in the tree allowed to import pyqtgraph |
+| `backends/wgpu/` | the **native** renderer: `_view.py` (data↔clip↔pixel, no Qt/GPU), `_gpu.py` (device, pipelines, offscreen render, stroke/marker geometry), `_handles.py` (handles, each contributing geometry), `_canvas.py` (the Qt widget), `_colormap.py`, `wgsl/plot2d.wgsl` |
+| `backends/opengl/` | superseded by `backends/wgpu/`; kept until the WebGPU backend has been through the plot families |
 | `_passthrough.py` | the migration safety net and its gap recorder |
 
 `Plot` is verb-first: `plot.line(x, y, pen="red")`, `plot.scatter`, `plot.bars`,
@@ -51,10 +53,40 @@ asserts each concrete class has an empty `__abstractmethods__` for that reason.
 
 `backends/__init__.py` keeps a registry (`register_backend`) and resolves the
 active backend lazily from the `CHISURF_PLOT_BACKEND` environment variable,
-defaulting to `pyqtgraph`; `set_backend(name)` switches it. A new renderer
+the `gui.plot.backend` setting, or defaults to `pyqtgraph`; `set_backend(name)`
+switches it. `available_backends()` lists the registered names. A new renderer
 registers there and becomes selectable with no call-site change. This is the
 mechanism [PRD-64](/prds/prd-64.md) exists to enable: pyqtgraph is the engine
-today, a native OpenGL renderer behind the same contract is the goal.
+today, a native renderer behind the same contract is the goal.
+
+## The native renderer is WebGPU, not OpenGL
+
+The first native backend targeted OpenGL and could not be finished: on macOS a
+GL context reports `2.1 Metal - 90.5`, because Apple deprecated OpenGL and what
+remains is a 2001 feature set emulated over Metal. Everything that made that
+backend hard traces back to it — no dependable `gl_PointSize`, a `texture1D`
+that may not exist, and a `QPainter`-versus-GL compositing fight that painted
+axes onto a black rectangle. WebGPU is one API and one shader text across
+macOS, Linux, Windows *and* the browser, and it is what the molecular viewer's
+renderer already targets, so `backends/wgpu/` is the native backend and
+`backends/opengl/` is superseded.
+
+Three decisions in it are worth keeping:
+
+* **Rendering is offscreen, and `QPainter` blits the result.** Hosting a GPU
+  surface in the widget is what created the compositing problem; rendering to
+  an image removes it, keeps text with Qt, and makes a headless screenshot the
+  same code path as a visible one. The cost is one GPU→CPU copy per repaint.
+* **Handles contribute geometry, not draw calls.** A handle's `batches(ctx)`
+  returns clip-space triangles, so its output can be asserted on with no device
+  present — which is where the geometry tests live.
+* **Strokes and markers are expanded to triangles on the CPU.** WebGPU has no
+  line width and no point size; both were fixed-function features that went
+  away. That is also what makes dashes and round joins possible at all.
+
+`CHISURF_PLOT_BACKEND=wgpu` selects it. `test/gui/chiplot_ab_screenshots.py`
+renders the same recipes through each backend for side-by-side comparison; it
+runs headless unless `opengl` is named.
 
 # The rule, and why it is guarded
 
@@ -131,6 +163,51 @@ read-side query on `Plot` (what was drawn), in the spirit of `menu_enabled()`.
 change that touches one of these files ports it in the same change and strikes
 the line, rather than noting it — which is what keeps a shrinking list actually
 shrinking. See the repository's `CLAUDE.md`.
+
+# Where to pick this up — the WebGPU backend
+
+`backends/wgpu/` draws every family the A/B script exercises (decay on a log
+axis, scatter, bars, heatmap, region, error bars) and passes 31 tests in
+`test/gui/test_chiplot_wgpu.py`. **Measure it with
+`python test/gui/chiplot_ab_screenshots.py` and read the PNG pairs** — that is
+the only instrument that has caught anything here. The traps in taking that
+measurement, both of which cost a session:
+
+* **A backend that renders nothing still writes a PNG.** The OpenGL backend's
+  every handle raised `AttributeError: 'QOpenGLShaderProgram' object has no
+  attribute 'setUniformValue1i'` (that binding has only the overloaded
+  `setUniformValue`), and `_paint_gl` swallowed it in a bare `except
+  Exception: pass`. The axes still drew, so the output looked like a
+  *rendering* problem for as long as nobody removed the swallow. Never wrap a
+  paint pass in a silent except.
+* **A fixture can invent the defect you are chasing.** The old decay recipe
+  modelled the IRF as a bare Gaussian, which falls to `exp(-2304)` by the end
+  of the window; a log axis asked to span 300 decades produced garbage ticks
+  on *both* backends. The recipe now carries a constant background, as real
+  data does.
+
+Open, in the order that unblocks the most:
+
+1. **Bring the plot families over.** The A/B script covers primitives, not the
+   application's panels. Start with the highest-volume ones (TCSPC decay +
+   weighted-residual pair, FCS curves, burst histograms), run each under
+   `CHISURF_PLOT_BACKEND=wgpu`, and compare screenshots against pyqtgraph.
+   This is what decides whether the backend can become the default.
+2. **Retire `backends/opengl/`.** It is superseded and registered only so the
+   comparison can still be run. Deleting it also removes the `PyOpenGL`
+   dependency's last plotting use.
+3. **A zero-copy surface path.** Every repaint currently reads the framebuffer
+   back to the CPU. That is the right trade for plot panels, and the wrong one
+   for an animated view; `rendercanvas.qt.QRenderWidget` gives a real surface,
+   at the cost of losing the `QPainter` chrome pass (text would have to move to
+   the GPU). Do not start this before (1) — it buys nothing until a panel is
+   found that needs it.
+4. **Colour bars.** `_ColorBar` stores levels and forwards them to its image
+   but draws no bar; `_WgpuGrid.add_colorbar` therefore adds no widget.
+5. **chimol convergence.** Both renderers are now WebGPU. Once chiplot's
+   backend is through (1), chimol's standalone renderer can move onto
+   chiplot's `Canvas`/`VolumeViewCanvas` contract, and the two WGSL sets can
+   be considered together.
 
 # Related
 

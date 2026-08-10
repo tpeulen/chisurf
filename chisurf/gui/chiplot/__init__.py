@@ -33,7 +33,8 @@ from chisurf.gui.chiplot._passthrough import (
     record_and_warn,
     reset_gaps,
 )
-from chisurf.gui.chiplot.backends import get_backend, set_backend
+from chisurf.gui.chiplot.backends import (
+    available_backends, get_backend, set_backend)
 from chisurf.gui.chiplot.canvas import (
     Grid, ImageView, PanelPlot, Plot, VolumeView)
 from chisurf.gui.chiplot.handles import Orientation, Symbol
@@ -116,6 +117,7 @@ __all__ = [
     "configure",
     "set_backend",
     "get_backend",
+    "available_backends",
     "ChiplotPassthroughWarning",
     "passthrough_gaps",
     "reset_gaps",

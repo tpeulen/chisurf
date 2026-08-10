@@ -299,6 +299,17 @@ class _Curve(_Item):
         """Set the whole-curve opacity (0 transparent .. 1 opaque)."""
         self._native.setOpacity(float(alpha))
 
+    def set_downsampling(self, *, auto: bool = True, mode: str = "peak") -> None:
+        """Enable/disable automatic downsampling of dense curves."""
+        # pyqtgraph's PlotDataItem.setDownsampling names the reduction strategy
+        # ``method`` (it is ``mode`` on the panel-level PlotItem API); forward
+        # chiplot's ``mode`` to the curve-level ``method``.
+        self._native.setDownsampling(auto=auto, method=mode)
+
+    def set_clip_to_view(self, clip: bool = True) -> None:
+        """Hint the backend to skip drawing samples outside the visible range."""
+        self._native.setClipToView(clip)
+
 
 class _Scatter(_Item):
     """Handle for a pyqtgraph ``ScatterPlotItem``."""
@@ -687,6 +698,17 @@ class _PgCanvas(base.Canvas):
         # A grid panel shares one host widget with its siblings, so widget-level
         # styling (background) must stay with the canvas that owns the widget.
         self._owns_host = owns_host
+        # pyqtgraph auto-prefixes axis ticks, which turns a FRET axis spanning
+        # 0..1 into "200 400 600 800" under a "(x0.001)" label, and a log axis
+        # into "(x1e+27)" nonsense — the tick values there are exponents, not
+        # magnitudes. Off by default so both backends label an axis the same
+        # way; ``set_si_prefix`` turns it back on per panel. Every call site in
+        # the tree was already disabling it by hand.
+        #
+        # Only the axes a panel shows: ``right`` and ``top`` exist but are
+        # hidden and unlinked, and re-labelling one schedules work against a
+        # view it does not have.
+        self.set_si_prefix(x=False, y=False)
 
     def widget(self) -> QtWidgets.QWidget:
         """Return the embeddable Qt widget."""
@@ -904,6 +926,11 @@ class _PgCanvas(base.Canvas):
         Removes any legend created by an earlier call first, so refreshing a
         plot (clear → legend → redraw) does not stack orphaned legend boxes in
         the scene.
+
+        pyqtgraph only collects items drawn *after* the legend exists, and
+        chiplot's verb-first API puts ``plot.legend()`` at the end of a recipe —
+        where it reads naturally, and where it produced an empty box. So the
+        existing items are adopted here.
         """
         existing = getattr(self._pi, "legend", None)
         if existing is not None:
@@ -913,7 +940,12 @@ class _PgCanvas(base.Canvas):
             else:
                 self._pi.removeItem(existing)
             self._pi.legend = None
-        self._pi.addLegend(offset=offset)
+        legend = self._pi.addLegend(offset=offset)
+        for item in self._pi.listDataItems():
+            name = getattr(item, "name", None)
+            label = name() if callable(name) else None
+            if label:
+                legend.addItem(item, label)
 
     def readd(self, handle: H.Handle) -> None:
         """Re-attach a previously removed handle."""
@@ -927,7 +959,6 @@ class _PgCanvas(base.Canvas):
         """Remove every handle from this panel."""
         self._pi.clear()
 
-    # -- axes / view ----------------------------------------------------
     def set_labels(self, *, left=None, bottom=None, right=None, top=None) -> None:
         """Set axis labels (unset axes unchanged)."""
         for side, txt in (("left", left), ("bottom", bottom), ("right", right), ("top", top)):
@@ -1026,6 +1057,22 @@ class _PgCanvas(base.Canvas):
     def link_y(self, other) -> None:
         """Link this panel's y-axis to ``other``'s (shared pan/zoom)."""
         self._pi.getViewBox().setYLink(other._pi.getViewBox())
+
+    def set_downsampling(self, *, auto: bool = True, mode: str = "peak") -> None:
+        """Enable/disable automatic downsampling of dense curves on this panel."""
+        for item in self._pi.listDataItems():
+            try:
+                item.setDownsampling(auto=auto, method=mode)
+            except Exception:
+                pass
+
+    def set_clip_to_view(self, clip: bool = True) -> None:
+        """Hint the backend to skip drawing samples outside the visible range."""
+        for item in self._pi.listDataItems():
+            try:
+                item.setClipToView(clip)
+            except Exception:
+                pass
 
     def set_menu_enabled(self, enabled) -> None:
         """Enable/disable pyqtgraph's own right-click viewbox menu."""
