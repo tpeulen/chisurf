@@ -1,3 +1,45 @@
+## A simulated molecule emits 500× more photons when it has neighbours
+
+**Found 2026-08-10** while building a polarisation-resolved mixture as a test
+set for segmentation and region-wise MLE ([PRD-92](/prds/prd-92.md)). The
+fixture is blocked on it: per-blob photon counts that vary by 500× for identical
+settings would make a test set that looks reasonable and encodes nonsense.
+
+Measured with `simulate_molecule_mixture` (tttrlib `SimEngine`, 48×48 scan,
+`dwell = 0.6`, `psf_w0 = 0.5`, two channels):
+
+* **one molecule at a time**, swept over a 5×5 grid of positions:
+  **20–45 photons**, essentially uniform — position does not matter;
+* **four molecules together** at `(12,12)`, `(34,14)`, `(18,34)`, `(36,36)`:
+  **20 / 1411 / 16406 / 10216**. Three of them emit 50–500× what the same
+  molecule emits alone, and the photons land *at* the molecule (a 7×7 patch
+  captures them), so this is not misattribution to the wrong pixel.
+
+Ruled out, each by measurement rather than by reasoning:
+
+* **the lifetime** — identical counts for `τ = 2.0 ns` everywhere and for a
+  1.0 / 3.6 / 2.2 / 0.6 mixture;
+* **the species layout** — one shared species with four fluorophores pointing at
+  it gives the same numbers as one species per blob;
+* **`independent_molecules`** — `True`, `False` and the default are identical;
+* **the excitation PSF** — widening `psf_w0` from 0.3 to 0.7 scales all four by
+  about 2.3× and leaves the ratios untouched.
+
+So the yield depends on *how many other molecules are in the system*, in a way
+that is not the optics and not the photophysics. The remaining suspects are in
+the engine's per-molecule activation and coasting logic
+(`active_margin`, `coast_safety`, `min_coast_windows`, `per_molecule_skip`,
+`focus_threshold`), which decide how many integration windows each molecule is
+alive for.
+
+**Not worked around.** The obvious workaround — tuning per-blob `brightness`
+until the field looks even — would bake an unexplained calibration into a
+fixture and hide the defect behind it. `simulate_clsm_molecules` (one channel,
+two molecules) is affected in principle too; its existing test survives because
+it only asserts that both molecules are *found*, not how bright they are.
+
+Fix belongs in tttrlib's `SimEngine`.
+
 ## `pixi` cannot solve the default environment: `wgpu` is named `wgpu-py` on conda-forge
 
 **Found 2026-08-10** while rebuilding the photon library. Every `pixi run`
