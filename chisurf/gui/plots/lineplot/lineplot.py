@@ -987,6 +987,13 @@ class LinePlot(plotbase.Plot):
                 plots['top_left_plot'].grid(x=True, y=True, alpha=grid_alpha)
             if cs.core.settings.gui['plot']['show_acorr_grid']:
                 plots['top_right_plot'].grid(x=True, y=True, alpha=grid_alpha)
+        # Same story as "Label axes" below: a settings checkbox that no plot
+        # read, so a legend could be asked for and never appear — and one that
+        # never appears is one that cannot be dragged either. The curves are
+        # already named, which is all a legend needs.
+        if cs.core.settings.gui['plot'].get('show_legend', False):
+            plots['main_plot'].legend()
+
         # "Label axes" was a settings checkbox nothing read, so turning it off
         # did nothing at all. Honour it: axis names cost horizontal space that
         # a narrow docked panel may prefer to give the data.

@@ -387,7 +387,22 @@ panel behind the user's back.
 
 **The legend is draggable**, as `LegendItem` is. It is grabbed before the pan
 gesture, so moving it never pans the view underneath, and it is clamped back
-inside the plot rectangle when the panel shrinks under it.
+inside the plot rectangle when the panel shrinks under it. `LinePlot` only
+*creates* one when `gui.plot.show_legend` says so — another checkbox the
+settings dialog wrote and no plot read, which is why "the legend drag is broken"
+was really "there is no legend".
+
+### Test the seam the application uses, not the one that is convenient
+
+Both of those shipped broken with a green suite, for the same reason: the tests
+built a **bare canvas**, and the application builds a `Plot`. A bare canvas has
+no host, so nothing could see that the canvas forwarded the menu to its hosting
+`Plot` while the `Plot` — seeing `provides_native_menu` — deferred straight
+back. Both deferred, a right-click raised nothing, and no test could tell.
+`test_a_right_click_on_a_hosted_plot_shows_the_menu` goes through `Plot`, and
+has to pin the active backend to do it: the rest of the module constructs
+canvases from the backend directly, which is exactly what let the seam go
+unexercised.
 
 # Where to pick this up — the WebGPU backend
 

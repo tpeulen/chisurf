@@ -617,6 +617,54 @@ def test_the_menu_offers_what_pyqtgraph_offers(qapp):
     assert "Grid" in labels["Plot options"]
 
 
+def test_a_right_click_on_a_hosted_plot_shows_the_menu(qapp, monkeypatch):
+    """Through ``Plot``, which is what the application builds.
+
+    The previous tests exercised a bare canvas, which has no host — so they
+    could not see that the canvas forwarded the menu to its hosting ``Plot``
+    while the ``Plot``, seeing ``provides_native_menu``, deferred right back.
+    Both deferred and a right-click raised nothing at all. Any menu test that
+    does not go through the host cannot catch that.
+    """
+    import chisurf.gui.chiplot.backends as backends
+    from chisurf.gui.chiplot.canvas import Plot
+
+    # The rest of this module builds canvases straight from the backend, which
+    # is why none of them cross the host seam. Here the active backend has to
+    # be this one, because the host is the point.
+    previous, previous_env = backends._active, os.environ.get("CHISURF_PLOT_BACKEND")
+    backends._active = None
+    os.environ["CHISURF_PLOT_BACKEND"] = "wgpu"
+    try:
+        plot = Plot()
+    finally:
+        backends._active = previous
+        if previous_env is None:
+            os.environ.pop("CHISURF_PLOT_BACKEND", None)
+        else:
+            os.environ["CHISURF_PLOT_BACKEND"] = previous_env
+    plot.line([0.0, 1.0, 2.0], [1.0, 2.0, 1.0], pen="orange", name="data")
+    plot.legend()
+    plot.resize(400, 300)
+
+    shown: list[list[str]] = []
+    monkeypatch.setattr(
+        QtWidgets.QMenu, "exec_",
+        lambda self, *a, **k: shown.append([x.text() for x in self.actions()
+                                            if not x.isSeparator()]))
+
+    canvas = plot.canvas
+    canvas._mouse_press(_FakeMouse((200, 150), QtCore.Qt.RightButton))
+    canvas._mouse_release(_FakeMouse((200, 150), QtCore.Qt.RightButton))
+
+    assert shown, "a right click on a hosted plot must raise a menu"
+    entries = shown[0]
+    for wanted in ("View all", "X axis", "Y axis", "Mouse mode", "Plot options"):
+        assert wanted in entries, wanted
+    # The host's own entries arrive through add_menu_action, not by forwarding.
+    assert any("Export" in e for e in entries)
+
+
 def test_disabling_an_axis_pins_it(qapp):
     """``Mouse enabled`` is per axis, as pyqtgraph's X/Y menus have it."""
     canvas = _interactive_canvas()

@@ -365,3 +365,16 @@ def test_a_dragged_split_is_not_overwritten():
     src = _lineplot_source()
     assert "splitterMoved.connect(self._on_splitter_moved)" in src
     assert "_split_is_users" in src
+
+
+def test_the_legend_is_shown_when_the_setting_asks_for_it():
+    """``gui.plot.show_legend`` reaches the plot.
+
+    It was a checkbox in the settings dialog that no plot read, so a legend
+    could be asked for and never appear — and one that never appears cannot be
+    dragged either, which is how "the legend drag is broken" was really "there
+    is no legend".
+    """
+    src = _lineplot_source()
+    assert "show_legend" in src
+    assert "plots['main_plot'].legend()" in src

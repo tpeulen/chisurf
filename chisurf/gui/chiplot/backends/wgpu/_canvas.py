@@ -1141,17 +1141,13 @@ class _WgpuCanvas(base.Canvas):
         """
         if not self._menu_enabled:
             return
-        global_pos = self._global_pos(event, self._widget, px, py)
-        parent = self._widget.parent()
-        while parent is not None:
-            if hasattr(parent, "contextMenuEvent") and hasattr(parent, "_series"):
-                menu_event = QtGui.QContextMenuEvent(
-                    QtGui.QContextMenuEvent.Mouse,
-                    QtCore.QPoint(int(px), int(py)), global_pos)
-                parent.contextMenuEvent(menu_event)
-                return
-            parent = parent.parent()
-        self._context_menu(global_pos)
+        # The panel shows its own menu. It used to forward to the hosting
+        # chiplot ``Plot`` instead, which was right while the backend had no
+        # menu of its own — but this backend now reports ``provides_native_menu``,
+        # so the host defers to *it*. Both deferring meant a right-click raised
+        # nothing at all. The host's entries are not lost: it injects them
+        # through ``add_menu_action``, and ``build_context_menu`` appends them.
+        self._context_menu(self._global_pos(event, self._widget, px, py))
 
     def _axis_menu(self, parent, axis: str) -> QtWidgets.QMenu:
         """Build pyqtgraph's per-axis submenu: mouse, auto/manual, invert."""
