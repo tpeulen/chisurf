@@ -2526,8 +2526,15 @@ class MolView(QtWidgets.QWidget):
 
         # The backend is chosen here, not assumed. `SceneSink` builds the scene
         # and rasterises nothing, which is what lets scene assembly run without
-        # a display; a browser backend arrives the same way.
-        factory = renderer_factory or QtGLRenderer
+        # a display; a browser backend arrives the same way. `CHIMOL_RENDERER`
+        # selects the WebGPU backend, which draws from the WGSL a browser will
+        # compile -- and falls back to OpenGL when the machine has no adapter,
+        # because a window with nothing in it is worse than the old renderer.
+        factory = renderer_factory
+        if factory is None:
+            from .wgpu_view import renderer_factory_from_env
+
+            factory = renderer_factory_from_env(QtGLRenderer)
         try:
             renderer = factory(controller=self, parent=self)
         except Exception:

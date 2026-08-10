@@ -20,6 +20,8 @@ from .lighting import resolve_light_rig
 from ..mouse_modes import action_of as mouse_action_of
 from ..mouse_modes import click_action_of
 from .base import Renderer
+from .camera_state import trackball_delta
+from .gui_overlay import refresh_gui_state
 from .scene import Geometry, Material, Scene, SceneObject
 from .view_state import (
     DEFAULT_FOV,
@@ -338,41 +340,13 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
     ) -> np.ndarray:
         """PyMOL virtual-trackball delta rotation (camera-space 3x3).
 
-        Projects the previous and current cursor onto a sphere of radius
-        ``0.45*min(W,H)``, takes the rotation carrying one to the other, and damps
-        the roll (z) component — see SceneMouse.cpp. Returned matrix left-multiplies
-        the current world->camera rotation.
+        The rule lives in :func:`.camera_state.trackball_delta`, because the
+        WebGPU viewer has to turn the molecule by exactly the same amount for
+        the same drag -- two viewers that do not are two different programs, and
+        no screenshot comparison catches it, since every individual frame is
+        correct.
         """
-        scale = 0.45 * min(float(width), float(height))
-        if scale <= 0.0:
-            return np.eye(3)
-        cx, cy = width / 2.0, height / 2.0
-
-        def _sphere(px: float, py: float) -> np.ndarray:
-            # Screen vector from centre; y is flipped (Qt top-left origin).
-            vx = px - cx
-            vy = cy - py
-            r2 = vx * vx + vy * vy
-            vz = math.sqrt(scale * scale - r2) if r2 < scale * scale else 0.0
-            v = np.array([vx, vy, vz], dtype=float)
-            n = np.linalg.norm(v)
-            return v / n if n > 1e-9 else np.array([0.0, 0.0, 1.0])
-
-        n1 = _sphere(*last)
-        n2 = _sphere(*cur)
-        axis = np.cross(n1, n2)
-        s = float(np.linalg.norm(axis))
-        if s <= 1e-9:
-            return np.eye(3)
-        axis /= s
-        angle = 1.3 * 2.0 * math.asin(min(s, 1.0))  # radians; mouse_scale=1.3
-        angle /= 1.0 + abs(axis[2])                  # damp the twist component
-        # PyMOL applies rotate(angle, ax, ay, -az); the screen axis lives in
-        # camera space, so this delta left-multiplies the view rotation.
-        ax, ay, az = axis[0], axis[1], -axis[2]
-        c, sn = math.cos(angle), math.sin(angle)
-        k = np.array([[0.0, -az, ay], [az, 0.0, -ax], [-ay, ax, 0.0]])
-        return np.eye(3) + sn * k + (1.0 - c) * (k @ k)
+        return trackball_delta(last, cur, width, height)
 
     @staticmethod
     def _rotation_delta_multiplier(mouse_mode: str) -> float:
@@ -2005,45 +1979,14 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         painter.drawRect(QtCore.QRectF(rect))
 
     def _refresh_gui_state(self, gui) -> None:
-        """Read the movie position into the panel before it is drawn.
+        """Pull the movie position and sequence colours into the panel.
 
-        Pulled every frame rather than pushed on change, because there is no one
-        place a frame changes: playback advances it on a timer, `frame` and the
-        transport set it directly, and a trajectory reload resets it. A slider
-        wired to one of those and not the others sits still while the molecule
-        moves, which is worse than having no slider.
-
-        A drag in progress wins: the position under the cursor is what the user
-        is asking for, and overwriting it from the viewer each frame would drag
-        the thumb back out of their hand.
+        The rule is in :func:`.gui_overlay.refresh_gui_state`, shared with the
+        WebGPU backend's overlay -- a panel that reports a different frame
+        number depending on which renderer is drawing it is worse than one that
+        reports none.
         """
-        controller = self._controller
-        if controller is None or gui.is_dragging():
-            return
-
-        # Re-read the sequence colours as well. Colouring is a *command* --
-        # `spectrum`, `color`, `ss` -- and there is no signal for it, so a strip
-        # coloured once at load keeps showing the old scheme while the molecule
-        # in front of it shows the new one. Reading them back is a cached array
-        # copy, which costs nothing beside drawing the molecule itself.
-        for row in gui.sequences:
-            if not row.object_id:
-                continue
-            try:
-                colours = controller.get_residue_colors(row.object_id)
-            except Exception:
-                continue
-            if colours is None:
-                continue
-            row.colors = [tuple(float(c) for c in rgba[:3]) for rgba in colours]
-
-        try:
-            current = int(controller.get_current_frame()) + 1
-            total = max(int(controller.get_total_frames()), 1)
-        except Exception:
-            return
-        if (current, total) != gui.state:
-            gui.state = (current, total)
+        refresh_gui_state(gui, self._controller)
 
     def _paint_labels(self, painter) -> None:
         """Draw the 3-D labels, projected to the window."""

@@ -7,6 +7,34 @@ tags: [plugins, structure, viewer, webgpu, wgsl, web, pyodide, compute]
 timestamp: '2026-08-10T00:00:00Z'
 ---
 
+# chimol runs on WGSL (2026-08-10)
+
+`CHIMOL_RENDERER=wgpu python -m chisurf.plugins.chimol` opens the real
+application window with `renderer/wgpu_view.py::WgpuRenderer` as its viewport:
+the molecule, the object panel, the sequence strip and the mouse-mode block, all
+drawn through the WGSL in `renderer/wgsl/`, on Metal. Verified by screenshot
+across cartoon / sticks / lines / spheres / surface / transparency, and the
+camera it reports for `orient` is the OpenGL baseline's camera to seven figures
+(`0.4264863 … −1380.95644`). It falls back to the OpenGL renderer when there is
+no adapter — a window with nothing in it is worse than the old backend.
+
+**The window and the baseline comparison are one code path.** `render_into` is
+what both call; `render` is a thin offscreen wrapper that allocates a target and
+reads it back. That is deliberate and load-bearing: a picture verified against
+the GL baseline is *the* picture the window shows, where two paths that merely
+"do the same thing" drift — as three constants in this port already did.
+
+**Everything a renderer holds rather than draws is in
+`renderer/camera_state.py`**, shared by `SceneSink` and the widget, so a
+headless replay and a window frame the same scene identically. PyMOL's
+trackball moved there too, and `qtgl` now delegates to it: two viewers whose
+drags turn the molecule by different amounts are two different programs, and no
+screenshot comparison catches it because every individual frame is correct.
+
+**Not there yet:** picking, the silhouette post-pass, 3-D labels, and the panel's
+menus and wizard beyond hover/click/drag routing. `qtgl.py` is therefore still
+the default and is not retired.
+
 # HANDOVER — start here (2026-08-10)
 
 **Goal.** ChiMOL must run in a browser embedded via JavaScript. WebGPU is the
@@ -165,6 +193,20 @@ renderers get it.
   uninitialised noise and poison any brightness comparison.
 - **Bind the `QApplication`.** An unreferenced `QApplication([])` is collected and
   the next `QWidget` aborts the interpreter with no Python traceback.
+- **A grab taken before the first present is a black viewport, not a broken
+  renderer.** `request_draw` only *schedules*. Pumping the Qt event loop does
+  not help, because the canvas decides when to draw. Call `force_draw()` on
+  every canvas before the shutter — `test/screenshot.py::force_render_canvases`
+  does it, and `shoot()` calls it.
+- **A translucent Qt child cannot overlay a presented surface.** Two
+  arrangements were tried for the object panel and both failed in ways that
+  read as renderer bugs: without clearing the child's backing store, uncleared
+  memory composited over the frame and turned a rainbow cartoon
+  salmon-and-blue (which looks exactly like a channel-order bug); with the
+  clear, the molecule vanished, because the child covers the surface rather
+  than blending with it. The chrome is painted to a premultiplied RGBA image
+  and composited as a textured quad inside the render pass — which is also the
+  only form a browser could use, and what `kind == "text"` labels will need.
 - **Suspect the baseline, not only the renderer.** A leaked setting does not
   announce itself; it looks like whichever renderer you trust less, and the
   baseline is the half nobody re-derives. Before spending a day inside a shader,

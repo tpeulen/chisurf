@@ -98,7 +98,6 @@ RESET: list[str] = [
     "set fog, 1.0",
     "set silhouette, off",
     "set balls.impostor_min_atoms, 20000",
-    "set sticks.ambient_occlusion, off",
     "set occlusion.enabled, on",
     "bg_color black",
     "cartoon automatic",
@@ -142,10 +141,11 @@ SCENES: list[tuple[str, str, list[str]]] = [
      ["hide everything", "show cartoon", "set silhouette, off", "orient"]),
     ("silhouette", "148l.pdb",
      ["hide everything", "show cartoon", "set silhouette, on", "orient"]),
-    # `sticks.ambient_occlusion` is registered and reachable but gates nothing --
-    # kept as a baseline so the port is not blamed for its having no effect.
-    ("ambient_occlusion", "148l.pdb",
-     ["hide everything", "show sticks", "set sticks.ambient_occlusion, on", "orient"]),
+    # `sticks.ambient_occlusion` had a scene here, to document that it was
+    # registered and reachable and gated nothing. The setting is gone (schema
+    # version 11 deletes it from existing configs too), so the scene went with
+    # it: replaying it now raises "Unknown setting", which the error callback
+    # reports on every comparison and is pure noise.
     # The gate that AO *actually* reads is `occlusion.enabled`, and only for
     # cartoon. Captured as a matched pair because the sense of that gate is
     # inverted in the current renderer (see known-issues): AO appears when

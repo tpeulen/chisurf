@@ -74,6 +74,35 @@ def _settle(app: QtWidgets.QApplication, rounds: int = 12) -> None:
         app.processEvents()
 
 
+def force_render_canvases(widget: QtWidgets.QWidget) -> int:
+    """Make every WebGPU canvas under *widget* present a frame, synchronously.
+
+    ``request_draw`` only *schedules*: a grab taken before the first present
+    captures an unpainted surface, and the result is a solid black viewport in
+    an otherwise perfect screenshot -- which reads as "the renderer draws
+    nothing" and is a shutter-timing bug. Pumping the event loop is not enough,
+    because the canvas decides when to draw.
+
+    Returns
+    -------
+    int
+        How many canvases were forced, so a caller can tell "none present" from
+        "none needed".
+    """
+    forced = 0
+    candidates = [widget, *widget.findChildren(QtWidgets.QWidget)]
+    for child in candidates:
+        force = getattr(child, "force_draw", None)
+        if not callable(force) or not child.isVisible():
+            continue
+        try:
+            force()
+        except Exception:  # pragma: no cover - a canvas without a surface yet
+            continue
+        forced += 1
+    return forced
+
+
 def _prepare(widget: QtWidgets.QWidget, size: tuple[int, int] | None) -> None:
     """Realise *widget* without putting it on the display."""
     widget.setAttribute(QtCore.Qt.WA_DontShowOnScreen, True)
@@ -208,6 +237,9 @@ def grab_window(widget: QtWidgets.QWidget, size: tuple[int, int] | None = None) 
     app = ensure_app()
     _prepare(widget, size)
     _settle(app)
+    # A WebGPU viewport paints when its canvas decides to, not when Qt does.
+    if force_render_canvases(widget):
+        _settle(app)
 
     shot = widget.grab().toImage()
     painter = QtGui.QPainter(shot)

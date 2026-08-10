@@ -101,22 +101,37 @@ class WgpuMeshRenderer:
         Framebuffer size in pixels.
     """
 
-    def __init__(self, width: int = 1280, height: int = 860) -> None:
+    def __init__(
+        self,
+        width: int = 1280,
+        height: int = 860,
+        *,
+        format: Optional[str] = None,
+        device=None,
+    ) -> None:
         import wgpu
 
         self._wgpu = wgpu
         self.width, self.height = int(width), int(height)
-        adapter = wgpu.gpu.request_adapter_sync(power_preference="high-performance")
-        self.device = adapter.request_device_sync()
-        self.adapter_info = dict(adapter.info)
+        if device is None:
+            adapter = wgpu.gpu.request_adapter_sync(power_preference="high-performance")
+            self.device = adapter.request_device_sync()
+            self.adapter_info = dict(adapter.info)
+        else:
+            # A canvas configures its context against a device it already has,
+            # and a texture from one device cannot be drawn into by another.
+            self.device = device
+            self.adapter_info = dict(getattr(device.adapter, "info", {}) or {})
 
-        # Non-sRGB on purpose. The swap-chain's preferred format is
+        # Non-sRGB by default, on purpose. The swap-chain's preferred format is
         # `rgba8unorm-srgb`, which gamma-encodes on write; the OpenGL backend
         # draws to a plain framebuffer and does not. Rendering into an sRGB
         # target here would wash every colour out relative to the baseline -- a
         # clear value of 0.09 comes back as 85 instead of 23 -- and the whole
-        # point of this renderer is to be comparable to that baseline.
-        self.format = wgpu.TextureFormat.rgba8unorm
+        # point of the offscreen renderer is to be comparable to that baseline.
+        # A window passes whatever format its surface was configured with, and
+        # the pipelines are built for it.
+        self.format = format or wgpu.TextureFormat.rgba8unorm
 
         self._bind_layout = self.device.create_bind_group_layout(
             entries=[
@@ -142,6 +157,8 @@ class WgpuMeshRenderer:
                 self._pipelines[(kind, depth_write)] = self._make_pipeline(
                     module, layout, spec, depth_write
                 )
+        self._overlay_pipeline = None
+        self._overlay_layout = None
 
     #: Vertex layout and topology per geometry kind. ``attributes`` are
     #: ``(format, float count)`` in order; the stride follows from them, so a
@@ -332,6 +349,114 @@ class WgpuMeshRenderer:
         ).tobytes()
         return bytes(b)
 
+    def _build_overlay_pipeline(self):
+        """Build the screen-space chrome pipeline, once, on first use.
+
+        Lazily, because a headless comparison never draws chrome and the
+        texture bind-group layout is the only thing in this class that a
+        molecule-only render does not need.
+        """
+        wgpu = self._wgpu
+        if self._overlay_pipeline is not None:
+            return self._overlay_pipeline
+
+        self._overlay_layout = self.device.create_bind_group_layout(
+            entries=[
+                {
+                    "binding": 0,
+                    "visibility": wgpu.ShaderStage.FRAGMENT,
+                    "texture": {"sample_type": wgpu.TextureSampleType.float},
+                },
+                {
+                    "binding": 1,
+                    "visibility": wgpu.ShaderStage.FRAGMENT,
+                    "sampler": {"type": wgpu.SamplerBindingType.filtering},
+                },
+            ]
+        )
+        module = self.device.create_shader_module(code=load_wgsl("overlay.wgsl"))
+        self._overlay_pipeline = self.device.create_render_pipeline(
+            layout=self.device.create_pipeline_layout(
+                # Group 0 is the shared uniform block. The chrome does not read
+                # it, but the layouts must line up with the shared prelude's
+                # `@group(0) @binding(0)` declaration, which every shader gets.
+                bind_group_layouts=[self._bind_layout, self._overlay_layout]
+            ),
+            vertex={"module": module, "entry_point": "vs_overlay", "buffers": []},
+            depth_stencil={
+                "format": wgpu.TextureFormat.depth24plus,
+                # Chrome sits in front of everything and is not part of the
+                # scene's depth: writing it would punch a hole for nothing.
+                "depth_write_enabled": False,
+                "depth_compare": wgpu.CompareFunction.always,
+            },
+            fragment={
+                "module": module,
+                "entry_point": "fs_overlay",
+                "targets": [
+                    {
+                        "format": self.format,
+                        # Premultiplied: Qt paints into a premultiplied buffer,
+                        # and `src_alpha` on top of that would darken every
+                        # antialiased glyph edge twice.
+                        "blend": {
+                            "color": {
+                                "src_factor": wgpu.BlendFactor.one,
+                                "dst_factor": wgpu.BlendFactor.one_minus_src_alpha,
+                                "operation": wgpu.BlendOperation.add,
+                            },
+                            "alpha": {
+                                "src_factor": wgpu.BlendFactor.one,
+                                "dst_factor": wgpu.BlendFactor.one_minus_src_alpha,
+                                "operation": wgpu.BlendOperation.add,
+                            },
+                        },
+                    }
+                ],
+            },
+            primitive={"topology": wgpu.PrimitiveTopology.triangle_list},
+        )
+        self._overlay_sampler = self.device.create_sampler(
+            mag_filter=wgpu.FilterMode.nearest, min_filter=wgpu.FilterMode.nearest
+        )
+        return self._overlay_pipeline
+
+    def upload_overlay(self, image: np.ndarray):
+        """Upload a premultiplied RGBA chrome image and return its texture.
+
+        Parameters
+        ----------
+        image : numpy.ndarray
+            ``(h, w, 4)`` uint8, **premultiplied**, the size of the target.
+
+        Returns
+        -------
+        wgpu.GPUTexture
+        """
+        wgpu = self._wgpu
+        data = np.ascontiguousarray(image, dtype=np.uint8)
+        height, width = data.shape[:2]
+        texture = self.device.create_texture(
+            size=(width, height, 1),
+            format=wgpu.TextureFormat.rgba8unorm,
+            usage=wgpu.TextureUsage.TEXTURE_BINDING | wgpu.TextureUsage.COPY_DST,
+        )
+        self.device.queue.write_texture(
+            {"texture": texture, "origin": (0, 0, 0)},
+            data,
+            {"bytes_per_row": width * 4, "rows_per_image": height},
+            (width, height, 1),
+        )
+        return texture
+
+    def resize(self, width: int, height: int) -> None:
+        """Change the framebuffer size the projection and point scale assume.
+
+        The pipelines do not depend on it, so nothing is rebuilt; only the
+        aspect ratio and the pixels-per-world-unit conversion change.
+        """
+        self.width, self.height = max(int(width), 1), max(int(height), 1)
+
     #: Radius, in pixels, for point geometry the builder gave no ``radii`` -- the
     #: `dots` representation and the selection glyphs. Matches the OpenGL
     #: backend's ``pointSize`` default.
@@ -363,7 +488,7 @@ class WgpuMeshRenderer:
             return "line" if geometry.vertex_count >= 2 else None
         return None
 
-    def point_scale(self, fov: float) -> float:
+    def point_scale(self, fov: float, height: Optional[float] = None) -> float:
         """Pixels per unit of world radius at unit depth.
 
         Half the viewport height over ``tan(fov / 2)``, which is the OpenGL
@@ -372,9 +497,17 @@ class WgpuMeshRenderer:
         does. Kept as a method because the impostor shader needs the same number
         the GL point-sprite path uses, and a second derivation of it is a second
         thing that can disagree.
+
+        Parameters
+        ----------
+        fov : float
+            Vertical field of view in degrees.
+        height : float, optional
+            Viewport height in pixels; defaults to the whole surface.
         """
         half = np.radians(max(float(fov), 1e-3)) * 0.5
-        return 0.5 * self.height / max(np.tan(half), 1e-6)
+        h = self.height if height is None else float(height)
+        return 0.5 * h / max(np.tan(half), 1e-6)
 
     def render(
         self,
@@ -420,13 +553,89 @@ class WgpuMeshRenderer:
             ``(height, width, 3)`` uint8.
         """
         wgpu = self._wgpu
+        colour_tex = self.device.create_texture(
+            size=(self.width, self.height, 1),
+            format=self.format,
+            usage=wgpu.TextureUsage.RENDER_ATTACHMENT | wgpu.TextureUsage.COPY_SRC,
+        )
+        self.render_into(
+            colour_tex.create_view(),
+            scene,
+            view_state,
+            background=background,
+            two_sided=two_sided,
+            lighting=lighting,
+            depth_cue=depth_cue,
+            target_radius=target_radius,
+        )
+        raw = self.device.queue.read_texture(
+            {"texture": colour_tex, "origin": (0, 0, 0)},
+            {"bytes_per_row": self.width * 4, "rows_per_image": self.height},
+            (self.width, self.height, 1),
+        )
+        img = np.frombuffer(raw, np.uint8).reshape(self.height, self.width, 4)
+        return np.ascontiguousarray(img[..., :3])
+
+    def render_into(
+        self,
+        target_view,
+        scene: PackedScene,
+        view_state: Sequence[float],
+        *,
+        background: Sequence[float] = (0.0, 0.0, 0.0),
+        two_sided: bool = False,
+        lighting: Optional[LightRig] = None,
+        depth_cue: Optional[dict] = None,
+        target_radius: Optional[float] = None,
+        viewport: Optional[Sequence[float]] = None,
+        overlay: Optional[np.ndarray] = None,
+    ) -> None:
+        """Draw ``scene`` into an existing texture view.
+
+        This is the half a window needs. :meth:`render` allocates its own target
+        and reads it back; a canvas hands over the texture the compositor is
+        about to present, and everything between the two is identical -- which is
+        the point, because it means the windowed viewer and the offscreen
+        comparison cannot drift into drawing different pictures.
+
+        Parameters
+        ----------
+        target_view : wgpu.GPUTextureView
+            Colour attachment, in :attr:`format`, sized :attr:`width` x
+            :attr:`height`.
+        viewport : sequence of float, optional
+            ``(x, y, width, height)`` in target pixels, for a window that gives
+            part of its surface to chrome -- the object panel is a column down
+            the right and the sequence strip a band across the top, and the
+            molecule belongs *beside* them, not under them. The clear still
+            covers the whole attachment, so the reserved area is background
+            rather than stale pixels. Defaults to the full target.
+        overlay : numpy.ndarray, optional
+            ``(height, width, 4)`` uint8 **premultiplied** RGBA, composited over
+            the whole target after the scene: the object panel, the sequence
+            strip, and eventually labels.
+
+        See Also
+        --------
+        render : the offscreen convenience wrapper, which returns pixels.
+        """
+        wgpu = self._wgpu
         light = lighting if lighting is not None else resolve_light_rig()
         state = unpack_view_state(view_state)
 
-        view = view_matrix(state.rotation, state.target, state.distance)
-        proj = perspective(
-            state.fov, self.width / max(self.height, 1), max(state.near, 1e-3), state.far
+        vx, vy, vw, vh = (
+            (0.0, 0.0, float(self.width), float(self.height))
+            if viewport is None
+            else tuple(float(v) for v in viewport)
         )
+        vw, vh = max(vw, 1.0), max(vh, 1.0)
+
+        view = view_matrix(state.rotation, state.target, state.distance)
+        # The aspect is the *scene column's*, not the surface's: projecting with
+        # the full width and then drawing into a narrower viewport stretches the
+        # same picture into less room, which is the squashed molecule a panel
+        # produces the first time one is added.
+        proj = perspective(state.fov, vw / vh, max(state.near, 1e-3), state.far)
         mvp = proj @ view
         # Normals need the inverse transpose; the view here is a rigid motion, so
         # its rotation block is orthonormal and the inverse transpose is itself.
@@ -441,11 +650,6 @@ class WgpuMeshRenderer:
         radius = scene.radius if target_radius is None else float(target_radius)
         fog_end, fog_scale = fog_planes(state.distance, radius, depth_cue)
 
-        colour_tex = self.device.create_texture(
-            size=(self.width, self.height, 1),
-            format=self.format,
-            usage=wgpu.TextureUsage.RENDER_ATTACHMENT | wgpu.TextureUsage.COPY_SRC,
-        )
         depth_tex = self.device.create_texture(
             size=(self.width, self.height, 1),
             format=wgpu.TextureFormat.depth24plus,
@@ -456,7 +660,7 @@ class WgpuMeshRenderer:
         rp = encoder.begin_render_pass(
             color_attachments=[
                 {
-                    "view": colour_tex.create_view(),
+                    "view": target_view,
                     "clear_value": (*background, 1.0),
                     "load_op": wgpu.LoadOp.clear,
                     "store_op": wgpu.StoreOp.store,
@@ -469,12 +673,15 @@ class WgpuMeshRenderer:
                 "depth_store_op": wgpu.StoreOp.store,
             },
         )
+        rp.set_viewport(vx, vy, vw, vh, 0.0, 1.0)
         keep = []  # buffers must outlive the pass
 
         def _opacity(obj) -> float:
             return 1.0 if obj.material is None else float(obj.material.opacity)
 
-        point_scale = self.point_scale(state.fov)
+        # From the viewport's height, not the surface's: a pixel size is a
+        # fraction of what is actually drawn into.
+        point_scale = self.point_scale(state.fov, height=vh)
 
         # Opaque first, then transparent. Blending is order-dependent: drawing a
         # translucent surface before the geometry behind it composites it against
@@ -546,13 +753,37 @@ class WgpuMeshRenderer:
             rp.set_index_buffer(ibo, wgpu.IndexFormat.uint32)
             rp.draw_indexed(int(geom.indices.size), 1, 0, 0, 0)
 
+        if overlay is not None and overlay.size:
+            # Over the *whole* target, not the scene viewport: the chrome's
+            # column and strip are precisely the parts the viewport excluded.
+            rp.set_viewport(0.0, 0.0, float(self.width), float(self.height), 0.0, 1.0)
+            pipeline = self._build_overlay_pipeline()
+            texture = self.upload_overlay(overlay)
+            bind = self.device.create_bind_group(
+                layout=self._overlay_layout,
+                entries=[
+                    {"binding": 0, "resource": texture.create_view()},
+                    {"binding": 1, "resource": self._overlay_sampler},
+                ],
+            )
+            # The chrome ignores the uniform block, but group 0 is declared by
+            # the shared prelude every shader carries, so it must be bound.
+            ubo = self.device.create_buffer_with_data(
+                data=self._uniforms(
+                    mvp, view, proj, normal_matrix, fog_end, fog_scale,
+                    background, False, 1.0, point_scale, False, light,
+                ),
+                usage=wgpu.BufferUsage.UNIFORM,
+            )
+            group0 = self.device.create_bind_group(
+                layout=self._bind_layout,
+                entries=[{"binding": 0, "resource": {"buffer": ubo, "offset": 0, "size": ubo.size}}],
+            )
+            keep += [texture, bind, ubo, group0]
+            rp.set_pipeline(pipeline)
+            rp.set_bind_group(0, group0)
+            rp.set_bind_group(1, bind)
+            rp.draw(6, 1, 0, 0)
+
         rp.end()
         self.device.queue.submit([encoder.finish()])
-
-        raw = self.device.queue.read_texture(
-            {"texture": colour_tex, "origin": (0, 0, 0)},
-            {"bytes_per_row": self.width * 4, "rows_per_image": self.height},
-            (self.width, self.height, 1),
-        )
-        img = np.frombuffer(raw, np.uint8).reshape(self.height, self.width, 4)
-        return np.ascontiguousarray(img[..., :3])
