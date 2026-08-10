@@ -70,6 +70,5 @@ chisurf/plugins/fcs/flc_2d/core.py
 
 # ── chimol (owned by the WebGPU port, okf/agent-board.md) ───────────────────
 chisurf/plugins/chimol/chimol/geometry/marching_cubes.py
-chisurf/plugins/chimol/chimol/geometry/surface.py
 chisurf/plugins/chimol/chimol/renderer/bvh.py
 chisurf/plugins/chimol/chimol/renderer/raytracer.py

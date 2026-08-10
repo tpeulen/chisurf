@@ -10,7 +10,7 @@ timestamp: '2026-08-10T00:00:00Z'
 # Where to pick this up
 
 1. **The tracker is `test/numba_import_allowlist.txt`** and it only shrinks.
-   Every entry carries its route. **34 of the original 59 files remain** — 18 ported by this work, 7 struck by the ChiMOL WebGPU port, which shrinks the same list;
+   Every entry carries its route. **33 of the original 59 files remain** — 18 ported by this work, 8 struck by the ChiMOL WebGPU port, which shrinks the same list;
    `test/test_numba_seam.py` fails both on a new importer and on a stale entry,
    so the list cannot drift from the tree.
 2. **Route `tttrlib`: next is `plugins/fluorescence_decay/maxent_decay/core/solver.py`**
@@ -238,8 +238,8 @@ mechanically.
 | | Files | Kernels |
 | --- | ---: | ---: |
 | At the start | 59 | 186 |
-| Ported so far | 25 | ~70 |
-| Remaining | 34 | ~116 |
+| Ported so far | 26 | ~74 |
+| Remaining | 33 | ~112 |
 
 Done: `fluorescence/general.py`, `math/datatools.py`, `math/statistics.py`,
 `math/signal.py`, `fluorescence/burst/utils.py`, `math/reaction/_reaction.py`,
