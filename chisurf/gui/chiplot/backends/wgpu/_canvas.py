@@ -159,11 +159,33 @@ class _PlotWidget(QtWidgets.QWidget):
         super().__init__(parent)
         self._canvas = canvas
         self.setMouseTracking(True)
-        self.setMinimumSize(50, 50)
         self.setSizePolicy(QtWidgets.QSizePolicy.Expanding,
                            QtWidgets.QSizePolicy.Expanding)
         self.setFocusPolicy(QtCore.Qt.WheelFocus)
         self.setAttribute(QtCore.Qt.WA_OpaquePaintEvent, True)
+
+    def sizeHint(self) -> QtCore.QSize:
+        """Ask for the same room a pyqtgraph panel asks for.
+
+        A layout hands out space in proportion to what its children advertise,
+        and this widget advertised nothing — Qt fell back to the minimum, so a
+        panel sharing a column with a form collapsed to a strip a few pixels
+        tall while the same plot on the other backend came out full height.
+        pyqtgraph's ``GraphicsView`` reports 600x450; matching it is what makes
+        switching backend not rearrange the window.
+        """
+        return QtCore.QSize(600, 450)
+
+    def minimumSizeHint(self) -> QtCore.QSize:
+        """Enough room for the axis chrome plus a usable data area.
+
+        The old floor was a flat 50x50, which is smaller than the margins the
+        ticks and labels need — the axes would draw over each other rather than
+        the panel refusing to shrink.
+        """
+        margins = self._canvas._margins
+        return QtCore.QSize(margins.left + margins.right + 60,
+                            margins.top + margins.bottom + 50)
 
     def paintEvent(self, event):
         """Render the data area on the GPU, then draw the chrome."""
@@ -267,11 +289,11 @@ class _WgpuCanvas(base.Canvas):
         color = (*_GRID_COLOR, float(self._grid_alpha))
         segs = []
         if self._show_grid_x:
-            y0, y1 = self._view.y_range
+            y0, y1 = self._view.visible_range("y")
             for tv in self._tick_values("bottom"):
                 segs.append(([tv, tv], [y0, y1]))
         if self._show_grid_y:
-            x0, x1 = self._view.x_range
+            x0, x1 = self._view.visible_range("x")
             for tv in self._tick_values("left"):
                 segs.append(([x0, x1], [tv, tv]))
         if not segs:
@@ -355,7 +377,9 @@ class _WgpuCanvas(base.Canvas):
     def _tick_values(self, side: str) -> list[float]:
         """Return the tick positions for one axis."""
         horizontal = side in ("bottom", "top")
-        lo, hi = self._view.x_range if horizontal else self._view.y_range
+        # The *sanitised* range, so the ticks describe the axis the geometry is
+        # actually drawn against.
+        lo, hi = self._view.visible_range("x" if horizontal else "y")
         log = self._view.log_x if horizontal else self._view.log_y
         spacing = self._tick_spacing.get(side)
         if spacing and spacing[0]:

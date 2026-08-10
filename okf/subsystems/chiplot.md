@@ -240,6 +240,24 @@ the new `font_size` are all controls now, and
 together. `label_axis` was the reverse case: a control that had *never* been
 read, so turning it off did nothing; `LinePlot` honours it.
 
+## A panel that advertises no size gets none
+
+`_PlotWidget` had `setMinimumSize(50, 50)` and no `sizeHint`, so Qt fell back to
+the minimum: **50x450 against pyqtgraph's 600x450**. A layout hands out space in
+proportion to what its children ask for, so a plot sharing a column with a form
+— the TCSPC simulator preview — collapsed to a strip a few pixels tall on the
+native backend and came out full height on the other. Switching backend must not
+rearrange the window, so the hint matches pyqtgraph's and the floor is derived
+from the axis margins rather than being a flat 50.
+
+The same panel showed the other half of the bug: created with `set_log(y=True)`
+and no data yet, its default `[0, 1]` range put `log10(0)` at the floor and the
+axis spanned **three hundred decades**, first tick `1e-300`. `PixelView`
+sanitises a non-positive log bound to a few decades below the top, and — this
+is the part that was missed first — `visible_range()` is what the tick
+generator and the grid read, so labels cannot describe a span the geometry was
+never mapped against.
+
 # Where to pick this up — the WebGPU backend
 
 `backends/wgpu/` draws every family the A/B script exercises (decay on a log

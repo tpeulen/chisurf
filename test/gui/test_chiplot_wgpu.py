@@ -415,6 +415,51 @@ def test_anchored_text_is_measured_over_all_its_lines(qapp):
     assert text.is_alive()
 
 
+def test_panel_asks_for_the_same_room_as_the_other_backend(qapp):
+    """A layout hands out space by size hint; advertising none starves the plot.
+
+    The widget had no ``sizeHint`` at all, so Qt fell back to its minimum and a
+    panel sharing a column with a form collapsed to a strip a few pixels tall —
+    while the identical plot on pyqtgraph (which reports 600x450) came out full
+    height. Switching backend must not rearrange the window.
+    """
+    canvas = _canvas()
+    hint = canvas.widget().sizeHint()
+    assert (hint.width(), hint.height()) == (600, 450)
+    floor = canvas.widget().minimumSizeHint()
+    margins = canvas._margins
+    assert floor.width() > margins.left + margins.right
+    assert floor.height() > margins.top + margins.bottom
+
+
+def test_an_empty_log_axis_does_not_span_three_hundred_decades(qapp):
+    """``set_log`` before any data must not produce a 1e-300 axis.
+
+    The default range is ``[0, 1]`` and ``log10(0)`` floors at the smallest
+    representable number, so a panel created logarithmic and not yet filled came
+    up ticking from 1e-300 — which is what the simulator preview showed.
+    """
+    canvas = _canvas()
+    canvas.set_log(y=True)
+    ticks = canvas._tick_values("left")
+    assert ticks
+    assert min(ticks) >= 1e-6
+    assert math.log10(max(ticks) / min(ticks)) <= 4
+
+
+def test_ticks_and_geometry_agree_on_the_range(qapp):
+    """Ticks come from the same sanitised bounds the vertices do.
+
+    Generating them from the raw range let an axis be labelled for a span the
+    geometry was never mapped against.
+    """
+    canvas = _canvas()
+    canvas.set_log(y=True)
+    lo, hi = canvas._view.visible_range("y")
+    ticks = canvas._tick_values("left")
+    assert lo * 0.999 <= min(ticks) and max(ticks) <= hi * 1.001
+
+
 # ---------------------------------------------------------------------------
 # Rendering (needs an adapter)
 # ---------------------------------------------------------------------------

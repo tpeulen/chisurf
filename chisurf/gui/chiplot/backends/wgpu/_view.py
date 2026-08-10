@@ -48,16 +48,54 @@ class PixelView:
         self.invert_y = invert_y
 
     # -- forward --------------------------------------------------------
-    @staticmethod
-    def _axis_bounds(rng, log: bool) -> tuple[float, float]:
-        """Return the axis bounds in the space the axis is linear in."""
+    #: Decades an empty or non-positive log axis falls back to spanning.
+    _LOG_FALLBACK_DECADES = 3.0
+
+    @classmethod
+    def _axis_bounds(cls, rng, log: bool) -> tuple[float, float]:
+        """Return the axis bounds in the space the axis is linear in.
+
+        A log axis whose low bound is non-positive cannot be taken literally.
+        Flooring it at the smallest representable number is what an empty panel
+        did — the default range is ``[0, 1]``, so a plot created with
+        ``set_log(y=True)`` before any data came up spanning **three hundred
+        decades**, with ``1e-300`` as its first tick. Falling back to a few
+        decades below the top gives an axis a reader can use, and one that the
+        first real data replaces anyway.
+        """
         lo, hi = float(rng[0]), float(rng[1])
         if log:
+            if hi <= 0:
+                hi = 1.0
+            if lo <= 0:
+                lo = hi * 10.0 ** -cls._LOG_FALLBACK_DECADES
             lo = math.log10(max(lo, _LOG_FLOOR))
             hi = math.log10(max(hi, _LOG_FLOOR))
         if hi - lo == 0:
             hi = lo + 1.0
         return lo, hi
+
+    def visible_range(self, axis: str = "x") -> tuple[float, float]:
+        """Return an axis's range in **data** units, sanitised for its scale.
+
+        The same numbers the transform uses, so ticks cannot be generated for a
+        span the geometry does not draw — which is how an empty log panel got
+        ticks from ``1e-300`` while its curves were mapped over three decades.
+
+        Parameters
+        ----------
+        axis : str
+            ``"x"`` or ``"y"``.
+
+        Returns
+        -------
+        tuple of float
+            ``(lo, hi)`` in data units.
+        """
+        log = self.log_x if axis == "x" else self.log_y
+        rng = self.x_range if axis == "x" else self.y_range
+        lo, hi = self._axis_bounds(rng, log)
+        return (10.0 ** lo, 10.0 ** hi) if log else (lo, hi)
 
     def _to_axis(self, values, log: bool):
         """Map data values into the axis's linear space."""
