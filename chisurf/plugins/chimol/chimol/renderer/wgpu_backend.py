@@ -26,26 +26,12 @@ from typing import Optional, Sequence
 
 import numpy as np
 
+from .depth_cue import fog_planes
+from .lighting import LightRig, resolve_light_rig
 from .pack import PackedScene
 from .view_state import unpack_view_state
 
 WGSL_DIR = pathlib.Path(__file__).with_name("wgsl")
-
-#: Key/fill directions and intensities matching the OpenGL backend's defaults, so
-#: a comparison against the baseline is a comparison of *shading* and not of
-#: lighting setup.
-DEFAULT_LIGHTING = {
-    "light_dir": (-0.35, 0.45, 0.82),
-    "fill_dir": (0.55, -0.25, 0.45),
-    "key": 1.0,
-    "fill": 0.45,
-    "ambient": 0.28,
-    "specular": 0.30,
-    "shininess": 60.0,
-    "rim_strength": 0.18,
-    "rim_power": 2.4,
-}
-
 
 def load_wgsl(name: str) -> str:
     """Read a shader from the shared ``wgsl`` directory.
@@ -232,22 +218,19 @@ class WgpuMeshRenderer:
         return np.ascontiguousarray(out)
 
     def _uniforms(self, mvp, view, normal_matrix, fog_end, fog_scale, fog_color,
-                  two_sided, opacity, lighting) -> bytes:
+                  two_sided, opacity, rig: LightRig) -> bytes:
         def m(a):
             # WGSL matrices are column-major; numpy is row-major.
             return np.ascontiguousarray(np.asarray(a, np.float32).T).tobytes()
 
         b = bytearray()
         b += m(mvp) + m(view) + m(normal_matrix)
-        b += np.array([*lighting["light_dir"], 0.0], np.float32).tobytes()
-        b += np.array([*lighting["fill_dir"], 0.0], np.float32).tobytes()
+        b += np.array([*rig.light_dir, 0.0], np.float32).tobytes()
+        b += np.array([*rig.fill_dir, 0.0], np.float32).tobytes()
         b += np.array([*fog_color, float(fog_end)], np.float32).tobytes()
+        b += np.array([rig.key, rig.fill, rig.ambient, rig.specular], np.float32).tobytes()
         b += np.array(
-            [lighting["key"], lighting["fill"], lighting["ambient"], lighting["specular"]],
-            np.float32,
-        ).tobytes()
-        b += np.array(
-            [lighting["shininess"], lighting["rim_strength"], lighting["rim_power"], float(fog_scale)],
+            [rig.shininess, rig.rim_strength, rig.rim_power, float(fog_scale)],
             np.float32,
         ).tobytes()
         b += np.array([1.0 if two_sided else 0.0, float(opacity), 0.0, 0.0], np.float32).tobytes()
@@ -260,8 +243,9 @@ class WgpuMeshRenderer:
         *,
         background: Sequence[float] = (0.0, 0.0, 0.0),
         two_sided: bool = False,
-        lighting: Optional[dict] = None,
-        fog: bool = False,
+        lighting: Optional[LightRig] = None,
+        depth_cue: Optional[dict] = None,
+        target_radius: Optional[float] = None,
     ) -> np.ndarray:
         """Render ``scene`` from ``view_state`` and return an ``(h, w, 3)`` uint8 image.
 
@@ -276,10 +260,16 @@ class WgpuMeshRenderer:
             Clear colour, linear RGB in ``[0, 1]``.
         two_sided : bool
             PyMOL's ``two_sided_lighting``.
-        lighting : dict, optional
-            Overrides for :data:`DEFAULT_LIGHTING`.
-        fog : bool
-            Whether to apply the depth cue.
+        lighting : LightRig, optional
+            The light rig. ``None`` resolves it from the display config, the
+            same section the OpenGL backend reads.
+        depth_cue : dict, optional
+            The ``depth_cue`` display-config section. ``None`` reads the live
+            config, which is what makes this match the OpenGL backend by
+            default; pass ``{"enabled": False}`` to render without the cue.
+        target_radius : float, optional
+            Radius the camera is framed on, which is the span the cue is
+            measured over. Defaults to the scene's own radius.
 
         Returns
         -------
@@ -287,7 +277,7 @@ class WgpuMeshRenderer:
             ``(height, width, 3)`` uint8.
         """
         wgpu = self._wgpu
-        light = {**DEFAULT_LIGHTING, **(lighting or {})}
+        light = lighting if lighting is not None else resolve_light_rig()
         state = unpack_view_state(view_state)
 
         view = view_matrix(state.rotation, state.target, state.distance)
@@ -300,14 +290,13 @@ class WgpuMeshRenderer:
         normal_matrix = view.copy()
         normal_matrix[:3, 3] = 0.0
 
-        if fog:
-            fog_end, fog_scale = state.far, 1.0 / max(state.far - state.near, 1e-6)
-        else:
-            # `vis` is a *visibility*: 1 is unfogged. A scale of 0 makes it 0,
-            # which is fully fogged -- every fragment comes back as the fog
-            # colour and the frame is a flat rectangle of the background. Push
-            # the term far past 1 instead and let the clamp do the work.
-            fog_end, fog_scale = 1e9, 1.0
+        # The same planes the GL backend uses, from the same rule, fitted around
+        # the scene rather than taken from the clipping planes. Leaving the cue
+        # out is not a neutral simplification: it fogs towards the *background*,
+        # so a missing cue is invisible against black and reads as a much darker
+        # model against white -- which is exactly how it was first reported.
+        radius = scene.radius if target_radius is None else float(target_radius)
+        fog_end, fog_scale = fog_planes(state.distance, radius, depth_cue)
 
         colour_tex = self.device.create_texture(
             size=(self.width, self.height, 1),

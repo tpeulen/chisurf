@@ -46,18 +46,18 @@ GL on the left and WGSL on the right. Baselines and their cameras live in
 
 1. **Metaball: "not flubber enough" (user request, untouched).** There is **no
    metaball scene in the baseline**, so there is nothing to judge against — add
-   one to `SCENES` in `test/capture_gl_baseline.py`, re-capture, *then* tune.
-   Existing knobs in `chimol_display.json`: `sigma_factor 4.0` (fusion — merges
-   beads into smooth lobes, the main lever), `alpha 0.55`, `shininess 96`,
-   `specular_strength 0.85`, `rim_strength 0.55`, `iso_value 0.1`. Prior tuning
-   is recorded in [pymol-parity](/plugins/pymol-parity.md): 9.0 sigma was tried
-   and rejected as "a featureless egg", so the useful range is narrow.
-2. **White-background darkness (open bug).** Against a white background the WGSL
-   cartoon renders markedly darker than the baseline; against black they match.
-   Model shading must not depend on the clear colour, so something is either
-   compositing against it or deriving a term from it. Suspect the fog term (the
-   background is passed as `fogColor`) or the environment/matcap. Reproduce:
-   `compare_wgsl bg_white cartoon` — row 1 wrong, row 2 fine.
+   one to `SCENES` in `test/capture_gl_baseline.py`, re-capture (the capture now
+   takes scene names, so this costs one scene and leaves the other 23 alone),
+   *then* tune. Existing knobs in `chimol_display.json`: `sigma_factor 4.0`
+   (fusion — merges beads into smooth lobes, the main lever), `alpha 0.55`,
+   `shininess 96`, `specular_strength 0.85`, `rim_strength 0.55`,
+   `iso_value 0.1`. Prior tuning is recorded in
+   [pymol-parity](/plugins/pymol-parity.md): 9.0 sigma was tried and rejected as
+   "a featureless egg", so the useful range is narrow.
+2. ✅ **Done — "white-background darkness" was a contaminated baseline.** See
+   *The bug that was not in the renderer* below; the four affected baselines are
+   re-captured and `compare_wgsl bg_white bg_grey_spectrum cartoon
+   nucleic_cartoon` now matches on all four rows.
 3. **Impostors.** Sphere and capped-cylinder impostors were prototyped and proven
    in Phase 0 (148L at **2 triangles/atom** with per-fragment depth, reusing the
    raytracer's own analytic capsule intersection) but are **not yet in
@@ -69,6 +69,56 @@ GL on the left and WGSL on the right. Baselines and their cameras live in
 5. **Then embed in the Qt dock.** `rendercanvas`'s `QRenderWidget` is verified
    embeddable under PyQt5 (870×485 in a real dock layout). Only after that does
    `qtgl.py` get retired.
+
+## The bug that was not in the renderer (2026-08-10)
+
+"The WGSL cartoon is markedly darker than the baseline against a **white**
+background, and matches against black" is a good bug report — it is specific,
+reproducible and it points somewhere. It pointed at the only place a clear colour
+legitimately reaches shading, the fog term, and the answer was not there.
+
+`capture_gl_baseline.py`'s `RESET` preamble did not restore `occlusion.enabled`,
+and `occlusion_enabled_off` runs **immediately before** `bg_white`. Five
+baselines were therefore photographed with ambient occlusion switched off, while
+the WebGPU replay — a fresh process, config default — had it on and was right.
+The scene's packed colours carry occlusion pre-multiplied, so `grey80` arrives at
+a mean of **0.455** with AO on and **0.856** with it off. That ratio is the whole
+of the difference; nothing about the background was ever involved.
+
+What settled it in one look was a three-panel PNG — GL | WGSL AO-on | WGSL AO-off
+— where the third panel lands on the first. Two scalars had already pointed the
+wrong way before that (lit-pixel IoU read **1.000** for a scene that was plainly
+wrong, because a white background counts as lit; whole-frame means differed by
+4 %). `labels` was an unplanned control: it re-captured **byte-identical**,
+because sticks have no AO path at all.
+
+Fixed by adding `occlusion.enabled` and `fog` to `RESET`, and — because the
+comment "keep the two lists in step" was already there and did not keep them in
+step — by `missing_resets()`, which diffs the settings the scenes assign against
+the ones the preamble restores. `main()` refuses to open a window when it is
+non-empty, and `test/test_wgsl_parity.py` fails on it with no GPU.
+
+**Two constants found on the way, both real and neither the cause.** They were
+transcribed between backends instead of shared, which is the same defect as the
+`RESET` list in a different costume:
+
+- `renderer/depth_cue.py` now holds PyMOL's `SceneSetFog` planes; `qtgl` and
+  `wgpu_backend` both call it. The WGSL renderer had had **no depth cue at all**.
+- `renderer/lighting.py` now holds the light rig. `wgpu_backend` had carried a
+  hand-written `DEFAULT_LIGHTING` dict documented as "matching the OpenGL
+  backend's defaults" which matched none of them: key light 25° off-axis where
+  the configured one points **straight down the camera**, `fill=0.45` where the
+  config asks for **no fill light**, `ambient=0.28` against `0.45`. Its shader
+  also added the environment reflection at a flat 10 % where GL blends it through
+  a Fresnel `mix` weighted by specular strength.
+
+**Open question for the user, and it is a judgement call not a defect:** the
+off-axis-key-plus-fill rig that `DEFAULT_LIGHTING` accidentally described is
+plausibly the "the WGSL render looks better" the user recorded, because it models
+a ribbon where the configured head-on rig lights it flatly. That is now a
+*setting*, not a backend's private constant — so if the modelled look is wanted,
+it belongs in `chimol_display.json`'s `lighting` section, where **both**
+renderers get it.
 
 ## Things that are settled — do not re-litigate
 
@@ -95,6 +145,11 @@ GL on the left and WGSL on the right. Baselines and their cameras live in
   uninitialised noise and poison any brightness comparison.
 - **Bind the `QApplication`.** An unreferenced `QApplication([])` is collected and
   the next `QWidget` aborts the interpreter with no Python traceback.
+- **Suspect the baseline, not only the renderer.** A leaked setting does not
+  announce itself; it looks like whichever renderer you trust less, and the
+  baseline is the half nobody re-derives. Before spending a day inside a shader,
+  render the *same* scene both ways with the suspected setting forced each way —
+  three panels, one image, one minute.
 - **Compare order-independent summaries** (area, centroid, bbox) for meshes, not
   sorted rounded centroids — f32-vs-f64 flips ties and reports a correct kernel
   as wrong.

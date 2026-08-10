@@ -105,14 +105,30 @@ fn fs_main(in: VertexOut, @builtin(front_facing) frontFacing: bool) -> @location
     let sunDir    = normalize(vec3<f32>(0.5, 1.0, 0.5));
     let sun       = pow(max(0.0, dot(R, sunDir)), max(10.0, u.surface.x));
     env += vec3<f32>(1.5) * sun;
-    shaded += env * 0.10 * sheet * exposure;
 
-    shaded += vec3<f32>(spec) * sheet;
+    // Blended by Fresnel and *mixed*, not added at a flat fraction. Face-on the
+    // reflection is barely there and at grazing angles it takes over, which is
+    // what makes a ribbon read as a solid with an edge rather than as a shape
+    // with a uniform sheen laid over it. Adding a constant 10 % instead lifts
+    // the whole surface by the same amount, which is exactly what a flat
+    // fraction cannot distinguish from raising the ambient term.
+    let fresnel    = pow(clamp(1.0 - dot(n, viewDir), 0.0, 1.0), 2.5);
+    let reflectMul = clamp(u.intensities.w * (0.1 + 0.6 * fresnel), 0.0, 1.0)
+                     * exposure * sheet;
+    var finalColor = mix(shaded, env, reflectMul);
+
+    finalColor += vec3<f32>(spec) * exposure * sheet;
 
     // PyMOL's fog is a linear *visibility* between two planes, not an
     // exponential in distance, so `fog_start` means the same here as it does in
-    // the ray tracer and in PyMOL.
-    let vis = clamp((u.fogColor.w + in.viewPos.z) * u.surface.w, 0.0, 1.0);
-    let out = mix(u.fogColor.rgb, shaded, vis);
+    // the ray tracer and in PyMOL. `viewPos.z` is negative in front of the
+    // camera, so `fogEnd + z` is how far short of the back plane this fragment
+    // is. A scale of 0 is how the host says the cue is off -- the same signal
+    // the GL shader tests, so neither backend needs a sentinel distance.
+    var vis = 1.0;
+    if (u.surface.w > 0.0) {
+        vis = clamp((u.fogColor.w + in.viewPos.z) * u.surface.w, 0.0, 1.0);
+    }
+    let out = mix(u.fogColor.rgb, finalColor, vis);
     return vec4<f32>(out, alpha);
 }

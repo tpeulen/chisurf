@@ -32,14 +32,21 @@ Use
     # needs a logged-in window server -- NOT QT_QPA_PLATFORM=offscreen, which
     # cannot create a GL context and yields black
     python -m chisurf.plugins.chimol.test.capture_gl_baseline
+
+Naming scenes re-captures only those and leaves the rest of the images and the
+rest of the manifest alone::
+
+    python -m chisurf.plugins.chimol.test.capture_gl_baseline bg_white labels
 """
 from __future__ import annotations
 
 import json
 import os
 import pathlib
+import sys
 import tempfile
 import traceback
+from typing import Optional, Sequence
 
 # Must be set before anything builds a QSettings: the main window persists its
 # dock layout, and a restored one hands the 3-D view a strip (see
@@ -59,17 +66,29 @@ _OUT = _HERE / "renders" / "gl_baseline"
 #: reproducible by replaying the whole list in order -- the first run of this
 #: script photographed a spectrum-coloured space-fill because ``spectrum count``
 #: from an earlier scene was still in effect, which reads as a property of the
-#: sphere representation and is not one. Every entry here corresponds to
-#: something a scene perturbs; keep the two lists in step.
+#: sphere representation and is not one.
+#:
+#: Every entry corresponds to something a scene perturbs, and keeping the two
+#: lists in step is checked by :func:`missing_resets` rather than asked for in a
+#: comment -- the comment was here and did not prevent ``occlusion.enabled`` from
+#: being added to the scenes and not to this list. The cost of that gap was a
+#: full day: ``occlusion_enabled_off`` runs immediately before ``bg_white``, so
+#: five baselines were photographed with ambient occlusion switched off, and the
+#: WebGPU renderer -- which had it on, correctly -- was read as "markedly too
+#: dark against a white background" and hunted as a shading bug through the fog
+#: term, the light rig and the environment reflection. A leaked setting does not
+#: announce itself; it looks like whichever renderer you trust less.
 RESET: list[str] = [
     "hide everything",
     "color grey80",
     "set transparency, 0",
     "set two_sided_lighting, off",
     "set depth_cue, off",
+    "set fog, 1.0",
     "set silhouette, off",
     "set balls.impostor_min_atoms, 20000",
     "set sticks.ambient_occlusion, off",
+    "set occlusion.enabled, on",
     "bg_color black",
     "cartoon automatic",
     'label all, ""',
@@ -138,9 +157,62 @@ SCENES: list[tuple[str, str, list[str]]] = [
 ]
 
 
-def main() -> int:
+def _settings_in(lines) -> set[str]:
+    """Names of the settings a list of commands assigns with ``set``."""
+    names = set()
+    for line in lines:
+        text = line.strip()
+        if not text.lower().startswith("set "):
+            continue
+        names.add(text[4:].split(",", 1)[0].strip().lower())
+    return names
+
+
+def missing_resets() -> set[str]:
+    """Settings some scene assigns that :data:`RESET` does not put back.
+
+    A scene that leaves a setting behind does not fail; the *next* scene renders
+    with it and the difference is attributed to whatever that scene was meant to
+    show. So this is checked rather than remembered -- see the note on
+    :data:`RESET` for what one missing entry cost.
+
+    Returns
+    -------
+    set of str
+        Setting names to add to :data:`RESET`. Empty when the lists are in step.
+    """
+    perturbed: set[str] = set()
+    for _name, _structure, script in SCENES:
+        perturbed |= _settings_in(script)
+    return perturbed - _settings_in(RESET)
+
+
+def main(only: Optional[Sequence[str]] = None) -> int:
+    """Capture the baselines, or just the named ones.
+
+    Parameters
+    ----------
+    only : sequence of str, optional
+        Scene names to re-capture. The rest keep the images and manifest entries
+        they already have, which is the point: a baseline that did not need
+        re-taking should stay byte-identical, so a later diff shows the scenes
+        that actually changed and not the run-to-run noise of all 23.
+
+    Returns
+    -------
+    int
+        Process exit status.
+    """
     # refuses the offscreen platform, where GL has no context and yields black
     from .screenshot import assert_view_usable, ensure_app, shoot
+
+    # Before a window opens, not after 23 scenes: a capture run that leaks a
+    # setting produces images that look fine and are wrong, and the wrongness
+    # surfaces weeks later as a difference in whatever renderer is compared next.
+    absent = missing_resets()
+    if absent:
+        print(f"RESET does not restore: {', '.join(sorted(absent))}")
+        return 2
 
     app = ensure_app()
     from chisurf.plugins.chimol.chimol.app.molview_main_window import MolViewPluginWindow
@@ -148,10 +220,20 @@ def main() -> int:
 
     _OUT.mkdir(parents=True, exist_ok=True)
     manifest: dict[str, dict] = {}
+    manifest_path = _OUT / "manifest.json"
+    if only and manifest_path.exists():
+        manifest = json.loads(manifest_path.read_text())
+    wanted = set(only or ())
+    if wanted - {name for name, _s, _c in SCENES}:
+        print(f"unknown scene(s): {', '.join(sorted(wanted - {n for n, _s, _c in SCENES}))}")
+        return 2
+
     loaded: str | None = None
     win = None
 
     for name, structure, script in SCENES:
+        if wanted and name not in wanted:
+            continue
         try:
             if win is None or structure != loaded:
                 if win is not None:
@@ -255,13 +337,16 @@ def main() -> int:
 
     if win is not None:
         win.close()
-    (_OUT / "manifest.json").write_text(json.dumps(manifest, indent=2))
-    n_ok = sum(1 for v in manifest.values() if "failed" not in v)
-    n_err = sum(1 for v in manifest.values() if v.get("errors"))
-    print(f"\n{n_ok}/{len(SCENES)} scenes captured, {n_err} with command errors")
+    manifest_path.write_text(json.dumps(manifest, indent=2))
+    # Counted over what this run captured, not over the merged manifest: a
+    # scoped re-capture that reported "23/5" would read as a wild success.
+    captured = {n for n, _s, _c in SCENES if not wanted or n in wanted}
+    n_ok = sum(1 for k in captured if "failed" not in manifest.get(k, {"failed": 1}))
+    n_err = sum(1 for k in captured if manifest.get(k, {}).get("errors"))
+    print(f"\n{n_ok}/{len(captured)} scenes captured, {n_err} with command errors")
     print(f"-> {_OUT}")
     return 0
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(main(sys.argv[1:]))

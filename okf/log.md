@@ -1,6 +1,46 @@
 # Update Log
 
 ## 2026-08-10
+* **The WGSL renderer's "too dark against white" was a contaminated baseline, not a shading bug.**
+  The symptom was specific enough to look like a real defect — the WebGPU cartoon
+  matched the OpenGL baseline against black and rendered markedly darker against
+  white — and specific enough to send the search into the one place a background
+  colour legitimately reaches shading: the fog term. It was none of that.
+  `capture_gl_baseline.py`'s `RESET` preamble did not restore `occlusion.enabled`,
+  and `occlusion_enabled_off` runs immediately *before* `bg_white`, so **five
+  baselines were photographed with ambient occlusion switched off** while the
+  WebGPU replay had it on, correctly. The decisive artefact was a three-panel PNG
+  — GL | WGSL AO-on | WGSL AO-off — where panel 3 lands on panel 1. Packed colours
+  carry occlusion pre-multiplied, so grey80 arrives at a mean of 0.455 with AO on
+  and 0.856 with it off; that ratio *is* the whole difference. `labels` was the
+  control nobody planned: it re-captured byte-identical, because sticks have no AO
+  path at all. Re-captured `bg_white`, `bg_grey_spectrum`, `nucleic_cartoon` and
+  `large_spheres`; the other eighteen are untouched, which is now possible because
+  the capture takes scene names and merges into the existing manifest instead of
+  rewriting all 23.
+
+  **Two constants had been transcribed between backends rather than shared, and
+  both are now single-sourced** — the hunt found them even though neither was the
+  cause. `renderer/depth_cue.py` holds PyMOL's `SceneSetFog` planes, and
+  `renderer/lighting.py` holds the light rig; `qtgl` and `wgpu_backend` both read
+  them. The WebGPU backend had been carrying a hand-written `DEFAULT_LIGHTING`
+  dict described as "matching the OpenGL backend's defaults" that matched nothing:
+  a key light 25 degrees off-axis where the configured one points straight down
+  the camera, `fill=0.45` where the configuration asks for **no fill light at
+  all**, and `ambient=0.28` against 0.45. It also added the environment reflection
+  at a flat 10 % where GL blends it through a Fresnel `mix` weighted by specular
+  strength. A second backend that re-reads the same config section with its own
+  defaults is not a second reader — it is a fork.
+
+  **The guard is the point:** "keep the two lists in step" was already written in
+  a comment above `RESET`, and a comment did not keep them in step.
+  `missing_resets()` diffs the settings the scenes assign against the ones the
+  preamble restores, `main()` refuses to open a window when it is non-empty, and
+  `test/test_wgsl_parity.py` fails on it without a GPU. Suites: 97 passed,
+  9 skipped (lighting, occlusion switch, display-config, settings, headless scene,
+  the new parity guards).
+  [chimol-web](plugins/chimol-web.md)
+
 * **chigame phase 2 complete: all five arcade games are on the engine, off `QPainter`.**
   `tetris`, `minesweeper` and `number_quest` ported, joining pong and breakout. Each was verified against
   a before/after pair in `plugins/misc/games/test/renders/`. **Tetris** needed its logic lifted *out* of

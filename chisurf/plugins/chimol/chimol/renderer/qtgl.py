@@ -14,7 +14,9 @@ except Exception:  # pragma: no cover - handled at runtime
     GL = None
 
 from ..config import _DISPLAY_CONFIG
+from .depth_cue import fog_planes
 from .internal_gui import InternalGui
+from .lighting import resolve_light_rig
 from ..mouse_modes import action_of as mouse_action_of
 from ..mouse_modes import click_action_of
 from .base import Renderer
@@ -223,22 +225,20 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         # change and the renderer's copy a value nothing could see.
         self._post = PostProcess()
 
-        lighting_cfg = (_DISPLAY_CONFIG.get("lighting") or {})
-        light_dir = lighting_cfg.get("light_direction", [0.0, 0.0, 1.0])
-        self._light_direction = QtGui.QVector3D(
-            float(light_dir[0]), float(light_dir[1]), float(light_dir[2])
-        )
-        self._ambient_strength = float(lighting_cfg.get("ambient_strength", 0.55))
-        fill_dir = lighting_cfg.get("fill_light_direction", [-0.4, -0.3, 0.8])
-        self._fill_light_direction = QtGui.QVector3D(
-            float(fill_dir[0]), float(fill_dir[1]), float(fill_dir[2])
-        )
-        self._key_intensity = float(lighting_cfg.get("key_light_intensity", 1.0))
-        self._fill_intensity = float(lighting_cfg.get("fill_light_intensity", 0.0))
-        self._specular_strength = float(lighting_cfg.get("specular_strength", 0.18))
-        self._shininess = float(lighting_cfg.get("shininess", 38.0))
-        self._rim_strength = float(lighting_cfg.get("rim_strength", 0.18))
-        self._rim_power = float(lighting_cfg.get("rim_power", 2.4))
+        # Resolved by the shared rig, not read field by field here. A second
+        # backend that re-reads the same section with its own defaults is how
+        # the two renderers came to disagree about whether there is a fill light
+        # at all -- see :mod:`.lighting`.
+        rig = resolve_light_rig()
+        self._light_direction = QtGui.QVector3D(*rig.light_dir)
+        self._fill_light_direction = QtGui.QVector3D(*rig.fill_dir)
+        self._ambient_strength = rig.ambient
+        self._key_intensity = rig.key
+        self._fill_intensity = rig.fill
+        self._specular_strength = rig.specular
+        self._shininess = rig.shininess
+        self._rim_strength = rig.rim_strength
+        self._rim_power = rig.rim_power
         self._grid_visible = False
         self._grid_size = 20.0
         self._grid_spacing = 1.0
@@ -2107,23 +2107,13 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         return 0.5 * height / max(math.tan(half_fov), 1e-6)
 
     def _fog_planes(self) -> tuple[float, float]:
-        """Return ``(fog_end, fog_scale)`` for the depth cue, PyMOL's way.
+        """Return ``(fog_end, fog_scale)`` for the depth cue.
 
-        Transcribed from ``SceneSetFog`` (``layer1/Scene.cpp``)::
-
-            FogStart = (back - front) * fog_start + front
-            FogEnd   = fog in (0, 1) ? FogStart + (back - FogStart) / fog : back
-            active   = depth_cue and fog != 0
-
-        and the shader then reads a *visibility*, ``(FogEnd - depth) /
-        (FogEnd - FogStart)``.
-
-        The planes are the ones fitted **around the scene** -- the camera
-        distance either side of the target radius -- not the camera's far plane.
-        That distinction is the whole of this feature: the ray tracer was once
-        normalised over an unfitted far plane and fogged every pixel of the
-        molecule 24-69 %, which reads as a dimmer rather than a depth cue. The
-        two renderers now measure the cue over the same span.
+        The rule itself lives in :func:`.depth_cue.fog_planes`, because the
+        WebGPU backend and the ray tracer have to measure the cue over the same
+        span as this one. chimol had only ever applied ``depth_cue`` to the
+        tracer, so the viewport had no cue at all -- ``fogDensity`` was
+        initialised to 0.0 and never assigned from anywhere.
 
         Returns
         -------
@@ -2131,32 +2121,7 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
             ``fog_end`` in view units, and ``1 / (end - start)``. A scale of
             ``0`` means the cue is off, which is what the shader tests.
         """
-        cfg = _DISPLAY_CONFIG.get("depth_cue", {}) or {}
-        # PyMOL's `depth_cue`, `fog` and `fog_start` are global: they govern the
-        # viewport, and the tracer follows them unless `ray_trace_fog` overrides.
-        # chimol has only ever applied them to the tracer, so the viewport had
-        # no depth cue at all -- `fogDensity` was initialised to 0.0 and never
-        # assigned from anywhere.
-        if not bool(cfg.get("enabled", True)):
-            return 0.0, 0.0
-        density = float(cfg.get("intensity", 1.0))
-        if density == 0.0:
-            return 0.0, 0.0
-
-        radius = max(float(self._target_radius), 1e-6)
-        front = max(float(self._distance) - radius, 1e-6)
-        back = float(self._distance) + radius
-        if back <= front:
-            return 0.0, 0.0
-
-        start = (back - front) * float(cfg.get("start", 0.45)) + front
-        if 0.0 < density < 1.0:
-            end = start + (back - start) / density
-        else:
-            end = back
-        if end <= start:
-            return 0.0, 0.0
-        return end, 1.0 / (end - start)
+        return fog_planes(self._distance, self._target_radius)
 
     def _build_matrices(self) -> tuple[QtGui.QMatrix4x4, QtGui.QMatrix4x4]:
         # The width the *scene* has, not the widget's: the panel takes a column
