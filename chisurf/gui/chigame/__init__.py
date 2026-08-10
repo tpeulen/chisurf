@@ -36,6 +36,7 @@ from .gpu import GpuContext, create_offscreen, get_adapter, get_device
 from .input import Action, InputMap
 from .render import (
     ELLIPSE,
+    FLOATS_PER_INSTANCE,
     GLOW,
     GLYPH,
     RECT,
@@ -55,6 +56,7 @@ __all__ = [
     "Audio",
     "Camera",
     "ELLIPSE",
+    "FLOATS_PER_INSTANCE",
     "FontAtlas",
     "GLOW",
     "GLYPH",

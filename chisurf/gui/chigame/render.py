@@ -146,6 +146,9 @@ class SpriteBatch:
         self._ctx = context
         self._device = context.device
         self._instances: list[np.ndarray] = []
+        # Entries may hold one quad or many, so the count is tracked rather
+        # than taken from len(self._instances).
+        self._count = 0
         self._capacity = 0
         self._storage = None
         self._bind_group = None
@@ -247,6 +250,7 @@ class SpriteBatch:
     def clear(self) -> None:
         """Drop everything queued for the current frame."""
         self._instances.clear()
+        self._count = 0
 
     def add(
         self,
@@ -292,6 +296,35 @@ class SpriteBatch:
                 dtype=np.float32,
             )
         )
+        self._count += 1
+
+    def add_array(self, instances: np.ndarray) -> None:
+        """Queue many quads at once from a prepared array.
+
+        :meth:`add` costs a Python call and a small array allocation per quad,
+        which is fine for a few hundred and is the whole frame budget for a
+        tile map: a screenful of ground is thousands of quads. A caller that can
+        build its instances with array operations should hand them over whole.
+
+        Parameters
+        ----------
+        instances : numpy.ndarray
+            Shape ``(n, FLOATS_PER_INSTANCE)``, float32, laid out exactly as
+            :meth:`add` builds a row.
+
+        Raises
+        ------
+        ValueError
+            If the array's second dimension is not the instance stride.
+        """
+        array = np.ascontiguousarray(instances, dtype=np.float32)
+        if array.ndim != 2 or array.shape[1] != FLOATS_PER_INSTANCE:
+            raise ValueError(
+                f"instances must be (n, {FLOATS_PER_INSTANCE}), got {array.shape}"
+            )
+        if array.size:
+            self._instances.append(array.reshape(-1))
+            self._count += array.shape[0]
 
     def _ensure_capacity(self, count: int) -> None:
         """Grow the instance storage buffer if this frame needs more room.
@@ -328,7 +361,7 @@ class SpriteBatch:
         int
             Number of instances drawn.
         """
-        count = len(self._instances)
+        count = self._count
         if count == 0:
             return 0
         self._ensure_capacity(count)

@@ -11,46 +11,41 @@ pytest.importorskip("rendercanvas")
 
 from chisurf.gui import chigame  # noqa: E402
 from chisurf.gui.chigame.input import Action  # noqa: E402
-from chisurf.plugins.misc.games.lumis_quest.api.world import (  # noqa: E402
-    SETTLED,
-    WILD,
-    Region,
-    Room,
-    Village,
-    World,
-)
+from chisurf.plugins.misc.games.lumis_quest.api import tiles  # noqa: E402
+from chisurf.plugins.misc.games.lumis_quest.api.world import build_world  # noqa: E402
 from chisurf.plugins.misc.games.lumis_quest.gui.overworld import (  # noqa: E402
     OverworldGame,
 )
 
 
-def _tiny_world() -> World:
-    """A three-room world, so tests never touch the installed corpus.
+def _docs(tmp_path: pathlib.Path) -> pathlib.Path:
+    """A miniature documentation tree, so tests never build the real corpus.
+
+    Parameters
+    ----------
+    tmp_path : pathlib.Path
+        Temporary directory.
 
     Returns
     -------
-    World
-        Two villages in one region.
+    pathlib.Path
+        The docs root.
     """
-    world = World()
-    region = Region(name="guides", title="Guides")
-    region.villages.append(
-        Village(name="First", position=(0.0, 0.0), rooms=[
-            Room("Alpha", pathlib.Path("a.md"), "docs/a.md", 1, WILD, (0.0, 0.0)),
-            Room("Beta", pathlib.Path("b.md"), "docs/b.md", 1, SETTLED, (44.0, 0.0)),
-        ])
+    root = tmp_path / "docs"
+    section = root / "guides"
+    section.mkdir(parents=True)
+    names = [f"p{index}" for index in range(8)]
+    for name in names:
+        (section / f"{name}.md").write_text(f"# {name.upper()}\n", encoding="utf-8")
+    listing = "\n".join(names)
+    (section / "index.md").write_text(
+        f"# Guides\n\n```{{toctree}}\n:maxdepth: 1\n\n{listing}\n```\n", encoding="utf-8"
     )
-    region.villages.append(
-        Village(name="Second", position=(300.0, 0.0), rooms=[
-            Room("Gamma", pathlib.Path("c.md"), "docs/c.md", 2, WILD, (300.0, 0.0)),
-        ])
-    )
-    world.regions.append(region)
-    return world
+    return root
 
 
 @pytest.fixture
-def game(qapp):
+def game(qapp, tmp_path):
     """An overworld on a tiny world, wired to a headless host.
 
     Returns
@@ -62,7 +57,7 @@ def game(qapp):
         context = chigame.create_offscreen(size=(240, 180))
     except Exception as error:  # pragma: no cover - depends on the machine
         pytest.skip(f"no usable GPU adapter: {error}")
-    instance = OverworldGame(world=_tiny_world())
+    instance = OverworldGame(world=build_world(_docs(tmp_path)))
     chigame.GameHost(instance, context, with_text=False, with_audio=False)
     return instance
 
@@ -70,11 +65,54 @@ def game(qapp):
 def test_iris_walks(game):
     """The pad moves Iris and the camera follows."""
     start = list(game.iris)
-    game.host.keys.press(Action.RIGHT)
+    game.host.keys.press(Action.DOWN)
     for _ in range(20):
         game.update(1 / 60, game.host.keys)
-    assert game.iris[0] > start[0]
-    assert game.host.camera.center[0] > start[0]
+    assert game.iris[1] > start[1]
+    assert game.host.camera.center[1] > start[1]
+
+
+def test_iris_cannot_walk_through_a_wall(game):
+    """The world has bounds, and they are the tiles themselves."""
+    village = game.world.villages[0]
+    col, row, width, height = village.rect
+    # Stand just below the south wall, off to one side of the gate.
+    game.iris = [(col + 1.5) * tiles.TILE, (row + height + 0.5) * tiles.TILE]
+    before = list(game.iris)
+
+    game.host.keys.press(Action.UP)
+    for _ in range(120):
+        game.update(1 / 60, game.host.keys)
+    assert game.iris[1] >= before[1] - tiles.TILE, "she walked through the compound wall"
+
+
+def test_iris_cannot_leave_the_world(game):
+    """Walking hard at the edge must not put her outside the grid.
+
+    She starts where the game starts her -- a land is ringed by water, so
+    teleporting her into the moat first would only prove she cannot swim.
+    """
+    game.host.keys.press(Action.LEFT)
+    game.host.keys.press(Action.UP)
+    for _ in range(600):
+        game.update(1 / 60, game.host.keys)
+    assert 0.0 <= game.iris[0] <= game.world.width * tiles.TILE
+    assert 0.0 <= game.iris[1] <= game.world.height * tiles.TILE
+    assert not game.world.blocked(*game.iris), "she ended up inside something solid"
+
+
+def test_the_story_advances_from_the_world_not_from_a_button(game):
+    """A beat completes because the corpus shows it, not because of input."""
+    from chisurf.plugins.misc.games.lumis_quest.api.story import ACT_ONE
+
+    assert game.story.current is not None
+    game.update(1 / 60, game.host.keys)
+    assert game.story.current.key != ACT_ONE[0].key, "arrival completes on arriving"
+
+    game.story.choose("clarity")
+    assert game.story.order["name"] == "The Order of Clarity"
+    with pytest.raises(KeyError):
+        game.story.choose("nonsense")
 
 
 def test_diagonal_movement_is_not_faster(game):
@@ -107,10 +145,20 @@ def test_lumi_follows_without_overlapping(game):
 
 def test_the_nearest_room_is_reported(game):
     """The HUD names where you are standing."""
-    game.iris = [1.0, 1.0]
-    assert game.here.title == "Alpha"
-    game.iris = [299.0, 1.0]
-    assert game.here.title == "Gamma"
+    first = game.world.rooms[0]
+    game.iris = list(first.position)
+    assert game.here is first
+
+    last = game.world.rooms[-1]
+    game.iris = list(last.position)
+    assert game.here is last
+
+
+def test_the_land_is_named_where_she_stands(game):
+    """Standing on a land reports its fantasy name, not the directory."""
+    game.iris = list(game.world.rooms[0].position)
+    assert game.land is not None
+    assert game.land.title.startswith("The ")
 
 
 def test_menu_toggles_a_map_that_fits_the_world(game):
@@ -148,11 +196,12 @@ def test_the_shoulders_zoom_within_bounds(game):
     assert game.view_height >= VIEW_MIN
 
 
-def test_it_renders(qapp):
+def test_it_renders(qapp, tmp_path):
     """A frame comes out with the world drawn on it."""
     try:
         frame = chigame.capture(
-            OverworldGame(world=_tiny_world()), size=(320, 240), frames=3, with_audio=False
+            OverworldGame(world=build_world(_docs(tmp_path))), size=(320, 240),
+            frames=3, with_audio=False
         )
     except Exception as error:  # pragma: no cover - depends on the machine
         pytest.skip(f"no usable GPU adapter: {error}")

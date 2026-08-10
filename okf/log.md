@@ -1,6 +1,128 @@
 # Update Log
 
 ## 2026-08-10
+* **Lumis Quest: the overworld becomes a real tile map, the lands get names, and the story arrives.**
+  The previous overworld was markers floating on rectangles — a diagram, not a place. It is now a painted
+  grid of **318x240 = 76,320 tiles** (5724x4320 world units): grass and woodland, water you cannot cross
+  without a bridge, roads that run gate to gate, and villages that are **walled compounds with a gate**
+  rather than dots on a slab. A walker collides with all of it, and the tests pin that — walls stop her,
+  gates do not, the outside of the grid reads as solid so she cannot leave the world, and the spawn is
+  somewhere she can actually stand.
+  **Lands are named as places**: `reference` is The Great Library, `guides` The Pilgrim Road, `concepts`
+  The Arcanum, `manual` The Chronicle Vaults, `development` The Forge, `fundamentals` The Wellspring —
+  each with a line under it. An unrecognised directory still arrives with a generated name rather than a
+  slug. `docs/references` correctly stopped being a land: it has **zero** non-index pages, and the old
+  fallback had been counting an index file as a page.
+  **The story exists now** (`api/story.py`) rather than being deferred: three orders who disagree about
+  what knowledge is for, and an opening act whose beats **complete because the corpus shows it** — you
+  reach settled ground, you find the scouted frontier — not because the player pressed something. A beat
+  cannot be advanced by fiddling with the UI, only by the documentation changing, which is the point.
+  **Iris and Lumi are photons, and they are shared** (`games/characters.py`): the same two characters are
+  the ball in Pong, the probe in Breakout and the walker here. A photon is the one thing that legitimately
+  appears in a detector array, a spectrometer, a lifetime measurement and a walk across a map — which is
+  what lets one cast span the hub without the conceit straining.
+  **A correction to my own claim**: I reported the renderer at ~98 ms/frame and "unplayable". Profiling
+  says **1.3 ms/frame — 795 fps**. The 98 ms was entirely the offscreen *capture readback* in the test
+  harness, not the game. The vectorised tile path (`SpriteBatch.add_array`, a whole window of tiles mapped
+  through a palette array in one call rather than a Python call per quad) is worth keeping regardless, and
+  view culling means only the visible window is ever built.
+  Still open, and asked for: the look is flat-colour tiles, **not pixel art** — that needs an RGBA sprite
+  atlas and a nearest-neighbour sampler in the engine, which is also the second `AssetPack` that would
+  finally prove the seam is swappable. And there is no gameplay beyond walking yet.
+  Suites: 112 passed.
+
+* **The WGSL renderer draws points and lines now, and its spheres are analytic.**
+  It routed only `kind == "mesh"`, so the `lines` and `dots` representations
+  rendered as nothing at all. `wgpu_backend` now routes by geometry kind through
+  three pipelines — `mesh`, `impostor`, `line` — and all three share one
+  `shade()` from the new `wgsl/shading.wgsl`, which `load_wgsl` prepends. WGSL
+  has no `#include`, and the alternative is a copy of the shading model per
+  pipeline, which is the *same* defect as the two constants found last change:
+  a mesh sphere and an impostor sphere are only indistinguishable where they
+  overlap if one function shades both.
+
+  **Sphere impostors are two triangles**, built as a view-space quad from
+  `@builtin(vertex_index)` with no vertex buffer, and they write `frag_depth`
+  from the ray-sphere hit — so they interpenetrate, where GL's point sprites
+  compute a sphere normal but never write depth and are therefore flat
+  billboards. Measured against the tessellated spheres they replace, same scene
+  and camera: **120 triangles against 19,200 (160×)**, silhouette IoU > 0.97,
+  and the near sphere's boundary is a curve rather than its own disc — which is
+  what the depth write buys and what the test asserts.
+
+  **Three shading terms finished, each found by looking at a GL|WGSL pair:**
+  transparency was passing the requested alpha straight through where GL runs it
+  through a Fresnel curve (face-on `0.5 → 0.275`), so a surface at
+  `transparency 0.5` rendered nearly solid; `two_sided_lighting` is **per-object
+  metadata** and was being read as one flag for the frame, which made the
+  `two_sided_on` baseline compare identical to the row without it — a test that
+  could only ever pass; and the environment reflection was a flat 10 % add
+  instead of a Fresnel `mix`.
+
+  **Two defects found on the way, both fixed at the root.** A test module that
+  imported `capture_gl_baseline` for `SCENES` moved `CHISURF_SETTINGS_DIR` at
+  *import*, so a later chimol test read a different display config and failed
+  three tests away with an unrelated assertion; that is `isolate_settings()`,
+  called from `main()`, now. Chasing it turned up the real one: **a key deleted
+  from the packaged defaults is still in every existing user's config**, because
+  the two migration kinds can change a value or move it but not delete it.
+  `sticks.ambient_occlusion` had been removed and was still live on every real
+  profile, while the guard test asserting it was gone passed — it runs on a
+  fresh directory, where it genuinely is. `DISPLAY_CONFIG_KEY_REMOVALS` is the
+  third kind; schema version 11.
+
+  Recorded and not fixed: **the OpenGL point glyph draws at half the size it is
+  asked for** (`dots` requests 8 px, the baseline measures a modal 4 px run;
+  dpr is 1.0 and the point-size range is [1, 64], so neither scaling nor
+  clamping explains it). Fixing it would change what `qtgl` draws and invalidate
+  the baseline in the change that uses it — see
+  [known-issues](references/known-issues.md). Suites: 191 passed, 9 skipped.
+  [chimol-web](plugins/chimol-web.md)
+
+* **Deconvolution: the engine is compiled, and the PSF source was already here.**
+  The top item on the [scikit-image mining](references/scikit-image-mining.md)
+  take-later list was Richardson–Lucy, with the note that "the algorithm is twenty
+  lines; the PSF source is the real work". The PSF source turned out to be in the tree
+  already — the **PSF determination** plugin fits sub-resolution beads and reports σ per
+  axis, which is exactly what a kernel builder wants — so the work was the engine.
+
+  It lives in the photon library, `modules/math/Deconvolution.{h,cpp}` over the vendored
+  FFT: `richardson_lucy` (2-D and 3-D) and `wiener_deconvolve`. The microscope-facing
+  half is [`chisurf/core/fluorescence/imaging/restoration.py`](../chisurf/core/fluorescence/imaging/restoration.py)
+  — `gaussian_psf` from a measured σ, and `psf_sigma_from_optics` for
+  σ_xy ≈ 0.21 λ/NA and σ_z ≈ 0.66 λn/NA². Numerically identical to the reference to
+  **1e-12** across three PSF shapes, three iteration counts and both ranks, and
+  1.3–2.6× faster per iteration.
+
+  **Richardson–Lucy is the right estimator here for a reason worth stating**: it is the
+  maximum-likelihood solution under *Poisson* noise, which is not an approximation to a
+  photon-limited image's noise but literally its noise, and it keeps the estimate
+  non-negative and flux-conserving by construction. The Wiener filter is included as the
+  linear alternative and deliberately not the default — measured on sparse spots it does
+  sharpen the peaks (125 → 260, truth 286) and it rings negative between them, so its
+  *total* error is worse than the blurred image it started from. That comparison is in
+  the tests rather than asserted in prose.
+
+  **The finding that changes how it should be used**: the iteration count is the
+  regularisation, not a convergence knob. On a noisy frame the error against the truth
+  traces a U — 0.24 at 5 iterations, **0.10 at 20**, 0.21 at 100, 0.41 at 400 — so past
+  the optimum the image keeps looking sharper while getting further from the truth.
+  Biggs–Andrews acceleration is included and **off by default** because measurement says
+  what it is: a step-size change, not a better estimator. Thirty accelerated iterations
+  land where four hundred plain ones do, which reaches the optimum in about five instead
+  of twenty and sails past it just as fast. Both curves are pinned in
+  `test/core/test_restoration.py`, because a single-call test would hide exactly this.
+
+  The one implementation detail that is a compatibility surface: the "same"-mode crop
+  offset, `(m - 1) / 2` per axis. An FFT convolution is circular, so the transform runs
+  on a padded grid and is cut back afterwards; off by one and the output is the right
+  image shifted by a pixel, which looks entirely plausible. One test asserts it directly
+  for symmetric and asymmetric kernels because nothing else would catch it.
+
+  New: [`docs/concepts/deconvolution.md`](../docs/concepts/deconvolution.md),
+  `test/core/test_restoration.py` (26), tttrlib `test_deconvolution.py` (11), and four
+  citations in the reference list.
+
 * **The WGSL renderer draws points and lines now, and its spheres are analytic.**
   It routed only `kind == "mesh"`, so the `lines` and `dots` representations
   rendered as nothing at all. `wgpu_backend` now routes by geometry kind through

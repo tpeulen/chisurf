@@ -12,7 +12,7 @@ import pathlib
 
 import pytest
 
-from chisurf.plugins.misc.games.lumis_quest.api import world as world_api
+from chisurf.plugins.misc.games.lumis_quest.api import tiles, world as world_api
 from chisurf.plugins.misc.games.lumis_quest.api.world import (
     SCOUTED,
     SETTLED,
@@ -138,20 +138,78 @@ def test_remoteness_rewards_review_debt_over_depth():
     assert shallow_but_wild.remoteness > deep_but_settled.remoteness
 
 
-def test_bounds_and_nearest_room():
-    """The helpers the map view depends on."""
+def test_an_empty_world_is_safe_to_query():
+    """The helpers the map view depends on must not raise on nothing."""
     world = World()
-    assert world.bounds() == (0.0, 0.0, 1.0, 1.0)
+    assert world.bounds() == (0.0, 0.0, 0.0, 0.0)
     assert world.nearest_room((0.0, 0.0)) is None
+    assert world.region_at(0.0, 0.0) is None
+    assert world.counts() == {WILD: 0, SCOUTED: 0, SETTLED: 0}
 
+
+def test_nearest_room_finds_the_closest_building():
+    """What the HUD names as "here"."""
+    world = World()
     region = world_api.Region(name="r", title="R")
     region.villages.append(world_api.Village(name="v", rooms=[
-        Room("near", pathlib.Path("a"), "a", 1, WILD, (10.0, 10.0)),
-        Room("far", pathlib.Path("b"), "b", 1, WILD, (500.0, 500.0)),
+        Room("near", pathlib.Path("a"), "a", 1, WILD, (1, 1)),
+        Room("far", pathlib.Path("b"), "b", 1, WILD, (40, 40)),
     ]))
     world.regions.append(region)
-    assert world.bounds() == (10.0, 10.0, 500.0, 500.0)
     assert world.nearest_room((0.0, 0.0)).title == "near"
+
+
+def test_the_world_is_a_painted_grid(tmp_path):
+    """A map is tiles you collide with, not markers floating on nothing."""
+    world = build_world(_docs(tmp_path))
+    assert world.width > 0 and world.height > 0
+    assert world.array.shape == (world.height, world.width)
+
+    kinds = {tile for row in world.grid for tile in row}
+    # The pieces that make it a place rather than a diagram.
+    for expected in (tiles.WATER, tiles.GRASS, tiles.WALL, tiles.GATE, tiles.BUILDING):
+        assert expected in kinds, tiles.NAMES[expected]
+
+
+def test_water_and_walls_block_but_gates_do_not(tmp_path):
+    """Bounds are real: the world is not an open plane you drift across."""
+    world = build_world(_docs(tmp_path))
+
+    # Outside the grid must read as solid, or a walker leaves the world.
+    assert world.blocked(-10.0, -10.0)
+    assert world.blocked(world.width * tiles.TILE + 10.0, 0.0)
+
+    village = world.villages[0]
+    col, row, width, height = village.rect
+    corner = ((col + 0.5) * tiles.TILE, (row + 0.5) * tiles.TILE)
+    assert world.blocked(*corner), "a compound wall must stop a walker"
+
+    gate_col, gate_row = village.gate
+    gate = ((gate_col + 0.5) * tiles.TILE, (gate_row + 0.5) * tiles.TILE)
+    assert not world.blocked(*gate), "the gate is the way in"
+
+    building = world.rooms[0]
+    assert world.blocked(*building.position), "you stand in front of a building, not inside it"
+
+
+def test_spawn_is_somewhere_you_can_stand(tmp_path):
+    """A start position inside a wall is a game that never begins."""
+    world = build_world(_docs(tmp_path))
+    assert not world.blocked(*world.spawn())
+
+
+def test_lands_are_named_as_places_not_folders(tmp_path):
+    """`reference` is a directory; The Great Library is somewhere to go."""
+    from chisurf.plugins.misc.games.lumis_quest.api.names import region_name
+
+    assert region_name("reference")[0] == "The Great Library"
+    assert region_name("guides")[0] == "The Pilgrim Road"
+    # An unknown directory still arrives with a name rather than a slug.
+    generated, _ = region_name("some_new_section")
+    assert generated.startswith("The ") and "_" not in generated
+
+    world = build_world(_docs(tmp_path))
+    assert all(region.title.startswith("The ") for region in world.regions)
 
 
 @pytest.mark.parametrize("directory", ["concepts", "guides", "fundamentals"])
