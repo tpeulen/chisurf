@@ -148,6 +148,20 @@ timestamp: '2026-08-10T00:00:00Z'
    `compute_histogram1d_adaptive` / `Histogram1DComputation` with **zero callers**
    and a `used_numba` field hard-coded `False`. All deleted.
 
+   Committed in the nested repo as `db52784`, necessarily carrying a peer's work
+   with it: `modules/ndxplorer` is a separate repository, and their uncommitted
+   removal of the numba histogram kernels is what made the `nb` import dead.
+   Neither half imports alone, so the file could not be split.
+
+   **The "zero callers" claim was wrong the first time, and how it was wrong is
+   the point.** `compute_histogram1d_adaptive` *did* have a caller —
+   `compute_histograms_parallel`, in the same file, which the grep had excluded
+   in order to skip the definition. Deleting the callee alone would not have
+   raised: the call sits inside a `try`/`except` that logs a warning and falls
+   back, so it would have degraded **silently** to the fallback. Both are gone
+   now, together, after checking neither has a caller in either repository.
+   **Grep the file you are editing, not only the rest of the tree.**
+
    `utils/vectorized_ops.py::digitize_parallel` **stays on numba for now** —
    route changed from `numpy` to `tttr-c`. Measured, 2,000,000 points, so this
    does not need re-deriving:

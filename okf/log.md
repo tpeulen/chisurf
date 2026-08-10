@@ -56,10 +56,15 @@
   `try: import numba` whose `nb` and `_HAVE_NUMBA` were referenced nowhere, plus
   `compute_histogram1d_adaptive` and its result type with **zero callers** and a
   `used_numba` field hard-coded `False` -- all deleted, and the file leaves the
-  allow-list without a kernel being ported -- though that edit stays
-  *uncommitted*, because `modules/ndxplorer` is a nested repo whose copy already
-  held a peer's uncommitted removal of the numba histogram kernels, and deleting
-  the import without their half would break the file. `utils/vectorized_ops.py` went the
+  allow-list without a kernel being ported (nested-repo commit
+  `db52784`, which necessarily carries a peer's kernel removal with it -- neither
+  half imports alone). The first pass got this **wrong**: it reported
+  `compute_histogram1d_adaptive` as having zero callers when
+  `compute_histograms_parallel` calls it from the same file, which the grep had
+  excluded. Deleting the callee alone would not have raised -- the call sits in a
+  `try`/`except` that logs and falls back, so it would have degraded silently.
+  Both are gone now, together. Grep the file you are editing, not just the rest
+  of the tree. `utils/vectorized_ops.py` went the
   other way: it is **re-routed from `numpy` to `tttr-c`**, because the numbers
   say NumPy cannot carry it. On 2,000,000 points the numba `prange` binary
   search runs in **7.2 / 20.1 ms** (64 / 512 bins) against 68.9 / 88.3 ms for
