@@ -61,6 +61,45 @@ says, keyed by member names. This PRD adds the second and does not touch the
 first. The `Decay*` headers are deprecated at 2.25 (the functionality lives
 in tttrlib) and are out of scope entirely.
 
+### Why nlohmann is not replaced by cereal (challenged, answered from the code)
+
+cereal is a *serializer*: the structure is declared at compile time by your
+types, and the archive walks it. nlohmann is a *DOM*: the structure is
+discovered at runtime from the document. `fps.json` needs the DOM, and the
+proof is four specific operations `FPSReaderWriter` performs today
+(`src/FPSReaderWriter.cpp`):
+
+1. **Path navigation with a runtime segment** —
+   `fps_json_["χ²"][score_set_]["distances"]` (line 42), where `score_set_`
+   is a constructor argument. An archive has no random access by
+   runtime-chosen key.
+2. **Iteration over dynamic keys** — the distance and position names are
+   user-invented labels; `for key in distances` (line 51) walks keys no C++
+   type declares.
+3. **Optional fields with defaults** — `distance.value("Forster_radius",
+   52.0)` (lines 54–61), and the whole of `AV::set_av_parameter`
+   (`AV.cpp:203-215`) is `.value(key, default)` per field. cereal *throws*
+   on a missing NVP; there is no value-or-default. Files come from FPS,
+   OLGA and chisurf, and tolerance is the contract.
+4. **Subtree extraction of unmodeled content** — `get_used_positions()`
+   copies `fps_json_["Positions"][name]` fragments (line 81) the class never
+   models. An archive can only read what the types declare; "whatever else
+   was in the file" is unrepresentable.
+
+Two more facts close the question. cereal's JSON encoding of `std::map` is
+an **array of key/value pairs**, not a `{name: {…}}` object — the FPS wire
+format does not match cereal's own representation, so even the modeled parts
+would need hand-rolled `getNodeName()` loops against `cereal::rapidjson`,
+an internal namespace that is not public API. And replacing nlohmann does
+not remove a JSON parser from the build: **cereal vendors rapidjson
+internally** — the trade is a 20,891-line DOM used directly for a different
+vendored DOM reachable only through cereal's implementation details. The
+reverse replacement (nlohmann-based object state, drop cereal-JSON) is also
+wrong: pickle rides cereal-binary through IMP's macros, and IMP alignment
+is the point of this PRD. Where structure is ours, cereal; where the
+document is theirs, nlohmann — and after the `Decay*` retirement, nlohmann's
+reach shrinks to the two fps.json-facing files.
+
 ## Requirements
 
 1. **Name every field.** Every `serialize()`/`save`/`load` wraps each member
