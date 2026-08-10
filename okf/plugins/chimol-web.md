@@ -98,15 +98,28 @@ Next, in order:
    | 10000 | 0.304 0.267 0.331 (grey) | 0.140 0.272 0.012 (green) |
    | 19907 | 0.254 0.549 0.946 (blue) | 0.639 0.111 0.035 (red) |
 
-   The two ends of the ramp are swapped, so the array reaching the GPU is not in
-   the order GL paints it. This is *not* explained by a mirror — `flip x` and
-   `flip y` both score far worse than as-is — and not by the scene differing,
-   since Phase 1 proved the arrays are bit-identical between backends. Two
-   candidates worth testing in order: the cartoon mesh's vertex order is not
-   chain order and something re-indexes colours between assembly and upload; or
-   `interleave()` in `wgpu_backend.py` is writing the colour columns from the
-   wrong source rows. Start by rendering with lighting neutralised so hue is the
-   only variable.
+   **It is not an ordering bug — that has been tested and ruled out.** See
+   `test/renders/wgsl/colour_diagnosis.png`: four panels, GL baseline | WGSL
+   as-is | WGSL with the colour array reversed | WGSL unlit. Reversing merely
+   swaps which side is orange and which is blue; it does not restore the rainbow.
+
+   **What the picture actually shows is that WGSL has only two hues where GL has
+   five.** GL runs blue→green→yellow→orange→red across the fold. WGSL renders
+   orange at one end and blue at the other with grey between — that is, it is
+   interpolating between the *first and last* colours and nothing in between.
+   And the packed array agrees with the WGSL image, not with GL: sampled at 0 %,
+   50 % and 100 % along, it reads orange, grey, blue.
+
+   So the question is not how the WGSL renderer draws the array. It is **why the
+   OpenGL baseline shows a rainbow the array does not contain.** Either the Qt
+   renderer colours from something other than `Geometry.colors` — a per-segment
+   or per-object colour it applies itself — or `spectrum count` writes its ramp
+   somewhere the packed scene is not reading. Test it by dumping the colour
+   buffer the Qt renderer actually uploads, at the point of upload, rather than
+   reading `Geometry.colors` and assuming that is what it gets. Note this does
+   *not* contradict the Phase 1 array-equality result: that compared two viewers
+   assembling the same `Scene`, which says nothing about what the Qt *renderer*
+   does with it afterwards.
 
    Also unexplained: the packed colours are dark and desaturated (mid-chain rgb
    ≈ 0.30, 0.27, 0.33) because occlusion is pre-multiplied in, yet the GL
