@@ -21,6 +21,7 @@ from collections.abc import Callable, Sequence
 from typing import Any
 
 import numpy as np
+
 from chisurf.core.datastore import (
     as_store,
     column_names,
@@ -30,7 +31,6 @@ from chisurf.core.datastore import (
     store_from_rows,
     take_columns,
 )
-
 from chisurf.core.fluorescence.mle import (
     Fit2x,
     Fit2xModel,
@@ -410,7 +410,15 @@ def segment_molecules(
     if seg_threshold > 0:
         thresh = seg_threshold
     else:
-        thresh = threshold_otsu(smoothed if inside is None else smoothed[inside])
+        values = smoothed if inside is None else smoothed[inside]
+        # A frame with one value in it is an ordinary input -- a blank tile, a
+        # field the sample missed -- and Otsu is undefined on it. Finding no
+        # molecules is the right answer; raising becomes a dropped file in the
+        # batch loop above, which is how a blank frame turns into a silently
+        # shorter result set rather than a row saying zero.
+        if np.unique(values).size < 2:
+            return np.zeros(intensity.shape, dtype=np.int32)
+        thresh = threshold_otsu(values)
     binary = clear_border(smoothed > thresh)
     if inside is not None:
         binary &= inside

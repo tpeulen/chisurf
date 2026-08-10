@@ -1,0 +1,95 @@
+{
+  "id": "spot_finder",
+  "version": "1.0.0",
+  "display_name": "Imaging:Spot Finder",
+  "description": "Detect spots and regions in imaging data and persist them, with their pixels, into the measurement's container.",
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
+  "categories": [
+    "Imaging",
+    "Detection"
+  ],
+  "icon": "🎯",
+  "state_namespace": "spot_finder",
+  "statefulness": {
+    "enabled": true,
+    "window": {
+      "enabled": true,
+      "settings_key": null
+    }
+  },
+  "entrypoints": {
+    "cli": "spot-finder=chisurf.plugins.microscopy.spot_finder.cli:cli",
+    "services": "chisurf.plugins.microscopy.spot_finder.backend.services:register_services"
+  },
+  "operation_types": ["region_detection"],
+  "rpc_methods": [
+    {
+      "name": "spot_finder.detect.run",
+      "summary": "Detect regions in one or more images and write them to their containers.",
+      "params_schema": {
+        "type": "object",
+        "required": [
+          "files"
+        ],
+        "properties": {
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Images to detect in — TIFF stacks or TTTR imaging files."
+          },
+          "name": {
+            "type": "string",
+            "description": "Stem the label raster and region table are written under."
+          },
+          "channels": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Routing channels for a photon file; every channel present by default."
+          },
+          "frame": {
+            "type": "integer",
+            "description": "Frame to detect in; -1 sums over frames."
+          },
+          "write": {
+            "type": "boolean",
+            "description": "Write each detection into its container; off makes this a dry run."
+          },
+          "out_dir": {
+            "type": "string",
+            "description": "Directory for the containers; beside each file by default."
+          },
+          "settings": {
+            "type": "object",
+            "description": "Detection settings (method, threshold, area limits, spot widths, region)."
+          }
+        }
+      },
+      "result_schema": {
+        "type": "object"
+      },
+      "long_running": true,
+      "cancelable": true
+    },
+    {
+      "name": "spot_finder.contract.describe",
+      "summary": "Return the RPC contract.",
+      "params_schema": {},
+      "result_schema": {},
+      "long_running": false,
+      "cancelable": false
+    }
+  ],
+  "events": [
+    {
+      "topic": "spot_finder.state.*",
+      "description": "State patch events"
+    }
+  ],
+  "menu_hidden": true
+}

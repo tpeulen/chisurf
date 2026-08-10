@@ -4,7 +4,7 @@ prd: "92"
 title: "PRD-92: Spot finding is not lifetime fitting — a region-property MLE fed by a spot finder that persists its regions"
 description: sm_image_mle segments, measures, gathers photons and fits inside one 897-line core, and fit_molecules re-runs the segmentation itself, so the regions cannot be inspected, corrected, reused or produced by anything else. Split it — a spot-finder plugin that detects spots and writes region properties into the .pto container, and a region-property MLE that reads them. The seam is the container, not a function call; the load-bearing question is that a region table of scalars cannot say which photons belong to a region; and both halves are batch tools, so the two batch loops that exist today (with different persistence, and a `continue` for every failure) become one Qt-free runner with a run table that has a row per input whatever happened to it.
 status: in-progress
-phase: "stage 1 landed (the container contract, in-tree and dictionary-declared); stages 2-6 open"
+phase: "stages 1-2 landed (container contract; spot_finder core, batch runner, CLI, RPC); rename, GUIs, docs open"
 resource: chisurf/plugins/microscopy/sm_image_mle/
 tags: [prd, imaging, roi, mle, spot-detection, pto, provenance, plugins, microscopy]
 timestamp: '2026-08-10T00:00:00Z'
@@ -12,8 +12,10 @@ timestamp: '2026-08-10T00:00:00Z'
 
 # Where to pick this up
 
-Stage 1 has landed; the two plugins do not exist yet. The order below is the
-intended one, and each item says what it unblocks.
+Stages 1 and 2 have landed: the container contract, and the `spot_finder`
+plugin (core, batch runner, CLI, RPC — no GUI yet). The region MLE is still
+the old `sm_image_mle`, unrenamed and still segmenting inside its own fit. The
+order below is the intended one, and each item says what it unblocks.
 
 1. ~~**Settle the pixel-membership question first (§3).**~~ **Settled and
    landed (2026-08-10):** option B, the raster/table pair, in
@@ -36,7 +38,11 @@ intended one, and each item says what it unblocks.
    ([burst companions](/subsystems/burst-companions.md)). A region table has
    the same shape and needs the same rule — one row per detected region
    including the ones the fit skipped.
-3. **The rename is not cosmetic and is the cheapest stage (§5).** "Molecule-wise
+3. **Next: the rename and the de-segmentation of the MLE (§5.2), which is the
+   whole point.** Everything landed so far *adds*; nothing yet removes the
+   coupling. Until `fit_molecules` stops calling `segment_molecules`, the spot
+   finder is a second way to segment rather than the only one. The rename is
+   not cosmetic and is the cheapest half (§5): "Molecule-wise
    MLE" names the *sample* the tool was written for; the tool fits whatever
    regions it is handed, and after the split it will be handed regions from a
    detector it does not know about. Doing the rename first means the split is
@@ -72,6 +78,20 @@ intended one, and each item says what it unblocks.
   same point.** The unweighted one is the shape's centre; the intensity-weighted
   one is where the molecule is. A consumer that picks the wrong column gets an
   answer that is wrong by a sub-pixel amount, which no assertion will catch.
+* **Otsu's level is set by the whole histogram, and both tails move it.**
+  Found twice while writing stage 2's tests, in opposite directions: a single
+  900-valued hot pixel beside a 200-valued spot puts the level *above the
+  spot*, so the frame's only detection is the defect; and a *large* bright
+  patch elsewhere pulls the level up past the dim objects one actually wants.
+  Neither fails — both return a plausible number of plausible regions — which
+  is why a fixed level is the honest choice whenever the frame holds anything
+  much brighter than the objects being counted.
+* **A one-valued frame is an ordinary input and `threshold_otsu` raises on it**
+  ("no two classes to separate"). A blank tile, a field the sample missed, one
+  entry in a batch. Both `spot_finder` and the existing `segment_molecules`
+  now return no regions instead — in the old code the exception reached the
+  batch loop's `continue` and the file simply left the result set, which is
+  precisely the silent-shortening this PRD is about.
 
 # Problem
 
@@ -235,6 +255,16 @@ second format later.
   `peak_footprint_size`, `min_area`, `roi`) plus a `method` selecting between
   the watershed pipeline, `blob_log`, `blob_dog` and a plain threshold. Returns
   `SpotFinderResult` (label image, region table, analysis ROI, background rate).
+
+  **A blob detector answers "where and how wide", not "which pixels", and the
+  contract needs pixels.** So `log`/`dog` spots are rasterised into discs of
+  radius `sqrt(2) * sigma` — the width the detector *measured*, at the scale
+  where the spot responded most strongly, rather than one fixed in advance —
+  and the sigma travels with the region as a `spot.sigma` column. Overlapping
+  discs are arbitrated by distance, so a contested pixel goes to the nearer
+  centre: painting discs in detection order instead would give the last one
+  written, which is an answer that depends on detection order rather than on
+  geometry, and no pixel's photons may be counted for two regions.
 * **Persistence**: `write_spots(container, result, settings)` → the artifact pair
   of §4. `read_spots(path)` → the same object, so a saved detection reopens.
 * **GUI**: AutoForm over the shared `image` section with the label overlay and
@@ -394,12 +424,24 @@ GUI writes its own persistence path.
   - [x] Beyond the DoD: the intensity columns are *absent* rather than zero when
         a detection was made on a mask, and an `extra` column of the wrong
         length is refused rather than recycled.
-* **Stage 2 — `spot_finder` core + CLI.** Detection methods on
-  `chisurf/core/roi/segmentation.py`, no new algorithms.
-  - [ ] On `core/fluorescence/imaging/simulate.py`'s synthetic CLSM field with
-        *n* planted molecules, each method recovers *n* regions and their
-        centroids to sub-pixel accuracy.
-  - [ ] Labels are contiguous from 1 after every filtering step.
+* **Stage 2 — `spot_finder` core + CLI. ✅ done (2026-08-10).**
+  `chisurf/plugins/microscopy/spot_finder/` — `core/spots.py` (four detectors on
+  the in-tree primitives, no new algorithms), `api/` (settings, request, run
+  table, the batch loop), `backend/services.py`, `cli/main.py` (`spot-finder
+  detect | list | contract`), `manifest.json`. 35 tests in `test/`.
+  - [x] Each detector recovers the planted spots, centroids within 1 px.
+  - [x] Labels are contiguous from 1 after every filtering step.
+  - [x] `min_area` rejects the hot pixel a threshold admits; `max_area` rejects
+        the aggregate that dominates a brightness histogram; `clear_border`
+        drops the partly-imaged object.
+  - [x] The blob detectors report the **width** they measured, and it separates
+        a narrow spot from a broad one.
+  - [x] A confined search computes its threshold from the region's own pixels.
+  - [x] Beyond the DoD: the batch half of §6 landed here rather than waiting —
+        one loop behind the CLI and the RPC service, a run table with one row
+        per input whatever happened to it, cancel, and a dry run. What remains
+        of stage 4 is the *region MLE* half and making both plugins share the
+        one runner.
 * **Stage 3 — the rename and the de-segmentation of the MLE.**
   - [ ] `region_mle` fits a label image it did not produce.
   - [ ] **Equivalence test**: `spot_finder` + `region_mle` on a file produces
