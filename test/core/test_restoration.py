@@ -304,3 +304,216 @@ def test_wiener_sharpens_but_rings():
     assert relative_error(restored, truth) > relative_error(blurred, truth), (
         "the ringing costs more than the sharpening gains, in total error"
     )
+
+
+# ---------------------------------------------------------------------------
+# Single-photon data: the pixel is a sweep, not a sample
+# ---------------------------------------------------------------------------
+
+
+def _has_event_mode():
+    import tttrlib
+
+    return hasattr(tttrlib, "richardson_lucy_events_2d")
+
+
+events_only = pytest.mark.skipif(
+    not _has_event_mode(), reason="the photon library has no event-mode deconvolution"
+)
+
+
+def marginal_width(psf, axis):
+    """Second moment of a PSF's marginal along one axis, in pixels."""
+    marginal = psf.sum(axis=1 - axis)
+    coordinates = np.arange(len(marginal)) - len(marginal) // 2
+    mean = (marginal * coordinates).sum() / marginal.sum()
+    return float(
+        np.sqrt((marginal * (coordinates - mean) ** 2).sum() / marginal.sum())
+    )
+
+
+@pytest.mark.parametrize("sigma", [0.9, 1.3, 2.0])
+def test_the_scan_sweep_widens_the_psf_by_exactly_one_rectangle(sigma):
+    """The dwell adds variance 1/12 on the fast axis and nothing on the other.
+
+    This is the number the whole single-photon correction rests on: a pixel is
+    the interval the beam swept, so the effective PSF is the optical one
+    convolved with a unit rectangle, and a rectangle of width 1 has variance
+    1/12.
+    """
+    from chisurf.core.fluorescence.imaging.restoration import effective_psf
+
+    optical = gaussian_psf(sigma, (21, 21))
+    effective = effective_psf(optical, dwell_seconds=1e-6)
+
+    expected = np.sqrt(sigma**2 + 1.0 / 12.0)
+    assert abs(marginal_width(effective, 1) - expected) < 5e-3
+    assert abs(marginal_width(effective, 0) - marginal_width(optical, 0)) < 1e-6
+    assert abs(effective.sum() - 1.0) < 1e-12
+
+
+def test_effective_psf_is_not_a_no_op():
+    """Guards the trap the implementation exists to avoid.
+
+    A one-pixel rectangle *sampled at one-pixel spacing* is a delta, so
+    convolving the two sampled kernels does nothing whatsoever — and leaves the
+    caller believing the sweep was corrected for. This asserts the PSF actually
+    changed.
+    """
+    from chisurf.core.fluorescence.imaging.restoration import effective_psf
+
+    optical = gaussian_psf(1.3, (15, 15))
+    effective = effective_psf(optical, dwell_seconds=1e-6)
+    assert not np.allclose(effective, optical, atol=1e-6)
+    assert marginal_width(effective, 1) > marginal_width(optical, 1) + 0.02
+
+
+@events_only
+def test_the_timing_terms_are_negligible_at_a_normal_dwell():
+    """Jitter and clock resolution map to position through the scan speed.
+
+    At 100 ps jitter and a 1 µs dwell that is 1e-4 pixels. Asserted so nobody
+    spends effort modelling it before checking whether it matters — and so the
+    fast-scanning case, where it does, is a change this test would notice.
+    """
+    from chisurf.core.fluorescence.imaging.restoration import scan_blur_kernel
+
+    without_sweep = np.asarray(
+        scan_blur_kernel(1e-6, jitter_seconds=100e-12, resolution_seconds=25e-9,
+                         oversampling=4, include_dwell=False)
+    )
+    # Everything lands in one sample: the timing blur is far below one pixel.
+    assert without_sweep.max() > 0.999
+
+    with_sweep = np.asarray(scan_blur_kernel(1e-6, oversampling=4))
+    coordinates = (np.arange(len(with_sweep)) - len(with_sweep) // 2) * 0.25
+    mean = (with_sweep * coordinates).sum()
+    sigma = np.sqrt((with_sweep * (coordinates - mean) ** 2).sum())
+    # The sweep alone, plus the quarter-pixel resampling of the kernel itself.
+    assert 0.28 < sigma < 0.32
+
+
+@events_only
+def test_event_mode_beats_binning_at_the_same_photon_count():
+    """The claim single-photon compatibility is *for*.
+
+    Same photons, same PSF, same iterations — the only difference is whether
+    each photon's sub-pixel position was kept or rounded to its pixel. Keeping
+    it concentrates markedly more of the signal into the true position.
+    """
+    from chisurf.core.fluorescence.imaging.restoration import richardson_lucy_events
+
+    rng = np.random.default_rng(1)
+    n_photons = 200_000
+    centres = np.where(rng.random(n_photons) < 0.5, 14.0, 18.0)
+    rows = 16.0 + rng.normal(0, 1.3, n_photons)
+    columns = centres + rng.normal(0, 1.3, n_photons)
+    # 5.8 sigma of support: truncation, not interpolation, is what limits how
+    # accurately a photon reconstructs to its own position.
+    psf = gaussian_psf(1.3, (15, 15))
+
+    event_wise = richardson_lucy_events(
+        np.column_stack([rows, columns]), psf, (32, 32), 60
+    )
+    binned = richardson_lucy_events(
+        np.column_stack([np.floor(rows + 0.5), np.floor(columns + 0.5)]),
+        psf,
+        (32, 32),
+        60,
+    )
+
+    # Photons are redistributed, never created or lost, either way.
+    assert abs(event_wise.sum() / n_photons - 1.0) < 1e-9
+    assert abs(binned.sum() / n_photons - 1.0) < 1e-9
+
+    peak_event = 2 * event_wise[16, 14] / n_photons
+    peak_binned = 2 * binned[16, 14] / n_photons
+    assert peak_event > peak_binned + 0.06, (
+        f"event-wise concentrated {peak_event:.3f} against binned {peak_binned:.3f}"
+    )
+
+
+@events_only
+def test_event_mode_conserves_photons_and_stays_non_negative():
+    """What list-mode conserves is the *sensitivity-weighted* total.
+
+    The iteration makes ``sum(f * s)`` exactly the photon count, where ``s`` is
+    the fraction of each pixel's PSF that falls inside the frame. In the
+    interior ``s`` is 1 and the bare sum is conserved to rounding; near the
+    border ``s < 1``, so a reconstruction with mass out there sums slightly
+    high — correctly, because those pixels emitted photons the frame could not
+    catch. Spreading photons to within four pixels of the edge is enough to see
+    it, at about one part in a million.
+    """
+    from chisurf.core.fluorescence.imaging.restoration import richardson_lucy_events
+
+    rng = np.random.default_rng(4)
+    coordinates = rng.uniform(4, 28, (5000, 2))
+    psf = gaussian_psf(1.5, (9, 9))
+    restored = richardson_lucy_events(coordinates, psf, (32, 32), 20)
+    assert restored.min() >= 0.0
+    assert 1.0 <= restored.sum() / 5000 < 1.0 + 1e-4
+
+    # Well away from the border the sensitivity is one and the sum is exact.
+    interior = richardson_lucy_events(
+        rng.uniform(12, 20, (5000, 2)), psf, (32, 32), 20
+    )
+    assert abs(interior.sum() / 5000 - 1.0) < 1e-9
+
+
+@events_only
+def test_event_mode_can_reconstruct_finer_than_the_acquisition_grid():
+    """Sub-pixel positions are only worth keeping if they can be cashed in."""
+    from chisurf.core.fluorescence.imaging.restoration import richardson_lucy_events
+
+    rng = np.random.default_rng(5)
+    n_photons = 50_000
+    rows = 16.0 + rng.normal(0, 1.0, n_photons)
+    columns = 16.0 + rng.normal(0, 1.0, n_photons)
+    # Twice the sampling: coordinates and PSF both scale.
+    fine = richardson_lucy_events(
+        np.column_stack([rows * 2, columns * 2]), gaussian_psf(2.0, (17, 17)), (64, 64), 30
+    )
+    assert fine.shape == (64, 64)
+    assert abs(fine.sum() / n_photons - 1.0) < 1e-9
+    peak = np.unravel_index(int(np.argmax(fine)), fine.shape)
+    assert abs(peak[0] - 32) <= 1 and abs(peak[1] - 32) <= 1
+
+
+@events_only
+def test_event_mode_refuses_the_wrong_shape():
+    from chisurf.core.fluorescence.imaging.restoration import richardson_lucy_events
+
+    with pytest.raises(ValueError, match=r"\(n_photons, 2\)"):
+        richardson_lucy_events(np.zeros((10, 3)), gaussian_psf(1.0, (5, 5)), (16, 16))
+
+
+@events_only
+def test_oversample_psf_preserves_the_kernel_it_refines():
+    """Refining is a resampling, not a reshaping.
+
+    The refined kernel has to describe the same optics: same total, same width,
+    same centre. Cubic interpolation can overshoot into negatives at a sharp
+    edge, which would put negative probability into the forward model, so that
+    is clipped and asserted.
+    """
+    from chisurf.core.fluorescence.imaging.restoration import oversample_psf
+
+    psf = gaussian_psf(1.5, (15, 15))
+    for factor in (1, 4, 8):
+        fine = oversample_psf(psf, factor)
+        assert fine.shape == (14 * factor + 1,) * 2
+        assert fine.min() >= 0.0
+        # Sampled back at pixel spacing, it is the kernel it came from.
+        phase = ((fine.shape[0] - 1) // 2) % factor
+        np.testing.assert_allclose(
+            fine[phase::factor, phase::factor], psf, atol=1e-12
+        )
+
+
+def test_oversample_psf_refuses_an_even_kernel():
+    """An even kernel has no sample at its centre to resample about."""
+    from chisurf.core.fluorescence.imaging.restoration import oversample_psf
+
+    with pytest.raises(ValueError, match="odd extent"):
+        oversample_psf(np.ones((4, 4)) / 16, 4)

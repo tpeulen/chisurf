@@ -1,6 +1,65 @@
 # Update Log
 
 ## 2026-08-10
+* **Deconvolution is single-photon compatible now — and the pixel turned out to
+  be a sweep, not a sample.** Following the user's requirement, the estimator
+  gained a list-mode form. Grounded in `CLSMImage.h`: a photon's fast-axis
+  position comes from its macro time within the line, so a *binned* pixel is a
+  **line integral** — the beam sweeps a whole pixel width during the dwell,
+  adding a rectangle of σ = 1/√12 = 0.289 px that deconvolving with the optical
+  PSF alone silently under-corrects. σ_eff = √(σ² + 1/12) on the fast axis only:
+  a 2.5% widening at σ = 1.3 px, 5% at σ = 0.9.
+
+  Two entry points, per the new tttrlib rule (below): `effective_psf` widens a
+  kernel for the sweep so the ordinary grid path corrects for it, and
+  `richardson_lucy_events` reconstructs from the photon list and never forms the
+  rectangle — so it takes the **optical** PSF, and widening it there would blur
+  twice. Measured on two emitters four pixels apart with 200 000 photons:
+  **69% of photons in the peak pixel event-wise against 61% binned**.
+
+  **The number was 74% until a defect was fixed, and that is the entry worth
+  reading.** Interpolating the PSF at a photon's fractional offset is *itself a
+  convolution* — variance t(1−t), up to 0.25 px², and it varies with each
+  photon's sub-pixel position, which is the exact quantity working event-wise
+  exists to preserve. An over-wide forward model over-sharpens, so the defect
+  was flattering its own benchmark. Flux, centroid, non-negativity and every
+  parity test were all exactly right throughout. `oversample_psf` refines the
+  kernel 8× before the engine sees it, which divides the term by 64.
+
+  Separately measured: **PSF truncation, not interpolation, sets how accurately
+  a photon reconstructs to its own position** — 8·10⁻⁴ px at 3.7σ of support,
+  3·10⁻⁶ at 5σ, 2·10⁻⁹ at 6.3σ. Five sigma is the number to remember. Jitter and
+  clock quantisation map to position through the scan speed and are 10⁻⁴ px at
+  100 ps over a 1 µs dwell — negligible, and asserted so nobody models them
+  before checking whether they matter.
+
+  Three earlier attempts are recorded in the tests because each looked right:
+  convolving two *sampled* kernels is a no-op (a 1-px rect sampled at 1-px
+  spacing **is** a delta, 1.296 → 1.299 instead of 1.332); `ndimage.zoom` added
+  ~5× too much variance from its coordinate convention plus a double box
+  integration; sub-pixel shift averaging is what finally landed, to 1·10⁻⁴.
+
+  Touched: `chisurf/core/fluorescence/imaging/restoration.py`
+  (`scan_blur_kernel`, `effective_psf`, `richardson_lucy_events`,
+  `oversample_psf`), `test/core/test_restoration.py` (26 → 35),
+  [`docs/concepts/deconvolution.md`](../docs/concepts/deconvolution.md).
+
+* **New rule in the photon library: every algorithm must work on photons.**
+  Recorded in tttrlib's `okf/specs/photon-native-algorithms.md`. Two entry
+  points, never one — a standard form on the binned array (kept numerically
+  identical to whatever reference it will be compared against) and a `*_events`
+  form taking detections with fractional coordinates. Where an algorithm has no
+  event-wise formulation, the fallback is the new shared `Jitter.h`, not
+  binning.
+
+  The justification is deliberately *not* the obvious one. Binning does **not**
+  bias a mean — the bin centre is unbiased — and starting from that wrong reason
+  produces wrong tolerances downstream. What it does is put distinct photons at
+  **identical coordinates**, and anything measuring a distance is degenerate on
+  ties rather than merely noisy: 4000 photons of a σ = 3 px spot, binned, give
+  **98.4% of nearest-neighbour distances exactly zero** (mean 0.0175 against a
+  true 0.1170); jittered, 0.1169. The price is w²/12 of variance, and a photon
+  round-tripped through a histogram pays it **twice**.
 * **cgdye and the rotamer library are in imp.bff — the four-repository split starts moving code.**
   [PRD-93](prds/prd-93.md) stages 0 and 2 (imp.bff `8fac573`, imp-tricks `34cf4de`). cgdye is structure and
   dye simulation, so under the settled boundaries it is imp.bff's: 67 Python files to `pyext/src/cgdye`
