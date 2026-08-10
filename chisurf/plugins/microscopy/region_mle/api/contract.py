@@ -1,4 +1,4 @@
-"""RPC contract constants and helpers for sm_image_mle."""
+"""RPC contract constants and helpers for region_mle."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from chisurf.plugins.microscopy.mle_common.contract import (
     service_success,
 )
 
-PLUGIN_ID = "sm_image_mle"
+PLUGIN_ID = "region_mle"
 CONTRACT_VERSION = "2.1.0"
 
 METHOD_ANALYZE = f"{PLUGIN_ID}.analyze.run"

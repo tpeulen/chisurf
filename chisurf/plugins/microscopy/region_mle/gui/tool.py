@@ -1,7 +1,7 @@
 """GUI entrypoint for the molecule-wise MLE tool (AutoForm + view.json).
 
-``SmImageMleTool`` hosts an :class:`~chisurf.gui.autoform.AutoForm` bound to the
-Qt-free :class:`~...gui.view_model.MoleculeMleViewModel`. The heavy analysis
+``RegionMleTool`` hosts an :class:`~chisurf.gui.autoform.AutoForm` bound to the
+Qt-free :class:`~...gui.view_model.RegionMleViewModel`. The heavy analysis
 (``view_model.run``) runs on a background thread so the UI never blocks, and the
 segmentation image / molecule table refresh when it finishes.
 
@@ -17,16 +17,16 @@ from qtpy import QtWidgets
 
 from chisurf.plugins.microscopy.mle_common.tool_base import AutoFormMleTool
 
-from .view_model import MoleculeMleViewModel
+from .view_model import RegionMleViewModel
 
 
-class SmImageMleTool(AutoFormMleTool):
-    """Molecule-wise MLE tool (AutoForm-hosted)."""
+class RegionMleTool(AutoFormMleTool):
+    """Region MLE tool (AutoForm-hosted)."""
 
     def __init__(self, parent=None, embedded: bool = False, view_model=None):
         super().__init__(
-            view_model or MoleculeMleViewModel(),
-            "Molecule-wise MLE",
+            view_model or RegionMleViewModel(),
+            "Region MLE",
             parent=parent,
             embedded=embedded,
             min_size=(640, 420),
@@ -68,9 +68,9 @@ class SmImageMleTool(AutoFormMleTool):
                 overlay.refresh()
 
     def handle_event(self, event: str) -> bool:
-        """Segmentation preview runs on a worker; export prompts on the UI thread."""
+        """The region preview runs on a worker; export prompts on the UI thread."""
         if event == "start_preview":
-            self._start_job(self.model.preview_segmentation)
+            self._start_job(self.model.preview_regions)
             return True
         if event == "start_export":
             self._export()
@@ -82,16 +82,16 @@ class SmImageMleTool(AutoFormMleTool):
         return False
 
     def _export(self) -> None:
-        """Prompt for a path and export the molecule table (UI thread)."""
+        """Prompt for a path and export the region table (UI thread)."""
         if not self.model.has_results():
-            self.model.status_text = "No molecules to export."
+            self.model.status_text = "No regions to export."
             self._refresh()
             return
         path, _ = QtWidgets.QFileDialog.getSaveFileName(
-            self, "Export molecule table", "molecules.tsv", "Tables (*.tsv *.csv)"
+            self, "Export region table", "regions.tsv", "Tables (*.tsv *.csv)"
         )
         if path:
             self.model.export_results(path)
 
 
-__all__ = ["SmImageMleTool"]
+__all__ = ["RegionMleTool"]

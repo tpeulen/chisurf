@@ -4,7 +4,7 @@ prd: "92"
 title: "PRD-92: Spot finding is not lifetime fitting — a region-property MLE fed by a spot finder that persists its regions"
 description: sm_image_mle segments, measures, gathers photons and fits inside one 897-line core, and fit_molecules re-runs the segmentation itself, so the regions cannot be inspected, corrected, reused or produced by anything else. Split it — a spot-finder plugin that detects spots and writes region properties into the .pto container, and a region-property MLE that reads them. The seam is the container, not a function call; the load-bearing question is that a region table of scalars cannot say which photons belong to a region; and both halves are batch tools, so the two batch loops that exist today (with different persistence, and a `continue` for every failure) become one Qt-free runner with a run table that has a row per input whatever happened to it.
 status: in-progress
-phase: "stages 1-2 landed (container contract; spot_finder core, JSON workflows, batch runner, CLI, RPC); rename, GUIs, docs open"
+phase: "stages 1-3 landed (contract; spot_finder + workflows; rename to region_mle and the fit no longer segments, equivalence proven); batch for the MLE half, docs open"
 resource: chisurf/plugins/microscopy/sm_image_mle/
 tags: [prd, imaging, roi, mle, spot-detection, pto, provenance, plugins, microscopy]
 timestamp: '2026-08-10T00:00:00Z'
@@ -12,10 +12,12 @@ timestamp: '2026-08-10T00:00:00Z'
 
 # Where to pick this up
 
-Stages 1 and 2 have landed: the container contract, and the `spot_finder`
-plugin (core, batch runner, CLI, RPC — no GUI yet). The region MLE is still
-the old `sm_image_mle`, unrenamed and still segmenting inside its own fit. The
-order below is the intended one, and each item says what it unblocks.
+Stages 1–3 have landed: the container contract, the `spot_finder` plugin
+(core, JSON workflows, batch runner, CLI, RPC — no GUI of its own yet), and the
+rename of `sm_image_mle` to `region_mle` with its segmentation removed. **The
+coupling this PRD exists to break is broken**: `fit_regions` resolves the
+regions it is handed and finds none of its own. What remains is the batch half
+for the MLE side, the spot finder's GUI, and docs.
 
 1. ~~**Settle the pixel-membership question first (§3).**~~ **Settled and
    landed (2026-08-10):** option B, the raster/table pair, in
@@ -38,11 +40,16 @@ order below is the intended one, and each item says what it unblocks.
    ([burst companions](/subsystems/burst-companions.md)). A region table has
    the same shape and needs the same rule — one row per detected region
    including the ones the fit skipped.
-3. **Next: the rename and the de-segmentation of the MLE (§5.2), which is the
-   whole point.** Everything landed so far *adds*; nothing yet removes the
-   coupling. Until `fit_molecules` stops calling `segment_molecules`, the spot
-   finder is a second way to segment rather than the only one. The rename is
-   not cosmetic and is the cheapest half (§5): "Molecule-wise
+3. ~~**The rename and the de-segmentation of the MLE (§5.2).**~~ **Landed
+   (2026-08-10)**, and the equivalence is *proven*, not asserted: the baseline
+   was captured before the change (`region_mle/test/data/` — the intensity
+   image, the labels the old watershed produced, the per-region VV/VH
+   histograms and the parameters the estimator returned), because the code that
+   produced it is deleted by the change the test exists to check, and the
+   simulator is unseeded so it cannot be recaptured. `test_equivalence.py`
+   compares against it: the spot finder's standard workflow reproduces the old
+   segmentation **pixel for pixel**, and the estimator returns the same
+   parameters from the same histograms. The rename is not cosmetic (§5): "Molecule-wise
    MLE" names the *sample* the tool was written for; the tool fits whatever
    regions it is handed, and after the split it will be handed regions from a
    detector it does not know about. Doing the rename first means the split is
@@ -500,13 +507,20 @@ GUI writes its own persistence path.
         per input whatever happened to it, cancel, and a dry run. What remains
         of stage 4 is the *region MLE* half and making both plugins share the
         one runner.
-* **Stage 3 — the rename and the de-segmentation of the MLE.**
-  - [ ] `region_mle` fits a label image it did not produce.
-  - [ ] **Equivalence test**: `spot_finder` + `region_mle` on a file produces
-        the *same* per-region parameters as today's `sm_image_mle` end-to-end
-        run, to the last significant figure. This is the test that says the
-        split changed nothing scientific.
-  - [ ] No `seg_*` field survives in `RegionMleSettings`.
+* **Stage 3 — the rename and the de-segmentation of the MLE. ✅ done (2026-08-10).**
+  - [x] `region_mle` fits a label image it did not produce — `resolve_labels`
+        takes a container, an array, or regions, and **raises** (naming the spot
+        finder) when given none, because an empty result would be the same
+        silence in a new place.
+  - [x] **Equivalence proven against a captured baseline**: the standard
+        workflow reproduces the old segmentation pixel for pixel, and the
+        estimator reproduces its parameters from the same histograms.
+  - [x] No `seg_*` field survives in `RegionMleSettings`; a test asserts it.
+  - [x] `region_photon_indices(clsm, labels)` is the named seam, and it walks
+        the occupied pixels once instead of re-walking the frame per region.
+  - [x] The preview and the fit resolve regions through the *same call*, so
+        "what is previewed is what is fitted" is structural rather than a
+        promise two code paths make separately.
 * **Stage 4 — batch (§6).** One Qt-free runner in the core, replacing both
   existing loops.
   - [ ] `len(run_table) == len(inputs)` on a batch containing a file that

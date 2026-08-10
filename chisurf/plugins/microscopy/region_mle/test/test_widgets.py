@@ -5,9 +5,9 @@ import pytest
 
 
 def test_view_model_is_qt_free_and_binds_settings():
-    from chisurf.plugins.microscopy.sm_image_mle.gui.view_model import MoleculeMleViewModel
+    from chisurf.plugins.microscopy.region_mle.gui.view_model import RegionMleViewModel
 
-    vm = MoleculeMleViewModel()
+    vm = RegionMleViewModel()
     # Scalar bindings proxy the core settings.
     vm.tau = 3.0
     assert vm.settings.tau == 3.0
@@ -27,9 +27,9 @@ def test_view_model_is_qt_free_and_binds_settings():
 def test_apply_setup_settings_carries_polarisation_corrections():
     # Regression: g_factor/l1/l2 from the shared detector setup used to be
     # dropped, and g_factor was later overwritten by the IRF-tail estimate.
-    from chisurf.plugins.microscopy.sm_image_mle.gui.view_model import MoleculeMleViewModel
+    from chisurf.plugins.microscopy.region_mle.gui.view_model import RegionMleViewModel
 
-    vm = MoleculeMleViewModel()
+    vm = RegionMleViewModel()
     vm.apply_setup_settings(
         {
             "detectors": {
@@ -53,9 +53,9 @@ def test_apply_setup_settings_carries_polarisation_corrections():
 
 
 def test_view_spec_loads():
-    from chisurf.plugins.microscopy.sm_image_mle.gui.view_model import MoleculeMleViewModel
+    from chisurf.plugins.microscopy.region_mle.gui.view_model import RegionMleViewModel
 
-    spec = MoleculeMleViewModel().view_spec()
+    spec = RegionMleViewModel().view_spec()
     assert spec is not None
     assert spec.sections
 
@@ -64,7 +64,7 @@ def test_load_analysis_from_disk(tmp_path):
     import numpy as np
     import pandas as pd
 
-    from chisurf.plugins.microscopy.sm_image_mle.gui.view_model import MoleculeMleViewModel
+    from chisurf.plugins.microscopy.region_mle.gui.view_model import RegionMleViewModel
 
     analysis = tmp_path / "cell_analysis"
     analysis.mkdir()
@@ -81,7 +81,7 @@ def test_load_analysis_from_disk(tmp_path):
     }).to_csv(analysis / "molecule_data.tsv", sep="\t", index=False)
     np.save(analysis / "intensity.npy", np.arange(16.0).reshape(4, 4))
 
-    vm = MoleculeMleViewModel()
+    vm = RegionMleViewModel()
     vm.results_tsv = str(analysis / "molecule_data.tsv")
 
     assert len(vm.results) == 1
@@ -95,10 +95,10 @@ def test_load_analysis_from_disk(tmp_path):
 
 
 def test_preview_without_files_reports_status():
-    from chisurf.plugins.microscopy.sm_image_mle.gui.view_model import MoleculeMleViewModel
+    from chisurf.plugins.microscopy.region_mle.gui.view_model import RegionMleViewModel
 
-    vm = MoleculeMleViewModel()
-    vm.preview_segmentation()
+    vm = RegionMleViewModel()
+    vm.preview_regions()
     assert "no imaging files" in vm.status_text.lower()
 
 
@@ -106,11 +106,11 @@ def test_unfitted_molecules_show_area_badge():
     import numpy as np
     import pandas as pd
 
-    from chisurf.plugins.microscopy.sm_image_mle.core.molecule_mle import MoleculeMleResult
-    from chisurf.plugins.microscopy.sm_image_mle.gui.view_model import MoleculeMleViewModel
+    from chisurf.plugins.microscopy.region_mle.core.region_mle import RegionMleResult
+    from chisurf.plugins.microscopy.region_mle.gui.view_model import RegionMleViewModel
 
-    vm = MoleculeMleViewModel()
-    vm.results = [MoleculeMleResult(
+    vm = RegionMleViewModel()
+    vm.results = [RegionMleResult(
         dataframe=pd.DataFrame({"label": [1, 2], "area": [7, 12], "tau": [np.nan, np.nan],
                                 "centroid_row": [1.0, 2.0], "centroid_col": [1.0, 2.0]}),
         intensity_image=np.zeros((4, 4)),
@@ -121,9 +121,9 @@ def test_unfitted_molecules_show_area_badge():
 
 
 def test_pipeline_and_calibration_hooks():
-    from chisurf.plugins.microscopy.sm_image_mle.gui.view_model import MoleculeMleViewModel
+    from chisurf.plugins.microscopy.region_mle.gui.view_model import RegionMleViewModel
 
-    vm = MoleculeMleViewModel()
+    vm = RegionMleViewModel()
     vm.apply_pipeline_context({"source": "/data/cell.ptu"})
     assert vm.files == ["/data/cell.ptu"]
     # Idempotent — the same source is not added twice.
@@ -139,18 +139,18 @@ def test_export_results_writes_combined_table(tmp_path):
     import numpy as np
     import pandas as pd
 
-    from chisurf.plugins.microscopy.sm_image_mle.core.molecule_mle import MoleculeMleResult
-    from chisurf.plugins.microscopy.sm_image_mle.gui.view_model import MoleculeMleViewModel
+    from chisurf.plugins.microscopy.region_mle.core.region_mle import RegionMleResult
+    from chisurf.plugins.microscopy.region_mle.gui.view_model import RegionMleViewModel
 
     def _res(labels, taus):
-        return MoleculeMleResult(
+        return RegionMleResult(
             dataframe=pd.DataFrame({"label": labels, "tau": taus}),
             intensity_image=np.zeros((2, 2)),
             label_image=np.zeros((2, 2), dtype=int),
             centroids=np.zeros((len(labels), 2)),
         )
 
-    vm = MoleculeMleViewModel()
+    vm = RegionMleViewModel()
     assert not vm.has_results()
     vm.results = [_res([1, 2], [1.0, 2.0]), _res([1], [3.0])]
     assert vm.has_results()
@@ -165,11 +165,11 @@ def test_export_results_writes_combined_table(tmp_path):
 
 def test_tool_creation(qapp, qtbot):
     pytest.importorskip("pyqtgraph")
-    from chisurf.plugins.microscopy.sm_image_mle.gui.tool import SmImageMleTool
+    from chisurf.plugins.microscopy.region_mle.gui.tool import RegionMleTool
 
-    widget = SmImageMleTool()
+    widget = RegionMleTool()
     qtbot.addWidget(widget)
-    assert widget.windowTitle() == "Molecule-wise MLE"
+    assert widget.windowTitle() == "Region MLE"
     assert hasattr(widget, "auto_form")
     assert hasattr(widget, "model")
 
@@ -178,16 +178,16 @@ def test_tool_creation(qapp, qtbot):
 def test_the_region_list_drives_the_setting_the_analysis_reads(tmp_path):
     """The list is the editing surface; the setting takes one region.
 
-    ``MoleculeMleSettings`` carries a single region because it crosses an RPC
+    ``RegionMleSettings`` carries a single region because it crosses an RPC
     boundary as plain data, so the collapse has to happen somewhere — here,
     rather than in every caller.
     """
     from chisurf.core.roi import RectangleROI
-    from chisurf.plugins.microscopy.sm_image_mle.gui.view_model import (
-        MoleculeMleViewModel,
+    from chisurf.plugins.microscopy.region_mle.gui.view_model import (
+        RegionMleViewModel,
     )
 
-    vm = MoleculeMleViewModel()
+    vm = RegionMleViewModel()
     assert vm.settings.roi is None
 
     vm.regions.add(RectangleROI(0, 0, 16, 16, name="patch"))
@@ -225,11 +225,11 @@ def test_the_measured_molecules_come_back_as_regions():
     """
     import pandas as pd
 
-    from chisurf.plugins.microscopy.sm_image_mle.core.molecule_mle import (
-        MoleculeMleResult,
+    from chisurf.plugins.microscopy.region_mle.core.region_mle import (
+        RegionMleResult,
     )
-    from chisurf.plugins.microscopy.sm_image_mle.gui.view_model import (
-        MoleculeMleViewModel,
+    from chisurf.plugins.microscopy.region_mle.gui.view_model import (
+        RegionMleViewModel,
     )
 
     labels = np.zeros((32, 32), dtype=int)
@@ -237,8 +237,8 @@ def test_the_measured_molecules_come_back_as_regions():
     labels[20:28, 22:26] = 2   # elongated along the rows
     intensity = np.where(labels > 0, 50.0, 2.0)
 
-    vm = MoleculeMleViewModel()
-    vm.results = [MoleculeMleResult(
+    vm = RegionMleViewModel()
+    vm.results = [RegionMleResult(
         dataframe=pd.DataFrame({"label": [1, 2], "tau": [2.0, 3.0]}),
         intensity_image=intensity,
         label_image=labels,
@@ -264,8 +264,8 @@ def test_the_measured_molecules_come_back_as_regions():
 
 
 def test_molecule_regions_are_empty_before_anything_is_analysed():
-    from chisurf.plugins.microscopy.sm_image_mle.gui.view_model import (
-        MoleculeMleViewModel,
+    from chisurf.plugins.microscopy.region_mle.gui.view_model import (
+        RegionMleViewModel,
     )
 
-    assert len(MoleculeMleViewModel().molecule_regions()) == 0
+    assert len(RegionMleViewModel().molecule_regions()) == 0

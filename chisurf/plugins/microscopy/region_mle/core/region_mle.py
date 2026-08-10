@@ -7,10 +7,10 @@ likelihood through the shared :class:`chisurf.core.fluorescence.mle.Fit2x`
 harness (tttrlib ``Fit23``, the Maus-2001 ``2I*`` estimator).
 
 This module contains no Qt and no ``click``: it is the single computational core
-shared by the ``sm_image_mle`` GUI, its RPC backend service, and its CLI, and it
+shared by the ``region_mle`` GUI, its RPC backend service, and its CLI, and it
 is directly testable headlessly from a TTTR image or a *simulated* CLSM image
-(see :mod:`test.test_molecule_mle_core`).  Unlike the previous monolithic script
-it returns data (a :class:`MoleculeMleResult`) instead of writing plots/TSVs —
+(see :mod:`test.test_region_mle_core`).  Unlike the previous monolithic script
+it returns data (a :class:`RegionMleResult`) instead of writing plots/TSVs —
 persisting outputs is the caller's job.
 """
 
@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import dataclasses
 from collections.abc import Callable, Sequence
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -44,7 +45,7 @@ ProgressCallback = Callable[[int, int], None]
 
 
 @dataclasses.dataclass
-class MoleculeMleSettings:
+class RegionMleSettings:
     """Settings for a molecule-wise MLE lifetime fit.
 
     The detector channels are split even/odd into the parallel (VV) and
@@ -63,7 +64,7 @@ class MoleculeMleSettings:
     irf : numpy.ndarray, optional
         Instrument-response histogram in VV/VH layout, length
         ``2 * (stop - start)``.  When ``None`` it must be supplied by the file
-        loader (:func:`fit_molecules_from_files`).
+        loader (:func:`fit_regions_from_files`).
     background : numpy.ndarray, optional
         Background histogram in VV/VH layout (same length as ``irf``).
     g_factor : float, optional
@@ -84,14 +85,15 @@ class MoleculeMleSettings:
         Optimise ``P + 2S`` instead of ``P`` and ``S`` individually.
     soft_bifl_scatter : bool, optional
         Reduce ``Istar`` by the background contribution ("soft" BIFL scatter).
-    seg_sigma : float, optional
-        Gaussian smoothing sigma for the segmentation.
-    seg_threshold : float, optional
-        Fixed intensity threshold for the segmentation; ``< 0`` uses Otsu.
-    peak_footprint_size : int, optional
-        Side length of the square footprint for peak detection (watershed seeds).
-    min_area : int, optional
-        Molecules smaller than this many pixels are discarded.
+    regions : str, pathlib.Path, numpy.ndarray or sequence of ROI, optional
+        Where the regions come from. A container path (or any file beside one)
+        reads the label raster the spot finder wrote; a 2-D integer array is a
+        label image directly; a list of regions is rasterised. **This tool does
+        not segment.** Finding the regions is the spot finder's job, and doing
+        it here as well is how the preview a user tunes stops being what gets
+        fitted.
+    region_set : str, optional
+        Which detection in the container, when it holds more than one.
     min_photons : int, optional
         Molecules with fewer than this many photons in the fit window are not
         fitted (they yield NaN parameters).
@@ -132,10 +134,8 @@ class MoleculeMleSettings:
     p2s_twoIstar: bool = True
     soft_bifl_scatter: bool = False
 
-    seg_sigma: float = 1.0
-    seg_threshold: float = -1.0
-    peak_footprint_size: int = 6
-    min_area: int = 1
+    regions: Any = None
+    region_set: str = "spots"
     min_photons: int = 1
     roi: Any = None
 
@@ -198,7 +198,7 @@ def with_source_column(table, source) -> Any:
 
 
 @dataclasses.dataclass
-class MoleculeMleResult:
+class RegionMleResult:
     """Result of a molecule-wise MLE lifetime analysis.
 
     Attributes
@@ -345,104 +345,145 @@ class MoleculeMleResult:
 
 
 # ---------------------------------------------------------------------------
-# Segmentation
+# Regions in, not regions found
 # ---------------------------------------------------------------------------
-def segment_molecules(
-    intensity: np.ndarray,
-    *,
-    seg_sigma: float = 1.0,
-    seg_threshold: float = -1.0,
-    peak_footprint_size: int = 6,
-    min_area: int = 1,
-    roi: Any = None,
-) -> np.ndarray:
-    """Segment single molecules from a 2-D intensity image by watershed.
+def resolve_labels(settings: RegionMleSettings, shape) -> np.ndarray:
+    """Return the label image this fit will use.
 
-    Gaussian-smooths the image, thresholds it (fixed ``seg_threshold`` or Otsu
-    when ``< 0``), clears border objects, and splits touching molecules by a
-    distance-transform watershed seeded on local maxima.
+    This tool does not segment. It reads the regions somebody else found — the
+    spot finder writing into the measurement's container, a saved label image,
+    or regions handed over in memory — because a fit that derives its own
+    regions cannot be shown what it is about to fit. That was the previous
+    design: ``segmentation_preview()`` returned exactly the labels the fit
+    would use, and the fit ignored them and segmented a second time, agreeing
+    only for as long as every setting reached both paths.
 
     Parameters
     ----------
-    intensity : numpy.ndarray
-        2-D total-intensity image.
-    seg_sigma : float, optional
-        Gaussian smoothing sigma.
-    seg_threshold : float, optional
-        Fixed intensity threshold; ``< 0`` uses Otsu.
-    peak_footprint_size : int, optional
-        Side length of the square footprint for the local-maxima seeds.
-    min_area : int, optional
-        Labels smaller than this many pixels are removed.
-    roi : chisurf.core.roi.ROI, optional
-        Confine the search to this region. It is applied *before* the
-        threshold, so an Otsu level is computed from the region's own pixels —
-        the point of restricting an analysis to one cell is that the rest of
-        the frame should not set its threshold.
+    settings : RegionMleSettings
+        ``settings.regions`` is a container path, a label array, or regions.
+    shape : tuple of int
+        Shape of the image the regions belong to; a region given as geometry is
+        rasterised onto it.
 
     Returns
     -------
     numpy.ndarray
-        Integer label image (0 = background), same shape as ``intensity``.
-    """
-    from scipy import ndimage as ndi
+        ``int32`` label image, ``0`` background.
 
-    from chisurf.core.roi.segmentation import (
-        clear_border,
-        gaussian,
-        peak_local_max,
-        relabel_sequential,
-        remove_small_objects,
-        threshold_otsu,
-        watershed,
+    Raises
+    ------
+    ValueError
+        If no regions were given, naming the spot finder — a fit with nothing
+        to fit is a missing step, not an empty result.
+    """
+    source = settings.regions
+    if source is None:
+        raise ValueError(
+            "no regions to fit: run the spot finder first (spot-finder detect), "
+            "or set settings.regions to a container, a label image, or a list "
+            "of regions"
+        )
+
+    if isinstance(source, np.ndarray):
+        labels = np.asarray(source)
+    elif isinstance(source, (str, Path)):
+        labels = _labels_from_path(source, settings.region_set)
+    else:
+        # A sequence of regions: rasterise in order, later regions winning any
+        # overlap, which is the same rule a label image already encodes.
+        from chisurf.core.roi import as_roi
+
+        labels = np.zeros(shape, dtype=np.int32)
+        for index, item in enumerate(source, start=1):
+            mask = as_roi(item).to_mask(shape)
+            labels[mask] = index
+
+    if labels.shape != tuple(shape):
+        raise ValueError(
+            f"the regions are {labels.shape} and the image is {tuple(shape)}; "
+            "they are not the same field"
+        )
+    return np.ascontiguousarray(labels, dtype=np.int32)
+
+
+def _labels_from_path(source, region_set: str) -> np.ndarray:
+    """Read a label image from a container's detection, or from an image file."""
+    from chisurf.core.fio.fluorescence.region_container import (
+        list_region_sets,
+        read_regions,
     )
 
-    smoothed = gaussian(intensity.astype(float), sigma=seg_sigma)
-    if smoothed.max() <= 0:
-        return np.zeros(intensity.shape, dtype=np.int32)
+    available = list_region_sets(source)
+    if available:
+        name = region_set if region_set in available else available[0]
+        return np.asarray(read_regions(source, name=name).labels)
 
-    inside = None
-    if roi is not None:
-        inside = roi.to_mask(intensity.shape, image=intensity)
-        if not inside.any():
-            return np.zeros(intensity.shape, dtype=np.int32)
+    # Not a container, or one holding no detection: a saved label image, a mask
+    # or a region JSON, through the reader that already accepts all three.
+    from chisurf.core.roi.io import load_regions
 
-    if seg_threshold > 0:
-        thresh = seg_threshold
-    else:
-        values = smoothed if inside is None else smoothed[inside]
-        # A frame with one value in it is an ordinary input -- a blank tile, a
-        # field the sample missed -- and Otsu is undefined on it. Finding no
-        # molecules is the right answer; raising becomes a dropped file in the
-        # batch loop above, which is how a blank frame turns into a silently
-        # shorter result set rather than a row saying zero.
-        if np.unique(values).size < 2:
-            return np.zeros(intensity.shape, dtype=np.int32)
-        thresh = threshold_otsu(values)
-    binary = clear_border(smoothed > thresh)
-    if inside is not None:
-        binary &= inside
-    if not binary.any():
-        return np.zeros(intensity.shape, dtype=np.int32)
+    path = Path(source)
+    if path.suffix.lower() in (".tif", ".tiff"):
+        from chisurf.core.fio.image import imread
 
-    distance = ndi.distance_transform_edt(binary)
-    footprint = np.ones((peak_footprint_size, peak_footprint_size), dtype=bool)
-    coords = peak_local_max(distance, footprint=footprint, labels=binary)
-    seeds = np.zeros(distance.shape, dtype=bool)
-    seeds[tuple(coords.T)] = True
-    markers, _ = ndi.label(seeds)
-    labels = watershed(-distance, markers, mask=binary)
+        return np.asarray(imread(path))
+    regions = load_regions(str(path), crop=False)
+    if not regions:
+        raise ValueError(f"{source} holds no regions")
+    raise ValueError(
+        f"{source} holds regions but not the image they belong to; pass them "
+        "as settings.regions=[...] so they can be rasterised onto the frame"
+    )
 
-    if min_area > 1:
-        # One bincount and one lookup, not a full-frame comparison per label:
-        # a crowded field holds thousands of molecules and the loop this
-        # replaces was O(n_labels x frame).
-        labels = remove_small_objects(labels, min_area)
-    # Removing labels leaves gaps in the numbering, and a gap is not cosmetic --
-    # every consumer that reads a label image as "1 to max", regionprops
-    # included, then reports empty regions that no pixel belongs to.
-    labels, _, _ = relabel_sequential(labels)
-    return labels.astype(np.int32)
+
+def _confine(labels, roi, intensity) -> np.ndarray:
+    """Drop the parts of *labels* outside *roi*, renumbering what survives.
+
+    The analysis region still applies — it confines *which of the regions found*
+    are fitted — but it no longer sets a threshold, because nothing here
+    thresholds. A region straddling the boundary is kept only where it is
+    inside, and the renumbering is what stops a dropped label leaving a row that
+    owns no pixel.
+    """
+    from chisurf.core.roi.segmentation import relabel_sequential
+
+    inside = roi.to_mask(np.asarray(labels).shape, image=intensity)
+    confined = np.where(inside, labels, 0)
+    confined, _forward, _inverse = relabel_sequential(confined)
+    return confined.astype(np.int32)
+
+
+def region_photon_indices(clsm, labels) -> list[np.ndarray]:
+    """Return the TTTR indices of every region's pixels, in label order.
+
+    The seam between the two halves of what used to be one tool: regions are
+    imaging, photons are spectroscopy, and this is the sentence that joins them.
+    It was an inline double loop over ``prop.coords``, per region, per pixel.
+
+    Parameters
+    ----------
+    clsm : tttrlib.CLSMImage
+        The reconstructed image, filled, whose pixels carry their photons.
+    labels : numpy.ndarray
+        ``int32`` label image, contiguous from 1.
+
+    Returns
+    -------
+    list of numpy.ndarray
+        One index array per label, in label order.
+    """
+    labels = np.asarray(labels)
+    n = int(labels.max())
+    buckets: list[list] = [[] for _ in range(n)]
+    frame = clsm[0]
+    # One pass over the occupied pixels rather than one pass per region: the
+    # per-region form re-walked the frame for every molecule, and a crowded
+    # field holds thousands.
+    rows, cols = np.nonzero(labels)
+    for r, c in zip(rows.tolist(), cols.tolist()):
+        buckets[labels[r, c] - 1].extend(frame[r][c].tttr_indices)
+    return [np.asarray(b, dtype=np.int64) for b in buckets]
 
 
 def _shape_columns(prop) -> dict:
@@ -476,43 +517,40 @@ def _shape_columns(prop) -> dict:
     return columns
 
 
-def segmentation_preview(
-    intensity: np.ndarray, settings: MoleculeMleSettings
-) -> MoleculeMleResult:
-    """Segment an image without fitting it.
+def region_preview(
+    intensity: np.ndarray, settings: RegionMleSettings
+) -> RegionMleResult:
+    """Measure the regions to be fitted, without fitting them.
 
-    The cheap half of :func:`fit_molecules`, for tuning the segmentation
-    parameters against the molecule count and the background rate before
-    committing to a full MLE run.
+    The cheap half of :func:`fit_regions`: what was found, how big, how bright,
+    and what the background rate around it is — before committing to a full MLE
+    run. It resolves the regions **the same way the fit does**, through
+    :func:`resolve_labels`, which is the whole point: what is previewed is what
+    is fitted, and there is no second segmentation to disagree with it.
 
     Parameters
     ----------
     intensity : numpy.ndarray
         2-D total-intensity image.
-    settings : MoleculeMleSettings
-        Segmentation settings; the estimator settings are ignored.
+    settings : RegionMleSettings
+        The region source; the estimator settings are ignored.
 
     Returns
     -------
-    MoleculeMleResult
+    RegionMleResult
         A result with the labels, the region measurements and a ``tau`` column
         of NaN, browsable exactly like a fitted one.
     """
     from chisurf.core.roi import regionprops
 
     analysis_roi = settings.analysis_roi()
-    labels = segment_molecules(
-        intensity,
-        seg_sigma=settings.seg_sigma,
-        seg_threshold=settings.seg_threshold,
-        peak_footprint_size=settings.peak_footprint_size,
-        min_area=settings.min_area,
-        roi=analysis_roi,
-    )
+    labels = resolve_labels(settings, intensity.shape)
+    if analysis_roi is not None:
+        labels = _confine(labels, analysis_roi, intensity)
     props = regionprops(labels, intensity)
     rows = [{**_shape_columns(p), "tau": float("nan")} for p in props]
     centroids = [p.centroid for p in props]
-    return MoleculeMleResult(
+    return RegionMleResult(
         dataframe=store_from_rows(rows),
         intensity_image=intensity,
         label_image=labels,
@@ -620,7 +658,7 @@ def _molecule_vv_vh(
     micro_times: np.ndarray,
     routing: np.ndarray,
     indices: np.ndarray,
-    settings: MoleculeMleSettings,
+    settings: RegionMleSettings,
 ) -> tuple[np.ndarray, int, int]:
     """Build one molecule's VV/VH histogram from its photon indices.
 
@@ -664,7 +702,7 @@ def _molecule_vv_vh(
     return assemble_vv_vh(cp, cs), n_p, n_s
 
 
-def _initial_and_fixed(s: MoleculeMleSettings) -> tuple[np.ndarray, np.ndarray]:
+def _initial_and_fixed(s: RegionMleSettings) -> tuple[np.ndarray, np.ndarray]:
     x0 = np.array([s.tau, s.gamma, s.r0, s.rho], dtype=np.float64)
     fixed = np.array(
         [int(s.fix_tau), int(s.fix_gamma), int(s.fix_r0), int(s.fix_rho)],
@@ -673,25 +711,25 @@ def _initial_and_fixed(s: MoleculeMleSettings) -> tuple[np.ndarray, np.ndarray]:
     return x0, fixed
 
 
-def fit_molecules(
+def fit_regions(
     tttr: Any,
-    settings: MoleculeMleSettings,
+    settings: RegionMleSettings,
     *,
     clsm: Any = None,
     dt: float | None = None,
     period: float | None = None,
     progress: ProgressCallback | None = None,
     keep_curves: bool = False,
-) -> MoleculeMleResult:
+) -> RegionMleResult:
     """Segment molecules from a CLSM TTTR image and MLE-fit each lifetime.
 
     Parameters
     ----------
     tttr : tttrlib.TTTR
         The confocal (CLSM) photon stream to analyse.
-    settings : MoleculeMleSettings
+    settings : RegionMleSettings
         Segmentation, channel, IRF and estimator settings.  ``settings.irf``
-        must be set (see :func:`fit_molecules_from_files` for the file path).
+        must be set (see :func:`fit_regions_from_files` for the file path).
     clsm : tttrlib.CLSMImage, optional
         Pre-built confocal image.  When omitted a ``CLSMImage(tttr, channels,
         fill=True)`` is constructed with auto-detected markers (the normal path
@@ -710,14 +748,14 @@ def fit_molecules(
 
     Returns
     -------
-    MoleculeMleResult
+    RegionMleResult
     """
     import tttrlib
 
     from chisurf.core.roi import regionprops
 
     if settings.irf is None:
-        raise ValueError("settings.irf must be set (VV/VH IRF); use fit_molecules_from_files")
+        raise ValueError("settings.irf must be set (VV/VH IRF); use fit_regions_from_files")
     irf = np.ascontiguousarray(settings.irf, dtype=np.float64)
     if irf.size != 2 * settings.window:
         raise ValueError(
@@ -751,28 +789,24 @@ def fit_molecules(
     intensity = np.asarray(clsm.intensity).sum(axis=0)
 
     analysis_roi = settings.analysis_roi()
-    labels = segment_molecules(
-        intensity,
-        seg_sigma=settings.seg_sigma,
-        seg_threshold=settings.seg_threshold,
-        peak_footprint_size=settings.peak_footprint_size,
-        min_area=settings.min_area,
-        roi=analysis_roi,
-    )
+    # Resolved, not derived. The regions were found by whatever found them --
+    # the spot finder, a saved label image, a hand-drawn set -- and this fit
+    # answers for those and no others.
+    labels = resolve_labels(settings, intensity.shape)
+    if analysis_roi is not None:
+        labels = _confine(labels, analysis_roi, intensity)
 
     micro_times = tttr.micro_times
     routing = tttr.routing_channels
 
     props = regionprops(labels, intensity)
     n_props = len(props)
+    photon_indices = region_photon_indices(clsm, labels)
 
-    # Pass 1: build each molecule's VV/VH histogram; drop sub-threshold molecules.
+    # Pass 1: build each region's VV/VH histogram; drop sub-threshold regions.
     kept: list[tuple] = []  # (prop, vv_vh, n_parallel, n_perpendicular)
     for i, prop in enumerate(props):
-        idx: list[int] = []
-        for r, c in prop.coords:
-            idx.extend(list(clsm[0][int(r)][int(c)].tttr_indices))
-        indices = np.asarray(idx, dtype=np.int64)
+        indices = photon_indices[int(prop.label) - 1]
         vv_vh, n_p, n_s = _molecule_vv_vh(micro_times, routing, indices, settings)
         if n_p + n_s >= settings.min_photons:
             kept.append((prop, vv_vh, n_p, n_s))
@@ -829,7 +863,7 @@ def fit_molecules(
             curves.append(model_curve if model_curve is not None else np.array([]))
 
     dataframe = store_from_rows(rows)
-    return MoleculeMleResult(
+    return RegionMleResult(
         dataframe=dataframe,
         intensity_image=intensity,
         label_image=labels,
@@ -840,18 +874,18 @@ def fit_molecules(
     )
 
 
-def fit_molecules_from_files(
+def fit_regions_from_files(
     ptu_path: str,
     irf_path: str,
-    settings: MoleculeMleSettings,
+    settings: RegionMleSettings,
     *,
     shift_sp: float = 0.0,
     shift_ss: float = 0.0,
     irf_threshold_fraction: float = 0.08,
     progress: ProgressCallback | None = None,
     keep_curves: bool = False,
-) -> MoleculeMleResult:
-    """Load a CLSM image + IRF from disk and run :func:`fit_molecules`.
+) -> RegionMleResult:
+    """Load a CLSM image + IRF from disk and run :func:`fit_regions`.
 
     The IRF VV/VH histogram, background and ``G`` factor are built from
     *irf_path* (unless ``settings.irf`` is already provided).
@@ -862,20 +896,20 @@ def fit_molecules_from_files(
         Path to the confocal (CLSM) TTTR image.
     irf_path : str
         Path to the IRF TTTR measurement.
-    settings : MoleculeMleSettings
+    settings : RegionMleSettings
         Analysis settings (segmentation, channels, estimator).
     shift_sp, shift_ss : float, optional
         Circular IRF shifts (parallel / perpendicular).
     irf_threshold_fraction : float, optional
         IRF denoising threshold fraction.
     progress : callable, optional
-        Progress callback forwarded to :func:`fit_molecules`.
+        Progress callback forwarded to :func:`fit_regions`.
     keep_curves : bool, optional
         Keep per-molecule curves in the result.
 
     Returns
     -------
-    MoleculeMleResult
+    RegionMleResult
     """
     import tttrlib
 
@@ -902,4 +936,4 @@ def fit_molecules_from_files(
                 settings.micro_time_range,
                 settings.micro_time_binning,
             )
-    return fit_molecules(tttr, settings, progress=progress, keep_curves=keep_curves)
+    return fit_regions(tttr, settings, progress=progress, keep_curves=keep_curves)

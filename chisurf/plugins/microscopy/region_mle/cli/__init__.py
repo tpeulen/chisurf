@@ -1,4 +1,4 @@
-"""CLI package for sm_image_mle."""
+"""CLI package for region_mle."""
 
 from __future__ import annotations
 

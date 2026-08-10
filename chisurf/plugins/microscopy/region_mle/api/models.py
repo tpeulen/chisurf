@@ -1,7 +1,7 @@
 """Transport dataclasses for molecule-wise MLE analysis (no Qt).
 
-The analysis settings live in the Qt-free core (:class:`MoleculeMleSettings`
-in :mod:`..core.molecule_mle`); this module re-exports them and adds the
+The analysis settings live in the Qt-free core (:class:`RegionMleSettings`
+in :mod:`..core.region_mle`); this module re-exports them and adds the
 request/result envelopes used by the CLI and RPC backend.
 """
 
@@ -9,13 +9,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from ..core.molecule_mle import MoleculeMleSettings
+from ..core.region_mle import RegionMleSettings
 
-__all__ = ["MoleculeMleSettings", "MoleculeMleRequest", "MoleculeMleResult"]
+__all__ = ["RegionMleSettings", "RegionMleRequest", "RegionMleResult"]
 
 
 @dataclass
-class MoleculeMleRequest:
+class RegionMleRequest:
     """A full molecule-wise MLE analysis request.
 
     Parameters
@@ -26,7 +26,7 @@ class MoleculeMleRequest:
         IRF TTTR measurement (shared by all files).
     output_dir : str, optional
         Directory for the merged joint TSV; defaults to the first file's parent.
-    settings : MoleculeMleSettings, optional
+    settings : RegionMleSettings, optional
         Analysis settings (segmentation, channels, estimator).
     shift_sp, shift_ss : float, optional
         Circular IRF shifts (parallel / perpendicular).
@@ -37,14 +37,14 @@ class MoleculeMleRequest:
     files: list[str]
     irf_file: str
     output_dir: str = ""
-    settings: MoleculeMleSettings = field(default_factory=MoleculeMleSettings)
+    settings: RegionMleSettings = field(default_factory=RegionMleSettings)
     shift_sp: float = 0.0
     shift_ss: float = 0.0
     irf_threshold_fraction: float = 0.08
 
 
 @dataclass
-class MoleculeMleResult:
+class RegionMleResult:
     """Result of a molecule-wise MLE analysis run.
 
     Attributes

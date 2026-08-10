@@ -1,6 +1,6 @@
 """Computation layer for molecule-wise MLE analysis.
 
-Runs the Qt-free core (:func:`..core.molecule_mle.fit_molecules_from_files`)
+Runs the Qt-free core (:func:`..core.region_mle.fit_regions_from_files`)
 in-process for each CLSM TTTR file, writes a per-file molecule-data TSV next to
 each file, and merges them into a joint TSV.  No subprocess, no Qt — safe to
 call from the CLI, the RPC backend, or headless tests.
@@ -14,28 +14,29 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from chisurf.core.datastore import concat_stores, row_count, write_csv_table
-from ..core.molecule_mle import fit_molecules_from_files, with_source_column
+
+from ..core.region_mle import fit_regions_from_files, with_source_column
 
 if TYPE_CHECKING:
-    from .models import MoleculeMleRequest, MoleculeMleResult
+    from .models import RegionMleRequest, RegionMleResult
 
 logger = logging.getLogger(__name__)
 
 
-def analyze_request(request: MoleculeMleRequest) -> MoleculeMleResult:
+def analyze_request(request: RegionMleRequest) -> RegionMleResult:
     """Run molecule-wise MLE analysis for every file in *request*.
 
     Parameters
     ----------
-    request : MoleculeMleRequest
+    request : RegionMleRequest
         Files, IRF, output directory and analysis settings.
 
     Returns
     -------
-    MoleculeMleResult
+    RegionMleResult
         Per-file TSV paths, the merged joint TSV, molecule count and warnings.
     """
-    from .models import MoleculeMleResult
+    from .models import RegionMleResult
 
     output_paths: list[str] = []
     processed: list[str] = []
@@ -48,7 +49,7 @@ def analyze_request(request: MoleculeMleRequest) -> MoleculeMleResult:
             # Each file gets a fresh settings copy so the IRF (built from the
             # first run) is not carried across files with different windows.
             settings = dataclasses.replace(request.settings)
-            result = fit_molecules_from_files(
+            result = fit_regions_from_files(
                 str(ptu_path),
                 request.irf_file,
                 settings,
@@ -105,7 +106,7 @@ def analyze_request(request: MoleculeMleRequest) -> MoleculeMleResult:
         write_csv_table(joint_path, combined)
         joint_tsv = str(joint_path)
 
-    return MoleculeMleResult(
+    return RegionMleResult(
         processed_files=processed,
         output_paths=output_paths,
         joint_tsv=joint_tsv,

@@ -2,7 +2,7 @@
 
 Exercises ``analyze_request`` — the per-file loop, per-file TSV writing and the
 joint merge — without tttrlib by stubbing the Qt-free core fit.  The science
-itself is covered by :mod:`test.test_molecule_mle_core`.
+itself is covered by :mod:`test.test_region_mle_core`.
 """
 
 from __future__ import annotations
@@ -10,14 +10,14 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from chisurf.plugins.microscopy.sm_image_mle.api.models import (
-    MoleculeMleRequest,
-    MoleculeMleSettings,
+from chisurf.plugins.microscopy.region_mle.api.models import (
+    RegionMleRequest,
+    RegionMleSettings,
 )
 
 
 def _fake_result(n_molecules: int):
-    from chisurf.plugins.microscopy.sm_image_mle.core.molecule_mle import MoleculeMleResult
+    from chisurf.plugins.microscopy.region_mle.core.region_mle import RegionMleResult
 
     df = pd.DataFrame(
         {
@@ -26,7 +26,7 @@ def _fake_result(n_molecules: int):
             "n_photons_total": np.full(n_molecules, 500),
         }
     )
-    return MoleculeMleResult(
+    return RegionMleResult(
         dataframe=df,
         intensity_image=np.zeros((4, 4)),
         label_image=np.zeros((4, 4), dtype=int),
@@ -35,7 +35,7 @@ def _fake_result(n_molecules: int):
 
 
 def test_analyze_request_writes_per_file_and_joint_tsv(tmp_path, monkeypatch):
-    from chisurf.plugins.microscopy.sm_image_mle.api import molecule_mle as api
+    from chisurf.plugins.microscopy.region_mle.api import region_mle as api
 
     f1 = tmp_path / "img1.ptu"
     f2 = tmp_path / "img2.ptu"
@@ -51,13 +51,13 @@ def test_analyze_request_writes_per_file_and_joint_tsv(tmp_path, monkeypatch):
 
         return _fake_result(counts[Path(ptu_path).name])
 
-    monkeypatch.setattr(api, "fit_molecules_from_files", fake_fit)
+    monkeypatch.setattr(api, "fit_regions_from_files", fake_fit)
 
-    request = MoleculeMleRequest(
+    request = RegionMleRequest(
         files=[str(f1), str(f2)],
         irf_file=str(irf),
         output_dir=str(tmp_path),
-        settings=MoleculeMleSettings(),
+        settings=RegionMleSettings(),
     )
     result = api.analyze_request(request)
 
@@ -79,7 +79,7 @@ def test_analyze_request_writes_per_file_and_joint_tsv(tmp_path, monkeypatch):
 
 
 def test_analyze_request_reports_failures_as_warnings(tmp_path, monkeypatch):
-    from chisurf.plugins.microscopy.sm_image_mle.api import molecule_mle as api
+    from chisurf.plugins.microscopy.region_mle.api import region_mle as api
 
     good = tmp_path / "good.ptu"
     bad = tmp_path / "bad.ptu"
@@ -93,9 +93,9 @@ def test_analyze_request_reports_failures_as_warnings(tmp_path, monkeypatch):
             raise RuntimeError("boom")
         return _fake_result(2)
 
-    monkeypatch.setattr(api, "fit_molecules_from_files", fake_fit)
+    monkeypatch.setattr(api, "fit_regions_from_files", fake_fit)
 
-    request = MoleculeMleRequest(
+    request = RegionMleRequest(
         files=[str(good), str(bad)],
         irf_file=str(tmp_path / "irf.ptu"),
         output_dir=str(tmp_path),
@@ -119,8 +119,8 @@ def test_cli_roi_option_reaches_the_settings(tmp_path, monkeypatch):
     from click.testing import CliRunner
 
     from chisurf.core.roi import RectangleROI, save_rois
-    from chisurf.plugins.microscopy.sm_image_mle.api import molecule_mle as api
-    from chisurf.plugins.microscopy.sm_image_mle.cli.main import cli
+    from chisurf.plugins.microscopy.region_mle.api import region_mle as api
+    from chisurf.plugins.microscopy.region_mle.cli.main import cli
 
     roi_file = tmp_path / "patch.json"
     save_rois(
@@ -139,7 +139,7 @@ def test_cli_roi_option_reaches_the_settings(tmp_path, monkeypatch):
         seen['roi'] = settings.analysis_roi()
         return _fake_result(1)
 
-    monkeypatch.setattr(api, "fit_molecules_from_files", fake_fit)
+    monkeypatch.setattr(api, "fit_regions_from_files", fake_fit)
 
     result = CliRunner().invoke(
         cli,
@@ -159,8 +159,8 @@ def test_cli_without_roi_leaves_the_whole_frame(tmp_path, monkeypatch):
     """Omitting the option must not smuggle in an empty region."""
     from click.testing import CliRunner
 
-    from chisurf.plugins.microscopy.sm_image_mle.api import molecule_mle as api
-    from chisurf.plugins.microscopy.sm_image_mle.cli.main import cli
+    from chisurf.plugins.microscopy.region_mle.api import region_mle as api
+    from chisurf.plugins.microscopy.region_mle.cli.main import cli
 
     image = tmp_path / "img.ptu"
     irf = tmp_path / "irf.ptu"
@@ -173,7 +173,7 @@ def test_cli_without_roi_leaves_the_whole_frame(tmp_path, monkeypatch):
         seen['roi'] = settings.analysis_roi()
         return _fake_result(1)
 
-    monkeypatch.setattr(api, "fit_molecules_from_files", fake_fit)
+    monkeypatch.setattr(api, "fit_regions_from_files", fake_fit)
 
     result = CliRunner().invoke(
         cli, ["analyze", "-i", str(irf), "-o", str(tmp_path), str(image)]

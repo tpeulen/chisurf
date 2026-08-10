@@ -1,4 +1,4 @@
-"""Public API for sm_image_mle plugin."""
+"""Public API for region_mle plugin."""
 
 from __future__ import annotations
 
@@ -11,13 +11,13 @@ from .contract import (
     service_error,
     service_success,
 )
-from .models import MoleculeMleRequest, MoleculeMleResult, MoleculeMleSettings
-from .molecule_mle import analyze_request
+from .models import RegionMleRequest, RegionMleResult, RegionMleSettings
+from .region_mle import analyze_request
 
 __all__ = [
-    "MoleculeMleSettings",
-    "MoleculeMleRequest",
-    "MoleculeMleResult",
+    "RegionMleSettings",
+    "RegionMleRequest",
+    "RegionMleResult",
     "PLUGIN_ID",
     "CONTRACT_VERSION",
     "METHOD_ANALYZE",

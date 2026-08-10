@@ -1,6 +1,6 @@
 """Shared base classes for the AutoForm-hosted MLE-lifetime imaging tools.
 
-The pixel-wise (``img_pixel_mle``) and molecule-wise (``sm_image_mle``) tools are
+The pixel-wise (``img_pixel_mle``) and region-wise (``region_mle``) tools are
 the same shape — an :class:`~chisurf.gui.autoform.AutoForm` bound to a Qt-free
 view-model, a background run thread, and the shared
 ``apply_setup_settings``/``apply_pipeline_context``/``apply_calibration``

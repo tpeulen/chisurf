@@ -1286,6 +1286,32 @@ class _PgImageView(base.ImageViewCanvas):
         # take them off again — ``pg.ImageView.clear`` only clears the image.
         self._added: list = []
 
+    @classmethod
+    def wrap(cls, image_view) -> "_PgImageView":
+        """Return a canvas driving an image view somebody else created.
+
+        For a widget that already owns its ``pg.ImageView`` and wants the
+        canvas API over it. It exists because the alternative was being done
+        anyway — ``_PgImageView.__new__(_PgImageView)`` with ``_iv`` assigned by
+        hand — which skips ``__init__`` and therefore skips every attribute
+        added to it later. That is not hypothetical: item tracking for
+        :meth:`clear` was added here and every such hand-built instance started
+        raising ``AttributeError`` inside :meth:`add_roi`.
+
+        Parameters
+        ----------
+        image_view : pyqtgraph.ImageView
+            The view to drive.
+
+        Returns
+        -------
+        _PgImageView
+        """
+        self = cls.__new__(cls)
+        self._iv = image_view
+        self._added = []
+        return self
+
     def widget(self) -> QtWidgets.QWidget:
         """Return the embeddable image-view widget."""
         return self._iv

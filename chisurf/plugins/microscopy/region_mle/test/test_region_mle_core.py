@@ -11,9 +11,9 @@ simulator) is unavailable.
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
 from chisurf.core.datastore import column_names, numeric_column
-import pytest
 
 pytest.importorskip("tttrlib")
 
@@ -22,12 +22,26 @@ from chisurf.core.fluorescence.imaging.simulate import have_simulator, simulate_
 if not have_simulator():
     pytest.skip("tttrlib built without the photon simulator", allow_module_level=True)
 
-from chisurf.plugins.microscopy.sm_image_mle.core import (
-    MoleculeMleResult,
-    MoleculeMleSettings,
-    fit_molecules,
-    segment_molecules,
+from chisurf.plugins.microscopy.region_mle.core import (
+    RegionMleResult,
+    RegionMleSettings,
+    fit_regions,
 )
+from chisurf.plugins.microscopy.spot_finder.core.spots import detect_labels
+from chisurf.plugins.microscopy.spot_finder.core.workflow import (
+    STANDARD,
+    request_from_workflow,
+)
+
+
+def _regions(sim):
+    """Return the standard-workflow segmentation of a simulated field.
+
+    The regions come from the spot finder now, which is the point of the split:
+    this fit answers for the regions it is handed and finds none of its own.
+    """
+    labels, _extra = detect_labels(sim.intensity, request_from_workflow(STANDARD).settings)
+    return labels
 
 # Two molecules, distinct lifetimes, well separated.
 MOLECULES = [(8, 8, 1.0), (23, 23, 3.5)]
@@ -37,29 +51,28 @@ def _sim():
     return simulate_clsm_molecules(MOLECULES, n_pixel=32)
 
 
-def _settings(sim, **overrides) -> MoleculeMleSettings:
+def _settings(sim, **overrides) -> RegionMleSettings:
     kwargs = dict(
         detector_chs=[0],
         micro_time_range=(0, sim.n_micro),
         micro_time_binning=1,
         irf=sim.vv_vh_irf(),
         p2s_twoIstar=True,
-        seg_sigma=1.0,
-        peak_footprint_size=6,
+        regions=_regions(sim),
         min_photons=30,
         tau=2.0,
         fix_r0=True,
         fix_rho=True,
     )
     kwargs.update(overrides)
-    return MoleculeMleSettings(**kwargs)
+    return RegionMleSettings(**kwargs)
 
 
 def test_segments_and_fits_two_simulated_molecules():
     sim = _sim()
-    result = fit_molecules(sim.tttr, _settings(sim), clsm=sim.clsm, dt=sim.dt, period=sim.laser_period)
+    result = fit_regions(sim.tttr, _settings(sim), clsm=sim.clsm, dt=sim.dt, period=sim.laser_period)
 
-    assert isinstance(result, MoleculeMleResult)
+    assert isinstance(result, RegionMleResult)
     assert result.intensity_image.shape == (sim.n_pixel, sim.n_pixel)
     # Both molecules were found (well-separated, bright).
     assert result.n_molecules == len(MOLECULES)
@@ -82,11 +95,11 @@ def test_batch_fit_matches_per_molecule():
     # keep_curves=False batches every molecule through one fit_many call;
     # keep_curves=True fits per molecule (to also return model curves). Same result.
     sim = _sim()
-    batch = fit_molecules(
+    batch = fit_regions(
         sim.tttr, _settings(sim), clsm=sim.clsm, dt=sim.dt, period=sim.laser_period,
         keep_curves=False,
     )
-    serial = fit_molecules(
+    serial = fit_regions(
         sim.tttr, _settings(sim), clsm=sim.clsm, dt=sim.dt, period=sim.laser_period,
         keep_curves=True,
     )
@@ -101,17 +114,16 @@ def test_batch_fit_matches_per_molecule():
     assert len(serial.model_curves) == len(MOLECULES)
 
 
-def test_segment_molecules_counts_bright_spots():
+def test_the_standard_workflow_finds_the_simulated_molecules():
     sim = _sim()
-    labels = segment_molecules(sim.intensity, seg_sigma=1.0, peak_footprint_size=6)
-    assert int(labels.max()) == len(MOLECULES)
+    assert int(_regions(sim).max()) == len(MOLECULES)
 
 
 def test_irf_length_mismatch_raises():
     sim = _sim()
     bad = _settings(sim, irf=np.zeros(10))
     with pytest.raises(ValueError):
-        fit_molecules(sim.tttr, bad, clsm=sim.clsm, dt=sim.dt, period=sim.laser_period)
+        fit_regions(sim.tttr, bad, clsm=sim.clsm, dt=sim.dt, period=sim.laser_period)
 
 
 # --- foreground and background as regions -----------------------------------
@@ -127,7 +139,7 @@ def test_an_analysis_roi_confines_the_search():
     sim = _sim()
     # (x0, y0, x1, y1) around the molecule at (row 8, col 8) only.
     around_first = RectangleROI(0, 0, 16, 16, name="patch")
-    result = fit_molecules(
+    result = fit_regions(
         sim.tttr, _settings(sim, roi=around_first), clsm=sim.clsm,
         dt=sim.dt, period=sim.laser_period,
     )
@@ -143,7 +155,7 @@ def test_a_serialised_roi_survives_the_trip_through_settings():
 
     sim = _sim()
     as_dict = RectangleROI(0, 0, 16, 16).to_dict()
-    result = fit_molecules(
+    result = fit_regions(
         sim.tttr, _settings(sim, roi=as_dict), clsm=sim.clsm,
         dt=sim.dt, period=sim.laser_period,
     )
@@ -159,7 +171,7 @@ def test_foreground_and_background_partition_the_frame():
     background rate reads high and every molecule looks dimmer than it is.
     """
     sim = _sim()
-    result = fit_molecules(
+    result = fit_regions(
         sim.tttr, _settings(sim), clsm=sim.clsm, dt=sim.dt, period=sim.laser_period
     )
     shape = result.intensity_image.shape
@@ -180,7 +192,7 @@ def test_foreground_and_background_partition_the_frame():
 def test_the_result_exposes_full_region_measurements():
     """Every molecule is measurable with the shared region properties."""
     sim = _sim()
-    result = fit_molecules(
+    result = fit_regions(
         sim.tttr, _settings(sim), clsm=sim.clsm, dt=sim.dt, period=sim.laser_period
     )
     props = result.region_properties()
@@ -195,14 +207,14 @@ def test_the_result_exposes_full_region_measurements():
     )
 
 
-def test_segmentation_preview_matches_the_fitted_segmentation():
-    """The GUI's preview and the real run segment identically — same code path."""
-    from chisurf.plugins.microscopy.sm_image_mle.core.molecule_mle import segmentation_preview
+def test_the_preview_and_the_fit_use_the_same_regions():
+    """Not "the same settings" — the same regions, resolved by one call."""
+    from chisurf.plugins.microscopy.region_mle.core.region_mle import region_preview
 
     sim = _sim()
     settings = _settings(sim)
-    preview = segmentation_preview(sim.intensity, settings)
-    fitted = fit_molecules(
+    preview = region_preview(sim.intensity, settings)
+    fitted = fit_regions(
         sim.tttr, settings, clsm=sim.clsm, dt=sim.dt, period=sim.laser_period
     )
     assert preview.n_molecules == fitted.n_molecules

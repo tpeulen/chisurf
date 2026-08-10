@@ -15,7 +15,7 @@ Panels (lazy-loaded via factory functions):
   1. Setup            — SetupChannelDefinitionWidget (shared, publishes via RPC)
   2. Browser          — TTTRImageBrowserTool
   3. Pixel-wise MLE   — ImgPixelMleTool (embedded)
-  4. Molecule-wise MLE — SmImageMleTool (embedded)
+  4. Region MLE — RegionMleTool (embedded)
   5. CLSM Draw        — CLSMPixelSelect
   ─────────────────── (separator)
   6. PSF Determination — PsfDeterminationTool
@@ -135,8 +135,8 @@ def _pixel_mle(parent: ImagingToolsTool) -> QtWidgets.QWidget:
 
 
 def _molecule_mle(parent: ImagingToolsTool) -> QtWidgets.QWidget:
-    from chisurf.plugins.microscopy.sm_image_mle.gui.tool import SmImageMleTool
-    widget = SmImageMleTool(parent=parent, embedded=True)
+    from chisurf.plugins.microscopy.region_mle.gui.tool import RegionMleTool
+    widget = RegionMleTool(parent=parent, embedded=True)
     parent._register_panel("molecule_mle", widget)
     return widget
 
@@ -324,9 +324,9 @@ IMAGING_PANELS: list[dict] = [
         "role": "clsm_draw",
     },
     {
-        "name": "Molecule-wise MLE",
+        "name": "Region MLE",
         "icon": "💠",
-        "description": "Molecule-wise MLE lifetime analysis from TTTR imaging data.",
+        "description": "Lifetime MLE per region, on the regions the Spot Finder found.",
         "factory": _molecule_mle,
         "role": "molecule_mle",
     },

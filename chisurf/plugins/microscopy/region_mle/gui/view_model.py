@@ -1,8 +1,8 @@
 """Qt-free view-model for the molecule-wise MLE tool.
 
 Holds the CLSM/IRF file lists and analysis settings edited through the AutoForm
-view (``molecule_mle.view.json``), runs the Qt-free core
-(:func:`...core.molecule_mle.fit_molecules_from_files`) over the selected files,
+view (``region_mle.view.json``), runs the Qt-free core
+(:func:`...core.region_mle.fit_regions_from_files`) over the selected files,
 and exposes the segmentation image, molecule markers and per-molecule table for
 display.  No Qt imports — the heavy ``run`` is driven from a background thread by
 the tool.
@@ -15,6 +15,8 @@ import logging
 import pathlib
 from collections.abc import Callable
 
+import numpy as np
+
 from chisurf.core.datastore import (
     column_names,
     concat_stores,
@@ -25,23 +27,21 @@ from chisurf.core.datastore import (
     take_where,
     write_csv_table,
 )
-import numpy as np
-
 from chisurf.core.roi import RegionCollection
 from chisurf.plugins.microscopy.mle_common.base import MleObserverMixin, scalar
 
-from ..core.molecule_mle import (
-    MoleculeMleResult,
-    MoleculeMleSettings,
+from ..core.region_mle import (
+    RegionMleResult,
+    RegionMleSettings,
     with_source_column,
 )
 
 logger = logging.getLogger(__name__)
 
-_VIEW_JSON = pathlib.Path(__file__).parent / "molecule_mle.view.json"
+_VIEW_JSON = pathlib.Path(__file__).parent / "region_mle.view.json"
 
 
-class MoleculeMleViewModel(MleObserverMixin):
+class RegionMleViewModel(MleObserverMixin):
     """State + logic for the molecule-wise MLE tool (no Qt)."""
 
     def __init__(self) -> None:
@@ -50,10 +50,10 @@ class MoleculeMleViewModel(MleObserverMixin):
         #: The analysis region, as the shared named list every ROI GUI edits.
         #: Empty (or all switched off) means the whole frame.
         self.regions = RegionCollection(combine="and", name="analysis region")
-        self.settings = MoleculeMleSettings()
+        self.settings = RegionMleSettings()
         self.status_text: str = ""
         #: Per-file results of the last run.
-        self.results: list[MoleculeMleResult] = []
+        self.results: list[RegionMleResult] = []
         #: Flat index of the molecule shown in the browser.
         self.current_molecule: int = 0
         self._observers: list[Callable[[str], None]] = []
@@ -144,7 +144,7 @@ class MoleculeMleViewModel(MleObserverMixin):
     def apply_regions(self) -> None:
         """Push the combined region into the settings the analysis reads.
 
-        ``MoleculeMleSettings`` takes a single region because it crosses an RPC
+        ``RegionMleSettings`` takes a single region because it crosses an RPC
         boundary as plain data; the list is the editing surface, and this is
         where it collapses to the one region the segmentation is confined to.
         ``None`` — nothing enabled — means the whole frame.
@@ -210,11 +210,8 @@ class MoleculeMleViewModel(MleObserverMixin):
         self.settings.micro_time_range = (self.settings.micro_time_range[0], int(value))
 
     micro_time_binning = scalar("micro_time_binning", int, "Micro-time down-binning factor.")
-    seg_sigma = scalar("seg_sigma", float, "Segmentation Gaussian sigma.")
-    seg_threshold = scalar("seg_threshold", float, "Segmentation threshold (<0 = Otsu).")
-    peak_footprint_size = scalar("peak_footprint_size", int, "Peak-detection footprint size.")
-    min_photons = scalar("min_photons", int, "Minimum photons per molecule to fit.")
-    min_area = scalar("min_area", int, "Minimum molecule area (pixels).")
+    min_photons = scalar("min_photons", int, "Minimum photons per region to fit.")
+    region_set = scalar("region_set", str, "Which detection in the container to fit.")
     tau = scalar("tau", float, "Initial lifetime (ns).")
     gamma = scalar("gamma", float, "Initial scatter fraction.")
     r0 = scalar("r0", float, "Initial fundamental anisotropy.")
@@ -259,7 +256,7 @@ class MoleculeMleViewModel(MleObserverMixin):
                 badge = f"τ={tau:.2f} ns" if np.isfinite(tau) else f"{int(rec.get('area', 0))} px"
                 entries.append({
                     "id": idx,
-                    "label": f"{file_tag}Mol {int(rec.get('label', idx))}",
+                    "label": f"{file_tag}Region {int(rec.get('label', idx))}",
                     "badge": badge,
                 })
                 idx += 1
@@ -301,7 +298,7 @@ class MoleculeMleViewModel(MleObserverMixin):
         """HTML fit summary for the selected molecule (metadata panel)."""
         cur = self._current_molecule()
         if cur is None:
-            return "<i>No molecule selected.</i>"
+            return "<i>No region selected.</i>"
         rec = cur[2]
 
         def g(key, fmt="{:.3f}"):
@@ -311,7 +308,7 @@ class MoleculeMleViewModel(MleObserverMixin):
                 return "—"
 
         return (
-            f"<b>Molecule {int(rec.get('label', 0))}</b><br>"
+            f"<b>Region {int(rec.get('label', 0))}</b><br>"
             f"τ = {g('tau')} ns &nbsp; γ = {g('gamma')}<br>"
             f"r0 = {g('r0')} &nbsp; ρ = {g('rho')} ns<br>"
             f"photons = {int(rec.get('n_photons_total', 0))} &nbsp; 2I* = {g('2I*')}"
@@ -323,15 +320,17 @@ class MoleculeMleViewModel(MleObserverMixin):
             return f"<i>{self.status_text}</i>"
         if not self.results:
             return (
-                "<i>Add CLSM imaging file(s) and an IRF, set the detector channels "
-                "and fit window, then press <b>Run</b>. Each molecule is segmented "
-                "and fitted with a single-lifetime Poisson-MLE (Fit23).</i>"
+                "<i>Find the regions first with the <b>Spot Finder</b>, then add "
+                "the imaging file(s) and an IRF here, set the detector channels "
+                "and fit window, and press <b>Run</b>. Each region is fitted with "
+                "a single-lifetime Poisson-MLE (Fit23); this tool does not "
+                "segment.</i>"
             )
         n_mol = sum(r.n_molecules for r in self.results)
         taus = [float(t) for r in self.results for t in r.dataframe.get("tau", [])]
         median = float(np.median(taus)) if taus else float("nan")
         return (
-            f"<b>{n_mol}</b> molecule(s) in <b>{len(self.results)}</b> file(s); "
+            f"<b>{n_mol}</b> region(s) in <b>{len(self.results)}</b> file(s); "
             f"median &tau; = <b>{median:.2f}</b> ns."
         )
 
@@ -370,14 +369,14 @@ class MoleculeMleViewModel(MleObserverMixin):
             as_table(r.dataframe) for r in self.results if row_count(r.dataframe)
         ]
         if not tables:
-            self.status_text = "No molecules to export."
+            self.status_text = "No regions to export."
             self.notify("done")
             return ""
         sep = "," if str(path).lower().endswith(".csv") else "\t"
         combined = concat_stores(tables)
         write_csv_table(path, combined, delimiter=sep)
         self.status_text = (
-            f"Exported {row_count(combined)} molecule(s) to {pathlib.Path(path).name}")
+            f"Exported {row_count(combined)} region(s) to {pathlib.Path(path).name}")
         self.notify("exported")
         return str(path)
 
@@ -389,17 +388,18 @@ class MoleculeMleViewModel(MleObserverMixin):
             return False, "No IRF file selected."
         return True, ""
 
-    def preview_segmentation(self) -> None:
-        """Segment the first file's image with the current settings — no fitting.
+    def preview_regions(self) -> None:
+        """Measure the regions to be fitted, without fitting them.
 
-        Builds an un-fitted, browsable :class:`MoleculeMleResult` (intensity +
-        labels + one row per region) so the segmentation parameters can be tuned
-        against the molecule count before committing to the full MLE fit.
+        Builds an un-fitted, browsable :class:`RegionMleResult` (intensity +
+        labels + one row per region), so what is about to be fitted can be
+        looked at first. It resolves the regions through the same call the fit
+        uses, which is why the preview cannot disagree with the run.
         BLOCKING — call from a worker thread.
         """
         import tttrlib
 
-        from ..core.molecule_mle import segmentation_preview
+        from ..core.region_mle import region_preview
 
         if not self.files:
             self.status_text = "No imaging files selected."
@@ -417,12 +417,12 @@ class MoleculeMleViewModel(MleObserverMixin):
             self.notify("done")
             return
 
-        result = segmentation_preview(intensity, self.settings)
+        result = region_preview(intensity, self.settings)
         self.results = [result]
         self.current_molecule = 0
         background = result.background_rate()
         self.status_text = (
-            f"Preview: {result.n_molecules} molecule(s) segmented, background "
+            f"Preview: {result.n_molecules} region(s), background "
             f"{background:.2f} photons/pixel — press Run to fit."
         )
         self.notify("done")
@@ -433,7 +433,7 @@ class MoleculeMleViewModel(MleObserverMixin):
         Segments and fits each file, writes a per-file ``molecule_data.tsv`` and a
         merged ``joint_output.tsv``, and keeps the results for display.
         """
-        from ..core.molecule_mle import fit_molecules_from_files
+        from ..core.region_mle import fit_regions_from_files
 
         ok, reason = self.can_run()
         if not ok:
@@ -448,7 +448,7 @@ class MoleculeMleViewModel(MleObserverMixin):
             self.status_text = f"Analysing {pathlib.Path(path).name} ({i + 1}/{len(self.files)})…"
             self.notify("progress")
             try:
-                result = fit_molecules_from_files(
+                result = fit_regions_from_files(
                     path, irf, dataclasses.replace(self.settings), keep_curves=True
                 )
             except Exception as exc:  # noqa: BLE001 - surfaced in the status line
@@ -471,7 +471,7 @@ class MoleculeMleViewModel(MleObserverMixin):
         self.notify("done")
 
     @staticmethod
-    def _save_result(path: str, result: MoleculeMleResult):
+    def _save_result(path: str, result: RegionMleResult):
         """Persist one file's result next to it (TSV + intensity); return the table.
 
         Writes ``<stem>_analysis/molecule_data.tsv`` and ``intensity.npy`` so the
@@ -505,7 +505,7 @@ class MoleculeMleViewModel(MleObserverMixin):
     def load_analysis(self, tsv_path: str) -> None:
         """Load a saved ``molecule_data.tsv`` (+ sibling ``intensity.npy``).
 
-        Reconstructs a browsable :class:`MoleculeMleResult` from disk (the decay
+        Reconstructs a browsable :class:`RegionMleResult` from disk (the decay
         curves are not persisted, so the per-molecule decay plot is empty for a
         reopened analysis). A ``joint_output.tsv`` with several ``source_ptu``
         files is split back into one result per file.
@@ -542,7 +542,7 @@ class MoleculeMleViewModel(MleObserverMixin):
                 if {"centroid_row", "centroid_col"}.issubset(column_names(sub))
                 else np.zeros((row_count(sub), 2))
             )
-            self.results.append(MoleculeMleResult(
+            self.results.append(RegionMleResult(
                 dataframe=sub,
                 intensity_image=intensity,
                 label_image=np.zeros(intensity.shape, dtype=np.int32),
@@ -550,7 +550,7 @@ class MoleculeMleViewModel(MleObserverMixin):
             ))
         self.current_molecule = 0
         n = sum(r.n_molecules for r in self.results)
-        self.status_text = f"Loaded {n} molecule(s) from {p.name}"
+        self.status_text = f"Loaded {n} region(s) from {p.name}"
         self.notify("loaded")
 
     @staticmethod

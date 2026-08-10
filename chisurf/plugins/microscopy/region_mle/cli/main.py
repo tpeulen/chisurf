@@ -2,9 +2,9 @@
 
 Usage::
 
-    sm-image-mle analyze --irf-file IRF.ptu FILE [FILE …]
-    sm-image-mle contract
-    sm-image-mle serve
+    region-mle analyze --irf-file IRF.ptu FILE [FILE …]
+    region-mle contract
+    region-mle serve
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ import click
 
 @click.group()
 def cli() -> None:
-    """Molecule-wise MLE lifetime analysis for TTTR imaging data."""
+    """Region MLE lifetime analysis for TTTR imaging data."""
 
 
 @cli.command()
@@ -51,12 +51,12 @@ def cli() -> None:
 @click.option("--l2", default=0.0, type=float, help="Polarisation mixing correction l2.")
 @click.option("--twoi-star/--no-twoi-star", default=True, help="Optimise P+2S (2I*).")
 @click.option("--bifl-scatter/--no-bifl-scatter", default=False, help="Soft BIFL scatter.")
-@click.option("--seg-sigma", default=1.0, type=float, help="Segmentation Gaussian sigma.")
-@click.option(
-    "--seg-threshold", default=-1.0, type=float, help="Segmentation threshold (<0 = Otsu)."
-)
-@click.option("--peak-footprint-size", default=6, type=int, help="Peak-detection footprint size.")
-@click.option("--min-area", default=1, type=int, help="Minimum molecule area (pixels).")
+@click.option("--regions", "regions", default="", type=click.Path(),
+              help="Where the regions come from: a container the spot finder wrote, "
+                   "a label image, or a saved region file. Detection is not done here "
+                   "— run `spot-finder detect` first.")
+@click.option("--region-set", default="spots",
+              help="Which detection in the container, when it holds more than one.")
 @click.option("--min-photons", default=1, type=int, help="Minimum photons per molecule to fit.")
 @click.option(
     "--roi",
@@ -95,17 +95,15 @@ def analyze(
     l2,
     twoi_star,
     bifl_scatter,
-    seg_sigma,
-    seg_threshold,
-    peak_footprint_size,
-    min_area,
+    regions,
+    region_set,
     min_photons,
     roi,
     json_output,
 ) -> None:
     """Analyze CLSM imaging FILES with molecule-wise MLE."""
-    from ..api.models import MoleculeMleRequest, MoleculeMleSettings
-    from ..api.molecule_mle import analyze_request
+    from ..api.models import RegionMleRequest, RegionMleSettings
+    from ..api.region_mle import analyze_request
 
     det_chs = [int(c.strip()) for c in detector_chs.split(",") if c.strip()]
     mtr = tuple(int(x.strip()) for x in micro_time_range.split(","))
@@ -118,7 +116,7 @@ def analyze(
 
         analysis_roi = load_region(roi).to_dict()
 
-    settings = MoleculeMleSettings(
+    settings = RegionMleSettings(
         detector_chs=det_chs,
         micro_time_range=(mtr[0], mtr[1]),
         micro_time_binning=micro_time_binning,
@@ -136,14 +134,12 @@ def analyze(
         l2=l2,
         p2s_twoIstar=twoi_star,
         soft_bifl_scatter=bifl_scatter,
-        seg_sigma=seg_sigma,
-        seg_threshold=seg_threshold,
-        peak_footprint_size=peak_footprint_size,
-        min_area=min_area,
+        regions=regions or None,
+        region_set=region_set,
         min_photons=min_photons,
         roi=analysis_roi,
     )
-    request = MoleculeMleRequest(
+    request = RegionMleRequest(
         files=list(files),
         irf_file=irf_file,
         output_dir=output_dir,
@@ -188,8 +184,8 @@ def contract(json_output: bool) -> None:
 @click.option("--host", default="127.0.0.1", help="ZMQ bind host.")
 @click.option("--port", default=5555, type=int, help="ZMQ bind port.")
 def serve(host: str, port: int) -> None:
-    """Start the sm_image_mle RPC service (ZMQ/JSON-RPC)."""
-    click.echo(f"Starting sm_image_mle service on {host}:{port} …")
+    """Start the region_mle RPC service (ZMQ/JSON-RPC)."""
+    click.echo(f"Starting region_mle service on {host}:{port} …")
     try:
         from chisurf.server.dispatcher import ServiceDispatcher
         from chisurf.server.session import SessionState

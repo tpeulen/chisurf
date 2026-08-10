@@ -1,9 +1,9 @@
 {
-  "_comment": "Molecule-wise MLE tool. AutoForm over MoleculeMleViewModel: an Analysis dock (CLSM + IRF file lists, detector/window, segmentation and Fit23 settings, Run button) plus result docks (segmentation image with molecule markers, and a per-molecule fit table). Segments single molecules from the CLSM intensity image and fits each by single-lifetime Poisson MLE (Fit23).",
+  "_comment": "Region MLE tool. AutoForm over RegionMleViewModel: an Analysis dock (CLSM + IRF file lists, detector/window, region source and Fit23 settings, Run button) plus result docks (the region image with markers, and a per-region fit table). Fits the regions the Spot Finder found by single-lifetime Poisson MLE (Fit23); it does not segment.",
   "sections": [
     {
       "type": "dock_area",
-      "title": "Molecule-wise MLE",
+      "title": "Region MLE",
       "sections": [
         {
           "type": "panel",
@@ -21,7 +21,7 @@
             {"type": "custom", "key": "region_list", "target": "regions", "title": "Analysis region",
              "options": {"image_attr": "segmentation_image", "extent_attr": "analysis_extent",
                          "intensity_unit": "ph", "refresh_on": ["region", "done", "preview"]},
-             "description": "Confines the molecule search. Draw one, or load a saved region, a mask or a segmentation; several combine by the rule below. An automatic threshold is computed from these pixels alone, so the rest of the frame does not set it. Empty = whole frame."},
+             "description": "Restricts which of the detected regions are fitted — one cell, one illuminated patch, a field with the bright edge cropped off. Draw one, or load a saved region, a mask or a segmentation; several combine by the rule below. Empty = the whole frame."},
             {"type": "value", "attr": "detector_chs_text", "kind": "str", "label": "Detector channels",
              "description": "Space-separated routing channels; even = parallel (∥), odd = perpendicular (⊥)."},
             {"type": "value", "attr": "mtr_start", "kind": "int", "label": "Fit start", "minimum": 0, "maximum": 1000000,
@@ -30,17 +30,11 @@
              "description": "Fit-window stop on the binned micro-time axis."},
             {"type": "value", "attr": "micro_time_binning", "kind": "int", "label": "Micro-time binning", "minimum": 1, "maximum": 100000,
              "description": "Integer down-binning of the micro-time axis before fitting."},
-            {"type": "panel", "title": "Segmentation", "n_col": 2, "collapsed": true, "sections": [
-              {"type": "value", "attr": "seg_sigma", "kind": "float", "label": "Smoothing σ", "decimals": 2, "minimum": 0.0, "maximum": 100.0,
-               "description": "Gaussian smoothing sigma applied before thresholding."},
-              {"type": "value", "attr": "seg_threshold", "kind": "float", "label": "Threshold", "decimals": 3, "minimum": -1.0, "maximum": 1000000.0,
-               "description": "Fixed intensity threshold; < 0 uses Otsu."},
-              {"type": "value", "attr": "peak_footprint_size", "kind": "int", "label": "Peak footprint", "minimum": 1, "maximum": 100,
-               "description": "Square footprint side for watershed-seed peak detection."},
-              {"type": "value", "attr": "min_area", "kind": "int", "label": "Min area (px)", "minimum": 1, "maximum": 100000,
-               "description": "Molecules smaller than this many pixels are discarded."},
+            {"type": "panel", "title": "Regions", "n_col": 2, "collapsed": true, "sections": [
+              {"type": "value", "attr": "region_set", "kind": "str", "label": "Detection", "hide_label": false,
+               "description": "Which detection in the measurement's container to fit, when it holds more than one. Regions are found by the Spot Finder; this tool fits the ones it is given."},
               {"type": "value", "attr": "min_photons", "kind": "int", "label": "Min photons", "minimum": 1, "maximum": 10000000,
-               "description": "Molecules with fewer photons in the fit window are not fitted."}
+               "description": "Regions with fewer photons in the fit window are not fitted; they keep a row, with NaN parameters."}
             ]},
             {"type": "panel", "title": "Fit (Fit23)", "n_col": 2, "collapsed": true, "sections": [
               {"type": "value", "attr": "tau", "kind": "float", "label": "τ (ns)", "decimals": 3, "minimum": 0.0, "maximum": 1000.0,
@@ -63,25 +57,25 @@
               {"type": "toggle", "attr": "soft_bifl_scatter", "label": "BIFL scatter", "description": "Reduce Istar by the background contribution."}
             ]},
             {"type": "button_row", "buttons": [
-              {"label": "👁️ Preview", "action": "request_preview", "description": "Segment the first file with the current settings (no fitting) to tune the molecule count."},
-              {"label": "▶ Run", "action": "request_run", "description": "Segment and fit molecules in every selected file; writes molecule_data.tsv + joint_output.tsv."},
+              {"label": "👁️ Preview", "action": "request_preview", "description": "Measure the regions about to be fitted, without fitting them — the same regions the run uses."},
+              {"label": "▶ Run", "action": "request_run", "description": "Fit every detected region in every selected file; writes molecule_data.tsv + joint_output.tsv."},
               {"label": "💾 Export", "action": "request_export", "description": "Export the combined per-molecule table (all files) to a TSV/CSV."}
             ]},
             {"type": "value", "attr": "results_tsv", "kind": "file", "label": "Open results",
              "description": "Reopen a saved molecule_data.tsv (or joint_output.tsv) from a previous analysis to browse its molecules."}
           ]
         },
-        {"type": "custom", "key": "image_browser", "target": "segmentation_image", "title": "Molecules",
+        {"type": "custom", "key": "image_browser", "target": "segmentation_image", "title": "Regions",
          "options": {
            "entries_source": "molecule_entries", "entry_attr": "current_molecule",
            "info_source": "current_molecule_info", "filter": true,
            "markers_source": "current_molecule_marker",
            "colormap": true, "default_colormap": "inferno", "list_width": 200
          },
-         "description": "Browse segmented molecules; the canvas marks the selected molecule and the panel shows its Fit23 result."},
+         "description": "Browse the detected regions; the canvas marks the selected one and the panel shows its Fit23 result."},
         {"type": "plot", "title": "Decay", "source": "current_molecule_decay",
          "x_label": "micro-time channel (∥ | ⊥)", "y_label": "photons", "log_y": true,
-         "description": "VV/VH decay of the selected molecule with the fitted Fit23 model overlaid (semilog)."}
+         "description": "VV/VH decay of the selected region with the fitted Fit23 model overlaid (semilog)."}
       ]
     }
   ]

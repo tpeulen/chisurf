@@ -1278,6 +1278,25 @@ class ValueWidget(_BoundControlMixin, QtWidgets.QWidget):
                 self.editor.setText(str(current))
             if not read_only:
                 self.editor.editingFinished.connect(lambda: self._commit_file(self.editor.text()))
+        elif section.kind == "expression":
+            # A one-line equation, rendered by the shared ``ExpressionInput``:
+            # the safe-AST validity badge, the reason in a tooltip, the typeset
+            # preview and the names-and-functions reference. Those are exactly the
+            # controls the hand-written parse editor had and no generated editor
+            # did -- and reusing that widget is why the two cannot drift.
+            from chisurf.gui.widgets.expression_input import ExpressionInput
+
+            self.editor = ExpressionInput(
+                placeholder=section.placeholder or "e.g.  a1*exp(-x/tau1)",
+            )
+            if current is not None:
+                self.editor.set_text_silently(str(current))
+            self.editor.setEnabled(not read_only)
+            if not read_only:
+                # Commit on Return (when valid) and on focus-out, matching every
+                # other field: an equation half-typed must not reach the model.
+                self.editor.committed.connect(self._commit)
+                self.editor.installEventFilter(self)
         else:  # "str"
             self.editor = QtWidgets.QLineEdit()
             if section.placeholder:
@@ -1286,7 +1305,9 @@ class ValueWidget(_BoundControlMixin, QtWidgets.QWidget):
                 self.editor.setText(str(current))
             if not read_only:
                 self.editor.editingFinished.connect(lambda: self._commit(self.editor.text()))
-        if read_only:
+        if read_only and section.kind != "expression":
+            # ``expression`` is a composite widget, not an editor with a
+            # ``setReadOnly``; it was disabled where it was built.
             self.editor.setReadOnly(True)
             if isinstance(self.editor, QtWidgets.QAbstractSpinBox):
                 self.editor.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
@@ -1299,7 +1320,14 @@ class ValueWidget(_BoundControlMixin, QtWidgets.QWidget):
             self.editor.setSizePolicy(
                 QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding
             )
-        layout.addWidget(self.editor, 1)
+        if section.kind == "expression":
+            # The pair takes a whole form row: packed two-up beside another field
+            # the editor shrinks to showing its last few characters, which is not
+            # a field anyone can read what they typed in.
+            self._autoform_full_row = True
+            layout.addWidget(self.editor, 1)
+        else:
+            layout.addWidget(self.editor, 1)
         if section.kind in ("file", "directory") and not read_only:
             browse = QtWidgets.QToolButton()
             browse.setText("…")
@@ -1316,6 +1344,22 @@ class ValueWidget(_BoundControlMixin, QtWidgets.QWidget):
             self.reveal.toggled.connect(self._toggle_secret)
             layout.addWidget(self.reveal)
         self._apply_tooltip(self, self.editor)
+
+    def eventFilter(self, obj, event):  # noqa: N802 (Qt override)
+        """Commit an ``expression`` field when it loses focus.
+
+        ``ExpressionInput`` emits ``committed`` on Return only. Without this a
+        user who types an equation and clicks elsewhere loses it, which is not
+        how any other field in the form behaves.
+        """
+        if (
+            self._section.kind == "expression"
+            and event.type() == QtCore.QEvent.FocusOut
+            and not getattr(self._section, "read_only", False)
+            and self.editor.is_valid()
+        ):
+            self._commit(self.editor.text())
+        return super().eventFilter(obj, event)
 
     def _toggle_secret(self, checked: bool) -> None:
         """Reveal or mask a ``kind="secret"`` field's contents."""
@@ -2655,8 +2699,12 @@ class ImageMapWidget(QtWidgets.QWidget):
         from chisurf.gui.chiplot import style as S
         from chisurf.gui.chiplot.backends import pyqtgraph_backend as B
 
-        surface = B._PgImageView.__new__(B._PgImageView)
-        surface._iv = self._image
+        # Through the backend's own constructor, not `__new__`: building the
+        # canvas by hand skipped `__init__` and therefore every attribute it
+        # sets, which broke the moment the canvas started tracking what it had
+        # added. (This whole method reaches past the chiplot seam; it belongs
+        # on a chiplot canvas this widget owns — see the chiplot concept.)
+        surface = B._PgImageView.wrap(self._image)
         return surface.add_roi(
             kind=kind, pos=tuple(pos), size=tuple(size), pen=S.to_pen(pen),
             movable=movable, rotatable=rotatable, points=points,

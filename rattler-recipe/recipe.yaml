@@ -45,7 +45,7 @@ build:
       - burst-selection = chisurf.plugins.burst.burst_selection.cli:cli
       - ndxplorer = chisurf.plugins.ndxplorer.cli:cli
       - lltf = chisurf.plugins.fluorescence_decay.lltf.core.cli:cli
-      - sm-image-mle = chisurf.plugins.microscopy.sm_image_mle.cli:cli
+      - region-mle = chisurf.plugins.microscopy.region_mle.cli:cli
       - img-pixel-mle = chisurf.plugins.microscopy.img_pixel_mle.cli:cli
       - clsm = chisurf.plugins.microscopy.clsm.cli:cli
       - psf-determination = chisurf.plugins.microscopy.psf_determination.cli:cli
@@ -125,7 +125,9 @@ requirements:
     # chisurf.core.roi.segmentation.
     # deprecation removed: chisurf.core.decorators.deprecated is the in-tree
     # replacement for the decorator, warning classes and docstring note.
-    - pandas
+    # pandas removed: chisurf.core.datastore (tttrlib.DataStore) is the
+    # storage model everywhere in the tree, and nothing shipped imports
+    # pandas any more (PRD-82). Solved-closure delta: 256 -> 255 packages.
     - scipy
     - numba
     # boost-cpp removed: it was a build-time C++ library that outlived the build
@@ -133,7 +135,10 @@ requirements:
     # -- tttrlib builds against the C++17 standard library -- so shipping it in
     # `run:` installed a compiler dependency into every user's environment.
     - ipython
-    - notebook <7
+    # nbformat backs the shipped notebook editor (lazy import). It used to
+    # arrive transitively via `notebook`, removed with the external Jupyter
+    # server in 2026-08.
+    - nbformat
     - pyopengl
     # guidata/guiqwt removed: guiqwt's users (global_tcspc, surfaceplot) were
     # ported to pyqtgraph, and guidata's DataFrameEditor was replaced by the
