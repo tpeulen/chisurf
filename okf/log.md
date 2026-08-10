@@ -1,6 +1,28 @@
 # Update Log
 
 ## 2026-08-10
+* **Lumis Quest handover: the systems are done, the population and the teaching are not.**
+  Resume point written into [prd-91](prds/prd-91.md) — three open fronts, in order. **(1) There is no
+  tutorial**, and `guide.json` is not one: it is the `?` modal, which a player has to know to press before
+  they know anything, and the prologue is story rather than instruction. Build a `Tutorial` beside
+  `Story`, completing on **game state** (`phase`, `here`, `battle`, `challenge`, `resting`) exactly as
+  story beats do, drawn as a banner — the Qt `guided_tour` helper is the wrong shape for a screen with no
+  widgets. **(2) No NPC is tied to the story**: the three orders exist only as data, so "choose an order"
+  is a menu row rather than a meeting; a small placed cast is needed (an emissary per order in a land that
+  suits their doctrine, a healer at each clinic) with `Npc` growing multi-line dialogue and an `on_talk`.
+  **(3) Villages are too small**: `_village_size` puts buildings on every other tile, a grid of doors with
+  a one-tile alley — nowhere to stand and nowhere to put anyone who is not a keeper. Widening the pitch to
+  3 was started and **not applied**; the note records the cost (the map is already 318x240, and a pitch of
+  3 grows every region by about half again) so the next session measures build time and frame after.
+  Also recorded as a trap, because it bit twice: **the temp-index commit recipe makes the working copy
+  drift**. It correctly avoids stealing another instance's staged work, but it rebases onto HEAD while the
+  on-disk file accumulates separately — `okf/log.md` fell 10 entries behind, known-issues 6 — and the
+  *main* index goes stale so freshly committed files show as **staged deletions** that anyone committing
+  that index would delete. `git reset -- <your paths>` after every such commit, and diff shared files
+  against HEAD. Both were repaired: known-issues restored from HEAD (nothing was working-only), and the
+  log had **one uncommitted entry belonging to another instance** which was spliced on rather than
+  overwritten.
+
 * **Lumis Quest: a premise, an opening, a loading screen, and options — the things a game has.**
   The story is one idea taken seriously: **everything alive carries light**. A creature's brightness is
   how hard it strikes, emitting spends it, one driven dark can be carried home — and knowledge is the same
