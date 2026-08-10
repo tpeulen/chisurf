@@ -53,6 +53,11 @@ dependencies = [
     "pandas",
     "scikit-image",
     "PyOpenGL",
+    # WebGPU, used by the chigame engine (chisurf.gui.chigame). wgpu is the
+    # graphics API; rendercanvas is the per-platform surface and the offscreen
+    # backend the headless render tests depend on.
+    "wgpu",
+    "rendercanvas",
     "labellib",
     "PyYAML",
     "packaging",

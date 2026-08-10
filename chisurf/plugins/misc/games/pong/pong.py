@@ -1,45 +1,80 @@
-import sys
+"""Pong, on the chigame engine.
+
+This replaces a hand-written ``QPainter`` board. The rules, speeds and scoring
+are carried over unchanged so the port is a change of renderer and input model,
+not of the game; what changes is that it draws through
+:mod:`chisurf.gui.chigame` and is driven by the abstract controller, which makes
+it gamepad-playable and scriptable in a headless test.
+
+Pong is the engine's first consumer because it exercises the parts everything
+else needs: per-frame simulation, collision, input, text and audio.
+"""
+
+from __future__ import annotations
+
 import math
 import random
-from qtpy.QtCore import Qt, QBasicTimer, QRectF, QPointF, QTimer
-from qtpy.QtGui import QPainter, QColor, QFont, QPen, QBrush, QRadialGradient, QLinearGradient
-from qtpy.QtWidgets import QFrame, QApplication, QMainWindow, QMessageBox
+
+from qtpy import QtWidgets
+
+from chisurf.gui import chigame
+from chisurf.gui.chigame.input import Action
 
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
-except ImportError:
-    persist_plugin_state = lambda n: lambda c: c
+except ImportError:  # pragma: no cover - stand-alone use
+    def persist_plugin_state(name):
+        """Return an identity decorator when the host is unavailable."""
+        return lambda cls: cls
 
-try:
-    from chisurf.plugins.misc.games.pong.sound import SoundManager
-except ImportError:
-    class SoundManager:
-        def __init__(self): self._muted = True
-        @property
-        def muted(self): return self._muted
-        @muted.setter
-        def muted(self, value): pass
-        def toggle(self): pass
-        def play(self, name): pass
-        def ensure_sounds(self): pass
+#: Play field, in world units. Kept at the original board's pixel dimensions so
+#: every speed and size below carries over without rescaling.
+FIELD_W = 800.0
+FIELD_H = 600.0
 
-WindowWidth = 800
-WindowHeight = 600
+PADDLE_W = 12.0
+PADDLE_H = 90.0
+PADDLE_SPEED = 480.0
 
-PaddleWidth = 12
-PaddleHeight = 90
-PaddleSpeed = 8
+BALL_SIZE = 14.0
+BASE_SPEED_X = 360.0
+BASE_SPEED_Y = 300.0
+CPU_SPEED = 420.0
 
-BallSize = 14
-BaseBallSpeedX = 6
-BaseBallSpeedY = 5
-
-CPU_SPEED = 7
 WIN_SCORE = 7
+SERVE_DELAY = 1.0
+
+#: Arrows drive player one, WASD player two. The default binding table maps both
+#: to the same actions, which is right for a single-player game and wrong here.
+P1_BINDINGS = {
+    "ArrowUp": Action.UP,
+    "ArrowDown": Action.DOWN,
+    "Enter": Action.CONFIRM,
+    " ": Action.CONFIRM,
+    "p": Action.MENU,
+    "r": Action.CANCEL,
+    "m": Action.SHOULDER_L,
+    "n": Action.SHOULDER_R,
+}
+P2_BINDINGS = {"w": Action.UP, "s": Action.DOWN}
 
 
 class Particle:
-    def __init__(self, x, y, vx, vy, color, life=20):
+    """A single impact spark.
+
+    Parameters
+    ----------
+    x, y : float
+        Starting position in world units.
+    vx, vy : float
+        Velocity in world units per second.
+    color : tuple of float
+        sRGB RGB.
+    life : float, optional
+        Lifetime in seconds.
+    """
+
+    def __init__(self, x, y, vx, vy, color, life: float = 0.35) -> None:
         self.x = x
         self.y = y
         self.vx = vx
@@ -48,368 +83,348 @@ class Particle:
         self.life = life
         self.max_life = life
 
-    def update(self):
-        self.x += self.vx
-        self.y += self.vy
-        self.vy += 0.2
-        self.life -= 1
+    def update(self, dt: float) -> None:
+        """Advance the spark.
 
-    def draw(self, painter):
-        alpha = int(255 * self.life / self.max_life)
-        c = QColor(self.color)
-        c.setAlpha(alpha)
-        painter.setPen(Qt.NoPen)
-        painter.setBrush(QBrush(c))
-        size = 3 + 2 * (self.life / self.max_life)
-        painter.drawEllipse(QPointF(int(self.x), int(self.y)), size, size)
+        Parameters
+        ----------
+        dt : float
+            Seconds elapsed.
+        """
+        self.x += self.vx * dt
+        self.y += self.vy * dt
+        self.vy += 600.0 * dt
+        self.life -= dt
 
 
-class PongBoard(QFrame):
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.setFocusPolicy(Qt.StrongFocus)
-        self.setFixedSize(WindowWidth, WindowHeight)
+class PongGame(chigame.Game):
+    """The rules and the drawing.
 
-        self.sound = SoundManager()
+    Holds no Qt and no GPU objects, so the whole game can be stepped in a test
+    with a fixed timestep and no window.
+    """
 
-        self.vsComputer = True
-        self.upPressed = False
-        self.downPressed = False
-        self.wPressed = False
-        self.sPressed = False
+    title = "Pong"
+    background = (0.055, 0.06, 0.115, 1.0)
+    music_context = "battle"
 
-        self.timer = QBasicTimer()
-        self.isStarted = False
-        self.isPaused = False
-        self.serve = True
-        self.serve_timer = 0
-        self.rally_count = 0
+    def setup(self, host) -> None:
+        """Bind controllers and start a game.
 
-        self.playerY = (WindowHeight - PaddleHeight) / 2
-        self.cpuY = (WindowHeight - PaddleHeight) / 2
+        Parameters
+        ----------
+        host : chisurf.gui.chigame.game.GameHost
+            The host running this game.
+        """
+        self.host = host
+        host.keys.bindings = dict(P1_BINDINGS)
+        self.p2 = host.add_player(P2_BINDINGS)
+        host.camera.center[:] = (FIELD_W * 0.5, FIELD_H * 0.5)
+        host.camera.height = FIELD_H
+        self.restart()
 
-        self.ballPos = QPointF(WindowWidth / 2, WindowHeight / 2)
-        self.ballVel = QPointF(0, 0)
+    def restart(self) -> None:
+        """Reset scores, paddles and serve state."""
+        self.player_score = 0
+        self.cpu_score = 0
+        self.rally = 0
+        self.paddle_y = FIELD_H * 0.5
+        self.cpu_y = FIELD_H * 0.5
+        self.particles: list[Particle] = []
+        self.paused = False
+        self.vs_computer = True
+        self.muted = False
+        self.winner: str | None = None
+        self.begin_serve()
 
-        self.playerScore = 0
-        self.cpuScore = 0
+    def begin_serve(self) -> None:
+        """Centre the ball and start the serve countdown."""
+        self.ball_x = FIELD_W * 0.5
+        self.ball_y = FIELD_H * 0.5
+        self.ball_vx = 0.0
+        self.ball_vy = 0.0
+        self.serve_timer = SERVE_DELAY
 
-        self.particles = []
-        self.flash_timer = 0
+    def launch(self) -> None:
+        """Send the ball out at a random angle."""
+        angle = random.uniform(-0.4, 0.4)
+        direction = random.choice((-1.0, 1.0))
+        self.ball_vx = direction * BASE_SPEED_X * math.cos(angle)
+        self.ball_vy = BASE_SPEED_Y * math.sin(angle)
 
-        self.startGame()
+    def spawn_particles(self, x: float, y: float, color, count: int = 12) -> None:
+        """Emit impact sparks.
 
-    def startGame(self):
-        self.playerScore = 0
-        self.cpuScore = 0
-        self.rally_count = 0
-        self.sound.ensure_sounds()
-        self.particles.clear()
-        self.beginServe()
-        self.timer.start(16, self)
-        self.isStarted = True
-        self.isPaused = False
-
-    def beginServe(self):
-        self.serve = True
-        self.serve_timer = 90
-        self.ballPos = QPointF(WindowWidth / 2 - BallSize / 2, WindowHeight / 2 - BallSize / 2)
-        self.ballVel = QPointF(0, 0)
-
-    def resetBall(self):
-        self.beginServe()
-        self.rally_count = 0
-
-    def spawnParticles(self, x, y, color, count=12):
+        Parameters
+        ----------
+        x, y : float
+            Impact point.
+        color : tuple of float
+            sRGB RGB.
+        count : int, optional
+            Number of sparks.
+        """
         for _ in range(count):
-            angle = random.uniform(0, 2 * math.pi)
-            speed = random.uniform(1, 5)
-            self.particles.append(Particle(
-                x, y,
-                math.cos(angle) * speed,
-                math.sin(angle) * speed - 1,
-                color, random.randint(10, 25)
-            ))
-
-    def keyPressEvent(self, event):
-        k = event.key()
-        if k == Qt.Key_P:
-            if not self.isStarted:
-                return
-            self.isPaused = not self.isPaused
-            if self.isPaused:
-                self.timer.stop()
-            else:
-                self.timer.start(16, self)
-            self.update()
-            return
-        if k == Qt.Key_R:
-            self.startGame()
-            return
-        if k == Qt.Key_M:
-            self.vsComputer = not self.vsComputer
-            self.resetBall()
-            self.parent().setWindowTitle(
-                'Pong vs CPU' if self.vsComputer else 'Pong - 2 Players'
+            angle = random.uniform(0, math.tau)
+            speed = random.uniform(60.0, 260.0)
+            self.particles.append(
+                Particle(x, y, math.cos(angle) * speed, math.sin(angle) * speed, color)
             )
-            return
-        if k == Qt.Key_N:
-            self.sound.toggle()
-            status = 'ON' if not self.sound.muted else 'OFF'
-            self.parent().statusBar().showMessage(f'Sound: {status} — Press N to toggle')
-            return
-        if k == Qt.Key_Up:
-            self.upPressed = True
-        elif k == Qt.Key_Down:
-            self.downPressed = True
-        elif k == Qt.Key_W:
-            self.wPressed = True
-        elif k == Qt.Key_S:
-            self.sPressed = True
-        super(PongBoard, self).keyPressEvent(event)
 
-    def keyReleaseEvent(self, event):
-        k = event.key()
-        if k == Qt.Key_Up:
-            self.upPressed = False
-        elif k == Qt.Key_Down:
-            self.downPressed = False
-        elif k == Qt.Key_W:
-            self.wPressed = False
-        elif k == Qt.Key_S:
-            self.sPressed = False
-        super(PongBoard, self).keyReleaseEvent(event)
+    def _sfx(self, name: str, frequency: float) -> None:
+        """Play a sound effect unless muted.
 
-    def timerEvent(self, event):
-        if event.timerId() != self.timer.timerId():
-            return
-        if self.isPaused:
-            return
+        Parameters
+        ----------
+        name : str
+            Effect name.
+        frequency : float
+            Pitch in Hz.
+        """
+        if not self.muted:
+            self.host.audio.sfx(name, frequency)
 
-        if self.serve:
-            self.serve_timer -= 1
-            if self.serve_timer <= 0:
-                self.serve = False
-                self.launchBall()
-            self.update()
+    def update(self, dt: float, keys) -> None:
+        """Advance one frame.
+
+        Parameters
+        ----------
+        dt : float
+            Seconds elapsed.
+        keys : chisurf.gui.chigame.input.InputMap
+            Player one's controller.
+        """
+        if keys.just_pressed(Action.MENU):
+            self.paused = not self.paused
+        if keys.just_pressed(Action.CANCEL):
+            self.restart()
+            return
+        if keys.just_pressed(Action.SHOULDER_L):
+            self.vs_computer = not self.vs_computer
+        if keys.just_pressed(Action.SHOULDER_R):
+            self.muted = not self.muted
+        if self.winner is not None:
+            if keys.just_pressed(Action.CONFIRM):
+                self.restart()
+            return
+        if self.paused:
             return
 
-        if self.upPressed:
-            self.playerY = max(self.playerY - PaddleSpeed, 0)
-        if self.downPressed:
-            self.playerY = min(self.playerY + PaddleSpeed, WindowHeight - PaddleHeight)
+        half = PADDLE_H * 0.5
+        move = keys.axis()[1]
+        self.paddle_y = min(max(self.paddle_y + move * PADDLE_SPEED * dt, half), FIELD_H - half)
 
-        if self.vsComputer:
-            self.moveCPUPaddle()
+        if self.vs_computer:
+            self._move_cpu(dt)
         else:
-            if self.wPressed:
-                self.cpuY = max(self.cpuY - PaddleSpeed, 0)
-            if self.sPressed:
-                self.cpuY = min(self.cpuY + PaddleSpeed, WindowHeight - PaddleHeight)
+            move2 = self.p2.axis()[1]
+            self.cpu_y = min(max(self.cpu_y + move2 * PADDLE_SPEED * dt, half), FIELD_H - half)
 
-        self.moveBall()
-        for p in self.particles[:]:
-            p.update()
-            if p.life <= 0:
-                self.particles.remove(p)
-        if self.flash_timer > 0:
-            self.flash_timer -= 1
-        self.update()
-
-    def launchBall(self):
-        angle = random.uniform(-math.pi / 4, math.pi / 4)
-        direction = 1 if random.choice([True, False]) else -1
-        speed = BaseBallSpeedX + self.rally_count * 0.15
-        self.ballVel = QPointF(
-            math.cos(angle) * speed * direction,
-            math.sin(angle) * speed
-        )
-
-    def moveBall(self):
-        self.ballPos += self.ballVel
-
-        if self.ballPos.y() <= 0:
-            self.ballPos.setY(0)
-            self.ballVel.setY(abs(self.ballVel.y()))
-            self.sound.play('wall_bounce')
-        elif self.ballPos.y() + BallSize >= WindowHeight:
-            self.ballPos.setY(WindowHeight - BallSize)
-            self.ballVel.setY(-abs(self.ballVel.y()))
-            self.sound.play('wall_bounce')
-
-        bx = self.ballPos.x()
-        by = self.ballPos.y()
-        bs = BallSize
-        pr = QRectF(10, self.playerY, PaddleWidth, PaddleHeight)
-        br = QRectF(bx, by, bs, bs)
-
-        if br.intersects(pr) and self.ballVel.x() < 0:
-            offset = ((by + bs / 2) - (self.playerY + PaddleHeight / 2)) / (PaddleHeight / 2)
-            speed = math.hypot(self.ballVel.x(), self.ballVel.y())
-            speed = min(speed + 0.3, BaseBallSpeedX * 3)
-            angle = offset * math.pi / 3
-            self.ballVel = QPointF(abs(math.cos(angle) * speed), math.sin(angle) * speed)
-            self.rally_count += 1
-            self.sound.play('paddle_hit')
-            self.spawnParticles(10 + PaddleWidth, by + bs / 2, QColor(255, 255, 200), 8)
-            self.flash_timer = 4
-
-        cr = QRectF(WindowWidth - PaddleWidth - 10, self.cpuY, PaddleWidth, PaddleHeight)
-        if br.intersects(cr) and self.ballVel.x() > 0:
-            offset = ((by + bs / 2) - (self.cpuY + PaddleHeight / 2)) / (PaddleHeight / 2)
-            speed = math.hypot(self.ballVel.x(), self.ballVel.y())
-            speed = min(speed + 0.3, BaseBallSpeedX * 3)
-            angle = offset * math.pi / 3
-            self.ballVel = QPointF(-abs(math.cos(angle) * speed), math.sin(angle) * speed)
-            self.rally_count += 1
-            self.sound.play('paddle_hit')
-            self.spawnParticles(WindowWidth - 10 - PaddleWidth, by + bs / 2, QColor(255, 200, 255), 8)
-            self.flash_timer = 4
-
-        if bx < -BallSize:
-            self.cpuScore += 1
-            self.sound.play('score')
-            self.spawnParticles(0, by + bs / 2, QColor(255, 100, 100), 20)
-            if self.cpuScore >= WIN_SCORE:
-                self.gameOver("CPU wins!")
-            else:
-                self.resetBall()
-        elif bx > WindowWidth:
-            self.playerScore += 1
-            self.sound.play('score')
-            self.spawnParticles(WindowWidth, by + bs / 2, QColor(100, 255, 100), 20)
-            if self.playerScore >= WIN_SCORE:
-                self.gameOver("You win!")
-            else:
-                self.resetBall()
-
-    def moveCPUPaddle(self):
-        pred_y = self.ballPos.y() + BallSize / 2
-        if self.ballVel.x() > 0:
-            time_to_reach = (WindowWidth - PaddleWidth - 20 - self.ballPos.x()) / abs(self.ballVel.x())
-            pred_y += self.ballVel.y() * time_to_reach
-            pred_y = max(0, min(pred_y, WindowHeight))
-        target = self.cpuY + PaddleHeight / 2
-        diff = pred_y - target
-        if abs(diff) > 15:
-            self.cpuY += CPU_SPEED * (1 if diff > 0 else -1)
-        self.cpuY = max(0, min(self.cpuY, WindowHeight - PaddleHeight))
-
-    def gameOver(self, message):
-        self.timer.stop()
-        self.isStarted = False
-        self.sound.play('game_over')
-        painter = QPainter(self)
-        painter.fillRect(self.rect(), QColor(0, 0, 0, 200))
-        painter.setPen(QColor(255, 255, 255))
-        painter.setFont(QFont('Arial', 48, QFont.Bold))
-        painter.drawText(self.rect(), Qt.AlignCenter, f"{message}\nPress R to restart")
-        painter.end()
-
-    def paintEvent(self, event):
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
-
-        bg = QLinearGradient(0, 0, 0, WindowHeight)
-        bg.setColorAt(0, QColor(10, 10, 30))
-        bg.setColorAt(1, QColor(20, 20, 50))
-        painter.fillRect(self.rect(), QBrush(bg))
-
-        pen = painter.pen()
-        pen.setColor(QColor(60, 60, 100))
-        pen.setWidth(2)
-        painter.setPen(pen)
-        dash_len = 24
-        x_center = WindowWidth // 2
-        y = 0
-        while y < WindowHeight:
-            painter.drawLine(x_center, y, x_center, y + dash_len // 2)
-            y += dash_len
-
-        if self.flash_timer > 0:
-            flash = QColor(255, 255, 255, self.flash_timer * 20)
-            painter.fillRect(self.rect(), flash)
-
-        pad_grad_left = QLinearGradient(0, 0, PaddleWidth, 0)
-        pad_grad_left.setColorAt(0, QColor(100, 200, 255))
-        pad_grad_left.setColorAt(1, QColor(60, 100, 255))
-        painter.setBrush(QBrush(pad_grad_left))
-        painter.setPen(QPen(QColor(200, 230, 255), 1))
-        painter.drawRoundedRect(10, int(self.playerY), PaddleWidth, PaddleHeight, 4, 4)
-
-        if self.vsComputer:
-            pad_grad_right = QLinearGradient(0, 0, PaddleWidth, 0)
-            pad_grad_right.setColorAt(0, QColor(255, 100, 100))
-            pad_grad_right.setColorAt(1, QColor(200, 50, 50))
+        if self.serve_timer > 0.0:
+            self.serve_timer -= dt
+            if self.serve_timer <= 0.0:
+                self.launch()
         else:
-            pad_grad_right = QLinearGradient(0, 0, PaddleWidth, 0)
-            pad_grad_right.setColorAt(0, QColor(255, 200, 100))
-            pad_grad_right.setColorAt(1, QColor(255, 150, 50))
-        painter.setBrush(QBrush(pad_grad_right))
-        painter.drawRoundedRect(
-            WindowWidth - PaddleWidth - 10, int(self.cpuY),
-            PaddleWidth, PaddleHeight, 4, 4
+            self._move_ball(dt)
+
+        for particle in self.particles:
+            particle.update(dt)
+        self.particles = [p for p in self.particles if p.life > 0.0]
+
+    def _move_cpu(self, dt: float) -> None:
+        """Track the ball, leading it when it is incoming.
+
+        Parameters
+        ----------
+        dt : float
+            Seconds elapsed.
+        """
+        target = self.ball_y
+        if self.ball_vx > 0.0:
+            time_to_reach = (FIELD_W - PADDLE_W - 20.0 - self.ball_x) / max(self.ball_vx, 1e-3)
+            target += self.ball_vy * time_to_reach
+        diff = target - self.cpu_y
+        half = PADDLE_H * 0.5
+        if abs(diff) > 6.0:
+            self.cpu_y += CPU_SPEED * dt * (1.0 if diff > 0 else -1.0)
+        self.cpu_y = min(max(self.cpu_y, half), FIELD_H - half)
+
+    def _move_ball(self, dt: float) -> None:
+        """Advance the ball, bounce it, and score it.
+
+        Parameters
+        ----------
+        dt : float
+            Seconds elapsed.
+        """
+        self.ball_x += self.ball_vx * dt
+        self.ball_y += self.ball_vy * dt
+        radius = BALL_SIZE * 0.5
+
+        if self.ball_y - radius <= 0.0:
+            self.ball_y = radius
+            self.ball_vy = abs(self.ball_vy)
+            self._sfx("wall", 420.0)
+        elif self.ball_y + radius >= FIELD_H:
+            self.ball_y = FIELD_H - radius
+            self.ball_vy = -abs(self.ball_vy)
+            self._sfx("wall", 420.0)
+
+        half = PADDLE_H * 0.5
+        player_x = 20.0 + PADDLE_W * 0.5
+        cpu_x = FIELD_W - 20.0 - PADDLE_W * 0.5
+
+        if (
+            self.ball_vx < 0.0
+            and abs(self.ball_x - player_x) <= (PADDLE_W + BALL_SIZE) * 0.5
+            and abs(self.ball_y - self.paddle_y) <= half + radius
+        ):
+            self._bounce(player_x, self.paddle_y, 1.0, (0.35, 0.60, 1.0))
+        elif (
+            self.ball_vx > 0.0
+            and abs(self.ball_x - cpu_x) <= (PADDLE_W + BALL_SIZE) * 0.5
+            and abs(self.ball_y - self.cpu_y) <= half + radius
+        ):
+            self._bounce(cpu_x, self.cpu_y, -1.0, (1.0, 0.35, 0.35))
+
+        if self.ball_x < -BALL_SIZE:
+            self._score("cpu")
+        elif self.ball_x > FIELD_W + BALL_SIZE:
+            self._score("player")
+
+    def _bounce(self, paddle_x: float, paddle_y: float, direction: float, color) -> None:
+        """Reflect the ball off a paddle, steering by where it struck.
+
+        Parameters
+        ----------
+        paddle_x, paddle_y : float
+            Paddle centre.
+        direction : float
+            ``1`` to send the ball right, ``-1`` to send it left.
+        color : tuple of float
+            Spark colour.
+        """
+        offset = (self.ball_y - paddle_y) / (PADDLE_H * 0.5)
+        angle = offset * 0.9
+        speed = math.hypot(self.ball_vx, self.ball_vy) * 1.03
+        self.ball_vx = direction * abs(math.cos(angle) * speed)
+        self.ball_vy = math.sin(angle) * speed
+        self.ball_x = paddle_x + direction * (PADDLE_W + BALL_SIZE) * 0.5
+        self.rally += 1
+        self.spawn_particles(self.ball_x, self.ball_y, color)
+        self._sfx("paddle", 660.0)
+
+    def _score(self, who: str) -> None:
+        """Award a point and either serve again or end the game.
+
+        Parameters
+        ----------
+        who : {'player', 'cpu'}
+            Who scored.
+        """
+        if who == "player":
+            self.player_score += 1
+        else:
+            self.cpu_score += 1
+        self.rally = 0
+        self._sfx("score", 880.0 if who == "player" else 220.0)
+        if self.player_score >= WIN_SCORE:
+            self.winner = "Player"
+        elif self.cpu_score >= WIN_SCORE:
+            self.winner = "CPU" if self.vs_computer else "Player 2"
+        else:
+            self.begin_serve()
+
+    def draw(self, scene) -> None:
+        """Queue the frame.
+
+        Parameters
+        ----------
+        scene : chisurf.gui.chigame.scene.Scene
+            The frame under construction.
+        """
+        net = (0.42, 0.44, 0.62, 0.55)
+        for i in range(16):
+            y = 20.0 + i * (FIELD_H - 40.0) / 15.0
+            scene.draw("ui", "net", at=(FIELD_W * 0.5, y), size=(3.0, 18.0), color=net)
+
+        scene.draw(
+            "ui", "paddle",
+            at=(20.0 + PADDLE_W * 0.5, self.paddle_y),
+            size=(PADDLE_W, PADDLE_H),
+            color=(0.35, 0.60, 1.0, 1.0),
+        )
+        scene.draw(
+            "ui", "paddle",
+            at=(FIELD_W - 20.0 - PADDLE_W * 0.5, self.cpu_y),
+            size=(PADDLE_W, PADDLE_H),
+            color=(1.0, 0.35, 0.35, 1.0),
         )
 
-        ball_grad = QRadialGradient(BallSize / 2, BallSize / 2, BallSize / 2)
-        ball_grad.setColorAt(0, QColor(255, 255, 255))
-        ball_grad.setColorAt(0.6, QColor(255, 255, 200))
-        ball_grad.setColorAt(1, QColor(200, 200, 100))
-        painter.setBrush(QBrush(ball_grad))
-        painter.setPen(Qt.NoPen)
-        painter.drawEllipse(
-            int(self.ballPos.x()), int(self.ballPos.y()),
-            BallSize, BallSize
+        for particle in self.particles:
+            fade = max(particle.life / particle.max_life, 0.0)
+            scene.draw(
+                "ui", "spark",
+                at=(particle.x, particle.y),
+                size=(3.0 + 4.0 * fade, 3.0 + 4.0 * fade),
+                color=(*particle.color, fade),
+            )
+
+        if self.winner is None:
+            scene.draw(
+                "dye", "ball",
+                at=(self.ball_x, self.ball_y),
+                size=(BALL_SIZE, BALL_SIZE),
+                emission_nm=575.0,
+            )
+
+        scene.text(f"Player: {self.player_score}", at=(FIELD_W * 0.30, 26.0), height=22.0, align="center")
+        scene.text(
+            f"{'CPU' if self.vs_computer else 'P2'}: {self.cpu_score}",
+            at=(FIELD_W * 0.70, 26.0), height=22.0, align="center",
         )
+        scene.text(f"Rally: {self.rally}", at=(FIELD_W * 0.5, 56.0), height=14.0,
+                   align="center", color=(0.62, 0.65, 0.80, 1.0))
 
-        for p in self.particles:
-            p.draw(painter)
+        if self.serve_timer > 0.0 and self.winner is None:
+            scene.text(f"{math.ceil(self.serve_timer)}", at=(FIELD_W * 0.5, FIELD_H * 0.5),
+                       height=64.0, align="center", color=(1.0, 0.95, 0.55, 1.0))
+        if self.paused:
+            scene.text("PAUSED", at=(FIELD_W * 0.5, FIELD_H * 0.5), height=48.0,
+                       align="center", color=(1.0, 0.85, 0.30, 1.0))
+        if self.winner is not None:
+            scene.draw("ui", "panel", at=(FIELD_W * 0.5, FIELD_H * 0.5), size=(440.0, 120.0))
+            scene.text(f"{self.winner} wins!", at=(FIELD_W * 0.5, FIELD_H * 0.5 - 16.0),
+                       height=38.0, align="center", color=(1.0, 0.85, 0.30, 1.0))
+            scene.text("Confirm to play again", at=(FIELD_W * 0.5, FIELD_H * 0.5 + 26.0),
+                       height=18.0, align="center")
 
-        painter.setPen(QColor(200, 200, 220))
-        painter.setFont(QFont('Arial', 14))
-        painter.drawText(WindowWidth // 4, 30, f"Player: {self.playerScore}")
-        painter.drawText(WindowWidth * 3 // 4 - 60, 30, f"CPU: {self.cpuScore}")
-
-        info = f"Rally: {self.rally_count}  |  P: pause  R: restart  M: mode  N: sound"
-        painter.setFont(QFont('Arial', 10))
-        painter.setPen(QColor(120, 120, 150))
-        painter.drawText(WindowWidth // 2 - 150, WindowHeight - 10, info)
-
-        if self.isPaused:
-            painter.fillRect(self.rect(), QColor(0, 0, 0, 160))
-            painter.setPen(QColor(255, 255, 255))
-            painter.setFont(QFont('Arial', 36, QFont.Bold))
-            painter.drawText(self.rect(), Qt.AlignCenter, "PAUSED")
-
-        if self.serve and not self.isPaused:
-            painter.setPen(QColor(255, 255, 200))
-            painter.setFont(QFont('Arial', 20, QFont.Bold))
-            t = max(1, self.serve_timer // 15 + 1)
-            painter.drawText(self.rect(), Qt.AlignCenter, f"{t}...")
+        scene.text(
+            "Up/Down move   Menu pause   Cancel restart   L mode   R sound"
+            + ("   [muted]" if self.muted else ""),
+            at=(FIELD_W * 0.5, FIELD_H - 18.0),
+            height=15.0,
+            align="center",
+            color=(0.58, 0.61, 0.75, 1.0),
+        )
 
 
 @persist_plugin_state("pong")
-class Pong(QMainWindow):
-    def __init__(self, parent=None):
+class Pong(QtWidgets.QWidget):
+    """Dockable container hosting the game.
+
+    Parameters
+    ----------
+    parent : QWidget, optional
+        Parent widget.
+    """
+
+    def __init__(self, parent=None) -> None:
         super().__init__(parent)
-        self.initUI()
-
-    def initUI(self):
-        self.board = PongBoard(self)
-        self.setCentralWidget(self.board)
-        self.board.setFocus()
-        self.statusBar().showMessage('↑ ↓ to move | P pause | R restart | M 1p/2p | N sound')
-        self.setFixedSize(WindowWidth, WindowHeight)
-        self.setWindowTitle('Pong vs CPU')
-
-    def closeEvent(self, event):
-        self.board.timer.stop()
-        event.accept()
-        self.deleteLater()
-
-
-if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    pong = Pong()
-    pong.show()
-    sys.exit(app.exec())
+        self.setWindowTitle("Pong")
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        self.game = PongGame()
+        canvas, self.host = chigame.create_widget(self.game, parent=self)
+        layout.addWidget(canvas)
+        self.resize(820, 640)

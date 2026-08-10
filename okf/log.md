@@ -1,6 +1,98 @@
 # Update Log
 
 ## 2026-08-10
+* **chigame: a wgpu 2-D game engine in-tree, proven by porting pong off `QPainter`; PRD-91 rewritten as Lumis Quest.**
+  New subsystem concept [subsystems/chigame](subsystems/chigame.md) and a rewritten
+  [prds/prd-91](prds/prd-91.md). The engine (`chisurf/gui/chigame/`) renders through **WebGPU**
+  and is built around four seams: an **AssetPack** (games emit semantic draw calls —
+  `draw("dye", "atto488")` — so the whole look *and soundtrack* are swappable without touching game
+  code), a **nine-action abstract controller** (four directions, Confirm, Cancel, Menu, two shoulders —
+  which forbids text entry by construction and makes input scriptable), **synthesised context-switched
+  audio**, and **offscreen capture**. It ships **zero art and zero audio binaries**: shapes are
+  signed-distance functions in one WGSL shader, glyphs are rasterised with `QPainter` at startup, music
+  is note data run through a small sequencer, and a fluorophore's colour is derived from its real
+  emission maximum via wavelength→sRGB.
+  **Written rather than depended on**, at the user's direction: pygfx 0.17.0 was cloned to `junk/pygfx`
+  and *read* — ~37,700 lines of Python and 33 WGSL files. What was taken is the boilerplate (device and
+  adapter setup, context configuration, the encoder/render-pass/submit sequence, one instanced draw over
+  an instance buffer); what was skipped is the entire 3-D pipeline, the geometry zoo, the glyph-atlas
+  subsystem, the controllers and the resource change-tracking — recorded in the checkout's
+  `CHISURF-REVIEWED`/`TAKEN`/`SKIPPED` header, **24 insertions and 0 deletions**. `wgpu` and
+  `rendercanvas` *are* kept as dependencies and are now **declared** in `pixi.toml`/`pyproject.toml`;
+  both were previously only incidentally installed, so the tree was importing undeclared packages.
+  **Pong ported and proven by a before/after pair**, captured in `plugins/misc/games/test/renders/`.
+  Legacy grabbed first, in a real mid-rally state (3–2), because the baseline is unrecoverable once the
+  widget is gone. Parity judged on control inventory, not pixels: player score, CPU score, dashed net,
+  both paddles, ball, serve countdown, rally counter, help line, particles, pause/restart/mode/sound and
+  win-at-7 are all present. Deliberate differences: the help line names abstract actions rather than
+  literal keys (the gamepad rule), the ball is a spectral glow rather than a radial gradient, and the
+  legacy frame's **two overlapping help strings** — a defect visible only in the image — became one.
+  Rules, speeds and scoring carry over unchanged; the game holds no Qt and no GPU objects, so its whole
+  simulation steps in a test at a fixed timestep.
+  **Three bugs the screenshots caught that assertions did not**: the cursor "triangle" was a
+  house-shaped trapezoid (the half-width test was wrong); a wide panel's rounded corners bulged into
+  ellipses (the radius was scaled against the longer axis instead of the shorter); and
+  `ProceduralPack.resolve` **silently dropped the documented `color` hint** for `ui` kinds, which turned
+  every pong paddle and spark white while the game code read as correct. All three are now pinned by
+  tests. Two API traps recorded rather than rediscovered: `rendercanvas.qt` raises on import unless a Qt
+  binding is imported first, and the offscreen canvas composes its frame *inside* its own draw callback,
+  so `canvas.draw(fn)` is a `TypeError`.
+  `Pong` is a plain `QWidget` now, so its exception was **struck** from the shrinking `QMainWindow`
+  allow-list in `test/test_tool_window_base.py`; `pong/sound.py` is deleted, superseded by
+  `chigame.audio`.
+  **PRD-91 rewritten in place** (`Doc Review Quest` → **Lumis Quest**): the documentation tree is the
+  overworld, reviewing a page turns a wild room into a **villager**, `spectra.db`'s 455 real dyes are the
+  creature roster and its 449 filters/dichroics/detectors are gear, combat is photophysics (photobleaching
+  is HP, spectral overlap is the type chart, crosstalk is friendly fire, FRET is a combo, FRAP is the
+  healer), crafting runs through the existing `lightpath_simulator` node graph, and the story generator's
+  memory is **its own OKF bundle**. The 2026-08-08 draft's text dungeon is struck. Full decision record
+  and the identified traps are in the concept.
+  Suites: 12 (`test/gui/test_chigame.py`) + 12 (`pong/test/`) + 19 (`test_tool_window_base`,
+  `test_relative_import`, `plugins/misc/games/`) = 43 passed.
+* **`arm64` now runs IMP built from source, and the FRET failure was never the missing class it looked like.**
+  New concept [workflows/imp-local-build](workflows/imp-local-build.md). The conda `imp` 2.24 package ships an
+  **empty** `IMP.bff.restraints`, so `arm64` was rebuilt on IMP **2.25** (`develop-345e71cb9a`) from
+  `/Users/tpeulen/dev/imp` with `modules/bff` symlinked at the `../imp.bff` checkout — conda `imp` removed,
+  one `.pth` putting `cmake-build-arm64/lib` on `sys.path` and setting `IMP_DATA` (a build tree compiles
+  `/usr/local/share/IMP` in, so without it every data lookup raises). RMF and ihm are consumed as *system*
+  dependencies because `site-packages` always precedes `.pth` entries; `cereal` was a missing prerequisite
+  and is installed. **Rebuilds land with no re-install, verified both ways:** IMP symlinks module Python
+  into the build tree, so an edit in `../imp.bff` is live in the env with no build step at all, and a C++
+  edit needs only `ninja`, because the extensions reference their dylibs by absolute path.
+  imp.bff did not compile at first — its vendored `numpy.i` predates SWIG 4.3's third `is_void` argument to
+  `SWIG_Python_AppendOutput`; fixed on a new imp.bff branch `dev` (`124f6bc`, version-adaptive macro, not pushed).
+  **The suite did not move: still 16 failed / 112 passed**, and that is the finding.
+  10 failures are still `AVNetworkRestraintWrapper`, which the local build *does* provide — the class is
+  **shadowed** by `modules/imp-tricks/src/sitecustomize.py`, which inserts imp-tricks at the front of
+  `IMP.bff.__path__`, and a subpackage resolves to the first match, so imp-tricks' `restraints` replaces
+  imp.bff's instead of merging. Same interpreter, same build, dropping one `PYTHONPATH` entry flips it.
+  [known-issues](references/known-issues.md) corrected accordingly ("an IMP API that moved" → shadowing), and
+  [workflows/testing](workflows/testing.md) no longer claims IMP 2.24 from conda or that the IMP-gated tests
+  pass. The fix belongs in imp-tricks, as a namespace merge.
+  Also repaired: IMP's git hooks invoked `envs/IMP_BUILD/bin/python3.12`, an environment deleted long ago.
+* **ChiMOL must also run in a browser, and that decides the renderer: WebGPU, one WGSL source.**
+  New concept [plugins/chimol-web](plugins/chimol-web.md). The obvious shape — keep the OpenGL desktop
+  renderer and add a second WebGL one in JS — was rejected after measurement, because it means two
+  renderers, two GLSL dialects and two implementations of every kernel forever. The fact that settles it:
+  **macOS caps OpenGL at 4.1 and compute shaders need 4.3**, so `GL_COMPUTE_SHADER` raises on this machine;
+  WebGL2 has no compute either (WebGL 2.0 Compute was removed from Chromium). WebGPU is the only API
+  spanning macOS, Linux/Windows and the browser. All three Phase-0 gates passed and **no file under
+  `chisurf/plugins/chimol/` was modified**: `wgpu-py` 0.32.0 embeds as a PyQt5 *subwidget* (870×485 in a real
+  dock layout) on Metal; instanced sphere and capped-cylinder impostors render 148L at **2 triangles per
+  atom** with per-fragment depth (the current GL point-sprite path never writes `gl_FragDepth`, so its
+  spheres are flat billboards), reusing the raytracer's own analytic capsule intersection; and marching
+  cubes as a compute kernel returns **exact** triangle counts against the numba version (32588 = 32588 at
+  96³) with surface area agreeing to 1.7e-09, at 4–19×. Two bonuses that fix long-standing pain:
+  `rendercanvas.offscreen` yields real pixels where GL returns black under `QT_QPA_PLATFORM=offscreen`, and
+  `win.grab()` captures the 3-D surface *and* the Qt chrome together, which the GL path cannot.
+  Kernel routing is by measurement, not category: the distance grid is **229×** on the GPU but marching
+  cubes only 4–19× (atomic-bound, not compute-bound). For Pyodide, a no-op `njit` shim is dead
+  (**300–680×** slower) and mypyc cannot rescue it (**1.04×** on numpy code — it unboxes Python natives, not
+  numpy buffers), so CPU leftovers go to scipy's compiled routines or Pythran/C99 with `-msimd128`.
+  Traps recorded in the concept: the WebGPU surface is **sRGB** while GL's default framebuffer is not, so
+  every colour washes out unless handled; and mesh equality must not be checked by sorting rounded
+  centroids, which reports a correct kernel as wrong. Side-finding logged separately —
+  `surface._compute_distance_grid_nb` is brute-force O(voxels × atoms), **35 s** on hGBP1 at 96³ today.
 * **[PRD-87](prds/prd-87.md) closed: HDBSCAN is in the tree, and scikit-learn is out of every manifest.**
   The last of the six estimators — the only one that was genuinely new work — is
   [`chisurf/core/ml/cluster/_hdbscan.py`](../chisurf/core/ml/cluster/_hdbscan.py): core distances, the

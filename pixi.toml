@@ -58,6 +58,11 @@ numba = "*"
 ipython = "*"
 notebook = "<7"
 pyopengl = "*"
+# WebGPU: the graphics API behind chisurf.gui.chigame, and the platform surface
+# plumbing (Qt embedding, offscreen rendering) that goes with it. Both were only
+# incidentally present before and are now load-bearing.
+wgpu = "*"
+rendercanvas = "*"
 python-docx = "*"
 # scikit-learn and hdbscan were dropped: every estimator the tree reached for —
 # GMM, k-means, PCA/IncrementalPCA, StandardScaler, the surrogate's MLP, and
