@@ -1,6 +1,54 @@
 # Update Log
 
 ## 2026-08-10
+* **The WGSL renderer draws points and lines now, and its spheres are analytic.**
+  It routed only `kind == "mesh"`, so the `lines` and `dots` representations
+  rendered as nothing at all. `wgpu_backend` now routes by geometry kind through
+  three pipelines — `mesh`, `impostor`, `line` — and all three share one
+  `shade()` from the new `wgsl/shading.wgsl`, which `load_wgsl` prepends. WGSL
+  has no `#include`, and the alternative is a copy of the shading model per
+  pipeline, which is the *same* defect as the two constants found last change:
+  a mesh sphere and an impostor sphere are only indistinguishable where they
+  overlap if one function shades both.
+
+  **Sphere impostors are two triangles**, built as a view-space quad from
+  `@builtin(vertex_index)` with no vertex buffer, and they write `frag_depth`
+  from the ray-sphere hit — so they interpenetrate, where GL's point sprites
+  compute a sphere normal but never write depth and are therefore flat
+  billboards. Measured against the tessellated spheres they replace, same scene
+  and camera: **120 triangles against 19,200 (160×)**, silhouette IoU > 0.97,
+  and the near sphere's boundary is a curve rather than its own disc — which is
+  what the depth write buys and what the test asserts.
+
+  **Three shading terms finished, each found by looking at a GL|WGSL pair:**
+  transparency was passing the requested alpha straight through where GL runs it
+  through a Fresnel curve (face-on `0.5 → 0.275`), so a surface at
+  `transparency 0.5` rendered nearly solid; `two_sided_lighting` is **per-object
+  metadata** and was being read as one flag for the frame, which made the
+  `two_sided_on` baseline compare identical to the row without it — a test that
+  could only ever pass; and the environment reflection was a flat 10 % add
+  instead of a Fresnel `mix`.
+
+  **Two defects found on the way, both fixed at the root.** A test module that
+  imported `capture_gl_baseline` for `SCENES` moved `CHISURF_SETTINGS_DIR` at
+  *import*, so a later chimol test read a different display config and failed
+  three tests away with an unrelated assertion; that is `isolate_settings()`,
+  called from `main()`, now. Chasing it turned up the real one: **a key deleted
+  from the packaged defaults is still in every existing user's config**, because
+  the two migration kinds can change a value or move it but not delete it.
+  `sticks.ambient_occlusion` had been removed and was still live on every real
+  profile, while the guard test asserting it was gone passed — it runs on a
+  fresh directory, where it genuinely is. `DISPLAY_CONFIG_KEY_REMOVALS` is the
+  third kind; schema version 11.
+
+  Recorded and not fixed: **the OpenGL point glyph draws at half the size it is
+  asked for** (`dots` requests 8 px, the baseline measures a modal 4 px run;
+  dpr is 1.0 and the point-size range is [1, 64], so neither scaling nor
+  clamping explains it). Fixing it would change what `qtgl` draws and invalidate
+  the baseline in the change that uses it — see
+  [known-issues](references/known-issues.md). Suites: 191 passed, 9 skipped.
+  [chimol-web](plugins/chimol-web.md)
+
 * **Deconvolution: the engine is compiled, and the PSF source was already here.**
   The top item on the [scikit-image mining](references/scikit-image-mining.md)
   take-later list was Richardson–Lucy, with the note that "the algorithm is twenty

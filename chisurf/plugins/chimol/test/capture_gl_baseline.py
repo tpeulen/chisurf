@@ -48,14 +48,25 @@ import tempfile
 import traceback
 from typing import Optional, Sequence
 
-# Must be set before anything builds a QSettings: the main window persists its
-# dock layout, and a restored one hands the 3-D view a strip (see
-# assert_view_usable in screenshot.py). This also keeps a QA run from writing the
-# user's real preferences.
-os.environ.setdefault(
-    "CHISURF_SETTINGS_DIR",
-    tempfile.mkdtemp(prefix="chimol_baseline_settings_"),
-)
+def isolate_settings() -> None:
+    """Point this run's settings at a scratch directory.
+
+    Must run before anything builds a QSettings *or* loads the display config:
+    the main window persists its dock layout, and a restored one hands the 3-D
+    view a strip (see ``assert_view_usable`` in ``screenshot.py``). It also keeps
+    a capture run from writing the user's real preferences.
+
+    Called from :func:`main` rather than at import, because a test module that
+    imports :data:`SCENES` or :func:`missing_resets` must not thereby change the
+    environment for every test that runs after it. It did: importing this module
+    moved ``CHISURF_SETTINGS_DIR`` to a fresh directory, another chimol test read
+    the display config from there instead of from the user's, and the difference
+    surfaced three tests later as an unrelated assertion about occlusion keys.
+    """
+    os.environ.setdefault(
+        "CHISURF_SETTINGS_DIR",
+        tempfile.mkdtemp(prefix="chimol_baseline_settings_"),
+    )
 
 _HERE = pathlib.Path(__file__).resolve().parent
 _DATA = _HERE.parents[3] / "test" / "data" / "atomic_coordinates" / "pdb_files"
@@ -205,6 +216,8 @@ def main(only: Optional[Sequence[str]] = None) -> int:
     """
     # refuses the offscreen platform, where GL has no context and yields black
     from .screenshot import assert_view_usable, ensure_app, shoot
+
+    isolate_settings()
 
     # Before a window opens, not after 23 scenes: a capture run that leaks a
     # setting produces images that look fine and are wrong, and the wrongness

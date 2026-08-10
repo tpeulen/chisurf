@@ -1,12 +1,14 @@
 """Guardrails for the shared-WGSL renderer and the baselines it is judged against.
 
-None of these need a GPU or a window. They cover the two things that made a
-correct renderer look wrong for a day: a baseline capture that leaked a setting
-into the next scene, and a second backend carrying its own copy of the first
-one's lighting constants.
+Everything here but :class:`TestImpostorsOnTheGpu` runs without a GPU or a
+window. They cover the two things that made a correct renderer look wrong for a
+day -- a baseline capture that leaked a setting into the next scene, and a
+second backend carrying its own copy of the first one's lighting constants --
+and the routing and conventions of the pipelines added after it.
 """
 from __future__ import annotations
 
+import numpy as np
 import pytest
 
 from chisurf.plugins.chimol.chimol.renderer.depth_cue import FOG_OFF, fog_planes
@@ -119,3 +121,280 @@ class TestFogPlanes:
         _e1, s1 = fog_planes(100.0, 10.0, {"intensity": 1.0})
         _e2, s2 = fog_planes(100.0, 20.0, {"intensity": 1.0})
         assert s2 == pytest.approx(s1 / 2.0, rel=1e-6)
+
+
+class TestPipelineRouting:
+    """Which pipeline draws which geometry. No GPU needed."""
+
+    @staticmethod
+    def _geom(kind, n=4, indices=None, **kw):
+        from chisurf.plugins.chimol.chimol.renderer.pack import PackedGeometry
+
+        return PackedGeometry(
+            kind=kind,
+            positions=np.zeros((n, 3), dtype=np.float32),
+            indices=indices,
+            **kw,
+        )
+
+    def test_mesh_needs_indices(self):
+        from chisurf.plugins.chimol.chimol.renderer.wgpu_backend import WgpuMeshRenderer
+
+        route = WgpuMeshRenderer.pipeline_for
+        assert route(self._geom("mesh", indices=np.arange(3, dtype=np.uint32))) == "mesh"
+        assert route(self._geom("mesh")) is None
+
+    def test_points_become_impostors(self):
+        from chisurf.plugins.chimol.chimol.renderer.wgpu_backend import WgpuMeshRenderer
+
+        assert WgpuMeshRenderer.pipeline_for(self._geom("points")) == "impostor"
+
+    def test_a_single_vertex_is_not_a_line(self):
+        """A line list needs pairs; an odd tail draws nothing and reports nothing."""
+        from chisurf.plugins.chimol.chimol.renderer.wgpu_backend import WgpuMeshRenderer
+
+        route = WgpuMeshRenderer.pipeline_for
+        assert route(self._geom("line", n=2)) == "line"
+        assert route(self._geom("line", n=1)) is None
+
+    def test_text_is_an_acknowledged_gap(self):
+        """Labels are skipped, and that is recorded rather than silently dropped."""
+        from chisurf.plugins.chimol.chimol.renderer.wgpu_backend import WgpuMeshRenderer
+
+        assert WgpuMeshRenderer.pipeline_for(self._geom("text", n=1)) is None
+
+    def test_point_size_is_a_diameter(self):
+        """``meta["size"]`` is ``gl_PointSize``, so the instance carries half of it."""
+        from chisurf.plugins.chimol.chimol.renderer.wgpu_backend import WgpuMeshRenderer
+
+        packed = WgpuMeshRenderer.interleave_impostors(
+            self._geom("points", n=3, meta={"size": 8.0})
+        )
+        assert packed.shape == (3, 9)
+        assert np.allclose(packed[:, 3], 4.0)
+
+    def test_model_radii_are_used_as_given(self):
+        """A bead's radius is a distance in the model and is not halved."""
+        from chisurf.plugins.chimol.chimol.renderer.wgpu_backend import WgpuMeshRenderer
+
+        packed = WgpuMeshRenderer.interleave_impostors(
+            self._geom("points", n=2, radii=np.full((2, 1), 2.5, dtype=np.float32),
+                       meta={"size": 8.0})
+        )
+        assert np.allclose(packed[:, 3], 2.5)
+
+
+class TestWgslSource:
+    """The shared source, without compiling it."""
+
+    def test_every_entry_point_gets_the_prelude(self):
+        """One shading function, prepended -- not one copy per pipeline.
+
+        WGSL has no ``#include``, so the composition is concatenation, and the
+        thing worth asserting is that no entry-point shader declares its own
+        copy of the model.
+        """
+        from chisurf.plugins.chimol.chimol.renderer.wgpu_backend import (
+            WGSL_DIR,
+            WGSL_PRELUDE,
+            load_wgsl,
+        )
+
+        entry_points = sorted(
+            p.name for p in WGSL_DIR.glob("*.wgsl") if p.name != WGSL_PRELUDE
+        )
+        assert entry_points, "no entry-point shaders found"
+        for name in entry_points:
+            source = load_wgsl(name)
+            assert source.count("struct Uniforms") == 1, name
+            assert "@group(0) @binding(0)" in source, name
+            assert source.count("fn shade(") == 1, name
+            raw = (WGSL_DIR / name).read_text()
+            assert "fn shade(" not in raw, f"{name} declares its own shading model"
+
+
+@pytest.mark.slow
+class TestImpostorsOnTheGpu:
+    """Needs a real adapter, so it is marked slow and skips when there is none."""
+
+    @staticmethod
+    def _renderer(size=320):
+        wgpu = pytest.importorskip("wgpu")
+        from chisurf.plugins.chimol.chimol.renderer.wgpu_backend import WgpuMeshRenderer
+
+        try:
+            return WgpuMeshRenderer(size, size)
+        except Exception as exc:  # pragma: no cover - no adapter in this environment
+            pytest.skip(f"no WebGPU adapter: {exc!r}")
+
+    def test_an_impostor_draws_the_sphere_a_mesh_draws(self):
+        """The same spheres, both ways, must land on the same pixels.
+
+        An impostor is not the cheaper approximation of a tessellation -- it is
+        the exact sphere where the tessellation is a polyhedron -- so a
+        silhouette overlap well short of 1 means the projection, the radius
+        convention or the depth write is wrong, and each of those is invisible
+        in a single-column render.
+        """
+        from chisurf.plugins.chimol.chimol.renderer.pack import (
+            PackedGeometry,
+            PackedObject,
+            PackedScene,
+        )
+        from chisurf.plugins.chimol.chimol.renderer.view_state import pack_view_state
+
+        centre = np.zeros((1, 3), dtype=np.float32)
+        radius = np.array([[4.0]], dtype=np.float32)
+        colour = np.array([[0.9, 0.4, 0.2, 1.0]], dtype=np.float32)
+
+        # A coarse UV sphere, deliberately: if the two agreed only at a fine
+        # tessellation the test would be measuring the tessellation.
+        us, vs = np.meshgrid(
+            np.linspace(0, 2 * np.pi, 48), np.linspace(0, np.pi, 24), indexing="ij"
+        )
+        pts = np.stack(
+            [np.cos(us) * np.sin(vs), np.cos(vs), np.sin(us) * np.sin(vs)], axis=-1
+        ).reshape(-1, 3)
+        faces = []
+        nu, nv = 48, 24
+        for i in range(nu - 1):
+            for j in range(nv - 1):
+                a, b = i * nv + j, (i + 1) * nv + j
+                faces += [[a, b, a + 1], [b, b + 1, a + 1]]
+        mesh = PackedGeometry(
+            kind="mesh",
+            positions=np.ascontiguousarray(pts * 4.0, dtype=np.float32),
+            normals=np.ascontiguousarray(pts, dtype=np.float32),
+            colors=np.repeat(colour, len(pts), axis=0),
+            indices=np.ascontiguousarray(np.array(faces).ravel(), dtype=np.uint32),
+        )
+        impostor = PackedGeometry(
+            kind="points",
+            positions=centre,
+            radii=radius,
+            colors=colour,
+            meta={"glyph": "sphere", "world_radius": True},
+        )
+
+        view = pack_view_state(
+            np.eye(3), distance=40.0, target=(0.0, 0.0, 0.0),
+            near=1.0, far=120.0, fov=20.0,
+        )
+        renderer = self._renderer()
+        images = [
+            renderer.render(
+                PackedScene([PackedObject("o", g)], radius=6.0),
+                view,
+                background=(0.0, 0.0, 0.0),
+                depth_cue={"enabled": False},
+            )
+            for g in (mesh, impostor)
+        ]
+        masks = [img.sum(2) > 30 for img in images]
+        assert masks[1].any(), "the impostor drew nothing"
+        iou = float((masks[0] & masks[1]).sum() / max((masks[0] | masks[1]).sum(), 1))
+        assert iou > 0.97, f"impostor and mesh silhouettes disagree (IoU {iou:.3f})"
+
+    def test_an_impostor_writes_depth_from_the_hit(self):
+        """Two overlapping spheres must interpenetrate, not sort as flat cards.
+
+        A billboard that does not write ``frag_depth`` puts one whole sphere in
+        front of the other, so the nearer one's disc is a complete circle. With
+        per-fragment depth the far sphere cuts into it, and the tell is that the
+        near sphere's own colour covers fewer pixels than its full disc.
+        """
+        from chisurf.plugins.chimol.chimol.renderer.pack import (
+            PackedGeometry,
+            PackedObject,
+            PackedScene,
+        )
+        from chisurf.plugins.chimol.chimol.renderer.view_state import pack_view_state
+
+        # Overlapping, and the far one offset sideways so it emerges.
+        geom = PackedGeometry(
+            kind="points",
+            positions=np.array([[0.0, 0.0, 3.0], [3.5, 0.0, -3.0]], dtype=np.float32),
+            radii=np.array([[5.0], [5.0]], dtype=np.float32),
+            colors=np.array(
+                [[1.0, 0.0, 0.0, 1.0], [0.0, 0.0, 1.0, 1.0]], dtype=np.float32
+            ),
+            meta={"glyph": "sphere", "world_radius": True},
+        )
+        view = pack_view_state(
+            np.eye(3), distance=40.0, target=(0.0, 0.0, 0.0),
+            near=1.0, far=120.0, fov=30.0,
+        )
+        renderer = self._renderer()
+        img = renderer.render(
+            PackedScene([PackedObject("o", geom)], radius=9.0),
+            view,
+            background=(0.0, 0.0, 0.0),
+            depth_cue={"enabled": False},
+        )
+        redder = (img[..., 0].astype(int) - img[..., 2]) > 20
+        bluer = (img[..., 2].astype(int) - img[..., 0]) > 20
+        assert redder.any() and bluer.any(), "one of the two spheres is missing"
+
+        # The far sphere is visible *beside* the near one, and the boundary
+        # between them is a curve rather than the near sphere's own circular
+        # silhouette: measured column by column, the red region's top edge moves.
+        columns = np.flatnonzero(redder.any(axis=0))
+        tops = [int(np.flatnonzero(redder[:, c])[0]) for c in columns]
+        assert max(tops) - min(tops) > 5, "the near sphere is a flat disc"
+
+
+class TestRemovedSettingsAreMigratedAway:
+    """A key deleted from the defaults must also leave existing user configs.
+
+    Found while chasing an unrelated failure: the guard asserting that
+    ``occlusion.enabled`` is the only occlusion switch passes on a **fresh**
+    settings directory, where ``sticks.ambient_occlusion`` is genuinely gone --
+    and every existing profile still had both, because removing a key from the
+    packaged defaults reaches nobody who already has the file.
+    """
+
+    def test_the_dead_occlusion_switch_is_removed_from_an_old_config(self):
+        from chisurf.plugins.chimol.chimol.config import (
+            apply_display_config_migrations,
+        )
+
+        cfg = {"sticks": {"radius": 0.15, "ambient_occlusion": True}}
+        changed = apply_display_config_migrations(cfg, from_version=10)
+        assert "ambient_occlusion" not in cfg["sticks"]
+        assert "sticks.ambient_occlusion (removed)" in changed
+        # Untouched neighbours stay, values and all.
+        assert cfg["sticks"]["radius"] == 0.15
+
+    def test_a_chosen_value_does_not_save_a_removed_key(self):
+        """Unlike a default change, there is no choice to protect.
+
+        Keeping a non-default value would keep exactly the dead second switch
+        the removal exists to delete.
+        """
+        from chisurf.plugins.chimol.chimol.config import (
+            apply_display_config_migrations,
+        )
+
+        cfg = {"sticks": {"ambient_occlusion": False}}
+        apply_display_config_migrations(cfg, from_version=10)
+        assert cfg["sticks"] == {}
+
+    def test_a_current_config_is_left_alone(self):
+        from chisurf.plugins.chimol.chimol.config import (
+            DISPLAY_CONFIG_VERSION,
+            apply_display_config_migrations,
+        )
+
+        cfg = {"sticks": {"ambient_occlusion": True}}
+        changed = apply_display_config_migrations(cfg, from_version=DISPLAY_CONFIG_VERSION)
+        assert changed == []
+        assert "ambient_occlusion" in cfg["sticks"]
+
+    def test_every_removal_is_at_or_below_the_current_version(self):
+        """A removal stamped past the version never runs."""
+        from chisurf.plugins.chimol.chimol.config import (
+            DISPLAY_CONFIG_KEY_REMOVALS,
+            DISPLAY_CONFIG_VERSION,
+        )
+
+        assert max(DISPLAY_CONFIG_KEY_REMOVALS) <= DISPLAY_CONFIG_VERSION

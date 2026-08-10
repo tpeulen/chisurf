@@ -58,15 +58,35 @@ GL on the left and WGSL on the right. Baselines and their cameras live in
    *The bug that was not in the renderer* below; the four affected baselines are
    re-captured and `compare_wgsl bg_white bg_grey_spectrum cartoon
    nucleic_cartoon` now matches on all four rows.
-3. **Impostors.** Sphere and capped-cylinder impostors were prototyped and proven
-   in Phase 0 (148L at **2 triangles/atom** with per-fragment depth, reusing the
-   raytracer's own analytic capsule intersection) but are **not yet in
-   `wgpu_backend.py`**, which draws only `kind == "mesh"`. Wiring them in is the
-   biggest single visual win: the tessellated sphere path costs 374,112 triangles
-   on 148L against ~2,770.
-4. **Remaining features**, each with a `compare_wgsl` pair: depth cue/fog,
-   silhouettes, labels (`kind == "text"`, currently skipped entirely).
-5. **Then embed in the Qt dock.** `rendercanvas`'s `QRenderWidget` is verified
+3. ✅ **Done — impostors, lines and points are in `wgpu_backend.py`.** It routes
+   by geometry `kind` through three pipelines (`mesh`, `impostor`, `line`), all
+   sharing one `shade()` from `wgsl/shading.wgsl`, which `load_wgsl` prepends —
+   WGSL has no `#include` and a second copy of the shading model is the drift
+   this port keeps finding. Sphere impostors are **two triangles per sphere**,
+   built as a view-space quad from `@builtin(vertex_index)` with no vertex
+   buffer, and they **write `frag_depth` from the ray-sphere hit**, so they
+   interpenetrate where GL's point sprites are flat billboards. Measured
+   against the tessellated spheres they replace, same scene, same camera:
+   **120 triangles against 19,200 (160×), silhouette IoU > 0.97**, guarded by
+   `test_wgsl_parity.py::TestImpostorsOnTheGpu`.
+4. **What is left of the feature list.** Done since: depth cue/fog (`depth_cue.py`),
+   transparency's Fresnel alpha curve, `two_sided_lighting` (which is **per
+   object** metadata, not a frame-wide flag — taking it as one flag made the
+   `two_sided_on` row compare identical to the row without it, a test that could
+   only pass). Still open: **silhouettes** (the `postprocess.py` pass), **labels**
+   (`kind == "text"`, skipped entirely — `pipeline_for` returns `None` and a test
+   pins that as a known gap), and **wide lines** (`meta["width"]`; WebGPU's
+   `line-list` is 1 px only, so a width needs expanding to quads).
+5. **The atomic sphere path still emits a mesh.** `balls.impostor_min_atoms`
+   applies to *beads* only, so `spheres_impostor` and `spheres_mesh` produce
+   **byte-identical** 374,112-triangle geometry and neither baseline exercises
+   the impostor path. Routing atomic spheres through it is the 374,112 → ~2,770
+   win, and it is a change to the scene builder (`renderer/view.py`), not to this
+   backend — which means it changes what **GL** draws too, and needs its
+   baselines re-captured in the same change. There is still no bead-model
+   baseline scene; the impostor path is currently proven by a synthetic scene
+   rather than by a captured one.
+6. **Then embed in the Qt dock.** `rendercanvas`'s `QRenderWidget` is verified
    embeddable under PyQt5 (870×485 in a real dock layout). Only after that does
    `qtgl.py` get retired.
 
@@ -150,6 +170,21 @@ renderers get it.
   baseline is the half nobody re-derives. Before spending a day inside a shader,
   render the *same* scene both ways with the suspected setting forced each way —
   three panels, one image, one minute.
+- **A test module that imports the capture harness moves the settings
+  directory.** `capture_gl_baseline` used to call `os.environ.setdefault(
+  "CHISURF_SETTINGS_DIR", mkdtemp())` at *import*, so importing it for `SCENES`
+  or `missing_resets` changed which display config every later test in the
+  process read — and the damage surfaced three tests away as an unrelated
+  assertion about occlusion keys. It is in `isolate_settings()`, called from
+  `main()`, now. See [global-setting-test-isolation] for the general shape: one
+  process-wide dict means one test can break a *different file*.
+- **A setting deleted from the packaged defaults is still in every existing
+  user's config.** `DISPLAY_CONFIG_MIGRATIONS` changes a value and
+  `DISPLAY_CONFIG_KEY_MOVES` moves one; neither can delete, so a removal reached
+  nobody who already had the file. `sticks.ambient_occlusion` had been "removed"
+  and was still live on every real profile, while the guard test asserting it was
+  gone passed — because it runs on a fresh directory.
+  `DISPLAY_CONFIG_KEY_REMOVALS` (version 11) is the third migration kind.
 - **Compare order-independent summaries** (area, centroid, bbox) for meshes, not
   sorted rounded centroids — f32-vs-f64 flips ties and reports a correct kernel
   as wrong.

@@ -14,7 +14,7 @@ try:
 except Exception:  # pragma: no cover - moview can run without chisurf
     _cs_settings = None
 
-DISPLAY_CONFIG_VERSION: int = 10
+DISPLAY_CONFIG_VERSION: int = 11
 """Current version of the chimol_display.json schema.
 
 Increment this when keys are added, renamed, or removed, **or when a default
@@ -139,6 +139,29 @@ DISPLAY_CONFIG_KEY_MOVES: dict[int, tuple[tuple[str, str, str, str, object], ...
     ),
 }
 
+#: Keys deleted outright, by the version that deleted them:
+#: ``{version: ((section, key), ...)}``.
+#:
+#: Deleting a key from the packaged defaults reaches **nobody who already has a
+#: copy of the file**, and the two migration kinds above cannot express a
+#: deletion: one changes a value and the other moves it somewhere. So a removed
+#: setting stayed in every existing user's config, still reachable through
+#: ``set``, still stored on change, and read by nothing.
+#:
+#: That is not hypothetical. ``sticks.ambient_occlusion`` was removed as a dead
+#: second switch for what ``occlusion.enabled`` governs, and the guard test that
+#: asserts there is only one such switch passed anyway -- because it runs against
+#: a *fresh* settings directory, where the key is genuinely gone. On an existing
+#: profile both switches were still there. A deletion needs a migration for the
+#: same reason a default change does.
+DISPLAY_CONFIG_KEY_REMOVALS: dict[int, tuple[tuple[str, str], ...]] = {
+    11: (
+        # Registered, reachable, stored, and read by nothing -- sticks bake no
+        # occlusion at all, so there was never anything for it to switch on.
+        ("sticks", "ambient_occlusion"),
+    ),
+}
+
 
 _update_listeners: list[Callable[[], None]] = []
 """Registered callbacks to notify when display config is reloaded."""
@@ -255,6 +278,22 @@ def apply_display_config_migrations(cfg: dict, from_version: int) -> list[str]:
                     cfg[new_section] = target
                 target[new_key] = value
             changed.append(f"{old_section}.{old_key} -> {new_section}.{new_key}")
+
+    # Deletions last: a key that a later version removes may well be one an
+    # earlier version moved or re-defaulted, and running the removals first
+    # would make those entries silently no-ops.
+    for version in sorted(DISPLAY_CONFIG_KEY_REMOVALS):
+        if version <= int(from_version or 0):
+            continue
+        for section, key in DISPLAY_CONFIG_KEY_REMOVALS[version]:
+            block = cfg.get(section)
+            if isinstance(block, dict) and key in block:
+                # Removed whatever the value is. Unlike a default change, there
+                # is no "the user chose this" case to protect: the setting is
+                # gone, and keeping a chosen value for it would keep exactly the
+                # dead second switch the removal exists to delete.
+                block.pop(key)
+                changed.append(f"{section}.{key} (removed)")
     return changed
 
 

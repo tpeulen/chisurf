@@ -1,3 +1,24 @@
+## The OpenGL point glyph renders at half the size it is asked for
+
+**Found 2026-08-10** while porting point geometry to the WebGPU backend, by
+comparing the same scene through both renderers.
+
+`dots` on 148L carries `meta["size"] = 8.0`. `qtgl` sets both `gl_PointSize` and
+`glPointSize` to `size * devicePixelRatioF()`, and the fragment shader keeps the
+inscribed circle of the sprite, so the dot should be **8 px across**. Measured on
+`test/renders/gl_baseline/dots_view.png`, the modal lit run per row is **4 px**
+(2,112 rows at 4, tailing off by 8). Ruled out: the device pixel ratio is
+genuinely `1.0` for both the window and the GL widget, and
+`GL_ALIASED_POINT_SIZE_RANGE` is `[1, 64]`, so neither scaling nor clamping
+explains it. Apple's GL-over-Metal sprite path is the remaining suspect.
+
+**Not fixed here, deliberately.** The fix would change what `qtgl` draws and
+invalidate the `dots` baseline in the same change that uses that baseline as a
+reference. The WebGPU renderer already draws the documented size (8 px for
+`size = 8`), so this is a difference the port *corrects*; it is recorded here so
+the next person comparing the two does not read the correct half as a regression.
+Whoever retires `qtgl` retires this with it.
+
 ## `test/gui` crashes the interpreter mid-run, and 20 of its failures are contamination
 
 **2026-08-10.** `pytest test/gui` dies with `Bus error: 10` (exit 138) at around
