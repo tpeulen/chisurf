@@ -60,12 +60,14 @@ class PixelView:
         *,
         log_x: bool = False,
         log_y: bool = False,
+        invert_x: bool = False,
         invert_y: bool = False,
     ):
         self.x_range = list(x_range)
         self.y_range = list(y_range)
         self.log_x = log_x
         self.log_y = log_y
+        self.invert_x = invert_x
         self.invert_y = invert_y
 
     # -- forward --------------------------------------------------------
@@ -146,6 +148,8 @@ class PixelView:
         ay = self._to_axis(ys, self.log_y)
         nx = 2.0 * (ax - xlo) / (xhi - xlo) - 1.0
         ny = 2.0 * (ay - ylo) / (yhi - ylo) - 1.0
+        if self.invert_x:
+            nx = -nx
         if self.invert_y:
             ny = -ny
         return nx, ny
@@ -168,6 +172,8 @@ class PixelView:
         ix, iy, pw, ph = margins.plot_rect(w, h)
         nx = 2.0 * (px - ix) / max(pw, 1) - 1.0
         ny = 1.0 - 2.0 * (py - iy) / max(ph, 1)
+        if self.invert_x:
+            nx = -nx
         if self.invert_y:
             ny = -ny
         return (self._from_ndc(nx, self.x_range, self.log_x),

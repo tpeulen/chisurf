@@ -580,6 +580,84 @@ def test_hovering_a_region_highlights_it_like_pyqtgraph(qapp):
     assert region._hover is None
 
 
+def _menu_labels(menu):
+    """Return ``{entry: [child labels]}`` for a menu tree."""
+    out = {}
+    for action in menu.actions():
+        if action.isSeparator():
+            continue
+        sub = action.menu()
+        out[action.text()] = ([a.text() for a in sub.actions() if not a.isSeparator()]
+                              if sub is not None else None)
+    return out
+
+
+def test_the_menu_offers_what_pyqtgraph_offers(qapp):
+    """The panel's own menu, not a two-entry stand-in.
+
+    A native backend is only a swap if nothing about *using* a plot changes, and
+    the menu is most of that: pyqtgraph gives View All, an X and a Y submenu
+    (mouse, auto/manual with min/max editors, invert, log), Mouse Mode, and
+    grouped plot options. chiplot injects its exports at the end, which is why
+    the backend reports a native menu rather than letting chiplot draw its own.
+    """
+    canvas = _interactive_canvas()
+    canvas.add_menu_action("Export data as CSV…", lambda: None)
+    assert canvas.provides_native_menu() is True
+
+    labels = _menu_labels(canvas.build_context_menu())
+    assert "View all" in labels
+    assert "Export data as CSV…" in labels
+    for axis in ("X axis", "Y axis"):
+        assert axis in labels
+        entries = labels[axis]
+        for wanted in ("Mouse enabled", "Auto", "Manual", "Invert axis", "Log scale"):
+            assert wanted in entries, f"{axis}: {wanted}"
+    assert set(labels["Mouse mode"]) == {"3 button (pan)", "1 button (zoom)"}
+    assert "Grid" in labels["Plot options"]
+
+
+def test_disabling_an_axis_pins_it(qapp):
+    """``Mouse enabled`` is per axis, as pyqtgraph's X/Y menus have it."""
+    canvas = _interactive_canvas()
+    canvas.set_mouse_enabled(x=False)
+    before = canvas.get_range()
+    canvas._view.x_range = canvas._zoom(canvas._view.x_range, 1.0, 1.2,
+                                        canvas._view.log_x) \
+        if canvas._mouse_enabled_x else canvas._view.x_range
+    assert tuple(canvas._view.x_range) == tuple(before[0])
+
+
+def test_the_legend_can_be_dragged(qapp):
+    """Drag the legend, the way pyqtgraph's ``LegendItem`` moves.
+
+    A legend parked on the data with no way to move it is worse than none, and
+    the drag must not also pan the view underneath it.
+    """
+    canvas = _interactive_canvas()
+    canvas.add_curve([0.0, 1.0], [1.0, 2.0], pen=S.to_pen("orange"), name="data")
+    canvas.add_legend(offset=(8, 8))
+    widget = canvas.widget()
+    widget.resize(400, 300)
+    widget.grab()  # a paint places the legend
+    assert canvas._legend_rect is not None
+
+    start = canvas._legend_rect.topLeft()
+    before_range = canvas.get_range()
+    canvas._mouse_press(_FakeMouse((start.x() + 8, start.y() + 6),
+                                   QtCore.Qt.LeftButton))
+    assert canvas._legend_drag is not None, "the press must grab the legend"
+    canvas._mouse_move(_FakeMouse((start.x() - 60, start.y() + 40),
+                                  buttons=QtCore.Qt.LeftButton))
+    canvas._mouse_release(_FakeMouse((start.x() - 60, start.y() + 40),
+                                     QtCore.Qt.LeftButton))
+    widget.grab()
+
+    assert canvas._legend_rect.x() < start.x()
+    assert canvas._legend_rect.y() > start.y()
+    assert canvas.get_range() == before_range, "dragging the legend must not pan"
+
+
 def test_the_middle_button_drives_the_view_like_the_left_one(qapp):
     """Pyqtgraph handles left and middle in one branch; so does this.
 

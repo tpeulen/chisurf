@@ -293,6 +293,12 @@ class _WgpuCanvas(base.Canvas):
         self._grid_alpha = 0.3
         self._show_legend = False
         self._legend_offset = (8, 8)
+        self._legend_rect = None
+        self._legend_drag = None
+        #: Where the user dragged the legend to, or ``None`` for the default
+        #: corner. pyqtgraph's ``LegendItem`` is draggable, and a legend that
+        #: sits on the data with no way to move it is worse than none.
+        self._legend_pos = None
         self._bg = S.Color(0, 0, 0)
         self._aspect_locked = False
         self._aspect_ratio = 1.0
@@ -301,6 +307,12 @@ class _WgpuCanvas(base.Canvas):
         self._invert_y = False
         self._axis_visible = {"left": True, "bottom": True, "right": False, "top": False}
         self._interactive_mouse = True
+        # Per axis, as pyqtgraph's X/Y menus offer: a user pinning one axis and
+        # exploring the other is the whole point of the option.
+        self._mouse_enabled_x = True
+        self._mouse_enabled_y = True
+        self._curve_alpha = 1.0
+        self._left_pans_override = None
         self._menu_enabled = True
         self._click_callbacks: list[Callable] = []
         self._mouse_move_callbacks: list[Callable] = []
@@ -587,9 +599,16 @@ class _WgpuCanvas(base.Canvas):
         row = fm.height() + 3
         text_w = max(fm.horizontalAdvance(n) for n, _ in entries)
         bw, bh = text_w + 34, row * len(entries) + 8
-        ox, oy = self._legend_offset
-        x0 = ix + pw - bw - ox
-        y0 = iy + oy
+        if self._legend_pos is not None:
+            x0, y0 = self._legend_pos
+            # Keep it reachable when the panel shrinks under it.
+            x0 = min(max(x0, ix), ix + pw - bw)
+            y0 = min(max(y0, iy), iy + ph - bh)
+        else:
+            ox, oy = self._legend_offset
+            x0 = ix + pw - bw - ox
+            y0 = iy + oy
+        self._legend_rect = QtCore.QRectF(x0, y0, bw, bh)
         painter.fillRect(QtCore.QRectF(x0, y0, bw, bh), QtGui.QColor(0, 0, 0, 140))
         painter.setPen(QtGui.QPen(_AXIS_COLOR, 1))
         painter.drawRect(QtCore.QRectF(x0 + 0.5, y0 + 0.5, bw - 1, bh - 1))
@@ -748,6 +767,9 @@ class _WgpuCanvas(base.Canvas):
         self._press_button = None
         self._press_pos = None
         self._dragged = False
+        if self._legend_drag is not None:
+            self._legend_drag = None
+            return
         if self._rubber is not None:
             self._rubber = None
             self._widget.update()
@@ -796,12 +818,32 @@ class _WgpuCanvas(base.Canvas):
                     return hd, "value"
         return None, None
 
+    def set_mouse_enabled(self, *, x: bool | None = None,
+                          y: bool | None = None) -> None:
+        """Enable or disable mouse interaction per axis, as pyqtgraph does."""
+        if x is not None:
+            self._mouse_enabled_x = bool(x)
+        if y is not None:
+            self._mouse_enabled_y = bool(y)
+
+    def set_left_button_pans(self, pans: bool) -> None:
+        """Choose pyqtgraph's *3 button* (pan) or *1 button* (zoom) mode.
+
+        Set on the panel rather than in the settings file: the menu is a
+        per-plot choice, and writing a global preference from a right-click
+        would change every other panel behind the user's back.
+        """
+        self._left_pans_override = bool(pans)
+
     def _left_button_pans(self) -> bool:
         """Whether a left drag pans, or draws a zoom rectangle.
 
-        The same preference the other backend reads, so the two renderers do
-        not answer the same gesture differently.
+        The panel's own mode wins when the menu has set one; otherwise the
+        preference the other backend reads, so the two renderers do not answer
+        the same gesture differently.
         """
+        if self._left_pans_override is not None:
+            return self._left_pans_override
         try:
             from chisurf.core.settings import cs_settings
 
@@ -839,6 +881,16 @@ class _WgpuCanvas(base.Canvas):
             if self._auto_btn_rect.contains(QtCore.QPointF(px, py)):
                 self.auto_range()
                 return
+
+        if (event.button() == QtCore.Qt.LeftButton and self._show_legend
+                and self._legend_rect is not None
+                and self._legend_rect.contains(QtCore.QPointF(px, py))):
+            self._legend_drag = (px - self._legend_rect.x(),
+                                 py - self._legend_rect.y())
+            self._press_button = event.button()
+            self._press_pos = (px, py)
+            self._dragged = False
+            return
 
         self._press_button = event.button()
         self._press_pos = (px, py)
@@ -962,10 +1014,20 @@ class _WgpuCanvas(base.Canvas):
             sx = 1.02 ** -(px - lx)
             sy = 1.02 ** (py - ly)
             ax, ay = self._scale_anchor or (dx, dy)
-            self._view.x_range = self._zoom(self._view.x_range, ax, sx, self._view.log_x)
-            self._view.y_range = self._zoom(self._view.y_range, ay, sy, self._view.log_y)
+            if self._mouse_enabled_x:
+                self._view.x_range = self._zoom(self._view.x_range, ax, sx,
+                                                self._view.log_x)
+            if self._mouse_enabled_y:
+                self._view.y_range = self._zoom(self._view.y_range, ay, sy,
+                                                self._view.log_y)
             self._auto_range_x = self._auto_range_y = False
             self._fire_range_changed()
+            self._widget.update()
+            return
+
+        if self._legend_drag is not None:
+            gx, gy = self._legend_drag
+            self._legend_pos = (px - gx, py - gy)
             self._widget.update()
             return
 
@@ -1005,10 +1067,12 @@ class _WgpuCanvas(base.Canvas):
             sx, sy = self._pan_start
             _, _, pw, ph = self._margins.plot_rect(w, h)
             xr0, yr0 = self._pan_range_start
-            self._view.x_range = self._shift(xr0, -(px - sx) / max(pw, 1),
-                                             self._view.log_x)
-            self._view.y_range = self._shift(yr0, (py - sy) / max(ph, 1),
-                                             self._view.log_y)
+            if self._mouse_enabled_x:
+                self._view.x_range = self._shift(xr0, -(px - sx) / max(pw, 1),
+                                                 self._view.log_x)
+            if self._mouse_enabled_y:
+                self._view.y_range = self._shift(yr0, (py - sy) / max(ph, 1),
+                                                 self._view.log_y)
             self._auto_range_x = self._auto_range_y = False
             self._fire_range_changed()
             self._widget.update()
@@ -1032,8 +1096,12 @@ class _WgpuCanvas(base.Canvas):
         px, py = self._event_pos(event)
         w, h = self._widget.width(), self._widget.height()
         mx, my = self._view.pixel_to_data(px, py, w, h, self._margins)
-        self._view.x_range = self._zoom(self._view.x_range, mx, factor, self._view.log_x)
-        self._view.y_range = self._zoom(self._view.y_range, my, factor, self._view.log_y)
+        if self._mouse_enabled_x:
+            self._view.x_range = self._zoom(self._view.x_range, mx, factor,
+                                            self._view.log_x)
+        if self._mouse_enabled_y:
+            self._view.y_range = self._zoom(self._view.y_range, my, factor,
+                                            self._view.log_y)
         self._auto_range_x = self._auto_range_y = False
         self._fire_range_changed()
         self._widget.update()
@@ -1085,19 +1153,181 @@ class _WgpuCanvas(base.Canvas):
             parent = parent.parent()
         self._context_menu(global_pos)
 
+    def _axis_menu(self, parent, axis: str) -> QtWidgets.QMenu:
+        """Build pyqtgraph's per-axis submenu: mouse, auto/manual, invert."""
+        is_x = axis == "x"
+        menu = QtWidgets.QMenu(f"{axis.upper()} axis", parent)
+
+        mouse = menu.addAction("Mouse enabled")
+        mouse.setCheckable(True)
+        mouse.setChecked(self._mouse_enabled_x if is_x else self._mouse_enabled_y)
+        mouse.toggled.connect(
+            lambda on, a=axis: self.set_mouse_enabled(**{a: on}))
+
+        menu.addSeparator()
+        group = QtWidgets.QActionGroup(menu)
+        auto = menu.addAction("Auto")
+        auto.setCheckable(True)
+        auto.setActionGroup(group)
+        auto.setChecked(self._auto_range_x if is_x else self._auto_range_y)
+        manual = menu.addAction("Manual")
+        manual.setCheckable(True)
+        manual.setActionGroup(group)
+        manual.setChecked(not auto.isChecked())
+        auto.triggered.connect(lambda _=False, a=axis: self._enable_axis_auto(a))
+
+        # The min/max editors pyqtgraph puts in the same submenu. Editing one
+        # is what switches the axis to manual, so the radio above follows the
+        # action rather than needing to be clicked first.
+        lo, hi = self.get_range()[0 if is_x else 1]
+        row = QtWidgets.QWidget(menu)
+        layout = QtWidgets.QHBoxLayout(row)
+        layout.setContentsMargins(24, 2, 8, 2)
+        layout.setSpacing(4)
+        editors = []
+        for value in (lo, hi):
+            box = QtWidgets.QLineEdit(f"{value:g}", row)
+            box.setValidator(QtGui.QDoubleValidator(box))
+            box.setMaximumWidth(90)
+            layout.addWidget(box)
+            editors.append(box)
+
+        def _apply_manual(*_, a=axis, boxes=editors):
+            try:
+                values = (float(boxes[0].text()), float(boxes[1].text()))
+            except ValueError:
+                return
+            self.set_range(**{a: values})
+            manual.setChecked(True)
+
+        for box in editors:
+            box.editingFinished.connect(_apply_manual)
+        holder = QtWidgets.QWidgetAction(menu)
+        holder.setDefaultWidget(row)
+        menu.addAction(holder)
+
+        menu.addSeparator()
+        invert = menu.addAction("Invert axis")
+        invert.setCheckable(True)
+        invert.setChecked(self._view.invert_x if is_x else self._view.invert_y)
+        invert.toggled.connect(
+            self.invert_x if is_x else self.invert_y)
+
+        log = menu.addAction("Log scale")
+        log.setCheckable(True)
+        log.setChecked(self._view.log_x if is_x else self._view.log_y)
+        log.toggled.connect(lambda on, a=axis: self.set_log(**{a: on}))
+        return menu
+
+    def _plot_options_menu(self, parent) -> QtWidgets.QMenu:
+        """Build the grid and transparency options pyqtgraph groups together."""
+        menu = QtWidgets.QMenu("Plot options", parent)
+
+        grid = QtWidgets.QMenu("Grid", menu)
+        for label, axis in (("Show X", "x"), ("Show Y", "y")):
+            act = grid.addAction(label)
+            act.setCheckable(True)
+            act.setChecked(self._show_grid_x if axis == "x" else self._show_grid_y)
+            act.toggled.connect(lambda on, a=axis: self._toggle_grid(a, on))
+        grid.addAction(self._slider_action(
+            grid, "Opacity", int(self._grid_alpha * 100),
+            lambda v: self.set_grid(x=self._show_grid_x, y=self._show_grid_y,
+                                    alpha=v / 100.0)))
+        menu.addMenu(grid)
+
+        menu.addAction(self._slider_action(
+            menu, "Curve alpha", int(self._curve_alpha * 100),
+            self._set_curve_alpha))
+        return menu
+
+    def _slider_action(self, parent, label: str, value: int,
+                       on_change) -> QtWidgets.QWidgetAction:
+        """Return a labelled 0-100 slider that lives inside a menu."""
+        row = QtWidgets.QWidget(parent)
+        layout = QtWidgets.QHBoxLayout(row)
+        layout.setContentsMargins(8, 2, 8, 2)
+        layout.setSpacing(6)
+        layout.addWidget(QtWidgets.QLabel(label, row))
+        slider = QtWidgets.QSlider(QtCore.Qt.Horizontal, row)
+        slider.setRange(0, 100)
+        slider.setValue(value)
+        slider.setMinimumWidth(110)
+        slider.valueChanged.connect(on_change)
+        layout.addWidget(slider)
+        action = QtWidgets.QWidgetAction(parent)
+        action.setDefaultWidget(row)
+        return action
+
+    def _toggle_grid(self, axis: str, on: bool) -> None:
+        """Turn one grid direction on or off, leaving the other alone."""
+        self.set_grid(x=on if axis == "x" else self._show_grid_x,
+                      y=on if axis == "y" else self._show_grid_y,
+                      alpha=self._grid_alpha)
+
+    def _set_curve_alpha(self, percent: int) -> None:
+        """Fade every curve, the way pyqtgraph's Alpha group does."""
+        self._curve_alpha = max(0.0, min(percent / 100.0, 1.0))
+        with self._lock:
+            handles = list(self._handles)
+        for hd in handles:
+            setter = getattr(hd, "set_opacity", None)
+            if setter is not None:
+                setter(self._curve_alpha)
+        self._widget.update()
+
+    def _enable_axis_auto(self, axis: str) -> None:
+        """Re-arm auto-range on one axis and refit it."""
+        if axis == "x":
+            self._auto_range_x = True
+        else:
+            self._auto_range_y = True
+        self._recompute_auto_range()
+        self._fire_range_changed()
+        self._widget.update()
+
+    def build_context_menu(self, parent=None) -> QtWidgets.QMenu:
+        """Return the panel's context menu.
+
+        Modelled on pyqtgraph's, because the point of a native backend is that
+        nothing about using a plot changes underneath the user: *View All*, an
+        X and a Y submenu (mouse, auto/manual with min/max editors, invert,
+        log), *Mouse Mode*, and the grid/alpha options it groups under plot
+        options. Entries registered through ``add_menu_action`` — chiplot puts
+        its CSV and image exports there — follow at the end.
+        """
+        menu = QtWidgets.QMenu(parent or self._widget)
+        menu.addAction("View all").triggered.connect(self.auto_range)
+        menu.addSeparator()
+        menu.addMenu(self._axis_menu(menu, "x"))
+        menu.addMenu(self._axis_menu(menu, "y"))
+
+        mode = QtWidgets.QMenu("Mouse mode", menu)
+        group = QtWidgets.QActionGroup(mode)
+        pans = self._left_button_pans()
+        for label, wants_pan in (("3 button (pan)", True), ("1 button (zoom)", False)):
+            act = mode.addAction(label)
+            act.setCheckable(True)
+            act.setActionGroup(group)
+            act.setChecked(pans is wants_pan)
+            act.triggered.connect(
+                lambda _=False, p=wants_pan: self.set_left_button_pans(p))
+        menu.addMenu(mode)
+
+        menu.addMenu(self._plot_options_menu(menu))
+
+        if self._menu_actions:
+            menu.addSeparator()
+            for label, cb in self._menu_actions:
+                menu.addAction(label).triggered.connect(cb)
+        return menu
+
     def _context_menu(self, global_pos):
-        """Show the backend's own menu (used when no chiplot Plot hosts us)."""
+        """Show the panel's menu at a screen position."""
         if not self._menu_enabled:
             return
         if hasattr(global_pos, "globalPos"):  # an event was passed
             global_pos = global_pos.globalPos()
-        menu = QtWidgets.QMenu(self._widget)
-        for label, cb in self._menu_actions:
-            menu.addAction(label).triggered.connect(cb)
-        if self._menu_actions:
-            menu.addSeparator()
-        menu.addAction("Auto range").triggered.connect(self.auto_range)
-        menu.exec_(global_pos)
+        self.build_context_menu().exec_(global_pos)
 
     def _fire_range_changed(self):
         """Notify listeners and propagate to linked panels."""
@@ -1329,6 +1559,11 @@ class _WgpuCanvas(base.Canvas):
         self._view.invert_y = bool(invert)
         self._widget.update()
 
+    def invert_x(self, invert=True) -> None:
+        """Draw the x axis increasing leftwards."""
+        self._view.invert_x = bool(invert)
+        self._widget.update()
+
     def set_axis_visible(self, side, visible) -> None:
         """Show or hide one axis's chrome."""
         self._axis_visible[side] = visible
@@ -1366,8 +1601,8 @@ class _WgpuCanvas(base.Canvas):
         self._menu_enabled = menu
 
     def provides_native_menu(self) -> bool:
-        """Whether the renderer supplies its own context menu."""
-        return False
+        """Return True: this backend ships the rich menu, so chiplot injects into it."""
+        return True
 
     def add_menu_action(self, label, callback) -> None:
         """Add an entry to the context menu."""

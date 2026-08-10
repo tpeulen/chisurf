@@ -366,6 +366,29 @@ chosen a split of their own, after which theirs stands. Measured at 1.619 /
 1.613 / 1.625 for window heights of 600 / 400 / 260; below about 200 px the
 strips reach their floor and the ratio necessarily gives way.
 
+## The menu is the backend's, and the legend moves
+
+`provides_native_menu()` returns **True** for the native backend, which is what
+the flag was built for: chiplot then injects its CSV and image exports into the
+backend's menu instead of drawing a small one of its own. Reporting `False`
+meant a right-click gave two entries where pyqtgraph gives a page of them.
+
+The menu mirrors pyqtgraph's: *View all*; an **X** and a **Y** submenu with
+mouse-enabled, auto/manual (with the min/max editors in the submenu, where
+editing one switches the axis to manual), invert and log; *Mouse mode* with
+3-button and 1-button; and plot options grouping the grid toggles, grid opacity
+and a curve-alpha slider. Mouse-enabled is genuinely **per axis** — pan, wheel
+and right-drag all consult it — because pinning one axis while exploring the
+other is the point of the option.
+
+Mouse mode is set on the *panel*, not written to the settings file: a
+right-click is a per-plot choice, and persisting it would change every other
+panel behind the user's back.
+
+**The legend is draggable**, as `LegendItem` is. It is grabbed before the pan
+gesture, so moving it never pans the view underneath, and it is clamped back
+inside the plot rectangle when the panel shrinks under it.
+
 # Where to pick this up — the WebGPU backend
 
 `backends/wgpu/` draws every family the A/B script exercises (decay on a log
