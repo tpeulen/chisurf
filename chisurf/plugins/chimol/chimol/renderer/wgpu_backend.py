@@ -195,6 +195,9 @@ class WgpuMeshRenderer:
         #: `id` cannot be recycled under the entry.
         self._vertex_cache: "OrderedDict[tuple, tuple]" = OrderedDict()
         self._overlay_cache = None
+        #: Uniform buffers and bind groups, by draw position. Rewritten each
+        #: frame rather than reallocated; see :meth:`_uniform_slot`.
+        self._uniform_pool: list = []
 
         self._bind_layout = self.device.create_bind_group_layout(
             entries=[
@@ -681,6 +684,78 @@ class WgpuMeshRenderer:
             geom.meta.get("size"), bool(geom.meta.get("world_radius", False)),
         )
 
+    def _uniform_slot(self, index: int, values: np.ndarray):
+        """A uniform buffer and its bind group for the ``index``-th draw.
+
+        Parameters
+        ----------
+        index : int
+            Position in this frame's draw order.
+        values : bytes or numpy.ndarray
+            The uniform block's contents.
+
+        Returns
+        -------
+        tuple
+            ``(buffer, bind_group)``, both reused across frames.
+
+        Notes
+        -----
+        Rotating a molecule changes one matrix. Everything else the frame needs
+        -- the vertices, the colours, the overlay -- is already on the device and
+        unchanged, so the only honest per-frame work is writing that matrix and
+        encoding the pass. Creating a fresh uniform buffer and a fresh bind group
+        for every object of every frame is neither: it is an allocation and a
+        descriptor build sixty times a second to carry two hundred bytes that
+        could have been written in place.
+
+        Pooled by draw position rather than by object, because the contents are
+        rewritten wholesale anyway and a pool indexed by position needs no
+        invalidation at all -- the worst a stale slot can do is be overwritten.
+        """
+        wgpu = self._wgpu
+        payload = memoryview(values).cast("B") if isinstance(values, (bytes, bytearray)) else values
+        size_needed = len(values) if isinstance(values, (bytes, bytearray)) else int(values.nbytes)
+        while len(self._uniform_pool) <= index:
+            buffer = self.device.create_buffer(
+                size=size_needed,
+                usage=wgpu.BufferUsage.UNIFORM | wgpu.BufferUsage.COPY_DST,
+            )
+            group = self.device.create_bind_group(
+                layout=self._bind_layout,
+                entries=[{
+                    "binding": 0,
+                    "resource": {"buffer": buffer, "offset": 0, "size": buffer.size},
+                }],
+            )
+            self._uniform_pool.append((buffer, group, size_needed))
+
+        buffer, group, size = self._uniform_pool[index]
+        if size != size_needed:
+            # The block only changes size if the shader's layout does, which is
+            # a code change, not a frame-to-frame event.
+            self._uniform_pool[index] = (buffer, group, size) = (
+                *self._uniform_slot_rebuild(size_needed), size_needed
+            )
+        self.device.queue.write_buffer(buffer, 0, payload)
+        return buffer, group
+
+    def _uniform_slot_rebuild(self, size_needed: int):
+        """Allocate a replacement uniform buffer and bind group."""
+        wgpu = self._wgpu
+        buffer = self.device.create_buffer(
+            size=int(size_needed),
+            usage=wgpu.BufferUsage.UNIFORM | wgpu.BufferUsage.COPY_DST,
+        )
+        group = self.device.create_bind_group(
+            layout=self._bind_layout,
+            entries=[{
+                "binding": 0,
+                "resource": {"buffer": buffer, "offset": 0, "size": buffer.size},
+            }],
+        )
+        return buffer, group
+
     def _vertex_buffer(self, geom, kind: str):
         """The interleaved vertex buffer for a geometry, built once.
 
@@ -726,6 +801,7 @@ class WgpuMeshRenderer:
         """
         self._vertex_cache.clear()
         self._overlay_cache = None
+        self._uniform_pool.clear()
 
     def upload_overlay(self, image: np.ndarray):
         """Upload a premultiplied RGBA chrome image and return its texture.
@@ -1019,6 +1095,7 @@ class WgpuMeshRenderer:
         )
 
         current = None
+        slot_index = 0
         for obj, kind in ordered:
             geom = obj.geometry
             opacity = _opacity(obj)
@@ -1029,8 +1106,9 @@ class WgpuMeshRenderer:
                 current = pipeline
 
             vbo = self._vertex_buffer(geom, kind)
-            ubo = self.device.create_buffer_with_data(
-                data=self._uniforms(
+            ubo, bind = self._uniform_slot(
+                slot_index,
+                self._uniforms(
                     mvp, view, proj, normal_matrix, fog_end, fog_scale,
                     background,
                     # Per object, as in GL: `two_sided_lighting` reaches the
@@ -1043,15 +1121,8 @@ class WgpuMeshRenderer:
                     opacity, point_scale,
                     bool(geom.meta.get("world_radius", False)), light,
                 ),
-                usage=wgpu.BufferUsage.UNIFORM,
             )
-            bind = self.device.create_bind_group(
-                layout=self._bind_layout,
-                entries=[{"binding": 0, "resource": {"buffer": ubo, "offset": 0, "size": ubo.size}}],
-            )
-            # `vbo` is owned by the cache and must not be dropped with the
-            # frame; `ubo` and `bind` change every frame and must be.
-            keep += [ubo, bind]
+            slot_index += 1
             rp.set_bind_group(0, bind)
             rp.set_vertex_buffer(0, vbo)
 

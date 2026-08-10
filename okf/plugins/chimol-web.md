@@ -728,6 +728,48 @@ rendered frame is **identical**: a six-representation sheet built each way
 differs in zero pixels above a threshold of 6. The traced image differs from the
 numba tracer's in 0.012 % of pixels, all on silhouette edges.
 
+**And on the actual nuclear pore it was 1030 ms a frame, of which the molecule
+was two.** Reported as "can hardly rotate". Loading `PDBDEV_00000012` — 31 MB,
+234,184 beads — rather than a synthetic stand-in is what found it, because the
+cost was in the *sequence strip*, which a synthetic scene does not have:
+
+| | |
+|---|---|
+| `_ca_rgba`, projecting per-atom colours onto residues in a Python loop | **683 ms** |
+| building 234k Python tuples for the strip's colours | **395 ms** |
+| drawing the geometry | ~2 ms |
+
+Both ran on **every repaint**, because the strip re-reads the colouring every
+frame — colouring is a command with no change signal. `_draw` is **1.9 ms** now.
+
+- `_ca_rgba` is array code: a `searchsorted` for the atom→residue map, bincounts
+  for the sums, and `np.unique` on a stable order for "the first CA wins".
+- Its structure-derived half is cached separately from its result, because only
+  the *colours* change per frame — uppercasing 234k atom names is 50 ms on its
+  own.
+- **`res_ids` is not unique**, and that is a real defect this work did not fix:
+  an integrative model numbers residues within each chain, so the pore has
+  234,184 slots carrying **1,667 distinct ids**, and the map keeps whichever slot
+  comes *last*. Almost every residue therefore projects to NaN. The rewrite
+  reproduces last-wins exactly so that a change for speed is only that; see
+  [known-issues](/references/known-issues.md).
+
+**The caching mistake worth not repeating: identity is the wrong key here.**
+The vertex buffers next door are keyed on array *addresses*, which is sound
+because the scene builder replaces arrays. The colour arrays are **re-derived in
+place**, so identity survives a change it must not survive — keyed that way,
+6.2 % of a render sheet came back rainbow where it should have been grey,
+carrying `spectrum count` over from the previous scene. It was visible only in
+the image; the percentage on its own said nothing. They are keyed on a content
+hash now, which costs ~3 ms and is paid ten times a second because the chrome is
+throttled, not sixty.
+
+**Nothing is left in the frame but a matrix.** Vertex buffers, the overlay
+texture, and — last — the uniform buffers and bind groups, which were still
+being allocated per object per frame to carry two hundred bytes. They are pooled
+by draw position and rewritten with `write_buffer`; a pool indexed by position
+needs no invalidation, since the worst a stale slot can do is be overwritten.
+
 **The interactive frame was 66 % chrome.** Rotating a quarter-million-bead model
 cost 21 ms a frame at a Retina viewport, and the molecule was the smaller half of
 it: 9.6 ms rasterising the panel, the sequence strip and the labels, plus 4.2 ms

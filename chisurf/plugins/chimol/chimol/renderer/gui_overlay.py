@@ -21,6 +21,9 @@ plainly visible on screen.
 """
 from __future__ import annotations
 
+import hashlib
+
+import numpy as np
 from qtpy import QtCore, QtGui
 
 __all__ = [
@@ -71,7 +74,24 @@ def refresh_gui_state(gui, controller) -> None:
             continue
         if colours is None:
             continue
+        # Converting the array to a list of tuples is 234k tuples and 700k
+        # `float()` calls on an integrative model -- 395 ms, on every repaint,
+        # to produce the same list as last time. The colours only change when a
+        # command replaces the array, so its address is the signal: same buffer,
+        # same list. Content is deliberately not hashed; that would cost more
+        # than the conversion it avoids.
+        # Content, not address. The colour arrays are re-derived by the colour
+        # commands rather than replaced, so identity survives a change it must
+        # not survive -- keyed on the address, a scene came back in the previous
+        # one's colours. The hash is paid once per chrome repaint, which is ten
+        # times a second, not sixty.
+        signature = hashlib.blake2b(
+            np.ascontiguousarray(colours).view(np.uint8), digest_size=16
+        ).digest()
+        if getattr(row, "_colors_from", None) == signature:
+            continue
         row.colors = [tuple(float(c) for c in rgba[:3]) for rgba in colours]
+        row._colors_from = signature
 
     try:
         current = int(controller.get_current_frame()) + 1

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import logging
+import hashlib
 import math
 import time
 from collections import OrderedDict
@@ -7373,6 +7374,71 @@ class MolView(QtWidgets.QWidget):
         bonded[flat] = True
         return ~bonded
 
+    def _residue_projection(self, atoms, res_ids, n_points):
+        """Which residue slot each atom belongs to, and which atoms are CAs.
+
+        Parameters
+        ----------
+        atoms : numpy.ndarray
+            The atom record array.
+        res_ids : numpy.ndarray
+            ``(n_points,)`` residue ids, one per residue slot.
+        n_points : int
+            Number of residue slots.
+
+        Returns
+        -------
+        tuple
+            ``(is_ca, matched, i_res)`` — a per-atom CA mask, a per-atom mask of
+            atoms whose residue id was found, and the slot each belongs to.
+
+        Notes
+        -----
+        Cached, because none of it depends on the *colours* and all of it is
+        expensive: uppercasing a quarter of a million atom names is 50 ms and
+        the sort behind `np.unique` another 22, paid on every chrome repaint
+        because the sequence strip re-reads the colouring every frame. Keyed on
+        the arrays' addresses -- a structure change replaces them.
+
+        ``res_ids`` is **not** unique. An integrative model numbers residues
+        within each chain, so the eight-spoke nuclear pore has 234,184 residue
+        slots carrying 1,667 distinct ids, and the dict this grew out of mapped
+        an id to whichever slot came *last* -- which is why almost every residue
+        of that structure projects to NaN. That is a real defect, recorded in
+        known-issues; what matters here is that a rewrite for speed returns the
+        same arbitrary answer, so ``target`` reproduces last-wins exactly rather
+        than the first-wins a plain ``searchsorted`` would give.
+        """
+        atom_res = np.asarray(atoms["res_id"])
+        names = atoms.dtype.names or ()
+        key = (
+            atoms.ctypes.data, atoms.shape,
+            res_ids.ctypes.data, res_ids.shape, int(n_points),
+        )
+        cached = getattr(self, "_residue_projection_cache", None)
+        if cached is not None and cached[0] == key:
+            return cached[1]
+
+        if "atom_name" in names:
+            labels = np.asarray(atoms["atom_name"]).astype(str)
+            is_ca = np.char.upper(np.char.strip(labels)) == "CA"
+        else:
+            is_ca = np.zeros(atom_res.shape[0], dtype=bool)
+
+        distinct, inverse = np.unique(res_ids, return_inverse=True)
+        target = np.zeros(distinct.shape[0], dtype=np.int64)
+        target[inverse] = np.arange(n_points)
+
+        slot = np.searchsorted(distinct, atom_res)
+        within = slot < distinct.shape[0]
+        matched = np.zeros(atom_res.shape[0], dtype=bool)
+        matched[within] = distinct[slot[within]] == atom_res[within]
+        i_res = np.where(matched, target[np.clip(slot, 0, distinct.shape[0] - 1)], 0)
+
+        projection = (is_ca, matched, i_res)
+        self._residue_projection_cache = (key, projection)
+        return projection
+
     def _ca_rgba(self, n_points: int) -> np.ndarray | None:
         """Per-residue RGBA projected down from the per-atom override.
 
@@ -7422,33 +7488,54 @@ class MolView(QtWidgets.QWidget):
         if res_ids.shape[0] != n_points:
             return None
 
-        is_ca = (
-            np.asarray([str(v).strip().upper() == "CA" for v in atoms["atom_name"]])
-            if "atom_name" in names
-            else np.zeros(atom_res.shape[0], dtype=bool)
-        )
+        # The sequence strip re-reads this on every chrome repaint -- colouring
+        # is a *command* and there is no signal for it -- so on a quarter of a
+        # million residues the whole projection was being redone sixty times a
+        # second.
+        #
+        # Keyed on the override's **content**, not its address. That is the
+        # opposite of the vertex-buffer cache next door, and deliberately: this
+        # array is re-derived in place by the colour commands, so its identity
+        # survives a change it must not survive. Keying on the address returned
+        # the previous scene's colours -- 6.2 % of a render sheet came back
+        # rainbow where it should have been grey, because `spectrum count` from
+        # the scene before was still cached. A hash of 7.5 MB is ~3 ms and the
+        # chrome repaints ten times a second, not sixty.
+        digest = hashlib.blake2b(
+            np.ascontiguousarray(ov).view(np.uint8), digest_size=16
+        ).digest()
+        result_key = (digest, ov.shape, id(atoms), id(res_ids), int(n_points))
+        cached = getattr(self, "_ca_rgba_cache", None)
+        if cached is not None and cached[0] == result_key:
+            return cached[1]
 
-        out = np.empty((n_points, 4), dtype=float)
-        # One pass over the atoms rather than one selection per residue: on a
-        # ribosome the per-residue version is the whole frame budget.
-        order = {int(rid): i for i, rid in enumerate(res_ids)}
-        sums = np.zeros((n_points, 4), dtype=float)
-        counts = np.zeros(n_points, dtype=int)
+        is_ca, matched, i_res = self._residue_projection(atoms, res_ids, n_points)
+
+        # Every step below used to be a Python loop over the atoms, and on an
+        # integrative model that is a quarter of a million of them -- 683 ms,
+        # paid on *every chrome repaint*, which is what made rotating the
+        # nuclear pore run at 8 fps while the molecule itself drew in 2 ms.
+        # There is nothing sequential here; it is a scatter and two reductions.
+        usable = matched & np.isfinite(ov).all(axis=1)
+        counts = np.bincount(i_res[usable], minlength=n_points)
+        sums = np.empty((n_points, 4), dtype=float)
+        for channel in range(4):
+            sums[:, channel] = np.bincount(
+                i_res[usable], weights=ov[usable, channel], minlength=n_points
+            )
+
+        # The CA of a residue wins over the mean of its atoms, and the *first*
+        # CA wins over any later one -- `np.unique` on a stable order is what
+        # picks that out, where the loop relied on a `ca_seen` flag.
+        ca_atoms = np.flatnonzero(usable & is_ca)
         ca_seen = np.zeros(n_points, dtype=bool)
         ca_cols = np.zeros((n_points, 4), dtype=float)
-        for i_atom, rid in enumerate(atom_res):
-            i_res = order.get(int(rid))
-            if i_res is None:
-                continue
-            col = ov[i_atom]
-            if not np.isfinite(col).all():
-                continue
-            sums[i_res] += col
-            counts[i_res] += 1
-            if is_ca[i_atom] and not ca_seen[i_res]:
-                ca_seen[i_res] = True
-                ca_cols[i_res] = col
+        if ca_atoms.size:
+            first_residues, first_atoms = np.unique(i_res[ca_atoms], return_index=True)
+            ca_seen[first_residues] = True
+            ca_cols[first_residues] = ov[ca_atoms[first_atoms]]
 
+        out = np.empty((n_points, 4), dtype=float)
         empty = counts == 0
         with np.errstate(invalid="ignore"):
             out[:] = sums / np.maximum(counts, 1)[:, None]
@@ -7460,6 +7547,8 @@ class MolView(QtWidgets.QWidget):
         # wholesale, so a fallback colour would flatten the colour mode and the
         # per-residue override for every residue the user did not name.
         out[empty] = np.nan
+        out.flags.writeable = False
+        self._ca_rgba_cache = (result_key, out)
         return out
 
     def _cartoon_atom_mask(self) -> np.ndarray | None:

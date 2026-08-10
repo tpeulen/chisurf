@@ -1,6 +1,32 @@
 # Update Log
 
 ## 2026-08-10
+* **The nuclear pore rotated at one frame per second, and the molecule was two
+  milliseconds of it.** Loading the real `PDBDEV_00000012` (31 MB, 234,184
+  beads) instead of a synthetic stand-in is what found it: the cost was in the
+  *sequence strip*, which a synthetic scene does not have. Per repaint,
+  `_ca_rgba` spent **683 ms** projecting per-atom colours onto residues in a
+  Python loop and the strip spent **395 ms** building 234k Python tuples -- both
+  on every frame, because the strip re-reads the colouring every frame and
+  colouring is a command with no change signal. `_draw` is **1.9 ms** now.
+  `_ca_rgba` is array code (searchsorted for the atom->residue map, bincounts
+  for the sums, `np.unique` on a stable order for first-CA-wins), its
+  structure-derived half is cached apart from its result, and the last per-frame
+  allocations -- a uniform buffer and a bind group per object -- are pooled by
+  draw position and rewritten in place.
+  **The caching mistake is the part worth keeping.** The vertex buffers are keyed
+  on array *addresses*, which is sound because the scene builder replaces arrays.
+  The colour arrays are re-derived **in place**, so identity survives a change it
+  must not survive: keyed that way, 6.2 % of a render sheet came back rainbow
+  where it should have been grey, carrying `spectrum count` over from the
+  previous scene. Only the image showed it; the percentage said nothing. Content
+  hash now -- ~3 ms, paid ten times a second because the chrome is throttled.
+  **A real defect found and deliberately not fixed here:** `res_ids` is not
+  unique. An integrative model numbers residues within each chain, so the pore
+  has 234,184 residue slots carrying 1,667 distinct ids and the map keeps
+  whichever comes *last* -- almost every residue projects to NaN. The rewrite
+  reproduces last-wins exactly so that a change for speed is only that.
+
 * **ndxplorer stops offering a Numba checkbox for a library it no longer has --
   and verifying that found a break in the commit before it.** The
   `Use Numba JIT Compilation` checkbox, `NDXPLORER_USE_NUMBA`, the `use_numba`
