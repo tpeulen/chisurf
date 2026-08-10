@@ -39,7 +39,7 @@ GUI widgets become pure **view**: no data processing, no DB/`tttrlib` calls, no 
 # Definition of Done
 - [ ] Widgets are view-only (no DB/`tttrlib`); construction is read-only.
 - [x] A shared dockable-tool base is used by the transformer tools; Load/Save/docks are not re-implemented per plugin. *(Done 2026-08-10: every tool window in `chisurf/` is a `ChisurfDockTool`; `test/test_tool_window_base.py` fails on a new `QMainWindow` subclass.)*
-- [ ] Every tool has a construction smoke test; new transformers must add one.
+- [x] Every tool has a construction smoke test; new transformers must add one. *(Done 2026-08-10: `test/gui/test_every_tool_constructs.py` discovers all 114 tools from the manifests and builds each in its own process, so a new plugin is covered the moment it declares `entrypoints.gui`.)*
 
 # Definition of Clean
 Layer purity (view ↔ api/RPC); no side effects on construction; GUI smoke tests mandatory; reuse the base, don't fork.
@@ -72,7 +72,17 @@ Two things fell out of the migration:
 
 **The guard.** `test/test_tool_window_base.py` is an AST check (no Qt, no display) that fails on any new direct `QMainWindow` subclass, against a **shrinking** allowlist of the five non-tools — plus a second test that fails when an allowlist entry goes stale, so the list cannot quietly grow a hiding place. Smoke tests for the migrated windows: `test/gui/test_migrated_tool_windows.py`.
 
-**Still to do:** Tasks 2 and 3 for the tools beyond the reference transformers — residual `tttrlib`/DB logic in `gui/`, and a construction smoke test for *every* tool rather than the migrated ones. The detector wizard is a `QWizardPage`, not a `QMainWindow`, so it does not fit this base and needs its own answer.
+**Task 3 finished (2026-08-10): one discovery-driven test replaces 114 hand-written ones.** `test/gui/test_every_tool_constructs.py` reads every plugin manifest, and builds each tool that declares `entrypoints.gui` **in its own subprocess** — which is not fastidiousness: a tool that blocks would wedge the session and one that segfaults would take the suite with it, and both kinds exist. Marked `slow` (process startup × 114 ≈ 13 min), so it is run deliberately with `--run-slow`.
+
+Measured on the first full run: **111 of 114 construct, 1 blocks, 2 segfault**, and **none** opens a metadata-store connection while constructing — so Task 4's rule holds everywhere the guard can see. The three exceptions are tracked in the test's shrinking `BLOCKING`/`CRASHING` sets, which fail if a listed tool starts working, and written up in [known issues](../references/known-issues.md):
+
+- `mmfdb_admin` fires four blocking RPCs from `__init__` (`mmfdb.status` ×2, `mmfdb.users.list`, `mmfdb.security.auth.login`), so with no server it freezes ~20 s. Not fixed here on purpose: `_verify_admin_access` is a permission gate, and where it should fire when there is no server is a design decision, not a mechanical deferral.
+- `psf_calculator` and `lightpath_simulator` segfault while constructing; both start background work in `__init__`.
+- Fixed in passing: `acq` crashed outright, because it keyed "are we inside chisurf?" on `import chisurf` succeeding — which it always does — rather than on `chisurf.cs` existing.
+
+**One bug the guard found in the infrastructure, not in a tool.** `chisurf/core/settings/env_bootstrap.py` prepended the environment's `lib` to `DYLD_LIBRARY_PATH` on macOS. dyld reads that once at process start, so it did nothing for the process that set it and silently overrode library resolution for every **child** — where Qt's font engine then bus-errors on the first `create_text_icon`. It presented as "one tool crashes, but only when the parent is pytest". Only the harmless `DYLD_FALLBACK_LIBRARY_PATH` remains; `test/test_env_bootstrap_dyld.py` guards both halves, and `test/fio` + `test/core` still pass 1629 tests with zero loader errors.
+
+**Still to do:** Task 2 for the tools beyond the reference transformers (residual `tttrlib`/DB logic in `gui/`), the three tracked construction defects, and the detector wizard — a `QWizardPage`, not a `QMainWindow`, so it does not fit this base and needs its own answer.
 
 # Relationships
 - Enforces the GUI half of [PRD-16](prd-16.md) (transformer contract); adds construction smoke tests as a conformance checklist item.

@@ -984,21 +984,29 @@ class SMAcquisitionManager:
         Args:
             standalone_main_window: If provided, use this as main window instead of chisurf
         """
-        # Check if chisurf is available
+        # Find a window to host the acquisition views. The question is whether a
+        # main window *exists*, not whether chisurf imports: chisurf always
+        # imports, but ``chisurf.cs`` is None until the GUI builds its main
+        # window, so keying on ImportError made this crash at
+        # ``self.main_window._acquisition_manager = self`` whenever the tool was
+        # opened without one (headless, a test, or before the window is up).
         try:
             import chisurf
-            self.chisurf_available = True
-            self.main_window = chisurf.cs
-            logger.info("Running in chisurf mode")
+            host = getattr(chisurf, 'cs', None)
         except ImportError:
-            self.chisurf_available = False
-            if standalone_main_window is None:
-                raise RuntimeError("chisurf not available and no standalone main window provided")
-            self.main_window = standalone_main_window
-            logger.info("Running in standalone mode")
+            host = None
+        self.chisurf_available = host is not None
+        if host is None:
+            host = standalone_main_window
+        self.main_window = host
+        logger.info(
+            "Running in chisurf mode" if self.chisurf_available
+            else "Running in standalone mode" if host is not None
+            else "Running without a host window; the acquisition views stay free-floating"
+        )
 
         # Check if acquisition manager already exists
-        if hasattr(self.main_window, '_acquisition_manager'):
+        if self.main_window is not None and hasattr(self.main_window, '_acquisition_manager'):
             logger.warning("SM Acquisition manager already exists, not creating another instance")
             # Maybe bring the existing windows to front or show a message
             if hasattr(self.main_window, '_acquisition_manager') and self.main_window._acquisition_manager:
@@ -1086,7 +1094,8 @@ class SMAcquisitionManager:
         self.acquisition_dock = AcquisitionDockWidget(self.main_window)
 
         # Store reference in main window
-        self.main_window._acquisition_manager = self
+        if self.main_window is not None:
+            self.main_window._acquisition_manager = self
 
         # Connect signals
         self.setup_connections()
@@ -1103,7 +1112,7 @@ class SMAcquisitionManager:
             self.main_window.mdiarea.addSubWindow(self.macrotime_window)
             self.main_window.mdiarea.addSubWindow(self.mcs_window)
             self.main_window.addDockWidget(Qt.LeftDockWidgetArea, self.acquisition_dock)
-        else:
+        elif self.main_window is not None:
             # Standalone mode - use MDI area from standalone window
             if hasattr(self.main_window, 'mdiarea'):
                 self.main_window.mdiarea.addSubWindow(self.decay_window)

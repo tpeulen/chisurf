@@ -77,6 +77,14 @@ Tracked by `BLOCKING` in `test/gui/test_every_tool_constructs.py`; that test
 fails if the tool starts constructing cleanly, so the entry cannot outlive the
 defect.
 
+**Two tools segfault while constructing** — `psf_calculator` (in
+`PSFComputation.run`, the vectorial PSF scheduled on a `QThreadPool` worker from
+`__init__`) and `lightpath_simulator` (aborts, then segfaults). Both reproduce
+standalone, not only under pytest, and both start background work during
+construction — the side effect the read-only-construction rule forbids, and the
+likely mechanism: the worker outlives the objects it touches. Tracked by
+`CRASHING` in the same test.
+
 **Fixed in passing:** `acq` (SM Acquisition) crashed with
 `AttributeError: 'NoneType' object has no attribute '_acquisition_manager'` —
 it keyed "are we inside chisurf?" on `import chisurf` succeeding, which it

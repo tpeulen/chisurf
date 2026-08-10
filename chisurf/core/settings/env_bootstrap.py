@@ -98,9 +98,18 @@ def _add_libpath(path: pathlib.Path) -> None:
     if IS_LNX:
         _ensure_prepend_env_path("LD_LIBRARY_PATH", path)
     elif IS_MAC:
-        # DYLD variables: best-effort; SIP can restrict these for system binaries
+        # Only the *fallback* variable. DYLD_FALLBACK_LIBRARY_PATH is consulted
+        # after normal resolution fails, so it can help a library that would not
+        # be found and cannot hijack one that would. DYLD_LIBRARY_PATH is
+        # searched *first* and therefore overrides what an extension module was
+        # linked against -- which is fatal rather than best-effort: dyld reads it
+        # at process start, so the process that sets it is unaffected while every
+        # child it spawns inherits the override. A subprocess that renders any Qt
+        # text or icon (``chisurf.plugins.icon_utils.create_text_icon``) then
+        # bus-errors inside Qt's font engine, which is what made a per-tool
+        # construction test crash on exactly one tool while the same code ran
+        # fine when started directly.
         _ensure_prepend_env_path("DYLD_FALLBACK_LIBRARY_PATH", path)
-        _ensure_prepend_env_path("DYLD_LIBRARY_PATH", path)
     _add_path(path)
 
 
