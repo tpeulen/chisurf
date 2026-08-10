@@ -34,6 +34,18 @@
 
 ### Changed
 
+- **Maximum-entropy TCSPC now runs entirely in the photon library.** The
+  `maxent_decay` plugin carried its own numba copies of the fractional IRF shift
+  and the single-shot and periodic exponential convolutions. They are deleted;
+  the lifetime and distance design matrices come from
+  `tttrlib.tcspc_build_fi_lifetimes` / `tcspc_build_fi_distances` in one call
+  each. Results agree with the numba original to 2.2e-15 relative -- the
+  compiled loop contracts its multiply-add where the interpreted one did not --
+  pinned by `test/fluorescence/test_maxent_tcspc_parity.py` against outputs
+  recorded before the port landed. Delegating the *kernels* instead would have
+  been 10.6× slower than numba — argument marshalling dominates a
+  512-channel convolution — so the whole matrix crosses the boundary at once.
+
 - **MMFDB: `flr_sample` is now the canonical sample-name source (flrCIF/pdbx-aligned)** ⚠️ *breaking*:
   - `flr_sample.description` now holds the **display name** (the sample's primary
     human-readable identifier); the optional longer free-text description is stored

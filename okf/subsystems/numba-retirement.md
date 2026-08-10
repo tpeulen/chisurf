@@ -10,32 +10,73 @@ timestamp: '2026-08-10T00:00:00Z'
 # Where to pick this up
 
 1. **The tracker is `test/numba_import_allowlist.txt`** and it only shrinks.
-   Every entry carries its route. **20 chisurf-owned files remain**, and **route `numpy` is now empty -- Phase 1 is done** of the 48 this work covers. ChiMOL's 11 are **excluded from the guard entirely** — the WebGPU port removes them on its own schedule, and listing them here only made this test fail nine times in one session with news about someone else's progress;
+   Every entry carries its route. **19 chisurf-owned files remain**, and **route `numpy` is now empty -- Phase 1 is done** of the 48 this work covers. ChiMOL's 11 are **excluded from the guard entirely** — the WebGPU port removes them on its own schedule, and listing them here only made this test fail nine times in one session with news about someone else's progress;
    `test/test_numba_seam.py` fails both on a new importer and on a stale entry,
    so the list cannot drift from the tree.
-2. **Route `tttrlib`: next is `plugins/fluorescence_decay/maxent_decay/core/solver.py`**
-   (3 kernels) — the strongest remaining candidate, already checked. Its own
-   docstrings call them "Numba port of … from `fsconv2.c`", which is the same C
-   source the photon library compiles, and the signatures line up exactly:
+2. **`maxent_decay/core/solver.py` is done, and the granularity of a delegation
+   is a measurement, not a detail.** All three kernels (`_shift_lamp`,
+   `_fconv_single_shot`, `_fconv_periodic`) are deleted and the *design
+   matrices* come from `tttrlib.tcspc_build_fi_lifetimes` /
+   `tcspc_build_fi_distances` in one call each. **Delegating the kernels
+   themselves — the obvious reading of route `tttrlib` — is 10.6× slower than
+   numba**: 1.57 → 16.6 ms for a 301-lifetime grid, because marshalling a
+   512-element `std::vector` costs ~30 µs against a ~3 µs kernel. Per-column is
+   the wrong seam whatever is on the other side of it; the whole matrix has to
+   cross at once. (For the record, a banked NumPy recursion — one pass over the
+   channel axis with the lifetime axis vectorised — is *bit-exact* and 2.9×
+   faster than numba, so route `numpy` was viable here too. It was not taken:
+   **the maximum-entropy engine belongs in the photon library**, and a second
+   implementation in ChiSurf is the thing this work exists to remove.)
 
-   | local | tttrlib |
-   | --- | --- |
-   | `_fconv_single_shot(lampsh, dt, amps, taus, stop)` | `tcspc_fconv_single_shot(lampsh, dt, amps, taus, stop)` |
-   | `_fconv_periodic(lampsh, dt, amps, taus, start, stop, period)` | `tcspc_fconv_periodic(lampsh, dt, amps, taus, start, stop, period)` |
-   | `_shift_lamp(lamp, ts_channels) -> lampsh` | `shift_lamp(lamp, lampsh, ts, out_value)` (out-parameter form) |
+   Two defects fell out, both in the same shape — code that exists but cannot
+   be reached:
+   - **`tcspc_build_fi_lifetimes` / `_distances` were unusable from Python.**
+     They return four arrays through reference parameters, which SWIG's
+     `std::vector` typemaps turn into four *required inputs* no caller can
+     supply. Fixed in tttrlib `ext/python/MaxEntTcspc.i` with NumPy bindings
+     returning `(Fi, y, sigma, fit_additive)`. Nothing failed before: the
+     high-level `solve_tcspc_mem_*` covered the only exercised path, so the
+     builders were dead in the binding while alive in C++.
+   - **tttrlib's own `test_maxent_tcspc.py` compared against ChiSurf** through a
+     hard-coded `sys.path.insert('/Users/tpeulen/dev/chisurf')` inside a
+     `try/except` that set `_HAVE_REF = False`. Deleting ChiSurf's kernels would
+     have turned every one of those tests into a **skip that reads like a
+     pass** — and the two solver tests were already tautological, since
+     ChiSurf's fast path *is* the C++ call. Rewritten to stand alone: analytic
+     shifts, a brute-force reference recursion, KKT conditions for the QP,
+     column-by-column checks of the new builders, and recovery of a known
+     lifetime and a known distance.
 
-   **Still diff the maths before switching** — that rule was earned three times
-   over (see below), and `_fconv_periodic` has a `while lampsh[lamp_start] == 0`
-   scan for the first non-zero IRF channel that the C version may or may not
-   share. Call sites: `solver.py:387, 392, 402, 432, 434, 488, 498, 508`.
+   Validation stays on the ChiSurf side deliberately: the C++ builder does not
+   filter `tau <= 0` (it would divide by zero) and does not reject an empty
+   grid.
 
-   Done already: `tcspc/convolve.py` (deleting its numba twin *fixed* a bug) and
-   the LLTF copies, which are now re-exports.
+   Done already on this route: `tcspc/convolve.py` (deleting its numba twin
+   *fixed* a bug) and the LLTF copies, which are now re-exports.
    Verified present in tttrlib 0.27.0 — do not re-derive: `fconv`,
    `fconv_per_cs`, `sconv`, `fconv_ref`, `shift_lamp`, `rescale_w_bg`,
    `rescale_w`, `add_pile_up_to_model`, `histogram1D_double`,
    `histogram1D_int`, `decode_records`, `GopichSzabo`, `HMM`/`HmmModel`/
    `HmmVB`, `maxent_invert`, `solve_tcspc_mem_lifetime`, `OptsCluster`.
+
+   **Still open there, and it is not numba:** `_run_mem` and `_quadpr_bound` are
+   a second copy of `tcspc_run_mem` / `tcspc_quadpr_bound` in NumPy. They stay
+   until the C++ grows a per-iteration progress callback — the MEM loop is where
+   the seconds go, and the plugin's GUI drives its progress bar and its
+   convergence history off exactly that callback. Worth knowing before anyone
+   reads that QP as broken: **it is not an optimal solver and does not claim to
+   be** — the sweep clamps a violating variable, re-solves the free block
+   *without* the clamped variables' coupling, and never releases one or checks a
+   multiplier's sign. Neither stationarity nor dual feasibility holds; the outer
+   MEM iteration re-solves it every step with an updated diagonal, which is why
+   that is tolerable. Both copies share the behaviour.
+
+   **Next on this route: `plugins/core/acq/gui/tool.py`.** Its
+   `_process_bh_spc_records_numba` decodes a whole record array per call, so the
+   seam is *already* the right size — the trap that cost this entry does not
+   apply — and `test/…/acq/test/test_spc_record_decoder.py` already pins the
+   hand-maintained copy against the real reader, so the reference exists before
+   the port starts.
 3. **PCH is done, and it was three copies, not one.** `plugins/pch/api/algorithms.py`
    (numba) turned out to duplicate `core/models/pch/pch.py`, which *already*
    delegated to tttrlib behind an unexercised pure-Python fallback — and
@@ -452,12 +493,14 @@ mechanically.
 | | Files | Kernels |
 | --- | ---: | ---: |
 | At the start | 59 | 186 |
-| Ported so far | 22 | ~59 |
-| Remaining | 26 | ~96 |
+| Ported so far | 23 | ~62 |
+| Remaining | 25 | ~93 |
 | ChiMOL (excluded, owned elsewhere) | 11 | 29 |
 
 Done: `fluorescence/general.py`, `math/datatools.py`, `math/statistics.py`,
 `math/signal.py`, `fluorescence/burst/utils.py`, `math/reaction/_reaction.py`,
 `fluorescence/tcspc/convolve.py`, `fluorescence/tcspc/corrections.py`,
-`fluorescence/tcspc/tcspc.py`, and the three LLTF modules, which now re-export
-the shared implementations instead of copying them.
+`fluorescence/tcspc/tcspc.py`,
+`plugins/fluorescence_decay/maxent_decay/core/solver.py`, and the three LLTF
+modules, which now re-export the shared implementations instead of copying
+them.

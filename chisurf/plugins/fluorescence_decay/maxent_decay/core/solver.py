@@ -1,8 +1,6 @@
-import math
 from typing import Any, Callable, Dict, Iterable, Optional, Sequence, Tuple
 
 import numpy as np
-from numba import njit
 
 from chisurf.core.progress import trange as _mem_trange
 
@@ -149,187 +147,41 @@ def auto_fit_range_tcspc(
     return start, stop
 
 
-def e1te2(e1: Sequence[float], e2: Sequence[float]) -> np.ndarray:
-    """Port of gfit/e1te2.m.
+def _require_design_builders():
+    """Return the photon library's design-matrix builders, or say why not.
 
-    e1, e2 are [c1, tau1, c2, tau2, ...]. The result is all pairwise
-    products with parallel combination of lifetimes.
-    """
-    a1 = np.asarray(e1, dtype=float).ravel()
-    a2 = np.asarray(e2, dtype=float).ravel()
-    if a1.size % 2 != 0 or a2.size % 2 != 0:
-        raise ValueError("e1 and e2 must contain amplitude/tau pairs")
-
-    n1 = a1.size // 2
-    n2 = a2.size // 2
-    out = np.empty(2 * n1 * n2, dtype=float)
-    k = 0
-    for i in range(n1):
-        c1 = a1[2 * i]
-        t1 = a1[2 * i + 1]
-        for j in range(n2):
-            c2 = a2[2 * j]
-            t2 = a2[2 * j + 1]
-            out[2 * k] = c1 * c2
-            out[2 * k + 1] = 1.0 / (1.0 / t1 + 1.0 / t2)
-            k += 1
-    return out[: 2 * k]
-
-
-@njit(cache=True)
-def _shift_lamp(lamp: np.ndarray, ts_channels: float) -> np.ndarray:
-    """Numba port of shift_lamp from fsconv2.c.
-
-    Parameters
-    ----------
-    lamp : 1D float64 array
-        Original instrument response.
-    ts_channels : float
-        Shift in channel units (can be fractional).
+    The maximum-entropy TCSPC engine lives in the photon library
+    (``MaxEntTcspc``); ChiSurf holds the workflow around it and no second copy
+    of the maths. The builders were exposed with the four output vectors as
+    *arguments*, which no Python caller can supply, so a checkout older than
+    that fix has the names but not the functions -- detected here rather than
+    at the call site, where it surfaces as an unreadable ``TypeError``.
 
     Returns
     -------
-    lampsh : 1D float64 array
-        Shifted IRF, same length as ``lamp``.
+    tuple of callable
+        ``(tcspc_build_fi_lifetimes, tcspc_build_fi_distances)``.
+
+    Raises
+    ------
+    RuntimeError
+        If the photon library is missing or predates the NumPy bindings.
     """
-    n_points = lamp.shape[0]
-    lampsh = np.zeros(n_points, dtype=np.float64)
-
-    tsint = int(math.floor(ts_channels))
-    tsdbl = ts_channels - float(tsint)
-
-    out_left = 0
-    out_right = 0
-    if tsint < 0:
-        out_left = -tsint
-    if tsint + 1 > 0:
-        out_right = tsint + 1
-
-    if out_left > n_points:
-        out_left = n_points
-    if out_right > n_points:
-        out_right = n_points
-
-    for j in range(out_left):
-        lampsh[j] = 0.0
-
-    limit = n_points - out_right
-    if limit < out_left:
-        limit = out_left
-
-    for j in range(out_left, limit):
-        idx = j + tsint
-        if idx < 0 or idx + 1 >= n_points:
-            lampsh[j] = 0.0
-        else:
-            lampsh[j] = lamp[idx] * (1.0 - tsdbl) + lamp[idx + 1] * tsdbl
-
-    start_tail = n_points - out_right
-    if start_tail < 0:
-        start_tail = 0
-    for j in range(start_tail, n_points):
-        lampsh[j] = 0.0
-
-    return lampsh
-
-
-@njit(cache=True)
-def _fconv_single_shot(
-    lampsh: np.ndarray,
-    dt: float,
-    amps: np.ndarray,
-    taus: np.ndarray,
-    stop: int,
-) -> np.ndarray:
-    """Numba port of fconv (single-shot convolution) from fsconv2.c.
-
-    Convolves a sum of exponentials with a shifted IRF.
-    """
-    n_points = lampsh.shape[0]
-    if stop >= n_points:
-        stop = n_points - 1
-    if stop < 1:
-        stop = 1
-
-    fit = np.zeros(n_points, dtype=np.float64)
-    deltathalf = 0.5 * dt
-
-    nexp = amps.shape[0]
-    for k in range(nexp):
-        amp = float(amps[k])
-        tau = float(taus[k])
-        if tau <= 0.0 or amp == 0.0:
-            continue
-        expcurr = math.exp(-dt / tau)
-        fitcurr = 0.0
-        for i in range(1, stop + 1):
-            fitcurr = (fitcurr + deltathalf * lampsh[i - 1]) * expcurr + deltathalf * lampsh[i]
-            fit[i] += fitcurr * amp
-
-    return fit
-
-
-@njit(cache=True)
-def _fconv_periodic(
-    lampsh: np.ndarray,
-    dt: float,
-    amps: np.ndarray,
-    taus: np.ndarray,
-    start: int,
-    stop: int,
-    period: float,
-) -> np.ndarray:
-    """Numba approximation of fconv_per from fsconv2.c.
-
-    For very large ``period`` this effectively reduces to the single-shot case.
-    """
-    n_points = lampsh.shape[0]
-    if stop >= n_points:
-        stop = n_points - 1
-    if start < 0:
-        start = 0
-    if start > stop:
-        start = stop
-
-    fit = np.zeros(n_points, dtype=np.float64)
-    if period <= 0.0:
-        return _fconv_single_shot(lampsh, dt, amps, taus, stop)
-
-    lamp_start = 0
-    while lamp_start < n_points and lampsh[lamp_start] == 0.0:
-        lamp_start += 1
-
-    period_n = int(math.ceil(period / dt - 0.5))
-    stop1 = period_n + lamp_start
-    if stop1 > n_points - 1:
-        stop1 = n_points - 1
-
-    deltathalf = 0.5 * dt
-    nexp = amps.shape[0]
-
-    for k in range(nexp):
-        amp = float(amps[k])
-        tau = float(taus[k])
-        if tau <= 0.0 or amp == 0.0:
-            continue
-
-        expcurr = math.exp(-dt / tau)
-        tail_a = 1.0 / (1.0 - math.exp(-period / tau))
-        fitcurr = 0.0
-
-        for i in range(1, stop1 + 1):
-            fitcurr = (fitcurr + deltathalf * lampsh[i - 1]) * expcurr + deltathalf * lampsh[i]
-            fit[i] += fitcurr * amp
-
-        steps_to_start = period_n - stop1 + start
-        if steps_to_start > 0:
-            fitcurr *= math.exp(-steps_to_start * dt / tau)
-
-        for i in range(start, stop + 1):
-            fitcurr *= expcurr
-            fit[i] += fitcurr * amp * tail_a
-
-    return fit
+    try:
+        import tttrlib
+    except ImportError as exc:  # pragma: no cover - tttrlib is a hard dependency
+        raise RuntimeError(
+            "the maximum-entropy TCSPC engine is provided by tttrlib, which "
+            "could not be imported"
+        ) from exc
+    try:
+        return tttrlib.tcspc_build_fi_lifetimes, tttrlib.tcspc_build_fi_distances
+    except AttributeError as exc:
+        raise RuntimeError(
+            "tttrlib does not expose tcspc_build_fi_lifetimes / "
+            "tcspc_build_fi_distances; rebuild it (the design-matrix builders "
+            "carry the maximum-entropy convolution)"
+        ) from exc
 
 
 def _build_Fi_distances(
@@ -349,7 +201,45 @@ def _build_Fi_distances(
     period: float,
     irf_background: float,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """Construct Fi, y, sigma for the distance MEM (me_vin4_E.m analogue)."""
+    """Build the distance-axis design matrix (me_vin4_E.m analogue).
+
+    Column *j* is the donor decay quenched at the FRET rate of ``R[j]``,
+    convolved with the shifted IRF and mixed with the unquenched donor by
+    ``x_donly``, divided through by the Poisson weight. The convolution runs in
+    the photon library; ``timeshift`` is in detector channels (samples), to match
+    ChiSurf's ``Curve.__lshift__``, and may be fractional.
+
+    Parameters
+    ----------
+    decay, lamp : numpy.ndarray
+        Measured decay and the raw instrument response. ``irf_background`` is
+        subtracted from ``lamp`` before the shift.
+    dt : float
+        Channel width, in the units of ``tau0``.
+    R : numpy.ndarray
+        Distance grid; every entry must be positive.
+    tau0, R0 : float
+        Donor lifetime without acceptor and the Foerster radius.
+    donly : numpy.ndarray
+        Donor-only reference as ``[c1, tau1, c2, tau2, ...]``.
+    x_donly : float
+        Donor-only fraction, clamped into ``[0, 1]``.
+    timeshift, background, lamp_scatter : float
+        IRF shift and the two additive terms.
+    fitstart, fitstop : int
+        Fit range, inclusive; clamped to the shorter of decay and IRF.
+    period : float
+        Excitation period; ``<= 0`` selects a single-shot convolution.
+    irf_background : float
+        Counts subtracted from the IRF before shifting.
+
+    Returns
+    -------
+    Fi : numpy.ndarray
+        ``(M, len(R))`` design matrix.
+    y, sigma, fit_additive : numpy.ndarray
+        Data, Poisson weight and the additive model term over the fit range.
+    """
     decay = np.asarray(decay, dtype=float).ravel()
     lamp = np.asarray(lamp, dtype=float).ravel()
     R = np.asarray(R, dtype=float).ravel()
@@ -359,85 +249,15 @@ def _build_Fi_distances(
         raise ValueError("decay, lamp, R and donly must be non-empty")
     if donly.size % 2 != 0:
         raise ValueError("donly must contain amplitude/tau pairs")
+    if np.any(R <= 0.0):
+        raise ValueError("R grid must be positive")
 
-    n = R.size
-
-    if fitstop >= decay.size:
-        fitstop = decay.size - 1
-    if fitstop >= lamp.size:
-        fitstop = lamp.size - 1
-    if fitstart < 0:
-        fitstart = 0
-    if fitstart > fitstop:
-        fitstart = fitstop
-
-    y = decay[fitstart : fitstop + 1]
-    sigma = np.sqrt(y) + (y == 0.0)
-
-    M = y.size
-    Fi = np.empty((M, n), dtype=float)
-
-    irf_bg = float(irf_background)
-    lamp_corr = lamp - irf_bg
-    lamp_corr[lamp_corr < 0.0] = 0.0
-    # NOTE: ``timeshift`` is expressed in detector channels (samples) to match
-    # ChiSurf's Curve shifting semantics (Curve.__lshift__). It may be
-    # fractional.
-    ts_channels = float(timeshift)
-    lampsh = _shift_lamp(lamp_corr.astype(np.float64), ts_channels)
-
-    amps_donly = donly[0::2].astype(np.float64)
-    taus_donly = donly[1::2].astype(np.float64)
-    if period > 0.0:
-        donor_full = _fconv_periodic(
-            lampsh,
-            float(dt),
-            amps_donly,
-            taus_donly,
-            int(fitstart),
-            int(fitstop),
-            float(period),
-        )
-    else:
-        donor_full = _fconv_single_shot(
-            lampsh,
-            float(dt),
-            amps_donly,
-            taus_donly,
-            int(fitstop),
-        )
-    donor_seg = donor_full[fitstart : fitstop + 1]
-    lamp_scatter_seg = lampsh[fitstart : fitstop + 1].astype(float)
-
-    x_d = float(x_donly)
-    if x_d < 0.0:
-        x_d = 0.0
-    if x_d > 1.0:
-        x_d = 1.0
-    x_fret = 1.0 - x_d
-    fit_additive = float(background) + float(lamp_scatter) * lamp_scatter_seg
-
-    for j in range(n):
-        Rj = float(R[j])
-        if Rj <= 0.0:
-            raise ValueError("R grid must be positive")
-
-        kfret = (1.0 / float(tau0)) * (float(R0) / Rj) ** 6
-        e2 = np.array([1.0, 1.0 / kfret], dtype=float)
-        d = e1te2(donly, e2)
-        amps = d[0::2].astype(np.float64)
-        taus = d[1::2].astype(np.float64)
-
-        if period > 0.0:
-            fit_full = _fconv_periodic(lampsh, float(dt), amps, taus, int(fitstart), int(fitstop), float(period))
-        else:
-            fit_full = _fconv_single_shot(lampsh, float(dt), amps, taus, int(fitstop))
-
-        col = x_fret * fit_full[fitstart : fitstop + 1] + x_d * donor_seg
-
-        Fi[:, j] = col / sigma
-
-    return Fi, y, sigma, fit_additive
+    _, build_distances = _require_design_builders()
+    return build_distances(
+        decay, lamp, float(dt), R, float(tau0), float(R0), donly, float(x_donly),
+        float(timeshift), float(background), float(lamp_scatter),
+        int(fitstart), int(fitstop), float(period), float(irf_background),
+    )
 
 
 def _build_Fi_lifetimes(
@@ -452,8 +272,36 @@ def _build_Fi_lifetimes(
     fitstop: int,
     period: float,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """Construct Fi, y, sigma for the lifetime MEM (me_vin4.m analogue)."""
+    """Build the lifetime-axis design matrix (me_vin4.m analogue).
 
+    Column *j* is a single exponential of lifetime ``tau[j]`` convolved with the
+    shifted IRF, divided through by the Poisson weight. The convolution runs in
+    the photon library; ``timeshift`` is in detector channels (samples) and may
+    be fractional.
+
+    Parameters
+    ----------
+    decay, lamp : numpy.ndarray
+        Measured decay and the instrument response. Unlike the distance builder
+        this one takes the IRF already background-corrected.
+    dt : float
+        Channel width.
+    tau : numpy.ndarray
+        Lifetime grid. Non-positive entries are dropped.
+    timeshift, background, lamp_scatter : float
+        IRF shift and the two additive terms.
+    fitstart, fitstop : int
+        Fit range, inclusive; clamped to the shorter of decay and IRF.
+    period : float
+        Excitation period; ``<= 0`` selects a single-shot convolution.
+
+    Returns
+    -------
+    Fi : numpy.ndarray
+        ``(M, len(tau))`` design matrix.
+    y, sigma, fit_additive : numpy.ndarray
+        Data, Poisson weight and the additive model term over the fit range.
+    """
     decay = np.asarray(decay, dtype=float).ravel()
     lamp = np.asarray(lamp, dtype=float).ravel()
     tau = np.asarray(tau, dtype=float).ravel()
@@ -465,58 +313,13 @@ def _build_Fi_lifetimes(
     if tau.size == 0:
         raise ValueError("tau grid must contain positive values")
 
-    if fitstop >= decay.size:
-        fitstop = decay.size - 1
-    if fitstop >= lamp.size:
-        fitstop = lamp.size - 1
-    if fitstart < 0:
-        fitstart = 0
-    if fitstart > fitstop:
-        fitstart = fitstop
+    build_lifetimes, _ = _require_design_builders()
+    return build_lifetimes(
+        decay, lamp, float(dt), tau,
+        float(timeshift), float(background), float(lamp_scatter),
+        int(fitstart), int(fitstop), float(period),
+    )
 
-    y = decay[fitstart : fitstop + 1]
-    sigma = np.sqrt(y) + (y == 0.0)
-
-    M = y.size
-    n = tau.size
-    Fi = np.empty((M, n), dtype=float)
-
-    # NOTE: ``timeshift`` is expressed in detector channels (samples) to match
-    # ChiSurf's Curve shifting semantics (Curve.__lshift__). It may be
-    # fractional.
-    ts_channels = float(timeshift)
-    lampsh = _shift_lamp(lamp.astype(np.float64), ts_channels)
-
-    lamp_seg = lampsh[fitstart : fitstop + 1].astype(float)
-    fit_additive = np.full_like(y, float(background), dtype=float) + float(lamp_scatter) * lamp_seg
-
-    for j in range(n):
-        amps = np.array([1.0], dtype=float)
-        taus = np.array([float(tau[j])], dtype=float)
-
-        if period > 0.0:
-            fit_full = _fconv_periodic(
-                lampsh,
-                float(dt),
-                amps,
-                taus,
-                int(fitstart),
-                int(fitstop),
-                float(period),
-            )
-        else:
-            fit_full = _fconv_single_shot(
-                lampsh,
-                float(dt),
-                amps,
-                taus,
-                int(fitstop),
-            )
-
-        col = fit_full[fitstart : fitstop + 1]
-        Fi[:, j] = col / sigma
-
-    return Fi, y, sigma, fit_additive
 
 
 def _quadpr_bound(C: np.ndarray, d: np.ndarray, lower_bound: float) -> np.ndarray:
@@ -931,7 +734,10 @@ def solve_fret_mem(
     nuisance_param_tol: float = 1e-3,
     prior: Optional[Sequence[float]] = None,
 ) -> Dict[str, Any]:
-    """Python plugin port of me_vin4_E.m using Numba instead of MEX/C.
+    """Maximum-entropy inversion of a FRET decay to a distance distribution.
+
+    The me_vin4_E.m workflow: the design matrix is built by the photon library,
+    the entropy-regularised quadratic program is iterated here.
 
     Parameters
     ----------

@@ -1,6 +1,57 @@
 # Update Log
 
 ## 2026-08-10
+* **The maximum-entropy TCSPC engine is the photon library's, and delegating it
+  per column would have been 10.6× slower than the numba it replaces.**
+  `maxent_decay/core/solver.py` had three numba kernels — a fractional IRF shift
+  and the single-shot and periodic exponential convolutions — that the photon
+  library already compiles from the same C source. Swapping them one for one is
+  the obvious reading of that route and it is wrong: a 301-lifetime design matrix
+  went **1.57 → 16.6 ms**, because marshalling a 512-element `std::vector` costs
+  ~30 µs against a ~3 µs kernel. The seam has to be the *whole design matrix*, so
+  the builders are what ChiSurf now calls, once per matrix, and the three kernels
+  are deleted. Agreement with the recorded numba output is **2.2e-15 relative**
+  on every design matrix, single-shot and periodic alike -- the compiled loop
+  contracts its multiply-add, so nothing here is bit-exact and the fixture
+  threshold says so. End to end it is **faster**, which per-column delegation
+  would not have been: a lifetime solve with nuisance optimisation (the path
+  that rebuilds the matrix per trial and never reaches the C++ solver)
+  **364.6 → 101.7 ms**, a periodic two-component FRET solve **11.1 → 4.3 ms**.
+
+  **Know before reading a relative number here as a defect:** the MEM iteration
+  amplifies that 2e-15 by about three orders of magnitude. The recovered
+  distributions differ by at most **2.9e-12 absolute** on a p summing to 63,
+  and χ² agrees to ten digits — but on a component sitting at 6e-4 that shows
+  up as 9e-10 *relative*. It is conditioning, not disagreement.
+
+  **Both defects found here are code that exists and cannot be reached.**
+  `tcspc_build_fi_lifetimes` / `tcspc_build_fi_distances` return four arrays
+  through reference parameters, which SWIG's `std::vector` typemaps turn into
+  four *required inputs* no caller can supply — the builders were unreachable
+  from Python while alive in C++, and nothing failed, because the only exercised
+  path went through the high-level `solve_tcspc_mem_*`. Fixed in tttrlib
+  `ext/python/MaxEntTcspc.i` with NumPy bindings returning
+  `(Fi, y, sigma, fit_additive)`. And tttrlib's own `test_maxent_tcspc.py`
+  compared against ChiSurf through a hard-coded
+  `sys.path.insert('/Users/tpeulen/dev/chisurf')` inside a `try/except` — so
+  deleting ChiSurf's kernels would have turned those tests into **skips that read
+  like passes**, and two of them were already tautological (ChiSurf's fast path
+  *is* the C++ call). Rewritten to stand alone: analytic shifts, a brute-force
+  reference recursion, KKT conditions for the QP, column-by-column checks of the
+  new builders, and recovery of a known lifetime and a known distance.
+
+  Recorded rather than taken: a **banked NumPy recursion** — one pass over the
+  channel axis with the lifetime axis vectorised — is bit-exact against numba and
+  **2.9× faster** than it, so route `numpy` was open. It was not taken because
+  the engine belongs in the photon library and a second implementation in ChiSurf
+  is what this work exists to remove. Still second copies on the ChiSurf side and
+  deliberately so: `_run_mem` / `_quadpr_bound`, which stay until the C++ grows a
+  per-iteration progress callback — the MEM loop is where the seconds go and the
+  GUI's progress bar and convergence history are driven off exactly that.
+  Allow-list 20 → 19; guard `test/fluorescence/test_maxent_tcspc_parity.py`
+  against `test/data/numba_parity/maxent_tcspc.npz`, recorded from the numba
+  original before it was deleted. See
+  [numba-retirement](subsystems/numba-retirement.md).
 * **The nuclear pore rotated at one frame per second, and the molecule was two
   milliseconds of it.** Loading the real `PDBDEV_00000012` (31 MB, 234,184
   beads) instead of a synthetic stand-in is what found it: the cost was in the
