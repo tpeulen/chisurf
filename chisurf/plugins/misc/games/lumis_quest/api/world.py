@@ -77,6 +77,14 @@ REGION_GAP = 30
 #: Thickness of the water separating one land from the next.
 MOAT = 7
 
+#: Tiles of solid woodland around each land's rim. A border you can see beats an
+#: invisible boundary, and it is what stops the map ending in mid-field.
+BORDER_WOOD = 2
+
+#: Clear ground kept either side of a road, and around every compound. Without
+#: it a copse grows across the only way in and the road becomes impassable.
+VERGE = 1
+
 
 def _tile_noise(salt: int, x: int, y: int) -> int:
     """Cheap, stable per-tile noise in 0..99.
@@ -749,6 +757,9 @@ def _paint(world: World) -> None:
         _paint_roads(grid, region)
     for region in world.regions:
         for village in region.villages:
+            _clear_around(grid, village.rect, VERGE + 1)
+    for region in world.regions:
+        for village in region.villages:
             _paint_village(grid, village)
 
     world.grid = grid
@@ -771,12 +782,25 @@ def _paint_region(grid: list[list[int]], region: Region) -> None:
         for x in range(col, col + width):
             if not (0 <= y < len(grid) and 0 <= x < len(grid[0])):
                 continue
-            # A tile's own coordinates seed its terrain, so the wilderness is
-            # identical on every run without anything being stored.
-            roll = _tile_noise(salt, x, y)
-            if roll < 11:
+
+            # Woodland belongs at the edges, in a mass. Scattering single trees
+            # across open ground is what makes walking feel like snagging: the
+            # player is constantly clipping a one-tile obstacle in the middle of
+            # a field. A border you can see, and clear ground inside it, is the
+            # shape this kind of game has always used.
+            edge = min(x - col, y - row, col + width - 1 - x, row + height - 1 - y)
+            if edge < BORDER_WOOD:
                 grid[y][x] = TREE
-            elif roll < 14:
+                continue
+
+            # Inland, trees come in copses rather than singly: the coarse grid
+            # decides whether there is a copse here at all, and only then does
+            # the fine roll place trunks in it.
+            copse = _tile_noise(salt, x // 4, y // 4) < 14
+            roll = _tile_noise(salt ^ 0x9E3779B9, x, y)
+            if copse and roll < 55:
+                grid[y][x] = TREE
+            elif not copse and roll < 3:
                 grid[y][x] = ROCK
             else:
                 grid[y][x] = GRASS
@@ -804,6 +828,30 @@ def _paint_roads(grid: list[list[int]], region: Region) -> None:
         _paint_line(grid, exit_, end)
 
 
+def _clear_around(grid: list[list[int]], rect: tuple[int, int, int, int], margin: int) -> None:
+    """Cut back woodland around a rectangle.
+
+    A compound whose gate opens into a tree is a compound you cannot enter, and
+    a road that a copse has grown across is not a road.
+
+    Parameters
+    ----------
+    grid : list of list of int
+        The tile grid.
+    rect : tuple of int
+        ``(col, row, width, height)``.
+    margin : int
+        How far out to clear.
+    """
+    col, row, width, height = rect
+    for y in range(row - margin, row + height + margin):
+        for x in range(col - margin, col + width + margin):
+            if not (0 <= y < len(grid) and 0 <= x < len(grid[0])):
+                continue
+            if grid[y][x] in (TREE, ROCK):
+                grid[y][x] = GRASS
+
+
 def _paint_line(grid: list[list[int]], start: tuple[int, int], end: tuple[int, int]) -> None:
     """Paint a straight run of road between two cells.
 
@@ -820,6 +868,12 @@ def _paint_line(grid: list[list[int]], start: tuple[int, int], end: tuple[int, i
     step_y = (y1 > y0) - (y1 < y0)
     x, y = x0, y0
     while True:
+        for oy in range(-VERGE, VERGE + 1):
+            for ox in range(-VERGE, VERGE + 1):
+                cy, cx = y + oy, x + ox
+                if 0 <= cy < len(grid) and 0 <= cx < len(grid[0]):
+                    if grid[cy][cx] in (TREE, ROCK):
+                        grid[cy][cx] = GRASS
         if 0 <= y < len(grid) and 0 <= x < len(grid[0]) and grid[y][x] not in (WATER, BRIDGE):
             grid[y][x] = ROAD
         if (x, y) == (x1, y1):

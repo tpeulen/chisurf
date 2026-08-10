@@ -26,6 +26,7 @@ from ...characters import IRIS, LUMI, draw as draw_character
 from ..api import tiles as T
 from ..api import battle as battle_api
 from ..api import findings as findings_api
+from ..api import npcs as npcs_api
 from ..api import gear as gear_api
 from ..api import roster as roster_api
 from ..api import providers as providers_api
@@ -248,6 +249,10 @@ class OverworldGame(chigame.Game):
         self.verdict = None
         self._guardian_nm: dict[str, float] = {}
         self.resting = False
+        # The world was a diagram until something lived on it.
+        self.people = npcs_api.populate(self.world)
+        self.speaking = None
+        self._clock = 0.0
 
         self._restore()
         start = self.world.spawn() if self._resume is None else self._resume
@@ -356,8 +361,16 @@ class OverworldGame(chigame.Game):
             self.menu_open = True
             self.menu_row = 0
             return
+        if self.speaking is not None:
+            if keys.just_pressed(Action.CONFIRM) or keys.just_pressed(Action.CANCEL):
+                self.speaking = None
+            return
         if keys.just_pressed(Action.SHOULDER_L):
-            self._try_encounter()
+            neighbour = npcs_api.nearest(self.people, *self.iris)
+            if neighbour is not None and neighbour.kind != "beast":
+                self.speaking = neighbour
+            else:
+                self._try_encounter()
 
         dx, dy = keys.axis()
         self.walking = bool(dx or dy)
@@ -379,8 +392,18 @@ class OverworldGame(chigame.Game):
         elif keys.is_held(Action.CANCEL):
             self.view_height = min(self.view_height * (1.0 + 1.9 * dt), VIEW_MAX)
 
+        self._clock += dt
+        npcs_api.update(self.people, self.world, dt, self._clock, near=tuple(self.iris))
         self._rest(dt)
         self.story.observe(self.here)
+
+        # A beast you walk into is a fight, so the wilds are dangerous in a way
+        # that standing beside a building is not.
+        if self.battle is None and self.pool:
+            for npc in self.people:
+                if npc.kind == "beast" and npc.distance_to(*self.iris) < T.TILE * 0.7:
+                    self._try_encounter(force=True)
+                    break
 
         # Lumi moves toward a point behind Iris rather than to Iris, so the two
         # never collapse into one blob.
@@ -530,7 +553,7 @@ class OverworldGame(chigame.Game):
             self._guardian_nm[room.address] = cached
         return cached
 
-    def _try_encounter(self) -> None:
+    def _try_encounter(self, force: bool = False) -> None:
         """Start a fight with whatever guards the nearest wild building.
 
         Only wild rooms hold a guardian: a page somebody has already read is a
@@ -540,7 +563,7 @@ class OverworldGame(chigame.Game):
         if room is None or room.state != WILD or not self.pool:
             return
         x, y = room.position
-        if math.hypot(x - self.iris[0], y - self.iris[1]) > T.TILE * 2.2:
+        if not force and math.hypot(x - self.iris[0], y - self.iris[1]) > T.TILE * 2.2:
             return
         if not any(fighter.alive for fighter in self.team):
             return
@@ -861,6 +884,20 @@ class OverworldGame(chigame.Game):
                     at=(vx, row * T.TILE - 14.0),
                     height=10.0, align="center", color=(0.52, 0.56, 0.64, 1.0),
                 )
+
+        # Everyone who lives here, drawn before Iris so she walks in front of
+        # them. Culled to the view: the world holds well over a hundred.
+        frame_index = int(self._clock * 3.0) % 2
+        for npc in self.people:
+            if abs(npc.x - camera.center[0]) > half[0] + T.TILE:
+                continue
+            if abs(npc.y - camera.center[1]) > half[1] + T.TILE:
+                continue
+            if npc.kind == "beast":
+                scene.draw("photon", "halo", at=(npc.x, npc.y),
+                           size=(T.TILE * 0.9, T.TILE * 0.9), emission_nm=405.0)
+            self._sprite(scene, f"{npc.kind}_{frame_index}", (npc.x, npc.y), T.TILE,
+                         mirror=npc.facing == "left")
 
         # The glow under each of them is the photon they are; the sprite on top
         # is the body that photon wears.
@@ -1368,6 +1405,21 @@ class OverworldGame(chigame.Game):
                 at=(camera.center[0], bottom - 62.0 * scale),
                 height=10.0 * scale, align="center", color=(0.90, 0.84, 0.52, 1.0),
             )
+
+        if self.speaking is not None:
+            scene.draw("ui", "panel", at=(camera.center[0], bottom - 46.0 * scale),
+                       size=(half[0] * 1.7, 54.0 * scale),
+                       color=(0.055, 0.065, 0.085, 0.97))
+            scene.text(self.speaking.name, at=(camera.center[0], bottom - 62.0 * scale),
+                       height=11.0 * scale, align="center", color=(0.90, 0.84, 0.60, 1.0))
+            for offset, line in enumerate(_wrap(self.speaking.line, 46)[:2]):
+                scene.text(line, at=(camera.center[0], bottom - 46.0 * scale
+                                     + offset * 12.0 * scale),
+                           height=10.0 * scale, align="center",
+                           color=(0.82, 0.86, 0.92, 1.0))
+            scene.text("Confirm to go on", at=(camera.center[0], bottom - 18.0 * scale),
+                       height=9.0 * scale, align="center", color=(0.48, 0.52, 0.60, 1.0))
+            return
 
         room = self.here
         if room is not None:

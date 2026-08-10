@@ -50,6 +50,14 @@ PALETTE: dict[str, tuple[int, int, int, int]] = {
     "L": (248, 252, 255, 255),          # blade highlight
     "y": (156, 116, 52, 255),           # hilt
     "i": (20, 24, 32, 255),             # eye / outline
+    # Villagers: robed keepers, warm and lit
+    "q": (150, 120, 70, 255), "Q": (196, 162, 96, 255),
+    "z": (86, 62, 44, 255),
+    # Animals
+    "j": (206, 202, 190, 255), "J": (236, 234, 226, 255),
+    # Beasts: dark, with a sick glow
+    "N": (86, 52, 104, 255), "H": (46, 30, 56, 255),
+    "P": (214, 108, 236, 255),
     # Lumi the dog
     "u": (70, 190, 110, 255),
     "U": (140, 245, 170, 255),
@@ -134,6 +142,48 @@ _HOUSE = [
     "..mmmmmkkmmmmm..", "..mmmmmkkmmmmm..", "..hhhhhkkhhhhh..", "................",
 ]
 
+#: A villager: a robed keeper standing outside the page they look after.
+_VILLAGER_A = [
+    "................", "................", ".....zzzzz......", "....zsssssz.....",
+    "....zsisisz.....", "....zsssssz.....", ".....sssss......", "....qQQQQQq.....",
+    "...qQQQQQQQq....", "...qQQQQQQQq....", "...qQQQQQQQq....", "....qQQQQQq.....",
+    "....qQQQQQq.....", "....qq...qq.....", "....zz...zz.....", "................",
+]
+_VILLAGER_B = [
+    "................", "................", ".....zzzzz......", "....zsssssz.....",
+    "....zsisisz.....", "....zsssssz.....", ".....sssss......", "....qQQQQQq.....",
+    "..sqQQQQQQQqs...", "...qQQQQQQQq....", "...qQQQQQQQq....", "....qQQQQQq.....",
+    "....qQQQQQq.....", "....qq...qq.....", "....zz...zz.....", "................",
+]
+
+#: An animal: a small pale four-legged thing that crops the grass.
+_ANIMAL_A = [
+    "................", "................", "................", "................",
+    "......jjjjjj....", ".....jJJJJJJj...", "....jJJJJJJJJj..", "...jjJJJJJJJJj..",
+    "..jJiJJJJJJJJj..", "..jJJJJJJJJJj...", "...jJJJJJJJj....", "....j.j..j.j....",
+    "....j.j..j.j....", "....jjj..jjj....", "................", "................",
+]
+_ANIMAL_B = [
+    "................", "................", "................", "................",
+    "......jjjjjj....", ".....jJJJJJJj...", "....jJJJJJJJJj..", "...jjJJJJJJJJj..",
+    "..jJiJJJJJJJJj..", "..jJJJJJJJJJj...", "...jJJJJJJJj....", "...j..jj.j..j...",
+    "..j...j..j...j..", "..jjj.j..j.jjj..", "................", "................",
+]
+
+#: A beast: dark, hunched, with a sick violet glow where a mouth should be.
+_BEAST_A = [
+    "................", "................", "..H..........H..", "..HH........HH..",
+    "..HNH......HNH..", "..HNNHHHHHHNNH..", "..HNNNNNNNNNNH..", "..HNPNNNNNNPNH..",
+    "..HNNNNNNNNNNH..", "..HNNPPPPPPNNH..", "..HNNNNNNNNNNH..", "...HNNNNNNNNH...",
+    "...H.HH..HH.H...", "...H.HH..HH.H...", "................", "................",
+]
+_BEAST_B = [
+    "................", "................", "..H..........H..", "..HH........HH..",
+    "..HNH......HNH..", "..HNNHHHHHHNNH..", "..HNNNNNNNNNNH..", "..HNPNNNNNNPNH..",
+    "..HNNNNNNNNNNH..", "..HNNPPPPPPNNH..", "..HNNNNNNNNNNH..", "...HNNNNNNNNH...",
+    "..HH.HH..HH.HH..", "..H..HH..HH..H..", "................", "................",
+]
+
 #: Iris, per facing, two frames each. The core is a photon: her body is the
 #: glow, and the limbs and sword hang off it.
 _IRIS_DOWN_A = [
@@ -210,6 +260,9 @@ SPRITES: dict[str, list[str]] = {
     "iris_right_0": _IRIS_RIGHT_A, "iris_right_1": _IRIS_RIGHT_B,
     "lumi_down_0": _LUMI_DOWN_A, "lumi_down_1": _LUMI_DOWN_B,
     "lumi_right_0": _LUMI_RIGHT_A, "lumi_right_1": _LUMI_RIGHT_B,
+    "villager_0": _VILLAGER_A, "villager_1": _VILLAGER_B,
+    "animal_0": _ANIMAL_A, "animal_1": _ANIMAL_B,
+    "beast_0": _BEAST_A, "beast_1": _BEAST_B,
 }
 
 
