@@ -258,6 +258,42 @@ is the part that was missed first — `visible_range()` is what the tick
 generator and the grid read, so labels cannot describe a span the geometry was
 never mapped against.
 
+## `set_range` is data units, on every axis
+
+A pyqtgraph view in log mode holds **exponents**, so a call site that wanted
+1..10000 wrote `set_ylim(log10(lo), log10(hi))` and it looked right — on that
+renderer. The same code on the native backend asked for a decay spanning 0.1 to
+4 counts, and the simulator preview drew the noise tail with the decay off the
+top of the panel.
+
+The API cannot carry a renderer-dependent unit, or every caller has to know
+which backend it is talking to. `base.Canvas.set_range` states data units and
+the pyqtgraph backend converts in both directions
+(`_to_axis_units`/`_from_axis_units`); the call site passes values now. Both
+suites assert the round trip.
+
+## Auto-range, and mouse behaviour worth copying
+
+A convolved decay does not stop at the last real count — it trails through
+denormals to ~1e-300, and those samples are *positive*, so an honest min/max on
+a log axis spans three hundred decades and squashes the data into the top two
+pixels. Auto-range drops anything more than `_AUTORANGE_DECADES` (9) below the
+peak; panning and zooming still reach it.
+
+The gestures are pyqtgraph's, because that is what the hands using this
+application already know: left drag pans, or draws a zoom rectangle under the
+`leftButtonPan` preference the other backend reads; right drag scales about the
+point it started from (1.02 per pixel, x inverted); the wheel zooms about the
+cursor; and the corner **[A]** button restores auto-range. That button matters
+more than it looks — a view panned away from its data otherwise has no
+discoverable way back, since "double-click somewhere" is not one.
+
+Every conversion out of log space goes through `_view.pow10`, which clamps to a
+representable exponent. The exponent is not bounded by the data — it comes from
+a pixel position, and a drag keeps delivering mouse events after the cursor has
+left the panel, so the unclamped version raised
+`OverflowError: (34, 'Result too large')` out of the move handler.
+
 # Where to pick this up — the WebGPU backend
 
 `backends/wgpu/` draws every family the A/B script exercises (decay on a log

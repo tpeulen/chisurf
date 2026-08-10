@@ -15,8 +15,7 @@ Panels (lazy-loaded via factory functions):
   1. Setup            — SetupChannelDefinitionWidget (shared, publishes via RPC)
   2. Browser          — TTTRImageBrowserTool
   3. Pixel-wise MLE   — ImgPixelMleTool (embedded)
-  4. Spot Finder      — SpotFinderTool (embedded)
-  5. Region MLE       — RegionMleTool (embedded), fits what the Spot Finder found
+  4. Region MLE — RegionMleTool (embedded)
   5. CLSM Draw        — CLSMPixelSelect
   ─────────────────── (separator)
   6. PSF Determination — PsfDeterminationTool
@@ -132,13 +131,6 @@ def _pixel_mle(parent: ImagingToolsTool) -> QtWidgets.QWidget:
     from chisurf.plugins.microscopy.img_pixel_mle.gui.tool import ImgPixelMleTool
     widget = ImgPixelMleTool(parent=parent, embedded=True)
     parent._register_panel("pixel_mle", widget)
-    return widget
-
-
-def _spot_finder(parent: ImagingToolsTool) -> QtWidgets.QWidget:
-    from chisurf.plugins.microscopy.spot_finder.gui.tool import SpotFinderTool
-    widget = SpotFinderTool(parent=parent, embedded=True)
-    parent._register_panel("spot_finder", widget)
     return widget
 
 
@@ -330,13 +322,6 @@ IMAGING_PANELS: list[dict] = [
         "description": "Interactive CLSM pixel selection, ROI drawing and decay extraction; opens imaging HDF5 (via source back-reference).",
         "factory": _clsm_draw,
         "role": "clsm_draw",
-    },
-    {
-        "name": "Spot Finder",
-        "icon": "🎯",
-        "description": "Find the regions — molecules, beads, objects — and write them, with their pixels, into each measurement's container.",
-        "factory": _spot_finder,
-        "role": "spot_finder",
     },
     {
         "name": "Region MLE",

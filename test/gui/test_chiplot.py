@@ -164,6 +164,24 @@ def test_handle_is_alive_tracks_the_native_item(qapp):
     assert text.is_alive() is True
 
 
+def test_set_range_takes_data_units_on_a_log_axis(qapp):
+    """``set_ylim`` is data units on every axis, exponents on none.
+
+    A pyqtgraph view in log mode holds exponents, so a call site wrote
+    ``set_ylim(log10(lo), log10(hi))`` and it looked right — on that renderer.
+    The same code on the native backend drew a decay spanning 0.1 to 4 counts.
+    The conversion belongs in the backend; the API cannot be renderer-dependent
+    or every caller has to know which one it is talking to.
+    """
+    plot = cp.Plot()
+    plot.line([1.0, 2.0, 3.0], [1.0, 100.0, 10000.0], pen="red")
+    plot.set_log(y=True)
+    plot.set_ylim(1.0, 10000.0)
+    (_, (lo, hi)) = plot.canvas.get_range()
+    assert 0.1 <= lo <= 2.0
+    assert 5e3 <= hi <= 2e5
+
+
 def test_menu_enabled_reads_back(qapp):
     """``set_menu_enabled`` has a read side that needs no renderer spelling."""
     plot = cp.Plot()

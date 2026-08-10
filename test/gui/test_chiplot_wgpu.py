@@ -28,7 +28,7 @@ pytestmark = pytest.mark.gui
 pytest.importorskip("qtpy")
 pytest.importorskip("wgpu")
 
-from qtpy import QtWidgets  # noqa: E402
+from qtpy import QtCore, QtWidgets  # noqa: E402
 
 from chisurf.gui.chiplot import handles as H  # noqa: E402
 from chisurf.gui.chiplot import style as S  # noqa: E402
@@ -413,6 +413,102 @@ def test_anchored_text_is_measured_over_all_its_lines(qapp):
                            anchored=True)
     assert text.text.count("\n") == 2
     assert text.is_alive()
+
+
+def test_set_range_takes_data_units_on_a_log_axis(qapp):
+    """The same contract the other backend now honours (data, not exponents)."""
+    canvas = _canvas()
+    canvas.set_log(y=True)
+    canvas.set_range(y=(1.0, 10000.0))
+    lo, hi = canvas.get_range()[1]
+    assert lo == pytest.approx(1.0)
+    assert hi == pytest.approx(10000.0)
+
+
+def test_log_auto_range_ignores_the_denormal_tail(qapp):
+    """A convolved decay trails into denormals; the axis must not follow.
+
+    Those samples are positive, so an honest min/max spans three hundred
+    decades and squashes the data into the top two pixels — which is what the
+    simulator preview showed.
+    """
+    x = np.linspace(0, 50, 512)
+    y = 10000.0 * np.exp(-x / 2.0)
+    y[y < 1e-300] = 1e-320
+    canvas = _canvas()
+    canvas.add_curve(x, y, pen=S.to_pen("orange"))
+    canvas.set_log(y=True)
+    canvas._recompute_auto_range()
+    lo, hi = canvas.get_range()[1]
+    assert hi > 1e3
+    assert math.log10(hi / lo) < 12
+
+
+def test_the_corner_button_restores_auto_range(qapp):
+    """The panel carries pyqtgraph's [A] button, and it re-arms auto-range."""
+    canvas = _canvas()
+    canvas.add_curve([0.0, 1.0, 2.0], [1.0, 5.0, 2.0], pen=S.to_pen("orange"))
+    widget = canvas.widget()
+    widget.resize(400, 300)
+    widget.grab()  # a paint pass is what places the button
+    assert canvas._auto_btn_rect is not None
+    ix, iy, _, ph = canvas._margins.plot_rect(400, 300)
+    assert canvas._auto_btn_rect.left() >= ix
+    assert canvas._auto_btn_rect.bottom() <= iy + ph + 1
+
+    canvas.set_range(x=(10.0, 20.0), y=(10.0, 20.0))
+    assert canvas._auto_range_x is False
+    centre = canvas._auto_btn_rect.center()
+
+    class _Press:
+        def button(self):
+            return QtCore.Qt.LeftButton
+
+        def position(self):
+            return centre
+
+    canvas._mouse_press(_Press())
+    assert canvas._auto_range_x is True and canvas._auto_range_y is True
+
+
+def test_a_cursor_outside_a_log_panel_does_not_overflow(qapp):
+    """Moving the mouse off a logarithmic plot must not raise.
+
+    ``pixel_to_data`` turns a pixel into ``10 ** v``, and the pixel is not
+    bounded by the panel: a drag keeps delivering move events after the cursor
+    has left it. Unclamped, that reached ``10 ** 309`` and the move handler died
+    with ``OverflowError: (34, 'Result too large')``.
+    """
+    view = PixelView((0.0, 50.0), (1e-3, 1e5), log_y=True)
+    margins = wc._Margins()
+    for py in (-20000.0, -1e6, 1e6):
+        x, y = view.pixel_to_data(200.0, py, 400, 300, margins)
+        assert math.isfinite(x) and math.isfinite(y)
+
+
+def test_zooming_out_stays_representable(qapp):
+    """Zoom-out multiplies a log axis's decade span every notch.
+
+    Thirty-odd notches took it past the largest float, and the exception came
+    out of the wheel handler.
+    """
+    canvas = _canvas()
+    canvas.set_range(y=(1.0, 1e4))
+    canvas.set_log(y=True)
+    rng = canvas._view.y_range
+    for _ in range(60):
+        rng = canvas._zoom(rng, 1.0, 1.15, True)
+    assert all(math.isfinite(v) for v in rng)
+    assert rng[0] > 0
+
+
+def test_pow10_clamps_instead_of_raising():
+    from chisurf.gui.chiplot.backends.wgpu._view import pow10
+
+    assert math.isfinite(pow10(1e9))
+    assert pow10(-1e9) > 0
+    assert math.isfinite(pow10(float("inf")))
+    assert pow10(3.0) == pytest.approx(1000.0)
 
 
 def test_panel_asks_for_the_same_room_as_the_other_backend(qapp):

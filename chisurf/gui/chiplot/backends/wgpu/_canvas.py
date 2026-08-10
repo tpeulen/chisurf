@@ -31,6 +31,7 @@ from chisurf.gui.chiplot import style as S
 from chisurf.gui.chiplot.backends import base
 from chisurf.gui.chiplot.backends.wgpu import _gpu, _handles
 from chisurf.gui.chiplot.backends.wgpu._view import PixelView as _PixelView
+from chisurf.gui.chiplot.backends.wgpu._view import pow10 as _pow10
 
 #: Pixel insets reserved for axis chrome. The left inset is a floor: the real
 #: one is measured from the widest tick label each frame, because a fixed
@@ -44,6 +45,14 @@ _AXIS_COLOR = QtGui.QColor(170, 170, 175)
 _GRID_COLOR = (0.62, 0.62, 0.66)
 #: How close to the pointer (in pixels) a draggable edge must be to grab it.
 _GRAB_PX = 6.0
+
+#: Decades below the peak a logarithmic auto-range will show. Past this the
+#: samples are the tail of the arithmetic rather than of the measurement.
+_AUTORANGE_DECADES = 9.0
+
+#: Geometry of the auto-range button in the plot's bottom-left corner.
+_AUTO_BTN_SIZE = 14
+_AUTO_BTN_INSET = 3
 
 
 class _Margins:
@@ -271,6 +280,11 @@ class _WgpuCanvas(base.Canvas):
         self._panning = False
         self._pan_start: tuple[float, float] | None = None
         self._pan_range_start = None
+        self._scaling = False
+        self._scale_last: tuple[float, float] | None = None
+        self._scale_anchor: tuple[float, float] | None = None
+        self._rubber: tuple[float, float, float, float] | None = None
+        self._auto_btn_rect = None
         self._drag: tuple[Any, str, float] | None = None
         self._lock = threading.RLock()
         self._linked_x: list[_WgpuCanvas] = []
@@ -362,6 +376,14 @@ class _WgpuCanvas(base.Canvas):
         for hd in ordered:
             if hasattr(hd, "paint_overlay"):
                 hd.paint_overlay(painter, self._view, w, h, self._margins)
+        if self._rubber is not None:
+            x0, y0, x1, y1 = self._rubber
+            band = QtCore.QRectF(min(x0, x1), min(y0, y1),
+                                 abs(x1 - x0), abs(y1 - y0))
+            painter.fillRect(band, QtGui.QColor(120, 170, 255, 45))
+            painter.setPen(QtGui.QPen(QtGui.QColor(150, 190, 255), 1,
+                                      QtCore.Qt.DashLine))
+            painter.drawRect(band)
         if self._show_legend:
             self._paint_legend(painter, w, h)
 
@@ -451,6 +473,19 @@ class _WgpuCanvas(base.Canvas):
                     QtCore.QRectF(ix - tw - 7, py - fm.height() / 2, tw, fm.height()),
                     QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter, label)
 
+        # pyqtgraph's little corner button, and for the same reason: a view
+        # panned or zoomed away from the data needs one obvious way back, and
+        # "double-click somewhere" is not discoverable.
+        size, inset = _AUTO_BTN_SIZE, _AUTO_BTN_INSET
+        self._auto_btn_rect = QtCore.QRectF(
+            ix + inset, iy + ph - size - inset, size, size)
+        painter.setPen(QtGui.QPen(_AXIS_COLOR, 1))
+        painter.setBrush(QtGui.QColor(0, 0, 0, 110))
+        painter.drawRoundedRect(self._auto_btn_rect, 3, 3)
+        painter.setBrush(QtCore.Qt.NoBrush)
+        painter.setFont(S.chrome_font("tick"))
+        painter.drawText(self._auto_btn_rect, QtCore.Qt.AlignCenter, "A")
+
         font = S.chrome_font("label")
         painter.setFont(font)
         if self._xlabel:
@@ -524,11 +559,29 @@ class _WgpuCanvas(base.Canvas):
             if ys is not None:
                 all_y.append(ys)
         if self._auto_range_x and all_x:
+            lo, hi = min(r[0] for r in all_x), max(r[1] for r in all_x)
             self._view.x_range = self._padded(
-                min(r[0] for r in all_x), max(r[1] for r in all_x), self._view.log_x)
+                *self._clip_log_floor(lo, hi, self._view.log_x), self._view.log_x)
         if self._auto_range_y and all_y:
+            lo, hi = min(r[0] for r in all_y), max(r[1] for r in all_y)
             self._view.y_range = self._padded(
-                min(r[0] for r in all_y), max(r[1] for r in all_y), self._view.log_y)
+                *self._clip_log_floor(lo, hi, self._view.log_y), self._view.log_y)
+
+    @staticmethod
+    def _clip_log_floor(lo: float, hi: float, log: bool) -> tuple[float, float]:
+        """Keep a log auto-range from chasing numerical noise to the floor.
+
+        A convolved decay does not stop at the last real count: it trails off
+        through denormals to ~1e-300, and those samples are positive, so an
+        honest min/max spans three hundred decades and squashes the data into
+        the top two pixels. No detector has that dynamic range — the tail is
+        arithmetic, not measurement. Anything more than
+        :data:`_AUTORANGE_DECADES` below the peak is dropped from the fit; the
+        user can still pan or zoom down to it.
+        """
+        if not log or not (hi > 0):
+            return lo, hi
+        return max(lo, hi * 10.0 ** -_AUTORANGE_DECADES), hi
 
     @staticmethod
     def _padded(lo: float, hi: float, log: bool) -> list[float]:
@@ -633,28 +686,77 @@ class _WgpuCanvas(base.Canvas):
                     return hd, "value"
         return None, None
 
+    def _left_button_pans(self) -> bool:
+        """Whether a left drag pans, or draws a zoom rectangle.
+
+        The same preference the other backend reads, so the two renderers do
+        not answer the same gesture differently.
+        """
+        try:
+            from chisurf.core.settings import cs_settings
+
+            cfg = cs_settings.get("gui", {}).get("plot", {}).get("pyqtgraph_config", {})
+            return bool(cfg.get("leftButtonPan", True))
+        except Exception:
+            return True
+
     def _mouse_press(self, event):
-        """Grab a draggable handle if one is under the pointer, else pan."""
-        if event.button() != QtCore.Qt.LeftButton:
-            return
+        """Route a press: the corner button, a draggable handle, pan, or scale.
+
+        The button semantics are pyqtgraph's, because that is what the hands
+        using this application already know: left drags (pan, or a zoom
+        rectangle under the ``leftButtonPan`` preference), right drags scale
+        about the point it started from, and the wheel zooms about the cursor.
+        """
         px, py = self._event_pos(event)
         w, h = self._widget.width(), self._widget.height()
+
+        if event.button() == QtCore.Qt.LeftButton and self._auto_btn_rect is not None:
+            if self._auto_btn_rect.contains(QtCore.QPointF(px, py)):
+                self.auto_range()
+                return
+
+        if event.button() == QtCore.Qt.RightButton:
+            if self._interactive_mouse:
+                self._scaling = True
+                self._scale_last = (px, py)
+                self._scale_anchor = self._view.pixel_to_data(
+                    px, py, w, h, self._margins)
+            return
+
+        if event.button() != QtCore.Qt.LeftButton:
+            return
+
         dx, dy = self._view.pixel_to_data(px, py, w, h, self._margins)
         hd, part = self._hit_draggable(px, py)
         if hd is not None:
             anchor = dx if getattr(hd, "_orientation", None) is H.Orientation.VERTICAL else dy
             self._drag = (hd, part, anchor)
             return
-        if self._interactive_mouse:
+        if not self._interactive_mouse:
+            return
+        if self._left_button_pans():
             self._panning = True
             self._pan_start = (px, py)
             self._pan_range_start = (list(self._view.x_range), list(self._view.y_range))
+        else:
+            self._rubber = (px, py, px, py)
 
     def _mouse_release(self, event):
-        """Finish a drag or a pan; a pan that did not move is a click."""
+        """Finish a scale, a zoom rectangle, a handle drag, or a pan."""
+        px, py = self._event_pos(event)
+        if event.button() == QtCore.Qt.RightButton:
+            self._scaling = False
+            self._scale_last = None
+            self._scale_anchor = None
+            return
         if event.button() != QtCore.Qt.LeftButton:
             return
-        px, py = self._event_pos(event)
+        if self._rubber is not None:
+            band, self._rubber = self._rubber, None
+            self._apply_rubber_band(band)
+            self._widget.update()
+            return
         if self._drag is not None:
             hd, _, _ = self._drag
             self._drag = None
@@ -671,6 +773,16 @@ class _WgpuCanvas(base.Canvas):
                     for cb in self._click_callbacks:
                         cb(dx, dy, "left")
 
+    def _apply_rubber_band(self, band) -> None:
+        """Set the view to a dragged rectangle, ignoring an accidental flick."""
+        x0, y0, x1, y1 = band
+        if abs(x1 - x0) < 4 or abs(y1 - y0) < 4:
+            return
+        w, h = self._widget.width(), self._widget.height()
+        a = self._view.pixel_to_data(min(x0, x1), max(y0, y1), w, h, self._margins)
+        b = self._view.pixel_to_data(max(x0, x1), min(y0, y1), w, h, self._margins)
+        self.set_range(x=(a[0], b[0]), y=(a[1], b[1]))
+
     def _mouse_move(self, event):
         """Report the cursor position, and drag whatever is grabbed."""
         px, py = self._event_pos(event)
@@ -678,6 +790,27 @@ class _WgpuCanvas(base.Canvas):
         dx, dy = self._view.pixel_to_data(px, py, w, h, self._margins)
         for cb in self._mouse_move_callbacks:
             cb(dx, dy)
+
+        if self._scaling and self._scale_last is not None:
+            lx, ly = self._scale_last
+            self._scale_last = (px, py)
+            # pyqtgraph's right-drag: 1.02 per pixel, x inverted, anchored at
+            # the point the drag started from so that point stays put.
+            sx = 1.02 ** -(px - lx)
+            sy = 1.02 ** (py - ly)
+            ax, ay = self._scale_anchor or (dx, dy)
+            self._view.x_range = self._zoom(self._view.x_range, ax, sx, self._view.log_x)
+            self._view.y_range = self._zoom(self._view.y_range, ay, sy, self._view.log_y)
+            self._auto_range_x = self._auto_range_y = False
+            self._fire_range_changed()
+            self._widget.update()
+            return
+
+        if self._rubber is not None:
+            x0, y0, _, _ = self._rubber
+            self._rubber = (x0, y0, px, py)
+            self._widget.update()
+            return
 
         if self._drag is not None:
             hd, part, anchor = self._drag
@@ -720,7 +853,7 @@ class _WgpuCanvas(base.Canvas):
         if log:
             lo, hi = math.log10(max(rng[0], 1e-300)), math.log10(max(rng[1], 1e-299))
             d = (hi - lo) * fraction
-            return [10.0 ** (lo + d), 10.0 ** (hi + d)]
+            return [_pow10(lo + d), _pow10(hi + d)]
         d = (rng[1] - rng[0]) * fraction
         return [rng[0] + d, rng[1] + d]
 
@@ -745,7 +878,9 @@ class _WgpuCanvas(base.Canvas):
         if log:
             lo, hi = math.log10(max(rng[0], 1e-300)), math.log10(max(rng[1], 1e-299))
             c = math.log10(max(center, 1e-300))
-            return [10.0 ** (c + (lo - c) * factor), 10.0 ** (c + (hi - c) * factor)]
+            # Zooming out multiplies the decade span every notch, so an
+            # unclamped 10 ** ... stops being a float after about thirty of them.
+            return [_pow10(c + (lo - c) * factor), _pow10(c + (hi - c) * factor)]
         return [center + (rng[0] - center) * factor,
                 center + (rng[1] - center) * factor]
 

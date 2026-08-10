@@ -518,7 +518,12 @@ class TCSPCSimulatorSetupWidget(QtWidgets.QWidget):
                     y_min = 0.1
                     if y_max <= y_min:
                         y_max = y_min * 10.0
-                    self.simulation_plot.set_ylim(np.log10(y_min), np.log10(y_max))
+                    # Data units, not exponents: chiplot's set_ylim takes the
+                    # values on every axis and the backend converts. Passing
+                    # log10 here worked only because pyqtgraph's view happens
+                    # to hold exponents in log mode, and drew a decay spanning
+                    # 0.1 to 4 counts on the native renderer.
+                    self.simulation_plot.set_ylim(y_min, y_max)
             except Exception:
                 pass
         except Exception:

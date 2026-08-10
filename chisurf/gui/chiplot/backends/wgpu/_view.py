@@ -18,6 +18,27 @@ import numpy as np
 #: meaningless and the transform would return infinities.
 _LOG_FLOOR = 1e-300
 
+#: Exponent range a log axis is allowed to reach. ``10 ** 309`` is not a float,
+#: and the exponent is *not* bounded by the data: it comes from a pixel
+#: position, which is unbounded because a drag keeps delivering mouse events
+#: after the cursor has left the panel. Unclamped, moving the mouse off a
+#: logarithmic plot raises ``OverflowError: (34, 'Result too large')`` out of
+#: the move handler.
+_LOG_MAX_EXP = 300.0
+_LOG_MIN_EXP = -300.0
+
+
+def pow10(exponent: float) -> float:
+    """Return ``10 ** exponent``, clamped to what a float can hold.
+
+    Every conversion out of log space goes through here — the transform, the
+    inverse, the tick range, and the pan/zoom arithmetic — so none of them can
+    produce a value the next one cannot represent.
+    """
+    if not math.isfinite(exponent):
+        return _LOG_FLOOR if exponent < 0 else 10.0 ** _LOG_MAX_EXP
+    return 10.0 ** min(max(exponent, _LOG_MIN_EXP), _LOG_MAX_EXP)
+
 
 class PixelView:
     """Maps data coordinates to clip space and to widget pixels.
@@ -64,13 +85,16 @@ class PixelView:
         first real data replaces anyway.
         """
         lo, hi = float(rng[0]), float(rng[1])
+        if not math.isfinite(lo) or not math.isfinite(hi):
+            # A range that already overflowed: fall back rather than propagate.
+            lo, hi = (0.0, 1.0) if not log else (_LOG_FLOOR, 1.0)
         if log:
             if hi <= 0:
                 hi = 1.0
             if lo <= 0:
-                lo = hi * 10.0 ** -cls._LOG_FALLBACK_DECADES
-            lo = math.log10(max(lo, _LOG_FLOOR))
-            hi = math.log10(max(hi, _LOG_FLOOR))
+                lo = hi * pow10(-cls._LOG_FALLBACK_DECADES)
+            lo = min(max(math.log10(max(lo, _LOG_FLOOR)), _LOG_MIN_EXP), _LOG_MAX_EXP)
+            hi = min(max(math.log10(max(hi, _LOG_FLOOR)), _LOG_MIN_EXP), _LOG_MAX_EXP)
         if hi - lo == 0:
             hi = lo + 1.0
         return lo, hi
@@ -95,7 +119,7 @@ class PixelView:
         log = self.log_x if axis == "x" else self.log_y
         rng = self.x_range if axis == "x" else self.y_range
         lo, hi = self._axis_bounds(rng, log)
-        return (10.0 ** lo, 10.0 ** hi) if log else (lo, hi)
+        return (pow10(lo), pow10(hi)) if log else (lo, hi)
 
     def _to_axis(self, values, log: bool):
         """Map data values into the axis's linear space."""
@@ -154,4 +178,4 @@ class PixelView:
         """Invert one axis's clip-space mapping."""
         lo, hi = cls._axis_bounds(rng, log)
         v = lo + (ndc + 1.0) * 0.5 * (hi - lo)
-        return 10.0 ** v if log else v
+        return pow10(v) if log else v

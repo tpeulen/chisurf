@@ -1051,17 +1051,51 @@ class _PgCanvas(base.Canvas):
             lambda _vb, ranges: callback(tuple(ranges[0]), tuple(ranges[1]))
         )
 
+    def _log_modes(self) -> tuple[bool, bool]:
+        """Return whether ``(x, y)`` are in logarithmic mode."""
+        try:
+            state = self._pi.getViewBox().state["logMode"]
+            return bool(state[0]), bool(state[1])
+        except Exception:
+            return False, False
+
+    @staticmethod
+    def _to_axis_units(rng, log: bool):
+        """Convert a data-unit range to what pyqtgraph's view wants.
+
+        A pyqtgraph view in log mode holds *exponents*; chiplot's contract is
+        data units on every axis (see ``base.Canvas.set_range``), so the
+        conversion belongs here rather than at each call site.
+        """
+        if not log or rng is None:
+            return rng
+        lo, hi = float(rng[0]), float(rng[1])
+        floor = 1e-300
+        return (np.log10(max(lo, floor)), np.log10(max(hi, floor)))
+
+    @staticmethod
+    def _from_axis_units(rng, log: bool):
+        """Inverse of :meth:`_to_axis_units`."""
+        if not log:
+            return rng
+        return (float(10.0 ** rng[0]), float(10.0 ** rng[1]))
+
     def set_range(self, *, x=None, y=None, padding=None) -> None:
-        """Set visible x/y range."""
+        """Set the visible x/y range, in data units on every axis."""
+        log_x, log_y = self._log_modes()
         if x is not None:
+            x = self._to_axis_units(x, log_x)
             self._pi.setXRange(x[0], x[1], padding=padding)
         if y is not None:
+            y = self._to_axis_units(y, log_y)
             self._pi.setYRange(y[0], y[1], padding=padding)
 
     def get_range(self):
-        """Return the current visible ``((x0, x1), (y0, y1))``."""
+        """Return the current visible ``((x0, x1), (y0, y1))``, in data units."""
         (x0, x1), (y0, y1) = self._pi.getViewBox().viewRange()
-        return (x0, x1), (y0, y1)
+        log_x, log_y = self._log_modes()
+        return (self._from_axis_units((x0, x1), log_x),
+                self._from_axis_units((y0, y1), log_y))
 
     def auto_range(self) -> None:
         """Fit the view to its contents once."""

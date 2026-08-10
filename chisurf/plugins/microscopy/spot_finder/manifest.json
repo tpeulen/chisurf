@@ -20,13 +20,10 @@
     }
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.microscopy.spot_finder.gui.tool:SpotFinderTool",
     "cli": "spot-finder=chisurf.plugins.microscopy.spot_finder.cli:cli",
     "services": "chisurf.plugins.microscopy.spot_finder.backend.services:register_services"
   },
-  "operation_types": [
-    "region_detection"
-  ],
+  "operation_types": ["region_detection"],
   "rpc_methods": [
     {
       "name": "spot_finder.detect.run",
