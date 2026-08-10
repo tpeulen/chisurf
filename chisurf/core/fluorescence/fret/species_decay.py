@@ -38,7 +38,7 @@ from chisurf.core.fluorescence.general import (
     calculate_fluorescence_decay,
     distance_to_fret_rate_constant,
 )
-from chisurf.core.fluorescence.tcspc.convolve import convolve_decay_nb, periodic_shift
+from chisurf.core.fluorescence.tcspc.convolve import convolve_decay, periodic_shift
 
 STATES = ("d_only", "da", "a_only")
 _ROLES = ("parallel", "perpendicular")
@@ -312,7 +312,7 @@ def _apply_irf(decay: np.ndarray, irf, dt: float, time_shift: float,
         # convolution so the unrelaxed decay of earlier pulses wraps in.
         conv = np.real(np.fft.ifft(np.fft.fft(decay) * np.fft.fft(response))) * float(dt)
         return np.maximum(conv, 0.0)
-    out = convolve_decay_nb(decay, response, 0, decay.size, float(dt))
+    out = convolve_decay(decay, response, 0, decay.size, float(dt))
     return np.maximum(np.asarray(out, dtype=float), 0.0)
 
 

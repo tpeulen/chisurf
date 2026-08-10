@@ -184,7 +184,7 @@ def synthetic_decay(
     built from the interleaved lifetime spectrum with the shared
     :func:`chisurf.core.fluorescence.general.calculate_fluorescence_decay`, IRF
     convolution uses the shared TCSPC kernel
-    (:func:`chisurf.core.fluorescence.tcspc.convolve.convolve_decay_nb`, the same
+    (:func:`chisurf.core.fluorescence.tcspc.convolve.convolve_decay`, the same
     trapezoidal ``fconv`` family the fit models use), and finite-count sampling
     uses :func:`sample_decay_shot_noise` — so no exponential/convolution/noise
     mathematics is duplicated in callers.
@@ -248,8 +248,8 @@ def synthetic_decay(
 
     if irf is not None:
         from chisurf.core.fluorescence.tcspc.convolve import (
-            convolve_decay_nb,
-            convolve_lifetime_spectrum_periodic_nb,
+            convolve_decay,
+            convolve_lifetime_spectrum_periodic,
             periodic_shift,
         )
 
@@ -263,13 +263,13 @@ def synthetic_decay(
             # adds the geometric inter-pulse tail (1/(1-exp(-period/tau))). Timing
             # here comes from the IRF position, not ``start_bin``.
             convolved = np.zeros(n, dtype=float)
-            convolve_lifetime_spectrum_periodic_nb(
+            convolve_lifetime_spectrum_periodic(
                 convolved, spectrum, response, 0, n, n,
                 float(period), float(bin_width), n,
             )
             decay = convolved
         else:
-            decay = convolve_decay_nb(decay, response, 0, n, float(bin_width))
+            decay = convolve_decay(decay, response, 0, n, float(bin_width))
         decay = np.maximum(np.asarray(decay, dtype=float), 0.0)
 
     if photon_count is not None:

@@ -10,17 +10,15 @@ timestamp: '2026-08-10T00:00:00Z'
 # Where to pick this up
 
 1. **The tracker is `test/numba_import_allowlist.txt`** and it only shrinks.
-   Every entry carries its route. **53 of the original 59 files remain**;
+   Every entry carries its route. **52 of the original 59 files remain**;
    `test/test_numba_seam.py` fails both on a new importer and on a stale entry,
    so the list cannot drift from the tree.
-2. **Next up is Route `tttrlib`, and it is the highest value per line** —
-   it removes the hot kernels *and* the JIT stalls, and needs no new code.
-   Start with `core/fluorescence/tcspc/convolve.py`: the tttrlib wrappers
-   already exist **in that same file** (`convolve.py:443` → `tttrlib.fconv`,
-   `:195` → `tttrlib.fconv_per_cs`) and production already calls them, so the
-   numba twins are dead weight. Then the five LLTF duplicates
-   (`plugins/fluorescence_decay/lltf/core/{convolve,scaling}.py`), which are
-   copies of the same functions.
+2. **Route `tttrlib` is under way.** `core/fluorescence/tcspc/convolve.py` is
+   done — and deleting its numba twin *fixed a bug*, see below. **Next are the
+   LLTF duplicates** (`plugins/fluorescence_decay/lltf/core/{convolve,scaling}.py`,
+   5 kernels), which are copies of the very functions just deleted: they should
+   import from `chisurf.core.fluorescence.tcspc` rather than be ported, and they
+   carry the same final-channel defect until they do.
    Verified present in tttrlib 0.27.0 — do not re-derive: `fconv`,
    `fconv_per_cs`, `sconv`, `fconv_ref`, `shift_lamp`, `rescale_w_bg`,
    `rescale_w`, `add_pile_up_to_model`, `histogram1D_double`,
@@ -155,6 +153,19 @@ mechanically.
   `[1,4,3,1]` came back as `[0.25,4,0.75,1]`. Fixed; pinned by a mutation test
   *and* a call-to-call stability test, because a test that only checks the
   returned decay passes either way.
+* **The periodic convolution's numba twin never gave the final channel its
+  inter-pulse tail** — and the guard test written to catch exactly that had been
+  failing. Settled with an independent brute-force sum rather than by picking a
+  side: at two lifetimes the twin returned 2.2e-53 where the truth is 1.55e-27,
+  and at 128 it was 200x low, while the C kernel reproduces the reference. So
+  deleting the twin was a *fix*, not a like-for-like swap. The rewritten
+  `test/test_periodic_convolution_reference.py` now asserts the surviving
+  implementation is **right** rather than that two implementations agree.
+  Two things learned there that the next comparison will need: the kernel's
+  **channel 0** uses its own start convention (~1.94x a plain trapezoid's
+  half-weighted first term — characterised, not derived), and a brute force that
+  does not model the **IRF's own periodic wrap** is not a valid reference for a
+  response carrying weight at the far end.
 * **`_reaction.py`'s numba path was never compiled.** Two byte-identical copies
   of the Gillespie SSA loop behind a `_HAVE_NUMBA` switch, the numba one
   `jit(forceobj=True)` — object mode, because the loop calls Python propensity
@@ -166,8 +177,9 @@ mechanically.
 | | Files | Kernels |
 | --- | ---: | ---: |
 | At the start | 59 | 186 |
-| Ported so far | 6 | 24 |
-| Remaining | 53 | 162 |
+| Ported so far | 7 | 27 |
+| Remaining | 52 | 159 |
 
 Done: `fluorescence/general.py`, `math/datatools.py`, `math/statistics.py`,
-`math/signal.py`, `fluorescence/burst/utils.py`, `math/reaction/_reaction.py`.
+`math/signal.py`, `fluorescence/burst/utils.py`, `math/reaction/_reaction.py`,
+`fluorescence/tcspc/convolve.py`.

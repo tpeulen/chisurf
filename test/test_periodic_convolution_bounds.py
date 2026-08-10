@@ -10,9 +10,10 @@ code happened to be allocating at the time. It only appeared on tttrlib builds
 that do not clamp internally, so a locally patched build ran clean while the
 released one crashed the GUI as soon as a fit started (SIGABRT, exit 134).
 
-``convolve_lifetime_spectrum_periodic_nb`` has always clamped with
-``stop = min(stop, n_points - 1)``; these tests pin the tttrlib path to the same
-contract so the two cannot drift apart again.
+The numba twin that used to sit beside this one clamped with
+``stop = min(stop, n_points - 1)``. It has since been deleted -- it never gave
+the final channel its inter-pulse tail -- so this is now the only periodic
+convolution in the tree, and these tests are what keep the clamp on it.
 """
 import numpy as np
 import pytest

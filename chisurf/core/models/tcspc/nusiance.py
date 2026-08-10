@@ -934,7 +934,7 @@ class Convolve(FittingParameterGroup):
             # time)
         elif mode == "exp":
             t = self.data.x
-            chisurf.core.fluorescence.tcspc.convolve.convolve_lifetime_spectrum_nb(
+            chisurf.core.fluorescence.tcspc.convolve.convolve_lifetime_spectrum(
                 output_decay=decay,
                 lifetime_spectrum=data,
                 instrument_response_function=irf_y,

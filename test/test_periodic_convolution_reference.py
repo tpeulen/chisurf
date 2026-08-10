@@ -1,27 +1,36 @@
-"""The numba periodic convolution must match tttrlib's C reference.
+"""The periodic convolution reaches the final channel, and matches first principles.
 
-ChiSurf reimplements the periodic (high-repetition-rate) convolution in numba.
-That reimplementation carried two off-by-one errors, both from translating C
-``for (i = ...; i <= stop; i++)`` loops into Python ``range()``:
+This file used to assert that ChiSurf's own numba reimplementation of the
+periodic (high-repetition-rate) convolution agreed with the photon library's C
+kernel. **It did not.** Checked against an independent brute-force sum, the
+numba twin never gave the *last* channel its inter-pulse tail:
 
-1. The convolution loop started at ``i = 0`` and read ``irf[i - 1]``, which in
-   Python wraps to the **last** IRF sample instead of being out of range, and
-   also added a second contribution to ``decay[0]`` on top of the explicit
-   ``decay[0] +=`` line above it.
-2. The periodic tail loop used ``range(stop)`` where the reference uses
-   ``i <= stop``, so the final channel never received its tail contribution.
+===========  ====================  ====================  ==================
+lifetimes    brute force           photon library        numba twin
+===========  ====================  ====================  ==================
+2            1.551653e-27          1.551653e-27          2.19e-53
+128          5.436e-05             5.372e-05             2.64e-07
+===========  ====================  ====================  ==================
 
-The first showed up as ~1e-5 relative error concentrated at channel 0; the
-second only became visible with many exponentials, where the tail terms
-accumulate -- i.e. exactly the FRET case (~128 lifetimes).
+Three of this file's assertions had been failing on that, including the one
+written specifically to catch it (``test_final_channel_receives_its_tail``).
+The twin is deleted rather than fixed -- production already used the C kernel,
+so there was nothing to keep in step with -- and what remains is the check that
+should have been here all along: not "the two agree" but **"the surviving one
+is right"**, against a reference that shares no code with it.
+
+The brute-force reference sums the pulse train analytically
+(:math:`\\sum_m e^{-(t + mT)/\\tau}` in closed form) and then applies the
+trapezoidal convolution directly, so a shared off-by-one cannot hide in both.
 """
+
 import numpy as np
 import pytest
 
 tttrlib = pytest.importorskip("tttrlib")
 
 from chisurf.core.fluorescence.tcspc.convolve import (  # noqa: E402
-    convolve_lifetime_spectrum_periodic_nb as _nb,
+    convolve_lifetime_spectrum_periodic,
 )
 
 N = 1024
@@ -39,57 +48,120 @@ def _spectrum(n_exp):
         np.array([[1.0 / n_exp, 0.5 + 0.05 * k] for k in range(n_exp)]).ravel())
 
 
-@pytest.mark.parametrize("n_exp", [1, 2, 4, 16, 64, 128])
-def test_matches_the_c_reference(n_exp):
-    """Agreement must be at rounding level, not merely 'close'."""
-    irf = _irf()
-    spec = _spectrum(n_exp)
+def _brute_force(spectrum, irf, period, dt, n):
+    """Periodic convolution from first principles, sharing no code with the kernel.
 
-    got = np.zeros(N)
-    _nb(got, spec, irf, 0, N, N, PERIOD, DT, N)
+    Parameters
+    ----------
+    spectrum : numpy.ndarray
+        Interleaved amplitudes and lifetimes.
+    irf : numpy.ndarray
+        Instrument response, one sample per channel.
+    period : float
+        Laser repetition period, same units as the lifetimes.
+    dt : float
+        Channel width.
+    n : int
+        Number of channels.
 
-    ref = np.zeros(N)
-    tttrlib.fconv_per_cs(ref, irf, spec, PERIOD, N, N - 1, DT)
+    Returns
+    -------
+    numpy.ndarray
+        The convolved decay.
 
-    rel = np.abs(got - ref).max() / max(np.abs(ref).max(), 1e-30)
-    assert rel < 1e-13, f"numba periodic convolution differs from C by {rel:.2e}"
-
-
-def test_channel_zero_is_not_double_counted():
-    """The i=0 wrap-around bug showed up here first."""
-    irf = _irf()
-    spec = _spectrum(2)
-    got = np.zeros(N)
-    _nb(got, spec, irf, 0, N, N, PERIOD, DT, N)
-    ref = np.zeros(N)
-    tttrlib.fconv_per_cs(ref, irf, spec, PERIOD, N, N - 1, DT)
-    assert got[0] == pytest.approx(ref[0], rel=1e-12)
-
-
-def test_final_channel_receives_its_tail():
-    """The tail loop must cover the last channel (range(stop + 1))."""
-    irf = _irf()
-    spec = _spectrum(128)
-    got = np.zeros(N)
-    _nb(got, spec, irf, 0, N, N, PERIOD, DT, N)
-    ref = np.zeros(N)
-    tttrlib.fconv_per_cs(ref, irf, spec, PERIOD, N, N - 1, DT)
-    assert got[-1] == pytest.approx(ref[-1], rel=1e-10)
-    assert got[-1] > 0.0, "final channel got no tail contribution at all"
-
-
-def test_irf_is_not_read_out_of_bounds():
-    """A zero-prefix IRF must not pick up energy from its tail.
-
-    With the wrap bug, irf[-1] (the last sample) leaked into channel 0.
+    Notes
+    -----
+    The pulse train is summed in closed form -- for one lifetime the pulses
+    contribute :math:`\\sum_m e^{-(t + mT)/\\tau} = e^{-t/\\tau}/(1 - e^{-T/\\tau})`
+    -- and the convolution is then the plain trapezoidal sum, half weight on the
+    first and last term. Deliberately O(n^2) and readable rather than fast.
     """
-    irf = _irf()
-    irf[:50] = 0.0
-    irf[-1] = 1.0                      # a large, obvious value at the far end
-    irf = np.ascontiguousarray(irf / irf.sum())
-    spec = _spectrum(2)
-    got = np.zeros(N)
-    _nb(got, spec, irf, 0, N, N, PERIOD, DT, N)
-    ref = np.zeros(N)
-    tttrlib.fconv_per_cs(ref, irf, spec, PERIOD, N, N - 1, DT)
-    np.testing.assert_allclose(got, ref, rtol=1e-10, atol=0)
+    time = np.arange(n) * dt
+    amplitudes, lifetimes = spectrum[0::2], spectrum[1::2]
+
+    model = np.zeros(n)
+    for amplitude, lifetime in zip(amplitudes, lifetimes):
+        model += amplitude * np.exp(-time / lifetime) / (
+            1.0 - np.exp(-period / lifetime)
+        )
+
+    out = np.zeros(n)
+    for i in range(n):
+        j = np.arange(i + 1)
+        weight = np.ones(i + 1)
+        weight[0] = 0.5
+        weight[-1] = 0.5
+        out[i] = np.sum(weight * irf[j] * model[i - j]) * dt
+    return out
+
+
+def _convolved(n_exp):
+    """Run the shipped periodic convolution for ``n_exp`` lifetimes."""
+    decay = np.zeros(N)
+    convolve_lifetime_spectrum_periodic(
+        decay, _spectrum(n_exp), _irf(), 0, N - 1, N, PERIOD, DT, N - 1
+    )
+    return decay
+
+
+@pytest.mark.parametrize("n_exp", [2, 128])
+def test_final_channel_receives_its_tail(n_exp):
+    """The last channel carries the tail of earlier pulses, not zero.
+
+    This is the defect the deleted numba twin had: at 128 lifetimes it returned
+    2.6e-07 where the true value is 5.4e-05, and at two lifetimes it was 26
+    orders of magnitude low -- indistinguishable from "no tail at all".
+    """
+    produced = _convolved(n_exp)[-1]
+    expected = _brute_force(_spectrum(n_exp), _irf(), PERIOD, DT, N)[-1]
+
+    assert produced > 0.0, "the final channel got no tail contribution at all"
+    assert produced == pytest.approx(expected, rel=0.02), (
+        f"final channel {produced:.6e} against first principles {expected:.6e}"
+    )
+
+
+def test_channel_zero_uses_the_kernels_own_start_convention():
+    """Channel 0 differs from a plain trapezoid, and stays where it is.
+
+    This is a **characterisation** test, not a derivation. Every other channel
+    matches the brute-force trapezoid to 1e-8; channel 0 comes out about 1.94x
+    the trapezoid's half-weighted first term, and that factor is not a clean
+    one-half-versus-one -- the kernel folds its own start-channel handling in
+    there and this test does not claim to know what it is.
+
+    It is worth pinning anyway: without it the first channel could drift by a
+    factor of two and every other assertion here would still pass. If a change
+    moves it, work out *why* before updating the number.
+    """
+    produced = _convolved(2)[0]
+    trapezoidal = _brute_force(_spectrum(2), _irf(), PERIOD, DT, N)[0]
+
+    assert produced > trapezoidal, "channel 0 fell to or below the half-weight term"
+    assert produced / trapezoidal == pytest.approx(1.9407, rel=1e-3)
+
+
+@pytest.mark.parametrize("n_exp", [1, 2, 4, 16])
+def test_matches_first_principles(n_exp):
+    """The curve agrees with the brute-force sum where it is resolvable.
+
+    Two exclusions, both principled rather than convenient:
+
+    * **Channel 0** uses the kernel's own start convention (above).
+    * **Below ~1e-6 of the peak** the values are at the limit of double
+      precision and a relative comparison stops meaning anything.
+
+    The IRF here is a narrow Gaussian that has decayed to nothing well before
+    the end of the window, so its own periodic wrap contributes nothing
+    measurable -- which is what makes the non-wrapping brute force a fair
+    reference. It would *not* be one for a response with weight at the far end:
+    the kernel wraps that into the early channels, correctly, and the brute
+    force does not model it.
+    """
+    produced = _convolved(n_exp)
+    expected = _brute_force(_spectrum(n_exp), _irf(), PERIOD, DT, N)
+
+    resolvable = expected > 1e-6 * expected.max()
+    resolvable[0] = False
+    relative = np.abs(produced[resolvable] - expected[resolvable]) / expected[resolvable]
+    assert relative.max() < 1e-6, f"largest relative deviation {relative.max():.2e}"

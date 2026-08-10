@@ -49,22 +49,9 @@ def test_convolution_scale_invariant_tttrlib(setup):
     assert diff < 1e-6, f"tttrlib convolution not scale-invariant: diff={diff:.2e}"
 
 
-def test_convolution_scale_invariant_numba(setup):
-    s = setup
-    decay_peak = np.zeros(s["n_points"])
-    decay_area = np.zeros(s["n_points"])
-    convolve_mod.convolve_lifetime_spectrum_nb(
-        decay_peak, s["lifetime_spectrum"], s["irf_peak_norm"],
-        s["n_points"], s["time_axis"],
-    )
-    convolve_mod.convolve_lifetime_spectrum_nb(
-        decay_area, s["lifetime_spectrum"], s["irf_area_norm"],
-        s["n_points"], s["time_axis"],
-    )
-    decay_peak /= np.max(decay_peak)
-    decay_area /= np.max(decay_area)
-    diff = np.max(np.abs(decay_peak - decay_area))
-    assert diff < 1e-6, f"numba convolution not scale-invariant: diff={diff:.2e}"
+#: There used to be a second copy of the test above, running the same check
+#: against a numba twin of the convolution. The twin is gone -- there is one
+#: convolution now, and it is the one checked above.
 
 
 def test_lifetime_accuracy(setup):

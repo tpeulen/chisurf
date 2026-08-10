@@ -201,7 +201,10 @@ def test_irf_is_normalized_before_convolution_paths():
     assert norm_idx != -1
 
     periodic_idx = src.find("convolve_lifetime_spectrum_periodic(", norm_idx)
-    exp_idx = src.find("convolve_lifetime_spectrum_nb", norm_idx)
+    # The `exp` branch is the only caller passing `output_decay=` by keyword;
+    # matching on the function name alone would find the periodic call first,
+    # since `convolve_lifetime_spectrum` is a prefix of it.
+    exp_idx = src.find("output_decay=decay", norm_idx)
     full_idx = src.find("np.convolve(data, irf_y", norm_idx)
 
     assert periodic_idx > norm_idx

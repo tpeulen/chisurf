@@ -47,7 +47,6 @@ modules/ndxplorer/ndxplorer/utils/vectorized_ops.py
 
 # ── tttrlib (already shipping; delegate) ─────────────────────────────────────
 chisurf/core/fluorescence/burst/gopich_szabo.py
-chisurf/core/fluorescence/tcspc/convolve.py
 chisurf/core/fluorescence/tcspc/corrections.py
 chisurf/core/fluorescence/tcspc/tcspc.py
 chisurf/core/math/hmm.py

@@ -22,7 +22,11 @@ unrelated change unreviewable.
   is already preferred when available — check whether the compiled path gives
   the expected value before debugging the kernel that is being deleted.
 
-Neither is a regression from the numba retirement, and neither should be
+Two more in `test/fitting`, found the same way and with the same verdict:
+`test_fit_state.py::test_fret_gaussian_model_get_set_state_preserves_gaussians`
+and `test_pcf_experiment.py::test_pcf_config_block_present`.
+
+None of these is a regression from the numba retirement, and none should be
 counted as one when that work reports its test results.
 
 ## Stale generated plugin reference pages after the `sm_image_mle` rename
