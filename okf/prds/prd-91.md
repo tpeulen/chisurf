@@ -14,75 +14,10 @@ sibling: none
 
 # Where to pick this up
 
-**Handover, 2026-08-10.** The game is built and playable end to end; what is
-left is *population and teaching*, not systems. Read this section and Part 11b,
-then the three open fronts below. Everything named here is committed and the
-working tree is clean.
+**Design settled 2026-08-10 across ~30 decisions (see "Decision record" at the
+end). Implementation is at Phase 4.**
 
-## The three open fronts, in the order they matter
-
-### 1. There is no tutorial — and the `?` tour is not one
-
-`gui/guide.json` exists and is good, but it is the **help modal**: the player
-has to know to press `?` before they know anything. The prologue (Part 0b) is
-*story*, not instruction. So a new player is dropped into a 76,000-tile world
-with nine actions and no idea that **Q** starts a fight or that **Tab** opens
-anything.
-
-What is needed is an in-world teaching sequence that **points at the real thing
-and waits for the real press**, in the order a first run actually goes: walk →
-speak to the keeper at your first lit house → find the gate → stand on the
-recovery station → meet a beast → take one turn → answer the page. The tour
-format in `chisurf/gui/widgets/tools/guided_tour.py` is the wrong shape here
-(it targets Qt widgets, and this screen has none); the state to drive it off
-already exists — `phase`, `story.current`, `here`, `battle`, `challenge`,
-`resting`. Build it as a `Tutorial` object beside `Story`, whose steps complete
-on **game state** exactly as story beats do, and draw it as a one-line banner
-rather than a modal.
-
-### 2. The NPCs are not tied to the story
-
-`api/npcs.py` populates the world with three kinds — **villager** (one per
-settled page, standing at its door), **animal** (wanders, means nothing,
-deliberately), **beast** (roams the wilds; walking into one starts a fight).
-That is 126 inhabitants and it is what stopped the world being dead.
-
-But **not one of them is a character**. The three orders (Part 8) exist only as
-data in `story.py`: nobody in the world speaks for Rigour, Clarity or
-Discovery, so "choose an order" is a menu row rather than a meeting. There is
-no one who tells you what the Fading is, no keeper of the recovery station, no
-one at a gate.
-
-What is needed: a small cast of **placed, named story NPCs** — one emissary per
-order, standing in a land whose character suits their doctrine (Rigour in The
-Great Library, Clarity on The Pilgrim Road, Discovery in The Cairns or at an
-Unlinked village), plus a healer at each clinic tile. They need fixed positions
-(not wander), multi-line dialogue, and `story.choose(order)` wired to actually
-talking to an emissary rather than to a menu. `Npc` already carries a `line`;
-it will need a `lines: list[str]` and an `on_talk` hook.
-
-### 3. Villages are too small and too empty
-
-A compound is currently `columns * 2 + 3` by `rows * 2 + 3` tiles
-(`_village_size` in `api/world.py`), which puts buildings on **every other
-tile** — a grid of doors with a one-tile alley between them. There is nowhere
-to stand and nowhere to put anyone who is not a page-keeper, which is why a
-village reads as a storage rack rather than a town.
-
-I was part-way into changing the pitch from 2 to 3 (`ROOM_PITCH`) and widening
-the wall margin when this handover was called; **nothing was applied**, the file
-is untouched. Note the cost before doing it: the map is already 318x240 tiles
-and a pitch of 3 grows every region by roughly half again. Check the build time
-(currently ~0.65 s) and re-measure the frame after, and remember that
-`_paint_village` fills the whole rect with FLOOR, so extra space is free ground
-that NPCs can be placed on.
-
-Then populate them: townsfolk who are *not* keepers (a smith, children, someone
-at the gate), scaled to village size rather than to how many pages are settled.
-Keep the keeper-per-settled-page rule intact — it is the one thing in the world
-that means something — and add the rest around it.
-
-## What is already done, and where the traps are
+Next, in order:
 
 1. ✅ **Phases 1 and 2 done.** The engine is in `chisurf/gui/chigame/` and **all
    five arcade games run on it**, off `QPainter`, each verified against a
@@ -211,15 +146,6 @@ input model either.
 - **The mean room position is not the centre of the world.** `reference` holds
   145 of the 377 rooms, so averaging drags a fit-to-world view into it and
   clips everything else; use the bounding box.
-- **The temp-index commit recipe makes your working copy drift.** Committing via
-  a temporary `GIT_INDEX_FILE` (HEAD + only your hunks) is the right way not to
-  steal another instance's staged work, but it rebases onto HEAD each time while
-  the on-disk file keeps accumulating separately. `okf/log.md` fell **10 entries
-  behind** and `okf/references/known-issues.md` **6**. Worse, the *main* index
-  goes stale against the new HEAD, so files you have just committed show as
-  **staged deletions** — and anyone committing that index would delete them.
-  After every such commit: `git reset -- <your paths>`, and diff your working
-  copy of any shared file against HEAD.
 - **REQ/REP is lock-step.** The existing `ZmqServer` (`chisurf/server/transport/zmq.py`)
   pairs REP with PUB. Many clients on one REP socket serialise, which is fine
   for turn-based play and trading and wrong for live avatar positions. Those go

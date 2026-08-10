@@ -10,7 +10,7 @@ timestamp: '2026-08-10T00:00:00Z'
 # Where to pick this up
 
 1. **The tracker is `test/numba_import_allowlist.txt`** and it only shrinks.
-   Every entry carries its route. **47 of the original 59 files remain**;
+   Every entry carries its route. **52 of the original 59 files remain**;
    `test/test_numba_seam.py` fails both on a new importer and on a stale entry,
    so the list cannot drift from the tree.
 2. **Route `tttrlib` is under way.** `core/fluorescence/tcspc/convolve.py` is
@@ -24,21 +24,7 @@ timestamp: '2026-08-10T00:00:00Z'
    `rescale_w`, `add_pile_up_to_model`, `histogram1D_double`,
    `histogram1D_int`, `decode_records`, `GopichSzabo`, `HMM`/`HmmModel`/
    `HmmVB`, `maxent_invert`, `solve_tcspc_mem_lifetime`, `OptsCluster`.
-3. **A `tttrlib` route is a hypothesis, not a verdict — diff the maths first.**
-   Two files routed to `tttrlib` turned out to be route `numpy`, because
-   ChiSurf's version is *deliberately better than the C one* and delegating
-   would have been a silent regression:
-   `tcspc/corrections.py::add_pile_up_to_model` caps the detection probability
-   below one, bails out when Coates' correction is undefined instead of
-   returning NaN, and uses the analytic limit in empty channels where the C
-   version divides by a substituted 1.0 and so **zeroes the model** there;
-   `tcspc/tcspc.py::rescale_w_bg` guards on a finite weight (an empty channel
-   can carry an infinite one), omits the C version's `1e-12` floor, and does
-   not rescale the model as a side effect. Both bodies were already pure NumPy
-   under the decorator. So: read both implementations before delegating, and
-   when they differ, work out *which* is right rather than assuming the
-   compiled one is.
-4. **Two of the routed files may need no work at all — check before writing.**
+3. **Two of the routed files may need no work at all — check before writing.**
    `core/ml/cluster/_hdbscan.py` already routes to the compiled kernel at
    `_hdbscan.py:298` and only falls back to numba; making the compiled path
    required deletes seven kernels. `plugins/burst/burst_h2mm/` already has
@@ -47,7 +33,7 @@ timestamp: '2026-08-10T00:00:00Z'
    same reason, but **measure before delegating** — it is the hmmlearn
    replacement and is 1.1–18× faster per E-step, so a regression there is a
    visible loss.
-5. **`gopich_szabo.py` has a red test that is not the port's fault.**
+4. **`gopich_szabo.py` has a red test that is not the port's fault.**
    `test_no_exchange_reduces_to_a_static_mixture` returns `-inf` where
    `-3.665` is expected — `-inf` is the numba kernel's own numerical-failure
    sentinel. Check whether `tttrlib.GopichSzabo` gives the expected value
@@ -55,7 +41,7 @@ timestamp: '2026-08-10T00:00:00Z'
    [known-issues](../references/known-issues.md) with four unrelated
    `mfd_burst_roundtrip` failures, so the retirement's test runs are not read
    as having caused them.
-6. **ChiMOL's 11 files are not this work's.** They are allow-listed under a
+5. **ChiMOL's 11 files are not this work's.** They are allow-listed under a
    `chimol` route and belong to the WebGPU port claimed on the agent board.
 
 ## Why it is going
@@ -191,11 +177,9 @@ mechanically.
 | | Files | Kernels |
 | --- | ---: | ---: |
 | At the start | 59 | 186 |
-| Ported so far | 12 | 36 |
-| Remaining | 47 | 150 |
+| Ported so far | 7 | 27 |
+| Remaining | 52 | 159 |
 
 Done: `fluorescence/general.py`, `math/datatools.py`, `math/statistics.py`,
 `math/signal.py`, `fluorescence/burst/utils.py`, `math/reaction/_reaction.py`,
-`fluorescence/tcspc/convolve.py`, `fluorescence/tcspc/corrections.py`,
-`fluorescence/tcspc/tcspc.py`, and the three LLTF modules, which now re-export
-the shared implementations instead of copying them.
+`fluorescence/tcspc/convolve.py`.

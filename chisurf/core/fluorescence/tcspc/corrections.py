@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import numba as nb
 import numpy as np
 
 import chisurf.core.math
@@ -108,6 +109,7 @@ def compute_linearization_table(
     )
 
 
+@nb.jit(nopython=True, nogil=True)
 def add_pile_up_to_model(
         data: np.ndarray,
         model: np.ndarray,
@@ -205,5 +207,9 @@ def add_pile_up_to_model(
     if modify_inplace:
         model *= sf
         return model
-    return model * sf
+    else:
+        a = np.empty(model.shape, dtype=np.float64)
+        for i, mv in enumerate(model):
+            a[i] = mv * sf[i]
+        return a
 

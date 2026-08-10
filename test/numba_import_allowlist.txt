@@ -47,9 +47,14 @@ modules/ndxplorer/ndxplorer/utils/vectorized_ops.py
 
 # ── tttrlib (already shipping; delegate) ─────────────────────────────────────
 chisurf/core/fluorescence/burst/gopich_szabo.py
+chisurf/core/fluorescence/tcspc/corrections.py
+chisurf/core/fluorescence/tcspc/tcspc.py
 chisurf/core/math/hmm.py
 chisurf/core/ml/cluster/_hdbscan.py
 chisurf/plugins/core/acq/gui/tool.py
+chisurf/plugins/fluorescence_decay/lltf/core/convolve.py
+chisurf/plugins/fluorescence_decay/lltf/core/fitter.py
+chisurf/plugins/fluorescence_decay/lltf/core/scaling.py
 chisurf/plugins/fluorescence_decay/maxent_decay/core/solver.py
 
 # ── imp (already migrated to imp-tricks; delete the leftover) ────────────────

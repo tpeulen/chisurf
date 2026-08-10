@@ -1,34 +1,25 @@
 # Update Log
 
 ## 2026-08-10
-* **Five more files off numba — and "delegate to the compiled kernel" turned out to be the wrong answer twice.** `tcspc/corrections.py::add_pile_up_to_model` and `tcspc/tcspc.py::rescale_w_bg` were both routed to tttrlib on the strength of the name matching. Reading the two implementations side by side says otherwise: **ChiSurf's are deliberately better and delegating would have been a silent regression.** The pile-up correction caps the detection probability strictly below one, bails out when Coates' eq. 4 is undefined instead of returning NaN, and uses the analytic `p → 0` limit in empty channels — where the C version substitutes 1.0 into the denominator and therefore **zeroes the model** in every channel without a photon. `rescale_w_bg` guards on a *finite* weight (an empty channel can carry an infinite one and would otherwise poison the whole sum), omits the C version's `1e-12` floor on the squared weight, and does not rescale the model in place as a side effect. Both bodies were already pure NumPy under the decorator, so both are route `numpy`. The rule that follows is now in the concept: **a `tttrlib` route is a hypothesis; diff the maths before acting on it.**
-  `pddem` also vectorised — a stream compaction over the Cartesian product whose emission order is pair-major with the two branches adjacent, reproduced by interleaving along a trailing axis of length two. Getting that wrong reorders the spectrum without changing any value, which no amplitude check would catch, so the parity harness compares shape *and* order: 300 cases, zero mismatches, with zero-amplitude and zero-lifetime pairs exercised.
-  **The lifetime-fitting plugin stops carrying its own forward model.** `lltf/core/{convolve,scaling}.py` held four numba kernels that were character-for-character the shared ones, docstrings aside — and the copy's `convolve_lifetime_spectrum` called the **numba** kernel where the shared one calls the compiled SIMD path, so the tool paid a JIT compile on first evaluation and ran the slower kernel after it, and inherited the final-channel defect fixed yesterday. Both modules are now thin re-exports.
-  **That merge surfaced a divergence a passing test could not see.** The plugin's `rescale_w_bg` indexed its weights as `w[i - start]` — pre-sliced — while the shared one indexes `w[i]` like every other array it is handed. The two agree **only when `start == 0`**, and `start=0` is the only way `test_rescale_w_bg_weights.py` ever called them, so the guard asserting "the LLTF copy uses the same convention" was true by construction. The caller now builds full-length weights, and the test asserts *identity* plus an offset window — with a third assertion that the offset window actually changes the answer, so it cannot pass for the wrong reason again.
-  One more pre-existing red test recorded (`test_detector_setups`), verified failing in isolation and against HEAD.
-
-* **Lumis Quest handover: the systems are done, the population and the teaching are not.**
-  Resume point written into [prd-91](prds/prd-91.md) — three open fronts, in order. **(1) There is no
-  tutorial**, and `guide.json` is not one: it is the `?` modal, which a player has to know to press before
-  they know anything, and the prologue is story rather than instruction. Build a `Tutorial` beside
-  `Story`, completing on **game state** (`phase`, `here`, `battle`, `challenge`, `resting`) exactly as
-  story beats do, drawn as a banner — the Qt `guided_tour` helper is the wrong shape for a screen with no
-  widgets. **(2) No NPC is tied to the story**: the three orders exist only as data, so "choose an order"
-  is a menu row rather than a meeting; a small placed cast is needed (an emissary per order in a land that
-  suits their doctrine, a healer at each clinic) with `Npc` growing multi-line dialogue and an `on_talk`.
-  **(3) Villages are too small**: `_village_size` puts buildings on every other tile, a grid of doors with
-  a one-tile alley — nowhere to stand and nowhere to put anyone who is not a keeper. Widening the pitch to
-  3 was started and **not applied**; the note records the cost (the map is already 318x240, and a pitch of
-  3 grows every region by about half again) so the next session measures build time and frame after.
-  Also recorded as a trap, because it bit twice: **the temp-index commit recipe makes the working copy
-  drift**. It correctly avoids stealing another instance's staged work, but it rebases onto HEAD while the
-  on-disk file accumulates separately — `okf/log.md` fell 10 entries behind, known-issues 6 — and the
-  *main* index goes stale so freshly committed files show as **staged deletions** that anyone committing
-  that index would delete. `git reset -- <your paths>` after every such commit, and diff shared files
-  against HEAD. Both were repaired: known-issues restored from HEAD (nothing was working-only), and the
-  log had **one uncommitted entry belonging to another instance** which was spliced on rather than
-  overwritten.
-
+* **PRD-93 stage 1 done: the decay wrapper deprecated, four value classes fixed, κ² fully in imp.bff.**
+  imp.bff `1a14a22` / `47a08b7`, pushed to `origin/dev`. **A PRD claim was wrong and is corrected**:
+  `spectroscopy/decay.py` is *not* unimported — `spectroscopy/__init__.py` star-imports it, so `Decay` and
+  friends are public API. It wraps the C++ `DecayCurve` family, deprecated at 2.25, so it now carries the
+  same `IMP.deprecated_module` notice and leaves in the same release rather than being deleted one early.
+  `PathMapTile`, `PathMapTileEdge`, `AVPairDistanceMeasurement` and `PathMapHeader` are now real IMP values
+  with `show()`, all four **off** both exception lists — the file shrank rather than grew. PathMapHeader
+  needed the API change IMP's value machinery demands: accessors return const references not pointers, the
+  setter takes a const reference, and `get_path_map_header_writable()` is `%ignore`d for Python because a
+  value may never hand out a mutable reference. Two pre-existing bugs surfaced: `IMP_OBJECTS` declared a
+  plain value class's plural as a vector of ref-counted pointers, and a const getter silently refreshed a
+  cached member (now `mutable`, which is what it is for).
+  **κ² is whole in imp.bff**: `kappa2_to_distance_ratio` and `convolve_distance_with_k2_ratio` moved, with
+  their one scipy call replaced (`interp1d(kind="linear", bounds_error=False, fill_value=0.0)` is exactly
+  `np.interp(..., left=0, right=0)`), verified **bit-identical across 200 randomised cases**. ChiSurf keeps
+  thin forwarders so the four call sites still work — but this is the cost you accepted: `core/models/tcspc/fret.py`
+  and the κ² GUI helper now reach IMP, which is optional here. Leaving a class on an exception list after it
+  stops deviating is itself an error; IMP says "Exception PathMapHeader is not really a show exception".
+  ChiSurf FRET suite unchanged at 6 failed / 122 passed; imp.bff 14/14.
 * **Lumis Quest: a premise, an opening, a loading screen, and options — the things a game has.**
   The story is one idea taken seriously: **everything alive carries light**. A creature's brightness is
   how hard it strikes, emitting spends it, one driven dark can be carried home — and knowledge is the same
