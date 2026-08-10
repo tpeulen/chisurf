@@ -1,6 +1,36 @@
 # Update Log
 
 ## 2026-08-10
+* **Scope boundaries for the four-repository stack, settled and partly enforced.**
+  New concept [references/imp-ecosystem](references/imp-ecosystem.md), folded in from a bundle that had
+  been started in `../imp` — the stack now has **one** knowledge base, this one, and `AGENTS.md` in `imp`,
+  `imp.bff`, `imp-tricks` and `tttrlib` points here. The layering is
+  **tttrlib → imp.bff → imp-tricks → chisurf**: tttrlib owns photons and fluorescence algorithms and never
+  imports upward; imp.bff owns structure, dye simulation, spectroscopy and scoring, and may import tttrlib
+  but only optionally; imp-tricks adds to any `IMP.*` namespace and never replaces; chisurf is the
+  application and owns no algorithms. Placement rule: **what is the input** — photons/curves → tttrlib,
+  coordinates → imp.bff, neither → chisurf. Tiebreaker when input and consumer disagree: **the consumer
+  wins**, which is what puts *all* of κ² in imp.bff including the routes fed by anisotropy, since κ²'s
+  purpose is an R₀/distance correction used when scoring a structure. chisurf being a fluorescence library
+  as well as an app is debt (38,215 lines in `core/fluorescence`), migrating **by attrition** — the rule
+  binds new code now, existing code moves when touched; a big-bang would break every plugin and saved
+  project at once.
+  **Three rules are tests, two are prose.** tttrlib guards that shipped code (`ext/python`) imports no
+  IMP/chisurf — with a deliberate carve-out for `bench/`, `test/`, `tools/`, which import chisurf in eight
+  files because benchmarking against the consumer is their point; scoping the walk to shipped sources also
+  took it from 230 s over 24,651 files to 0.1 s. imp.bff guards that no unguarded module-level
+  `import tttrlib` exists and that it imports with tttrlib blocked at the meta-path finder. imp-tricks
+  guards that no name it defines replaces one IMP already provides — the check that would have caught
+  `AVNetworkRestraintWrapper` on day one — and `sitecustomize` now warns at import
+  (`IMP_TRICKS_STRICT=1` raises). Each guard was verified to *fail* on a deliberate violation, not merely
+  to pass today. "chisurf owns no algorithms" stays prose: it cannot be tested without defining
+  *algorithm*, and a test failing on 38k lines of debt gets disabled in a week.
+  **`cgdye/thirdparty` is out of imp-tricks**: 280 MB, 269 tracked files of vendored reference code
+  (FRETpredict, fpsim, MDAnalysis tooling, a Flask/Celery/Redis web app) untracked and moved to
+  `junk/cgdye`, `/junk/` gitignored wholesale. cgdye is now 11 MB / 67 files, ready to fold into imp.bff.
+  That move exposed a hidden runtime dependency that would otherwise have broken silently after
+  relocation — `cgdye/rotamer` *loads* `.dcd` rotamer trajectories and R0 CSVs from the vendored tree —
+  and whether that library is data or reference is recorded as **open**, to answer before cgdye moves.
 * **Lumis Quest: the overworld becomes a real tile map, the lands get names, and the story arrives.**
   The previous overworld was markers floating on rectangles — a diagram, not a place. It is now a painted
   grid of **318x240 = 76,320 tiles** (5724x4320 world units): grass and woodland, water you cannot cross

@@ -30,3 +30,4 @@
 * [Pipelines](pipeline.md) - Typed DAGs of transformer invocations persisted and replayed through MMFDB provenance.
 * [Compiled Modules](compiled-modules.md) - The C++ extensions in `modules/` that must be built before tests.
 * [The photon container](photon-container.md) - One measurement as one `.pto`: the instrument file verbatim and immutable, results as artifacts beside it, provenance from the mmCIF dictionaries.
+* [IMP module conventions](imp-module-conventions.md) — how an out-of-tree module (IMP.bff) plugs into IMP's build, the generated files it does not own, and the SWIG/cereal/deprecation conventions it must follow.
