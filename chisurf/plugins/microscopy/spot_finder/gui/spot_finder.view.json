@@ -1,0 +1,83 @@
+{
+  "_comment": "Spot Finder tool. AutoForm over SpotFinderViewModel: a Detection dock (file list, workflow selector, the settings that deviate from it, an analysis region, Detect/Preview/Export) plus result docks (the field with the found regions marked, and the run table with one row per input). Writes each detection into its measurement's own container, for the Region MLE panel below to fit.",
+  "sections": [
+    {
+      "type": "dock_area",
+      "title": "Spot Finder",
+      "sections": [
+        {
+          "type": "panel",
+          "title": "Detection",
+          "n_col": 1,
+          "collapsed": false,
+          "sections": [
+            {"type": "info", "source": "summary", "height": 64},
+            {"type": "custom", "key": "path_list", "target": "files", "title": "Imaging files",
+             "options": {"add_folders": false, "dialog_filter": "Imaging data (*.pto *.ptu *.ht3 *.spc *.pt3 *.tif *.tiff);;All files (*)"},
+             "description": "Photon or camera image file(s) to detect in. Drag-drop to add."},
+            {"type": "choice", "attr": "workflow", "label": "Workflow",
+             "options_source": "workflow_choices", "rebuild_on_change": true,
+             "description": "The recipe. single_molecule is the standard one — the pipeline the Region MLE has always been fitted on. Picking a workflow replaces every setting below with that recipe's; edit them afterwards to deviate from it."},
+            {"type": "value", "attr": "name", "kind": "str", "label": "Detection name",
+             "description": "Stem the regions are stored under, so two detections of the same field can be compared instead of one replacing the other."},
+            {"type": "custom", "key": "region_list", "target": "regions", "title": "Analysis region",
+             "options": {"image_attr": "detection_image", "extent_attr": "analysis_extent",
+                         "intensity_unit": "ph", "refresh_on": ["region", "done", "results"]},
+             "description": "Confines the search. The threshold is computed from these pixels alone, so the rest of the frame does not set it — which is the point of restricting an analysis to one cell or one illuminated patch. Empty = the whole frame."},
+            {"type": "panel", "title": "Detector", "n_col": 2, "collapsed": false, "sections": [
+              {"type": "choice", "attr": "method", "label": "Method",
+               "options_source": "method_choices",
+               "description": "watershed splits objects that touch; threshold does not, which is right when they do not; log and dog measure each spot's own width."},
+              {"type": "value", "attr": "threshold", "kind": "float", "label": "Threshold", "decimals": 3, "minimum": -1.0, "maximum": 1000000.0,
+               "description": "Intensity level; below 0 computes an Otsu level. For log/dog this is the minimum scale-normalised response instead, which does not follow the image units — read it off a run."},
+              {"type": "value", "attr": "sigma", "kind": "float", "label": "Smoothing σ", "decimals": 2, "minimum": 0.0, "maximum": 100.0,
+               "description": "Gaussian smoothing before thresholding. Smoothing is what stops a single noisy pixel becoming an object."},
+              {"type": "value", "attr": "peak_footprint_size", "kind": "int", "label": "Peak footprint", "minimum": 1, "maximum": 100,
+               "description": "Square footprint side for the watershed's local-maxima seeds. Larger merges nearby seeds, which is how over-splitting is cured."}
+            ]},
+            {"type": "panel", "title": "Spot width (log / dog)", "n_col": 2, "collapsed": true, "sections": [
+              {"type": "value", "attr": "min_sigma", "kind": "float", "label": "min σ", "decimals": 2, "minimum": 0.1, "maximum": 100.0,
+               "description": "Smallest spot width to look for, in pixels. A diffraction-limited spot has σ ≈ 0.21 λ / NA."},
+              {"type": "value", "attr": "max_sigma", "kind": "float", "label": "max σ", "decimals": 2, "minimum": 0.1, "maximum": 100.0,
+               "description": "Largest spot width to look for, in pixels."},
+              {"type": "value", "attr": "num_sigma", "kind": "int", "label": "Scales", "minimum": 2, "maximum": 100,
+               "description": "Number of scales between them (log only)."},
+              {"type": "value", "attr": "overlap", "kind": "float", "label": "Overlap", "decimals": 2, "minimum": 0.0, "maximum": 1.0,
+               "description": "Spots overlapping by more than this fraction are merged, the larger kept."}
+            ]},
+            {"type": "panel", "title": "Filters", "n_col": 2, "collapsed": true, "sections": [
+              {"type": "value", "attr": "min_area", "kind": "int", "label": "Min area (px)", "minimum": 1, "maximum": 100000,
+               "description": "Smaller regions are dropped. 2 is what separates an object from a hot camera pixel: a spot covers several pixels, a defect covers exactly one."},
+              {"type": "value", "attr": "max_area", "kind": "int", "label": "Max area (px)", "minimum": 0, "maximum": 10000000,
+               "description": "Larger regions are dropped; 0 disables. An aggregate is not a molecule, and it is the one that dominates a brightness histogram."},
+              {"type": "toggle", "attr": "clear_border", "label": "Clear border",
+               "description": "Drop regions touching the frame edge. A partly-imaged object has a truncated area and a biased centroid — but on a crowded field this can remove most of the data."}
+            ]},
+            {"type": "button_row", "buttons": [
+              {"label": "👁️ Preview", "action": "request_preview", "description": "Detect in the first file only, writing nothing — for tuning against the region count."},
+              {"label": "▶ Detect", "action": "request_run", "description": "Detect in every selected file and write each result into its own measurement container."},
+              {"label": "💾 Export", "action": "request_export", "description": "Export the combined region table (all files) to a TSV/CSV."}
+            ]}
+          ]
+        },
+        {"type": "custom", "key": "image_browser", "target": "detection_image", "title": "Regions",
+         "options": {
+           "entries_source": "region_entries", "entry_attr": "current_region",
+           "info_source": "current_region_info", "filter": true,
+           "markers_source": "current_region_marker",
+           "colormap": true, "default_colormap": "inferno", "list_width": 200
+         },
+         "description": "Browse what was found; the canvas marks the selected region and the panel shows its measurements."},
+        {"type": "table", "title": "Run", "source": "run_entries", "expand": true,
+         "columns": [
+           {"key": "input", "label": "File", "width": 220, "description": "The input, whatever became of it."},
+           {"key": "status", "label": "Status", "width": 80, "description": "ok, empty, failed or skipped."},
+           {"key": "n_regions", "label": "Regions", "width": 80, "description": "Regions detected in this file."},
+           {"key": "container", "label": "Written to", "width": 200, "description": "The measurement container the pair was written into."},
+           {"key": "reason", "label": "Reason", "width": 320, "description": "Why, for anything that is not ok."}
+         ],
+         "description": "One row per input file, whatever became of it. A file that produced nothing is a row saying so, never a file that quietly left the list."}
+      ]
+    }
+  ]
+}

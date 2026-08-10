@@ -281,3 +281,35 @@ def test_prepare_refuses_a_setting_that_does_not_exist():
 
     assert response["ok"] is False
     assert "min_size" in str(response)
+
+
+def test_picking_a_workflow_replaces_every_setting_not_just_the_method():
+    """A selector that changes one field would make the recipe decorative."""
+    from chisurf.plugins.microscopy.spot_finder.gui.view_model import SpotFinderViewModel
+
+    vm = SpotFinderViewModel()
+    vm.settings.threshold = 999.0            # a value from the previous recipe
+    vm.workflow = "camera_spots"
+
+    assert vm.settings.method == "log"
+    assert vm.settings.threshold != 999.0
+    assert vm.settings.max_sigma == builtin_workflow("camera_spots")["settings"]["max_sigma"]
+    assert vm.workflow == "camera_spots"
+
+
+def test_the_run_table_has_a_row_per_input_in_the_gui_too(tmp_path: Path):
+    from chisurf.plugins.microscopy.spot_finder.gui.view_model import SpotFinderViewModel
+
+    good = _write_field(tmp_path / "good.tif")
+    broken = tmp_path / "broken.tif"
+    broken.write_bytes(b"not a tiff")
+
+    vm = SpotFinderViewModel()
+    vm.files = [str(good), str(broken)]
+    vm.write_results = False
+    vm.run()
+
+    rows = vm.run_entries()
+    assert len(rows) == 2
+    assert [r["status"] for r in rows] == ["ok", "failed"]
+    assert rows[1]["reason"]
