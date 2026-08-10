@@ -84,13 +84,72 @@ def wavelength_to_srgb(nanometres: float) -> tuple[float, float, float]:
         r, g, b = 1.0, 0.0, 0.0
 
     # Roll off at the ends of vision, but never all the way to black.
+    #
+    # The red rolloff starts at 645 rather than 700 deliberately. Above 645 the
+    # hue is pure red and stops changing, so without a brightness gradient every
+    # wavelength from there to 780 renders *identically* -- which showed up as
+    # two adjacent spectral bands that were supposed to differ looking the same.
+    # Eye sensitivity really does fall away across that span, so dimming it is
+    # both the fix and the more faithful answer. It starts at 620 rather than
+    # 645 because two bands only ~40 nm apart still have to be told apart.
     if w < 420.0:
         falloff = 0.3 + 0.7 * (w - 380.0) / 40.0
-    elif w > 700.0:
-        falloff = 0.3 + 0.7 * (780.0 - w) / 80.0
+    elif w > 620.0:
+        falloff = 0.28 + 0.72 * (780.0 - w) / 160.0
     else:
         falloff = 1.0
     return r * falloff, g * falloff, b * falloff
+
+
+#: The visible range the games span, in nanometres. Violet is high-energy and
+#: red is low: anything the games rank by difficulty ranks the same way.
+VISIBLE_MIN_NM = 405.0
+VISIBLE_MAX_NM = 680.0
+
+
+def spectral_band(fraction: float) -> float:
+    """Wavelength at a position across the visible range.
+
+    Used wherever a game needs a series of distinct colours. Taking them from
+    the spectrum rather than from a palette means the ordering carries meaning:
+    the short-wavelength end is the energetic one, so "harder" and "bluer"
+    coincide instead of being two unrelated facts the player must memorise.
+
+    Parameters
+    ----------
+    fraction : float
+        Position in 0..1. ``0`` is violet, ``1`` is deep red.
+
+    Returns
+    -------
+    float
+        Wavelength in nanometres.
+    """
+    f = min(max(float(fraction), 0.0), 1.0)
+    return VISIBLE_MIN_NM + f * (VISIBLE_MAX_NM - VISIBLE_MIN_NM)
+
+
+def photon_energy_rank(nanometres: float) -> float:
+    """How energetic a wavelength is, normalised to 0..1.
+
+    Photon energy goes as the reciprocal of wavelength, so this is not a linear
+    ramp -- and using the real relation is what makes "violet is hardest" a
+    consequence rather than a decoration.
+
+    Parameters
+    ----------
+    nanometres : float
+        Wavelength in nm.
+
+    Returns
+    -------
+    float
+        ``1`` at the violet end of the visible range, ``0`` at the red end.
+    """
+    inv = 1.0 / max(nanometres, 1e-6)
+    lo = 1.0 / VISIBLE_MAX_NM
+    hi = 1.0 / VISIBLE_MIN_NM
+    return min(max((inv - lo) / (hi - lo), 0.0), 1.0)
 
 
 class AssetPack:
@@ -158,19 +217,35 @@ class ProceduralPack(AssetPack):
         Pack identifier.
     """
 
-    #: Base palette, in sRGB. Anything not derived from data comes from here.
+    #: Base palette, in sRGB. The look is an optical bench in a darkened room,
+    #: not an arcade cabinet: structure is desaturated graphite and steel, and
+    #: **every saturated colour in the game is a wavelength**, produced by
+    #: :func:`wavelength_to_srgb` rather than picked. Anything that glows is
+    #: emitting; anything grey is hardware.
     PALETTE: dict[str, tuple[float, float, float, float]] = {
-        "ink": (0.07, 0.08, 0.11, 1.0),
-        "paper": (0.93, 0.94, 0.96, 1.0),
-        "grass": (0.30, 0.55, 0.32, 1.0),
-        "stone": (0.55, 0.56, 0.60, 1.0),
-        "water": (0.22, 0.45, 0.70, 1.0),
-        "path": (0.72, 0.66, 0.52, 1.0),
-        "wall": (0.36, 0.31, 0.29, 1.0),
-        "fog": (0.14, 0.15, 0.19, 1.0),
-        "accent": (0.95, 0.72, 0.25, 1.0),
-        "danger": (0.85, 0.28, 0.28, 1.0),
-        "ui": (0.88, 0.90, 0.94, 1.0),
+        # Room and enclosure.
+        "ink": (0.030, 0.034, 0.042, 1.0),
+        "fog": (0.075, 0.082, 0.098, 1.0),
+        # Hardware: mounts, rails, housings.
+        "steel": (0.42, 0.45, 0.50, 1.0),
+        "graphite": (0.16, 0.18, 0.21, 1.0),
+        "chrome": (0.68, 0.72, 0.78, 1.0),
+        # Optics.
+        "glass": (0.55, 0.72, 0.78, 1.0),
+        "mirror": (0.80, 0.84, 0.88, 1.0),
+        # Legible chrome text and rules.
+        "ui": (0.78, 0.82, 0.88, 1.0),
+        "dim": (0.44, 0.48, 0.55, 1.0),
+        # Reserved semantics. "accent" is a readout colour, not decoration.
+        "accent": (0.35, 0.85, 0.80, 1.0),
+        "danger": (0.90, 0.32, 0.30, 1.0),
+        # Terrain, kept muted so an emitting object always wins the eye.
+        "grass": (0.16, 0.28, 0.24, 1.0),
+        "stone": (0.30, 0.32, 0.35, 1.0),
+        "water": (0.12, 0.26, 0.38, 1.0),
+        "path": (0.34, 0.33, 0.30, 1.0),
+        "wall": (0.20, 0.21, 0.24, 1.0),
+        "paper": (0.86, 0.89, 0.93, 1.0),
     }
 
     def __init__(self, name: str = "procedural") -> None:
@@ -197,6 +272,44 @@ class ProceduralPack(AssetPack):
             How to draw it.
         """
         color = hints.get("color")
+        nm = hints.get("emission_nm")
+
+        if kind == "photon":
+            # A quantum of light: a small bright core inside a wide halo, in the
+            # colour it actually is. Nothing else in the scene glows this hard.
+            rgb = wavelength_to_srgb(nm) if nm else (0.90, 0.94, 1.0)
+            if name == "halo":
+                # A spill of light around something emitting, not the thing
+                # itself: wide, faint, and never competing with its source.
+                return Appearance(shape=GLOW, color=(*rgb, 0.30), param=0.9,
+                                  softness=0.5, scale=3.4)
+            return Appearance(shape=GLOW, color=(*rgb, 1.0), param=0.42, softness=0.5, scale=2.6)
+        if kind == "band":
+            # One emission band of a spectrum. Brightness follows photon energy,
+            # so the violet end reads as the energetic one without a legend.
+            rgb = wavelength_to_srgb(nm) if nm else (0.7, 0.7, 0.7)
+            gain = 0.78 + 0.22 * photon_energy_rank(nm or 550.0)
+            alpha = 0.45 if state == "depleted" else 1.0
+            return Appearance(
+                shape=ROUND,
+                color=(rgb[0] * gain, rgb[1] * gain, rgb[2] * gain, alpha),
+                param=0.30,
+                softness=0.06,
+            )
+        if kind == "optic":
+            # A mirror, dichroic or filter: hardware that redirects light. Tinted
+            # by its own passband when one is given, otherwise plain glass.
+            rgb = wavelength_to_srgb(nm) if nm else self.PALETTE["glass"][:3]
+            return Appearance(
+                shape=ROUND,
+                color=(*[0.35 + 0.65 * c for c in rgb], 1.0),
+                param=1.0,
+                softness=0.10,
+            )
+        if kind == "detector":
+            return Appearance(shape=ROUND, color=color or self.PALETTE["chrome"], param=0.35)
+        if kind == "mount":
+            return Appearance(shape=ROUND, color=color or self.PALETTE["graphite"], param=0.2)
         if kind == "dye":
             nm = hints.get("emission_nm")
             rgb = wavelength_to_srgb(nm) if nm else (0.8, 0.8, 0.8)

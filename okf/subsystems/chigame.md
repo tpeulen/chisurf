@@ -71,10 +71,33 @@ Games emit **semantic** draw calls and never name a texture, a colour or a shade
 
 An `AssetPack` resolves the semantic name to something drawable. The default
 `ProceduralPack` renders signed-distance shapes in WGSL and ships with **no image
-files at all** — creature colour is derived from a real emission maximum via
-wavelength→sRGB, so the art is generated from data rather than drawn. An
-`AtlasPack` backed by a sprite sheet can replace it later **without a line of game
-code changing**.
+files at all**. An `AtlasPack` backed by a sprite sheet can replace it later
+**without a line of game code changing**.
+
+### The art direction is a rule, not a mood
+
+The default pack is an **optical bench in a darkened room**, not an arcade
+cabinet. One rule generates the whole look:
+
+> Structure is desaturated graphite, steel and chrome. **Every saturated colour
+> in the game is a wavelength**, produced by `wavelength_to_srgb` rather than
+> picked. Anything that glows is emitting; anything grey is hardware.
+
+That is worth more than a style guide, because it makes the picture *mean*
+something. A brick wall becomes an emission spectrum. A ball becomes a photon
+whose colour records the last band it interacted with. Two paddles become a
+donor and an acceptor, and the ball changing colour as it crosses the field is
+the transfer, not a flourish.
+
+It also removes arbitrary decisions. `spectral_band(fraction)` gives a series of
+distinct colours from the spectrum, and `photon_energy_rank(nm)` ranks them by
+`1/λ` — so when a game needs a difficulty ordering, "bluer" and "harder"
+coincide as a *consequence* instead of two unrelated facts a player must
+memorise. Note the ranking is deliberately non-linear: the midpoint wavelength
+of the visible range sits at energy rank 0.37, not 0.5.
+
+The vocabulary a game draws with is therefore optical — `photon`, `band`,
+`optic`, `detector`, `mount` — rather than `sprite` or `brick`.
 
 A pack declares its tiles, palette, sprite mappings, shaders **and music** in one
 manifest. Music lives in the pack deliberately: swapping the pack swaps the
@@ -119,6 +142,16 @@ proves the *scene*, not the swapchain or presentation.
 
 # Traps
 
+- **A failing `draw` used to vanish.** The canvas catches whatever its draw
+  callback raises, logs it, and hands back an empty frame — so a plain
+  `NameError` in a game surfaced much later as an `IndexError` on a
+  0-dimensional array, somewhere unrelated. `capture` now captures the
+  exception and re-raises it, and refuses a frame that is not an image.
+- **Colour above ~645 nm stops changing.** The hue is already pure red, so
+  without a brightness gradient every wavelength from there to 780 renders
+  *identically* — two spectral bands 40 nm apart looked the same. The rolloff
+  therefore starts at 620, which is both the fix and closer to real luminous
+  efficiency.
 - **`rendercanvas.qt` raises on import** unless a Qt binding is imported first.
   `import PyQt5.QtWidgets` (or `qtpy`) must precede it. The error reads like a
   missing dependency and is not one.

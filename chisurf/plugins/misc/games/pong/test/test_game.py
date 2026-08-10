@@ -98,14 +98,14 @@ def test_the_ball_bounces_off_the_player_paddle(game):
 
 
 def test_reaching_the_win_score_ends_the_game(game):
-    """The winner is declared and play stops."""
+    """The winning side is declared -- by its role -- and play stops."""
     game.player_score = WIN_SCORE - 1
     game.serve_timer = 0.0
     # Out of play is a ball-width beyond the edge, not the edge itself.
     game.ball_x = FIELD_W + 40.0
     game.ball_vx = 400.0
     game.update(1 / 60, game.host.keys)
-    assert game.winner == "Player"
+    assert game.winner == "Donor"
 
     before = game.ball_x
     game.update(1 / 60, game.host.keys)
@@ -158,3 +158,31 @@ def test_it_renders(qapp):
     # The net runs down the middle, so the centre column is brighter than the
     # empty quarter-width column beside it.
     assert int(frame[:, 160, :3].sum()) > int(frame[:, 80, :3].sum())
+
+
+def test_each_optic_re_emits_the_photon_at_its_own_wavelength(game):
+    """A bounce is an energy transfer, and the photon's colour records it."""
+    from chisurf.plugins.misc.games.pong.pong import ACCEPTOR_NM, DONOR_NM
+
+    game.serve_timer = 0.0
+    game.paddle_y = FIELD_H * 0.5
+    game.ball_y = FIELD_H * 0.5
+    game.ball_x = 40.0
+    game.ball_vx = -300.0
+    game.ball_vy = 0.0
+    for _ in range(20):
+        game.update(1 / 60, game.host.keys)
+        if game.ball_vx > 0:
+            break
+    assert game.ball_nm == DONOR_NM
+
+    game.cpu_y = game.ball_y = FIELD_H * 0.5
+    game.ball_x = FIELD_W - 40.0
+    game.ball_vx = 300.0
+    game.ball_vy = 0.0
+    for _ in range(20):
+        game.update(1 / 60, game.host.keys)
+        if game.ball_vx < 0:
+            break
+    assert game.ball_nm == ACCEPTOR_NM
+    assert ACCEPTOR_NM > DONOR_NM, "the acceptor must be red-shifted from the donor"

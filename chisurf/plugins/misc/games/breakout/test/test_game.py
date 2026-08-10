@@ -106,7 +106,7 @@ def test_running_out_of_lives_ends_the_game(game):
     game.ball_y = H + 50.0
     game.ball_vy = 300.0
     game.update(1 / 60, game.host.keys)
-    assert game.message == "Game over"
+    assert game.message == "Sample bleached"
 
     before = game.ball_y
     game.update(1 / 60, game.host.keys)
@@ -148,3 +148,34 @@ def test_it_renders(qapp):
     wall = int(frame[40, :, :3].sum())
     empty = int(frame[220, :, :3].sum())
     assert wall > empty * 3, (wall, empty)
+
+
+def test_the_wall_is_a_spectrum_and_hardness_follows_photon_energy():
+    """Rows run violet to red, and the energetic rows are the hard ones.
+
+    Row hardness is not a curve someone picked: it is derived from 1/lambda, so
+    "bluer" and "tougher" are the same fact rather than two to memorise.
+    """
+    from chisurf.gui.chigame.assets import photon_energy_rank
+    from chisurf.plugins.misc.games.breakout.breakout import ROW_HARDNESS, ROW_NM
+
+    assert ROW_NM == sorted(ROW_NM), "the wall must run short to long wavelength"
+    assert len(set(ROW_NM)) == BRICK_ROWS, "every band needs its own wavelength"
+    for nm, hardness in zip(ROW_NM, ROW_HARDNESS):
+        assert hardness == (2 if photon_energy_rank(nm) > 0.5 else 1), nm
+    assert ROW_HARDNESS[0] > ROW_HARDNESS[-1]
+
+
+def test_the_photon_takes_the_wavelength_of_the_band_it_strikes(game):
+    """The probe's colour is a running record of what it last interacted with."""
+    from chisurf.plugins.misc.games.breakout.breakout import EXCITATION_NM
+
+    assert game.ball_nm == EXCITATION_NM
+    game.stuck = False
+    brick = game.bricks[0]
+    game.ball_x = brick.x
+    game.ball_y = brick.y + brick.h * 0.5
+    game.ball_vx = 0.0
+    game.ball_vy = -200.0
+    game.update(1 / 60, game.host.keys)
+    assert game.ball_nm == brick.nm != EXCITATION_NM

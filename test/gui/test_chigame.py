@@ -204,3 +204,75 @@ def test_a_track_synthesises_to_audible_samples():
     samples = np.frombuffer(pcm, dtype="<i2")
     assert len(samples) > SAMPLE_RATE // 2
     assert int(np.abs(samples).max()) > 3000
+
+
+def test_adjacent_long_wavelength_bands_are_distinguishable():
+    """Two bands ~40 nm apart in the red must not render identically.
+
+    Above ~645 nm the hue is pure red and stops changing, so without a
+    brightness gradient every wavelength from there to 780 came out the same
+    colour -- which showed up as the bottom two rows of the breakout spectrum
+    being indistinguishable. Regression for the steeper rolloff.
+    """
+    near = chigame.wavelength_to_srgb(640.0)
+    far = chigame.wavelength_to_srgb(680.0)
+    assert abs(near[0] - far[0]) > 0.08, (near, far)
+
+
+def test_the_spectrum_runs_violet_to_red():
+    """`spectral_band` spans the visible range in the documented direction."""
+    from chisurf.gui.chigame.assets import spectral_band
+
+    assert spectral_band(0.0) < spectral_band(0.5) < spectral_band(1.0)
+    violet = chigame.wavelength_to_srgb(spectral_band(0.0))
+    red = chigame.wavelength_to_srgb(spectral_band(1.0))
+    assert violet[2] > violet[1], "the short-wavelength end must be blue-violet"
+    assert red[0] > red[1] and red[0] > red[2], "the long end must be red"
+
+
+def test_photon_energy_ranks_violet_above_red():
+    """Energy goes as 1/lambda, so shorter is more energetic -- and non-linear.
+
+    Games rank difficulty by this, so "bluer" and "harder" have to coincide.
+    """
+    from chisurf.gui.chigame.assets import photon_energy_rank
+
+    assert photon_energy_rank(405.0) > photon_energy_rank(550.0) > photon_energy_rank(680.0)
+    # Energy goes as 1/lambda, which compresses the ranks toward the long-
+    # wavelength end: the *midpoint wavelength* sits well below the midpoint
+    # energy (0.373, not 0.5). A linear sweep of wavelength is therefore not a
+    # linear sweep of energy, which is exactly why the ranking is computed
+    # rather than assumed.
+    assert photon_energy_rank(0.5 * (405.0 + 680.0)) < 0.5
+
+
+def test_a_halo_never_outshines_its_source():
+    """The spill of light around an emitter stays under the emitter itself."""
+    pack = chigame.ProceduralPack()
+    core = pack.resolve("photon", "probe", emission_nm=520.0)
+    halo = pack.resolve("photon", "halo", emission_nm=520.0)
+    assert halo.color[3] < core.color[3]
+    assert halo.scale > core.scale, "a halo has to be wider than what it surrounds"
+
+
+def test_capture_reports_a_failing_draw_instead_of_an_empty_frame(gpu, qapp):
+    """A game whose draw raises must surface that error, not a shape puzzle.
+
+    The canvas catches whatever the draw callback raises and only logs it, then
+    returns an empty frame -- so the real error used to appear much later as an
+    IndexError on a 0-dimensional array, somewhere unrelated.
+    """
+
+    class Broken(_Solid):
+        def draw(self, scene):
+            """Fail deliberately.
+
+            Parameters
+            ----------
+            scene : chisurf.gui.chigame.scene.Scene
+                Ignored.
+            """
+            raise ValueError("deliberate failure inside draw")
+
+    with pytest.raises(ValueError, match="deliberate failure inside draw"):
+        chigame.capture(Broken(), size=(32, 32), with_text=False)

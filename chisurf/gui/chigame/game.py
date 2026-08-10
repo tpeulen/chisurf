@@ -307,12 +307,50 @@ def capture(
     # beside it — calling draw() with the function is a TypeError.
     context.canvas.request_draw(lambda: host.frame(dt))
 
+    errors: list[BaseException] = []
+    original_frame = host.frame
+
+    def _frame_recording_errors(step: float) -> int:
+        """Run one frame, keeping any exception for the caller.
+
+        The canvas catches whatever its draw callback raises and merely logs it,
+        then hands back an empty frame. That turns a plain error in a game's
+        ``draw`` into a confusing failure much later, somewhere else -- so the
+        exception is captured here and re-raised below.
+
+        Parameters
+        ----------
+        step : float
+            Seconds to advance.
+
+        Returns
+        -------
+        int
+            Instances drawn, or ``0`` when the frame raised.
+        """
+        try:
+            return original_frame(step)
+        except BaseException as error:  # noqa: BLE001 - re-raised below
+            errors.append(error)
+            return 0
+
+    context.canvas.request_draw(lambda: _frame_recording_errors(dt))
+
     result = None
     for index in range(max(frames, 1)):
         if script is not None:
             script(index, host)
         result = context.canvas.draw()
-    return np.asarray(result)
+        if errors:
+            raise errors[0]
+
+    frame = np.asarray(result)
+    if frame.ndim != 3:
+        raise RuntimeError(
+            "the canvas returned no frame; the game's draw callback probably "
+            f"failed silently (got an array of shape {frame.shape})"
+        )
+    return frame
 
 
 def save_png(image: np.ndarray, path) -> None:

@@ -1,6 +1,65 @@
 # Update Log
 
 ## 2026-08-10
+* **The games are optics now, not an arcade: the default asset pack is a fluorescence look.**
+  The ported games read as an **optical bench in a darkened room** rather than 80s cabinet art, and it is
+  enforced by one rule in the pack rather than by taste: structure is desaturated graphite, steel and
+  chrome, and **every saturated colour in the game is a wavelength** produced by `wavelength_to_srgb`.
+  Anything that glows is emitting; anything grey is hardware. Because the look lives in the `AssetPack`
+  and not in the games, this was a change to one file plus the two games' draw calls — which is the seam
+  doing its job.
+  It makes the picture *mean* something. **Breakout's wall is an emission spectrum**: one row per band,
+  violet to deep red, and the per-row hardness is no longer a curve someone chose — it follows photon
+  energy (`1/lambda`), so "bluer" and "tougher" are the same fact instead of two to memorise. The ball is
+  a **488 nm probe photon** that takes on the wavelength of the band it last struck, so its colour is a
+  running record of what it interacted with; the paddle is a chrome **detector** on a rail; the readouts
+  are Counts / Scan / Pulses, and running out is "Sample bleached". **Pong is a FRET pair**: a green donor
+  optic against a red-shifted acceptor, and each bounce re-emits the photon at that side's wavelength, so
+  the transfer is the thing you watch. The centre line is the optical axis; the score reads Donor /
+  Acceptor over **Transfers**.
+  Games now draw in an optical vocabulary — `photon`, `band`, `optic`, `detector`, `mount` — instead of
+  `sprite` and `brick`, with `spectral_band()` and `photon_energy_rank()` in the pack so a game never
+  invents a colour or a difficulty ordering.
+  **Two defects only the screenshots showed.** Colour above ~645 nm stops changing — the hue is already
+  pure red — so without a brightness gradient every wavelength to 780 renders *identically*, and the
+  bottom two bands of the wall were indistinguishable; the rolloff now starts at 620, which is also closer
+  to real luminous efficiency. And a 405 nm probe is almost invisible against a dark field, so the
+  excitation line is 488, which is a real laser line and actually followable.
+  **One engine defect worth more than the retheme**: a game whose `draw` raised produced *no error*. The
+  canvas catches the exception, logs it, and returns an empty frame — so a plain `NameError` surfaced much
+  later as an `IndexError` on a 0-dimensional array in `save_png`, pointing at entirely the wrong place.
+  `capture` now records the exception and re-raises it, and rejects a frame that is not an image. Covered
+  by a test that asserts a deliberately failing `draw` propagates.
+  Suites: 62 passed.
+
+* **chiplot's native backend is WebGPU; the OpenGL one was drawing nothing, and for a reason no screenshot could show.**
+  Every handle in `backends/opengl/` raised `AttributeError: 'QOpenGLShaderProgram' object has no
+  attribute 'setUniformValue1i'` on its first uniform — that binding exposes only the overloaded
+  `setUniformValue` — and `_paint_gl` swallowed it in a bare `except Exception: pass`. The axes and
+  labels still drew, so five sessions of A/B PNGs read as a *rendering* problem (blend state, point
+  size, texture formats) when nothing had ever executed a draw call.
+  Rather than finish a backend on an API macOS reports as `2.1 Metal - 90.5`, the native renderer is
+  now [`backends/wgpu/`](subsystems/chiplot.md): one shader text (`wgsl/plot2d.wgsl`) across macOS,
+  Linux, Windows and the browser, on the stack the molecular viewer already proved. Three decisions
+  carry the design — **render offscreen and blit with `QPainter`** (no GPU-surface-versus-painter
+  fight, and a headless screenshot is the same code path as a visible one), **handles contribute
+  geometry rather than draw calls** (so `batches(ctx)` is assertable with no device present), and
+  **strokes/markers expand to triangles on the CPU**, since WebGPU has neither line width nor point
+  size — which is also what makes dashes and round joins possible at all.
+  Draws decay-on-log, scatter, bars, heatmap, region, error bars, grid, legend and draggable
+  regions; 31 tests in `test/gui/test_chiplot_wgpu.py`, the geometry half needing no GPU.
+  **Two pyqtgraph defects fell out of the comparison**, both live in the shipped default: `plot.legend()`
+  produced an empty box because pyqtgraph's legend only adopts items added *after* it exists, and
+  chiplot's verb-first API puts the call last — it now adopts what is already on the panel; and the
+  automatic SI prefix turned a FRET axis spanning 0..1 into `200 400 600 800` under `(x0.001)`, and a
+  log axis into `(x1e+27)`, so it is off by default (every call site in the tree was already
+  disabling it) and reachable through `set_si_prefix`.
+  **A fixture was inventing part of the problem**: the A/B decay modelled the IRF as a bare Gaussian,
+  which reaches `exp(-2304)` by the end of the window, so the log axis was asked to span 300 decades
+  and produced garbage on *both* backends. It now carries a constant background, as real data does.
+  `test/gui/test_chiplot.py` is pinned to pyqtgraph — most of it asserts on that renderer's internals
+  through `.native`, by design. `backends/opengl/` stays registered only until the WebGPU backend has
+  been through the plot families; the resume point is in the concept.
 * **[PRD-23](prds/prd-23.md) Task 1 finished: every tool window is a `ChisurfDockTool`, and a guard keeps
   it that way.** The PRD had said the remaining windows would "migrate opportunistically", which is what
   left the list half-done and, worse, unmeasured. Counting direct `QMainWindow` subclasses across
