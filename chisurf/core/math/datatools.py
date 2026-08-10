@@ -6,11 +6,9 @@ from chisurf import typing
 import copy
 from math import floor
 
-import numba as nb
 import numpy as np
 
 
-@nb.jit(nopython=True)
 def distance_between_gaussian(
         distances: np.ndarray,
         separation_distance: float,
@@ -302,7 +300,6 @@ def bin_count(
     return bins, count
 
 
-@nb.jit(nopython=True, nogil=True)
 def minmax(
         x: np.ndarray,
         ignore_zero: bool = False
@@ -318,19 +315,23 @@ def minmax(
     :return: tuple (min, max)
         The minimum and maximum values in the array.
     """
-    max_v = -np.inf
-    min_v = np.inf
-    for i in x:
-        if i > max_v:
-            max_v = i
-        if ignore_zero and i == 0:
-            continue
-        if i < min_v:
-            min_v = i
+    x = np.asarray(x)
+    if x.size == 0:
+        return np.inf, -np.inf
+
+    # `ignore_zero` is asymmetric, and deliberately so: the original loop
+    # updates the maximum *before* the `continue`, so a zero can still be the
+    # largest value while being excluded from the minimum. Masking both ends
+    # would change the answer for an all-non-positive array.
+    max_v = x.max()
+    if ignore_zero:
+        nonzero = x[x != 0]
+        min_v = nonzero.min() if nonzero.size else np.inf
+    else:
+        min_v = x.min()
     return min_v, max_v
 
 
-@nb.jit(nopython=True, nogil=True)
 def histogram1D(
         values,
         weights,
@@ -357,24 +358,20 @@ def histogram1D(
         axis: numpy array representing the bin centers.
         hist: numpy array containing the weighted counts for each bin.
     """
-    n_values = values.size
-
     bin_width = (n_bins - 1.0) / (tth_max - tth_min)
-    hist = np.zeros(n_bins, dtype=np.float64)
-    axis = np.zeros(n_bins, dtype=np.float64)
-    for i in range(n_bins):
-        axis[i] = i / bin_width + tth_min
+    axis = np.arange(n_bins, dtype=np.float64) / bin_width + tth_min
 
-    for i in range(n_values):
-        v = values[i]
-        if (v > tth_max) or (v < tth_min):
-            continue
-        bin = int(floor((v - tth_min) * bin_width))
-        hist[bin] += weights[i]
+    values = np.asarray(values)
+    inside = (values >= tth_min) & (values <= tth_max)
+    # floor(), matching the original: at v == tth_max the index is exactly
+    # n_bins - 1, so the top bin is closed and nothing lands out of range.
+    index = np.floor((values[inside] - tth_min) * bin_width).astype(np.intp)
+    hist = np.bincount(
+        index, weights=np.asarray(weights)[inside], minlength=n_bins
+    ).astype(np.float64)
     return axis, hist
 
 
-@nb.jit(nopython=True, nogil=True)
 def discriminate(
         values: np.ndarray,
         weights: np.ndarray,
@@ -394,16 +391,8 @@ def discriminate(
     :return: tuple (filtered_values, filtered_weights)
         Arrays containing the values and weights that passed the discriminator threshold.
     """
-    v_r = np.zeros_like(values)
-    w_r = np.zeros_like(weights)
-
-    n_v = 0
-    for i, w in enumerate(weights):
-        if w > discriminator:
-            w_r[n_v] = w
-            v_r[n_v] = values[i]
-            n_v += 1
-    return v_r[:n_v], w_r[:n_v]
+    keep = np.asarray(weights) > discriminator
+    return np.asarray(values)[keep], np.asarray(weights)[keep]
 
 
 def smooth(
@@ -561,7 +550,6 @@ def two_column_to_interleaved(
     return c
 
 
-@nb.jit(nopython=True, nogil=True)
 def elte2(
         e1: np.array,
         e2: np.array
@@ -589,20 +577,17 @@ def elte2(
     array([ 5.        ,  1.5       ,  7.        ,  1.6       , 15.        ,
             2.4       , 21.        ,  2.66666667])
     """
-    n1 = e1.shape[0] // 2
-    n2 = e2.shape[0] // 2
-    r = np.empty(n1 * n2 * 2, dtype=np.float64)
+    # k advances as i * n2 + j, so the write position is an affine function of
+    # the loop indices and the whole Cartesian product lands in C order.
+    amplitudes = np.outer(e1[0::2], e2[0::2])
+    lifetimes = 1.0 / (1.0 / e1[1::2][:, None] + 1.0 / e2[1::2][None, :])
 
-    k = 0
-    for i in range(n1):
-        for j in range(n2):
-            r[k * 2 + 0] = e1[i * 2 + 0] * e2[j * 2 + 0]
-            r[k * 2 + 1] = 1. / (1. / e1[i * 2 + 1] + 1. / e2[j * 2 + 1])
-            k += 1
+    r = np.empty(amplitudes.size * 2, dtype=np.float64)
+    r[0::2] = amplitudes.ravel()
+    r[1::2] = lifetimes.ravel()
     return r
 
 
-@nb.jit(nopython=True, nogil=True)
 def ere2(
         e1: np.ndarray,
         e2: np.ndarray
@@ -628,19 +613,15 @@ def ere2(
     >>> ere2(e1, e2)
     array([0.25, 4.  , 0.25, 5.  , 0.25, 5.  , 0.25, 6.  ])
     """
-    n1 = e1.shape[0] // 2
-    n2 = e2.shape[0] // 2
-    r = np.empty(n1 * n2 * 2, dtype=np.float64)
-    k = 0
-    for i in range(n1):
-        for j in range(n2):
-            r[k * 2 + 0] = e1[i * 2 + 0] * e2[j * 2 + 0]
-            r[k * 2 + 1] = e1[i * 2 + 1] + e2[j * 2 + 1]
-            k += 1
+    amplitudes = np.outer(e1[0::2], e2[0::2])
+    rates = e1[1::2][:, None] + e2[1::2][None, :]
+
+    r = np.empty(amplitudes.size * 2, dtype=np.float64)
+    r[0::2] = amplitudes.ravel()
+    r[1::2] = rates.ravel()
     return r
 
 
-@nb.jit(nopython=True, nogil=True)
 def invert_interleaved(
         interleaved_spectrum: np.ndarray
 ) -> np.ndarray:
@@ -663,14 +644,11 @@ def invert_interleaved(
     """
     n1 = interleaved_spectrum.shape[0] // 2
     r = np.empty(n1 * 2, dtype=np.float64)
-
-    for i in range(n1):
-        r[i * 2 + 0] = interleaved_spectrum[i * 2 + 0]
-        r[i * 2 + 1] = 1. / (interleaved_spectrum[i * 2 + 1])
+    r[0::2] = interleaved_spectrum[0:n1 * 2:2]
+    r[1::2] = 1.0 / interleaved_spectrum[1:n1 * 2:2]
     return r
 
 
-@nb.jit(nopython=True, nogil=True)
 def e1tn(
         e1: np.array,
         n: float
@@ -694,13 +672,12 @@ def e1tn(
     >>> e1tn(e1, 2.0)
     array([2, 2, 6, 4])
     """
-    n2 = e1.shape[0]
-    for i in range(0, n2, 2):
-        e1[i] *= n
+    # In place, and the caller relies on it: the array is returned as well as
+    # modified.
+    e1[0::2] *= n
     return e1
 
 
-@nb.jit(nopython=True, nogil=True)
 def e1ti2(
         e1: np.array,
         e2: np.array
@@ -728,16 +705,12 @@ def e1ti2(
     >>> e1ti2(e1, e2)
     array([ 5., 12.,  7., 16., 15., 24., 21., 32.])
     """
-    n1 = e1.shape[0] // 2
-    n2 = e2.shape[0] // 2
-    r = np.zeros(n1 * n2 * 2, dtype=np.float64)
+    amplitudes = np.outer(e1[0::2], e2[0::2])
+    lifetimes = np.outer(e1[1::2], e2[1::2])
 
-    k = 0
-    for i in range(n1):
-        for j in range(n2):
-            r[k * 2 + 0] = e1[i * 2 + 0] * e2[j * 2 + 0]
-            r[k * 2 + 1] = e1[i * 2 + 1] * e2[j * 2 + 1]
-            k += 1
+    r = np.empty(amplitudes.size * 2, dtype=np.float64)
+    r[0::2] = amplitudes.ravel()
+    r[1::2] = lifetimes.ravel()
     return r
 
 

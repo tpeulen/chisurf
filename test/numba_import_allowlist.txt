@@ -32,7 +32,6 @@
 chisurf/core/fluorescence/anisotropy/decay.py
 chisurf/core/fluorescence/anisotropy/kappa2.py
 chisurf/core/fluorescence/imaging/frc.py
-chisurf/core/math/datatools.py
 chisurf/core/math/functions/distributions.py
 chisurf/core/math/functions/rdf.py
 chisurf/core/math/functions/special.py
