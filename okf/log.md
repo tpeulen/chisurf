@@ -1,6 +1,35 @@
 # Update Log
 
 ## 2026-08-10
+* **PCH had three implementations of the same integral; it now has one, and the
+  check that collapsed them found two silent bugs.** `plugins/pch/api/algorithms.py`
+  was numba, `core/models/pch/pch.py` already delegated to the photon library
+  behind an unexercised pure-Python fallback, and the model widget had carried a
+  third copy until a peer's refactor extracted it. The plugin module is now a
+  re-export of `core`. What licensed the delegation was not that the names match
+  but that **two conventions do**: the `x**2` shell weight of the 3-D Gaussian
+  (dropping it gives `2**-0.5` instead of `gamma_2 = 2**-1.5`), and `p1[0]` as
+  the complement of the `k >= 1` terms, which folds the `4 pi w^3 / V_0`
+  prefactor into the reference volume. The second is the one worth naming: a
+  different normalisation there changes what the fitted occupancy `avgN`
+  *means*, not what it equals, so no amplitude comparison would have caught it.
+  Measured `p1[0]` to the last digit, arrays to `1e-16`, mixtures to `4e-17`.
+  Two defects fell out, both quiet. **The library's `pch_mixture` reads past the
+  end of `avg_numbers`** — it loops over the brightnesses and subscripts the
+  occupancies with the same index, unchecked; it does not crash, because the
+  heap there is zero and the `<= 0.0` guard on the next line then drops exactly
+  the species whose occupancy was never supplied, so four brightnesses and one
+  occupancy return a normalised finite histogram of *one* species, identically
+  across processes. Filed upstream; the length check stays in front of the
+  delegation until it lands. And **a non-contiguous count axis was being
+  answered for a different axis** — the C++ takes a scalar `k_max` and builds
+  `0, 1, ... k_max` itself, which cannot represent the axis `pch_model` reads
+  from dataset metadata, so that pre-existing delegation now raises and the
+  model logs and flattens: a flat curve reads as bad data, a wrong-axis
+  histogram reads as a bad fit. Also repaired `test/gui/test_pch_models_resolve.py`,
+  red since the widget refactor deleted the kernels it imported — retargeted
+  rather than removed, since `gamma_2` and the `k = 171` factorial overflow are
+  still worth pinning.
 * **The grid stays on the GPU now, and a surface build costs a fifteenth of
   what it did.** Every kernel in the surface pipeline -- distance grid,
   threshold, distance transform, marching cubes -- already ran on the device;

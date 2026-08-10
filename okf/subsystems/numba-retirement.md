@@ -10,7 +10,7 @@ timestamp: '2026-08-10T00:00:00Z'
 # Where to pick this up
 
 1. **The tracker is `test/numba_import_allowlist.txt`** and it only shrinks.
-   Every entry carries its route. **26 chisurf-owned files remain** of the 48 this work covers. ChiMOL's 11 are **excluded from the guard entirely** — the WebGPU port removes them on its own schedule, and listing them here only made this test fail nine times in one session with news about someone else's progress;
+   Every entry carries its route. **25 chisurf-owned files remain** of the 48 this work covers. ChiMOL's 11 are **excluded from the guard entirely** — the WebGPU port removes them on its own schedule, and listing them here only made this test fail nine times in one session with news about someone else's progress;
    `test/test_numba_seam.py` fails both on a new importer and on a stale entry,
    so the list cannot drift from the tree.
 2. **Route `tttrlib`: next is `plugins/fluorescence_decay/maxent_decay/core/solver.py`**
@@ -36,20 +36,43 @@ timestamp: '2026-08-10T00:00:00Z'
    `rescale_w`, `add_pile_up_to_model`, `histogram1D_double`,
    `histogram1D_int`, `decode_records`, `GopichSzabo`, `HMM`/`HmmModel`/
    `HmmVB`, `maxent_invert`, `solve_tcspc_mem_lifetime`, `OptsCluster`.
-3. **`plugins/pch/api/algorithms.py` was mis-routed and has been moved to
-   `tttrlib`** — the library ships PCH and I had it down as `numpy`:
-   `pch_single_species(k_max, brightness, n_grid=1000, x_max=5.0)`,
-   `pch_mixture(k_max, brightnesses, avg_numbers)`,
-   `pch_open_system(k_max, brightness, avg_n, max_n=30)`,
-   `fida_pch(k_max, species_flat, n_species, background, profile_flat, ...)`.
-   `compute_p1` looks like `pch_single_species` and `convolve_pch_numba` like
-   the N-fold step inside `pch_mixture`/`pch_open_system` — **but diff the maths
-   before delegating** (rule below). Two specifics to check: `compute_p1`
-   carries the `x**2` shell weight of a *3-D* Gaussian (its docstring records
-   that dropping it gives `2**-0.5` instead of `gamma_2 = 2**-1.5`), and its
-   `p1[0]` is the complement of the `k >= 1` terms, which folds the
-   `4 pi w^3 / V_0` prefactor into the reference volume. If the library's
-   normalisation differs, `avgN` changes meaning rather than value.
+3. **PCH is done, and it was three copies, not one.** `plugins/pch/api/algorithms.py`
+   (numba) turned out to duplicate `core/models/pch/pch.py`, which *already*
+   delegated to tttrlib behind an unexercised pure-Python fallback — and
+   `gui/widgets/models/pch/widgets.py` had carried a third copy until a peer's
+   `4df1b1041` extracted it. There is now one implementation in
+   `core/models/pch/pch.py`; the plugin module is a re-export.
+
+   The two conventions that decided the delegation was safe, both confirmed
+   rather than assumed: the shell weight `x**2` of the *3-D* Gaussian (dropping
+   it gives `2**-0.5` instead of `gamma_2 = 2**-1.5`), and `p1[0]` as the
+   complement of the `k >= 1` terms, which folds the `4 pi w^3 / V_0` prefactor
+   into the reference volume. **The second is the one that would not have shown
+   up in an amplitude comparison** — a different normalisation changes what
+   `avgN` *means*, not what it equals. Measured: `p1[0]` agrees to the last
+   digit, arrays to `1e-16`, mixtures to `4e-17`.
+
+   Two defects fell out of the check, both silent:
+   - **tttrlib `pch_mixture` reads past the end of `avg_numbers`** — it loops
+     over `brightnesses` and subscripts the occupancies with the same index,
+     unchecked. It does not crash: the heap there is zero, the
+     `avg_numbers[s] <= 0.0` guard on the *next line* then skips the species
+     whose occupancy was never supplied, and the caller gets a normalised finite
+     histogram of fewer species than it asked for — stable across processes, so
+     even a reproducibility test calls it correct. Filed in tttrlib `BUGS.md`
+     (`6b505cf24`). The length check in `pch_mixture` stays in front of the
+     delegation until that lands.
+   - **A non-contiguous count axis was answered for a different axis.** The C++
+     takes a scalar `k_max` and builds `0, 1, ... k_max` itself, so the
+     pre-existing `int(k_vals[-1])` delegation could not represent the axis
+     `pch_model.py` reads from dataset metadata. Now `_k_max` raises and
+     `update_model` logs and flattens — a flat curve reads as bad data, a
+     wrong-axis histogram reads as a bad fit.
+
+   Also fixed here: `test/gui/test_pch_models_resolve.py` had been red since
+   `4df1b1041` (importing the widget kernels that refactor deleted). Retargeted
+   at the surviving implementation rather than deleted — what they pin,
+   `gamma_2` and the `k = 171` factorial overflow, is still worth pinning.
 4. **A `tttrlib` route is a hypothesis, not a verdict — diff the maths first.**
    Two files routed to `tttrlib` turned out to be route `numpy`, because
    ChiSurf's version is *deliberately better than the C one* and delegating
