@@ -159,9 +159,14 @@ gui:
       region_selector_alpha: 50
       residuals: "#df0101"
     enable_grid: true
+    # Grid line opacity, 0-1. A grid at full opacity buries an eighty-pixel
+    # residual strip; this is what the "Grid opacity" slider writes.
+    grid_alpha: 0.35
     enable_region_selector: true
     hideTitle: true
-    label_axis: false
+    # Show the axis names. Was shipped false and read by nothing, so labels
+    # appeared regardless; true keeps that behaviour now that it is honoured.
+    label_axis: true
     line_width: 2.0
     pyqtgraph_config:
       antialias: false

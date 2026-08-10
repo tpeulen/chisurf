@@ -218,6 +218,28 @@ existed. Any other backend answers "no", so the overlay was created and then
 never written. `Handle.is_alive()` is the chiplot query both backends
 implement; reach for it rather than for a renderer's liveness internals.
 
+## The Plot-settings dialog wrote defaults over the settings it was reading
+
+Every control's `setChecked`/`setValue` emits, and the handler applied the
+**whole** dialog to `cs_settings` — the same dict the loader was reading, and
+not a copy. So the first control to load wrote every not-yet-loaded control's
+default over the real value: the panel opened with everything unchecked and the
+sliders at zero, and pressing *Save* persisted that to `~/.chisurf`.
+
+That is almost certainly where the black-on-black `foreground` came from, and
+it explains a settings file carrying `enable_grid: false`, `label_axis: false`
+and `line_width: 0.5` that nobody chose. Loading is one-directional now
+(`_loading` guard), covered by
+`test_loading_does_not_overwrite_what_it_is_reading`.
+
+Settings the plots honoured but the dialog could not reach were a second half
+of the same problem — a value only editable by hand is one nobody edits.
+`grid_alpha`, the three per-panel grid toggles, `enable_region_selector` and
+the new `font_size` are all controls now, and
+`test_every_plot_setting_the_dialog_writes_is_reachable` keeps the two lists
+together. `label_axis` was the reverse case: a control that had *never* been
+read, so turning it off did nothing; `LinePlot` honours it.
+
 # Where to pick this up — the WebGPU backend
 
 `backends/wgpu/` draws every family the A/B script exercises (decay on a log

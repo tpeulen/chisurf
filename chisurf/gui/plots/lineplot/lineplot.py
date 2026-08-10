@@ -963,20 +963,25 @@ class LinePlot(plotbase.Plot):
 
         # Grid
         if cs.core.settings.gui['plot']['enable_grid']:
+            grid_alpha = float(cs.core.settings.gui['plot'].get('grid_alpha', 0.35))
             if cs.core.settings.gui['plot']['show_data_grid']:
-                plots['main_plot'].grid(x=True, y=True, alpha=0.5)
+                plots['main_plot'].grid(x=True, y=True, alpha=grid_alpha)
             # ``alpha`` is the grid's opacity, not an on/off flag — these two
             # panels asked for 1.0 and drew solid foreground-coloured stripes
             # across a strip only eighty pixels tall, burying the residuals.
-            # It went unnoticed while the foreground was black on black.
+            # It went unnoticed while the foreground was black on black, and
+            # there was no way to turn it down: the value is a setting now.
             if cs.core.settings.gui['plot']['show_residual_grid']:
-                plots['top_left_plot'].grid(x=True, y=True, alpha=0.25)
+                plots['top_left_plot'].grid(x=True, y=True, alpha=grid_alpha)
             if cs.core.settings.gui['plot']['show_acorr_grid']:
-                plots['top_right_plot'].grid(x=True, y=True, alpha=0.25)
-        # Axis labels: always show for clarity
-        plots['top_left_plot'].set_labels(left="w.res.")
-        plots['top_right_plot'].set_labels(left="a.corr.")
-        plots['main_plot'].set_labels(left=y_label, bottom=x_label)
+                plots['top_right_plot'].grid(x=True, y=True, alpha=grid_alpha)
+        # "Label axes" was a settings checkbox nothing read, so turning it off
+        # did nothing at all. Honour it: axis names cost horizontal space that
+        # a narrow docked panel may prefer to give the data.
+        if cs.core.settings.gui['plot'].get('label_axis', True):
+            plots['top_left_plot'].set_labels(left="w.res.")
+            plots['top_right_plot'].set_labels(left="a.corr.")
+            plots['main_plot'].set_labels(left=y_label, bottom=x_label)
 
         lines = OrderedDict()
         curves = self.fit.get_curves()
