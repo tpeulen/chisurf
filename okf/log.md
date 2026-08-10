@@ -1,6 +1,25 @@
 # Update Log
 
 ## 2026-08-10
+* **Lumis Quest: the guided tour and the user guide — PRD-91 is complete.**
+  Every plugin owes a `?`, a **Guide**, and a numbered workflow page; Lumis Quest now has all three.
+  `gui/guide.json` is an eight-step tour that **points at the real controls and waits for the player to
+  press them** — no "do it for me" button, because someone who watched a button being pressed has not
+  learned where it is. `docs/guides/71_lumis_quest.md` is the workflow page: what the three map states
+  mean, the nine controls, training versus expert, what flagging produces, and why the questions can be
+  trusted. Registered in the guides index and cross-linked to the FRET concept, the light-path simulator
+  reference and the ask-the-documentation guide.
+  **Pre-existing docs breakage found while checking my own links, and recorded rather than swept up**:
+  `docs/reference/plugins/sm_image_mle.md` is a *generated* page for a plugin that no longer exists (the
+  `region_mle` rename), with no `region_mle.md` generated to replace it — so the reference section
+  documents a plugin nobody can open and omits the one that does. Two further cross-link assertions fail
+  on unrelated pages. The fix is one command (`docs-plugins`) that rewrites every plugin reference page at
+  once, which cannot land inside an unrelated change; it is in
+  [known-issues](references/known-issues.md) with the exact remedy.
+  Also fixed along the way: my own link check used `ls a b`, which reports a miss when *either* file is
+  absent — it said three good links were broken. Three of the four were fine; one genuinely pointed at a
+  page that does not exist and is corrected.
+
 * **The packaging guard was failing on files git ignores — fixed, and it had caught something real.**
   Opening the bundled `spectra.db` read-write leaves `.db-wal`/`.db-shm` beside it. Both are **gitignored**
   and neither is ever packaged, but the sweep in `test/test_package_data_covers_shipped_files.py` walked

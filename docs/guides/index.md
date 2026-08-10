@@ -139,6 +139,7 @@ irf_estimation
 60_global_analysis
 40_ai_assistant
 70_ask_the_documentation
+71_lumis_quest
 59_console
 64_notebooks
 ```

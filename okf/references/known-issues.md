@@ -1,3 +1,228 @@
+## Stale generated plugin reference pages after the `sm_image_mle` rename
+
+**Found 2026-08-10** while adding a guide, by running
+`chisurf/plugins/core/help/test/test_docs_crosslinks.py`. Three of its
+assertions fail, and **none of them is caused by the change that found them**:
+
+* `docs/reference/plugins/sm_image_mle.md` describes a plugin that no longer
+  exists — `chisurf/plugins/microscopy/sm_image_mle/` is gone, renamed to
+  `region_mle`. The page is **generated**
+  (`generator: build_tools/docs/generate_plugin_docs.py`) and no
+  `region_mle.md` has been generated to replace it, so the reference section
+  documents a plugin nobody can open and omits the one that exists.
+* `docs/reference/plugins/region_properties.md` points at the same dead path.
+* `docs/guides/64_notebooks.md` links to no concept page, and
+  `docs/concepts/deconvolution.md` trips the third assertion.
+
+**The fix is one command** — `pixi run -e docs docs-plugins` — but it rewrites
+every plugin reference page at once, which cannot land cleanly inside an
+unrelated change. Whoever owns the `region_mle` rename should run it and delete
+the stale page; the two link failures want a concept cross-reference adding.
+
+## RESOLVED 2026-08-10 — importing chisurf broke every subprocess that draws an icon
+
+**The symptom** was a bus error that made no sense: constructing
+`CodeEditorWindow` in a subprocess crashed *deterministically* when the parent
+was pytest and *never* when the same snippet was run from a shell. Not memory,
+not the disk, not `QT_PLUGIN_PATH` — each of those was tested and cleared.
+
+**The cause** was `chisurf/core/settings/env_bootstrap.py`, imported by
+`chisurf.core.settings` and therefore by everything: on macOS it prepended the
+environment's `lib` to **`DYLD_LIBRARY_PATH`** as well as to
+`DYLD_FALLBACK_LIBRARY_PATH`. Those two are not variants of one idea:
+
+- `DYLD_FALLBACK_LIBRARY_PATH` is consulted *after* normal resolution fails, so
+  it can rescue a library that would not be found and cannot displace one that
+  would;
+- `DYLD_LIBRARY_PATH` is searched *first*, so it overrides what each extension
+  module was linked against.
+
+dyld reads both once, at process start. So setting `DYLD_LIBRARY_PATH` did
+nothing for the process that set it — and silently re-pointed library
+resolution for **every child it spawned**. In such a child, Qt's font engine
+binds to the wrong library and the first `create_text_icon` call bus-errors
+(`chisurf/plugins/icon_utils.py`), taking down anything that draws an emoji
+icon: a spawned tool, a headless render, `csc`, a per-tool test.
+
+**Fixed** by keeping only the fallback variable. Verified: the icon renders with
+neither variable and with the fallback alone, and crashes with
+`DYLD_LIBRARY_PATH` — and `test/fio` + `test/core` still pass 1629 tests with
+zero loader errors afterwards, so nothing depended on the override. Guarded by
+`test/test_env_bootstrap_dyld.py`.
+
+**Not** the cause of the separate `test/gui` crash below: that suite still
+segfaults without either variable.
+
+## Every plugin GUI tool constructs, except mmfdb_admin, which blocks
+
+**2026-08-10.** Measured by building all 114 tools the manifests declare, each
+in its own process: **111 construct, 1 blocks, 2 failed** (both since fixed —
+see below). None opens a metadata-store connection while constructing, so
+PRD-23's read-only-construction rule holds everywhere else.
+
+**`mmfdb_admin` performs four blocking RPCs while building** — `mmfdb.status`
+twice (its Overview panel, loaded eagerly by the navigation shell),
+`mmfdb.users.list` (the admin gate in `_verify_admin_access`) and
+`mmfdb.security.auth.login` (`_ensure_authenticated`), both called directly
+from `__init__`. With no server up each waits out the 5 s client timeout, so
+opening the tool freezes for ~20 s and looks like a hang.
+
+Not fixed here, deliberately: `_verify_admin_access` is a permission gate, and
+deciding where it should fire when the tool is opened without a server is a
+design call inside a security-sensitive tool, not a mechanical deferral. The
+shape of the fix is the one used for `ProjectBrowserTool` — post the work
+instead of doing it in `__init__` — plus a lazy Overview panel.
+
+Tracked by `BLOCKING` in `test/gui/test_every_tool_constructs.py`; that test
+fails if the tool starts constructing cleanly, so the entry cannot outlive the
+defect.
+
+**Fixed in passing:** `acq` (SM Acquisition) crashed with
+`AttributeError: 'NoneType' object has no attribute '_acquisition_manager'` —
+it keyed "are we inside chisurf?" on `import chisurf` succeeding, which it
+always does, rather than on `chisurf.cs` existing, which it does not until the
+main window is built.
+
+## A simulated photon stream cannot be persisted, and the HDF5 path aborts the process
+
+**Found 2026-08-10** while capturing a pre-split baseline for
+[PRD-92](/prds/prd-92.md), which wanted the simulated CLSM stream stored beside
+the labels it produced so an equivalence test could re-derive the whole chain
+rather than its two ends.
+
+**`TTTR.write` itself is fine**, including the `"PTO"` container: a stream read
+from a real file (`m000.spc`, 174,438 photons) writes a 1.2 MB `.pto` and a
+1.2 MB `.spc`, both returning `True`. The limitation is specific to a stream
+**built in memory** — what `simulate_clsm_molecules` returns. It carries
+`get_tttr_record_type() == -1`, `TTTRHeader.ensure_minimal_tags(header, 20, n)`
+does not give it one, and PTO header writing is not implemented in the installed
+build (`Error in TTTR::write, writing of headers not implemented`). The write
+then returns `False` and leaves a **0-byte file**, with nothing raised — so a
+caller that does not check the return value gets an empty container and
+discovers it later.
+
+**The HDF5 path is worse and is a separate defect.** `tttr.write(path)` with the
+HDF5 default `abort()`s the interpreter — the installed tttrlib was compiled
+against HDF5 headers 1.14.6 and links a 2.1.1 library, and the library's version
+check kills the process rather than raising. A dependency mismatch should not be
+able to end a user's session.
+
+Neither is worked around in ChiSurf, and neither should be: **ChiSurf persists
+to `.mmfdb.pto`**, and the container writers (`Measurement.create`,
+`write_imaging_table`, `write_image`, `write_regions`) all embed files that
+already exist on disk, so nothing in the shipped tree hits either path. It is
+recorded because the *tests* want it — a simulated measurement that cannot be
+stored is a fixture that has to be a pile of derived arrays instead — and
+because the next person to try will spend the same half hour on `record type -1`.
+
+Fix belongs in tttrlib: a record type for in-memory streams (or a PTO header
+writer), and an HDF5 version check that raises instead of aborting.
+
+## `test/gui/test_chiplot.py` segfaults in the shared working tree, and not from chiplot
+
+**Found 2026-08-10** while landing the WebGPU plot backend. `pytest
+test/gui/test_chiplot.py` reports **56 passed** and then dies with
+`Fatal Python error: Segmentation fault` during garbage collection, inside a
+pyqtgraph `ViewBox` weakref lambda or an `InfiniteLine.boundingRect`. Rate in
+the working tree: **5–8 of 8 runs**.
+
+**It is not the chiplot changes.** A clean `git worktree` at HEAD carrying the
+*entire* WebGPU backend, its 31 tests, the pyqtgraph SI-prefix and legend fixes,
+and every uncommitted chiplot source edit (`canvas.py`, `handles.py`,
+`backends/base.py`, `backends/pyqtgraph_backend.py`) runs the four chiplot-related
+suites **0 crashes in 8 runs**. Adding the working tree's `chisurf/gui/__init__.py`
+and settings edits on top: still 0 in 6. The trigger is one of the other several
+dozen files another agent instance has in flight, and it was not found.
+
+**The trap, which cost most of a session.** The crash is a *latent* pyqtgraph
+teardown defect — abandoned panels whose finalizers touch Qt objects C++ has
+already deleted — so it fires inside **whatever happens to allocate next**, and
+the traceback names that caller. It pointed at the WebGPU driver's cffi
+initialisation, then at a legend, then at an axis. Each looked like a specific
+bug in the code being written. Two rules follow:
+
+* **Never add a `gc.collect()` to "fix" it.** Doing so converts a probabilistic
+  crash into a deterministic one at the collect site, and the new site looks
+  even more like the culprit.
+* **Bisect in a clean worktree, not by editing the shared tree.** Six A/B
+  measurements at 6–8 runs each were run against a baseline that was already
+  crashing, so every one of them was noise. The clean-worktree comparison
+  settled it in two runs.
+
+Whoever owns the in-flight change should re-measure; until then, run
+`test/gui/test_chiplot.py` in its own pytest invocation.
+
+## 33 of the MMFDB suite's failures are test-order contamination, not defects
+
+**Found 2026-08-10** while adding three enumeration terms to
+`mmfdb_flr_ext.dic` for the region/spot container contract
+([PRD-92](/prds/prd-92.md)) and checking what that broke. `pytest tests` in
+`modules/mmfdb` reports **33 failed / 757 passed**, concentrated in four files:
+`test_mmfdb_user_management.py` (14), `test_security_architecture.py` (10),
+`test_zip_archive_export.py` (6), plus one each in `test_fdb_general.py`,
+`test_fdb_setups.py`, `test_mmcif_database_resolver.py`.
+
+**Every one of them passes when its file is run alone** — the two largest were
+checked directly (`test_mmfdb_user_management.py` + `test_security_architecture.py`
+→ 40 passed), as was `test_zip_archive_export.py` (6 passed). So the suite is
+carrying process-wide state between files, most likely an auth/session or
+database singleton, in the same family as the `_DISPLAY_CONFIG` contamination
+already recorded for ChiMOL: one test's leftovers break *other files*, which is
+why bisecting with `-k` finds nothing.
+
+**Not fixed here**, and not caused by the dictionary change (that adds three
+enum values and a comment; the failures are in user management, security and
+zip export, none of which read the enumeration). Recorded because the number is
+large enough to look like a regression to whoever runs the suite next, and
+because it means the suite currently cannot tell a real breakage from this
+noise. Whoever fixes it should bisect by explicit node ids across *files*, not
+within one.
+
+## The OpenGL point glyph renders at half the size it is asked for
+
+**Found 2026-08-10** while porting point geometry to the WebGPU backend, by
+comparing the same scene through both renderers.
+
+`dots` on 148L carries `meta["size"] = 8.0`. `qtgl` sets both `gl_PointSize` and
+`glPointSize` to `size * devicePixelRatioF()`, and the fragment shader keeps the
+inscribed circle of the sprite, so the dot should be **8 px across**. Measured on
+`test/renders/gl_baseline/dots_view.png`, the modal lit run per row is **4 px**
+(2,112 rows at 4, tailing off by 8). Ruled out: the device pixel ratio is
+genuinely `1.0` for both the window and the GL widget, and
+`GL_ALIASED_POINT_SIZE_RANGE` is `[1, 64]`, so neither scaling nor clamping
+explains it. Apple's GL-over-Metal sprite path is the remaining suspect.
+
+**Not fixed here, deliberately.** The fix would change what `qtgl` draws and
+invalidate the `dots` baseline in the same change that uses that baseline as a
+reference. The WebGPU renderer already draws the documented size (8 px for
+`size = 8`), so this is a difference the port *corrects*; it is recorded here so
+the next person comparing the two does not read the correct half as a regression.
+Whoever retires `qtgl` retires this with it.
+
+## `test/gui` crashes the interpreter mid-run, and 20 of its failures are contamination
+
+**2026-08-10.** `pytest test/gui` dies with `Bus error: 10` (exit 138) at around
+44 %, just after `test_language_selector`, and reports ~22 failures before it
+does. Almost none of that is real:
+
+- **The failures are mostly cross-test contamination.** Two of three sampled
+  failures (`test_dialogs_and_progress::test_confirm_declines_by_default`,
+  `settings/test_log_filter::test_log_list_widget_uses_multiple_columns`) **pass
+  when run on their own**. Judge a `test/gui` failure by re-running that test
+  alone before believing it.
+- **The one real failure sampled** is `ParseFCSModel object has no attribute
+  'get_plot_reference_modes'` (raised from `chisurf/core/base.py`), i.e. an FCS
+  model/plot-reference API mismatch — not a GUI defect.
+- **A second, separate crash** appears when several plugin suites are combined in
+  one process: `chisurf/plugins/{tttr,pch,core/project_browser,burst/...}` plus
+  the dock suites run to ~89 % **with zero failures** and then take
+  `Segmentation fault: 11` in teardown. Split into two invocations, the same
+  tests are 146 + 254 passed. Same shape as the `fret_trajectory` entry below.
+
+So a red `test/gui` is not evidence that a change broke something. Until the
+contamination and the two crashes are fixed, verify a GUI change by running the
+suites that cover it, individually, and say which ones.
+
 ## A simulated photon stream cannot be persisted, and the HDF5 path aborts the process
 
 **Found 2026-08-10** while capturing a pre-split baseline for

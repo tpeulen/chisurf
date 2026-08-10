@@ -1,0 +1,62 @@
+{
+  "_comment": "Guided tour for Lumis Quest. Steps point at real controls and wait for the player to press them -- there is deliberately no 'do it for me' button, because someone who watched a button being pressed has not learned where it is. Read by chisurf.gui.widgets.tools.guided_tour.",
+  "steps": [
+    {
+      "title": "The documentation is the world",
+      "text": "This is a game whose map <b>is</b> ChiSurf's documentation. Every building is a page; every walled compound is a section of the manual. It is generated, not drawn: add a page and a new building appears where nothing was.<br/><br/>You are <b>Iris</b>, a probe photon. The dog trotting behind you is <b>Lumi</b>. You will meet them both again — they are the ball in Pong and the probe in Breakout.<br/><br/>Eight steps, about two minutes. You press the buttons; the tour only points at them.",
+      "target": {}
+    },
+    {
+      "title": "Walk, and look at the ground",
+      "text": "The <b>arrow keys</b> or <b>WASD</b> move Iris; hold <b>Space</b> to run. You collide with the world — walls stop you, water needs a bridge, and a compound is entered through its gate.<br/><br/>Look at the buildings as you pass. A <b>dark</b> one is a page nobody has read. A <b>faintly lit</b> one has been scouted by an agent but confirmed by no human. A <b>warm</b> one is settled: someone read it and vouched for it. Those three states are the whole point of the map.",
+      "await": {
+        "hint": "Walk around for a moment. The land's name is in the top left, and the page you are standing nearest is named along the bottom."
+      }
+    },
+    {
+      "title": "Wild ground holds a guardian",
+      "text": "Press <b>Q</b> beside a dark building to start an encounter. Only unread pages have guardians — a settled page is a village you walk through.<br/><br/>The creature guarding it is a <b>real fluorophore</b>, read from the spectra database ChiSurf ships. Its attack is its brightness (extinction coefficient times quantum yield) and its health is its photostability. None of it is invented.",
+      "await": {
+        "hint": "Stand next to a dark building and press <b>Q</b>."
+      }
+    },
+    {
+      "title": "Combat is photophysics",
+      "text": "Choose <b>Emit</b> and watch what the log says. Damage is the <b>spectral overlap</b> of your creature's emission with the target's absorption — the real integral, computed from the stored spectra. A green donor is devastating against something absorbing at 560 nm and nearly useless against a blue absorber.<br/><br/>Emitting also <b>bleaches you</b>, and a high quantum yield costs more. The brightest creature hits hardest and burns out soonest. That trade is the whole game.",
+      "await": {
+        "hint": "Take a few turns. Try <b>Collect</b> once the guardian is worn down — a dye driven into its dark state is easier to capture."
+      }
+    },
+    {
+      "title": "Then the page asks its question",
+      "text": "Beating the guardian is spectroscopy. It says nothing about whether you <i>read the page</i> — so the page puts a question of its own, drawn from its actual prose.<br/><br/>Every question is checked against the source before you ever see it: a quoted sentence that is not in the page is thrown away. That check is code, not trust, because a language model asked to quote a page will happily invent one.",
+      "await": {
+        "hint": "Answer it, or press <b>Cancel</b> to leave the page unread."
+      }
+    },
+    {
+      "title": "Training teaches. Expert reviews.",
+      "text": "Press <b>Tab</b> for the menu, then <b>E</b> to reach the <b>MODE</b> tab.<br/><br/>In <b>training</b> mode nothing is ever signed off — you are learning fluorescence, and answering a question about a page is not the same as having reviewed it. In <b>expert</b> mode a correct answer marks the page reviewed, by you, through ChiSurf's own review gate.<br/><br/>The same tab turns the AI question-writer on. It is off by default so that play never waits on a network call.",
+      "target": {
+        "action": "Menu"
+      },
+      "await": {
+        "hint": "Open the menu with <b>Tab</b>, reach <b>MODE</b>, and look at the three rows."
+      }
+    },
+    {
+      "title": "Saying what is wrong",
+      "text": "Signing a page off says \"this is fine\". In expert mode, <b>Q</b> at the question screen says what is not: pick the sentence at fault, then one of eight faults — undefined symbol, wrong units, missing citation, and so on.<br/><br/>There is no typing anywhere in this game, and that is deliberate: a span plus a category is <i>more</i> useful than prose. It points at an exact sentence, and two people flagging the same problem file the same record.<br/><br/>Nothing is ever written into <code>docs/</code>. Findings pool in your own directory until you export them.",
+      "await": {
+        "hint": "In expert mode, press <b>Q</b> when a page puts its question."
+      }
+    },
+    {
+      "title": "Gear changes what you can see",
+      "text": "Clearing a room yields an optical part — a real Chroma or Thorlabs filter, with its measured transmission curve. Fit it from the <b>RIG</b> tab.<br/><br/>A filter is not \"+3 damage\". It decides <b>what is visible</b>: a creature whose band it blocks is not drawn on the map at all. Swap filters and walk back through ground you have already cleared, and things appear that were always there.<br/><br/>Photon budgets carry between fights, so when your team is spent, walk to the recovery station just inside any village gate.",
+      "target": {
+        "action": "Menu"
+      }
+    }
+  ]
+}
