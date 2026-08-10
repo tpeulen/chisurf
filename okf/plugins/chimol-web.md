@@ -79,23 +79,40 @@ Next, in order:
    present and controllable — and explicitly **not** matching GL pixel for pixel.
    Record any deliberate look change rather than "fixing" it.
 
-   **Still a correctness question, separate from taste: the colours land in
-   different places on screen.** GL puts the cool end of the `spectrum count`
-   ramp on the left, WGSL puts it on the right. This is *not* a colour bug: the
-   colour buffer handed to the GPU was dumped and runs orange at vertex 0 →
-   blue at the end, and Phase 1 already proved the Scene arrays are bit-identical
-   between backends, so GL receives exactly the same numbers. Same colours in
-   different screen positions means the **camera mapping** differs — a mirror or
-   a half-turn about the vertical axis. Transposing the rotation made the
-   silhouette overlap worse, so it is not a plain transpose; suspect the
-   projection's handedness (WebGPU's 0..1 depth and its y convention versus GL's
-   -1..1) or the sign on `back[2,3]` in `view_matrix`.
+   **The camera is correct. There was never a camera bug — the harness was the
+   whole problem.** With `scene_rect` recorded (cartoon: x=0, y=51, 1058×580
+   inside a 1278×631 framebuffer) the silhouette overlap against the GL baseline
+   is **IoU 0.981** with the matrices exactly as written. For contrast:
+   transposing the rotation gives 0.274, flipping x 0.367, flipping y 0.341. The
+   earlier 0.362 and the "the model is mirrored" reading were both artefacts of
+   cropping 1078×571 at y=60 out of an image whose scene column is 1058×580 at
+   y=51. **Do not re-open the camera; it is measured.**
 
-   Also worth chasing while there: the dumped vertex colours are dark and
-   desaturated (mid-chain rgb ≈ 0.22, 0.14, 0.13) because occlusion is already
-   multiplied in, yet the GL baseline renders a vivid rainbow from that same
-   array. One of the two backends is treating the pre-multiplied occlusion
-   differently, and finding out which explains the grey wash.
+   **What is genuinely still wrong is per-vertex colour correspondence.**
+   Projecting individual vertices and sampling the GL baseline at the same screen
+   position:
+
+   | vertex | colour in the packed array | GL pixel there |
+   |---|---|---|
+   | 0 | 0.648 0.307 0.170 (orange) | 0.017 0.024 0.415 (blue) |
+   | 10000 | 0.304 0.267 0.331 (grey) | 0.140 0.272 0.012 (green) |
+   | 19907 | 0.254 0.549 0.946 (blue) | 0.639 0.111 0.035 (red) |
+
+   The two ends of the ramp are swapped, so the array reaching the GPU is not in
+   the order GL paints it. This is *not* explained by a mirror — `flip x` and
+   `flip y` both score far worse than as-is — and not by the scene differing,
+   since Phase 1 proved the arrays are bit-identical between backends. Two
+   candidates worth testing in order: the cartoon mesh's vertex order is not
+   chain order and something re-indexes colours between assembly and upload; or
+   `interleave()` in `wgpu_backend.py` is writing the colour columns from the
+   wrong source rows. Start by rendering with lighting neutralised so hue is the
+   only variable.
+
+   Also unexplained: the packed colours are dark and desaturated (mid-chain rgb
+   ≈ 0.30, 0.27, 0.33) because occlusion is pre-multiplied in, yet the GL
+   baseline renders a vivid rainbow from that same array. Whichever backend
+   treats the pre-multiplied occlusion differently is also the likely source of
+   the grey wash in the WGSL image.
 
    Then the rest of the feature list, each proven by a screenshot pair:
    impostor spheres and capped cylinders (prototyped in Phase 0), transparency,

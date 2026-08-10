@@ -206,8 +206,35 @@ def main() -> int:
                 errors.append(f"get_view failed: {exc!r}")
 
             paths = shoot(win, name, directory=_OUT, size=(1280, 860), area="all")
+
+            # Where the molecule actually is inside the `_view` grab. The panel
+            # is a right-hand *column* and the sequence viewer a top *band*, both
+            # drawn inside the GL widget, so the framebuffer is wider and taller
+            # than the scene. Without this a diff against the PNG measures the
+            # crop rather than the shading -- two silhouette overlaps taken that
+            # way came out 0.362 and 0.277 and meant nothing.
+            scene_rect = None
+            try:
+                r = win.viewer._renderer
+                fb_w, fb_h = r.width(), r.height()
+                sw, sh = r.scene_width(), r.scene_height()
+                # device pixels, since that is what grabFramebuffer returns
+                ratio = float(getattr(win, "devicePixelRatioF", lambda: 1.0)())
+                scene_rect = {
+                    "x": 0,
+                    "y": int(round((fb_h - sh) * ratio)),
+                    "width": int(round(sw * ratio)),
+                    "height": int(round(sh * ratio)),
+                    "framebuffer": [int(round(fb_w * ratio)), int(round(fb_h * ratio))],
+                    "device_pixel_ratio": ratio,
+                }
+            except Exception as exc:  # pragma: no cover - diagnostic only
+                errors.append(f"scene_rect unavailable: {exc!r}")
+
             manifest[name] = {
                 "structure": structure,
+                # the molecule's rectangle within <name>_view.png
+                "scene_rect": scene_rect,
                 # the full sequence, so the after-half replays exactly this
                 "reset": RESET,
                 "script": script,
