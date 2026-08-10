@@ -130,17 +130,19 @@ def vm_rt_to_vv_vh(
     # (`vv(1-l1) + vh l1`, Koshioka 1995). That is a *different* meaning for
     # l1/l2, and it does not invert with the correction the rest of the stack
     # applies: a round trip with both a non-unit G and non-zero l1/l2 came back
-    # at 0.274 and 0.318 against a truth of 0.300.
+    # at 0.274 and 0.318 against a truth of 0.300. In this parameterisation the
+    # round trip is exact for any l1, l2 and G -- but only against the matching
+    # correction, which is DecayFit23's (DecayFit23.cpp, `anisotropy_denominator`):
     #
-    # Note what the *uncorrected* inversion (vv - G vh) / (vv + 2 G vh) does and
-    # does not recover here. The numerator collapses to 3 vm r (1 - l1 - l2),
-    # but the denominator is 3 vm + 3 vm r (2 l2 - l1) -- not the same factor --
-    # so that formula returns r exactly for **any G** and only for
-    # l1 = l2 = 0. Measured: G = 1.7 with l1 = l2 = 0 gives 0.300000 against a
-    # truth of 0.300; G = 1.7, l1 = 0.05, l2 = 0.08 gives 0.252662. Recovering r
-    # when the depolarisation factors are non-zero needs the l1/l2 terms in the
-    # correction, which is what the fitting stack applies -- it is not a defect
-    # in the pair built here.
+    #     r = (Sp - G Ss) / (Sp (1 - 3 l2) + (2 - 3 l1) G Ss)
+    #
+    # Both sides then collapse to 3 vm (1 - l1 - l2) and it cancels exactly
+    # (measured 2.7e-16 over 200 random (G, l1, l2)). The naive
+    # (Sp - G Ss) / (Sp + 2 G Ss) is *not* that correction: its denominator is
+    # 3 vm + 3 vm r (2 l2 - l1), so it recovers r for any G but only at
+    # l1 = l2 = 0 -- G = 1.7 with l1 = 0.05, l2 = 0.08 returns 0.2527 against a
+    # truth of 0.300. If a round trip here looks wrong, check which denominator
+    # is being used before suspecting the pair.
     vv_j = vm * (1.0 + (2.0 - 3.0 * l1) * rt)
     vh_j = vm * (1.0 - (1.0 - 3.0 * l2) * rt) / g_factor
     return vv_j, vh_j

@@ -1,6 +1,10 @@
 # Update Log
 
 ## 2026-08-10
+* **Correction to the entry above: the original `vm_rt_to_vv_vh` comment was right, and my "fix" to it was wrong.** I tested the round trip with the naive `(Sp - G Ss) / (Sp + 2 G Ss)`, found it off at non-zero l1/l2, and rewrote the comment to say the claim did not hold. It does. `l1`, `l2` and `g` are DecayFit23's, and so is the matching inversion (`DecayFit23.cpp`, `anisotropy_denominator`):
+  `r = (Sp - G Ss) / (Sp (1 - 3 l2) + (2 - 3 l1) G Ss)`.
+  With **that** denominator both sides collapse to `3 vm (1 - l1 - l2)` and it cancels exactly — measured **2.7e-16** over 200 random (G, l1, l2). The naive denominator is `3 vm + 3 vm r (2 l2 - l1)`, which is why it recovers r for any G but only at l1 = l2 = 0. The comment now carries the correct formula explicitly and says to check which denominator is in use before suspecting the pair, so the next reader does not repeat the mistake. The forward model was never in question: `x_vv[2] = r0(2 - 3 l1)`, `x_vh[0] = 1/g`, `x_vh[2] = (1/g) r0(-1 + 3 l2)` is what the code builds, and the numba port matched it to 4.4e-16.
+
 * **`anisotropy/decay.py` off numba (4.4e-16 over 300 cases), and a comment beside it corrected.** `vm_rt_to_vv_vh` builds r(t) as one matrix-vector product over the interleaved (b, rho) pairs. The comment claimed the uncorrected round trip `(vv - G vh) / (vv + 2 G vh)` recovers r "for any l1, l2 and G" — it does not, and the algebra says why: the *numerator* collapses to `3 vm r (1 - l1 - l2)` but the *denominator* is `3 vm + 3 vm r (2 l2 - l1)`, which is a different factor. So that formula is exact for **any G** and only for **l1 = l2 = 0**. Measured on the shipped code: G = 1.7 with zero depolarisation gives 0.300000 against a truth of 0.300; G = 1.7, l1 = 0.05, l2 = 0.08 gives **0.252662**. Not a defect in the pair being built — recovering r with non-zero depolarisation needs the l1/l2 terms the fitting stack applies — but the comment as written would send the next reader hunting a bug in the wrong place. **22 of 48 done.**
 
 * **Three chimol scene kernels moved to WGSL compute, and the frame did not
