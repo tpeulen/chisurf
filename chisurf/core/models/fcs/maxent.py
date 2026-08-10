@@ -5,7 +5,6 @@ from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
-from numba import njit
 
 
 @dataclass
@@ -81,8 +80,7 @@ def build_diffusion_kernel(
     return k
 
 
-@njit(cache=True)
-def _quickfit_mem_iteration_numba(
+def _quickfit_mem_iteration(
         Vred: np.ndarray,
         svals: np.ndarray,
         Ured: np.ndarray,
@@ -93,7 +91,7 @@ def _quickfit_mem_iteration_numba(
         alpha: float,
         num_iter: int,
 ):
-    """Numba-accelerated MaxEnt iteration loop (QuickFit-style MEM).
+    """MaxEnt iteration loop (QuickFit-style MEM).
 
     Parameters
     ----------
@@ -127,18 +125,11 @@ def _quickfit_mem_iteration_numba(
     s = svals.shape[0]
 
     # Ensure a positive, normalized prior m on the distribution grid
-    m = m_prior.copy()
-    for i in range(N):
-        if m[i] <= 0.0:
-            m[i] = 1.0
-    total = 0.0
-    for i in range(N):
-        total += m[i]
+    m = np.where(np.asarray(m_prior, dtype=np.float64) <= 0.0, 1.0, m_prior)
+    total = m.sum()
     if total <= 0.0:
         total = float(N)
-    inv_total = 1.0 / total
-    for i in range(N):
-        m[i] *= inv_total
+    m = m / total
 
     stdev2 = stdev * stdev
 
@@ -149,16 +140,11 @@ def _quickfit_mem_iteration_numba(
 
     for _ in range(num_iter):
         # Current distribution: f = m * exp(Ured @ u)
-        work = Ured @ u
-        for i in range(N):
-            if work[i] > max_exponent:
-                work[i] = max_exponent
-            elif work[i] < -max_exponent:
-                work[i] = -max_exponent
+        work = np.clip(Ured @ u, -max_exponent, max_exponent)
         f = m * np.exp(work)
-        for i in range(N):
-            if not np.isfinite(f[i]) or f[i] < 0.0:
-                f[i] = 0.0
+        # The clamp bounds the exponent, not the product: a large prior can
+        # still overflow, and a NaN here would propagate into the solve.
+        f = np.where(np.isfinite(f) & (f >= 0.0), f, 0.0)
 
         # K = Ured^T diag(f) Ured
         K = Ured.T @ (f.reshape(N, 1) * Ured)
@@ -179,21 +165,14 @@ def _quickfit_mem_iteration_numba(
         u = u + du
 
     # Final distribution and model curve
-    work = Ured @ u
-    for i in range(N):
-        if work[i] > max_exponent:
-            work[i] = max_exponent
-        elif work[i] < -max_exponent:
-            work[i] = -max_exponent
+    work = np.clip(Ured @ u, -max_exponent, max_exponent)
     f = m * np.exp(work)
     tmp_s = Ured.T @ f
     tmp_s = svals * tmp_s
     F = Vred @ tmp_s
 
     # Enforce finite, non-negative distribution
-    for i in range(N):
-        if not np.isfinite(f[i]) or f[i] < 0.0:
-            f[i] = 0.0
+    f = np.where(np.isfinite(f) & (f >= 0.0), f, 0.0)
 
     return f, F
 
@@ -363,7 +342,7 @@ def fcs_maxent(
     num_iter = int(kwargs.pop("num_iter", kwargs.pop("max_iter", 200)))
     alpha = float(reg)
 
-    p, g_fit_data = _quickfit_mem_iteration_numba(
+    p, g_fit_data = _quickfit_mem_iteration(
         Vred,
         svals_red,
         Ured,
@@ -915,7 +894,7 @@ def _compute_fcs_maxent_l_curve(
             for i, log10_reg in enumerate(grid):
                 alpha = 10.0 ** float(log10_reg)
                 num_iter = int(kwargs.get("num_iter", kwargs.get("max_iter", 200)))
-                p, g_fit_data = _quickfit_mem_iteration_numba(
+                p, g_fit_data = _quickfit_mem_iteration(
                     Vred,
                     svals_red,
                     Ured,
@@ -974,7 +953,7 @@ def _compute_fcs_maxent_l_curve(
             for i, log10_reg in enumerate(grid):
                 alpha = 10.0 ** float(log10_reg)
                 num_iter = int(kwargs.get("num_iter", kwargs.get("max_iter", 200)))
-                p, g_fit_data = _quickfit_mem_iteration_numba(
+                p, g_fit_data = _quickfit_mem_iteration(
                     Vred,
                     svals_red,
                     Ured,

@@ -1,6 +1,11 @@
 # Update Log
 
 ## 2026-08-10
+* **Three more files off numba, and one of them was cubic.** `plugins/traj/fret_trajectory/traj2fret.py`, `plugins/traj/traj_remove_clashes/view_model.py`, `core/models/fcs/maxent.py`. `integrate_rate_traj` re-added the same elements for every window *and* every lag; a prefix sum turns each window sum into a difference and the sum over windows into two slice sums, so it is one pass per lag rather than one per (window, lag) pair — agreement 4.9e-14. `below_min_distance`'s nested loops break out of both the moment a close pair is found, so the answer per frame is a plain "does any pair clash": 0/300 mismatches, atom subsets included. Frames stay a Python loop **deliberately** — the pairwise matrix is `n_atoms²` and building it for every frame at once is what would run a real trajectory out of memory.
+  **That one fixes a red test.** `test_below_min_distance_kernel` fails at HEAD because the numba kernel could not type-infer its own default argument — `np.arange(...)` is int64, the `atom_list` it is chosen against is int32, and the ternary between them will not compile — so passing an explicit atom list raised. The vectorised version has no such constraint. Verified by swap-and-restore: HEAD fails **three** tests in that file, this fails **two**, and the remaining two are recorded as pre-existing.
+  `maxent.py`'s MEM iteration was already almost entirely NumPy under the decorator; only the clamps and the prior normalisation were loops. Renamed `_quickfit_mem_iteration_numba` → `_quickfit_mem_iteration`, since the old name was now a claim the code no longer makes.
+  **21 of the 48 chisurf-owned files done, 27 left.**
+
 * **22 of chimol's 29 numba kernels are gone, and the slowest one got 7x
   faster.** numba does not exist in Pyodide, so every `njit` in `chimol/` was a
   wall between the renderer and the browser port that shares its WGSL with the

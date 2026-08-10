@@ -33,7 +33,6 @@
 chisurf/core/fluorescence/anisotropy/decay.py
 chisurf/core/fluorescence/anisotropy/kappa2.py
 chisurf/core/math/linalg/__init__.py
-chisurf/core/models/fcs/maxent.py
 chisurf/plugins/modelling/fret/core/olga_greedy.py
 chisurf/plugins/pch/api/algorithms.py
 modules/ndxplorer/ndxplorer/utils/performance_optimizations.py
