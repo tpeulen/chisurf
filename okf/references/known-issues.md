@@ -440,6 +440,35 @@ sphere scenes captured with `balls.impostor_min_atoms` at 100000 and at 10 came
 out **bit-identical**, which looks like a broken setting until you find the
 docstring.
 
+## `test_numba_seam` is red at HEAD: six allow-list strikes landed without their code
+
+**2026-08-11.** `test/test_numba_seam.py::test_no_new_numba_imports` fails on
+six files that import numba and are no longer listed in
+`test/numba_import_allowlist.txt`:
+
+```
+chisurf/core/fluorescence/burst/bocpd.py
+chisurf/core/fluorescence/tcspc/corrections.py
+chisurf/core/fluorescence/tcspc/tcspc.py
+chisurf/plugins/fluorescence_decay/lltf/core/convolve.py
+chisurf/plugins/fluorescence_decay/lltf/core/fitter.py
+chisurf/plugins/fluorescence_decay/lltf/core/scaling.py
+```
+
+All six are **already ported in the shared working tree** — none imports numba
+there — so the failure is invisible to anyone running the suite from that tree
+and appears only against a clean checkout. The allow-list strike was committed;
+the ported source was not. Fixing it means committing another session's
+uncommitted work, which is off limits, so it belongs to whoever owns those
+files.
+
+**The shape is what to carry forward, because the retirement will keep hitting
+it:** striking a line and porting the kernel are *one* change. Split across two
+commits, the tree is red for everyone who did not inherit the working tree —
+and the guard, which exists precisely to keep the list from drifting from the
+code, reads as broken rather than as correct. Verified pre-existing: identical
+at `HEAD~1` and at HEAD, in an isolated `git worktree`, with the same six files.
+
 ## `test_prd_mentions` is red on three files that belong to another session
 
 **2026-08-10.** `test/test_prd_mentions.py` fails on three files that name a PRD
