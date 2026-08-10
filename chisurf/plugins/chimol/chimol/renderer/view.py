@@ -2344,6 +2344,7 @@ class MolView(QtWidgets.QWidget):
         parent: QtWidgets.QWidget | None = None,
         background: str | None = None,
         *,
+        renderer_factory=None,
         representation_mode: str | None = None,
         show_cartoon: bool | None = None,
         show_trace: bool | None = None,
@@ -2511,12 +2512,19 @@ class MolView(QtWidgets.QWidget):
 
         info_cfg = _DISPLAY_CONFIG.get("info_overlay", {})
 
+        # The backend is chosen here, not assumed. `SceneSink` builds the scene
+        # and rasterises nothing, which is what lets scene assembly run without
+        # a display; a browser backend arrives the same way.
+        factory = renderer_factory or QtGLRenderer
         try:
-            renderer = QtGLRenderer(controller=self, parent=self)
+            renderer = factory(controller=self, parent=self)
         except Exception:
             renderer = None
 
-        if renderer is not None:
+        # Guarded on the renderer *being* a widget rather than on there being
+        # one: a windowless backend is a renderer, and the block below is Qt
+        # chrome that only a widget can be embedded in.
+        if isinstance(renderer, QtWidgets.QWidget):
             container = QtWidgets.QWidget(self)
             container_layout = QtWidgets.QGridLayout(container)
             container_layout.setContentsMargins(0, 0, 0, 0)
@@ -2592,7 +2600,14 @@ class MolView(QtWidgets.QWidget):
             self._info_overlay.raise_()
             layout.addWidget(container, 1)
         else:
-            self._renderer = None
+            # A windowless backend is still a renderer -- it just has no chrome
+            # to embed. Only a renderer that could not be *constructed* disables
+            # the view; treating "no widget" as "no renderer" is what made
+            # `_update_view` return before assembling a scene, and so what kept
+            # the Qt-free CLI from producing any geometry at all.
+            self._renderer = renderer
+            self.view = None
+            self._container = None
 
         if self._renderer is None:
             self._show_disabled_label()
