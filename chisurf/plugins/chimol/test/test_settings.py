@@ -66,9 +66,20 @@ def test_declared_kinds_match_the_stored_values():
         "str": str,
         "vector": (list, tuple),
         "color": (str, list, tuple),
+        # PyMOL's `cColorDefault` (-1): no per-representation override, so the
+        # representation takes its own colour. Stored as None, hence the extra
+        # member -- this kind arrived with the unit-cell work and the table was
+        # not extended with it, so every run since raised KeyError here rather
+        # than checking anything.
+        "color_or_default": (str, list, tuple, type(None)),
     }
     for spec in settings.iter_settings():
         value = settings.get_setting(spec.name)
+        assert spec.kind in kind_types, (
+            f"{spec.name!r} declares kind {spec.kind!r}, which this test does not "
+            f"know how to check; add it to kind_types rather than leaving the "
+            f"suite to raise KeyError"
+        )
         expected = kind_types[spec.kind]
         # bool is a subclass of int, so check it first and exclude it elsewhere.
         if spec.kind != "bool" and isinstance(value, bool):
