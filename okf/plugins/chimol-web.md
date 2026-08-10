@@ -162,12 +162,13 @@ stops matching is a question, not a failure. `capture_gl_baseline.py` keeps
 
 ## Do these next, in order
 
-1. **numba is gone from chimol, the compute is on the GPU, and the grid stays
-   there.** Nothing under `chisurf/plugins/chimol/` imports numba;
-   `test/test_no_numba.py`'s `ALLOWED` set is **empty**. The surface pipeline —
-   distance grid → threshold → distance transform → marching cubes — now passes a
-   `GpuVolume` from one kernel to the next instead of copying an 8 MB grid out
-   and back in between each pair.
+1. **The first render of a large scene, which still pays 241 ms of BVH build.**
+   Everything else in this item is done and is here as the context for that one
+   number: numba is gone from chimol (`test/test_no_numba.py`'s `ALLOWED` set is
+   **empty**), every data-parallel kernel is WGSL compute, and the surface
+   pipeline — distance grid → threshold → distance transform → marching cubes —
+   passes a `GpuVolume` from one kernel to the next instead of copying an 8 MB
+   grid out and back in between each pair.
 
    **The BVH build is the CPU-side bottleneck of a large trace, and the honest
    state of it is: measured, partly improved, and not finished.** On a *real*
