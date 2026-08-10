@@ -14,7 +14,7 @@ timestamp: '2026-07-05T00:00:00Z'
 PRD-23 makes GUI widgets pure view: they call only the api/RPC client, hold no database or photon-library logic, and perform no side effects (especially no database writes) on construction. It mandates a construction smoke test per tool to catch missing-import and side-effect-on-init regressions, and introduces a shared dockable-tool base implementing Load/Save, drag-drop, dock management, and connectivity-aware MMFDB behaviour once instead of per plugin. This removes the class of bugs where logic hidden inside a widget ships broken, and enforces the GUI half of the transformer contract.
 
 # Status
-In-progress (cross-cutting, STATUS TABLE authoritative). The shared `ChisurfDockTool` base, residual-logic extraction, construction smoke tests, and a repo-wide static guard against database writes in widget `__init__` have landed for the reference transformers plus a third tool; remaining dockable tools migrate opportunistically.
+In-progress (cross-cutting, STATUS TABLE authoritative). **Task 1 is complete**: every tool window in `chisurf/` now subclasses `ChisurfDockTool`, enforced by `test/test_tool_window_base.py` against a shrinking allowlist of the five windows that are not tools. Residual-logic extraction and the static guard against database writes in widget `__init__` have landed for the reference transformers; Tasks 2 and 3 remain open for the rest of the tools.
 
 # Goal
 GUI widgets become pure **view**: no data processing, no DB/`tttrlib` calls, no side effects on construction. All state and I/O live behind the api/RPC layer. Mandatory construction smoke tests and a shared dockable-tool base remove the class of bugs where logic hidden in widgets ships broken.
@@ -38,7 +38,7 @@ GUI widgets become pure **view**: no data processing, no DB/`tttrlib` calls, no 
 
 # Definition of Done
 - [ ] Widgets are view-only (no DB/`tttrlib`); construction is read-only.
-- [ ] A shared dockable-tool base is used by the transformer tools; Load/Save/docks are not re-implemented per plugin.
+- [x] A shared dockable-tool base is used by the transformer tools; Load/Save/docks are not re-implemented per plugin. *(Done 2026-08-10: every tool window in `chisurf/` is a `ChisurfDockTool`; `test/test_tool_window_base.py` fails on a new `QMainWindow` subclass.)*
 - [ ] Every tool has a construction smoke test; new transformers must add one.
 
 # Definition of Clean
@@ -60,7 +60,19 @@ Layer purity (view ↔ api/RPC); no side effects on construction; GUI smoke test
 
 **Third tool migrated — TTTR Time-Window (`tttr_time_windows`).** It had the same copied `DropListWidget` + window drag-drop, but its list filtered by supported TTTR extension. Rather than fork, `PathDropListWidget` gained an optional `path_filter` predicate (None = accept all, preserving the burst/shifter behavior; a predicate restricts drag-accept and drop), so the tool now reuses the shared widget (`PathDropListWidget(..., path_filter=_is_supported_path)`), subclasses `ChisurfDockTool`, drops its window `dragEnter`/`dropEvent`, and lazy-loads its GUI in `__init__.py`. Covered by `tttr_time_windows/tests/test_construction_smoke.py` and an added base test for the filter variant. This proves the base generalises beyond the two reference transformers, including the extension-filtered drop case.
 
-**Still to do:** migrate the remaining `QMainWindow` dockable tools onto `ChisurfDockTool` opportunistically (e.g. `tttr_image_browser`, `trace_browser`, `tttr_lut_tools`, `pch`, FCS dialog, detector wizard — though the detector wizard is a `QWizardPage`, not a `QMainWindow`, so it does not fit this base). The FCS write-on-construction bug is already fixed (its `register_result` is in an explicit action handler, not `__init__`; the guard confirms). The GUI base/smoke work was written without a Qt-capable environment; run the smoke/base tests under `QT_QPA_PLATFORM=offscreen` with Qt bindings to confirm (the static guard needs no Qt).
+**Task 1 finished (2026-08-10): every tool window is on the base, and a guard keeps it that way.** The "migrate opportunistically" phase is over — opportunism is what left the list half-done and unmeasured. Counting direct `QMainWindow` subclasses across `chisurf/` by AST: **11 → 5**, and the five that remain are not tools (the application's own `Main` window, `ChisurfDockTool` itself, and the three games). Migrated in this pass:
+
+- **`NavigationPanelTool`** (`chisurf/gui/widgets/navigation.py`) — the highest-leverage one, because it is the shell every navigation-style plugin tool is built on. It was `HelpGuideMixin + QMainWindow`, i.e. a second, parallel kind of tool window; it is now a `ChisurfDockTool` that lays its content out as navigation-plus-panels, so every shell inherits the shared error/warning reporting, path drag-drop and lazy store access.
+- **`ProjectBrowserTool`**, **`MaxentDecayWidget`**, **`MolViewPluginWindow`** (chimol), **`StandaloneMainWindow`** (SM Acquisition), and the legacy **`BurstSelectionTool`**.
+
+Two things fell out of the migration:
+
+- `ProjectBrowserTool.__init__` called `self.refresh()`, opening the project store **while constructing** — the exact shape of the FCS bug, and invisible to the write-only static guard because it is a read. The load moved to `showEvent`; the smoke test asserts both halves (nothing on construction, populated on show), because deferring a load is also how you silently lose it.
+- `chisurf/plugins/core/acq/standalone.py` imports Qt inside a `try` so CLI-only mode works without it. The base import had to go in the same guarded block with an `object` fallback, or importing the module headlessly would raise.
+
+**The guard.** `test/test_tool_window_base.py` is an AST check (no Qt, no display) that fails on any new direct `QMainWindow` subclass, against a **shrinking** allowlist of the five non-tools — plus a second test that fails when an allowlist entry goes stale, so the list cannot quietly grow a hiding place. Smoke tests for the migrated windows: `test/gui/test_migrated_tool_windows.py`.
+
+**Still to do:** Tasks 2 and 3 for the tools beyond the reference transformers — residual `tttrlib`/DB logic in `gui/`, and a construction smoke test for *every* tool rather than the migrated ones. The detector wizard is a `QWizardPage`, not a `QMainWindow`, so it does not fit this base and needs its own answer.
 
 # Relationships
 - Enforces the GUI half of [PRD-16](prd-16.md) (transformer contract); adds construction smoke tests as a conformance checklist item.

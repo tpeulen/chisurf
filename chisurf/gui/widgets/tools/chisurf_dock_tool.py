@@ -1,12 +1,17 @@
-"""Shared dockable-tool base for transformer GUIs (PRD-23 Task 1).
+"""The one base class every ChiSurf tool window is built on.
 
-`ChisurfDockTool` factors the boilerplate every transformer tool re-implemented
-(drag-drop of file/folder paths, a `DockArea` central widget, window-geometry
-persistence, and MMFDB-connectivity status) into one base, so fixes propagate and
-the per-tool widget stays a thin view. `PathDropListWidget` is the byte-identical
-drag-drop list both tools had copied.
+`ChisurfDockTool` factors the boilerplate every tool re-implemented (drag-drop
+of file/folder paths, a `DockArea` central widget, window-geometry persistence,
+and metadata-store connectivity status) into one base, so fixes propagate and the
+per-tool widget stays a thin view. `PathDropListWidget` is the byte-identical
+drag-drop list the tools had copied.
 
-The base performs **no** I/O or DB work on construction (PRD-23 Task 4): it only
+A window that subclasses `QMainWindow` directly gets none of that and cannot be
+reached by a fix to any of it, so `test/test_tool_window_base.py` fails on a new
+one; its allowlist holds only the windows that are genuinely not tools (the
+application's own main window, and the games).
+
+The base performs **no** I/O or DB work on construction: it only
 wires Qt widgets. MMFDB access is via the overridable `acquire_mmfdb_connection`
 hook, called lazily on demand — never in `__init__`.
 """

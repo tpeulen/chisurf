@@ -64,7 +64,6 @@ chisurf/gui/widgets/fitting/fit_subwindow.py
 chisurf/gui/widgets/models/auto_model_widget.py
 chisurf/gui/widgets/sample_picker.py
 chisurf/gui/widgets/tools/__init__.py
-chisurf/gui/widgets/tools/chisurf_dock_tool.py
 chisurf/macros/core_fit.py
 chisurf/plugins/burst/accurate_fret/__init__.py
 chisurf/plugins/burst/burst_2cde/tests/test_gui.py

@@ -134,15 +134,15 @@ def test_tool_reset_button_and_logy() -> None:
 
     # Test logy toggle
     assert tool.logy_action.isChecked() is False
-    assert tool.trigger_level_line.value() == 200
+    assert tool.trigger_level_line.value == 200
 
     # Toggle logy on
     tool.logy_action.setChecked(True)
-    assert np.isclose(tool.trigger_level_line.value(), np.log10(200))
+    assert np.isclose(tool.trigger_level_line.value, np.log10(200))
 
     # Toggle logy off
     tool.logy_action.setChecked(False)
-    assert tool.trigger_level_line.value() == 200
+    assert tool.trigger_level_line.value == 200
 
     tool.close()
 

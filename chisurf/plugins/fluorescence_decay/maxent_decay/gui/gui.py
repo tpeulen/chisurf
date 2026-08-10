@@ -33,6 +33,7 @@ except Exception:
     QtWidgets = QtCore = QtGui = None
 
 
+from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
 from chisurf.gui.widgets.tools.help_guide import attach_help_and_guide
 
 try:
@@ -58,7 +59,7 @@ class MaxentDecayWidget(
     _MaxentPriorsMixin,
     _MaxentRunMixin,
     _MaxentPlottingMixin,
-    QtWidgets.QMainWindow,
+    ChisurfDockTool,
 ):
     """GUI front-end for the MaxEnt lifetime/FRET MEM analysis.
 

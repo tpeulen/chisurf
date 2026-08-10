@@ -5,10 +5,11 @@ from typing import Any
 from qtpy import QtCore, QtWidgets
 
 from chisurf import logging
+from chisurf.gui import dialogs
 from chisurf.gui.glyphs import Glyphs
+from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
 
 from .client import ProjectBrowserClient
-from chisurf.gui import dialogs
 
 
 class SaveProjectDialog(QtWidgets.QDialog):
@@ -118,7 +119,7 @@ class CollisionDialog(QtWidgets.QDialog):
         layout.addWidget(buttons)
 
 
-class ProjectBrowserTool(QtWidgets.QMainWindow):
+class ProjectBrowserTool(ChisurfDockTool):
     """Browser for MMFDB-backed project versions."""
 
     def __init__(self, parent: QtWidgets.QWidget | None = None):
@@ -128,9 +129,27 @@ class ProjectBrowserTool(QtWidgets.QMainWindow):
 
         self._client: ProjectBrowserClient | None = None
         self._projects: list[dict[str, Any]] = []
+        self._refreshed = False
 
         self._init_ui()
         self._connect_signals()
+        # Opening the project store is *posted*, not performed: construction
+        # itself touches nothing, and the list is loaded as soon as the event
+        # loop turns. Tying it to showEvent instead would leave the tree empty
+        # for anyone who builds the tool without showing it as a window --
+        # embedded in a hub panel, or read straight after construction.
+        QtCore.QTimer.singleShot(0, self._ensure_loaded)
+
+    def showEvent(self, event) -> None:  # noqa: N802 - Qt override
+        """Make sure the project list is loaded before the window appears."""
+        super().showEvent(event)
+        self._ensure_loaded()
+
+    def _ensure_loaded(self) -> None:
+        """Load the project list once, on whichever trigger comes first."""
+        if self._refreshed:
+            return
+        self._refreshed = True
         self.refresh()
 
     def _make_client(self) -> ProjectBrowserClient:

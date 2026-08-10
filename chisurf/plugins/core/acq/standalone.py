@@ -6,30 +6,36 @@ This application can run the single-molecule acquisition plugin either as part o
 or as a standalone application with its own MDI interface.
 """
 
-import sys
-import os
 import logging
+import os
+import sys
+
 from chisurf.gui import dialogs
 
 try:
+    from qtpy.QtCore import Qt
     from qtpy.QtWidgets import (
+        QAction,
         QApplication,
         QMainWindow,
         QMdiArea,
+        QMenu,
+        QMenuBar,
+        QStatusBar,
         QVBoxLayout,
         QWidget,
-        QMenuBar,
-        QMenu,
-        QAction,
-        QStatusBar,
     )
-    from qtpy.QtCore import Qt
+
+    from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
     PYQT_AVAILABLE = True
 except Exception:
     # Allow this module to be imported in environments without a Qt stack so that
     # CLI-only mode (``standalone.py --cli ...``) continues to work.
     QApplication = None  # type: ignore
     QMainWindow = object  # type: ignore
+    # The shared tool base is Qt-only, so CLI-only mode falls back to ``object``
+    # exactly as it already does for the Qt classes above.
+    ChisurfDockTool = object  # type: ignore
     QMdiArea = QVBoxLayout = QWidget = QMenuBar = QMenu = QAction = QStatusBar = object  # type: ignore
     Qt = None  # type: ignore
     PYQT_AVAILABLE = False
@@ -115,7 +121,7 @@ def run_as_plugin():
     # Keep the plugin running
     return chisurf.run()
 
-class StandaloneMainWindow(QMainWindow):
+class StandaloneMainWindow(ChisurfDockTool):
     """Standalone main window for SM Acquisition."""
 
     def __init__(self):

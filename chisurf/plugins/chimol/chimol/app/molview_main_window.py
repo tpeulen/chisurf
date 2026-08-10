@@ -3,15 +3,15 @@
 import json
 import logging
 import shutil
-
-import chisurf as cs
 from pathlib import Path
-from typing import Optional, Any, Sequence
+from typing import Any, Optional, Sequence
 
 import numpy as np
+from qtpy import QtCore, QtGui, QtWidgets
 
-from qtpy import QtWidgets, QtCore, QtGui
+import chisurf as cs
 from chisurf.gui import dialogs
+from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
 
 # These are imported independently on purpose: the structure reader is pure
 # core code, while `open_files` drags in the whole Qt widget stack. Sharing one
@@ -44,35 +44,35 @@ except Exception:  # pragma: no cover - standalone moview
     _cs_open_files = None
 
 from .. import config as _config
-from ..config import _DISPLAY_CONFIG
-from ..renderer.internal_gui import GuiRow as InternalGuiRow
-from ..renderer.internal_gui import SequenceRow as InternalSequenceRow
-from ..colors import _SEQ_COLOR_ROLE, _OBJECT_ID_ROLE
-from ..io import (
-    open_structure_files,
-    load_structure_payload,
-    load_trajectory_frames,
-    TrajectoryFormatError,
-    load_mrc_as_points,
-)
-from ..renderer.view import MolView
 from ..analysis import (
-    build_residue_alignment,
     assign_ss_c3_from_atoms,
     assign_ss_c3_from_file,
+    build_residue_alignment,
 )
-from .controls_panel import ControlsToolbar
-from .objects_panel import ObjectsDock
-from .sequence_dock import SequenceDock
-from .hierarchy_panel import HierarchyDock
-from .volume_panel import VolumeDock
-from .rmf_panel import RmfPanel
-from .config_editor import MolViewConfigEditor
-from .menu_bar import build_menu_bar
 from ..cmd import cmd as _cmd
+from ..colors import _OBJECT_ID_ROLE, _SEQ_COLOR_ROLE
+from ..config import _DISPLAY_CONFIG
+from ..io import (
+    TrajectoryFormatError,
+    load_mrc_as_points,
+    load_structure_payload,
+    load_trajectory_frames,
+    open_structure_files,
+)
+from ..renderer.internal_gui import GuiRow as InternalGuiRow
+from ..renderer.internal_gui import SequenceRow as InternalSequenceRow
+from ..renderer.view import MolView
+from .config_editor import MolViewConfigEditor
+from .controls_panel import ControlsToolbar
+from .hierarchy_panel import HierarchyDock
+from .menu_bar import build_menu_bar
+from .objects_panel import ObjectsDock
+from .rmf_panel import RmfPanel
+from .sequence_dock import SequenceDock
+from .volume_panel import VolumeDock
 
 try:
-    from chisurf.gui.misc_helpers import persist_plugin_state, get_plugin_settings_path
+    from chisurf.gui.misc_helpers import get_plugin_settings_path, persist_plugin_state
 except ImportError:
     persist_plugin_state = lambda n: lambda c: c
     get_plugin_settings_path = lambda n: Path.home() / ".chisurf" / f"plugin_{n}_settings.ini"
@@ -185,7 +185,7 @@ def _without_retired_docks(state):
 
 
 @persist_plugin_state("chimol")
-class MolViewPluginWindow(QtWidgets.QMainWindow):
+class MolViewPluginWindow(ChisurfDockTool):
     """Chimol main window — toolbar, statusbar, DockArea panels, and 3D view."""
 
     def __init__(
@@ -561,7 +561,7 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
 
     def edit_demo_script(self, blank: bool = False) -> None:
         """Open a demo in the script editor, or a blank one."""
-        from .demos import DEMOS, open_script_editor, demo_path, read_demo
+        from .demos import DEMOS, demo_path, open_script_editor, read_demo
 
         if blank:
             open_script_editor(self, text="# ChiMOL script\n")
@@ -1071,8 +1071,8 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
 
         try:
             from chisurf.plugins.chimol.chimol.config import (
-                get_user_display_config_path,
                 get_package_display_config_path,
+                get_user_display_config_path,
             )
             json_path = get_user_display_config_path()
             if json_path is None or not json_path.is_file():

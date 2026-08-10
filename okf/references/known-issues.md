@@ -1,3 +1,27 @@
+## `test/gui` crashes the interpreter mid-run, and 20 of its failures are contamination
+
+**2026-08-10.** `pytest test/gui` dies with `Bus error: 10` (exit 138) at around
+44 %, just after `test_language_selector`, and reports ~22 failures before it
+does. Almost none of that is real:
+
+- **The failures are mostly cross-test contamination.** Two of three sampled
+  failures (`test_dialogs_and_progress::test_confirm_declines_by_default`,
+  `settings/test_log_filter::test_log_list_widget_uses_multiple_columns`) **pass
+  when run on their own**. Judge a `test/gui` failure by re-running that test
+  alone before believing it.
+- **The one real failure sampled** is `ParseFCSModel object has no attribute
+  'get_plot_reference_modes'` (raised from `chisurf/core/base.py`), i.e. an FCS
+  model/plot-reference API mismatch — not a GUI defect.
+- **A second, separate crash** appears when several plugin suites are combined in
+  one process: `chisurf/plugins/{tttr,pch,core/project_browser,burst/...}` plus
+  the dock suites run to ~89 % **with zero failures** and then take
+  `Segmentation fault: 11` in teardown. Split into two invocations, the same
+  tests are 146 + 254 passed. Same shape as the `fret_trajectory` entry below.
+
+So a red `test/gui` is not evidence that a change broke something. Until the
+contamination and the two crashes are fixed, verify a GUI change by running the
+suites that cover it, individually, and say which ones.
+
 ## 20 file types in `chisurf/` are missing from an installed distribution
 
 **Found 2026-08-10** while adding `*.wgsl` for the chigame shader, which had the
@@ -110,6 +134,26 @@ baseline for that path needs a bead/integrative model. Recorded because two
 sphere scenes captured with `balls.impostor_min_atoms` at 100000 and at 10 came
 out **bit-identical**, which looks like a broken setting until you find the
 docstring.
+
+## `test_prd_mentions` is red on three files that belong to another session
+
+**2026-08-10.** `test/test_prd_mentions.py` fails on three files that name a PRD
+in shipped source:
+
+```
+chisurf/gui/chiplot/backends/opengl/__init__.py
+chisurf/plugins/burst/mfd_prepare/api/__init__.py
+chisurf/plugins/burst/mfd_prepare/backend/services.py
+```
+
+All three are **untracked** — they are new files from other sessions' in-flight
+work in the shared tree, so editing them would collide with whoever is writing
+them. The fix is one line each (point at the OKF concept that owns the area, or
+drop the reference) and belongs to the session that lands those files.
+
+Not to be confused with a regression from the tool-window migration: that pass
+*removed* a file from the allowlist (`chisurf_dock_tool.py`, 154 → 153 entries)
+and added none.
 
 ## Registering a dropped measurement in MMFDB fails on a foreign key
 

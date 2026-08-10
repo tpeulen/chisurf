@@ -7,20 +7,19 @@ fluorescence bursts in TTTR data.
 
 from pathlib import Path
 
-from qtpy import QtCore, QtGui, QtWidgets
-
-from chisurf.gui import chiplot as cp
-from chisurf.gui.glyphs import Glyphs
-from chisurf.gui.widgets.chitable import edit_store
-
 import numpy as np
-from chisurf.core.ml import GaussianMixture
+from qtpy import QtCore, QtGui, QtWidgets
 
 import chisurf.gui.decorators
 import chisurf.gui.widgets
 import chisurf.gui.widgets.wizard
 from chisurf import logging
+from chisurf.core.ml import GaussianMixture
+from chisurf.gui import chiplot as cp
 from chisurf.gui import dialogs
+from chisurf.gui.glyphs import Glyphs
+from chisurf.gui.widgets.chitable import edit_store
+from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
 
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
@@ -289,7 +288,7 @@ class BatchProcessingDialog(QtWidgets.QDialog):
 
 
 @persist_plugin_state("burst_selection")
-class BurstSelectionTool(QtWidgets.QMainWindow):
+class BurstSelectionTool(ChisurfDockTool):
 
     def open_batch_dialog(self):
         dlg = BatchProcessingDialog(self)

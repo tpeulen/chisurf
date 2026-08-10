@@ -1,6 +1,29 @@
 # Update Log
 
 ## 2026-08-10
+* **[PRD-23](prds/prd-23.md) Task 1 finished: every tool window is a `ChisurfDockTool`, and a guard keeps
+  it that way.** The PRD had said the remaining windows would "migrate opportunistically", which is what
+  left the list half-done and, worse, unmeasured. Counting direct `QMainWindow` subclasses across
+  `chisurf/` by AST: **11 → 5**, and the five left are not tools (the app's own `Main`, the base itself,
+  three games). Migrated: `NavigationPanelTool` — the highest-leverage one, since it is the shell every
+  navigation-style plugin is built on and was a second, parallel kind of tool window — plus
+  `ProjectBrowserTool`, `MaxentDecayWidget`, chimol's `MolViewPluginWindow`, SM Acquisition's
+  `StandaloneMainWindow`, and the legacy `BurstSelectionTool`. Two things fell out: `ProjectBrowserTool`
+  opened the project store **in `__init__`** (the same shape as the FCS bug the PRD was written for, and
+  invisible to the write-only static guard because it is a read) — deferred to `showEvent`, with the
+  smoke test asserting both halves, since deferring a load is also how you silently lose it; and
+  `acq/standalone.py` imports Qt inside a `try` for CLI-only mode, so the base import needed the same
+  guard and an `object` fallback. The new `test/test_tool_window_base.py` is an AST check (no Qt, no
+  display) failing on any new direct `QMainWindow` subclass, with a second test that fails when an
+  allowlist entry goes stale so the list cannot grow a hiding place; smoke tests in
+  `test/gui/test_migrated_tool_windows.py`. `chisurf_dock_tool.py` stopped naming PRD-23 and came off
+  the [PRD-mention allowlist](../test/prd_mention_allowlist.txt) (154 → 153). Two stale call sites fixed
+  on the way: the microtime-shifter GUI test called `Marker.value()` where chiplot deliberately makes
+  `value` a *property*, and `ProjectBrowserTool`'s deferral was first written as `showEvent`, which broke
+  four headless tests that build the tool and read its tree without showing it — posting the load with a
+  zero-delay timer keeps `__init__` free of I/O *and* the tool's contract. Verified suite-by-suite
+  (146 + 254 passed) rather than through `test/gui`, which is red and crashes for reasons of its own —
+  measured and recorded in [known issues](references/known-issues.md).
 * **`arm64` now runs IMP built from source, and the FRET failure was never the missing class it looked like.**
   New concept [workflows/imp-local-build](workflows/imp-local-build.md). The conda `imp` 2.24 package ships an
   **empty** `IMP.bff.restraints`, so `arm64` was rebuilt on IMP **2.25** (`develop-345e71cb9a`) from

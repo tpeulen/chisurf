@@ -14,7 +14,7 @@ from qtpy import QtCore, QtWidgets
 
 from chisurf.core.plugin.manifest import load_manifest
 from chisurf.gui.event_pump import pump_ui
-from chisurf.gui.widgets.tools.help_guide import HelpGuideMixin
+from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
 
 
 class _StatusLogHandler(logging.Handler):
@@ -442,7 +442,8 @@ def load_panels_json(path: str | pathlib.Path) -> tuple[dict, list[dict]]:
     that must be flattened via :func:`embed_mainwindow`; ``{"separator": true}``
     inserts a group separator; ``"optional": true`` marks a step the pipeline
     works without, which *Next* and the fast-forward therefore pass over without
-    running (see :meth:`NavigationPanelTool.process_current_step`). An entry may also name the tool's ``manifest`` so
+    running (see :meth:`NavigationPanelTool.process_current_step`). An entry may
+    also name the tool's ``manifest`` so
     :func:`apply_manifest_flags` surfaces its maturity flags. Panels import
     lazily inside their factories.
 
@@ -479,17 +480,23 @@ def load_panels_json(path: str | pathlib.Path) -> tuple[dict, list[dict]]:
     return spec, apply_manifest_flags(panels)
 
 
-class NavigationPanelTool(HelpGuideMixin, QtWidgets.QMainWindow):
+class NavigationPanelTool(ChisurfDockTool):
     """Main-window shell with a left selector and lazy-loaded right panels.
+
+    This is a :class:`~chisurf.gui.widgets.tools.chisurf_dock_tool.ChisurfDockTool`
+    that happens to lay its content out as navigation-plus-panels, rather than a
+    second, parallel kind of tool window: a shell built here gets the shared
+    error/warning reporting, path drag-drop and lazy metadata-store access for
+    free, and a fix to any of those reaches it.
 
     Help and guide
     --------------
     The shell adds the ``?`` and **Guide** buttons itself, in a hairline toolbar
     above the panel area, whenever the *subclass* ships ``help.md`` /
-    ``guide.json`` beside its own module — the same two files a
-    :class:`~chisurf.gui.widgets.tools.chisurf_dock_tool.ChisurfDockTool` reads.
-    A plugin therefore gets both buttons by writing the files and changing no
-    code; a plugin that ships neither gets no toolbar rather than an empty strip.
+    ``guide.json`` beside its own module — the same two files a plain
+    ``ChisurfDockTool`` reads. A plugin therefore gets both buttons by writing
+    the files and changing no code; a plugin that ships neither gets no toolbar
+    rather than an empty strip.
     """
 
     #: Emitted (possibly from a worker thread) by the scoped log handler; the
