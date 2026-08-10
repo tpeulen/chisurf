@@ -4,7 +4,7 @@ prd: "93"
 title: "PRD-93: The clean four-repository split — tttrlib, imp.bff, imp-tricks, chisurf"
 description: The scope boundaries are settled and three of them are enforced by tests, but the code has not moved. This PRD is the ordered work to make the tree match the rule — cgdye out of imp-tricks, κ² consolidated in imp.bff, decay finished off, and chisurf's 38k-line fluorescence library migrating by attrition.
 status: in-progress
-phase: "stage 0 done (boundaries settled, guards in place); stage 1 next"
+phase: "stage 0 and stage 2 done (boundaries + guards; cgdye and the rotamer library are in imp.bff); stage 1 next"
 resource: okf/references/imp-ecosystem.md
 tags: [prd, scope, architecture, imp.bff, imp-tricks, tttrlib, migration]
 timestamp: '2026-08-10T00:00:00Z'
@@ -12,12 +12,21 @@ timestamp: '2026-08-10T00:00:00Z'
 
 # Where to pick this up
 
-**Stage 0 is done.** The boundaries are settled and written up in
+**Stages 0 and 2 are done.** The boundaries are settled and written up in
 [references/imp-ecosystem](/references/imp-ecosystem.md); three of them are
-enforced by tests that were each verified to *fail* on a deliberate violation.
-Nothing below is blocked on further discussion except where marked **DECISION**.
+enforced by tests, each verified to *fail* on a deliberate violation. **cgdye
+now lives in imp.bff** (`imp.bff` `8fac573`, `imp-tricks` `34cf4de`) together
+with `fps.py` and the FRETpredict rotamer library, which was the open question
+and turned out to be **data**: 45 MB / 227 files now shipping as IMP module data
+at `imp.bff/data/rotamer_library`, reached through
+`IMP.bff.get_data_path("rotamer_library")` by every loader. Registry loads 34
+entries; IMP.bff tests 13/13; ChiSurf's FRET suite unchanged at 6 failed / 122
+passed.
 
-Next: **stage 1**, which is entirely unblocked and mostly small.
+Next: **stage 1**, entirely unblocked and mostly small, plus one item stage 2
+uncovered — cgdye's own externals (`Bio`, `MDAnalysis`, `click`, `numba`) are
+not yet declared or guarded, and IMP.bff's conda-forge runtime dependency list
+is a public contract.
 
 # Why
 
@@ -70,42 +79,30 @@ Each item is independent. None needs a decision, none is large.
    `setup_git.py` regenerates `.git/hooks/`, removing the `pre-commit` hook that
    enforces the golden rule. Cheap to lose, expensive to notice.
 
-# Stage 2 — cgdye moves, once one question is answered
+# Stage 2 — cgdye moved (done)
 
-`cgdye` is now 11 MB and 67 Python files: its vendored `thirdparty/` (280 MB,
-269 tracked files — FRETpredict, fpsim, MDAnalysis tooling, a Flask/Celery/Redis
-web app) is untracked and parked in `imp-tricks/junk/cgdye`, and `/junk/` is
-gitignored. Under the rule cgdye is structure and dye simulation, so it belongs
-in imp.bff.
+`cgdye` is in imp.bff: 67 Python files under `pyext/src/cgdye`, plus `fps.py`,
+which its rotamer package was the only external dependency on and which reads the
+same fps.json `AVNetworkRestraint` already parses in C++.
 
-**DECISION REQUIRED before the move — is FRETpredict's rotamer library data, or
-reference?** Untracking `thirdparty/` exposed a hidden runtime dependency:
-`cgdye/rotamer/r0.py`, `cli.py` and `scripts/label_protein.py` *load* `.dcd`
-rotamer trajectories, weight files and R0 CSVs out of that tree, and `r0.py`
-reaches them through the import path
-`IMP.bff.cgdye.thirdparty.FRETpredict...`, which no longer resolves. `junk/` is
-read-and-mine-only by definition. Either:
+**The open question is answered: the rotamer library is data.** Untracking the
+vendored `thirdparty/` had exposed that `rotamer/r0.py`, `rotamer/io.py`,
+`cli.py` and `scripts/label_protein.py` *load* `.dcd` trajectories, weight files,
+R0 CSVs and `libraries.yml` from it at run time — three by walking up from
+`__file__`, one through the import path
+`IMP.bff.cgdye.thirdparty.FRETpredict...`, all of which broke the moment the
+module moved. It ships as IMP module data at `data/rotamer_library` (45 MB, 227
+files) and every loader now goes through `IMP.bff.get_data_path`, so none depends
+on where the package sits.
 
-* **it is data** → the library files ship as IMP module data under
-  `imp.bff/data/bff/`, and the loaders are rewritten against
-  `IMP.bff.get_data_path`; or
-* **it is reference** → the rotamer route is experimental, says so, and skips
-  when the library is absent.
+`scripts/migrate_reference_libs.py` was dropped rather than moved: a one-off
+migration for a layout that no longer exists.
 
-Answer that and the move itself is mechanical. Note that it can also be
-**staged**: `topology`, `io`, `sim`, `sampling`, `labeling` and `analysis` do
-not touch FRETpredict and can move first, leaving `rotamer` behind pending the
-decision.
-
-Two constraints the move must respect, both learned the hard way this session:
-
-* IMP globs **every** `.py` under a module's `test/` into ctest. Two stray
-  helper files became two failing IMP tests on 2026-08-10. Vendored or parked
-  tests must not land under `test/`.
-* `IMP.bff` ships through conda-forge as part of IMP; its runtime dependency
-  list is a public contract. cgdye's own externals (`Bio`, `MDAnalysis`,
-  `click`, `numba`) have to be declared, guarded, or dropped — they cannot
-  simply arrive.
+**Left over, and now stage 1's fifth item**: cgdye's externals (`Bio`,
+`MDAnalysis`, `click`, `numba`) are neither declared nor guarded. IMP.bff ships
+through conda-forge as part of IMP, where the runtime dependency list is a public
+contract, so each has to be declared, guarded, or dropped — it cannot simply
+arrive.
 
 # Stage 3 — resolve the AV duplication
 

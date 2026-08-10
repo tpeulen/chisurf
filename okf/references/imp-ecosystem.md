@@ -40,19 +40,17 @@ The boundaries below were settled on 2026-08-10 and are the target. Three of
 them are enforced by tests; the rest is debt with a known direction. Open work,
 in the order it should be done:
 
-1. **`cgdye` moves from imp-tricks to imp.bff.** Its vendored `thirdparty/`
-   (280 MB, 269 tracked files) is already untracked and moved to
-   `imp-tricks/junk/cgdye/`; what remains is 11 MB and 67 Python files, ready
-   to move.
-2. **OPEN — is FRETpredict's rotamer library data or reference?** Moving
-   `thirdparty/` exposed a hidden runtime dependency: `cgdye/rotamer/r0.py`,
-   `cli.py` and `scripts/label_protein.py` *load* `.dcd` rotamer trajectories,
-   weight files and R0 CSVs out of that tree, and `r0.py` reaches them through
-   the import path `IMP.bff.cgdye.thirdparty.FRETpredict...`, which no longer
-   resolves. `junk/` is read-and-mine-only by definition, so either those files
-   are real data and must ship as IMP module data under `imp.bff/data/`, or the
-   rotamer route is experimental and should say so. Decide before cgdye moves —
-   this would otherwise break silently in imp.bff.
+1. ✅ **`cgdye` is in imp.bff** (`imp.bff` `8fac573`, `imp-tricks` `34cf4de`),
+   with `fps.py` and the FRETpredict rotamer library. The library was the open
+   question and it is **data**: 45 MB / 227 files now shipping as IMP module
+   data at `imp.bff/data/rotamer_library`, reached by every loader through
+   `IMP.bff.get_data_path("rotamer_library")` rather than by walking up from
+   `__file__`. Its vendored `thirdparty/` (280 MB) stayed behind as gitignored
+   `junk/`.
+2. **cgdye's externals are undeclared** — `Bio`, `MDAnalysis`, `click`, `numba`.
+   IMP.bff ships through conda-forge as part of IMP, where the runtime
+   dependency list is a public contract, so each must be declared, guarded or
+   dropped. It cannot simply arrive.
 3. **chisurf's κ² is debt** — `core/models/anisotropy_to_kappa.py` (the fitting
    adapter) stays; `kappa2_to_distance_ratio` and
    `convolve_distance_with_k2_ratio` in `core/fluorescence/general.py` belong in

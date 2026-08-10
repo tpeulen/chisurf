@@ -1,6 +1,26 @@
 # Update Log
 
 ## 2026-08-10
+* **cgdye and the rotamer library are in imp.bff — the four-repository split starts moving code.**
+  [PRD-93](prds/prd-93.md) stages 0 and 2 (imp.bff `8fac573`, imp-tricks `34cf4de`). cgdye is structure and
+  dye simulation, so under the settled boundaries it is imp.bff's: 67 Python files to `pyext/src/cgdye`
+  plus `fps.py`, which its rotamer package was the only external dependency on and which reads the same
+  fps.json `AVNetworkRestraint` already parses in C++. **The open question is answered — the FRETpredict
+  rotamer library is data, not reference.** Untracking cgdye's vendored `thirdparty/` had exposed that four
+  files *load* `.dcd` trajectories, weight files, R0 CSVs and `libraries.yml` from it at run time, three by
+  walking up from `__file__` and one through the import path `IMP.bff.cgdye.thirdparty.FRETpredict...`, all
+  of which broke the moment the module moved. It now ships as IMP module data at
+  `imp.bff/data/rotamer_library` (45 MB, 227 files) and every loader goes through
+  `IMP.bff.get_data_path`, so none depends on where the package sits — registry loads 34 entries.
+  IMP.bff tests 13/13; FRET suite unchanged at 6 failed / 122 passed (the six want the absent `../olga`).
+  The add-never-replace guard earned itself mid-move: a stale `__pycache__` cgdye in imp-tricks still looked
+  like a package, and the collision warning fired the moment imp.bff gained its own.
+  **Left open**: cgdye's externals (`Bio`, `MDAnalysis`, `click`, `numba`) are neither declared nor guarded,
+  and IMP.bff's conda-forge runtime dependency list is a public contract.
+  Also: the shared [agent board](agent-board.md) now carries this claim, and a warning that two sessions
+  committing in one worktree delete each other's new files — a commit builds its tree from the *shared*
+  index, so a file another session committed but never added there is removed by your next commit. It
+  happened today (`789117879` dropped, recovered in `1ec04bc24`).
 * **Lumis Quest: gear, loot and healing — and a filter that genuinely blinds you.**
   `api/gear.py` reads **673 real optical parts** out of the same `spectra.db` (333 emission filters, 172
   dichroics, 100 excitation, 68 detectors), each with its **measured transmission curve**. So equipment is
