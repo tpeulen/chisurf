@@ -19,10 +19,11 @@ keeping in a format every other tool reads.
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import Any, Mapping, Sequence
+from typing import Any
 
-__all__ = ["write_image", "write_imaging_table"]
+__all__ = ["read_image", "write_image", "write_imaging_table"]
 
 
 def write_imaging_table(
@@ -71,6 +72,7 @@ def write_imaging_table(
     units : mapping, optional
         ``{column: unit}``.
     out_dir : str or Path, optional
+        Directory the container lives in. Defaults to beside *source*.
 
     Returns
     -------
@@ -136,6 +138,7 @@ def write_image(
     derived_from : str or sequence of str, optional
         Names of the objects this was computed from.
     out_dir : str or Path, optional
+        Directory the container lives in. Defaults to beside *source*.
 
     Returns
     -------
@@ -177,3 +180,51 @@ def write_image(
             mime_type="image/tiff",
         )
         return str(m.path)
+
+
+def read_image(source: str | Path, *, name: str):
+    """Read a raster back out of the measurement's container.
+
+    The counterpart of :func:`write_image`, which had none: three plugins were
+    writing rasters into containers that nothing could read back through this
+    module, so the only way to see one again was to unpack the container by
+    hand.
+
+    Parameters
+    ----------
+    source : str or Path
+        The container, or any file beside it that resolves to one.
+    name : str
+        Label the raster was written under.
+
+    Returns
+    -------
+    numpy.ndarray
+        The raster, with its written dtype — a label image comes back as
+        integers, not as the 8-bit picture a viewer would have made of it.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the container does not exist.
+    """
+    import tempfile
+
+    from chisurf.core.fio.fluorescence.burst_container import container_for
+    from chisurf.core.fio.image import imread
+    from chisurf.core.fio.pto import Measurement
+
+    container = container_for(source)
+    if not Path(container).exists():
+        raise FileNotFoundError(f"{source} resolves to no container ({container})")
+
+    with Measurement.open(container, writable=False) as m:
+        payload = m.get_blob(name)
+
+    # Decoded from a file because the decoder reads a path — the same trip
+    # `write_image` takes in the other direction, and the reason the checksum
+    # `get_blob` verifies is worth having before it is written out again.
+    with tempfile.TemporaryDirectory() as scratch:
+        staged = Path(scratch) / f"{Path(str(name)).name}.tif"
+        staged.write_bytes(payload)
+        return imread(staged)

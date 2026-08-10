@@ -3,8 +3,8 @@ type: PRD
 prd: "92"
 title: "PRD-92: Spot finding is not lifetime fitting — a region-property MLE fed by a spot finder that persists its regions"
 description: sm_image_mle segments, measures, gathers photons and fits inside one 897-line core, and fit_molecules re-runs the segmentation itself, so the regions cannot be inspected, corrected, reused or produced by anything else. Split it — a spot-finder plugin that detects spots and writes region properties into the .pto container, and a region-property MLE that reads them. The seam is the container, not a function call; the load-bearing question is that a region table of scalars cannot say which photons belong to a region; and both halves are batch tools, so the two batch loops that exist today (with different persistence, and a `continue` for every failure) become one Qt-free runner with a run table that has a row per input whatever happened to it.
-status: draft
-phase: "scoped from the existing code; nothing implemented"
+status: in-progress
+phase: "stage 1 landed (the container contract, in-tree and dictionary-declared); stages 2-6 open"
 resource: chisurf/plugins/microscopy/sm_image_mle/
 tags: [prd, imaging, roi, mle, spot-detection, pto, provenance, plugins, microscopy]
 timestamp: '2026-08-10T00:00:00Z'
@@ -12,18 +12,24 @@ timestamp: '2026-08-10T00:00:00Z'
 
 # Where to pick this up
 
-Nothing is implemented. The order below is the intended one, and each item says
-what it unblocks.
+Stage 1 has landed; the two plugins do not exist yet. The order below is the
+intended one, and each item says what it unblocks.
 
-1. **Settle the pixel-membership question first (§3).** Everything else is
-   plumbing that has been done before in this tree; this is the one decision
-   that cannot be deferred, because it decides what the spot finder writes.
-   A region table of scalars — centroid, area, eccentricity — is what
-   `regionprops` gives and what a person wants to look at, and it is **not
-   enough to fit**: the MLE reaches a molecule's photons through
-   `prop.coords` → `clsm[0][r][c].tttr_indices`, one pixel at a time. Persist
-   the wrong thing and the second plugin has to re-segment, which is exactly
-   the coupling this PRD exists to remove.
+1. ~~**Settle the pixel-membership question first (§3).**~~ **Settled and
+   landed (2026-08-10):** option B, the raster/table pair, in
+   `chisurf/core/fio/fluorescence/region_container.py`
+   (`write_regions` / `read_regions` / `region_table` / `list_region_sets`),
+   with `test/fio/test_region_container.py` (12 tests). A region table of
+   scalars is **not enough to fit** — the MLE reaches a molecule's photons
+   through `prop.coords` → `clsm[0][r][c].tttr_indices`, one pixel at a time —
+   so the pixels travel as an `image_data` label raster keyed by the table's
+   `label` column. Two things found while landing it:
+   `imaging_container.write_image` **had no reader at all** (three plugins were
+   writing rasters into containers nothing could read back through the module),
+   so `read_image` was added beside it; and the vocabulary is the dictionary's,
+   not the caller's — `region_table`, `region_detection` and the `region` grain
+   were added to `mmfdb_flr_ext.dic`, and `radians`/`pixels` were already there
+   under those spellings (`rad` is not a term).
 2. **Then the container contract (§4), before either plugin is written.** The
    burst side learned this the expensive way: a companion format that merges by
    position fails *silently* when a row is missing rather than absent
@@ -175,9 +181,19 @@ is needed, and the fit table's rows can be linked to the region table's rows by
 
 ```
 artifact_kind  = "region_table"     (scalars)  /  "image_data"  (label raster)
-operation_type = "spot_detection"
+operation_type = "region_detection"
 row_grain      = "region"
 ```
+
+These are dictionary terms, added to `mmfdb_flr_ext.dic` rather than invented at
+the call site — the container refuses a term the profile does not carry, which
+is how the wrong spelling is caught at the write rather than in a reader six
+months later. **`region` is not `spot`**, which the enumeration already had: a
+spot is a point-like detection with a position and at most a width; a region is
+an arbitrary connected set of pixels that owns its own pixel list. Declaring a
+table of cell nuclei at `spot` grain is a false statement about its rows, in the
+one field a reader consults to decide what may be joined to it — the same shape
+of error as calling a file of binned traces a photon stream.
 
 Rules, mirroring [burst companions](/subsystems/burst-companions.md) because the
 failure mode is identical:
@@ -360,11 +376,24 @@ GUI writes its own persistence path.
 
 # 7. Stages and Definition of Done
 
-* **Stage 1 — the contract.** `write_spots` / `read_spots` + the artifact pair,
-  with a round-trip test on a synthetic label field.
-  - [ ] A detection written and reopened returns identical labels and an
+* **Stage 1 — the contract. ✅ done (2026-08-10).**
+  `chisurf/core/fio/fluorescence/region_container.py` +
+  `test/fio/test_region_container.py` (12 tests); the functions are
+  `write_regions` / `read_regions` rather than `write_spots` / `read_spots`,
+  because the contract is the general one and only the *plugin* is about spots.
+  - [x] A detection written and reopened returns identical labels and an
         identical table, including sentinel rows.
-  - [ ] `lineage()` from the region table reaches the primary data.
+  - [x] `lineage()` from the region table reaches the primary data — asserted on
+        the primary's uid, not merely on the raster being in the chain.
+  - [x] Label gaps cannot reach the file: `write_regions` relabels
+        sequentially, so a filtering step that deletes labels cannot leave rows
+        that own no pixel.
+  - [x] A table whose raster is missing is refused, naming what the container
+        does hold; `list_region_sets` lists only complete pairs.
+  - [x] The raster comes back integer-valued — a label image is not a picture.
+  - [x] Beyond the DoD: the intensity columns are *absent* rather than zero when
+        a detection was made on a mask, and an `extra` column of the wrong
+        length is refused rather than recycled.
 * **Stage 2 — `spot_finder` core + CLI.** Detection methods on
   `chisurf/core/roi/segmentation.py`, no new algorithms.
   - [ ] On `core/fluorescence/imaging/simulate.py`'s synthetic CLSM field with
