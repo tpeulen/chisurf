@@ -3527,3 +3527,31 @@ and what none of this touched. Two candidates worth taking first:
 Reproduce with a structure that has waters, driving the GUI rather than the
 command line — the standing correction in the parity concept applies: a test
 that calls the handler cannot see what the widget does.
+
+## structure: `ProteinCentroid` cannot coarse-grain nucleic acids
+
+**2026-08-10.** Found while making `calc_internal_coordinates_bb` survive
+crystallographic PDB files (three separate crashes, all fixed:
+`KeyError: 'H'` on structures without hydrogens, `KeyError: 'CA'` on waters,
+`ValueError: -1 is not in list` on the absent-atom sentinel). One failure was
+left, because it is a capability gap rather than a guard:
+
+```
+>>> ProteinCentroid('test/data/atomic_coordinates/pdb_files/1rtd.pdb')
+KeyError: np.str_('DG')      # protein.py, to_coarse
+```
+
+`residue_atoms_internal` is keyed by amino-acid name only, so `to_coarse`
+raises on the first nucleotide. **1RTD is this project's designated
+protein + DNA/RNA fixture** ([testing](../workflows/testing.md)), which means
+the coarse-grained path has never been exercised on the structure class it was
+supposed to be tested against — the two combined-molecule tests in the tree use
+the all-atom path.
+
+Not fixed here for one reason worth stating: `chisurf/core/structure/protein.py`
+is route `imp` in the [numba retirement](../subsystems/numba-retirement.md) —
+its counterpart already exists as `IMP.cgmol.protein`, and CLAUDE.md records
+that molecular modelling has migrated to imp-tricks. Adding nucleotide
+templates here would be work thrown away at that port. **Check whether
+`IMP.cgmol` already handles nucleic acids before writing any**; if it does, this
+closes by deletion.

@@ -10,7 +10,7 @@ timestamp: '2026-08-10T00:00:00Z'
 # Where to pick this up
 
 1. **The tracker is `test/numba_import_allowlist.txt`** and it only shrinks.
-   Every entry carries its route. **25 chisurf-owned files remain** of the 48 this work covers. ChiMOL's 11 are **excluded from the guard entirely** — the WebGPU port removes them on its own schedule, and listing them here only made this test fail nine times in one session with news about someone else's progress;
+   Every entry carries its route. **24 chisurf-owned files remain** of the 48 this work covers. ChiMOL's 11 are **excluded from the guard entirely** — the WebGPU port removes them on its own schedule, and listing them here only made this test fail nine times in one session with news about someone else's progress;
    `test/test_numba_seam.py` fails both on a new importer and on a stale entry,
    so the list cannot drift from the tree.
 2. **Route `tttrlib`: next is `plugins/fluorescence_decay/maxent_decay/core/solver.py`**
@@ -73,7 +73,43 @@ timestamp: '2026-08-10T00:00:00Z'
    `4df1b1041` (importing the widget kernels that refactor deleted). Retargeted
    at the surviving implementation rather than deleted — what they pin,
    `gamma_2` and the `k = 171` factorial overflow, is still worth pinning.
-4. **A `tttrlib` route is a hypothesis, not a verdict — diff the maths first.**
+4. **`linalg` is done, and it is the case where "delete the decorator" was not
+   enough.** The 3-vector helpers are now NumPy and bit-exact against the numba
+   versions (0.0e+00 on every one). But measured on the only live consumer,
+   `protein.py`'s per-residue walk over hGBP1 (3456 internal coordinates), the
+   naive port was a **4.9× regression** — 0.096 s compiled to 0.474 s scalar
+   NumPy, because a 3-element operation is all call overhead. **Do not ship a
+   Route-`numpy` port on measurement of the kernel alone; measure the loop that
+   calls it.**
+
+   The fix is the one the routing table always implied: the helpers are written
+   against the last axis, so they take `(n, 3)` stacks, and
+   `calc_internal_coordinates_bb` now collects its quadruples and measures them
+   in three stacked calls instead of ~10,000 scalar ones — **0.021 s, 4.5×
+   faster than the numba version it replaces**. Compiling could never have
+   reached that, because the cost was the Python calls, not the arithmetic.
+   The same shape applies to the remaining `numpy` entries: check the call
+   pattern before assuming the decorator is all that has to go.
+
+   Three latent defects surfaced, all pre-existing, all now fixed with a
+   guardrail suite (`test/structure/test_internal_coordinates.py`):
+   `angle` returned **NaN for collinear points** (the normalised dot product
+   overshoots one by 4.4e-16 and `arccos` of that is not a number; `dihedral`
+   had always clamped, `angle` never did), and `ProteinCentroid` could not load
+   *any* crystallographic PDB — `KeyError: 'H'` because it chose side-chain
+   atoms by residue name rather than by what the file contains and X-ray does
+   not resolve hydrogens, `KeyError: 'CA'` on the waters that `residue_dict`
+   also holds, and `ValueError: -1 is not in list` from looking up the
+   absent-atom sentinel. 148L now loads. 1RTD still does not — nucleotides are
+   a capability gap, recorded in
+   [known-issues](../references/known-issues.md), deliberately not fixed here
+   because `protein.py` is route `imp` and `IMP.cgmol.protein` may already
+   cover it.
+
+   `rotate_point` sliced the quaternion vector part as `quaternion[1:3]` — two
+   elements — so it read past the end inside `cross3`. It has no callers and
+   never ran; under numba that read memory instead of raising.
+5. **A `tttrlib` route is a hypothesis, not a verdict — diff the maths first.**
    Two files routed to `tttrlib` turned out to be route `numpy`, because
    ChiSurf's version is *deliberately better than the C one* and delegating
    would have been a silent regression:
@@ -87,7 +123,7 @@ timestamp: '2026-08-10T00:00:00Z'
    under the decorator. So: read both implementations before delegating, and
    when they differ, work out *which* is right rather than assuming the
    compiled one is.
-5. **`_hdbscan.py` splits — measured, so do not re-derive.** The compiled
+6. **`_hdbscan.py` splits — measured, so do not re-derive.** The compiled
    kernel covers only the first two stages (`core_distances`,
    `mutual_reachability_mst`); `single_linkage`, `condense_tree` and
    `label_points` are **not** in the photon library. Timed on the *compiled*
@@ -103,7 +139,7 @@ timestamp: '2026-08-10T00:00:00Z'
    same reason, but **measure before delegating** — it is the hmmlearn
    replacement and is 1.1–18× faster per E-step, so a regression there is a
    visible loss.
-6. **`gopich_szabo.py` has a red test that is not the port's fault.**
+7. **`gopich_szabo.py` has a red test that is not the port's fault.**
    `test_no_exchange_reduces_to_a_static_mixture` returns `-inf` where
    `-3.665` is expected — `-inf` is the numba kernel's own numerical-failure
    sentinel. Check whether `tttrlib.GopichSzabo` gives the expected value
@@ -111,7 +147,7 @@ timestamp: '2026-08-10T00:00:00Z'
    [known-issues](../references/known-issues.md) with four unrelated
    `mfd_burst_roundtrip` failures, so the retirement's test runs are not read
    as having caused them.
-7. **ChiMOL is out of scope and out of the guard.** `test_numba_seam.py` skips
+8. **ChiMOL is out of scope and out of the guard.** `test_numba_seam.py` skips
    `chisurf/plugins/chimol/` via `_EXCLUDED_PREFIXES`, and the allow-list no
    longer names those files. They belong to the WebGPU port; when it lands
    them, nothing here needs touching.

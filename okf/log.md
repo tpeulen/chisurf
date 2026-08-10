@@ -1,6 +1,33 @@
 # Update Log
 
 ## 2026-08-10
+* **The 3-vector helpers left numba bit-exact, and that alone would have been a
+  4.9x regression.** `core/math/linalg` is NumPy now and every kernel matches
+  the compiled version to `0.0e+00`. But the kernel was never the thing to
+  measure: on the only live consumer -- `protein.py`'s per-residue walk over
+  hGBP1, 3456 internal coordinates -- the naive port went **0.096 s to
+  0.474 s**, because a three-element operation is all call overhead and numba
+  had been hiding ~10,000 Python calls. The helpers are written against the last
+  axis, so they take `(n, 3)` stacks; `calc_internal_coordinates_bb` now
+  collects its quadruples and measures them in three stacked calls, at
+  **0.021 s -- 4.5x faster than the numba version it replaces**. Compiling could
+  not have reached that, since the cost was the calls and not the arithmetic.
+  The rule this earns: *do not accept a Route-`numpy` port on the kernel's own
+  timing; time the loop that calls it.* Four latent defects surfaced on the way,
+  all pre-existing and all now pinned by
+  `test/structure/test_internal_coordinates.py`: **`angle` returned NaN for
+  collinear points** (the normalised dot product overshoots one by 4.4e-16 and
+  `arccos` of that is not a number -- `dihedral` had always clamped, `angle`
+  never did), and `ProteinCentroid` could not load **any** crystallographic PDB,
+  failing three separate ways -- `KeyError: 'H'` from choosing side-chain atoms
+  by residue name when X-ray does not resolve hydrogens, `KeyError: 'CA'` on the
+  waters `residue_dict` also holds, and `ValueError: -1 is not in list` from
+  looking up the absent-atom sentinel. 148L loads now; 1RTD still does not,
+  because nucleotides are a capability gap rather than a guard -- recorded in
+  known-issues and deliberately left, since `protein.py` is bound for
+  `IMP.cgmol`. Also: `rotate_point` sliced the quaternion vector part as
+  `[1:3]`, two elements, and read past the end inside `cross3` -- it has no
+  callers and had never run.
 * **PCH had three implementations of the same integral; it now has one, and the
   check that collapsed them found two silent bugs.** `plugins/pch/api/algorithms.py`
   was numba, `core/models/pch/pch.py` already delegated to the photon library
