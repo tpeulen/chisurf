@@ -51,7 +51,6 @@ dependencies = [
     # PyOpenGL by the molecular view,
     # scikit-image by the CLSM and single-molecule image tools.
     "pandas",
-    "scikit-image",
     "PyOpenGL",
     # WebGPU, used by the chigame engine (chisurf.gui.chigame). wgpu is the
     # graphics API; rendercanvas is the per-platform surface and the offscreen

@@ -42,7 +42,10 @@ qtpy = "<2.0"
 pyqt = "*"
 pyqtgraph = "0.13.*"
 matplotlib = "*"
-scikit-image = "*"
+# scikit-image was dropped: regionprops lives in chisurf.core.roi.props and
+# the five segmentation primitives the imaging tools used (gaussian,
+# threshold_otsu, clear_border, peak_local_max, watershed) in
+# chisurf.core.roi.segmentation.
 # imageio, tifffile and imagecodecs were dropped: data images are TIFF, through
 # tttrlib's bundled libtiff behind chisurf.core.fio.image. pillow is here for
 # pictures, not measurements: chimol's render export and the docs figure tooling.
