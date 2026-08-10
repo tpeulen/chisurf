@@ -344,8 +344,38 @@ class Shell:
             self.user_ns[f"_{count}"] = value
             while len(self.Out) > self._cache_size:
                 self.Out.pop(min(self.Out), None)
+        if self._is_pending_inline_figure(value):
+            return
         data, metadata = self.formatter.format(value)
         self.display_data(data, metadata, kind="execute_result", execution_count=count)
+
+    def _is_pending_inline_figure(self, value: typing.Any) -> bool:
+        """Return whether *value* is a figure the inline backend will publish.
+
+        A cell ending in ``fig`` would otherwise print the figure's repr
+        (``<Figure size 420x260 with 1 Axes>``) immediately before the inline
+        backend flushes the same figure as an image -- two outputs for one
+        plot, the first of them noise.
+
+        Parameters
+        ----------
+        value : object
+
+        Returns
+        -------
+        bool
+        """
+        if getattr(self, "_flush_figures_hook", None) is None:
+            return False
+        matplotlib = sys.modules.get("matplotlib")
+        if matplotlib is None:
+            return False
+        try:
+            from matplotlib.axes import Axes
+            from matplotlib.figure import FigureBase
+        except Exception:  # noqa: BLE001 - a broken matplotlib is not our error
+            return False
+        return isinstance(value, (FigureBase, Axes))
 
     def clear_screen(self) -> None:
         """Clear the console, for ``%clear``."""

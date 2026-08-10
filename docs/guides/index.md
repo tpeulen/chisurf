@@ -140,6 +140,7 @@ irf_estimation
 40_ai_assistant
 70_ask_the_documentation
 59_console
+64_notebooks
 ```
 
 ## Where each guide starts in ChiSurf
@@ -210,6 +211,7 @@ irf_estimation
 | [Global analysis: linking parameters across fits](60_global_analysis.md) | `fitting.fit.link_parameter`, `core.models.global_model`, `globalview` plugin |
 | [Maximum-entropy decay analysis](62_maxent_decay.md) | `maxent_decay` plugin, `models.tcspc.maxent`, `math.regularization` |
 | [Driving ChiSurf from its console](59_console.md) | `chisurf.gui.chinsole`, `chisurf.core.console`, `cs.fits`, `%run -i` |
+| [Notebooks that run inside ChiSurf](64_notebooks.md) | Code Editor `.ipynb` tabs, `code_editor.notebook_editor`, `core.console.shell` |
 | [Accurate FRET: calibration](fret_calibration.md) | `accurate_fret` plugin, `fret.calibration` |
 | [IRF estimation](irf_estimation.md) | `irf_estimation`, TCSPC nuisances |
 | [Photon-by-photon HMM (H2MM)](h2mm.md) | `burst_h2mm` plugin |

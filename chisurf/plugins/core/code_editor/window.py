@@ -84,6 +84,8 @@ class CodeEditorWindow(QtWidgets.QMainWindow):
         for name in ["new", "open", "open_folder", "save", "save_as", "reload"]:
             file_menu.addAction(self.actions[name])
         file_menu.addSeparator()
+        self._populate_notebooks_menu(file_menu)
+        file_menu.addSeparator()
         file_menu.addAction("Close", self.close)
 
         edit_menu = self.menuBar().addMenu("Edit")
@@ -109,6 +111,29 @@ class CodeEditorWindow(QtWidgets.QMainWindow):
         run_menu = self.menuBar().addMenu("Run")
         run_menu.addAction(self.actions["run"])
         run_menu.addAction(self.actions["ruff"])
+
+    def _populate_notebooks_menu(self, file_menu: QtWidgets.QMenu) -> None:
+        """Add the File > Open Notebook submenu listing shipped notebooks."""
+        from chisurf.plugins.core.code_editor.notebook_editor import shipped_notebooks
+
+        notebooks = shipped_notebooks()
+        menu = file_menu.addMenu("Open Notebook")
+        if not notebooks:
+            empty = menu.addAction("No shipped notebooks found")
+            empty.setEnabled(False)
+            return
+        groups: dict[str, list[pathlib.Path]] = {}
+        for path in notebooks:
+            group = path.name.split("_", 1)[0] if "_" in path.name else "Other"
+            groups.setdefault(group, []).append(path)
+        for group in sorted(groups):
+            submenu = menu.addMenu(group)
+            for path in sorted(groups[group], key=lambda p: p.name):
+                action = submenu.addAction(path.stem)
+                action.setToolTip(str(path))
+                action.triggered.connect(
+                    lambda _checked=False, p=path: self.editor.open_file(str(p))
+                )
 
     def _create_toolbar(self) -> None:
         """Create the main editor toolbar."""

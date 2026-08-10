@@ -1,6 +1,22 @@
 # Update Log
 
 ## 2026-08-10
+* **Notebook editor layout: every surface is sized to what it holds.** The [code editor
+  profile](plugins/profiles/code-editor.md) carries the detail. Measured on the demo notebook the new
+  `build_tools/dev_utils/grab_notebook_editor.py` writes, the cell stack went **1091px → 929px** with no
+  scrollbar where one is not needed. `CellOutput` now fits its document (capped at 360px, then scrolls)
+  instead of reserving a fixed block for a one-line result; the source editor is exactly as tall as it
+  has lines; the per-cell header row became a 40px left `[n]` gutter, which also keeps a *rendered*
+  markdown cell deletable; a one-row toolbar carries run-all / restart-kernel / clear-outputs / hide-
+  terminal. A figure is scaled to the output width and painted in exactly one place — `_on_display`
+  routes to the running cell *or* the terminal, never both. Two defects were visible only in the PNGs
+  and invisible to the 13 passing tests: a **ghost cell** still painting over the notebook
+  (`deleteLater()` without `setParent(None)`) and **ANSI escapes printed verbatim** in every traceback
+  (now fed through `chisurf.core.console.ansi.AnsiParser` against the light theme). One shell-side fix
+  belongs to the same story: `Shell.record_output` no longer publishes the execute_result for a
+  matplotlib `Figure`/`Axes` while the inline backend hook is registered, so a cell ending in `fig`
+  yields the image alone rather than `<Figure size ...>` *and* the image. 25 tests (12 new); six of the
+  new ones were confirmed to fail against the pre-fix code.
 * **[PRD-87](prds/prd-87.md) stages 1-4 landed: `chisurf.core.ml` in-tree scikit-learn port (except HDBSCAN).** Built
   `chisurf/core/ml/{base,_gaussian,mixture,cluster,decomposition,preprocessing,neural_network}` mirroring sklearn's
   public spellings: `GaussianMixture` (four covariance types, `n_init`, `aic`/`bic`, `score_samples`) with the

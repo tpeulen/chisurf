@@ -326,7 +326,10 @@ def _clean_inline(text: str) -> str:
     text = re.sub(r"(?<!\w)[*_]([^*_]+)[*_](?!\w)", r"\1", text)
     text = text.replace("\\", "")
     text = re.sub(r"\(\s*[,;]?\s*\)", "", text)  # parentheses emptied by the above
-    text = re.sub(r"\s+([,.;:])", r"\1", text)
+    # Close up punctuation the removals left stranded ("see , and"), but only
+    # where it really is punctuation: a word may legitimately begin with a dot
+    # (a `.pto` code span becomes " .pto", not "a.pto").
+    text = re.sub(r"\s+([,.;:])(?=\s|$)", r"\1", text)
     return re.sub(r"\s+", " ", text).strip()
 
 

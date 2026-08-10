@@ -21,6 +21,7 @@ from chisurf.gui.widgets.dock_area import DockArea
 from chisurf.plugins.core.code_editor.agent_panel import AgentPanelWidget
 from chisurf.plugins.core.code_editor.document_store import DocumentStore
 from chisurf.plugins.core.code_editor.lsp_client import PythonLspClient
+from chisurf.plugins.core.code_editor.notebook_editor import NotebookEditor, shipped_notebooks
 from chisurf.plugins.core.code_editor.rpc_server import EditorRpcServer
 from chisurf.plugins.core.code_editor.ruff_runner import RuffRunner
 from chisurf.plugins.core.code_editor.symbols import CodeSymbol, find_project_root
@@ -155,6 +156,7 @@ class CodeEditor(QtWidgets.QWidget):
             [
                 "*.py",
                 "*.pyw",
+                "*.ipynb",
                 "*.json",
                 "*.yaml",
                 "*.yml",
@@ -484,7 +486,7 @@ class CodeEditor(QtWidgets.QWidget):
     def _document_id_for_editor(self, editor: QtWidgets.QWidget) -> str:
         """Return or create the document id for an editor widget."""
         existing = self._document_ids.get(editor)
-        if isinstance(editor, TextEditor) and editor.current_file:
+        if isinstance(editor, (TextEditor, NotebookEditor)) and editor.current_file:
             document_id = DocumentStore.document_id_for_path(editor.current_file)
             if existing and existing != document_id:
                 self.document_store.remove(existing)
@@ -498,7 +500,7 @@ class CodeEditor(QtWidgets.QWidget):
 
     def _sync_editor_document(self, editor: QtWidgets.QWidget) -> None:
         """Sync an editor widget into the JSON document store."""
-        if not isinstance(editor, TextEditor):
+        if not isinstance(editor, (TextEditor, NotebookEditor)):
             return
         document_id = self._document_id_for_editor(editor)
         path = editor.current_file or self._get_current_filename() or document_id
@@ -557,6 +559,32 @@ class CodeEditor(QtWidgets.QWidget):
             self._on_editor_created(editor)
         self._sync_editor_document(editor)
         return editor, tab_index
+
+    def _create_notebook_tab(self, filename: str = None) -> tuple[NotebookEditor, int]:
+        """Create a new notebook editor tab."""
+        editor = NotebookEditor(parent=self)
+        self.tab_widget.addTab(editor, filename or "Untitled.ipynb")
+        editor.document().modificationChanged.connect(
+            lambda modified, e=editor: self._on_modification_changed(e, modified)
+        )
+        editor.statusChanged.connect(self._on_editor_status_changed)
+        editor.symbolsChanged.connect(self._on_editor_symbols_changed)
+        editor.filePathChanged.connect(self.currentFileChanged.emit)
+        editor.definitionRequested.connect(self.go_to_definition)
+        editor.textChanged.connect(self._on_editor_text_changed)
+        editor.cellAdded.connect(self._connect_notebook_cell)
+        if self._is_real_file(filename):
+            editor.set_current_file(str(pathlib.Path(filename).resolve()))
+        tab_index = self.tab_widget.indexOf(editor)
+        if hasattr(self, "_on_editor_created"):
+            self._on_editor_created(editor)
+        self._sync_editor_document(editor)
+        return editor, tab_index
+
+    def _connect_notebook_cell(self, cell) -> None:
+        """Wire a notebook cell's editor to the host definition lookup."""
+        if getattr(cell, "editor", None) is not None:
+            cell.editor.definitionRequested.connect(self.go_to_definition)
 
     def _get_current_editor(self):
         """Get the current editor widget."""
@@ -628,7 +656,8 @@ class CodeEditor(QtWidgets.QWidget):
         editor = self.sender()
         if editor is self._get_current_editor() and not self._applying_remote_document:
             self._sync_editor_document(editor)
-            self._lsp_sync_timer.start()
+            if not isinstance(editor, NotebookEditor):
+                self._lsp_sync_timer.start()
 
     def _populate_symbol_tree(self, symbols: list[CodeSymbol]) -> None:
         """Populate the symbol outline tree from *symbols*."""
@@ -903,6 +932,8 @@ class CodeEditor(QtWidgets.QWidget):
         """Open or update the current editor document in LSP."""
         if self._lsp_client is None or not editor.current_file:
             return
+        if isinstance(editor, NotebookEditor):
+            return
         language = "python" if editor_language_key(editor.language) == "python" else "plaintext"
         self._lsp_client.open_document(editor.current_file, editor.toPlainText(), language)
 
@@ -1085,6 +1116,19 @@ class CodeEditor(QtWidgets.QWidget):
     def _save_tab(self, editor, tab_text: str, index: int) -> bool:
         """Save the tab content to its file."""
         clean = tab_text[:-2] if tab_text.endswith(" *") else tab_text
+        if isinstance(editor, NotebookEditor):
+            if clean and self._is_real_file(clean) and clean != "Untitled":
+                clean = str(pathlib.Path(clean).resolve())
+                try:
+                    editor.save_to(clean)
+                except OSError as e:
+                    logging.log(1, f"Error saving {clean}: {e}")
+                    return False
+            else:
+                return self._save_tab_as(editor, clean, index)
+            self.tab_widget.setTabText(index, clean)
+            self._sync_editor_document(editor)
+            return True
         if clean and clean != "Untitled":
             clean = str(pathlib.Path(clean).resolve()) if self._is_real_file(clean) else clean
             try:
@@ -1105,6 +1149,24 @@ class CodeEditor(QtWidgets.QWidget):
 
     def _save_tab_as(self, editor, tab_text: str, index: int) -> bool:
         """Open a save-as dialog and save the tab content."""
+        if isinstance(editor, NotebookEditor):
+            default_name = "Untitled.ipynb"
+            new_filename = cs.gui.widgets.save_file(file_type="Jupyter notebook (*.ipynb)")
+            if not new_filename:
+                return False
+            new_path = str(new_filename)
+            try:
+                editor.save_to(new_path)
+            except OSError as e:
+                logging.log(1, f"Error saving {new_path}: {e}")
+                return False
+            self.tab_widget.setTabText(index, new_path)
+            old_key = next((k for k, v in self._open_files.items() if v is editor), None)
+            if old_key:
+                del self._open_files[old_key]
+            self._open_files[new_path] = editor
+            self._sync_editor_document(editor)
+            return True
         new_filename = cs.gui.widgets.save_file(file_type="Python script (*.py)")
         if not new_filename:
             return False
@@ -1147,6 +1209,16 @@ class CodeEditor(QtWidgets.QWidget):
         """Re-read the file from disk and replace editor content."""
         clean = tab_text[:-2] if tab_text.endswith(" *") else tab_text
         if clean == "Untitled":
+            return
+        if isinstance(editor, NotebookEditor):
+            try:
+                editor.reload()
+            except OSError as e:
+                logging.log(1, f"Error reloading {clean}: {e}")
+                return
+            editor.document().setModified(False)
+            self._sync_editor_document(editor)
+            editor.refresh_symbols()
             return
         try:
             with open(clean, encoding="utf-8") as f:
@@ -1200,6 +1272,10 @@ class CodeEditor(QtWidgets.QWidget):
             self.tab_widget.setCurrentIndex(self.tab_widget.indexOf(editor))
             return
 
+        if self._language_from_path(filename_str) == "Notebook":
+            self._open_notebook(filename_str)
+            return
+
         try:
             logging.log(0, f"Loading file: {filename_str}")
             with open(filename_str, encoding="utf-8") as file:
@@ -1230,6 +1306,8 @@ class CodeEditor(QtWidgets.QWidget):
         if path_str in self._open_files:
             editor = self._open_files[path_str]
             self.tab_widget.setCurrentIndex(self.tab_widget.indexOf(editor))
+        elif self._language_from_path(path_str) == "Notebook":
+            self._open_notebook(path_str)
         else:
             try:
                 with open(path_str, encoding="utf-8") as file:
@@ -1260,6 +1338,8 @@ class CodeEditor(QtWidgets.QWidget):
     def _language_from_path(path: str) -> str:
         """Infer editor language from a path suffix."""
         suffix = pathlib.Path(path).suffix.lower()
+        if suffix == ".ipynb":
+            return "Notebook"
         if suffix == ".json":
             return "JSON"
         if suffix in {".yaml", ".yml"}:
@@ -1267,6 +1347,40 @@ class CodeEditor(QtWidgets.QWidget):
         if suffix in {".txt", ".md"}:
             return "Plain text"
         return "Python"
+
+    def _open_notebook(self, path: str) -> None:
+        """Open *path* as a notebook tab, falling back to a text tab on failure."""
+        path_str = str(pathlib.Path(path).resolve())
+        if path_str in self._open_files:
+            editor = self._open_files[path_str]
+            self.tab_widget.setCurrentIndex(self.tab_widget.indexOf(editor))
+            return
+        editor, _ = self._create_notebook_tab(filename=path_str)
+        if not editor.open_file(path_str):
+            self.tab_widget.removeTab(self.tab_widget.indexOf(editor))
+            editor.deleteLater()
+            editor, _ = self._create_editor_tab(
+                filename=path_str,
+                language="Python",
+            )
+            try:
+                with open(path_str, encoding="utf-8") as file:
+                    content = file.read()
+            except OSError as e:
+                logging.log(1, f"Error opening file {path_str}: {e}")
+                return
+            editor.blockSignals(True)
+            editor.setText(content)
+            editor.blockSignals(False)
+            editor.set_current_file(path_str)
+            editor.document().setModified(False)
+        self._open_files[path_str] = editor
+        self._sync_editor_document(editor)
+        self.tab_widget.setCurrentIndex(self.tab_widget.indexOf(editor))
+        if isinstance(editor, NotebookEditor):
+            editor.refresh_symbols()
+        else:
+            self._notify_lsp_open(editor)
 
     def goto_line(self, line: int, col: int = 0):
         """Move the cursor to a specific line number in the current editor."""
@@ -1330,7 +1444,7 @@ class CodeEditor(QtWidgets.QWidget):
             if widget_id == document_id:
                 editor = widget
                 break
-        if editor is None or not isinstance(editor, TextEditor):
+        if editor is None or not isinstance(editor, (TextEditor, NotebookEditor)):
             return
         content = event.get("content")
         if content is None:
@@ -1442,6 +1556,10 @@ class CodeEditor(QtWidgets.QWidget):
         """Execute the current editor content without requiring a prior save."""
         editor = self._get_current_editor()
         if editor is None:
+            return
+
+        if isinstance(editor, NotebookEditor):
+            editor.run_current_cell()
             return
 
         content = editor.toPlainText()
@@ -1567,6 +1685,11 @@ class CodeEditor(QtWidgets.QWidget):
         """Save the current tab's text to a file."""
         editor = self._get_current_editor()
         if editor is None:
+            return
+
+        if isinstance(editor, NotebookEditor):
+            if self._save_tab(editor, self._get_current_filename() or "Untitled.ipynb", self.tab_widget.currentIndex()):
+                return
             return
 
         filename = self._get_current_filename()

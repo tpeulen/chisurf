@@ -1,6 +1,6 @@
 ---
 type: File Format
-title: Becker & Hickl.set File Reader
+title: Becker & Hickl .set File Reader
 description: The BeckerHicklSetReader class provides functionality to read and parse Becker & Hickl SPC.set files.
 tags: [reference, file-formats, becker, hickl]
 ---
