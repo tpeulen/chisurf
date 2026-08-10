@@ -7,13 +7,33 @@ algorithms in the chisurf package.
 
 import numpy as np
 from typing import List, Tuple, Union, Optional, Any
-from numba import njit
 
 
-@njit(cache=True)
 def _fill_intervals(arr: np.ndarray, starts: np.ndarray, stops: np.ndarray) -> None:
-    for i in range(len(starts)):
-        arr[starts[i]:stops[i]] = True
+    """Set ``arr[start:stop]`` to ``True`` for every ``(start, stop)`` pair.
+
+    Parameters
+    ----------
+    arr : numpy.ndarray
+        Boolean array, modified in place.
+    starts, stops : numpy.ndarray
+        Interval bounds; ``stop`` is exclusive.
+
+    Notes
+    -----
+    Written as a difference array (``+1`` at each start, ``-1`` at each stop,
+    then a running sum) rather than a loop of slice assignments, so the cost is
+    one pass over ``arr`` regardless of how many intervals there are — a burst
+    search can return tens of thousands. Overlapping intervals are handled by
+    construction, and existing ``True`` values are preserved: the mask is
+    OR-ed in, not assigned over.
+    """
+    if len(starts) == 0:
+        return
+    delta = np.zeros(arr.shape[0] + 1, dtype=np.intp)
+    np.add.at(delta, starts, 1)
+    np.add.at(delta, stops, -1)
+    arr[np.cumsum(delta[:-1]) > 0] = True
 
 
 def create_array_with_ones(start_stop_pairs: np.ndarray, length: int) -> np.ndarray:

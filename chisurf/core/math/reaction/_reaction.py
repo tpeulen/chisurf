@@ -28,117 +28,89 @@ from typing import Callable, Iterable, List, Sequence, Tuple
 import numpy as np
 from numpy.random import multinomial
 
-try:  # Optional acceleration via numba
-    import numba as nb  # type: ignore[import]
-
-    _HAVE_NUMBA = True
-except Exception:  # pragma: no cover - runtime availability only
-    nb = None  # type: ignore[assignment]
-    _HAVE_NUMBA = False
-
-
 DTYPE = np.float64
 
 
-if _HAVE_NUMBA:
+def _gssa_loop(
+    tmax: int,
+    ini: np.ndarray,
+    rates: np.ndarray,
+    pv_funcs: Sequence[Callable[[np.ndarray, np.ndarray], float]],
+    tm: np.ndarray,
+    res: np.ndarray,
+    round_idx: int,
+) -> int:
+    """Inner Gillespie SSA loop.
 
-    @nb.jit(forceobj=True)  # uses Python callables in the loop
-    def _gssa_loop(
-        tmax: int,
-        ini: np.ndarray,
-        rates: np.ndarray,
-        pv_funcs: Sequence[Callable[[np.ndarray, np.ndarray], float]],
-        tm: np.ndarray,
-        res: np.ndarray,
-        round_idx: int,
-    ) -> int:
-        """Inner Gillespie SSA loop (Numba-accelerated, object mode).
+    Parameters are deliberately kept generic so the semantics match the
+    original Cython implementation.
 
-        Parameters are deliberately kept generic so the semantics match
-        the original Cython implementation.
-        """
+    Parameters
+    ----------
+    tmax : int
+        Number of unit time steps to simulate.
+    ini : numpy.ndarray
+        Initial copy numbers; updated as reactions fire.
+    rates : numpy.ndarray
+        Rate constants passed to each propensity function.
+    pv_funcs : sequence of callable
+        One propensity function per reaction, ``f(rates, state) -> float``.
+    tm : numpy.ndarray
+        Transition matrix; column ``idx`` is the state change of reaction ``idx``.
+    res : numpy.ndarray
+        Output trajectory, written in place.
+    round_idx : int
+        Index of the repeat this trajectory belongs to.
 
-        l = len(pv_funcs)
-        pv = np.zeros(l, dtype=DTYPE)
+    Returns
+    -------
+    int
+        Number of reaction events that fired.
 
-        tc = 0.0
-        steps = 0
-        a0 = 1.0
+    Notes
+    -----
+    This used to exist twice: once wrapped in ``numba.jit(forceobj=True)`` and
+    once as a byte-identical pure-Python fallback. ``forceobj`` is *object*
+    mode -- the loop calls Python propensity callables and draws from
+    ``numpy.random``, so nothing here can be compiled -- which made the two
+    copies the same interpreted code, one of them merely reached through a
+    dispatcher. Only one is kept.
+    """
 
-        # initial state at t = 0
-        res[0, :, round_idx] = ini
+    l = len(pv_funcs)
+    pv = np.zeros(l, dtype=DTYPE)
 
-        for tim in range(1, tmax):
-            while tc < tim:
-                # compute propensity vector
-                for i in range(l):
-                    pv[i] = pv_funcs[i](rates, ini)
+    tc = 0.0
+    steps = 0
+    a0 = 1.0
 
-                a0 = float(np.sum(pv))
-                if a0 <= 0.0:
-                    break
+    # initial state at t = 0
+    res[0, :, round_idx] = ini
 
-                tau = (-1.0 / a0) * float(np.log(np.random.random()))
-                probs = pv / a0
-                event = multinomial(1, probs)
-                idx = int(np.nonzero(event)[0][0])
+    for tim in range(1, tmax):
+        while tc < tim:
+            # compute propensity vector
+            for i in range(l):
+                pv[i] = pv_funcs[i](rates, ini)
 
-                ini = ini + tm[:, idx]
-                tc += tau
-                steps += 1
-
-            res[tim, :, round_idx] = ini
+            a0 = float(np.sum(pv))
             if a0 <= 0.0:
                 break
 
-        return steps
+            tau = (-1.0 / a0) * float(np.log(np.random.random()))
+            probs = pv / a0
+            event = multinomial(1, probs)
+            idx = int(np.nonzero(event)[0][0])
 
+            ini = ini + tm[:, idx]
+            tc += tau
+            steps += 1
 
-else:
+        res[tim, :, round_idx] = ini
+        if a0 <= 0.0:
+            break
 
-    def _gssa_loop(
-        tmax: int,
-        ini: np.ndarray,
-        rates: np.ndarray,
-        pv_funcs: Sequence[Callable[[np.ndarray, np.ndarray], float]],
-        tm: np.ndarray,
-        res: np.ndarray,
-        round_idx: int,
-    ) -> int:
-        """Pure-Python Gillespie SSA loop (no Numba available)."""
-
-        l = len(pv_funcs)
-        pv = np.zeros(l, dtype=DTYPE)
-
-        tc = 0.0
-        steps = 0
-        a0 = 1.0
-
-        res[0, :, round_idx] = ini
-
-        for tim in range(1, tmax):
-            while tc < tim:
-                for i in range(l):
-                    pv[i] = pv_funcs[i](rates, ini)
-
-                a0 = float(np.sum(pv))
-                if a0 <= 0.0:
-                    break
-
-                tau = (-1.0 / a0) * float(np.log(np.random.random()))
-                probs = pv / a0
-                event = multinomial(1, probs)
-                idx = int(np.nonzero(event)[0][0])
-
-                ini = ini + tm[:, idx]
-                tc += tau
-                steps += 1
-
-            res[tim, :, round_idx] = ini
-            if a0 <= 0.0:
-                break
-
-        return steps
+    return steps
 
 
 class Model:

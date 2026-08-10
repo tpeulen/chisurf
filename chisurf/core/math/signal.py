@@ -2,7 +2,6 @@ from __future__ import annotations
 from chisurf import typing
 
 import numpy as np
-import numba as nb
 
 
 window_function_types = ['flat', 'hanning', 'hamming', 'bartlett', 'blackman']
@@ -407,10 +406,31 @@ def find_bursts(arr, max_gap=0):
     return bursts
 
 
-@nb.njit(cache=True)
 def _fill_gaps_helper(arr: np.ndarray, starts: np.ndarray, stops: np.ndarray, small_gaps: np.ndarray) -> None:
-    for idx in small_gaps:
-        arr[stops[idx]:starts[idx + 1]] = 1
+    """Fill the gap after each burst in ``small_gaps`` with ones, in place.
+
+    Parameters
+    ----------
+    arr : numpy.ndarray
+        Binary array, modified in place.
+    starts, stops : numpy.ndarray
+        Burst bounds; gap ``idx`` spans ``stops[idx]`` to ``starts[idx + 1]``.
+    small_gaps : numpy.ndarray
+        Indices of the gaps to fill.
+
+    Notes
+    -----
+    A difference array rather than a loop of slice assignments: one pass over
+    ``arr`` whatever the number of gaps. The gaps are disjoint by construction,
+    but the running-sum form would handle overlaps anyway, and it only ever
+    sets ones — values already in ``arr`` are left alone.
+    """
+    if len(small_gaps) == 0:
+        return
+    delta = np.zeros(arr.shape[0] + 1, dtype=np.intp)
+    np.add.at(delta, stops[small_gaps], 1)
+    np.add.at(delta, starts[small_gaps + 1], -1)
+    arr[np.cumsum(delta[:-1]) > 0] = 1
 
 
 def fill_small_gaps_in_array(arr, max_gap):

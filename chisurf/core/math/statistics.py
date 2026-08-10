@@ -3,7 +3,6 @@ from chisurf import typing
 
 import scipy.stats
 import numpy as np
-import numba as nb
 import scipy.special
 
 
@@ -265,7 +264,6 @@ def durbin_watson(
     return nom / denominator
 
 
-@nb.jit(nopython=True)
 def kl(
         p: np.ndarray,
         q: np.ndarray
@@ -293,13 +291,18 @@ def kl(
     If either p[i] or q[i] is zero, that term is skipped in the summation.
     """
     n_min = min(p.shape[0], q.shape[0])
-    s = 0.0
-    for i in range(n_min):
-        pi, qi = p[i], q[i]
-        s += qi
-        if pi > 0 and qi > 0:
-            s += pi * np.log(pi / qi) - pi
-    return s
+    pi = np.asarray(p[:n_min], dtype=float)
+    qi = np.asarray(q[:n_min], dtype=float)
+
+    # Both terms accumulate over the same truncated range, but only the
+    # log term is guarded -- q alone still contributes where p is zero, so the
+    # two sums cannot be folded into one masked expression.
+    contributing = (pi > 0) & (qi > 0)
+    divergence = np.sum(
+        pi[contributing] * np.log(pi[contributing] / qi[contributing])
+        - pi[contributing]
+    )
+    return float(qi.sum() + divergence)
 
 
 def chi2_max(

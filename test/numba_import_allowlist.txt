@@ -5,7 +5,7 @@
 # The end state is an empty list, after which numba leaves the manifests and
 # joins RETIRED in test/test_no_retired_dependency_imports.py.
 #
-# Each entry carries the route it takes, because "port it" means four
+# Each entry carries the route it takes, because "port it" means five
 # different things here and picking the wrong one is how a fast kernel becomes
 # a slow one:
 #
@@ -31,7 +31,6 @@
 # ── numpy ────────────────────────────────────────────────────────────────────
 chisurf/core/fluorescence/anisotropy/decay.py
 chisurf/core/fluorescence/anisotropy/kappa2.py
-chisurf/core/fluorescence/burst/utils.py
 chisurf/core/fluorescence/imaging/frc.py
 chisurf/core/math/datatools.py
 chisurf/core/math/functions/distributions.py
@@ -39,9 +38,6 @@ chisurf/core/math/functions/rdf.py
 chisurf/core/math/functions/special.py
 chisurf/core/math/linalg/__init__.py
 chisurf/core/math/rand/__init__.py
-chisurf/core/math/reaction/_reaction.py
-chisurf/core/math/signal.py
-chisurf/core/math/statistics.py
 chisurf/core/models/fcs/maxent.py
 chisurf/plugins/modelling/fret/core/olga_greedy.py
 chisurf/plugins/pch/api/algorithms.py
