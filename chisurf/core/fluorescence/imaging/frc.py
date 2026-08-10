@@ -33,7 +33,6 @@ from __future__ import annotations
 
 import dataclasses
 
-import numba as nb
 import numpy as np
 
 #: Threshold criteria understood by :func:`threshold_curve` and :func:`resolve`.
@@ -95,7 +94,6 @@ class FrcResolution:
     crossed: bool
 
 
-@nb.jit(nopython=True, cache=True)
 def _ring_sums(f1f2, f12, f22, nx, ny, n_bins, bin_width):
     """Accumulate the per-ring sums of one FRC (auxiliary for :func:`frc_curve`).
 
@@ -110,20 +108,27 @@ def _ring_sums(f1f2, f12, f22, nx, ny, n_bins, bin_width):
     pixels of a 65x65 spectrum, concentrated in the outermost rings, which is
     where the crossing lives.
     """
-    s12 = np.zeros(n_bins, np.float64)
-    s11 = np.zeros(n_bins, np.float64)
-    s22 = np.zeros(n_bins, np.float64)
-    counts = np.zeros(n_bins, np.int64)
-    for xi in range(-(nx // 2), (nx + 1) // 2):
-        fx = xi / nx
-        for yi in range(-(ny // 2), (ny + 1) // 2):
-            fy = yi / ny
-            index = int(np.sqrt(fx * fx + fy * fy) / bin_width)
-            if index < n_bins:
-                s12[index] += f1f2[xi, yi]
-                s11[index] += f12[xi, yi]
-                s22[index] += f22[xi, yi]
-                counts[index] += 1
+    # The two ranges are the fftfreq index order, and they carry negative
+    # values on purpose: indexing the spectra with them wraps, which is what
+    # pairs each index with its own frequency. Fancy-indexing wraps identically,
+    # so the gather below is the same set of pixels the loop visited.
+    xi = np.arange(-(nx // 2), (nx + 1) // 2)
+    yi = np.arange(-(ny // 2), (ny + 1) // 2)
+    fx = xi / nx
+    fy = yi / ny
+
+    radius = np.sqrt(fx[:, None] ** 2 + fy[None, :] ** 2)
+    index = (radius / bin_width).astype(np.int64)  # radius >= 0, so trunc == floor
+    inside = index < n_bins
+    flat = index[inside]
+
+    rows = np.broadcast_to(xi[:, None], radius.shape)[inside]
+    cols = np.broadcast_to(yi[None, :], radius.shape)[inside]
+
+    s12 = np.bincount(flat, weights=f1f2[rows, cols], minlength=n_bins)
+    s11 = np.bincount(flat, weights=f12[rows, cols], minlength=n_bins)
+    s22 = np.bincount(flat, weights=f22[rows, cols], minlength=n_bins)
+    counts = np.bincount(flat, minlength=n_bins).astype(np.int64)
     return s12, s11, s22, counts
 
 

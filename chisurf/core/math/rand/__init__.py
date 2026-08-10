@@ -4,12 +4,10 @@ Functions related to random numbers
 
 from math import sqrt
 
-import numba as nb
 import numpy as np
 from scipy.stats import norm
 
 
-@nb.jit(nopython=True)
 def weighted_choice(weights, n=1):
     """
     A weighted random number generator. The random number generator generates
@@ -31,24 +29,15 @@ def weighted_choice(weights, n=1):
 
     http://eli.thegreenplace.net/2010/01/22/weighted-random-generation-in-python/
     """
-    running_total = 0.0
+    totals = np.cumsum(np.asarray(weights, dtype=np.float64))
+    running_total = totals[-1] if totals.size else 0.0
 
-    nWeights = weights.shape[0]
-
-    r = np.empty(n, dtype=np.uint32)
-    totals = np.empty(nWeights, dtype=np.float64)
-
-    for i in range(nWeights):
-        running_total += weights[i]
-        totals[i] = running_total
-
-    for j in range(n):
-        rnd = np.random.ranf() * running_total
-        for i in range(nWeights):
-            if rnd <= totals[i]:
-                r[j] = i
-                break
-    return r
+    # One draw per output, in the order the loop drew them, so a seeded
+    # generator produces the same stream. The linear scan for the first total
+    # at or above the draw is a searchsorted: side="left" returns the first
+    # index with totals[i] >= rnd, which is the loop's `rnd <= totals[i]`.
+    draws = np.random.ranf(n) * running_total
+    return np.searchsorted(totals, draws, side="left").astype(np.uint32)
 
 
 def brownian(
@@ -124,7 +113,6 @@ def brownian(
     return out
 
 
-@nb.jit(nopython=True)
 def mc(
         e0: float,
         e1: float,
@@ -158,7 +146,6 @@ def mc(
         return np.random.ranf() < np.exp((e0 - e1) / kT)
 
 
-@nb.jit(nopython=True)
 def random_numbers(
         cdf_axis,
         cdf_values: np.ndarray,
@@ -186,16 +173,21 @@ def random_numbers(
     >>> hy, hx = np.histogram(rn, bins=4096, range=(0, 10))
     >>> p.plot(hx[1:], hy)
     """
+    cdf_values = np.asarray(cdf_values, dtype=np.float64)
     if norm_cdf:
-        # use the last point of the CDF for normalization
-        # at the latest time a sample is taken for sure...
-        cdf_values /= cdf_values[-1]
+        # A copy, not `cdf_values /= cdf_values[-1]`: that divided through the
+        # caller's array, so drawing from a CDF normalised it as a side effect
+        # and a second draw from the same object sampled a different
+        # distribution.
+        cdf_values = cdf_values / cdf_values[-1]
+
+    draws = np.random.random_sample(n)
+    index = np.searchsorted(cdf_values, draws, side="left")
+
+    # The loop left an entry at zero where no CDF value reached the draw (`tr`
+    # starts as zeros and the inner loop simply never fired), so an
+    # out-of-range index maps to 0.0 rather than to the last axis point.
     tr = np.zeros(n, dtype=dtype)
-    for j, r in enumerate(
-            np.random.random_sample(n)
-    ):
-        for i, xi in enumerate(cdf_values):
-            if xi >= r:
-                tr[j] = cdf_axis[i]
-                break
+    found = index < cdf_values.size
+    tr[found] = np.asarray(cdf_axis)[index[found]]
     return tr

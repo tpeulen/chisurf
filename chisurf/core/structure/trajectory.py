@@ -5,7 +5,6 @@ import copy
 import os
 import tempfile
 
-import numba as nb
 import numpy as np
 
 import chisurf.core.base
@@ -574,7 +573,6 @@ class TrajectoryFile(
             return [make_structure(i) for i in range(start, stop, step)]
 
 
-@nb.jit(nopython=True)
 def translate(
         xyz: np.ndarray,
         vector: np.ndarray
@@ -586,16 +584,9 @@ def translate(
     :param vector:
     :return:
     """
-    n_frames = xyz.shape[0]
-    n_atoms = xyz.shape[1]
-
-    for i_frame in range(n_frames):
-        for i_atom in range(n_atoms):
-            for i_dim in range(3):
-                xyz[i_frame, i_atom, i_dim] += vector[i_dim]
+    xyz += np.asarray(vector, dtype=xyz.dtype)
 
 
-@nb.jit(nopython=True)
 def rotate(
         xyz: np.ndarray,
         rm: np.ndarray
@@ -619,19 +610,7 @@ def rotate(
     >>> rotate(xyz, b)
 
     """
-    n_frames = xyz.shape[0]
-    n_atoms = xyz.shape[1]
-    for i_frame in range(n_frames):
-        for i_atom in range(n_atoms):
-            # matrix vector product
-            x = xyz[i_frame, i_atom, 0]
-            y = xyz[i_frame, i_atom, 1]
-            z = xyz[i_frame, i_atom, 2]
-
-            t1 = rm[0, 0] * x + rm[0, 1] * y + rm[0, 2] * z
-            t2 = rm[1, 0] * x + rm[1, 1] * y + rm[1, 2] * z
-            t3 = rm[2, 0] * x + rm[2, 1] * y + rm[2, 2] * z
-
-            xyz[i_frame, i_atom, 0] = t1
-            xyz[i_frame, i_atom, 1] = t2
-            xyz[i_frame, i_atom, 2] = t3
+    # rm applied to each coordinate as a column vector, so for the rows stored
+    # here that is xyz @ rm.T. The result is written back through [...] rather
+    # than rebound, because the caller relies on the update being in place.
+    xyz[...] = xyz @ np.asarray(rm, dtype=xyz.dtype).T

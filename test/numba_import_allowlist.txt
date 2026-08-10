@@ -31,9 +31,7 @@
 # ── numpy ────────────────────────────────────────────────────────────────────
 chisurf/core/fluorescence/anisotropy/decay.py
 chisurf/core/fluorescence/anisotropy/kappa2.py
-chisurf/core/fluorescence/imaging/frc.py
 chisurf/core/math/linalg/__init__.py
-chisurf/core/math/rand/__init__.py
 chisurf/core/models/fcs/maxent.py
 chisurf/plugins/modelling/fret/core/olga_greedy.py
 chisurf/plugins/pch/api/algorithms.py
@@ -57,7 +55,6 @@ chisurf/core/structure/av/static.py
 chisurf/core/structure/av/utils.py
 chisurf/core/structure/potential/potentials.py
 chisurf/core/structure/protein.py
-chisurf/core/structure/trajectory.py
 chisurf/plugins/modelling/fret/core/distance.py
 
 # ── wgsl (AV grids; also retires pyopencl) ──────────────────────────────────
@@ -72,10 +69,6 @@ chisurf/plugins/fcs/flc_2d/api.py
 chisurf/plugins/fcs/flc_2d/core.py
 
 # ── chimol (owned by the WebGPU port, okf/agent-board.md) ───────────────────
-chisurf/plugins/chimol/chimol/analysis/ss.py
-chisurf/plugins/chimol/chimol/app/picking.py
-chisurf/plugins/chimol/chimol/geometry/cartoon.py
-chisurf/plugins/chimol/chimol/geometry/guide_frames.py
 chisurf/plugins/chimol/chimol/geometry/marching_cubes.py
 chisurf/plugins/chimol/chimol/geometry/surface.py
 chisurf/plugins/chimol/chimol/renderer/bvh.py
