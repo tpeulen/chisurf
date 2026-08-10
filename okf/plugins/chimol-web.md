@@ -73,13 +73,29 @@ Next, in order:
    offset and size are read from the renderer rather than guessed. The manifest
    already records the camera; it should also record the scene-column rectangle.
 
-   **Then: explain the colour difference.** Side by side, the GL baseline shows
-   the `spectrum count` rainbow running blue→green→yellow→orange→red across the
-   fold while the WGSL image puts blue on one side and orange on the other with a
-   grey wash between. Candidates, none yet tested: vertex colours read at the
-   wrong offset in the interleaved buffer; the environment/ambient terms washing
-   saturation out; or a genuine handedness difference. Transposing the rotation
-   made the silhouette overlap *worse*, so it is probably not that.
+   **USER JUDGEMENT (2026-08-10): the WGSL render looks *better* than the GL
+   one.** So the material is not to be tuned back toward the OpenGL image. Parity
+   here means feature inventory — every representation, setting and cue still
+   present and controllable — and explicitly **not** matching GL pixel for pixel.
+   Record any deliberate look change rather than "fixing" it.
+
+   **Still a correctness question, separate from taste: the colours land in
+   different places on screen.** GL puts the cool end of the `spectrum count`
+   ramp on the left, WGSL puts it on the right. This is *not* a colour bug: the
+   colour buffer handed to the GPU was dumped and runs orange at vertex 0 →
+   blue at the end, and Phase 1 already proved the Scene arrays are bit-identical
+   between backends, so GL receives exactly the same numbers. Same colours in
+   different screen positions means the **camera mapping** differs — a mirror or
+   a half-turn about the vertical axis. Transposing the rotation made the
+   silhouette overlap worse, so it is not a plain transpose; suspect the
+   projection's handedness (WebGPU's 0..1 depth and its y convention versus GL's
+   -1..1) or the sign on `back[2,3]` in `view_matrix`.
+
+   Also worth chasing while there: the dumped vertex colours are dark and
+   desaturated (mid-chain rgb ≈ 0.22, 0.14, 0.13) because occlusion is already
+   multiplied in, yet the GL baseline renders a vivid rainbow from that same
+   array. One of the two backends is treating the pre-multiplied occlusion
+   differently, and finding out which explains the grey wash.
 
    Then the rest of the feature list, each proven by a screenshot pair:
    impostor spheres and capped cylinders (prototyped in Phase 0), transparency,
