@@ -32,9 +32,6 @@
 chisurf/core/fluorescence/anisotropy/decay.py
 chisurf/core/fluorescence/anisotropy/kappa2.py
 chisurf/core/fluorescence/imaging/frc.py
-chisurf/core/math/functions/distributions.py
-chisurf/core/math/functions/rdf.py
-chisurf/core/math/functions/special.py
 chisurf/core/math/linalg/__init__.py
 chisurf/core/math/rand/__init__.py
 chisurf/core/models/fcs/maxent.py
@@ -47,14 +44,9 @@ modules/ndxplorer/ndxplorer/utils/vectorized_ops.py
 
 # ── tttrlib (already shipping; delegate) ─────────────────────────────────────
 chisurf/core/fluorescence/burst/gopich_szabo.py
-chisurf/core/fluorescence/tcspc/corrections.py
-chisurf/core/fluorescence/tcspc/tcspc.py
 chisurf/core/math/hmm.py
 chisurf/core/ml/cluster/_hdbscan.py
 chisurf/plugins/core/acq/gui/tool.py
-chisurf/plugins/fluorescence_decay/lltf/core/convolve.py
-chisurf/plugins/fluorescence_decay/lltf/core/fitter.py
-chisurf/plugins/fluorescence_decay/lltf/core/scaling.py
 chisurf/plugins/fluorescence_decay/maxent_decay/core/solver.py
 
 # ── imp (already migrated to imp-tricks; delete the leftover) ────────────────
@@ -82,12 +74,9 @@ chisurf/plugins/fcs/flc_2d/core.py
 # ── chimol (owned by the WebGPU port, okf/agent-board.md) ───────────────────
 chisurf/plugins/chimol/chimol/analysis/ss.py
 chisurf/plugins/chimol/chimol/app/picking.py
-chisurf/plugins/chimol/chimol/geometry/ambient.py
-chisurf/plugins/chimol/chimol/geometry/bonds.py
 chisurf/plugins/chimol/chimol/geometry/cartoon.py
 chisurf/plugins/chimol/chimol/geometry/guide_frames.py
 chisurf/plugins/chimol/chimol/geometry/marching_cubes.py
-chisurf/plugins/chimol/chimol/geometry/neighbors.py
 chisurf/plugins/chimol/chimol/geometry/surface.py
 chisurf/plugins/chimol/chimol/renderer/bvh.py
 chisurf/plugins/chimol/chimol/renderer/raytracer.py

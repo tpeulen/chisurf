@@ -3,7 +3,6 @@ from __future__ import annotations
 from math import exp, gamma, log
 
 import numpy as np
-import numba as nb
 
 _trapz = getattr(np, "trapezoid", getattr(np, "trapz", None))
 
@@ -11,7 +10,6 @@ from chisurf.core.math.functions.special import i0
 from . import distributions
 
 
-@nb.jit(nopython=True)
 def gaussian_chain_ree(
         segment_length: float,
         number_of_segments: int
@@ -27,7 +25,6 @@ def gaussian_chain_ree(
     return segment_length * np.sqrt(number_of_segments)
 
 
-@nb.jit(nopython=True)
 def gaussian_chain(
         r,
         segment_length: float,
@@ -175,7 +172,6 @@ def ising_chain(
 
 
 # TODO: needs docstring
-@nb.jit(nopython=True)
 def Qd(
         r,
         kappa
@@ -185,7 +181,6 @@ def Qd(
            (1.0 - 5.0 / 4.0 * kappa + 2.0 * r * r - 33.0 / 80.0 * r * r * r * r / kappa)
 
 
-@nb.jit(nopython=True)
 def worm_like_chain(
         distances: np.array,
         kappa: float,
@@ -260,20 +255,24 @@ def worm_like_chain(
     else:
         d = 1.0 - 1.0/(0.177/(k-0.111)+6.4 * exp(0.783 * log(k-0.111)))
 
-    for i in range(len(distances)):
-        r = distances[i]
-        if r < chain_length:
-            r /= chain_length
+    # The loop this replaces `break`s at the first distance that reaches the
+    # chain length, so everything past that point stays zero *whether or not*
+    # the remaining distances are shorter. That is a prefix, not a mask: with an
+    # unsorted axis the two differ, and `distances` is not required to be sorted
+    # anywhere. Reproduce the prefix.
+    reached = np.asarray(distances) >= chain_length
+    limit = int(np.argmax(reached)) if reached.any() else len(distances)
 
-            pri = ((1.0 - c * r**2.0) / (1.0 - r**2.0))**(5.0 / 2.0)
-            pri *= np.exp(-d * k * a * b * (1.0 + b) / (1.0 - (b*r)**2.0) * r**2.0)
+    if limit:
+        r = np.asarray(distances[:limit], dtype=np.float64) / chain_length
 
-            g = (((-3./4.) / k - 1./2.) * r**2. + ((-23./64.) / k + 17./16.) * r**4. + ((-7./64.) / k - 9./16.) * r**6.)
-            pri *= exp(g / (1.0 - r**2.0))
-            pri *= i0(-d*k*a*(1+b)*r/(1-(b*r)**2))
-            pr[i] = pri
-        else:
-            break
+        pri = ((1.0 - c * r**2.0) / (1.0 - r**2.0))**(5.0 / 2.0)
+        pri *= np.exp(-d * k * a * b * (1.0 + b) / (1.0 - (b*r)**2.0) * r**2.0)
+
+        g = (((-3./4.) / k - 1./2.) * r**2. + ((-23./64.) / k + 17./16.) * r**4. + ((-7./64.) / k - 9./16.) * r**6.)
+        pri *= np.exp(g / (1.0 - r**2.0))
+        pri *= i0(-d*k*a*(1+b)*r/(1-(b*r)**2))
+        pr[:limit] = pri
 
     if normalize:
         pr /= pr.sum()
@@ -281,7 +280,6 @@ def worm_like_chain(
     return pr
 
 
-@nb.jit(nopython=True)
 def distance_between_gaussian(
         distances: np.array,
         separation_distance: float,
@@ -296,34 +294,36 @@ def distance_between_gaussian(
     :param normalize:
     :return:
     """
-    if separation_distance > 0:
-        pr = distances / separation_distance * (
-                distributions.normal_distribution(
-                    x=distances,
-                    loc=separation_distance,
-                    scale=sigma,
-                    norm=False
-                ) -
-                distributions.normal_distribution(
-                    x=distances,
-                    loc=-separation_distance,
-                    scale=sigma,
-                    norm=False
-                )
+    separation_distance = np.asarray(separation_distance, dtype=float)
+    positive = separation_distance > 0.0
+
+    # Elementwise in *both* arguments, so a column of separations against a row
+    # of distances builds a whole kernel in one call. That means selecting the
+    # two branches with `where` rather than an `if`, and feeding the zero
+    # separations a substituted 1.0 so the division in the unused branch does
+    # not produce a warning or a NaN that `where` would then have to discard.
+    safe_separation = np.where(positive, separation_distance, 1.0)
+    separated = distances / safe_separation * (
+        distributions.normal_distribution(
+            x=distances, loc=safe_separation, scale=sigma, norm=False
         )
-    else:
-        pr = 2. * distances ** 2 / sigma ** 2 * distributions.normal_distribution(
-            x=distances,
-            loc=0.0,
-            scale=sigma,
-            norm=False
+        - distributions.normal_distribution(
+            x=distances, loc=-safe_separation, scale=sigma, norm=False
         )
+    )
+    coincident = 2. * distances ** 2 / sigma ** 2 * distributions.normal_distribution(
+        x=distances, loc=0.0, scale=sigma, norm=False
+    )
+    pr = np.where(positive, separated, coincident)
+
     if normalize:
-        pr /= pr.sum()
+        # Note this normalises over the whole array, so a 2-D kernel would be
+        # normalised globally rather than per row. Every caller that passes a
+        # kernel leaves `normalize` False.
+        pr = pr / pr.sum()
     return pr
 
 
-@nb.jit(nopython=True)
 def worm_like_chain_linker(
         distances: np.array,
         kappa: float,
@@ -356,13 +356,17 @@ def worm_like_chain_linker(
         kappa=kappa,
         chain_length=chain_length
     )
-    pn = np.zeros_like(pr)
-    for r, p in zip(distances, pr):
-        pn += p * distance_between_gaussian(
-            distances=distances,
-            separation_distance=r,
-            sigma=sigma
-        )
+    # sum_r pr[r] * G(distances | separation = r) as one matrix-vector product.
+    # `distance_between_gaussian` is elementwise in both arguments, so giving it
+    # a column of separations and a row of distances builds the whole kernel at
+    # once -- the Python loop it replaces would otherwise run once per distance
+    # on every model evaluation, and this is on a fit's inner loop.
+    kernel = distance_between_gaussian(
+        distances=np.asarray(distances, dtype=np.float64)[None, :],
+        separation_distance=np.asarray(distances, dtype=np.float64)[:, None],
+        sigma=sigma,
+    )
+    pn = pr @ kernel
 
     if normalize:
         pn /= pn.sum()

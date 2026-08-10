@@ -3,10 +3,8 @@ from chisurf import typing
 
 import math
 import numpy as np
-import numba as nb
 
 
-@nb.jit(nopython=True, nogil=True)
 def poisson_0toN(lam: float, N: int):
     """
     Compute Poisson distribution probabilities for k = 0 to N-1 for a given lambda.
@@ -36,14 +34,15 @@ def poisson_0toN(lam: float, N: int):
     array([8.18730753e-01, 1.63746151e-01, 1.63746151e-02, 1.09164100e-03,
            5.45820502e-05])
     """
+    # p[i] = p[i-1] * lam / i is a multiplicative scan, so cumprod produces it
+    # in the same order and with the same rounding as the loop did.
     p = np.empty(N, dtype=np.float64)
     p[0] = math.exp(-lam)
-    for i in range(1, N):
-        p[i] = p[i - 1] * lam / i
+    if N > 1:
+        p[1:] = p[0] * np.cumprod(lam / np.arange(1, N, dtype=np.float64))
     return p
 
 
-@nb.jit(nopython=True, nogil=True)
 def normal_distribution(x: np.ndarray, loc: float = 0.0, scale: float = 1.0, norm: bool = True):
     """
     Compute the normal (Gaussian) probability density function (PDF) for given x values.
@@ -84,7 +83,6 @@ def normal_distribution(x: np.ndarray, loc: float = 0.0, scale: float = 1.0, nor
     return y
 
 
-@nb.jit(nopython=True, nogil=True)
 def generalized_normal_distribution(x: np.ndarray, loc: float = 0.0, scale: float = 1.0,
                                       shape: float = 0.0, norm: bool = True):
     """
@@ -320,7 +318,6 @@ def combine_distributions(x_axis, dist_function, dist_args, weights: typing.List
     return y_values
 
 
-@nb.jit(nopython=True)
 def distance_between_gaussian(distances: np.array, separation_distance: float, sigma: float,
                               normalize: bool = False) -> np.array:
     """
