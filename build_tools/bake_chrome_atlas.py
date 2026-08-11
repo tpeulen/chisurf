@@ -50,7 +50,7 @@ __all__ = ["CHARSET", "FONT_PT", "SCALE", "OUT_DIR", "bake"]
 
 #: Point size of the chrome font. Mirrors ``InternalGui.FONT_PT``; a mismatch
 #: shows up as text that does not fit the rows it is laid out into.
-FONT_PT = 10
+FONT_PT = 8
 
 #: Supersampling factor. See the module docstring.
 SCALE = 4

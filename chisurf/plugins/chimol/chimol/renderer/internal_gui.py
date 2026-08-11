@@ -313,7 +313,7 @@ class InternalGui:
     BUTTON_W = 17
     PAD = 6
     MARGIN = 8
-    FONT_PT = 10
+    FONT_PT = 8
     MENU_ITEM_H = 18
     MENU_PAD = 6
     #: The gap a separator leaves between two groups of entries.
@@ -996,10 +996,17 @@ class InternalGui:
         """
         depth, entry = self._menu_at(x, y)
         if depth is None:
-            # Off the menus entirely. The branch the cursor wandered into is
-            # done with, but the menu the button opened stays: it is dismissed
-            # by a click, as PyMOL's is, not by the cursor drifting over the
-            # scene on the way to it.
+            # Off the menus -- but not off the *gap between* them. A submenu
+            # opens beside its parent with `CHILD_GAP` of nothing in between, so
+            # the straight line from the parent's row to the child's first item
+            # crosses pixels that belong to neither menu. Collapsing on those
+            # closed the child under the cursor on its way there, which made
+            # every submenu unreachable by the obvious gesture.
+            #
+            # So the branch still collapses when the cursor genuinely leaves --
+            # into the scene, into the object list -- and tolerates the seam.
+            if self._within_menu_reach(x, y):
+                return False
             return self._collapse_to(1)
         if entry is not None and entry.is_submenu:
             child = self._menus[depth + 1] if len(self._menus) > depth + 1 else None
@@ -1009,6 +1016,30 @@ class InternalGui:
             self._open_submenu(entry)
             return True
         return self._collapse_to(depth + 1)
+
+    def _within_menu_reach(self, x: float, y: float) -> bool:
+        """Whether ``(x, y)`` is inside the open menus' bounds, plus the seam.
+
+        Parameters
+        ----------
+        x, y : float
+            Cursor position, in logical pixels.
+
+        Returns
+        -------
+        bool
+            ``True`` for a point between two open menus -- the ``CHILD_GAP``
+            seam a diagonal move across has to survive -- and ``False`` for one
+            genuinely outside them.
+        """
+        if not self._menus:
+            return False
+        pad = float(self.CHILD_GAP) + 1.0
+        left = min(menu.rect.x for menu in self._menus) - pad
+        right = max(menu.rect.x + menu.rect.w for menu in self._menus) + pad
+        top = min(menu.rect.y for menu in self._menus) - pad
+        bottom = max(menu.rect.y + menu.rect.h for menu in self._menus) + pad
+        return left <= x <= right and top <= y <= bottom
 
     def _collapse_to(self, depth: int) -> bool:
         """Close every menu deeper than *depth*. Returns whether any was open."""
