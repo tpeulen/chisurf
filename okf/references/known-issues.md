@@ -8,8 +8,10 @@ correctly, and then **slices the last row and column off on return**
 (`core.py:182-183`, `var_size = shape[0] - 1`). The discarded bin holds real
 pairs whenever `lint_bin_factor > 1`.
 
-Measured on one stream, gate `[1, 40]`, against the **log** matrix from the same
-call, which is the true pair count:
+Measured on one stream, gate `[1, 40]`, against a **brute-force double loop** —
+every pair whose two micro-times fall inside the gate and whose macro-time gap
+falls in the window, counted with no binning at all. That independent count is
+6443, and the log matrix equals it at every binning factor:
 
 | `lint_bin_factor` | true pairs | in the linear matrix | lost |
 |---:|---:|---:|---:|
@@ -37,9 +39,19 @@ question, not patched separately. Unlike the axis question this one is not a
 method choice — discarding photons that fell inside the gate is a defect, and
 the MATLAB does no such trim.
 
+**Do not use the log total as the denominator** — use a brute-force count. The
+two axes legitimately disagree at the *low* edge: bin 0 is excluded on every
+axis, and "bin 0" spans different micro-times per axis, so a photon at
+`tau = 1` can land in bin 0 of a log axis (dropped) and bin 1 of a linear axis
+(kept). That effect is real, points the other way, and did not arise on this
+gate — but comparing two axes' totals as a consistency check will show it and it
+is not a defect. (Established by the tttrlib session on a 16-bin log axis over
+4096 ticks: 3480 vs 3495, reconciling exactly once the `tau = 1` photons are
+removed.)
+
 **How to re-derive**: call `create_2d_fdc_numba_int` with `lint_bin_factor` in
-`{1, 2, 3, 5}` and compare `mat_lin.sum()` against `mat_log.sum()` from the same
-call. Equal at 1 and 2, short at 3 and 5.
+`{1, 2, 3, 5}` and compare `mat_lin.sum()` against a brute-force pair count.
+Equal at 1 and 2, short by 654 and 974 at 3 and 5.
 
 ## 2D-FLC: the log-binned matrix moves when `lint_bin_factor` changes, and the two kernels disagree
 
