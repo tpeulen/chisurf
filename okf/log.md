@@ -1,6 +1,10 @@
 # Update Log
 
 ## 2026-08-11
+* **2D-FDC: tttrlib's kernel matches ours exactly** (9 recorded cases) and is
+  1.14× faster at 1M photons — but `flc_2d/core.py` stays on the numba list: the
+  single-lag builder's linear-binned matrix has no upstream equivalent and is
+  live. Raised upstream; reason recorded so nobody re-derives it.
 * **The `imp` route is a re-expression, not a deletion** — checked: none of the
   five potentials, five AV kernels or the quenching kernel exist in `IMP.bff` /
   `IMP.cgmol` / `IMP.bff.cgdye` or `~/dev/imp.bff`, under any name. Direction is

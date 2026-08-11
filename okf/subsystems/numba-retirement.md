@@ -678,6 +678,37 @@ algorithm) and `av/dynamic.py` (does not vectorise). The pattern is consistent
 enough to state as a rule: **the route tag is a hypothesis written when the file
 was catalogued, and the first step of any entry is re-checking it.**
 
+## flc_2d cannot leave the list yet, and the reason is recorded so nobody re-checks
+
+**2026-08-11.** tttrlib PRD-036 landed its side (`fdc_scan_log`, `fdc_log`), and
+its `fdc_scan_log` **agrees exactly with our numba kernel on all nine recorded
+cases** — including a lag inside the window half-width, a narrow gate, an empty
+gate, and a 1.05M-pair dense stream. Fixture:
+`test/data/numba_parity/flc_2d_fdc.npz`, pinned by
+`plugins/fcs/flc_2d/test/test_fdc_parity.py`. Performance at 1M photons /
+20 lags / 100 bins, interleaved A/B best-of-4: **1.14× faster** than numba
+(1.01× at 200k).
+
+**What blocks the strike**: `create_2d_fdc_numba_int` returns
+`(mat_lin, lint_axis, mat_log, logt_axis)` and the **linear-binned** matrix has
+no upstream equivalent. It is live — `flc_2d/fit/helpers.py` returns
+`np.diag(mat_lin)` as the linearly-binned decay and `api.two_d_fdc` hands
+`mat_lin` to callers — and it is **not** recoverable from the log matrix,
+because log binning collapses many micro-time channels into one bin. PRD-036
+originally claimed the opposite; that claim was written before the call sites
+were checked and is corrected there.
+
+So the scan kernel could delegate today and the single-lag builder could not.
+Delegating half would leave two paths for one method, so **nothing is
+delegated until `fdc_log` grows a linear variant** (or takes a caller-supplied
+tick axis, which is the more general fix). Raised upstream; the file keeps its
+numba until then.
+
+**Measurement caution worth keeping**: the first benchmark of this pair ran the
+two implementations *sequentially* and reported tttrlib 21% slower. Interleaved
+A/B/A/B, best-of-4, it is 14% faster. A sequential timing of two kernels on the
+same data is a thermal/ordering measurement, not a performance one.
+
 ## Bugs the ports have found
 
 * **The whole 2D-FLC plugin was failing to compile its kernels**, found by
