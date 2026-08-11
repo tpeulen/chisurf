@@ -105,6 +105,57 @@ tops out at 4.19 M elements. Past that a kernel must dispatch in 2-D. It is a
 validation error, not a silent truncation -- but it is discovered at the first
 large input rather than in development.
 
+## ADPCM decode: numpy against a compute kernel
+
+**Work unit:** one decoded sample of block-aligned IMA ADPCM
+(`chisurf/gui/chigame/adpcm.py`), the codec the games' audio ships in.
+
+The codec is sequential by construction -- every sample needs the predictor the
+one before it left -- which looks like the worst possible fit for a GPU. It is
+not, because the stream is cut into *independent* blocks: the sequential part is
+the 505 steps inside one block, and thousands of blocks run at once. Both routes
+are kept, and they are asserted **bit-identical**; a lossy codec that decoded
+differently depending on which route ran would change the audio behind the
+caller's back.
+
+```bash
+pixi run python test/benchmarks/benchmark_adpcm.py
+```
+
+Apple M1 Pro (Metal), wgpu 0.32.0.
+
+| seconds | samples | blocks | numpy [ms] | wgsl [ms] | speedup | identical |
+| ---: | ---: | ---: | ---: | ---: | ---: | :---: |
+| 0.05 | 1,102 | 3 | 10.27 | 2.12 | 4.8x | yes |
+| 0.2 | 4,410 | 9 | 9.94 | 1.67 | 6.0x | yes |
+| 1.0 | 22,050 | 44 | 10.18 | 1.78 | 5.7x | yes |
+| 5.0 | 110,250 | 219 | 10.90 | 2.08 | 5.2x | yes |
+| 20.0 | 441,000 | 874 | 15.13 | 3.02 | 5.0x | yes |
+| 80.0 | 1,764,000 | 3,494 | 28.31 | 6.38 | 4.4x | yes |
+
+**The threshold this decided was the opposite of the guess.** `MIN_BLOCKS_FOR_GPU`
+was set to 600 on the reasoning from the table above -- a dispatch costs ~1.7 ms
+of fixed overhead, so short effects should surely stay on the CPU. The
+measurement says **zero**: the GPU is ahead at every size, including a clip
+three blocks long.
+
+The reason is that *the numpy route has the larger floor*. It runs exactly
+`BLOCK` vectorised steps regardless of the clip's length -- 505 of them -- and at
+roughly 20 us of numpy call overhead per step that is ~10 ms even when the
+arrays being operated on have three elements each. Its cost is set by the block
+size, not by the audio:
+
+| clip | blocks | numpy [ms] | per vectorised step |
+| ---: | ---: | ---: | ---: |
+| 0.05 s | 3 | 9.85 | 19.5 us |
+| 80 s | 3,494 | 69.96 | 138.5 us |
+
+A twenty-six-hundred-fold increase in work costs seven times the wall clock,
+because most of the small case is Python-to-numpy overhead. This is the general
+trap with "vectorise the inner loop": the vectorised axis has to be *wide* for
+it to mean anything, and here its width is the number of blocks, which for a
+sound effect is single digits.
+
 ## Gaussian HMM
 
 `chisurf.core.math.hmm.GaussianHMM` — Baum-Welch fitting of a hidden Markov

@@ -109,6 +109,112 @@ def test_an_empty_or_tiny_input_round_trips():
         assert back.size == count, count
 
 
+# -- the two decode routes ------------------------------------------------
+
+def _gpu_or_skip():
+    """Skip when this machine has no compute adapter."""
+    if adpcm.device() is None:
+        pytest.skip("no GPU adapter on this machine")
+
+
+@pytest.mark.parametrize("seconds", [0.02, 0.05, 1.0, 5.0])
+def test_the_gpu_and_numpy_routes_agree_bit_for_bit(seconds):
+    """The property the whole two-route design stands on.
+
+    A lossy codec that decoded differently depending on which route ran would
+    change the audio behind the caller's back -- a far worse failure than being
+    slow, and one no listening test would catch reliably.
+    """
+    _gpu_or_skip()
+    clip = adpcm.encode(_tone(seconds), 22050)
+    on_cpu, cpu_rate = adpcm.decode_cpu(clip)
+    decoded = adpcm.decode_gpu(clip)
+    assert decoded is not None, "the kernel refused to run"
+    on_gpu, gpu_rate = decoded
+    assert cpu_rate == gpu_rate
+    assert on_cpu.dtype == on_gpu.dtype == np.int16
+    assert np.array_equal(on_cpu, on_gpu), (
+        f"{int(np.count_nonzero(on_cpu != on_gpu))} of {on_cpu.size} samples differ"
+    )
+
+
+def test_the_routes_agree_on_a_shipped_clip():
+    """Synthetic signals are gentle; the real pack is what actually plays."""
+    _gpu_or_skip()
+    handle = audio.archive("music")
+    if handle is None:
+        pytest.skip("audio assets are not installed in this checkout")
+    raw = handle.read("level_1.snd")
+    on_cpu, _ = adpcm.decode_cpu(raw)
+    on_gpu, _ = adpcm.decode_gpu(raw)
+    assert np.array_equal(on_cpu, on_gpu)
+
+
+def test_a_block_boundary_does_not_shift_between_routes():
+    """Off-by-one in the tail block would be inaudible and still wrong."""
+    _gpu_or_skip()
+    for count in (1, 2, adpcm.BLOCK - 1, adpcm.BLOCK, adpcm.BLOCK + 1,
+                  adpcm.BLOCK * 3 + 7):
+        clip = adpcm.encode(_tone(2.0)[:count], 22050)
+        on_cpu, _ = adpcm.decode_cpu(clip)
+        on_gpu, _ = adpcm.decode_gpu(clip)
+        assert on_cpu.size == count, count
+        assert np.array_equal(on_cpu, on_gpu), count
+
+
+def test_the_route_can_be_forced_either_way():
+    """So a caller can pin it, and so the twin stays reachable in tests."""
+    clip = adpcm.encode(_tone(0.5), 22050)
+    forced_cpu, _ = adpcm.decode(clip, gpu=False)
+    assert np.array_equal(forced_cpu, adpcm.decode_cpu(clip)[0])
+    if adpcm.device() is not None:
+        forced_gpu, _ = adpcm.decode(clip, gpu=True)
+        assert np.array_equal(forced_gpu, forced_cpu)
+
+
+def test_no_adapter_is_a_fallback_and_not_a_failure(monkeypatch):
+    """A headless runner has no GPU, and the game still has audio."""
+    clip = adpcm.encode(_tone(0.5), 22050)
+    expected, _ = adpcm.decode_cpu(clip)
+
+    monkeypatch.setattr(adpcm, "_pipeline", lambda: None)
+    assert adpcm.decode_gpu(clip) is None
+    got, _ = adpcm.decode(clip)
+    assert np.array_equal(got, expected), "the router has to fall through"
+
+
+def test_the_threshold_is_the_measured_one():
+    """It was guessed at 600 and measured at 0; that inversion is the point.
+
+    The numpy route runs ``BLOCK`` vectorised steps whatever the clip's length,
+    so it has a ~10 ms floor even for a three-block clip -- larger than a
+    dispatch. Anything that puts this back above zero should have a table
+    behind it.
+    """
+    assert adpcm.MIN_BLOCKS_FOR_GPU == 0
+
+
+def test_the_host_lends_its_own_device_rather_than_making_a_second(qapp):
+    """Two devices to draw and decompress on one machine is pure waste."""
+    pytest.importorskip("wgpu")
+    from chisurf.gui import chigame
+
+    class _Quiet(chigame.Game):
+        """A game that does nothing but exist."""
+
+        def draw(self, scene) -> None:
+            """Draw nothing at all."""
+
+    context = chigame.create_offscreen(size=(64, 64))
+    host = chigame.GameHost(_Quiet(), context, with_audio=False, with_text=False)
+    try:
+        assert adpcm.device() is context.device
+    finally:
+        adpcm.use_device(None)
+        adpcm.device.cache_clear()
+        host.close()
+
+
 # -- what is shipped ------------------------------------------------------
 
 def test_the_shipped_archives_hold_what_the_credits_say():

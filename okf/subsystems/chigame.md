@@ -194,6 +194,20 @@ every call site still passes a frequency. `audio_assets/CREDITS.md` carries the
 author's own licence statement verbatim: CC0 asks for nothing, but a package
 that redistributes somebody's work should say whose it is, in their words.
 
+**The decoder has a GPU route** (`wgsl/adpcm.wgsl`), one invocation per block,
+and it is the default wherever an adapter exists. Both routes are kept and are
+asserted **bit-identical** -- the codec is lossy, so a route that decoded
+differently would change the audio behind the caller's back, which is worse
+than being slow. The host lends the renderer's device rather than asking the
+driver for a second one to decompress audio.
+
+`MIN_BLOCKS_FOR_GPU` is **zero**, and that inversion is worth reading before
+changing it: the guess was 600, on the reasoning that a ~1.7 ms dispatch cannot
+be worth it for a 50 ms sound effect. The measurement disagreed, because the
+numpy route has the *larger* floor -- it runs `BLOCK` vectorised steps whatever
+the clip's length, so a three-block clip still costs ~10 ms of numpy call
+overhead. See [benchmarks](../../docs/development/benchmarks.md).
+
 **A track may be a tracker module** (`{"module": "song.mod"}`), rendered by
 `tracker.py` -- an in-tree ProTracker player, no dependency. This is the only
 audio format small enough to live in a source tree: a module stores a handful

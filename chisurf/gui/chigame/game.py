@@ -130,6 +130,14 @@ class GameHost:
         if with_text:
             self.font = FontAtlas(context.device)
             self.batch.set_atlas(self.font.texture)
+        # The decoder shares the renderer's device rather than asking the
+        # driver for a second one purely to decompress audio.
+        try:
+            from .adpcm import use_device
+
+            use_device(context.device)
+        except Exception:
+            pass
         self.audio = Audio(self.pack, enabled=with_audio)
         self.scene = Scene(self.batch, self.pack, self.camera, self.font)
         self._extra_players: list[InputMap] = []

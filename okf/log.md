@@ -1,6 +1,21 @@
 # Update Log
 
 ## 2026-08-11
+* **ADPCM decode has a compute-shader route, and it changed the threshold it
+  was written to justify** ([chigame](subsystems/chigame.md),
+  [benchmarks](../docs/development/benchmarks.md)). `wgsl/adpcm.wgsl` decodes
+  one block per invocation -- the codec's sequential dependency lives *inside* a
+  block and the blocks are independent by construction, so thousands run at
+  once. Both routes are kept and asserted **bit-identical** (integer arithmetic
+  on both sides): a lossy codec that decoded differently depending on which ran
+  would change the audio behind the caller's back. The host lends the renderer's
+  device rather than making a second one. **`MIN_BLOCKS_FOR_GPU` was guessed at
+  600 and measured at 0** -- the GPU is ahead at *every* size, 4.8x on a 50 ms
+  effect and 4.4x on an 80 s loop, because the numpy route has the larger
+  floor: it runs `BLOCK` vectorised steps whatever the clip's length, ~10 ms of
+  call overhead even when the arrays are three elements wide. The general trap
+  it illustrates: vectorising an inner loop only pays if the vectorised axis is
+  *wide*, and here its width is the block count.
 * **Measured what a WGSL compute kernel is actually worth**
   ([benchmarks](../docs/development/benchmarks.md)). Compute runs here (Apple
   M1 Pro / Metal, wgpu 0.32.0) and `chimol.renderer.compute` already guards
