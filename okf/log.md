@@ -119,6 +119,15 @@
 * **`plugins/core/acq/gui/tool.py` off the numba list** by deleting its
   SPC-130 decoder copy for `tttrlib.decode_records`; allow-list 19 → 18.
   Traps and verification in [numba retirement](subsystems/numba-retirement.md) §3.
+* **2D-FLC marked a tttrlib candidate** (user): `flc_2d/core.py`'s five kernels
+  are specified by tttrlib PRD-036, written against the original MATLAB in
+  `junk/2D-FLC-code` and requiring every kernel be tested by simulation with a
+  known answer — including a single-state negative control.
+* **`flc_2d/api.py` off the numba list** (13 left) — its only numba use was
+  choosing a chunk count, which never changes the result. Taking it off exposed
+  a real defect: the plugin's kernels could not cold-compile at all after
+  `env_bootstrap` rewrites `NUMBA_NUM_THREADS`. Guard added, suite 26 passed.
+  (Re-added: an earlier commit of this entry was dropped by a peer's stale index.)
 * **XTC support dropped** on the user's instruction — DCD is enough and is
   lossless. Deletes the reader, its six XDR bit-unpacking numba kernels and the
   only rescale-on-read in the tree; allow-list 15 → 14. Swept 36 files of

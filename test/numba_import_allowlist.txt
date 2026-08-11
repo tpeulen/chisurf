@@ -32,6 +32,10 @@
 # ── numpy: EMPTY. Route 1 is done; every remaining entry needs real work.
 
 # ── tttrlib (already shipping; delegate) ─────────────────────────────────────
+# flc_2d/core.py is here as a CANDIDATE, not a shipping delegation: the 2D-FDC
+# photon pass is specified for the library by tttrlib PRD-036, written against
+# the original MATLAB in junk/2D-FLC-code. Do not port it in-tree.
+chisurf/plugins/fcs/flc_2d/core.py
 chisurf/core/fluorescence/burst/gopich_szabo.py
 chisurf/core/ml/cluster/_hdbscan.py
 
@@ -55,4 +59,3 @@ chisurf/core/fluorescence/burst/kalman.py
 chisurf/core/ml/cluster/_kmeans.py
 chisurf/core/roi/segmentation.py
 chisurf/plugins/burst/burst_h2mm/core/h2mm.py
-chisurf/plugins/fcs/flc_2d/core.py

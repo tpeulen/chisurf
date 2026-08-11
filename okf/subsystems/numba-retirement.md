@@ -604,6 +604,43 @@ raising, and both of which cost a run: `_hmmc.forward_log`/`backward_log`/
 frame probabilities are logged), so passing logs makes every log-likelihood
 `nan`; and `_hmmc.viterbi` returns `(logprob, states)`, not the reverse.
 
+## 2D-FLC is a tttrlib candidate, specified against the original MATLAB
+
+**USER INSTRUCTION (2026-08-11).** `plugins/fcs/flc_2d/core.py` moves to route
+`tttrlib` as a **candidate** — the compiled equivalent does not exist yet, so
+this is a specification rather than a delegation. It is specified by
+**tttrlib PRD-036** (`okf/prds/PRD-036-2d-flc-photon-kernels.md` in that repo);
+the link is deliberately a path rather than a relative link, because the two
+repos are siblings and a relative link resolves in neither.
+
+Five kernels move: `_fdc_scan_log_kernel`, `create_2d_fdc_numba_int`,
+`_log_bin_int` and the two `_ceil_div_*` helpers. The inversions (Tikhonov,
+MEM, the rate-matrix fit) are already NumPy/SciPy and stay here — this is only
+the photon pass, which touches macro and micro times together and does a binary
+search per lag window, the shape numba was compensating for.
+
+**Written against the reference, not against our own code.** The original is
+Toru Kondo's MATLAB in `junk/2D-FLC-code` (Schlau-Cohen lab, MIT), with *A
+Technical Note on 2D-FLC.pdf*. ChiSurf's kernel is already a faithful port of
+`TK_Create2DFDC_04.m` — same lin/log matrix pair, same log-tick construction
+`t_Imax^(j/(L-1))·tStep − tStep`, same `dT ± ddT/2` window — so the C++ has a
+third implementation to agree with rather than only ours. Files read are marked
+with `CHISURF-REVIEWED` headers pointing at the PRD.
+
+**Everything in it is tested by simulation**, which is the user's requirement
+and the PRD's spine: `TK_MyMain_Simu_PhotonStream.m` prescribes the generator
+(N states with per-state cps and lifetime, an interconversion rate matrix, an
+IRF for the micro-time, `Tstep = 1e-6 s`, `tstep = 0.004 ns`), and its default
+case — **two states, 1 ns and 2 ns, 10 s⁻¹ both ways, equal intensity** — is the
+recovery target. ChiSurf already ports that generator as
+`flc_2d.api.simulate_stream`. The PRD requires the negative control too (a
+single state must produce no cross-peak at any lag), because without it a kernel
+that fabricates correlation passes every positive test.
+
+The lesson PRD-035 paid for is why: a fixture recorded from the code being
+replaced cannot tell a faithful port from a shared mistake. Simulation with a
+known answer can.
+
 ## Bugs the ports have found
 
 * **The whole 2D-FLC plugin was failing to compile its kernels**, found by
