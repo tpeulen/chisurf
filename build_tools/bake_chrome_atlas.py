@@ -174,9 +174,20 @@ def bake(out_dir: pathlib.Path | None = None) -> dict:
     # tallest line. Bold is a little wider than regular, so taking the max of
     # the two is what stops a bold glyph being clipped by a cell sized for the
     # regular face.
-    advance = max(
-        max(m.horizontalAdvance(c) for c in CHARSET) for m in metrics.values()
-    )
+    advances = {
+        m.horizontalAdvance(c) for m in metrics.values() for c in CHARSET
+    }
+    # One advance, or the runtime's `Atlas.advance` -- a multiplication rather
+    # than a sum over a glyph table -- is silently wrong. Asserted here because
+    # the panel's own layout is built on `char_w` constants that assume it, and
+    # a proportional fallback font would break those in a way no single number
+    # could express.
+    if len(advances) != 1:
+        raise RuntimeError(
+            "the chrome font is not monospaced across the charset: advances "
+            f"{sorted(advances)}. The panel's layout assumes one width."
+        )
+    advance = advances.pop()
     pad = _padding(metrics, advance)
     cell_w = advance + 2 * pad
     cell_h = max(m.height() for m in metrics.values()) + 2 * pad
@@ -184,15 +195,27 @@ def bake(out_dir: pathlib.Path | None = None) -> dict:
 
     columns = 16
     rows_per_face = (len(CHARSET) + columns - 1) // columns
-    total_rows = rows_per_face * len(faces)
+    # One extra row for the solid block; see below.
+    total_rows = rows_per_face * len(faces) + 1
 
     image = QtGui.QImage(
         cell_w * columns, cell_h * total_rows, QtGui.QImage.Format_ARGB32
     )
     image.fill(QtCore.Qt.transparent)
 
+    # A fully opaque block, so a plain rectangle is a textured quad that happens
+    # to sample white. Without it the chrome needs two pipelines -- one for
+    # rectangles and one for glyphs -- or a per-vertex "is this text" flag and a
+    # branch in the fragment shader. With it there is one pipeline, one vertex
+    # format and one draw call for the whole panel.
+    solid_y = rows_per_face * len(faces) * cell_h
+    solid = [0, solid_y, cell_w, cell_h]
+
     painter = QtGui.QPainter(image)
     painter.setRenderHint(QtGui.QPainter.TextAntialiasing, True)
+    painter.fillRect(
+        solid[0], solid[1], solid[2], solid[3], QtGui.QColor(255, 255, 255, 255)
+    )
     painter.setPen(QtGui.QColor(255, 255, 255, 255))
 
     glyphs: dict[str, dict] = {}
@@ -231,6 +254,8 @@ def bake(out_dir: pathlib.Path | None = None) -> dict:
         "columns": columns,
         "charset": CHARSET,
         "glyphs": glyphs,
+        "solid": solid,
+        "size": [image.width(), image.height()],
     }
     (out_dir / "chrome.json").write_text(
         json.dumps(record, indent=1, sort_keys=True), encoding="utf-8"
