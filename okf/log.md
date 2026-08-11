@@ -1,6 +1,20 @@
 # Update Log
 
 ## 2026-08-11
+* **Measured what a WGSL compute kernel is actually worth**
+  ([benchmarks](../docs/development/benchmarks.md)). Compute runs here (Apple
+  M1 Pro / Metal, wgpu 0.32.0) and `chimol.renderer.compute` already guards
+  every kernel with a `MIN_WORK_ITEMS` floor; `test/benchmarks/benchmark_wgpu_compute.py`
+  now says whether that floor is right. With data resident the kernel crosses
+  numpy at ~65k elements and reaches **54x** at 2 M, which supports the 20k
+  floor. The **round trip** -- allocate, upload, dispatch, read back -- carries
+  ~1.6 ms of fixed cost at every size, so a kernel handed numpy and returning
+  numpy does not break even until ~1 M elements and is only 2.7x at 2 M. A
+  guard tuned on the kernel column will accept work the round trip makes twenty
+  times slower. Also recorded: WebGPU allows 65535 workgroups per dimension, so
+  a 1-D dispatch at 64 invocations tops out at 4.19 M elements and anything
+  larger must go 2-D -- a validation error rather than a silent truncation, but
+  one you meet at the first large input.
 * **The games have a real soundtrack: 5 CC0 loops and 512 CC0 sound effects,
   in 6.7 MB** ([chigame](subsystems/chigame.md)). Juhani Junkala's
   [5 Chiptunes (Action)](https://opengameart.org/content/5-chiptunes-action) and

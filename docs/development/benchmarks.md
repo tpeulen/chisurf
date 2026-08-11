@@ -51,6 +51,60 @@ Python 3.12.13, NumPy 2.4.6, SciPy 1.18.0, numba 0.66.0. Measured 2026-07-28.
 
 ---
 
+## WGSL compute on wgpu
+
+**Work unit:** one element of `sqrt(x)*sin(x) + cos(x/2)` in float32, over an
+array. Transcendental-heavy on purpose -- a kernel that only copies memory
+measures the bus rather than the processor.
+
+ChiSurf can and does run compute shaders (`chimol.renderer.compute`), and every
+kernel there is guarded by a work-item floor (`MIN_WORK_ITEMS`) below which the
+CPU route is taken. This table exists to justify that floor rather than assert
+it, by separating the two numbers that get conflated:
+
+- **kernel** -- dispatch and execute with the data already on the device. The
+  honest number for a pipeline that keeps its buffers between passes.
+- **round trip** -- allocate, upload, dispatch, read back. The honest number for
+  anything called from numpy and returning to numpy.
+
+```bash
+pixi run python test/benchmarks/benchmark_wgpu_compute.py
+```
+
+Apple M1 Pro (Metal), wgpu 0.32.0. Limits: 1024 invocations per workgroup,
+65535 workgroups per dimension, 32 kB workgroup storage.
+
+| elements | kernel [ms] | round trip [ms] | numpy [ms] | kernel vs numpy | round trip vs numpy |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 4,096 | 0.122 | 1.598 | 0.021 | 0.2x | 0.0x |
+| 16,384 | 0.129 | 1.606 | 0.079 | 0.6x | 0.0x |
+| 65,536 | 0.125 | 1.726 | 0.308 | 2.5x | 0.2x |
+| 262,144 | 0.134 | 2.043 | 1.512 | 11.3x | 0.7x |
+| 1,048,576 | 0.162 | 3.748 | 6.606 | 40.8x | 1.8x |
+| 2,097,152 | 0.261 | 5.240 | 14.021 | 53.7x | 2.7x |
+
+**What this says.** The kernel is flat to within a factor of two across three
+orders of magnitude -- below about a million elements this GPU is not working,
+it is being launched. Crossover against numpy is near **65k elements** with the
+data resident, which is where `MIN_WORK_ITEMS = 20_000` comes from and is
+roughly the right order for it.
+
+**The round trip is a different question, and the answer is much less
+flattering.** It carries about **1.6 ms of fixed cost** at every size -- buffer
+allocation, submission, and the readback latency -- so a kernel that is handed
+numpy and must return numpy does not break even until around a million
+elements, and is still only 2.7x at two million. A guard tuned on the kernel
+column will happily accept work that the round trip makes *twenty times
+slower*. Anything designed around this has to either keep its buffers on the
+device across several passes, or be doing far more arithmetic per byte than
+this kernel does.
+
+**A limit worth knowing before designing around it:** WebGPU allows at most
+**65535 workgroups per dimension**, so a 1-D dispatch at 64 invocations each
+tops out at 4.19 M elements. Past that a kernel must dispatch in 2-D. It is a
+validation error, not a silent truncation -- but it is discovered at the first
+large input rather than in development.
+
 ## Gaussian HMM
 
 `chisurf.core.math.hmm.GaussianHMM` — Baum-Welch fitting of a hidden Markov
