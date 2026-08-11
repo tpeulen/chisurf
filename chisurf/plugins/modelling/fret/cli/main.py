@@ -163,7 +163,7 @@ def _resolve_evaluate_mode(pdb, pdb_dir, top, traj, input_type):
 @click.option("--pdb", default=None, help="Single PDB file (or directory with --input-type 'PDB Directory').")
 @click.option("--pdb-dir", default=None, help="Directory of PDB structures (selects directory mode).")
 @click.option("--top", default=None, help="Topology file for a trajectory (paired with --traj).")
-@click.option("--traj", default=None, help="Trajectory file (DCD/XTC); topology is --top or --pdb.")
+@click.option("--traj", default=None, help="Trajectory file (DCD); topology is --top or --pdb.")
 @click.option("--output", required=True, help="Output CSV file path.")
 @click.option("--input-type", default=None, type=click.Choice(["Single PDB File", "PDB Directory", "MDTraj Trajectory"]), help="Legacy mode override (prefer --pdb-dir / --top+--traj).")
 @click.option("--av-backend", default="auto", type=click.Choice(["auto", "labellib", "imp-bff"]), help="Accessible Volume backend.")

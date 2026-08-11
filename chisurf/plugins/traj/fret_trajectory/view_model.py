@@ -56,7 +56,7 @@ class FretTrajectoryViewModel:
         self.filenames: list[str] = []
         #: Structured coordinate array of the first frame (drives the atom pickers).
         self.pdb: np.ndarray | None = None
-        #: Topology (PDB) the user supplied. DCD and XTC store coordinates only,
+        #: Topology (PDB) the user supplied. DCD stores coordinates only,
         #: so the atom names -- which are what the donor/acceptor pickers list --
         #: are not in the trajectory. Empty is fine for a self-describing file.
         self.topology_filename: str = ""

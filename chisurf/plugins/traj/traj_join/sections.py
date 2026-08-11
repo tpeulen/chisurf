@@ -55,7 +55,7 @@ class _IoSection(QtWidgets.QWidget):
             self._load_trajectory_2,
         )
 
-        # DCD and XTC hold coordinates and nothing else, so the atom names have
+        # DCD holds coordinates and nothing else, so the atom names have
         # to come from a structure file. Without this row the tool could be
         # driven from a script but not from the window.
         _top_row = QtWidgets.QHBoxLayout()
@@ -64,13 +64,13 @@ class _IoSection(QtWidgets.QWidget):
         _top_row.addWidget(QtWidgets.QLabel("Topology"))
         self._top_edit = QtWidgets.QLineEdit()
         self._top_edit.setReadOnly(True)
-        self._top_edit.setPlaceholderText("PDB naming the atoms — required for DCD/XTC")
+        self._top_edit.setPlaceholderText("PDB naming the atoms — required for DCD")
         self._top_edit.setText(self._model.topology_filename)
         _top_row.addWidget(self._top_edit, 1)
         _top_browse = QtWidgets.QToolButton()
         _top_browse.setText("…")
         _top_browse.setToolTip(
-            "Open the PDB that names the atoms. DCD and XTC store coordinates "
+            "Open the PDB that names the atoms. DCD stores coordinates "
             "only, so this is required for them."
         )
         _top_browse.clicked.connect(self._browse_topology)
@@ -96,7 +96,7 @@ class _IoSection(QtWidgets.QWidget):
         row.addWidget(QtWidgets.QLabel(label))
         edit = QtWidgets.QLineEdit()
         edit.setReadOnly(True)
-        edit.setPlaceholderText("Drop a DCD or XTC trajectory here or browse…")
+        edit.setPlaceholderText("Drop a DCD trajectory here or browse…")
         edit.setText(initial)
         row.addWidget(edit, 1)
         browse = QtWidgets.QToolButton()
@@ -138,7 +138,7 @@ class _IoSection(QtWidgets.QWidget):
         import chisurf.gui.widgets
 
         filename = chisurf.gui.widgets.get_filename(
-            "Open trajectory", "Trajectories (*.dcd *.xtc)"
+            "Open trajectory", "Trajectories (*.dcd)"
         )
         if filename:
             self._load_trajectory_1(filename)
@@ -147,7 +147,7 @@ class _IoSection(QtWidgets.QWidget):
         import chisurf.gui.widgets
 
         filename = chisurf.gui.widgets.get_filename(
-            "Open trajectory", "Trajectories (*.dcd *.xtc)"
+            "Open trajectory", "Trajectories (*.dcd)"
         )
         if filename:
             self._load_trajectory_2(filename)

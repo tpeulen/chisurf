@@ -343,7 +343,7 @@ def load(filename, top=None, stride: int = None, atom_indices=None) -> Trajector
     Parameters
     ----------
     filename : str or os.PathLike
-        ``.dcd``, ``.xtc``, or a structure file (``.pdb``, ``.cif``) read as a
+        ``.dcd``, or a structure file (``.pdb``, ``.cif``) read as a
         single frame.
     top : str or Topology, optional
         Topology, required for the coordinate-only formats.
@@ -357,31 +357,20 @@ def load(filename, top=None, stride: int = None, atom_indices=None) -> Trajector
     Trajectory
     """
     name = str(filename).lower()
-    if name.endswith((".dcd", ".xtc")):
+    if name.endswith(".dcd"):
         if top is None:
             raise ValueError(f"{filename!r} stores coordinates only; pass top=")
         topology = top if isinstance(top, Topology) else Topology.from_file(str(top))
-        if name.endswith(".dcd"):
-            from chisurf.core.fio.trajectory import read_dcd
-            xyz, _, _ = read_dcd(filename, stride=stride, atom_indices=atom_indices)
-            # DCD records a first step, an interval and a timestep rather than
-            # a free list of times. Rebuild the axis from those, so a strided
-            # trajectory keeps its real spacing instead of counting frames.
-            from chisurf.core.fio.trajectory import read_time_axis
+        from chisurf.core.fio.trajectory import read_dcd
+        xyz, _, _ = read_dcd(filename, stride=stride, atom_indices=atom_indices)
+        # DCD records a first step, an interval and a timestep rather than a
+        # free list of times. Rebuild the axis from those, so a strided
+        # trajectory keeps its real spacing instead of counting frames.
+        from chisurf.core.fio.trajectory import read_time_axis
 
-            time = read_time_axis(filename, stride=stride)[:len(xyz)]
-            return Trajectory(xyz, topology.subset(atom_indices)
-                              if atom_indices is not None else topology, time)
-        else:
-            from chisurf.core.fio.trajectory import read_xtc
-            xyz, _, _, _ = read_xtc(filename, stride=stride, atom_indices=atom_indices)
-            # XTC is the one format here that is not angstroms: GROMACS writes
-            # nanometres. Everything else -- DCD, PDB, mmCIF -- is angstroms, and
-            # so is the interior, so this is the only scale left in the reader.
-            xyz = np.asarray(xyz, dtype=np.float32) * 10.0
-        if atom_indices is not None:
-            topology = topology.subset(atom_indices)
-        return Trajectory(xyz, topology)
+        time = read_time_axis(filename, stride=stride)[:len(xyz)]
+        return Trajectory(xyz, topology.subset(atom_indices)
+                          if atom_indices is not None else topology, time)
 
     topology = Topology.from_file(str(filename))
     xyz = topology.atom_array["xyz"][np.newaxis]

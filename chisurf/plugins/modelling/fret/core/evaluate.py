@@ -191,7 +191,7 @@ def evaluate_trajectory(
     top_path : str
         Path to topology PDB file.
     traj_path : str
-        Path to trajectory file (e.g. XTC, DCD).
+        Path to trajectory file (e.g. DCD).
     positions : dict
         fps.json Positions section.
     evaluators : list of Evaluator

@@ -219,7 +219,7 @@ def compute_rmsd_matrix_from_trajectory(
     top_path : str
         Path to topology PDB file.
     traj_path : str
-        Path to trajectory file (e.g. XTC, DCD).
+        Path to trajectory file (e.g. DCD).
     selection : str
         Atom selection syntax.
 
@@ -258,7 +258,7 @@ def compute_efficiency_matrix_from_evaluators_trajectory(
     top_path : str
         Path to topology PDB file.
     traj_path : str
-        Path to trajectory file (e.g. XTC, DCD).
+        Path to trajectory file (e.g. DCD).
     positions : dict
         fps.json Positions section.
     distances : dict

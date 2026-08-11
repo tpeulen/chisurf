@@ -160,9 +160,8 @@ alone.
 distance distributions alike. Coordinates were once held in nanometres
 internally, which meant a distance computed from coordinates and a distance
 fitted from a decay could differ by a factor of ten with nothing to warn you;
-they no longer do. The one file format that is genuinely nanometres is
-**GROMACS XTC**, and it is converted on the way in — every other structure
-format ChiSurf reads (PDB, mmCIF, DCD) is already ångström.
+they no longer do. Every structure format ChiSurf reads (PDB, mmCIF, DCD) is
+already ångström, so nothing is rescaled on the way in.
 
 ChiSurf uses per-molecule (Boltzmann) rather than molar (gas-constant) forms of
 thermodynamic relations.

@@ -38,7 +38,7 @@ class JoinTrajectoriesViewModel:
 
     def __init__(self) -> None:
         self.trajectory_filename_1: str = ""
-        # DCD and XTC store coordinates only, so the atom names have to come
+        # DCD stores coordinates only, so the atom names have to come
         # from somewhere. Empty is fine for a self-describing file.
         self.topology_filename: str = ""
         self.trajectory_filename_2: str = ""

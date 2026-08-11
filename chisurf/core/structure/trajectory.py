@@ -86,7 +86,7 @@ class TrajectoryFile(
     :class:`~chisurf.core.structure.topology.Topology`; there is no MD library
     behind this.
 
-    Accepts a ``.pdb``, a ``.dcd`` or ``.xtc`` (with ``topology=``), a
+    Accepts a ``.pdb`` or a ``.dcd`` (with ``topology=``), a
     :class:`~chisurf.core.structure.trajectory_data.Trajectory`, or a
     :class:`Structure`
 
@@ -188,7 +188,7 @@ class TrajectoryFile(
     ):
         """
 
-        :param p_object: a path to a .pdb/.cif/.dcd/.xtc file, a Trajectory,
+        :param p_object: a path to a .pdb/.cif/.dcd file, a Trajectory,
             or a chisurf.core.structure.Structure object;
         :param filename:
         :param rmsd_ref_state:
@@ -199,7 +199,7 @@ class TrajectoryFile(
         :param atom_indices:
         :param mode:
         :param topology: path to a PDB supplying the topology. Required for
-            ``.dcd`` and ``.xtc``, which store coordinates only -- the atom
+            ``.dcd``, which stores coordinates only -- the atom
             names, elements and connectivity are simply not in those files.
         :param args:
         :param kwargs:
@@ -220,7 +220,7 @@ class TrajectoryFile(
             lowered = p_object.lower()
             if self._filename is None:
                 self._filename = p_object
-            if lowered.endswith((".dcd", ".xtc")):
+            if lowered.endswith(".dcd"):
                 if topology is None:
                     raise ValueError(
                         f"{p_object!r} stores coordinates only; pass topology=<pdb path>"
@@ -233,7 +233,7 @@ class TrajectoryFile(
                 structure = chisurf.core.structure.Structure(p_object)
             else:
                 raise ValueError(
-                    f"cannot read {p_object!r}: expected .pdb, .cif, .dcd or .xtc"
+                    f"cannot read {p_object!r}: expected .pdb, .cif or .dcd"
                 )
         elif isinstance(p_object, traj_data.Trajectory):
             loaded = p_object

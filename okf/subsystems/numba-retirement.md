@@ -10,7 +10,7 @@ timestamp: '2026-08-10T00:00:00Z'
 # Where to pick this up
 
 1. **The tracker is `test/numba_import_allowlist.txt`** and it only shrinks.
-   Every entry carries its route. **15 chisurf-owned files remain**, and **route `numpy` is now empty -- Phase 1 is done** of the 48 this work covers. ChiMOL's 11 are **excluded from the guard entirely** — the WebGPU port removes them on its own schedule, and listing them here only made this test fail nine times in one session with news about someone else's progress;
+   Every entry carries its route. **14 chisurf-owned files remain**, and **route `numpy` is now empty -- Phase 1 is done** of the 48 this work covers. ChiMOL's 11 are **excluded from the guard entirely** — the WebGPU port removes them on its own schedule, and listing them here only made this test fail nine times in one session with news about someone else's progress;
    `test/test_numba_seam.py` fails both on a new importer and on a stale entry,
    so the list cannot drift from the tree.
 2. **`maxent_decay/core/solver.py` is done, and the granularity of a delegation
@@ -154,13 +154,17 @@ timestamp: '2026-08-10T00:00:00Z'
        gets to **2.5–9.4×**. It is a parallel gather *with a transpose*, which
        is the shape NumPy expresses worst; the broadcast index array alone is
        80 MB at 200 frames × 50k atoms.
-     - `xtc.py`'s six kernels are the **XDR bit-unpacking decompressor**
+     - `xtc.py`'s six kernels were the **XDR bit-unpacking decompressor**
        (`_decodebits`, `_decodeints`, `_sizeofint`, `_sizeofints`,
        `_decompress`, `_decompress_many`). Serial bit manipulation; NumPy
        cannot express it at all.
-     Both moved to route `tttr-c`. They are the two entries on that route with
-     no photon content, so whoever writes those kernels should decide where a
-     trajectory reader belongs before writing them.
+     **`xtc.py` was then deleted outright** (2026-08-11, user's instruction:
+     DCD is enough). That is the cheapest way off this list and the one worth
+     asking about first — six kernels left with the feature, and the format was
+     also the only place in the tree where coordinates were rescaled on read.
+     `dcd.py` moved to route `tttr-c`; it is the one entry there with no photon
+     content, so whoever writes that kernel should settle where a trajectory
+     reader belongs first.
    - **`av/dynamic.py`'s kernel does not vectorise either**, though its route
      (`imp`) is right — `IMP.bff.AV` exists. `_quenching_rate_per_frame` is a
      masked row-sum, i.e. a matrix–vector product, and both NumPy spellings are
@@ -664,8 +668,8 @@ mechanically.
 | | Files | Kernels |
 | --- | ---: | ---: |
 | At the start | 59 | 186 |
-| Ported so far | 27 | ~71 |
-| Remaining | 21 | ~84 |
+| Ported so far | 28 | ~77 |
+| Remaining | 20 | ~78 |
 | ChiMOL (excluded, owned elsewhere) | 11 | 29 |
 
 Done: `fluorescence/general.py`, `math/datatools.py`, `math/statistics.py`,

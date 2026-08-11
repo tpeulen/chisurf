@@ -97,6 +97,10 @@
 * **`plugins/core/acq/gui/tool.py` off the numba list** by deleting its
   SPC-130 decoder copy for `tttrlib.decode_records`; allow-list 19 → 18.
   Traps and verification in [numba retirement](subsystems/numba-retirement.md) §3.
+* **XTC support dropped** on the user's instruction — DCD is enough and is
+  lossless. Deletes the reader, its six XDR bit-unpacking numba kernels and the
+  only rescale-on-read in the tree; allow-list 15 → 14. Swept 36 files of
+  filters, help text and docs.
 * **Four numba routes corrected by measuring, not reading the label**: `dcd.py`
   and `xtc.py` are not route `imp` (imp-tricks has no trajectory reader) and do
   not vectorise — 2.5–9.4× and bit-unpacking respectively; `av/dynamic.py` keeps

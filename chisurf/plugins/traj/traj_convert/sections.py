@@ -135,7 +135,7 @@ class _IoSection(QtWidgets.QWidget):
             path = str(QtWidgets.QFileDialog.getExistingDirectory(self, "Open PDB-Files", "."))
         else:
             path = chisurf.gui.widgets.get_filename(
-                "Open trajectory", "Trajectory (*.dcd *.xtc)"
+                "Open trajectory", "Trajectory (*.dcd)"
             )
         if path:
             self._model.set_trajectory(path)

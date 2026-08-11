@@ -1,4 +1,4 @@
-"""Opening DCD and XTC trajectories through :class:`TrajectoryFile`.
+"""Opening DCD trajectories through :class:`TrajectoryFile`.
 
 The coordinates come from ChiSurf's own codecs
 (:mod:`chisurf.core.fio.trajectory`), which are tested against reference files
@@ -26,7 +26,6 @@ import pytest
 DATA = pathlib.Path(__file__).resolve().parents[1] / "data/atomic_coordinates/trajectory"
 TOPOLOGY = DATA / "hgbp1/topol.pdb"
 DCD = DATA / "dcd/hgbp1_transition.dcd"
-XTC = DATA / "xtc/hgbp1_transition.xtc"
 
 
 @pytest.fixture
@@ -37,22 +36,17 @@ def trajectory_file():
 
 def _reference(path, kind):
     """Return the coordinates the file itself holds, in ångströms."""
-    from chisurf.core.fio.trajectory import read_dcd, read_xtc
+    from chisurf.core.fio.trajectory import read_dcd
 
-    if kind == "dcd":
-        xyz, _, _ = read_dcd(str(path))
-        return xyz                             # DCD is already angstroms
-    xyz, _, _, _ = read_xtc(str(path))
-    return xyz * 10.0                          # XTC stores nanometres
+    xyz, _, _ = read_dcd(str(path))
+    return xyz                                 # DCD is already angstroms
 
 
 @pytest.mark.parametrize("path, kind, atol", [
     # The loaded coordinates must be the file's own -- not recentred, not
-    # rescaled. This pair inverted when the interior became angstroms: DCD
-    # stores angstroms and now needs no conversion at all, so it is exact,
-    # while XTC is the one format still scaled and carries the float32 error.
+    # rescaled. DCD stores angstroms, which the interior also uses, so no
+    # conversion happens anywhere and the comparison is exact.
     (DCD, "dcd", 0.0),
-    (XTC, "xtc", 1e-4),
 ])
 def test_a_coordinate_trajectory_loads_with_a_topology(trajectory_file, path, kind, atol):
     traj = trajectory_file(str(path), topology=str(TOPOLOGY))
@@ -79,7 +73,7 @@ def test_atom_indices_subset_the_topology_too(trajectory_file):
 
 
 def test_a_trajectory_without_a_topology_is_refused(trajectory_file):
-    # DCD and XTC store coordinates only. Guessing a topology is not possible,
+    # DCD stores coordinates only. Guessing a topology is not possible,
     # and proceeding without one would produce a trajectory with no atom names.
     with pytest.raises(ValueError, match="coordinates only"):
         trajectory_file(str(DCD))

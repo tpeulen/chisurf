@@ -87,7 +87,7 @@ class RemoveClashesViewModel:
 
     def __init__(self) -> None:
         self.trajectory_filename: str = ""
-        # DCD and XTC store coordinates only, so the atom names have to come
+        # DCD stores coordinates only, so the atom names have to come
         # from somewhere. Empty is fine for a self-describing file.
         self.topology_filename: str = ""
         #: atom-selection expression (e.g. ``"name CA"``) selecting the

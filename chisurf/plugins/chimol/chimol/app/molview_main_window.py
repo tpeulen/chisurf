@@ -1979,7 +1979,7 @@ class MolViewPluginWindow(ChisurfDockTool):
             n_atoms = 0 if coords_arr is None else coords_arr.shape[0]
         else:
             # No usable static structure/coords: the trajectory codecs, for
-            # the formats the structure readers do not cover (DCD, XTC).
+            # the formats the structure readers do not cover (DCD).
             #
             # RMF is *not* handled here. It used to be -- a second RMF path,
             # unreachable because the branch above it always returned, which

@@ -53,6 +53,15 @@
   acquisition owns, and the test now pins it by decoding a real file in
   4096-record chunks rather than by comparing two copies of the same algorithm.
 
+### Removed
+
+- **GROMACS XTC trajectories are no longer read.** ChiSurf reads DCD, which is
+  lossless where XTC quantises, and writes DCD too — so a trajectory that only
+  exists as `.xtc` has to be converted by the tool that wrote it. This removes
+  the XDR bit-unpacking decoder, the only place in ChiSurf where coordinates
+  were rescaled on the way in (XTC is nanometres, everything else ångström).
+  File dialogs, the converter's format list and the CLI help no longer offer it.
+
 ### Fixed
 
 - **A hidden-Markov fit could silently stop improving.** If any observation was

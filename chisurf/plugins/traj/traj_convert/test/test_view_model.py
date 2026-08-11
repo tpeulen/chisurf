@@ -43,7 +43,7 @@ def test_settable_attrs_round_trip():
     model.last_frame = 42
     model.stride = 5
     model.filename = "conv"
-    model.ending = ".xtc"
+    model.ending = ".pdb"
     model.split = True
     assert model.trajectory == "/data/traj.dcd"
     assert model.target_directory == "/data/out"
@@ -52,7 +52,7 @@ def test_settable_attrs_round_trip():
     assert model.last_frame == 42
     assert model.stride == 5
     assert model.filename == "conv"
-    assert model.ending == ".xtc"
+    assert model.ending == ".pdb"
     assert model.split is True
 
 

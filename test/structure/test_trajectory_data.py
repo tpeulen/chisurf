@@ -24,7 +24,6 @@ from chisurf.core.structure.topology import Topology
 DATA = pathlib.Path(__file__).resolve().parents[1] / "data/atomic_coordinates/trajectory"
 PDB = DATA / "hgbp1/topol.pdb"
 DCD = DATA / "dcd/hgbp1_transition.dcd"
-XTC = DATA / "xtc/hgbp1_transition.xtc"
 #: Reference values, in angstroms. The length arrays were scaled by ten
 #: when the interior stopped being nanometres -- the same physical
 #: quantities, restated -- and `pairs`/`ca` are indices and were not.
@@ -152,11 +151,6 @@ def test_load_frame_returns_one_frame():
     assert frame.n_frames == 1
     np.testing.assert_array_equal(
         frame.xyz[0], traj_ops.load(str(DCD), top=str(PDB)).xyz[1])
-
-
-def test_xtc_loads_through_the_same_entry_point():
-    trajectory = traj_ops.load(str(XTC), top=str(PDB))
-    assert (trajectory.n_frames, trajectory.n_atoms) == (3, 5235)
 
 
 def test_a_coordinate_file_without_a_topology_is_refused():

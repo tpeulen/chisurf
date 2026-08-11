@@ -98,7 +98,7 @@ class LoaderCommands(BaseCmd):
         """Read coordinate frames onto an object that already has atoms.
 
         PyMOL's ``load_traj file [, object]``, and the only way to open a DCD or
-        an XTC usefully: they store coordinates and *nothing else* -- no atom
+        a DCD usefully: it stores coordinates and *nothing else* -- no atom
         names, no residues, no chains. Loaded on their own they arrive as a bare
         point cloud, and everything keyed on atom identity degrades without
         erroring: the cartoon splines through every atom instead of the CA

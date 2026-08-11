@@ -51,7 +51,6 @@ chisurf/core/structure/av/functions.py
 # view, and xtc's six kernels are XDR bit-unpacking, which NumPy cannot
 # express at all. Measurements in okf/subsystems/numba-retirement.md.
 chisurf/core/fio/trajectory/dcd.py
-chisurf/core/fio/trajectory/xtc.py
 chisurf/core/fluorescence/burst/kalman.py
 chisurf/core/ml/cluster/_kmeans.py
 chisurf/core/roi/segmentation.py

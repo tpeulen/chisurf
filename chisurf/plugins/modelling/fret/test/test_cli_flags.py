@@ -27,11 +27,11 @@ def test_resolve_pdb_dir_flag_wins():
 
 
 def test_resolve_top_and_traj():
-    assert _resolve_evaluate_mode(None, None, "t.pdb", "j.xtc", None) == ("MDTraj Trajectory", "t.pdb", "j.xtc")
+    assert _resolve_evaluate_mode(None, None, "t.pdb", "j.dcd", None) == ("MDTraj Trajectory", "t.pdb", "j.dcd")
 
 
 def test_resolve_pdb_as_topology_with_traj():
-    assert _resolve_evaluate_mode("t.pdb", None, None, "j.xtc", None) == ("MDTraj Trajectory", "t.pdb", "j.xtc")
+    assert _resolve_evaluate_mode("t.pdb", None, None, "j.dcd", None) == ("MDTraj Trajectory", "t.pdb", "j.dcd")
 
 
 def test_resolve_legacy_input_type_directory():
@@ -45,7 +45,7 @@ def test_resolve_requires_some_input():
 
 def test_resolve_traj_without_topology_raises():
     with pytest.raises(ValueError):
-        _resolve_evaluate_mode(None, None, None, "j.xtc", None)
+        _resolve_evaluate_mode(None, None, None, "j.dcd", None)
 
 
 # --------------------------------------------------------------------------------------
@@ -88,9 +88,9 @@ def test_evaluate_cli_top_traj_dispatches_to_trajectory(tmp_path, monkeypatch):
                         lambda top, traj, pos, evs: calls.__setitem__("traj", (top, traj)) or _FakeStorage())
     out = tmp_path / "o.csv"
     res = CliRunner().invoke(main, ["evaluate", "--fps", "f.json", "--top", "T.pdb",
-                                    "--traj", "J.xtc", "--output", str(out)])
+                                    "--traj", "J.dcd", "--output", str(out)])
     assert res.exit_code == 0, res.output
-    assert calls["traj"] == ("T.pdb", "J.xtc")
+    assert calls["traj"] == ("T.pdb", "J.dcd")
 
 
 def test_evaluate_cli_no_input_errors(tmp_path, monkeypatch):

@@ -19,18 +19,18 @@ StructureFactory = Optional[Callable[[str], object]]
 FileDialogCallable = Optional[Callable[..., Sequence[str]]]
 
 _DEFAULT_FILTER = (
-    "Structure files (*.pdb *.ent *.cif *.mmcif *.dcd *.xtc);;All files (*.*)"
+    "Structure files (*.pdb *.ent *.cif *.mmcif *.dcd);;All files (*.*)"
 )
 
 #: The trajectory formats ChiSurf carries a codec for.
 #:
 #: One constant because two call sites need it and they drifted apart the last
 #: time they were written out separately: `load_trajectory_frames` was moved on
-#: to DCD/XTC while the caller that decides whether to *skip the structure
+#: to DCD while the caller that decides whether to *skip the structure
 #: reader* went on naming the old library's formats, so it suppressed the
 #: reader's warning for three formats that can no longer be opened and raised
 #: it for the two that now can.
-TRAJECTORY_SUFFIXES: tuple[str, ...] = (".dcd", ".xtc")
+TRAJECTORY_SUFFIXES: tuple[str, ...] = (".dcd",)
 
 
 class TrajectoryFormatError(RuntimeError):
@@ -682,22 +682,15 @@ def load_trajectory_frames(path: Path) -> np.ndarray:
     suffix = path.suffix.lower()
     if suffix not in TRAJECTORY_SUFFIXES:
         raise TrajectoryFormatError(
-            f"File type '{suffix}' is not a trajectory ChiSurf reads "
-            "(.dcd and .xtc are)"
+            f"File type '{suffix}' is not a trajectory ChiSurf reads (.dcd is)"
         )
 
-    from chisurf.core.fio.trajectory import read_dcd, read_xtc
+    from chisurf.core.fio.trajectory import read_dcd
 
-    if suffix == ".dcd":
-        xyz, _, _ = read_dcd(str(path))          # already Angstrom
-        return np.ascontiguousarray(xyz, dtype=float)
-    xyz, _, _, _ = read_xtc(str(path))           # nanometres
-    arr = np.asarray(xyz, dtype=float)
+    xyz, _, _ = read_dcd(str(path))              # already Angstrom
+    arr = np.ascontiguousarray(xyz, dtype=float)
     if arr.ndim != 3 or arr.shape[2] != 3 or arr.shape[0] == 0 or arr.shape[1] == 0:
         raise RuntimeError(f"invalid coordinates in '{path}': shape {arr.shape!r}")
-
-    # XTC is nanometres; the rest of ChiSurf/Moview works in Angstrom.
-    arr *= 10.0
     return arr
 
 
@@ -706,7 +699,7 @@ _VDW = {"H": 1.20, "C": 1.70, "N": 1.55, "O": 1.52, "S": 1.80, "P": 1.80}
 
 
 def load_trajectory_atoms(path: Path, first_frame: np.ndarray):
-    """Return ``None``: DCD and XTC carry no topology.
+    """Return ``None``: DCD carries no topology.
 
     They store coordinates and nothing else, so there are no atom names,
     residues or chains to recover. The caller falls back to a bare point cloud,
@@ -846,7 +839,7 @@ def load_structure_payload(
             structure = None
 
     # Reject empty/invalid structures so that callers can fall back to
-    # alternative loaders (the DCD/XTC trajectory codecs).
+    # alternative loaders (the DCD trajectory codec).
     if structure is not None:
         try:
             n_atoms = getattr(structure, "n_atoms", None)

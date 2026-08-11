@@ -4,7 +4,7 @@ There are three places that each state, in their own words, which files are
 trajectories: the loader that decodes them, the caller that decides whether to
 *skip* the structure reader for them, and the file dialog that offers them. They
 drifted once already -- the loader was moved from an HDF5-based library onto
-ChiSurf's own DCD/XTC codecs and the other two went on naming the old formats.
+ChiSurf's own DCD codec and the other two went on naming the old formats.
 Nothing failed. The dialog offered a format that could no longer be opened, and
 the skip-the-structure-reader rule fired for exactly the files it should not
 have and not for the ones it should, which put a warning and a full traceback in

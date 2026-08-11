@@ -28,8 +28,8 @@ _VIEW_JSON = pathlib.Path(__file__).parent / "convert_structures.view.json"
 #: Output file extensions offered by the converter.
 #:
 #: Only what can actually be *written*. The list used to also offer ``.xtc`` and
-#: ``.h5``: XTC is read-only here (the decoder is ours, the bit-packing encoder
-#: is not written) and HDF5 trajectories were retired with
+#: ``.h5``: XTC support was dropped entirely on 2026-08-11 (DCD is lossless and
+#: enough) and HDF5 trajectories were retired with
 #: :doc:`PRD-80 </prds/prd-80>`. Offering an unwritable format in a combo box
 #: turns a wrong choice into a traceback at save time, after the user has picked
 #: a directory and a name.
@@ -56,7 +56,7 @@ class MDConverterViewModel:
 
         A method, not the literal list in the view spec it replaces: that list
         was a second copy of :data:`ENDINGS` and had already drifted from it,
-        still offering `.xtc` and `.h5` after both stopped being writable. It
+        still offering `.xtc` and `.h5` after both stopped being supported. It
         must stay a *callable* -- AutoForm resolves a model-backed
         ``options_source`` by calling it, and a bare property that raises
         yields an empty combo with only a log line to say so.

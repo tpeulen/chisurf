@@ -156,7 +156,7 @@ class CalculateTransfer(object):
             If verbose is True -> output to std-out.
         """
         self._trajectory_file = trajectory_file
-        #: PDB naming the atoms. Required for DCD and XTC, which store
+        #: PDB naming the atoms. Required for DCD, which stores
         #: coordinates only -- without it the reader cannot say which atom is
         #: the donor.
         self.topology_file = topology_file
@@ -409,7 +409,7 @@ python traj2fret.py traj.h5 -a A 22 CA A 32 CA -d A 101 CA A 152 CA -o output.cs
 """,
         formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('--topology', dest='topology_file', type=str, default=None,
-                        help='PDB naming the atoms. Required for .dcd and .xtc, '
+                        help='PDB naming the atoms. Required for .dcd, '
                              'which store coordinates only.')
     parser.add_argument('trajectory_file', metavar='file', type=str,
                         help='Filename of the .h5 trajectory file')

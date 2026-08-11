@@ -35,7 +35,7 @@ Ideal for comparing experimental FRET data with structural models from molecular
 
 1. Launch the plugin from the ChiSurf menu: Structure > FRET from Trajectory
 2. Load a molecular dynamics trajectory:
-   - Select trajectory file (supported formats: DCD, XTC, TRR, etc.)
+   - Select trajectory file (DCD)
    - Load corresponding topology file (PDB, PSF, etc.)
 3. Define FRET pairs:
    - Select donor residue/atom
