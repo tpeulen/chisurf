@@ -1083,6 +1083,7 @@ class OverworldGame(chigame.Game):
         self.ctx.cleared = sorted(self.cleared)
         self.ctx.tick += 1
         scene_id, lines, subject = self._scene_for(npc)
+        self._sound("talk", 620.0)
         self.screen = self.runner.start(scene_id, who=npc.name, lines=lines,
                                         subject=subject)
         self._after_step(npc)
@@ -1176,6 +1177,21 @@ class OverworldGame(chigame.Game):
                 self.lumi = [npc.x, npc.y]
             self.speaking = None
 
+    def _sound(self, event: str, frequency: float = 660.0) -> None:
+        """Play one of the shipped effects, if there is audio at all.
+
+        Parameters
+        ----------
+        event : str
+            An event name the asset pack maps onto a recording.
+        frequency : float, optional
+            Pitch of the synthesised blip used when the pack has no recording
+            for this event.
+        """
+        host = getattr(self, "host", None)
+        if host is not None and getattr(host, "audio", None) is not None:
+            host.audio.sfx(event, frequency)
+
     def _serve(self, request) -> None:
         """Satisfy one host request from a script.
 
@@ -1186,10 +1202,12 @@ class OverworldGame(chigame.Game):
         """
         if request.kind == "save":
             self.save_run()
+            self._sound("seal", 720.0)
         elif request.kind == "menu":
             self.menu_open = True
             self.menu_row = 0
         elif request.kind == "cross":
+            self._sound("cross", 300.0)
             self._cross(request.args.get("to", "dark"))
         elif request.kind == "battle":
             self._begin_warden_fight(request.args.get("warden", ""))
@@ -1662,7 +1680,9 @@ class OverworldGame(chigame.Game):
         if keys.just_pressed(Action.UP):
             self.menu_index = (self.menu_index - 1) % len(options)
         if keys.just_pressed(Action.CONFIRM):
+            label = options[self.menu_index][0]
             options[self.menu_index][1]()
+            self._sound("unbind" if label.startswith("Unbind") else "emit", 700.0)
         elif keys.just_pressed(Action.CANCEL):
             fight.flee()
 
@@ -1686,11 +1706,14 @@ class OverworldGame(chigame.Game):
             if fight.taken.probe_id not in {label.probe_id for label in self.labels}:
                 self.labels.append(fight.taken)
             self.story.unbound += 1
+        elif fight.won and not fight.fled:
+            self._sound("bleach", 240.0)
         if fight.joined and fight.freed is not None:
             if fight.freed.key not in {body.key for body in self.bodies}:
                 self.bodies.append(fight.freed)
         if fight.won and self.warden_fight:
             self.story.seal(self.warden_fight)
+            self._sound("seal", 880.0)
             self.save_run()
 
     def _begin_challenge(self, room) -> None:

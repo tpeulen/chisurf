@@ -73,17 +73,28 @@ def test_the_waveforms_are_band_limited():
 
 
 def test_nothing_clips_and_nothing_clicks():
-    """A loop that pops at its own seam is worse than no loop."""
+    """A loop that pops at its own seam is worse than no loop.
+
+    This is a property of the *synthesiser*, so the recorded clip is taken off
+    each track first. A recorded seamless loop deliberately does not fade to
+    zero at its edges -- fading it would be what introduced the gap.
+    """
     for name, track in TRACKS.items():
-        pcm = _samples(track)
+        pcm = _samples({key: value for key, value in track.items() if key != "clip"})
         assert np.abs(pcm).max() <= 0.90, name
         assert abs(pcm[0]) < 0.02 and abs(pcm[-1]) < 0.02, name
 
 
 def test_every_shipped_track_is_long_enough_to_be_a_piece():
-    """Sixteen eighth notes on repeat is what made the old soundtrack hurt."""
+    """Sixteen eighth notes on repeat is what made the old soundtrack hurt.
+
+    Measured on the synthesised fallback: the recordings are checked for length
+    in ``test_chigame_clips``, and they are stored at half this rate, so
+    dividing a clip by the synthesiser's rate reports half its real duration.
+    """
     for name, track in TRACKS.items():
-        seconds = _samples(track).size / audio.SAMPLE_RATE
+        bare = {key: value for key, value in track.items() if key != "clip"}
+        seconds = _samples(bare).size / audio.SAMPLE_RATE
         floor = 3.0 if not track.get("loop", True) else 10.0
         assert seconds >= floor, (name, seconds)
         # ...and it has to breathe: a phrase with no held notes and no rests is

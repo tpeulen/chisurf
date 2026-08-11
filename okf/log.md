@@ -1,17 +1,24 @@
 # Update Log
 
 ## 2026-08-11
-* **Second 2D-FLC defect**: the linear matrix's last row and column are sliced
-  off on return, dropping **10–15% of pairs** at `lint_bin_factor` 3 and 5 —
-  the longest micro-times, i.e. the tail of the decay `fit/helpers.py` fits.
-  Recorded, not fixed: coupled to the axis question and the same code is
-  in flight upstream. [known issues](references/known-issues.md).
-* **2D-FLC defect found**: the log-binned matrix moves when `lint_bin_factor`
-  changes, so a linear-binning knob silently shifts the axis the lifetime
-  inversion runs on — and the scan kernel deviates from the published MATLAB
-  where the builder does not. Recorded in
-  [known issues](references/known-issues.md); not fixed, because choosing an
-  axis changes published numbers and is a method decision.
+* **The games have a real soundtrack: 5 CC0 loops and 512 CC0 sound effects,
+  in 6.7 MB** ([chigame](subsystems/chigame.md)). Juhani Junkala's
+  [5 Chiptunes (Action)](https://opengameart.org/content/5-chiptunes-action) and
+  [512 Sound Effects](https://opengameart.org/content/512-sound-effects-8-bit-style),
+  both CC0, shipped as two zips of IMA ADPCM clips (mono, 22.05 kHz, four bits
+  a sample) against 27 MB for the source WAVs. `adpcm.py` is the codec, and
+  **blocks are what make it usable**: IMA is sequential, so the stream is cut
+  into independent blocks each restating its predictor and every block is
+  decoded in parallel with numpy -- a minute of audio in ~10 ms instead of a
+  Python loop over millions of samples. The five tracks map onto the five
+  contexts (Level 1/2/3, Title Screen, Ending -> overworld/battle/underworld/
+  town/victory) so every game gets them, and `AssetPack.sound_clip` maps a
+  game's *event* name onto a recording so a game's vocabulary never has to know
+  what is installed. A track keeps its note data alongside the clip, so a
+  stripped install degrades to the synthesiser rather than to silence.
+  `audio_assets/CREDITS.md` carries the author's licence statement verbatim.
+  The conversion is a developer tool (`build_tools/dev_utils/pack_game_audio.py`),
+  not a runtime path.
 * **chigame can play tracker modules, with nothing added to the environment**
   ([chigame](subsystems/chigame.md)). A module is the one audio format small
   enough to live in a source tree -- instrument samples plus a grid of notes,

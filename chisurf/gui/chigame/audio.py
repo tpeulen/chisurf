@@ -13,12 +13,14 @@ so swapping the pack swaps the soundtrack along with the art.
 
 from __future__ import annotations
 
+import functools
 import hashlib
 import json
 import math
 import pathlib
 import tempfile
 import wave
+import zipfile
 
 import numpy as np
 
@@ -29,6 +31,12 @@ SAMPLE_RATE = 44100
 
 #: Musical contexts a game may be in.
 CONTEXTS = ("overworld", "town", "battle", "underworld", "victory")
+
+#: Where the shipped recorded audio lives: two zips of IMA ADPCM clips, one of
+#: music and one of sound effects. Archives rather than 517 loose files, which
+#: would be 517 git objects for no gain; `zipfile` reads a named entry out of
+#: one in microseconds.
+ASSET_DIR = pathlib.Path(__file__).resolve().parent / "audio_assets"
 
 #: Where module files live, if any are installed. A tracker module is the one
 #: audio format small enough to sit in a source tree -- a few hundred kB for a
@@ -43,6 +51,82 @@ REST = None
 #: Fraction of each note left silent at its end, so consecutive notes at the
 #: same pitch articulate instead of merging into one long tone.
 DETACHE = 0.10
+
+
+@functools.lru_cache(maxsize=4)
+def archive(name: str):
+    """Open one of the shipped clip archives.
+
+    Parameters
+    ----------
+    name : str
+        ``music`` or ``sfx``.
+
+    Returns
+    -------
+    zipfile.ZipFile or None
+        ``None`` when the archive is not installed, which is not an error: the
+        synthesiser covers everything the archives would have.
+    """
+    path = ASSET_DIR / f"{name}.zip"
+    if not path.is_file():
+        return None
+    try:
+        return zipfile.ZipFile(path)
+    except (OSError, zipfile.BadZipFile):
+        return None
+
+
+def clip_names(name: str) -> tuple[str, ...]:
+    """Everything in one archive.
+
+    Parameters
+    ----------
+    name : str
+        ``music`` or ``sfx``.
+
+    Returns
+    -------
+    tuple of str
+        Clip names without their extension, sorted. Empty when absent.
+    """
+    handle = archive(name)
+    if handle is None:
+        return ()
+    return tuple(sorted(
+        entry[:-4] for entry in handle.namelist() if entry.endswith(".snd")
+    ))
+
+
+@functools.lru_cache(maxsize=64)
+def clip(name: str, which: str = "sfx"):
+    """Decode one shipped clip.
+
+    Parameters
+    ----------
+    name : str
+        Clip name, without extension.
+    which : str, optional
+        ``music`` or ``sfx``.
+
+    Returns
+    -------
+    tuple or None
+        ``(pcm, rate)``, or ``None`` when there is no such clip.
+    """
+    handle = archive(which)
+    if handle is None:
+        return None
+    from . import adpcm
+
+    try:
+        raw = handle.read(f"{name}.snd")
+    except KeyError:
+        return None
+    try:
+        return adpcm.to_pcm(raw), adpcm.rate_of(raw)
+    except adpcm.ClipError:
+        return None
 
 
 def _harmonics(shape: str, freq: float) -> list[tuple[int, float]]:
@@ -352,6 +436,12 @@ def render_track(track: dict) -> bytes:
     bytes
         Little-endian signed 16-bit samples.
     """
+    recorded = track.get("clip")
+    if recorded:
+        found = clip(str(recorded), "music")
+        if found is not None:
+            return found[0]
+
     module = track.get("module")
     if module:
         # A track may be a tracker module rather than note data. The player is
@@ -456,7 +546,7 @@ def render_blip(frequency: float, duration: float, shape: str = "triangle",
     return (np.clip(out, -1.0, 1.0) * 32767.0).astype("<i2").tobytes()
 
 
-def write_wav(path: pathlib.Path, pcm: bytes) -> pathlib.Path:
+def write_wav(path: pathlib.Path, pcm: bytes, rate: int = SAMPLE_RATE) -> pathlib.Path:
     """Write PCM samples to a mono 16-bit WAV file.
 
     Parameters
@@ -465,6 +555,9 @@ def write_wav(path: pathlib.Path, pcm: bytes) -> pathlib.Path:
         Destination.
     pcm : bytes
         Little-endian signed 16-bit samples.
+    rate : int, optional
+        Sample rate. The shipped clips are stored at half the synthesiser's
+        rate, and a WAV that lies about its rate plays at the wrong pitch.
 
     Returns
     -------
@@ -474,7 +567,7 @@ def write_wav(path: pathlib.Path, pcm: bytes) -> pathlib.Path:
     with wave.open(str(path), "wb") as handle:
         handle.setnchannels(1)
         handle.setsampwidth(2)
-        handle.setframerate(SAMPLE_RATE)
+        handle.setframerate(int(rate))
         handle.writeframes(pcm)
     return path
 
@@ -514,7 +607,7 @@ class Audio:
         except Exception:
             self.enabled = False
 
-    def _load(self, key: str, pcm: bytes, loop: bool):
+    def _load(self, key: str, pcm: bytes, loop: bool, rate: int = SAMPLE_RATE):
         """Materialise PCM as a playable, cached effect.
 
         Parameters
@@ -525,6 +618,8 @@ class Audio:
             Sample data.
         loop : bool
             Whether playback repeats.
+        rate : int, optional
+            Sample rate of ``pcm``.
 
         Returns
         -------
@@ -537,7 +632,7 @@ class Audio:
             return self._effects[key]
         from qtpy.QtCore import QUrl
 
-        path = write_wav(self._dir / f"{key}.wav", pcm)
+        path = write_wav(self._dir / f"{key}.wav", pcm, rate)
         effect = self._sound_cls()
         effect.setSource(QUrl.fromLocalFile(str(path)))
         if loop:
@@ -574,7 +669,17 @@ class Audio:
         key = "music-" + hashlib.sha256(
             json.dumps(track, sort_keys=True).encode("utf-8")
         ).hexdigest()[:16]
-        effect = self._load(key, render_track(track), bool(track.get("loop", True)))
+        # A track that names a shipped clip is stored at the clip's own rate,
+        # not the synthesiser's; a WAV that lies about its rate plays at the
+        # wrong pitch and at the wrong speed.
+        rate = SAMPLE_RATE
+        recorded = track.get("clip")
+        if recorded:
+            found = clip(str(recorded), "music")
+            if found is not None:
+                rate = found[1]
+        effect = self._load(key, render_track(track), bool(track.get("loop", True)),
+                            rate)
         if effect is not None:
             effect.play()
             self._music = effect
@@ -586,7 +691,9 @@ class Audio:
         Parameters
         ----------
         name : str
-            Cache key; the same name reuses the same synthesised sample.
+            A clip in the shipped sound-effect pack -- see
+            :func:`clip_names` -- or any other name, which is synthesised from
+            the parameters below and cached under it.
         frequency : float, optional
             Pitch in Hz.
         duration : float, optional
@@ -596,8 +703,18 @@ class Audio:
         """
         if self._suspended:
             return
-        effect = self._load(f"sfx-{name}", render_blip(frequency, duration, bend=bend),
-                            loop=False)
+        # The pack maps a game's event name onto a recording; the synthesised
+        # blip is what a game gets when it asks for something the pack has no
+        # entry for, which is why every call site still passes a frequency.
+        chosen = name
+        if hasattr(self.pack, "sound_clip"):
+            chosen = self.pack.sound_clip(name) or name
+        found = clip(chosen, "sfx")
+        if found is not None:
+            effect = self._load(f"sfx-{name}", found[0], loop=False, rate=found[1])
+        else:
+            effect = self._load(f"sfx-{name}", render_blip(frequency, duration, bend=bend),
+                                loop=False)
         if effect is not None:
             effect.play()
 

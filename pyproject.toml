@@ -180,6 +180,8 @@ namespaces = true
 [tool.setuptools.package-data]
 "*" = [
     "*.json", "*.yaml",
+    # The games' audio: two archives of ADPCM clips beside the engine.
+    "*.zip",
     "*.ui", "*.css", "*.qss",
     "*.png", "*.svg",
     "*.csv", "*.npy", "*.dat",

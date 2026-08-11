@@ -349,6 +349,21 @@ class ProceduralPack(AssetPack):
             return look
         return Appearance(shape=RECT, color=color or self.PALETTE["ui"])
 
+    def sound_clip(self, event: str) -> str | None:
+        """Which recorded clip a game event plays.
+
+        Parameters
+        ----------
+        event : str
+            The name a game asked for.
+
+        Returns
+        -------
+        str or None
+            A clip name in the shipped sound pack, or ``None`` to synthesise.
+        """
+        return SOUNDS.get(event)
+
     def music_track(self, context: str) -> dict | None:
         """Return a synthesised track for a musical context.
 
@@ -368,6 +383,38 @@ class ProceduralPack(AssetPack):
         return TRACKS.get(context)
 
 
+#: What each game *event* actually sounds like. The games ask for an event by
+#: name -- ``"paddle"``, ``"clear"``, ``"unbind"`` -- and this is where that
+#: becomes a particular recording, so the vocabulary of a game never has to
+#: know what is installed. A name with no entry, or an entry the pack does not
+#: hold, falls through to the synthesised blip, which is why every call site
+#: still passes a frequency.
+SOUNDS: dict[str, str] = {
+    # Pong, Breakout, Tetris
+    "paddle": "menu_select1",
+    "wall": "damage_hit1",
+    "launch": "movement_jump1",
+    "score": "coin_double1",
+    "lost": "deathscream_human1",
+    "break": "damage_hit10",
+    "crack": "damage_hit4",
+    "settle": "movement_footsteps1a",
+    "clear": "coin_cluster1",
+    # Minesweeper, Number Quest
+    "reveal": "menu_move1",
+    "flag": "menu_select3",
+    "guess": "coin_double1",
+    # Lumis Quest
+    "emit": "wpn_sword1",
+    "unbind": "coin_cluster4",
+    "seal": "coin_cluster9",
+    "bleach": "deathscream_alien1",
+    "step": "movement_footsteps1b",
+    "door": "movement_dooropen1",
+    "talk": "menu_move2",
+    "cross": "alarm_loop1",
+}
+
 #: Note data for the default pack. Semitone offsets from the root; ``null`` is
 #: a rest and ``[semitone, eighths]`` holds a note. The sequencer in
 #: :mod:`chisurf.gui.chigame.audio` turns these into samples.
@@ -381,6 +428,8 @@ class ProceduralPack(AssetPack):
 TRACKS: dict[str, dict] = {
     # The road: D major, walking pace, a lead that leans on its long notes.
     "overworld": {
+        # Recorded first, synthesised if the pack is not installed.
+        "clip": "level_1",
         "root": 293.66,
         "tempo": 104,
         "loop": True,
@@ -422,6 +471,8 @@ TRACKS: dict[str, dict] = {
     },
     # Inside the walls: a slow waltz in G, no kit, close and domestic.
     "town": {
+        # Recorded first, synthesised if the pack is not installed.
+        "clip": "title_screen",
         "root": 392.00,
         "tempo": 96,
         "loop": True,
@@ -460,6 +511,8 @@ TRACKS: dict[str, dict] = {
     },
     # A fight: A minor, driving, the only track with a full kit under it.
     "battle": {
+        # Recorded first, synthesised if the pack is not installed.
+        "clip": "level_2",
         "root": 220.00,
         "tempo": 150,
         "loop": True,
@@ -496,6 +549,8 @@ TRACKS: dict[str, dict] = {
     # Underneath: slow, low, mostly rests. Nothing here is in a hurry and
     # nothing here resolves.
     "underworld": {
+        # Recorded first, synthesised if the pack is not installed.
+        "clip": "level_3",
         "root": 174.61,
         "tempo": 66,
         "loop": True,
@@ -517,6 +572,8 @@ TRACKS: dict[str, dict] = {
     },
     # A win: eight bars would be a victory lap. This is a fanfare.
     "victory": {
+        # Recorded first, synthesised if the pack is not installed.
+        "clip": "ending",
         "root": 329.63,
         "tempo": 132,
         "loop": False,

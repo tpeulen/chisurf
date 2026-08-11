@@ -172,6 +172,28 @@ missing until 2026-08-11:
   pleasant the intervals. They are now eight bars with phrase structure and a
   bass line following a chord progression: twelve to twenty seconds a loop.
 
+**The soundtrack is real recorded audio, and it fits in the repository.** Five
+seamlessly looping tracks and 512 sound effects by **Juhani Junkala**
+(SubspaceAudio), both **CC0**, live in `audio_assets/` as two zips of IMA ADPCM
+clips -- mono, 22.05 kHz, four bits a sample. That is **6.7 MB** against 27 MB
+for the source WAVs, which is the difference between a soundtrack that is
+committed and one that is a download step. `adpcm.py` is the codec: IMA is
+sequential by nature, so the stream is cut into independent blocks each
+carrying its own starting predictor, and every block is then decoded *in
+parallel* with numpy -- a minute of audio in milliseconds rather than a Python
+loop over millions of samples. `build_tools/dev_utils/pack_game_audio.py` is
+the one-off developer tool that produced them; nothing at runtime imports it.
+
+Two seams keep this swappable and optional. A track names a recording with
+`"clip"` **and keeps its note data**, so a stripped install degrades to the
+synthesiser rather than to silence. And a game asks for an *event*
+(`"paddle"`, `"unbind"`), which `AssetPack.sound_clip` maps onto a particular
+recording -- so a game's vocabulary never has to know what is installed, and a
+name with no entry still falls through to a synthesised blip, which is why
+every call site still passes a frequency. `audio_assets/CREDITS.md` carries the
+author's own licence statement verbatim: CC0 asks for nothing, but a package
+that redistributes somebody's work should say whose it is, in their words.
+
 **A track may be a tracker module** (`{"module": "song.mod"}`), rendered by
 `tracker.py` -- an in-tree ProTracker player, no dependency. This is the only
 audio format small enough to live in a source tree: a module stores a handful
