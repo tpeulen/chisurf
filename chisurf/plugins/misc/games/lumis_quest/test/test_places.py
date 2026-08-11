@@ -37,8 +37,10 @@ def world(tmp_path):
 def test_a_section_of_three_pages_is_not_the_same_place_as_one_of_twenty():
     """Three sizes, because a corpus has three sizes of section."""
     assert places.kind_for(2) == "hamlet"
-    assert places.kind_for(7) == "village"
+    assert places.kind_for(5) == "village"
     assert places.kind_for(20) == "town"
+    assert places.kind_for(places.HAMLET_MAX + 1) == "village"
+    assert places.kind_for(places.VILLAGE_MAX + 1) == "town"
     assert places.kind_for(1, warden=True) == "town", "somebody built the hall"
 
 

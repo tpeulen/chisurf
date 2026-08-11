@@ -61,9 +61,13 @@ CAMERA_LAG = 7.0
 #: How closely Lumi follows, in world units.
 LUMI_TRAIL = 26.0
 
-#: Iris' collision radius. Smaller than a tile so she fits through a one-tile
-#: gate without catching on its jambs.
-BODY = 5.0
+#: Half-width of Iris' collision box. A gate is one tile (18 units) wide, so a
+#: 12-unit box leaves three units of clearance each side -- forgiving enough to
+#: walk through, small enough that she cannot stand inside a wall.
+BODY = 6.0
+
+#: How far a blocked move is nudged sideways to slip past a corner.
+CORNER_SLIP = 3.0
 
 #: View heights: walking, and the range the shoulders zoom over.
 VIEW_HEIGHT = 330.0
@@ -906,6 +910,7 @@ class OverworldGame(chigame.Game):
         elif keys.is_held(Action.CANCEL):
             self.view_height = min(self.view_height * (1.0 + 1.9 * dt), VIEW_MAX)
 
+        self._unstick()
         self._clock += dt
         npcs_api.update(self.people, self.world, dt, self._clock, near=tuple(self.iris),
                         dark=self.dark)
@@ -1256,9 +1261,11 @@ class OverworldGame(chigame.Game):
         else:
             self.people = getattr(self, "_lit_people", None) or npcs_api.populate(self.world)
         # A step clear of the mouth, so the crossing does not immediately offer
-        # itself again from the other side.
+        # itself again from the other side -- and out of anything that is solid
+        # on this side but was not on the other.
         if not self._solid(self.iris[0], self.iris[1] + T.TILE):
             self.iris[1] += T.TILE
+        self._unstick()
 
     def _door_scene(self) -> str:
         """The scene the ground under Iris runs, if any.
@@ -1926,24 +1933,81 @@ class OverworldGame(chigame.Game):
         return options
 
     def _walk(self, dx: float, dy: float) -> None:
-        """Move Iris, sliding along anything solid.
+        """Move Iris, sliding along anything solid and slipping past corners.
 
-        Each axis resolves separately, so walking into a wall at an angle slides
-        along it instead of stopping dead. Without that the one-tile gates are
-        nearly impossible to enter.
+        Three things this has to get right, and the version before it got none
+        of them:
+
+        * **Never move more than a fraction of a tile at once.** The frame step
+          is capped at 0.1 s and a sprint is nearly 500 units a second, so one
+          hitched frame moved her *two and a half tiles* -- straight through a
+          wall, after which she was inside geometry and every subsequent move
+          was refused. That is what "stuck on objects" was.
+        * **Resolve the axes separately**, so walking into a wall at an angle
+          slides along it rather than stopping dead.
+        * **Slip past corners.** Catching the lip of a doorway and stopping
+          when you are a pixel off the opening is the most irritating thing a
+          tile game does. A blocked move is retried nudged to each side before
+          it is given up on.
 
         Parameters
         ----------
         dx, dy : float
             Intended movement in world units.
         """
-        if not self._solid(self.iris[0] + dx, self.iris[1]):
-            self.iris[0] += dx
-        if not self._solid(self.iris[0], self.iris[1] + dy):
-            self.iris[1] += dy
+        steps = max(1, int(math.hypot(dx, dy) / (BODY * 0.6)) + 1)
+        step_x, step_y = dx / steps, dy / steps
+        for _ in range(steps):
+            self._step(step_x, step_y)
+
+    def _step(self, dx: float, dy: float) -> None:
+        """Move by one sub-step, resolving each axis and slipping corners.
+
+        Parameters
+        ----------
+        dx, dy : float
+            Movement for this sub-step.
+        """
+        if dx and not self._slide(dx, 0.0):
+            for nudge in (CORNER_SLIP, -CORNER_SLIP):
+                if not self._solid(self.iris[0] + dx, self.iris[1] + nudge):
+                    self.iris[0] += dx
+                    self.iris[1] += nudge
+                    break
+        if dy and not self._slide(0.0, dy):
+            for nudge in (CORNER_SLIP, -CORNER_SLIP):
+                if not self._solid(self.iris[0] + nudge, self.iris[1] + dy):
+                    self.iris[0] += nudge
+                    self.iris[1] += dy
+                    break
+
+    def _slide(self, dx: float, dy: float) -> bool:
+        """Take a move if the destination is clear.
+
+        Parameters
+        ----------
+        dx, dy : float
+            Movement.
+
+        Returns
+        -------
+        bool
+            Whether it was taken.
+        """
+        if self._solid(self.iris[0] + dx, self.iris[1] + dy):
+            return False
+        self.iris[0] += dx
+        self.iris[1] += dy
+        return True
 
     def _solid(self, x: float, y: float) -> bool:
         """Whether Iris' body would overlap something solid.
+
+        The body is a **box**, and every tile the box touches is tested. The
+        version before this sampled four points on a cross, which never looked
+        at the body's own corners -- so she could clip diagonally into the
+        corner of a building, end up overlapping it, and then be refused every
+        move back out.
 
         Parameters
         ----------
@@ -1955,9 +2019,44 @@ class OverworldGame(chigame.Game):
         bool
             True when the move must be refused.
         """
-        for ox, oy in ((-BODY, 0.0), (BODY, 0.0), (0.0, -BODY), (0.0, BODY)):
-            if self.world.blocked(x + ox, y + oy, self.dark):
-                return True
+        left = int((x - BODY) // T.TILE)
+        right = int((x + BODY) // T.TILE)
+        top = int((y - BODY) // T.TILE)
+        bottom = int((y + BODY) // T.TILE)
+        for row in range(top, bottom + 1):
+            for col in range(left, right + 1):
+                if T.is_blocking(self.world.tile_at(col, row, self.dark)):
+                    return True
+        return False
+
+    def _unstick(self) -> bool:
+        """Get Iris out of anything she has ended up inside.
+
+        Nothing should put her inside a wall any more, but a save from an older
+        build, a corpus that changed under a stored position, or crossing into
+        the dark manifold onto ground that is solid *there* all can. Freezing
+        the player is the worst possible answer: the game looks broken and
+        there is no way out but a restart.
+
+        Returns
+        -------
+        bool
+            Whether she had to be moved.
+        """
+        if not self._solid(*self.iris):
+            return False
+        col = int(self.iris[0] // T.TILE)
+        row = int(self.iris[1] // T.TILE)
+        for radius in range(1, 24):
+            for drow in range(-radius, radius + 1):
+                for dcol in range(-radius, radius + 1):
+                    if max(abs(drow), abs(dcol)) != radius:
+                        continue
+                    x = (col + dcol + 0.5) * T.TILE
+                    y = (row + drow + 0.5) * T.TILE
+                    if not self._solid(x, y):
+                        self.iris[0], self.iris[1] = x, y
+                        return True
         return False
 
     def _map_view(self) -> tuple[tuple[float, float], float]:

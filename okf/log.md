@@ -1,6 +1,23 @@
 # Update Log
 
 ## 2026-08-11
+* **Lumis Quest: collision was wrong in two ways and the towns were too small**
+  ([PRD-91](prds/prd-91.md)). "Stuck on objects all the time" had a specific
+  cause: the frame step is capped at 0.1 s and a sprint is nearly 500 units a
+  second, so **one hitched frame moved Iris two and a half tiles** -- through a
+  wall, after which she was inside geometry and every move out was refused.
+  Movement is sub-stepped now. The second bug was the collision shape: four
+  sample points on a cross, which never tested the body's own corners, so she
+  could clip diagonally into a building and end up overlapping it. It is an
+  AABB over every tile the box touches. Added corner-slip (a blocked move is
+  retried nudged to each side, so catching the lip of a doorway no longer stops
+  you dead) and `_unstick`, which walks her out of anything she is inside
+  rather than freezing -- an older save or a corpus that changed under a stored
+  position can still put her there. Towns: `PITCH` 3 -> 4 so a street is three
+  tiles rather than two, `MARGIN` 2 -> 3, plots laid out wider than square, and
+  the town threshold dropped to 7 pages. Largest town is now 41x69 tiles and
+  compound interiors are 96% walkable. Five new tests, including a sprint at the
+  frame cap into every wall of a compound and an off-centre approach to a gate.
 * **Lumis Quest can be finished** ([PRD-91](prds/prd-91.md)). The last two
   beats were written, scripted and unreachable: `data/story.json` held Vesper's
   four screens and the three doctrine replies, `data/dialogue.json` held the

@@ -51,16 +51,22 @@ from .tiles import (
 )
 
 #: Tiles from one building plot to the next. At 2 the buildings sat on every
-#: other tile -- a grid of doors with a one-tile alley between them. At 3 a
-#: settlement has streets.
-PITCH = 3
+#: other tile -- a grid of doors with a one-tile alley between them. At 3 the
+#: streets were two tiles, which is wide enough to walk down and narrow enough
+#: that every lantern post and market stall in one is something to catch on.
+#: At 4 a street is three tiles: room to pass a stall, and room for the people
+#: who live there to walk past each other.
+PITCH = 4
 
-#: Open ground kept between the wall and the outermost plot.
-MARGIN = 2
+#: Open ground kept between the wall and the outermost plot, so a compound has
+#: a perimeter street rather than houses jammed against the wall.
+MARGIN = 3
 
-#: Page counts at which a settlement changes kind.
-HAMLET_MAX = 3
-VILLAGE_MAX = 9
+#: Page counts at which a settlement changes kind. A town is the interesting
+#: one and the corpus has plenty of sections that deserve to be one, so the
+#: threshold is low.
+HAMLET_MAX = 2
+VILLAGE_MAX = 6
 
 #: Which premises each kind of settlement has, in the order they claim the
 #: cells facing the square.
@@ -174,8 +180,11 @@ def plan(room_count: int, kind: str, warden: bool = False) -> Plan:
     # gardens. Squaring that up gives a compound that reads as deliberate.
     gardens = 2 if kind != "hamlet" else 1
     needed = room_count + len(plot_premises) + 4 + gardens
-    columns = max(3, min(7, int(needed ** 0.5 + 0.999)))
-    rows = max(2, -(-needed // columns))
+    # Wider than square. A town you can see across in one screen is a
+    # courtyard; laying the plots out broad rather than deep gives a main
+    # street with length to it.
+    columns = max(4, min(9, int((needed * 1.4) ** 0.5 + 0.999)))
+    rows = max(3, -(-needed // columns))
 
     width = (columns - 1) * PITCH + 2 * (1 + MARGIN) + 1
     height = (rows - 1) * PITCH + 2 * (1 + MARGIN) + 1

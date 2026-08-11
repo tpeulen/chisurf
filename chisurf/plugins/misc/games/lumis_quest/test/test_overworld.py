@@ -138,22 +138,65 @@ def test_the_story_advances_from_the_world_not_from_a_button(game):
 
 
 def test_diagonal_movement_is_not_faster(game):
-    """Normalising the axis stops diagonals being a speed exploit."""
-    game.iris = [0.0, 0.0]
+    """Normalising the axis stops diagonals being a speed exploit.
+
+    Measured from open ground rather than from world coordinate (0, 0), which
+    is the corner of the sea outside every land: she is relocated out of it
+    now, and two runs starting from an illegal position do not start from the
+    same legal one.
+    """
+    open_ground = _open_ground(game)
+    start = list(open_ground)
+
+    game.iris = list(start)
     game.host.keys.press(Action.RIGHT)
     for _ in range(30):
         game.update(1 / 60, game.host.keys)
-    straight = abs(game.iris[0])
+    straight = abs(game.iris[0] - start[0])
 
     game.host.keys.release(Action.RIGHT)
     game.host.keys.end_frame()
-    game.iris = [0.0, 0.0]
+    game.iris = list(start)
     game.host.keys.press(Action.RIGHT)
     game.host.keys.press(Action.DOWN)
     for _ in range(30):
         game.update(1 / 60, game.host.keys)
-    diagonal = (game.iris[0] ** 2 + game.iris[1] ** 2) ** 0.5
+    diagonal = ((game.iris[0] - start[0]) ** 2
+                + (game.iris[1] - start[1]) ** 2) ** 0.5
+    assert straight > 50.0, "she has to have somewhere to walk"
     assert diagonal == pytest.approx(straight, rel=0.02)
+
+
+def _open_ground(game) -> tuple[float, float]:
+    """A spot with room to walk in every direction, for a movement test.
+
+    Parameters
+    ----------
+    game : OverworldGame
+        The running game.
+
+    Returns
+    -------
+    tuple of float
+        World coordinates.
+    """
+    region = game.world.regions[0]
+    col, row, width, height = region.rect
+    # The test walks 30 frames, which is over five tiles, so the run has to be
+    # clear that far in both directions it uses. Scanned over the whole land
+    # rather than around its middle: a small corpus makes a land that is mostly
+    # compound and border woodland, with the open ground off to one side.
+    span = 7
+    for start_row in range(row + 1, row + height - span):
+        for start_col in range(col + 1, col + width - span):
+            if all(
+                not tiles.is_blocking(game.world.tile_at(start_col + dx,
+                                                         start_row + dy))
+                for dx in range(span) for dy in range(span)
+            ):
+                return ((start_col + 0.5) * tiles.TILE,
+                        (start_row + 0.5) * tiles.TILE)
+    raise AssertionError("no open ground in the first land")
 
 
 def test_lumi_follows_without_overlapping(game):
@@ -898,3 +941,111 @@ def test_regenerating_redraws_the_wilderness_but_not_the_world(game):
     game.finish_loading()
     assert [r.title for r in game.world.regions] == lands
     assert {room.address: room.tile for room in game.world.rooms} == rooms
+
+
+def test_a_hitched_frame_does_not_put_her_through_a_wall(game):
+    """The bug behind "stuck on objects all the time".
+
+    The frame step is capped at 0.1 s and a sprint is nearly 500 units a
+    second, so one hitched frame used to move her two and a half tiles --
+    through a wall, after which she was inside geometry and every move out was
+    refused. Movement is sub-stepped now, so the cap is what she is tested at.
+    """
+    from chisurf.plugins.misc.games.lumis_quest.gui.overworld import BODY
+
+    village = game.world.villages[0]
+    col, row, width, height = village.rect
+    for corner_x, corner_y in ((col + 1.5, row + height + 3.0),
+                               (col + width - 1.5, row + height + 3.0)):
+        game.iris = [corner_x * tiles.TILE, corner_y * tiles.TILE]
+        game.host.keys.press(Action.UP)
+        game.host.keys.press(Action.CONFIRM)      # sprint
+        for _ in range(60):
+            game.update(game.host.MAX_DT, game.host.keys)
+            assert not game._solid(*game.iris), (
+                f"walked into something solid at {game.iris}"
+            )
+        game.host.keys.release(Action.UP)
+        game.host.keys.release(Action.CONFIRM)
+    assert BODY * 2 < tiles.TILE, "the body has to fit through a one-tile gate"
+
+
+def test_she_is_never_frozen_wherever_she_is_put(game):
+    """Being unable to move at all is worse than being moved wrongly."""
+    world = game.world
+    tried = 0
+    for village in world.villages[:4]:
+        col, row, width, height = village.rect
+        for spot in ((col + width / 2, row + height / 2),
+                     (col + 1.5, row + 1.5),
+                     (col + width - 1.5, row + height - 1.5)):
+            game.iris = [spot[0] * tiles.TILE, spot[1] * tiles.TILE]
+            game._unstick()
+            assert not game._solid(*game.iris)
+            before = list(game.iris)
+            moved = False
+            for action in (Action.UP, Action.DOWN, Action.LEFT, Action.RIGHT):
+                game.host.keys.press(action)
+                for _ in range(6):
+                    game.update(1 / 60, game.host.keys)
+                game.host.keys.release(action)
+                if game.iris != before:
+                    moved = True
+                    break
+            assert moved, f"frozen at {spot}"
+            tried += 1
+    assert tried >= 6
+
+
+def test_being_inside_a_wall_is_recovered_from_not_frozen(game):
+    """A save from an older build, or a corpus that changed underneath one."""
+    village = game.world.villages[0]
+    col, row, _, _ = village.rect
+    # The compound's own corner is solid whatever kind of settlement it is.
+    game.iris = [(col + 0.5) * tiles.TILE, (row + 0.5) * tiles.TILE]
+    if not game._solid(*game.iris):
+        pytest.skip("that corner is not solid in this layout")
+    assert game._unstick(), "she was inside something and was not moved"
+    assert not game._solid(*game.iris)
+    assert game._unstick() is False, "unsticking twice must be a no-op"
+
+
+def test_a_doorway_can_be_walked_through_off_centre(game):
+    """Catching the lip of a gate is the most irritating thing a tile game does."""
+    village = next((v for v in game.world.villages if v.kind != "hamlet"),
+                   game.world.villages[0])
+    gate_col, gate_row = village.gate
+    entered = 0
+    for offset in (-0.28, 0.0, 0.28):
+        game.iris = [(gate_col + 0.5 + offset) * tiles.TILE,
+                     (gate_row + 2.5) * tiles.TILE]
+        if game._solid(*game.iris):
+            continue
+        game.host.keys.press(Action.UP)
+        for _ in range(90):
+            game.update(1 / 60, game.host.keys)
+        game.host.keys.release(Action.UP)
+        if game.iris[1] < (gate_row - 0.5) * tiles.TILE:
+            entered += 1
+    assert entered >= 2, "an off-centre approach has to slip into the doorway"
+
+
+def test_a_town_is_big_enough_to_be_a_town(game):
+    """And mostly walkable, because a plaza full of posts is an obstacle course."""
+    from chisurf.plugins.misc.games.lumis_quest.api import places
+
+    assert places.PITCH >= 4, "a street narrower than three tiles snags"
+    for village in game.world.villages:
+        _, _, width, height = village.rect
+        assert width >= 12 and height >= 12, (village.place, width, height)
+
+    open_ = solid = 0
+    for village in game.world.villages:
+        col, row, width, height = village.rect
+        for y in range(row + 1, row + height - 1):
+            for x in range(col + 1, col + width - 1):
+                if tiles.is_blocking(game.world.tile_at(x, y)):
+                    solid += 1
+                else:
+                    open_ += 1
+    assert open_ / max(open_ + solid, 1) > 0.85, "too much of a compound is furniture"
