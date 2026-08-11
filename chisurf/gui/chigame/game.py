@@ -190,6 +190,7 @@ class GameHost:
         self.keys.end_frame()
         for player in self._extra_players:
             player.end_frame()
+        self.sync_audio()
         if self.game.music_context is not None:
             self.audio.set_context(self.game.music_context)
 
@@ -219,6 +220,48 @@ class GameHost:
         render_pass.end()
         self.ctx.device.queue.submit([encoder.finish()])
         return drawn
+
+    def attend(self) -> bool:
+        """Whether this game's window is the one the user is actually looking at.
+
+        Returns
+        -------
+        bool
+            False when the widget is hidden, or its window is not the active
+            one. An offscreen canvas has no widget at all and counts as
+            attended, because a headless capture is nobody's foreground.
+        """
+        canvas = getattr(self.ctx, "canvas", None)
+        if canvas is None or not hasattr(canvas, "isVisible"):
+            return True
+        try:
+            if not canvas.isVisible():
+                return False
+            window = canvas.window()
+            return bool(window is None or window.isActiveWindow())
+        except Exception:
+            # A widget being torn down answers nothing useful; silence is the
+            # safe reading of that.
+            return False
+
+    def sync_audio(self) -> None:
+        """Suspend or resume the mixer to match the window.
+
+        A game in a window nobody is looking at must not still be audible.
+        Frames may stop entirely when a widget is hidden, so this is called
+        both per frame *and* from the event filter installed by
+        :func:`create_widget`.
+        """
+        if not self.audio.enabled:
+            return
+        if self.attend():
+            self.audio.resume()
+        else:
+            self.audio.suspend()
+
+    def close(self) -> None:
+        """Stop the game's audio for good."""
+        self.audio.stop()
 
     def start(self) -> None:
         """Drive frames continuously from the canvas' own draw scheduling."""
@@ -255,7 +298,78 @@ def create_widget(game: Game, parent=None, pack: AssetPack | None = None, **kwar
     context = create_gpu_widget(parent=parent)
     host = GameHost(game, context, pack=pack, **kwargs)
     host.start()
+    _watch_focus(host, context.canvas)
     return context.canvas, host
+
+
+def _watch_focus(host: GameHost, widget) -> None:
+    """Make a game go quiet the moment its window stops being the front one.
+
+    Polling inside ``frame`` is not enough on its own: a hidden widget may stop
+    being asked to draw at all, and a game whose frames have stopped with its
+    music still playing is the worst version of this bug. So the window's own
+    show/hide/activate events are watched too, and both routes call the same
+    :meth:`GameHost.sync_audio`.
+
+    Parameters
+    ----------
+    host : GameHost
+        The running game.
+    widget : QWidget
+        The canvas.
+    """
+    try:
+        from qtpy.QtCore import QEvent, QObject
+    except Exception:  # pragma: no cover - no Qt in this build
+        return
+
+    watched = frozenset({
+        QEvent.Type.Show, QEvent.Type.Hide, QEvent.Type.Close,
+        QEvent.Type.WindowActivate, QEvent.Type.WindowDeactivate,
+        QEvent.Type.WindowStateChange, QEvent.Type.ApplicationStateChange,
+    })
+
+    class _Watcher(QObject):
+        """Keeps the mixer in step with the window."""
+
+        def eventFilter(self, obj, event):  # noqa: N802 - Qt's spelling
+            """Sync audio on anything that changes whether we are in front.
+
+            Parameters
+            ----------
+            obj : QObject
+                The watched object.
+            event : QEvent
+                What happened.
+
+            Returns
+            -------
+            bool
+                Always False: this observes, it never consumes.
+            """
+            if event.type() in watched:
+                try:
+                    host.sync_audio()
+                except Exception:
+                    pass
+            return False
+
+    watcher = _Watcher(widget)
+    widget.installEventFilter(watcher)
+    window = widget.window()
+    if window is not None and window is not widget:
+        window.installEventFilter(watcher)
+    try:
+        from qtpy.QtWidgets import QApplication
+
+        app = QApplication.instance()
+        if app is not None:
+            app.installEventFilter(watcher)
+    except Exception:
+        pass
+    # Keep it alive for as long as the host does; a filter that is collected
+    # stops filtering and the bug comes back silently.
+    host._focus_watcher = watcher
 
 
 def capture(

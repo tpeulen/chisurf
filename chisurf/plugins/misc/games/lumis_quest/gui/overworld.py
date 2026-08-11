@@ -138,11 +138,24 @@ STRUCTURE_SPRITES = {
 #: brown for withered, the plot that was tended and has rotted under its
 #: sign-off. Crop rot the gardener cannot see is crop rot nobody fixes.
 HOUSE_TINT = {
-    WILD: (0.62, 0.64, 0.72, 1.0),
-    WITHERED: (0.72, 0.58, 0.40, 1.0),
+    # Not so dark that the house stops reading as a house: most of a town is
+    # unread, and a town of murk is a town nobody wants to walk through. The
+    # difference from settled is warmth and the lit windows, not brightness.
+    WILD: (0.74, 0.76, 0.86, 1.0),
+    WITHERED: (0.80, 0.62, 0.42, 1.0),
     SCOUTED: (0.78, 0.92, 1.00, 1.0),
     SETTLED: (1.00, 0.97, 0.84, 1.0),
 }
+
+#: How many tiles tall anything built is drawn. A building the size of its own
+#: tile sits inside the ground; at one and a half it stands on it and overlaps
+#: the row behind, which is the whole reason a 16-bit town reads as a town.
+BUILDING_HEIGHT = 1.5
+
+#: Structures that are *ground furniture* rather than buildings, and so are
+#: drawn at their own tile size. A fence post standing a tile and a half tall
+#: is a fence you cannot see over.
+FLAT_STRUCTURES = frozenset({T.FENCE, T.SIGN})
 
 #: Frames per second of the walk cycle.
 WALK_FPS = 6.0
@@ -349,7 +362,6 @@ class OverworldGame(chigame.Game):
 
     title = "Lumis Quest"
     background = (0.020, 0.024, 0.030, 1.0)
-    music_context = "overworld"
 
     def __init__(self, world: World | None = None, save_path=None, docs_root=None) -> None:
         self._world = world
@@ -734,6 +746,31 @@ class OverworldGame(chigame.Game):
     def save_run(self) -> None:
         """Write the run to disk."""
         self.snapshot().save(self._save_path)
+
+    @property
+    def music_context(self) -> str:
+        """Which piece should be playing.
+
+        The game had one context and therefore one loop, everywhere, forever --
+        which is most of why the soundtrack was unbearable however good the
+        tune was. Where you are is now what you hear.
+
+        Returns
+        -------
+        str
+            One of :data:`chisurf.gui.chigame.audio.CONTEXTS`.
+        """
+        if getattr(self, "battle", None) is not None:
+            return "battle"
+        if getattr(self, "dark", False):
+            return "underworld"
+        if getattr(self, "phase", "") in ("title", "prologue", "epilogue"):
+            return "town"
+        world = getattr(self, "world", None)
+        if world is not None and world.villages:
+            if world.village_at(self.iris[0], self.iris[1]) is not None:
+                return "town"
+        return "overworld"
 
     @property
     def grid_array(self):
@@ -2182,9 +2219,13 @@ class OverworldGame(chigame.Game):
                 x = (col0 + int(col) + 0.5) * T.TILE
                 y = (row0 + int(row) + 0.5) * T.TILE
                 if lit:
-                    scene.draw("photon", f"lamp{int(row)}_{int(col)}", at=(x, y),
+                    scene.draw("photon", f"lamp{int(row)}_{int(col)}",
+                               at=(x, y - T.TILE * 0.3),
                                size=(T.TILE * 0.85, T.TILE * 0.85), emission_nm=600.0)
-                self._sprite(scene, sprite, (x, y), T.TILE)
+                if kind in FLAT_STRUCTURES:
+                    self._sprite(scene, sprite, (x, y), T.TILE)
+                else:
+                    self._building(scene, sprite, (x, y))
 
     def _visible_tiles(self, camera, half) -> tuple[int, int, int, int]:
         """Grid range covering the view.
@@ -2297,18 +2338,64 @@ class OverworldGame(chigame.Game):
                 # with different optics shows you things that were always there.
                 nm = self.guardian_nm(room)
                 if nm and not self.loadout.sees(nm):
-                    self._sprite(scene, "house_wild", (x, y), T.TILE,
-                                 tint=(0.16, 0.17, 0.20, 1.0))
+                    self._building(scene, self._house_sprite(room, lit=False), (x, y),
+                                   tint=(0.16, 0.17, 0.20, 1.0))
                     continue
 
             if room.state == SETTLED:
-                scene.draw("photon", "halo", at=(x, y), size=(T.TILE * 1.5, T.TILE * 1.5),
-                           emission_nm=SETTLED_NM)
+                scene.draw("photon", "halo", at=(x, y - T.TILE * 0.2),
+                           size=(T.TILE * 1.7, T.TILE * 1.7), emission_nm=SETTLED_NM)
             elif room.state == SCOUTED:
-                scene.draw("photon", "halo", at=(x, y), size=(T.TILE * 1.1, T.TILE * 1.1),
-                           emission_nm=SCOUTED_NM)
-            self._sprite(scene, f"house_{room.state}", (x, y), T.TILE,
-                         tint=HOUSE_TINT[room.state])
+                scene.draw("photon", "halo", at=(x, y - T.TILE * 0.2),
+                           size=(T.TILE * 1.2, T.TILE * 1.2), emission_nm=SCOUTED_NM)
+            lit = room.state in (SETTLED, SCOUTED)
+            self._building(scene, self._house_sprite(room, lit), (x, y),
+                           tint=HOUSE_TINT[room.state])
+
+    def _house_sprite(self, room, lit: bool) -> str:
+        """Which of the four house styles a page is built in.
+
+        Chosen by the page's own address, so a street is slate beside thatch
+        beside tile the way a street is, and the same page is the same house on
+        every visit.
+
+        Parameters
+        ----------
+        room : chisurf.plugins.misc.games.lumis_quest.api.world.Room
+            The page.
+        lit : bool
+            Whether anybody has read it.
+
+        Returns
+        -------
+        str
+            A sprite name.
+        """
+        style = npcs_api._seed(room.address) % pixelart.HOUSE_STYLES
+        return f"house{style}_{'lit' if lit else 'dark'}"
+
+    def _building(self, scene, sprite: str, at, tint=(1.0, 1.0, 1.0, 1.0)) -> None:
+        """Draw something built, standing a tile and a half tall.
+
+        A building the size of its own tile sits *in* the ground; a 16-bit town
+        reads because its buildings stand over it and overlap the row behind.
+        The sprite is drawn oversized and pushed up so its base stays exactly
+        where the tile is.
+
+        Parameters
+        ----------
+        scene : chisurf.gui.chigame.scene.Scene
+            Frame under construction.
+        sprite : str
+            Sprite name.
+        at : sequence of float
+            Centre of the *tile*, in world units.
+        tint : tuple of float, optional
+            Multiplied into the artwork.
+        """
+        size = T.TILE * BUILDING_HEIGHT
+        self._sprite(scene, sprite, (at[0], at[1] - (size - T.TILE) * 0.5), size,
+                     tint=tint)
 
     def _draw_battle(self, scene, camera, half) -> None:
         """Draw the encounter over the world.

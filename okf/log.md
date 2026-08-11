@@ -1,6 +1,34 @@
 # Update Log
 
 ## 2026-08-11
+* **The soundtrack is music now, and a game nobody is looking at is silent**
+  ([chigame](subsystems/chigame.md)). Two things were wrong and both were
+  structural. The oscillators were naive — a square built from a sign flip, at
+  22.05 kHz, puts most of its energy above Nyquist and it folds back down as a
+  metallic buzz; they are additive and band-limited now, at 44.1 kHz, with
+  vibrato, an optional detuned second oscillator, a real ADSR, a lowpass over
+  the mix and `tanh` soft clipping, plus a drum voice. And the *tracks* were
+  patterns rather than pieces: sixteen unbroken eighth notes, a four-second loop
+  with no rest, no held note, no harmony and no cadence. A note may now be
+  `[semitone, eighths]` or `null`, and all five shipped tracks are eight bars
+  with phrase structure and a bass line on a chord progression — twelve to
+  twenty seconds a loop. Synthesis moved to numpy: the whole soundtrack builds
+  in ~0.4 s. **All five arcade games get this**, because they already share the
+  five contexts; Lumis Quest additionally makes `music_context` a property, so
+  the town, the wilds, a fight and the dark manifold each sound different
+  instead of one loop everywhere forever. Separately, `Audio.suspend()`/
+  `resume()` plus `GameHost.attend()`/`sync_audio()` and a Qt event filter mean
+  a game goes quiet the moment its window is hidden or stops being the active
+  one — driven from both the frame loop and the window's own events, since a
+  hidden widget may stop being asked to draw at all.
+* **Lumis Quest's towns look like towns** ([PRD-91](prds/prd-91.md)). Four house
+  styles (tile, slate, thatch, stone), chosen by page address so a street is
+  not twenty identical boxes; everything built is drawn a tile and a half tall
+  and anchored at its base, so buildings stand *on* the ground and overlap the
+  row behind rather than sitting inside it; the town floor is trodden earth
+  instead of pale plaster, so the paved square reads as the middle of the
+  place; and the shrine, the Warden's hall and the stone house were redrawn
+  after a contact sheet showed them reading as boxes at full size.
 * **Lumis Quest becomes a game: marked animals, a tier ladder, a data-driven
   engine, a dark manifold, and a town with a day of its own**
   ([PRD-91](prds/prd-91.md)). You no longer fight dyes: a beast is a real
@@ -119,15 +147,6 @@
 * **`plugins/core/acq/gui/tool.py` off the numba list** by deleting its
   SPC-130 decoder copy for `tttrlib.decode_records`; allow-list 19 → 18.
   Traps and verification in [numba retirement](subsystems/numba-retirement.md) §3.
-* **2D-FLC marked a tttrlib candidate** (user): `flc_2d/core.py`'s five kernels
-  are specified by tttrlib PRD-036, written against the original MATLAB in
-  `junk/2D-FLC-code` and requiring every kernel be tested by simulation with a
-  known answer — including a single-state negative control.
-* **`flc_2d/api.py` off the numba list** (13 left) — its only numba use was
-  choosing a chunk count, which never changes the result. Taking it off exposed
-  a real defect: the plugin's kernels could not cold-compile at all after
-  `env_bootstrap` rewrites `NUMBA_NUM_THREADS`. Guard added, suite 26 passed.
-  (Re-added: an earlier commit of this entry was dropped by a peer's stale index.)
 * **XTC support dropped** on the user's instruction — DCD is enough and is
   lossless. Deletes the reader, its six XDR bit-unpacking numba kernels and the
   only rescale-on-read in the tree; allow-list 15 → 14. Swept 36 files of

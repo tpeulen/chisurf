@@ -103,6 +103,13 @@ PALETTE: dict[str, tuple[int, int, int, int]] = {
     "Y": (222, 216, 204, 255),   # dressed white stone
     "$": (168, 72, 64, 255),     # awning red
     ">": (170, 190, 205, 255),   # ground glass / steel
+    # More than one kind of house, because a street of twenty identical boxes
+    # is a housing estate whatever you paint on it.
+    "<": (112, 126, 146, 255),   # slate light
+    "/": (64, 74, 94, 255),      # slate shadow
+    "~": (186, 158, 96, 255),    # thatch light
+    "|": (126, 102, 60, 255),    # thatch shadow
+    ":": (168, 152, 126, 255),   # timber-framed wall
 }
 
 #: Pixels per sprite. 16x16 is the era's own size for a character sprite.
@@ -157,10 +164,10 @@ TERRAIN: dict[str, list[str]] = {
         "ddDdddDdd8dddddd", "dddddddddddDd1dd", "d8dDdd1ddddddddd", "ddddddddDddddndd",
     ],
     "floor": [
-        "DSSDdDSSSDdDSSSD", "SSSSdSSSSSdSSSSS", "DSSDdDSSSDdDSSSD", "dddddddddddddddd",
-        "SDdDSSSDdDSSSDdS", "SSdSSSSSdSSSSSdS", "SDdDSSSDdDSSSDdS", "dddddddddddddddd",
-        "DSSDdDSSSDdDSSSD", "SSSSdSSSSSdSSSSS", "DSSDdDSSSDdDSSSD", "dddddddddddddddd",
-        "SDdDSSSDdDSSSDdS", "SSdSSSSSdSSSSSdS", "SDdDSSSDdDSSSDdS", "dddddddddddddddd",
+        "ddDddddddDdddddd", "dddddxddddddDddd", "dDddddddddxddddd", "ddddDdddddddddDd",
+        "dddxdddddDdddddd", "dDdddddddddddxdd", "ddddddDdddddddDd", "dxddddddddDddddd",
+        "ddDdddddxdddddDd", "ddddddDddddddddd", "dDddxdddddDddddd", "dddddddDdddxdddd",
+        "ddDddddddddddDdd", "ddddxddDdddddddd", "dDdddddddxdddddd", "dddDddddddddDddd",
     ],
     "wall": [
         "SSSSSSSSSSSSSSSS", "XxxXxxxXxxxXxxxX", "XxxXxxxXxxxXxxxX", "EEEEEEEEEEEEEEEE",
@@ -203,6 +210,63 @@ _HOUSE_LIT = [
     ".KKKKKKKKKKKKKK.", ".EmSmmmmmmmmSmE.", ".EmM99mmmm99MmE.", ".EmM99mmmm99MmE.",
     ".EmmmmmZZmmmmmE.", ".EmmmmmZ9mmmmmE.", ".Emmmmm88mmmmmE.", ".55555555555555.",
 ]
+
+#: Four ways to build a house, dark and lit. A page's address picks one, so a
+#: street has slate beside thatch beside tile the way a street does, and the
+#: same page is the same house on every visit. Drawn full-height in the sprite
+#: and rendered a tile and a half tall, which is how a 16-bit town gets
+#: buildings that stand *over* the ground rather than sitting inside it.
+_HOUSE_TILE_DARK = [
+    "................", "......KIIK......", ".....KIIIIK.....", "....KIIIIIIK....",
+    "...KIIIIIIIIK...", "..KIIIIIIIIIIK..", ".KKKKKKKKKKKKKK.", ".E::::::::::::E.",
+    ".E:mm::::::mm:E.", ".E:mm::::::mm:E.", ".E::::::::::::E.", ".E:::::ZZ:::::E.",
+    ".E:::::ZZ:::::E.", ".E:::::Z8:::::E.", ".EEEEEEEEEEEEEE.", ".55555555555555.",
+]
+_HOUSE_TILE_LIT = [
+    "................", "......KIIK......", ".....KIIIIK.....", "....KIIIIIIK....",
+    "...KIIIIIIIIK...", "..KIIIIIIIIIIK..", ".KKKKKKKKKKKKKK.", ".E::::::::::::E.",
+    ".E:99::::::99:E.", ".E:99::::::99:E.", ".E::::::::::::E.", ".E:::::ZZ:::::E.",
+    ".E:::::Z9:::::E.", ".E:::::Z8:::::E.", ".EEEEEEEEEEEEEE.", ".55555555555555.",
+]
+_HOUSE_SLATE_DARK = [
+    "................", "...<<<<<<<<<<...", "..<<////////<<..", "..<<<<<<<<<<<<..",
+    ".E::::::::::::E.", ".E:mm::::::mm:E.", ".E:mm::::::mm:E.", ".E::::::::::::E.",
+    ".E<<<<<<<<<<<<E.", ".E::::::::::::E.", ".E:mm::::::mm:E.", ".E:mm::::::mm:E.",
+    ".E:::::ZZ:::::E.", ".E:::::Z8:::::E.", ".EEEEEEEEEEEEEE.", ".55555555555555.",
+]
+_HOUSE_SLATE_LIT = [
+    "................", "...<<<<<<<<<<...", "..<<////////<<..", "..<<<<<<<<<<<<..",
+    ".E::::::::::::E.", ".E:99::::::99:E.", ".E:99::::::99:E.", ".E::::::::::::E.",
+    ".E<<<<<<<<<<<<E.", ".E::::::::::::E.", ".E:99::::::99:E.", ".E:99::::::99:E.",
+    ".E:::::ZZ:::::E.", ".E:::::Z9:::::E.", ".EEEEEEEEEEEEEE.", ".55555555555555.",
+]
+_HOUSE_THATCH_DARK = [
+    "................", "......~~~~......", ".....~~||~~.....", "....~~||||~~....",
+    "...~~||||||~~...", "..~~||||||||~~..", ".~~~~~~~~~~~~~~.", ".E::::::::::::E.",
+    ".E:mm::::::mm:E.", ".E:mm::::::mm:E.", ".E::::::::::::E.", ".E:::::ZZ:::::E.",
+    ".E:::::ZZ:::::E.", ".E:::::Z8:::::E.", ".EEEEEEEEEEEEEE.", ".55555555555555.",
+]
+_HOUSE_THATCH_LIT = [
+    "................", "......~~~~......", ".....~~||~~.....", "....~~||||~~....",
+    "...~~||||||~~...", "..~~||||||||~~..", ".~~~~~~~~~~~~~~.", ".E::::::::::::E.",
+    ".E:99::::::99:E.", ".E:99::::::99:E.", ".E::::::::::::E.", ".E:::::ZZ:::::E.",
+    ".E:::::Z9:::::E.", ".E:::::Z8:::::E.", ".EEEEEEEEEEEEEE.", ".55555555555555.",
+]
+_HOUSE_STONE_DARK = [
+    "................", "......KKKK......", ".....KIIIIK.....", "....KIIIIIIK....",
+    "...KIIIIIIIIK...", "..KKKKKKKKKKKK..", ".EmmmmmmmmmmmmE.", ".Em:mm::::mm:mE.",
+    ".Em:mm::::mm:mE.", ".EmmmmmmmmmmmmE.", ".Em::::::::::mE.", ".Em::ZZZZZZ::mE.",
+    ".Em::ZZZZZZ::mE.", ".Em::Z8ZZ8Z::mE.", ".EEEEEEEEEEEEEE.", ".55555555555555.",
+]
+_HOUSE_STONE_LIT = [
+    "................", "......KKKK......", ".....KIIIIK.....", "....KIIIIIIK....",
+    "...KIIIIIIIIK...", "..KKKKKKKKKKKK..", ".EmmmmmmmmmmmmE.", ".Em:99::::99:mE.",
+    ".Em:99::::99:mE.", ".EmmmmmmmmmmmmE.", ".Em::::::::::mE.", ".Em::ZZZZZZ::mE.",
+    ".Em::Z9999Z::mE.", ".Em::Z8ZZ8Z::mE.", ".EEEEEEEEEEEEEE.", ".55555555555555.",
+]
+
+#: How many ways a house can be built. The renderer picks by page address.
+HOUSE_STYLES = 4
 
 #: A soft ground shadow, drawn under everyone who walks. Nothing anchors a
 #: sprite to the ground like the shadow it casts.
@@ -454,7 +518,7 @@ TERRAIN_WIDE: dict[str, list[str]] = {
 STRUCTURES: dict[str, list[str]] = {
     "well": [
         "................", "....KKKKKKKK....", "...KIIIIIIIIK...", "..KIIIIIIIIIIK..",
-        "....8......8....", "....8......8....", "...mMMMMMMMMm...", "..mMMMMMMMMMMm..",
+        "....M......M....", "....M......M....", "...mMMMMMMMMm...", "..mMMMMMMMMMMm..",
         "..mM44444444Mm..", "..mM46666664Mm..", "..mM47777774Mm..", "..mM46666664Mm..",
         "..mM44444444Mm..", "..mMMMMMMMMMMm..", "...5555555555...", "................",
     ],
@@ -477,16 +541,16 @@ STRUCTURES: dict[str, list[str]] = {
         ".EmE>>>Emm88mmE.", ".EmmEEEmmmmmmmE.", ".Emmm8mmmmmmmmE.", ".55555555555555.",
     ],
     "shrine": [
-        "................", "................", "......YYYY......", ".....YYYYYY.....",
-        "....YY....YY....", "...YY......YY...", "...YY......YY...", "...YY..!!..YY...",
-        "...YY.!99!.YY...", "...YY..!!..YY...", "...YY......YY...", "...YY......YY...",
-        "...YY......YY...", "..YYYYYYYYYYYY..", "..5555555555555.", "................",
+        "................", "....YYYYYYYY....", "...YYYYYYYYYY...", "..YY::::::::YY..",
+        "..YY:......:YY..", "..YY:.!!!!.:YY..", "..YY:.!99!.:YY..", "..YY:.!99!.:YY..",
+        "..YY:.!!!!.:YY..", "..YY:......:YY..", "..YY:......:YY..", "..YY::::::::YY..",
+        "..YYYYYYYYYYYY..", ".YYYYYYYYYYYYYY.", ".EEEEEEEEEEEEEE.", ".55555555555555.",
     ],
     "hall": [
-        "................", ".....$$..$$.....", ".....$$..$$.....", "...KKKKKKKKKK...",
-        "..KIbbbbbbbbbK..", ".KIbbbbbbbbbbbK.", "KKKKKKKKKKKKKKKK", "EYYYYYYYYYYYYYYE",
-        "EY99YYYYYY99YYYE", "EY99YYYYYY99YYYE", "EYYYYYYYYYYYYYYE", "EYYYYYZZZZYYYYYE",
-        "EYYYYYZ99ZYYYYYE", "EYYYYYZZZZYYYYYE", "EYYYYY8888YYYYYE", "5555555555555555",
+        "................", "....$......$....", "....$......$....", "...KKKKKKKKKK...",
+        "..KIIIIIIIIIIK..", ".KIIIIIIIIIIIIK.", "KKKKKKKKKKKKKKKK", "EYYYYYYYYYYYYYYE",
+        "EY99YYYYYY99YYYE", "EY99YYYYYY99YYYE", "EYYYYYYYYYYYYYYE", "EYYYYZZZZZZYYYYE",
+        "EYYYZZ9999ZZYYYE", "EYYYZZZZZZZZYYYE", "EEEEEEEEEEEEEEEE", "5555555555555555",
     ],
     "lantern": [
         "................", "................", "......EEEE......", ".....E!!!!E.....",
@@ -638,6 +702,10 @@ SPRITES: dict[str, list[str]] = {
     "house_withered": _HOUSE_DARK,
     "house_scouted": _HOUSE_LIT,
     "house_settled": _HOUSE_LIT,
+    **{f"house{index}_dark": rows for index, rows in enumerate(
+        (_HOUSE_TILE_DARK, _HOUSE_SLATE_DARK, _HOUSE_THATCH_DARK, _HOUSE_STONE_DARK))},
+    **{f"house{index}_lit": rows for index, rows in enumerate(
+        (_HOUSE_TILE_LIT, _HOUSE_SLATE_LIT, _HOUSE_THATCH_LIT, _HOUSE_STONE_LIT))},
     "shadow": _SHADOW,
     "iris_down_0": _IRIS_DOWN_A, "iris_down_1": _IRIS_DOWN_B,
     "iris_up_0": _IRIS_UP_A, "iris_up_1": _IRIS_UP_B,

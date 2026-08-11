@@ -368,48 +368,169 @@ class ProceduralPack(AssetPack):
         return TRACKS.get(context)
 
 
-#: Note data for the default pack. Scale degrees are semitone offsets from the
-#: root; the sequencer turns them into samples. Kept small and diatonic so the
-#: result is pleasant rather than merely present.
+#: Note data for the default pack. Semitone offsets from the root; ``null`` is
+#: a rest and ``[semitone, eighths]`` holds a note. The sequencer in
+#: :mod:`chisurf.gui.chigame.audio` turns these into samples.
+#:
+#: These are written as **pieces**, not as patterns. The versions before them
+#: were sixteen eighth notes of unbroken arpeggio -- a four-second loop with no
+#: rests, no held notes, no harmony and no cadence, which is unlistenable
+#: inside a minute however pleasant the individual intervals are. Each of these
+#: is eight bars with a phrase structure and somewhere to breathe, so a loop is
+#: twelve to twenty seconds and arrives back at its own tonic.
 TRACKS: dict[str, dict] = {
+    # The road: D major, walking pace, a lead that leans on its long notes.
     "overworld": {
-        "root": 261.63,
-        "tempo": 108,
-        "wave": "triangle",
-        "loop": True,
-        "melody": [0, 4, 7, 12, 7, 4, 2, 4, 5, 4, 2, 0, -3, 0, 4, 7],
-        "bass": [-12, -12, -5, -5, -8, -8, -12, -12],
-    },
-    "town": {
         "root": 293.66,
-        "tempo": 92,
-        "wave": "sine",
+        "tempo": 104,
         "loop": True,
-        "melody": [0, 2, 4, 5, 7, 5, 4, 2, 0, 2, 4, 2, 0, -3, -5, -3],
-        "bass": [-12, -12, -7, -7, -10, -10, -12, -12],
+        "tone": 0.62,
+        "melody": {
+            "wave": "triangle", "gain": 0.30, "vibrato": 0.006, "sustain": 0.74,
+            "notes": [
+                [0, 2], [4, 1], [7, 1], [9, 2], [7, 2],
+                [4, 2], [2, 1], [4, 1], [7, 3], None,
+                [9, 2], [11, 1], [12, 1], [11, 2], [9, 2],
+                [7, 3], [5, 1], [4, 2], [2, 2],
+                [0, 2], [4, 1], [7, 1], [12, 3], None,
+                [11, 2], [9, 1], [7, 1], [4, 4],
+                [5, 2], [7, 2], [9, 2], [11, 2],
+                [12, 4], [7, 2], [4, 2],
+            ],
+        },
+        "pad": {
+            "wave": "sine", "gain": 0.09, "octave": -1, "detune": 8.0,
+            "sustain": 0.85,
+            "notes": [[0, 8], [7, 8], [9, 8], [5, 8],
+                      [0, 8], [7, 8], [5, 8], [7, 8]],
+        },
+        "bass": {
+            "wave": "triangle", "gain": 0.26, "octave": -1, "sustain": 0.55,
+            "notes": [
+                [0, 2], [7, 2], [0, 2], [4, 2],
+                [7, 2], [2, 2], [7, 2], [11, 2],
+                [9, 2], [4, 2], [9, 2], [12, 2],
+                [5, 2], [0, 2], [5, 2], [9, 2],
+                [0, 2], [7, 2], [0, 2], [4, 2],
+                [7, 2], [2, 2], [7, 2], [11, 2],
+                [5, 2], [0, 2], [5, 2], [9, 2],
+                [7, 2], [7, 2], [11, 2], [12, 2],
+            ],
+        },
+        "drums": "k-h-s-hh",
+        "drum_gain": 0.22,
     },
+    # Inside the walls: a slow waltz in G, no kit, close and domestic.
+    "town": {
+        "root": 392.00,
+        "tempo": 96,
+        "loop": True,
+        "tone": 0.50,
+        "melody": {
+            "wave": "triangle", "gain": 0.26, "vibrato": 0.004, "sustain": 0.60,
+            "notes": [
+                [7, 2], [9, 1], [11, 1], [12, 2],
+                [11, 2], [9, 2], [7, 2],
+                [4, 2], [7, 2], [11, 2],
+                [9, 3], [7, 1], [5, 2],
+                [4, 2], [2, 2], [4, 2],
+                [5, 2], [7, 2], [9, 2],
+                [11, 4], [9, 2],
+                [7, 4], None, None,
+            ],
+        },
+        "harmony": {
+            "wave": "sine", "gain": 0.10, "sustain": 0.8,
+            "notes": [[4, 6], [0, 6], [4, 6], [-2, 6],
+                      [-1, 6], [0, 6], [-2, 6], [4, 6]],
+        },
+        "bass": {
+            "wave": "triangle", "gain": 0.24, "octave": -1, "sustain": 0.5,
+            "notes": [
+                [0, 2], [7, 2], [7, 2],
+                [5, 2], [12, 2], [12, 2],
+                [0, 2], [7, 2], [7, 2],
+                [-5, 2], [2, 2], [2, 2],
+                [-3, 2], [4, 2], [4, 2],
+                [5, 2], [12, 2], [12, 2],
+                [-5, 2], [2, 2], [2, 2],
+                [0, 2], [7, 2], [7, 2],
+            ],
+        },
+    },
+    # A fight: A minor, driving, the only track with a full kit under it.
     "battle": {
         "root": 220.00,
-        "tempo": 152,
-        "wave": "square",
+        "tempo": 150,
         "loop": True,
-        "melody": [0, 0, 3, 0, 5, 3, 0, -2, 0, 0, 3, 5, 7, 5, 3, 0],
-        "bass": [-12, -12, -12, -9, -12, -12, -12, -7],
+        "tone": 0.78,
+        "melody": {
+            "wave": "square", "gain": 0.24, "sustain": 0.55,
+            "notes": [
+                [0, 1], [0, 1], [3, 1], [0, 1], [5, 2], [3, 2],
+                [0, 1], [0, 1], [3, 1], [5, 1], [7, 2], [5, 2],
+                [8, 2], [7, 2], [5, 2], [3, 2],
+                [7, 1], [8, 1], [10, 2], [7, 4],
+                [12, 1], [0, 1], [12, 1], [0, 1], [10, 2], [8, 2],
+                [7, 1], [8, 1], [7, 1], [5, 1], [3, 4],
+                [8, 2], [10, 2], [12, 4],
+                [11, 2], [10, 2], [7, 2], None, None,
+            ],
+        },
+        "bass": {
+            "wave": "saw", "gain": 0.20, "octave": -1, "sustain": 0.45,
+            "notes": [
+                0, 0, 0, 7, 0, 0, 0, 7,
+                0, 0, 0, 7, 0, 0, 0, 7,
+                -4, -4, -4, 3, -4, -4, -4, 3,
+                -2, -2, -2, 5, -2, -2, -2, 5,
+                0, 0, 0, 7, 0, 0, 0, 7,
+                0, 0, 0, 7, 0, 0, 0, 7,
+                -4, -4, -4, 3, -4, -4, -4, 3,
+                -5, -5, -5, 2, -5, -5, 2, 2,
+            ],
+        },
+        "drums": "k-h-s-h-k-hks-hh",
+        "drum_gain": 0.34,
     },
+    # Underneath: slow, low, mostly rests. Nothing here is in a hurry and
+    # nothing here resolves.
     "underworld": {
         "root": 174.61,
-        "tempo": 76,
-        "wave": "saw",
+        "tempo": 66,
         "loop": True,
-        "melody": [0, 1, 0, -2, 0, 3, 1, 0, -1, 0, 1, 3, 1, 0, -2, -4],
-        "bass": [-12, -13, -12, -13, -15, -13, -12, -12],
+        "tone": 0.26,
+        "melody": {
+            "wave": "triangle", "gain": 0.20, "vibrato": 0.010, "sustain": 0.8,
+            "notes": [
+                [0, 4], [None, 2], [1, 2], [None, 4],
+                [-2, 4], [None, 2], [0, 2], [None, 4],
+                [3, 4], [1, 2], [0, 2], [None, 4],
+                [-4, 6], [None, 2], [0, 4], [None, 4],
+            ],
+        },
+        "pad": {
+            "wave": "sine", "gain": 0.13, "octave": -1, "detune": 14.0,
+            "sustain": 0.95,
+            "notes": [[0, 12], [-2, 12], [3, 12], [-4, 16]],
+        },
     },
+    # A win: eight bars would be a victory lap. This is a fanfare.
     "victory": {
         "root": 329.63,
         "tempo": 132,
-        "wave": "triangle",
         "loop": False,
-        "melody": [0, 4, 7, 12, 12, 7, 12, 16],
-        "bass": [-12, -12, -5, 0],
+        "tone": 0.72,
+        "melody": {
+            "wave": "triangle", "gain": 0.32, "sustain": 0.7,
+            "notes": [[0, 1], [4, 1], [7, 1], [12, 2], None,
+                      [12, 1], [16, 1], [19, 4]],
+        },
+        "bass": {
+            "wave": "triangle", "gain": 0.26, "octave": -1,
+            "notes": [[-12, 2], [-5, 2], [0, 4], [0, 4]],
+        },
+        "drums": "k-k-s---k---s---",
+        "drum_gain": 0.30,
     },
 }

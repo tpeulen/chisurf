@@ -145,12 +145,40 @@ drives a game by pushing actions, with no synthetic key events.
 No audio binaries either. The pattern already existed in the tree, duplicated
 three times: the arcade games each synthesise WAV programmatically (`math`,
 `struct`, `wave`) and play through `QSoundEffect`. Those consolidate here into a
-small chiptune sequencer — waveform generators plus ADSR envelopes, a track as
-JSON note data, synthesised once at load.
+small sequencer — a track is JSON note data, synthesised once at load.
 
 Music is **context-driven**: `audio.set_context("overworld" | "town" | "battle" |
-"underworld" | "victory")` crossfades. Games set a context; they do not manage
-playback.
+"underworld" | "victory")`. Games set a context; they do not manage playback.
+A game whose context is a **property** rather than a class attribute changes
+what is playing as the player moves, which is what the five contexts are for —
+`OverworldGame.music_context` returns town inside the walls, battle in a fight
+and underworld in the dark manifold.
+
+**Two things make the difference between a sequencer and music**, and both were
+missing until 2026-08-11:
+
+* **Band-limited oscillators.** A square or saw built from a sign flip has
+  energy far above Nyquist; at the old 22.05 kHz that folded straight back down
+  as a metallic buzz no amount of composing could fix. Waveforms are now
+  additive — a bounded harmonic series, cut off below Nyquist — at 44.1 kHz,
+  with a vibrato option, an optional detuned second oscillator, an ADSR with a
+  real decay, a gentle lowpass over the mix (`tone`), and `tanh` soft clipping.
+  A drum voice (kick/snare/hat as a pattern string) sits under the tracks that
+  want one. Synthesis is numpy, so a whole soundtrack builds in ~0.4 s.
+* **Pieces, not patterns.** A note may be `[semitone, eighths]` or `null` for a
+  rest, so a line can hold and breathe. The shipped tracks were sixteen
+  unbroken eighth notes — a four-second loop with no rest, no held note, no
+  harmony and no cadence, which is unlistenable inside a minute however
+  pleasant the intervals. They are now eight bars with phrase structure and a
+  bass line following a chord progression: twelve to twenty seconds a loop.
+
+**A game in a window nobody is looking at is silent.** `Audio.suspend()` /
+`resume()` hold playback and remember the context, and `GameHost.sync_audio()`
+drives them from `GameHost.attend()` — visible, and in the active window. It is
+called both per frame *and* from a Qt event filter installed by `create_widget`,
+because a hidden widget may stop being asked to draw at all, and a game whose
+frames have stopped with its music still playing is the worst version of this
+bug.
 
 ## Offscreen capture — headless is a first-class path
 
