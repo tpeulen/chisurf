@@ -321,3 +321,43 @@ def test_every_trait_the_steering_names_is_a_trait_the_bestiary_has():
     from chisurf.plugins.misc.games.lumis_quest.api.bestiary import TRAITS
     named = steering.AGGRESSIVE | steering.LYING_IN_WAIT | steering.PHOTOTACTIC
     assert named <= set(TRAITS)
+
+
+# --------------------------------------------------------------------------
+# Noticing, which is not the same as reacting
+# --------------------------------------------------------------------------
+
+def test_a_creature_reacts_to_nobody_it_has_not_seen():
+    """Alignment alone has no distance in it.
+
+    Without a notice radius a beast forty tiles down your column flees from you
+    through a forest it cannot see over -- and it looks, from where the player
+    is standing, like nothing at all.
+    """
+    temper = steering.Temper(rate=0, homing=255, speed=TILE, notice=TILE * 4.0)
+    drift = steering.Drift(facing=RIGHT)
+    x, y = _centre(5), _centre(5)
+    steering.advance(temper, drift, x, y, 1.0, _open, random.Random(2),
+                     target=(_centre(5), _centre(40)))
+    assert drift.facing == RIGHT
+    assert not drift.noticed
+
+
+def test_it_does_react_once_you_are_inside_that_radius():
+    """The same creature, the same axis, closer."""
+    temper = steering.Temper(rate=0, homing=255, speed=TILE, notice=TILE * 4.0)
+    drift = steering.Drift(facing=RIGHT)
+    x, y = _centre(5), _centre(5)
+    steering.advance(temper, drift, x, y, 1.0, _open, random.Random(2),
+                     target=(_centre(5), _centre(8)))
+    assert drift.facing == DOWN
+    assert drift.noticed
+
+
+def test_no_notice_radius_means_no_limit():
+    """Zero is "unlimited", which is what the rest of the module means by it."""
+    temper = steering.Temper(rate=0, homing=255, speed=TILE, notice=0.0)
+    drift = steering.Drift(facing=RIGHT)
+    steering.advance(temper, drift, _centre(5), _centre(5), 1.0, _open,
+                     random.Random(2), target=(_centre(5), _centre(300)))
+    assert drift.facing == DOWN

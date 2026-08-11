@@ -2408,6 +2408,15 @@ class OverworldGame(chigame.Game):
             # north.
             lift = npc.lift
             drawn = (npc.x, npc.y - lift)
+            if npc.startled:
+                # It has just seen you. Which way that goes is the animal's
+                # business -- most of them are about to run -- but the noticing
+                # itself has to be legible, or a creature that has not seen you
+                # and one that is stalking you look exactly the same.
+                npc.startled = False
+                self.sparks.rise("!", (npc.x, npc.y - T.TILE * 0.8),
+                                 color=(1.00, 0.90, 0.55, 1.0), span=0.85,
+                                 distance=6.0, height=9.0)
             if npc.species:
                 # An animal is drawn as the animal it is, in the colour of
                 # whatever is fixed into it. A marked hare and an unmarked one

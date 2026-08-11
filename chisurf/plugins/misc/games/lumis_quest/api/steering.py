@@ -94,6 +94,14 @@ class Temper:
         Out of 4, signed. Positive is drawn to light, negative avoids it.
     reach : float
         How far away light still pulls, in world units. 0 means no limit.
+    notice : float
+        How far away this creature is aware of the player at all, in world
+        units. Ported from the notice radius of a modern reference, and it
+        fixes a real hole: alignment alone has no distance in it, so without
+        this a beast forty tiles down your column reacts to you through a
+        forest it cannot see over. It is also what makes *being noticed* a
+        moment -- a creature outside its notice radius is not stalking you, it
+        simply has not seen you, and those should not look the same.
     hover : float
         A purely visual height, in world units. It never touches collision --
         the original kept a second, fake z for exactly this, so a thing can
@@ -106,6 +114,7 @@ class Temper:
     homing: int = 0
     greed: int = 0
     reach: float = TILE * 6.0
+    notice: float = TILE * 9.0
     hover: float = 0.0
     speed: float = 20.0
 
@@ -123,12 +132,17 @@ class Drift:
         World units left in the current leg. At zero it is time to decide.
     phase : float
         Running seconds, for the visual bob.
+    noticed : bool
+        Whether the player was within notice range at the last decision. The
+        *rising edge* of this is the interesting event -- it is the frame a
+        creature saw you -- and it is why this is kept rather than recomputed.
     """
 
     facing: int = DOWN
     remaining: float = 0.0
     phase: float = 0.0
     hover: float = 0.0
+    noticed: bool = False
 
     @property
     def name(self) -> str:
@@ -228,6 +242,7 @@ def choose(temper: Temper, drift: Drift, x: float, y: float, passable,
             return chosen
 
     if temper.homing and target is not None and \
+            _within(x, y, target, temper.notice) and \
             rng.getrandbits(8) < abs(temper.homing):
         chosen = lined_up(x, y, target[0], target[1])
         if chosen != STUCK:
@@ -250,6 +265,33 @@ def choose(temper: Temper, drift: Drift, x: float, y: float, passable,
         if passable(chosen):
             return chosen
     return STUCK
+
+
+def _within(x: float, y: float, point: tuple[float, float],
+            reach: float) -> bool:
+    """Whether a point is close enough to matter.
+
+    Squared distance, because this runs per creature per decision and a square
+    root buys nothing a comparison needs.
+
+    Parameters
+    ----------
+    x, y : float
+        Where the creature is.
+    point : tuple of float
+        What it might be aware of.
+    reach : float
+        World units. 0 means no limit.
+
+    Returns
+    -------
+    bool
+        True when in range.
+    """
+    if not reach:
+        return True
+    dx, dy = point[0] - x, point[1] - y
+    return dx * dx + dy * dy <= reach * reach
 
 
 def _towards_bait(temper: Temper, x: float, y: float,
@@ -343,6 +385,8 @@ def advance(temper: Temper, drift: Drift, x: float, y: float, dt: float,
             # creature on the grid cannot end a leg inside a wall.
             x = (int(x // TILE) + 0.5) * TILE
             y = (int(y // TILE) + 0.5) * TILE
+            drift.noticed = target is not None and \
+                _within(x, y, target, temper.notice)
             drift.facing = choose(temper, drift, x, y, passable, rng, target, bait)
             if drift.facing == STUCK:
                 return x, y

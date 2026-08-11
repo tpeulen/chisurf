@@ -174,24 +174,41 @@ label comes off and visibly travels from the animal into you. `alpha` became a
 Scene-level hint on the way, so anything can fade without every pack branch
 learning about transparency.
 
+**Also taken:**
+
+1. **The notice radius** → `steering.Temper.notice`, gating homing. ZQuest has
+   no equivalent: its enemies are always on. This closed a real hole rather
+   than adding a nicety — *alignment has no distance in it*, so a beast forty
+   tiles down your column was reacting to you through a forest it cannot see
+   over, and from where the player stands that looks like nothing at all. The
+   rising edge of `Drift.noticed` is surfaced as `Npc.startled` and drawn as a
+   **"!"**, because "has not seen you" and "is stalking you" must not look the
+   same.
+2. **A\* with the recalculation *policy*** → `api/pathing.py`. Recalculate when
+   the path is stale **or** when the destination has changed grid cell,
+   whichever comes first, and fall back to the direct line when there is no
+   path. The search is textbook; the policy is the hard-won part — on a timer
+   alone a follower cuts corners into walls for half a second after its target
+   turns, and every frame means the pathfinding *is* the frame. Wired into
+   `agents.Society._walk`, which previously said in as many words: *"Blocked
+   flat. Give up on this errand rather than grinding into a wall for the rest
+   of the session."* Every errand whose destination sat behind a building was
+   abandoned. Deliberately **not** used for fleeing beasts, which should look
+   panicked rather than well-routed.
+   One thing is ours: the search takes a **node budget**. That game's maps are
+   one screen; this world is tens of thousands of tiles, and an unreachable
+   goal makes an uncapped A\* expand every reachable cell — per walker, per
+   recalculation.
+
 **Found and not taken, in the order it is worth doing:**
 
-1. **`notice_radius` / `attack_radius` driving idle → move → attack.** ZQuest
-   has no equivalent — its enemies are always on. Two radii are what give a
-   creature personal space, and this bestiary wants exactly that: an animal
-   that has not noticed you is not fleeing, and the moment it notices is the
-   moment worth seeing. Folds into `steering.Temper` as two more fields.
-2. **A\* with a recalculation *policy*** (`code/enemy.py`): recalculate when
-   the path is stale (500 ms) **or** when the player has changed grid cell,
-   whichever comes first, and fall back to direct movement when there is no
-   path. The search is textbook and thirty lines; the policy is the hard-won
-   part. Needed for Lumi at heel and for `agents.py` errands, both of which
-   snag on buildings today — and explicitly **not** for fleeing beasts, which
-   should look panicked rather than well-routed.
 3. **Knockback as one signed scalar**: `direction *= -resistance`, applied by
    negating the direction the hit came from.
 4. **An invulnerability window with a flicker**, which is how a player learns
    that a hit registered.
+5. **An `attack_radius` distinct from the notice radius**, i.e. a third state
+   between wandering and engaging. Only worth it once something happens on the
+   overworld other than touching a beast to start a fight.
 
 **Skipped, with reasons:** the five-bar stat shop (stats here are photophysics
 and come from which label is in which body — a shop that sells brightness would

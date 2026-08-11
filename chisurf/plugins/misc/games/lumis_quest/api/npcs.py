@@ -221,6 +221,11 @@ class Npc:
     role: str = ""
     species: str = ""
     tier: int = 1
+    #: Set on the frame this one first becomes aware of the player and cleared
+    #: by whoever draws it. The moment a creature notices you is the moment
+    #: worth showing -- without it, "has not seen you" and "is stalking you"
+    #: look identical, which is most of what a notice radius is for.
+    startled: bool = False
     _phase: float = 0.0
     #: Steering state, built the first time this one is stepped. See
     #: :mod:`.steering`: what it is (:class:`~.steering.Temper`), where it is in
@@ -856,11 +861,14 @@ def update(people: list[Npc], world, dt: float, clock: float,
         temper = npc.temper
         bait = _light_near(npc, world, temper, near, dark) if temper.greed else None
 
+        was_aware = npc.drift.noticed
         npc.x, npc.y = steering.advance(
             temper, npc.drift, npc.x, npc.y, dt,
             _passage(npc, world, ground, dark), npc._rng,
             target=near, bait=bait,
         )
+        if npc.drift.noticed and not was_aware and temper.homing:
+            npc.startled = True
         npc.facing = npc.drift.name
 
 

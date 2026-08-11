@@ -29,7 +29,7 @@ import dataclasses
 import math
 import random
 
-from . import engine
+from . import engine, pathing
 from .tiles import TILE, is_blocking
 
 #: How close two people have to be to fall into conversation, and how far the
@@ -105,7 +105,7 @@ class Mind:
     drives: dict[str, float] = dataclasses.field(default_factory=dict)
     goal: str = ""
     target: tuple[float, float] | None = None
-    partner: "Mind | None" = None
+    partner: Mind | None = None
     exchange: list[tuple[str, str]] = dataclasses.field(default_factory=list)
     beat: int = 0
     timer: float = 0.0
@@ -113,6 +113,10 @@ class Mind:
     patience: float = 0.0
     memory: list[str] = dataclasses.field(default_factory=list)
     topic: str = ""
+    #: The plan for getting to :attr:`target`, kept between frames. Somebody
+    #: with an errand has a destination, and walking at it until something
+    #: stops you is not a plan -- see :mod:`.pathing`.
+    route: pathing.Route = dataclasses.field(default_factory=pathing.Route)
 
     @property
     def talking(self) -> bool:
@@ -277,6 +281,7 @@ class Society:
                 mind.drives[urge] = 0.2
                 return
             mind.goal, mind.target, mind.patience = urge, target, PATIENCE
+            mind.route.clear()  # a new errand is a new plan, not a stale one
             return
 
         mind.patience -= dt
@@ -308,10 +313,18 @@ class Society:
             True once close enough to have arrived.
         """
         npc = mind.npc
-        dx, dy = target[0] - npc.x, target[1] - npc.y
-        distance = math.hypot(dx, dy)
-        if distance <= ARRIVED:
+        if math.hypot(target[0] - npc.x, target[1] - npc.y) <= ARRIVED:
             return True
+
+        # Where to go *next*, which is not usually where you are going: a
+        # settlement is full of buildings and an errand that walks at its
+        # destination gets one house-width into the trip. Before this the
+        # blocked case simply abandoned the errand.
+        step_to = mind.route.waypoint(self._passable, (npc.x, npc.y), target, dt)
+        dx, dy = step_to[0] - npc.x, step_to[1] - npc.y
+        distance = math.hypot(dx, dy)
+        if distance <= 1e-6:
+            return False
         step = min(PACE * dt, distance)
         nx, ny = npc.x + dx / distance * step, npc.y + dy / distance * step
         moved = False
@@ -320,13 +333,29 @@ class Society:
         if not is_blocking(self.world.tile_at(int(npc.x // TILE), int(ny // TILE))):
             npc.y, moved = ny, True
         if not moved:
-            # Blocked flat. Give up on this errand rather than grinding into a
-            # wall for the rest of the session.
+            # Blocked even along the plan: the destination is walled in, or
+            # somebody is standing in the doorway. Give it up rather than
+            # grinding into a wall for the rest of the session.
             mind.patience = 0.0
         npc.facing = ("right" if dx > 0 else "left") if abs(dx) > abs(dy) else (
             "down" if dy > 0 else "up"
         )
         return False
+
+    def _passable(self, col: int, row: int) -> bool:
+        """Whether a townsperson may stand in a cell.
+
+        Parameters
+        ----------
+        col, row : int
+            Grid coordinates.
+
+        Returns
+        -------
+        bool
+            True when the cell is not solid.
+        """
+        return not is_blocking(self.world.tile_at(col, row))
 
     def _place_for(self, mind: Mind, key: str):
         """Where in this person's settlement answers a need.
