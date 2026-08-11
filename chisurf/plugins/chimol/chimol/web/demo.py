@@ -89,6 +89,50 @@ def sequence_of(payload):
     return codes, numbers
 
 
+def _occlusion(coords, radius: float = 8.0, strength: float = 0.5):
+    """Per-atom ambient occlusion from how crowded each atom is.
+
+    Parameters
+    ----------
+    coords : numpy.ndarray
+        ``(n, 3)`` atom positions.
+    radius : float
+        Neighbourhood radius, in Angstrom.
+    strength : float
+        How dark the most buried atom gets, in ``[0, 1)``.
+
+    Returns
+    -------
+    numpy.ndarray
+        ``(n,)`` occlusion in ``[0, strength]``, 0 being fully exposed.
+
+    Notes
+    -----
+    A neighbour count, not hemispherical occlusion. chimol has the real thing --
+    ``renderer/compute.occlusion_from_spheres``, on the GPU -- but it wants a
+    surface normal per vertex, and a sphere impostor has none: its normal is
+    computed per *fragment* in the shader. For a space-filling model the count
+    is the right approximation anyway, because what makes it read as a body is
+    that atoms in the interior are darker than atoms on the outside, and that is
+    exactly what crowding measures.
+
+    Brute force, in one ``(n, n)`` pass. 1363 atoms is 1.9 M distances and a few
+    milliseconds; it needs no spatial index, which matters because the obvious
+    one is ``scipy.spatial.cKDTree`` and the browser would then have to download
+    scipy to draw a molecule.
+    """
+    import numpy as np
+
+    points = np.asarray(coords, dtype=np.float32)
+    delta = points[:, None, :] - points[None, :, :]
+    within = (np.einsum("ijk,ijk->ij", delta, delta) < radius * radius)
+    # Minus one: every atom is its own neighbour.
+    count = within.sum(axis=1).astype(np.float32) - 1.0
+    if count.max() <= 0.0:
+        return np.zeros(len(points), dtype=np.float32)
+    return (strength * (count / count.max())).astype(np.float32)
+
+
 def build_molecule():
     """Read the bundled PDB and return ``(Scene, centre, radius)``.
 
@@ -134,6 +178,11 @@ def build_molecule():
     colours[:, 2] = np.clip(1.5 - abs(ramp - 0.0) * 3.0, 0.0, 1.0)
     colours[:, 3] = 1.0
 
+    # Ambient occlusion, so the model reads as a solid body rather than a heap
+    # of lit balls. Buried atoms darken; exposed ones keep their colour.
+    occlusion = _occlusion(coords)
+    colours[:, :3] *= (1.0 - occlusion)[:, None]
+
     radii = payload.atom_radii
     if radii is None:
         radii = np.full(len(coords), 1.6, dtype=np.float32)
@@ -145,6 +194,11 @@ def build_molecule():
     # looks like a framing bug and is a units bug.
     geometry = Geometry(
         kind="points", positions=coords, colors=colours, radii=radii,
+        # Carried as well as multiplied in: the shader damps the light that does
+        # *not* come from the surface colour -- ambient, rim -- with it, and
+        # without that those terms fill the crevices back in and the occlusion
+        # reads as an overall dimming instead of as shape.
+        occlusion=occlusion.reshape(-1, 1),
         meta={"world_radius": True},
     )
     scene = Scene(
