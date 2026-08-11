@@ -10,7 +10,7 @@ timestamp: '2026-08-10T00:00:00Z'
 # Where to pick this up
 
 1. **The tracker is `test/numba_import_allowlist.txt`** and it only shrinks.
-   Every entry carries its route. **19 chisurf-owned files remain**, and **route `numpy` is now empty -- Phase 1 is done** of the 48 this work covers. ChiMOL's 11 are **excluded from the guard entirely** — the WebGPU port removes them on its own schedule, and listing them here only made this test fail nine times in one session with news about someone else's progress;
+   Every entry carries its route. **18 chisurf-owned files remain**, and **route `numpy` is now empty -- Phase 1 is done** of the 48 this work covers. ChiMOL's 11 are **excluded from the guard entirely** — the WebGPU port removes them on its own schedule, and listing them here only made this test fail nine times in one session with news about someone else's progress;
    `test/test_numba_seam.py` fails both on a new importer and on a stale entry,
    so the list cannot drift from the tree.
 2. **`maxent_decay/core/solver.py` is done, and the granularity of a delegation
@@ -79,13 +79,39 @@ timestamp: '2026-08-10T00:00:00Z'
    MEM iteration re-solves it every step with an updated diagonal, which is why
    that is tolerable. Both copies share the behaviour.
 
-   **Next on this route: `plugins/core/acq/gui/tool.py`.** Its
-   `_process_bh_spc_records_numba` decodes a whole record array per call, so the
-   seam is *already* the right size — the trap that cost this entry does not
-   apply — and `test/…/acq/test/test_spc_record_decoder.py` already pins the
-   hand-maintained copy against the real reader, so the reference exists before
-   the port starts.
-3. **PCH is done, and it was three copies, not one.** `plugins/pch/api/algorithms.py`
+3. **`plugins/core/acq/gui/tool.py` is done — the copy is deleted, not ported.**
+   `_process_bh_spc_records_numba` was a hand-maintained transcription of
+   `RecordProcessor<BH_RECORD_TYPE_SPC130>`, and its own test said why it
+   existed: the library exposed that decoder only behind a *file* reader, and
+   live acquisition decodes records arriving from the card **in memory**. It
+   exposes `decode_records(buffer, record_type, state)` now, so
+   `_decode_bh_spc_records` is 15 lines of delegation and the format has one
+   implementation again. Verified against `bh_spc132.spc` and
+   `bh_spc132_sm_dna/m000.spc`: identical macro times, micro times, routing
+   channels *and* overflow counter (1127184 / 1252232) — the numba copy was
+   correct, which is the only reason this reads as tidying rather than a bug
+   fix.
+
+   Two things the port had to keep, neither visible in the diff:
+   - **The wrap counter across chunk boundaries.** `state.overflow_counter`
+     carries it; a fresh state per chunk restarts every buffer at time zero and
+     yields a perfectly plausible first chunk and nonsense from the second on,
+     with nothing raised. The rewritten test decodes a real file in 4096-record
+     chunks and demands the file back.
+   - **`uint8` routing channels.** The library hands back `int8`, and
+     `_accumulate` reinterprets what it is given, so the cast is load-bearing.
+
+   The test that pinned the copy said "if the library ever grows an in-memory
+   record decoder, this test should be deleted along with the copy". It is
+   rewritten instead: comparing two implementations is now a tautology, but the
+   chunk-boundary state is still ChiSurf's to get wrong.
+
+   **Next on this route: `core/math/hmm.py` and
+   `core/fluorescence/burst/gopich_szabo.py`** — the two remaining `tttrlib`
+   entries. Check what the library exposes *first*: this entry took an hour
+   less than budgeted because `decode_records` already existed and nothing in
+   ChiSurf knew.
+4. **PCH is done, and it was three copies, not one.** `plugins/pch/api/algorithms.py`
    (numba) turned out to duplicate `core/models/pch/pch.py`, which *already*
    delegated to tttrlib behind an unexercised pure-Python fallback — and
    `gui/widgets/models/pch/widgets.py` had carried a third copy until a peer's
@@ -122,7 +148,7 @@ timestamp: '2026-08-10T00:00:00Z'
    `4df1b1041` (importing the widget kernels that refactor deleted). Retargeted
    at the surviving implementation rather than deleted — what they pin,
    `gamma_2` and the `k = 171` factorial overflow, is still worth pinning.
-4. **`linalg` is done, and it is the case where "delete the decorator" was not
+5. **`linalg` is done, and it is the case where "delete the decorator" was not
    enough.** The 3-vector helpers are now NumPy and bit-exact against the numba
    versions (0.0e+00 on every one). But measured on the only live consumer,
    `protein.py`'s per-residue walk over hGBP1 (3456 internal coordinates), the
@@ -158,7 +184,7 @@ timestamp: '2026-08-10T00:00:00Z'
    `rotate_point` sliced the quaternion vector part as `quaternion[1:3]` — two
    elements — so it read past the end inside `cross3`. It has no callers and
    never ran; under numba that read memory instead of raising.
-5. **`olga_greedy.py` is done, and the port found a wrong answer that had been
+6. **`olga_greedy.py` is done, and the port found a wrong answer that had been
    shipping.** The FRET experiment-planning weight is the chi-squared
    right-tail, `Q(nu/2, chi2/2)`. Olga takes its closed-form expansion from
    Boost, whose half-integer branch loops `for (n = 2; n < a; ++n)` with `a` a
@@ -191,7 +217,7 @@ timestamp: '2026-08-10T00:00:00Z'
    `plugins/modelling/fret/test/test_examples.py` (olga example JSON, AVs on
    PDB, project save/load, CLI info, FastAPI endpoints), verified identical with
    `HEAD`'s file swapped back in.
-6. **ndxplorer is numba-free, and both files came off the list without a
+7. **ndxplorer is numba-free, and both files came off the list without a
    kernel being ported.** `utils/performance_optimizations.py` kept a
    `try: import numba` whose `nb` and `_HAVE_NUMBA` were referenced nowhere, plus
    `compute_histogram1d_adaptive` / `Histogram1DComputation` with **zero callers**
@@ -266,7 +292,7 @@ timestamp: '2026-08-10T00:00:00Z'
    **A working tree containing other people's uncommitted work does not verify
    your commit**; `git worktree add --detach <sha>` to a scratch path does, and
    costs one command.
-7. **`kappa2.py` closes Route 1, and blocking is what made it win.** All four
+8. **`kappa2.py` closes Route 1, and blocking is what made it win.** All four
    kernels are NumPy and the `k2` grids are **bit-exact**; the histograms differ
    by `3e-14` relative, from summation order alone. Timings (median of 7):
 
@@ -297,7 +323,7 @@ timestamp: '2026-08-10T00:00:00Z'
      finiteness, which is what the caller meant and does not depend on which
      layer does the arithmetic. Watch for this shape elsewhere: numba raising on
      `0.0/0.0` is a behavioural difference no parity test on values will catch.
-8. **A `tttrlib` route is a hypothesis, not a verdict — diff the maths first.**
+9. **A `tttrlib` route is a hypothesis, not a verdict — diff the maths first.**
    Two files routed to `tttrlib` turned out to be route `numpy`, because
    ChiSurf's version is *deliberately better than the C one* and delegating
    would have been a silent regression:
@@ -311,7 +337,7 @@ timestamp: '2026-08-10T00:00:00Z'
    under the decorator. So: read both implementations before delegating, and
    when they differ, work out *which* is right rather than assuming the
    compiled one is.
-9. **`_hdbscan.py` splits — measured, so do not re-derive.** The compiled
+10. **`_hdbscan.py` splits — measured, so do not re-derive.** The compiled
    kernel covers only the first two stages (`core_distances`,
    `mutual_reachability_mst`); `single_linkage`, `condense_tree` and
    `label_points` are **not** in the photon library. Timed on the *compiled*
@@ -327,7 +353,7 @@ timestamp: '2026-08-10T00:00:00Z'
    same reason, but **measure before delegating** — it is the hmmlearn
    replacement and is 1.1–18× faster per E-step, so a regression there is a
    visible loss.
-10. **`gopich_szabo.py` has a red test that is not the port's fault.**
+11. **`gopich_szabo.py` has a red test that is not the port's fault.**
    `test_no_exchange_reduces_to_a_static_mixture` returns `-inf` where
    `-3.665` is expected — `-inf` is the numba kernel's own numerical-failure
    sentinel. Check whether `tttrlib.GopichSzabo` gives the expected value
@@ -335,7 +361,7 @@ timestamp: '2026-08-10T00:00:00Z'
    [known-issues](../references/known-issues.md) with four unrelated
    `mfd_burst_roundtrip` failures, so the retirement's test runs are not read
    as having caused them.
-11. **ChiMOL is out of scope and out of the guard.** `test_numba_seam.py` skips
+12. **ChiMOL is out of scope and out of the guard.** `test_numba_seam.py` skips
    `chisurf/plugins/chimol/` via `_EXCLUDED_PREFIXES`, and the allow-list no
    longer names those files. They belong to the WebGPU port; when it lands
    them, nothing here needs touching.
@@ -467,6 +493,18 @@ once the library is fixed.
 
 ## Bugs the ports have found
 
+* **The acquisition dock drew three widgets on top of each other**, found by
+  screenshotting the panel while porting its decoder — not by any test. The
+  output-folder row, the Save/Load buttons and the whole "Show" group box were
+  all added at grid row 4, and `QGridLayout` silently stacks overlapping cells
+  rather than complaining: "Fluorescence Decays" and "Count Rate" were behind a
+  line edit, "Save Settings" on top of "Correlation Curve". Fixed by moving the
+  group to row 5 and pinning the spare vertical space to the empty row above
+  the status bar, so five checkboxes no longer occupy a group box taller than
+  the controls it belongs to. This is what the screenshot rule is for: nothing
+  raised, nothing failed, and the panel had presumably looked like that for a
+  long time.
+
 Kept here because they are the argument for doing this carefully rather than
 mechanically.
 
@@ -501,8 +539,8 @@ mechanically.
 | | Files | Kernels |
 | --- | ---: | ---: |
 | At the start | 59 | 186 |
-| Ported so far | 23 | ~62 |
-| Remaining | 25 | ~93 |
+| Ported so far | 24 | ~63 |
+| Remaining | 24 | ~92 |
 | ChiMOL (excluded, owned elsewhere) | 11 | 29 |
 
 Done: `fluorescence/general.py`, `math/datatools.py`, `math/statistics.py`,

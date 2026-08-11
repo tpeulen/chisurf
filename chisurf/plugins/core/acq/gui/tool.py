@@ -10,18 +10,6 @@ import numpy as np
 from chisurf.gui import dialogs
 from chisurf.gui.widgets.system_info_watermark import memory_usage_mb, total_memory_mb
 
-# Try to import numba for performance
-try:
-    from numba import njit
-    NUMBA_AVAILABLE = True
-except ImportError:
-    NUMBA_AVAILABLE = False
-    # Fallback: njit does nothing
-    def njit(*args, **kwargs):
-        def decorator(func):
-            return func
-        return decorator if args and callable(args[0]) else decorator
-
 from qtpy.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -75,92 +63,48 @@ def _default_acquisition_output_path() -> str:
     return str(Path.home() / "chisurf" / "acquisition")
 
 
-# Numba-accelerated photon processing (10-50x faster)
-@njit(cache=True)
-def _process_bh_spc_records_numba(data, initial_overflow):
-    """Fast numba-compiled BH SPC-130 record processing.
+def _decode_bh_spc_records(data, initial_overflow):
+    """Decode a buffer of BH SPC-130 records with the photon library's decoder.
 
-    This implementation mirrors tttrlib's
-    RecordProcessor<BH_RECORD_TYPE_SPC130>:
+    Records arriving from the card are decoded in memory, so this used to be a
+    hand-maintained transcription of ``RecordProcessor<BH_RECORD_TYPE_SPC130>``
+    kept fast with numba. The library now exposes that decoder directly
+    (``decode_records``), so the transcription is gone and there is one
+    implementation of the format again.
 
-    - Regular photon records (invalid == 0):
-        overflow_counter += mtov
-        true_nsync = mt + overflow_counter * 4096
-        micro_time = 4095 - adc
-        channel = rout
+    ``state.overflow_counter`` is what carries the macro-time wrap count across
+    chunk boundaries; a fresh state per chunk would restart every buffer at
+    time zero, which looks like a working acquisition until the second chunk.
 
-    - Overflow records (invalid == 1 and mtov == 1):
-        cnt = low 28 bits
-        overflow_counter += cnt
+    Parameters
+    ----------
+    data : numpy.ndarray
+        ``uint32`` BH SPC-130 records, without the file's leading header word.
+    initial_overflow : int
+        Wrap counter left by the previous chunk, in units of 4096 ticks.
 
-    Args:
-        data: numpy array of uint32 BH SPC-130 records
-        initial_overflow: overflow counter from previous chunk (in units of
-                          4096-tick wraps)
-
-    Returns:
-        tuple: (photons, microtimes, channels, total_overflows, final_overflow)
-            photons: absolute macro times (true_nsync) as uint64
-            microtimes: TAC bins (uint16)
-            channels: routing channels (uint8)
-            total_overflows: number of macrotime wraps seen in this chunk
-            final_overflow: updated overflow counter for next chunk
+    Returns
+    -------
+    tuple
+        ``(photons, microtimes, channels, total_overflows, final_overflow)`` —
+        absolute macro times (``uint64``), TAC bins (``uint16``), routing
+        channels (``uint8``), the wraps seen in this chunk, and the counter to
+        hand to the next one.
     """
-    n_records = len(data)
-
-    photons = np.zeros(n_records, dtype=np.uint64)
-    microtimes = np.zeros(n_records, dtype=np.uint16)
-    channels = np.zeros(n_records, dtype=np.uint8)
-
-    overflow_counter = np.uint64(initial_overflow)
-    total_overflows = np.uint64(0)
-    photon_idx = 0
-
-    for i in range(n_records):
-        record = data[i]
-
-        # Decode fields according to bh_spc130_record_t
-        mt = record & 0xFFF                 # 12-bit macrotime within wrap
-        rout = (record >> 12) & 0xF         # 4-bit routing channel
-        adc = (record >> 16) & 0xFFF        # 12-bit ADC
-        mark = (record >> 28) & 0x1
-        gap = (record >> 29) & 0x1
-        mtov = (record >> 30) & 0x1
-        invalid = (record >> 31) & 0x1
-
-        # Regular photon record: invalid == 0
-        if invalid == 0:
-            # Single wrap encoded in mtov bit
-            overflow_counter += np.uint64(mtov)
-            total_overflows += np.uint64(mtov)
-
-            # Absolute macrotime in units of base clock ticks
-            true_nsync = np.uint64(mt) + overflow_counter * np.uint64(4096)
-
-            photons[photon_idx] = true_nsync
-            # tttrlib uses 4095 - adc
-            microtimes[photon_idx] = np.uint16(4095 - adc)
-            channels[photon_idx] = np.uint8(rout)
-            photon_idx += 1
-            continue
-
-        # Overflow record: invalid == 1 and mtov == 1
-        if invalid == 1 and mtov == 1:
-            # bh_overflow_t: cnt is low 28 bits
-            cnt = record & 0x0FFFFFFF
-            overflow_counter += np.uint64(cnt)
-            total_overflows += np.uint64(cnt)
-            continue
-
-        # All other records (gaps, markers, etc.) are ignored
-        # to match RecordProcessor behaviour.
-
+    state = tttrlib.TTTRDecodeState()
+    state.overflow_counter = int(initial_overflow)
+    decoded, state = tttrlib.decode_records(
+        np.ascontiguousarray(data, dtype=np.uint32),
+        tttrlib.RECORD_SPC130,
+        state,
+    )
+    final_overflow = int(state.overflow_counter)
     return (
-        photons[:photon_idx].copy(),
-        microtimes[:photon_idx].copy(),
-        channels[:photon_idx].copy(),
-        int(total_overflows),
-        int(overflow_counter),  # overflow counter for next chunk
+        np.asarray(decoded.macro_times, dtype=np.uint64),
+        np.asarray(decoded.micro_times, dtype=np.uint16),
+        np.asarray(decoded.routing_channel, dtype=np.uint8),
+        final_overflow - int(initial_overflow),
+        final_overflow,
     )
 
 
@@ -473,7 +417,7 @@ class DataProcessingThread(QThread):
             return None
         if self._device_type in ("BH_SPC", "SIMULATION"):
             photons, microtimes, channels, _ov, new_overflow = (
-                _process_bh_spc_records_numba(data, self._overflow_accumulator)
+                _decode_bh_spc_records(data, self._overflow_accumulator)
             )
             self._overflow_accumulator = new_overflow
             return photons, microtimes, channels, _ov
@@ -849,7 +793,17 @@ class AcquisitionDockWidget(QDockWidget):
         windows_layout.addWidget(self.show_macrotime_checkbox, 1, 1)
         windows_layout.addWidget(self.show_mcs_checkbox, 2, 0)
 
-        control_layout.addWidget(windows_group, 4, 0, 1, 6)
+        # Row 5, not 4: the output-folder row and the settings buttons already
+        # occupy row 4, and a QGridLayout silently draws overlapping cells on
+        # top of each other rather than complaining.
+        control_layout.addWidget(windows_group, 5, 0, 1, 6)
+
+        # Spare height goes to the empty row above the status bar. Without this
+        # the grid shares it out evenly and the five checkboxes below end up in
+        # a group box taller than the controls it belongs to.
+        for row in (0, 1, 3, 4, 5):
+            control_layout.setRowStretch(row, 0)
+        control_layout.setRowStretch(2, 1)
 
         self.setWidget(control_panel)
 
@@ -2880,8 +2834,8 @@ class SMAcquisitionManager:
         Handles overflow accumulation to produce absolute macrotimes.
         Returns photons, microtimes, channels, overflow_count.
 
-        This wraps the low-level BH-SPC decoding (numba or pure Python)
-        and is called from process_data.
+        This wraps the photon library's BH-SPC record decoder and is called
+        from process_data.
 
         Args:
             data: numpy array of uint32 BH SPC-130 records
@@ -2896,11 +2850,10 @@ class SMAcquisitionManager:
         if data is None or len(data) == 0:
             return None, None, None, 0
 
-        # Always use the numba-optimized BH SPC decoder for BH_SPC and SIMULATION.
-        # If numba is not installed, njit is a no-op but the same implementation
-        # is still used (just without JIT acceleration).
+        # BH_SPC and SIMULATION both emit SPC-130 records, so both go through
+        # the library's decoder.
         if self.device.device_type in ("BH_SPC", "SIMULATION"):
-            photons, microtimes, channels, overflows, new_overflow = _process_bh_spc_records_numba(
+            photons, microtimes, channels, overflows, new_overflow = _decode_bh_spc_records(
                 data,
                 self.overflow_accumulator,
             )

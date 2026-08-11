@@ -34,6 +34,30 @@
 
 ### Changed
 
+- **Live acquisition decodes BH SPC-130 records with the photon library's own
+  decoder.** The acquisition tool carried a hand-maintained numba transcription
+  of the library's record processor, written because the library exposed that
+  decoder only behind a *file* reader while acquisition decodes records
+  arriving from the card in memory. It exposes `decode_records` now, so the
+  transcription is deleted and the format has one implementation again.
+  Verified against two real `.spc` files: identical macro times, micro times,
+  routing channels and overflow counter, so nothing about decoded data changes.
+  The wrap counter is still carried across chunk boundaries — that is the part
+  acquisition owns, and the test now pins it by decoding a real file in
+  4096-record chunks rather than by comparing two copies of the same algorithm.
+
+### Fixed
+
+- **The acquisition panel drew three of its controls on top of each other.**
+  The output-folder row, the Save/Load Settings buttons and the whole "Show"
+  group box were all placed at the same grid row, and Qt stacks overlapping
+  cells silently: "Fluorescence Decays" and "Count Rate" sat behind the folder
+  line edit and "Save Settings" on top of "Correlation Curve". All controls are
+  now visible, and spare vertical space goes to the plot area instead of
+  inflating the checkbox group.
+
+### Changed
+
 - **Maximum-entropy TCSPC now runs entirely in the photon library.** The
   `maxent_decay` plugin carried its own numba copies of the fractional IRF shift
   and the single-shot and periodic exponential convolutions. They are deleted;

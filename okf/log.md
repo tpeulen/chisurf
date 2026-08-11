@@ -1,6 +1,39 @@
 # Update Log
 
 ## 2026-08-11
+* **The photon library's MaxEnt bindings now take NumPy buffers, and the calls
+  got 18–69× cheaper.** The regression recorded this morning is fixed at its
+  source rather than routed around: all nine entry points in
+  `ext/python/MaxEntTcspc.i` moved to `IN_ARRAY1` in / `ARGOUTVIEWM` out.
+  9.1 → 0.50 µs at n=64, 26.5 → 0.81 at 512, 335 → 5.55 at 4096, 1360 → 19.6 at
+  16384; per-element 50 ns → 1.2–1.6 ns. Knock-on for this repo: a per-column
+  design-matrix build goes 1668 → 129 µs and a Python-driven 200-iteration MEM
+  loop 29 → 7.3 ms. Nothing in ChiSurf changed — signatures and keyword names
+  are identical, and the design-matrix parity guard still matches its numba
+  fixture bit for bit. Landed as tttrlib `02fba5618`.
+  **The rule survives the fix**: a loop still stays whole in C++, because
+  per-column is still 2.3× the one-call cost.
+* **`plugins/core/acq/gui/tool.py` is off the numba list — by deletion, not by
+  porting.** Its `_process_bh_spc_records_numba` was a hand-maintained
+  transcription of the library's SPC-130 record processor, written because the
+  library exposed that decoder only behind a *file* reader while live
+  acquisition decodes card records in memory. It exposes `decode_records` now,
+  so the transcription is gone and `_decode_bh_spc_records` is 15 lines.
+  Verified on `bh_spc132.spc` and `bh_spc132_sm_dna/m000.spc`: identical macro
+  times, micro times, routing channels and overflow counter — the copy was
+  correct, so this is tidying rather than a bug fix. Allow-list 19 → 18.
+  Two things the port had to keep: `state.overflow_counter` across chunk
+  boundaries (drop it and the first chunk still looks right), and the `uint8`
+  cast on routing channels (the library returns `int8` and `_accumulate`
+  reinterprets what it is handed). The old test compared the copy against the
+  reader, which is now a tautology; it is rewritten to pin the chunk-boundary
+  state instead, which is the part ChiSurf still owns.
+* **Screenshotting that panel found a layout defect no test could see.** The
+  output-folder row, the settings buttons and the whole "Show" group box were
+  all placed at grid row 4, and `QGridLayout` stacks overlapping cells silently:
+  two checkboxes sat behind a line edit and a third behind a button. Fixed, and
+  recorded under "Bugs the ports have found" in
+  [numba retirement](subsystems/numba-retirement.md).
 * **PRD-98 written: acquisition is a stream, not an array** — the user's
   directive "chisurf acq should use upcoming streaming from tttrlib", scoped
   against the code. The acq plugin is *half*-migrated in the most instructive
