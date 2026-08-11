@@ -1,6 +1,12 @@
 # Update Log
 
 ## 2026-08-11
+* **2D-FLC defect found**: the log-binned matrix moves when `lint_bin_factor`
+  changes, so a linear-binning knob silently shifts the axis the lifetime
+  inversion runs on — and the scan kernel deviates from the published MATLAB
+  where the builder does not. Recorded in
+  [known issues](references/known-issues.md); not fixed, because choosing an
+  axis changes published numbers and is a method decision.
 * **chigame can play tracker modules, with nothing added to the environment**
   ([chigame](subsystems/chigame.md)). A module is the one audio format small
   enough to live in a source tree -- instrument samples plus a grid of notes,

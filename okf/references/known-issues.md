@@ -1,3 +1,48 @@
+## 2D-FLC: the log-binned matrix moves when `lint_bin_factor` changes, and the two kernels disagree
+
+**Found 2026-08-11**, from an observation by the tttrlib session porting these
+kernels, then confirmed against the original MATLAB.
+
+`flc_2d` has two entry points that both produce a log-binned 2D-FDC matrix, and
+they build the log axis from **different** `t_imax`:
+
+- `create_2d_fdc_numba_int` (the single-lag builder) uses
+  `t_imax = lint_imax * lint_bin_factor` — the micro-time span rounded *up* to a
+  whole number of **linear** bins.
+- `_fdc_scan_log_kernel` (the multi-lag scan) uses `t_imax = span + 1`.
+
+Measured on the same stream, gate `[1, 40]`, 12 log bins: the two log matrices
+are **identical at `lint_bin_factor = 1` and different at 2, 3 and 5**. The total
+count is the same (6443 in every case) — the pairs are redistributed across
+different log bins, not lost.
+
+**Two consequences, both user-visible:**
+
+1. **A linear-binning knob silently changes the log-binned result.**
+   `api.two_d_fdc` derives `lint_bin_factor` from `max_bins`, so a user adjusting
+   what looks like a display/resolution setting for the *linear* matrix moves the
+   axis of the *log* matrix — which is the one the 2D-FLC lifetime inversion runs
+   on. Recovered lifetimes shift and nothing warns.
+2. **The scan deviates from the published method.**
+   `junk/2D-FLC-code/MatlabCodes/TK_Create2DFDC_04.m` computes
+   `t_Imax = lint_Imax * lint_BinFactor` and uses that same `t_Imax` for
+   `Mat_2DFDC_logt`. So the *builder* is faithful to the reference and the *scan*
+   is not. tttrlib's `fdc_scan_log` (PRD-036) followed the scan, so the C++
+   inherits the deviation.
+
+**Not fixed here, deliberately.** Picking an axis changes numbers users have
+already published, and the choice is a method decision rather than a coding one:
+either the scan adopts the reference's coupling, or the builder drops it and the
+reference's coupling is declared an artifact of its linear/log matrices sharing
+one variable. Whoever decides should say which, in the tracker, before either
+kernel is delegated — `fdc_scan_axis` (tttrlib, 2026-08-11) now takes a
+caller-supplied tick array, so ChiSurf can pass whichever axis is chosen rather
+than inheriting one.
+
+**How to re-derive**: call both entry points on the same stream with
+`lint_bin_factor` in `{1, 2, 3, 5}` and compare the log matrices. Equal at 1,
+different above it.
+
 ## The acquisition plot controllers paint over the window title with no host
 
 **Found 2026-08-11**, in the PRD-98 screenshots. Each acquisition window builds
