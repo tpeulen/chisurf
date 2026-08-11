@@ -1,3 +1,36 @@
+## The flc_2d plugin suite segfaults intermittently (SIGSEGV/SIGBUS, ~2 runs in 3)
+
+**Found 2026-08-11.** `pytest chisurf/plugins/fcs/flc_2d/test/` together with
+`test/fluorescence/test_gopich_szabo.py` and `test/test_numba_seam.py` exits
+**139, 138, 0** on three consecutive runs of an unchanged tree. Every file
+passes on its own, and smaller combinations pass; it needs the whole set in one
+process, which is the signature of heap corruption surfacing at interpreter
+teardown rather than at the call that caused it.
+
+The process loads Qt, IMP, numba, scipy and tttrlib together (121 extension
+modules in the fatal dump), so the interaction is not obviously any one of them.
+
+**How this entry was nearly written wrong**, which is the useful part. It first
+claimed a delegation of `flc_2d/core.py` to `fdc_scan_axis` caused the crash,
+on an A/B of **4 crashes with the change against 3 clean runs without it**. That
+looked decisive and was not: the same tree at HEAD then produced 139, 138, 0.
+Four-versus-three is not a measurement of a process that fails about two times
+in three — it is two draws from the same distribution. The delegation was
+reverted on that evidence and did not deserve to be.
+
+**Consequence for anyone testing here: a pass or a fail from one run of this
+directory means nothing.** Repeat it, and if you are attributing a crash to a
+change, repeat both arms enough to separate ~0.67 from ~1.0 — which is more
+runs than feels necessary.
+
+**Still to find:** which pair of libraries corrupts the heap. Worth trying
+`PYTHONMALLOC=malloc` under a sanitiser build, and bisecting the module set
+rather than the test set.
+
+**Not blocking the delegation.** That work is verified exact against all 13
+recorded fixture cases and is kept at `scratchpad/core_delegated.py`; it should
+land once someone can tell a real regression from this noise.
+
 ## WITHDRAWN — 2D-FLC's linear matrix does not "silently drop" its highest bin
 
 **Filed and withdrawn 2026-08-11, same day.** I reported that
@@ -57,6 +90,16 @@ If the intent is to *change the method* — to keep the highest bin because the
 trim loses real pairs, which it does — that is a legitimate decision, but it is a
 deliberate divergence from the reference and should be recorded as one, not as
 alignment with it.
+
+**The tttrlib session's part in this, recorded because it is the reusable
+lesson.** I (`opus-5/ac9f6757`) took "the MATLAB does no such trim" from a
+message, wrote it into a `🐛 BUG` block here on the user's *MATLAB is
+authoritative* ruling, and repeated it in tttrlib's PRD-036 and on the agent
+board — in the same message where I said I was reading the reference
+first-hand rather than a paraphrase. I had read its *construction* (lines
+38-44) and never its *return* (170-175). A second-hand claim laundered through
+a first-hand check reads exactly like a verified one. The trim stays; whether
+it *should* is now back with the user as a deliberate-divergence question.
 
 ## 2D-FLC: the log-binned matrix moves when `lint_bin_factor` changes, and the two kernels disagree
 
