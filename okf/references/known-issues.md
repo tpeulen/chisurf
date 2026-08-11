@@ -3495,26 +3495,36 @@ environment and build tool, every CI workflow uses it, and `build-extensions` is
 a `depends-on` of every `test*` task. A broken default solve takes the whole
 sanctioned test path with it, and `--frozen` masks that locally.
 
-## A ChiMOL object menu opened from the panel runs off the right edge of the window
+## ✅ FIXED — ChiMOL's chrome was laid out into boxes too small for its own text
 
 **Found 2026-08-11** while capturing the before-half of the chrome for the
-GPU-quad port ([chimol-web](/plugins/chimol-web.md)).
+GPU-quad port; **fixed the same day** ([chimol-web](/plugins/chimol-web.md)).
 
-The panel is a column pinned to the **right** edge, and `InternalGui._open_menu`
-places a menu at the x of the button that opened it and grows it rightwards.
-Nothing clamps it to the viewport, so a menu opened from the per-row `A` button
-at 1280×860 has its whole right-hand side outside the window: `assign sec. str…`,
-`copy to object` and `drag coordinate…` are cut mid-word, and the submenu markers
-sit off-screen. The same clipping truncates the mouse-mode block
-(`Mouse Mode 3-Button Viewin…`, `Whee…`, `MovZSlab`) and the last column of the
-`A S H L C` buttons.
+Reported first as "an object menu runs off the right edge of the window", which
+is what it looks like. It is not a clamping bug -- top-level menus *are* clamped
+to the viewport and submenus already flip sides. The cause is one constant:
 
-Visible in `test/renders/chrome_baseline/menu_open.png`.
+```python
+char_w = self.FONT_PT * 0.62      # 6.2 px at 10 pt
+```
 
-**Not fixed here on purpose.** The chrome port that found this is a *parity*
-change — it must reproduce the panel as it is, and a layout fix landed in the
-same change would be indistinguishable from a port regression when the two
-images are compared. The baseline records the clipping so the after-image can be
-held to it; the fix is a separate change, and it belongs in `_open_menu` and
-`layout_block` (clamp x to `width - menu_w`, flipping the menu to the left of its
-button when it would not fit).
+Menlo at 10 pt advances **8.5 px**, so every box in the panel was budgeted 22 %
+narrow. `assign sec. structure` was given 130 px and needs 177; because a menu
+is clamped against the *right* edge, the 47 px of overflow ran off-screen
+instead of merely overlapping. The truncated mouse-mode block
+(`Mouse Mode 3-Button Viewin…`) and the cramped sequence strip were the same
+constant, which is why they looked like three separate defects.
+
+The width now comes from the baked glyph atlas -- the thing that actually draws
+the text -- via `internal_gui.char_width()`.
+
+A second, independent bug surfaced with it: `column_width` starts at PyMOL's
+`internal_gui_width` of 220 and **only the splitter drag consulted
+`minimum_column_width()`**, so until someone dragged it the mouse-mode block was
+laid out wider than the column that positions it. `layout()` now holds the
+column to its own minimum, which is the invariant
+`test_internal_gui.py` was already asserting after a drag.
+
+Control inventory is unchanged across the fix (11/56/66/81 reachable controls in
+the four captured states); only the widths moved. Baselines in
+`test/renders/chrome_baseline/` were deliberately re-taken.

@@ -11,7 +11,11 @@ import pytest
 from qtpy import QtCore
 
 from chisurf.plugins.chimol.chimol.object_menus import OBJECT_MENUS
-from chisurf.plugins.chimol.chimol.renderer.internal_gui import GuiRow, InternalGui
+from chisurf.plugins.chimol.chimol.renderer.internal_gui import (
+    GuiRow,
+    InternalGui,
+    char_width,
+)
 
 WIDTH, HEIGHT = 900, 600
 
@@ -634,7 +638,7 @@ def test_clicking_a_residue_selects_it(sequences):
         (name, list(indices), additive)
     )
     row = sequences._seq_rows[0]
-    char_w = sequences.FONT_PT * 0.62
+    char_w = char_width(sequences.FONT_PT)
 
     sequences.mouse_press(sequences._seq_origin + char_w * 3.5, row.y + 4)
 
@@ -649,7 +653,7 @@ def test_dragging_selects_a_range(sequences):
     picked: list[list[int]] = []
     sequences.on_select = lambda name, indices, additive: picked.append(list(indices))
     row = sequences._seq_rows[0]
-    char_w = sequences.FONT_PT * 0.62
+    char_w = char_width(sequences.FONT_PT)
 
     sequences.mouse_press(sequences._seq_origin + char_w * 2.5, row.y + 4)
     sequences.drag(sequences._seq_origin + char_w * 7.5, row.y + 4)
@@ -667,7 +671,7 @@ def test_a_drag_does_not_stray_onto_the_other_object(sequences):
     """
     sequences.on_select = lambda *a: None
     first, second = sequences._seq_rows
-    char_w = sequences.FONT_PT * 0.62
+    char_w = char_width(sequences.FONT_PT)
 
     sequences.mouse_press(sequences._seq_origin + char_w * 2.5, first.y + 4)
     sequences.drag(sequences._seq_origin + char_w * 5.5, second.y + 4)
@@ -685,7 +689,7 @@ def test_clicking_past_the_end_of_a_sequence_selects_nothing(sequences):
     picked: list = []
     sequences.on_select = lambda *a: picked.append(a)
     row = sequences._seq_rows[1]          # the nine-residue one
-    char_w = sequences.FONT_PT * 0.62
+    char_w = char_width(sequences.FONT_PT)
 
     sequences.mouse_press(sequences._seq_origin + char_w * 40, row.y + 4)
 
@@ -697,7 +701,7 @@ def test_clicking_a_selected_residue_toggles_it_off(sequences):
     picked: list[list[int]] = []
     sequences.on_select = lambda name, indices, additive: picked.append(list(indices))
     row = sequences._seq_rows[0]
-    char_w = sequences.FONT_PT * 0.62
+    char_w = char_width(sequences.FONT_PT)
     x = sequences._seq_origin + char_w * 3.5
 
     sequences.mouse_press(x, row.y + 4)
@@ -712,7 +716,7 @@ def test_shift_click_extends_the_previous_gesture(sequences):
     picked: list[list[int]] = []
     sequences.on_select = lambda name, indices, additive: picked.append(list(indices))
     row = sequences._seq_rows[0]
-    char_w = sequences.FONT_PT * 0.62
+    char_w = char_width(sequences.FONT_PT)
     origin = sequences._seq_origin
 
     sequences.mouse_press(origin + char_w * 2.5, row.y + 4)              # anchor at 2
@@ -728,7 +732,7 @@ def test_ctrl_click_toggles_and_keeps_the_rest(sequences):
     picked: list[list[int]] = []
     sequences.on_select = lambda name, indices, additive: picked.append(list(indices))
     row = sequences._seq_rows[0]
-    char_w = sequences.FONT_PT * 0.62
+    char_w = char_width(sequences.FONT_PT)
     origin = sequences._seq_origin
 
     sequences.mouse_press(origin + char_w * 2.5, row.y + 4)                     # {2}
@@ -744,7 +748,7 @@ def test_ctrl_drag_merges_into_the_selection(sequences):
     picked: list[list[int]] = []
     sequences.on_select = lambda name, indices, additive: picked.append(list(indices))
     row = sequences._seq_rows[0]
-    char_w = sequences.FONT_PT * 0.62
+    char_w = char_width(sequences.FONT_PT)
     origin = sequences._seq_origin
 
     sequences.mouse_press(origin + char_w * 2.5, row.y + 4)                     # {2}
@@ -890,7 +894,7 @@ def test_a_scrolled_click_selects_the_residue_under_the_cursor(long_sequence):
     long_sequence.on_select = lambda name, indices, additive: picked.append(list(indices))
     long_sequence.scroll_sequence(30)
     row = long_sequence._seq_rows[0]
-    char_w = long_sequence.FONT_PT * 0.62
+    char_w = char_width(long_sequence.FONT_PT)
 
     long_sequence.mouse_press(long_sequence._seq_origin + char_w * 2.5, row.y + 4)
 

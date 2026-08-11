@@ -33,6 +33,42 @@ from .ui.painter import (
 
 from ..host.events import CONTROL_MODIFIER, SHIFT_MODIFIER
 
+_CHAR_WIDTH: float | None = None
+
+
+def char_width(font_pt: int) -> float:
+    """Advance width of one character of the chrome font, in pixels.
+
+    Parameters
+    ----------
+    font_pt : int
+        Point size, i.e. ``InternalGui.FONT_PT``.
+
+    Returns
+    -------
+    float
+
+    Notes
+    -----
+    Read from the baked glyph atlas, because that is what actually draws the
+    text. It used to be ``font_pt * 0.62``, a guess that is **22 % narrow**:
+    Menlo at 10 pt advances 8.5 px and the layout budgeted 6.2. Every box in
+    the panel is sized in multiples of this, so the whole chrome was laid out
+    into boxes too small for their own contents -- ``assign sec. structure``
+    was given 130 px and needs 177, and because a menu is clamped against the
+    right edge of the window the overflow ran *off-screen* rather than merely
+    overlapping. The truncated mouse-mode block (``Mouse Mode 3-Button
+    Viewin…``) and the cramped sequence strip are the same constant.
+
+    Cached: it is read on every layout pass and the atlas is immutable.
+    """
+    global _CHAR_WIDTH
+    if _CHAR_WIDTH is None:
+        from .ui.font import load_atlas
+
+        _CHAR_WIDTH = load_atlas().advance()
+    return _CHAR_WIDTH
+
 # PyMOL's palette, read off its internal GUI.
 PANEL_BG = (0, 0, 0, 190)
 HEADER_BG = (128, 128, 128, 220)
@@ -369,7 +405,10 @@ class InternalGui:
         #: rendered to the *left* of it, as PyMOL does, rather than under it:
         #: an overlay hides the molecule it is describing, and the part it hides
         #: is the part you just moved out of the way.
-        self.column_width = 220.0   # PyMOL's `internal_gui_width`
+        #: PyMOL's `internal_gui_width`, as a *starting* value: `layout` raises
+        #: it to `minimum_column_width()` when the contents need more, which at
+        #: this font is 267.
+        self.column_width = 220.0
         self._splitter = Rect(0, 0, 0, 0)
         self._dragging_splitter = False
         #: PyMOL's `seq_view`, off by default there and here.
@@ -427,6 +466,21 @@ class InternalGui:
         self._width, self._height = int(width), int(height)
         if name_width is not None:
             self._name_width = float(name_width)
+
+        if self.docked:
+            # The column must be at least as wide as the things inside it. It
+            # starts at PyMOL's `internal_gui_width` of 220, and only the
+            # *splitter drag* used to consult `minimum_column_width` -- so until
+            # someone dragged it, the mouse-mode block was laid out wider than
+            # the column that positions it and ran off the right edge of the
+            # window (`Mouse Mode 3-Button Viewin...`).
+            #
+            # Not capped to the window. On a viewport narrower than the panel's
+            # own minimum the two cannot both be satisfied, and the minimum
+            # wins: a panel that overhangs a 200 px window is still readable,
+            # where one truncated to fit it is the defect this whole clamp
+            # exists to prevent.
+            self.column_width = max(self.column_width, self.minimum_column_width())
 
         column = self.column_width if self.docked else 0.0
         self._splitter = Rect(
@@ -513,7 +567,7 @@ class InternalGui:
         if not strip_h:
             return
 
-        char_w = self.FONT_PT * 0.62
+        char_w = char_width(self.FONT_PT)
         name_w = max(
             [len(row.name) for row in self.sequences] + [4]
         ) * char_w + self.PAD
@@ -565,7 +619,7 @@ class InternalGui:
 
     def visible_columns(self) -> int:
         """How many residues fit across the strip."""
-        char_w = self.FONT_PT * 0.62
+        char_w = char_width(self.FONT_PT)
         return max(int((self._seq_strip.w - self._seq_origin - self.PAD) / char_w), 1)
 
     def max_scroll(self) -> int:
@@ -583,7 +637,7 @@ class InternalGui:
 
     def sequence_index_at(self, x: float, y: float) -> tuple[int, int] | None:
         """Return ``(row, residue index)`` under the cursor, or ``None``."""
-        char_w = self.FONT_PT * 0.62
+        char_w = char_width(self.FONT_PT)
         for index, rect in enumerate(self._seq_rows):
             if not rect.contains(x, y):
                 continue
@@ -674,7 +728,7 @@ class InternalGui:
         Where PyMOL puts them, and for the same reason: it is reference material
         you glance at without leaving the view, so it belongs in the view.
         """
-        char_w = self.FONT_PT * 0.62
+        char_w = char_width(self.FONT_PT)
         line_h = self.BLOCK_ROW_H
         label_w = 10.0 * char_w
         cell_w = 5 * char_w
@@ -704,7 +758,7 @@ class InternalGui:
 
         # Stride and average share the line under the state.
         stride_y = self._block.y + self.PAD + line_h * (rows + 4)
-        char_w = self.FONT_PT * 0.62
+        char_w = char_width(self.FONT_PT)
         split = self.PAD + 10.0 * char_w + 5 * char_w      # label column + one cell
         self._stride_rect = Rect(self._block.x, stride_y, split, line_h)
         self._average_rect = Rect(
@@ -762,7 +816,7 @@ class InternalGui:
         each of its nine buttons. A constant floor either cuts one of them off
         or stops the splitter well before it needs to.
         """
-        char_w = self.FONT_PT * 0.62
+        char_w = char_width(self.FONT_PT)
         rows_w = (
             self.PAD + self._name_width + self.PAD
             + self.BUTTON_W * len(OBJECT_MENUS) + self.PAD
@@ -1227,7 +1281,7 @@ class InternalGui:
         rectangles stay the single source of truth for both drawing and hit
         testing -- they cannot disagree about where an entry is.
         """
-        char_w = self.FONT_PT * 0.62
+        char_w = char_width(self.FONT_PT)
         width = max(
             [len(menu.title) * char_w]
             + [len(e.label) * char_w + (18 if e.is_submenu else 0) for e in menu.entries]
@@ -1459,7 +1513,7 @@ class InternalGui:
         strip = self._seq_strip
         p.fill_rect(strip.x, strip.y, strip.w, strip.h, SEQ_BG)
 
-        char_w = self.FONT_PT * 0.62
+        char_w = char_width(self.FONT_PT)
         visible = max(int((strip.w - self._seq_origin) / char_w), 1)
 
         # The number line, above the rows it labels.
@@ -1504,7 +1558,7 @@ class InternalGui:
         rect = self._block
         p.fill_rect(rect.x, rect.y, rect.w, rect.h, PANEL_BG)
 
-        char_w = self.FONT_PT * 0.62
+        char_w = char_width(self.FONT_PT)
         label_w = 10.0 * char_w
         cell_w = 5 * char_w
         left = rect.x + self.PAD
