@@ -1,3 +1,33 @@
+## `core/math/hmm.py` needs a tttrlib that is not committed anywhere
+
+**Found 2026-08-11**, by landing it. The HMM lattice delegation
+([numba retirement](/subsystems/numba-retirement.md) item 3) calls
+`tttrlib.hmm_forward_log` and its four siblings. Those exist and are verified —
+this machine's installed tttrlib has them and ChiSurf's parity suite is green
+against the numba fixture — but on the tttrlib side they live **only in the
+shared working tree**. The session that wrote them has made no commits, by
+choice: the shared index holds several sessions' staged work, so it left the
+commit to a human.
+
+So a **clean tttrlib checkout does not build a working ChiSurf HMM**. The
+failure is at least loud rather than silent: `_require_lattice()` raises
+`RuntimeError` naming the missing functions and telling the reader to rebuild,
+instead of falling back to a second implementation — which is the whole point
+of the change.
+
+**What closes this:** committing tttrlib
+`modules/math/{include/HmmLattice.h,src/HmmLattice.cpp,CMakeLists.txt,README.md}`,
+`ext/python/{HmmLattice.i,tttrlib.i}`, `test/python/misc/test_hmm_lattice.py`,
+`test/data/reference/hmm_lattice_numba_parity.npz`, plus its `CHANGELOG.md` and
+`okf/prds/PRD-035-*.md`. Not done here because those are another session's
+uncommitted files and committing them would be committing work that is not
+mine.
+
+**The trap:** a `git stash` or a clean checkout in tttrlib makes the lattice
+vanish, and ChiSurf's HMM stops working with an error that points at a rebuild
+rather than at the real cause. Check `python -c "import tttrlib;
+tttrlib.hmm_forward_log"` before believing any other diagnosis.
+
 ## A simulated molecule's photon yield depends on its *index*, not its physics
 
 **Found 2026-08-10** while building the mixture test set for segmentation and

@@ -25,7 +25,8 @@ counterpart used for empirical-Bayes FRET analysis lives in the ebFRET plugin
 variant is H2MM.
 
 The forward-backward recursions run in log space, so long traces do not
-underflow, and the time-stepping loops are compiled with numba.
+underflow, and the time-stepping loops are the photon library's compiled
+lattice.
 
 Where the analysis lives
 ------------------------
@@ -66,9 +67,10 @@ Invariants a change must not break
 Each of these was a real defect first, so they are cheap to reintroduce:
 
 * **Log space is load-bearing, and so are its infinities.** The compiled
-  kernels guard against ``-inf``; ``fastmath=True`` licenses LLVM to assume no
-  operand is infinite and deletes those guards. Log-domain kernels therefore
-  opt into :data:`LOG_DOMAIN_FASTMATH` instead.
+  lattice guards against ``-inf``; fast-math licenses the compiler to assume no
+  operand is infinite and deletes those guards. The library therefore builds
+  that translation unit without it, and an all-``-inf`` frame is a test rather
+  than a hope.
 * **A frame that no state can explain gets a uniform posterior.** Its
   ``log_gamma`` row is all ``-inf``, and subtracting its own maximum yields
   ``nan``, which then spreads through the M-step into every later iteration.
@@ -108,7 +110,6 @@ import sys
 from collections import deque
 from collections.abc import Iterator, Sequence
 
-import numba as nb
 import numpy as np
 from scipy import linalg
 
@@ -131,34 +132,72 @@ SQUAREM_PATIENCE = 4
 
 
 # ---------------------------------------------------------------------------
-# compiled kernels
+# the lattice
 # ---------------------------------------------------------------------------
+#
+# The forward, backward, posterior/xi and Viterbi recursions are the photon
+# library's. They used to be compiled here with numba -- five kernels and a
+# hand-picked ``fastmath`` set, because the stock one deleted the ``-inf``
+# guards the log domain depends on. That constraint did not go away; it moved,
+# and is pinned there by a translation unit built without fast-math and a test
+# on an all-``-inf`` frame.
+#
+# The wrappers below exist so the recursions keep their names and their call
+# signatures: ``fwd``, ``bwd``, ``posteriors`` and ``state_sequence`` are
+# buffers the caller allocates and this module reuses across EM iterations, and
+# ``xi_sum`` is *accumulated* into across every sequence of a fit. The library
+# takes them in place and honours both, which is why the delegation is a
+# forward and not a rewrite of the E-step.
 
-#: ``fastmath`` flags for the log-domain kernels: everything LLVM offers except
-#: ``nnan``/``ninf``. Those two license the compiler to assume no operand is NaN
-#: or infinite, which folds away the ``-inf`` guards these kernels depend on --
-#: with ``fastmath=True`` an all ``-inf`` frame (a structurally constrained model
-#: has whole columns of them) makes :func:`_logsumexp` return ``nan`` instead of
-#: ``-inf``, and the ``nan`` then spreads through the whole lattice.
-LOG_DOMAIN_FASTMATH = {"nsz", "arcp", "contract", "afn", "reassoc"}
+
+def _require_lattice():
+    """Return the photon library's HMM lattice functions, or say why not.
+
+    Returns
+    -------
+    tuple of callable
+        ``(forward, backward, backward_posteriors_xi, viterbi, logsumexp)``.
+
+    Raises
+    ------
+    RuntimeError
+        If the library is missing or predates the lattice.
+    """
+    try:
+        import tttrlib
+    except ImportError as exc:  # pragma: no cover - tttrlib is a hard dependency
+        raise RuntimeError(
+            "the hidden-Markov lattice is provided by tttrlib, which could not "
+            "be imported"
+        ) from exc
+    try:
+        return (
+            tttrlib.hmm_forward_log,
+            tttrlib.hmm_backward_log,
+            tttrlib.hmm_backward_posteriors_xi,
+            tttrlib.hmm_viterbi_log,
+            tttrlib.hmm_logsumexp,
+        )
+    except AttributeError as exc:
+        raise RuntimeError(
+            "tttrlib does not expose hmm_forward_log / hmm_backward_log / "
+            "hmm_backward_posteriors_xi / hmm_viterbi_log / hmm_logsumexp; "
+            "rebuild it (the log-domain lattice carries the forward-backward "
+            "recursions)"
+        ) from exc
 
 
-@nb.jit(nopython=True, nogil=True, fastmath=LOG_DOMAIN_FASTMATH)
 def _logsumexp(values: np.ndarray) -> float:
-    """Return ``log(sum(exp(values)))`` computed without overflow."""
-    vmax = -np.inf
-    for i in range(values.shape[0]):
-        if values[i] > vmax:
-            vmax = values[i]
-    if vmax == -np.inf:
-        return -np.inf
-    acc = 0.0
-    for i in range(values.shape[0]):
-        acc += np.exp(values[i] - vmax)
-    return np.log(acc) + vmax
+    """Return ``log(sum(exp(values)))`` computed without overflow.
+
+    An all ``-inf`` input returns ``-inf`` rather than ``nan``; a structurally
+    constrained model produces whole ``-inf`` columns, so that is a value and
+    not an error.
+    """
+    _, _, _, _, logsumexp = _require_lattice()
+    return float(logsumexp(np.ascontiguousarray(values, dtype=np.float64)))
 
 
-@nb.jit(nopython=True, nogil=True, fastmath=LOG_DOMAIN_FASTMATH)
 def _forward_log(
     log_startprob: np.ndarray,
     log_transmat: np.ndarray,
@@ -169,19 +208,10 @@ def _forward_log(
 
     ``fwd[t, i]`` is :math:`\log P(x_1 \dots x_t, z_t = i)`.
     """
-    n_samples, n_components = log_frameprob.shape
-    work = np.empty(n_components)
-    for j in range(n_components):
-        fwd[0, j] = log_startprob[j] + log_frameprob[0, j]
-    for t in range(1, n_samples):
-        for j in range(n_components):
-            for i in range(n_components):
-                work[i] = fwd[t - 1, i] + log_transmat[i, j]
-            fwd[t, j] = _logsumexp(work) + log_frameprob[t, j]
-    return _logsumexp(fwd[n_samples - 1])
+    forward, _, _, _, _ = _require_lattice()
+    return float(forward(log_startprob, log_transmat, log_frameprob, fwd))
 
 
-@nb.jit(nopython=True, nogil=True, fastmath=LOG_DOMAIN_FASTMATH)
 def _backward_log(
     log_transmat: np.ndarray,
     log_frameprob: np.ndarray,
@@ -193,18 +223,10 @@ def _backward_log(
     standalone recursion for testing; the E-step uses
     :func:`_backward_posteriors_xi`, which folds this into a single sweep.
     """
-    n_samples, n_components = log_frameprob.shape
-    work = np.empty(n_components)
-    for i in range(n_components):
-        bwd[n_samples - 1, i] = 0.0
-    for t in range(n_samples - 2, -1, -1):
-        for i in range(n_components):
-            for j in range(n_components):
-                work[j] = log_transmat[i, j] + log_frameprob[t + 1, j] + bwd[t + 1, j]
-            bwd[t, i] = _logsumexp(work)
+    _, backward, _, _, _ = _require_lattice()
+    backward(log_transmat, log_frameprob, bwd)
 
 
-@nb.jit(nopython=True, nogil=True, fastmath=LOG_DOMAIN_FASTMATH)
 def _backward_posteriors_xi(
     log_transmat: np.ndarray,
     log_frameprob: np.ndarray,
@@ -216,108 +238,36 @@ def _backward_posteriors_xi(
     r"""Sweep backwards once, filling ``posteriors`` and accumulating ``xi_sum``.
 
     Backward lattice, state posteriors and expected transition counts all need
-    the same quantity :math:`\log a_{ij} + \log b_j(x_{t+1}) + \beta_{t+1}(j)`.
-    Computing it once and exponentiating it once -- rather than running three
-    passes over the lattice -- is what makes the E-step here cheaper than the
-    textbook arrangement, and it keeps only two rows of the backward lattice
-    alive instead of the whole ``(n_samples, n_components)`` array.
+    the same quantity :math:`\log a_{ij} + \log b_j(x_{t+1}) + \beta_{t+1}(j)`,
+    so the library computes and exponentiates it once rather than running three
+    passes over the lattice.
 
-    A frame that no state can explain gets a uniform posterior; its ``-inf``
-    entries would otherwise turn into ``nan`` on normalisation.
+    Two behaviours the E-step depends on: ``xi_sum`` is **added to**, never
+    cleared, because every sequence of a fit accumulates into the same matrix;
+    and a frame no state can explain gets a uniform posterior rather than
+    ``nan``, while an impossible *sequence* contributes no transition counts at
+    all.
     """
-    n_samples, n_components = log_frameprob.shape
-    bwd_next = np.zeros(n_components)
-    bwd_current = np.empty(n_components)
-    work = np.empty(n_components)
-    uniform = 1.0 / n_components
-
-    total = 0.0
-    for j in range(n_components):
-        posteriors[n_samples - 1, j] = np.exp(fwd[n_samples - 1, j] - log_prob)
-        total += posteriors[n_samples - 1, j]
-    for j in range(n_components):
-        posteriors[n_samples - 1, j] = (
-            posteriors[n_samples - 1, j] / total if total > 0.0 else uniform
-        )
-
-    for t in range(n_samples - 2, -1, -1):
-        for i in range(n_components):
-            maximum = -np.inf
-            for j in range(n_components):
-                value = log_transmat[i, j] + log_frameprob[t + 1, j] + bwd_next[j]
-                work[j] = value
-                if value > maximum:
-                    maximum = value
-            if maximum == -np.inf:
-                bwd_current[i] = -np.inf
-                continue
-            # exp(work - maximum) serves both the log-sum-exp below and the
-            # transition counts, which differ from it by a constant factor.
-            #
-            # An impossible sequence (log_prob == -inf) contributes no expected
-            # transitions at all. Without the guard the scale is
-            # exp(-inf + -inf - -inf) = exp(nan) = nan, and since xi_sum is the
-            # accumulator shared by every sequence in the E-step, that one
-            # sequence turns the whole transition matrix into nan -- and then
-            # the M-step, and then every iteration after it. The posteriors
-            # survive it (their uniform fallback catches the nan total), which
-            # is what makes it invisible.
-            accumulated = 0.0
-            if log_prob == -np.inf:
-                scale = 0.0
-            else:
-                scale = np.exp(maximum + fwd[t, i] - log_prob)
-            for j in range(n_components):
-                shifted = np.exp(work[j] - maximum)
-                accumulated += shifted
-                xi_sum[i, j] += shifted * scale
-            bwd_current[i] = np.log(accumulated) + maximum
-
-        total = 0.0
-        for j in range(n_components):
-            posteriors[t, j] = np.exp(fwd[t, j] + bwd_current[j] - log_prob)
-            total += posteriors[t, j]
-        for j in range(n_components):
-            posteriors[t, j] = posteriors[t, j] / total if total > 0.0 else uniform
-
-        for j in range(n_components):
-            bwd_next[j] = bwd_current[j]
+    _, _, backward_posteriors_xi, _, _ = _require_lattice()
+    backward_posteriors_xi(
+        log_transmat, log_frameprob, fwd, float(log_prob), posteriors, xi_sum
+    )
 
 
-@nb.jit(nopython=True, nogil=True, fastmath=LOG_DOMAIN_FASTMATH)
 def _viterbi(
     log_startprob: np.ndarray,
     log_transmat: np.ndarray,
     log_frameprob: np.ndarray,
     state_sequence: np.ndarray,
 ) -> float:
-    """Fill ``state_sequence`` with the most probable path and return its log-probability."""
-    n_samples, n_components = log_frameprob.shape
-    delta = np.empty((n_samples, n_components))
-    psi = np.zeros((n_samples, n_components), dtype=np.int64)
-    for j in range(n_components):
-        delta[0, j] = log_startprob[j] + log_frameprob[0, j]
-    for t in range(1, n_samples):
-        for j in range(n_components):
-            best = -np.inf
-            best_i = 0
-            for i in range(n_components):
-                score = delta[t - 1, i] + log_transmat[i, j]
-                if score > best:
-                    best = score
-                    best_i = i
-            delta[t, j] = best + log_frameprob[t, j]
-            psi[t, j] = best_i
-    best = -np.inf
-    best_i = 0
-    for j in range(n_components):
-        if delta[n_samples - 1, j] > best:
-            best = delta[n_samples - 1, j]
-            best_i = j
-    state_sequence[n_samples - 1] = best_i
-    for t in range(n_samples - 2, -1, -1):
-        state_sequence[t] = psi[t + 1, state_sequence[t + 1]]
-    return best
+    """Fill ``state_sequence`` with the most probable path and return its log-probability.
+
+    ``state_sequence`` must be ``int64``. Where no path is possible the
+    log-probability is ``-inf`` and the returned labels are arbitrary: every
+    candidate scores ``-inf``, so only the tie-break distinguishes them.
+    """
+    _, _, _, viterbi, _ = _require_lattice()
+    return float(viterbi(log_startprob, log_transmat, log_frameprob, state_sequence))
 
 
 # ---------------------------------------------------------------------------
@@ -363,18 +313,6 @@ def _split_sequences(X: np.ndarray, lengths: Sequence[int] | None) -> Iterator[n
 #: Log emission density for every state -- moved to :mod:`chisurf.core.ml` so
 #: the mixture estimators and the HMM share one implementation.
 from chisurf.core.ml._gaussian import _log_gaussian_density  # noqa: E402
-
-
-@nb.jit(nopython=True, nogil=True, fastmath=True)
-def _squared_distances(X: np.ndarray, center: np.ndarray, out: np.ndarray) -> None:
-    """Fill ``out`` with the squared distance from every row of ``X`` to ``center``."""
-    n_samples, n_features = X.shape
-    for t in range(n_samples):
-        acc = 0.0
-        for j in range(n_features):
-            diff = X[t, j] - center[j]
-            acc += diff * diff
-        out[t] = acc
 
 
 #: k-means++ seeding / Lloyd / the ``_kmeans`` driver -- moved to

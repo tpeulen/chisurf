@@ -33,7 +33,6 @@
 
 # ── tttrlib (already shipping; delegate) ─────────────────────────────────────
 chisurf/core/fluorescence/burst/gopich_szabo.py
-chisurf/core/math/hmm.py
 chisurf/core/ml/cluster/_hdbscan.py
 
 # ── imp (already migrated to imp-tricks; delete the leftover) ────────────────

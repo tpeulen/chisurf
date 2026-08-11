@@ -12,7 +12,6 @@ from scipy.special import logsumexp
 from chisurf.core.math import hmm
 from chisurf.core.math.hmm import (
     COVARIANCE_TYPES,
-    LOG_DOMAIN_FASTMATH,
     ConvergenceMonitor,
     GaussianHMM,
     _backward_log,
@@ -70,19 +69,32 @@ def _sorted_by_mean(model):
 # ---------------------------------------------------------------------------
 
 
+def _logsumexp_reference(values):
+    """``log(sum(exp(values)))``, written out, as the thing to be believed."""
+    finite = [v for v in values if v != -np.inf]
+    if not finite:
+        return -np.inf
+    vmax = max(finite)
+    return float(np.log(sum(np.exp(v - vmax) for v in finite)) + vmax)
+
+
 def test_an_unexplainable_frame_stays_minus_inf_after_compilation():
     """The ``-inf`` guards must survive the compiler's fast-math licence.
 
-    ``fastmath=True`` implies LLVM's ``ninf``, under which the compiler may
-    assume no operand is infinite and folds ``if vmax == -np.inf`` away, so an
-    all ``-inf`` frame -- what a structurally constrained model produces -- comes
-    back as ``nan`` and poisons the whole lattice. The log-domain kernels are
-    therefore compiled with every fast-math flag *except* ``nnan``/``ninf``.
+    Fast-math implies the compiler's ``ninf``, under which it may assume no
+    operand is infinite and fold the ``vmax == -inf`` guard away — so an all
+    ``-inf`` frame, which is what a structurally constrained model produces,
+    comes back as ``nan`` and poisons the whole lattice. The library builds the
+    lattice's translation unit without fast-math for exactly this reason, and
+    that is a property of a *build*, so it is worth asserting from here rather
+    than trusting.
     """
-    assert not {"nnan", "ninf"} & LOG_DOMAIN_FASTMATH
     values = np.full(3, -np.inf)
     assert _logsumexp(values) == -np.inf
-    assert _logsumexp(values) == _logsumexp.py_func(values)
+    assert _logsumexp(values) == _logsumexp_reference(values)
+
+    mixed = np.array([-np.inf, -2.5, -np.inf, 0.25])
+    np.testing.assert_allclose(_logsumexp(mixed), _logsumexp_reference(mixed), rtol=1e-15)
 
 
 def test_a_structurally_constrained_chain_fits_without_nan():

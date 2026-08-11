@@ -34,6 +34,13 @@
 
 ### Changed
 
+- **Hidden-Markov fitting runs on the photon library's compiled lattice.** The
+  forward, backward, posterior and Viterbi recursions were compiled in-tree; they
+  are now one implementation in the library, shared rather than duplicated, and
+  **1.1–1.6× faster** than what they replace. Results are unchanged: the lattice
+  is checked bit-for-bit against a recording of the previous kernels, which was
+  itself cross-checked against hmmlearn.
+
 - **Live acquisition decodes BH SPC-130 records with the photon library's own
   decoder.** The acquisition tool carried a hand-maintained numba transcription
   of the library's record processor, written because the library exposed that

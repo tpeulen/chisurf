@@ -10,7 +10,7 @@ timestamp: '2026-08-10T00:00:00Z'
 # Where to pick this up
 
 1. **The tracker is `test/numba_import_allowlist.txt`** and it only shrinks.
-   Every entry carries its route. **16 chisurf-owned files remain**, and **route `numpy` is now empty -- Phase 1 is done** of the 48 this work covers. ChiMOL's 11 are **excluded from the guard entirely** — the WebGPU port removes them on its own schedule, and listing them here only made this test fail nine times in one session with news about someone else's progress;
+   Every entry carries its route. **15 chisurf-owned files remain**, and **route `numpy` is now empty -- Phase 1 is done** of the 48 this work covers. ChiMOL's 11 are **excluded from the guard entirely** — the WebGPU port removes them on its own schedule, and listing them here only made this test fail nine times in one session with news about someone else's progress;
    `test/test_numba_seam.py` fails both on a new importer and on a stale entry,
    so the list cannot drift from the tree.
 2. **`maxent_decay/core/solver.py` is done, and the granularity of a delegation
@@ -125,13 +125,21 @@ timestamp: '2026-08-10T00:00:00Z'
      tttrlib's `modules/math`, NumPy-bound. Route `numpy` is out — the
      recursions are serial in `t` and only vectorise over states, so a NumPy
      rewrite pays Python loop overhead once per sample.
-     **Do not pick this file up here — it is blocked on tttrlib PRD-035**
-     (`okf/prds/PRD-035-generic-log-domain-hmm-lattice.md`, board ticket
-     `T-20260811-07`, flagged priority by the user). The PRD carries the numba
-     baseline the C++ must not regress (forward 10.81 ms, backward+xi 12.66 ms
-     at T=100k/K=3) and the four numerical traps, chiefly that an all-`-inf`
-     frame must give `-inf` rather than `nan`. ChiSurf's side is then a
-     delegation plus a parity fixture recorded before the kernels are deleted.
+     **Done 2026-08-11.** tttrlib PRD-035 landed the lattice
+     (`hmm_forward_log`, `hmm_backward_log`, `hmm_backward_posteriors_xi`,
+     `hmm_viterbi_log`, `hmm_logsumexp`, plus an `hmm_estep_log` taking
+     `lengths`); the five numba kernels here are thin forwards to it and
+     `import numba` is gone. It came out **1.1–1.6× faster** than the numba it
+     replaces rather than merely matching. Proven by
+     `test/math/test_hmm_lattice_parity.py` against the committed fixture, and
+     the fixture itself is anchored to hmmlearn (above). Two things went with
+     it: `LOG_DOMAIN_FASTMATH` (the constraint moved into a translation unit
+     built without fast-math, and the test now checks the *behaviour* against a
+     written-out reference instead of the flag set) and a dead
+     `_squared_distances`, a duplicate of the live one in
+     `core/ml/cluster/_kmeans.py`.
+     **It depends on tttrlib files that are not committed** — see
+     [known issues](/references/known-issues.md).
    - **The `imp` group is not "delete the leftover", and nothing in this area
      is dead.** Importers, absolute + relative: `potentials.py` 10,
      `dcd.py` 5+1, `protein.py` 4, `av/dynamic.py` 3, `av/static.py` 1+1,
@@ -628,8 +636,8 @@ mechanically.
 | | Files | Kernels |
 | --- | ---: | ---: |
 | At the start | 59 | 186 |
-| Ported so far | 26 | ~65 |
-| Remaining | 22 | ~90 |
+| Ported so far | 27 | ~71 |
+| Remaining | 21 | ~84 |
 | ChiMOL (excluded, owned elsewhere) | 11 | 29 |
 
 Done: `fluorescence/general.py`, `math/datatools.py`, `math/statistics.py`,

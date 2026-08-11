@@ -57,6 +57,10 @@
 * **`plugins/core/acq/gui/tool.py` off the numba list** by deleting its
   SPC-130 decoder copy for `tttrlib.decode_records`; allow-list 19 → 18.
   Traps and verification in [numba retirement](subsystems/numba-retirement.md) §3.
+* **`core/math/hmm.py` delegates to tttrlib's lattice** (PRD-035); five numba
+  kernels and `import numba` gone, 1.1–1.6× faster, parity green against the
+  fixture. Allow-list 16 → 15. **Needs uncommitted tttrlib files** —
+  [known issues](references/known-issues.md).
 * **HMM lattice validated against hmmlearn** (user rule: use it as the
   reference). Forward and backward lattices are **bit-identical**; posteriors
   and xi differ only by accumulation order; Viterbi matches wherever a path
