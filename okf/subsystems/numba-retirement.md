@@ -125,11 +125,15 @@ timestamp: '2026-08-10T00:00:00Z'
      tttrlib's `modules/math`, NumPy-bound. Route `numpy` is out — the
      recursions are serial in `t` and only vectorise over states, so a NumPy
      rewrite pays Python loop overhead once per sample.
-   - **The `imp` group is not "delete the leftover".** All of it is live:
-     `potentials.py` has 10 importers, `dcd.py` 5, `protein.py` 4,
-     `av/dynamic.py` 3, `av/static.py` 1. Only `av/functions.py` has none, and
-     that one is route `wgsl` anyway. These need real ports or real delegation
-     to `IMP.bff` / `IMP.cgmol`; budget accordingly.
+   - **The `imp` group is not "delete the leftover", and nothing in this area
+     is dead.** Importers, absolute + relative: `potentials.py` 10,
+     `dcd.py` 5+1, `protein.py` 4, `av/dynamic.py` 3, `av/static.py` 1+1,
+     `xtc.py` 2+1 — and `av/functions.py` (route `wgsl`) **11, all relative**,
+     via `from . import functions` inside `av/__init__.py`. Count relative
+     imports: a grep for the dotted module path alone reports `functions.py` as
+     having no callers, which is exactly backwards for the most-used file of
+     the set. These need real ports or real delegation to `IMP.bff` /
+     `IMP.cgmol`; budget accordingly.
 
    **`core/structure/av/utils.py` is done** and is the cheap shape: a two-pass
    `@nb.jit` loop that was a boolean mask all along. Vectorised, bit-identical
