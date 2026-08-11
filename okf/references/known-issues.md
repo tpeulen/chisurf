@@ -3544,3 +3544,27 @@ column to its own minimum, which is the invariant
 Control inventory is unchanged across the fix (11/56/66/81 reachable controls in
 the four captured states); only the widths moved. Baselines in
 `test/renders/chrome_baseline/` were deliberately re-taken.
+
+## ✅ RESOLVED — ChiMOL's browser page renders; drive it with Playwright, not the Chrome tools
+
+**Found and resolved 2026-08-11** ([chimol-web](/plugins/chimol-web.md)).
+
+The browser tools drive a Chrome that is **not on the same host** as the shell.
+A dev server that answers
+
+```
+curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8792/     # 200
+```
+
+gives that Chrome `ERR_CONNECTION_REFUSED` at the same URL, on `localhost` and
+`127.0.0.1` alike, with the shell sandbox disabled. Every read landed on
+`chrome-error://chromewebdata/`, which is also why `navigator.gpu` read as
+false -- it was being read on the error page.
+
+**Playwright's Chromium runs in the same sandbox as the shell and works.** With
+`--enable-unsafe-webgpu`, `navigator.gpu` is present and the page renders.
+`test/test_browser_render.py` does the whole thing -- server, browser, Pyodide,
+device, frame, pixels -- and is marked `slow`.
+
+So: **to look at chimol in a browser from an agent session, use Playwright.**
+The Chrome tools cannot reach a locally served page on this machine.

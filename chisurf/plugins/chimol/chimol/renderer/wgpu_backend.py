@@ -212,7 +212,13 @@ class WgpuMeshRenderer:
             # A canvas configures its context against a device it already has,
             # and a texture from one device cannot be drawn into by another.
             self.device = device
-            self.adapter_info = dict(getattr(device.adapter, "info", {}) or {})
+            # `device.adapter` is a wgpu-py convenience; WebGPU's own API has no
+            # such property, so a browser device does not carry one. Diagnostic
+            # only -- reaching for it unguarded made the browser backend fail
+            # inside the constructor, several layers from anything to do with
+            # adapters.
+            adapter = getattr(device, "adapter", None)
+            self.adapter_info = dict(getattr(adapter, "info", {}) or {})
 
         # Non-sRGB by default, on purpose. The swap-chain's preferred format is
         # `rgba8unorm-srgb`, which gamma-encodes on write; the OpenGL backend

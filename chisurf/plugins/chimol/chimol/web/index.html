@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>ChiMOL in the browser</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #1a1a1a; color: #ddd;
+               font: 13px/1.5 Menlo, monospace; }
+  #view { display: block; width: 100vw; height: calc(100vh - 28px); }
+  #status { height: 28px; padding: 4px 10px; box-sizing: border-box;
+            border-top: 1px solid #333; white-space: nowrap; overflow: hidden; }
+</style>
+</head>
+<body>
+<canvas id="view"></canvas>
+<div id="status">starting…</div>
+<!-- A local Pyodide when one has been copied in (`serve.py --pyodide DIR`),
+     the CDN otherwise. Loaded before boot.js, which needs `loadPyodide`. -->
+<script>
+  document.write(
+    '<script src="' +
+    (window.CHIMOL_PYODIDE || "https://cdn.jsdelivr.net/pyodide/v0.28.0/full/pyodide.js") +
+    '"><\/script>'
+  );
+</script>
+<script src="boot.js"></script>
+</body>
+</html>

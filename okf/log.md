@@ -119,11 +119,6 @@
 * **`plugins/core/acq/gui/tool.py` off the numba list** by deleting its
   SPC-130 decoder copy for `tttrlib.decode_records`; allow-list 19 → 18.
   Traps and verification in [numba retirement](subsystems/numba-retirement.md) §3.
-* **`flc_2d/api.py` off the numba list** (13 left) — its only numba use was
-  choosing a chunk count, which never changes the result. Taking it off exposed
-  a real defect: the plugin's kernels could not cold-compile at all after
-  `env_bootstrap` rewrites `NUMBA_NUM_THREADS`. Guard added, suite 26 passed.
-  Detail in [numba retirement](subsystems/numba-retirement.md).
 * **XTC support dropped** on the user's instruction — DCD is enough and is
   lossless. Deletes the reader, its six XDR bit-unpacking numba kernels and the
   only rescale-on-read in the tree; allow-list 15 → 14. Swept 36 files of
@@ -33863,3 +33858,29 @@
   first (`objects_panel`/`hierarchy_panel` are nearly duplicates of what `InternalGui` already draws), then
   labels (text, therefore quads), then the Pyodide backend — whose device request is **async**, so the bootstrap
   must resolve it before the engine starts or the desktop path grows an event loop it does not need.
+
+- **2026-08-11 — ChiMOL renders a molecule in a browser: 148L, on the browser's own WebGPU, from the same Python and the same WGSL.**
+  `renderer/gpu/browser.py` is the second backend beside `native.py`. The engine is unchanged: it calls
+  `device.create_buffer(size=..., usage=...)` either way, and the nineteen WGSL files are the same text. What the
+  backend does is translate — snake_case to camelCase, keyword arguments to one object literal, numpy to a typed
+  array — because `wgpu-py` is a literal transliteration of the same IDL the browser implements. `web/` is a
+  loader, a demo and a dev server; `boot.js` contains no pipeline, no buffer and no draw call, and a guard
+  forbids it.
+  **The browser found four things Python could not, and none of them is about Qt.**
+  `device.adapter` is a wgpu-py convenience with no WebGPU equivalent, read unguarded in the renderer's
+  constructor. `createBufferWithData` does not exist either — the specification's way is `mappedAtCreation` +
+  `getMappedRange` + `unmap`. Positional arguments needed converting as much as keyword ones, which
+  `queue.writeTexture(destination, data, layout, size)` reports only as `Overload resolution failed`. And
+  **the engine still depended on the host application**: `io/atoms.py` took its atom dtype from
+  `chisurf.core.fio.structure.coordinates`, and `io/__init__.py` imported every reader eagerly, so asking for the
+  self-contained PDB parser pulled in the density-map reader, marching cubes and scipy. Both fixed; the dtype
+  keeps the core's object when the core is there (an existing test asserts *identity*, deliberately) and falls
+  back to an equal local copy only in a browser, guarded by an equality test.
+  **Drive it with Playwright, not the Chrome tools.** The browser tools reach a Chrome that is not on the same
+  host as the shell: a server answering `200` to curl gives that Chrome `ERR_CONNECTION_REFUSED`, and every read
+  landed on `chrome-error://chromewebdata/` — which is also why `navigator.gpu` read as false. Playwright's
+  Chromium runs in the same sandbox and works with `--enable-unsafe-webgpu`.
+  `test/test_browser_render.py` does the whole thing — server, browser, Pyodide, device, frame, pixels — marked
+  `slow`. It asserts the **molecule**, not just that something drew: the panel alone renders happily against an
+  empty scene and looks like a working port until someone asks where the molecule is. See
+  [chimol-web](/plugins/chimol-web.md).

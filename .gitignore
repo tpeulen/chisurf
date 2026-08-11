@@ -93,8 +93,6 @@ session-*.md
 dummy.db
 wrapper_test.spc
 scripts/*.txt
-# compiled burbulator lib (built by setup.py per-platform)
-chisurf/plugins/core/acq/tcspc_devices/simulation/*.dylib
 chisurf/plugins/core/acq/tcspc_devices/simulation/*.so
 chisurf/plugins/core/acq/tcspc_devices/simulation/*.dll
 # agent / AI assistant artifacts (kept local-only, never tracked)
@@ -116,3 +114,7 @@ chisurf/plugins/spectra_downloader/spectra.db-shm
 chisurf/plugins/spectra_downloader/spectra.db-wal
 chisurf/plugins/spectra_downloader/spectra.db*.bak
 chisurf/plugins/spectra_downloader/backups/
+
+# Built by chimol's browser loader (`web/serve.py`); assembled on demand.
+chisurf/plugins/chimol/chimol/web/chimol.zip
+chisurf/plugins/chimol/chimol/web/pyodide/

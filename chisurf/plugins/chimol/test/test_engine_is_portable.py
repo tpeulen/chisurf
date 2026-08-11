@@ -29,6 +29,8 @@ import subprocess
 import sys
 import textwrap
 
+import pytest
+
 #: The shipped package.
 _CHIMOL = pathlib.Path(__file__).resolve().parents[1] / "chimol"
 
@@ -221,3 +223,26 @@ def test_the_host_list_is_not_padded():
         "these no longer import Qt at module scope -- strike them from HOSTS: "
         + ", ".join(stale)
     )
+
+
+def test_the_atom_dtype_matches_the_host():
+    """chimol's atom row is byte-identical to the host application's.
+
+    :data:`chimol.io.atoms.ATOM_DTYPE` used to be imported from
+    ``chisurf.core.fio.structure.coordinates``, which made reading a PDB pull in
+    the whole host application -- the second kind of portability leak this port
+    found, after Qt, and one that only showed up when the browser ran chimol's
+    own self-contained PDB parser.
+
+    Stated locally now, and asserted against the authority here. Not a
+    duplicate to drift: every reader in the plugin produces this layout and
+    every builder consumes it, so a change on either side has to fail rather
+    than silently produce arrays that do not round-trip.
+    """
+    coordinates = pytest.importorskip(
+        "chisurf.core.fio.structure.coordinates",
+        reason="the host application is not importable here",
+    )
+    from chisurf.plugins.chimol.chimol.io.atoms import ATOM_DTYPE
+
+    assert ATOM_DTYPE == coordinates.atom_dtype

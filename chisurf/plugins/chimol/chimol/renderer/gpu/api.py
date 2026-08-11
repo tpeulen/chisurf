@@ -79,19 +79,57 @@ __all__ = [
 ]
 
 
+#: Overrides the automatic choice. Set by :func:`use_backend`.
+_FORCED = None
+
+
 def _backend():
     """Return the active backend module.
 
     Returns
     -------
     module
-        :mod:`chimol.renderer.gpu.native` today. The selection lives in one
-        function so that adding a second backend is a change here and nowhere
-        else.
+        :mod:`chimol.renderer.gpu.browser` when this process is Pyodide with a
+        WebGPU-capable browser under it, and
+        :mod:`chimol.renderer.gpu.native` otherwise.
+
+    Notes
+    -----
+    Chosen by asking, not by a build flag: the same wheel is meant to run in
+    both places, and a flag is a thing that can be set wrong. The browser
+    backend's :func:`~.browser.is_available` returns ``False`` unless ``js``
+    imports *and* ``navigator.gpu`` exists, so a desktop process cannot select
+    it by accident.
     """
+    if _FORCED is not None:
+        return _FORCED
+
+    from . import browser
+
+    if browser.is_available():
+        return browser
+
     from . import native
 
     return native
+
+
+def use_backend(module) -> None:
+    """Force a specific backend, or ``None`` to choose automatically.
+
+    Parameters
+    ----------
+    module : module or None
+        A module offering ``name``, ``is_available`` and
+        ``request_adapter_sync``.
+
+    Notes
+    -----
+    For tests and for a loader that has already resolved a device. Not a
+    configuration knob -- the automatic choice is right in both real cases.
+    """
+    global _FORCED
+    _FORCED = module
 
 
 def backend_name() -> str:

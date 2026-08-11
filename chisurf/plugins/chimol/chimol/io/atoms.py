@@ -31,7 +31,35 @@ from __future__ import annotations
 
 import numpy as np
 
-from chisurf.core.fio.structure.coordinates import atom_dtype as ATOM_DTYPE
+#: The layout of one atom row, as the host application defines it.
+#:
+#: Imported when the host is there, and **the same object** -- there is one atom
+#: dtype and the core owns it, which `test_atom_rows.py` asserts by identity
+#: rather than by equality.
+#:
+#: The fallback is for the one place the host cannot be: a browser. chimol's own
+#: PDB parser is self-contained, and this single import was what stopped it
+#: running under Pyodide -- the second kind of portability leak this port found,
+#: after Qt, and the one that only showed up when a page tried to draw a real
+#: molecule. `test_engine_is_portable.py` asserts the two are *equal*, so the
+#: copy cannot drift into arrays that do not round-trip.
+try:
+    from chisurf.core.fio.structure.coordinates import atom_dtype as ATOM_DTYPE
+except ImportError:  # pragma: no cover - exercised in the browser, not here
+    ATOM_DTYPE = np.dtype([
+        ("i", "<i4"),
+        ("chain", "<U4"),
+        ("res_id", "<i4"),
+        ("res_name", "<U5"),
+        ("atom_id", "<i4"),
+        ("atom_name", "<U5"),
+        ("element", "<U2"),
+        ("xyz", "<f8", (3,)),
+        ("charge", "<f8"),
+        ("radius", "<f8"),
+        ("bfactor", "<f8"),
+        ("mass", "<f8"),
+    ])
 
 __all__ = [
     "ATOM_DTYPE",

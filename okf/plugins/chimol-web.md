@@ -387,6 +387,45 @@ stops matching is a question, not a failure. `capture_gl_baseline.py` keeps
    other three are the widget (`wgpu_view`), its scene builder (`view`) and what
    is left of the image overlay (`gui_overlay`).
 
+   **The browser renders — 148L, on the browser's own WebGPU (2026-08-11).**
+   `renderer/gpu/browser.py` is the second backend beside `native.py`;
+   `chimol/web/` is a loader, a demo and a dev server. `boot.js` holds no
+   pipeline, no buffer and no draw call — every frame is the same Python, and
+   the same nineteen WGSL files, the desktop runs. The demo draws 1363 sphere
+   impostors of T4 lysozyme *parsed in the browser* by chimol's own PDB reader,
+   plus the panel as quads.
+
+   **Drive it with Playwright, not the Chrome tools.** The browser tools reach a
+   Chrome that is **not on the same host** as the shell: a server answering
+   `200` to curl gives that Chrome `ERR_CONNECTION_REFUSED`, on `localhost` and
+   `127.0.0.1` alike, with the sandbox disabled — and every read lands on
+   `chrome-error://chromewebdata/`, which is also why `navigator.gpu` read as
+   false. Playwright's Chromium runs in the same sandbox and works with
+   `--enable-unsafe-webgpu`. `test/test_browser_render.py` does the whole thing
+   and is marked `slow`.
+
+   **Four things the browser found that Python could not, and only one is a
+   translation bug:**
+   - `device.adapter` is a wgpu-py convenience with no WebGPU equivalent, read
+     unguarded in the renderer's constructor — so the failure landed several
+     layers from anything to do with adapters;
+   - `createBufferWithData` does not exist either; the specification's way is
+     `mappedAtCreation` + `getMappedRange` + `unmap`;
+   - positional arguments needed converting as much as keyword ones, which
+     `queue.writeTexture(destination, data, layout, size)` reports only as
+     `Overload resolution failed`;
+   - **the engine still depended on the host application.** `io/atoms.py` took
+     its atom dtype from `chisurf.core.fio.structure.coordinates`, and
+     `io/__init__.py` imported every reader eagerly — so asking for the
+     self-contained PDB parser pulled in the density-map reader, marching cubes
+     and scipy. Qt was never the only thing tying the engine to a desktop, and
+     the portability guard did not catch this because it only blocks Qt.
+
+   *Trap for the dtype fix:* `test_atom_rows.py` asserts `ATOM_DTYPE is
+   atom_dtype` — **identity**, deliberately, so the core owns it. The fallback
+   therefore keeps the core's object when the core is importable and defines an
+   equal copy only when it is not.
+
    **Where to pick this up next.**
    1. **Move an `app/` panel into `InternalGui`.** Start with `objects_panel` /
       `hierarchy_panel`: `InternalGui` already draws that list, so this is
