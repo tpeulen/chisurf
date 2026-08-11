@@ -76,12 +76,19 @@ implementations** on 2026-08-10 (tttrlib PRD-033):
 - `decode_records` + carried `DecodeState` (PRD-021) decodes **any
   fixed-width container** in pieces — PicoQuant record types included.
 
-**One class is missing, and it is the one the acquisition GUI leans on
-hardest.** There is no streaming intensity trace: `compute_intensity_trace`
-is a batch free function (`TTTR.h:131`) and the streaming module holds four
-headers, none of them an MCS. The MCS trace *is* the live count-rate
-display an operator watches, so "append per-chunk bins" cannot be satisfied
-by delegation today — see requirement 2.
+**The MCS class exists and is unreachable, which is worse than missing.**
+`StreamingIntensityTrace` was written on 2026-08-11
+(`modules/streaming/include/StreamingIntensityTrace.h`), is documented in
+the module README, is listed in the module's `CMakeLists.txt`, and has a
+test file — but `hasattr(tttrlib, "StreamingIntensityTrace")` is `False`,
+because `Streaming.i` exists **twice** and the module's copy is shadowed by
+a stale `ext/python/Streaming.i` that SWIG finds first. The shadowing also
+withholds the `push_np` numpy typemaps, so every streaming class still
+crosses the language boundary one photon at a time at 1.13 µs each — on a
+100 kHz acquisition, half a core — and `push_np(macro_times, weights)`
+raises `TypeError` outright. Filed in tttrlib's `BUGS.md`
+("Two `Streaming.i` files"). This is a blocker for requirement 2, not a
+gap to design around.
 
 And the *upcoming* piece this PRD is named for: **tttrlib PRD-034** makes
 `.pto` a native TTTR sink — a normative 4-column photons table plus header
@@ -102,16 +109,17 @@ measurement per object.
    mapped to 0/1) replaces the every-5-chunks full-history batch re-run;
    the MCS trace appends per-chunk bin counts instead of recomputing all
    bins. Nothing downstream of decode ever touches "all photons so far".
-   The MCS is the one consumer with **no library class to delegate to**,
-   and the answer is *not* to hand-roll it in the plugin — that is the
-   pattern this PRD exists to end, and a per-chunk binner that must carry
-   a partial trailing bin across chunk boundaries is exactly the kind of
-   state that gets it wrong twice in two places. tttrlib gains a
-   `StreamingIntensityTrace` beside the other four: `push_photons`, a
-   fixed bin width, an append-only counts vector, its oracle the batch
-   `compute_intensity_trace` on the same photons. It is small enough not
-   to want a PRD of its own, and it must exist before requirement 2 is
-   met — recorded here so it is not discovered during implementation.
+   The MCS delegates to `StreamingIntensityTrace`, whose `set_max_bins(m)`
+   keeps only the newest `m` bins (O(1) in run length) while
+   `first_bin_index()` keeps the retained window's place on the absolute
+   time axis — which is exactly the rolling display the plugin fakes today
+   by binning every photon of the run to show its tail. The class is
+   written but **unreachable from every binding** until the duplicate
+   `Streaming.i` is resolved (tttrlib `BUGS.md`); acq cannot start
+   requirement 2 before that lands, and must not hand-roll a per-chunk
+   binner in the meantime — carrying a partial trailing bin across chunk
+   boundaries is precisely the state that ends up implemented twice and
+   correct once, which is what this PRD exists to stop.
    `StreamingBurstDetector` (live burst rate as a QC number) and
    `StreamingPhasor` are offered where the decay window already is —
    they cost one push loop that is running anyway.
@@ -172,8 +180,10 @@ measurement per object.
 
 - tttrlib PRD-021 (record streams) — **done**, partially adopted.
 - tttrlib PRD-033 (streaming consumers) — **done, verified 2026-08-10**,
-  minus the `StreamingIntensityTrace` named in requirement 2, which does
-  not exist yet.
+  but **not reachable as built**: the duplicate `Streaming.i` withholds
+  `StreamingIntensityTrace` and the `push_np` typemaps from every binding
+  (tttrlib `BUGS.md`, 2026-08-11). Requirement 2 is blocked on that one
+  deletion.
 - tttrlib PRD-034 (`.pto` native TTTR sink) — **proposed**; requirement 3
   and acceptance 3–4 land with it. Its *Writing a file that is still being
   measured* section (the checkpoint operation) was added because of this
