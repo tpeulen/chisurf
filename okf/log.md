@@ -33717,6 +33717,48 @@
   [chimol-web](/plugins/chimol-web.md); note that the byte-identity assertions must be relaxed to the inventory
   comparison **in the same change** as the atlas, which moves text metrics on purpose.
 
+- **2026-08-11 — ChiMOL's chrome draws through six operations, and the pixels did not move.**
+  `renderer/ui/painter.py` defines the surface the in-viewport chrome draws on — `fill_rect`, `stroke_rect`,
+  `gradient_rect`, `text`, `push_clip`/`pop_clip` — and `renderer/ui/qt_painter.py` implements it with the same
+  `QPainter` as before. `internal_gui.py`'s `paint` and its seven `_paint_*` methods lost their
+  `QtGui`/`QtCore` parameters, so the panel — a layout and hit-test engine — no longer needs a window system to
+  describe itself.
+  Deliberately **not** a `QPainter` with the names changed. `QPainter` is a state machine and the chrome used it
+  as one: 31 `setPen` and 20 `setBrush` calls feeding 18 `drawRect`s and 14 `drawText`s. Ported literally, that
+  state has to be tracked while emitting vertices, where a stale brush is a mis-coloured quad rather than an
+  error. Every call carries its own colour now, so each maps to a fixed quad count — which is what made the GPU
+  painter that followed a transcription rather than a redesign.
+  **All four baseline PNGs and the reachability inventory came back byte-identical**, which is the right bar: a
+  refactor that moves pixels cannot be told apart from a wiring mistake. Pinned by `test/test_chrome_painter.py`.
+  Also baked the glyph atlas, which taught three things a count would not have shown: the first preview was
+  white-on-transparent composited onto white, so every glyph read as a hollow outline and looked broken (it was
+  fine — an image you cannot read is not evidence); the bold face *looked* identical to the regular one and
+  measures 13–16 % more ink, because Menlo is monospaced and bold shares the advance; and a monospaced font's
+  advance bounds its *spacing*, not its ink — `─` starts a texel left of the pen, so sized to the advance it
+  bleeds into the neighbouring cell. Padding is measured from both faces now, asserted at 0 border violations
+  across 206 cells. See [chimol-web](/plugins/chimol-web.md).
+
+- **2026-08-11 — ChiMOL's chrome draws through six operations, and the pixels did not move.**
+  `renderer/ui/painter.py` defines the surface the in-viewport chrome draws on — `fill_rect`, `stroke_rect`,
+  `gradient_rect`, `text`, `push_clip`/`pop_clip` — and `renderer/ui/qt_painter.py` implements it with the same
+  `QPainter` as before. `internal_gui.py`'s `paint` and its seven `_paint_*` methods lost their
+  `QtGui`/`QtCore` parameters, so the panel — a layout and hit-test engine — no longer needs a window system to
+  describe itself.
+  Deliberately **not** a `QPainter` with the names changed. `QPainter` is a state machine and the chrome used it
+  as one: 31 `setPen` and 20 `setBrush` calls feeding 18 `drawRect`s and 14 `drawText`s. Ported literally, that
+  state has to be tracked while emitting vertices, where a stale brush is a mis-coloured quad rather than an
+  error. Every call carries its own colour now, so each maps to a fixed quad count — which is what made the GPU
+  painter that followed a transcription rather than a redesign.
+  **All four baseline PNGs and the reachability inventory came back byte-identical**, which is the right bar: a
+  refactor that moves pixels cannot be told apart from a wiring mistake. Pinned by `test/test_chrome_painter.py`.
+  Also baked the glyph atlas, which taught three things a count would not have shown: the first preview was
+  white-on-transparent composited onto white, so every glyph read as a hollow outline and looked broken (it was
+  fine — an image you cannot read is not evidence); the bold face *looked* identical to the regular one and
+  measures 13–16 % more ink, because Menlo is monospaced and bold shares the advance; and a monospaced font's
+  advance bounds its *spacing*, not its ink — `─` starts a texel left of the pen, so sized to the advance it
+  bleeds into the neighbouring cell. Padding is measured from both faces now, asserted at 0 border violations
+  across 206 cells. See [chimol-web](/plugins/chimol-web.md).
+
 - **2026-08-11 — ChiMOL's chrome is quads on the GPU, and the panel stopped being allowed to lag.**
   `renderer/ui/quad_painter.py` appends the panel, the sequence strip, the menus and the transport into one
   interleaved vertex array; `renderer/wgsl/ui.wgsl` draws it in the existing second pass beside the silhouette.
