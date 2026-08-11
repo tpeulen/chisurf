@@ -18,9 +18,13 @@ timestamp: '2026-08-10T00:00:00Z'
    `_fconv_single_shot`, `_fconv_periodic`) are deleted and the *design
    matrices* come from `tttrlib.tcspc_build_fi_lifetimes` /
    `tcspc_build_fi_distances` in one call each. **Delegating the kernels
-   themselves — the obvious reading of route `tttrlib` — is 10.6× slower than
+   themselves — the obvious reading of route `tttrlib` — was 10.6× slower than
    numba**: 1.57 → 16.6 ms for a 301-lifetime grid, because marshalling a
-   512-element `std::vector` costs ~26 µs against a ~0.4 µs kernel. Per-column is
+   512-element `std::vector` cost ~26 µs against a ~0.4 µs kernel. **That
+   number is historical**: the typemap conversion below cut the marshalling to
+   ~0.8 µs, so per-kernel delegation is no longer 10.6× slower. The conclusion
+   is unchanged and is the point — per-column is still 2.3× the cost of the one
+   whole-matrix call, and the ratio was never the argument. Per-column is
    the wrong seam whatever is on the other side of it; the whole matrix has to
    cross at once. **The cause is now measured and filed upstream**: tttrlib's
    `%template(VectorDouble) std::vector<double>` makes every such binding convert
@@ -110,8 +114,8 @@ timestamp: '2026-08-10T00:00:00Z'
    budgeted because `decode_records` already existed and nothing in ChiSurf
    knew.
 
-   **Two routing corrections, both from checking before porting. Do not
-   re-derive these.**
+   **Four routing corrections, all from checking or measuring before porting.
+   Do not re-derive these.**
 
    - **`core/math/hmm.py` is NOT route `tttrlib`.** The library's HMM is a
      *photon-stream* model — per-burst, Δt-dependent transition matrices,
@@ -140,6 +144,30 @@ timestamp: '2026-08-10T00:00:00Z'
      `core/ml/cluster/_kmeans.py`.
      **It depends on tttrlib files that are not committed** — see
      [known issues](/references/known-issues.md).
+   - **`fio/trajectory/dcd.py` and `xtc.py` are NOT route `imp`.** The label
+     said "already migrated to imp-tricks; delete the leftover", and imp-tricks
+     has **no trajectory reader at all** — nothing to delegate to. Nor do they
+     vectorise, measured rather than assumed:
+     - `dcd.py`'s `_gather_frames` de-interleaves DCD's separate X/Y/Z blocks.
+       A NumPy fancy-index gather is **7.4–21.5× slower** (bit-identical), and
+       describing the payload as a 3-D strided view — the better idea — only
+       gets to **2.5–9.4×**. It is a parallel gather *with a transpose*, which
+       is the shape NumPy expresses worst; the broadcast index array alone is
+       80 MB at 200 frames × 50k atoms.
+     - `xtc.py`'s six kernels are the **XDR bit-unpacking decompressor**
+       (`_decodebits`, `_decodeints`, `_sizeofint`, `_sizeofints`,
+       `_decompress`, `_decompress_many`). Serial bit manipulation; NumPy
+       cannot express it at all.
+     Both moved to route `tttr-c`. They are the two entries on that route with
+     no photon content, so whoever writes those kernels should decide where a
+     trajectory reader belongs before writing them.
+   - **`av/dynamic.py`'s kernel does not vectorise either**, though its route
+     (`imp`) is right — `IMP.bff.AV` exists. `_quenching_rate_per_frame` is a
+     masked row-sum, i.e. a matrix–vector product, and both NumPy spellings are
+     **2.9–16.2× slower** and not bit-exact: `(collided != 0) @ k` upcasts a
+     `uint8` `(100000, 500)` mask to a 400 MB `float64` temporary, which is the
+     materialisation the numba loop exists to avoid. So the file leaves by
+     delegating to `IMP.bff`, not by deleting the decorator.
    - **The `imp` group is not "delete the leftover", and nothing in this area
      is dead.** Importers, absolute + relative: `potentials.py` 10,
      `dcd.py` 5+1, `protein.py` 4, `av/dynamic.py` 3, `av/static.py` 1+1,

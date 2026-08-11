@@ -36,8 +36,6 @@ chisurf/core/fluorescence/burst/gopich_szabo.py
 chisurf/core/ml/cluster/_hdbscan.py
 
 # ── imp (already migrated to imp-tricks; delete the leftover) ────────────────
-chisurf/core/fio/trajectory/dcd.py
-chisurf/core/fio/trajectory/xtc.py
 chisurf/core/structure/av/dynamic.py
 chisurf/core/structure/av/static.py
 chisurf/core/structure/potential/potentials.py
@@ -47,6 +45,13 @@ chisurf/core/structure/protein.py
 chisurf/core/structure/av/functions.py
 
 # ── tttr-c (needs a new compiled kernel) ────────────────────────────────────
+# dcd/xtc were listed under `imp` until 2026-08-11; that was wrong. imp-tricks
+# has no trajectory reader to delegate to, and neither kernel vectorises:
+# dcd's de-interleaving gather is 2.5-9.4x slower in NumPy even as a strided
+# view, and xtc's six kernels are XDR bit-unpacking, which NumPy cannot
+# express at all. Measurements in okf/subsystems/numba-retirement.md.
+chisurf/core/fio/trajectory/dcd.py
+chisurf/core/fio/trajectory/xtc.py
 chisurf/core/fluorescence/burst/kalman.py
 chisurf/core/ml/cluster/_kmeans.py
 chisurf/core/roi/segmentation.py
