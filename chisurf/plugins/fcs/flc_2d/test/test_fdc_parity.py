@@ -123,3 +123,60 @@ def test_a_gate_that_admits_nothing_returns_zeros_rather_than_raising(recorded):
         np.int64(c["tmin"]), np.int64(c["tmax"]), c["logt_imax"], 1,
     )
     assert got.sum() == 0 and got.shape == c["mats"].shape
+
+
+def test_the_linear_matrix_trims_its_last_bin_as_the_reference_does(recorded):
+    """The trim is the published method's, not a defect — do not "fix" it.
+
+    `create_2d_fdc_numba_int` slices one bin off the linear matrix on return,
+    which drops the pairs in the highest linear bin: 654 at `lint_bin_factor` 3
+    and 974 at 5, against a brute-force count of 6443. That looks exactly like a
+    data-loss bug, and it is not — `TK_Create2DFDC_04.m:170-172` does the same
+    (`Var = size(Mat_2DFDC_lin) - 1`), and MATLAB is 1-based over bins
+    `1..lint_Imax`, so it is the same trim.
+
+    This test exists because the shortfall was filed as a defect and a fix was
+    written before the reference was read to the end. It pins the behaviour *and*
+    the reason, so the next person measuring the shortfall finds the answer
+    rather than repeating the fix.
+    """
+    from chisurf.plugins.fcs.flc_2d.core import create_2d_fdc_numba_int
+
+    macro, micro = recorded["macro_single"], recorded["micro_single"]
+    for i in range(int(recorded["n_single"])):
+        dT, ddT, tmin, tmax, lint, logt = recorded[f"s_params_{i}"]
+        lin, axis, _, _ = create_2d_fdc_numba_int(
+            macro, micro, int(dT), int(ddT), 0, 10**12, int(tmin), int(tmax),
+            int(lint), int(logt), True, 1,
+        )
+        span = int(tmax) - int(tmin)
+        lint_imax = -(-(span + int(lint)) // int(lint))
+        assert lin.shape == (lint_imax - 1, lint_imax - 1), f"factor {int(lint)}"
+        assert len(axis) == lint_imax - 1
+
+
+def test_both_kernels_put_the_log_matrix_on_the_same_axis(recorded):
+    """The scan and the single-lag builder must agree, and follow the reference.
+
+    `TK_Create2DFDC_04.m` derives `t_Imax` by rounding the span up to a whole
+    number of *linear* bins and uses it for the *log* edges too, so the log axis
+    depends on `lint_bin_factor`. The scan used `span + 1` unconditionally — that
+    rule at factor 1 and a different axis above it, so the two entry points
+    disagreed with each other and the scan disagreed with the paper.
+    """
+    import numpy as np
+
+    from chisurf.plugins.fcs.flc_2d.core import _fdc_scan_log_kernel, create_2d_fdc_numba_int
+
+    macro, micro = recorded["macro_single"], recorded["micro_single"]
+    for i in range(int(recorded["n_single"])):
+        dT, ddT, tmin, tmax, lint, logt = recorded[f"s_params_{i}"]
+        _, _, log, _ = create_2d_fdc_numba_int(
+            macro, micro, int(dT), int(ddT), 0, 10**12, int(tmin), int(tmax),
+            int(lint), int(logt), True, 1,
+        )
+        scan = _fdc_scan_log_kernel(
+            macro, micro, np.array([int(dT)], dtype=np.int64), np.int64(ddT),
+            np.int64(tmin), np.int64(tmax), int(logt), 1, int(lint),
+        )[0]
+        np.testing.assert_array_equal(scan, log, err_msg=f"factor {int(lint)}")

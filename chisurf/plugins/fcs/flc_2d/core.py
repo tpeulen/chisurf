@@ -179,6 +179,12 @@ def create_2d_fdc_numba_int(
         mat_2dfdc_lin += acc_lin[c]
         mat_2dfdc_log += acc_log[c]
 
+    # The reference trims one bin off the linear matrix on return
+    # (TK_Create2DFDC_04.m:170-172, `Var = size(Mat_2DFDC_lin) - 1`), and MATLAB
+    # is 1-based over bins 1..lint_Imax, so this is the same trim. It DOES drop
+    # the pairs in the highest linear bin -- 654 at lint_bin_factor=3, 974 at 5
+    # against a brute-force count -- but that is the published method's
+    # behaviour, not a defect here. Do not "fix" it without changing the method.
     var_size = mat_2dfdc_lin.shape[0] - 1
     mat_2dfdc_lin = mat_2dfdc_lin[:var_size, :var_size]
     mat_2dfdc_lint = mat_2dfdc_lint[:var_size]
@@ -223,6 +229,7 @@ def _fdc_scan_log_kernel(
     tMax_over_tStep: int,
     logt_imax_in: int,
     n_chunks: int,
+    lint_bin_factor: int = 1,
 ) -> np.ndarray:
     """Build one log-binned 2D-FDC matrix per lag in ``dT_ticks`` in a single photon pass.
 
@@ -233,7 +240,17 @@ def _fdc_scan_log_kernel(
     n_lags = dT_ticks.shape[0]
     logt_imax = logt_imax_in + 1
     span = tMax_over_tStep - tMin_over_tStep
-    t_imax = span + 1
+    # The reference derives t_imax by rounding the span UP to a whole number of
+    # linear bins and uses that same value for the log edges
+    # (TK_Create2DFDC_04.m:38-40), so the log axis depends on lint_bin_factor.
+    # This kernel used `span + 1` unconditionally, which is that rule at
+    # lint_bin_factor=1 and a different axis for anything else -- so the two
+    # entry points here disagreed with each other and the scan disagreed with
+    # the paper. MATLAB is authoritative; the default of 1 keeps every existing
+    # caller's numbers unchanged.
+    t_imax0 = span + lint_bin_factor
+    lint_imax = _ceil_div_pos(t_imax0, lint_bin_factor)
+    t_imax = lint_imax * lint_bin_factor
 
     logt_ticks = np.empty(logt_imax, dtype=np.int64)
     logt_ticks[0] = -1

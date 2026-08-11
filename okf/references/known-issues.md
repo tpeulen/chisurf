@@ -1,57 +1,35 @@
-## 2D-FLC: the linear matrix silently drops its highest bin, losing 10-15% of pairs
+## WITHDRAWN — 2D-FLC's linear matrix does not "silently drop" its highest bin
 
-**Found 2026-08-11**, while checking that tttrlib's `fdc_scan_axis` reproduces
-ChiSurf's linear matrix. It does — for the bins ChiSurf keeps.
+**Filed and withdrawn 2026-08-11, same day.** I reported that
+`create_2d_fdc_numba_int` loses 654 pairs at `lint_bin_factor` 3 and 974 at 5
+(against a brute-force count of 6443), called it an unambiguous defect, and
+wrote a fix. **The measurement was right and the conclusion was wrong.**
 
-`create_2d_fdc_numba_int` allocates `lint_imax × lint_imax`, accumulates into it
-correctly, and then **slices the last row and column off on return**
-(`core.py:182-183`, `var_size = shape[0] - 1`). The discarded bin holds real
-pairs whenever `lint_bin_factor > 1`.
+`TK_Create2DFDC_04.m:170-172` does the same trim:
 
-Measured on one stream, gate `[1, 40]`, against a **brute-force double loop** —
-every pair whose two micro-times fall inside the gate and whose macro-time gap
-falls in the window, counted with no binning at all. That independent count is
-6443, and the log matrix equals it at every binning factor:
+```matlab
+Var = size(Mat_2DFDC_lin) - 1 ;
+Mat_2DFDC_lin = Mat_2DFDC_lin(1:Var, 1:Var) ;
+```
 
-| `lint_bin_factor` | true pairs | in the linear matrix | lost |
-|---:|---:|---:|---:|
-| 1 | 6443 | 6443 | 0 |
-| 2 | 6443 | 6443 | 0 |
-| 3 | 6443 | 5789 | **654 (10%)** |
-| 5 | 6443 | 5469 | **974 (15%)** |
+MATLAB is 1-based over bins `1..lint_Imax`, so that is exactly ChiSurf's
+`[:lint_imax - 1]`. The shortfall is the **published method's** behaviour.
 
-The lost pairs are exactly those in the trimmed row and column (333 + 340 at
-factor 3; 513 + 507 at factor 5), and they are the **longest micro-times** — so
-`fit/helpers.py`, which returns `np.diag(mat_lin)` as the linearly-binned decay,
-loses that decay's tail. A tail-fit on it is fitting a curve with its end cut
-off.
+**What produced the wrong conclusion**, worth recording because it is cheap to
+repeat: I asserted "the MATLAB does no such trim" after reading the reference's
+*construction* (lines 38-42) and not its *return* (170-172). Two reads of the
+same file, one of them stopping early. The fix I wrote made things measurably
+worse — `test_one_d_fdc_matches_microtime_histogram` fell from 0.98 to 0.9695
+correlation — which is what sent me back to the source.
 
-**Why it looks right at first.** `t_imax0 = span + lint_bin_factor` pads by one
-bin's worth of ticks, so *something* should be trimmed. The trim removes one
-**bin** where it should remove one bin's worth of **ticks** — which are the same
-thing only at `lint_bin_factor = 1`, and that is the default the tests use.
+The behaviour is now pinned by
+`plugins/fcs/flc_2d/test/test_fdc_parity.py::test_the_linear_matrix_trims_its_last_bin_as_the_reference_does`,
+with the reason in the docstring, so the next person who measures the shortfall
+finds the answer instead of re-deriving the fix.
 
-**Not fixed here**, for the same reason as the axis entry above and coupled to
-it: both concern how `t_imax` and the bin count are derived, the tttrlib session
-is mid-flight in exactly this code, and the fix changes a published observable
-(the decay gains its tail back). It should be decided together with the axis
-question, not patched separately. Unlike the axis question this one is not a
-method choice — discarding photons that fell inside the gate is a defect, and
-the MATLAB does no such trim.
-
-**Do not use the log total as the denominator** — use a brute-force count. The
-two axes legitimately disagree at the *low* edge: bin 0 is excluded on every
-axis, and "bin 0" spans different micro-times per axis, so a photon at
-`tau = 1` can land in bin 0 of a log axis (dropped) and bin 1 of a linear axis
-(kept). That effect is real, points the other way, and did not arise on this
-gate — but comparing two axes' totals as a consistency check will show it and it
-is not a defect. (Established by the tttrlib session on a 16-bin log axis over
-4096 ticks: 3480 vs 3495, reconciling exactly once the `tau = 1` photons are
-removed.)
-
-**How to re-derive**: call `create_2d_fdc_numba_int` with `lint_bin_factor` in
-`{1, 2, 3, 5}` and compare `mat_lin.sum()` against a brute-force pair count.
-Equal at 1 and 2, short by 654 and 974 at 3 and 5.
+**Still open and unaffected**: the log-axis question below, which is a genuine
+disagreement between ChiSurf's two kernels — and there the reference does settle
+it in the builder's favour.
 
 ## 2D-FLC: the log-binned matrix moves when `lint_bin_factor` changes, and the two kernels disagree
 
@@ -85,8 +63,14 @@ different log bins, not lost.
    is not. tttrlib's `fdc_scan_log` (PRD-036) followed the scan, so the C++
    inherits the deviation.
 
-**Not fixed here, deliberately.** Picking an axis changes numbers users have
-already published, and the choice is a method decision rather than a coding one:
+**Settled 2026-08-11 (user: "the matlab is the authoritative code, if
+discrepancy matlab wins, override chisurf, fix chisurf, stay close to matlab").**
+The scan kernel now takes `lint_bin_factor` (default 1, where the rule collapses
+to `span + 1`, so no existing caller's numbers move) and derives `t_imax` the
+reference's way, so the two entry points agree at every factor. Pinned by
+`test_both_kernels_put_the_log_matrix_on_the_same_axis`.
+
+Kept here rather than deleted because the *original* reasoning was that:
 either the scan adopts the reference's coupling, or the builder drops it and the
 reference's coupling is declared an artifact of its linear/log matrices sharing
 one variable. Whoever decides should say which, in the tracker, before either
@@ -97,6 +81,40 @@ than inheriting one.
 **How to re-derive**: call both entry points on the same stream with
 `lint_bin_factor` in `{1, 2, 3, 5}` and compare the log matrices. Equal at 1,
 different above it.
+
+### 🐛 BUG — the open question is closed; the scan is wrong, ruled 2026-08-11
+
+Not "whoever decides should say which" any more. The user has ruled that the
+**MATLAB is authoritative**, so the coupling is the method and the *scan* is the
+deviation: `_fdc_scan_log_kernel`'s unconditional `t_imax = span + 1` matches the
+reference only at `lint_bin_factor = 1`. `TK_Create2DFDC_04.m:38-40`:
+
+```matlab
+t_Imax    = ceil((tMax-tMin)/tStep) + lint_BinFactor ;
+lint_Imax = ceil(t_Imax / lint_BinFactor) ;
+t_Imax    = lint_Imax * lint_BinFactor ;
+Mat_2DFDC_logt = t_Imax .^ ([0:logt_Imax-1]'/(logt_Imax-1)) * tStep - tStep ;
+```
+
+**Fix the scan to derive the span this way.** tttrlib already does
+(2026-08-11): `fdc_scan_log`/`fdc_log` take `lint_bin_factor`, defaulting to 1
+where the rule collapses to `span + 1`, and `fdc_t_imax(span, factor)` exposes
+the formula so a caller can build the identical axis for `fdc_scan_axis`.
+
+**And it needs simulation evidence, per the same ruling.** Moving the log axis
+moves the axis the lifetime inversion runs on, so "the matrices now agree" is
+not sufficient — show that recovered lifetimes and the recovered relaxation rate
+still match a simulation with a known answer, at `lint_bin_factor > 1` where the
+axis actually moved. A fixture regenerated against the new axis will agree with
+itself by construction and prove nothing about that.
+
+One trap for the fixture work: the MATLAB keeps its log edges in floating point
+and compares `(tauI*tStep) <= Mat_2DFDC_logt(T)`, while both ports round edges
+to integer ticks. A single-pair disagreement at a bin boundary is that, not a
+port error.
+
+Recorded by the tttrlib session (`opus-5/ac9f6757`) on the user's ruling; the
+code is owned by the ChiSurf session and has not been touched from here.
 
 ## The acquisition plot controllers paint over the window title with no host
 
