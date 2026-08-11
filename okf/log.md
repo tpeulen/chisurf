@@ -1,5 +1,29 @@
 # Update Log
 
+## 2026-08-11
+* **The per-column slowdown has a cause, and it is a property of the binding,
+  not of the maximum-entropy code — filed upstream.** The photon library
+  declares `std::vector<double>` as one library-wide SWIG template, so every
+  binding taking or returning one converts through the Python sequence
+  protocol: one boxed float per element, **~50 ns each**, not a memcpy. Measured
+  against the NumPy in-place `fconv` doing the same arithmetic — 9.1 vs 1.3 µs
+  at n=64, 26.5 vs 2.6 at 512, 335 vs 10.8 at 4096, 1360 vs 68 at 16384. A
+  fractional IRF shift of **zero** channels costs 24.4 µs of the 24.8 µs a real
+  shift costs: 98% of the call is wrapper, and a 512-channel decay is a small
+  histogram, not a tail case. Two entries filed in the library's `BUGS.md` with
+  reproductions, plus a durable concept (`okf/bindings/marshalling-cost.md`)
+  recording the rule: **a loop stays whole in C++; the seam is crossed once per
+  analysis, never per iteration or per column.** The rule now heads item 2 of
+  [numba retirement](subsystems/numba-retirement.md), since route `tttrlib` is
+  where it applies.
+* **What this costs ChiSurf today, named rather than left implicit.** The MEM
+  solvers have no per-iteration callback, so `maxent_decay/core/solver.py` keeps
+  a second NumPy implementation of `_run_mem` and `_quadpr_bound` purely to
+  drive the progress bar — delegating only the inner QP would cost 146 µs per
+  call at `n_tau = 60`, i.e. 29 ms of seam over 200 iterations. A
+  `std::function<bool(int, double, double)>` hook on the C++ loop closes it and
+  gives the GUI a cancel; requested upstream, not worked around here.
+
 ## 2026-08-10
 * **The maximum-entropy TCSPC engine is the photon library's, and delegating it
   per column would have been 10.6× slower than the numba it replaces.**

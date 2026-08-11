@@ -20,9 +20,17 @@ timestamp: '2026-08-10T00:00:00Z'
    `tcspc_build_fi_distances` in one call each. **Delegating the kernels
    themselves — the obvious reading of route `tttrlib` — is 10.6× slower than
    numba**: 1.57 → 16.6 ms for a 301-lifetime grid, because marshalling a
-   512-element `std::vector` costs ~30 µs against a ~3 µs kernel. Per-column is
+   512-element `std::vector` costs ~26 µs against a ~0.4 µs kernel. Per-column is
    the wrong seam whatever is on the other side of it; the whole matrix has to
-   cross at once. (For the record, a banked NumPy recursion — one pass over the
+   cross at once. **The cause is now measured and filed upstream**: tttrlib's
+   `%template(VectorDouble) std::vector<double>` makes every such binding convert
+   through the Python sequence protocol at ~50 ns per element, so a
+   zero-channel shift costs 24.4 µs of the 24.8 µs a real one does — 98%
+   wrapper. The rule that follows governs this whole route: **a loop stays whole
+   in C++, and the seam is crossed once per analysis, never per iteration or per
+   column.** Numbers, the NumPy-typemap fix and the worklist are in tttrlib's
+   `okf/bindings/marshalling-cost.md` and its `BUGS.md`.
+   (For the record, a banked NumPy recursion — one pass over the
    channel axis with the lifetime axis vectorised — is *bit-exact* and 2.9×
    faster than numba, so route `numpy` was viable here too. It was not taken:
    **the maximum-entropy engine belongs in the photon library**, and a second
