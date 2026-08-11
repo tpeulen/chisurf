@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import pathlib
 
 import pytest
@@ -129,6 +130,139 @@ def test_a_wanderer_stays_near_home_and_out_of_walls(world):
     for npc in movers:
         assert abs(npc.x - npc.home[0]) <= npc.radius + tiles.TILE
         assert abs(npc.y - npc.home[1]) <= npc.radius + tiles.TILE
+        assert not npcs._blocked(world, npc.x, npc.y)
+
+
+def test_a_marked_animal_runs_away_from_you(world):
+    """The premise, made mechanical.
+
+    These animals did not choose to be labelled. Standing on a beast's row and
+    watching it come at you would say the opposite of everything the story
+    says, so the default steering is flight and only an aggressive trait turns
+    it round -- see :mod:`~..api.steering`.
+    """
+    people = npcs.populate(world)
+    seed = next((n for n in people if n.kind == "beast"), None)
+    if seed is None:
+        pytest.skip("this small world spawned no beasts")
+
+    def chased(species: str) -> float:
+        """Average distance kept from somebody walking at it.
+
+        One creature is measured against another rather than against an
+        absolute, because the leash makes the absolute meaningless: run a timid
+        animal long enough and it reaches the edge of its range and comes back.
+        The question is only ever whether the flag flips the sign.
+        """
+        beast = npcs.Npc(kind="beast", name=f"a marked {species}",
+                         x=seed.x, y=seed.y, home=(seed.x, seed.y),
+                         radius=tiles.TILE * 8.0, line="", species=species,
+                         tier=3)
+        hunter = [beast.x - tiles.TILE * 3.0, beast.y]
+        kept = []
+        for _ in range(300):
+            npcs.update([beast], world, 1 / 30, 0.0, near=tuple(hunter), radius=1e9)
+            # The hunter closes, so the animal never gets to stop reacting by
+            # simply leaving the row it was found on.
+            gap = math.hypot(beast.x - hunter[0], beast.y - hunter[1])
+            if gap > 1e-6:
+                hunter[0] += (beast.x - hunter[0]) / gap * 22.0 / 30.0
+                hunter[1] += (beast.y - hunter[1]) / gap * 22.0 / 30.0
+            kept.append(gap)
+        return sum(kept) / len(kept)
+
+    # hare: "bolt". boar: "charge" -- one direction, committed to entirely.
+    assert chased("hare") > chased("boar")
+
+
+def test_the_moth_comes_to_the_light_you_are_carrying(world):
+    """Iris is a photon given a body, and one animal in the bestiary cares.
+
+    Without her as a light source the greed flag does nothing at all across the
+    whole map -- the lamp posts stand inside town walls and wildlife may not go
+    in -- and nothing anywhere fails to report it.
+    """
+    seed = next((n for n in world_beasts(world)), None)
+    if seed is None:
+        pytest.skip("this small world spawned no beasts")
+
+    def kept(species: str) -> float:
+        beast = npcs.Npc(kind="beast", name="one", x=seed.x, y=seed.y,
+                         home=(seed.x, seed.y), radius=tiles.TILE * 8.0,
+                         line="", species=species, tier=1)
+        iris = (seed.x, seed.y + tiles.TILE * 3.0)
+        gaps = []
+        for _ in range(300):
+            npcs.update([beast], world, 1 / 30, 0.0, near=iris, radius=1e9)
+            gaps.append(beast.distance_to(*iris))
+        return sum(gaps) / len(gaps)
+
+    # moth: "phototaxis" -- goes to the brightest thing in the room, always has.
+    # beetle: "chitin", which has no opinion about light and every reason to
+    # keep away from whatever is holding it.
+    assert kept("moth") < kept("beetle")
+
+
+def test_the_shelved_steer_by_the_only_light_left_in_the_manifold(world):
+    """Down there the lamps are out, so the light is the one you walked in with.
+
+    Reading the bait off the lamp table instead leaves every wraith's
+    characterising behaviour switched off in the only place wraiths exist --
+    which it did, silently, until somebody looked at a picture of it.
+    """
+    shelved = [n for n in npcs.dark_population(world) if n.kind == "wraith"]
+    if not shelved:
+        pytest.skip("this small world has no dark population")
+    one = shelved[0]
+    one.home = (one.x, one.y)
+    iris = (one.x, one.y + tiles.TILE * 3.0)
+    before = one.distance_to(*iris)
+    for _ in range(300):
+        npcs.update([one], world, 1 / 30, 0.0, near=iris, radius=1e9, dark=True)
+    assert one.distance_to(*iris) < before
+
+
+def world_beasts(world):
+    """Every marked beast a world spawned.
+
+    Returns
+    -------
+    list of Npc
+        Possibly empty, for a corpus too small to have wilds.
+    """
+    return [n for n in npcs.populate(world) if n.kind == "beast"]
+
+
+def test_a_wanderer_never_comes_to_rest_off_the_grid(world):
+    """The property the whole steering port exists for.
+
+    A creature decides at tile centres and walks legs of exactly one tile, so
+    it is either aligned or mid-leg -- and a creature that cannot stop between
+    tiles cannot be the one wedged in a doorway.
+    """
+    people = npcs.populate(world)
+    movers = [n for n in people if n.kind in ("animal", "beast")]
+    if not movers:
+        pytest.skip("this small world spawned nothing that wanders")
+    for step in range(300):
+        npcs.update(people, world, 1 / 30, step / 30.0, near=(movers[0].x, movers[0].y),
+                    radius=1e9)
+    for npc in movers:
+        if npc.drift.remaining <= 0.0:
+            assert npc.x / tiles.TILE - 0.5 == pytest.approx(
+                round(npc.x / tiles.TILE - 0.5), abs=1e-6)
+
+
+def test_a_hitched_frame_does_not_throw_anybody_through_a_wall(world):
+    """One enormous step is still resolved one tile at a time."""
+    people = npcs.populate(world)
+    movers = [n for n in people if n.kind in ("animal", "beast")]
+    if not movers:
+        pytest.skip("this small world spawned nothing that wanders")
+    for _ in range(20):
+        npcs.update(people, world, 0.75, 0.0, near=(movers[0].x, movers[0].y),
+                    radius=1e9)
+    for npc in movers:
         assert not npcs._blocked(world, npc.x, npc.y)
 
 

@@ -36,7 +36,6 @@ from __future__ import annotations
 
 import dataclasses
 import hashlib
-import math
 import pathlib
 
 import numpy as np
@@ -45,16 +44,16 @@ from chisurf.plugins.core.help.api import review, toc
 
 from . import places
 from .names import biome_for, region_name, settlement_name
+from .tiers import WARDENS, crossing_tier
 from .tiles import (
     BRIDGE,
-    BUILDING,
     CAVE,
     CLIFF,
-    CLINIC,
     DOCK,
     FLOWERS,
     GATE,
     GRASS,
+    LANTERN,
     MARSH,
     ROAD,
     ROCK,
@@ -65,7 +64,6 @@ from .tiles import (
     WATER,
     is_blocking,
 )
-from .tiers import WARDENS, crossing_tier
 
 #: Room states, in increasing order of settledness. WITHERED is the garden
 #: half of the farm layer: a page whose content moved under its sign-off is
@@ -379,6 +377,9 @@ class World:
     tower: tuple[int, int] | None = None
     #: Salts the terrain only; the structure is always the documentation's.
     seed: str = ""
+    #: Every lamp post, as world coordinates, found once and kept. Built lazily
+    #: by :meth:`lights` because most of what uses a world never asks.
+    _lamps: np.ndarray | None = dataclasses.field(default=None, repr=False)
 
     @property
     def height(self) -> int:
@@ -423,6 +424,55 @@ class World:
             Flattened across regions.
         """
         return [village for region in self.regions for village in region.villages]
+
+    def lights(self) -> np.ndarray:
+        """Every lamp post in the world.
+
+        A lamp is the only light the world holds that stands still, which makes
+        it the thing wildlife steers by: a moth goes to the brightest thing in
+        the room, and everything that has learned better keeps out of it. See
+        :mod:`.steering`.
+
+        Returns
+        -------
+        numpy.ndarray
+            ``(n, 2)`` float array of ``(x, y)`` world coordinates, at tile
+            centres. Empty when the world has no lamps.
+        """
+        if self._lamps is None:
+            if self.array.size:
+                cells = np.argwhere(self.array == LANTERN)
+                # argwhere gives (row, col); the world is addressed (x, y).
+                self._lamps = (cells[:, ::-1].astype(np.float64) + 0.5) * TILE
+            else:
+                self._lamps = np.zeros((0, 2), dtype=np.float64)
+        return self._lamps
+
+    def nearest_light(self, x: float, y: float,
+                      within: float = TILE * 8.0) -> tuple[float, float] | None:
+        """The closest lamp post, if one is near enough to matter.
+
+        Parameters
+        ----------
+        x, y : float
+            World coordinates to search from.
+        within : float, optional
+            How far to look, in world units.
+
+        Returns
+        -------
+        tuple of float or None
+            The lamp's position, or ``None`` when there is none in reach.
+        """
+        lamps = self.lights()
+        if not len(lamps):
+            return None
+        offsets = lamps - np.array((x, y))
+        squared = np.einsum("ij,ij->i", offsets, offsets)
+        best = int(np.argmin(squared))
+        if squared[best] > within * within:
+            return None
+        return float(lamps[best, 0]), float(lamps[best, 1])
 
     @property
     def caves(self) -> list[tuple[int, int]]:

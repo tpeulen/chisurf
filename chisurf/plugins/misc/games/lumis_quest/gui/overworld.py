@@ -2289,6 +2289,14 @@ class OverworldGame(chigame.Game):
                 continue
             tint = (1.0, 1.0, 1.0, 1.0)
             sprite = f"{npc.kind}_{frame_index}"
+            # A hovering thing is *drawn* above its own feet and collides at
+            # them, which is a second height that never reaches the physics --
+            # see the fake z in :mod:`~..api.steering`. The shadow stays on the
+            # ground and shrinks, because a shadow that rises with the sprite
+            # is how a hover ends up reading as a creature standing further
+            # north.
+            lift = npc.lift
+            drawn = (npc.x, npc.y - lift)
             if npc.species:
                 # An animal is drawn as the animal it is, in the colour of
                 # whatever is fixed into it. A marked hare and an unmarked one
@@ -2297,37 +2305,38 @@ class OverworldGame(chigame.Game):
                 sprite = pixelart.creature_sprite(npc.species)
                 if npc.kind == "beast":
                     nm = self._marked_nm(npc)
-                    scene.draw("photon", "halo", at=(npc.x, npc.y),
+                    scene.draw("photon", "halo", at=drawn,
                                size=(T.TILE * 0.8, T.TILE * 0.8), emission_nm=nm)
                     tint = _emission_tint(nm)
                 elif npc.kind == "wraith":
                     tint = (0.30, 0.26, 0.36, 1.0)
             elif npc.kind == "beast":
-                scene.draw("photon", "halo", at=(npc.x, npc.y),
+                scene.draw("photon", "halo", at=drawn,
                            size=(T.TILE * 0.9, T.TILE * 0.9), emission_nm=405.0)
             elif npc.kind == "lanternwright":
                 # The only thing burning in the dark manifold, and it is her.
-                scene.draw("photon", "vesper", at=(npc.x, npc.y),
+                scene.draw("photon", "vesper", at=drawn,
                            size=(T.TILE * 1.8, T.TILE * 1.8), emission_nm=690.0)
                 tint = (1.00, 0.72, 0.86, 1.0)
             elif npc.kind == "warden":
-                scene.draw("photon", "halo", at=(npc.x, npc.y),
+                scene.draw("photon", "halo", at=drawn,
                            size=(T.TILE * 1.2, T.TILE * 1.2), emission_nm=600.0)
                 tint = (1.00, 0.92, 0.74, 1.0)
             elif npc.kind == "emissary":
                 doctrine = npc.role.split(":", 1)[-1]
-                scene.draw("photon", "halo", at=(npc.x, npc.y),
+                scene.draw("photon", "halo", at=drawn,
                            size=(T.TILE * 1.1, T.TILE * 1.1),
                            emission_nm=EMISSARY_NM.get(doctrine, 488.0))
                 tint = EMISSARY_TINT.get(doctrine, tint)
             elif npc.kind == "lumi":
                 # The dim hound: an ember of the glow it will have at heel.
-                scene.draw("photon", "halo", at=(npc.x, npc.y),
+                scene.draw("photon", "halo", at=drawn,
                            size=(T.TILE * 0.5, T.TILE * 0.5),
                            emission_nm=LUMI.wavelength_nm)
                 tint = (0.55, 0.62, 0.55, 1.0)
-            self._sprite(scene, "shadow", (npc.x, npc.y + 2.0), T.TILE)
-            self._sprite(scene, sprite, (npc.x, npc.y), T.TILE,
+            self._sprite(scene, "shadow", (npc.x, npc.y + 2.0),
+                         T.TILE * (1.0 - min(lift / 12.0, 0.35)))
+            self._sprite(scene, sprite, drawn, T.TILE,
                          mirror=npc.facing == "left", tint=tint)
         # ...and whatever any of them is in the middle of saying. Two people
         # talking has to be legible from across the square or the whole layer

@@ -152,6 +152,27 @@ def main(argv: list[str]) -> int:
     capture(out, world, "lumis_country", country)
     capture(out, world, "lumis_town", lambda game: _stand_in(game))
 
+    def wilds(game):
+        """Open country, run on long enough that the wildlife has steered.
+
+        Three frames is enough to prove a creature was *drawn*; it is not
+        enough to prove it can move without ending up inside a rock. This one
+        runs for several seconds of game time so that everything on screen has
+        taken twenty-odd decisions and is standing wherever those put it -- and
+        with Iris in the middle of them, so what is on screen is a beast's
+        answer to being approached.
+        """
+        beast = min(
+            (one for one in game.people if one.kind == "beast"),
+            key=lambda one: abs(one.x) + abs(one.y), default=None,
+        )
+        if beast is not None:
+            game.iris = [beast.x, beast.y + TILE * 3.0]
+        game.host.camera.center[:] = game.iris
+        game.view_height = 300.0
+
+    capture(out, world, "lumis_wilds", wilds, frames=240)
+
     def seat(game):
         _stand_in(game, warden=True)
         game.view_height = 560.0
@@ -187,7 +208,32 @@ def main(argv: list[str]) -> int:
         game.host.camera.center[:] = game.iris
         game._cross("dark")
 
-    capture(out, world, "lumis_dark", dark)
+    # Long enough for the shelved to have drifted and to be mid-hover, which is
+    # the only way to see that the bob lifts the drawing and not the shadow.
+    capture(out, world, "lumis_dark", dark, frames=150)
+
+    def shelved(game):
+        """The dark manifold, with the shelved actually on screen.
+
+        The generic dark shot puts Iris wherever the region's middle happens to
+        be, and whether a wraith is in frame is luck. This one goes to them, so
+        the hover is something that can be *looked* at rather than something a
+        unit test asserts about a float.
+        """
+        dark(game)
+        # Screen mode holds the camera on the 16x14 screen Iris is standing in,
+        # so moving her does not move the view. For a close look the follow
+        # camera has to come back on, or the subject ends up behind the HUD.
+        game.screen_mode = False
+        game.view_height = 150.0
+        found = [one for one in game.people if one.kind == "wraith"]
+        for offset, one in enumerate(found[:3]):
+            one.x = game.iris[0] + (offset - 1) * TILE * 1.6
+            one.y = game.iris[1] - TILE * 1.6
+            one.home = (one.x, one.y)
+        game.host.camera.center[:] = game.iris
+
+    capture(out, world, "lumis_shelved", shelved, frames=90)
 
     def party(game):
         game.labels.extend(game.pool[:3])

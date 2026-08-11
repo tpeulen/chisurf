@@ -34066,3 +34066,17 @@
   modules — replaced by `geometry/grid_pairs.py` (identical pair sets, **5–8× slower**; the GPU
   kernel is the next step) and an exact in-tree distance transform. The web server also moved off
   port 8765, which is ChiSurf's own ZMQ port. See [chimol-web](/plugins/chimol-web.md).
+
+- **2026-08-11 — Lumis Quest's wildlife steers by ZQuest's model, and the marked animals run away.**
+  `api/steering.py` ports `enemy::newdir` whole: bait, then homing as a probability out of 256
+  that fires **only when the player shares a row or column** (`lined_up`), then a weighted random
+  turn — and decisions taken at tile centres with legs of exactly one tile (`constant_walk`),
+  which is the anti-wedge property and the answer to "get stuck on objects all the time". The
+  Lissajous curve every NPC was tracing at a different phase is gone: nothing had ever noticed
+  the player, and a curve does not respect a grid. **`homing < 0` means flee**, and in this
+  bestiary that is the default — `temper_for` reads `AGGRESSIVE`/`LYING_IN_WAIT`/`PHOTOTACTIC`
+  off real `bestiary.TRAITS` keys (guardrail test: an invented key silently matches nothing).
+  The bait is **light**: a lamp post or Iris herself, since a probe is a photon given a body.
+  `fakez` came with it as `Drift.fake_z` — a visual-only height, so the shelved hover and their
+  shadows stay on the ground. A screenshot caught the one real defect: greed was switched off in
+  the dark manifold, i.e. in the only place wraiths exist. See [PRD-91](/prds/prd-91.md).

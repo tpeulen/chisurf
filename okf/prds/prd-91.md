@@ -120,24 +120,54 @@ the per-file detail.
 3. **Variable jump height** (`hero.cpp` ~8385, their `jump_loss`) -> `JUMP_CUT`.
    Release the button while rising and the jump is clamped short, so its
    height is a decision rather than a constant.
+4. **The whole steering model** (`zc/guys.cpp` ~5829) -> `api/steering.py`.
+   `enemy::newdir(rate, homing, special)` is three rules in priority order:
+   divert to bait if hungry; else with probability `homing/256` turn toward the
+   player **but only when `lined_up(8)` says you share a row or column** -- so
+   enemies never beeline, they snap onto your axis and charge, which is the
+   entire feel of a Zelda enemy; else a weighted random turn at `rate/16`,
+   re-rolled up to 32 times against `canmove`. Taken with it:
+   * **`homing < 0` means flee**, and `grumble < 0` means repelled by bait --
+     one signed parameter serving drawn-to and afraid-of. This is the piece
+     that matters most here, because it is where the bestiary stops being a
+     stat table and takes a position: a marked animal did not choose to be
+     labelled, so **flight is the default** (`temper_for`) and an aggressive
+     trait is what turns it round. `AGGRESSIVE`, `LYING_IN_WAIT` and
+     `PHOTOTACTIC` are read off real `bestiary.TRAITS` keys, with a guardrail
+     test, because an invented key silently matches nothing and every animal
+     quietly falls to the default.
+   * **Decide at tile boundaries, walk exactly one tile** (`constant_walk`
+     ~5959: `fix_coords(true)`, `newdir`, then a leg of `16/step`). This is
+     the anti-wedge property and the answer to "get stuck on objects all the
+     time": a creature is either grid-aligned or mid-leg, and a creature that
+     cannot stop between tiles cannot come to rest inside one. Adapted to be
+     dt-based -- a step that would overshoot is cut at the boundary and the
+     surplus carried, so a hitched frame produces two decisions rather than a
+     slide through a wall.
+   * **The bait rule is light.** ZQuest's bait is an item; here the bait is a
+     lamp post or **Iris herself** (`npcs._light_near`), which is what a probe
+     is. One animal in the bestiary is phototactic and its entry already said
+     so. Without her as a source the flag would do nothing at all across the
+     map -- lamps stand inside town walls and wildlife may not go in -- and
+     nothing would fail to report it.
+5. **`fakez`** -> `steering.Drift.fake_z`, drawn via `npcs.Npc.lift`. A second
+   height that is *visual only* and never touches collision, so a bob can be
+   given to anything without re-auditing what it may now pass over. The
+   shelved hover; the shadow stays on the ground and shrinks.
 
-**Found and not taken -- this is the worklist, in the order it is worth doing:**
+**Found and not taken -- the worklist:**
 
-4. **`enemy::newdir(rate, homing, special)`** (`zc/guys.cpp` ~5811) is the best
-   unmined thing in the repository. Three rules in priority order: divert to
-   bait if hungry; else with probability `homing/256` turn toward the player
-   **but only when `lined_up(8)` says you share a row or column** -- so enemies
-   never beeline, they snap onto your axis and charge, which is the entire feel
-   of a Zelda enemy; else a weighted random turn. And **`homing < 0` means
-   flee**, one parameter serving both drawn-to and afraid-of. Lumis Quest's
-   marked animals are *victims*, so most of them should carry negative homing,
-   and the bait rule is how you lure one instead of fighting it.
-5. **`fakez`**: a second height that is *visual only* and never touches
-   collision, tracked in parallel with the real one. A cosmetic hop, a thrown
-   item's arc, an NPC's bob -- all free.
-6. **`hoverclk`**: hover frames as a timer that suspends the fall.
+6. **`hoverclk`**: hover frames as a timer that suspends the fall. Distinct
+   from `fakez`, which is what has landed: this one is a real suspension of
+   gravity, i.e. a creature that can be *over* something.
 
-**Skipped deliberately, with reasons**, so nobody re-derives them: the combo
+**Skipped deliberately, with reasons**, so nobody re-derives them: the
+eight-direction `newdir_8` (diagonals are exactly what stop grid-aligned legs
+being grid-aligned), `place_on_axis` (an enemy that teleports into line is the
+opposite of a creature whose position is always explicable), the `slide` /
+`scored` / `stunclk` gating in the walk family (hit reaction belongs to action
+combat; ours is turn-based photophysics and never happens on the overworld),
+the rest of the walk family (the same `newdir` in different clocks), the combo
 *type* system (`cWATER`, `cBRIDGE`, `dive_under_level` and ~200 more), which
 encodes behaviour in the tile id and is why one byte grows into forty lines of
 branching at `maps.cpp:2380-2480` -- Lumis Quest keeps behaviour in
@@ -147,6 +177,16 @@ ours are a camera mode over one continuous grid; and `sideview_mode`, an entire
 second gravity model for platformer rooms.
 
 **Where to pick this up next**
+1. **The interiors are built, tested, and unreachable.** `api/interiors.py`
+   generates six kinds of room from ASCII maps under `data/rooms/`, every one
+   sized to fit a single screen, with a door in the bottom wall row and
+   standing spots for people -- and **nothing on the overworld opens one**. So
+   "walkable houses, talk to people in houses" is still not true, and the room
+   files are dead weight until it is. What is missing is small and specific: a
+   door tile under a building that swaps the active grid the way `_cross`
+   already swaps the dark manifold, and the arrival/leave positions. Measure it
+   by walking into a house in `lumis_town`, not by `test_interiors.py`, which
+   passes today and proves only that rooms can be built.
 2. **A Warden fight is winnable by the strategy it exists to forbid.** Each
    Warden teaches one thing (`lesson` in `data/wardens.json`) and the fight is
    supposed to be unwinnable without it, but the only thing their tier changes

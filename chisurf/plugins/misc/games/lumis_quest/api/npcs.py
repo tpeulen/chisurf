@@ -35,13 +35,14 @@ from __future__ import annotations
 
 import dataclasses
 import math
+import random
 
+from . import steering
 from . import tiles as T
 from .bestiary import BY_KEY as SPECIES_BY_KEY
 from .bestiary import SPECIES
 from .story import ORDER_LANDS, ORDERS
 from .tiers import BY_KEY as WARDEN_BY_KEY
-from .tiers import WARDENS
 from .tiles import CLINIC, FLOOR, GARDEN, GRASS, PLAZA, ROAD, SAND, TILE, is_blocking
 
 #: What a villager might say. Chosen by page address, so a given villager always
@@ -202,6 +203,9 @@ class Npc:
     species : str
         For an animal or a marked beast, which body it is -- so an encounter
         fights the animal that was standing there rather than a fresh roll.
+    tier : int
+        For a marked beast, how hard its land is. Steering reads it: a heavier
+        label is a bolder animal.
     """
 
     kind: str
@@ -216,7 +220,74 @@ class Npc:
     lines: tuple[str, ...] = ()
     role: str = ""
     species: str = ""
+    tier: int = 1
     _phase: float = 0.0
+    #: Steering state, built the first time this one is stepped. See
+    #: :mod:`.steering`: what it is (:class:`~.steering.Temper`), where it is in
+    #: its current decision (:class:`~.steering.Drift`), and its own generator
+    #: so that one creature's wandering does not depend on how many others were
+    #: updated first.
+    _temper: steering.Temper | None = None
+    _drift: steering.Drift | None = None
+    _rng: random.Random | None = None
+
+    @property
+    def traits(self) -> tuple[str, ...]:
+        """What this one's body does, if it has a body in the bestiary.
+
+        Returns
+        -------
+        tuple of str
+            Trait keys, empty for anybody who is not an animal.
+        """
+        body = SPECIES_BY_KEY.get(self.species)
+        return (body.trait,) if body is not None else ()
+
+    @property
+    def drift(self) -> steering.Drift:
+        """This one's steering state, created on demand.
+
+        Returns
+        -------
+        chisurf.plugins.misc.games.lumis_quest.api.steering.Drift
+            Mutated as it walks.
+        """
+        if self._drift is None:
+            seed = _seed(f"{self.kind}:{self.name}:{self.home}")
+            self._rng = random.Random(seed)
+            self._temper = steering.temper_for(self.kind, self.traits, self.tier)
+            self._drift = steering.Drift(
+                facing=steering.NAMES.index(self.facing)
+                if self.facing in steering.NAMES else steering.DOWN,
+                phase=self._phase,
+            )
+        return self._drift
+
+    @property
+    def temper(self) -> steering.Temper:
+        """What kind of mover this one is.
+
+        Returns
+        -------
+        chisurf.plugins.misc.games.lumis_quest.api.steering.Temper
+            Constant for its lifetime.
+        """
+        self.drift  # noqa: B018 -- builds both halves together
+        return self._temper
+
+    @property
+    def lift(self) -> float:
+        """How far off the ground to *draw* this one.
+
+        Returns
+        -------
+        float
+            World units, never applied to collision -- a hovering wraith is
+            still something you walk into. Keeping the visual height separate
+            from the real one is the reason a bob can be given to anything
+            without re-auditing what it can now pass over.
+        """
+        return self._drift.fake_z() if self._drift is not None else 0.0
 
     @property
     def dialogue(self) -> tuple[str, ...]:
@@ -410,10 +481,13 @@ def populate(world) -> list[Npc]:
                 continue
             species = SPECIES[seed % len(SPECIES)]
             people.append(
+                # A wide leash, because most of these are going to spend the
+                # encounter running away from you and a short one would put a
+                # wall behind them that the player cannot see.
                 Npc(kind="beast", name=f"a marked {species.name}",
-                    x=spot[0], y=spot[1], home=spot, radius=TILE * 5.0,
+                    x=spot[0], y=spot[1], home=spot, radius=TILE * 8.0,
                     line="It is burning, and it cannot stop.",
-                    species=species.key,
+                    species=species.key, tier=region.crossing_tier,
                     _phase=(seed % 1000) / 1000.0 * math.tau)
             )
 
@@ -668,7 +742,7 @@ def dark_population(world) -> list[Npc]:
             species = SPECIES[(seed >> 3) % len(SPECIES)]
             made.append(
                 Npc(kind="wraith", name=f"the shape of a {species.name}",
-                    x=spot[0], y=spot[1], home=spot, radius=TILE * 2.0,
+                    x=spot[0], y=spot[1], home=spot, radius=TILE * 4.0,
                     line=WRAITH_LINES[seed % len(WRAITH_LINES)],
                     species=species.key,
                     _phase=(seed % 1000) / 1000.0 * math.tau)
@@ -726,10 +800,24 @@ def _open_spot(world, col: int, row: int, seed: int, span: int = 5,
     return None
 
 
+#: What can be walked on in the dark manifold. Almost nothing: down there the
+#: road you built is the only thing still shaped like a road.
+DARK_GROUND = frozenset({T.ASH, T.FLOOR, T.ROAD, T.PLAZA})
+
+
 def update(people: list[Npc], world, dt: float, clock: float,
            near: tuple[float, float] | None = None, radius: float = 700.0,
            dark: bool = False) -> None:
     """Move the world's inhabitants.
+
+    Everything here steers by :mod:`.steering` -- a tile-aligned decision, then
+    a leg of exactly one tile -- rather than by a smooth curve through the
+    clock, which is what this did before. The curve was cheap and it was
+    wrong in a way that took a while to name: every creature in the world was
+    tracing the *same* figure of eight at a different phase, nothing ever
+    noticed the player, and because a curve does not respect a grid the
+    unlucky ones spent their lives grinding along a wall they could not turn
+    off. A creature that decides on the grid cannot end a step inside one.
 
     Only those near the player are stepped. The world holds well over a hundred
     of them and the ones nobody can see do not need to breathe.
@@ -739,14 +827,14 @@ def update(people: list[Npc], world, dt: float, clock: float,
     people : list of Npc
         Everyone.
     world : World
-        For collision.
+        For collision, and for the lamp posts that wildlife steers by.
     dt : float
         Seconds elapsed.
     clock : float
-        Running time, so wandering is a smooth function rather than a random
-        walk that jitters.
+        Running time. Kept for callers, and used for the visual hover.
     near : tuple of float, optional
-        Only update within ``radius`` of this point.
+        Only update within ``radius`` of this point. Doubles as the player's
+        position, which is what homing and fleeing are measured against.
     radius : float, optional
         How far to bother.
     dark : bool, optional
@@ -757,26 +845,110 @@ def update(people: list[Npc], world, dt: float, clock: float,
             continue  # they stand where they stand
         if near is not None and npc.distance_to(*near) > radius:
             continue
-        speed = {"animal": 14.0, "townsfolk": 9.0, "wraith": 6.0}.get(npc.kind, 22.0)
-        angle = npc._phase + clock * (0.35 if npc.kind == "animal" else 0.22)
-        dx = math.cos(angle) * speed * dt
-        dy = math.sin(angle * 1.3) * speed * dt
 
         # A beast may never wander onto village ground, even through a gate:
-        # inside the walls, nothing fights you, and that rule is worth more
-        # than a beast's freedom of movement.
+        # inside the walls nothing fights you, and that rule is worth more than
+        # a beast's freedom of movement.
         ground = WILD_GROUND if npc.kind == "beast" else WALKABLE
         if dark:
-            ground = frozenset({T.ASH, T.FLOOR, T.ROAD, T.PLAZA})
-        if world.tile_at(int((npc.x + dx) // TILE), int(npc.y // TILE), dark) in ground and \
-                abs(npc.x + dx - npc.home[0]) < npc.radius:
-            npc.x += dx
-        if world.tile_at(int(npc.x // TILE), int((npc.y + dy) // TILE), dark) in ground and \
-                abs(npc.y + dy - npc.home[1]) < npc.radius:
-            npc.y += dy
-        npc.facing = ("right" if dx > 0 else "left") if abs(dx) > abs(dy) else (
-            "down" if dy > 0 else "up"
+            ground = DARK_GROUND
+
+        temper = npc.temper
+        bait = _light_near(npc, world, temper, near, dark) if temper.greed else None
+
+        npc.x, npc.y = steering.advance(
+            temper, npc.drift, npc.x, npc.y, dt,
+            _passage(npc, world, ground, dark), npc._rng,
+            target=near, bait=bait,
         )
+        npc.facing = npc.drift.name
+
+
+def _light_near(npc: Npc, world, temper, player: tuple[float, float] | None,
+                dark: bool) -> tuple[float, float] | None:
+    """The brightest thing in this creature's neighbourhood.
+
+    Two sources, and the nearer one wins. The lamp posts stand still and are
+    the reason a moth is in the square at all; **Iris is the other**, and she is
+    the brighter of the two -- a probe is a photon given a body, so the light
+    the wildlife steers by is mostly the player walking through it. That gives
+    the greed flag something to do everywhere rather than only inside town
+    walls, where wildlife is not allowed to go in the first place: without her,
+    a moth's whole reason for being a moth is switched off across the entire
+    map, and nothing fails.
+
+    In the dark manifold there are no lamps at all, and she is the only light
+    there has been for a long time.
+
+    Parameters
+    ----------
+    npc : Npc
+        Whose neighbourhood.
+    world : World
+        For the lamp table.
+    temper : chisurf.plugins.misc.games.lumis_quest.api.steering.Temper
+        For its reach.
+    player : tuple of float or None
+        Where Iris is.
+    dark : bool
+        Which manifold.
+
+    Returns
+    -------
+    tuple of float or None
+        The light to steer by, or ``None`` when there is none in reach.
+    """
+    reach = temper.reach or TILE * 8.0
+    lamp = None
+    if not dark and hasattr(world, "nearest_light"):
+        lamp = world.nearest_light(npc.x, npc.y, reach)
+    if player is None:
+        return lamp
+    if npc.distance_to(*player) > reach:
+        return lamp
+    if lamp is None:
+        return player
+    return min((lamp, player), key=lambda one: npc.distance_to(*one))
+
+
+def _passage(npc: Npc, world, ground: frozenset[int], dark: bool):
+    """A test for whether one creature may take one step.
+
+    The leash is folded in here rather than applied afterwards, so straying too
+    far from home is indistinguishable from a wall -- which means the same
+    thirty-two re-rolls that get a creature out of a dead end also turn it
+    around at the edge of its range, instead of it pressing against a boundary
+    that is not there and shivering.
+
+    Parameters
+    ----------
+    npc : Npc
+        Whose step it is.
+    world : World
+        For the grid.
+    ground : frozenset of int
+        Tiles this one may stand on.
+    dark : bool
+        Which manifold.
+
+    Returns
+    -------
+    callable
+        ``passable(direction) -> bool``.
+    """
+    def passable(direction: int) -> bool:
+        step = steering.STEPS[direction]
+        col = int(npc.x // TILE) + step[0]
+        row = int(npc.y // TILE) + step[1]
+        if world.tile_at(col, row, dark) not in ground:
+            return False
+        if npc.radius <= 0.0:
+            return True
+        x = (col + 0.5) * TILE
+        y = (row + 0.5) * TILE
+        return abs(x - npc.home[0]) < npc.radius and abs(y - npc.home[1]) < npc.radius
+
+    return passable
 
 
 def _blocked(world, x: float, y: float, dark: bool = False) -> bool:
