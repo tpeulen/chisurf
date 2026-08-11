@@ -17,6 +17,24 @@
   dependency for write-through acquisition — the file exists and grows during
   the run, killing the process no longer kills the data.
   [prd-98](prds/prd-98.md).
+* **Two assumptions in PRD-98 were checked and both were wrong — the PRD and
+  its tttrlib dependency were amended rather than left to break in
+  implementation.** (1) *"Kill the process, keep the photons"* does **not**
+  follow from a `.pto` sink: the container's rule is that bytes past the
+  `Segment` end are an abandoned write and **not part of the file**, so an
+  hour streamed without a commit is no file at all, not a short one. The
+  format has every mechanism to fix that — an eight-octet `Segment` size
+  rewritten as the file grows, an 8 KiB `SeekHead` reserve that exists
+  *because* the commit protocol rewrites one in place, `PtoRowCount` — but
+  nothing obliged a writer to use them periodically, so tttrlib PRD-034
+  gained a normative **checkpoint** operation and an acceptance criterion
+  that `SIGKILL`s a writer. (2) The MCS trace has **nothing to delegate
+  to**: `compute_intensity_trace` is batch-only and the streaming module has
+  no intensity trace among its four classes, so PRD-98 now names
+  `StreamingIntensityTrace` as a prerequisite instead of quietly assuming
+  it. The general lesson, since this is twice in one week: a PRD that says
+  "use the streaming X" must name X's header, and one that says "survives a
+  crash" must name the commit that makes it true.
 * **The per-column slowdown has a cause, and it is a property of the binding,
   not of the maximum-entropy code — filed upstream.** The photon library
   declares `std::vector<double>` as one library-wide SWIG template, so every
