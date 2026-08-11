@@ -1,27 +1,22 @@
 # Update Log
 
 ## 2026-08-11
-* **PRD-100 written**: the `imp` numba route is a migration against `IMP.bff.AV`
-  with a parity bar, not a deletion. Three groups (AV grid, dye-diffusion maps,
-  ProteinMC potentials — the last with no IMP target at all), the consumers that
-  must not move, and why "the tests pass" is not the bar.
-* **2D-FDC: tttrlib's kernel matches ours exactly** (9 recorded cases) and is
-  1.14× faster at 1M photons — but `flc_2d/core.py` stays on the numba list: the
-  single-lag builder's linear-binned matrix has no upstream equivalent and is
-  live. Raised upstream; reason recorded so nobody re-derives it.
-* **The `imp` route is a re-expression, not a deletion** — checked: none of the
-  five potentials, five AV kernels or the quenching kernel exist in `IMP.bff` /
-  `IMP.cgmol` / `IMP.bff.cgdye` or `~/dev/imp.bff`, under any name. Direction is
-  right (`IMP.bff.AV` is real), the labelled work is not. Fifth route corrected
-  by checking today.
-* **2D-FLC marked a tttrlib candidate** (user): `flc_2d/core.py`'s five kernels
-  are specified by tttrlib PRD-036, written against the original MATLAB in
-  `junk/2D-FLC-code` and requiring every kernel be tested by simulation with a
-  known answer — including a single-state negative control.
-* **`flc_2d/api.py` off the numba list** (13 left) — its only numba use chose a
-  chunk count, which never changes the result. Taking it off exposed a real
-  defect: the plugin's kernels could not cold-compile after `env_bootstrap`
-  rewrites `NUMBA_NUM_THREADS`. Guard added, suite 26 passed.
+* **chigame can play tracker modules, with nothing added to the environment**
+  ([chigame](subsystems/chigame.md)). A module is the one audio format small
+  enough to live in a source tree -- instrument samples plus a grid of notes,
+  so a four-minute song is 50--300 kB against tens of megabytes as OGG, the
+  same order as the PNGs already committed. `libopenmpt` is the usual reader
+  and is **not on conda-forge at all**, so `tracker.py` is an in-tree
+  ProTracker player instead: MOD parsing, Amiga periods against the PAL clock,
+  linear interpolation, and the effects that change what you hear (portamento,
+  tone portamento, vibrato, sample offset, volume slide, jump, set volume,
+  break, speed/tempo), with anything unknown parsed and ignored rather than
+  silencing a channel. It renders to the same PCM as the synthesiser, so
+  `{"module": "song.mod"}` is a track like any other and a missing or corrupt
+  module falls back to the track's note data instead of to silence. 14 tests,
+  and they build a real MOD byte by byte rather than committing a binary, so
+  the player is covered with no third-party asset in the tree. **No music is
+  bundled yet** -- what to ship, and under which licence, is still open.
 * **The soundtrack is music now, and a game nobody is looking at is silent**
   ([chigame](subsystems/chigame.md)). Two things were wrong and both were
   structural. The oscillators were naive — a square built from a sign flip, at

@@ -172,6 +172,28 @@ missing until 2026-08-11:
   pleasant the intervals. They are now eight bars with phrase structure and a
   bass line following a chord progression: twelve to twenty seconds a loop.
 
+**A track may be a tracker module** (`{"module": "song.mod"}`), rendered by
+`tracker.py` -- an in-tree ProTracker player, no dependency. This is the only
+audio format small enough to live in a source tree: a module stores a handful
+of short instrument samples plus a grid of which note plays on which channel on
+which row, so a four-minute song is 50--300 kB against tens of megabytes as
+OGG -- the same order as the PNGs already committed. `libopenmpt` is the usual
+answer and is **not on conda-forge at all**, so using it would mean vendoring a
+C library into a scientific package to play a tune; the format is old, small
+and fully documented, and the player is a page of parsing and a page of mixing.
+It renders to exactly the PCM the synthesiser produces, so a module drops into
+the existing `QSoundEffect` path with nothing else to change, and a missing or
+unreadable module falls back to the track's note data rather than to silence.
+
+Supported: 31-instrument MOD (`M.K.`/`M!K!`/`4CHN`/`6CHN`/`8CHN`), Amiga periods
+against the PAL clock, linear interpolation, and the effects that change what
+you hear -- portamento, tone portamento, vibrato, sample offset, volume slide,
+position jump, set volume, pattern break, speed/tempo. Anything else is parsed
+and ignored, which is deliberate: an unknown effect must not silence a channel
+or desynchronise the song. `Module.credits` exposes the title and sample names,
+because a tracker author's attribution lives in the sample names and a CC-BY
+module needs that text to reach a credits screen rather than being discarded.
+
 **A game in a window nobody is looking at is silent.** `Audio.suspend()` /
 `resume()` hold playback and remember the context, and `GameHost.sync_audio()`
 drives them from `GameHost.attend()` — visible, and in the active window. It is

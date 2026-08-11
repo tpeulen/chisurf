@@ -30,6 +30,11 @@ SAMPLE_RATE = 44100
 #: Musical contexts a game may be in.
 CONTEXTS = ("overworld", "town", "battle", "underworld", "victory")
 
+#: Where module files live, if any are installed. A tracker module is the one
+#: audio format small enough to sit in a source tree -- a few hundred kB for a
+#: whole song -- so a pack can be dropped in here and picked up by name.
+MUSIC_DIR = pathlib.Path(__file__).resolve().parent / "music"
+
 #: A note may be a bare semitone, a ``[semitone, eighths]`` pair, or ``None``
 #: for a rest. Held notes and rests are the whole difference between a phrase
 #: and a metronome playing scales.
@@ -347,6 +352,24 @@ def render_track(track: dict) -> bytes:
     bytes
         Little-endian signed 16-bit samples.
     """
+    module = track.get("module")
+    if module:
+        # A track may be a tracker module rather than note data. The player is
+        # in-tree (:mod:`.tracker`) and renders to exactly this PCM, so nothing
+        # downstream knows the difference.
+        from . import tracker
+
+        path = pathlib.Path(module)
+        if not path.is_absolute():
+            path = MUSIC_DIR / path
+        if path.is_file():
+            try:
+                return tracker.render_to_pcm(path, SAMPLE_RATE)
+            except tracker.ModuleError:
+                # A module we cannot read falls through to whatever note data
+                # the track also carries, which is silence if it carries none.
+                pass
+
     root = float(track.get("root", 261.63))
     tempo = float(track.get("tempo", 100))
     eighth = max(1, int(SAMPLE_RATE * 30.0 / max(tempo, 1.0)))
