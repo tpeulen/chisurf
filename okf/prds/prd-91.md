@@ -161,6 +161,46 @@ the per-file detail.
    from `fakez`, which is what has landed: this one is a real suspension of
    gravity, i.e. a creature that can be *over* something.
 
+**Mined from a small pygame RPG (2026-08-11).** `junk/pyzelda-rpg`, MIT, 2,016
+lines of Python. Tiny beside ZQuest and useful for different things, because it
+is a *modern* game rather than a 1980s one: it has the layers ZQuest predates.
+
+**Taken:** the whole particle and floating-text layer, as
+[`chigame/particles.py`](../subsystems/chigame.md) — a rising number, an orb
+that flies to a target, a one-shot burst. Engine-level, so all six games get
+it; Lumis Quest uses it for damage numbers, for the impact spark (in the colour
+*your* beast emits, because an impact is light arriving), and for the moment a
+label comes off and visibly travels from the animal into you. `alpha` became a
+Scene-level hint on the way, so anything can fade without every pack branch
+learning about transparency.
+
+**Found and not taken, in the order it is worth doing:**
+
+1. **`notice_radius` / `attack_radius` driving idle → move → attack.** ZQuest
+   has no equivalent — its enemies are always on. Two radii are what give a
+   creature personal space, and this bestiary wants exactly that: an animal
+   that has not noticed you is not fleeing, and the moment it notices is the
+   moment worth seeing. Folds into `steering.Temper` as two more fields.
+2. **A\* with a recalculation *policy*** (`code/enemy.py`): recalculate when
+   the path is stale (500 ms) **or** when the player has changed grid cell,
+   whichever comes first, and fall back to direct movement when there is no
+   path. The search is textbook and thirty lines; the policy is the hard-won
+   part. Needed for Lumi at heel and for `agents.py` errands, both of which
+   snag on buildings today — and explicitly **not** for fleeing beasts, which
+   should look panicked rather than well-routed.
+3. **Knockback as one signed scalar**: `direction *= -resistance`, applied by
+   negating the direction the hit came from.
+4. **An invulnerability window with a flicker**, which is how a player learns
+   that a hit registered.
+
+**Skipped, with reasons:** the five-bar stat shop (stats here are photophysics
+and come from which label is in which body — a shop that sells brightness would
+undo the bestiary), its sprite-frame asset pipeline (chigame is procedural and
+string-art; shipping PNG frame sets would undo the swappable look), its
+axis-separated collision (ours already sub-steps, slips corners and tests
+per-quadrant solidity, so adopting it is a regression), and its save manager
+(`api/save.py` already versions and migrates).
+
 **Skipped deliberately, with reasons**, so nobody re-derives them: the
 eight-direction `newdir_8` (diagonals are exactly what stop grid-aligned legs
 being grid-aligned), `place_on_axis` (an enemy that teleports into line is the

@@ -8,6 +8,8 @@ what makes the whole look swappable.
 
 from __future__ import annotations
 
+import dataclasses
+
 from .assets import AssetPack, ProceduralPack
 from .render import Camera, SpriteBatch
 from .text import FontAtlas, draw_text
@@ -69,9 +71,18 @@ class Scene:
             Rotation in radians.
         **hints
             Facts the pack may use, such as ``emission_nm`` or an explicit
-            ``color`` override.
+            ``color`` override. ``alpha`` is handled here rather than by the
+            pack: it scales whatever opacity the pack chose, so a caller can
+            fade *any* semantic thing -- a particle dying, a UI panel coming in
+            -- without knowing what colour the pack picked or teaching every
+            branch of every pack about transparency.
         """
         look = self.pack.resolve(kind, name, state, **hints)
+        alpha = hints.get("alpha")
+        if alpha is not None:
+            look = dataclasses.replace(
+                look, color=(look.color[0], look.color[1], look.color[2],
+                             look.color[3] * float(alpha)))
         self.batch.add(
             pos=at,
             size=(size[0] * look.scale, size[1] * look.scale),

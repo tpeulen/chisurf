@@ -435,6 +435,19 @@ class OverworldGame(chigame.Game):
         self.iris = [0.0, 0.0]
         self.lumi = [0.0, 0.0]
         self._clock = 0.0
+        # Short-lived feedback: damage numbers, the burst when a label comes
+        # off, the photons that fly into you afterwards. Two fields, because
+        # the battle screen and the overworld are different coordinate spaces
+        # and a spark from one drawn in the other lands in a field somewhere.
+        self.sparks = chigame.ParticleField()
+        self.battle_sparks = chigame.ParticleField()
+        #: Where the two portraits were drawn last frame, so a hit can put its
+        #: number over the thing that took it. The layout does not move, so a
+        #: frame of lag is invisible.
+        self._portraits: dict[str, tuple[float, float]] = {}
+        #: The battle screen's own scale, so feedback is sized in the same
+        #: units as the panel it lands on rather than in raw world units.
+        self._portrait_scale = 1.0
 
     #: What each loading stage is called, in order.
     #: The first is deliberately empty work. Without it the heaviest stage runs
@@ -859,6 +872,11 @@ class OverworldGame(chigame.Game):
         keys : chisurf.gui.chigame.input.InputMap
             Controller state.
         """
+        # Feedback ages regardless of what screen is up, so a number thrown
+        # just before a fight ends still finishes rising. Empty fields cost
+        # nothing, which is why this sits above every early return.
+        self.sparks.update(dt)
+        self.battle_sparks.update(dt)
         if self.phase == "loading":
             self._load_next()
             return
@@ -1746,7 +1764,9 @@ class OverworldGame(chigame.Game):
                 self._challenge_input(keys)
                 return
             if keys.just_pressed(Action.CONFIRM) or keys.just_pressed(Action.CANCEL):
+                self._say_what_you_carried_away(fight)
                 self.battle = None
+                self.battle_sparks.clear()
                 self.encounter_room = None
                 self.warden_fight = ""
                 self.verdict = None
@@ -1759,10 +1779,101 @@ class OverworldGame(chigame.Game):
             self.menu_index = (self.menu_index - 1) % len(options)
         if keys.just_pressed(Action.CONFIRM):
             label = options[self.menu_index][0]
+            # Health per *fighter*, keyed by identity: a relay or a knock-out
+            # can change which one is active inside a single press, and reading
+            # `fight.active.hp` before and after then compares two different
+            # animals and reports nothing.
+            before = ({id(one): one.hp for one in [*fight.team, fight.opponent]},
+                      fight.taken, fight.active.beast.emission_nm)
             options[self.menu_index][1]()
             self._sound("unbind" if label.startswith("Unbind") else "emit", 700.0)
+            self._show_exchange(fight, before)
         elif keys.just_pressed(Action.CANCEL):
             fight.flee()
+
+    def _say_what_you_carried_away(self, fight) -> None:
+        """Repeat the spoils on the overworld, where the player is looking.
+
+        The battle screen already said it, but it said it on a screen that is
+        about to be torn down, and the two are different places. A label and an
+        animal are the two things a run is made of, so both get a line.
+
+        Parameters
+        ----------
+        fight : chisurf.plugins.misc.games.lumis_quest.api.battle.Battle
+            The finished encounter.
+        """
+        at = (self.iris[0], self.iris[1] - T.TILE * 0.9)
+        if fight.taken is not None:
+            self.sparks.rise(f"+ {fight.taken.name}", at, span=1.8,
+                             distance=20.0, height=8.5,
+                             color=(0.72, 0.96, 0.84, 1.0))
+            self.sparks.burst(tuple(self.iris), count=10, span=0.7, speed=32.0,
+                              emission_nm=fight.taken.emission_nm)
+            at = (at[0], at[1] - 11.0)
+        if fight.joined and fight.freed is not None:
+            self.sparks.rise(f"the {fight.freed.name} follows you", at,
+                             span=2.2, distance=18.0, height=8.0,
+                             color=(0.94, 0.88, 0.62, 1.0))
+
+    def _show_exchange(self, fight, before) -> None:
+        """Say what an exchange did, where it did it.
+
+        A bar that moves is a bar that moved; a number over the thing that took
+        the hit is the hit. Which side lost health is read from the hp deltas
+        rather than from the log text, because the log is prose and an exchange
+        can hurt both sides in one press.
+
+        Parameters
+        ----------
+        fight : chisurf.plugins.misc.games.lumis_quest.api.battle.Battle
+            The encounter, after the action.
+        before : tuple
+            ``({id(fighter): hp}, taken, emitted nm)`` from immediately before
+            it -- the wavelength being the one *your* beast emits, which is
+            what lands on the other one.
+        """
+        health, had, emitted = before
+        if not {"enemy", "ours"} <= set(self._portraits):
+            return  # nothing has been drawn yet, so there is nowhere to put it
+        # The battle screen is laid out in multiples of its own scale, so
+        # feedback has to be too -- fixed sizes were a glow three times the
+        # portrait with a number too small to read inside it.
+        scale = self._portrait_scale
+        enemy, ours = self._portraits["enemy"], self._portraits["ours"]
+
+        dealt = health.get(id(fight.opponent), fight.opponent.hp) - fight.opponent.hp
+        if dealt > 0:
+            self.battle_sparks.rise(f"-{int(dealt)}",
+                                    (enemy[0], enemy[1] - 16.0 * scale),
+                                    color=(1.00, 0.86, 0.42, 1.0),
+                                    height=13.0 * scale, distance=14.0 * scale)
+            # In the colour *your* beast emits, not the colour the target
+            # does: an impact is light arriving. Drawn in the target's own
+            # band it was invisible, because the target is already glowing
+            # that colour -- which is the sort of thing only a picture says.
+            self.battle_sparks.burst(enemy, count=10, size=3.2 * scale,
+                                     speed=30.0 * scale, span=0.55, drag=1.6,
+                                     radius=17.0 * scale, emission_nm=emitted)
+
+        took = max((was - one.hp for one in fight.team
+                    for was in [health.get(id(one), one.hp)]), default=0)
+        if took > 0:
+            self.battle_sparks.rise(f"-{int(took)}",
+                                    (ours[0], ours[1] - 16.0 * scale),
+                                    color=(0.96, 0.52, 0.48, 1.0),
+                                    height=13.0 * scale, distance=14.0 * scale)
+
+        if had is None and fight.taken is not None:
+            # The moment the whole game is about: the label comes off, and it
+            # visibly goes from the animal into you.
+            self.battle_sparks.rise("unbound", (enemy[0], enemy[1] - 26.0 * scale),
+                                    color=(0.62, 0.94, 0.78, 1.0), span=1.6,
+                                    distance=18.0 * scale, height=11.0 * scale)
+            self.battle_sparks.orbs(enemy, ours, count=9, size=1.5 * scale,
+                                    speed=95.0 * scale, span=2.0,
+                                    scatter=5.0 * scale,
+                                    emission_nm=fight.taken.emission_nm)
 
     def _collect_spoils(self, fight) -> None:
         """Take what a finished fight leaves behind, once.
@@ -2380,8 +2491,15 @@ class OverworldGame(chigame.Game):
         self._sprite(scene, f"iris_{self._sheet_facing()}_{frame}", self._drawn_at,
                      T.TILE * 1.15, mirror=self.facing == "left")
 
+        # World feedback goes over the world and under the panels: a number
+        # behind a dialogue box is a number nobody saw.
+        self.sparks.draw(scene)
+
         if self.battle is not None:
             self._draw_battle(scene, camera, half)
+            # ...and battle feedback goes over the battle screen, because that
+            # is what it is about.
+            self.battle_sparks.draw(scene)
         elif self.menu_open:
             self._draw_menu(scene, camera, half)
         else:
@@ -2824,8 +2942,9 @@ class OverworldGame(chigame.Game):
         # The opponent, drawn in the colour it actually emits.
         enemy = fight.opponent
         top = cy - half[1] * 0.52
-        self._beast_portrait(scene, enemy, (cx + half[0] * 0.46, top + 6.0 * scale),
-                             34.0 * scale)
+        self._portraits["enemy"] = (cx + half[0] * 0.46, top + 6.0 * scale)
+        self._portrait_scale = scale
+        self._beast_portrait(scene, enemy, self._portraits["enemy"], 34.0 * scale)
         scene.text(enemy.name, at=(cx - half[0] * 0.10, top - 14.0 * scale),
                    height=13.0 * scale, align="center", color=(0.90, 0.88, 0.82, 1.0))
         self._bar(scene, (cx - half[0] * 0.10, top + 4.0 * scale), 130.0 * scale, 7.0 * scale,
@@ -2840,8 +2959,8 @@ class OverworldGame(chigame.Game):
         # Your active creature.
         active = fight.active
         low = cy + half[1] * 0.10
-        self._beast_portrait(scene, active, (cx - half[0] * 0.48, low + 6.0 * scale),
-                             32.0 * scale)
+        self._portraits["ours"] = (cx - half[0] * 0.48, low + 6.0 * scale)
+        self._beast_portrait(scene, active, self._portraits["ours"], 32.0 * scale)
         scene.text(active.name, at=(cx + half[0] * 0.10, low - 14.0 * scale),
                    height=13.0 * scale, align="center", color=(0.82, 0.90, 0.96, 1.0))
         self._bar(scene, (cx + half[0] * 0.10, low + 4.0 * scale), 130.0 * scale, 7.0 * scale,

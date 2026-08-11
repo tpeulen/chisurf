@@ -34,6 +34,8 @@ from .audio import Audio
 from .game import Game, GameHost, capture, create_widget, save_png
 from .gpu import GpuContext, create_offscreen, get_adapter, get_device
 from .input import Action, InputMap
+from .particles import Field as ParticleField
+from .particles import Particle
 from .render import (
     ELLIPSE,
     FLOATS_PER_INSTANCE,
@@ -65,6 +67,8 @@ __all__ = [
     "GameHost",
     "GpuContext",
     "InputMap",
+    "Particle",
+    "ParticleField",
     "ProceduralPack",
     "RECT",
     "RING",

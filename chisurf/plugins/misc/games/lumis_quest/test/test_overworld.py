@@ -1161,3 +1161,78 @@ def test_a_jump_clears_the_low_things_and_not_the_walls(game):
     assert grounded_water and not game._solid_at_tile(tiles.WATER)
     assert game._solid_at_tile(tiles.WALL), "walls stay solid in the air"
     game.z, game.jumping = 0.0, False
+
+
+def test_an_exchange_says_what_it_did_where_it_did_it(game, wild_room):
+    """A bar that moves is a bar that moved; a number over the thing is the hit.
+
+    This also walks the emit path end to end, which matters more than it looks:
+    every field name in it (`emission_nm`, the portrait anchors) is read only
+    here, so a rename would otherwise sit in the tree raising an AttributeError
+    that no test and no ordinary play session reaches until somebody wins.
+    """
+    wild = wild_room
+    game.iris = [wild.position[0], wild.position[1] + tiles.TILE]
+    game._try_encounter()
+    assert game.battle is not None
+
+    # The anchors come from the draw, so take a frame first.
+    game.draw(_scene(game))
+    assert {"enemy", "ours"} <= set(game._portraits)
+
+    game.host.keys.tap(Action.CONFIRM)          # Emit
+    game.update(1 / 60, game.host.keys)
+    game.host.keys.end_frame()
+    assert len(game.battle_sparks) > 0, "an exchange produced no feedback at all"
+
+
+def test_carrying_a_label_away_is_visible_on_the_overworld(game, wild_room):
+    """The battle screen said it, and then the battle screen was torn down."""
+    from chisurf.plugins.misc.games.lumis_quest.api import bestiary as bestiary_api
+
+    wild = wild_room
+    game.iris = [wild.position[0], wild.position[1] + tiles.TILE]
+    game._try_encounter()
+    fight = game.battle
+    fight.finished = True
+    fight.won = True
+    fight.taken = fight.opponent.beast.label
+    fight.freed = fight.opponent.beast.species
+    fight.joined = True
+    if fight.taken is None:
+        pytest.skip("this encounter's beast carries no label")
+    assert isinstance(fight.freed, bestiary_api.Species)
+
+    # No page attached, so Confirm dismisses the fight rather than opening the
+    # page's own question.
+    game.encounter_room = None
+
+    game.host.keys.tap(Action.CONFIRM)
+    game.update(1 / 60, game.host.keys)
+    assert game.battle is None
+    assert len(game.sparks) > 0
+    assert game.battle_sparks.particles == [], "battle feedback outlived its screen"
+
+
+def _scene(game):
+    """A scene over the game's own host, for one frame.
+
+    Returns
+    -------
+    chisurf.gui.chigame.scene.Scene
+        Ready to draw into.
+    """
+    return chigame.Scene(_Recorder(), camera=game.host.camera)
+
+
+class _Recorder:
+    """A sprite batch that records, so a draw can be taken without a GPU."""
+
+    def add(self, **quad) -> None:
+        """Ignore one quad.
+
+        Parameters
+        ----------
+        **quad
+            Whatever the scene passes.
+        """

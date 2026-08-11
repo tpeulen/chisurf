@@ -238,6 +238,33 @@ because a hidden widget may stop being asked to draw at all, and a game whose
 frames have stopped with its music still playing is the worst version of this
 bug.
 
+## ParticleField — the layer that says something happened
+
+`particles.py` is a `Field` of `Particle`s, each of which is one of three
+things depending on which fields are set: a **number that rises and fades**, an
+**orb that flies to a target**, or a **one-shot burst**. Ported from a small
+MIT-licensed pygame RPG (`junk/pyzelda-rpg`, headers on the files read), which
+had all three and is the reason they exist here at all — a game without them
+makes the player read a bar to find out whether anything happened.
+
+The look stays semantic: a particle names a `kind` and a `name` and the
+`AssetPack` decides, exactly as `Scene.draw` does. `alpha` is now a
+**Scene-level hint** rather than a pack concern — it scales whatever opacity
+the pack chose, so anything can fade without teaching every branch of every
+pack about transparency.
+
+Three things are deliberately not the way the reference had them, each because
+the reference's version has a failure mode that does not show up on the machine
+it was written on:
+
+- **Motion is integrated against `dt`**, not counted in frames. Frame-locked
+  particles live proportionally longer on a slow machine.
+- **The field has a cap.** An emitter inside a loop is the standard way a
+  particle system becomes a frame budget.
+- **`burst(radius=...)` can spawn a ring.** A spark thrown from the middle of
+  something that is already glowing spends its whole life inside that glow. No
+  assertion says so; a screenshot does, and did.
+
 ## Offscreen capture — headless is a first-class path
 
 `rendercanvas.offscreen` renders real pixels with no window server, which is what

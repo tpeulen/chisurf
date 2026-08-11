@@ -1,9 +1,6 @@
 # Update Log
 
 ## 2026-08-11
-* **Remaining numba work issued as 7 board tickets** (`T-20260811-14`…`-20`),
-  each with defined interfaces and named test cases rather than prose. Covers all
-  12 remaining files; `-20` is blocked on tttrlib PRD-037 Part B.
 * **Jumping, and a proper survey of ZQuest Classic**
   ([PRD-91](prds/prd-91.md)). The first pass through that engine read two files
   and came back with one idea, which was not a survey -- 503,550 lines across
@@ -34083,3 +34080,17 @@
   `fakez` came with it as `Drift.fake_z` — a visual-only height, so the shelved hover and their
   shadows stay on the ground. A screenshot caught the one real defect: greed was switched off in
   the dark manifold, i.e. in the only place wraiths exist. See [PRD-91](/prds/prd-91.md).
+
+- **2026-08-11 — chigame gets particles, and Lumis Quest finally says what happened.**
+  `chigame/particles.py` — a rising number, an orb that flies to a target, a one-shot burst —
+  ported from a small MIT pygame RPG (`junk/pyzelda-rpg`, headers on the six files read) and
+  generalised: dt-integrated rather than frame-counted, a per-field cap, and `burst(radius=)` so
+  a spark can spawn as a ring. `alpha` became a **Scene-level hint** that scales whatever the
+  pack chose, so anything can fade without every pack branch learning transparency. Lumis Quest
+  uses it for damage numbers, for the impact spark **in the colour your own beast emits** (an
+  impact is light arriving), and for the label visibly travelling from the animal into you.
+  Three defects only the screenshots showed: numbers sized in world units instead of the battle
+  panel's scale (unreadably small), the spark drawn in the *target's* band so it was invisible
+  against the target's own halo, and hp read from `fight.active` before and after — which
+  compares two different animals when the bench relays. See [chigame](/subsystems/chigame.md)
+  and [PRD-91](/prds/prd-91.md).
