@@ -1,11 +1,15 @@
 from __future__ import annotations
 
 import abc
-from typing import Optional
-
-from qtpy import QtWidgets
+from typing import TYPE_CHECKING, Optional
 
 from .scene import Scene
+
+if TYPE_CHECKING:  # pragma: no cover - annotations only
+    # Imported for the signatures below and nowhere else. Kept out of the
+    # runtime import graph so the engine can be loaded without a GUI toolkit;
+    # `from __future__ import annotations` above is what makes that safe.
+    from qtpy import QtWidgets
 
 
 class Renderer:

@@ -231,23 +231,96 @@ stops matching is a question, not a failure. `capture_gl_baseline.py` keeps
    by a host-side sort and a re-gather. Roughly 20 ms of prize against that; the
    analysis is here so the next attempt starts from it.
 
-2. **Begin the JS/browser port (user request, not started).** The groundwork is
-   deliberate and already in place: `wgsl/` composes by **concatenation**
-   (`load_wgsl` prepends `shading.wgsl`), which is the browser's rule too; the
-   chrome and the labels are a **premultiplied RGBA image composited inside the
-   render pass**, not Qt widgets, which is the only form a browser can use; and
-   `renderer/camera_state.py` holds the camera with no Qt in it.
+2. **The browser port — in progress. There is one engine, and Qt and the GPU
+   binding are moving behind seams.**
 
-   **Open question to answer first, not skip:** whether `rendercanvas`'s
-   **`pyodide` backend** collapses the two drivers into one. It exists. If it
-   does, the browser driver may not need to be JavaScript at all, and that
-   decision shapes everything after it.
+   **The user's constraints, and they decide the architecture:** *no duplication
+   of the engine*, *~90 % of the app lives in the WebGPU window*, and *shipping
+   pixels will be too slow*. A JavaScript renderer was designed and **rejected
+   against those**: it would have had to grow a JS ray tracer, a JS BVH build
+   and a JS marching cubes to reach parity with the eighteen WGSL files, and
+   every future pass would need writing twice.
 
-   **Second question:** the sRGB mismatch. The surface format is
-   `rgba8unorm-srgb` in a browser; the desktop deliberately uses non-sRGB so it
-   matches the frozen baselines. A clear value of 0.09 comes back as 85 rather
-   than 23 if this is not handled explicitly — and it is invisible except by
-   looking at the image.
+   **What settles it is four measurements, taken from the tree:**
+
+   | measured | value |
+   |---|---|
+   | wgpu-py methods the engine calls | **20**, plus ~25 enum constants |
+   | WGSL files behind them | **18**, incl. `raytrace`, `bvh`, `mc_vertices`, `edt` |
+   | distinct QPainter primitives in `internal_gui.py` | **6** (91 sites, 1700 lines) |
+   | chimol modules importing Qt | **24 of 119**, 13 of them `app/*` panels |
+
+   Thirty-four of the thirty-eight `wgpu.*` names are **WebGPU specification
+   constants** — the same integers and strings in a browser — and three more
+   appear only in docstrings. That leaves **one** backend-dependent name,
+   `gpu.request_adapter_sync`, which is why the seam is ~200 lines rather than a
+   second renderer. And `internal_gui`'s `_paint_*` methods already take the
+   painter **as a parameter**, so swapping it is wiring.
+
+   **Landed.**
+   - *Phase A* — the engine no longer needs Qt to import. `renderer/base.py`
+     (annotations only), `colors.py` (two `Qt.UserRole` ints), `io/structure.py`
+     (`QFileDialog`), `internal_gui.py` (two modifier masks), `cmd/animation.py`
+     (`QTimer`) and `cmd/exporting.py` (a `QThread` subclass, now built by a
+     cached factory rather than a module-scope `class` statement). Both
+     `chimol/__init__.py` and `renderer/__init__.py` eagerly imported `MolView`,
+     so *every* module in those packages required a window system — both are now
+     :pep:`562` lazy. **15/15 engine modules import with Qt blocked.**
+   - *Phase B* — `renderer/gpu/` is the only place allowed to name the binding.
+     `api.py` keeps wgpu-py's spelling so call sites read unchanged
+     (`from .gpu import api as wgpu`); `enums.py` states the spec constants
+     outright; `native.py` holds the one real call. `wgpu_backend.py`,
+     `compute.py` and `wgpu_view.py` are retargeted. `test_gpu_seam.py` fails on
+     a new importer of `wgpu` and on any drift between our constants and the
+     binding's. **161 passed / 6 skipped** across the render, compute, BVH,
+     volume, lighting and view suites — the seam is a rename layer.
+
+   **Answered — and the first answer is the opposite of what was assumed here.**
+   - `wgpu.backends.js_webgpu` in wgpu-py 0.32 is an **explicit stub**
+     (`# NOTE: this is just a stub for now!!`; `get_preferred_canvas_format`
+     raises `NotImplementedError`; no device, buffer or pipeline API). So
+     `rendercanvas`'s pyodide backend has nothing to drive and **does not**
+     collapse the two drivers. The browser backend is a second module beside
+     `native.py`, written against `js.navigator.gpu` through `pyodide.ffi`.
+   - **The sRGB worry was backwards.** `navigator.gpu.getPreferredCanvasFormat()`
+     returns `bgra8unorm` or `rgba8unorm` — **never** an `-srgb` variant. The
+     default is already correct, and the trap is sprung only by a well-meaning
+     "fix" that adds `viewFormats` + `createView({format})`. The guard is
+     therefore a *prohibition*, not a conversion.
+   - **`cerbsim/webgpu`** (the reference the user supplied) is read, not adopted.
+     Its `engine.js` calls `createPipelineLayout({bindGroupLayouts: [one]})`
+     unconditionally, while `silhouette.wgsl` and `overlay.wgsl` each declare
+     `@group(1)`; and its depth texture is `RENDER_ATTACHMENT` only, so it
+     cannot be sampled — which is exactly what pass 2 does. Its Pyodide
+     device-request and heap-view technique is the part worth taking.
+
+   **Next, in order.** *Phase C* — the chrome moves off `QPainter` onto GPU
+   quads (see the defect below, which is the desktop reason to do it).
+   *Phase D* — `platform/{events,desktop}.py`, then
+   `test_engine_is_portable.py`. Only then the browser backend and a loader
+   page.
+
+   **The chrome is a per-frame CPU rasterise, and that is a desktop defect, not
+   only a portability one.** `wgpu_view.py:519` documents its own cost:
+   *"painting this was 9.6 ms of a 21 ms frame with a quarter of a million beads
+   on screen"* — ~46 % of the frame, spent rasterising a full-viewport RGBA
+   image with `QPainter` and uploading it as a texture. The mitigation is a
+   **timer**, `CHROME_INTERVAL`: the panel is deliberately allowed to be stale
+   because repainting it when it changes is too expensive. And the same
+   docstring names the case where even that fails — *"Labels are the exception
+   — they move with the camera — so a scene that has any is painted every frame
+   as before."* Drawing the chrome as quads deletes the cost, the staleness
+   compromise and the last Qt import from the engine together.
+
+   **The before-half is captured.** `test/chrome_baseline.py` writes four states
+   — `panel`, `panel_and_sequence`, `menu_open`, `movie_transport` — to
+   `test/renders/chrome_baseline/` as PNGs plus an `inventory.json` recording
+   both what the layout holds and every control a 4-px sweep of `hit_test` can
+   actually **reach** (11 / 56 / 66 / 81). Parity is judged on that inventory,
+   not on pixels: the glyph atlas deliberately moves text metrics. *Trap, and it
+   cost a capture:* the strip is gated on `sequence_visible` and the transport
+   on `state[1] > 1`, so a capture that only sets the rows produces four
+   identical images and an inventory that cannot tell the states apart.
 
 3. **Metaball "not flubber enough" (user request, still untouched).** There is
    **no metaball scene in the frozen baselines**, and now there never can be —

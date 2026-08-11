@@ -33581,3 +33581,39 @@
   every colour washes out unless handled; and mesh equality must not be checked by sorting rounded
   centroids, which reports a correct kernel as wrong. Side-finding logged separately —
   `surface._compute_distance_grid_nb` is brute-force O(voxels × atoms), **35 s** on hGBP1 at 96³ today.
+
+- **2026-08-11 — ChiMOL's engine becomes portable: Qt and the GPU binding move behind seams (phases A and B).**
+  chimol must run in a browser and could not, for two reasons that are properties of the *desktop* code: the
+  engine named its GPU library, and it imported Qt. A JavaScript renderer was designed and **rejected** against
+  the user's constraints — no duplicate engine, ~90 % of the app inside the WebGPU window, no shipping pixels —
+  because it would have had to grow a JS ray tracer, BVH build and marching cubes to match the **18** WGSL
+  files. What makes the seam cheap instead is measurement: the engine calls only **20** wgpu-py methods, and
+  **34 of the 38** `wgpu.*` names it touches are WebGPU *specification* constants, identical in a browser, with
+  three more appearing only in docstrings — leaving **one** backend-dependent name. `renderer/gpu/`
+  (`api`/`enums`/`native`) is now the only place allowed to import the binding, keeps wgpu-py's spelling so call
+  sites read unchanged, and is guarded by `test_gpu_seam.py` against both a new importer and constant drift.
+  Phase A made the engine Qt-free to import: four accidental imports (annotations, two `Qt.UserRole` ints, a
+  `QFileDialog`, two modifier masks), a `QTimer`, a `QThread` subclass rebuilt by a cached factory rather than a
+  module-scope `class` statement, and — the two that mattered most — `chimol/__init__.py` *and*
+  `renderer/__init__.py` both eagerly importing `MolView`, which made every module in those packages require a
+  window system; both are now PEP 562 lazy. **15/15 engine modules import with Qt blocked; 161 passed / 6
+  skipped through the seam**, plus 192 across the touched command, panel and export suites.
+  Answered two questions the concept said not to skip, and **one answer is the reverse of what was assumed**:
+  `wgpu.backends.js_webgpu` is an explicit stub, so `rendercanvas`'s pyodide backend does *not* collapse the two
+  drivers; and `getPreferredCanvasFormat()` never returns an `-srgb` format, so the browser default is already
+  right and the guard is a prohibition rather than a conversion. `cerbsim/webgpu` was read and not adopted — its
+  engine binds one bind group unconditionally and its depth texture is not sampleable, which is precisely what
+  `silhouette.wgsl`/`overlay.wgsl` and pass 2 need.
+  Two defects fixed on the way, both pre-existing: `test_cmd_viewing.py` opened with
+  `QApplication.instance() or QApplication([])` as a bare statement, keeping **no reference** to the application
+  it may have just built, so it was collected again immediately and the `MolView()` below **aborted the
+  interpreter** rather than failing — it passed only when an earlier file in the session left a live application
+  behind. And the guard test's first Qt blocker used the `find_module`/`load_module` protocol **removed in
+  Python 3.12**, so it was silently skipped and every module "passed" without Qt ever being blocked.
+  Recorded the chrome's own cost as the desktop reason for phase C — `wgpu_view.py` documents *"9.6 ms of a
+  21 ms frame"* to rasterise a full-viewport `QPainter` image, mitigated by a **timer** that deliberately lets
+  the panel go stale, and bypassed entirely for any scene with labels. Before-half captured to
+  `test/renders/chrome_baseline/` (four states, PNG + reachability inventory of 11/56/66/81 controls), and a
+  new finding filed: an object menu opened from the panel **runs off the right edge of the window**, deliberately
+  left unfixed so it cannot be confused with a port regression. See
+  [chimol-web](/plugins/chimol-web.md) and [known-issues](/references/known-issues.md).

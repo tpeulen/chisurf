@@ -3464,3 +3464,27 @@ It matters out of proportion to its size: `pixi` is the single sanctioned
 environment and build tool, every CI workflow uses it, and `build-extensions` is
 a `depends-on` of every `test*` task. A broken default solve takes the whole
 sanctioned test path with it, and `--frozen` masks that locally.
+
+## A ChiMOL object menu opened from the panel runs off the right edge of the window
+
+**Found 2026-08-11** while capturing the before-half of the chrome for the
+GPU-quad port ([chimol-web](/plugins/chimol-web.md)).
+
+The panel is a column pinned to the **right** edge, and `InternalGui._open_menu`
+places a menu at the x of the button that opened it and grows it rightwards.
+Nothing clamps it to the viewport, so a menu opened from the per-row `A` button
+at 1280×860 has its whole right-hand side outside the window: `assign sec. str…`,
+`copy to object` and `drag coordinate…` are cut mid-word, and the submenu markers
+sit off-screen. The same clipping truncates the mouse-mode block
+(`Mouse Mode 3-Button Viewin…`, `Whee…`, `MovZSlab`) and the last column of the
+`A S H L C` buttons.
+
+Visible in `test/renders/chrome_baseline/menu_open.png`.
+
+**Not fixed here on purpose.** The chrome port that found this is a *parity*
+change — it must reproduce the panel as it is, and a layout fix landed in the
+same change would be indistinguishable from a port regression when the two
+images are compared. The baseline records the clipping so the after-image can be
+held to it; the fix is a separate change, and it belongs in `_open_menu` and
+`layout_block` (clamp x to `width - menu_w`, flipping the menu to the left of its
+button when it would not fit).

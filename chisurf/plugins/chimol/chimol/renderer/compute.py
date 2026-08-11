@@ -152,7 +152,7 @@ def device():
         return _DEVICE
     _DEVICE_TRIED = True
     try:
-        import wgpu
+        from .gpu import api as wgpu
 
         adapter = wgpu.gpu.request_adapter_sync(power_preference="high-performance")
         _DEVICE = adapter.request_device_sync()
@@ -378,7 +378,7 @@ class _Job:
     """
 
     def __init__(self, shader: str, entry_point: str) -> None:
-        import wgpu
+        from .gpu import api as wgpu
 
         self._wgpu = wgpu
         self.device = device()
@@ -909,7 +909,7 @@ def distance_transform_edt(mask, resident=False):
     axes because the transform cannot run in place: the parabola that wins at
     position ``q`` may be centred to the right of it.
     """
-    import wgpu
+    from .gpu import api as wgpu
 
     if isinstance(mask, GpuVolume):
         dims = mask.shape
@@ -1056,7 +1056,7 @@ def marching_cubes_active(grid, level):
     *used* prefix is read back, which needs the counter read first -- reading the
     whole buffer cost more than the NumPy pass the dispatch replaces.
     """
-    import wgpu
+    from .gpu import api as wgpu
 
     resident = isinstance(grid, GpuVolume)
     shape = grid.shape if resident else np.asarray(grid).shape
@@ -1115,7 +1115,7 @@ def _scan_cells(dev, grid, resident, shape, cells, level, total, capacity):
         case and the ``(cells, cases)`` pair otherwise. ``(None, None)`` on
         failure.
     """
-    import wgpu
+    from .gpu import api as wgpu
 
     try:
         info = np.zeros(8, dtype=np.uint32)
@@ -1236,7 +1236,7 @@ class GpuVolume:
 
 def _volume_usage():
     """Buffer usage flags a resident volume needs."""
-    import wgpu
+    from .gpu import api as wgpu
 
     return (wgpu.BufferUsage.STORAGE | wgpu.BufferUsage.COPY_SRC
             | wgpu.BufferUsage.COPY_DST)
@@ -1313,7 +1313,7 @@ def _volume_op(entry: str, volume: GpuVolume, params) -> GpuVolume:
     GpuVolume
         A new volume; the input is left alone.
     """
-    import wgpu
+    from .gpu import api as wgpu
 
     dev = device()
     out = new_volume(volume.shape)

@@ -77,8 +77,12 @@ def is_available() -> bool:
     a viewer that opens to a blank widget is worse than one that opens on the
     old backend.
     """
+    from .gpu import api as wgpu
+    from .gpu import native
+
+    if not native.is_available():
+        return False
     try:
-        import wgpu  # noqa: F401
         import rendercanvas.qt  # noqa: F401
     except Exception:
         return False
@@ -190,6 +194,19 @@ class WgpuRenderer(_make_widget_base(), CameraState, Renderer):
 
     def __init__(self, controller: object = None, parent: object = None) -> None:
         super().__init__(parent=parent)
+
+        # Qt destroys an embedded widget without a closeEvent, so rendercanvas
+        # keeps it registered as open; at aboutToQuit its loop probes the dead
+        # wrapper and PyQt raises RuntimeError where the loop expects
+        # AttributeError, killing app shutdown. Writing the flags through the
+        # captured instance dict survives the C++ half's death, so the loop
+        # skips both the probe and the close() call.
+        def _mark_closed(*_args, _d=self.__dict__):
+            _d["_is_closed"] = True
+            _d["_rc_closed_by_loop"] = True
+
+        self.destroyed.connect(_mark_closed)
+
         self._controller = controller
         self.init_camera_state(DEFAULT_VIEWPORT)
 
@@ -266,7 +283,7 @@ class WgpuRenderer(_make_widget_base(), CameraState, Renderer):
 
     def _configure_surface(self) -> str:
         """Configure the canvas context and return the format it accepted."""
-        import wgpu
+        from .gpu import api as wgpu
 
         adapter = wgpu.gpu.request_adapter_sync(power_preference="high-performance")
         self._device = adapter.request_device_sync()

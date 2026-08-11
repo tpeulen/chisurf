@@ -3,13 +3,15 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, Optional, Sequence, Tuple
+from typing import TYPE_CHECKING, Callable, Optional, Sequence, Tuple
 
 import numpy as np
-from qtpy import QtWidgets
 
 from ..analysis.atom_classes import ATOMIC_NUMBER
 from .atoms import ATOM_DTYPE, BEAD_RES_NAME, atom_row, bead_row
+
+if TYPE_CHECKING:  # pragma: no cover - annotations only
+    from qtpy import QtWidgets
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +45,11 @@ class TrajectoryFormatError(RuntimeError):
     pass
 
 
-def _fallback_open_files(parent: Optional[QtWidgets.QWidget] = None) -> list[str]:
+def _fallback_open_files(parent: Optional["QtWidgets.QWidget"] = None) -> list[str]:
+    # Imported here rather than at module scope: this is the one function in
+    # the module that needs a window system, and reading a PDB should not.
+    from qtpy import QtWidgets
+
     files, _ = QtWidgets.QFileDialog.getOpenFileNames(
         parent,
         "Open structure file",
@@ -54,7 +60,7 @@ def _fallback_open_files(parent: Optional[QtWidgets.QWidget] = None) -> list[str
 
 
 def open_structure_files(
-    parent: Optional[QtWidgets.QWidget] = None,
+    parent: Optional["QtWidgets.QWidget"] = None,
     *,
     opener: FileDialogCallable = None,
     description: str = "Open structure file",
@@ -734,7 +740,14 @@ def _read_full_model(structure_factory: Callable[..., object], path: Path) -> ob
     """
     try:
         return structure_factory(
-            str(path), keep_water=True, only_standard_residues=False
+            str(path),
+            keep_water=True,
+            only_standard_residues=False,
+            # A viewer wants van der Waals radii -- it draws spheres and
+            # measures surfaces with them -- and that is also the fast reader:
+            # 1239 ms to 25 ms on a 9315-atom structure, because the native
+            # parser never builds an IMP hierarchy to walk back out of.
+            radii="vdw",
         )
     except TypeError:
         logger.debug(

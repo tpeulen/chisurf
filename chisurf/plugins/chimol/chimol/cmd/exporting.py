@@ -5,41 +5,79 @@ import time
 from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
-from qtpy import QtCore, QtWidgets
 
 from ..io.export import unscale_coordinates, write_structure
 from .base import BaseCmd
 from .registry import command
 from .selection_types import Selection
-from chisurf.gui.progress import ChiSurfProgress
+
+if TYPE_CHECKING:  # pragma: no cover - annotations only
+    from qtpy import QtCore
+
+    from chisurf.gui.progress import ChiSurfProgress
+
+#: Cache for :func:`ray_render_thread_class`.
+_RAY_RENDER_THREAD = None
 
 
-class RayRenderThread(QtCore.QThread):
-    """Background thread for Chimol ray-tracing.
+def ray_render_thread_class():
+    """Return the background ray-tracing thread class, building it on first call.
 
-    Runs a render callable that returns an (H, W, 3) uint8 image and emits
-    the result (or an error message) back to the GUI thread.
+    Why a factory rather than a ``class`` statement
+    -----------------------------------------------
+    The class derives from ``QThread`` and declares ``Signal`` attributes, so
+    Qt has to be present *when the class body runs* -- and a class body at
+    module scope runs on import. That made the whole command set require a
+    window system in order to parse ``color`` or write a PDB, because
+    :mod:`chimol.cmd` imports this module for the rest of what is in it.
+
+    Deferring the class body to first use is the only way to keep both: the
+    thread is still a real ``QThread`` where one exists, and the module still
+    imports where one does not. The class is built once and cached.
+
+    Returns
+    -------
+    type
+        A ``QThread`` subclass whose ``finished`` signal carries an
+        ``(H, W, 3)`` uint8 image and whose ``error`` signal carries a message.
     """
+    global _RAY_RENDER_THREAD
+    if _RAY_RENDER_THREAD is not None:
+        return _RAY_RENDER_THREAD
 
-    finished = QtCore.Signal(object)
-    error = QtCore.Signal(str)
+    from qtpy import QtCore
 
-    def __init__(
-        self,
-        render_func: Callable[[], np.ndarray],
-        parent: QtCore.QObject | None = None,
-    ) -> None:
-        super().__init__(parent)
-        self._render_func = render_func
+    class RayRenderThread(QtCore.QThread):
+        """Background thread for Chimol ray-tracing.
 
-    def run(self) -> None:
-        try:
-            image = self._render_func()
-            self.finished.emit(image)
-        except Exception as exc:
-            self.error.emit(str(exc))
+        Runs a render callable that returns an (H, W, 3) uint8 image and emits
+        the result (or an error message) back to the GUI thread.
+        """
+
+        finished = QtCore.Signal(object)
+        error = QtCore.Signal(str)
+
+        def __init__(
+            self,
+            render_func: Callable[[], np.ndarray],
+            parent=None,
+        ) -> None:
+            super().__init__(parent)
+            self._render_func = render_func
+
+        def run(self) -> None:
+            """Render, and emit either the image or the failure."""
+            try:
+                image = self._render_func()
+                self.finished.emit(image)
+            except Exception as exc:
+                self.error.emit(str(exc))
+
+    _RAY_RENDER_THREAD = RayRenderThread
+    return _RAY_RENDER_THREAD
 
 
 class ExportMixin(BaseCmd):
@@ -618,6 +656,13 @@ class ExportMixin(BaseCmd):
         'setMinimumSize'`` before a single ray was cast -- every time it ran with
         a window, which is every time a user runs it.
         """
+        # Imported here, not at module scope: this method is the only one in
+        # the file that needs a window system, and the rest of the file writes
+        # PDB and mmCIF.
+        from qtpy import QtCore, QtWidgets
+
+        from chisurf.gui.progress import ChiSurfProgress
+
         parent = window if isinstance(window, QtWidgets.QWidget) else None
         if parent is None:
             # Headless / test context: run synchronously without a dialog.
@@ -652,7 +697,7 @@ class ExportMixin(BaseCmd):
         )
         timer.start(100)
 
-        thread = RayRenderThread(render_func, parent=parent)
+        thread = ray_render_thread_class()(render_func, parent=parent)
         thread.finished.connect(
             lambda image: self._on_ray_finished(
                 image, cancel, out_path, width, height, viewer, window, dialog, timer, thread,
@@ -781,7 +826,7 @@ class ExportMixin(BaseCmd):
         window: object | None,
         dialog: ChiSurfProgress,
         timer: QtCore.QTimer,
-        thread: RayRenderThread,
+        thread: "QtCore.QThread",
         started: float,
     ) -> None:
         """Take the progress display down and save what the thread rendered.
@@ -806,7 +851,7 @@ class ExportMixin(BaseCmd):
         msg: str,
         dialog: ChiSurfProgress,
         timer: QtCore.QTimer,
-        thread: RayRenderThread,
+        thread: "QtCore.QThread",
     ) -> None:
         """Report a render that raised, and take the progress display down."""
         timer.stop()

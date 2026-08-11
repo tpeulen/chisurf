@@ -68,15 +68,24 @@ def test_turn_move_clip_dispatch_to_viewer():
 # 10 A -- invisible on screen, and only caught once `save` wrote the result out.
 
 
-def test_translate_is_in_angstrom_not_scene_units():
+def test_translate_is_in_angstrom_not_scene_units(qapp):
+    """``translate`` moves atoms by Angstrom, not by scene units.
+
+    Takes ``qapp`` rather than making its own application. It used to open with
+    ``QApplication.instance() or QApplication([])`` as a bare statement, which
+    keeps no reference to the application it may have just constructed -- so it
+    was collected again immediately, and the ``MolView()`` below aborted the
+    interpreter with ``Fatal Python error: Aborted`` rather than failing. The
+    test passed anyway whenever some earlier file in the same session had left
+    a live application behind, which is why it survived: it is the only test in
+    this mock-based file that builds a real widget.
+    """
     import pathlib
 
     import pytest
 
     cs_struct = pytest.importorskip("chisurf.core.structure")
-    from qtpy import QtWidgets
 
-    QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     from chisurf.plugins.chimol.chimol.cmd.command import Cmd
     from chisurf.plugins.chimol.chimol.io.export import unscale_coordinates
     from chisurf.plugins.chimol.chimol.io.structure import _read_full_model

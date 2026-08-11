@@ -22,10 +22,18 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 
-from qtpy import QtCore
-
 from ..mouse_modes import BUTTON_COLUMNS, DEFAULT_RING, MODE_NAMES, next_mode, rows_for
 from ..object_menus import OBJECT_MENUS, MenuEntry
+
+#: Keyboard-modifier bits, as plain integers.
+#:
+#: These are ``QtCore.Qt.ControlModifier`` and ``ShiftModifier``, whose values
+#: are fixed by Qt's ABI. They were this module's only module-level Qt
+#: dependency, and it is a layout and hit-test engine -- it decides where a
+#: button is and what a click on it means, which is arithmetic, not a window
+#: system. The painting entry point imports Qt for itself further down.
+CONTROL_MODIFIER = 0x04000000
+SHIFT_MODIFIER = 0x02000000
 
 # PyMOL's palette, read off its internal GUI.
 PANEL_BG = (0, 0, 0, 190)
@@ -934,12 +942,8 @@ class InternalGui:
         hit = self.hit_test(x, y)
 
         try:
-            ctrl = bool(
-                modifiers is not None and (modifiers & QtCore.Qt.ControlModifier)
-            )
-            shift = bool(
-                modifiers is not None and (modifiers & QtCore.Qt.ShiftModifier)
-            )
+            ctrl = bool(modifiers is not None and (modifiers & CONTROL_MODIFIER))
+            shift = bool(modifiers is not None and (modifiers & SHIFT_MODIFIER))
         except Exception:
             ctrl = False
             shift = False

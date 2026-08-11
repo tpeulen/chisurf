@@ -164,7 +164,7 @@ class WgpuMeshRenderer:
         format: Optional[str] = None,
         device=None,
     ) -> None:
-        import wgpu
+        from .gpu import api as wgpu
 
         self._wgpu = wgpu
         self.width, self.height = int(width), int(height)

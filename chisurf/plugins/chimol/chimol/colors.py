@@ -3,13 +3,21 @@ from __future__ import annotations
 from typing import Optional
 
 import numpy as np
-from qtpy import QtCore
 
 from .config import _DISPLAY_CONFIG
 
 
-_SEQ_COLOR_ROLE = QtCore.Qt.UserRole + 100
-_OBJECT_ID_ROLE = QtCore.Qt.UserRole + 101
+#: Qt item-data roles for the sequence strip, as plain integers.
+#:
+#: ``QtCore.Qt.UserRole`` is 256 and is fixed by Qt's ABI -- the first role
+#: applications may claim. Spelling it out costs a comment and buys the whole
+#: colour module its independence from the GUI toolkit: these two constants
+#: were the only thing in the file that needed Qt, and a module that computes
+#: RGB from a residue name should not decide whether a window system is
+#: present.
+_QT_USER_ROLE = 256
+_SEQ_COLOR_ROLE = _QT_USER_ROLE + 100
+_OBJECT_ID_ROLE = _QT_USER_ROLE + 101
 
 
 _AA_THREE_TO_ONE = {

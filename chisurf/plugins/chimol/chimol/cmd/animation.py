@@ -6,8 +6,6 @@ import time
 
 import numpy as np
 
-from qtpy import QtCore
-
 from .base import BaseCmd
 from .registry import command
 
@@ -289,6 +287,12 @@ class AnimationMixin(BaseCmd):
             interval = max(1, int(round(1000.0 / rate)))
 
         if viewer._animation_timer is None:
+            # Local, as at the other timer site below: a clock is the one thing
+            # this module needs from the toolkit, and importing it at module
+            # scope made the whole command set -- parsing, selection, colouring
+            # -- require a window system.
+            from qtpy import QtCore
+
             viewer._animation_timer = QtCore.QTimer(viewer)
             viewer._animation_timer.timeout.connect(self._on_animation_tick)
         # Single-shot, rescheduled by the tick itself; see `_on_animation_tick`.
