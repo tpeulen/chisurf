@@ -4,15 +4,20 @@ The world's terrain was authored as string art in :mod:`.pixelart` -- three
 tones and a scatter of noise per material. It was honest, and it was flat, and
 beside real 16-bit tile art it read as a placeholder, which is what it was.
 
-The ground now comes from **Ninja Adventure** by Pixel-boy and AAA, released
-**CC0** by its authors. CC0 is a public-domain dedication: nothing to reconcile
-with this package's licence, no notice to propagate, no attribution required.
-Attribution is in ``art/CREDITS.md`` regardless.
+The ground now comes from **Ninja Adventure** by Pixel-boy and AAA, and two
+ground-cover props (``rock``, ``flowers``) from **"Zelda-like tilesets and
+sprites"** by ArMM1998 -- both released **CC0**. CC0 is a public-domain
+dedication: nothing to reconcile with this package's licence, no notice to
+propagate, no attribution required. Attribution is in ``art/CREDITS.md``
+regardless.
 
-Only the *ground* is replaced. Every building, character and creature is still
-string art, because those are this game's own -- a marked hare in the colour of
-its own label is not something a generic pack has -- and because the two share
-a 16x16 grid, mixing them is a substitution rather than a second pipeline.
+Only the ground and those two props are replaced. Every building, character,
+creature and other item is still string art, because those are this game's own
+-- a marked hare in the colour of its own label is not something a generic
+pack has -- and because everything shares a 16x16 grid, mixing them is a
+substitution rather than a second pipeline. Props still composite over their
+ground at draw time (:func:`~.pixelart.sprite_image`); shipped prop art is not
+exempt from that just for having come from a file instead of a palette.
 
 The tiles are cut and **shipped** by
 :mod:`build_tools.dev_utils.import_tileart` rather than read from the reference

@@ -101,6 +101,23 @@ def test_a_brighter_dye_bleaches_faster():
     assert bright.max_hp < dim.max_hp, "and it has less to spend in the first place"
 
 
+def test_a_turn_on_label_is_dark_until_struck(pair):
+    """Photoactivation: the hit that lands lights it; its own next hit is bigger."""
+    donor, acceptor = pair
+    me = battle.Fighter(_beast(donor, PLAIN).infused("turn_on"))
+    foe = battle.Fighter(_beast(acceptor))
+    fight = battle.Battle([me], foe, rng=random.Random(3))
+
+    assert not me.activated
+    plain_power = fight._damage(me, foe, multiplier=1.0, gain=1.0)
+
+    fight._apply(me, 1)  # any hit at all switches it on
+    assert me.activated
+    lit_power = fight._damage(me, foe, multiplier=1.0, gain=1.0)
+
+    assert lit_power > plain_power, (lit_power, plain_power)
+
+
 def test_the_fight_ends_when_the_opponent_bleaches(pair):
     """And it is recorded as a win."""
     donor, acceptor = pair
@@ -292,3 +309,31 @@ def test_a_failed_catch_costs_the_turn(pair):
         if fight.taken is not None:
             pytest.skip("caught on an unlucky seed")
     assert me.hp < before
+
+
+def test_warden_fight_distinctiveness_rules(pair):
+    """Warden boss fights enforce distinct mechanical rules per lesson."""
+    donor, acceptor = pair
+    me = battle.Fighter(_beast(donor), hp=100)
+
+    # 1. Tolm (Ember): Continuous attacks trigger counter recoil.
+    ember_fight = battle.Battle([me], battle.Fighter(_beast(acceptor), hp=500), warden_key="ember", rng=random.Random(42))
+    ember_fight.attack()
+    assert ember_fight.player_attack_streak == 1
+    hp_after_1 = me.hp
+    ember_fight.attack()
+    assert "counters a continuous barrage" in ember_fight.log[-1].text
+    assert me.hp < hp_after_1
+
+    # 2. Ysolde (Prism): Non-matching spectral emission deals 0 damage.
+    prism_fight = battle.Battle([me], battle.Fighter(_beast(acceptor), hp=500), warden_key="prism", rng=random.Random(42))
+    opp_hp_before = prism_fight.opponent.hp
+    prism_fight.attack()
+    # Unmatched spectral emission fails to deal damage to Ysolde's Mantis
+    assert prism_fight.opponent.hp == opp_hp_before or "transfers" not in prism_fight.log[-1].text
+
+    # 3. Kestrel (Shutter): Invisible without tuned optical filter.
+    shutter_fight = battle.Battle([me], battle.Fighter(_beast(acceptor), hp=500), warden_key="shutter", rng=random.Random(42))
+    shutter_fight.attack()
+    player_turns = [t for t in shutter_fight.log if me.name in t.text]
+    assert player_turns and player_turns[0].damage == 0

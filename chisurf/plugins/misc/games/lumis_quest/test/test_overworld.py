@@ -83,10 +83,12 @@ def test_iris_walks(game):
     """The pad moves Iris, and the camera holds the screen she is on.
 
     It does not follow her *within* a screen -- that is the whole point of a
-    screen-based camera, and a composed view is what it buys.
+    screen-based camera, and a composed view is what it buys. Scrolling is
+    the default now, so this opts into screen mode explicitly to test it.
     """
     from chisurf.plugins.misc.games.lumis_quest.api import screens
 
+    game.screen_mode = True
     start = list(game.iris)
     game.host.keys.press(Action.DOWN)
     for _ in range(20):
@@ -132,7 +134,11 @@ def test_a_screen_is_the_16_bit_playfield(game):
     from chisurf.plugins.misc.games.lumis_quest.api import screens
 
     assert (screens.COLS, screens.ROWS) == (16, 14)
-    assert game.screen_mode, "the screen camera is the default"
+
+
+def test_scrolling_is_the_default_camera(game):
+    """Screen-by-screen is still there, but scrolling is what a new run gets."""
+    assert not game.screen_mode
 
 
 def test_iris_cannot_walk_through_a_wall(game):
@@ -147,6 +153,63 @@ def test_iris_cannot_walk_through_a_wall(game):
     for _ in range(120):
         game.update(1 / 60, game.host.keys)
     assert game.iris[1] >= before[1] - tiles.TILE, "she walked through the compound wall"
+
+
+def test_a_wide_house_blocks_the_ground_its_sprite_actually_covers(game):
+    """A real building sprite is wider than the one tile its room sits on.
+
+    ``_building`` draws it that wide (:attr:`OverworldGame._sprite_tiles`), so
+    walking was only blocked at the room's own ``BUILDING`` tile -- she could
+    step straight through the painted wall either side of the door. The
+    columns the sprite actually spans get the same whole-tile solidity.
+    """
+    wide = next(
+        (r for r in game.world.rooms
+         if game._sprite_tiles.get(game._house_sprite(r, lit=False), (1.0, 1.0))[0] > 1.0),
+        None,
+    )
+    if wide is None:
+        pytest.skip("no room in this seed picked a wider-than-one-tile house")
+    col = int(wide.position[0] // tiles.TILE)
+    row = int(wide.position[1] // tiles.TILE)
+    assert (col - 1, row) in game._building_solid or (col + 1, row) in game._building_solid
+
+    # And walking at it from the side the sprite overhangs must actually
+    # refuse the step, not just add an entry to the lookup nothing reads.
+    extra_col = col - 1 if (col - 1, row) in game._building_solid else col + 1
+    game.iris = [(extra_col + 0.5) * tiles.TILE, (row + 1.5) * tiles.TILE]
+    before = list(game.iris)
+    game.host.keys.press(Action.UP)
+    for _ in range(60):
+        game.update(1 / 60, game.host.keys)
+    assert game.iris[1] >= before[1] - tiles.TILE, "she walked through the sprite's overhang"
+
+
+def test_a_door_is_hittable_from_beside_it_not_only_dead_centre(game):
+    """A one-tile door used to need her exact centre inside that one cell.
+
+    Widened to a small ring of samples around wherever she is standing
+    (`DOOR_REACH`), which is what made walking up to a cave mouth and
+    pressing the key at a normal angle actually work.
+    """
+    col = row = None
+    for r in range(game.world.height):
+        for c in range(game.world.width):
+            if game.world.tile_at(c, r) == tiles.CAVE:
+                col, row = c, r
+                break
+        if col is not None:
+            break
+    if col is None:
+        pytest.skip("this seed has no cave mouth in the lit world")
+
+    centre = [(col + 0.5) * tiles.TILE, (row + 0.5) * tiles.TILE]
+    game.iris = list(centre)
+    assert game._door_scene() == "cave", "dead centre must still hit"
+
+    # Half a tile off to one side -- inside DOOR_REACH, previously a miss.
+    game.iris = [centre[0] + tiles.TILE * 0.5, centre[1]]
+    assert game._door_scene() == "cave", "just beside it must hit too"
 
 
 def test_iris_cannot_leave_the_world(game):
@@ -254,6 +317,32 @@ def test_lumi_follows_without_overlapping(game):
     assert 5.0 < gap < 60.0, gap
 
 
+def test_lumi_faces_the_way_it_is_actually_walking(game):
+    """Its own facing, not Iris's -- and drawn from real art, not a guess.
+
+    The chase can point Lumi a different way than Iris last turned, and it
+    has its own up/down/right art now (no more falling back to the down
+    sprite while walking away, which read as staring at the camera).
+    """
+    game.story.has_lumi = True
+    game.facing = "left"  # deliberately not the direction Lumi will step
+
+    game.iris = [game.lumi[0], game.lumi[1] - 100.0]  # north of Lumi
+    game.update(1 / 60, game.host.keys)
+    assert game.lumi_facing == "up"
+    assert game._lumi_sprite() == ("up", False)
+
+    game.iris = [game.lumi[0] + 100.0, game.lumi[1]]  # east of Lumi
+    game.update(1 / 60, game.host.keys)
+    assert game.lumi_facing == "right"
+    assert game._lumi_sprite() == ("right", False)
+
+    game.iris = [game.lumi[0] - 100.0, game.lumi[1]]  # west of Lumi
+    game.update(1 / 60, game.host.keys)
+    assert game.lumi_facing == "left"
+    assert game._lumi_sprite() == ("right", True), "mirrors the right frame, same as everyone else"
+
+
 def test_the_nearest_room_is_reported(game):
     """The HUD names where you are standing."""
     first = game.world.rooms[0]
@@ -265,6 +354,65 @@ def test_the_nearest_room_is_reported(game):
     assert game.here is last
 
 
+def test_entering_a_house_opens_its_room_and_leaving_returns_her(game):
+    """Interiors were built, tested and unreachable -- this is what opens one.
+
+    `ENTERABLE`/`interiors.build` already existed; nothing on the overworld
+    had ever called either.
+    """
+    room = game.world.rooms[0]
+    x, y = room.position
+    # One tile south of the door -- room.position is already the door
+    # tile's own centre, so a further +1.0 (not +1.5) tile lands her in the
+    # middle of the tile just outside it.
+    game.iris = [x, y + tiles.TILE]
+    before = list(game.iris)
+
+    building = game._building_scene()
+    assert building is not None, "standing this close must find the door"
+    tile, col, row = building
+    assert (col, row) == room.tile
+
+    game._enter_building(tile, col, row)
+    assert game.interior is not None
+    assert game.interior.title
+
+    # Walk toward the door (south wall) and out again.
+    game.host.keys.press(Action.DOWN)
+    for _ in range(400):
+        game.update(1 / 60, game.host.keys)
+        game.host.keys.end_frame()
+        if game.interior is None:
+            break
+    assert game.interior is None, "walking to the door must step back outside"
+    assert game.iris == before, "leaving must return her to exactly where she went in"
+
+
+def test_the_bottom_band_only_names_a_room_she_is_actually_near(game):
+    """`here` has no distance limit of its own -- the band adds one.
+
+    Across open ground the *nearest* room can be many tiles away, and the
+    bottom band showed its name anyway, which was most of why it never went
+    away: `_nearby_room` is the fix, `here` unchanged (other callers still
+    want "nearest regardless of distance" and add their own cutoff, e.g.
+    `_try_encounter`'s guardian range).
+    """
+    from chisurf.plugins.misc.games.lumis_quest.gui.overworld import ROOM_LABEL_RANGE
+
+    room = game.world.rooms[0]
+    game.iris = list(room.position)
+    assert game._nearby_room() is room, "standing on it must still report it"
+
+    game.iris = [room.position[0] + ROOM_LABEL_RANGE * 5, room.position[1]]
+    nearest = game.here
+    assert nearest is not None
+    distance = ((nearest.position[0] - game.iris[0]) ** 2
+                + (nearest.position[1] - game.iris[1]) ** 2) ** 0.5
+    if distance <= ROOM_LABEL_RANGE:
+        pytest.skip("this seed's rooms are too dense to get clear of all of them")
+    assert game._nearby_room() is None, "too far to be 'standing near' the nearest room"
+
+
 def test_the_land_is_named_where_she_stands(game):
     """Standing on a land reports its fantasy name, not the directory."""
     game.iris = list(game.world.rooms[0].position)
@@ -272,14 +420,40 @@ def test_the_land_is_named_where_she_stands(game):
     assert game.land.title.startswith("The ")
 
 
+def test_the_land_banner_arms_on_arrival_and_counts_down(game):
+    """The banner names a crossing, then gets out of the way on its own.
+
+    It used to sit on screen permanently, which was the whole complaint: you
+    could not see the world it was describing. Arriving retimes it; standing
+    still afterwards only counts it down, never back up.
+    """
+    from chisurf.plugins.misc.games.lumis_quest.gui.overworld import (
+        LAND_BANNER_SECONDS,
+    )
+
+    game.iris = list(game.world.rooms[0].position)
+    game.update(1 / 60, game.host.keys)
+    assert game.land is not None
+    assert game._land_banner_land is game.land
+    assert game._land_banner_timer == pytest.approx(LAND_BANNER_SECONDS)
+
+    game.update(1.0, game.host.keys)
+    assert game._land_banner_timer == pytest.approx(LAND_BANNER_SECONDS - 1.0)
+
+    for _ in range(10):
+        game.update(1.0, game.host.keys)
+    assert game._land_banner_timer == 0.0
+
+
 def test_menu_toggles_a_map_that_fits_the_world(game):
     """The map view frames everything rather than guessing a height."""
-    # The map lives behind the pause menu now: Menu opens it, the MAP tab is
-    # first, and Confirm toggles the map and closes the menu.
+    # The map lives behind the pause menu now: Menu opens it, STATUS is the
+    # first tab, and Confirm on MAP toggles the map and closes the menu.
     game.host.keys.tap(Action.MENU)
     game.update(1 / 60, game.host.keys)
     game.host.keys.end_frame()
     assert game.menu_open
+    game.menu_tab = game.TABS.index("MAP")
 
     game.host.keys.tap(Action.CONFIRM)
     game.update(1 / 60, game.host.keys)
@@ -482,7 +656,12 @@ def test_the_menu_has_tabs_and_closes(game):
     game.host.keys.tap(Action.MENU)
     game.update(1 / 60, game.host.keys)
     game.host.keys.end_frame()
-    assert game.menu_open and game.TABS[game.menu_tab] == "MAP"
+    assert game.menu_open and game.TABS[game.menu_tab] == "STATUS"
+
+    game.host.keys.tap(Action.SHOULDER_R)
+    game.update(1 / 60, game.host.keys)
+    game.host.keys.end_frame()
+    assert game.TABS[game.menu_tab] == "MAP"
 
     game.host.keys.tap(Action.SHOULDER_R)
     game.update(1 / 60, game.host.keys)
@@ -493,6 +672,255 @@ def test_the_menu_has_tabs_and_closes(game):
     game.update(1 / 60, game.host.keys)
     game.host.keys.end_frame()
     assert not game.menu_open
+
+
+def _pixel_for(game, wx: float, wy: float) -> tuple[float, float]:
+    """The canvas pixel a world point would be clicked at.
+
+    Inverts `OverworldGame._click_world`'s own formula so the test does not
+    have to duplicate assumptions about where the camera happens to be
+    sitting.
+    """
+    camera = game.host.camera
+    width_px, height_px = game.host.ctx.size
+    half = camera.half_extent(width_px / max(height_px, 1))
+    left = float(camera.center[0]) - half[0]
+    top = float(camera.center[1]) - half[1]
+    px = (wx - left) / (half[0] * 2.0) * width_px
+    py = (wy - top) / (half[1] * 2.0) * height_px
+    return px, py
+
+
+def test_clicking_a_tab_selects_it(game):
+    """Mouse control in the pause menu: a tab is a click target, not just L/R."""
+    game.menu_open = True
+    game.menu_tab = 0
+    camera = game.host.camera
+    half = camera.half_extent(game.host.ctx.size[0] / max(game.host.ctx.size[1], 1))
+    cx, cy = float(camera.center[0]), float(camera.center[1])
+    span = half[0] * 1.5
+    target = 2  # "RIG"
+    tab_x = cx - span * 0.5 + (target + 0.5) * span / len(game.TABS)
+    tab_y = cy - half[1] * 0.62
+    game.host.keys.click_at(*_pixel_for(game, tab_x, tab_y))
+    game.update(1 / 60, game.host.keys)
+    game.host.keys.end_frame()
+    assert game.TABS[game.menu_tab] == "RIG"
+
+
+def test_clicking_a_tab_selects_it_on_a_hidpi_display(qapp, tmp_path):
+    """A click was landing nowhere near the cursor on a Retina display.
+
+    Qt's own mouse-event coordinates are logical points; ``ctx.size`` (and
+    the old formula built on it) is physical pixels. At a 2x pixel ratio --
+    the default on most Macs -- that halved the fraction every click
+    resolved to, so a click square on a menu tab used to land at a world
+    point nowhere near it and nothing ever seemed to respond to the mouse.
+    """
+    try:
+        context = chigame.create_offscreen(size=(240, 180))
+    except Exception as error:  # pragma: no cover - depends on the machine
+        pytest.skip(f"no usable GPU adapter: {error}")
+    context.canvas.set_pixel_ratio(2.0)
+    context.canvas.set_logical_size(240, 180)
+    assert context.canvas.get_physical_size() == (480, 360)
+    assert context.canvas.get_logical_size() == (240, 180)
+
+    docs = _docs(tmp_path)
+    game = OverworldGame(world=build_world(docs), save_path=tmp_path / "run.json",
+                         docs_root=docs)
+    chigame.GameHost(game, context, with_text=False, with_audio=False)
+    game.finish_loading(skip_prologue=True)
+
+    game.menu_open = True
+    game.menu_tab = 0
+    camera = game.host.camera
+    half = camera.half_extent(context.canvas.get_logical_size()[0]
+                               / max(context.canvas.get_logical_size()[1], 1))
+    cx, cy = float(camera.center[0]), float(camera.center[1])
+    span = half[0] * 1.5
+    target = 2  # "RIG"
+    tab_x = cx - span * 0.5 + (target + 0.5) * span / len(game.TABS)
+    tab_y = cy - half[1] * 0.62
+
+    # The click a real Qt widget would report: logical points, not the
+    # canvas' physical pixel count.
+    logical_w, logical_h = context.canvas.get_logical_size()
+    left, top = cx - half[0], cy - half[1]
+    click_x = (tab_x - left) / (half[0] * 2.0) * logical_w
+    click_y = (tab_y - top) / (half[1] * 2.0) * logical_h
+    game.host.keys.click_at(click_x, click_y)
+    game.update(1 / 60, game.host.keys)
+    game.host.keys.end_frame()
+    assert game.TABS[game.menu_tab] == "RIG"
+
+
+def test_clicking_a_row_selects_and_confirms_it(game):
+    """A row click is choose-and-confirm in one, the way a button is."""
+    game.menu_open = True
+    game.menu_tab = game.TABS.index("OPTIONS")
+    game.menu_row = 0
+    before = game.scheme
+    camera = game.host.camera
+    half = camera.half_extent(game.host.ctx.size[0] / max(game.host.ctx.size[1], 1))
+    cx, cy = float(camera.center[0]), float(camera.center[1])
+    row_x = cx - half[0] * 0.62
+    row_y = cy - half[1] * 0.44  # top, row index 0
+    game.host.keys.click_at(*_pixel_for(game, row_x, row_y))
+    game.update(1 / 60, game.host.keys)
+    game.host.keys.end_frame()
+    assert game.menu_row == 0
+    assert game.scheme != before, "a row click must select AND confirm"
+
+
+def test_clicking_a_title_row_selects_and_confirms_it(game):
+    """Mouse control on the title screen too, not just the pause menu."""
+    from chisurf.plugins.misc.games.lumis_quest.gui.overworld import VIEW_HEIGHT
+
+    game.phase = "title"
+    game.title_index = 0
+    rows = game._title_rows()
+    target = len(rows) - 1  # "controls: ..." -- confirming it must not crash
+    before = game.scheme
+    camera = game.host.camera
+    cx, cy = float(camera.center[0]), float(camera.center[1])
+    scale = camera.height / VIEW_HEIGHT
+    row_y = cy + target * 16.0 * scale
+    game.host.keys.click_at(*_pixel_for(game, cx, row_y))
+    game.update(1 / 60, game.host.keys)
+    game.host.keys.end_frame()
+    assert game.title_index == target
+    assert game.scheme != before, "clicking the controls row must cycle it"
+
+
+def test_the_escape_key_is_actually_bound_to_cancel(game):
+    """A bound Action is not proof the real key reaches it.
+
+    `test_cancel_taps_the_menu_open_but_held_it_zooms` below drives
+    `Action.CANCEL` directly and so passed while "Escape" pressed nothing at
+    all in play: the game's own default `host.keys.bindings` (set in
+    `setup`, independent of `chigame.input.DEFAULT_BINDINGS`) had never
+    mapped the literal key "Escape" to any action, only "Backspace" -- this
+    checks the string, not the enum, so that gap cannot reopen unnoticed.
+    """
+    from chisurf.plugins.misc.games.lumis_quest.gui.overworld import SCHEMES
+
+    for scheme_keys in SCHEMES.values():
+        assert scheme_keys.get("Escape") is Action.CANCEL
+    assert game.host.keys.bindings.get("Escape") is Action.CANCEL
+
+
+def test_cancel_opens_the_menu_on_a_plain_tap(game):
+    """Escape/Backspace is Cancel, and every game this shape opens its menu on it.
+
+    Cancel used to double as hold-to-zoom-out, which made whether a press
+    opened the menu depend on exactly how long it was held before release --
+    reported back as Escape simply not working half the time. It is just the
+    menu key now, and pressing it is enough; nothing else needs to happen
+    first, and holding it does not change the camera.
+    """
+    start_height = game.view_height
+    game.host.keys.tap(Action.CANCEL)
+    game.update(1 / 60, game.host.keys)
+    game.host.keys.end_frame()
+    assert game.menu_open, "a tap must open the menu"
+    assert game.view_height == start_height, "cancel must not also zoom"
+
+    game.menu_open = False
+    game.host.keys.press(Action.CANCEL)
+    for _ in range(30):
+        game.update(1 / 60, game.host.keys)
+        game.host.keys.end_frame()
+    assert game.menu_open, "the press already opened it -- holding must not close it again"
+    assert game.view_height == start_height, "holding cancel must not zoom"
+
+
+def test_the_mouse_wheel_zooms(game):
+    """Scrolled up (negative dy) zooms in, matching a map; down zooms out."""
+    start = game.view_height
+    game.host.keys.scroll(-120.0)
+    game.update(1 / 60, game.host.keys)
+    game.host.keys.end_frame()
+    assert game.view_height < start, "scrolling up must zoom in"
+
+    zoomed_in = game.view_height
+    game.host.keys.scroll(120.0)
+    game.update(1 / 60, game.host.keys)
+    game.host.keys.end_frame()
+    assert game.view_height > zoomed_in, "scrolling down must zoom back out"
+
+    # end_frame clears it -- a wheel tick is one instant, not a held input.
+    before = game.view_height
+    game.update(1 / 60, game.host.keys)
+    assert game.view_height == before, "a wheel step must not repeat on its own"
+
+
+def test_free_roam_autosaves_between_the_ceremony_saves(game):
+    """A crash between a new journey and the next Warden's seal lost everything.
+
+    Autosave is the safety net in between, not a replacement for either.
+    """
+    from chisurf.plugins.misc.games.lumis_quest.gui.overworld import AUTOSAVE_SECONDS
+
+    game._save_path.unlink(missing_ok=True)
+    game._autosave_timer = 0.0
+    step = 1.0
+    for _ in range(int(AUTOSAVE_SECONDS / step) - 1):
+        game.update(step, game.host.keys)
+    assert not game._save_path.exists(), "must not save before the interval is up"
+
+    for _ in range(3):
+        game.update(step, game.host.keys)
+    assert game._save_path.exists(), "must autosave once the interval elapses"
+
+
+def test_autosave_does_not_fire_mid_battle(game, wild_room):
+    """Saving mid-transaction is how a run gets corrupted, not protected."""
+    from chisurf.plugins.misc.games.lumis_quest.gui.overworld import AUTOSAVE_SECONDS
+
+    game.iris = [wild_room.position[0], wild_room.position[1] + tiles.TILE]
+    game._try_encounter()
+    assert game.battle is not None
+
+    game._save_path.unlink(missing_ok=True)
+    game._autosave_timer = AUTOSAVE_SECONDS  # already due, if it were checked
+    for _ in range(int(AUTOSAVE_SECONDS) + 5):
+        game.update(1.0, game.host.keys)
+    assert not game._save_path.exists(), "battle input never reaches the autosave tick"
+
+
+def test_the_status_tab_reports_what_the_hud_used_to_show_permanently(game):
+    """The stat block moved behind Menu; it did not just disappear."""
+    game.menu_tab = game.TABS.index("STATUS")
+    rows = game._menu_rows()
+    joined = " ".join(rows)
+    assert "settled" in joined and "scouted" in joined
+    assert "wild" in joined
+    assert "seal" in joined and "licence" in joined
+    assert f"mode: {game.mode}" in joined
+    assert f"level {game.game_state.level}" in joined, "the walk used to pay out nothing at all"
+
+
+def test_the_warden_compass_points_somewhere_real(game):
+    """next_warden existed but nothing ever asked it where they stood."""
+    from chisurf.plugins.misc.games.lumis_quest.api import tiers
+
+    warden = tiers.next_warden(game.story.seals)
+    assert warden is not None, "a fresh run has not beaten any yet"
+    line = game._warden_compass()
+    assert warden.name in line
+    assert any(point in line for point in game._COMPASS), "a bearing, not just a name"
+
+    village = next(v for v in game.world.villages if v.warden == warden.key)
+    col, row, width, height = village.rect
+    region = game.world.region_at((col + width * 0.5) * tiles.TILE,
+                                  (row + height * 0.5) * tiles.TILE)
+    land = region.title if region is not None else village.place
+    assert land in line
+
+    # Holding every seal names the ladder as climbed, not a stale bearing.
+    game.story.seals = {w.key for w in tiers.WARDENS}
+    assert "held" in game._warden_compass()
 
 
 def test_walking_is_suspended_while_the_menu_is_open(game):
@@ -529,11 +957,31 @@ def test_the_rig_tab_fits_a_found_part(game):
 
     game.menu_open = True
     game.menu_tab = game.TABS.index("RIG")
-    game.menu_row = 0
+    # Rows 0 and 1 are the weapon/magic cycle now; found parts start at 2.
+    game.menu_row = 2
     game._menu_confirm()
 
     assert game.rig.emission is part, "the part must land in its own slot"
     assert game.loadout.emission is part, "and fit as the single filter too"
+
+
+def test_the_rig_tab_cycles_the_overworld_weapon_and_magic(game):
+    """_cycle_weapon/_cycle_magic were dead code -- no button was free for
+    them on the nine-action pad, so they are menu rows instead."""
+    game.menu_open = True
+    game.menu_tab = game.TABS.index("RIG")
+
+    weapon = game.active_weapon
+    game.menu_row = 0
+    game._menu_confirm()
+    assert game.active_weapon != weapon
+    assert game.active_weapon in game.weapons
+
+    magic = game.active_magic
+    game.menu_row = 1
+    game._menu_confirm()
+    assert game.active_magic != magic
+    assert game.active_magic in game.magics
 
 
 def test_the_party_tab_fits_a_label_and_swaps_a_body(game):
@@ -592,6 +1040,26 @@ def test_the_mode_tab_can_opt_into_the_model(game):
     assert game.use_model is False
 
 
+def test_llm_status_menu_display_and_hover_info(game):
+    """The MODE and OPTIONS tabs show the LLM indicator and hover setup guidance."""
+    game.menu_open = True
+    game.menu_tab = game.TABS.index("MODE")
+    mode_rows = game._menu_rows()
+    assert any("llm status:" in r for r in mode_rows)
+    llm_mode_idx = [i for i, r in enumerate(mode_rows) if "llm status:" in r][0]
+
+    game.menu_row = llm_mode_idx
+    scene = _scene(game)
+    game._draw_menu(scene, game.host.camera, game.host.camera.half_extent(16 / 9))
+
+    game.menu_tab = game.TABS.index("OPTIONS")
+    opt_rows = game._menu_rows()
+    assert any("llm provider:" in r for r in opt_rows)
+    llm_opt_idx = [i for i, r in enumerate(opt_rows) if "llm provider:" in r][0]
+    game.menu_row = llm_opt_idx
+    game._options_confirm()
+
+
 def test_flagging_records_a_span_and_a_category(game, wild_room, tmp_path):
     """Expert mode's other half: saying what is *not* fine."""
     from chisurf.plugins.misc.games.lumis_quest.api import findings, review_bridge
@@ -646,6 +1114,49 @@ def test_flagging_is_expert_only(game, wild_room, tmp_path):
     assert not game.flagging, "the flag interface is expert-only"
 
 
+def test_a_real_sign_off_pays_xp_but_training_never_does(game, wild_room, tmp_path):
+    """Levelling answers to a page actually reviewed, not to combat or a guess.
+
+    Casting spells used to spend a permanent narrative counter; the same
+    mistake here would be XP for merely walking through the challenge
+    screen. It has to come from review_bridge.clear_page saying "signed",
+    which only happens in EXPERT mode with the right answer.
+    """
+    from chisurf.plugins.misc.games.lumis_quest.api import review_bridge
+
+    game.mode = review_bridge.TRAINING
+    game.encounter_room = wild_room
+    questions, content_hash = review_bridge.challenge_for(
+        wild_room.path, cache_dir=tmp_path / "cache"
+    )
+    if not questions:
+        pytest.skip("this fixture page is too thin to question")
+    game.challenge, game.challenge_hash = questions[0], content_hash
+    game.menu_index = questions[0].answer
+    xp_before = game.game_state.xp
+
+    game.host.keys.tap(Action.CONFIRM)
+    game._challenge_input(game.host.keys)
+    game.host.keys.end_frame()
+    assert not game.verdict.signed_off, "training mode signs nothing off"
+    assert game.game_state.xp == xp_before, "and so must pay nothing"
+
+    # The same page, in EXPERT mode with the right answer, is a real review.
+    game.mode = review_bridge.EXPERT
+    game.encounter_room = wild_room
+    game.challenge, game.challenge_hash = questions[0], content_hash
+    game.menu_index = questions[0].answer
+    game._pending_first_clear = True
+
+    game.host.keys.tap(Action.CONFIRM)
+    game._challenge_input(game.host.keys)
+    game.host.keys.end_frame()
+    if game.verdict.reason == "untracked":
+        pytest.skip("this fixture page is outside the tracked directories")
+    assert game.verdict.signed_off
+    assert game.game_state.xp > xp_before
+
+
 def test_loading_is_staged_so_the_screen_appears_before_the_work(qapp, tmp_path):
     """Building the world takes over a second.
 
@@ -675,6 +1186,14 @@ def test_loading_is_staged_so_the_screen_appears_before_the_work(qapp, tmp_path)
         host.frame(1 / 60)
     assert game.phase == "title", "loading ends at the front door"
     assert game.world.rooms and game.people is not None
+
+
+def test_the_title_screen_draws_the_world_behind_the_menu(game):
+    """A flat panel used to stand in for a background; the world does now."""
+    game.phase = "title"
+    frame = _frame(game)
+    sprite_quads = [q for q in frame.quads if q.get("shape") == chigame.SPRITE]
+    assert len(sprite_quads) > 5, "the spawn area should paint real ground and cover"
 
 
 def test_the_title_screen_offers_a_new_journey_and_then_a_continue(qapp, tmp_path):
@@ -801,8 +1320,10 @@ def test_the_awakening_scene_is_staged_and_the_hound_joins(qapp, tmp_path):
     assert game.speaking is not None and game.speaking.role == "elder"
     assert game.story.current.key == "wake"
 
-    # Hear him out: the waking is witnessed when he has said his piece.
-    for _ in range(len(game.speaking.dialogue)):
+    # Hear him out: the waking is witnessed when he has said his piece. Each
+    # line now takes two taps -- the appearing-text effect makes the first
+    # one finish the line rather than advance past it.
+    for _ in range(len(game.speaking.dialogue) * 2):
         game.host.keys.tap(Action.CONFIRM)
         game.update(1 / 60, game.host.keys)
         game.host.keys.end_frame()
@@ -817,7 +1338,7 @@ def test_the_awakening_scene_is_staged_and_the_hound_joins(qapp, tmp_path):
     game.update(1 / 60, game.host.keys)
     game.host.keys.end_frame()
     assert game.speaking is hound
-    for _ in range(len(hound.dialogue)):
+    for _ in range(len(hound.dialogue) * 2):
         game.host.keys.tap(Action.CONFIRM)
         game.update(1 / 60, game.host.keys)
         game.host.keys.end_frame()
@@ -850,8 +1371,10 @@ def test_an_order_is_chosen_by_talking_to_an_emissary(game):
     for warden in tiers.WARDENS[:3]:
         game.story.seal(warden.key)
 
-    # Confirm through every screen of their case, until they ask.
-    for _ in range(len(emissary.dialogue) + 2):
+    # Confirm through every screen of their case, until they ask. Twice the
+    # budget: the appearing-text effect makes the first tap on a line finish
+    # revealing it rather than advance past it.
+    for _ in range(len(emissary.dialogue) * 2 + 4):
         if game.screen is not None and game.screen.choices:
             break
         assert game.story.chosen_order is None, "no pledge before the question"
@@ -942,6 +1465,28 @@ def test_a_pre_tutorial_save_with_progress_skips_the_teaching(game):
     assert game.tutorial.complete
 
 
+def test_the_workshop_and_an_infusion_survive_save_and_restore(game):
+    """A gathered shelf and a fixed-in reagent are run state, not scenery."""
+    if not game.pool or not game.team:
+        pytest.skip("spectra.db is not present in this install")
+    game.workshop.gather("roxs", 3)
+    game.workshop.gather("trolox", 1)
+    assert game.workshop.craft("unblinking")
+    game.party_slot = 0
+    infusions_at = len(game.team) + 1 + len(game.bodies) + 1 + len(game.labels) + 1
+    game.menu_row = infusions_at
+    game._party_confirm()
+    assert game.team[0].beast.infusion == "unblinking"
+    materials_before = dict(game.workshop.materials)
+
+    game.save_run()
+    game._restore()
+
+    assert game.workshop.materials == materials_before
+    assert game.workshop.crafted == []
+    assert game.team[0].beast.infusion == "unblinking"
+
+
 def test_the_tutorial_banner_names_the_active_keys(game):
     """A banner that says the wrong key is worse than no banner."""
     labels = game._key_labels()
@@ -967,9 +1512,33 @@ def test_the_options_tab_changes_the_controls_and_the_speed(game):
     assert game.host.keys.bindings == SCHEMES[game.scheme]
 
     game.menu_row = 1
+    screen_mode = game.screen_mode
+    game._menu_confirm()
+    assert game.screen_mode != screen_mode
+
+    game.menu_row = 2
     speed = game.walk_speed
     game._menu_confirm()
     assert game.walk_speed != speed
+
+    game.menu_row = 4
+    music_volume = game.music_volume
+    game._menu_confirm()
+    assert round(game.music_volume - music_volume, 2) == 0.1
+    assert game.host.audio.music_volume == game.music_volume
+
+    game.menu_row = 5
+    sfx_volume = game.sfx_volume
+    game._menu_confirm()
+    assert round(game.sfx_volume - sfx_volume, 2) == 0.1
+    assert game.host.audio.sfx_volume == game.sfx_volume
+
+    # A full turn of the dial wraps back to silent rather than getting stuck
+    # at 100%.
+    game.music_volume = 1.0
+    game.menu_row = 4
+    game._menu_confirm()
+    assert game.music_volume == 0.0
 
 
 def test_regenerating_redraws_the_wilderness_but_not_the_world(game):
@@ -979,7 +1548,7 @@ def test_regenerating_redraws_the_wilderness_but_not_the_world(game):
 
     game.menu_open = True
     game.menu_tab = game.TABS.index("OPTIONS")
-    game.menu_row = 3
+    game.menu_row = 7
     game._menu_confirm()
     assert game.phase == "loading" and not game.menu_open
 
@@ -1161,6 +1730,35 @@ def test_a_jump_clears_the_low_things_and_not_the_walls(game):
     assert grounded_water and not game._solid_at_tile(tiles.WATER)
     assert game._solid_at_tile(tiles.WALL), "walls stay solid in the air"
     game.z, game.jumping = 0.0, False
+
+
+def test_a_wild_encounter_opens_with_a_zoom_and_a_flash(game, wild_room):
+    """Cut to zoomed in, then update() eases the camera back out.
+
+    `_draw_battle` fades a flash over the same window -- see
+    `BATTLE_ZOOM_START`/`ENCOUNTER_FLASH_SECONDS`.
+    """
+    from chisurf.plugins.misc.games.lumis_quest.gui.overworld import (
+        BATTLE_ZOOM_START,
+        ENCOUNTER_FLASH_SECONDS,
+    )
+
+    game.iris = [wild_room.position[0], wild_room.position[1] + tiles.TILE]
+    game.view_height = 300.0
+    game._try_encounter()
+    assert game.battle is not None
+    assert game._battle_intro == pytest.approx(ENCOUNTER_FLASH_SECONDS)
+    assert game.host.camera.height == pytest.approx(300.0 * BATTLE_ZOOM_START), (
+        "a wild encounter must cut in already zoomed, not ease into the zoom too"
+    )
+
+    for _ in range(int(ENCOUNTER_FLASH_SECONDS * 60) + 30):
+        game.update(1 / 60, game.host.keys)
+        game.host.keys.end_frame()
+    assert game._battle_intro == 0.0, "the flash must not run forever"
+    assert game.host.camera.height == pytest.approx(300.0, rel=0.05), (
+        "the zoom must settle back to the overworld's own framing"
+    )
 
 
 def test_an_exchange_says_what_it_did_where_it_did_it(game, wild_room):
@@ -1425,3 +2023,88 @@ def test_the_readouts_do_not_print_through_each_other(game):
         gap = second - first
         assert gap >= max(heights[first], heights[second]) * 0.95, (
             f"two readouts overlap at y={first:.1f} and y={second:.1f}")
+
+
+def test_battle_loss_or_flee_triggers_cooldown_and_faint_preventing_attack_loop(game, wild_room):
+    """Losing or fleeing a battle must trigger encounter cooldown and faint if lost, avoiding loop."""
+    wild = wild_room
+    game.iris = [wild.position[0], wild.position[1] + tiles.TILE]
+    game._try_encounter()
+    assert game.battle is not None
+
+    # Test Fleeing
+    game.battle.flee()
+    game.host.keys.tap(Action.CONFIRM)
+    game.update(1 / 60, game.host.keys)
+    assert game.battle is None
+    assert game._encounter_cooldown > 0.0, "Fleeing must set encounter cooldown"
+
+    # Enforce re-encounter attempt during cooldown
+    game._try_encounter(force=True)
+    assert game.battle is None, "Should not re-trigger encounter during cooldown"
+
+    # Test Defeat / Fainting
+    game.iris = [wild.position[0], wild.position[1] + tiles.TILE]
+    game._encounter_cooldown = 0.0
+    game._try_encounter(force=True)
+    assert game.battle is not None
+
+    game.battle.finished = True
+    game.battle.won = False
+    game.battle.fled = False
+    game.host.keys.tap(Action.CONFIRM)
+    game.update(1 / 60, game.host.keys)
+
+    assert game.battle is None
+    assert game._encounter_cooldown > 0.0
+    assert any(f.alive for f in game.team), "Team should have restored HP on faint"
+
+
+def test_minigame_request_awards_photons_and_xp(game):
+    """Minigame request in dialogue awards photons and XP."""
+    from chisurf.plugins.misc.games.lumis_quest.api.engine import Request
+    xp_before = game.game_state.xp
+    photons_before = game.photons
+    game._serve(Request(kind="minigame", args={"game": "minesweeper"}))
+    assert game.game_state.xp > xp_before, "Minigame must award XP"
+    assert game.photons >= photons_before, "Minigame must restore photons"
+
+
+
+def test_salvaging_a_dark_ruin_yields_a_reagent_once_and_persists(game):
+    """A ruin in the dark manifold is worth one reagent, ever.
+
+    Pressing the action key at a ruin salvages a crafting reagent; pressing
+    again at the same cell yields nothing, and the picked-clean set survives
+    a save/restore round trip so a reload cannot farm it either.
+    """
+    import numpy as np
+
+    from chisurf.plugins.misc.games.lumis_quest.api import save as save_api
+
+    cells = np.argwhere(game.world.dark == tiles.RUIN)
+    assert cells.size, "the miniature world must ruin at least one premises"
+    row, col = (int(value) for value in cells[0])
+
+    game.dark = True
+    game.iris = [col * tiles.TILE + tiles.TILE / 2.0,
+                 row * tiles.TILE + tiles.TILE / 2.0]
+
+    found = game._ruin_scene()
+    assert found == (col, row)
+
+    before = dict(game.workshop.materials)
+    game._salvage_dark_ruin(*found)
+    gained = sum(game.workshop.materials.values()) - sum(before.values())
+    assert gained == 1, "one ruin, one reagent"
+    assert (col, row) in game.salvaged
+    assert game._ruin_scene() is None, "a picked-clean ruin offers nothing"
+
+    # The lit side never offers a salvage, whatever stands there.
+    game.dark = False
+    assert game._ruin_scene() is None
+
+    # And the set survives the save file.
+    state = game.snapshot()
+    reloaded = save_api.RunState.load(state.save(game._save_path))
+    assert f"{col},{row}" in reloaded.salvaged

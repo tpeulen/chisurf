@@ -37,8 +37,9 @@ from .tiles import TILE, is_blocking
 MEET_RANGE = TILE * 1.4
 OVERHEAR_RANGE = TILE * 3.0
 
-#: Seconds a single line of an exchange stays up before the next one.
-LINE_SECONDS = 3.2
+#: Seconds a single line of an exchange stays up before the next one. Long
+#: enough that a bubble glimpsed while walking past is still readable.
+LINE_SECONDS = 4.2
 
 #: Seconds after parting before either of them will stop for anybody again.
 COOLDOWN = 22.0

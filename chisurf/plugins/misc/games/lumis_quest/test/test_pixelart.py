@@ -93,18 +93,32 @@ def test_the_walk_cycle_has_two_distinct_frames():
 
 
 def test_the_atlas_packs_every_sprite_where_its_uv_says():
-    """A uv rectangle that misses its pixels shows the neighbouring sprite."""
-    image, uvs = pixelart.build_atlas()
-    assert image.shape == (pixelart.SIZE, pixelart.SIZE * len(pixelart.SPRITES), 4)
-    assert set(uvs) == set(pixelart.SPRITES)
+    """A uv rectangle that misses its pixels shows the neighbouring sprite.
 
-    width = image.shape[1]
-    for name in pixelart.SPRITES:
+    Every sprite here happens to be ``SIZE x SIZE`` today, but the check does
+    not assume that: a :mod:`~.gui.bigart` entry is taller or wider than the
+    grid, so the atlas height is whatever its tallest sprite needs and a
+    one-tile sprite's own uv rectangle only reaches partway down it.
+    """
+    from chisurf.plugins.misc.games.lumis_quest.gui import bigart
+
+    image, uvs, tiles = pixelart.build_atlas()
+    everything = set(pixelart.SPRITES) | set(bigart.names())
+    assert set(uvs) == everything == set(tiles)
+
+    height, width = image.shape[:2]
+    for name in everything:
         u0, v0, u1, v1 = uvs[name]
-        assert 0.0 <= u0 < u1 <= 1.0 and (v0, v1) == (0.0, 1.0)
-        start = int(round(u0 * width))
-        packed = image[:, start:start + pixelart.SIZE]
-        assert np.array_equal(packed, pixelart.sprite_image(name)), name
+        assert 0.0 <= u0 < u1 <= 1.0 and v0 == 0.0 and 0.0 < v1 <= 1.0
+        expected = pixelart.sprite_image(name)
+        tiles_w, tiles_h = tiles[name]
+        assert (tiles_w, tiles_h) == (
+            expected.shape[1] / pixelart.SIZE, expected.shape[0] / pixelart.SIZE,
+        ), name
+        x0, x1 = int(round(u0 * width)), int(round(u1 * width))
+        y1 = int(round(v1 * height))
+        packed = image[0:y1, x0:x1]
+        assert np.array_equal(packed, expected), name
 
 
 def test_terrain_is_dithered_rather_than_flat():
@@ -128,7 +142,7 @@ def test_the_atlas_uploads(qapp):
         device = chigame.get_device()
     except Exception as error:  # pragma: no cover - depends on the machine
         pytest.skip(f"no usable GPU adapter: {error}")
-    image, _ = pixelart.build_atlas()
+    image, _, _ = pixelart.build_atlas()
     texture = pixelart.upload(device, image)
     assert texture.size[0] == image.shape[1]
     assert texture.size[1] == image.shape[0]
@@ -178,3 +192,23 @@ def test_every_shipped_tile_names_a_sprite_that_exists():
 
     unknown = [name for name in tileart.names() if name not in pixelart.SPRITES]
     assert unknown == [], f"shipped art for sprites that do not exist: {unknown}"
+
+
+def test_a_missing_bigart_pack_degrades_instead_of_crashing(monkeypatch):
+    """Houses and the tree canopy have no other source, unlike ground tiles.
+
+    Every :mod:`.bigart`-only name (``house_hut``, ``house_barn``,
+    ``big_tree``) is what a room or a tree tile is drawn as *unconditionally*
+    -- :meth:`~.overworld.OverworldGame._house_sprite` and
+    :meth:`~.overworld.OverworldGame._draw_trees` never check whether the pack
+    loaded. Without a string-art fallback in SPRITES, a missing or corrupt
+    ``bigart.png`` would not degrade the look the way a missing ``terrain.png``
+    does -- it would raise out of the render loop.
+    """
+    from chisurf.plugins.misc.games.lumis_quest.gui import bigart
+
+    monkeypatch.setattr(bigart, "tiles", lambda: {})
+    for name in ("house_hut", "house_barn", "big_tree"):
+        art = pixelart.sprite_image(name)
+        assert art.shape == (pixelart.SIZE, pixelart.SIZE, 4), name
+        assert art[..., 3].any(), f"{name} fallback is entirely transparent"

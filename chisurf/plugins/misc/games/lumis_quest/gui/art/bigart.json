@@ -1,0 +1,41 @@
+{
+  "names": [
+    "big_tree",
+    "house_barn",
+    "house_hut"
+  ],
+  "sizes": {
+    "big_tree": [
+      64,
+      48
+    ],
+    "house_barn": [
+      48,
+      80
+    ],
+    "house_hut": [
+      64,
+      48
+    ]
+  },
+  "source": {
+    "big_tree": [
+      0,
+      144,
+      64,
+      192
+    ],
+    "house_barn": [
+      192,
+      96,
+      240,
+      176
+    ],
+    "house_hut": [
+      0,
+      0,
+      64,
+      48
+    ]
+  }
+}

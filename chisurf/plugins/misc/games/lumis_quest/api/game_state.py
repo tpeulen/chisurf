@@ -96,6 +96,10 @@ class GameState:
     total_pages_reviewed: int = 0
     total_suggestions_merged: int = 0
     sections_reviewed: dict[str, int] = dataclasses.field(default_factory=dict)
+    #: Where a save-triggering method (record_review, record_suggestion_merged)
+    #: writes without being told again -- set by load(), not game data itself,
+    #: so it stays out of as_dict() and out of equality.
+    path: pathlib.Path = dataclasses.field(default=STATE_FILE, repr=False, compare=False)
 
     # -- level helpers -----------------------------------------------------
 
@@ -123,8 +127,8 @@ class GameState:
     # -- persistence -------------------------------------------------------
 
     def save(self) -> None:
-        STATE_DIR.mkdir(parents=True, exist_ok=True)
-        STATE_FILE.write_text(
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self.path.write_text(
             json.dumps(self.as_dict(), indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
         )
@@ -143,13 +147,29 @@ class GameState:
         }
 
     @classmethod
-    def load(cls, reviewer: str = "anonymous") -> "GameState":
-        if not STATE_FILE.exists():
-            return cls(reviewer=reviewer)
+    def load(cls, reviewer: str = "anonymous", path: pathlib.Path | None = None) -> GameState:
+        """Read a player's standing from disk, or start a fresh one.
+
+        Parameters
+        ----------
+        reviewer : str, optional
+            Who this is, for a fresh state.
+        path : pathlib.Path, optional
+            Where to read from and where a later ``save()`` writes back to.
+            Defaults to :data:`STATE_FILE`; tests pass a temporary one so a
+            headless run never touches the real player's standing.
+
+        Returns
+        -------
+        GameState
+        """
+        target = path or STATE_FILE
+        if not target.exists():
+            return cls(reviewer=reviewer, path=target)
         try:
-            raw = json.loads(STATE_FILE.read_text(encoding="utf-8"))
+            raw = json.loads(target.read_text(encoding="utf-8"))
         except Exception:
-            return cls(reviewer=reviewer)
+            return cls(reviewer=reviewer, path=target)
         streak = StreakState(**raw.get("streak", {}))
         session = SessionState(**raw.get("session", {}))
         return cls(
@@ -162,6 +182,7 @@ class GameState:
             total_pages_reviewed=int(raw.get("total_pages_reviewed", 0)),
             total_suggestions_merged=int(raw.get("total_suggestions_merged", 0)),
             sections_reviewed=raw.get("sections_reviewed", {}),
+            path=target,
         )
 
     # -- game actions ------------------------------------------------------

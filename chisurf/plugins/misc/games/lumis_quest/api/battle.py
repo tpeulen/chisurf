@@ -94,6 +94,8 @@ class Fighter:
         Damage per turn still working from a venomous bite.
     sheltered : bool
         Whether a wellspring body has already spent its one refusal to go out.
+    activated : bool
+        Whether a ``turn_on`` label has been struck yet -- see ``TRAITS``.
     """
 
     beast: Beast
@@ -101,6 +103,7 @@ class Fighter:
     stunned: bool = False
     bleed: int = 0
     sheltered: bool = False
+    activated: bool = False
 
     def __post_init__(self) -> None:
         """Start at full health only when no HP was given at all."""
@@ -216,7 +219,7 @@ class Battle:
 
     def __init__(self, team: list[Fighter], opponent: Fighter,
                  rng: random.Random | None = None, opponent_power: float = 1.6,
-                 loadout=None, seals=()) -> None:
+                 loadout=None, seals=(), warden_key: str | None = None) -> None:
         if not team:
             raise ValueError("a battle needs at least one beast")
         self.team = team
@@ -229,6 +232,8 @@ class Battle:
         # which is what makes gear a choice rather than a stat stick.
         self.loadout = loadout
         self.seals = tuple(seals)
+        self.warden_key = warden_key
+        self.player_attack_streak = 0
         self.rng = rng or random.Random()
         self.active_index = 0
         self.log: list[Turn] = []
@@ -346,6 +351,7 @@ class Battle:
             return self._record(Turn(f"{self.team[index].name} is fully bleached."))
 
         def action() -> Turn:
+            self.player_attack_streak = 0
             self.active_index = index
             fighter = self.team[index]
             if fighter.has("play"):
@@ -422,6 +428,7 @@ class Battle:
             return self._round(lambda: self._record(Turn(refusal)))
 
         def action() -> Turn:
+            self.player_attack_streak = 0
             chance = self.take_chance()
             if self.rng.random() >= chance:
                 return self._record(
@@ -503,6 +510,20 @@ class Battle:
         if not attacker.beast.marked:
             return self._record(
                 Turn(f"{attacker.name} has no label. It cannot shine at anything.")
+            )
+
+        if self.warden_key == "ember":
+            self.player_attack_streak += 1
+        else:
+            self.player_attack_streak = 0
+
+        # Tolm (Warden of Ember) lesson: continuous attacking triggers recoil counter.
+        if self.warden_key == "ember" and self.player_attack_streak >= 2:
+            self._spend(attacker)
+            recoil = max(5, int(attacker.beast.max_hp * 0.28))
+            self._apply(attacker, recoil)
+            return self._record(
+                Turn(f"{attacker.name} emits -- Tolm's boar counters a continuous barrage! (-{recoil} HP recoil)")
             )
 
         multiplier = self._effectiveness(attacker, self.opponent)
@@ -614,6 +635,11 @@ class Battle:
         if attacker.has("phototaxis") and defender.beast.marked and \
                 defender.creature.quantum_yield >= BRIGHT_QY:
             power *= 1.3
+        if attacker.has("turn_on") and attacker.activated:
+            # Dark until struck: the first hit it takes lights it, and every
+            # shot after that is the label doing what it was switched on to
+            # do -- the real point of a photoactivatable protein.
+            power *= 1.6
 
         if defender.has("chitin"):
             power *= 0.7
@@ -626,6 +652,22 @@ class Battle:
             return 0
         if defender.has("shiftwalk") and self.rng.random() < 0.15:
             return 0
+
+        # Warden-specific distinctiveness rules:
+        if self.warden_key == "prism" and defender is self.opponent:
+            # Ysolde (Prism): Mantis deflects un-matched spectral emission.
+            if multiplier < 1.15:
+                return 0
+        if self.warden_key == "shutter" and defender is self.opponent:
+            # Kestrel (Shutter): Owl is Umbral (far-red) and unseen without tuned filter.
+            response = self.loadout.response(defender.beast.emission_nm) if self.loadout is not None else 0.2
+            if response < 0.45:
+                return 0
+        if self.warden_key == "wellspring" and defender is self.opponent:
+            # Nera (Wellspring): 50% resistance against artificial high-bleach dyes.
+            if attacker.beast.marked and attacker.creature.bleach_rate > 0.08:
+                power *= 0.5
+
         return max(1, int(round(power)))
 
     def _apply(self, target: Fighter, damage: int) -> int:
@@ -645,6 +687,10 @@ class Battle:
         """
         if damage <= 0:
             return 0
+        if target.has("turn_on") and not target.activated:
+            # Photoactivation: dark until struck. This hit is what switches
+            # it on -- its own next hit is the one that lands harder.
+            target.activated = True
         before = target.hp
         target.hp = max(0, target.hp - damage)
         if target.hp == 0 and target.has("wellspring") and not target.sheltered:
@@ -702,6 +748,18 @@ class Battle:
                     fighter.beast.max_hp,
                     fighter.hp + max(1, int(round(fighter.beast.max_hp * REGROWTH))),
                 )
+        if self.warden_key == "wellspring" and self.opponent.alive:
+            # Nera's Jelly rapidly recovers wellspring photons each round.
+            self.opponent.hp = min(
+                self.opponent.beast.max_hp,
+                self.opponent.hp + max(2, int(round(self.opponent.beast.max_hp * 0.12)))
+            )
+        if self.warden_key == "triplet" and self.opponent.alive and self.opponent.stunned:
+            # Ovid's Bat draws dark manifold energy to regenerate while shelved.
+            self.opponent.hp = min(
+                self.opponent.beast.max_hp,
+                self.opponent.hp + max(2, int(round(self.opponent.beast.max_hp * 0.15)))
+            )
         self._settle()
 
     def _settle(self) -> None:

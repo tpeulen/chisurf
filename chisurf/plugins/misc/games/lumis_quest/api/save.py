@@ -75,11 +75,30 @@ class RunState:
     lab : list
         Growing cultures, ``[probe_id, planted_at, duration]`` per plot —
         wall-clock timestamps, because maturation is real time.
+    materials : dict of str to int
+        Bench reagents on hand, keyed by
+        :data:`chisurf.plugins.misc.games.lumis_quest.api.crafting.MATERIALS`.
+    crafted : list of str
+        Recipe keys crafted and not yet fixed into a beast.
+    explored : list of str
+        Land names Iris has physically stood in -- fog of war on the map is
+        everywhere else.
+    salvaged : list of str
+        Dark-manifold ruin cells already picked clean, as ``"col,row"``
+        strings -- a ruin yields its reagent once per run, ever.
+    iris_hp : int
+        Her own life in real-time combat. ``-1`` (a save from before this
+        existed, or a fresh run) means full, not zero.
+    photons : int
+        Her own casting energy. ``-1`` means the starting half-charge, not
+        zero -- see ``iris_hp``.
     """
 
     position: tuple[float, float] = (0.0, 0.0)
     dark: bool = False
-    team: list[tuple[str, int, int]] = dataclasses.field(default_factory=list)
+    # (species_key, probe_id, hp, infusion) -- infusion is a TRAITS key or
+    # None, from a bench reagent fixed in on top of whatever label is worn.
+    team: list[tuple[str, int, int, str | None]] = dataclasses.field(default_factory=list)
     bodies: list[str] = dataclasses.field(default_factory=list)
     labels: list[int] = dataclasses.field(default_factory=list)
     seals: list[str] = dataclasses.field(default_factory=list)
@@ -94,6 +113,12 @@ class RunState:
     story_seen: list[str] = dataclasses.field(default_factory=list)
     pledge_baseline: int | None = None
     lab: list = dataclasses.field(default_factory=list)
+    materials: dict[str, int] = dataclasses.field(default_factory=dict)
+    crafted: list[str] = dataclasses.field(default_factory=list)
+    explored: list[str] = dataclasses.field(default_factory=list)
+    salvaged: list[str] = dataclasses.field(default_factory=list)
+    iris_hp: int = -1
+    photons: int = -1
 
     def as_dict(self) -> dict:
         """Serialise to plain JSON types.
@@ -122,6 +147,12 @@ class RunState:
             "story_seen": list(self.story_seen),
             "pledge_baseline": self.pledge_baseline,
             "lab": [list(row) for row in self.lab],
+            "materials": dict(self.materials),
+            "crafted": list(self.crafted),
+            "explored": list(self.explored),
+            "salvaged": list(self.salvaged),
+            "iris_hp": int(self.iris_hp),
+            "photons": int(self.photons),
         }
 
     def save(self, path: pathlib.Path | None = None) -> pathlib.Path:
@@ -145,7 +176,7 @@ class RunState:
         return target
 
     @classmethod
-    def load(cls, path: pathlib.Path | None = None) -> "RunState":
+    def load(cls, path: pathlib.Path | None = None) -> RunState:
         """Read a run from disk.
 
         A missing, unreadable or future-versioned file yields a fresh run rather
@@ -173,7 +204,8 @@ class RunState:
             return cls(
                 position=tuple(raw.get("position", (0.0, 0.0)))[:2],
                 dark=bool(raw.get("dark", False)),
-                team=[(str(entry[0]), int(entry[1]), int(entry[2]))
+                team=[(str(entry[0]), int(entry[1]), int(entry[2]),
+                       str(entry[3]) if len(entry) >= 4 and entry[3] is not None else None)
                       for entry in raw.get("team", []) if len(entry) >= 3],
                 bodies=[str(value) for value in raw.get("bodies", [])],
                 labels=[int(value) for value in raw.get("labels", [])],
@@ -189,6 +221,13 @@ class RunState:
                 story_seen=[str(value) for value in raw.get("story_seen", [])],
                 pledge_baseline=raw.get("pledge_baseline"),
                 lab=[list(row) for row in raw.get("lab", [])],
+                materials={str(key): int(value)
+                          for key, value in raw.get("materials", {}).items()},
+                crafted=[str(value) for value in raw.get("crafted", [])],
+                explored=[str(value) for value in raw.get("explored", [])],
+                salvaged=[str(value) for value in raw.get("salvaged", [])],
+                iris_hp=int(raw.get("iris_hp", -1)),
+                photons=int(raw.get("photons", -1)),
             )
         except (TypeError, ValueError):
             return cls()

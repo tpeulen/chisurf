@@ -30,8 +30,8 @@ import pathlib
 
 from chisurf.plugins.core.help.api import review
 
-from .challenge import Challenge
 from . import providers
+from .challenge import Challenge
 
 #: The two ways to play.
 TRAINING = "training"

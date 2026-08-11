@@ -14,7 +14,13 @@
     "road",
     "sand",
     "water",
-    "water2"
+    "water2",
+    "townsfolk_0",
+    "townsfolk_1",
+    "villager_0",
+    "villager_1",
+    "flowers",
+    "rock"
   ],
   "source": {
     "ash": [
@@ -86,6 +92,32 @@
       "tileset_floor",
       6,
       23
+    ],
+    "townsfolk_0": [
+      "samurai_blue/sprite",
+      0,
+      0
+    ],
+    "townsfolk_1": [
+      "samurai_blue/sprite",
+      0,
+      1
+    ],
+    "villager_0": [
+      "samurai_green/samurai_green",
+      0,
+      0
+    ],
+    "villager_1": [
+      "samurai_green/samurai_green",
+      0,
+      1
+    ],
+    "flowers": [
+      "grass/grass_3.png"
+    ],
+    "rock": [
+      "test/rock.png"
     ]
   }
 }

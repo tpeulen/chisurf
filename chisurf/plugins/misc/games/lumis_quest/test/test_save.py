@@ -14,7 +14,7 @@ def test_a_run_round_trips(tmp_path):
     path = tmp_path / "run.json"
     state = save.RunState(
         position=(123.5, 456.5),
-        team=[("hare", 11, 40), ("beetle", 22, 5)],
+        team=[("hare", 11, 40, "photostable"), ("beetle", 22, 5, None)],
         bodies=["fox", "newt"],
         labels=[33, 44],
         seals=["ember", "prism"],

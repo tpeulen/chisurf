@@ -201,6 +201,18 @@ TRAITS: dict[str, Trait] = {
     "hardlight": Trait("hardlight", "Hard Light", "Blue and violent: more damage, more bleaching."),
     "unmeasured": Trait("unmeasured", "Unmeasured",
                         "Stats are class defaults -- its damage is unpredictable."),
+    # Fixed in at the bench, not grown or worn -- see .crafting. Real
+    # single-molecule antifade and passivation reagents, same rule as the
+    # label traits above: nothing here is an invented stat.
+    "photostable": Trait("photostable", "Antifade Cocktail",
+                         "Trolox and an oxygen scavenger: bleaches much slower."),
+    "unblinking": Trait("unblinking", "Triplet Quencher",
+                        "A reducing-and-oxidizing system: bleaches slower still."),
+    "shielded": Trait("shielded", "Passivation Coat",
+                      "A blocking protein coat: bleaches a little slower."),
+    "turn_on": Trait("turn_on", "Photoactivation Label",
+                     "Dark until struck -- the hit that lands lights it, "
+                     "and its own next hit lands much harder."),
 }
 
 #: Emission band -> the name a marked animal goes by. A player learns to read
@@ -296,10 +308,15 @@ class Beast:
         The fluorophore marking it. ``None`` is an *unmarked* animal: a body
         nobody has done anything to. It can be befriended and carried home, but
         it cannot fight until you fit it with something.
+    infusion : str or None
+        A bench reagent fixed in on top of the label -- see
+        :mod:`chisurf.plugins.misc.games.lumis_quest.api.crafting`. A key into
+        :data:`TRAITS`, the same as everything else here.
     """
 
     species: Species
     label: Creature | None = None
+    infusion: str | None = None
 
     # -- identity ----------------------------------------------------------
 
@@ -432,20 +449,29 @@ class Beast:
             rate *= 2.0
         if "hardlight" in self.traits:
             rate *= 1.3
+        # Bench reagents, not photophysics of the label or the body -- the
+        # real thing they are named for is exactly this: protecting a dye
+        # against its own bleaching, from outside it.
+        if "photostable" in self.traits:
+            rate *= 0.55
+        if "unblinking" in self.traits:
+            rate *= 0.7
+        if "shielded" in self.traits:
+            rate *= 0.85
         return rate
 
     @property
     def traits(self) -> tuple[str, ...]:
-        """Everything this beast does: the body's, then the label's.
+        """Everything this beast does: the body's, the label's, the bench's.
 
         Returns
         -------
         tuple of str
             Keys into :data:`TRAITS`.
         """
-        if self.label is None:
-            return (self.species.trait,)
-        return (self.species.trait, *label_traits(self.label))
+        base = (self.species.trait,) if self.label is None \
+            else (self.species.trait, *label_traits(self.label))
+        return (*base, self.infusion) if self.infusion else base
 
     @property
     def trait_names(self) -> tuple[str, ...]:
@@ -506,7 +532,7 @@ class Beast:
             f"hp {self.max_hp}{mark}  T{self.tier}"
         )
 
-    def fitted(self, label: Creature | None) -> "Beast":
+    def fitted(self, label: Creature | None) -> Beast:
         """The same body wearing a different label.
 
         This is the build: one animal is many creatures depending on what you
@@ -520,9 +546,28 @@ class Beast:
         Returns
         -------
         Beast
-            A new beast; nothing is mutated.
+            A new beast; nothing is mutated. Any bench infusion carries over
+            -- it protects the animal, not the particular dye in it.
         """
-        return Beast(species=self.species, label=label)
+        return Beast(species=self.species, label=label, infusion=self.infusion)
+
+    def infused(self, trait_key: str) -> Beast:
+        """The same animal, with one bench reagent fixed in.
+
+        Parameters
+        ----------
+        trait_key : str
+            A key into :data:`TRAITS` -- see
+            :mod:`chisurf.plugins.misc.games.lumis_quest.api.crafting` for
+            what is actually craftable.
+
+        Returns
+        -------
+        Beast
+            A new beast; nothing is mutated. Replaces any earlier infusion --
+            the bench fixes in one reagent at a time, not a stack of them.
+        """
+        return Beast(species=self.species, label=self.label, infusion=trait_key)
 
 
 def species_for_terrain(terrain: str) -> tuple[Species, ...]:

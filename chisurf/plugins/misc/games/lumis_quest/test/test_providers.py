@@ -180,3 +180,13 @@ def test_the_bridge_serves_the_cache_on_a_second_visit(tmp_path):
     _, hash_three = review_bridge.challenge_for(page, provider=Counting(), cache_dir=cache)
     assert hash_three != hash_one
     assert len(calls) == 2, "a changed page must regenerate"
+
+
+def test_llm_status_reports_wired_and_unconfigured_states(monkeypatch):
+    """llm_status must return structured info, green/red indicators, and setup guidance."""
+    status = providers.llm_status()
+    assert "wired" in status
+    assert "indicator" in status
+    assert status["indicator"] in ("●", "○")
+    assert "hover_info" in status
+    assert "Settings -> AI" in status["hover_info"]

@@ -356,3 +356,54 @@ def test_a_villager_in_a_neglected_village_says_so(world):
         room.state = SETTLED
     proud = next(n for n in npcs.populate(world) if n.kind == "villager")
     assert proud.line in npcs.GREETINGS
+
+
+def test_indoor_population_populates_rooms_with_resident_npcs():
+    """Interiors hold 1-2 resident NPCs on designated standing spots."""
+    from chisurf.plugins.misc.games.lumis_quest.api import interiors
+
+    for kind in ("tavern", "smithy", "shop", "shrine", "hall", "house"):
+        room = interiors.build(f"test_{kind}", kind)
+        cast = npcs.indoor_population(room)
+        assert len(cast) > 0, f"Room of kind '{kind}' should have indoor NPCs"
+        assert len(cast) <= len(room.spots)
+        for npc in cast:
+            assert npc.name
+            assert npc.line
+            assert npc.role
+
+def test_a_keeper_speaks_from_the_page_they_keep(world):
+    """The offline keeper voice reads the page, not the shared greeting bank.
+
+    The greeting stays -- it is the character -- but the screens after it are
+    the page's own prose: its opening claim, then a "Did you know?" picked by
+    the page's address. A page with no usable prose keeps the canned line
+    alone rather than inventing something.
+    """
+    room = world.rooms[0]
+    room.state = SETTLED
+    prose = (
+        "The fundamental anisotropy of a fluorophore describes how much "
+        "polarisation memory survives the excited-state lifetime in a "
+        "measurement.\n\n"
+        "Rotational correlation time governs how quickly that polarisation "
+        "memory is lost, so a larger molecule tumbling slowly retains its "
+        "polarisation for longer.\n"
+    )
+    room.path.write_text(f"# {room.title}\n\n{prose}", encoding="utf-8")
+
+    keeper = next(n for n in npcs.populate(world)
+                  if n.kind == "villager" and n.address == room.address)
+    assert len(keeper.dialogue) == 3, "greeting, the page's claim, and a trivia"
+    assert "fundamental anisotropy" in keeper.dialogue[1]
+    assert keeper.dialogue[2].startswith("Did you know? ")
+    assert "--" not in prose  # the fixture must not pre-clean what clean() does
+    assert all(len(line) <= 182 for line in keeper.dialogue), "panel is 46x4"
+
+    # A page of stubs keeps the canned greeting alone.
+    other = world.rooms[1]
+    other.state = SETTLED
+    other.path.write_text("# Stub\n\nProse here.\n", encoding="utf-8")
+    stub_keeper = next(n for n in npcs.populate(world)
+                       if n.kind == "villager" and n.address == other.address)
+    assert len(stub_keeper.dialogue) == 1

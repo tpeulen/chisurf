@@ -125,6 +125,15 @@ where the water was, dead wood, ruins where people lived — and your own roads,
 going the same way they always did. Everything that was ever driven all the way
 down is standing in it, still shaped like the animal it used to be.
 
+There are two things to do down there. A shelved animal can be **rekindled** —
+give it one of your labels back and it comes up out of the ash with you, at the
+cost of the gentlest label you carry. And every **ruin** was a premises someone
+kept stocked on the lit side: press the action key at one and you **salvage**
+what is left in it — a bench reagent for the crafting shelf, weighted toward
+the ones the lit world drops rarely. Each ruin gives up its find once, ever;
+which reagent it holds is fixed by where it stands, so reloading a save cannot
+reroll it.
+
 ## Controls
 
 Everything is on nine actions, because the game is meant to be playable on a
@@ -285,6 +294,12 @@ with no model at all, so the game works offline.
 
 Questions are cached under the page's content hash, so a page asks the same
 thing every visit and asks something new the moment it changes.
+
+Even with the model off, a page's keeper does not make small talk: after their
+greeting they speak **from the page they keep** — its opening claim, then a
+"Did you know?" sentence picked by the page's own address. No network, no
+model; the lines are read straight out of the page's prose, so what a keeper
+tells you is always something their page actually says.
 
 The same switch also gives the inhabitants **voices**: with the model on, a
 keeper speaks as someone who has read and vouched for their own page, an

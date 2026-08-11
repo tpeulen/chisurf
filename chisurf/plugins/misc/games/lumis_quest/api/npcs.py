@@ -56,6 +56,52 @@ GREETINGS = (
     "Read it yourself if you like -- it will stand up.",
 )
 
+def page_lines(room) -> tuple[str, ...]:
+    """What a settled page's keeper says, from the page itself.
+
+    A keeper used to greet you from the shared bank and stop there, so every
+    settlement in the world made the same small talk. Their page is right
+    behind them and it is the reason they exist -- so the deterministic,
+    model-free voice now reads it: the page's opening claim, then one more
+    sentence picked by the page's own address as a "did you know". The model
+    voices (:mod:`.personas`) still replace all of this when they are on;
+    this is the offline floor, not the ceiling.
+
+    Parameters
+    ----------
+    room : chisurf.plugins.misc.games.lumis_quest.api.world.Room
+        The settled page.
+
+    Returns
+    -------
+    tuple of str
+        Zero, one or two lines of the page's own prose, cleaned for the
+        dialogue panel. Empty when the page cannot be read or holds no
+        usable sentence -- the caller keeps the canned greeting then.
+    """
+    from .challenge import _sentences
+
+    try:
+        text = room.path.read_text(encoding="utf-8")
+    except OSError:
+        return ()
+    sentences = _sentences(text)
+    if not sentences:
+        return ()
+
+    def clean(sentence: str) -> str:
+        # The dialogue panel wraps at 46 characters over four lines, and the
+        # text path has no em-dash glyph.
+        line = " ".join(sentence.split()).replace("—", "--")
+        return line if len(line) <= 168 else line[:165].rstrip() + "..."
+
+    lines = [clean(sentences[0])]
+    if len(sentences) > 1:
+        pick = 1 + _seed(room.address) % (len(sentences) - 1)
+        lines.append(f"Did you know? {clean(sentences[pick])}")
+    return tuple(lines)
+
+
 #: What a villager says about the state of their settlement.
 STRUGGLING = (
     "Half our houses are dark. Nobody has been through them.",
@@ -407,12 +453,15 @@ def populate(world) -> list[Npc]:
                     if prosperity > 0.4
                     else STRUGGLING[seed % len(STRUGGLING)]
                 )
+                # The greeting stays theirs; what follows it comes off the
+                # page they keep, when the page has prose worth repeating.
                 people.append(
                     Npc(
                         kind="villager",
                         name=room.title[:28],
                         x=spot[0], y=spot[1], home=spot, radius=TILE * 0.9,
-                        line=line, address=room.address,
+                        line=line, lines=(line, *page_lines(room)),
+                        address=room.address,
                         _phase=(seed % 1000) / 1000.0 * math.tau,
                     )
                 )
@@ -1003,3 +1052,71 @@ def nearest(people: list[Npc], x: float, y: float, within: float = TILE * 1.6):
         if distance <= best_distance:
             best, best_distance = npc, distance
     return best
+
+
+def indoor_population(interior) -> list[Npc]:
+    """Populate an interior room with resident NPCs on its designated spots.
+
+    Parameters
+    ----------
+    interior : chisurf.plugins.misc.games.lumis_quest.api.interiors.Interior
+        The interior room.
+
+    Returns
+    -------
+    list of Npc
+        Resident NPCs standing inside the room.
+    """
+    cast: list[Npc] = []
+    if not getattr(interior, "spots", None):
+        return cast
+
+    kind = getattr(interior, "kind", "house")
+    seed = _seed(f"indoor:{getattr(interior, 'key', 'room')}")
+
+    if kind == "tavern":
+        roles = [
+            ("barkeep", "Barkeep", "Welcome to the tavern! What's your story?"),
+            ("patron", "Traveler", "The Wardens hold the seals of light in each land."),
+        ]
+    elif kind == "smithy":
+        roles = [
+            ("smith", "Lens-Grinder", "Optical precision is key to focusing emission."),
+        ]
+    elif kind == "shop":
+        roles = [
+            ("merchant", "Supply Merchant", "Need photostabilizers or reagents for your bench?"),
+        ]
+    elif kind == "shrine":
+        roles = [
+            ("priest", "Shrine Keeper", "May your fluorophores shine bright and untarnished."),
+        ]
+    elif kind == "hall":
+        roles = [
+            ("warden_guard", "Hall Guard", "This is the Warden's hall. Speak with care."),
+        ]
+    else:  # house
+        roles = [
+            ("resident", "Villager", "Make yourself at home. The wilds can be harsh."),
+        ]
+
+    for idx, spot in enumerate(interior.spots):
+        if idx >= len(roles):
+            break
+        role_key, name, line = roles[idx]
+        cast.append(
+            Npc(
+                kind="villager",
+                name=name,
+                x=(spot[0] + 0.5) * TILE,
+                y=(spot[1] + 0.5) * TILE,
+                home=((spot[0] + 0.5) * TILE, (spot[1] + 0.5) * TILE),
+                radius=0.0,
+                line=line,
+                lines=(line,),
+                role=role_key,
+                _phase=(seed % 1000) / 1000.0 * math.tau,
+            )
+        )
+
+    return cast

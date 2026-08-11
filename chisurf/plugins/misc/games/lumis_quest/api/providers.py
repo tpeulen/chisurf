@@ -371,3 +371,43 @@ def best_available(prefer_model: bool = True) -> ChallengeProvider:
         if agent._make_client() is not None:
             return agent
     return DeterministicProvider()
+
+
+def llm_status() -> dict:
+    """Check whether a language model provider is configured and reachable in ChiSurf settings.
+
+    Returns
+    -------
+    dict
+        Status dictionary containing:
+        - ``wired`` (bool): True if an LLM client is configured and validated.
+        - ``indicator`` (str): "●" if wired else "○"
+        - ``color`` (tuple): RGBA color, green if wired else red.
+        - ``model`` (str): Configured model identifier or "none".
+        - ``summary_short`` (str): Short status summary.
+        - ``hover_info`` (str): Hover/setup instruction for ChiSurf settings.
+    """
+    try:
+        from chisurf.core.agent.llm import LLMSettings
+
+        settings = LLMSettings.from_provider()
+        settings.validate()
+        model = settings.model or "configured"
+        return {
+            "wired": True,
+            "indicator": "●",
+            "color": (0.35, 0.90, 0.45, 1.0),
+            "model": model,
+            "summary_short": f"Wired ({model})",
+            "hover_info": f"LLM Active ({model}). Setup in ChiSurf: Main Menu -> Settings -> AI Provider.",
+        }
+    except Exception:
+        return {
+            "wired": False,
+            "indicator": "○",
+            "color": (0.92, 0.42, 0.42, 1.0),
+            "model": "none",
+            "summary_short": "Offline (Not configured)",
+            "hover_info": "Setup LLM in ChiSurf: Main Menu -> Settings -> AI Provider (Set API key & model).",
+        }
+

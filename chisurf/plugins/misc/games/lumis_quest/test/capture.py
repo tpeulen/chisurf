@@ -192,6 +192,18 @@ def main(argv: list[str]) -> int:
 
     capture(out, world, "lumis_battle", fight)
 
+    def dark_fight(game):
+        """A battle joined on the dark side, so the backdrop shows it.
+
+        The backdrop is read off where Iris stands and which side of the
+        manifold she is on -- the same fight in the ash must not open under
+        a blue sky.
+        """
+        game._cross("dark")
+        fight(game)
+
+    capture(out, world, "lumis_battle_dark", dark_fight)
+
     def warden(game):
         npc = next(one for one in game.people if one.kind == "warden")
         game.iris = [npc.x, npc.y + 12.0]

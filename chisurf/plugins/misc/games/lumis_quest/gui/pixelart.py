@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from . import tileart
+from . import bigart, tileart
 
 #: Character -> RGBA. Two tones per material, because a single flat colour is
 #: what makes procedural art look procedural; a light and a dark read as form.
@@ -117,6 +117,9 @@ PALETTE: dict[str, tuple[int, int, int, int]] = {
 #: Pixels per sprite. 16x16 is the era's own size for a character sprite.
 SIZE = 16
 
+#: Margin, in atlas pixels, between packed sprites -- see :func:`build_atlas`.
+_PAD = 1
+
 _ = "................"
 
 #: Terrain, 16-bit style: every material is three tones and an edge, with two
@@ -197,78 +200,24 @@ TERRAIN: dict[str, list[str]] = {
     ],
 }
 
-#: The buildings: a dark cottage (nobody has read the page -- shuttered, no
-#: light in the windows) and a lit one (the windows glow). State tints do the
-#: rest: wild is cold, withered is a sick brown, scouted cool, settled warm.
-_HOUSE_DARK = [
-    "................", ".......KK.......", "......KIbK......", ".....KIbbbK.....",
-    "....KIbbbbbK....", "...KIbbbbbbbK...", "..KIbbbbbbbbbK..", ".KIbbbbbbbbbbbK.",
-    ".KKKKKKKKKKKKKK.", ".EmSmmmmmmmmSmE.", ".EmMEEmmmmEEMmE.", ".EmMEEmmmmEEMmE.",
-    ".EmmmmmZZmmmmmE.", ".EmmmmmZZmmmmmE.", ".Emmmmm88mmmmmE.", ".55555555555555.",
-]
-_HOUSE_LIT = [
+#: How many ways a house can be built. The renderer picks by page address, so
+#: a street has a hut beside a barn the way a street does, and the same page
+#: is the same house on every visit. Both are real :mod:`.bigart` -- Ninja
+#: Adventure CC0 buildings, drawn at their own native size rather than the
+#: string art's old one-tile-stretched-to-a-tile-and-a-half. See
+#: :func:`~.overworld.OverworldGame._house_sprite`.
+HOUSE_STYLES = 2
+
+#: Fallback for ``house_hut``/``house_barn`` if the shipped big-art pack ever
+#: fails to load. Every other :mod:`.bigart` name (grass, rock, flowers...)
+#: has a string-art sibling for exactly this reason -- degrading to a plain
+#: one-tile cottage is the same contract, not a special case for houses.
+_HOUSE_FALLBACK = [
     "................", ".......KK.......", "......KIbK......", ".....KIbbbK.....",
     "....KIbbbbbK....", "...KIbbbbbbbK...", "..KIbbbbbbbbbK..", ".KIbbbbbbbbbbbK.",
     ".KKKKKKKKKKKKKK.", ".EmSmmmmmmmmSmE.", ".EmM99mmmm99MmE.", ".EmM99mmmm99MmE.",
     ".EmmmmmZZmmmmmE.", ".EmmmmmZ9mmmmmE.", ".Emmmmm88mmmmmE.", ".55555555555555.",
 ]
-
-#: Four ways to build a house, dark and lit. A page's address picks one, so a
-#: street has slate beside thatch beside tile the way a street does, and the
-#: same page is the same house on every visit. Drawn full-height in the sprite
-#: and rendered a tile and a half tall, which is how a 16-bit town gets
-#: buildings that stand *over* the ground rather than sitting inside it.
-_HOUSE_TILE_DARK = [
-    "................", "......KIIK......", ".....KIIIIK.....", "....KIIIIIIK....",
-    "...KIIIIIIIIK...", "..KIIIIIIIIIIK..", ".KKKKKKKKKKKKKK.", ".E::::::::::::E.",
-    ".E:mm::::::mm:E.", ".E:mm::::::mm:E.", ".E::::::::::::E.", ".E:::::ZZ:::::E.",
-    ".E:::::ZZ:::::E.", ".E:::::Z8:::::E.", ".EEEEEEEEEEEEEE.", ".55555555555555.",
-]
-_HOUSE_TILE_LIT = [
-    "................", "......KIIK......", ".....KIIIIK.....", "....KIIIIIIK....",
-    "...KIIIIIIIIK...", "..KIIIIIIIIIIK..", ".KKKKKKKKKKKKKK.", ".E::::::::::::E.",
-    ".E:99::::::99:E.", ".E:99::::::99:E.", ".E::::::::::::E.", ".E:::::ZZ:::::E.",
-    ".E:::::Z9:::::E.", ".E:::::Z8:::::E.", ".EEEEEEEEEEEEEE.", ".55555555555555.",
-]
-_HOUSE_SLATE_DARK = [
-    "................", "...<<<<<<<<<<...", "..<<////////<<..", "..<<<<<<<<<<<<..",
-    ".E::::::::::::E.", ".E:mm::::::mm:E.", ".E:mm::::::mm:E.", ".E::::::::::::E.",
-    ".E<<<<<<<<<<<<E.", ".E::::::::::::E.", ".E:mm::::::mm:E.", ".E:mm::::::mm:E.",
-    ".E:::::ZZ:::::E.", ".E:::::Z8:::::E.", ".EEEEEEEEEEEEEE.", ".55555555555555.",
-]
-_HOUSE_SLATE_LIT = [
-    "................", "...<<<<<<<<<<...", "..<<////////<<..", "..<<<<<<<<<<<<..",
-    ".E::::::::::::E.", ".E:99::::::99:E.", ".E:99::::::99:E.", ".E::::::::::::E.",
-    ".E<<<<<<<<<<<<E.", ".E::::::::::::E.", ".E:99::::::99:E.", ".E:99::::::99:E.",
-    ".E:::::ZZ:::::E.", ".E:::::Z9:::::E.", ".EEEEEEEEEEEEEE.", ".55555555555555.",
-]
-_HOUSE_THATCH_DARK = [
-    "................", "......~~~~......", ".....~~||~~.....", "....~~||||~~....",
-    "...~~||||||~~...", "..~~||||||||~~..", ".~~~~~~~~~~~~~~.", ".E::::::::::::E.",
-    ".E:mm::::::mm:E.", ".E:mm::::::mm:E.", ".E::::::::::::E.", ".E:::::ZZ:::::E.",
-    ".E:::::ZZ:::::E.", ".E:::::Z8:::::E.", ".EEEEEEEEEEEEEE.", ".55555555555555.",
-]
-_HOUSE_THATCH_LIT = [
-    "................", "......~~~~......", ".....~~||~~.....", "....~~||||~~....",
-    "...~~||||||~~...", "..~~||||||||~~..", ".~~~~~~~~~~~~~~.", ".E::::::::::::E.",
-    ".E:99::::::99:E.", ".E:99::::::99:E.", ".E::::::::::::E.", ".E:::::ZZ:::::E.",
-    ".E:::::Z9:::::E.", ".E:::::Z8:::::E.", ".EEEEEEEEEEEEEE.", ".55555555555555.",
-]
-_HOUSE_STONE_DARK = [
-    "................", "......KKKK......", ".....KIIIIK.....", "....KIIIIIIK....",
-    "...KIIIIIIIIK...", "..KKKKKKKKKKKK..", ".EmmmmmmmmmmmmE.", ".Em:mm::::mm:mE.",
-    ".Em:mm::::mm:mE.", ".EmmmmmmmmmmmmE.", ".Em::::::::::mE.", ".Em::ZZZZZZ::mE.",
-    ".Em::ZZZZZZ::mE.", ".Em::Z8ZZ8Z::mE.", ".EEEEEEEEEEEEEE.", ".55555555555555.",
-]
-_HOUSE_STONE_LIT = [
-    "................", "......KKKK......", ".....KIIIIK.....", "....KIIIIIIK....",
-    "...KIIIIIIIIK...", "..KKKKKKKKKKKK..", ".EmmmmmmmmmmmmE.", ".Em:99::::99:mE.",
-    ".Em:99::::99:mE.", ".EmmmmmmmmmmmmE.", ".Em::::::::::mE.", ".Em::ZZZZZZ::mE.",
-    ".Em::Z9999Z::mE.", ".Em::Z8ZZ8Z::mE.", ".EEEEEEEEEEEEEE.", ".55555555555555.",
-]
-
-#: How many ways a house can be built. The renderer picks by page address.
-HOUSE_STYLES = 4
 
 #: A soft ground shadow, drawn under everyone who walks. Nothing anchors a
 #: sprite to the ground like the shadow it casts.
@@ -364,43 +313,101 @@ _BEAST_B = [
     "..HH.HH..HH.HH..", "..H..HH..HH..H..", "................", "................",
 ]
 
+_NINJA_BEAST_A = [
+    "................", ".....vNNNNv.....", "....vNNNNNNv....", "...vNNPNNPNNv...",
+    "...vNNNNNNNNv...", "...vvNNNNNNvv...", "...l.vNNNNv.l...", "..L..vNNNNv..L..",
+    ".....vNNNNv.....", "....vvNNNNvv....", "....vNNvvNNv....", "....vNv..vNv....",
+    "....vv....vv....", "................", "................", "................",
+]
+_NINJA_BEAST_B = [
+    "................", ".....vNNNNv.....", "....vNNNNNNv....", "...vNNPNNPNNv...",
+    "...vNNNNNNNNv...", "...vvNNNNNNvv...", "..l..vNNNNv..l..", ".L...vNNNNv...L.",
+    ".....vNNNNv.....", "....vvNNNNvv....", "....vNNvvNNv....", ".....vNv..vNv...",
+    ".....vv....vv...", "................", "................", "................",
+]
+
+_SAMURAI_BEAST_A = [
+    "................", "...o........o...", "..oK........Ko..", "..KKOKKKKKOKKK..",
+    "..KKKKPKKPKKKK..", "...KKKKKKKKKK...", "...KKKKOOKKKK...", "..rKKKKKKKKKKr..",
+    "..rKKKKKKKKKKr..", "...KKKKKKKKKK...", "....KKK..KKK....", "....KKK..KKK....",
+    "....rrr..rrr....", "................", "................", "................",
+]
+_SAMURAI_BEAST_B = [
+    "................", "...o........o...", "..oK........Ko..", "..KKOKKKKKOKKK..",
+    "..KKKKPKKPKKKK..", "...KKKKKKKKKK...", "...KKKKOOKKKK...", "..rKKKKKKKKKKr..",
+    "..rKKKKKKKKKKr..", "...KKKKKKKKKK...", "...rKKK..KKKr...", "...rKKK..KKKr...",
+    "....rrr..rrr....", "................", "................", "................",
+]
+
+_SPIRIT_BEAST_A = [
+    "................", "......cCCc......", "....cCCCCCCc....", "...cCCiCCiCCc...",
+    "..cCCCCCCCCCCc..", "..cCCCCCCCCCCc..", "...cCCCCCCCCc...", "....cCCCCCCc....",
+    ".....cCCCCc.....", "......cCCc......", ".....c.cC.c.....", "....c...cc...c..",
+    "................", "................", "................", "................",
+]
+_SPIRIT_BEAST_B = [
+    "................", "......cCCc......", "....cCCCCCCc....", "...cCCiCCiCCc...",
+    "..cCCCCCCCCCCc..", "..cCCCCCCCCCCc..", "...cCCCCCCCCc...", "....cCCCCCCc....",
+    ".....cCCCCc.....", "......cCCc......", "....c...cC...c..", ".....c..cc..c...",
+    "................", "................", "................", "................",
+]
+
+_SQUID_BEAST_A = [
+    "................", ".....NNNNNN.....", "....NNNNNNNN....", "...NNNiNNiNNN...",
+    "...NNNNNNNNNN...", "...NNNNNNNNNN...", "....NNNNNNNN....", "...N.N.N.N.N....",
+    "..N..N.N.N..N...", "..N..N.N.N..N...", ".N...N.N.N...N..", "................",
+    "................", "................", "................", "................",
+]
+_SQUID_BEAST_B = [
+    "................", ".....NNNNNN.....", "....NNNNNNNN....", "...NNNiNNiNNN...",
+    "...NNNNNNNNNN...", "...NNNNNNNNNN...", "....NNNNNNNN....", "....N.N.N.N.N...",
+    "...N..N.N.N..N..", "...N..N.N.N..N..", "..N...N.N.N...N.", "................",
+    "................", "................", "................", "................",
+]
+
 #: Iris, per facing, two frames each. The core is a photon: her body is the
 #: glow, and the limbs and sword hang off it.
+#:
+#: Head-heavy on purpose: the head is 8 of her 16 rows (it was 6), the body
+#: compressed to fit under it. A user who had seen both the original and a
+#: pack-art replacement asked for a bigger head on the *original* proportions,
+#: not a third design, so the hair/skin/tunic/core/blade palette characters
+#: are the same ones the original used.
 _IRIS_DOWN_A = [
-    "................", ".....aaaaa......", "....aAAAAAa.....", "....asssssa.....",
-    "....asisisa.....", "....assssaa.....", ".....sssss......", "...ttTTTTTtt....",
-    "..sttCCCCCttl...", "..s.TCcccCT.L...", "....TCcccCT.l...", "....TTTTTTyyy...",
-    "....tt...tt.y...", "....tt...tt.....", "....ee...ee.....", "................",
+    ".....aaaaaa.....", "....aAAAAAAa....", "...aAAAAAAAAa...", "...AssssssssA...",
+    "...AssississA...", "...AssssssssA...", "...aAssssssaa...", "....aassssaa....",
+    "...ttTTTTTtt....", "..sttCCCCCtt.l..", "....TCccccCT.L..", "....TCccccCT....",
+    "....TTTTTTyyy...", "....tt...tt.y...", "....ee...ee.....", "................",
 ]
 _IRIS_DOWN_B = [
-    "................", ".....aaaaa......", "....aAAAAAa.....", "....asssssa.....",
-    "....asisisa.....", "....assssaa.....", ".....sssss......", "...ttTTTTTtt....",
-    "..sttCCCCCttl...", "....TCcccCT.L...", "..s.TCcccCT.l...", "....TTTTTTyyy...",
-    ".....tt.tt..y...", "....tt...tt.....", "...ee.....ee....", "................",
+    ".....aaaaaa.....", "....aAAAAAAa....", "...aAAAAAAAAa...", "...AssssssssA...",
+    "...AssississA...", "...AssssssssA...", "...aAssssssaa...", "....aassssaa....",
+    "...ttTTTTTtt.l..", "...ttCCCCCttsL..", "...TCccccCT.....", "...sTCccccCT....",
+    "....TTTTTTyyy...", "....tt.tt.......", ".....ee...ee....", "................",
 ]
 _IRIS_UP_A = [
-    "................", ".....aaaaa......", "....aAAAAAa.....", "....aAAAAAa.....",
-    "....aAAAAAa.....", "....aaaaaaa.....", ".....aaaaa......", "...ttTTTTTtt....",
-    "..sttCCCCCttl...", "..s.TCCCCCT.L...", "....TCCCCCT.l...", "....TTTTTTyyy...",
-    "....tt...tt.y...", "....tt...tt.....", "....ee...ee.....", "................",
+    ".....aaaaaa.....", "....aAAAAAAa....", "...aAAAAAAAAa...", "...AAAAAAAAAA...",
+    "...AAAAAAAAAA...", "...AAAAAAAAAA...", "...aAAAAAAaa....", "....aaaaaaaa....",
+    "...ttTTTTTtt....", "..sttCCCCCtt.l..", "....TCCCCCCT.L..", "....TCCCCCCT....",
+    "....TTTTTTyyy...", "....tt...tt.y...", "....ee...ee.....", "................",
 ]
 _IRIS_UP_B = [
-    "................", ".....aaaaa......", "....aAAAAAa.....", "....aAAAAAa.....",
-    "....aAAAAAa.....", "....aaaaaaa.....", ".....aaaaa......", "...ttTTTTTtt....",
-    "..sttCCCCCttl...", "....TCCCCCT.L...", "..s.TCCCCCT.l...", "....TTTTTTyyy...",
-    ".....tt.tt..y...", "....tt...tt.....", "...ee.....ee....", "................",
+    ".....aaaaaa.....", "....aAAAAAAa....", "...aAAAAAAAAa...", "...AAAAAAAAAA...",
+    "...AAAAAAAAAA...", "...AAAAAAAAAA...", "...aAAAAAAaa....", "....aaaaaaaa....",
+    "...ttTTTTTtt.l..", "...ttCCCCCttsL..", "...TCCCCCCT.....", "...sTCCCCCCT....",
+    "....TTTTTTyyy...", "....tt.tt.......", ".....ee...ee....", "................",
 ]
 _IRIS_RIGHT_A = [
-    "................", ".....aaaaa......", "....aAAAAAa.....", "....asssssa.....",
-    "....assisaa.....", "....asssssa.....", ".....sssss......", "....tTTTTt......",
-    "...tTCCCCTts....", "...tTCcccCTs.l..", "....TCcccCT..L..", "....TTTTTTyyl...",
-    "....tt..tt..y...", "....tt..tt......", "....ee..ee......", "................",
+    ".....aaaaaa.....", "....aAAAAAa.....", "...aAAAAAAAs....", "...AAAAAsssA....",
+    "...AAAssisA.....", "...AAAsssssA....", "...aAAssssaa....", ".....aaassaa....",
+    "....tTTTTt......", "...tTCCCCTts....", "...tTCcccCTs.l..", "....TCcccCT..L..",
+    "....TTTTTTyyl...", "....tt..tt.y....", "....ee..ee......", "................",
 ]
 _IRIS_RIGHT_B = [
-    "................", ".....aaaaa......", "....aAAAAAa.....", "....asssssa.....",
-    "....assisaa.....", "....asssssa.....", ".....sssss......", "....tTTTTt......",
-    "...tTCCCCTts....", "...tTCcccCTs.l..", "....TCcccCT..L..", "....TTTTTTyyl...",
-    ".....tt.tt..y...", "....tt...tt.....", "...ee.....ee....", "................",
+    ".....aaaaaa.....", "....aAAAAAa.....", "...aAAAAAAAs....", "...AAAAAsssA....",
+    "...AAAssisA.....", "...AAAsssssA....", "...aAAssssaa....", ".....aaassaa....",
+    "....tTTTTt......", "...tTCCCCTts....", "...tTCcccCTs.l..", "....TCcccCT..L..",
+    "....TTTTTTyyl...", ".....tt.tt......", "....ee...ee.....", "................",
 ]
 
 #: Lumi the dog: a four-legged companion whose body is the same kind of glow.
@@ -426,6 +433,21 @@ _LUMI_DOWN_B = [
     "................", "................", "..uu.......uu...", ".uUUu.....uUUu..",
     ".uUUUuuuuuUUUu..", "..uUUUUUUUUUu...", "..uUpUUUUUpUu...", "..uUUUUUUUUUu...",
     "...uUUUpUUUu....", "...uUUUUUUUu....", "...uUUUUUUUu....", "..uUu.....uUu...",
+    "..uUu.....uUu...", "..uuu.....uuu...", "................", "................",
+]
+# Walking away: the same silhouette as the down frames with the eyes and nose
+# ('p') lifted -- the back of the head has neither, the same trick Iris's own
+# up-facing frames use on her face band.
+_LUMI_UP_A = [
+    "................", "................", "..uu.......uu...", ".uUUu.....uUUu..",
+    ".uUUUuuuuuUUUu..", "..uUUUUUUUUUu...", "..uUUUUUUUUUu...", "..uUUUUUUUUUu...",
+    "...uUUUUUUUu....", "...uUUUUUUUu....", "...uUUUUUUUu....", "...uUu...uUu....",
+    "...uUu...uUu....", "...uuu...uuu....", "................", "................",
+]
+_LUMI_UP_B = [
+    "................", "................", "..uu.......uu...", ".uUUu.....uUUu..",
+    ".uUUUuuuuuUUUu..", "..uUUUUUUUUUu...", "..uUUUUUUUUUu...", "..uUUUUUUUUUu...",
+    "...uUUUUUUUu....", "...uUUUUUUUu....", "...uUUUUUUUu....", "..uUu.....uUu...",
     "..uUu.....uUu...", "..uuu.....uuu...", "................", "................",
 ]
 
@@ -781,19 +803,18 @@ SPRITES: dict[str, list[str]] = {
     **INDOORS,
     **STRUCTURES,
     **{f"body_{name}": rows for name, rows in CREATURES.items()},
-    "house_wild": _HOUSE_DARK,
-    "house_withered": _HOUSE_DARK,
-    "house_scouted": _HOUSE_LIT,
-    "house_settled": _HOUSE_LIT,
-    **{f"house{index}_dark": rows for index, rows in enumerate(
-        (_HOUSE_TILE_DARK, _HOUSE_SLATE_DARK, _HOUSE_THATCH_DARK, _HOUSE_STONE_DARK))},
-    **{f"house{index}_lit": rows for index, rows in enumerate(
-        (_HOUSE_TILE_LIT, _HOUSE_SLATE_LIT, _HOUSE_THATCH_LIT, _HOUSE_STONE_LIT))},
+    "house_hut": _HOUSE_FALLBACK,
+    "house_barn": _HOUSE_FALLBACK,
+    # Fallback for the shipped "big_tree" (see _HOUSE_FALLBACK) -- the old
+    # one-tile tree, self-contained rather than composited, since _render is
+    # only ever called with a clear colour by the OVER_GROUND branch above.
+    "big_tree": TERRAIN["tree"],
     "shadow": _SHADOW,
     "iris_down_0": _IRIS_DOWN_A, "iris_down_1": _IRIS_DOWN_B,
     "iris_up_0": _IRIS_UP_A, "iris_up_1": _IRIS_UP_B,
     "iris_right_0": _IRIS_RIGHT_A, "iris_right_1": _IRIS_RIGHT_B,
     "lumi_down_0": _LUMI_DOWN_A, "lumi_down_1": _LUMI_DOWN_B,
+    "lumi_up_0": _LUMI_UP_A, "lumi_up_1": _LUMI_UP_B,
     "lumi_right_0": _LUMI_RIGHT_A, "lumi_right_1": _LUMI_RIGHT_B,
     # The dim hound waiting in the grass is drawn through the NPC path, which
     # names sprites by kind: these alias the down-facing frames.
@@ -804,6 +825,10 @@ SPRITES: dict[str, list[str]] = {
     "emissary_0": _EMISSARY_A, "emissary_1": _EMISSARY_B,
     "animal_0": _ANIMAL_A, "animal_1": _ANIMAL_B,
     "beast_0": _BEAST_A, "beast_1": _BEAST_B,
+    "ninja_beast_0": _NINJA_BEAST_A, "ninja_beast_1": _NINJA_BEAST_B,
+    "samurai_beast_0": _SAMURAI_BEAST_A, "samurai_beast_1": _SAMURAI_BEAST_B,
+    "spirit_beast_0": _SPIRIT_BEAST_A, "spirit_beast_1": _SPIRIT_BEAST_B,
+    "squid_beast_0": _SQUID_BEAST_A, "squid_beast_1": _SQUID_BEAST_B,
     # Premises keepers are townsfolk with a counter in front of them; a Warden
     # is the robed-and-staffed figure, tinted gold by the renderer; a wraith is
     # the old beast drawing, which is exactly right -- it is the shape of
@@ -890,39 +915,82 @@ def _over(top: np.ndarray, bottom: np.ndarray) -> np.ndarray:
     return out
 
 
-def build_atlas() -> tuple[np.ndarray, dict[str, tuple[float, float, float, float]]]:
+def build_atlas() -> tuple[
+    np.ndarray, dict[str, tuple[float, float, float, float]],
+    dict[str, tuple[float, float]],
+]:
     """Pack every sprite into one texture and report their uv rectangles.
 
-    Sprites are laid out in a single row. A 1-pixel gap would be needed for a
-    filtered sampler, but the sprite sampler is point-sampling by design, so the
-    tiles can abut exactly and the uv arithmetic stays trivial.
+    Sprites are laid out in a single row, top-aligned, with a 1-pixel margin
+    between them. The sampler point-samples rather than filters, so *in
+    principle* sprites could abut exactly -- but a tile is not drawn at a
+    pixel-exact size at every zoom the game allows (:data:`~.overworld.
+    VIEW_MIN`..:data:`~.overworld.VIEW_MAX`), and at a non-integer world-to-
+    screen scale, the interpolated uv the shader hands the sampler for a
+    quad's last column can round to the *next* sprite's first texel instead
+    of this one's last -- one nearest-sampled fragment reading one column
+    into the neighbour, which shows up as a seam repeating at every tile.
+    :data:`_PAD` gives that rounding somewhere harmless to land: each
+    sprite's own edge pixel is extruded into its margin (and its bottom edge
+    downward, into the unused rows beneath a shorter sprite in a taller
+    atlas), so a stray sample one texel off still reads that sprite's own
+    colour rather than a neighbour's.
+
+    Almost every sprite is ``SIZE x SIZE``, but a :mod:`.bigart` entry is not
+    -- the atlas height is the *tallest* sprite shipped, so a one-tile
+    sprite's own uv rectangle covers only the top ``SIZE`` rows of a texture
+    that may be taller than that.
 
     Returns
     -------
     tuple
-        ``(image, uvs)``. ``image`` is ``(SIZE, SIZE * n, 4)`` uint8; ``uvs``
-        maps a sprite name to ``(u0, v0, u1, v1)``.
+        ``(image, uvs, tiles)``. ``image`` is ``(h, w, 4)`` uint8, ``h`` the
+        tallest sprite's native height. ``uvs`` maps a sprite name to
+        ``(u0, v0, u1, v1)`` -- the *true* sprite region, margin excluded.
+        ``tiles`` maps a sprite name to ``(tiles_wide, tiles_tall)`` --
+        ``(1.0, 1.0)`` for everything drawn at the grid's own size, bigger for
+        a :mod:`.bigart` entry.
     """
-    names = list(SPRITES)
-    atlas = np.zeros((SIZE, SIZE * len(names), 4), dtype=np.uint8)
+    # A name may exist only in the big-art pack (a building has no string-art
+    # fallback), so the atlas covers the union rather than assuming every
+    # drawable name is a key of SPRITES.
+    names = sorted(set(SPRITES) | set(bigart.names()))
+    images = {name: sprite_image(name) for name in names}
+    atlas_h = max(image.shape[0] for image in images.values())
+    total_w = sum(image.shape[1] + 2 * _PAD for image in images.values())
+    atlas = np.zeros((atlas_h, total_w, 4), dtype=np.uint8)
     uvs: dict[str, tuple[float, float, float, float]] = {}
-    width = SIZE * len(names)
-    for index, name in enumerate(names):
-        atlas[:, index * SIZE:(index + 1) * SIZE] = sprite_image(name)
-        uvs[name] = (index * SIZE / width, 0.0, (index + 1) * SIZE / width, 1.0)
-    return atlas, uvs
+    tiles: dict[str, tuple[float, float]] = {}
+    x = _PAD
+    for name in names:
+        image = images[name]
+        h, w = image.shape[:2]
+        atlas[0:h, x:x + w] = image
+        atlas[0:h, x - _PAD:x] = image[:, :1]
+        atlas[0:h, x + w:x + w + _PAD] = image[:, -1:]
+        if h < atlas_h:
+            atlas[h:atlas_h, x:x + w] = image[-1:, :]
+        uvs[name] = (x / total_w, 0.0, (x + w) / total_w, h / atlas_h)
+        tiles[name] = (w / SIZE, h / SIZE)
+        x += w + 2 * _PAD
+    return atlas, uvs, tiles
 
 
 def sprite_image(name: str) -> np.ndarray:
     """The pixels one sprite actually ships as.
 
-    Three sources, in order. **Real tile art wins** where the shipped pack
-    covers a name: the ground was authored here as three tones and a scatter of
-    noise, which is honest and flat. **Props are composited** over that ground,
-    because a tree is one cell of the grid rather than a sprite over a grass
-    cell -- clearing its backdrop would leave a hole, since there is nothing
-    beneath it. **Everything else is the string art**, which is most of the
-    game: every building, character and creature is this project's own.
+    Four sources. A name the **big-art** pack covers (:mod:`.bigart` --
+    buildings, anything drawn taller or wider than one tile) is used at its own
+    native size, because it is drawn as its own oversized quad
+    (:meth:`~.overworld.OverworldGame._building`) standing on ground drawn
+    separately underneath it, not composited into one cell. A name in
+    :data:`OVER_GROUND` **always composites**, because a tree is one cell of
+    the grid rather than a sprite over a grass cell -- clearing its backdrop
+    and stopping there would leave a hole with nothing beneath it, whether the
+    art doing the clearing is shipped pack art or the string art here. Every
+    other name the shipped ground pack covers is **real tile art**, used as-is.
+    **Everything else is the string art**, which is most of the game: every
+    character and creature not yet ported is this project's own.
 
     Parameters
     ----------
@@ -932,16 +1000,30 @@ def sprite_image(name: str) -> np.ndarray:
     Returns
     -------
     numpy.ndarray
-        ``(SIZE, SIZE, 4)`` uint8.
+        ``(h, w, 4)`` uint8 -- ``(SIZE, SIZE, 4)`` for everything except a
+        :mod:`.bigart` entry, which keeps its own native size.
     """
+    big = bigart.tiles().get(name)
+    if big is not None:
+        return big
     shipped = tileart.tiles()
+    backdrop, ground = OVER_GROUND.get(name, (None, None))
+    if ground is not None:
+        # A prop composites over its ground whether the prop's own art is
+        # shipped or hand-drawn -- shipped pack art wins the same way it does
+        # for plain ground, but it is not exempt from needing something
+        # underneath it. Skipping the composite here is exactly how a shipped
+        # prop with real transparency would end up a hole with nothing behind
+        # it: see test_a_prop_stands_in_real_ground_rather_than_a_hole.
+        art = shipped.get(name)
+        if art is None:
+            art = _render(SPRITES[name], backdrop)
+        under = shipped.get(ground)
+        return _over(art, under) if under is not None else art
     art = shipped.get(name)
     if art is not None:
         return art
-    backdrop, ground = OVER_GROUND.get(name, (None, None))
-    art = _render(SPRITES[name], backdrop)
-    under = shipped.get(ground) if ground else None
-    return _over(art, under) if under is not None else art
+    return _render(SPRITES[name])
 
 
 def upload(device, image: np.ndarray):
