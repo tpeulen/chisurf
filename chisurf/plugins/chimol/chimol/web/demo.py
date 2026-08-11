@@ -89,6 +89,58 @@ def sequence_of(payload):
     return codes, numbers
 
 
+def _occlusion_gpu(coords, radii, max_distance: float = 8.0, strength: float = 1.2):
+    """Hemispherical ambient occlusion on the GPU, or ``None``.
+
+    Parameters
+    ----------
+    coords : numpy.ndarray
+        ``(n, 3)`` atom positions.
+    radii : numpy.ndarray
+        ``(n,)`` atom radii.
+    max_distance : float
+        Occluders further than this are ignored.
+    strength : float
+        Scales the accumulated coverage.
+
+    Returns
+    -------
+    numpy.ndarray or None
+        ``(n,)`` occlusion in ``[0, 1)``, or ``None`` when there is no compute
+        device -- the ordinary state on a headless runner.
+
+    Notes
+    -----
+    chimol's own ``occlusion.wgsl``, through
+    :func:`chimol.renderer.compute.occlusion_from_spheres` and the GPU seam, so
+    the browser runs the same compute shader the desktop does against the device
+    the page already resolved.
+
+    The normals are the approximation. Real hemispherical occlusion wants a
+    surface normal per vertex, and a sphere impostor has none -- its normal is
+    computed per *fragment*. Pointing each atom outward from the centroid is
+    right for the surface atoms, which are the ones whose brightness carries the
+    shape; a buried atom's hemisphere is blocked whichever way it faces.
+
+    **The neighbour grid is still built on the CPU** -- see
+    :func:`chimol.renderer.compute.build_grid`, which is numpy. Only the
+    occlusion integral runs on the GPU.
+    """
+    import numpy as np
+
+    from ..renderer.compute import occlusion_from_spheres
+
+    points = np.ascontiguousarray(coords, dtype=np.float64)
+    outward = points - points.mean(axis=0)
+    length = np.linalg.norm(outward, axis=1, keepdims=True)
+    normals = np.divide(outward, np.where(length > 1e-6, length, 1.0))
+    return occlusion_from_spheres(
+        points, normals, points,
+        np.ascontiguousarray(radii, dtype=np.float64).reshape(-1),
+        float(max_distance), float(strength),
+    )
+
+
 def _occlusion(coords, radius: float = 8.0, strength: float = 0.5):
     """Per-atom ambient occlusion from how crowded each atom is.
 
@@ -180,7 +232,13 @@ def build_molecule():
 
     # Ambient occlusion, so the model reads as a solid body rather than a heap
     # of lit balls. Buried atoms darken; exposed ones keep their colour.
-    occlusion = _occlusion(coords)
+    occlusion = _occlusion_gpu(coords, np.full(len(coords), 1.6))
+    if occlusion is None:
+        # No compute device -- headless, or a browser without one. The neighbour
+        # count is the same idea measured more cheaply, so the demo still reads
+        # as a body rather than silently losing its shading.
+        occlusion = _occlusion(coords)
+    occlusion = np.clip(np.asarray(occlusion, dtype=np.float32), 0.0, 0.85)
     colours[:, :3] *= (1.0 - occlusion)[:, None]
 
     radii = payload.atom_radii
