@@ -9,6 +9,28 @@ timestamp: '2026-08-10T00:00:00Z'
 
 # Where to pick this up
 
+**The remaining work is issued as tickets, not as prose here.** Seven on the
+shared board (`okf/agent-board.md`), each carrying its **interface** and its
+**test cases** so it can be picked up without re-deriving anything:
+
+| Ticket | Files | Kernels | State |
+|---|---|---:|---|
+| `T-20260811-14` | `flc_2d/core.py` | 5 | delegation written and exact; land it |
+| `T-20260811-15` | `_hdbscan.py` (part) | 3 | compiled path exists; make it required |
+| `T-20260811-16` | h2mm call sites | 0 | prerequisite for `h2mm.py`'s 8 |
+| `T-20260811-17` | `av/static.py` + part of `av/functions.py` | 9 | PRD-100 g1 |
+| `T-20260811-18` | `av/dynamic.py` + rest of `av/functions.py` | 7 | PRD-100 g2, decision first |
+| `T-20260811-19` | `potentials.py`, `protein.py` | 7 | PRD-100 g3, **no IMP target** |
+| `T-20260811-20` | `_kmeans`, `kalman`, `segmentation`, `dcd`, `_hdbscan` rest | 15 | blocked on tttrlib PRD-037 B |
+
+Two things the tickets encode that this file used to bury:
+
+- **Every route tag is a hypothesis.** Six were wrong and were corrected by
+  *importing* rather than reading. The tickets state what was checked and when.
+- **A parity fixture recorded from the code being replaced cannot tell a
+  faithful port from a shared mistake.** Every ticket that deletes a kernel also
+  names a property or simulation test with an independent answer.
+
 **Everything this needs from the photon library is one document**:
 tttrlib `okf/prds/PRD-037-kernels-to-finish-chisurfs-numba-retirement.md`
 (2026-08-11, written at the user's request because the per-file round trips were

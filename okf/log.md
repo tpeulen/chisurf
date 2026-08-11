@@ -1,6 +1,9 @@
 # Update Log
 
 ## 2026-08-11
+* **Remaining numba work issued as 7 board tickets** (`T-20260811-14`…`-20`),
+  each with defined interfaces and named test cases rather than prose. Covers all
+  12 remaining files; `-20` is blocked on tttrlib PRD-037 Part B.
 * **Jumping, and a proper survey of ZQuest Classic**
   ([PRD-91](prds/prd-91.md)). The first pass through that engine read two files
   and came back with one idea, which was not a survey -- 503,550 lines across
