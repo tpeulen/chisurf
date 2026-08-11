@@ -1095,3 +1095,69 @@ def test_a_town_is_big_enough_to_be_a_town(game):
                 else:
                     open_ += 1
     assert open_ / max(open_ + solid, 1) > 0.85, "too much of a compound is furniture"
+
+
+def test_a_jump_goes_up_and_comes_back_down(game):
+    """Height and fall velocity, on the model a top-down engine uses."""
+    from chisurf.plugins.misc.games.lumis_quest.gui.overworld import HOP_HEIGHT
+
+    assert game.z == 0.0 and not game.jumping
+    game.host.keys.tap(Action.CONFIRM)
+    game.update(1 / 60, game.host.keys)
+    game.host.keys.end_frame()
+    assert game.jumping and game.z > 0.0
+    assert game.fall < 0.0, "rising means a negative fall velocity"
+
+    peak = game.z
+    for _ in range(120):
+        game.update(1 / 60, game.host.keys)
+        peak = max(peak, game.z)
+        if not game.jumping:
+            break
+    assert peak > HOP_HEIGHT, peak
+    assert not game.jumping, "she has to come down"
+    assert game.z == 0.0 and game.fall == 0.0
+
+
+def test_letting_go_early_makes_a_shorter_jump(game):
+    """A jump with one height is a jump with no decision in it."""
+    def peak_of(hold_frames: int) -> float:
+        game.z = game.fall = 0.0
+        game.jumping = False
+        game.host.keys.press(Action.CONFIRM)
+        game.update(1 / 60, game.host.keys)
+        game.host.keys.end_frame()
+        high = game.z
+        for frame in range(120):
+            if frame == hold_frames:
+                game.host.keys.release(Action.CONFIRM)
+            game.update(1 / 60, game.host.keys)
+            high = max(high, game.z)
+            if not game.jumping:
+                break
+        game.host.keys.release(Action.CONFIRM)
+        game.host.keys.end_frame()
+        return high
+
+    tapped = peak_of(1)
+    held = peak_of(60)
+    assert held > tapped * 1.2, (tapped, held)
+
+
+def test_a_jump_clears_the_low_things_and_not_the_walls(game):
+    """You hop a fence. You do not hop a house."""
+    from chisurf.plugins.misc.games.lumis_quest.gui.overworld import HOPPABLE
+
+    assert tiles.FENCE in HOPPABLE and tiles.WATER in HOPPABLE
+    assert tiles.WALL not in HOPPABLE, "a wall is the shape of the place"
+    assert tiles.BUILDING not in HOPPABLE
+    assert tiles.CLIFF not in HOPPABLE
+
+    # Airborne, a hoppable tile stops blocking; a wall never does.
+    game.z, game.jumping = 0.0, False
+    grounded_water = game._solid_at_tile(tiles.WATER)
+    game.z, game.jumping = 20.0, True
+    assert game.hopping
+    assert grounded_water and not game._solid_at_tile(tiles.WATER)
+    assert game._solid_at_tile(tiles.WALL), "walls stay solid in the air"
+    game.z, game.jumping = 0.0, False

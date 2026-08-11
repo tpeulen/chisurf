@@ -103,24 +103,48 @@ trodden-earth floors and the roads kept their warmth and sat in the ash looking
 like a different game. The roads stay visible on purpose -- "your own road,
 under your feet, going the same way it always did" is in the lore.
 
-**Mined from ZQuest Classic (2026-08-11).** The checkout is
-`junk/ZQuestClassic` and the two files read carry `CHISURF-REVIEWED` headers.
-What was taken is **per-quadrant solidity**: its `newcombo.walk` byte holds one
-solid/not bit per *quarter* of a tile, indexed
-`b = (x & 8 ? 2 : 0) + (y & 8 ? 1 : 0)`, with the high nibble the same four bits
-for a second effect layer (which is how a bridge sits over water). Whole-tile
-blocking is coarse for what a town is full of -- a lantern is a post, a fence is
-a rail, a counter is a plank -- and blocking all eighteen units for each of them
-is most of what "getting stuck on objects" was. `tiles.SOLIDITY` is that idea,
-ported rather than copied.
+**Mined from ZQuest Classic (2026-08-11).** 503,550 lines across 835 files;
+`hero.cpp` alone is 33,462. The first pass through it read two files and came
+back with one idea, which was not a survey. This is the survey. Checkout at
+`junk/ZQuestClassic`; the four files read carry `CHISURF-REVIEWED` headers with
+the per-file detail.
 
-What was **skipped, deliberately**: the combo *type* system (`cWATER`,
-`cBRIDGE`, `dive_under_level` and ~200 others), which encodes behaviour in the
-tile id and is why one byte grows into the branching at `maps.cpp:2380-2480`;
-Lumis Quest keeps behaviour in `data/dialogue.json` against a tile and stays
-flat. Also skipped: the region/`rpos` coordinate system, which exists to stitch
-screens into scrolling regions -- our screens are a camera mode over one
-continuous grid and need none of it.
+**Taken:**
+
+1. **Per-quadrant solidity** (`core/combo.h`, the `walk` byte) -> `tiles.SOLIDITY`.
+2. **The top-down z axis** (`zc/hero.cpp` ~8716) -> `overworld._airborne`.
+   Height and *fall velocity* are the state; gravity accumulates into the
+   velocity, the velocity comes off the height, landing is height reaching
+   zero. Jumping is not a special case of walking, which is why it composes
+   with everything else.
+3. **Variable jump height** (`hero.cpp` ~8385, their `jump_loss`) -> `JUMP_CUT`.
+   Release the button while rising and the jump is clamped short, so its
+   height is a decision rather than a constant.
+
+**Found and not taken -- this is the worklist, in the order it is worth doing:**
+
+4. **`enemy::newdir(rate, homing, special)`** (`zc/guys.cpp` ~5811) is the best
+   unmined thing in the repository. Three rules in priority order: divert to
+   bait if hungry; else with probability `homing/256` turn toward the player
+   **but only when `lined_up(8)` says you share a row or column** -- so enemies
+   never beeline, they snap onto your axis and charge, which is the entire feel
+   of a Zelda enemy; else a weighted random turn. And **`homing < 0` means
+   flee**, one parameter serving both drawn-to and afraid-of. Lumis Quest's
+   marked animals are *victims*, so most of them should carry negative homing,
+   and the bait rule is how you lure one instead of fighting it.
+5. **`fakez`**: a second height that is *visual only* and never touches
+   collision, tracked in parallel with the real one. A cosmetic hop, a thrown
+   item's arc, an NPC's bob -- all free.
+6. **`hoverclk`**: hover frames as a timer that suspends the fall.
+
+**Skipped deliberately, with reasons**, so nobody re-derives them: the combo
+*type* system (`cWATER`, `cBRIDGE`, `dive_under_level` and ~200 more), which
+encodes behaviour in the tile id and is why one byte grows into forty lines of
+branching at `maps.cpp:2380-2480` -- Lumis Quest keeps behaviour in
+`data/dialogue.json` against a tile and stays flat; the region/`rpos`
+coordinate system, which exists to stitch screens into scrolling regions when
+ours are a camera mode over one continuous grid; and `sideview_mode`, an entire
+second gravity model for platformer rooms.
 
 **Where to pick this up next**
 2. **A Warden fight is winnable by the strategy it exists to forbid.** Each

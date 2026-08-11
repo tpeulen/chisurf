@@ -1,24 +1,23 @@
 # Update Log
 
 ## 2026-08-11
-* **`gopich_szabo.py` scrubbed** (allow-list 13 → 12): both kernels delegate to
-  `GopichSzabo`, whose `set_scheme` defect — the only reason the numba copy was
-  kept — was fixed upstream without ChiSurf hearing. Verified on the degenerate
-  schemes; `-inf` for a defective generator stays in ChiSurf, and `offsets` is
-  correctness (the leak persists to 2000 relaxation times).
-* **ChiSurf is GPL-3.0-or-later, and per-quadrant solidity is ported from
-  ZQuest Classic** ([PRD-91](prds/prd-91.md)). The relicence
-  (`99618f6b7`) fixes a defect the project's own `license_tracker.py` had been
-  printing into `doc/licenses.md`: ChiSurf binds PyQt5/sip at **GPL v3** while
-  declaring GPL-2.0-only, which cannot combine. `or-later`, so it cannot recur.
-  Sole copyright holder throughout, so no consent to gather. With that settled,
-  ZQuest Classic (GPLv3) can be consulted: `junk/ZQuestClassic`, annotated per
-  the reference-checkout rule. The gold is its `newcombo.walk` byte -- one
-  solid/not bit per **quarter** of a tile rather than per tile. A lantern is a
-  post and a fence is a rail; blocking all eighteen units for each was most of
-  what "stuck on objects" was. `tiles.SOLIDITY` is the idea ported, not the
-  code. Skipped and written down: the combo *type* system (behaviour in the
-  tile id) and the region/rpos coordinate system (we need neither).
+* **Jumping, and a proper survey of ZQuest Classic**
+  ([PRD-91](prds/prd-91.md)). The first pass through that engine read two files
+  and came back with one idea, which was not a survey -- 503,550 lines across
+  835 files, `hero.cpp` alone 33,462. Second pass, recorded properly. **Taken:**
+  the top-down z axis (`hero.cpp` ~8716 -- height and *fall velocity* are the
+  state, gravity accumulates into the velocity, the velocity comes off the
+  height, landing is height reaching zero) and **variable jump height** (their
+  `jump_loss`: release while rising and the jump clamps short, so its height is
+  a decision). Lumis Quest has jumping now, on a tap of the key that sprints
+  when held, clearing water, marsh and fences but never walls or buildings, with
+  the shadow staying on the ground and shrinking -- nothing else reads as height
+  in a top-down view. **Found and left as a worklist**, with the reasons in the
+  PRD: `enemy::newdir` (bait, then homing *only when axis-aligned*, then random
+  -- and negative homing means flee, which is exactly right for animals that are
+  victims), `fakez` (a second, collision-free height), `hoverclk`. **Skipped
+  with reasons**: the combo type system, the region/rpos coordinates,
+  `sideview_mode`.
 * **Lumis Quest moves to a screen-based camera, and its rooms are ASCII maps**
   ([PRD-91](prds/prd-91.md)). Following the ZQuest Classic reference: the world
   is now viewed as a grid of fixed **screens** that flip when you cross an edge

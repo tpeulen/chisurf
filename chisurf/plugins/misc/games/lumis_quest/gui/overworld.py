@@ -70,6 +70,25 @@ BODY = 6.0
 #: How far a blocked move is nudged sideways to slip past a corner.
 CORNER_SLIP = 3.0
 
+#: Jumping, on the model Zelda Classic uses for its top-down z axis (see
+#: ``junk/ZQuestClassic/src/zc/hero.cpp``): height and *fall velocity* are the
+#: state, gravity is added to the velocity each frame and the velocity is taken
+#: off the height, and landing is the moment height reaches zero.
+GRAVITY = 900.0
+JUMP_SPEED = 235.0
+
+#: Releasing the button while still rising cuts the jump short, which is what
+#: gives a jump a *height you choose* rather than one fixed arc. Their
+#: ``jump_loss``.
+JUMP_CUT = 620.0
+
+#: How high off the ground counts as clear of the things you can hop.
+HOP_HEIGHT = 5.0
+
+#: What a jump carries you over. Not walls and not buildings -- those are the
+#: shape of the place -- but the low things that would otherwise be a detour.
+HOPPABLE = frozenset({T.WATER, T.MARSH, T.FENCE, T.TAR})
+
 #: View heights: walking, and the range the shoulders zoom over.
 VIEW_HEIGHT = 330.0
 VIEW_MIN = 240.0
@@ -587,6 +606,10 @@ class OverworldGame(chigame.Game):
         self.facing = "down"
         self.walking = False
         self._walk_clock = 0.0
+        #: Height above the ground, and the velocity taking her back to it.
+        self.z = 0.0
+        self.fall = 0.0
+        self.jumping = False
 
         # The team's photon budgets persist between fights: a single encounter
         # is winnable three-on-one, so the danger is attrition across a run.
@@ -899,6 +922,18 @@ class OverworldGame(chigame.Game):
                 self._play_scene(door)
             else:
                 self._try_encounter()
+
+        # A tap jumps, a hold sprints. Nine actions is the whole controller and
+        # they were all spoken for, so the jump shares the key rather than
+        # asking the player to learn a tenth.
+        if keys.just_pressed(Action.CONFIRM) and not self.jumping and self.z <= 0.0:
+            self.jumping = True
+            self.fall = -JUMP_SPEED
+            self._sound("jump", 520.0)
+        if self.jumping and self.fall < 0.0 and not keys.is_held(Action.CONFIRM):
+            # Let go early and she does not go as high.
+            self.fall = min(0.0, self.fall + JUMP_CUT * dt)
+        self._airborne(dt)
 
         dx, dy = keys.axis()
         self.walking = bool(dx or dy)
@@ -1951,6 +1986,39 @@ class OverworldGame(chigame.Game):
         options.append(("Withdraw", fight.flee))
         return options
 
+    def _airborne(self, dt: float) -> None:
+        """Advance the jump, and land when the ground comes back.
+
+        Parameters
+        ----------
+        dt : float
+            Seconds elapsed.
+        """
+        if not self.jumping and self.z <= 0.0:
+            return
+        self.fall += GRAVITY * dt
+        self.z -= self.fall * dt
+        if self.z <= 0.0:
+            self.z = 0.0
+            self.fall = 0.0
+            self.jumping = False
+            self._sound("step", 300.0)
+            # Landing on something solid is the one way a jump could leave her
+            # inside geometry, so the ground is checked the moment she reaches
+            # it rather than on the next frame.
+            self._unstick()
+
+    @property
+    def hopping(self) -> bool:
+        """Whether she is high enough to clear the low obstacles.
+
+        Returns
+        -------
+        bool
+            True in the middle of a jump.
+        """
+        return self.z > HOP_HEIGHT
+
     def _walk(self, dx: float, dy: float) -> None:
         """Move Iris, sliding along anything solid and slipping past corners.
 
@@ -2047,9 +2115,31 @@ class OverworldGame(chigame.Game):
                 point_x, point_y = x + offset_x, y + offset_y
                 tile = self.world.tile_at(int(point_x // T.TILE),
                                           int(point_y // T.TILE), self.dark)
+                if self.hopping and tile in HOPPABLE:
+                    continue
                 if T.solidity(tile) & T.quadrant(point_x, point_y):
                     return True
         return False
+
+    def _solid_at_tile(self, tile: int) -> bool:
+        """Whether a tile of this kind would stop her right now.
+
+        Exists so the jump's hop rule can be asserted without needing a world
+        that happens to have a fence in the right place.
+
+        Parameters
+        ----------
+        tile : int
+            A tile kind.
+
+        Returns
+        -------
+        bool
+            True when it blocks, given her current height.
+        """
+        if self.hopping and tile in HOPPABLE:
+            return False
+        return bool(T.solidity(tile) & T.TOP_LEFT)
 
     def _unstick(self) -> bool:
         """Get Iris out of anything she has ended up inside.
@@ -2270,10 +2360,15 @@ class OverworldGame(chigame.Game):
                        emission_nm=LUMI.wavelength_nm)
             self._sprite(scene, f"lumi_{self._facing_for('lumi')}_{frame}",
                          self.lumi, T.TILE)
-        self._sprite(scene, "shadow", (self.iris[0], self.iris[1] + 3.0), T.TILE * 1.15)
+        # The shadow stays on the ground and shrinks; the body rises off it.
+        # Nothing else reads as height in a top-down view -- without the
+        # shadow staying put, a jump is indistinguishable from walking north.
+        shade = 1.15 - min(self.z / 40.0, 0.45)
+        self._sprite(scene, "shadow", (self.iris[0], self.iris[1] + 3.0),
+                     T.TILE * shade)
         scene.draw("photon", "halo", at=tuple(self.iris), size=(T.TILE * 0.9, T.TILE * 0.9),
                    emission_nm=IRIS.wavelength_nm)
-        self._sprite(scene, f"iris_{self._sheet_facing()}_{frame}", self.iris,
+        self._sprite(scene, f"iris_{self._sheet_facing()}_{frame}", self._drawn_at,
                      T.TILE * 1.15, mirror=self.facing == "left")
 
         if self.battle is not None:
@@ -2282,6 +2377,17 @@ class OverworldGame(chigame.Game):
             self._draw_menu(scene, camera, half)
         else:
             self._draw_hud(scene, camera, half)
+
+    @property
+    def _drawn_at(self) -> tuple[float, float]:
+        """Where Iris' body is drawn, which is not where she stands.
+
+        Returns
+        -------
+        tuple of float
+            Her position lifted by her height off the ground.
+        """
+        return (self.iris[0], self.iris[1] - self.z)
 
     def _sheet_facing(self) -> str:
         """Which drawn facing to use for Iris.
