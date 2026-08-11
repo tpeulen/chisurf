@@ -1,35 +1,55 @@
-## The flc_2d plugin suite segfaults intermittently (SIGSEGV/SIGBUS, ~2 runs in 3)
+## flc_2d cannot delegate to tttrlib yet: importing it segfaults the widget tests
 
-**Found 2026-08-11.** `pytest chisurf/plugins/fcs/flc_2d/test/` together with
-`test/fluorescence/test_gopich_szabo.py` and `test/test_numba_seam.py` exits
-**139, 138, 0** on three consecutive runs of an unchanged tree. Every file
-passes on its own, and smaller combinations pass; it needs the whole set in one
-process, which is the signature of heap corruption surfacing at interpreter
-teardown rather than at the call that caused it.
+**Found 2026-08-11.** A delegation of `plugins/fcs/flc_2d/core.py` to
+`fdc_scan_axis` / `fdc_scan_two_axes` is **numerically exact** — all 13 recorded
+fixture cases reproduce bit-for-bit — and still cannot land, because merely
+bringing `tttrlib` into that plugin's process segfaults its Qt widget tests.
 
-The process loads Qt, IMP, numba, scipy and tttrlib together (121 extension
-modules in the fatal dump), so the interaction is not obviously any one of them.
+Measured on `pytest chisurf/plugins/fcs/flc_2d/test/`, 8 runs each arm:
 
-**How this entry was nearly written wrong**, which is the useful part. It first
-claimed a delegation of `flc_2d/core.py` to `fdc_scan_axis` caused the crash,
-on an A/B of **4 crashes with the change against 3 clean runs without it**. That
-looked decisive and was not: the same tree at HEAD then produced 139, 138, 0.
-Four-versus-three is not a measurement of a process that fails about two times
-in three — it is two draws from the same distribution. The delegation was
-reverted on that evidence and did not deserve to be.
+| `core.py` | crashes |
+|---|---:|
+| HEAD (numba, no tttrlib import) | **0 / 8** |
+| delegated, `import tttrlib` *inside* the functions | **3 / 8** |
+| delegated, `import tttrlib` at module level | **8 / 8** |
 
-**Consequence for anyone testing here: a pass or a fail from one run of this
-directory means nothing.** Repeat it, and if you are attributing a crash to a
-change, repeat both arms enough to separate ~0.67 from ~1.0 — which is more
-runs than feels necessary.
+The ladder is the finding: the more certainly `tttrlib` is loaded before the Qt
+widgets are built, the more certainly the process dies. With
+`test_widgets.py` excluded, the delegated version is **5 / 5 clean**, so nothing
+is wrong with the numbers or the kernels.
 
-**Still to find:** which pair of libraries corrupts the heap. Worth trying
-`PYTHONMALLOC=malloc` under a sanitiser build, and bisecting the module set
-rather than the test set.
+The fault is `SIGSEGV` inside **pytest-qt's `_process_events`**, after the test's
+assertions have passed — i.e. at Qt event processing, not in any computation.
 
-**Not blocking the delegation.** That work is verified exact against all 13
-recorded fixture cases and is kept at `scratchpad/core_delegated.py`; it should
-land once someone can tell a real regression from this noise.
+**The likely culprit is the environment, not either library.** The process
+carries 121 extension modules including PyQt5 *and* IMP, and IMP is loaded from
+`/Users/tpeulen/dev/imp/cmake-build-arm64/lib` (via `imp-local-build.pth`) — a
+local build made against the **`arm64-imp`** environment while the tests run in
+`arm64`. One crash trace showed `pytestqt` itself resolving from
+`arm64-imp/lib/python3.12/site-packages`. Two Python/Qt stacks in one process is
+a known way to get exactly this. A minimal `import tttrlib` → `QApplication` →
+import the plugin does **not** crash (3/3), so it needs the full session.
+
+**What to try next**, in order: rebuild IMP against `arm64` so a single stack is
+loaded; then re-run the ladder above — if the delegated arm reaches 0/8, land the
+delegation unchanged.
+
+**The delegation is kept** at `scratchpad/core_delegated.py`. It is finished
+work, not a sketch.
+
+### On how this entry got written three times
+
+It was first filed blaming the delegation (4 crashes vs 3 clean runs), then
+**withdrawn** as pre-existing noise when the same tree at HEAD gave 139/138/0,
+then re-established with 8-run arms showing 0/8 against 3/8. The withdrawal was
+the wrong call and the first instinct was right.
+
+The lesson is not "trust the first instinct" — it is that **a three-run and a
+four-run arm cannot separate a 0% failure rate from a 40% one**, and both of the
+first two conclusions were drawn from arms that small. The 139/138/0 that
+triggered the withdrawal was a *different command* (it included two other test
+files), so it was never evidence about this one. Match the arms before comparing
+them.
 
 ## WITHDRAWN — 2D-FLC's linear matrix does not "silently drop" its highest bin
 
