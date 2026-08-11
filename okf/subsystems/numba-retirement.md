@@ -531,6 +531,39 @@ filed bug when the compiled engine refuses a scheme. Silence is what turns a
 temporary path into an architectural one, and the warning disappears by itself
 once the library is fixed.
 
+## The HMM fixture is anchored to hmmlearn, not only to ourselves
+
+**USER RULE (2026-08-11): use hmmlearn as the reference.** A fixture recorded
+from our own numba kernels only proves a port matches *us* — and the first
+version of this one encoded a live bug (below). `core/math/hmm.py` replaced
+hmmlearn, so hmmlearn is the independent oracle for exactly these recursions.
+
+Measured over all ten fixture cases
+(`build_tools/dev_utils/hmm_lattice_fixture.py`, run by hand):
+
+- **forward and backward lattices are bit-identical** — `0.0` difference, not
+  "within tolerance". Same recursion, same order.
+- log-likelihoods agree on every case, including the two that are `-inf`.
+- posteriors ≤ `3.1e-14`, `xi_sum` ≤ `6.8e-13` — accumulation-order noise only:
+  we fuse the backward sweep with the posterior and transition-count
+  accumulation where hmmlearn makes three passes.
+- Viterbi paths are identical **wherever a path exists**. They diverge only in
+  the two cases where the sequence is impossible, and there every candidate
+  scores `-inf`, so the arg-max is arbitrary — both implementations report the
+  meaningful part (`-inf`) and differ only on which labels to emit. A port
+  should assert the log-probability there and **not** the path.
+
+hmmlearn stays a **developer** tool: it is not in the manifests, nothing
+shipped imports it, and it is deliberately not an `importorskip` in the suite —
+that becomes a skip on any machine without it, and a skip reads like a pass.
+The committed artifact is the `.npz`; the script regenerates and re-checks it.
+
+Two hmmlearn API traps, both of which return confident nonsense rather than
+raising, and both of which cost a run: `_hmmc.forward_log`/`backward_log`/
+`viterbi` take `startprob` and `transmat` as **plain probabilities** (only the
+frame probabilities are logged), so passing logs makes every log-likelihood
+`nan`; and `_hmmc.viterbi` returns `(logprob, states)`, not the reverse.
+
 ## Bugs the ports have found
 
 * **An impossible sequence turned the whole HMM transition matrix into `nan`**,

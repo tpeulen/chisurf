@@ -57,6 +57,11 @@
 * **`plugins/core/acq/gui/tool.py` off the numba list** by deleting its
   SPC-130 decoder copy for `tttrlib.decode_records`; allow-list 19 → 18.
   Traps and verification in [numba retirement](subsystems/numba-retirement.md) §3.
+* **HMM lattice validated against hmmlearn** (user rule: use it as the
+  reference). Forward and backward lattices are **bit-identical**; posteriors
+  and xi differ only by accumulation order; Viterbi matches wherever a path
+  exists. hmmlearn stays a dev tool, never a test dependency —
+  `build_tools/dev_utils/hmm_lattice_fixture.py` regenerates and re-checks.
 * **HMM: an impossible sequence turned the shared xi accumulator into `nan`**,
   poisoning the transition matrix for every later EM iteration; the clean
   posteriors hid it. Found while recording the PRD-035 parity fixture, fixed,
