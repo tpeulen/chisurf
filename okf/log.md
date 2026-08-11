@@ -1,6 +1,46 @@
 # Update Log
 
 ## 2026-08-11
+* **PRD-98 requirements 1, 2, 4 and 5 landed — the acquisition plugin is a
+  push-based stream.** Everything between the card and the screen now lives in
+  one Qt-free `chisurf/plugins/core/acq/pipeline.py`: a `PhotonDecoder` carrying
+  its decode state (the hand-rolled numpy bit-field decoder PicoQuant fell
+  through to is deleted, with a guard test against `np.right_shift` returning),
+  a `StreamingDecayHistogram`, one `StreamingCorrelator` per configured channel
+  pair, a rolling `StreamingIntensityTrace` for the MCS, and bounded deques for
+  the count-rate and inter-photon displays. The manager's duplicate
+  decode→accumulate→histogram→correlate loop and its three growing photon arrays
+  are gone; `snapshot()` is display state sized by configuration, not by run
+  length. Equality with the batch analysis is asserted in ChiSurf's own tests on
+  a simulated stream (decay == `bincount`; correlator == batch Wahl per cascade,
+  auto/cross/overlapping pairs; MCS == `compute_intensity_trace`, window ==
+  its tail), as is the property the design exists for: per-chunk cost at the end
+  of a run does not exceed the start. `_save_data()`'s `pass` now *reports* what
+  was and was not saved; the `.pto` sink is a declared `PhotonSink` seam blocked
+  on tttrlib PRD-034.
+  **Two tttrlib pieces this needed, both landed there:** a new
+  `StreamingIntensityTrace` (the streaming family had no MCS, and PRD-98 says
+  not to hand-roll one in the plugin), and **numpy typemaps for the streaming
+  `push_photons`** — `push_np` was a *Python loop* over `push_photon` at
+  **1.13 µs/photon**, 30× a numpy histogram of the same photons; a chunk is now
+  one call (decay and MCS 0.007 µs/photon, correlator 0.27). Found on the way:
+  `modules/streaming/include/Streaming.i` had a **divergent second copy** at
+  `ext/python/Streaming.i` which was the one SWIG compiled, so edits to the
+  module's own interface did nothing at all — merged and the shadow deleted.
+  **Screenshot-verified**, and it found two defects no assertion did: the
+  simulator encoded its TAC without B&H reverse start-stop, so the live decay
+  was time-mirrored while every number about it was right; and the decay window
+  mapped routing channels through a hard-coded `{8: 0, 9: 1, 10: 2}` table
+  instead of the dock's channel spinboxes. Both fixed, as are the decay axis
+  (`np.linspace(0, 100, n)` — "Assuming 100 ns time range" — now the device's
+  TAC resolution, or TAC channels when it cannot say), `standalone.py`'s
+  `from .main import` (that module has not existed since the gui/ split), and a
+  transposed rate matrix (the shared editor stores `K[target, source]`, the
+  simulator wants row-major i→j). `acq` is off the pyqtgraph allow-list — the
+  five windows are chiplot, with a new `Plot.set_compact()` replacing the
+  `getPlotItem()` chrome-tuning the count-rate strip reached past the seam for.
+  Docs: [Streaming analysis](/docs/concepts/live_streaming_analysis.md) and
+  [Live acquisition](/docs/guides/65_live_acquisition.md), with real screenshots.
 * **PRD-97 stages 0-3 landed — FRET docking, the AV backend and the one
   fps.json reader are imp.bff's.** `IMP.bff.fret` now holds `imp_engine`,
   `av` (no LabelLib — user rule; IMP.bff is the only backend), `distance`

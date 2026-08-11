@@ -1114,6 +1114,40 @@ class _PgCanvas(base.Canvas):
         """Show or hide one axis."""
         self._pi.showAxis(side, bool(visible))
 
+    def set_compact(self, compact: bool = True, *, font_size: int = 8) -> None:
+        """Shrink margins, ticks and tick font so a strip panel is mostly data."""
+        from qtpy.QtGui import QFont
+
+        margin = 0 if compact else 11
+        self._pi.setContentsMargins(margin, margin, margin, margin)
+        layout = getattr(self._pi, "layout", None)
+        if layout is not None:
+            layout.setContentsMargins(margin, margin, margin, margin)
+            layout.setSpacing(0 if compact else 1)
+        if compact:
+            self._pi.hideButtons()
+        else:
+            self._pi.showButtons()
+
+        font = QFont()
+        font.setPointSize(font_size)
+        for side in ("left", "bottom", "right", "top"):
+            axis = self._pi.getAxis(side)
+            if axis is None:
+                continue
+            if compact:
+                axis.setStyle(
+                    tickLength=0, autoExpandTextSpace=False, tickTextOffset=0
+                )
+                axis.setTickFont(font)
+            else:
+                axis.setStyle(tickLength=-5, autoExpandTextSpace=True, tickTextOffset=2)
+                axis.setTickFont(None)
+
+        view_box = self._pi.getViewBox()
+        if hasattr(view_box, "setDefaultPadding"):
+            view_box.setDefaultPadding(0.0 if compact else 0.02)
+
     def link_x(self, other) -> None:
         """Link this panel's x-axis to ``other``'s (shared pan/zoom)."""
         self._pi.getViewBox().setXLink(other._pi.getViewBox())

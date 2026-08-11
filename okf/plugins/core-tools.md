@@ -83,7 +83,7 @@ Two open fronts: the **PTO inspector**'s operation index, and **Global View**
 | `core/database_connector` | Core:Database Connector | Source/user DB resolution, migration, backup/reset, FLR CIF import/export. |
 | `core/project_browser` | Tools:Open Project | Browse, save, restore, export/import projects via MMFDB with version control. |
 | `core/updater` | Setup:Updates & Packages | Update checker/installer and conda package manager (panels inside Settings). |
-| `core/acq` | Main:Tools:Acquisition | Single-molecule acquisition from TCSPC hardware or the built-in tttrlib photon simulator. |
+| `core/acq` | Main:Tools:Acquisition | Single-molecule acquisition from TCSPC hardware or the built-in tttrlib photon simulator — push-based, see [below](#acquisition-is-a-stream). |
 | `core/batch_analysis` | Main:Tools:Batch-Analysis | Apply one template fit to many datasets/files and export consolidated results. |
 | `core/globalview` | Main:Tools:Global View | Interactive network graph of parameter relationships across fits — see [below](#global-view-the-parameter-network). |
 | `core/help` | Help:Documentation | Documentation browser and editor (Markdown + the reStructuredText user manual), with human-review sign-off tracking. |
@@ -101,6 +101,42 @@ see [MMFDB](/architecture/mmfdb.md) and [PRD-02b](/prds/prd-02b.md). Acquisition
 [PRD-32](/prds/prd-32.md)/[PRD-33](/prds/prd-33.md). Because this plumbing is itself
 plugins, it exercises the same discovery/lifecycle rules the [Plugins target](/specs/plugins.md)
 demands of feature code.
+
+## Acquisition is a stream
+
+`core/acq` drives every device through one seam — `read_fifo(max_words)` returns
+raw `uint32` records — and everything that happens to a photon after that lives
+in **one Qt-free object**, `acq/pipeline.py`:
+
+```
+device words → PhotonDecoder → [ PhotonSink, live consumers ] → snapshot()
+```
+
+Three properties are the point, and each replaced something that looked like it
+worked:
+
+- **One decoder.** `PhotonDecoder` wraps the photon library's `decode_records`
+  with a carried decode state, and the device says which record format it emits
+  (`record_type_for_device`, a device attribute or the device-type table). An
+  unknown device raises rather than defaulting to B&H. There was a second,
+  hand-rolled numpy bit-field decoder that PicoQuant fell through to; a guard
+  test fails on any `np.right_shift` returning to the plugin.
+- **Nothing downstream keeps the photons.** The decay is a
+  `StreamingDecayHistogram`, each correlation curve a `StreamingCorrelator`, the
+  MCS a `StreamingIntensityTrace` with a rolling window, and the count-rate and
+  inter-photon buffers are bounded deques. `snapshot()` — the only thing that
+  crosses to the GUI thread — is display state sized by the configuration, not
+  by run length. What this replaced concatenated three growing arrays per chunk
+  and re-ran the *batch* correlator over the full history every five chunks.
+- **A chunk crosses into C++ once.** The consumers' `push_np` takes a whole
+  chunk. Pushing photon by photon costs 1.13 µs each, which does not fail — it
+  simply stops keeping up with a card.
+
+The theory is in [Streaming analysis](/docs/concepts/live_streaming_analysis.md)
+and the workflow in [Live acquisition](/docs/guides/65_live_acquisition.md).
+`PhotonSink` is the seam for writing the stream to a `.pto` *during* the
+measurement; it is a `NullSink` today and tracked in [PRD-98](/prds/prd-98.md)
+against the container work.
 
 ## Documentation review gating
 

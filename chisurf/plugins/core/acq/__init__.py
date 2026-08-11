@@ -65,9 +65,9 @@ try:
         QLCDNumber,
     )
     from qtpy.QtCore import QTimer, QThread, Qt, Signal
-    import pyqtgraph as pg
+    from chisurf.gui import chiplot
     GUI_AVAILABLE = True
-except Exception:  # Qt stack / pyqtgraph not available – CLI-only use is still allowed
+except Exception:  # Qt stack not available – CLI-only use is still allowed
     GUI_AVAILABLE = False
 
 

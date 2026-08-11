@@ -323,6 +323,16 @@ class Canvas(abc.ABC):
         Default no-op; backends with axis chrome override it.
         """
 
+    def set_compact(self, compact: bool = True, *, font_size: int = 8) -> None:
+        """Shrink the panel's chrome so a small panel is mostly data.
+
+        Margins, tick length, tick-label spacing, the view's default padding
+        and the tick font all shrink together — they are one intent ("this
+        panel is a strip, not a figure") and adjusting them one at a time is
+        what drove call sites past the seam into the backend's plot item.
+        Default no-op; backends with chrome override it.
+        """
+
     def set_downsampling(self, *, auto: bool = True, mode: str = "peak") -> None:
         """Enable/disable automatic downsampling of dense curves on this panel.
 

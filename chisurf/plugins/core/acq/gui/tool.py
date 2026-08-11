@@ -40,10 +40,12 @@ import queue
 import threading
 
 from chisurf import settings
+from chisurf.gui import chiplot
 import tttrlib
 
 from .windows import DecayWindow, CorrelationWindow, CountRateWindow, MCSWindow, MacrotimeWindow
 from ..tcspc_devices import TCSPCDevice, BHSPCCardSetupDialog
+from ..pipeline import AcquisitionPipeline, PipelineConfig, record_type_for_device
 
 
 logger = logging.getLogger(__name__)
@@ -61,51 +63,6 @@ def _default_acquisition_output_path() -> str:
         return str(Path(working_path).expanduser() / "acquisition")
 
     return str(Path.home() / "chisurf" / "acquisition")
-
-
-def _decode_bh_spc_records(data, initial_overflow):
-    """Decode a buffer of BH SPC-130 records with the photon library's decoder.
-
-    Records arriving from the card are decoded in memory, so this used to be a
-    hand-maintained transcription of ``RecordProcessor<BH_RECORD_TYPE_SPC130>``
-    kept fast with numba. The library now exposes that decoder directly
-    (``decode_records``), so the transcription is gone and there is one
-    implementation of the format again.
-
-    ``state.overflow_counter`` is what carries the macro-time wrap count across
-    chunk boundaries; a fresh state per chunk would restart every buffer at
-    time zero, which looks like a working acquisition until the second chunk.
-
-    Parameters
-    ----------
-    data : numpy.ndarray
-        ``uint32`` BH SPC-130 records, without the file's leading header word.
-    initial_overflow : int
-        Wrap counter left by the previous chunk, in units of 4096 ticks.
-
-    Returns
-    -------
-    tuple
-        ``(photons, microtimes, channels, total_overflows, final_overflow)`` —
-        absolute macro times (``uint64``), TAC bins (``uint16``), routing
-        channels (``uint8``), the wraps seen in this chunk, and the counter to
-        hand to the next one.
-    """
-    state = tttrlib.TTTRDecodeState()
-    state.overflow_counter = int(initial_overflow)
-    decoded, state = tttrlib.decode_records(
-        np.ascontiguousarray(data, dtype=np.uint32),
-        tttrlib.RECORD_SPC130,
-        state,
-    )
-    final_overflow = int(state.overflow_counter)
-    return (
-        np.asarray(decoded.macro_times, dtype=np.uint64),
-        np.asarray(decoded.micro_times, dtype=np.uint16),
-        np.asarray(decoded.routing_channel, dtype=np.uint8),
-        final_overflow - int(initial_overflow),
-        final_overflow,
-    )
 
 
 class AcquisitionThread(QThread):
@@ -221,20 +178,22 @@ class AcquisitionThread(QThread):
 
 
 class DataProcessingThread(QThread):
-    """Background thread for heavy photon data processing.
+    """Background thread around the acquisition pipeline.
 
-    Receives raw TCSPC records, decodes photons, and computes decay
-    histograms, streaming Wahl multi-tau correlation, MCS trace, and
-    count rates — all off the main thread.  The main thread polls
-    :meth:`get_results` via a QTimer and performs lightweight pyqtgraph
-    ``setData`` calls.
+    The thread owns the queue and the Qt signals; everything that happens to a
+    photon lives in :class:`~chisurf.plugins.core.acq.pipeline.AcquisitionPipeline`,
+    which is Qt-free and is what the tests drive. There used to be a second
+    copy of the decode -> accumulate -> histogram -> correlate loop on the
+    manager itself, and the two drifted: the manager decoded B&H records with
+    the photon library while this thread's base-class fallback bit-shifted them
+    by hand. One pipeline, one decoder, one place a defect can be.
 
     Signals
     -------
     results_ready : Signal()
-        Emitted whenever new results are available.
+        New display state is available; the GUI polls :meth:`get_results`.
     stop_requested : Signal(str)
-        Emitted when a stop condition (time or photon limit) is met.
+        A configured stop condition (time or photon count) was met.
     """
 
     results_ready = Signal()
@@ -246,45 +205,25 @@ class DataProcessingThread(QThread):
         self._results_lock = threading.Lock()
         self._results = None
         self._running = False
+        self._pipeline = None
+        self._stop_emitted = False
 
-        # ---- configurable parameters ----
-        self._device_type = "SIMULATION"
+        # Configuration, applied to the pipeline when the acquisition starts.
+        self._record_type = tttrlib.RECORD_SPC130
         self._macrotime_clock = 50e-9
         self._channel_mapping = [8, 9, 10, 0]
         self._mcs_bin_width_ms = 1.0
         self._mcs_rollaround_ms = 1000.0
         self._time_limit = 0.0
         self._photon_limit = 0
-        self._start_time = 0.0
+        self._correlation_pairs = [(0, 0, 0)]
 
-        # correlation settings: list of (curve_idx, ch_a, ch_b)
-        self._correlation_pairs = []
-
-        # ---- internal processing state ----
-        self._overflow_accumulator = 0
-        self._decay_data = [np.zeros(4096) for _ in range(4)]
-        self._absolute_macrotimes = np.array([], dtype=np.uint64)
-        self._routing_channels = np.array([], dtype=np.int16)
-        self._microtimes_all = np.array([], dtype=np.uint16)
-        self._count_rate_times = []
-        self._count_rate_data = [[] for _ in range(5)]
-        self._last_count_rate_time = 0.0
-        self._last_channel_counts = [0, 0, 0, 0]
-        self._mcs_trace = None
-        self._macrotime_data = []
-        self._macrotime_times = []
-        self._total_photons = 0
-
-        # tttrlib correlation results (list of (tau, g) per curve)
-        self._correlation_results = [None] * 4
-        self._correlation_step = 0  # throttle counter
-        self._correlation_interval = 5  # default: correlate every 5 chunks
     # ------------------------------------------------------------------
     # Configuration
     # ------------------------------------------------------------------
 
     def configure(self, **kwargs):
-        """Set processing parameters (thread-safe, call before start)."""
+        """Set processing parameters (call before :meth:`reset`)."""
         for k, v in kwargs.items():
             attr = f'_{k}'
             if hasattr(self, attr):
@@ -300,25 +239,21 @@ class DataProcessingThread(QThread):
         self._correlation_pairs = list(pairs)
 
     def reset(self):
-        """Reset all state for a new acquisition."""
-        self._overflow_accumulator = 0
-        self._decay_data = [np.zeros(4096) for _ in range(4)]
-        self._absolute_macrotimes = np.array([], dtype=np.uint64)
-        self._routing_channels = np.array([], dtype=np.int16)
-        self._microtimes_all = np.array([], dtype=np.uint16)
-        self._count_rate_times = []
-        self._count_rate_data = [[] for _ in range(5)]
-        self._last_count_rate_time = 0.0
-        self._last_channel_counts = [0, 0, 0, 0]
-        self._mcs_trace = None
-        self._macrotime_data = []
-        self._macrotime_times = []
-        self._total_photons = 0
-        self._start_time = time.monotonic()
-        self._correlation_results = [None] * 4
-        self._correlation_step = 0
+        """Build a pipeline for a new acquisition and drain anything stale."""
+        self._pipeline = AcquisitionPipeline(
+            PipelineConfig(
+                record_type=self._record_type,
+                macrotime_clock=self._macrotime_clock,
+                channels=tuple(self._channel_mapping[:4]),
+                correlation_pairs=tuple(self._correlation_pairs),
+                mcs_bin_width_ms=self._mcs_bin_width_ms,
+                mcs_rollaround_ms=self._mcs_rollaround_ms,
+                time_limit_s=self._time_limit,
+                photon_limit=self._photon_limit,
+            )
+        )
+        self._stop_emitted = False
 
-        # Drain any stale data
         while not self._queue.empty():
             try:
                 self._queue.get_nowait()
@@ -326,6 +261,11 @@ class DataProcessingThread(QThread):
                 break
         with self._results_lock:
             self._results = None
+
+    @property
+    def pipeline(self):
+        """The pipeline this thread feeds, or ``None`` before :meth:`reset`."""
+        return self._pipeline
 
     # ------------------------------------------------------------------
     # Thread control
@@ -339,16 +279,19 @@ class DataProcessingThread(QThread):
             logger.warning("DataProcessingThread queue full, dropping chunk")
 
     def get_results(self):
-        """Return latest results dict (thread-safe, non-blocking).
-
-        Returns *None* if no results are available yet.
-        """
+        """Return the latest display state (thread-safe, non-blocking)."""
         with self._results_lock:
             return self._results
 
     def stop(self):
         """Ask the thread to finish."""
         self._running = False
+
+    def flush(self):
+        """Close out the run — the correlators emit their last bin."""
+        if self._pipeline is not None:
+            self._pipeline.flush()
+            self._store_results()
 
     # ------------------------------------------------------------------
     # Main loop
@@ -366,274 +309,21 @@ class DataProcessingThread(QThread):
             except Exception as e:
                 logger.error("DataProcessingThread error: %s", e, exc_info=True)
 
-    # ------------------------------------------------------------------
-    # Per-chunk processing
-    # ------------------------------------------------------------------
-
     def _process_chunk(self, data):
-        # 1. Decode photons
-        result = self._decode_photons(data)
-        if result is None:
+        if self._pipeline is None:
             return
-        photons, microtimes, channels, _overflow = result
-        if photons is None or len(photons) == 0:
+        if self._pipeline.push(data) == 0:
             return
-
-        # Track photon count before this chunk for differential updates
-        photons_before = self._total_photons
-
-        # 2. Accumulate flat arrays
-        self._accumulate(photons, microtimes, channels)
-
-        # 3. Decay histograms
-        self._update_decay(photons, microtimes, channels)
-
-        # 4. Count rates (differential — only this chunk's photons)
-        self._update_count_rates(photons_before)
-
-        # 5. Correlation via tttrlib (throttled by plot controller setting)
-        self._correlation_step += 1
-        if self._correlation_step % self._correlation_interval == 0:
-            self._compute_tttrlib_correlation()
-
-        # 6. MCS trace (heavy — uses tttrlib on all macrotimes)
-        self._update_mcs()
-
-        # 7. Macrotime differences for plotting
-        self._update_macrotime(photons)
-
-        # 8. Package results for the main thread
         self._store_results()
-
-        # 9. Check stop conditions
-        self._check_stop()
-
-    # ------------------------------------------------------------------
-    # Photon decoding
-    # ------------------------------------------------------------------
-
-    def _decode_photons(self, data):
-        if data is None or len(data) == 0:
-            return None
-        if self._device_type in ("BH_SPC", "SIMULATION"):
-            photons, microtimes, channels, _ov, new_overflow = (
-                _decode_bh_spc_records(data, self._overflow_accumulator)
-            )
-            self._overflow_accumulator = new_overflow
-            return photons, microtimes, channels, _ov
-        logger.warning("Unknown device type %s", self._device_type)
-        return None
-
-    # ------------------------------------------------------------------
-    # Flat accumulation
-    # ------------------------------------------------------------------
-
-    def _accumulate(self, photons, microtimes, channels):
-        p = np.asarray(photons, dtype=np.uint64)
-        m = np.asarray(microtimes, dtype=np.uint16)
-        c = np.asarray(channels, dtype=np.int16)
-
-        if self._absolute_macrotimes.size == 0:
-            self._absolute_macrotimes = p
-            self._microtimes_all = m
-            self._routing_channels = c
-        else:
-            self._absolute_macrotimes = np.concatenate([self._absolute_macrotimes, p])
-            self._microtimes_all = np.concatenate([self._microtimes_all, m])
-            self._routing_channels = np.concatenate([self._routing_channels, c])
-
-        self._total_photons = len(self._absolute_macrotimes)
-
-    # ------------------------------------------------------------------
-    # Decay histograms
-    # ------------------------------------------------------------------
-
-    def _update_decay(self, photons, microtimes, channels):
-        for i, ch in enumerate(self._channel_mapping[:4]):
-            mask = channels == ch
-            if np.any(mask):
-                hist, _ = np.histogram(microtimes[mask], bins=4096, range=(0, 4096))
-                self._decay_data[i] += hist
-
-
-
-    # ------------------------------------------------------------------
-    # Count rates
-    # ------------------------------------------------------------------
-
-    def _update_count_rates(self, photons_before):
-        """Update count rates using only the photons from the current chunk.
-
-        Parameters
-        ----------
-        photons_before : int
-            Total accumulated photon count *before* this chunk was added.
-        """
-        n_total = self._total_photons
-        if n_total == 0:
-            self._count_rate_times.append(0.0)
-            for i in range(5):
-                self._count_rate_data[i].append(0.0)
-            return
-
-        current_macrotime_seconds = float(self._absolute_macrotimes[-1]) * self._macrotime_clock
-        self._count_rate_times.append(current_macrotime_seconds)
-
-        # Slice of routing channels belonging to this chunk only
-        chunk_channels = self._routing_channels[photons_before:n_total]
-
-        for i in range(4):
-            ch = self._channel_mapping[i] if i < len(self._channel_mapping) else i
-            photons_in_chunk = int(np.count_nonzero(chunk_channels == ch))
-
-            if len(self._count_rate_times) > 1 and photons_in_chunk > 0:
-                time_span = self._count_rate_times[-1] - self._count_rate_times[-2]
-                count_rate = photons_in_chunk / time_span if time_span > 0 else 0.0
-            else:
-                count_rate = 0.0
-            self._count_rate_data[i].append(count_rate)
-
-        all_rate = sum(
-            self._count_rate_data[i][-1]
-            for i in range(4)
-            if self._count_rate_data[i]
-        )
-        self._count_rate_data[4].append(all_rate)
-
-    # ------------------------------------------------------------------
-    # Correlation via tttrlib (batch)
-    # ------------------------------------------------------------------
-
-    def _compute_tttrlib_correlation(self):
-        if self._absolute_macrotimes.size < 10:
-            return
-        try:
-            macrotimes = np.asarray(self._absolute_macrotimes, dtype=np.uint64)
-            for i in range(4):
-                # Use _correlation_pairs if available to determine which channels to correlate
-                ch_a = -1
-                ch_b = -1
-                if i < len(self._correlation_pairs):
-                    _idx, ch_a, ch_b = self._correlation_pairs[i]
-                self._correlate_pair(i, macrotimes, ch_a, ch_b)
-        except Exception as e:
-            logger.warning("Correlation error: %s", e, exc_info=True)
-
-    def _correlate_pair(self, curve_idx, macrotimes, ch_a, ch_b):
-        # Select photons for channel A
-        if ch_a == -1:
-            mt_a = macrotimes
-        else:
-            mask = self._routing_channels == ch_a
-            if not np.any(mask):
-                self._correlation_results[curve_idx] = None
-                return
-            mt_a = macrotimes[mask]
-
-        # Select photons for channel B
-        if ch_b == -1:
-            mt_b = macrotimes
-        else:
-            mask = self._routing_channels == ch_b
-            if not np.any(mask):
-                self._correlation_results[curve_idx] = None
-                return
-            mt_b = macrotimes[mask]
-
-        if mt_a.size < 10 or mt_b.size < 10:
-            self._correlation_results[curve_idx] = None
-            return
-
-        corr = tttrlib.Correlator(n_bins=9, n_casc=15, make_fine=False)
-        w_a = np.ones_like(mt_a, dtype=np.float64)
-        w_b = np.ones_like(mt_b, dtype=np.float64)
-        corr.set_events(mt_a, w_a, mt_b, w_b)
-        x = corr.x * self._macrotime_clock * 1e3
-        y = corr.y
-        self._correlation_results[curve_idx] = (x.copy(), y.copy())
-
-    # ------------------------------------------------------------------
-    # MCS trace (heavy — tttrlib on all macrotimes)
-    # ------------------------------------------------------------------
-
-    def _update_mcs(self):
-        if self._absolute_macrotimes.size == 0:
-            return
-        try:
-            macrotimes_uint64 = np.asarray(self._absolute_macrotimes, dtype=np.uint64)
-            time_window_length = self._mcs_bin_width_ms / 1000.0
-            trace = tttrlib.compute_intensity_trace(
-                macrotimes_uint64,
-                time_window_length=time_window_length,
-                macro_time_resolution=self._macrotime_clock,
-            )
-            trace = np.asarray(trace, dtype=float)
-            n_bins_total = len(trace)
-            n_bins_view = max(1, int(self._mcs_rollaround_ms / self._mcs_bin_width_ms))
-            if n_bins_total > n_bins_view:
-                start_idx = n_bins_total - n_bins_view
-                display = trace[start_idx:]
-            else:
-                start_idx = 0
-                display = trace
-            bin_centers = (start_idx + np.arange(len(display))) * self._mcs_bin_width_ms
-            self._mcs_trace = (bin_centers, display)
-        except Exception as e:
-            logger.error("MCS trace error: %s", e)
-
-    # ------------------------------------------------------------------
-    # Macrotime differences for plotting
-    # ------------------------------------------------------------------
-
-    def _update_macrotime(self, photons):
-        if len(photons) > 1:
-            macrotimes = np.asarray(photons, dtype=np.uint64)
-            diffs = np.diff(macrotimes).astype(np.float64) * self._macrotime_clock
-            current_time = time.monotonic() - self._start_time
-            self._macrotime_data.extend(diffs.tolist())
-            self._macrotime_times.extend([current_time] * len(diffs))
-
-    # ------------------------------------------------------------------
-    # Package results
-    # ------------------------------------------------------------------
+        reason = self._pipeline.stop_reason
+        if reason and not self._stop_emitted:
+            self._stop_emitted = True
+            self.stop_requested.emit(reason)
 
     def _store_results(self):
-        # Mean count rate for display
-        mean_cr = 0.0
-        if self._absolute_macrotimes.size > 1:
-            span = float(self._absolute_macrotimes[-1] - self._absolute_macrotimes[0])
-            if span > 0:
-                mean_cr = self._total_photons / (span * self._macrotime_clock) / 1000.0
-
         with self._results_lock:
-            self._results = {
-                'decay_data': [d.copy() for d in self._decay_data],
-                'correlation_results': list(self._correlation_results),
-                'correlation_pairs': list(self._correlation_pairs),
-                'mcs_trace': self._mcs_trace,
-                'count_rate_times': list(self._count_rate_times),
-                'count_rate_data': [list(d) for d in self._count_rate_data],
-                'macrotime_data': list(self._macrotime_data),
-                'macrotime_times': list(self._macrotime_times),
-                'total_photons': self._total_photons,
-                'mean_count_rate_khz': mean_cr,
-            }
+            self._results = self._pipeline.snapshot()
         self.results_ready.emit()
-
-    # ------------------------------------------------------------------
-    # Stop conditions
-    # ------------------------------------------------------------------
-
-    def _check_stop(self):
-        if self._time_limit > 0 and self._absolute_macrotimes.size > 0:
-            elapsed = float(self._absolute_macrotimes[-1]) * self._macrotime_clock
-            if elapsed >= self._time_limit:
-                self.stop_requested.emit(f"Time limit reached ({elapsed:.1f} s)")
-                return
-        if self._photon_limit > 0 and self._total_photons >= self._photon_limit:
-            self.stop_requested.emit(
-                f"Photon limit reached ({self._total_photons:,} photons)"
-            )
 
 
 class AcquisitionDockWidget(QDockWidget):
@@ -1001,28 +691,25 @@ class SMAcquisitionManager:
         # Simulation mode (default to True)
         self.simulation_mode = True
 
-        # Global flat photon arrays
-        # Routing channel for each photon (as stored in device records)
-        self.routing_channels = np.array([], dtype=np.int16)
-        # Absolute macrotime (with overflow handled) for each photon
-        self.absolute_macrotimes = np.array([], dtype=np.uint64)
-        # Microtime (TAC bin) for each photon
-        self.microtimes_all = np.array([], dtype=np.uint16)
-
-        # Index range [start:end) of the most recently appended chunk
-        self._last_chunk_start = 0
-        self._last_chunk_end = 0
+        # There are deliberately no photon arrays here. The manager holds
+        # display state only; the photons live in the streaming consumers
+        # inside the pipeline, which never keep them either. Three growing
+        # arrays used to sit at this spot and were `np.concatenate`-d on every
+        # chunk — O(N^2) copying, unbounded RAM, and the reason the plugin's
+        # feature list advertises "RAM usage monitoring".
+        self.total_photons = 0
 
         # Count rate data
         self.count_rate_times = []
         self.count_rate_data = [[] for _ in range(5)]
         self.count_rate_update_counter = 0
         self.last_count_rate_time = 0.0
-        # Per-plot bookkeeping of how many photons per logical channel have been seen
-        self.last_macrotime_counts = [0] * 4
 
         # Device timing parameters
         self.macrotime_clock = 50e-9  # Default 50 ns (20 MHz), will be updated from device
+        # ns per TAC channel; None until a device says, and then the decay
+        # window's axis is TAC channels rather than invented nanoseconds.
+        self.microtime_resolution_ns = None
 
         # Macrotime data for plotting
         self.macrotime_data = []  # List of macrotime values (dt differences)
@@ -1032,7 +719,6 @@ class SMAcquisitionManager:
         self.mcs_trace = None  # MCS trace histogram (bins, counts)
         self.mcs_bin_width_ms = 1.0  # Bin width in milliseconds (default 1ms)
         self.mcs_rollaround_time_ms = 1000.0  # Rollaround time in milliseconds (default 1s)
-        self.mcs_intensity_accumulator = None  # Accumulated intensity data
 
         # Update frequency counters
         self.decay_update_counter = 0
@@ -1111,276 +797,6 @@ class SMAcquisitionManager:
         except Exception:
             pass
 
-    def _process_photons(self, data):
-        """Extract photon records, microtimes, and channels from raw data.
-
-        Handles different data formats depending on the acquisition device type.
-        BH_SPC: bits 31,28 markers; 16-27 microtimes; 8-15 channels; 0-15 macrotimes
-        PicoQuant: uses different bit layout with special records and channel extraction
-        """
-        if len(data) == 0:
-            return None, None, None
-
-        logger.debug(f"_process_photons: processing {len(data)} words")
-        if len(data) > 0:
-            logger.debug(f"First 5 words: {data[:min(5, len(data))]}")
-
-        if self.device.device_type in ("BH_SPC", "BRICKMIC"):
-            # BH_SPC format: Separate photon records from overflow records
-            # Overflow records have byte3 >= 0xC0 (bit 31 effectively set)
-            overflow_mask = np.bitwise_and(np.right_shift(data, 24), 0xFF) >= 0xC0
-            photon_mask = ~overflow_mask
-            
-            photons = data[photon_mask]
-            overflow_records = data[overflow_mask]
-            
-            logger.debug(f"BH_SPC: found {len(photons)} photons, {len(overflow_records)} overflow records from {len(data)} words")
-
-            if len(photons) == 0:
-                logger.debug("No photons after BH_SPC filtering")
-                return None, None, None
-
-            # Extract microtimes (bits 16-27)
-            max_12bit = (1 << 12) - 1  # 4095
-            microtimes = np.bitwise_and(np.right_shift(photons, 16), max_12bit)
-
-            # Extract routing channels (bits 8-15)
-            channels = np.bitwise_and(np.right_shift(photons, 8), 0xFF)
-
-            # Process overflow records to accumulate macrotime overflows
-            overflow_count = 0
-            for overflow_record in overflow_records:
-                # Extract overflow count from overflow record
-                # byte0: low 8 bits, byte1: mid-low 8 bits, byte2: mid-high 8 bits, byte3: marker + high 4 bits
-                byte0 = overflow_record & 0xFF
-                byte1 = (overflow_record >> 8) & 0xFF
-                byte2 = (overflow_record >> 16) & 0xFF
-                byte3 = (overflow_record >> 24) & 0xFF
-                
-                # Remove marker from byte3 and combine
-                ov_count_high = (byte3 - 0xC0) & 0x0F
-                ov_count = (ov_count_high << 24) | (byte2 << 16) | (byte1 << 8) | byte0
-                overflow_count += ov_count
-                
-            logger.debug(f"BH_SPC: accumulated {overflow_count} macrotime overflows")
-
-            # Store overflow count for later use in macrotime accumulation
-            # TODO: Pass this to the macrotime processing code
-
-        elif self.device.device_type == "SIMULATION":
-            # Simulation format: Separate photon records from overflow records
-            # Same format as BH_SPC
-            overflow_mask = np.bitwise_and(np.right_shift(data, 24), 0xFF) >= 0xC0
-            photon_mask = ~overflow_mask
-            
-            photons = data[photon_mask]
-            overflow_records = data[overflow_mask]
-            
-            logger.debug(f"SIMULATION: found {len(photons)} photons, {len(overflow_records)} overflow records from {len(data)} words")
-
-            if len(photons) == 0:
-                logger.debug("No photons after SIMULATION filtering")
-                return None, None, None
-
-            # Extract microtimes (bits 16-27)
-            max_12bit = (1 << 12) - 1  # 4095
-            microtimes = np.bitwise_and(np.right_shift(photons, 16), max_12bit)
-
-            # Extract routing channels (bits 8-15)
-            channels = np.bitwise_and(np.right_shift(photons, 8), 0xFF)
-
-            # Process overflow records to accumulate macrotime overflows
-            overflow_count = 0
-            for overflow_record in overflow_records:
-                # Extract overflow count from overflow record
-                # byte0: low 8 bits, byte1: mid-low 8 bits, byte2: mid-high 8 bits, byte3: marker + high 4 bits
-                byte0 = overflow_record & 0xFF
-                byte1 = (overflow_record >> 8) & 0xFF
-                byte2 = (overflow_record >> 16) & 0xFF
-                byte3 = (overflow_record >> 24) & 0xFF
-                
-                # Remove marker from byte3 and combine
-                ov_count_high = (byte3 - 0xC0) & 0x0F
-                ov_count = (ov_count_high << 24) | (byte2 << 16) | (byte1 << 8) | byte0
-                overflow_count += ov_count
-                
-            logger.debug(f"SIMULATION: accumulated {overflow_count} macrotime overflows")
-
-            # Store overflow count for later use in macrotime accumulation
-            # TODO: Pass this to the macrotime processing code
-
-        elif self.device.device_type == "PICOQUANT":
-            # PicoQuant format: Filter out special records and extract timing info
-            # Special records have bit 31 set
-            photons = data[np.bitwise_and(data, 0x80000000) == 0]
-
-            if len(photons) == 0:
-                return None, None, None
-
-            # For PicoQuant, we need to extract microtimes and channels differently
-            # PicoQuant uses T3 mode with different bit layout
-            # Extract microtimes from lower bits (implementation may need adjustment based on exact format)
-            microtimes = np.bitwise_and(photons, 0xFFFF)  # Lower 16 bits for microtimes
-
-            # Extract channels: PicoQuant uses bits 25-30 for channel info
-            channels = np.bitwise_and(np.right_shift(photons, 25), 0x3F) + 1
-
-            overflow_count = 0  # PicoQuant doesn't use BH_SPC style overflows
-
-        else:
-            logger.warning(f"Unknown device type: {self.device.device_type}, assuming BH_SPC format")
-            # Fallback to BH_SPC format
-            photons = data[np.bitwise_and(data, 0b1001 << 28) == 0]
-
-            if len(photons) == 0:
-                return None, None, None
-
-            max_12bit = (1 << 12) - 1  # 4095
-            microtimes = np.bitwise_and(np.right_shift(photons, 16), max_12bit)
-            channels = np.bitwise_and(np.right_shift(photons, 8), 0xFF)
-
-            overflow_count = 0  # Assume no overflows for unknown formats
-
-        return photons, microtimes, channels, overflow_count
-
-    def _accumulate_flat_photons(self, photons, microtimes, channels):
-        """Append routing channel, absolute macrotime, and microtime to flat arrays.
-
-        This keeps a single global time-ordered list of photons. When
-        per-channel data are needed (decays, correlations, count rates), we
-        filter these flat arrays by routing channel.
-        """
-        if photons is None or len(photons) == 0:
-            return
-
-        # Ensure numpy arrays with stable dtypes
-        photons_u64 = np.asarray(photons, dtype=np.uint64)
-        micro_u16 = np.asarray(microtimes, dtype=np.uint16)
-        chan_i16 = np.asarray(channels, dtype=np.int16)
-
-        # Compute insertion indices for this chunk
-        start = int(self.absolute_macrotimes.size)
-
-        if self.absolute_macrotimes.size == 0:
-            # First chunk: just assign
-            self.absolute_macrotimes = photons_u64
-            self.microtimes_all = micro_u16
-            self.routing_channels = chan_i16
-        else:
-            # Subsequent chunks: concatenate to preserve temporal order
-            self.absolute_macrotimes = np.concatenate([self.absolute_macrotimes, photons_u64])
-            self.microtimes_all = np.concatenate([self.microtimes_all, micro_u16])
-            self.routing_channels = np.concatenate([self.routing_channels, chan_i16])
-
-        end = int(self.absolute_macrotimes.size)
-        self._last_chunk_start = start
-        self._last_chunk_end = end
-
-    def _update_decay_data(self, photons, microtimes, channels):
-        """Update decay histograms using the current chunk.
-
-        Photon storage is handled separately via :meth:`_accumulate_flat_photons`.
-        """
-        logger.debug(f"_update_decay_data: {len(photons)} photons, unique channels: {np.unique(channels)}")
-        # Update decay histograms for each channel
-        for i, spinbox in enumerate(self.acquisition_dock.channel_spinboxes):
-            channel = spinbox.value()
-            logger.debug(f"Processing channel {i}, spinbox set to {channel}")
-            mask = channels == channel
-            logger.debug(f"Channel {channel} has {np.sum(mask)} photons")
-            if np.any(mask):
-                channel_microtimes = microtimes[mask]
-
-                # Extract macrotimes based on device type
-                # photons are now absolute macrotimes from _process_photons
-                channel_macrotimes = photons[mask]
-
-                hist, _ = np.histogram(channel_microtimes, bins=4096, range=(0, 4096))
-                self.decay_data[i] += hist
-
-                # Collect macrotime differences for time series plotting
-                # Store differences in **seconds** using macrotime_clock
-                if len(channel_macrotimes) > 1:
-                    # Compute differences between consecutive macrotimes (clock ticks)
-                    diffs = np.diff(channel_macrotimes).astype(np.float64) * self.macrotime_clock
-                    # All diffs in this chunk share the same wall-clock time stamp
-                    current_time = time.monotonic() - self.start_time
-                    self.macrotime_data.extend(diffs.tolist())
-                    self.macrotime_times.extend([current_time] * len(diffs))
-                # If only one photon, can't compute difference, skip
-
-    def _update_count_rates(self):
-        """Calculate and update count rates for plotting and display."""
-        # Use macrotime for X-axis (last photon timestamp in seconds)
-        if self.absolute_macrotimes is not None and self.absolute_macrotimes.size > 0:
-            current_macrotime_seconds = float(self.absolute_macrotimes[-1]) * self.macrotime_clock
-            self.count_rate_times.append(current_macrotime_seconds)
-        else:
-            self.count_rate_times.append(0.0)
-            # No data yet
-            for i in range(5):
-                self.count_rate_data[i].append(0.0)
-            return
-
-        # Determine slice corresponding to the last processed chunk
-        start = getattr(self, "_last_chunk_start", 0)
-        end = getattr(self, "_last_chunk_end", 0)
-        if end <= start or self.routing_channels is None or self.routing_channels.size == 0:
-            # No new photons in this chunk
-            for i in range(5):
-                self.count_rate_data[i].append(0.0)
-            self.update_count_rate_plot()
-            self.update_macrotime_plot()
-            return
-
-        chunk_channels = self.routing_channels[start:end]
-
-        # Calculate instantaneous count rates for THIS CHUNK ONLY by routing channel
-        # Compare number of photons in this chunk to the time span between chunk endpoints
-        for i in range(4):
-            # Logical channel defined by spinboxes (fall back to 0..3)
-            try:
-                if len(self.acquisition_dock.channel_spinboxes) > i:
-                    routing_ch = self.acquisition_dock.channel_spinboxes[i].value()
-                else:
-                    routing_ch = i
-            except Exception:
-                routing_ch = i
-
-            photons_in_chunk = int(np.count_nonzero(chunk_channels == routing_ch))
-
-            # Calculate time span for this chunk (macrotime axis)
-            if len(self.count_rate_times) > 1 and photons_in_chunk > 0:
-                time_span = self.count_rate_times[-1] - self.count_rate_times[-2]
-                if time_span > 0:
-                    count_rate = photons_in_chunk / time_span
-                else:
-                    count_rate = 0.0
-            else:
-                # First chunk or no new photons
-                count_rate = 0.0
-
-            self.count_rate_data[i].append(count_rate)
-
-        # Calculate "All" count rate (sum of all channels)
-        if len(self.count_rate_data[0]) > 0:
-            all_count_rate = sum(
-                self.count_rate_data[i][-1]
-                for i in range(4)
-                if len(self.count_rate_data[i]) > 0
-            )
-            self.count_rate_data[4].append(all_count_rate)
-
-            # Update count rate display immediately after each chunk
-            count_rate_khz = all_count_rate / 1000
-            self._safe_set_count_rate_text(count_rate_khz)
-
-        # Update count rate plot
-        self.update_count_rate_plot()
-
-        # Update macrotime plot
-        self.update_macrotime_plot()
-
     def _read_device_timing_parameters(self):
         """Read timing parameters from the device and update instance variables."""
         try:
@@ -1414,6 +830,21 @@ class SMAcquisitionManager:
             else:
                 logger.info(f"Unknown device type {self.device.device_type}, using default macrotime clock: {self.macrotime_clock*1e9:.1f} ns")
 
+            # Micro-time (TAC) resolution, which sets the decay window's axis.
+            # Only the simulator states it today; a card that cannot say keeps
+            # the axis in TAC channels rather than inventing nanoseconds.
+            self.microtime_resolution_ns = None
+            sim_params = getattr(self.device, "simulation_params", None)
+            if isinstance(sim_params, dict) and sim_params.get("tac_dt"):
+                self.microtime_resolution_ns = float(sim_params["tac_dt"])
+            try:
+                self.decay_window.decay_plot_widget.set_labels(
+                    bottom="Time (ns)" if self.microtime_resolution_ns
+                    else "Micro time (TAC channel)"
+                )
+            except (AttributeError, RuntimeError):
+                pass
+
             # Update GUI display if available
             if self.macrotime_clock < 1e-9:  # Less than 1 ns
                 display_text = f"{self.macrotime_clock*1e12:.1f} ps"
@@ -1424,83 +855,7 @@ class SMAcquisitionManager:
         except Exception as e:
             logger.debug(f"Could not update macrotime clock display: {e}")
 
-    def _calculate_mcs_trace(self):
-        """Calculate MCS trace using tttrlib.
 
-        - Stacks all photons so far into a single MCS (raw counts per bin)
-        - Displays only a limited window (last rollaround_time_ms worth of bins)
-        """
-
-        # Only calculate if we have macrotime data
-        if len(self.absolute_macrotimes) == 0:
-            return
-
-        try:
-            # --- Get current settings (GUI overrides defaults if present) ---
-            bin_width_ms = float(self.mcs_bin_width_ms)
-            rollaround_time_ms = float(self.mcs_rollaround_time_ms)
-
-            if hasattr(self, 'mcs_window') and self.mcs_window is not None \
-            and hasattr(self.mcs_window, 'plot_controller'):
-                pc = self.mcs_window.plot_controller
-                try:
-                    if hasattr(pc, 'bin_width_spinbox'):
-                        bin_width_ms = float(pc.bin_width_spinbox.value())
-                    if hasattr(pc, 'rollaround_spinbox'):
-                        rollaround_time_ms = float(pc.rollaround_spinbox.value())
-                except RuntimeError:
-                    # Widgets may already be deleted – fall back to defaults
-                    pass
-
-            # --- Sanity checks ---
-            if bin_width_ms <= 0:
-                bin_width_ms = 1.0
-            if rollaround_time_ms <= 0:
-                rollaround_time_ms = bin_width_ms
-
-            # Convert bin width from milliseconds to seconds for tttrlib
-            time_window_length = bin_width_ms / 1000.0  # s
-
-            # Convert absolute macrotimes for tttrlib
-            macrotimes_uint64 = np.asarray(self.absolute_macrotimes, dtype=np.uint64)
-            if macrotimes_uint64.size == 0:
-                return
-
-            # --- Compute full MCS for ALL photons so far (stacked) ---
-            current_intensity_trace = tttrlib.compute_intensity_trace(
-                macrotimes_uint64,
-                time_window_length=time_window_length,
-                macro_time_resolution=self.macrotime_clock
-            )
-
-            current_intensity_trace = np.asarray(current_intensity_trace, dtype=float)
-
-            # Store full stacked MCS (for potential later use)
-            self.mcs_intensity_accumulator = current_intensity_trace
-
-            # --- Display only a limited time window of the MCS ---
-            n_bins_total = len(current_intensity_trace)
-            n_bins_view = max(1, int(rollaround_time_ms / bin_width_ms))
-
-            if n_bins_total > n_bins_view:
-                start_idx = n_bins_total - n_bins_view
-                display_data = current_intensity_trace[start_idx:]
-            else:
-                start_idx = 0
-                display_data = current_intensity_trace
-
-            # Time axis: bin centers in ms (absolute from start of acquisition)
-            bin_indices = start_idx + np.arange(len(display_data))
-            bin_centers = bin_indices * bin_width_ms
-
-            # Final trace: raw counts
-            self.mcs_trace = (bin_centers, display_data)
-
-        except Exception as e:
-            logger.error(f"Error calculating MCS trace with tttrlib: {e}")
-            import traceback
-            logger.error(traceback.format_exc())
-            self.mcs_trace = None
     def setup_connections(self):
         """Set up signal-slot connections."""
         self.acquisition_dock.start_button.clicked.connect(self.start_acquisition)
@@ -1665,11 +1020,6 @@ class SMAcquisitionManager:
         self.correlation_times = [None] * 4
         self.correlation_amplitudes = [None] * 4
 
-        # Reset flat photon storage
-        self.routing_channels = np.array([], dtype=np.int16)
-        self.absolute_macrotimes = np.array([], dtype=np.uint64)
-        self.microtimes_all = np.array([], dtype=np.uint16)
-
         # Reset count rate data
         self.count_rate_times = []  # Time points for count rate plot
         self.count_rate_data = [[] for _ in range(5)]  # 4 channels + 1 for "All"
@@ -1681,7 +1031,6 @@ class SMAcquisitionManager:
         self.macrotime_data = []
         self.macrotime_times = []
         self.mcs_trace = None
-        self.mcs_intensity_accumulator = None
         self.macrotime_update_counter = 0
 
         # Reset update counters
@@ -1689,23 +1038,22 @@ class SMAcquisitionManager:
         self.correlation_update_counter = 0
         self.mcs_update_counter = 0
 
-        # Reset photon counter used for photon-based stop condition
+        # Reset photon counter used for photon-based stop condition. The
+        # overflow accumulator that used to live beside it belongs to the
+        # decoder, which is the only thing that has ever needed it.
         self.total_photons = 0
-        
-        # Reset overflow accumulator for continuous macrotimes across chunks
-        self.overflow_accumulator = 0
 
         # Clear plots
         for i in range(4):
-            self.decay_window.decay_curves[i].setData([])
+            self.decay_window.decay_curves[i].set_data([], [])
         for i in range(4):
-            self.correlation_window.correlation_curves[i].setData([])
+            self.correlation_window.correlation_curves[i].set_data([], [])
 
         # Clear count rate plot and mean lines
         for i in range(5):
-            self.count_rate_window.count_rate_curves[i].setData([])
+            self.count_rate_window.count_rate_curves[i].set_data([], [])
         for line in self.count_rate_window.mean_lines:
-            self.count_rate_window.count_rate_plot_widget.removeItem(line)
+            line.remove()
         self.count_rate_window.mean_lines.clear()
 
         # Pass output folder and photon target to device/simulation where applicable
@@ -1746,7 +1094,7 @@ class SMAcquisitionManager:
         # --- Set up background data processing thread ---
         self._processing_thread = DataProcessingThread(self.main_window)
         self._processing_thread.configure(
-            device_type=self.device.device_type,
+            record_type=record_type_for_device(self.device),
             macrotime_clock=self.macrotime_clock,
             channel_mapping=[s.value() for s in self.acquisition_dock.channel_spinboxes],
             time_limit=self._time_limit,
@@ -1767,14 +1115,18 @@ class SMAcquisitionManager:
             self._processing_thread.set_correlation_pairs(pairs)
         except Exception:
             self._processing_thread.set_correlation_pairs([(0, 0, 0)])
-        # Read correlation update interval from plot controller
+        # The correlation update interval now throttles the *redraw*, not the
+        # correlation: every photon reaches the correlator as it arrives, so
+        # there is no longer an expensive recomputation to skip.
+        self.correlation_redraw_interval = 1
         try:
             if (hasattr(self.correlation_window, 'plot_controller')
                     and hasattr(self.correlation_window.plot_controller, 'update_frequency_spinbox')):
-                corr_interval = self.correlation_window.plot_controller.update_frequency_spinbox.value()
-                self._processing_thread._correlation_interval = max(1, corr_interval)
+                self.correlation_redraw_interval = max(
+                    1, self.correlation_window.plot_controller.update_frequency_spinbox.value()
+                )
         except Exception:
-            self._processing_thread._correlation_interval = 1
+            self.correlation_redraw_interval = 1
         self._processing_thread.reset()
         self._processing_thread.results_ready.connect(self._apply_results)
         self._processing_thread.stop_requested.connect(self._on_processing_stop)
@@ -1822,12 +1174,16 @@ class SMAcquisitionManager:
             self.decay_data = results['decay_data']
             self.total_photons = results['total_photons']
 
-            # Correlation (list of (tau, g) or None per curve)
-            corr_results = results.get('correlation_results', [None] * 4)
-            for i, c in enumerate(corr_results):
-                if c is not None:
-                    self.correlation_times[i] = c[0]
-                    self.correlation_amplitudes[i] = c[1]
+            # Correlation. The results are in *pair* order and each pair names
+            # the curve it belongs to, which is not the same thing: correlating
+            # only curve 2 gives one result, and reading it positionally draws
+            # it as curve 0.
+            corr_results = results.get('correlation_results', [])
+            corr_pairs = results.get('correlation_pairs', [])
+            for (curve_idx, _a, _b), c in zip(corr_pairs, corr_results):
+                if c is not None and 0 <= curve_idx < len(self.correlation_times):
+                    self.correlation_times[curve_idx] = c[0]
+                    self.correlation_amplitudes[curve_idx] = c[1]
 
             # Count rates
             self.count_rate_times = results.get('count_rate_times', [])
@@ -1847,7 +1203,22 @@ class SMAcquisitionManager:
             except Exception:
                 pass
 
-            # Update plots (lightweight pyqtgraph setData calls)
+            # Live quality numbers, from the same photon pass as the decay.
+            try:
+                bursts = results.get('burst_count')
+                phasor = results.get('phasor')
+                text = "Bursts: —" if bursts is None else (
+                    f"Bursts: {bursts:,} ({results.get('burst_rate_hz', 0.0):.1f}/s)"
+                )
+                if phasor is not None and phasor[2] > 0:
+                    text += f" · Phasor: g={phasor[0]:.3f} s={phasor[1]:.3f}"
+                else:
+                    text += " · Phasor: —"
+                self.decay_window.qc_label.setText(text)
+            except (AttributeError, RuntimeError):
+                pass
+
+            # Update plots (lightweight chiplot set_data calls)
             self.update_decay_plot()
             self.update_correlation_plot()
             self.update_count_rate_plot()
@@ -2289,6 +1660,33 @@ class SMAcquisitionManager:
         # Log the closure
         logger.info("Single-Molecule Acquisition mode closed.")
 
+    def _decay_window_of_channel(self, channel):
+        """Return the decay window holding a device routing channel, or ``None``.
+
+        The dock's four channel spinboxes *are* the mapping — window *i* shows
+        routing channel ``channel_spinboxes[i].value()`` — and the pipeline
+        histograms in exactly that order.
+        """
+        try:
+            mapping = [s.value() for s in self.acquisition_dock.channel_spinboxes]
+        except (AttributeError, RuntimeError):
+            return channel if 0 <= channel < len(self.decay_data) else None
+        return mapping.index(channel) if channel in mapping else None
+
+    def _microtime_axis_ns(self, n_bins):
+        """Micro-time axis in nanoseconds for ``n_bins`` TAC channels.
+
+        The axis used to be ``np.linspace(0, 100, n)`` with the comment
+        "Assuming 100 ns time range" — a number no instrument here produces, so
+        every live decay was drawn on a made-up abscissa. The resolution comes
+        from the device when it knows it (the simulator carries ``tac_dt``);
+        otherwise the axis stays in TAC channels, which is at least true.
+        """
+        resolution = getattr(self, "microtime_resolution_ns", None)
+        if resolution:
+            return np.arange(n_bins) * float(resolution)
+        return np.arange(n_bins, dtype=float)
+
     def update_decay_plot(self):
         """Update the decay plot based on current plot controller settings."""
         logger.debug("update_decay_plot called")
@@ -2330,7 +1728,7 @@ class SMAcquisitionManager:
 
         # Set log mode for Y axis
         try:
-            self.decay_window.decay_plot_widget.setLogMode(y=use_log_y)
+            self.decay_window.decay_plot_widget.set_log(y=use_log_y)
         except RuntimeError as e:
             if "wrapped C/C++ object" in str(e) and "has been deleted" in str(e):
                 logger.warning("Decay plot widget was deleted, skipping log mode update")
@@ -2348,16 +1746,19 @@ class SMAcquisitionManager:
                             if checkbox.isChecked():
                                 channel = spinbox.value()
                                 if channel == -1:
-                                    # Sum of all channels
-                                    if len(self.decay_data) >= 3:
-                                        combined = np.sum(self.decay_data[:3], axis=0)
-                                        visible_channels.append((i, -1))  # Special marker for combined
-                                elif channel in {8, 9, 10}:
-                                    data_idx = {8: 0, 9: 1, 10: 2}[channel]
-                                    visible_channels.append((i, data_idx))
-                                elif 0 <= channel <= 2:
-                                    data_idx = channel
-                                    visible_channels.append((i, data_idx))
+                                    # Sum of every acquired window
+                                    combined = np.sum(self.decay_data, axis=0)
+                                    visible_channels.append((i, -1))
+                                else:
+                                    # A routing channel is a *device* number; which
+                                    # decay window holds it is whatever the dock's
+                                    # channel spinboxes say. This used to be the
+                                    # hard-coded table {8: 0, 9: 1, 10: 2}, so any
+                                    # other detector numbering drew the wrong
+                                    # channel's decay under the right label.
+                                    data_idx = self._decay_window_of_channel(channel)
+                                    if data_idx is not None:
+                                        visible_channels.append((i, data_idx))
                         except RuntimeError as e:
                             if "wrapped C/C++ object" in str(e) and "has been deleted" in str(e):
                                 logger.warning(f"Decay curve {i} widget was deleted, skipping")
@@ -2376,13 +1777,13 @@ class SMAcquisitionManager:
             for curve_idx, data_idx in visible_channels:
                 if data_idx == -1:
                     # Combined data
-                    x = np.linspace(0, 100, len(combined))  # Assuming 100 ns time range
-                    self.decay_window.decay_curves[curve_idx].setData(x, combined)
+                    x = self._microtime_axis_ns(len(combined))
+                    self.decay_window.decay_curves[curve_idx].set_data(x, combined)
                     self.decay_window.decay_curves[curve_idx].show()
                 elif data_idx < len(self.decay_data) and len(self.decay_data[data_idx]) > 0:
                     logger.debug(f"Setting decay data for curve {curve_idx} (channel data {data_idx}), length {len(self.decay_data[data_idx])}, total counts {np.sum(self.decay_data[data_idx])}")
-                    x = np.linspace(0, 100, len(self.decay_data[data_idx]))  # Assuming 100 ns time range
-                    self.decay_window.decay_curves[curve_idx].setData(x, self.decay_data[data_idx])
+                    x = self._microtime_axis_ns(len(self.decay_data[data_idx]))
+                    self.decay_window.decay_curves[curve_idx].set_data(x, self.decay_data[data_idx])
                     self.decay_window.decay_curves[curve_idx].show()
                 else:
                     logger.debug(f"Hiding decay curve {curve_idx}, no data for channel data {data_idx}")
@@ -2461,7 +1862,7 @@ class SMAcquisitionManager:
 
                     # Clear any mean lines
                     for line in self.count_rate_window.mean_lines:
-                        self.count_rate_window.count_rate_plot_widget.removeItem(line)
+                        line.remove()
                     self.count_rate_window.mean_lines.clear()
                 except RuntimeError as e:
                     if "wrapped C/C++ object" in str(e) and "has been deleted" in str(e):
@@ -2711,13 +2112,19 @@ class SMAcquisitionManager:
         if not hasattr(self.correlation_window, 'plot_controller') or self.correlation_window.plot_controller is None:
             return
 
-        # Note: Update frequency is now checked at computation stage (in process_data)
-        # This just updates the plot with already-computed correlation data
+        # The correlation is computed per chunk; this only redraws it, so the
+        # update-frequency setting throttles the redraw.
+        interval = getattr(self, "correlation_redraw_interval", 1)
+        if interval > 1:
+            self.correlation_update_counter += 1
+            if self.correlation_update_counter < interval:
+                return
+            self.correlation_update_counter = 0
 
         try:
             for i in range(4):
                 if self.correlation_times[i] is not None and self.correlation_amplitudes[i] is not None:
-                    self.correlation_window.correlation_curves[i].setData(self.correlation_times[i], self.correlation_amplitudes[i])
+                    self.correlation_window.correlation_curves[i].set_data(self.correlation_times[i], self.correlation_amplitudes[i])
                     self.correlation_window.correlation_curves[i].show()
                 else:
                     self.correlation_window.correlation_curves[i].hide()
@@ -2789,7 +2196,7 @@ class SMAcquisitionManager:
 
         # Set log mode for Y axis
         try:
-            self.count_rate_window.count_rate_plot_widget.setLogMode(y=use_log_y)
+            self.count_rate_window.count_rate_plot_widget.set_log(y=use_log_y)
         except RuntimeError as e:
             if "wrapped C/C++ object" in str(e) and "has been deleted" in str(e):
                 logger.warning("Count rate plot widget was deleted, skipping log mode update")
@@ -2804,7 +2211,7 @@ class SMAcquisitionManager:
                     # Pad time array to match data length
                     time_array = np.array(self.count_rate_times[:len(self.count_rate_data[data_idx])])
                     data_array = np.array(self.count_rate_data[data_idx])
-                    self.count_rate_window.count_rate_curves[curve_idx].setData(time_array, data_array)
+                    self.count_rate_window.count_rate_curves[curve_idx].set_data(time_array, data_array)
                     self.count_rate_window.count_rate_curves[curve_idx].show()
                 else:
                     self.count_rate_window.count_rate_curves[curve_idx].hide()
@@ -2816,7 +2223,7 @@ class SMAcquisitionManager:
             
             # Force plot refresh and auto-range
             try:
-                self.count_rate_window.count_rate_plot_widget.enableAutoRange()
+                self.count_rate_window.count_rate_plot_widget.autoscale()
                 self.count_rate_window.count_rate_plot_widget.update()
             except Exception:
                 # Swallow plot refresh errors to avoid spurious console output
@@ -2827,43 +2234,6 @@ class SMAcquisitionManager:
                 logger.warning("Count rate plot curves were deleted, skipping plot update")
             else:
                 raise
-
-    def _process_photons(self, data):
-        """Process raw BH SPC records using the optimized decoder.
-
-        Handles overflow accumulation to produce absolute macrotimes.
-        Returns photons, microtimes, channels, overflow_count.
-
-        This wraps the photon library's BH-SPC record decoder and is called
-        from process_data.
-
-        Args:
-            data: numpy array of uint32 BH SPC-130 records
-
-        Returns:
-            tuple: (photons, microtimes, channels, overflow_count)
-                  photons: array of absolute macrotimes (uint64)
-                  microtimes: array of microtimes (uint16)
-                  channels: array of channel numbers (uint8)
-                  overflow_count: total overflow count in this chunk
-        """
-        if data is None or len(data) == 0:
-            return None, None, None, 0
-
-        # BH_SPC and SIMULATION both emit SPC-130 records, so both go through
-        # the library's decoder.
-        if self.device.device_type in ("BH_SPC", "SIMULATION"):
-            photons, microtimes, channels, overflows, new_overflow = _decode_bh_spc_records(
-                data,
-                self.overflow_accumulator,
-            )
-            # Update persistent overflow state for next chunk
-            self.overflow_accumulator = new_overflow
-            return photons, microtimes, channels, overflows
-
-        # Non-BH devices use their existing decoding logic (PICOQUANT, etc.)
-        # implemented in the base class.
-        return super()._process_photons(data)
 
     def acquisition_completed(self):
         """Handle acquisition completion."""
@@ -2889,9 +2259,37 @@ class SMAcquisitionManager:
         self._acquisition_in_progress = False
 
     def _save_data(self):
-        """Save acquired data."""
-        # No automatic saving - user can specify output folder for SPC files
-        pass
+        """Report what the finished run left on disk — and what it did not.
+
+        This used to be ``pass`` under a module docstring promising that data
+        is "saved at the end of data acquisition". Nothing was: unless the
+        device was dripping raw vendor words to a folder, the photons went to
+        the display and nowhere else, and a crash or a forgotten checkbox lost
+        the run with no message anywhere.
+
+        The real fix is a photon sink written *during* the measurement — see
+        :class:`~chisurf.plugins.core.acq.pipeline.PhotonSink`; it is blocked on
+        the photon library's native container sink. Until then the honest thing
+        is to say which of the two applied, rather than to look like saving.
+        """
+        output_path = (self.acquisition_dock.output_path or "").strip()
+        photons = getattr(self, "total_photons", 0)
+        if output_path:
+            logger.info(
+                "Acquisition finished: %s photons; raw device words were written "
+                "to %s if the device supports the raw drip.", f"{photons:,}", output_path
+            )
+            self._safe_set_status_text(
+                f"Status: Finished — {photons:,} photons (raw words in {output_path})"
+            )
+        else:
+            logger.warning(
+                "Acquisition finished: %s photons were NOT saved — no output "
+                "folder was set and there is no photon sink yet.", f"{photons:,}"
+            )
+            self._safe_set_status_text(
+                f"Status: Finished — {photons:,} photons, NOT saved (no output folder)"
+            )
 
     def update_macrotime_plot(self):
         """Update the macrotime plot."""
@@ -2909,10 +2307,9 @@ class SMAcquisitionManager:
             except RuntimeError:
                 pass
 
-        # Update MCS trace
-        self._calculate_mcs_trace()
-
-        # Update MCS trace display (in separate window)
+        # The MCS trace arrives with the rest of the display state — it is a
+        # rolling window kept by the pipeline, not something recomputed here
+        # from every photon of the run.
         self.update_mcs_plot()
 
         # Check if macrotime plot should be shown
@@ -2928,9 +2325,9 @@ class SMAcquisitionManager:
                 # Plot macrotime differences vs time (dt already in seconds)
                 times = np.array(self.macrotime_times[-len(self.macrotime_data):])
                 dts = np.array(self.macrotime_data)
-                self.macrotime_window.macrotime_curve.setData(times, dts)
-                self.macrotime_window.macrotime_plot_widget.setLabel('left', 'Macrotime Difference (s)')
-                self.macrotime_window.macrotime_plot_widget.setLabel('bottom', 'Time (s)')
+                self.macrotime_window.macrotime_curve.set_data(times, dts)
+                self.macrotime_window.macrotime_plot_widget.set_labels(
+                    left='Macrotime Difference (s)', bottom='Time (s)')
 
             self.macrotime_window.macrotime_curve.show()
         except RuntimeError as e:
@@ -2952,7 +2349,7 @@ class SMAcquisitionManager:
         try:
             if self.mcs_trace is not None:
                 bin_centers, hist_counts = self.mcs_trace
-                self.mcs_window.mcs_curve.setData(bin_centers, hist_counts)
+                self.mcs_window.mcs_curve.set_data(bin_centers, hist_counts)
                 self.mcs_window.mcs_curve.show()
 
                 # Apply Y range if manual range is enabled
@@ -2960,9 +2357,9 @@ class SMAcquisitionManager:
                     if self.mcs_window.plot_controller.manual_y_range_checkbox.isChecked():
                         y_min = self.mcs_window.plot_controller.y_min_spinbox.value()
                         y_max = self.mcs_window.plot_controller.y_max_spinbox.value()
-                        self.mcs_window.mcs_plot_widget.setYRange(y_min, y_max)
+                        self.mcs_window.mcs_plot_widget.set_ylim(y_min, y_max)
                     else:
-                        self.mcs_window.mcs_plot_widget.enableAutoRange(axis=self.mcs_window.mcs_plot_widget.getViewBox().YAxis)
+                        self.mcs_window.mcs_plot_widget.autoscale(x=False, y=True)
             else:
                 self.mcs_window.mcs_curve.hide()
         except RuntimeError as e:
@@ -2977,16 +2374,12 @@ class SMAcquisitionManager:
             return
 
         try:
-            # Create horizontal line at mean value
-            import pyqtgraph as pg
-            mean_line = pg.InfiniteLine(pos=mean_value, angle=0, pen=pg.mkPen('r', width=2, style=Qt.DashLine))
-
-            # Add label
             curve_name = f"Curve{curve_index}" if curve_index < 4 else "All"
-            mean_line.label = pg.InfLineLabel(mean_line, f"{curve_name} Mean: {mean_value:.1f}", position=0.1, anchor=(1, 1))
-
-            # Add to plot and store reference
-            self.count_rate_window.count_rate_plot_widget.addItem(mean_line)
+            mean_line = self.count_rate_window.count_rate_plot_widget.hline(
+                mean_value,
+                pen=chiplot.to_pen("r", width=2, style="dash"),
+                label=f"{curve_name} Mean: {mean_value:.1f}",
+            )
             self.count_rate_window.mean_lines.append(mean_line)
 
         except Exception as e:

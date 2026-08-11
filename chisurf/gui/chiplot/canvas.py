@@ -870,6 +870,29 @@ class Plot(QtWidgets.QWidget):
                 self._canvas.set_axis_visible(side, bool(vis))
         return self
 
+    def set_compact(self, compact: bool = True, *, font_size: int = 8) -> Plot:
+        """Shrink the panel's chrome so a small panel is mostly data.
+
+        Margins, tick length, tick-label offset, the view's default padding and
+        the tick font are one intent — "this panel is a strip, not a figure" —
+        and setting them one at a time is what sends a call site through
+        ``getPlotItem()`` into the backend.
+
+        Parameters
+        ----------
+        compact : bool
+            ``False`` restores the ordinary chrome.
+        font_size : int
+            Tick-label point size while compact.
+
+        Returns
+        -------
+        Plot
+            ``self``.
+        """
+        self._canvas.set_compact(compact, font_size=font_size)
+        return self
+
     def link_x(self, other: Plot) -> Plot:
         """Link this panel's x-axis to ``other``'s so they pan/zoom together.
 

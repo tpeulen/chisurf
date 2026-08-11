@@ -328,6 +328,14 @@ def encode_records(engine, params: Dict[str, Any]) -> np.ndarray:
     enc.n_microtime_channels = int(params.get("N_tac_channels", 4096))
     enc.microtime_resolution = float(params.get("tac_dt", 0.004069))
     enc.laser_period = float(params.get("laser_period", 13.596))
+    # B&H reverse start-stop: the hardware writes `n_channels-1 - micro_time`
+    # into the record and every SPC reader un-reverses it on the way back.
+    # Encoding without this produced records that decode to a *time-mirrored*
+    # decay — a live acquisition window showing a decay that rises to the end
+    # of the TAC range and falls off a cliff, which is what the simulated
+    # stream looked like until a screenshot was taken of it.
+    if hasattr(enc, "reverse_tac"):
+        enc.reverse_tac = True
 
     rng = tttrlib.SimRandom(int(params.get("rmt2seed", 54321)))
     rec = engine.encode(enc, rng)

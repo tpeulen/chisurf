@@ -60,7 +60,10 @@ def run_standalone():
     logger.info("Running SM Acquisition in standalone mode")
 
     # Import our modules
-    from .main import SMAcquisitionManager
+    # The manager lives in `gui.tool`; `main` has not existed since the plugin
+    # was split into gui/ and this import raised ModuleNotFoundError on every
+    # standalone start.
+    from .gui.tool import SMAcquisitionManager
 
     # Create the application
     app = QApplication(sys.argv) if not QApplication.instance() else QApplication.instance()

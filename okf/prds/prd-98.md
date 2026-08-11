@@ -3,13 +3,59 @@ type: PRD
 prd: "98"
 title: "PRD-98: Acquisition is a stream, not an array — acq on tttrlib's streaming decode, consumers, and sink"
 description: The acq plugin already decodes BH records with tttrlib's carried-state decoder, then throws the streaming away — every photon is concatenated into one growing array, correlation re-runs the batch correlator on the full history every 5 chunks, the MCS trace recomputes all bins to show the last second, PicoQuant still decodes through a hand-rolled numpy bit-twiddler, and _save_data() is pass. tttrlib now ships a verified streaming family (StreamingCorrelator exact vs batch Wahl, StreamingDecayHistogram exact vs bincount) and PRD-034 is bringing a native .pto sink; acq becomes push-based end to end — one decode path, O(chunk) updates, bounded RAM, and a file that exists before the run ends.
-status: proposed
+status: in-progress
 resource: /Users/tpeulen/dev/chisurf/chisurf/plugins/core/acq
 tags: [prd, chisurf, acq, tttrlib, streaming, correlator, tcspc, pto]
 timestamp: '2026-08-11T00:00:00Z'
 ---
 
 # PRD-98: Acquisition is a stream, not an array — acq on tttrlib's streaming decode, consumers, and sink
+
+## Where to pick this up
+
+Requirements 1, 2, 4 and 5 landed on 2026-08-11 (chisurf; tttrlib alongside).
+What is left, in order:
+
+1. **Requirement 3 — the `.pto` sink — is the whole remainder, and it is
+   blocked on tttrlib PRD-034.** The seam exists and is deliberately small:
+   `pipeline.PhotonSink` (`write` / `checkpoint` / `close`) with a `NullSink`
+   wired in, so landing the sink is implementing one class and passing it to
+   `AcquisitionPipeline`. `_save_data` currently *reports* what was and was not
+   saved rather than pretending; that message is what disappears when the sink
+   lands. Do not write a `.pto` from the plugin by hand — the container's
+   normative photons table and its checkpoint operation are 034's.
+2. **Live burst QC is a count, not a selection.** `StreamingBurstDetector` runs
+   over *all* photons regardless of the channel map, so the burst rate is an
+   alignment diagnostic and nothing downstream should treat it as a burst
+   search. If it is ever to feed a selection, it needs the channel filter the
+   correlator pairs already have.
+3. **The phasor's frequency is `PipelineConfig.phasor_frequency_mhz`, not the
+   device's.** It defaults to 73.5 MHz and no device reports its repetition
+   rate today, so the (g, s) numbers are comparable within a session and not
+   across instruments. The fix is a device-level laser-period property, which is
+   the same gap as the micro-time resolution below.
+4. **Micro-time resolution is known only for the simulator.** The decay window
+   labels its axis in nanoseconds when the device states `tac_dt` and in TAC
+   channels when it does not (a B&H card does not). It used to be
+   `np.linspace(0, 100, n)` — "Assuming 100 ns time range" — under a
+   nanosecond label on every device. Reading the TAC range from the SPC
+   parameters is the honest fix.
+5. **Do not re-derive these measurements.** Pushing a chunk into a streaming
+   consumer through `push_np` cost **1.13 µs/photon** before 2026-08-11 because
+   the binding looped in *Python*; after numpy typemaps it is 0.007 µs/photon
+   for the decay histogram and the MCS, and 0.27 µs/photon for the correlator
+   (whose own cascade work now dominates — that part is real). A regression here
+   does not crash, it just fails to keep up with a card.
+6. **A screenshot found two defects no assertion did**, both now fixed, both
+   worth knowing about because they are shaped like things that will recur: the
+   simulator wrote its TAC without B&H reverse start-stop (`reverse_tac`), so
+   the live decay was *time-mirrored* while every number about it was correct;
+   and the decay window mapped routing channels through a hard-coded
+   `{8: 0, 9: 1, 10: 2}` table rather than the dock's own channel spinboxes, so
+   a different detector numbering drew one channel's decay under another's
+   label. Drive the GUI with
+   `chisurf/plugins/core/acq` + a simulated run and *look* at the decay before
+   believing a change to it.
 
 ## What exists (measured 2026-08-11)
 

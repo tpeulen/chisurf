@@ -24,6 +24,7 @@ already have a burst list or a decay, jump straight to the analysis you need.
 ```{toctree}
 :maxdepth: 1
 
+65_live_acquisition
 12_handling_tttr_files
 33_timestamps_and_bursts
 13_burst_identification
@@ -159,6 +160,7 @@ irf_estimation
 | [Diffusion FCS](09_diffusion_fcs.md) | FCS models + `fcs_correlator` plugin |
 | [Lifetime & anisotropy decay fitting](10_lifetime_anisotropy_fitting.md) | `core.fluorescence.tcspc`, TCSPC models |
 | [Two-colour PDA (PDA2c)](11_pda2c.md) | `tttrlib.Pda`, `core.models.pda2c` |
+| [Live acquisition](65_live_acquisition.md) | `core/acq` plugin, `acq.pipeline`, `tttrlib` streaming consumers |
 | [Handling TTTR files (& Photon-HDF5)](12_handling_tttr_files.md) | `tttrlib.TTTR`, `plugins/tttr` |
 | [Photon burst identification](13_burst_identification.md) | `TTTR.burst_search`, `burst_selection` |
 | [Multi-parameter E–S & correction factors](14_multiparameter_es.md) | `burst/es.py`, `fret/calibration.py` |

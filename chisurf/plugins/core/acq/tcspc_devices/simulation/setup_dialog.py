@@ -177,12 +177,30 @@ def _list_get(values: list[float], index: int, default: float) -> float:
     return float(values[index]) if index < len(values) else float(default)
 
 
-def _sized_matrix(values: Any, n: int) -> list[float]:
-    """Return a flat row-major ``n*n`` matrix, padding/truncating ``values``."""
+def _sized_matrix(values: Any, n: int, *, transpose: bool = False) -> list[float]:
+    """Return a flat ``n*n`` matrix, padding/truncating ``values``.
+
+    Parameters
+    ----------
+    values : Any
+        Flat rate matrix as stored on the model.
+    n : int
+        Number of states.
+    transpose : bool
+        Swap the index convention. The shared rate-matrix editor writes
+        ``K[target, source]`` — chisurf's kinetics convention — while the
+        photon simulator takes a **row-major i→j** matrix. Feeding one to the
+        other transposes every rate: a two-state blinker keeps its two numbers
+        and swaps which way they run, so the simulation is wrong in a way that
+        still looks like a simulation. The transpose happens here, once, at the
+        boundary between the two conventions.
+    """
     flat = [float(v) for v in (values or [])]
     out = [0.0] * (n * n)
     for i in range(min(len(flat), n * n)):
         out[i] = flat[i]
+    if transpose:
+        out = [out[j * n + i] for i in range(n) for j in range(n)]
     return out
 
 
@@ -783,8 +801,9 @@ class SimulationSettingsModel:
             "N_channels": n_channels,
             "q": q,
             "q_bg": q_bg,
-            "k_rad": _sized_matrix(self.k_rad, n_species),
-            "k_nrad": _sized_matrix(self.k_nrad, n_species),
+            # The editor stores K[target, source]; the simulator wants i→j.
+            "k_rad": _sized_matrix(self.k_rad, n_species, transpose=True),
+            "k_nrad": _sized_matrix(self.k_nrad, n_species, transpose=True),
             "box_xy": float(self.box_xy),
             "box_z": float(self.box_z),
             "focus_type": 0,

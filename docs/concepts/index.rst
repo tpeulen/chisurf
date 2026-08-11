@@ -85,6 +85,7 @@ alternatives are collected in :doc:`/fundamentals/conventions`.
    :maxdepth: 1
 
    photon_container
+   live_streaming_analysis
 
 .. rubric:: Structure & imaging
 

@@ -15,10 +15,12 @@ from qtpy.QtWidgets import (
     QLabel,
     QLCDNumber,
     QSizePolicy,
+    QVBoxLayout,
+    QWidget,
 )
 from qtpy.QtGui import QFont
 from qtpy.QtCore import Qt
-import pyqtgraph as pg
+from chisurf.gui import chiplot
 import chisurf
 from chisurf.gui.widgets.mdi_custom_titlebar import CustomMdiSubWindow
 from .controllers import (
@@ -30,6 +32,18 @@ from .controllers import (
 )
 
 
+#: Per-channel curve colours, shared by every acquisition window so that
+#: channel 2 is the same colour in the decay, the count rate and the
+#: correlation. The fifth is the "All" trace of the count-rate window.
+CHANNEL_COLORS = [
+    (255, 0, 0),
+    (0, 255, 0),
+    (0, 0, 255),
+    (255, 255, 0),
+    (128, 128, 128),
+]
+
+
 class DecayWindow(CustomMdiSubWindow):
     """Window for displaying fluorescence decays."""
 
@@ -39,20 +53,37 @@ class DecayWindow(CustomMdiSubWindow):
         self.setAttribute(Qt.WA_DeleteOnClose, False)
 
         # Create the decay plot widget - single plot instead of stacked
-        self.decay_plot_widget = pg.PlotWidget()
-        self.decay_plot_widget.setLogMode(y=False)  # Linear scale to show zeros
-        self.decay_plot_widget.setLabel('left', 'Counts')
-        self.decay_plot_widget.setLabel('bottom', 'Time (ns)')
+        self.decay_plot_widget = chiplot.Plot()
+        self.decay_plot_widget.set_log(y=False)  # Linear scale to show zeros
+        self.decay_plot_widget.set_labels(left='Counts', bottom='Time (ns)')
 
         # Create curves for each channel (4 channels)
-        self.decay_curves = []
-        colors = [(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0)]  # Red, Green, Blue, Yellow
-        for i in range(4):
-            curve = self.decay_plot_widget.plot(pen=pg.mkPen(color=colors[i], width=2))
-            self.decay_curves.append(curve)
+        self.decay_curves = [
+            self.decay_plot_widget.line([], [], pen=color, width=2)
+            for color in CHANNEL_COLORS[:4]
+        ]
+
+        # Two live quality numbers that cost nothing to have: the photons are
+        # already being pushed through the decay histogram, so the phasor and
+        # the burst search ride along on the same pass. They belong beside the
+        # decay because that is the window an operator watches while aligning.
+        self.qc_label = QLabel("Bursts: — · Phasor: —")
+        self.qc_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.qc_label.setToolTip(
+            "Live quality numbers from the same photon pass as the decay:\n"
+            "• Bursts — sliding-window burst search, as a count and a rate\n"
+            "• Phasor — (g, s) of all micro times at the laser repetition rate"
+        )
+
+        content = QWidget()
+        layout = QVBoxLayout(content)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+        layout.addWidget(self.decay_plot_widget)
+        layout.addWidget(self.qc_label)
 
         # Set the plot widget as content
-        self.set_content(self.decay_plot_widget)
+        self.set_content(content)
 
         # Set reasonable default size from settings (same as fit windows)
         xs, ys = chisurf.settings.gui['fit_windows_size']
@@ -103,17 +134,15 @@ class CorrelationWindow(CustomMdiSubWindow):
         self.setAttribute(Qt.WA_DeleteOnClose, False)
 
         # Create the correlation plot widget
-        self.correlation_plot_widget = pg.PlotWidget()
-        self.correlation_plot_widget.setLogMode(x=True)
-        self.correlation_plot_widget.setLabel('left', 'G(\u03c4)')
-        self.correlation_plot_widget.setLabel('bottom', '\u03c4 (ms)')
+        self.correlation_plot_widget = chiplot.Plot()
+        self.correlation_plot_widget.set_log(x=True)
+        self.correlation_plot_widget.set_labels(left='G(\u03c4)', bottom='\u03c4 (ms)')
 
         # Create curves for each correlation (4 curves)
-        self.correlation_curves = []
-        colors = [(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0)]  # Red, Green, Blue, Yellow
-        for i in range(4):
-            curve = self.correlation_plot_widget.plot(pen=pg.mkPen(color=colors[i], width=2))
-            self.correlation_curves.append(curve)
+        self.correlation_curves = [
+            self.correlation_plot_widget.line([], [], pen=color, width=2)
+            for color in CHANNEL_COLORS[:4]
+        ]
 
         # Set the plot widget as content
         self.set_content(self.correlation_plot_widget)
@@ -166,55 +195,20 @@ class CountRateWindow(CustomMdiSubWindow):
         self.setAttribute(Qt.WA_DeleteOnClose, False)
 
         # Create the count rate plot widget
-        self.count_rate_plot_widget = pg.PlotWidget()
-        self.count_rate_plot_widget.setLabel('left', 'Count Rate (cps)')
-        self.count_rate_plot_widget.setLabel('bottom', 'Macrotime (s)')
-        # Minimize padding/margins inside the plot
-        try:
-            self.count_rate_plot_widget.setContentsMargins(0, 0, 0, 0)
-            plot_item = self.count_rate_plot_widget.getPlotItem()
-            if hasattr(plot_item, 'setContentsMargins'):
-                plot_item.setContentsMargins(0, 0, 0, 0)
-            if hasattr(plot_item, 'layout') and plot_item.layout is not None:
-                plot_item.layout.setContentsMargins(0, 0, 0, 0)
-                plot_item.layout.setSpacing(0)
-            # Hide unused axes and buttons
-            try:
-                plot_item.showAxis('top', False)
-                plot_item.showAxis('right', False)
-                if hasattr(plot_item, 'hideButtons'):
-                    plot_item.hideButtons()
-                if hasattr(plot_item, 'setMenuEnabled'):
-                    plot_item.setMenuEnabled(False)
-            except Exception:
-                pass
-            # Reduce axis spacing
-            try:
-                for ax in ('left', 'bottom', 'right', 'top'):
-                    axis = plot_item.getAxis(ax)
-                    if axis is not None:
-                        axis.setStyle(tickLength=0, autoExpandTextSpace=False, tickTextOffset=0)
-                # Shrink tick font on visible axes
-                small_font = QFont()
-                small_font.setPointSize(8)
-                for ax in ('left', 'bottom'):
-                    axis = plot_item.getAxis(ax)
-                    if axis is not None and hasattr(axis, 'setTickFont'):
-                        axis.setTickFont(small_font)
-            except Exception:
-                pass
-            vb = plot_item.getViewBox()
-            if hasattr(vb, 'setDefaultPadding'):
-                vb.setDefaultPadding(0.0)
-        except Exception:
-            pass
+        self.count_rate_plot_widget = chiplot.Plot()
+        self.count_rate_plot_widget.set_labels(
+            left='Count Rate (cps)', bottom='Macrotime (s)')
+        # The count-rate panel is a strip, not a figure: no spare chrome.
+        self.count_rate_plot_widget.set_compact(True)
+        self.count_rate_plot_widget.set_axis_visible(top=False, right=False)
+        self.count_rate_plot_widget.set_menu_enabled(False)
 
         # Create curves for each channel (4 channels) plus "All"
-        self.count_rate_curves = []
-        colors = [(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0), (128, 128, 128)]  # Red, Green, Blue, Yellow, Gray for "All"
-        for i in range(5):  # 4 channels + 1 for "All"
-            curve = self.count_rate_plot_widget.plot(pen=pg.mkPen(color=colors[i], width=2))
-            self.count_rate_curves.append(curve)
+        # 4 channels + 1 for "All"
+        self.count_rate_curves = [
+            self.count_rate_plot_widget.line([], [], pen=color, width=2)
+            for color in CHANNEL_COLORS
+        ]
 
         # Store horizontal mean lines
         self.mean_lines = []
@@ -267,11 +261,10 @@ class MCSWindow(CustomMdiSubWindow):
         self.setAttribute(Qt.WA_DeleteOnClose, False)
 
         # Create the MCS plot widget
-        self.mcs_plot_widget = pg.PlotWidget()
-        self.mcs_plot_widget.setLabel('left', 'Intensity (counts)')
-        self.mcs_plot_widget.setLabel('bottom', 'Time (ms)')
+        self.mcs_plot_widget = chiplot.Plot()
+        self.mcs_plot_widget.set_labels(left='Intensity (counts)', bottom='Time (ms)')
 
-        self.mcs_curve = self.mcs_plot_widget.plot(pen=pg.mkPen(color=(0, 150, 150), width=2))
+        self.mcs_curve = self.mcs_plot_widget.line([], [], pen=(0, 150, 150), width=2)
 
         # Set the plot widget as content
         self.set_content(self.mcs_plot_widget)
@@ -304,11 +297,12 @@ class MacrotimeWindow(CustomMdiSubWindow):
         self.setAttribute(Qt.WA_DeleteOnClose, False)
 
         # Create the macrotime plot widget
-        self.macrotime_plot_widget = pg.PlotWidget()
-        self.macrotime_plot_widget.setLabel('left', 'Macrotime Difference')
-        self.macrotime_plot_widget.setLabel('bottom', 'Time (s)')
+        self.macrotime_plot_widget = chiplot.Plot()
+        self.macrotime_plot_widget.set_labels(
+            left='Macrotime Difference', bottom='Time (s)')
 
-        self.macrotime_curve = self.macrotime_plot_widget.plot(pen=pg.mkPen(color=(150, 75, 0), width=2))
+        self.macrotime_curve = self.macrotime_plot_widget.line(
+            [], [], pen=(150, 75, 0), width=2)
 
         # Set the plot widget as content
         self.set_content(self.macrotime_plot_widget)

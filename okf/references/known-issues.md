@@ -1,3 +1,19 @@
+## The acquisition plot controllers paint over the window title with no host
+
+**Found 2026-08-11**, in the PRD-98 screenshots. Each acquisition window builds
+its plot controller parented to itself (`DecayPlotController(self)`, and the
+four siblings). Inside ChiSurf the controller is re-homed into the main window's
+controller area; **without a host window** — headless, a test, the standalone
+entry point — it has nowhere to go and renders at the window's top-left corner,
+on top of the title bar. Every acquisition window does it, including the ones
+untouched by that change, so it is not new; it is recorded because it is the
+first thing anyone screenshotting this plugin will see and it is not a defect in
+what they are looking at.
+
+**What closes this:** the controller should be hidden (or docked into the window
+itself) when `chisurf.cs` is None, decided in the window rather than by whoever
+happens to construct it.
+
 ## `core/math/hmm.py` needs a tttrlib that is not committed anywhere
 
 **Found 2026-08-11**, by landing it. The HMM lattice delegation
