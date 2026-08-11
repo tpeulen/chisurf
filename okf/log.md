@@ -1,6 +1,10 @@
 # Update Log
 
 ## 2026-08-11
+* **numba removed from `chisurf/` entirely** (`f1290e84b`): 47 decorators, 11
+  imports, every `prange`. Results unchanged — the kernels were plain Python
+  loops. Where each one was, and what it now costs:
+  [where numba was](references/where-numba-was.md).
 * **Jumping, and a proper survey of ZQuest Classic**
   ([PRD-91](prds/prd-91.md)). The first pass through that engine read two files
   and came back with one idea, which was not a survey -- 503,550 lines across
