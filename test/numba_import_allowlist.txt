@@ -57,6 +57,13 @@ chisurf/core/structure/protein.py
 chisurf/core/structure/av/functions.py
 
 # ── tttr-c (needs a new compiled kernel) ────────────────────────────────────
+# ALL of this section, plus flc_2d and gopich_szabo above, is specified in ONE
+# place now: tttrlib okf/prds/PRD-037-kernels-to-finish-chisurfs-numba-
+# retirement.md. Do not open per-file requests upstream; that PRD is the list.
+# Checked 2026-08-11, correcting two labels: OptsCluster is 2-D Gaussian PEAK
+# FITTING, not k-means, so _kmeans.py needs new kernels; and _frc_smooth is FRC
+# smoothing, not a Kalman filter. Conversely core_distances and
+# mutual_reachability_mst DO exist and already cover 3 of _hdbscan.py's 7.
 # dcd/xtc were listed under `imp` until 2026-08-11; that was wrong. imp-tricks
 # has no trajectory reader to delegate to, and neither kernel vectorises:
 # dcd's de-interleaving gather is 2.5-9.4x slower in NumPy even as a strided

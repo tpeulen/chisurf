@@ -1,6 +1,10 @@
 # Update Log
 
 ## 2026-08-11
+* **tttrlib PRD-037 written**: one list of everything the photon library needs so
+  ChiSurf can drop numba — 8 of 13 files, 30 of 56 kernels — replacing the
+  per-file round trips. Two more route labels fell over while writing it
+  (`OptsCluster` is peak fitting, `_frc_smooth` is FRC smoothing).
 * **Lumis Quest moves to a screen-based camera, and its rooms are ASCII maps**
   ([PRD-91](prds/prd-91.md)). Following the ZQuest Classic reference: the world
   is now viewed as a grid of fixed **screens** that flip when you cross an edge

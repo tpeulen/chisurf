@@ -9,6 +9,21 @@ timestamp: '2026-08-10T00:00:00Z'
 
 # Where to pick this up
 
+**Everything this needs from the photon library is one document**:
+tttrlib `okf/prds/PRD-037-kernels-to-finish-chisurfs-numba-retirement.md`
+(2026-08-11, written at the user's request because the per-file round trips were
+costing three build cycles each). It unblocks **8 of the 13 remaining files and
+30 of the 56 kernels**; the other five need nothing from there —
+[PRD-100](../prds/prd-100.md) for the AV/IMP group, a WGSL shader for
+`av/functions.py`, and ChiSurf-side routing for `h2mm.py`. **Do not open
+per-file requests upstream** — add to that PRD instead.
+
+Two route labels were corrected while writing it, both by import rather than
+argument: `OptsCluster` is 2-D Gaussian *peak fitting*, not k-means, and
+`_frc_smooth` is FRC smoothing, not a Kalman filter. `core_distances` and
+`mutual_reachability_mst` do exist and already cover three of `_hdbscan.py`'s
+seven kernels.
+
 1. **The tracker is `test/numba_import_allowlist.txt`** and it only shrinks.
    Every entry carries its route. **13 chisurf-owned files remain**, and **route `numpy` is now empty -- Phase 1 is done** of the 48 this work covers. ChiMOL's 11 are **excluded from the guard entirely** — the WebGPU port removes them on its own schedule, and listing them here only made this test fail nine times in one session with news about someone else's progress;
    `test/test_numba_seam.py` fails both on a new importer and on a stale entry,
