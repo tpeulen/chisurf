@@ -1,6 +1,17 @@
 # Update Log
 
 ## 2026-08-11
+* **Two chimol defects filed, not fixed** (reported by tpeulen), in
+  [known-issues](references/known-issues.md). (1) The C menu's *by element*
+  issues `color byelement, {sele}`, which is an **object-wide colour mode** —
+  it repaints the whole molecule, clears existing per-atom overrides, and on a
+  cartoon varies over CA elements (all carbon), so nothing turns CPK. The
+  per-atom path that would work, `cmd/presets.py:252` `_color_by_element`,
+  already exists and the menu does not use it; PyMOL's own submenu is **49
+  entries** (`util.cnc` = CNOS, plus 48 carbon/hydrogen variants), chimol has
+  one. (2) The mutagenesis wizard leaves a stale `mutation` row in the Sequence
+  strip: `_wizard_finish` refreshes the sequence view *inside* `_wizard_commit`,
+  before `_wizard_delete_preview` removes the object, and never again.
 * **numba removed from `chisurf/` entirely** (`f1290e84b`): 47 decorators, 11
   imports, every `prange`. Results unchanged — the kernels were plain Python
   loops. Where each one was, and what it now costs:
@@ -34149,3 +34160,20 @@
   the additive auras behind the portraits are gone, replaced by a flat platform to stand on: at
   that size a glow is a coloured blob with an animal somewhere inside it, and the label's colour
   is already carried by the tint. See [chigame](/subsystems/chigame.md).
+
+- **2026-08-11 — the world's ground is real 16-bit tile art, and it is CC0.**
+  Lumis Quest's terrain was string art — three tones and a scatter of noise per material — and
+  next to real tile art it read as the placeholder it was. The ground now comes from the **Ninja
+  Adventure** pack by Pixel-boy and AAA, **CC0** (public-domain dedication: nothing propagates
+  into the GPL, no attribution owed; given anyway in `gui/art/CREDITS.md`). Only the ground:
+  buildings, characters and creatures stay string art, because one hare drawing being a Verdant
+  Hare *and* a Garnet Hare is the premise of the bestiary. Cut by
+  `build_tools/dev_utils/import_tileart.py`, which records the source cell of every tile and
+  re-cuts them — a shipped pack is committed, never read from gitignored `junk/` at run time.
+  Cells were chosen by measurement (opaque, low-variance, matching opposite edges); three defects
+  only the rendered world showed: the palest *natural* tile is snow, so the town square got paved
+  in it; a block's plain fill is a flat colour, which trips the project's own dither guard and
+  makes the sea blink; and every authored prop had the old grass baked in behind it, so trees sat
+  in hard squares until they were **composited over the shipped ground** at atlas-build time — a
+  tree is a cell of the grid, so clearing its backdrop leaves a hole rather than showing what is
+  beneath. The typeface stays ours. See [chigame](/subsystems/chigame.md).

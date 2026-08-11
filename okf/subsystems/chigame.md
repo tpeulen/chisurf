@@ -273,6 +273,45 @@ no licence grant, whatever the surrounding repository's MIT file says. (The
 *graphics* of that same reference are genuinely CC0 — the Ninja Adventure pack
 by Pixel-boy and AAA.)
 
+## Where the art comes from — and the one rule about it
+
+chigame ships **no image files**: the procedural pack renders signed-distance
+shapes, and `pixelfont` is string art. Lumis Quest is the one exception, and it
+is a deliberate one: its **ground tiles** are cut from the **Ninja Adventure**
+pack by Pixel-boy and AAA, which is **CC0** — a public-domain dedication, so
+nothing propagates into ChiSurf's GPL and no attribution is owed (it is given
+anyway, in `gui/art/CREDITS.md`).
+
+Only the ground. Every building, character and creature stays string art,
+because the bestiary's whole premise is that one hare drawing is a Verdant Hare
+and a Garnet Hare depending on the dye somebody fixed into it, and no generic
+pack supplies that.
+
+**The rule, learned the expensive way**: a shipped art pack is cut by a script
+from a `junk/` checkout and committed, never read from `junk/` at run time —
+that directory is gitignored, so anything reading from it works on one machine
+and nowhere else. `build_tools/dev_utils/import_tileart.py` records the source
+cell of every tile and can re-cut them, so the provenance of each shipped pixel
+is a command rather than a claim.
+
+Three things only the rendered world showed:
+
+- The palest tile in a *natural*-ground sheet is snow, so a town square got
+  paved in snow. Made ground comes from the interior sheet.
+- A tile block's plain fill is a **flat colour**, which trips the project's own
+  "terrain is dithered rather than flat" guard — and pairing it with a rippled
+  tile makes the whole sea blink instead of move.
+- Every authored prop had the old grass painted in behind it. That was
+  invisible while the ground was the same string art, and became a hard square
+  under every tree the moment it was not. Props are **composited over the
+  shipped ground at atlas-build time**, because a tree is a *cell of the grid*
+  rather than a sprite over a grass cell: clearing its backdrop leaves a hole,
+  since there is nothing beneath it.
+
+Loading degrades to the string art if the pack is missing, which is right at
+run time and wrong to discover in a release — so a guardrail test asserts the
+art is present and is what `sprite_image` returns.
+
 ## Scene.window — the console dialogue box
 
 Three flat bands, outside in: a near-black outer edge, a bright rule one pixel

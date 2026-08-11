@@ -104,13 +104,17 @@ def test_the_atlas_packs_every_sprite_where_its_uv_says():
         assert 0.0 <= u0 < u1 <= 1.0 and (v0, v1) == (0.0, 1.0)
         start = int(round(u0 * width))
         packed = image[:, start:start + pixelart.SIZE]
-        assert np.array_equal(packed, pixelart._render(pixelart.SPRITES[name])), name
+        assert np.array_equal(packed, pixelart.sprite_image(name)), name
 
 
 def test_terrain_is_dithered_rather_than_flat():
-    """A single flat colour per tile is what makes generated art look generated."""
+    """A single flat colour per tile is what makes generated art look generated.
+
+    Asserted against what *ships* rather than against the authored art, so it
+    still means something now that the ground comes from a tile pack.
+    """
     for name in ("grass", "water", "road", "floor"):
-        art = pixelart._render(pixelart.SPRITES[name])
+        art = pixelart.sprite_image(name)
         colours = {tuple(pixel) for row in art for pixel in row}
         assert len(colours) >= 2, f"{name} is a flat fill"
 
@@ -128,3 +132,49 @@ def test_the_atlas_uploads(qapp):
     texture = pixelart.upload(device, image)
     assert texture.size[0] == image.shape[1]
     assert texture.size[1] == image.shape[0]
+
+
+def test_the_shipped_ground_is_present_and_is_what_gets_drawn():
+    """A missing art pack degrades silently, so something has to say so.
+
+    `tileart.tiles()` returns nothing at all when the PNG is absent or will not
+    decode, and the world then draws the authored string art and looks merely
+    worse. That is the right runtime behaviour and the wrong thing to discover
+    in a release: the failure mode of shipping without `gui/art/` is a game
+    that runs.
+    """
+    from chisurf.plugins.misc.games.lumis_quest.gui import tileart
+
+    shipped = tileart.tiles()
+    assert shipped, "gui/art/terrain.png is missing or will not decode"
+    # The ground the player spends the game walking on.
+    for name in ("grass", "water", "sand", "road", "floor", "plaza"):
+        assert name in shipped, name
+        assert np.array_equal(pixelart.sprite_image(name), shipped[name]), name
+
+
+def test_a_prop_stands_in_real_ground_rather_than_a_hole():
+    """A tree is a *cell of the grid*, not a sprite over a grass cell.
+
+    Clearing its authored backdrop without compositing leaves transparency with
+    nothing beneath it -- the tree then sits in a black square, which is what
+    the first attempt at this produced.
+    """
+    from chisurf.plugins.misc.games.lumis_quest.gui import tileart
+
+    if "grass" not in tileart.tiles():
+        pytest.skip("no shipped ground to composite against")
+    for name in pixelart.OVER_GROUND:
+        art = pixelart.sprite_image(name)
+        # Fully transparent, not merely translucent: these sprites carry soft
+        # contact shadows on purpose, and those are supposed to let the ground
+        # through.
+        assert (art[..., 3] > 0).all(), f"{name} has holes in it"
+
+
+def test_every_shipped_tile_names_a_sprite_that_exists():
+    """A tile cut under a name nothing draws is a tile nobody ever sees."""
+    from chisurf.plugins.misc.games.lumis_quest.gui import tileart
+
+    unknown = [name for name in tileart.names() if name not in pixelart.SPRITES]
+    assert unknown == [], f"shipped art for sprites that do not exist: {unknown}"

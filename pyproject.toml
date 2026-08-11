@@ -195,6 +195,10 @@ namespaces = true
     "*.md"
 ]
 "chisurf.settings.constants" = ["*.json"]
+# The world's ground tiles live in a plain directory beside the module that
+# reads them, not in a package, so the "*" globs above do not reach them and an
+# installed copy would silently fall back to the authored string art.
+"chisurf.plugins.misc.games.lumis_quest.gui" = ["art/*"]
 
 [tool.setuptools.dynamic]
 version = {attr = "chisurf.core.info.__version__"}

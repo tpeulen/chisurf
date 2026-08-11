@@ -1,0 +1,91 @@
+{
+  "size": 16,
+  "names": [
+    "ash",
+    "boards",
+    "clinic",
+    "floor",
+    "garden",
+    "grass",
+    "grass2",
+    "iwall",
+    "marsh",
+    "plaza",
+    "road",
+    "sand",
+    "water",
+    "water2"
+  ],
+  "source": {
+    "ash": [
+      "tileset_interior_floor",
+      12,
+      13
+    ],
+    "boards": [
+      "tileset_interior_floor",
+      1,
+      13
+    ],
+    "clinic": [
+      "tileset_interior_floor",
+      11,
+      4
+    ],
+    "floor": [
+      "tileset_interior_floor",
+      14,
+      5
+    ],
+    "garden": [
+      "tileset_floor",
+      15,
+      12
+    ],
+    "grass": [
+      "tileset_floor",
+      2,
+      12
+    ],
+    "grass2": [
+      "tileset_floor",
+      3,
+      12
+    ],
+    "iwall": [
+      "tileset_interior_floor",
+      14,
+      13
+    ],
+    "marsh": [
+      "tileset_floor",
+      12,
+      12
+    ],
+    "plaza": [
+      "tileset_interior_floor",
+      14,
+      11
+    ],
+    "road": [
+      "tileset_floor",
+      13,
+      19
+    ],
+    "sand": [
+      "tileset_floor",
+      2,
+      5
+    ],
+    "water": [
+      "tileset_floor",
+      5,
+      22
+    ],
+    "water2": [
+      "tileset_floor",
+      6,
+      23
+    ]
+  }
+}

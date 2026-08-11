@@ -20,6 +20,8 @@ from __future__ import annotations
 
 import numpy as np
 
+from . import tileart
+
 #: Character -> RGBA. Two tones per material, because a single flat colour is
 #: what makes procedural art look procedural; a light and a dark read as form.
 PALETTE: dict[str, tuple[int, int, int, int]] = {
@@ -813,7 +815,30 @@ SPRITES: dict[str, list[str]] = {
 }
 
 
-def _render(rows: list[str]) -> np.ndarray:
+#: Props that stand *on* the ground: the backdrop character their art uses, and
+#: the ground tile they should be standing on instead.
+#:
+#: Every one of these was authored with the old grass -- or the dark manifold's
+#: ash -- painted in behind it, which was invisible while the ground was the
+#: same string art in the same tones. It stopped being invisible the moment the
+#: ground became real tile art: each tree sat in a hard square of the colour
+#: the grass used to be.
+#:
+#: The fix is to *composite*, not merely to clear. A tree is one tile of the
+#: grid rather than a sprite over a grass tile, so clearing its backdrop leaves
+#: a hole rather than showing what is beneath -- there is nothing beneath. So
+#: the prop is drawn over the shipped ground, once, at atlas-build time: one
+#: quad per tile still, and the tree stands in real grass.
+OVER_GROUND: dict[str, tuple[str, str]] = {
+    "tree": ("g", "grass"),
+    "rock": ("g", "grass"),
+    "flowers": ("g", "grass"),
+    "deadtree": ("(", "ash"),
+    "ruin": ("(", "ash"),
+}
+
+
+def _render(rows: list[str], clear: str | None = None) -> np.ndarray:
     """Turn string art into an RGBA image.
 
     Parameters
@@ -821,6 +846,10 @@ def _render(rows: list[str]) -> np.ndarray:
     rows : list of str
         One string per pixel row. Short rows are padded with transparency and
         long ones truncated, so a typo in the art cannot crash the game.
+    clear : str, optional
+        A palette character to render as transparent instead of its colour.
+        This is how a prop's baked-in backdrop is removed -- see
+        :data:`OVER_GROUND`.
 
     Returns
     -------
@@ -831,8 +860,34 @@ def _render(rows: list[str]) -> np.ndarray:
     for y in range(min(len(rows), SIZE)):
         row = rows[y]
         for x in range(min(len(row), SIZE)):
+            if row[x] == clear:
+                continue
             image[y, x] = PALETTE.get(row[x], (0, 0, 0, 0))
     return image
+
+
+def _over(top: np.ndarray, bottom: np.ndarray) -> np.ndarray:
+    """Composite one 16x16 sprite over another.
+
+    Straight alpha, and only two levels of it, because the art is either ink or
+    paper -- nothing here is half transparent.
+
+    Parameters
+    ----------
+    top : numpy.ndarray
+        ``(SIZE, SIZE, 4)`` uint8, drawn on top.
+    bottom : numpy.ndarray
+        ``(SIZE, SIZE, 4)`` uint8, drawn underneath.
+
+    Returns
+    -------
+    numpy.ndarray
+        ``(SIZE, SIZE, 4)`` uint8.
+    """
+    out = bottom.copy()
+    ink = top[..., 3] > 0
+    out[ink] = top[ink]
+    return out
 
 
 def build_atlas() -> tuple[np.ndarray, dict[str, tuple[float, float, float, float]]]:
@@ -853,9 +908,40 @@ def build_atlas() -> tuple[np.ndarray, dict[str, tuple[float, float, float, floa
     uvs: dict[str, tuple[float, float, float, float]] = {}
     width = SIZE * len(names)
     for index, name in enumerate(names):
-        atlas[:, index * SIZE:(index + 1) * SIZE] = _render(SPRITES[name])
+        atlas[:, index * SIZE:(index + 1) * SIZE] = sprite_image(name)
         uvs[name] = (index * SIZE / width, 0.0, (index + 1) * SIZE / width, 1.0)
     return atlas, uvs
+
+
+def sprite_image(name: str) -> np.ndarray:
+    """The pixels one sprite actually ships as.
+
+    Three sources, in order. **Real tile art wins** where the shipped pack
+    covers a name: the ground was authored here as three tones and a scatter of
+    noise, which is honest and flat. **Props are composited** over that ground,
+    because a tree is one cell of the grid rather than a sprite over a grass
+    cell -- clearing its backdrop would leave a hole, since there is nothing
+    beneath it. **Everything else is the string art**, which is most of the
+    game: every building, character and creature is this project's own.
+
+    Parameters
+    ----------
+    name : str
+        A key of :data:`SPRITES`.
+
+    Returns
+    -------
+    numpy.ndarray
+        ``(SIZE, SIZE, 4)`` uint8.
+    """
+    shipped = tileart.tiles()
+    art = shipped.get(name)
+    if art is not None:
+        return art
+    backdrop, ground = OVER_GROUND.get(name, (None, None))
+    art = _render(SPRITES[name], backdrop)
+    under = shipped.get(ground) if ground else None
+    return _over(art, under) if under is not None else art
 
 
 def upload(device, image: np.ndarray):
