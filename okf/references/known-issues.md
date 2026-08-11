@@ -31,6 +31,33 @@ finds the answer instead of re-deriving the fix.
 disagreement between ChiSurf's two kernels — and there the reference does settle
 it in the builder's favour.
 
+### 🐛 On the ruling that this is a bug — the premise does not hold, verbatim
+
+A ruling was relayed (2026-08-11) that this trim is a defect because *"the MATLAB
+returns `Mat_2DFDC_lin` whole"*. **It does not.** `TK_Create2DFDC_04.m`, lines
+170-172, unmodified:
+
+```matlab
+Var = size(Mat_2DFDC_lin) - 1 ;
+Mat_2DFDC_lin = Mat_2DFDC_lin(1:Var, 1:Var) ;
+Mat_2DFDC_lint = Mat_2DFDC_lint(1:Var) ;
+```
+
+The rule *"MATLAB is authoritative, fix ChiSurf to match"* is not in dispute and
+is why this entry was withdrawn: applied to this trim it says **keep it**,
+because ChiSurf's `[:lint_imax - 1]` already is it (MATLAB being 1-based over
+bins `1..lint_Imax`).
+
+This is recorded rather than silently obeyed because the fix was already written
+once on the same wrong premise and made a real measurement worse
+(`test_one_d_fdc_matches_microtime_histogram`, 0.98 → 0.9695). Anyone re-opening
+it should start by reading past line 168 of the reference.
+
+If the intent is to *change the method* — to keep the highest bin because the
+trim loses real pairs, which it does — that is a legitimate decision, but it is a
+deliberate divergence from the reference and should be recorded as one, not as
+alignment with it.
+
 ## 2D-FLC: the log-binned matrix moves when `lint_bin_factor` changes, and the two kernels disagree
 
 **Found 2026-08-11**, from an observation by the tttrlib session porting these
@@ -101,9 +128,14 @@ Mat_2DFDC_logt = t_Imax .^ ([0:logt_Imax-1]'/(logt_Imax-1)) * tStep - tStep ;
 where the rule collapses to `span + 1`, and `fdc_t_imax(span, factor)` exposes
 the formula so a caller can build the identical axis for `fdc_scan_axis`.
 
-**And it needs simulation evidence, per the same ruling.** Moving the log axis
-moves the axis the lifetime inversion runs on, so "the matrices now agree" is
-not sufficient — show that recovered lifetimes and the recovered relaxation rate
+**Fixed 2026-08-11** (`d9ef9bc32`): `_fdc_scan_log_kernel` takes
+`lint_bin_factor` and derives `t_imax` the reference's way; the two entry points
+now agree at every factor, pinned by
+`test_both_kernels_put_the_log_matrix_on_the_same_axis`. **The simulation
+evidence is still owed** — that requirement is right and is not met by the fix.
+
+Moving the log axis moves the axis the lifetime inversion runs on, so "the
+matrices now agree" is not sufficient — show that recovered lifetimes and the recovered relaxation rate
 still match a simulation with a known answer, at `lint_bin_factor > 1` where the
 axis actually moved. A fixture regenerated against the new axis will agree with
 itself by construction and prove nothing about that.
