@@ -99,7 +99,7 @@ def test_horizontal_alignment_places_the_string(align, expected):
     # blank margin on each side -- so the run's outer edges sit ``pad`` beyond
     # where the text itself starts and ends. That margin is the reason the
     # neighbouring glyph's ink cannot bleed in; see the baker.
-    margin = atlas.pad / atlas.scale
+    margin = atlas.pad * atlas.render_scale
     if expected == "left":
         assert left == pytest.approx(box_x - margin, abs=0.01)
     elif expected == "right":

@@ -67,10 +67,11 @@ AA_MARGIN = 2
 #:
 #: Printable ASCII, then the seven symbols in use:
 #: ``▾`` menu marker, ``▸`` submenu marker, ``▴`` scroll-up mark, ``─``
-#: separator, and ``◀ ■ ▶ ▼`` from ``MOVIE_BUTTONS``.
+#: separator, ``…`` for an elided label, and ``◀ ■ ▶ ▼`` from
+#: ``MOVIE_BUTTONS``.
 CHARSET: str = (
     "".join(sorted(set(string.printable[:95])))
-    + "─▴▸▾◀■▶▼"
+    + "─▴▸▾◀■▶▼…"
 )
 
 #: Where the atlas lands, inside the package so it ships.
@@ -80,7 +81,7 @@ OUT_DIR = (
 )
 
 
-def _face(bold: bool):
+def _face(bold: bool, scale: int | None = None):
     """Return the chrome font, at :data:`SCALE`× size.
 
     Parameters
@@ -96,7 +97,7 @@ def _face(bold: bool):
 
     font = QtGui.QFont("Menlo")
     font.setStyleHint(QtGui.QFont.Monospace)
-    font.setPointSize(FONT_PT * SCALE)
+    font.setPointSize(FONT_PT * (SCALE if scale is None else scale))
     font.setBold(bold)
     return font
 
@@ -242,12 +243,21 @@ def bake(out_dir: pathlib.Path | None = None) -> dict:
 
     image.save(str(out_dir / "chrome.png"))
 
+    # Metrics at the size the panel is *laid out* in, not the size it was baked
+    # at. Font metrics do not scale linearly -- hinting and rounding make Menlo
+    # advance 8 px at 10 pt and 34 at 40 pt, so dividing the baked metric by the
+    # supersample gives 8.5 and every string in the panel runs 6% wide. The
+    # layout has to agree with the toolkit it shares a window with.
+    one_x = QtGui.QFontMetrics(_face(False, scale=1))
     record = {
         "font_pt": FONT_PT,
         "scale": SCALE,
         "pad": pad,
         "cell": [cell_w, cell_h],
         "advance": advance,
+        "advance_1x": one_x.horizontalAdvance("M"),
+        "line_height_1x": one_x.height(),
+        "ascent_1x": one_x.ascent(),
         "ascent": ascent,
         "descent": max(m.descent() for m in metrics.values()),
         "line_height": cell_h,

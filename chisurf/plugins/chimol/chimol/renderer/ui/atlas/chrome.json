@@ -1,11 +1,13 @@
 {
  "advance": 34,
+ "advance_1x": 8,
  "ascent": 52,
+ "ascent_1x": 13,
  "cell": [
   40,
   71
  ],
- "charset": " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\u2500\u25b4\u25b8\u25be\u25c0\u25a0\u25b6\u25bc",
+ "charset": " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\u2500\u25b4\u25b8\u25be\u25c0\u25a0\u25b6\u25bc\u2026",
  "columns": 16,
  "descent": 13,
  "font_pt": 10,
@@ -672,6 +674,13 @@
    "~": [
     560,
     852,
+    40,
+    71,
+    34
+   ],
+   "\u2026": [
+    280,
+    923,
     40,
     71,
     34
@@ -1399,6 +1408,13 @@
     71,
     34
    ],
+   "\u2026": [
+    280,
+    426,
+    40,
+    71,
+    34
+   ],
    "\u2500": [
     600,
     355,
@@ -1458,6 +1474,7 @@
   }
  },
  "line_height": 71,
+ "line_height_1x": 16,
  "pad": 3,
  "scale": 4,
  "size": [

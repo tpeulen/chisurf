@@ -261,17 +261,18 @@ class QuadPainter:
             pen_x = x
 
         scale = atlas.scale
+        shrink = atlas.render_scale
         cell_w, cell_h = atlas.cell
         # The pen sits a fixed (pad, pad + ascent) inside every cell, so a
         # glyph's quad is the cell placed relative to the baseline. No
         # per-glyph bearing is needed; see the baker.
         baseline = (
-            y + h * 0.5 + (atlas.ascent - atlas.cell[1] * 0.5) / scale
+            y + h * 0.5 + (atlas.ascent - atlas.cell[1] * 0.5) * shrink
             if align & ALIGN_VCENTER
-            else y + atlas.ascent / scale
+            else y + atlas.ascent * shrink
         )
-        top = baseline - (atlas.ascent + atlas.pad) / scale
-        quad_w, quad_h = cell_w / scale, cell_h / scale
+        top = baseline - (atlas.ascent + atlas.pad) * shrink
+        quad_w, quad_h = cell_w * shrink, cell_h * shrink
 
         rgba = _rgba(colour)
         for index, char in enumerate(string):
@@ -280,7 +281,7 @@ class QuadPainter:
                 continue
             cx, cy, cw, ch = cell
             self._quad(
-                pen_x + index * advance - atlas.pad / scale, top,
+                pen_x + index * advance - atlas.pad * shrink, top,
                 quad_w, quad_h,
                 cx, cy, cw, ch,
                 rgba,

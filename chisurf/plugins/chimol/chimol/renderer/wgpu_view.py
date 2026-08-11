@@ -490,12 +490,18 @@ class WgpuRenderer(_make_widget_base(), CameraState, Renderer):
         background = self._background_rgb()
         if not self._draw_data:
             # Still clear: a viewer with nothing loaded shows its background,
-            # not whatever was in the buffer.
+            # not whatever was in the buffer -- and it still shows its **panel**.
+            # The object list, the mouse-mode block and the sequence strip are
+            # how you load something in the first place; a viewer that hides its
+            # own controls until it has a molecule cannot be given one. This
+            # path used to omit `chrome`, so `disable all` made the whole panel
+            # disappear.
             self._gpu.render_into(
                 texture.create_view(),
                 pack_scene(None),
                 self.get_view_state(),
                 background=background,
+                chrome=self._chrome_quads(),
             )
             return
         self._gpu.render_into(

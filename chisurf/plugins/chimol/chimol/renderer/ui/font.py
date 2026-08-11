@@ -48,12 +48,32 @@ class Atlas:
         self.solid = tuple(meta["solid"])
         self.ascent = int(meta["ascent"])
         self._glyphs = meta["glyphs"]
-        self._advance = float(meta["advance"]) / self.scale
+        # The 1x advance, when the baker recorded one. Font metrics do not
+        # scale linearly, so the baked 4x advance divided by four is 8.5 where
+        # Qt's 10 pt is 8 -- a 6% stretch across every string in the panel, and
+        # a panel that disagrees with the toolkit it shares a window with.
+        self._advance = float(
+            meta.get("advance_1x") or float(meta["advance"]) / self.scale
+        )
+
+    @property
+    def render_scale(self) -> float:
+        """Logical pixels per baked texel, for the glyph *quad*.
+
+        Not simply ``1 / scale``. The atlas is baked at four times the point
+        size and its metrics do not scale linearly -- Menlo advances 34 texels
+        at 40 pt where it advances 8 px at 10 pt, so a quad sized ``cell /
+        scale`` draws ink 6 % wider than the toolkit does beside it. This is the
+        ratio that makes the drawn glyph the size the layout budgeted for it.
+        """
+        baked = float(self._meta["advance"]) / self.scale
+        return (self._advance / baked) / self.scale if baked else 1.0 / self.scale
 
     @property
     def line_height(self) -> float:
         """Height of one line, in logical pixels."""
-        return float(self._meta["line_height"]) / self.scale
+        meta = self._meta
+        return float(meta.get("line_height_1x") or meta["line_height"] / self.scale)
 
     def advance(self, string: str = "") -> float:
         """Advance width of *string*, in logical pixels.
