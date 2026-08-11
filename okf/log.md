@@ -1,6 +1,22 @@
 # Update Log
 
 ## 2026-08-11
+* **Lumis Quest moves to a screen-based camera, and its rooms are ASCII maps**
+  ([PRD-91](prds/prd-91.md)). Following the ZQuest Classic reference: the world
+  is now viewed as a grid of fixed **screens** that flip when you cross an edge
+  rather than a continuously scrolling window (`api/screens.py`). Sized to the
+  **16-bit** playfield -- 256x224 at a 16-pixel tile is 16x14 tiles, against
+  the NES's 16x11, and those three rows are the difference between a room and a
+  corridor. This is pure geometry over the grid that already existed: a screen
+  is a *view*, not a second copy of the map. `api/interiors.py` gives every
+  building a room of its own, several times the size of the tile it is entered
+  from, each fitting one screen so going indoors never scrolls -- and the rooms
+  are **authored as ASCII art** in `data/rooms/*.txt` with a legend, then
+  replaced with tile artwork when drawn, for the same reason the sprites are
+  string art: a map nobody can read in a diff is a map nobody can review.
+  **Not a code port of ZQuest Classic**, which is GPLv3 against ChiSurf's
+  GPL-2.0 and 12,708 commits of C++; the architecture is not copyrightable and
+  the implementation here is native.
 * **Lumis Quest: collision was wrong in two ways and the towns were too small**
   ([PRD-91](prds/prd-91.md)). "Stuck on objects all the time" had a specific
   cause: the frame step is capped at 0.1 s and a sprint is nearly 500 units a
@@ -34014,3 +34030,12 @@
   Fixed on the way: `grab_image(chrome=True)` never passed the chrome **quads**, so
   every headless grab had lost the panel since the quad port. See
   [chimol-web](/plugins/chimol-web.md).
+
+- **2026-08-11 — chimol selections are engine code, and the marker is a marker.**
+  `renderer/markers.py` holds PyMOL's width rule, the indicator geometry and the
+  column→residue→atom mapping, so the browser gets selections and the two viewers
+  cannot disagree. The "scattered dots" report was **not** `px_mode`: pixel mode is
+  the default and worked. It was (a) `meta["glyph"]` read by nobody, so markers went
+  through the *impostor* pipeline as shaded spheres — `wgsl/marker.wgsl` is the glyph
+  now — and (b) a 3 px marker cannot show three bands, so the width band is 7–16 with
+  migration 14 carrying it. See [chimol-web](/plugins/chimol-web.md).

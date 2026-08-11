@@ -1,0 +1,12 @@
+# The shrine. Nothing here was made; the point is that something was already
+# shining before anybody thought to make it.
+#############
+#....aaa....#
+#....@......#
+#s....r....s#
+#.....r.....#
+#s....r....s#
+#.....r.....#
+#s....r....s#
+#.....@.....#
+######+######

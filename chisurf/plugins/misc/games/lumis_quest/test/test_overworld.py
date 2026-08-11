@@ -80,13 +80,59 @@ def game(qapp, tmp_path):
 
 
 def test_iris_walks(game):
-    """The pad moves Iris and the camera follows."""
+    """The pad moves Iris, and the camera holds the screen she is on.
+
+    It does not follow her *within* a screen -- that is the whole point of a
+    screen-based camera, and a composed view is what it buys.
+    """
+    from chisurf.plugins.misc.games.lumis_quest.api import screens
+
     start = list(game.iris)
     game.host.keys.press(Action.DOWN)
     for _ in range(20):
         game.update(1 / 60, game.host.keys)
     assert game.iris[1] > start[1]
-    assert game.host.camera.center[1] > start[1]
+
+    where = screens.screen_of(*game.iris)
+    assert game.screen_at == where
+    centre = screens.centre_of(*where)
+    # Mid-flip the camera is between the two screens, so it is checked against
+    # the pair rather than the destination alone.
+    was = screens.centre_of(*screens.screen_of(*start))
+    low, high = sorted((was[1], centre[1]))
+    assert low - 1.0 <= game.host.camera.center[1] <= high + 1.0
+
+
+def test_crossing_an_edge_flips_the_screen(game):
+    """A flip is the ceremony that makes a small world feel large."""
+    from chisurf.plugins.misc.games.lumis_quest.api import screens
+
+    # Driven through the camera directly: which tiles happen to be walkable at
+    # a screen boundary is the world generator's business, not this test's.
+    game.iris = [screens.WIDTH * 1.5, screens.HEIGHT * 1.5]
+    game._screen_view(1 / 60)
+    before = game.screen_at
+    assert before == (1, 1)
+
+    game.iris[1] = screens.HEIGHT * 2.5
+    game._screen_view(1 / 60)
+    assert game.screen_at == (before[0], before[1] + 1)
+    for _ in range(int(screens.FLIP_SECONDS * 60) + 10):
+        centre, height = game._screen_view(1 / 60)
+        game.host.camera.center[0], game.host.camera.center[1] = centre
+        game.host.camera.height = height
+    assert game.host.camera.center[1] == pytest.approx(
+        screens.centre_of(*game.screen_at)[1], abs=1.0
+    )
+    assert game.screen_name != screens.label(*before)
+
+
+def test_a_screen_is_the_16_bit_playfield(game):
+    """16 by 14 tiles, not the 8-bit 16 by 11."""
+    from chisurf.plugins.misc.games.lumis_quest.api import screens
+
+    assert (screens.COLS, screens.ROWS) == (16, 14)
+    assert game.screen_mode, "the screen camera is the default"
 
 
 def test_iris_cannot_walk_through_a_wall(game):

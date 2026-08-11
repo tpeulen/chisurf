@@ -26,6 +26,7 @@ from chisurf.gui.chigame.input import Action
 from ...characters import IRIS, LUMI, draw as draw_character
 from ..api import tiles as T
 from ..api import agents as agents_api
+from ..api import screens as screens_api
 from ..api import battle as battle_api
 from ..api import bestiary as bestiary_api
 from ..api import context as context_api
@@ -574,6 +575,15 @@ class OverworldGame(chigame.Game):
         self._tile_uv_alt[T.GRASS] = self._uvs["grass2"]
         self._tile_uv_alt[T.WATER] = self._uvs["water2"]
 
+        # The camera holds one screen at a time and flips when she crosses an
+        # edge, the way an 8-bit overworld does. A screen you can see all of is
+        # a screen somebody composed; a scrolling window is a texture going
+        # past. Switchable from OPTIONS for anyone who wants the scroll.
+        self.screen_mode = True
+        self.screen_at = (0, 0)
+        self.flip_from: tuple[float, float] | None = None
+        self.flip_left = 0.0
+
         self.facing = "down"
         self.walking = False
         self._walk_clock = 0.0
@@ -944,9 +954,18 @@ class OverworldGame(chigame.Game):
 
         camera = self.host.camera
         blend = min(CAMERA_LAG * dt, 1.0)
-        centre, height = (
-            self._map_view() if self.show_map else (tuple(self.iris), self.view_height)
-        )
+        if self.show_map:
+            centre, height = self._map_view()
+        elif self.screen_mode:
+            centre, height = self._screen_view(dt)
+            # A flip is a hard cut in the geometry and a slide on screen, so
+            # the camera is placed rather than eased -- easing on top of the
+            # slide reads as drift.
+            camera.center[0], camera.center[1] = centre
+            camera.height += (height - camera.height) * blend
+            return
+        else:
+            centre, height = (tuple(self.iris), self.view_height)
         camera.center[0] += (centre[0] - camera.center[0]) * blend
         camera.center[1] += (centre[1] - camera.center[1]) * blend
         camera.height += (height - camera.height) * blend
@@ -2058,6 +2077,52 @@ class OverworldGame(chigame.Game):
                         self.iris[0], self.iris[1] = x, y
                         return True
         return False
+
+    def _screen_view(self, dt: float) -> tuple[tuple[float, float], float]:
+        """Camera centre and height for the screen Iris is standing on.
+
+        Crossing an edge is a *flip*: the destination screen is chosen at once
+        -- so the geometry and the collision never disagree with what is drawn
+        -- and the camera slides to it over a fraction of a second.
+
+        Parameters
+        ----------
+        dt : float
+            Seconds elapsed.
+
+        Returns
+        -------
+        tuple
+            ``((x, y), height)``.
+        """
+        here = screens_api.screen_of(*self.iris)
+        if here != self.screen_at:
+            self.flip_from = screens_api.centre_of(*self.screen_at)
+            self.flip_left = screens_api.FLIP_SECONDS
+            self.screen_at = here
+        target = screens_api.centre_of(*self.screen_at)
+
+        if self.flip_left > 0.0 and self.flip_from is not None:
+            self.flip_left = max(0.0, self.flip_left - dt)
+            through = 1.0 - self.flip_left / screens_api.FLIP_SECONDS
+            # Smoothstep, so the slide starts and stops rather than jerking.
+            eased = through * through * (3.0 - 2.0 * through)
+            target = (
+                self.flip_from[0] + (target[0] - self.flip_from[0]) * eased,
+                self.flip_from[1] + (target[1] - self.flip_from[1]) * eased,
+            )
+        return (target, screens_api.HEIGHT)
+
+    @property
+    def screen_name(self) -> str:
+        """Where she is, as a paper map would say it.
+
+        Returns
+        -------
+        str
+            e.g. ``H7``.
+        """
+        return screens_api.label(*self.screen_at)
 
     def _map_view(self) -> tuple[tuple[float, float], float]:
         """Camera centre and height that frame the whole world.

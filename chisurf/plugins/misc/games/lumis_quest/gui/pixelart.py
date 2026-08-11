@@ -512,6 +512,86 @@ TERRAIN_WIDE: dict[str, list[str]] = {
     ],
 }
 
+#: Indoors. A building is one tile outside and a room when you are in it, and
+#: the room has to look like somewhere somebody lives -- boards underfoot, a
+#: fire, a bed, shelves with things on them.
+INDOORS: dict[str, list[str]] = {
+    "boards": [
+        "oOoooOooooOoooOo", "oooooooooooooooo", "EEEEEEEEEEEEEEEE", "ooOoooooOoooooOo",
+        "oooooooooooooooo", "oOooooOoooooOooo", "EEEEEEEEEEEEEEEE", "ooooOoooooOooooo",
+        "oOoooooooOoooooO", "oooooooooooooooo", "EEEEEEEEEEEEEEEE", "oOooooOoooooOooo",
+        "oooooooooooooooo", "ooOoooooOoooooOo", "EEEEEEEEEEEEEEEE", "oooOooooooOooooo",
+    ],
+    "iwall": [
+        "EEEEEEEEEEEEEEEE", "S::::::::::::::S", "S::::::::::::::S", "S::::::::::::::S",
+        "EEEEEEEEEEEEEEEE", "::::::::::::::SS", "::::::::::::::SS", "::::::::::::::SS",
+        "EEEEEEEEEEEEEEEE", "S::::::::::::::S", "S::::::::::::::S", "S::::::::::::::S",
+        "EEEEEEEEEEEEEEEE", "8888888888888888", "8888888888888888", "5555555555555555",
+    ],
+    "counter": [
+        "................", "EEEEEEEEEEEEEEEE", "EOOOOOOOOOOOOOOE", "EOOOOOOOOOOOOOOE",
+        "EEEEEEEEEEEEEEEE", "EooooooooooooooE", "Eo8oooooo8oooooE",
+        "EooooooooooooooE",
+        "EooooooooooooooE", "Eo8oooooo8oooooE",
+        "EooooooooooooooE", "EooooooooooooooE",
+        "EEEEEEEEEEEEEEEE", "5555555555555555", "................", "................",
+    ],
+    "table": [
+        "................", "..EEEEEEEEEEEE..", ".EOOOOOOOOOOOOE.", ".EOOOOOOOOOOOOE.",
+        ".EOoooooooooOOE.", ".EOoooooooooOOE.", ".EOOOOOOOOOOOOE.", "..EEEEEEEEEEEE..",
+        "....E8....8E....", "....E8....8E....", "....E8....8E....", "....E8....8E....",
+        "....EE....EE....", "....55....55....", "................", "................",
+    ],
+    "bed": [
+        "................", ".EEEEEEEEEEEEEE.", ".E8888888888888.", ".ESSSSSSSSSS88E.",
+        ".ESSSSSSSSSS88E.", ".EJJJJJJJJJS88E.", ".EJJJJJJJJJS88E.", ".EJJJJJJJJJS88E.",
+        ".EJJJJJJJJJS88E.", ".EJJJJJJJJJS88E.", ".EJJJJJJJJJS88E.", ".E8888888888888.",
+        ".EEEEEEEEEEEEEE.", ".55555555555555.", "................", "................",
+    ],
+    "shelf": [
+        "................", "EEEEEEEEEEEEEEEE", "E88888888888888E", "EOoOoOoOoOoOoOoE",
+        "EEEEEEEEEEEEEEEE", "E88888888888888E", "E$O$OO$O$OO$O$OE", "EEEEEEEEEEEEEEEE",
+        "E88888888888888E", "EOoO$OoOoO$OoOoE", "EEEEEEEEEEEEEEEE", "E88888888888888E",
+        "EEEEEEEEEEEEEEEE", "5555555555555555", "................", "................",
+    ],
+    "hearth": [
+        "................", "EEEEEEEEEEEEEEEE", "EmMmMmMmMmMmMmME", "EmmmmmmmmmmmmmmE",
+        "EmEEEEEEEEEEEEmE", "EmE##########EmE", "EmE###!!!!###EmE", "EmE##!9999!##EmE",
+        "EmE#!999999!#EmE", "EmE#!9!!99!!#EmE", "EmE##!9999!##EmE", "EmE###!!!!###EmE",
+        "EmEEEEEEEEEEEEmE", "EmMmMmMmMmMmMmME", "EEEEEEEEEEEEEEEE", "5555555555555555",
+    ],
+    "altar": [
+        "................", "................", "..EEEEEEEEEEEE..", "..EYYYYYYYYYYE..",
+        "..EY99999999YE..", "..EY9!!!!!!9YE..", "..EY9!9999!9YE..", "..EY9!9999!9YE..",
+        "..EY9!!!!!!9YE..", "..EY99999999YE..", "..EYYYYYYYYYYE..", "..EEEEEEEEEEEE..",
+        "..EYYYYYYYYYYE..", "..EEEEEEEEEEEE..", "..5555555555 5..".replace(" ", "5"), "................",
+    ],
+    "rug": [
+        "oOoooOooooOoooOo", ".$$$$$$$$$$$$$$.", ".$OOOOOOOOOOOO$.", ".$O$$$$$$$$$$O$.",
+        ".$O$OOOOOOOO$O$.", ".$O$O$$$$$$O$O$.", ".$O$O$OOOO$O$O$.", ".$O$O$OOOO$O$O$.",
+        ".$O$O$$$$$$O$O$.", ".$O$OOOOOOOO$O$.", ".$O$$$$$$$$$$O$.", ".$OOOOOOOOOOOO$.",
+        ".$$$$$$$$$$$$$$.", "oOoooooOoooooOoo", "oooooooooooooooo", "EEEEEEEEEEEEEEEE",
+    ],
+    "anvil": [
+        "................", "................", "...EEEEEEEEEE...", "..EXXXXXXXXXXE..",
+        "..EXxxxxxxxxXE..", "...EXxxxxxxXE...", "....EXxxxxXE....", ".....EXxxXE.....",
+        ".....EXxxXE.....", "....EXxxxxXE....", "...EXxxxxxxXE...", "..EXXXXXXXXXXE..",
+        "..EEEEEEEEEEEE..", "...8888888888...", "...5555555555...", "................",
+    ],
+    "barrel": [
+        "................", "...EEEEEEEEEE...", "..EOOOOOOOOOOE..", "..EOoOoOoOoOOE..",
+        "..EEEEEEEEEEEE..", "..EoooooooooOE..", "..EoooooooooOE..", "..EEEEEEEEEEEE..",
+        "..EoooooooooOE..", "..EoooooooooOE..", "..EEEEEEEEEEEE..", "..EOoOoOoOoOOE..",
+        "..EOOOOOOOOOOE..", "...EEEEEEEEEE...", "...5555555555...", "................",
+    ],
+    "exit": [
+        "oOoooOooooOoooOo", "oooooooooooooooo", "EEEEEEEEEEEEEEEE", "ooOoooooOoooooOo",
+        "................", "..EEEEEEEEEEEE..", "..E##########E..", "..E##########E..",
+        "..E##########E..", "..E##########E..", "..E##########E..", "..E##########E..",
+        "..E##########E..", "..E##########E..", "..EEEEEEEEEEEE..", "................",
+    ],
+}
+
 #: What a settlement is made of. All transparent-backed: they are built *on*
 #: ground the renderer has already drawn, so a tavern on cobble and a tavern on
 #: grass are one sprite.
@@ -696,6 +776,7 @@ def creature_sprite(species_key: str) -> str:
 SPRITES: dict[str, list[str]] = {
     **TERRAIN,
     **TERRAIN_WIDE,
+    **INDOORS,
     **STRUCTURES,
     **{f"body_{name}": rows for name, rows in CREATURES.items()},
     "house_wild": _HOUSE_DARK,

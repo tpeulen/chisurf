@@ -57,6 +57,23 @@ FLOWERS = 27
 STALL = 28
 DOCK = 29
 
+#: Indoors. A building is one tile on the overworld and a whole room when you
+#: are inside it, which is the oldest trick the genre has: the exterior is a
+#: doorway, not a floor plan.
+BOARDS = 35
+IWALL = 36
+COUNTER = 37
+TABLE = 38
+BED = 39
+SHELF = 40
+HEARTH = 41
+ALTAR = 42
+RUG = 43
+ANVIL = 44
+BARREL = 45
+#: The way out, at the bottom of every room.
+EXIT = 46
+
 #: The dark manifold. The same ground with the light taken out of it: ash where
 #: the grass was, tar where the water was, dead wood, and ruins where people
 #: lived. See :mod:`.darkworld`.
@@ -73,11 +90,12 @@ RIFT = 34
 BLOCKING = frozenset({
     VOID, WATER, TREE, ROCK, WALL, BUILDING, CLIFF, WELL, TAVERN, SHOP,
     SMITHY, SHRINE, HALL, LANTERN, SIGN, FENCE, STALL, TAR, DEADTREE, RUIN,
+    IWALL, COUNTER, TABLE, BED, SHELF, HEARTH, ALTAR, ANVIL, BARREL,
 })
 
 #: Tiles you can walk on that are, in some way, *somewhere*: standing on one
 #: means something to the game rather than merely being legal.
-DOORS = frozenset({GATE, CAVE, CLINIC, RIFT})
+DOORS = frozenset({GATE, CAVE, CLINIC, RIFT, EXIT})
 
 #: Buildings you can talk to from outside. Each has an interior scene in
 #: :mod:`.places` rather than an interior map -- a tavern the size of one room
@@ -121,6 +139,29 @@ NAMES = {
     DEADTREE: "dead tree",
     RUIN: "ruin",
     RIFT: "rift",
+    BOARDS: "boards",
+    IWALL: "inner wall",
+    COUNTER: "counter",
+    TABLE: "table",
+    BED: "bed",
+    SHELF: "shelf",
+    HEARTH: "hearth",
+    ALTAR: "altar",
+    RUG: "rug",
+    ANVIL: "anvil",
+    BARREL: "barrel",
+    EXIT: "way out",
+}
+
+#: Which overworld tiles are a building you can walk into, and what kind of
+#: room is behind each.
+ENTERABLE: dict[int, str] = {
+    BUILDING: "house",
+    TAVERN: "tavern",
+    SHOP: "shop",
+    SMITHY: "smithy",
+    SHRINE: "shrine",
+    HALL: "hall",
 }
 
 #: World units per tile.

@@ -1,0 +1,13 @@
+# A keeper's house. One room, a fire, a bed, and somewhere to sit.
+#   #  wall   .  boards   +  way out   @  somewhere to stand
+#   b  bed    s  shelf    h  hearth    T  table
+#   r  rug    o  barrel   C  counter   a  altar   n  anvil
+#############
+#bb...h...ss#
+#.@.......@.#
+#...........#
+#....TT.....#
+#....rr.....#
+#..@.....o..#
+#...........#
+#####+#######
