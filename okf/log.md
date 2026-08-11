@@ -1,6 +1,22 @@
 # Update Log
 
 ## 2026-08-11
+* **PRD-98 written: acquisition is a stream, not an array** — the user's
+  directive "chisurf acq should use upcoming streaming from tttrlib", scoped
+  against the code. The acq plugin is *half*-migrated in the most instructive
+  way: BH decoding already goes through `tttrlib.decode_records` with the
+  carried overflow state (PRD-021 adopted), and then every downstream step
+  un-streams it — full-history `np.concatenate` per chunk, the **batch**
+  correlator re-run over all photons every 5 chunks, `compute_intensity_trace`
+  over everything to display the last second, PicoQuant still on a hand-rolled
+  numpy bit-field decoder (`gui/tool.py:1104`), the pipeline duplicated
+  between `DataProcessingThread` and the manager, and `_save_data()` literally
+  `pass`. The PRD moves the live path onto tttrlib's now-verified streaming
+  family (PRD-033: `StreamingCorrelator` exact vs batch, chunked-vs-whole
+  tested) and names tttrlib PRD-034's native `.pto` sink as the tracked
+  dependency for write-through acquisition — the file exists and grows during
+  the run, killing the process no longer kills the data.
+  [prd-98](prds/prd-98.md).
 * **The per-column slowdown has a cause, and it is a property of the binding,
   not of the maximum-entropy code — filed upstream.** The photon library
   declares `std::vector<double>` as one library-wide SWIG template, so every
