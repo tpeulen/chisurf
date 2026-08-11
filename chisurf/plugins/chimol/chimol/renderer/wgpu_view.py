@@ -543,15 +543,20 @@ class WgpuRenderer(_make_widget_base(), CameraState, Renderer):
         from .ui.quad_painter import QuadPainter
 
         refresh_gui_state(gui, self._controller)
-        # Laid out in **logical** pixels and scaled to device pixels as the
-        # quads are built. Those are two different coordinate systems and this
-        # is the only place they meet: mouse events arrive in logical pixels
-        # and `hit_test` answers in them, so laying the panel out in device
-        # pixels would move the drawing without moving the hit-testing -- the
-        # panel draws in the wrong place *and* stops responding, which reads as
-        # "clicks do not work" rather than as a scale factor.
-        gui.layout(int(self._width), int(self._height))
-        painter = QuadPainter(scale=self._ratio())
+        # `self._width`/`self._height` are **device** pixels: `_draw` resizes
+        # the camera from `_physical_size()`. The panel must be laid out in
+        # **logical** pixels and scaled back up as the quads are built, which is
+        # exactly what the QPainter path did (`paint_chrome_into` took
+        # `width / ratio`).
+        #
+        # Both halves matter, and getting either alone is worse than getting
+        # neither. Laying out in device pixels draws the panel correctly and
+        # hit-tests it in the wrong coordinates, so it looks fine and ignores
+        # every click. Scaling that by the ratio as well puts it off the right
+        # edge of the window entirely.
+        ratio = self._ratio()
+        gui.layout(int(self._width / ratio), int(self._height / ratio))
+        painter = QuadPainter(scale=ratio)
         gui.paint(painter)
         vertices = painter.vertices()
         return vertices if len(vertices) else None
