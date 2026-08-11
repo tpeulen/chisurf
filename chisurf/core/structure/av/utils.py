@@ -1,8 +1,6 @@
 import numpy as np
-import numba as nb
 
 
-@nb.jit(nopython=True)
 def atoms_in_reach(xyz, vdw, dmaxsq, atom_i):
     """Return the xyz coordinates of atoms within reach (defined by dmaxsq) of a list of atoms
 
@@ -23,22 +21,16 @@ def atoms_in_reach(xyz, vdw, dmaxsq, atom_i):
         Coordinates of atoms within reach
     vdwr : ndarray
         Van der Waals radii of atoms within reach
-    """
-    # copy all atoms in proximity to the dye into a smaller array and move coordinate frame to attachment point
-    n_atoms = xyz.shape[0]
-    atomindex = np.empty(n_atoms, dtype=np.uint32)
-    r0 = xyz[atom_i]
-    natomsgrid = 0
-    for i in range(0, n_atoms):
-        dsq = ((xyz[i] - r0)**2.0).sum()
-        if (dsq < dmaxsq) and (i != atom_i):
-            atomindex[natomsgrid] = i
-            natomsgrid += 1
 
-    ra = np.empty((natomsgrid, 3), dtype=np.float64)
-    vdwr = np.empty(natomsgrid, dtype=np.float64)
-    for i in range(natomsgrid):
-        n = atomindex[i]
-        ra[i] = xyz[n]
-        vdwr[i] = vdw[n]
-    return ra, vdwr
+    Notes
+    -----
+    The squared distance is summed over the coordinate axis rather than
+    accumulated in a scalar, so the comparison against ``dmaxsq`` is the same
+    arithmetic in the same order as the per-atom loop this replaces. Boolean
+    indexing keeps the atoms in index order, which the callers rely on.
+    """
+    xyz = np.asarray(xyz, dtype=np.float64)
+    dsq = ((xyz - xyz[atom_i]) ** 2.0).sum(axis=1)
+    in_reach = dsq < dmaxsq
+    in_reach[atom_i] = False
+    return xyz[in_reach], np.asarray(vdw, dtype=np.float64)[in_reach]

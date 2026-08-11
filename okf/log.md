@@ -9,6 +9,11 @@
   Traps and verification in [numba retirement](subsystems/numba-retirement.md) §3.
 * **Layout defect found by screenshotting that panel**: three controls stacked
   on one grid row. Fixed; recorded in the same concept.
+* **`core/structure/av/utils.py` off the numba list**; allow-list → 16. Two
+  routing corrections recorded in the same concept, both from checking before
+  porting: `core/math/hmm.py` is **not** route `tttrlib` (the library's HMM is
+  a scaled photon-stream model, not a generic log lattice) and the `imp` group
+  is **not** dead code — all of it has importers.
 * **PRD-98 written: acquisition is a stream, not an array** — the user's
   directive "chisurf acq should use upcoming streaming from tttrlib", scoped
   against the code. The acq plugin is *half*-migrated in the most instructive

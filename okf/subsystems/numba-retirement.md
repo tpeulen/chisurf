@@ -10,7 +10,7 @@ timestamp: '2026-08-10T00:00:00Z'
 # Where to pick this up
 
 1. **The tracker is `test/numba_import_allowlist.txt`** and it only shrinks.
-   Every entry carries its route. **18 chisurf-owned files remain**, and **route `numpy` is now empty -- Phase 1 is done** of the 48 this work covers. ChiMOL's 11 are **excluded from the guard entirely** — the WebGPU port removes them on its own schedule, and listing them here only made this test fail nine times in one session with news about someone else's progress;
+   Every entry carries its route. **16 chisurf-owned files remain**, and **route `numpy` is now empty -- Phase 1 is done** of the 48 this work covers. ChiMOL's 11 are **excluded from the guard entirely** — the WebGPU port removes them on its own schedule, and listing them here only made this test fail nine times in one session with news about someone else's progress;
    `test/test_numba_seam.py` fails both on a new importer and on a stale entry,
    so the list cannot drift from the tree.
 2. **`maxent_decay/core/solver.py` is done, and the granularity of a delegation
@@ -106,11 +106,40 @@ timestamp: '2026-08-10T00:00:00Z'
    rewritten instead: comparing two implementations is now a tautology, but the
    chunk-boundary state is still ChiSurf's to get wrong.
 
-   **Next on this route: `core/math/hmm.py` and
-   `core/fluorescence/burst/gopich_szabo.py`** — the two remaining `tttrlib`
-   entries. Check what the library exposes *first*: this entry took an hour
-   less than budgeted because `decode_records` already existed and nothing in
-   ChiSurf knew.
+   Check what the library exposes *first*: this entry cost far less than
+   budgeted because `decode_records` already existed and nothing in ChiSurf
+   knew.
+
+   **Two routing corrections, both from checking before porting. Do not
+   re-derive these.**
+
+   - **`core/math/hmm.py` is NOT route `tttrlib`.** The library's HMM is a
+     *photon-stream* model — per-burst, Δt-dependent transition matrices,
+     discrete symbol emissions (`obs[k*p + y]`) — and its recursion is
+     **scaled, not log-domain** (`forward_burst` in `modules/spectroscopy/hmm/
+     src/HMM.cpp`, `static`, unexported). ChiSurf's is a generic log-domain
+     lattice over a caller-supplied `log_frameprob`. Different algorithm,
+     different numerics; `HmmEval.gamma_obs_np` / `xi_np` are E-step outputs of
+     that other model, not a lattice one can borrow. **Reroute to `tttr-c`**: a
+     generic log-domain forward / backward / posteriors-and-xi kernel in
+     tttrlib's `modules/math`, NumPy-bound. Route `numpy` is out — the
+     recursions are serial in `t` and only vectorise over states, so a NumPy
+     rewrite pays Python loop overhead once per sample.
+   - **The `imp` group is not "delete the leftover".** All of it is live:
+     `potentials.py` has 10 importers, `dcd.py` 5, `protein.py` 4,
+     `av/dynamic.py` 3, `av/static.py` 1. Only `av/functions.py` has none, and
+     that one is route `wgsl` anyway. These need real ports or real delegation
+     to `IMP.bff` / `IMP.cgmol`; budget accordingly.
+
+   **`core/structure/av/utils.py` is done** and is the cheap shape: a two-pass
+   `@nb.jit` loop that was a boolean mask all along. Vectorised, bit-identical
+   on 27 recorded cases, pinned by `test/structure/test_atoms_in_reach_parity.py`
+   against a fixture frozen from the numba original. Its one caller,
+   `av/static.py`, indexes the two returned arrays against each other, so the
+   port had to keep index order and the self-exclusion — both asserted.
+
+   **Next on this route: `core/ml/cluster/_hdbscan.py`** (see item 10 — it
+   splits, and the measurement is already recorded).
 4. **PCH is done, and it was three copies, not one.** `plugins/pch/api/algorithms.py`
    (numba) turned out to duplicate `core/models/pch/pch.py`, which *already*
    delegated to tttrlib behind an unexercised pure-Python fallback — and
@@ -539,8 +568,8 @@ mechanically.
 | | Files | Kernels |
 | --- | ---: | ---: |
 | At the start | 59 | 186 |
-| Ported so far | 24 | ~63 |
-| Remaining | 24 | ~92 |
+| Ported so far | 26 | ~65 |
+| Remaining | 22 | ~90 |
 | ChiMOL (excluded, owned elsewhere) | 11 | 29 |
 
 Done: `fluorescence/general.py`, `math/datatools.py`, `math/statistics.py`,

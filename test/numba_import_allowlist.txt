@@ -41,7 +41,6 @@ chisurf/core/fio/trajectory/dcd.py
 chisurf/core/fio/trajectory/xtc.py
 chisurf/core/structure/av/dynamic.py
 chisurf/core/structure/av/static.py
-chisurf/core/structure/av/utils.py
 chisurf/core/structure/potential/potentials.py
 chisurf/core/structure/protein.py
 
