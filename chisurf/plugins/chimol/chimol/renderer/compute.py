@@ -55,6 +55,34 @@ WORKGROUP = 64
 #: which is more than the NumPy route takes on a small mesh.
 MIN_WORK_ITEMS = 20_000
 
+#: The floor for the three **per-vertex shading** kernels: the colour gather,
+#: the hemispherical occlusion and the cast shadows.
+#:
+#: :data:`MIN_WORK_ITEMS` is a general guess and it was badly wrong for these.
+#: Measured on an M1 Pro, best of three, against their own NumPy routes (which
+#: enumerate vertex/atom pairs, so they grow with the product while the kernel
+#: grows with the vertices):
+#:
+#: ===========  =========  =========  =========
+#: vertices     CPU        GPU        speed-up
+#: ===========  =========  =========  =========
+#: 250          15 ms      3.7 ms     4x
+#: 1,000        42 ms      3.6 ms     12x
+#: 5,000        201 ms     5.8 ms     35x
+#: 20,000       1,242 ms   11.8 ms    105x
+#: 40,000       3,328 ms   15.9 ms    210x
+#: ===========  =========  =========  =========
+#:
+#: The GPU is flat -- it is dispatch-bound until tens of thousands of vertices --
+#: so the break-even is around 100-250 and everything above it is a rout. At the
+#: old floor of 20,000 a **cartoon of T4 lysozyme (19,908 vertices) missed the
+#: GPU by 92 vertices and took 4.4 seconds instead of 0.08**.
+#:
+#: 512 rather than 250: the first dispatch in a process also compiles the
+#: shader, which is ~950 ms once, and a floor at the exact break-even would pay
+#: it for a case that gains a millisecond.
+SHADING_MIN_ITEMS = 512
+
 #: Environment override, for tests and for a machine whose driver misbehaves.
 #: ``cpu`` disables every kernel here; ``gpu`` skips the size threshold so a
 #: small case still dispatches, which is what makes a parity test meaningful.
@@ -603,7 +631,7 @@ def shade_from_atoms(verts, atoms, atom_colors, sigmas, cutoff) -> Optional[tupl
     a = np.ascontiguousarray(atoms, dtype=np.float64)
     if v.ndim != 2 or v.shape[1] != 3 or a.ndim != 2 or a.shape[1] != 3:
         return None
-    if _declines(v.shape[0]) or v.shape[0] == 0 or a.shape[0] == 0:
+    if _declines(v.shape[0], SHADING_MIN_ITEMS) or v.shape[0] == 0 or a.shape[0] == 0:
         return None
     if not np.isfinite(cutoff) or cutoff <= 0.0:
         return None
@@ -664,7 +692,7 @@ def occlusion_from_spheres(points, normals, centers, radii, max_distance, streng
     """
     p = np.ascontiguousarray(points, dtype=np.float64)
     c = np.ascontiguousarray(centers, dtype=np.float64)
-    if _declines(p.shape[0]) or p.shape[0] == 0 or c.shape[0] == 0:
+    if _declines(p.shape[0], SHADING_MIN_ITEMS) or p.shape[0] == 0 or c.shape[0] == 0:
         return None
     if not np.isfinite(max_distance) or max_distance <= 0.0:
         return None
@@ -818,7 +846,7 @@ def directional_occlusion(points, normals, centers, radii, direction,
     p = np.ascontiguousarray(points, dtype=np.float64)
     c = np.ascontiguousarray(centers, dtype=np.float64)
     r = np.ascontiguousarray(radii, dtype=np.float64).reshape(-1)
-    if _declines(p.shape[0]) or p.shape[0] == 0 or c.shape[0] == 0:
+    if _declines(p.shape[0], SHADING_MIN_ITEMS) or p.shape[0] == 0 or c.shape[0] == 0:
         return None
     if not np.isfinite(max_distance) or max_distance <= 0.0:
         return None
@@ -1731,6 +1759,7 @@ __all__ = [
     "upload_volume",
     "DISTANCE_CELL",
     "MIN_WORK_ITEMS",
+    "SHADING_MIN_ITEMS",
     "RayScene",
     "backend",
     "closest_hit",

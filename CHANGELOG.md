@@ -4,6 +4,8 @@
 
 ### Added
 
+- **ChiMOL draws a cartoon 54× faster.** Showing a cartoon of T4 lysozyme took 4.4 seconds and now takes 82 ms: its 19,908 vertices missed the GPU compute threshold by ninety-two, and fell back to a CPU route that grows with vertex×atom pairs. The threshold for the per-vertex shading kernels is now set from measurements rather than guessed. The neighbour queries underneath are 4–12× faster too, and a bug that stopped structures loading in the browser went with them.
+
 - **ChiMOL in a browser is now the same ChiMOL.** The page runs the viewer and the command layer the desktop runs — `load`, `as cartoon`, `as spheres`, `select`, `bg_color` all work in a tab — rather than a parallel browser-only viewer with its own commands, which is what it had. Along the way the engine stopped needing SciPy at all (neighbour queries are an in-tree grid, the distance transform an in-tree exact transform), `fetch` works in a page, and the web server moved off port 8765, which ChiSurf's own server uses.
 
 - **A selection looks like a selection again, and works in the browser.** The marker geometry moved out of the Qt widget into the engine, so a selection made in the sequence strip marks the molecule wherever ChiMOL runs. Two defects behind the "scattered dots" report are fixed with it: the markers were drawn by the *sphere* pipeline because their glyph was never read, and at PyMOL's three-pixel floor the indicator's three bands cannot exist — the width band is now 7–16 pixels, carried to existing profiles by a settings migration.

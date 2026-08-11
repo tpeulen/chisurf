@@ -147,3 +147,28 @@ def test_distance_transform_edt_matches_brute_force():
     d = np.sqrt(((idx[:, None, :] - zeros[None, :, :]) ** 2).sum(2)).min(1)
     ref = d.reshape(fb.shape)
     assert np.allclose(got, ref, atol=1e-9)
+
+
+def test_pair_indices_are_intp_so_bincount_accepts_them():
+    """The index dtype is ``intp``, and that is a portability requirement.
+
+    ``np.bincount`` takes only ``intp``, and every caller here counts pairs with
+    it. On a 64-bit desktop ``intp`` *is* ``int64``, so an int64 index array is
+    indistinguishable -- and in WebAssembly ``intp`` is 32-bit, where the same
+    array raises "cannot cast ... according to the rule 'safe'" from inside the
+    cell table. It surfaced as a structure that would not load in the browser,
+    with nothing in the message about integers.
+    """
+    import numpy as np
+
+    from chisurf.plugins.chimol.chimol.geometry.grid_pairs import (
+        pairs_within,
+        self_pairs_within_grid,
+    )
+
+    points = np.random.default_rng(0).random((64, 3)) * 10.0
+    first, second = pairs_within(points, points, 3.0)
+    assert first.dtype == np.intp and second.dtype == np.intp
+    assert self_pairs_within_grid(points, 3.0).dtype == np.intp
+    # The operation that would raise, run for real.
+    assert np.bincount(first, minlength=len(points)).sum() == first.size

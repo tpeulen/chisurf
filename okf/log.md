@@ -34098,3 +34098,28 @@
   against the target's own halo, and hp read from `fight.active` before and after — which
   compares two different animals when the bench relays. See [chigame](/subsystems/chigame.md)
   and [PRD-91](/prds/prd-91.md).
+
+- **2026-08-11 — chimol got fast: `as cartoon` 4.4 s → 82 ms, and the neighbour grid 4–12×.**
+  The cartoon was slow because of **one constant**: `MIN_WORK_ITEMS = 20_000` gates every
+  compute kernel and a 148L cartoon is 19,908 vertices — it missed the GPU by ninety-two.
+  The GPU shading kernels are *flat* to tens of thousands of vertices (3.6 ms) where the
+  NumPy routes grow with vertex×atom pairs, so break-even is ~150 and `SHADING_MIN_ITEMS`
+  is now 512. Separately, a profile put 57 % of the neighbour query in `searchsorted`:
+  a counting-sort cell table, a padded grid and scalar key offsets replaced it (2.8/58/72/365 ms
+  at 1.4k/20k/50k/200k points, within 2× of cKDTree, identical pair sets). Two attempted
+  optimisations measured slower and are recorded as such. Browser-only bug caught on the way:
+  index arrays must be `intp`, not `int64` — `np.bincount` takes only `intp`, and in wasm
+  that is 32-bit, so a structure simply would not load. See [chimol-web](/plugins/chimol-web.md).
+
+- **2026-08-11 — Lumis Quest's townsfolk can get round a building, and a creature shows you when it notices you.**
+  Two more from `junk/pyzelda-rpg`. `api/pathing.py` is A* plus the part that matters — recompute
+  when the path is stale **or** when the destination changed grid cell, whichever comes first, and
+  fall back to the direct line when there is no path — wired into `agents.Society._walk`, which
+  previously read *"Blocked flat. Give up on this errand rather than grinding into a wall for the
+  rest of the session."* Every errand whose destination sat behind a building was abandoned. Ours
+  adds a **node budget**: that game's maps are one screen, this world is tens of thousands of
+  tiles, and an unreachable goal makes an uncapped search expand every reachable cell per walker
+  per recalculation. And `steering.Temper.notice` gates homing by distance, closing a hole nobody
+  had noticed — alignment has no distance in it, so a beast forty tiles down your column was
+  reacting to you through a forest. The rising edge is drawn as a **"!"** through the new particle
+  field. See [PRD-91](/prds/prd-91.md).

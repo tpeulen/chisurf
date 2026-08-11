@@ -42,6 +42,44 @@ with a large consequence:**
   and all three imported scipy at module scope, so a page paid a ~14 MB download
   to *import the viewer*. Gone: see below.
 
+## Speed: the router was the bug, not the arithmetic (2026-08-11)
+
+**`as cartoon` on T4 lysozyme took 4.4 seconds and now takes 82 ms.** The cause
+was one constant. `renderer/compute.py`'s `MIN_WORK_ITEMS = 20_000` gates every
+kernel, and a cartoon of 148L is **19,908 vertices** — it missed the GPU by
+ninety-two vertices and fell back to a NumPy route that enumerates vertex/atom
+pairs.
+
+Measured per kernel (M1 Pro, best of three, CPU route against GPU route, results
+agreeing to 2e-3):
+
+| vertices | CPU | GPU | speed-up |
+|---:|---:|---:|---:|
+| 250 | 15 ms | 3.7 ms | 4× |
+| 1,000 | 42 ms | 3.6 ms | 12× |
+| 5,000 | 201 ms | 5.8 ms | 35× |
+| 20,000 | 1,242 ms | 11.8 ms | 105× |
+| 40,000 | 3,328 ms | 15.9 ms | 210× |
+
+The GPU route is **flat** — dispatch-bound until tens of thousands of vertices —
+so the break-even is 100–250 and everything above it is a rout.
+`SHADING_MIN_ITEMS = 512` now gates the three per-vertex shading kernels (the
+colour gather, hemispherical occlusion, cast shadows); 512 rather than 250
+because the first dispatch in a process also compiles the shader, ~950 ms once,
+and a floor at the exact break-even would pay that to gain a millisecond. The
+other kernels keep their own measured minima.
+
+**This is what the "neighbour count on the GPU" item was really asking for**,
+and it needed no new kernel: the kernels existed and the router was not letting
+them run. The 806 ms-against-39 ms measurement in the earlier handover is still
+true and is still why a *tiny* case stays on the CPU — it was taken at 1,363
+work items, below this floor.
+
+Whole commands afterwards (real viewer, headless, warm): `load` 67 ms,
+`as cartoon` 82 ms, `as spheres` 81 ms, `as surface` 597 ms. `as sticks` is the
+slowest left at ~1.8 s cold and ~0.25 s warm, and its profile blames wgpu's FFI
+rather than any kernel.
+
 ## scipy is out of the engine
 
 `geometry/grid_pairs.py` is a vectorised uniform grid — sort points by cell,
@@ -51,33 +89,44 @@ and no compiler. `neighbors.py`, `ambient.py` and `surface.py` route through it;
 which reproduces `scipy.ndimage.distance_transform_edt` **exactly** (checked on
 1-D, 2-D and 3-D random masks).
 
-**The measurement, and it is not flattering.** Pair sets are *identical* to
-`cKDTree`'s, and the grid is **5–8× slower**:
+**The measurement.** Pair sets are *identical* to `cKDTree`'s at every size,
+and after the query was rewritten the grid is within a factor of two of
+compiled C:
 
-| n | radius | pairs | grid | cKDTree |
-|---|---|---|---|---|
-| 1,363 | 4 Å | 8,209 | 12 ms | 2.5 ms |
-| 20,000 | 4 Å | 122,094 | 323 ms | 39 ms |
-| 50,000 | 3 Å | 131,774 | 874 ms | 127 ms |
+| n | radius | pairs | grid | cKDTree | first attempt |
+|---|---|---|---|---|---|
+| 1,363 | 4 Å | 8,209 | 2.8 ms | 1.3 ms | 12 ms |
+| 20,000 | 4 Å | 122,094 | 58 ms | 25 ms | 323 ms |
+| 50,000 | 3 Å | 131,774 | 72 ms | 68 ms | 874 ms |
+| 200,000 | 3 Å | 522,558 | 365 ms | 287 ms | — |
 
-A grid inspects ~6× more candidates than it returns pairs — that is the shape of
-a 3×3×3 stencil against a sphere — and the bookkeeping across 27 offsets, not
-the distance test, is where the time goes (making the candidate gather
-contiguous and float32 moved 14 → 12 ms and nothing at 20k). At scene-rebuild
-sizes this is invisible; at tens of thousands of atoms it is the thing to fix,
-and **the fix is the GPU kernel the user asked for**, with this as its CPU twin
-and its small-input fallback. `grid_occupancy()` reports cells and the fullest
-cell, which is how a degenerate case is seen rather than guessed at.
+**A profile said where the time was, and it was not the arithmetic**: 57 % in
+two `searchsorted` calls, twenty-seven of them per query point. The fix is a
+counting-sort **cell table** (a cell's range is an index, not a search), a grid
+**padded** by one cell so the bounds test disappears, and therefore **scalar
+key offsets** — the whole stencil is one `(block, 27)` add. 4–12× faster than
+the first version.
+
+Two ideas measured *slower* and are deliberately absent: a float32 sieve before
+the exact test (the work is memory-bound, so the extra pass costs more than the
+narrower gather saves), and pruning cells by box distance (helps at 20k, 2.5×
+worse at 200k, where the `(block, 27, 3)` temporaries stop fitting).
+
+Also fixed here: `blocked_cross_pairs` exists to bound memory on 2.4×10⁷ pairs
+and was materialising *every pair in order to decide how to avoid materialising
+every pair*, then re-querying each block — the exact counts were free from the
+k-d tree and are not free from a grid. It samples a few hundred query points
+now. And the index arrays are **`intp`, not `int64`**: `np.bincount` takes only
+`intp`, in WebAssembly that is 32-bit, and an int64 key array made a structure
+fail to load in the browser with a message about casting rules.
+`grid_occupancy()` reports the fullest cell, which is how a degenerate density
+is seen rather than guessed at.
 
 ## Next, in this order
 
-1. **The neighbour count on the GPU.** The numbers above are the case for it and
-   `renderer/compute.py` already has the router, the seam and `bvh.wgsl`'s prefix
-   sum to copy. The shape that wins is one dispatch doing grid, count and the
-   integral it feeds without a round-trip between them — measured at
-   `CHIMOL_COMPUTE=gpu`, the existing occlusion integral is 806 ms against
-   numpy's 39 ms on 1363 atoms, so a kernel that only counts loses by *more* at
-   that size. It wins at tens of thousands.
+1. **`as sticks` is the slowest command left** — ~1.8 s cold, ~0.25 s warm, and
+   a profile puts the top entry in wgpu's FFI rather than in any one kernel.
+   Measure a cold rebuild before optimising; the warm path is already fine.
 2. **The `app/` panels into the chrome** — thirteen of `HOSTS`' fifteen. Start
    with `sequence_dock.py`, whose replacement already ships.
 3. **The page's renderer is still its own.** `web/demo.py` packs the sink's scene

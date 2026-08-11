@@ -167,29 +167,42 @@ def blocked_cross_pairs(points, others, radius, *, budget: int = 4_000_000):
     -----
     A 12 Å occlusion radius over a 40k-vertex mesh in an all-atom structure is
     roughly 2.4×10⁷ pairs; materialising them all costs gigabytes for work that
-    reduces to one number per vertex. The neighbour counts are queried first —
-    cheap, and parallel — so the block sizes follow the actual density rather
-    than a guess about it.
+    reduces to one number per vertex. **So the block size is estimated from a
+    sample, not from the exact counts.** Counting exactly used to be free -- the
+    k-d tree could return lengths without building the pairs -- and when the
+    tree went, the same code started materialising every pair *in order to
+    decide how to avoid materialising every pair*, then querying each block a
+    second time. That is the opposite of what this function is for, and it is
+    invisible until the input is large enough to run out of memory.
+
+    A few hundred query points give the mean pairs per point to well within the
+    factor of two that choosing a block size needs.
     """
     pts = _as_points(points)
     oth = _as_points(others)
     n = pts.shape[0]
     if n == 0 or oth.shape[0] == 0 or not np.isfinite(radius) or radius <= 0.0:
         return
-    first, _second = pairs_within(pts, oth, float(radius))
-    counts = np.bincount(first, minlength=n)[:n].astype(np.int64)
-    cumulative = np.cumsum(counts)
-    total = int(cumulative[-1])
-    if total == 0:
-        return
-    block_count = max(1, -(-total // max(1, int(budget))))
-    targets = np.arange(1, block_count) * max(1, int(budget))
-    splits = np.searchsorted(cumulative, targets) + 1
-    bounds = np.unique(np.clip(np.concatenate(([0], splits, [n])), 0, n))
-    for start, stop in zip(bounds[:-1], bounds[1:]):
-        if counts[start:stop].sum() == 0:
-            continue
+
+    budget = max(1, int(budget))
+    sample_size = min(n, 512)
+    step = max(1, n // sample_size)
+    sample = pts[::step][:sample_size]
+    sampled_i, _sampled_j = pairs_within(sample, oth, float(radius))
+    if sampled_i.size == 0:
+        # The sample found nothing, which does not prove the rest is empty --
+        # it proves only that the density is low, so one generous block is the
+        # right guess rather than an early return.
+        chunk = n
+    else:
+        per_point = max(sampled_i.size / float(len(sample)), 1e-9)
+        chunk = int(min(max(budget / per_point, 1.0), float(n)))
+
+    for start in range(0, n, chunk):
+        stop = min(start + chunk, n)
         block_i, block_j = pairs_within(pts[start:stop], oth, float(radius))
+        if block_i.size == 0:
+            continue
         yield int(start), int(stop), block_i, block_j
 
 
