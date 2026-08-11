@@ -76,3 +76,45 @@ def test_fdc_on_reference_subset(reference_photons):
     out = two_d_fdc(macro, micro, dT=dT, ddT=ddT, tMin=tMin, tMax=tMax, logt_imax=60)
     expected = _brute_force_pair_count(macro, micro, dT, ddT, tMin, tMax)
     assert out["mat_lin"].sum() == expected
+
+
+def test_the_scan_result_does_not_depend_on_the_chunk_count():
+    """Chunking is a partition, not an approximation.
+
+    ``two_d_fdc_scan`` splits the photon stream into ``n_chunks`` pieces, counts
+    pairs in each and sums the counts. The counts are integers, so the total is
+    exactly independent of how the stream was cut — which is what lets the
+    default be chosen for parallelism alone. It was previously taken from
+    numba's thread count; nothing about the answer depended on that, and this
+    pins it so nothing starts to.
+    """
+    from chisurf.plugins.fcs.flc_2d.api import two_d_fdc_scan
+
+    rng = np.random.default_rng(11)
+    macro = np.cumsum(rng.integers(1, 50, size=4000)).astype(np.int64)
+    micro = rng.integers(1, 40, size=4000).astype(np.int64)
+    lags = np.array([100, 400], dtype=np.int64)
+
+    reference = two_d_fdc_scan(macro, micro, lags, ddT=60, tMin=1, tMax=40,
+                               logt_imax=12, n_chunks=1)["matrices"]
+    assert reference.sum() > 0, "no pairs counted; the case proves nothing"
+    for n_chunks in (2, 3, 7, 64):
+        got = two_d_fdc_scan(macro, micro, lags, ddT=60, tMin=1, tMax=40,
+                             logt_imax=12, n_chunks=n_chunks)["matrices"]
+        np.testing.assert_array_equal(got, reference, err_msg=f"n_chunks={n_chunks}")
+
+
+def test_the_default_chunk_count_is_used_when_none_is_given():
+    """The default must produce the same matrices as an explicit count."""
+    from chisurf.plugins.fcs.flc_2d.api import two_d_fdc_scan
+
+    rng = np.random.default_rng(12)
+    macro = np.cumsum(rng.integers(1, 50, size=2000)).astype(np.int64)
+    micro = rng.integers(1, 40, size=2000).astype(np.int64)
+    lags = np.array([200], dtype=np.int64)
+
+    default = two_d_fdc_scan(macro, micro, lags, ddT=60, tMin=1, tMax=40,
+                             logt_imax=12)["matrices"]
+    explicit = two_d_fdc_scan(macro, micro, lags, ddT=60, tMin=1, tMax=40,
+                              logt_imax=12, n_chunks=1)["matrices"]
+    np.testing.assert_array_equal(default, explicit)

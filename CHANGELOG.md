@@ -53,6 +53,16 @@
   acquisition owns, and the test now pins it by decoding a real file in
   4096-record chunks rather than by comparing two copies of the same algorithm.
 
+### Fixed
+
+- **2D-FLC could fail to run at all, with an error about threads.** ChiSurf's
+  startup rewrites numba's thread-count setting, and if that happened after
+  numba had already started its thread pool, the plugin's compute kernels
+  refused to compile — reporting a threading conflict rather than the setting
+  that moved. Whether it struck depended on import order, so it looked
+  intermittent. The plugin now pins the value the way the H2MM engine already
+  did.
+
 ### Removed
 
 - **GROMACS XTC trajectories are no longer read.** ChiSurf reads DCD, which is

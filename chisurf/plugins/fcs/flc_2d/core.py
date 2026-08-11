@@ -20,6 +20,35 @@ except ImportError as exc:  # pragma: no cover - hard failure when numba missing
     ) from exc
 
 
+def _sync_numba_threads() -> None:
+    """Pin ``NUMBA_NUM_THREADS`` back to numba's already-launched pool size.
+
+    ChiSurf's startup (:mod:`chisurf.core.settings.env_bootstrap`) rewrites
+    ``NUMBA_NUM_THREADS`` from settings, and it can do so *after* numba's
+    threadpool has launched. numba re-reads that variable on every cold compile
+    and raises when it no longer matches the pool, so the first kernel here to
+    be compiled after such a rewrite dies with "cannot set NUMBA_NUM_THREADS to
+    a different value once the threads have been launched" — a message that
+    points at threading rather than at the setting that moved.
+
+    Rewriting the variable back to the launched count keeps late cold compiles
+    valid without touching the pool. The same guard exists in the H2MM engine
+    for the same reason; this module needs its own because it compiles its
+    kernels lazily too.
+    """
+    try:
+        import os
+
+        from numba import config as _nb_config
+
+        os.environ["NUMBA_NUM_THREADS"] = str(_nb_config.NUMBA_NUM_THREADS)
+    except Exception:  # pragma: no cover - defensive only
+        pass
+
+
+_sync_numba_threads()
+
+
 @njit(cache=True)
 def _ceil_div_pos(a: int, b: int) -> int:
     """Ceil division for positive integers."""
@@ -158,6 +187,30 @@ def create_2d_fdc_numba_int(
     logt_ticks = logt_ticks[: logt_imax - 1]
 
     return mat_2dfdc_lin, mat_2dfdc_lint, mat_2dfdc_log, logt_ticks
+
+
+def default_chunk_count() -> int:
+    """Chunks to split the photon stream into for :func:`_fdc_scan_log_kernel`.
+
+    The number the *kernel's own thread pool* is running with, which is not the
+    same as the CPU count: ChiSurf's environment bootstrap sets
+    ``NUMBA_NUM_THREADS`` from settings, and once the pool has launched, handing
+    the kernel a different number makes the runtime object rather than silently
+    over-subscribe.
+
+    The count never changes the result -- per-chunk pair counts are integers and
+    are summed afterwards -- so this is a parallelism and memory decision only.
+
+    Returns
+    -------
+    int
+    """
+    from numba import get_num_threads
+
+    try:
+        return int(get_num_threads())
+    except Exception:  # pragma: no cover - a pool that will not report itself
+        return 1
 
 
 @njit(cache=True, parallel=True)

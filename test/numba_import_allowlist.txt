@@ -55,5 +55,4 @@ chisurf/core/fluorescence/burst/kalman.py
 chisurf/core/ml/cluster/_kmeans.py
 chisurf/core/roi/segmentation.py
 chisurf/plugins/burst/burst_h2mm/core/h2mm.py
-chisurf/plugins/fcs/flc_2d/api.py
 chisurf/plugins/fcs/flc_2d/core.py

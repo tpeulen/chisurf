@@ -355,9 +355,7 @@ def two_d_fdc_scan(
 
     Returns a dict with ``matrices`` (``n_lags x L x L``) and ``dT_ticks``.
     """
-    from numba import get_num_threads
-
-    from .core import _fdc_scan_log_kernel
+    from .core import _fdc_scan_log_kernel, default_chunk_count
 
     macro = np.ascontiguousarray(macro_times, dtype=np.int64)
     micro = np.ascontiguousarray(micro_times, dtype=np.int64)
@@ -365,10 +363,11 @@ def two_d_fdc_scan(
         raise ValueError("macro_times must be sorted ascending")
     lags = np.ascontiguousarray(np.asarray(dT_ticks, dtype=np.int64))
     if n_chunks is None:
-        try:
-            n_chunks = int(get_num_threads())
-        except Exception:  # pragma: no cover
-            n_chunks = 1
+        # A parallelism decision, never a numerical one: the per-chunk counts
+        # are integers summed afterwards, so the matrices are identical however
+        # the stream is cut. The kernel's module owns the choice because it is
+        # the kernel's thread pool being matched.
+        n_chunks = default_chunk_count()
     mats = _fdc_scan_log_kernel(
         macro,
         micro,

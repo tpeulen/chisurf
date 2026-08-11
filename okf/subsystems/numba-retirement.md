@@ -10,7 +10,7 @@ timestamp: '2026-08-10T00:00:00Z'
 # Where to pick this up
 
 1. **The tracker is `test/numba_import_allowlist.txt`** and it only shrinks.
-   Every entry carries its route. **14 chisurf-owned files remain**, and **route `numpy` is now empty -- Phase 1 is done** of the 48 this work covers. ChiMOL's 11 are **excluded from the guard entirely** — the WebGPU port removes them on its own schedule, and listing them here only made this test fail nine times in one session with news about someone else's progress;
+   Every entry carries its route. **13 chisurf-owned files remain**, and **route `numpy` is now empty -- Phase 1 is done** of the 48 this work covers. ChiMOL's 11 are **excluded from the guard entirely** — the WebGPU port removes them on its own schedule, and listing them here only made this test fail nine times in one session with news about someone else's progress;
    `test/test_numba_seam.py` fails both on a new importer and on a stale entry,
    so the list cannot drift from the tree.
 2. **`maxent_decay/core/solver.py` is done, and the granularity of a delegation
@@ -606,6 +606,21 @@ frame probabilities are logged), so passing logs makes every log-likelihood
 
 ## Bugs the ports have found
 
+* **The whole 2D-FLC plugin was failing to compile its kernels**, found by
+  taking `flc_2d/api.py` off this list. ChiSurf's `env_bootstrap` rewrites
+  `NUMBA_NUM_THREADS` from settings (`numba_num_threads: "auto"` = cores − 1),
+  and it can do so *after* numba's pool has launched. numba re-reads that
+  variable on **every cold compile** and raises when it no longer matches, so
+  the first kernel compiled afterwards died with *"cannot set NUMBA_NUM_THREADS
+  to a different value once the threads have been launched (currently have 7,
+  trying to set 8)"* — a message pointing at threading rather than at the
+  setting that moved. Its whole test suite was red (5 of 6 in one file) and it
+  reproduced 3/3, so it was not flaky. The H2MM engine has carried a
+  `_sync_numba_threads` guard for exactly this since it hit the same wall;
+  `flc_2d/core.py` now has one too, and the suite is 26 passed. **Any module
+  that compiles numba kernels lazily needs this** — the crash lands on whoever
+  compiles first after the rewrite, which is a matter of import order.
+
 * **An impossible sequence turned the whole HMM transition matrix into `nan`**,
   found while recording a parity fixture for PRD-035 — not by any test, and not
   by the port itself, which had not started. `_backward_posteriors_xi` scales
@@ -668,8 +683,8 @@ mechanically.
 | | Files | Kernels |
 | --- | ---: | ---: |
 | At the start | 59 | 186 |
-| Ported so far | 28 | ~77 |
-| Remaining | 20 | ~78 |
+| Ported so far | 29 | ~77 |
+| Remaining | 19 | ~78 |
 | ChiMOL (excluded, owned elsewhere) | 11 | 29 |
 
 Done: `fluorescence/general.py`, `math/datatools.py`, `math/statistics.py`,
