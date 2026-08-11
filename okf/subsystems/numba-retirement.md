@@ -703,11 +703,28 @@ because log binning collapses many micro-time channels into one bin. PRD-036
 originally claimed the opposite; that claim was written before the call sites
 were checked and is corrected there.
 
-So the scan kernel could delegate today and the single-lag builder could not.
-Delegating half would leave two paths for one method, so **nothing is
-delegated until `fdc_log` grows a linear variant** (or takes a caller-supplied
-tick axis, which is the more general fix). Raised upstream; the file keeps its
-numba until then.
+**That gap is closed** (2026-08-11): tttrlib has `fdc_scan_axis`
+(caller-supplied tick array) and `fdc_scan_two_axes` (both matrices from one
+walk, which is what `create_2d_fdc_numba_int` does). The A/B that justified the
+two-axis form: at comparable bin counts and 1M photons, one axis is 144.8 ms and
+two axes in two calls 329.1 ms — the second pass is a full pass, not noise.
+
+**What now blocks the delegation is not code but two method decisions**, both of
+which change numbers users have published, and both recorded in
+[known issues](/references/known-issues.md):
+
+1. **Which `t_imax` the log axis uses.** The builder couples it to
+   `lint_bin_factor` (faithful to the MATLAB); the scan uses `span + 1` and does
+   not. They disagree for any factor > 1.
+2. **Whether the linear matrix's trim is removed.** It slices its last row and
+   column on return, dropping 654 pairs at factor 3 and 974 at factor 5 against
+   a brute-force count of 6443.
+
+They are the same derivation and should be settled together, by whoever owns the
+method. **Then** the delegation lands in one change: all five kernels via
+`fdc_scan_two_axes`, the allow-list line, and the parity fixture regenerated
+against whichever axis is chosen. Do not delegate before that — the fixture
+would pin the axis that is about to change.
 
 **Measurement caution worth keeping**: the first benchmark of this pair ran the
 two implementations *sequentially* and reported tttrlib 21% slower. Interleaved
