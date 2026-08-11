@@ -36,7 +36,6 @@
 # photon pass is specified for the library by tttrlib PRD-036, written against
 # the original MATLAB in junk/2D-FLC-code. Do not port it in-tree.
 chisurf/plugins/fcs/flc_2d/core.py
-chisurf/core/fluorescence/burst/gopich_szabo.py
 chisurf/core/ml/cluster/_hdbscan.py
 
 # ── imp (re-express against IMP; NOT a leftover to delete) ───────────────────

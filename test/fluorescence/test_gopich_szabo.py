@@ -418,20 +418,24 @@ def test_a_defective_rate_matrix_backs_the_optimiser_off():
     assert value == float("-inf")
 
 
-def test_a_rejected_scheme_falls_through_instead_of_reporting_impossible():
+def test_a_rejected_scheme_raises_instead_of_reporting_impossible():
     """A compiled engine that will not take the scheme must not answer ``-inf``.
 
     ``-inf`` is reserved for a model that genuinely has no likelihood -- the
-    defective generator above. A *setup* failure is a different thing, and
-    conflating the two is how the no-exchange limit came to report "forbidden"
-    for parameters whose likelihood is perfectly well defined: the photon
-    library's ``set_scheme`` returns False for an all-zero rate matrix, and the
-    delegation used to return ``-inf`` on that.
+    defective generator above -- and it is decided in ChiSurf, before the engine
+    is asked. A *setup* failure is a different thing, and conflating the two is
+    how the no-exchange limit once came to report "forbidden" for parameters
+    whose likelihood is perfectly well defined.
 
-    The failure mode this pins is silent by construction -- the optimiser sees a
-    finite value everywhere else and a wall at the static limit -- so the test
-    forces the rejection rather than waiting for a version of the library that
-    happens to exhibit it.
+    Until 2026-08-11 a refusal fell back to an in-tree numba copy, kept because
+    the library rejected any scheme with a repeated zero eigenvalue. That defect
+    is fixed and the copy is deleted, so a refusal is now a ``ValueError``: loud,
+    and impossible to mistake for a likelihood. What must NOT happen -- then or
+    now -- is an ``-inf`` wall at the static limit, which an optimiser reads as a
+    hard boundary and walks away from.
+
+    The rejection is forced rather than waited for, because a library build that
+    refuses this scheme no longer exists.
     """
     bursts = gs.PhotonBursts.from_lists(
         [np.array([0.0, 1e-5, 2e-5, 3e-5])],
@@ -445,8 +449,6 @@ def test_a_rejected_scheme_falls_through_instead_of_reporting_impossible():
     assert np.isfinite(reference)
 
     tttrlib = pytest.importorskip("tttrlib")
-    if not hasattr(tttrlib, "GopichSzabo"):
-        pytest.skip("the compiled engine is not present to reject anything")
 
     class _Rejecting(tttrlib.GopichSzabo):
         """Stands in for a library build that will not accept this scheme."""
@@ -457,10 +459,72 @@ def test_a_rejected_scheme_falls_through_instead_of_reporting_impossible():
     original = tttrlib.GopichSzabo
     tttrlib.GopichSzabo = _Rejecting
     try:
-        fallen_through = gs.log_likelihood(bursts, rates, emission)
+        with pytest.raises(ValueError, match="refused"):
+            gs.log_likelihood(bursts, rates, emission)
     finally:
         tttrlib.GopichSzabo = original
 
-    assert fallen_through == pytest.approx(reference, rel=1e-9), (
-        "a rejected scheme did not fall through to the in-tree implementation"
+
+def test_the_no_exchange_limit_is_a_likelihood_not_a_wall():
+    """The scheme the deleted fallback existed for must now go straight through.
+
+    An all-zero rate matrix is the static limit: two states that never
+    interconvert. Its likelihood is perfectly well defined, and the library used
+    to refuse it -- which is why a numba copy was kept here at all. It is
+    accepted now, so this asserts the end of that story rather than the
+    workaround.
+    """
+    bursts = gs.PhotonBursts.from_lists(
+        [np.array([0.0, 1e-5, 2e-5, 3e-5])],
+        [np.array([0, 1, 0, 1], dtype=np.int32)],
+        2,
     )
+    emission = gs.emission_from_efficiencies([0.2, 0.8])
+    static = gs.log_likelihood(bursts, np.zeros((2, 2)), emission)
+    assert np.isfinite(static), "the static limit came back as -inf again"
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Against the deleted numba kernels
+# ──────────────────────────────────────────────────────────────────────────────
+_NUMBA_PARITY = (
+    pathlib.Path(__file__).parent.parent / "data" / "numba_parity" / "gopich_szabo.npz"
+)
+
+
+def test_the_delegation_returns_what_the_numba_kernels_returned():
+    """Recorded from ``_total_log_likelihood`` / ``_viterbi_burst`` before deletion.
+
+    The suite above already checks this module against ``expm`` and against
+    PAM's MATLAB, which are stronger evidence than agreement with the code being
+    replaced. This is the narrower question those cannot answer: did the
+    *delegation itself* change anything?
+
+    The five schemes include the three the deleted fallback existed for — no
+    exchange, one-way, and an asymmetric pair — because the library used to
+    refuse exactly those, and a fixture of well-behaved schemes would not notice
+    if it started refusing them again.
+    """
+    assert _NUMBA_PARITY.is_file(), f"committed fixture is missing: {_NUMBA_PARITY}"
+    with np.load(_NUMBA_PARITY) as data:
+        emission = data["emission"]
+        bursts = gs.PhotonBursts(data["times"], data["colors"], data["offsets"], 2)
+        for i in range(int(data["n_schemes"])):
+            name = str(data["names"][i])
+            rate_matrix = data[f"rate_matrix_{i}"]
+            assert gs.log_likelihood(bursts, rate_matrix, emission) == pytest.approx(
+                float(data[f"loglik_{i}"]), abs=1e-8
+            ), name
+            path = np.asarray(gs.viterbi(bursts, rate_matrix, emission))
+            np.testing.assert_array_equal(path, data[f"path_{i}"], err_msg=name)
+
+        # 80 bursts of 8 photons: where per-burst decoding differs most from
+        # decoding the concatenated array, and so where `offsets` earns its keep.
+        sparse = gs.PhotonBursts(data["times2"], data["colors2"], data["offsets2"], 2)
+        rate_matrix = data["rate_matrix_1"]
+        assert gs.log_likelihood(sparse, rate_matrix, emission) == pytest.approx(
+            float(data["loglik_sparse"]), abs=1e-8
+        )
+        np.testing.assert_array_equal(
+            np.asarray(gs.viterbi(sparse, rate_matrix, emission)), data["path_sparse"]
+        )

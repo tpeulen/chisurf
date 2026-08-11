@@ -89,24 +89,65 @@ from chisurf.core.fluorescence.kinetics import (
     rates_from_rate_matrix,
 )
 
-try:  # numba is a first-class dependency; degrade gracefully if unavailable
-    from numba import njit, prange
+def _engine(rate_matrix, emission):
+    r"""Return a configured ``tttrlib.GopichSzabo``, or say why it cannot be had.
 
-    _HAVE_NUMBA = True
-except Exception:  # pragma: no cover - exercised only without numba
-    _HAVE_NUMBA = False
+    The likelihood and the Viterbi path are both the photon library's. They were
+    compiled here with numba until 2026-08-11, and the copy was kept as a
+    fallback for a library defect that rejected any scheme with a repeated zero
+    eigenvalue -- the no-exchange limit, or a state that does not exchange with
+    the rest. That defect is fixed: verified on four such schemes (connected,
+    ``k = 0``, one-way, and a 3-state with an isolated state), agreeing with the
+    deleted kernels to 6.8e-13 - 2.8e-10 in log-likelihood and on **every**
+    Viterbi state across 3040 photons.
 
-    def njit(*args, **kwargs):  # type: ignore
-        """No-op ``njit`` fallback used when numba is unavailable."""
+    Raising rather than falling back is deliberate. A silent second
+    implementation is the thing this work exists to remove, and a fallback that
+    is never exercised is a fallback nobody knows is broken.
 
-        def wrap(fn):
-            return fn
+    Parameters
+    ----------
+    rate_matrix : array_like
+        ``(n_states, n_states)`` with ``[target, source]`` rates in s\ :sup:`-1`.
+    emission : array_like
+        ``(n_states, n_colors)`` row-stochastic emission probabilities.
 
-        return wrap(args[0]) if args and callable(args[0]) else wrap
+    Returns
+    -------
+    tttrlib.GopichSzabo
 
-    def prange(*args):  # type: ignore
-        """Return a serial range (``prange`` fallback without numba)."""
-        return range(*args)
+    Raises
+    ------
+    RuntimeError
+        If the photon library is missing or predates the engine.
+    ValueError
+        If the engine refuses the scheme.
+    """
+    try:
+        import tttrlib
+    except ImportError as exc:  # pragma: no cover - tttrlib is a hard dependency
+        raise RuntimeError(
+            "the Gopich-Szabo engine is provided by tttrlib, which could not be "
+            "imported"
+        ) from exc
+    if not hasattr(tttrlib, "GopichSzabo"):
+        raise RuntimeError(
+            "tttrlib does not expose GopichSzabo; rebuild it (the compiled "
+            "engine carries the burst likelihood and the Viterbi path)"
+        )
+    rate_matrix = np.asarray(rate_matrix, dtype=float)
+    emission = _validate_emission(emission)
+    engine = tttrlib.GopichSzabo()
+    ok = engine.set_scheme(
+        rate_matrix.flatten().tolist(), emission.flatten().tolist(),
+        int(rate_matrix.shape[0]), int(emission.shape[1]),
+    )
+    if not ok:
+        raise ValueError(
+            f"the compiled Gopich-Szabo engine refused a "
+            f"{int(rate_matrix.shape[0])}-state scheme"
+        )
+    return engine
 
 
 __all__ = [
@@ -371,112 +412,6 @@ def _validate_emission(emission) -> np.ndarray:
 # ──────────────────────────────────────────────────────────────────────────────
 # Kernels
 # ──────────────────────────────────────────────────────────────────────────────
-@njit(cache=True, parallel=True)
-def _total_log_likelihood(times, colors, offsets, phi, eigenvalues, p0, u_row):
-    """Sum the per-burst log-likelihood over every burst (parallel over bursts)."""
-    n_bursts = offsets.shape[0] - 1
-    n = p0.shape[0]
-    per_burst = np.empty(n_bursts, dtype=np.float64)
-    for b in prange(n_bursts):
-        start = offsets[b]
-        stop = offsets[b + 1]
-        vector = np.empty(n, dtype=np.complex128)
-        scratch = np.empty(n, dtype=np.complex128)
-
-        # First photon: emission acting on the (transformed) equilibrium.
-        c0 = colors[start]
-        for a in range(n):
-            acc = 0.0 + 0.0j
-            for k in range(n):
-                acc += phi[c0, a, k] * p0[k]
-            vector[a] = acc
-
-        log_scale = 0.0
-        failed = False
-        for i in range(start + 1, stop):
-            dt = times[i] - times[i - 1]
-            for k in range(n):
-                scratch[k] = np.exp(eigenvalues[k] * dt) * vector[k]
-            c = colors[i]
-            total = 0.0 + 0.0j
-            for a in range(n):
-                acc = 0.0 + 0.0j
-                for k in range(n):
-                    acc += phi[c, a, k] * scratch[k]
-                vector[a] = acc
-                total += acc
-            magnitude = abs(total)
-            if magnitude <= 0.0:
-                failed = True
-                break
-            inverse = 1.0 / magnitude
-            for a in range(n):
-                vector[a] *= inverse
-            log_scale += np.log(magnitude)
-
-        if failed:
-            per_burst[b] = -np.inf
-            continue
-        final = 0.0 + 0.0j
-        for a in range(n):
-            final += u_row[a] * vector[a]
-        if final.real <= 0.0:
-            per_burst[b] = -np.inf
-        else:
-            per_burst[b] = np.log(final.real) + log_scale
-
-    total = 0.0
-    for b in range(n_bursts):
-        total += per_burst[b]
-    return total
-
-
-@njit(cache=True)
-def _viterbi_burst(times, colors, log_emission, eigenvalues, eigenvectors,
-                   inverse, log_prior, path):
-    """Fill *path* with the most likely state sequence of one burst."""
-    n_photons = times.shape[0]
-    n = log_prior.shape[0]
-    delta = np.empty((n_photons, n), dtype=np.float64)
-    back = np.zeros((n_photons, n), dtype=np.int32)
-
-    for j in range(n):
-        delta[0, j] = log_prior[j] + log_emission[colors[0], j]
-
-    propagator = np.empty((n, n), dtype=np.complex128)
-    for i in range(1, n_photons):
-        dt = times[i] - times[i - 1]
-        # P = U diag(e^{lambda dt}) U^-1, real up to round-off.
-        for a in range(n):
-            for b in range(n):
-                acc = 0.0 + 0.0j
-                for k in range(n):
-                    acc += eigenvectors[a, k] * np.exp(eigenvalues[k] * dt) * inverse[k, b]
-                propagator[a, b] = acc
-        for j in range(n):
-            best = -np.inf
-            best_i = 0
-            for k in range(n):
-                value = propagator[j, k].real
-                if value <= 0.0:
-                    continue
-                candidate = delta[i - 1, k] + np.log(value)
-                if candidate > best:
-                    best = candidate
-                    best_i = k
-            delta[i, j] = best + log_emission[colors[i], j]
-            back[i, j] = best_i
-
-    best = -np.inf
-    best_j = 0
-    for j in range(n):
-        if delta[n_photons - 1, j] > best:
-            best = delta[n_photons - 1, j]
-            best_j = j
-    path[n_photons - 1] = best_j
-    for i in range(n_photons - 1, 0, -1):
-        path[i - 1] = back[i, path[i]]
-    return best
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -520,52 +455,20 @@ def log_likelihood(bursts: PhotonBursts, rate_matrix, emission) -> float:
             f"the photons use {bursts.n_colors} colours but emission has "
             f"{emission.shape[1]} columns"
         )
-    # Delegate to the photon library's C++ engine when it can take the scheme.
-    #
-    # A rejected scheme is *not* an impossible model, and this used to answer
-    # `-inf` when the engine refused one -- telling the optimiser the parameters
-    # were forbidden where the likelihood is perfectly well defined. A setup
-    # failure now falls through like any other unavailability.
-    #
-    # It also *says so*. The known cause is a defect in the library
-    # (`set_scheme` rejects any scheme with a repeated zero eigenvalue -- the
-    # no-exchange limit, or a state that does not exchange with the rest), filed
-    # against it with a reproduction. Falling through quietly would fix the
-    # symptom here and leave that defect invisible, which is how a workaround
-    # becomes permanent; the warning is what keeps it a library bug rather than
-    # a ChiSurf behaviour, and it stops appearing when the library is fixed.
-    try:
-        import tttrlib as _ttl
-        if hasattr(_ttl, 'GopichSzabo'):
-            rm = np.asarray(rate_matrix, dtype=float)
-            gs = _ttl.GopichSzabo()
-            ok = gs.set_scheme(
-                rm.flatten().tolist(),
-                emission.flatten().tolist(),
-                rm.shape[0], emission.shape[1]
-            )
-            if ok:
-                return float(gs.log_likelihood(
-                    bursts.times, bursts.colors, bursts.offsets
-                ))
-            logging.warning(
-                "the compiled Gopich-Szabo engine rejected a %d-state scheme; "
-                "falling back to the slower in-tree likelihood. This is a "
-                "library defect, not a property of the model -- see BUGS.md, "
-                "'set_scheme rejects any disconnected kinetic scheme'.",
-                int(np.asarray(rate_matrix).shape[0]),
-            )
-    except Exception:
-        pass  # fall through to the in-tree implementation
-
-    decomposition = _spectral(rate_matrix, emission)
-    if decomposition is None:
+    # `-inf` is reserved for a model that genuinely has no likelihood: a
+    # defective generator, whose repeated eigenvalue leaves the spectral
+    # propagator undefined. That is what backs an optimiser off, and it is
+    # decided HERE rather than by the engine, because a *setup* failure is a
+    # different thing and conflating the two is how the no-exchange limit once
+    # came to report "forbidden".
+    if _spectral(rate_matrix, emission) is None:
         return float("-inf")
-    eigenvalues, phi, p0, u_row = decomposition
-    value = _total_log_likelihood(
-        bursts.times, bursts.colors, bursts.offsets, phi, eigenvalues, p0, u_row
-    )
-    return float(value)
+    # Everything else is the library's. This used to fall back to an in-tree
+    # numba copy kept for a library defect that rejected disconnected schemes;
+    # that defect is fixed, so the copy is gone and a refusal now raises.
+    return float(_engine(rate_matrix, emission).log_likelihood(
+        bursts.times, bursts.colors, bursts.offsets
+    ))
 
 
 def log_likelihood_multi(datasets: Sequence[tuple[PhotonBursts, np.ndarray]],
@@ -633,39 +536,19 @@ def viterbi(bursts: PhotonBursts, rate_matrix, emission):
         If the rate matrix is too degenerate to diagonalise, or the emission
         matrix is invalid.
     """
-    emission = _validate_emission(emission)
-    generator = generator_from_rate_matrix(rate_matrix)
-    eigenvalues, eigenvectors = np.linalg.eig(generator)
-    if np.linalg.cond(eigenvectors) > _MAX_COND:
-        raise ValueError("the rate matrix is too degenerate to diagonalise")
-    eigenvalues = eigenvalues.astype(np.complex128)
-    eigenvalues.real = np.minimum(eigenvalues.real, 0.0)
-    inverse = np.linalg.inv(eigenvectors).astype(np.complex128)
-    eigenvectors = eigenvectors.astype(np.complex128)
-
-    populations = equilibrium_populations(rate_matrix)
-    with np.errstate(divide="ignore"):
-        log_prior = np.log(np.clip(populations, 1e-300, None))
-        # Transposed to (n_colors, n_states) so the kernel indexes it by colour.
-        log_emission = np.log(np.clip(emission.T, 1e-300, None))
-
-    path = np.zeros(bursts.n_photons, dtype=np.int32)
-    for b in range(len(bursts)):
-        start = int(bursts.offsets[b])
-        stop = int(bursts.offsets[b + 1])
-        segment = np.zeros(stop - start, dtype=np.int32)
-        _viterbi_burst(
-            bursts.times[start:stop],
-            bursts.colors[start:stop],
-            np.ascontiguousarray(log_emission),
-            eigenvalues,
-            eigenvectors,
-            inverse,
-            log_prior,
-            segment,
-        )
-        path[start:stop] = segment
-    return path
+    # `offsets` is the whole point. Without burst boundaries the concatenated
+    # array decodes as ONE burst and the previous burst's evidence leaks across
+    # the dark gap. Measured upstream at tau = 250 s: an entire 30-photon burst
+    # was still being dragged at a gap of 5e5 s -- two thousand relaxation times
+    # -- because Viterbi maximises a path rather than marginalising, so the
+    # accumulated log-likelihood competes with a transition term decaying only
+    # as exp(-dt/tau). "Our bursts are well separated" is not a defence.
+    return np.asarray(
+        _engine(rate_matrix, emission).viterbi(
+            bursts.times, bursts.colors, bursts.offsets
+        ),
+        dtype=np.int32,
+    )
 
 
 # ──────────────────────────────────────────────────────────────────────────────

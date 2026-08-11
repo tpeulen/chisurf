@@ -25,7 +25,7 @@ argument: `OptsCluster` is 2-D Gaussian *peak fitting*, not k-means, and
 seven kernels.
 
 1. **The tracker is `test/numba_import_allowlist.txt`** and it only shrinks.
-   Every entry carries its route. **13 chisurf-owned files remain**, and **route `numpy` is now empty -- Phase 1 is done** of the 48 this work covers. ChiMOL's 11 are **excluded from the guard entirely** — the WebGPU port removes them on its own schedule, and listing them here only made this test fail nine times in one session with news about someone else's progress;
+   Every entry carries its route. **12 chisurf-owned files remain**, and **route `numpy` is now empty -- Phase 1 is done** of the 48 this work covers. ChiMOL's 11 are **excluded from the guard entirely** — the WebGPU port removes them on its own schedule, and listing them here only made this test fail nine times in one session with news about someone else's progress;
    `test/test_numba_seam.py` fails both on a new importer and on a stale entry,
    so the list cannot drift from the tree.
 2. **`maxent_decay/core/solver.py` is done, and the granularity of a delegation
@@ -784,6 +784,37 @@ delegation is: `_fdc_scan_log_kernel` → `fdc_scan_axis`, `create_2d_fdc_numba_
 `[-1, 0, f, 2f, …]`, then the reference's one-bin trim in Python), and the three
 helpers deleted.
 
+## `gopich_szabo.py` is done — the fallback outlived the defect (2026-08-11)
+
+Both kernels delegate to the photon library's `GopichSzabo`; `import numba` is
+gone. The file kept a numba copy **solely** because `set_scheme` used to reject
+any scheme with a repeated zero eigenvalue — the no-exchange limit, or a state
+that does not exchange. **That defect was fixed upstream and nobody told
+ChiSurf.** The warned fallback is what made the reason findable at all, which is
+the argument for warning rather than falling through silently.
+
+Verified before deleting: five schemes (connected fast/slow, no exchange,
+one-way, asymmetric) plus a sparse 80×8-photon set, agreeing to 6.8e-13 – 2.8e-10
+in log-likelihood and on **every one of 3040 Viterbi states**. Pinned by
+`test/fluorescence/test_gopich_szabo.py::test_the_delegation_returns_what_the_numba_kernels_returned`.
+
+**Two things the delegation had to keep, and one nearly lost:**
+
+- **`-inf` is reserved for a model with no likelihood** — a defective,
+  non-diagonalisable generator — and that decision stays in ChiSurf, *before*
+  the engine is asked. A setup failure is a different thing; conflating them is
+  how the no-exchange limit once reported "forbidden" for a perfectly well
+  defined likelihood. The first version of this delegation dropped that check
+  and `test_a_defective_rate_matrix_backs_the_optimiser_off` caught it.
+- **`offsets` is correctness, not an optimisation.** Upstream measured the leak
+  at τ = 250 s: an entire 30-photon burst still dragged at a gap of 5e5 s — two
+  thousand relaxation times — because Viterbi maximises a path rather than
+  marginalising. "Our bursts are well separated" is not a defence.
+
+A refusal now raises `ValueError` instead of falling back. The rewritten test
+forces a refusal to pin that, since a library build that refuses this scheme no
+longer exists.
+
 ## Bugs the ports have found
 
 * **The whole 2D-FLC plugin was failing to compile its kernels**, found by
@@ -863,8 +894,8 @@ mechanically.
 | | Files | Kernels |
 | --- | ---: | ---: |
 | At the start | 59 | 186 |
-| Ported so far | 29 | ~77 |
-| Remaining | 19 | ~78 |
+| Ported so far | 30 | ~79 |
+| Remaining | 18 | ~76 |
 | ChiMOL (excluded, owned elsewhere) | 11 | 29 |
 
 Done: `fluorescence/general.py`, `math/datatools.py`, `math/statistics.py`,

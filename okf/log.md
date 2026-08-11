@@ -1,6 +1,11 @@
 # Update Log
 
 ## 2026-08-11
+* **`gopich_szabo.py` scrubbed** (allow-list 13 → 12): both kernels delegate to
+  `GopichSzabo`, whose `set_scheme` defect — the only reason the numba copy was
+  kept — was fixed upstream without ChiSurf hearing. Verified on the degenerate
+  schemes; `-inf` for a defective generator stays in ChiSurf, and `offsets` is
+  correctness (the leak persists to 2000 relaxation times).
 * **ChiSurf is GPL-3.0-or-later, and per-quadrant solidity is ported from
   ZQuest Classic** ([PRD-91](prds/prd-91.md)). The relicence
   (`99618f6b7`) fixes a defect the project's own `license_tracker.py` had been
