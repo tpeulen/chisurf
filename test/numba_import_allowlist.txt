@@ -46,7 +46,8 @@ chisurf/core/ml/cluster/_hdbscan.py
 # route is right in direction, but this is a re-expression against a different
 # API -- not "delete the copy and import the same name". potentials.py is the
 # clearest case: GoPotential/HPotential/Ramachandran are live behind three GUI
-# widgets and have no IMP equivalent at all. Budget accordingly.
+# widgets and have no IMP equivalent at all. Scoped as okf/prds/prd-100.md;
+# do not start before PRD-97 settles (a peer is mid-change in protein.py).
 chisurf/core/structure/av/dynamic.py
 chisurf/core/structure/av/static.py
 chisurf/core/structure/potential/potentials.py

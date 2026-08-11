@@ -643,6 +643,11 @@ known answer can.
 
 ## The `imp` route is a re-expression, not a deletion — checked, not assumed
 
+**Scoped as [PRD-100](../prds/prd-100.md)** (2026-08-11): three groups that
+should land separately, the consumers that must not move, and a parity bar that
+is not "the tests pass" — those were written against the current
+implementation.
+
 **2026-08-11.** The route text said these files "already migrated to imp-tricks
 under the same function names" and the label said "delete the leftover". Neither
 is true, and the check is one import:

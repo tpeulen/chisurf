@@ -1,6 +1,10 @@
 # Update Log
 
 ## 2026-08-11
+* **PRD-100 written**: the `imp` numba route is a migration against `IMP.bff.AV`
+  with a parity bar, not a deletion. Three groups (AV grid, dye-diffusion maps,
+  ProteinMC potentials — the last with no IMP target at all), the consumers that
+  must not move, and why "the tests pass" is not the bar.
 * **2D-FDC: tttrlib's kernel matches ours exactly** (9 recorded cases) and is
   1.14× faster at 1M photons — but `flc_2d/core.py` stays on the numba list: the
   single-lag builder's linear-binned matrix has no upstream equivalent and is
