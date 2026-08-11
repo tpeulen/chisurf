@@ -5,7 +5,7 @@ description: A top-down RPG whose map is ChiSurf's own documentation, whose crea
 tags: [guides, documentation, review, games, fluorophores, spectra, bestiary]
 ---
 
-# Reviewing the documentation as a game
+# Reviewing the documentation as a game (Lumis Quest)
 
 Documentation review is a thankless job with no feedback loop: you read a page,
 you tick a box, nothing happens. The queue sits stale and the docs drift.
