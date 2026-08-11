@@ -378,6 +378,13 @@ at here.
 subsampled for display, so a big map opens and a contour change stays quick;
 `map_info` says when that is happening.
 
+**Dragging a level lets the surface follow.** While a marker is being dragged
+the map is re-contoured under a reduced budget — coarser, but fast enough to
+keep up with the mouse — and the full-quality contour is cut once, on release.
+A level change touches only the map's own geometry: the rest of the scene
+(cartoon, sticks, surfaces) is not rebuilt, and re-drawing an unchanged level
+(a colour or opacity edit, a surface/mesh toggle) reuses the cached contour.
+
 :::{admonition} Direct volume rendering is not implemented yet
 :class: warning
 `volume` is registered but declines, and says to use `isosurface` or `isomesh`

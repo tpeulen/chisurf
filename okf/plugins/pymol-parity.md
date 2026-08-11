@@ -52,6 +52,84 @@ The findings below are what has been *closed*. This section is the open front,
 kept at the top so a new session does not have to reconstruct it. Ordered by
 what a user actually hits.
 
+**0-ante-ante. Density contouring is fast now (landed 2026-08-11); what is
+left of it.** The user-reported "make density plots more performant" is
+closed by taking the map-contour habits from the ChimeraX checkout
+(`_map/contour.cpp`, `map_data/src/arrays.py` — both carry `CHISURF-*`
+headers): the marching cubes reads the grid in its own precision with `uint8`
+corner cases, normals are symmetric differences sampled only at surface
+vertices, and `VolumeGrid` memoises range/histogram/default-levels/strided
+copy plus the last 4 contours (`values` is immutable by contract — nothing in
+the tree writes it in place, and the memo depends on that). A level drag now
+live-previews under a 2 M-voxel budget (`_VOLUME_PREVIEW_LIMIT_M`, view.py)
+with one full contour on release, and `set_volume_levels` swaps only that
+object's `volume_*` scene objects via `_refresh_volume_objects` instead of a
+full `_update_view`. Measured in `docs/development/benchmarks.md` ("ChiMOL
+density-map contouring", script `test/benchmarks/benchmark_map_contour.py`):
+180³ cold contour 500–770 ms → ~100 ms, unchanged-level re-ask ~3 µs,
+histogram per panel paint 92 ms → 0.4 µs. Re-derive with the benchmark
+script; the trap in measuring is that the *second* ask is served from the
+memo, so time a **fresh** grid for the cold number. Left open, in order of
+what it blocks:
+
+* **the mid-drag→release "pop"** on noisy maps: the preview is a stride-2/3
+  *sample*, so it crosses fewer noise voxels than the full-resolution release
+  and the surface visibly roughens on release near the noise floor (seen in
+  the QA screenshots). ChimeraX's answer is smoothing-free too, so this is
+  cosmetic, not a defect — but if it is ever worked, it belongs in the
+  preview path, not in a filter applied to the data;
+* **the histogram's paint loop** (`density_window._draw_histogram`) still
+  issues one `fill_rect` per column (~300/frame). The data behind it is now
+  free; the loop is the remaining cost and it is chrome-wide, not
+  map-specific;
+* **the GPU marching-cubes route** (`compute.marching_cubes_active`) was left
+  untouched; it predates this work and its host fallback now outruns small
+  grids. Worth re-measuring its decline thresholds (`_declines`) against the
+  new host numbers before trusting them;
+* tried and *kept out*: ChimeraX's fine-bins-then-rebin histogram (10 000
+  bins rebinned to display width) — memoising `np.histogram` per requested
+  width has the same cost profile at the panel's one or two widths and stays
+  bit-identical to what the tests pin; and a flying-edges port — its win is
+  cache locality in compiled row loops, which array-at-a-time NumPy cannot
+  express.
+
+**0-ante. `C ▸ by element` is wired to the wrong mechanism, and it is 1 entry
+where PyMOL has 49 (filed 2026-08-11, user-reported).** This is not a refusal —
+the menu answers, and does the wrong thing: `color byelement, {sele}` sets an
+**object-wide colour mode**, so it repaints the whole molecule regardless of the
+selection, clears any per-atom overrides on the way, and on a cartoon varies
+over CA elements (all carbon) so nothing turns CPK at all. The per-atom
+implementation is already in the tree and unused by the menu —
+`cmd/presets.py:252` `_color_by_element`, which even takes the `carbon`
+argument PyMOL's variants need. Missing entries: `util.cnc` (**CNOS** — colour
+H/N/O/S, leave carbon), 8 `util.cba` carbon colours, and sets 2–6
+(`junk/pymol-open-source/modules/pymol/menu.py:339-425`). Full diagnosis:
+[known-issues](../references/known-issues.md). **Do not** fix it by masking
+atoms inside `_apply_color_mode` — `by_residue`/`by_ss`/`by_chain` share that
+path and are legitimately per object.
+
+**0-ante-0. Landed 2026-08-11, and what is left of each.** The **measurement
+wizard** (Wizard ▸ Measurement) and the **selection levels**
+(`mouse_selection_mode`, cycled from the block's Selecting row) both shipped
+with tests. Left open on them: the wizard measures within the **active object**
+only, because the pick index is into that object's atom table — measuring
+between two molecules still needs `distance` with selections; and the levels
+omit PyMOL's *Segments* (no segi is parsed — that is the same gap the Label
+menu refuses on) and *Molecules*. Two defects found underneath and fixed:
+`distance` reported **scene units** (258.450 for 25.845 Å) and drew its dashes
+in the wrong place, and residue ids are **not unique across chains**, which the
+selection had been matching on alone. Both in
+[known-issues](../references/known-issues.md), both with guardrails.
+
+**0-ante-bis. The mutagenesis wizard leaves a stale `mutation` row in the
+Sequence strip (filed 2026-08-11, user-reported, screenshot).** The preview
+object is correct and PyMOL-faithful; the refresh order is not. `_wizard_finish`
+refreshes the sequence view *inside* `_wizard_commit` — while the preview still
+exists — then deletes it and never refreshes again. Check first why the *object
+panel* is clean in the same screenshot; that asymmetry is the part the
+hypothesis does not explain. Details in
+[known-issues](../references/known-issues.md).
+
 **0. The refusals are the worklist — six were stale in one day (2026-08-07).**
 Start here, because it is the cheapest parity there is: chimol repeatedly has
 the capability and still tells the user it does not. Six found in one sweep —

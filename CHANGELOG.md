@@ -4,6 +4,8 @@
 
 ### Added
 
+- **ChiMOL contours density maps 5–10× faster, and the level drag is live.** A 180³ map took 500–770 ms per contour and now takes ~100 (the reference viewer's habits, ported: the map is read in its own precision, normals are sampled only at surface vertices, and the range/histogram/recent contours are computed once and remembered — a colour edit, an opacity change or a surface/mesh toggle no longer re-runs marching cubes at all). Dragging a level now lets the surface follow at a reduced budget with the full contour cut on release, and a level change swaps only the map's own scene objects instead of re-meshing every representation in the scene.
+
 - **ChiMOL's spheres and sticks are analytic primitives, not meshes.** `show spheres` on T4 lysozyme built 124,704 triangles in NumPy on every rebuild and now builds none — an impostor is the *exact* sphere where a tessellation is a polyhedron — and sticks went from 33,216 vertices to 2,768 capped cylinders with PyMOL's midpoint colour split. `ray` draws both. Separately, `as <representation>` was rebuilding the whole scene eleven times per command; it rebuilds once, so `as sticks` takes 9 ms instead of 81.
 
 - **ChiMOL draws a cartoon 54× faster.** Showing a cartoon of T4 lysozyme took 4.4 seconds and now takes 82 ms: its 19,908 vertices missed the GPU compute threshold by ninety-two, and fell back to a CPU route that grows with vertex×atom pairs. The threshold for the per-vertex shading kernels is now set from measurements rather than guessed. The neighbour queries underneath are 4–12× faster too, and a bug that stopped structures loading in the browser went with them.

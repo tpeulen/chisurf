@@ -15,6 +15,23 @@ triangle table is applied by fancy indexing. Vertex normals are taken from the
 trilinearly interpolated grid gradient (as ``skimage`` does), so the output is a
 drop-in for the ``(verts, faces, normals)`` the renderer expects.
 
+Two habits here are taken from the reference viewer's contour code
+(``_map/contour.cpp`` in the ChimeraX checkout), which is the authority on
+doing this fast:
+
+* **The grid is read in its own precision.** A ``float32`` map stays
+  ``float32`` end to end; promoting a 180³ map to ``float64`` before looking
+  at it doubles the memory traffic of every full-grid pass and was costing
+  more than the triangulation itself. The corner cases are packed into
+  ``uint8`` for the same reason — a case is 0–255, and an ``int64`` temporary
+  per corner bit is eight times the traffic for no information.
+* **The gradient is sampled only at surface vertices.** Every welded vertex
+  sits on one grid edge, so its trilinear gradient reduces to the symmetric
+  difference at the edge's two end nodes, lerped by the crossing fraction —
+  exactly the reference's per-vertex normal. Building three full-grid
+  ``np.gradient`` fields first (as this module once did) allocated 3×N
+  doubles to read back a few thousand values, and dominated the profile.
+
 Corner / edge numbering (Lorensen–Cline):
 
     corners: 0:(0,0,0) 1:(1,0,0) 2:(1,1,0) 3:(0,1,0)
@@ -204,8 +221,11 @@ def _place_vertices(grid, level, unique, dims):
 
     Returns
     -------
-    numpy.ndarray
-        ``(m, 3)`` positions in grid-index units.
+    tuple
+        ``(verts, lower, vaxis, mu)`` — the ``(m, 3)`` positions in grid-index
+        units, plus the edge each vertex sits on (its lower grid node, its
+        axis, and the crossing fraction along it), which is what the normal
+        sampling needs to avoid a full-grid gradient.
     """
     nx, ny, nz = dims
     volume = nx * ny * nz
@@ -218,8 +238,8 @@ def _place_vertices(grid, level, unique, dims):
     lower = np.stack((vi, vj, vk), axis=1)
     upper = lower + _AXIS_STEP[vaxis]
 
-    below = grid[lower[:, 0], lower[:, 1], lower[:, 2]]
-    above = grid[upper[:, 0], upper[:, 1], upper[:, 2]]
+    below = grid[lower[:, 0], lower[:, 1], lower[:, 2]].astype(np.float64)
+    above = grid[upper[:, 0], upper[:, 1], upper[:, 2]].astype(np.float64)
     span = above - below
     # A flat edge has no crossing to locate; the midpoint is what the tables
     # assume, and dividing by the span would be a division by zero.
@@ -227,7 +247,8 @@ def _place_vertices(grid, level, unique, dims):
         np.abs(span) < 1e-12, 0.5,
         (level - below) / np.where(span == 0.0, 1.0, span),
     )
-    return lower.astype(np.float64) + mu[:, None] * _AXIS_STEP[vaxis]
+    verts = lower.astype(np.float64) + mu[:, None] * _AXIS_STEP[vaxis]
+    return verts, lower, vaxis, mu
 
 
 def _cell_cases(grid, level, corners):
@@ -249,12 +270,22 @@ def _cell_cases(grid, level, corners):
     """
     nx, ny, nz = grid.shape
     inside = grid < level
-    case = np.zeros((nx - 1, ny - 1, nz - 1), dtype=np.int64)
+    # A case is 0–255: packing it into uint8 instead of int64 cuts the memory
+    # traffic of this (full-grid) phase eightfold, and the one reused scratch
+    # buffer keeps the eight corner passes from allocating eight temporaries.
+    bits = inside.view(np.uint8)
+    case = np.zeros((nx - 1, ny - 1, nz - 1), dtype=np.uint8)
+    scratch = np.empty_like(case)
     for bit in range(8):
         ox, oy, oz = corners[bit]
-        case |= inside[ox:ox + nx - 1, oy:oy + ny - 1, oz:oz + nz - 1] << bit
-    active = np.flatnonzero(((case != 0) & (case != 255)).ravel())
-    return active, case.ravel()[active]
+        np.multiply(
+            bits[ox:ox + nx - 1, oy:oy + ny - 1, oz:oz + nz - 1],
+            np.uint8(1 << bit), out=scratch,
+        )
+        np.bitwise_or(case, scratch, out=case)
+    flat = case.ravel()
+    active = np.flatnonzero((flat != 0) & (flat != 255))
+    return active, flat[active]
 
 
 def marching_cubes(grid, level, spacing=(1.0, 1.0, 1.0), volume=None):
@@ -316,7 +347,13 @@ def marching_cubes(grid, level, spacing=(1.0, 1.0, 1.0), volume=None):
         # path twice over and it is also the only correct thing to do.
         if grid is None:
             grid = volume.read()
-        g = np.ascontiguousarray(grid, dtype=np.float64)
+        # The grid is read in its own precision (the reference viewer's habit):
+        # promoting a float32 map to float64 here doubled the memory traffic of
+        # every full-grid pass. Only non-float grids are converted.
+        g = np.asarray(grid)
+        if g.dtype not in (np.float32, np.float64):
+            g = g.astype(np.float32)
+        g = np.ascontiguousarray(g)
         active, case_of_active = _cell_cases(g, level, _CORNERS)
         if active.size == 0:
             return empty
@@ -326,10 +363,12 @@ def marching_cubes(grid, level, spacing=(1.0, 1.0, 1.0), volume=None):
         )
         if unique.size == 0:
             return empty
-        verts = _place_vertices(g, level, unique, dims)
-        # Vertex normals from the interpolated grid gradient (points up-gradient).
-        gx, gy, gz = np.gradient(g)
-        normals = _sample_gradient(gx, gy, gz, verts)
+        verts, lower, vaxis, mu = _place_vertices(g, level, unique, dims)
+        # Vertex normals from the interpolated grid gradient (points
+        # up-gradient), sampled only at the vertices rather than built as three
+        # full-grid fields first. Each vertex lies on one grid edge, so the
+        # trilinear sample reduces to the two end-node gradients lerped by mu.
+        normals = _edge_normals(g, lower, vaxis, mu)
 
     if verts.shape[0] == 0:
         return empty
@@ -348,27 +387,44 @@ def marching_cubes(grid, level, spacing=(1.0, 1.0, 1.0), volume=None):
     return verts, faces.astype(np.int64), normals
 
 
-def _sample_gradient(gx, gy, gz, verts):
-    """Trilinearly sample a gradient field at fractional vertex positions."""
-    shape = np.array(gx.shape) - 1
-    p = np.clip(verts, 0.0, shape.astype(float))
-    i0 = np.floor(p).astype(np.int64)
-    i0 = np.minimum(i0, shape - 1)
-    frac = p - i0
-    out = np.empty_like(verts)
-    for axis, gfield in enumerate((gx, gy, gz)):
-        acc = np.zeros(verts.shape[0], dtype=np.float64)
-        for dx in (0, 1):
-            for dy in (0, 1):
-                for dz in (0, 1):
-                    w = (
-                        (frac[:, 0] if dx else 1 - frac[:, 0])
-                        * (frac[:, 1] if dy else 1 - frac[:, 1])
-                        * (frac[:, 2] if dz else 1 - frac[:, 2])
-                    )
-                    acc += w * gfield[i0[:, 0] + dx, i0[:, 1] + dy, i0[:, 2] + dz]
-        out[:, axis] = acc
+def _gradient_at_nodes(grid, nodes):
+    """Sample the grid gradient at a set of grid nodes, by symmetric differences.
+
+    Central differences over two steps at interior nodes, one-sided at the
+    boundary — exactly what :func:`numpy.gradient` computes, evaluated only at
+    the ``(m, 3)`` ``nodes`` instead of over the whole grid.
+    """
+    out = np.empty((nodes.shape[0], 3), dtype=np.float64)
+    index = [nodes[:, 0], nodes[:, 1], nodes[:, 2]]
+    for axis, limit in enumerate(grid.shape):
+        hi = np.minimum(index[axis] + 1, limit - 1)
+        lo = np.maximum(index[axis] - 1, 0)
+        pick_hi = list(index)
+        pick_lo = list(index)
+        pick_hi[axis] = hi
+        pick_lo[axis] = lo
+        span = np.maximum(hi - lo, 1)
+        out[:, axis] = (
+            grid[tuple(pick_hi)].astype(np.float64) - grid[tuple(pick_lo)]
+        ) / span
     return out
+
+
+def _edge_normals(grid, lower, vaxis, mu):
+    """Sample the grid gradient at each welded vertex, where the vertex is.
+
+    A welded vertex sits on one grid edge, at fraction ``mu`` between the edge's
+    two end nodes, with its other two coordinates integral — so the trilinear
+    gradient sample the renderer needs reduces to the end-node gradients lerped
+    along that one axis. This is the reference viewer's per-vertex normal, and
+    it touches ~6 values per vertex where building full-grid gradient fields
+    first touched every voxel three times.
+    """
+    upper = lower + _AXIS_STEP[vaxis]
+    at_lower = _gradient_at_nodes(grid, lower)
+    at_upper = _gradient_at_nodes(grid, upper)
+    weight = mu[:, None]
+    return at_lower * (1.0 - weight) + at_upper * weight
 
 
 __all__ = ["marching_cubes"]

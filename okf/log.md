@@ -1,6 +1,29 @@
 # Update Log
 
 ## 2026-08-11
+* **chimol: density-map contouring is 5–10× faster and the level drag is
+  live** ([pymol-parity](plugins/pymol-parity.md), "0-ante-ante"; user ask
+  "make density plots more performant, look at ChimeraX"). Three habits taken
+  from the ChimeraX checkout (its `contour.cpp` and `arrays.py`, both now
+  carrying `CHISURF-*` headers): the NumPy marching cubes reads the grid in
+  its own precision with `uint8` corner cases and samples normals **only at
+  surface vertices** (each welded vertex sits on one grid edge, so the
+  trilinear gradient reduces to two end-node symmetric differences lerped by
+  the crossing fraction — bit-compatible with the old full-grid
+  `np.gradient`, pinned by a float64-parity test); `VolumeGrid` memoises
+  everything derived from its immutable samples (range, histograms,
+  default levels, the strided copy, the last 4 contours — ChimeraX's
+  `matrix_stats` idea); and the drag trades quality for following
+  (preview contours under a 2 M-voxel budget, throttled and self-disabling,
+  full quality once on release). `set_volume_levels` now swaps only the
+  map's own `volume_*` scene objects (`_refresh_volume_objects`) instead of
+  rebuilding every representation of every object. Measured (new
+  `test/benchmarks/benchmark_map_contour.py`, table in
+  `docs/development/benchmarks.md`): 180³ contour 500–770 ms → ~100 ms cold
+  and ~3 µs re-asked, panel histogram 92 ms per paint → 0.4 µs. QA'd against
+  screenshots of open/mid-drag/release states. `volume.py`'s PRD mention
+  ported here and struck from the shrinking allowlist. Guide 44 documents
+  the drag behaviour.
 * **Two chimol defects filed, not fixed** (reported by tpeulen), in
   [known-issues](references/known-issues.md). (1) The C menu's *by element*
   issues `color byelement, {sele}`, which is an **object-wide colour mode** —

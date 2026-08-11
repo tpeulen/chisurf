@@ -579,6 +579,38 @@ states. The remaining ~1.4 ms is Python building them; it is flat in the
 viewport and would fall again if it ever mattered, since the geometry for a
 panel that has not changed is the same geometry.
 
+## ChiMOL density-map contouring
+
+**Work unit:** one isosurface of a seeded two-blob `float32` map at the
+densest-1 % level — the cost of releasing a drag, and of opening a map. Script:
+`test/benchmarks/benchmark_map_contour.py`. Measured 2026-08-11, same
+environment as above.
+
+| Grid | Vertices | cold contour | cached re-ask | preview (2 M) | histogram, first | histogram, again |
+| --- | --- | --- | --- | --- | --- | --- |
+| 96³ | 4,562 | 22.5 ms | 2.8 µs | 20.8 ms | 15.5 ms | 0.4 µs |
+| 180³ | 21,792 | 104.6 ms | 2.7 µs | 28.5 ms | 92.2 ms | 0.4 µs |
+| 256³ | 9,238 | 50.1 ms | 3.9 µs | 12.3 ms | 227.0 ms | 0.6 µs |
+
+Before this measurement the 180³ contour was **500–770 ms**, and it was paid on
+every ask: the NumPy marching cubes promoted the map to `float64`, built three
+full-grid `np.gradient` fields to read back ~22 k vertex normals, and packed
+corner cases into `int64`. The habits that removed it are the reference
+viewer's (its `contour.cpp`): the grid is read in its own precision, normals
+are symmetric differences sampled *only at surface vertices*, and everything
+derived from the samples — range, histogram, the last few contours — is
+computed once and remembered (its `matrix_stats`). The 256³ row has fewer
+vertices than 180³ because it sits past the 16 M-voxel display budget and is
+strided by 2, which is the budget doing its documented job.
+
+The **cached re-ask** column is what a colour or opacity edit, a surface/mesh
+toggle and every redraw of an unchanged level now cost. **histogram, again**
+is the density panel's per-paint cost — the panel redraws every frame, and
+92 ms per paint on a 180³ map was most of why it felt slow. On top of the
+table, a level change no longer rebuilds the rest of the scene: dragging a
+threshold beside a loaded structure used to re-mesh cartoon, sticks and
+surface per release, and now swaps only the map's own scene objects.
+
 ## Reading a PDB
 
 Measured 2026-08-06 on an M-series Mac, best of five after a warm-up, through

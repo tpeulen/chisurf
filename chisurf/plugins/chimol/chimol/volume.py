@@ -23,7 +23,14 @@ larger than anything worth drawing, so :meth:`VolumeGrid.strided` subsamples
 until it fits a voxel budget. This is what lets a large map open at all, and it
 keeps a contour change from stalling the viewer.
 
-See [PRD-57](../../../okf/prds/prd-57.md) for the wider requirement.
+**The samples are immutable, and everything derived from them is cached.** The
+reference viewer keeps a ``matrix_stats`` beside every map for the same reason:
+the histogram panel repaints every frame, and a range or histogram that rescans
+millions of voxels per paint is a UI that fights back. ``value_range``,
+``histogram``, ``default_levels``, the strided copy and the last few contours
+are all computed once and remembered. The contract that makes this safe is that
+``values`` is never written in place — a changed map is a new
+:class:`VolumeGrid`.
 """
 
 from __future__ import annotations
@@ -76,6 +83,19 @@ class VolumeGrid:
     step: np.ndarray = field(default_factory=lambda: np.ones(3))
     rotation: np.ndarray = field(default_factory=lambda: np.eye(3))
     name: str = "map"
+    recommended_level: Optional[float] = None
+
+    #: Memoised derived quantities (range, histograms, strided copies, recent
+    #: contours). Safe because ``values`` is treated as immutable — a changed
+    #: map is a new grid. Not part of the value of the object.
+    _cache: dict = field(default_factory=dict, init=False, repr=False, compare=False)
+
+    def _memo(self, key, compute):
+        """Return the cached value for ``key``, computing and remembering it once."""
+        cache = self._cache
+        if key not in cache:
+            cache[key] = compute()
+        return cache[key]
 
     # ------------------------------------------------------------------ #
     # Construction
@@ -161,8 +181,12 @@ class VolumeGrid:
         """Smallest and largest finite value, as ``(low, high)``.
 
         Non-finite samples are ignored rather than propagated: a single NaN in a
-        corner would otherwise make every contour level meaningless.
+        corner would otherwise make every contour level meaningless. Computed
+        once; the histogram panel asks several times per paint.
         """
+        return self._memo("range", self._compute_value_range)
+
+    def _compute_value_range(self) -> Tuple[float, float]:
         finite = np.isfinite(self.values)
         if not finite.any():
             return 0.0, 0.0
@@ -195,12 +219,19 @@ class VolumeGrid:
     def histogram(self, bins: int = 256):
         """Value distribution, for choosing a contour by looking at the data.
 
+        Cached per bin count: the density panel redraws this every frame, and
+        rescanning a multi-million-voxel map per paint was most of why the
+        panel felt slow.
+
         Returns
         -------
         tuple
             ``(counts, edges)`` over the finite values, as :func:`numpy.histogram`
             returns them.
         """
+        return self._memo(("histogram", int(bins)), lambda: self._compute_histogram(bins))
+
+    def _compute_histogram(self, bins: int):
         finite = self.values[np.isfinite(self.values)]
         if finite.size == 0:
             return np.zeros(bins, dtype=int), np.linspace(0.0, 1.0, bins + 1)
@@ -208,6 +239,9 @@ class VolumeGrid:
 
     def is_binary(self) -> bool:
         """Whether the map takes only two values, as a mask or an AV does."""
+        return self._memo("binary", self._compute_is_binary)
+
+    def _compute_is_binary(self) -> bool:
         finite = self.values[np.isfinite(self.values)]
         if finite.size == 0:
             return False
@@ -219,6 +253,9 @@ class VolumeGrid:
         Judged on both tails carrying real weight, not merely on a negative
         minimum: noise around zero would otherwise make every map polar.
         """
+        return self._memo("polar", self._compute_is_polar)
+
+    def _compute_is_polar(self) -> bool:
         finite = self.values[np.isfinite(self.values)]
         if finite.size == 0:
             return False
@@ -250,12 +287,22 @@ class VolumeGrid:
             One level, or two for a polar map. Empty when the map is flat and
             has no contour to give.
         """
+        levels = self._memo(
+            ("default_levels", float(voxel_fraction)),
+            lambda: self._compute_default_levels(voxel_fraction),
+        )
+        return list(levels)
+
+    def _compute_default_levels(self, voxel_fraction: float) -> list[float]:
         finite = self.values[np.isfinite(self.values)]
         if finite.size == 0:
             return []
         low, high = float(finite.min()), float(finite.max())
         if high <= low:
             return []
+
+        if self.recommended_level is not None and low < self.recommended_level < high:
+            return [float(self.recommended_level)]
 
         if self.is_binary():
             return [0.5] if low <= 0.5 <= high else [low + 0.5 * (high - low)]
@@ -308,16 +355,26 @@ class VolumeGrid:
         Returns ``self`` when no striding is needed, so the common case costs
         nothing. The step is scaled with the stride, which is what keeps the
         subsampled map in the same place and at the same size as the full one.
+
+        Cached per stride, and the subsample is materialised contiguously: the
+        strided grid carries its own memo (range, histogram, contours), so a
+        drag that re-contours the same subsample pays for the copy and the
+        scans once rather than per mouse move.
         """
         stride = self.stride_for_limit(voxel_limit_m)
         if stride <= 1:
             return self
-        return VolumeGrid(
-            values=self.values[::stride, ::stride, ::stride],
-            origin=self.origin.copy(),
-            step=self.step * stride,
-            rotation=self.rotation.copy(),
-            name=self.name,
+        return self._memo(
+            ("strided", stride),
+            lambda: VolumeGrid(
+                values=np.ascontiguousarray(
+                    self.values[::stride, ::stride, ::stride]
+                ),
+                origin=self.origin.copy(),
+                step=self.step * stride,
+                rotation=self.rotation.copy(),
+                name=self.name,
+            ),
         )
 
     # ------------------------------------------------------------------ #
@@ -344,6 +401,13 @@ class VolumeGrid:
             ``(vertices, faces, normals)``, or ``None`` when the surface does not
             cross the grid -- which is a real answer, not a failure: it means the
             level is above everything, or below it.
+
+        Notes
+        -----
+        The last few contours are memoised per ``(level, budget)``, so a colour
+        or opacity change, a surface/mesh toggle, or a redraw of the scene that
+        did not move the level costs nothing. The returned arrays are shared
+        between callers and marked read-only for that reason.
         """
         grid = self.strided(voxel_limit_m)
         if level is None:
@@ -353,7 +417,23 @@ class VolumeGrid:
         if not np.isfinite(level) or level <= low or level >= high:
             return None
 
-        values = np.ascontiguousarray(grid.values, dtype=np.float64)
+        memo = self._cache.setdefault("contours", {})
+        key = (level, float(voxel_limit_m))
+        if key in memo:
+            return memo[key]
+
+        result = self._contour(grid, level)
+        # A handful of levels covers a polar pair plus a drag preview; anything
+        # older is stale drag positions, and each entry can be megabytes.
+        while len(memo) >= 4:
+            memo.pop(next(iter(memo)))
+        memo[key] = result
+        return result
+
+    @staticmethod
+    def _contour(grid: VolumeGrid, level: float):
+        """One triangulated contour of ``grid``, uncached."""
+        values = np.ascontiguousarray(grid.values, dtype=np.float32)
         verts, faces, normals = marching_cubes(values, level, tuple(grid.step))
         if verts.shape[0] == 0:
             return None
@@ -367,11 +447,16 @@ class VolumeGrid:
         lengths = np.sqrt(np.einsum("ij,ij->i", normals, normals))
         good = lengths > 1e-12
         normals[good] /= lengths[good][:, None]
-        return (
+        out = (
             verts.astype(np.float32),
             np.asarray(faces, dtype=np.int32),
             normals.astype(np.float32),
         )
+        # The tuple is memoised and handed to every caller; a consumer writing
+        # into it would corrupt every later draw of the same level.
+        for arr in out:
+            arr.setflags(write=False)
+        return out
 
 
 __all__ = [

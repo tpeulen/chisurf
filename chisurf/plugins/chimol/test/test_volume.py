@@ -545,6 +545,46 @@ def test_map_info_reports_placement_and_range(shell):
 
 
 # --------------------------------------------------------------------------- #
+# Everything derived from the samples is computed once
+# --------------------------------------------------------------------------- #
+def test_a_contour_is_cut_once_per_level_not_once_per_ask(blob, monkeypatch):
+    """The histogram panel and the scene both ask; the map answers from memory.
+
+    A colour change, an opacity change and a surface/mesh toggle all redraw
+    the same level -- re-running marching cubes for each was most of why the
+    map controls felt slow.
+    """
+    from chisurf.plugins.chimol.chimol import volume as volume_module
+
+    grid = VolumeGrid.from_array(blob)
+    calls = {"n": 0}
+    real = volume_module.marching_cubes
+
+    def counting(*args, **kwargs):
+        calls["n"] += 1
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(volume_module, "marching_cubes", counting)
+    first = grid.isosurface(0.35)
+    second = grid.isosurface(0.35)
+    assert calls["n"] == 1, "the same level was contoured twice"
+    assert first is second, "the memo did not hand back the same surface"
+    assert not first[0].flags.writeable, (
+        "a shared surface must be read-only, or one caller corrupts the next"
+    )
+
+
+def test_the_histogram_and_range_are_not_rescanned_per_paint(blob):
+    """The density window redraws every frame; the map must not be re-read."""
+    grid = VolumeGrid.from_array(blob)
+    counts_a, edges_a = grid.histogram(200)
+    counts_b, edges_b = grid.histogram(200)
+    assert counts_a is counts_b and edges_a is edges_b
+    assert grid.value_range() == grid.value_range()
+    assert grid._cache, "nothing was memoised at all"
+
+
+# --------------------------------------------------------------------------- #
 # Opening contours: the reference tool is the authority for maps
 # --------------------------------------------------------------------------- #
 def test_the_default_level_encloses_the_densest_one_percent():
