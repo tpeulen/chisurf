@@ -125,6 +125,13 @@ timestamp: '2026-08-10T00:00:00Z'
      tttrlib's `modules/math`, NumPy-bound. Route `numpy` is out — the
      recursions are serial in `t` and only vectorise over states, so a NumPy
      rewrite pays Python loop overhead once per sample.
+     **Do not pick this file up here — it is blocked on tttrlib PRD-035**
+     (`okf/prds/PRD-035-generic-log-domain-hmm-lattice.md`, board ticket
+     `T-20260811-07`, flagged priority by the user). The PRD carries the numba
+     baseline the C++ must not regress (forward 10.81 ms, backward+xi 12.66 ms
+     at T=100k/K=3) and the four numerical traps, chiefly that an all-`-inf`
+     frame must give `-inf` rather than `nan`. ChiSurf's side is then a
+     delegation plus a parity fixture recorded before the kernels are deleted.
    - **The `imp` group is not "delete the leftover", and nothing in this area
      is dead.** Importers, absolute + relative: `potentials.py` 10,
      `dcd.py` 5+1, `protein.py` 4, `av/dynamic.py` 3, `av/static.py` 1+1,
