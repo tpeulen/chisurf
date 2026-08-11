@@ -186,7 +186,7 @@ tests:
 
 about:
   homepage: https://github.com/Fluorescence-Tools/ChiSurf
-  license: GPL-2.0-only
+  license: GPL-3.0-or-later
   license_file: LICENSE
   summary: ChiSurf - an interactive global analysis platform for fluorescence data
   description: |

@@ -12,7 +12,7 @@ dynamic = ["version"]
 description = "ChiSurf: an interactive global analysis platform for fluorescence data."
 readme = "README.md"
 requires-python = ">=3.10"
-license = "GPL-2.0"
+license = "GPL-3.0-or-later"
 authors = [
     {name = "Thomas-Otavio Peulen", email = "thomas@peulen.xyz"}
 ]

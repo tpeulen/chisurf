@@ -1,0 +1,456 @@
+{
+  "generated": "2026-08-11",
+  "project_license": "GPL-3.0-or-later",
+  "binding_class": 4,
+  "binding_class_name": "Strong copyleft (GPL)",
+  "blockers": [
+    "PyQt5",
+    "sip"
+  ],
+  "unknown": [],
+  "entries": [
+    {
+      "name": "PyQt5",
+      "group": "runtime",
+      "requirement": "PyQt5",
+      "license": "GPL-3.0-only",
+      "url": "https://www.riverbankcomputing.com/commercial/license-faq",
+      "source": "override",
+      "version": "5.15.11",
+      "class": 4
+    },
+    {
+      "name": "qtpy",
+      "group": "runtime",
+      "requirement": "qtpy",
+      "license": "MIT License",
+      "url": "https://github.com/spyder-ide/qtpy",
+      "source": "metadata",
+      "version": "2.4.3",
+      "class": 1
+    },
+    {
+      "name": "sip",
+      "group": "runtime",
+      "requirement": "sip",
+      "license": "SIP license / GPL-3.0-only",
+      "url": "https://www.riverbankcomputing.com/commercial/license-faq",
+      "source": "override",
+      "version": "6.16.0",
+      "class": 4
+    },
+    {
+      "name": "pyqtgraph",
+      "group": "runtime",
+      "requirement": "pyqtgraph",
+      "license": "MIT",
+      "url": "https://github.com/pyqtgraph/pyqtgraph",
+      "source": "metadata",
+      "version": "0.14.0",
+      "class": 1
+    },
+    {
+      "name": "numba",
+      "group": "runtime",
+      "requirement": "numba",
+      "license": "BSD License",
+      "url": "https://numba.pydata.org",
+      "source": "metadata",
+      "version": "0.66.0",
+      "class": 1
+    },
+    {
+      "name": "numpy",
+      "group": "runtime",
+      "requirement": "numpy",
+      "license": "BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0",
+      "url": "https://numpy.org",
+      "source": "metadata",
+      "version": "2.4.6",
+      "class": 1
+    },
+    {
+      "name": "imp",
+      "group": "runtime",
+      "requirement": "imp>=2.25",
+      "license": "LGPL-2.1",
+      "url": "https://integrativemodeling.org/latest/doc/manual/licenses.html",
+      "source": "override",
+      "version": "not installed",
+      "class": 3
+    },
+    {
+      "name": "scipy",
+      "group": "runtime",
+      "requirement": "scipy",
+      "license": "BSD License",
+      "url": "https://scipy.org/",
+      "source": "metadata",
+      "version": "1.18.0",
+      "class": 1
+    },
+    {
+      "name": "PyOpenGL",
+      "group": "runtime",
+      "requirement": "PyOpenGL",
+      "license": "BSD License",
+      "url": "https://mcfletch.github.io/pyopengl/",
+      "source": "metadata",
+      "version": "3.1.10",
+      "class": 1
+    },
+    {
+      "name": "wgpu",
+      "group": "runtime",
+      "requirement": "wgpu",
+      "license": "BSD 2-Clause License",
+      "url": "https://github.com/pygfx/wgpu-py",
+      "source": "metadata",
+      "version": "0.32.0",
+      "class": 1
+    },
+    {
+      "name": "rendercanvas",
+      "group": "runtime",
+      "requirement": "rendercanvas",
+      "license": "BSD-2-Clause",
+      "url": "https://github.com/pygfx/rendercanvas/blob/main/LICENSE",
+      "source": "override",
+      "version": "2.7.2",
+      "class": 1
+    },
+    {
+      "name": "labellib",
+      "group": "runtime",
+      "requirement": "labellib",
+      "license": "MPL-2.0",
+      "url": "https://github.com/Fluorescence-Tools/LabelLib",
+      "source": "metadata",
+      "version": "1!1.0.0",
+      "class": 2
+    },
+    {
+      "name": "PyYAML",
+      "group": "runtime",
+      "requirement": "PyYAML",
+      "license": "MIT License",
+      "url": "https://pyyaml.org/",
+      "source": "metadata",
+      "version": "6.0.3",
+      "class": 1
+    },
+    {
+      "name": "packaging",
+      "group": "runtime",
+      "requirement": "packaging",
+      "license": "Apache-2.0 OR BSD-2-Clause",
+      "url": "https://github.com/pypa/packaging",
+      "source": "metadata",
+      "version": "26.3",
+      "class": 1
+    },
+    {
+      "name": "typing-extensions",
+      "group": "runtime",
+      "requirement": "typing-extensions",
+      "license": "PSF-2.0",
+      "url": "https://github.com/python/typing_extensions",
+      "source": "metadata",
+      "version": "4.16.0",
+      "class": 1
+    },
+    {
+      "name": "matplotlib",
+      "group": "runtime",
+      "requirement": "matplotlib",
+      "license": "Python Software Foundation License",
+      "url": "https://matplotlib.org",
+      "source": "metadata",
+      "version": "3.11.0",
+      "class": 1
+    },
+    {
+      "name": "python-docx",
+      "group": "runtime",
+      "requirement": "python-docx",
+      "license": "MIT",
+      "url": "https://github.com/python-openxml/python-docx/blob/master/LICENSE",
+      "source": "override",
+      "version": "not installed",
+      "class": 1
+    },
+    {
+      "name": "markdown",
+      "group": "runtime",
+      "requirement": "markdown",
+      "license": "BSD-3-Clause",
+      "url": "https://Python-Markdown.github.io/",
+      "source": "metadata",
+      "version": "3.10.3",
+      "class": 1
+    },
+    {
+      "name": "msgpack",
+      "group": "runtime",
+      "requirement": "msgpack>=1.1.2",
+      "license": "Apache-2.0",
+      "url": "https://msgpack.org/",
+      "source": "metadata",
+      "version": "1.2.1",
+      "class": 1
+    },
+    {
+      "name": "ipython",
+      "group": "runtime",
+      "requirement": "ipython",
+      "license": "BSD-3-Clause",
+      "url": "https://ipython.org",
+      "source": "metadata",
+      "version": "9.16.1",
+      "class": 1
+    },
+    {
+      "name": "nbformat",
+      "group": "runtime",
+      "requirement": "nbformat",
+      "license": "BSD License",
+      "url": "https://jupyter.org",
+      "source": "metadata",
+      "version": "5.11.0",
+      "class": 1
+    },
+    {
+      "name": "click",
+      "group": "runtime",
+      "requirement": "click",
+      "license": "BSD-3-Clause",
+      "url": "https://github.com/pallets/click/",
+      "source": "metadata",
+      "version": "8.4.2",
+      "class": 1
+    },
+    {
+      "name": "pyzmq",
+      "group": "runtime",
+      "requirement": "pyzmq>=25.0",
+      "license": "BSD License",
+      "url": "https://pyzmq.readthedocs.org",
+      "source": "metadata",
+      "version": "27.1.0",
+      "class": 1
+    },
+    {
+      "name": "ruff",
+      "group": "runtime",
+      "requirement": "ruff>=0.4",
+      "license": "MIT",
+      "url": "https://github.com/astral-sh/ruff/blob/main/LICENSE",
+      "source": "override",
+      "version": "not installed",
+      "class": 1
+    },
+    {
+      "name": "sqlalchemy",
+      "group": "runtime",
+      "requirement": "sqlalchemy>=2.0",
+      "license": "MIT",
+      "url": "https://www.sqlalchemy.org",
+      "source": "metadata",
+      "version": "2.0.51",
+      "class": 1
+    },
+    {
+      "name": "Pillow",
+      "group": "runtime",
+      "requirement": "Pillow",
+      "license": "MIT-CMU",
+      "url": "https://python-pillow.github.io",
+      "source": "metadata",
+      "version": "12.3.0",
+      "class": 1
+    },
+    {
+      "name": "mmfdb",
+      "group": "runtime",
+      "requirement": "mmfdb==0.1.0",
+      "license": "MIT",
+      "url": "https://github.com/tpeulen/mmfdb",
+      "source": "override",
+      "version": "not installed",
+      "class": 1
+    },
+    {
+      "name": "Pygments",
+      "group": "full",
+      "requirement": "Pygments",
+      "license": "BSD-2-Clause",
+      "url": "https://pygments.org",
+      "source": "metadata",
+      "version": "2.20.0",
+      "class": 1
+    },
+    {
+      "name": "latexify-py",
+      "group": "full",
+      "requirement": "latexify-py",
+      "license": "Apache Software License",
+      "url": "https://github.com/google/latexify_py",
+      "source": "metadata",
+      "version": "0.4.4",
+      "class": 1
+    },
+    {
+      "name": "python-lsp-server",
+      "group": "dev",
+      "requirement": "python-lsp-server>=1.14",
+      "license": "MIT",
+      "url": "https://github.com/python-lsp/python-lsp-server/blob/develop/LICENSE",
+      "source": "override",
+      "version": "not installed",
+      "class": 1
+    },
+    {
+      "name": "pytest",
+      "group": "dev",
+      "requirement": "pytest",
+      "license": "MIT",
+      "url": "https://docs.pytest.org/en/latest/",
+      "source": "metadata",
+      "version": "9.1.1",
+      "class": 1
+    },
+    {
+      "name": "pytest-cov",
+      "group": "dev",
+      "requirement": "pytest-cov",
+      "license": "MIT",
+      "url": "https://github.com/pytest-dev/pytest-cov/blob/master/LICENSE",
+      "source": "override",
+      "version": "not installed",
+      "class": 1
+    },
+    {
+      "name": "pytest-qt",
+      "group": "dev",
+      "requirement": "pytest-qt",
+      "license": "MIT License",
+      "url": "http://github.com/pytest-dev/pytest-qt",
+      "source": "metadata",
+      "version": "4.5.0",
+      "class": 1
+    },
+    {
+      "name": "mypy",
+      "group": "dev",
+      "requirement": "mypy",
+      "license": "MIT",
+      "url": "https://www.mypy-lang.org/",
+      "source": "metadata",
+      "version": "2.3.0",
+      "class": 1
+    },
+    {
+      "name": "ruff",
+      "group": "dev",
+      "requirement": "ruff",
+      "license": "MIT",
+      "url": "https://github.com/astral-sh/ruff/blob/main/LICENSE",
+      "source": "override",
+      "version": "not installed",
+      "class": 1
+    },
+    {
+      "name": "ptpython",
+      "group": "cli",
+      "requirement": "ptpython>=3.0",
+      "license": "BSD-3-Clause",
+      "url": "https://github.com/prompt-toolkit/ptpython/blob/master/LICENSE",
+      "source": "override",
+      "version": "not installed",
+      "class": 1
+    },
+    {
+      "name": "psycopg",
+      "group": "postgres",
+      "requirement": "psycopg[binary]>=3.1",
+      "license": "LGPL-3.0-or-later",
+      "url": "https://github.com/psycopg/psycopg/blob/master/LICENSE.txt",
+      "source": "override",
+      "version": "not installed",
+      "class": 3
+    },
+    {
+      "name": "fastapi",
+      "group": "api",
+      "requirement": "fastapi",
+      "license": "MIT",
+      "url": "https://github.com/fastapi/fastapi",
+      "source": "metadata",
+      "version": "0.141.1",
+      "class": 1
+    },
+    {
+      "name": "pydantic",
+      "group": "api",
+      "requirement": "pydantic",
+      "license": "MIT",
+      "url": "https://github.com/pydantic/pydantic",
+      "source": "metadata",
+      "version": "2.13.4",
+      "class": 1
+    },
+    {
+      "name": "requests",
+      "group": "scrape",
+      "requirement": "requests",
+      "license": "Apache Software License",
+      "url": "https://github.com/psf/requests",
+      "source": "metadata",
+      "version": "2.34.2",
+      "class": 1
+    },
+    {
+      "name": "beautifulsoup4",
+      "group": "scrape",
+      "requirement": "beautifulsoup4",
+      "license": "MIT License",
+      "url": "https://www.crummy.com/software/BeautifulSoup/bs4/",
+      "source": "metadata",
+      "version": "4.15.0",
+      "class": 1
+    },
+    {
+      "name": "openpyxl",
+      "group": "scrape",
+      "requirement": "openpyxl",
+      "version": "not installed",
+      "license": "",
+      "url": "",
+      "source": "missing",
+      "class": null
+    }
+  ],
+  "bundled": [
+    {
+      "name": "tttrlib",
+      "version": "(pinned by environment)",
+      "license": "BSD-3-Clause",
+      "class": 1,
+      "url": "https://github.com/fluorescence-tools/tttrlib"
+    },
+    {
+      "name": "libtiff (bundled by tttrlib)",
+      "version": "vendored",
+      "license": "libtiff (MIT-style)",
+      "class": 1,
+      "url": "https://libtiff.gitlab.io/libtiff/misc.html"
+    },
+    {
+      "name": "HDF5 (linked by tttrlib)",
+      "version": "environment",
+      "license": "BSD-3-Clause (HDF5)",
+      "class": 1,
+      "url": "https://github.com/HDFGroup/hdf5/blob/develop/LICENSE"
+    }
+  ]
+}
