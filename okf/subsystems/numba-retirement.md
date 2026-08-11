@@ -731,6 +731,44 @@ two implementations *sequentially* and reported tttrlib 21% slower. Interleaved
 A/B/A/B, best-of-4, it is 14% faster. A sequential timing of two kernels on the
 same data is a thermal/ordering measurement, not a performance one.
 
+## flc_2d delegation: three gaps found, two closed, one open (2026-08-11)
+
+Worked in order; each was found by comparing against the recorded fixture rather
+than by reading, and each is recorded so the next attempt starts past it.
+
+1. **No linear matrix upstream** — closed. `fdc_scan_axis` takes a caller-supplied
+   tick array and `fdc_scan_two_axes` produces both matrices from one walk, which
+   is the shape `create_2d_fdc_numba_int` needs. Justified by measurement: at
+   comparable bin counts and 1M photons, one axis is 144.8 ms and two axes in two
+   calls 329.1 ms, so the second pass is a full pass.
+2. **The log axis ignored `lint_bin_factor`** — closed, both sides.
+   `fdc_t_imax(span, factor)` upstream; `_fdc_scan_log_kernel` here.
+3. **The micro-time gate differs** — **OPEN, blocks the strike.** The reference
+   gates on `t_Imax`, not on `tMax`:
+
+   ```matlab
+   if (tauI <= 0) || (tauI >= t_Imax)      % TK_Create2DFDC_04.m:66
+   ```
+
+   and `t_Imax = lint_Imax * lint_BinFactor` is ≥ the span, so photons **above
+   `tMax`** are admitted whenever the span is not a whole number of linear bins.
+   ChiSurf's builder is faithful to that. tttrlib's `fdc_scan_two_axes` gates at
+   `t_max`, so it counts fewer pairs: on the narrow-gate fixture case (gate
+   `[15, 25]`, factor 4, `t_imax` 16) it returns **432 pairs against 972**, with
+   63 of 400 cells differing. The other three fixture cases agree exactly,
+   because their gate is `[1, 40]` with no micro-times above 40 — so nothing
+   falls in the excess range and the difference is invisible.
+
+   That last point is why this is worth writing down: **a gate difference only
+   shows up when the data reaches past `tMax`**, so a fixture built from
+   well-behaved streams will not catch it.
+
+**Do not delegate until the gate matches.** Raised upstream. When it does, the
+delegation is: `_fdc_scan_log_kernel` → `fdc_scan_axis`, `create_2d_fdc_numba_int`
+→ `fdc_scan_two_axes` (log ticks length `logt_imax_in + 1`, linear ticks
+`[-1, 0, f, 2f, …]`, then the reference's one-bin trim in Python), and the three
+helpers deleted.
+
 ## Bugs the ports have found
 
 * **The whole 2D-FLC plugin was failing to compile its kernels**, found by
