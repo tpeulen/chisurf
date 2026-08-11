@@ -1,3 +1,46 @@
+## 2D-FLC: the linear matrix silently drops its highest bin, losing 10-15% of pairs
+
+**Found 2026-08-11**, while checking that tttrlib's `fdc_scan_axis` reproduces
+ChiSurf's linear matrix. It does — for the bins ChiSurf keeps.
+
+`create_2d_fdc_numba_int` allocates `lint_imax × lint_imax`, accumulates into it
+correctly, and then **slices the last row and column off on return**
+(`core.py:182-183`, `var_size = shape[0] - 1`). The discarded bin holds real
+pairs whenever `lint_bin_factor > 1`.
+
+Measured on one stream, gate `[1, 40]`, against the **log** matrix from the same
+call, which is the true pair count:
+
+| `lint_bin_factor` | true pairs | in the linear matrix | lost |
+|---:|---:|---:|---:|
+| 1 | 6443 | 6443 | 0 |
+| 2 | 6443 | 6443 | 0 |
+| 3 | 6443 | 5789 | **654 (10%)** |
+| 5 | 6443 | 5469 | **974 (15%)** |
+
+The lost pairs are exactly those in the trimmed row and column (333 + 340 at
+factor 3; 513 + 507 at factor 5), and they are the **longest micro-times** — so
+`fit/helpers.py`, which returns `np.diag(mat_lin)` as the linearly-binned decay,
+loses that decay's tail. A tail-fit on it is fitting a curve with its end cut
+off.
+
+**Why it looks right at first.** `t_imax0 = span + lint_bin_factor` pads by one
+bin's worth of ticks, so *something* should be trimmed. The trim removes one
+**bin** where it should remove one bin's worth of **ticks** — which are the same
+thing only at `lint_bin_factor = 1`, and that is the default the tests use.
+
+**Not fixed here**, for the same reason as the axis entry above and coupled to
+it: both concern how `t_imax` and the bin count are derived, the tttrlib session
+is mid-flight in exactly this code, and the fix changes a published observable
+(the decay gains its tail back). It should be decided together with the axis
+question, not patched separately. Unlike the axis question this one is not a
+method choice — discarding photons that fell inside the gate is a defect, and
+the MATLAB does no such trim.
+
+**How to re-derive**: call `create_2d_fdc_numba_int` with `lint_bin_factor` in
+`{1, 2, 3, 5}` and compare `mat_lin.sum()` against `mat_log.sum()` from the same
+call. Equal at 1 and 2, short at 3 and 5.
+
 ## 2D-FLC: the log-binned matrix moves when `lint_bin_factor` changes, and the two kernels disagree
 
 **Found 2026-08-11**, from an observation by the tttrlib session porting these

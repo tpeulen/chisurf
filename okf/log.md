@@ -1,6 +1,11 @@
 # Update Log
 
 ## 2026-08-11
+* **Second 2D-FLC defect**: the linear matrix's last row and column are sliced
+  off on return, dropping **10–15% of pairs** at `lint_bin_factor` 3 and 5 —
+  the longest micro-times, i.e. the tail of the decay `fit/helpers.py` fits.
+  Recorded, not fixed: coupled to the axis question and the same code is
+  in flight upstream. [known issues](references/known-issues.md).
 * **2D-FLC defect found**: the log-binned matrix moves when `lint_bin_factor`
   changes, so a linear-binning knob silently shifts the axis the lifetime
   inversion runs on — and the scan kernel deviates from the published MATLAB
