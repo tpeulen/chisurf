@@ -1,6 +1,19 @@
 # Update Log
 
 ## 2026-08-11
+* **The `imp` route is a re-expression, not a deletion** — checked: none of the
+  five potentials, five AV kernels or the quenching kernel exist in `IMP.bff` /
+  `IMP.cgmol` / `IMP.bff.cgdye` or `~/dev/imp.bff`, under any name. Direction is
+  right (`IMP.bff.AV` is real), the labelled work is not. Fifth route corrected
+  by checking today.
+* **2D-FLC marked a tttrlib candidate** (user): `flc_2d/core.py`'s five kernels
+  are specified by tttrlib PRD-036, written against the original MATLAB in
+  `junk/2D-FLC-code` and requiring every kernel be tested by simulation with a
+  known answer — including a single-state negative control.
+* **`flc_2d/api.py` off the numba list** (13 left) — its only numba use chose a
+  chunk count, which never changes the result. Taking it off exposed a real
+  defect: the plugin's kernels could not cold-compile after `env_bootstrap`
+  rewrites `NUMBA_NUM_THREADS`. Guard added, suite 26 passed.
 * **The soundtrack is music now, and a game nobody is looking at is silent**
   ([chigame](subsystems/chigame.md)). Two things were wrong and both were
   structural. The oscillators were naive — a square built from a sign flip, at

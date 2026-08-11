@@ -641,6 +641,43 @@ The lesson PRD-035 paid for is why: a fixture recorded from the code being
 replaced cannot tell a faithful port from a shared mistake. Simulation with a
 known answer can.
 
+## The `imp` route is a re-expression, not a deletion — checked, not assumed
+
+**2026-08-11.** The route text said these files "already migrated to imp-tricks
+under the same function names" and the label said "delete the leftover". Neither
+is true, and the check is one import:
+
+| ChiSurf symbol | in `IMP.bff` / `IMP.cgmol` / `IMP.bff.cgdye`? |
+|---|---|
+| `centroid2`, `internal_potential`, `lj_calpha`, `gb`, `go` | no |
+| `make_grid_axis`, `find_atom_clashes`, `define_starting_positions`, `distance_lookup`, `calc_linker_distance` | no |
+| `_quenching_rate_per_frame` | no |
+
+Nothing matched, exactly or fuzzily, and `~/dev/imp.bff` (the fourth repo
+PRD-93 created) does not carry them either.
+
+The route is right in **direction**: `IMP.bff.AV` is a real accessible-volume
+decorator (`get_linker_length`, `get_map`, `get_mean_position`,
+`create_path_map_header`) and `IMP.cgmol` has `ProteinCentroid`. But ChiSurf's
+kernels are the *internals* of an AV calculation, so this is re-expressing
+ChiSurf against a different API and proving the volumes still agree — not
+deleting a duplicate. Different work, and much more of it.
+
+**`potentials.py` is the clearest counter-example**: `GoPotential`,
+`HPotential` and `Ramachandran` are live behind `proteinmc`, the ProteinMC model
+and three GUI widgets, and `IMP.bff` exposes only `AVNetworkRestraint`. There is
+nothing to delegate to today.
+
+**Do not start this without checking `protein.py` first** — a peer is mid-change
+in it for PRD-97 (`Hand fret/core's algorithms to IMP.bff.fret`), 159 uncommitted
+lines, and that work may settle where these belong.
+
+This is the fifth route label corrected by checking rather than reading, after
+`dcd.py`/`xtc.py` (no trajectory reader in imp-tricks), `hmm.py` (a different
+algorithm) and `av/dynamic.py` (does not vectorise). The pattern is consistent
+enough to state as a rule: **the route tag is a hypothesis written when the file
+was catalogued, and the first step of any entry is re-checking it.**
+
 ## Bugs the ports have found
 
 * **The whole 2D-FLC plugin was failing to compile its kernels**, found by
