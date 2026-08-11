@@ -1,105 +1,86 @@
-"""The story: the Fading, the three orders, and why any of it is worth walking.
+"""The story: the Fading, the Marking, and the woman who thought she was helping.
 
 The premise is one idea taken seriously. **Everything alive in this world
-carries light.** A person, a hound, a thing in the long grass — each holds a
+carries light.** A person, a hound, a thing in the long grass -- each holds a
 quantum of it, absorbs it, and gives it back changed. That is not a metaphor
-laid over the mechanics; it *is* the mechanics. A creature's brightness is how
-hard it can strike. Emitting spends it. A creature driven dark can be carried
-home.
+laid over the mechanics; it *is* the mechanics. Brightness is how hard a thing
+can strike. Emitting spends it. Whatever is driven all the way down goes out.
 
-And knowledge is the same substance. A page somebody has read and vouched for
-is **lit**, and its keeper stands outside it. A page nobody has opened is dark,
-and something has moved into it. That is why the map looks the way it does.
+And knowledge is the same substance. A page somebody has read and vouched for is
+**lit**, and its keeper stands outside it. A page nobody has opened is dark, and
+something has moved into the dark. That is why the map looks the way it does.
 
-**The Fading** is the premise's consequence: light is leaving. Not dramatically —
-a lamp at a time, a page at a time, until a whole land is dark and nobody
-remembers it was ever otherwise. You are **Iris**, a probe: a photon given a
-body and sent in to find where it is going. **Lumi** is a hound of light, who
-can smell where light has been.
+**The Fading** is the premise's consequence: light is leaving. Not dramatically
+-- a lamp at a time, a page at a time, until a whole land is dark and nobody
+remembers it was ever otherwise.
 
-Two rules keep the arc honest, and they are the same two as before:
+**The Marking** is somebody's answer to it. Vesper, once the finest keeper
+anyone had, worked out how to *fix* light into a living body so that it could
+not leave. She began with a moth. She has not stopped. Every marked animal in
+the world is a lamp she lit and walked away from, and a lamp burns until it does
+not: driven all the way down, a marked animal does not die -- it **crosses**,
+into the dark manifold, where it is still there and no longer anything. That
+country is filling up.
 
-* **A beat completes because the documentation changed**, not because the player
-  pressed something. Every condition is a query over the world.
+You are **Iris**, a probe: a photon given a body and sent in to find where the
+light is going. **Lumi** is a hound of light who does not spend what he carries
+-- the last of a line nobody ever marked.
+
+Three rules keep the arc honest:
+
+* **Every beat completes on the world, not on a keypress.** Some conditions are
+  queries over the documentation (a lit page exists; you have cleared three
+  rooms in your order's lands) and some are queries over the run (you hold three
+  seals; you have unbound a label). None of them is a cutscene flag the
+  interface can set on its own.
 * **The spine is data**, so it can be read, reviewed and argued with.
+* **Nobody in it is stupid.** Vesper is wrong, and her argument is a good one.
 """
 
 from __future__ import annotations
 
 import dataclasses
 
+from . import engine
 from .world import SCOUTED, SETTLED, World
+
+#: Everything the arc says, read from ``data/story.json``. Nothing narrative
+#: lives in this module any more: a writer changes the story by editing JSON,
+#: and the only thing Python still owns is what a beat *means*.
+_DATA: dict = engine.load("story")
 
 #: The opening. Shown once, on a fresh run, before the world appears -- so a
 #: player arrives knowing what they are looking at rather than deducing it.
-PROLOGUE: tuple[tuple[str, str], ...] = (
-    (
-        "The Fading",
-        "Everything alive here carries light. A person, a hound, a thing in the "
-        "long grass — each holds a little, spends it, and gives back what is "
-        "left, changed.",
-    ),
-    (
-        "The Fading",
-        "Knowledge is the same substance. A page somebody has read and vouched "
-        "for burns steadily, and its keeper stands at the door. A page nobody "
-        "has opened goes dark, and something moves into the dark.",
-    ),
-    (
-        "The Fading",
-        "Lately the light has been leaving. Not all at once — a lamp at a time, "
-        "a page at a time, until a whole land has gone quiet and no one recalls "
-        "it was ever otherwise.",
-    ),
-    (
-        "Iris",
-        "You are a probe: a single quantum given a body and sent in to find "
-        "where it is going. You will be spent doing it. That is what a probe "
-        "is for.",
-    ),
-    (
-        "Lumi",
-        "Somewhere out in the grass is a hound made of the same light, and it "
-        "does not spend what it carries. It can smell where light has been. "
-        "Find it, and it will find the rest.",
-    ),
+PROLOGUE: tuple[tuple[str, str], ...] = tuple(
+    (card[0], card[1]) for card in _DATA.get("prologue", ())
 )
 
-#: The three orders. They agree the light is going and disagree entirely about
-#: what to do, which is what makes choosing one a decision rather than a menu.
-ORDERS: dict[str, dict[str, str]] = {
-    "rigour": {
-        "name": "The Order of Rigour",
-        "creed": "Light that misleads is worse than dark.",
-        "wants": "every derivation checked, every symbol defined, every source named",
-        "critical": "an unstated assumption, a wrong unit, a claim with nothing behind it",
-        "belief": (
-            "They hold that a page lit wrongly is a lamp hung over a pit. Better "
-            "an honest dark than a light that walks people off the edge."
-        ),
-    },
-    "clarity": {
-        "name": "The Order of Clarity",
-        "creed": "Light nobody can reach is light nobody has.",
-        "wants": "a stranger at the door and through it in five minutes",
-        "critical": "a term used before it is defined, a step nobody explains",
-        "belief": (
-            "They hold that the Fading is not a loss of light but a loss of "
-            "doors. The knowledge is still burning; it is only that nobody can "
-            "get to it any more."
-        ),
-    },
-    "discovery": {
-        "name": "The Order of Discovery",
-        "creed": "What is unwritten is not therefore unimportant.",
-        "wants": "the gaps found, the unlinked mapped, the silence named",
-        "critical": "an orphan, a dead link, a hole in the tree",
-        "belief": (
-            "They hold that the worst dark was never lit at all — and that "
-            "counting the lamps you already have is how a world quietly agrees "
-            "to stop looking."
-        ),
-    },
+#: The three orders. They agree the Marking is happening and disagree entirely
+#: about what it means, which is what makes choosing one a decision rather than
+#: a menu row.
+ORDERS: dict[str, dict[str, str]] = _DATA.get("orders", {})
+
+#: Which lands each order calls its own. Doctrine work is counted against
+#: these, and each order's emissary stands in the first of them.
+ORDER_LANDS: dict[str, tuple[str, ...]] = {
+    key: tuple(value) for key, value in _DATA.get("order_lands", {}).items()
+}
+
+#: Rooms to clear for your order after pledging, and seals to hold before an
+#: order will take you seriously. Small on purpose: a run must be finishable in
+#: a humane number of sessions.
+WORK_GOAL: int = int(_DATA.get("goals", {}).get("work", 3))
+SEAL_GOAL: int = int(_DATA.get("goals", {}).get("seals", 3))
+
+#: What Vesper says when you reach her, and what Iris says back -- one reply
+#: per doctrine, because the reply *is* the doctrine's whole argument.
+LANTERNWRIGHT: tuple[str, ...] = tuple(_DATA.get("lanternwright", ()))
+REPLIES: dict[str, str] = _DATA.get("replies", {})
+
+#: The closing cards, one set per doctrine, shown when the work is done.
+EPILOGUES: dict[str, tuple[tuple[str, str], ...]] = {
+    key: tuple((card[0], card[1]) for card in cards)
+    for key, cards in _DATA.get("epilogues", {}).items()
 }
 
 
@@ -117,168 +98,39 @@ class Beat:
         What is happening and why it matters.
     goal : str
         What the player has to do, in plain words.
+    when : dict
+        The condition that completes it, as an :mod:`.engine` expression. This
+        is the whole reason the arc is data: a beat completes because the run
+        or the corpus satisfies a written-down rule, not because a branch in a
+        method said so.
     """
 
     key: str
     headline: str
     body: str
     goal: str
+    when: dict = dataclasses.field(default_factory=dict)
 
-
-#: Which lands each order calls its own. Doctrine work (Act Two) is counted
-#: against these, and each order's emissary stands in the first of them.
-ORDER_LANDS: dict[str, tuple[str, ...]] = {
-    "rigour": ("reference", "manual", "development"),
-    "clarity": ("guides", "fundamentals", "getting_started"),
-    "discovery": ("references", "concepts"),
-}
-
-#: Rooms to clear for your order after pledging. Small on purpose: a run must
-#: be finishable in a humane number of sessions, and the corpus is the real
-#: unbounded task this arc exists to break into wins.
-WORK_GOAL = 3
-
-#: The waking act. A run does not start mid-stride with a companion already at
-#: heel — you come to in the wild with someone standing over you, and the hound
-#: is out there to be found. A journey earns its company.
-ACT_ZERO: list[Beat] = [
-    Beat(
-        key="wake",
-        headline="Wake. Someone is standing over you.",
-        body=(
-            "Grass, sky, and a stranger's voice. You were sent here as a "
-            "probe, and probes arrive the way light does — suddenly, and "
-            "without luggage. The keeper crouched beside you has been waiting."
-        ),
-        goal="Hear the keeper out.",
-    ),
-    Beat(
-        key="the-hound",
-        headline="Something glows faintly in the grass.",
-        body=(
-            "A hound of light, run down to an ember, curled where the road "
-            "bends. It does not spend what it carries, so if it is dim, it has "
-            "been alone in the dark a long time. It lifts its head as you come "
-            "near."
-        ),
-        goal="Find the dim hound and speak to it.",
-    ),
-]
-
-#: The opening act, shared by all three orders. Short on purpose: the player
-#: chooses a doctrine at the end of it, and that choice only means something
-#: once they have seen what the world is actually like.
-ACT_ONE: list[Beat] = [
-    Beat(
-        key="arrival",
-        headline="Lumi is dimming. Find ground that is still lit.",
-        body=(
-            "You arrive somewhere that was recently brighter. Lumi is running "
-            "down faster than a hound of light should, which means the Fading "
-            "is not distant history here — it is happening around you."
-        ),
-        goal="Reach a village whose buildings are still burning.",
-    ),
-    Beat(
-        key="first-light",
-        headline="Lit ground still exists. Learn what keeps it burning.",
-        body=(
-            "A lit page is one a person read and vouched for, and its keeper is "
-            "standing at the door. There are far fewer keepers than doors. The "
-            "difference between a lamp and a dark house is only ever whether "
-            "somebody came."
-        ),
-        goal="Stand in a village where at least one house is lit.",
-    ),
-    Beat(
-        key="the-frontier",
-        headline="Something walked this ground ahead of you.",
-        body=(
-            "Some houses are half-lit — a cold, borrowed glow with nobody at the "
-            "door. Something passed through, read what was there and wrote down "
-            "what it saw, and no person has confirmed a word of it. That band of "
-            "half-light is the frontier, and it is where the three orders stop "
-            "agreeing with one another."
-        ),
-        goal="Find half-lit ground — a house burning with nobody keeping it.",
-    ),
-    Beat(
-        key="the-choice",
-        headline="Three orders will each tell you what the Fading is.",
-        body=(
-            "Rigour says the light is going because too much of it lies. "
-            "Clarity says the light is fine and the doors have closed. "
-            "Discovery says the worst dark was never lit at all. They cannot all "
-            "be served first, and whichever you serve decides what counts as "
-            "having won."
-        ),
-        goal="Find an emissary and pledge to an order.",
-    ),
-]
-
-#: The doctrine act. Pledging is a promise; this is the keeping of it. The
-#: work counts *cleared rooms in your order's own lands*, mode-independent, so
-#: training and expert runs both have an arc to finish.
-ACT_TWO: list[Beat] = [
-    Beat(
-        key="the-work",
-        headline="Your order has work for you.",
-        body=(
-            "A pledge is words until ground changes hands. Your order's lands "
-            "hold rooms nobody has faced; clear them, and the doctrine you "
-            "chose stops being an opinion."
-        ),
-        goal=f"Clear {WORK_GOAL} rooms in your order's lands.",
-    ),
-    Beat(
-        key="the-dawn",
-        headline="The dark has given ground. Come see.",
-        body=(
-            "Not everywhere, and not for good. But where you worked, the lamps "
-            "hold — and a land that has watched light leave for years has "
-            "watched it come back."
-        ),
-        goal="Witness the dawn.",
-    ),
-]
 
 #: Every beat, in the order a run walks them.
-BEATS: list[Beat] = [*ACT_ZERO, *ACT_ONE, *ACT_TWO]
-
-#: The closing cards, one set per doctrine, shown when the work is done.
-EPILOGUES: dict[str, tuple[tuple[str, str], ...]] = {
-    "rigour": (
-        ("The Dawn", "The lamps you lit do not flicker. Every one of them "
-         "stands over ground that was checked before it was trusted, and "
-         "Merel walks the shelves without a taper for the first time in years."),
-        ("The Dawn", "Rigour does not celebrate. But tonight the order's "
-         "ledger closes with more light than it opened with, and that has not "
-         "been written in a long while."),
-    ),
-    "clarity": (
-        ("The Dawn", "Doors stand open along the Pilgrim Road. A stranger "
-         "arriving tonight would find the way in five minutes -- which is, "
-         "Halden says, the only measure that was ever worth taking."),
-        ("The Dawn", "The light was there all along. What you built were "
-         "doors, and the Fading walks past a door it cannot close."),
-    ),
-    "discovery": (
-        ("The Dawn", "The map has fewer blank places. Sable stands at a cairn "
-         "that now points somewhere, in ground that was never dark -- only "
-         "unwritten, which is the dark nobody counts."),
-        ("The Dawn", "What you found was always there. Now it is *findable*, "
-         "and that is the difference between a world and a rumour of one."),
-    ),
-}
+BEATS: list[Beat] = [
+    Beat(
+        key=entry["key"],
+        headline=entry["headline"],
+        body=entry["body"],
+        goal=entry["goal"],
+        when=entry.get("when", {}),
+    )
+    for entry in _DATA.get("beats", ())
+]
 
 
 class Story:
     """Tracks which beat the world is on.
 
-    Progress is *derived*: the story asks the world what state it is in rather
-    than being told by the game. A beat cannot be advanced by fiddling with the
-    interface, only by the corpus actually changing — and a saved game does not
-    need to record how far along the arc it is.
+    Progress is *derived*: the story asks the world and the run what state they
+    are in rather than being told by the interface. A beat cannot be advanced by
+    fiddling with the UI, only by the corpus or the run actually changing.
 
     Parameters
     ----------
@@ -288,15 +140,24 @@ class Story:
 
     def __init__(self, world: World) -> None:
         self.world = world
+        #: The run, as the scripts see it. Set by
+        #: :class:`..context.GameContext` when it is built around this story,
+        #: because a beat's condition is evaluated against the *whole* run --
+        #: the corpus, the seals and the team -- not against the arc alone.
+        self.context = None
         self.chosen_order: str | None = None
         self.seen: set[str] = set()
         #: The hound is found in the world, not issued at the door. A journey
         #: earns its company.
         self.has_lumi = False
+        #: Warden seals held, which is also the licence tier (see :mod:`.tiers`).
+        self.seals: set[str] = set()
+        #: How many labels have been taken off marked animals.
+        self.unbound = 0
         #: Cleared-rooms-in-doctrine-lands at the moment of pledging, so the
         #: work beat counts what was done *for* the order, not before it.
         self.pledge_baseline: int | None = None
-        #: The same count, now — fed by the game each frame (clears live in
+        #: The same count, now -- fed by the game each frame (clears live in
         #: the run, not in the world).
         self.doctrine_count = 0
 
@@ -315,6 +176,18 @@ class Story:
         return None
 
     @property
+    def act(self) -> tuple[int, int]:
+        """How far through the arc the run has come.
+
+        Returns
+        -------
+        tuple of int
+            ``(beats done, beats in all)``.
+        """
+        done = sum(1 for beat in BEATS if self.is_complete(beat))
+        return (done, len(BEATS))
+
+    @property
     def work_progress(self) -> tuple[int, int] | None:
         """How far the doctrine work has come.
 
@@ -328,37 +201,43 @@ class Story:
         done = max(0, self.doctrine_count - (self.pledge_baseline or 0))
         return (min(done, WORK_GOAL), WORK_GOAL)
 
-    def is_complete(self, beat: Beat) -> bool:
-        """Whether a beat's condition is satisfied by the world.
+    @property
+    def seal_progress(self) -> tuple[int, int]:
+        """How far up the ladder the run has come.
+
+        Returns
+        -------
+        tuple of int
+            ``(held, goal)``.
+        """
+        return (min(len(self.seals), SEAL_GOAL), SEAL_GOAL)
+
+    def is_complete(self, beat: Beat, context=None) -> bool:
+        """Whether a beat's condition is satisfied.
+
+        The condition is the one written in ``data/story.json`` and evaluated
+        by :func:`..engine.evaluate`. There is deliberately no branch on
+        ``beat.key`` here: a beat that needed one would be a beat the data
+        cannot express, and that is the bug to fix rather than to work around.
 
         Parameters
         ----------
         beat : Beat
             The beat to test.
+        context : Context, optional
+            The run to ask. Defaults to :attr:`context`.
 
         Returns
         -------
         bool
-            True when the world already shows what the beat asks for.
+            True when the world or the run already shows what the beat asks
+            for. False when there is no context to ask at all -- an arc with
+            nothing behind it has not begun.
         """
-        if beat.key == "wake":
-            return "wake" in self.seen
-        if beat.key == "the-hound":
-            return self.has_lumi
-        if beat.key == "arrival":
-            return "arrival" in self.seen
-        if beat.key == "first-light":
-            return self.world.counts()[SETTLED] > 0 and "first-light" in self.seen
-        if beat.key == "the-frontier":
-            return self.world.counts()[SCOUTED] > 0 and "the-frontier" in self.seen
-        if beat.key == "the-choice":
-            return self.chosen_order is not None
-        if beat.key == "the-work":
-            progress = self.work_progress
-            return progress is not None and progress[0] >= progress[1]
-        if beat.key == "the-dawn":
-            return "dawn" in self.seen
-        return False
+        run = context if context is not None else self.context
+        if run is None:
+            return False
+        return engine.evaluate(beat.when, run)
 
     def witness(self, key: str) -> None:
         """Record that the player has seen what a beat asks for.
@@ -378,13 +257,22 @@ class Story:
         room : Room or None
             The nearest room, or ``None``.
         """
-        self.witness("arrival")
         if room is None:
             return
         if room.state == SETTLED:
             self.witness("first-light")
         elif room.state == SCOUTED:
             self.witness("the-frontier")
+
+    def seal(self, key: str) -> None:
+        """Record a Warden beaten.
+
+        Parameters
+        ----------
+        key : str
+            The Warden's key.
+        """
+        self.seals.add(key)
 
     def choose(self, order: str, baseline: int | None = None) -> None:
         """Commit to an order.
@@ -419,6 +307,17 @@ class Story:
             ``None`` before a choice is made.
         """
         return ORDERS[self.chosen_order] if self.chosen_order else None
+
+    @property
+    def reply(self) -> str:
+        """What Iris says to the Lanternwright, in your doctrine's words.
+
+        Returns
+        -------
+        str
+            A neutral answer before any pledge.
+        """
+        return REPLIES.get(self.chosen_order or "none", "")
 
 
 def cleared_in_lands(cleared, order: str | None) -> int:

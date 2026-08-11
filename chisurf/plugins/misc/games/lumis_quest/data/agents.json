@@ -1,0 +1,86 @@
+{
+  "_comment": "How the people in a town behave when nobody is watching. Drives rise on their own and are spent by doing the thing that answers them, which is what makes a townsperson walk somewhere for a reason rather than jitter around a home point. Openers and replies are the offline fallback: with a model configured, personas.py writes the exchange instead and these stand until it lands. Keep every line under ~120 characters -- two of them share one dialogue panel.",
+
+  "drives": {
+    "rest":    {"rate": 0.020, "goal": "tavern",  "did": "sat an hour at {place}."},
+    "trade":   {"rate": 0.014, "goal": "shop",    "did": "bought glass at {place}."},
+    "worship": {"rate": 0.009, "goal": "shrine",  "did": "stood a while in the shrine."},
+    "work":    {"rate": 0.022, "goal": "garden",  "did": "turned over the beds."},
+    "gossip":  {"rate": 0.030, "goal": "well",    "did": "heard something at the well."}
+  },
+
+  "topics": {
+    "marking": {
+      "weight": 3,
+      "openers": [
+        "There was a hare in the low field burning gold. Gold. A hare.",
+        "That is the third marked beast this month, and nobody counts them but me.",
+        "They say she started with a moth. One moth, and look at us."
+      ],
+      "replies": [
+        "My grandmother would have put it out of its misery. I could not.",
+        "It cannot stop running. That is the part I cannot get past.",
+        "Somebody fixed that light in there. It did not climb in by itself."
+      ]
+    },
+    "fading": {
+      "weight": 2,
+      "openers": [
+        "Two more houses went dark on the north row. Nobody has been through them.",
+        "The lamps were lit the whole way to the bridge when I was small.",
+        "It is not that the light goes. It is that nobody comes to look at it."
+      ],
+      "replies": [
+        "A reader would fix it. We have not had a reader in years.",
+        "I keep mine lit. That is one house out of forty.",
+        "You say that every year and every year there are fewer."
+      ]
+    },
+    "wardens": {
+      "weight": 2,
+      "openers": [
+        "The Warden turned another one away today. Attacked every turn, apparently.",
+        "You cannot get past the crossing without a seal. I have watched them try.",
+        "They say the fourth one has been down. Underneath, I mean."
+      ],
+      "replies": [
+        "Good. Half of them would get an animal killed inside a week.",
+        "A seal is a promise you can be trusted with something alive.",
+        "Down where? -- Do not answer that. I do not want it in my head."
+      ]
+    },
+    "probe": {
+      "weight": 2,
+      "openers": [
+        "That one with the hound. Came out of the grass with nothing on her.",
+        "A probe, they said. Sent to find where the light is going.",
+        "She takes the labels *off*. I have seen her do it."
+      ],
+      "replies": [
+        "Then she is either the best thing to happen here or the last.",
+        "The hound is the strange part. Nobody ever marked that line.",
+        "Off, and the animal walks away. I did not know it could come off."
+      ]
+    },
+    "weather": {
+      "weight": 1,
+      "openers": [
+        "Cold coming off the water. Early for it.",
+        "The beds want turning before the rain.",
+        "Quiet week. I have sold four things and three were bread."
+      ],
+      "replies": [
+        "It always is, this side of the bridge.",
+        "I will lend you the fork if you bring it back this time.",
+        "Quiet is not the worst thing a week can be."
+      ]
+    }
+  },
+
+  "closers": [
+    "Anyway. I have things.",
+    "Mind how you go.",
+    "Do not repeat that.",
+    "Right. Back to it."
+  ]
+}

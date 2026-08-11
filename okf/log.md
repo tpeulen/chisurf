@@ -1,6 +1,28 @@
 # Update Log
 
 ## 2026-08-11
+* **Lumis Quest becomes a game: marked animals, a tier ladder, a data-driven
+  engine, a dark manifold, and a town with a day of its own**
+  ([PRD-91](prds/prd-91.md)). You no longer fight dyes: a beast is a real
+  **animal** (`api/bestiary.py`, 23 species with their own stamina, speed and
+  behaviour) with a real **fluorophore** fixed into it, and every feature the
+  label grants is a property of the molecule. Winning is **unbinding** — the
+  label comes off, the animal goes free — so bodies and labels are collected
+  separately and recombined by hand. Dialogue, story beats and effects are now
+  **data** (`data/*.json`) run by a script engine (`api/engine.py`,
+  `api/actions.py`, `api/context.py`): a beat's completion rule is a condition
+  expression, a consequence is a registered action, and anything the host must
+  do is a queued request — the `if role == ...` chain in the renderer is gone.
+  The overworld grew biomes, lakes, rivers, cliffs with caves, and settlements
+  planned in plots (`api/places.py`) so a town has a square, a well, a tavern, a
+  lens-grinder, a shrine, stalls, lanterns and beds. Five **Wardens** gate what
+  you may unbind (`api/tiers.py`). A **dark manifold** (`api/darkworld.py`) is
+  the same grid with the light taken out, entered by cave and left by rift.
+  And the townsfolk are **agents** (`api/agents.py`): drives that rise, errands
+  they walk to, conversations they start with each other about whatever the run
+  has made topical, which the player can overhear and drop into. A model, where
+  configured, writes only the words. 232 tests; gallery reproducible via
+  `test/capture.py`.
 * **PRD-98 requirements 1, 2, 4 and 5 landed — the acquisition plugin is a
   push-based stream.** Everything between the card and the screen now lives in
   one Qt-free `chisurf/plugins/core/acq/pipeline.py`: a `PhotonDecoder` carrying

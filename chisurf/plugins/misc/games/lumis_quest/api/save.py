@@ -24,8 +24,10 @@ from .roster import Creature, load_roster
 SAVE_DIR = pathlib.Path.home() / ".chisurf"
 SAVE_FILE = SAVE_DIR / "lumis_quest_run.json"
 
-#: Bumped when the shape changes in a way an older file cannot satisfy.
-VERSION = 1
+#: Bumped when the shape changes in a way an older file cannot satisfy. Version
+#: 2 is the split into bodies and labels: a team member is an animal *and* a
+#: dye, and a save from before that cannot say which animal.
+VERSION = 2
 
 
 @dataclasses.dataclass
@@ -36,10 +38,19 @@ class RunState:
     ----------
     position : tuple of float
         Where Iris stood, in world units.
+    dark : bool
+        Whether the run was left standing in the dark manifold.
     team : list of tuple
-        ``(probe_id, hp)`` for each creature in the party.
-    collection : list of int
-        Probe ids of every creature caught.
+        ``(species_key, probe_id, hp)`` for each beast in the party. A
+        ``probe_id`` of ``-1`` is an unmarked animal carrying nothing.
+    bodies : list of str
+        Species keys of every animal that has chosen to travel with you.
+    labels : list of int
+        Probe ids of every label taken off a marked beast.
+    seals : list of str
+        Warden keys beaten, which is the licence tier.
+    unbound : int
+        How many labels have been taken off, ever.
     inventory : list of int
         Probe ids of every piece of gear held.
     emission_id : int or None
@@ -67,8 +78,12 @@ class RunState:
     """
 
     position: tuple[float, float] = (0.0, 0.0)
-    team: list[tuple[int, int]] = dataclasses.field(default_factory=list)
-    collection: list[int] = dataclasses.field(default_factory=list)
+    dark: bool = False
+    team: list[tuple[str, int, int]] = dataclasses.field(default_factory=list)
+    bodies: list[str] = dataclasses.field(default_factory=list)
+    labels: list[int] = dataclasses.field(default_factory=list)
+    seals: list[str] = dataclasses.field(default_factory=list)
+    unbound: int = 0
     inventory: list[int] = dataclasses.field(default_factory=list)
     emission_id: int | None = None
     detector_id: int | None = None
@@ -91,8 +106,12 @@ class RunState:
         return {
             "version": VERSION,
             "position": list(self.position),
+            "dark": bool(self.dark),
             "team": [list(entry) for entry in self.team],
-            "collection": list(self.collection),
+            "bodies": list(self.bodies),
+            "labels": list(self.labels),
+            "seals": list(self.seals),
+            "unbound": int(self.unbound),
             "inventory": list(self.inventory),
             "emission_id": self.emission_id,
             "detector_id": self.detector_id,
@@ -153,8 +172,13 @@ class RunState:
         try:
             return cls(
                 position=tuple(raw.get("position", (0.0, 0.0)))[:2],
-                team=[tuple(entry)[:2] for entry in raw.get("team", [])],
-                collection=[int(value) for value in raw.get("collection", [])],
+                dark=bool(raw.get("dark", False)),
+                team=[(str(entry[0]), int(entry[1]), int(entry[2]))
+                      for entry in raw.get("team", []) if len(entry) >= 3],
+                bodies=[str(value) for value in raw.get("bodies", [])],
+                labels=[int(value) for value in raw.get("labels", [])],
+                seals=[str(value) for value in raw.get("seals", [])],
+                unbound=int(raw.get("unbound", 0)),
                 inventory=[int(value) for value in raw.get("inventory", [])],
                 emission_id=raw.get("emission_id"),
                 detector_id=raw.get("detector_id"),

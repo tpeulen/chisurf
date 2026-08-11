@@ -119,12 +119,17 @@ def test_iris_cannot_leave_the_world(game):
 
 
 def test_the_story_advances_from_the_world_not_from_a_button(game):
-    """A beat completes because the corpus shows it, not because of input."""
-    from chisurf.plugins.misc.games.lumis_quest.api.story import ACT_ONE
-
+    """A beat completes because the run shows it, not because of input."""
     assert game.story.current is not None
-    game.update(1 / 60, game.host.keys)
-    assert game.story.current.key != ACT_ONE[0].key, "arrival completes on arriving"
+    assert game.story.current.key == "the-marked", \
+        "the quick-start path is past the waking act"
+
+    # Nothing about pressing a key completes it; facing a marked animal does.
+    for _ in range(5):
+        game.update(1 / 60, game.host.keys)
+    assert game.story.current.key == "the-marked"
+    game.story.witness("the-marked")
+    assert game.story.current.key == "the-unbinding"
 
     game.story.choose("clarity")
     assert game.story.order["name"] == "The Order of Clarity"
@@ -442,20 +447,33 @@ def test_the_rig_tab_fits_a_found_part(game):
     assert game.loadout.emission is part, "and fit as the single filter too"
 
 
-def test_the_party_tab_swaps_a_collected_creature_in(game):
-    """A collection you cannot field is a list."""
+def test_the_party_tab_fits_a_label_and_swaps_a_body(game):
+    """Bodies and labels are collected apart and combined by hand.
+
+    That is the build: the same animal wearing a different dye is a different
+    creature, so the screen has to let you say which animal and which dye
+    without either of them being consumed.
+    """
+    from chisurf.plugins.misc.games.lumis_quest.api import bestiary
+
     if not game.pool:
         pytest.skip("spectra.db is not present in this install")
     spare = next(c for c in game.pool if c not in [f.creature for f in game.team])
-    game.collection.append(spare)
-    game.team[0].hp = 1  # the most spent slot is the one replaced
-
+    body = bestiary.BY_KEY["heron"]
+    game.labels.append(spare)
+    game.bodies.append(body)
     game.menu_open = True
     game.menu_tab = game.TABS.index("PARTY")
-    game.menu_row = len(game.team)  # first collected creature
-    game._menu_confirm()
 
-    assert spare in [f.creature for f in game.team]
+    was = game.team[0].beast.species
+    game.menu_row = len(game.team) + 1          # the first body
+    game._menu_confirm()
+    assert game.team[0].beast.species is body, "the body swapped in"
+    assert was in game.bodies, "and the one it replaced went back to the stable"
+
+    game.menu_row = len(game.team) + len(game.bodies) + 2   # the first label
+    game._menu_confirm()
+    assert game.team[0].creature is spare, "the label was fitted"
     assert len(game.team) == 3, "the party size is fixed; a swap is a swap"
 
 
@@ -737,24 +755,36 @@ def test_an_order_is_chosen_by_talking_to_an_emissary(game):
     game.host.keys.end_frame()
     assert game.speaking is emissary
 
-    # Confirm through every screen of their dialogue.
-    for _ in range(len(emissary.dialogue)):
+    # An order will not take a probe with no seals: carry three first.
+    from chisurf.plugins.misc.games.lumis_quest.api import tiers
+
+    for warden in tiers.WARDENS[:3]:
+        game.story.seal(warden.key)
+
+    # Confirm through every screen of their case, until they ask.
+    for _ in range(len(emissary.dialogue) + 2):
+        if game.screen is not None and game.screen.choices:
+            break
         assert game.story.chosen_order is None, "no pledge before the question"
         game.host.keys.tap(Action.CONFIRM)
         game.update(1 / 60, game.host.keys)
         game.host.keys.end_frame()
-    assert game.pledging, "the dialogue must end in the question"
+    assert game.screen is not None and game.screen.choices, \
+        "the dialogue must end in the question"
 
+    game.menu_index = 0            # "I will serve."
     game.host.keys.tap(Action.CONFIRM)
     game.update(1 / 60, game.host.keys)
     game.host.keys.end_frame()
     order = emissary.role.split(":", 1)[1]
     assert game.story.chosen_order == order
-    assert game.pledge_ack, "the pledge is acknowledged in their voice"
 
-    game.host.keys.tap(Action.CONFIRM)
-    game.update(1 / 60, game.host.keys)
-    game.host.keys.end_frame()
+    for _ in range(4):
+        if game.speaking is None:
+            break
+        game.host.keys.tap(Action.CONFIRM)
+        game.update(1 / 60, game.host.keys)
+        game.host.keys.end_frame()
     assert game.speaking is None
 
 
@@ -816,7 +846,7 @@ def test_a_pre_tutorial_save_with_progress_skips_the_teaching(game):
         pytest.skip("spectra.db is not present in this install")
     save_api.RunState(
         position=(100.0, 100.0),
-        team=[(f.creature.probe_id, f.hp) for f in game.team],
+        team=[(f.beast.species.key, f.creature.probe_id, f.hp) for f in game.team],
         cleared=["docs/guides/p0.md"],
     ).save(game._save_path)
     game._restore()

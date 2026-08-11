@@ -1,8 +1,8 @@
 ---
 type: Guide
 title: Reviewing the documentation as a game (Lumis Quest)
-description: A top-down RPG whose map is ChiSurf's own documentation, whose creatures are real fluorophores, and whose expert mode signs pages off through the review gate.
-tags: [guides, documentation, review, games, fluorophores, spectra]
+description: A top-down RPG whose map is ChiSurf's own documentation, whose creatures are real animals with real fluorophores fixed into them, and whose expert mode signs pages off through the review gate.
+tags: [guides, documentation, review, games, fluorophores, spectra, bestiary]
 ---
 
 # Reviewing the documentation as a game
@@ -11,10 +11,11 @@ Documentation review is a thankless job with no feedback loop: you read a page,
 you tick a box, nothing happens. The queue sits stale and the docs drift.
 
 **Lumis Quest** is that job with a game around it. The map *is* this
-documentation — every building is a page, every walled compound a section — and
-the creatures are real fluorophores read from the spectra database ChiSurf
-ships. It teaches spectroscopy whether or not you ever review anything, and in
-expert mode it signs pages off through ChiSurf's own review gate.
+documentation — every building is a page, every walled compound a settlement —
+and what you meet out in the grass is a **real animal with a real fluorophore
+fixed into it**, read from the spectra database ChiSurf ships. It teaches
+spectroscopy whether or not you ever review anything, and in expert mode it
+signs pages off through ChiSurf's own review gate.
 
 Open it from **Tools → Miscellaneous → Games → Lumis Quest**. The game opens
 on a title screen: **Continue** resumes a saved run, **New Journey** starts
@@ -42,6 +43,87 @@ town from across the map.
 
 You play **Iris**, a probe photon; **Lumi**, a dog, trots behind her. You will
 meet them again — they are the ball in Pong and the probe in Breakout.
+
+Each land has a **biome** — meadowland, deep wood, marsh, highland, coast —
+which decides its ground cover, how many lakes it grows, and which animals are
+at home in it. Every land also has cliffs with a **cave** in them, and the cave
+goes somewhere.
+
+## What you fight
+
+Not dyes. A fluorophore is not an organism; it is something you attach to one.
+So the thing in the long grass is a **body** with a **label** fixed into it:
+
+- the **body** is a real animal — hare, heron, boar, moth, olm, crystal jelly —
+  and it brings stamina, speed and one behaviour of its own (a hare bolts, a
+  beetle is armoured, a crow copies your band so you are never strong against
+  it);
+- the **label** is a real fluorophore, and it brings everything else: what the
+  animal emits, how hard it hits, how fast it burns out, and what it is strong
+  against.
+
+A far-red dye in a heron is a different creature from the same dye in a boar,
+and both are different from the same body wearing a blue protein. Every feature
+a label grants is a real property of the molecule — a high quantum yield hits
+harder and bleaches sooner, a protein barrel shields, a wide Stokes shift is
+hard to jam, far-red moves first against anything bluer.
+
+The name tells you the band: a **Verdant Hare** emits around 520 nm, a **Garnet
+Hare** around 640. You learn to read the spectrum without ever being shown a
+number.
+
+**Somebody is doing this to the wild**, and that is the story.
+
+## Unbinding, not catching
+
+You do not collect animals. You wear the label down until it lets go and then
+**take it off**: the animal walks away free and the dye is yours to fit to
+somebody who agreed to carry it. If you did it quickly and did not grind the
+animal down, it may decide to come with you.
+
+So bodies and labels are collected **separately**, and the **PARTY** tab is
+where you put them together — pick a slot, pick an animal, pick a dye. Nothing
+is consumed doing it.
+
+## The ladder
+
+Five **Wardens** hold five seals, and each teaches one real thing before making
+you use it: what shining costs, what colour is for, what the glass decides,
+what is underneath, and where any of this light came from in the first place.
+
+Your **licence** is how many seals you carry, and it caps what you may unbind —
+a beast above it simply shrugs the trap off and the game says whose seal you are
+missing. The wild scales to your licence, so a land does not open with something
+you cannot answer.
+
+## The town's day
+
+The people in a settlement are not scenery. Each has **drives** that rise on
+their own — rest, trade, worship, work, gossip — and walks to a real place to
+spend them: the tavern, the supply house, the shrine, the garden beds, the well.
+Two who end up in the same place **start a conversation**, and what they talk
+about is read off your run — the Marking once you have met a marked animal, the
+Wardens once you carry a seal, *you* once you have started taking labels off.
+
+Walk close enough and you can read it over their heads. Press **Q** and you
+**drop into it**: you get the exchange in full and they tell you what they meant.
+
+The simulation is entirely offline and deterministic. With a model configured
+(**MODE** tab), it writes the *words* and nothing else — and the authored
+exchange stands until it lands, so nothing ever waits on a network call.
+
+## The dark manifold
+
+A label pushed too hard does not stop. It **crosses** — into the state
+underneath this one, where it is still there and no longer shining. That is the
+triplet manifold, it is where a bleaching dye actually goes, and in this world
+you can walk into it: down through any **cave mouth**, back up through a
+**rift**.
+
+It is the same country with the light taken out. Ash where the grass was, tar
+where the water was, dead wood, ruins where people lived — and your own roads,
+going the same way they always did. Everything that was ever driven all the way
+down is standing in it, still shaped like the animal it used to be.
 
 ## Controls
 
@@ -72,19 +154,34 @@ answer the page — and waits for you to actually do it. The banners never press
 anything for you, and once a lesson is learned it never comes back; the
 sequence is stored with your run, not with the session.
 
-The arc continues past the opening: pledge to an order, then **do its work** —
-clear rooms in your order's own lands — and the run ends on a dawn told in
-your doctrine's voice.
+The arc continues past the opening: face a marked animal, take your first
+label off one, climb the Warden ladder, pledge to an order, **do its work** —
+clear rooms in your order's own lands — go down through a cave, and find what
+is at the middle of the dark. The run ends on a dawn told in your doctrine's
+voice.
 
-The villages are inhabited. **Keepers** stand outside pages somebody has
-reviewed — that population *is* the review state. Around them live townsfolk
-who are not a metric at all, a **recovery warden** at the pad inside every
-gate, and — in three particular lands — the emissaries of the orders.
+Every one of those beats completes because the run or the corpus says so, and
+every one of them is written down in `data/story.json` rather than in code.
+
+The settlements are inhabited and laid out like places rather than stamped like
+tables. A section of two or three pages is a fenced **hamlet**; a middling one
+is a walled **village** with a square, a well and a tavern; a large one — or any
+Warden's seat — is a **town** with a market row, a lens-grinder, a shrine and
+garden beds. Each has a place name of its own (Candlemere, Emberford) and is
+known *for* its section.
+
+**Keepers** stand outside pages somebody has reviewed — that population *is* the
+review state. Around them live townsfolk who are not a metric at all, an
+innkeeper who has heard things, a supplier with glass, a lens-grinder who will
+narrow what you are wearing, a shrine-keeper who restores your team and writes
+the day down, a **recovery warden** at the pad inside every gate, and — in three
+particular lands — the emissaries of the orders.
 
 ## The three orders
 
-Three orders disagree about what the Fading is, and choosing one decides what
-counts as winning your run. You choose by **meeting them**, not from a menu:
+Three orders disagree about what the **Marking** is, and choosing one decides
+what counts as winning your run. You choose by **meeting them**, not from a
+menu — and they will not take you seriously until you carry three seals:
 
 - **Merel, Voice of Rigour** stands at a gate in The Great Library. Rigour
   holds that light which misleads is worse than dark.
@@ -99,13 +196,15 @@ Cancel walks away with the choice still open.
 ## Playing
 
 1. **Walk to a dark building** and press **Q**. Only unread pages have guardians.
-2. **Fight it.** Damage is the real spectral overlap of your creature's emission
+2. **Fight it.** Damage is the real spectral overlap of your beast's emission
    with the target's absorption, so a green donor is devastating against
    something absorbing at 560 nm and nearly useless against a blue absorber.
    Emitting **bleaches you**, and a high quantum yield costs more — the
-   brightest creature hits hardest and burns out soonest.
-3. **Collect it** once it is worn down. A dye driven into its dark state is
-   easier to capture, and you cannot collect what your filter cannot see.
+   brightest label hits hardest and burns out soonest. **Who moves first is the
+   animal's**: a hare goes before a boar whatever either of them is wearing.
+3. **Unbind it** once it is worn down. A dye driven into its dark state comes
+   away; a fresh one is welded in. You cannot unbind what your filter cannot
+   see, and you cannot unbind above your licence.
 4. **Answer the page's question.** Beating the guardian is spectroscopy; it says
    nothing about whether you read the page.
 5. **Recover** at the station just inside any village gate — the warden there

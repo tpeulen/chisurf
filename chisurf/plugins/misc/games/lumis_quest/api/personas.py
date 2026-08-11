@@ -61,6 +61,27 @@ Rules:
 - Never mention being an AI, a model, or a game.
 """
 
+#: Two of them talking to each other, which is a different job from talking to
+#: the player: nobody is being addressed, nobody is being helpful, and the
+#: player is (at most) standing near enough to overhear.
+EXCHANGE_PROMPT = """{world}
+
+Two people who live here are talking to each other. Iris is not part of it.
+
+FIRST: {name}
+{backstory}
+
+THEY ARE TALKING ABOUT: {situation}
+
+Write the exchange.
+Rules:
+- Return ONLY a JSON array of 3 or 4 strings, no prose around it.
+- Alternate speakers, first speaker first. At most 120 characters each.
+- They are talking to each other, not to the player or the reader.
+- No names in front of the lines, no stage directions, no asterisks.
+- Never mention being an AI, a model, or a game.
+"""
+
 
 @dataclasses.dataclass(frozen=True)
 class Persona:
@@ -82,6 +103,12 @@ class Persona:
     name: str
     backstory: str
     situation: str
+    #: Which prompt shape voices this. One character talking to Iris and two
+    #: townsfolk talking to each other are different jobs, and giving Persona a
+    #: prompt is what lets one director serve both without a second class.
+    prompt: str = PROMPT
+    #: How many lines the gate will accept.
+    span: tuple[int, int] = (2, 4)
 
     @property
     def cache_token(self) -> str:
@@ -92,7 +119,7 @@ class Persona:
         str
             Hex digest; a changed backstory or situation is a new voice.
         """
-        payload = "\n".join((self.key, self.backstory, self.situation))
+        payload = "\n".join((self.key, self.backstory, self.situation, self.prompt))
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:24]
 
 
@@ -177,19 +204,53 @@ def persona_for(npc, land_title: str = "", prosperity: float | None = None,
     )
 
 
-def parse(raw: str) -> tuple[str, ...] | None:
+def exchange_persona(one, other, topic: str, gist: str = "") -> Persona:
+    """Two inhabitants and what they are discussing, ready to be voiced.
+
+    Parameters
+    ----------
+    one, other : chisurf.plugins.misc.games.lumis_quest.api.npcs.Npc
+        Who is talking. Order matters: the first speaks first.
+    topic : str
+        A key of the ``topics`` table in ``data/agents.json``.
+    gist : str, optional
+        One line of what that topic is, so the model is not guessing from a
+        single word.
+
+    Returns
+    -------
+    Persona
+        Cached per pair-and-topic, so the same two people discussing the same
+        thing cost one fetch ever.
+    """
+    return Persona(
+        key=f"exchange:{one.kind}:{one.name}|{other.kind}:{other.name}|{topic}",
+        name=one.name,
+        backstory=(
+            f"{one.name} -- {one.line} "
+            f"SECOND: {other.name} -- {other.line}"
+        ),
+        situation=gist or topic,
+        prompt=EXCHANGE_PROMPT,
+        span=(3, 4),
+    )
+
+
+def parse(raw: str, span: tuple[int, int] = (2, 4)) -> tuple[str, ...] | None:
     """Gate a model reply into usable dialogue lines.
 
     Parameters
     ----------
     raw : str
         Whatever the model returned.
+    span : tuple of int, optional
+        How many lines are acceptable.
 
     Returns
     -------
     tuple of str or None
-        Two to four clean lines, or ``None`` when the reply fails the gate —
-        in which case the authored lines stand.
+        Clean lines, or ``None`` when the reply fails the gate — in which case
+        the authored lines stand.
     """
     body = raw.strip()
     start, end = body.find("["), body.rfind("]")
@@ -209,7 +270,7 @@ def parse(raw: str) -> tuple[str, ...] | None:
         if not line or len(line) > 200 or line.startswith(("*", "(", "[")):
             return None
         lines.append(line)
-    if not 2 <= len(lines) <= 4:
+    if not span[0] <= len(lines) <= span[1]:
         return None
     return tuple(lines)
 
@@ -310,7 +371,7 @@ class DialogueDirector:
         client = self._make_client()
         if client is None:
             return None
-        prompt = PROMPT.format(
+        prompt = persona.prompt.format(
             world=WORLD_BRIEF, name=persona.name,
             backstory=persona.backstory, situation=persona.situation,
         )
@@ -318,7 +379,7 @@ class DialogueDirector:
             response = client.complete([{"role": "user", "content": prompt}])
         except Exception:
             return None
-        lines = parse(getattr(response, "text", None) or "")
+        lines = parse(getattr(response, "text", None) or "", persona.span)
         if lines is None:
             self.rejected += 1
             return None
@@ -342,7 +403,7 @@ class DialogueDirector:
             return None
         if (isinstance(entries, list)
                 and 2 <= len(entries) <= 4
-                and all(isinstance(entry, str) for entry in entries)):
+                and all(isinstance(entry, str) for entry in entries)):  # noqa: PLR2004
             return tuple(entries)
         return None
 

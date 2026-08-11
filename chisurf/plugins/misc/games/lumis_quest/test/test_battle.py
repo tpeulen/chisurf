@@ -6,16 +6,47 @@ import random
 
 import pytest
 
-from chisurf.plugins.misc.games.lumis_quest.api import battle, roster
+from chisurf.plugins.misc.games.lumis_quest.api import battle, bestiary, roster
+from chisurf.plugins.misc.games.lumis_quest.api.bestiary import Beast, Species
 from chisurf.plugins.misc.games.lumis_quest.api.roster import Creature
+
+#: A body with no opinions: every stat multiplier is 1 and its trait is one
+#: that does nothing to damage. Combat tests are about the *label*, so the
+#: animal has to be a plain carrier or every assertion is about a hare.
+PLAIN = Species("plain", "plain", 1.0, 1.0, 1.0, bestiary.MEADOW, "burrow",
+                "A test carrier.")
 
 
 def _creature(name, em, ab, ec=60000.0, qy=0.6, protein=False, probe_id=0):
-    """Build a creature with chosen stats, so tests do not depend on the data."""
+    """Build a label with chosen stats, so tests do not depend on the data."""
     return Creature(
         probe_id=probe_id, name=name, is_protein=protein,
         emission_nm=em, absorption_nm=ab, ext_coeff=ec, quantum_yield=qy,
     )
+
+
+class _Lucky(random.Random):
+    """A generator whose every roll succeeds.
+
+    Unbinding is a roll, and a fixed seed does not pin it any more: turn order
+    draws from the same generator, so which number the take gets depends on who
+    moved first. This pins the outcome instead of the seed.
+    """
+
+    def random(self) -> float:
+        """Always the luckiest possible roll.
+
+        Returns
+        -------
+        float
+            Zero, which is below every threshold in the fight.
+        """
+        return 0.0
+
+
+def _beast(label, species=PLAIN):
+    """Fix a label into a body, which is what a fight is actually between."""
+    return Beast(species=species, label=label)
 
 
 @pytest.fixture
@@ -34,7 +65,7 @@ def pair():
 
 def test_a_fighter_starts_at_full_health(pair):
     """And knows how far through its photon budget it is."""
-    fighter = battle.Fighter(pair[0])
+    fighter = battle.Fighter(_beast(pair[0]))
     assert fighter.hp == pair[0].max_hp and fighter.alive
     assert fighter.bleached == 0.0
     fighter.hp //= 2
@@ -44,8 +75,8 @@ def test_a_fighter_starts_at_full_health(pair):
 def test_attacking_costs_the_attacker_photons(pair):
     """Emitting bleaches you. That trade is the whole tactical layer."""
     donor, acceptor = pair
-    me = battle.Fighter(donor)
-    fight = battle.Battle([me], battle.Fighter(acceptor, hp=999), rng=random.Random(1))
+    me = battle.Fighter(_beast(donor))
+    fight = battle.Battle([me], battle.Fighter(_beast(acceptor), hp=999), rng=random.Random(1))
     before = me.hp
     fight.attack()
     assert me.hp < before
@@ -62,8 +93,8 @@ def test_a_brighter_dye_bleaches_faster():
     # absolute loss per shot can come out equal while the fraction does not.
     spent = []
     for creature in (bright, dim):
-        me = battle.Fighter(creature)
-        fight = battle.Battle([me], battle.Fighter(target, hp=999), rng=random.Random(2))
+        me = battle.Fighter(_beast(creature))
+        fight = battle.Battle([me], battle.Fighter(_beast(target), hp=999), rng=random.Random(2))
         fight.attack()
         spent.append(me.bleached)
     assert spent[0] > spent[1], spent
@@ -73,7 +104,7 @@ def test_a_brighter_dye_bleaches_faster():
 def test_the_fight_ends_when_the_opponent_bleaches(pair):
     """And it is recorded as a win."""
     donor, acceptor = pair
-    fight = battle.Battle([battle.Fighter(donor)], battle.Fighter(acceptor, hp=1),
+    fight = battle.Battle([battle.Fighter(_beast(donor))], battle.Fighter(_beast(acceptor), hp=1),
                           rng=random.Random(3))
     fight.attack()
     assert fight.finished and fight.won
@@ -82,8 +113,8 @@ def test_the_fight_ends_when_the_opponent_bleaches(pair):
 def test_the_fight_ends_when_the_whole_team_bleaches(pair):
     """A loss is a loss."""
     donor, acceptor = pair
-    me = battle.Fighter(donor, hp=1)
-    fight = battle.Battle([me], battle.Fighter(acceptor, hp=999), rng=random.Random(4),
+    me = battle.Fighter(_beast(donor), hp=1)
+    fight = battle.Battle([me], battle.Fighter(_beast(acceptor), hp=999), rng=random.Random(4),
                           opponent_power=40.0)
     for _ in range(6):
         if fight.finished:
@@ -93,26 +124,37 @@ def test_the_fight_ends_when_the_whole_team_bleaches(pair):
 
 
 def test_the_log_reads_in_the_order_things_happened(pair):
-    """Regression: the opponent's reply was landing ahead of the shot."""
+    """Regression: the opponent's reply was landing ahead of the shot.
+
+    Turn order is the *body's* now, so the two are given bodies of very
+    different speed rather than left to a coin toss: a hare goes before a
+    beetle, every time.
+    """
     donor, acceptor = pair
-    fight = battle.Battle([battle.Fighter(donor)], battle.Fighter(acceptor, hp=999),
-                          rng=random.Random(5))
+    mine = battle.Fighter(Beast(bestiary.BY_KEY["hare"], donor))
+    theirs = battle.Fighter(Beast(bestiary.BY_KEY["beetle"], acceptor), hp=999)
+    fight = battle.Battle([mine], theirs, rng=random.Random(5))
     fight.attack()
     assert len(fight.log) >= 2
-    assert "Donor" in fight.log[0].text
-    assert "Acceptor" in fight.log[1].text
+    assert mine.name in fight.log[0].text
+    assert theirs.name in fight.log[1].text
 
 
 def test_swapping_brings_a_partner_forward_and_costs_the_turn(pair):
     """A swap is a real decision because the opponent still acts."""
     donor, acceptor = pair
     second = _creature("Second", 560.0, 515.0, probe_id=-6)
-    team = [battle.Fighter(donor), battle.Fighter(second)]
-    fight = battle.Battle(team, battle.Fighter(acceptor, hp=999), rng=random.Random(6))
-    before = team[1].hp
+    team = [battle.Fighter(_beast(donor)), battle.Fighter(_beast(second))]
+    fight = battle.Battle(team, battle.Fighter(_beast(acceptor), hp=999), rng=random.Random(6))
+    before = sum(fighter.hp for fighter in team)
     fight.swap(1)
     assert fight.active.creature.name == "Second"
-    assert team[1].hp < before, "the opponent acts during a swap"
+    # Whoever was out when the opponent moved is who it hit -- turn order is
+    # the body's now, so a fast opponent lands its shot before the swap and a
+    # slow one after it. The claim the swap has to keep is that it *costs the
+    # turn*, which is that somebody on your side was hit either way.
+    assert sum(fighter.hp for fighter in team) < before, \
+        "the opponent acts during a swap"
 
     assert "Already out" in fight.swap(1).text
     assert "Nobody" in fight.swap(9).text
@@ -122,7 +164,7 @@ def test_a_bleached_creature_cannot_be_swapped_in(pair):
     """It has no photons left."""
     donor, acceptor = pair
     spare = battle.Fighter(_creature("Spare", 560.0, 515.0, probe_id=-7), hp=0)
-    fight = battle.Battle([battle.Fighter(donor), spare], battle.Fighter(acceptor, hp=999))
+    fight = battle.Battle([battle.Fighter(_beast(donor)), spare], battle.Fighter(_beast(acceptor), hp=999))
     assert "bleached" in fight.swap(1).text
     assert fight.active.creature.name == "Donor"
 
@@ -130,7 +172,7 @@ def test_a_bleached_creature_cannot_be_swapped_in(pair):
 def test_fleeing_ends_it_with_nothing_gained(pair):
     """No win, no loss."""
     donor, acceptor = pair
-    fight = battle.Battle([battle.Fighter(donor)], battle.Fighter(acceptor))
+    fight = battle.Battle([battle.Fighter(_beast(donor))], battle.Fighter(_beast(acceptor)))
     fight.flee()
     assert fight.finished and fight.fled and not fight.won
     assert "already over" in fight.attack().text
@@ -139,13 +181,13 @@ def test_fleeing_ends_it_with_nothing_gained(pair):
 def test_a_wild_opponent_is_the_same_every_visit():
     """A page's guardian must not reshuffle: a place is a place."""
     pool = [_creature(f"c{i}", 450.0 + i * 5, 430.0 + i * 5, probe_id=-100 - i) for i in range(40)]
-    first = battle.wild_opponent("docs/concepts/fret.md", 0.6, pool)
-    second = battle.wild_opponent("docs/concepts/fret.md", 0.6, pool)
-    assert first.creature.name == second.creature.name
+    first = battle.wild_encounter("docs/concepts/fret.md", 0.6, pool)
+    second = battle.wild_encounter("docs/concepts/fret.md", 0.6, pool)
+    assert first.beast.name == second.beast.name
     assert first.hp == second.hp
 
-    other = battle.wild_opponent("docs/guides/01_start.md", 0.6, pool)
-    assert other.creature.name != first.creature.name or other.hp != first.hp
+    other = battle.wild_encounter("docs/guides/01_start.md", 0.6, pool)
+    assert other.beast.name != first.beast.name or other.hp != first.hp
 
 
 def test_a_remote_page_holds_a_stronger_guardian():
@@ -158,15 +200,15 @@ def test_a_remote_page_holds_a_stronger_guardian():
         _creature(f"c{i}", 500.0, 480.0, ec=10000.0 + i * 4000.0, probe_id=-200 - i)
         for i in range(40)
     ]
-    near = [battle.wild_opponent(f"p{i}", 0.05, pool).creature.attack for i in range(12)]
-    far = [battle.wild_opponent(f"p{i}", 0.95, pool).creature.attack for i in range(12)]
+    near = [battle.wild_encounter(f"p{i}", 0.05, pool).creature.attack for i in range(12)]
+    far = [battle.wild_encounter(f"p{i}", 0.95, pool).creature.attack for i in range(12)]
     assert sum(far) / len(far) > sum(near) / len(near) * 1.5
 
 
 def test_an_empty_pool_is_an_error_not_a_crash_later():
     """Better here than as a mysterious failure mid-encounter."""
     with pytest.raises(ValueError):
-        battle.wild_opponent("x", 0.5, [])
+        battle.wild_encounter("x", 0.5, [])
     with pytest.raises(ValueError):
         battle.Battle([], battle.Fighter(_creature("x", 500.0, 480.0)))
 
@@ -176,8 +218,8 @@ def test_a_real_encounter_from_the_shipped_data_resolves():
     creatures = [c for c in roster.load_roster() if not c.estimated]
     if not creatures:
         pytest.skip("spectra.db is not present in this install")
-    team = [battle.Fighter(c) for c in roster.starters()]
-    opponent = battle.wild_opponent("docs/concepts/fret.md", 0.72, creatures)
+    team = [battle.Fighter(_beast(c)) for c in roster.starters()]
+    opponent = battle.wild_encounter("docs/concepts/fret.md", 0.72, creatures)
     fight = battle.Battle(team, opponent, rng=random.Random(11))
     for _ in range(40):
         if fight.finished:
@@ -190,13 +232,13 @@ def test_a_real_encounter_from_the_shipped_data_resolves():
 def test_a_worn_opponent_is_easier_to_collect(pair):
     """Driving a dye into its dark state is how you collect it."""
     donor, acceptor = pair
-    fresh = battle.Battle([battle.Fighter(donor)], battle.Fighter(acceptor))
+    fresh = battle.Battle([battle.Fighter(_beast(donor))], battle.Fighter(_beast(acceptor)))
     worn = battle.Battle(
-        [battle.Fighter(donor)],
-        battle.Fighter(acceptor, hp=max(1, acceptor.max_hp // 8)),
+        [battle.Fighter(_beast(donor))],
+        battle.Fighter(_beast(acceptor), hp=max(1, acceptor.max_hp // 8)),
     )
-    assert worn.catch_chance() > fresh.catch_chance()
-    assert 0.0 <= fresh.catch_chance() <= 1.0
+    assert worn.take_chance() > fresh.take_chance()
+    assert 0.0 <= fresh.take_chance() <= 1.0
 
 
 def test_you_cannot_collect_what_you_cannot_see(pair):
@@ -204,7 +246,7 @@ def test_you_cannot_collect_what_you_cannot_see(pair):
     from chisurf.plugins.misc.games.lumis_quest.api import gear
 
     donor, acceptor = pair
-    worn = battle.Fighter(acceptor, hp=1)
+    worn = battle.Fighter(_beast(acceptor), hp=1)
 
     import numpy as np
 
@@ -216,11 +258,11 @@ def test_you_cannot_collect_what_you_cannot_see(pair):
         probe_id=-41, name="seeing", slot="emission",
         curve=np.exp(-0.5 * ((gear.GRID - acceptor.emission_nm) / 20.0) ** 2),
     )
-    blocked = battle.Battle([battle.Fighter(donor)], worn,
+    blocked = battle.Battle([battle.Fighter(_beast(donor))], worn,
                             loadout=gear.Loadout(emission=blind))
-    visible = battle.Battle([battle.Fighter(donor)], battle.Fighter(acceptor, hp=1),
+    visible = battle.Battle([battle.Fighter(_beast(donor))], battle.Fighter(_beast(acceptor), hp=1),
                             loadout=gear.Loadout(emission=seeing))
-    assert visible.catch_chance() > blocked.catch_chance() * 2
+    assert visible.take_chance() > blocked.take_chance() * 2
 
 
 def test_a_successful_catch_ends_the_encounter(pair):
@@ -230,23 +272,23 @@ def test_a_successful_catch_ends_the_encounter(pair):
     # a failed catch gives the opponent its turn, and an opponent on 1 HP
     # bleaches itself to nothing by emitting, ending the fight before a second
     # attempt.
-    fight = battle.Battle([battle.Fighter(donor)], battle.Fighter(acceptor, hp=1),
-                          rng=random.Random(1))
-    assert fight.catch_chance() > 0.7
-    fight.catch()
-    assert fight.caught is acceptor
+    fight = battle.Battle([battle.Fighter(_beast(donor))], battle.Fighter(_beast(acceptor), hp=1),
+                          rng=_Lucky(), seals=("ember", "prism", "shutter", "triplet"))
+    assert fight.take_chance() > 0.7
+    fight.unbind()
+    assert fight.taken is acceptor
     assert fight.finished and fight.won
 
 
 def test_a_failed_catch_costs_the_turn(pair):
     """Otherwise collecting is free and nothing else is ever chosen."""
     donor, acceptor = pair
-    me = battle.Fighter(donor)
-    fight = battle.Battle([me], battle.Fighter(acceptor, hp=9999), rng=random.Random(1),
+    me = battle.Fighter(_beast(donor))
+    fight = battle.Battle([me], battle.Fighter(_beast(acceptor), hp=9999), rng=random.Random(1),
                           opponent_power=3.0)
     before = me.hp
     for _ in range(4):
-        fight.catch()
-        if fight.caught is not None:
+        fight.unbind()
+        if fight.taken is not None:
             pytest.skip("caught on an unlucky seed")
     assert me.hp < before

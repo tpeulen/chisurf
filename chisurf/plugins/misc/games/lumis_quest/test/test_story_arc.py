@@ -6,7 +6,9 @@ import pathlib
 
 import pytest
 
+from chisurf.plugins.misc.games.lumis_quest.api import context as context_api
 from chisurf.plugins.misc.games.lumis_quest.api import story as story_api
+from chisurf.plugins.misc.games.lumis_quest.api import tiers as tiers_api
 from chisurf.plugins.misc.games.lumis_quest.api.story import (
     BEATS,
     WORK_GOAL,
@@ -42,26 +44,66 @@ def world(tmp_path):
     return built
 
 
+def _arc(world) -> tuple:
+    """A story and the run its beats are evaluated against.
+
+    Beat conditions are data now (``data/story.json``), and they are asked of
+    the *whole* run rather than of the arc alone -- so a story with no context
+    behind it cannot answer anything, and every test has to build one.
+
+    Parameters
+    ----------
+    world : World
+        The corpus as a map.
+
+    Returns
+    -------
+    tuple
+        ``(story, context)``.
+    """
+    story = Story(world)
+    return story, context_api.GameContext(world=world, story=story)
+
+
+def _up_the_ladder(story) -> None:
+    """Carry enough seals that the orders will listen.
+
+    Parameters
+    ----------
+    story : Story
+        The arc to advance.
+    """
+    for warden in tiers_api.WARDENS[:story_api.SEAL_GOAL]:
+        story.seal(warden.key)
+
+
 def test_the_arc_has_a_beginning_a_middle_and_an_end():
-    """Acts zero, one and two, in walking order."""
+    """Five acts, in walking order, and every one of them read from data."""
     keys = [beat.key for beat in BEATS]
     assert keys == [
-        "wake", "the-hound", "arrival", "first-light", "the-frontier",
-        "the-choice", "the-work", "the-dawn",
+        "wake", "the-hound",
+        "the-marked", "the-unbinding", "first-light", "the-frontier",
+        "the-ladder",
+        "the-choice", "the-work",
+        "the-crossing", "the-shelved",
+        "the-lanternwright", "the-dawn",
     ]
+    assert all(beat.when for beat in BEATS), \
+        "a beat with no condition can never complete"
 
 
 def test_a_fresh_run_starts_asleep_and_without_the_hound(world):
     """Act Zero: nothing is given away at the door."""
-    story = Story(world)
+    story, _ = _arc(world)
     assert story.current.key == "wake"
     assert not story.has_lumi
 
     story.witness("wake")
     assert story.current.key == "the-hound"
 
+    story.witness("the-hound")
     story.has_lumi = True
-    assert story.current.key == "arrival"
+    assert story.current.key == "the-marked"
 
 
 def test_the_work_counts_only_the_orders_own_lands():
@@ -76,14 +118,17 @@ def test_the_work_counts_only_the_orders_own_lands():
 
 def test_the_work_counts_from_the_pledge_not_from_the_start(world):
     """Ground cleared before pledging honours nobody."""
-    story = Story(world)
-    story.witness("wake")
+    story, _ = _arc(world)
+    for key in ("wake", "the-hound"):
+        story.witness(key)
     story.has_lumi = True
-    story.witness("arrival")
+    story.witness("the-marked")
+    story.unbound = 1
     world.rooms[0].state = SETTLED
     story.witness("first-light")
     world.rooms[1].state = story_api.SCOUTED
     story.witness("the-frontier")
+    _up_the_ladder(story)
 
     # Pledge with two clears already on the books: they must not count.
     story.choose("clarity", baseline=2)
@@ -93,9 +138,10 @@ def test_the_work_counts_from_the_pledge_not_from_the_start(world):
 
     story.doctrine_count = 2 + WORK_GOAL
     assert story.work_progress == (WORK_GOAL, WORK_GOAL)
-    assert story.current.key == "the-dawn"
+    assert story.current.key == "the-crossing"
 
-    story.witness("dawn")
+    for key in ("the-crossing", "the-shelved", "the-lanternwright", "dawn"):
+        story.witness(key)
     assert story.current is None, "the arc ends"
 
 

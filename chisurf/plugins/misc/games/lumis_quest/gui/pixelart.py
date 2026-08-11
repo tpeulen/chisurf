@@ -78,6 +78,31 @@ PALETTE: dict[str, tuple[int, int, int, int]] = {
     "Z": (104, 62, 30, 255),     # door wood
     "5": (10, 14, 10, 110),      # soft drop shadow
     "0": (10, 14, 10, 55),       # softer shadow edge
+    # The wider overworld: shore, bog, cliff, cave, paving, tilled ground.
+    ",": (214, 196, 150, 255),   # sand light
+    ";": (176, 156, 112, 255),   # sand dark
+    "&": (86, 102, 66, 255),     # marsh light
+    "%": (58, 72, 48, 255),      # marsh dark
+    "^": (146, 142, 136, 255),   # cliff face
+    "@": (74, 72, 70, 255),      # cliff shadow
+    "#": (16, 14, 18, 255),      # cave mouth
+    "=": (150, 146, 140, 255),   # cobble light
+    "-": (104, 100, 96, 255),    # cobble dark
+    "+": (78, 58, 40, 255),      # tilled earth
+    "*": (110, 168, 80, 255),    # sprout
+    # The dark manifold: ash, tar, and the violet of a rift.
+    "(": (104, 100, 104, 255),   # ash light
+    ")": (62, 60, 64, 255),      # ash dark
+    "[": (18, 16, 22, 255),      # tar
+    "]": (44, 38, 54, 255),      # tar sheen
+    "{": (96, 92, 92, 255),      # ruin stone
+    "}": (52, 50, 52, 255),      # ruin shadow
+    "?": (188, 120, 255, 255),   # rift
+    # Premises.
+    "!": (255, 226, 150, 255),   # lamp flame
+    "Y": (222, 216, 204, 255),   # dressed white stone
+    "$": (168, 72, 64, 255),     # awning red
+    ">": (170, 190, 205, 255),   # ground glass / steel
 }
 
 #: Pixels per sprite. 16x16 is the era's own size for a character sprite.
@@ -114,8 +139,8 @@ TERRAIN: dict[str, list[str]] = {
         "w6wwwwwwwW7wwww4", "wwww4wwwwwwww6ww", "wW6wwwww4wwwwwww", "wwwwwwwwwwwwwwww",
     ],
     "tree": [
-        "ggggg2vvvv1ggggg", "ggg1vv2VVvvvggg" + "g", "ggvv2VVVVVVvv1gg", "gvv2VVVVVVVVvvgg",
-        "gv2VVVVVVVVVVvgg", "gv2VVVVVVVVvVvg" + "g", "gvVVVVVVVvVVVvgg", "gvvVVVVVVVVvvvgg",
+        "ggggg2vvvv1ggggg", "ggg1vv2VVvvvgggg", "ggvv2VVVVVVvv1gg", "gvv2VVVVVVVVvvgg",
+        "gv2VVVVVVVVVVvgg", "gv2VVVVVVVVvVvgg", "gvVVVVVVVvVVVvgg", "gvvVVVVVVVVvvvgg",
         "ggvvVVVvVVVvvggg", "gg1vvvVVvvvv1ggg", "gggg1vvvvv1ggggg", "gggggEnnEg1ggggg",
         "gggg1EnnEg2ggggg", "ggg55EnnE55ggggg", "gg5hhhhhhhh5gggg", "ggg55555555ggggg",
     ],
@@ -338,9 +363,277 @@ _LUMI_DOWN_B = [
     "..uUu.....uUu...", "..uuu.....uuu...", "................", "................",
 ]
 
+#: The wider overworld. Shore, bog, cliff and cave mouth in the lit world; ash,
+#: tar, dead wood and a rift in the dark manifold. Terrain is drawn opaque --
+#: it *is* the ground -- while everything built on top of it keeps a
+#: transparent background so the ground shows through.
+TERRAIN_WIDE: dict[str, list[str]] = {
+    "sand": [
+        ",,,,;,,,,,,;,,,,", ",,;,,,,,,,,,,;,,", ",,,,,,;,,,,,,,,,", ",;,,,,,,,;,,,,,,",
+        ",,,,,;,,,,,,,;,,", ",,,;,,,,,,,,,,,,", ",,,,,,,,;,,,,,,;", ",;,,,,;,,,,,,,,,",
+        ",,,,,,,,,,;,,,,,", ",,,;,,,,,,,,,;,,", ",,,,,,,;,,,,,,,,", ",;,,,,,,,,,;,,,,",
+        ",,,,;,,,,,,,,,,;", ",,,,,,,,,;,,,,,,", ",,;,,,,,,,,,,,,,", ",,,,,,;,,,,,;,,,",
+    ],
+    "marsh": [
+        "%%&%%%%&%%%%%&%%", "%&%%%w%%%%&%%%%%", "%%%%%%%%&%%%w%%&", "&%%%w%%%%%%%%%%%",
+        "%%%&%%%%%&%%%%%%", "%%%%%%w%%%%%&%%%", "%&%%%%%%%%%%%%w%", "%%%w%&%%%&%%%%%%",
+        "%%%%%%%%w%%%%%%&", "&%%%%&%%%%%%w%%%", "%%%w%%%%%&%%%%%%", "%%%%%%&%%%%%%%&%",
+        "%&%%%%%%%%w%%%%%", "%%%%w%%%&%%%%%%%", "%%&%%%%%%%%%&%%%", "%%%%%%w%%%%%%%%%",
+    ],
+    "cliff": [
+        "^^^^^^^^^^^^^^^^", "^@^^^^@^^^^^^@^^", "^^^^@^^^^^@^^^^^", "@^^^^^^^@^^^^^@^",
+        "^^^@^^^^^^^^@^^^", "^^^^^^@^^^^^^^^^", "@^^^^^^^^^@^^^@^", "^^^@^^^^^^^^^^^^",
+        "^^^^^^^^@^^^^^^^", "^@^^^^^^^^^^@^^^", "^^^^^@^^^^^^^^^^", "@^^^^^^^@^^^^^@^",
+        "^^^@^^^^^^^^^@^^", "@@@@@@@@@@@@@@@@", "@@@@@@@@@@@@@@@@", "5555555555555555",
+    ],
+    "cave": [
+        "^^^^^^^^^^^^^^^^", "^@^^^^^^^^^^@^^^", "^^^^^@^^^^^^^^^^", "^^^^#######^^^^^",
+        "^^^#########^^^^", "^^^#########^^^^", "^^^#########^^^^", "^^^#########^^^^",
+        "^^^#########^^^^", "^^^#########^^^^", "^^^#########^^^^", "^^^#########^^^^",
+        "^^^#########^^^^", "@@@#########@@@@", "@@@#########@@@@", "5555555555555555",
+    ],
+    "plaza": [
+        "==-==-==-==-==-=", "==-==-==-==-==-=", "----------------", "=-==-==-==-==-==",
+        "=-==-==-==-==-==", "----------------", "==-==-==-==-==-=", "==-==-==-==-==-=",
+        "----------------", "=-==-==-==-==-==", "=-==-==-==-==-==", "----------------",
+        "==-==-==-==-==-=", "==-==-==-==-==-=", "----------------", "=-==-==-==-==-==",
+    ],
+    "garden": [
+        "++++++++++++++++", "+*+++*++++*++++*", "++++++++++++++++", "++++++++++++++++",
+        "+++*++++*+++*+++", "++++++++++++++++", "++++++++++++++++", "*++++*+++*+++++*",
+        "++++++++++++++++", "++++++++++++++++", "++*+++++*++++*++", "++++++++++++++++",
+        "++++++++++++++++", "+*+++*++++*+++++", "++++++++++++++++", "++++++++++++++++",
+    ],
+    "flowers": [
+        "gggGg3gggggGgggg", "g2gggggg73ggggg1", "g2gggGg3gGgg3ggg", "gggg1ggg2gggg7gg",
+        "gGgg3g2gGgggg2gg", "gggGgggg2ggGg3gg", "g1ggg7gggggg1ggg", "gggg2Gg3gggggg1g",
+        "gg2gGggg2gg3Gggg", "ggg7gggg1gggGggg", "gGgg1ggggg2ggg3g", "gggg3ggGg2gggg1g",
+        "g2ggGggg7ggggGgg", "gg3gg1ggGggggggg", "ggG3ggggggg7g2gg", "ggggg3gg1ggggggg",
+    ],
+    "dock": [
+        "w4ww6Wwww4ww6www", "oOooOooOooOooOoo", "EEEEEEEEEEEEEEEE", "oOooOooOooOooOoo",
+        "oooOooooOoooOooo", "EEEEEEEEEEEEEEEE", "oOooOooOooOooOoo", "oooOooooOoooOooo",
+        "EEEEEEEEEEEEEEEE", "oOooOooOooOooOoo", "oooOooooOoooOooo", "EEEEEEEEEEEEEEEE",
+        "oOooOooOooOooOoo", "oooOooooOoooOooo", "w6ww4wwww6Ww4www", "wwww4ww6wwww4www",
+    ],
+    "ash": [
+        "(())((((()((((((", "(((()((((())((((", "()(((((()((((()(", "((((())(((((((((",
+        "(()((((((((()(((", "((((()(((()(((((", "()((((((((((()((", "(((()(((()((((((",
+        "((()((((((((((()", "(((((()((((()(((", "()((((((()((((((", "((((()((((((()((",
+        "(()(((((((((((((", "((((((()((()((((", "()((((((((((((((", "(((()(((((()((((",
+    ],
+    "tar": [
+        "[[[][[[[[][[[[[]", "[[][[[[[[[[[][[[", "[[[[[][[[[[[[[[[", "[][[[[[[][[[[[[[",
+        "[[[[[[[][[[[][[[", "[[][[[[[[[[[[[[]", "[[[[][[[[[[[[[[[", "[][[[[[[[[[][[[[",
+        "[[[[[[][[[[[[[[[", "[[][[[[[[][[[[[[", "[[[[[[[[[[[[][[[", "[][[[[][[[[[[[[[",
+        "[[[[[[[[[[[[[[][", "[[[][[[[[[[[[[[[", "[[[[[[[[][[[[][[", "[[[[[[[[[[[[[[[[",
+    ],
+    "deadtree": [
+        "(((((()((()((()(", "((((n(((n(((((((", "(((((n((n(((((((", "((((((nnn(((((((",
+        "(((n(((n((n(((((", "((((nn(n(nn(((((", "((((((nnn(((((((", "(((((((n((((((((",
+        "((((((Enn(((((((", "((((((Enn(((((((", "((((((Enn(((((((", "((((((Enn(((((((",
+        "(((((EEnnE((((((", "((((5EnnE5((((((", "(((5))))))5(((((", "(((55555555(((((",
+    ],
+    "ruin": [
+        "((((((((((((((((", "(({{(((((((({{((", "(({}{((((((({}{(", "(({}{{(((((({}{(",
+        "(({}}{{((((({}{(", "(({}{}{{((({{}{(", "(({}{}{}{{{}}}{(", "(({}}}{}{}{}{}{(",
+        "(({}{}{}{}{}{}{(", "(({}{}{}{}{}{}{(", "(({}{}{}{}{}{}{(", "(({}{}{}{}{}{}{(",
+        "(({}{}{}{}{}{}{(", "(({}}}}}}}}}}}{(", "((5}}}}}}}}}}}5(", "(((55555555555((",
+    ],
+    "rift": [
+        "[[[[[[[[[[[[[[[[", "[[[[[[[?[[[[[[[[", "[[[[[[?P?[[[[[[[", "[[[[[[?P?[[[[[[[",
+        "[[[[[?PPP?[[[[[[", "[[[[?P???P?[[[[[", "[[[[?P?c?P?[[[[[", "[[[?P?cccc?P[[[[",
+        "[[[?P?cccc?P[[[[", "[[[[?P?c?P?[[[[[", "[[[[?P???P?[[[[[", "[[[[[?PPP?[[[[[[",
+        "[[[[[[?P?[[[[[[[", "[[[[[[?P?[[[[[[[", "[[[[[[[?[[[[[[[[", "[[[[[[[[[[[[[[[[",
+    ],
+}
+
+#: What a settlement is made of. All transparent-backed: they are built *on*
+#: ground the renderer has already drawn, so a tavern on cobble and a tavern on
+#: grass are one sprite.
+STRUCTURES: dict[str, list[str]] = {
+    "well": [
+        "................", "....KKKKKKKK....", "...KIIIIIIIIK...", "..KIIIIIIIIIIK..",
+        "....8......8....", "....8......8....", "...mMMMMMMMMm...", "..mMMMMMMMMMMm..",
+        "..mM44444444Mm..", "..mM46666664Mm..", "..mM47777774Mm..", "..mM46666664Mm..",
+        "..mM44444444Mm..", "..mMMMMMMMMMMm..", "...5555555555...", "................",
+    ],
+    "tavern": [
+        "................", "......KKKK......", ".....KIbbK......", "....KIbbbbK.....",
+        "...KIbbbbbbK....", "..KIbbbbbbbbK...", ".KKKKKKKKKKKKKK.", ".EmSmmmmmmmSmmE.",
+        ".$$$$$$$$$$$$$$.", ".Em99mmmmm99mmE.", ".Em99mmmmm99mmE.", ".EmmmmmZZmmmmmE.",
+        ".EmmO!OZ9mmmmmE.", ".EmmmmmZZmmmmmE.", ".Emmmmm88mmmmmE.", ".55555555555555.",
+    ],
+    "shop": [
+        "................", "................", ".....KKKKKKK....", "....KIbbbbbbK...",
+        "...KIbbbbbbbbK..", "..KKKKKKKKKKKKK.", ".$Y$Y$Y$Y$Y$Y$Y.", ".EmSmmmmmmmSmmE.",
+        ".Em99mmmmm99mmE.", ".EmmmmmmmmmmmmE.", ".EooOmmmmmmZZmE.", ".EoOomooOoZ9ZmE.",
+        ".EooOmoOooZZZmE.", ".EmmmmmmmmZZmmE.", ".Emmmmmmmm88mmE.", ".55555555555555.",
+    ],
+    "smithy": [
+        "................", "...EE...........", "...EE...KKKK....", "...EE..KIbbbK...",
+        "...EE.KIbbbbbK..", "..KKKKKKKKKKKKK.", ".KIbbbbbbbbbbbK.", ".EmmmmmmmmmmmmE.",
+        ".Emm!!mmmmmmmmE.", ".Em!99!mmmZZmmE.", ".Emmmmmmmm99mmE.", ".EmmEEEmmmZZmmE.",
+        ".EmE>>>Emm88mmE.", ".EmmEEEmmmmmmmE.", ".Emmm8mmmmmmmmE.", ".55555555555555.",
+    ],
+    "shrine": [
+        "................", "................", "......YYYY......", ".....YYYYYY.....",
+        "....YY....YY....", "...YY......YY...", "...YY......YY...", "...YY..!!..YY...",
+        "...YY.!99!.YY...", "...YY..!!..YY...", "...YY......YY...", "...YY......YY...",
+        "...YY......YY...", "..YYYYYYYYYYYY..", "..5555555555555.", "................",
+    ],
+    "hall": [
+        "................", ".....$$..$$.....", ".....$$..$$.....", "...KKKKKKKKKK...",
+        "..KIbbbbbbbbbK..", ".KIbbbbbbbbbbbK.", "KKKKKKKKKKKKKKKK", "EYYYYYYYYYYYYYYE",
+        "EY99YYYYYY99YYYE", "EY99YYYYYY99YYYE", "EYYYYYYYYYYYYYYE", "EYYYYYZZZZYYYYYE",
+        "EYYYYYZ99ZYYYYYE", "EYYYYYZZZZYYYYYE", "EYYYYY8888YYYYYE", "5555555555555555",
+    ],
+    "lantern": [
+        "................", "................", "......EEEE......", ".....E!!!!E.....",
+        ".....E9!!9E.....", ".....E9999E.....", ".....E!99!E.....", "......EEEE......",
+        ".......88.......", ".......88.......", ".......88.......", ".......88.......",
+        ".......88.......", "......E88E......", "......5555......", "................",
+    ],
+    "sign": [
+        "................", "................", "...EEEEEEEEEE...", "...E88888888E...",
+        "...E8SSSSSS8E...", "...E8SSSSSS8E...", "...E8SSSSSS8E...", "...E88888888E...",
+        "...EEEEEEEEEE...", ".......88.......", ".......88.......", ".......88.......",
+        ".......88.......", "......E88E......", "......5555......", "................",
+    ],
+    "fence": [
+        "................", "................", "..8..........8..", "..8..........8..",
+        "888888888888888E", "888888888888888E", "..8..........8..", "..8..........8..",
+        "888888888888888E", "888888888888888E", "..8..........8..", "..8..........8..",
+        "..8..........8..", "..E..........E..", "..55........55..", "................",
+    ],
+    "stall": [
+        "................", "................", "..EEEEEEEEEEEE..", "..$Y$Y$Y$Y$Y$$..",
+        "..$Y$Y$Y$Y$Y$$..", "..EEEEEEEEEEEE..", "..8..........8..", "..8..O..O.O..8..",
+        "..8.oOo.oOoOo8..", "..888888888888..", "..8..........8..", "..8..........8..",
+        "..8..........8..", "..E..........E..", "..5555555555555.", "................",
+    ],
+}
+
+#: The bodies. Drawn pale and neutral on purpose: a marked animal is *tinted*
+#: by the emission of whatever is fixed into it, so one hare sprite is a
+#: Verdant Hare and a Garnet Hare and an Umbral Hare. That is the whole premise
+#: of the bestiary made visible -- the animal is the animal, and the colour is
+#: somebody else's doing.
+CREATURES: dict[str, list[str]] = {
+    "hare": [
+        "................", "....j......j....", "...jJj....jJj...", "...jJj....jJj...",
+        "...jJj....jJj...", "....jJj..jJj....", "....jJJjjJJj....", "...jJiJJJJiJj...",
+        "..jJJJJJJJJJJj..", "..jJJJJJJJJJJj..", "...jJJJJJJJJj...", "....jJJJJJJj....",
+        "....j.jj.jj.j...", "....j..j..j.j...", "....jj.jj.jj....", "................",
+    ],
+    "fox": [
+        "................", "................", "..............j.", ".jj..........jJj",
+        ".jJj........jJJj", ".jJJjjjjjjjjJiJj", ".jJJJJJJJJJJJJJj", "..jJJJJJJJJJJJJj",
+        "..jJJJJJJJJJJJj.", "...jJJJJJJJJJj..", "...jJj..jj.jJj..", "...jJj..jj.jJj..",
+        "...jjj..jj.jjj..", "................", "................", "................",
+    ],
+    "boar": [
+        "................", "................", "...jj.......jj..", "..jJJjjjjjjjJJj.",
+        ".jJJJJJJJJJJJJJj", "jJJiJJJJJJJJJJJj", "jJJJJJJJJJJJJJJj", "jJjJJJJJJJJJJJJj",
+        "jJJJJJJJJJJJJJJj", "jJJJJJJJJJJJJJJj", ".jJJJJJJJJJJJJj.", "..jjJj.jj.jJjj..",
+        "...jJj.jj.jJj...", "...jJj.jj.jJj...", "...jjj.jj.jjj...", "................",
+    ],
+    "moth": [
+        "................", "......jjjj......", "....jJJJJJJj....", "..jJJJJJJJJJJj..",
+        ".jJJJJjiijJJJJj.", "jJJJJJjJJjJJJJJj", "jJJJJJjJJjJJJJJj", "jJJJJJjJJjJJJJJj",
+        ".jJJJJjJJjJJJJj.", "..jJJJjJJjJJJj..", "...jJJjJJjJJj...", "....jJjJJjJj....",
+        ".....jjJJjj.....", "......jJJj......", "......j..j......", "................",
+    ],
+    "heron": [
+        "................", ".........jjj....", "........jJiJj...", "........jJJJjjjj",
+        ".........jJJj...", ".........jJj....", ".........jJj....", "......jjjjJj....",
+        "....jJJJJJJj....", "...jJJJJJJJJj...", "..jJJJJJJJJJj...", "...jJJJJJJJj....",
+        "....jJj.jJj.....", "....jJj.jJj.....", "....jjj.jjj.....", "................",
+    ],
+    "crow": [
+        "................", "................", "......jjjj......", ".....jJiJJj.jj..",
+        "....jJJJJJJjJJj.", "...jJJJJJJJJJJj.", "..jJJJJJJJJJJJj.", "..jJJJJJJJJJJj..",
+        "..jJJJJJJJJJj...", "...jJJJJJJJj....", "....jJJJJJj.....", ".....jJJJj......",
+        ".....j.j.j......", ".....j.j.j......", ".....jjj.jj.....", "................",
+    ],
+    "newt": [
+        "................", "................", "................", "....jjjj........",
+        "...jJiJJj.......", "..jJJJJJJjjjj...", ".jJJJJJJJJJJJj..", ".jJJJJJJJJJJJJj.",
+        "..jJJJJJJJJJJJJj", "..jj.jj...jj.j..", "..j..j.....j.j..", "................",
+        "................", "................", "................", "................",
+    ],
+    "beetle": [
+        "................", "................", "......jjjj......", ".....jJiiJj.....",
+        "j...jJJJJJJj...j", ".j.jJJJJJJJJj.j.", "..jJJJJJJJJJJj..", ".jJJJJJJJJJJJJj.",
+        "jJJJJJjJJjJJJJJj", "jJJJJJjJJjJJJJJj", "jJJJJJjJJjJJJJJj", ".jJJJJjJJjJJJJj.",
+        "..jJJJJJJJJJJj..", "...jJJJJJJJJj...", "..j.j.j..j.j.j..", "................",
+    ],
+    "bat": [
+        "................", "................", "..jj........jj..", ".jJJj..jj..jJJj.",
+        "jJJJJjjJiJjjJJJJ", "jJJJJJJJJJJJJJJj", "jJJJJJJJJJJJJJJj", ".jJJJJJJJJJJJJj.",
+        "..jJJJJJJJJJJj..", "...jJJJJJJJJj...", "....jJJJJJJj....", ".....jJJJJj.....",
+        "......jJJj......", "......j..j......", "................", "................",
+    ],
+    "jelly": [
+        "................", "......jjjj......", "....jJJJJJJj....", "...jJJJJJJJJj...",
+        "..jJJJJJJJJJJj..", "..jJJJJJJJJJJj..", "..jJJJJJJJJJJj..", "..jJJJJJJJJJJj..",
+        "...jjjjjjjjjj...", "...j.j.j.j.j....", "...j.j.j.j.j.j..", "..j..j.j.j..j...",
+        "..j..j...j..j...", ".j...j...j...j..", ".j...j...j......", "................",
+    ],
+    "serpent": [
+        "................", "................", "....jjjjjj......", "...jJJJJJJj.....",
+        "..jJJjjjjJJj....", "..jJj....jJj....", "..jJj...jJJj....", "..jJj..jJJj.....",
+        "..jJj.jJJj......", "..jJjjJJj.......", "..jJJJJj........", "..jJiJj.........",
+        "...jjj..........", "................", "................", "................",
+    ],
+    "fish": [
+        "................", "................", "................", "..........jj....",
+        ".....jjjjjjJJj..", "...jJJJJJJJJJJj.", "..jJiJJJJJJJJJJj", "..jJJJJJJJJJJJJj",
+        "..jJJJJJJJJJJJJj", "...jJJJJJJJJJJj.", ".....jjjjjjJJj..", "..........jj....",
+        "................", "................", "................", "................",
+    ],
+}
+
+#: Which drawing stands in for a body that has none of its own. A silhouette
+#: family beats a wrong-shaped placeholder: a vole drawn as a hare still reads
+#: as a small quick thing, which is what the player needs to know.
+CREATURE_FAMILY: dict[str, str] = {
+    "hare": "hare", "vole": "hare", "shrew": "hare", "rat": "hare",
+    "fox": "fox", "otter": "fox", "cat": "fox", "dog": "fox", "sheep": "fox",
+    "boar": "boar",
+    "moth": "moth", "mantis": "moth",
+    "beetle": "beetle",
+    "heron": "heron", "goose": "heron",
+    "crow": "crow", "owl": "crow",
+    "newt": "newt", "toad": "newt", "olm": "newt",
+    "carp": "fish", "eel": "serpent", "adder": "serpent",
+    "bat": "bat",
+    "jelly": "jelly", "coral": "jelly", "anemone": "jelly",
+}
+
+
+def creature_sprite(species_key: str) -> str:
+    """Which sprite draws a body.
+
+    Parameters
+    ----------
+    species_key : str
+        A key of :data:`..api.bestiary.BY_KEY`.
+
+    Returns
+    -------
+    str
+        A name in :data:`SPRITES`.
+    """
+    return f"body_{CREATURE_FAMILY.get(species_key, 'hare')}"
+
+
 #: Every sprite, by name. Terrain first so a tile lookup is a dict hit.
 SPRITES: dict[str, list[str]] = {
     **TERRAIN,
+    **TERRAIN_WIDE,
+    **STRUCTURES,
+    **{f"body_{name}": rows for name, rows in CREATURES.items()},
     "house_wild": _HOUSE_DARK,
     "house_withered": _HOUSE_DARK,
     "house_scouted": _HOUSE_LIT,
@@ -360,6 +653,13 @@ SPRITES: dict[str, list[str]] = {
     "emissary_0": _EMISSARY_A, "emissary_1": _EMISSARY_B,
     "animal_0": _ANIMAL_A, "animal_1": _ANIMAL_B,
     "beast_0": _BEAST_A, "beast_1": _BEAST_B,
+    # Premises keepers are townsfolk with a counter in front of them; a Warden
+    # is the robed-and-staffed figure, tinted gold by the renderer; a wraith is
+    # the old beast drawing, which is exactly right -- it is the shape of
+    # something that used to be an animal.
+    "keeper_0": _TOWNSFOLK_A, "keeper_1": _TOWNSFOLK_B,
+    "warden_0": _EMISSARY_A, "warden_1": _EMISSARY_B,
+    "wraith_0": _BEAST_A, "wraith_1": _BEAST_B,
 }
 
 

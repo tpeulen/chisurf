@@ -5,7 +5,7 @@ title: "PRD-91: Lumis Quest — the documentation is the world"
 description: A top-down, gamepad-playable JRPG in ChiSurf's games hub where the documentation tree is the overworld, real fluorophores from spectra.db are the creature roster, combat is photophysics, and reviewing a page turns a wild room into a villager. Runs on chigame, a wgpu 2D engine mined from a reference render engine and reimplemented in-tree. Layers on top of the existing review_status.json sign-off system — does not replace it.
 status: Draft
 created: 2026-08-08
-updated: 2026-08-10
+updated: 2026-08-11
 owner: tpeulen
 sibling: none
 ---
@@ -13,6 +13,112 @@ sibling: none
 # Lumis Quest — the documentation is the world
 
 # Where to pick this up
+
+**Handover, 2026-08-11 (fourth pass).** The game was a walking simulator with a
+type chart. It is now a game, and four things changed at the root:
+
+1. **You fight animals, not dyes** (`api/bestiary.py`). A fluorophore is not an
+   organism, so the thing in the grass is a **body** (23 real animals, each with
+   vitality/power/**agility** and one behaviour of its own) with a **label** (a
+   real fluorophore) fixed into it. The label supplies colour, damage, bleach
+   rate and every feature -- each one a real property of the molecule
+   (`bloom`/`slowburn` from quantum yield, `barrel` from a protein shell,
+   `shiftwalk` from a wide Stokes shift, `nightsight` from far-red). **Tier is
+   derived** from brightness against stamina, never assigned. Winning is
+   **unbinding**: the label comes off, the animal walks away free, and it may
+   choose to follow you -- so bodies and labels are collected *separately* and
+   recombined in the PARTY tab. That split is the build game.
+2. **Everything is data, run by an engine** (`api/engine.py`, `api/actions.py`,
+   `api/context.py`, `data/*.json`). Dialogue is scenes of `say` / `say_from` /
+   `choice` / `when` / `do` / `goto`; a story beat's completion rule is a
+   condition expression; a consequence is a named action in a registry; anything
+   the host must do (start a fight, cross manifolds, save) is a `Request` the
+   runner queues. The `if role == "healer"` chain in the window class is gone.
+   **A typo is loud** -- an unknown condition or action raises rather than
+   silently never firing.
+3. **The world is a 16-bit overworld** (`api/places.py`, `api/world.py`,
+   `api/darkworld.py`). Biomes, lakes with sand rims, rivers that a road
+   bridges, cliffs with a cave in them; settlements planned in *plots* so they
+   have a middle -- hamlet / village / town, with a square, a well, a tavern, a
+   supply house, a lens-grinder, a shrine, market stalls, lantern posts and
+   garden beds, and a place name of their own. Five **Wardens** hold five seals
+   (`api/tiers.py`); your licence caps what you may unbind and the wild scales
+   to it. And there is a **dark manifold**: the same grid transformed by a
+   lookup table (ash/tar/dead wood/ruins), entered through a cave and left
+   through a rift, with Vesper's tower built into the middle of it.
+4. **The town has a day** (`api/agents.py`). Townsfolk carry drives that rise on
+   their own, walk to a real premises to spend them, and **start conversations
+   when they meet**. Topics are weighted by the run (`mood_from`), so nobody
+   gossips about the probe who takes labels off before there is one. The player
+   overhears from a distance and can **drop into** the conversation. The loop is
+   deterministic and offline; a configured model writes only the *words*, off
+   the frame loop, with the authored exchange standing until it lands.
+
+The story (`data/story.json`, `data/wardens.json`) is rewritten around **the
+Marking**: Vesper the Lanternwright decided that if light will not stay in a
+lamp, you fix it into something that cannot put it down. Thirteen beats across
+five acts, and every beat's condition is a JSON expression.
+
+**Defects only the screenshots and the new tests caught** (all fixed, do not
+reintroduce):
+
+* a Warden's seat was upgraded to a town **after** its compound had been
+  measured, so the wall was painted at the old size and its `rect` said
+  otherwise -- Iris walked straight through one. World building is now two
+  passes: decide what every settlement *is*, then measure.
+* `Runner._step` tested `"say"` before `"choice"`, so every step carrying both
+  (the prompt above a menu) rendered as narration with its options silently
+  dropped. Test `test_a_choice_branches_and_a_condition_hides_an_option`.
+* `wild_beast` honoured `tier_cap` by walking down the *labels* only, so a heavy
+  body over the cap stayed over it. It now walks down the bodies too.
+* asking for wellspring ground was the one way to meet a crystal jelly in a
+  field: the "never wild" filter fell back to the unfiltered list.
+* four lantern glows at a tile and a half of additive light each turned a town
+  square into a white hole. Only lamp posts glow now, at 0.85 tiles.
+* the dialogue panel's last line sat under the bottom edge of the screen.
+
+**Reproducing the gallery** (the rule is to *look*, and a screenshot nobody can
+re-take is no evidence): `test/capture.py` writes all eleven screens --
+
+```
+QT_QPA_PLATFORM=offscreen PYTHONPATH=. python \
+    -m chisurf.plugins.misc.games.lumis_quest.test.capture \
+    chisurf/plugins/misc/games/test/renders
+```
+
+**Where to pick this up next**
+
+1. **The Lanternwright is written but unreachable.** `data/story.json` holds her
+   four screens and the three doctrine replies, and `data/dialogue.json` has the
+   `lanternwright` scene -- but nothing in `gui/overworld.py` puts an NPC at the
+   tower door in the dark manifold. Measure: `darkworld.raise_tower` returns the
+   door tile; there is no `_story_cast` equivalent for the dark. Until that
+   lands the final two beats (`the-lanternwright`, `the-dawn`) can only be
+   reached by witnessing the flags directly, which is what the epilogue test
+   does.
+2. **A Warden fight is winnable by the strategy it exists to forbid.** Each
+   Warden teaches one thing (`lesson` in `data/wardens.json`) and the fight is
+   supposed to be unwinnable without it, but the only thing their tier changes
+   today is which label they wear -- `_warden_beast` picks by
+   `tier/5 * len(ranked)`. Tolm's boar should punish attacking every turn,
+   Kestrel's Umbral owl should be *invisible* under the starting filter. The
+   hook is `Battle(opponent_power=...)` plus a per-Warden rule; the lesson text
+   is already written.
+3. **The dark manifold has nothing to do in it.** `npcs.dark_population` places
+   wraiths and the `wraith` scene sets the `the-shelved` flag, but there are no
+   encounters, no reason to walk it, and no way to unbind anything down there.
+   The obvious shape: a shelved beast you can *re-light* rather than unbind.
+4. **The `LAB` and `RIG` tabs still speak the old vocabulary.** They culture and
+   fit *labels*, which is right, but neither mentions bodies -- and the farm
+   layer is the natural home for the bodies you befriend (feed, rest, a stable).
+5. **`animal_*` and `beast_*` sprites are dead weight.** Every animal is now
+   drawn per species and tinted by its label (`pixelart.creature_sprite`); the
+   two generic drawings survive only as the `wraith` alias. Ten of the twelve
+   body sprites are distinct; `serpent` and `crow` are the weakest and were
+   judged acceptable from the contact sheet, not good.
+
+---
+
 
 **Handover, 2026-08-10 (third pass, same day).** On top of the
 population-and-teaching pass below, the game now has a **front door and a

@@ -1,20 +1,29 @@
-"""Turn-based combat, built out of photophysics.
+"""Turn-based combat against marked animals, built out of photophysics.
 
-Every mechanic here is a real thing a fluorophore does, which is what stops this
-being a reskinned damage race:
+What you fight is a **beast**: a real animal with a fluorophore fixed into it
+(see :mod:`.bestiary`). The body decides how much punishment it takes and who
+moves first; the label decides what it emits, how hard, and how fast it burns
+down. Every mechanic below is a real thing one or the other actually does.
 
-* **Photobleaching is the cost of attacking.** Emitting costs the emitter HP,
-  and a high quantum yield cycles harder, so the brightest creature hits hardest
-  and burns out soonest. That trade is the whole tactical layer.
+* **Photobleaching is the cost of shining.** Emitting costs the emitter its
+  own budget, and a high quantum yield cycles harder -- so the brightest label
+  hits hardest and burns out soonest. That trade is the tactical layer.
 * **Spectral overlap is the type chart** -- measured, not designed. See
   :func:`..roster.effectiveness`.
-* **Crosstalk is friendly fire.** If your own two creatures emit into each
+* **Crosstalk is friendly fire.** If two of your own beasts emit into each
   other's absorption band, part of your shot is absorbed by your own team.
-* **FRET is a combo.** A partner whose absorption sits under the active
-  creature's emission relays the shot and adds to it.
-* **The triplet state stuns.** A creature that pushes too hard shelves itself
-  for a turn: real dyes do this, and it stops "attack every turn" being the
-  only strategy.
+* **FRET is a combo.** A benched partner whose absorption sits under the active
+  beast's emission relays the shot and adds to it.
+* **The triplet state stuns.** A label pushed too hard shelves itself for a
+  turn -- and, in this world, all the way down is where the dark manifold
+  starts.
+* **Speed is the animal's.** A hare goes before a boar. This is what the old
+  fight did not have, and without it every exchange was you-then-them forever.
+
+And the win condition is not a kill. You **unbind**: you take the label off, the
+animal walks away, and the dye is yours to fit to somebody who agreed to carry
+it. What you may unbind is capped by your Warden seals (:mod:`.tiers`), which is
+the ladder the whole map is arranged along.
 
 Qt-free and engine-free, so the whole fight steps in a test with no window.
 """
@@ -24,6 +33,8 @@ from __future__ import annotations
 import dataclasses
 import random
 
+from . import tiers as tiers_api
+from .bestiary import BRIGHT_QY, Beast, Species
 from .roster import Creature, effectiveness, overlap
 
 #: Global damage scale. Raw brightness against raw photostability settles a
@@ -31,9 +42,6 @@ from .roster import Creature, effectiveness, overlap
 #: state to matter -- the tactics only exist if the fight lasts long enough to
 #: use them. Tuned for roughly five to eight exchanges.
 DAMAGE_SCALE = 0.42
-
-#: Fraction of an emitter's max HP burned by one attack, before quantum yield.
-BLEACH_BASE = 0.045
 
 #: Chance per attack of dropping into the triplet state, scaled by quantum
 #: yield. Bright dyes intersystem-cross more.
@@ -45,37 +53,82 @@ COMBO_GAIN = 0.55
 #: How much crosstalk with your own bench costs, at full overlap.
 CROSSTALK_COST = 0.35
 
-#: Catching, at a fresh opponent and at a fully bleached one.
-CATCH_FLOOR = 0.10
-CATCH_CEILING = 0.80
+#: Unbinding, at a fresh beast and at one driven all the way down. A label
+#: comes off a dye that is already deep in its dark state; a fresh one is
+#: welded in.
+TAKE_FLOOR = 0.10
+TAKE_CEILING = 0.80
+
+#: How readily a freed animal decides to come with you, before anything is
+#: taken into account, and how much of that is decided by how long you took.
+TRUST_BASE = 0.25
+TRUST_GENTLE = 0.50
+
+#: Turns after which a fight counts as having been brute force. A body you
+#: ground down for a dozen exchanges does not then follow you home.
+GENTLE_TURNS = 12
+
+#: Fraction of max HP that a venomous bite keeps burning, per turn.
+VENOM_BLEED = 0.05
+
+#: Fraction of max HP a regrowing body recovers each turn.
+REGROWTH = 0.04
 
 
 @dataclasses.dataclass
 class Fighter:
-    """A creature in a fight, with its running state.
+    """A beast in a fight, with its running state.
 
     Attributes
     ----------
-    creature : chisurf.plugins.misc.games.lumis_quest.api.roster.Creature
-        The fluorophore itself.
+    beast : chisurf.plugins.misc.games.lumis_quest.api.bestiary.Beast
+        The animal and its label.
     hp : int, optional
-        Remaining photons before it bleaches. ``None`` means full health; zero
-        means already bleached, and the two must not be confused -- a sentinel
-        of ``0`` made it impossible to construct a spent creature, which is
-        exactly what a saved team between fights is full of.
+        Remaining photons before it bleaches out. ``None`` means full health;
+        zero means already spent, and the two must not be confused -- a
+        sentinel of ``0`` made it impossible to construct a spent beast, which
+        is exactly what a saved team between fights is full of.
     stunned : bool
         Whether it is shelved in the triplet state this turn.
+    bleed : int
+        Damage per turn still working from a venomous bite.
+    sheltered : bool
+        Whether a wellspring body has already spent its one refusal to go out.
     """
 
-    creature: Creature
+    beast: Beast
     hp: int | None = None
     stunned: bool = False
+    bleed: int = 0
+    sheltered: bool = False
 
     def __post_init__(self) -> None:
         """Start at full health only when no HP was given at all."""
         if self.hp is None:
-            self.hp = self.creature.max_hp
+            self.hp = self.beast.max_hp
         self.hp = max(0, int(self.hp))
+
+    @property
+    def creature(self) -> Creature | None:
+        """The label this beast wears.
+
+        Returns
+        -------
+        Creature or None
+            ``None`` for an unmarked animal.
+        """
+        return self.beast.label
+
+    @property
+    def name(self) -> str:
+        """What to call it in the log.
+
+        Returns
+        -------
+        str
+            e.g. ``Verdant Heron``.
+        """
+        return self.beast.name
 
     @property
     def alive(self) -> bool:
@@ -97,7 +150,22 @@ class Fighter:
         float
             0 fresh, 1 spent.
         """
-        return 1.0 - self.hp / max(self.creature.max_hp, 1)
+        return 1.0 - self.hp / max(self.beast.max_hp, 1)
+
+    def has(self, trait: str) -> bool:
+        """Whether this beast carries a trait.
+
+        Parameters
+        ----------
+        trait : str
+            A key of :data:`..bestiary.TRAITS`.
+
+        Returns
+        -------
+        bool
+            True when the body or the label grants it.
+        """
+        return trait in self.beast.traits
 
 
 @dataclasses.dataclass
@@ -126,12 +194,12 @@ class Turn:
 
 
 class Battle:
-    """One encounter: your bench against a single opponent.
+    """One encounter: your bench against a single marked animal.
 
     Parameters
     ----------
     team : list of Fighter
-        Your creatures. The first alive one is active.
+        Your beasts. The first alive one is active.
     opponent : Fighter
         What you are fighting.
     rng : random.Random, optional
@@ -142,33 +210,44 @@ class Battle:
     loadout : chisurf.plugins.misc.games.lumis_quest.api.gear.Loadout, optional
         Fitted optics. Omitted means an unfiltered eye: nothing amplified and
         nothing blocked.
+    seals : iterable of str, optional
+        Warden seals held, which decides what may be unbound.
     """
 
     def __init__(self, team: list[Fighter], opponent: Fighter,
                  rng: random.Random | None = None, opponent_power: float = 1.6,
-                 loadout=None) -> None:
+                 loadout=None, seals=()) -> None:
         if not team:
-            raise ValueError("a battle needs at least one creature")
+            raise ValueError("a battle needs at least one beast")
         self.team = team
         self.opponent = opponent
-        # A wild creature has no bench and no combo, so it hits harder per shot
+        # A wild beast has no bench and no combo, so it hits harder per shot
         # to make up for it; without this the player simply cannot lose.
         self.opponent_power = opponent_power
         # What is fitted decides how much of your own light is collected. A
-        # filter that blocks your creature's band makes it nearly useless --
+        # filter that blocks your beast's band makes it nearly useless --
         # which is what makes gear a choice rather than a stat stick.
         self.loadout = loadout
+        self.seals = tuple(seals)
         self.rng = rng or random.Random()
         self.active_index = 0
         self.log: list[Turn] = []
         self.finished = False
         self.won = False
         self.fled = False
-        self.caught: Creature | None = None
+        self.rounds = 0
+        #: Set when a label is successfully taken off the opponent.
+        self.taken: Creature | None = None
+        #: Set to the body that walked away free, whether or not it followed.
+        self.freed: Species | None = None
+        #: Whether the freed animal decided to come with you.
+        self.joined = False
+
+    # -- state -------------------------------------------------------------
 
     @property
     def active(self) -> Fighter:
-        """The creature currently in play.
+        """The beast currently in play.
 
         Returns
         -------
@@ -179,7 +258,7 @@ class Battle:
 
     @property
     def bench(self) -> list[Fighter]:
-        """Everyone except the active creature.
+        """Everyone except the active beast.
 
         Returns
         -------
@@ -204,6 +283,36 @@ class Battle:
         self.log.append(turn)
         return turn
 
+    # -- turn order --------------------------------------------------------
+
+    def opponent_first(self) -> bool:
+        """Whether the wild beast moves before you this round.
+
+        Speed is the *body's*, which is the whole reason bodies matter: a
+        far-red label in a hare is a different problem from the same label in a
+        boar. Three traits override it, and each is the animal doing what that
+        animal does.
+
+        Returns
+        -------
+        bool
+            True when the opponent acts first.
+        """
+        if self.opponent.has("spearfall") and self.rounds == 0:
+            return True
+        if self.active.has("silent"):
+            return False
+        if self.opponent.has("nightsight") and \
+                self.opponent.beast.emission_nm > self.active.beast.emission_nm:
+            return True
+        mine = self.active.beast.speed * self.rng.uniform(0.9, 1.1)
+        theirs = self.opponent.beast.speed * self.rng.uniform(0.9, 1.1)
+        if self.active.has("bolt") and self.active.bleached > 0.5:
+            mine *= 1.15
+        return theirs > mine
+
+    # -- actions -----------------------------------------------------------
+
     def attack(self) -> Turn:
         """Emit at the opponent, and take the cost of having emitted.
 
@@ -212,70 +321,10 @@ class Battle:
         Turn
             What happened.
         """
-        if self.finished:
-            return self._record(Turn("The encounter is already over."))
-        attacker = self.active
-        if attacker.stunned:
-            attacker.stunned = False
-            turn = self._record(
-                Turn(f"{attacker.creature.name} is stuck in a triplet state.")
-            )
-            self._opponent_turn()
-            return turn
-
-        multiplier = effectiveness(attacker.creature, self.opponent.creature)
-
-        # A partner whose absorption sits under the active creature's emission
-        # relays the shot: that is FRET, and it is why a team is not just a
-        # queue of replacements.
-        combo = 0.0
-        for mate in self.bench:
-            if mate.alive:
-                combo = max(combo, overlap(attacker.creature, mate.creature))
-        # ...and the same overlap in the other direction is your own team
-        # absorbing your shot. The bench cuts both ways.
-        crosstalk = 0.0
-        for mate in self.bench:
-            if mate.alive:
-                crosstalk = max(crosstalk, overlap(mate.creature, attacker.creature))
-
-        gain = 1.0 + COMBO_GAIN * combo - CROSSTALK_COST * crosstalk
-        if self.loadout is not None:
-            gain *= self.loadout.response(attacker.creature.emission_nm)
-        spread = self.rng.uniform(0.85, 1.15)
-        damage = max(
-            1,
-            int(round(attacker.creature.attack * multiplier * gain * spread * DAMAGE_SCALE)),
-        )
-        self.opponent.hp = max(0, self.opponent.hp - damage)
-
-        # Emitting costs photons, and a high quantum yield costs more.
-        bleach = BLEACH_BASE * (0.6 + attacker.creature.quantum_yield)
-        attacker.hp = max(0, attacker.hp - max(1, int(round(attacker.creature.max_hp * bleach))))
-
-        if self.rng.random() < TRIPLET_BASE * attacker.creature.quantum_yield:
-            attacker.stunned = True
-
-        note = "super effective" if multiplier > 1.4 else (
-            "barely couples" if multiplier < 0.8 else "transfers"
-        )
-        text = f"{attacker.creature.name} emits -- {note} for {damage}."
-        if combo > 0.35:
-            text += " Relayed by the bench."
-        if crosstalk > 0.35:
-            text += " Some was absorbed by your own team."
-
-        # Recorded before the reply, or the log reads backwards: the opponent's
-        # answer was landing in the log ahead of the shot that provoked it.
-        turn = self._record(Turn(text, damage=damage, multiplier=multiplier,
-                                 combo=combo > 0.35, crosstalk=crosstalk > 0.35))
-        self._settle()
-        if not self.finished:
-            self._opponent_turn()
-        return turn
+        return self._round(self._emit)
 
     def swap(self, index: int) -> Turn:
-        """Bring another creature forward. Costs the turn.
+        """Bring another beast forward. Costs the turn.
 
         Parameters
         ----------
@@ -294,55 +343,106 @@ class Battle:
         if index == self.active_index:
             return self._record(Turn("Already out."))
         if not self.team[index].alive:
-            return self._record(Turn(f"{self.team[index].creature.name} is fully bleached."))
-        self.active_index = index
-        turn = self._record(Turn(f"{self.active.creature.name} steps forward."))
-        self._opponent_turn()
-        return turn
+            return self._record(Turn(f"{self.team[index].name} is fully bleached."))
 
-    def catch_chance(self) -> float:
-        """Odds of collecting the opponent right now.
+        def action() -> Turn:
+            self.active_index = index
+            fighter = self.team[index]
+            if fighter.has("play"):
+                # An otter coming off the bench arrives having enjoyed the wait.
+                fighter.hp = min(fighter.beast.max_hp,
+                                 fighter.hp + int(round(fighter.beast.max_hp * 0.08)))
+            return self._record(Turn(f"{fighter.name} steps forward."))
 
-        Two things decide it, and both are real. A dye driven far into its dark
-        state is easier to collect than a fresh one -- so wearing it down is the
-        way in. And you cannot collect what you cannot detect: if the fitted
-        filter blocks its band, the odds collapse whatever its health.
+        return self._round(action)
+
+    def take_chance(self) -> float:
+        """Odds of getting the label off right now.
+
+        Three things decide it, and all three are real. A dye driven far into
+        its dark state comes away; a fresh one is welded in. You cannot unbind
+        what you cannot detect, so a filter that blocks its band collapses the
+        odds. And a cunning body of your own knows how to do it.
 
         Returns
         -------
         float
             0..1.
         """
-        wear = 1.0 - self.opponent.hp / max(self.opponent.creature.max_hp, 1)
-        chance = CATCH_FLOOR + (CATCH_CEILING - CATCH_FLOOR) * max(0.0, min(wear, 1.0))
+        if not self.opponent.beast.marked:
+            return 0.0
+        wear = 1.0 - self.opponent.hp / max(self.opponent.beast.max_hp, 1)
+        chance = TAKE_FLOOR + (TAKE_CEILING - TAKE_FLOOR) * max(0.0, min(wear, 1.0))
         if self.loadout is not None:
-            seen = min(self.loadout.response(self.opponent.creature.emission_nm), 1.0)
+            seen = min(self.loadout.response(self.opponent.beast.emission_nm), 1.0)
+            if self.active.has("echo"):
+                # A bat does not need the light to know where the thing is.
+                seen = max(seen, 0.85)
             chance *= 0.25 + 0.75 * seen
+        if self.active.has("cunning"):
+            chance *= 1.5
         return max(0.0, min(chance, 1.0))
 
-    def catch(self) -> Turn:
-        """Try to collect the opponent. Costs the turn either way.
+    def trust_chance(self) -> float:
+        """Odds the freed animal comes with you.
+
+        Nothing about this is combat. A body you ground down over a dozen
+        exchanges walks away; one you unbound quickly may not.
+
+        Returns
+        -------
+        float
+            0..1.
+        """
+        gentle = max(0.0, 1.0 - self.rounds / GENTLE_TURNS)
+        chance = TRUST_BASE + TRUST_GENTLE * gentle
+        if self.opponent.has("play"):
+            chance += 0.2
+        if self.opponent.has("bolt"):
+            chance -= 0.15
+        return max(0.0, min(chance, 1.0))
+
+    def unbind(self) -> Turn:
+        """Try to take the label off. Costs the turn either way.
 
         Returns
         -------
         Turn
-            What happened. On success the encounter ends with ``caught`` set.
+            What happened. On success the encounter ends with :attr:`taken` set
+            to the label and :attr:`freed` to the body that walked away.
         """
         if self.finished:
             return self._record(Turn("The encounter is already over."))
-        chance = self.catch_chance()
-        if self.rng.random() < chance:
-            self.caught = self.opponent.creature
+        if not self.opponent.beast.marked:
+            return self._record(Turn("There is nothing fixed into it."))
+        refusal = tiers_api.refusal(self.opponent.beast.tier, self.seals)
+        if refusal:
+            # Not a failed roll: a rule, stated. A player who is told why can
+            # go and do something about it.
+            return self._round(lambda: self._record(Turn(refusal)))
+
+        def action() -> Turn:
+            chance = self.take_chance()
+            if self.rng.random() >= chance:
+                return self._record(
+                    Turn(f"The label holds fast ({chance:.0%}).")
+                )
+            self.taken = self.opponent.beast.label
+            self.freed = self.opponent.beast.species
             self.finished = True
             self.won = True
-            return self._record(
-                Turn(f"{self.opponent.creature.name} settles into the collection.")
-            )
-        turn = self._record(
-            Turn(f"{self.opponent.creature.name} slips the trap ({chance:.0%}).")
-        )
-        self._opponent_turn()
-        return turn
+            self.joined = self.rng.random() < self.trust_chance()
+            body = self.opponent.beast.species.name
+            if self.joined:
+                return self._record(Turn(
+                    f"The label comes away. The {body} shakes itself -- "
+                    f"and follows you."
+                ))
+            return self._record(Turn(
+                f"The label comes away. The {body} goes back into the grass."
+            ))
+
+        return self._round(action)
 
     def flee(self) -> Turn:
         """Leave. Nothing is gained and nothing is lost.
@@ -356,31 +456,262 @@ class Battle:
         self.fled = True
         return self._record(Turn("You withdraw."))
 
+    # -- resolution --------------------------------------------------------
+
+    def _round(self, action) -> Turn:
+        """Run one exchange, in speed order.
+
+        Parameters
+        ----------
+        action : callable
+            Your half of it, returning the :class:`Turn` to hand back.
+
+        Returns
+        -------
+        Turn
+            Your half's result.
+        """
+        if self.finished:
+            return self._record(Turn("The encounter is already over."))
+        first = self.opponent_first()
+        if first:
+            self._opponent_turn()
+            if self.finished:
+                return self.log[-1]
+        turn = action()
+        self._settle()
+        if not first and not self.finished:
+            self._opponent_turn()
+        self.rounds += 1
+        self._upkeep()
+        return turn
+
+    def _emit(self) -> Turn:
+        """Your active beast shines at the opponent.
+
+        Returns
+        -------
+        Turn
+            What happened.
+        """
+        attacker = self.active
+        if attacker.stunned:
+            attacker.stunned = False
+            return self._record(
+                Turn(f"{attacker.name} is stuck in a triplet state.")
+            )
+        if not attacker.beast.marked:
+            return self._record(
+                Turn(f"{attacker.name} has no label. It cannot shine at anything.")
+            )
+
+        multiplier = self._effectiveness(attacker, self.opponent)
+
+        # A partner whose absorption sits under the active beast's emission
+        # relays the shot: that is FRET, and it is why a team is not just a
+        # queue of replacements.
+        combo = 0.0
+        crosstalk = 0.0
+        for mate in self.bench:
+            if mate.alive and mate.beast.marked:
+                combo = max(combo, overlap(attacker.creature, mate.creature))
+                # ...and the same overlap the other way is your own team
+                # absorbing your shot. The bench cuts both ways.
+                crosstalk = max(crosstalk, overlap(mate.creature, attacker.creature))
+
+        gain = 1.0 + COMBO_GAIN * combo - CROSSTALK_COST * crosstalk
+        if self.loadout is not None:
+            gain *= self.loadout.response(attacker.beast.emission_nm)
+
+        hits = 2 if attacker.has("frenzy") else 1
+        total = 0
+        for _ in range(hits):
+            damage = self._damage(attacker, self.opponent, multiplier, gain)
+            if hits > 1:
+                damage = max(1, damage // 2)
+            total += self._apply(self.opponent, damage)
+
+        self._spend(attacker)
+        if self.rng.random() < TRIPLET_BASE * attacker.creature.quantum_yield:
+            attacker.stunned = True
+        if attacker.has("venom") and total:
+            self.opponent.bleed = max(
+                self.opponent.bleed,
+                max(1, int(round(self.opponent.beast.max_hp * VENOM_BLEED))),
+            )
+        if attacker.has("discharge") and self.rng.random() < 0.2:
+            self.opponent.stunned = True
+
+        note = "super effective" if multiplier > 1.4 else (
+            "barely couples" if multiplier < 0.8 else "transfers"
+        )
+        text = f"{attacker.name} emits -- {note} for {total}."
+        if hits > 1:
+            text += " Twice."
+        if combo > 0.35:
+            text += " Relayed by the bench."
+        if crosstalk > 0.35:
+            text += " Some was absorbed by your own team."
+        return self._record(Turn(text, damage=total, multiplier=multiplier,
+                                 combo=combo > 0.35, crosstalk=crosstalk > 0.35))
+
+    def _effectiveness(self, attacker: Fighter, defender: Fighter) -> float:
+        """Spectral multiplier, after the defender's tricks.
+
+        Parameters
+        ----------
+        attacker, defender : Fighter
+            Who is shining at whom.
+
+        Returns
+        -------
+        float
+            0.5..2.0.
+        """
+        if not (attacker.beast.marked and defender.beast.marked):
+            return 1.0
+        multiplier = effectiveness(attacker.creature, defender.creature)
+        if defender.has("mimicry"):
+            # A crow that has heard what you sound like is never the wrong
+            # colour to be hit by.
+            multiplier = min(multiplier, 1.0)
+        return multiplier
+
+    def _damage(self, attacker: Fighter, defender: Fighter,
+                multiplier: float, gain: float) -> int:
+        """One hit, with every trait that touches it applied.
+
+        Parameters
+        ----------
+        attacker, defender : Fighter
+            Who is shining at whom.
+        multiplier : float
+            Spectral effectiveness.
+        gain : float
+            Bench and optics.
+
+        Returns
+        -------
+        int
+            Damage before the defender's last refusals.
+        """
+        spread = self.rng.uniform(0.7, 1.3) if attacker.has("unmeasured") \
+            else self.rng.uniform(0.85, 1.15)
+        power = attacker.beast.attack * multiplier * gain * spread * DAMAGE_SCALE
+
+        if attacker.has("ambush") and self.rounds == 0:
+            power *= 2.0
+        if attacker.has("charge"):
+            power *= 1.4
+        if attacker.has("silent"):
+            power *= 1.1
+        if attacker.has("bloom"):
+            power *= 1.2
+        if attacker.has("hardlight"):
+            power *= 1.25
+        if attacker.has("slowburn"):
+            power *= 0.9
+        if attacker.has("phototaxis") and defender.beast.marked and \
+                defender.creature.quantum_yield >= BRIGHT_QY:
+            power *= 1.3
+
+        if defender.has("chitin"):
+            power *= 0.7
+        if defender.has("barrel"):
+            power *= 0.85
+        if defender.has("mucus") and attacker.beast.marked and \
+                attacker.creature.quantum_yield >= BRIGHT_QY:
+            power *= 0.75
+        if defender.has("burrow") and self.rng.random() < 0.25:
+            return 0
+        if defender.has("shiftwalk") and self.rng.random() < 0.15:
+            return 0
+        return max(1, int(round(power)))
+
+    def _apply(self, target: Fighter, damage: int) -> int:
+        """Take damage off a fighter, respecting what refuses to go out.
+
+        Parameters
+        ----------
+        target : Fighter
+            Who is hit.
+        damage : int
+            How much.
+
+        Returns
+        -------
+        int
+            Damage actually dealt.
+        """
+        if damage <= 0:
+            return 0
+        before = target.hp
+        target.hp = max(0, target.hp - damage)
+        if target.hp == 0 and target.has("wellspring") and not target.sheltered:
+            # It was shining before any of this. It does not go out in one blow.
+            target.sheltered = True
+            target.hp = 1
+        return before - target.hp
+
+    def _spend(self, fighter: Fighter) -> None:
+        """Charge a beast for having shone.
+
+        Parameters
+        ----------
+        fighter : Fighter
+            Whoever just emitted.
+        """
+        cost = max(1, int(round(fighter.beast.max_hp * fighter.beast.bleach_rate)))
+        fighter.hp = max(0, fighter.hp - cost)
+
     def _opponent_turn(self) -> None:
         """Let the opponent emit back."""
         if self.finished or not self.opponent.alive:
             return
-        multiplier = effectiveness(self.opponent.creature, self.active.creature)
-        spread = self.rng.uniform(0.85, 1.15)
-        damage = max(
-            1,
-            int(round(self.opponent.creature.attack * multiplier * spread
-                      * DAMAGE_SCALE * self.opponent_power)),
-        )
-        self.active.hp = max(0, self.active.hp - damage)
-        bleach = BLEACH_BASE * (0.6 + self.opponent.creature.quantum_yield)
-        self.opponent.hp = max(
-            0, self.opponent.hp - max(1, int(round(self.opponent.creature.max_hp * bleach)))
-        )
+        if self.opponent.stunned:
+            self.opponent.stunned = False
+            self.log.append(Turn(f"{self.opponent.name} is shelved, and does nothing."))
+            return
+        if not self.opponent.beast.marked:
+            self.log.append(Turn(f"The {self.opponent.name} keeps its distance."))
+            return
+        multiplier = self._effectiveness(self.opponent, self.active)
+        damage = self._damage(self.opponent, self.active, multiplier, self.opponent_power)
+        dealt = self._apply(self.active, damage)
+        self._spend(self.opponent)
+        if self.opponent.has("venom") and dealt:
+            self.active.bleed = max(
+                self.active.bleed,
+                max(1, int(round(self.active.beast.max_hp * VENOM_BLEED))),
+            )
         self.log.append(
-            Turn(f"{self.opponent.creature.name} emits back for {damage}.", damage=damage,
+            Turn(f"{self.opponent.name} emits back for {dealt}.", damage=dealt,
                  multiplier=multiplier)
         )
         self._settle()
 
+    def _upkeep(self) -> None:
+        """End-of-round effects: what is still burning, and what grows back."""
+        for fighter in (*self.team, self.opponent):
+            if not fighter.alive:
+                continue
+            if fighter.bleed:
+                self._apply(fighter, fighter.bleed)
+            if fighter.has("regrowth"):
+                fighter.hp = min(
+                    fighter.beast.max_hp,
+                    fighter.hp + max(1, int(round(fighter.beast.max_hp * REGROWTH))),
+                )
+        self._settle()
+
     def _settle(self) -> None:
         """Check whether the fight is over, and pick a replacement if not."""
+        if self.finished:
+            return
         if not self.opponent.alive:
+            # Driven all the way down. The label crosses into the dark rather
+            # than being destroyed -- which is where the second half of the
+            # world comes from, and why this is not the good ending.
             self.finished = True
             self.won = True
             return
@@ -393,23 +724,22 @@ class Battle:
             self.won = False
 
 
-def wild_opponent(seed_text: str, difficulty: float, roster_pool, rng=None) -> Fighter:
-    """Pick the creature guarding a room.
-
-    Seeded by the room's own address, so the same page always holds the same
-    opponent -- a wild encounter that reshuffles every visit is a slot machine,
-    not a place.
+def wild_encounter(seed_text: str, difficulty: float, labels, terrain: str = "meadow",
+                   tier_cap: int = 5) -> Fighter:
+    """The marked animal guarding a place.
 
     Parameters
     ----------
     seed_text : str
-        Usually the page address.
+        Usually the page address, so the same page always holds the same beast.
     difficulty : float
-        0..1, from the room's remoteness. Scales the opponent's HP.
-    roster_pool : sequence of Creature
-        Creatures to choose from.
-    rng : random.Random, optional
-        Ignored; kept so callers can pass one uniformly.
+        0..1, from the room's remoteness.
+    labels : sequence of Creature
+        Fluorophores the labeller had to hand.
+    terrain : str, optional
+        Which bodies live on this ground.
+    tier_cap : int, optional
+        Never produce a beast above this tier.
 
     Returns
     -------
@@ -419,21 +749,11 @@ def wild_opponent(seed_text: str, difficulty: float, roster_pool, rng=None) -> F
     Raises
     ------
     ValueError
-        If the pool is empty.
+        If there are no labels at all.
     """
-    if not roster_pool:
-        raise ValueError("no creatures available")
+    from .bestiary import wild_beast
+
+    beast = wild_beast(seed_text, difficulty, labels, terrain=terrain, tier_cap=tier_cap)
     level = max(0.0, min(difficulty, 1.0))
-
-    # Difficulty picks *which* creature, not merely how much HP it has. Scaling
-    # HP alone left remote pages guarded by whatever weakling came up, which
-    # made the reward gradient point somewhere the danger did not.
-    ranked = sorted(roster_pool, key=lambda creature: creature.attack)
-    span = max(1, len(ranked) // 4)
-    top = int(round(level * (len(ranked) - 1)))
-    window = ranked[max(0, top - span // 2): max(1, top + span // 2 + 1)] or ranked
-
-    picker = random.Random(seed_text)
-    creature = picker.choice(window)
-    hp = int(round(creature.max_hp * (0.7 + 0.9 * level)))
-    return Fighter(creature=creature, hp=max(12, hp))
+    hp = int(round(beast.max_hp * (0.7 + 0.9 * level)))
+    return Fighter(beast=beast, hp=max(12, hp))

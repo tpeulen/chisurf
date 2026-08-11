@@ -2,26 +2,29 @@
 
 A map with nothing moving on it is a diagram. This is what makes it a place.
 
-Six kinds, and each is derived rather than sprinkled:
+The cast is derived rather than sprinkled:
 
 * **Villagers** stand outside settled buildings. That is not decoration -- the
   design has always been that reviewing a page *turns a wild room into a
-  villager*, so the population of a village is literally how much of that
+  villager*, so the population of a settlement is literally how much of that
   section somebody has read. A ghost town is a section nobody has touched.
 * **Townsfolk** live in the compounds regardless of review state, scaled to the
-  village's size rather than to its pages -- a walled town with exactly as many
-  people as sign-offs is a spreadsheet wearing houses. The keeper-per-settled-
-  page rule stays intact; these are the people around it.
-* **Healers** keep the recovery station just inside every gate. One fixed,
-  named person per clinic, so the place that heals you has someone in it.
-* **Emissaries** are the story cast: one per order, standing in a land whose
-  character suits their doctrine. Talking to one is how an order is chosen --
-  a doctrine you pledge to is a person you met, not a menu row.
-* **Animals** wander the open ground inside a land's borders. They are the only
-  thing here that means nothing at all, and that is deliberate: a world in which
-  every single object is a metric is exhausting to walk through.
-* **Beasts** roam the wilds between compounds. Touching one starts a fight, so
-  the wilderness is dangerous in a way that standing next to a building is not.
+  settlement's size rather than to its pages -- a walled town with exactly as
+  many people as sign-offs is a spreadsheet wearing houses.
+* **Keepers of premises** stand at the door of the tavern, the supply house,
+  the lens-grinder and the shrine. Each is a *service*, not a line of flavour:
+  rumours that point at your actual next objective, gear, a re-ground filter, a
+  full restore.
+* **Wardens** hold the halls. They are the ladder (see :mod:`.tiers`), and each
+  teaches one real thing before making you use it.
+* **Emissaries** are the moral cast: one per order. Talking to one is how a
+  doctrine is chosen -- a doctrine you pledge to is a person you met.
+* **Unmarked animals** wander the open ground. They mean nothing at all, and
+  that is deliberate: a world where every object is a metric is exhausting.
+* **Marked beasts** roam the wilds. Touching one starts a fight, so the
+  wilderness is dangerous in a way that standing inside the walls is not -- and
+  each is a real animal with a real dye fixed into it, which is the thing the
+  whole story is about.
 
 Everything is seeded by position or by page address, so the population is the
 same on every run: a village whose people rearrange themselves each time you
@@ -33,8 +36,13 @@ from __future__ import annotations
 import dataclasses
 import math
 
+from . import tiles as T
+from .bestiary import BY_KEY as SPECIES_BY_KEY
+from .bestiary import SPECIES
 from .story import ORDER_LANDS, ORDERS
-from .tiles import CLINIC, FLOOR, GRASS, ROAD, TILE, is_blocking
+from .tiers import BY_KEY as WARDEN_BY_KEY
+from .tiers import WARDENS
+from .tiles import CLINIC, FLOOR, GARDEN, GRASS, PLAZA, ROAD, SAND, TILE, is_blocking
 
 #: What a villager might say. Chosen by page address, so a given villager always
 #: greets you the same way and the words become theirs.
@@ -47,30 +55,36 @@ GREETINGS = (
     "Read it yourself if you like -- it will stand up.",
 )
 
-#: What a villager says about the state of their village.
+#: What a villager says about the state of their settlement.
 STRUGGLING = (
     "Half our houses are dark. Nobody has been through them.",
     "We could use a reader. Plenty here has never been checked.",
     "The lamps go out one at a time when nobody comes.",
 )
 
-#: Animal kinds and their calls.
+#: Unmarked animals, and what they do when you bother them. These are the ones
+#: nobody has done anything to, and the game is quietly about keeping it that
+#: way.
 ANIMALS = (
-    ("sheep", "The creature regards you and returns to the grass."),
-    ("bird", "It startles, circles once, and settles again."),
-    ("hare", "It watches you from a safe distance."),
+    ("sheep", "It regards you, decides against it, and returns to the grass."),
+    ("goose", "It hisses. You have been warned by better and survived."),
+    ("hare", "Up on its back legs, ears working. Ordinary brown. Unmarked."),
+    ("heron", "Standing in the shallows, entirely uninterested in you."),
+    ("cat", "It watches your pocket, where the labels are."),
+    ("dog", "Tail once, then back to whatever it was smelling."),
 )
 
-#: Townsfolk who are not keepers: a village the size of a town needs people in
-#: it who are not a review metric. Chosen by seed, so a given village always
-#: has the same smith.
+#: Townsfolk who are not keepers: a settlement the size of a town needs people
+#: in it who are not a review metric.
 TOWNSFOLK = (
-    ("the smith", "Optics want grinding. Bring me glass and I will put an edge on it."),
+    ("the carter", "I haul between the towns. The dark stretches get longer every year."),
     ("a child", "Have you seen the hound glow? Everyone says Lumi can smell light."),
     ("the gatekeeper", "The gate stays open. It is readers we are short of, not doors."),
     ("the gardener", "A tended page keeps its colour. Same as anything planted."),
-    ("the carter", "I haul between villages. The dark stretches get longer every year."),
     ("the lamplighter", "I light what I can reach. The high shelves need someone like you."),
+    ("a drover", "Lost two beasts to the Marking this spring. Both came back gold."),
+    ("the ferryman", "There is water between every land. There is a bridge for a reason."),
+    ("an old woman", "I remember when a hare was brown. You will not, and that is the trouble."),
 )
 
 #: What the healer at every recovery station says.
@@ -80,30 +94,58 @@ HEALER_LINES = (
     "Fill your team before the wilds. Attrition is what kills probes, not beasts.",
 )
 
-#: The story cast: one emissary per order, in a land whose character suits the
-#: doctrine. Directories are tried in order; a corpus missing them all still
-#: gets its emissary somewhere (see :func:`_story_cast`).
+#: The premises keepers. Each is one screen of who they are and then a service.
+TAVERN_KEEPER = "the innkeeper"
+SHOP_KEEPER = "the supplier"
+SMITH = "the lens-grinder"
+PRIEST = "the shrine-keeper"
+
+TAVERN_LINES = (
+    "Sit down. Everyone who walks this road comes through here eventually.",
+    "I hear things. Buy nothing and I will still tell you -- the light is "
+    "going, and gossip is cheap.",
+)
+SHOP_LINES = (
+    "Glass, mostly. Filters somebody ground before the Fading and nobody has "
+    "matched since.",
+    "Take what suits your team's band. It is no use to me: I cannot see half "
+    "of it either.",
+)
+SMITH_LINES = (
+    "Bring me glass and I will put an edge on it. Narrower passes less and "
+    "sees better -- that is the whole trade.",
+    "A wide filter is a kindness to a beginner and a lie to everyone else.",
+)
+SHRINE_LINES = (
+    "The Wellspring is not a place. It is the fact that something was shining "
+    "before anybody thought to make it.",
+    "Rest here. Whatever you are carrying will come back up to full, and the "
+    "road will still be there.",
+)
+
+#: The story cast: one emissary per order, in a land whose character suits their
+#: doctrine.
 EMISSARY_NAMES = {
     "rigour": "Merel, Voice of Rigour",
     "clarity": "Halden, Voice of Clarity",
     "discovery": "Sable, Voice of Discovery",
 }
-#: Each order's emissary stands in the first of the order's own lands — the
+#: Each order's emissary stands in the first of the order's own lands -- the
 #: same lands its doctrine work is counted against.
 EMISSARY_LANDS = ORDER_LANDS
 
 #: Kinds that stand where they are placed. A keeper keeps their page, a healer
-#: keeps their station, and a story character you have to find again must not
-#: have wandered off. The dim hound waits where it lies until befriended.
-FIXED = frozenset({"villager", "healer", "emissary", "lumi"})
+#: keeps their station, a Warden keeps their hall, and a story character you
+#: have to find again must not have wandered off.
+FIXED = frozenset({"villager", "healer", "emissary", "lumi", "warden", "keeper"})
 
 #: Tiles an NPC may stand on.
-WALKABLE = frozenset({GRASS, ROAD, FLOOR, CLINIC})
+WALKABLE = frozenset({GRASS, ROAD, FLOOR, CLINIC, PLAZA, GARDEN, SAND})
 
 #: Where wildlife may stand: the open country only. A beast on a village floor
 #: would break the one safety rule the map teaches -- inside the walls, nothing
 #: fights you.
-WILD_GROUND = frozenset({GRASS, ROAD})
+WILD_GROUND = frozenset({GRASS, ROAD, SAND})
 
 
 def _seed(text: str) -> int:
@@ -132,8 +174,8 @@ class Npc:
     Attributes
     ----------
     kind : str
-        ``villager``, ``townsfolk``, ``healer``, ``emissary``, ``animal`` or
-        ``beast``.
+        ``villager``, ``townsfolk``, ``healer``, ``keeper``, ``warden``,
+        ``emissary``, ``animal`` or ``beast``.
     name : str
         Display name.
     x, y : float
@@ -154,7 +196,11 @@ class Npc:
         of it.
     role : str
         What talking to them means to the game: ``""`` for flavour,
-        ``healer``, or ``emissary:<order>``.
+        ``healer``, ``tavern``, ``shop``, ``smithy``, ``shrine``,
+        ``warden:<key>`` or ``emissary:<order>``.
+    species : str
+        For an animal or a marked beast, which body it is -- so an encounter
+        fights the animal that was standing there rather than a fresh roll.
     """
 
     kind: str
@@ -168,6 +214,7 @@ class Npc:
     address: str = ""
     lines: tuple[str, ...] = ()
     role: str = ""
+    species: str = ""
     _phase: float = 0.0
 
     @property
@@ -197,6 +244,58 @@ class Npc:
         return math.hypot(self.x - x, self.y - y)
 
 
+def rumours(world, village) -> tuple[str, ...]:
+    """What the tavern has heard.
+
+    A rumour in a game of this kind is a hint system wearing a costume, and it
+    only works if it points at something that is actually there. Every line here
+    is read off the world: a Warden who really is in that town, a land that
+    really is dark, a crossing that really is in those cliffs.
+
+    Parameters
+    ----------
+    world : chisurf.plugins.misc.games.lumis_quest.api.world.World
+        The world to read.
+    village : chisurf.plugins.misc.games.lumis_quest.api.world.Village
+        Where the tavern is, so the rumour is about somewhere else.
+
+    Returns
+    -------
+    tuple of str
+        Two or three lines.
+    """
+    heard: list[str] = []
+    seats = [v for v in world.villages if v.warden and v is not village]
+    if seats:
+        seat = seats[_seed(village.place) % len(seats)]
+        warden = WARDEN_BY_KEY.get(seat.warden)
+        if warden is not None:
+            heard.append(
+                f"{warden.name} holds the hall at {seat.place}. They say "
+                f"{warden.name.split()[0]} has never lost to anyone who "
+                f"attacked every turn."
+            )
+    caves = world.caves
+    if caves:
+        col, row = caves[_seed(village.name) % len(caves)]
+        region = world.region_at(col * TILE, row * TILE)
+        where = region.title if region is not None else "the highlands"
+        heard.append(f"There is a cave in the cliffs of {where}. People who go "
+                     f"in come out saying the same three words.")
+    darkest = None
+    for region in world.regions:
+        rooms = region.rooms
+        if not rooms:
+            continue
+        dark = sum(1 for room in rooms if room.state == "wild") / len(rooms)
+        if darkest is None or dark > darkest[1]:
+            darkest = (region, dark)
+    if darkest is not None and darkest[1] > 0.2:
+        heard.append(f"Nobody has been through {darkest[0].title} in years. "
+                     f"Whatever is in there has had the run of it.")
+    return tuple(heard) or ("Quiet week. Nothing worth the price of the ale.",)
+
+
 def populate(world) -> list[Npc]:
     """Fill a world with its inhabitants.
 
@@ -208,7 +307,7 @@ def populate(world) -> list[Npc]:
     Returns
     -------
     list of Npc
-        Villagers, animals and beasts.
+        Villagers, townsfolk, premises keepers, Wardens, animals and beasts.
     """
     from .world import SETTLED, WILD
 
@@ -241,13 +340,15 @@ def populate(world) -> list[Npc]:
                     )
                 )
 
+            people.extend(_premises_keepers(world, village))
+
             # Townsfolk, scaled to the compound's size rather than to how many
             # pages are settled: the keeper-per-page rule is the one thing on
             # the map that means something, and these are the people around it.
             col, row, width, height = village.rect
             interior = max(0, (width - 2) * (height - 2))
-            for index in range(min(5, max(1, interior // 48))):
-                seed = _seed(f"{village.name}:townsfolk:{index}")
+            for index in range(min(6, max(1, interior // 44))):
+                seed = _seed(f"{village.place}:townsfolk:{index}")
                 name, line = TOWNSFOLK[seed % len(TOWNSFOLK)]
                 spot = _open_spot(
                     world,
@@ -264,10 +365,9 @@ def populate(world) -> list[Npc]:
                         _phase=(seed % 1000) / 1000.0 * math.tau)
                 )
 
-            # The healer, at the recovery station just inside the gate. The
-            # place that heals you should have someone in it who says so.
+            # The healer, at the recovery station just inside the gate.
             clinic_col, clinic_row = village.clinic
-            seed = _seed(f"{village.name}:healer")
+            seed = _seed(f"{village.place}:healer")
             spot = _open_spot(world, clinic_col + 1, clinic_row, seed, span=3)
             if spot is not None:
                 people.append(
@@ -277,9 +377,10 @@ def populate(world) -> list[Npc]:
                         _phase=(seed % 1000) / 1000.0 * math.tau)
                 )
 
-            # One or two animals per village, on the open ground outside it.
-            for index in range(1 + (_seed(village.name) % 2)):
-                seed = _seed(f"{village.name}:animal:{index}")
+            # Unmarked animals on the open ground outside. These are what the
+            # marked ones used to be.
+            for index in range(1 + (_seed(village.place) % 3)):
+                seed = _seed(f"{village.place}:animal:{index}")
                 kind, line = ANIMALS[seed % len(ANIMALS)]
                 spot = _open_spot(world, col + width // 2, row + height + 3 + index * 2,
                                   seed, allowed=WILD_GROUND)
@@ -287,15 +388,15 @@ def populate(world) -> list[Npc]:
                     continue
                 people.append(
                     Npc(kind="animal", name=kind, x=spot[0], y=spot[1], home=spot,
-                        radius=TILE * 3.0, line=line,
+                        radius=TILE * 3.0, line=line, species=kind,
                         _phase=(seed % 1000) / 1000.0 * math.tau)
                 )
 
-        # Beasts roam the wilds: a handful per land, scaled to how much of it is
-        # still unread, so a neglected land is also a dangerous one.
+        # Marked beasts roam the wilds: a handful per land, scaled to how much
+        # of it is still unread, so a neglected land is also a dangerous one.
         wild = sum(1 for room in region.rooms if room.state == WILD)
         rcol, rrow, rwidth, rheight = region.rect
-        for index in range(min(8, 1 + wild // 12)):
+        for index in range(min(10, 2 + wild // 10)):
             seed = _seed(f"{region.name}:beast:{index}")
             spot = _open_spot(
                 world,
@@ -306,15 +407,91 @@ def populate(world) -> list[Npc]:
             )
             if spot is None:
                 continue
+            species = SPECIES[seed % len(SPECIES)]
             people.append(
-                Npc(kind="beast", name="something in the grass", x=spot[0], y=spot[1],
-                    home=spot, radius=TILE * 5.0,
-                    line="It does not want to talk.",
+                Npc(kind="beast", name=f"a marked {species.name}",
+                    x=spot[0], y=spot[1], home=spot, radius=TILE * 5.0,
+                    line="It is burning, and it cannot stop.",
+                    species=species.key,
                     _phase=(seed % 1000) / 1000.0 * math.tau)
             )
 
     people.extend(_story_cast(world))
+    people.extend(_warden_cast(world))
     return people
+
+
+def _premises_keepers(world, village) -> list[Npc]:
+    """Put somebody at the door of every premises in a settlement.
+
+    Parameters
+    ----------
+    world : World
+        For finding standable ground.
+    village : Village
+        The settlement, whose ``premises`` says what it has.
+
+    Returns
+    -------
+    list of Npc
+        One keeper per premises, fewer where there is nowhere to stand.
+    """
+    made: list[Npc] = []
+    spec = {
+        "tavern": (TAVERN_KEEPER, TAVERN_LINES, "tavern"),
+        "shop": (SHOP_KEEPER, SHOP_LINES, "shop"),
+        "smithy": (SMITH, SMITH_LINES, "smithy"),
+        "shrine": (PRIEST, SHRINE_LINES, "shrine"),
+    }
+    for key, (name, lines, role) in spec.items():
+        where = village.premises.get(key)
+        if where is None:
+            continue
+        seed = _seed(f"{village.place}:{key}")
+        spot = _open_spot(world, where[0], where[1] + 1, seed, span=3)
+        if spot is None:
+            continue
+        made.append(
+            Npc(kind="keeper", name=name, x=spot[0], y=spot[1], home=spot,
+                radius=0.0, line=lines[0], lines=lines, role=role,
+                _phase=(seed % 1000) / 1000.0 * math.tau)
+        )
+    return made
+
+
+def _warden_cast(world) -> list[Npc]:
+    """Stand each Warden at the door of their hall.
+
+    Parameters
+    ----------
+    world : World
+        The world to place them in.
+
+    Returns
+    -------
+    list of Npc
+        One per Warden with a seat.
+    """
+    made: list[Npc] = []
+    for village in world.villages:
+        warden = WARDEN_BY_KEY.get(village.warden)
+        if warden is None:
+            continue
+        where = village.premises.get("hall") or village.premises.get("well")
+        if where is None:
+            continue
+        seed = _seed(f"warden:{warden.key}")
+        spot = _open_spot(world, where[0], where[1] + 1, seed, span=4)
+        if spot is None:
+            continue
+        made.append(
+            Npc(kind="warden", name=f"{warden.name}, {warden.title}",
+                x=spot[0], y=spot[1], home=spot, radius=0.0,
+                line=warden.lines[0], lines=warden.lines,
+                role=f"warden:{warden.key}",
+                _phase=(seed % 1000) / 1000.0 * math.tau)
+        )
+    return made
 
 
 #: What the keeper says over you when you come to. The last line hands the
@@ -323,20 +500,20 @@ ELDER_LINES = (
     "So. The probe is awake. I am Bram; I keep what is left of the lamps here.",
     "You were sent from the Wellspring, the way light is sent -- suddenly, and "
     "without being asked. The Fading has reached even this road.",
-    "A hound of light came through before you and would not leave. It is lying "
-    "out where the road bends, nearly spent. It has been waiting for someone "
+    "A hound of light came through before you and would not leave. He is lying "
+    "out where the road bends, nearly spent. He has been waiting for someone "
     "to follow.",
-    "Find it first. Then find the village -- the gate is the gap in the south "
-    "wall, and the lamps inside still hold. Go.",
+    "Find him first. Then mind the grass -- there are hares out there burning "
+    "gold, and nothing about that is natural. Go.",
 )
 
-#: What passes between Iris and the dim hound. No words on its side, of course.
+#: What passes between Iris and the dim hound. No words on his side, of course.
 LUMI_LINES = (
-    "The hound is barely an ember. It lifts its head, and something in its "
-    "glow steadies as it looks at you.",
-    "It knows what you are. It gets to its feet, shakes the dark off its "
-    "coat, and its light comes back green and full.",
-    "Lumi will follow you now. Where light has been, the hound can smell it.",
+    "The hound is barely an ember. He lifts his head, and something in his "
+    "glow steadies as he looks at you.",
+    "He knows what you are. He gets to his feet, shakes the dark off his "
+    "coat, and his light comes back green and full.",
+    "Nobody ever marked his line. Whatever he carries, he carries by right.",
 )
 
 
@@ -346,7 +523,7 @@ def awakening_cast(world) -> tuple[tuple[float, float], list[Npc]]:
     A run does not start mid-stride: Iris wakes in the open with the keeper
     Bram standing over her, and the dim hound lies further along the road,
     waiting to be found. Both stand fixed; both are placed off the first
-    village's gate so the scene points at the world's first door.
+    settlement's gate so the scene points at the world's first door.
 
     Parameters
     ----------
@@ -392,11 +569,9 @@ def awakening_cast(world) -> tuple[tuple[float, float], list[Npc]]:
 def _story_cast(world) -> list[Npc]:
     """Place the named story characters: one emissary per order.
 
-    Each stands outside the gate of the first village in a land whose character
-    suits their doctrine -- Rigour among the exact and largely unread, Clarity
-    on the road worn smooth by learners, Discovery at the markers pointing
-    elsewhere. Talking to one is how an order is chosen; :mod:`.story` holds
-    what they believe.
+    Each stands outside the gate of the first settlement in a land whose
+    character suits their doctrine. Talking to one is how an order is chosen;
+    :mod:`.story` holds what they believe.
 
     Parameters
     ----------
@@ -431,8 +606,8 @@ def _story_cast(world) -> list[Npc]:
         lines = (
             f"I am {EMISSARY_NAMES[key]}. I speak for {order['name']}.",
             order["belief"],
+            order["on_marking"],
             f"Our creed: {order['creed']}",
-            f"What we want is {order['wants']}.",
         )
         cast.append(
             Npc(kind="emissary", name=EMISSARY_NAMES[key],
@@ -443,8 +618,69 @@ def _story_cast(world) -> list[Npc]:
     return cast
 
 
+def dark_population(world) -> list[Npc]:
+    """Who is standing in the dark manifold.
+
+    They are not monsters. They are the shelved: labels driven all the way down,
+    still in the shape of whatever was carrying them. One of the few things the
+    game asks a player to feel is that this is somebody's fault.
+
+    Parameters
+    ----------
+    world : chisurf.plugins.misc.games.lumis_quest.api.world.World
+        The world, read for its dark grid.
+
+    Returns
+    -------
+    list of Npc
+        Wraiths, thickest where the living world is emptiest.
+    """
+    from .darkworld import WRAITH_LINES
+
+    made: list[Npc] = []
+    for region in world.regions:
+        rcol, rrow, rwidth, rheight = region.rect
+        for index in range(12):
+            seed = _seed(f"{region.name}:shelved:{index}")
+            spot = _open_spot(
+                world,
+                rcol + 3 + (seed % max(1, rwidth - 6)),
+                rrow + 3 + ((seed >> 8) % max(1, rheight - 6)),
+                seed,
+                allowed=frozenset({T.ASH, T.FLOOR, T.ROAD, T.PLAZA}),
+                dark=True,
+            )
+            if spot is None:
+                continue
+            species = SPECIES[(seed >> 3) % len(SPECIES)]
+            made.append(
+                Npc(kind="wraith", name=f"the shape of a {species.name}",
+                    x=spot[0], y=spot[1], home=spot, radius=TILE * 2.0,
+                    line=WRAITH_LINES[seed % len(WRAITH_LINES)],
+                    species=species.key,
+                    _phase=(seed % 1000) / 1000.0 * math.tau)
+            )
+    return made
+
+
+def species_of(npc: Npc):
+    """The body an animal or beast NPC is.
+
+    Parameters
+    ----------
+    npc : Npc
+        Whoever is being fought or looked at.
+
+    Returns
+    -------
+    Species or None
+        ``None`` for anyone who is not an animal.
+    """
+    return SPECIES_BY_KEY.get(npc.species)
+
+
 def _open_spot(world, col: int, row: int, seed: int, span: int = 5,
-               allowed: frozenset[int] = WALKABLE):
+               allowed: frozenset[int] = WALKABLE, dark: bool = False):
     """Find a standable tile near a target cell.
 
     Parameters
@@ -460,6 +696,8 @@ def _open_spot(world, col: int, row: int, seed: int, span: int = 5,
     allowed : frozenset of int, optional
         Tiles that qualify. Wildlife passes :data:`WILD_GROUND` so a beast can
         never end up standing on a village floor.
+    dark : bool, optional
+        Look in the dark manifold instead.
 
     Returns
     -------
@@ -470,13 +708,14 @@ def _open_spot(world, col: int, row: int, seed: int, span: int = 5,
         dx = (step + seed) % span - span // 2
         dy = (step // span + seed // 7) % span - span // 2
         c, r = col + dx, row + dy
-        if world.tile_at(c, r) in allowed:
+        if world.tile_at(c, r, dark) in allowed:
             return ((c + 0.5) * TILE, (r + 0.5) * TILE)
     return None
 
 
 def update(people: list[Npc], world, dt: float, clock: float,
-           near: tuple[float, float] | None = None, radius: float = 700.0) -> None:
+           near: tuple[float, float] | None = None, radius: float = 700.0,
+           dark: bool = False) -> None:
     """Move the world's inhabitants.
 
     Only those near the player are stepped. The world holds well over a hundred
@@ -497,13 +736,15 @@ def update(people: list[Npc], world, dt: float, clock: float,
         Only update within ``radius`` of this point.
     radius : float, optional
         How far to bother.
+    dark : bool, optional
+        Collide against the dark manifold.
     """
     for npc in people:
         if npc.kind in FIXED:
             continue  # they stand where they stand
         if near is not None and npc.distance_to(*near) > radius:
             continue
-        speed = {"animal": 14.0, "townsfolk": 9.0}.get(npc.kind, 22.0)
+        speed = {"animal": 14.0, "townsfolk": 9.0, "wraith": 6.0}.get(npc.kind, 22.0)
         angle = npc._phase + clock * (0.35 if npc.kind == "animal" else 0.22)
         dx = math.cos(angle) * speed * dt
         dy = math.sin(angle * 1.3) * speed * dt
@@ -512,10 +753,12 @@ def update(people: list[Npc], world, dt: float, clock: float,
         # inside the walls, nothing fights you, and that rule is worth more
         # than a beast's freedom of movement.
         ground = WILD_GROUND if npc.kind == "beast" else WALKABLE
-        if world.tile_at(int((npc.x + dx) // TILE), int(npc.y // TILE)) in ground and \
+        if dark:
+            ground = frozenset({T.ASH, T.FLOOR, T.ROAD, T.PLAZA})
+        if world.tile_at(int((npc.x + dx) // TILE), int(npc.y // TILE), dark) in ground and \
                 abs(npc.x + dx - npc.home[0]) < npc.radius:
             npc.x += dx
-        if world.tile_at(int(npc.x // TILE), int((npc.y + dy) // TILE)) in ground and \
+        if world.tile_at(int(npc.x // TILE), int((npc.y + dy) // TILE), dark) in ground and \
                 abs(npc.y + dy - npc.home[1]) < npc.radius:
             npc.y += dy
         npc.facing = ("right" if dx > 0 else "left") if abs(dx) > abs(dy) else (
@@ -523,7 +766,7 @@ def update(people: list[Npc], world, dt: float, clock: float,
         )
 
 
-def _blocked(world, x: float, y: float) -> bool:
+def _blocked(world, x: float, y: float, dark: bool = False) -> bool:
     """Whether a position is solid.
 
     Parameters
@@ -532,13 +775,15 @@ def _blocked(world, x: float, y: float) -> bool:
         The world.
     x, y : float
         World coordinates.
+    dark : bool, optional
+        Test the dark manifold.
 
     Returns
     -------
     bool
         True when nothing may stand there.
     """
-    return is_blocking(world.tile_at(int(x // TILE), int(y // TILE)))
+    return is_blocking(world.tile_at(int(x // TILE), int(y // TILE), dark))
 
 
 def nearest(people: list[Npc], x: float, y: float, within: float = TILE * 1.6):

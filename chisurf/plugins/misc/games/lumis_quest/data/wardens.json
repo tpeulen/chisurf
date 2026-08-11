@@ -1,0 +1,86 @@
+{
+  "_comment": "The tier ladder. Each Warden grants one licence tier and teaches one real thing before making you use it. 'lands' are documentation directories, most-wanted first; a corpus with none of them still gets the Warden a seat (see world._warden_seats). 'body' is a species key from api/bestiary.py. Keep every line under ~180 characters and write -- rather than an em dash.",
+
+  "wardens": [
+    {
+      "key": "ember",
+      "name": "Tolm",
+      "title": "Warden of the Ember",
+      "tier": 1,
+      "seal": "Seal of the Ember",
+      "lands": ["getting_started", "fundamentals", "guides"],
+      "lesson": "Shining costs. Whatever hits hardest runs out first.",
+      "body": "boar",
+      "lines": [
+        "You have a marked beast and no idea what it costs it. Sit down.",
+        "Every shot it fires, it spends. A bright label spends more. Go and watch one burn out if you do not believe me.",
+        "So: last longer than my boar. Attack every turn and you will lose to a slower animal."
+      ],
+      "after": "Good. You spent it deliberately. Take the Ember."
+    },
+    {
+      "key": "prism",
+      "name": "Ysolde",
+      "title": "Warden of the Prism",
+      "tier": 2,
+      "seal": "Seal of the Prism",
+      "lands": ["concepts", "guides", "manual"],
+      "lesson": "Colour is not decoration. What you emit must land where they absorb.",
+      "body": "mantis",
+      "lines": [
+        "Name the colour of the thing you are about to hit. You cannot? Then you have been winning by accident.",
+        "A shot counts only if the target can drink it. Your green into her green is a wasted afternoon.",
+        "My mantis is Azure. Bring me something she wants to absorb."
+      ],
+      "after": "You picked your band before you swung. That is the Prism."
+    },
+    {
+      "key": "shutter",
+      "name": "Kestrel",
+      "title": "Warden of the Shutter",
+      "tier": 3,
+      "seal": "Seal of the Shutter",
+      "lands": ["reference", "development", "api"],
+      "lesson": "You cannot catch what you cannot see. The filter decides the world.",
+      "body": "owl",
+      "lines": [
+        "Everyone arrives thinking the glass is a bonus. It is not. It is the eye.",
+        "Fit the wrong band and half the wild goes invisible. Still there, still hunting you, simply not drawn.",
+        "My owl is Umbral. Most of what you carry cannot see her at all. Fix that before you swing."
+      ],
+      "after": "You changed your glass instead of your team. Take the Shutter."
+    },
+    {
+      "key": "triplet",
+      "name": "Ovid",
+      "title": "Warden of the Triplet",
+      "tier": 4,
+      "seal": "Seal of the Triplet",
+      "lands": ["manual", "references", "development"],
+      "lesson": "There is a dark state under this one, and things live in it.",
+      "body": "bat",
+      "lines": [
+        "A label that pushes too hard does not stop. It crosses -- into a state where it is still there and no longer shining.",
+        "I have been down. It is the same world with the light taken out, and the things in it were ours once.",
+        "Beat me and I will show you the way in. Refuse, and I will think better of you than most."
+      ],
+      "after": "Then come and look. The crossing is the cave under the cliffs."
+    },
+    {
+      "key": "wellspring",
+      "name": "Nera",
+      "title": "Warden of the Wellspring",
+      "tier": 5,
+      "seal": "Seal of the Wellspring",
+      "lands": ["fundamentals", "concepts", "references"],
+      "lesson": "Nobody invented this light. It was taken from animals that had it.",
+      "body": "jelly",
+      "lines": [
+        "Before any of us fixed a dye into anything, there was a jellyfish in cold water that was already green.",
+        "Every label you carry descends from an animal that never needed a labeller. Vesper forgets this. Do not.",
+        "Face what the sea has had all along, and the last seal is yours."
+      ],
+      "after": "Now you know where it comes from. Go and tell the Lanternwright."
+    }
+  ]
+}

@@ -1,19 +1,21 @@
 """The overworld: a real tile map, generated from the documentation.
 
 The map is not authored, and it is not a scatter of markers either. It is a grid
-that gets *painted*: grass and woodland, water you cannot cross without a bridge,
-roads that run between places, and villages that are walled compounds with a gate
-rather than dots on a rectangle. A walker collides with it.
+that gets *painted*: grass and woodland, lakes with sand at their rim, rivers
+you cross at a bridge, cliffs you walk around until you find the cave in them,
+roads that run between places, and settlements that are laid out like towns
+rather than stamped like tables.
 
 Its shape comes from the documentation:
 
 * a **region** is a top-level documentation directory, named as a place rather
-  than a folder (see :mod:`.names`);
-* a **village** is a toctree group -- a walled compound whose buildings are its
-  pages;
+  than a folder (see :mod:`.names`) and given a **biome**, so no two lands look
+  alike;
+* a **settlement** is a toctree group -- a hamlet, village or town depending on
+  how many pages it holds (see :mod:`.places`);
 * a **room** is a page, and it is a building you stand in front of.
 
-Three rules hold the generation together:
+Four rules hold the generation together:
 
 * **Layout is seeded by a page's path**, so a page keeps its place as the corpus
   churns and adding one is a new building rather than a reshuffle. Nothing is
@@ -23,6 +25,8 @@ Three rules hold the generation together:
   work and must not be collapsed into either neighbour.
 * **Remoteness is review debt**, weighted above depth, so the reward gradient
   points where the corpus actually needs attention.
+* **The map opens in an order.** Each land's crossing wants a Warden's seal
+  (see :mod:`.tiers`), so the world is large without being formless.
 
 Qt-free and engine-free: this is the model the view draws, which is what makes
 the map testable without a window.
@@ -39,23 +43,29 @@ import numpy as np
 
 from chisurf.plugins.core.help.api import review, toc
 
-from .names import region_name
+from . import places
+from .names import biome_for, region_name, settlement_name
 from .tiles import (
     BRIDGE,
-    CLINIC,
     BUILDING,
-    FLOOR,
+    CAVE,
+    CLIFF,
+    CLINIC,
+    DOCK,
+    FLOWERS,
     GATE,
     GRASS,
+    MARSH,
     ROAD,
     ROCK,
+    SAND,
     TILE,
     TREE,
     VOID,
-    WALL,
     WATER,
     is_blocking,
 )
+from .tiers import WARDENS, crossing_tier
 
 #: Room states, in increasing order of settledness. WITHERED is the garden
 #: half of the farm layer: a page whose content moved under its sign-off is
@@ -66,26 +76,13 @@ WITHERED = "withered"
 SCOUTED = "scouted"
 SETTLED = "settled"
 
-#: Buildings per row inside a village compound before it wraps.
-VILLAGE_COLUMNS = 5
-
-#: Tiles from one building to the next inside a compound. At 2 the buildings sat
-#: on every other tile -- a grid of doors with a one-tile alley between them, and
-#: nowhere to stand or to put anyone who is not a page-keeper. At 3 a village has
-#: streets, at the cost of every region growing by roughly half.
-ROOM_PITCH = 3
-
-#: Tiles of open floor between the wall and the nearest building, so a compound
-#: has a perimeter street rather than houses jammed against the wall.
-VILLAGE_MARGIN = 2
-
-#: Villages per row inside a region before it wraps.
+#: Settlements per row inside a region before it wraps.
 REGION_COLUMNS = 3
 
 #: Open ground between compounds and between lands, in tiles. These are large
 #: on purpose: a world you cross in four strides is a menu with scenery, and
-#: the wilderness between villages is where exploration happens at all.
-VILLAGE_GAP = 15
+#: the wilderness between settlements is where exploration happens at all.
+VILLAGE_GAP = 18
 REGION_GAP = 30
 
 #: Thickness of the water separating one land from the next.
@@ -98,6 +95,17 @@ BORDER_WOOD = 2
 #: Clear ground kept either side of a road, and around every compound. Without
 #: it a copse grows across the only way in and the road becomes impassable.
 VERGE = 1
+
+#: How much of a land is woodland, rock, marsh and flowers, per biome. These are
+#: percentages against a per-tile roll, and they are most of why a coast does
+#: not read like a deep wood.
+BIOME_COVER: dict[str, dict[str, int]] = {
+    "meadow": {"copse": 12, "tree": 45, "rock": 3, "marsh": 0, "flower": 2, "lakes": 2},
+    "forest": {"copse": 34, "tree": 72, "rock": 4, "marsh": 2, "flower": 2, "lakes": 2},
+    "marsh": {"copse": 16, "tree": 40, "rock": 1, "marsh": 22, "flower": 3, "lakes": 4},
+    "highland": {"copse": 9, "tree": 38, "rock": 14, "marsh": 0, "flower": 2, "lakes": 2},
+    "coast": {"copse": 10, "tree": 40, "rock": 4, "marsh": 4, "flower": 2, "lakes": 3},
+}
 
 
 def _tile_noise(salt: int, x: int, y: int) -> int:
@@ -203,12 +211,17 @@ class Room:
 
 @dataclasses.dataclass
 class Village:
-    """A toctree group: a walled compound whose buildings are its pages.
+    """A toctree group, as a settlement: hamlet, village or town.
 
     Attributes
     ----------
     name : str
-        The group's own title.
+        The group's own title -- what the place is known *for*.
+    place : str
+        Its place name, e.g. ``Emberford``. A section heading is not somewhere
+        anybody walks to.
+    kind : str
+        ``hamlet``, ``village`` or ``town``.
     rooms : list of Room
         Its pages.
     rect : tuple of int
@@ -217,13 +230,23 @@ class Village:
         Grid cell of the gate in the wall.
     clinic : tuple of int
         Grid cell of the recovery station, just inside the gate.
+    premises : dict
+        Named landmarks in world tiles: ``well``, ``tavern``, ``shop``,
+        ``smithy``, ``shrine``, ``hall``.
+    warden : str
+        Key into :data:`chisurf.plugins.misc.games.lumis_quest.api.tiers.BY_KEY`
+        when a Warden holds their hall here, else empty.
     """
 
     name: str
+    place: str = ""
+    kind: str = "village"
     rooms: list[Room] = dataclasses.field(default_factory=list)
     rect: tuple[int, int, int, int] = (0, 0, 0, 0)
     gate: tuple[int, int] = (0, 0)
     clinic: tuple[int, int] = (0, 0)
+    premises: dict[str, tuple[int, int]] = dataclasses.field(default_factory=dict)
+    warden: str = ""
 
     @property
     def position(self) -> tuple[float, float]:
@@ -250,6 +273,17 @@ class Village:
             return 0.0
         return sum(room.state == SETTLED for room in self.rooms) / len(self.rooms)
 
+    @property
+    def label(self) -> str:
+        """How the place announces itself.
+
+        Returns
+        -------
+        str
+            Place name and what it keeps.
+        """
+        return f"{self.place} -- {self.name}" if self.place else self.name
+
 
 @dataclasses.dataclass
 class Region:
@@ -263,17 +297,26 @@ class Region:
         The land's name, e.g. ``The Pilgrim Road``.
     subtitle : str
         A line describing it.
+    biome : str
+        A key of :data:`chisurf.plugins.misc.games.lumis_quest.api.names.BIOMES`.
+    index : int
+        Position in layout order, which is also how far into the run it sits.
     villages : list of Village
-        Its compounds.
+        Its settlements.
     rect : tuple of int
         ``(col, row, width, height)`` of the land, in tiles.
+    cave : tuple of int or None
+        Grid cell of the cave mouth in its cliffs, when it has any.
     """
 
     name: str
     title: str
     subtitle: str = ""
+    biome: str = "meadow"
+    index: int = 0
     villages: list[Village] = dataclasses.field(default_factory=list)
     rect: tuple[int, int, int, int] = (0, 0, 0, 0)
+    cave: tuple[int, int] | None = None
 
     @property
     def position(self) -> tuple[float, float]:
@@ -298,6 +341,17 @@ class Region:
         """
         return [room for village in self.villages for room in village.rooms]
 
+    @property
+    def crossing_tier(self) -> int:
+        """Which licence the way into this land demands.
+
+        Returns
+        -------
+        int
+            1..5, from :func:`..tiers.crossing_tier`.
+        """
+        return crossing_tier(self.index)
+
 
 @dataclasses.dataclass
 class World:
@@ -317,6 +371,9 @@ class World:
     #: window out of this every frame; doing that over lists of ints is most of
     #: a frame's budget once the world is tens of thousands of tiles.
     array: np.ndarray = dataclasses.field(default_factory=lambda: np.zeros((0, 0), np.uint8))
+    #: The dark manifold: the same ground with the light taken out. Built once
+    #: beside the lit world so crossing over is a swap rather than a rebuild.
+    dark: np.ndarray = dataclasses.field(default_factory=lambda: np.zeros((0, 0), np.uint8))
     #: Salts the terrain only; the structure is always the documentation's.
     seed: str = ""
 
@@ -364,13 +421,26 @@ class World:
         """
         return [village for region in self.regions for village in region.villages]
 
-    def tile_at(self, col: int, row: int) -> int:
+    @property
+    def caves(self) -> list[tuple[int, int]]:
+        """Every cave mouth in the world.
+
+        Returns
+        -------
+        list of tuple
+            Grid cells. These are the crossings into the dark manifold.
+        """
+        return [region.cave for region in self.regions if region.cave is not None]
+
+    def tile_at(self, col: int, row: int, dark: bool = False) -> int:
         """The tile at a grid cell.
 
         Parameters
         ----------
         col, row : int
             Grid coordinates.
+        dark : bool, optional
+            Read the dark manifold instead of the lit world.
 
         Returns
         -------
@@ -380,22 +450,26 @@ class World:
         """
         if row < 0 or row >= self.height or col < 0 or col >= self.width:
             return VOID
+        if dark and self.dark.size:
+            return int(self.dark[row, col])
         return self.grid[row][col]
 
-    def blocked(self, x: float, y: float) -> bool:
+    def blocked(self, x: float, y: float, dark: bool = False) -> bool:
         """Whether a world position is inside something solid.
 
         Parameters
         ----------
         x, y : float
             World coordinates.
+        dark : bool, optional
+            Test the dark manifold.
 
         Returns
         -------
         bool
             True when a walker cannot stand there.
         """
-        return is_blocking(self.tile_at(int(x // TILE), int(y // TILE)))
+        return is_blocking(self.tile_at(int(x // TILE), int(y // TILE), dark))
 
     def bounds(self) -> tuple[float, float, float, float]:
         """Extent of the whole grid in world units.
@@ -440,6 +514,26 @@ class World:
                 return region
         return None
 
+    def village_at(self, x: float, y: float) -> Village | None:
+        """The settlement containing a world position.
+
+        Parameters
+        ----------
+        x, y : float
+            World coordinates.
+
+        Returns
+        -------
+        Village or None
+            ``None`` when standing outside every compound.
+        """
+        col, row = int(x // TILE), int(y // TILE)
+        for village in self.villages:
+            vcol, vrow, width, height = village.rect
+            if vcol <= col < vcol + width and vrow <= row < vrow + height:
+                return village
+        return None
+
     def nearest_room(self, position: tuple[float, float]) -> Room | None:
         """The room closest to a point.
 
@@ -476,7 +570,7 @@ class World:
         for region in self.regions:
             for village in region.villages:
                 col, row = village.gate
-                return ((col + 0.5) * TILE, (row + 1.5) * TILE)
+                return ((col + 0.5) * TILE, (row + 2.5) * TILE)
         return (TILE * 1.5, TILE * 1.5)
 
 
@@ -532,33 +626,6 @@ def _collect(node: toc.Node, depth: int = 0) -> list[tuple[toc.Node, int]]:
     for child in node.children:
         found.extend(_collect(child, depth + 1))
     return found
-
-
-def _village_size(room_count: int) -> tuple[int, int]:
-    """Compound size in tiles for a given number of buildings.
-
-    Buildings sit every :data:`ROOM_PITCH` tiles so there are streets to walk
-    and ground to stand on; the compound adds a floor margin and a wall ring
-    around that.
-
-    Parameters
-    ----------
-    room_count : int
-        Number of buildings.
-
-    Returns
-    -------
-    tuple of int
-        ``(width, height)`` in tiles, wall included.
-    """
-    columns = min(max(room_count, 1), VILLAGE_COLUMNS)
-    rows = max(1, math.ceil(room_count / VILLAGE_COLUMNS))
-    # Wall, margin, then buildings a pitch apart, then margin and wall again.
-    span = 2 * (1 + VILLAGE_MARGIN)
-    return (
-        (columns - 1) * ROOM_PITCH + span + 1,
-        (rows - 1) * ROOM_PITCH + span + 1,
-    )
 
 
 def _address(path: pathlib.Path, repo_root: pathlib.Path) -> str:
@@ -638,6 +705,41 @@ def _read_groups(directory: pathlib.Path) -> list[tuple[str, list[tuple[toc.Node
     return groups
 
 
+def _warden_seats(regions: list[Region]) -> None:
+    """Give each Warden a hall, in a land whose character suits them.
+
+    A Warden with no seat is a fight the player can never find, so the fallback
+    matters more than the preference: every Warden gets a settlement even in a
+    corpus that has none of the directories they would have chosen.
+
+    Parameters
+    ----------
+    regions : list of Region
+        The placed lands, modified in place.
+    """
+    if not regions:
+        return
+    by_name = {region.name: region for region in regions}
+    taken: set[int] = set()
+    for index, warden in enumerate(WARDENS):
+        region = next((by_name[name] for name in warden.lands if name in by_name), None)
+        if region is None or not region.villages:
+            region = regions[index % len(regions)]
+        village = next(
+            (v for v in region.villages if id(v) not in taken and not v.warden),
+            None,
+        )
+        if village is None:
+            # Every settlement in the preferred land is spoken for: take the
+            # biggest free one anywhere rather than dropping the Warden.
+            free = [v for r in regions for v in r.villages if id(v) not in taken]
+            if not free:
+                continue
+            village = max(free, key=lambda v: len(v.rooms))
+        village.warden = warden.key
+        taken.add(id(village))
+
+
 def build_world(docs_root: pathlib.Path | None = None, seed: str = "") -> World:
     """Generate the overworld from the documentation tree.
 
@@ -669,15 +771,52 @@ def build_world(docs_root: pathlib.Path | None = None, seed: str = "") -> World:
         entry for entry in root.iterdir() if entry.is_dir() and not entry.name.startswith("_")
     )
 
+    # First pass: what exists. No geometry yet -- a Warden's seat is always a
+    # town, and deciding that *after* the compounds were measured is what made
+    # the walls of an upgraded settlement paint at the old size while its rect
+    # said otherwise. Iris walked straight through one.
     pending: list[Region] = []
+    contents: list[list[tuple[str, list]]] = []
     for directory in directories:
         groups = _read_groups(directory)
         if not groups:
             continue
         title, subtitle = region_name(directory.name)
-        region = Region(name=directory.name, title=title, subtitle=subtitle)
+        region = Region(
+            name=directory.name, title=title, subtitle=subtitle,
+            biome=biome_for(len(pending), directory.name), index=len(pending),
+        )
+        for group_title, pages in groups:
+            region.villages.append(
+                Village(
+                    name=group_title,
+                    place=settlement_name(f"{directory.name}/{group_title}"),
+                    rooms=[
+                        Room(
+                            title=node.title,
+                            path=node.path,
+                            address=_address(node.path, repo_root),
+                            depth=depth,
+                            state=_state_for(node.path),
+                        )
+                        for node, depth in pages
+                    ],
+                )
+            )
+        pending.append(region)
+        contents.append(groups)
 
-        sizes = [_village_size(len(pages)) for _, pages in groups]
+    _warden_seats(pending)
+
+    # Second pass: geometry, now that every settlement knows what it is.
+    plans: dict[int, places.Plan] = {}
+    for region in pending:
+        laid = []
+        for village in region.villages:
+            warden = bool(village.warden)
+            village.kind = places.kind_for(len(village.rooms), warden=warden)
+            laid.append(places.plan(len(village.rooms), village.kind, warden=warden))
+        sizes = [(one.width, one.height) for one in laid]
         cursor_col = 0
         cursor_row = 0
         row_height = 0
@@ -699,29 +838,14 @@ def build_world(docs_root: pathlib.Path | None = None, seed: str = "") -> World:
             cursor_row + row_height + VILLAGE_GAP,
         )
 
-        for (group_title, pages), (col, row), (width, height) in zip(groups, placements, sizes):
-            village = Village(name=group_title, rect=(col, row, width, height))
-            for page_index, (node, depth) in enumerate(pages):
-                village.rooms.append(
-                    Room(
-                        title=node.title,
-                        path=node.path,
-                        address=_address(node.path, repo_root),
-                        depth=depth,
-                        state=_state_for(node.path),
-                        tile=(
-                            col + 1 + VILLAGE_MARGIN
-                            + (page_index % VILLAGE_COLUMNS) * ROOM_PITCH,
-                            row + 1 + VILLAGE_MARGIN
-                            + (page_index // VILLAGE_COLUMNS) * ROOM_PITCH,
-                        ),
-                    )
-                )
-            # The gate sits in the middle of the south wall, so every compound is
-            # entered the same way and the roads have something to aim at.
-            village.gate = (col + width // 2, row + height - 1)
-            region.villages.append(village)
-        pending.append(region)
+        for village, (col, row), layout in zip(region.villages, placements, laid):
+            village.rect = (col, row, layout.width, layout.height)
+            for index, room in enumerate(village.rooms):
+                cell = (layout.room_cells[index] if index < len(layout.room_cells)
+                        else (1 + places.MARGIN, 1 + places.MARGIN))
+                room.tile = (col + cell[0], row + cell[1])
+            village.gate = (col + layout.gate[0], row + layout.gate[1])
+            plans[id(village)] = layout
 
     cursor_col = MOAT
     cursor_row = MOAT
@@ -737,7 +861,7 @@ def build_world(docs_root: pathlib.Path | None = None, seed: str = "") -> World:
         cursor_col += width + REGION_GAP
         world.regions.append(region)
 
-    _paint(world)
+    _paint(world, plans)
     return world
 
 
@@ -766,13 +890,15 @@ def _translate_region(region: Region, col: int, row: int) -> None:
             room.tile = (room.tile[0] + col, room.tile[1] + row)
 
 
-def _paint(world: World) -> None:
+def _paint(world: World, plans: dict[int, places.Plan]) -> None:
     """Paint the tile grid from the placed regions.
 
     Parameters
     ----------
     world : World
         The world to paint in situ. Its ``grid`` is replaced.
+    plans : dict
+        Settlement plans by ``id(village)``.
     """
     if not world.regions:
         return
@@ -786,6 +912,10 @@ def _paint(world: World) -> None:
 
     for region in world.regions:
         _paint_region(grid, region, world.seed)
+    for region in world.regions:
+        _paint_lakes(grid, region, world.seed)
+        _paint_cliffs(grid, region, world.seed)
+    _paint_shores(grid)
     _paint_bridges(grid, world.regions)
     for region in world.regions:
         _paint_roads(grid, region)
@@ -794,14 +924,31 @@ def _paint(world: World) -> None:
             _clear_around(grid, village.rect, VERGE + 1)
     for region in world.regions:
         for village in region.villages:
-            _paint_village(grid, village)
+            layout = plans.get(id(village))
+            if layout is None:
+                continue
+            origin = (village.rect[0], village.rect[1])
+            landmarks = places.paint(grid, origin, layout, _seed(village.place),
+                                     warden=bool(village.warden))
+            placed = places.paint_rooms(grid, origin, layout.room_cells)
+            for room, tile in zip(village.rooms, placed):
+                room.tile = tile
+            village.gate = landmarks.get("gate", village.gate)
+            village.clinic = landmarks.get("clinic", village.clinic)
+            village.premises = {
+                key: value for key, value in landmarks.items()
+                if key not in ("gate", "clinic")
+            }
 
     world.grid = grid
     world.array = np.asarray(grid, dtype=np.uint8)
+    from . import darkworld
+    world.dark = darkworld.shadow(world.array)
+    darkworld.raise_tower(world)
 
 
 def _paint_region(grid: list[list[int]], region: Region, world_seed: str = "") -> None:
-    """Lay a land's ground: grass, with woodland and rock scattered over it.
+    """Lay a land's ground, in the mix its biome calls for.
 
     Parameters
     ----------
@@ -809,9 +956,12 @@ def _paint_region(grid: list[list[int]], region: Region, world_seed: str = "") -
         The tile grid.
     region : Region
         The region to paint.
+    world_seed : str, optional
+        Salts the scatter.
     """
     col, row, width, height = region.rect
     salt = _seed(region.name + world_seed) & 0xFFFFFFFF
+    cover = BIOME_COVER.get(region.biome, BIOME_COVER["meadow"])
     for y in range(row, row + height):
         for x in range(col, col + width):
             if not (0 <= y < len(grid) and 0 <= x < len(grid[0])):
@@ -830,14 +980,242 @@ def _paint_region(grid: list[list[int]], region: Region, world_seed: str = "") -
             # Inland, trees come in copses rather than singly: the coarse grid
             # decides whether there is a copse here at all, and only then does
             # the fine roll place trunks in it.
-            copse = _tile_noise(salt, x // 4, y // 4) < 14
+            copse = _tile_noise(salt, x // 4, y // 4) < cover["copse"]
             roll = _tile_noise(salt ^ 0x9E3779B9, x, y)
-            if copse and roll < 55:
+            boggy = _tile_noise(salt ^ 0x51ED270B, x // 5, y // 5) < cover["marsh"]
+            if copse and roll < cover["tree"]:
                 grid[y][x] = TREE
-            elif not copse and roll < 3:
+            elif boggy and roll < 70:
+                grid[y][x] = MARSH
+            elif not copse and roll < cover["rock"]:
                 grid[y][x] = ROCK
+            elif roll >= 100 - cover["flower"]:
+                grid[y][x] = FLOWERS
             else:
                 grid[y][x] = GRASS
+
+
+def _free_of_villages(region: Region, col: int, row: int, radius: int) -> bool:
+    """Whether a disc of ground has no settlement in it.
+
+    Parameters
+    ----------
+    region : Region
+        The land.
+    col, row : int
+        Centre, in tiles.
+    radius : int
+        How far to keep clear.
+
+    Returns
+    -------
+    bool
+        True when nothing built is within reach.
+    """
+    for village in region.villages:
+        vcol, vrow, width, height = village.rect
+        if (vcol - radius <= col <= vcol + width + radius
+                and vrow - radius <= row <= vrow + height + radius):
+            return False
+    return True
+
+
+def _open_basin(region: Region, radius_x: int, radius_y: int, salt: int,
+                index: int = 0) -> tuple[int, int] | None:
+    """Somewhere in a land with room for a mass of this size.
+
+    Parameters
+    ----------
+    region : Region
+        The land.
+    radius_x, radius_y : int
+        Half-extent of the thing being placed.
+    salt : int
+        Deterministic order of candidates.
+    index : int, optional
+        Which mass this is, so two do not land on the same spot.
+
+    Returns
+    -------
+    tuple of int or None
+        Centre in tiles, or ``None`` when the land has no room left.
+    """
+    col, row, width, height = region.rect
+    clear = max(radius_x, radius_y) + 4
+    span_x = max(1, width - 2 * BORDER_WOOD - 2 * radius_x - 4)
+    span_y = max(1, height - 2 * BORDER_WOOD - 2 * radius_y - 4)
+    for attempt in range(24):
+        mix = salt >> (attempt % 20) ^ (attempt * 2654435761 + index * 40503)
+        cx = col + BORDER_WOOD + radius_x + 2 + mix % span_x
+        cy = row + BORDER_WOOD + radius_y + 2 + (mix >> 13) % span_y
+        if _free_of_villages(region, cx, cy, clear):
+            return (cx, cy)
+    return None
+
+
+def _paint_lakes(grid: list[list[int]], region: Region, world_seed: str = "") -> None:
+    """Put standing water in a land, and a river out of it.
+
+    A land with no water in it reads as a texture. A lake is a landmark you
+    navigate by, a reason for a bridge, and where half the bodies in
+    :mod:`.bestiary` live.
+
+    Parameters
+    ----------
+    grid : list of list of int
+        The tile grid.
+    region : Region
+        The land.
+    world_seed : str, optional
+        Salts placement.
+    """
+    col, row, width, height = region.rect
+    cover = BIOME_COVER.get(region.biome, BIOME_COVER["meadow"])
+    salt = _seed(f"{region.name}:lake:{world_seed}")
+    for index in range(cover["lakes"]):
+        spot_seed = salt >> (index * 7)
+        radius_x = 5 + spot_seed % 7
+        radius_y = 4 + (spot_seed >> 5) % 6
+        # Try a spread of candidate basins rather than one. A single roll was
+        # nearly always inside a settlement's clearance and the lake was simply
+        # dropped, so most lands had no water in them at all.
+        spot = _open_basin(region, radius_x, radius_y, spot_seed, index)
+        if spot is None:
+            continue
+        cx, cy = spot
+        for y in range(cy - radius_y - 1, cy + radius_y + 2):
+            for x in range(cx - radius_x - 1, cx + radius_x + 2):
+                if not (0 <= y < len(grid) and 0 <= x < len(grid[0])):
+                    continue
+                # A wobble on the rim, so the lake is not an ellipse anybody
+                # would notice being an ellipse.
+                wobble = 0.85 + _tile_noise(salt, x // 3, y // 3) / 300.0
+                dx = (x - cx) / max(radius_x, 1)
+                dy = (y - cy) / max(radius_y, 1)
+                if dx * dx + dy * dy <= wobble:
+                    grid[y][x] = WATER
+
+        # A river leaves the lake for the sea, which is what stops the lake
+        # being a puddle somebody dropped on the map.
+        _paint_river(grid, region, (cx, cy + radius_y), salt >> (index * 3 + 1))
+
+
+def _paint_river(grid: list[list[int]], region: Region, start: tuple[int, int],
+                 salt: int) -> None:
+    """Run a river from a point to the edge of its land.
+
+    Parameters
+    ----------
+    grid : list of list of int
+        The tile grid.
+    region : Region
+        The land, which bounds the run.
+    start : tuple of int
+        Where the river leaves the lake.
+    salt : int
+        Deterministic meander.
+    """
+    col, row, width, height = region.rect
+    x, y = start
+    for step in range(height):
+        if not (row <= y < row + height and col <= x < col + width):
+            break
+        if not _free_of_villages(region, x, y, 3):
+            break
+        for dx in (0, 1):
+            if 0 <= y < len(grid) and 0 <= x + dx < len(grid[0]):
+                grid[y][x + dx] = WATER
+        y += 1
+        x += ((salt >> (step % 24)) & 3) - 1
+
+
+def _paint_cliffs(grid: list[list[int]], region: Region, world_seed: str = "") -> None:
+    """Raise a mass of cliff in a land, and open a cave in the foot of it.
+
+    The cave is the crossing into the dark manifold, so every land that can
+    hold one gets one: a way down that only exists in some lands would be a way
+    down most players never find.
+
+    Parameters
+    ----------
+    grid : list of list of int
+        The tile grid.
+    region : Region
+        The land, modified through its ``cave`` field.
+    world_seed : str, optional
+        Salts placement.
+    """
+    col, row, width, height = region.rect
+    salt = _seed(f"{region.name}:cliff:{world_seed}")
+    tall = region.biome == "highland"
+    radius_x = (9 if tall else 6) + salt % 4
+    radius_y = (7 if tall else 4) + (salt >> 5) % 3
+
+    # Cliffs sit against a land's rim, the way they do on every map of this
+    # kind: a mountain in the middle of a field is a wall across the field. All
+    # four corners are tried, then anywhere with room -- a land whose cliffs
+    # were dropped is a land with no way down, and the crossing is the point.
+    spot = None
+    for corner in range(4):
+        which = ((salt >> 9) + corner) % 4
+        cx = col + (radius_x + BORDER_WOOD + 2 if which in (0, 2)
+                    else width - radius_x - BORDER_WOOD - 2)
+        cy = row + (radius_y + BORDER_WOOD + 2 if which in (0, 1)
+                    else height - radius_y - BORDER_WOOD - 2)
+        if _free_of_villages(region, cx, cy, max(radius_x, radius_y) + 3):
+            spot = (cx, cy)
+            break
+    if spot is None:
+        spot = _open_basin(region, radius_x, radius_y, salt, index=7)
+    if spot is None:
+        return
+    cx, cy = spot
+
+    for y in range(cy - radius_y, cy + radius_y + 1):
+        for x in range(cx - radius_x, cx + radius_x + 1):
+            if not (0 <= y < len(grid) and 0 <= x < len(grid[0])):
+                continue
+            wobble = 0.9 + _tile_noise(salt, x // 3, y // 3) / 260.0
+            dx = (x - cx) / max(radius_x, 1)
+            dy = (y - cy) / max(radius_y, 1)
+            if dx * dx + dy * dy <= wobble:
+                grid[y][x] = CLIFF
+
+    # The mouth: at the foot of the mass, facing the open country, with the
+    # cliff carved back either side so it reads as an opening.
+    mouth_y = min(cy + radius_y, len(grid) - 1)
+    while mouth_y > 0 and grid[mouth_y][cx] != CLIFF:
+        mouth_y -= 1
+    if 0 <= mouth_y < len(grid) and 0 <= cx < len(grid[0]):
+        grid[mouth_y][cx] = CAVE
+        if mouth_y + 1 < len(grid) and grid[mouth_y + 1][cx] == CLIFF:
+            grid[mouth_y + 1][cx] = GRASS
+        region.cave = (cx, mouth_y)
+
+
+def _paint_shores(grid: list[list[int]]) -> None:
+    """Put sand between every stretch of water and the ground beside it.
+
+    Parameters
+    ----------
+    grid : list of list of int
+        The tile grid, modified in place.
+    """
+    height = len(grid)
+    width = len(grid[0]) if grid else 0
+    shore: list[tuple[int, int]] = []
+    for y in range(height):
+        row = grid[y]
+        for x in range(width):
+            if row[x] not in (GRASS, FLOWERS, MARSH):
+                continue
+            for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                ny, nx = y + dy, x + dx
+                if 0 <= ny < height and 0 <= nx < width and grid[ny][nx] == WATER:
+                    shore.append((x, y))
+                    break
+    for x, y in shore:
+        grid[y][x] = SAND
 
 
 def _paint_roads(grid: list[list[int]], region: Region) -> None:
@@ -860,6 +1238,13 @@ def _paint_roads(grid: list[list[int]], region: Region) -> None:
         _paint_line(grid, approach, (exit_[0], approach[1]))
         _paint_line(grid, (exit_[0], approach[1]), exit_)
         _paint_line(grid, exit_, end)
+    if region.cave is not None and gates:
+        # A road to the cave mouth: a crossing nobody can find is a crossing
+        # that is not in the game.
+        cave = region.cave
+        near = min(gates, key=lambda gate: abs(gate[0] - cave[0]) + abs(gate[1] - cave[1]))
+        _paint_line(grid, (near[0], near[1] + 2), (cave[0], near[1] + 2))
+        _paint_line(grid, (cave[0], near[1] + 2), (cave[0], cave[1] + 1))
 
 
 def _clear_around(grid: list[list[int]], rect: tuple[int, int, int, int], margin: int) -> None:
@@ -882,7 +1267,7 @@ def _clear_around(grid: list[list[int]], rect: tuple[int, int, int, int], margin
         for x in range(col - margin, col + width + margin):
             if not (0 <= y < len(grid) and 0 <= x < len(grid[0])):
                 continue
-            if grid[y][x] in (TREE, ROCK):
+            if grid[y][x] in (TREE, ROCK, CLIFF, MARSH):
                 grid[y][x] = GRASS
 
 
@@ -906,57 +1291,29 @@ def _paint_line(grid: list[list[int]], start: tuple[int, int], end: tuple[int, i
             for ox in range(-VERGE, VERGE + 1):
                 cy, cx = y + oy, x + ox
                 if 0 <= cy < len(grid) and 0 <= cx < len(grid[0]):
-                    if grid[cy][cx] in (TREE, ROCK):
+                    if grid[cy][cx] in (TREE, ROCK, CLIFF):
                         grid[cy][cx] = GRASS
-        if 0 <= y < len(grid) and 0 <= x < len(grid[0]) and grid[y][x] not in (WATER, BRIDGE):
-            grid[y][x] = ROAD
+        if 0 <= y < len(grid) and 0 <= x < len(grid[0]):
+            # A road that meets water becomes a bridge rather than stopping: a
+            # river that cuts the only road in two is a river that strands the
+            # player on one bank of their own map.
+            if grid[y][x] in (WATER, BRIDGE):
+                grid[y][x] = BRIDGE
+            elif grid[y][x] not in (GATE, CAVE):
+                grid[y][x] = ROAD
         if (x, y) == (x1, y1):
             break
         x += step_x
         y += step_y
 
 
-def _paint_village(grid: list[list[int]], village: Village) -> None:
-    """Paint a walled compound with a gate, a floor, and its buildings.
-
-    Parameters
-    ----------
-    grid : list of list of int
-        The tile grid.
-    village : Village
-        The village to paint.
-    """
-    col, row, width, height = village.rect
-    for y in range(row, row + height):
-        for x in range(col, col + width):
-            if not (0 <= y < len(grid) and 0 <= x < len(grid[0])):
-                continue
-            on_edge = x in (col, col + width - 1) or y in (row, row + height - 1)
-            grid[y][x] = WALL if on_edge else FLOOR
-
-    gate_col, gate_row = village.gate
-    if 0 <= gate_row < len(grid) and 0 <= gate_col < len(grid[0]):
-        grid[gate_row][gate_col] = GATE
-    # A recovery station just inside the gate. Photon budgets persist between
-    # fights, so somewhere to recover is what turns a run into a loop rather
-    # than a one-way slide into a bleached team.
-    clinic_row = gate_row - 1
-    if 0 <= clinic_row < len(grid) and 0 <= gate_col < len(grid[0]):
-        if grid[clinic_row][gate_col] != BUILDING:
-            grid[clinic_row][gate_col] = CLINIC
-    village.clinic = (gate_col, clinic_row)
-
-    for room in village.rooms:
-        x, y = room.tile
-        if 0 <= y < len(grid) and 0 <= x < len(grid[0]):
-            grid[y][x] = BUILDING
-
-
 def _paint_bridges(grid: list[list[int]], regions: list[Region]) -> None:
     """Bridge the water between neighbouring lands.
 
     Without these the lands are unreachable from one another, which would make
-    the moat a wall rather than a border.
+    the moat a wall rather than a border. A crossing also carries a *toll* in
+    the game's terms -- see :attr:`Region.crossing_tier` -- so this is the point
+    at which the map opens in an order.
 
     Parameters
     ----------
@@ -981,3 +1338,22 @@ def _paint_bridges(grid: list[list[int]], regions: list[Region]) -> None:
             for y in range(row + height, orow):
                 if 0 <= y < len(grid) and 0 <= x < len(grid[0]):
                     grid[y][x] = BRIDGE
+
+
+def dock_tiles(world: World) -> list[tuple[int, int]]:
+    """Every jetty in the world.
+
+    Parameters
+    ----------
+    world : World
+        The world to scan.
+
+    Returns
+    -------
+    list of tuple
+        Grid cells carrying :data:`..tiles.DOCK`.
+    """
+    if not world.array.size:
+        return []
+    rows, cols = np.nonzero(world.array == DOCK)
+    return [(int(col), int(row)) for row, col in zip(rows, cols)]

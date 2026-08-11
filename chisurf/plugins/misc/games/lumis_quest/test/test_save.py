@@ -14,8 +14,12 @@ def test_a_run_round_trips(tmp_path):
     path = tmp_path / "run.json"
     state = save.RunState(
         position=(123.5, 456.5),
-        team=[(11, 40), (22, 5)],
-        collection=[33, 44],
+        team=[("hare", 11, 40), ("beetle", 22, 5)],
+        bodies=["fox", "newt"],
+        labels=[33, 44],
+        seals=["ember", "prism"],
+        unbound=7,
+        dark=True,
         inventory=[55],
         emission_id=55,
         detector_id=None,
@@ -41,7 +45,7 @@ def test_a_corrupt_save_is_a_fresh_run(tmp_path):
     path.write_text(json.dumps({"version": 999, "team": [[1, 2]]}), encoding="utf-8")
     assert save.RunState.load(path) == save.RunState(), "a future version must not be guessed at"
 
-    path.write_text(json.dumps({"version": save.VERSION, "collection": ["not an id"]}),
+    path.write_text(json.dumps({"version": save.VERSION, "labels": ["not an id"]}),
                     encoding="utf-8")
     assert save.RunState.load(path) == save.RunState()
 
@@ -53,9 +57,9 @@ def test_creatures_are_stored_by_id_not_by_value(tmp_path):
     the run was saved, including any since fixed.
     """
     path = tmp_path / "run.json"
-    save.RunState(team=[(11, 40)], inventory=[55], emission_id=55).save(path)
+    save.RunState(team=[("hare", 11, 40)], inventory=[55], emission_id=55).save(path)
     raw = json.loads(path.read_text(encoding="utf-8"))
-    assert raw["team"] == [[11, 40]]
+    assert raw["team"] == [["hare", 11, 40]]
     assert raw["inventory"] == [55]
     flat = json.dumps(raw)
     for leaked in ("ext_coeff", "quantum_yield", "emission_nm", "curve"):
