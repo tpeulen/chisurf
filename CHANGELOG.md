@@ -48,6 +48,13 @@
 
 ### Fixed
 
+- **A hidden-Markov fit could silently stop improving.** If any observation was
+  impossible under the current model, that sequence's expected transition counts
+  became `nan` and — because the counts of every sequence share one accumulator
+  — took the whole transition matrix with them, for that iteration and every
+  one after it. The state posteriors stayed clean, so nothing looked wrong.
+  An impossible sequence now contributes no transition counts.
+
 - **The acquisition panel drew three of its controls on top of each other.**
   The output-folder row, the Save/Load Settings buttons and the whole "Show"
   group box were all placed at the same grid row, and Qt stacks overlapping

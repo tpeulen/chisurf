@@ -34,6 +34,10 @@
 * **`plugins/core/acq/gui/tool.py` off the numba list** by deleting its
   SPC-130 decoder copy for `tttrlib.decode_records`; allow-list 19 → 18.
   Traps and verification in [numba retirement](subsystems/numba-retirement.md) §3.
+* **HMM: an impossible sequence turned the shared xi accumulator into `nan`**,
+  poisoning the transition matrix for every later EM iteration; the clean
+  posteriors hid it. Found while recording the PRD-035 parity fixture, fixed,
+  pinned. Detail in [numba retirement](subsystems/numba-retirement.md).
 * **Layout defect found by screenshotting that panel**: three controls stacked
   on one grid row. Fixed; recorded in the same concept.
 * **`core/structure/av/utils.py` off the numba list**; allow-list → 16. Two

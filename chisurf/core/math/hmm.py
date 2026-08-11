@@ -253,8 +253,20 @@ def _backward_posteriors_xi(
                 continue
             # exp(work - maximum) serves both the log-sum-exp below and the
             # transition counts, which differ from it by a constant factor.
+            #
+            # An impossible sequence (log_prob == -inf) contributes no expected
+            # transitions at all. Without the guard the scale is
+            # exp(-inf + -inf - -inf) = exp(nan) = nan, and since xi_sum is the
+            # accumulator shared by every sequence in the E-step, that one
+            # sequence turns the whole transition matrix into nan -- and then
+            # the M-step, and then every iteration after it. The posteriors
+            # survive it (their uniform fallback catches the nan total), which
+            # is what makes it invisible.
             accumulated = 0.0
-            scale = np.exp(maximum + fwd[t, i] - log_prob)
+            if log_prob == -np.inf:
+                scale = 0.0
+            else:
+                scale = np.exp(maximum + fwd[t, i] - log_prob)
             for j in range(n_components):
                 shifted = np.exp(work[j] - maximum)
                 accumulated += shifted

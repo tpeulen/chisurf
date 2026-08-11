@@ -9,6 +9,7 @@ import numpy as np
 import pytest
 from scipy.special import logsumexp
 
+from chisurf.core.math import hmm
 from chisurf.core.math.hmm import (
     COVARIANCE_TYPES,
     LOG_DOMAIN_FASTMATH,
@@ -427,3 +428,61 @@ def test_a_fit_is_reproducible_for_a_fixed_seed():
     second = GaussianHMM(n_components=3, covariance_type="full", random_state=4).fit(X)
     np.testing.assert_allclose(first.means_, second.means_, rtol=1e-12)
     np.testing.assert_allclose(first.transmat_, second.transmat_, rtol=1e-12)
+
+
+def test_an_impossible_sequence_contributes_no_transition_counts():
+    """An ``-inf`` log-likelihood must not poison the shared xi accumulator.
+
+    ``_backward_posteriors_xi`` scales its transition counts by
+    ``exp(maximum + fwd[t, i] - log_prob)``. When the whole sequence is
+    impossible that is ``exp(-inf + -inf - -inf)`` — ``exp(nan)`` — and because
+    ``xi_sum`` is the accumulator *shared by every sequence* in the E-step, one
+    such sequence turns the entire transition matrix into ``nan``, then the
+    M-step, then every iteration after it.
+
+    It hid because the posteriors survive: their uniform fallback triggers on
+    the ``nan`` total and returns clean numbers, so the only visible symptom
+    was a model that stopped improving.
+    """
+    n_samples, n_components = 40, 3
+    rng = np.random.default_rng(6)
+    log_startprob = np.log(np.full(n_components, 1.0 / n_components))
+    log_transmat = np.log(rng.dirichlet(np.ones(n_components) * 8, size=n_components))
+    log_frameprob = np.log(rng.uniform(1e-6, 1.0, (n_samples, n_components)))
+    log_frameprob[17, :] = -np.inf          # no state can explain this frame
+
+    fwd = np.empty((n_samples, n_components))
+    log_prob = hmm._forward_log(log_startprob, log_transmat, log_frameprob, fwd)
+    assert log_prob == -np.inf
+
+    posteriors = np.empty((n_samples, n_components))
+    xi_sum = np.zeros((n_components, n_components))
+    hmm._backward_posteriors_xi(
+        log_transmat, log_frameprob, fwd, log_prob, posteriors, xi_sum
+    )
+
+    assert not np.isnan(xi_sum).any(), "an impossible sequence poisoned xi_sum"
+    assert not np.isnan(posteriors).any()
+    # Contributing nothing is the right answer, not merely a finite number.
+    np.testing.assert_array_equal(xi_sum, np.zeros((n_components, n_components)))
+
+
+def test_a_possible_sequence_still_accumulates_after_an_impossible_one():
+    """The guard must not switch off counting for the sequences that are fine."""
+    n_samples, n_components = 30, 3
+    rng = np.random.default_rng(7)
+    log_startprob = np.log(np.full(n_components, 1.0 / n_components))
+    log_transmat = np.log(rng.dirichlet(np.ones(n_components) * 8, size=n_components))
+    good = np.log(rng.uniform(1e-6, 1.0, (n_samples, n_components)))
+    bad = good.copy()
+    bad[5, :] = -np.inf
+
+    xi_sum = np.zeros((n_components, n_components))
+    for frames in (bad, good):
+        fwd = np.empty((n_samples, n_components))
+        lp = hmm._forward_log(log_startprob, log_transmat, frames, fwd)
+        posteriors = np.empty((n_samples, n_components))
+        hmm._backward_posteriors_xi(log_transmat, frames, fwd, lp, posteriors, xi_sum)
+
+    assert not np.isnan(xi_sum).any()
+    assert xi_sum.sum() > 0.0, "the possible sequence contributed nothing"

@@ -533,6 +533,22 @@ once the library is fixed.
 
 ## Bugs the ports have found
 
+* **An impossible sequence turned the whole HMM transition matrix into `nan`**,
+  found while recording a parity fixture for PRD-035 — not by any test, and not
+  by the port itself, which had not started. `_backward_posteriors_xi` scales
+  its transition counts by `exp(maximum + fwd[t, i] - log_prob)`; when the
+  sequence is impossible that is `exp(-inf + -inf - -inf)` = `exp(nan)`. Since
+  `xi_sum` is the accumulator **shared by every sequence** in `_do_estep`, one
+  unexplainable frame poisoned the entire transition matrix for that EM
+  iteration, then the M-step, then every iteration after it. It hid because the
+  *posteriors* survive — their uniform fallback triggers on the `nan` total and
+  returns clean numbers — so the only visible symptom was a model that stopped
+  improving. Fixed by contributing zero counts for an impossible sequence,
+  which is the correct answer rather than merely a finite one; pinned by two
+  tests in `test/math/test_hmm.py`. **The fixture handed to PRD-035 is the
+  fixed output**: recording it first would have required the C++ to reproduce
+  the bug.
+
 * **The acquisition dock drew three widgets on top of each other**, found by
   screenshotting the panel while porting its decoder — not by any test. The
   output-folder row, the Save/Load buttons and the whole "Show" group box were
