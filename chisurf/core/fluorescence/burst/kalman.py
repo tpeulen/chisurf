@@ -11,10 +11,8 @@ import numpy as np
 import tttrlib
 from dataclasses import dataclass, field
 from typing import List, Tuple, Dict, Optional, Union, Any
-from numba import njit
 
 
-@njit(cache=True, inline='always')
 def _inv2x2(A: np.ndarray) -> np.ndarray:
     """Compute the analytic inverse of a 2x2 matrix.
 
@@ -44,7 +42,6 @@ def _inv2x2(A: np.ndarray) -> np.ndarray:
     return inv
 
 
-@njit(cache=True)
 def _kalman_filter_loop(
     y: np.ndarray,
     x0: np.ndarray,

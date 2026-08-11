@@ -5,7 +5,6 @@ import math
 import copy
 
 import numpy as np
-import numba as nb
 
 import chisurf.core.fluorescence
 import chisurf.core.structure.av
@@ -25,7 +24,6 @@ from IMP.cgmol.sterics._kernels import (
 )
 
 
-@nb.njit
 def centroid2(
         atom_lookup,
         res_types,
@@ -126,7 +124,6 @@ def centroid2(
     return nCont, E
 
 
-@nb.jit(nopython=True)
 def internal_potential(
         internal_coordinates,
         equilibrium_internal=None,
@@ -169,7 +166,6 @@ def internal_potential_calpha(
     return internal_potential(structure.internal_coordinates, eq, kb, ka, kd)
 
 
-@nb.jit(nopython=True)
 def lj_calpha(
         ca_coordinates: np.ndarray,
         rm: float = 3.8208650279
@@ -211,7 +207,6 @@ def lennard_jones_calpha(
     return lj_calpha(ca_atoms['xyz'][0], rm)
 
 
-@nb.njit
 def gb(
         xyz: np.ndarray,
         epsilon: float = 4.0,
@@ -265,7 +260,6 @@ def gb(
     return energy * pre
 
 
-@nb.jit(nopython=True)
 def go(
         ca_dist: np.ndarray,
         energy_matrix: np.ndarray,

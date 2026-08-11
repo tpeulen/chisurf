@@ -35,15 +35,27 @@ from __future__ import annotations
 
 from typing import Optional, Union
 
-import numba as nb
 import numpy as np
 
 __all__ = [
+    # thresholding and smoothing
     "gaussian",
     "threshold_otsu",
-    "clear_border",
+    "difference_of_gaussians",
+    "white_tophat",
+    # finding
     "peak_local_max",
+    "blob_dog",
+    "blob_log",
     "watershed",
+    # cleaning up and describing a label image
+    "clear_border",
+    "remove_small_objects",
+    "remove_small_holes",
+    "relabel_sequential",
+    "expand_labels",
+    "find_boundaries",
+    "find_contours",
 ]
 
 
@@ -466,7 +478,6 @@ def _brightest(image, mask, num_peaks, min_distance, p_norm):
 # ---------------------------------------------------------------------------
 
 
-@nb.jit(nopython=True, nogil=True, cache=True)
 def _flood(image, marker_locations, offsets, mask, output):
     """Flood the image from the markers, cheapest pixel first.
 
@@ -593,7 +604,6 @@ def _flood(image, marker_locations, offsets, mask, output):
             size += 1
 
 
-@nb.jit(nopython=True, nogil=True, cache=True)
 def _grow(value, age, index, source):
     """Double the heap arrays."""
     n = value.shape[0]
@@ -747,3 +757,698 @@ def watershed(
 
     cropped = output[tuple(slice(pad, -pad) for _ in range(image.ndim))]
     return np.ascontiguousarray(cropped).astype(markers.dtype, copy=False)
+
+
+# ---------------------------------------------------------------------------
+# Cleaning up a segmentation
+# ---------------------------------------------------------------------------
+
+
+def remove_small_objects(labels, min_size: int = 64, connectivity: int = 1, *, out=None):
+    """Drop connected components smaller than ``min_size`` pixels.
+
+    One ``bincount`` over the label image and one lookup, rather than a pass
+    over the whole frame per label — the difference between ``O(frame)`` and
+    ``O(n_labels × frame)``, which on a segmentation holding a few thousand
+    molecules is the difference between instant and a coffee.
+
+    Parameters
+    ----------
+    labels : numpy.ndarray
+        Label image, or a boolean mask (which is labelled first).
+    min_size : int
+        Components with strictly fewer pixels than this are removed.
+    connectivity : int
+        Neighbourhood order used when a boolean mask has to be labelled.
+    out : numpy.ndarray, optional
+        Write into this array rather than a copy.
+
+    Returns
+    -------
+    numpy.ndarray
+        The input with the small components set to 0.
+    """
+    from scipy import ndimage
+
+    labels = np.asarray(labels)
+    if labels.dtype != bool and not np.issubdtype(labels.dtype, np.integer):
+        raise TypeError(f"labels must be integer or boolean, got {labels.dtype}")
+    if out is None:
+        out = labels.copy()
+    else:
+        out[:] = labels
+
+    if out.dtype == bool:
+        structure = ndimage.generate_binary_structure(labels.ndim, connectivity)
+        components = np.zeros(labels.shape, dtype=np.int32)
+        ndimage.label(labels, structure, output=components)
+    else:
+        if out.min() < 0:
+            raise ValueError("negative labels are not supported")
+        components = out
+
+    sizes = np.bincount(components.ravel())
+    out[(sizes < min_size)[components]] = 0
+    return out
+
+
+def remove_small_holes(mask, area_threshold: int = 64, connectivity: int = 1, *, out=None):
+    """Fill holes in ``mask`` smaller than ``area_threshold`` pixels.
+
+    The complement of :func:`remove_small_objects`: a hole is a small component
+    of the background. A molecule whose centre is dim enough to fall below the
+    threshold segments as an annulus, and every shape measurement of an annulus
+    — area, centroid, eccentricity — is wrong.
+
+    Parameters
+    ----------
+    mask : numpy.ndarray
+        Boolean image.
+    area_threshold : int
+        Holes with strictly fewer pixels than this are filled.
+    connectivity : int
+        Neighbourhood order for the background components.
+    out : numpy.ndarray, optional
+        Write into this array rather than a copy.
+
+    Returns
+    -------
+    numpy.ndarray
+        Boolean image with the small holes filled.
+    """
+    mask = np.asarray(mask)
+    if out is None:
+        out = mask.astype(bool, copy=True)
+    elif out.dtype != bool:
+        raise TypeError("out must be boolean")
+    np.logical_not(mask, out=out)
+    out = remove_small_objects(out, area_threshold, connectivity, out=out)
+    np.logical_not(out, out=out)
+    return out
+
+
+def relabel_sequential(labels, offset: int = 1):
+    """Renumber ``labels`` to a gap-free ``offset..offset + n - 1``.
+
+    Removing objects leaves gaps, and a gap is not cosmetic: every consumer that
+    treats a label image as "the labels are 1 to max" — :func:`regionprops`
+    among them — then reports empty regions that no pixel belongs to. Anything
+    that deletes labels should renumber afterwards.
+
+    Parameters
+    ----------
+    labels : numpy.ndarray
+        Label image with non-negative integer labels; 0 stays 0.
+    offset : int
+        First label of the output.
+
+    Returns
+    -------
+    relabelled : numpy.ndarray
+        The renumbered image.
+    forward : numpy.ndarray
+        Lookup from old label to new, so a per-label table can follow.
+    inverse : numpy.ndarray
+        Lookup from new label back to old.
+    """
+    labels = np.asarray(labels)
+    if not np.issubdtype(labels.dtype, np.integer):
+        raise TypeError("labels must have an integer dtype")
+    if offset <= 0:
+        raise ValueError("offset must be strictly positive")
+    if labels.size and labels.min() < 0:
+        raise ValueError("negative labels are not supported")
+
+    present = np.unique(labels)
+    if present.size and present[0] == 0:
+        renumbered = np.concatenate(
+            [[0], np.arange(offset, offset + present.size - 1)]
+        )
+    else:
+        renumbered = np.arange(offset, offset + present.size)
+
+    forward = np.zeros(int(labels.max()) + 1 if labels.size else 1, dtype=np.intp)
+    forward[present] = renumbered
+    inverse = np.zeros(int(renumbered[-1]) + 1 if renumbered.size else 1, dtype=np.intp)
+    inverse[renumbered] = present
+    return forward[labels].astype(labels.dtype, copy=False), forward, inverse
+
+
+def expand_labels(labels, distance: float = 1.0, spacing=None):
+    """Grow every label outwards by ``distance``, without merging neighbours.
+
+    Each background pixel within ``distance`` of a label joins the *nearest*
+    one, so two objects growing towards each other meet at the midline instead
+    of fusing. That is what makes this the honest way to put a background
+    annulus around each molecule.
+
+    Parameters
+    ----------
+    labels : numpy.ndarray
+        Label image; 0 is background.
+    distance : float
+        Growth radius, in pixels unless ``spacing`` says otherwise.
+    spacing : sequence of float, optional
+        Physical pixel size per axis, so an anisotropic stack grows isotropically
+        in space rather than in pixels.
+
+    Returns
+    -------
+    numpy.ndarray
+        The grown label image.
+    """
+    from scipy import ndimage
+
+    labels = np.asarray(labels)
+    distances, indices = ndimage.distance_transform_edt(
+        labels == 0, sampling=spacing, return_indices=True
+    )
+    grown = np.zeros_like(labels)
+    within = distances <= distance
+    nearest = labels[tuple(axis[within] for axis in indices)]
+    grown[within] = nearest
+    return grown
+
+
+def find_boundaries(labels, connectivity: int = 1, mode: str = "thick", background: int = 0):
+    """Return the pixels where ``labels`` changes value.
+
+    Parameters
+    ----------
+    labels : numpy.ndarray
+        Label image or boolean mask.
+    connectivity : int
+        Neighbourhood order.
+    mode : {'thick', 'inner', 'outer'}
+        ``'thick'`` marks both sides of every boundary; ``'inner'`` only the
+        object side, which is what an overlay that must not spill outside the
+        object wants; ``'outer'`` only the background side.
+    background : int
+        Label treated as background for ``'inner'`` and ``'outer'``.
+
+    Returns
+    -------
+    numpy.ndarray
+        Boolean image of the boundary pixels.
+    """
+    from scipy import ndimage
+
+    labels = np.asarray(labels)
+    if labels.dtype == bool:
+        labels = labels.astype(np.uint8)
+    structure = ndimage.generate_binary_structure(labels.ndim, connectivity)
+    # A pixel is on a boundary when the neighbourhood maximum and minimum
+    # disagree — the grey dilation/erosion pair, which works on labels and not
+    # just on a mask.
+    boundaries = ndimage.grey_dilation(
+        labels, footprint=structure
+    ) != ndimage.grey_erosion(labels, footprint=structure)
+    if mode == "thick":
+        return boundaries
+    if mode == "inner":
+        return boundaries & (labels != background)
+    if mode == "outer":
+        # Not simply "the background half of the boundary". Two objects that
+        # touch have no background between them, and an outline that dropped
+        # those pixels would draw them as one blob — so a pixel inside an object
+        # that is adjacent to a *different* object counts as outer too.
+        is_background = labels == background
+        full = ndimage.generate_binary_structure(labels.ndim, labels.ndim)
+        sentinel = np.iinfo(labels.dtype).max
+        without_background = np.array(labels, copy=True)
+        without_background[is_background] = sentinel
+        adjacent_to_another = (
+            ndimage.grey_dilation(labels, footprint=full)
+            != ndimage.grey_erosion(without_background, footprint=full)
+        ) & ~is_background
+        return boundaries & (is_background | adjacent_to_another)
+    raise ValueError(f"mode must be 'thick', 'inner' or 'outer', got {mode!r}")
+
+
+# ---------------------------------------------------------------------------
+# Enhancing what is to be found
+# ---------------------------------------------------------------------------
+
+
+def difference_of_gaussians(image, low_sigma, high_sigma=None, *, mode: str = "nearest",
+                            cval: float = 0.0, truncate: float = 4.0):
+    """Band-pass ``image`` by subtracting two Gaussian blurs.
+
+    One pass removes both nuisances at once: the narrow blur keeps structure at
+    the scale of interest while the wide blur carries the slowly varying
+    background, and their difference has neither the shot noise below
+    ``low_sigma`` nor the illumination gradient above ``high_sigma``. It is the
+    natural pre-filter for finding spots, and a close approximation of the
+    Laplacian of a Gaussian at that scale.
+
+    Parameters
+    ----------
+    image : numpy.ndarray
+        Input image.
+    low_sigma : float or sequence of float
+        Standard deviation of the narrow blur — the smallest feature kept.
+    high_sigma : float or sequence of float, optional
+        Standard deviation of the wide blur; defaults to ``1.6 * low_sigma``,
+        the ratio that best approximates the Laplacian of a Gaussian.
+    mode, cval, truncate
+        Passed to :func:`gaussian`.
+
+    Returns
+    -------
+    numpy.ndarray
+        The band-passed image, as float.
+
+    Raises
+    ------
+    ValueError
+        If any ``high_sigma`` is below its ``low_sigma``, which would invert the
+        band and silently return the negative of what was asked for.
+    """
+    image = np.asarray(image, dtype=float)
+    low = np.array(low_sigma, dtype=float, ndmin=1)
+    high = low * 1.6 if high_sigma is None else np.array(high_sigma, dtype=float, ndmin=1)
+    low = low * np.ones(image.ndim)
+    high = high * np.ones(image.ndim)
+    if np.any(high < low):
+        raise ValueError(
+            "high_sigma must be at least low_sigma, or the band is inverted"
+        )
+    narrow = gaussian(image, low, mode=mode, cval=cval, truncate=truncate)
+    wide = gaussian(image, high, mode=mode, cval=cval, truncate=truncate)
+    return narrow - wide
+
+
+def white_tophat(image, footprint=None, size: int = 15):
+    """Return ``image`` minus its morphological opening — the small bright detail.
+
+    The opening is what survives sliding the footprint under the surface, which
+    is a background estimate that follows uneven illumination instead of
+    assuming it is flat. Subtracting it leaves the features smaller than the
+    footprint, which is what a fluorescence image's spots are.
+
+    Parameters
+    ----------
+    image : numpy.ndarray
+        Input image.
+    footprint : numpy.ndarray, optional
+        Structuring element. Defaults to a square of side ``size``, which must
+        be comfortably larger than the features to keep and smaller than the
+        illumination variation to remove.
+    size : int
+        Side of the default square footprint.
+
+    Returns
+    -------
+    numpy.ndarray
+        The background-subtracted image, never negative.
+    """
+    from scipy import ndimage
+
+    image = np.asarray(image, dtype=float)
+    if footprint is None:
+        footprint = np.ones((size,) * image.ndim, dtype=bool)
+    opened = ndimage.grey_opening(image, footprint=np.asarray(footprint, dtype=bool))
+    return image - opened
+
+
+# ---------------------------------------------------------------------------
+# Multi-scale spot detection
+# ---------------------------------------------------------------------------
+
+
+def _blob_overlap(first, second) -> float:
+    """Fraction of the smaller disc's area shared with the larger one."""
+    radius_a, radius_b = first[-1] * np.sqrt(2), second[-1] * np.sqrt(2)
+    separation = float(np.linalg.norm(first[:-1] - second[:-1]))
+    if separation > radius_a + radius_b:
+        return 0.0
+    if separation <= abs(radius_a - radius_b):
+        return 1.0
+    if separation == 0:
+        return 1.0
+    # Circle-circle lens area, normalised by the smaller disc.
+    ratio_a = np.clip(
+        (separation**2 + radius_a**2 - radius_b**2) / (2 * separation * radius_a), -1, 1
+    )
+    ratio_b = np.clip(
+        (separation**2 + radius_b**2 - radius_a**2) / (2 * separation * radius_b), -1, 1
+    )
+    area = (
+        radius_a**2 * (np.arccos(ratio_a) - ratio_a * np.sqrt(1 - ratio_a**2))
+        + radius_b**2 * (np.arccos(ratio_b) - ratio_b * np.sqrt(1 - ratio_b**2))
+    )
+    return float(area / (np.pi * min(radius_a, radius_b) ** 2))
+
+
+def _prune_blobs(blobs, overlap: float):
+    """Drop the smaller of any two blobs overlapping by more than ``overlap``.
+
+    A spot is found once per scale it survives, so the same molecule appears
+    several times at neighbouring sigmas; without this a detector returns three
+    copies of everything.
+    """
+    from scipy import spatial
+
+    if len(blobs) < 2:
+        return blobs
+    largest_sigma = blobs[:, -1].max()
+    reach = 2 * largest_sigma * np.sqrt(blobs.shape[1] - 1)
+    tree = spatial.cKDTree(blobs[:, :-1])
+    pairs = np.array(list(tree.query_pairs(reach)))
+    if len(pairs) == 0:
+        return blobs
+    for i, j in pairs:
+        first, second = blobs[i], blobs[j]
+        if _blob_overlap(first, second) > overlap:
+            # The sigmas increase together, so "larger sigma wins" is the same
+            # decision in every dimension.
+            if first[-1] > second[-1]:
+                second[-1] = 0
+            else:
+                first[-1] = 0
+    kept = blobs[blobs[:, -1] > 0]
+    return kept if len(kept) else np.empty((0, blobs.shape[1]))
+
+
+def blob_dog(image, min_sigma: float = 1.0, max_sigma: float = 50.0,
+             sigma_ratio: float = 1.6, threshold: float = 0.5,
+             overlap: float = 0.5):
+    """Find bright round spots by a difference-of-Gaussians scale space.
+
+    The image is band-passed at a geometric ladder of scales; a spot registers
+    most strongly at the scale matching its own width, so the *position of the
+    maximum along the ladder* estimates its size. That is what a fixed-scale
+    detector cannot do, and what an image of unknown focus needs.
+
+    Parameters
+    ----------
+    image : numpy.ndarray
+        Grayscale image; bright spots on a dark background.
+    min_sigma, max_sigma : float
+        Smallest and largest spot width to look for, as a Gaussian sigma. A
+        diffraction-limited spot has sigma ≈ 0.21 λ / NA, in pixels.
+    sigma_ratio : float
+        Spacing of the scale ladder. Must exceed 1.
+    threshold : float
+        Minimum response. Scale-normalised, so it does not follow the image
+        units — read it off a run rather than guessing.
+    overlap : float
+        Two spots overlapping by more than this fraction are merged, keeping
+        the larger.
+
+    Returns
+    -------
+    numpy.ndarray
+        ``(n_blobs, image.ndim + 1)``: coordinates then sigma.
+    """
+    from scipy import ndimage
+
+    image = np.asarray(image, dtype=float)
+    if sigma_ratio <= 1.0:
+        raise ValueError("sigma_ratio must be greater than 1")
+    n_scales = int(np.mean(np.log(max_sigma / min_sigma) / np.log(sigma_ratio) + 1))
+    sigmas = np.array([min_sigma * (sigma_ratio**i) for i in range(n_scales + 1)])
+
+    cube = np.empty(image.shape + (n_scales,), dtype=float)
+    previous = ndimage.gaussian_filter(image, sigmas[0], mode="reflect")
+    for index, sigma in enumerate(sigmas[1:]):
+        current = ndimage.gaussian_filter(image, sigma, mode="reflect")
+        # Normalised so that a spot of any width gives the same response, which
+        # is what makes one threshold usable across the whole ladder.
+        cube[..., index] = (previous - current) / (sigma_ratio - 1)
+        previous = current
+
+    return _blobs_from_cube(cube, sigmas, threshold, overlap, image.ndim)
+
+
+def blob_log(image, min_sigma: float = 1.0, max_sigma: float = 50.0,
+             num_sigma: int = 10, threshold: float = 0.2, overlap: float = 0.5,
+             log_scale: bool = False):
+    """Find bright round spots by a Laplacian-of-Gaussian scale space.
+
+    The exact form of what :func:`blob_dog` approximates: slower, because every
+    scale is a separate filter rather than a difference of two, and more
+    accurate about the size it reports.
+
+    Parameters
+    ----------
+    image : numpy.ndarray
+        Grayscale image; bright spots on a dark background.
+    min_sigma, max_sigma : float
+        Smallest and largest spot width, as a Gaussian sigma.
+    num_sigma : int
+        Number of scales between them.
+    threshold : float
+        Minimum scale-normalised response.
+    overlap : float
+        Merge threshold, as in :func:`blob_dog`.
+    log_scale : bool
+        Space the scales geometrically rather than linearly, which is the right
+        choice when ``max_sigma / min_sigma`` is large.
+
+    Returns
+    -------
+    numpy.ndarray
+        ``(n_blobs, image.ndim + 1)``: coordinates then sigma.
+    """
+    from scipy import ndimage
+
+    image = np.asarray(image, dtype=float)
+    if log_scale:
+        sigmas = np.logspace(np.log10(min_sigma), np.log10(max_sigma), num_sigma)
+    else:
+        sigmas = np.linspace(min_sigma, max_sigma, num_sigma)
+
+    cube = np.empty(image.shape + (len(sigmas),), dtype=float)
+    for index, sigma in enumerate(sigmas):
+        # Negated, so a bright spot is a maximum rather than a minimum, and
+        # scale-normalised by sigma**2 so one threshold spans the ladder.
+        cube[..., index] = -ndimage.gaussian_laplace(image, sigma) * sigma**2
+
+    return _blobs_from_cube(cube, sigmas, threshold, overlap, image.ndim)
+
+
+def _blobs_from_cube(cube, sigmas, threshold, overlap, ndim):
+    """Local maxima of a scale-space cube, as ``(coordinates..., sigma)`` rows."""
+    peaks = peak_local_max(
+        cube,
+        threshold_abs=threshold,
+        footprint=np.ones((3,) * cube.ndim, dtype=bool),
+        exclude_border=False,
+    )
+    if not len(peaks):
+        return np.empty((0, ndim + 1))
+    blobs = np.column_stack(
+        [peaks[:, :ndim].astype(float), sigmas[peaks[:, -1]].astype(float)]
+    )
+    return _prune_blobs(blobs, overlap)
+
+
+# ---------------------------------------------------------------------------
+# From a mask back to geometry
+# ---------------------------------------------------------------------------
+
+
+def find_contours(image, level: Optional[float] = None,
+                  fully_connected: str = "low", positive_orientation: str = "low"):
+    """Trace iso-value contours through ``image`` by marching squares.
+
+    This is the way back from a raster to geometry: a segmentation traced into
+    polygons can become a :class:`~chisurf.core.roi.PolygonROI`, which is
+    resolution-independent and editable, rather than a mask that is neither.
+
+    Parameters
+    ----------
+    image : numpy.ndarray
+        2-D array.
+    level : float, optional
+        Contour value. Defaults to halfway between the image's extremes, which
+        is the sensible choice for a boolean mask.
+    fully_connected : {'low', 'high'}
+        Which side of an ambiguous saddle is treated as connected.
+    positive_orientation : {'low', 'high'}
+        Whether the traced polygon winds with the low or the high side on its
+        left, which decides the sign of an enclosed area.
+
+    Returns
+    -------
+    list of numpy.ndarray
+        One ``(n_points, 2)`` array of ``(row, column)`` coordinates per
+        contour, in continuous coordinates — a contour runs *between* pixels.
+    """
+    image = np.asarray(image, dtype=float)
+    if image.ndim != 2:
+        raise ValueError(f"find_contours needs a 2-D image, got {image.ndim}-D")
+    if fully_connected not in ("low", "high"):
+        raise ValueError("fully_connected must be 'low' or 'high'")
+    if positive_orientation not in ("low", "high"):
+        raise ValueError("positive_orientation must be 'low' or 'high'")
+    if level is None:
+        level = (float(np.nanmin(image)) + float(np.nanmax(image))) / 2.0
+
+    segments = _marching_squares(image, float(level), fully_connected == "high")
+    contours = _assemble_contours(segments)
+    if positive_orientation == "high":
+        contours = [contour[::-1] for contour in contours]
+    return contours
+
+
+def _marching_squares(image, level, vertex_connect_high):
+    """Return the contour segments of one iso-level, as ``(n, 4)`` endpoint pairs.
+
+    Each 2x2 block of pixels is classified by which of its corners lie above the
+    level — sixteen cases, of which fourteen give one or two segments. The two
+    ambiguous ones are the diagonals, where the block can be read as two corners
+    joined or two corners separated; ``vertex_connect_high`` chooses, and the
+    choice must be consistent across the image or the contours do not close.
+
+    Endpoints are placed by linear interpolation along the block's edges, which
+    is what makes the contour sub-pixel rather than a staircase.
+    """
+    n_rows, n_columns = image.shape
+    segments = np.empty((4 * (n_rows - 1) * (n_columns - 1), 4), dtype=np.float64)
+    count = 0
+    for r in range(n_rows - 1):
+        for c in range(n_columns - 1):
+            upper_left = image[r, c]
+            upper_right = image[r, c + 1]
+            lower_left = image[r + 1, c]
+            lower_right = image[r + 1, c + 1]
+            if (
+                np.isnan(upper_left)
+                or np.isnan(upper_right)
+                or np.isnan(lower_left)
+                or np.isnan(lower_right)
+            ):
+                continue
+
+            square_case = 0
+            if upper_left > level:
+                square_case += 1
+            if upper_right > level:
+                square_case += 2
+            if lower_right > level:
+                square_case += 4
+            if lower_left > level:
+                square_case += 8
+            if square_case == 0 or square_case == 15:
+                continue
+
+            top = (r, c + _fraction(upper_left, upper_right, level))
+            bottom = (r + 1, c + _fraction(lower_left, lower_right, level))
+            left = (r + _fraction(upper_left, lower_left, level), c)
+            right = (r + _fraction(upper_right, lower_right, level), c + 1)
+
+            if square_case == 1:
+                count = _emit(segments, count, top, left)
+            elif square_case == 2:
+                count = _emit(segments, count, right, top)
+            elif square_case == 3:
+                count = _emit(segments, count, right, left)
+            elif square_case == 4:
+                count = _emit(segments, count, bottom, right)
+            elif square_case == 5:
+                if vertex_connect_high:
+                    count = _emit(segments, count, top, left)
+                    count = _emit(segments, count, bottom, right)
+                else:
+                    count = _emit(segments, count, top, right)
+                    count = _emit(segments, count, bottom, left)
+            elif square_case == 6:
+                count = _emit(segments, count, bottom, top)
+            elif square_case == 7:
+                count = _emit(segments, count, bottom, left)
+            elif square_case == 8:
+                count = _emit(segments, count, left, bottom)
+            elif square_case == 9:
+                count = _emit(segments, count, top, bottom)
+            elif square_case == 10:
+                if vertex_connect_high:
+                    count = _emit(segments, count, right, bottom)
+                    count = _emit(segments, count, left, top)
+                else:
+                    count = _emit(segments, count, right, top)
+                    count = _emit(segments, count, left, bottom)
+            elif square_case == 11:
+                count = _emit(segments, count, right, bottom)
+            elif square_case == 12:
+                count = _emit(segments, count, left, right)
+            elif square_case == 13:
+                count = _emit(segments, count, top, right)
+            elif square_case == 14:
+                count = _emit(segments, count, left, top)
+    return segments[:count]
+
+
+def _fraction(low_value, high_value, level):
+    """Where between two corner values the level falls, in [0, 1]."""
+    if high_value == low_value:
+        return 0.0
+    return (level - low_value) / (high_value - low_value)
+
+
+def _emit(segments, count, start, end):
+    """Append one segment and return the new count."""
+    segments[count, 0] = start[0]
+    segments[count, 1] = start[1]
+    segments[count, 2] = end[0]
+    segments[count, 3] = end[1]
+    return count + 1
+
+
+def _assemble_contours(segments):
+    """Join segments end to end into contours.
+
+    Segments leave the grid in raster order, not in path order, so they have to
+    be chained. Two dictionaries keyed on the free endpoints turn what would be
+    a quadratic search into one linear pass: each new segment either extends a
+    chain, joins two chains, closes a loop, or starts a chain of its own.
+    """
+    from collections import deque
+
+    contours: dict[int, deque] = {}
+    starts: dict[tuple, tuple] = {}
+    ends: dict[tuple, tuple] = {}
+    next_index = 0
+
+    for row in segments:
+        first = (row[0], row[1])
+        second = (row[2], row[3])
+        if first == second:
+            continue
+
+        tail, tail_index = starts.pop(second, (None, None))
+        head, head_index = ends.pop(first, (None, None))
+
+        if tail is not None and head is not None:
+            if tail is head:
+                # The segment closes the chain it belongs to.
+                head.append(second)
+            else:
+                # It bridges two chains; keep the one that started first, which
+                # is what makes the output order deterministic.
+                if tail_index > head_index:
+                    head.extend(tail)
+                    contours.pop(tail_index)
+                    starts[head[0]] = (head, head_index)
+                    ends[head[-1]] = (head, head_index)
+                else:
+                    tail.extendleft(reversed(head))
+                    starts.pop(head[0], None)
+                    contours.pop(head_index)
+                    starts[tail[0]] = (tail, tail_index)
+                    ends[tail[-1]] = (tail, tail_index)
+        elif tail is None and head is None:
+            new_contour = deque([first, second])
+            contours[next_index] = new_contour
+            starts[first] = (new_contour, next_index)
+            ends[second] = (new_contour, next_index)
+            next_index += 1
+        elif head is None:
+            tail.appendleft(first)
+            starts[first] = (tail, tail_index)
+        else:
+            head.append(second)
+            ends[second] = (head, head_index)
+
+    return [np.array(contour) for _, contour in sorted(contours.items())]

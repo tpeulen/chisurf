@@ -1,5 +1,4 @@
 import numpy as np
-import numba as nb
 
 import chisurf as cs
 try:
@@ -302,7 +301,6 @@ def calculate_3_radius(
 #     return ra, vdwr
 
 
-@nb.jit(nopython=True)
 def make_grid_axis(dg, n):
     """Create a 1D grid axis centered at zero with spacing dg."""
     grid_x = np.empty(n, dtype=np.float64)
@@ -312,7 +310,6 @@ def make_grid_axis(dg, n):
     return grid_x
 
 
-@nb.jit(nopython=True)
 def find_atom_clashes(xyz, vdw, density, dg, min_clash):
     """
 
@@ -344,7 +341,6 @@ def find_atom_clashes(xyz, vdw, density, dg, min_clash):
     return density
 
 
-@nb.jit(nopython=True)
 def define_starting_positions(linker_sphere, w, dg, l, ng):
     """
 
@@ -383,7 +379,6 @@ def define_starting_positions(linker_sphere, w, dg, l, ng):
     return length_linker, newpos, nnew
 
 
-@nb.jit(nopython=True)
 def distance_lookup(linknodes, dg):
     """Precompute sqrt distances scaled by dg for a linknodes x linknodes x linknodes cube."""
     sqrts_dg = np.zeros((linknodes, linknodes, linknodes), dtype=np.float64)
@@ -394,7 +389,6 @@ def distance_lookup(linknodes, dg):
     return sqrts_dg
 
 
-@nb.jit(nopython=True)
 def calc_linker_distance(density, linker_sphere, linknodes, dg, w, l):
     """Calculate linker distances by flood-fill from starting positions within the allowed sphere."""
     ng = density.shape[0]

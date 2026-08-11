@@ -46,7 +46,6 @@ from .h2mm import (
     BurstPhotons,
     H2mmModel,
     _row_normalize,
-    njit,
     optimize,
     prepare_bursts,
     simulate_bursts,
@@ -80,7 +79,6 @@ def surrogate_available() -> bool:
 _AC_LAGS = np.array([1, 2, 4, 8, 16, 32], dtype=np.int64)
 
 
-@njit(cache=True)
 def _feature_kernel(streams, offsets, n_streams, win, lags):
     """Single O(N) pass: per-photon windowed FRET + signal mean + lag autocorr.
 

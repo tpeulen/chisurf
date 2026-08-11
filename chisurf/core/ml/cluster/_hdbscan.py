@@ -36,7 +36,6 @@ from __future__ import annotations
 
 from typing import Optional
 
-import numba as nb
 import numpy as np
 
 from ..base import BaseEstimator
@@ -87,7 +86,6 @@ _NOISE = -1
 # set — which the settings bootstrap does, from a preference. A library module
 # that may be imported at any point must not decide that for the process; the
 # fast path here is the compiled kernel anyway, and it is threaded.
-@nb.jit(nopython=True, nogil=True, cache=True)
 def _core_distances_bruteforce(X: np.ndarray, k: int) -> np.ndarray:
     """Distance to the ``k``-th nearest neighbour of every row, brute force.
 
@@ -159,7 +157,6 @@ def core_distances(X: np.ndarray, min_samples: int) -> np.ndarray:
 # `ninf` is deliberately absent from the fast-math set: the running best is
 # seeded with `inf`, and a compiler allowed to assume finiteness turns the
 # first comparison of every round into whatever it likes.
-@nb.jit(nopython=True, nogil=True, inline="always", cache=True)
 def _edge_less(w1: float, u1: int, v1: int, w2: float, u2: int, v2: int) -> bool:
     """Total order on edges: by weight, then by the sorted endpoint pair.
 
@@ -182,7 +179,6 @@ def _edge_less(w1: float, u1: int, v1: int, w2: float, u2: int, v2: int) -> bool
     return b1 < b2
 
 
-@nb.jit(nopython=True, nogil=True, cache=True)
 def _prim_mst(
     X: np.ndarray, core: np.ndarray, alpha: float
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -326,7 +322,6 @@ def _compiled_kernel():
 # ---------------------------------------------------------------------------
 
 
-@nb.jit(nopython=True, nogil=True, cache=True)
 def _single_linkage(
     sources: np.ndarray, targets: np.ndarray, weights: np.ndarray
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
@@ -409,7 +404,6 @@ def single_linkage_tree(mst: np.ndarray) -> np.ndarray:
     return out
 
 
-@nb.jit(nopython=True, nogil=True, cache=True)
 def _bfs_nodes(
     left: np.ndarray, right: np.ndarray, n_samples: int, root: int, out: np.ndarray
 ) -> int:
@@ -428,7 +422,6 @@ def _bfs_nodes(
     return tail
 
 
-@nb.jit(nopython=True, nogil=True, cache=True)
 def _condense(
     left: np.ndarray,
     right: np.ndarray,
@@ -687,7 +680,6 @@ def _epsilon_search(
     return set(selected)
 
 
-@nb.jit(nopython=True, nogil=True, cache=True)
 def _label_points(
     parents: np.ndarray,
     children: np.ndarray,

@@ -47,50 +47,16 @@ from dataclasses import dataclass
 
 import numpy as np
 
-try:  # numba is a first-class dependency; degrade gracefully if unavailable
-    from numba import get_num_threads, njit, prange
-
-    _HAVE_NUMBA = True
-except Exception:  # pragma: no cover - exercised only without numba
-    _HAVE_NUMBA = False
-
-    def njit(*args, **kwargs):  # type: ignore
-        """No-op ``njit`` fallback used when numba is unavailable."""
-        def _wrap(fn):
-            return fn
-
-        if len(args) == 1 and callable(args[0]) and not kwargs:
-            return args[0]
-        return _wrap
-
-    def prange(*args):  # type: ignore
-        """Return a serial range (``prange`` fallback without numba)."""
-        return range(*args)
-
-    def get_num_threads():  # type: ignore
-        """Return a single thread (fallback without numba)."""
-        return 1
-
 
 def _sync_numba_threads() -> None:
-    """Pin ``NUMBA_NUM_THREADS`` back to numba's already-launched pool size.
+    """Retained as a no-op: there are no numba kernels left to keep compilable.
 
-    ChiSurf's startup (``chisurf.core.settings.env_bootstrap``) may rewrite the
-    ``NUMBA_NUM_THREADS`` environment variable *after* numba's threadpool has
-    launched.  numba re-reads that variable on every fresh (cold) compile and
-    raises if it no longer matches the launched pool — so the first new kernel
-    specialisation compiled after such a rewrite (e.g. the ``float32`` E-step)
-    would crash.  Rewriting the env back to the launched count keeps late cold
-    compiles valid without touching the pool.
+    It pinned ``NUMBA_NUM_THREADS`` back to the launched pool size, because
+    ChiSurf's startup rewrites that variable and numba re-read it on every cold
+    compile. Kept as a no-op rather than deleted because two call sites read as
+    deliberate; they can go with the next edit to this file.
     """
-    if not _HAVE_NUMBA:
-        return
-    try:
-        from numba import config as _nb_config
-
-        os.environ["NUMBA_NUM_THREADS"] = str(_nb_config.NUMBA_NUM_THREADS)
-    except Exception:  # pragma: no cover - defensive only
-        pass
+    return
 
 
 # ---------------------------------------------------------------------------
@@ -317,7 +283,6 @@ def prepare_bursts(
 # ---------------------------------------------------------------------------
 
 
-@njit(cache=True, fastmath=True)
 def _matmul_norm(a, b):
     """Return the row-normalised matrix product ``a @ b``."""
     n = a.shape[0]
@@ -336,7 +301,6 @@ def _matmul_norm(a, b):
     return out
 
 
-@njit(cache=True)
 def _rho_base(A):
     """Return ``ρ(1)[k,m,i,j] = δ_{k,i}·A[i,j]·δ_{j,m}``."""
     n = A.shape[0]
@@ -347,7 +311,6 @@ def _rho_base(A):
     return R
 
 
-@njit(cache=True, fastmath=True)
 def _pair_compose(Pa, Ra, Pb, Rb):
     """Compose interval propagators ``(Pa,Ra)`` then ``(Pb,Rb)``.
 
@@ -368,7 +331,6 @@ def _pair_compose(Pa, Ra, Pb, Rb):
     return P, R
 
 
-@njit(cache=True)
 def _pair_pow(A, R1, power):
     """Binary-exponentiate the base pair ``(A, R1)`` to ``(A^power, ρ(power))``."""
     n = A.shape[0]
@@ -387,7 +349,6 @@ def _pair_pow(A, R1, power):
     return Pres, Rres
 
 
-@njit(parallel=True, cache=True, fastmath=True)
 def _build_caches(A, unique_dt, pow_cache, rho_cache):
     """Fill ``pow_cache[s]=A^Δt`` and ``rho_cache[s]=ρ(Δt)`` for each slot ``s``.
 
@@ -396,7 +357,7 @@ def _build_caches(A, unique_dt, pow_cache, rho_cache):
     spectral build (:func:`_build_caches_eig`) declines.
     """
     R1 = _rho_base(A)
-    for s in prange(unique_dt.shape[0]):
+    for s in range(unique_dt.shape[0]):
         P, R = _pair_pow(A, R1, unique_dt[s])
         pow_cache[s] = P
         rho_cache[s] = R
@@ -507,7 +468,6 @@ def _fill_caches(A, unique_dt, pow_cache, rho_cache, prefer_eig):
 # ---------------------------------------------------------------------------
 
 
-@njit(parallel=True, fastmath=True)
 def _estep(
     prior,
     obs,
@@ -568,7 +528,7 @@ def _estep(
     prior_p = np.zeros((nthreads, n_states))
     ll_p = np.zeros(nthreads)
 
-    for c in prange(nthreads):
+    for c in range(nthreads):
         b0 = c * n_bursts // nthreads
         b1 = (c + 1) * n_bursts // nthreads
         # Thread-local scratch + accumulators (own stack → no false sharing).
@@ -953,7 +913,6 @@ def optimize(
 # ---------------------------------------------------------------------------
 
 
-@njit(cache=True)
 def _viterbi_burst(log_prior, log_obs, log_pow, streams, gap_slot, s, e, path):
     """Viterbi decode one burst into ``path[s:e]``; return its path log-lik."""
     n_states = log_prior.shape[0]
@@ -994,7 +953,6 @@ def _viterbi_burst(log_prior, log_obs, log_pow, streams, gap_slot, s, e, path):
     return best
 
 
-@njit(parallel=True, cache=True)
 def _viterbi_all(log_prior, log_obs, log_pow, streams, gap_slot, offsets, path):
     """Viterbi-decode every burst in parallel; return the summed path log-lik.
 
@@ -1005,7 +963,7 @@ def _viterbi_all(log_prior, log_obs, log_pow, streams, gap_slot, offsets, path):
     """
     n_bursts = offsets.shape[0] - 1
     total = 0.0
-    for b in prange(n_bursts):
+    for b in range(n_bursts):
         total += _viterbi_burst(
             log_prior, log_obs, log_pow, streams, gap_slot,
             offsets[b], offsets[b + 1], path,

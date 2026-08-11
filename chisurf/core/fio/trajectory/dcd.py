@@ -38,52 +38,47 @@ from __future__ import annotations
 import dataclasses
 import pathlib
 
-import numba as nb
 import numpy as np
 
 __all__ = ["DCDHeader", "DCDWriter", "dcd_info", "read_dcd", "read_time_axis", "read_times",
            "write_dcd"]
 
 
-@nb.njit(cache=True, parallel=True)
 def _gather_frames(flat, frames, atoms, frame_stride, x_offset, gap, out):
     """De-interleave DCD's separate X, Y and Z blocks into ``(frame, atom, 3)``.
 
-    A DCD frame stores all the X values, then all the Y, then all the Z, each
-    in its own record. Turning that into the interleaved array everything else
-    wants is a gather with a stride, and doing it a frame at a time in Python
-    is what the read used to cost -- the decoding itself is free, because the
-    payload is already ``float32``.
+    A DCD frame stores all the X values, then all the Y, then all the Z, each in
+    its own record; everything downstream wants them interleaved.
 
-    Parameters
-    ----------
-    flat : numpy.ndarray
-        The whole post-header payload viewed as ``float32``, record markers
-        included. Native byte order.
-    frames : numpy.ndarray
-        Indices of the frames to gather, in output order.
-    atoms : numpy.ndarray
-        Indices of the atoms to keep, in output order.
-    frame_stride : int
-        Distance between frames, in ``float32`` slots.
-    x_offset : int
-        Slot of the first X value within a frame.
-    gap : int
-        Slots between the end of one coordinate block and the start of the
-        next -- the two record markers that separate them.
-    out : numpy.ndarray
-        ``(len(frames), len(atoms), 3)`` destination.
+    The payload is a regular 3-D grid, so it is described as one with
+    ``as_strided`` and copied, rather than gathered with a broadcast index array
+    — the index array alone is 80 MB at 200 frames × 50k atoms.
+
+    This was a parallel numba kernel until numba was retired. NumPy is
+    **2.5–9.4× slower** here (measured; a parallel gather *with* a transpose is
+    the shape NumPy expresses worst), so a compiled kernel is still wanted —
+    board ticket ``T-20260811-20``, tttrlib PRD-037 B5. Correctness is
+    unaffected: this produces identical bytes.
     """
+    from numpy.lib.stride_tricks import as_strided
+
     n_atoms_file = (frame_stride - x_offset - 2 * gap) // 3
-    for i in nb.prange(frames.shape[0]):
-        base = frames[i] * frame_stride + x_offset
-        y_base = base + n_atoms_file + gap
-        z_base = y_base + n_atoms_file + gap
-        for j in range(atoms.shape[0]):
-            a = atoms[j]
-            out[i, j, 0] = flat[base + a]
-            out[i, j, 1] = flat[y_base + a]
-            out[i, j, 2] = flat[z_base + a]
+    item = flat.itemsize
+    n_frames_file = (flat.size - x_offset) // frame_stride + 1
+    view = as_strided(
+        flat[x_offset:],
+        shape=(n_frames_file, 3, n_atoms_file),
+        strides=(frame_stride * item, (n_atoms_file + gap) * item, item),
+    )
+    selected = view[np.asarray(frames, dtype=np.intp)]
+    atoms = np.asarray(atoms, dtype=np.intp)
+    contiguous = (
+        atoms.size == n_atoms_file and atoms[0] == 0 and atoms[-1] == n_atoms_file - 1
+    )
+    if not contiguous:
+        selected = selected[:, :, atoms]
+    np.copyto(out, selected.transpose(0, 2, 1))
+
 
 #: Header record length, and the magic that follows it.
 _HEADER_BYTES = 84

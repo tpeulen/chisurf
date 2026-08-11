@@ -10,7 +10,6 @@ from __future__ import annotations
 
 from typing import Optional
 
-import numba as nb
 import numpy as np
 
 from ..base import BaseEstimator
@@ -24,7 +23,6 @@ __all__ = [
 ]
 
 
-@nb.jit(nopython=True, nogil=True, fastmath=True)
 def _squared_distances(X: np.ndarray, center: np.ndarray, out: np.ndarray) -> None:
     """Fill ``out`` with the squared distance from every row of ``X`` to ``center``."""
     n_samples, n_features = X.shape
@@ -36,7 +34,6 @@ def _squared_distances(X: np.ndarray, center: np.ndarray, out: np.ndarray) -> No
         out[t] = acc
 
 
-@nb.jit(nopython=True, nogil=True, fastmath=True)
 def _kmeanspp_seed(X: np.ndarray, n_clusters: int, uniforms: np.ndarray) -> np.ndarray:
     """Choose ``n_clusters`` initial centres with the greedy k-means++ rule.
 
@@ -90,14 +87,24 @@ def _kmeanspp_seed(X: np.ndarray, n_clusters: int, uniforms: np.ndarray) -> np.n
     return centers
 
 
-@nb.jit(nopython=True, nogil=True, fastmath=True)
 def _kmeans_lloyd(
     X: np.ndarray, centers: np.ndarray, labels: np.ndarray, max_iter: int, tol: float
-) -> float:
-    """Run Lloyd's algorithm in place on ``centers``/``labels``, returning the inertia.
+) -> tuple[float, int]:
+    """Run Lloyd's algorithm in place on ``centers``/``labels``.
 
     Assignment and centroid accumulation share one pass over the samples, so no
     ``(n_samples, n_clusters)`` distance matrix is ever materialised.
+
+    Returns
+    -------
+    inertia : float
+        Within-cluster sum of squares **of the returned centres**. The
+        accumulation loop computes it against the centres it started the sweep
+        with, so a final assignment pass is made once the sweep has converged —
+        otherwise the value reported is one update stale, and restarts get
+        ranked on it.
+    n_iter : int
+        Sweeps actually performed.
     """
     n_samples, n_features = X.shape
     n_clusters = centers.shape[0]
@@ -105,7 +112,9 @@ def _kmeans_lloyd(
     sums = np.empty((n_clusters, n_features))
     counts = np.empty(n_clusters)
     inertia = 0.0
+    n_iter = 0
     for _ in range(max_iter):
+        n_iter += 1
         sums[:, :] = 0.0
         counts[:] = 0.0
         inertia = 0.0
@@ -142,13 +151,43 @@ def _kmeans_lloyd(
                     shift += diff * diff
                     centers[c, j] = updated
             else:
-                # Re-seed an emptied cluster on the worst-explained sample.
+                # Re-seed an emptied cluster on the worst-explained sample, and
+                # take that sample out of the running so that a second empty
+                # cluster does not land on top of the first.
                 for j in range(n_features):
                     centers[c, j] = X[worst_index, j]
+                worst_distance = -1.0
+                for t in range(n_samples):
+                    if labels[t] == c:
+                        continue
+                    acc = 0.0
+                    for j in range(n_features):
+                        diff = X[t, j] - centers[labels[t], j]
+                        acc += diff * diff
+                    if acc > worst_distance:
+                        worst_distance = acc
+                        worst_index = t
                 shift += tol + 1.0
         if n_changed == 0 or shift <= tol * tol:
             break
-    return inertia
+
+    # The inertia above was accumulated against the centres of the *previous*
+    # sweep. One more assignment pass makes it the inertia of what is returned.
+    inertia = 0.0
+    for t in range(n_samples):
+        best = np.inf
+        best_c = 0
+        for c in range(n_clusters):
+            acc = 0.0
+            for j in range(n_features):
+                diff = X[t, j] - centers[c, j]
+                acc += diff * diff
+            if acc < best:
+                best = acc
+                best_c = c
+        labels[t] = best_c
+        inertia += best
+    return inertia, n_iter
 
 
 def _kmeans(
@@ -158,7 +197,7 @@ def _kmeans(
     n_init: int = 10,
     max_iter: int = 300,
     tol: float = 1e-4,
-) -> tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, float, int]:
     """Cluster ``X`` with k-means++ seeded Lloyd iterations.
 
     Used to place the initial state means *and* -- through the labels it
@@ -187,27 +226,32 @@ def _kmeans(
         Cluster centres, shape ``(n_clusters, n_features)``.
     labels : numpy.ndarray
         Index of the closest centre per sample, shape ``(n_samples, )``.
+    inertia : float
+        Within-cluster sum of squares of the winning restart.
+    n_iter : int
+        Sweeps the winning restart took.
     """
     X = np.ascontiguousarray(X, dtype=float)
     n_samples = len(X)
     if n_samples <= n_clusters:
         centers = np.repeat(X.mean(axis=0)[None, :], n_clusters, axis=0)
         centers[:n_samples] = X
-        return centers, np.arange(n_samples) % n_clusters
+        return centers, np.arange(n_samples) % n_clusters, 0.0, 0
 
     # Candidates per centre for the greedy seeding, as in the reference
     # implementations: enough to matter, few enough to stay cheap.
     n_trials = 2 + int(np.log(n_clusters))
     labels = np.empty(n_samples, dtype=np.int64)
-    best, best_inertia = None, np.inf
+    best, best_inertia, best_n_iter = None, np.inf, 0
     for _ in range(n_init):
         centers = _kmeanspp_seed(
             X, n_clusters, random_state.random(n_clusters * n_trials)
         )
-        inertia = _kmeans_lloyd(X, centers, labels, max_iter, tol)
+        inertia, n_iter = _kmeans_lloyd(X, centers, labels, max_iter, tol)
         if inertia < best_inertia:
-            best, best_inertia = (centers, labels.copy()), inertia
-    return best
+            best = (centers, labels.copy())
+            best_inertia, best_n_iter = inertia, n_iter
+    return best[0], best[1], best_inertia, best_n_iter
 
 
 class KMeans(BaseEstimator):
@@ -261,9 +305,9 @@ class KMeans(BaseEstimator):
 
     def fit(self, X, y=None):
         """Compute k-means clustering on ``X`` and return ``self``."""
-        X = np.asarray(X, dtype=float)
+        X = np.ascontiguousarray(X, dtype=float)
         rng = np.random.default_rng(self.random_state)
-        centers, labels = _kmeans(
+        centers, labels, inertia, n_iter = _kmeans(
             X,
             int(self.n_clusters),
             rng,
@@ -273,10 +317,8 @@ class KMeans(BaseEstimator):
         )
         self.cluster_centers_ = centers
         self.labels_ = labels
-        self.n_iter_ = int(self.max_iter)
-        # inertia: sum of squared distances to the assigned centroid
-        diff = X - centers[labels]
-        self.inertia_ = float(np.einsum("ij,ij->", diff, diff))
+        self.n_iter_ = n_iter
+        self.inertia_ = float(inertia)
         self.n_features_in_ = X.shape[1]
         return self
 
@@ -284,17 +326,30 @@ class KMeans(BaseEstimator):
         """Fit and return the cluster labels of ``X``."""
         return self.fit(X).labels_
 
+    def _squared_distances_to_centers(self, X: np.ndarray) -> np.ndarray:
+        """Return the ``(n, k)`` squared distances, without an ``(n, k, d)`` temporary.
+
+        The obvious broadcast ``X[:, None, :] - centers[None, :, :]`` allocates
+        ``n * k * d`` doubles, which for a burst table and a dozen clusters is
+        gigabytes. The expansion below allocates ``n * k``.
+        """
+        centers = self.cluster_centers_
+        squared = (
+            np.einsum("ij,ij->i", X, X)[:, None]
+            + np.einsum("ij,ij->i", centers, centers)[None, :]
+            - 2.0 * (X @ centers.T)
+        )
+        return np.maximum(squared, 0.0, out=squared)
+
     def predict(self, X) -> np.ndarray:
         """Return the closest-centroid index of each row of ``X``."""
         X = np.asarray(X, dtype=float)
-        diff = X[:, None, :] - self.cluster_centers_[None, :, :]
-        return np.einsum("ijk,ijk->ij", diff, diff).argmin(axis=1)
+        return self._squared_distances_to_centers(X).argmin(axis=1)
 
     def transform(self, X) -> np.ndarray:
         """Return the per-row distance to every centroid, ``(n, k)``."""
         X = np.asarray(X, dtype=float)
-        diff = X[:, None, :] - self.cluster_centers_[None, :, :]
-        return np.sqrt(np.einsum("ijk,ijk->ij", diff, diff))
+        return np.sqrt(self._squared_distances_to_centers(X))
 
 
 __all__ = ["KMeans", "_kmeans", "_kmeanspp_seed", "_kmeans_lloyd", "_squared_distances"]

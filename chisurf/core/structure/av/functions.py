@@ -11,7 +11,6 @@ except ImportError:
     fps_ = None
 import chisurf.core.settings
 import numpy as np
-import numba as nb
 import math
 
 # Try to import pyopencl, but make it optional
@@ -149,7 +148,6 @@ def dRmp(
     return np.sqrt(((av1.Rmp-av2.Rmp)**2).sum())
 
 
-@nb.jit(nopython=True)
 def density2points(ng, dg, density, r0):
     """Convert a 3D density grid to a list of (x, y, z, weight) points."""
     r = np.empty((ng**3, 4), dtype=np.float64)
@@ -173,7 +171,6 @@ def density2points(ng, dg, density, r0):
     return n, r
 
 
-@nb.jit(nopython=True)
 def assign_diffusion_to_grid_1(
         d_map,
         density,
@@ -229,7 +226,6 @@ def assign_diffusion_to_grid_1(
     return r
 
 
-@nb.jit(nopython=True)
 def assign_diffusion_to_grid_2(
         density,
         r0,
@@ -320,7 +316,6 @@ def assign_diffusion_to_grid_3(
 assign_diffusion_to_grid = assign_diffusion_to_grid_1
 
 
-@nb.jit(nopython=True, nogil=True)
 def iterate_cpu(n, p, d, k, b, ng):
     """CPU implementation of the diffusion iteration kernel."""
     for ix in range(1, ng-1):
@@ -348,7 +343,6 @@ def iterate_cpu(n, p, d, k, b, ng):
                     n[i] = p[i] - (xl + xr + yl + yr + zl + zr + ts)
     return n
 
-@nb.jit(nopython=True, nogil=True)
 def reduce_decay_cpu(p, k, time_i, ng):
     """CPU implementation of the reduce_decay kernel for fluorescence decay."""
     decay_sum = 0.0
@@ -522,7 +516,6 @@ class DiffusionIterator:
         return time_axis, n_ex, self.p
 
 
-@nb.jit(nopython=True, nogil=True)
 def create_fret_rate_map(
         density_donor,
         density_acceptor,
@@ -601,7 +594,6 @@ def create_fret_rate_map(
     return r
 
 
-@nb.jit(nopython=True, nogil=True)
 def create_quenching_map(
         density,
         r0,
@@ -687,7 +679,6 @@ def reset_density_av(density):
         chisurf.core.structure.av.fps_.reset_density_av(density, ng)
 
 
-@nb.jit(nopython=True)
 def random_distances(p1, p2, n_samples):
     """
 
@@ -717,7 +708,6 @@ def random_distances(p1, p2, n_samples):
     return distances
 
 
-@nb.jit(nopython=True)
 def split_av_acv(density, dg, radius, rs, r0):
     """
 

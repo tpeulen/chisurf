@@ -12,72 +12,26 @@ from collections.abc import Callable
 
 import numpy as np
 
-try:
-    from numba import get_num_threads, njit, prange
-except ImportError as exc:  # pragma: no cover - hard failure when numba missing
-    raise ImportError(
-        "chisurf.plugins.fcs.flc_2d.core requires numba. Install numba to use the 2D-FCS module."
-    ) from exc
+def default_chunk_count() -> int:
+    """Chunks to split the photon stream into for the 2D-FDC pass.
 
+    One per CPU. The kernels are the photon library's now and parallelise with
+    OpenMP, so this is no longer tied to numba's pool -- which it had to be while
+    they were numba kernels, because handing a ``prange`` a count its launched
+    pool disagreed with made the runtime object rather than over-subscribe.
 
-def _sync_numba_threads() -> None:
-    """Pin ``NUMBA_NUM_THREADS`` back to numba's already-launched pool size.
+    The count never changes the result: per-chunk pair counts are integers and
+    are summed afterwards, so this is a parallelism and memory decision only.
 
-    ChiSurf's startup (:mod:`chisurf.core.settings.env_bootstrap`) rewrites
-    ``NUMBA_NUM_THREADS`` from settings, and it can do so *after* numba's
-    threadpool has launched. numba re-reads that variable on every cold compile
-    and raises when it no longer matches the pool, so the first kernel here to
-    be compiled after such a rewrite dies with "cannot set NUMBA_NUM_THREADS to
-    a different value once the threads have been launched" — a message that
-    points at threading rather than at the setting that moved.
-
-    Rewriting the variable back to the launched count keeps late cold compiles
-    valid without touching the pool. The same guard exists in the H2MM engine
-    for the same reason; this module needs its own because it compiles its
-    kernels lazily too.
+    Returns
+    -------
+    int
     """
-    try:
-        import os
+    import os
 
-        from numba import config as _nb_config
-
-        os.environ["NUMBA_NUM_THREADS"] = str(_nb_config.NUMBA_NUM_THREADS)
-    except Exception:  # pragma: no cover - defensive only
-        pass
+    return os.cpu_count() or 1
 
 
-_sync_numba_threads()
-
-
-@njit(cache=True)
-def _ceil_div_pos(a: int, b: int) -> int:
-    """Ceil division for positive integers."""
-    return (a + b - 1) // b
-
-
-@njit(cache=True)
-def _ceil_div_signed(a: int, b: int) -> int:
-    """Safe ceil division for signed numerator."""
-    if a >= 0:
-        return (a + b - 1) // b
-    return -((-a) // b)
-
-
-@njit(cache=True)
-def _log_bin_int(tau_ticks: int, logt_ticks: np.ndarray) -> int:
-    """Find the logarithmic bin index for an integer tau.
-
-    Returns -1 if out of range.
-    """
-    idx = np.searchsorted(logt_ticks, tau_ticks, side="left")
-    if idx <= 0:
-        return -1
-    if idx >= logt_ticks.shape[0]:
-        return -1
-    return idx - 1
-
-
-@njit(cache=True, parallel=True)
 def create_2d_fdc_numba_int(
     macro_times: np.ndarray,
     micro_times: np.ndarray,
@@ -92,134 +46,62 @@ def create_2d_fdc_numba_int(
     build_lin: bool = True,
     n_chunks: int = 1,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """Numba-accelerated 2D-FDC creation using integer arithmetic.
+    """Build the linear and log 2D-FDC matrices for one lag, in one photon pass.
 
-    The reference-photon loop is split into ``n_chunks`` independent chunks, each
-    accumulating into a private matrix (no write races), run in parallel with
-    ``prange`` and reduced at the end. ``lint_bin_factor`` bins the micro-time axis at
-    construction time; ``build_lin=False`` skips the (potentially large) linear matrix
-    when only the log-binned one is needed.
+    Both matrices come from a single walk over the stream
+    (`fdc_scan_two_axes`) -- two calls would be two passes, which at 1M photons
+    is a measured 2.27x.
+
+    The axes and the gate follow ``TK_Create2DFDC_04.m``: ``t_Imax`` is the span
+    rounded **up** to a whole number of linear bins, it bounds the micro-time
+    gate (so photons above ``tMax`` are admitted, lines 38-40 and 66), and the
+    linear matrix is trimmed by one bin on return (lines 170-172, MATLAB being
+    1-based over ``1..lint_Imax``).
+
+    ``Tstart_ticks`` and ``Tend_ticks`` are accepted for signature compatibility
+    and unused: the library bounds the window by the photon stream itself.
     """
-    n = macro_times.shape[0]
-    if n == 0:
+    import tttrlib
+
+    macro = np.ascontiguousarray(macro_times, dtype=np.int64)
+    micro = np.ascontiguousarray(micro_times, dtype=np.int64)
+    if macro.shape[0] == 0:
         raise ValueError("Input arrays cannot be empty")
-    if micro_times.shape[0] != n:
+    if micro.shape[0] != macro.shape[0]:
         raise ValueError("macro_times and micro_times must have same length")
-
-    logt_imax = logt_imax_in + 1
-
-    span_ticks = tMax_over_tStep - tMin_over_tStep
-    if span_ticks < 0:
+    span = int(tMax_over_tStep) - int(tMin_over_tStep)
+    if span < 0:
         raise ValueError("tMax_over_tStep must be >= tMin_over_tStep")
 
-    t_imax0 = span_ticks + lint_bin_factor
-    lint_imax = _ceil_div_pos(t_imax0, lint_bin_factor)
-    t_imax = lint_imax * lint_bin_factor
+    factor = int(lint_bin_factor)
+    t_imax = tttrlib.fdc_t_imax(span, factor)
+    lint_imax = t_imax // factor
 
-    mat_2dfdc_lint = (lint_bin_factor) * np.arange(lint_imax, dtype=np.int64)
+    log_ticks = np.zeros(int(logt_imax_in) + 1, dtype=np.int64)
+    tttrlib.fdc_log_ticks(t_imax, log_ticks)
+    lin_ticks = np.concatenate(
+        [[-1], np.arange(0, t_imax + factor, factor)]
+    ).astype(np.int64)
 
-    logt_ticks = np.empty(logt_imax, dtype=np.int64)
-    logt_ticks[0] = -1
-    for j in range(1, logt_imax):
-        x = j / (logt_imax - 1)
-        v = (t_imax**x) - 1.0
-        if v < -9.22e18:
-            logt_ticks[j] = -9223372036854775808
-        elif v > 9.22e18:
-            logt_ticks[j] = 9223372036854775807
-        else:
-            logt_ticks[j] = int(np.floor(v + 0.5))
+    out_log = np.zeros((len(log_ticks) - 1) ** 2, dtype=np.int64)
+    out_lin = np.zeros((len(lin_ticks) - 1) ** 2, dtype=np.int64)
+    tttrlib.fdc_scan_two_axes(
+        macro, micro, np.array([int(dT_ticks)], dtype=np.int64), int(ddT_ticks),
+        int(tMin_over_tStep), int(tMax_over_tStep), log_ticks, lin_ticks,
+        int(n_chunks), out_log, out_lin, t_imax,
+    )
 
-    nc = n_chunks if n_chunks >= 1 else 1
-    llin = lint_imax if build_lin else 1
-    acc_lin = np.zeros((nc, llin, llin), dtype=np.int64)
-    acc_log = np.zeros((nc, logt_imax, logt_imax), dtype=np.int64)
-    half = ddT_ticks // 2
-
-    for c in prange(nc):
-        i0 = (n * c) // nc
-        i1 = (n * (c + 1)) // nc
-        for i in range(i0, i1):
-            ti = macro_times[i]
-            if ti < Tstart_ticks or ti > Tend_ticks:
-                continue
-
-            tau_i = micro_times[i] - tMin_over_tStep
-            if tau_i <= 0 or tau_i >= t_imax:
-                continue
-
-            lint_i = _ceil_div_pos(tau_i, lint_bin_factor)
-            logt_i = _log_bin_int(tau_i, logt_ticks)
-
-            dt_start = ti + dT_ticks - half
-            dt_end = ti + dT_ticks + half
-            if dt_end > macro_times[n - 1] or dt_end > Tend_ticks:
-                break  # photons are sorted: the rest of this chunk also overflow
-
-            k_start = np.searchsorted(macro_times, dt_start, side="left")
-            k_end = np.searchsorted(macro_times, dt_end, side="right")
-
-            for k in range(k_start, k_end):
-                tau_k = micro_times[k] - tMin_over_tStep
-                if tau_k <= 0 or tau_k >= t_imax:
-                    continue
-
-                if build_lin:
-                    lint_k = _ceil_div_pos(tau_k, lint_bin_factor)
-                    if lint_i < lint_imax and lint_k < lint_imax:
-                        acc_lin[c, lint_i, lint_k] += 1
-
-                logt_k = _log_bin_int(tau_k, logt_ticks)
-                if (logt_i > 0) and (logt_k > 0) and (logt_i < logt_imax) and (logt_k < logt_imax):
-                    acc_log[c, logt_i, logt_k] += 1
-
-    mat_2dfdc_lin = acc_lin[0].copy()
-    mat_2dfdc_log = acc_log[0].copy()
-    for c in range(1, nc):
-        mat_2dfdc_lin += acc_lin[c]
-        mat_2dfdc_log += acc_log[c]
-
-    # The reference trims one bin off the linear matrix on return
-    # (TK_Create2DFDC_04.m:170-172, `Var = size(Mat_2DFDC_lin) - 1`), and MATLAB
-    # is 1-based over bins 1..lint_Imax, so this is the same trim. It DOES drop
-    # the pairs in the highest linear bin -- 654 at lint_bin_factor=3, 974 at 5
-    # against a brute-force count -- but that is the published method's
-    # behaviour, not a defect here. Do not "fix" it without changing the method.
-    var_size = mat_2dfdc_lin.shape[0] - 1
-    mat_2dfdc_lin = mat_2dfdc_lin[:var_size, :var_size]
-    mat_2dfdc_lint = mat_2dfdc_lint[:var_size]
-
-    mat_2dfdc_log = mat_2dfdc_log[: logt_imax - 1, : logt_imax - 1]
-    logt_ticks = logt_ticks[: logt_imax - 1]
-
-    return mat_2dfdc_lin, mat_2dfdc_lint, mat_2dfdc_log, logt_ticks
+    mat_log = out_log.reshape(int(logt_imax_in), int(logt_imax_in))
+    logt_ticks = log_ticks[: int(logt_imax_in)]
+    mat_lin = out_lin.reshape(len(lin_ticks) - 1, len(lin_ticks) - 1)[
+        : lint_imax - 1, : lint_imax - 1
+    ]
+    mat_lint = (factor * np.arange(lint_imax, dtype=np.int64))[: lint_imax - 1]
+    return mat_lin, mat_lint, mat_log, logt_ticks
 
 
-def default_chunk_count() -> int:
-    """Chunks to split the photon stream into for :func:`_fdc_scan_log_kernel`.
-
-    The number the *kernel's own thread pool* is running with, which is not the
-    same as the CPU count: ChiSurf's environment bootstrap sets
-    ``NUMBA_NUM_THREADS`` from settings, and once the pool has launched, handing
-    the kernel a different number makes the runtime object rather than silently
-    over-subscribe.
-
-    The count never changes the result -- per-chunk pair counts are integers and
-    are summed afterwards -- so this is a parallelism and memory decision only.
-
-    Returns
-    -------
-    int
-    """
-    from numba import get_num_threads
-
-    try:
-        return int(get_num_threads())
-    except Exception:  # pragma: no cover - a pool that will not report itself
-        return 1
 
 
-@njit(cache=True, parallel=True)
 def _fdc_scan_log_kernel(
     macro_times: np.ndarray,
     micro_times: np.ndarray,
@@ -231,74 +113,29 @@ def _fdc_scan_log_kernel(
     n_chunks: int,
     lint_bin_factor: int = 1,
 ) -> np.ndarray:
-    """Build one log-binned 2D-FDC matrix per lag in ``dT_ticks`` in a single photon pass.
+    """Build one log-binned 2D-FDC matrix per lag in a single photon pass.
 
-    Returns an array of shape ``(n_lags, L, L)`` (``L = logt_imax_in``). Each reference
-    photon visits every lag window once, so the photon stream is traversed only once.
+    Returns an array of shape ``(n_lags, L, L)`` (``L = logt_imax_in``). The
+    photon pass is the library's `fdc_scan_axis`; the axis and the gate are
+    built here from the reference's ``t_Imax`` so the result is the paper's.
     """
-    n = macro_times.shape[0]
-    n_lags = dT_ticks.shape[0]
-    logt_imax = logt_imax_in + 1
-    span = tMax_over_tStep - tMin_over_tStep
-    # The reference derives t_imax by rounding the span UP to a whole number of
-    # linear bins and uses that same value for the log edges
-    # (TK_Create2DFDC_04.m:38-40), so the log axis depends on lint_bin_factor.
-    # This kernel used `span + 1` unconditionally, which is that rule at
-    # lint_bin_factor=1 and a different axis for anything else -- so the two
-    # entry points here disagreed with each other and the scan disagreed with
-    # the paper. MATLAB is authoritative; the default of 1 keeps every existing
-    # caller's numbers unchanged.
-    t_imax0 = span + lint_bin_factor
-    lint_imax = _ceil_div_pos(t_imax0, lint_bin_factor)
-    t_imax = lint_imax * lint_bin_factor
+    import tttrlib
 
-    logt_ticks = np.empty(logt_imax, dtype=np.int64)
-    logt_ticks[0] = -1
-    for j in range(1, logt_imax):
-        x = j / (logt_imax - 1)
-        v = (t_imax**x) - 1.0
-        if v < -9.22e18:
-            logt_ticks[j] = -9223372036854775808
-        elif v > 9.22e18:
-            logt_ticks[j] = 9223372036854775807
-        else:
-            logt_ticks[j] = int(np.floor(v + 0.5))
+    span = int(tMax_over_tStep) - int(tMin_over_tStep)
+    t_imax = tttrlib.fdc_t_imax(span, int(lint_bin_factor))
+    ticks = np.zeros(int(logt_imax_in) + 1, dtype=np.int64)
+    tttrlib.fdc_log_ticks(t_imax, ticks)
+    lags = np.ascontiguousarray(dT_ticks, dtype=np.int64)
+    out = np.zeros(lags.size * int(logt_imax_in) ** 2, dtype=np.int64)
+    tttrlib.fdc_scan_axis(
+        np.ascontiguousarray(macro_times, dtype=np.int64),
+        np.ascontiguousarray(micro_times, dtype=np.int64),
+        lags, int(ddT_ticks), int(tMin_over_tStep), int(tMax_over_tStep),
+        ticks, int(n_chunks), out, t_imax,
+    )
+    return out.reshape(lags.size, int(logt_imax_in), int(logt_imax_in))
 
-    nc = n_chunks if n_chunks >= 1 else 1
-    half = ddT_ticks // 2
-    last = macro_times[n - 1]
-    acc = np.zeros((nc, n_lags, logt_imax, logt_imax), dtype=np.int64)
 
-    for c in prange(nc):
-        i0 = (n * c) // nc
-        i1 = (n * (c + 1)) // nc
-        for i in range(i0, i1):
-            ti = macro_times[i]
-            tau_i = micro_times[i] - tMin_over_tStep
-            if tau_i <= 0 or tau_i >= t_imax:
-                continue
-            logt_i = _log_bin_int(tau_i, logt_ticks)
-            if logt_i <= 0 or logt_i >= logt_imax:
-                continue
-            for li in range(n_lags):
-                dt_start = ti + dT_ticks[li] - half
-                dt_end = ti + dT_ticks[li] + half
-                if dt_end > last:
-                    continue
-                k_start = np.searchsorted(macro_times, dt_start, side="left")
-                k_end = np.searchsorted(macro_times, dt_end, side="right")
-                for k in range(k_start, k_end):
-                    tau_k = micro_times[k] - tMin_over_tStep
-                    if tau_k <= 0 or tau_k >= t_imax:
-                        continue
-                    logt_k = _log_bin_int(tau_k, logt_ticks)
-                    if 0 < logt_k < logt_imax:
-                        acc[c, li, logt_i, logt_k] += 1
-
-    out = acc[0].copy()
-    for c in range(1, nc):
-        out += acc[c]
-    return out[:, : logt_imax - 1, : logt_imax - 1]
 
 
 class TwoDFDCreatorNumbaInt:

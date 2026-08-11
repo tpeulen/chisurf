@@ -3,7 +3,6 @@ from chisurf import typing
 
 import time
 import numpy as np
-import numba as nb
 
 import chisurf.core.fio
 import chisurf.core.fio.structure.coordinates
@@ -21,7 +20,6 @@ except ImportError:
 from chisurf.core.parameter import ParameterGroup
 
 
-@nb.njit(cache=True, parallel=True)
 def _quenching_rate_per_frame(collided, k_quench):
     """Sum the quenching rates of the atoms a dye collided with, per frame.
 
@@ -47,7 +45,7 @@ def _quenching_rate_per_frame(collided, k_quench):
     """
     n_frames, n_atoms = collided.shape
     out = np.zeros(n_frames, dtype=np.float64)
-    for frame in nb.prange(n_frames):
+    for frame in range(n_frames):
         total = 0.0
         for atom in range(n_atoms):
             if collided[frame, atom]:
