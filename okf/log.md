@@ -1,6 +1,33 @@
 # Update Log
 
 ## 2026-08-11
+* **PRD-99 written: the cheap dye model has never been checked against the
+  expensive one.** Asked for a PRD parameterising FPSIMP sampling against
+  simple AV simulations — vary linker length and rigidity, make the expensive
+  sim cheap, and make the AV match it. Scoping found the two halves have
+  never met: `run_imp_sampling` takes eight arguments and **neither** named
+  variable is among them (linker length is whatever AlphaFold segmentation
+  produced; "rigidity" is `plddt_rigid`, a prediction-confidence threshold
+  for which residues become rigid bodies — not a physical knob), while the
+  AV's nine parameters are set by convention with the surface-enrichment
+  correction shipped *off* (`contact_volume_trapped_fraction = -1`). The
+  expensive side is further along than expected: `fpsim/measure.py` already
+  computes per-frame distance **and κ²** from four coordinates, so the
+  observable to compare against exists. Framed the deliverable as a **map**
+  rather than a fit, because an AV's linker is infinitely flexible by
+  construction — in the stiff limit the ensemble samples a shell that no
+  uniform accessible volume can reproduce, and the honest result is the
+  boundary, stated as a number. [prd-99](prds/prd-99.md).
+* **The AV three-radius bug is real, and the fix is sitting uncommitted.**
+  Re-checked the finding logged here yesterday before building a PRD on top
+  of it: the *committed* `AV::set_av_parameter` does
+  `set_radius2(r[0]); set_radius3(r[0])`, so every three-radius dye from an
+  `fps.json` becomes one-radius; a working-tree edit (`r[1]`, `r[2]`) fixes
+  it but has not landed. Recorded in PRD-99 as a **precondition** rather
+  than a footnote: calibrating AV radii through that bug would not produce a
+  visibly bad fit, it would produce a good-looking one with the error
+  absorbed into `linker_length`, and the stack would publish three radii
+  that were never independently varied.
 * **MaxEnt binding regression fixed upstream** (tttrlib `02fba5618`): NumPy
   typemaps, calls 18–69× cheaper. Nothing here changed; parity guard still
   bit-exact. The rule stands — per-column is still 2.3× one call.
