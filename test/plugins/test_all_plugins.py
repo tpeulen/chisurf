@@ -27,18 +27,10 @@ OPTIONAL: dict[str, str] = {
 
 
 def _manifests() -> list[pathlib.Path]:
-    """Return every plugin manifest, excluding scaffolds and test fixtures.
-
-    ``manifest.json`` is a common enough name that a plugin's own test data can
-    claim it — ChiMOL's render baselines index their scenes in one — and such a
-    file is not a plugin manifest in any sense the tests below mean. Matching it
-    fails every assertion about ids, entrypoints and menu paths, for a file that
-    correctly has none of those.
-    """
+    """Return every plugin manifest, excluding the cookiecutter scaffold."""
     return sorted(
         p for p in PLUGIN_ROOT.rglob("manifest.json")
         if "{{" not in str(p)  # the plugin template, not a plugin
-        and not {"test", "tests"} & set(p.relative_to(PLUGIN_ROOT).parts)
     )
 
 

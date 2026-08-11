@@ -1,4 +1,4 @@
-"""CLI package for spot_finder."""
+"""CLI package for sm_image_mle."""
 
 from __future__ import annotations
 

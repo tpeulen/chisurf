@@ -2,7 +2,7 @@
 
 Provides a single unified window with:
 - Image Browser (TTTR Image Browser)
-- Region MLE (region_mle)
+- Molecule-wise MLE (sm_image_mle)
 - Pixel-wise MLE (img_pixel_mle)
 - (separator)
 - PSF Determination (psf_determination)
@@ -10,8 +10,8 @@ Provides a single unified window with:
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
+import json
 
 _manifest_path = Path(__file__).parent / "manifest.json"
 _manifest = json.loads(_manifest_path.read_text()) if _manifest_path.exists() else {}

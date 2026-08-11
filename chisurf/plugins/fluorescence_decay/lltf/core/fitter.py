@@ -13,7 +13,6 @@ import random
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.optimize
-from numba import njit
 
 from .convolve import convolve_lifetime_spectrum, add_pile_up_to_model
 from .optimization.leastsqbound import leastsqbound

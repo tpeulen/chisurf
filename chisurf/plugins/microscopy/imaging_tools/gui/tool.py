@@ -15,8 +15,7 @@ Panels (lazy-loaded via factory functions):
   1. Setup            — SetupChannelDefinitionWidget (shared, publishes via RPC)
   2. Browser          — TTTRImageBrowserTool
   3. Pixel-wise MLE   — ImgPixelMleTool (embedded)
-  4. Spot Finder      — SpotFinderTool (embedded)
-  5. Region MLE       — RegionMleTool (embedded), fits what the Spot Finder found
+  4. Molecule-wise MLE — SmImageMleTool (embedded)
   5. CLSM Draw        — CLSMPixelSelect
   ─────────────────── (separator)
   6. PSF Determination — PsfDeterminationTool
@@ -135,16 +134,9 @@ def _pixel_mle(parent: ImagingToolsTool) -> QtWidgets.QWidget:
     return widget
 
 
-def _spot_finder(parent: ImagingToolsTool) -> QtWidgets.QWidget:
-    from chisurf.plugins.microscopy.spot_finder.gui.tool import SpotFinderTool
-    widget = SpotFinderTool(parent=parent, embedded=True)
-    parent._register_panel("spot_finder", widget)
-    return widget
-
-
 def _molecule_mle(parent: ImagingToolsTool) -> QtWidgets.QWidget:
-    from chisurf.plugins.microscopy.region_mle.gui.tool import RegionMleTool
-    widget = RegionMleTool(parent=parent, embedded=True)
+    from chisurf.plugins.microscopy.sm_image_mle.gui.tool import SmImageMleTool
+    widget = SmImageMleTool(parent=parent, embedded=True)
     parent._register_panel("molecule_mle", widget)
     return widget
 
@@ -332,16 +324,9 @@ IMAGING_PANELS: list[dict] = [
         "role": "clsm_draw",
     },
     {
-        "name": "Spot Finder",
-        "icon": "🎯",
-        "description": "Find the regions — molecules, beads, objects — and write them, with their pixels, into each measurement's container.",
-        "factory": _spot_finder,
-        "role": "spot_finder",
-    },
-    {
-        "name": "Region MLE",
+        "name": "Molecule-wise MLE",
         "icon": "💠",
-        "description": "Lifetime MLE per region, on the regions the Spot Finder found.",
+        "description": "Molecule-wise MLE lifetime analysis from TTTR imaging data.",
         "factory": _molecule_mle,
         "role": "molecule_mle",
     },

@@ -31,7 +31,6 @@ from chisurf.gui.chiplot import style as S
 from chisurf.gui.chiplot.backends import base
 from chisurf.gui.chiplot.backends.wgpu import _gpu, _handles
 from chisurf.gui.chiplot.backends.wgpu._view import PixelView as _PixelView
-from chisurf.gui.chiplot.backends.wgpu._view import pow10 as _pow10
 
 #: Pixel insets reserved for axis chrome. The left inset is a floor: the real
 #: one is measured from the widest tick label each frame, because a fixed
@@ -41,35 +40,10 @@ _BOTTOM_MARGIN = 38
 _TOP_MARGIN = 10
 _RIGHT_MARGIN = 14
 
-#: Breathing room on a side that draws nothing, and the two pieces of an axis
-#: that does: the tick mark itself and the gap before its label.
-_EDGE_PAD = 6
-_TICK_LEN = 4
-_TICK_GAP = 4
-
-#: The floor a panel refuses to shrink past. Deliberately small — see
-#: ``_PlotWidget.minimumSizeHint`` for why it cannot be derived from the
-#: margins, and why a large one clips the plot that matters most.
-_MIN_PANEL_W = 60
-_MIN_PANEL_H = 40
-
 _AXIS_COLOR = QtGui.QColor(170, 170, 175)
 _GRID_COLOR = (0.62, 0.62, 0.66)
 #: How close to the pointer (in pixels) a draggable edge must be to grab it.
 _GRAB_PX = 6.0
-
-#: Pixels a press must travel before it counts as a drag rather than a click.
-#: pyqtgraph's ``GraphicsScene`` uses 5, and the distinction is what decides
-#: whether a right button raises the context menu or scales the view.
-_DRAG_PX = 5.0
-
-#: Decades below the peak a logarithmic auto-range will show. Past this the
-#: samples are the tail of the arithmetic rather than of the measurement.
-_AUTORANGE_DECADES = 9.0
-
-#: Geometry of the auto-range button in the plot's bottom-left corner.
-_AUTO_BTN_SIZE = 14
-_AUTO_BTN_INSET = 3
 
 
 class _Margins:
@@ -185,47 +159,11 @@ class _PlotWidget(QtWidgets.QWidget):
         super().__init__(parent)
         self._canvas = canvas
         self.setMouseTracking(True)
+        self.setMinimumSize(50, 50)
         self.setSizePolicy(QtWidgets.QSizePolicy.Expanding,
                            QtWidgets.QSizePolicy.Expanding)
         self.setFocusPolicy(QtCore.Qt.WheelFocus)
         self.setAttribute(QtCore.Qt.WA_OpaquePaintEvent, True)
-        # The menu is raised from a right *click* on release, the way
-        # pyqtgraph does it — see _mouse_release. Letting Qt raise it from the
-        # press instead is what broke dragging: the menu runs modally and
-        # swallows the release, so the scale-drag never ended and every later
-        # mouse move went on scaling the view.
-        self.setContextMenuPolicy(QtCore.Qt.PreventContextMenu)
-
-    def sizeHint(self) -> QtCore.QSize:
-        """Ask for the same room a pyqtgraph panel asks for.
-
-        A layout hands out space in proportion to what its children advertise,
-        and this widget advertised nothing — Qt fell back to the minimum, so a
-        panel sharing a column with a form collapsed to a strip a few pixels
-        tall while the same plot on the other backend came out full height.
-        pyqtgraph's ``GraphicsView`` reports 600x450; matching it is what makes
-        switching backend not rearrange the window.
-        """
-        return QtCore.QSize(600, 450)
-
-    def minimumSizeHint(self) -> QtCore.QSize:
-        """Return the chrome plus just enough room to draw in.
-
-        A floor is needed — a flat 50x50 is smaller than the margins the ticks
-        and labels need, and the axes would draw over each other — but it must
-        stay *small*. Three stacked panels each demanding a comfortable minimum
-        add up to more than a short window has, and the splitter then refuses
-        to shrink them: the data panel is what gets clipped, axis and all. The
-        allowance beyond the chrome is therefore token, and how much room a
-        panel really gets is left to the layout.
-        """
-        # A constant, not the current margins. Margins are measured during a
-        # paint, and a layout asks for this *before* the first one — then Qt's
-        # default size constraint freezes whatever it got onto the parent
-        # widget. The panel was therefore stuck at the floor for a
-        # fully-labelled plot even after hiding its axes, which is what kept
-        # three stacked strips from fitting a short window.
-        return QtCore.QSize(_MIN_PANEL_W, _MIN_PANEL_H)
 
     def paintEvent(self, event):
         """Render the data area on the GPU, then draw the chrome."""
@@ -249,11 +187,6 @@ class _PlotWidget(QtWidgets.QWidget):
         """Forward to the canvas."""
         self._canvas._mouse_move(event)
 
-    def leaveEvent(self, event):
-        """Drop any in-progress drag when the pointer leaves the panel."""
-        self._canvas._cancel_interaction()
-        super().leaveEvent(event)
-
     def mouseDoubleClickEvent(self, event):
         """Reset the view to auto-range, matching the other backend."""
         self._canvas.auto_range()
@@ -263,8 +196,14 @@ class _PlotWidget(QtWidgets.QWidget):
         self._canvas._wheel(event)
 
     def contextMenuEvent(self, event):
-        """Ignored: the menu is raised on a right click, not by Qt's policy."""
-        event.ignore()
+        """Let the owning chiplot ``Plot`` build the menu when there is one."""
+        parent = self.parent()
+        while parent is not None:
+            if hasattr(parent, "contextMenuEvent") and hasattr(parent, "_series"):
+                parent.contextMenuEvent(event)
+                return
+            parent = parent.parent()
+        self._canvas._context_menu(event)
 
 
 # ---------------------------------------------------------------------------
@@ -293,12 +232,6 @@ class _WgpuCanvas(base.Canvas):
         self._grid_alpha = 0.3
         self._show_legend = False
         self._legend_offset = (8, 8)
-        self._legend_rect = None
-        self._legend_drag = None
-        #: Where the user dragged the legend to, or ``None`` for the default
-        #: corner. pyqtgraph's ``LegendItem`` is draggable, and a legend that
-        #: sits on the data with no way to move it is worse than none.
-        self._legend_pos = None
         self._bg = S.Color(0, 0, 0)
         self._aspect_locked = False
         self._aspect_ratio = 1.0
@@ -307,12 +240,6 @@ class _WgpuCanvas(base.Canvas):
         self._invert_y = False
         self._axis_visible = {"left": True, "bottom": True, "right": False, "top": False}
         self._interactive_mouse = True
-        # Per axis, as pyqtgraph's X/Y menus offer: a user pinning one axis and
-        # exploring the other is the whole point of the option.
-        self._mouse_enabled_x = True
-        self._mouse_enabled_y = True
-        self._curve_alpha = 1.0
-        self._left_pans_override = None
         self._menu_enabled = True
         self._click_callbacks: list[Callable] = []
         self._mouse_move_callbacks: list[Callable] = []
@@ -322,14 +249,6 @@ class _WgpuCanvas(base.Canvas):
         self._panning = False
         self._pan_start: tuple[float, float] | None = None
         self._pan_range_start = None
-        self._scaling = False
-        self._scale_last: tuple[float, float] | None = None
-        self._scale_anchor: tuple[float, float] | None = None
-        self._press_button = None
-        self._press_pos: tuple[float, float] | None = None
-        self._dragged = False
-        self._rubber: tuple[float, float, float, float] | None = None
-        self._auto_btn_rect = None
         self._drag: tuple[Any, str, float] | None = None
         self._lock = threading.RLock()
         self._linked_x: list[_WgpuCanvas] = []
@@ -348,11 +267,11 @@ class _WgpuCanvas(base.Canvas):
         color = (*_GRID_COLOR, float(self._grid_alpha))
         segs = []
         if self._show_grid_x:
-            y0, y1 = self._view.visible_range("y")
+            y0, y1 = self._view.y_range
             for tv in self._tick_values("bottom"):
                 segs.append(([tv, tv], [y0, y1]))
         if self._show_grid_y:
-            x0, x1 = self._view.visible_range("x")
+            x0, x1 = self._view.x_range
             for tv in self._tick_values("left"):
                 segs.append(([x0, x1], [tv, tv]))
         if not segs:
@@ -421,57 +340,22 @@ class _WgpuCanvas(base.Canvas):
         for hd in ordered:
             if hasattr(hd, "paint_overlay"):
                 hd.paint_overlay(painter, self._view, w, h, self._margins)
-        if self._rubber is not None:
-            x0, y0, x1, y1 = self._rubber
-            band = QtCore.QRectF(min(x0, x1), min(y0, y1),
-                                 abs(x1 - x0), abs(y1 - y0))
-            painter.fillRect(band, QtGui.QColor(120, 170, 255, 45))
-            painter.setPen(QtGui.QPen(QtGui.QColor(150, 190, 255), 1,
-                                      QtCore.Qt.DashLine))
-            painter.drawRect(band)
         if self._show_legend:
             self._paint_legend(painter, w, h)
 
     def _measure_margins(self, painter: QtGui.QPainter, w: int, h: int) -> None:
-        """Size each inset from what that side actually draws.
-
-        Every inset used to be a constant with a floor, whether or not the side
-        had anything on it. A residual strip hides its bottom axis and is only
-        eighty pixels tall, so a reserved 24-pixel bottom margin was a third of
-        the panel spent on nothing — and a stack of them turned into the band of
-        empty space between plots. Measure the text instead: a hidden axis costs
-        a couple of pixels of breathing room and no more.
-        """
-        tick_fm = QtGui.QFontMetrics(S.chrome_font("tick"))
-        label_fm = QtGui.QFontMetrics(S.chrome_font("label"))
-
-        if self._axis_visible.get("left", True):
-            labels = self._tick_labels("left")
-            widest = max((tick_fm.horizontalAdvance(t) for t in labels), default=0)
-            left = widest + _TICK_GAP + _TICK_LEN
-        else:
-            left = _EDGE_PAD
-        if self._ylabel:
-            left += label_fm.height() + 2
-        self._margins.left = int(max(left, _EDGE_PAD))
-
-        if self._axis_visible.get("bottom", True):
-            bottom = tick_fm.height() + _TICK_GAP + _TICK_LEN
-        else:
-            bottom = _EDGE_PAD
-        if self._xlabel:
-            bottom += label_fm.height() + 2
-        self._margins.bottom = int(bottom)
-
-        self._margins.top = int(_EDGE_PAD + (label_fm.height() + 4 if self._title else 0))
-        self._margins.right = int(_EDGE_PAD)
+        """Widen the left inset to fit the widest y tick label."""
+        fm = QtGui.QFontMetrics(S.chrome_font("tick"))
+        labels = self._tick_labels("left")
+        widest = max((fm.horizontalAdvance(t) for t in labels), default=0)
+        self._margins.left = max(_LEFT_MARGIN, widest + 14 + (16 if self._ylabel else 0))
+        self._margins.bottom = _BOTTOM_MARGIN if self._xlabel else _BOTTOM_MARGIN - 14
+        self._margins.top = _TOP_MARGIN + (18 if self._title else 0)
 
     def _tick_values(self, side: str) -> list[float]:
         """Return the tick positions for one axis."""
         horizontal = side in ("bottom", "top")
-        # The *sanitised* range, so the ticks describe the axis the geometry is
-        # actually drawn against.
-        lo, hi = self._view.visible_range("x" if horizontal else "y")
+        lo, hi = self._view.x_range if horizontal else self._view.y_range
         log = self._view.log_x if horizontal else self._view.log_y
         spacing = self._tick_spacing.get(side)
         if spacing and spacing[0]:
@@ -543,19 +427,6 @@ class _WgpuCanvas(base.Canvas):
                     QtCore.QRectF(ix - tw - 7, py - fm.height() / 2, tw, fm.height()),
                     QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter, label)
 
-        # pyqtgraph's little corner button, and for the same reason: a view
-        # panned or zoomed away from the data needs one obvious way back, and
-        # "double-click somewhere" is not discoverable.
-        size, inset = _AUTO_BTN_SIZE, _AUTO_BTN_INSET
-        self._auto_btn_rect = QtCore.QRectF(
-            ix + inset, iy + ph - size - inset, size, size)
-        painter.setPen(QtGui.QPen(_AXIS_COLOR, 1))
-        painter.setBrush(QtGui.QColor(0, 0, 0, 110))
-        painter.drawRoundedRect(self._auto_btn_rect, 3, 3)
-        painter.setBrush(QtCore.Qt.NoBrush)
-        painter.setFont(S.chrome_font("tick"))
-        painter.drawText(self._auto_btn_rect, QtCore.Qt.AlignCenter, "A")
-
         font = S.chrome_font("label")
         painter.setFont(font)
         if self._xlabel:
@@ -599,16 +470,9 @@ class _WgpuCanvas(base.Canvas):
         row = fm.height() + 3
         text_w = max(fm.horizontalAdvance(n) for n, _ in entries)
         bw, bh = text_w + 34, row * len(entries) + 8
-        if self._legend_pos is not None:
-            x0, y0 = self._legend_pos
-            # Keep it reachable when the panel shrinks under it.
-            x0 = min(max(x0, ix), ix + pw - bw)
-            y0 = min(max(y0, iy), iy + ph - bh)
-        else:
-            ox, oy = self._legend_offset
-            x0 = ix + pw - bw - ox
-            y0 = iy + oy
-        self._legend_rect = QtCore.QRectF(x0, y0, bw, bh)
+        ox, oy = self._legend_offset
+        x0 = ix + pw - bw - ox
+        y0 = iy + oy
         painter.fillRect(QtCore.QRectF(x0, y0, bw, bh), QtGui.QColor(0, 0, 0, 140))
         painter.setPen(QtGui.QPen(_AXIS_COLOR, 1))
         painter.drawRect(QtCore.QRectF(x0 + 0.5, y0 + 0.5, bw - 1, bh - 1))
@@ -636,29 +500,11 @@ class _WgpuCanvas(base.Canvas):
             if ys is not None:
                 all_y.append(ys)
         if self._auto_range_x and all_x:
-            lo, hi = min(r[0] for r in all_x), max(r[1] for r in all_x)
             self._view.x_range = self._padded(
-                *self._clip_log_floor(lo, hi, self._view.log_x), self._view.log_x)
+                min(r[0] for r in all_x), max(r[1] for r in all_x), self._view.log_x)
         if self._auto_range_y and all_y:
-            lo, hi = min(r[0] for r in all_y), max(r[1] for r in all_y)
             self._view.y_range = self._padded(
-                *self._clip_log_floor(lo, hi, self._view.log_y), self._view.log_y)
-
-    @staticmethod
-    def _clip_log_floor(lo: float, hi: float, log: bool) -> tuple[float, float]:
-        """Keep a log auto-range from chasing numerical noise to the floor.
-
-        A convolved decay does not stop at the last real count: it trails off
-        through denormals to ~1e-300, and those samples are positive, so an
-        honest min/max spans three hundred decades and squashes the data into
-        the top two pixels. No detector has that dynamic range — the tail is
-        arithmetic, not measurement. Anything more than
-        :data:`_AUTORANGE_DECADES` below the peak is dropped from the fit; the
-        user can still pan or zoom down to it.
-        """
-        if not log or not (hi > 0):
-            return lo, hi
-        return max(lo, hi * 10.0 ** -_AUTORANGE_DECADES), hi
+                min(r[0] for r in all_y), max(r[1] for r in all_y), self._view.log_y)
 
     @staticmethod
     def _padded(lo: float, hi: float, log: bool) -> list[float]:
@@ -727,61 +573,6 @@ class _WgpuCanvas(base.Canvas):
         except AttributeError:
             return float(event.x()), float(event.y())
 
-    def _update_hover(self, px: float, py: float) -> bool:
-        """Mark the draggable part under the pointer; return whether it moved.
-
-        pyqtgraph highlights what a press would grab — the line under the
-        cursor turns red and a region's band brightens — and that is the only
-        thing telling a user an edge is draggable at all. Nothing is highlighted
-        mid-drag: the answer is already known then.
-        """
-        target, part = (None, None)
-        if self._drag is None and not self._panning and not self._scaling:
-            target, part = self._hit_draggable(px, py)
-        changed = False
-        with self._lock:
-            handles = list(self._handles)
-        for hd in handles:
-            setter = getattr(hd, "set_hover", None)
-            if setter is None:
-                continue
-            changed |= bool(setter(part if hd is target else None))
-        return changed
-
-    def _cancel_interaction(self) -> None:
-        """Forget any in-progress press, drag, pan, scale or rubber band.
-
-        Called whenever the panel can no longer trust that it will see the
-        matching release — the pointer leaving, or a move arriving with no
-        button held. Without it a swallowed release leaves the panel scaling
-        for the rest of the session: the context menu used to run modally from
-        the *press*, so the release went to the menu and every later mouse move
-        went on zooming.
-        """
-        self._panning = False
-        self._pan_start = None
-        self._pan_range_start = None
-        self._scaling = False
-        self._scale_last = None
-        self._scale_anchor = None
-        self._press_button = None
-        self._press_pos = None
-        self._dragged = False
-        if self._legend_drag is not None:
-            self._legend_drag = None
-            return
-        if self._rubber is not None:
-            self._rubber = None
-            self._widget.update()
-        if self._drag is not None:
-            self._drag = None
-        with self._lock:
-            handles = list(self._handles)
-        for hd in handles:
-            setter = getattr(hd, "set_hover", None)
-            if setter is not None:
-                setter(None)
-
     def _hit_draggable(self, px: float, py: float):
         """Return ``(handle, part)`` for a draggable edge under the pointer."""
         w, h = self._widget.width(), self._widget.height()
@@ -818,139 +609,28 @@ class _WgpuCanvas(base.Canvas):
                     return hd, "value"
         return None, None
 
-    def set_mouse_enabled(self, *, x: bool | None = None,
-                          y: bool | None = None) -> None:
-        """Enable or disable mouse interaction per axis, as pyqtgraph does."""
-        if x is not None:
-            self._mouse_enabled_x = bool(x)
-        if y is not None:
-            self._mouse_enabled_y = bool(y)
-
-    def set_left_button_pans(self, pans: bool) -> None:
-        """Choose pyqtgraph's *3 button* (pan) or *1 button* (zoom) mode.
-
-        Set on the panel rather than in the settings file: the menu is a
-        per-plot choice, and writing a global preference from a right-click
-        would change every other panel behind the user's back.
-        """
-        self._left_pans_override = bool(pans)
-
-    def _left_button_pans(self) -> bool:
-        """Whether a left drag pans, or draws a zoom rectangle.
-
-        The panel's own mode wins when the menu has set one; otherwise the
-        preference the other backend reads, so the two renderers do not answer
-        the same gesture differently.
-        """
-        if self._left_pans_override is not None:
-            return self._left_pans_override
-        try:
-            from chisurf.core.settings import cs_settings
-
-            cfg = cs_settings.get("gui", {}).get("plot", {}).get("pyqtgraph_config", {})
-            return bool(cfg.get("leftButtonPan", True))
-        except Exception:
-            return True
-
-    @staticmethod
-    def _is_view_drag_button(button) -> bool:
-        """Whether a button drives the view's pan / zoom-rectangle gesture.
-
-        Left **and middle**, exactly as pyqtgraph has it: its ``ViewBox``
-        handles the two in one branch, and its ``GraphicsView`` pans on either.
-        The middle button is how a user pans without giving up a left-drag
-        that has been rebound to a zoom rectangle.
-        """
-        return button in (QtCore.Qt.LeftButton, QtCore.Qt.MiddleButton)
-
     def _mouse_press(self, event):
-        """Route a press: the corner button, a draggable handle, pan, or scale.
-
-        The button semantics are pyqtgraph's, because that is what the hands
-        using this application already know: left and middle drag the view
-        (pan, or a zoom rectangle under the ``leftButtonPan`` preference),
-        right drags scale about the point it started from, and the wheel zooms
-        about the cursor. Only the *left* button grabs a region, a marker or
-        the corner button — pyqtgraph's items ignore the middle one, so a
-        middle drag pans across a fit range instead of moving it.
-        """
+        """Grab a draggable handle if one is under the pointer, else pan."""
+        if event.button() != QtCore.Qt.LeftButton:
+            return
         px, py = self._event_pos(event)
         w, h = self._widget.width(), self._widget.height()
-
-        if event.button() == QtCore.Qt.LeftButton and self._auto_btn_rect is not None:
-            if self._auto_btn_rect.contains(QtCore.QPointF(px, py)):
-                self.auto_range()
-                return
-
-        if (event.button() == QtCore.Qt.LeftButton and self._show_legend
-                and self._legend_rect is not None
-                and self._legend_rect.contains(QtCore.QPointF(px, py))):
-            self._legend_drag = (px - self._legend_rect.x(),
-                                 py - self._legend_rect.y())
-            self._press_button = event.button()
-            self._press_pos = (px, py)
-            self._dragged = False
+        dx, dy = self._view.pixel_to_data(px, py, w, h, self._margins)
+        hd, part = self._hit_draggable(px, py)
+        if hd is not None:
+            anchor = dx if getattr(hd, "_orientation", None) is H.Orientation.VERTICAL else dy
+            self._drag = (hd, part, anchor)
             return
-
-        self._press_button = event.button()
-        self._press_pos = (px, py)
-        self._dragged = False
-
-        if event.button() == QtCore.Qt.RightButton:
-            # Recorded, not started. A right button that never moves is a
-            # click and raises the menu; one that moves is a scale drag. That
-            # is pyqtgraph's distinction, and making it here is what stops a
-            # menu from opening in the middle of a drag.
-            if self._interactive_mouse:
-                self._scale_last = (px, py)
-                self._scale_anchor = self._view.pixel_to_data(
-                    px, py, w, h, self._margins)
-            return
-
-        if not self._is_view_drag_button(event.button()):
-            return
-
-        if event.button() == QtCore.Qt.LeftButton:
-            dx, dy = self._view.pixel_to_data(px, py, w, h, self._margins)
-            hd, part = self._hit_draggable(px, py)
-            if hd is not None:
-                anchor = (dx if getattr(hd, "_orientation", None) is H.Orientation.VERTICAL
-                          else dy)
-                self._drag = (hd, part, anchor)
-                return
-        if not self._interactive_mouse:
-            return
-        if self._left_button_pans():
+        if self._interactive_mouse:
             self._panning = True
             self._pan_start = (px, py)
             self._pan_range_start = (list(self._view.x_range), list(self._view.y_range))
-        else:
-            self._rubber = (px, py, px, py)
 
     def _mouse_release(self, event):
-        """Finish a scale, a zoom rectangle, a handle drag, or a pan."""
+        """Finish a drag or a pan; a pan that did not move is a click."""
+        if event.button() != QtCore.Qt.LeftButton:
+            return
         px, py = self._event_pos(event)
-        if event.button() == QtCore.Qt.RightButton:
-            was_drag = self._dragged
-            self._scaling = False
-            self._scale_last = None
-            self._scale_anchor = None
-            self._press_button = None
-            self._press_pos = None
-            self._dragged = False
-            if not was_drag:
-                self._raise_context_menu(event, px, py)
-            return
-        if not self._is_view_drag_button(event.button()):
-            return
-        self._press_button = None
-        self._press_pos = None
-        self._dragged = False
-        if self._rubber is not None:
-            band, self._rubber = self._rubber, None
-            self._apply_rubber_band(band)
-            self._widget.update()
-            return
         if self._drag is not None:
             hd, _, _ = self._drag
             self._drag = None
@@ -964,81 +644,16 @@ class _WgpuCanvas(base.Canvas):
                 if not moved:
                     w, h = self._widget.width(), self._widget.height()
                     dx, dy = self._view.pixel_to_data(px, py, w, h, self._margins)
-                    name = ("middle" if event.button() == QtCore.Qt.MiddleButton
-                            else "left")
                     for cb in self._click_callbacks:
-                        cb(dx, dy, name)
-
-    def _apply_rubber_band(self, band) -> None:
-        """Set the view to a dragged rectangle, ignoring an accidental flick."""
-        x0, y0, x1, y1 = band
-        if abs(x1 - x0) < 4 or abs(y1 - y0) < 4:
-            return
-        w, h = self._widget.width(), self._widget.height()
-        a = self._view.pixel_to_data(min(x0, x1), max(y0, y1), w, h, self._margins)
-        b = self._view.pixel_to_data(max(x0, x1), min(y0, y1), w, h, self._margins)
-        self.set_range(x=(a[0], b[0]), y=(a[1], b[1]))
+                        cb(dx, dy, "left")
 
     def _mouse_move(self, event):
         """Report the cursor position, and drag whatever is grabbed."""
         px, py = self._event_pos(event)
-
-        # A move with nothing held means the press this panel is still tracking
-        # ended somewhere it could not see — a modal menu, another widget, a
-        # window switch. Anything else leaves the panel dragging forever.
-        try:
-            buttons = event.buttons()
-        except Exception:
-            buttons = None
-        if buttons is not None and buttons == QtCore.Qt.NoButton:
-            if (self._panning or self._scaling or self._rubber is not None
-                    or self._drag is not None or self._press_button is not None):
-                self._cancel_interaction()
-
-        if (self._press_pos is not None and not self._dragged
-                and (abs(px - self._press_pos[0]) >= _DRAG_PX
-                     or abs(py - self._press_pos[1]) >= _DRAG_PX)):
-            self._dragged = True
-            if self._press_button == QtCore.Qt.RightButton and self._interactive_mouse:
-                self._scaling = True
         w, h = self._widget.width(), self._widget.height()
         dx, dy = self._view.pixel_to_data(px, py, w, h, self._margins)
         for cb in self._mouse_move_callbacks:
             cb(dx, dy)
-
-        if self._scaling and self._scale_last is not None:
-            lx, ly = self._scale_last
-            self._scale_last = (px, py)
-            # pyqtgraph's right-drag: 1.02 per pixel, x inverted, anchored at
-            # the point the drag started from so that point stays put.
-            sx = 1.02 ** -(px - lx)
-            sy = 1.02 ** (py - ly)
-            ax, ay = self._scale_anchor or (dx, dy)
-            if self._mouse_enabled_x:
-                self._view.x_range = self._zoom(self._view.x_range, ax, sx,
-                                                self._view.log_x)
-            if self._mouse_enabled_y:
-                self._view.y_range = self._zoom(self._view.y_range, ay, sy,
-                                                self._view.log_y)
-            self._auto_range_x = self._auto_range_y = False
-            self._fire_range_changed()
-            self._widget.update()
-            return
-
-        if self._legend_drag is not None:
-            gx, gy = self._legend_drag
-            self._legend_pos = (px - gx, py - gy)
-            self._widget.update()
-            return
-
-        if self._rubber is not None:
-            x0, y0, _, _ = self._rubber
-            self._rubber = (x0, y0, px, py)
-            self._widget.update()
-            return
-
-        if self._update_hover(px, py):
-            self._widget.update()
 
         if self._drag is not None:
             hd, part, anchor = self._drag
@@ -1067,12 +682,10 @@ class _WgpuCanvas(base.Canvas):
             sx, sy = self._pan_start
             _, _, pw, ph = self._margins.plot_rect(w, h)
             xr0, yr0 = self._pan_range_start
-            if self._mouse_enabled_x:
-                self._view.x_range = self._shift(xr0, -(px - sx) / max(pw, 1),
-                                                 self._view.log_x)
-            if self._mouse_enabled_y:
-                self._view.y_range = self._shift(yr0, (py - sy) / max(ph, 1),
-                                                 self._view.log_y)
+            self._view.x_range = self._shift(xr0, -(px - sx) / max(pw, 1),
+                                             self._view.log_x)
+            self._view.y_range = self._shift(yr0, (py - sy) / max(ph, 1),
+                                             self._view.log_y)
             self._auto_range_x = self._auto_range_y = False
             self._fire_range_changed()
             self._widget.update()
@@ -1083,7 +696,7 @@ class _WgpuCanvas(base.Canvas):
         if log:
             lo, hi = math.log10(max(rng[0], 1e-300)), math.log10(max(rng[1], 1e-299))
             d = (hi - lo) * fraction
-            return [_pow10(lo + d), _pow10(hi + d)]
+            return [10.0 ** (lo + d), 10.0 ** (hi + d)]
         d = (rng[1] - rng[0]) * fraction
         return [rng[0] + d, rng[1] + d]
 
@@ -1096,12 +709,8 @@ class _WgpuCanvas(base.Canvas):
         px, py = self._event_pos(event)
         w, h = self._widget.width(), self._widget.height()
         mx, my = self._view.pixel_to_data(px, py, w, h, self._margins)
-        if self._mouse_enabled_x:
-            self._view.x_range = self._zoom(self._view.x_range, mx, factor,
-                                            self._view.log_x)
-        if self._mouse_enabled_y:
-            self._view.y_range = self._zoom(self._view.y_range, my, factor,
-                                            self._view.log_y)
+        self._view.x_range = self._zoom(self._view.x_range, mx, factor, self._view.log_x)
+        self._view.y_range = self._zoom(self._view.y_range, my, factor, self._view.log_y)
         self._auto_range_x = self._auto_range_y = False
         self._fire_range_changed()
         self._widget.update()
@@ -1112,218 +721,21 @@ class _WgpuCanvas(base.Canvas):
         if log:
             lo, hi = math.log10(max(rng[0], 1e-300)), math.log10(max(rng[1], 1e-299))
             c = math.log10(max(center, 1e-300))
-            # Zooming out multiplies the decade span every notch, so an
-            # unclamped 10 ** ... stops being a float after about thirty of them.
-            return [_pow10(c + (lo - c) * factor), _pow10(c + (hi - c) * factor)]
+            return [10.0 ** (c + (lo - c) * factor), 10.0 ** (c + (hi - c) * factor)]
         return [center + (rng[0] - center) * factor,
                 center + (rng[1] - center) * factor]
 
-    @staticmethod
-    def _global_pos(event, widget, px: float, py: float):
-        """Return the event's screen position, across Qt bindings."""
-        for name in ("globalPosition", "globalPos"):
-            getter = getattr(event, name, None)
-            if getter is None:
-                continue
-            try:
-                value = getter()
-            except Exception:
-                continue
-            return value.toPoint() if hasattr(value, "toPoint") else value
-        return widget.mapToGlobal(QtCore.QPoint(int(px), int(py)))
-
-    def _raise_context_menu(self, event, px: float, py: float) -> None:
-        """Show the menu for a right *click*, the way pyqtgraph does.
-
-        Raised from the release, and only when the press did not turn into a
-        drag — a menu that opens from the press runs modally and eats the
-        release, which left the panel scaling for good.
-        """
+    def _context_menu(self, event):
+        """Show the backend's own menu (used when no chiplot Plot hosts us)."""
         if not self._menu_enabled:
             return
-        # The panel shows its own menu. It used to forward to the hosting
-        # chiplot ``Plot`` instead, which was right while the backend had no
-        # menu of its own — but this backend now reports ``provides_native_menu``,
-        # so the host defers to *it*. Both deferring meant a right-click raised
-        # nothing at all. The host's entries are not lost: it injects them
-        # through ``add_menu_action``, and ``build_context_menu`` appends them.
-        self._context_menu(self._global_pos(event, self._widget, px, py))
-
-    def _axis_menu(self, parent, axis: str) -> QtWidgets.QMenu:
-        """Build pyqtgraph's per-axis submenu: mouse, auto/manual, invert."""
-        is_x = axis == "x"
-        menu = QtWidgets.QMenu(f"{axis.upper()} axis", parent)
-
-        mouse = menu.addAction("Mouse enabled")
-        mouse.setCheckable(True)
-        mouse.setChecked(self._mouse_enabled_x if is_x else self._mouse_enabled_y)
-        mouse.toggled.connect(
-            lambda on, a=axis: self.set_mouse_enabled(**{a: on}))
-
-        menu.addSeparator()
-        group = QtWidgets.QActionGroup(menu)
-        auto = menu.addAction("Auto")
-        auto.setCheckable(True)
-        auto.setActionGroup(group)
-        auto.setChecked(self._auto_range_x if is_x else self._auto_range_y)
-        manual = menu.addAction("Manual")
-        manual.setCheckable(True)
-        manual.setActionGroup(group)
-        manual.setChecked(not auto.isChecked())
-        auto.triggered.connect(lambda _=False, a=axis: self._enable_axis_auto(a))
-
-        # The min/max editors pyqtgraph puts in the same submenu. Editing one
-        # is what switches the axis to manual, so the radio above follows the
-        # action rather than needing to be clicked first.
-        lo, hi = self.get_range()[0 if is_x else 1]
-        row = QtWidgets.QWidget(menu)
-        layout = QtWidgets.QHBoxLayout(row)
-        layout.setContentsMargins(24, 2, 8, 2)
-        layout.setSpacing(4)
-        editors = []
-        for value in (lo, hi):
-            box = QtWidgets.QLineEdit(f"{value:g}", row)
-            box.setValidator(QtGui.QDoubleValidator(box))
-            box.setMaximumWidth(90)
-            layout.addWidget(box)
-            editors.append(box)
-
-        def _apply_manual(*_, a=axis, boxes=editors):
-            try:
-                values = (float(boxes[0].text()), float(boxes[1].text()))
-            except ValueError:
-                return
-            self.set_range(**{a: values})
-            manual.setChecked(True)
-
-        for box in editors:
-            box.editingFinished.connect(_apply_manual)
-        holder = QtWidgets.QWidgetAction(menu)
-        holder.setDefaultWidget(row)
-        menu.addAction(holder)
-
-        menu.addSeparator()
-        invert = menu.addAction("Invert axis")
-        invert.setCheckable(True)
-        invert.setChecked(self._view.invert_x if is_x else self._view.invert_y)
-        invert.toggled.connect(
-            self.invert_x if is_x else self.invert_y)
-
-        log = menu.addAction("Log scale")
-        log.setCheckable(True)
-        log.setChecked(self._view.log_x if is_x else self._view.log_y)
-        log.toggled.connect(lambda on, a=axis: self.set_log(**{a: on}))
-        return menu
-
-    def _plot_options_menu(self, parent) -> QtWidgets.QMenu:
-        """Build the grid and transparency options pyqtgraph groups together."""
-        menu = QtWidgets.QMenu("Plot options", parent)
-
-        grid = QtWidgets.QMenu("Grid", menu)
-        for label, axis in (("Show X", "x"), ("Show Y", "y")):
-            act = grid.addAction(label)
-            act.setCheckable(True)
-            act.setChecked(self._show_grid_x if axis == "x" else self._show_grid_y)
-            act.toggled.connect(lambda on, a=axis: self._toggle_grid(a, on))
-        grid.addAction(self._slider_action(
-            grid, "Opacity", int(self._grid_alpha * 100),
-            lambda v: self.set_grid(x=self._show_grid_x, y=self._show_grid_y,
-                                    alpha=v / 100.0)))
-        menu.addMenu(grid)
-
-        menu.addAction(self._slider_action(
-            menu, "Curve alpha", int(self._curve_alpha * 100),
-            self._set_curve_alpha))
-        return menu
-
-    def _slider_action(self, parent, label: str, value: int,
-                       on_change) -> QtWidgets.QWidgetAction:
-        """Return a labelled 0-100 slider that lives inside a menu."""
-        row = QtWidgets.QWidget(parent)
-        layout = QtWidgets.QHBoxLayout(row)
-        layout.setContentsMargins(8, 2, 8, 2)
-        layout.setSpacing(6)
-        layout.addWidget(QtWidgets.QLabel(label, row))
-        slider = QtWidgets.QSlider(QtCore.Qt.Horizontal, row)
-        slider.setRange(0, 100)
-        slider.setValue(value)
-        slider.setMinimumWidth(110)
-        slider.valueChanged.connect(on_change)
-        layout.addWidget(slider)
-        action = QtWidgets.QWidgetAction(parent)
-        action.setDefaultWidget(row)
-        return action
-
-    def _toggle_grid(self, axis: str, on: bool) -> None:
-        """Turn one grid direction on or off, leaving the other alone."""
-        self.set_grid(x=on if axis == "x" else self._show_grid_x,
-                      y=on if axis == "y" else self._show_grid_y,
-                      alpha=self._grid_alpha)
-
-    def _set_curve_alpha(self, percent: int) -> None:
-        """Fade every curve, the way pyqtgraph's Alpha group does."""
-        self._curve_alpha = max(0.0, min(percent / 100.0, 1.0))
-        with self._lock:
-            handles = list(self._handles)
-        for hd in handles:
-            setter = getattr(hd, "set_opacity", None)
-            if setter is not None:
-                setter(self._curve_alpha)
-        self._widget.update()
-
-    def _enable_axis_auto(self, axis: str) -> None:
-        """Re-arm auto-range on one axis and refit it."""
-        if axis == "x":
-            self._auto_range_x = True
-        else:
-            self._auto_range_y = True
-        self._recompute_auto_range()
-        self._fire_range_changed()
-        self._widget.update()
-
-    def build_context_menu(self, parent=None) -> QtWidgets.QMenu:
-        """Return the panel's context menu.
-
-        Modelled on pyqtgraph's, because the point of a native backend is that
-        nothing about using a plot changes underneath the user: *View All*, an
-        X and a Y submenu (mouse, auto/manual with min/max editors, invert,
-        log), *Mouse Mode*, and the grid/alpha options it groups under plot
-        options. Entries registered through ``add_menu_action`` — chiplot puts
-        its CSV and image exports there — follow at the end.
-        """
-        menu = QtWidgets.QMenu(parent or self._widget)
-        menu.addAction("View all").triggered.connect(self.auto_range)
-        menu.addSeparator()
-        menu.addMenu(self._axis_menu(menu, "x"))
-        menu.addMenu(self._axis_menu(menu, "y"))
-
-        mode = QtWidgets.QMenu("Mouse mode", menu)
-        group = QtWidgets.QActionGroup(mode)
-        pans = self._left_button_pans()
-        for label, wants_pan in (("3 button (pan)", True), ("1 button (zoom)", False)):
-            act = mode.addAction(label)
-            act.setCheckable(True)
-            act.setActionGroup(group)
-            act.setChecked(pans is wants_pan)
-            act.triggered.connect(
-                lambda _=False, p=wants_pan: self.set_left_button_pans(p))
-        menu.addMenu(mode)
-
-        menu.addMenu(self._plot_options_menu(menu))
-
+        menu = QtWidgets.QMenu(self._widget)
+        for label, cb in self._menu_actions:
+            menu.addAction(label).triggered.connect(cb)
         if self._menu_actions:
             menu.addSeparator()
-            for label, cb in self._menu_actions:
-                menu.addAction(label).triggered.connect(cb)
-        return menu
-
-    def _context_menu(self, global_pos):
-        """Show the panel's menu at a screen position."""
-        if not self._menu_enabled:
-            return
-        if hasattr(global_pos, "globalPos"):  # an event was passed
-            global_pos = global_pos.globalPos()
-        self.build_context_menu().exec_(global_pos)
+        menu.addAction("Auto range").triggered.connect(self.auto_range)
+        menu.exec_(event.globalPos())
 
     def _fire_range_changed(self):
         """Notify listeners and propagate to linked panels."""
@@ -1555,11 +967,6 @@ class _WgpuCanvas(base.Canvas):
         self._view.invert_y = bool(invert)
         self._widget.update()
 
-    def invert_x(self, invert=True) -> None:
-        """Draw the x axis increasing leftwards."""
-        self._view.invert_x = bool(invert)
-        self._widget.update()
-
     def set_axis_visible(self, side, visible) -> None:
         """Show or hide one axis's chrome."""
         self._axis_visible[side] = visible
@@ -1597,8 +1004,8 @@ class _WgpuCanvas(base.Canvas):
         self._menu_enabled = menu
 
     def provides_native_menu(self) -> bool:
-        """Return True: this backend ships the rich menu, so chiplot injects into it."""
-        return True
+        """Whether the renderer supplies its own context menu."""
+        return False
 
     def add_menu_action(self, label, callback) -> None:
         """Add an entry to the context menu."""

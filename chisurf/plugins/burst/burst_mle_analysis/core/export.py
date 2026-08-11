@@ -53,24 +53,6 @@ _UNIT_BY_PREFIX: tuple[tuple[str, str], ...] = (
 )
 
 
-#: `irf_model` -> the `_mmfdb_operation.algorithm` term for it.
-#:
-#: The IRF is not one method. A Gaussian fitted to the measured prompt, a
-#: skew-normal fitted to it, and the measured prompt used raw are three
-#: different instrument responses, and a lifetime fitted against each differs.
-#: `operation_type` says only that a calibration happened; this says which,
-#: so two containers can be told apart without parsing settings.
-#:
-#: An `irf_model` not listed here records nothing rather than the nearest
-#: guess -- absent means unrecorded, never "the usual one".
-_IRF_ALGORITHM = {
-    "gaussian": "gaussian_prompt_fit",
-    "skewed": "skew_normal_prompt_fit",
-    "experimental": "measured_prompt",
-    "raw": "measured_prompt",
-}
-
-
 def _units_by_prefix(columns) -> dict[str, str]:
     """Return ``{column: unit}`` for the columns a prefix rule recognises.
 
@@ -143,7 +125,6 @@ def write_mle_container(
             name=f"mle {str(detector).lower()}",
             artifact_kind="fit_result",
             operation_type="burst_lifetime_fitting",
-            algorithm="mle",
             row_grain="burst",
             parameters=parameters,
             derived_from="bursts",
@@ -157,7 +138,6 @@ def write_mle_container(
             name="mle state lifetimes",
             artifact_kind="fit_result",
             operation_type="burst_lifetime_fitting",
-            algorithm="mle",
             row_grain="state",
             parameters=parameters,
             derived_from=[f"mle {str(d).lower()}" for d in tables] or "bursts",
@@ -191,8 +171,6 @@ def write_mle_container(
             name=f"irf {str(detector).lower()}",
             artifact_kind="irf_curve",
             operation_type="calibration",
-            algorithm=_IRF_ALGORITHM.get(
-                str((parameters or {}).get("irf_model", "")).lower(), ""),
             row_grain="curve_point",
             parameters=parameters,
             # Not derived from the bursts: an instrument response is measured

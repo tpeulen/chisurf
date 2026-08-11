@@ -1175,19 +1175,10 @@ class ImageView(QtWidgets.QWidget):
     """
 
     clicked = QtCore.Signal(float, float)
-    #: Emitted with a :class:`chisurf.core.roi.PickedSpot` for each pick, whether
-    #: or not the fit converged — a refusal carries its reason and is worth
-    #: showing, where a silently dropped click is not.
-    picked = QtCore.Signal(object)
 
     def __init__(self, parent=None, **backend_opts):
         super().__init__(parent)
         self._iv = get_backend().create_image_view(**backend_opts)
-        self._picking = False
-        self._pick_fit = "gaussian"
-        self._pick_window = 9
-        self._pick_image = None
-        self._last_image = None
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
@@ -1206,11 +1197,7 @@ class ImageView(QtWidgets.QWidget):
         axes : dict, optional
             Dimension map for stacks, e.g. ``{"t": 0, "y": 1, "x": 2}``.
         """
-        data = np.asarray(data)
-        # Kept so picking has something to fit against without the caller
-        # having to hand the same array over twice.
-        self._last_image = data
-        self._iv.set_image(data, auto_levels=auto_levels, axes=axes)
+        self._iv.set_image(np.asarray(data), auto_levels=auto_levels, axes=axes)
 
     def set_colormap(self, name, source="matplotlib") -> None:
         """Apply a named colormap.
@@ -1265,7 +1252,6 @@ class ImageView(QtWidgets.QWidget):
         movable=True,
         rotatable=False,
         points=None,
-        angle=0.0,
     ) -> H.Roi:
         """Add a region-of-interest shape over the image.
 
@@ -1289,9 +1275,6 @@ class ImageView(QtWidgets.QWidget):
             Vertices for ``kind="polygon"``; a polygon is defined by these, not
             by a corner and a size. Without them the polygon starts as the box
             described by *pos* and *size*.
-        angle : float, optional
-            Rotation of an ellipse, in **radians**, about its own centre —
-            the unit :class:`chisurf.core.roi.EllipseROI` carries.
 
         Returns
         -------
@@ -1305,119 +1288,6 @@ class ImageView(QtWidgets.QWidget):
             movable=movable,
             rotatable=rotatable,
             points=points,
-            angle=np.degrees(float(angle)),
-        )
-
-    def add_region(self, region, *, pen="y", movable=False, name: str = "") -> H.Roi:
-        """Draw a :class:`chisurf.core.roi.ROI` over the image.
-
-        The shape-agnostic form of :meth:`add_roi`. Every caller that had a
-        region and wanted it on screen was converting it to ``kind``/``pos``/
-        ``size`` by hand, differently, and getting the ellipse's radius-versus-
-        diameter convention wrong in at least two places. A region knows what
-        shape it is; this asks it.
-
-        Parameters
-        ----------
-        region : chisurf.core.roi.ROI
-            Rectangle, ellipse/circle or polygon. A mask-backed region has no
-            analytic outline and raises — draw it as an overlay instead.
-        pen : pen-like
-            Outline style.
-        movable : bool
-            Whether the user can drag/resize it. Default is **not**: a region
-            drawn from a measurement is a result, and dragging one would claim
-            to edit something the analysis owns.
-        name : str, optional
-            Unused by the backend; accepted so a caller can keep its own
-            bookkeeping in one call.
-
-        Returns
-        -------
-        handles.Roi
-
-        Raises
-        ------
-        TypeError
-            For a region with no analytic outline, naming the alternative.
-        """
-        from chisurf.core.roi import EllipseROI, PolygonROI, RectangleROI
-
-        if isinstance(region, RectangleROI):
-            x0, y0, x1, y1 = region.bounds()
-            return self.add_roi(kind="rect", pos=(x0, y0), size=(x1 - x0, y1 - y0),
-                                pen=pen, movable=movable)
-        if isinstance(region, EllipseROI):
-            # pos/size are the bounding box, so the radii double. Getting this
-            # wrong draws an ellipse half the size of the region it describes,
-            # which looks plausible on every screenshot.
-            return self.add_roi(
-                kind="ellipse",
-                pos=(region.cx - region.rx, region.cy - region.ry),
-                size=(2.0 * region.rx, 2.0 * region.ry),
-                pen=pen, movable=movable, angle=region.angle,
-            )
-        if isinstance(region, PolygonROI):
-            return self.add_roi(kind="polygon", points=[tuple(v) for v in region.vertices],
-                                pen=pen, movable=movable)
-        raise TypeError(
-            f"{type(region).__name__} has no analytic outline to draw; "
-            "show it with add_overlay(region.to_mask(shape)) instead"
-        )
-
-    def enable_picking(self, image_source=None, *, fit: str = "gaussian",
-                       window: int = 9) -> None:
-        """Turn clicks into picked regions.
-
-        The third way a region gets made — beside a batch detector and a drawn
-        shape — offered here because it is a *gesture*, and a gesture belongs to
-        the thing being clicked. Before this, every tool that wanted it reached
-        past the plotting seam for the click and re-implemented the fit.
-
-        The click is a **seed, not the answer**: it lands a pixel or two off
-        centre, and a region built on it inherits that as a biased centroid.
-        With ``fit="gaussian"`` the click selects a window, the brightest pixel
-        in it seeds a 2-D Gaussian, and the fit decides where the spot is and
-        how wide it is (:func:`chisurf.core.roi.fit_gaussian_spot`). A fit that
-        does not converge emits a :class:`~chisurf.core.roi.PickedSpot` with
-        ``success`` false and a reason, rather than a region placed where
-        nothing was found.
-
-        Parameters
-        ----------
-        image_source : callable, optional
-            Returns the 2-D array to fit against. Defaults to whatever was last
-            passed to :meth:`set_image`, which is right whenever the canvas is
-            showing the data rather than a rendering of it.
-        fit : str, optional
-            ``"gaussian"`` to refine the click, or ``"none"`` to take it as-is
-            (for a canvas whose pixels are not a picture of anything fittable).
-        window : int, optional
-            Side of the square the fit sees.
-
-        Notes
-        -----
-        Connect to :attr:`picked` to receive each pick.
-        """
-        self._pick_fit = str(fit)
-        self._pick_window = int(window)
-        self._pick_image = image_source
-        if not self._picking:
-            self._picking = True
-            self.clicked.connect(self._on_pick_click)
-
-    def _on_pick_click(self, x: float, y: float) -> None:
-        """Turn one click into a pick and emit it."""
-        from chisurf.core.roi import PickedSpot, fit_gaussian_spot
-
-        image = self._pick_image() if callable(self._pick_image) else self._last_image
-        if image is None:
-            return
-        if self._pick_fit == "none":
-            self.picked.emit(PickedSpot(y=float(y), x=float(x), success=True))
-            return
-        self.picked.emit(
-            fit_gaussian_spot(np.asarray(image), y, x, window=self._pick_window)
         )
 
     @property

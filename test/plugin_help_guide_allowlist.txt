@@ -46,6 +46,7 @@ chisurf/plugins/microscopy/img_pixel_mle/gui
 chisurf/plugins/microscopy/img_pixel_nb/gui
 chisurf/plugins/microscopy/img_pixel_phasor/gui
 chisurf/plugins/microscopy/psf_determination/gui
+chisurf/plugins/microscopy/sm_image_mle/gui
 chisurf/plugins/misc/games/breakout
 chisurf/plugins/misc/games/gui
 chisurf/plugins/misc/games/minesweeper/gui

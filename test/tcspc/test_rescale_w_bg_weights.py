@@ -133,11 +133,31 @@ def test_zero_error_channels_are_skipped():
     assert scale == pytest.approx(reference, rel=1e-3)
 
 
-def test_lltf_kernel_uses_the_same_convention():
-    """The LLTF copy of the kernel weights by ``w**2`` as well."""
+def test_lltf_kernel_is_the_same_kernel():
+    """The lifetime tool uses the shared kernel, not a copy of it.
+
+    It used to be a copy, and the copy indexed its weights as ``w[i - start]``
+    -- a *pre-sliced* array -- while this one indexes ``w[i]`` like every other
+    array it is handed. The two therefore agreed only at ``start == 0``, which
+    is the only way this test used to call them, so a genuine divergence in
+    convention sat behind a passing assertion.
+
+    Hence the offset window below: it is the case that can tell the two apart,
+    and it is the reason to check identity rather than equality now.
+    """
+    assert rescale_w_bg_lltf is rescale_w_bg
+
     y, w = _noisy_data()
     m = _decay(3.8)
+    start, stop = 64, N_CHANNELS - 32
 
-    scale = rescale_w_bg_lltf(m, y, w, BACKGROUND, 0, N_CHANNELS)
+    scale = rescale_w_bg_lltf(m, y, w, BACKGROUND, start, stop)
+    assert scale == pytest.approx(
+        rescale_w_bg(m, y, w, BACKGROUND, start, stop), rel=1e-12
+    )
 
-    assert scale == pytest.approx(rescale_w_bg(m, y, w, BACKGROUND, 0, N_CHANNELS), rel=1e-12)
+    # And the offset window is not a no-op: it must disagree with a call that
+    # ignores it, or the test above would pass for the wrong reason.
+    assert scale != pytest.approx(
+        rescale_w_bg(m, y, w, BACKGROUND, 0, N_CHANNELS), rel=1e-9
+    )

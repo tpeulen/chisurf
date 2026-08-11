@@ -240,4 +240,4 @@ individual analyses have their own concept pages.
 - {cite}`sisamakis2010` — the multiparameter detection scheme and the correction factors it rests on.
 - {cite}`kalinin2010` — photon distribution analysis combined with lifetime, and what each adds.
 - {cite}`mcinnes2018` — the embedding used to lay out a many-dimensional burst set in two.
-- {cite}`campello2013` — the density-based clustering that finds populations without being told how many; the method is in {ref}`concept-density-clustering`.
+- {cite}`campello2013` — the density-based clustering that finds populations without being told how many.

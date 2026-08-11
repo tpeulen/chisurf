@@ -1,6 +1,29 @@
 # Update Log
 
 ## 2026-08-11
+* **PRD-97 stages 0-3 landed — FRET docking, the AV backend and the one
+  fps.json reader are imp.bff's.** `IMP.bff.fret` now holds `imp_engine`,
+  `av` (no LabelLib — user rule; IMP.bff is the only backend), `distance`
+  (numba kernels rewritten as vectorised numpy — user rule: no numba in bff),
+  `distributions`, `engine`, `olga_greedy`, `stat`, `uncertainty`, `io` and
+  the authored `fps_schema` (union of both dialects, flrCIF item names,
+  derived + drift-tested `data/fps_json_schema.json`); `pyext/src/fps.py` is
+  deleted. ChiSurf's `fret/core` is 8 module-alias forwarders plus an `io.py`
+  wrapper (evaluator factory + PMI RMF writer stay application-side);
+  `fret/core/distance.py` struck from the numba allowlist. The move proved
+  the PRD's coincidence claim: the C++ reader wrote radius1 into all three AV
+  radii (fixed in `src/AV.cpp`), and ChiSurf's imp-bff AV path had two latent
+  crashes (`if xyz_density:` on an ndarray, argument-less
+  `DensityHeader.get_origin()`) that the LabelLib fallback had swallowed on
+  every call — LabelLib, not IMP, had been computing those AVs. A
+  source-clearance rule (`allowed_sphere_radius >= lw/2 + grid/2`) replaces
+  the clearance FPS got by stripping the attachment residue. Suites: imp.bff
+  fret+cgdye 93 passed; ChiSurf FRET 125 passed with only the 7
+  `../olga`-dependent `test_examples.py` failures remaining. Schema
+  validation also caught real data bugs: `flex.fps.json` `S1_val_chi2` lost
+  its `S1_` prefixes (fixed), `hGBP1.fps.json` `577_577` references a
+  nonexistent distance (left, flagged). Stage 4 (three AV paths measured
+  against each other) stays open.
 * **PRD-99 written: the cheap dye model has never been checked against the
   expensive one.** Asked for a PRD parameterising FPSIMP sampling against
   simple AV simulations — vary linker length and rigidity, make the expensive

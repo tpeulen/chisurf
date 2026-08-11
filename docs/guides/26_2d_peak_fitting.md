@@ -28,7 +28,7 @@ Burst features are extracted and clustered with a **Gaussian mixture model** in
 
 ```python
 from chisurf.plugins.burst.burst_selection.api.features import extract_features
-from chisurf.core.ml import GaussianMixture
+from sklearn.mixture import GaussianMixture
 
 feat = extract_features(burst_frames)                 # nphotons, duration, fret, ...
 gmm = GaussianMixture(n_components=3).fit(feat[["fret", "brightness"]].to_numpy())

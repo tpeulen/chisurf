@@ -3,8 +3,8 @@ type: PRD
 prd: "97"
 title: "PRD-97: FRET docking is imp.bff's — the engine, the AV backend and the one fps.json"
 description: ChiSurf's FRET plugin holds 4,014 lines of docking algorithm that import IMP and nothing of ChiSurf, plus the most elaborate of three fps.json readers. The algorithms move to imp.bff and ChiSurf calls them; imp.bff becomes the home for the data schemas -- legacy C# FPS, both fps.json dialects and what supersedes them -- authored once and derived, the way mmfdb derives its schema from the flrCIF dictionary.
-status: draft
-phase: "scoped and measured; nothing moved yet"
+status: in-progress
+phase: "stages 0-3 landed 2026-08-11: schema authored, one reader, engine + AV backend + algorithm files moved, ChiSurf on forwarders; stage 4 (three AV paths) open"
 resource: chisurf/plugins/modelling/fret/core
 tags: [prd, scope, architecture, imp.bff, fret, docking, fps-json, schema, flrcif, mmfdb]
 timestamp: '2026-08-10T00:00:00Z'
@@ -12,7 +12,61 @@ timestamp: '2026-08-10T00:00:00Z'
 
 # Where to pick this up
 
-Nothing has moved. This is the scope and the measurement.
+**Stages 0–3 landed 2026-08-11.** The engine, the AV backend, the six
+algorithm files and the one fps.json reader live in `imp.bff/pyext/src/fret/`
+(`IMP.bff.fret`); ChiSurf's `fret/core` holds thin forwarders (8 pure module
+aliases + an `io.py` wrapper overriding `read_evaluators_json` — evaluator
+instantiation stays application-side via a factory parameter — and
+`write_rmf`, which keeps the PMI-compatible writer). `pyext/src/fps.py` is
+deleted; its two importers moved to `IMP.bff.fret.io`. What remains is
+**stage 4** (measure the three AV paths against each other) and the open sync
+question below.
+
+Decisions taken while landing:
+
+* **Rules (user, 2026-08-11): no LabelLib and no numba in imp.bff.** The AV
+  backend moved *without* the LabelLib backend/selection (IMP.bff's AV is the
+  only path; `select_backend` accepts only `auto`/`imp-bff`), and
+  `distance.py`'s two numba kernels were rewritten as vectorised numpy.
+* **Forwarders: kept** (open decision 3) — module-alias forwarders are ~10
+  lines each, keep every ChiSurf import path and private test symbol working,
+  and cost nothing at run time.
+* **`engine.py` is not dead** (stage 3 caveat): ChiSurf's staying
+  `evaluate.py` uses `RigidBody`/`DistanceRestraint`. Moved anyway — plain
+  data classes, coordinates in — with the forwarder carrying the consumers.
+* **`olga_greedy.py` moved, `pair_selection.py` stayed** (open decision 2),
+  exactly on the algorithm/workflow line.
+* **Schema (stage 0)**: `IMP.bff.fret.fps_schema` is the single authored
+  definition (union of both dialects, flrCIF item names where flrCIF has
+  them: `_flr_FPS_AV_parameter.*`, `_flr_fret_distance_restraint.*`,
+  `_flr_FPS_global_parameter.AV_allowed_sphere`,
+  `_flr_FPS_mean_probe_position.mpp_*coord`); `imp.bff/data/fps_json_schema.json`
+  is *derived* from it and a drift test holds them equal, mmfdb-style.
+  `read_fps_json`/`write_fps_json` take `validate=True`.
+* **C++ parser as the only one** (open decision 1): not taken — the C++
+  reader stays as is, but both readers are now checked against the same
+  written schema by tests, which is the agreement-by-construction the PRD
+  actually needs; collapsing to one parser remains possible later.
+
+What the move surfaced — the "agree by coincidence" claim, proven:
+
+* `AV::set_av_parameter` (imp.bff `src/AV.cpp`) assigned **radius1 to all
+  three radii** — an AV3's radius2/radius3 were silently ignored by the C++
+  reader. Fixed.
+* ChiSurf's `_av_imp_bff` had **two latent crashes** (`if xyz_density:` on a
+  numpy array; `DensityHeader.get_origin()` called without its axis argument)
+  that the LabelLib fallback had swallowed on every call — the "imp-bff
+  backend" had never actually produced an AV in that workflow; LabelLib did.
+  Both fixed in the moved code, plus a source-clearance rule
+  (`allowed_sphere_radius >= linker_width/2 + grid/2` unless the position
+  declares its own), because FPS/LabelLib got clearance by stripping the
+  attachment residue and the C++ AV does not.
+* The schema validator immediately caught **real data bugs**: `flex.fps.json`'s
+  `S1_val_chi2` score set referenced distances without their `S1_` prefix
+  (fixed — the `S2_` twin showed the intent) and `hGBP1.fps.json`'s `577_577`
+  set references a distance that does not exist (`A577F_eGFP-A577F_mCh`;
+  left as is — the intended fix is not obvious, a silent no-op in the C++
+  reader today).
 
 The headline is that the cut is unusually clean: **`imp_engine.py` (1391 lines)
 and `av.py` (742) import IMP twelve and six times respectively, and ChiSurf zero

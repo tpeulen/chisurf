@@ -725,7 +725,7 @@ class _Text(_Item):
 
 
 
-def _roi_item(kind, pos, size, pen, movable, rotatable, points, angle=0.0):
+def _roi_item(kind, pos, size, pen, movable, rotatable, points):
     """Build the pyqtgraph ROI item for a region shape.
 
     Shared by the image view and the plot canvas: a region carries no axes, so
@@ -735,18 +735,7 @@ def _roi_item(kind, pos, size, pen, movable, rotatable, points, angle=0.0):
     if kind == "circle":
         return pg.CircleROI(list(pos), list(size), pen=_pen(pen), movable=movable)
     if kind == "ellipse":
-        # Rotation matters here and not for a circle: a Gaussian gate on a
-        # correlated population is a *tilted* ellipse, and drawing it
-        # axis-aligned either leaks in the corners or cuts the population's own
-        # diagonal off. pyqtgraph rotates about `pos`, so the centre has to be
-        # held still by hand.
-        item = pg.EllipseROI(list(pos), list(size), pen=_pen(pen), movable=movable,
-                             rotatable=rotatable)
-        if angle:
-            centre = item.pos() + item.size() * 0.5
-            item.setAngle(float(angle), center=(0.5, 0.5))
-            item.setPos(centre - item.size() * 0.5, finish=False)
-        return item
+        return pg.EllipseROI(list(pos), list(size), pen=_pen(pen), movable=movable)
     if kind == "polygon":
         # A polygon is defined by its vertices, not a corner and a size; the box
         # is only the fallback when no vertices were given.
@@ -1062,51 +1051,17 @@ class _PgCanvas(base.Canvas):
             lambda _vb, ranges: callback(tuple(ranges[0]), tuple(ranges[1]))
         )
 
-    def _log_modes(self) -> tuple[bool, bool]:
-        """Return whether ``(x, y)`` are in logarithmic mode."""
-        try:
-            state = self._pi.getViewBox().state["logMode"]
-            return bool(state[0]), bool(state[1])
-        except Exception:
-            return False, False
-
-    @staticmethod
-    def _to_axis_units(rng, log: bool):
-        """Convert a data-unit range to what pyqtgraph's view wants.
-
-        A pyqtgraph view in log mode holds *exponents*; chiplot's contract is
-        data units on every axis (see ``base.Canvas.set_range``), so the
-        conversion belongs here rather than at each call site.
-        """
-        if not log or rng is None:
-            return rng
-        lo, hi = float(rng[0]), float(rng[1])
-        floor = 1e-300
-        return (np.log10(max(lo, floor)), np.log10(max(hi, floor)))
-
-    @staticmethod
-    def _from_axis_units(rng, log: bool):
-        """Inverse of :meth:`_to_axis_units`."""
-        if not log:
-            return rng
-        return (float(10.0 ** rng[0]), float(10.0 ** rng[1]))
-
     def set_range(self, *, x=None, y=None, padding=None) -> None:
-        """Set the visible x/y range, in data units on every axis."""
-        log_x, log_y = self._log_modes()
+        """Set visible x/y range."""
         if x is not None:
-            x = self._to_axis_units(x, log_x)
             self._pi.setXRange(x[0], x[1], padding=padding)
         if y is not None:
-            y = self._to_axis_units(y, log_y)
             self._pi.setYRange(y[0], y[1], padding=padding)
 
     def get_range(self):
-        """Return the current visible ``((x0, x1), (y0, y1))``, in data units."""
+        """Return the current visible ``((x0, x1), (y0, y1))``."""
         (x0, x1), (y0, y1) = self._pi.getViewBox().viewRange()
-        log_x, log_y = self._log_modes()
-        return (self._from_axis_units((x0, x1), log_x),
-                self._from_axis_units((y0, y1), log_y))
+        return (x0, x1), (y0, y1)
 
     def auto_range(self) -> None:
         """Fit the view to its contents once."""
@@ -1331,32 +1286,6 @@ class _PgImageView(base.ImageViewCanvas):
         # take them off again — ``pg.ImageView.clear`` only clears the image.
         self._added: list = []
 
-    @classmethod
-    def wrap(cls, image_view) -> _PgImageView:
-        """Return a canvas driving an image view somebody else created.
-
-        For a widget that already owns its ``pg.ImageView`` and wants the
-        canvas API over it. It exists because the alternative was being done
-        anyway — ``_PgImageView.__new__(_PgImageView)`` with ``_iv`` assigned by
-        hand — which skips ``__init__`` and therefore skips every attribute
-        added to it later. That is not hypothetical: item tracking for
-        :meth:`clear` was added here and every such hand-built instance started
-        raising ``AttributeError`` inside :meth:`add_roi`.
-
-        Parameters
-        ----------
-        image_view : pyqtgraph.ImageView
-            The view to drive.
-
-        Returns
-        -------
-        _PgImageView
-        """
-        self = cls.__new__(cls)
-        self._iv = image_view
-        self._added = []
-        return self
-
     def widget(self) -> QtWidgets.QWidget:
         """Return the embeddable image-view widget."""
         return self._iv
@@ -1424,10 +1353,10 @@ class _PgImageView(base.ImageViewCanvas):
 
     def add_roi(
         self, *, kind="rect", pos=(0.0, 0.0), size=(10.0, 10.0), pen, movable=True,
-        rotatable=False, points=None, angle=0.0
+        rotatable=False, points=None
     ) -> H.Roi:
         """Add a region-of-interest to the view."""
-        roi = _roi_item(kind, pos, size, pen, movable, rotatable, points, angle)
+        roi = _roi_item(kind, pos, size, pen, movable, rotatable, points)
         view = self._iv.getView()
         view.addItem(roi)
         self._added.append(roi)

@@ -1,26 +1,10 @@
-"""Small linear-algebra helpers: 3-vector geometry and a few rotation utilities.
-
-The 3-vector functions are written against the last axis, so each works on a
-single ``(3,)`` vector or on a stack of them (``(n, 3)``, ``(n, m, 3)``) with no
-change at the call site. That is not decoration: the callers in
-:mod:`chisurf.core.structure.protein` invoke them once per residue from a Python
-loop, and a stacked call is how that loop stops being one.
-
-These used to be ``numba``-compiled. They are not any more, and the measurement
-that decided it is worth keeping: at ~0.4 s to import and a further 0.4-0.8 s to
-JIT on the first ``angle()`` call, over a second was spent before the first
-residue of a structure was processed -- against 3.4 ms for ten thousand compiled
-calls. The import cost is why :mod:`chisurf.core.math` had to serve its
-submodules lazily (PEP 562) in the first place.
-"""
-
 from __future__ import annotations
-
-from math import cos, sin, sqrt
-
-import numpy as np
-
 from chisurf import typing
+
+from math import sin, cos, sqrt
+
+import numba as nb
+import numpy as np
 
 
 def cartesian(arrays: typing.List[np.array], out=None):
@@ -68,220 +52,312 @@ def cartesian(arrays: typing.List[np.array], out=None):
     return out
 
 
-def sub3(a: np.ndarray, b: np.ndarray) -> np.ndarray:
-    """Subtract ``b`` from ``a``.
+@nb.jit(nopython=True)
+def angle(
+        a: np.array,
+        b: np.array,
+        c: np.array
+) -> float:
+    """
+    The angle between three vectors
+
+    :param a: numpy array
+    :param b: numpy array
+    :param c: numpy array
+    :return: angle between three vectors/points in space
+
+    Example
+    -------
+
+    >>> import numpy as np
+    >>> a = np.array([0,0,0], dtype=np.float64)
+    >>> b = np.array([1,0,0], dtype=np.float64)
+    >>> c = np.array([0,1,0], dtype=np.float64)
+    >>> angle(a, b, c) / np.pi * 360
+    90.000000000000014
+
+    """
+    r12 = sub3(a, b)
+    r23 = sub3(c, b)
+    r12n = np.sqrt(dot3(r12, r12))
+    r23n = np.sqrt(dot3(r23, r23))
+    d = dot3(r12, r23) / (r12n * r23n)
+    return np.arccos(d)
+
+
+@nb.jit(nopython=True)
+def sq_dist3(
+        u: np.array,
+        v: np.array
+) -> np.ndarray:
+    """Compute the squared distance between two 3D vectors.
 
     Parameters
     ----------
-    a, b : numpy.ndarray
-        Vectors with 3 elements on the last axis.
+    u : np.ndarray
+        3-element vector.
+    v : np.ndarray
+        3-element vector.
 
     Returns
     -------
-    numpy.ndarray
-        ``a - b``.
+    float
+        Squared Euclidean distance.
+    """
+    r = (u[0]-v[0])**2
+    r += (u[1] - v[1]) ** 2
+    r += (u[2] - v[2]) ** 2
+    return r
+
+
+@nb.jit(nopython=True)
+def cross3(
+        a: np.array,
+        b: np.array
+) -> np.ndarray:
+    """Compute the cross product of two 3D vectors.
+
+    Parameters
+    ----------
+    a : np.ndarray
+        3-element vector.
+    b : np.ndarray
+        3-element vector.
+
+    Returns
+    -------
+    np.ndarray
+        3-element cross product vector.
+    """
+    o = np.empty(3, dtype=np.float64)
+    o[0] = a[1]*b[2]-a[2]*b[1]
+    o[1] = a[2]*b[0]-a[0]*b[2]
+    o[2] = a[0]*b[1]-a[1]*b[0]
+    return o
+
+
+@nb.jit(nopython=True)
+def norm3(a: np.array) -> np.ndarray:
+    """The length of a 3D-vector
+
+    :param a:
+    :return:
+    """
+    return np.sqrt(a[0]**2 + a[1]**2 + a[2]**2)
+
+
+@nb.jit(nopython=True)
+def dot3(a: np.array, b: np.array) -> float:
+    """Dot product of 2 3D-vectors
+
+    :param a:
+    :param b:
+    :return:
+    """
+    s = 0.0
+    s += a[0]*b[0]
+    s += a[1]*b[1]
+    s += a[2]*b[2]
+    return s
+
+
+@nb.jit(nopython=True)
+def add3(
+        a: np.array,
+        b: np.array
+) -> np.ndarray:
+    """Adds two 3D vectors
+
+    :param a:
+    :param b:
+    :return:
+    """
+    o = np.empty(3, dtype=np.float64)
+    o[0] = a[0]+b[0]
+    o[1] = a[1]+b[1]
+    o[2] = a[2]+b[2]
+    return o
+
+
+@nb.jit(nopython=True)
+def sub3(
+        a: np.array,
+        b: np.array
+) -> np.ndarray:
+    """ Subtracts b from a and returns a vector of the difference
+
+    :param a: 3D vector
+    :param b: 3D vector
+    :return: distance between the vectors
 
     Example
     -------
     >>> import numpy as np
-    >>> sub3(np.array([1., 0, 0]), np.array([0., 0, 0]))
-    array([1., 0., 0.])
+    >>> a = np.array([1,0,0], dtype=np.float64)
+    >>> b = np.array([0,0,0], dtype=np.float64)
+    >>> c = sub3(a, b)
+
     """
-    return np.subtract(a, b)
+    o = np.empty(3, dtype=np.float64)
+    o[0] = a[0]-b[0]
+    o[1] = a[1]-b[1]
+    o[2] = a[2]-b[2]
+    return o
 
 
-def add3(a: np.ndarray, b: np.ndarray) -> np.ndarray:
-    """Add two 3-vectors.
+@nb.jit(nopython=True)
+def dist3(
+        a: np.array,
+        b: np.array
+) -> np.ndarray:
+    """ Calculates the distance between two 3D vectors
 
-    Parameters
-    ----------
-    a, b : numpy.ndarray
-        Vectors with 3 elements on the last axis.
-
-    Returns
-    -------
-    numpy.ndarray
-        ``a + b``.
-    """
-    return np.add(a, b)
-
-
-def dot3(a: np.ndarray, b: np.ndarray) -> float | np.ndarray:
-    """Dot product along the last axis.
-
-    Parameters
-    ----------
-    a, b : numpy.ndarray
-        Vectors with 3 elements on the last axis.
-
-    Returns
-    -------
-    float or numpy.ndarray
-        The scalar product; an array if the inputs are stacked.
-    """
-    return np.sum(np.multiply(a, b), axis=-1)
-
-
-def cross3(a: np.ndarray, b: np.ndarray) -> np.ndarray:
-    """Cross product along the last axis.
-
-    Parameters
-    ----------
-    a, b : numpy.ndarray
-        Vectors with 3 elements on the last axis.
-
-    Returns
-    -------
-    numpy.ndarray
-        ``a x b``.
-    """
-    return np.cross(a, b)
-
-
-def norm3(a: np.ndarray) -> float | np.ndarray:
-    """Euclidean length along the last axis.
-
-    Parameters
-    ----------
-    a : numpy.ndarray
-        Vector with 3 elements on the last axis.
-
-    Returns
-    -------
-    float or numpy.ndarray
-        The length; an array if the input is stacked.
-    """
-    return np.sqrt(np.sum(np.multiply(a, a), axis=-1))
-
-
-def sq_dist3(u: np.ndarray, v: np.ndarray) -> float | np.ndarray:
-    """Squared Euclidean distance along the last axis.
-
-    Parameters
-    ----------
-    u, v : numpy.ndarray
-        Vectors with 3 elements on the last axis.
-
-    Returns
-    -------
-    float or numpy.ndarray
-        ``|u - v|**2``.
-    """
-    d = np.subtract(u, v)
-    return np.sum(np.multiply(d, d), axis=-1)
-
-
-def dist3(a: np.ndarray, b: np.ndarray) -> float | np.ndarray:
-    """Euclidean distance along the last axis.
-
-    Parameters
-    ----------
-    a, b : numpy.ndarray
-        Vectors with 3 elements on the last axis.
-
-    Returns
-    -------
-    float or numpy.ndarray
-        ``|a - b|``.
+    :param a: 3D vector
+    :param b: 3D vector
+    :return: distance between the vectors
 
     Example
     -------
     >>> import numpy as np
-    >>> float(dist3(np.array([1., 0, 0]), np.array([0., 0, 0])))
+    >>> a = np.array([1,0,0], dtype=np.float64)
+    >>> b = np.array([0,0,0], dtype=np.float64)
+    >>> dist = dist3(a, b)
+    >>> dist
     1.0
+
     """
-    return np.sqrt(sq_dist3(a, b))
+    d2 = (a[0] - b[0])**2
+    d2 += (a[1] - b[1]) ** 2
+    d2 += (a[2] - b[2]) ** 2
+    return np.sqrt(d2)
 
 
-def angle(a: np.ndarray, b: np.ndarray, c: np.ndarray) -> float | np.ndarray:
-    """The angle subtended at ``b`` by ``a`` and ``c``.
-
-    Parameters
-    ----------
-    a, b, c : numpy.ndarray
-        Points with 3 coordinates on the last axis.
-
-    Returns
-    -------
-    float or numpy.ndarray
-        The angle in radians; an array if the inputs are stacked.
-
-    Notes
-    -----
-    The cosine is clamped to ``[-1, 1]`` before :func:`numpy.arccos`. This is
-    not defensive padding: for three nearly collinear points the normalised dot
-    product overshoots one by up to ``4.4e-16`` in double precision, and
-    ``arccos`` of that is ``NaN``. Collinear backbone atoms are ordinary, so the
-    unclamped form returned ``NaN`` for real structures. :func:`dihedral` has
-    always clamped; this did not.
-
-    Example
-    -------
-    >>> import numpy as np
-    >>> a = np.array([0., 0, 0])
-    >>> b = np.array([1., 0, 0])
-    >>> c = np.array([0., 1, 0])
-    >>> round(float(angle(a, b, c)) / np.pi * 360, 6)
-    90.0
-    """
-    r12 = np.subtract(a, b)
-    r23 = np.subtract(c, b)
-    d = dot3(r12, r23) / (norm3(r12) * norm3(r23))
-    return np.arccos(np.clip(d, -1.0, 1.0))
-
-
+@nb.jit(nopython=True)
 def dihedral(
-        v1: np.ndarray,
-        v2: np.ndarray,
-        v3: np.ndarray,
-        v4: np.ndarray
-) -> float | np.ndarray:
-    """Dihedral angle defined by four points.
+        v1: np.array,
+        v2: np.array,
+        v3: np.array,
+        v4: np.array
+) -> float:
+    """Dihedral angle between four-vectors
 
-    Obtain ``b1``, ``b2`` and ``b3`` by subtraction, then the plane normals
-    ``n1 = b1 x b2`` and ``n2 = b2 x b3``. The angle sought is the angle between
-    ``n1`` and ``n2``. The three vectors ``n1``, ``<b2>`` and ``m1 = n1 x <b2>``
-    form an orthonormal frame; expressing ``n2`` in it gives ``x = n1.n2`` and
-    ``y = m1.n2``, and the signed angle is ``atan2(y, x)``.
+    Given the coordinates of the four points, obtain the vectors b1, b2, and b3 by vector subtraction.
+    Let me use the nonstandard notation <v> to denote v/|v|, the unit vector in the direction of the
+    vector v. Compute n1=<b1xb2> and n2=<b2xb3>, the normal vectors to the planes containing b1 and b2,
+    and b2 and b3 respectively. The angle we seek is the same as the angle between n1 and n2.
 
-    ``atan2`` is used rather than ``acos`` both because it produces an angle over
-    a range of 2*pi naturally, and because ``acos`` is poorly conditioned when the
-    angle is close to 0 or +-pi.
+    The three vectors n1, <b2>, and m1:=n1x<b2> form an orthonormal frame. Compute the coordinates of
+    n2 in this frame: x=n1*n2 and y=m1*n2. (You don't need to compute <b2>*n2 as it should always be zero.)
 
-    Parameters
-    ----------
-    v1, v2, v3, v4 : numpy.ndarray
-        Points with 3 coordinates on the last axis.
+    The dihedral angle, with the correct sign, is atan2(y,x).
 
-    Returns
-    -------
-    float or numpy.ndarray
-        The dihedral angle in radians; an array if the inputs are stacked.
+    (The reason I recommend the two-argument atan2 function to the traditional cos-1 in this case is both
+    because it naturally produces an angle over a range of 2pi, and because cos-1 is poorly conditioned
+    when the angle is close to 0 or +-pi.)
+    :param v1:
+    :param v2:
+    :param v3:
+    :param v4:
+
+    :return: dihedral angle between four vectors
 
     Example
     -------
     >>> import numpy as np
-    >>> a = np.array([-1., 1, 0])
-    >>> b = np.array([-1., 0, 0])
-    >>> c = np.array([0., 0, 0])
-    >>> d = np.array([0., -1, 0])
-    >>> round(float(dihedral(a, b, c, d)) / np.pi * 360, 6)
-    -360.0
+    >>> a = np.array([-1,1,0], dtype=np.float64)
+    >>> b = np.array([-1,0,0], dtype=np.float64)
+    >>> c = np.array([0,0,0], dtype=np.float64)
+    >>> d = np.array([0,-1,0], dtype=np.float64)
+    >>> dihedral(a, b, c, d) / np.pi * 360
+    -360
+
     """
-    b1 = np.subtract(v1, v2)
-    b2 = np.subtract(v2, v3)
-    b3 = np.subtract(v3, v4)
+    b1 = sub3(v1, v2)
+    b2 = sub3(v2, v3)
+    b3 = sub3(v3, v4)
     n1 = cross3(b1, b2)
     n2 = cross3(b2, b3)
     m1 = cross3(b2, n1)
-
+    n1_inv = 1.0 / norm3(n1)
     n2_inv = 1.0 / norm3(n2)
-    cos_phi = dot3(n1, n2) * (1.0 / norm3(n1) * n2_inv)
-    sin_phi = dot3(m1, n2) * (1.0 / norm3(m1) * n2_inv)
-    return -np.arctan2(
-        np.clip(sin_phi, -1.0, 1.0),
-        np.clip(cos_phi, -1.0, 1.0),
-    )
+    m1_inv = 1.0 / norm3(m1)
+
+    cos_phi = dot3(n1, n2)*(n1_inv * n2_inv)
+    sin_phi = dot3(m1, n2)*(m1_inv * n2_inv)
+    if cos_phi < -1:
+        cos_phi = -1
+    elif cos_phi > 1:
+        cos_phi = 1
+    if sin_phi < -1:
+        sin_phi = -1
+    elif sin_phi > 1:
+        sin_phi = 1
+    phi = -np.arctan2(sin_phi, cos_phi)
+    return phi
+
+
+@nb.jit(nopython=True, nogil=True)
+def grad3d(
+        d: np.ndarray,
+        b: np.ndarray = None,
+        dg: float = 1.0
+) -> np.ndarray:
+    """Calculates the gradient of a 3D scalar field within a certain shape
+    defined the bounds.
+
+    :param d: 3D scalar field
+    :param bd: 3D bounds (1 within structure, 0 outside)
+    :param dg: grid spacing
+    :return: 3D vector field as numpy-array (first axis defines x, y, z (0, 1, 2))
+    """
+    if b is None:
+        bd = np.ones_like(d)
+    else:
+        bd = b
+    nx, ny, nz = d.shape
+    dd = np.zeros((3, nx, ny, nz))
+    i2dg = 1. / (2. * dg)
+    for ix in range(1, nx - 1):
+        for iy in range(1, ny - 1):
+            for iz in range(1, nz - 1):
+                if bd[ix, iy, iz] == 0:
+                    continue
+                dd[0, ix, iy, iz] = 0.5 * (d[ix - 1, iy, iz] - d[ix + 1, iy, iz]) * i2dg
+                dd[1, ix, iy, iz] = 0.5 * (d[ix, iy - 1, iz] - d[ix, iy + 1, iz]) * i2dg
+                dd[2, ix, iy, iz] = 0.5 * (d[ix, iy, iz - 1] - d[ix, iy, iz + 1]) * i2dg
+    return dd
+
+
+@nb.jit(nopython=True, nogil=True)
+def laplace3d_1(
+        c: np.ndarray,
+        b: np.ndarray = None,
+        dg: float = 1.0
+) -> np.ndarray:
+    """Calculates the Laplacian of a 3D scalar field within a certain shape
+    defined the bounds.
+
+    :param c:
+    :param b:
+    :param dg:
+    :return:
+    """
+    if b is None:
+        b = np.ones_like(c)
+    nx, ny, nz = c.shape
+    l = np.zeros((3, nx, ny, nz), dtype=np.float64)
+    nx, ny, nz = c.shape
+    idg2 = 1. / (dg**2)
+    for ix in range(1, nx - 1):
+        for iy in range(1, ny - 1):
+            for iz in range(1, nz - 1):
+                if b[ix, iy, iz] == 0:
+                    continue
+                di = c[ix, iy, iz]
+                l[0, ix, iy, iz] = (c[ix + 1, iy, iz] - 2 * di + c[ix - 1, iy, iz]) * idg2
+                l[1, ix, iy, iz] = (c[ix, iy + 1, iz] - 2 * di + c[ix, iy - 1, iz]) * idg2
+                l[2, ix, iy, iz] = (c[ix, iy, iz + 1] - 2 * di + c[ix, iy, iz - 1]) * idg2
+    return l
 
 
 def solve_richardson_lucy(
@@ -290,27 +366,33 @@ def solve_richardson_lucy(
         d: np.array,
         max_iter: int
 ) -> np.ndarray:
-    """Richardson-Lucy deconvolution.
-
-    Parameters
-    ----------
-    p : numpy.ndarray
-        Point-spread matrix of shape ``(n_i, n_j)``.
-    u : numpy.ndarray
-        Current estimate of length ``n_j``; updated in place and returned.
-    d : numpy.ndarray
-        Observed data of length ``n_i``.
-    max_iter : int
-        Number of iterations.
-
-    Returns
-    -------
-    numpy.ndarray
-        The estimate ``u`` after ``max_iter`` iterations.
     """
-    for _ in range(max_iter):
-        c = p @ u
-        u[:] = u * (d / c @ p)
+
+    :param p:
+    :param u:
+    :param d:
+    :param max_iter:
+    :return:
+    """
+    n_i = p.shape[0]
+    n_j = p.shape[1]
+    un = np.copy(u)
+    c = np.zeros(n_i)
+
+    for iteration in range(max_iter):
+
+        for i in range(n_i):
+            c[i] = 0.0
+            for k in range(n_j):
+                c[i] += p[i, k] * u[k]
+
+        for j in range(n_j):
+            s = 0.0
+            for i in range(n_i):
+                s += d[i] / c[i] * p[i, j]
+            un[j] = u[j] * s
+        for j in range(n_j):
+            u[j] = un[j]
     return u
 
 
@@ -358,19 +440,13 @@ def euler_matrix(
     return m
 
 
-def vector4_norm(v: np.ndarray) -> np.ndarray:
-    """Normalise a 4-vector in place.
-
-    Parameters
-    ----------
-    v : numpy.ndarray
-        4-element vector, modified in place.
-
-    Returns
-    -------
-    numpy.ndarray
-        The same array, normalised.
+def vector4_norm(
+        v: np.ndarray
+) -> np.ndarray:
+    """Normalize a vector of length 4
     """
+    # untested
+    s = 0.0
     s = sqrt(v[0]**2 + v[1]**2 + v[2]**2 + v[3]**2)
     v[0] /= s
     v[1] /= s
@@ -379,21 +455,13 @@ def vector4_norm(v: np.ndarray) -> np.ndarray:
     return v
 
 
-def quaternion_about_axis(angle: float, axis: np.ndarray) -> np.ndarray:
-    """Return the quaternion for a rotation about an axis.
-
-    Parameters
-    ----------
-    angle : float
-        Rotation angle in radians.
-    axis : numpy.ndarray
-        3-element axis; need not be normalised.
-
-    Returns
-    -------
-    numpy.ndarray
-        Quaternion ``(w, x, y, z)``.
+def quaternion_about_axis(
+        angle: float,
+        axis: np.ndarray
+) -> np.ndarray:
+    """Return quaternion for rotation about axis.
     """
+    # untested
     q = np.array([0.0, axis[0], axis[1], axis[2]], dtype=np.float64)
     vector4_norm(q)
     q[1] *= sin(angle/2.0)
@@ -407,20 +475,10 @@ def quaternion_multiply(
         quaternion0: np.ndarray,
         quaternion1: np.ndarray
 ) -> np.ndarray:
-    """Multiply ``quaternion1`` into ``quaternion0`` in place.
-
-    Parameters
-    ----------
-    quaternion0 : numpy.ndarray
-        Left factor ``(w, x, y, z)``; modified in place.
-    quaternion1 : numpy.ndarray
-        Right factor ``(w, x, y, z)``.
-
-    Returns
-    -------
-    numpy.ndarray
-        ``quaternion0``, holding the product.
+    """Multiply quaternion1 to quaternion0
+    (inplace, quaternion0 is modified)
     """
+    # untested
     w0, x0, y0, z0 = quaternion0
     w1, x1, y1, z1 = quaternion1
 
@@ -431,32 +489,26 @@ def quaternion_multiply(
     return quaternion0
 
 
-def rotate_point(p3: np.ndarray, quaternion: np.ndarray) -> np.ndarray:
-    """Rotate a 3D point by a quaternion.
-
-    Applies ``p' = p + 2w(v x p) + 2(v x (v x p))`` with ``v`` the vector part.
+def rotate_point(
+        p3: np.ndarray,
+        quaternion: np.ndarray
+) -> np.ndarray:
+    """Rotate a 3D point using a quaternion.
 
     Parameters
     ----------
-    p3 : numpy.ndarray
-        3-element point.
-    quaternion : numpy.ndarray
-        4-element quaternion ``(w, x, y, z)``.
+    p3 : np.ndarray
+        3-element vector representing the point.
+    quaternion : np.ndarray
+        4-element quaternion (w, x, y, z).
 
     Returns
     -------
-    numpy.ndarray
-        The rotated point.
-
-    Notes
-    -----
-    The vector part was sliced as ``quaternion[1:3]`` -- two elements, not
-    three -- so every call reached past the end of it inside :func:`cross3`.
-    Under the previous ``numba`` compilation that read whatever followed in
-    memory instead of raising, which is why a function this broken could sit
-    here: it has no callers, and nothing ever ran it.
+    np.ndarray
+        Rotated 3-element vector.
     """
-    v = quaternion[1:4]
+    # untested
+    v = quaternion[1:3]
     w = quaternion[0]
 
     vCp3 = cross3(v, p3)
@@ -468,3 +520,4 @@ def rotate_point(p3: np.ndarray, quaternion: np.ndarray) -> np.ndarray:
     p_new[2] = p3[2] + vCp3[2]*(2*w) + vCvCp3[2]
 
     return p_new
+

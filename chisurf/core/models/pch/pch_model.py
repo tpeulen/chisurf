@@ -131,18 +131,7 @@ class PchMultiComponentModel(ModelCurve):
         if not np.any(mask):
             y = np.zeros_like(k, dtype=float)
         else:
-            try:
-                y = np.asarray(pch.pch_mixture(k, eps[mask], ns[mask]), dtype=float)
-            except ValueError as e:
-                # The count axis comes from the dataset, so it is the user's,
-                # and a PCH is only defined on 0, 1, ... k_max. Refusing here
-                # costs a flat curve; answering anyway would silently return
-                # the histogram of a *different* axis, which looks like a bad
-                # fit rather than bad data.
-                chisurf.logging.warning("PCH: %s", e)
-                self.x = k
-                self.y = np.zeros_like(k, dtype=float)
-                return
+            y = np.asarray(pch.pch_mixture(k, eps[mask], ns[mask]), dtype=float)
             if y.size != k.size:
                 m = min(y.size, k.size)
                 y, k = y[:m], k[:m]

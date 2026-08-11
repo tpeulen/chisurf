@@ -26,13 +26,13 @@ for the peak positions.
 
 ## In ChiSurf
 
-Burst features are clustered/fit with ChiSurf's own `GaussianMixture` in
+Burst features are clustered/fit with a scikit-learn `GaussianMixture` in
 {src}`chisurf/plugins/burst/burst_selection/api/features.py`; the same one-dimensional
 fit applies to the FRET efficiency:
 
 ```python
 import numpy as np
-from chisurf.core.ml import GaussianMixture
+from sklearn.mixture import GaussianMixture
 
 E = fret["E"].to_numpy()
 gm = GaussianMixture(n_components=3, random_state=0).fit(E.reshape(-1, 1))

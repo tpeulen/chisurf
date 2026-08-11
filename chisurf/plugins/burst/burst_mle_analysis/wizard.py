@@ -4232,32 +4232,32 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         self.update_fit_ui(fit_result)
 
     def _pin_decay_yrange(self, data_rng):
-        """Fix the Intensity (log-y) view to the data's range; disable autorange.
-
-        Through the shared rule (:func:`chisurf.core.fluorescence.mle.display.decay_ylim`),
-        which also fixes what this did wrong: it passed **log10** values, and
-        ``chiplot.Plot.set_ylim`` takes data units on every axis and does the log
-        conversion itself. The range was therefore logged twice and the panel
-        showed a few counts while the decay sat off the top of it — a regression
-        from the pyqtgraph migration, where log10 had been correct.
-        """
-        from chisurf.core.fluorescence.mle.display import decay_ylim
-
+        """Fix the Intensity (log-y) view to the data's range; disable autorange."""
+        import math
+        d = np.asarray(data_rng, dtype=float)
+        d = d[np.isfinite(d) & (d > 0)]
         # Setting an explicit range is itself what turns the axis' auto-range
         # off, so there is nothing to disable first.
         try:
-            lo, hi = decay_ylim(data_rng)
-            self.combined_plot.set_ylim(lo, hi, padding=0.0)
+            if d.size:
+                lo = math.log10(max(float(d.min()) * 0.5, 1e-2))
+                hi = math.log10(float(d.max()) * 3.0)
+                if hi <= lo:
+                    hi = lo + 1.0
+                self.combined_plot.set_ylim(lo, hi, padding=0.0)
+            else:
+                self.combined_plot.set_ylim(-1, 5, padding=0.0)
         except Exception:
             pass
 
     def _pin_residual_yrange(self, resid_rng):
         """Clamp the residual view to a symmetric band so a bad fit can't run off."""
-        from chisurf.core.fluorescence.mle.display import residual_ylim
-
+        r = np.asarray(resid_rng, dtype=float)
+        r = r[np.isfinite(r)]
         try:
-            lo, hi = residual_ylim(resid_rng)
-            self.residual_plot.set_ylim(lo, hi, padding=0.05)
+            span = float(np.nanpercentile(np.abs(r), 99)) if r.size else 5.0
+            span = max(span, 5.0)
+            self.residual_plot.set_ylim(-span, span, padding=0.05)
         except Exception:
             pass
 

@@ -66,7 +66,7 @@ QT_DROP_TOKENS = (
 
 # Packages whose bundled "tests" dirs are safe to drop (NOT tables/pytables,
 # which imports its tests at runtime).
-TEST_PKGS = ("numpy", "scipy", "pandas", "numba", "skimage", "mdtraj", "matplotlib")
+TEST_PKGS = ("numpy", "scipy", "pandas", "numba", "skimage", "mdtraj", "matplotlib", "sklearn")
 
 # Build tools pulled in only to compile modules/* during assembly; removed after.
 BUILD_TOOLS_TO_REMOVE = ("cmake", "ninja", "swig", "cython", "pythran", "vs2022_win-64", "doxygen")

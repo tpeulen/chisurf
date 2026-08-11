@@ -78,8 +78,6 @@ alternatives are collected in :doc:`/fundamentals/conventions`.
    :maxdepth: 1
 
    multidimensional_exploration
-   density_clustering
-   deconvolution
 
 .. rubric:: Data and provenance
 

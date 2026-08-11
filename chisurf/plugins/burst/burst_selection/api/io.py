@@ -101,7 +101,6 @@ def write_container(
     parameters: dict | None = None,
     out_dir: str | Path | None = None,
     run: str = "",
-    algorithm: str = "",
 ) -> str:
     """Write the burst table into the measurement's own container.
 
@@ -120,12 +119,6 @@ def write_container(
         The analysis settings. Their hash is the identity of the run.
     out_dir : str or Path, optional
         Where the container goes. Defaults to beside *source*.
-    algorithm : str, optional
-        An ``_mmfdb_operation.algorithm`` term naming the search that found
-        these bursts -- ``sliding_window``, ``maxtree``, ``bocpd``, ... The
-        settings hash already tells two runs apart; this is what tells a reader
-        which *method* produced a burst list without parsing them. Omitted
-        means unrecorded, not "the default one".
     run : str, optional
         Name of this analysis inside the container -- the same string the
         legacy layout uses for its directory. A container holds several
@@ -154,7 +147,6 @@ def write_container(
         artifact_kind="burst_table",
         operation_type="burst_selection",
         row_grain="burst",
-        algorithm=algorithm,
         parameters=dict(parameters) if parameters else None,
         derived_from=(),
         out_dir=out_dir,

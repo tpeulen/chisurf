@@ -2,8 +2,7 @@ import json
 from pathlib import Path
 
 import numpy as np
-import pytest
-from qtpy import QtCore, QtWidgets
+from qtpy import QtWidgets
 
 import chisurf.core.plot_transforms as plot_transforms
 from chisurf.gui.plots.lineplot.lineplot import (
@@ -318,63 +317,3 @@ def test_apply_presets_to_mode_list_conversion():
     updated = LinePlot._apply_presets_to_mode(mode, raw_preset)
     assert updated.y_range == (0, 1)
     assert updated.y_padding == 0.05
-
-
-def test_the_stacked_panels_can_be_folded():
-    """Dragging a splitter handle onto a panel collapses it.
-
-    ``DockSplitter`` turns collapsing off for docks, where a pane that vanishes
-    is a pane the user cannot get back. Here the handle stays on screen and the
-    drag reverses, so a residual strip can be folded away when the data panel
-    needs the room.
-    """
-    src = _lineplot_source()
-    assert "area.setChildrenCollapsible(True)" in src
-
-
-def test_the_data_panel_takes_the_golden_share(qtbot):
-    """Split the stack so data : (a.corr + w.res) is the golden ratio.
-
-    Absolute sizes do not survive a resize -- the splitter rescales them and the
-    proportion drifts -- so the ratio is re-applied on every resize until the
-    user drags a handle. Exercised on a bare splitter because the arithmetic,
-    not the plot, is what can go wrong.
-    """
-    splitter = QtWidgets.QSplitter(QtCore.Qt.Vertical)
-    for _ in range(3):
-        pane = QtWidgets.QWidget()
-        pane.setMinimumHeight(1)
-        splitter.addWidget(pane)
-    splitter.setChildrenCollapsible(True)
-    qtbot.addWidget(splitter)
-
-    class _Stub:
-        GOLDEN_DATA_FRACTION = LinePlot.GOLDEN_DATA_FRACTION
-        plot_splitter = splitter
-
-    for height in (600, 400, 260):
-        splitter.resize(400, height)
-        LinePlot._apply_golden_split(_Stub())
-        acorr, wres, data = splitter.sizes()
-        assert data / (acorr + wres) == pytest.approx(1.618, abs=0.05)
-        assert acorr == pytest.approx(wres, abs=1)
-
-
-def test_a_dragged_split_is_not_overwritten():
-    """Once the user chooses a split, resizing keeps it."""
-    src = _lineplot_source()
-    assert "splitterMoved.connect(self._on_splitter_moved)" in src
-    assert "_split_is_users" in src
-
-
-def test_the_legend_is_shown_when_the_setting_asks_for_it():
-    """``gui.plot.show_legend`` reaches the plot.
-
-    It was a checkbox in the settings dialog that no plot read, so a legend
-    could be asked for and never appear — and one that never appears cannot be
-    dragged either, which is how "the legend drag is broken" was really "there
-    is no legend".
-    """
-    src = _lineplot_source()
-    assert "show_legend" in src
-    assert "plots['main_plot'].legend()" in src

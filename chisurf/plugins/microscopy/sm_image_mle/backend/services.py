@@ -1,4 +1,4 @@
-"""RPC service registration for region_mle."""
+"""RPC service registration for sm_image_mle."""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 def register_services(dispatcher: Any) -> None:
-    """Register all region_mle RPC handlers with *dispatcher*."""
+    """Register all sm_image_mle RPC handlers with *dispatcher*."""
     dispatcher.register(METHOD_ANALYZE, _handle_analyze)
     dispatcher.register(METHOD_CONTRACT, _handle_contract)
 
@@ -26,15 +26,15 @@ def register_services(dispatcher: Any) -> None:
 def _handle_analyze(params: dict[str, Any]) -> dict[str, Any]:
     """Run molecule-wise MLE analysis."""
     try:
-        from ..api.models import RegionMleRequest, RegionMleSettings
-        from ..api.region_mle import analyze_request
+        from ..api.models import MoleculeMleRequest, MoleculeMleSettings
+        from ..api.molecule_mle import analyze_request
 
         settings_dict = params.get("settings") or {}
-        field_names = {f.name for f in dataclasses.fields(RegionMleSettings)}
-        settings = RegionMleSettings(
+        field_names = {f.name for f in dataclasses.fields(MoleculeMleSettings)}
+        settings = MoleculeMleSettings(
             **{k: v for k, v in settings_dict.items() if k in field_names}
         )
-        request = RegionMleRequest(
+        request = MoleculeMleRequest(
             files=params["files"],
             irf_file=params["irf_file"],
             output_dir=params.get("output_dir", ""),
@@ -51,7 +51,7 @@ def _handle_analyze(params: dict[str, Any]) -> dict[str, Any]:
             }
         )
     except Exception as exc:
-        logger.exception("region_mle.analyze.run failed")
+        logger.exception("sm_image_mle.analyze.run failed")
         return service_error(exc)
 
 

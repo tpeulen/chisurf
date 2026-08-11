@@ -283,19 +283,11 @@ class Canvas(abc.ABC):
         y: tuple[float, float] | None = None,
         padding: float | None = None,
     ) -> None:
-        """Set the visible x/y range, **in data units**.
-
-        Data units on a logarithmic axis too: pass ``(1, 10000)``, not
-        ``(0, 4)``. One renderer wants the exponents and another wants the
-        values, so a backend converts — the API cannot, or a call site would
-        have to know which renderer it is talking to. That is exactly what went
-        wrong: a caller pre-computed ``log10`` for pyqtgraph and the same code
-        on the native backend showed a decay spanning 0.1 to 4 counts.
-        """
+        """Set visible x/y range."""
 
     @abc.abstractmethod
     def get_range(self) -> tuple[tuple[float, float], tuple[float, float]]:
-        """Return the current ``((x0, x1), (y0, y1))`` visible range, in data units."""
+        """Return the current ``((x0, x1), (y0, y1))`` visible range."""
 
     @abc.abstractmethod
     def auto_range(self) -> None:
