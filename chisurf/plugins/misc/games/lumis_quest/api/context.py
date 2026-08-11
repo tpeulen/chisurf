@@ -242,6 +242,39 @@ class GameContext:
         self.inventory.append(part)
         return part
 
+    def rekindle(self, species_key: str):
+        """Give a shelved animal one of your labels back.
+
+        The exact inverse of unbinding, and the only thing there is to *do* in
+        the dark manifold. It costs a label -- the gentlest one you carry, on
+        the grounds that you are choosing what something else has to live with
+        -- and the animal comes back up with you.
+
+        Parameters
+        ----------
+        species_key : str
+            Which body is standing there.
+
+        Returns
+        -------
+        tuple or None
+            ``(species, label)`` given, or ``None`` when you carry nothing to
+            give or the body is not one this world has.
+        """
+        from . import bestiary
+
+        species = bestiary.BY_KEY.get(species_key)
+        if species is None or not self.labels:
+            return None
+        # The dimmest label: it is the one that will burn the animal down
+        # slowest, and the choice is being made *for* it.
+        label = min(self.labels, key=lambda one: one.quantum_yield)
+        self.labels.remove(label)
+        if species.key not in {body.key for body in self.bodies}:
+            self.bodies.append(species)
+        self.story.witness("the-shelved")
+        return species, label
+
     def grind_filter(self) -> gear_api.Gear | None:
         """Swap the fitted filter for a narrower one over the same band.
 

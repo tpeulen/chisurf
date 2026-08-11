@@ -147,6 +147,11 @@ HOUSE_TINT = {
     SETTLED: (1.00, 0.97, 0.84, 1.0),
 }
 
+#: What every tile is multiplied by underneath. Cool, and dimmer than the lit
+#: world without being so dark that the geography stops reading -- the point of
+#: the dark manifold is that you already know the way.
+DARK_WASH = (0.66, 0.68, 0.80, 1.0)
+
 #: How many tiles tall anything built is drawn. A building the size of its own
 #: tile sits inside the ground; at one and a half it stands on it and overlaps
 #: the row behind, which is the whole reason a 16-bit town reads as a town.
@@ -1062,6 +1067,18 @@ class OverworldGame(chigame.Game):
             return ("warden", lines, key)
         if role.startswith("emissary:"):
             return ("emissary", lines, role.split(":", 1)[1])
+        if role == "lanternwright":
+            # Her four screens and Iris' answer both live in data/story.json;
+            # the answer is the doctrine's whole argument in a sentence, so
+            # which one it is depends on who you pledged to.
+            from ..api.story import LANTERNWRIGHT
+
+            return ("lanternwright",
+                    {"lines": LANTERNWRIGHT, "reply": (self.story.reply,)}, "")
+        if npc.kind == "wraith":
+            # The species is the subject, so the scene can hand it back to the
+            # rekindle action without the renderer knowing what a wraith is.
+            return ("wraith", lines, npc.species)
         if role in engine_api.scenes():
             return (role, lines, "")
         if npc.kind in engine_api.scenes():
@@ -2031,6 +2048,11 @@ class OverworldGame(chigame.Game):
             elif npc.kind == "beast":
                 scene.draw("photon", "halo", at=(npc.x, npc.y),
                            size=(T.TILE * 0.9, T.TILE * 0.9), emission_nm=405.0)
+            elif npc.kind == "lanternwright":
+                # The only thing burning in the dark manifold, and it is her.
+                scene.draw("photon", "vesper", at=(npc.x, npc.y),
+                           size=(T.TILE * 1.8, T.TILE * 1.8), emission_nm=690.0)
+                tint = (1.00, 0.72, 0.86, 1.0)
             elif npc.kind == "warden":
                 scene.draw("photon", "halo", at=(npc.x, npc.y),
                            size=(T.TILE * 1.2, T.TILE * 1.2), emission_nm=600.0)
@@ -2317,7 +2339,11 @@ class OverworldGame(chigame.Game):
             instances[:, 8] = chigame.RECT
             instances[:, 12:16] = (0.0, 0.0, 1.0, 1.0)
         else:
-            instances[:, 4:8] = 1.0
+            # The dark manifold is drawn from the same art, drained. Without
+            # this the trodden-earth floors and the roads keep their warmth and
+            # sit in the ash looking like a different game -- and the roads are
+            # supposed to still be there, just not to be inviting.
+            instances[:, 4:8] = DARK_WASH if self.dark else 1.0
             instances[:, 8] = chigame.SPRITE
             # Two drawings per organic material, chosen by position so the
             # field never reads as a repeating grid -- and water additionally

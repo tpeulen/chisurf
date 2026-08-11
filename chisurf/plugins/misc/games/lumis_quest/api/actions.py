@@ -184,6 +184,17 @@ def _grind(context, args, runner) -> str:
 
 # -- host requests --------------------------------------------------------
 
+@action("rekindle")
+def _rekindle(context, args, runner) -> str:
+    """Give a shelved animal a label back, which is the inverse of unbinding."""
+    given = context.rekindle(args.get("species", ""))
+    if given is None:
+        return "You have nothing to give it."
+    species, label = given
+    return (f"You fit {label.name}. The {species.name} comes back up out of "
+            f"the ash, and follows you.")
+
+
 @action("battle")
 def _battle(context, args, runner) -> str:
     """Ask the host to start a fight."""

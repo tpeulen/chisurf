@@ -163,7 +163,20 @@
 
     "wraith": [
       {"say_from": "lines"},
-      {"do": "flag", "args": {"name": "the-shelved"}}
+      {"do": "flag", "args": {"name": "the-shelved"}},
+      {"when": {"labels": 1},
+       "then": [
+         {"say": "It is waiting to see whether you brought any light with you.",
+          "choice": [
+            {"text": "Give it one of your labels.", "then": [
+              {"do": "rekindle", "args": {"species": "$subject"}}
+            ]},
+            {"text": "You have not come here to do that."}
+          ]}
+       ],
+       "else": [
+         {"say": "You have nothing on you it could use. It goes back to waiting."}
+       ]}
     ],
 
     "beast": [

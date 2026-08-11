@@ -30,6 +30,7 @@ from chisurf.gui import chigame  # noqa: E402
 from chisurf.plugins.misc.games.lumis_quest.api import agents  # noqa: E402
 from chisurf.plugins.misc.games.lumis_quest.api import battle as battle_api  # noqa: E402
 from chisurf.plugins.misc.games.lumis_quest.api import bestiary  # noqa: E402
+from chisurf.plugins.misc.games.lumis_quest.api import npcs as agents_npcs  # noqa: E402
 from chisurf.plugins.misc.games.lumis_quest.api.world import build_world  # noqa: E402
 from chisurf.plugins.misc.games.lumis_quest.gui.overworld import (  # noqa: E402
     OverworldGame,
@@ -229,6 +230,23 @@ def main(argv: list[str]) -> int:
         game._overhear()
 
     capture(out, world, "lumis_joinin", joining)
+
+    def tower(game):
+        """At the door of the only built thing in the dark manifold."""
+        game._cross("dark")
+        game.people = agents_npcs.dark_population(game.world)
+        vesper = next((one for one in game.people
+                       if one.kind == "lanternwright"), None)
+        if vesper is None:
+            return
+        game.iris = [vesper.x, vesper.y + 26.0]
+        game.host.camera.center[:] = game.iris
+        game.story.choose("discovery")
+        game._talk_to(vesper)
+        for _ in range(3):
+            game.screen = game.runner.advance()
+
+    capture(out, world, "lumis_tower", tower)
     return 0
 
 

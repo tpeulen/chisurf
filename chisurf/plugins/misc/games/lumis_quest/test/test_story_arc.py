@@ -152,3 +152,101 @@ def test_every_order_has_an_epilogue():
         assert len(cards) >= 2
         for title, body in cards:
             assert title and body
+
+
+def test_the_whole_arc_can_actually_be_walked(world):
+    """Every beat, in order, by doing the thing rather than setting the flag.
+
+    This is the test the arc did not have: the last two beats were written,
+    scripted and unreachable, because nothing stood at the tower door to say
+    Vesper's lines. A story you cannot finish in play is a story that is not
+    there.
+    """
+    from chisurf.plugins.misc.games.lumis_quest.api import engine, npcs
+    from chisurf.plugins.misc.games.lumis_quest.api import roster
+
+    story, ctx = _arc(world)
+    runner = engine.Runner(engine.scenes(), ctx)
+    world.rooms[0].state = SETTLED
+    world.rooms[1].state = story_api.SCOUTED
+
+    def play(scene, **kwargs):
+        """Walk a scene to its end, taking the first live option each time."""
+        screen = runner.start(scene, **kwargs)
+        guard = 0
+        while screen is not None and guard < 40:
+            guard += 1
+            screen = runner.choose(0) if screen.choices else runner.advance()
+
+    # Act Zero: the keeper, then the hound.
+    _, cast = npcs.awakening_cast(world)
+    elder = next(one for one in cast if one.role == "elder")
+    hound = next(one for one in cast if one.role == "lumi")
+    play("elder", who=elder.name, lines={"lines": elder.dialogue})
+    play("lumi", who=hound.name, lines={"lines": hound.dialogue})
+    assert story.has_lumi
+    assert story.current.key == "the-marked"
+
+    # Act One: meet a marked animal, take a label off it, see both kinds of
+    # lit ground.
+    story.witness("the-marked")
+    story.unbound += 1
+    story.observe(world.rooms[0])
+    story.observe(world.rooms[1])
+    assert story.current.key == "the-ladder"
+
+    # Act Two: the ladder.
+    _up_the_ladder(story)
+    assert story.current.key == "the-choice"
+
+    # Act Three: pledge, then do the work.
+    emissary = next(one for one in npcs.populate(world) if one.kind == "emissary")
+    order = emissary.role.split(":", 1)[1]
+    play("emissary", who=emissary.name, lines={"lines": emissary.dialogue},
+         subject=order)
+    assert story.chosen_order == order
+    story.doctrine_count = (story.pledge_baseline or 0) + story_api.WORK_GOAL
+    assert story.current.key == "the-crossing"
+
+    # Act Four: go down, and meet what is standing in it.
+    play("cave")
+    assert "the-crossing" in story.seen
+    dark = npcs.dark_population(world)
+    wraith = next(one for one in dark if one.kind == "wraith")
+    ctx.labels.extend(roster.load_roster()[:1])
+    play("wraith", who=wraith.name, lines={"lines": wraith.dialogue},
+         subject=wraith.species)
+    assert "the-shelved" in story.seen
+    assert story.current.key == "the-lanternwright"
+
+    # Act Five: the tower.
+    vesper = next((one for one in dark if one.kind == "lanternwright"), None)
+    assert vesper is not None, "nobody is standing at the tower door"
+    play("lanternwright", who=vesper.name,
+         lines={"lines": story_api.LANTERNWRIGHT, "reply": (story.reply,)})
+    assert story.current is None, "the arc has to end"
+    assert story.act == (len(story_api.BEATS), len(story_api.BEATS))
+
+
+def test_giving_a_label_back_is_the_inverse_of_taking_one(world):
+    """The one thing there is to *do* in the dark manifold."""
+    from chisurf.plugins.misc.games.lumis_quest.api import bestiary, roster
+
+    _, ctx = _arc(world)
+    labels = list(roster.load_roster()[:3])
+    if not labels:
+        pytest.skip("spectra.db is not present in this install")
+    ctx.labels.extend(labels)
+
+    given = ctx.rekindle("heron")
+    assert given is not None
+    species, label = given
+    assert species is bestiary.BY_KEY["heron"]
+    # The gentlest label you carry, because the choice is being made *for* it.
+    assert label.quantum_yield == min(one.quantum_yield for one in labels)
+    assert label not in ctx.labels, "it has to cost you the label"
+    assert species in ctx.bodies, "and the animal comes back with you"
+
+    ctx.labels.clear()
+    assert ctx.rekindle("heron") is None, "nothing to give is not a crash"
+    assert ctx.rekindle("not-an-animal") is None

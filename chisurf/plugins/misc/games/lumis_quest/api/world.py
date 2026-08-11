@@ -374,6 +374,9 @@ class World:
     #: The dark manifold: the same ground with the light taken out. Built once
     #: beside the lit world so crossing over is a swap rather than a rebuild.
     dark: np.ndarray = dataclasses.field(default_factory=lambda: np.zeros((0, 0), np.uint8))
+    #: Grid cell of the door of the Lanternwright's tower, in the dark
+    #: manifold. The one built thing down there, and the end of the arc.
+    tower: tuple[int, int] | None = None
     #: Salts the terrain only; the structure is always the documentation's.
     seed: str = ""
 
@@ -944,7 +947,7 @@ def _paint(world: World, plans: dict[int, places.Plan]) -> None:
     world.array = np.asarray(grid, dtype=np.uint8)
     from . import darkworld
     world.dark = darkworld.shadow(world.array)
-    darkworld.raise_tower(world)
+    world.tower = darkworld.raise_tower(world)
 
 
 def _paint_region(grid: list[list[int]], region: Region, world_seed: str = "") -> None:

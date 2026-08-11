@@ -1,6 +1,17 @@
 # Update Log
 
 ## 2026-08-11
+* **Lumis Quest can be finished** ([PRD-91](prds/prd-91.md)). The last two
+  beats were written, scripted and unreachable: `data/story.json` held Vesper's
+  four screens and the three doctrine replies, `data/dialogue.json` held the
+  scene, and nothing was standing anywhere to say them. `World.tower` now keeps
+  the door tile and `npcs.dark_population` puts her at it. The dark manifold
+  also has something to *do* now -- **rekindling**, the exact inverse of
+  unbinding: give a shelved animal one of your labels back and it comes up out
+  of the ash with you, at the cost of the gentlest label you carry. That is the
+  only reason to walk the dark, and it is the moral counterweight to a run
+  spent taking labels off things. `test_the_whole_arc_can_actually_be_walked`
+  walks all thirteen beats by doing each one rather than setting its flag.
 * **ADPCM decode has a compute-shader route, and it changed the threshold it
   was written to justify** ([chigame](subsystems/chigame.md),
   [benchmarks](../docs/development/benchmarks.md)). `wgsl/adpcm.wgsl` decodes

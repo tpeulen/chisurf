@@ -86,16 +86,24 @@ QT_QPA_PLATFORM=offscreen PYTHONPATH=. python \
     chisurf/plugins/misc/games/test/renders
 ```
 
-**Where to pick this up next**
+**Handover, 2026-08-11 (fifth pass).** The arc is **finishable in play**.
+`World.tower` now carries the door tile `darkworld.raise_tower` returns, and
+`npcs.dark_population` stands **Vesper** at it -- her four screens and the
+three doctrine replies were written, scripted and unreachable because nothing
+was standing anywhere to say them. And the dark manifold has something to *do*:
+**rekindling**, the exact inverse of unbinding. Give a shelved animal one of
+your labels back and it comes up out of the ash with you -- it costs the
+gentlest label you carry, on the grounds that you are choosing what something
+else has to live with. `test_the_whole_arc_can_actually_be_walked` walks all
+thirteen beats by doing each one rather than setting its flag, and asserts the
+story ends.
 
-1. **The Lanternwright is written but unreachable.** `data/story.json` holds her
-   four screens and the three doctrine replies, and `data/dialogue.json` has the
-   `lanternwright` scene -- but nothing in `gui/overworld.py` puts an NPC at the
-   tower door in the dark manifold. Measure: `darkworld.raise_tower` returns the
-   door tile; there is no `_story_cast` equivalent for the dark. Until that
-   lands the final two beats (`the-lanternwright`, `the-dawn`) can only be
-   reached by witnessing the flags directly, which is what the epilogue test
-   does.
+Also: the dark manifold is drawn through a `DARK_WASH` multiplier, because the
+trodden-earth floors and the roads kept their warmth and sat in the ash looking
+like a different game. The roads stay visible on purpose -- "your own road,
+under your feet, going the same way it always did" is in the lore.
+
+**Where to pick this up next**
 2. **A Warden fight is winnable by the strategy it exists to forbid.** Each
    Warden teaches one thing (`lesson` in `data/wardens.json`) and the fight is
    supposed to be unwinnable without it, but the only thing their tier changes

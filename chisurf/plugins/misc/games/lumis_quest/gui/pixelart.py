@@ -728,6 +728,7 @@ SPRITES: dict[str, list[str]] = {
     "keeper_0": _TOWNSFOLK_A, "keeper_1": _TOWNSFOLK_B,
     "warden_0": _EMISSARY_A, "warden_1": _EMISSARY_B,
     "wraith_0": _BEAST_A, "wraith_1": _BEAST_B,
+    "lanternwright_0": _EMISSARY_A, "lanternwright_1": _EMISSARY_B,
 }
 
 

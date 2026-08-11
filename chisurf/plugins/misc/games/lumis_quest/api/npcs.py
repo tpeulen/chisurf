@@ -137,7 +137,8 @@ EMISSARY_LANDS = ORDER_LANDS
 #: Kinds that stand where they are placed. A keeper keeps their page, a healer
 #: keeps their station, a Warden keeps their hall, and a story character you
 #: have to find again must not have wandered off.
-FIXED = frozenset({"villager", "healer", "emissary", "lumi", "warden", "keeper"})
+FIXED = frozenset({"villager", "healer", "emissary", "lumi", "warden", "keeper",
+                   "lanternwright"})
 
 #: Tiles an NPC may stand on.
 WALKABLE = frozenset({GRASS, ROAD, FLOOR, CLINIC, PLAZA, GARDEN, SAND})
@@ -638,6 +639,18 @@ def dark_population(world) -> list[Npc]:
     from .darkworld import WRAITH_LINES
 
     made: list[Npc] = []
+    # Vesper, at the door of the only built thing down here. Without her the
+    # last two beats of the arc are unreachable: everything she says is
+    # written, and nothing was standing anywhere to say it.
+    if world.tower is not None:
+        col, row = world.tower
+        made.append(
+            Npc(kind="lanternwright", name="Vesper, the Lanternwright",
+                x=(col + 0.5) * TILE, y=(row + 1.5) * TILE,
+                home=((col + 0.5) * TILE, (row + 1.5) * TILE), radius=0.0,
+                line="She has been expecting somebody for a long time.",
+                role="lanternwright")
+        )
     for region in world.regions:
         rcol, rrow, rwidth, rheight = region.rect
         for index in range(12):
