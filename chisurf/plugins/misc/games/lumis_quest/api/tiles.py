@@ -167,6 +167,89 @@ ENTERABLE: dict[int, str] = {
 #: World units per tile.
 TILE = 18.0
 
+#: **Per-quarter-tile solidity.** A whole-tile block is too coarse for the
+#: things a town is full of: a lantern is a post, a fence is a rail, a counter
+#: is a plank. Blocking all 18 units for any of them is most of what "getting
+#: stuck on objects" actually is.
+#:
+#: So a tile carries four bits, one per quadrant, indexed
+#: ``(x & half ? 2 : 0) + (y & half ? 1 : 0)`` -- top-left, bottom-left,
+#: top-right, bottom-right. The model is Zelda Classic's ``newcombo.walk``
+#: (see ``junk/ZQuestClassic/src/core/combo.h``); the implementation here is
+#: our own, and it stops at solidity rather than growing the two-hundred-entry
+#: combo *type* system that byte is entangled with over there.
+#:
+#: Anything not named is all-or-nothing from :data:`BLOCKING`, so this table is
+#: only for the things that genuinely are not.
+SOLID_ALL = 0xF
+SOLID_NONE = 0x0
+
+#: Quadrant bit per corner, for writing the table below readably.
+TOP_LEFT = 0x1
+BOTTOM_LEFT = 0x2
+TOP_RIGHT = 0x4
+BOTTOM_RIGHT = 0x8
+TOP = TOP_LEFT | TOP_RIGHT
+BOTTOM = BOTTOM_LEFT | BOTTOM_RIGHT
+LEFT = TOP_LEFT | BOTTOM_LEFT
+RIGHT = TOP_RIGHT | BOTTOM_RIGHT
+
+SOLIDITY: dict[int, int] = {
+    # Posts. You can walk past one, not through it.
+    LANTERN: BOTTOM_LEFT | BOTTOM_RIGHT,
+    SIGN: BOTTOM_LEFT | BOTTOM_RIGHT,
+    # A rail, not a wall: it blocks along its length and you stand close to it.
+    FENCE: TOP,
+    # A market stall is a table with an awning over it; the awning is not solid.
+    STALL: BOTTOM,
+    # Indoors, the furniture that is thin.
+    COUNTER: TOP,
+    TABLE: TOP,
+    SHELF: TOP,
+    BED: LEFT | TOP_RIGHT,
+    BARREL: BOTTOM,
+    ANVIL: BOTTOM,
+    ALTAR: TOP,
+}
+
+
+def solidity(tile: int) -> int:
+    """Which quarters of a tile stop a walker.
+
+    Parameters
+    ----------
+    tile : int
+        A tile kind.
+
+    Returns
+    -------
+    int
+        Four bits; see :data:`SOLIDITY`. Whole-tile blockers answer
+        :data:`SOLID_ALL` and everything else :data:`SOLID_NONE`.
+    """
+    if tile in SOLIDITY:
+        return SOLIDITY[tile]
+    return SOLID_ALL if tile in BLOCKING else SOLID_NONE
+
+
+def quadrant(x: float, y: float) -> int:
+    """Which quarter of its tile a world position falls in.
+
+    Parameters
+    ----------
+    x, y : float
+        World coordinates.
+
+    Returns
+    -------
+    int
+        Bit for that quadrant, matching :data:`SOLIDITY`.
+    """
+    half = TILE * 0.5
+    right = (x % TILE) >= half
+    bottom = (y % TILE) >= half
+    return 1 << ((2 if right else 0) + (1 if bottom else 0))
+
 
 def is_blocking(tile: int) -> bool:
     """Whether a tile stops movement.

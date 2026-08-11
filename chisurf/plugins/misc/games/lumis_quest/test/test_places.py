@@ -149,3 +149,35 @@ def test_there_is_one_built_thing_in_the_dark_and_it_is_hers(world):
     col, row = door
     assert int(world.dark[row, col]) == T.GATE
     assert int(np.count_nonzero(world.dark == T.HALL)) == 1
+
+
+def test_a_post_blocks_a_quarter_of_its_tile_not_all_of_it():
+    """Whole-tile blocking is most of what "stuck on objects" actually was.
+
+    The model is Zelda Classic's per-quadrant ``walk`` byte: four bits, one per
+    quarter of the tile, indexed by which half of the tile a point falls in.
+    """
+    assert T.solidity(T.WALL) == T.SOLID_ALL
+    assert T.solidity(T.GRASS) == T.SOLID_NONE
+    assert T.solidity(T.BUILDING) == T.SOLID_ALL, "a house is a house"
+
+    for thin in (T.LANTERN, T.SIGN, T.FENCE, T.STALL, T.COUNTER, T.TABLE):
+        mask = T.solidity(thin)
+        assert 0 < mask < T.SOLID_ALL, T.NAMES[thin]
+
+    # And the quadrant a point falls in is the one that is tested.
+    half = T.TILE * 0.5
+    assert T.quadrant(1.0, 1.0) == T.TOP_LEFT
+    assert T.quadrant(half + 1.0, 1.0) == T.TOP_RIGHT
+    assert T.quadrant(1.0, half + 1.0) == T.BOTTOM_LEFT
+    assert T.quadrant(half + 1.0, half + 1.0) == T.BOTTOM_RIGHT
+    # It is periodic in the tile, so it works anywhere on the map.
+    assert T.quadrant(T.TILE * 40 + 1.0, T.TILE * 17 + 1.0) == T.TOP_LEFT
+
+
+def test_you_can_walk_past_a_lantern_post():
+    """The specific thing the quadrant model buys."""
+    mask = T.solidity(T.LANTERN)
+    # The post stands in the lower half; the upper half of the tile is clear.
+    assert not mask & T.TOP_LEFT and not mask & T.TOP_RIGHT
+    assert mask & T.BOTTOM_LEFT and mask & T.BOTTOM_RIGHT

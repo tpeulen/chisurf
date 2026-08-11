@@ -2038,13 +2038,16 @@ class OverworldGame(chigame.Game):
         bool
             True when the move must be refused.
         """
-        left = int((x - BODY) // T.TILE)
-        right = int((x + BODY) // T.TILE)
-        top = int((y - BODY) // T.TILE)
-        bottom = int((y + BODY) // T.TILE)
-        for row in range(top, bottom + 1):
-            for col in range(left, right + 1):
-                if T.is_blocking(self.world.tile_at(col, row, self.dark)):
+        # Sampled at the box's four corners, and each against the *quarter* of
+        # its tile that corner is in -- so a lantern post blocks the half of
+        # its tile it stands on and you can walk past it, which is most of what
+        # "getting stuck on objects" was.
+        for offset_x in (-BODY, BODY - 0.001):
+            for offset_y in (-BODY, BODY - 0.001):
+                point_x, point_y = x + offset_x, y + offset_y
+                tile = self.world.tile_at(int(point_x // T.TILE),
+                                          int(point_y // T.TILE), self.dark)
+                if T.solidity(tile) & T.quadrant(point_x, point_y):
                     return True
         return False
 

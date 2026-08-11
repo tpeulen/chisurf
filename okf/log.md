@@ -1,10 +1,19 @@
 # Update Log
 
 ## 2026-08-11
-* **tttrlib PRD-037 written**: one list of everything the photon library needs so
-  ChiSurf can drop numba — 8 of 13 files, 30 of 56 kernels — replacing the
-  per-file round trips. Two more route labels fell over while writing it
-  (`OptsCluster` is peak fitting, `_frc_smooth` is FRC smoothing).
+* **ChiSurf is GPL-3.0-or-later, and per-quadrant solidity is ported from
+  ZQuest Classic** ([PRD-91](prds/prd-91.md)). The relicence
+  (`99618f6b7`) fixes a defect the project's own `license_tracker.py` had been
+  printing into `doc/licenses.md`: ChiSurf binds PyQt5/sip at **GPL v3** while
+  declaring GPL-2.0-only, which cannot combine. `or-later`, so it cannot recur.
+  Sole copyright holder throughout, so no consent to gather. With that settled,
+  ZQuest Classic (GPLv3) can be consulted: `junk/ZQuestClassic`, annotated per
+  the reference-checkout rule. The gold is its `newcombo.walk` byte -- one
+  solid/not bit per **quarter** of a tile rather than per tile. A lantern is a
+  post and a fence is a rail; blocking all eighteen units for each was most of
+  what "stuck on objects" was. `tiles.SOLIDITY` is the idea ported, not the
+  code. Skipped and written down: the combo *type* system (behaviour in the
+  tile id) and the region/rpos coordinate system (we need neither).
 * **Lumis Quest moves to a screen-based camera, and its rooms are ASCII maps**
   ([PRD-91](prds/prd-91.md)). Following the ZQuest Classic reference: the world
   is now viewed as a grid of fixed **screens** that flip when you cross an edge

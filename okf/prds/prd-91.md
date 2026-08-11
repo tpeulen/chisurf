@@ -103,6 +103,25 @@ trodden-earth floors and the roads kept their warmth and sat in the ash looking
 like a different game. The roads stay visible on purpose -- "your own road,
 under your feet, going the same way it always did" is in the lore.
 
+**Mined from ZQuest Classic (2026-08-11).** The checkout is
+`junk/ZQuestClassic` and the two files read carry `CHISURF-REVIEWED` headers.
+What was taken is **per-quadrant solidity**: its `newcombo.walk` byte holds one
+solid/not bit per *quarter* of a tile, indexed
+`b = (x & 8 ? 2 : 0) + (y & 8 ? 1 : 0)`, with the high nibble the same four bits
+for a second effect layer (which is how a bridge sits over water). Whole-tile
+blocking is coarse for what a town is full of -- a lantern is a post, a fence is
+a rail, a counter is a plank -- and blocking all eighteen units for each of them
+is most of what "getting stuck on objects" was. `tiles.SOLIDITY` is that idea,
+ported rather than copied.
+
+What was **skipped, deliberately**: the combo *type* system (`cWATER`,
+`cBRIDGE`, `dive_under_level` and ~200 others), which encodes behaviour in the
+tile id and is why one byte grows into the branching at `maps.cpp:2380-2480`;
+Lumis Quest keeps behaviour in `data/dialogue.json` against a tile and stays
+flat. Also skipped: the region/`rpos` coordinate system, which exists to stitch
+screens into scrolling regions -- our screens are a camera mode over one
+continuous grid and need none of it.
+
 **Where to pick this up next**
 2. **A Warden fight is winnable by the strategy it exists to forbid.** Each
    Warden teaches one thing (`lesson` in `data/wardens.json`) and the fight is
