@@ -7,6 +7,62 @@ tags: [plugins, structure, viewer, webgpu, wgsl, web, pyodide, compute]
 timestamp: '2026-08-10T00:00:00Z'
 ---
 
+# Where to pick this up (2026-08-11, latest — read this first)
+
+**Landed since the handover below: the browser can be typed at.** chimol has
+two command lines now, PyMOL's split: an *internal* one drawn in the viewport by
+the engine, and the *external* docked console. Both run the same command layer,
+so a browser -- which has no console to dock -- has a real prompt.
+
+- `renderer/ui/command_line.py` is the model (buffer, caret, history, tab
+  completion, a feedback log). No toolkit, no GPU, no host: it draws nothing.
+- `host/keys.py` states the key values (Qt's) and translates
+  `KeyboardEvent.key`, exactly as `host/events.py` does for buttons.
+- `InternalGui` lays it out along the bottom of the scene, paints it as quads,
+  hit-tests it, and routes keys through `key_press`.
+- Hosts: `wgpu_view.keyPressEvent` offers keys to the chrome *first*;
+  `boot.js` listens on `window` and calls `Viewer.key`.
+- `web/commands.py` is the browser's command set (`bg_color`, `turn`, `zoom`,
+  `set seq_view`, …), bound to the browser viewer. **It is a stand-in with a
+  known end**: the real `Cmd` acts on a `MolViewPluginWindow`, so it becomes
+  reachable when the `app/` panels move into the chrome, and this module is then
+  deleted rather than translated.
+
+**The focus rule is the part to not "simplify".** The viewport binds bare
+letters (`r`, `c`, `b`, `s`, `d`) to actions, so a prompt that took every
+keystroke would disable them with no error and nothing on screen to say why.
+Keys reach the prompt only when it is focused -- a click, or Return over the
+scene -- and Escape gives focus back. The unfocused line says so.
+
+**Found and fixed on the way:** `wgpu_view.grab_image(chrome=True)` did not pass
+`chrome=` to the renderer, so **every headless grab had come back with the
+molecule and no panel** since the quads landed -- the chrome moved from
+`overlay=` (an image) to `chrome=` (quads) and this call site was not moved with
+it. Also a duplicated `sele` row in the browser demo's panel.
+
+**The baselines.** `test/chrome_baseline.py` gained a fifth state,
+`command_line`; the four frozen ones switch the prompt *off* explicitly, so
+their PNGs stay byte-identical -- they photograph a QPainter chrome that cannot
+be re-taken. `inventory.json` gained one key and changed nothing else.
+
+## Next, in this order
+
+1. **Selections without Qt** — unchanged from the handover below, and now the
+   biggest gap: `renderer/view.py::_update_selection_highlight` builds the
+   marker geometry inside the Qt widget. Fix `meta["px_mode"]` in the WGSL
+   backend *first* (it reads only `size` and `world_radius`), or the port
+   carries the scattered-dots bug across.
+2. **scipy is on the browser's critical path.** `geometry/neighbors.py` is four
+   `cKDTree` calls, and `geometry/surface.py` adds `scipy.ndimage`'s distance
+   transform; `analysis/{hbonds,surface_area,symmetry}` and `cmd/measurements`
+   each import `cKDTree` lazily. Pyodide ships scipy, but it is a large download
+   to draw a molecule, and the user's instruction is to move that compute to the
+   GPU. The router in `renderer/compute.py` already picks by size and
+   `shade_from_atoms` already has a GPU path — so this is per-primitive work
+   behind one module, not a rewrite.
+3. **The `app/` panels into the chrome** — thirteen of `HOSTS`' sixteen entries.
+   Start with `sequence_dock.py`, whose replacement already ships.
+
 # The OpenGL renderer is gone (2026-08-10)
 
 `renderer/qtgl.py` (2,932 lines) and `renderer/postprocess.py` (452) are

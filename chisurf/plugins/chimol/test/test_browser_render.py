@@ -79,12 +79,26 @@ def server():
     process.wait(timeout=10)
 
 
+#: Typed at the page once it has drawn, one ``keydown`` per character, to prove
+#: the in-viewport command line reaches a real command layer. ``bg_color`` is
+#: the command to pick: its effect is *in the frame*, so the assertion can be
+#: made on pixels rather than on the prompt agreeing with itself.
+TYPED_COMMAND = "bg_color white"
+
+
 @pytest.fixture(scope="module")
 def rendered(server, tmp_path_factory):
-    """Render the page once and return ``(status, screenshot path, console)``."""
+    """Render the page, then type a command at it.
+
+    Returns ``(status, screenshot, console, failure, typed screenshot, prompt)``.
+    Both screenshots come from one browser session because starting one costs a
+    minute of Pyodide, and the second is the first with a command run at it.
+    """
     from playwright.sync_api import sync_playwright
 
-    out = tmp_path_factory.mktemp("browser") / "chimol.png"
+    directory = tmp_path_factory.mktemp("browser")
+    out = directory / "chimol.png"
+    typed_out = directory / "chimol_typed.png"
     console: list[str] = []
     with sync_playwright() as pw:
         browser = pw.chromium.launch(headless=True, args=CHROMIUM_FLAGS)
@@ -113,13 +127,29 @@ def rendered(server, tmp_path_factory):
         )
         failure = page.evaluate("() => globalThis.chimolError || ''")
         page.screenshot(path=str(out))
+
+        # Typed through the browser's own key handling -- `page.keyboard` emits
+        # real `keydown` events, so this exercises the page listener, the DOM
+        # key translation and the engine's editor, not a Python call dressed up
+        # as one.
+        prompt = ""
+        if "drawn" in status:
+            page.keyboard.press("Enter")          # focuses the prompt
+            page.keyboard.type(TYPED_COMMAND, delay=5)
+            page.keyboard.press("Enter")          # runs it
+            page.wait_for_timeout(500)
+            prompt = page.evaluate(
+                "() => globalThis.chimolViewer.prompt_state()"
+            )
+            page.screenshot(path=str(typed_out))
+
         browser.close()
-    return status, out, console, failure
+    return status, out, console, failure, typed_out, prompt
 
 
 def test_the_page_reports_a_drawn_frame(rendered):
     """The loader gets all the way to a drawn frame."""
-    status, _path, _console, failure = rendered
+    status, _path, _console, failure, _typed, _prompt = rendered
     assert "drawn" in status, f"{status}\n\n{failure[-2000:]}"
 
 
@@ -137,7 +167,7 @@ def test_the_molecule_is_on_the_canvas(rendered):
     """
     np = pytest.importorskip("numpy")
     Image = pytest.importorskip("PIL.Image")
-    _status, path, _console, _failure = rendered
+    _status, path, _console, _failure, _typed, _prompt = rendered
 
     frame = np.asarray(Image.open(path).convert("RGB")).astype(float)
     height, width = frame.shape[:2]
@@ -167,7 +197,7 @@ def test_the_panel_is_actually_on_the_canvas(rendered):
     """
     np = pytest.importorskip("numpy")
     Image = pytest.importorskip("PIL.Image")
-    _status, path, _console, _failure = rendered
+    _status, path, _console, _failure, _typed, _prompt = rendered
 
     frame = np.asarray(Image.open(path).convert("RGB")).astype(float)
     height, width = frame.shape[:2]
@@ -189,8 +219,54 @@ def test_the_panel_is_actually_on_the_canvas(rendered):
     assert spread.max() > 60, "no saturated colour in the object rows"
 
 
+def test_a_command_can_be_typed_at_the_page(rendered):
+    """Return focuses the prompt, the characters land, and the line runs.
+
+    This is what the in-viewport command line exists for. A browser has no
+    console to dock beside the viewer, so before this the page could render a
+    molecule and had no way to say anything to it -- every command reached it
+    only by editing Python and reloading.
+    """
+    _status, _path, _console, _failure, _typed, prompt = rendered
+    assert prompt, "the prompt reported nothing; did the page draw?"
+    assert f"echo: ChiMOL> {TYPED_COMMAND}" in prompt, (
+        f"the typed line did not reach the command layer:\n{prompt}"
+    )
+    assert "error:" not in prompt, f"the command was refused:\n{prompt}"
+    assert "line=" in prompt.splitlines()[1], "the editor did not clear"
+    assert prompt.splitlines()[1] == "line=", (
+        "a submitted line must leave the editor empty"
+    )
+
+
+def test_the_typed_command_changed_the_frame(rendered):
+    """``bg_color white`` is visible in the pixels, not only in the log.
+
+    A prompt that logs a command it did not run looks identical to one that ran
+    it, which is why this is measured in the frame: the scene's clear colour was
+    dark grey before and is white after.
+    """
+    np = pytest.importorskip("numpy")
+    Image = pytest.importorskip("PIL.Image")
+    _status, path, _console, _failure, typed, _prompt = rendered
+    if not typed.exists():
+        pytest.skip("the page never drew, so nothing was typed at it")
+
+    def _corner(image_path) -> float:
+        """Mean brightness of a scene corner the molecule does not reach."""
+        frame = np.asarray(Image.open(image_path).convert("RGB")).astype(float)
+        height, width = frame.shape[:2]
+        return float(frame[int(height * 0.15): int(height * 0.3),
+                           int(width * 0.02): int(width * 0.12)].mean())
+
+    before, after = _corner(path), _corner(typed)
+    assert after > before + 80.0, (
+        f"the background did not turn white: {before:.0f} -> {after:.0f}"
+    )
+
+
 def test_no_page_errors(rendered):
     """Nothing raised in the page while it rendered."""
-    _status, _path, console, _failure = rendered
+    _status, _path, console, _failure, _typed, _prompt = rendered
     errors = [line for line in console if line.startswith(("error", "pageerror"))]
     assert not errors, "\n".join(errors[:5])

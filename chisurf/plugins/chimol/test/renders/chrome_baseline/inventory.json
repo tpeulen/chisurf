@@ -1,4 +1,55 @@
 {
+  "command_line": {
+    "menus": [],
+    "reachable": [
+      "average:",
+      "block:",
+      "button:A",
+      "button:C",
+      "button:H",
+      "button:L",
+      "button:S",
+      "command:",
+      "mode:",
+      "name:",
+      "splitter:",
+      "stride:"
+    ],
+    "rows": [
+      {
+        "detail": "",
+        "enabled": true,
+        "indent": 0,
+        "is_group": false,
+        "is_header": true,
+        "is_selection": false,
+        "name": "all"
+      },
+      {
+        "detail": "",
+        "enabled": true,
+        "indent": 0,
+        "is_group": false,
+        "is_header": false,
+        "is_selection": false,
+        "name": "148l"
+      },
+      {
+        "detail": "",
+        "enabled": false,
+        "indent": 0,
+        "is_group": false,
+        "is_header": false,
+        "is_selection": false,
+        "name": "sugars"
+      }
+    ],
+    "sequences": [],
+    "size": [
+      1280,
+      860
+    ]
+  },
   "menu_open": {
     "menus": [
       {

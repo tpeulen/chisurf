@@ -125,6 +125,39 @@ viewer
   // A right-click is a chimol gesture, not a place for the browser's menu.
   canvas.addEventListener("contextmenu", (event) => event.preventDefault());
 
+  // Typing. The command line is drawn in the viewport by the same engine that
+  // draws the panel, so the page's whole job is to name the key and say what
+  // was typed -- `KeyboardEvent.key` plus the four modifier flags -- and let
+  // Python decide whether anything wanted it.
+  //
+  // On `window`, not on the canvas: a canvas takes keyboard focus only with a
+  // `tabindex` and a click, and a viewer you have to click before you can type
+  // is a viewer whose prompt looks broken. Anything typed into a real form
+  // control on the page is left alone.
+  window.addEventListener("keydown", (event) => {
+    const tag = (event.target && event.target.tagName) || "";
+    if (tag === "INPUT" || tag === "TEXTAREA" || event.target?.isContentEditable) {
+      return;
+    }
+    // A browser shortcut stays a browser shortcut: ctrl/cmd combinations are
+    // offered to the engine, which takes only the handful of line-editing ones
+    // and leaves reload, find and the console alone.
+    const consumed = viewer.key(
+      event.key,
+      event.key.length === 1 ? event.key : "",
+      event.ctrlKey,
+      event.shiftKey,
+      event.altKey,
+      event.metaKey,
+    );
+    if (consumed) {
+      // Only when consumed: Tab must still move focus, and space must still
+      // scroll, on a page where nothing is being typed.
+      event.preventDefault();
+      redraw();
+    }
+  });
+
   globalThis.chimolViewer = viewer;
   status("drawn — drag to rotate, wheel to zoom, click the panel");
 }

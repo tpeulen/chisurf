@@ -24,6 +24,7 @@ from dataclasses import dataclass, field
 
 from ..mouse_modes import BUTTON_COLUMNS, DEFAULT_RING, MODE_NAMES, next_mode, rows_for
 from ..object_menus import OBJECT_MENUS, MenuEntry
+from .ui.command_line import HINT, PROMPT, CommandLine
 from .ui.painter import (
     ALIGN_CENTER,
     ALIGN_LEFT,
@@ -107,6 +108,19 @@ SELECT_MODE_FG = (0, 224, 224)
 STATE_FG = (0, 224, 0)
 MOVIE_FG = (240, 128, 128)
 MOVIE_BG = (48, 48, 48, 230)
+
+# The in-viewport command line. Green for what the user typed and for the
+# prompt itself, PyMOL's colour for its own internal feedback; red for a
+# refusal, because a command that did nothing has to say so where the eye
+# already is rather than in a console behind the window.
+CMD_BG = (0, 0, 0, 190)
+CMD_PROMPT_FG = (0, 224, 0)
+CMD_TEXT_FG = (240, 240, 240)
+CMD_HINT_FG = (128, 128, 128)
+CMD_ECHO_FG = (0, 224, 0)
+CMD_MESSAGE_FG = (208, 208, 208)
+CMD_ERROR_FG = (240, 128, 128)
+CMD_CARET_FG = (0, 224, 0)
 
 #: The movie transport, left to right: glyph and the command it runs.
 MOVIE_BUTTONS: tuple[tuple[str, str], ...] = (
@@ -338,6 +352,8 @@ class InternalGui:
     BLOCK_ROW_H = 14
     #: Grab width of the splitter, in pixels.
     SPLITTER_W = 6
+    #: Height of one row of the command line and of its feedback log.
+    CMD_ROW_H = 16
     #: How narrow and how wide the column may be dragged.
     #: The transport needs a hit target per button, whatever else is in the
     #: column: below this the buttons stop being clickable rather than merely
@@ -436,11 +452,24 @@ class InternalGui:
         self.on_select: Callable[[str, list[int], bool], None] | None = None
         self._movie_rects: list[tuple[Rect, str]] = []
         self._block = Rect(0, 0, 0, 0)
+        #: PyMOL's *internal* prompt: the command line drawn in the viewport,
+        #: bottom-left of the scene. The docked console is the external one, and
+        #: both drive the same command layer -- which is what lets a browser,
+        #: where there is no console to dock, still be typed at.
+        self.command_line = CommandLine(run_command)
+        self._cmd_rect = Rect(0, 0, 0, 0)
+        self._cmd_log_rect = Rect(0, 0, 0, 0)
 
     # ── model ────────────────────────────────────────────────────────────
     def set_run_command(self, run_command: Callable[[str], None] | None) -> None:
-        """Set the sink every click is turned into a command for."""
+        """Set the sink every click is turned into a command for.
+
+        The in-viewport prompt gets the same sink: a line typed there and a
+        button pressed here are the same command, and giving them separate
+        routes is how the two stop agreeing about what a click means.
+        """
         self._run_command = run_command
+        self.command_line.set_run(run_command)
 
     def set_rows(self, rows: Sequence[GuiRow]) -> None:
         """Replace the panel's contents."""
@@ -516,6 +545,99 @@ class InternalGui:
         self.layout_wizard(width, height)
         self.layout_block(width, height)
         self.layout_sequence(width, height)
+        self.layout_command(width, height)
+
+    def layout_command(self, width: int, height: int) -> None:
+        """Place the command line along the bottom of the scene.
+
+        An *overlay*, not a band the scene gives up. The prompt is one row of a
+        viewport that is usually a thousand pixels tall, and taking that row
+        away from the molecule would change the camera's aspect every time the
+        prompt was shown -- so it is drawn over the scene, as PyMOL's is, and
+        the renderer needs to know nothing about it.
+
+        Left of the panel column, because the column is where the object list
+        already is and a prompt underneath it would be reading the two as one
+        block.
+        """
+        self._width, self._height = int(width), int(height)
+        line = self.command_line
+        if not line.visible:
+            self._cmd_rect = Rect(0, 0, 0, 0)
+            self._cmd_log_rect = Rect(0, 0, 0, 0)
+            return
+
+        scene_w = max(float(width) - (self.column_width if self.docked else 0.0), 1.0)
+        rows = len(line.visible_log())
+        bottom = float(height) - self.MARGIN
+        self._cmd_rect = Rect(
+            0.0, bottom - self.CMD_ROW_H, scene_w, float(self.CMD_ROW_H)
+        )
+        self._cmd_log_rect = Rect(
+            0.0, self._cmd_rect.y - rows * self.CMD_ROW_H,
+            scene_w, float(rows * self.CMD_ROW_H),
+        )
+
+    def command_rect(self) -> Rect:
+        """Where the prompt sits, for a host that wants to place a caret."""
+        return self._cmd_rect
+
+    # ── the command line ─────────────────────────────────────────────────
+    def focus_command(self, focused: bool = True) -> None:
+        """Give the prompt the keyboard, or take it away.
+
+        Closing any open menu with it: a menu and a text cursor both claim the
+        next keystroke, and the one that is drawn on top is not necessarily the
+        one that would get it.
+        """
+        if focused:
+            self.close_menus()
+        self.command_line.set_focus(focused)
+
+    def _cmd_cursor_at(self, x: float) -> int:
+        """Character index under *x* on the prompt line.
+
+        The chrome font is monospaced -- it is Menlo, and the whole panel's
+        layout arithmetic already assumes a single advance width -- so this is
+        division rather than a walk over glyph metrics.
+        """
+        advance = char_width(self.FONT_PT)
+        origin = self._cmd_rect.x + self.MARGIN + advance * (len(PROMPT) + 1)
+        return max(0, min(
+            int(round((float(x) - origin) / max(advance, 1e-6))),
+            len(self.command_line.text),
+        ))
+
+    def key_press(self, key: int, text: str = "", modifiers: int = 0) -> bool:
+        """Offer a key to the chrome. Returns whether it was consumed.
+
+        Every host calls this before its own shortcuts, and the answer decides
+        whether they run. Three things can take a key: an open menu takes
+        Escape, a focused prompt takes everything, and an unfocused prompt takes
+        Return -- which is how it gets focus without the mouse, and the only
+        gesture a browser page can offer that costs nothing else.
+
+        Parameters
+        ----------
+        key : int
+            One of :mod:`chimol.host.keys`' constants, ``0`` for a key that only
+            produces text.
+        text : str
+            The character produced, if any.
+        modifiers : int
+            A mask of :mod:`chimol.host.events`' ``*_MODIFIER`` values.
+        """
+        from ..host.keys import KEY_ENTER, KEY_ESCAPE, KEY_RETURN
+
+        if key == KEY_ESCAPE and self._menus:
+            self.close_menus()
+            return True
+        if self.command_line.focused:
+            return self.command_line.key(key, text, modifiers)
+        if key in (KEY_RETURN, KEY_ENTER) and self.command_line.visible:
+            self.focus_command(True)
+            return True
+        return False
 
     def layout_wizard(self, width: int, height: int) -> None:
         """Place the wizard panel directly under the object list.
@@ -853,6 +975,12 @@ class InternalGui:
                 return Hit("menu")
             return Hit("menu", entry=entry, submenu=entry.is_submenu)
 
+        # Before the panel's own visibility gate: the prompt is drawn when the
+        # panel is hidden, and a control that draws and cannot be clicked is
+        # worse than one that is not drawn at all.
+        if self.command_line.visible and self._cmd_rect.contains(x, y):
+            return Hit("command")
+
         if not self.visible:
             return Hit("")
 
@@ -1066,6 +1194,17 @@ class InternalGui:
             ctrl = False
             shift = False
 
+        if hit.kind == "command":
+            self.close_menus()
+            self.focus_command(True)
+            self.command_line.cursor = self._cmd_cursor_at(x)
+            return True
+        if self.command_line.focused:
+            # A press anywhere else takes focus away, so the next ``r`` rotates
+            # the representation instead of appearing in a prompt the user has
+            # stopped looking at.
+            self.focus_command(False)
+
         if hit.kind == "menu":
             if hit.entry is None or hit.entry.is_separator:
                 return True
@@ -1231,11 +1370,19 @@ class InternalGui:
             if "{text}" in line:
                 question = str((prompt or ("", "value"))[-1]).strip().rstrip(":")
                 placeholder = f"<{question.lower() or 'value'}>"
+                filled = line.replace("{text}", placeholder)
+                # Into the viewport's own prompt first, with the caret on the
+                # placeholder. That is the one that exists everywhere: the host
+                # console is a desktop widget, and in a browser the entry would
+                # otherwise be clickable and inert.
+                if self.command_line.visible:
+                    self.focus_command(True)
+                    self.command_line.set_text(
+                        filled, cursor=filled.find(placeholder)
+                    )
                 if self.on_prompt_command is not None:
                     try:
-                        self.on_prompt_command(
-                            line.replace("{text}", placeholder), placeholder
-                        )
+                        self.on_prompt_command(filled, placeholder)
                     except Exception:
                         pass
                 continue
@@ -1414,6 +1561,12 @@ class InternalGui:
             a ``QPainter`` with the names changed.
         """
         if not self.visible and not self._menus:
+            # The prompt is not part of the panel: PyMOL's `internal_prompt` and
+            # `internal_gui` are separate settings, and hiding the object list
+            # to see the molecule is not a reason to lose the only way of typing
+            # at it -- which in a browser is the *only* way.
+            if self.command_line.visible:
+                self._paint_command(p)
             return
 
         if self.sequence_visible and self.sequences:
@@ -1433,6 +1586,8 @@ class InternalGui:
             self._paint_block(p)
         if self.wizard_prompt:
             self._paint_prompt(p)
+        if self.command_line.visible:
+            self._paint_command(p)
         if self.visible and self.docked:
             p.fill_rect(
                 self._splitter.x + self.SPLITTER_W / 2 - 1, 0.0,
@@ -1533,6 +1688,53 @@ class InternalGui:
                 ALIGN_VCENTER | ALIGN_LEFT, str(line), MODE_TITLE_FG,
             )
             y += self.ROW_H
+
+    def _paint_command(self, p) -> None:
+        """Draw the feedback log and the prompt across the bottom of the scene.
+
+        The caret is a filled rectangle rather than a glyph. A ``|`` sits inside
+        a cell and reads as a character of the command; a block between two
+        cells reads as a position, which is what it is -- and it needs nothing
+        baked into the atlas.
+        """
+        line = self.command_line
+        rect = self._cmd_rect
+        if rect.w <= 0.0:
+            return
+
+        log = line.visible_log()
+        if log:
+            box = self._cmd_log_rect
+            p.fill_rect(box.x, box.y, box.w, box.h, CMD_BG)
+            for index, entry in enumerate(log):
+                colour = {
+                    "echo": CMD_ECHO_FG,
+                    "error": CMD_ERROR_FG,
+                }.get(entry.kind, CMD_MESSAGE_FG)
+                p.text(
+                    box.x + self.MARGIN, box.y + index * self.CMD_ROW_H,
+                    box.w - 2 * self.MARGIN, float(self.CMD_ROW_H),
+                    ALIGN_VCENTER | ALIGN_LEFT, entry.text, colour,
+                )
+
+        p.fill_rect(rect.x, rect.y, rect.w, rect.h, CMD_BG)
+        if not line.focused:
+            p.text(
+                rect.x + self.MARGIN, rect.y, rect.w - 2 * self.MARGIN, rect.h,
+                ALIGN_VCENTER | ALIGN_LEFT, HINT, CMD_HINT_FG,
+            )
+            return
+
+        x = rect.x + self.MARGIN
+        p.text(x, rect.y, p.text_width(PROMPT), rect.h,
+               ALIGN_VCENTER | ALIGN_LEFT, PROMPT, CMD_PROMPT_FG)
+        text_x = x + p.text_width(PROMPT + " ")
+        p.text(
+            text_x, rect.y, max(rect.w - text_x - self.MARGIN, 1.0), rect.h,
+            ALIGN_VCENTER | ALIGN_LEFT, line.text, CMD_TEXT_FG,
+        )
+        caret = text_x + p.text_width(line.text[: line.cursor])
+        p.fill_rect(caret, rect.y + 2.0, 1.5, rect.h - 4.0, CMD_CARET_FG)
 
     def _paint_sequence(self, p) -> None:
         """Draw the sequence strip: numbers, names, residues, selection.

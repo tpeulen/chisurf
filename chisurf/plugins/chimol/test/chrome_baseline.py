@@ -66,6 +66,11 @@ STATES: tuple[str, ...] = (
     "panel_and_sequence",
     "menu_open",
     "movie_transport",
+    # Added after the four above were frozen. The in-viewport command line did
+    # not exist when they were captured, so they switch it *off* explicitly
+    # (see ``_apply_state``) rather than being re-photographed with it: their
+    # PNGs are the only record of the QPainter chrome and cannot be re-taken.
+    "command_line",
 )
 
 
@@ -227,6 +232,12 @@ def _apply_state(gui, state: str, width: int, height: int) -> None:
     )
 
     gui.visible = True
+    # The four original states are frozen images of a chrome that had no
+    # command line, and their PNGs cannot be re-taken -- the QPainter path they
+    # photograph is the before-half of the quad port. So the prompt is off for
+    # them and on for the state that exists to show it, rather than every
+    # baseline being invalidated by an addition none of them are about.
+    gui.command_line.visible = state == "command_line"
     gui.set_rows(
         [
             GuiRow(name="all", is_header=True),
@@ -235,7 +246,18 @@ def _apply_state(gui, state: str, width: int, height: int) -> None:
         ]
     )
 
-    if state != "panel":
+    if state == "command_line":
+        # Focused and mid-line, with output above it: unfocused it is one line
+        # of hint text, which says nothing about the caret, the log colours or
+        # what happens when a command has printed something.
+        gui.focus_command(True)
+        gui.command_line.set_text("color red, chain A")
+        gui.command_line.feedback = 3
+        gui.command_line.append("ChiMOL> fetch 148l", "echo")
+        gui.command_line.append("loaded 148l: 1363 atoms", "message")
+        gui.command_line.append("unknown command: colr", "error")
+
+    if state not in ("panel", "command_line"):
         # ``sequence_visible`` gates the strip the way PyMOL's ``seq_view``
         # does -- off by default. Setting the rows without it lays out a strip
         # of zero height, which is why an earlier version of this capture

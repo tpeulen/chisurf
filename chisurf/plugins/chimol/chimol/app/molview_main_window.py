@@ -467,8 +467,16 @@ class MolViewPluginWindow(ChisurfDockTool):
 
         try:
             _cmd.set_window(self)
-            _cmd.set_message_callback(self.command_panel.append_message)
-            _cmd.set_error_callback(self.command_panel.append_error)
+            # Both prompts hear everything. The docked console is the external
+            # command line and the one in the viewport is the internal one --
+            # PyMOL's split -- and output that reached only one of them would
+            # make whichever the user is looking at the wrong one.
+            _cmd.set_message_callback(
+                self._fan_out(self.command_panel.append_message, "message")
+            )
+            _cmd.set_error_callback(
+                self._fan_out(self.command_panel.append_error, "error")
+            )
             # commandEntered is *not* connected to an executor any more: the
             # console's dispatcher runs the command and then emits it. Wiring
             # both would run every command twice.
@@ -2250,6 +2258,7 @@ class MolViewPluginWindow(ChisurfDockTool):
         rows.append(InternalGuiRow(name="sele", enabled=True, is_selection=True))
         gui.set_rows(rows)
         gui.set_run_command(self._run_internal_gui_command)
+        self._wire_internal_command_line(gui)
         gui.on_playback_change = self._apply_playback_settings
         gui.on_frame_change = self._seek_to_frame
         gui.on_prompt_command = self._prefill_command_line
@@ -2401,6 +2410,73 @@ class MolViewPluginWindow(ChisurfDockTool):
             logging.getLogger(__name__).debug(
                 "could not prefill the command line", exc_info=True
             )
+
+    def _fan_out(self, sink, kind: str):
+        """Return a callback that reports to the console *and* to the viewport.
+
+        Parameters
+        ----------
+        sink : callable
+            The console's own message or error method.
+        kind : str
+            ``"message"`` or ``"error"``, which is how the viewport's log
+            colours the line.
+
+        Returns
+        -------
+        callable
+            Takes the text. The viewport half is looked up per call rather than
+            captured, because the panel is rebuilt whenever the object list
+            changes and a captured one would go on writing into a dead log.
+        """
+        def _report(text: str) -> None:
+            try:
+                sink(text)
+            except Exception:
+                logging.getLogger(__name__).debug(
+                    "console rejected a message", exc_info=True
+                )
+            gui = self._viewport_gui()
+            if gui is not None:
+                gui.command_line.append(str(text), kind)
+                try:
+                    self.viewer.update()
+                except Exception:
+                    pass
+
+        return _report
+
+    def _viewport_gui(self):
+        """Return the in-viewport chrome, or ``None`` when there is none."""
+        renderer = getattr(getattr(self, "viewer", None), "_renderer", None)
+        return getattr(renderer, "_internal_gui", None)
+
+    def _wire_internal_command_line(self, gui) -> None:
+        """Give the viewport's prompt the command names and the shared history.
+
+        The completions come from the same :class:`ChimolDispatcher` the docked
+        console uses, so the two prompts complete identically -- a prompt that
+        completes differently from the one beside it is worse than one that does
+        not complete at all, because the difference reads as a missing command.
+        """
+        line = gui.command_line
+        if line.completions is None:
+            from .command_dispatch import ChimolDispatcher
+
+            line.completions = ChimolDispatcher(_cmd).completions
+        if line.history:
+            return
+        # Seeded from the console's history file, not sharing it: the console
+        # owns that file, and two writers appending to one history is how it
+        # gains duplicates. So Up in the viewport recalls what was typed in
+        # earlier sessions, and this session's two prompts keep their own.
+        panel = getattr(self, "command_panel", None)
+        entries = getattr(
+            getattr(getattr(panel, "shell", None), "history", None), "entries", None
+        )
+        if entries:
+            line.history = [str(item) for item in entries][-line.MAX_HISTORY:]
+            line._history_index = len(line.history)
 
     def _run_internal_gui_command(self, line: str) -> None:
         """Run a command the in-viewport panel produced, echoing it.

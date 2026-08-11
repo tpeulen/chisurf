@@ -93,9 +93,24 @@ def test_a_click_on_the_name_finds_the_row(gui):
 
 
 def test_the_scene_keeps_clicks_that_miss_the_panel(gui):
-    """Otherwise the panel would swallow the camera's own drags."""
-    assert gui.hit_test(10, HEIGHT - 10).kind == ""
-    assert gui.wants(10, HEIGHT - 10) is False
+    """Otherwise the panel would swallow the camera's own drags.
+
+    Sampled in the middle of the scene. The bottom-left corner this used to
+    test is the command line's now -- see the test below, which pins that
+    deliberately rather than leaving it as a corner nobody checks.
+    """
+    assert gui.hit_test(10, HEIGHT // 2).kind == ""
+    assert gui.wants(10, HEIGHT // 2) is False
+
+
+def test_the_command_line_owns_the_bottom_of_the_scene(gui):
+    """One row along the bottom is the in-viewport prompt, and takes clicks."""
+    assert gui.hit_test(10, HEIGHT - 10).kind == "command"
+    gui.command_line.visible = False
+    gui.layout(WIDTH, HEIGHT)
+    assert gui.hit_test(10, HEIGHT - 10).kind == "", (
+        "with the prompt off the scene gets its corner back"
+    )
 
 
 def test_the_panel_takes_clicks_that_land_on_it(gui):

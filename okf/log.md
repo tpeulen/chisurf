@@ -33960,3 +33960,14 @@
   `slow`. It asserts the **molecule**, not just that something drew: the panel alone renders happily against an
   empty scene and looks like a working port until someone asks where the molecule is. See
   [chimol-web](/plugins/chimol-web.md).
+
+- **2026-08-11 — chimol has two command lines, and the browser can be typed at.**
+  An *internal* prompt drawn in the viewport as quads (`renderer/ui/command_line.py`,
+  keys via `host/keys.py`, laid out and painted by `InternalGui`) beside the docked
+  console, both running one command layer — PyMOL's split. Qt feeds it from
+  `keyPressEvent`, the browser from a `window` `keydown` in `boot.js`;
+  `web/commands.py` is the browser's command set until `Cmd` stops needing a Qt
+  window. Focus is explicit, or the bare-letter shortcuts die silently.
+  Fixed on the way: `grab_image(chrome=True)` never passed the chrome **quads**, so
+  every headless grab had lost the panel since the quad port. See
+  [chimol-web](/plugins/chimol-web.md).

@@ -23,8 +23,8 @@ only thing that changed.
 """
 from __future__ import annotations
 
+import math
 import pathlib
-from typing import Optional
 
 __all__ = ["Viewer", "build_molecule", "build_scene_chrome", "draw", "read_demo_payload", "sequence_of"]
 
@@ -60,6 +60,7 @@ def sequence_of(payload):
     Parameters
     ----------
     payload : StructurePayload
+        The parsed structure.
 
     Returns
     -------
@@ -314,7 +315,7 @@ def build_scene_chrome(width: int, height: int, payload=None):
     return painter.vertices()
 
 
-def draw(canvas, background: Optional[tuple] = None) -> int:
+def draw(canvas, background: tuple | None = None) -> int:
     """Render one frame of chimol's chrome into *canvas*.
 
     Parameters
@@ -454,10 +455,9 @@ class Viewer:
                 GuiRow(name="all", is_header=True),
                 GuiRow(name="148l"),
                 GuiRow(name="sugars", enabled=False),
+                # PyMOL's `sele` pseudo-object: always present, pinned to the
+                # bottom, and how a selection made in the strip is acted on.
                 GuiRow(name="sele", is_selection=True),
-            # PyMOL's `sele` pseudo-object: always present, pinned to the
-            # bottom, and how a selection made in the strip is acted on.
-            GuiRow(name="sele", is_selection=True),
             ]
         )
         gui.sequence_visible = True
@@ -466,6 +466,24 @@ class Viewer:
         gui.state = (12, 40)
         self.gui = gui
         self._drag = None
+        self.background = (0.16, 0.16, 0.16)
+        self.atom_count = int(len(scene.objects[0].geometry.positions))
+        #: The camera `reset` goes back to.
+        self._home = (self.rotation.copy(), float(self.distance), self.target.copy())
+
+        # The prompt, wired to something that can actually run a command. This
+        # is the whole reason the command line was moved into the engine: a
+        # browser has no console to dock, so the only place to type is the
+        # viewport, and it has to reach a real command layer to be worth having.
+        from .commands import BrowserCommands
+
+        self.commands = BrowserCommands(self)
+        self.commands.report = gui.command_line.append_message
+        gui.set_run_command(self.commands)
+        gui.command_line.completions = self.commands.completions
+        gui.command_line.append(
+            "chimol in the browser -- type 'help' for the commands", "message"
+        )
 
     # -- geometry ----------------------------------------------------------
 
@@ -490,8 +508,6 @@ class Viewer:
         """Handle a move, dragging the camera or hovering the panel."""
         if self._drag is None:
             return bool(self.gui.mouse_move(x, y))
-
-        import numpy as np
 
         from ..renderer.camera_state import trackball_delta
 
@@ -528,6 +544,95 @@ class Viewer:
         self.distance = float(min(max(self.distance * (1.1 ** steps), 1e-3), 1e9))
         return True
 
+    def key(
+        self,
+        name: str,
+        text: str = "",
+        ctrl: bool = False,
+        shift: bool = False,
+        alt: bool = False,
+        meta: bool = False,
+    ) -> bool:
+        """Handle a ``keydown``. Returns whether the key was consumed.
+
+        Parameters
+        ----------
+        name : str
+            ``KeyboardEvent.key`` -- the browser's name for the key.
+        text : str
+            The character it produced, empty for a key that produces none.
+        ctrl, shift, alt, meta : bool
+            ``KeyboardEvent.ctrlKey`` and friends.
+
+        Notes
+        -----
+        The answer is what the page uses to decide whether to call
+        ``preventDefault``. It must be honest: swallowing every key would take
+        the browser's own shortcuts -- reload, find, the developer console --
+        away from a page that is not a text editor, and answering ``False`` for
+        a key the prompt consumed puts a ``/`` in the browser's find bar while
+        it also appears in the command line.
+        """
+        from ..host.keys import key_from_dom, modifiers_from_dom
+
+        return bool(
+            self.gui.key_press(
+                key_from_dom(name),
+                str(text or ""),
+                modifiers_from_dom(bool(ctrl), bool(shift), bool(alt), bool(meta)),
+            )
+        )
+
+    def prompt_state(self) -> str:
+        """Return the prompt as one plain string: focus, the line, the log.
+
+        For the page and for a test driving it. Everything else about the
+        command line is Python objects, and a proxy of a list of dataclasses is
+        not something a browser test can read -- so the one thing that crosses
+        the boundary is a string.
+        """
+        line = self.gui.command_line
+        parts = [f"focused={int(line.focused)}", f"line={line.text}"]
+        parts += [f"{entry.kind}: {entry.text}" for entry in line.log[-8:]]
+        return "\n".join(parts)
+
+    # -- what the commands drive --------------------------------------------
+
+    def turn(self, axis: str, angle: float) -> None:
+        """Rotate the camera about a camera-space axis, PyMOL's ``turn``.
+
+        Parameters
+        ----------
+        axis : str
+            ``"x"``, ``"y"`` or ``"z"``.
+        angle : float
+            Radians.
+        """
+        import numpy as np
+
+        cos, sin = math.cos(angle), math.sin(angle)
+        rotations = {
+            "x": ((1, 0, 0), (0, cos, -sin), (0, sin, cos)),
+            "y": ((cos, 0, sin), (0, 1, 0), (-sin, 0, cos)),
+            "z": ((cos, -sin, 0), (sin, cos, 0), (0, 0, 1)),
+        }
+        self.rotation = np.asarray(rotations[axis], dtype=np.float64) @ self.rotation
+
+    def frame(self, buffer: float = 0.0) -> None:
+        """Re-fit the camera to the molecule, plus *buffer* Angstrom."""
+        from ..renderer.view_state import distance_for_radius
+
+        self.distance = distance_for_radius(
+            self.radius + float(buffer), aspect=self.width / max(self.height, 1)
+        )
+
+    def reset_camera(self) -> None:
+        """Restore the camera the viewer started with."""
+        rotation, distance, target = self._home
+        self.rotation = rotation.copy()
+        self.distance = float(distance)
+        self.target = target.copy()
+
     # -- drawing -----------------------------------------------------------
 
     def draw(self) -> int:
@@ -552,7 +657,7 @@ class Viewer:
             context.getCurrentTexture().createView(),
             self.packed,
             view,
-            background=(0.16, 0.16, 0.16),
+            background=self.background,
             target_radius=self.radius,
             viewport=(0.0, 0.0, float(self.scene_width() * self.dpr),
                       float(self.height)),

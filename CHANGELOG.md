@@ -4,6 +4,8 @@
 
 ### Added
 
+- **ChiMOL has a command line inside the viewport**, beside the docked console — PyMOL's internal/external split, both running the same command layer. It is drawn as GPU quads by the engine, needs no toolkit, and is what lets the browser build be typed at: Return focuses it, Tab completes, Up recalls, and command output and errors appear above it. Fixed with it: a headless `grab_image` had been returning the molecule without the panel since the chrome became quads.
+
 - **Implemented the first PRD-02 sample-tracking foundation**:
   - Added `SampleDefinition`, `sample_manager` CRUD/link helpers, and `measured_sample` relationship vocabulary.
   - Added a modal sample picker and TTTR/PCH/PDA import integration that stores `sample_id` in dataset metadata.

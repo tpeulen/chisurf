@@ -862,6 +862,11 @@ class WgpuRenderer(_make_widget_base(), CameraState, Renderer):
             target_radius=self._target_radius,
             viewport=self._scene_viewport() if chrome else None,
             overlay=self._chrome_image() if chrome else None,
+            # The panel is quads now, and they arrive through `chrome`, not
+            # through `overlay`. Omitting them here made every headless grab
+            # come back with the molecule and no panel -- the same failure this
+            # method's own docstring describes for labels, one port later.
+            chrome=self._chrome_quads() if chrome else None,
         )
 
     def _frame_scene(self):
@@ -1126,7 +1131,26 @@ class WgpuRenderer(_make_widget_base(), CameraState, Renderer):
         self.update()
 
     def keyPressEvent(self, event) -> None:  # noqa: N802 - Qt naming
-        """Offer the key to the viewer before Qt's default handling."""
+        """Offer the key to the chrome, then the viewer, then Qt.
+
+        The chrome goes first because it owns the in-viewport command line, and
+        a prompt with a caret in it must get the ``r`` the user typed rather
+        than the representation switching underneath them. It answers ``False``
+        for every key it does not want, so the shortcuts are untouched until
+        something is being typed.
+        """
+        gui = self._internal_gui
+        if gui is not None:
+            try:
+                if gui.key_press(
+                    int(event.key()), event.text(), int(event.modifiers())
+                ):
+                    self.update()
+                    event.accept()
+                    return
+            except Exception:  # pragma: no cover - a chrome that refuses the key
+                pass
+
         handler = getattr(self._controller, "handle_key_event", None)
         if callable(handler):
             try:
