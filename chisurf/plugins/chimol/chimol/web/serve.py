@@ -102,7 +102,8 @@ class _Handler(http.server.SimpleHTTPRequestHandler):
             super().log_message(fmt, *args)
 
 
-def serve(port: int = 8765, pyodide: pathlib.Path | None = None) -> None:
+def serve(port: int = 8765, pyodide: pathlib.Path | None = None,
+          open_browser: bool = False) -> None:
     """Pack the engine and serve the page.
 
     Parameters
@@ -124,8 +125,19 @@ def serve(port: int = 8765, pyodide: pathlib.Path | None = None) -> None:
 
     handler = functools.partial(_Handler, directory=str(WEB_DIR))
     server = http.server.ThreadingHTTPServer(("127.0.0.1", port), handler)
-    print(f"serving {WEB_DIR} at http://localhost:{port}/  (ctrl-c to stop)")
-    server.serve_forever()
+    url = f"http://localhost:{port}/"
+    print(f"serving {WEB_DIR} at {url}  (ctrl-c to stop)")
+    if open_browser:
+        import threading
+        import webbrowser
+
+        # After the server is listening, or the browser races it to a refused
+        # connection and shows its own error page instead of chimol.
+        threading.Timer(0.4, webbrowser.open, args=(url,)).start()
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        print("\nstopped")
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -141,6 +153,10 @@ def main(argv: list[str] | None = None) -> None:
         help="write chimol.zip and exit",
     )
     parser.add_argument(
+        "--no-open", action="store_true",
+        help="do not open a browser",
+    )
+    parser.add_argument(
         "--isolate", action="store_true",
         help="send COOP/COEP; needs --pyodide, since it blocks the CDN",
     )
@@ -150,7 +166,8 @@ def main(argv: list[str] | None = None) -> None:
         print(archive)
         return
     _Handler.isolate = bool(args.isolate)
-    serve(port=args.port, pyodide=args.pyodide)
+    serve(port=args.port, pyodide=args.pyodide,
+          open_browser=not args.no_open)
 
 
 if __name__ == "__main__":  # pragma: no cover - a dev server

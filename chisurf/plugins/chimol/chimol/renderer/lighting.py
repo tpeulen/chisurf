@@ -63,8 +63,8 @@ class LightRig:
     #: Zero by default, and deliberately so: chimol's configured look is a single
     #: head-on key light. A fill light is what turns an evenly lit ribbon into a
     #: modelled one, so inventing a non-zero default changes every render.
-    fill: float = 0.0
-    ambient: float = 0.55
+    fill: float = 0.35
+    ambient: float = 0.62
     specular: float = 0.18
     shininess: float = 38.0
     rim_strength: float = 0.18
