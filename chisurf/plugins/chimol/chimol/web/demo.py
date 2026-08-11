@@ -183,6 +183,9 @@ def build_scene_chrome(width: int, height: int, payload=None):
             GuiRow(name="all", is_header=True),
             GuiRow(name="148l"),
             GuiRow(name="sugars", enabled=False),
+            # PyMOL's `sele` pseudo-object: always present, pinned to the
+            # bottom, and how a selection made in the strip is acted on.
+            GuiRow(name="sele", is_selection=True),
         ]
     )
     gui.sequence_visible = True
@@ -339,6 +342,10 @@ class Viewer:
                 GuiRow(name="all", is_header=True),
                 GuiRow(name="148l"),
                 GuiRow(name="sugars", enabled=False),
+                GuiRow(name="sele", is_selection=True),
+            # PyMOL's `sele` pseudo-object: always present, pinned to the
+            # bottom, and how a selection made in the strip is acted on.
+            GuiRow(name="sele", is_selection=True),
             ]
         )
         gui.sequence_visible = True
