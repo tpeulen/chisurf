@@ -1,102 +1,93 @@
-"""Text for chigame, without shipping a font.
+"""Text for chigame: the in-tree bitmap face, uploaded as one texture.
 
-Glyphs are rasterised into a coverage atlas with Qt at startup and uploaded as
-one texture; the sprite batcher then draws each character as a ``GLYPH`` quad.
-Qt is already a dependency and already knows about the platform's fonts and
-hinting, so this buys real typography for no binary assets and no font parser.
+Glyphs come from :mod:`.pixelfont` -- string art in this repository, not a font
+file and not the platform's. The sprite batcher then draws each character as a
+``GLYPH`` quad against that coverage atlas.
+
+This used to rasterise through Qt, and the result was the worst-looking thing
+in every screenshot for two reasons. The first was a plain bug:
+``QFontDatabase.systemFont(FixedFont)`` resolves to a **proportional** face on
+this platform, and ``setFixedPitch(True)`` afterwards does not change what was
+already resolved -- so narrow letters were centred in cells the width of an
+``M``. The second is that a system UI font in a 16-bit game reads as a terminal
+in costume however carefully it is measured.
+
+Three things fall out of the change beyond the look. Text no longer needs Qt at
+all, so a headless render and a windowed one draw identical glyphs. Advance and
+glyph box are now separate numbers rather than one conflated ``aspect`` -- the
+letters sit on a six-pixel pitch and are five pixels wide, which is what makes
+them read as words. And the atlas is sampled with a nearest filter, because a
+pixel font through a linear filter is a blurred pixel font.
 """
 
 from __future__ import annotations
 
 import numpy as np
 import wgpu
-from qtpy import QtCore, QtGui
+
+from . import pixelfont
 
 #: Printable ASCII. Enough for scores, menus and villager dialogue.
-CHARSET = "".join(chr(c) for c in range(32, 127))
+CHARSET = pixelfont.CHARSET
 
 
 class FontAtlas:
-    """A monospace coverage atlas covering :data:`CHARSET`.
+    """The bitmap face, as a coverage atlas covering :data:`CHARSET`.
 
     Parameters
     ----------
     device : wgpu.GPUDevice
         Device the texture is created on.
     pixel_size : int, optional
-        Rasterisation size. Glyphs are sampled with a linear filter, so this
-        sets quality rather than on-screen size; drawing is scaled freely.
+        Ignored, and kept so existing callers keep working: the face is a
+        bitmap, so there is no rasterisation size to choose. Its on-screen size
+        is decided per draw.
     family : str, optional
-        Font family. A monospace family keeps the atlas a simple grid and makes
-        layout arithmetic exact. Omitted asks the platform for its own fixed
-        -pitch font, which is the only spelling guaranteed to resolve — the
-        literal name "monospace" is not a family on macOS and costs a ~240 ms
-        alias search before falling back to something proportional.
+        Ignored, for the same reason. There is one face and it is in the tree.
+    scale : int, optional
+        Atlas pixels per font pixel. Headroom for drawing a glyph larger than
+        its cell, not quality -- see :data:`.pixelfont.SCALE`.
     """
 
-    def __init__(self, device, pixel_size: int = 48, family: str | None = None) -> None:
+    def __init__(self, device, pixel_size: int = 48, family: str | None = None,
+                 scale: int = pixelfont.SCALE) -> None:
         self._device = device
-        if family is None:
-            font = QtGui.QFontDatabase.systemFont(QtGui.QFontDatabase.FixedFont)
-        else:
-            font = QtGui.QFont(family)
-        font.setStyleHint(QtGui.QFont.Monospace)
-        font.setFixedPitch(True)
-        font.setPixelSize(pixel_size)
+        self.cell_w = pixelfont.WIDTH * scale
+        self.cell_h = pixelfont.HEIGHT * scale
+        #: Pixels from one character's left edge to the next. Larger than
+        #: :attr:`cell_w` by the inter-character gap, which is part of the face
+        #: rather than a layout parameter.
+        self.advance_w = pixelfont.ADVANCE * scale
 
-        metrics = QtGui.QFontMetrics(font)
-        self.cell_w = max(1, metrics.horizontalAdvance("M"))
-        self.cell_h = max(1, metrics.height())
-        self._ascent = metrics.ascent()
+        grid = pixelfont.atlas(scale)
+        self.height, self.width = grid.shape
+        self.texture = self._upload(grid)
 
-        image = QtGui.QImage(
-            self.cell_w * len(CHARSET), self.cell_h, QtGui.QImage.Format_Grayscale8
-        )
-        image.fill(0)
-        painter = QtGui.QPainter(image)
-        painter.setFont(font)
-        painter.setPen(QtGui.QColor(255, 255, 255))
-        painter.setRenderHint(QtGui.QPainter.TextAntialiasing, True)
-        for index, char in enumerate(CHARSET):
-            painter.drawText(
-                QtCore.QPoint(index * self.cell_w, self._ascent), char
-            )
-        painter.end()
-
-        self.width = image.width()
-        self.height = image.height()
-        self.texture = self._upload(image)
-
-    def _upload(self, image: "QtGui.QImage"):
-        """Copy a grayscale image into a single-channel texture.
+    def _upload(self, grid: np.ndarray):
+        """Copy a coverage array into a single-channel texture.
 
         Parameters
         ----------
-        image : QtGui.QImage
-            Grayscale-8 atlas image.
+        grid : numpy.ndarray
+            ``(rows, cols)`` uint8 coverage.
 
         Returns
         -------
         wgpu.GPUTexture
             The uploaded texture.
         """
-        # Qt pads each row to a 4-byte boundary, so the row stride is not
-        # necessarily the width. Copying row by row into a tight array avoids a
-        # sheared atlas, which is the classic symptom of trusting bytesPerLine.
-        stride = image.bytesPerLine()
-        raw = np.frombuffer(image.constBits().asstring(stride * image.height()), dtype=np.uint8)
-        tight = raw.reshape(image.height(), stride)[:, : image.width()].copy()
-
+        tight = np.ascontiguousarray(grid, dtype=np.uint8)
+        rows, cols = tight.shape
         texture = self._device.create_texture(
-            size=(image.width(), image.height(), 1),
+            size=(cols, rows, 1),
             format=wgpu.TextureFormat.r8unorm,
             usage=wgpu.TextureUsage.TEXTURE_BINDING | wgpu.TextureUsage.COPY_DST,
         )
         self._device.queue.write_texture(
             {"texture": texture},
             tight.tobytes(),
-            {"bytes_per_row": image.width(), "rows_per_image": image.height()},
-            (image.width(), image.height(), 1),
+            {"bytes_per_row": cols, "rows_per_image": rows},
+            (cols, rows, 1),
         )
         return texture
 
@@ -122,14 +113,31 @@ class FontAtlas:
 
     @property
     def aspect(self) -> float:
-        """Glyph cell width divided by its height.
+        """Glyph box width divided by its height.
 
         Returns
         -------
         float
-            Used to lay out a string without stretching the glyphs.
+            The shape of one character, used to size its quad so the face is
+            never stretched.
         """
         return self.cell_w / self.cell_h
+
+    @property
+    def pitch(self) -> float:
+        """Character-to-character advance, divided by the cell height.
+
+        Keeping this apart from :attr:`aspect` is the difference between text
+        that reads as words and text that reads as ``s e t t l e d``: the
+        advance includes the gap between letters and the box does not, and
+        conflating them was most of why the old text looked spindly.
+
+        Returns
+        -------
+        float
+            Multiply by the drawn height to get the step per character.
+        """
+        return self.advance_w / self.cell_h
 
 
 def draw_text(
@@ -169,8 +177,9 @@ def draw_text(
     """
     from .render import GLYPH
 
-    advance = height * atlas.aspect
-    total = advance * len(text)
+    step = height * atlas.pitch
+    box = height * atlas.aspect
+    total = step * len(text)
     if align == "center":
         x = pos[0] - total * 0.5
     elif align == "right":
@@ -181,11 +190,11 @@ def draw_text(
     for char in text:
         if char != " ":
             batch.add(
-                pos=(x + advance * 0.5, pos[1]),
-                size=(advance, height),
+                pos=(x + box * 0.5, pos[1]),
+                size=(box, height),
                 color=color,
                 shape=GLYPH,
                 uv=atlas.uv_for(char),
             )
-        x += advance
+        x += step
     return total

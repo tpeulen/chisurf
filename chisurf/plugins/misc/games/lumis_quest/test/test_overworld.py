@@ -1236,3 +1236,143 @@ class _Recorder:
         **quad
             Whatever the scene passes.
         """
+
+
+class _Quads:
+    """A sprite batch that records every quad, so a frame can be inspected."""
+
+    def __init__(self) -> None:
+        self.quads: list[dict] = []
+
+    def add(self, **quad) -> None:
+        """Record one quad.
+
+        Parameters
+        ----------
+        **quad
+            Whatever the scene passes through.
+        """
+        self.quads.append(quad)
+
+
+def _frame(game):
+    """Draw one frame into a recorder.
+
+    Returns
+    -------
+    _Quads
+        Every quad the frame queued.
+    """
+    batch = _Quads()
+    game.draw(chigame.Scene(batch, camera=game.host.camera,
+                            font=_MeasuringFont()))
+    return batch
+
+
+class _MeasuringFont:
+    """Stands in for the real atlas, with the real metrics.
+
+    The atlas needs a GPU; the numbers that decide layout do not.
+    """
+
+    def __init__(self) -> None:
+        from chisurf.gui.chigame import pixelfont
+        self.cell_w = pixelfont.WIDTH
+        self.cell_h = pixelfont.HEIGHT
+        self.advance_w = pixelfont.ADVANCE
+
+    @property
+    def aspect(self) -> float:
+        """Glyph box width over height.
+
+        Returns
+        -------
+        float
+            As the real atlas reports it.
+        """
+        return self.cell_w / self.cell_h
+
+    @property
+    def pitch(self) -> float:
+        """Character advance over height.
+
+        Returns
+        -------
+        float
+            As the real atlas reports it.
+        """
+        return self.advance_w / self.cell_h
+
+    def uv_for(self, char: str):
+        """Atlas rectangle, which nothing here reads.
+
+        Returns
+        -------
+        tuple of float
+            A unit rectangle.
+        """
+        return (0.0, 0.0, 1.0, 1.0)
+
+
+def _glyphs_and_panels(batch):
+    """Split a recorded frame into text quads and the panels behind them.
+
+    Returns
+    -------
+    tuple
+        ``(glyph quads, panel quads)``.
+    """
+    from chisurf.gui.chigame.render import GLYPH
+    glyphs = [q for q in batch.quads if q.get("shape") == GLYPH]
+    # The panels are the handful of very large quads; the tiles are many small
+    # ones, so area sorts them apart without needing the pack to say so.
+    panels = sorted(batch.quads, key=lambda q: -(q["size"][0] * q["size"][1]))[:6]
+    return glyphs, panels
+
+
+def test_no_battle_text_is_drawn_outside_its_panel(game, wild_room):
+    """The class of bug that hid behind a blurry font.
+
+    Every readout in this screen was placed against a hard-coded offset, so the
+    last option sat two units inside a rounded corner -- "Withdraw", the one a
+    player in trouble is looking for, was shaved off. A sharper face did not
+    cause that; it stopped hiding it.
+    """
+    wild = wild_room
+    game.iris = [wild.position[0], wild.position[1] + tiles.TILE]
+    game._try_encounter()
+    assert game.battle is not None
+
+    glyphs, panels = _glyphs_and_panels(_frame(game))
+    assert glyphs, "the battle screen drew no text at all"
+    panel = panels[0]
+    px, py = panel["pos"]
+    pw, ph = panel["size"]
+    for quad in glyphs:
+        x, y = quad["pos"]
+        w, h = quad["size"]
+        assert x - w / 2 >= px - pw / 2 - 1e-6, "text runs off the left of the panel"
+        assert x + w / 2 <= px + pw / 2 + 1e-6, "text runs off the right of the panel"
+        assert y - h / 2 >= py - ph / 2 - 1e-6, "text runs off the top of the panel"
+        assert y + h / 2 <= py + ph / 2 + 1e-6, "text runs off the bottom of the panel"
+
+
+def test_the_readouts_do_not_print_through_each_other(game):
+    """Eleven readouts at eleven fixed offsets is eleven chances to collide.
+
+    A row that appears only while resting used to shift nothing, so it landed
+    on whatever was beneath it.
+    """
+    game.resting = True
+    game.labels.extend(game.pool[:2])
+    glyphs, _ = _glyphs_and_panels(_frame(game))
+    # Group the left-hand column's glyphs into lines by their y, and check the
+    # lines are separated by at least a glyph's height.
+    left = min((q["pos"][0] for q in glyphs), default=0.0)
+    column = [q for q in glyphs if q["pos"][0] < left + tiles.TILE * 12]
+    lines = sorted({round(q["pos"][1], 3) for q in column})
+    heights = {round(q["pos"][1], 3): q["size"][1] for q in column}
+    for first, second in zip(lines, lines[1:]):
+        gap = second - first
+        assert gap >= max(heights[first], heights[second]) * 0.95, (
+            f"two readouts overlap at y={first:.1f} and y={second:.1f}")

@@ -157,8 +157,12 @@ class SpriteBatch:
         self._uniform = self._device.create_buffer(
             size=16, usage=wgpu.BufferUsage.UNIFORM | wgpu.BufferUsage.COPY_DST
         )
+        # The glyph atlas. Nearest, because the face is a bitmap
+        # (chisurf.gui.chigame.pixelfont) and a pixel font through a linear
+        # filter is a blurred pixel font -- which is exactly the soft, washed
+        # look the old text had, on top of its spacing problems.
         self._sampler = self._device.create_sampler(
-            mag_filter=wgpu.FilterMode.linear, min_filter=wgpu.FilterMode.linear
+            mag_filter=wgpu.FilterMode.nearest, min_filter=wgpu.FilterMode.nearest
         )
         # Point sampling, because pixel art that is interpolated is not pixel
         # art. This is the whole difference between a 16-bit look and a blur.

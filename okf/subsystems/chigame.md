@@ -238,6 +238,34 @@ because a hidden widget may stop being asked to draw at all, and a game whose
 frames have stopped with its music still playing is the worst version of this
 bug.
 
+## pixelfont — the typeface is string art, not a font file
+
+`pixelfont.py` holds all 95 printable ASCII glyphs as eight rows of five
+`#`/`.` characters, and `text.py` uploads them as one coverage atlas. There is
+no font file, no font parser, and — now — no Qt in the text path at all, so a
+headless render and a windowed one draw identical glyphs.
+
+It replaced Qt rasterisation, which was the worst-looking thing in every
+screenshot for two separate reasons:
+
+- **A bug.** `QFontDatabase.systemFont(FixedFont)` resolves to
+  `.AppleSystemUIFont` on macOS — a *proportional* face — and
+  `setFixedPitch(True)` afterwards does not change what was already resolved.
+  Every glyph was then centred in a cell the width of an `M`, which is the
+  `s e t t l e d` look.
+- **A category error.** A system UI font in a 16-bit game reads as a terminal
+  in costume however carefully it is measured.
+
+Two things came with it. **Advance and glyph box are separate numbers**
+(`pitch` vs `aspect`) — letters sit on a six-pixel pitch and are five pixels
+wide, and conflating those was most of the spindliness. And the glyph atlas is
+sampled **nearest**, because a pixel font through a linear filter is a blurred
+pixel font.
+
+Licensing, since this replaced a proposal to ship a real one: shipping
+`joystix.ttf` was refused after reading its `name` table — `© Typodermic Fonts
+Inc`, trademarked, no licence grant. The face here is one file of `#` and `.`.
+
 ## ParticleField — the layer that says something happened
 
 `particles.py` is a `Field` of `Particle`s, each of which is one of three

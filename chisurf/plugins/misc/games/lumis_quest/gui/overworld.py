@@ -3009,9 +3009,19 @@ class OverworldGame(chigame.Game):
                        height=10.0 * scale, align="center", color=(0.50, 0.54, 0.62, 1.0))
             return
 
-        for index, (label, _) in enumerate(self._battle_options()):
+        # Laid out between the log and the panel's own bottom edge rather than
+        # from a fixed start at a fixed pitch. The old arrangement put the last
+        # option two units inside a rounded corner, so "Withdraw" -- the one
+        # option a player in trouble is looking for -- was shaved off; and it
+        # would break outright the first time a sixth option existed.
+        options = self._battle_options()
+        top = cy + half[1] * 0.56
+        pitch = 12.5 * scale
+        if len(options) > 1:
+            pitch = min(pitch, (half[1] * 0.84 - half[1] * 0.56) / (len(options) - 1))
+        for index, (label, _) in enumerate(options):
             selected = index == self.menu_index
-            y = cy + half[1] * 0.56 + index * 13.0 * scale
+            y = top + index * pitch
             if selected:
                 scene.draw("ui", "selected", at=(cx - half[0] * 0.34, y),
                            size=(7.0 * scale, 7.0 * scale))
@@ -3228,6 +3238,31 @@ class OverworldGame(chigame.Game):
             "cancel": label(Action.CANCEL),
         }
 
+    @staticmethod
+    def _text_width(scene, text: str, height: float) -> float:
+        """How wide a string will actually be, in world units.
+
+        Asking the font rather than assuming is the difference between a panel
+        that fits its contents and one that a longer land name walks out of.
+
+        Parameters
+        ----------
+        scene : chisurf.gui.chigame.scene.Scene
+            For its font.
+        text : str
+            The string.
+        height : float
+            Cell height in world units, before the HUD's own scale.
+
+        Returns
+        -------
+        float
+            Advance width, or a rough estimate when no font is loaded.
+        """
+        font = getattr(scene, "font", None)
+        pitch = getattr(font, "pitch", 0.75) if font is not None else 0.75
+        return len(text) * height * pitch
+
     def _draw_hud(self, scene, camera, half) -> None:
         """Draw the readouts, pinned to the camera rather than the world.
 
@@ -3246,37 +3281,62 @@ class OverworldGame(chigame.Game):
         scale = camera.height / VIEW_HEIGHT
 
         # A quiet backing behind the readouts: light text on the pale town
-        # floor was unreadable, and a HUD you cannot read is not a HUD.
-        scene.draw("ui", "panel",
-                   at=(left + 95.0 * scale, top + 62.0 * scale),
-                   size=(206.0 * scale, 168.0 * scale),
-                   color=(0.02, 0.025, 0.035, 0.82))
-
+        # floor was unreadable, and a HUD you cannot read is not a HUD. Its
+        # width is *measured* from what it holds rather than being a constant,
+        # because the constant was 206 units and the tally line is nearer 350 --
+        # so the readout ran out of its own box and across the town. That was
+        # true before the face changed and merely harder to see.
         counts = self.world.counts()
         total = max(len(self.world.rooms), 1)
-        tally = (f"settled {counts[SETTLED]}/{total}   scouted {counts[SCOUTED]}"
-                 f"   wild {counts[WILD]}")
-        if counts[WITHERED]:
-            tally += f"   withered {counts[WITHERED]}"
-        scene.text(
-            tally,
-            at=(left + 14.0 * scale, top + 54.0 * scale),
-            height=10.0 * scale, color=(0.55, 0.60, 0.68, 1.0),
-        )
-
         land = self.land
+        rows: list[tuple[str, float, tuple[float, float, float, float]]] = []
         if land is not None:
-            scene.text(
-                land.title,
-                at=(left + 14.0 * scale, top + 20.0 * scale),
-                height=15.0 * scale, color=(0.82, 0.78, 0.62, 1.0),
-            )
+            rows.append((land.title, 15.0, (0.82, 0.78, 0.62, 1.0)))
             if land.subtitle:
-                scene.text(
-                    land.subtitle,
-                    at=(left + 14.0 * scale, top + 36.0 * scale),
-                    height=9.5 * scale, color=(0.44, 0.46, 0.52, 1.0),
-                )
+                rows.append((land.subtitle, 9.5, (0.44, 0.46, 0.52, 1.0)))
+        rows.append((f"settled {counts[SETTLED]}/{total}   scouted {counts[SCOUTED]}",
+                     10.0, (0.55, 0.60, 0.68, 1.0)))
+        withered = f"   withered {counts[WITHERED]}" if counts[WITHERED] else ""
+        rows.append((f"wild {counts[WILD]}{withered}", 10.0, (0.55, 0.60, 0.68, 1.0)))
+        rows.append((self.loadout.summary, 9.5, (0.62, 0.70, 0.66, 1.0)))
+        if self.labels or self.bodies:
+            rows.append((f"{len(self.labels)} labels   {len(self.bodies)} bodies",
+                         9.5, (0.72, 0.78, 0.62, 1.0)))
+        if self.resting:
+            rows.append(("recovering", 9.5, (0.45, 0.90, 0.75, 1.0)))
+        rows.append(("", 6.0, (0.0, 0.0, 0.0, 0.0)))
+        rows.append((f"[{self.mode}]", 9.5,
+                     (0.90, 0.78, 0.45, 1.0) if self.mode == review_bridge.EXPERT
+                     else (0.50, 0.56, 0.64, 1.0)))
+        # The ladder, always visible: what you are licensed to unbind is the
+        # single number that decides which half of the world is available.
+        licence = tiers_api.licence(self.story.seals)
+        rows.append((f"seal {len(self.story.seals)}/5   licence "
+                     f"{tiers_api.TIER_NAMES[licence]}", 9.5, (0.86, 0.76, 0.94, 1.0)))
+        if self.dark:
+            rows.append(("the dark manifold", 9.5, (0.72, 0.50, 0.92, 1.0)))
+
+        # One measured column instead of eleven hard-coded offsets. The offsets
+        # were the actual defect: every readout was placed against a constant,
+        # so a line that grew -- or a row that appeared only while resting --
+        # printed straight through its neighbour. The sharper face did not
+        # cause that, it only stopped hiding it.
+        pad = 12.0
+        widest = max(self._text_width(scene, text, size) for text, size, _ in rows)
+        panel_w = max(206.0, widest + pad * 2.0)
+        panel_h = sum(size + 5.0 for _, size, _ in rows) + 22.0
+        scene.draw("ui", "panel",
+                   at=(left + (panel_w * 0.5 - 8.0) * scale,
+                       top + (panel_h * 0.5 + 6.0) * scale),
+                   size=(panel_w * scale, panel_h * scale),
+                   color=(0.02, 0.025, 0.035, 0.82))
+
+        y = top + 20.0 * scale
+        for text, size, colour in rows:
+            if text:
+                scene.text(text, at=(left + 14.0 * scale, y),
+                           height=size * scale, color=colour)
+            y += (size + 5.0) * scale
 
         # Dialogue owns the bottom band outright: the beat, the banner and the
         # loot line all live there too, and drawn first they bled through the
@@ -3322,86 +3382,45 @@ class OverworldGame(chigame.Game):
                        height=9.0 * scale, align="center", color=(0.48, 0.52, 0.60, 1.0))
             return
 
+        # The bottom band, stacked from the bottom up and given a backing of its
+        # own. These were five lines at five fixed offsets, so which of them
+        # were on screen decided whether they collided -- the tutorial line and
+        # the loot line are 14 units apart and both 10.5 tall -- and all of them
+        # sat directly on the town floor, where pale text is unreadable. The
+        # band is now sized to whatever is actually showing.
+        band: list[tuple[str, float, tuple[float, float, float, float]]] = []
+        step = self.tutorial.current
+        if step is not None:
+            # In the reward gold, above everything else along the bottom. It
+            # names the next real control and waits for the real press -- it
+            # never presses anything for the player.
+            band.append((step.teach.format(**self._key_labels()), 10.5,
+                         (0.95, 0.86, 0.50, 1.0)))
+        if self.last_loot is not None:
+            band.append((f"found {self.last_loot.summary}", 10.0,
+                         (0.90, 0.84, 0.52, 1.0)))
         beat = self.story.current
         if beat is not None:
-            # Along the bottom, above the room name: the top band already holds
-            # the counts and the land, and all three collided there.
             headline = beat.headline
             if beat.key == "the-work" and self.story.work_progress is not None:
                 done, goal = self.story.work_progress
                 headline += f"   {done}/{goal}"
-            scene.text(
-                headline,
-                at=(camera.center[0], bottom - 48.0 * scale),
-                height=10.5 * scale, align="center", color=(0.62, 0.70, 0.80, 1.0),
-            )
-
-        step = self.tutorial.current
-        if step is not None:
-            # One line, in the reward gold, above everything else along the
-            # bottom. It names the next real control and waits for the real
-            # press -- it never presses anything for the player.
-            scene.text(
-                step.teach.format(**self._key_labels()),
-                at=(camera.center[0], bottom - 76.0 * scale),
-                height=10.5 * scale, align="center", color=(0.95, 0.86, 0.50, 1.0),
-            )
-
-        scene.text(
-            self.loadout.summary,
-            at=(left + 14.0 * scale, top + 70.0 * scale),
-            height=9.5 * scale, color=(0.62, 0.70, 0.66, 1.0),
-        )
-        scene.text(
-            f"[{self.mode}]",
-            at=(left + 14.0 * scale, top + 112.0 * scale),
-            height=9.5 * scale,
-            color=(0.90, 0.78, 0.45, 1.0) if self.mode == review_bridge.EXPERT
-            else (0.50, 0.56, 0.64, 1.0),
-        )
-        if self.labels or self.bodies:
-            scene.text(
-                f"{len(self.labels)} labels   {len(self.bodies)} bodies",
-                at=(left + 14.0 * scale, top + 84.0 * scale),
-                height=9.5 * scale, color=(0.72, 0.78, 0.62, 1.0),
-            )
-        # The ladder, always visible: what you are licensed to unbind is the
-        # single number that decides which half of the world is available.
-        licence = tiers_api.licence(self.story.seals)
-        scene.text(
-            f"seal {len(self.story.seals)}/5   licence "
-            f"{tiers_api.TIER_NAMES[licence]}",
-            at=(left + 14.0 * scale, top + 126.0 * scale),
-            height=9.5 * scale, color=(0.86, 0.76, 0.94, 1.0),
-        )
-        if self.dark:
-            scene.text(
-                "the dark manifold",
-                at=(left + 14.0 * scale, top + 140.0 * scale),
-                height=9.5 * scale, color=(0.72, 0.50, 0.92, 1.0),
-            )
-        if self.resting:
-            scene.text(
-                "recovering",
-                at=(left + 14.0 * scale, top + 98.0 * scale),
-                height=9.5 * scale, color=(0.45, 0.90, 0.75, 1.0),
-            )
-        if self.last_loot is not None:
-            scene.text(
-                f"found {self.last_loot.summary}",
-                at=(camera.center[0], bottom - 62.0 * scale),
-                height=10.0 * scale, align="center", color=(0.90, 0.84, 0.52, 1.0),
-            )
-
+            band.append((headline, 10.5, (0.62, 0.70, 0.80, 1.0)))
         room = self.here
         if room is not None:
-            scene.text(
-                room.title,
-                at=(camera.center[0], bottom - 30.0 * scale),
-                height=13.0 * scale, align="center", color=(0.80, 0.84, 0.90, 1.0),
-            )
-            scene.text(
-                f"{room.address}   [{room.state}]",
-                at=(camera.center[0], bottom - 16.0 * scale),
-                height=9.0 * scale, align="center", color=(0.42, 0.46, 0.54, 1.0),
-            )
+            band.append((room.title, 13.0, (0.80, 0.84, 0.90, 1.0)))
+            band.append((f"{room.address}   [{room.state}]", 9.0,
+                         (0.42, 0.46, 0.54, 1.0)))
+
+        if band:
+            pitch = 15.0
+            tall = pitch * len(band) + 12.0
+            wide = max(self._text_width(scene, text, size) for text, size, _ in band)
+            base = bottom - (tall - 6.0) * scale
+            scene.draw("ui", "panel",
+                       at=(camera.center[0], base + (tall * 0.5 - 9.0) * scale),
+                       size=(max(wide + 26.0, 180.0) * scale, tall * scale),
+                       color=(0.02, 0.025, 0.035, 0.72))
+            for offset, (text, size, colour) in enumerate(band):
+                scene.text(text, at=(camera.center[0], base + offset * pitch * scale),
+                           height=size * scale, align="center", color=colour)

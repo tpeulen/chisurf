@@ -34123,3 +34123,17 @@
   had noticed — alignment has no distance in it, so a beast forty tiles down your column was
   reacting to you through a forest. The rising edge is drawn as a **"!"** through the new particle
   field. See [PRD-91](/prds/prd-91.md).
+
+- **2026-08-11 — chigame's typeface is string art, and the HUD is measured instead of guessed.**
+  `chigame/pixelfont.py`: 95 glyphs as eight rows of five `#`/`.`, uploaded as one atlas, sampled
+  **nearest**. It replaced Qt rasterisation, which carried a real bug —
+  `QFontDatabase.systemFont(FixedFont)` resolves to a **proportional** face on macOS and
+  `setFixedPitch(True)` does not change what was already resolved, so narrow letters floated in
+  cells the width of an `M`. Advance and glyph box are now separate numbers (`pitch` vs `aspect`).
+  Text no longer needs Qt at all. Shipping `joystix.ttf` was refused after reading its `name`
+  table (© Typodermic Fonts Inc, trademarked, no licence grant); the graphics of that same
+  reference *are* CC0 (Ninja Adventure pack). The sharper face then exposed a layout class that
+  had always been wrong: eleven Lumis Quest readouts at eleven hard-coded offsets, a HUD panel
+  fixed at 206 units holding a 350-unit line, and a battle option list whose last entry —
+  `Withdraw` — sat inside a rounded corner. All three are now measured from their contents, with
+  a guardrail test that no glyph is drawn outside its panel. See [chigame](/subsystems/chigame.md).
