@@ -543,8 +543,15 @@ class WgpuRenderer(_make_widget_base(), CameraState, Renderer):
         from .ui.quad_painter import QuadPainter
 
         refresh_gui_state(gui, self._controller)
+        # Laid out in **logical** pixels and scaled to device pixels as the
+        # quads are built. Those are two different coordinate systems and this
+        # is the only place they meet: mouse events arrive in logical pixels
+        # and `hit_test` answers in them, so laying the panel out in device
+        # pixels would move the drawing without moving the hit-testing -- the
+        # panel draws in the wrong place *and* stops responding, which reads as
+        # "clicks do not work" rather than as a scale factor.
         gui.layout(int(self._width), int(self._height))
-        painter = QuadPainter()
+        painter = QuadPainter(scale=self._ratio())
         gui.paint(painter)
         vertices = painter.vertices()
         return vertices if len(vertices) else None

@@ -3568,3 +3568,47 @@ device, frame, pixels -- and is marked `slow`.
 
 So: **to look at chimol in a browser from an agent session, use Playwright.**
 The Chrome tools cannot reach a locally served page on this machine.
+
+## ChiMOL's WGSL backend silently ignores `px_mode`, and selection markers look wrong
+
+**Found 2026-08-11** from a user screenshot: selected atoms draw as red dots of
+wildly varying size scattered through the cartoon, where PyMOL draws even pink
+markers of a fixed pixel size.
+
+`renderer/view.py` sets `meta["px_mode"] = True` in **three** places — the
+`dots` representation (`:8492`), an overlay path (`:8564`) and the selection
+indicator (`:8942`) — and `px_mode` appears **nowhere** in `wgpu_backend.py` or
+`compute.py`. The backend's geometry signature reads only `meta["size"]` and
+`meta["world_radius"]` (`wgpu_backend.py:906`), so a builder asking for
+pixel-mode markers gets whatever that pair happens to mean. Size varying with
+depth is what world-radius spheres do and what pixel-mode markers must not do,
+which matches the screenshot. `_selection_marker_width` computes its value in
+**pixels**, clamped to PyMOL's 3–10 band, so the units are certain at the
+producing end.
+
+**Not fixed, and not diagnosed past this point.** The open question is what the
+impostor pipeline does with `size` when `world_radius` is false, and whether the
+fix belongs in `impostor.wgsl`, in the interleave, or in teaching the backend to
+honour `px_mode`. This is the "silently degraded path" shape the project rules
+warn about: the flag is not rejected, it is simply never read.
+
+## ChiMOL's test suite cannot collect while `chimol/` is on `sys.path`
+
+**Found 2026-08-11.** `pytest chisurf/plugins/chimol/test/...` fails at
+configure time:
+
+```
+INTERNALERROR   File ".../pdb.py", line 74, in <module>
+    import cmd
+ImportError: attempted relative import beyond top-level package
+```
+
+chimol has a top-level `cmd` package, so anything putting
+`chisurf/plugins/chimol/chimol` on `sys.path` shadows the standard library's
+`cmd` — which `pdb` imports, which pytest's debugging plugin imports at
+configure time, before a single test runs. Same hazard CLAUDE.md already records
+for `chisurf/math/` and the stdlib `math`, and the reason chimol's `host`
+package is deliberately not called `platform`.
+
+The suites run when the path is clean. Find what inserted it before trusting a
+green *or* a red run — a collection error here says nothing about the tests.

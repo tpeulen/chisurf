@@ -88,10 +88,23 @@ class QuadPainter:
         The baked font. Loaded from the package by default.
     """
 
-    def __init__(self, atlas: Optional[Atlas] = None) -> None:
+    def __init__(self, atlas: Optional[Atlas] = None, scale: float = 1.0) -> None:
         self._atlas = atlas if atlas is not None else load_atlas()
         self._data: list[float] = []
         self._clips: list[tuple[float, float, float, float]] = []
+        #: Device pixels per logical pixel.
+        #:
+        #: The panel lays itself out in **logical** pixels -- that is what a
+        #: window's coordinates are, and what a mouse event carries -- while the
+        #: surface it lands on is in **device** pixels. Applied here, at the one
+        #: point where layout becomes geometry, so hit-testing keeps working in
+        #: the coordinates the events arrive in.
+        #:
+        #: Getting this wrong does not look like a scaling bug. On a 2x display
+        #: the panel draws at half size in the corner of the window while
+        #: ``hit_test`` still answers for where it *should* be, so every click
+        #: misses by the ratio and the panel looks inert rather than misplaced.
+        self._scale = float(scale)
 
     # -- output ------------------------------------------------------------
 
@@ -150,10 +163,12 @@ class QuadPainter:
         """
         if w <= 0.0 or h <= 0.0:
             return
-        cx0, cy0, cx1, cy1 = self._clip
+        scale = self._scale
+        cx0, cy0, cx1, cy1 = (value * scale for value in self._clip)
         if isinstance(corners, tuple) and corners and isinstance(corners[0], float):
             corners = (corners,) * 4
 
+        x, y, w, h = x * scale, y * scale, w * scale, h * scale
         tl = (x, y, u, v, *corners[0])
         tr = (x + w, y, u + uw, v, *corners[1])
         br = (x + w, y + h, u + uw, v + vh, *corners[2])
