@@ -300,8 +300,20 @@ class Viewer:
         api.use_backend(browser)
 
         self.canvas = canvas
+        # Device pixels for the surface, CSS pixels for the layout -- the same
+        # split the desktop has between `_physical_size()` and a mouse event.
+        # Laying the panel out in device pixels makes it half-size on a 2x
+        # display *and* hit-test in coordinates the events do not use.
         self.width = int(canvas.width)
         self.height = int(canvas.height)
+        try:
+            self.dpr = float(canvas.width) / float(canvas.clientWidth)
+        except Exception:
+            self.dpr = 1.0
+        if not (self.dpr > 0.0):
+            self.dpr = 1.0
+        self.logical_width = int(self.width / self.dpr)
+        self.logical_height = int(self.height / self.dpr)
 
         adapter = browser.request_adapter_sync()
         self.device = adapter.request_device_sync()
@@ -339,12 +351,12 @@ class Viewer:
     # -- geometry ----------------------------------------------------------
 
     def scene_width(self) -> int:
-        """Width of the part of the canvas the molecule gets."""
-        return int(max(self.width - self.gui.column_width, 1))
+        """Width of the part of the canvas the molecule gets, in CSS pixels."""
+        return int(max(self.logical_width - self.gui.column_width, 1))
 
     def scene_height(self) -> int:
-        """Height of the part of the canvas the molecule gets."""
-        return int(max(self.height - self.gui.sequence_height(), 1))
+        """Height of the part of the canvas the molecule gets, in CSS pixels."""
+        return int(max(self.logical_height - self.gui.sequence_height(), 1))
 
     # -- events ------------------------------------------------------------
 
@@ -404,8 +416,8 @@ class Viewer:
         from ..renderer.ui.quad_painter import QuadPainter
         from ..renderer.view_state import pack_view_state
 
-        self.gui.layout(self.width, self.height)
-        painter = QuadPainter()
+        self.gui.layout(self.logical_width, self.logical_height)
+        painter = QuadPainter(scale=self.dpr)
         self.gui.paint(painter)
         chrome = painter.vertices()
 
@@ -423,7 +435,8 @@ class Viewer:
             view,
             background=(0.16, 0.16, 0.16),
             target_radius=self.radius,
-            viewport=(0.0, 0.0, float(self.scene_width()), float(self.height)),
+            viewport=(0.0, 0.0, float(self.scene_width() * self.dpr),
+                      float(self.height)),
             chrome=chrome,
         )
         return int(len(chrome) // 6)

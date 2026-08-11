@@ -81,10 +81,13 @@ viewer
     (event.altKey ? 0x08000000 : 0) |
     (event.metaKey ? 0x10000000 : 0);
 
+  // CSS pixels, not device ones. The panel is laid out in CSS pixels and
+  // hit-tests in them, exactly as the desktop does with logical pixels -- a
+  // pointer converted to device pixels would miss every control by the display
+  // ratio.
   const at = (event) => {
     const box = canvas.getBoundingClientRect();
-    const ratio = canvas.width / box.width;
-    return [(event.clientX - box.left) * ratio, (event.clientY - box.top) * ratio];
+    return [event.clientX - box.left, event.clientY - box.top];
   };
 
   let frame = null;

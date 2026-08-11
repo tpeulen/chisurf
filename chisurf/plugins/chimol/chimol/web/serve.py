@@ -74,6 +74,61 @@ def pack(destination: pathlib.Path | None = None) -> pathlib.Path:
     return destination
 
 
+def _already_serving(port: int) -> bool:
+    """Whether *port* is already serving this page.
+
+    Parameters
+    ----------
+    port : int
+
+    Returns
+    -------
+    bool
+        ``True`` when something on the port answers with chimol's own page --
+        i.e. this server is already running and the answer is to use it, not to
+        start a second one.
+    """
+    import urllib.request
+
+    try:
+        with urllib.request.urlopen(f"http://127.0.0.1:{port}/", timeout=1) as page:
+            return b"ChiMOL in the browser" in page.read(4096)
+    except Exception:
+        return False
+
+
+def _bind(handler, port: int):
+    """Return ``(server, port)``, stepping off a port that is taken.
+
+    Parameters
+    ----------
+    handler : type
+        The request handler.
+    port : int
+        The port asked for.
+
+    Returns
+    -------
+    tuple
+
+    Notes
+    -----
+    A busy port is the *normal* outcome of running this twice, and a traceback
+    ending in ``OSError: [Errno 48]`` is a poor way to say "it is already
+    open". So a taken port moves to a free one and says so -- and if what is
+    holding it is this same page, nothing is started at all.
+    """
+    try:
+        return http.server.ThreadingHTTPServer(("127.0.0.1", port), handler), port
+    except OSError as exc:
+        if exc.errno not in (48, 98):        # EADDRINUSE on BSD and on Linux
+            raise
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    chosen = int(server.server_address[1])
+    print(f"port {port} is in use; serving on {chosen} instead")
+    return server, chosen
+
+
 class _Handler(http.server.SimpleHTTPRequestHandler):
     """Static files, cross-origin isolated."""
 
@@ -113,6 +168,15 @@ def serve(port: int = 8765, pyodide: pathlib.Path | None = None,
     pyodide : pathlib.Path, optional
         A local Pyodide distribution to copy in beside the page.
     """
+    if _already_serving(port):
+        url = f"http://localhost:{port}/"
+        print(f"chimol is already being served at {url}")
+        if open_browser:
+            import webbrowser
+
+            webbrowser.open(url)
+        return
+
     archive = pack()
     print(f"packed {archive.name}: {archive.stat().st_size / 1024:.0f} KB")
 
@@ -124,7 +188,7 @@ def serve(port: int = 8765, pyodide: pathlib.Path | None = None,
         print(f"copied Pyodide from {pyodide}")
 
     handler = functools.partial(_Handler, directory=str(WEB_DIR))
-    server = http.server.ThreadingHTTPServer(("127.0.0.1", port), handler)
+    server, port = _bind(handler, port)
     url = f"http://localhost:{port}/"
     print(f"serving {WEB_DIR} at {url}  (ctrl-c to stop)")
     if open_browser:
