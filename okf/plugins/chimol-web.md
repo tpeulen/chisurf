@@ -361,17 +361,51 @@ stops matching is a question, not a failure. `capture_gl_baseline.py` keeps
    wanted nearest. Adding a constant is now a deliberate edit in one file that a
    guard test checks against the binding.
 
+   **Phase D — landed. The desktop side of the port is done.**
+   `chimol/host/events.py` holds the button and modifier values, so
+   `mouse_modes` decides what a click means without importing Qt to compare
+   against `Qt.LeftButton`. Named **`host`, not `platform`**: a package called
+   `platform` beside modules whose directory is sometimes on `sys.path` would
+   shadow the standard library's, which this repository has already paid for
+   once with `chisurf/math/` and the stdlib `math`.
+
+   `test/test_engine_is_portable.py` is the exit criterion, as four assertions:
+   **21 engine modules import in a process where Qt cannot be imported**; no
+   module outside `renderer/gpu/native.py` imports the binding; no module
+   outside a 16-entry host list imports Qt at module scope; and — the one that
+   makes it shrink — an entry that no longer needs to be in that list fails.
+
+   **The host list is the remaining worklist, and it is mostly one job.**
+   Thirteen of its sixteen entries are `app/` panels — `objects_panel`,
+   `hierarchy_panel`, `controls_panel`, `sequence_dock`, `timeline_panel`,
+   `menu_bar`, `settings_table`, `config_editor`, `volume_panel`, `rmf_panel`,
+   `demos`, `picking`, `molview_main_window` — which draw *with Qt widgets what
+   the in-viewport panel already draws with quads*. So most of that list closes
+   by moving those panels into the chrome, not by editing them. That is also
+   the "~90 % of the app lives in the WebGPU window" the user asked for, and it
+   is now the same job as finishing the port rather than a separate one. The
+   other three are the widget (`wgpu_view`), its scene builder (`view`) and what
+   is left of the image overlay (`gui_overlay`).
+
    **Where to pick this up next.**
-   1. **Labels are still an image.** They are text, so they are quads —
-      `_collect_labels` + `project_to_screen` already give position and string.
-      Doing them would leave only the traced frame and the selection box on the
-      texture path, and would delete `paint_labels`.
-   2. **Phase D** — `platform/{events,desktop}.py`, then
-      `test_engine_is_portable.py`. `renderer/internal_gui.py` is already
-      Qt-free; what is left is `mouse_modes.py`'s three Qt-event translators and
-      `wgpu_view`'s widget.
-   3. Only then the browser backend beside `renderer/gpu/native.py`, and a
-      loader page.
+   1. **Move an `app/` panel into `InternalGui`.** Start with `objects_panel` /
+      `hierarchy_panel`: `InternalGui` already draws that list, so this is
+      mostly deleting a duplicate. Each panel that moves strikes a line from
+      `HOSTS` and gains the browser a feature.
+   2. **Labels are still an image.** They are text, so they are quads —
+      `_collect_labels` and `project_to_screen` already give position and
+      string. Doing them leaves only the traced frame and the selection box on
+      the texture path, and deletes `paint_labels`.
+   3. **The browser backend**, beside `renderer/gpu/native.py`: `js.navigator.gpu`
+      through `pyodide.ffi`. The device request is **async**, so the bootstrap
+      must resolve it before the engine starts — if `await` leaks into the
+      engine, the desktop path grows an event loop it does not need. Measure
+      Pyodide's per-frame cost early; it is the one risk that can still change
+      the shape of the answer.
+   4. **A loader page.** No packaging change is needed for the assets:
+      `[tool.setuptools.package-data]` already ships `*.png`, `*.json` and
+      `*.wgsl`; `*.js` and `*.html` would need adding, and **not** `*.ts`,
+      which is Qt Linguist.
 
    **Superseded — the atlas plan, for reference.**
    1. **Bake the glyph atlas.** The chrome's font is `QFont("Menlo")` at

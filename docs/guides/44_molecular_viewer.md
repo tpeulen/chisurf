@@ -45,6 +45,11 @@ the **object list** at the top right, and the **mouse-mode block** at the bottom
 right — because they are reference material you glance at without looking away
 from what you are doing.
 
+All three are drawn by the GPU as part of the frame, not painted over it, so
+they update on the frame they change and cost the same on a 4K display as on a
+laptop screen. There is no separate refresh to wait for: recolour a selection
+and the sequence strip is already showing it.
+
 Under the view is the **command console**: an always-visible prompt with the
 output of everything you have run above it. It is the fastest way to drive the
 viewer, and nothing has to be opened first.

@@ -33742,3 +33742,22 @@
   scrubber. `test/quad_raster.py` does what `ui.wgsl` does in numpy, so all of that is checkable with **no GPU
   at all**. Next: labels are text and therefore quads; then phase D. See
   [chimol-web](/plugins/chimol-web.md).
+
+- **2026-08-11 — ChiMOL's engine names neither Qt nor a GPU binding; the desktop side of the browser port is done.**
+  `chimol/host/events.py` holds the mouse-button and keyboard-modifier values, so `mouse_modes` decides what a
+  click means without importing Qt to compare against `Qt.LeftButton`. Named **`host`, not `platform`** — a
+  package called `platform` beside modules whose directory is sometimes on `sys.path` would shadow the standard
+  library's, a failure this repo already paid for once with `chisurf/math/`.
+  `test/test_engine_is_portable.py` states the exit criterion as four assertions: **21 engine modules import in
+  a process where Qt cannot be imported**; nothing outside `renderer/gpu/native.py` imports the binding; nothing
+  outside a 16-entry host list imports Qt at module scope; and an entry that no longer needs to be in that list
+  **fails**, so the list shrinks rather than accumulates. It guards 107 of chimol's 130 modules — checked, so
+  that the guard is not passing by exempting everything.
+  **The host list turns out to be mostly one job.** Thirteen of its sixteen entries are `app/` panels that draw
+  *with Qt widgets what the in-viewport panel already draws with quads*, so most of it closes by moving those
+  panels into the chrome rather than by editing them — which is also the "~90 % of the app lives in the WebGPU
+  window" the user asked for, now the same job as finishing the port instead of a separate one.
+  Resume order, with the trap that matters, is in [chimol-web](/plugins/chimol-web.md): move an `app/` panel
+  first (`objects_panel`/`hierarchy_panel` are nearly duplicates of what `InternalGui` already draws), then
+  labels (text, therefore quads), then the Pyodide backend — whose device request is **async**, so the bootstrap
+  must resolve it before the engine starts or the desktop path grows an event loop it does not need.
