@@ -34137,3 +34137,15 @@
   fixed at 206 units holding a 350-unit line, and a battle option list whose last entry —
   `Withdraw` — sat inside a rounded corner. All three are now measured from their contents, with
   a guardrail test that no glyph is drawn outside its panel. See [chigame](/subsystems/chigame.md).
+
+- **2026-08-11 — the face is 7x11 and proportional, and the battle screen is a place rather than a dialog.**
+  The 5x7 face read as Game Boy, so `pixelfont` moved to an eleven-row box with real descenders,
+  **proportional widths measured from the ink** (`i` one column, `m` seven) and a **drop shadow**
+  drawn one font pixel down-right — the last two are what separate a console face from a terminal
+  one, more than the resolution does. `Scene.window()` draws the console dialogue box: dark outer
+  edge, bright rule, flat fill; the *rule* is the effect. Lumis Quest's encounter now takes the
+  **whole screen** with its own sky and ground, sprites two-thirds larger, each combatant's framed
+  readout diagonally opposite its sprite, and the message and command boxes along the bottom — and
+  the additive auras behind the portraits are gone, replaced by a flat platform to stand on: at
+  that size a glow is a coloured blob with an animal somewhere inside it, and the label's colour
+  is already carried by the tint. See [chigame](/subsystems/chigame.md).

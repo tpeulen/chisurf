@@ -60,34 +60,53 @@ def test_no_two_glyphs_are_the_same_drawing():
     assert clashes == []
 
 
+#: Capitals sit on rows 1-8, so anything below row 8 is a descender.
+BASELINE = 8
+
+
 def test_the_letters_that_descend_do_descend():
-    """Row seven exists for exactly these five, and for nothing else."""
+    """The rows below the baseline exist for exactly these five.
+
+    A 5x7 body had nowhere to put them and they ended up tucked onto the
+    baseline, which is one of the things that made the old face read as four-bit.
+    """
     descenders = [char for char in "abcdefghijklmnopqrstuvwxyz"
-                  if pixelfont.bitmap(char)[pixelfont.HEIGHT - 1].any()]
+                  if pixelfont.bitmap(char)[BASELINE + 1:].any()]
     assert set(descenders) == set("gjpqy")
 
 
-def test_capitals_stay_out_of_the_descender_row():
-    """Otherwise a line of capitals sits a pixel lower than a line of text."""
+def test_capitals_stay_out_of_the_descender_rows():
+    """Otherwise a line of capitals sits lower than a line of text."""
     for char in "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789":
-        assert not pixelfont.bitmap(char)[pixelfont.HEIGHT - 1].any(), char
+        assert not pixelfont.bitmap(char)[BASELINE + 1:].any(), char
 
 
-def test_the_advance_is_wider_than_the_glyph():
-    """The gap between letters is part of the face.
+def test_the_face_is_proportional():
+    """An ``i`` must not take an ``m``'s room.
 
-    Conflating the advance with the glyph box is what produced ``s e t t l e d``
-    -- narrow letters centred in cells the width of an M.
+    Monospace is the loudest tell of a font that was not designed, and it is
+    what the old face was: every glyph in a cell the width of an M.
     """
-    assert pixelfont.ADVANCE > pixelfont.WIDTH
-    assert pixelfont.ADVANCE - pixelfont.WIDTH == pixelfont.GAP
+    table = pixelfont.metrics()
+    assert table["i"][2] < table["m"][2]
+    assert table["."][2] < table["W"][2]
 
 
-def test_the_atlas_is_one_row_of_boxes():
-    """Layout arithmetic downstream assumes exactly this shape."""
+def test_every_advance_is_its_ink_plus_the_gap():
+    """The widths are measured from the art, not declared beside it.
+
+    A hand-maintained width table goes wrong the first time somebody nudges a
+    stem, and goes wrong silently.
+    """
+    for char, (_, ink, advance) in pixelfont.metrics().items():
+        assert advance == ink + pixelfont.GAP, char
+
+
+def test_the_atlas_is_the_ink_and_nothing_else():
+    """Trimmed cells are what make the face proportional at draw time."""
     grid = pixelfont.atlas(scale=2)
-    assert grid.shape == (pixelfont.HEIGHT * 2,
-                          pixelfont.WIDTH * 2 * len(pixelfont.CHARSET))
+    total = sum(pixelfont.extent(char)[1] for char in pixelfont.CHARSET)
+    assert grid.shape == (pixelfont.HEIGHT * 2, total * 2)
     assert set(np.unique(grid)) <= {0, 255}
 
 

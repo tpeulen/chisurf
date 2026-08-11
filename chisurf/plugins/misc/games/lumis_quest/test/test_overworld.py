@@ -1272,36 +1272,78 @@ def _frame(game):
 class _MeasuringFont:
     """Stands in for the real atlas, with the real metrics.
 
-    The atlas needs a GPU; the numbers that decide layout do not.
+    The atlas needs a GPU; the numbers that decide layout do not. The face is
+    proportional, so this has to answer per character rather than hand back one
+    nominal width -- which is exactly what the real one does.
     """
 
     def __init__(self) -> None:
         from chisurf.gui.chigame import pixelfont
-        self.cell_w = pixelfont.WIDTH
+        self._font = pixelfont
+        self._metrics = pixelfont.metrics()
         self.cell_h = pixelfont.HEIGHT
-        self.advance_w = pixelfont.ADVANCE
+
+    def _box(self, char: str):
+        """Atlas placement and advance for one character.
+
+        Returns
+        -------
+        tuple of int
+            ``(atlas x, ink width, advance)``.
+        """
+        return self._metrics.get(char, self._metrics["?"])
+
+    def box_of(self, char: str) -> float:
+        """Drawn width over line height.
+
+        Returns
+        -------
+        float
+            As the real atlas reports it.
+        """
+        return self._box(char)[1] / self._font.HEIGHT
+
+    def advance_of(self, char: str) -> float:
+        """Pen advance over line height.
+
+        Returns
+        -------
+        float
+            As the real atlas reports it.
+        """
+        return self._box(char)[2] / self._font.HEIGHT
+
+    def measure(self, text: str, height: float) -> float:
+        """How wide a string will be, in world units.
+
+        Returns
+        -------
+        float
+            Advance width.
+        """
+        return height * sum(self.advance_of(char) for char in text)
 
     @property
     def aspect(self) -> float:
-        """Glyph box width over height.
+        """A nominal character width over line height.
 
         Returns
         -------
         float
-            As the real atlas reports it.
+            The advance of a digit.
         """
-        return self.cell_w / self.cell_h
+        return self.advance_of("0")
 
     @property
     def pitch(self) -> float:
-        """Character advance over height.
+        """Same as :attr:`aspect`.
 
         Returns
         -------
         float
-            As the real atlas reports it.
+            Nominal advance over line height.
         """
-        return self.advance_w / self.cell_h
+        return self.aspect
 
     def uv_for(self, char: str):
         """Atlas rectangle, which nothing here reads.
@@ -1330,31 +1372,34 @@ def _glyphs_and_panels(batch):
     return glyphs, panels
 
 
-def test_no_battle_text_is_drawn_outside_its_panel(game, wild_room):
+def test_no_battle_text_is_drawn_off_the_screen(game, wild_room):
     """The class of bug that hid behind a blurry font.
 
     Every readout in this screen was placed against a hard-coded offset, so the
-    last option sat two units inside a rounded corner -- "Withdraw", the one a
-    player in trouble is looking for, was shaved off. A sharper face did not
-    cause that; it stopped hiding it.
+    last option sat inside a rounded corner -- "Withdraw", the one a player in
+    trouble is looking for, was shaved off. A sharper face did not cause that;
+    it stopped hiding it.
     """
     wild = wild_room
     game.iris = [wild.position[0], wild.position[1] + tiles.TILE]
     game._try_encounter()
     assert game.battle is not None
 
-    glyphs, panels = _glyphs_and_panels(_frame(game))
+    glyphs, _ = _glyphs_and_panels(_frame(game))
     assert glyphs, "the battle screen drew no text at all"
-    panel = panels[0]
-    px, py = panel["pos"]
-    pw, ph = panel["size"]
+    # The encounter takes the whole screen now, so the screen is the container.
+    camera = game.host.camera
+    width, height = game.host.ctx.size
+    half = camera.half_extent(width / max(height, 1))
+    px, py = float(camera.center[0]), float(camera.center[1])
+    pw, ph = float(half[0]) * 2.0, float(half[1]) * 2.0
     for quad in glyphs:
         x, y = quad["pos"]
         w, h = quad["size"]
-        assert x - w / 2 >= px - pw / 2 - 1e-6, "text runs off the left of the panel"
-        assert x + w / 2 <= px + pw / 2 + 1e-6, "text runs off the right of the panel"
-        assert y - h / 2 >= py - ph / 2 - 1e-6, "text runs off the top of the panel"
-        assert y + h / 2 <= py + ph / 2 + 1e-6, "text runs off the bottom of the panel"
+        assert x - w / 2 >= px - pw / 2 - 1e-6, "text runs off the left of the screen"
+        assert x + w / 2 <= px + pw / 2 + 1e-6, "text runs off the right of the screen"
+        assert y - h / 2 >= py - ph / 2 - 1e-6, "text runs off the top of the screen"
+        assert y + h / 2 <= py + ph / 2 + 1e-6, "text runs off the bottom of the screen"
 
 
 def test_the_readouts_do_not_print_through_each_other(game):
@@ -1368,8 +1413,12 @@ def test_the_readouts_do_not_print_through_each_other(game):
     glyphs, _ = _glyphs_and_panels(_frame(game))
     # Group the left-hand column's glyphs into lines by their y, and check the
     # lines are separated by at least a glyph's height.
-    left = min((q["pos"][0] for q in glyphs), default=0.0)
-    column = [q for q in glyphs if q["pos"][0] < left + tiles.TILE * 12]
+    # Every string is drawn twice -- the console drop shadow is a dark copy one
+    # font pixel down and right -- so the shadow pass has to come out before
+    # anything counts lines, or every line "overlaps" its own shadow.
+    ink = [q for q in glyphs if any(q["color"][:3])]
+    left = min((q["pos"][0] for q in ink), default=0.0)
+    column = [q for q in ink if q["pos"][0] < left + tiles.TILE * 12]
     lines = sorted({round(q["pos"][1], 3) for q in column})
     heights = {round(q["pos"][1], 3): q["size"][1] for q in column}
     for first, second in zip(lines, lines[1:]):

@@ -94,6 +94,60 @@ class Scene:
             uv=look.uv,
         )
 
+    #: The frame a console dialogue box is made of, outside in: a near-black
+    #: outer edge, a bright inner rule, then the fill. Three flat bands and no
+    #: gradient -- the look comes from the *rule*, which is what a single
+    #: translucent rounded rectangle can never give you however carefully it is
+    #: tinted.
+    FRAME: tuple[tuple[float, float, float, float], ...] = (
+        (0.043, 0.047, 0.078, 0.98),
+        (0.62, 0.70, 0.90, 1.0),
+        (0.086, 0.11, 0.26, 0.98),
+    )
+
+    #: Thickness of each band, in world units at a nominal 1.0 scale.
+    FRAME_BANDS: tuple[float, float] = (2.0, 1.0)
+
+    def window(
+        self,
+        at: tuple[float, float],
+        size: tuple[float, float],
+        scale: float = 1.0,
+        fill: tuple[float, float, float, float] | None = None,
+    ) -> None:
+        """Draw a framed box in the console-dialogue style.
+
+        A translucent rounded rectangle is what a modern UI does and it reads
+        as a modern UI. The boxes these games used are **framed**: a dark outer
+        edge, a bright rule one pixel inside it, and a flat saturated fill. The
+        rule is the whole effect -- it is what makes the box sit *on* the
+        picture instead of floating over it, and it costs two extra quads.
+
+        Parameters
+        ----------
+        at : tuple of float
+            Centre, in world units.
+        size : tuple of float
+            Outer size, in world units.
+        scale : float, optional
+            Multiplies the band thicknesses, so a box keeps its proportions
+            when the view is zoomed.
+        fill : tuple of float, optional
+            Override for the innermost colour.
+        """
+        width, height = size
+        edge, rule = (band * scale for band in self.FRAME_BANDS)
+        bands = (
+            (width, height, self.FRAME[0]),
+            (width - edge * 2.0, height - edge * 2.0, self.FRAME[1]),
+            (width - (edge + rule) * 2.0, height - (edge + rule) * 2.0,
+             fill if fill is not None else self.FRAME[2]),
+        )
+        for band_w, band_h, colour in bands:
+            if band_w <= 0.0 or band_h <= 0.0:
+                continue
+            self.draw("ui", "frame", at=at, size=(band_w, band_h), color=colour)
+
     def text(
         self,
         content: str,
@@ -101,6 +155,7 @@ class Scene:
         height: float = 4.0,
         color: tuple[float, float, float, float] = (1.0, 1.0, 1.0, 1.0),
         align: str = "left",
+        shadow: bool = True,
     ) -> float:
         """Draw a string.
 
@@ -116,6 +171,8 @@ class Scene:
             sRGB RGBA.
         align : {'left', 'center', 'right'}, optional
             Alignment relative to ``at``.
+        shadow : bool, optional
+            Draw the dark offset copy underneath, as console dialogue does.
 
         Returns
         -------
@@ -124,4 +181,5 @@ class Scene:
         """
         if self.font is None:
             return 0.0
-        return draw_text(self.batch, self.font, content, at, height, color, align)
+        return draw_text(self.batch, self.font, content, at, height, color, align,
+                         shadow=shadow)

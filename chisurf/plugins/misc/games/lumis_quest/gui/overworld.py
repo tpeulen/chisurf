@@ -2613,6 +2613,43 @@ class OverworldGame(chigame.Game):
             self._guardian_nm[key] = nm
         return nm
 
+    def _fighter_card(self, scene, fighter, at, scale: float, tone, numbers: bool) -> None:
+        """One combatant's readout, as a framed window.
+
+        Parameters
+        ----------
+        scene : chisurf.gui.chigame.scene.Scene
+            Frame under construction.
+        fighter : chisurf.plugins.misc.games.lumis_quest.api.battle.Fighter
+            Whose readout.
+        at : tuple of float
+            Centre, in world units.
+        scale : float
+            The battle screen's own scale.
+        tone : tuple of float
+            Bar colour.
+        numbers : bool
+            Show the hit points as a number. Only your own creature gets them,
+            which is the convention and is also the right information rule: you
+            know your own condition exactly and you have to read the other one.
+        """
+        card_w, card_h = 150.0 * scale, 46.0 * scale
+        scene.window(at, (card_w, card_h), scale=scale)
+        left = at[0] - card_w * 0.5 + 10.0 * scale
+        scene.text(fighter.name, at=(left, at[1] - card_h * 0.5 + 12.0 * scale),
+                   height=12.0 * scale, color=(0.96, 0.96, 0.92, 1.0))
+        scene.text(f"T{fighter.beast.tier}",
+                   at=(at[0] + card_w * 0.5 - 10.0 * scale,
+                       at[1] - card_h * 0.5 + 12.0 * scale),
+                   height=10.0 * scale, align="right", color=(0.80, 0.84, 0.94, 1.0))
+        self._bar(scene, (at[0], at[1] + 2.0 * scale), card_w - 20.0 * scale,
+                  6.0 * scale, fighter.hp / max(fighter.beast.max_hp, 1), tone)
+        tail = (f"{fighter.hp}/{fighter.beast.max_hp}" if numbers
+                else f"{fighter.beast.emission_nm:.0f} nm")
+        scene.text(tail, at=(at[0] + card_w * 0.5 - 10.0 * scale,
+                             at[1] + card_h * 0.5 - 9.0 * scale),
+                   height=10.0 * scale, align="right", color=(0.78, 0.82, 0.90, 1.0))
+
     def _beast_portrait(self, scene, fighter, at, size: float) -> None:
         """Draw a marked animal: the body, in the colour of its label.
 
@@ -2631,10 +2668,18 @@ class OverworldGame(chigame.Game):
         size : float
             Edge length in world units.
         """
-        if fighter.beast.marked:
-            scene.draw("photon", f"aura{id(fighter) & 0xFF}", at=at,
-                       size=(size * 0.9, size * 0.9),
-                       emission_nm=fighter.beast.emission_nm)
+        # No aura. An additive glow behind a sprite is what a modern engine
+        # does because it can, and at this size it is a coloured blob with an
+        # animal somewhere inside it -- the label's colour is already carried by
+        # the tint, which is the whole point of the bestiary. What a creature
+        # gets instead is a flat platform to stand on, which is how these
+        # screens put a thing in a place.
+        scene.draw("ui", "frame", at=(at[0], at[1] + size * 0.46),
+                   size=(size * 1.15, size * 0.30),
+                   color=(0.30, 0.40, 0.26, 1.0))
+        scene.draw("ui", "frame", at=(at[0], at[1] + size * 0.44),
+                   size=(size * 1.02, size * 0.22),
+                   color=(0.44, 0.56, 0.34, 1.0))
         tint = _emission_tint(fighter.beast.emission_nm) if fighter.beast.marked \
             else (0.86, 0.86, 0.84, 1.0)
         self._sprite(scene, pixelart.creature_sprite(fighter.beast.species.key),
@@ -2872,10 +2917,15 @@ class OverworldGame(chigame.Game):
         width, height = half[0] * 2.0, half[1] * 2.0
         scale = camera.height / VIEW_HEIGHT
 
-        # Near-opaque: an encounter has to be readable, and the terrain showing
-        # through the numbers is worse than losing the view of it for a moment.
-        scene.draw("ui", "panel", at=(cx, cy), size=(width * 0.94, height * 0.92),
-                   color=(0.055, 0.065, 0.085, 0.985))
+        # The encounter takes the whole screen. A rounded box floating over the
+        # overworld is a dialog; a battle is a *place you have gone to*, and
+        # every game this one is modelled on cuts to a full screen with its own
+        # ground and sky. It is also what stops the terrain showing through the
+        # numbers, which no amount of opacity on a smaller box ever quite did.
+        scene.draw("ui", "frame", at=(cx, cy - height * 0.18),
+                   size=(width, height * 0.64), color=(0.44, 0.62, 0.78, 1.0))
+        scene.draw("ui", "frame", at=(cx, cy + height * 0.30),
+                   size=(width, height * 0.40), color=(0.36, 0.50, 0.29, 1.0))
 
         if self.flagging:
             if self.flag_stage == "span":
@@ -2948,49 +2998,38 @@ class OverworldGame(chigame.Game):
             return
 
 
-        # The opponent, drawn in the colour it actually emits.
-        enemy = fight.opponent
-        top = cy - half[1] * 0.52
-        self._portraits["enemy"] = (cx + half[0] * 0.46, top + 6.0 * scale)
+        # The console arrangement, and it is a convention worth keeping to the
+        # letter: each combatant's *readout* sits diagonally opposite its
+        # sprite. That is not decoration -- it is what stops a player's eye
+        # having to cross the screen to pair a name with the thing it belongs
+        # to, and it is why these screens are readable at a glance.
+        enemy, active = fight.opponent, fight.active
         self._portrait_scale = scale
-        self._beast_portrait(scene, enemy, self._portraits["enemy"], 34.0 * scale)
-        scene.text(enemy.name, at=(cx - half[0] * 0.10, top - 14.0 * scale),
-                   height=13.0 * scale, align="center", color=(0.90, 0.88, 0.82, 1.0))
-        self._bar(scene, (cx - half[0] * 0.10, top + 4.0 * scale), 130.0 * scale, 7.0 * scale,
-                  enemy.hp / max(enemy.beast.max_hp, 1), (0.90, 0.42, 0.38, 1.0))
-        scene.text(f"{enemy.beast.summary}",
-                   at=(cx - half[0] * 0.10, top + 18.0 * scale),
-                   height=9.0 * scale, align="center", color=(0.52, 0.56, 0.64, 1.0))
-        scene.text("  ".join(enemy.beast.trait_names[:3]),
-                   at=(cx - half[0] * 0.10, top + 28.0 * scale),
-                   height=8.5 * scale, align="center", color=(0.62, 0.56, 0.72, 1.0))
+        # Big. These sprites were a third of this and the screen read as a
+        # form with two icons on it; the creature is the subject of the scene
+        # and has to be the largest thing in it. Yours is larger still, because
+        # it is nearer.
+        self._portraits["enemy"] = (cx + half[0] * 0.42, cy - half[1] * 0.44)
+        self._portraits["ours"] = (cx - half[0] * 0.44, cy + half[1] * 0.02)
+        self._beast_portrait(scene, enemy, self._portraits["enemy"], 66.0 * scale)
+        self._beast_portrait(scene, active, self._portraits["ours"], 80.0 * scale)
 
-        # Your active creature.
-        active = fight.active
-        low = cy + half[1] * 0.10
-        self._portraits["ours"] = (cx - half[0] * 0.48, low + 6.0 * scale)
-        self._beast_portrait(scene, active, self._portraits["ours"], 32.0 * scale)
-        scene.text(active.name, at=(cx + half[0] * 0.10, low - 14.0 * scale),
-                   height=13.0 * scale, align="center", color=(0.82, 0.90, 0.96, 1.0))
-        self._bar(scene, (cx + half[0] * 0.10, low + 4.0 * scale), 130.0 * scale, 7.0 * scale,
-                  active.hp / max(active.beast.max_hp, 1), (0.40, 0.85, 0.70, 1.0))
-        scene.text(f"{active.beast.summary}",
-                   at=(cx + half[0] * 0.10, low + 18.0 * scale),
-                   height=9.0 * scale, align="center", color=(0.52, 0.56, 0.64, 1.0))
-        scene.text(active.beast.subtitle,
-                   at=(cx + half[0] * 0.10, low - 25.0 * scale),
-                   height=8.5 * scale, align="center", color=(0.50, 0.58, 0.62, 1.0))
+        self._fighter_card(scene, enemy, (cx - half[0] * 0.42, cy - half[1] * 0.62),
+                           scale, (0.90, 0.42, 0.38, 1.0), numbers=False)
+        self._fighter_card(scene, active, (cx + half[0] * 0.40, cy + half[1] * 0.12),
+                           scale, (0.40, 0.85, 0.70, 1.0), numbers=True)
 
-        # The last two things that happened, newest at the bottom.
-        # Wrapped to the panel: a single long line ran off both edges, and the
-        # interesting half of it ("barely couples for 16") was the half cut off.
+        # The bottom band: what just happened on the left, what you may do on
+        # the right, both in framed windows rather than floating over the art.
+        band_h = half[1] * 0.62
+        band_y = cy + half[1] - band_h * 0.5 - 4.0 * scale
+        said_w = half[0] * 1.16
+        scene.window((cx - half[0] + said_w * 0.5 + 4.0 * scale, band_y),
+                     (said_w, band_h), scale=scale)
+
         lines: list[str] = []
         for turn in fight.log[-2:]:
-            lines.extend(_wrap(turn.text, 52))
-        for offset, line in enumerate(lines[-3:]):
-            scene.text(line, at=(cx, cy + half[1] * 0.30 + offset * 12.0 * scale),
-                       height=10.0 * scale, align="center", color=(0.74, 0.78, 0.86, 1.0))
-
+            lines.extend(_wrap(turn.text, 34))
         if fight.finished:
             outcome = "The light holds." if fight.won else (
                 "You withdraw." if fight.fled else "Your team is spent."
@@ -3003,30 +3042,32 @@ class OverworldGame(chigame.Game):
                 warden = tiers_api.BY_KEY.get(self.warden_fight)
                 if warden is not None:
                     outcome = warden.after
-            scene.text(outcome, at=(cx, cy + half[1] * 0.60), height=15.0 * scale,
-                       align="center", color=(0.90, 0.84, 0.52, 1.0))
-            scene.text("Confirm to continue", at=(cx, cy + half[1] * 0.70),
-                       height=10.0 * scale, align="center", color=(0.50, 0.54, 0.62, 1.0))
+            lines = _wrap(outcome, 34)[:2] + ["", "Confirm to continue"]
+        left = cx - half[0] + 16.0 * scale
+        for offset, line in enumerate(lines[-4:]):
+            scene.text(line, at=(left, band_y - band_h * 0.5 + (14.0 + offset * 13.0) * scale),
+                       height=11.0 * scale, color=(0.92, 0.94, 0.98, 1.0))
+        if fight.finished:
             return
 
-        # Laid out between the log and the panel's own bottom edge rather than
-        # from a fixed start at a fixed pitch. The old arrangement put the last
-        # option two units inside a rounded corner, so "Withdraw" -- the one
-        # option a player in trouble is looking for -- was shaved off; and it
-        # would break outright the first time a sixth option existed.
         options = self._battle_options()
-        top = cy + half[1] * 0.56
-        pitch = 12.5 * scale
-        if len(options) > 1:
-            pitch = min(pitch, (half[1] * 0.84 - half[1] * 0.56) / (len(options) - 1))
+        menu_w = half[0] * 0.80
+        menu_x = cx + half[0] - menu_w * 0.5 - 4.0 * scale
+        scene.window((menu_x, band_y), (menu_w, band_h), scale=scale,
+                     fill=(0.16, 0.13, 0.30, 0.98))
+        pitch = min(13.0 * scale, (band_h - 20.0 * scale) / max(1, len(options)))
+        first = band_y - (pitch * (len(options) - 1)) * 0.5
         for index, (label, _) in enumerate(options):
             selected = index == self.menu_index
-            y = top + index * pitch
+            y = first + index * pitch
             if selected:
-                scene.draw("ui", "selected", at=(cx - half[0] * 0.34, y),
-                           size=(7.0 * scale, 7.0 * scale))
-            scene.text(label, at=(cx - half[0] * 0.29, y), height=11.0 * scale,
-                       color=(0.94, 0.92, 0.86, 1.0) if selected else (0.56, 0.60, 0.68, 1.0))
+                scene.draw("ui", "selected",
+                           at=(menu_x - menu_w * 0.5 + 12.0 * scale, y),
+                           size=(6.0 * scale, 6.0 * scale))
+            scene.text(label, at=(menu_x - menu_w * 0.5 + 20.0 * scale, y),
+                       height=11.0 * scale,
+                       color=(1.00, 0.98, 0.92, 1.0) if selected
+                       else (0.68, 0.72, 0.84, 1.0))
 
     def _draw_curtain(self, scene, camera, half) -> None:
         """Draw the loading screen and the opening.
@@ -3260,8 +3301,12 @@ class OverworldGame(chigame.Game):
             Advance width, or a rough estimate when no font is loaded.
         """
         font = getattr(scene, "font", None)
-        pitch = getattr(font, "pitch", 0.75) if font is not None else 0.75
-        return len(text) * height * pitch
+        if font is not None and hasattr(font, "measure"):
+            # Ask, rather than assume: the face is proportional, so there is no
+            # per-character constant that would be right for both "iii" and
+            # "WWW".
+            return font.measure(text, height)
+        return len(text) * height * 0.6
 
     def _draw_hud(self, scene, camera, half) -> None:
         """Draw the readouts, pinned to the camera rather than the world.
@@ -3325,11 +3370,10 @@ class OverworldGame(chigame.Game):
         widest = max(self._text_width(scene, text, size) for text, size, _ in rows)
         panel_w = max(206.0, widest + pad * 2.0)
         panel_h = sum(size + 5.0 for _, size, _ in rows) + 22.0
-        scene.draw("ui", "panel",
-                   at=(left + (panel_w * 0.5 - 8.0) * scale,
-                       top + (panel_h * 0.5 + 6.0) * scale),
-                   size=(panel_w * scale, panel_h * scale),
-                   color=(0.02, 0.025, 0.035, 0.82))
+        scene.window((left + (panel_w * 0.5 - 8.0) * scale,
+                      top + (panel_h * 0.5 + 6.0) * scale),
+                     (panel_w * scale, panel_h * scale), scale=scale,
+                     fill=(0.055, 0.075, 0.16, 0.90))
 
         y = top + 20.0 * scale
         for text, size, colour in rows:
@@ -3350,9 +3394,8 @@ class OverworldGame(chigame.Game):
             rows = len(wrapped) + len(screen.choices)
             tall = 34.0 + 12.5 * max(rows, 1)
             middle = bottom - (tall * 0.5 + 22.0) * scale
-            scene.draw("ui", "panel", at=(camera.center[0], middle),
-                       size=(half[0] * 1.7, tall * scale),
-                       color=(0.055, 0.065, 0.085, 0.97))
+            scene.window((camera.center[0], middle),
+                         (half[0] * 1.7, tall * scale), scale=scale)
             head = middle - (tall * 0.5 - 10.0) * scale
             who = screen.who or (self.speaking.name if self.speaking else "")
             if who:
@@ -3378,8 +3421,10 @@ class OverworldGame(chigame.Game):
                            else (0.56, 0.60, 0.68, 1.0))
             hint = ("Up/Down choose   Confirm select" if screen.choices
                     else "Confirm to go on   Cancel to leave")
-            scene.text(hint, at=(camera.center[0], bottom - 10.0 * scale),
-                       height=9.0 * scale, align="center", color=(0.48, 0.52, 0.60, 1.0))
+            # Inside the box, on its bottom rule. It used to sit at the very
+            # edge of the screen, where the view cut it in half.
+            scene.text(hint, at=(camera.center[0], middle + tall * 0.5 * scale - 7.0 * scale),
+                       height=8.5 * scale, align="center", color=(0.56, 0.62, 0.78, 1.0))
             return
 
         # The bottom band, stacked from the bottom up and given a backing of its
@@ -3417,10 +3462,9 @@ class OverworldGame(chigame.Game):
             tall = pitch * len(band) + 12.0
             wide = max(self._text_width(scene, text, size) for text, size, _ in band)
             base = bottom - (tall - 6.0) * scale
-            scene.draw("ui", "panel",
-                       at=(camera.center[0], base + (tall * 0.5 - 9.0) * scale),
-                       size=(max(wide + 26.0, 180.0) * scale, tall * scale),
-                       color=(0.02, 0.025, 0.035, 0.72))
+            scene.window((camera.center[0], base + (tall * 0.5 - 9.0) * scale),
+                         (max(wide + 26.0, 180.0) * scale, tall * scale),
+                         scale=scale, fill=(0.055, 0.075, 0.16, 0.88))
             for offset, (text, size, colour) in enumerate(band):
                 scene.text(text, at=(camera.center[0], base + offset * pitch * scale),
                            height=size * scale, align="center", color=colour)

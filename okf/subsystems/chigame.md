@@ -240,31 +240,46 @@ bug.
 
 ## pixelfont — the typeface is string art, not a font file
 
-`pixelfont.py` holds all 95 printable ASCII glyphs as eight rows of five
+`pixelfont.py` holds all 95 printable ASCII glyphs as eleven rows of seven
 `#`/`.` characters, and `text.py` uploads them as one coverage atlas. There is
-no font file, no font parser, and — now — no Qt in the text path at all, so a
-headless render and a windowed one draw identical glyphs.
+no font file, no font parser, and no Qt in the text path at all, so a headless
+render and a windowed one draw identical glyphs.
 
-It replaced Qt rasterisation, which was the worst-looking thing in every
-screenshot for two separate reasons:
+**Why 7x11 and not 5x7.** A 5x7 body is a Game Boy face — one stroke per
+feature and no room for a curve to be a curve. The taller box gives capitals
+eight rows, lower case a real x-height, and `g j p q y` somewhere to descend to.
 
-- **A bug.** `QFontDatabase.systemFont(FixedFont)` resolves to
-  `.AppleSystemUIFont` on macOS — a *proportional* face — and
-  `setFixedPitch(True)` afterwards does not change what was already resolved.
-  Every glyph was then centred in a cell the width of an `M`, which is the
-  `s e t t l e d` look.
-- **A category error.** A system UI font in a 16-bit game reads as a terminal
-  in costume however carefully it is measured.
+**Two things matter as much as the resolution**, and both are what separate a
+console face from a terminal one:
 
-Two things came with it. **Advance and glyph box are separate numbers**
-(`pitch` vs `aspect`) — letters sit on a six-pixel pitch and are five pixels
-wide, and conflating those was most of the spindliness. And the glyph atlas is
-sampled **nearest**, because a pixel font through a linear filter is a blurred
-pixel font.
+- **Proportional widths.** Glyphs are authored in a 7-wide box and *trimmed to
+  their ink*, so `i` takes one column and `m` seven. The advance is measured
+  from the art, never declared beside it — a hand-kept width table goes wrong
+  silently the first time a stem moves.
+- **A drop shadow.** Every string is drawn twice, one font pixel down and
+  right, in a dark tone. It is why console text stays readable over any
+  background. Tests that count text lines must filter the shadow pass out.
 
-Licensing, since this replaced a proposal to ship a real one: shipping
-`joystix.ttf` was refused after reading its `name` table — `© Typodermic Fonts
-Inc`, trademarked, no licence grant. The face here is one file of `#` and `.`.
+It replaced Qt rasterisation, which carried a real bug:
+`QFontDatabase.systemFont(FixedFont)` resolves to `.AppleSystemUIFont` on
+macOS — a *proportional* face — and `setFixedPitch(True)` afterwards does not
+change what was already resolved, so narrow letters floated in cells the width
+of an `M`. The glyph atlas is also sampled **nearest** now; a pixel font
+through a linear filter is a blurred pixel font.
+
+Licensing, since this replaced a proposal to ship a real one: `joystix.ttf` was
+refused after reading its `name` table — `© Typodermic Fonts Inc`, trademarked,
+no licence grant, whatever the surrounding repository's MIT file says. (The
+*graphics* of that same reference are genuinely CC0 — the Ninja Adventure pack
+by Pixel-boy and AAA.)
+
+## Scene.window — the console dialogue box
+
+Three flat bands, outside in: a near-black outer edge, a bright rule one pixel
+inside it, then a saturated fill. The **rule** is the whole effect — it is what
+makes a box sit *on* the picture rather than float over it, and it is what a
+single translucent rounded rectangle can never give you however carefully it is
+tinted. Two extra quads.
 
 ## ParticleField — the layer that says something happened
 

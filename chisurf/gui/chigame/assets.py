@@ -337,6 +337,12 @@ class ProceduralPack(AssetPack):
         if kind == "ui":
             variants = {
                 "panel": Appearance(shape=ROUND, color=(0.10, 0.11, 0.15, 0.92), param=0.25),
+                # One band of a console-style window frame. Barely rounded and
+                # never soft: the corners of these boxes are square by two
+                # pixels, and a soft edge would blur the rule that makes the
+                # frame read as a frame. See Scene.window.
+                "frame": Appearance(shape=ROUND, color=(0.10, 0.11, 0.15, 0.98),
+                                    param=0.06, softness=0.0),
                 "bar": Appearance(shape=ROUND, color=self.PALETTE["accent"], param=0.5),
                 "selected": Appearance(shape=ROUND, color=self.PALETTE["accent"], param=0.35),
                 "spark": Appearance(shape=ELLIPSE, color=self.PALETTE["accent"], softness=0.4),
