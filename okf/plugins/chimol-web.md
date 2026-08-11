@@ -75,10 +75,83 @@ them run. The 806 ms-against-39 ms measurement in the earlier handover is still
 true and is still why a *tiny* case stays on the CPU — it was taken at 1,363
 work items, below this floor.
 
-Whole commands afterwards (real viewer, headless, warm): `load` 67 ms,
-`as cartoon` 82 ms, `as spheres` 81 ms, `as surface` 597 ms. `as sticks` is the
-slowest left at ~1.8 s cold and ~0.25 s warm, and its profile blames wgpu's FFI
-rather than any kernel.
+### And then `as X` was rebuilding the scene eleven times
+
+The second half is not a kernel at all. `as sticks` profiled at **eleven calls
+to `_update_view` for one command**: `as` is "hide everything, show this", and
+`hide everything` is a loop over ten representations whose every setter
+triggered a full rebuild — atoms, occlusion, shadows, all of it. Ten of those
+scenes are never seen by anybody.
+
+`MolView.suspend_updates()` already existed for exactly this, with one caller.
+`show`/`hide`/`as` use it now (through `_batched`, which degrades to a plain
+block for a viewer that lacks it). **`as sticks` 81 → 9 ms cold**; a
+spheres→sticks round trip 540 → 78 ms.
+
+### Spheres: the fastest geometry is the geometry you do not build
+
+`show spheres` on 148L emitted **124,704 triangles** from 94 ms of NumPy, every
+rebuild. It now emits **none**: 1,299 impostor quads. An impostor is not the
+cheap approximation of the two -- it is the *exact* sphere, where a tessellation
+is a polyhedron -- and the parity is already pinned at silhouette IoU > 0.97
+(`test_wgsl_parity.py::TestImpostorsOnTheGpu`).
+
+The rule existed and applied to nothing: `balls.impostor_min_atoms` defaulted to
+20,000 and only the **bead** path consulted it, so an atomic structure never
+took the impostor route however large it was. `_build_balls_mesh` chooses now,
+so every caller -- atoms, beads, ball-and-stick -- gets it, and the floor is 1
+(migration 15; the knob remains for anyone who wants the mesh back).
+
+`show spheres` 94 → 27 ms, and what is left is the occlusion bake, not geometry.
+Occlusion is baked **per atom** rather than per vertex: there are no vertices,
+and a gradient across one atom is not visible at this scale.
+
+### Sticks, the same way
+
+`wgsl/cylinder.wgsl` is the bond: a capped cylinder with an analytic ray
+intersection and the colour split at the midpoint, as PyMOL's sticks are. **33,216
+vertices and 11,072 triangles become 2,768 vertices and none**, and the
+before/after pair on 148L is indistinguishable at a glance -- the impostor is
+slightly crisper, because a twelve-sided tube is a prism.
+
+Three things this cost, all of them the seam working as intended:
+
+* **the sign of the near root.** `(-qb - root) / qa`, not `(qb - root) / qa`.
+  Getting it wrong does not draw nothing -- it draws a handful of correct pixels
+  per bond, which reads as a scatter of specks rather than as an error.
+* **the ray tracer had to be taught the primitive in the same change.** `ray`
+  refused a stick model outright ("the only thing shown is cylinders geometry"),
+  because `TRACEABLE_KINDS` did not list it. It draws them as its own
+  round-capped sausages -- the primitive it already had for wireframes.
+* **`float()` of a one-element array raises.** The tracer read
+  `geom.radii[i]` for point geometry, which is `(n, 1)` from the scene builder;
+  the impostor path made that the ordinary case and `ray` failed with *only
+  0-dimensional arrays can be converted to Python scalars*.
+
+**This is the shape of the answer to "move the representation compute to WGSL"**
+for spheres and bonds: a compute shader that built those 33,216 vertices faster
+would still be building vertices nobody needs. What is left for a compute shader
+is the cartoon, which is a genuine mesh.
+
+### Where the commands stand
+
+Real viewer, headless, warm, on an M1 Pro:
+
+| command | session start | after the router | after batching |
+|---|---:|---:|---:|
+| `load 148l.pdb` | 393 ms | 67 ms | **48 ms** |
+| `as cartoon` | 4,435 ms | 82 ms | **16 ms** |
+| `as spheres` | 111 ms | 81 ms | **64 ms** |
+| `as surface` | 834 ms | 597 ms | **222 ms** |
+| `as sticks` | 2,769 ms | 1,880 ms | **8 ms** |
+
+Two stale tests fell out of the profiling, both red since numba left chimol and
+both about the same obsolete trick: `test_bead_model` asserted a `_NB_CACHE`
+flag that no longer exists, and `test_nucleic_cartoon_render` loaded
+`cartoon.py` **by file path** to dodge a package `__init__` that used to import
+Qt. The dodge broke when `ambient.py` grew a relative import — a by-path module
+has no package to be relative to — and it is unnecessary now that the engine
+imports without a toolkit. Both import normally.
 
 ## scipy is out of the engine
 
@@ -122,14 +195,59 @@ fail to load in the browser with a message about casting rules.
 `grid_occupancy()` reports the fullest cell, which is how a degenerate density
 is seen rather than guessed at.
 
+## What belongs on the GPU, and what belongs nowhere
+
+The question asked was whether the representation builders -- cartoon, bonds --
+should move from Python into WGSL compute, with the atom list resident in VRAM.
+The measurements say: **for two of them, yes; for two of them the work should
+stop existing instead; and the VRAM residency is a separate, real win.**
+
+Per representation on 148L (1,363 atoms), after today's work:
+
+| representation | build | vertices | triangles | verdict |
+|---|---:|---:|---:|---|
+| `lines` | 0.7 ms | 5,536 | 0 | already trivial |
+| `sticks` | 10 ms | 33,216 → **2,768** | 11,072 → **0** | done -- impostors |
+| `cartoon` | 27 ms | 19,908 | 13,010 | **compute shader** |
+| `spheres` | 94 → **27 ms** | 207,840 → **1,299** | 124,704 → **0** | done -- impostors |
+| `surface` | 312 ms | 27,920 | 18,610 | mostly GPU already |
+
+1. **Spheres and bonds are analytic primitives, and both are done.** Two
+   triangles each, intersected in the fragment shader. A compute shader that
+   produced their meshes faster would still be producing vertices nobody needs.
+2. **The cartoon is a genuine mesh** -- a swept ribbon whose cross-section
+   changes with secondary structure -- and it is the one that wants a compute
+   shader. It is also the one whose *input* is small (one frame per residue) and
+   whose output is large, which is exactly the ratio that makes a GPU builder
+   pay.
+3. **The surface is already there** except for marching cubes' vertex welding,
+   whose GPU form was designed and rejected once (an `atomicCompareExchange`
+   claim per grid edge with no forward-progress guarantee; the spin-free version
+   is three passes and 25 MB at 128³ -- see the earlier analysis in this
+   concept).
+4. **Atoms resident in VRAM** is the upload half, and it is worth doing on its
+   own: a colour change re-uploads positions today because the vertex buffer is
+   keyed on the *content* of the arrays. A persistent per-object buffer, with
+   the CPU copy kept for picking and for the ray tracer, makes a recolour a
+   1-float-per-atom write. `_vertex_cache` in `wgpu_backend.py` is where that
+   lands.
+
 ## Next, in this order
 
-1. **`as sticks` is the slowest command left** — ~1.8 s cold, ~0.25 s warm, and
-   a profile puts the top entry in wgpu's FFI rather than in any one kernel.
-   Measure a cold rebuild before optimising; the warm path is already fine.
-2. **The `app/` panels into the chrome** — thirteen of `HOSTS`' fifteen. Start
-   with `sequence_dock.py`, whose replacement already ships.
-3. **The page's renderer is still its own.** `web/demo.py` packs the sink's scene
+1. **The cartoon on the GPU.** The one representation left whose output really
+   is a mesh, and the one whose input/output ratio makes a compute builder pay:
+   one frame per residue in, ~20,000 vertices out. `mc_vertices.wgsl` is the
+   nearest example of a kernel that emits geometry.
+2. **A resident per-object atom buffer**, so a recolour does not re-upload
+   positions. `_vertex_cache` keys on array *content* today, which is correct
+   and wasteful -- and now that a sphere is one position and a bond two, the
+   buffers are small enough that keeping them resident is cheap.
+3. **The `app/` panels into the chrome** — thirteen of `HOSTS`' fifteen. Start
+   with `sequence_dock.py`: it is already built-hidden, nothing outside
+   `molview_main_window` touches it, and the ~110 references that feed it are
+   in eight methods. It also costs a real rebuild: the window still fills a
+   hidden list widget with one item per residue on every sequence sync.
+4. **The page's renderer is still its own.** `web/demo.py` packs the sink's scene
    and calls `render_into`; `wgpu_view.py` does the same thing with Qt around it.
    That is the last real duplication, and it closes by making the Qt widget a
    thin host over a shared frame builder.

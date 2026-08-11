@@ -85,7 +85,10 @@ def test_counts_report_every_kind_the_scene_holds():
 def test_text_is_the_kind_that_cannot_be_traced():
     """`ray` names what it leaves out; that list comes from this constant."""
     assert "text" not in TRACEABLE_KINDS
-    assert set(TRACEABLE_KINDS) == {"points", "mesh", "line"}
+    # `cylinders` is here because bonds became analytic cylinders on the GPU and
+    # the tracer was taught them in the same change -- a rasteriser primitive
+    # missing from this list is a `ray` that refuses the representation.
+    assert set(TRACEABLE_KINDS) == {"points", "mesh", "line", "cylinders"}
 
 
 def test_an_empty_scene_counts_nothing():

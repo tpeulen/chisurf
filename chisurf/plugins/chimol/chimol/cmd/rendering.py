@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import contextlib
+
 import numpy as np
 
 from ..colors import _PYMOL_COLORS
@@ -7,6 +9,29 @@ from .argparse2 import CommandError, coerce_value
 from .base import BaseCmd
 from .registry import command
 from .selection_types import Selection
+
+
+@contextlib.contextmanager
+def _batched(viewer):
+    """Collapse a command's redraws into one, where the viewer can.
+
+    Parameters
+    ----------
+    viewer : object
+        The viewer. Anything without ``suspend_updates`` -- a test double, an
+        older backend -- runs the block unchanged rather than failing, because
+        this is an optimisation and not a contract.
+
+    Yields
+    ------
+    None
+    """
+    suspend = getattr(viewer, "suspend_updates", None)
+    if suspend is None:
+        yield
+        return
+    with suspend():
+        yield
 
 
 class RenderingMixin(BaseCmd):
@@ -270,8 +295,14 @@ class RenderingMixin(BaseCmd):
         # representations while the menu it lived in grew to ten, and the ones
         # the command rejected were the ones the object menu shipped.
         selection = str(sel).strip()
-        self._toggle_representation("everything", selection, visible=False)
-        self._toggle_representation(rep, selection, visible=True)
+        # One rebuild, not eleven. `as` hides ten representations and shows one,
+        # and each of those eleven setters triggered a full `_update_view` --
+        # measured on a profile of a single `as sticks`, which called it eleven
+        # times and rebuilt the atoms, the occlusion and the shadows on each.
+        # Ten of those scenes are never seen by anybody.
+        with _batched(viewer):
+            self._toggle_representation("everything", selection, visible=False)
+            self._toggle_representation(rep, selection, visible=True)
 
     #: Every representation ``everything`` stands for, in the order applied.
     _ALL_REPRESENTATIONS = ("cartoon", "trace", "lines", "nonbonded", "labels",
@@ -311,8 +342,11 @@ class RenderingMixin(BaseCmd):
                 rep_target = "everything"
 
         if rep_target == "everything":
-            for name in self._ALL_REPRESENTATIONS:
-                self._toggle_representation(name, selection or "", visible=vis)
+            # Also batched: `hide everything` on its own is ten rebuilds for one
+            # command, and it is what every script starts with.
+            with _batched(viewer):
+                for name in self._ALL_REPRESENTATIONS:
+                    self._toggle_representation(name, selection or "", visible=vis)
             return
 
         if rep_target in ("all", "*"):

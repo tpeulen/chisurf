@@ -226,9 +226,13 @@ def test_hetero_atoms_reach_the_scene(loaded_view):
     assert scene is not None
     atom_objects = [o for o in scene.objects if "atoms" in o.id]
     assert atom_objects, "no atom geometry in the scene"
-    # A merged sphere mesh has many vertices per atom; the coarse CA fallback
-    # produced a points object with about a tenth of the residue count.
-    assert atom_objects[0].geometry.positions.shape[0] > _N_DISPLAYED
+    # One position per displayed atom. This used to read `> _N_DISPLAYED`,
+    # because a merged sphere mesh has ~160 vertices per atom and the coarse CA
+    # fallback this guards against produced roughly a tenth of the residue
+    # count -- so "more than the atoms" separated them. Spheres are impostors
+    # now, one position each, which makes the exact count available and the
+    # proxy unnecessary.
+    assert atom_objects[0].geometry.positions.shape[0] == _N_DISPLAYED
 
 
 # --------------------------------------------------------------------------- #

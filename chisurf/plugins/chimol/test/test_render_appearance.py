@@ -283,17 +283,31 @@ def test_a_bonded_ligand_keeps_its_van_der_waals_radius(lysozyme):
         centres - radii[:, None]
     ).min(axis=0)
 
-    # Only the sphere mesh: the cartoon spans the whole protein and would swamp
-    # any measurement of the ligand.
-    verts = [
-        np.asarray(o.geometry.positions, dtype=float)
-        for o in viewer.get_current_scene().objects
-        if getattr(o.geometry, "positions", None) is not None
-        and "cartoon" not in str(o.id)
-    ]
-    assert verts, "show spheres, organic produced no geometry"
-    drawn = np.concatenate(verts)
-    actual = drawn.max(axis=0) - drawn.min(axis=0)
+    # Only the spheres: the cartoon spans the whole protein and would swamp any
+    # measurement of the ligand.
+    #
+    # Each object's extent is its positions **grown by its own radii**, because
+    # a sphere is an impostor now: its geometry carries one position and a
+    # radius, where the tessellation carried a shell of vertices a radius away.
+    # Measuring the raw positions reads 86% of the envelope for a perfectly
+    # correct picture -- it is missing one radius at each end.
+    lows: list[np.ndarray] = []
+    highs: list[np.ndarray] = []
+    for obj in viewer.get_current_scene().objects:
+        geometry = obj.geometry
+        positions = getattr(geometry, "positions", None)
+        if positions is None or "cartoon" in str(obj.id):
+            continue
+        points = np.asarray(positions, dtype=float)
+        if not points.size:
+            continue
+        grow = 0.0
+        if getattr(geometry, "radii", None) is not None:
+            grow = np.asarray(geometry.radii, dtype=float).reshape(-1, 1)
+        lows.append((points - grow).min(axis=0))
+        highs.append((points + grow).max(axis=0))
+    assert lows, "show spheres, organic produced no geometry"
+    actual = np.max(highs, axis=0) - np.min(lows, axis=0)
 
     # The margin has to be tight. A bounding box is dominated by how far apart
     # the atom *centres* are, so quartering every ligand radius only pulls this

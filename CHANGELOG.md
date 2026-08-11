@@ -4,6 +4,8 @@
 
 ### Added
 
+- **ChiMOL's spheres and sticks are analytic primitives, not meshes.** `show spheres` on T4 lysozyme built 124,704 triangles in NumPy on every rebuild and now builds none — an impostor is the *exact* sphere where a tessellation is a polyhedron — and sticks went from 33,216 vertices to 2,768 capped cylinders with PyMOL's midpoint colour split. `ray` draws both. Separately, `as <representation>` was rebuilding the whole scene eleven times per command; it rebuilds once, so `as sticks` takes 9 ms instead of 81.
+
 - **ChiMOL draws a cartoon 54× faster.** Showing a cartoon of T4 lysozyme took 4.4 seconds and now takes 82 ms: its 19,908 vertices missed the GPU compute threshold by ninety-two, and fell back to a CPU route that grows with vertex×atom pairs. The threshold for the per-vertex shading kernels is now set from measurements rather than guessed. The neighbour queries underneath are 4–12× faster too, and a bug that stopped structures loading in the browser went with them.
 
 - **ChiMOL in a browser is now the same ChiMOL.** The page runs the viewer and the command layer the desktop runs — `load`, `as cartoon`, `as spheres`, `select`, `bg_color` all work in a tab — rather than a parallel browser-only viewer with its own commands, which is what it had. Along the way the engine stopped needing SciPy at all (neighbour queries are an in-tree grid, the distance transform an in-tree exact transform), `fetch` works in a page, and the web server moved off port 8765, which ChiSurf's own server uses.

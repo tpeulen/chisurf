@@ -314,6 +314,18 @@ class WgpuMeshRenderer:
             "topology": "triangle-list",
             "step_mode": "instance",
         },
+        # start+radius(4) end+pad(4) colour_start(4) colour_end(4) occlusion(1),
+        # one per bond. Two colours because PyMOL splits a stick at its midpoint
+        # so each half carries its own atom's colour.
+        "cylinder": {
+            "shader": "cylinder.wgsl",
+            "attributes": [
+                ("float32x4", 4), ("float32x4", 4),
+                ("float32x4", 4), ("float32x4", 4), ("float32", 1),
+            ],
+            "topology": "triangle-list",
+            "step_mode": "instance",
+        },
         # position(3) colour(4)
         "line": {
             "shader": "line.wgsl",
@@ -463,6 +475,58 @@ class WgpuMeshRenderer:
         out[:, 4:8] = cls._rgba(geometry)
         if geometry.occlusion is not None:
             out[:, 8] = geometry.occlusion[:, 0]
+        return np.ascontiguousarray(out)
+
+    @classmethod
+    def interleave_cylinders(cls, geometry) -> np.ndarray:
+        """Pack bond geometry into the per-instance cylinder layout.
+
+        Parameters
+        ----------
+        geometry : PackedGeometry
+            ``kind == "cylinders"``: ``positions`` holds the two ends of each
+            bond consecutively, so it has twice as many rows as there are
+            bonds, and ``colors`` matches it end for end.
+
+        Returns
+        -------
+        numpy.ndarray
+            ``(k, 17)`` float32: start+radius, end+pad, both colours, occlusion.
+
+        Notes
+        -----
+        The radius comes from ``radii`` per bond, or from ``meta["radius"]`` for
+        the ordinary case where every stick is the same width. It is a distance
+        in the model, always -- a stick that changed thickness with the camera
+        would be a different bond at every zoom.
+        """
+        positions = np.asarray(geometry.positions, dtype=np.float32).reshape(-1, 3)
+        count = positions.shape[0] // 2
+        out = np.zeros((count, 17), dtype=np.float32)
+        if count == 0:
+            return out
+
+        out[:, 0:3] = positions[0::2]
+        out[:, 4:7] = positions[1::2]
+        if geometry.radii is not None and len(geometry.radii) >= count:
+            out[:, 3] = np.asarray(geometry.radii, dtype=np.float32).reshape(-1)[:count]
+        else:
+            out[:, 3] = float(geometry.meta.get("radius", 0.25))
+
+        colours = cls._rgba(geometry)
+        if colours is not None and colours.shape[0] >= 2 * count:
+            out[:, 8:12] = colours[0::2][:count]
+            out[:, 12:16] = colours[1::2][:count]
+        else:
+            out[:, 8:16] = 1.0
+        if geometry.occlusion is not None:
+            occlusion = np.asarray(geometry.occlusion, dtype=np.float32).reshape(-1)
+            if occlusion.size >= 2 * count:
+                # Per *end*; a cylinder gets one value, so the darker end wins --
+                # a stick half-buried in the protein should read as buried.
+                out[:, 16] = np.maximum(occlusion[0::2][:count], occlusion[1::2][:count])
+            elif occlusion.size >= count:
+                out[:, 16] = occlusion[:count]
         return np.ascontiguousarray(out)
 
     @classmethod
@@ -1031,6 +1095,8 @@ class WgpuMeshRenderer:
 
         if kind in ("impostor", "marker"):
             data = self.interleave_impostors(geom)
+        elif kind == "cylinder":
+            data = self.interleave_cylinders(geom)
         elif kind == "line":
             data = self.interleave_lines(geom)
         else:
@@ -1123,6 +1189,9 @@ class WgpuMeshRenderer:
         if kind == "mesh":
             has_indices = geometry.indices is not None and geometry.indices.size
             return "mesh" if has_indices else None
+        if kind == "cylinders":
+            # Two rows per bond, so an odd count is a bond with one end.
+            return "cylinder" if geometry.vertex_count >= 2 else None
         if kind == "points":
             if not geometry.vertex_count:
                 return None
@@ -1395,6 +1464,10 @@ class WgpuMeshRenderer:
             slot_index += 1
             rp.set_bind_group(0, bind)
             rp.set_vertex_buffer(0, vbo)
+
+            if kind == "cylinder":
+                rp.draw(6, max(geom.vertex_count // 2, 0), 0, 0)
+                continue
 
             if kind in ("impostor", "marker"):
                 # Six vertices derived from the index, one instance per sphere:

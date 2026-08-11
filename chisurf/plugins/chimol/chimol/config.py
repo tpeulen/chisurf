@@ -14,7 +14,7 @@ try:
 except Exception:  # pragma: no cover - moview can run without chisurf
     _cs_settings = None
 
-DISPLAY_CONFIG_VERSION: int = 14
+DISPLAY_CONFIG_VERSION: int = 15
 """Current version of the chimol_display.json schema.
 
 Increment this when keys are added, renamed, or removed, **or when a default
@@ -128,6 +128,29 @@ DISPLAY_CONFIG_MIGRATIONS: dict[int, dict[str, dict[str, tuple]]] = {
             # keeps every existing scene looking as it did, rather than making
             # a correctness fix arrive as "the shadows went pale".
             "shadow_strength": (1.0, 2.8),
+        },
+    },
+    15: {
+        "balls": {
+            # Impostors for every sphere, not only for a bead model of twenty
+            # thousand. An impostor is the *exact* sphere where a tessellation
+            # is a polyhedron, and it costs two triangles against ninety-two:
+            # `show spheres` on 148L was 124,704 triangles built by 94 ms of
+            # NumPy per rebuild, and is now 2,726 built by nothing. The knob
+            # stays -- set it high to get the mesh back -- but its floor has no
+            # reason to be above one.
+            "impostor_min_atoms": (20000, 1),
+        },
+    },
+    17: {
+        "label": {
+            # The size nobody was ever seeing: `paint_labels` hard-coded 10
+            # while this said 14, so the setting was documented, stored and
+            # read by nothing. Honouring it is already an increase, and the
+            # size actually on screen -- 10 -- was reported as too small, so
+            # the default moves too rather than restoring a number that was
+            # never in effect.
+            "size": (14.0, 16.0),
         },
     },
     14: {
@@ -626,7 +649,7 @@ def _load_display_config() -> dict:
             # Past this many beads an integrative model is drawn as sphere
             # impostors -- one vertex each, shaded as a sphere in the fragment
             # shader -- instead of a merged mesh of ~160 vertices per bead.
-            "impostor_min_atoms": 20000,
+            "impostor_min_atoms": 1,
         },
         "overlay": {
             # Cap on rendered points for transparent point-cloud overlays (AV
@@ -763,6 +786,9 @@ def _load_display_config() -> dict:
         },
         "sticks": {
             "connect_cutoff": 0.35,
+            # Analytic cylinders rather than a twelve-sided tube. `False`
+            # restores the mesh, which is only worth doing to compare them.
+            "impostors": True,
             "width": 2.0,
             "radius": 0.15,
             "segments_circle": 12,

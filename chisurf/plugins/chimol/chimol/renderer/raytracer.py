@@ -336,7 +336,11 @@ _LINE_SIDES = 8
 
 #: Geometry kinds :func:`render_scene` turns into traced primitives. ``text`` is
 #: the one it cannot: a label is rasterised glyphs, and the tracer has no glyph.
-TRACEABLE_KINDS = ("points", "mesh", "line")
+#: ``cylinders`` joined the list when bonds became analytic cylinders on
+#: the GPU: the tracer draws them as its round-capped sausages, and a
+#: rasteriser primitive the tracer has not been taught is a `ray` that
+#: refuses the representation outright.
+TRACEABLE_KINDS = ("points", "mesh", "line", "cylinders")
 
 
 def traceable_geometry_counts(scene) -> dict[str, int]:
@@ -604,7 +608,8 @@ def render_scene(
 ) -> np.ndarray:
     """Render a Scene object by extracting all renderable geometry.
 
-    Handles ``points`` geometry (spheres), ``mesh`` geometry (triangles) and
+    Handles ``points`` geometry (spheres), ``cylinders`` (capped sausages),
+    ``mesh`` geometry (triangles) and
     ``line`` geometry (round-capped cylinders, as PyMOL's ray does). ``text`` is
     the one kind it cannot trace; :func:`traceable_geometry_counts` is how a
     caller finds that out and says so, rather than dropping labels in silence.
@@ -639,7 +644,16 @@ def render_scene(
         if geom.kind == "points":
             positions = np.asarray(geom.positions, dtype=float)
             colors = np.asarray(geom.colors, dtype=float) if geom.colors is not None else None
-            radii_arr = np.asarray(geom.radii, dtype=float) if geom.radii is not None else None
+            # `(n, 1)` is the shape the scene builder uses -- one radius per
+            # point, as a column -- and `float()` of a one-element array raises
+            # rather than converting. The impostor path made that the ordinary
+            # case, and the failure reached the user as `ray: only
+            # 0-dimensional arrays can be converted to Python scalars`.
+            radii_arr = (
+                np.asarray(geom.radii, dtype=float).reshape(-1)
+                if geom.radii is not None
+                else None
+            )
             meta_radius = geom.meta.get("radius", 0.5) if isinstance(geom.meta, dict) else 0.5
             for i in range(positions.shape[0]):
                 r = float(radii_arr[i]) if radii_arr is not None else float(meta_radius)
@@ -713,6 +727,34 @@ def render_scene(
                 tri_alpha_list.append(
                     _triangle_alpha(cols, np.arange(0, n_tris * 3, 3), n_tris)
                 )
+
+        elif geom.kind == "cylinders":
+            # Bonds are analytic cylinders on the GPU and round-capped sausages
+            # here -- the tracer's existing primitive for exactly this shape,
+            # already used for wireframes. Without this branch `ray` refused a
+            # stick model outright ("the only thing shown is cylinders
+            # geometry"), which is what the rasteriser gaining a primitive costs
+            # if the tracer is not taught it at the same time.
+            ends = np.asarray(geom.positions, dtype=float).reshape(-1, 3)
+            pairs = ends.shape[0] // 2
+            if pairs:
+                cols = (
+                    np.asarray(geom.colors, dtype=float).reshape(-1, 4)
+                    if geom.colors is not None
+                    else np.ones((ends.shape[0], 4))
+                )
+                bond_radius = float((geom.meta or {}).get("radius", shaft_radius))
+                caps, lv, ln, lc = _sausages(
+                    ends[0::2][:pairs], ends[1::2][:pairs],
+                    cols[0::2][:pairs, :3], cols[1::2][:pairs, :3],
+                    bond_radius,
+                )
+                if lv.shape[0]:
+                    spheres.extend(caps)
+                    tri_vertices_list.append(lv)
+                    tri_vnormals_list.append(ln)
+                    tri_colors_list.append(lc)
+                    tri_alpha_list.append(np.ones(lv.shape[0], dtype=float))
 
         elif geom.kind == "line":
             caps, lv, ln, lc = _sausages(*_line_segments(geom), shaft_radius)

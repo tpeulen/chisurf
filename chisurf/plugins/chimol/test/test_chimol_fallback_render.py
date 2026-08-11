@@ -21,7 +21,6 @@ from chisurf.plugins.chimol.chimol.io.structure import _parse_pdb_backbone
 from chisurf.plugins.chimol.chimol.renderer.view import (
     _DISPLAY_CONFIG,
     MolView,
-    _build_sphere_mesh,
 )
 
 _PDB = (
@@ -68,13 +67,13 @@ def test_fallback_renders_every_atom(_qt_app) -> None:
         np.asarray(view._coords), view._coords.shape[0], balls_cfg, view._colors_per_ca
     ) or []
 
-    meshes = [o for o in objs if o.id == "atoms_mesh"]
-    assert meshes, "the fallback atoms representation produced no mesh"
+    spheres = [o for o in objs if o.id == "atoms_mesh"]
+    assert spheres, "the fallback atoms representation produced no geometry"
 
-    # The balls glyph uses the coarse, config-driven sphere resolution.
-    lat, lon = view._balls_sphere_segments()
-    verts_per_atom = _build_sphere_mesh(1.0, lat, lon)["vertices"].shape[0]
-    drawn = meshes[0].geometry.positions.shape[0] // verts_per_atom
+    # One position per atom: spheres are impostors, so the sphere count *is*
+    # the position count. This used to divide by the tessellation's vertices
+    # per atom, which measured the same thing through the mesh.
+    drawn = spheres[0].geometry.positions.shape[0]
     assert drawn == n_atoms, f"drew {drawn} atoms, expected {n_atoms}"
 
 

@@ -6,8 +6,12 @@ widget, so it runs anywhere numpy + matplotlib are available.
 
 It:
 
-* loads ``cartoon.py`` (and its sibling ``ambient.py``) by file path so the
-  Qt-importing ``chimol`` package ``__init__`` is not pulled in;
+* imports ``chimol.geometry.cartoon`` normally. It used to load that file **by
+  path**, to dodge a ``chimol`` package ``__init__`` that imported Qt -- and
+  that stopped working the moment ``ambient.py`` grew a relative import of its
+  own, since a by-path module has no package to be relative to. The test had
+  been red ever since. The dodge is also no longer needed: the engine imports
+  without a toolkit;
 * builds the same inputs ``MolView`` passes (full atom array, scaled/centered
   coordinates, per-residue trace ids, per-residue colors) from the FRET docking
   example ``fps_hiv_rt/dna.pdb`` (DA/DC/DG/DT + modified 2DA, mixed ' / * sugar
@@ -23,7 +27,6 @@ Produce the PNGs:     ``python chisurf/plugins/chimol/test/test_nucleic_cartoon_
 """
 from __future__ import annotations
 
-import importlib.util
 import pathlib
 
 import numpy as np
@@ -43,21 +46,18 @@ _DNA_PDB = (
 _RENDERS = _HERE / "renders"
 
 
-def _load_by_path(name: str, path: pathlib.Path):
-    spec = importlib.util.spec_from_file_location(name, path)
-    assert spec and spec.loader, f"cannot load {path}"
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    return mod
-
-
 def _load_cartoon_module():
-    """Load cartoon.py standalone and inject the AO helper it expects."""
-    ambient = _load_by_path("_chimol_ambient_standalone", _GEOM / "ambient.py")
-    cartoon = _load_by_path("_chimol_cartoon_standalone", _GEOM / "cartoon.py")
-    # cartoon.py's ``from .ambient import ...`` fails under file-path loading and
-    # falls back to None; wire the real implementation back in.
-    cartoon._estimate_ambient_occlusion = ambient._estimate_ambient_occlusion
+    """Return the cartoon geometry module.
+
+    A plain import. What stood here loaded ``cartoon.py`` and ``ambient.py`` by
+    file path and then hand-wired the occlusion helper back in, because
+    ``from .ambient import ...`` fails under a by-path load and fell back to
+    ``None``. Every part of that is obsolete: importing the package no longer
+    drags in a GUI toolkit, so the module can simply be imported, and then the
+    relative imports resolve by themselves.
+    """
+    from chisurf.plugins.chimol.chimol.geometry import cartoon
+
     return cartoon
 
 

@@ -35,7 +35,7 @@ class Geometry:
     Moview to a specific library.
     """
 
-    kind: str  # "mesh" | "line" | "points" | "text"
+    kind: str  # "mesh" | "line" | "points" | "cylinders" | "text"
     positions: np.ndarray
     indices: Optional[np.ndarray] = None
     normals: Optional[np.ndarray] = None

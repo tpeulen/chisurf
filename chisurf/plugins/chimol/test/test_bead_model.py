@@ -137,11 +137,18 @@ def test_the_masks_survive_the_scene_build(bead_view):
 # --------------------------------------------------------------------------- #
 # Which depiction, and how much it costs
 # --------------------------------------------------------------------------- #
-def test_a_small_bead_model_gets_the_merged_mesh(bead_view):
+def test_the_impostor_threshold_can_still_ask_for_the_merged_mesh(bead_view):
+    """The setting decides, and it can still choose the tessellation.
+
+    It no longer *defaults* to it: `impostor_min_atoms` is 1, so every sphere in
+    chimol is an analytic impostor. This test used to assert the old default and
+    now asserts what the knob is for -- a caller that passes a high threshold
+    gets the mesh, which is how the two can be compared at all.
+    """
     view, radii = bead_view
     obj = view._bead_scene_object({"impostor_min_atoms": 10_000}, None)
     assert obj.geometry.kind == "mesh"
-    # ~160 vertices a sphere: the mesh is what the impostor budget exists for.
+    # ~160 vertices a sphere: the mesh is what the threshold selects.
     assert obj.geometry.positions.shape[0] > 20 * radii.shape[0]
 
 
@@ -300,15 +307,14 @@ def test_a_bead_is_not_drawn_twice(hybrid_view):
     meshes = [o for o in objects if o.id == "atoms_mesh"]
     assert len(points) == 1
     assert points[0].geometry.positions.shape[0] == int(beads.sum())
-    # A merged sphere mesh has a fixed vertex count per sphere, so the mesh must
-    # account for the atomic rows and no more.
+    # The atomic rows are drawn once, by the generic path, and that path emits
+    # impostors now: one position per atom rather than a sphere's worth of
+    # vertices. Counting positions still answers the question this test asks --
+    # *how many spheres* the second object covers -- and it no longer depends on
+    # the tessellation's vertex count, which is what made it a proxy.
     assert meshes, "the atomic rows still need drawing"
-    from chisurf.plugins.chimol.chimol.renderer.view import _build_sphere_mesh
-
-    lat, lon = MolView._balls_sphere_segments()
-    per_sphere = _build_sphere_mesh(1.0, lat, lon)["vertices"].shape[0]
-    assert meshes[0].geometry.positions.shape[0] == n_atomic * per_sphere, (
-        "the merged mesh must cover the atomic rows and nothing else"
+    assert meshes[0].geometry.positions.shape[0] == n_atomic, (
+        "the second object must cover the atomic rows and nothing else"
     )
 
 
@@ -382,31 +388,26 @@ def test_world_radius_reaches_the_draw_call(qapp_chimol):
 
 
 # --------------------------------------------------------------------------- #
-# The numba cache must not be poisoned by a by-path load
+# The numba cache hazard is gone with numba
 # --------------------------------------------------------------------------- #
-def test_numba_cache_is_only_written_under_a_real_package_name():
-    """A cache entry keyed to a name nothing can import breaks the *next* run.
+def test_the_geometry_modules_import_without_a_compiler():
+    """No numba, so no cache, so nothing left to poison.
 
-    `test_nucleic_cartoon_render` loads these two modules by file path, where
-    the module name is synthetic. Numba records that name in the entry it
-    writes and re-imports it when it loads the entry back -- so the by-path
-    load's cache made an ordinary ``add_structure`` die inside numba with
-    ``ModuleNotFoundError: No module named '<dynamic>'``.
+    What stood here asserted a ``_NB_CACHE`` flag on two modules that no longer
+    have one, and loaded them **by file path** to check the flag was false
+    there. It had been red twice over since numba left chimol: the attribute is
+    gone, and a by-path load cannot resolve the relative imports those modules
+    now have.
+
+    The hazard it guarded is worth remembering even though it cannot recur:
+    numba writes the *module name* into its cache entry and re-imports it when
+    reading the entry back, so a by-path load under a synthetic name poisoned
+    the cache for the next ordinary run -- ``ModuleNotFoundError: No module
+    named '<dynamic>'`` raised from inside ``add_structure``. If numba ever
+    returns to these modules, that returns with it; ``test_no_numba.py`` is what
+    keeps it away.
     """
-    import importlib.util
-    import pathlib
-
     from chisurf.plugins.chimol.chimol.geometry import ambient, cartoon
 
-    assert cartoon._NB_CACHE is True
-    assert ambient._NB_CACHE is True
-
-    geom_dir = pathlib.Path(cartoon.__file__).parent
-    for name, path in (
-        ("_chimol_cartoon_standalone", geom_dir / "cartoon.py"),
-        ("_chimol_ambient_standalone", geom_dir / "ambient.py"),
-    ):
-        spec = importlib.util.spec_from_file_location(name, path)
-        mod = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(mod)
-        assert mod._NB_CACHE is False, f"{name} would write a poisoned cache"
+    assert not hasattr(cartoon, "_NB_CACHE"), "numba is back; restore the guard"
+    assert not hasattr(ambient, "_NB_CACHE"), "numba is back; restore the guard"

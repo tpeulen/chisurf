@@ -1,5 +1,5 @@
 {
-  "_version": 14,
+  "_version": 15,
   "renderer": {
     "backend": "wgpu"
   },
@@ -113,7 +113,7 @@
     "max_atoms": 8000,
     "sphere_lat": 10,
     "sphere_lon": 16,
-    "impostor_min_atoms": 20000
+    "impostor_min_atoms": 1
   },
   "overlay": {
     "max_points": 30000
@@ -185,6 +185,7 @@
     "connect_cutoff": 0.35,
     "width": 2.0,
     "radius": 0.15,
+    "impostors": true,
     "segments_circle": 12,
     "max_bonds": 20000,
     "bond_max_length": 1.9

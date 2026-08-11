@@ -34177,3 +34177,14 @@
   in hard squares until they were **composited over the shipped ground** at atlas-build time — a
   tree is a cell of the grid, so clearing its backdrop leaves a hole rather than showing what is
   beneath. The typeface stays ours. See [chigame](/subsystems/chigame.md).
+
+- **2026-08-11 — chimol's spheres and sticks stopped being meshes.** Both are analytic
+  impostors now: `show spheres` on 148L was 124,704 triangles from 94 ms of NumPy and is
+  0 from none (`_build_balls_mesh` chooses, `impostor_min_atoms` 20000 → 1, migration 15);
+  `show sticks` was 33,216 vertices and is 2,768 (`wgsl/cylinder.wgsl`, capped, with PyMOL's
+  midpoint colour split). The ray tracer was taught both in the same change — `cylinders`
+  joined `TRACEABLE_KINDS` and draws as its round-capped sausages — because a rasteriser
+  primitive it does not know is a `ray` that refuses the representation. Also: `as X` was
+  rebuilding the scene **eleven times** (hide-everything is ten setters, each triggering a
+  full `_update_view`); `show`/`hide`/`as` batch through the existing `suspend_updates`,
+  and `as sticks` went 81 → 9 ms cold. See [chimol-web](/plugins/chimol-web.md).

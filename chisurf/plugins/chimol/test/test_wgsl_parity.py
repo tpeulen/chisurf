@@ -211,6 +211,9 @@ class TestWgslSource:
         "bvh.wgsl": None,       # the ray prelude
         "mesh.wgsl": "render",
         "impostor.wgsl": "render",
+        # Bonds, as analytic capped cylinders: the same argument as the sphere
+        # impostor, with a colour split at the midpoint.
+        "cylinder.wgsl": "render",
         # A flat unlit glyph, not a shaded surface -- it takes the render
         # prelude for the camera matrices and calls no shading function.
         "marker.wgsl": "render",

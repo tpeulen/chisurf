@@ -5944,6 +5944,7 @@ class MolView(WidgetBase):
         radii: np.ndarray,
         *,
         occluders: str | None = None,
+        impostor_min: int | None = None,
     ) -> SceneObject | None:
         """Merge per-atom spheres into a single ``atoms_mesh`` scene object.
 
@@ -5976,6 +5977,12 @@ class MolView(WidgetBase):
         n_atoms = int(pts.shape[0])
         if n_atoms == 0:
             return None
+
+        if self._spheres_as_impostors(n_atoms, impostor_min):
+            return self._build_balls_impostors(
+                pts, colors_rgb, radii, occluders=occluders
+            )
+
         lat, lon = MolView._balls_sphere_segments()
         sphere_mesh = _build_sphere_mesh(1.0, lat, lon)
         if sphere_mesh is None:
@@ -6036,6 +6043,127 @@ class MolView(WidgetBase):
                     "radii": np.asarray(radii, dtype=float),
                     "colors": rgba[:, :3],
                 }
+            },
+        )
+        return SceneObject(id="atoms_mesh", geometry=geom, render_mode="opaque")
+
+    @staticmethod
+    def _spheres_as_impostors(n_atoms: int, floor: int | None = None) -> bool:
+        """Whether to draw *n_atoms* spheres as impostors rather than a mesh.
+
+        Parameters
+        ----------
+        n_atoms : int
+            How many spheres are to be drawn.
+        floor : int, optional
+            The caller's own ``impostor_min_atoms``. The bead path carries a
+            settings dict of its own and hands it down, and reading the global
+            configuration instead would silently ignore it -- which is exactly
+            what a caller passing a threshold is asking not to happen.
+
+        Returns
+        -------
+        bool
+
+        Notes
+        -----
+        An impostor is not the cheaper approximation of the two: it is the
+        **exact** sphere, where a tessellation is a polyhedron. It costs two
+        triangles instead of ~92, so `show spheres` on 148L is 2,726 triangles
+        instead of 124,704 -- and the build that produced those triangles, 94 ms
+        of NumPy per rebuild, does not happen at all.
+
+        This was already the bead path's rule and applied to nothing else:
+        ``balls.impostor_min_atoms`` defaults to 20,000, which no atomic
+        structure's *atom* path ever consulted. The setting still decides, so a
+        profile that wants the mesh can have it, but the floor for it is now
+        low: the impostor pipeline is verified against the mesh at silhouette
+        IoU > 0.97 (`test_wgsl_parity.py::TestImpostorsOnTheGpu`), so there is
+        nothing to gain by tessellating a hundred spheres either.
+        """
+        if floor is None:
+            try:
+                from ..config import _DISPLAY_CONFIG  # noqa: PLC0415
+
+                balls_cfg = _DISPLAY_CONFIG.get("balls", {}) or {}
+                floor = int(balls_cfg.get("impostor_min_atoms", 0))
+            except Exception:
+                floor = 0
+        return int(floor) <= 0 or n_atoms >= int(floor)
+
+    def _build_balls_impostors(
+        self,
+        pts: np.ndarray,
+        colors_rgb: np.ndarray,
+        radii: np.ndarray,
+        *,
+        occluders: str | None = None,
+    ) -> SceneObject | None:
+        """The same spheres as :meth:`_build_balls_mesh`, as impostors.
+
+        Parameters
+        ----------
+        pts : numpy.ndarray
+            ``(n, 3)`` centres.
+        colors_rgb : numpy.ndarray
+            ``(n, 3)`` colours.
+        radii : numpy.ndarray
+            ``(n,)`` radii, in model units.
+        occluders : str, optional
+            Bake ambient occlusion against this occluder set.
+
+        Returns
+        -------
+        SceneObject
+
+        Notes
+        -----
+        Occlusion is baked **per atom**, not per vertex -- there are no vertices
+        to bake it into. The mesh path shades each of a sphere's ninety-odd
+        vertices separately, which is a gradient across one atom that nothing
+        at this scale can see; one value per atom is what the impostor shader
+        reads anyway.
+
+        The normal handed to the occlusion is the outward direction from the
+        centroid. A sphere impostor has no vertex normal at all -- its normal is
+        computed per *fragment* -- and pointing outward is right for the surface
+        atoms, which are the ones whose brightness carries the shape.
+        """
+        centres = np.ascontiguousarray(pts, dtype=float).reshape(-1, 3)
+        rgba = np.ones((centres.shape[0], 4), dtype=float)
+        rgba[:, :3] = np.clip(np.asarray(colors_rgb, dtype=float)[:, :3], 0.0, 1.0)
+        radius = np.asarray(radii, dtype=float).reshape(-1, 1)
+
+        colours = rgba
+        occlusion = None
+        if occluders is not None:
+            outward = centres - centres.mean(axis=0)
+            length = np.linalg.norm(outward, axis=1, keepdims=True)
+            normals = np.divide(outward, np.where(length > 1e-6, length, 1.0))
+            colours, occlusion = self._shade_by_occlusion(
+                centres, normals, rgba, occluders=occluders
+            )
+
+        geom = Geometry(
+            kind="points",
+            positions=centres,
+            colors=colours,
+            radii=radius,
+            occlusion=occlusion,
+            # `world_radius` is what says these are model units and not point
+            # sizes. Without it the shader reads the radius as a screen-space
+            # sprite size and the molecule comes out as a scatter of dots --
+            # which looks like a framing bug and is a units bug.
+            meta={
+                "glyph": "sphere",
+                "world_radius": True,
+                # The ray tracer wants the spheres, not their silhouettes, and
+                # it is the same record the mesh path carries.
+                "spheres": {
+                    "centers": centres,
+                    "radii": np.asarray(radii, dtype=float),
+                    "colors": rgba[:, :3],
+                },
             },
         )
         return SceneObject(id="atoms_mesh", geometry=geom, render_mode="opaque")
@@ -6162,7 +6290,11 @@ class MolView(WidgetBase):
             )
             return SceneObject(id="atoms_points", geometry=geom, render_mode="opaque")
 
-        return self._build_balls_mesh(pts, rgb, radii_sel)
+        # The bead path has its own threshold and has just decided against
+        # impostors, so the shared builder must not decide again.
+        return self._build_balls_mesh(
+            pts, rgb, radii_sel, impostor_min=max(impostor_min, 1)
+        )
 
     def _update_atoms(
         self,
@@ -7695,9 +7827,31 @@ class MolView(WidgetBase):
                 if stick_override is not None:
                     atom_colors[:, :] = stick_override
 
-                # Use cylinder mesh for sticks (replaces GL_LINES)
                 sticks_radius = float(sticks_cfg.get("radius", 0.15)) * float(self._scale_factor)
                 sticks_segments = int(sticks_cfg.get("segments_circle", 12))
+
+                if bool(sticks_cfg.get("impostors", True)):
+                    # Two triangles per bond, and an *exact* cylinder: the
+                    # twelve-sided tube below is a prism whose silhouette is
+                    # visibly faceted close up, and it costs 33,216 vertices on
+                    # 148L where this costs 1,384 -- built by nothing, because
+                    # the ends and the radius are the whole description.
+                    ends = np.empty((bonds.shape[0] * 2, 3), dtype=np.float32)
+                    ends[0::2] = pts_all[bonds[:, 0]]
+                    ends[1::2] = pts_all[bonds[:, 1]]
+                    cols = np.ones((bonds.shape[0] * 2, 4), dtype=np.float32)
+                    cols[0::2, :3] = atom_colors[bonds[:, 0], :3]
+                    cols[1::2, :3] = atom_colors[bonds[:, 1], :3]
+                    geom = Geometry(
+                        kind="cylinders",
+                        positions=ends,
+                        colors=cols,
+                        meta={"radius": sticks_radius},
+                    )
+                    return [
+                        SceneObject(id="sticks", geometry=geom, render_mode="opaque")
+                    ]
+
                 mesh = _build_stick_mesh(
                     bonds, pts_all, atom_colors,
                     radius=sticks_radius, segments_circle=sticks_segments,
