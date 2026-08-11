@@ -426,7 +426,43 @@ stops matching is a question, not a failure. `capture_gl_baseline.py` keeps
    therefore keeps the core's object when the core is importable and defines an
    equal copy only when it is not.
 
-   **Where to pick this up next.**
+   **Where to pick this up next — three, asked for directly, in this order.**
+
+   1. **Selections must work without Qt.** `renderer/view.py::_update_selection_highlight`
+      (`:8898`) builds the marker geometry and lives in the **Qt widget**, so the
+      browser has no path to it and a strip selection highlights nothing in 3-D.
+      Move it into the engine beside the other scene builders. It pays twice --
+      the browser gains it, and the desktop and browser stop being able to
+      disagree about what a selection looks like.
+      *Do not port it as it stands:* the markers set `meta["px_mode"]`, which the
+      WGSL backend **never reads** (it reads only `size` and `world_radius`), so
+      pixel-mode markers get world-radius behaviour -- size varying with depth,
+      which is the scattered dots in the user's screenshot. Fix that first or
+      the port carries the bug across. See [known-issues](/references/known-issues.md).
+
+   2. **Delete the Qt sequence dock.** `app/sequence_dock.py` duplicates what the
+      in-viewport strip already draws with quads. Removing it strikes a line from
+      `HOSTS` in `test/test_engine_is_portable.py` -- 16 → 15 -- and it is the
+      cheapest of the thirteen `app/` panels to close, because the replacement is
+      already shipping and already tested. Check `app/molview_main_window.py` for
+      its registration and the `Seq` toolbar button.
+
+   3. **Neighbour counting on the GPU.** The demo's occlusion uses a brute-force
+      `(n, n)` numpy pass, and `compute.build_grid` is numpy too -- so the *only*
+      GPU part today is the occlusion integral in `occlusion.wgsl`.
+
+      **Measure before assuming it is a win.** Forced with `CHIMOL_COMPUTE=gpu` on
+      148L's 1363 atoms, the existing GPU integral is **806 ms against numpy's
+      39 ms** -- twenty times slower, because `MIN_WORK_ITEMS` is 20 000 and 1363
+      work items cannot amortise the dispatch and the buffer round-trip. A GPU
+      neighbour count at that size will lose by more, not less: it is cheaper work
+      than the integral it feeds. The shape that wins is one dispatch that does
+      grid, count and integral together without a round-trip between them, and it
+      wins on a structure with tens of thousands of atoms, not on the demo.
+      A counting sort on the GPU is histogram → prefix sum → scatter; `bvh.wgsl`
+      already has a prefix sum to copy from.
+
+   **Also still open.**
    1. **Move an `app/` panel into `InternalGui`.** Start with `objects_panel` /
       `hierarchy_panel`: `InternalGui` already draws that list, so this is
       mostly deleting a duplicate. Each panel that moves strikes a line from
