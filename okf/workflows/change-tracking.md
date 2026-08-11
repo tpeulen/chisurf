@@ -27,6 +27,13 @@ the same loop**. This is the process rule that the root
    heading — one bullet per landed unit of work, saying *what* changed, *why*, the
    verification result, and the affected concept links. OKF wins on conflicts
    (it is newer than the code comments).
+
+   **USER RULE: keep it short.** Every later session reads this file, so a long
+   entry costs everyone context and buries the fact that mattered. Two or three
+   tight lines per bullet. Measurement tables, worked numbers and traps belong
+   in the **concept** that owns the area — reference material, read on demand —
+   and the log points at it. Same for a `CHANGELOG.md` bullet and a commit body:
+   say what changed and where the detail lives.
 4. **Update the user documentation in `docs/`** — OKF is the knowledge layer for
    *agents*; `docs/` is the manual for *people*, and a change that alters what a
    user sees or how they work is not finished until both are updated. See
