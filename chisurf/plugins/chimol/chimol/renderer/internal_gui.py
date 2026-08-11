@@ -24,6 +24,12 @@ from dataclasses import dataclass, field
 
 from ..mouse_modes import BUTTON_COLUMNS, DEFAULT_RING, MODE_NAMES, next_mode, rows_for
 from ..object_menus import OBJECT_MENUS, MenuEntry
+from .ui.painter import (
+    ALIGN_CENTER,
+    ALIGN_LEFT,
+    ALIGN_RIGHT,
+    ALIGN_VCENTER,
+)
 
 #: Keyboard-modifier bits, as plain integers.
 #:
@@ -90,7 +96,42 @@ MOVIE_BUTTONS: tuple[tuple[str, str], ...] = (
 )
 
 #: The C button's rainbow, left to right.
-COLOR_BUTTON_STOPS = ("#ff0000", "#ffff00", "#00ff00", "#00ffff", "#0000ff")
+#:
+#: RGB triples rather than the ``"#ff0000"`` strings they were: parsing a hex
+#: colour was the last thing in the panel that needed ``QColor``, and the
+#: values are identical either way.
+COLOR_BUTTON_STOPS = (
+    (255, 0, 0),
+    (255, 255, 0),
+    (0, 255, 0),
+    (0, 255, 255),
+    (0, 0, 255),
+)
+
+
+def _grey_of(colour: tuple[int, int, int]) -> tuple[int, int, int]:
+    """Return the dimmed grey a disabled ``C`` button shows instead of *colour*.
+
+    Parameters
+    ----------
+    colour : tuple of int
+        An RGB triple, 0-255.
+
+    Returns
+    -------
+    tuple of int
+        A neutral grey of the same lightness band.
+
+    Notes
+    -----
+    ``QColor.value()`` is HSV *value*, which is simply the largest of the three
+    components -- so the original ``value() // 3 + 60`` is reproduced exactly
+    without a toolkit. Every rainbow stop is fully saturated, so this is 145
+    for all five of them: the disabled button is a flat grey, which is the
+    point.
+    """
+    grey = max(colour[:3]) // 3 + 60
+    return grey, grey, grey
 
 
 @dataclass
@@ -1285,60 +1326,53 @@ class InternalGui:
         return True
 
     # ── drawing ──────────────────────────────────────────────────────────
-    def paint(self, painter) -> None:
-        """Draw the panel and any open menu with *painter*."""
-        from qtpy import QtCore, QtGui
+    def paint(self, p) -> None:
+        """Draw the panel and any open menu.
 
+        Parameters
+        ----------
+        p : chimol.renderer.ui.painter.Painter
+            The surface to draw on. Six operations, each carrying its own
+            colour -- see :mod:`chimol.renderer.ui.painter` for why this is not
+            a ``QPainter`` with the names changed.
+        """
         if not self.visible and not self._menus:
             return
 
-        font = QtGui.QFont("Menlo")
-        font.setStyleHint(QtGui.QFont.Monospace)
-        font.setPointSize(self.FONT_PT)
-        painter.setFont(font)
-        metrics = QtGui.QFontMetrics(font)
-
         if self.sequence_visible and self.sequences:
-            self._paint_sequence(painter, QtGui, QtCore)
+            self._paint_sequence(p)
         if self.visible and self.docked:
             # One continuous column, not two floating boxes with the scene
             # showing between them: the gap reads as a hole in the panel.
-            painter.setPen(QtCore.Qt.NoPen)
-            painter.setBrush(QtGui.QColor(*PANEL_BG))
-            painter.drawRect(QtCore.QRectF(
+            p.fill_rect(
                 self._width - self.column_width, 0.0,
-                self.column_width, float(self._height),
-            ))
+                self.column_width, float(self._height), PANEL_BG,
+            )
         if self.visible and self.rows:
-            self._paint_panel(painter, QtGui, QtCore, metrics)
+            self._paint_panel(p)
         if self.visible and self.wizard_rows:
-            self._paint_wizard(painter, QtGui, QtCore)
+            self._paint_wizard(p)
         if self.visible:
-            self._paint_block(painter, QtGui, QtCore)
+            self._paint_block(p)
         if self.wizard_prompt:
-            self._paint_prompt(painter, QtGui, QtCore)
+            self._paint_prompt(p)
         if self.visible and self.docked:
-            painter.setPen(QtCore.Qt.NoPen)
-            painter.setBrush(QtGui.QColor(*SPLITTER_FG))
-            painter.drawRect(QtCore.QRectF(
-                self._splitter.x + self.SPLITTER_W / 2 - 1, 0.0, 2.0, self._height
-            ))
+            p.fill_rect(
+                self._splitter.x + self.SPLITTER_W / 2 - 1, 0.0,
+                2.0, self._height, SPLITTER_FG,
+            )
         for menu in self._menus:
-            self._paint_menu(painter, QtGui, QtCore, menu)
+            self._paint_menu(p, menu)
 
-    def _paint_panel(self, painter, QtGui, QtCore, metrics) -> None:
-        painter.setPen(QtCore.Qt.NoPen)
-        painter.setBrush(QtGui.QColor(*PANEL_BG))
-        painter.drawRect(
-            QtCore.QRectF(self._panel.x, self._panel.y, self._panel.w, self._panel.h)
-        )
+    def _paint_panel(self, p) -> None:
+        """Draw the object list: one row per molecule, group or selection."""
+        p.fill_rect(self._panel.x, self._panel.y, self._panel.w, self._panel.h,
+                    PANEL_BG)
 
         for index, row in enumerate(self.rows):
             rect = self._row_rects[index]
             if row.is_header:
-                painter.setBrush(QtGui.QColor(*HEADER_BG))
-                painter.setPen(QtCore.Qt.NoPen)
-                painter.drawRect(QtCore.QRectF(rect.x, rect.y, rect.w, rect.h))
+                p.fill_rect(rect.x, rect.y, rect.w, rect.h, HEADER_BG)
 
             label = row.name
             if row.is_group:
@@ -1349,26 +1383,22 @@ class InternalGui:
                 HEADER_FG if row.is_header
                 else (ENABLED_FG if row.enabled else DISABLED_FG)
             )
-            painter.setPen(QtGui.QColor(*colour))
-            painter.drawText(
-                QtCore.QRectF(
-                    rect.x + self.PAD + row.indent * 10, rect.y,
-                    self._name_width, rect.h,
-                ),
-                int(QtCore.Qt.AlignVCenter | QtCore.Qt.AlignLeft),
-                label,
+            p.text(
+                rect.x + self.PAD + row.indent * 10, rect.y,
+                self._name_width, rect.h,
+                ALIGN_VCENTER | ALIGN_LEFT, label, colour,
             )
 
             for key, brect in self._button_rects[index].items():
                 self._paint_button(
-                    painter, QtGui, QtCore, key, brect,
+                    p, key, brect,
                     hovered=(self._hover.kind == "button"
                              and self._hover.row == index
                              and self._hover.key == key),
                     enabled=row.enabled or row.is_header,
                 )
 
-    def _paint_wizard(self, painter, QtGui, QtCore) -> None:
+    def _paint_wizard(self, p) -> None:
         """Draw the wizard panel, PyMOL's three row kinds and nothing else.
 
         A banner, pop-ups that carry their current value in the label, and
@@ -1378,9 +1408,7 @@ class InternalGui:
         distinguishing before the click rather than after it.
         """
         rect = self._wizard_rect
-        painter.setPen(QtCore.Qt.NoPen)
-        painter.setBrush(QtGui.QColor(*PANEL_BG))
-        painter.drawRect(QtCore.QRectF(rect.x, rect.y, rect.w, rect.h))
+        p.fill_rect(rect.x, rect.y, rect.w, rect.h, PANEL_BG)
 
         for row_rect, row in self._wizard_row_rects:
             hovered = (
@@ -1389,34 +1417,27 @@ class InternalGui:
                 and self._wizard_row_rects[self._hover.row][1] is row
             )
             if row.kind == "title":
-                painter.setPen(QtCore.Qt.NoPen)
-                painter.setBrush(QtGui.QColor(*HEADER_BG))
-                painter.drawRect(
-                    QtCore.QRectF(row_rect.x, row_rect.y, row_rect.w, row_rect.h)
-                )
-                painter.setPen(QtGui.QColor(*HEADER_FG))
+                p.fill_rect(row_rect.x, row_rect.y, row_rect.w, row_rect.h,
+                            HEADER_BG)
+                colour = HEADER_FG
             else:
                 if hovered:
-                    painter.setPen(QtCore.Qt.NoPen)
-                    painter.setBrush(QtGui.QColor(*MENU_SEL_BG))
-                    painter.drawRect(
-                        QtCore.QRectF(row_rect.x + 1, row_rect.y,
-                                      row_rect.w - 2, row_rect.h)
-                    )
-                painter.setPen(QtGui.QColor(*MENU_FG))
-            painter.drawText(
-                QtCore.QRectF(row_rect.x + self.PAD, row_rect.y,
-                              row_rect.w - 2 * self.PAD, row_rect.h),
-                int(QtCore.Qt.AlignVCenter | QtCore.Qt.AlignLeft), row.label,
+                    p.fill_rect(row_rect.x + 1, row_rect.y,
+                                row_rect.w - 2, row_rect.h, MENU_SEL_BG)
+                colour = MENU_FG
+            p.text(
+                row_rect.x + self.PAD, row_rect.y,
+                row_rect.w - 2 * self.PAD, row_rect.h,
+                ALIGN_VCENTER | ALIGN_LEFT, row.label, colour,
             )
             if row.kind == "menu":
-                painter.drawText(
-                    QtCore.QRectF(row_rect.x, row_rect.y,
-                                  row_rect.w - self.PAD, row_rect.h),
-                    int(QtCore.Qt.AlignVCenter | QtCore.Qt.AlignRight), "▾",
+                p.text(
+                    row_rect.x, row_rect.y,
+                    row_rect.w - self.PAD, row_rect.h,
+                    ALIGN_VCENTER | ALIGN_RIGHT, "▾", colour,
                 )
 
-    def _paint_prompt(self, painter, QtGui, QtCore) -> None:
+    def _paint_prompt(self, p) -> None:
         """Draw the wizard's instruction, top-left of the scene, as PyMOL does.
 
         Not in the panel: the prompt says what to do *in the view* -- "pick a
@@ -1425,19 +1446,18 @@ class InternalGui:
         """
         if not self.wizard_prompt:
             return
-        painter.setPen(QtGui.QColor(*MODE_TITLE_FG))
         # Below the sequence strip, not over it. The strip owns a band at the
         # top of the window and the scene starts under it; a prompt at the
         # window's own top edge lands on the residue numbers.
         y = self.sequence_height() + self.MARGIN
         for line in self.wizard_prompt:
-            painter.drawText(
-                QtCore.QRectF(self.MARGIN, y, self._width * 0.6, self.ROW_H),
-                int(QtCore.Qt.AlignVCenter | QtCore.Qt.AlignLeft), str(line),
+            p.text(
+                self.MARGIN, y, self._width * 0.6, self.ROW_H,
+                ALIGN_VCENTER | ALIGN_LEFT, str(line), MODE_TITLE_FG,
             )
             y += self.ROW_H
 
-    def _paint_sequence(self, painter, QtGui, QtCore) -> None:
+    def _paint_sequence(self, p) -> None:
         """Draw the sequence strip: numbers, names, residues, selection.
 
         One-letter codes with a number every fifth column, which is PyMOL's
@@ -1445,9 +1465,7 @@ class InternalGui:
         ``seq_view_label_spacing 5``).
         """
         strip = self._seq_strip
-        painter.setPen(QtCore.Qt.NoPen)
-        painter.setBrush(QtGui.QColor(*SEQ_BG))
-        painter.drawRect(QtCore.QRectF(strip.x, strip.y, strip.w, strip.h))
+        p.fill_rect(strip.x, strip.y, strip.w, strip.h, SEQ_BG)
 
         char_w = self.FONT_PT * 0.62
         visible = max(int((strip.w - self._seq_origin) / char_w), 1)
@@ -1455,7 +1473,6 @@ class InternalGui:
         # The number line, above the rows it labels.
         first = self.sequences[0] if self.sequences else None
         if first is not None:
-            painter.setPen(QtGui.QColor(*SEQ_NUMBER_FG))
             for column in range(self._seq_scroll, min(self._seq_scroll + visible,
                                                       len(first.codes))):
                 if column % self.LABEL_SPACING:
@@ -1463,47 +1480,37 @@ class InternalGui:
                 number = (
                     first.numbers[column] if column < len(first.numbers) else column + 1
                 )
-                painter.drawText(
-                    QtCore.QRectF(
-                        self._seq_origin + (column - self._seq_scroll) * char_w,
-                        self.PAD, char_w * 6, self.SEQ_ROW_H,
-                    ),
-                    int(QtCore.Qt.AlignVCenter | QtCore.Qt.AlignLeft), str(number),
+                p.text(
+                    self._seq_origin + (column - self._seq_scroll) * char_w,
+                    self.PAD, char_w * 6, self.SEQ_ROW_H,
+                    ALIGN_VCENTER | ALIGN_LEFT, str(number), SEQ_NUMBER_FG,
                 )
 
         for index, row in enumerate(self.sequences):
             rect = self._seq_rows[index]
-            painter.setPen(QtGui.QColor(*SEQ_NAME_FG))
-            painter.drawText(
-                QtCore.QRectF(self.PAD, rect.y, self._seq_origin - self.PAD, rect.h),
-                int(QtCore.Qt.AlignVCenter | QtCore.Qt.AlignLeft), row.name,
+            p.text(
+                self.PAD, rect.y, self._seq_origin - self.PAD, rect.h,
+                ALIGN_VCENTER | ALIGN_LEFT, row.name, SEQ_NAME_FG,
             )
             for column in range(self._seq_scroll,
                                 min(self._seq_scroll + visible, len(row.codes))):
                 x = self._seq_origin + (column - self._seq_scroll) * char_w
-                cell = QtCore.QRectF(x, rect.y, char_w, rect.h)
                 if column in row.selected:
-                    painter.setPen(QtCore.Qt.NoPen)
-                    painter.setBrush(QtGui.QColor(*SEQ_SELECTED_BG))
-                    painter.drawRect(cell)
-                    painter.setPen(QtGui.QColor(*SEQ_SELECTED_FG))
+                    p.fill_rect(x, rect.y, char_w, rect.h, SEQ_SELECTED_BG)
+                    colour = SEQ_SELECTED_FG
                 else:
-                    painter.setPen(QtGui.QColor(*_residue_color(row, column)))
-                painter.drawText(cell, int(QtCore.Qt.AlignCenter), row.codes[column])
+                    colour = _residue_color(row, column)
+                p.text(x, rect.y, char_w, rect.h,
+                       ALIGN_CENTER, row.codes[column], colour)
 
         track, thumb = self._seq_track, self._seq_thumb
-        painter.setPen(QtCore.Qt.NoPen)
-        painter.setBrush(QtGui.QColor(*SEQ_TRACK_BG))
-        painter.drawRect(QtCore.QRectF(track.x, track.y, track.w, track.h))
-        painter.setBrush(QtGui.QColor(*SEQ_THUMB_BG))
-        painter.drawRect(QtCore.QRectF(thumb.x, thumb.y, thumb.w, thumb.h))
+        p.fill_rect(track.x, track.y, track.w, track.h, SEQ_TRACK_BG)
+        p.fill_rect(thumb.x, thumb.y, thumb.w, thumb.h, SEQ_THUMB_BG)
 
-    def _paint_block(self, painter, QtGui, QtCore) -> None:
+    def _paint_block(self, p) -> None:
         """Draw the mouse-mode reference, the state, and the transport."""
         rect = self._block
-        painter.setPen(QtCore.Qt.NoPen)
-        painter.setBrush(QtGui.QColor(*PANEL_BG))
-        painter.drawRect(QtCore.QRectF(rect.x, rect.y, rect.w, rect.h))
+        p.fill_rect(rect.x, rect.y, rect.w, rect.h, PANEL_BG)
 
         char_w = self.FONT_PT * 0.62
         label_w = 10.0 * char_w
@@ -1514,15 +1521,17 @@ class InternalGui:
         gutter = char_w          # between a right-aligned label and its values
 
         def draw(x, y, text, colour, width=None, right=False):
-            painter.setPen(QtGui.QColor(*colour))
-            align = QtCore.Qt.AlignRight if right else QtCore.Qt.AlignLeft
-            box = QtCore.QRectF(x, y, width or cell_w, self.BLOCK_ROW_H)
+            box_w = width or cell_w
             if right:
                 # Shrink from the right so the text ends a gutter short of the
                 # column beside it; right-aligning into the full width puts the
                 # last glyph hard against the first value ("ButtonsL").
-                box.setWidth(box.width() - gutter)
-            painter.drawText(box, int(QtCore.Qt.AlignVCenter | align), text)
+                box_w -= gutter
+            p.text(
+                x, y, box_w, self.BLOCK_ROW_H,
+                ALIGN_VCENTER | (ALIGN_RIGHT if right else ALIGN_LEFT),
+                text, colour,
+            )
 
         draw(left, line, "Mouse Mode", MODE_TITLE_FG, label_w + cell_w, right=True)
         draw(left + label_w + cell_w, line,
@@ -1565,68 +1574,52 @@ class InternalGui:
             return
 
         track, thumb = self._timeline_track, self._timeline_thumb
-        painter.setPen(QtCore.Qt.NoPen)
-        painter.setBrush(QtGui.QColor(*SEQ_TRACK_BG))
-        painter.drawRect(QtCore.QRectF(track.x, track.y, track.w, track.h))
-        painter.setBrush(QtGui.QColor(*MOVIE_FG))
-        painter.drawRect(QtCore.QRectF(thumb.x, thumb.y, thumb.w, thumb.h))
+        p.fill_rect(track.x, track.y, track.w, track.h, SEQ_TRACK_BG)
+        p.fill_rect(thumb.x, thumb.y, thumb.w, thumb.h, MOVIE_FG)
 
         for button_rect, _command in self._movie_rects:
-            box = QtCore.QRectF(button_rect.x, button_rect.y,
-                                button_rect.w, button_rect.h)
-            painter.setBrush(QtGui.QColor(*MOVIE_BG))
-            painter.setPen(QtGui.QColor(*BUTTON_EDGE))
-            painter.drawRect(box)
-            painter.setPen(QtGui.QColor(*MOVIE_FG))
-            painter.drawText(box, int(QtCore.Qt.AlignCenter), _glyph_of(_command))
+            p.stroke_rect(button_rect.x, button_rect.y,
+                          button_rect.w, button_rect.h,
+                          BUTTON_EDGE, fill=MOVIE_BG)
+            p.text(button_rect.x, button_rect.y, button_rect.w, button_rect.h,
+                   ALIGN_CENTER, _glyph_of(_command), MOVIE_FG)
 
-    def _paint_button(self, painter, QtGui, QtCore, key, rect, hovered,
-                      enabled=True) -> None:
+    def _paint_button(self, p, key, rect, hovered, enabled=True) -> None:
         """Draw one A/S/H/L/C box.
 
         A switched-off object keeps its boxes -- they are how it gets switched
         back on -- but they are drawn dim, so the row says at a glance which
         state it is in rather than only in the colour of its name.
         """
-        box = QtCore.QRectF(rect.x, rect.y + 1, rect.w, rect.h - 2)
+        x, y = rect.x, rect.y + 1
+        w, h = rect.w, rect.h - 2
         if key == "C":
-            gradient = QtGui.QLinearGradient(box.left(), 0.0, box.right(), 0.0)
-            for index, stop in enumerate(COLOR_BUTTON_STOPS):
-                colour = QtGui.QColor(stop)
-                if not enabled:
-                    grey = colour.value() // 3 + 60
-                    colour = QtGui.QColor(grey, grey, grey)
-                gradient.setColorAt(index / (len(COLOR_BUTTON_STOPS) - 1), colour)
-            painter.setBrush(QtGui.QBrush(gradient))
+            stops = [
+                _grey_of(stop) if not enabled else stop
+                for stop in COLOR_BUTTON_STOPS
+            ]
+            p.gradient_rect(x, y, w, h, stops, edge=BUTTON_EDGE)
         elif not enabled:
-            painter.setBrush(QtGui.QColor(*BUTTON_OFF_BG))
+            p.stroke_rect(x, y, w, h, BUTTON_EDGE, fill=BUTTON_OFF_BG)
         else:
-            painter.setBrush(QtGui.QColor(*(HOVER_BG if hovered else BUTTON_BG)))
-        painter.setPen(QtGui.QColor(*BUTTON_EDGE))
-        painter.drawRect(box)
+            p.stroke_rect(x, y, w, h, BUTTON_EDGE,
+                          fill=(HOVER_BG if hovered else BUTTON_BG))
         if key == "C":
-            painter.setPen(QtGui.QColor(0, 0, 0) if enabled else QtGui.QColor(70, 70, 70))
+            colour = (0, 0, 0) if enabled else (70, 70, 70)
         else:
-            painter.setPen(QtGui.QColor(*(BUTTON_FG if enabled else BUTTON_OFF_FG)))
-        painter.drawText(box, int(QtCore.Qt.AlignCenter), key)
+            colour = BUTTON_FG if enabled else BUTTON_OFF_FG
+        p.text(x, y, w, h, ALIGN_CENTER, key, colour)
 
-    def _paint_menu(self, painter, QtGui, QtCore, menu: _OpenMenu) -> None:
-        rect = QtCore.QRectF(menu.rect.x, menu.rect.y, menu.rect.w, menu.rect.h)
-        painter.setBrush(QtGui.QColor(*MENU_BG))
-        painter.setPen(QtGui.QColor(*MENU_EDGE))
-        painter.drawRect(rect)
+    def _paint_menu(self, p, menu: _OpenMenu) -> None:
+        """Draw one open menu, its title row, and its scroll marks."""
+        rect = menu.rect
+        p.stroke_rect(rect.x, rect.y, rect.w, rect.h, MENU_EDGE, fill=MENU_BG)
 
-        painter.setPen(QtGui.QColor(*MENU_FG))
-        font = painter.font()
-        font.setBold(True)
-        painter.setFont(font)
-        painter.drawText(
-            QtCore.QRectF(menu.rect.x + self.MENU_PAD, menu.rect.y + self.MENU_PAD,
-                          menu.rect.w, self.MENU_ITEM_H),
-            int(QtCore.Qt.AlignVCenter | QtCore.Qt.AlignLeft), menu.title,
+        p.text(
+            rect.x + self.MENU_PAD, rect.y + self.MENU_PAD,
+            rect.w, self.MENU_ITEM_H,
+            ALIGN_VCENTER | ALIGN_LEFT, menu.title, MENU_FG, bold=True,
         )
-        font.setBold(False)
-        painter.setFont(font)
 
         # Say which way there is more, when the menu is taller than the window.
         # In the *title* row, not at the edges of the list: an arrow on the last
@@ -1638,45 +1631,40 @@ class InternalGui:
             marks = ("▴" if menu.scroll > 0.0 else " ") + (
                 "▾" if menu.scroll < menu.max_scroll else " "
             )
-            painter.setPen(QtGui.QColor(*MENU_DISABLED_FG))
-            painter.drawText(
-                QtCore.QRectF(menu.rect.x, menu.rect.y + self.MENU_PAD,
-                              menu.rect.w - self.MENU_PAD, self.MENU_ITEM_H),
-                int(QtCore.Qt.AlignVCenter | QtCore.Qt.AlignRight), marks,
+            p.text(
+                rect.x, rect.y + self.MENU_PAD,
+                rect.w - self.MENU_PAD, self.MENU_ITEM_H,
+                ALIGN_VCENTER | ALIGN_RIGHT, marks, MENU_DISABLED_FG,
             )
 
-        painter.save()
         # Below the title, so a scrolled row cannot be drawn over it.
-        painter.setClipRect(QtCore.QRectF(
-            menu.rect.x,
-            menu.rect.y + self.MENU_PAD + self.MENU_ITEM_H,
-            menu.rect.w,
-            max(menu.rect.h - self.MENU_PAD - self.MENU_ITEM_H, 0.0),
-        ))
-        for item_rect, entry in menu.item_rects:
-            hovered = (self._hover.kind == "menu" and self._hover.entry is entry)
-            if hovered and entry.command is not None or (hovered and entry.is_submenu):
-                painter.setBrush(QtGui.QColor(*MENU_SEL_BG))
-                painter.setPen(QtCore.Qt.NoPen)
-                painter.drawRect(
-                    QtCore.QRectF(item_rect.x + 1, item_rect.y,
-                                  item_rect.w - 2, item_rect.h)
+        p.push_clip(
+            rect.x,
+            rect.y + self.MENU_PAD + self.MENU_ITEM_H,
+            rect.w,
+            max(rect.h - self.MENU_PAD - self.MENU_ITEM_H, 0.0),
+        )
+        try:
+            for item_rect, entry in menu.item_rects:
+                hovered = (self._hover.kind == "menu" and self._hover.entry is entry)
+                if hovered and (entry.command is not None or entry.is_submenu):
+                    p.fill_rect(item_rect.x + 1, item_rect.y,
+                                item_rect.w - 2, item_rect.h, MENU_SEL_BG)
+                enabled = entry.is_submenu or entry.command is not None
+                colour = MENU_FG if enabled else MENU_DISABLED_FG
+                p.text(
+                    item_rect.x + self.MENU_PAD, item_rect.y,
+                    item_rect.w - 2 * self.MENU_PAD, item_rect.h,
+                    ALIGN_VCENTER | ALIGN_LEFT, entry.label, colour,
                 )
-            enabled = entry.is_submenu or entry.command is not None
-            painter.setPen(QtGui.QColor(*(MENU_FG if enabled else MENU_DISABLED_FG)))
-            painter.drawText(
-                QtCore.QRectF(item_rect.x + self.MENU_PAD, item_rect.y,
-                              item_rect.w - 2 * self.MENU_PAD, item_rect.h),
-                int(QtCore.Qt.AlignVCenter | QtCore.Qt.AlignLeft),
-                entry.label,
-            )
-            if entry.is_submenu:
-                painter.drawText(
-                    QtCore.QRectF(item_rect.x, item_rect.y,
-                                  item_rect.w - self.MENU_PAD, item_rect.h),
-                    int(QtCore.Qt.AlignVCenter | QtCore.Qt.AlignRight), "▸",
-                )
-        painter.restore()
+                if entry.is_submenu:
+                    p.text(
+                        item_rect.x, item_rect.y,
+                        item_rect.w - self.MENU_PAD, item_rect.h,
+                        ALIGN_VCENTER | ALIGN_RIGHT, "▸", colour,
+                    )
+        finally:
+            p.pop_clip()
 
 
 def _glyph_of(command: str) -> str:

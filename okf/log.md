@@ -33630,3 +33630,26 @@
   new finding filed: an object menu opened from the panel **runs off the right edge of the window**, deliberately
   left unfixed so it cannot be confused with a port regression. See
   [chimol-web](/plugins/chimol-web.md) and [known-issues](/references/known-issues.md).
+
+- **2026-08-11 — ChiMOL's chrome draws through six neutral operations, and the pixels did not move.**
+  Second half of the portability work's phase C groundwork. `renderer/ui/painter.py` defines the surface the
+  in-viewport chrome draws on — `fill_rect`, `stroke_rect`, `gradient_rect`, `text`, `push_clip`/`pop_clip` —
+  and `renderer/ui/qt_painter.py` implements it with the same `QPainter` as before. `internal_gui.py`'s `paint`
+  and its seven `_paint_*` methods lost their `QtGui`/`QtCore` parameters, so the panel — a layout and hit-test
+  engine — no longer needs a window system to describe itself.
+  Deliberately **not** a `QPainter` with the names changed. `QPainter` is a state machine, and the chrome used
+  it as one: 31 `setPen` and 20 `setBrush` calls feeding 18 `drawRect`s and 14 `drawText`s. Ported literally,
+  that state has to be tracked while emitting vertices, where a stale brush is a mis-coloured quad rather than
+  an error. Every call now carries its own colour, so each maps to a fixed quad count — which is what makes the
+  GPU painter that follows a transcription rather than a redesign.
+  **All four baseline PNGs and the reachability inventory came back byte-identical**, which is the right bar
+  here: a refactor that moves pixels cannot be told apart from a wiring mistake, and a swapped colour or a
+  dropped hover fill is exactly what this shape of change gets wrong. Pinned by `test/test_chrome_painter.py`,
+  which also blocks Qt in a subprocess and imports `internal_gui` to prove the toolkit is gone — and asserts the
+  blocker actually blocks, because the first one silently did not.
+  Two things fell out: `COLOR_BUTTON_STOPS` became RGB triples (parsing `"#ff0000"` was the last use of
+  `QColor` in the panel), and its disabled grey is now `_grey_of`, reproducing `QColor.value() // 3 + 60`
+  exactly — `value()` is HSV value, the largest component, so every saturated stop greys to 145.
+  Resume point for the glyph atlas, the quad painter and the deletions is in
+  [chimol-web](/plugins/chimol-web.md); note that the byte-identity assertions must be relaxed to the inventory
+  comparison **in the same change** as the atlas, which moves text metrics on purpose.

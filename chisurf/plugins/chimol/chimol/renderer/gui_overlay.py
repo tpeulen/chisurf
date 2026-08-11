@@ -239,9 +239,15 @@ def paint_chrome_into(painter, gui, controller, width: int, height: int, *,
     if labels and project is not None:
         paint_labels(painter, labels, project)
     if gui is not None:
+        from .ui.qt_painter import QtPainter
+
         refresh_gui_state(gui, controller)
         gui.layout(int(width), int(height))
-        gui.paint(painter)
+        # The panel no longer knows what a ``QPainter`` is: it draws through
+        # the six operations in :mod:`chimol.renderer.ui.painter`, of which
+        # this is the Qt implementation and the reference. Constructed here,
+        # per paint, because it owns the font it sets on the painter.
+        gui.paint(QtPainter(painter, font_pt=gui.FONT_PT))
     paint_select_rect(painter, select_rect)
 
 

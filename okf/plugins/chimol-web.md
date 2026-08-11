@@ -294,9 +294,67 @@ stops matching is a question, not a failure. `capture_gl_baseline.py` keeps
      cannot be sampled — which is exactly what pass 2 does. Its Pyodide
      device-request and heap-view technique is the part worth taking.
 
-   **Next, in order.** *Phase C* — the chrome moves off `QPainter` onto GPU
-   quads (see the defect below, which is the desktop reason to do it).
-   *Phase D* — `platform/{events,desktop}.py`, then
+   **Phase C, first half — landed.** The chrome no longer knows what a toolkit
+   is. `renderer/ui/painter.py` defines **six** operations — `fill_rect`,
+   `stroke_rect`, `gradient_rect`, `text`, `push_clip`/`pop_clip` — and
+   `renderer/ui/qt_painter.py` implements them with the same `QPainter` as
+   before. `internal_gui.py`'s `paint` and its seven `_paint_*` methods lost
+   their `QtGui`/`QtCore` parameters entirely.
+
+   Deliberately **not** a `QPainter` with the names changed. `QPainter` is a
+   state machine — thirty-one `setPen`s and twenty `setBrush`es feeding
+   eighteen `drawRect`s and fourteen `drawText`s — and ported literally that
+   state would have to be tracked while emitting vertices, where a stale brush
+   is a mis-coloured quad rather than an error. Every call now carries its own
+   colour, so each maps to a fixed number of quads: one for a fill, one plus
+   four edges for a stroke, one with per-vertex colour for the gradient, one
+   per glyph for text, a scissor for a clip.
+
+   Two small things fell out: `COLOR_BUTTON_STOPS` became RGB triples (parsing
+   `"#ff0000"` was the last thing needing `QColor`), and its disabled grey is
+   now `_grey_of`, which reproduces `QColor.value() // 3 + 60` exactly —
+   `value()` is HSV value, i.e. the largest component, so every saturated stop
+   greys to 145.
+
+   **Proof: all four baseline PNGs and the inventory came back byte-identical.**
+   That is the right bar for this step — a refactor that changes pixels is
+   indistinguishable from a wiring mistake, and a swapped colour or a dropped
+   hover fill is exactly what this shape of change gets wrong. Pinned by
+   `test/test_chrome_painter.py`, which also blocks Qt in a subprocess and
+   imports `internal_gui` to prove the toolkit is gone.
+
+   **Where to pick this up — Phase C, second half.**
+   1. **Bake the glyph atlas.** The chrome's font is `QFont("Menlo")` at
+      `InternalGui.FONT_PT`. The character set is ASCII plus exactly seven
+      non-ASCII glyphs: `▾ ▸ ▴ ─` in the panel and menus, and `◀ ■ ▶ ▼` in the
+      transport (`MOVIE_BUTTONS`, which also uses `|`, `S` and `F`). A **bold**
+      face is needed too — one caller, a menu's title row. Bake with Qt or PIL
+      at build time, commit the `.png` and a metrics `.json`; *using* it must
+      need neither. **No packaging change is required**: `pyproject.toml`'s
+      `[tool.setuptools.package-data]` already ships `*.png` and `*.json` for
+      every package — checked, so do not add a glob for them. (Do not reach for
+      `*.ts` for anything: that glob is Qt Linguist translation sources.)
+   2. **`QuadPainter` + `renderer/wgsl/ui.wgsl`.** One alpha-blended pipeline,
+      no depth. Blend **premultiplied**, matching what `overlay.wgsl` composites
+      today, or light backgrounds get dark fringes — visible only on white.
+      Clipping is one call site but governs the menu, so it needs a scissor or
+      a per-quad clip rect.
+   3. **Wire it and delete the old path.** `gui_overlay.paint_chrome`,
+      `paint_chrome_into`, `image_from_rgb`, and in `wgpu_view` the
+      `_chrome_cache` / `_chrome_key` / `_chrome_painted` / `CHROME_INTERVAL` /
+      `invalidate_chrome` group — the cache exists *only* because the paint was
+      expensive. `paint_ray_image` keeps its texture; that one is genuinely an
+      image.
+   4. **Benchmark** at a quarter-million beads, labels on and off, and update
+      `docs/development/benchmarks.md`.
+
+   Parity is judged on the **control inventory**, not pixels, from step 1
+   onwards: the atlas moves text metrics on purpose. `test_chrome_painter.py`'s
+   byte-identity assertions are for the refactor only and must be relaxed to
+   the inventory comparison when the atlas lands — do that deliberately, in the
+   same change, rather than discovering it as a failure.
+
+   **Then Phase D** — `platform/{events,desktop}.py`, then
    `test_engine_is_portable.py`. Only then the browser backend and a loader
    page.
 
