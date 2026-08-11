@@ -19,6 +19,8 @@ different shape from the one they know.
 """
 from __future__ import annotations
 
+from .host.events import button_name, modifier_name
+
 #: How PyMOL renders each action code. Its own capitalisation, which no rule
 #: recovers -- ``mvsz`` is shown ``MvSZ`` and ``pk1`` as ``Pk1``.
 ACTION_LABELS: dict[str, str] = {
@@ -502,48 +504,18 @@ def next_mode(mode: str, ring: str = DEFAULT_RING) -> str:
     return modes[(modes.index(mode) + 1) % len(modes)]
 
 
-#: How Qt spells the modifiers PyMOL's table names.
-_QT_MODIFIERS = (
-    ("ctsh", ("ControlModifier", "ShiftModifier")),
-    ("ctrl", ("ControlModifier",)),
-    ("shft", ("ShiftModifier",)),
-    ("alt", ("AltModifier",)),
-)
-
-
 def modifier_of(modifiers) -> str:
-    """Return PyMOL's name for a Qt modifier state.
+    """Return PyMOL's name for a modifier state.
 
-    Order matters: ctrl+shift is its own row (``CtSh``), not a ctrl row that
-    happens to have shift held, so the combination has to be tested before
-    either of its parts.
+    Thin wrapper over :func:`chimol.host.events.modifier_name`, kept because
+    this module's name for it is what the tables and the call sites use.
     """
-    from qtpy import QtCore
-
-    for name, flags in _QT_MODIFIERS:
-        mask = None
-        for flag in flags:
-            bit = getattr(QtCore.Qt, flag, None)
-            if bit is None:
-                mask = None
-                break
-            mask = bit if mask is None else (mask | bit)
-        if mask is not None and (modifiers & mask) == mask:
-            return name
-    return "none"
+    return modifier_name(modifiers)
 
 
 def button_of(button) -> str:
-    """Return PyMOL's name for a Qt mouse button, or ``""``."""
-    from qtpy import QtCore
-
-    if button == QtCore.Qt.LeftButton:
-        return "l"
-    if button == QtCore.Qt.MiddleButton:
-        return "m"
-    if button == QtCore.Qt.RightButton:
-        return "r"
-    return ""
+    """Return PyMOL's name for a mouse button, or ``""``."""
+    return button_name(button)
 
 
 def action_of(mode: str, button, modifiers) -> str:
@@ -570,15 +542,8 @@ def click_action_of(mode: str, button, modifiers) -> str:
     cell so the release handler can tell a click that selects from a drag that
     rotates.
     """
-    from qtpy import QtCore
-
-    if button == QtCore.Qt.LeftButton:
-        name = "left"
-    elif button == QtCore.Qt.MiddleButton:
-        name = "middle"
-    elif button == QtCore.Qt.RightButton:
-        name = "right"
-    else:
+    name = {"l": "left", "m": "middle", "r": "right"}.get(button_name(button))
+    if name is None:
         return "none"
     bindings = MODE_BINDINGS.get(mode, {})
     return str(bindings.get(("single_" + name, modifier_of(modifiers)), "none")).lower()

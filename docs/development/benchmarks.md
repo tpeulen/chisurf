@@ -437,6 +437,43 @@ remain the right answer for the models they were added for, where the count is
 in the hundreds of thousands. The remaining ~3.9 ms floor is the 2-D sequence
 strip's text, not the molecule.
 
+## ChiMOL chrome: the panel that was a picture
+
+**Work unit:** building one frame of in-viewport chrome — the object panel, the
+sequence strip, the mouse-mode block — ready for the GPU. Median of 20, same
+panel contents at every size, so the only variable is the viewport.
+
+The old path rasterised the whole thing into a viewport-sized premultiplied RGBA
+image with `QPainter` and uploaded it as a texture. The new one appends quads
+that `wgsl/ui.wgsl` draws.
+
+| Viewport | `QPainter` + image | Bytes uploaded | Quads | Bytes uploaded | Speed-up |
+| --- | --- | --- | --- | --- | --- |
+| 1280×860 | 2.94 ms | 4.4 MB | 1.31 ms | 107 KB | 2.3× |
+| 1920×1080 | 4.10 ms | 8.3 MB | 1.40 ms | 107 KB | 2.9× |
+| 2560×1720 | 6.71 ms | 17.6 MB | 1.37 ms | 107 KB | 4.9× |
+| 3840×2160 | 10.06 ms | 33.2 MB | 1.42 ms | 107 KB | 7.1× |
+
+**The speed-up column is the least interesting one.** What the table actually
+says is that the two paths scale differently: the old cost tracks *viewport
+area* — it is rasterising every pixel of a mostly-empty image — while the new
+one tracks *content*, and the content does not change when the window does. At
+4K that is 7× less CPU and **318× fewer bytes** across the bus per repaint.
+
+That difference is why the old path could not simply be made faster. Painting it
+cost 9.6 ms of a 21 ms frame on a quarter-million beads, so the panel was
+repainted on a **timer** and allowed to lag rather than redrawn when it changed
+— and the timer was bypassed entirely for any scene carrying labels, because
+labels move with the camera and forced a repaint every frame. Once a frame of
+chrome is ~1.4 ms and 107 KB, deciding whether to rebuild costs more than
+rebuilding, so the cache, the staleness and the invalidation calls are gone and
+the panel is simply always current.
+
+A whole frame of chrome is 313–608 quads, measured across the four captured
+states. The remaining ~1.4 ms is Python building them; it is flat in the
+viewport and would fall again if it ever mattered, since the geometry for a
+panel that has not changed is the same geometry.
+
 ## Reading a PDB
 
 Measured 2026-08-06 on an M-series Mac, best of five after a warm-up, through

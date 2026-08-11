@@ -33712,3 +33712,33 @@
   Resume point for the glyph atlas, the quad painter and the deletions is in
   [chimol-web](/plugins/chimol-web.md); note that the byte-identity assertions must be relaxed to the inventory
   comparison **in the same change** as the atlas, which moves text metrics on purpose.
+
+- **2026-08-11 — ChiMOL's chrome is quads on the GPU, and the panel stopped being allowed to lag.**
+  `renderer/ui/quad_painter.py` appends the panel, the sequence strip, the menus and the transport into one
+  interleaved vertex array; `renderer/wgsl/ui.wgsl` draws it in the existing second pass beside the silhouette.
+  One pipeline serves all of it, because the glyph atlas carries an **opaque block** — a rectangle is a textured
+  quad that samples white — and clipping rides on the vertex rather than as a scissor, so the whole panel stays
+  a single draw call.
+  **The number that matters is the scaling, not the speed-up.** `QPainter` + upload goes 2.94 → 10.06 ms from
+  1280×860 to 4K, because it rasterises every pixel of a mostly-empty viewport-sized image; the quads stay flat
+  at ~1.4 ms, because they track content and the content does not change when the window does. Bytes across the
+  bus per repaint fall from 33.2 MB to 107 KB — **318×** — and a whole frame of chrome is 313–608 quads. Table
+  in [benchmarks](development/benchmarks.md), which previously ended by naming the sequence strip's text as the
+  remaining per-frame floor; this is that loop closed.
+  Deleted with it: `CHROME_INTERVAL`, the `_chrome_cache`/`_chrome_key`/`_chrome_painted` trio,
+  `invalidate_chrome` and its three call sites. All of it existed only because painting was expensive — the
+  panel was repainted on a *timer* and deliberately allowed to go stale, and the timer was bypassed entirely for
+  any scene carrying labels. Once a frame costs ~1.4 ms, deciding whether to rebuild costs more than rebuilding,
+  so **the panel is simply always current**. `_chrome_image` survives for the three things that genuinely are
+  images or drawn once — a traced frame, the labels, the selection box — and returns `None` for an ordinary
+  frame, which now rasterises nothing on the CPU and uploads nothing.
+  The GPU seam earned itself here: `FilterMode.linear` was not declared in `renderer/gpu/enums.py` because
+  nothing had needed it, and the atlas is baked at 4× and sampled down, so it wants linear where the overlay
+  image wanted nearest. Adding a constant is now one deliberate edit in one file, checked against the binding by
+  a guard test.
+  Verified by looking: the same four states rendered through the real WebGPU pipeline carry every control the
+  Qt baseline does — sequence numbers and codes, the three panel rows, the `C` button's rainbow, the open
+  `Action:` menu with its bold title, greyed-out entries and submenu markers, all nine transport glyphs and the
+  scrubber. `test/quad_raster.py` does what `ui.wgsl` does in numpy, so all of that is checkable with **no GPU
+  at all**. Next: labels are text and therefore quads; then phase D. See
+  [chimol-web](/plugins/chimol-web.md).

@@ -323,7 +323,57 @@ stops matching is a question, not a failure. `capture_gl_baseline.py` keeps
    `test/test_chrome_painter.py`, which also blocks Qt in a subprocess and
    imports `internal_gui` to prove the toolkit is gone.
 
-   **Where to pick this up — Phase C, second half.**
+   **Phase C, second half — landed.** The chrome is quads, on the GPU, and it
+   is the default. `renderer/ui/quad_painter.py` appends into one interleaved
+   array; `renderer/wgsl/ui.wgsl` draws it in the existing second pass, beside
+   the silhouette. One pipeline serves the whole panel because the atlas
+   carries an **opaque block** — a rectangle is a textured quad that samples
+   white — and clipping rides on the vertex rather than as a scissor, so the
+   panel stays one draw call.
+
+   **The measurement that justifies it is the scaling, not the speed-up.**
+
+   | viewport | `QPainter` + image | quads | uploaded |
+   |---|---|---|---|
+   | 1280×860 | 2.94 ms | 1.31 ms | 4.4 MB → 107 KB |
+   | 2560×1720 | 6.71 ms | 1.37 ms | 17.6 MB → 107 KB |
+   | 3840×2160 | 10.06 ms | 1.42 ms | 33.2 MB → 107 KB |
+
+   The old cost tracks **viewport area** — it rasterises every pixel of a
+   mostly-empty image — and the new one tracks **content**, which does not
+   change when the window does. At 4K that is 7× less CPU and **318× fewer
+   bytes**. A whole frame of chrome is 313–608 quads.
+
+   Deleted with it: `CHROME_INTERVAL`, `_chrome_cache`/`_chrome_key`/
+   `_chrome_painted`, `invalidate_chrome` and its three call sites. All of it
+   existed only because the paint was expensive; once a frame is ~1.4 ms,
+   deciding whether to rebuild costs more than rebuilding, and **the panel is
+   simply always current** instead of allowed to lag.
+
+   `_chrome_image` survives for the three things that genuinely are images or
+   are drawn once — a traced frame, the 3-D labels, the rubber-band selection
+   box — and returns `None` for an ordinary frame, which now rasterises nothing
+   on the CPU and uploads nothing.
+
+   *Trap the seam caught, working as intended:* `FilterMode.linear` was not
+   declared in `renderer/gpu/enums.py`, because nothing had needed it. The atlas
+   is baked at 4× and sampled down, so it wants linear where the overlay image
+   wanted nearest. Adding a constant is now a deliberate edit in one file that a
+   guard test checks against the binding.
+
+   **Where to pick this up next.**
+   1. **Labels are still an image.** They are text, so they are quads —
+      `_collect_labels` + `project_to_screen` already give position and string.
+      Doing them would leave only the traced frame and the selection box on the
+      texture path, and would delete `paint_labels`.
+   2. **Phase D** — `platform/{events,desktop}.py`, then
+      `test_engine_is_portable.py`. `renderer/internal_gui.py` is already
+      Qt-free; what is left is `mouse_modes.py`'s three Qt-event translators and
+      `wgpu_view`'s widget.
+   3. Only then the browser backend beside `renderer/gpu/native.py`, and a
+      loader page.
+
+   **Superseded — the atlas plan, for reference.**
    1. **Bake the glyph atlas.** The chrome's font is `QFont("Menlo")` at
       `InternalGui.FONT_PT`. The character set is ASCII plus exactly seven
       non-ASCII glyphs: `▾ ▸ ▴ ─` in the panel and menus, and `◀ ■ ▶ ▼` in the

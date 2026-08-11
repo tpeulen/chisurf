@@ -164,13 +164,44 @@ class TestChrome:
             assert y > 0.0
             assert h == pytest.approx(renderer.scene_height())
 
-    def test_the_chrome_paints_something_with_transparency(self, renderer):
-        chrome = renderer._chrome_image()
-        assert chrome is not None
-        assert chrome.shape == (renderer._height, renderer._width, 4)
-        alpha = chrome[..., 3]
-        assert alpha.max() == 255, "nothing was painted"
-        assert alpha.min() == 0, "the chrome is opaque, so it would hide the molecule"
+    def test_the_panel_is_built_as_quads(self, renderer):
+        """The chrome reaches the GPU as vertices, not as a rasterised image."""
+        quads = renderer._chrome_quads()
+        assert quads is not None, "the panel produced no geometry"
+        assert quads.ndim == 2 and quads.shape[1] == 12, quads.shape
+        assert quads.shape[0] % 6 == 0, "quads are two triangles, six vertices"
+        assert quads.dtype == np.float32
+
+    def test_an_ordinary_frame_uploads_no_chrome_image(self, renderer):
+        """With no labels, no traced frame and no selection box, there is none.
+
+        This is the change worth pinning. The panel used to be rasterised into a
+        viewport-sized premultiplied image and uploaded whenever a timer
+        expired -- 9.6 ms of a 21 ms frame to paint -- and every single frame
+        for a scene carrying labels. An ordinary frame now rasterises nothing on
+        the CPU and uploads nothing; the image path is left for the three things
+        that genuinely are images.
+        """
+        assert not renderer._labels
+        assert renderer._ray_image is None
+        assert renderer._select_rect is None
+        assert renderer._chrome_image() is None
+
+    def test_the_image_path_still_serves_labels(self, renderer):
+        """A scene with labels still gets a premultiplied image."""
+        from chisurf.plugins.chimol.chimol.renderer.wgpu_view import Label
+
+        renderer._labels = [
+            Label(np.zeros(3, dtype=float), "ALA", (1.0, 1.0, 1.0, 1.0))
+        ]
+        try:
+            chrome = renderer._chrome_image()
+            assert chrome is not None
+            assert chrome.shape == (renderer._height, renderer._width, 4)
+            alpha = chrome[..., 3]
+            assert alpha.min() == 0, "the chrome would hide the molecule"
+        finally:
+            renderer._labels = []
 
 
 class TestItDrawsTheSamePictureAsTheComparisonHarness:

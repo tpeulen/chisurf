@@ -115,6 +115,42 @@ def view_matrix(
 #: upload it saves.
 _OVERLAY_HASH_LIMIT = 1 << 20
 
+#: Floats per chrome vertex: position, uv, colour, clip box.
+#:
+#: Mirrors ``ui.wgsl``'s vertex inputs and
+#: :data:`chimol.renderer.ui.quad_painter.FLOATS_PER_VERTEX`; a mismatch is a
+#: stride error, which draws a plausible-looking panel out of the wrong bytes
+#: rather than failing.
+UI_FLOATS_PER_VERTEX = 12
+
+
+def _read_atlas_rgba(path) -> np.ndarray:
+    """Read the glyph atlas as ``(h, w, 4)`` uint8 RGBA.
+
+    Parameters
+    ----------
+    path : pathlib.Path
+        The atlas PNG.
+
+    Returns
+    -------
+    numpy.ndarray
+
+    Raises
+    ------
+    RuntimeError
+        If no PNG reader is available. Raised rather than falling back to a
+        blank texture, which would draw the whole panel as invisible text and
+        look like a layout bug.
+    """
+    try:
+        from PIL import Image
+    except Exception as exc:  # pragma: no cover - Pillow is a hard dependency
+        raise RuntimeError(f"cannot read the glyph atlas at {path}: {exc}") from exc
+    return np.ascontiguousarray(
+        np.array(Image.open(path).convert("RGBA"), dtype=np.uint8)
+    )
+
 #: How much interleaved vertex data to keep. A quarter-million beads is 8.4 MB,
 #: so this holds a large scene and its predecessor without holding every scene
 #: anyone has looked at.
@@ -226,6 +262,15 @@ class WgpuMeshRenderer:
         self._overlay_pipeline = None
         self._overlay_layout = None
         self._silhouette_pipeline = None
+        #: The chrome-quad pipeline and the glyph atlas it samples. Built and
+        #: uploaded on first use, then kept: the atlas is immutable, and
+        #: re-uploading it per frame would put back the cost that drawing the
+        #: chrome as quads removed.
+        self._ui_pipeline = None
+        self._ui_layout = None
+        self._ui_sampler = None
+        self._ui_atlas_texture = None
+        self._ui_atlas_size = (1, 1)
 
     #: Size of the shared uniform block, in floats: four 4x4 matrices and six
     #: vec4s. Named because the chrome pass has to bind a block it never reads,
@@ -488,6 +533,177 @@ class WgpuMeshRenderer:
             mag_filter=wgpu.FilterMode.nearest, min_filter=wgpu.FilterMode.nearest
         )
         return self._overlay_pipeline
+
+    def _build_ui_pipeline(self):
+        """Build the chrome-quad pipeline, once, on first use.
+
+        One pipeline for the whole panel: rectangles sample the glyph atlas's
+        opaque block, so there is no second pipeline for solid fills and no
+        "is this text" branch in the fragment shader.
+        """
+        wgpu = self._wgpu
+        if self._ui_pipeline is not None:
+            return self._ui_pipeline
+
+        self._ui_layout = self.device.create_bind_group_layout(
+            entries=[
+                {
+                    "binding": 0,
+                    "visibility": wgpu.ShaderStage.VERTEX,
+                    "buffer": {"type": wgpu.BufferBindingType.uniform},
+                },
+                {
+                    "binding": 1,
+                    "visibility": wgpu.ShaderStage.FRAGMENT,
+                    "texture": {"sample_type": wgpu.TextureSampleType.float},
+                },
+                {
+                    "binding": 2,
+                    "visibility": wgpu.ShaderStage.FRAGMENT,
+                    "sampler": {"type": wgpu.SamplerBindingType.filtering},
+                },
+            ]
+        )
+        module = self.device.create_shader_module(code=load_wgsl("ui.wgsl"))
+        stride = 4 * UI_FLOATS_PER_VERTEX
+        self._ui_pipeline = self.device.create_render_pipeline(
+            layout=self.device.create_pipeline_layout(
+                bind_group_layouts=[self._bind_layout, self._ui_layout]
+            ),
+            vertex={
+                "module": module,
+                "entry_point": "vs_ui",
+                "buffers": [
+                    {
+                        "array_stride": stride,
+                        "step_mode": "vertex",
+                        "attributes": [
+                            # position, uv, colour, clip box
+                            {"format": "float32x2", "offset": 0, "shader_location": 0},
+                            {"format": "float32x2", "offset": 8, "shader_location": 1},
+                            {"format": "float32x4", "offset": 16, "shader_location": 2},
+                            {"format": "float32x4", "offset": 32, "shader_location": 3},
+                        ],
+                    }
+                ],
+            },
+            # No depth attachment: this rides in the second pass, which samples
+            # the depth the first one wrote.
+            fragment={
+                "module": module,
+                "entry_point": "fs_ui",
+                "targets": [
+                    {
+                        "format": self.format,
+                        # Premultiplied, as `ui.wgsl` outputs and as the chrome
+                        # has always been composited.
+                        "blend": {
+                            "color": {
+                                "src_factor": wgpu.BlendFactor.one,
+                                "dst_factor": wgpu.BlendFactor.one_minus_src_alpha,
+                                "operation": wgpu.BlendOperation.add,
+                            },
+                            "alpha": {
+                                "src_factor": wgpu.BlendFactor.one,
+                                "dst_factor": wgpu.BlendFactor.one_minus_src_alpha,
+                                "operation": wgpu.BlendOperation.add,
+                            },
+                        },
+                    }
+                ],
+            },
+            primitive={"topology": wgpu.PrimitiveTopology.triangle_list},
+        )
+        # Linear, unlike the overlay's nearest: the atlas is baked at 4x and
+        # sampled down, so filtering is what turns supersampled coverage into a
+        # smooth edge rather than a stair.
+        self._ui_sampler = self.device.create_sampler(
+            mag_filter=wgpu.FilterMode.linear, min_filter=wgpu.FilterMode.linear
+        )
+        return self._ui_pipeline
+
+    def upload_ui_atlas(self):
+        """Upload the glyph atlas, once, and return its texture.
+
+        Returns
+        -------
+        object
+            A ``GPUTexture``. Cached: the atlas is immutable and re-uploading it
+            per frame would put the cost back that drawing quads removed.
+        """
+        if self._ui_atlas_texture is not None:
+            return self._ui_atlas_texture
+
+        wgpu = self._wgpu
+        from .ui.font import load_atlas
+
+        atlas = load_atlas()
+        image = _read_atlas_rgba(atlas.image_path)
+        height, width = image.shape[:2]
+        texture = self.device.create_texture(
+            size=(width, height, 1),
+            format=wgpu.TextureFormat.rgba8unorm,
+            usage=wgpu.TextureUsage.TEXTURE_BINDING | wgpu.TextureUsage.COPY_DST,
+        )
+        self.device.queue.write_texture(
+            {"texture": texture, "origin": (0, 0, 0)},
+            image,
+            {"bytes_per_row": width * 4, "rows_per_image": height},
+            (width, height, 1),
+        )
+        self._ui_atlas_size = (width, height)
+        self._ui_atlas_texture = texture
+        return texture
+
+    def _draw_ui(self, render_pass, vertices: np.ndarray) -> list:
+        """Draw the chrome quads; returns the resources to keep alive."""
+        wgpu = self._wgpu
+        pipeline = self._build_ui_pipeline()
+        texture = self.upload_ui_atlas()
+
+        data = np.ascontiguousarray(vertices, dtype=np.float32)
+        vbo = self.device.create_buffer_with_data(
+            data=data, usage=wgpu.BufferUsage.VERTEX
+        )
+        # Viewport in pixels and atlas size in texels; the shader needs both to
+        # turn a pixel-space quad into clip space and a texel into a uv.
+        uniforms = np.array(
+            [float(self.width), float(self.height),
+             float(self._ui_atlas_size[0]), float(self._ui_atlas_size[1])],
+            dtype=np.float32,
+        )
+        ubo_ui = self.device.create_buffer_with_data(
+            data=uniforms, usage=wgpu.BufferUsage.UNIFORM
+        )
+        bind = self.device.create_bind_group(
+            layout=self._ui_layout,
+            entries=[
+                {"binding": 0,
+                 "resource": {"buffer": ubo_ui, "offset": 0, "size": ubo_ui.size}},
+                {"binding": 1, "resource": texture.create_view()},
+                {"binding": 2, "resource": self._ui_sampler},
+            ],
+        )
+        # As with the overlay: group 0 is declared by the shared prelude every
+        # shader carries, so it must be bound even though the chrome never
+        # reads it.
+        ubo = self.device.create_buffer_with_data(
+            data=np.zeros(self.UNIFORM_FLOATS, dtype=np.float32),
+            usage=wgpu.BufferUsage.UNIFORM,
+        )
+        group0 = self.device.create_bind_group(
+            layout=self._bind_layout,
+            entries=[
+                {"binding": 0,
+                 "resource": {"buffer": ubo, "offset": 0, "size": ubo.size}}
+            ],
+        )
+        render_pass.set_pipeline(pipeline)
+        render_pass.set_bind_group(0, group0)
+        render_pass.set_bind_group(1, bind)
+        render_pass.set_vertex_buffer(0, vbo)
+        render_pass.draw(int(data.shape[0]), 1, 0, 0)
+        return [vbo, ubo_ui, ubo, bind, group0, texture]
 
     def _build_silhouette_pipeline(self):
         """Build the depth-outline pipeline, once, on first use."""
@@ -911,6 +1127,7 @@ class WgpuMeshRenderer:
         target_radius: Optional[float] = None,
         viewport: Optional[Sequence[float]] = None,
         overlay: Optional[np.ndarray] = None,
+        chrome: Optional[np.ndarray] = None,
         silhouette: Optional[dict] = None,
     ) -> np.ndarray:
         """Render ``scene`` from ``view_state`` and return an ``(h, w, 3)`` uint8 image.
@@ -962,6 +1179,7 @@ class WgpuMeshRenderer:
             target_radius=target_radius,
             viewport=viewport,
             overlay=overlay,
+            chrome=chrome,
             silhouette=silhouette,
         )
         raw = self.device.queue.read_texture(
@@ -985,6 +1203,7 @@ class WgpuMeshRenderer:
         target_radius: Optional[float] = None,
         viewport: Optional[Sequence[float]] = None,
         overlay: Optional[np.ndarray] = None,
+        chrome: Optional[np.ndarray] = None,
         silhouette: Optional[dict] = None,
     ) -> None:
         """Draw ``scene`` into an existing texture view.
@@ -1152,7 +1371,8 @@ class WgpuMeshRenderer:
         # chrome rides along rather than taking a third pass, and it goes last:
         # an outline drawn over the object panel would trace the panel.
         outline = self._silhouette_params(state, silhouette)
-        if outline is not None or (overlay is not None and overlay.size):
+        has_chrome = chrome is not None and len(chrome) > 0
+        if outline is not None or (overlay is not None and overlay.size) or has_chrome:
             rp2 = encoder.begin_render_pass(
                 color_attachments=[
                     {
@@ -1166,6 +1386,8 @@ class WgpuMeshRenderer:
                 keep += self._draw_silhouette(rp2, depth_tex, outline)
             if overlay is not None and overlay.size:
                 keep += self._draw_overlay(rp2, overlay)
+            if has_chrome:
+                keep += self._draw_ui(rp2, chrome)
             rp2.end()
 
         self.device.queue.submit([encoder.finish()])

@@ -91,9 +91,16 @@ class CullMode:
 
 
 class FilterMode:
-    """Sampler filtering."""
+    """Sampler filtering.
+
+    ``nearest`` for the chrome image, which is drawn at exactly the size it is
+    composited at; ``linear`` for the glyph atlas, which is baked supersampled
+    and sampled down, so filtering is what turns that coverage into a smooth
+    edge rather than a stair.
+    """
 
     nearest = "nearest"
+    linear = "linear"
 
 
 class IndexFormat:

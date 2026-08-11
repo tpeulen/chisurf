@@ -31,15 +31,7 @@ from .ui.painter import (
     ALIGN_VCENTER,
 )
 
-#: Keyboard-modifier bits, as plain integers.
-#:
-#: These are ``QtCore.Qt.ControlModifier`` and ``ShiftModifier``, whose values
-#: are fixed by Qt's ABI. They were this module's only module-level Qt
-#: dependency, and it is a layout and hit-test engine -- it decides where a
-#: button is and what a click on it means, which is arithmetic, not a window
-#: system. The painting entry point imports Qt for itself further down.
-CONTROL_MODIFIER = 0x04000000
-SHIFT_MODIFIER = 0x02000000
+from ..host.events import CONTROL_MODIFIER, SHIFT_MODIFIER
 
 # PyMOL's palette, read off its internal GUI.
 PANEL_BG = (0, 0, 0, 190)
