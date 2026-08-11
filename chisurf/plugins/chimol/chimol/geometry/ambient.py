@@ -22,8 +22,8 @@ from __future__ import annotations
 from typing import Optional
 
 import numpy as np
-from scipy.spatial import cKDTree
 
+from .grid_pairs import pairs_within
 from .neighbors import blocked_cross_pairs, count_within_radius
 
 
@@ -183,7 +183,6 @@ def _ray_blockage(
     if facing.size == 0:
         return total
 
-    tree = cKDTree(centers)
     step = reach_max
     sample_count = int(np.ceil(max_distance / step)) + 1
     query_radius = reach_max * _RAY_SAMPLE_MARGIN
@@ -193,12 +192,11 @@ def _ray_blockage(
     for sample in range(sample_count):
         along = min(sample * step, max_distance)
         probes = origins + direction * along
-        found = tree.query_ball_point(probes, query_radius, workers=-1)
-        counts = np.fromiter((len(f) for f in found), dtype=np.int64, count=facing.size)
-        if counts.sum() == 0:
+        rows, found = pairs_within(probes, centers, query_radius)
+        if rows.size == 0:
             continue
-        flat = np.concatenate([np.asarray(f, dtype=np.int64) for f in found if f])
-        seen.append(np.stack((np.repeat(facing, counts), flat)))
+        # `rows` indexes the probes, which are the facing vertices in order.
+        seen.append(np.stack((facing[rows], found)))
     if not seen:
         return total
 

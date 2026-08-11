@@ -1,402 +1,152 @@
-"""Draw a molecule and chimol's panel into a browser canvas, on its own GPU.
+"""chimol in a page: the real viewer, on a browser's own WebGPU.
 
-What this proves
-----------------
-Both halves of a frame, through the whole seam: the **molecule** as sphere
-impostors -- ``impostor.wgsl``, analytic ray-sphere intersection, per-fragment
-depth, the shared shading prelude and the depth cue -- and the **chrome** as
-quads through ``ui.wgsl`` and the baked glyph atlas. Same layout arithmetic,
-same :class:`~chimol.renderer.wgpu_backend.WgpuMeshRenderer`, same nineteen
-WGSL files, reaching a driver through :mod:`chimol.renderer.gpu.browser`
-instead of ``wgpu-py``.
+What this is
+------------
+A host. The viewer is :class:`chimol.renderer.view.MolView` -- the same object
+the desktop drives -- with a windowless renderer, and the command layer is
+:class:`chimol.cmd.Cmd` -- the same hundred-odd commands. This module supplies
+what a page has that a desktop does not: a canvas to draw the built scene into,
+DOM events to drive it with, and the handful of application-level calls the
+commands make (loading a file, refreshing the object list).
 
-The structure is parsed **in the browser**, by chimol's own PDB reader. That is
-worth stating because it was not free: ``io/atoms.py`` took its atom dtype from
-the host application and ``io/__init__.py`` imported every reader eagerly, so
-asking for the PDB parser pulled in the density-map reader, marching cubes and
-scipy. Both are fixed, and the browser is what found them -- Qt was not the only
-thing tying the engine to a desktop.
+That is the whole design, and it replaced the obvious alternative. This file
+used to hold its *own* scene builder (spheres, then a cartoon), its own
+trackball and its own command set, because ``MolView`` could not be imported
+without Qt. Every representation and every command then existed twice, in two
+spellings, with two sets of defaults. ``chimol.host.widget`` removed the reason
+for that: the viewer imports without a toolkit, so the browser runs the same
+one.
 
-Everything below is the same code the desktop runs. If a frame drawn here
-differs from a frame drawn there, the difference is in the backend, which is the
-only thing that changed.
+The molecule is parsed **in the browser**, by chimol's own reader, and drawn by
+the same nineteen WGSL files the desktop compiles -- reaching a driver through
+:mod:`chimol.renderer.gpu.browser` instead of ``wgpu-py``.
 """
 from __future__ import annotations
 
-import math
 import pathlib
 
-__all__ = ["Viewer", "build_molecule", "build_scene_chrome", "draw", "read_demo_payload", "sequence_of"]
+__all__ = ["BrowserHost", "Viewer", "demo_pdb_path"]
 
 
-#: The molecule the demo draws. T4 lysozyme, the structure this project uses
-#: for every protein rendering check, bundled so the page needs no upload and no
-#: network beyond its own origin.
+#: The structure the page opens with. T4 lysozyme, the structure this project
+#: uses for every protein rendering check, bundled so the page needs no upload
+#: and no network beyond its own origin.
 DEMO_PDB = "data/148l.pdb"
 
-#: Cached by :func:`read_demo_payload`.
-_PAYLOAD = None
 
+def demo_pdb_path() -> str:
+    """Absolute path of the bundled structure, for the opening ``load``."""
+    return str(pathlib.Path(__file__).resolve().parent / DEMO_PDB)
 
-def read_demo_payload():
-    """Parse the bundled PDB, once.
+class BrowserHost:
+    """The host the command layer reaches past the viewer for.
 
-    Returns
-    -------
-    StructurePayload
+    ``Cmd`` drives a *viewer* -- sixty-seven of its methods -- and reaches the
+    surrounding application for exactly thirteen things: loading a file,
+    refreshing the docked object list, full-screen, and the rock timer. On the
+    desktop that host is ``MolViewPluginWindow``, a Qt main window. Here it is
+    this, which is the same role played by a page.
+
+    It is deliberately not a stand-in that swallows everything. An earlier
+    version answered every attribute with a no-op, and ``load`` then reported
+    success while registering nothing -- the command delegates the actual read
+    to the host, and a host that silently accepts it produces a viewer with no
+    objects and no error.
+
+    Parameters
+    ----------
+    viewer : chimol.renderer.view.MolView
+        The viewer, built with a windowless renderer.
     """
-    global _PAYLOAD
-    if _PAYLOAD is None:
+
+    def __init__(self, viewer) -> None:
+        self.viewer = viewer
+        #: Called after anything that changes the object list, so the page can
+        #: re-read it into the in-viewport panel.
+        self.on_objects_changed = None
+
+    # -- what the commands actually call ----------------------------------
+    def _load_structure_from_path(self, path, *, name=None) -> str:
+        """Read a structure file and register it as an object.
+
+        Parameters
+        ----------
+        path : str or pathlib.Path
+            A file on the page's filesystem -- which in a browser is Pyodide's
+            in-memory one, written by ``fetch``.
+        name : str, optional
+            Object name; the file's stem otherwise.
+
+        Returns
+        -------
+        str
+            The new object's id.
+        """
+        import pathlib as _pathlib
+
         from ..io.structure import _parse_pdb_backbone
 
-        path = pathlib.Path(__file__).resolve().parent / DEMO_PDB
-        _PAYLOAD = _parse_pdb_backbone(str(path))
-    return _PAYLOAD
+        source = _pathlib.Path(str(path))
+        payload = _parse_pdb_backbone(str(source))
+        if payload is None or payload.coords is None or not len(payload.coords):
+            raise ValueError(f"no coordinates in {source.name}")
+        label = str(name or source.stem or "molecule")
+        # `apply_payload` is the viewer's documented single route from a file
+        # in: it is what builds the residues, the CA trace and the secondary
+        # structure a cartoon needs. Going in through `set_structure` instead
+        # is how a structure arrives as bare points and every feature keyed on
+        # atom identity degrades silently.
+        entry = self.viewer._create_object(name=label, source_path=str(source))
+        self.viewer.set_active_object(entry.object_id)
+        self.viewer.apply_payload(payload, object_id=entry.object_id)
+        self._refresh_objects_from_viewer()
+        return entry.object_id
+
+    def _refresh_objects_from_viewer(self) -> None:
+        """Tell the page the object list changed."""
+        if self.on_objects_changed is not None:
+            self.on_objects_changed()
+
+    def _set_object_visible(self, object_id, visible: bool) -> None:
+        """Show or hide an object, then refresh the panel."""
+        self.viewer.set_object_visible(object_id, bool(visible))
+        self._refresh_objects_from_viewer()
+
+    def _select_object_in_ui(self, object_id) -> None:
+        """Make an object current in the page's panel."""
+        self._refresh_objects_from_viewer()
+
+    def _update_sequence_view(self) -> None:
+        """Rebuild the sequence strip."""
+        self._refresh_objects_from_viewer()
+
+    def isFullScreen(self) -> bool:  # noqa: N802 - the Qt name the commands use
+        """Whether the page is full screen. It has no window to maximise."""
+        return False
+
+    def showFullScreen(self) -> None:  # noqa: N802 - the Qt name
+        """Go full screen -- a page cannot, without a user gesture."""
+
+    def showNormal(self) -> None:  # noqa: N802 - the Qt name
+        """Leave full screen."""
+
+    def close(self) -> None:
+        """Close the window. A page closes itself with the tab."""
 
 
-def sequence_of(payload):
-    """Return ``(one-letter codes, residue numbers)`` for the strip.
-
-    Parameters
-    ----------
-    payload : StructurePayload
-        The parsed structure.
-
-    Returns
-    -------
-    tuple
-        The chain's one-letter codes and its residue numbers.
-
-    Notes
-    -----
-    Read from the structure rather than written out. The demo used to carry a
-    43-character string, which is what a viewer showing **164** residues looks
-    like when nobody counts: the strip renders happily, scrolls happily, and
-    stops a quarter of the way through the protein.
-    """
-    from ..colors import _AA_THREE_TO_ONE
-
-    names = payload.res_names
-    if names is None:
-        return "", []
-    codes = "".join(
-        _AA_THREE_TO_ONE.get(str(name).strip().upper(), "X") for name in names
-    )
-    numbers = (
-        [int(n) for n in payload.res_ids]
-        if payload.res_ids is not None
-        else list(range(1, len(codes) + 1))
-    )
-    return codes, numbers
-
-
-def _occlusion_gpu(coords, radii, max_distance: float = 8.0, strength: float = 1.2):
-    """Hemispherical ambient occlusion on the GPU, or ``None``.
-
-    Parameters
-    ----------
-    coords : numpy.ndarray
-        ``(n, 3)`` atom positions.
-    radii : numpy.ndarray
-        ``(n,)`` atom radii.
-    max_distance : float
-        Occluders further than this are ignored.
-    strength : float
-        Scales the accumulated coverage.
-
-    Returns
-    -------
-    numpy.ndarray or None
-        ``(n,)`` occlusion in ``[0, 1)``, or ``None`` when there is no compute
-        device -- the ordinary state on a headless runner.
-
-    Notes
-    -----
-    chimol's own ``occlusion.wgsl``, through
-    :func:`chimol.renderer.compute.occlusion_from_spheres` and the GPU seam, so
-    the browser runs the same compute shader the desktop does against the device
-    the page already resolved.
-
-    The normals are the approximation. Real hemispherical occlusion wants a
-    surface normal per vertex, and a sphere impostor has none -- its normal is
-    computed per *fragment*. Pointing each atom outward from the centroid is
-    right for the surface atoms, which are the ones whose brightness carries the
-    shape; a buried atom's hemisphere is blocked whichever way it faces.
-
-    **The neighbour grid is still built on the CPU** -- see
-    :func:`chimol.renderer.compute.build_grid`, which is numpy. Only the
-    occlusion integral runs on the GPU.
-    """
-    import numpy as np
-
-    from ..renderer.compute import occlusion_from_spheres
-
-    points = np.ascontiguousarray(coords, dtype=np.float64)
-    outward = points - points.mean(axis=0)
-    length = np.linalg.norm(outward, axis=1, keepdims=True)
-    normals = np.divide(outward, np.where(length > 1e-6, length, 1.0))
-    return occlusion_from_spheres(
-        points, normals, points,
-        np.ascontiguousarray(radii, dtype=np.float64).reshape(-1),
-        float(max_distance), float(strength),
-    )
-
-
-def _occlusion(coords, radius: float = 8.0, strength: float = 0.5):
-    """Per-atom ambient occlusion from how crowded each atom is.
-
-    Parameters
-    ----------
-    coords : numpy.ndarray
-        ``(n, 3)`` atom positions.
-    radius : float
-        Neighbourhood radius, in Angstrom.
-    strength : float
-        How dark the most buried atom gets, in ``[0, 1)``.
-
-    Returns
-    -------
-    numpy.ndarray
-        ``(n,)`` occlusion in ``[0, strength]``, 0 being fully exposed.
-
-    Notes
-    -----
-    A neighbour count, not hemispherical occlusion. chimol has the real thing --
-    ``renderer/compute.occlusion_from_spheres``, on the GPU -- but it wants a
-    surface normal per vertex, and a sphere impostor has none: its normal is
-    computed per *fragment* in the shader. For a space-filling model the count
-    is the right approximation anyway, because what makes it read as a body is
-    that atoms in the interior are darker than atoms on the outside, and that is
-    exactly what crowding measures.
-
-    Brute force, in one ``(n, n)`` pass. 1363 atoms is 1.9 M distances and a few
-    milliseconds; it needs no spatial index, which matters because the obvious
-    one is ``scipy.spatial.cKDTree`` and the browser would then have to download
-    scipy to draw a molecule.
-    """
-    import numpy as np
-
-    points = np.asarray(coords, dtype=np.float32)
-    delta = points[:, None, :] - points[None, :, :]
-    within = (np.einsum("ijk,ijk->ij", delta, delta) < radius * radius)
-    # Minus one: every atom is its own neighbour.
-    count = within.sum(axis=1).astype(np.float32) - 1.0
-    if count.max() <= 0.0:
-        return np.zeros(len(points), dtype=np.float32)
-    return (strength * (count / count.max())).astype(np.float32)
-
-
-def build_molecule():
-    """Read the bundled PDB and return ``(Scene, centre, radius)``.
-
-    Returns
-    -------
-    tuple
-        A :class:`~chimol.renderer.scene.Scene` of sphere impostors, the
-        framing centre, and the framing radius.
-
-    Notes
-    -----
-    Parsed by chimol's **own** PDB reader. ``io/structure.py`` reaches for the
-    host application only to read DCD trajectories; the PDB path is
-    self-contained, which is what makes a molecule in the browser a matter of
-    shipping one file rather than porting the readers.
-
-    Spheres rather than cartoon: ``kind == "points"`` routes to the impostor
-    pipeline, which is two triangles and an analytic ray-sphere intersection per
-    atom -- so this exercises `impostor.wgsl`, per-fragment depth and the
-    shading prelude, without needing the secondary-structure machinery that
-    lives in the Qt widget.
-    """
-    import numpy as np
-
-    from ..renderer.scene import Geometry, Scene, SceneObject
-    from ..renderer.view_state import framing_centre, framing_radius
-
-    payload = read_demo_payload()
-
-    coords = np.ascontiguousarray(payload.coords, dtype=np.float32)
-    centre = framing_centre(coords)
-    # `complete` frames on the bounding sphere rather than PyMOL's default
-    # half-extent box, so a demo that nobody is going to re-frame by hand does
-    # not clip its own molecule against the top of the canvas.
-    radius = framing_radius(coords, complete=True)
-
-    # Coloured along the chain, which is `spectrum count` -- the colouring that
-    # makes a fold readable without secondary structure.
-    ramp = np.linspace(0.0, 1.0, len(coords), dtype=np.float32)
-    colours = np.empty((len(coords), 4), dtype=np.float32)
-    colours[:, 0] = np.clip(1.5 - abs(ramp - 1.0) * 3.0, 0.0, 1.0)
-    colours[:, 1] = np.clip(1.5 - abs(ramp - 0.5) * 3.0, 0.0, 1.0)
-    colours[:, 2] = np.clip(1.5 - abs(ramp - 0.0) * 3.0, 0.0, 1.0)
-    colours[:, 3] = 1.0
-
-    # Ambient occlusion, so the model reads as a solid body rather than a heap
-    # of lit balls. Buried atoms darken; exposed ones keep their colour.
-    occlusion = _occlusion_gpu(coords, np.full(len(coords), 1.6))
-    if occlusion is None:
-        # No compute device -- headless, or a browser without one. The neighbour
-        # count is the same idea measured more cheaply, so the demo still reads
-        # as a body rather than silently losing its shading.
-        occlusion = _occlusion(coords)
-    occlusion = np.clip(np.asarray(occlusion, dtype=np.float32), 0.0, 0.85)
-    colours[:, :3] *= (1.0 - occlusion)[:, None]
-
-    radii = payload.atom_radii
-    if radii is None:
-        radii = np.full(len(coords), 1.6, dtype=np.float32)
-    radii = np.ascontiguousarray(radii, dtype=np.float32).reshape(-1, 1)
-
-    # `world_radius` is what says these are Angstroms and not point sizes.
-    # Without it the impostor shader reads `radii` as a screen-space sprite
-    # size, and 1363 atoms come out as a scatter of two-pixel dots -- which
-    # looks like a framing bug and is a units bug.
-    geometry = Geometry(
-        kind="points", positions=coords, colors=colours, radii=radii,
-        # Carried as well as multiplied in: the shader damps the light that does
-        # *not* come from the surface colour -- ambient, rim -- with it, and
-        # without that those terms fill the crevices back in and the occlusion
-        # reads as an overall dimming instead of as shape.
-        occlusion=occlusion.reshape(-1, 1),
-        meta={"world_radius": True},
-    )
-    scene = Scene(
-        objects=[SceneObject(id="148l", geometry=geometry)],
-        center=centre,
-        radius=float(radius),
-    )
-    return scene, centre, float(radius)
-
-
-def build_scene_chrome(width: int, height: int, payload=None):
-    """Lay the panel out and return it as chrome vertices.
-
-    Parameters
-    ----------
-    width, height : int
-        Canvas size, in device pixels.
-    payload : StructurePayload, optional
-        The structure whose sequence the strip shows. Read from the file when
-        omitted.
-
-    Returns
-    -------
-    numpy.ndarray
-        ``(n, 12)`` float32 for ``ui.wgsl``.
-    """
-    if payload is None:
-        payload = read_demo_payload()
-    from ..renderer.internal_gui import GuiRow, InternalGui, SequenceRow
-    from ..renderer.ui.quad_painter import QuadPainter
-
-    gui = InternalGui()
-    gui.visible = True
-    gui.set_rows(
-        [
-            GuiRow(name="all", is_header=True),
-            GuiRow(name="148l"),
-            GuiRow(name="sugars", enabled=False),
-            # PyMOL's `sele` pseudo-object: always present, pinned to the
-            # bottom, and how a selection made in the strip is acted on.
-            GuiRow(name="sele", is_selection=True),
-        ]
-    )
-    gui.sequence_visible = True
-    codes, numbers = sequence_of(payload)
-    gui.set_sequences(
-        [SequenceRow(name="148l", codes=codes, numbers=numbers)]
-    )
-    gui.state = (12, 40)
-    gui.layout(int(width), int(height))
-    gui.layout_block(int(width), int(height))
-
-    painter = QuadPainter()
-    gui.paint(painter)
-    return painter.vertices()
-
-
-def draw(canvas, background: tuple | None = None) -> int:
-    """Render one frame of chimol's chrome into *canvas*.
-
-    Parameters
-    ----------
-    canvas : object
-        A JavaScript ``HTMLCanvasElement``.
-    background : tuple, optional
-        Clear colour, linear RGB in ``[0, 1]``.
-
-    Returns
-    -------
-    int
-        The number of quads drawn, so the page can report something specific
-        rather than "it worked".
-    """
-    import numpy as np
-
-    from ..renderer.gpu import api, browser
-    from ..renderer.pack import pack_scene
-    from ..renderer.view_state import distance_for_radius, pack_view_state
-    from ..renderer.wgpu_backend import WgpuMeshRenderer
-
-    api.use_backend(browser)
-
-    width = int(canvas.width)
-    height = int(canvas.height)
-    adapter = browser.request_adapter_sync()
-    device = adapter.request_device_sync()
-    fmt = browser.configure_canvas(canvas, device)
-
-    renderer = WgpuMeshRenderer(width, height, format=fmt, device=device)
-    scene, centre, radius = build_molecule()
-    packed = pack_scene(scene)
-    chrome = build_scene_chrome(width, height, read_demo_payload())
-
-    # Framed on the molecule, and the near/far planes fitted around it -- the
-    # depth cue is measured over that span, so a far plane widened "for safety"
-    # spreads the cue over empty space and dims the whole molecule instead of
-    # separating its front from its back.
-    distance = distance_for_radius(radius, aspect=width / max(height, 1))
-    view = pack_view_state(
-        rotation=np.eye(3, dtype=np.float32),
-        distance=distance,
-        target=centre,
-        near=max(distance - radius, 0.1),
-        far=distance + radius,
-    )
-
-    context = canvas.getContext("webgpu")
-    target = context.getCurrentTexture().createView()
-    renderer.render_into(
-        target,
-        packed,
-        view,
-        background=background or (0.16, 0.16, 0.16),
-        target_radius=radius,
-        viewport=_scene_viewport(width, height),
-        chrome=chrome,
-    )
-    return int(len(chrome) // 6)
-
-
-def _scene_viewport(width: int, height: int):
-    """Return the part of the canvas the molecule gets.
-
-    The panel is a **column** beside the scene, not an overlay on it: drawing
-    the molecule under the panel and then covering it wastes the pixels and
-    puts the centre of the view behind the object list.
-    """
-    from ..renderer.internal_gui import InternalGui
-
-    column = InternalGui().minimum_column_width()
-    return (0.0, 0.0, max(float(width) - column, 1.0), float(height))
 class Viewer:
-    """One interactive viewer: a scene, a camera, a panel, and a canvas.
+    """One interactive viewer in a page: the real viewer, on a canvas.
 
-    Holds the state a browser frame needs between events. The desktop keeps this
-    in the Qt widget, which is exactly the part a browser does not have -- so the
-    only thing that is new here is *where the state lives*, not what it is: the
-    same trackball, the same dolly, the same ``InternalGui`` that decides whether
-    a click landed on a button or on the molecule.
+    The state a browser frame needs between events is the same state a desktop
+    frame needs, and it lives in the same object -- ``MolView``. What differs is
+    only where the pixels go and where the events come from.
+
+    That is the point, and it is what this class was rewritten to be. It used to
+    hold its own scene builder, its own trackball and its own command set, which
+    meant every representation, every command and every default existed twice.
+    ``MolView`` imports without a toolkit now (see ``chimol.host.widget``), so
+    the browser runs **the** viewer and **the** command layer, with a windowless
+    renderer whose scene this draws.
 
     Parameters
     ----------
@@ -407,10 +157,11 @@ class Viewer:
     def __init__(self, canvas) -> None:
         import numpy as np
 
+        from ..cmd import Cmd
         from ..renderer.gpu import api, browser
-        from ..renderer.internal_gui import GuiRow, InternalGui, SequenceRow
-        from ..renderer.pack import pack_scene
-        from ..renderer.view_state import distance_for_radius
+        from ..renderer.headless import SceneSink
+        from ..renderer.internal_gui import InternalGui
+        from ..renderer.view import MolView
         from ..renderer.wgpu_backend import WgpuMeshRenderer
 
         api.use_backend(browser)
@@ -438,52 +189,109 @@ class Viewer:
             self.width, self.height, format=self.format, device=self.device
         )
 
-        scene, centre, radius = build_molecule()
-        self.packed = pack_scene(scene)
-        self.target = np.asarray(centre, dtype=np.float64)
-        self.radius = radius
-        self.rotation = np.eye(3, dtype=np.float64)
-        self.distance = distance_for_radius(
-            radius, aspect=self.width / max(self.height, 1)
-        )
+        # The viewer, with the windowless renderer: it builds scenes and
+        # rasterises nothing, and this class rasterises what it built.
+        self.view = MolView(renderer_factory=SceneSink)
+        self.sink = self.view._renderer
+        self.sink.resize(self.logical_width, self.logical_height)
 
-        payload = read_demo_payload()
-        gui = InternalGui()
-        gui.visible = True
-        gui.set_rows(
-            [
-                GuiRow(name="all", is_header=True),
-                GuiRow(name="148l"),
-                GuiRow(name="sugars", enabled=False),
-                # PyMOL's `sele` pseudo-object: always present, pinned to the
-                # bottom, and how a selection made in the strip is acted on.
-                GuiRow(name="sele", is_selection=True),
-            ]
-        )
-        gui.sequence_visible = True
-        codes, numbers = sequence_of(payload)
-        gui.set_sequences([SequenceRow(name="148l", codes=codes, numbers=numbers)])
-        gui.state = (12, 40)
-        self.gui = gui
+        self.host = BrowserHost(self.view)
+        self.cmd = Cmd(self.host)
+        self.host.on_objects_changed = self._sync_panel
+
+        self.gui = InternalGui()
+        self.gui.visible = True
+        self.gui.sequence_visible = True
+        self.gui.set_run_command(self.cmd.do)
+        self.gui.command_line.completions = self._completions
+        self.cmd.set_message_callback(self.gui.command_line.append_message)
+        self.cmd.set_error_callback(self.gui.command_line.append_error)
+        self.gui.on_select = self._on_select
+
         self._drag = None
-        self.background = (0.16, 0.16, 0.16)
-        self.atom_count = int(len(scene.objects[0].geometry.positions))
-        #: The camera `reset` goes back to.
-        self._home = (self.rotation.copy(), float(self.distance), self.target.copy())
+        self._np = np
 
-        # The prompt, wired to something that can actually run a command. This
-        # is the whole reason the command line was moved into the engine: a
-        # browser has no console to dock, so the only place to type is the
-        # viewport, and it has to reach a real command layer to be worth having.
-        from .commands import BrowserCommands
-
-        self.commands = BrowserCommands(self)
-        self.commands.report = gui.command_line.append_message
-        gui.set_run_command(self.commands)
-        gui.command_line.completions = self.commands.completions
-        gui.command_line.append(
+        # The bundled structure, through the same command a user would type.
+        self.cmd.do(f"load {demo_pdb_path()}")
+        self.cmd.do("as cartoon")
+        self.gui.command_line.append(
             "chimol in the browser -- type 'help' for the commands", "message"
         )
+
+    # -- the panel ----------------------------------------------------------
+
+    def _completions(self, line: str, cursor: int):
+        """Complete a command name or an argument, as the console does."""
+        from ..cmd import completion
+
+        head = line[:cursor].lstrip()
+        parts = [p for p in head.replace(",", " ").split() if p]
+        if not parts or (len(parts) == 1 and not head.endswith((" ", ","))):
+            prefix = (parts[0] if parts else "").lower()
+            return [n for n in completion.command_names(self.cmd)
+                    if n.startswith(prefix)]
+        prefix = "" if head.endswith((" ", ",")) else parts[-1].lower()
+        pool = completion.argument_pool(parts[0], self.cmd)
+        return [item for item in pool if item.lower().startswith(prefix)]
+
+    def _sync_panel(self) -> None:
+        """Mirror the viewer's objects and sequences into the in-viewport panel.
+
+        The same job ``molview_main_window.sync_internal_gui`` does on the
+        desktop, and for the same reason: the panel is a *view* of the object
+        list, so it is fed from the list rather than kept in step by hand.
+        """
+        from ..renderer.internal_gui import GuiRow, SequenceRow
+
+        rows = [GuiRow(name="all", is_header=True)]
+        sequences = []
+        for entry in self.view.list_objects():
+            name = str(entry.get("name") or entry.get("id"))
+            rows.append(GuiRow(name=name, enabled=bool(entry.get("visible", True))))
+            codes, numbers, colours = self._sequence_of(entry.get("id"))
+            if codes:
+                sequences.append(
+                    SequenceRow(name=name, codes=codes, numbers=numbers,
+                                colors=colours, object_id=str(entry.get("id")))
+                )
+        rows.append(GuiRow(name="sele", is_selection=True))
+        self.gui.set_rows(rows)
+        self.gui.set_sequences(sequences)
+
+    def _sequence_of(self, object_id):
+        """One-letter codes, residue numbers and colours for an object.
+
+        From the viewer's own accessors, which is what the desktop's
+        ``_sync_internal_sequences`` reads too -- deriving the sequence here
+        from the payload instead is how the strip ends up disagreeing with the
+        molecule about what a residue is coloured.
+        """
+        try:
+            codes, _names = self.view.get_sequence_arrays(object_id)
+            numbers = self.view.get_residue_numbers(object_id)
+            colours = self.view.get_residue_colors(object_id)
+        except Exception:  # noqa: BLE001 - an object with no sequence
+            return "", [], []
+        if codes is None or not len(codes):
+            return "", [], []
+        return (
+            "".join(str(c) for c in codes),
+            [int(n) for n in (numbers if numbers is not None else [])],
+            [tuple(float(c) for c in rgba[:3])
+             for rgba in (colours if colours is not None else [])],
+        )
+
+    def _on_select(self, name: str, indices, additive: bool) -> None:
+        """Turn a sequence-strip selection into the viewer's own selection."""
+        columns = [int(i) for i in (indices or [])]
+        object_id = None
+        for entry in self.view.list_objects():
+            if str(entry.get("name")) == str(name):
+                object_id = entry.get("id")
+                break
+        if object_id is None:
+            return
+        self.view.set_selected_residues(columns, object_id=object_id)
 
     # -- geometry ----------------------------------------------------------
 
@@ -509,28 +317,15 @@ class Viewer:
         if self._drag is None:
             return bool(self.gui.mouse_move(x, y))
 
-        from ..renderer.camera_state import trackball_delta
-
         last_x, last_y, button = self._drag
         self._drag = (x, y, button)
         if button == 0:
-            delta = trackball_delta(
-                (last_x, last_y), (x, y), self.scene_width(), self.scene_height()
-            )
-            self.rotation = delta @ self.rotation
+            # The shared trackball, from `camera_state`: a viewer whose drags
+            # turn the molecule by a different amount is a different viewer,
+            # and no screenshot comparison catches it.
+            self.sink.orbit((last_x, last_y), (x, y))
         else:
-            # Middle or right drags pan, at one pixel of scene per pixel of
-            # cursor -- the same scale on both axes, or the molecule slides out
-            # from under the pointer.
-            import math
-
-            half_tan = math.tan(math.radians(30.0) / 2.0)
-            scale = 2.0 * self.distance * half_tan / max(self.scene_height(), 1)
-            right = self.rotation[0]
-            up = self.rotation[1]
-            self.target = self.target + (-(x - last_x) * scale) * right + (
-                (y - last_y) * scale
-            ) * up
+            self.sink.pan(x - last_x, y - last_y)
         return True
 
     def release(self) -> bool:
@@ -541,7 +336,7 @@ class Viewer:
 
     def wheel(self, steps: float) -> bool:
         """Dolly the camera. Multiplicative, so one step feels the same at any scale."""
-        self.distance = float(min(max(self.distance * (1.1 ** steps), 1e-3), 1e9))
+        self.sink.dolly(1.1 ** float(steps))
         return True
 
     def key(
@@ -569,9 +364,7 @@ class Viewer:
         The answer is what the page uses to decide whether to call
         ``preventDefault``. It must be honest: swallowing every key would take
         the browser's own shortcuts -- reload, find, the developer console --
-        away from a page that is not a text editor, and answering ``False`` for
-        a key the prompt consumed puts a ``/`` in the browser's find bar while
-        it also appears in the command line.
+        away from a page that is not a text editor.
         """
         from ..host.keys import key_from_dom, modifiers_from_dom
 
@@ -596,71 +389,31 @@ class Viewer:
         parts += [f"{entry.kind}: {entry.text}" for entry in line.log[-8:]]
         return "\n".join(parts)
 
-    # -- what the commands drive --------------------------------------------
-
-    def turn(self, axis: str, angle: float) -> None:
-        """Rotate the camera about a camera-space axis, PyMOL's ``turn``.
-
-        Parameters
-        ----------
-        axis : str
-            ``"x"``, ``"y"`` or ``"z"``.
-        angle : float
-            Radians.
-        """
-        import numpy as np
-
-        cos, sin = math.cos(angle), math.sin(angle)
-        rotations = {
-            "x": ((1, 0, 0), (0, cos, -sin), (0, sin, cos)),
-            "y": ((cos, 0, sin), (0, 1, 0), (-sin, 0, cos)),
-            "z": ((cos, -sin, 0), (sin, cos, 0), (0, 0, 1)),
-        }
-        self.rotation = np.asarray(rotations[axis], dtype=np.float64) @ self.rotation
-
-    def frame(self, buffer: float = 0.0) -> None:
-        """Re-fit the camera to the molecule, plus *buffer* Angstrom."""
-        from ..renderer.view_state import distance_for_radius
-
-        self.distance = distance_for_radius(
-            self.radius + float(buffer), aspect=self.width / max(self.height, 1)
-        )
-
-    def reset_camera(self) -> None:
-        """Restore the camera the viewer started with."""
-        rotation, distance, target = self._home
-        self.rotation = rotation.copy()
-        self.distance = float(distance)
-        self.target = target.copy()
-
     # -- drawing -----------------------------------------------------------
 
     def draw(self) -> int:
         """Render one frame. Returns the quad count of the chrome."""
+        from ..renderer.pack import pack_scene
         from ..renderer.ui.quad_painter import QuadPainter
-        from ..renderer.view_state import pack_view_state
 
         self.gui.layout(self.logical_width, self.logical_height)
+        self.gui.layout_block(self.logical_width, self.logical_height)
         painter = QuadPainter(scale=self.dpr)
         self.gui.paint(painter)
         chrome = painter.vertices()
 
-        view = pack_view_state(
-            rotation=self.rotation,
-            distance=self.distance,
-            target=self.target,
-            near=max(self.distance - self.radius, 0.1),
-            far=self.distance + self.radius,
-        )
+        scene = getattr(self.sink, "scene", None)
+        packed = pack_scene(scene) if scene is not None else None
         context = self.canvas.getContext("webgpu")
-        self.renderer.render_into(
-            context.getCurrentTexture().createView(),
-            self.packed,
-            view,
-            background=self.background,
-            target_radius=self.radius,
-            viewport=(0.0, 0.0, float(self.scene_width() * self.dpr),
-                      float(self.height)),
-            chrome=chrome,
-        )
+        if packed is not None:
+            self.renderer.render_into(
+                context.getCurrentTexture().createView(),
+                packed,
+                self.sink.get_view_state(),
+                background=self.sink.get_background_color()[:3],
+                target_radius=getattr(self.sink, "_target_radius", None),
+                viewport=(0.0, 0.0, float(self.scene_width() * self.dpr),
+                          float(self.height)),
+                chrome=chrome,
+            )
         return int(len(chrome) // 6)

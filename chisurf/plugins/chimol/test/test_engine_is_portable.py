@@ -59,7 +59,12 @@ ENGINE_MODULES = (
     "chimol.renderer.gpu.enums",
     "chimol.renderer.internal_gui",
     "chimol.renderer.lighting",
+    "chimol.renderer.markers",
     "chimol.renderer.pack",
+    # The viewer itself. It is a ``QWidget`` when there is a toolkit and a plain
+    # object when there is not (`chimol.host.widget`), which is what lets a page
+    # run *the* viewer and *the* command layer rather than a second set of both.
+    "chimol.renderer.view",
     "chimol.renderer.scene",
     "chimol.renderer.ui.command_line",
     "chimol.renderer.ui.painter",
@@ -69,12 +74,19 @@ ENGINE_MODULES = (
 
 #: The host layer: the modules that are *allowed* to import Qt at module scope.
 #:
-#: A **shrinking** list, and the worklist for what is left of the port. Sixteen
+#: A **shrinking** list, and the worklist for what is left of the port. Fifteen
 #: modules, thirteen of them ``app/`` panels that draw with Qt widgets what the
 #: in-viewport panel already draws with quads -- so most of this list is closed
-#: by moving those panels into the chrome, not by editing them. The three
-#: renderer entries are the widget, its scene builder, and what is left of the
-#: image-composited overlay.
+#: by moving those panels into the chrome, not by editing them. The two renderer
+#: entries are the Qt widget and what is left of the image-composited overlay;
+#: the scene builder (``renderer/view.py``) left the list when the viewer stopped
+#: needing a toolkit to exist.
+#:
+#: "Imports Qt at module scope" means an *unconditional* import. A guarded
+#: ``try: from qtpy import ... except ImportError:`` with a stand-in behind it
+#: is the sanctioned shape -- that is what `chimol.host.widget` is -- and the
+#: subprocess test above is what proves such a module really does load without
+#: a toolkit.
 #:
 #: Never add to it. ``test_the_host_list_is_not_padded`` fails on an entry that
 #: no longer needs to be here, which is how it shrinks.
@@ -93,7 +105,6 @@ HOSTS = frozenset({
     "app/timeline_panel.py",
     "app/volume_panel.py",
     "renderer/gui_overlay.py",
-    "renderer/view.py",
     "renderer/wgpu_view.py",
 })
 

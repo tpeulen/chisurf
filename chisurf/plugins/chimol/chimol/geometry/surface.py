@@ -4,8 +4,8 @@ import math
 from typing import Optional, Tuple
 
 import numpy as np
-from scipy.ndimage import distance_transform_edt as _scipy_edt
-from scipy.spatial import cKDTree
+
+from .grid_pairs import pairs_within
 
 # Isosurface extraction is chimol's own marching cubes (see marching_cubes.py),
 # not scikit-image's -- the tables are small and the alternative is a large
@@ -181,7 +181,6 @@ def _distance_to_spheres(points, radii, grid, origin, spacing):
         grid[...] = accelerated
         return
 
-    tree = cKDTree(points)
     radius_max = float(radii.max())
     count = points.shape[0]
 
@@ -201,7 +200,7 @@ def _distance_to_spheres(points, radii, grid, origin, spacing):
             np.meshgrid(ax[begin:end], ay, az, indexing="ij"), axis=-1
         ).reshape(-1, 3)
         grid[begin:end] = np.minimum(
-            _nearest_sphere_surface(tree, points, radii, radius_max, count, block),
+            _nearest_sphere_surface(points, radii, radius_max, horizon, block),
             horizon,
         ).reshape(end - begin, ny, nz)
 
@@ -229,21 +228,21 @@ _DISTANCE_HORIZON = 8.0
 _NEAREST_SPHERES = 8
 
 
-def _nearest_sphere_surface(tree, points, radii, radius_max, count, queries):
+def _nearest_sphere_surface(points, radii, radius_max, horizon, queries):
     """``min(|q - p_i| - r_i)`` over all spheres, for each query point.
 
     Parameters
     ----------
-    tree : scipy.spatial.cKDTree
-        Index over ``points``.
     points : numpy.ndarray
         ``(n, 3)`` sphere centres.
     radii : numpy.ndarray
         ``(n,)`` sphere radii.
     radius_max : float
         ``radii.max()``, passed in so it is not recomputed per slab.
-    count : int
-        ``n``, likewise.
+    horizon : float
+        Distances beyond this are not distinguished -- see
+        :data:`_DISTANCE_HORIZON`. It is what bounds the search radius, and
+        therefore what makes this a local query rather than a global one.
     queries : numpy.ndarray
         ``(q, 3)`` positions to evaluate.
 
@@ -251,28 +250,37 @@ def _nearest_sphere_surface(tree, points, radii, radius_max, count, queries):
     -------
     numpy.ndarray
         ``(q,)`` signed distance to the nearest sphere *surface*.
+
+    Notes
+    -----
+    A radius query on the shared grid, not a k-nearest search. The two are not
+    interchangeable in general, but they are here because the caller clamps at
+    ``horizon``: any voxel with no sphere centre within ``horizon + radius_max``
+    is beyond the clamp whatever the true nearest is, so reporting the clamp for
+    it is exact rather than approximate. That is also why the k-nearest version
+    this replaces needed its escalation loop -- a fixed *k* cannot know it has
+    found the nearest surface when the radii differ -- and the radius form has
+    no such doubt.
     """
-    k = min(_NEAREST_SPHERES, count)
-    pending = np.arange(queries.shape[0])
-    best = np.empty(queries.shape[0], dtype=np.float64)
-    while pending.size:
-        distance, index = tree.query(queries[pending], k=k, workers=-1)
-        if k == 1:
-            distance = distance[:, None]
-            index = index[:, None]
-        # A short tree pads with `inf` / `n`; clamp the index so the gather is
-        # valid and let the infinite distance keep the entry out of the minimum.
-        valid = np.isfinite(distance)
-        scored = np.where(valid, distance - radii[np.minimum(index, count - 1)], np.inf)
-        found = scored.min(axis=1)
-        best[pending] = found
-        if k >= count:
-            break
-        # Everything not in the k-nearest set is at least `distance[:, -1]` away,
-        # so it cannot score below that minus the largest radius.
-        bound = distance[:, -1] - radius_max
-        pending = pending[found > bound]
-        k = min(k * 4, count)
+    q = np.ascontiguousarray(queries, dtype=np.float64).reshape(-1, 3)
+    best = np.full(q.shape[0], float(horizon), dtype=np.float64)
+    if q.shape[0] == 0 or points.shape[0] == 0:
+        return best
+
+    reach = float(horizon) + float(radius_max)
+    vi, si = pairs_within(q, points, reach)
+    if vi.size == 0:
+        return best
+
+    delta = q[vi] - points[si]
+    scored = np.sqrt(np.einsum("ij,ij->i", delta, delta)) - radii[si]
+    # One minimum per query row. `np.minimum.at` is the unbuffered ufunc path
+    # and runs an order of magnitude slower on the millions of pairs a grid
+    # produces; sorting and taking the first of each run is the fast form.
+    order = np.lexsort((scored, vi))
+    rows = vi[order]
+    firsts = np.flatnonzero(np.r_[True, rows[1:] != rows[:-1]])
+    best[rows[firsts]] = np.minimum(best[rows[firsts]], scored[order][firsts])
     return best
 
 
@@ -300,7 +308,104 @@ def _distance_transform_edt(forbidden: np.ndarray) -> np.ndarray:
     accelerated = _edt_on_gpu(mask)
     if accelerated is not None:
         return accelerated
-    return _scipy_edt(mask)
+    return _edt_numpy(mask)
+
+
+def _edt_1d(values: np.ndarray) -> np.ndarray:
+    """Squared distance transform along the last axis, Felzenszwalb's way.
+
+    Parameters
+    ----------
+    values : numpy.ndarray
+        ``(rows, n)`` float64: the squared distance accumulated so far, or
+        ``inf`` where nothing has been found yet.
+
+    Returns
+    -------
+    numpy.ndarray
+        The lower envelope of the parabolas ``(x - i)^2 + values[i]``.
+
+    Notes
+    -----
+    The parabola-envelope algorithm, which is what scipy's
+    ``distance_transform_edt`` runs and what makes the transform *exact* and
+    linear rather than an approximation by repeated dilation. Vectorised across
+    rows; the scan along the axis stays a loop, because each step depends on the
+    intersection computed by the last.
+    """
+    rows, n = values.shape
+    out = np.empty_like(values)
+    # `v` holds the index of the k-th parabola in the envelope, `z` its domain
+    # boundaries. One set per row, advanced together.
+    v = np.zeros((rows, n), dtype=np.int64)
+    z = np.empty((rows, n + 1), dtype=np.float64)
+    z[:, 0] = -np.inf
+    z[:, 1] = np.inf
+    k = np.zeros(rows, dtype=np.int64)
+    index = np.arange(rows)
+
+    for q in range(1, n):
+        fq = values[:, q]
+        while True:
+            vk = v[index, k]
+            # The intersection of parabola `q` with the current top one.
+            with np.errstate(invalid="ignore"):
+                s = ((fq + q * q) - (values[index, vk] + vk * vk)) / (2.0 * (q - vk))
+            pop = (k > 0) & (s <= z[index, k])
+            if not pop.any():
+                break
+            k = np.where(pop, k - 1, k)
+        vk = v[index, k]
+        with np.errstate(invalid="ignore"):
+            s = ((fq + q * q) - (values[index, vk] + vk * vk)) / (2.0 * (q - vk))
+        # A row whose f(q) is infinite contributes no parabola at all.
+        finite = np.isfinite(fq)
+        k = np.where(finite, k + 1, k)
+        v[index, k] = np.where(finite, q, v[index, k])
+        z[index, k] = np.where(finite, s, z[index, k])
+        z[index, k + 1] = np.inf
+
+    k = np.zeros(rows, dtype=np.int64)
+    for q in range(n):
+        while True:
+            ahead = z[index, k + 1] < q
+            if not ahead.any():
+                break
+            k = np.where(ahead, k + 1, k)
+        vk = v[index, k]
+        out[:, q] = (q - vk) ** 2 + values[index, vk]
+    return out
+
+
+def _edt_numpy(mask: np.ndarray) -> np.ndarray:
+    """Exact Euclidean distance to the nearest zero of *mask*, in voxels.
+
+    Parameters
+    ----------
+    mask : numpy.ndarray
+        Non-zero where the distance is measured *from*.
+
+    Returns
+    -------
+    numpy.ndarray
+        float64, the same shape.
+
+    Notes
+    -----
+    In the tree rather than from scipy, and the reason is the browser: importing
+    scipy is a ~14 MB download before a page can draw anything, for a fallback
+    that a page with a GPU never takes. Separable, so it is :func:`_edt_1d`
+    applied along each axis in turn -- which is exactly what makes the result
+    exact and not a chamfer approximation.
+    """
+    volume = np.ascontiguousarray(mask)
+    result = np.where(volume != 0, np.inf, 0.0).astype(np.float64)
+    for axis in range(volume.ndim):
+        moved = np.moveaxis(result, axis, -1)
+        shape = moved.shape
+        transformed = _edt_1d(moved.reshape(-1, shape[-1]))
+        result = np.moveaxis(transformed.reshape(shape), -1, axis)
+    return np.sqrt(result)
 
 
 

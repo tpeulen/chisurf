@@ -12,7 +12,17 @@ from importlib import import_module
 from typing import Any, Optional, Union
 
 import numpy as np
-from qtpy import QtCore, QtGui, QtWidgets
+# Qt is *optional* here. ``MolView`` is the viewer -- the object store, the
+# scene builder and everything ``cmd/`` drives -- and being a ``QWidget`` is
+# incidental to all of that. Importing the toolkit unconditionally is what made
+# a browser unable to have a command layer at all; see `chimol.host.widget`.
+try:
+    from qtpy import QtCore, QtGui, QtWidgets
+except Exception:  # noqa: BLE001 - a browser, or no display stack
+    QtCore = QtGui = QtWidgets = None
+
+from ..host.events import CONTROL_MODIFIER
+from ..host.widget import HAS_QT, Signal, Timer, WidgetBase, is_widget
 
 from ..analysis.atom_classes import classify_atoms
 from ..analysis.side_chain_helper import hidden_backbone_bonds
@@ -560,20 +570,20 @@ def _expand_occlusion(
     return np.interp(np.arange(n), sample.astype(float), values)
 
 
-class MolView(QtWidgets.QWidget):
+class MolView(WidgetBase):
 
     # Emitted when residues are selected via picking in the 3D view. The
     # payload is a list of integer residue indices along the CA trace.
-    residueSelectionChanged = QtCore.Signal(object)
-    objectResidueSelectionChanged = QtCore.Signal(object, object)
+    residueSelectionChanged = Signal(object)
+    objectResidueSelectionChanged = Signal(object, object)
     # Emitted when atoms are selected via picking in the 3D view. The
     # payload is a list of integer atom indices.
-    atomSelectionChanged = QtCore.Signal(object)
+    atomSelectionChanged = Signal(object)
     # A short line for the status bar, for things the view does that have no
     # other trace. A mouse gesture that changes a mode silently -- clipping,
     # say -- is undiagnosable when it is triggered by accident, and clipping
     # was: a slab cut into a closed surface reads as broken transparency.
-    statusMessage = QtCore.Signal(str)
+    statusMessage = Signal(str)
     """Minimal 3D protein viewer widget (Chimol).
 
     This widget embeds a :class:`QtWidgets.QOpenGLWidget`-based renderer and
@@ -2386,12 +2396,17 @@ class MolView(QtWidgets.QWidget):
         self._current_frame: int = 0  # 0-indexed internally
         self._keyframes: dict[int, dict] = {}
         self._animation_running: bool = False
-        self._animation_timer: QtCore.QTimer | None = None
+        self._animation_timer = None
         self.selection_mode: str = "Residues"
 
-        layout = QtWidgets.QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(0)
+        # No layout without a toolkit: there is nothing to lay out, and the
+        # block that would fill it is already guarded on the renderer being a
+        # widget.
+        layout = None
+        if HAS_QT:
+            layout = QtWidgets.QVBoxLayout(self)
+            layout.setContentsMargins(0, 0, 0, 0)
+            layout.setSpacing(0)
 
         self.view: QtWidgets.QWidget | None = None
         self._disabled_label: QtWidgets.QLabel | None = None
@@ -2541,7 +2556,7 @@ class MolView(QtWidgets.QWidget):
         # Guarded on the renderer *being* a widget rather than on there being
         # one: a windowless backend is a renderer, and the block below is Qt
         # chrome that only a widget can be embedded in.
-        if isinstance(renderer, QtWidgets.QWidget):
+        if is_widget(renderer):
             container = QtWidgets.QWidget(self)
             container_layout = QtWidgets.QGridLayout(container)
             container_layout.setContentsMargins(0, 0, 0, 0)
@@ -4713,7 +4728,7 @@ class MolView(QtWidgets.QWidget):
         """
         try:
             mods = modifiers
-            ctrl = bool(mods & QtCore.Qt.ControlModifier) if mods is not None else False
+            ctrl = bool(mods & CONTROL_MODIFIER) if mods is not None else False
         except Exception:
             ctrl = False
 
@@ -5113,7 +5128,7 @@ class MolView(QtWidgets.QWidget):
         try:
             timer = getattr(self, "_settle_timer", None)
             if timer is None:
-                timer = QtCore.QTimer(self)
+                timer = Timer(self)
                 timer.setSingleShot(True)
                 timer.timeout.connect(self._bake_after_settling)
                 self._settle_timer = timer
@@ -5158,7 +5173,7 @@ class MolView(QtWidgets.QWidget):
         try:
             timer = getattr(self, "_settle_timer", None)
             if timer is None:
-                timer = QtCore.QTimer(self)
+                timer = Timer(self)
                 timer.setSingleShot(True)
                 timer.timeout.connect(self._bake_after_settling)
                 self._settle_timer = timer
@@ -8863,37 +8878,25 @@ class MolView(QtWidgets.QWidget):
     def _selection_marker_width(self) -> float:
         """Indicator size in pixels, by PyMOL's rule.
 
-        ``ExecutiveGetAdjustedSelectionWidth``:
-        ``selection_width_scale * |stick_radius| / vScale``, clamped between
-        ``selection_width`` and ``selection_width_max`` -- so the marker grows
-        as you zoom in and stops at ten pixels. ``vScale`` is
-        ``SceneGetScreenVertexScale``: the scene units one pixel covers at the
-        origin's depth.
+        The rule itself lives in :mod:`chimol.renderer.markers`, where a browser
+        can reach it; this reads the camera it needs out of the widget.
 
-        PyMOL recomputes this every frame and chimol computes it when the
+        PyMOL recomputes it every frame and chimol computes it when the
         selection changes; between the two, the clamp band is three to ten
         pixels, so the drift a zoom introduces is at most that.
         """
-        cfg = _DISPLAY_CONFIG.get("selection", {}) or {}
-        try:
-            low = float(cfg.get("width", 3.0))
-            high = float(cfg.get("width_max", 10.0))
-            scale = float(cfg.get("width_scale", 2.0))
-            radius = float(cfg.get("width_reference_radius", 0.25))
-        except Exception:
-            low, high, scale, radius = 3.0, 10.0, 2.0, 0.25
+        from .markers import marker_width, screen_vertex_scale
 
         renderer = getattr(self, "_renderer", None)
         try:
-            height = max(int(renderer.scene_height()), 1)
-            fov = math.radians(float(renderer._fov))
-            distance = float(renderer._distance)
-            v_scale = 2.0 * distance * math.tan(fov / 2.0) / height
+            v_scale = screen_vertex_scale(
+                float(renderer._fov),
+                float(renderer._distance),
+                max(int(renderer.scene_height()), 1),
+            )
         except Exception:
             v_scale = 0.0
-        if v_scale <= 0.0:
-            return high
-        return float(min(max(scale * abs(radius) / v_scale, low), high))
+        return marker_width(v_scale, _DISPLAY_CONFIG.get("selection", {}) or {})
 
     def _update_selection_highlight(self, coords: np.ndarray) -> list[SceneObject] | None:
         """Mark the selected atoms, the way PyMOL marks a selection.
@@ -8914,7 +8917,14 @@ class MolView(QtWidgets.QWidget):
         depth rendered to a texture and the existing outline shader
         (``wgsl/silhouette.wgsl``) run over it; until that second depth
         target exists, PyMOL's marker is the honest option.
+
+        The geometry itself is built by :mod:`chimol.renderer.markers`, which is
+        engine code: the marker was assembled here, in the Qt widget, so a
+        browser had no path to it and a strip selection highlighted nothing in
+        3-D. What is left in the widget is finding the selected atoms.
         """
+        from .markers import selection_markers
+
         centers = self._selection_atom_positions(coords)
         if centers is None or not len(centers):
             return None
@@ -8923,31 +8933,11 @@ class MolView(QtWidgets.QWidget):
             sel_cfg = _DISPLAY_CONFIG.get("selection", {})
         except Exception:
             sel_cfg = {}
-        # PyMOL's selection pink, from its own indicator pass.
-        default_color = [1.0, 0.2, 0.6, 1.0]
-        try:
-            col = np.asarray(sel_cfg.get("color", default_color), dtype=float)
-        except Exception:
-            col = np.array(default_color, dtype=float)
-        if col.shape[0] != 4:
-            col = np.array(default_color, dtype=float)
-
-        geom = Geometry(
-            kind="points",
-            positions=centers,
-            colors=np.tile(col, (centers.shape[0], 1)),
-            meta={
-                "glyph": "selection",
-                "size": self._selection_marker_width(),
-                "px_mode": True,
-            },
-        )
-        # An overlay, as PyMOL's is: `selection_overlay` defaults to on, so the
-        # marker is drawn over the representation rather than hidden by it. A
-        # marker you can only see when nothing is in front of it does not tell
-        # you what is selected on the far side of the molecule -- which is
-        # exactly where a box select reaches.
-        return [SceneObject(id="selection", geometry=geom, render_mode="overlay")]
+        return selection_markers(
+            centers,
+            self._selection_marker_width(),
+            sel_cfg.get("color"),
+        ) or None
 
     def _update_view(self, fit_camera: bool = False) -> None:
         """Rebuild the scene, leaving the camera where the user put it.

@@ -1,5 +1,5 @@
 {
-  "_version": 13,
+  "_version": 14,
   "renderer": {
     "backend": "wgpu"
   },
@@ -318,8 +318,8 @@
       0.6,
       1.0
     ],
-    "width": 3.0,
-    "width_max": 10.0,
+    "width": 7.0,
+    "width_max": 16.0,
     "width_scale": 2.0,
     "width_reference_radius": 0.25,
     "click_radius_px": 8.0

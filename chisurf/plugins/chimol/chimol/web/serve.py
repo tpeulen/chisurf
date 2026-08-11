@@ -18,7 +18,7 @@ Use
 ---
     python -m chisurf.plugins.chimol.chimol.web.serve
 
-then open http://localhost:8765/. Pass ``--pyodide DIR`` to serve a local
+then open http://localhost:8788/. Pass ``--pyodide DIR`` to serve a local
 Pyodide instead of fetching one.
 """
 from __future__ import annotations
@@ -72,6 +72,14 @@ def pack(destination: pathlib.Path | None = None) -> pathlib.Path:
                 continue
             archive.write(path, str(relative))
     return destination
+
+
+#: Where the page is served. **Not 8765**, which is ChiSurf's own ZMQ command
+#: port (`chisurf/server/app.py`): serving the page there means whichever of the
+#: two starts second cannot bind, and the one that fails is whichever the user
+#: was not looking at. The page's failure is loud and the server's is a refused
+#: RPC, so this moved rather than the server.
+DEFAULT_PORT = 8788
 
 
 def _already_serving(port: int) -> bool:
@@ -157,7 +165,7 @@ class _Handler(http.server.SimpleHTTPRequestHandler):
             super().log_message(fmt, *args)
 
 
-def serve(port: int = 8765, pyodide: pathlib.Path | None = None,
+def serve(port: int = DEFAULT_PORT, pyodide: pathlib.Path | None = None,
           open_browser: bool = False) -> None:
     """Pack the engine and serve the page.
 
@@ -207,7 +215,7 @@ def serve(port: int = 8765, pyodide: pathlib.Path | None = None,
 def main(argv: list[str] | None = None) -> None:
     """Command-line entry point."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--port", type=int, default=8765)
+    parser.add_argument("--port", type=int, default=DEFAULT_PORT)
     parser.add_argument(
         "--pyodide", type=pathlib.Path, default=None,
         help="a local Pyodide distribution to serve alongside the page",

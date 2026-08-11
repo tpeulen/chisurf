@@ -34056,3 +34056,13 @@
   through the *impostor* pipeline as shaded spheres — `wgsl/marker.wgsl` is the glyph
   now — and (b) a 3 px marker cannot show three bands, so the width band is 7–16 with
   migration 14 carrying it. See [chimol-web](/plugins/chimol-web.md).
+
+- **2026-08-11 — the browser runs chimol's own viewer and command layer; scipy is out of the engine.**
+  `MolView` imports without Qt (`host/widget.py`: a base class, four signals, a timer, and
+  stand-ins), so a page runs *the* viewer and *the* commands — `load`, `as cartoon`, `select`,
+  `bg_color` all work in a tab. `web/commands.py` and the demo's own scene builders are deleted;
+  `renderer/view.py` left `HOSTS` (16 → 15). Three one-line imports blocked it: module-scope `ssl`
+  in `cmd/loader.py`, `urllib` inside `fetch` (now `host/net.py`), and scipy in three `geometry/`
+  modules — replaced by `geometry/grid_pairs.py` (identical pair sets, **5–8× slower**; the GPU
+  kernel is the next step) and an exact in-tree distance transform. The web server also moved off
+  port 8765, which is ChiSurf's own ZMQ port. See [chimol-web](/plugins/chimol-web.md).

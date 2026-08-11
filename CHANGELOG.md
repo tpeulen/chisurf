@@ -4,6 +4,10 @@
 
 ### Added
 
+- **ChiMOL in a browser is now the same ChiMOL.** The page runs the viewer and the command layer the desktop runs — `load`, `as cartoon`, `as spheres`, `select`, `bg_color` all work in a tab — rather than a parallel browser-only viewer with its own commands, which is what it had. Along the way the engine stopped needing SciPy at all (neighbour queries are an in-tree grid, the distance transform an in-tree exact transform), `fetch` works in a page, and the web server moved off port 8765, which ChiSurf's own server uses.
+
+- **A selection looks like a selection again, and works in the browser.** The marker geometry moved out of the Qt widget into the engine, so a selection made in the sequence strip marks the molecule wherever ChiMOL runs. Two defects behind the "scattered dots" report are fixed with it: the markers were drawn by the *sphere* pipeline because their glyph was never read, and at PyMOL's three-pixel floor the indicator's three bands cannot exist — the width band is now 7–16 pixels, carried to existing profiles by a settings migration.
+
 - **ChiMOL has a command line inside the viewport**, beside the docked console — PyMOL's internal/external split, both running the same command layer. It is drawn as GPU quads by the engine, needs no toolkit, and is what lets the browser build be typed at: Return focuses it, Tab completes, Up recalls, and command output and errors appear above it. Fixed with it: a headless `grab_image` had been returning the molecule without the panel since the chrome became quads.
 
 - **Implemented the first PRD-02 sample-tracking foundation**:

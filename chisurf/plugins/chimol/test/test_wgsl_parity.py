@@ -45,16 +45,28 @@ def test_reset_runs_before_every_scene():
 class TestLightRig:
     """One rig, resolved from the config, shared by both backends."""
 
-    def test_defaults_are_a_single_head_on_key_light(self):
-        """No fill light by default.
+    def test_the_default_key_light_is_head_on_and_the_fill_is_shared(self):
+        """One head-on key, and a fill that both backends read from here.
 
-        The WebGPU backend once hardcoded ``fill=0.45`` and an off-axis key,
-        which models a ribbon with dark flanks where the configured rig lights it
-        evenly. Against a black background that difference is invisible.
+        The WebGPU backend once hardcoded ``fill=0.45`` and an *off-axis* key,
+        described in its own comment as "matching the OpenGL backend's
+        defaults" while matching none of them. What matters is not the value --
+        that is a judgement, and it has changed: `3ef65bc37` raised the fill
+        from 0.0 to 0.35 because a scene lit by a head-on key alone falls to
+        ambient everywhere it turns away, and read dark. What matters is that
+        the key points **down the camera** and that there is exactly one place
+        the numbers live.
+
+        This test asserted ``fill == 0.0`` and has been red since that commit,
+        which is the failure mode a value assertion has: it pins a decision that
+        was allowed to change, and then it is the test that is wrong.
         """
         rig = LightRig()
         assert rig.light_dir == (0.0, 0.0, 1.0)
-        assert rig.fill == 0.0
+        assert rig.fill == pytest.approx(0.35)
+        assert resolve_light_rig({}).fill == pytest.approx(rig.fill), (
+            "the dataclass default and the resolved default must be one number"
+        )
 
     def test_reads_the_config_section(self):
         rig = resolve_light_rig(
@@ -199,7 +211,13 @@ class TestWgslSource:
         "bvh.wgsl": None,       # the ray prelude
         "mesh.wgsl": "render",
         "impostor.wgsl": "render",
+        # A flat unlit glyph, not a shaded surface -- it takes the render
+        # prelude for the camera matrices and calls no shading function.
+        "marker.wgsl": "render",
         "line.wgsl": "render",
+        # The chrome's quads. Also a render shader that shades nothing: it
+        # samples the glyph atlas and writes the colour it was given.
+        "ui.wgsl": "render",
         "overlay.wgsl": "render",
         "silhouette.wgsl": "render",
         "shade_atoms.wgsl": "compute",

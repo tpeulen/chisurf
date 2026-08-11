@@ -7,7 +7,85 @@ tags: [plugins, structure, viewer, webgpu, wgsl, web, pyodide, compute]
 timestamp: '2026-08-10T00:00:00Z'
 ---
 
-# Where to pick this up (2026-08-11, latest — read this first)
+# One code path — the page runs the viewer (2026-08-11, latest)
+
+**The browser runs `MolView` and `Cmd`.** Not a browser viewer and a browser
+command set: *the* viewer and *the* hundred-odd commands, with a windowless
+renderer whose scene the page rasterises. `load`, `as cartoon`, `as spheres`,
+`as sticks`, `select`, `bg_color`, `count_atoms` — all of them, in a page,
+because they are the same code.
+
+**What made it possible, and it is small.** `MolView` is the object store, the
+scene builder, the camera and everything `cmd/` drives (sixty-seven of its
+methods); being a `QWidget` was incidental to all of it and was the only reason
+a page could not import it. `host/widget.py` supplies the three things it needs
+from a toolkit — a base class, four signals, a timer — and stand-ins when there
+is none. `view.py`'s Qt import is now guarded, and its widget-construction block
+was already guarded on the renderer *being* a widget (since `SceneSink`).
+**`renderer/view.py` has left `HOSTS`: 16 → 15**, and the viewer is an engine
+module in `test_engine_is_portable.py`.
+
+**Deleted with it:** `web/commands.py` (a parallel command set) and `demo.py`'s
+own scene builders — `build_molecule`, `build_cartoon`, `_occlusion*`,
+`_chain_segments`. `web/demo.py` is now a *host*: a canvas, DOM events, and the
+thirteen application calls the commands make (`BrowserHost`).
+
+**Three imports stood between the page and the viewer, and each was a one-liner
+with a large consequence:**
+- `cmd/loader.py` imported `ssl` at module scope. Pyodide ships `ssl` as a
+  *loadable package*, so the whole command layer failed to import in a page with
+  a message about ssl. Now local to `_tls_context`.
+- `fetch` called `urllib.request.urlopen` directly, which cannot open a socket
+  in a tab. `host/net.py` is the seam — `pyodide.http.open_url` in a page,
+  `urllib` elsewhere — so `fetch` stays one command.
+- **scipy.** `geometry/__init__` imports `neighbors`, `ambient` and `surface`,
+  and all three imported scipy at module scope, so a page paid a ~14 MB download
+  to *import the viewer*. Gone: see below.
+
+## scipy is out of the engine
+
+`geometry/grid_pairs.py` is a vectorised uniform grid — sort points by cell,
+answer all 27 neighbour cells with `searchsorted`, no Python loop over points
+and no compiler. `neighbors.py`, `ambient.py` and `surface.py` route through it;
+`surface.py` also gained `_edt_numpy`, the parabola-envelope distance transform,
+which reproduces `scipy.ndimage.distance_transform_edt` **exactly** (checked on
+1-D, 2-D and 3-D random masks).
+
+**The measurement, and it is not flattering.** Pair sets are *identical* to
+`cKDTree`'s, and the grid is **5–8× slower**:
+
+| n | radius | pairs | grid | cKDTree |
+|---|---|---|---|---|
+| 1,363 | 4 Å | 8,209 | 12 ms | 2.5 ms |
+| 20,000 | 4 Å | 122,094 | 323 ms | 39 ms |
+| 50,000 | 3 Å | 131,774 | 874 ms | 127 ms |
+
+A grid inspects ~6× more candidates than it returns pairs — that is the shape of
+a 3×3×3 stencil against a sphere — and the bookkeeping across 27 offsets, not
+the distance test, is where the time goes (making the candidate gather
+contiguous and float32 moved 14 → 12 ms and nothing at 20k). At scene-rebuild
+sizes this is invisible; at tens of thousands of atoms it is the thing to fix,
+and **the fix is the GPU kernel the user asked for**, with this as its CPU twin
+and its small-input fallback. `grid_occupancy()` reports cells and the fullest
+cell, which is how a degenerate case is seen rather than guessed at.
+
+## Next, in this order
+
+1. **The neighbour count on the GPU.** The numbers above are the case for it and
+   `renderer/compute.py` already has the router, the seam and `bvh.wgsl`'s prefix
+   sum to copy. The shape that wins is one dispatch doing grid, count and the
+   integral it feeds without a round-trip between them — measured at
+   `CHIMOL_COMPUTE=gpu`, the existing occlusion integral is 806 ms against
+   numpy's 39 ms on 1363 atoms, so a kernel that only counts loses by *more* at
+   that size. It wins at tens of thousands.
+2. **The `app/` panels into the chrome** — thirteen of `HOSTS`' fifteen. Start
+   with `sequence_dock.py`, whose replacement already ships.
+3. **The page's renderer is still its own.** `web/demo.py` packs the sink's scene
+   and calls `render_into`; `wgpu_view.py` does the same thing with Qt around it.
+   That is the last real duplication, and it closes by making the Qt widget a
+   thin host over a shared frame builder.
+
+# Where to pick this up (2026-08-11, superseded by the section above)
 
 **Landed since the handover below: the browser can be typed at.** chimol has
 two command lines now, PyMOL's split: an *internal* one drawn in the viewport by
@@ -45,13 +123,33 @@ it. Also a duplicated `sele` row in the browser demo's panel.
 their PNGs stay byte-identical -- they photograph a QPainter chrome that cannot
 be re-taken. `inventory.json` gained one key and changed nothing else.
 
-## Next, in this order
+**Selections work without Qt, and the marker is a marker again.**
+`renderer/markers.py` is the engine module: PyMOL's width rule
+(`ExecutiveGetAdjustedSelectionWidth`), the indicator geometry, and the
+column→residue→atom mapping that a strip selection needs. `view.py` keeps only
+"which atoms are selected"; the browser calls the same three functions, and
+`web/commands.py` gained `select resi 20-40`.
 
-1. **Selections without Qt** — unchanged from the handover below, and now the
-   biggest gap: `renderer/view.py::_update_selection_highlight` builds the
-   marker geometry inside the Qt widget. Fix `meta["px_mode"]` in the WGSL
-   backend *first* (it reads only `size` and `world_radius`), or the port
-   carries the scattered-dots bug across.
+**The scattered-dots report was two bugs, and neither was `px_mode`.** The
+handover said the WGSL backend ignores `meta["px_mode"]` and gives pixel markers
+world-radius behaviour. It does ignore the flag, but *pixel mode is the
+default* — `impostor.wgsl` converts a pixel size to a view extent whenever
+`world_radius` is false, so the size was right all along. What was wrong:
+
+1. **No glyph.** `meta["glyph"] = "selection"` was set by the builder and read by
+   nobody, so markers went through the *impostor* pipeline and each one was a
+   shaded pink **sphere**. `wgsl/marker.wgsl` is the glyph — three concentric
+   screen-space squares, unlit — and `pipeline_for` routes to it.
+2. **Three pixels cannot show three bands.** At PyMOL's `selection_width` floor
+   of 3 the white core is a fifth of a pixel, so every marker resolved to one
+   speck. The band is now 7–16 (`chimol_display.json`, the built-in defaults in
+   `config.py`, and **migration 14**, or the change reaches nobody who already
+   has a profile).
+
+Verified by photographing `select sele, resi 20-40` typed into the viewport
+prompt of the real window: 162 markers, square, with visible cores.
+
+## Next, in this order
 2. **scipy is on the browser's critical path.** `geometry/neighbors.py` is four
    `cKDTree` calls, and `geometry/surface.py` adds `scipy.ndimage`'s distance
    transform; `analysis/{hbonds,surface_area,symmetry}` and `cmd/measurements`

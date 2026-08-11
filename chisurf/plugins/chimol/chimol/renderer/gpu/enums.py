@@ -82,6 +82,10 @@ class CompareFunction:
     """Depth/stencil comparison functions."""
 
     less = "less"
+    #: Draw whatever is already in the depth buffer -- what an *overlay* object
+    #: needs. A selection marker has to be visible on the far side of a
+    #: space-filling model, which is PyMOL's ``selection_overlay``.
+    always = "always"
 
 
 class CullMode:

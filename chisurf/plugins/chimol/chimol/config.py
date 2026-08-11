@@ -14,7 +14,7 @@ try:
 except Exception:  # pragma: no cover - moview can run without chisurf
     _cs_settings = None
 
-DISPLAY_CONFIG_VERSION: int = 13
+DISPLAY_CONFIG_VERSION: int = 14
 """Current version of the chimol_display.json schema.
 
 Increment this when keys are added, renamed, or removed, **or when a default
@@ -128,6 +128,18 @@ DISPLAY_CONFIG_MIGRATIONS: dict[int, dict[str, dict[str, tuple]]] = {
             # keeps every existing scene looking as it did, rather than making
             # a correctness fix arrive as "the shadows went pale".
             "shadow_strength": (1.0, 2.8),
+        },
+    },
+    14: {
+        "selection": {
+            # A three-pixel marker cannot show a three-band marker: at PyMOL's
+            # floor the white core is a fifth of a pixel, so the indicator
+            # resolves to a single pink speck per atom and a selection reads as
+            # a scatter of dots over the molecule -- which is how it was
+            # reported, twice. The rule and the clamp are unchanged; the band
+            # the clamp allows is wide enough for the bands to exist.
+            "width": (3.0, 7.0),
+            "width_max": (10.0, 16.0),
         },
     },
 }
@@ -807,8 +819,11 @@ def _load_display_config() -> dict:
         # representation setting and this must not follow it.
         "selection": {
             "color": [1.0, 0.2, 0.6, 1.0],
-            "width": 3.0,
-            "width_max": 10.0,
+            # Wider than PyMOL's 3-10 on purpose -- see migration 14 and
+            # `renderer/markers.py`: a three-pixel marker cannot show three
+            # bands, and resolves to one pink speck per atom.
+            "width": 7.0,
+            "width_max": 16.0,
             "width_scale": 2.0,
             "width_reference_radius": 0.25,
             "click_radius_px": 8.0,

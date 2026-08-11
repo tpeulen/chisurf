@@ -7,19 +7,21 @@ mask coordinates against a target set. They were four hand-written uniform-grid
 cell lists in four files; they are now four calls to :mod:`scipy.spatial`'s
 compiled k-d tree.
 
-Why not the cell lists
-----------------------
-They were numba kernels, and numba does not exist in Pyodide — so each one was a
-wall between chimol and the browser. The cheap way out is dead: a no-op ``njit``
-shim (exactly ``NUMBA_DISABLE_JIT=1``) runs 300–680× slower, and no
-whole-program Python→WASM compiler closes that, because it cannot see through a
-numpy buffer. ``cKDTree`` is compiled, ships in Pyodide, and lands within a small
-factor of the numba cell list — nothing for work done once per scene rebuild.
+Why a grid, and not scipy
+-------------------------
+These were numba cell lists, then ``scipy.spatial.cKDTree``, and are now a
+vectorised uniform grid — :mod:`chimol.geometry.grid_pairs`. Each move was for a
+reason and the last one is the browser: scipy *runs* in Pyodide, but importing
+it is a ~14 MB download, ``geometry/__init__`` imports this module at module
+scope, and the page therefore paid for scipy in order to *import the viewer* —
+before any query was made. The instruction was to move this compute to the GPU,
+and a CPU twin is what a GPU kernel is checked against, so it had to exist
+first.
 
-The k-d tree is also *better* than what it replaces for non-uniform input. A
-cell list sized to the query radius degenerates when density varies (one cell
-holding most of the points), which is exactly what a coarse-grained bead model
-next to an all-atom chain looks like.
+The grid is not the numba cell list returning. Those were Python loops made fast
+by a compiler that does not exist in a browser (a no-op ``njit`` shim runs
+300–680× slower). This is the same structure expressed as sorting and
+``searchsorted``, which is what NumPy is fast at, with no loop over points.
 
 Boundary conventions are preserved from the kernels they replace and differ
 between queries — :func:`count_within_radius` is strict, :func:`within_distance_mask`
@@ -30,12 +32,8 @@ against, and ``nextafter`` makes strictness exact rather than approximate.
 from __future__ import annotations
 
 import numpy as np
-from scipy.spatial import cKDTree
 
-#: Pass to every ``cKDTree`` query that accepts it. The tree releases the GIL,
-#: so this is a real speedup on the vertex counts a marching-cubes surface
-#: produces.
-_WORKERS = -1
+from .grid_pairs import pairs_within, self_pairs_within_grid
 
 
 def _as_points(values) -> np.ndarray:
@@ -80,10 +78,10 @@ def count_within_radius(points, radius) -> np.ndarray:
     # `radius` turns the tree's inclusive query into that exact test, rather
     # than an approximation of it that differs on grid-aligned input -- which
     # a marching-cubes vertex set is.
-    strict = float(np.nextafter(float(radius), 0.0))
-    tree = cKDTree(pts)
-    counts = tree.query_ball_point(pts, strict, return_length=True, workers=_WORKERS)
-    return np.asarray(counts, dtype=np.int64) - 1
+    first, _second = pairs_within(pts, pts, float(radius), strict=True)
+    counts = np.bincount(first, minlength=n)[:n].astype(np.int64)
+    # Minus one: the query point is inside its own radius.
+    return counts - 1
 
 
 def within_distance_mask(coords, targets, dist) -> np.ndarray:
@@ -108,10 +106,12 @@ def within_distance_mask(coords, targets, dist) -> np.ndarray:
     n = pts.shape[0]
     if n == 0 or tgt.shape[0] == 0 or not np.isfinite(dist) or dist <= 0.0:
         return np.zeros(n, dtype=bool)
-    # One nearest-target distance per coordinate answers the question directly;
-    # enumerating the pairs would build a list only to throw it away.
-    nearest, _ = cKDTree(tgt).query(pts, k=1, workers=_WORKERS)
-    return np.asarray(nearest) <= float(dist)
+    # Any target within the cutoff answers the question; the *nearest* one is
+    # more than was asked, and finding it costs a second structure.
+    first, _second = pairs_within(pts, tgt, float(dist))
+    mask = np.zeros(n, dtype=bool)
+    mask[first] = True
+    return mask
 
 
 def cross_pairs_within(points, others, radius) -> tuple[np.ndarray, np.ndarray]:
@@ -140,10 +140,7 @@ def cross_pairs_within(points, others, radius) -> tuple[np.ndarray, np.ndarray]:
         return empty
     if not np.isfinite(radius) or radius <= 0.0:
         return empty
-    pairs = cKDTree(pts).sparse_distance_matrix(
-        cKDTree(oth), float(radius), output_type="ndarray"
-    )
-    return pairs["i"].astype(np.int64), pairs["j"].astype(np.int64)
+    return pairs_within(pts, oth, float(radius))
 
 
 def blocked_cross_pairs(points, others, radius, *, budget: int = 4_000_000):
@@ -179,11 +176,8 @@ def blocked_cross_pairs(points, others, radius, *, budget: int = 4_000_000):
     n = pts.shape[0]
     if n == 0 or oth.shape[0] == 0 or not np.isfinite(radius) or radius <= 0.0:
         return
-    tree = cKDTree(oth)
-    counts = np.asarray(
-        tree.query_ball_point(pts, float(radius), return_length=True, workers=_WORKERS),
-        dtype=np.int64,
-    )
+    first, _second = pairs_within(pts, oth, float(radius))
+    counts = np.bincount(first, minlength=n)[:n].astype(np.int64)
     cumulative = np.cumsum(counts)
     total = int(cumulative[-1])
     if total == 0:
@@ -195,10 +189,8 @@ def blocked_cross_pairs(points, others, radius, *, budget: int = 4_000_000):
     for start, stop in zip(bounds[:-1], bounds[1:]):
         if counts[start:stop].sum() == 0:
             continue
-        pairs = cKDTree(pts[start:stop]).sparse_distance_matrix(
-            tree, float(radius), output_type="ndarray"
-        )
-        yield int(start), int(stop), pairs["i"].astype(np.int64), pairs["j"].astype(np.int64)
+        block_i, block_j = pairs_within(pts[start:stop], oth, float(radius))
+        yield int(start), int(stop), block_i, block_j
 
 
 def self_pairs_within(points, radius) -> np.ndarray:
@@ -219,13 +211,7 @@ def self_pairs_within(points, radius) -> np.ndarray:
     pts = _as_points(points)
     if pts.shape[0] < 2 or not np.isfinite(radius) or radius <= 0.0:
         return np.zeros((0, 2), dtype=np.int64)
-    first, second = cross_pairs_within(pts, pts, radius)
-    keep = first < second
-    out = np.empty((int(keep.sum()), 2), dtype=np.int64)
-    out[:, 0] = first[keep]
-    out[:, 1] = second[keep]
-    order = np.lexsort((out[:, 1], out[:, 0]))
-    return out[order]
+    return self_pairs_within_grid(pts, radius)
 
 
 def shade_from_atoms(verts, atoms, atom_colors, sigmas, cutoff):
@@ -285,13 +271,7 @@ def shade_from_atoms(verts, atoms, atom_colors, sigmas, cutoff):
         out_col, wsum, grad = accelerated
         return out_col, wsum, grad, _nearest_where_starved(v, a, wsum)
 
-    atom_tree = cKDTree(a)
-    strict = float(np.nextafter(float(cutoff), 0.0))
-    pairs = cKDTree(v).sparse_distance_matrix(
-        atom_tree, strict, output_type="ndarray"
-    )
-    vi = pairs["i"]
-    ai = pairs["j"]
+    vi, ai = pairs_within(v, a, float(cutoff), strict=True)
     if vi.size == 0:
         return out_col, wsum, grad, _nearest_where_starved(v, a, wsum)
 
@@ -343,9 +323,15 @@ def _nearest_where_starved(verts, atoms, wsum) -> np.ndarray:
     """
     nearest = np.full(verts.shape[0], -1, dtype=np.int64)
     starved = np.flatnonzero(wsum <= 0.0)
-    if starved.size:
-        _, found = cKDTree(atoms).query(verts[starved], k=1, workers=_WORKERS)
-        nearest[starved] = np.asarray(found, dtype=np.int64)
+    if starved.size and len(atoms):
+        # Brute force over the starved rows only. There are none on an ordinary
+        # surface -- every vertex has atoms inside the cutoff -- and where there
+        # are any it is a handful, so a spatial structure costs more than the
+        # distances do.
+        delta = np.asarray(verts)[starved][:, None, :] - np.asarray(atoms)[None, :, :]
+        nearest[starved] = np.argmin(
+            np.einsum("ijk,ijk->ij", delta, delta), axis=1
+        ).astype(np.int64)
     return nearest
 
 

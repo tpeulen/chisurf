@@ -258,12 +258,16 @@ class WgpuMeshRenderer:
         # depth; transparent geometry does not, or the near face of a
         # translucent shell occludes the far face of the same shell and the
         # surface reads solid.
-        self._pipelines: dict[tuple[str, bool], object] = {}
+        # Keyed by (kind, mode). ``"opaque"`` writes depth, ``"blend"`` does
+        # not, and ``"overlay"`` neither writes nor *tests* it -- an overlay is
+        # drawn over the scene whatever is in front of it, which is what makes a
+        # selection visible on the far side of a space-filling model.
+        self._pipelines: dict[tuple[str, str], object] = {}
         for kind, spec in self._PIPELINES.items():
             module = self.device.create_shader_module(code=load_wgsl(spec["shader"]))
-            for depth_write in (True, False):
-                self._pipelines[(kind, depth_write)] = self._make_pipeline(
-                    module, layout, spec, depth_write
+            for mode in ("opaque", "blend", "overlay"):
+                self._pipelines[(kind, mode)] = self._make_pipeline(
+                    module, layout, spec, mode
                 )
         self._overlay_pipeline = None
         self._overlay_layout = None
@@ -301,6 +305,15 @@ class WgpuMeshRenderer:
             "topology": "triangle-list",
             "step_mode": "instance",
         },
+        # Same instance layout as the impostor -- centre, size, colour -- and a
+        # different fragment stage: a flat unlit stamp rather than a shaded
+        # sphere. See `marker.wgsl` for why that is a separate shader.
+        "marker": {
+            "shader": "marker.wgsl",
+            "attributes": [("float32x4", 4), ("float32x4", 4), ("float32", 1)],
+            "topology": "triangle-list",
+            "step_mode": "instance",
+        },
         # position(3) colour(4)
         "line": {
             "shader": "line.wgsl",
@@ -310,8 +323,22 @@ class WgpuMeshRenderer:
         },
     }
 
-    def _make_pipeline(self, module, layout, spec: dict, depth_write: bool):
-        """Build one render pipeline from a :data:`_PIPELINES` entry."""
+    def _make_pipeline(self, module, layout, spec: dict, mode: str):
+        """Build one render pipeline from a :data:`_PIPELINES` entry.
+
+        Parameters
+        ----------
+        module : wgpu.GPUShaderModule
+            The compiled shader.
+        layout : wgpu.GPUPipelineLayout
+            The shared bind-group layout.
+        spec : dict
+            The :data:`_PIPELINES` entry.
+        mode : str
+            ``"opaque"`` (writes depth), ``"blend"`` (tests but does not write
+            it, so the near face of a translucent shell does not occlude its own
+            far face) or ``"overlay"`` (neither tests nor writes).
+        """
         wgpu = self._wgpu
         attributes, offset = [], 0
         for location, (fmt, count) in enumerate(spec["attributes"]):
@@ -334,8 +361,11 @@ class WgpuMeshRenderer:
             },
             depth_stencil={
                 "format": wgpu.TextureFormat.depth24plus,
-                "depth_write_enabled": depth_write,
-                "depth_compare": wgpu.CompareFunction.less,
+                "depth_write_enabled": mode == "opaque",
+                "depth_compare": (
+                    wgpu.CompareFunction.always if mode == "overlay"
+                    else wgpu.CompareFunction.less
+                ),
             },
             fragment={
                 "module": module,
@@ -986,7 +1016,7 @@ class WgpuMeshRenderer:
         geom : PackedGeometry
             Geometry to draw.
         kind : str
-            ``"impostor"``, ``"line"`` or ``"mesh"``.
+            ``"impostor"``, ``"marker"``, ``"line"`` or ``"mesh"``.
 
         Returns
         -------
@@ -999,7 +1029,7 @@ class WgpuMeshRenderer:
             self._vertex_cache.move_to_end(key)
             return hit[1]
 
-        if kind == "impostor":
+        if kind in ("impostor", "marker"):
             data = self.interleave_impostors(geom)
         elif kind == "line":
             data = self.interleave_lines(geom)
@@ -1084,7 +1114,8 @@ class WgpuMeshRenderer:
         Returns
         -------
         str or None
-            ``"mesh"``, ``"impostor"``, ``"line"``, or ``None`` for geometry this
+            ``"mesh"``, ``"impostor"``, ``"marker"``, ``"line"``, or ``None``
+            for geometry this
             renderer cannot draw. ``kind == "text"`` is the live gap -- labels are
             skipped entirely, which is a missing feature rather than a decision.
         """
@@ -1093,7 +1124,15 @@ class WgpuMeshRenderer:
             has_indices = geometry.indices is not None and geometry.indices.size
             return "mesh" if has_indices else None
         if kind == "points":
-            return "impostor" if geometry.vertex_count else None
+            if not geometry.vertex_count:
+                return None
+            # A glyph the scene builder named, rather than a sphere. Only the
+            # selection indicator uses this today, and it exists because being
+            # drawn as a sphere is what made a selection read as a scatter of
+            # pink dots over the molecule.
+            if geometry.meta.get("glyph") == "selection":
+                return "marker"
+            return "impostor"
         if kind == "line":
             # A line list needs pairs; an odd count would drop its last vertex
             # into a line with no end, which wgpu reports as nothing drawn.
@@ -1310,22 +1349,28 @@ class WgpuMeshRenderer:
         # fraction of what is actually drawn into.
         point_scale = self.point_scale(state.fov, height=vh)
 
-        # Opaque first, then transparent. Blending is order-dependent: drawing a
-        # translucent surface before the geometry behind it composites it against
-        # the background instead of against what it should veil.
+        def _mode(obj) -> str:
+            if obj.render_mode == "overlay":
+                return "overlay"
+            if _opacity(obj) < 1.0 or obj.render_mode == "transparent":
+                return "blend"
+            return "opaque"
+
+        # Opaque, then transparent, then overlays. Blending is order-dependent:
+        # drawing a translucent surface before the geometry behind it composites
+        # it against the background instead of against what it should veil. An
+        # overlay ignores depth entirely, so it has to be last or it would be
+        # painted over by whatever came after it.
+        _ORDER = {"opaque": 0, "blend": 1, "overlay": 2}
         drawable = [(o, k) for o in scene.objects if (k := self.pipeline_for(o.geometry))]
-        ordered = sorted(
-            drawable,
-            key=lambda pair: (_opacity(pair[0]) < 1.0 or pair[0].render_mode == "transparent"),
-        )
+        ordered = sorted(drawable, key=lambda pair: _ORDER[_mode(pair[0])])
 
         current = None
         slot_index = 0
         for obj, kind in ordered:
             geom = obj.geometry
             opacity = _opacity(obj)
-            blended = opacity < 1.0 or obj.render_mode == "transparent"
-            pipeline = self._pipelines[(kind, not blended)]
+            pipeline = self._pipelines[(kind, _mode(obj))]
             if pipeline is not current:
                 rp.set_pipeline(pipeline)
                 current = pipeline
@@ -1351,7 +1396,7 @@ class WgpuMeshRenderer:
             rp.set_bind_group(0, bind)
             rp.set_vertex_buffer(0, vbo)
 
-            if kind == "impostor":
+            if kind in ("impostor", "marker"):
                 # Six vertices derived from the index, one instance per sphere:
                 # two triangles per atom against the ~270 a tessellated sphere
                 # costs. No index buffer and no per-corner vertex buffer -- the

@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import re
-import shutil
-import ssl
 import tempfile
 import urllib.error
 import urllib.request
@@ -36,7 +34,7 @@ def _download_dir() -> Path:
         return Path(tempfile.gettempdir())
 
 
-def _tls_context() -> ssl.SSLContext | None:
+def _tls_context():
     """Build a verifying TLS context that ignores the ambient CA store.
 
     ``urlopen`` with no context trusts whatever OpenSSL was compiled to look at,
@@ -53,7 +51,13 @@ def _tls_context() -> ssl.SSLContext | None:
         use its default when certifi is unavailable. Verification is never
         turned off: a fetch that cannot be verified is a fetch that fails.
     """
+    # Both imports are local. ``ssl`` is not built into every Python that runs
+    # this: Pyodide ships it as a *loadable package*, so importing it at module
+    # scope made the whole command layer -- and therefore the viewer -- fail to
+    # import in a browser, with a message about ssl and nothing about chimol.
     try:
+        import ssl
+
         import certifi
     except Exception:  # pragma: no cover - certifi is a normal dependency
         return None
@@ -353,10 +357,11 @@ class LoaderCommands(BaseCmd):
         # cache.
         partial = destination.with_name(destination.name + ".part")
         try:
-            with urllib.request.urlopen(
-                url, timeout=60, context=_tls_context()
-            ) as response, partial.open("wb") as fh:
-                shutil.copyfileobj(response, fh)
+            # Through the host seam, not `urllib` directly: a browser tab has
+            # no sockets, and this command has to be the same command there.
+            from ..host.net import download
+
+            partial.write_bytes(download(url, timeout=60))
             partial.replace(destination)
         except urllib.error.HTTPError as exc:
             partial.unlink(missing_ok=True)
@@ -374,6 +379,8 @@ class LoaderCommands(BaseCmd):
             # A certificate failure is not a missing entry and not a network
             # outage, and the raw OpenSSL string says so to nobody. Name it.
             reason = exc.reason
+            import ssl
+
             if isinstance(reason, ssl.SSLError):
                 self._emit_error(
                     f"fetch: could not verify {spec['label']}'s certificate. "

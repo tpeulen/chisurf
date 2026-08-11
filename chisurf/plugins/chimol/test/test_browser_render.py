@@ -85,6 +85,16 @@ def server():
 #: made on pixels rather than on the prompt agreeing with itself.
 TYPED_COMMAND = "bg_color white"
 
+#: Typed after it. Selecting is the second thing the browser could not do: the
+#: marker geometry lived in the Qt widget, so a selection made in the page
+#: highlighted nothing in 3-D.
+SELECT_COMMAND = "select sele, resi 20-40"
+
+#: And the third: a representation change. The page opens on a cartoon -- the
+#: viewer's own default -- so this asks for the other one, which covers far more
+#: of the frame and is therefore measurable.
+SHOW_COMMAND = "as spheres"
+
 
 @pytest.fixture(scope="module")
 def rendered(server, tmp_path_factory):
@@ -99,6 +109,8 @@ def rendered(server, tmp_path_factory):
     directory = tmp_path_factory.mktemp("browser")
     out = directory / "chimol.png"
     typed_out = directory / "chimol_typed.png"
+    selected_out = directory / "chimol_selected.png"
+    cartoon_out = directory / "chimol_cartoon.png"
     console: list[str] = []
     with sync_playwright() as pw:
         browser = pw.chromium.launch(headless=True, args=CHROMIUM_FLAGS)
@@ -143,13 +155,29 @@ def rendered(server, tmp_path_factory):
             )
             page.screenshot(path=str(typed_out))
 
+            page.keyboard.type(SELECT_COMMAND, delay=5)
+            page.keyboard.press("Enter")
+            page.wait_for_timeout(500)
+            prompt += "\n" + page.evaluate(
+                "() => globalThis.chimolViewer.prompt_state()"
+            )
+            page.screenshot(path=str(selected_out))
+
+            page.keyboard.type(SHOW_COMMAND, delay=5)
+            page.keyboard.press("Enter")
+            page.wait_for_timeout(1500)
+            prompt += "\n" + page.evaluate(
+                "() => globalThis.chimolViewer.prompt_state()"
+            )
+            page.screenshot(path=str(cartoon_out))
+
         browser.close()
-    return status, out, console, failure, typed_out, prompt
+    return status, out, console, failure, typed_out, prompt, selected_out, cartoon_out
 
 
 def test_the_page_reports_a_drawn_frame(rendered):
     """The loader gets all the way to a drawn frame."""
-    status, _path, _console, failure, _typed, _prompt = rendered
+    status, _path, _console, failure, _typed, _prompt, _selected, _cartoon = rendered
     assert "drawn" in status, f"{status}\n\n{failure[-2000:]}"
 
 
@@ -167,7 +195,7 @@ def test_the_molecule_is_on_the_canvas(rendered):
     """
     np = pytest.importorskip("numpy")
     Image = pytest.importorskip("PIL.Image")
-    _status, path, _console, _failure, _typed, _prompt = rendered
+    _status, path, _console, _failure, _typed, _prompt, _selected, _cartoon = rendered
 
     frame = np.asarray(Image.open(path).convert("RGB")).astype(float)
     height, width = frame.shape[:2]
@@ -176,7 +204,10 @@ def test_the_molecule_is_on_the_canvas(rendered):
     saturation = scene.max(axis=2) - scene.min(axis=2)
     lit = saturation > 60
     fraction = float(lit.mean())
-    assert fraction > 0.05, (
+    # A cartoon, which is what the viewer opens on: a ribbon covers a few per
+    # cent of the frame where a space-filling model covers a fifth of it, so
+    # the bar is where a *ribbon* sits and not where spheres did.
+    assert fraction > 0.015, (
         f"only {fraction:.1%} of the scene is saturated colour; the molecule "
         "is missing, and the panel alone would still pass a 'did anything "
         "render' check"
@@ -197,7 +228,7 @@ def test_the_panel_is_actually_on_the_canvas(rendered):
     """
     np = pytest.importorskip("numpy")
     Image = pytest.importorskip("PIL.Image")
-    _status, path, _console, _failure, _typed, _prompt = rendered
+    _status, path, _console, _failure, _typed, _prompt, _selected, _cartoon = rendered
 
     frame = np.asarray(Image.open(path).convert("RGB")).astype(float)
     height, width = frame.shape[:2]
@@ -227,7 +258,7 @@ def test_a_command_can_be_typed_at_the_page(rendered):
     molecule and had no way to say anything to it -- every command reached it
     only by editing Python and reloading.
     """
-    _status, _path, _console, _failure, _typed, prompt = rendered
+    _status, _path, _console, _failure, _typed, prompt, _selected, _cartoon = rendered
     assert prompt, "the prompt reported nothing; did the page draw?"
     assert f"echo: ChiMOL> {TYPED_COMMAND}" in prompt, (
         f"the typed line did not reach the command layer:\n{prompt}"
@@ -248,7 +279,7 @@ def test_the_typed_command_changed_the_frame(rendered):
     """
     np = pytest.importorskip("numpy")
     Image = pytest.importorskip("PIL.Image")
-    _status, path, _console, _failure, typed, _prompt = rendered
+    _status, path, _console, _failure, typed, _prompt, _selected, _cartoon = rendered
     if not typed.exists():
         pytest.skip("the page never drew, so nothing was typed at it")
 
@@ -265,8 +296,77 @@ def test_the_typed_command_changed_the_frame(rendered):
     )
 
 
+def test_a_selection_made_in_the_page_is_visible_in_3d(rendered):
+    """The markers are on the canvas, in the selection colour.
+
+    Measured against the frame *before* the selection, both with a white
+    background: the marker is pink and nothing else in this scene is, so the
+    count of pink pixels is the selection. A prompt that reported "21 residues
+    selected" and drew nothing would pass every other check here.
+    """
+    np = pytest.importorskip("numpy")
+    Image = pytest.importorskip("PIL.Image")
+    _status, _path, _console, _failure, typed, prompt, selected, _cartoon = rendered
+    if not selected.exists():
+        pytest.skip("the page never drew, so nothing was selected in it")
+
+    assert "defined with 162 atoms" in prompt, (
+        f"the select command did not run:\n{prompt}"
+    )
+
+    def _pink(image_path) -> int:
+        """Selection-coloured pixels **in the scene**, not in the chrome.
+
+        Cropped deliberately. The sequence strip highlights a selected residue
+        with a pink cell, so a count over the whole frame goes up whether or not
+        anything was drawn in 3-D -- which is exactly the false pass this test
+        was written to avoid, and did not avoid on its first attempt.
+        """
+        frame = np.asarray(Image.open(image_path).convert("RGB")).astype(int)
+        height, width = frame.shape[:2]
+        scene = frame[int(height * 0.08): int(height * 0.9), : int(width * 0.8)]
+        red, green, blue = scene[..., 0], scene[..., 1], scene[..., 2]
+        return int(((red > 150) & (blue > 70) & (green + 60 < red)).sum())
+
+    before, after = _pink(typed), _pink(selected)
+    assert after > before + 200, (
+        f"no selection markers appeared: {before} -> {after} pink pixels"
+    )
+
+
+def test_a_representation_change_redraws_the_molecule(rendered):
+    """``as spheres`` in the browser, through the viewer's own scene builder.
+
+    Asserted as a *change of shape*, not as "something drew": a space-filling
+    model covers far more of the frame than the cartoon the page opens on, and
+    the colours are the same, so a check on colour alone would pass on either.
+    """
+    np = pytest.importorskip("numpy")
+    Image = pytest.importorskip("PIL.Image")
+    _status, _path, _console, _failure, _typed, prompt, selected, cartoon = rendered
+    if not cartoon.exists():
+        pytest.skip("the page never drew, so nothing was shown in it")
+
+    assert f"ChiMOL> {SHOW_COMMAND}" in prompt, (
+        f"the representation command did not run:\n{prompt}"
+    )
+
+    def _covered(image_path) -> int:
+        frame = np.asarray(Image.open(image_path).convert("RGB")).astype(int)
+        height, width = frame.shape[:2]
+        scene = frame[int(height * 0.08): int(height * 0.9), : int(width * 0.8)]
+        # Anything that is not the white background this run set.
+        return int((scene.min(axis=2) < 220).sum())
+
+    ribbon, spheres = _covered(selected), _covered(cartoon)
+    assert spheres > 5_000, "the spheres cover almost nothing; nothing rebuilt"
+    assert spheres > ribbon * 1.25, (
+        f"the frame did not change shape: {ribbon} -> {spheres} covered pixels"
+    )
+
+
 def test_no_page_errors(rendered):
     """Nothing raised in the page while it rendered."""
-    _status, _path, console, _failure, _typed, _prompt = rendered
+    _status, _path, console, _failure, _typed, _prompt, _selected, _cartoon = rendered
     errors = [line for line in console if line.startswith(("error", "pageerror"))]
     assert not errors, "\n".join(errors[:5])
