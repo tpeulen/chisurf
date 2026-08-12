@@ -14,9 +14,40 @@ timestamp: '2026-08-07T00:00:00Z'
 
 1. **The vocabulary exists and almost nothing uses it.** `_mmfdb_units` declares
    28 codes with their symbols and SI factors, `chisurf/core/units.py` reads it,
-   and a `.pto` column carries its unit. Everything else in the tree is
+   and a `.mmfdb.pto` column carries its unit. Everything else in the tree is
    unchanged. Start where a wrong unit is most expensive, which is not the GUI:
    it is `FittingParameter`, because a fitted number leaves the program.
+
+   **2026-08-10 — the rule that reads the vocabulary had three holes**, all
+   found by making a *second* writer implement it (the compiled `tttr sm`, from
+   the tttrlib repository, writing into the same containers). Two writers is
+   what turns "what should this column's unit be?" from a matter of taste into
+   a question with one answer, and the exercise is worth repeating for the next
+   boundary rather than trusting a single implementation:
+
+   - **A detector qualifier cost a column its unit.** `BURST_COLUMN_UNITS` keys
+     on the exact name, so `Number of Photons` was `photons` and
+     `Number of Photons (green)`, *in the same row of the same table*, was
+     unitless. `units_for` now drops a trailing non-unit qualifier and asks
+     again — which also stops the table needing one row per detector name it
+     has never heard of, and makes the hand-listed `Tau (green)` / `Tau (red)` /
+     `Tau (yellow)` rows redundant.
+   - **A label carrying both conventions at once found neither.** A burst
+     table's window rate is `S prompt green (kHz) | 0-2048`: the bar separates a
+     micro-time *range*, and the unit is in the bracket to its left. The bar
+     branch gave up when `0-2048` was not a unit, and the suffix regex is
+     anchored at the end, so a column that plainly says kHz carried no unit.
+     `split_label` now falls through to the bracket on the bar's left.
+   - **`FRET 2CDE` / `ALEX 2CDE` had no entry.** A 2CDE value is a score on a
+     fixed scale (≈10 for a static burst), so it is `dimensionless` — which is a
+     different claim from the unit being unknown, and the distinction is the
+     whole point of leaving a column unitless.
+
+   Pinned by `test/fio/test_burst_container.py` (the rule) and
+   `test/fio/test_container_cross_writer.py` (the two writers agreeing column
+   for column — 40/40 on a four-detector burst table, 30/30 with PIE windows).
+   The C++ port cannot read the mmCIF dictionary, so it carries the subset a
+   burst table needs; that test is what stops the two drifting.
 2. **The four conventions are the inventory.** Grep for them before writing
    anything: `"Name (unit)"` suffixes, `"Name | unit"` headers
    (`chisurf/core/expressions.py`), `_TIME_UNIT_US`

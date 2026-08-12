@@ -48,7 +48,7 @@ fail only in a packaged install.
 `conda create --dry-run --json --override-channels -c conda-forge -n probe <specs>`
 and counting `actions.LINK`, then again without the candidate. Measured
 2026-07-28 against the recipe's `run:` list (**301 packages** in total):
-`notebook` **59** (the Jupyter server stack; kept — the GUI starts it), `pyarrow-core`
+`notebook` **59** (the Jupyter server stack; was kept because the GUI started it, and was removed with that integration in 2026-08), `pyarrow-core`
 **37** (libarrow's AWS/Azure/GCS/gRPC/ORC stack; kept), `scikit-image` **20**,
 `boost-cpp` **8**, `python-docx` 3, `mdtraj` 2, `hdbscan`/`micromamba`/
 `boost-histogram` 1, and **`pytables` 0** — mdtraj required it, so it was already

@@ -3,7 +3,7 @@ type: PRD
 prd: "detector-setup"
 title: "PRD (detector-setup): Centralized Detector Setup Selection"
 description: Replace the full detector/PIE-window wizard page embedded across 15+ plugin UIs with a lightweight setup-selector widget that opens the full editor on demand.
-status: planned
+status: done
 phase: "unassigned"
 resource: chisurf/gui/widgets/wizard/tttr_channeldefinition/
 tags: [prd, gui, plugins]

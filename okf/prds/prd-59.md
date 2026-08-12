@@ -3,7 +3,7 @@ type: PRD
 prd: "59"
 title: "PRD-59: Pluggable MMFDB Authentication (local / LDAP)"
 description: A pluggable authentication layer for MMFDB with local-password and LDAP/Active-Directory providers behind one interface, resolving to the existing Principal/session, with JIT provisioning and directory-group mapping.
-status: in-progress
+status: done
 phase: "landed: local + LDAP providers, CLI, hardening; no further providers planned"
 resource: modules/mmfdb/src/mmfdb/security/
 tags: [prd, mmfdb, auth, security, ldap]

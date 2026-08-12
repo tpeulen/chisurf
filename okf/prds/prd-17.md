@@ -14,7 +14,16 @@ timestamp: '2026-07-05T00:00:00Z'
 PRD-17 eliminates divergent identity resolution — where registration stamped one user while read handlers resolved another — that caused ownership and visibility bugs (for example, "Mine" returning zero results). It introduces a single `SessionContext` dataclass carrying `user_id`, database handle, admin flag, groups, and auth principal, constructed once per entry point (GUI launch or RPC dispatch). All MMFDB read and write APIs take the context explicitly, and the scattered per-module current-user resolvers are removed in favor of one canonical resolver used by both reads and writes.
 
 # Status
-In-progress (re-verified against code 2026-07-05). The canonical current-user resolver landed and the "Mine returns 0" ownership/visibility bug is fixed (registration owner and browse scope agree). **Open:** the "one `SessionContext`, constructed once per entry point and threaded explicitly" design is not realized — `resolve_session()` has no call sites and ~10 modules still resolve identity independently, so the DoD ("no module re-resolves identity on its own") is unmet. Corroborated by assessment [SV-03](/specs/assessment.md#sv-03).
+In-progress (updated 2026-08-09). The canonical current-user resolver landed
+and the "Mine returns 0" ownership/visibility bug is fixed. In the **float
+zone**, identity resolution is canonicalized: `_resolve_active_user_id()` in
+`result_registry.py` and `_default_user_id()` / `_resolve_owner_id()` in
+`services.py` all delegate to `mmfdb.security.session.configured_default_user_id()`.
+`register_result()` accepts `session: SessionContext | None` and uses it when
+provided. The remaining DoD ("`resolve_session()` has production call sites,
+threaded from entry points") is **boundary work**: ~10 `chisurf/` modules
+still call `configured_default_user_id()` or construct `SessionContext`
+inline rather than through `resolve_session()`.
 
 # Goal
 Resolve "who is the active user" and "which database" **once**, at the boundary, into a single `SessionContext` threaded explicitly through registration, browse, and ownership code — eliminating the divergent identity resolution that caused ownership/visibility bugs.
@@ -47,3 +56,28 @@ DI (context passed, not module-global); behavior-asserting tests (write→read s
 - Pairs with [PRD-18](prd-18.md) — the SessionContext is the unit that gets dependency-injected.
 - The injected identity/config becomes a prerequisite for [PRD-24](prd-24.md) package extraction.
 - Targets the [MMFDB target](/specs/mmfdb.md); reduces reliance on [runtime globals](/architecture/runtime-globals.md).
+
+# Where to pick this up
+
+**Float-zone identity resolution is canonicalized; the boundary threading is
+the open front.** In `modules/mmfdb/src/mmfdb/`, every resolver
+(`_resolve_active_user_id` in `result_registry.py`, `_default_user_id` /
+`_resolve_owner_id` in `services.py`) delegates to
+`mmfdb.security.session.configured_default_user_id()`, and `register_result()`
+accepts `session: SessionContext | None`. The remaining DoD ("`resolve_session()`
+has production call sites, threaded from entry points") is boundary work:
+
+1. **Wire `resolve_session()` at the entry points.** It currently has zero
+   production call sites (only `test/fio/test_session_context.py`). Call it
+   at GUI launch and RPC dispatch, construct the `SessionContext` once, and
+   thread it through.
+2. **Replace inline `SessionContext` construction.** `chisurf/plugins/ndxplorer/cli.py`
+   and `chisurf/plugins/microscopy/imaging_common/base.py` build `SessionContext`
+   inline — switch them to `resolve_session()`.
+3. **Delete the duplicate `_resolve_active_user_id()` resolvers** in
+   `chisurf/gui/widgets/wizard/tttr_channeldefinition/{tttr_detector_setups,tttr_channel_definition}.py`
+   (boundary) so no module re-resolves identity on its own.
+4. **Remove the anonymous→default-user fallback patches** in
+   `datasets.browse`/`datasets.open` once the session is threaded.
+5. **Tests:** write→read-same-user round trips under logged-in + no-login
+   modes; two-user scoping intact.

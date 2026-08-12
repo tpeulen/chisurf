@@ -47,12 +47,20 @@ and fixed-width strings), and codes that do not index their dictionary are read
 as the integers they literally are rather than as a column whose every access
 is out of bounds.
 
-**Dropping `pandas` is not the goal and does not follow from any of this.** It
-was measured: removing it from the recipe's run list moves the solved closure
-256 → 255, and in the dev environment it does not leave at all because another
-dependency requires it. pandas stays as the interop format. What is actually
-achievable is the memory, the surviving dtypes, and finally making the removal
-of the HDF5 table dependency *true* rather than declared.
+**Pandas is gone, both from the code and from the declared runtime
+dependency.** This was not the original goal — see the measurement below,
+which used to be the reason not to bother — but it became one on explicit
+direction (2026-08-07: "no pandas AT ALL"), and it landed the same day.
+`chisurf/` imports pandas nowhere, not even lazily; `pandas` is struck from
+`pixi.toml` `[dependencies]`, `pyproject.toml`, and
+`rattler-recipe/recipe.yaml`. Measured with `conda create --dry-run`: the
+solved closure moves **256 → 255** — nothing else in chisurf's own recipe
+pulls it back in transitively. It stays declared in `pixi.toml`
+`[feature.test.dependencies]` only, for the handful of tests that use it as an
+independent oracle (verifying chisurf's own CSV writer byte-for-byte against
+`pandas.to_csv`) or to build a file an external tool actually wrote — that is
+test-only interop, not chisurf depending on pandas, and it never reaches the
+packaged app.
 
 # What the seam guarantees
 
@@ -188,6 +196,18 @@ consumer does not re-derive it.
 
 # Where to pick this up
 
+**Pandas eliminated entirely, 2026-08-07** — see [PRD-82](../prds/prd-82.md)'s
+resume note for the full account (every deleted/renamed function, the six
+`read_table_frame` call sites, the `store_from_rows` boolean-branch bug found
+on the way, and the `pixi.toml [feature.test.dependencies]` split that keeps
+pandas available to tests without declaring it for the packaged app).
+`chisurf/` imports pandas nowhere at all now, confirmed by AST scan;
+`test/pandas_import_allowlist.txt` is deleted and
+`test/test_pandas_seam.py` asserts zero importers rather than tracking a
+shrinking list. The notes below, from earlier the same day, describe the
+`as_store`-strictness fallout this built on and are still accurate for that
+part of the story.
+
 **A strict `as_store` needs a boundary to refuse frames *at*.** Making the
 conversion reject a DataFrame is right, and it left several live call sites
 raising: `Measurement._as_store`, `deinterleave_bursts`, `write_per_source`,
@@ -207,9 +227,11 @@ it is already a store. **Two traps in using it:**
   of the fixes above were first placed one call too deep, which moved the frame
   past the first `take_*` only to meet the second.
 
-`store_from_dataframe`, `dataframe_from_store` and `read_table_frame` were
-removed while callers still imported them; `burst_selection/tests/test_io.py`
-still does.
+`store_from_dataframe` and `dataframe_from_store` are deleted outright;
+`read_table_frame` is renamed `read_results_table` and returns a store.
+Every caller — production and test, six call sites in all, including
+`burst_selection/tests/test_io.py` — was ported the same day. See the
+"pandas eliminated entirely" resume note below for the full account.
 
 
 **The burst-table layer holds a store** (2026-08-07), which was the item
@@ -218,9 +240,10 @@ frame, **71 ms into a store (7.6×)**, and 485 ms into a store and back to a
 frame (**1.1×**) — so a consumer that converts back gains nothing, and until the
 producer moved, every port was churn. `read_bur_file`,
 `read_bur_with_companions`, the `.bur`/HDF5/CSV writers, fusion, BVA, 2CDE, the
-burst browser and the MFD preparation are all store-native now, and
-`test/pandas_import_allowlist.txt` is **47 → 8**, all of it the interop group
-that hands a frame *out* — the PORTS group emptied the same day.
+burst browser and the MFD preparation are all store-native now. The old
+`test/pandas_import_allowlist.txt` tracker went **47 → 8** here, then **8 → 0**
+and was retired the same day (see the resume note above) once the scope
+changed from "pandas as documented interop" to "pandas out of the tree".
 
 1. **The three ports that emptied the tracker**, none of them mechanical:
    `burst_fcs_correlator/wizard.py`'s `td4` writer built its row grid from the

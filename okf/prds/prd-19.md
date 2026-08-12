@@ -14,7 +14,19 @@ timestamp: '2026-07-05T00:00:00Z'
 PRD-19 makes flrCIF (extended via the local `.dic`) the single authoritative source for one canonical schema, its vocabularies, and its migrations. Legacy `fdb_*` tables are deleted and `mmfdb_*` tables that duplicate an authoritative flrCIF concept are removed with their call sites repointed, while genuine chisurf extensions (the provenance graph, content-addressed object store, and vocabulary table) are declared as proper mmCIF extension categories foreign-keyed to flrCIF. All controlled vocabulary is seeded from dictionary enumerations, ending the duplicate-definition drift. The hand-written 39-version migration chain is replaced by a versionless declarative `reconcile_schema` that diffs the live database against the dictionary and applies the difference, reserving version stamps for one-off data backfills.
 
 # Status
-In-progress (re-verified against code 2026-07-05). The declarative engine landed: `reconcile_schema` runs on DB open, all legacy `fdb_*` tables are dropped, and vocabulary is dictionary-seeded. **Open:** the core `mmfdb_*` tables are still hand-written DDL duplicated across `CREATE_TABLES_SQL` and a parallel `_CANONICAL_CHECK_SQL` (kept in sync by hand), and the `SCHEMA_VERSION = 40` stamp still lingers — so the "single canonical, dictionary-generated, no-hand-written-DDL" goal is not fully met. Corroborated by assessment [DATA-02](/specs/assessment.md#data-02) / [DATA-03](/specs/assessment.md#data-03).
+In-progress (updated 2026-08-09). The declarative engine landed: `reconcile_schema`
+runs on DB open, all legacy `fdb_*` tables are dropped, and vocabulary is
+dictionary-seeded. The `_CANONICAL_TABLE_DEFS`/`_CANONICAL_CHECK_SQL` hand-sync
+is collapsed into single-source `_CANONICAL_TABLE_DEFS`. The dictionary's
+extension categories now carry **complete column metadata** for all 6 core
+tables (`mmfdb_object`, `mmfdb_artifact`, `mmfdb_operation`,
+`mmfdb_operation_artifact`, `mmfdb_edge`, `mmfdb_parameter`): 48 missing
+column definitions added to `mmfdb_flr_ext.dic`; `DictionarySchemaMap`
+validates all dictionary items map to live columns. CHECK-constraint generation
+from `_item_enumeration` values landed. SCHEMA_VERSION is 49. **Remaining:**
+swap the 6 core tables from `_CANONICAL_TABLE_DEFS` DDL to `_get_dict_ddl`
+(generator needs UNIQUE and AUTOINCREMENT support first); reduce the version
+chain to a pure reconcile-on-open.
 
 # Scope note
 This folds in two related ideas: collapsing the three table families to one canonical model, and a versionless declarative schema. MMFDB is unreleased — do the breaking consolidation now, before more schema lands.
@@ -74,3 +86,30 @@ flrCIF is authoritative and the `.dic` extends it (no parallel/duplicate model, 
 - Prerequisite to [PRD-11](prd-11.md), which adds many extension categories on this canonical base.
 - Benefits [PRD-24](prd-24.md) by yielding a self-contained dictionary-driven schema.
 - Targets the [MMFDB target](/specs/mmfdb.md); see [MMFDB (current)](/architecture/mmfdb.md).
+
+# Where to pick this up
+
+**The dictionary now carries complete metadata for all 6 core tables; the
+remaining step is swapping their DDL source.** 48 missing column definitions
+were added to `mmfdb_flr_ext.dic`; `DictionarySchemaMap` validates every
+dictionary item maps to a live column; `_column_def()` emits CHECK constraints
+from `_item_enumeration`. The 6 core tables (`mmfdb_object`, `mmfdb_artifact`,
+`mmfdb_operation`, `mmfdb_operation_artifact`, `mmfdb_edge`, `mmfdb_parameter`)
+are still DDL-authored in `_CANONICAL_TABLE_DEFS` (Python dataclasses), not
+dictionary-generated:
+
+1. **Extend the generator for UNIQUE and AUTOINCREMENT.** The dictionary
+   generator (`schema_from_dictionary.py`) currently emits columns, PKs, FKs,
+   defaults, and CHECKs — but not `UNIQUE` or `INTEGER PRIMARY KEY
+   AUTOINCREMENT`. Add `_mmfdb_schema.unique` and a PK-type hint so the
+   generated DDL matches `_CANONICAL_TABLE_DEFS` exactly.
+2. **Swap the 6 tables to `_get_dict_ddl`.** Once the generator matches, replace
+   the `_CANONICAL_TABLE_DEFS` entries with `_get_dict_ddl("<table>")` calls in
+   `CREATE_TABLES_SQL`, and delete the now-unused `_CANONICAL_TABLE_DEFS` /
+   `_build_canonical_ddl` / `_build_permissive_ddl` machinery.
+3. **Assert the gate.** Add a test that a freshly reconciled DB matches the
+   dictionary exactly (tables/columns/indexes/vocab) — `validate_mapping` is
+   the seed.
+4. **Reduce the version chain.** Replace the `SCHEMA_VERSION`/`MIGRATIONS`
+   waterfall with a single `reconcile_schema(conn, dictionary)` on open,
+   reserving version stamps only for one-off data backfills.

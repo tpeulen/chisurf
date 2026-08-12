@@ -3,8 +3,8 @@ type: PRD
 prd: "85"
 title: "PRD-85: Drop guards — an opt-in nag-before-commit pattern for file drops, first applied to .pto conversion"
 description: A dropped file is committed as-is everywhere in ChiSurf today; nothing gets a chance to say "wait, first...". This PRD adds a general, registry-based drop-guard pattern — mirroring the existing AutoForm section-registry decorator — that a drop zone opts into by name, each guard free to ask about something different and to apply to only some drop zones, never all of them. The concrete first guard closes a real gap: the Qt-free function that would import a dropped vendor photon file (.ptu/.spc/.ht3/...) into ChiSurf's own .pto container exists (pto.Measurement.create / staging.import_measurement) and is called from nowhere in the tree. Wired through the new pattern, plus a zero-setting drop-only tool for people who just want the container. Because a .pto stacks the raw stream plus every derived table in one growing file, the second half audits and fixes photon-level plots (scatter/trace views reading macro_times/micro_times directly) that were sized for a lone vendor file and must not try to draw millions of raw points at once.
-status: in-progress
-phase: "Part A landed; Part B: budget semantics fixed and the range controls with them, chiplot seam opt-in; seven plugins unaudited"
+status: done
+phase: "Part A and Part B complete; all seven plugins audited"
 resource: chisurf/gui/widgets/dropguard.py
 tags: [prd, tttr, pto, data-loading, gui, plugins, plotting, chiplot]
 timestamp: '2026-08-07T00:00:00Z'
@@ -36,14 +36,14 @@ which changed what the remaining work is. Take these in order:
    skipped for a stepped curve whose bin edges thinning would break). This was
    Scope B.2 and it is done — so the plugins in item 3 can be ported
    through the seam rather than calling `thin_for_plot` directly.
-3. **The seven plugins Scope B.3 named are still unaudited**, but the first
-   pass is cheaper than it looks: `tttr_correlate/gui.py:461` and
-   `tttr_histogram/gui.py:96` already draw through `chiplot.Plot.line`, and
-   both draw *aggregated* curves (a correlation, a histogram) — leave them
-   alone. `trace_browser` does not plot per-photon data itself; it delegates to
-   `intensity_trace`. That leaves `intensity_trace`,
-   `tttr_count_rate_analysis/gui/view_model.py`, `fcs_filter_calculator`,
-   `flc_2d`, and `clsm_generator` genuinely unchecked.
+3. **The seven plugins Scope B.3 named have been audited (2026-08-08).** None
+   has raw per-photon plots: `tttr_correlate` draws aggregated correlation
+   curves, `tttr_histogram` draws TCSPC histograms, `tttr_count_rate_analysis`
+   draws per-file count rates, `fcs_filter_calculator` draws filters/decays,
+   `flc_2d` draws fit results, `clsm_generator` has no line plots at all, and
+   `trace_browser` delegates to `intensity_trace`. The only action: added
+   `setDownsampling(auto=True, mode='peak')` + `setClipToView(True)` to
+   `intensity_trace`'s binned-trace plots (inherited by `trace_browser`).
 4. **Decimating the arrays was the *smallest* of the three levers, and that is
    the trap this PRD walked into.** Benchmarked
    (`test/benchmarks/benchmark_burst_plots.py`): thinning wins 10x only while
@@ -87,13 +87,9 @@ The original Part-B notes, still accurate:
    part**: `chiplot.Plot.line` now takes the opt-in `max_points` (item 2
    above), so the seam exists; porting this plugin onto chiplot is still a
    separate change.
-8. **The other seven plugins Scope B.3 named are still unaudited**:
-   `tttr_correlate/gui.py`, `trace_browser`, `tttr_histogram`,
-   `tttr_count_rate_analysis/gui/view_model.py`, `fcs_filter_calculator/gui_parts/*`,
-   `flc_2d/gui/{tool,client}.py`, `clsm_generator/gui/view_model.py`. First
-   task for each is the same confirmation `burst_selection` just went
-   through: which of its plots are raw per-photon (call `thin_for_plot`
-   directly, same pattern) versus already-aggregated (leave alone).
+8. **The seven plugins Scope B.3 named are audited (see item 3 above)** —
+   none needed `thin_for_plot`. `intensity_trace`'s binned-trace plots gained
+   `setDownsampling(auto=True, mode='peak')` + `setClipToView(True)`.
 9. **The pre-unification drop-zone audit (A.5) is not exhaustive.** Wired so
    far: `burst_background`, `burst_irf_bg`, `tttr_count_rate_analysis` (via
    the `path_list` `guards` option in their view.json), `burst_analysis` and
@@ -148,14 +144,17 @@ must not try to draw an unbounded photon stream point-for-point.
 
 # Status
 
-In progress. Part A (Scope §A: the drop-guard registry, the `tttr_to_pto`
+Done (2026-08-08). Part A (Scope §A: the drop-guard registry, the `tttr_to_pto`
 guard, the bare two-way drop tool, and wiring into the genuine measurement
 drop zones) is done and tested. Part B (Scope §B: decimated plotting for a
-stacked container) has its core utility (`thin_for_plot`) done and tested,
-and wired into the one plugin (`burst_selection`) that actually hit the lag
-this PRD predicted; `chiplot` and the other seven listed plugins are
-untouched — see [Where to pick this up](#where-to-pick-this-up) for exactly
-what was and was not wired.
+stacked container) is done: `thin_for_plot` is built, tested, and wired into
+`burst_selection`; `chiplot.Plot.line(max_points=...)` is the opt-in seam; and
+all seven remaining plugins have been audited — none has raw per-photon plots
+(all draw already-aggregated data), so `thin_for_plot` is unnecessary. The one
+action taken was adding `setDownsampling(auto=True, mode='peak')` +
+`setClipToView(True)` to `intensity_trace`'s binned-trace plots (inherited by
+`trace_browser`), the only plots large enough to lag without viewport
+decimation.
 
 # Motivation
 

@@ -4,7 +4,7 @@ prd: "81"
 title: "PRD-81: chinsole — one console seam, and the end of qtconsole"
 description: ChiSurf had three hand-rolled consoles and a Jupyter kernel running inside the GUI process to provide a text box that runs Python. chinsole is the in-tree replacement — a Qt-free interpreter under a Qt widget — and the seam every console in the application goes through.
 status: done
-phase: "shipped; the notebook server is the open dependency question"
+phase: "shipped; the notebook server was removed in 2026-08 (final dependency cleanup)"
 resource: chisurf/gui/chinsole/
 tags: [prd, gui, console, chinsole, dependencies, qtconsole, chimol, code-editor]
 timestamp: '2026-08-06T00:00:00Z'
@@ -18,15 +18,20 @@ timestamp: '2026-08-06T00:00:00Z'
    a badly broken engine. The load-bearing cases are the compound-statement rule
    in `check_complete` (without it, Enter after the first line of a `for` body
    *runs* the loop instead of continuing it) and the traceback frame trimming.
-2. **`ipython` and `notebook<7` are still declared, and that is where the
-   remaining 83 packages live.** Measured on the recipe's `run:` list: dropping
-   `qtconsole` alone is **264 → 262**; dropping the whole Jupyter stack is
-   **264 → 181**. Retiring qtconsole did *not* get the prize, because
-   `notebook<7` pulls `ipykernel` and hence `ipython` back in regardless. The
-   open question is the external notebook server (the `start_jupyter` service,
-   the Notebooks ribbon tab, `~/notebooks`), which is a **user-visible feature
-   removal** and was deliberately out of scope. `pygments` is now imported by
-   nothing in the tree, so its declaration goes with that same change.
+ 2. **`ipython` and `notebook<7` are still declared, and that is where the
+    remaining 83 packages live.** Measured on the recipe's `run:` list: dropping
+    `qtconsole` alone is **264 → 262**; dropping the whole Jupyter stack is
+    **264 → 181**. Retiring qtconsole did *not* get the prize, because
+    `notebook<7` pulls `ipykernel` and hence `ipython` back in regardless. The
+    external notebook server (the `start_jupyter` service, the Notebooks ribbon
+    tab, `~/notebooks`) was a **user-visible feature removal** and out of scope
+    at the time; **it was removed in 2026-08** — the `start_jupyter` /
+    `populate_notebooks` startup services, the `launch_jupyter_process` startup
+    path, the Notebooks ribbon category and the `start_jupyter_on_startup`
+    setting are gone. Whether `ipython` and `notebook<7` can now be dropped from
+    the recipe is the remaining dependency-cleanup question. `pygments` is now
+    imported by nothing in the tree, so its declaration goes with that same
+    change.
 3. **All three consoles are ported** (2026-08-06). `command_dock.py` is
    deleted, the editor's `_Tee` is gone, and both `run_endpoint` and
    *Macro ▸ Record* are fixed. What is worth knowing if you touch them: the

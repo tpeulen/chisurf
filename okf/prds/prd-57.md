@@ -3,7 +3,7 @@ type: PRD
 prd: "57"
 title: "PRD-57: ChiMOL Command Parity and Renderer Migration"
 description: Grow the ChiMOL molecular viewer's cmd surface toward parity with a reference molecular-graphics command language, and migrate its renderer to an immediate-mode GUI backend while holding a Qt-free controller/scene contract.
-status: draft
+status: in-progress
 phase: "feature track"
 resource: chisurf/plugins/chimol/
 tags: [prd, plugins, structure, viewer]

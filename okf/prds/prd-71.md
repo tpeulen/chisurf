@@ -3,7 +3,7 @@ type: PRD
 prd: "71"
 title: "PRD-71: Fast 2D MFD Fitting — kinetic models fitted to E–⟨t⟩ and r–⟨t⟩ burst histograms"
 description: Fit kinetic models to the two-dimensional multiparameter-fluorescence burst histograms by forward-modelling the raw per-burst observables over a PDA-style empirical nuisance measure of burst signal and green/red observation times, with the mean micro time replacing per-burst lifetime fitting and three composable scoring sources over one model core.
-status: draft
+status: in-progress
 phase: "unassigned"
 resource: chisurf/core/fluorescence/mfd/
 tags: [prd, fret, mfd, burst, kinetics, anisotropy, pda]
@@ -632,9 +632,9 @@ Two questions the static gate raised, both worth answering before rates are:
    implementation here; the round-trip tests (`G ∈ {0.7, 1, 1.4}` and non-zero
    l₁/l₂ all recovering the same anisotropy) are what caught it.
 6. **Surfacing** — fitting model plus view spec (PRD-38/40), 2D plots through
-   chiplot with the analytic overlay lines, CLI, a theory page under
-   `docs/concepts/` and a numbered guide under `docs/guides/` covering burst
-   search through fit.
+   chiplot with the analytic overlay lines, CLI (`csc mfd-prepare fit`), a theory
+   page under `docs/concepts/` and a numbered guide under `docs/guides/` covering
+   burst search through fit.
 7. **Global fits** — link across measurements, titrations and species on the
    factor graph ([PRD-68](prd-68.md)); posteriors through the one posterior-query
    API ([PRD-70](prd-70.md)).
@@ -656,3 +656,36 @@ Two questions the static gate raised, both worth answering before rates are:
   `PhotonBursts` layout and path marginalization, the FRET calibration
   corrections, the PDA Poisson-deviance statistic, the burst-companion writer, the
   prior/sampling stack.
+
+## Validated against known truth (2026-08-03)
+
+The fit is now checked against a *simulated measurement* rather than against
+itself: a full smFRET experiment from the confocal photon engine, pushed through
+the real burst pipeline, with the exchange rate that generated it known. Two
+defects it found, both invisible to the previous tests:
+
+* **The donor-photon weighting.** The micro-time mixture of an exchanging burst
+  was weighted by the occupation fraction `f`, but donor photons arrive in
+  proportion to `f·(1−E)`; a burst split evenly between E=0.2 and E=0.8 states
+  draws 80% of its donor photons from the low-FRET state. Both scoring sources
+  shared the error, so their agreement — which this document previously offered as
+  a cross-check — could not detect it. Fixed; the channel-count half is provably
+  exact and unchanged.
+* **The instrument response is the dominant error, and it is not modelled — it is
+  estimated.** Non-burst photons are mostly sub-threshold fluorescence, not
+  scatter, so the estimated response is 4.50 ns against a true 1.00 ns and carries
+  a fabricated background. Both land on the lifetime axis: modelled ⟨t⟩ 6.88 ns
+  against an observed 3.79, deviance 18 592, against 667 with the true response.
+
+**Consequence for the design.** The lifetime axis should carry a *corrected*
+lifetime, obtained from the photon library's moment correction, rather than a raw
+mean micro time the forward model has to be convolved into. The response then
+enters as two scalars — a nuisance — and an error in it becomes a constant offset
+on one axis instead of a distortion entangled with the model. `corrected_lifetimes`
+is the reference implementation; the circular convolution and wrapped-moment
+machinery become unnecessary on that axis.
+
+**Still open.** With a correct response the model recovers 3113 Hz against a true
+5000 — a bias previously masked by the instrument error compensating it. That is
+the model's own, and the remaining switches (burst-duration binning, occupation-law
+resolution, the Gaussian ⟨t⟩ kernel) exist to explain it.

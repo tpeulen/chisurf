@@ -86,12 +86,6 @@ references/index
 development/index
 ```
 
-:::{note}
-By default, ChiSurf does not start the bundled Jupyter notebook server on
-startup. To enable it, set `gui.start_jupyter_on_startup: true` in your user
-settings file (`settings_chisurf.yaml`) or via the Settings Editor.
-:::
-
 ## Indices and tables
 
 * {ref}`genindex`

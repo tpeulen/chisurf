@@ -72,6 +72,126 @@ script; the trap in measuring is that the *second* ask is served from the
 memo, so time a **fresh** grid for the cold number. Left open, in order of
 what it blocks:
 
+* **sticky windows + chrome file dialogs (2026-08-12, fourth user round):**
+  windows stick to *each other* — a title-drag within 8 px snaps flush and
+  aligns the near-perpendicular edge; the stuck group is geometric
+  (`_frames_touch`/`_stuck_group`, read at drag start, nothing linked
+  explicitly) and rides along at fixed offsets; **shift-drag detaches**;
+  partners get the accent border mid-drag. The viewport menu bar now honours
+  `MenuEntry.file_prompt` via `InternalGui.on_file_prompt` (the app opens the
+  QFileDialog; unset, e.g. the browser, falls back to the CLI placeholder) —
+  the Qt bar had the dialogs but is hidden, so Save/Export never showed one.
+  `chimol/test/conftest.py` pins every test to a throwaway
+  `CHISURF_SETTINGS_DIR` after the user's live session closed the density
+  window in real prefs and seven fixture tests read it and failed. Trap worth
+  keeping: a fixture callback with the wrong arity dies *inside* the
+  producer's `try/except` — the hierarchy guard test was green-by-accident
+  until run against the two-argument `on_change`. Open: stuck groups do not
+  resize together, and a group dragged against a viewport edge anchors only
+  the lead window;
+* **polish round (2026-08-12, third user round):** window bounds stop at
+  the prompt/status band; the mouse block left PyMOL's palette for
+  chimol's own; chrome-wide hover tooltips (`GuiWindow.on_tooltip` is the
+  seam for panel bodies; `MODE_ACTION_WORDS` decodes binding cells); the
+  hierarchy-disable bug was an object-identity mismatch (tree from one
+  object, hiding applied to the active one — carried the id through);
+  the object list grew an eye and names run `activate` (new command);
+  density panel compact by default with the palette clamped into the body;
+  `load_map` fetches EMDB deposited contour levels. Lesson worth keeping:
+  a panel that *shows* one object's data while *acting* on "the active
+  object" will eventually act on the wrong one — carry the identity with
+  the data;
+* **six-ask sweep (2026-08-12, second user round):** menu saves via real
+  file dialogs (`MenuEntry.file_prompt`), the Qt status bar replaced by the
+  chrome's own line (`status_text`, obeys `show_status`), chrome fully
+  strippable via `show_menubar`/`show_toolbar`/`show_command_line`/
+  `show_status` (bare viewer for embedding), the Atoms-level `sele`
+  widening bug fixed at `_selected_residues_atom_mask`, Save Molecule As…
+  surfaced, and the **Build menu un-omitted** — bond/unbond/remove/alter/
+  pseudoatom/h_add/mutagenesis existed, tested, and were invisible; the
+  OMITTED_MENUS reason "no structure editing" had silently gone stale.
+  **Open:** structural undo beyond PyMOL's coordinate scope (topology
+  snapshots so `remove`/`bond`/`unbond` can be undone) — the ring in
+  `renderer/undo.py` is the seam, and its docstring explains why the
+  current scope is deliberate; extend, don't replace;
+* **scene model export (2026-08-12):** `save x.glb/.stl/.wrl` writes the
+  drawn scene as a 3-D model (`io/mesh_export.py`, wholly new); glb is the
+  PowerPoint format and is labelled so in the menu, the prompt and the save
+  message. Spheres/sticks re-tessellate from the primitives templates; the
+  export deliberately skips lines, labels and the solid fog. PyMOL parity
+  note: PyMOL's `save` also does `.wrl`/`.stl`/`.obj`/`.dae` — `.obj` and
+  `.dae` remain open, same writer pattern if wanted;
+* **the chrome is windows (2026-08-12):** Object List and Mouse are
+  `GuiWindow`s (content painters untouched; the windows position
+  `_panel`/`_block` and dispatch their sub-hits so z-order wins), snapping
+  with corner anchors in `renderer/window_state.py`, persistence to
+  `chimol_windows.json` **opt-in from the shipped app only** (a bare panel
+  in a test must never touch real preferences — enforced by a test).
+  Docked-column mode survives behind `gui.docked = True`. Traps worth
+  keeping: the chrome atlas has no `×` — a missing glyph draws as
+  *nothing*, so use ASCII in chrome text; and hit-testing must follow
+  window z-order, not a flat rect list, once panels can overlap. Open:
+  the density/hierarchy/settings windows do not auto-anchor on first start
+  (only objects/mouse do), and `test_a_middle_drag_moves_the_molecule` is
+  failing 2× independent of this change (see the log entry);
+* **map tools and a Tools menu (2026-08-12):** Hide Dust
+  (`geometry/dust.py`, the reference's `size` metric = largest bbox extent;
+  a display setting on the map, applied pre-refinement, preview-exempt) and
+  the Gaussian filter (`volume.py::gaussian_filtered`, FFT, **new map
+  object** — never rewrite samples the contour memo caches). The Tools menu
+  (Map / Measure / Panels) is a declared extra (`EXTRA_MENUS`) so the
+  PyMOL-order test tolerates it; board ticket T-20260811-12 (menu-test
+  drift) closed in the same change. Candidates for the next tool round, in
+  the reference's volume-filter family: median filter, binning, Laplacian,
+  flatten/subtract for background — all the same shape as the Gaussian
+  (new-map-from-old);
+* **map surfaces have quality presets (2026-08-12):** the reference's
+  rendering options ported into `chimol/geometry/refine.py` (its `smooth.cpp`
+  and `subdivide.cpp`, NumPy) and named — coarse / normal / smooth / fine —
+  in `_VOLUME_QUALITY_PRESETS` (view.py), a panel row, and `volume_quality`.
+  The trap if reordered: the refinement pipeline must run subdivide →
+  square-mesh mask → smooth, because smoothing destroys the exact coordinate
+  identity the mask tests — masking after smoothing silently turns mesh mode
+  back into the full-wireframe scribble. Left open: quality presets act on
+  contours only (solid mode has its own budget), and the molecular Gaussian
+  surface's separate quality system (`surface_quality.py`, another session's
+  in-flight work) is untouched — the two "quality" vocabularies could
+  eventually meet;
+* **the mesh style works now, and the defect was an engine seam worth
+  remembering (2026-08-12):** `kind="line"` geometry **ignored its
+  `indices`** — `interleave_lines` packed positions raw and the draw counted
+  vertices, so the map wireframe (the only *indexed* line geometry in the
+  tree) drew chords between array-adjacent welded vertices. Every other line
+  builder pre-pairs vertices, which is exactly why the seam stayed invisible;
+  an attribute a pipeline silently drops is a bug that waits for its first
+  real user. Fixed in the packer; pinned by a unit test. The mesh then got
+  the reference's two defaults: square mesh (`_square_mesh_edges`, exact
+  coordinate equality, falls back to full wireframe on rotated grids) and
+  baked mesh lighting (line pipeline stays unlit by design);
+* **`solid` is direct volume rendering now (2026-08-12):** the box-per-voxel
+  `voxel` style (user: "make no sense") is replaced by the reference's
+  image mode — markers as a colour/opacity transfer function, composited as
+  three axis-aligned unlit plane stacks (`_volume_solid_object`, view.py;
+  `meta["unlit"]` rides the spare `gauss.w` uniform to an early-out in
+  `shading.wgsl`). Known cosmetic: mild banding edge-on to a stack (the
+  reference's axis-aligned mode has the same; its fix is view-aligned
+  planes off a 3-D texture, which this engine does not have). Two traps if
+  retuned: per-plane alpha is sub-1% *by design* — an 8-bit cull erases the
+  fog (cull at 1/1024); and the single-marker ramp needs the reference's
+  wide foot (transparent at the densest-10% value), not a start at the
+  marker, or almost nothing is coloured. The ray tracer still draws solid
+  maps as lit geometry — unlit is a raster-shader flag only;
+* **the controls themselves are Chimera's now (2026-08-12):** a persistent
+  *selected* threshold (gold handle) that the colour well, alpha slider and
+  level readout act on; the well opens a palette drawn in the panel (an HSV
+  grid, not a system dialog — the panel also runs in the browser); markers
+  drag off the histogram to delete (never the last — an empty level list
+  falls back to the opening contour and the map would reappear). This
+  replaced two defects, both worth remembering as a pattern: the old well
+  cycled presets indexed by **marker number** (pressing it repeatedly did
+  nothing), and the colour/alpha controls bound to "held, else first" (a
+  second contour could never be recoloured after release). If a control acts
+  on "the active X", the selection must **survive the mouse release**;
 * **the mid-drag→release "pop"** on noisy maps: the preview is a stride-2/3
   *sample*, so it crosses fewer noise voxels than the full-resolution release
   and the surface visibly roughens on release near the noise floor (seen in

@@ -17,6 +17,41 @@ timestamp: '2026-08-07T00:00:00Z'
    It drives each real writer against real data and asks, of every artifact left
    behind, whether it names its operation, its settings and its parents, and
    whether `lineage()` terminates at the primary data.
+
+   **2026-08-10 — the audit is a test now, in two files, and widening it found
+   things both times.** `test/fio/test_container_cross_writer.py` covers the
+   writer this PRD did not know about (see *The 21st writer*).
+   `test/fio/test_provenance_matrix.py` covers the source axis and the **nested
+   chains**, which had no coverage at all — depth 4, fan-in, siblings,
+   `calibrated_by` as a second relation, extend-after-reopen, re-run, and the
+   no-primary case. Its `_walk_every_artifact` collects one complaint per
+   artifact rather than asserting on the first, so a run says everything wrong
+   with a container at once; that is the shape the remaining cells should reuse.
+
+   **What widening found this time: the vocabulary was not being enforced on the
+   compiled writer.** ChiSurf's `put_table` checks every term against the
+   dictionary before writing, so a ChiSurf writer *cannot* invent one — and every
+   `operation_type` in the tree is a declared term. The `tttr` CLI makes no such
+   check (it is C++, does not link mmfdb, and has no mmCIF parser), and it had
+   been emitting **four undeclared terms**: `bva`, `kde_cde` and
+   `mle_<detector>` for operations the dictionary calls
+   `burst_variance_analysis`, `burst_2cde` and `burst_lifetime_fitting`, and
+   `companion_of` for a relation `_mmfdb_edge.relationship_type` does not define
+   at all. Every container the CLI has written carries them.
+
+   Fixed in tttrlib, and the check now lives on this side —
+   `test_every_term_the_cli_writes_is_in_the_dictionary` — because this is the
+   only side that can read the dictionary. Two smaller consequences: the
+   cross-writer test's own rule-3 assertion had been *accepting* `companion_of`,
+   so it passed on exactly what it existed to catch; and ndX's
+   `_COMPANION_TYPES` was a list of informal spellings no writer produces, which
+   is a silent fallback that would have stopped working the moment a parent edge
+   went missing.
+
+   **The pattern, third time today:** a term, a unit or a name that one side
+   invents and the other side never checks. The fix is always the same shape —
+   put the check on the side that owns the vocabulary, and drive the other side
+   through it.
 2. **Two known-incomplete cells remain** (below). Neither is a mystery; both
    need a decision rather than an investigation.
 3. **Nested chains are the part with no coverage at all.** Every case tested so
@@ -59,6 +94,43 @@ The remaining two are decisions, not bugs:
 |---|---|---|
 | `img_tracking` | not exercised | no fixture drives it; either add one or state that the writer is unreachable from a test and say why |
 | a standalone curve | no parent, no settings | a curve typed in or computed from a model genuinely has no measurement behind it, and `create_empty` makes a container with no primary. **Is a container with no primary well-formed?** If yes, the test needs to distinguish "legitimately primary" from "lost its parent" — they look identical today |
+
+# The 21st writer — one that is not in this tree
+
+**Found 2026-08-10.** The sink table below lists ~20 writers and every one of
+them is ChiSurf. There is another: the compiled `tttr` CLI in the tttrlib
+repository writes burst tables and their companions into the same containers,
+through the C++ half of the same profile. It is not in the matrix, nothing
+tested it, and it reproduced this PRD's own root cause independently —
+
+> a writer that *creates* the container in the same call has the uid from
+> `create` and never asks again; it only shows on **reopen**
+
+— in its own idiom. The CLI looked its primary up **by file name**, so a
+container ChiSurf had already created was extended with a *second*
+`tttr_photon_stream` whenever the name did not match: two roots, with the CLI's
+burst table hanging off the one nothing else references. Reading the container
+looks completely intact until somebody walks the lineage of an artifact the
+*other* tool wrote. The lookup is now on `_mmfdb_artifact.checksum`, so a
+byte-identical file under any name resolves to the primary already there, with
+the name only as a fallback for a container written before the checksum tag.
+
+Two more, fixed in the same pass, both of which this PRD's rules would have
+caught had the writer been in the matrix:
+
+- **The container held a lossy re-encoding of the measurement.** The CLI wrote
+  the *channel-filtered* stream back out as a `.sm` — other channels gone,
+  vendor header gone — in the one place the profile promises is verbatim. It
+  now embeds the original file unchanged with a SHA-256, verified byte for byte,
+  and is smaller for it.
+- **A companion's run identity did not include its parent's.** Keyed on its own
+  settings alone, a BVA table computed over one burst list was silently
+  overwritten by a BVA table computed over another; the row counts still line up
+  whenever the two searches happen to find the same number of bursts (rule 6).
+
+**The lesson for the rest of the matrix:** a writer outside this repository is
+still a writer, and the profile is the contract, not the Python API. The same
+applies to anything else that learns to write these files.
 
 # The matrix
 
@@ -110,6 +182,15 @@ artifacts is where the run-key collision lived, and where a chain forks.
 
 The gap with no coverage. Each row is one container built by running the real
 writers in sequence, then walked from the deepest artifact.
+
+**Covered as of 2026-08-10** by `test/fio/test_provenance_matrix.py`: depth-4
+(photons → bursts → per-burst fits → pooled states), fan-in through fusion *and*
+something derived from the fused result, four siblings on one parent,
+`calibrated_by` as a second relation type, a non-photon source, a sidecar-carrying
+`.spc`, extend-after-reopen across three separate opens, a re-run that must not
+orphan its children, and the duplicate-parent case. Still uncovered: the imaging
+chains (a raster in the middle, crossing into the curve seam) and anything
+driven through the actual analysis plugins rather than through `put_table`.
 
 | chain | depth | what it exercises |
 |---|---|---|

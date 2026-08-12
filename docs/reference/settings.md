@@ -286,10 +286,6 @@ plot defaults. Many of these are read via `chisurf.settings.gui`.
 - **`show_console`**  
   Control whether the embedded console pane is visible on startup.
 
-- **`start_jupyter_on_startup`**  
-  If true, starts an external Jupyter kernel / notebook integration when
-  launching ChiSurf.
-
 #### 1.8.2 Embedded console
 
 The console is ChiSurf's own (`chisurf.gui.chinsole`); it replaced the

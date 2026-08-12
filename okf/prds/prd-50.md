@@ -3,7 +3,7 @@ type: PRD
 prd: "50"
 title: "PRD-50: Photon Distribution Analysis (PDA) Family"
 description: Wrap the existing PDA histogram engine in ChiSurf models and AutoForm view specs, covering static distance-distribution PDA, dynamic/N-state kinetic PDA, error surfaces, and a kinetic consistency check (three-color PDA is PRD-65).
-status: in-progress
+status: done
 phase: "unassigned"
 resource: chisurf/core/models/pda2c/
 tags: [prd, fret]

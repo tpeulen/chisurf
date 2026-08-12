@@ -3,7 +3,7 @@ type: PRD
 prd: "52"
 title: "PRD-52: Phasor-FLIM Imaging & Particle Tracking"
 description: Add per-pixel phasor-FLIM imaging, universal-circle ROI segmentation, per-PIE/spectral-channel phasor, and phasor-based particle detection and tracking.
-status: stub
+status: obsolete
 phase: "unassigned"
 resource: chisurf/plugins/microscopy/img_pixel_phasor/
 tags: [prd, imaging]
@@ -14,7 +14,7 @@ timestamp: '2026-07-05T00:00:00Z'
 ChiSurf computes phasors of TCSPC decays but has no phasor-FLIM imaging: no per-pixel phasor plot, universal-semicircle navigation, ROI/threshold segmentation, per-PIE/spectral-channel phasor, or phasor-based particle detection and tracking. This PRD adds per-pixel `g,s` maps from CLSM/TTTR data with reference calibration, an interactive universal-circle plot with ROI back-projection and phasor-space unmixing, per-channel phasor, and particle detection with per-particle lifetime and trajectory linking. It reuses the existing decay-phasor math (extended to per-pixel), CLSM reconstruction tooling, and the pixel-wise FLIM plumbing pattern, with all UIs delivered as AutoForm view specs.
 
 # Status
-Stub / unassigned (STATUS TABLE authoritative). Scope and reuse identified; implementation not started.
+Obsolete / superseded (2026-08-08). This stub's scope was delivered under [PRD-55](prd-55.md) (phasor analysis toolkit — apparent-lifetime readout, g/s filtering, unmixing, cursor masks), [PRD-56](prd-56.md) (companion-tool RPC + phasor overlays), the `img_pixel_phasor` plugin (per-pixel phasor imaging + ROI back-projection), and the `img_tracking` plugin (particle detection, trajectory linking, MSD analysis). Spectral phasor remains under [PRD-54](prd-54.md).
 
 Parent: [PRD-49](prd-49.md) (Phase 3). Related: PRD-38, PRD-40, PRD-49.
 

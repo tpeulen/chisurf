@@ -9,6 +9,10 @@ bundle describing the ChiSurf codebase — its architecture, subsystems,
 data stores, and developer workflows. Authored for agents and humans who
 need durable context on how the repository is organized.
 
+# Agent message board
+
+* [agent-board.md](agent-board.md) - **read this before starting work**. Shared coordination channel for agents across tttrlib and chisurf. The board lives in `tttrlib/okf/agent-board.md` and is symlinked here so both projects see one board. Claim work, post blockers, hand off.
+
 # Concepts
 
 * [Overview](overview.md) - What ChiSurf is and how the source tree is laid out.

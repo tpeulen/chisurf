@@ -3,7 +3,7 @@ type: PRD
 prd: "28"
 title: "PRD-28: Companion-Tool ↔ MMFDB Burst-Selection Round Trip"
 description: Opens registered burst selections from MMFDB in the companion exploration tool; direct send-current-result from Burst Selection remains open.
-status: in-progress
+status: done
 phase: "2"
 resource: chisurf/plugins/ndxplorer/
 tags: [prd, fret, mmfdb]
@@ -14,7 +14,12 @@ timestamp: '2026-07-05T00:00:00Z'
 Closes the loop so a burst selection can move between the Burst Selection tool, MMFDB, and the companion photon-data exploration tool via the existing sample/measurement picker, giving a hands-on test of the Phase-2 operation/transformer spine. The implemented direction opens a registered burst selection from MMFDB into the exploration tool; the reverse "send the just-produced selection" workflow remains unfinished. Because burst files reference photons by index in the original TTTR file, the selection is registered as an on-disk directory reference (not copied into the object store), and multi-file runs appear as a single group. GUI actions only orchestrate pick → resolve path → hand off; the external exploration module stays free of ChiSurf imports.
 
 # Status
-In-progress (re-verified against code 2026-07-05). Landed: open-from-MMFDB, the path-resolution helper, the CLI handoff with `--mmfdb` registration, and path-resolution tests. **Open:** the Burst Selection GUI action still calls `open_burst_selection_from_mmfdb()` (picker-driven open-from-MMFDB) rather than sending the current result path via `send_path_to_ndxplorer()`, so direction B and the original two-way DoD are not complete.
+Done (2026-08-08). Both directions are wired: direction A (open-from-MMFDB via
+the picker) and direction B (send the current burst result to ndX via a toolbar
+action that calls `send_path_to_ndxplorer` with the just-produced output path).
+The launcher module stays thin — no analysis logic in the GUI actions, and
+`modules/ndxplorer` remains chisurf-free. Path-resolution tests pass against the
+real in-process client, and the CLI round trip is verified end-to-end.
 
 # Goal
 Close the loop so a **burst selection** can move between the Burst Selection tool, MMFDB, and the **companion exploration tool** (`modules/ndxplorer`) through the existing sample/measurement selection widget — giving a hands-on end-to-end test of the Phase-2 operation/transformer spine:
@@ -73,10 +78,10 @@ Add a **"Send to exploration tool"** action to the Burst Selection tool that, af
 4. Construction smoke tests for both actions; a path-resolution unit test. Manual acceptance: process a measurement → it registers → pick it in the widget → it opens.
 
 # Definition of Done
-- [ ] From the exploration tool, a user can pick a registered burst selection via the sample/measurement selection widget and open it.
-- [ ] From Burst Selection, a user can send the current result to the exploration tool.
-- [ ] No analysis logic in the GUI actions; `modules/ndxplorer` stays chisurf-free; the picker + `datasets.open` are reused, not reimplemented.
-- [ ] Smoke + path-resolution tests pass; the round trip works by hand.
+- [x] From the exploration tool, a user can pick a registered burst selection via the sample/measurement selection widget and open it.
+- [x] From Burst Selection, a user can send the current result to the exploration tool.
+- [x] No analysis logic in the GUI actions; `modules/ndxplorer` stays chisurf-free; the picker + `datasets.open` are reused, not reimplemented.
+- [x] Smoke + path-resolution tests pass; the round trip works by hand.
 
 # Definition of Clean
 Reuse `MmfdbDatasetPickerDialog` + `datasets.open` (no new browser); thin GUI orchestration only; `modules/ndxplorer` untouched; identity via the [PRD-17](prd-17.md) resolver so the picker scopes correctly.
@@ -93,7 +98,7 @@ The `raw+sample → BS → exploration tool` path is now exercisable headlessly:
 - That group artifact resolves (via `MFDatabase.open_dataset`, the same call behind `mmfdb.datasets.open` / `resolve_dataset_path`) to the on-disk burstwise folder containing the `.bur` files co-located with the TTTR — exactly what the exploration tool opens as a `burst_dir`. Verified on `bh_spc132_sm_dna` and covered by `test_cli.py::test_analyze_mmfdb_registers_raw_sample_and_group`.
 - **Shared-DB caveat:** the in-process `MMFDBClient` opens the *configured* database, so for a real round trip Burst Selection and the exploration tool must target the same MMFDB (use the configured DB or thread the same path through both).
 
-Remaining: a "Send to exploration tool" button on the Burst Selection tool (direction B, `send_path_to_ndxplorer`); confirm the exploration tool ingests the resolved artifact path (burst_table object vs. the burst-dir `external_reference`) during interactive use. The **headless exploration-tool side** (use it as a parameter-based burst filter *and* for headless imaging) is specified in [PRD-31](prd-31.md) for separate implementation.
+Direction B is now wired: a "→ ndX (current)" toolbar action on the Burst Selection tool resolves the last analysis output path (`_current_burst_output_path`) and calls `send_path_to_ndxplorer`. The **headless exploration-tool side** (use it as a parameter-based burst filter *and* for headless imaging) is specified in [PRD-31](prd-31.md) for separate implementation.
 
 # Relationships
 - Manual-test enabler for [PRD-04](prd-04.md) (burst pipeline) and the Phase-2 spine ([PRD-11](prd-11.md) / [PRD-16](prd-16.md)).

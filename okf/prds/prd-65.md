@@ -3,7 +3,7 @@ type: PRD
 prd: "65"
 title: "PRD-65: Three-Colour Photon Distribution Analysis (PDA3c)"
 description: A burst-wise three-colour PDA model — trinomial/binomial photon-partition likelihood with Poisson background, correlated trivariate distance distributions, labelling and brightness corrections, and MAP + MCMC inference with per-parameter priors, implemented in Python/numba with algorithmic rather than language-level speedups.
-status: in-progress
+status: done
 phase: "unassigned"
 resource: chisurf/core/models/pda3c/
 tags: [prd, fret, pda, three-colour, bayesian]

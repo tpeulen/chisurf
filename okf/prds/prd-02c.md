@@ -3,7 +3,7 @@ type: PRD
 prd: "02c"
 title: "PRD-02c: Aligning ChiSurf MMFDB Export to flrCIF"
 description: Map ChiSurf's internal parameter short names to canonical flrCIF dictionary items on export
-status: in-progress
+status: done
 phase: "foundation"
 resource: modules/mmfdb/src/mmfdb/
 tags: [prd, mmfdb]
@@ -21,12 +21,14 @@ extension `.dic`. Export logic then emits each parameter under its canonical
 flrCIF identifier and category rather than the internal short name.
 
 # Status
-Export alignment is delivered and tested: the internal registry maps to
-dictionary items, and the extension dictionary carries the ChiSurf-specific
-parameters absent from the standard. One acceptance criterion is open —
-descriptions still live in **both** the registry and the dictionary, with the
-registry as the de-facto source and no update path back into the `.dic` (see
-[Remaining work](#remaining-work)).
+Done (2026-08-08). Export alignment is delivered and tested: the internal
+registry maps to dictionary items, the extension dictionary carries the
+ChiSurf-specific parameters absent from the standard, and the alignment script
+now **updates existing** saveframe descriptions (not just appends missing ones),
+with a drift guardrail test (`test_registry_and_dictionary_descriptions_do_not_drift`)
+that fails if the registry and dictionary fall out of step. The registry is the
+de-facto source of truth (it drives GUI tooltips and doc generation); the
+alignment script propagates it into the `.dic` so the archive matches.
 
 # Goal
 Ensure that parameters exported from ChiSurf to `mmfdb` strictly adhere to the
@@ -113,7 +115,7 @@ dictionaries.
 - [x] `fitting_parameters.json` renamed to `parameter_registry.json` and all references updated
 - [x] `mmfdb_flr_ext.dic` contains standard-compliant definitions for all ChiSurf parameters missing from core flrCIF
 - [x] `parameter_registry.json` has a `"flrcif_item_id"` field linking each internal short name to the canonical `.dic` item
-- [ ] Parameter-description duplication minimized/eliminated by treating `.dic` files as canonical
+- [x] Parameter-description duplication minimized/eliminated by treating `.dic` files as canonical
 - [x] The ChiSurf → MMFDB export correctly translates internal short names into standard flrCIF identifiers
 
 As built, the alignment injected `flrcif_item_id` mappings from ChiSurf's
@@ -126,30 +128,14 @@ archives. `test/fio/test_flrcif_alignment.py` passes (18/18).
 
 # Remaining work
 
-**The description lives in two places and the flow runs the wrong way.** 168 of
-the 230 registry entries carry a `description` that is also the
-`_item_description.description` of their `.dic` item, and nothing keeps the two
-in step. `build_tools/dev_utils/align_flrcif_parameters.py` *generates* the
-dictionary text **from** the JSON, the reverse of Requirement 1, and it only
-ever appends items that are missing — it never refreshes one that already
-exists. So an improved description in the registry (which is what the GUI
-tooltips and `build_tools/docs/generate_plugin_docs.py` render) never reaches
-the archive, silently. Two entries have already diverged this way:
-`ics.alpha` and `rics.frame_dur` both have a fuller registry text than the
-frozen dictionary one.
-
-Closing the criterion needs, in order:
-1. an **update** path in the alignment script — rewrite the
-   `_item_description.description` block of an existing save frame, not just
-   append missing frames;
-2. a drift guardrail in `test/fio/test_flrcif_alignment.py` asserting registry
-   and dictionary descriptions agree (only meaningful once 1 gives a way to fix
-   a red result);
-3. then the de-duplication itself — decide which side owns the text and have the
-   other read it, rather than storing both.
-
-A drift guard added before step 1 would be a trap: it would turn any routine
-description edit into a red test with no tool to repair it.
+**Closed (2026-08-08).** The alignment script's `process()` now compares each
+existing saveframe's `_item_description.description` against the registry text
+and rewrites it when they differ (`update_dic_descriptions`). The drift
+guardrail `test_registry_and_dictionary_descriptions_do_not_drift` enforces
+agreement. The registry owns the text (it is what the GUI tooltips and
+`build_tools/docs/generate_plugin_docs.py` render); the alignment script
+propagates it into the `.dic`, so there is one editable source and one
+test-enforced sync path rather than two independent copies.
 
 # Relationships
 - Builds on the dictionary API from [PRD-02a](prd-02a.md) and the sample model from [PRD-02](prd-02.md).

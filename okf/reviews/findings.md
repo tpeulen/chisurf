@@ -11179,11 +11179,11 @@ lines after it is loaded. RF-1002..RF-1006 below.
 - **Fix note:**
 
 ### RF-1005
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S2 (`gui.start_jupyter_on_startup` is unconditionally forced back to `True`, so the settings toggle and the service's `enabled_if` gate are both inert)
 - **Location:** `chisurf/core/settings/__init__.py:95-100` (`# BETA OVERRIDES … _gui_overrides['start_jupyter_on_startup'] = True`) against `chisurf/gui/__init__.py:1361-1367` (the `start_jupyter` stage reads `cs.core.settings.cs_settings['gui']`) and `chisurf/startup/services.d/30_gui_post_show.json:40-43` (`"enabled_if": {"setting": "gui.start_jupyter_on_startup", "equals": true}`)
 - **Finding:** the override runs two lines after `locals().update(cs_settings)` and mutates the same dict every consumer reads, so a user's choice is discarded in-process, not merely ignored at one site. Verified: with `start_jupyter_on_startup: false` in the user YAML, `cs_settings['gui']['start_jupyter_on_startup']` is `True` after import. The generic settings editor renders the key — `SettingsEditor.load_file` (`chisurf/gui/widgets/settings_editor.py:1160-1174`) reads the user YAML straight off disk and `_populate_model` (`:786-822`) turns every key, booleans included, into an editable row — so the checkbox shows the user's `false`, saves `false`, survives a restart in the file, and still starts a Jupyter kernel — a control that does nothing, plus startup cost and an open port a user cannot decline. The comment scopes it to "the Antigravity (v26.1) Beta release" and carries no expiry or log line; `chisurf.core.info.__version__` should decide whether that window is still open. Either drop the override and let the setting mean what it says, or make it explicit — log it once at `info` and grey the editor control out — but not both silently.
-- **Fix note:**
+- **Fix note:** Rendered moot — the Jupyter integration was removed wholesale (2026-08): the `start_jupyter` / `populate_notebooks` stages and `launch_jupyter_process` are gone from `chisurf/gui/__init__.py`, the two services were dropped from `30_gui_post_show.json`, the `start_jupyter_on_startup` setting and the beta override were deleted, and the settings key no longer exists. The built-in notebook editor (`chisurf/plugins/core/code_editor/`) is unaffected — it is an in-process nbformat/console feature with no Jupyter server.
 
 ### RF-1006
 - **Status:** OPEN

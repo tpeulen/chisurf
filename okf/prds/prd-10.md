@@ -3,7 +3,7 @@ type: PRD
 prd: "10"
 title: "PRD-10: MMFDB Dataset Browser Widget"
 description: A reusable Qt widget to pick a registered MMFDB dataset, with scope/visibility, server-side filtering, co-ownership, and file groups.
-status: in-progress
+status: done
 phase: "0"
 resource: chisurf/gui/widgets/mmfdb/dataset_browser.py
 tags: [prd, gui]

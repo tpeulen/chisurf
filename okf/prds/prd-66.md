@@ -94,7 +94,7 @@ Full architecture in the [chitable subsystem concept](/subsystems/gui-tables.md)
       the extension-dtype and filtered-edit-row defects regression-tested.
 - [ ] Remaining hand-rolled plugin tables migrated (mmfdb_admin ~26,
       lightpath_simulator, burst_browser's `_BurstTableModel`).
-- [ ] A scalable AutoForm `data_table` custom section for plugin view schemes,
+- [x] A scalable AutoForm `data_table` custom section for plugin view schemes,
       registered via `@register_section` alongside the existing `table` section.
 
 # Out of scope

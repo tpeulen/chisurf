@@ -14,7 +14,15 @@ timestamp: '2026-07-05T00:00:00Z'
 PRD-25 bundles cross-cutting correctness and consistency changes that each remove a latent bug class. The hardening items apply a uniform fail-loud error policy (warn only for a missing database, surface genuine FK/vocab/integrity/transport errors), define one typed RPC envelope with a single client-side unwrap, provide a single canonical sample read path, cache the parsed dictionary and generated DDL, remove N+1 queries from list endpoints, and drop confirmed-dead legacy paths. The correctness primitives add typed IDs (distinct value-object types for artifact, sample, user, operation, and setup ids), a first-class units/quantities layer validated against the dictionary, and validation moved to the RPC/registration boundary rather than deep inside a transaction.
 
 # Status
-In-progress (phase 1, STATUS TABLE authoritative). Items are independent and land in any order, interleaved with other PRDs.
+In-progress (updated 2026-08-09, phase 1, STATUS TABLE authoritative).
+**N1 (typed IDs) landed:** 7 `NewType` aliases in `models.py`. **N3 (boundary
+validation) landed** via PRD-26's `DictionaryValidator`. **H3 (single sample
+read path) landed:** `sample_manager.get_sample` now delegates to the
+canonical schema-driven `MFDatabase.get_sample` instead of a hand-written
+column-subset SELECT. H2 (one RPC envelope), H4 (caching), H5 (N+1 removal)
+landed. H1 is partial (register_result is fail-loud; ~100 broad
+`except Exception` remain). **N2 (units layer) remains open.** Items are
+independent and land in any order.
 
 # Goal
 A set of cross-cutting correctness/consistency changes that each remove a latent bug class. The H items are small/incremental; the N items (N1–N3) are correctness *primitives* that prevent whole classes at the type/boundary level. This PRD folds in the "typed IDs, first-class units, boundary validation" idea.
@@ -67,3 +75,22 @@ Fail-loud on real errors; one RPC contract; no duplicated read paths; behavior-a
 - The sample-table item (H3) finishes the reconciliation completed by [PRD-19](prd-19.md) (which subsumes it) and depends on the flrCIF-canonical fix.
 - Boundary validation (N3) is dictionary-driven via [PRD-26](prd-26.md), reusing the operation parameter schemas of [PRD-11](prd-11.md).
 - Targets the [MMFDB target](/specs/mmfdb.md) and the [RPC target](/specs/rpc.md).
+
+# Where to pick this up
+
+**N1 (typed IDs), N3 (boundary validation), and H3 (single sample read) are
+done; N2 (units) and H1 (fail-loud audit) remain.** The remaining items:
+
+1. **N2 — first-class units layer.** No `Quantity`/`Unit` class exists;
+   `mmfdb_parameter.units` is free-text. Build a float-zone `units.py` that
+   reads `_item_units.code` from the dictionary and validates parameter units
+   at the boundary. Wire into `provenance/operation_parameters.py` and
+   `queries/parameters.py`.
+2. **H1 — audit the ~100 broad `except Exception` sites.** `register_result`
+   is fail-loud (warns only for "no DB", raises on real errors), but
+   `repository.py` (319, 414, 493, 500, 510, 1549), `result_registry.py`
+   (249, 309, 449, 615, 898), `store/object_store.py`, and `samples/*.py`
+   still swallow real errors. Convert "no DB" to warn, everything else to
+   raise.
+3. **H3 follow-up.** The manager now delegates to the canonical read; verify
+   no other hand-written sample SELECTs remain (`grep -rn 'FROM flr_sample'`).

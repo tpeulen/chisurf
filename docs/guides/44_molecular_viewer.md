@@ -50,6 +50,11 @@ they update on the frame they change and cost the same on a 4K display as on a
 laptop screen. There is no separate refresh to wait for: recolour a selection
 and the sequence strip is already showing it.
 
+The strip carries **one row per chain**, labelled in PyMOL's slash syntax —
+`1f5n/A`, `1f5n/B`. That is not only a label: residue numbers restart in every
+chain, so a row spanning several of them shows the same number more than once
+with nothing to say which chain any of them is.
+
 Under the view is the **command console**: an always-visible prompt with the
 output of everything you have run above it. It is the fastest way to drive the
 viewer, and nothing has to be opened first.
@@ -385,13 +390,96 @@ A level change touches only the map's own geometry: the rest of the scene
 (cartoon, sticks, surfaces) is not rebuilt, and re-drawing an unchanged level
 (a colour or opacity edit, a surface/mesh toggle) reuses the cached contour.
 
-:::{admonition} Direct volume rendering is not implemented yet
-:class: warning
-`volume` is registered but declines, and says to use `isosurface` or `isomesh`
-instead. Ray-cast volume rendering — the mode that suits microscopy and diffuse
-probability densities, where no single threshold is meaningful — is planned, as
-is a histogram panel for dragging contour levels.
-:::
+**The in-viewport controls follow Chimera's volume panel.** `density_panel`
+opens the same histogram as a window drawn inside the 3-D view (it also works
+in the browser build). One threshold is *selected* — its marker carries the
+gold handle — and the colour well, the alpha slider and the level readout act
+on it. The colour well opens a palette drawn in the panel; picking a colour
+recolours that contour immediately. Clicking empty histogram adds a threshold
+there; dragging a marker off the histogram deletes it on release (the last one
+stays — an empty list would fall back to the opening contour and the map would
+reappear).
+
+**The chrome is strippable, and the status line is its own.** Four display
+settings — `show_menubar`, `show_toolbar`, `show_command_line`, `show_status`
+— turn the fixed chrome off piece by piece; with all of them off (and the
+windows closed) nothing remains but the 3-D scene, which is the shape an
+embedded or kiosk view wants. The status line (object, atom and residue
+counts, and transient messages) is drawn by the chrome in the bottom-right
+rather than by a toolkit status bar, so it exists in the browser too and
+switches off like everything else. Menu actions that write files — Save
+Molecule As…, Save Image As…, and everything under File ▸ Export — ask with
+a real file dialog; the command line keeps taking paths as text.
+
+**Editing lives in the Build menu.** Bond/unbond (with bond orders), remove,
+alter, pseudoatom, add hydrogens and the mutagenesis wizard — all
+long-existing commands — plus Edit ▸ Undo/Redo, which are PyMOL's scope
+exactly: sixteen coordinate snapshots per object; colours, representations
+and deletions are outside it.
+
+**The chrome is windows now, and it remembers itself.** The PyMOL-style
+object column became the **Object List** window and the mouse-mode block the
+**Mouse** window — draggable by their title bars, foldable, and closable (every
+in-viewport window carries an `x`; reopen from Display or Tools ▸ Panels, or
+with `object_panel` / `mouse_panel`). Windows **snap** to the viewport's edges
+while dragged — overshooting the edge counts as hitting it — and **anchor**
+where they land: a corner pins the window to that corner, a side pins it to
+that side at its own height, and anchored windows follow their edge when the
+viewport resizes. While a drag is glued, the snap announces itself: the
+window's border and a band along the edge(s) light up in the accent colour.
+Snapping is a setting — `set window_snap, off` (or the settings panel) makes
+windows go exactly where they are dropped. Windows also stick **to each
+other**: drag one within a few pixels of another and it snaps flush against
+that edge, aligning with the neighbour's top or side; windows that touch move
+**as a group** when any of them is dragged by its title, and the partners that
+will ride along light up in the accent colour while you drag. Hold **Shift**
+while dragging to take a window out of its group. On first start the Object List sits
+top-right and Mouse bottom-right. Placement, visibility and fold state are
+**remembered between runs** (`chimol_windows.json` beside your other chisurf
+settings). The density panel's header additionally carries two per-map
+buttons: the eye (`o`) shows or hides the map object, the `x` unloads it —
+closing the *window* keeps the map; this closes the map.
+
+**Map tools live under Tools ▸ Map.** The **Tools** menu groups the working
+tools into submenus (Map, Measure, Panels), every entry a command you can also
+type. Two tools ported from the reference viewer:
+
+- **Hide Dust** (`hide_dust [map,] [size]`): a contour near an interesting
+  level is surrounded by noise crumbs — disconnected blobs the size of a few
+  voxels. Hide Dust finds the connected pieces and hides every piece whose
+  bounding box is smaller than `size` (default five voxels); `show_dust`
+  brings them back. Hiding is a display setting on the map, re-applied when
+  the level moves.
+- **Gaussian Filter** (`volume_gaussian [map,] [sdev]`): a Gaussian-smoothed
+  copy of the data, added as a **new** map beside the original (default width
+  one voxel) — filtering is analysis, and analysis makes a new object.
+
+**Surface quality is a row of presets, wrapping Chimera's rendering options.**
+`coarse` contours at a quarter of the voxel budget (snappy on huge maps);
+`normal` is the raw marching-cubes contour; `smooth` is the reference's
+*surface smoothing* (each vertex pulled toward the mean of its neighbours,
+factor 0.3 × 2 iterations — the staircase and noise-floor glitter relax
+without changing the triangulation); `fine` is its *subdivide surface* first
+(each triangle into four, midpoints welded), then smoothed. Available from the
+density panel's quality row or `volume_quality map, smooth`. Preview contours
+while dragging a level always use the raw fast path.
+
+**`mesh` is Chimera's square mesh, lit.** Only edges lying in principal grid
+planes are drawn — the net of contour lines where the surface crosses the x, y
+and z planes, not every triangle sliver — and the lines are shaded by the
+surface normal so the far side darkens and the shape reads in 3-D. (A rotated
+map falls back to the full wireframe: the square-mesh test is exact
+coordinate equality, which rotation destroys.)
+
+**`solid` is direct volume rendering, Chimera's third style.** The histogram
+markers become a colour and opacity transfer function — value, colour and
+opacity per marker, linearly interpolated, transparent below the lowest — and
+the map is composited through it as unlit translucent fog, so density reads as
+fog thickening toward the cores. It is the style that suits microscopy stacks
+and diffuse probability densities, where no single threshold is meaningful.
+With one marker the reference default shape is used: transparent at the
+densest-ten-percent value, rising through the marker to the maximum. `voxel`
+and `image` (ChimeraX's name) are accepted spellings.
 
 ### Playing a trajectory
 
@@ -1064,6 +1152,30 @@ the object list carries the same five menus pointed at it.
 
 Mask a region — `mask resi 1-40` — to stop the mouse reaching it.
 
+#### How far a click spreads
+
+The **Selecting** line near the bottom of the block says what a click picks up,
+and clicking that line cycles it (right-click steps back). It is the setting
+`mouse_selection_mode`, so a script can set it directly:
+
+```text
+set mouse_selection_mode, Atoms      # only the atom under the cursor
+set mouse_selection_mode, Residues   # its whole residue (the default)
+set mouse_selection_mode, Chains     # every residue of its chain
+set mouse_selection_mode, Objects    # the whole molecule
+set mouse_selection_mode, 2          # PyMOL's numbering also works
+```
+
+At the **Atoms** level the marker sits on the single picked atom rather than on
+every atom of its residue, and a second click on another atom of the same
+residue adds to the selection instead of removing the residue. The sequence
+strip still highlights whole residues, because that is what it shows.
+
+PyMOL's *Segments* and *Molecules* levels are deliberately absent rather than
+present and behaving as something else: chimol reads no segment identifier from
+a PDB, and has no molecule separate from the object holding it. Its numbering
+folds them onto `Chains` and `Objects`.
+
 ## Drawing
 
 ```text
@@ -1106,6 +1218,43 @@ get_extent resn NAG         # bounding box, in Angstrom
 get_title
 distance d1, resi 10 and name CA, resi 20 and name CA
 rms polymer, other_object and polymer
+```
+
+### Measuring by clicking
+
+Naming two atoms in a selection expression means already knowing which two they
+are, which is the opposite of what you want when measuring something you are
+looking at. **Wizard ▸ Measurement** — or `wizard measurement` — hands the mouse
+to a wizard instead: click atoms in the viewport and every two of them become a
+distance, drawn and labelled in Ångström.
+
+The panel that appears at the top right carries the mode, the atoms picked so
+far, and the buttons:
+
+| Control | What it does |
+| --- | --- |
+| the mode row | switches between **Distances** (2 atoms), **Angles** (3) and **Dihedrals** (4) |
+| a picked-atom row | click it to take that pick back after a mis-click |
+| **Delete Last** / **Delete All** | remove measurements the wizard made |
+| **Done** | leave; the measurements stay on screen |
+
+The prompt in the top-left corner says which atom is being waited for. Picks
+made while the wizard runs do **not** change `sele` — a measurement click is a
+measurement click. Switching mode discards a half-finished group, because three
+atoms on the way to a dihedral are not the start of a distance.
+
+Each atom you pick is marked with the selection indicator until the group is
+complete, so a click is acknowledged before the measurement exists. The marks
+are not a selection — they never reach `sele` and they clear themselves.
+
+Measurements made this way are ordinary measurement objects, so `wizard done`
+leaves them behind and they follow trajectory playback like any other.
+
+The number is drawn at `label_size` points:
+
+```text
+set label_size, 24        # bigger numbers on a large scene
+set label_color, yellow   # 3-D label colour
 ```
 
 ### Polar contacts
@@ -1629,6 +1778,23 @@ save whole.cif               # mmCIF, for large residue numbers
 Files carry the coordinates **as the viewer holds them**, including any transform
 applied in the session. Re-exporting the input file instead would silently
 discard the work.
+
+### Exporting the scene as a 3-D model
+
+```text
+save figure.glb              # binary glTF — PowerPoint: Insert ▸ 3D Models
+save figure.stl              # triangles for printing/CAD (STL has no colour)
+save figure.wrl              # VRML 2.0, with per-vertex colours
+```
+
+Also under **File ▸ Export**. What is written is the scene **as drawn** —
+contours as their triangles, spheres and sticks (analytic impostors on
+screen) tessellated back into real triangles, per-vertex colours carried in
+glTF and WRL. The `.glb` is the one for **PowerPoint**: drop it on a slide
+via Insert ▸ 3D Models and the audience can rotate the molecule during the
+talk. Lines, labels and the translucent `solid` map fog are skipped — the
+first two have no surface, and the fog is a trick of this renderer rather
+than a model another program can light (contour the map instead).
 
 `undo` and `redo` cover coordinate changes only, per object, sixteen deep — the
 same narrow scope as PyMOL's. They do not undo a colour, a representation or a

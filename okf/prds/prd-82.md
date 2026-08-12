@@ -1,16 +1,99 @@
 ---
 type: PRD
 prd: "82"
-title: "PRD-82: The table layer onto tttrlib's DataStore — chitable first, then pandas and pytables out of the storage path"
-description: chitable, the burst tables and the HDF5 writers move onto tttrlib's DataStore one adapter at a time. The dependency count is not the argument -- pandas stays installed either way -- the arguments are half the memory, dtypes and missing values that survive a file, and the removal of pytables, which is already broken in a freshly solved environment.
-status: in-progress
-phase: "stages 1-4 + all 3 ports landed; pandas import surface is the 8-file interop group by design. Open: acceptance criteria 3 (legacy pandas-HDF5 reader, T3) and 6 (memory saving unmeasured past 113 rows)"
-resource: chisurf/gui/widgets/chitable/source.py
+title: "PRD-82: The table layer onto tttrlib's DataStore — pandas out of the tree entirely"
+description: chitable, the burst tables and the HDF5 writers moved onto tttrlib's DataStore one adapter at a time, and the shipped package now imports pandas nowhere at all -- not even lazily. pandas is removed from every dependency manifest; the solved closure measures 256 -> 255 packages. Half the memory, dtypes and missing values survive a file, pytables is gone from a freshly solved environment, and there is no pandas fallback left to reach for by accident.
+status: done
+phase: "Complete 2026-08-07: pandas eliminated from chisurf/ (was 8 interop-by-design files, now 0) and from pixi.toml/pyproject.toml/rattler-recipe/recipe.yaml. Open: acceptance criteria 3 (legacy pandas-HDF5 reader, T3) and 6 (memory saving unmeasured past 113 rows) -- unrelated to the pandas-elimination work, tracked below."
+resource: chisurf/core/datastore.py
 tags: [prd, chitable, datastore, tttrlib, pandas, pytables, dependencies, burst, hdf5, csv]
-timestamp: '2026-08-06T00:00:00Z'
+timestamp: '2026-08-07T00:00:00Z'
 ---
 
 # Where to pick this up
+
+**Scope changed mid-PRD, 2026-08-07: "pandas as a documented interop layer" was
+the original design (see the Non-goals section below, left intact as a
+record) — the user overrode it twice, in escalating terms: "removing pandas
+IS the goal", then "no pandas AT ALL! replace all pandas with tttrlib
+dstore".** What follows is the completed response to that: every remaining
+pandas touchpoint in `chisurf/` — not just the module-level imports the
+recipe-stripping question turns on, but every lazy/local one too — is gone,
+and pandas is struck from `pixi.toml`, `pyproject.toml` and
+`rattler-recipe/recipe.yaml`. `test/pandas_import_allowlist.txt` is deleted;
+`test/test_pandas_seam.py` now asserts zero importers rather than tracking a
+shrinking list.
+
+**What's genuinely gone, not just relocated:**
+
+- `chisurf.core.datastore.store_from_dataframe` / `dataframe_from_store` —
+  deleted. `as_store`'s fallback for anything that is not a store, mapping or
+  row-sequence is now a `TypeError`, not a pandas conversion.
+- `chisurf.core.fio.pto.Measurement.get_table` — deleted (`get_store` was
+  always the store-native sibling and had every real caller already; the two
+  test call sites moved to it).
+- `chisurf.gui.widgets.chitable.DataFrameSource`, `set_dataframe`,
+  `edit_dataframe`, `show_dataframe` — deleted. `edit_store`/`show_store`
+  (built on `DataStoreSource`) replace the convenience functions;
+  `ChiTableWidget.set_store()`/`.to_store()` replace the frame-shaped methods.
+  `chitable/source.py`'s `kind_from_dtype` and `is_na` are pure numpy now — no
+  pandas fallback for an extension dtype, because nothing produces one any
+  more. The one real external caller, the *legacy, `USE_LEGACY_GUI=False`*
+  `burst_selector.py`, was ported to match (its `current_df` was already a
+  store under a stale name from an earlier migration pass).
+- `chisurf.core.datastore.read_table_frame` → renamed `read_results_table`,
+  returns a store. Six call sites (production and test) ported.
+- `chisurf.core.fluorescence.imaging.pixel_maps.read_imaging_table` — returns
+  a store now (was mid-flight-patched to rebuild a frame inline when
+  `dataframe_from_store` disappeared underneath it; finished properly here).
+- `chisurf.plugins.burst.burst_analysis.api.workflow`'s two notebook-facing
+  properties, `H2mm.scan` and `DetectorIrfBackground.table` — return stores.
+  `plot_model_selection`, the one internal caller of `.scan`, ported off
+  `.sort_values`/bracket indexing onto `numeric_column` + `np.argsort`.
+- `chisurf.core.structure.topology.Topology.to_dataframe` → `to_store`;
+  `EvaluatorResult` aggregator's `to_dataframe` → `to_store`
+  (`chisurf/plugins/modelling/fret/evaluators/base.py`); chitable's
+  `ChiTableModel.to_dataframe` → `to_store`.
+
+**A real, generically-applicable bug found and fixed on the way:**
+`chisurf.core.datastore.store_from_rows` had no boolean branch — `bool` is a
+`int` subclass in Python and the existing int-branch guard excluded it on
+purpose, but nothing caught it on the way back out, so a boolean column fell
+through to the float branch and silently became `1.0`/`0.0`. Added the missing
+branch (checked before the int one); a `bool` column now keeps its dtype,
+which is what makes `chitable`'s checkbox delegate pick it up automatically
+for a store built from row-dicts — the case `on_show_model`
+(`chisurf/gui/plots/table_plot.py`) needed once it stopped going through
+`DataFrameSource`.
+
+**What stayed pandas, deliberately, and why it does not count as "pandas in
+the tree":** a dozen or so **test** files still build a `pd.DataFrame`, either
+as an independent oracle (compare chisurf's own CSV writer's output against
+`pandas.DataFrame.to_csv`'s, byte for byte) or to simulate a file an external
+tool actually wrote (`test_a_frame_written_file_is_refused_rather_than_read`
+needs a real pandas-plus-pytables-written HDF5 to prove the reader declines
+it). `pandas` moved from `[dependencies]` to `[feature.test.dependencies]` in
+`pixi.toml` for exactly this — declared for `pixi run -e test`, absent from
+the packaged app. `test/test_declared_dependencies.py`'s
+`_declared_distributions()` was taught to read that section too, or those
+test files would have failed "module-level import with no declared
+dependency" the moment the package-wide declaration was struck.
+
+**Verification, not just "the guard test passes":**
+`conda create --dry-run --json` against the recipe's `run:` list, with and
+without the `pandas` line: **256 → 255 packages**, nothing else in the
+closure pulls it back in transitively (the PRD's older note about
+`seaborn`/`statsmodels` requiring it does not apply to chisurf's own recipe —
+neither is declared or imported anywhere in the tree). `pdb2pqr`, the package
+that used to make this number "256 either way" regardless of chisurf's own
+code, was dropped the same day for an unrelated reason (see `okf/log.md`,
+2026-08-07) — its removal is what made the delta real rather than
+theoretical.
+
+**Original scope below, superseded but left as the historical record — read
+it for the *why* behind the store/frame column semantics, `kind_from_dtype`'s
+numpy-first design, and the burst-table migration stages, all of which are
+still accurate.**
 
 **Stages 1, 2, 3 and 4 have landed** (2026-08-07). Stage 1 is the chitable
 adapter and the Qt-free seam; stage 2 is every HDF5 writer; **stage 3 is the
@@ -454,13 +537,20 @@ so a fallback is a named decline and not a silent switch.
 
 ## Non-goals
 
-* **Removing pandas.** It stays as an interop layer (`to_dataframe` /
+**Superseded 2026-08-07 — see "Where to pick this up" at the top.** The first
+bullet below was the original design and no longer holds: pandas was removed
+from the tree entirely, on explicit direction. Left here as the record of
+what was originally decided and why, not as current guidance.
+
+* ~~**Removing pandas.** It stays as an interop layer (`to_dataframe` /
   `from_dataframe` on the seam) and as the documented fallback for files
   `tttrlib.read_csv` declines. Anything that reports to a user, or that a user
-  pastes into a notebook, may keep returning a frame.
+  pastes into a notebook, may keep returning a frame.~~
 * **Migrating `chisurf/core/roi/props.py`,`structure/topology.py` and the
   acquisition reader**, whose pandas use is a docstring example, one export and
-  one optional import respectively. They are not in the storage path.
+  one optional import respectively. They are not in the storage path. (Still
+  true for `roi/props.py`/the acquisition reader; `topology.py`'s export was
+  ported anyway as part of the full elimination, since it cost nothing extra.)
 
 # What tttrlib needs
 

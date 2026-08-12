@@ -784,15 +784,88 @@ Migrate `ndxplorer` and `quest` on the same contract (committed in their own
 repos per the module ownership rule). Allow-list reaches empty except the
 ChiMOL OpenGL entry owned by PRD-57.
 
-**Phase 5+ — native chiplot renderer (long-term, the actual goal).**
-Implement `backends/opengl_backend.py`: an OpenGL-backed 2-D renderer satisfying
-the `backends/base.py` contract — batched line/scatter/bar rendering, an
-axis/viewbox with pan/zoom, region/marker/text overlays, and image blitting —
-with an immediate-mode (imgui-style) control surface for interactive panels
-where it fits. Bring plots over one family at a time (start with the
-highest-volume, most GPU-favourable: large scatter/phasor clouds, waterfalls,
-dense decays), gated behind `CHISURF_PLOT_BACKEND=opengl` and A/B screenshot
-comparison against the pyqtgraph backend, re-running `test/gui/test_chiplot.py`
+**Phase 5+ — native chiplot renderer (long-term, the actual goal). 🚧 SCAFFOLD LANDED.**
+The `backends/opengl/` package exists with a full implementation of the
+`backends/base.py` contract: `_glcore.py` (Qt-free GLSL shaders,
+`ViewTransform`, tick helpers), `_handles.py` (all handle protocols —
+Curve, Scatter, Bars, ErrorBars, FillBetween, Image, Region, Marker, Roi,
+Arrow, Text, ColorBar), `_canvas.py` (`_GlCanvas`, `_GlGrid`, `_GlImageView`
+on `QOpenGLWidget`), and `__init__.py` (`OpenGLBackend` factory). The
+backend is registered in the selection registry and selectable via
+`CHISURF_PLOT_BACKEND=opengl` or the `gui.plot.backend` setting; all 24
+contract + handle tests pass against both backends.
+
+The rendering approach follows chimol's proven pattern: Qt GL wrappers
+(`QOpenGLShaderProgram`, `setAttributeArray`) for shader/buffer management,
+PyOpenGL for draw calls and GL state, data pre-transformed to NDC on the
+CPU (handles log axes without shader log), axes/ticks/text overlaid via
+`QPainter`. The `_glcore.py` and handle logic are Qt-free for future
+portability away from Qt.
+
+**Known rendering gaps (2026-08-09):** curves, bars, and regions render
+correctly under `grabFramebuffer()`; scatter (GL points) and image (texture
+upload) need debugging — the A/B comparison script
+(`test/gui/chiplot_ab_screenshots.py`) generates paired PNGs in `renders/`
+for incremental visual verification. The macOS `QOpenGLWidget` +
+`beginNativePainting` interaction has quirks: the `QPainter` overlay
+sometimes clears the framebuffer; chimol avoids this by not using
+`beginNativePainting` at all (raw GL, then `QPainter(self)` directly), and
+the chiplot backend follows that pattern but it needs further tuning.
+
+The full Phase 5+ work (bringing plots over one family at a time, A/B
+screenshot parity at each step, and eventually dropping pyqtgraph) remains.
+
+## UX parity (the "user test")
+
+A backend that implements the abstract `Canvas` contract but fails the
+real interactions a user performs — right-click → context menu, select →
+auto-range, export data, drag a region, pan/zoom — is not usable.  The
+pyqtgraph backend passes these because pyqtgraph shipped them; a native
+backend must replicate them behind the same `Plot` API.
+
+**UX features that must work on every backend** (tested in
+`test/gui/test_chiplot_opengl.py` under the `gl_backend` fixture, matching
+the pyqtgraph tests in `test/gui/test_chiplot.py`):
+
+1. **Context menu** — right-click on the plot shows a menu with: Export
+   data as CSV, Export image, Auto-range, and any `add_menu_action`
+   entries.  The GL backend returns `provides_native_menu() → False`, so
+   chiplot's own `contextMenuEvent` builds the `QMenu`; the pyqtgraph
+   backend injects into pyqtgraph's native ViewBox menu instead.  Either
+   way, the same actions appear.
+2. **Autoscale** — `plot.autoscale()` fits the view to the data range
+   (respecting log axes); `autoscale(continuous=True)` keeps fitting as
+   data changes.
+3. **Export CSV / image** — `export_csv` writes every named series to
+   columns; `export_image` saves a screenshot (GL backend: `grabFramebuffer`;
+   pyqtgraph: `ImageExporter` or widget grab fallback).
+4. **Interactive toggles** — `set_interactive(mouse=, menu=)` /
+   `set_menu_enabled` / `set_context_menu_enabled` round-trip and read back.
+5. **Signals** — `clicked(x, y)` fires on left-click in data coords;
+   `mouse_moved(x, y)` fires on pointer motion; `on_range_changed(cb)`
+   fires on pan/zoom.
+6. **View control** — `set_xlim`/`set_ylim`/`set_range`/`get_range`/
+   `link_x`/`link_y` work identically.
+7. **Chaining** — every setter returns `self` so `plot.set_labels(…).grid(…).set_log(…)` works.
+
+**chimol sibling task.** chimol (`chisurf/plugins/chimol/`) has its own
+OpenGL renderer (`chimol/renderer/qtgl.py`) with a proven paint loop,
+shader compilation (`QOpenGLShaderProgram` + `setAttributeArray`), in-viewport
+context menus, and `grabFramebuffer` screenshots.  The two renderers share
+the same direction (GL behind a stable contract) and the same macOS GL 2.1
+constraints.  The plan is:
+
+- chiplot's GL backend reuses chimol's proven patterns (shader wrapper,
+  paint loop, GL state management) rather than maintaining a parallel one.
+- chimol's in-viewport menus (A/S/H/L/C object panel, `internal_gui.py`)
+  are a *different* interaction layer (drawn in GL, command-string driven),
+  not chiplot's Qt-menu model — chiplot does not subsume them.
+- **Eventually chimol swaps its renderer to chiplot**: the 3-D scene graph
+  (`chimol/renderer/scene.py`) draws through chiplot's `VolumeViewCanvas`
+  contract, and the 2-D overlays (labels, selection box, object panel)
+  draw through chiplot's `Canvas`/`Grid` API.  This unifies the two GL
+  contexts into one and eliminates a duplicate rendering path.  Tracked
+  as a follow-up to Phase 5+; not started yet.
 against it. pyqtgraph is dropped only when the native backend covers every used
 handle family at parity — at which point the allow-list and this dependency are
 both gone.
@@ -815,7 +888,10 @@ both gone.
 
 # Non-goals
 
-- Subsuming ChiMOL 3-D / raw-OpenGL rendering (PRD-57 owns that).
+- **Short-term:** subsuming ChiMOL 3-D / raw-OpenGL rendering. chiplot's GL
+  backend shares infrastructure patterns with chimol's renderer, and the
+  long-term plan is for chimol to draw through chiplot — but that is a
+  follow-up to Phase 5+, not part of the initial scaffold.
 - Re-exposing non-plot widgets through chiplot (PRD-42 removes those).
 - Speculatively over-building the handle contract — capabilities are added when
   a real call site needs them during Phases 2–4, not up front.
@@ -829,8 +905,9 @@ both gone.
   one swappable seam. PRD-42 should land first (or concurrently) so the facade
   never has to re-expose non-plot symbols.
 - Shares the renderer-behind-a-stable-contract shape and OpenGL/immediate-mode
-  direction with [PRD-57](prd-57.md) (ChiMOL renderer migration); the two stay
-  separate (2-D vs 3-D) but can share GL infrastructure later.
+  direction with [PRD-57](prd-57.md) (ChiMOL renderer migration). The long-term
+  convergence: chimol swaps its standalone GL renderer (`qtgl.py`) for chiplot's
+  `Canvas`/`VolumeViewCanvas` contract, unifying the two GL surfaces into one.
 - Interacts with [PRD-40](prd-40.md)/[PRD-38](prd-38.md) AutoForm: AutoForm plot
   sections (`decay_conv`, `phasor`, `waterfall`, `image`, `builtin`) become
   chiplot consumers, so the seam also covers the data-driven view layer.

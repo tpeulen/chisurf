@@ -3,7 +3,7 @@ type: PRD
 prd: "68"
 title: "PRD-68: Fit Factor Graph — structure-aware objectives and posteriors"
 description: Materialise the factor structure of a fit's posterior (variables = free parameters, factors = per-dataset likelihoods and per-parameter priors) so global fits stop recomputing every dataset per evaluation, and so blocks, separators, treewidth and identifiability become queryable; plus the prior fix that makes MCMC target the same posterior as MAP.
-status: in-progress
+status: done
 phase: "unassigned"
 resource: chisurf/core/fitting/factorgraph.py
 tags: [prd, fitting, sampling, bayesian, global-analysis, performance, priors]

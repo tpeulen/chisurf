@@ -3,7 +3,7 @@ type: PRD
 prd: "04"
 title: "PRD-04: Stable Burst Pipeline MMFDB Integration"
 description: Register burst-selection results in MMFDB with stable, queryable provenance across all callers
-status: in-progress
+status: done
 phase: "0"
 resource: chisurf/plugins/burst/burst_selection
 tags: [prd, mmfdb, fret]

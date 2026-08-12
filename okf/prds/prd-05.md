@@ -3,7 +3,7 @@ type: PRD
 prd: "05"
 title: "PRD-05: Calibration Provenance"
 description: Track calibration parameters in MMFDB with links to the reference measurements they derive from
-status: in-progress
+status: done
 phase: "4"
 resource: modules/mmfdb/src/mmfdb/
 tags: [prd, mmfdb, fret]
@@ -22,9 +22,11 @@ distinct "computed-from-optics" provenance source, so predicted and measured
 crosstalk/R₀ can be compared.
 
 # Status
-In progress. Depends on the result registry for storing calibration records and
-wiring provenance edges; some values can be sourced from an optical-configuration
-setup rather than a measurement.
+Done (2026-08-08). All Definition-of-Done items are complete and tested. Three
+GUI/convenience items remain unchecked but are explicitly deferred with documented
+rationale (convenience-only buttons, fragile heuristic, dead-code avoidance); the
+mmfdb-admin Calibrations view covers the manual-registration path they would have
+provided.
 
 # Goal
 Calibration parameters (g-factor, gamma, crosstalk, direct excitation, Förster

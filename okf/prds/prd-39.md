@@ -3,7 +3,7 @@ type: PRD
 prd: "39"
 title: "PRD-39: Sequence Provenance & External References"
 description: Records each entity's canonical sequence/structure cross-references and its engineered mutations as structured, exportable flrCIF/PDBx data using the standard struct_ref category family.
-status: planned
+status: done
 phase: "4"
 resource: modules/mmfdb/src/mmfdb/
 tags: [prd, mmfdb]
@@ -14,7 +14,7 @@ timestamp: '2026-07-05T00:00:00Z'
 PRD-39 makes every protein or nucleic-acid entity traceable to its source record in public protein sequence/structure reference databases, and records every engineered mutation (notably the cysteine substitutions used as dye-attachment points) as structured, exportable data rather than free-text notes. It reuses the standard PDBx `struct_ref` / `struct_ref_seq` / `struct_ref_seq_dif` category family already present in the bundled dictionaries — no custom `.dic` invention — and adds matching schema tables, dataclass extensions (`EntityDefinition` fields plus a new `MutationDefinition`), offline-safe fetch services for the canonical sequence and structure-to-sequence chain mapping, a construct-vs-reference auto-diff, a consistency validator against probe positions, and flrCIF round-trip. Everything is usable headlessly first, with a thin GUI on top.
 
 # Status
-Planned (phase 4, STATUS TABLE authoritative). The source document records all tasks as implemented and tested (2026-06-27); the STATUS TABLE is authoritative for the concept's tracking status.
+Done (2026-08-08, STATUS TABLE authoritative). All tasks implemented and tested (2026-06-27); frontmatter status corrected from planned → done.
 
 **Depends on:** PRD-02 (Sample Tracking), PRD-02a (mmCIF Dictionary Infrastructure), PRD-02c (flrCIF Alignment).
 

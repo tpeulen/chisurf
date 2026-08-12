@@ -14,7 +14,7 @@ timestamp: '2026-07-05T00:00:00Z'
 Because MMFDB is unreleased, this PRD decides the provenance-core shape early and then incrementally hardens it: recorded facts should be appended rather than destructively rewritten, "delete" should become a tombstone, and current state/lifecycle should be projections folded over append-only records. A go/no-go chose append-only-lite (keep the current tables, make provenance/state changes append-only where practical) over full event-sourcing, keeping the latter as the documented end state. Branches are represented as named pointers to operation heads, enabling limited "what-if" reprocessing without touching the main line.
 
 # Status
-In-progress (re-verified against code 2026-07-05). The append-only-lite decision is locked, lifecycle transitions are append-only, an event-log table exists for GUI history, and branch/head APIs plus branching tests are present. **Open:** the PRD's implementation DoD is broader than the code: full provenance/state reconstructability is not proven, several core tables still use `UPDATE`/upsert paths for recorded facts, and full single-log event-sourcing remains only the documented future end state.
+In-progress (updated 2026-08-09). The append-only-lite decision is locked. Lifecycle transitions are append-only (`mmfdb_state_transition` is a true log; `get_state` is a fold over it). Operation status changes now log transitions alongside the backward-compat UPDATE. Reconstructability is proven: `test_reconstructability.py` (3 tests) verifies lifecycle state is reconstructable from the log, tombstone deletes preserve records, and operation status transitions are recorded. **Remaining:** audit the other in-place mutations (`settings_json`, `software_package`, generic `update_*` bags on operations/artifacts); wire PRD-12/PRD-21 as formal projections; full single-log event-sourcing remains the documented future end state.
 
 > **Decide this early.** MMFDB is unreleased. If the core is append-only/event-sourced, then [PRD-12](prd-12.md) (lifecycle) and [PRD-21](prd-21.md) (events) are **projections over the log**, not mutable status + bolt-on events — built once, not reworked.
 
@@ -79,3 +79,25 @@ Append-only invariants enforced (no in-place mutation of facts); current state i
 - Branching enables the "what-if" replay used by [PRD-29](prd-29.md).
 - Foundation for the metadata/provenance store: [MMFDB (current)](/architecture/mmfdb.md), [MMFDB target](/specs/mmfdb.md).
 - Replayable compute-spec idea drawn from a visual node/workflow toolkit's prior art.
+
+# Where to pick this up
+
+**Reconstructability is proven for lifecycle state and operation status; the
+remaining in-place mutations are the open front.** `test_reconstructability.py`
+(3 tests) proves lifecycle state is a fold over `mmfdb_state_transition`,
+tombstones preserve records, and operation status changes log transitions.
+The remaining in-place UPDATEs on recorded facts:
+
+1. **`settings_json`** (`queries/artifacts.py:133` `update_operation_settings`)
+   — mutates the operation's recorded settings in place. Decide: append a new
+   settings revision row, or accept settings as a mutable "current config"
+   (not a recorded fact) and document that.
+2. **`software_package`** (`workflow/runner.py:277`) — the host-neutralizer
+   rewrites the recorded software identity. This is a provenance fact; it
+   should be a new row or a documented correction, not an in-place UPDATE.
+3. **Generic `update_operation` / `update_artifact` bags** (`artifacts.py:127`,
+   `:259`, `analysis.py:100`) — these mutate recorded facts (checksum,
+   validation_status, metadata). Audit each column: which are "current state"
+   (mutable) vs "recorded fact" (append-only).
+4. **Wire PRD-12/PRD-21 as formal projections** over the transition log once
+   the mutation audit is done.

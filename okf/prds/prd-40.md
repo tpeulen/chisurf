@@ -3,7 +3,7 @@ type: PRD
 prd: "40"
 title: "PRD-40: A ChiSurf-native declarative dataset-to-editor framework"
 description: Provides one reusable way to declare a typed dataset once and auto-generate its Qt editor across models, settings, and tool panels, replacing the several ad-hoc type-to-widget mappers.
-status: planned
+status: done
 phase: "unassigned"
 resource: chisurf/core/dataspec/
 tags: [prd, gui]

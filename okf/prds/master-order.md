@@ -31,15 +31,13 @@ biggest lever for "minimize reimplementation."
 ## Phase 0 — Current (finish first)
 
 - **[PRD-03](prd-03.md)** result registry, **[PRD-04](prd-04.md)** burst pipeline —
-  *we are here (3/4)*.
-- **[PRD-09](prd-09.md)** (shifter) and **[PRD-10](prd-10.md)** (dataset browser)
-  were added on this line and are largely built.
+  *done*. **[PRD-09](prd-09.md)** (shifter) done.
+- **[PRD-10](prd-10.md)** (dataset browser) remains open (file-group membership).
+- **[PRD-02c](prd-02c.md)** (flrCIF export alignment) remains open.
 
-These are the *active* line, not closed-out prerequisites: PRD-04 is "implemented"
-and the setup/calibration/dataset work has landed, but 03/04 remain the current
-line. PRD-11–16 are **downstream** of it and slot into the existing plan rather
-than treating 03/04 as finished. They reuse the PRD-03 operation/artifact tables,
-the PRD-04 `.dic`→DDL generator, and the `validate_mapping` gate.
+PRD-11–16 are **downstream** of this line and slot into the existing plan.
+They reuse the PRD-03 operation/artifact tables, the PRD-04 `.dic`→DDL generator,
+and the `validate_mapping` gate.
 
 ### Reconciliation with the pending original PRDs (05–08)
 
@@ -53,7 +51,8 @@ the PRD-04 `.dic`→DDL generator, and the `validate_mapping` gate.
 - **[PRD-08](prd-08.md)** optical configuration — reconciled in PRD-04 (detector
   channel = base; optical = extension). Keep as an independent follow-up; orthogonal
   to PRD-11–16.
-- **[PRD-06](prd-06.md)** fluorophore database — independent;
+- **[PRD-06](prd-06.md)** fluorophore database — **done** (21 seeded dyes, 10 R0 pairs,
+  verification workflow, AI triage, approved-only downstream);
   [PRD-15](prd-15.md) reagent inventory may link to it. No conflict.
 
 ## Phase 1 — Architecture foundation (de-risk before building more)
@@ -131,9 +130,8 @@ Parallelization after the spine: **track A** = PRD-12 then PRD-14
     lineage (21); "what-if" reprocessing rides PRD-27 branches.
 13. **[PRD-15](prd-15.md)** reagent inventory (LIMS P4), **[PRD-05](prd-05.md)
     remainder** (gamma/crosstalk/R0 — g-factor done via PRD-04 C/D),
-    **[PRD-06](prd-06.md)** fluorophore DB (folds in the `_dev/fluorophore_db` plugin
-    as the curated real-spectra source — spectral-database/dye-vendor/photochem
-    importers + curation GUI — registered into MMFDB), **[PRD-08](prd-08.md)** optical
+    **[PRD-06](prd-06.md)** fluorophore DB (**done** — 21 dyes, 10 R0 pairs,
+    verification + AI triage), **[PRD-08](prd-08.md)** optical
     configuration (now also folds in the Light Path Simulator as the optics
     authoring/visualization tool + a computed crosstalk/R₀ source feeding PRD-05) —
     independent; slot as needed.
@@ -171,25 +169,25 @@ Parallelization after the spine: **track A** = PRD-12 then PRD-14
 ## Dependency graph
 
 ```
-PRD-03/04 (current)
+PRD-03/04 (done) ──► PRD-10/02c (open)
    │
    ▼
 Phase 1:  PRD-18 ─┬─ PRD-17 ─┬─ PRD-19 (I+K) ─┬─ PRD-27 (M)   (+ PRD-25 H1/H2 N1/N3)
                   │          │ canonical schema│ append-only core
                   ▼          ▼                 ▼
-Phase 2:        PRD-11 ──► PRD-16 ──► PRD-26 (J)   (supersedes PRD-07; refactor 04+09; apply 23)
+Phase 2:        PRD-11 ──► PRD-16 ──► PRD-26 (J)   (supersedes PRD-07; apply 23)
                   │        contract   model-driven layer (on 19+11)
    ┌──────────────┼───────────────┐
    ▼              ▼               ▼
 PRD-21 ──► PRD-12        PRD-14        PRD-13        (Phase 3 — projections over PRD-27)
    │          │            (needs 11)   (independent)
    └────► PRD-22 (Phase 4; + spine; "what-if" on 27 branches)
-                  PRD-15 / PRD-05* / PRD-06 / PRD-08  (independent features)
+                  PRD-15 / PRD-05* / PRD-08  (independent features; PRD-06 done)
                   │
                   ▼
               PRD-24 (Phase 5, capstone)
 
-Cross-cutting:  PRD-43 Phase 1 ◄── PRD-03 (shippable now)
+Cross-cutting:  PRD-43 Phase 1 ◄── PRD-03 (done)
                 PRD-43 Phase 3–4 ◄── PRD-21 + PRD-27
 ```
 

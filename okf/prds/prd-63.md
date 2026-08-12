@@ -3,7 +3,7 @@ type: PRD
 prd: "63"
 title: "PRD-63: Internationalisation & UI-language harmonisation"
 description: Add a translation kit (extract → catalogue → runtime switch) that localizes the data-driven view.json/manifest and .ui UI from a single Qt-free seam, seed a German catalogue, and use the same funnel to harmonise inconsistent UI terminology against a canonical glossary.
-status: in-progress
+status: done
 phase: "unassigned"
 resource: chisurf/core/i18n.py
 tags: [prd, i18n, translation, localization, autoform, harmonisation]

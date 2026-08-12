@@ -3,7 +3,7 @@ type: PRD
 prd: "43"
 title: "PRD-43: Align GUI Operation History with MMFDB Provenance"
 description: Makes the in-memory operation history a projection over a durable MMFDB event log so undo/redo and the exploration trail survive database save/restore, and incrementally aligns the GUI event stream with the backend provenance model.
-status: in-progress
+status: done
 phase: "cross-cutting"
 resource: chisurf/history/
 tags: [prd, mmfdb]
@@ -14,7 +14,7 @@ timestamp: '2026-07-05T00:00:00Z'
 PRD-43 closes the gap where saving a project to a local `.csp` archive preserved the full action history but saving to MMFDB discarded it, losing the undo stack and scientific-exploration trail. The original "opaque history blob" plan was superseded by a stronger design in which MMFDB is the durable source of truth and the in-memory `OperationHistory` is a projection over it, delivered in four staged headless-tested increments (Qt-free replay, dictionary-declared vocabulary alignment, bounded snapshots, and an append-only `mmfdb_event_log` with best-effort dual-write). Making recording live again also exposed and fixed three stacked latent bugs in the interactive undo/redo replay path plus UID-remapping on redo. Later phases (auto-creating operation rows in the dispatcher, transactional GUI-to-DB operations, unified replay) ride other architecture PRDs.
 
 # Status
-In-progress (cross-cutting phase, STATUS TABLE authoritative). Recording, undo, and redo (re-create fits, restore name-keyed state, remap model-state fit groups) work; several known undo/redo edges and duplicate-recording consolidation remain, and Phases 2–4 are deferred.
+Done (2026-08-08, cross-cutting phase, STATUS TABLE authoritative). The Definition of Done — MMFDB save/restore preserves the full undo/redo history — is met (all DoD checkboxes checked). Recording, undo, and redo (re-create fits, restore name-keyed state, remap model-state fit groups) work. Several known undo/redo edges and duplicate-recording consolidation remain as tracked enhancements outside the DoD; Phases 2–4 (auto-creating operation rows in the dispatcher, transactional GUI-to-DB operations, unified replay) ride PRD-11/16/21/27 and are deferred.
 
 > **Scope:** Inspection of the current history mechanism + incremental alignment plan. Phase 1 is shippable now (no new dependencies); Phases 3–4 ride PRD-21/27 and are deferred until the architecture track lands.
 
@@ -172,9 +172,15 @@ Replace client-side checkpoint snapshots with database version pointers. Moving 
 
 # Definition of Done
 
-- [ ] Project save/restore via MMFDB (Project Browser) preserves the full undo/redo history stack.
-- [ ] History is stored as a content-addressed `project_history` artifact — no new database tables required.
-- [ ] Round-trip test passes: archive with history → restore → history intact.
+- [x] Project save/restore via MMFDB (Project Browser) preserves the full undo/redo
+      history stack — delivered via the `mmfdb_event_log` table (not the original opaque-
+      blob plan; see IMPLEMENTED above).
+- [x] ~~History is stored as a content-addressed `project_history` artifact — no new
+      database tables required.~~ **Superseded**: the `mmfdb_event_log` table is a
+      stronger design that the database can query, not an opaque blob. The table is
+      dictionary-declared and materialized by `reconcile_schema`.
+- [x] Round-trip test passes: archive with history → restore → history intact
+      (`test_archive_then_restore_preserves_history`).
 
 # Definition of Clean
 

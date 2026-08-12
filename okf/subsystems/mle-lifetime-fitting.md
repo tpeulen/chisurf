@@ -72,11 +72,6 @@ The plugin-scaffolding layer (`gui/tool.py`, `gui/view_model.py`, `api/`, `cli/`
 of the two imaging tools is still largely duplicated; a shared `AutoFormMleTool`
 / `MleViewModelBase` base is a pending refactor.
 
-
-The plugin-scaffolding layer (`gui/tool.py`, `gui/view_model.py`, `api/`, `cli/`)
-of the two imaging tools is still largely duplicated; a shared `AutoFormMleTool`
-/ `MleViewModelBase` base is a pending refactor.
-
 # Model selection is registry-driven, not hardcoded
 
 The burst wizard offers **every fit2x model tttrlib advertises** rather than a

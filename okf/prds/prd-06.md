@@ -3,7 +3,7 @@ type: PRD
 prd: "06"
 title: "PRD-06: Expand the Fluorophore Database"
 description: Populate MMFDB with real, provenance-tracked spectral data for common dyes and compute Förster radii from spectral overlap.
-status: in-progress
+status: done
 phase: "4"
 resource: modules/mmfdb/src/mmfdb/
 tags: [prd, mmfdb]

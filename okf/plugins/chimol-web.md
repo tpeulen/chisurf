@@ -7,6 +7,63 @@ tags: [plugins, structure, viewer, webgpu, wgsl, web, pyodide, compute]
 timestamp: '2026-08-10T00:00:00Z'
 ---
 
+# Where to pick this up (2026-08-12, latest) — Qt is an option now
+
+**The default is toolkit-free.** `python -m chisurf.plugins.chimol` opens a
+GLFW window through `rendercanvas` and runs the same `MolView`, the same `Cmd`
+and the same `_draw` the Qt plugin embeds; `--qt` asks for the Qt window and is
+the only thing that reaches it. `--check` builds everything, renders one frame
+and exits, which is what the guard test drives.
+
+**The seam is `renderer/canvas_base.py`.** `CanvasRenderer` holds the surface
+configuration, the packing, the chrome quads, the frame, and every decision
+about what a press/drag/wheel/key means — none of which is a window system's
+business. It reaches its surface through `_surface()`: `self` for
+`WgpuRenderer` (which *is* a `rendercanvas` Qt widget) and the held canvas for
+`CanvasView`. A host supplies a canvas, five event translations and
+`_composite_overlay()`.
+
+**What is still Qt-bound, and why.** `_composite_overlay()` returns `None`
+without a toolkit, so 3-D **labels**, a **traced frame** and the **rubber-band
+box** do not appear in the Qt-free window: those three are rasterised with a
+`QPainter` (`gui_overlay.paint_chrome`) rather than built as quads. Everything
+else — molecule, panel, menus, sequence strip, command line, status — is quads
+and draws identically. The fix is to build them with `ui/quad_painter.py`,
+which already draws text, not to add a second image path.
+
+**Open, in order.**
+
+1. **Labels and the selection box as quads**, closing the gap above. The
+   selection box is a rectangle outline and is the cheap half; labels need the
+   projection (`project_to_screen`) plus `QuadPainter` glyphs.
+2. **The remaining `HOSTS` entries are `app/` panels** (`controls_panel`,
+   `objects_panel`, `rmf_panel`, `sequence_dock`, `settings_table`, `demos`,
+   `molview_main_window`) that draw with Qt widgets what the in-viewport panel
+   already draws with quads. They close by moving into the chrome, not by
+   editing them.
+3. **`ViewerHost` is thinner than `MolViewPluginWindow`**: it does objects,
+   sequences, visibility and loading. Measurement rows, groups and the
+   trajectory transport are still only in the Qt window's `sync_internal_gui`;
+   `host/app.py:sync_panel` is where they belong.
+
+**Trap: never call `rendercanvas.auto`.** Its last-resort backend generator
+does `import PyQt5` and selects the Qt backend if that succeeds, so
+"automatic" means Qt on any machine with Qt installed —
+`canvas_view.canvas_module()` names the backend it wants instead.
+
+**Trap: importability is not a choice.** chimol runs inside a PyQt application,
+so `import qtpy` works on the Qt-free path too; `host/widget.py` therefore
+selects from `CHIMOL_TOOLKIT` (the entry point sets `none`) rather than from
+whether Qt imports. Picking the base class from importability makes `MolView` a
+`QWidget` with no `QApplication`, which is a SIGABRT, not an exception.
+
+**Trap: `python -m <package>` runs the package `__init__` first.** A single
+eager `from ...app import MolViewPluginWindow` in
+`chisurf/plugins/chimol/__init__.py` imported Qt before the Qt-free entry point
+was reached, and a guard that imports bare `chimol.*` off `PYTHONPATH` cannot
+see it. `test_the_real_module_entry_point_runs_without_a_gui_toolkit` uses
+`runpy.run_module` on the real dotted path for exactly this reason.
+
 # One code path — the page runs the viewer (2026-08-11, latest)
 
 **The browser runs `MolView` and `Cmd`.** Not a browser viewer and a browser
@@ -231,6 +288,33 @@ Per representation on 148L (1,363 atoms), after today's work:
    the CPU copy kept for picking and for the ray tracer, makes a recolour a
    1-float-per-atom write. `_vertex_cache` in `wgpu_backend.py` is where that
    lands.
+
+## The surface has a quality setting, and its fastest level is a different
+## algorithm (2026-08-11, **uncommitted**)
+
+A screen-space Gaussian surface: one additive splat per atom into an offscreen
+field, resolved by a fullscreen pass. No 3-D grid, no iso-surface, no mesh, and
+nothing to rebuild when the molecule moves. `surface.quality` selects it
+(`splat`) or one of three grid spacings (`fast` / `balanced` / `fine`); the
+levels and their measurements are in `renderer/surface_quality.py`.
+
+The meshed path costs **253 ms** on 148L for 27,920 vertices, and the profile
+says where: 106 ms building the 3-D density grid in NumPy, 63 ms in marching
+cubes, 65 ms baking occlusion over the vertices.
+
+**Three findings, each of which produced a plausible-looking wrong picture:**
+a normal taken from the *density* gradient draws a flat interior with a lit rim
+(the field saturates inside the molecule, so its gradient is zero — the fix is a
+second attachment carrying density-weighted **depth**); `r32float` is **not
+blendable**, so the depth channel is `r16float` and must be normalised or it
+overflows; and a splat must write the atom's *front* surface, not its centre, or
+the envelope sits half a radius inside every atom.
+
+**It is not finished** — no `frag_depth`, so it draws over other geometry rather
+than intersecting it; two guard tests are pending; no tests of its own; the
+browser has not run it. The full state, the traps and the order to pick it up in
+are in [`HANDOVER_CHISURF_SURFACE.md`](/HANDOVER_CHISURF_SURFACE.md) at the
+repository root.
 
 ## Next, in this order
 

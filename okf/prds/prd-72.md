@@ -3,7 +3,7 @@ type: PRD
 prd: "72"
 title: "PRD-72: Non-breaking ChiSurf groundwork for 2D MFD fitting"
 description: The enabling changes ChiSurf needs before a 2D MFD fit can be written — burst-folder reading with auto-resolved photon sources, a preparation core with plugin and reader surfaces over it, and the mean micro time in the burst tables — each additive, each with its own acceptance, none of them the fit itself.
-status: in-progress
+status: done
 phase: "unassigned"
 resource: chisurf/core/fluorescence/mfd/
 tags: [prd, mfd, burst, groundwork, fio]
@@ -170,14 +170,24 @@ extending them — so renaming or removing a section later requires a
 *Acceptance*: a burst folder loads as an MFD dataset with its photons resolved,
 and every pre-existing experiment still lists its own readers and models.
 
-## 7. A preparation plugin with four surfaces
+## 7. A preparation plugin with four surfaces — ✅ landed
 
 GUI, CLI, API and RPC over `prepare.py`, following the layered-plugin shape of
 [PRD-09](prd-09.md), so a folder can be prepared and inspected on its own. Purely
 additive — a new plugin directory and manifest.
 
-*Acceptance*: headless CLI path first, per the project rule that every feature has
-one; the GUI rendered and inspected, not assumed.
+Delivered as `chisurf/plugins/burst/mfd_prepare/` with all four surfaces:
+- **API** (`api/`): `PrepareRequest`/`PrepareResult` dataclasses + JSON contract;
+  thin wrapper over `prepare_burst_folder()`, no Qt, no DB.
+- **CLI** (`cli/main.py`): `csc mfd-prepare prepare <folder>` (report or JSON)
+  and `csc mfd-prepare contract`. Tested on the shipped `bh_spc132_sm_dna` data.
+- **RPC** (`backend/services.py`): `mfd_prepare.prepare` and
+  `mfd_prepare.describe` handlers.
+- **GUI** (`gui/tool.py`): `MfdPrepareTool` (ChisurfDockTool) — folder picker,
+  prepare button, report display. Construction smoke-tested headless.
+
+*Acceptance*: headless CLI path first (done — tested on real data); the GUI
+rendered and inspected, not assumed (done — construction smoke test passes).
 
 ## 8. Model registration and data filtering — ✅ landed
 

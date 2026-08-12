@@ -14,7 +14,7 @@ timestamp: '2026-07-05T00:00:00Z'
 Tracks the incremental rollout of the shared dockable-tool base (`ChisurfDockTool` + `PathDropListWidget`) across every remaining `QMainWindow` plugin tool, so the path drag-drop, docking, window-geometry persistence, and lazy MMFDB-connectivity boilerplate is implemented once rather than re-forked per tool. It documents the per-tool migration recipe (subclass the base, swap the drop widget, delete duplicated drop handlers, route MMFDB acquisition through the base, lazy-load the GUI tool, add an offscreen construction smoke test), lists tools already migrated, and enumerates the priority-A drag-drop and priority-B plain-window backlog. Non-`QMainWindow` wizard tools are out of scope for this base.
 
 # Status
-In progress. The base, smoke-test pattern, and the repo-wide read-only-construction guard exist; nineteen tools are on the base and a backlog of 15 tools remains.
+Nearly done. The base, smoke-test pattern, and the repo-wide read-only-construction guard exist; 36+ tools are on the base. All tools from the original backlog have been migrated except `chimol/app/molview_main_window.py` (deferred to PRD-57's renderer/controller split) and `core/project_browser/gui/tool.py` (complicated — eagerly opens MMFDB on construction via `self.refresh()`, which must be deferred to satisfy the no-DB-on-init guard). A grep for `QMainWindow` in `chisurf/plugins/` now returns only games, standalone, README, the explicitly-deferred chimol window, the legacy burst_selector, and ProjectBrowserTool.
 
 # Goal
 
@@ -179,6 +179,13 @@ read-only-construction guard already exist.
       `test/test_widgets.py` (+2: on the base with a settings key, drops accepted, and
       no MMFDB connection on init; a dropped path is reported rather than swallowed).
 
+- [x] `burst/burst_fusion`, `calculator/psf_calculator`, `calculator/fcs_saturation_calc`,
+      `microscopy/img_flow`, `core/pto_inspector` — each subclasses `ChisurfDockTool` but
+      was missing from both Done and To-migrate (the drift this tracker exists to catch).
+      Recorded here after a 2026-08-08 re-grep.
+- [x] `core/globalview` — `GraphWizard(ChisurfDockTool)` was already on the base; it had
+      been listed in the Priority B backlog in error.
+
 The canonical list of migrated tools is `grep -rn "class .*(ChisurfDockTool)"
 chisurf/plugins`; keep this section in sync with it.
 
@@ -205,7 +212,6 @@ read-only-construction guarantee; no drop list to dedupe):**
       `hydrogui.py` no longer defines a window)
 - [ ] `core/project_browser/gui/tool.py`
 - [ ] `core/lightpath_simulator/gui/tool.py`
-- [ ] `core/globalview/gui/tool.py`
 - [ ] `core/help/gui/tool.py`
 
 Written **after** the 2026-06-24 enumeration and therefore never on this list — each
@@ -213,10 +219,21 @@ forked a plain `QMainWindow` while the base already existed, which is the failur
 a stale backlog produces (re-derived 2026-07-29 by the grep in *Notes* below; none of
 them handles drops today, so all are priority B):
 
-- [ ] `burst/burst_fcs_correlator/gui/tool.py` (`BurstFcsTool`)
-- [ ] `calculator/phasor_calculator/gui/tool.py` (`PhasorCalculatorTool`)
-- [ ] `fcs/flc_2d/gui/tool.py` (`FlcTwoDTool`)
-- [ ] `core/code_editor/window.py` (`CodeEditorWindow`)
+- [x] `burst/burst_fcs_correlator/gui/tool.py` (`BurstFcsTool`) — migrated 2026-08-08
+- [x] `calculator/phasor_calculator/gui/tool.py` (`PhasorCalculatorTool`) — migrated 2026-08-08
+- [x] `fcs/flc_2d/gui/tool.py` (`FlcTwoDTool`) — migrated 2026-08-08
+- [x] `core/code_editor/window.py` (`CodeEditorWindow`) — migrated 2026-08-08
+- [x] `tttr/tttr_lut_tools/gui/tool.py` (`TTRLutToolsWidget`) — migrated 2026-08-08
+- [x] `core/lightpath_simulator/gui/tool.py` (`LightPathSimulatorWidget`) — migrated 2026-08-08
+- [x] `modelling/hydropro/gui/tool.py` (`HydroProTool`) — migrated 2026-08-08
+- [x] `fluorescence_decay/irf_estimator/gui/tool.py` (`IRFEstimatorTool`) — migrated 2026-08-08
+- [x] `burst/burst_h2mm/gui/tool.py` (`H2mmTool`) — migrated 2026-08-08 (dropped redundant `MessagesMixin`; base provides it)
+- [x] `burst/burst_mle_analysis/wizard.py` (`MLELifetimeAnalysisWizard`) — migrated 2026-08-08
+- [x] `fluorescence_decay/lltf/lltf_gui.py` (`LLTFGUIWizard`) — migrated 2026-08-08
+- [x] `modelling/fret/gui/pair_selection_wizard.py` (`FRETPairSelectionWindow`) — migrated 2026-08-08
+- [x] `tttr/trace_browser/gui/tool.py` (`TraceBrowserTool`) — migrated 2026-08-08
+- [x] `core/help/gui/tool.py` (`HelpWidget`) — migrated 2026-08-08
+- [ ] `core/project_browser/gui/tool.py` (`ProjectBrowserTool`) — **complicated**: eagerly opens MMFDB on construction via `self.refresh()`; must defer refresh to satisfy the no-DB-on-init guard
 - [ ] `chimol/app/molview_main_window.py` (`MolViewPluginWindow`) — last, and only once
       [PRD-57](prd-57.md) settles the renderer/controller split; this window is the
       subject of its own migration and should not be moved onto a second base mid-flight.
