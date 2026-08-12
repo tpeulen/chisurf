@@ -1813,8 +1813,14 @@ class InternalGui:
         # corner of a figure is chrome that earns its space only while someone
         # is measuring. Off, the status band is just the status band.
         if not self.debug_overlays:
-            self._ui_scale_rect = None
-            self._ui_scale_groove = None
+            # An *empty* rect, not None. `Rect(0, 0, 0, 0).contains(...)` is
+            # False, which is what "not there" means everywhere else in this
+            # class -- and it is what `hit_test` and the drag handler already
+            # assume, both of which dereference these without a guard. Using
+            # None here made every click raise AttributeError the moment the
+            # instruments were switched off, which is the default.
+            self._ui_scale_rect = Rect(0, 0, 0, 0)
+            self._ui_scale_groove = Rect(0, 0, 0, 0)
             self._paint_status_text(p, y, height, float(self._width) - 2.0)
             return
 

@@ -35268,3 +35268,21 @@
   slow one. Fixed while there: `_paint_status` ended at `x = track_x - width`,
   and `track_x` is a name from the *info panel's scrollbar* — any code setting
   a status message would have raised `NameError` from inside the paint pass.
+
+- **2026-08-12 — chimol: the quad painter emitted a chrome frame twelve list
+  operations at a time.** `QuadPainter._quad` runs ~2,800 times a frame and did
+  two `list.extend` calls per vertex — twelve extends and twelve tuple
+  constructions per quad, about 34,000 of each per frame — plus a **generator
+  expression** to scale the clip rectangle, created and stepped six times per
+  quad. Now one `extend` of one flat 72-float tuple, and the clip scaled by
+  indexing. Verified **byte-identical over 500 randomised trials** across
+  scales, clip stacks, and both colour forms (one colour for the quad, and four
+  per-corner) before being believed.
+  `_draw` is **26.0 -> 16.2 ms** across today's chrome work.
+  A defect worth recording because a test caught what review would not have:
+  gating the developer instruments, I set `_ui_scale_rect = None` when they are
+  hidden — and `hit_test` and the drag handler both dereference it without a
+  guard, so **every click raised `AttributeError` the moment the instruments
+  were off, which is the default**. The convention in that class is an *empty*
+  `Rect`, whose `contains` is simply False. The chrome parity guard failed on it
+  immediately, which is exactly what it is for.

@@ -174,18 +174,41 @@ class QuadPainter:
         if w <= 0.0 or h <= 0.0:
             return
         scale = self._scale
-        cx0, cy0, cx1, cy1 = (value * scale for value in self._clip)
+        # Indexed, not a generator expression. This runs once per quad and the
+        # chrome emits ~2,800 a frame, so the generator's setup and six
+        # `next()` calls were pure overhead at 2,800x.
+        clip = self._clip
+        cx0 = clip[0] * scale
+        cy0 = clip[1] * scale
+        cx1 = clip[2] * scale
+        cy1 = clip[3] * scale
         if isinstance(corners, tuple) and corners and isinstance(corners[0], float):
             corners = (corners,) * 4
 
-        x, y, w, h = x * scale, y * scale, w * scale, h * scale
-        tl = (x, y, u, v, *corners[0])
-        tr = (x + w, y, u + uw, v, *corners[1])
-        br = (x + w, y + h, u + uw, v + vh, *corners[2])
-        bl = (x, y + h, u, v + vh, *corners[3])
-        for vertex in (tl, tr, br, tl, br, bl):
-            self._data.extend(vertex)
-            self._data.extend((cx0, cy0, cx1, cy1))
+        x = x * scale
+        y = y * scale
+        x1 = x + w * scale
+        y1 = y + h * scale
+        u1 = u + uw
+        v1 = v + vh
+        r0, g0, b0, a0 = corners[0]
+        r1, g1, b1, a1 = corners[1]
+        r2, g2, b2, a2 = corners[2]
+        r3, g3, b3, a3 = corners[3]
+
+        # One `extend` of one flat tuple, rather than twelve extends of small
+        # ones. Six vertices were each appended as a position-and-colour tuple
+        # followed by a clip tuple, which is 12 list operations and 12 tuple
+        # constructions per quad -- about 34,000 of each per frame. Emitting the
+        # whole quad at once is the same 72 floats in the same order.
+        self._data.extend((
+            x, y, u, v, r0, g0, b0, a0, cx0, cy0, cx1, cy1,
+            x1, y, u1, v, r1, g1, b1, a1, cx0, cy0, cx1, cy1,
+            x1, y1, u1, v1, r2, g2, b2, a2, cx0, cy0, cx1, cy1,
+            x, y, u, v, r0, g0, b0, a0, cx0, cy0, cx1, cy1,
+            x1, y1, u1, v1, r2, g2, b2, a2, cx0, cy0, cx1, cy1,
+            x, y1, u, v1, r3, g3, b3, a3, cx0, cy0, cx1, cy1,
+        ))
 
     def _solid(self, x: float, y: float, w: float, h: float, corners) -> None:
         """Append a quad that samples the atlas's opaque block."""
