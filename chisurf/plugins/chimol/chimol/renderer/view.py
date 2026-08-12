@@ -746,6 +746,47 @@ def _expand_occlusion(
     return np.interp(np.arange(n), sample.astype(float), values)
 
 
+def _ca_indices_for(state) -> "np.ndarray | None":
+    """Where the guide atoms are in a state's atom array, computed on demand.
+
+    Returns
+    -------
+    numpy.ndarray or None
+        Indices of the ``CA`` atoms, cached on the state; ``None`` when the
+        state has no atoms to look in.
+
+    Notes
+    -----
+    This used to be read straight off ``state._ca_indices``, and that field is
+    only filled by ``set_coordinates``. Loading a PDB by any other route left it
+    ``None`` -- and then a trajectory laid onto that object could not extract a
+    CA trace, so the render trace fell back to **every atom in the file**.
+
+    The visible result was a cartoon splined through all 5,235 atoms of a
+    570-residue protein instead of through its 570 guide atoms: a spiky
+    hairball rather than a ribbon, and only ever after ``load_traj``, which is
+    what made it look like a trajectory bug. The same molecule drew perfectly
+    from the PDB alone.
+
+    Deriving it here rather than at the one call site that happened to fill it
+    is the fix: a value that every frame needs should not depend on which door
+    the structure came in through.
+    """
+    cached = getattr(state, "_ca_indices", None)
+    if cached is not None:
+        return cached
+    atoms = getattr(state, "atoms", None)
+    if atoms is None:
+        return None
+    try:
+        names = np.asarray(atoms["atom_name"], dtype=str)
+        found = np.where(np.char.strip(names) == "CA")[0]
+    except Exception:  # noqa: BLE001 - a state with no atom names
+        return None
+    state._ca_indices = found
+    return found
+
+
 class MolView(WidgetBase):
 
     # Emitted when residues are selected via picking in the 3D view. The
@@ -2106,7 +2147,7 @@ class MolView(WidgetBase):
         selected_coords = None
         if frame_matches_all_atoms and state.residue_ids is not None:
             try:
-                ca_idx = getattr(state, "_ca_indices", None)
+                ca_idx = _ca_indices_for(state)
                 if ca_idx is not None and len(ca_idx) > 0 and ca_idx.max() < frame.shape[0]:
                     ca_coords = frame[ca_idx]
                     if ca_coords.shape[0] == len(state.residue_ids):

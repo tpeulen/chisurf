@@ -35488,3 +35488,21 @@
   named.
   Ruled out first, by A/B: this was **not** a regression from the colour-revision
   change -- the drawn pixels were identical with the revision skip defeated.
+
+- **2026-08-12 — chimol: a trajectory turned the CA trace into every atom.**
+  `load_traj` on the 570-residue hgbp1 demo took the render trace from **570
+  points to 5,235** -- one per *atom* -- so the cartoon splined a ribbon through
+  every atom in file order and drew a spiky hairball. It happened only after
+  `load_traj`, which is what made it read as a trajectory bug; the same molecule
+  drew a perfect cartoon from its PDB alone, and that A/B is what located it.
+  One field. `_select_state_frame` extracts the CA trace from each frame through
+  `state._ca_indices`, and that field was filled **only by `set_coordinates`**.
+  A structure loaded by any other route left it `None`, the extraction was
+  skipped, and the fallback is "use the whole frame". The file had 570 atoms
+  named `CA` all along -- nothing had looked. It is derived on demand now.
+  The general shape is worth carrying: **a value that every frame needs must not
+  depend on which door the structure came in through.** Guarded by
+  `test_trajectory_trace.py`, which checks the trace *length* (570 != 5235 is
+  exact, where a hairball and a ribbon differ in ways a pixel threshold cannot
+  state) and also that consecutive guide atoms stay ~3.8 A apart -- because
+  picking 570 of the 5,235 atoms by the wrong rule would also give 570 points.
