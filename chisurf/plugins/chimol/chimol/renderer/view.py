@@ -5483,6 +5483,44 @@ class MolView(WidgetBase):
             chains = _copy_array(getattr(self, "_residue_chain_ids", None))
         return chains
 
+    def field_revision(self, name: str, object_id: str | None = None) -> int:
+        """How many times a state field has been assigned, for *object_id*.
+
+        A cheap change signal. Watchers that would otherwise re-derive a value
+        every frame just to notice it moved can compare this integer instead --
+        see :func:`~.gui_state.refresh_gui_state`, which used to rebuild a
+        234,184-row colour array on every frame for exactly that reason.
+
+        Parameters
+        ----------
+        name : str
+            The state field, e.g. ``"colors_per_ca"``.
+        object_id : str, optional
+            Which object; the active one by default.
+
+        Returns
+        -------
+        int
+            Monotonic per object and per field. ``0`` when the object or the
+            field is unknown -- which reads as "never assigned" and therefore
+            errs towards the watcher doing its work.
+        """
+        entry = None
+        if object_id is None:
+            entry = getattr(self, "_active_entry", None)
+            state = getattr(entry, "state", None)
+            if state is None:
+                try:
+                    state = self._get_active_state()
+                except Exception:  # noqa: BLE001 - an empty viewer has no state
+                    return 0
+        else:
+            entry = getattr(self, "_objects", {}).get(object_id)
+            state = getattr(entry, "state", None)
+        if state is None:
+            return 0
+        return int(state.__dict__.get("_field_revisions", {}).get(name, 0))
+
     def get_residue_colors(
         self, object_id: str | None = None
     ) -> np.ndarray | None:

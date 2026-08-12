@@ -131,10 +131,33 @@ def refresh_gui_state(gui, controller) -> None:
     for row in gui.sequences:
         if not row.object_id:
             continue
+        # Ask the viewer whether the colours have been *assigned* since this row
+        # last looked, rather than re-deriving them to find out. Deriving them
+        # is the expensive half: on an integrative model it rebuilds a
+        # 234,184 x 4 array, which measured as the whole remaining CPU cost of a
+        # frame once the chrome was cached.
+        #
+        # The revision is read again **after** the call and stored from there.
+        # `get_residue_colors` recomputes, and recomputing assigns, so the
+        # counter always moves during the call -- recording the value from
+        # before it would make every frame look dirty and change nothing.
+        try:
+            revision = controller.field_revision("colors_per_ca", row.object_id)
+        except Exception:  # noqa: BLE001 - a viewer without the signal
+            revision = None
+        if revision is not None and getattr(row, "_colors_revision", None) == revision:
+            continue
         try:
             colours = controller.get_residue_colors(row.object_id)
         except Exception:
             continue
+        if revision is not None:
+            try:
+                row._colors_revision = controller.field_revision(
+                    "colors_per_ca", row.object_id
+                )
+            except Exception:  # noqa: BLE001
+                row._colors_revision = None
         if colours is None:
             continue
         # Converting the array to a list of tuples is 234k tuples and 700k

@@ -35437,3 +35437,33 @@
   and the fingerprint will faithfully report it as a change. A clock, a
   coordinate readout under the cursor, a live atom count -- all of them want the
   same treatment.
+
+- **2026-08-12 — chimol: the colour re-read is gone, and `_draw` is 1.5 ms.**
+  The third attempt at the last large CPU item, and the first that worked --
+  because it stopped trying to make the derivation cheaper and removed the
+  *reason* for it. Colouring is a command with no signal, so the sequence strip
+  re-derived a 234,184 x 4 array on **every frame** purely to notice a
+  `spectrum` or a `color`. Two caches over its declared inputs had already
+  failed at 50 and 152 test failures, because the pipeline is mutated in place
+  from places such a key cannot see.
+  Every assignment to a state field already passes through **one descriptor**
+  (`_StateField.__set__`), so that descriptor now counts them, per object and
+  per field. The strip compares an integer and derives only when it moves. A
+  counter rather than a callback: a callback fires mid-command with the chrome
+  half-updated and has to be unsubscribed; an integer is read when convenient
+  and cannot dangle.
+  The one subtlety, which is why it is read **after** the call: deriving the
+  colours *assigns* them, so the counter always moves during the call. Recording
+  the value from before it would mark every frame dirty and change nothing.
+  `refresh_gui_state` **3.02 -> 0.01 ms**; `_chrome_quads` 2.48 -> 0.14 ms;
+  `_draw` **6.73 -> 1.49 ms**, and the offscreen frame including its readback is
+  14.7 ms (68 fps) where it was 36.9. Across the session `_draw` went
+  **26.0 -> 1.5 ms**.
+  Guarded by `test_colour_revision.py`, which drives real colour commands and
+  asserts on **what the strip holds**, not on the counter -- a counter that
+  missed a change would leave the previous scheme on screen with nothing
+  raised. One test pins that an idle frame derives the colours *zero* times,
+  because anything that assigns `colors_per_ca` during a repaint puts the whole
+  cost straight back and nothing else would notice. Found in passing: `ss` is
+  **not implemented** (it was in the test list and correctly failed to move the
+  counter).

@@ -277,6 +277,24 @@ class _StateField:
     def __set__(self, instance, value):  # type: ignore[override]
         state = instance._get_active_state()
         setattr(state, self.attr_name, value)
+        # Every assignment to a state field passes through here, which makes
+        # this the one place a watcher can be told that something changed
+        # without re-deriving the value to find out.
+        #
+        # That is what the sequence strip needed. It re-read the whole
+        # per-residue colour array on **every frame** purely to notice a
+        # `spectrum` or a `color`, because there was no signal to listen to --
+        # and on an integrative model that array is 234,184 x 4, so noticing
+        # cost more than everything else in the frame put together.
+        #
+        # A counter rather than a callback: a callback fires during a command,
+        # when the chrome may be half-updated, and it would have to be
+        # unsubscribed. An integer is read when convenient and cannot dangle.
+        revisions = state.__dict__.get("_field_revisions")
+        if revisions is None:
+            revisions = {}
+            state.__dict__["_field_revisions"] = revisions
+        revisions[self.attr_name] = revisions.get(self.attr_name, 0) + 1
 
 
 __all__ = [
