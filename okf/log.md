@@ -35181,3 +35181,30 @@
   **Mol\* (MIT) is the only prior art here that can be borrowed as code**, and
   its stride-ordered LOD buffer makes selecting a level a `drawCount`
   truncation.
+
+- **2026-08-12 — PRD-102: the atom-to-micrometre ladder, and someone built most
+  of it in 2014.** tpeulen restated the objective as a *continuous ladder* of
+  representations spanning ~5 orders of magnitude — atoms, Martini beads,
+  super-beads/Gaussians, splats/continuum — and asked explicitly for research
+  **outside molecules**, on the grounds that km-to-mm dynamic range has been
+  solved with Gaussian splats. That instruction paid: the dynamic-range problem
+  is not molecular, and the fields that own it have better answers.
+  The find that matters most is *inside* the field and was missed twice:
+  **Parulek et al. 2014** ([10.1111/cgf.12349](https://doi.org/10.1111/cgf.12349))
+  is rungs 1-3 in one paper, already using the word *superatom*, blending
+  SES → Gaussian → sphere billboards as a **continuous field over space rather
+  than a discrete switch**. ChiMOL already has all three representations; what
+  is missing is the blend. And cellVIEW's authors state in their own paper that
+  the particle representation breaks down into graining exactly where rung 4
+  begins — primary-source confirmation, from the team that reached 15 billion
+  atoms, that rung 4 cannot be spheres.
+  Three constraints now recorded, one **verified on this M1 today**: there are
+  **no 64-bit atomics** (`shader-int64` yes, `shader-int64-atomic-min-max` no),
+  which gates both mechanisms most worth borrowing — Nanite's 30:27:7 visibility
+  buffer and Schutz's depth:index `atomicMin` — since in both the max/min atomic
+  *is* the depth test. Also: **reversed-Z + `depth32float` + infinite far plane**
+  is the first thing to fix (0 % swapped at a 10^5 ratio, against 45 %/18 %
+  standard — and float depth buys nothing without reversed-Z); and for rung-3/4
+  topology a **VDB beats an octree** by construction — 7.5 orders of index space
+  for a 4 % memory penalty, against 17 octree levels and 17 dependent hops.
+  Anti-popping has an analytic, free, *exact* option on the sphere rungs.
