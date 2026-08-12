@@ -299,22 +299,81 @@ def _smooth_frame(
     # Clipped at the ends rather than wrapped: a trajectory's last frame is not
     # next to its first, and averaging across that seam invents motion that
     # never happened.
-    lo = max(0, index - half)
-    hi = min(n_frames, index + half + 1)
-    if hi - lo < 2:
+    # Clamped, not shrunk. Taking `frames[max(0, i-half) : min(n, i+half+1)]`
+    # narrows the window near either end of a trajectory, so the smoothing
+    # quietly weakens exactly where it is applied least evenly -- the first and
+    # last frames come out noticeably jitterier than the middle, which reads as
+    # the setting not working at the ends. Repeating the end frame instead keeps
+    # the window the width it was asked for. VMD clamps for the same reason.
+    #
+    # Clipped rather than wrapped: a trajectory's last frame is not next to its
+    # first, and averaging across that seam invents motion that never happened.
+    picks = np.clip(np.arange(index - half, index + half + 1), 0, n_frames - 1)
+    if picks.size < 2:
         return frame
 
-    block = np.asarray(frames[lo:hi], dtype=float)
+    block = np.asarray(frames, dtype=float)[picks]
+    lo, index_in_block = 0, int(np.argmin(np.abs(picks - index)))
     # Minimum-imaged against the frame being shown, where there is a box. An
     # atom that crosses the wall reappears a whole cell away, and a plain mean
     # of "one side, one side, the other side" puts it in the *middle of the
     # box* -- a single frame in which part of the molecule explodes across the
     # cell. VMD images its averaging the same way and for the same reason.
-    block = _minimum_image(block, index - lo, cell)
-    weights = _window_weights(hi - lo, index - lo)
+    block = _minimum_image(block, index_in_block, cell)
+    weights = _window_weights(picks.size, index_in_block)
     if weights is None:
         return block.mean(axis=0)
     return np.tensordot(weights, block, axes=(0, 0))
+
+
+def _publish_frame_cell(state, index: int) -> None:
+    """Expose this frame's periodic box as the object's unit cell.
+
+    The viewer already draws a wireframe box -- ``cell on`` -- from
+    ``state.symmetry["cell"]``, built for crystallographic CRYST1 records. A
+    trajectory's periodic box is the same six numbers, so publishing it there
+    means ``cell`` shows the simulation cell with no second implementation and
+    no second command to learn.
+
+    Updated **per frame** rather than once, because an NPT box breathes: drawing
+    the first frame's box around frame four hundred is a wrong picture that
+    looks like a right one.
+
+    A crystallographic cell already on the object is left alone. If a file
+    carried both, the CRYST1 record is the deliberate statement and the
+    trajectory box is incidental.
+    """
+    cell = getattr(state, "cell", None)
+    if cell is None:
+        return
+    try:
+        lengths, angles = cell
+        lengths = np.asarray(lengths, dtype=float).reshape(-1, 3)
+        angles = np.asarray(angles, dtype=float).reshape(-1, 3)
+    except Exception:  # noqa: BLE001
+        return
+    if lengths.shape[0] == 0:
+        return
+
+    symmetry = dict(getattr(state, "symmetry", None) or {})
+    if symmetry.get("cell") is not None and not symmetry.get("_from_trajectory"):
+        return
+    row = min(max(int(index), 0), lengths.shape[0] - 1)
+    box = lengths[row]
+    if np.any(box <= 0.0):
+        return
+    angle = angles[row] if angles.shape[0] > row else np.full(3, 90.0)
+    try:
+        from ..analysis.symmetry import UnitCell  # noqa: PLC0415
+
+        symmetry["cell"] = UnitCell(
+            float(box[0]), float(box[1]), float(box[2]),
+            float(angle[0]), float(angle[1]), float(angle[2]),
+        )
+    except Exception:  # noqa: BLE001 - a box is not worth a failed frame
+        return
+    symmetry["_from_trajectory"] = True
+    state.symmetry = symmetry
 
 
 def _minimum_image(block: np.ndarray, centre: int, cell) -> np.ndarray:
@@ -337,11 +396,11 @@ def _minimum_image(block: np.ndarray, centre: int, cell) -> np.ndarray:
 
     Notes
     -----
-    Orthorhombic only, deliberately. A triclinic minimum image needs the full
-    cell matrix and its inverse per frame, and the case that actually breaks a
-    picture -- an atom stepping across a wall between two frames -- is handled
-    by the rectangular one. A triclinic box is left alone rather than imaged
-    wrongly.
+    Triclinic as well as orthorhombic: the shift is taken in **fractional**
+    coordinates, so a sheared cell images as correctly as a rectangular one.
+    The orthorhombic case is not special-cased -- for a 90-degree cell the
+    matrix is diagonal and the general path reduces to dividing by the box
+    lengths, which is what it used to do explicitly.
     """
     if cell is None or block.ndim != 3 or block.shape[0] < 2:
         return block
@@ -358,15 +417,72 @@ def _minimum_image(block: np.ndarray, centre: int, cell) -> np.ndarray:
     box = lengths[min(max(centre, 0), lengths.shape[0] - 1)]
     if np.any(box <= 0.0):
         return block
-    if angles.size and not np.allclose(
-        angles[min(max(centre, 0), angles.shape[0] - 1)], 90.0, atol=1e-3
-    ):
+
+    if angles.size:
+        box_angles = angles[min(max(centre, 0), angles.shape[0] - 1)]
+    else:
+        box_angles = np.full(3, 90.0)
+    matrix = _cell_matrix(box, box_angles)
+    if matrix is None:
+        return block
+    try:
+        inverse = np.linalg.inv(matrix)
+    except np.linalg.LinAlgError:
         return block
 
     reference = block[centre]
     delta = block - reference[None, :, :]
-    shift = np.round(delta / box) * box
-    return block - shift
+    # Into the cell's own frame, round to the nearest whole cell, and back.
+    # Rounding in *fractional* coordinates is what makes this work for a
+    # sheared box: a whole-cell step is an integer there whatever the angles,
+    # while in Cartesian space it is a different vector along each axis.
+    # `matrix` holds the cell vectors as *rows*, so a Cartesian vector is
+    # ``r = s @ matrix`` and therefore ``s = r @ inverse``. Transposing either
+    # of these images a sheared cell along the wrong axes -- and silently, since
+    # for a 90-degree box the matrix is symmetric and the error disappears.
+    fractional = delta @ inverse
+    return block - (np.round(fractional) @ matrix)
+
+
+def _cell_matrix(lengths: np.ndarray, angles: np.ndarray):
+    """The 3x3 cell matrix for *lengths* and *angles*, or ``None``.
+
+    Rows are the cell vectors ``a``, ``b``, ``c`` in the conventional setting:
+    ``a`` along x, ``b`` in the xy plane, ``c`` completing it. This is the same
+    construction crystallography uses to go from six numbers to three vectors.
+
+    Returns
+    -------
+    numpy.ndarray or None
+        ``None`` when the six numbers do not describe a cell with volume --
+        which happens for a degenerate or malformed box, and must not raise
+        from inside a paint pass.
+    """
+    try:
+        a, b, c = (float(x) for x in lengths)
+        alpha, beta, gamma = (np.radians(float(x)) for x in angles)
+    except Exception:  # noqa: BLE001
+        return None
+    if not (a > 0 and b > 0 and c > 0):
+        return None
+
+    cos_a, cos_b, cos_g = np.cos(alpha), np.cos(beta), np.cos(gamma)
+    sin_g = np.sin(gamma)
+    if abs(sin_g) < 1e-9:
+        return None
+    cx = c * cos_b
+    cy = c * (cos_a - cos_b * cos_g) / sin_g
+    squared = c * c - cx * cx - cy * cy
+    if squared <= 0.0:
+        return None
+    return np.array(
+        [
+            [a, 0.0, 0.0],
+            [b * cos_g, b * sin_g, 0.0],
+            [cx, cy, float(np.sqrt(squared))],
+        ],
+        dtype=float,
+    )
 
 
 #: How the averaging window is shaped. ``box`` weights every frame in the window
@@ -2268,6 +2384,7 @@ class MolView(WidgetBase):
 
         state.active_frame = idx
         state.frame_position = float(idx) + blend
+        _publish_frame_cell(state, idx)
         # Coordinate-only trajectories should not leave stale all-atom data in
         # atom rendering paths. Reuse all-atom coords only when dimensions match.
         all_atom_coords = getattr(state, "all_atom_coords", None)

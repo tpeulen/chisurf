@@ -35640,3 +35640,31 @@
   connectivity-aware unwrap and a `pbc` command. Both are pinned by
   `test_periodic_box.py`, including the "16.6 is the box centre" number, so the
   gap is a recorded decision rather than a silent one.
+
+- **2026-08-12 — chimol: full triclinic imaging, the box on screen, and the
+  clamped window.** All three of tpeulen's follow-ups to the PBC work.
+  **Triclinic.** The minimum image is taken in *fractional* coordinates now --
+  build the 3x3 cell matrix from the six numbers, round the displacement there,
+  transform back -- so a sheared cell images as correctly as a rectangular one.
+  The orthorhombic case is not special-cased: for a 90-degree cell the matrix is
+  diagonal and the general path reduces to dividing by the edge lengths.
+  One trap, and it is silent: with the cell vectors as *rows*, `r = s @ M`, so
+  `s = r @ M^-1`. Transposing either lands the atom somewhere else entirely --
+  and **for a 90-degree box the two agree**, so the error survives every
+  rectangular test. The guard is three atoms displaced by exactly one cell
+  *vector* each, which must all collapse onto the reference.
+  **The box is drawn.** It is published as the object's unit cell, so the
+  existing `cell` wireframe shows the simulation box with no second
+  implementation and no new command -- `cell all, on`. Republished **per frame**,
+  because an NPT box breathes and last frame's box around this frame is a wrong
+  picture that looks right. A crystallographic CRYST1 cell already on the object
+  wins, being the deliberate statement.
+  **The averaging window is clamped, not shrunk.** Slicing
+  `frames[max(0, i-half) : min(n, i+half+1)]` narrows the window near either end
+  of a trajectory, so the first and last frames come out jitterier than the
+  middle -- which reads as the setting not working there. Repeating the end
+  frame keeps the width that was asked for, as VMD does.
+  Left undone and recorded: nothing unwraps a molecule for *display* -- a
+  protein straddling a wall is still drawn in two pieces -- and `zoom` frames
+  the atoms rather than the cell, so a box much larger than its contents runs
+  off the viewport.
