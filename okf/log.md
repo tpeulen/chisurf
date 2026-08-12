@@ -1,6 +1,44 @@
 # Update Log
 
 ## 2026-08-12
+* **Settings became data: every one of them editable in the 3-D view, and the
+  game's menu drawing the same declarations** (chimol viewport UI; Lumis Quest
+  [PRD-91](prds/prd-91.md); user ask: *"in chimol edit all settings must be
+  displayed in 3d view, make new settings widget/editor inspired by imgui, also
+  use such setting from lumis quest … make lumis quest an easter egg. lumis
+  quest is not allowed to be hardcoded all must run through the settings and
+  engine."*).
+  **ChiMOL.** `renderer/ui/settings_editor.py` is a `SettingsModel` (rows +
+  a getter and a setter) and a panel over it; `renderer/settings_window.py`
+  builds that model by **walking the live `_DISPLAY_CONFIG`** — 270 rows across
+  28 sections — rather than listing rows by hand, so a setting added by a new
+  version appears with no code written. A registered `SettingSpec` supplies the
+  PyMOL name and its line of documentation, and registered settings are
+  addressed *by name* so their transforms run (`transparency` edits as
+  transparency, is stored as `surface.alpha`). Slider tracks come from
+  `RANGES`, matched by key **suffix**, so one rule covers every `*_radius`.
+  Reached by `settings_panel` or **Display → Settings**. Three defects the
+  first screenshot caught and no assertion could: 28 sections do not fit a tab
+  strip (each pill was narrower than a letter — a `Combo` now), a label wider
+  than its column is drawn *over* the control beside it since the painter clips
+  nothing (`widgets.fit_text`), and 63 rows need a scrollbar.
+  **Lumis Quest.** Its settings are declared in `api/settings.py` using
+  ChiMOL's own `Setting` — the dependency the user allowed, and what lets one
+  editor serve both. The three parallel `elif` ladders keyed by row number (row
+  text, which control, what a press does) are gone: the menu renders what is
+  declared, stepping is the model moving a value inside its declared range, and
+  an action is a hook. The game's attributes (`walk_speed`, `screen_mode`, the
+  volumes, the gamelogic flags) are now `property` views onto the store, so
+  every existing call site reads it. Settings ride in the save file
+  (`RunState.settings`, restored even from a run with no team, unknown keys
+  dropped) — no `VERSION` bump, which would have discarded every existing save.
+  **The easter egg.** The game was already `menu_hidden` and therefore
+  unreachable except from a console; `chisurf/gui/easter_egg.py` installs the
+  Konami code on the *application*, so it works wherever the focus is. Matching
+  is on the last keys entered rather than a counter a wrong key resets —
+  `Up Up Up Down Down …` contains the code and is how it is actually typed. The
+  guide's *"open it from Tools → Miscellaneous → Games"* had been wrong since
+  the manifest hid it.
 * **The in-viewport control set grew ten controls, and the pause menu stopped
   crashing on the frame it opens** ([chimol viewport UI](plugins/chimol-viewport-ui.md);
   user report: `TypeError: Checkbox.draw() got an unexpected keyword argument 'at'`).

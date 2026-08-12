@@ -14,6 +14,64 @@ sibling: none
 
 # Where to pick this up
 
+**Handover, 2026-08-12 (settings became data; the game became an easter egg).**
+*"in chimol edit all settings must be displayed in 3d view, make new settings
+widget/editor inspired by imgui, also use such setting from lumis quest (lumis
+quest may depend on chimol). make lumis quest an easter egg. lumis quest is not
+allowed to be hardcoded all must run through the settings and engine."*
+
+* **The settings are declared, not written into the menu** — `api/settings.py`.
+  Each one gives its kind, bounds, choices, default and one line of
+  documentation; the menu renders whatever is declared, `SettingsModel.adjust`
+  steps a value inside its own range, and an action is a hook. The three
+  parallel `elif` ladders keyed by row number (row text, which control, what a
+  press does) are gone. The declaration type is **Chimol's**
+  (`chimol.renderer.ui.settings_editor.Setting`), which is what "lumis quest may
+  depend on chimol" bought: the game and the molecular viewer describe settings
+  the same way and are drawn by the same controls.
+* **The game's attributes are views onto the store.** `walk_speed`,
+  `view_height`, `screen_mode`, `scheme`, the volumes, the gamelogic flags —
+  all `property` objects over `self.settings`, so every existing call site
+  reads the store without a hundred-call-site edit. Hooks apply what a change
+  *means* (rebinding the controller, telling the mixer).
+* **Settings are part of the run.** `RunState.settings`, restored even from a
+  save with no team in it. Unknown keys are dropped on the way in, so a renamed
+  setting cannot stop a run from loading. `VERSION` was not bumped: the field
+  has a default, and bumping it would throw away every existing save.
+* **The way in is the Konami code** (`chisurf/gui/easter_egg.py`), installed on
+  the *application* so it works wherever the focus is. Matching is on the last
+  keys entered rather than a counter a wrong key resets — `Up Up Up Down Down …`
+  contains the code and is how people actually type it. The guide said "open it
+  from Tools → Miscellaneous → Games", which had been wrong since the manifest
+  set `menu_hidden`.
+
+**Open, in order.** (1) The tabs still show eight rows in a fixed window: the
+ninth OPTIONS row (*watch the opening again*) is only reachable by scrolling,
+which a screenshot shows and no test does. (2) The rest of the game's constants
+— `SPRINT`, `CAMERA_LAG`, `LUMI_TRAIL`, the jump numbers, encounter rates — are
+still module constants; they are the next candidates for the registry, and the
+registry is where a difficulty setting would come from. (3) `_menu_click_target`
+hit-tests rows with its own arithmetic rather than the boxes the draw laid out,
+so a control that moves has to be moved in two places.
+
+**Handover, 2026-08-12 (Ninja Adventure Music Integration & ImGui-style Menu Controls).** "continue working on lumis quest, need better graphics and music use ninja also do menu ctrls like chimol, ie, options, gamelogic menus etc based on imgui style."
+
+* **Ninja Adventure Music Pack (`chigame/audio_assets/music.zip`, `chigame/assets.py`).** Converted 4 soundtrack themes from `junk/NinjaAdventure/audio/music` (`theme_plain.ogg`, `theme_lost_village.ogg`, `theme_swamp.ogg`, `theme_dream.ogg`) using `afconvert` and `adpcm.encode` into `.snd` mono 22.05 kHz clips (`ninja_plain`, `ninja_lost_village`, `ninja_swamp`, `ninja_dream`) and packed them into `music.zip`. Mapped musical contexts (`overworld`, `town`, `battle`, `underworld`, `victory`) in `assets.py` to play these high-quality tracks dynamically during overworld exploration, village visits, dark manifold crawling, and boss encounters.
+* **ImGui-Style Menu Controls (`gui/imgui_controls.py`).** Designed and implemented interactive painter-level ImGui controls matching Chimol's `StyleColorsDark` palette:
+  * `SliderFloat`: Track background `(0.18, 0.19, 0.22)`, filled progress track `(0.26, 0.59, 0.98)`, active thumb knob `(0.98, 0.78, 0.35)`, label + formatted value readouts.
+  * `Checkbox`: Square check box `[✓]` (bright green `(0.35, 0.90, 0.45)`) / `[ ]` with toggle action.
+  * `Combo`: Option selector box `< Option >` with forward/backward cycling.
+  * `Button`: Action button box `[ Button ]` with hover highlights.
+  * `ColorEdit4`: Color swatch square `[■]` with RGBA values.
+* **`GAMELOGIC` & ImGui `OPTIONS` Pause Menu Tabs (`gui/overworld.py`).** Added a dedicated `GAMELOGIC` tab to pause menu `TABS` in `overworld.py` and converted both `OPTIONS` and `GAMELOGIC` tabs to use interactive ImGui controls:
+  * `soundtrack`: Combo selection (`Ninja Adventure (CC0)`, `Classic Chiptune`, `Synthesiser`).
+  * `enemy aggro`: SliderFloat (`2.0` to `8.0` tiles) dynamically driving enemy aggro radius.
+  * `action combat`, `particle effects`, `crt retro shader`: Interactive Checkboxes.
+  * `ui accent tone`: ColorEdit4 swatch (`Gold`, `Cyan`, `Emerald`, `Ruby`, `Violet`).
+  * `quick save run`, `quick load run`, `test audio sfx`: ImGui Action Buttons.
+  * Left/Right keyboard, gamepad D-pad, and mouse click/drag support for adjusting sliders, toggles, combos, and buttons seamlessly.
+* **Unit Tests & Verification.** Added `test_imgui_controls.py` (5 tests) and `test_gamelogic_menu.py` (4 tests). All unit tests pass 100% green.
+
 **Handover, 2026-08-11 (leaving prototype stage: dark-ruin salvage, battle
 backdrops, keepers speak from their pages).** "continue and make lumis quest a
 real game, leave prototype stage."

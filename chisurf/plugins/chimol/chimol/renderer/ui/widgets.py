@@ -45,6 +45,7 @@ from .painter import (
 )
 
 __all__ = [
+    "fit_text",
     "SliderFloat",
     "ColorEdit4",
     "Table",
@@ -86,6 +87,36 @@ _BTN_HELD = (75, 100, 135, 255)
 #: multiplied by a hundred). ``"%.0%" % 0.5`` is a ``ValueError``, which is why
 #: this is a substitution and not a format string.
 _PERCENT_SPEC = re.compile(r"%\.(\d+)%")
+
+
+def fit_text(p: Painter, label: str, room: float) -> str:
+    """``label`` shortened with a trailing dot until it fits ``room``.
+
+    The painter clips nothing by itself, so a caption wider than its column is
+    drawn straight over the neighbouring one -- which reads as a layout bug
+    rather than as a name that did not fit.
+
+    Parameters
+    ----------
+    p : Painter
+        Used to measure.
+    label : str
+        The text.
+    room : float
+        Width available.
+
+    Returns
+    -------
+    str
+        The text, or as much of it as fits.
+    """
+    if room <= 0.0 or p.text_width(label) <= room:
+        return label
+    for cut in range(len(label) - 1, 0, -1):
+        short = label[:cut] + "."
+        if p.text_width(short) <= room:
+            return short
+    return ""
 
 
 def _format(fmt: str, value: float) -> str:
@@ -850,19 +881,8 @@ class Tabs:
             p.stroke_rect(cell_x, y, pill_w, h, _BORDER,
                           _HEADER_BG if current else _TRACK_BG)
             p.text(cell_x, y, pill_w, h, ALIGN_CENTER,
-                   self._fitted(p, label, pill_w - 4.0),
+                   fit_text(p, label, pill_w - 4.0),
                    _GOLD if current else _DIM)
-
-    @staticmethod
-    def _fitted(p: Painter, label: str, room: float) -> str:
-        """``label`` shortened until it fits ``room``, with a trailing dot."""
-        if room <= 0.0 or p.text_width(label) <= room:
-            return label
-        for cut in range(len(label) - 1, 0, -1):
-            short = label[:cut] + "."
-            if p.text_width(short) <= room:
-                return short
-        return ""
 
     def press(self, x: float, y: float, box_x: float, box_y: float, box_w: float, box_h: float) -> Optional[int]:
         """Process mouse press. Returns the tab index hit, or ``None``."""

@@ -59,6 +59,8 @@ DISPLAY_MENU: tuple[MenuEntry, ...] = (
         MenuEntry("Show", "set seq_view, on"),
         MenuEntry("Hide", "set seq_view, off"),
     )),
+    MenuEntry("Settings", "settings_panel toggle",
+              "Every display setting, edited in the view it changes."),
     SEP,
     MenuEntry("Stereo", None, "Chimol has no stereo modes."),
     SEP,

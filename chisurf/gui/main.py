@@ -1106,6 +1106,15 @@ class Main(
         except Exception:
             pass
 
+        # The one way into the hidden game. See chisurf/gui/easter_egg.py for
+        # why it is not a menu entry.
+        try:
+            from chisurf.gui import easter_egg
+
+            self._easter_egg = easter_egg.install(QtWidgets.QApplication.instance())
+        except Exception:
+            self._easter_egg = None
+
         misc_helpers.setup_log_list_widget(self)
         self._init_history_browser()
 

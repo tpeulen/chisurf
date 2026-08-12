@@ -17,10 +17,16 @@ fixed into it**, read from the spectra database ChiSurf ships. It teaches
 spectroscopy whether or not you ever review anything, and in expert mode it
 signs pages off through ChiSurf's own review gate.
 
-Open it from **Tools → Miscellaneous → Games → Lumis Quest**. The game opens
-on a title screen: **Continue** resumes a saved run, **New Journey** starts
-over (it asks before erasing a run), and the controls scheme can be switched
-right there.
+**It is not in a menu.** Lumis Quest is an easter egg: with the ChiSurf main
+window focused, enter
+
+> ↑ ↑ ↓ ↓ ← → ← → B A
+
+and the game opens. (A game listed beside the fitting tools reads as one of the
+tools, which is the wrong thing to say about it — so it is hidden, and the code
+is the way in.) The game opens on a title screen: **Continue** resumes a saved
+run, **New Journey** starts over (it asks before erasing a run), and the
+controls scheme can be switched right there.
 
 ## The world you are looking at
 
@@ -147,6 +153,21 @@ gamepad. There is no typing anywhere.
 | Shoulder R | E | Zoom in; next menu tab |
 | Cancel | Backspace | Zoom out; back |
 | Menu | Tab | Open the pack (MAP, RIG, PARTY, LAB, MODE, OPTIONS) |
+
+### Settings
+
+**OPTIONS** and **GAMELOGIC** are the settings tabs. Up/Down chooses a row,
+Left/Right steps it, Confirm activates it — a switch flips, a choice advances,
+a button fires. What each row *is* — a slider with its range, a set of choices,
+a switch, an action — is declared once in
+`chisurf/plugins/misc/games/lumis_quest/api/settings.py`, and the menu draws
+whatever is declared: nothing about a setting is written into the menu. The
+controls are the same ImGui-style ones the molecular viewer's settings panel is
+drawn from.
+
+Settings are part of the run. They are written into the save file and come back
+with it, including from a save with no party in it — turning the music down and
+then starting over does not turn it back up.
 
 ## Your first minutes
 

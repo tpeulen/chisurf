@@ -43,6 +43,7 @@ from ..api import npcs as npcs_api
 from ..api import gear as gear_api
 from ..api import roster as roster_api
 from ..api import providers as providers_api
+from ..api import settings as game_settings
 from ..api import review_bridge
 from ..api import rig as rig_api
 from ..api import farm as farm_api
@@ -486,29 +487,96 @@ class OverworldGame(chigame.Game):
         self._docs_root = docs_root
         # Injectable so a test never reads or writes the player's real run.
         self._save_path = save_path
-        # Every setting the OPTIONS and GAMELOGIC tabs read, defaulted here
-        # rather than in `setup`. A game that has not been bound to a host is
-        # still a game that can be asked what its settings are -- and half of
-        # these were only set in `setup`, so `_menu_rows` raised AttributeError
-        # on any game that had not been run.
-        self.scheme = "arrows"
-        self.walk_speed = WALK_SPEED
-        self.view_height = VIEW_HEIGHT
-        # Quieter than Audio's own 1.0/1.0 defaults out of the box: the synth
-        # music runs under dialogue and easily drowns it out at full volume.
-        self.music_volume = 0.1
-        self.sfx_volume = 0.5
-        self.screen_mode = False
-        self.soundtrack_theme = self.SOUNDTRACKS[0]
-        self.enemy_aggro_radius = 4.5
-        self.action_combat_enabled = True
-        self.particle_fx_enabled = True
-        self.crt_filter_enabled = False
-        self.ui_accent_tone = "Gold"
+        #: Every tunable the game has. Nothing here is an attribute with a
+        #: default written into whichever branch happened to step it: the
+        #: values, their ranges and their choices are declared in
+        #: `api/settings.py`, the menu draws whatever is declared, and the
+        #: attributes below are views onto this store. A game that has not
+        #: been bound to a host can still be asked what its settings are --
+        #: half of them used to be set only in `setup`, so `_menu_rows` raised
+        #: AttributeError on any game that had not been run.
+        self.settings = game_settings.GameSettings()
+        self._wire_settings()
         #: The last few frames' cost in milliseconds, oldest first, drawn as a
         #: sparkline in OPTIONS. Bounded, so a run left open overnight does not
         #: quietly grow a list nobody reads past the last second of it.
         self.frame_ms: collections.deque[float] = collections.deque(maxlen=90)
+
+    # ------------------------------------------------------------------ #
+    # Settings
+    #
+    # The store holds the values; these say what a change *does*. Anything
+    # that only needs reading is read where it is used, so it has no hook.
+    # ------------------------------------------------------------------ #
+    def _wire_settings(self) -> None:
+        """Register what each setting change applies to."""
+        self.settings.on("options.scheme", self._apply_scheme)
+        self.settings.on("options.music_volume", self._apply_music_volume)
+        self.settings.on("options.sfx_volume", self._apply_sfx_volume)
+        self.settings.on("options.llm", self._show_llm_status)
+        self.settings.on("options.regenerate", self._regenerate_wilderness)
+        self.settings.on("options.prologue", self._replay_prologue)
+        self.settings.on("gamelogic.quick_save", self._quick_save)
+        self.settings.on("gamelogic.quick_load", self._quick_load)
+        self.settings.on("gamelogic.test_sfx", self._test_sfx)
+
+    def _apply_scheme(self, name: str) -> None:
+        """Rebind the controller, when there is one."""
+        host = getattr(self, "host", None)
+        if host is not None and name in SCHEMES:
+            host.keys.bindings = dict(SCHEMES[name])
+
+    def _apply_music_volume(self, level: float) -> None:
+        """Tell the mixer, when there is one."""
+        host = getattr(self, "host", None)
+        if host is not None:
+            host.audio.set_music_volume(float(level))
+
+    def _apply_sfx_volume(self, level: float) -> None:
+        """Tell the mixer, when there is one."""
+        host = getattr(self, "host", None)
+        if host is not None:
+            host.audio.set_sfx_volume(float(level))
+
+    def _setting_property(key: str, cast=None):  # noqa: N805 - descriptor factory
+        """A read/write attribute backed by one setting.
+
+        Every existing ``self.walk_speed`` in the game keeps working and now
+        reads the store, which is what "nothing is hard-coded past the
+        settings" means in practice: one place holds the value, and the name
+        the code already used is a view onto it.
+        """
+
+        def read(self):
+            value = self.settings.get(key)
+            return cast(value) if cast is not None else value
+
+        def write(self, value):
+            self.settings.set(key, value)
+
+        return property(read, write)
+
+    scheme = _setting_property("options.scheme")
+    walk_speed = _setting_property("options.walk_speed")
+    view_height = _setting_property("options.view_height")
+    music_volume = _setting_property("options.music_volume")
+    sfx_volume = _setting_property("options.sfx_volume")
+    soundtrack_theme = _setting_property("gamelogic.soundtrack")
+    enemy_aggro_radius = _setting_property("gamelogic.enemy_aggro_radius")
+    action_combat_enabled = _setting_property("gamelogic.action_combat")
+    particle_fx_enabled = _setting_property("gamelogic.particles")
+    crt_filter_enabled = _setting_property("gamelogic.crt_filter")
+    ui_accent_tone = _setting_property("gamelogic.accent_tone")
+
+    @property
+    def screen_mode(self) -> bool:
+        """Whether the camera holds one screen instead of following Iris."""
+        return self.settings.get("options.camera") == game_settings.CAMERA_MODES[1]
+
+    @screen_mode.setter
+    def screen_mode(self, held: bool) -> None:
+        self.settings.set("options.camera",
+                          game_settings.CAMERA_MODES[1 if held else 0])
 
     def setup(self, host) -> None:
         """Bind the controller and start loading.
@@ -526,10 +594,11 @@ class OverworldGame(chigame.Game):
         self.host = host
         # The settings themselves are the game's, and were defaulted in
         # __init__. What happens here is only the half that needs a host:
-        # pushing them at the controller and the mixer.
-        host.keys.bindings = dict(SCHEMES[self.scheme])
-        host.audio.set_music_volume(self.music_volume)
-        host.audio.set_sfx_volume(self.sfx_volume)
+        # pushing them at the controller and the mixer, through the same hooks
+        # a change from the menu goes through.
+        self._apply_scheme(self.scheme)
+        self._apply_music_volume(self.music_volume)
+        self._apply_sfx_volume(self.sfx_volume)
         self.phase = "loading"
         self.load_step = 0
         self.load_note = "waking"
@@ -925,6 +994,14 @@ class OverworldGame(chigame.Game):
         self._resume = None
         state = save_api.RunState.load(self._save_path)
         self._has_save = bool(state.team)
+        # Settings come back even from a run with no team in it: someone who
+        # turned the music down and then started over should not have to turn
+        # it down again.
+        if state.settings:
+            self.settings.update(state.settings)
+            self._apply_scheme(self.scheme)
+            self._apply_music_volume(self.music_volume)
+            self._apply_sfx_volume(self.sfx_volume)
         if not state.team:
             return
         creatures = save_api.creatures_by_id(self.pool)
@@ -1025,6 +1102,7 @@ class OverworldGame(chigame.Game):
             salvaged=[f"{col},{row}" for col, row in sorted(self.salvaged)],
             iris_hp=int(self.iris_hp),
             photons=int(self.photons),
+            settings=self.settings.as_dict(),
         )
 
     def save_run(self) -> None:
@@ -2372,101 +2450,64 @@ class OverworldGame(chigame.Game):
         return None
 
     def _options_confirm(self, direction: int = 0) -> None:
-        """Act on the selected option."""
-        row = self.menu_row
-        if row == 0:
-            names = list(SCHEMES)
-            step_dir = direction if direction != 0 else 1
-            self.scheme = names[(names.index(self.scheme) + step_dir) % len(names)]
-            self.host.keys.bindings = dict(SCHEMES[self.scheme])
-        elif row == 1:
-            self.screen_mode = not self.screen_mode
-        elif row == 2:
-            step_val = direction * 20.0 if direction != 0 else 35.0
-            val = self.walk_speed + step_val
-            if val > 260.0:
-                val = 120.0
-            self.walk_speed = max(120.0, min(260.0, val))
-        elif row == 3:
-            step_val = direction * 45.0 if direction != 0 else 90.0
-            val = self.view_height + step_val
-            if val > 600.0:
-                val = VIEW_MIN
-            self.view_height = max(300.0, min(600.0, val))
-        elif row == 4:
-            step_val = direction * 0.1 if direction != 0 else 0.1
-            val = round(self.music_volume + step_val, 2)
-            if val > 1.0:
-                val = 0.0
-            self.music_volume = max(0.0, min(1.0, val))
-            self.host.audio.set_music_volume(self.music_volume)
-        elif row == 5:
-            step_val = direction * 0.1 if direction != 0 else 0.1
-            val = round(self.sfx_volume + step_val, 2)
-            if val > 1.0:
-                val = 0.0
-            self.sfx_volume = max(0.0, min(1.0, val))
-            self.host.audio.set_sfx_volume(self.sfx_volume)
-            self._sound("confirm", frequency=600.0)
-        elif row == 6:
-            info = providers_api.llm_status()
-            msg = f"LLM: {info['summary_short']}"
-            self.sparks.rise(msg, tuple(self.iris), color=info["color"], height=9.0)
-            self._sound("confirm" if info["wired"] else "cancel", 600.0 if info["wired"] else 240.0)
-        elif row == 7:
-            # Only the wilderness is redrawn. Which lands exist and where each
-            # page stands comes from the documentation and must not move: a
-            # player who has learned where something lives should not lose that
-            # by asking for new scenery.
-            self.seed = f"{self.seed}+" if self.seed else "regenerated"
-            self._pending = None
-            self.menu_open = False
-            self.phase = "loading"
-            self.load_step = 0
-            self.load_note = self.LOAD_STAGES[0]
-        elif row == 8:
-            self.menu_open = False
-            self.prologue_index = 0
-            self.phase = "prologue"
+        """Act on the selected OPTIONS row."""
+        self._settings_confirm("OPTIONS", direction)
 
     def _gamelogic_confirm(self, direction: int = 0) -> None:
-        """Act on the selected gamelogic option."""
-        row = self.menu_row
-        if row == 0:
-            themes = list(self.SOUNDTRACKS)
-            step_dir = direction if direction != 0 else 1
-            curr = getattr(self, "soundtrack_theme", themes[0])
-            idx = (themes.index(curr) if curr in themes else 0) + step_dir
-            self.soundtrack_theme = themes[idx % len(themes)]
-        elif row == 1:
-            step_val = direction * 0.5 if direction != 0 else 1.0
-            val = getattr(self, "enemy_aggro_radius", 4.5) + step_val
-            if val > 8.0:
-                val = 2.0
-            self.enemy_aggro_radius = round(max(2.0, min(8.0, val)), 1)
-        elif row == 2:
-            self.action_combat_enabled = not getattr(self, "action_combat_enabled", True)
-        elif row == 3:
-            self.particle_fx_enabled = not getattr(self, "particle_fx_enabled", True)
-        elif row == 4:
-            self.crt_filter_enabled = not getattr(self, "crt_filter_enabled", False)
-        elif row == 5:
-            tones = ["Gold", "Cyan", "Emerald", "Ruby", "Violet"]
-            step_dir = direction if direction != 0 else 1
-            curr = getattr(self, "ui_accent_tone", "Gold")
-            idx = (tones.index(curr) if curr in tones else 0) + step_dir
-            self.ui_accent_tone = tones[idx % len(tones)]
-        elif row == 6:
-            self.save_run()
-            self.sparks.rise("Run Saved!", tuple(self.iris), color=(0.35, 0.90, 0.45, 1.0), height=9.0)
-            self._sound("confirm", frequency=750.0)
-        elif row == 7:
-            self._boot()
-            self.sparks.rise("Run Loaded!", tuple(self.iris), color=(0.40, 0.82, 0.95, 1.0), height=9.0)
-            self._sound("confirm", frequency=650.0)
-        elif row == 8:
-            self._sound("confirm", frequency=880.0)
-            self.sparks.burst(tuple(self.iris), count=8, kind="sparkle", color=(0.96, 0.88, 0.50, 1.0))
+        """Act on the selected GAMELOGIC row."""
+        self._settings_confirm("GAMELOGIC", direction)
+
+    # ------------------------------------------------------------------ #
+    # What the action settings do. Registered as hooks in `_wire_actions`,
+    # so pressing one is `settings.set(key, True)` and nothing in the menu
+    # knows what any of them mean.
+    # ------------------------------------------------------------------ #
+    def _show_llm_status(self, _value=None) -> None:
+        """Say which model is wired, over Iris' head."""
+        info = providers_api.llm_status()
+        self.sparks.rise(f"LLM: {info['summary_short']}", tuple(self.iris),
+                         color=info["color"], height=9.0)
+        self._sound("confirm" if info["wired"] else "cancel",
+                    600.0 if info["wired"] else 240.0)
+
+    def _regenerate_wilderness(self, _value=None) -> None:
+        """Redraw the scenery, keeping the lands and the pages where they are.
+
+        A player who has learned where something lives should not lose that by
+        asking for new scenery, so only the wilderness is rebuilt.
+        """
+        self.seed = f"{self.seed}+" if self.seed else "regenerated"
+        self._pending = None
+        self.menu_open = False
+        self.phase = "loading"
+        self.load_step = 0
+        self.load_note = self.LOAD_STAGES[0]
+
+    def _replay_prologue(self, _value=None) -> None:
+        """Show the opening cards again."""
+        self.menu_open = False
+        self.prologue_index = 0
+        self.phase = "prologue"
+
+    def _quick_save(self, _value=None) -> None:
+        """Write the run out now."""
+        self.save_run()
+        self.sparks.rise("Run Saved!", tuple(self.iris),
+                         color=(0.35, 0.90, 0.45, 1.0), height=9.0)
+        self._sound("confirm", frequency=750.0)
+
+    def _quick_load(self, _value=None) -> None:
+        """Read the run back."""
+        self._boot()
+        self.sparks.rise("Run Loaded!", tuple(self.iris),
+                         color=(0.40, 0.82, 0.95, 1.0), height=9.0)
+        self._sound("confirm", frequency=650.0)
+
+    def _test_sfx(self, _value=None) -> None:
+        """One sound, at the volume the sliders are set to."""
+        self._sound("confirm", frequency=880.0)
+        self.sparks.burst(tuple(self.iris), count=8, kind="sparkle",
+                          color=(0.96, 0.88, 0.50, 1.0))
 
     def _menu_rows(self) -> list[str]:
         """The lines the current tab offers.
@@ -2549,31 +2590,8 @@ class OverworldGame(chigame.Game):
                             for key in self.workshop.crafted
                             if key in crafting_api.RECIPES)
             return rows
-        if tab == "OPTIONS":
-            info = providers_api.llm_status()
-            return [
-                f"controls: {self.scheme}",
-                f"camera: {'scrolling' if not self.screen_mode else 'screen by screen'}",
-                f"walk speed: {self.walk_speed:.0f}",
-                f"default zoom: {self.view_height:.0f}",
-                f"music volume: {self.music_volume:.0%}",
-                f"sound volume: {self.sfx_volume:.0%}",
-                f"llm provider: [{info['indicator']}] {info['summary_short']}",
-                "regenerate the wilderness",
-                "watch the opening again",
-            ]
-        if tab == "GAMELOGIC":
-            return [
-                f"soundtrack: {getattr(self, 'soundtrack_theme', 'Ninja Adventure (CC0)')}",
-                f"enemy aggro: {getattr(self, 'enemy_aggro_radius', 4.5):.1f} tiles",
-                f"action combat: {'[✓] enabled' if getattr(self, 'action_combat_enabled', True) else '[ ] disabled'}",
-                f"particle effects: {'[✓] enabled' if getattr(self, 'particle_fx_enabled', True) else '[ ] disabled'}",
-                f"crt retro shader: {'[✓] enabled' if getattr(self, 'crt_filter_enabled', False) else '[ ] disabled'}",
-                f"ui accent tone: {getattr(self, 'ui_accent_tone', 'Gold')}",
-                "quick save run",
-                "quick load run",
-                "test audio sfx",
-            ]
+        if tab in self.SETTINGS_TABS:
+            return [self._setting_row(one) for one in self._settings_rows(tab)]
         if tab == "LAB":
             now = time.time()
             rows = []
@@ -4973,18 +4991,38 @@ class OverworldGame(chigame.Game):
                    at=(cx, cy + half[1] * 0.62), height=9.5 * scale, align="center",
                    color=(0.46, 0.50, 0.58, 1.0))
 
-    #: What the soundtrack option cycles through. One list, read by the option
-    #: that changes it and by the control that shows it -- two lists is how a
-    #: selector ends up showing a theme the game cannot play.
-    SOUNDTRACKS = ("Ninja Adventure (CC0)", "Classic Chiptune", "Synthesiser")
+    #: The tabs whose rows are settings rather than prose. Their contents come
+    #: from `api/settings.py` and nothing about them is written here.
+    SETTINGS_TABS = ("OPTIONS", "GAMELOGIC")
+
+    #: Kept as a name because the save file and the audio pack both use it.
+    SOUNDTRACKS = game_settings.SOUNDTRACKS
+
+    def _settings_rows(self, tab: str) -> list:
+        """The settings a tab shows, in declaration order."""
+        return self.settings.rows(tab.lower())
+
+    def _setting_row(self, setting) -> str:
+        """The menu line for one setting.
+
+        The provider row is the one line the registry cannot write: it carries
+        a live indicator and a summary that come from asking the provider, not
+        from a stored value.
+        """
+        if setting.key == "options.llm":
+            info = providers_api.llm_status()
+            return f"llm provider: [{info['indicator']}] {info['summary_short']}"
+        return game_settings.row_text(setting, self.settings.get(setting.key))
 
     def _menu_widget(self, tab: str, index: int, row: str):
         """The control a menu row is drawn as, if it is drawn as one.
 
         A row is a string everywhere else in the menu -- it is what the cursor
         moves over and what a click hit-tests against -- so the widgets are a
-        *rendering* of a row rather than a replacement for it. Anything without
-        a control here falls back to plain text.
+        *rendering* of a row rather than a replacement for it. Which control a
+        setting gets is decided by its declared **kind**, in one table
+        (:meth:`SettingsModel.control`) that the settings panel in the 3-D view
+        uses too; the only thing chosen here is the game's own dressing.
 
         Parameters
         ----------
@@ -4993,68 +5031,77 @@ class OverworldGame(chigame.Game):
         index : int
             Row index within the tab.
         row : str
-            The row's text, used for the parts of a label the tab already
-            spells out.
+            The row's text, for anything drawn as plain text.
 
         Returns
         -------
         object or None
             A control from :mod:`.imgui_controls`, or ``None`` for plain text.
         """
-        if tab == "OPTIONS":
-            if index == 0:
-                schemes = list(SCHEMES)
-                return imgui_controls.RadioGroup(
-                    "controls", schemes,
-                    index=schemes.index(self.scheme) if self.scheme in schemes else 0)
-            if index == 1:
-                return imgui_controls.RadioGroup(
-                    "camera", ["scrolling", "screen"], index=1 if self.screen_mode else 0)
-            if index in (2, 3, 4, 5):
-                v_min, v_max, val, fmt = (
-                    (120.0, 260.0, self.walk_speed, "%.0f") if index == 2 else
-                    (300.0, 600.0, self.view_height, "%.0f") if index == 3 else
-                    (0.0, 1.0, self.music_volume, "%.0%") if index == 4 else
-                    (0.0, 1.0, self.sfx_volume, "%.0%")
-                )
-                return imgui_controls.SliderFloat(row.split(":")[0], v_min, v_max, val, fmt=fmt)
-            if index in (7, 8):
-                return imgui_controls.Button(
-                    "regenerate wilderness" if index == 7 else "watch opening story")
+        if tab not in self.SETTINGS_TABS:
             return None
-
-        if tab == "GAMELOGIC":
-            if index == 0:
-                themes = list(self.SOUNDTRACKS)
-                current = getattr(self, "soundtrack_theme", themes[0])
-                return imgui_controls.Combo(
-                    "soundtrack", themes,
-                    index=themes.index(current) if current in themes else 0)
-            if index == 1:
-                return imgui_controls.SliderFloat(
-                    "enemy aggro radius", 2.0, 8.0,
-                    getattr(self, "enemy_aggro_radius", 4.5), fmt="%.1f tiles")
-            if index in (2, 3, 4):
-                label, on = (
-                    ("zelda action combat", getattr(self, "action_combat_enabled", True))
-                    if index == 2 else
-                    ("particle bursts", getattr(self, "particle_fx_enabled", True))
-                    if index == 3 else
-                    ("crt retro shader", getattr(self, "crt_filter_enabled", False))
-                )
-                return imgui_controls.Toggle(label, on=on)
-            if index == 5:
-                tone = getattr(self, "ui_accent_tone", "Gold")
-                return imgui_controls.ColorEdit4(
-                    f"ui accent tone: {tone}",
-                    color=imgui_controls.ACCENT_COLORS.get(tone, (0.96, 0.88, 0.50, 1.0)))
-            if index in (6, 7, 8):
-                return imgui_controls.Button(
-                    "quick save run" if index == 6 else
-                    "quick load run" if index == 7 else "test audio sfx")
+        rows = self._settings_rows(tab)
+        if not (0 <= index < len(rows)):
             return None
+        setting = rows[index]
+        if setting.key == "options.llm":
+            return None                      # a light and a summary, not a control
+        value = self.settings.get(setting.key)
 
+        if setting.kind == game_settings.CHOICE and setting.key == "gamelogic.accent_tone":
+            # The one choice whose value *is* a colour: a swatch says more
+            # about it than its name does.
+            return imgui_controls.ColorEdit4(
+                f"{setting.label}: {value}",
+                color=imgui_controls.ACCENT_COLORS.get(value, (0.96, 0.88, 0.50, 1.0)))
+        options = list(setting.options or ())
+        if (setting.kind == game_settings.CHOICE and len(options) <= 3
+                and max((len(one) for one in options), default=0) <= 12):
+            # Short and few: show them all at once. A row of three options is
+            # read in one glance where a `< value >` selector has to be
+            # clicked through to find out what else there is -- but only while
+            # they fit, and "screen by screen" beside two others does not.
+            return imgui_controls.RadioGroup(
+                setting.label, options,
+                index=options.index(value) if value in options else 0)
+        if setting.kind == game_settings.CHOICE:
+            return imgui_controls.Combo(
+                setting.label, options,
+                index=options.index(value) if value in options else 0)
+        if setting.kind == game_settings.BOOL:
+            return imgui_controls.Toggle(setting.label, on=bool(value))
+        if setting.kind == game_settings.FLOAT:
+            return imgui_controls.SliderFloat(
+                setting.label, float(setting.v_min), float(setting.v_max),
+                float(value), fmt=setting.fmt or "%.2f")
+        if setting.kind == game_settings.ACTION:
+            return imgui_controls.Button(setting.label)
         return None
+
+    def _settings_confirm(self, tab: str, direction: int = 0) -> None:
+        """Act on the selected row of a settings tab.
+
+        Stepping a value is the model moving it inside its own declared range;
+        an action is a hook. Neither is a branch on a row number any more,
+        which is what made inserting a setting a three-file edit.
+        """
+        rows = self._settings_rows(tab)
+        if not (0 <= self.menu_row < len(rows)):
+            return
+        setting = rows[self.menu_row]
+        if setting.kind == game_settings.ACTION:
+            self.settings.set(setting.key, True)
+            return
+        model = self.settings.model(rows)
+        if direction == 0 and setting.kind == game_settings.FLOAT:
+            # Confirm is one button, so a slider it steps has to come back
+            # round rather than stop at the top: there is no other way to
+            # reach the quiet end again without a left arrow.
+            step = float(setting.step or 0.1)
+            if float(self.settings.get(setting.key)) + step > float(setting.v_max):
+                self.settings.set(setting.key, float(setting.v_min))
+                return
+        model.adjust(setting, direction)
 
     def _draw_menu(self, scene, camera, half) -> None:
         """Draw the pause menu.

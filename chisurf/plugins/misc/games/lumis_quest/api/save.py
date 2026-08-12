@@ -92,6 +92,10 @@ class RunState:
     photons : int
         Her own casting energy. ``-1`` means the starting half-charge, not
         zero -- see ``iris_hp``.
+    settings : dict
+        The player's settings, by the keys declared in
+        :mod:`..api.settings`. Empty means "whatever the defaults are", which
+        is what a save written before the settings moved into the run says.
     """
 
     position: tuple[float, float] = (0.0, 0.0)
@@ -119,6 +123,7 @@ class RunState:
     salvaged: list[str] = dataclasses.field(default_factory=list)
     iris_hp: int = -1
     photons: int = -1
+    settings: dict = dataclasses.field(default_factory=dict)
 
     def as_dict(self) -> dict:
         """Serialise to plain JSON types.
@@ -153,6 +158,7 @@ class RunState:
             "salvaged": list(self.salvaged),
             "iris_hp": int(self.iris_hp),
             "photons": int(self.photons),
+            "settings": dict(self.settings),
         }
 
     def save(self, path: pathlib.Path | None = None) -> pathlib.Path:
@@ -228,6 +234,10 @@ class RunState:
                 salvaged=[str(value) for value in raw.get("salvaged", [])],
                 iris_hp=int(raw.get("iris_hp", -1)),
                 photons=int(raw.get("photons", -1)),
+                # Unknown keys are dropped on the way in by GameSettings, so a
+                # setting that has been renamed or removed cannot stop a run
+                # from loading.
+                settings=dict(raw.get("settings", {})),
             )
         except (TypeError, ValueError):
             return cls()

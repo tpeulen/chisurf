@@ -716,6 +716,34 @@ clip slab, 20
 The status bar reports the near plane whenever the wheel moves it, and says
 `Clipping: off` once it is back — so the gesture is never silent.
 
+### Every setting, in the view it changes
+
+**Display → Settings** (or `settings_panel` on the command line) opens a
+settings editor **inside the 3-D view**. It is not a curated selection: every
+entry of the display configuration is a row, grouped by section, so a setting
+added by a new version appears there without waiting for somebody to write a
+control for it.
+
+```text
+settings_panel          # toggle it
+settings_panel off      # put it away
+```
+
+* the selector at the top left picks the section — click its right-hand side
+  for the next one, its left fifth for the previous — and the number beside it
+  is how many rows the section has;
+* the box at the top right filters, by the setting's name **and** by the path it
+  is stored under, so `alpha` finds `transparency` (which is kept as
+  `surface.alpha`);
+* the control is chosen by the setting's type: a slider for a number, a switch
+  for a flag, a swatch for a colour, a stepper for a whole number, a `< value >`
+  selector for a choice;
+* the line at the foot names the path, the current value, and what the setting
+  does;
+* a change goes through the same path `set` does, so a setting with a
+  transform — `transparency`, which the renderer keeps as an alpha — is edited
+  in the units you know it by.
+
 ### When a new version changes a default
 
 Your settings live in `~/.chisurf/chimol_display.json`, and they are yours —

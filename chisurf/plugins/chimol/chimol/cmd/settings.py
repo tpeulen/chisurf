@@ -88,6 +88,61 @@ class SettingsMixin(BaseCmd):
         self._apply_setting(spec, value)
         self._emit_message(f"{spec.name} reset to {_format(value)}")
 
+    @command("settings_panel")
+    def settings_panel(self, action: str = "toggle") -> None:
+        """Show, hide or toggle the settings editor **inside the viewport**.
+
+        Every entry of the display configuration, grouped by section, edited
+        with the same controls the rest of the chrome is drawn from. The Qt
+        settings table shows the registered subset in a dock; this shows all of
+        it in the view it changes, which is where the effect of a change is.
+
+        Parameters
+        ----------
+        action : str, optional
+            ``toggle`` (the default), ``on``/``show``, or ``off``/``hide``.
+        """
+        _window, viewer = self._require_window_and_viewer()
+        if viewer is None:
+            return
+        gui = getattr(getattr(viewer, "_renderer", None), "_internal_gui", None)
+        if gui is None:
+            self._emit_error("settings_panel: this renderer draws no chrome")
+            return
+
+        from ..renderer.settings_window import SettingsWindow
+
+        wanted = str(action).strip().lower() or "toggle"
+        existing = gui.window(SettingsWindow.KEY)
+        if wanted in ("off", "hide", "0", "false"):
+            if existing is not None:
+                existing.visible = False
+            viewer._update_view()
+            return
+
+        if existing is None:
+            panel = SettingsWindow(viewer)
+            panel.attach(gui)
+            # Kept on the viewer so it outlives this call: the window holds
+            # bound methods and nothing else keeps the panel alive.
+            viewer._settings_controls = panel
+            existing = gui.add_window(panel.window())
+        elif wanted == "toggle" and existing.visible:
+            existing.visible = False
+            viewer._update_view()
+            return
+        else:
+            # Values move under the panel -- a command, a preset, a script --
+            # so the rows are rebuilt whenever it is asked for again.
+            controls = getattr(viewer, "_settings_controls", None)
+            if controls is not None:
+                controls.refresh()
+
+        existing.visible = True
+        gui.raise_window(SettingsWindow.KEY)
+        gui.layout(gui._width, gui._height)
+        viewer._update_view()
+
     @command("toggle")
     def toggle(self, name: str = "") -> None:
         """Flip a boolean display setting (PyMOL ``toggle <name>``)."""

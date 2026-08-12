@@ -235,7 +235,9 @@ def test_menu_rows_map_to_the_expected_controls():
     game.menu_tab = game.TABS.index("OPTIONS")
     options = [type(game._menu_widget("OPTIONS", i, row)).__name__
                for i, row in enumerate(game._menu_rows())]
-    assert options[:2] == ["RadioGroup", "RadioGroup"]
+    # Three short schemes fit side by side; "screen by screen" does not, so
+    # the camera gets a selector rather than a row that overlaps itself.
+    assert options[:2] == ["RadioGroup", "Combo"]
     assert options[2:6] == ["SliderFloat"] * 4
     assert options[6] == "NoneType"          # the llm row stays text: it has a light
     assert options[7:9] == ["Button", "Button"]
