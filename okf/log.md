@@ -35668,3 +35668,29 @@
   protein straddling a wall is still drawn in two pieces -- and `zoom` frames
   the atoms rather than the cell, so a box much larger than its contents runs
   off the viewport.
+
+- **2026-08-12 — chimol: `pbc unwrap` / `pbc wrap`, and `zoom` frames the cell.**
+  The two gaps left by the periodic-box work, closed.
+  **Unwrapping.** A simulation writes coordinates wrapped into its box, which is
+  correct bookkeeping and a broken picture: a protein on a wall is drawn in two
+  pieces at opposite edges, and its radius of gyration and every distance across
+  the seam are wrong by a box length. `pbc unwrap` makes each molecule whole --
+  and may push it outside the box, which is the point -- while `pbc wrap` puts
+  it back **as a unit**. Both work on **fragments**: connected components of the
+  bond graph via union-find, falling back to chains and then residues. That is
+  the whole reason it is not two lines -- wrapping *atom by atom* is exactly
+  what splits a molecule across the picture in the first place, and the fallback
+  order matters too, since a residue-wise wrap would tear a polymer at every
+  peptide bond.
+  Demonstrated on a four-atom chain straddling a 30 A wall: the file says
+  `29.0, 29.8, 0.6, 1.4` -- two bonds apparently 29 A long -- and after `pbc
+  unwrap` it reads `29.0, 29.8, 30.6, 31.4`, every bond 0.8 A. `pbc wrap` then
+  returns it to `-1.0, -0.2, 0.6, 1.4`: centre inside the box, still one piece.
+  Works in a sheared cell, since the rounding is fractional.
+  **`zoom` now includes a shown cell.** Framing only the atoms put the box off
+  the edge of the viewport, which is the normal case rather than an edge case --
+  a protein in a water box occupies a fraction of it. Only when the cell is
+  *shown*, so the camera does not move for anyone who has not asked to see it.
+  Recorded limit: `pbc unwrap` seeds each fragment from its first atom rather
+  than walking the bond graph, so a fragment spanning more than half the cell is
+  not unwrapped correctly -- and such a fragment has no unambiguous unwrapping.

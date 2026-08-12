@@ -4391,6 +4391,18 @@ class MolView(WidgetBase):
             indices, object_id=object_id, atom_mask=atom_mask,
             selections=selections,
         )
+        # A displayed cell belongs in the fit. Framing only the atoms puts a box
+        # that is much larger than its contents off the edge of the viewport --
+        # which is exactly the case a periodic box is: a protein in a water box
+        # occupies a fraction of it. Only when it is *shown*, so this cannot
+        # move the camera for anyone who has not asked to see it.
+        cell_corners = self._displayed_cell_corners(object_id)
+        if cell_corners is not None and cell_corners.size:
+            coords = (
+                cell_corners if coords.size == 0
+                else np.vstack((coords, cell_corners))
+            )
+
         if coords.size == 0:
             self.reset_view()
             return
@@ -4407,6 +4419,53 @@ class MolView(WidgetBase):
         if self._renderer is not None:
             self._renderer.look_at(center)
             self._renderer.fit_to_radius(radius + float(buffer))
+
+    def _displayed_cell_corners(self, object_id: str | None = None):
+        """The eight corners of every shown unit cell, in scene coordinates.
+
+        Returns
+        -------
+        numpy.ndarray or None
+            ``(8k, 3)`` for the *k* objects drawing a cell, or ``None``.
+
+        Notes
+        -----
+        In the same frame the atoms are in. The cell is stored in the file's own
+        units and the scene is centred and scaled, so a corner used raw would
+        drag the camera to wherever the unscaled box happens to sit.
+        """
+        objects = getattr(self, "_objects", {}) or {}
+        if object_id is not None:
+            entries = [objects.get(object_id)]
+        else:
+            entries = list(objects.values())
+
+        scale = float(getattr(self, "_scale_factor", 1.0) or 1.0)
+        found = []
+        for entry in entries:
+            state = getattr(entry, "state", None)
+            if state is None or not getattr(state, "show_cell", False):
+                continue
+            symmetry = getattr(state, "symmetry", None) or {}
+            cell = symmetry.get("cell")
+            if cell is None:
+                continue
+            try:
+                matrix = np.asarray(cell.frac_to_real(), dtype=float)
+            except Exception:  # noqa: BLE001 - a cell that cannot transform
+                continue
+            corners = np.array(
+                [(i, j, k) for i in (0.0, 1.0) for j in (0.0, 1.0) for k in (0.0, 1.0)],
+                dtype=float,
+            )
+            raw = corners @ matrix.T
+            centre = getattr(state, "raw_center", None)
+            if centre is not None:
+                raw = raw - np.asarray(centre, dtype=float).reshape(3)
+            found.append(raw * scale)
+        if not found:
+            return None
+        return np.vstack(found)
 
     def orient(
         self,

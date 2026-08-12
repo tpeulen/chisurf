@@ -27,12 +27,18 @@ so smoothing strength stays constant there, and the box is published as the
 object's unit cell so ``cell`` draws it -- republished per frame, because an NPT
 box breathes.
 
+Unwrapping is covered too: ``pbc unwrap`` makes each molecule whole across a
+wall and ``pbc wrap`` puts it back **as a unit**, both over fragments of the
+bond graph -- wrapping atom by atom is what splits a molecule across the picture
+in the first place. And ``zoom`` includes a *shown* cell in its fit, so a box
+much larger than its contents no longer runs off the viewport.
+
 What is deliberately not covered
 --------------------------------
-Nothing here unwraps a molecule for *display*: a protein straddling the wall is
-still drawn in two pieces. That wants a connectivity-aware unwrap and a ``pbc``
-command. ``zoom`` also frames the atoms rather than the cell, so a box much
-larger than its contents runs off the viewport.
+``pbc unwrap`` seeds each fragment from its first atom rather than walking the
+bond graph, so a fragment spanning more than half the cell -- a polymer threaded
+through the whole box -- is not unwrapped correctly. Such a fragment has no
+unambiguous unwrapping anyway.
 """
 from __future__ import annotations
 
@@ -190,3 +196,93 @@ def test_an_unusable_box_is_ignored_rather_than_raising(cell):
     """
     frames, _ = _wobble_across_the_wall()
     assert np.array_equal(_minimum_image(frames, 2, cell), frames)
+
+
+# --------------------------------------------------------------------------- #
+# Unwrapping
+# --------------------------------------------------------------------------- #
+def _split_chain():
+    """A four-atom chain straddling the x wall of a 30 A box, 0.8 A bonds."""
+    coords = np.array(
+        [[29.0, 5.0, 5.0], [29.8, 5.0, 5.0], [0.6, 5.0, 5.0], [1.4, 5.0, 5.0]]
+    )
+    bonds = np.array([[0, 1], [1, 2], [2, 3]])
+    return coords, bonds
+
+
+def test_a_molecule_on_a_wall_arrives_split():
+    """The premise, stated as a number: two of the bonds look 29 A long."""
+    coords, _ = _split_chain()
+    steps = np.abs(np.diff(coords[:, 0]))
+    assert steps.max() > 25.0, "the fixture is supposed to straddle the wall"
+
+
+def test_unwrap_makes_the_molecule_whole():
+    from chisurf.plugins.chimol.chimol.analysis.periodic import (
+        cell_matrix, fragments, unwrap_coordinates,
+    )
+
+    coords, bonds = _split_chain()
+    matrix = cell_matrix([30.0, 40.0, 50.0], [90.0, 90.0, 90.0])
+    groups = fragments(4, bonds=bonds)
+    assert len(groups) == 1, "the bond graph is one fragment"
+
+    whole = unwrap_coordinates(coords, matrix, groups)
+    steps = np.abs(np.diff(whole[:, 0]))
+    assert np.allclose(steps, 0.8), f"bonds are still broken: {steps}"
+
+
+def test_wrap_moves_a_molecule_as_a_unit():
+    """Back inside the box, and still in one piece.
+
+    The second half is the point. Wrapping atom by atom puts every atom inside
+    the box and tears the molecule in half doing it, which is the state the
+    files arrive in.
+    """
+    from chisurf.plugins.chimol.chimol.analysis.periodic import (
+        cell_matrix, fragments, unwrap_coordinates, wrap_coordinates,
+    )
+
+    coords, bonds = _split_chain()
+    matrix = cell_matrix([30.0, 40.0, 50.0], [90.0, 90.0, 90.0])
+    groups = fragments(4, bonds=bonds)
+    whole = unwrap_coordinates(coords, matrix, groups)
+    back = wrap_coordinates(whole, matrix, groups)
+
+    assert np.abs(np.diff(back[:, 0])).max() < 5.0, "wrapping tore the molecule"
+    centre = back.mean(axis=0) @ np.linalg.inv(matrix)
+    assert np.all((centre >= -1e-9) & (centre < 1.0 + 1e-9)), (
+        f"the fragment centre is outside the box: {centre}"
+    )
+
+
+def test_unwrap_works_in_a_sheared_cell():
+    """Two atoms one cell vector apart come back together, triclinic or not."""
+    from chisurf.plugins.chimol.chimol.analysis.periodic import (
+        cell_matrix, unwrap_coordinates,
+    )
+
+    matrix = cell_matrix([30.0, 40.0, 50.0], [70.0, 80.0, 110.0])
+    base = np.array([1.0, 2.0, 3.0])
+    pair = np.vstack((base, base + matrix[1]))
+    whole = unwrap_coordinates(pair, matrix, [np.array([0, 1])])
+    assert np.allclose(whole[0], whole[1])
+
+
+def test_fragments_fall_back_when_there_are_no_bonds():
+    """A bead model has no bonds, and must still move in sensible pieces.
+
+    Chains before residues: a residue-wise wrap would tear a polymer at every
+    peptide bond, which is worse than not wrapping at all.
+    """
+    from chisurf.plugins.chimol.chimol.analysis.periodic import fragments
+
+    chains = np.array(["A", "A", "B", "B", "B"])
+    residues = np.array([1, 2, 3, 4, 5])
+    grouped = fragments(5, bonds=None, chains=chains, res_ids=residues)
+    assert [list(g) for g in grouped] == [[0, 1], [2, 3, 4]]
+
+    grouped = fragments(5, bonds=None, chains=None, res_ids=residues)
+    assert len(grouped) == 5
+
+    assert [list(g) for g in fragments(3)] == [[0, 1, 2]]

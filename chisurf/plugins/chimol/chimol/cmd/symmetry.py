@@ -314,6 +314,140 @@ class SymmetryMixin(BaseCmd):
             f"('{space_group}', {len(operators)} operators from {source})"
         )
 
+    @command("pbc")
+    def pbc(self, action: str = "", selection: str = "all") -> None:
+        """Make molecules whole across the periodic box, or put them back.
+
+        A simulation writes coordinates *wrapped* into its box: an atom leaving
+        one face re-enters the opposite one. Correct bookkeeping, broken
+        picture -- a protein sitting on a wall is drawn in two pieces at
+        opposite edges, and its radius of gyration and every distance measured
+        across the seam are wrong by a box length.
+
+        Parameters
+        ----------
+        action : str
+            ``unwrap`` makes each molecule whole, which may push it outside the
+            box -- that is the point. ``wrap`` puts each molecule back inside,
+            moving it *as a unit* so it stays whole. ``box`` shows the cell, the
+            same wireframe ``cell`` draws.
+        selection : str, optional
+            Which object. ``all`` by default.
+
+        Notes
+        -----
+        Both operate on **fragments** -- connected components of the bond graph,
+        falling back to chains and then residues. Wrapping atom by atom is what
+        splits a molecule across the picture in the first place.
+
+        The change is applied to the coordinates as the viewer holds them, so it
+        survives into ``save`` and into every measurement. A trajectory is
+        unwrapped for the frame on screen; stepping re-derives the frame from
+        the file and the operation is applied again.
+        """
+        want = str(action).strip().lower()
+        if want in ("box", "cell"):
+            self.cell(selection, "on")
+            return
+        if want not in ("wrap", "unwrap"):
+            self._emit_error("Usage: pbc unwrap|wrap|box [, selection]")
+            return
+
+        _window, viewer = self._require_window_and_viewer()
+        if viewer is None:
+            return
+
+        target = str(selection).strip() or "all"
+        if target in ("all", "*", "everything"):
+            object_ids = list(getattr(viewer, "_objects", {}))
+        else:
+            try:
+                object_id, _name, _mask = self._resolve_selection_to_atom_mask(
+                    viewer, target
+                )
+            except Exception as exc:  # noqa: BLE001
+                self._emit_error(f"pbc: {exc}")
+                return
+            object_ids = [object_id]
+
+        from ..analysis.periodic import (  # noqa: PLC0415
+            cell_matrix,
+            fragments,
+            unwrap_coordinates,
+            wrap_coordinates,
+        )
+
+        done, without = [], []
+        for object_id in object_ids:
+            entry = getattr(viewer, "_objects", {}).get(object_id)
+            state = getattr(entry, "state", None)
+            if state is None or getattr(entry, "placeholder", False):
+                continue
+            matrix = self._periodic_matrix(state, cell_matrix)
+            if matrix is None:
+                without.append(getattr(entry, "name", object_id))
+                continue
+            coords = getattr(state, "all_atom_coords", None)
+            if coords is None:
+                without.append(getattr(entry, "name", object_id))
+                continue
+
+            atoms = getattr(state, "atoms", None)
+            groups = fragments(
+                int(np.asarray(coords).shape[0]),
+                bonds=getattr(state, "bond_pairs", None),
+                chains=atoms["chain"] if atoms is not None and "chain" in (
+                    atoms.dtype.names or ()
+                ) else None,
+                res_ids=getattr(state, "all_atom_res_ids", None),
+            )
+            # The box is in the file's units; the render coordinates are scaled.
+            scale = float(getattr(viewer, "_scale_factor", 1.0) or 1.0)
+            operation = unwrap_coordinates if want == "unwrap" else wrap_coordinates
+            moved = operation(np.asarray(coords, dtype=float), matrix * scale, groups)
+            try:
+                viewer.set_all_atom_coords(moved, object_id=object_id)
+            except Exception:
+                state.all_atom_coords = moved
+            done.append(f"{getattr(entry, 'name', object_id)} ({len(groups)})")
+
+        if done:
+            self._emit_message(
+                f"pbc: {want}ped {', '.join(done)} -- the number is fragments moved"
+            )
+        if without:
+            self._emit_error(
+                f"pbc: no periodic box on {', '.join(without)} -- a trajectory "
+                "carries one only if it was written with a unit cell"
+            )
+        if done:
+            viewer._update_view()
+
+    @staticmethod
+    def _periodic_matrix(state, cell_matrix):
+        """The cell matrix for an object, from its trajectory box or CRYST1."""
+        cell = getattr(state, "cell", None)
+        if cell is not None:
+            try:
+                lengths, angles = cell
+                index = min(
+                    max(int(getattr(state, "active_frame", 0)), 0),
+                    np.asarray(lengths).shape[0] - 1,
+                )
+                return cell_matrix(
+                    np.asarray(lengths)[index], np.asarray(angles)[index]
+                )
+            except Exception:  # noqa: BLE001
+                pass
+        symmetry = getattr(state, "symmetry", None) or {}
+        unit = symmetry.get("cell")
+        if unit is None:
+            return None
+        try:
+            return np.asarray(unit.frac_to_real(), dtype=float).T
+        except Exception:  # noqa: BLE001
+            return None
+
     @command("cell")
     def cell(self, selection: str = "all", state: str = "") -> None:
         """Draw or hide the unit cell as a wireframe box (PyMOL ``cell``).
