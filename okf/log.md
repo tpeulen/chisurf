@@ -35728,3 +35728,14 @@
   trajectory frames. Already present and better than expected: a real
   Kabsch-Sander DSSP in `analysis/ss.py`, `measure_inertia` (already transcribed
   from ChimeraX), rms/super/align, clashes, hbond_network, buried_area.
+- 2026-08-12 — chimol: secondary structure became chain-aware. DSSP ran down one
+  flat backbone array for the whole structure, so chain junctions manufactured
+  helices, proline donated hydrogen bonds it cannot donate, and a residue missing
+  a backbone atom shifted every code after it. Helices are now assigned per
+  covalently continuous segment while bridges keep the whole hydrogen-bond map —
+  segmenting that too costs inter-chain sheets (40 of 1DG3's 68 strand residues).
+  Separately, `align`/`super`/`rms` paired residues by *position*: a 131-residue
+  fragment of 148L scored 15.964 Å against its own parent instead of zero.
+  Pairing is now by chain and residue number, then residue number, then
+  Needleman-Wunsch, with all-atom `rms` matching atoms by name inside each paired
+  residue. See [plugins/pymol-parity](plugins/pymol-parity.md).

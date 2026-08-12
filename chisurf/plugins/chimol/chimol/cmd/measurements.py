@@ -1191,6 +1191,35 @@ class MeasurementMixin(BaseCmd):
             self._emit_error("Selections must contain at least one coordinate")
             return
 
+        # Paired by residue identity, exactly as `align` and `super` are. This
+        # had its own copy of the truncate-to-the-shorter bug: `count = min(...)`
+        # then `[:count]` on both, so a fragment offset from its parent was
+        # measured residue-against-the-wrong-residue. On a 131-residue piece cut
+        # from 148L -- whose RMSD against its own parent is zero -- that
+        # reported 20.5 A.
+        #
+        pairs = self._pair_residues(
+            viewer, mob_obj, mob_indices or [], tgt_obj, tgt_indices or []
+        )
+        if pairs is not None and len(pairs[0]) >= 1:
+            mob_rows, tgt_rows, _how = pairs
+            if use_ca:
+                mob_coords = mob_coords[mob_rows]
+                tgt_coords = tgt_coords[tgt_rows]
+            else:
+                # All-atom: pair the residues, then pair the *atoms inside each
+                # paired residue by name*. Two structures need not carry the
+                # same atoms per residue -- a missing side chain, an alternate
+                # location, added hydrogens -- so lining up two flat atom lists
+                # by position is wrong for the same reason lining up residues
+                # was, only harder to notice.
+                matched = self._paired_atom_coords(
+                    viewer, mob_obj, mob_indices or [], mob_rows,
+                    tgt_obj, tgt_indices or [], tgt_rows,
+                )
+                if matched is not None:
+                    mob_coords, tgt_coords = matched
+
         count = min(mob_coords.shape[0], tgt_coords.shape[0])
         if count <= 0:
             self._emit_error("Selections did not yield matching coordinate counts")
@@ -1365,6 +1394,120 @@ class MeasurementMixin(BaseCmd):
         """Superpose ``mobile`` onto ``target`` (sequence-independent variant)."""
         self._align_or_super(mobile, target, cutoff, cycles, cmd="super")
 
+    @staticmethod
+    def _residue_labels(viewer, object_id, indices):
+        """``(numbers, chains, letters)`` for the selected residues of an object."""
+        entry = getattr(viewer, "_objects", {}).get(object_id)
+        state = getattr(entry, "state", None)
+        if state is None:
+            return None
+        rows = np.asarray(indices, dtype=int)
+
+        def take(name):
+            values = getattr(state, name, None)
+            if values is None:
+                return None
+            values = np.asarray(values)
+            if values.shape[0] <= (rows.max() if rows.size else -1):
+                return None
+            return values[rows]
+
+        return take("residue_ids"), take("residue_chain_ids"), take("residue_oneletter")
+
+    def _pair_residues(self, viewer, mob_obj, mob_indices, tgt_obj, tgt_indices):
+        """Match residues between two selections, best rule first.
+
+        Returns
+        -------
+        tuple or None
+            ``(mobile_rows, target_rows, how)`` -- positions *within each
+            selection* that correspond, and the name of the rule that paired
+            them, for the report.
+
+        Notes
+        -----
+        Three rules, in the order ChimeraX's ``match`` offers them:
+
+        1. **chain and residue number.** Two models of the same molecule share
+           numbering, and this is exact. It also spans a deletion correctly,
+           because a residue absent from one model simply has no partner.
+        2. **residue number alone**, for a single-chain comparison where the
+           chains happen to be lettered differently.
+        3. **sequence alignment** -- Needleman-Wunsch on the one-letter codes,
+           which handles an insertion, a tag, or different numbering entirely.
+           The aligner already existed in ``analysis/sequence.py`` and was
+           called by nothing.
+
+        Falling back to position is deliberately *not* one of the rules. That is
+        what produced a silent wrong answer; refusing is better.
+        """
+        mob = self._residue_labels(viewer, mob_obj, mob_indices)
+        tgt = self._residue_labels(viewer, tgt_obj, tgt_indices)
+        if mob is None or tgt is None:
+            return None
+        mob_ids, mob_chains, mob_letters = mob
+        tgt_ids, tgt_chains, tgt_letters = tgt
+
+        def match_on(mob_keys, tgt_keys, how):
+            if mob_keys is None or tgt_keys is None:
+                return None
+            lookup = {}
+            for position, key in enumerate(tgt_keys):
+                lookup.setdefault(key, position)   # first wins, as PyMOL does
+            left, right = [], []
+            for position, key in enumerate(mob_keys):
+                found = lookup.get(key)
+                if found is not None:
+                    left.append(position)
+                    right.append(found)
+            if len(left) < 3:
+                return None
+            return np.asarray(left), np.asarray(right), how
+
+        if mob_ids is not None and tgt_ids is not None:
+            if mob_chains is not None and tgt_chains is not None:
+                paired = match_on(
+                    list(zip(map(str, mob_chains), map(str, mob_ids))),
+                    list(zip(map(str, tgt_chains), map(str, tgt_ids))),
+                    "chain and residue number",
+                )
+                if paired is not None:
+                    return paired
+            paired = match_on(
+                [str(x) for x in mob_ids], [str(x) for x in tgt_ids],
+                "residue number",
+            )
+            if paired is not None:
+                return paired
+
+        if mob_letters is None or tgt_letters is None:
+            return None
+        try:
+            from ..analysis.sequence import needleman_wunsch  # noqa: PLC0415
+
+            top, bottom, _score = needleman_wunsch(
+                [str(x) for x in mob_letters],
+                [str(x) for x in tgt_letters],
+            )
+        except Exception:  # noqa: BLE001 - an aligner that cannot run
+            return None
+
+        # Walk the two gapped rows together, counting real residues on each
+        # side. A column with a residue on both sides is a pair; a column with
+        # a gap advances only the other counter, which is precisely how an
+        # insertion or a missing loop stops shifting everything after it.
+        left, right, i, j = [], [], 0, 0
+        for a, b in zip(top, bottom):
+            has_a, has_b = a != "-", b != "-"
+            if has_a and has_b:
+                left.append(i)
+                right.append(j)
+            i += int(has_a)
+            j += int(has_b)
+        if len(left) < 3:
+            return None
+        return np.asarray(left), np.asarray(right), "sequence alignment"
+
     def _align_or_super(
         self,
         mobile_expr: str,
@@ -1436,9 +1579,29 @@ class MeasurementMixin(BaseCmd):
         # translation exactly, so nothing else in the loop has to change.
         scale = float(getattr(viewer, "_scale_factor", 1.0) or 1.0)
 
-        # Subset to matching count
-        m_coords = mob_coords[:count] / scale
-        t_coords = tgt_coords[:count] / scale
+        # Pair the residues by *identity*, not by position in the selection.
+        #
+        # This used to be `mob_coords[:count]` against `tgt_coords[:count]`,
+        # with `count = min(len, len)` -- the longer selection simply truncated.
+        # The comment above it said "for now, let's assume sequence-based
+        # matching (by index in the selection)". Any two structures differing by
+        # an insertion, a deletion, a missing loop or a different first residue
+        # number were then superposed on mismatched residues, and the RMSD that
+        # came back was meaningless **without saying so**, which is the worst
+        # property a quantitative command can have.
+        pairs = self._pair_residues(
+            viewer, mob_obj, mob_indices, tgt_obj, tgt_indices
+        )
+        if pairs is None or len(pairs[0]) < 3:
+            self._emit_error(
+                f"{cmd}: could not pair three residues between '{mobile_expr}' "
+                f"and '{target_expr}' -- they may be unrelated sequences"
+            )
+            return
+        mob_rows, tgt_rows, how = pairs
+        count = len(mob_rows)
+        m_coords = mob_coords[mob_rows] / scale
+        t_coords = tgt_coords[tgt_rows] / scale
 
         # Iterative outlier rejection
         current_mask = np.ones(count, dtype=bool)
@@ -1529,6 +1692,72 @@ class MeasurementMixin(BaseCmd):
             i += 1
 
         return found_ca and not other_named
+
+    def _paired_atom_coords(
+        self, viewer, mob_obj, mob_indices, mob_rows, tgt_obj, tgt_indices, tgt_rows
+    ):
+        """Atom coordinates for paired residues, matched by atom name.
+
+        Returns
+        -------
+        tuple of numpy.ndarray, or None
+            ``(mobile, target)`` of equal length, or ``None`` when the objects
+            do not expose what is needed -- the caller then keeps its own
+            behaviour rather than failing.
+        """
+        def atoms_of(object_id):
+            entry = getattr(viewer, "_objects", {}).get(object_id)
+            state = getattr(entry, "state", None)
+            atoms = getattr(state, "atoms", None)
+            residue_ids = getattr(state, "residue_ids", None)
+            all_res = getattr(state, "all_atom_res_ids", None)
+            coords = getattr(state, "all_atom_coords", None)
+            if atoms is None or residue_ids is None or all_res is None or coords is None:
+                return None
+            if "atom_name" not in (atoms.dtype.names or ()):
+                return None
+            return (
+                np.asarray(coords, dtype=float),
+                np.asarray(all_res),
+                np.asarray(residue_ids),
+                np.asarray(atoms["atom_name"], dtype=str),
+            )
+
+        left, right = atoms_of(mob_obj), atoms_of(tgt_obj)
+        if left is None or right is None:
+            return None
+        mob_xyz, mob_res, mob_ids, mob_names = left
+        tgt_xyz, tgt_res, tgt_ids, tgt_names = right
+
+        mob_sel = np.asarray(mob_indices, dtype=int)
+        tgt_sel = np.asarray(tgt_indices, dtype=int)
+        if mob_sel.size == 0 or tgt_sel.size == 0:
+            mob_sel = np.arange(mob_ids.shape[0])
+            tgt_sel = np.arange(tgt_ids.shape[0])
+
+        picked_mob, picked_tgt = [], []
+        for m_row, t_row in zip(np.asarray(mob_rows), np.asarray(tgt_rows)):
+            try:
+                m_res = mob_ids[mob_sel[int(m_row)]]
+                t_res = tgt_ids[tgt_sel[int(t_row)]]
+            except (IndexError, ValueError):
+                continue
+            m_where = np.flatnonzero(mob_res == m_res)
+            t_where = np.flatnonzero(tgt_res == t_res)
+            if m_where.size == 0 or t_where.size == 0:
+                continue
+            lookup = {}
+            for position in t_where:
+                lookup.setdefault(str(tgt_names[position]).strip(), position)
+            for position in m_where:
+                partner = lookup.get(str(mob_names[position]).strip())
+                if partner is not None:
+                    picked_mob.append(position)
+                    picked_tgt.append(partner)
+
+        if len(picked_mob) < 1:
+            return None
+        return mob_xyz[np.asarray(picked_mob)], tgt_xyz[np.asarray(picked_tgt)]
 
     def _gather_atom_coords_for_residues(
         self,

@@ -52,6 +52,70 @@ SS_MAX_GAP = {"H": 0, "E": 1}
 SS_MIN_LENGTH = {"H": 4, "E": 2}
 
 
+#: A peptide bond is 1.33 A. Anything beyond this is a chain break -- a
+#: crystallographically disordered loop, a gap in the deposited model, or simply
+#: the end of one chain and the start of the next. Past a break the amide
+#: hydrogen cannot be modelled from the preceding carbonyl carbon, because there
+#: is no bond to model it along.
+PEPTIDE_BOND_MAX = 2.5
+
+#: Proline's nitrogen is inside the pyrrolidine ring and carries no hydrogen, so
+#: it cannot donate a backbone hydrogen bond. DSSP has excluded it since 1983.
+#: Modelling an H onto it invents helical i,i+4 bonds that are not there.
+NON_DONOR_RESIDUES = frozenset({"PRO", "HYP", "DPR"})
+
+
+class _Backbone:
+    """Backbone coordinates plus what is needed to use them correctly.
+
+    Attributes
+    ----------
+    coords : numpy.ndarray
+        ``(n, 4, 3)``, atom order ``(N, CA, C, O)``.
+    slots : numpy.ndarray
+        For each row, the residue position it came from. Rows are *dropped*
+        when a residue is missing a backbone atom, so this is what puts each
+        code back where it belongs -- concatenating and padding at the end
+        shifts every later residue by one for each dropped one.
+    donor : numpy.ndarray
+        Boolean, per row: may this residue donate an amide hydrogen bond.
+    segments : list of tuple
+        ``(start, stop)`` half-open row ranges that are covalently continuous.
+        A hydrogen-bond map is only meaningful within one of these.
+    """
+
+    __slots__ = ("coords", "slots", "donor", "segments")
+
+    def __init__(self, coords, slots, donor, segments):
+        self.coords = coords
+        self.slots = slots
+        self.donor = donor
+        self.segments = segments
+
+
+def _split_segments(coords: np.ndarray, chains: np.ndarray) -> list[tuple[int, int]]:
+    """Row ranges that are one covalently continuous stretch of backbone.
+
+    Two things break a stretch: a change of chain label, and a C(i)-N(i+1)
+    distance too long to be a peptide bond. The second matters as much as the
+    first -- a deposited structure with a disordered loop has one chain label
+    across a physical gap, and treating it as continuous manufactures hydrogen
+    bonds across the hole.
+    """
+    n = coords.shape[0]
+    if n == 0:
+        return []
+    if n == 1:
+        return [(0, 1)]
+    carbon = coords[:-1, 2]
+    nitrogen = coords[1:, 0]
+    bonded = np.linalg.norm(nitrogen - carbon, axis=-1) <= PEPTIDE_BOND_MAX
+    same_chain = chains[:-1] == chains[1:]
+    cuts = np.flatnonzero(~(bonded & same_chain)) + 1
+    bounds = [0, *cuts.tolist(), n]
+    return [(int(a), int(b)) for a, b in zip(bounds[:-1], bounds[1:]) if b > a]
+
+
 def _build_backbone_from_atoms(atoms: np.ndarray) -> Optional[np.ndarray]:
     """Return backbone coordinates array of shape (N, 4, 3) or ``None``.
 
@@ -117,6 +181,79 @@ def _build_backbone_from_atoms(atoms: np.ndarray) -> Optional[np.ndarray]:
         return None
 
     return np.stack(bb_list, axis=0)
+
+
+def _backbone_record(atoms: np.ndarray) -> Optional[_Backbone]:
+    """Backbone coordinates together with chains, donors and residue slots.
+
+    The plain coordinate array is not enough to assign secondary structure
+    correctly: run through a whole assembly as one sequence it stacks the last
+    residue of every chain against the first of the next, which is what puts a
+    helix across a chain junction where there is only a gap.
+    """
+    if not isinstance(atoms, np.ndarray):
+        return None
+    fields = set(atoms.dtype.fields or {})
+    if "atom_name" not in fields or "xyz" not in fields:
+        return None
+
+    names = atoms["atom_name"]
+    try:
+        text = np.char.strip(names.astype(str))
+    except Exception:  # noqa: BLE001
+        text = np.array([str(n).strip() for n in names])
+    xyz = np.asarray(atoms["xyz"], dtype=float)
+
+    res_ids = np.asarray(atoms["res_id"]) if "res_id" in fields else np.arange(len(atoms))
+    has_chain = "chain" in fields
+    try:
+        chains = np.asarray(atoms["chain"]).astype(str) if has_chain else None
+    except Exception:  # noqa: BLE001
+        chains, has_chain = None, False
+    if chains is None:
+        chains = np.zeros(len(atoms), dtype="U1")
+
+    res_names = None
+    for field in ("res_name", "resn", "residue_name"):
+        if field in fields:
+            try:
+                res_names = np.asarray(atoms[field]).astype(str)
+            except Exception:  # noqa: BLE001
+                res_names = None
+            break
+
+    ca_rows = np.nonzero(text == "CA")[0]
+    if ca_rows.size == 0:
+        return None
+
+    coords, slots, donor, chain_of = [], [], [], []
+    for slot, row in enumerate(ca_rows):
+        same = res_ids == res_ids[row]
+        if has_chain:
+            same &= chains == chains[row]
+        n_idx = np.nonzero(same & (text == "N"))[0]
+        c_idx = np.nonzero(same & (text == "C"))[0]
+        o_idx = np.nonzero(same & (text == "O"))[0]
+        if n_idx.size == 0 or c_idx.size == 0 or o_idx.size == 0:
+            continue
+        coords.append(
+            np.stack([xyz[n_idx[0]], xyz[row], xyz[c_idx[0]], xyz[o_idx[0]]], axis=0)
+        )
+        slots.append(slot)
+        chain_of.append(chains[row])
+        name = "" if res_names is None else res_names[row].strip().upper()
+        donor.append(name not in NON_DONOR_RESIDUES)
+
+    if not coords:
+        return None
+    stacked = np.stack(coords, axis=0).astype(float)
+    chain_arr = np.asarray(chain_of)
+    return _Backbone(
+        stacked,
+        np.asarray(slots, dtype=int),
+        np.asarray(donor, dtype=bool),
+        _split_segments(stacked, chain_arr),
+    )
 
 
 def _pydssp_check_input(coord: np.ndarray) -> tuple[np.ndarray, tuple[int, ...]]:
@@ -260,33 +397,19 @@ def _pydssp_unfold(a: np.ndarray, window: int, axis: int) -> np.ndarray:
     return np.moveaxis(unfolded, axis - 1, -1)
 
 
-def _pydssp_assign_onehot(
-    coord: np.ndarray,
-    donor_mask: Optional[np.ndarray] = None,
-) -> np.ndarray:
-    """Return one-hot C3 labels (loop, helix, strand) as in PyDSSP.
+def _helix_from_hbmap(hbmap: np.ndarray) -> np.ndarray:
+    """DSSP's n-turn helix patterns, from a hydrogen-bond map.
 
-    Parameters
-    ----------
-    coord:
-        Backbone coordinates ``(L, 4, 3)`` or ``(B, L, 4, 3)``.
-    donor_mask:
-        Optional donor mask of length L.
+    Split out of :func:`_pydssp_assign_onehot` because helices and sheets need
+    different scopes: an n-turn is defined by a *sequence offset* -- i to i+4 --
+    and so is only meaningful within one covalently continuous chain, while a
+    beta bridge is a purely spatial pairing and is routinely formed between two
+    different chains.
     """
-
-    coord_b, org_shape = _pydssp_check_input(coord)
-
-    # Hydrogen-bond map: shape (B, L, L)
-    hbmap = _pydssp_get_hbond_map(coord_b, donor_mask=donor_mask)
-    # Convert into "i:C=O, j:N-H" form
-    hbmap = hbmap.transpose(0, 2, 1)
-
-    # Identify turn 3, 4, 5
     turn3 = np.diagonal(hbmap, axis1=-2, axis2=-1, offset=3) > 0.0
     turn4 = np.diagonal(hbmap, axis1=-2, axis2=-1, offset=4) > 0.0
     turn5 = np.diagonal(hbmap, axis1=-2, axis2=-1, offset=5) > 0.0
 
-    # Assignment of helical SS
     h3 = np.pad(turn3[:, :-1] * turn3[:, 1:], ((0, 0), (1, 3)))
     h4 = np.pad(turn4[:, :-1] * turn4[:, 1:], ((0, 0), (1, 4)))
     h5 = np.pad(turn5[:, :-1] * turn5[:, 1:], ((0, 0), (1, 5)))
@@ -302,9 +425,30 @@ def _pydssp_assign_onehot(
         + np.roll(h5, 3, 1)
         + np.roll(h5, 4, 1)
     )
+    return (helix3 + helix4 + helix5) > 0
 
-    # Identify bridges and ladders
+
+def _strand_from_hbmap(
+    hbmap: np.ndarray, triple_ok: Optional[np.ndarray] = None
+) -> np.ndarray:
+    """DSSP's bridge and ladder patterns, from a hydrogen-bond map.
+
+    Parameters
+    ----------
+    hbmap : numpy.ndarray
+        ``(B, L, L)`` in ``i:C=O, j:N-H`` form.
+    triple_ok : numpy.ndarray, optional
+        Length ``L - 2``, true where residues ``t, t+1, t+2`` are covalently
+        consecutive. A bridge is stated over such a triple on each side, so a
+        window straddling a chain break describes a ladder between residues
+        that are not neighbours. Left ``None``, every window is accepted --
+        which is what to pass for a single continuous chain.
+    """
     unfoldmap = _pydssp_unfold(_pydssp_unfold(hbmap, 3, -2), 3, -2) > 0.0
+    if triple_ok is not None:
+        valid = np.asarray(triple_ok, dtype=bool)
+        unfoldmap = unfoldmap & valid[None, :, None, None, None]
+        unfoldmap = unfoldmap & valid[None, None, :, None, None]
     unfoldmap_rev = np.swapaxes(unfoldmap, 1, 2)
 
     p_bridge = (
@@ -319,11 +463,32 @@ def _pydssp_assign_onehot(
     )
     a_bridge = np.pad(a_bridge, ((0, 0), (1, 1), (1, 1)))
 
-    ladder = (p_bridge + a_bridge).sum(-1) > 0
+    return (p_bridge + a_bridge).sum(-1) > 0
 
-    # Final C3 one-hot labels
-    helix = (helix3 + helix4 + helix5) > 0
-    strand = ladder
+
+def _pydssp_assign_onehot(
+    coord: np.ndarray,
+    donor_mask: Optional[np.ndarray] = None,
+) -> np.ndarray:
+    """Return one-hot C3 labels (loop, helix, strand) as in PyDSSP.
+
+    Treats *coord* as one continuous chain. :func:`assign_ss_c3_from_atoms` does
+    not use this on an assembly -- see there for why.
+
+    Parameters
+    ----------
+    coord:
+        Backbone coordinates ``(L, 4, 3)`` or ``(B, L, 4, 3)``.
+    donor_mask:
+        Optional donor mask of length L.
+    """
+
+    coord_b, org_shape = _pydssp_check_input(coord)
+    hbmap = _pydssp_get_hbond_map(coord_b, donor_mask=donor_mask)
+    hbmap = hbmap.transpose(0, 2, 1)  # -> i:C=O, j:N-H
+
+    helix = _helix_from_hbmap(hbmap)
+    strand = _strand_from_hbmap(hbmap)
     loop = (~helix) & (~strand)
 
     onehot = np.stack([loop, helix, strand], axis=-1)
@@ -511,6 +676,67 @@ def tidy_ss_runs(
     return out
 
 
+def _assign_over_segments(record: "_Backbone") -> np.ndarray:
+    """H/E/C codes for a backbone that may be several chains.
+
+    The two halves of DSSP get different scopes, and the difference is the
+    whole point of this function.
+
+    **Helices** are n-turn patterns: residue *i* bonded to *i+4*. That offset is
+    a statement about sequence, so it is computed one covalently continuous
+    segment at a time. Run across a whole assembly the array index stops
+    tracking chain position, and the last residues of one chain get read as
+    turning into the first residues of the next.
+
+    **Sheets** are not. A beta bridge is a spatial pairing of two backbone
+    stretches, and inter-chain sheets are ordinary -- a domain-swapped dimer, a
+    barrel built from several chains. So the bridge search runs over the *whole*
+    hydrogen-bond map, with only the windows that straddle a break masked out.
+    Restricting it per segment instead costs real structure: on 1DG3 it dropped
+    40 of 68 strand residues.
+    """
+    coords, donor, segments = record.coords, record.donor, record.segments
+    n = coords.shape[0]
+    if n == 0:
+        return np.zeros(0, dtype="U1")
+
+    # A residue at the start of a segment has no preceding carbonyl carbon to
+    # model its amide hydrogen from, so the H that would be placed there is an
+    # invention. It cannot donate, exactly as proline cannot.
+    can_donate = donor.copy()
+    for start, _stop in segments:
+        can_donate[start] = False
+
+    hbmap = _pydssp_get_hbond_map(
+        coords[None, ...], donor_mask=can_donate.astype(float)
+    ).transpose(0, 2, 1)
+
+    helix = np.zeros(n, dtype=bool)
+    for start, stop in segments:
+        if stop - start < 5:  # shorter than one i,i+4 turn plus its successor
+            continue
+        block = hbmap[:, start:stop, start:stop]
+        helix[start:stop] = _helix_from_hbmap(block)[0]
+
+    link = np.zeros(max(n - 1, 0), dtype=bool)
+    for start, stop in segments:
+        if stop - start > 1:
+            link[start:stop - 1] = True
+    triple_ok = (link[:-1] & link[1:]) if n >= 3 else np.zeros(max(n - 2, 0), dtype=bool)
+    strand = _strand_from_hbmap(hbmap, triple_ok=triple_ok)[0]
+
+    codes = np.full(n, "C", dtype="U1")
+    codes[helix] = "H"
+    codes[strand & ~helix] = "E"
+
+    # Tidy per segment: closing a one-residue gap must not reach across a break.
+    for start, stop in segments:
+        codes[start:stop] = np.asarray(
+            tidy_ss_runs(codes[start:stop].tolist()), dtype="U1"
+        )
+    return codes
+
+
 def assign_ss_c3_from_atoms(
     atoms: np.ndarray,
     n_res: int,
@@ -525,42 +751,27 @@ def assign_ss_c3_from_atoms(
     if n_res <= 0:
         return None
 
-    bb = _build_backbone_from_atoms(atoms)
-    if bb is None or bb.shape[0] == 0:
+    record = _backbone_record(atoms)
+    if record is None or record.coords.shape[0] == 0:
         if verbose:
             print("Chimol SS: no valid backbone could be built from atoms")
         return None
 
-    # Use full PyDSSP-style assignment on backbone coordinates to obtain
-    # one-hot (loop, helix, strand) labels.
     try:
-        onehot = _pydssp_assign_onehot(bb)
-    except Exception as e:
+        ss_arr = _assign_over_segments(record)
+    except Exception as e:  # noqa: BLE001
         if verbose:
-            print(f"Chimol SS: PyDSSP onehot assignment failed: {e!r}")
+            print(f"Chimol SS: DSSP assignment failed: {e!r}")
         return None
+    n_bb = ss_arr.shape[0]
 
-    if onehot is None or onehot.size == 0 or onehot.ndim != 2 or onehot.shape[1] != 3:
-        if verbose:
-            shape = None if onehot is None else onehot.shape
-            print(f"Chimol SS: invalid onehot output shape={shape}")
-        return None
-
-    helix = np.asarray(onehot[:, 1], dtype=bool)
-    strand = np.asarray(onehot[:, 2], dtype=bool)
-
-    n_bb = onehot.shape[0]
-    ss_arr = np.full(n_bb, "C", dtype="U1")
-    ss_arr[helix] = "H"
-    ss_arr[strand & ~helix] = "E"
-
-    ss_codes = tidy_ss_runs(ss_arr.tolist())
-
-    # Align with n_res
-    if len(ss_codes) < n_res:
-        ss_codes.extend(["C"] * (n_res - len(ss_codes)))
-    elif len(ss_codes) > n_res:
-        ss_codes = ss_codes[:n_res]
+    # Scatter back onto residue positions. Residues whose backbone was
+    # incomplete were dropped, and a dropped residue in the middle would
+    # otherwise shift every code after it by one.
+    ss_codes = ["C"] * n_res
+    for row, slot in enumerate(record.slots):
+        if 0 <= slot < n_res:
+            ss_codes[int(slot)] = str(ss_arr[row])
 
     if verbose:
         n_total = len(ss_codes)

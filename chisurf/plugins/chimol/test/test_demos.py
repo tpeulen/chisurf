@@ -173,6 +173,29 @@ def test_each_demo_starts_from_a_clean_viewer(window):
         assert len(win.viewer.list_objects()) == 1, key
 
 
+def _menubar_of(win):
+    """The viewport menu bar's ``(title, entries)`` pairs."""
+    renderer = getattr(win.viewer, "_renderer", None) or win.viewer
+    gui = getattr(renderer, "_internal_gui", None)
+    return list(getattr(gui, "menubar", []) or [])
+
+
+def _demo_menu_of(win):
+    """The Demo menu as the *viewer* holds it, or ``None``.
+
+    Read from the internal GUI rather than from ``win.menuBar()``: the Qt bar
+    was retired -- on macOS Qt moves it to the system bar at the top of the
+    screen, nowhere near the 3-D view, and a browser host has no Qt at all --
+    and the menus are now drawn in the viewport from the same ``MENU_BAR``
+    table. The property being tested is unchanged: a menu that was built but
+    never handed to the bar is a menu the user cannot open.
+    """
+    for title, entries in _menubar_of(win):
+        if "Demo" in str(title):
+            return entries
+    return None
+
+
 def test_the_demo_menu_is_on_the_menu_bar(window):
     """On the *bar*, not merely constructed.
 
@@ -180,20 +203,19 @@ def test_the_demo_menu_is_on_the_menu_bar(window):
     ``bar.clear()`` -- so the menu was created and then silently wiped, and it
     was missing in the running application. A test that inspected the child
     widgets still found it, because the cleared menu object survives as a child
-    of the bar without being on it. Reading the bar's *actions* is what
-    distinguishes the two.
+    of the bar without being on it. Reading what the bar was actually *given*
+    is what distinguishes the two.
     """
     win, _shared, _errors, _qapp = window
-    titles = [action.text() for action in win.menuBar().actions()]
-    assert any("Demo" in title for title in titles), titles
+    titles = [str(title) for title, _entries in _menubar_of(win)]
+    assert _demo_menu_of(win) is not None, titles
 
 
 def test_every_demo_has_a_menu_entry(window):
     win, _shared, _errors, _qapp = window
-    demo_action = next(
-        action for action in win.menuBar().actions() if "Demo" in action.text()
-    )
-    labels = [a.text() for a in demo_action.menu().actions() if a.text()]
+    entries = _demo_menu_of(win)
+    assert entries is not None, "no Demo menu on the viewport menu bar"
+    labels = [str(getattr(e, "label", "")) for e in entries if getattr(e, "label", "")]
     for _key, title, _description in DEMOS:
         assert title in labels, f"{title} is not in the Demo menu"
     assert any("Edit" in label for label in labels)

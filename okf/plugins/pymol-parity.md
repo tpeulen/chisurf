@@ -72,6 +72,46 @@ script; the trap in measuring is that the *second* ask is served from the
 memo, so time a **fresh** grid for the cold number. Left open, in order of
 what it blocks:
 
+* **secondary structure knew nothing about chains (2026-08-12, ChimeraX
+  round):** `analysis/ss.py` built one flat `(n, 4, 3)` backbone from *every*
+  residue in the structure and ran DSSP down it as one polypeptide. Three
+  silent consequences: the last residues of one chain were read as turning
+  into the first of the next (helix patterns are sequence *offsets* — an i+4
+  can be in another molecule); **proline donated** hydrogen bonds, though its
+  nitrogen is in the ring and carries no H, which is exactly the bond that
+  makes a helix; and a residue missing a backbone atom was dropped from the
+  *middle* while the codes were padded at the *end*, shifting every later
+  residue by one. Now `_backbone_record` carries slots, a donor mask and
+  covalently continuous segments (chain label **and** a C–N bond under
+  `PEPTIDE_BOND_MAX = 2.5 Å`, so a disordered loop breaks a segment too).
+  **The trap that cost a rewrite:** the obvious fix — run DSSP per chain —
+  is wrong. A β bridge is a *spatial* pairing and inter-chain sheets are
+  ordinary; segmenting the hydrogen-bond map dropped **40 of 1DG3's 68**
+  strand residues with nothing in the output to say so. The split that is
+  correct is **helices per segment, bridges across the whole map**, masking
+  only the three-residue windows that straddle a break
+  (`_helix_from_hbmap` / `_strand_from_hbmap`). Re-derive with
+  `_backbone_record(...).segments` and by comparing a chain's codes alone
+  against the same chain with another laid after it — and note that laying a
+  helix against *a copy of itself* does not discriminate (the fused thing is
+  still a helix); 148L 93–106 followed by 38–50 does. Pinned by
+  `chimol/test/test_ss_chains.py`, three of whose tests fail on the old code;
+* **`align`/`super`/`rms` paired residues by position (2026-08-12, ChimeraX
+  round):** `_align_or_super` truncated both selections to `min(len, len)`
+  and paired them by index — its own comment admitted it. Any insertion,
+  deletion, missing loop or different first residue number superposed
+  **mismatched residues** and returned a confident meaningless RMSD. A
+  131-residue fragment cut from 148L itself scored **15.964 Å** against its
+  own parent, where the answer is zero. Now `_pair_residues` tries chain +
+  residue number, then residue number, then Needleman–Wunsch on the
+  one-letter sequences (the aligner in `analysis/sequence.py` already
+  existed and *nothing called it*); falling back to position is deliberately
+  **not** a rule, because refusing to pair beats a wrong number. `rms` held a
+  **second copy** of the same bug, found only by the test — and its default
+  is all-atom, so it additionally pairs atoms **by name within each paired
+  residue** (`_paired_atom_coords`): two structures need not carry the same
+  atoms per residue, and lining up two flat atom lists is the same mistake
+  one level down. All four commands now report 0.000 on that fragment;
 * **sticky windows + chrome file dialogs (2026-08-12, fourth user round):**
   windows stick to *each other* — a title-drag within 8 px snaps flush and
   aligns the near-perpendicular edge; the stuck group is geometric
