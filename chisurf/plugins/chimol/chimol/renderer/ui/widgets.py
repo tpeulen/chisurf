@@ -6,7 +6,8 @@ operations so controls run natively on desktop quads, Qt, and in the browser.
 Includes:
 - SliderFloat
 - ColorEdit4
-- Table
+- Table (scrolling)
+- ScrollBar
 - Checkbox
 - Combo
 - Button
@@ -46,6 +47,7 @@ from .painter import (
 
 __all__ = [
     "fit_text",
+    "ScrollBar",
     "SliderFloat",
     "ColorEdit4",
     "Table",
@@ -270,8 +272,95 @@ class ColorEdit4:
         return box_x <= x <= box_x + box_w and box_y <= y <= box_y + box_h
 
 
+class ScrollBar:
+    """A vertical scrollbar: geometry, drawing and the drag, in one place.
+
+    Every scrolling panel here had its own copy of "how tall is the thumb,
+    where does a click put the window, is the drag still held" -- three copies
+    that disagreed about the last row. This is the one copy.
+
+    Parameters
+    ----------
+    width : float, optional
+        How wide the bar draws.
+    """
+
+    def __init__(self, width: float = 7.0) -> None:
+        self.width = float(width)
+        self.top = 0
+        self.held = False
+        self._box: Optional[tuple[float, float, float, float]] = None
+        self._total = 0
+        self._visible = 1
+
+    # ------------------------------------------------------------------ #
+    def clamp(self, total: int, visible: int) -> int:
+        """Keep the window inside a list of ``total`` rows showing ``visible``."""
+        self._total, self._visible = int(total), max(int(visible), 1)
+        self.top = max(0, min(self.top, max(self._total - self._visible, 0)))
+        return self.top
+
+    def scroll(self, rows: int) -> int:
+        """Move the window by ``rows``."""
+        self.top += int(rows)
+        return self.clamp(self._total, self._visible)
+
+    def needed(self) -> bool:
+        """Whether there is anything to scroll."""
+        return self._total > self._visible
+
+    def draw(self, p: Painter, x: float, y: float, h: float) -> None:
+        """Paint the bar down the right-hand edge of a list."""
+        self._box = (x, y, self.width, h)
+        p.fill_rect(x, y, self.width, h, _ROW_ODD)
+        if not self.needed():
+            return
+        span = max(h * self._visible / max(self._total, 1), 10.0)
+        travel = max(h - span, 0.0)
+        at = y + travel * (self.top / max(self._total - self._visible, 1))
+        p.fill_rect(x + 1.0, at, max(self.width - 2.0, 1.0), span,
+                    _THUMB_HELD if self.held else _DIM)
+
+    # ------------------------------------------------------------------ #
+    def hit(self, x: float, y: float) -> bool:
+        """Whether a press landed on the bar, as last drawn."""
+        if self._box is None:
+            return False
+        box_x, box_y, box_w, box_h = self._box
+        return box_x <= x <= box_x + box_w and box_y <= y <= box_y + box_h
+
+    def press(self, x: float, y: float) -> bool:
+        """Grab the bar. Returns whether it was hit."""
+        if not self.hit(x, y):
+            return False
+        self.held = True
+        self.drag_to(y)
+        return True
+
+    def drag_to(self, y: float) -> int:
+        """Put the window where the bar was dragged."""
+        if self._box is None:
+            return self.top
+        _, box_y, _, box_h = self._box
+        fraction = (y - box_y) / max(box_h, 1e-6)
+        self.top = int(round(min(max(fraction, 0.0), 1.0)
+                             * max(self._total - self._visible, 0)))
+        return self.clamp(self._total, self._visible)
+
+    def drag(self, y: float) -> bool:
+        """Continue a drag. Returns whether anything moved."""
+        if not self.held:
+            return False
+        self.drag_to(y)
+        return True
+
+    def release(self) -> None:
+        """Let go."""
+        self.held = False
+
+
 class Table:
-    """An ImGui-style multi-column data table.
+    """An ImGui-style multi-column data table, scrolled when it does not fit.
 
     Parameters
     ----------
@@ -287,6 +376,18 @@ class Table:
         Active sort column index.
     sort_ascending : bool, optional
         Sort direction.
+    row_scale : float, optional
+        Row height as a multiple of the line height. The default is tight on
+        purpose: a table is read as a block, and the space between rows is
+        space the rows themselves do not get.
+
+    Notes
+    -----
+    Rows past the bottom are **scrolled**, not dropped. They used to be simply
+    not drawn -- and the hit test then read them at a *fixed* 18-pixel pitch
+    that had nothing to do with the pitch they were drawn at, so clicking a row
+    selected a different one as soon as the font was not exactly 13 px tall.
+    Both now come from the geometry the last draw actually used.
     """
 
     def __init__(
@@ -297,6 +398,7 @@ class Table:
         selected_row: Optional[int] = None,
         sort_col: Optional[int] = None,
         sort_ascending: bool = True,
+        row_scale: float = 1.15,
     ) -> None:
         self.headers = list(headers)
         self.rows = [list(r) for r in rows]
@@ -304,6 +406,19 @@ class Table:
         self.selected_row = selected_row
         self.sort_col = sort_col
         self.sort_ascending = sort_ascending
+        self.row_scale = float(row_scale)
+        self.bar = ScrollBar()
+        #: Set by :meth:`draw`: ``(x, y, w, row_h, header_h, visible)``.
+        self._geometry: Optional[tuple[float, float, float, float, float, int]] = None
+
+    @property
+    def top(self) -> int:
+        """First visible row."""
+        return self.bar.top
+
+    def scroll(self, rows: int) -> int:
+        """Scroll by whole rows."""
+        return self.bar.scroll(rows)
 
     def sort(self, col_index: int) -> None:
         """Sort rows by the given column."""
@@ -325,68 +440,101 @@ class Table:
         self.rows.sort(key=key_fn, reverse=not self.sort_ascending)
 
     def draw(self, p: Painter, x: float, y: float, w: float, h: float) -> None:
-        """Paint the header row, data rows, grid lines and text."""
+        """Paint the header row, the visible data rows and the scrollbar."""
         num_cols = max(len(self.headers), 1)
+        row_h = p.line_height() * self.row_scale
+        header_h = row_h * 1.1
+        body_h = max(h - header_h, row_h)
+        visible = max(int(body_h / max(row_h, 1e-6)), 1)
+        self.bar.clamp(len(self.rows), visible)
+        list_w = w - (self.bar.width if self.bar.needed() else 0.0)
+
         if self.col_widths and len(self.col_widths) == num_cols:
             total_w = sum(self.col_widths) or 1.0
-            widths = [w * (cw / total_w) for cw in self.col_widths]
+            widths = [list_w * (cw / total_w) for cw in self.col_widths]
         else:
-            widths = [w / num_cols] * num_cols
+            widths = [list_w / num_cols] * num_cols
+        self._geometry = (x, y, list_w, row_h, header_h, visible)
 
-        row_h = p.line_height() * 1.35
-        header_h = row_h * 1.15
-
-        # Clip table viewport
         p.push_clip(x, y, w, h)
 
-        # Header bar background
-        p.stroke_rect(x, y, w, header_h, _BORDER, _HEADER_BG)
+        p.stroke_rect(x, y, list_w, header_h, _BORDER, _HEADER_BG)
         col_x = x
         for idx, head in enumerate(self.headers):
             cw = widths[idx]
             sort_mark = " ▲" if (self.sort_col == idx and self.sort_ascending) else (" ▼" if self.sort_col == idx else "")
-            display = f"{head}{sort_mark}"
-            p.text(col_x + 4.0, y, max(cw - 8.0, 1.0), header_h, ALIGN_VCENTER | ALIGN_LEFT, display, _GOLD, bold=True)
+            p.text(col_x + 3.0, y, max(cw - 6.0, 1.0), header_h,
+                   ALIGN_VCENTER | ALIGN_LEFT,
+                   fit_text(p, f"{head}{sort_mark}", cw - 6.0), _GOLD, bold=True)
             p.stroke_rect(col_x, y, cw, header_h, _BORDER, None)
             col_x += cw
 
-        # Rows
         row_y = y + header_h
-        for r_idx, row_data in enumerate(self.rows):
-            if row_y >= y + h:
+        for offset in range(visible):
+            r_idx = self.bar.top + offset
+            if r_idx >= len(self.rows):
                 break
+            row_data = self.rows[r_idx]
             bg_color = _ROW_SEL if (self.selected_row == r_idx) else (_ROW_EVEN if (r_idx % 2 == 0) else _ROW_ODD)
-            p.stroke_rect(x, row_y, w, row_h, _BORDER, bg_color)
+            p.stroke_rect(x, row_y, list_w, row_h, _BORDER, bg_color)
             col_x = x
             for c_idx in range(num_cols):
                 cw = widths[c_idx]
-                cell_text = row_data[c_idx] if c_idx < len(row_data) else ""
-                p.text(col_x + 4.0, row_y, max(cw - 8.0, 1.0), row_h, ALIGN_VCENTER | ALIGN_LEFT, cell_text, _TEXT)
+                cell_text = str(row_data[c_idx]) if c_idx < len(row_data) else ""
+                p.text(col_x + 3.0, row_y, max(cw - 6.0, 1.0), row_h,
+                       ALIGN_VCENTER | ALIGN_LEFT,
+                       fit_text(p, cell_text, cw - 6.0), _TEXT)
                 col_x += cw
             row_y += row_h
 
         p.pop_clip()
+        if self.bar.needed():
+            self.bar.draw(p, x + list_w, y + header_h, h - header_h)
 
     def press(self, x: float, y: float, box_x: float, box_y: float, box_w: float, box_h: float) -> Optional[tuple[str, int]]:
-        """Process mouse press. Returns ('header', col_idx) or ('row', row_idx)."""
+        """Process mouse press.
+
+        Returns
+        -------
+        tuple or None
+            ``("header", col)``, ``("row", row)`` -- the row's index in the
+            whole table, not in the visible window -- ``("scroll", top)``, or
+            ``None``.
+        """
         if not (box_x <= x <= box_x + box_w and box_y <= y <= box_y + box_h):
             return None
-        row_h = 18.0
-        header_h = 22.0
-        if y <= box_y + header_h:
+        if self.bar.press(x, y):
+            return ("scroll", self.bar.top)
+        if self._geometry is None:
+            return None
+        geo_x, geo_y, list_w, row_h, header_h, _visible = self._geometry
+        if y <= geo_y + header_h:
             num_cols = max(len(self.headers), 1)
-            cw = box_w / num_cols
-            col_idx = int((x - box_x) / cw)
-            col_idx = max(0, min(col_idx, num_cols - 1))
+            widths = ([list_w * (cw / (sum(self.col_widths) or 1.0)) for cw in self.col_widths]
+                      if self.col_widths and len(self.col_widths) == num_cols
+                      else [list_w / num_cols] * num_cols)
+            edge, col_idx = geo_x, 0
+            for idx, cw in enumerate(widths):
+                if x < edge + cw:
+                    col_idx = idx
+                    break
+                edge += cw
+                col_idx = idx
             self.sort(col_idx)
             return ("header", col_idx)
-        else:
-            rel_y = y - (box_y + header_h)
-            row_idx = int(rel_y / row_h)
-            if 0 <= row_idx < len(self.rows):
-                self.selected_row = row_idx
-                return ("row", row_idx)
+        row_idx = self.bar.top + int((y - (geo_y + header_h)) / max(row_h, 1e-6))
+        if 0 <= row_idx < len(self.rows):
+            self.selected_row = row_idx
+            return ("row", row_idx)
         return None
+
+    def drag(self, y: float) -> bool:
+        """Continue a scrollbar drag."""
+        return self.bar.drag(y)
+
+    def release(self) -> None:
+        """End a scrollbar drag."""
+        self.bar.release()
 
 
 class Checkbox:

@@ -37,17 +37,19 @@ class QtPainter:
     ----------
     painter : QtGui.QPainter
         An open painter. Not closed here -- whoever opened it owns it.
-    font_pt : int, optional
-        Point size for the monospaced chrome font.
+    font_pt : float, optional
+        Point size for the monospaced chrome font. Fractional, because the
+        chrome scale is fractional and rounding it here would draw text of a
+        size the layout did not budget for.
     """
 
-    def __init__(self, painter, font_pt: int = DEFAULT_FONT_PT) -> None:
+    def __init__(self, painter, font_pt: float = DEFAULT_FONT_PT) -> None:
         from qtpy import QtGui
 
         self._p = painter
         font = QtGui.QFont("Menlo")
         font.setStyleHint(QtGui.QFont.Monospace)
-        font.setPointSize(int(font_pt))
+        font.setPointSizeF(float(font_pt))
         painter.setFont(font)
         self._metrics = QtGui.QFontMetrics(font)
         self._clips: list = []

@@ -21,6 +21,7 @@ from __future__ import annotations
 
 from typing import Any, Callable, Iterator, Optional
 
+from .. import config
 from .. import settings as settings_api
 from ..config import _DISPLAY_CONFIG
 from .internal_gui import GuiWindow
@@ -37,7 +38,13 @@ from .ui.settings_editor import (
     SettingsModel,
 )
 
-__all__ = ["RANGES", "CHOICES", "build_model", "SettingsWindow"]
+__all__ = ["RANGES", "CHOICES", "PROMPT_KEY", "build_model", "SettingsWindow"]
+
+#: The one row that is a *preference* rather than a display setting: whether
+#: start-up compares this version's defaults with yours. It lives in the user's
+#: configuration file under a leading underscore, which is how the walk knows
+#: to skip it, so it is added by hand.
+PROMPT_KEY = "ask_about_package_defaults"
 
 #: Slider tracks by key suffix, longest match first. A guessed range (zero to
 #: twice the current value) is honest but useless for dragging -- the thumb
@@ -61,6 +68,7 @@ RANGES: dict[str, tuple[float, float]] = {
     "quality": (0.0, 4.0),
     "samples": (1.0, 64.0),
     "iso_value": (0.0, 1.0),
+    "ui_scale": (0.5, 2.0),
     "sigma_factor": (0.5, 8.0),
     "spacing": (0.05, 5.0),
     "distance": (0.0, 50.0),
@@ -173,11 +181,27 @@ def build_model(on_change: Optional[Callable[[str, Any], None]] = None) -> Setti
             source=dotted,
         ))
 
+    # Preferences that are not display config but are edited in the same
+    # place. The start-up prompt used to be a tick box in the JSON dialog, and
+    # the dialog is gone; a preference with no way to turn it back on is a
+    # preference that only turns off.
+    rows.append(Setting(
+        key=PROMPT_KEY, kind=BOOL, label="ask about package defaults",
+        default=True, group="general", source="_ask_about_package_defaults",
+        description="Ask at start-up when this version ships display defaults "
+                    "different from yours.",
+    ))
+
     def read(key: str) -> Any:
+        if key == PROMPT_KEY:
+            return config.get_update_prompt_enabled()
         return settings_api.get_setting(key)
 
     def write(key: str, value: Any) -> None:
-        settings_api.set_setting(key, value)
+        if key == PROMPT_KEY:
+            config.set_update_prompt_enabled(bool(value))
+        else:
+            settings_api.set_setting(key, value)
         if on_change is not None:
             on_change(key, value)
 

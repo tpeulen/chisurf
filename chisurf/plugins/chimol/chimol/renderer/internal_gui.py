@@ -36,6 +36,11 @@ from ..host.events import CONTROL_MODIFIER, SHIFT_MODIFIER
 
 _CHAR_WIDTH: float | None = None
 
+#: The point size the glyph atlas was baked at, and therefore the size at which
+#: :func:`char_width` returns the atlas' own advance. Everything else is a
+#: multiple of it.
+BASE_FONT_PT: float = 8.0
+
 
 def char_width(font_pt: int) -> float:
     """Advance width of one character of the chrome font, in pixels.
@@ -61,14 +66,18 @@ def char_width(font_pt: int) -> float:
     overlapping. The truncated mouse-mode block (``Mouse Mode 3-Button
     Viewin…``) and the cramped sequence strip are the same constant.
 
-    Cached: it is read on every layout pass and the atlas is immutable.
+    The baked advance is what the font *is*; ``font_pt`` scales it, so the one
+    knob that makes the chrome smaller (``InternalGui.FONT_PT``) reaches all
+    fourteen call sites without any of them knowing about it.
+
+    Cached: the atlas is read on every layout pass and is immutable.
     """
     global _CHAR_WIDTH
     if _CHAR_WIDTH is None:
         from .ui.font import load_atlas
 
         _CHAR_WIDTH = load_atlas().advance()
-    return _CHAR_WIDTH
+    return _CHAR_WIDTH * (float(font_pt) / BASE_FONT_PT)
 
 # PyMOL's palette, read off its internal GUI.
 PANEL_BG = (0, 0, 0, 190)
@@ -312,6 +321,12 @@ class _OpenMenu:
     #: window height happens to put it and takes the grouping with it.
     scroll: float = 0.0
     max_scroll: float = 0.0
+    #: Height of one screenful of entries, set by the layout. A menu too tall
+    #: for the window is read a **page** at a time -- the arrows in its title
+    #: row turn the page -- because a wheel is not available to every hand and
+    #: a menu whose remainder can only be reached by scrolling is a menu whose
+    #: remainder most people never see.
+    page_px: float = 0.0
 
 
 class InternalGui:
@@ -361,8 +376,66 @@ class InternalGui:
     MIN_BUTTON_W = 14.0
     MAX_COLUMN_FRACTION = 0.6
 
+    #: Every length the chrome is laid out with, at scale 1.0. `set_ui_scale`
+    #: multiplies each of them onto the instance, so the whole panel -- text,
+    #: rows, menus, title bars -- changes size together. Scaling the font alone
+    #: leaves 17-pixel rows around 11-pixel text, which is not smaller chrome,
+    #: only emptier chrome.
+    SCALED_LENGTHS = (
+        "ROW_H", "BUTTON_W", "PAD", "MARGIN", "FONT_PT", "MENU_ITEM_H",
+        "MENU_PAD", "SEPARATOR_H", "CHILD_GAP", "MENU_SCROLL_PX", "SEQ_ROW_H",
+        "SEQ_BAR_H", "MOUSE_LINE_H", "MENUBAR_H", "TOOLBAR_H",
+        "WINDOW_TITLE_H", "WINDOW_MIN_W", "WINDOW_MIN_H", "WINDOW_GRIP",
+    )
+
+    #: How big the chrome is drawn, as a multiple of the sizes above. Smaller
+    #: than one by default: the chrome is read at a glance and then looked
+    #: past, and every pixel it takes is a pixel of the molecule it covers.
+    DEFAULT_UI_SCALE = 0.85
+
+    def set_ui_scale(self, scale: float) -> float:
+        """Scale the whole chrome -- text and the boxes around it.
+
+        Parameters
+        ----------
+        scale : float
+            Multiplier on the class' own lengths. Clamped to a range that
+            stays legible at one end and leaves room for the scene at the
+            other.
+
+        Returns
+        -------
+        float
+            The scale actually applied.
+        """
+        scale = min(max(float(scale), 0.5), 2.0)
+        if scale == getattr(self, "ui_scale", None):
+            return scale
+        self.ui_scale = scale
+        cls = type(self)
+        for name in self.SCALED_LENGTHS:
+            base = getattr(cls, name, None)
+            if base is None:
+                continue
+            # `MENU_SCROLL_PX` is a float and `ROW_H` an int; keeping each
+            # one's own type matters, because a fractional row height puts
+            # every row below the first on a half pixel. `FONT_PT` is the
+            # exception and stays fractional: it is what `char_width` divides
+            # by, so rounding it there would budget boxes for text of a size
+            # nothing draws.
+            value = base * scale
+            keep_int = isinstance(base, int) and name != "FONT_PT"
+            setattr(self, name, int(round(value)) if keep_int else float(value))
+        self._menus = []
+        return scale
+
     def __init__(self, run_command: Callable[[str], None] | None = None) -> None:
         self.visible = True
+        #: Set before anything is laid out, so a panel that is never told a
+        #: scale is still smaller than the baked one rather than being the one
+        #: place the default does not apply.
+        self.ui_scale = 1.0
+        self.set_ui_scale(self.DEFAULT_UI_SCALE)
         #: Docked into a column of its own, PyMOL-style, rather than floating
         #: over the scene.
         self.docked = True
@@ -1207,6 +1280,18 @@ class InternalGui:
 
         if hit.kind == "menu":
             if hit.entry is None or hit.entry.is_separator:
+                # The title row's arrows are the page control. Everything else
+                # in the frame is deliberately inert -- a press on a menu's own
+                # padding must not close it.
+                for menu in reversed(self._menus):
+                    if menu.max_scroll <= 0.0:
+                        continue
+                    button = self._menu_page_button(menu)
+                    if button.contains(x, y):
+                        # The left half goes back, the right half forward.
+                        self.page_menu(-1 if x < button.x + button.w * 0.5 else 1,
+                                       depth=self._menus.index(menu))
+                        break
                 return True
             if hit.entry.is_submenu:
                 self._open_submenu(hit.entry)
@@ -1460,17 +1545,20 @@ class InternalGui:
         testing -- they cannot disagree about where an entry is.
         """
         char_w = char_width(self.FONT_PT)
-        width = max(
-            [len(menu.title) * char_w]
-            + [len(e.label) * char_w + (18 if e.is_submenu else 0) for e in menu.entries]
-        ) + 2 * self.MENU_PAD + 12
-
         title_h = self.MENU_ITEM_H
         content = title_h + 2 * self.MENU_PAD + sum(
             self.SEPARATOR_H if e.is_separator else self.MENU_ITEM_H
             for e in menu.entries
         )
         height = min(content, float(self._height))
+        # A paged menu's title carries "2/3" and the arrows beside it, and both
+        # are in the title *row*: without the allowance the page number is
+        # drawn underneath the arrows on any menu whose entries are short.
+        paged = content > height
+        width = max(
+            [len(menu.title) * char_w + (10 * char_w if paged else 0.0)]
+            + [len(e.label) * char_w + (18 if e.is_submenu else 0) for e in menu.entries]
+        ) + 2 * self.MENU_PAD + 12
         if height < content:
             # A whole number of rows, so the bottom one is not sliced through
             # the middle of its text -- which reads as a rendering fault rather
@@ -1478,6 +1566,7 @@ class InternalGui:
             rows = max(int((height - title_h - 2 * self.MENU_PAD) // self.MENU_ITEM_H), 1)
             height = title_h + 2 * self.MENU_PAD + rows * self.MENU_ITEM_H
         menu.max_scroll = max(content - height, 0.0)
+        menu.page_px = max(height - title_h - 2 * self.MENU_PAD, self.MENU_ITEM_H)
         menu.scroll = min(max(menu.scroll, 0.0), menu.max_scroll)
 
         if menu.parent is None:
@@ -1498,6 +1587,54 @@ class InternalGui:
                 continue
             menu.item_rects.append((Rect(x, iy, width, self.MENU_ITEM_H), entry))
             iy += self.MENU_ITEM_H
+
+    @staticmethod
+    def menu_pages(menu: _OpenMenu) -> tuple[int, int]:
+        """Which page of a too-tall menu is showing, and how many there are.
+
+        Returns
+        -------
+        tuple of int
+            ``(page, pages)``, one-based. ``(1, 1)`` when it all fits.
+        """
+        if menu.max_scroll <= 0.0 or menu.page_px <= 0.0:
+            return (1, 1)
+        pages = int(menu.max_scroll // menu.page_px) + 2 \
+            if menu.max_scroll % menu.page_px else int(menu.max_scroll // menu.page_px) + 1
+        page = int(round(menu.scroll / menu.page_px)) + 1
+        return (min(page, pages), pages)
+
+    def page_menu(self, delta: int, depth: int | None = None) -> bool:
+        """Turn a too-tall menu's page. Returns whether anything moved.
+
+        Parameters
+        ----------
+        delta : int
+            ``+1`` forward, ``-1`` back.
+        depth : int, optional
+            Which open menu; the innermost by default.
+        """
+        if not self._menus:
+            return False
+        menu = self._menus[depth if depth is not None else -1]
+        if menu.max_scroll <= 0.0:
+            return False
+        wanted = min(max(menu.scroll + delta * menu.page_px, 0.0), menu.max_scroll)
+        wanted = self._snap_scroll(menu, wanted)
+        if wanted == menu.scroll:
+            return False
+        menu.scroll = wanted
+        # Children hang off a row that has just moved, so they cannot stay.
+        del self._menus[self._menus.index(menu) + 1:]
+        self._layout_menu(menu)
+        return True
+
+    def _menu_page_button(self, menu: _OpenMenu) -> Rect:
+        """The arrows in a menu's title row, as a press target."""
+        rect = menu.rect
+        width = 4.0 * char_width(self.FONT_PT) + self.MENU_PAD
+        return Rect(rect.x + rect.w - width, rect.y + self.MENU_PAD,
+                    width, self.MENU_ITEM_H)
 
     def _snap_scroll(self, menu: _OpenMenu, wanted: float) -> float:
         """Round a scroll offset to the nearest row boundary.
@@ -1894,10 +2031,13 @@ class InternalGui:
         rect = menu.rect
         p.stroke_rect(rect.x, rect.y, rect.w, rect.h, MENU_EDGE, fill=MENU_BG)
 
+        page, pages = self.menu_pages(menu)
+        title = menu.title if pages == 1 else f"{menu.title}  {page}/{pages}"
+        room = rect.w - (self._menu_page_button(menu).w if pages > 1 else 0.0)
         p.text(
             rect.x + self.MENU_PAD, rect.y + self.MENU_PAD,
-            rect.w, self.MENU_ITEM_H,
-            ALIGN_VCENTER | ALIGN_LEFT, menu.title, MENU_FG, bold=True,
+            max(room - self.MENU_PAD, 1.0), self.MENU_ITEM_H,
+            ALIGN_VCENTER | ALIGN_LEFT, title, MENU_FG, bold=True,
         )
 
         # Say which way there is more, when the menu is taller than the window.
@@ -1907,13 +2047,20 @@ class InternalGui:
         # that is silently cut off at the window edge -- the complaint that the
         # column-wrapping this replaces was trying to answer.
         if menu.max_scroll > 0.0:
-            marks = ("▴" if menu.scroll > 0.0 else " ") + (
+            # `▴`/`▾`, not `◂`/`▸`: the baked atlas has the vertical pair (the
+            # scroll marks these replace used them) and only one of the
+            # horizontal one -- `▸` is the submenu marker. A glyph the atlas
+            # does not have draws as nothing, so the "back" arrow was simply
+            # absent on every page but the first.
+            marks = ("▴" if menu.scroll > 0.0 else " ") + " " + (
                 "▾" if menu.scroll < menu.max_scroll else " "
             )
+            button = self._menu_page_button(menu)
+            p.fill_rect(button.x, button.y, button.w, button.h, MENU_SEL_BG)
             p.text(
                 rect.x, rect.y + self.MENU_PAD,
                 rect.w - self.MENU_PAD, self.MENU_ITEM_H,
-                ALIGN_VCENTER | ALIGN_RIGHT, marks, MENU_DISABLED_FG,
+                ALIGN_VCENTER | ALIGN_RIGHT, marks, MENU_FG,
             )
 
         # Below the title, so a scrolled row cannot be drawn over it.

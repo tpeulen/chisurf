@@ -88,6 +88,19 @@ class SettingsMixin(BaseCmd):
         self._apply_setting(spec, value)
         self._emit_message(f"{spec.name} reset to {_format(value)}")
 
+    @command("config")
+    def config(self) -> None:
+        """Open the settings editor **in the viewport**.
+
+        PyMOL's *Setting -> Edit All...*, the toolbar's *Cfg* and a typed
+        `config` all send this. It used to raise a modal Qt dialog holding the
+        display configuration as raw JSON; two things were wrong with that and
+        only one of them was the JSON. A dialog outside the 3-D view cannot be
+        seen by the browser build at all, and it covers the very picture the
+        settings change. It is an alias for `settings_panel` now.
+        """
+        self.settings_panel("on")
+
     @command("settings_panel")
     def settings_panel(self, action: str = "toggle") -> None:
         """Show, hide or toggle the settings editor **inside the viewport**.

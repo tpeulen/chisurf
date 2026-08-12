@@ -186,6 +186,9 @@ def _spacing_quality(spacing: Any) -> int:
 # is the path that was verified against the reading code.
 _SPECS: tuple[SettingSpec, ...] = (
     # -- Camera / viewport --------------------------------------------------
+    _spec("internal_gui_scale", "layout.ui_scale", "float", 0.85,
+          "How big the in-viewport chrome draws: text and the rows around it "
+          "together. 1.0 is the size the glyph atlas was baked at."),
     _spec("field_of_view", "camera.field_of_view", "float", 20.0,
           "Vertical field of view in degrees."),
     _spec("orthoscopic", "camera.orthoscopic", "bool", False,

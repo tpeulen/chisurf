@@ -1,6 +1,48 @@
 # Update Log
 
 ## 2026-08-12
+* **The chrome has a size, the menus have pages, and the last Qt dialog is
+  gone** (chimol viewport UI; user asks: *"need option to adj font size use
+  smaller fonts by default"*, *"optimize layouts for space efficiency … density
+  widgets takes too much space"*, *"edit all should not popup a pyqt widget stay
+  in 3d view, no pyqt besides embedding window allowed"*, *"if menu is too large
+  auto break it into multiple pages"*).
+  **One knob, not two.** `internal_gui_scale` (`layout.ui_scale`, default
+  **0.85**) scales the chrome's *text and its rows together* —
+  `InternalGui.set_ui_scale` multiplies every length on the instance, and
+  `char_width(font_pt)` now scales the baked advance by the point size, which
+  is what carries it to all fourteen layout call sites without any of them
+  knowing. The drawing half is `QuadPainter(font_scale=…)`, given the same
+  number: the atlas is a bitmap face, so the glyph quads and the advance scale
+  together. Scaling the font alone would have left 17-pixel rows around
+  11-pixel text — not smaller chrome, only emptier chrome. Read from the config
+  every frame, so the settings panel edits it live. **No schema bump**: a
+  *missing* key is added to every existing copy by the shallow merge, and the
+  version is for defaults that changed under somebody who already has one.
+  **`config` is the panel.** *Setting → Edit All...*, the toolbar's `Cfg` and a
+  typed `config` all open the in-viewport settings editor;
+  `app/config_editor.py` (a `QDialog` holding the configuration as raw JSON) is
+  deleted. Its one non-JSON control, the start-up "ask about package defaults"
+  preference, is a row in the panel now — added by hand, because it lives under
+  a leading underscore that the config walk deliberately skips, and a
+  preference with no way back on is a preference that only turns off.
+  **Menus page.** A menu taller than the viewport already scrolled, and a wheel
+  is not available to every hand: the title now reads `Long: 2/3` and the ▴▾
+  beside it turn the page (`menu_pages`, `page_menu`, `_menu_page_button`). Two
+  things a screenshot caught: the page number was drawn *underneath* the arrows
+  until the title's width allowed for it, and `◂` is not in the baked atlas —
+  a glyph the atlas lacks draws as nothing, so the back arrow was simply absent
+  (`▴`/`▾` are, and are used).
+  **Scrolling is one implementation.** `widgets.ScrollBar` — geometry, drawing
+  and the drag — is now shared by the settings editor and by `Table`, which
+  scrolls at all for the first time. Its hit test used a *fixed* 18-pixel row
+  pitch against a draw that used `line_height() * 1.35`, so clicking a row
+  selected a different one on any font that was not exactly 13 px; both come
+  from the geometry the last draw used.
+  **Density panel.** Rows 16→13 px, padding 8→5, one header line instead of
+  two, no `+2` on every control box: ~45 px of 242 given back to the histogram,
+  which is the only part anybody drags. (That panel is another instance's
+  uncommitted file, so the compaction is in the tree and lands with it.)
 * **Settings became data: every one of them editable in the 3-D view, and the
   game's menu drawing the same declarations** (chimol viewport UI; Lumis Quest
   [PRD-91](prds/prd-91.md); user ask: *"in chimol edit all settings must be

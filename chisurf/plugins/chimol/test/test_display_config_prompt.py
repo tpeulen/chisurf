@@ -283,56 +283,46 @@ def test_nothing_is_asked_when_the_settings_already_agree(settings, shipped, _qt
 
 
 # --------------------------------------------------------------------------- #
-# Turning it back on, in the Config editor
+# Turning it back on, in the settings panel
 # --------------------------------------------------------------------------- #
-def _editor(path, _qt_app):
-    from chisurf.plugins.chimol.chimol.app.config_editor import MolViewConfigEditor
+# The preference used to be a tick box in a modal JSON dialog. That dialog is
+# gone -- no Qt chrome outside the embedding window -- so the row lives in the
+# settings editor drawn inside the 3-D view, beside everything else. What has
+# to keep working is only this: the preference can be read, and it can be put
+# back after being turned off.
+def test_the_panel_shows_the_current_preference(settings, shipped):
+    from chisurf.plugins.chimol.chimol.renderer import settings_window
 
-    return MolViewConfigEditor(None, json_path=path, viewer=None)
+    mine = json.loads(json.dumps(shipped))
+    mine[cfg_mod.UPDATE_PROMPT_KEY] = False
+    _write(settings, mine)
+
+    model = settings_window.build_model()
+    assert model.get(settings_window.PROMPT_KEY) is False
 
 
-def test_the_editor_shows_the_current_preference(settings, shipped, _qt_app):
+def test_an_absent_preference_reads_as_asking(settings, shipped):
+    from chisurf.plugins.chimol.chimol.renderer import settings_window
+
+    _write(settings, shipped)
+    assert settings_window.build_model().get(settings_window.PROMPT_KEY) is True
+
+
+def test_the_panel_can_turn_it_back_on(settings, shipped):
+    """A preference with no way back on is a preference that only turns off."""
+    from chisurf.plugins.chimol.chimol.renderer import settings_window
+
     mine = json.loads(json.dumps(shipped))
     mine[cfg_mod.UPDATE_PROMPT_KEY] = False
     path = _write(settings, mine)
 
-    assert _editor(path, _qt_app)._ask_box.isChecked() is False
+    model = settings_window.build_model()
+    row = next(one for one in model.settings
+               if one.key == settings_window.PROMPT_KEY)
+    model.adjust(row, 0)
 
-
-def test_an_absent_preference_reads_as_asking(settings, shipped, _qt_app):
-    path = _write(settings, shipped)
-    assert _editor(path, _qt_app)._ask_box.isChecked() is True
-
-
-def test_ticking_the_box_edits_the_document_not_the_disk(settings, shipped, _qt_app):
-    """The dialog's own rule: nothing is written until Save.
-
-    A tick box that wrote straight through would be undone moments later
-    anyway -- Save rewrites the whole file from this editor's text.
-    """
-    mine = json.loads(json.dumps(shipped))
-    mine[cfg_mod.UPDATE_PROMPT_KEY] = True
-    path = _write(settings, mine)
-    editor = _editor(path, _qt_app)
-
-    editor._ask_box.setChecked(False)
-
-    assert json.loads(editor._edit.toPlainText())[cfg_mod.UPDATE_PROMPT_KEY] is False
-    assert json.loads(path.read_text())[cfg_mod.UPDATE_PROMPT_KEY] is True, "written early"
-
-    editor._on_save()
-    assert json.loads(path.read_text())[cfg_mod.UPDATE_PROMPT_KEY] is False
-
-
-def test_the_box_does_nothing_while_the_json_is_invalid(settings, shipped, _qt_app):
-    """Save already refuses invalid JSON and says why; this must not race it."""
-    path = _write(settings, shipped)
-    editor = _editor(path, _qt_app)
-    editor._edit.setPlainText("{ this is not json")
-
-    editor._ask_box.setChecked(False)  # must not raise
-
-    assert editor._edit.toPlainText() == "{ this is not json"
+    assert model.get(settings_window.PROMPT_KEY) is True
+    assert json.loads(path.read_text())[cfg_mod.UPDATE_PROMPT_KEY] is True
 
 
 # --------------------------------------------------------------------------- #

@@ -857,6 +857,15 @@ def _load_display_config() -> dict:
         "layout": {
             "root_margins": [4, 4, 4, 4],
             "root_spacing": 4,
+            # How big the in-viewport chrome draws -- text and the rows around
+            # it together. Below one by default: the chrome is read at a glance
+            # and then looked past, and every pixel it takes is a pixel of the
+            # molecule it covers.
+            #
+            # No schema bump: the shallow merge below adds a *missing* key to
+            # every existing copy on its own, and the version is for defaults
+            # that changed under somebody who already has one.
+            "ui_scale": 0.85,
         },
         "sequence": {
             "residue_tick_step": 20,

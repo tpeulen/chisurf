@@ -91,7 +91,6 @@ ENGINE_MODULES = (
 #: Never add to it. ``test_the_host_list_is_not_padded`` fails on an entry that
 #: no longer needs to be here, which is how it shrinks.
 HOSTS = frozenset({
-    "app/config_editor.py",
     "app/controls_panel.py",
     "app/demos.py",
     "app/hierarchy_panel.py",

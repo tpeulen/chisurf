@@ -86,10 +86,20 @@ class QuadPainter:
     ----------
     atlas : Atlas, optional
         The baked font. Loaded from the package by default.
+    scale : float, optional
+        Device pixels per logical pixel.
+    font_scale : float, optional
+        Text size, as a multiple of the baked one. The atlas is a bitmap face,
+        so this scales the glyph quads and their advance together -- there is
+        no second size to bake. It is the *drawing* half of the chrome scale;
+        the layout half is ``InternalGui.FONT_PT``, and the two must be given
+        the same number or the boxes and the text they hold disagree.
     """
 
-    def __init__(self, atlas: Optional[Atlas] = None, scale: float = 1.0) -> None:
+    def __init__(self, atlas: Optional[Atlas] = None, scale: float = 1.0,
+                 font_scale: float = 1.0) -> None:
         self._atlas = atlas if atlas is not None else load_atlas()
+        self._font_scale = float(font_scale)
         self._data: list[float] = []
         self._clips: list[tuple[float, float, float, float]] = []
         #: Device pixels per logical pixel.
@@ -250,7 +260,7 @@ class QuadPainter:
         if not string:
             return
         atlas = self._atlas
-        advance = atlas.advance()
+        advance = atlas.advance() * self._font_scale
         width = advance * len(string)
 
         if align & ALIGN_RIGHT:
@@ -261,7 +271,7 @@ class QuadPainter:
             pen_x = x
 
         scale = atlas.scale
-        shrink = atlas.render_scale
+        shrink = atlas.render_scale * self._font_scale
         cell_w, cell_h = atlas.cell
         # The pen sits a fixed (pad, pad + ascent) inside every cell, so a
         # glyph's quad is the cell placed relative to the baseline. No
@@ -305,8 +315,8 @@ class QuadPainter:
 
     def text_width(self, string: str) -> float:
         """Advance width of *string*, in pixels."""
-        return self._atlas.advance(string)
+        return self._atlas.advance(string) * self._font_scale
 
     def line_height(self) -> float:
         """Height of one line of text, in pixels."""
-        return self._atlas.line_height
+        return self._atlas.line_height * self._font_scale

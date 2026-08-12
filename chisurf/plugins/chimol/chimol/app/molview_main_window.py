@@ -62,7 +62,6 @@ from ..io import (
 from ..renderer.internal_gui import GuiRow as InternalGuiRow
 from ..renderer.internal_gui import SequenceRow as InternalSequenceRow
 from ..renderer.view import MolView
-from .config_editor import MolViewConfigEditor
 from .controls_panel import ControlsToolbar
 from .hierarchy_panel import HierarchyDock
 from .menu_bar import build_menu_bar
@@ -1075,27 +1074,14 @@ class MolViewPluginWindow(ChisurfDockTool):
             pass
 
     def on_open_display_config(self) -> None:
-        """Open the Chimol display configuration in a built-in editor."""
+        """Open the settings editor inside the 3-D view.
 
-        try:
-            from chisurf.plugins.chimol.chimol.config import (
-                get_package_display_config_path,
-                get_user_display_config_path,
-            )
-            json_path = get_user_display_config_path()
-            if json_path is None or not json_path.is_file():
-                pkg_path = get_package_display_config_path()
-                if pkg_path.is_file():
-                    if json_path is None:
-                        json_path = pkg_path
-                    else:
-                        json_path.parent.mkdir(parents=True, exist_ok=True)
-                        shutil.copyfile(pkg_path, json_path)
-        except Exception:
-            json_path = Path(__file__).with_name("chimol_display.json")
-
-        dlg = MolViewConfigEditor(self, json_path=json_path, viewer=self.viewer)
-        dlg.exec_()
+        Kept as a method because a Qt button and the menu builder both hold a
+        reference to it; what it does is now the `config` command, which is
+        the panel. The modal JSON dialog it used to raise is gone -- see
+        `renderer/settings_window.py`.
+        """
+        self._run_internal_gui_command("settings_panel on")
 
     @staticmethod
     def _widget_alive(widget) -> bool:

@@ -32,6 +32,7 @@ from .widgets import (
     Combo,
     InputInt,
     Separator,
+    ScrollBar,
     SliderFloat,
     TextInput,
     Toggle,
@@ -419,17 +420,22 @@ class SettingsEditor:
         self.groups = Combo("", [self.ALL, *model.groups()])
         self.filter = TextInput("", "", placeholder="filter")
         self.row = 0
-        #: First listed row on screen. Kept as state rather than derived from
-        #: the selection: a section with two hundred entries is scrolled with
-        #: the bar far more often than it is walked with the cursor.
-        self.top = 0
         self._boxes: list[tuple[Setting, tuple[float, float, float, float]]] = []
         self._filter_box: tuple[float, float, float, float] | None = None
         self._tab_box: tuple[float, float, float, float] | None = None
-        self._bar_box: tuple[float, float, float, float] | None = None
-        self._bar_held = False
+        self.bar = ScrollBar()
 
     # ------------------------------------------------------------------ #
+    @property
+    def top(self) -> int:
+        """First listed row on screen."""
+        return self.bar.top
+
+    @top.setter
+    def top(self, value: int) -> None:
+        self.bar.top = int(value)
+        self._clamp()
+
     @property
     def group(self) -> str:
         """The group being shown, or ``""`` when showing all of them."""
@@ -462,12 +468,12 @@ class SettingsEditor:
 
     def scroll(self, rows: int) -> None:
         """Scroll the window without moving the cursor."""
-        self.top += int(rows)
         self._clamp()
+        self.bar.scroll(rows)
 
     def _clamp(self) -> None:
         """Keep the window inside the list."""
-        self.top = max(0, min(self.top, max(len(self.rows()) - self.visible_rows, 0)))
+        self.bar.clamp(len(self.rows()), self.visible_rows)
 
     def adjust(self, direction: int) -> Any:
         """Change the selected setting."""
@@ -501,8 +507,7 @@ class SettingsEditor:
 
         body_y = y + head_h + 4.0
         body_h = max(h - head_h - foot_h - 8.0, line)
-        bar_w = 8.0
-        list_w = max(w - bar_w, 1.0)
+        list_w = max(w - self.bar.width, 1.0)
         p.stroke_rect(x, body_y, list_w, body_h, _BORDER, _ROW_EVEN)
 
         rows = self.rows()
@@ -536,8 +541,8 @@ class SettingsEditor:
             self._boxes.append((setting, box))
         p.pop_clip()
 
-        self._bar_box = (x + list_w, body_y, bar_w, body_h)
-        self._draw_bar(p, len(rows))
+        self.bar.clamp(len(rows), self.visible_rows)
+        self.bar.draw(p, x + list_w, body_y, body_h)
 
         Separator().draw(p, x, y + h - foot_h - 2.0, w, 4.0)
         p.text(x + 6.0, y + h - foot_h, max(w - 12.0, 1.0), foot_h,
@@ -558,19 +563,6 @@ class SettingsEditor:
         if chosen.description:
             note = f"{note}  --  {chosen.description}"
         return fit_text(p, note, room)
-
-    def _draw_bar(self, p: Painter, total: int) -> None:
-        """Paint the scrollbar for a list of ``total`` rows."""
-        if self._bar_box is None:
-            return
-        x, y, w, h = self._bar_box
-        p.fill_rect(x, y, w, h, _ROW_ODD)
-        if total <= self.visible_rows:
-            return
-        span = max(h * self.visible_rows / total, 12.0)
-        travel = h - span
-        at = y + travel * (self.top / max(total - self.visible_rows, 1))
-        p.fill_rect(x + 1.0, at, w - 2.0, span, _DIM)
 
     # ------------------------------------------------------------------ #
     def press(self, x: float, y: float) -> Optional[Setting]:
@@ -599,9 +591,7 @@ class SettingsEditor:
             return None
         if self._inside(self._filter_box, x, y):
             return None
-        if self._inside(self._bar_box, x, y):
-            self._bar_held = True
-            self._scroll_to(y)
+        if self.bar.press(x, y):
             return None
 
         for setting, box in self._boxes:
@@ -627,14 +617,11 @@ class SettingsEditor:
 
     def drag(self, x: float, y: float) -> bool:
         """Continue a scrollbar drag. Returns whether anything moved."""
-        if not self._bar_held:
-            return False
-        self._scroll_to(y)
-        return True
+        return self.bar.drag(y)
 
     def release(self) -> None:
         """End a scrollbar drag."""
-        self._bar_held = False
+        self.bar.release()
 
     @staticmethod
     def _inside(box, x: float, y: float) -> bool:
@@ -644,13 +631,3 @@ class SettingsEditor:
         box_x, box_y, box_w, box_h = box
         return box_x <= x <= box_x + box_w and box_y <= y <= box_y + box_h
 
-    def _scroll_to(self, y: float) -> None:
-        """Put the window where the bar was grabbed."""
-        if self._bar_box is None:
-            return
-        _, bar_y, _, bar_h = self._bar_box
-        total = len(self.rows())
-        fraction = (y - bar_y) / max(bar_h, 1e-6)
-        self.top = int(round(min(max(fraction, 0.0), 1.0)
-                             * max(total - self.visible_rows, 0)))
-        self._clamp()

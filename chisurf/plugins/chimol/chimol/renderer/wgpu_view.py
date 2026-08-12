@@ -103,6 +103,27 @@ def selected_backend() -> str:
     return choice or DEFAULT_BACKEND
 
 
+def _chrome_scale() -> float:
+    """How big the in-viewport chrome draws, from the display configuration.
+
+    Returns
+    -------
+    float
+        ``layout.ui_scale``, or :attr:`InternalGui.DEFAULT_UI_SCALE` when the
+        configuration has no opinion.
+    """
+    from ..config import _DISPLAY_CONFIG
+    from .internal_gui import InternalGui
+
+    section = _DISPLAY_CONFIG.get("layout")
+    if isinstance(section, dict):
+        try:
+            return float(section.get("ui_scale", InternalGui.DEFAULT_UI_SCALE))
+        except (TypeError, ValueError):
+            pass
+    return InternalGui.DEFAULT_UI_SCALE
+
+
 def default_renderer():
     """The renderer class the viewer builds when it is given none.
 
@@ -561,8 +582,12 @@ class WgpuRenderer(_make_widget_base(), CameraState, Renderer):
         # every click. Scaling that by the ratio as well puts it off the right
         # edge of the window entirely.
         ratio = self._ratio()
+        # Read every frame rather than at construction: the settings panel
+        # edits this like any other setting, and a chrome scale that only
+        # applied at start-up would be the one setting with no live effect.
+        gui.set_ui_scale(_chrome_scale())
         gui.layout(int(self._width / ratio), int(self._height / ratio))
-        painter = QuadPainter(scale=ratio)
+        painter = QuadPainter(scale=ratio, font_scale=gui.ui_scale)
         gui.paint(painter)
         vertices = painter.vertices()
         return vertices if len(vertices) else None

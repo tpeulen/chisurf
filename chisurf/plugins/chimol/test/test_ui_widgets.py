@@ -114,3 +114,57 @@ def test_text_input_holds_a_text_field():
     field.move(-1)
     assert field.insert("X") == "aXb"
     assert field.backspace() == "ab"
+
+
+def test_a_table_scrolls_rather_than_dropping_its_tail():
+    """Rows past the bottom are reachable, not simply undrawn."""
+    painter = RecordingPainter()
+    table = widgets.Table(["n"], [[str(i)] for i in range(40)])
+    # 12 line-heights of room, one used by the header.
+    table.draw(painter, 0.0, 0.0, 100.0, 12 * painter.line_height())
+    assert table.bar.needed()
+    drawn = [s for s in painter.strings if s.isdigit()]
+    assert drawn[0] == "0" and len(drawn) < 40
+
+    table.scroll(1000)          # all the way down
+    painter.strings.clear()
+    table.draw(painter, 0.0, 0.0, 100.0, 12 * painter.line_height())
+    drawn = [s for s in painter.strings if s.isdigit()]
+    assert drawn[-1] == "39", "the last row must be reachable"
+
+
+def test_a_table_press_hits_the_row_that_was_drawn():
+    """The hit test uses the pitch the draw used, not a hard-coded one."""
+    painter = RecordingPainter()
+    table = widgets.Table(["n"], [[str(i)] for i in range(40)])
+    height = 12 * painter.line_height()
+    table.draw(painter, 0.0, 0.0, 100.0, height)
+    row_h = painter.line_height() * table.row_scale
+    header_h = row_h * 1.1
+
+    assert table.press(10.0, header_h + row_h * 2.5, 0.0, 0.0, 100.0, height) == ("row", 2)
+    table.scroll(10)
+    table.draw(painter, 0.0, 0.0, 100.0, height)
+    # The same point now names the row that is *there*, ten further down.
+    assert table.press(10.0, header_h + row_h * 2.5, 0.0, 0.0, 100.0, height) == ("row", 12)
+
+
+def test_a_table_header_press_sorts_the_column_it_hit():
+    painter = RecordingPainter()
+    table = widgets.Table(["a", "b"], [["2", "x"], ["1", "y"]])
+    table.draw(painter, 0.0, 0.0, 100.0, 100.0)
+    assert table.press(60.0, 2.0, 0.0, 0.0, 100.0, 100.0) == ("header", 1)
+    assert table.sort_col == 1
+
+
+def test_the_scrollbar_is_one_implementation():
+    """Every scrolling panel shares it, so they cannot disagree on the last row."""
+    bar = widgets.ScrollBar()
+    bar.clamp(total=40, visible=10)
+    assert bar.needed()
+    bar.scroll(100)
+    assert bar.top == 30, "cannot scroll past the last full window"
+    bar.scroll(-100)
+    assert bar.top == 0
+    bar.clamp(total=3, visible=10)
+    assert not bar.needed() and bar.top == 0

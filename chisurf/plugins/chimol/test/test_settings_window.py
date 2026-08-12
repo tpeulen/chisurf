@@ -68,9 +68,16 @@ def _leaf_count(node) -> int:
 
 
 def test_every_configuration_leaf_is_a_row():
-    """The panel shows all of the display config, not a curated subset."""
+    """The panel shows all of the display config, not a curated subset.
+
+    Plus one: the start-up prompt is a *preference*, not a display setting --
+    it lives under a leading underscore, which is how the walk knows to skip
+    it, and it is added by hand because the dialog that used to carry it is
+    gone.
+    """
     model = settings_window.build_model()
-    assert len(model.settings) == _leaf_count(_DISPLAY_CONFIG)
+    assert len(model.settings) == _leaf_count(_DISPLAY_CONFIG) + 1
+    assert any(one.key == settings_window.PROMPT_KEY for one in model.settings)
     # And enough of it that a regression to "a few hand-written rows" shows.
     assert len(model.settings) > 200
     assert "cartoon" in model.groups() and "surface" in model.groups()
@@ -163,7 +170,7 @@ def test_the_scrollbar_moves_the_window_without_moving_the_cursor():
     panel = settings_window.SettingsWindow()
     panel.editor.groups.index = panel.editor.groups.options.index("cartoon")
     panel.draw(RecordingPainter(), Rect(0.0, 0.0, 420.0, 300.0))
-    bar = panel.editor._bar_box
+    bar = panel.editor.bar._box
     assert bar is not None
     panel.press(bar[0] + 2.0, bar[1] + bar[3], Rect(0, 0, 420, 300))
     assert panel.editor.top > 0

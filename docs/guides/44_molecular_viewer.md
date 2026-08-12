@@ -744,6 +744,30 @@ settings_panel off      # put it away
   transform — `transparency`, which the renderer keeps as an alpha — is edited
   in the units you know it by.
 
+There is no separate configuration dialog any more. `Cfg`, **Setting → Edit
+All...** and a typed `config` all open this panel: the settings change the
+picture, so they belong in front of it rather than in a window that covers it —
+and a Qt dialog is invisible to the browser build.
+
+### How big the chrome draws
+
+Everything the renderer draws over the scene — the object column, the menus,
+the panels, the prompt — is sized by one setting:
+
+```text
+set internal_gui_scale, 0.85    # the default: smaller than the baked font
+set internal_gui_scale, 1.2     # larger, for a big display
+```
+
+It moves the text **and the rows around it** together; scaling the font alone
+would only give you the same rows with more air in them. Below one by default,
+because the chrome is read at a glance and then looked past, and every pixel it
+takes is a pixel of the molecule underneath.
+
+A menu too tall for the window is broken into **pages**: its title says which
+page it is on (`Display  2/3`) and the arrows beside the title turn it. The
+wheel still scrolls it a row at a time.
+
 ### When a new version changes a default
 
 Your settings live in `~/.chisurf/chimol_display.json`, and they are yours —
@@ -761,10 +785,9 @@ Choosing **Keep mine** changes nothing. Ticking **Don't ask again** stops the
 question for good — independently of which button you press, so you can keep
 your settings *and* stop being asked.
 
-To turn it back on, open **Cfg** and tick *"Tell me when this version ships
-different display defaults"* at the bottom, then **Save**. (The tick box edits
-the document in the editor, like everything else there, so nothing is written
-until you save.)
+To turn it back on, open the settings panel (**Display → Settings**, or `Cfg`
+on the toolbar) and switch **ask about package defaults** back on. It sits in
+the *general* group, beside the settings themselves.
 
 :::{note}
 Settings that merely fell behind a rename or a changed default are brought
