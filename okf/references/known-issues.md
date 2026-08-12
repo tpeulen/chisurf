@@ -4521,3 +4521,36 @@ that the colours changed, and the colours change only when a command changes
 them. A change signal on the viewer would remove the call, the copy and the
 signature together. That is a larger change than it sounds, because there is no
 one place a colour changes -- which is exactly why the per-frame re-read exists.
+
+### Rejected — memoising `_recompute_colors_per_ca`
+
+The second attempt on the same 2 ms, and it failed the same way as the first.
+
+`get_residue_colors` is called on **every frame** by the sequence strip -- that
+is how a `spectrum` or a `color` reaches the strip, there being no signal to
+listen to -- and it recomputes the whole per-residue colour array each time. The
+obvious fix is to skip the recomputation when nothing it reads has changed, with
+a key over the colour mode, the residue names, the chains, the atoms, the base
+colour, the per-residue override and the per-atom projection (`_ca_rgba`, hoisted
+above the key precisely so it would be covered).
+
+Result: **152 failures in the object-menu suite**, plus spectrum, the per-atom
+sort, colour-by-element and the appearance suite. Reverted; `view.py` is
+byte-identical to before and all 272 object-menu tests pass again.
+
+The lesson is now well evidenced from two directions -- the read-only attempt
+and this one. **The colour pipeline is mutated in place from many places that a
+key over its declared inputs does not see.** Any further attempt at this level
+is likely to fail the same way.
+
+If the 2 ms is ever worth having, the change is structural rather than another
+cache: give the viewer an explicit **colour revision** bumped by the commands
+that change colours, and have `refresh_gui_state` consult that instead of
+re-deriving the array to notice. That is a real refactor -- there is no one
+place a colour changes today, which is exactly why the per-frame re-read exists
+-- and it should be done deliberately, not smuggled in behind a memo.
+
+For scale: after the chrome cache and the frame-rate fix, `_draw` on the
+234,184-bead nuclear pore is **6.7 ms** with the developer instruments on. This
+2 ms is the last large CPU item, and it is guarded by a suite that catches every
+attempt at it -- which is the system working.
