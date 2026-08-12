@@ -472,6 +472,12 @@ class InternalGui:
         #: enough to notice drives it -- a load, a trace, a surface -- and none
         #: of those live in this class.
         self.progress = ProgressOverlay()
+        #: Whether the developer instruments are drawn -- the chrome-size
+        #: slider and the frame-rate readout. A figure does not want either.
+        self.debug_overlays = False
+        #: Frames per second, pushed by the renderer. 0 means "not measured",
+        #: which is what a still frame and a headless host both are.
+        self.fps = 0.0
         self._width = 0
         self._height = 0
         #: Widest name seen, so the panel does not change width every frame.
@@ -1799,12 +1805,26 @@ class InternalGui:
         """
         height = float(self.CMD_ROW_H)
         y = float(self._height) - height - 2.0
+        char_w = char_width(self.FONT_PT)
 
-        # The chrome-size slider, always there. It had no control at all: the
-        # only way to resize the chrome was to know the setting's name and type
-        # `set internal_gui_scale, 1.0`, which is not a thing a user finds.
-        # Bottom-right, in the status band, because it is a property of the
-        # whole chrome rather than of any one panel.
+        # The chrome-size slider and the frame-rate readout are **developer
+        # instruments**, so both are behind `debug`. They were shown to
+        # everyone, and a permanent slider plus a permanent number in the
+        # corner of a figure is chrome that earns its space only while someone
+        # is measuring. Off, the status band is just the status band.
+        if not self.debug_overlays:
+            self._ui_scale_rect = None
+            self._ui_scale_groove = None
+            self._paint_status_text(p, y, height, float(self._width) - 2.0)
+            return
+
+        # Frame rate, immediately left of the size slider: the two are read
+        # together -- the question is always "what does this cost", and the
+        # slider is the thing most likely to change the answer.
+        fps_w = 0.0
+        if self.fps > 0.0:
+            fps_label = f"{self.fps:.0f} fps"
+            fps_w = char_w * (len(fps_label) + 1) + self.PAD
         char_w = char_width(self.FONT_PT)
         # The number gets its own column and the groove gets the rest. Drawn on
         # top of each other, the thumb crossed the digits and both became hard
@@ -1835,11 +1855,26 @@ class InternalGui:
         #: The groove alone, which is what a drag maps onto.
         self._ui_scale_groove = Rect(groove_x, y, groove_w, height)
 
+        self._paint_status_text(p, y, height, box_x - fps_w)
+
+    def _paint_status_text(self, p, y: float, height: float, right: float) -> None:
+        """The status message, right-aligned against *right*.
+
+        Split out because the band's right edge depends on what else is in it:
+        the size slider and the frame counter are debug-only, so with them off
+        the message may use the full width.
+
+        This used to end at ``x = track_x - width``, and ``track_x`` is a name
+        from a *different* method -- the info panel's scrollbar. Any code that
+        set a status message would have raised ``NameError`` from inside the
+        paint pass. Nothing sets one today, which is the only reason it was
+        never seen.
+        """
         if not (self.status_visible and self.status_text):
             return
         text = str(self.status_text)
         width = char_width(self.FONT_PT) * len(text) + 2 * self.PAD
-        x = track_x - width - 4.0
+        x = max(right - width - 4.0, 0.0)
         p.fill_rect(x, y, width, height, PANEL_BG)
         p.text(x + self.PAD, y, width - 2 * self.PAD, height,
                ALIGN_VCENTER | ALIGN_RIGHT, text, WINDOW_DIM_FG)

@@ -275,6 +275,43 @@ class LoaderCommands(BaseCmd):
         for code in [str(v).strip() for v in entry_ids if str(v).strip()]:
             self._fetch_one(code, "pdb-ihm")
 
+    def _load_fetched(self, window, destination, display: str, repository: str) -> None:
+        """Load a fetched file through the reader its *repository* implies.
+
+        A density map is not a structure. Both fetch paths -- cached and freshly
+        downloaded -- called ``_load_structure_from_path`` unconditionally, so
+        ``fetch EMD-3061`` handed a gzipped CCP4 map to the structure readers,
+        which fell through to the built-in PDB parser, found no ATOM records and
+        reported *"No atom coordinates found"*. Everything after it in the demo
+        then failed in a way that named the wrong cause: ``map_info`` and
+        ``isosurface`` said *"no maps are loaded"*, and ``zoom all`` said
+        *"nothing is loaded"* -- three messages, none of them pointing at the
+        fetch that had actually gone wrong.
+
+        This command's own docstring already promised the right behaviour: *"An
+        EMDB map arrives as a map object with a contour on it, not as a
+        structure."*
+
+        Parameters
+        ----------
+        window : object
+            The host, for the structure path.
+        destination : pathlib.Path
+            The downloaded file.
+        display : str
+            Object name.
+        repository : str
+            Which repository it came from; ``"emdb"`` means a map.
+        """
+        if repository == "emdb" or destination.name.lower().endswith(
+            (".map", ".map.gz", ".mrc", ".mrc.gz", ".ccp4", ".ccp4.gz")
+        ):
+            # `load_map` is a sibling mixin on the same command object, and it
+            # is what knows to ask EMDB for the deposited contour level.
+            self.load_map(str(destination), display)
+            return
+        window._load_structure_from_path(destination, name=display)
+
     def _repository_for(self, code: str) -> str:
         """Which repository an identifier looks like it belongs to.
 
@@ -339,7 +376,7 @@ class LoaderCommands(BaseCmd):
         # since an entry at a given accession does not change under you.
         if destination.is_file() and destination.stat().st_size > 0:
             try:
-                window._load_structure_from_path(destination, name=display)
+                self._load_fetched(window, destination, display, name)
             except Exception as exc:
                 self._emit_error(
                     f"fetch: the cached {display} would not load ({exc}); "
@@ -400,8 +437,35 @@ class LoaderCommands(BaseCmd):
             return
 
         try:
-            window._load_structure_from_path(destination, name=display)
+            self._load_fetched(window, destination, display, name)
         except Exception as exc:
             self._emit_error(f"fetch: {display} downloaded but would not load: {exc}")
             return
         self._emit_message(f"fetch: loaded {display} from {spec['label']}")
+
+
+def _fetch_emdb_contour_level(num: str) -> float | None:
+    """Fetch the author-recommended contour level for an EMDB map."""
+    try:
+        from ..host.net import download
+
+        xml_url = f"https://ftp.ebi.ac.uk/pub/databases/emdb/structures/EMD-{num}/header/emd-{num}.xml"
+        raw = download(xml_url, timeout=10)
+        if raw:
+            import xml.etree.ElementTree as ET
+
+            root = ET.fromstring(raw)
+            for el in root.iter():
+                if el.tag.lower() == "level" and el.text:
+                    try:
+                        val = float(el.text.strip())
+                        if np.isfinite(val):
+                            return val
+                    except ValueError:
+                        pass
+    except Exception:
+        pass
+    return None
+
+
+__all__ = ["LoaderMixin", "_fetch_emdb_contour_level"]

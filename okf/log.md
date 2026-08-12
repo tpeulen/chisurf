@@ -35230,3 +35230,41 @@
   Triage and the rule that follows from it — read the summary line, not the exit
   code, and confirm a failure in isolation before believing it — are in
   [known-issues](references/known-issues.md).
+
+- **2026-08-12 — chimol: a glTF of the nuclear pore was 3.1 GB, and is now
+  69 MB.** Exporting a mesoscale model tessellates every particle into a sphere,
+  and almost all of those spheres are **inside**, where no camera will see them:
+  the NPC came out at **92.7 million triangles / 3,136 MB**, which no program
+  opens. Dropping buried particles *before* tessellation gives **2.0 million
+  triangles / 68.8 MB — 45x smaller** — and total export time falls from 45 s to
+  8 s.
+  The test is deliberately crude, as tpeulen asked: **count neighbours within a
+  few particle radii and call a particle buried when it has too many.** That is
+  the same signal ambient occlusion already uses to darken crowded beads, which
+  is a good sign — what the shading thinks is enclosed, is. It is not a
+  visibility computation and does not pretend to be: no camera, so it keeps the
+  wall of an interior cavity and drops a particle in a dense but exposed patch.
+  The number that justifies it: at the shipped threshold the NPC keeps **5,136
+  of 234,184 beads (2.2 %)**, and a render of those 5,136 is **visually
+  indistinguishable** from the full model — checked as a four-panel sheet across
+  thresholds, not asserted. Settings are `export.hollow` (**on** by default, per
+  tpeulen), `export.hollow_min_neighbors` and `export.hollow_radius_scale`.
+  Guard: it never returns an empty set, so a threshold that buried everything
+  writes the whole model rather than an empty file.
+
+- **2026-08-12 — chimol: `fetch EMD-3061` handed a density map to the PDB
+  parser.** Both fetch paths called `_load_structure_from_path` unconditionally,
+  so the emdb demo died with three messages that all named the wrong cause —
+  *"no maps are loaded"* twice and then *"zoom: nothing is loaded"* — while the
+  actual failure was a gzipped CCP4 map falling through to the built-in PDB
+  reader and finding no ATOM records. The command's own docstring already
+  promised the right behaviour (*"An EMDB map arrives as a map object"*). Routed
+  by repository and by suffix now; the demo runs end to end and was looked at.
+  Also: a **frame-rate readout** beside the chrome-size slider, bottom-right,
+  and **both are now behind `layout.debug`** — a permanent slider and a
+  permanent number in the corner of a figure are chrome that earns its space
+  only while somebody is measuring. Averaged over 30 frames, and a gap longer
+  than a quarter second clears the window, because an idle viewport is not a
+  slow one. Fixed while there: `_paint_status` ended at `x = track_x - width`,
+  and `track_x` is a name from the *info panel's scrollbar* — any code setting
+  a status message would have raised `NameError` from inside the paint pass.

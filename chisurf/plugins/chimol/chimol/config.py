@@ -861,11 +861,39 @@ def _load_display_config() -> dict:
             # it together. Below one by default: the chrome is read at a glance
             # and then looked past, and every pixel it takes is a pixel of the
             # molecule it covers.
-            #
-            # No schema bump: the shallow merge below adds a *missing* key to
-            # every existing copy on its own, and the version is for defaults
-            # that changed under somebody who already has one.
-            "ui_scale": 0.85,
+            "ui_scale": 1.0,
+            # Dragged windows snap to the viewport's sides and corners and
+            # anchor there. Off means a window goes exactly where it is
+            # dropped and follows no edge.
+            "window_snap": True,
+            # The chrome, piece by piece. All off leaves a bare 3-D viewer,
+            # which is what an embedded or kiosk view wants.
+            "show_menubar": True,
+            "show_toolbar": True,
+            "show_command_line": True,
+            "show_status": True,
+            # Developer instruments: the chrome-size slider and the frame-rate
+            # readout, both bottom-right in the status band. Off by default
+            # because a permanent slider and a permanent number in the corner
+            # of a figure are chrome that only earns its space while somebody
+            # is measuring.
+            "debug": False,
+        },
+        # --- export ------------------------------------------------------ #
+        "export": {
+            # Drop particles that are buried inside the model before writing a
+            # mesh. A mesoscale structure exported whole is mostly geometry
+            # nobody can see: every bead becomes a tessellated sphere, and the
+            # nuclear pore's 234,184 of them make a glTF too large to open.
+            # The test is a neighbour count, not a visibility computation --
+            # fast and approximate on purpose, since this is for a picture.
+            "hollow": True,
+            # How enclosed a particle must be to count as buried. Close packing
+            # puts 12 spheres in contact, so well past that is surrounded.
+            # Lower removes more and eats into the surface; higher keeps more.
+            "hollow_min_neighbors": 18,
+            # The neighbourhood, as a multiple of the median particle radius.
+            "hollow_radius_scale": 2.5,
         },
         "sequence": {
             "residue_tick_step": 20,
