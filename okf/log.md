@@ -35406,3 +35406,19 @@
   **import graph with `ast`**, not the file text: the first version matched
   `from qtpy` and flagged a module whose only mention of Qt was a docstring
   explaining that it no longer imports Qt.
+
+- **2026-08-12 — chimol: `ray` traced 800x600 into whatever size the window
+  was.** tpeulen's screenshot showed the traced frame occupying a band with the
+  *live* scene visible either side of it. The blit preserves aspect -- it has to,
+  or a traced frame is a different picture from the one that was traced -- so a
+  4:3 image in a 16:10 viewport is letterboxed, and the bars showed what was
+  behind. The cause was upstream: `_scene_pixel_size` asked
+  `renderer.widget()` for its size, and **only a Qt host has a widget**. On the
+  toolkit-free window it fell straight through to the 800x600 default, so
+  nothing had ever asked the view how big it was. It asks the *renderer* first
+  now, and `ray` with no arguments traces the scene rectangle exactly.
+  Also: **the `png` file no longer contains the chrome.** That was the stated
+  intent in the code -- *"PyMOL's own output carries no GUI either"* -- but the
+  only mechanism was hiding the in-viewport *windows*, so the menu bar, the
+  sequence strip, the info panel and the status line all landed in the file.
+  `grab_image(chrome=False)` already existed for exactly this.

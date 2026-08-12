@@ -292,27 +292,39 @@ class ExportMixin(BaseCmd):
         """
         default = (800, 600)
         renderer = getattr(viewer, "_renderer", None)
-        widget = None
-        if renderer is not None and hasattr(renderer, "widget"):
-            try:
-                widget = renderer.widget()
-            except Exception:
-                widget = None
-        if widget is None:
+        if renderer is None:
             return default
-        sizer = getattr(widget, "scene_pixel_size", None)
-        if callable(sizer):
-            try:
-                width, height = sizer()
-                if width > 0 and height > 0:
-                    return int(width), int(height)
-            except Exception:
-                pass
-        try:
-            if widget.width() > 0 and widget.height() > 0:
-                return int(widget.width()), int(widget.height())
-        except Exception:
-            pass
+
+        # The **renderer** is asked first, not `renderer.widget()`. Only a Qt
+        # host has a widget: the toolkit-free window owns a canvas beside the
+        # renderer and answers `widget()` with itself or with None, so going
+        # through the widget fell straight to the 800x600 default there.
+        #
+        # That default is what put a 4:3 image in a 16:10 viewport. The blit
+        # preserves aspect -- it must, or a traced frame is a different picture
+        # from the one that was traced -- so the image was letterboxed and the
+        # *live* scene showed through the bars on either side. It read as "ray
+        # only traced part of the view", and the cause was that nothing had
+        # asked the view how big it was.
+        for source in (renderer, getattr(renderer, "widget", lambda: None)()):
+            if source is None:
+                continue
+            sizer = getattr(source, "scene_pixel_size", None)
+            if callable(sizer):
+                try:
+                    width, height = sizer()
+                    if width > 0 and height > 0:
+                        return int(width), int(height)
+                except Exception:  # noqa: BLE001
+                    pass
+            for pair in (("width", "height"), ("_width", "_height")):
+                try:
+                    w, h = (getattr(source, pair[0]), getattr(source, pair[1]))
+                    w, h = (w() if callable(w) else w), (h() if callable(h) else h)
+                    if w and h and w > 0 and h > 0:
+                        return int(w), int(h)
+                except Exception:  # noqa: BLE001
+                    pass
         return default
 
     @command("ray")
@@ -1035,8 +1047,17 @@ class ExportMixin(BaseCmd):
         # A saved image is a picture of the *scene*. The in-viewport windows are
         # tools laid over it, not part of the molecule, so they come out for the
         # grab and go straight back -- PyMOL's own output carries no GUI either.
+        # `chrome=False`: the saved image is the **scene**, with no menu bar,
+        # no sequence strip, no panels and no status line. That was always the
+        # stated intent here -- "PyMOL's own output carries no GUI either" --
+        # but the only mechanism was hiding the in-viewport *windows*, so
+        # everything else in the chrome still landed in the file.
         with self._windows_hidden(renderer):
-            image = grab()
+            try:
+                image = grab(chrome=False)
+            except TypeError:
+                # A renderer whose grab takes no arguments.
+                image = grab()
         if image is None:
             return False
         from PIL import Image  # noqa: PLC0415
