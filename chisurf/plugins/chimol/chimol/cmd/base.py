@@ -22,6 +22,52 @@ MessageCallback = Callable[[str], None]
 _PROGRESS_REDRAW_INTERVAL = 1.0 / 15.0
 
 
+#: Longest result echoed verbatim. Past this the log gets a summary instead.
+_RESULT_ECHO_LIMIT = 160
+
+
+def _summarise_result(result) -> str:
+    """A command's return value, in a form a feedback log can hold.
+
+    A command's return value is for the *caller* -- ``rms = cmd.intra_rms(...)``
+    -- and echoing it was useful right up until a command returned something
+    big. ``intra_rms`` on a 464-frame trajectory returns 464 floats, and the
+    whole repr went into the viewport's log as one line: several thousand
+    characters, drawn as chrome text, in a panel three lines tall.
+
+    So a short result is still printed exactly, because that is the useful case
+    -- a distance, an area, a count. A long one is described instead: what it
+    is, how many, and the range, which is what anybody reads off a list of
+    numbers anyway.
+
+    Parameters
+    ----------
+    result : object
+
+    Returns
+    -------
+    str
+    """
+    text = str(result)
+    if len(text) <= _RESULT_ECHO_LIMIT:
+        return text
+
+    if isinstance(result, (list, tuple)):
+        numbers = [x for x in result if isinstance(x, (int, float))]
+        if len(numbers) == len(result) and numbers:
+            return (
+                f"{len(result)} values, "
+                f"min {min(numbers):.4g}, max {max(numbers):.4g}, "
+                f"mean {sum(numbers) / len(numbers):.4g}"
+            )
+        return f"{type(result).__name__} of {len(result)} items"
+    if isinstance(result, dict):
+        return f"dict of {len(result)} entries"
+    # Anything else: the head of it, marked as truncated rather than silently
+    # cut, so nobody reads a clipped number as the whole answer.
+    return text[: _RESULT_ECHO_LIMIT - 3] + "..."
+
+
 class BaseCmd:
     """Shared infrastructure for the Moview/Chimol command layer."""
 
@@ -180,7 +226,7 @@ class BaseCmd:
             return
 
         if result is not None:
-            self._emit_message(str(result))
+            self._emit_message(_summarise_result(result))
 
     def _run_script_file(self, path: str) -> None:
         """Execute a simple cmd script file, one command per non-empty line.

@@ -35694,3 +35694,16 @@
   Recorded limit: `pbc unwrap` seeds each fragment from its first atom rather
   than walking the bond graph, so a fragment spanning more than half the cell is
   not unwrapped correctly -- and such a fragment has no unambiguous unwrapping.
+
+- **2026-08-12 — chimol: a command returning a list dumped its whole repr into
+  the viewport log.** `do()` ended `if result is not None: self._emit_message(
+  str(result))`, which is right up until a command returns something big:
+  `intra_rms` on the 464-frame demo returns 464 floats, and the whole repr went
+  into the feedback log as **one ~9,000-character line**, drawn as chrome text
+  in a panel three lines tall.
+  A short result is still printed exactly -- that is the useful case, a
+  distance, an area, a count. A long one is described instead: **"464 values,
+  min 1.1e-14, max 20.69, mean 14.22"**, 48 characters, and more informative
+  than the dump it replaces, since a range is what anybody reads off a list of
+  numbers anyway. A truncated string is marked as truncated rather than silently
+  cut, so a clipped number cannot be read as the whole answer.
