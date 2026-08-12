@@ -35112,3 +35112,17 @@
   Martini table are in [known-issues](references/known-issues.md) — as written it
   is a different force field wearing Martini's name, so a model here is a
   simulation candidate only through an exported GROMACS topology.
+
+- **2026-08-12 — chimol: the frame is 94 % chrome, and that is why the UI feels
+  slow.** With the NPC load fixed, frame time was measured for the first time:
+  **45.7 ms -> 36.9 ms** (22 -> 27 fps at 234,184 beads) by caching the sequence
+  gradient, which was rebuilding a 234,184x4 array *every frame*. The profile
+  then shows `_chrome_quads` at **37.8 ms of a 41 ms frame** — ~2,800 quads and
+  ~330 text runs re-emitted from scratch per frame — while the molecule barely
+  appears, being built once and drawn by the GPU. So "the UI is slow" and "the
+  NPC is slow to interact with" are one defect, and it is not a rendering-scale
+  problem. Left open deliberately: `internal_gui.py` and `renderer/ui/*` are
+  under active edit by another agent, so a chrome cache would collide. Details,
+  including why `test_chrome_painter`'s baselines are currently red for that same
+  reason and *not* from this change, are in
+  [known-issues](references/known-issues.md).

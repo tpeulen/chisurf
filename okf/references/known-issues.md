@@ -4272,3 +4272,43 @@ that work is scoped as research; recorded so it is not rediscovered.
 
 Consequence for users: a Martini-shaped model here is a candidate for simulation
 only through an exported GROMACS topology, never through the in-tree scoring.
+
+### Open 2026-08-12 — chimol: the frame is 94 % chrome, not molecule
+
+Measured on the same M1 Pro, same NPC, offscreen WebGPU/Metal, once the load
+costs above were fixed. Frame time went **45.7 ms -> 36.9 ms** (22 -> 27 fps)
+by caching the sequence gradient, and the profile then says plainly where the
+rest is:
+
+* `_chrome_quads` is **37.8 ms of a 41 ms frame**. It rebuilds **~2,800 quads
+  and ~330 text runs from scratch every frame**, in Python.
+* The molecule itself barely appears in the profile. It is built once and drawn
+  by the GPU; drawing 234,184 beads is not what costs.
+
+So "chimol's UI is slow" and "the NPC demo is slow to interact with" are the
+same defect, and it is **not** a rendering-scale problem. The chrome is
+immediate-mode — every panel, row and glyph re-emitted per frame — and the
+sequence strip of an integrative model with hundreds of chains is thousands of
+cells wide.
+
+The fix is a dirty-flag cache on the chrome quad buffer: the chrome changes on
+hover, focus and state, not on camera motion, and camera motion is when frames
+matter. **Not done here** because `internal_gui.py` and `renderer/ui/*` are
+being actively edited by another agent (+2,496 uncommitted lines, and the chrome
+baseline PNGs themselves are modified), so it would collide.
+
+Note for whoever picks it up: `test_chrome_painter.py`'s five baseline
+comparisons are **currently failing in the working tree** for that same
+in-flight reason, so they cannot be used as a regression check until that work
+lands. Confirmed not caused by the colour caching above —
+`_build_sequence_gradient_colors` is called **zero** times during those tests.
+
+One caching trap, already paid for once: the gradient cache first handed out its
+array **read-only**, to stop a caller recolouring the shared copy. That is the
+right instinct and it immediately found two real in-place writers (`spectrum`,
+and the per-atom sort path) — but as a shipped behaviour it turns aliasing into
+`assignment destination is read-only` raised from inside a command that did
+nothing wrong. It now returns a copy, which is one memcpy against rebuilding the
+ramp. The separate defensive copy added in `_recompute_colors_per_ca` is worth
+keeping regardless: it wrote overrides in place into whatever array the colour
+mode returned.

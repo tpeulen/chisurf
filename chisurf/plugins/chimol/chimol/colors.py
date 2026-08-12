@@ -496,6 +496,15 @@ def _build_ss_color_array(ss_codes: Optional[np.ndarray], n_points: int) -> np.n
     return colors
 
 
+#: The last sequence gradient built, keyed by what determines it.
+#:
+#: The ramp is a pure function of its length and its two endpoint colours, and
+#: for an integrative model it is a 234,184x4 array -- 7.5 MB rebuilt from
+#: scratch on **every frame**, which is 8 ms of a 46 ms frame spent arriving at
+#: the array already in hand.
+_SEQUENCE_GRADIENT_CACHE: dict[tuple, np.ndarray] = {}
+
+
 def _build_sequence_gradient_colors(n_points: int) -> np.ndarray:
     if n_points <= 0:
         return np.zeros((0, 4), dtype=float)
@@ -521,10 +530,29 @@ def _build_sequence_gradient_colors(n_points: int) -> np.ndarray:
     if n_points == 1:
         return start.reshape(1, 4).copy()
 
-    t = np.linspace(0.0, 1.0, n_points, dtype=float)[:, np.newaxis]
-    colors = start + (end - start) * t
-    colors = np.clip(colors, 0.0, 1.0)
-    return colors
+    # Cached on the endpoints as well as the length: the gradient is a setting,
+    # and a cache keyed on length alone would keep serving the old ramp after
+    # someone changed the colours.
+    key = (int(n_points), start.tobytes(), end.tobytes())
+    hit = _SEQUENCE_GRADIENT_CACHE.get(key)
+    if hit is None:
+        t = np.linspace(0.0, 1.0, n_points, dtype=float)[:, np.newaxis]
+        hit = np.clip(start + (end - start) * t, 0.0, 1.0)
+        # One entry. The interesting case is *repeating* one ramp every frame,
+        # not accumulating many.
+        _SEQUENCE_GRADIENT_CACHE.clear()
+        _SEQUENCE_GRADIENT_CACHE[key] = hit
+
+    # A copy, always. Several callers recolour the result in place -- `spectrum`
+    # and the per-atom sort among them -- and handing out the cached array
+    # directly would let one object's recolouring reach every later caller.
+    # Sharing it read-only instead was tried and is worse: it converts that
+    # aliasing into "assignment destination is read-only" raised from deep
+    # inside a command, at a call site that has done nothing wrong.
+    #
+    # The copy is one memcpy against building the ramp from scratch, which is a
+    # linspace, a broadcast multiply-add and a clip over every residue.
+    return hit.copy()
 
 
 def _build_element_color_array(

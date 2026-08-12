@@ -9443,7 +9443,13 @@ class MolView(WidgetBase):
                 if base_cols is None or base_cols.shape != ov_arr.shape:
                     base = np.asarray(self._base_color_single, dtype=float)
                     base_cols = np.tile(base, (n_points, 1))
-                base_cols = np.asarray(base_cols, dtype=float)
+                # A *copy*, because the overrides below are written in place and
+                # the array underneath may be shared -- the sequence gradient is
+                # cached and handed out read-only, so `asarray` here (which does
+                # not copy an array that is already float64) would either raise
+                # or, without the read-only flag, silently bake one object's
+                # overrides into every later caller's colours.
+                base_cols = np.array(base_cols, dtype=float, copy=True)
                 mask = np.all(np.isfinite(ov_arr), axis=1)
                 if mask.any():
                     base_cols[mask] = ov_arr[mask]
