@@ -53,12 +53,8 @@ def test_cusum_filter_execution() -> None:
     assert len(df) >= 0
 
 
-def test_bocpd_filter_is_removed() -> None:
-    """BOCPD was retired (the tttrlib searches supersede it): selecting it errors.
-
-    It never performed well enough to recommend, so the API now rejects the mode
-    with a clear message instead of running it.
-    """
+def test_bocpd_filter_dispatches_to_tttrlib() -> None:
+    """BOCPD is now backed by tttrlib's C++ engine and runs without error."""
     if not BH_SPC_FILE.exists():
         pytest.skip("Test data not available")
 
@@ -78,8 +74,8 @@ def test_bocpd_filter_is_removed() -> None:
         min_photons=15, photon_window=10, time_window=0.001,
     )
 
-    with pytest.raises(ValueError, match="BOCPD"):
-        analyze_file(BH_SPC_FILE, settings=settings)
+    result = analyze_file(BH_SPC_FILE, settings=settings)
+    assert result is not None
 
 
 def test_kalman_filter_execution() -> None:

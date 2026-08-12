@@ -2,7 +2,7 @@ import numpy as np
 
 from chisurf.plugins.pch.api.algorithms import (
     compute_p1,
-    convolve_pch_numba,
+    convolve_pch,
     pch_mixture,
     pch_open_system,
     pch_single_species,
@@ -27,16 +27,16 @@ def test_pch_single_species():
     assert np.isclose(p.sum(), 1.0, atol=1e-6)
 
 
-def test_convolve_pch_numba():
+def test_convolve_pch():
     p1 = np.array([0.5, 0.3, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], dtype=float)
-    result = convolve_pch_numba(p1, 2, 10)
+    result = convolve_pch(p1, 2, 10)
     assert len(result) == 10
     assert np.isclose(result.sum(), 1.0, atol=1e-6)
 
 
 def test_convolve_n0():
     p1 = np.array([0.5, 0.3, 0.2, 0.0, 0.0], dtype=float)
-    result = convolve_pch_numba(p1, 0, 5)
+    result = convolve_pch(p1, 0, 5)
     assert result[0] == 1.0
     assert result[1:].sum() == 0.0
 

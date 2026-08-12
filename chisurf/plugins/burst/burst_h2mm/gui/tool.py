@@ -59,6 +59,7 @@ from ..core.engines import DECODER_LABELS, ENGINE_LABELS
 from ..core.engines import DECODERS as H2mmDecoders
 from ..core.engines import ENGINES as H2mmEngines
 from chisurf.gui import dialogs
+from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
 
 #: Bump in the same change that alters what this tool computes, so results
 #: written by the previous version stop reading as current.
@@ -171,7 +172,7 @@ class LikelihoodScanDialog(QDialog):
 
 
 @persist_plugin_state("burst_h2mm")
-class H2mmTool(MessagesMixin, QMainWindow):
+class H2mmTool(ChisurfDockTool):
     """H2MM analysis widget with toolbar, tabbed settings, and result plots."""
 
     class Error(MessagesMixin.Error):

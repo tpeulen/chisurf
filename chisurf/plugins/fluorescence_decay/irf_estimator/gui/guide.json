@@ -1,0 +1,44 @@
+{
+  "_comment": "Guided tour for blind IRF estimation. Hand-built Qt (no view spec), so steps target toolbar actions by caption and the parameter spin boxes by the irf_* objectNames set in gui/tool.py. Read by chisurf.gui.widgets.tools.guided_tour.",
+  "steps": [
+    {
+      "title": "An IRF you did not measure",
+      "text": "What you recorded is your molecule's decay <b>convolved</b> with the instrument's response to an infinitely short flash. Late in the record the response has long since ended, so the tail is the <i>pure</i> decay — fit it there and you know the decay without ever having seen the IRF. What connects the two is then recoverable by deconvolution.<br/><br/>That is what this does. It is a <b>fallback</b>, not a substitute for measuring the IRF, and the last step says why in detail.<br/><br/>Five steps.",
+      "target": {}
+    },
+    {
+      "title": "Load the decay",
+      "text": "From a file, or from a dataset already open in ChiSurf. It should be a decay whose tail is long enough to fit — the tail is the entire input to the first half of the method.",
+      "target": {
+        "action": "Load Decay"
+      },
+      "await": {
+        "hint": "Press <b>Load Decay</b> (or <b>Load from Dataset</b>)."
+      }
+    },
+    {
+      "title": "Subtract the background before anything else",
+      "text": "An offset that is not removed has no exponential shape to attribute to the decay — so the deconvolution attributes it to the <b>IRF</b>, as a long flat tail.<br/><br/>That is exactly what an instrument response cannot have, and exactly what will bias every lifetime you later fit with it. It is the most common way this method produces a confident, wrong answer.<br/><br/>Set the <b>channel width</b> from the acquisition too: everything downstream is in those units, and a wrong Δt gives a plausible IRF of the wrong width.",
+      "target": {
+        "name": "irf_background"
+      }
+    },
+    {
+      "title": "Iterations are the regularisation, not a convergence setting",
+      "text": "Richardson–Lucy does not converge to a sensible answer and stop. Left running, <b>it converges to the noise</b> — more iterations sharpen the estimate and amplify noise in the same motion, so <i>where you stop is the regularisation</i>.<br/><br/>Increase it until the IRF stops getting narrower in a way that looks structural, and no further. RL is used here because it keeps the result non-negative — which an IRF must be — and because it degrades gracefully instead of exploding on noisy data.",
+      "target": {
+        "name": "irf_rl_iterations"
+      }
+    },
+    {
+      "title": "Estimate — then distrust it in three specific ways",
+      "text": "The tail is fitted, the IRF deconvolved, and both are plotted.<br/><br/><b>1. The circularity.</b> An IRF estimated from a decay and then used to fit <i>that same decay</i> gives an excellent fit no matter what, because the IRF absorbed whatever the model could not describe. <b>A good χ² here is not evidence.</b> At minimum, fit a <i>different</i> measurement with it.<br/><b>2. The tail fit is an assumption.</b> It assumes one clean exponential. A multi-exponential sample, an unaccounted slow component, or a fit window that starts while the decay is still rising all transfer straight into the \"IRF\".<br/><b>3. Does it look like an instrument response?</b> One sharp peak, fast rise, short tail. Structure, a shoulder, or a width comparable to the lifetime you are measuring is a failed deconvolution — which will still convolve happily.<br/><br/>And if every lifetime you care about is far longer than the pulse, fit the tail directly instead: a method that needs no IRF beats one that invents one. The <b>?</b> button has the rest.",
+      "target": {
+        "action": "Estimate IRF"
+      },
+      "await": {
+        "hint": "Press <b>Estimate IRF</b>."
+      }
+    }
+  ]
+}

@@ -344,13 +344,13 @@ def test_empty_search_masks_nothing(photons, monkeypatch):
 
 # --- retired and unavailable modes in the dispatcher ---------------------------
 
-def test_bocpd_mode_is_reported_as_removed(photons):
-    """BOCPD is retired: the enum survives so old projects load, but it errors."""
+def test_bocpd_mode_dispatches_to_tttrlib(photons):
+    """BOCPD is now backed by tttrlib's C++ engine."""
     from chisurf.plugins.burst.burst_selection.api.selection import apply_photon_filters
 
     settings = PhotonFilterSettings(used_filter=BurstFilterMode.BOCPD)
-    with pytest.raises(ValueError, match="BOCPD"):
-        apply_photon_filters(photons, settings)
+    mask = apply_photon_filters(photons, settings)
+    assert mask.shape == (len(photons),)
 
 
 def test_tttrlib_mode_without_a_registry_falls_back(photons, monkeypatch):

@@ -6,13 +6,18 @@ import zipfile
 from pathlib import Path
 
 import numpy as np
-import pandas as pd
 import pytest
 
-from chisurf.core.datastore import read_table, read_table_frame
+from chisurf.core.datastore import (
+    column_names,
+    numeric_column,
+    read_results_table,
+    read_table,
+    store_from_arrays,
+    store_from_rows,
+)
 from chisurf.plugins.burst.burst_selection.api.io import (
     get_unique_folder_path,
-    write_hdf5,
     zip_output_folder,
 )
 from chisurf.plugins.burst.burst_selection.api.models import (
@@ -61,12 +66,16 @@ DEFAULT_SETTINGS = AnalysisSettings(
 
 
 @pytest.fixture
-def burst_dataframe() -> pd.DataFrame:
-    """Run analysis on the BH SPC132 file and return a burst DataFrame."""
+def burst_table():
+    """Run analysis on the BH SPC132 file and return a burst store.
+
+    Returns
+    -------
+    tttrlib.DataStore
+    """
     result = analyze_file(str(BH_SPC_FILE), settings=DEFAULT_SETTINGS)
     path_key = str(BH_SPC_FILE)
-    df = pd.DataFrame(result.dataframes[path_key])
-    return df
+    return store_from_rows(result.dataframes[path_key])
 
 
 # ---------------------------------------------------------------------------

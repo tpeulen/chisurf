@@ -34,6 +34,12 @@ SETTINGS_PANELS = [
         "class_name": "StyleManagerWidget",
     },
     {
+        "name": "Plots",
+        "icon": "📊",
+        "class_path": "chisurf.plugins.core.plot_settings.gui.tool",
+        "class_name": "PlotSettingsWidget",
+    },
+    {
         "name": "Models",
         "icon": Glyphs.SETTINGS,
         "class_path": "chisurf.plugins.core.model_manager.gui.tool",

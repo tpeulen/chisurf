@@ -16,11 +16,20 @@ from qtpy.QtWidgets import QFileDialog
 from chisurf.gui import chiplot
 import numpy as np
 from types import SimpleNamespace
-import pandas as pd
 
 import json
 
-from chisurf.core.datastore import write_csv_table
+from chisurf.core.datastore import (
+    column_names,
+    concat_stores,
+    numeric_column,
+    row_count,
+    set_constant,
+    store_from_arrays,
+    store_from_rows,
+    take_where,
+    write_csv_table,
+)
 import chisurf as cs
 
 from chisurf.gui.autoform import AutoForm
@@ -34,6 +43,19 @@ from chisurf.gui.widgets.tool_buttons import action_button, flag_attention
 #: 2: a split-by-state run first fits each state's pooled decay and starts that
 #: state's per-burst fits from it, so its per-burst lifetimes differ from v1's.
 ALGORITHM_VERSION = 2
+
+
+def _coerce_float(value) -> float:
+    """Return *value* as a float, or ``nan`` for anything that is not one.
+
+    The store-and-frame spelling of ``pd.to_numeric(..., errors="coerce")`` for
+    a single scalar: a fit-result row can carry ``None`` for a column its model
+    did not emit, and that is "not measured", not zero.
+    """
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return float("nan")
 
 
 def _mle_progress(widget, text: str, maximum: int) -> ChiSurfProgress:
@@ -74,6 +96,7 @@ import tttrlib
 from typing import Dict
 from chisurf.core.fio import write_vv_vh
 from chisurf.core.fluorescence.mle import Fit2x, Fit2xModel, Fit2xSettings
+from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
 
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
@@ -173,7 +196,7 @@ class _MleParameterRows:
 
 
 @persist_plugin_state("burst_mle_analysis")
-class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
+class MLELifetimeAnalysisWizard(ChisurfDockTool):
     """
     Note on legacy burst processors:
     Older implementations (process_bursts_old, process_bursts_new, process_bursts_new2, process_bursts_new3)
@@ -522,7 +545,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             try:
                 info.mkdir(parents=True, exist_ok=True)
                 target = info / "state_lifetimes.csv"
-                write_csv_table(target, pd.DataFrame(rows), delimiter=",")
+                write_csv_table(target, store_from_rows(rows), delimiter=",")
             except OSError as exc:
                 cs.logging.warning(f"Could not write {info}: {exc}")
                 continue
@@ -587,7 +610,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
     #: Rows of the last pooled per-state fit (see ``write_state_lifetimes``).
     state_lifetimes: list = []
 
-    def _save_burst_results_fast(self, result_df: pd.DataFrame) -> list[Path] | None:
+    def _save_burst_results_fast(self, results: list[dict]) -> list[Path] | None:
         """
         Save burst-fit results grouped by (file stem, detector) with a fast, vectorized path.
 
@@ -600,7 +623,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         - Writes channel_settings.json once per output folder.
         - Shows a modal QProgressDialog and supports cancelation.
 
-        Expects columns:
+        Expects each row (a plain mapping) to carry:
           'First File', 'Detector', and the per-detector numeric columns produced above.
         Uses:
           self.burst_files_list, self.channel_definer, self.channel_settings
@@ -610,21 +633,24 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         files_by_stem = {Path(p).stem: Path(p) for p in files}
         selected_stems = set(files_by_stem.keys())
 
-        if result_df is None or result_df.empty:
+        if not results:
             self._set_status("No burst-fit results to save.")
             return
         if not selected_stems:
             self._set_status("No files selected to save.")
             return
 
-        # Compute stems once; filter to selected stems; attach "First Stem" without double-mapping
-        stems_series = result_df['First File'].map(lambda fn: Path(fn).stem)
-        mask = stems_series.isin(selected_stems)
-        if not mask.any():
+        # Attach "First Stem" and drop rows outside the selected files, in one pass.
+        res: list[dict] = []
+        for row in results:
+            stem = Path(row['First File']).stem
+            if stem in selected_stems:
+                row = dict(row)
+                row['First Stem'] = stem
+                res.append(row)
+        if not res:
             self._set_status("No burst-fit rows matched the selected files.")
             return
-        res = result_df.loc[mask].copy()
-        res['First Stem'] = stems_series.loc[mask].values
 
         # Prepare detector metadata (columns per detector). The column set is
         # model-aware: fit23 keeps its historical layout (byte-for-byte export);
@@ -641,8 +667,10 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             )
             det_meta[det] = (color, letter, cols)
 
-        # Group once by (First Stem, Detector)
-        groups = res.groupby(['First Stem', 'Detector'], sort=False)
+        # Group once by (First Stem, Detector), preserving first-seen order.
+        groups: dict[tuple, list[dict]] = {}
+        for row in res:
+            groups.setdefault((row['First Stem'], row.get('Detector')), []).append(row)
         total_tasks = len(groups)
 
         progress = _mle_progress(self, "Saving burst-fit results...", total_tasks)
@@ -665,7 +693,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             if (k % 25) == 0:
                 QtWidgets.QApplication.processEvents()
 
-        for (stem, det), df_g in groups:
+        for (stem, det), rows_g in groups.items():
             meta = det_meta.get(det)
             if meta is None:
                 # Unknown detector label in results; skip gracefully
@@ -695,11 +723,15 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             out_dir.mkdir(parents=True, exist_ok=True)
             written_dirs.add(out_dir.name)
 
-            # Build zero-interleaved matrix efficiently (reindex tolerates a
-            # model that did not emit every column — missing → NaN).
-            fits = df_g.reindex(columns=cols)
-            by_stem.setdefault(stem, {})[det] = fits
-            arr = fits.to_numpy(dtype=float, copy=False)
+            # Build zero-interleaved matrix efficiently (a column a model did
+            # not emit is simply absent from a row's mapping — missing → NaN).
+            arr = np.array(
+                [[_coerce_float(row.get(c)) for c in cols] for row in rows_g],
+                dtype=float,
+            )
+            by_stem.setdefault(stem, {})[det] = store_from_arrays(
+                {c: arr[:, i] for i, c in enumerate(cols)}
+            )
             out = np.zeros((arr.shape[0] * 2 + 1, arr.shape[1]), dtype=float)
             out[1::2] = arr  # fill odd rows with data
 
@@ -1230,12 +1262,12 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
     def total_burst_time_seconds(self) -> float:
         """
         Total integrated burst duration, in seconds.
-        Returns 0.0 if no burst DataFrame is loaded or if the column is missing.
+        Returns 0.0 if no burst table is loaded or if the column is missing.
         """
-        if self.df_bursts is None or 'Duration (ms)' not in self.df_bursts:
+        if self.df_bursts is None or 'Duration (ms)' not in column_names(self.df_bursts):
             return 0.0
         # sum durations (ms) and convert to seconds
-        total_ms = self.df_bursts['Duration (ms)'].sum()
+        total_ms = float(np.nansum(numeric_column(self.df_bursts, 'Duration (ms)')))
         return total_ms / 1000.0
 
     def _header_time_ns(self):
@@ -1282,7 +1314,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
     @property
     def n_bursts(self) -> int:
         """Number of bursts currently loaded."""
-        return len(self.df_bursts) if self.df_bursts is not None else 0
+        return row_count(self.df_bursts) if self.df_bursts is not None else 0
 
     @property
     def detector_channels(self):
@@ -2131,15 +2163,17 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             cs.logging.info("No burst data loaded.")
             return
 
-        row = self.df_bursts.iloc[idx]
-        key = Path(row['First File']).stem
+        first_file = np.asarray(self.df_bursts['First File'], dtype=object)[idx]
+        key = Path(str(first_file)).stem
         tttr = self.tttrs.get(key)
         if tttr is None:
             cs.logging.info(f"TTTR with key {key} not found.")
             return
         # ``Last Photon`` is inclusive (see ``_mp_worker._burst_slice``), so the
         # inspected burst must be the same photons the fit uses.
-        burst = tttr[int(row['First Photon']):int(row['Last Photon']) + 1]
+        first_photon = numeric_column(self.df_bursts, 'First Photon')[idx]
+        last_photon = numeric_column(self.df_bursts, 'Last Photon')[idx]
+        burst = tttr[int(first_photon):int(last_photon) + 1]
 
         # clear any existing plots
         self.burst_layout.clear()
@@ -3141,11 +3175,9 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             self._set_irf_bg_widgets_enabled(False)
         else:
             paris = files[0].parent
-            if self.df_bursts is None:
-                self.df_bursts = pd.DataFrame()
             df, tttrs = self.read_burst_analysis(paris.parent)
             self.tttrs = tttrs
-            self.df_bursts = pd.concat([self.df_bursts, df], ignore_index=True, sort=False)
+            self.df_bursts = df if self.df_bursts is None else concat_stores([self.df_bursts, df])
 
             # Enable IRF and BG file drops after burst files are loaded
             self._set_irf_bg_widgets_enabled(True)
@@ -3187,7 +3219,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         try:
             import numpy as _np
 
-            if self.df_bursts is None or not len(self.df_bursts):
+            if self.df_bursts is None or not row_count(self.df_bursts):
                 return
             if self._current_tttr() is None:
                 return
@@ -3242,7 +3274,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
 
     def get_current_vv_vhs(self):
         if self.df_bursts is None:
-            cs.logging.info("No burst DataFrame loaded.")
+            cs.logging.info("No burst table loaded.")
             return
 
         # gather detector channels and microtime settings
@@ -3257,25 +3289,26 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         # 1) Which .bur file is selected in the UI?
         curr_bur = Path(self.current_filename).name
 
-        # 2) Check if 'burst_file' column exists in the DataFrame
-        if 'burst_file' not in self.df_bursts.columns:
-            cs.logging.info(f"'burst_file' column not found in DataFrame. Available columns: {list(self.df_bursts.columns)}")
+        # 2) Check if 'burst_file' column exists in the store
+        names = column_names(self.df_bursts)
+        if 'burst_file' not in names:
+            cs.logging.info(f"'burst_file' column not found in burst table. Available columns: {names}")
             # Try to use the first file if burst_file column doesn't exist
-            if len(self.df_bursts) > 0:
+            if row_count(self.df_bursts) > 0:
                 df_this = self.df_bursts
-                cs.logging.info(f"Using all rows in DataFrame as fallback")
+                cs.logging.info("Using all rows in burst table as fallback")
             else:
-                cs.logging.info("DataFrame is empty")
+                cs.logging.info("Burst table is empty")
                 return
         else:
             # Filter df_bursts to just its rows
-            df_this = self.df_bursts[self.df_bursts["burst_file"] == curr_bur]
-            if df_this.empty:
+            df_this = take_where(self.df_bursts, np.asarray(self.df_bursts["burst_file"]) == curr_bur)
+            if row_count(df_this) == 0:
                 cs.logging.info(f"No bursts found for {curr_bur!r}")
                 return
 
         # 3) Now grab the TTTR filename from the first row of that subset
-        tttr_name = df_this.loc[df_this.index[0], "First File"]
+        tttr_name = np.asarray(df_this["First File"], dtype=object)[0]
 
         # 4) Load or retrieve the TTTR
         key = Path(tttr_name).stem
@@ -3815,13 +3848,16 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             return None
         df = self.df_bursts
         curr = Path(self.current_filename).name if self.current_filename else None
-        if "burst_file" in df.columns and curr:
-            sub = df[df["burst_file"] == curr]
-            if not sub.empty:
+        names = column_names(df)
+        if "burst_file" in names and curr:
+            sub = take_where(df, np.asarray(df["burst_file"]) == curr)
+            if row_count(sub) > 0:
                 df = sub
-        if "First File" not in df.columns or df.empty:
+                names = column_names(df)
+        if "First File" not in names or row_count(df) == 0:
             return None
-        return self.tttrs.get(Path(df.iloc[0]["First File"]).stem)
+        first_file = np.asarray(df["First File"], dtype=object)[0]
+        return self.tttrs.get(Path(str(first_file)).stem)
 
     def _irf_fwhm_channels(self):
         """FWHM of the scatter IRF prompt in RAW micro-time channels, or ``None``.
@@ -4232,32 +4268,32 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         self.update_fit_ui(fit_result)
 
     def _pin_decay_yrange(self, data_rng):
-        """Fix the Intensity (log-y) view to the data's range; disable autorange."""
-        import math
-        d = np.asarray(data_rng, dtype=float)
-        d = d[np.isfinite(d) & (d > 0)]
+        """Fix the Intensity (log-y) view to the data's range; disable autorange.
+
+        Through the shared rule (:func:`chisurf.core.fluorescence.mle.display.decay_ylim`),
+        which also fixes what this did wrong: it passed **log10** values, and
+        ``chiplot.Plot.set_ylim`` takes data units on every axis and does the log
+        conversion itself. The range was therefore logged twice and the panel
+        showed a few counts while the decay sat off the top of it — a regression
+        from the pyqtgraph migration, where log10 had been correct.
+        """
+        from chisurf.core.fluorescence.mle.display import decay_ylim
+
         # Setting an explicit range is itself what turns the axis' auto-range
         # off, so there is nothing to disable first.
         try:
-            if d.size:
-                lo = math.log10(max(float(d.min()) * 0.5, 1e-2))
-                hi = math.log10(float(d.max()) * 3.0)
-                if hi <= lo:
-                    hi = lo + 1.0
-                self.combined_plot.set_ylim(lo, hi, padding=0.0)
-            else:
-                self.combined_plot.set_ylim(-1, 5, padding=0.0)
+            lo, hi = decay_ylim(data_rng)
+            self.combined_plot.set_ylim(lo, hi, padding=0.0)
         except Exception:
             pass
 
     def _pin_residual_yrange(self, resid_rng):
         """Clamp the residual view to a symmetric band so a bad fit can't run off."""
-        r = np.asarray(resid_rng, dtype=float)
-        r = r[np.isfinite(r)]
+        from chisurf.core.fluorescence.mle.display import residual_ylim
+
         try:
-            span = float(np.nanpercentile(np.abs(r), 99)) if r.size else 5.0
-            span = max(span, 5.0)
-            self.residual_plot.set_ylim(-span, span, padding=0.05)
+            lo, hi = residual_ylim(resid_rng)
+            self.residual_plot.set_ylim(lo, hi, padding=0.05)
         except Exception:
             pass
 
@@ -4528,7 +4564,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
 
         # UI
         self.stop_processing = False
-        total_bursts = len(self.df_bursts)
+        total_bursts = row_count(self.df_bursts)
         progress = _mle_progress(self, "Processing bursts...", total_bursts)
         progress.setWindowTitle("Processing bursts")
         progress.setWindowModality(QtCore.Qt.WindowModal)
@@ -4629,13 +4665,23 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             # Build per-file jobs with shared memory
             jobs = []
             shm_blocks = []  # to unlink at end
-            for fname, df_file in self.df_bursts.groupby('First File', sort=False):
+            first_file_col = np.array(
+                [str(v) for v in np.asarray(self.df_bursts['First File'], dtype=object)],
+                dtype=object,
+            )
+            fp_col = numeric_column(self.df_bursts, 'First Photon')
+            lp_col = numeric_column(self.df_bursts, 'Last Photon')
+            burst_groups: dict = {}
+            for fname in dict.fromkeys(first_file_col.tolist()):
+                mask = first_file_col == fname
+                burst_groups[fname] = list(zip(fp_col[mask].tolist(), lp_col[mask].tolist()))
+
+            for fname, bursts in burst_groups.items():
                 key = Path(fname).stem
                 tttr = self.tttrs.get(key)
 
                 if tttr is None:
-                    jobs.append((fname,
-                                 list(df_file[['First Photon', 'Last Photon']].itertuples(index=False, name=None)),
+                    jobs.append((fname, bursts,
                                  None, None, None, None, None, None,
                                  det_order, {}, int(self.shift or 0), None))
                     continue
@@ -4714,7 +4760,6 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
                         'param_names': list(param_names),
                     }
 
-                bursts = list(df_file[['First Photon', 'Last Photon']].itertuples(index=False, name=None))
                 jobs.append((fname, bursts,
                              rc_shm.name, rc_full.shape, str(rc_full.dtype),
                              mt_shm.name, mt_bins_full.shape, str(mt_bins_full.dtype),
@@ -4820,35 +4865,35 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             )
             return
 
-        result_df = pd.DataFrame(results)
-
         # Diagnostics: per-detector fit yield + photon-window stats, so an all-NaN
         # τ column (e.g. every green burst below min_photons in the fit window)
         # is explained in the log rather than appearing as silent NaNs downstream.
         summary_bits = []
         try:
+            any_result_has = lambda name: any(name in row for row in results)  # noqa: E731
             for det in det_order:
                 color = det.lower()
                 tau_col = f"Tau ({color})"
                 nph_col = f"Number of Photons (fit window) ({color})"
-                if tau_col not in result_df.columns:
+                if not any_result_has(tau_col):
                     continue
-                tau_vals = pd.to_numeric(result_df[tau_col], errors="coerce")
-                n_ok = int(tau_vals.notna().sum())
-                n_all = int(len(tau_vals))
+                tau_vals = np.array([_coerce_float(row.get(tau_col)) for row in results])
+                n_ok = int(np.count_nonzero(~np.isnan(tau_vals)))
+                n_all = int(tau_vals.size)
                 summary_bits.append(f"{det} {n_ok}/{n_all}")
                 msg = f"MLE batch '{det}': {n_ok}/{n_all} bursts fitted (τ non-NaN)"
-                if nph_col in result_df.columns:
-                    nph = pd.to_numeric(result_df[nph_col], errors="coerce")
-                    if nph.notna().any():
+                if any_result_has(nph_col):
+                    nph = np.array([_coerce_float(row.get(nph_col)) for row in results])
+                    if np.any(~np.isnan(nph)):
+                        nph_min, nph_med, nph_max = (
+                            int(np.nanmin(nph)), int(np.nanmedian(nph)), int(np.nanmax(nph))
+                        )
                         msg += (
                             f"; fit-window photons min/median/max="
-                            f"{int(nph.min())}/{int(nph.median())}/{int(nph.max())}"
+                            f"{nph_min}/{nph_med}/{nph_max}"
                             f", min_photons={int(settings_cache[det].get('min_photons', 0))}"
                         )
-                        summary_bits[-1] += (
-                            f" (ph {int(nph.min())}/{int(nph.median())}/{int(nph.max())})"
-                        )
+                        summary_bits[-1] += f" (ph {nph_min}/{nph_med}/{nph_max})"
                 (cs.logging.warning if n_ok == 0 and n_all else cs.logging.info)(msg)
         except Exception:
             pass
@@ -4864,7 +4909,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         if summary_bits:
             self._set_status("MLE fitted τ: " + " · ".join(summary_bits))
 
-        written = self._save_burst_results_fast(result_df)
+        written = self._save_burst_results_fast(results)
         if written and sidecars:
             # Everything the step produced belongs in the stamp, or the gate
             # validates only part of it: delete Info/state_lifetimes.csv and the
@@ -5006,22 +5051,23 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             return []
 
         # lazy-compute stems if missing
-        if "stem" not in self.df_bursts:
-            self.df_bursts["stem"] = (
-                self.df_bursts["First File"]
-                .str.split(r"[\\/]").str[-1]
-                .str.rsplit(".", n=1).str[0]
-            )
+        if "stem" not in column_names(self.df_bursts):
+            import re
+
+            first_file_vals = np.asarray(self.df_bursts["First File"], dtype=object)
+            stems = [re.split(r"[\\/]", str(v))[-1].rsplit(".", 1)[0] for v in first_file_vals]
+            self.df_bursts["stem"] = stems
 
         # select only the bursts for this file
         curr_stem = Path(self.current_filename).stem
-        df_file = self.df_bursts.loc[self.df_bursts["stem"] == curr_stem]
-        if df_file.empty:
+        stem_col = np.asarray(self.df_bursts["stem"], dtype=object)
+        mask = stem_col == curr_stem
+        if not mask.any():
             return []
 
         # pull start/stop as int arrays
-        starts = df_file["First Photon"].to_numpy(dtype=np.int32)
-        stops = df_file["Last Photon"].to_numpy(dtype=np.int32)
+        starts = numeric_column(self.df_bursts, "First Photon")[mask].astype(np.int32)
+        stops = numeric_column(self.df_bursts, "Last Photon")[mask].astype(np.int32)
 
         # build a single “difference” event array with bincount
         # - at each start index we +1, at each (stop+1) we -1
@@ -5043,9 +5089,28 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             self,
             paris_path: Path,
             pattern: str = "**/*.bur",
-            row_stride: int = 2
-    ) -> tuple[pd.DataFrame, dict[str, tttrlib.TTTR]]:
-        print("def read_burst_analysis")
+    ) -> tuple[typing.Any, dict[str, tttrlib.TTTR]]:
+        """Read every ``.bur`` file under *paris_path* into one burst table.
+
+        Parameters
+        ----------
+        paris_path : Path
+            Directory searched (recursively, via *pattern*) for ``.bur`` files.
+        pattern : str
+            Glob pattern, relative to *paris_path*.
+
+        Returns
+        -------
+        table : tttrlib.DataStore
+            One row per burst, from every matched file, deinterleaved and
+            tagged with the source file in ``burst_file``.
+        tttrs : dict of str to tttrlib.TTTR
+            ``self.tttrs``, lazily populated from the ``First File`` names via
+            ``self._tttr_paths`` (set below).
+        """
+        from chisurf.core.fio.fluorescence.burst import read_bur_file
+        from chisurf.core.fio.fluorescence.burst_container import deinterleave_bursts
+
         # 1) Locate and sanity-check
         bur_files = sorted(paris_path.glob(pattern))
         if not bur_files:
@@ -5059,7 +5124,6 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         from chisurf.core.settings.file_utils import safe_open_file
         import json
 
-        setup_info = None
         json_data = safe_open_file(
             json_file_path,
             processor=json.load,
@@ -5073,70 +5137,27 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             setup_info = json_data.get("setup_info")
             if setup_info:
                 cs.logging.info("Using setup information from JSON file")
-                # If we have setup information, we can use it to configure the wizard
-                # For example, we could set channel settings, detector settings, etc.
-                # This will depend on what's available in the JSON and what's needed by the wizard
-
                 # If the channel_definer is available, we can update its settings
                 if hasattr(self, 'channel_definer') and setup_info.get("windows"):
                     self.channel_definer.windows = setup_info.get("windows", {})
                     self.channel_definer.detectors = setup_info.get("detectors", {})
                     cs.logging.info("Updated channel definitions from JSON file")
 
-        # 2) Sample first file to infer which cols are numeric and build robust dtype spec
-        sample = pd.read_csv(
-            bur_files[0],
-            sep="\t",
-            header=0,
-            skiprows=[1],
-            nrows=100,
-            engine="c",
-            low_memory=False
-        )
-        # Numeric columns from sample
-        num_cols = sample.select_dtypes(include="number").columns
-        dtype_spec: dict[str, str] = {col: "float64" for col in num_cols}
-        # Ensure file/path-like columns are treated as strings across all files
-        string_like_cols = set()
-        for col in sample.columns:
-            if col.strip() == "" or "File" in col or col in ("First File", "Last File", "BID File", "burst_file"):
-                string_like_cols.add(col)
-        # Explicitly include common string columns even if not present in the sample
-        string_like_cols.update({"First File", "Last File", "BID File", "burst_file", ""})
-        for col in string_like_cols:
-            dtype_spec[col] = "string"
-        # BID Index should be integer if present (use pandas nullable integer)
-        if "BID Index" in sample.columns:
-            dtype_spec["BID Index"] = "Int64"
-        else:
-            # add proactively; ignored for files without the column
-            dtype_spec["BID Index"] = "Int64"
-
-        # 3) Read each file and concat
-        file_dfs = []
+        # Read and deinterleave each file separately: the .bur zero/data
+        # interleave is a per-file property (each file's own row count is odd),
+        # so deinterleaving after concatenating would misalign whenever the
+        # combined row count across files happens to come out even.
+        tables = []
         for fn in bur_files:
-            df_part = pd.read_csv(
-                fn,
-                sep="\t",
-                header=0,
-                skiprows=[1],
-                dtype=dtype_spec,
-                engine="c",
-                low_memory=False
-            )
-            # Track source .bur file name
-            df_part["burst_file"] = str(getattr(fn, 'name', fn))
-            file_dfs.append(df_part)
-        df = pd.concat(file_dfs, ignore_index=True)
+            table = deinterleave_bursts(read_bur_file(fn))
+            set_constant(table, "burst_file", str(fn.name))
+            tables.append(table)
+        df = concat_stores(tables)
 
-        # 4) One-time down-sampling
-        if row_stride > 1:
-            df = df.iloc[::row_stride].reset_index(drop=True)
-
-        raw_files = df["First File"].dropna().unique()
+        raw_files = dict.fromkeys(
+            str(v) for v in np.asarray(df["First File"], dtype=object)
+        )
         base_dir = paris_path.parent
-        # clear any old registrations
-        print("self._tttr_paths:", self._tttr_paths)
         for fn in raw_files:
             # Extract just the filename part from the "First File" column
             filename = Path(fn).name

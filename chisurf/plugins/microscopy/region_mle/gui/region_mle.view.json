@@ -1,0 +1,85 @@
+{
+  "_comment": "Region MLE tool. AutoForm over RegionMleViewModel: an Analysis dock (CLSM + IRF file lists, detector/window, region source and Fit23 settings, Run button) plus result docks (the region image with markers, and a per-region fit table). Fits the regions the Spot Finder found by single-lifetime Poisson MLE (Fit23); it does not segment.",
+  "sections": [
+    {
+      "type": "dock_area",
+      "title": "Region MLE",
+      "sections": [
+        {
+          "type": "panel",
+          "title": "Analysis",
+          "n_col": 1,
+          "collapsed": false,
+          "sections": [
+            {"type": "info", "source": "info_html", "height": 60},
+            {"type": "custom", "key": "path_list", "target": "sel_files", "title": "CLSM imaging files",
+             "options": {"add_folders": false, "dialog_filter": "Photon data (*.pto *.ptu *.ht3 *.spc *.pt3);;All files (*)"},
+             "description": "Confocal (CLSM) TTTR image file(s) to analyse. Drag-drop to add."},
+            {"type": "custom", "key": "path_list", "target": "sel_irf_files", "title": "IRF file",
+             "options": {"add_folders": false, "dialog_filter": "Photon data (*.pto *.ptu *.ht3 *.spc *.pt3);;All files (*)"},
+             "description": "IRF TTTR measurement (the first file is used)."},
+            {"type": "custom", "key": "region_list", "target": "regions", "title": "Analysis region",
+             "options": {"image_attr": "segmentation_image", "extent_attr": "analysis_extent",
+                         "intensity_unit": "ph", "refresh_on": ["region", "done", "preview"]},
+             "description": "Restricts which of the detected regions are fitted — one cell, one illuminated patch, a field with the bright edge cropped off. Draw one, or load a saved region, a mask or a segmentation; several combine by the rule below. Empty = the whole frame."},
+            {"type": "value", "attr": "detector_chs_text", "kind": "str", "label": "Detector channels",
+             "description": "Space-separated routing channels; even = parallel (∥), odd = perpendicular (⊥)."},
+            {"type": "value", "attr": "mtr_start", "kind": "int", "label": "Fit start", "minimum": 0, "maximum": 1000000,
+             "description": "Fit-window start on the binned micro-time axis."},
+            {"type": "value", "attr": "mtr_stop", "kind": "int", "label": "Fit stop", "minimum": 1, "maximum": 1000000,
+             "description": "Fit-window stop on the binned micro-time axis."},
+            {"type": "value", "attr": "micro_time_binning", "kind": "int", "label": "Micro-time binning", "minimum": 1, "maximum": 100000,
+             "description": "Integer down-binning of the micro-time axis before fitting."},
+            {"type": "panel", "title": "Regions", "n_col": 2, "collapsed": true, "sections": [
+              {"type": "value", "attr": "region_set", "kind": "str", "label": "Detection", "hide_label": false,
+               "description": "Which detection in the measurement's container to fit, when it holds more than one. Regions are found by the Spot Finder; this tool fits the ones it is given."},
+              {"type": "value", "attr": "min_photons", "kind": "int", "label": "Min photons", "minimum": 1, "maximum": 10000000,
+               "description": "Regions with fewer photons in the fit window are not fitted; they keep a row, with NaN parameters."}
+            ]},
+            {"type": "panel", "title": "Fit (Fit23)", "n_col": 2, "collapsed": true, "sections": [
+              {"type": "value", "attr": "tau", "kind": "float", "label": "τ (ns)", "decimals": 3, "minimum": 0.0, "maximum": 1000.0,
+               "description": "Initial fluorescence lifetime."},
+              {"type": "toggle", "attr": "fix_tau", "label": "fix τ", "description": "Hold the lifetime fixed."},
+              {"type": "value", "attr": "gamma", "kind": "float", "label": "γ", "decimals": 3, "minimum": 0.0, "maximum": 1.0,
+               "description": "Initial scatter fraction."},
+              {"type": "toggle", "attr": "fix_gamma", "label": "fix γ", "description": "Hold the scatter fraction fixed."},
+              {"type": "value", "attr": "r0", "kind": "float", "label": "r0", "decimals": 3, "minimum": 0.0, "maximum": 0.4,
+               "description": "Fundamental anisotropy."},
+              {"type": "toggle", "attr": "fix_r0", "label": "fix r0", "description": "Hold the fundamental anisotropy fixed."},
+              {"type": "value", "attr": "rho", "kind": "float", "label": "ρ (ns)", "decimals": 3, "minimum": 0.0, "maximum": 1000.0,
+               "description": "Rotational correlation time."},
+              {"type": "toggle", "attr": "fix_rho", "label": "fix ρ", "description": "Hold the rotational correlation time fixed."},
+              {"type": "value", "attr": "l1", "kind": "float", "label": "l1", "decimals": 3, "minimum": 0.0, "maximum": 1.0,
+               "description": "Polarisation mixing correction l1."},
+              {"type": "value", "attr": "l2", "kind": "float", "label": "l2", "decimals": 3, "minimum": 0.0, "maximum": 1.0,
+               "description": "Polarisation mixing correction l2."},
+              {"type": "toggle", "attr": "p2s_twoIstar", "label": "2I* (P+2S)", "description": "Optimise P+2S instead of P and S separately."},
+              {"type": "toggle", "attr": "soft_bifl_scatter", "label": "BIFL scatter", "description": "Reduce Istar by the background contribution."}
+            ]},
+            {"type": "button_row", "buttons": [
+              {"label": "🧪 Load demo", "action": "request_demo", "description": "Simulate a field whose regions have known lifetimes, detect them with the standard workflow, and fill this panel in — so a fitted lifetime can be checked against an answer."},
+              {"label": "👁️ Preview", "action": "request_preview", "description": "Measure the regions about to be fitted, without fitting them — the same regions the run uses."},
+              {"label": "▶ Run", "action": "request_run", "description": "Fit every detected region in every selected file; writes molecule_data.tsv + joint_output.tsv."},
+              {"label": "💾 Export", "action": "request_export", "description": "Export the combined per-molecule table (all files) to a TSV/CSV."}
+            ]},
+            {"type": "value", "attr": "results_tsv", "kind": "file", "label": "Open results",
+             "description": "Reopen a saved molecule_data.tsv (or joint_output.tsv) from a previous analysis to browse its molecules."}
+          ]
+        },
+        {"type": "custom", "key": "image_browser", "target": "segmentation_image", "title": "Regions",
+         "options": {
+           "entries_source": "molecule_entries", "entry_attr": "current_molecule",
+           "info_source": "current_molecule_info", "filter": true,
+           "markers_source": "current_molecule_marker",
+           "colormap": true, "default_colormap": "inferno", "list_width": 200
+         },
+         "description": "Browse the detected regions; the canvas marks the selected one and the panel shows its Fit23 result."},
+        {"type": "custom", "key": "decay_panel", "target": "current_region_curves",
+         "title": "Decay",
+         "options": {"x_label": "micro-time channel (∥ | ⊥)",
+                     "refresh_on": ["results", "done", "preview"]},
+         "description": "VV/VH decay of the selected region with the fitted Fit23 model, the IRF and the background overlaid, and the weighted residuals above sharing the time axis — the same panel the burst-wise MLE draws."}
+      ]
+    }
+  ]
+}

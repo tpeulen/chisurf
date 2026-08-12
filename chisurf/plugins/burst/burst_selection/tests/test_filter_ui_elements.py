@@ -245,24 +245,24 @@ def test_editing_any_control_triggers_a_plot_update(page):
     assert calls, "no update signalled"
 
 
-# --- retired modes ---------------------------------------------------------------
+# --- BOCPD is back (tttrlib C++ engine) ---------------------------------------
 
-def test_bocpd_is_not_offered(page):
+def test_bocpd_is_offered(page):
     combo = page.comboBox_burst_filter
     labels = [combo.itemText(i) for i in range(combo.count())]
-    assert not any("BOCPD" in label for label in labels)
+    assert any("BOCPD" in label for label in labels)
 
 
-def test_bocpd_says_why_it_is_gone(photons):
-    """An old project naming it must get an explanation, not a crash."""
+def test_bocpd_runs_without_error(photons):
+    """BOCPD is now backed by tttrlib C++ and should run successfully."""
     from chisurf.plugins.burst.burst_selection.api.models import (
         BurstFilterMode, PhotonFilterSettings,
     )
     from chisurf.plugins.burst.burst_selection.api.selection import apply_photon_filters
 
     settings = PhotonFilterSettings(used_filter=BurstFilterMode.BOCPD)
-    with pytest.raises(ValueError, match="removed"):
-        apply_photon_filters(photons, settings)
+    mask = apply_photon_filters(photons, settings)
+    assert mask.shape == (len(photons),)
 
 
 # --- responsiveness: every control must reach the plots -------------------------

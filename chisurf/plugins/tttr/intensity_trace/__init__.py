@@ -508,6 +508,8 @@ class IntensityPlotWidget(QtWidgets.QWidget):
                 trace_plot.layout.setContentsMargins(0, 0, 0, 0)
             except Exception:
                 pass
+            trace_plot.setDownsampling(auto=True, mode='peak')
+            trace_plot.setClipToView(True)
             trace_plot.plot(time_axis, trace, pen='b', name=str(label))
             trace_plot.setLabel('left', f'{label}\nCounts / {int(time_window_ms)} ms')
             if not show_x:

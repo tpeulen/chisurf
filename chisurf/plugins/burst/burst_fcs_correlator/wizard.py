@@ -24,7 +24,6 @@ import shutil
 from typing import Any, Dict, List, Tuple
 
 import numpy as np
-import pandas as pd
 import tttrlib
 
 import chisurf
@@ -46,6 +45,18 @@ from .helpers import (
 )
 from chisurf.gui import dialogs
 from chisurf.gui.progress import ChiSurfProgress
+
+
+def _coerce_float(value) -> float:
+    """Return *value* as a float, or ``nan`` for anything that is not one.
+
+    A burst a pair did not compute a diffusion time for carries no key at all
+    for that column, and that is "not measured", not zero.
+    """
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return float("nan")
 
 
 class BurstWiseFCSWizard(QtWidgets.QDialog):
@@ -1214,8 +1225,16 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
         progress.setAutoClose(True)
         progress.show()
 
+        # The true burst grid per measurement -- every burst of the .bur/.bst
+        # file, not just the ones that end up producing a result below. This is
+        # what lets the td4 writer emit one row per burst (see
+        # ``_save_td4_results``): a burst dropped further down by a photon-count
+        # or fit failure must still get a sentinel row, not a missing one.
+        burst_counts: Dict[Tuple[str, str], int] = {}
+
         current = 0
         for index_path, analysis_root, tttr_path, ranges in burst_info:
+            burst_counts[(analysis_root.as_posix(), pathlib.Path(tttr_path).stem)] = len(ranges)
             # Open underlying TTTR file once per index file (.bur or .bst)
             # We rely on open_tttr's internal heuristics and optional inference
             filetype = None
@@ -1446,34 +1465,31 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
             dialogs.information(self, "Burst-wise FCS", "No valid burst correlations could be computed.")
             return None
 
-        return pd.DataFrame(rows)
+        return rows, burst_counts
 
-    def _write_container(self, group: pd.DataFrame, table: pd.DataFrame) -> None:
+    def _write_container(self, group: list, table) -> None:
         """Write one group's diffusion times into its measurement's container.
 
-        The container carries ``Burst Index`` as a declared key, which is the
-        one thing the ``td4`` companion beside it cannot do: that file is merged
-        onto the burst table by counting rows, while its grid is built from the
-        bursts that *produced a result*. A burst the correlator skipped is a
-        missing row there rather than a blank one, so every burst after it is
-        merged against the wrong burst's diffusion time — silently, because the
-        shape and the column names stay right and only the attribution is
-        wrong.
+        The container carries ``Burst Index`` as a declared key, which lets it
+        stay *sparse* — one row per burst that produced a result — without
+        misaligning anything downstream, unlike the positional ``td4``
+        companion (see :meth:`_save_td4_results`).
 
         Parameters
         ----------
-        group : pandas.DataFrame
-            The rows for one (burst folder, file), carrying ``First File``.
-        table : pandas.DataFrame
+        group : list of mapping
+            The rows for one (burst folder, file), each carrying ``First File``.
+        table : tttrlib.DataStore
             The wide table: ``Burst Index`` plus one column per pair.
         """
         from chisurf.plugins.burst.burst_fcs_correlator.core.export import (
             write_fcs_container,
         )
 
-        try:
-            source = str(group['First File'].iloc[0])
-        except (KeyError, IndexError):
+        if not group:
+            return
+        source = str(group[0].get('First File', ''))
+        if not source:
             return
         try:
             # The same mapping the settings file records, so a re-run with the
@@ -1485,35 +1501,60 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
                 f"Could not write the container for {source}: {exc}"
             )
 
-    def _save_td4_results(self, result_df: pd.DataFrame) -> None:
+    def _save_td4_results(self, rows: list, burst_counts: Dict[Tuple[str, str], int]) -> None:
         """Write diffusion times to td4-style files in the burst analysis folder.
 
-        Layout (per burst analysis folder and underlying TTTR file):
+        Layout (per burst analysis folder and underlying TTTR file), via
+        :func:`~chisurf.core.fio.fluorescence.burst_companion.write_companion`:
 
         - Folder: ``<Burst Folder>/td4`` where ``<Burst Folder>`` is the
           burstwise analysis directory (sibling of ``bi4_bur``).
         - File:   ``<stem>.td4`` where ``stem`` is derived from the
           underlying TTTR file name.
-        - Header: ``Burst Index`` followed by one or more diffusion-time
-          columns, e.g. ``td_mean_ms``, ``td_peak_ms``, and additional
-          columns for other correlation pairs if present. All columns are
-          tab-separated, with a trailing tab to mimic the b*4 writer.
-        - Body:   zero-interleaved rows (zero row, data row, zero row, ...)
-          for compatibility with existing burst result formats.
-        """
+        - **One row per burst of the measurement**, in ``.bur``/``.bst`` order
+          — including bursts the correlator skipped, which get a sentinel row
+          rather than a missing one. *That* grid is what ``burst_counts``
+          supplies (built in :meth:`_run_burstwise_fcs`, one entry per
+          ``(Burst Folder, First Stem)`` from the same ``ranges`` the burst
+          loop enumerates ``Burst Index`` against) — a burst dropped later by a
+          photon-count or fit failure keeps the position its index says it has.
+          Without it, the file is built from the bursts that *produced a
+          result*, and a skipped burst there is a missing row that shifts every
+          later burst's diffusion time onto the wrong burst — silently, because
+          the shape and the column names stay right and only the attribution is
+          wrong.
 
-        if result_df is None or result_df.empty:
+        The container written alongside (:meth:`_write_container`) is
+        unaffected by this: it already carries ``Burst Index`` as a declared
+        join key, so it is safe to stay sparse.
+
+        Parameters
+        ----------
+        rows : list of mapping
+            One mapping per computed correlation.
+        burst_counts : mapping of (str, str) to int
+            ``{(Burst Folder, First Stem): n_bursts}`` for every measurement in
+            this run, from :meth:`_run_burstwise_fcs`.
+        """
+        from chisurf.core.datastore import store_from_arrays
+        from chisurf.core.fio.fluorescence.burst_companion import (
+            CompanionError,
+            write_companion,
+        )
+
+        if not rows:
             dialogs.information(self, "Burst-wise FCS", "No results to save.")
             return
 
-        df = result_df.copy()
-        if 'Burst Folder' not in df.columns:
-            df['Burst Folder'] = df['First File'].map(lambda fn: str(pathlib.Path(fn).parent))
-        df['First Stem'] = df['First File'].map(lambda fn: pathlib.Path(fn).stem)
+        for row in rows:
+            row.setdefault('Burst Folder', str(pathlib.Path(row['First File']).parent))
+            row['First Stem'] = pathlib.Path(row['First File']).stem
 
         # Group by burst analysis folder and TTTR stem so that results from
         # different burstwise folders are written to separate td4 files.
-        groups = df.groupby(['Burst Folder', 'First Stem'], sort=False)
+        groups: Dict[Tuple[str, str], List[dict]] = {}
+        for row in rows:
+            groups.setdefault((row['Burst Folder'], row['First Stem']), []).append(row)
         total_groups = len(groups)
 
         progress = ChiSurfProgress(self, "Saving td4 results...", total_groups)
@@ -1525,7 +1566,7 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
         wrote_settings_for: set[pathlib.Path] = set()
         current = 0
 
-        for (burst_folder, stem), df_g in groups:
+        for (burst_folder, stem), group_rows in groups.items():
             current += 1
             progress.setValue(current)
             if progress.wasCanceled():
@@ -1538,86 +1579,95 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
                 burst_root = pathlib.Path(burst_folder)
             except Exception:
                 try:
-                    first_file = pathlib.Path(str(df_g['First File'].iloc[0]))
-                    burst_root = first_file.parent
+                    burst_root = pathlib.Path(str(group_rows[0]['First File'])).parent
                 except Exception:
                     continue
 
             out_dir = burst_root / "td4"
             out_dir.mkdir(parents=True, exist_ok=True)
 
-            # Build wide (multi-column) table: one row per burst index and
-            # separate td_* columns per FCS pair.
-            if 'pair_name' in df_g.columns:
-                df_g_sorted = df_g.sort_values(['Burst Index', 'pair_name'])
-                burst_ids = np.sort(df_g_sorted['Burst Index'].unique())
-                wide_df = pd.DataFrame({'Burst Index': burst_ids})
-
-                pair_names = [str(p) for p in df_g_sorted['pair_name'].dropna().unique()]
+            # Per-column, per-burst-index values -- one dict per output column,
+            # keyed by the burst's true position in the .bur/.bst grid. Separate
+            # FCS pairs get separate columns (td_mean__<pair>); a single-pair
+            # run (no 'pair_name' at all) keeps the historical bare names.
+            has_pairs = any('pair_name' in row for row in group_rows)
+            col_data: Dict[str, Dict[int, Any]] = {}
+            value_cols: List[str] = []
+            if has_pairs:
+                pair_names = list(dict.fromkeys(
+                    str(row['pair_name']) for row in group_rows if row.get('pair_name') is not None
+                ))
                 for pname in pair_names:
-                    sub = df_g_sorted[df_g_sorted['pair_name'] == pname].set_index('Burst Index')
-                    if 'td_mean_ms' in sub.columns:
-                        col_mean = f"td_mean__{pname}"
-                        try:
-                            wide_df[col_mean] = sub['td_mean_ms'].reindex(burst_ids).to_numpy(dtype=float)
-                        except Exception:
-                            wide_df[col_mean] = np.nan
-                    if 'td_peak_ms' in sub.columns:
-                        col_peak = f"td_peak__{pname}"
-                        try:
-                            wide_df[col_peak] = sub['td_peak_ms'].reindex(burst_ids).to_numpy(dtype=float)
-                        except Exception:
-                            wide_df[col_peak] = np.nan
-
-                value_cols = [c for c in wide_df.columns if c.startswith('td_')]
-                cols = ["Burst Index"] + value_cols
-                wide = wide_df
-
-                try:
-                    arr = wide_df[cols].to_numpy(dtype=float, copy=False)
-                except Exception:
-                    continue
+                    sub = [row for row in group_rows if str(row.get('pair_name')) == pname]
+                    for src_key, prefix in (('td_mean_ms', 'td_mean'), ('td_peak_ms', 'td_peak')):
+                        if any(src_key in row for row in sub):
+                            col = f"{prefix}__{pname}"
+                            value_cols.append(col)
+                            col_data[col] = {int(row['Burst Index']): row.get(src_key) for row in sub}
             else:
-                df_g_sorted = df_g.sort_values('Burst Index')
-                df_for_save = df_g_sorted.copy()
-                if 'td_mean_ms' in df_for_save.columns:
-                    df_for_save = df_for_save.rename(columns={'td_mean_ms': 'td_mean'})
-                if 'td_peak_ms' in df_for_save.columns:
-                    df_for_save = df_for_save.rename(columns={'td_peak_ms': 'td_peak'})
-                value_cols = [c for c in df_for_save.columns if c.startswith('td_')]
-                cols = ["Burst Index"] + value_cols
-                wide = df_for_save
+                for src_key, col_name in (('td_mean_ms', 'td_mean'), ('td_peak_ms', 'td_peak')):
+                    if any(src_key in row for row in group_rows):
+                        value_cols.append(col_name)
+                        col_data[col_name] = {
+                            int(row['Burst Index']): row.get(src_key) for row in group_rows
+                        }
 
-                try:
-                    arr = df_for_save[cols].to_numpy(dtype=float, copy=False)
-                except Exception:
-                    continue
+            if not value_cols:
+                continue
 
-            self._write_container(df_g, wide[cols])
+            burst_ids_sorted = sorted(dict.fromkeys(int(row['Burst Index']) for row in group_rows))
 
-            out = np.zeros((arr.shape[0] * 2 + 1, arr.shape[1]), dtype=float)
-            out[1::2] = arr
+            # Sparse table (results only) -- feeds the container, which carries
+            # its own declared "Burst Index" join key and tolerates absent rows.
+            sparse_cols = ["Burst Index"] + value_cols
+            sparse_arr = np.full((len(burst_ids_sorted), len(sparse_cols)), np.nan, dtype=float)
+            for i, bid in enumerate(burst_ids_sorted):
+                sparse_arr[i, 0] = bid
+                for j, col in enumerate(value_cols, start=1):
+                    sparse_arr[i, j] = _coerce_float(col_data[col].get(bid))
+            self._write_container(
+                group_rows,
+                store_from_arrays({c: sparse_arr[:, i] for i, c in enumerate(sparse_cols)}),
+            )
 
-            out_file = out_dir / f"{stem}.td4"
+            # Full grid (one row per burst of the measurement, sentinel for a
+            # burst the correlator skipped) -- feeds the td4 companion, which
+            # is positional and carries no index column of its own.
+            n_total = burst_counts.get((burst_folder, stem))
+            if not n_total:
+                n_total = burst_ids_sorted[-1] + 1 if burst_ids_sorted else 0
+                chisurf.logging.warning(
+                    f"td4 for {stem!r} in {burst_folder!r}: true burst count not "
+                    f"found, falling back to {n_total} inferred from the results "
+                    "computed (a burst above the last one with a result would be "
+                    "missing)"
+                )
+            if n_total <= 0:
+                continue
+
+            full = np.full((n_total, len(value_cols)), np.nan, dtype=float)
+            for j, col in enumerate(value_cols):
+                for bid, value in col_data[col].items():
+                    if 0 <= bid < n_total:
+                        full[bid, j] = _coerce_float(value)
+
             try:
-                with out_file.open('w', newline='') as f:
-                    f.write('\t'.join(cols) + '\t\n')
-                    np.savetxt(f, out, delimiter='\t', fmt='%.6f')
-            except Exception:
+                write_companion(burst_root, "td4", stem, value_cols, full)
+            except CompanionError as exc:
+                chisurf.logging.warning(f"Could not write td4 for {stem!r}: {exc}")
                 continue
 
             # Write a small JSON sidecar once per td4 folder with meta info
             if out_dir not in wrote_settings_for:
                 try:
-                    df_g_sorted_meta = df_g.sort_values(['Burst Index', 'pair_name']) if 'pair_name' in df_g.columns else df_g
                     meta: Dict[str, Any] = {}
-                    if 'pair_name' in df_g_sorted_meta.columns:
+                    if has_pairs:
                         pairs_meta: List[Dict[str, Any]] = []
-                        for pname in df_g_sorted_meta['pair_name'].dropna().unique():
-                            sub = df_g_sorted_meta[df_g_sorted_meta['pair_name'] == pname]
-                            if sub.empty:
+                        for pname in pair_names:
+                            sub = [row for row in group_rows if str(row.get('pair_name')) == pname]
+                            if not sub:
                                 continue
-                            row0 = sub.iloc[0]
+                            row0 = sub[0]
                             pairs_meta.append({
                                 "name": str(pname),
                                 "channel_a": str(row0.get("pair_channel_a", "")),
@@ -1628,12 +1678,13 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
                             })
                         meta["pairs"] = pairs_meta
                     else:
+                        row0 = group_rows[0]
                         meta = {
-                            "channel_a": str(df_g.get("channel_a").iloc[0] if "channel_a" in df_g else ""),
-                            "channel_b": str(df_g.get("channel_b").iloc[0] if "channel_b" in df_g else ""),
-                            "n_bins": int(df_g.get("n_bins").iloc[0] if "n_bins" in df_g else 0),
-                            "n_casc": int(df_g.get("n_casc").iloc[0] if "n_casc" in df_g else 0),
-                            "make_fine": bool(df_g.get("make_fine").iloc[0] if "make_fine" in df_g else False),
+                            "channel_a": str(row0.get("channel_a", "")),
+                            "channel_b": str(row0.get("channel_b", "")),
+                            "n_bins": int(row0.get("n_bins", 0)),
+                            "n_casc": int(row0.get("n_casc", 0)),
+                            "make_fine": bool(row0.get("make_fine", False)),
                         }
 
                     settings_file = out_dir / 'td4_settings.json'
@@ -1653,7 +1704,7 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
         """Override the base wizard's Finish behavior for burst-wise FCS."""
 
         try:
-            result_df = self._run_burstwise_fcs()
+            result = self._run_burstwise_fcs()
         except Exception as e:  # pragma: no cover - defensive UI layer
             dialogs.error(
                 self,
@@ -1662,11 +1713,12 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
             )
             return
 
-        if result_df is None or result_df.empty:
+        if result is None:
             # _run_burstwise_fcs already informed the user
             return
+        rows, burst_counts = result
 
-        self._save_td4_results(result_df)
+        self._save_td4_results(rows, burst_counts)
         # Refresh integrated browser view with newly cached curves
         try:
             self._update_browser_view()

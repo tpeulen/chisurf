@@ -188,14 +188,10 @@ def test_evaluation_storage_to_csv_creates_file():
 
 
 def test_evaluation_storage_columns_match_evaluators():
-    """Verify EvaluationStorage DataFrame columns map correctly to evaluators."""
+    """Verify EvaluationStorage's store columns map correctly to evaluators."""
+    from chisurf.core.datastore import column_names
+
     storage = EvaluationStorage()
     storage.add_frame("f1.pdb", {"m1": EvaluatorResult("m1", 1.0), "m2": EvaluatorResult("m2", 2.0)})
-    try:
-        df = storage.to_dataframe()
-        assert list(df.columns) == ["filename", "m1", "m2"]
-    except TypeError as e:
-        if "Cannot convert numpy.ndarray" in str(e):
-            pytest.skip("System pandas installation is broken with TypeError")
-        else:
-            raise
+    table = storage.to_store()
+    assert column_names(table) == ["filename", "m1", "m2"]

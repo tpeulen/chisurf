@@ -123,11 +123,11 @@ def test_ndx_hdf5_and_csv_roundtrip(tmp_path):
     # ndX opens MFD-HDF5 by taking the file root straight into a store — the
     # columns must be there, and readable without the optional HDF5 package the
     # importorskip here used to require.
-    from chisurf.core.datastore import read_table_frame
+    from chisurf.core.datastore import read_results_table, row_count
 
-    back = read_table_frame(h5)
-    assert list(back.columns) == column_names(tables.photons)
-    assert len(back) == data.n_photons
+    back = read_results_table(h5)
+    assert column_names(back) == column_names(tables.photons)
+    assert row_count(back) == data.n_photons
 
     csv = X.write_csv(tables.bursts, tmp_path / "h2mm_bursts.csv")
     back_csv = pd.read_csv(csv)

@@ -13,6 +13,7 @@ from chisurf.gui.widgets.dock_area import DockArea
 from .settings_panel import TTTRSettingsPanel
 from .tac_lut_panel import TACLinearizationPanel
 from chisurf.gui import dialogs
+from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
 
 _README = pathlib.Path(__file__).parents[1] / "README.md"
 
@@ -47,7 +48,7 @@ class _HelpDialog(QtWidgets.QDialog):
         layout.addWidget(buttons)
 
 
-class TTRLutToolsWidget(QtWidgets.QMainWindow):
+class TTRLutToolsWidget(ChisurfDockTool):
     """Combined TTTR microtime LUT computation and settings workspace."""
 
     def __init__(self) -> None:

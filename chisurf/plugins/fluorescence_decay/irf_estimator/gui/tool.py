@@ -18,62 +18,18 @@ from ..api.models import IRFEstimationSettings
 from ..core.estimation import estimate_irf as _estimate_irf
 from chisurf.gui import dialogs
 
-
-class HelpDialog(QtWidgets.QDialog):
-    """Help dialog with description and CLI reference."""
-
-    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
-        super().__init__(parent)
-        self.setWindowTitle("About IRF Estimation")
-        self.resize(640, 520)
-        layout = QtWidgets.QVBoxLayout(self)
-
-        text = QtWidgets.QTextEdit(self)
-        text.setReadOnly(True)
-
-        cli_text = ""
-        try:
-            from click.testing import CliRunner
-
-            from ..cli import cli
-
-            runner = CliRunner()
-            result = runner.invoke(cli, ["--help"])
-            cli_text = "<pre>" + html.escape(result.output) + "</pre>"
-        except Exception as exc:
-            cli_text = f"<p>CLI help unavailable: {html.escape(str(exc))}</p>"
-
-        text.setHtml(
-            """
-            <h2>IRF Estimation</h2>
-            <p>This plugin performs blind instrument response function (IRF) estimation from fluorescence decay data using truncated exponential fitting and Richardson-Lucy deconvolution.</p>
-
-            <h3>How it works</h3>
-            <ol>
-              <li>Load a VV/VH decay file or ChiSurf dataset.</li>
-              <li>Configure filtering, deconvolution, and regularization parameters.</li>
-              <li>Click <b>Estimate IRF</b> to recover the IRF and fit parameters.</li>
-              <li>Save the estimated IRF or transfer it to ChiSurf for downstream analysis.</li>
-            </ol>
-
-            <h3>Output</h3>
-            <p>Results include the estimated IRF, lifetime, decay rate, amplitude, and offset.</p>
-
-            <hr>
-            <h3>CLI Reference</h3>
-            """
-            + cli_text
-        )
-        layout.addWidget(text, 1)
-
-        buttons = QtWidgets.QDialogButtonBox(
-            QtWidgets.QDialogButtonBox.StandardButton.Ok,
-        )
-        buttons.accepted.connect(self.accept)
-        layout.addWidget(buttons)
+from chisurf.gui.widgets.tools.help_guide import attach_help_and_guide
+from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
 
 
-class IRFEstimatorTool(QtWidgets.QMainWindow):
+# The tool used to carry its own ``HelpDialog`` — a hard-coded summary plus the
+# CLI reference. It is gone: the shared ``?`` modal renders ``gui/help.md``, so
+# the help is prose in a file rather than a string in a widget, its links are
+# live, and it sits beside the ``guide.json`` that answers the other question.
+# See :mod:`chisurf.gui.widgets.tools.help_guide`.
+
+
+class IRFEstimatorTool(ChisurfDockTool):
     """Main window for IRF estimation with dock-based layout."""
 
     def __init__(self, *args: object, **kwargs: object) -> None:
@@ -216,6 +172,10 @@ class IRFEstimatorTool(QtWidgets.QMainWindow):
 
         grid.addWidget(QtWidgets.QLabel("RL Iterations:"), 3, 0)
         self.rl_iterations_spinbox = QtWidgets.QSpinBox()
+        # Named for the guided tour: this panel is hand-built, so there is no
+        # view spec for a step to point into. Prefixed because ``{"name": …}``
+        # matches by suffix.
+        self.rl_iterations_spinbox.setObjectName("irf_rl_iterations")
         self.rl_iterations_spinbox.setRange(5, 2000)
         self.rl_iterations_spinbox.setValue(500)
         self.rl_iterations_spinbox.setSingleStep(10)
@@ -238,6 +198,7 @@ class IRFEstimatorTool(QtWidgets.QMainWindow):
 
         grid.addWidget(QtWidgets.QLabel("Manual Background:"), 5, 0)
         self.background_spinbox = QtWidgets.QDoubleSpinBox()
+        self.background_spinbox.setObjectName("irf_background")
         self.background_spinbox.setRange(0.0, 100000.0)
         self.background_spinbox.setValue(0.0)
         self.background_spinbox.setDecimals(2)
@@ -452,15 +413,12 @@ class IRFEstimatorTool(QtWidgets.QMainWindow):
         )
         toolbar.addWidget(spacer)
 
-        help_action = QtWidgets.QAction(f"{Glyphs.INFO} Help", self)
-        help_action.setToolTip("Show help and CLI reference")
-        help_action.triggered.connect(self._show_help)
-        toolbar.addAction(help_action)
-
-    def _show_help(self) -> None:
-        """Show the help dialog."""
-        dialog = HelpDialog(self)
-        dialog.exec_()
+        # Adjacent stretches share the slack rather than adding, so the helper
+        # must not add a second one and strand the pair mid-bar.
+        toolbar.setProperty("_chisurf_right_spacer", True)
+        attach_help_and_guide(
+            self, toolbar, title="Blind IRF estimation — help"
+        )
 
     # ------------------------------------------------------------------
     # Dock context menu

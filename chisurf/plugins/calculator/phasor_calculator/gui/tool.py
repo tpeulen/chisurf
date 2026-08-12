@@ -15,6 +15,8 @@ from typing import Any
 
 from qtpy import QtWidgets
 
+from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
+
 _GUI_DIR = pathlib.Path(__file__).parent
 
 
@@ -118,7 +120,7 @@ class _PhasorCalcModel:
         )
 
 
-class PhasorCalculatorTool(QtWidgets.QMainWindow):
+class PhasorCalculatorTool(ChisurfDockTool):
     """Interactive phasor plot; constructs with no required arguments (hub-embeddable)."""
 
     name = "Phasor calculator"

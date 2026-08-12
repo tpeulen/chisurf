@@ -24,6 +24,7 @@ from ..file_list import make_burst_file_list
 from .client import BurstFcsClient
 from chisurf.gui import dialogs
 from chisurf.gui.progress import ChiSurfProgress
+from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
 
 _GUI_DIR = pathlib.Path(__file__).parent
 
@@ -106,7 +107,7 @@ class _PlotsProxy:
         return self._model.dist_plot_series()
 
 
-class BurstFcsTool(QtWidgets.QMainWindow):
+class BurstFcsTool(ChisurfDockTool):
     """Modern burst-wise FCS correlator (declarative AutoForm + dockable plots)."""
 
     def __init__(self, parent=None, *, embedded: bool = False):

@@ -567,6 +567,10 @@ def write_fusion_container(
             deinterleave_bursts(fused),
             artifact_kind="burst_table",
             operation_type="burst_fusion",
+            # Same-molecule probability from the inter-burst lag distribution,
+            # thresholded -- which is what makes two bursts one, and is not
+            # derivable from `operation_type` alone.
+            algorithm="recurrence_probability",
             row_grain="burst",
             parameters=parameters,
             derived_from=parents,
@@ -576,6 +580,10 @@ def write_fusion_container(
             mapping,
             artifact_kind="row_mapping",
             operation_type="burst_fusion",
+            # Same-molecule probability from the inter-burst lag distribution,
+            # thresholded -- which is what makes two bursts one, and is not
+            # derivable from `operation_type` alone.
+            algorithm="recurrence_probability",
             row_grain="pair",
             parameters=parameters,
             derived_from=[bursts, fused_uid] if bursts else [fused_uid],

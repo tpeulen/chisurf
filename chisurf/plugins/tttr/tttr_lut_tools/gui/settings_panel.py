@@ -379,8 +379,8 @@ class TTTRSettingsPanel(QtWidgets.QWidget):
         self._apply_log_mode()
         # pyqtgraph render optimisations for large histograms — reached via the
         # backend escape hatch (no chiplot native verb yet; a migration gap).
-        self.hist_plot.native.setDownsampling(auto=True)
-        self.hist_plot.native.setClipToView(True)
+        self.hist_plot.set_downsampling(auto=True)
+        self.hist_plot.set_clip_to_view(True)
         plot_splitter.addWidget(self.hist_plot)
 
         self.lut_container = QtWidgets.QWidget()
@@ -847,8 +847,8 @@ class TTTRSettingsPanel(QtWidgets.QWidget):
                 item = self.hist_plot.line(x_values, y_display, pen=nice_pen(color, width=2))
                 item.z = 0
                 # pyqtgraph render optimisations (migration gap; via escape hatch).
-                item.native.setDownsampling(auto=True)
-                item.native.setClipToView(True)
+                item.set_downsampling(auto=True)
+                item.set_clip_to_view(True)
                 self.curves[channel] = item
 
         self._emphasize_active_curve()

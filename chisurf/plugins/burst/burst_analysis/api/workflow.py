@@ -50,7 +50,6 @@ from chisurf.core.datastore import (
     row_count,
     take_where,
 )
-import pandas as pd
 
 # Full micro-time acceptance when a stream declares no window (SPC is 12-bit).
 _FULL_MICROTIME = (0, 4095)
@@ -427,7 +426,9 @@ class H2mm:
     @property
     def scan(self):
         """Return the model-selection scan (state count, log-lik, BIC, ICL)."""
-        return pd.DataFrame(
+        from chisurf.core.datastore import store_from_rows
+
+        return store_from_rows(
             [
                 {"n_states": f.n_states, "loglik": f.loglik, "bic": f.bic, "icl": f.icl}
                 for f in self.analysis.scan
@@ -474,14 +475,19 @@ class H2mm:
 
         if ax is None:
             _, ax = plt.subplots(figsize=(5, 4))
-        scan = self.scan.sort_values("n_states")
-        ax.plot(scan["n_states"], scan["bic"], "o-", label="BIC", color="#1f77b4")
-        ax.plot(scan["n_states"], scan["icl"], "s--", label="ICL", color="#ff7f0e")
+        scan = self.scan
+        n_states = numeric_column(scan, "n_states")
+        order = np.argsort(n_states)
+        n_states = n_states[order]
+        bic = numeric_column(scan, "bic")[order]
+        icl = numeric_column(scan, "icl")[order]
+        ax.plot(n_states, bic, "o-", label="BIC", color="#1f77b4")
+        ax.plot(n_states, icl, "s--", label="ICL", color="#ff7f0e")
         ax.axvline(self.n_states, color="grey", ls=":", label=f"chosen ({self.n_states})")
         ax.set_xlabel("number of states")
         ax.set_ylabel("information criterion")
         ax.set_title("Model selection")
-        ax.set_xticks(scan["n_states"].tolist())
+        ax.set_xticks(n_states.tolist())
         ax.legend()
         return ax
 
@@ -575,7 +581,9 @@ class IrfBackground:
     @property
     def table(self):
         """One row per detector: background rate and non-burst/burst photon counts."""
-        return pd.DataFrame(
+        from chisurf.core.datastore import store_from_rows
+
+        return store_from_rows(
             [
                 {
                     "Detector": d.name,

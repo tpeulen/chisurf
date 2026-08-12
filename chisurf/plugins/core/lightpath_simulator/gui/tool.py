@@ -32,6 +32,7 @@ from chisurf.plugins.core.lightpath_simulator.gui.node_types import (
     optical_registry,
 )
 from chisurf.gui import dialogs
+from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
 
 logger = logging.getLogger(__name__)
 
@@ -93,7 +94,7 @@ def _json_safe(obj: Any) -> Any:
     return obj
 
 
-class LightPathSimulatorWidget(QtWidgets.QMainWindow):
+class LightPathSimulatorWidget(ChisurfDockTool):
     """Main window for defining and simulating an optical light path."""
     
     def __init__(self, parent=None):

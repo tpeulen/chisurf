@@ -13,6 +13,7 @@ from qtpy import QtCore, QtWidgets
 from chisurf.core.math.regularization import LCurveData
 from chisurf.gui import dialogs
 from chisurf.gui.widgets.tools.help_guide import attach_help_and_guide
+from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
 
 from .client import FlcClient
 from chisurf.core.fio.staging import TTTR_FILE_FILTER
@@ -152,7 +153,7 @@ class _FlcModel:
         return self._correlation or []
 
 
-class FlcTwoDTool(QtWidgets.QMainWindow):
+class FlcTwoDTool(ChisurfDockTool):
     """Modern 2D-FLCS tool with dockable AutoForm panels."""
 
     tool_settings_name = "FlcTwoDTool"

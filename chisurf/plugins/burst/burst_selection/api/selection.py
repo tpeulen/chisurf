@@ -51,6 +51,37 @@ from .models import (
 
 
 
+
+#: Which filter ran -> its `_mmfdb_operation.algorithm` term.
+#:
+#: `operation_type` says a burst selection happened; this says how, which is
+#: what makes two selections of one measurement comparable or not. Both
+#: `COUNT_RATE` and `BURST` are the classic photons-in-a-time-window rate
+#: threshold -- `count_rate_filter` selects on photons per window and
+#: `burst_filter` is the L/m/T form of the same test -- so both are
+#: `sliding_window`.
+#:
+#: `TTTRLIB` is not here: its algorithm is whatever the registry advertised and
+#: is read from the settings. A mode absent from both records nothing rather
+#: than the nearest guess.
+_FILTER_ALGORITHM = {
+    BurstFilterMode.COUNT_RATE: "sliding_window",
+    BurstFilterMode.BURST: "sliding_window",
+    BurstFilterMode.BOCPD: "bocpd",
+    BurstFilterMode.KALMAN: "kalman",
+    BurstFilterMode.CUSUM: "cusum_sprt",
+}
+
+
+def _selection_algorithm(settings) -> str:
+    """The mmfdb term for the search `settings` selected, or "" if unrecorded."""
+    used = getattr(settings, "used_filter", None)
+    if used == BurstFilterMode.TTTRLIB:
+        return str(getattr(getattr(settings, "tttrlib_search", None),
+                           "algorithm", "") or "")
+    return _FILTER_ALGORITHM.get(used, "")
+
+
 def _manifest_settings(analysis_settings) -> dict:
     """The burst-search settings, in a JSON-safe shape for the manifest."""
     try:
@@ -144,13 +175,32 @@ def _run_burst_search(
         return np.asarray(selection, dtype=bool)
 
     if used_filter == BurstFilterMode.BOCPD:
-        # BOCPD is retired: it never performed well enough to recommend, and
-        # every search it competed with now lives in tttrlib. The mode value
-        # survives so an old project still loads and says what happened
-        # instead of failing somewhere deeper.
-        raise ValueError(
-            "the BOCPD burst search has been removed; choose another filter "
-            "mode (the tttrlib searches supersede it)"
+        # BOCPD now lives in tttrlib (burst_search_bocpd). The settings
+        # and mode name are unchanged, so saved projects keep working.
+        bocpd_settings = settings.bocpd_filter
+        min_counts = burst_detection.min_photons if burst_detection else 20
+        if tttrlib_search.is_available():
+            selection = tttrlib_burst_filter(
+                tttr=tttr,
+                algorithm="bocpd",
+                parameters=dict(
+                    L=min_counts,
+                    dt=bocpd_settings.dt,
+                    prior_count=bocpd_settings.prior_count,
+                    prior_duration=bocpd_settings.prior_duration,
+                    changepoint_prob=bocpd_settings.changepoint_prob,
+                    max_run=256,
+                    per_channel=True,
+                ),
+            )
+            return np.asarray(selection, dtype=bool)
+        # fallback: direct call on timestamps
+        from chisurf.core.fluorescence.burst.bocpd import bocpd_filter
+        return bocpd_filter(
+            tttr, min_ph=min_counts, dt=bocpd_settings.dt,
+            prior_count=bocpd_settings.prior_count,
+            prior_duration=bocpd_settings.prior_duration,
+            changepoint_prob=bocpd_settings.changepoint_prob,
         )
 
     if used_filter == BurstFilterMode.KALMAN:
@@ -776,6 +826,7 @@ def analyze_request(
                 path,
                 store_from_rows(result.dataframes.get(str(path), [])),
                 parameters=to_jsonable(request.settings),
+                algorithm=_selection_algorithm(request.settings),
                 out_dir=request.output_dir,
                 # Named the way the folder layout names its directory, so a
                 # container holding several analyses of one measurement is

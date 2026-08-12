@@ -17,6 +17,7 @@ from qtpy.QtWidgets import (
 
 from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.dock_area.dock_area import DockArea
+from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
 from chisurf.plugins.tttr.trace_browser import TraceBrowser
 from chisurf.plugins.tttr.trace_browser.gui.client import TraceBrowserClient
 
@@ -31,7 +32,7 @@ except ImportError:
 
 
 @persist_plugin_state("trace_browser")
-class TraceBrowserTool(QMainWindow):
+class TraceBrowserTool(ChisurfDockTool):
     """Toolbar-backed Trace Browser window."""
 
     def __init__(self, parent=None):

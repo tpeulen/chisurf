@@ -68,6 +68,7 @@ import chisurf.core.settings
 from chisurf.core.info import help_url
 from chisurf.gui import dialogs
 from chisurf.gui.glyphs import Glyphs
+from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
 from chisurf.plugins.core.help.api import markdown as md_api, review, toc as toc_api
 from chisurf.plugins.core.help.gui.ask_panel import AskPanel
 from chisurf.plugins.core.help.gui.client import HelpClient
@@ -561,7 +562,7 @@ class HelpTextBrowser(QTextBrowser):
 
 
 @persist_plugin_state("help_documentation")
-class HelpWidget(QMainWindow):
+class HelpWidget(ChisurfDockTool):
     """Documentation browser and help resource viewer for ChiSurf.
 
     Features

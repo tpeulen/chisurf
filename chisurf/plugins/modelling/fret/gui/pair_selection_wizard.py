@@ -12,6 +12,7 @@ import chisurf as cs
 from chisurf.gui import chiplot as cp
 import chisurf.gui.widgets
 from chisurf.gui import dialogs
+from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
 
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
@@ -34,7 +35,7 @@ from ..core.trajectory import (
 
 
 @persist_plugin_state("fret_pair_selection")
-class FRETPairSelectionWindow(QtWidgets.QMainWindow):
+class FRETPairSelectionWindow(ChisurfDockTool):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.setWindowTitle("Optimal FRET Pair Selection")

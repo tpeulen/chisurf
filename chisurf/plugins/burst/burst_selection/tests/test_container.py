@@ -21,7 +21,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from chisurf.core.datastore import column_names, row_count
+from chisurf.core.datastore import column_names, numeric_column, row_count
 from chisurf.core.fio.pto import Measurement
 from chisurf.plugins.burst.burst_selection.api.io import deinterleave_bursts
 from chisurf.plugins.burst.burst_selection.api.models import (
@@ -116,33 +116,41 @@ def test_the_burst_count_matches_the_legacy_writer(tmp_path: Path):
             selected_setup="Test",
         )
     )
+    from chisurf.core.fio.fluorescence.burst_tree import read_burst_table
+
     bur_lines = Path(result.output_paths["bur"]).read_text().splitlines()
     # The header line, then 2N+1 interleaved data rows.
     expected = (len(bur_lines) - 2) // 2
-    with Measurement.open(Path(result.output_paths["pto"])) as m:
-        assert row_count(m.get_store("bursts")) == expected
+    assert row_count(read_burst_table(Path(result.output_paths["pto"]))) == expected
 
 
 # -- and the bookkeeping does not come with it ---------------------------------
 
 
-def test_the_interleave_is_not_carried_into_the_container(analysed: Path):
-    """The zero rows exist so companions can be merged by counting; the
-    container joins on declared keys, so a placeholder row would only destroy
-    the information that a burst was absent."""
-    with Measurement.open(analysed) as m:
-        df = m.get_table("bursts")
-    numeric = df.select_dtypes(include="number")
-    all_zero = (numeric == 0).all(axis=1)
+def test_the_interleave_is_not_carried_out_of_the_container(analysed: Path):
+    """The zero rows are file-format padding, and a *reader* never sees them.
+
+    They are stored — the container holds the `.bur` 1:1 so that unpacking
+    reproduces it — and they come off on the way out, which is the same stride
+    the folder reader applies to the same rows. What must never happen is a
+    caller receiving them as bursts.
+    """
+    from chisurf.core.fio.fluorescence.burst_tree import read_burst_table
+
+    store = read_burst_table(analysed)
+    numeric_names = [n for n in column_names(store) if store[n].dtype not in ("str", "bool")]
+    numeric = np.column_stack([numeric_column(store, n) for n in numeric_names])
+    all_zero = np.all(numeric == 0, axis=1)
     assert not all_zero.any(), f"{int(all_zero.sum())} sentinel rows came through"
 
 
-def test_the_trailing_tab_column_is_not_carried_over(analysed: Path):
+def test_the_trailing_tab_column_is_not_handed_to_a_reader(analysed: Path):
     """The blank column exists only to produce the trailing tab the `.bur`
-    header needs. It is not data."""
-    with Measurement.open(analysed) as m:
-        df = m.get_table("bursts")
-    assert [c for c in df.columns if not str(c).strip()] == []
+    header needs. It is not data, and a reader is not given it."""
+    from chisurf.core.fio.fluorescence.burst_tree import read_burst_table
+
+    store = read_burst_table(analysed)
+    assert [c for c in column_names(store) if not str(c).strip()] == []
 
 
 def test_one_measurement_leaves_one_container_and_no_folder(analysed: Path):
@@ -260,7 +268,6 @@ def test_the_legacy_folder_is_written_only_when_it_is_asked_for(tmp_path: Path):
                         legacy_output=False)
     )
     assert "bur" not in result.output_paths
-    assert "output_folder" not in result.output_paths
     assert not [p for p in source.parent.iterdir() if p.is_dir()]
 
     result = analyze_request(
@@ -301,8 +308,17 @@ def test_a_pto_source_writes_no_folder_even_when_one_is_asked_for(tmp_path: Path
 
     assert result.output_paths.get("pto") == str(container)
     assert "bur" not in result.output_paths
-    assert "output_folder" not in result.output_paths
     assert not [p for p in container.parent.iterdir() if p.is_dir()]
+
+    # There *is* an analysis path — it just points inside the container. A
+    # container is addressed like a folder, so a downstream step is handed
+    # `m000.pto/<run>` and needs no idea which of the two it was given.
+    from chisurf.core.fio.analysis_path import is_container_path, split_container_path
+
+    analysis = result.output_paths["output_folder"]
+    assert is_container_path(analysis)
+    assert split_container_path(analysis) == (container, "countrate_All 0.2000#60")
+    assert not Path(analysis).exists()
 
 
 def test_the_results_still_land_when_the_folder_is_suppressed(tmp_path: Path):

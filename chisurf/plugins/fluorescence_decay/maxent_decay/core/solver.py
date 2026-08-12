@@ -624,6 +624,61 @@ def solve_lifetime_mem(
         return res_single
 
     if not optimize_nuisance:
+        # Fast path: delegate to tttrlib's C++ MEM engine when available.
+        # Matches the Python path below exactly (same H, g0, const, m, nu);
+        # see tttrlib::solve_tcspc_mem_lifetime (MaxEntTcspc.h).
+        try:
+            import tttrlib as _ttl
+            if hasattr(_ttl, "solve_tcspc_mem_lifetime"):
+                irf_bg_val_l = float(irf_bg_val)
+                bg_val_used = float(background)  # NB: Python path passes the raw
+                # background argument (0.0 by default), NOT bg0 (the median).
+                lamp_corr_l = lamp_arr - irf_bg_val_l
+                lamp_corr_l[lamp_corr_l < 0.0] = 0.0
+                if prior is None:
+                    prior_vec_l = np.ones_like(tau_arr, dtype=float)
+                    prior_vec_l /= float(np.sum(prior_vec_l))
+                else:
+                    prior_vec_l = np.asarray(prior, dtype=float).ravel()
+                    if prior_vec_l.size != tau_arr.size:
+                        raise ValueError("prior must have same length as tau grid")
+                    prior_vec_l[prior_vec_l <= 0.0] = MIN_PROB
+                    prior_vec_l /= float(np.sum(prior_vec_l))
+                cpp = _ttl.solve_tcspc_mem_lifetime(
+                    decay_arr.tolist(), lamp_corr_l.tolist(), float(dt),
+                    tau_arr.tolist(), float(ts0), float(bg_val_used), float(lamp_scatter),
+                    int(fitstart), int(fitstop), float(period_val),
+                    nu=float(nu), max_iter=int(max_iter), tol=float(tol),
+                    min_prob=MIN_PROB, prior=prior_vec_l.tolist(),
+                )
+                p_cpp = np.asarray(cpp.p)
+                result = {
+                    "p": p_cpp,
+                    "chisq": float(cpp.chisq),
+                    "S": float(cpp.S),
+                    "Q": float(cpp.Q),
+                    "p_esm": np.asarray(cpp.p_esm),
+                    "chisq_esm": float(cpp.chisq_esm),
+                    "S_esm": float(cpp.S_esm),
+                    "Q_esm": float(cpp.Q_esm),
+                    "nu": float(nu),
+                    "niter": int(cpp.niter),
+                    "tau": tau_arr,
+                    "fitrange": (int(fitstart), int(fitstop)),
+                    "dt": float(dt),
+                    "timeshift": float(ts0),
+                    "background": float(bg0),
+                    "lamp_scatter": float(lamp_scatter),
+                    "fit_additive": np.zeros(tau_arr.size),
+                    "irf_background": float(irf_bg_val_l),
+                    "nu_input": float(nu),
+                    "prior": prior_vec_l,
+                    "nuisance_optimized": False,
+                }
+                return result
+        except Exception:
+            pass  # fall back to the Python MEM path below
+
         result = _eval_mem_lifetime_single(ts0, float(background), irf_bg0)
         result["nuisance_optimized"] = False
         return result

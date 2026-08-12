@@ -21,6 +21,7 @@ from chisurf.core.dataspec import load_view_spec
 from ..core import HydroProSettings, HydroResult, run_hydro
 from .dialogs import DownloadInfoDialog, OutputDialog
 from chisurf.gui import dialogs
+from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
 
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
@@ -129,7 +130,7 @@ class _RunWorker(QtCore.QObject):
 
 
 @persist_plugin_state("hydropro")
-class HydroProTool(QtWidgets.QMainWindow):
+class HydroProTool(ChisurfDockTool):
     """HYDROPRO / HYDRO++ diffusion-coefficient calculator (AutoForm UI)."""
 
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:

@@ -119,13 +119,14 @@ class EvaluationStorage:
             if name not in frame_results:
                 self.results[name].append(np.nan)
 
-    def to_dataframe(self) -> Any:
-        """Convert accumulated results to a pandas DataFrame."""
-        import pandas as pd
+    def to_store(self) -> Any:
+        """Convert accumulated results to a ``tttrlib.DataStore``."""
+        from chisurf.core.datastore import store_from_arrays
+
         data = {"filename": self.filenames}
         for name, vals in self.results.items():
             data[name] = vals
-        return pd.DataFrame(data)
+        return store_from_arrays(data)
 
     def to_csv(self, path: str) -> None:
         """Write accumulated results to a CSV file.

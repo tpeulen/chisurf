@@ -278,7 +278,7 @@ def write_hdf5(df, path: str | pathlib.Path, key: str = NDX_HDF5_KEY) -> str:
 
     Parameters
     ----------
-    df : tttrlib.DataStore, pandas.DataFrame or mapping of str to array
+    df : tttrlib.DataStore or mapping of str to array
         The table to write.
     path : str or pathlib.Path
         Target file.

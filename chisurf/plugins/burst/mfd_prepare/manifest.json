@@ -1,0 +1,37 @@
+{
+  "id": "mfd_prepare",
+  "version": "1.0.0",
+  "display_name": "Tools:Burst:MFD Prepare",
+  "description": "Prepare a burst folder for multiparameter-fluorescence (MFD) analysis: resolve photon sources, verify channel counts, compute mean micro times, and inspect the preparation report.",
+  "authors": ["tpeulen"],
+  "categories": ["Tools", "Burst", "MFD"],
+  "icon": "📊",
+  "menu_hidden": true,
+  "state_namespace": "mfd_prepare",
+  "state_schema": {"folder": {"type": "string", "default": ""}},
+  "statefulness": {"enabled": false},
+  "entrypoints": {
+    "gui": "chisurf.plugins.burst.mfd_prepare.gui.tool:MfdPrepareTool",
+    "cli": "mfd-prepare=chisurf.plugins.burst.mfd_prepare.cli.main:cli",
+    "services": "chisurf.plugins.burst.mfd_prepare.backend.services:register_services"
+  },
+  "operation_types": [],
+  "rpc_methods": [
+    {
+      "name": "mfd_prepare.prepare",
+      "summary": "Prepare a burst folder for MFD analysis.",
+      "params_schema": "api.contract#/methods/0/params_schema",
+      "result_schema": "api.contract#/methods/0/result_schema",
+      "long_running": true,
+      "cancelable": false
+    },
+    {
+      "name": "mfd_prepare.describe",
+      "summary": "Return the plugin contract descriptor.",
+      "params_schema": {"type": "object"},
+      "result_schema": {"type": "object"},
+      "long_running": false,
+      "cancelable": false
+    }
+  ]
+}
