@@ -154,6 +154,10 @@ def test_nothing_but_the_viewport_is_drawn_on_the_window(window):
     Four were stacked there once the dock area went (`Chinsole`, `VolumeDock`
     and two bare containers), all still constructed because a few call sites
     read them. Hiding is not enough for all of them, so the parent link is cut.
+
+    The viewport is now the *only* one: the Qt status bar went the same way as
+    the Qt menu bar, replaced by the chrome's own status line, which obeys
+    `show_status` and exists in a browser host too.
     """
     from qtpy import QtWidgets
 
@@ -162,7 +166,7 @@ def test_nothing_but_the_viewport_is_drawn_on_the_window(window):
         for child in window.findChildren(QtWidgets.QWidget)
         if child.isVisible() and child.parentWidget() is window
     ]
-    assert drawn == ["MolView", "QStatusBar"], drawn
+    assert drawn == ["MolView"], drawn
     # Cut off the window, not deleted: the call sites that read them still work.
     assert window.command_panel is not None
     assert window.volume_panel is not None

@@ -72,6 +72,35 @@ script; the trap in measuring is that the *second* ask is served from the
 memo, so time a **fresh** grid for the cold number. Left open, in order of
 what it blocks:
 
+* **`molmap` and `fitmap` (2026-08-12, ChimeraX round):** the biggest
+  scientific gap in the earlier census is closed. `analysis/molmap.py`
+  simulates a density from atoms -- one Gaussian each, width
+  `resolution / (pi*sqrt2)` and **not** the resolution (a 3 A map splatted with
+  3 A blobs is markedly blurrier than the real thing), step `resolution/3`, pad
+  `3*resolution` so the tails are not clipped flat by the box faces, evaluated
+  to 5 sigma per atom so the cost is `n_atoms * (cutoff/step)^3` rather than
+  `n_atoms * n_voxels`. `on_grid=` samples onto an experimental map's own
+  lattice, which is the only way two maps can be compared.
+  `analysis/mapfit.py` fits rigidly by steepest ascent on the map value at the
+  atoms, using the density gradient and the torque about the model's centre;
+  both motions are scaled so the largest *atom* displacement is one step, or a
+  large complex spins while a small one barely turns.
+  **The measurement:** 148L displaced 5.9 A RMSD (10 deg + 5.4 A) is recovered
+  to **0.014 A** in 13 steps, through the command layer. Re-derive with
+  `chimol/test/test_molmap_fitmap.py`.
+  **Two traps, both pinned by tests.** (1) The obvious fit score -- correlate
+  each atom's weight against the map value under it -- **prefers the wrong
+  answer**: on 148L at 6 A it is -0.030 at the true position and -0.014 four
+  angstrom away. Density at map resolution is smooth and heavy atoms are not
+  under denser voxels. The number to quote is `map_correlation`, model density
+  simulated `on_grid` and compared voxel-wise: 1.000 at the answer, 0.62
+  displaced. With uniform weights the per-atom form returns `nan`, never 0.0,
+  because 0.0 reads as total failure for a perfect fit. (2) The basin is much
+  wider than expected -- 45 deg and a half-extent shift both recover fully --
+  but **90 deg does not** (17.2 A out, settles 12.8 A out) and still reports an
+  ordinary score. A model entirely off the map does not move, correctly.
+  Open: a global search (many starts) on top of this, `volume zone`, and a
+  difference map.
 * **secondary structure knew nothing about chains (2026-08-12, ChimeraX
   round):** `analysis/ss.py` built one flat `(n, 4, 3)` backbone from *every*
   residue in the structure and ran DSSP down it as one polypeptide. Three

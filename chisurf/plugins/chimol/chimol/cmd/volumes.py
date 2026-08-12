@@ -585,6 +585,221 @@ class VolumeMixin(BaseCmd):
         shown = getattr(grid, "name", object_id)
         self._emit_message(f"show_dust: {shown} shows every piece again")
 
+    # ------------------------------------------------------------------ #
+    # Simulating and fitting
+    # ------------------------------------------------------------------ #
+    def _map_named(self, viewer, name: str):
+        """The ``(object_id, grid)`` of a named map, or ``(None, None)``."""
+        wanted = str(name).strip().lower().replace("_", "-")
+        first = None
+        for object_id, entry in getattr(viewer, "_objects", {}).items():
+            grid = getattr(getattr(entry, "state", None), "volume", None)
+            if grid is None:
+                continue
+            if first is None:
+                first = (object_id, grid)
+            if not wanted:
+                continue
+            label = str(getattr(entry, "name", object_id)).lower().replace("_", "-")
+            if wanted in (str(object_id).lower().replace("_", "-"), label):
+                return object_id, grid
+        # No name given: the only map, if there is exactly one.
+        return first if not wanted else (None, None)
+
+    def _selection_points_and_weights(self, sel, label: str):
+        """``(object_id, coordinates, weights)`` in Angstrom for a selection.
+
+        Weights are atomic masses. A density map is really electron count, but
+        for carbon, nitrogen, oxygen and sulphur the mass is *exactly* twice the
+        electron count, so the simulated map differs from an electron-density
+        one by a global factor of two -- which a correlation does not see, and
+        which a contour level is chosen against anyway. Hydrogen is the one
+        common exception, and structures at map resolutions rarely carry it.
+        """
+        atoms, mask, object_id = self._selection_atoms(sel, label)
+        if atoms is None:
+            return None, None, None
+        chosen = np.asarray(mask, dtype=bool)
+        points = np.asarray(atoms["xyz"], dtype=float)[chosen]
+        weights, unknown = self._atom_masses(atoms, chosen)
+        if unknown >= len(weights):
+            # Every element unrecognised: one weight each beats zero weights,
+            # which would make an empty map and look like a failure elsewhere.
+            weights = np.ones(len(points), dtype=float)
+        else:
+            weights = np.asarray(weights, dtype=float)
+            weights[weights <= 0.0] = 1.0
+        return object_id, points, weights
+
+    @command("molmap")
+    def molmap(self, selection: str = "all", resolution: str = "3.0",
+               name: str = "", grid_spacing: str = "") -> None:
+        """Simulate a density map from atoms at a stated resolution.
+
+        The counterpart of ``load_map``: what this model *would* look like if it
+        had been imaged at that resolution. That is what a real map is compared
+        against -- by eye, by ``fitmap``, or by subtracting one from the other.
+
+        Parameters
+        ----------
+        selection : str
+            Which atoms. ``all`` by default.
+        resolution : str
+            In Angstrom. The Gaussian's width is ``resolution / (pi * sqrt 2)``,
+            not the resolution itself.
+        name : str
+            Name for the new map object.
+        grid_spacing : str
+            Sample spacing; ``resolution / 3`` by default.
+        """
+        window, viewer = self._require_window_and_viewer()
+        if viewer is None:
+            return
+        try:
+            res = float(str(resolution).strip())
+        except ValueError:
+            self._emit_error(f"molmap: '{resolution}' is not a resolution")
+            return
+        step = None
+        if str(grid_spacing).strip():
+            try:
+                step = float(str(grid_spacing).strip())
+            except ValueError:
+                self._emit_error(f"molmap: '{grid_spacing}' is not a spacing")
+                return
+
+        object_id, points, weights = self._selection_points_and_weights(
+            selection, "molmap"
+        )
+        if points is None:
+            return
+
+        label = self._unquote_name(name) or f"molmap_{res:g}"
+        try:
+            from ..analysis.molmap import simulate_map
+
+            with self.progress(
+                "Simulating map", message=f"{len(points)} atoms at {res:g} A"
+            ) as report:
+                report(0.0)
+                grid = simulate_map(
+                    points, res, weights=weights, step=step, name=label
+                )
+        except Exception as exc:
+            self._emit_error(f"molmap: {exc}")
+            return
+
+        new_id = viewer.add_volume(grid, name=label)
+        low, high = grid.value_range()
+        self._emit_message(
+            f"molmap: {label} from {len(points)} atoms at {res:g} A, "
+            f"{grid.shape[0]}x{grid.shape[1]}x{grid.shape[2]} step "
+            f"{grid.step[0]:.3g}, values {low:.4g} to {high:.4g}  [{new_id}]"
+        )
+
+    @command("fitmap")
+    def fitmap(self, selection: str = "all", map: str = "",
+               resolution: str = "", steps: str = "500") -> None:
+        """Fit a structure rigidly into a density map (ChimeraX ``fit in map``).
+
+        Steepest ascent on the map value at the atoms, moving the model as a
+        rigid body. It finds the **nearest** maximum, not the best one: a model
+        that starts in the wrong place ends in the wrong place with a plausible
+        score, so start it near where the model belongs.
+
+        Parameters
+        ----------
+        selection : str
+            The atoms to move. The whole object moves with them.
+        map : str
+            Which map to fit into. The only loaded map by default.
+        resolution : str
+            If given, the fit quality is also reported as a **map-to-map**
+            correlation: the model's own density simulated onto this map's grid
+            and compared voxel by voxel. That is the number worth quoting --
+            correlating atom weights against map values does not discriminate
+            (on 148L at 6 A it scores *worse* at the right answer than 4 A away).
+        steps : str
+            Maximum optimiser steps.
+        """
+        window, viewer = self._require_window_and_viewer()
+        if viewer is None:
+            return
+
+        map_name = self._unquote_name(map)
+        map_id, grid = self._map_named(viewer, map_name)
+        if grid is None:
+            self._emit_error(
+                f"fitmap: no map called '{map_name}'" if map_name
+                else "fitmap: no map is loaded; use load_map or molmap first"
+            )
+            return
+
+        object_id, points, weights = self._selection_points_and_weights(
+            selection, "fitmap"
+        )
+        if points is None:
+            return
+        try:
+            budget = int(float(str(steps).strip() or 500))
+        except ValueError:
+            self._emit_error(f"fitmap: '{steps}' is not a step count")
+            return
+
+        try:
+            from ..analysis.mapfit import fit_points_in_map
+
+            with self.progress(
+                "Fitting into map",
+                message=f"{len(points)} atoms, up to {budget} steps",
+            ) as report:
+                report(0.0)
+                result = fit_points_in_map(
+                    points, grid, weights=weights, max_steps=budget
+                )
+        except Exception as exc:
+            self._emit_error(f"fitmap: {exc}")
+            return
+
+        # The fit is stated as "rotate about the model's centre, then shift",
+        # while a transform is "rotate about the origin, then shift" -- so the
+        # centre term has to be folded into the translation before it is handed
+        # over, and only then converted into the renderer's scene units.
+        from .measurements import _scene_transform
+
+        rotation = result.rotation
+        offset = result.centre - rotation @ result.centre + result.translation
+        try:
+            viewer.apply_transform_to_object(
+                rotation,
+                _scene_transform(viewer, object_id, rotation, offset),
+                object_id=object_id,
+            )
+        except Exception as exc:
+            self._emit_error(f"fitmap: could not apply the transform: {exc}")
+            return
+
+        message = (
+            f"fitmap: moved {result.shift:.2f} A and rotated {result.angle:.1f} deg "
+            f"in {result.steps} steps; average map value {result.average:.4g}"
+        )
+        if str(resolution).strip():
+            try:
+                res = float(str(resolution).strip())
+                from ..analysis.mapfit import map_correlation
+                from ..analysis.molmap import simulate_map
+
+                simulated = simulate_map(
+                    result.apply(points), res, weights=weights, on_grid=grid
+                )
+                message += (
+                    f", map correlation {map_correlation(grid, simulated):.4f} "
+                    f"at {res:g} A"
+                )
+            except Exception as exc:
+                message += f" (correlation unavailable: {exc})"
+        self._emit_message(message)
+
     @command("volume_gaussian")
     def volume_gaussian(self, name: str = "", sdev: str = "") -> None:
         """Smooth a map's data with a Gaussian, as a new map object.

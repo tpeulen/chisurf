@@ -4554,3 +4554,30 @@ For scale: after the chrome cache and the frame-rate fix, `_draw` on the
 234,184-bead nuclear pore is **6.7 ms** with the developer instruments on. This
 2 ms is the last large CPU item, and it is guarded by a suite that catches every
 attempt at it -- which is the system working.
+
+## The whole chimol suite segfaults in one process; the files do not
+
+**Found 2026-08-12.** `pytest chisurf/plugins/chimol/test` (3,496 tests) dies
+around 16-17% with `Fatal Python error: Segmentation fault`. The dump says
+**`Garbage-collecting`**, then `_mark_closed` in `renderer/wgpu_view.py`, then
+whatever was allocating when the collection ran -- twice in a row it was
+`geometry/guide_frames.py:_flip_sweep` calling `.tolist()`, once under
+`create`, once under `spectrum`, i.e. two different tests.
+
+That is the same shape as the pyqtgraph teardown crash above and should be read
+the same way: **the named caller is not the culprit.** `_mark_closed` is two
+dict writes; it cannot fault. What faults is the C++ teardown that emitted
+`destroyed` -- a `WgpuMolView` widget abandoned by an earlier test, collected at
+an arbitrary later allocation, with a wgpu poller thread still running.
+
+**It does not reproduce per file.** `test_demos.py` alone -- which contains the
+test that was running -- is clean, so bisecting by the file named in the
+traceback finds nothing. It needs a process that has already built and dropped
+many viewers.
+
+Not fixed. The fix is deterministic viewer teardown rather than leaving the
+canvas to the collector; the `destroyed` connection in `wgpu_view.py` (whose
+comment records two *earlier* shutdown crashes at the same seam) is where to
+start. Until then, run chimol tests **per file or per directory**, which is what
+the project asks for anyway on cost grounds.
+

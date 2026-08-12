@@ -35739,3 +35739,11 @@
   Pairing is now by chain and residue number, then residue number, then
   Needleman-Wunsch, with all-atom `rms` matching atoms by name inside each paired
   residue. See [plugins/pymol-parity](plugins/pymol-parity.md).
+- 2026-08-12 — chimol: `molmap` simulates a density map from a model and `fitmap`
+  puts a model back into one, closing what the earlier ChimeraX census called the
+  biggest scientific gap. 148L displaced 5.9 A RMSD is recovered to 0.014 A. The
+  trap worth carrying: the per-atom fit score (atom weight against map value)
+  prefers the *wrong* answer -- -0.030 at the true position, -0.014 four angstrom
+  away -- so fit quality is reported as a map-to-map correlation against the
+  model's own simulated density instead. The optimiser recovers 45 degrees but
+  traps at 90. See [plugins/pymol-parity](plugins/pymol-parity.md).

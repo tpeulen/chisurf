@@ -328,6 +328,56 @@ a map read as though it were `x, y, z` is silently transposed. It also honours
 anisotropy: a confocal stack whose z step differs from its xy step is not
 squashed into a cube.
 
+### Simulating a map, and fitting a model into one
+
+A map is only half of the work. The other half is being able to say what a
+*model* would look like at the same resolution — that is what a real map is
+compared against, and what a fit is scored on.
+
+```text
+molmap all, 6.0, sim         # simulate this model's density at 6 A
+fitmap 148l, sim, 6.0        # move the model to where the map says it belongs
+```
+
+`molmap` sums one Gaussian per atom. The width is **not** the resolution: it is
+`resolution / (π√2)`, the Gaussian whose transform falls to `1/e` there, and
+quoting a 3 Å map while splatting a 3 Å-wide blob gives something markedly
+blurrier than the real thing. The grid is sampled three times across the
+resolution and padded by three times it, so the tails are inside the box rather
+than clipped flat by its faces. Atoms are weighted by mass; for carbon,
+nitrogen, oxygen and sulphur that is exactly twice the electron count, so the
+result differs from an electron density by one global factor.
+
+```{figure} figures/chimol_molmap.png
+:name: fig-chimol-molmap
+:width: 640px
+
+`molmap` at 6 Å around 148L, contoured as an `isomesh`. The envelope follows the
+fold, which is the check that the grid is placed on the model rather than beside
+it.
+```
+
+`fitmap` moves the model rigidly to the nearest maximum of the map value at its
+atoms, following the density's gradient and the torque it exerts about the
+model's own centre. Two things are worth knowing before quoting a number from
+it:
+
+**It is local.** Measured on 148L at 6 Å, a 45° rotation (9.3 Å RMSD) comes back
+to 0.02 Å and so does a shift of half the structure's own 73 Å extent — but a
+**90° rotation does not**: it starts 17.2 Å out and settles 12.8 Å out, in a
+different maximum, still reporting an ordinary-looking score. A model that
+misses the map entirely does not move at all. Start it near where it belongs, or
+run several starts.
+
+**Quote the map-to-map correlation, not a per-atom one.** Given a resolution,
+`fitmap` also reports the correlation between the map and the model's own
+simulated density, voxel by voxel: 1.000 at the answer, 0.62 for the 5.9 Å
+displacement above. The tempting per-atom alternative — correlate each atom's
+weight against the map value under it — is not a fit quality: on 148L at 6 Å it
+scores **−0.030 at the true position and −0.014 four ångström away**, preferring
+the wrong answer. Density at map resolutions is smooth, and heavy atoms are not
+systematically under denser voxels.
+
 ### The Map panel
 
 The **Map** tab shows the map's value distribution with each contour as a marker
