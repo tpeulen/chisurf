@@ -393,17 +393,17 @@ class Topology:
         """
         return Topology(self._atoms[np.asarray(indices, dtype=np.intp)])
 
-    def to_dataframe(self):
-        """Return the atoms as a :class:`pandas.DataFrame`.
+    def to_store(self):
+        """Return the atoms as a ``tttrlib.DataStore``.
 
         Returns
         -------
-        pandas.DataFrame
+        tttrlib.DataStore
             One row per atom, with the residue and chain indices resolved.
         """
-        import pandas as pd
+        from chisurf.core.datastore import store_from_arrays
 
-        return pd.DataFrame({
+        return store_from_arrays({
             "serial": self._atoms["atom_id"],
             "name": self._atoms["atom_name"],
             "element": self._atoms["element"],

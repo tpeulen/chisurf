@@ -1,37 +1,28 @@
-"""The columnar-store seam — ``DataStore`` in, ``DataFrame`` out, and back.
+"""The columnar-store seam — ``chisurf.core.datastore``, the one table container.
 
-ChiSurf's tables are moving from :class:`pandas.DataFrame` onto the columnar
-store one consumer at a time. This module is the Qt-free layer both sides of
-that migration share: the conversions that keep pandas as an *interop* format
-rather than the storage model, and the cell-level primitives a store needs
-before it can back an editable table. See the
-[columnar store concept](/subsystems/columnar-store.md) for the plan and the
-measurements.
+ChiSurf's tables moved off :class:`pandas.DataFrame` onto the columnar store,
+consumer by consumer; this module is the Qt-free layer that migration built —
+the cell-level primitives a store needs before it can back an editable table,
+and the constructors (:func:`store_from_arrays`, :func:`store_from_rows`) that
+build one. Nothing here imports pandas, not even lazily: a caller holding a
+frame is expected to have moved onto a store already. See the
+[columnar store concept](/subsystems/columnar-store.md) for the history and
+the measurements.
 
 Why a store rather than a frame — measured on a 1M-row burst table (six float64,
 one int32, one float32, one four-label text column): **114.3 MB as a frame,
 60.2 MB as a store**, almost all of the difference being the text column, which
-pandas holds as a million Python string objects and a store holds as four
+a frame held as a million Python string objects and a store holds as four
 strings plus a million ``int32`` codes. Dtypes also survive a round trip: a
 float32 column stays float32 instead of being widened, and an integer column
 with a missing value stays an integer column instead of becoming floats.
 
 Missing values
 --------------
-The two containers do not mean the same thing by "missing", and this module
-never silently converts one into the other:
-
-* a frame marks a missing number with ``NaN``, which only a float column can
-  hold;
-* a store carries a per-column validity **mask**, so an integer column can say
-  "not measured" without giving up a value or its dtype — which is exactly the
-  distinction a burst analysis that skipped a burst needs.
-
-:func:`store_from_dataframe` therefore masks non-finite entries of an integer or
-boolean column rather than widening the column, and :func:`dataframe_from_store`
-turns a masked entry back into ``NaN``, widening to float where it must. A round
-trip through pandas is lossy in that one direction, and it is documented rather
-than hidden.
+A store carries a per-column validity **mask**, so an integer column can say
+"not measured" without giving up a value or its dtype — which is exactly the
+distinction a burst analysis that skipped a burst needs, and which a frame's
+``NaN`` (a value only a float column can hold) cannot make.
 
 Tables in a file
 ----------------
@@ -80,19 +71,17 @@ __all__ = [
     "column_names",
     "column_values",
     "concat_stores",
-    "dataframe_from_store",
     "is_missing",
     "new_store",
     "numeric_column",
     "read_csv_table",
+    "read_results_table",
     "read_table",
-    "read_table_frame",
     "row_count",
     "rows_from_table",
     "set_cell",
     "set_constant",
     "store_from_arrays",
-    "store_from_dataframe",
     "store_from_rows",
     "take_columns",
     "take_rows",
@@ -360,7 +349,7 @@ def column_names(table: Any) -> list[str]:
 
     Parameters
     ----------
-    table : mapping, tttrlib.DataStore, or pandas.DataFrame
+    table : mapping or tttrlib.DataStore
 
     Returns
     -------
@@ -385,7 +374,7 @@ def row_count(table: Any) -> int:
 
     Parameters
     ----------
-    table : mapping, tttrlib.DataStore, or pandas.DataFrame
+    table : mapping or tttrlib.DataStore
 
     Returns
     -------
@@ -410,7 +399,7 @@ def numeric_column(table: Any, name: str) -> np.ndarray:
 
     Parameters
     ----------
-    table : mapping, tttrlib.DataStore, or pandas.DataFrame
+    table : mapping or tttrlib.DataStore
         The table.
     name : str
         Column name.
@@ -484,7 +473,7 @@ def set_constant(table: Any, name: str, value: Any) -> Any:
 
     Parameters
     ----------
-    table : tttrlib.DataStore, pandas.DataFrame or mapping of str to array
+    table : tttrlib.DataStore or mapping of str to array
     name : str
         Column name.
     value : object
@@ -492,7 +481,7 @@ def set_constant(table: Any, name: str, value: Any) -> Any:
 
     Returns
     -------
-    tttrlib.DataStore, pandas.DataFrame or mapping
+    tttrlib.DataStore or mapping
         *table*, modified in place.
     """
     n = row_count(table)
@@ -520,56 +509,6 @@ def _is_text(values: Any) -> bool:
     return array.dtype.kind in ("U", "S", "O")
 
 
-def store_from_dataframe(df: Any) -> Any:
-    """Convert a :class:`pandas.DataFrame` into a store, dtype for dtype.
-
-    Object and string columns become dictionary-encoded text columns. An integer
-    or boolean column whose frame dtype is nullable keeps its integer dtype and
-    records the missing entries in the store's validity mask, rather than being
-    widened to float the way ``to_numpy`` would.
-
-    Parameters
-    ----------
-    df : pandas.DataFrame
-        The frame to convert. Its index is dropped: a store addresses rows by
-        position, and every frame this replaces carries a ``RangeIndex``.
-
-    Returns
-    -------
-    tttrlib.DataStore
-    """
-    import pandas as pd
-
-    store = new_store()
-    for label in df.columns:
-        series = df[label]
-        name = str(label)
-        if isinstance(series.dtype, pd.CategoricalDtype) or series.dtype == object:
-            missing = np.asarray(series.isna())
-            # Fill before the cast: ``astype(str)`` would put the literal
-            # ``"nan"`` in the dictionary and it would outlive the mask.
-            store.add(name, np.asarray(series.fillna("").astype(str), dtype=object))
-        elif pd.api.types.is_bool_dtype(series.dtype):
-            missing = np.asarray(series.isna())
-            store.add(name, np.asarray(series.fillna(False), dtype=bool))
-        elif pd.api.types.is_integer_dtype(series.dtype):
-            missing = np.asarray(series.isna())
-            store.add(name, np.asarray(series.fillna(0), dtype=_numpy_dtype(series.dtype)))
-        elif pd.api.types.is_numeric_dtype(series.dtype):
-            values = series.to_numpy(dtype=_numpy_dtype(series.dtype), na_value=np.nan)
-            store.add(name, values)
-            missing = np.zeros(len(values), dtype=bool)
-        else:
-            missing = np.asarray(series.isna())
-            store.add(name, np.asarray(series.fillna("").astype(str), dtype=object))
-        if missing.any():
-            column = store[store.n_columns() - 1]
-            column.set_mask(np.ascontiguousarray(~missing, dtype=np.uint8))
-    if store.n_columns() == 0:
-        store.set_n_rows(int(len(df.index)))
-    return store
-
-
 def write_table(
     path: Any,
     data: Any,
@@ -594,9 +533,8 @@ def write_table(
     path : path-like
         Target file. Existing groups it does not write are left alone, so two
         tables can live in one file.
-    data : tttrlib.DataStore, pandas.DataFrame, or mapping of str to array-like
-        The table. A frame or a mapping is converted with
-        :func:`store_from_dataframe` / :func:`store_from_arrays`.
+    data : tttrlib.DataStore, or mapping of str to array-like
+        The table. A mapping is converted with :func:`store_from_arrays`.
     group : str
         Group to write into. ``"/"`` — the root — is what a burst reader looks
         at first, so it is the default.
@@ -631,17 +569,23 @@ def write_table(
 
 
 def as_store(data: Any) -> Any:
-    """Return ``data`` as a store, converting a frame or a mapping.
+    """Return ``data`` as a store, converting a mapping or a row sequence.
 
     Parameters
     ----------
     data : object
-        A ``tttrlib.DataStore``, a :class:`pandas.DataFrame`, or a mapping of
-        column name to values.
+        A ``tttrlib.DataStore``, a mapping of column name to values, or a
+        sequence of row mappings.
 
     Returns
     -------
     tttrlib.DataStore
+
+    Raises
+    ------
+    TypeError
+        For anything else — there is no pandas fallback here; a caller
+        holding a frame is expected to have moved onto a store already.
     """
     if isinstance(data, Mapping):
         return store_from_arrays(data)
@@ -649,7 +593,11 @@ def as_store(data: Any) -> Any:
         return data
     if isinstance(data, Sequence) and not isinstance(data, (str, bytes)):
         return store_from_rows(data)
-    return store_from_dataframe(data)
+    raise TypeError(
+        f"as_store cannot convert {type(data).__name__!r}: expected a "
+        "tttrlib.DataStore, a mapping of column name to values, or a sequence "
+        "of row mappings"
+    )
 
 
 
@@ -665,7 +613,7 @@ def rows_from_table(table: Any) -> list[dict[str, Any]]:
 
     Parameters
     ----------
-    table : mapping, tttrlib.DataStore, or pandas.DataFrame
+    table : mapping or tttrlib.DataStore
 
     Returns
     -------
@@ -730,6 +678,15 @@ def store_from_rows(
         if any(isinstance(v, str) for v in raw if v is not None):
             values = np.array(["" if v is None else str(v) for v in raw], dtype=object)
         elif all(
+            isinstance(v, (bool, np.bool_)) for v in raw if v is not None
+        ) and any(v is not None for v in raw):
+            # Checked before the int branch: bool is a subclass of int in
+            # Python, and the int branch already excludes it (`not
+            # isinstance(v, bool)`) -- without this branch a bool column fell
+            # through to the float branch below instead, losing the dtype a
+            # checkbox delegate keys off.
+            values = np.array([False if v is None else bool(v) for v in raw], dtype=bool)
+        elif all(
             isinstance(v, (bool, int)) and not isinstance(v, bool) or isinstance(v, np.integer)
             for v in raw
             if v is not None
@@ -761,7 +718,7 @@ def concat_stores(stores: Sequence[Any], *, inner: bool = False) -> Any:
 
     Parameters
     ----------
-    stores : sequence of tttrlib.DataStore, pandas.DataFrame or mapping
+    stores : sequence of tttrlib.DataStore or mapping
         The tables to stack. An empty sequence gives an empty store.
     inner : bool
         Keep only the columns every store has, rather than the union.
@@ -800,7 +757,7 @@ def take_columns(store: Any, names: Sequence[str]) -> Any:
 
     Parameters
     ----------
-    store : tttrlib.DataStore, pandas.DataFrame or mapping
+    store : tttrlib.DataStore or mapping
         The table to take from. Converted first, as everywhere on this seam: a
         migration moves one producer at a time, and until the last one moves a
         caller legitimately holds a mixture.
@@ -834,7 +791,7 @@ def take_rows(store: Any, rows: Any) -> Any:
 
     Parameters
     ----------
-    store : tttrlib.DataStore, pandas.DataFrame or mapping
+    store : tttrlib.DataStore or mapping
         The table to take from.
     rows : array-like of int
         Row positions.
@@ -868,7 +825,7 @@ def read_table(path: Any, *, group: str = "/") -> Any:
     ``None`` means the file is a different shape — a frame-written table, a
     photon-data file — and the caller should read it another way. Returning
     ``None`` rather than raising is what keeps the two readable side by side;
-    :func:`read_table_frame` is the caller that does both.
+    :func:`read_results_table` is the caller that does both.
 
     The column-count guard matters: handed a file it does not recognise the
     reader can answer with an *empty* table rather than declining, so a caller
@@ -950,7 +907,7 @@ def write_csv_table(
     ----------
     path : path-like or None
         Target file, or ``None`` to return the text instead of writing it.
-    data : tttrlib.DataStore, pandas.DataFrame, or mapping of str to array-like
+    data : tttrlib.DataStore or mapping of str to array-like
         The table.
     delimiter : str
         Field separator. Tab, because that is what the tables here use.
@@ -1019,14 +976,14 @@ def read_csv_table(path: Any, *, delimiter: str = "\t", header: bool = True) -> 
     return store if store.n_columns() > 0 else None
 
 
-def read_table_frame(path: Any, *, key: str = "results") -> Any:
-    """Return a columnar HDF5 table as a frame, for a caller that wants one.
+def read_results_table(path: Any, *, key: str = "results") -> Any:
+    """Return a columnar HDF5 table as a store, trying two conventional locations.
 
-    The conversion, not a second reader: the file must be in the columnar layout
-    this module writes. There is deliberately **no fallback to a frame-based
-    HDF5 reader** — that reader needs an optional package a solved environment
-    does not carry, so a fallback is a path that works on a developer's machine
-    and fails on everyone else's, which is how the writers it replaced went
+    Not a second reader: the file must be in the columnar layout this module
+    writes. There is deliberately **no fallback to a frame-based HDF5 reader**
+    — that reader needs an optional package a solved environment does not
+    carry, so a fallback is a path that works on a developer's machine and
+    fails on everyone else's, which is how the writers it replaced went
     unnoticed for so long.
 
     Parameters
@@ -1038,7 +995,7 @@ def read_table_frame(path: Any, *, key: str = "results") -> Any:
 
     Returns
     -------
-    pandas.DataFrame
+    tttrlib.DataStore
 
     Raises
     ------
@@ -1058,59 +1015,4 @@ def read_table_frame(path: Any, *, key: str = "results") -> Any:
             "release is in the frame layout and has to be converted rather than "
             "read here."
         )
-    return dataframe_from_store(store)
-
-
-def _numpy_dtype(dtype: Any) -> Any:
-    """Return the plain numpy dtype behind a possibly-nullable pandas dtype.
-
-    Parameters
-    ----------
-    dtype : object
-        A numpy or pandas extension dtype.
-
-    Returns
-    -------
-    numpy.dtype
-    """
-    numpy_dtype = getattr(dtype, "numpy_dtype", None)
-    return np.dtype(numpy_dtype if numpy_dtype is not None else dtype)
-
-
-def dataframe_from_store(store: Any) -> Any:
-    """Convert a store back into a :class:`pandas.DataFrame`.
-
-    The interop direction — for a caller that reports to a user, writes a format
-    only pandas knows, or hands a table to a notebook. It is lossy in one
-    respect and the loss is deliberate: a masked entry becomes ``NaN``, which
-    widens an integer column to float, because a frame has nowhere else to put
-    it.
-
-    Parameters
-    ----------
-    store : tttrlib.DataStore
-        The store to convert.
-
-    Returns
-    -------
-    pandas.DataFrame
-        A frame with a ``RangeIndex`` and one column per store column.
-    """
-    import pandas as pd
-
-    data = {}
-    for index in range(store.n_columns()):
-        column = column_at(store, index)
-        values = column.numpy()
-        if column.has_mask():
-            valid = column.mask_numpy()
-            if column.dtype == STRING_DTYPE:
-                values = np.asarray(values, dtype=object)
-                values[~valid] = None
-            else:
-                values = np.asarray(values, dtype="float64")
-                values[~valid] = np.nan
-        else:
-            values = np.asarray(values)
-        data[column.name()] = values
-    return pd.DataFrame(data, index=pd.RangeIndex(store.n_rows()))
+    return store

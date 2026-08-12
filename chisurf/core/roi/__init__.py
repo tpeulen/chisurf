@@ -44,12 +44,13 @@ from .io import (
     save_label_image,
     save_rois,
 )
-from .selections import (
-    collection_from_selections,
-    ellipse_from_covariance,
-    excluded_mask,
-    interval_roi,
-    roi_from_selection,
+from .picking import (
+    PickedCluster,
+    PickedSpot,
+    cluster_roi,
+    fit_gaussian_cluster,
+    fit_gaussian_spot,
+    spot_roi,
 )
 from .props import (
     INTENSITY_PROPERTIES,
@@ -73,8 +74,21 @@ from .roi import (
     rois_to_labels,
     union_of,
 )
+from .selections import (
+    collection_from_selections,
+    ellipse_from_covariance,
+    excluded_mask,
+    interval_roi,
+    roi_from_selection,
+)
 
 __all__ = [
+    "PickedCluster",
+    "PickedSpot",
+    "cluster_roi",
+    "fit_gaussian_cluster",
+    "fit_gaussian_spot",
+    "spot_roi",
     # geometry
     "ROI",
     "RectangleROI",

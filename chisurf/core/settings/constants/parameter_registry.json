@@ -5,7 +5,7 @@
       "description": "",
       "keywords": [],
       "label_texts": [
-        "D[µm²/s]"
+        "D[\u00b5m\u00b2/s]"
       ],
       "sources": [
         {
@@ -15,7 +15,7 @@
           "file": "fcs/general.py",
           "fixed": false,
           "function": "__init__",
-          "label_text": "D[µm²/s]",
+          "label_text": "D[\u00b5m\u00b2/s]",
           "lb": 0.001,
           "line": 69,
           "module": "fcs.general",
@@ -296,7 +296,7 @@
       "description": "",
       "keywords": [],
       "label_texts": [
-        "pinhole[µm]"
+        "pinhole[\u00b5m]"
       ],
       "sources": [
         {
@@ -306,7 +306,7 @@
           "file": "fcs/mdf.py",
           "fixed": true,
           "function": "__init__",
-          "label_text": "pinhole[µm]",
+          "label_text": "pinhole[\u00b5m]",
           "lb": 1.0,
           "line": 100,
           "module": "fcs.mdf",
@@ -411,7 +411,7 @@
       "description": "",
       "keywords": [],
       "label_texts": [
-        "D[µm²/s]"
+        "D[\u00b5m\u00b2/s]"
       ],
       "sources": [
         {
@@ -421,7 +421,7 @@
           "file": "fcs/mdf.py",
           "fixed": false,
           "function": "__init__",
-          "label_text": "D[µm²/s]",
+          "label_text": "D[\u00b5m\u00b2/s]",
           "lb": 0.001,
           "line": 59,
           "module": "fcs.mdf",
@@ -707,7 +707,7 @@
           "file": "fcs/mdf.py",
           "fixed": false,
           "function": "__init__",
-          "label_text": "D[µm²/s]",
+          "label_text": "D[\u00b5m\u00b2/s]",
           "lb": 0.001,
           "line": 59,
           "module": "fcs.mdf",
@@ -720,7 +720,7 @@
           "file": "fcs/general.py",
           "fixed": false,
           "function": "__init__",
-          "label_text": "D[µm²/s]",
+          "label_text": "D[\u00b5m\u00b2/s]",
           "lb": 0.001,
           "line": 69,
           "module": "fcs.general",
@@ -4784,7 +4784,7 @@
       "flrcif_item_id": "_flr_chisurf_parameter.pinhole",
       "keywords": [],
       "label_texts": [
-        "pinhole[µm]"
+        "pinhole[\u00b5m]"
       ],
       "sources": [
         {
@@ -4794,7 +4794,7 @@
           "file": "fcs/mdf.py",
           "fixed": true,
           "function": "__init__",
-          "label_text": "pinhole[µm]",
+          "label_text": "pinhole[\u00b5m]",
           "lb": 1.0,
           "line": 100,
           "module": "fcs.mdf",
@@ -5103,7 +5103,7 @@
     "rics.D": {
       "aliases": [],
       "ambiguous": false,
-      "description": "Diffusion coefficient D in µm²/s.",
+      "description": "Diffusion coefficient D in \u00b5m\u00b2/s.",
       "flrcif_item_id": "_flr_chisurf_parameter.rics_D",
       "keywords": [
         "RICS",
@@ -5117,7 +5117,7 @@
     "rics.aT": {
       "aliases": [],
       "ambiguous": false,
-      "description": "Triplet/blinking fraction a_T (0–1).",
+      "description": "Triplet/blinking fraction a_T (0\u20131).",
       "flrcif_item_id": "_flr_chisurf_parameter.rics_aT",
       "keywords": [
         "RICS",
@@ -5228,7 +5228,7 @@
     "rics.tauT": {
       "aliases": [],
       "ambiguous": false,
-      "description": "Triplet/blinking correlation time τ_T in milliseconds.",
+      "description": "Triplet/blinking correlation time \u03c4_T in milliseconds.",
       "flrcif_item_id": "_flr_chisurf_parameter.rics_tauT",
       "keywords": [
         "RICS",
@@ -5243,7 +5243,7 @@
     "rics.w_r": {
       "aliases": [],
       "ambiguous": false,
-      "description": "Radial waist of the detection PSF in µm.",
+      "description": "Radial waist of the detection PSF in \u00b5m.",
       "flrcif_item_id": "_flr_chisurf_parameter.rics_w_r",
       "keywords": [
         "RICS",
@@ -5258,7 +5258,7 @@
     "rics.w_z": {
       "aliases": [],
       "ambiguous": false,
-      "description": "Axial waist of the detection PSF in µm.",
+      "description": "Axial waist of the detection PSF in \u00b5m.",
       "flrcif_item_id": "_flr_chisurf_parameter.rics_w_z",
       "keywords": [
         "RICS",

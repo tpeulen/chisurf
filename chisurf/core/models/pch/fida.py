@@ -33,6 +33,12 @@ from typing import Sequence, Tuple
 
 import numpy as np
 
+try:
+    import tttrlib as _ttl
+    _HAVE_TTTRLIB = hasattr(_ttl, 'fida_pch')
+except Exception:
+    _HAVE_TTTRLIB = False
+
 
 def dvdx_gaussian(
     n_bins: int = 256, x_min: float = 1e-4, structure: float = 1.0,
@@ -99,6 +105,16 @@ def fida_pch(
     if profile is None:
         profile = dvdx_gaussian()
     x, w = profile
+
+    # Delegate to tttrlib C++ engine when available
+    if _HAVE_TTTRLIB:
+        species_flat = []
+        for q, n in species:
+            species_flat.extend([float(q), float(n)])
+        return np.asarray(_ttl.fida_pch(
+            k_max, species_flat, len(species), float(background)
+        ))
+
     dx = x[1] - x[0]
 
     m = int(max(oversample, 1) * (k_max + 1))

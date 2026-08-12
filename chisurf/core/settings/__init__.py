@@ -35,8 +35,6 @@ chisurf_settings_path = get_path('settings')
 chisurf_root = get_path('chisurf')
 macro_path = chisurf_root / "macros"
 plugin_path = chisurf_root / "plugins"
-_notebook_root = chisurf_root.parent / "notebooks"
-notebook_path = _notebook_root if _notebook_root.is_dir() else (chisurf_root / "notebooks")
 
 # Copy settings files if not already present
 copy_settings_to_user_folder()
@@ -92,12 +90,8 @@ tcspc = dict()
 fps = dict()
 locals().update(cs_settings)
 
-# BETA OVERRIDES: Force Jupyter to start even if disabled in user settings
-# to ensure connectivity for the Antigravity (v26.1) Beta release.
-_gui_overrides = cs_settings.setdefault('gui', {})
-_gui_overrides['start_jupyter_on_startup'] = True
 # ZMQ server is always auto-started — no setting required.
-gui.update(_gui_overrides)
+gui.update(cs_settings.setdefault('gui', {}))
 
 
 def is_dev_mode() -> bool:

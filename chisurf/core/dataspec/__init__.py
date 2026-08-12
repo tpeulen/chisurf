@@ -401,7 +401,9 @@ class ValueSection(Section):
 
     label: str = "Value"
     #: One of ``"int"``, ``"float"``, ``"str"``, ``"text"`` (multi-line),
-    #: ``"date"`` (ISO ``yyyy-MM-dd``), ``"file"`` (line edit + browse button) or
+    #: ``"expression"`` (a one-line equation in Python syntax, coloured by whether
+    #: it parses and shown beside its typeset form), ``"date"``
+    #: (ISO ``yyyy-MM-dd``), ``"file"`` (line edit + browse button) or
     #: ``"directory"`` (the same, browsing for a folder).
     kind: str = "str"
     #: Attribute on the target group to get/set (direct-binding mode).
