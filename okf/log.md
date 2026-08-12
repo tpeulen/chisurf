@@ -35422,3 +35422,18 @@
   only mechanism was hiding the in-viewport *windows*, so the menu bar, the
   sequence strip, the info panel and the status line all landed in the file.
   `grab_image(chrome=False)` already existed for exactly this.
+
+- **2026-08-12 — chimol: the frame-rate counter was destroying the frame rate it
+  reported.** The readout is part of the chrome, so a value that changes every
+  frame invalidated the chrome cache every frame -- and rebuilding the chrome is
+  ~14 ms on the nuclear pore. Switching the instrument on did not merely perturb
+  the measurement, it **dominated** it: the number shown was the number it
+  caused. With debug on, `_draw` was **18.27 ms**; publishing the rate twice a
+  second instead of every frame makes it **6.92 ms**, a 2.6x difference produced
+  entirely by the observer. It is also more readable — a number redrawn sixty
+  times a second cannot be read at all.
+  Worth carrying: this is a general hazard of the chrome cache. **Anything put
+  in the chrome that changes every frame costs a full chrome rebuild per frame**,
+  and the fingerprint will faithfully report it as a change. A clock, a
+  coordinate readout under the cursor, a live atom count -- all of them want the
+  same treatment.

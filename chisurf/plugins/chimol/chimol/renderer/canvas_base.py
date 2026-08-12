@@ -81,6 +81,10 @@ _FPS_WINDOW = 30
 #: A gap longer than this is an idle viewport rather than a slow frame.
 _IDLE_GAP = 0.25
 
+#: How often the frame-rate readout publishes a new number. It is part of the
+#: chrome, so every change rebuilds the chrome -- see `_measured_fps`.
+_FPS_REPORT_INTERVAL = 0.5
+
 #: Wheel notch to distance ratio. Multiplicative so one step feels the same on a
 #: peptide and on a ribosome; PyMOL's own zoom is a ratio for the same reason.
 WHEEL_STEP = 1.1
@@ -314,6 +318,9 @@ class CanvasRenderer(CameraState, Renderer):
         #: Recent frame intervals, for the debug frame-rate readout.
         self._frame_times: list[float] = []
         self._last_frame_time: float | None = None
+        #: The frame rate as *shown*, and when it was last published.
+        self._fps_published = 0.0
+        self._fps_published_at = 0.0
         self._background_source = None
         self._background_image = None
         #: The rubber-band selection box while it is being dragged, in viewport
@@ -697,7 +704,23 @@ class CanvasRenderer(CameraState, Renderer):
             del samples[:-_FPS_WINDOW]
         if len(samples) < 3:
             return 0.0
-        return len(samples) / sum(samples)
+
+        # Published a few times a second, not every frame -- and this is a
+        # correctness fix, not a cosmetic one. The readout is part of the
+        # chrome, so a value that changes every frame invalidates the chrome
+        # cache every frame, and rebuilding the chrome is ~14 ms on a large
+        # model. **Switching the counter on therefore destroyed the frame rate
+        # it was reporting**, which is the worst possible behaviour for an
+        # instrument: it does not merely perturb the measurement, it dominates
+        # it, and the number it shows is the number it caused.
+        #
+        # Twice a second is also simply more readable. A rate redrawn sixty
+        # times a second cannot be read at all.
+        rate = len(samples) / sum(samples)
+        if now - self._fps_published_at >= _FPS_REPORT_INTERVAL:
+            self._fps_published_at = now
+            self._fps_published = rate
+        return self._fps_published
 
     def _chrome_quads(self) -> np.ndarray | None:
         """The panel, strip, menus and transport as GPU quads.
