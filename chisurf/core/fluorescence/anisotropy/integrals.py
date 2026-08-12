@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 import numpy as np
 
@@ -9,10 +8,10 @@ import numpy as np
 @dataclass(frozen=True)
 class AnisotropyResult:
     r_e: float
-    r_s: Optional[float]
+    r_s: float | None
     G: float
-    chi: Optional[float]
-    S_ges: Optional[float]
+    chi: float | None
+    S_ges: float | None
 
 
 def perrin_steady_state_anisotropy(
@@ -51,7 +50,7 @@ def perrin_steady_state_anisotropy(
 def compute_g_factor_isotropic(
         s_p,
         s_s,
-        axis: Optional[int] = None,
+        axis: int | None = None,
 ) -> float:
     """Compute the G-factor assuming isotropic rotational diffusion.
 
@@ -91,7 +90,7 @@ def compute_g_factor_perrin(
         r0: float = 0.38,
         l1: float = 0.0,
         l2: float = 0.0,
-        axis: Optional[int] = None,
+        axis: int | None = None,
 ) -> float:
     """Compute G from integrated channels using Perrin-corrected anisotropy.
 
@@ -125,7 +124,7 @@ def anisotropy_from_integrals(
         gamma: float = 0.0,
         B_p: float = 0.0,
         B_s: float = 0.0,
-        axis: Optional[int] = None,
+        axis: int | None = None,
         scatter_corrected: bool = False,
 ) -> AnisotropyResult:
     """Compute anisotropy from integrated signal intensities.

@@ -667,6 +667,20 @@ class IRFEstimator:
         np.ndarray
             Estimated IRFs (shape: [num_samples, num_channels])
         """
+        try:
+            import tttrlib as _ttl
+            if hasattr(_ttl, 'blind_irf_estimate'):
+                data_flat = self.data.astype(np.float64).flatten().tolist()
+                irf = np.asarray(_ttl.blind_irf_estimate(
+                    data_flat, self.num_samples, self.num_channels,
+                    self.dt, rl_iterations, regularization,
+                    window_length, polyorder
+                ))
+                self.irf = irf.reshape(self.data.shape)
+                return self.irf
+        except Exception:
+            pass
+
         self.find_t0_t1(
             window_length=window_length,
             polyorder=polyorder,

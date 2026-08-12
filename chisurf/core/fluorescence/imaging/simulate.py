@@ -21,7 +21,6 @@ from typing import Any
 
 import numpy as np
 
-
 # Re-exported so importers of this module keep their name; the check itself is
 # shared, because four copies of "is the simulator there?" is four places for the
 # answer to differ.
@@ -187,6 +186,316 @@ def simulate_clsm_molecules(
         n_pixel=n_pixel, pixel_size=pixel_size, n_micro=n_micro, dt=dt,
         laser_period=laser_period,
     )
+
+
+@dataclasses.dataclass
+class Blob:
+    """One simulated object in a mixture, with the truth it was made from.
+
+    Parameters
+    ----------
+    ix, iy : int
+        Pixel coordinates in the scan grid.
+    tau : float
+        Fluorescence lifetime (ns).
+    r0 : float
+        Fundamental anisotropy. Non-zero is what makes the parallel and
+        perpendicular channels differ at all — with ``r0 = 0`` the two decays
+        are the same curve and a VV/VH fit has nothing to work with.
+    rho : float
+        Rotational correlation time (ns). ``0`` freezes the anisotropy at
+        ``r0``, which is the useful degenerate case for testing a τ fit: the
+        VV/VH ratio is then constant and only the lifetime varies between blobs.
+    brightness : float
+        Per-molecule emission rate (simulator ``q``, summed over channels).
+    """
+
+    ix: int
+    iy: int
+    tau: float
+    r0: float = 0.38
+    rho: float = 0.0
+    brightness: float = 3000.0
+
+
+@dataclasses.dataclass
+class SimulatedMixture:
+    """A polarisation-resolved CLSM scan of blobs with different lifetimes.
+
+    The test set the segmentation and the region-wise fit are both aimed at:
+    one field, several objects, each with its *own* lifetime, and photons split
+    over a parallel and a perpendicular detector so a VV/VH estimator has the
+    two channels it expects.
+
+    Attributes
+    ----------
+    tttr : tttrlib.TTTR
+        The marker-annotated photon stream, two routing channels.
+    clsm : tttrlib.CLSMImage
+        The reconstructed image, filled on both channels.
+    blobs : list of Blob
+        Ground truth, in the order the blobs were placed.
+    irf : numpy.ndarray
+        The IRF pattern each decay was convolved with (length ``n_micro``).
+    n_pixel, n_micro : int
+    dt, laser_period : float
+    """
+
+    tttr: Any
+    clsm: Any
+    blobs: list
+    irf: np.ndarray
+    n_pixel: int
+    pixel_size: float
+    n_micro: int
+    dt: float
+    laser_period: float
+
+    def vv_vh_irf(self) -> np.ndarray:
+        """Return the area-normalised IRF in VV/VH layout (``2 * n_micro``)."""
+        norm = self.irf / self.irf.sum() if self.irf.sum() > 0 else self.irf
+        return np.concatenate([norm, norm])
+
+    @property
+    def intensity(self) -> np.ndarray:
+        """Total-intensity image over both channels and every frame."""
+        return np.asarray(self.clsm.intensity).sum(axis=0)
+
+    @property
+    def true_taus(self) -> list:
+        """Ground-truth lifetimes, in blob order."""
+        return [b.tau for b in self.blobs]
+
+
+def simulate_molecule_mixture(
+    blobs: Sequence,
+    *,
+    n_pixel: int = 48,
+    pixel_size: float = 0.5,
+    n_micro: int = 128,
+    dt: float = 0.064,
+    irf_center: float = 10.0,
+    irf_sigma: float = 1.5,
+    dwell: float = 0.12,
+    psf_w0: float = 0.3,
+    seed: int = 1,
+) -> SimulatedMixture:
+    """Simulate a field of blobs with different lifetimes, VV/VH resolved.
+
+    Each blob becomes its own species, so lifetimes need not be shared and the
+    ground truth is per object rather than per field. Photons land in two
+    routing channels — ``0`` parallel, ``1`` perpendicular — with the split set
+    by the species' anisotropy, which is what gives a VV/VH estimator two
+    different decays to fit rather than one curve twice.
+
+    Parameters
+    ----------
+    blobs : sequence
+        :class:`Blob` instances, ``{"ix","iy","tau",…}`` mappings, or
+        ``(ix, iy, tau)`` tuples.
+    n_pixel : int
+        Scan grid side.
+    pixel_size : float
+        Pixel size (µm).
+    n_micro : int
+        Micro-time channels per detector.
+    dt : float
+        Micro-time channel width (ns); the excitation period is ``n_micro * dt``.
+    irf_center, irf_sigma : float
+        Centre and width of the Gaussian IRF, in micro-time channels.
+    dwell : float
+        Per-pixel dwell (macro-time units).
+    psf_w0 : float
+        Excitation PSF ``1/e²`` radius (µm).
+    seed : int
+        Simulator seed. **Set, not left to chance**: a test set that differs
+        between runs cannot be a fixture, and a fit that recovers the truth
+        only sometimes is not evidence of anything.
+
+    Returns
+    -------
+    SimulatedMixture
+
+    Raises
+    ------
+    RuntimeError
+        If tttrlib was built without the photon simulator.
+    """
+    import tttrlib
+
+    if not hasattr(tttrlib, "SimEngine"):
+        raise RuntimeError("tttrlib was built without the photon simulator (SimEngine)")
+
+    items = _coerce_blobs(blobs)
+    laser_period = n_micro * dt
+    irf = _gaussian_irf(n_micro, irf_center, irf_sigma)
+
+    sample = tttrlib.SimSystem()
+    for blob in items:
+        # One species per blob, so two blobs may share a lifetime without
+        # sharing an identity — and so the truth is per object.
+        species = _lifetime_species(
+            tttrlib, blob.tau, irf, dt,
+            [float(blob.brightness), float(blob.brightness)],
+        )
+        species.r0 = float(blob.r0)
+        # rho = 1 / (6 D_rot); rho = 0 means frozen, which the simulator
+        # expresses as no rotational diffusion at all.
+        species.D_rot = 0.0 if blob.rho <= 0 else 1.0 / (6.0 * float(blob.rho))
+        sample.add_species(species)
+
+    n_sp = len(items)
+    sample.set_rate_matrices([0.0] * n_sp * n_sp, [0.0] * n_sp * n_sp)
+    sample.set_background([0.0, 0.0])
+    for index, blob in enumerate(items):
+        sample.add_fluorophore(
+            blob.ix * pixel_size, blob.iy * pixel_size, 0.0, index, False
+        )
+
+    tttr, clsm = _run_scan(
+        tttrlib, sample, n_channels=2, n_pixel=n_pixel, pixel_size=pixel_size,
+        n_micro=n_micro, dt=dt, dwell=dwell, psf_w0=psf_w0, fill_channels=[0, 1],
+        seed=int(seed),
+    )
+    return SimulatedMixture(
+        tttr=tttr, clsm=clsm, blobs=items, irf=irf,
+        n_pixel=n_pixel, pixel_size=pixel_size, n_micro=n_micro, dt=dt,
+        laser_period=laser_period,
+    )
+
+
+def simulate_irf_measurement(
+    *,
+    n_pixel: int = 16,
+    pixel_size: float = 0.5,
+    n_micro: int = 128,
+    dt: float = 0.064,
+    irf_center: float = 10.0,
+    irf_sigma: float = 1.5,
+    dwell: float = 0.4,
+    psf_w0: float = 0.3,
+    brightness: float = 6000.0,
+    seed: int = 2,
+) -> SimulatedMixture:
+    """Simulate the IRF measurement that belongs to a mixture.
+
+    A scatterer, which is what an IRF measurement is: the same optics and the
+    same detectors, with a lifetime short enough that what comes back is the
+    instrument response and not a decay. Simulated rather than synthesised so
+    it carries the same Poisson noise, the same two channels and the same
+    micro-time axis as the sample it will be fitted against — an analytic IRF
+    is noiseless, and a fit given a noiseless IRF and noisy data is being
+    handed an advantage no measurement provides.
+
+    Parameters
+    ----------
+    n_pixel, pixel_size, n_micro, dt, irf_center, irf_sigma, dwell, psf_w0 : ...
+        As for :func:`simulate_molecule_mixture`; keep the micro-time axis and
+        the optics identical to the sample's or the fit is comparing two
+        different instruments.
+    brightness : float
+        Emission rate of the scatterer.
+    seed : int
+        Simulator seed; different from the sample's, or the two measurements
+        share their noise.
+
+    Returns
+    -------
+    SimulatedMixture
+        With one central "blob" whose lifetime is negligible.
+    """
+    scatterer = Blob(ix=n_pixel // 2, iy=n_pixel // 2, tau=0.001, r0=0.0,
+                     brightness=brightness)
+    return simulate_molecule_mixture(
+        [scatterer], n_pixel=n_pixel, pixel_size=pixel_size, n_micro=n_micro,
+        dt=dt, irf_center=irf_center, irf_sigma=irf_sigma, dwell=dwell,
+        psf_w0=psf_w0, seed=seed,
+    )
+
+
+def clsm_from_scan(tttr, n_pixel: int, channels=(0, 1)):
+    """Rebuild the scanned image from a stream that came back off disk.
+
+    The marker layout is the scanner's, not something a reader can infer: the
+    simulator writes frame/line/pixel markers on specific channels, and
+    ``CLSMImage``'s auto-detection does not find them in a written PTU — it
+    returns a ``(1, 0)`` image and zero photons, which looks like an empty
+    measurement rather than a misread one. Reconstructing through the same
+    settings the scan used is the whole fix, and it belongs here so that a
+    fixture and the code that made it cannot drift apart.
+
+    Parameters
+    ----------
+    tttr : tttrlib.TTTR
+        The stream, freshly opened from a file or still in memory.
+    n_pixel : int
+        Scan grid side, as simulated.
+    channels : sequence of int
+        Routing channels to fill.
+
+    Returns
+    -------
+    tttrlib.CLSMImage
+    """
+    import tttrlib
+
+    clsm = tttrlib.CLSMImage(
+        tttr_data=tttr, marker_frame_start=[4], marker_line_start=1,
+        marker_line_stop=2, n_pixel_per_line=int(n_pixel),
+        use_pixel_markers=True, marker_pixel=8,
+        settings={"n_lines": int(n_pixel)},
+    )
+    clsm.fill(tttr, channels=list(channels))
+    return clsm
+
+
+def write_mixture_ptu(sim, path) -> str:
+    """Write a simulated scan out as a PTU.
+
+    PTU because it is what the writer supports for a stream built in memory:
+    the PTO writer has no header support for one, so the ordinary route to a
+    container is a vendor file first and ``Measurement.create`` after. See
+    ``okf/references/known-issues.md``.
+
+    Parameters
+    ----------
+    sim : SimulatedMixture
+        The simulated scan to persist.
+    path : str or pathlib.Path
+        Where to write it.
+
+    Returns
+    -------
+    str
+        The path written.
+
+    Raises
+    ------
+    RuntimeError
+        If the writer refused, rather than leaving a zero-byte file behind for
+        the next reader to discover.
+    """
+    import pathlib
+
+    target = pathlib.Path(path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    if not sim.tttr.write(str(target), "PTU"):
+        raise RuntimeError(f"tttrlib refused to write {target}")
+    return str(target)
+
+
+def _coerce_blobs(blobs) -> list:
+    """Return *blobs* as :class:`Blob` instances."""
+    out = []
+    for item in blobs:
+        if isinstance(item, Blob):
+            out.append(item)
+        elif isinstance(item, dict):
+            out.append(Blob(**item))
+        else:
+            ix, iy, tau = item
+            out.append(Blob(int(ix), int(iy), float(tau)))
+    return out
 
 
 @dataclasses.dataclass
@@ -528,7 +837,8 @@ def _lifetime_species(tttrlib, tau: float, irf: np.ndarray, dt: float, q):
 
 
 def _run_scan(tttrlib, sample, *, n_channels, n_pixel, pixel_size, n_micro, dt,
-              dwell, psf_w0, fill_channels, window_dt: float = 0.01):
+              dwell, psf_w0, fill_channels, window_dt: float = 0.01,
+              seed: int | None = None):
     """Raster-scan *sample* and reconstruct a filled ``CLSMImage``.
 
     ``window_dt`` is the integrator step, in the same time unit as *dwell*: the
@@ -546,6 +856,13 @@ def _run_scan(tttrlib, sample, *, n_channels, n_pixel, pixel_size, n_micro, dt,
     integrator.n_microtime_channels = n_micro
     integrator.microtime_resolution = dt
     integrator.laser_period = n_micro * dt
+    if seed is not None:
+        # Without this the scan is unseeded, which is why the older fixtures
+        # could not be stored: a test set that differs between runs is not a
+        # fixture, and a fit that recovers the truth only sometimes is not
+        # evidence.
+        integrator.seed_diffusion = int(seed)
+        integrator.seed_emission = int(seed) + 1
     engine = tttrlib.SimEngine(sample, excitation, tttrlib.VectorSimGrid([]), integrator)
     engine.run_scan(
         tttrlib.SimScanner.uniform(

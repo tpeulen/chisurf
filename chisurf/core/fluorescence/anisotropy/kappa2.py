@@ -1,8 +1,8 @@
-from chisurf import typing
-
 import logging
 
 import numpy as np
+
+from chisurf import typing
 
 logger = logging.getLogger(__name__)
 

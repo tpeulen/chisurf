@@ -245,7 +245,7 @@ def write_bur_file_old(bur_filename, start_stop, filename, tttr, windows, detect
     for det_name in detectors:
         det_cols += [
             f"First Photon ({det_name})", f"Last Photon ({det_name})",
-            f"Duration ({det_name}) (ms)", f"Mean Macrotime ({det_name}) (ms)",
+            f"Duration ({det_name}) (ms)", f"Mean Macro Time ({det_name}) (ms)",
             f"Number of Photons ({det_name})", f"{det_name.capitalize()} Count Rate (KHz)"
         ]
     window_cols = []
@@ -330,7 +330,7 @@ def write_bur_file_old(bur_filename, start_stop, filename, tttr, windows, detect
                     f"First Photon ({det_name})": -1,
                     f"Last Photon ({det_name})": -1,
                     f"Duration ({det_name}) (ms)": -1.0,
-                    f"Mean Macrotime ({det_name}) (ms)": -1.0,
+                    f"Mean Macro Time ({det_name}) (ms)": -1.0,
                     f"Number of Photons ({det_name})": 0,
                     f"{det_name.capitalize()} Count Rate (KHz)": -1.0,
                 })
@@ -343,7 +343,7 @@ def write_bur_file_old(bur_filename, start_stop, filename, tttr, windows, detect
                     f"First Photon ({det_name})": start_idx + first_i,
                     f"Last Photon ({det_name})": start_idx + last_i,
                     f"Duration ({det_name}) (ms)": dur_ms,
-                    f"Mean Macrotime ({det_name}) (ms)": mean_mt_ms,
+                    f"Mean Macro Time ({det_name}) (ms)": mean_mt_ms,
                     f"Number of Photons ({det_name})": len(idxs),
                     f"{det_name.capitalize()} Count Rate (KHz)": rate_khz,
                 })

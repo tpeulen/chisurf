@@ -1,17 +1,13 @@
 # BVA module
 from chisurf.core.fluorescence.burst.bva import compute_static_bva_line, compute_bva
 
-# BOCPD module
+# BOCPD module — thin wrapper around tttrlib C++ engine
 from chisurf.core.fluorescence.burst.bocpd import (
-    bin_photons as bocpd_bin_photons,
-    bocpd_joint_poisson_optimized,
-    extract_bursts as bocpd_extract_bursts,
+    bocpd_filter,
     bocpd_burst_detection,
-    bin_photons_multi as bocpd_bin_photons_multi,
-    extract_bursts_multi as bocpd_extract_bursts_multi,
-    bocpd_burst_detection_multi
+    bocpd_burst_detection_multi,
+    convert_bursts_to_start_stop as bocpd_convert_bursts_to_start_stop,
 )
-# Import with module prefix to avoid name conflict
 import chisurf.core.fluorescence.burst.bocpd
 
 # Kalman module

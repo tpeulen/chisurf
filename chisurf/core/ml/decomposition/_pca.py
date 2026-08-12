@@ -110,13 +110,17 @@ class PCA(BaseEstimator):
             np.zeros((1, n_comp)), self.components_
         )[1]
         self.n_components_ = n_comp
-        self._centered = centered
         return self
 
     def fit_transform(self, X, y=None) -> np.ndarray:
         """Fit and project ``X`` in one call."""
+        X = np.asarray(X, dtype=float)
         self.fit(X)
-        return self._centered @ self.components_.T
+        # Projected here rather than by keeping the centred copy from `fit`:
+        # holding an (n_samples, n_features) array on the estimator for the sake
+        # of one call is the kind of retention that only shows up as a memory
+        # figure much later.
+        return (X - self.mean_) @ self.components_.T
 
     def transform(self, X) -> np.ndarray:
         """Project ``X`` onto the components."""
@@ -174,17 +178,26 @@ class IncrementalPCA(BaseEstimator):
         batch = int(self.batch_size or max(len(X) // 10, 1))
         n_features = X.shape[1]
 
+        # Accumulated about an offset, not about zero. The textbook
+        # sum-of-squares-minus-square-of-sum loses every significant digit when
+        # the mean is large next to the spread -- which is the normal case for a
+        # column that is a macro time or a photon count -- and the covariance
+        # then comes out with negative eigenvalues. Shifting by any value near
+        # the mean bounds the cancellation by the spread instead. The first
+        # block's mean is near enough and costs nothing.
+        offset = X[:batch].mean(axis=0)
         total_sum = np.zeros(n_features)
         total_sq = np.zeros((n_features, n_features))
         n = 0
         for start in range(0, len(X), batch):
-            block = X[start : start + batch]
+            block = X[start : start + batch] - offset
             total_sum += block.sum(axis=0)
             total_sq += block.T @ block
             n += len(block)
 
-        mean = total_sum / n
-        cov = (total_sq - n * np.outer(mean, mean)) / (n - 1)
+        shifted_mean = total_sum / n
+        mean = offset + shifted_mean
+        cov = (total_sq - n * np.outer(shifted_mean, shifted_mean)) / (n - 1)
         eigvals, eigvecs = np.linalg.eigh(cov)
         order = np.argsort(eigvals)[::-1]
         n_comp = self.n_components
@@ -194,6 +207,10 @@ class IncrementalPCA(BaseEstimator):
         if n_comp <= 0:
             raise ValueError("n_components must be >= 1")
         self.components_ = eigvecs[:, order[:n_comp]].T.copy()
+        # The same sign convention as PCA. Without it the two disagree on the
+        # sign of every loading -- a difference that is meaningless to the
+        # decomposition and very visible to anyone reading a loadings plot.
+        self.components_ = _svd_flip(np.zeros((1, n_comp)), self.components_)[1]
         self.explained_variance_ = eigvals[order[:n_comp]].copy()
         self.mean_ = mean
         self.n_components_ = n_comp

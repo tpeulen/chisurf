@@ -28,6 +28,12 @@ from typing import Tuple
 
 import numpy as np
 
+try:
+    import tttrlib as _ttl
+    _HAVE_TTTRLIB = hasattr(_ttl, 'same_molecule_probability')
+except Exception:
+    _HAVE_TTTRLIB = False
+
 
 def pair_statistics(
     burst_times_s: np.ndarray,
@@ -126,6 +132,18 @@ def same_molecule_probability(
     """
     edges = np.logspace(np.log10(tau_min_s), np.log10(tau_max_s), n_bins + 1)
     tau = np.sqrt(edges[:-1] * edges[1:])
+
+    if _HAVE_TTTRLIB:
+        res = np.asarray(_ttl.same_molecule_probability(
+            np.asarray(burst_times_s, dtype=float).tolist(),
+            tau_min_s, tau_max_s, n_bins, edge_correction
+        ))
+        nb = len(res) // 3
+        g = res[2 * nb:]
+        with np.errstate(divide="ignore", invalid="ignore"):
+            p_same = np.clip(res[nb:2 * nb], 0.0, 1.0)
+        return tau, p_same, g
+
     counts, expected = pair_statistics(burst_times_s, edges, edge_correction)
     g = np.full(n_bins, np.nan)
     if not expected.any():

@@ -23,7 +23,7 @@ class BeckerHicklSetReader:
 
     _LINE_REGEX = re.compile(
         r"SP_([A-Z0-9_]+),"  # parameter name
-        r"([FI]),"           # type: F=float, I=int
+        r"([FI]),"           # field kind: F=float, I=int
         r"([-+]?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?)\]"  # value
     )
 
