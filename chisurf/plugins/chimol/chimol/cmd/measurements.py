@@ -1774,6 +1774,73 @@ class MeasurementMixin(BaseCmd):
             f"[{centre[0]:.3f}, {centre[1]:.3f}, {centre[2]:.3f}]"
         )
 
+    @command("gyrate", aliases=("measure_rgyr", "radius_of_gyration"))
+    def gyrate(self, sel: Selection = "all", mass_weighted: bool = True) -> float:
+        """Radius of gyration of a selection (PyMOL ``gyrate``).
+
+        The mass-weighted root-mean-square distance of the atoms from their
+        centre of mass -- the single number that says how extended a structure
+        is, and the one an experimentalist compares against a SAXS or FRET
+        measurement.
+
+        Parameters
+        ----------
+        sel : str, optional
+            Which atoms. ``all`` by default.
+        mass_weighted : bool, optional
+            Weight by atomic mass, which is the definition that matches
+            scattering. Pass ``off`` for the unweighted geometric value, which
+            is what a coarse-grained model of equal beads wants.
+
+        Returns
+        -------
+        float
+            The radius in Angstrom, or ``0.0`` when nothing was selected.
+
+        Notes
+        -----
+        Computed in **file units**, not scene units. The viewer holds
+        coordinates scaled by ``_scale_factor``, and reading the radius straight
+        off them gives an answer ten times too large -- which is exactly the bug
+        this project has already had once, in the info panel.
+        """
+        atoms, mask, _object_id = self._selection_atoms(sel, "gyrate")
+        if atoms is None:
+            return 0.0
+        chosen = np.asarray(mask, dtype=bool)
+        xyz = np.asarray(atoms["xyz"], dtype=float)[chosen]
+        if xyz.shape[0] < 2:
+            self._emit_error(
+                f"gyrate: '{sel}' has {xyz.shape[0]} atom(s); two are needed"
+            )
+            return 0.0
+
+        if mass_weighted:
+            weights, _unknown = self._atom_masses(atoms, chosen)
+            weights = np.asarray(weights, dtype=float)
+            if weights.sum() <= 0.0:
+                weights = np.ones(xyz.shape[0], dtype=float)
+        else:
+            weights = np.ones(xyz.shape[0], dtype=float)
+
+        total = float(weights.sum())
+        centre = (weights[:, None] * xyz).sum(axis=0) / total
+        offsets = xyz - centre
+        squared = float((weights * np.einsum("ij,ij->i", offsets, offsets)).sum() / total)
+        radius = float(np.sqrt(max(squared, 0.0)))
+
+        # No scale division. `atoms["xyz"]` holds the file's own coordinates --
+        # it is what `save` writes and what `distance` measures -- while the
+        # *render* arrays are the scaled ones. Dividing here gave 1.64 A for a
+        # lysozyme whose radius of gyration is 16.4, which is the same
+        # factor-of-ten this project has already been bitten by from the other
+        # direction, reading a radius off the scaled coordinates.
+        kind = "mass-weighted" if mass_weighted else "geometric"
+        self._emit_message(
+            f"gyrate: {radius:.3f} A over {xyz.shape[0]} atoms ({kind})"
+        )
+        return radius
+
     @command("measure_inertia", aliases=("inertia",))
     def measure_inertia(self, sel: Selection = "all") -> None:
         """Principal axes and moments of a selection (ChimeraX ``measure inertia``).

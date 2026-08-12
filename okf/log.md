@@ -35707,3 +35707,24 @@
   than the dump it replaces, since a range is what anybody reads off a list of
   numbers anyway. A truncated string is marked as truncated rather than silently
   cut, so a clipped number cannot be read as the whole answer.
+
+- **2026-08-12 — chimol: `gyrate`, and a census of what a viewer usually has.**
+  Radius of gyration was computed for the info panel and had **no command**, so
+  it could not be scripted or taken over a selection. `gyrate` (PyMOL's name,
+  aliased `measure_rgyr`) gives the mass-weighted RMS distance from the centre
+  of mass -- the number compared against a SAXS or FRET measurement -- with
+  `off` for the unweighted geometric value that an equal-bead coarse-grained
+  model wants. Checked against the panel's independent figure: **16.394 A** for
+  148L against its 16.4.
+  The trap, hit while writing it: `atoms["xyz"]` holds the **file's own**
+  coordinates while the render arrays are scaled, so dividing by
+  `_scale_factor` gave 1.64 A. That is the same factor of ten this project was
+  bitten by from the other direction earlier, reading a radius **off** the
+  scaled coordinates.
+  Census of what is still missing, for whoever picks this up: **fit a structure
+  into a density map** (ChimeraX `fitmap`, the biggest scientific gap),
+  ramachandran, per-atom SASA, a contacts/interfaces command, sequence
+  alignment, morph between states, symmetry averaging of a map, and clustering
+  trajectory frames. Already present and better than expected: a real
+  Kabsch-Sander DSSP in `analysis/ss.py`, `measure_inertia` (already transcribed
+  from ChimeraX), rms/super/align, clashes, hbond_network, buried_area.
