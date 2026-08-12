@@ -123,6 +123,13 @@ class ChimolApp:
         gui.visible = True
         gui.sequence_visible = True
         gui.set_run_command(self.cmd.do)
+        # The stride and averaging cells in the mouse block. Wired **here**
+        # because the block is drawn by the chrome, which every host shares,
+        # while the callback was only ever connected in the Qt window -- so on
+        # this host clicking `Avg` moved the number in the panel and reached
+        # nothing. The label said the smoothing was on and no smoothing was
+        # applied, which is the worst way for a control to fail.
+        gui.on_playback_change = self._apply_playback_settings
         gui.command_line.completions = self._completions
         self.cmd.set_message_callback(gui.command_line.append_message)
         self.cmd.set_error_callback(gui.command_line.append_error)
@@ -202,6 +209,25 @@ class ChimolApp:
 
         gui.menubar = [(title, entries) for title, entries in MENU_BAR if entries]
         gui.toolbar = list(TOOLBAR)
+
+    def _apply_playback_settings(self, stride: int, average: int) -> None:
+        """Apply the stride and averaging window chosen in the mouse block.
+
+        Parameters
+        ----------
+        stride : int
+            Play every Nth frame.
+        average : int
+            Frames to average over; 0 or 1 is off.
+        """
+        try:
+            self.viewer.set_frame_step(int(stride))
+            self.viewer.set_trajectory_smoothing(int(average))
+            self.viewer.update()
+        except Exception:  # noqa: BLE001 - a playback setting is not worth a crash
+            logging.getLogger(__name__).debug(
+                "could not apply playback settings", exc_info=True
+            )
 
     def sync_panel(self) -> None:
         """Re-read the object list into the in-viewport panel."""

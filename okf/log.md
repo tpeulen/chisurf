@@ -35531,3 +35531,20 @@
   where before it could not help. Guarded in `test_trajectory_trace.py` by two
   tests: no sign flips at all, and averaging must at least halve the swing --
   because "the setting exists" was true the whole time.
+
+- **2026-08-12 — chimol: the `Avg` control in the mouse block reached nothing on
+  the native host.** tpeulen: *"the ctrl in the mouse menu does not work, was
+  using that"* -- which reframes the earlier flicker report entirely, because it
+  means averaging had never actually been on. The block is drawn by the chrome,
+  which every host shares, but `gui.on_playback_change` was connected **only in
+  the Qt window**. So clicking `Avg` on the toolkit-free host incremented the
+  number in the panel and reached the viewer with nothing: **the label said the
+  smoothing was on while none was applied**, which is the worst way for a
+  control to fail. Wired in `host/run.py` now; clicking it moves
+  `set_trajectory_smoothing` as it does under Qt.
+  Ruled out while looking for the residual helix-end flicker: **secondary
+  structure is not recomputed per frame** (0 residues change SS across ten
+  frames), so the ribbon's width profile is stable and that is not the cause.
+  With smoothing actually applied, the per-frame twist change is 0.72 deg in
+  helix interiors, 0.69 in sheets, 1.06 at SS boundaries and 1.40 in coils --
+  i.e. the *coils* are now the noisiest part, not the helix ends.
