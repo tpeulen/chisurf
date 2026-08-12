@@ -268,6 +268,7 @@ def _smooth_frame(
     index: int,
     frame: np.ndarray,
     window: int,
+    cell=None,
 ) -> np.ndarray:
     """Average *frame* over the smoothing window centred on *index*.
 
@@ -304,10 +305,68 @@ def _smooth_frame(
         return frame
 
     block = np.asarray(frames[lo:hi], dtype=float)
+    # Minimum-imaged against the frame being shown, where there is a box. An
+    # atom that crosses the wall reappears a whole cell away, and a plain mean
+    # of "one side, one side, the other side" puts it in the *middle of the
+    # box* -- a single frame in which part of the molecule explodes across the
+    # cell. VMD images its averaging the same way and for the same reason.
+    block = _minimum_image(block, index - lo, cell)
     weights = _window_weights(hi - lo, index - lo)
     if weights is None:
         return block.mean(axis=0)
     return np.tensordot(weights, block, axes=(0, 0))
+
+
+def _minimum_image(block: np.ndarray, centre: int, cell) -> np.ndarray:
+    """Shift each frame's atoms to the image nearest the reference frame.
+
+    Parameters
+    ----------
+    block : numpy.ndarray
+        ``(w, n, 3)`` frames in the averaging window.
+    centre : int
+        Index within *block* of the frame being shown -- the reference every
+        other frame is imaged against.
+    cell : tuple or None
+        ``(lengths, angles)`` per frame. ``None``, a missing box, or a
+        non-orthogonal one returns *block* unchanged.
+
+    Returns
+    -------
+    numpy.ndarray
+
+    Notes
+    -----
+    Orthorhombic only, deliberately. A triclinic minimum image needs the full
+    cell matrix and its inverse per frame, and the case that actually breaks a
+    picture -- an atom stepping across a wall between two frames -- is handled
+    by the rectangular one. A triclinic box is left alone rather than imaged
+    wrongly.
+    """
+    if cell is None or block.ndim != 3 or block.shape[0] < 2:
+        return block
+    try:
+        lengths, angles = cell
+        lengths = np.asarray(lengths, dtype=float)
+        angles = np.asarray(angles, dtype=float)
+    except Exception:  # noqa: BLE001 - anything unreadable is "no box"
+        return block
+    if lengths.ndim != 2 or lengths.shape[1] != 3 or not np.all(np.isfinite(lengths)):
+        return block
+    # One box for the whole window: the reference frame's. A window is a few
+    # frames and a fluctuating box changes by fractions of a percent over it.
+    box = lengths[min(max(centre, 0), lengths.shape[0] - 1)]
+    if np.any(box <= 0.0):
+        return block
+    if angles.size and not np.allclose(
+        angles[min(max(centre, 0), angles.shape[0] - 1)], 90.0, atol=1e-3
+    ):
+        return block
+
+    reference = block[centre]
+    delta = block - reference[None, :, :]
+    shift = np.round(delta / box) * box
+    return block - shift
 
 
 #: How the averaging window is shaped. ``box`` weights every frame in the window
@@ -2193,8 +2252,18 @@ class MolView(WidgetBase):
         # `getattr` rather than `self.`: `_select_state_frame` is also driven
         # unbound (`MolView._select_state_frame(None, state, i)`) by tests that
         # exercise the frame maths without building a widget.
+        # The render array is centred and scaled, so the box has to be scaled
+        # with it or the minimum image is computed against the wrong size.
+        cell = getattr(state, "cell", None)
+        scaled_cell = None
+        if cell is not None:
+            try:
+                factor = float(getattr(self, "_scale_factor", 1.0)) or 1.0
+                scaled_cell = (np.asarray(cell[0], dtype=float) * factor, cell[1])
+            except Exception:  # noqa: BLE001
+                scaled_cell = None
         frame = _smooth_frame(
-            arr, idx, frame, getattr(self, "_trajectory_smoothing", 0)
+            arr, idx, frame, getattr(self, "_trajectory_smoothing", 0), scaled_cell
         )
 
         state.active_frame = idx
@@ -2312,6 +2381,9 @@ class MolView(WidgetBase):
                             idx,
                             raw_frame,
                             getattr(self, "_trajectory_smoothing", 0),
+                            # Unscaled here: `frames_raw` is in the file's own
+                            # units, and so is the box.
+                            getattr(state, "cell", None),
                         )
                     else:
                         raw_frame = None
@@ -3623,6 +3695,7 @@ class MolView(WidgetBase):
         object_id: str | None = None,
         active_frame: int | None = None,
         share_frame_with: str | None = None,
+        cell=None,
     ) -> None:
         """Attach a trajectory to an object.
 
@@ -3663,6 +3736,10 @@ class MolView(WidgetBase):
             state = self._get_active_state()
             state.frames = arr_scaled
             state.frames_raw = arr
+            # ``(lengths, angles)`` per frame, in the file's own units, or
+            # ``None``. Kept unscaled beside ``frames_raw``, which is what the
+            # minimum-image averaging works in.
+            state.cell = cell
             idx = 0 if active_frame is None else int(active_frame)
             idx = self._select_state_frame(state, idx)
             self._center = np.zeros(3, dtype=float)

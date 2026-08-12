@@ -191,7 +191,11 @@ class LoaderCommands(BaseCmd):
         if viewer is None:
             return
 
-        from ..io.structure import TrajectoryFormatError, load_trajectory_frames
+        from ..io.structure import (
+            TrajectoryFormatError,
+            load_trajectory_cell,
+            load_trajectory_frames,
+        )
 
         resolved = Path(str(path).strip()).expanduser()
         try:
@@ -235,7 +239,12 @@ class LoaderCommands(BaseCmd):
             return
 
         try:
-            viewer.set_frames(frames, object_id=obj_id)
+            # The periodic box travels with the frames. Without it the averaging
+            # below cannot tell a molecule that crossed the wall from one that
+            # teleported across the cell.
+            viewer.set_frames(
+                frames, object_id=obj_id, cell=load_trajectory_cell(resolved)
+            )
         except Exception as exc:
             self._emit_error(f"load_traj: could not store the frames: {exc}")
             return

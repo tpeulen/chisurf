@@ -725,6 +725,43 @@ def parse_pdb_secondary_structure(path: str | Path) -> dict[tuple[str, int], str
     return records or None
 
 
+def load_trajectory_cell(path: Path):
+    """The per-frame periodic box, when the trajectory carries one.
+
+    Returns
+    -------
+    tuple of numpy.ndarray, or None
+        ``(lengths, angles)`` -- ``(T, 3)`` each, in Angstrom and degrees --
+        or ``None`` for a trajectory written without a unit cell.
+
+    Notes
+    -----
+    :func:`load_trajectory_frames` reads this and throws it away
+    (``xyz, _, _ = read_dcd(...)``), which is where chimol's periodic
+    boundaries went: the DCD reader parses the cell perfectly well and nothing
+    downstream ever saw it. Read separately rather than by widening that
+    function's return, because a caller that only wants coordinates should not
+    have to know a box exists.
+    """
+    suffix = path.suffix.lower()
+    if suffix not in TRAJECTORY_SUFFIXES:
+        return None
+    try:
+        from chisurf.core.fio.trajectory import read_dcd
+
+        _xyz, lengths, angles = read_dcd(str(path))
+    except Exception:  # noqa: BLE001 - a missing box is not a failed load
+        return None
+    if lengths is None or np.size(lengths) == 0:
+        return None
+    lengths = np.asarray(lengths, dtype=float).reshape(-1, 3)
+    if angles is None or np.size(angles) == 0:
+        angles = np.full_like(lengths, 90.0)
+    else:
+        angles = np.asarray(angles, dtype=float).reshape(-1, 3)
+    return lengths, angles
+
+
 def load_trajectory_frames(path: Path) -> np.ndarray:
     """Load a trajectory or multi-frame structure through ChiSurf's own codecs.
 
@@ -746,7 +783,7 @@ def load_trajectory_frames(path: Path) -> np.ndarray:
 
     from chisurf.core.fio.trajectory import read_dcd
 
-    xyz, _, _ = read_dcd(str(path))              # already Angstrom
+    xyz, _, _ = read_dcd(str(path))              # already Angstrom; see below
     arr = np.ascontiguousarray(xyz, dtype=float)
     if arr.ndim != 3 or arr.shape[2] != 3 or arr.shape[0] == 0 or arr.shape[1] == 0:
         raise RuntimeError(f"invalid coordinates in '{path}': shape {arr.shape!r}")

@@ -204,6 +204,9 @@ class _MolViewObjectState:
     rmf_frame_metadata: dict[str, object] = field(default_factory=dict)
     rmf_resolutions: list[float] = field(default_factory=list)
     _ca_indices: Optional[np.ndarray] = None
+    #: ``(lengths, angles)`` per frame for a trajectory with a periodic box, or
+    #: ``None``. Unscaled, matching ``frames_raw``.
+    cell: object = None
 
 
 def copy_state(state: "_MolViewObjectState") -> "_MolViewObjectState":

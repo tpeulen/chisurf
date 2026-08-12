@@ -35616,3 +35616,27 @@
   grooves landed on the **timeline track**, and every press went to the scrubber
   instead -- so the sliders appeared to do nothing, which is exactly the bug
   they were added to fix. Both were verified by driving the real hit rectangles.
+
+- **2026-08-12 — chimol did not handle periodic boundaries, and the box was
+  discarded one line after being read.** tpeulen asked whether chimol handles
+  PBC, with VMD as the reference. It did not, and the evidence is compact:
+  `load_trajectory_frames` ends `xyz, _, _ = read_dcd(path)` -- the DCD reader
+  parses the per-frame unit cell perfectly well and nothing downstream ever saw
+  it. There is no `pbc`, `wrap` or `unwrap` among the 180 commands; the only
+  `cell` is **crystallographic** (CRYST1 -> symmetry mates), which is a different
+  thing entirely.
+  Fixed: the box is carried from the reader through `set_frames` onto the state,
+  and the **trajectory averaging is minimum-imaged** against the frame being
+  shown -- which is what VMD does and why. An atom that steps over a wall
+  reappears a whole cell away, so a plain mean of "this side, this side, the
+  other side" puts it in the **middle of the box**: measured on a synthetic
+  wobble across a 30 A wall, the naive average lands at **x = 16.6** where the
+  atom sits at 29.6. Imaged, it lands at 29.98.
+  Scope stated rather than implied: **orthorhombic only** -- a triclinic cell is
+  left alone rather than imaged wrongly, since a correct triclinic image needs
+  the full matrix and its inverse per frame, and the case that breaks a picture
+  is the rectangular one. And nothing **unwraps for display**: a protein
+  straddling a wall is still drawn in two pieces, which wants a
+  connectivity-aware unwrap and a `pbc` command. Both are pinned by
+  `test_periodic_box.py`, including the "16.6 is the box centre" number, so the
+  gap is a recorded decision rather than a silent one.
