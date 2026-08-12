@@ -35548,3 +35548,20 @@
   With smoothing actually applied, the per-frame twist change is 0.72 deg in
   helix interiors, 0.69 in sheets, 1.06 at SS boundaries and 1.40 in coils --
   i.e. the *coils* are now the noisiest part, not the helix ends.
+
+- **2026-08-12 — chimol test rule: a toolkit-free test must run in a child
+  process.** Three tests written today set `CHIMOL_TOOLKIT=none` at module
+  scope, and that broke seven Qt-expecting tests in the same run while passing
+  perfectly on their own -- `'MolView' object has no attribute 'deleteLater'`.
+  `MolView` binds its base class **once, at import**, so the variable is a
+  process-wide decision and pytest imports every test module into one process at
+  collection.
+  Two fixes were tried and both were worse, which is why they are recorded:
+  setting the variable only when `renderer.view` is not yet imported (always
+  true at collection, so it changed nothing), and creating a `QApplication` so
+  the Qt-bound viewer could be used instead (**aborts the interpreter** -- a
+  Qt-bound `MolView` with an offscreen rendercanvas is not a working
+  combination). The repo already had the answer in `test_wheel_routing` and
+  `test_engine_is_portable`: a subprocess. Factored into
+  `test/toolkit_free.py::probe`, which runs a script with `open_app` and `emit`
+  in scope and returns what it emitted.

@@ -1,179 +1,160 @@
-"""A trajectory must not turn the CA trace into every atom.
+"""A trajectory must not break the cartoon: the trace, the sign, the averaging.
 
-The bug this pins
------------------
-``load_traj`` laid 464 frames of 5,235 atoms onto a 570-residue protein, and the
-render trace went from **570 points to 5,235**. The cartoon then splined a
-ribbon through every atom in file order, which draws a spiky hairball rather
-than a protein -- and only ever *after* loading a trajectory, which is what made
-it look like a trajectory bug. The same molecule drew perfectly from its PDB
-alone.
+Three faults lived here, and each looked like a different bug.
 
-The cause was one field. ``_select_state_frame`` extracts the CA trace from each
-frame using ``state._ca_indices``, and that field was only ever filled by
-``set_coordinates``. A structure loaded by any other route left it ``None``, the
-extraction was skipped, and the fallback is "use the whole frame".
+**The trace became every atom.** ``load_traj`` laid 464 frames of 5,235 atoms
+onto a 570-residue protein and the render trace went from 570 points to 5,235,
+so the cartoon splined a ribbon through every atom in file order -- a spiky
+hairball. The cause was one field: ``_select_state_frame`` extracts the CA trace
+through ``state._ca_indices``, and that was filled only by ``set_coordinates``,
+so a structure loaded any other way left it ``None`` and the fallback is "use
+the whole frame".
 
-So the test is not about trajectories at all, really: it is that a value every
-frame needs must not depend on which door the structure came in through.
+**The ribbon's face flipped every frame.** A ribbon's up-vector carries the
+twist and its sign is arbitrary -- ``u`` and ``-u`` describe the same plane --
+so the sign is resolved along the chain from whatever seed the first residue
+gives. Every frame reseeded, and 48 % of the vectors flipped between consecutive
+frames.
 
-What is asserted
-----------------
-The trace length, because that is the thing that broke and it is one number.
-Pixels would also have caught it, but a hairball and a ribbon differ in ways a
-threshold cannot state, while ``570 != 5235`` is exact.
+**And the twist was never averaged.** Those vectors are built from
+``atoms["xyz"]``, which was synced from the *raw* frames while the render
+coordinates went through the smoother. So ``Avg`` smoothed the cartoon's path
+and not its twist.
+
+The tests are written against numbers rather than pixels, because a hairball and
+a ribbon differ in ways no threshold can state while ``570 != 5235`` is exact.
+
+They run in a **child process**: the toolkit-free host needs ``MolView`` bound
+without Qt, and that is decided once per process at import. See
+:mod:`.toolkit_free` for the two approaches that failed before this one.
 """
 from __future__ import annotations
 
-import os
-import pathlib
-
-import numpy as np
 import pytest
 
-os.environ.setdefault("CHIMOL_TOOLKIT", "none")
-os.environ.setdefault("CHIMOL_CANVAS", "offscreen")
+from toolkit_free import DATA, probe
 
-#: The demo trajectory: 570 residues, 5,235 atoms, 464 frames.
-DATA = (
-    pathlib.Path(__file__).resolve().parents[4]
-    / "test" / "data" / "atomic_coordinates" / "trajectory" / "hgbp1"
-)
-TOPOLOGY = DATA / "topol.pdb"
-FRAMES = DATA / "hgbp1_transition.dcd"
+#: 570 residues, 5,235 atoms, 464 frames.
+HGBP1 = DATA / "atomic_coordinates" / "trajectory" / "hgbp1"
+TOPOLOGY = HGBP1 / "topol.pdb"
+FRAMES = HGBP1 / "hgbp1_transition.dcd"
 
 
-@pytest.fixture
-def app():
+@pytest.fixture(scope="module")
+def loaded():
+    """Load the topology, then lay the trajectory on it."""
     if not TOPOLOGY.is_file() or not FRAMES.is_file():
         pytest.skip("the hgbp1 trajectory fixture is not present")
-    run = pytest.importorskip("chisurf.plugins.chimol.chimol.host.run")
-    try:
-        instance = run.ChimolApp(backend="offscreen", size=(640, 480))
-    except Exception as exc:  # pragma: no cover - no WebGPU adapter here
-        pytest.skip(f"no offscreen renderer: {exc}")
-    instance.cmd.do(f"load {TOPOLOGY}")
-    return instance
+    return probe(f"""
+        app = open_app(size=(640, 480))
+        app.cmd.do("load {TOPOLOGY}")
+        emit("residues", len(app.viewer._residue_ids))
+        emit("atoms", len(app.viewer._atoms))
+        emit("trace_before", app.viewer._coords.shape[0])
+        app.cmd.do("load_traj {FRAMES}")
+        emit("trace_after", app.viewer._coords.shape[0])
+    """)
 
 
-def _trace(app) -> np.ndarray:
-    return np.asarray(app.viewer._coords)
+def test_the_trace_is_one_point_per_residue_before_any_trajectory(loaded):
+    """The baseline everything else is measured against."""
+    assert int(loaded["trace_before"]) == int(loaded["residues"])
 
 
-def test_the_trace_is_one_point_per_residue_before_any_trajectory(app):
-    """The baseline the rest of this file is measured against."""
-    viewer = app.viewer
-    assert _trace(app).shape[0] == len(viewer._residue_ids)
-
-
-def test_a_trajectory_does_not_replace_the_trace_with_every_atom(app):
+def test_a_trajectory_does_not_replace_the_trace_with_every_atom(loaded):
     """The bug, stated as the number that changed."""
-    residues = len(app.viewer._residue_ids)
-    atoms = len(app.viewer._atoms)
+    atoms, residues = int(loaded["atoms"]), int(loaded["residues"])
     assert atoms > residues, "fixture assumption: more atoms than residues"
-
-    app.cmd.do(f"load_traj {FRAMES}")
-    length = _trace(app).shape[0]
-    assert length != atoms, (
+    assert int(loaded["trace_after"]) != atoms, (
         f"the trace became one point per *atom* ({atoms}); the cartoon will "
         "spline a ribbon through every atom in file order"
     )
-    assert length == residues
+    assert int(loaded["trace_after"]) == residues
 
 
-@pytest.mark.parametrize("frame", [1, 5, 25])
-def test_the_trace_stays_per_residue_as_frames_change(app, frame):
+@pytest.fixture(scope="module")
+def played():
+    """Step through frames with the cartoon shown, reporting what moved."""
+    if not TOPOLOGY.is_file() or not FRAMES.is_file():
+        pytest.skip("the hgbp1 trajectory fixture is not present")
+    return probe(f"""
+        app = open_app(size=(640, 480))
+        app.cmd.do("load {TOPOLOGY}")
+        app.cmd.do("load_traj {FRAMES}")
+        app.cmd.do("hide everything")
+        app.cmd.do("show cartoon, polymer")
+        viewer = app.viewer
+        scale = float(getattr(viewer, "_scale_factor", 1.0)) or 1.0
+
+        def walk(window):
+            viewer.set_trajectory_smoothing(window)
+            previous, flips, angles, lengths = None, [], [], []
+            for frame in range(20, 26):
+                app.cmd.do("frame %d" % frame)
+                lengths.append(viewer._coords.shape[0])
+                ups = np.asarray(viewer._trace_ups, dtype=float)
+                if previous is not None and previous.shape == ups.shape:
+                    dot = np.einsum("ij,ij->i", ups, previous)
+                    flips.append(float((dot < 0).mean()))
+                    angles.append(float(np.degrees(
+                        np.arccos(np.clip(np.abs(dot), -1, 1))).mean()))
+                previous = ups
+            return lengths, flips, angles
+
+        emit("residues", len(viewer._residue_ids))
+
+        lengths, flips, angles = walk(0)
+        emit("trace_lengths", ",".join(str(x) for x in lengths))
+        emit("max_flip_unsmoothed", max(flips))
+        emit("swing_unsmoothed", sum(angles) / len(angles))
+
+        _, flips, angles = walk(15)
+        emit("max_flip_smoothed", max(flips))
+        emit("swing_smoothed", sum(angles) / len(angles))
+
+        # A real CA trace steps about 3.8 Angstrom per residue. The median, not
+        # the max: this fixture has two chains and a break is a real large jump.
+        app.cmd.do("frame 10")
+        steps = np.linalg.norm(
+            np.diff(np.asarray(viewer._coords), axis=0), axis=1) / scale
+        emit("median_step", float(np.median(steps)))
+    """)
+
+
+def test_the_trace_stays_per_residue_as_frames_change(played):
     """Stepping must not reintroduce it -- the extraction runs per frame."""
-    app.cmd.do(f"load_traj {FRAMES}")
-    residues = len(app.viewer._residue_ids)
-    app.cmd.do(f"frame {frame}")
-    assert _trace(app).shape[0] == residues
+    residues = int(played["residues"])
+    lengths = [int(x) for x in played["trace_lengths"].split(",")]
+    assert lengths, "no frames were stepped"
+    assert set(lengths) == {residues}, f"trace lengths across frames: {lengths}"
 
 
-def test_the_trace_still_looks_like_a_backbone_after_a_frame_change(app):
-    """Consecutive guide atoms stay a CA-CA bond apart.
-
-    The length being right is necessary but not sufficient: picking 570 of the
-    5,235 atoms by the wrong rule also gives 570 points. A real CA trace steps
-    about 3.8 Angstrom per residue, times the scene scale.
-    """
-    app.cmd.do(f"load_traj {FRAMES}")
-    app.cmd.do("frame 10")
-    trace = _trace(app)
-    scale = float(getattr(app.viewer, "_scale_factor", 1.0)) or 1.0
-    steps = np.linalg.norm(np.diff(trace, axis=0), axis=1) / scale
-    # The median, not the max: a chain break is a real, large jump and this
-    # fixture has two chains.
-    assert 3.0 < float(np.median(steps)) < 4.5, (
-        f"median consecutive step is {np.median(steps) / 1:.2f} A -- that is not "
-        "a backbone"
+def test_the_trace_still_looks_like_a_backbone(played):
+    """Length alone is not enough: picking the wrong 570 atoms also gives 570."""
+    assert 3.0 < float(played["median_step"]) < 4.5, (
+        f"median consecutive step is {played['median_step']} A -- not a backbone"
     )
 
 
-def test_the_ribbon_does_not_flip_its_face_between_frames(app):
-    """The cartoon's twist keeps its sign as the trajectory plays.
+@pytest.mark.parametrize("key", ["max_flip_unsmoothed", "max_flip_smoothed"])
+def test_the_ribbon_does_not_flip_its_face_between_frames(played, key):
+    """No up-vector may reverse between frames, smoothed or not.
 
-    A ribbon's up-vector carries the twist, and its **sign** is arbitrary: ``u``
-    and ``-u`` describe the same plane. Within a frame that is already resolved
-    along the chain, but each frame used to resolve it independently -- so about
-    **half** the residues' vectors flipped on every frame and the ribbon's face
-    inverted. That is the flicker, and it is why turning ``Avg`` up did not help:
-    averaging made the orientation smooth (0.9 degrees between frames at a
-    fifteen-frame window) while leaving it negated half the time.
+    Both are checked because averaging does not fix this and never did: with a
+    fifteen-frame window the *orientation* is smooth and the sign flipped just
+    as often, which is exactly why turning ``Avg`` up did nothing.
     """
-    app.cmd.do(f"load_traj {FRAMES}")
-    app.cmd.do("hide everything")
-    app.cmd.do("show cartoon, polymer")
-    viewer = app.viewer
-
-    previous = None
-    flipped = []
-    for frame in range(20, 26):
-        app.cmd.do(f"frame {frame}")
-        ups = viewer._trace_ups
-        if ups is None:
-            pytest.skip("this build does not expose trace ups")
-        ups = np.asarray(ups, dtype=float)
-        if previous is not None and previous.shape == ups.shape:
-            flipped.append(float((np.einsum("ij,ij->i", ups, previous) < 0).mean()))
-        previous = ups
-
-    assert flipped, "no consecutive frames were compared"
-    assert max(flipped) == 0.0, (
-        f"{max(flipped) * 100:.0f}% of the ribbon's up-vectors flipped sign "
-        "between frames -- the cartoon will flicker as it plays"
+    assert float(played[key]) == 0.0, (
+        f"{float(played[key]) * 100:.0f}% of the ribbon's up-vectors flipped "
+        "sign between frames -- the cartoon will flicker as it plays"
     )
 
 
-def test_averaging_actually_smooths_the_ribbon(app):
-    """`Avg` must reduce frame-to-frame motion, not just exist.
-
-    Pinned because the ribbon's orientation is built from ``atoms["xyz"]``, and
-    those were synced from the **raw** frames while the render coordinates went
-    through the smoother -- so the cartoon's path was averaged and its twist was
-    not.
-    """
-    app.cmd.do(f"load_traj {FRAMES}")
-    app.cmd.do("hide everything")
-    app.cmd.do("show cartoon, polymer")
-    viewer = app.viewer
-
-    def mean_swing(window: int) -> float:
-        viewer.set_trajectory_smoothing(window)
-        previous, angles = None, []
-        for frame in range(20, 26):
-            app.cmd.do(f"frame {frame}")
-            ups = np.asarray(viewer._trace_ups, dtype=float)
-            if previous is not None and previous.shape == ups.shape:
-                dot = np.abs(np.einsum("ij,ij->i", ups, previous))
-                angles.append(float(np.degrees(np.arccos(np.clip(dot, -1, 1))).mean()))
-            previous = ups
-        return float(np.mean(angles)) if angles else 0.0
-
-    unsmoothed = mean_swing(0)
-    smoothed = mean_swing(15)
+def test_averaging_actually_smooths_the_ribbon(played):
+    """`Avg` must reduce frame-to-frame motion, not merely exist."""
+    unsmoothed = float(played["swing_unsmoothed"])
+    smoothed = float(played["swing_smoothed"])
     assert unsmoothed > 0.0, "the trajectory does not move at all"
     assert smoothed < unsmoothed * 0.5, (
-        f"averaging barely helped: {unsmoothed:.1f} deg -> {smoothed:.1f} deg "
-        "between frames"
+        f"averaging barely helped: {unsmoothed:.1f} deg -> {smoothed:.1f} deg"
     )
