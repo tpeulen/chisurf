@@ -35506,3 +35506,28 @@
   exact, where a hairball and a ribbon differ in ways a pixel threshold cannot
   state) and also that consecutive guide atoms stay ~3.8 A apart -- because
   picking 570 of the 5,235 atoms by the wrong rule would also give 570 points.
+
+- **2026-08-12 — chimol: the cartoon flickered through a trajectory, and `Avg`
+  could not stop it.** Two faults, and the second is why the first looked
+  unfixable from the settings.
+  **The ribbon's twist was never averaged.** A cartoon's orientation comes from
+  `atoms["xyz"]` via `_build_trace_ups`, and those were synced from the **raw**
+  frames while the render coordinates went through `_smooth_frame`. The comment
+  there even claimed they were "interpolated exactly like the render
+  coordinates" -- the *interpolation* matched, the *averaging* did not. So the
+  cartoon's path was averaged and its twist was not.
+  **And the twist's sign was arbitrary per frame.** A ribbon's up-vector carries
+  the twist, and `u` and `-u` describe the same plane;
+  `_flip_for_sign_continuity` resolves that *along the chain*, but every frame
+  resolved it independently from whatever seed its first residue gave. Measured
+  on the hgbp1 demo: **48 % of up-vectors flipped sign between consecutive
+  frames**, so the ribbon's face inverted -- which is the flicker. It is also
+  exactly why turning `Avg` up did nothing: with a fifteen-frame window the real
+  orientation change is **0.9 degrees**, and a smooth orientation negated half
+  the time still flickers.
+  Both fixed: the raw frames go through the same smoother, and each frame's
+  up-vectors are aligned in sign to the previous frame's. **48 % -> 0 %** flips,
+  and averaging now cuts frame-to-frame pixel change **5.5x** (0.507 -> 0.092)
+  where before it could not help. Guarded in `test_trajectory_trace.py` by two
+  tests: no sign flips at all, and averaging must at least halve the swing --
+  because "the setting exists" was true the whole time.

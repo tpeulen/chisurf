@@ -787,6 +787,50 @@ def _ca_indices_for(state) -> "np.ndarray | None":
     return found
 
 
+def _align_ups_to_previous(ups, previous):
+    """Give the ribbon's up-vectors the same sign they had last frame.
+
+    A cartoon's twist is carried by one vector per residue, and its **sign** is
+    arbitrary: ``u`` and ``-u`` describe the same ribbon plane. Within a frame
+    that arbitrariness is already resolved -- ``_flip_for_sign_continuity``
+    makes each residue agree with the one before it along the chain -- but each
+    frame resolves it *independently*, from whatever seed the first residue
+    happens to give.
+
+    So playing a trajectory flipped about **half the residues' up-vectors on
+    every frame**: measured at 48 % on the hgbp1 demo. The ribbon's face
+    inverted, which is the flicker, and it is why turning ``Avg`` up did not
+    help. Averaging works -- with a fifteen-frame window the *actual* change in
+    ribbon orientation between frames is 0.9 degrees -- but a smooth orientation
+    that is negated half the time still flickers.
+
+    Parameters
+    ----------
+    ups : numpy.ndarray or None
+        ``(n, 3)`` up-vectors for this frame.
+    previous : numpy.ndarray or None
+        Last frame's, or ``None`` for the first frame.
+
+    Returns
+    -------
+    numpy.ndarray or None
+        *ups*, with any vector opposing its predecessor negated.
+    """
+    if ups is None or previous is None:
+        return ups
+    current = np.asarray(ups, dtype=float)
+    before = np.asarray(previous, dtype=float)
+    if current.shape != before.shape or current.ndim != 2:
+        # A different residue count: the molecule changed, so there is no
+        # correspondence to preserve.
+        return ups
+    opposed = np.einsum("ij,ij->i", current, before) < 0.0
+    if opposed.any():
+        current = current.copy()
+        current[opposed] = -current[opposed]
+    return current
+
+
 class MolView(WidgetBase):
 
     # Emitted when residues are selected via picking in the 3D view. The
@@ -2187,6 +2231,24 @@ class MolView(WidgetBase):
                             )
                         else:
                             raw_frame = raw_arr[idx]
+                        # ...and **smoothed** exactly like them too. The comment
+                        # above claimed this was already the case, and the
+                        # interpolation matched while the averaging did not:
+                        # `frame` above goes through `_smooth_frame`, these
+                        # coordinates did not.
+                        #
+                        # These are what `_build_trace_ups` orients the ribbon
+                        # from. So with `Avg` on, the cartoon's *path* was
+                        # averaged and its *twist* was not -- the ribbon kept
+                        # every frame's jitter in the one degree of freedom the
+                        # eye reads as flicker, and turning averaging up did
+                        # nothing about it.
+                        raw_frame = _smooth_frame(
+                            raw_arr,
+                            idx,
+                            raw_frame,
+                            getattr(self, "_trajectory_smoothing", 0),
+                        )
                     else:
                         raw_frame = None
                 else:
@@ -2206,12 +2268,15 @@ class MolView(WidgetBase):
                                 state.residue_ids,
                                 state.residue_chain_ids,
                             )
-                        state.trace_ups = _build_trace_ups(
-                            state.atoms,
-                            state.residue_ids,
-                            selected_coords,
-                            state.residue_chain_ids,
-                            index_map=state.backbone_map,
+                        state.trace_ups = _align_ups_to_previous(
+                            _build_trace_ups(
+                                state.atoms,
+                                state.residue_ids,
+                                selected_coords,
+                                state.residue_chain_ids,
+                                index_map=state.backbone_map,
+                            ),
+                            state.trace_ups,
                         )
             except Exception:
                 pass

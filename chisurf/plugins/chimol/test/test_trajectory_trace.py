@@ -108,3 +108,72 @@ def test_the_trace_still_looks_like_a_backbone_after_a_frame_change(app):
         f"median consecutive step is {np.median(steps) / 1:.2f} A -- that is not "
         "a backbone"
     )
+
+
+def test_the_ribbon_does_not_flip_its_face_between_frames(app):
+    """The cartoon's twist keeps its sign as the trajectory plays.
+
+    A ribbon's up-vector carries the twist, and its **sign** is arbitrary: ``u``
+    and ``-u`` describe the same plane. Within a frame that is already resolved
+    along the chain, but each frame used to resolve it independently -- so about
+    **half** the residues' vectors flipped on every frame and the ribbon's face
+    inverted. That is the flicker, and it is why turning ``Avg`` up did not help:
+    averaging made the orientation smooth (0.9 degrees between frames at a
+    fifteen-frame window) while leaving it negated half the time.
+    """
+    app.cmd.do(f"load_traj {FRAMES}")
+    app.cmd.do("hide everything")
+    app.cmd.do("show cartoon, polymer")
+    viewer = app.viewer
+
+    previous = None
+    flipped = []
+    for frame in range(20, 26):
+        app.cmd.do(f"frame {frame}")
+        ups = viewer._trace_ups
+        if ups is None:
+            pytest.skip("this build does not expose trace ups")
+        ups = np.asarray(ups, dtype=float)
+        if previous is not None and previous.shape == ups.shape:
+            flipped.append(float((np.einsum("ij,ij->i", ups, previous) < 0).mean()))
+        previous = ups
+
+    assert flipped, "no consecutive frames were compared"
+    assert max(flipped) == 0.0, (
+        f"{max(flipped) * 100:.0f}% of the ribbon's up-vectors flipped sign "
+        "between frames -- the cartoon will flicker as it plays"
+    )
+
+
+def test_averaging_actually_smooths_the_ribbon(app):
+    """`Avg` must reduce frame-to-frame motion, not just exist.
+
+    Pinned because the ribbon's orientation is built from ``atoms["xyz"]``, and
+    those were synced from the **raw** frames while the render coordinates went
+    through the smoother -- so the cartoon's path was averaged and its twist was
+    not.
+    """
+    app.cmd.do(f"load_traj {FRAMES}")
+    app.cmd.do("hide everything")
+    app.cmd.do("show cartoon, polymer")
+    viewer = app.viewer
+
+    def mean_swing(window: int) -> float:
+        viewer.set_trajectory_smoothing(window)
+        previous, angles = None, []
+        for frame in range(20, 26):
+            app.cmd.do(f"frame {frame}")
+            ups = np.asarray(viewer._trace_ups, dtype=float)
+            if previous is not None and previous.shape == ups.shape:
+                dot = np.abs(np.einsum("ij,ij->i", ups, previous))
+                angles.append(float(np.degrees(np.arccos(np.clip(dot, -1, 1))).mean()))
+            previous = ups
+        return float(np.mean(angles)) if angles else 0.0
+
+    unsmoothed = mean_swing(0)
+    smoothed = mean_swing(15)
+    assert unsmoothed > 0.0, "the trajectory does not move at all"
+    assert smoothed < unsmoothed * 0.5, (
+        f"averaging barely helped: {unsmoothed:.1f} deg -> {smoothed:.1f} deg "
+        "between frames"
+    )
