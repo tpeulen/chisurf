@@ -1,33 +1,40 @@
 from __future__ import annotations
 
 import abc
-from typing import TYPE_CHECKING, Optional
+from typing import Any, Optional
 
 from .scene import Scene
 
-if TYPE_CHECKING:  # pragma: no cover - annotations only
-    # Imported for the signatures below and nowhere else. Kept out of the
-    # runtime import graph so the engine can be loaded without a GUI toolkit;
-    # `from __future__ import annotations` above is what makes that safe.
-    from qtpy import QtWidgets
-
 
 class Renderer:
-    """Abstract interface for Moview rendering backends.
+    """Abstract interface for chimol rendering backends.
 
-    This class deliberately avoids using :class:`abc.ABC` as a metaclass
-    so that renderer implementations can safely inherit from Qt widget
-    classes (e.g. :class:`QOpenGLWidget`) without metaclass conflicts. The
-    methods still behave like abstract methods by raising
+    This class deliberately avoids :class:`abc.ABC` as a metaclass so that a
+    renderer can inherit from a toolkit's widget class without a metaclass
+    conflict. The methods still behave like abstract ones, raising
     :class:`NotImplementedError` by default.
+
+    **The interface names no toolkit.** It used to be typed in Qt's terms --
+    ``parent: QtWidgets.QWidget``, ``widget() -> QtWidgets.QWidget`` -- which
+    described only one of the three hosts that now implement it: the Qt plugin,
+    the toolkit-free desktop window, and a browser canvas. An interface that
+    can only be spelled in one host's vocabulary is one the other hosts are
+    implementing by accident.
     """
 
-    def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
+    def __init__(self, parent: Optional[Any] = None) -> None:
         self._parent = parent
 
-    def widget(self) -> QtWidgets.QWidget:
-        """Return the QWidget that should be embedded into the UI."""
+    def widget(self) -> Any:
+        """Return the toolkit object to embed, where the host has one.
 
+        Returns
+        -------
+        object
+            A widget on a toolkit host. Hosts without a toolkit own a window
+            beside the renderer rather than a widget inside it, and answer with
+            themselves or with ``None``.
+        """
         raise NotImplementedError
 
     def set_scene(self, scene: Optional[Scene]) -> None:

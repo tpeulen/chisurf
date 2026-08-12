@@ -44,6 +44,29 @@ try:
 except Exception:  # pragma: no cover - standalone moview
     _cs_open_files = None
 
+
+def _qt_open_files(*, description: str = "Open file", file_type: str = "All files (*.*)"):
+    """A plain Qt file chooser, for when ChiSurf's own is unavailable.
+
+    This lives **here**, in the Qt window, rather than in ``io.structure``
+    where it used to. A structure reader's job is parsing PDB and mmCIF, and it
+    had a ``QFileDialog`` in it -- so importing the reader pulled in a window
+    system, in a plugin that now runs in two hosts without one.
+
+    Parameters
+    ----------
+    description, file_type : str, optional
+        Dialog title and filter.
+
+    Returns
+    -------
+    list of str
+    """
+    from qtpy import QtWidgets  # noqa: PLC0415
+
+    files, _ = QtWidgets.QFileDialog.getOpenFileNames(None, description, "", file_type)
+    return [str(f) for f in files]
+
 from .. import config as _config
 from ..analysis import (
     assign_ss_c3_from_atoms,
@@ -875,7 +898,7 @@ class MolViewPluginWindow(ChisurfDockTool):
 
         filenames = open_structure_files(
             self,
-            opener=_cs_open_files,
+            opener=_cs_open_files or _qt_open_files,
             description="Open structure file",
             file_type=(
                 "Structure / map files (*.pdb *.ent *.gro *.cif *.mmcif *.mrc *.map *.ccp4 *.mrc.gz *.map.gz *.ccp4.gz);;"

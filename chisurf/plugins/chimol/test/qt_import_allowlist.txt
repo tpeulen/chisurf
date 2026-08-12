@@ -1,0 +1,27 @@
+# Modules that still import Qt. SHRINKING -- never add a line.
+#
+# chimol runs in three hosts and only one of them has Qt: the plugin. The other
+# two are a GLFW window and a browser canvas, and a module that imports Qt is a
+# module they cannot use.
+#
+# `app/*` and `renderer/wgpu_view.py` are the embedding window and are expected
+# to stay. `renderer/ui/qt_painter.py` and `renderer/gui_overlay.py` are the
+# QPainter half of the painter seam. `host/widget.py` is the seam that decides
+# whether Qt is used at all. Everything else here is a leak.
+#
+# Guarded by test_qt_seam.py.
+app/controls_panel.py
+app/demos.py
+app/menu_bar.py
+app/molview_main_window.py
+app/objects_panel.py
+app/rmf_panel.py
+app/sequence_dock.py
+app/settings_table.py
+cmd/exporting.py
+host/widget.py
+renderer/gui_overlay.py
+renderer/ui/qt_painter.py
+renderer/view.py
+renderer/wgpu_view.py
+testing/mock_viewer.py

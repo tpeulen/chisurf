@@ -400,27 +400,10 @@ class ExportMixin(BaseCmd):
         if out_path.suffix.lower() != ".png":
             out_path = out_path.with_suffix(".png")
 
-        grab_current = None
-        if callable(grab_current):
-            try:
-                image = grab_current(width=width, height=height)
-            except Exception:
-                image = None
-            if image is not None:
-                try:
-                    parent = out_path.parent
-                    parent.mkdir(parents=True, exist_ok=True)
-                    if image.save(str(out_path), "PNG"):
-                        show_overlay = getattr(viewer, "show_ray_overlay", None)
-                        if callable(show_overlay):
-                            show_overlay(image)
-                        self._emit_message(
-                            f"ray: wrote {out_path} ({width}x{height})"
-                        )
-                        return
-                except Exception as exc:
-                    self._emit_error(f"ray: failed to save image: {exc}")
-                    return
+        # (A "grab the live viewport instead of tracing" shortcut used to sit
+        # here, guarded by `if callable(grab_current)` where `grab_current` was
+        # assigned `None` on the line above -- twenty-one lines that could not
+        # run. Removed rather than repaired: `ray` traces, and `png` grabs.)
 
         view_state_func = getattr(viewer, "get_ray_view_state", None)
         if not callable(view_state_func):
@@ -1031,8 +1014,18 @@ class ExportMixin(BaseCmd):
         renderer = getattr(viewer, "_renderer", None)
         if renderer is None:
             return False
-        widget = renderer.widget() if hasattr(renderer, "widget") else renderer
-        grab = getattr(widget, "grabFramebuffer", None)
+
+        # `grab_image`, not `grabFramebuffer`. The old path asked the widget for
+        # its framebuffer, which is a **QOpenGLWidget** method -- and the OpenGL
+        # renderer is gone. So the check `callable(grab)` was false on every
+        # host, and `png` had simply stopped writing files: "Failed to write
+        # PNG", with nothing explaining why.
+        #
+        # `grab_image` re-renders the frame into an offscreen target through the
+        # same code, which is both toolkit-free and more correct than reading a
+        # window back -- a widget grab captures the compositor's idea of the
+        # surface rather than the render.
+        grab = getattr(renderer, "grab_image", None)
         if not callable(grab):
             return False
         if width or height:
@@ -1044,9 +1037,14 @@ class ExportMixin(BaseCmd):
         # grab and go straight back -- PyMOL's own output carries no GUI either.
         with self._windows_hidden(renderer):
             image = grab()
+        if image is None:
+            return False
+        from PIL import Image  # noqa: PLC0415
+
         parent = path.parent
         parent.mkdir(parents=True, exist_ok=True)
-        return bool(image.save(str(path), "PNG"))
+        Image.fromarray(np.ascontiguousarray(image)[..., :3]).save(str(path), "PNG")
+        return True
 
     @contextmanager
     def _windows_hidden(self, renderer):

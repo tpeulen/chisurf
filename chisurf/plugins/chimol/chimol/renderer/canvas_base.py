@@ -202,52 +202,30 @@ def collect_labels(packed) -> list:
 def _as_rgba_array(image) -> "np.ndarray | None":
     """Return *image* as ``(h, w, 4)`` uint8 premultiplied RGBA, or ``None``.
 
-    Accepts what the two hosts actually produce: the ray tracer hands over a
-    plain NumPy ``(h, w, 3)`` or ``(h, w, 4)`` array, and the Qt path may hand
-    over a ``QImage``. Taking both here is what lets one blit serve both,
-    rather than the traced frame being displayable only where Qt is present.
+    Arrays only. This briefly accepted a ``QImage`` too, and converting one
+    meant ``from qtpy import QtGui`` -- inside the module whose entire purpose
+    is to be the draw path *without* a toolkit. The producer was fixed instead:
+    the ray tracer hands on its NumPy array, and the Qt paint path converts at
+    its own end, where Qt already lives.
 
     Parameters
     ----------
-    image : numpy.ndarray or QImage or None
+    image : numpy.ndarray or None
+        ``(h, w, 3)`` or ``(h, w, 4)``; float input is taken as 0..1.
 
     Returns
     -------
     numpy.ndarray or None
-        ``None`` when the input is not an image this can read -- the caller
-        then draws nothing, which is better than raising inside a paint pass.
+        ``None`` for anything unreadable -- the caller then draws nothing,
+        which is better than raising inside a paint pass.
     """
-    if image is None:
+    if image is None or not isinstance(image, np.ndarray):
         return None
 
-    if isinstance(image, np.ndarray):
-        arr = image
-    else:
-        # A QImage. Converted through its own buffer rather than by hand: the
-        # scanline stride is not width*4 for every format.
-        try:
-            from qtpy import QtGui
-
-            if hasattr(image, "isNull") and image.isNull():
-                return None
-            converted = image.convertToFormat(QtGui.QImage.Format_RGBA8888_Premultiplied)
-            width, height = converted.width(), converted.height()
-            ptr = converted.constBits()
-            try:
-                ptr.setsize(converted.sizeInBytes())
-            except AttributeError:  # PySide hands back a memoryview already
-                pass
-            arr = np.frombuffer(bytes(ptr), dtype=np.uint8).reshape(
-                height, converted.bytesPerLine() // 4, 4
-            )[:, :width]
-        except Exception:  # noqa: BLE001 - no toolkit, or an unreadable image
-            return None
-
-    arr = np.asarray(arr)
+    arr = np.asarray(image)
     if arr.ndim != 3 or arr.shape[0] < 1 or arr.shape[1] < 1:
         return None
     if arr.dtype != np.uint8:
-        # A float image is conventionally 0..1; anything else is already 0..255.
         scale = 255.0 if np.issubdtype(arr.dtype, np.floating) else 1.0
         arr = np.clip(np.asarray(arr, dtype=float) * scale, 0, 255).astype(np.uint8)
     if arr.shape[2] == 3:

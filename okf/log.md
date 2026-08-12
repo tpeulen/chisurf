@@ -35377,3 +35377,32 @@
   `BaseCmd.progress()` context manager reaches the overlay through the *viewer*
   rather than the window, so it works on both hosts; anything else slow should
   use it.
+
+- **2026-08-12 — chimol: a real Qt scan, and `png` had been broken by the
+  OpenGL removal.** tpeulen asked for a proper sweep rather than spot checks.
+  **22 modules imported Qt; 15 do now**, and the 15 are the parts that are
+  allowed to: `app/*` and `renderer/wgpu_view.py` (the embedding window),
+  `renderer/ui/qt_painter.py` and `renderer/gui_overlay.py` (the QPainter half
+  of the painter seam), `host/widget.py` (the seam that decides whether Qt is
+  used at all), plus three leaks left to close.
+  The scan found a **live bug nobody had reported**: `png` wrote nothing.
+  `_save_png_from_renderer` asked the widget for `grabFramebuffer`, which is a
+  **QOpenGLWidget** method — and the OpenGL renderer was removed. The guard
+  `if not callable(grab): return False` was therefore false on *every* host, and
+  the command answered "Failed to write PNG" with nothing to explain it. It now
+  uses `grab_image`, which already existed, is toolkit-free, and is more correct
+  besides: it re-renders through the same code into an offscreen target, where a
+  widget grab captures the compositor's idea of the surface.
+  Removed: `MolView.grab_current_view_image` (dead since OpenGL went, zero
+  callers), a 21-line "grab instead of tracing" shortcut in `ray` guarded by
+  `if callable(grab_current)` where `grab_current` was assigned `None` on the
+  line above, `QFileDialog` from the **structure reader** (a PDB parser had a
+  window system in it; the chooser moved to the Qt window, where every caller
+  already passes one), the `QImage` branch from the toolkit-free draw path, and
+  Qt from the `Renderer` interface — which was typed `parent: QtWidgets.QWidget`
+  while three hosts implement it.
+  Guarded by `test_qt_seam.py` against a **shrinking** allow-list, plus named
+  tests on the nine core modules that have regressed before. It reads the
+  **import graph with `ast`**, not the file text: the first version matched
+  `from qtpy` and flagged a module whose only mention of Qt was a docstring
+  explaining that it no longer imports Qt.

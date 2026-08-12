@@ -762,9 +762,9 @@ class MolView(WidgetBase):
     statusMessage = Signal(str)
     """Minimal 3D protein viewer widget (Chimol).
 
-    This widget embeds a :class:`QtWidgets.QOpenGLWidget`-based renderer and
-    draws a simple backbone trace (through CA atoms where possible). It is
-    designed to be embedded in existing Qt layouts and does not manage its own
+    It holds a WebGPU renderer -- there is no OpenGL one any more -- and draws
+    a simple backbone trace (through CA atoms where possible). It embeds in a
+    Qt layout when there is one, and does not manage its own
     QApplication.
 
     Public methods
@@ -4799,7 +4799,7 @@ class MolView(WidgetBase):
             return None
         return renderer if callable(getattr(renderer, "project_to_screen", None)) else None
 
-    def handle_key_event(self, ev: QtGui.QKeyEvent) -> bool:  # type: ignore[name-defined]
+    def handle_key_event(self, ev) -> bool:
         """Handle keyboard shortcuts for basic viewer controls.
 
         r - cartoon/ribbon mode
@@ -4842,7 +4842,7 @@ class MolView(WidgetBase):
     # Picking / mouse interaction
     # ------------------------------------------------------------------
 
-    def handle_mouse_click(self, ev: QtGui.QMouseEvent, action: str | None = None) -> None:  # type: ignore[name-defined]
+    def handle_mouse_click(self, ev, action: str | None = None) -> None:
         """Handle a mouse-click in the GL view for atom picking.
 
         A left-click near an atom picks it and toggles its residue in and out
@@ -7453,46 +7453,7 @@ class MolView(WidgetBase):
         """
         return self._scene
 
-    def grab_current_view_image(
-        self,
-        *,
-        width: int | None = None,
-        height: int | None = None,
-    ) -> QtGui.QImage | None:
-        """Grab the currently visible OpenGL view as a QImage.
-
-        Parameters
-        ----------
-        width, height:
-            Optional output dimensions. When both are provided, the grabbed
-            image is scaled to that exact size.
-
-        Returns
-        -------
-        QtGui.QImage or None
-            Snapshot of the current viewport, or ``None`` if unavailable.
-        """
-        renderer = getattr(self, "_renderer", None)
-        widget = renderer.widget() if renderer is not None and hasattr(renderer, "widget") else None
-        grab = getattr(widget, "grabFramebuffer", None)
-        if not callable(grab):
-            return None
-        try:
-            image = grab()
-        except Exception:
-            return None
-        if image is None or image.isNull():
-            return None
-        if width and height and width > 0 and height > 0 and (image.width() != width or image.height() != height):
-            image = image.scaled(
-                int(width),
-                int(height),
-                QtCore.Qt.IgnoreAspectRatio,
-                QtCore.Qt.SmoothTransformation,
-            )
-        return image
-
-    def show_ray_overlay(self, image: QtGui.QImage) -> bool:
+    def show_ray_overlay(self, image) -> bool:
         """Show a traced image in place of the live scene.
 
         Parameters

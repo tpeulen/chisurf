@@ -3,15 +3,12 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable, Optional, Sequence, Tuple
+from typing import Any, Callable, Optional, Sequence, Tuple
 
 import numpy as np
 
 from ..analysis.atom_classes import ATOMIC_NUMBER
 from .atoms import ATOM_DTYPE, BEAD_RES_NAME, atom_row, make_bead_rows
-
-if TYPE_CHECKING:  # pragma: no cover - annotations only
-    from qtpy import QtWidgets
 
 logger = logging.getLogger(__name__)
 
@@ -45,34 +42,46 @@ class TrajectoryFormatError(RuntimeError):
     pass
 
 
-def _fallback_open_files(parent: Optional["QtWidgets.QWidget"] = None) -> list[str]:
-    # Imported here rather than at module scope: this is the one function in
-    # the module that needs a window system, and reading a PDB should not.
-    from qtpy import QtWidgets
-
-    files, _ = QtWidgets.QFileDialog.getOpenFileNames(
-        parent,
-        "Open structure file",
-        "",
-        _DEFAULT_FILTER,
-    )
-    return [str(f) for f in files]
-
-
 def open_structure_files(
-    parent: Optional["QtWidgets.QWidget"] = None,
+    parent: Optional[Any] = None,
     *,
     opener: FileDialogCallable = None,
     description: str = "Open structure file",
     file_type: str = _DEFAULT_FILTER,
 ) -> list[str]:
-    if opener is not None:
-        try:
-            result = opener(description=description, file_type=file_type)
-            return [str(f) for f in result]
-        except Exception:
-            pass
-    return _fallback_open_files(parent)
+    """Ask the caller's *opener* for structure files to load.
+
+    Parameters
+    ----------
+    parent : object, optional
+        Passed through to *opener*; a parent window where the host has one.
+    opener : callable, optional
+        ``opener(description=..., file_type=...) -> sequence of str``. The only
+        way this function reaches a file chooser.
+    description, file_type : str, optional
+        Title and filter for the chooser.
+
+    Returns
+    -------
+    list of str
+        Chosen paths, or an empty list when there is no opener or the user
+        cancelled.
+
+    Notes
+    -----
+    There is deliberately **no built-in dialog**. This module used to fall back
+    to ``QtWidgets.QFileDialog``, which made the structure *reader* -- a module
+    whose job is parsing PDB and mmCIF -- depend on a window system. Chimol now
+    runs in three hosts and only one of them has Qt; a chooser belongs to
+    whichever host is asking, and every caller already passes one.
+    """
+    if opener is None:
+        return []
+    try:
+        result = opener(description=description, file_type=file_type)
+    except Exception:  # noqa: BLE001 - a cancelled or failed chooser is no files
+        return []
+    return [str(f) for f in (result or ())]
 
 
 @dataclass
