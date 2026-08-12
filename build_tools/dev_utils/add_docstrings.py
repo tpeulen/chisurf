@@ -365,8 +365,6 @@ PATTERNS = [
     (r"^_on_link_l1_l2_toggled$", "Handle L1-L2 link toggle."),
     (r"^_create_next_fit$", "Create the next fit in the queue."),
     (r"^_startup_update_check$", "Check for updates on startup."),
-    (r"^_find_free_port$", "Find a free TCP port."),
-    (r"^_reader$", "Reader thread for Jupyter output."),
     (r"^_warmup$", "Warm-up callback for background stages."),
     (r"^_on_bg_complete$", "Complete callback for background stages."),
     (r"^_should_open_onboarding$", "Check if onboarding should open."),

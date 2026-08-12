@@ -162,6 +162,69 @@ def generate_item_def(
     return "\n".join(lines) + "\n"
 
 
+def _replace_saveframe_description(
+    content: str,
+    attr: str,
+    new_description: str,
+) -> str:
+    """Replace the ``_item_description.description`` block in one saveframe.
+
+    Returns the updated file content. If the saveframe or its description
+    block is not found, the content is returned unchanged.
+    """
+    save_header = f"save__{CATEGORY_ID}.{attr}"
+    start = content.find(save_header)
+    if start == -1:
+        return content
+
+    end = content.find("\nsave_", start + 1)
+    frame_end = len(content) if end == -1 else end
+    frame = content[start:frame_end]
+
+    desc_re = re.compile(
+        r"(_item_description\.description\s*\n);.*\n;",
+        re.DOTALL,
+    )
+    if not desc_re.search(frame):
+        return content
+
+    if new_description:
+        replacement = f";     {new_description}\n;"
+    else:
+        replacement = f";     ChiSurf parameter.\n;"
+
+    new_frame = desc_re.sub(
+        lambda m: m.group(1) + replacement,
+        frame,
+        count=1,
+    )
+    return content[:start] + new_frame + content[frame_end:]
+
+
+def update_dic_descriptions(
+    dic_path: Path,
+    updates: Dict[str, str],
+) -> int:
+    """Rewrite ``_item_description.description`` blocks in the extension .dic.
+
+    *updates* maps the sanitized attribute name (e.g. ``"ics_alpha"``) to
+    the new description text. Returns the number of blocks actually
+    rewritten.
+    """
+    if not updates:
+        return 0
+    content = dic_path.read_text(encoding="utf-8")
+    changed = 0
+    for attr, description in sorted(updates.items()):
+        new_content = _replace_saveframe_description(content, attr, description)
+        if new_content != content:
+            content = new_content
+            changed += 1
+    if changed:
+        dic_path.write_text(content, encoding="utf-8")
+    return changed
+
+
 def append_dic_entries(
     dic_path: Path,
     entries: str,
@@ -201,7 +264,15 @@ def process(
         params = {}
 
     existing_dic_items = get_all_dic_items()
+    d = MmcifDictionary.load_bundled()
+    cat = d.get_category(CATEGORY)
+    dic_descriptions: Dict[str, str] = {}
+    if cat is not None:
+        for attr, item in cat.items.items():
+            dic_descriptions[attr] = (item.description or "").strip()
+
     new_entry_strings: List[str] = []
+    desc_updates: Dict[str, str] = {}
     mapped_count = 0
 
     for key, entry in sorted(params.items()):
@@ -210,11 +281,16 @@ def process(
         item_id = parameter_to_item_id(key)
         entry["flrcif_item_id"] = item_id
         mapped_count += 1
-        if item_id in existing_dic_items:
-            continue
+        attr = sanitize_cif_attribute(key)
         description = entry.get("description", "")
         if not isinstance(description, str):
             description = ""
+        reg_desc = description.strip()
+        if item_id in existing_dic_items:
+            dic_desc = dic_descriptions.get(attr, None)
+            if dic_desc is not None and reg_desc and dic_desc != reg_desc:
+                desc_updates[attr] = reg_desc
+            continue
         new_entry_strings.append(generate_item_def(key, description))
 
     if not dry_run:
@@ -222,6 +298,8 @@ def process(
         if new_entry_strings:
             all_entries = "".join(new_entry_strings)
             append_dic_entries(dic_path, all_entries)
+        if desc_updates:
+            update_dic_descriptions(dic_path, desc_updates)
 
     return len(new_entry_strings)
 

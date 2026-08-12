@@ -60,6 +60,9 @@ dependencies = [
     # backend the headless render tests depend on.
     "wgpu",
     "rendercanvas",
+    # The window backend for chimol's Qt-free default run mode; without it that
+    # path falls back to rendercanvas's offscreen canvas.
+    "glfw",
     "labellib",
     "PyYAML",
     "packaging",

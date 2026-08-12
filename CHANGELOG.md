@@ -4,7 +4,9 @@
 
 ### Added
 
-- **ChiMOL contours density maps 5–10× faster, and the level drag is live.** A 180³ map took 500–770 ms per contour and now takes ~100 (the reference viewer's habits, ported: the map is read in its own precision, normals are sampled only at surface vertices, and the range/histogram/recent contours are computed once and remembered — a colour edit, an opacity change or a surface/mesh toggle no longer re-runs marching cubes at all). Dragging a level now lets the surface follow at a reduced budget with the full contour cut on release, and a level change swaps only the map's own scene objects instead of re-meshing every representation in the scene.
+- **Lumis Quest left prototype stage.** The dark manifold's ruins are worth entering: every collapsed premises can be **salvaged** once for a crafting reagent, deterministic per cell so a reload cannot reroll the find (this also fixes a crash — the action key called salvage methods that did not exist). The battle screen is a **place** now instead of two flat rectangles: a banded sky, a silhouetted treeline and ground tiled with the land's own terrain art, all read off where Iris stands and which side of the manifold she is on. And with the model off, a page's keeper now speaks **from the page they keep** — its opening claim and a seeded "Did you know?" — instead of the shared greeting bank.
+
+- **ChiMOL contours density maps 5–10× faster, and the level drag is live.** A 180³ map took 500–770 ms per contour and now takes ~100 (the reference viewer's habits, ported: the map is read in its own precision, normals are sampled only at surface vertices, and the range/histogram/recent contours are computed once and remembered — a colour edit, an opacity change or a surface/mesh toggle no longer re-runs marching cubes at all). Dragging a level now lets the surface follow at a reduced budget with the full contour cut on release, and a level change swaps only the map's own scene objects instead of re-meshing every representation in the scene. The in-viewport controls now follow Chimera's volume panel: a persistent selected threshold that the colour well, alpha slider and level readout act on, a working colour picker (a palette drawn in the panel, so it also works in the browser — the old well cycled presets by marker index and could not change a colour twice), and drag-off-the-histogram to delete a level. The third display style is now Chimera's `solid` — direct volume rendering, the histogram markers composited as an unlit colour/opacity transfer function — replacing the opaque box-per-voxel that read as a wall of cubes; the `volume` command stops refusing and switches a map to it. And the `mesh` style stopped drawing random chords: the line pipeline had silently ignored index lists (the map wireframe was the only indexed line geometry in the tree), and the fixed wireframe now follows Chimera's defaults — square mesh (only edges in grid planes) with normal-shaded lines. Map surfaces gained **quality presets** wrapping Chimera's rendering options — `coarse` / `normal` / `smooth` (its surface smoothing) / `fine` (its surface subdivision, then smoothed) — from a new row in the density panel or `volume_quality map, smooth`. Two of Chimera's map tools are ported — **Hide Dust** (`hide_dust`: hide disconnected contour crumbs below a size, `show_dust` restores) and the **Gaussian filter** (`volume_gaussian`: a smoothed copy as a new map) — and a new **Tools** menu groups the working tools into Map / Measure / Panels submenus, every entry a typeable command. The in-viewport chrome became real windows: the PyMOL object column is the **Object List** window and the mouse block the **Mouse** window (snapped top- and bottom-right at first start), every window has a visible close button, windows **snap to sides and corners and anchor there** (overshooting the edge counts as hitting it; anchored windows follow their edge through resizes; the glue is announced live by an accent border and edge bands while dragging; `set window_snap, off` disables it), windows **stick to each other** — dragged near another window they snap flush and aligned, windows that touch move as a group (the partners light up while dragging; Shift-drag detaches one), and placements/visibility/fold state are **remembered between restarts**. The density panel gained per-map **eye** (show/hide) and **close** (unload) buttons. In-viewport windows keep out of the prompt/status band; the mouse block wears chimol's own colours instead of PyMOL's; **hover tooltips** explain every chrome control (object-menu letters, mouse-binding cells spelled out, the density panel's buttons); the **object list has an eye** per row — the eye shows/hides, the name activates (`activate` command); the density panel opens more compact; `load_map` opens EMDB maps at their **deposited contour level**; and the hierarchy panel's switches now hide the object whose tree they show — with a map active they used to act on the map and do nothing visible. Menu saves go through a real **file dialog** (Save Molecule As…, Save Image As…, Export) instead of a filename text box; the Qt status bar is replaced by the viewer's **own status line** (bottom-right, browser-capable, switchable); the chrome is **fully strippable** via `show_menubar` / `show_toolbar` / `show_command_line` / `show_status` — all off leaves a bare 3-D viewer for embedding; the **Build menu** appears with the editing tools that already existed (bond/unbond with orders, remove, alter, pseudoatom, h_add, mutagenesis) and Edit ▸ Undo/Redo are wired to the real commands; and an **atom-selection bug** is fixed — at the Atoms mouse-selection level, `show <rep>, sele` changed the whole residue instead of exactly the picked atoms. The scene exports as a **3-D model**: `save figure.glb` writes binary glTF — the format PowerPoint places on a slide via Insert ▸ 3D Models — and `.stl` / `.wrl` write STL and VRML 2.0; spheres and sticks are tessellated back from their impostors, colours carried per vertex, all under **File ▸ Export**.
 
 - **ChiMOL's spheres and sticks are analytic primitives, not meshes.** `show spheres` on T4 lysozyme built 124,704 triangles in NumPy on every rebuild and now builds none — an impostor is the *exact* sphere where a tessellation is a polyhedron — and sticks went from 33,216 vertices to 2,768 capped cylinders with PyMOL's midpoint colour split. `ray` draws both. Separately, `as <representation>` was rebuilding the whole scene eleven times per command; it rebuilds once, so `as sticks` takes 9 ms instead of 81.
 
@@ -12,9 +14,16 @@
 
 - **ChiMOL in a browser is now the same ChiMOL.** The page runs the viewer and the command layer the desktop runs — `load`, `as cartoon`, `as spheres`, `select`, `bg_color` all work in a tab — rather than a parallel browser-only viewer with its own commands, which is what it had. Along the way the engine stopped needing SciPy at all (neighbour queries are an in-tree grid, the distance transform an in-tree exact transform), `fetch` works in a page, and the web server moved off port 8765, which ChiSurf's own server uses.
 
-- **A selection looks like a selection again, and works in the browser.** The marker geometry moved out of the Qt widget into the engine, so a selection made in the sequence strip marks the molecule wherever ChiMOL runs. Two defects behind the "scattered dots" report are fixed with it: the markers were drawn by the *sphere* pipeline because their glyph was never read, and at PyMOL's three-pixel floor the indicator's three bands cannot exist — the width band is now 7–16 pixels, carried to existing profiles by a settings migration.
+- **A selection looks like a selection again, and works in the browser.** The marker geometry moved out of the Qt widget into the engine, so a selection made in the sequence strip marks the molecule wherever ChiMOL runs, and `select resi 20-40` works in the web build. Two defects behind the "scattered dots" report are fixed with it: the markers were drawn by the *sphere* pipeline because their glyph was never read, and at PyMOL's three-pixel floor the indicator's three bands cannot exist — the width band is now 7–16 pixels, carried to existing profiles by a settings migration.
 
 - **ChiMOL has a command line inside the viewport**, beside the docked console — PyMOL's internal/external split, both running the same command layer. It is drawn as GPU quads by the engine, needs no toolkit, and is what lets the browser build be typed at: Return focuses it, Tab completes, Up recalls, and command output and errors appear above it. Fixed with it: a headless `grab_image` had been returning the molecule without the panel since the chrome became quads.
+
+- **The gamespace is pinned against silently vanishing**: a regression test asserts the Games hub stays menu-visible regardless of `plugins.show_demo_plugins`, all six games (Lumis Quest included) stay listed in it, and the individual games stay out of the production menus — the arrangement that resolved "the built-in games appear to have disappeared".
+
+- **License tracker** (`build_tools/license_tracker.py`):
+  - Generates `doc/licenses.md` + `doc/licenses.json` from the dependencies declared in `pyproject.toml`, resolved against installed package metadata (overrides for packages that ship none), plus the bundled compiled components; no JS/wasm is bundled anywhere in the tree.
+  - The report opens with the compatibility answer: current license GPL-2.0, most permissive possible **GPL** — the binding constraint is **PyQt5/sip** (GPL v3), which also surfaces the GPL-2.0-only vs GPL-3.0-only combination wrinkle worth a deliberate call.
+  - `--check` mode and `test/test_license_tracker.py` fail when a new dependency arrives without a classifiable license, so the answer stays current.
 
 - **Implemented the first PRD-02 sample-tracking foundation**:
   - Added `SampleDefinition`, `sample_manager` CRUD/link helpers, and `measured_sample` relationship vocabulary.
@@ -64,16 +73,6 @@
   The wrap counter is still carried across chunk boundaries — that is the part
   acquisition owns, and the test now pins it by decoding a real file in
   4096-record chunks rather than by comparing two copies of the same algorithm.
-
-### Fixed
-
-- **2D-FLC could fail to run at all, with an error about threads.** ChiSurf's
-  startup rewrites numba's thread-count setting, and if that happened after
-  numba had already started its thread pool, the plugin's compute kernels
-  refused to compile — reporting a threading conflict rather than the setting
-  that moved. Whether it struck depended on import order, so it looked
-  intermittent. The plugin now pins the value the way the H2MM engine already
-  did.
 
 ### Removed
 
@@ -138,6 +137,38 @@
   - Established `AGENT/TEST/` as the canonical location for temporary/ad-hoc development scripts.
 
 ### Fixed
+
+- **Quiet by default, everywhere the level was set**:
+  - ndX's `WARNING` default was being re-raised to `INFO` by chisurf itself on import — from `chisurf/__init__.py`'s import-time default, its settings fallback, and the shipped `settings_chisurf.yaml` (`log_level: 20`). All three now default to `WARNING` (30); a settings file or `CHISURF_LOG_LEVEL` stating a level is honoured as before.
+  - The plot-update hot path's f-string log calls use lazy `%` formatting; measured logging overhead on a 50k-point `update_plots` is 2 µs (0.8 %) — the hot path is unchanged with logging enabled vs removed.
+
+- **ndX: cryptic buttons carry short labels**:
+  - The seven emoji-only main-window buttons are now `📁 Browse`, `📊 Data`, `🎨 Contrast`, `🔄 Update`, `🧹 Clear`, `📷 Screenshot`, `💾 Save`; the axis rows' single-letter `u`/`r` buttons read `Set`/`Auto`, and the `Auto` buttons gained the tooltip they never had.
+  - Icons are paired with labels, not replaced; button sizes and spacing unchanged.
+
+- **ndX: the playback readout is a hover, not a permanent row**:
+  - The `slice X/Y · N points` info line under the transport was always visible for information rarely needed. It is removed from the panel; the same live readout is now the tooltip of the Step row (row, slider and value box), refreshed on every step and across panel rebuilds. The step value box already sits to the right of the slider.
+  - Regression test `test_playback_panel.py::test_the_readout_is_a_hover_not_a_row`.
+
+- **ndX: the DataFrame Editor opens a burst table in ~0.2 s instead of ~5 s**:
+  - chitable retired `DataFrameSource` (deliberately pandas-free); ndX's import of it raised, the ImportError was swallowed by the standalone-fallback machinery, and every ChiSurf user silently got the per-cell `QTableWidget` editor. The container read itself was never the problem (0.12 s profiled).
+  - The chitable branch now adapts the frame through `ArraySource` with cell edits written back to the frame; the public surface (`DataFrameEditor(df)`, `.dataframe`, `edit_dataframe`) is unchanged.
+  - The standalone fallback hoists the per-cell `df.iloc[i, j]` to per-column arrays and bounds the column-resize scan.
+  - A guard test now fails loudly if the chitable branch ever rots into the fallback again while chisurf is importable.
+
+- **ndX: the window is titled by the opened file's name, and the log is quiet by default**:
+  - Opening a file never set a window title at all; the only path on screen was the header's working-directory field. `open_files` now titles the window `ndX - <filename>` (`(+N)` for multi-selection, kept on append), the same convention the mmfdb-admin/trace-browser launchers already used; the full path(s) are the header Path field's tooltip. Tests: `test_window_title.py`.
+  - Default log level is `WARNING` instead of `INFO` (ndX logged every plot update and file operation); `-v/--verbose` restores `INFO`, `--debug` unchanged.
+
+- **ndX: clicking the 2D histogram while the Gaussian-Fit dock is activated now adds a local Gaussian instead of starting a selection**:
+  - Point mode existed but only the `Fit Gaussians` menu action armed it; reaching the dock's tab directly left clicks rubber-banding a new selection.
+  - The dock area's `currentChanged` now drives the same visibility hook: point mode is armed exactly while the Fit tab is the activated tab, and disarmed when any other tab is activated or the tab is hidden.
+  - Regression test `test_dock_conversion.py::test_switching_to_the_fit_tab_arms_point_mode`.
+
+- **Fixed `RuntimeError: wrapped C/C++ object of type WgpuRenderer has been deleted` at app shutdown**:
+  - Qt destroys an embedded widget without a `closeEvent`, so `rendercanvas` kept the canvas registered as open; at `aboutToQuit` its loop probed the dead wrapper, and PyQt raises `RuntimeError` where the loop's guard expects `AttributeError`.
+  - Both canvas sites (`chimol` `WgpuRenderer`, `chigame` `gpu.create_widget`) now mark the canvas closed via a `destroyed` hook that writes only through the captured instance dict, which survives the C++ half's deletion.
+  - Verified by destroying the parent widget and calling `loop.stop(force=True)`: crashed before, clean after; `test_wgpu_view.py` 26/26.
 
 - **Fixed Chimol RMF rendering scale mismatch (nm/Å-like distortion)**:
   - `MolView.set_rmf_data` now centers and scales RMF coordinates and radii by `_scale_factor`, matching `set_frames` and `add_structure`.

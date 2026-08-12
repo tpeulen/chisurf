@@ -77,6 +77,13 @@ pyopengl = "*"
 # incidentally present before and are now load-bearing.
 wgpu = "*"
 rendercanvas = "*"
+# The window backend for chimol's Qt-free default. `rendercanvas` ships the
+# glfw backend but not the binding it needs, so without this the toolkit-free
+# run falls back to the offscreen canvas and renders every frame into a buffer
+# nobody can see. Deliberately NOT `rendercanvas.auto`, whose last fallback
+# imports PyQt5 -- on a machine with Qt installed "automatic" means Qt, which
+# is the outcome the Qt-free host exists to avoid.
+glfw = "*"
 python-docx = "*"
 # scikit-learn and hdbscan were dropped: every estimator the tree reached for —
 # GMM, k-means, PCA/IncrementalPCA, StandardScaler, the surrogate's MLP, and
