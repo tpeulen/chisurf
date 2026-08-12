@@ -35467,3 +35467,24 @@
   cost straight back and nothing else would notice. Found in passing: `ss` is
   **not implemented** (it was in the test list and correctly failed to move the
   counter).
+
+- **2026-08-12 — chimol: the in-viewport density panel could not open, and the
+  default cartoon was ramped through grey.** Two reported bugs.
+  **`density_panel: no map view model to drive`** on every host without Qt. The
+  panel exists precisely so that the desktop app and the browser get the same
+  density controls, and it took its view model from `window.volume_panel` --
+  a **Qt dock**. So the one panel written for the toolkit-free hosts refused to
+  open on them. `VolumeViewModel` is documented as *"state and logic for the map
+  panel (no Qt)"* and takes the viewer, so where there is no dock the command
+  now builds one.
+  **The default cartoon looked dead.** `by_sequence` and `spectrum` ramped
+  between two endpoint colours, orange to blue -- and a straight line between
+  those passes through a **desaturated grey**, so the middle of every chain,
+  which is most of it, came out colourless before ambient occlusion darkened
+  that grey towards black. Every other spectrum path in chimol already ramps
+  through `rainbow`, which is why the same molecule looked right the moment
+  anyone typed `spectrum count`. The default is now that same palette, which is
+  also what PyMOL shows on load; `start`/`end` still work when no palette is
+  named.
+  Ruled out first, by A/B: this was **not** a regression from the colour-revision
+  change -- the drawn pixels were identical with the revision skip defeated.

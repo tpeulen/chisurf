@@ -937,6 +937,12 @@ def _load_display_config() -> dict:
                 "coil": [0.9, 0.9, 0.7, 1.0],
             },
             "sequence_gradient": {
+                # A named palette wins over `start`/`end`. `rainbow` is what
+                # every other spectrum path already ramps through, and what
+                # PyMOL shows on load; the two-stop orange-to-blue form this
+                # replaced went through a desaturated grey, so the middle of
+                # every chain came out colourless.
+                "palette": "rainbow",
                 "start": [0.95, 0.45, 0.25, 1.0],
                 "end": [0.25, 0.55, 0.95, 1.0],
             },

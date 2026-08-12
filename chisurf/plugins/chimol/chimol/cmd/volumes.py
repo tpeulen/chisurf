@@ -141,11 +141,25 @@ class VolumeMixin(BaseCmd):
         if existing is None:
             from ..renderer.density_window import DensityWindow
 
+            # The Qt window keeps a `volume_panel`; the toolkit-free host and
+            # the browser do not, and this panel exists precisely so that all
+            # three get the same density controls. Borrowing the model from a
+            # Qt dock meant the in-viewport panel refused to open on the hosts
+            # it was written for -- "no map view model to drive" on every one
+            # of them.
+            #
+            # `VolumeViewModel` is documented as "state and logic for the map
+            # panel (no Qt)" and takes the viewer, so where there is no dock
+            # this makes one.
             panel = getattr(window, "volume_panel", None)
             model = getattr(panel, "model", None)
             if model is None:
-                self._emit_error("density_panel: no map view model to drive")
-                return
+                from ..app.volume_panel import VolumeViewModel
+
+                model = VolumeViewModel(viewer)
+                # Kept on the viewer for the same reason the controls are: the
+                # window holds callbacks into it.
+                viewer._volume_view_model = model
             controls = DensityWindow(model)
             # Kept on the viewer so it outlives this call and the callbacks the
             # window holds stay alive with it.

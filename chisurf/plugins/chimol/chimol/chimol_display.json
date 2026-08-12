@@ -279,6 +279,7 @@
       ]
     },
     "sequence_gradient": {
+      "palette": "rainbow",
       "start": [
         0.95,
         0.45,

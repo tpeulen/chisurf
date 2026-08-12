@@ -496,7 +496,50 @@ def _build_ss_color_array(ss_codes: Optional[np.ndarray], n_points: int) -> np.n
     return colors
 
 
-#: The last sequence gradient built, keyed by what determines it.
+def key_for(palette: str, n_points: int) -> tuple:
+    """Cache key for a palette ramp of *n_points*."""
+    return ("palette", str(palette), int(n_points))
+
+
+def _palette_ramp(palette: str, n_points: int):
+    """``(n, 4)`` colours ramped through a named palette, or ``None``.
+
+    Parameters
+    ----------
+    palette : str
+        A palette name, or colour names joined by spaces or underscores --
+        whatever :func:`~.analysis.spectrum.palette_colors` accepts.
+    n_points : int
+
+    Returns
+    -------
+    numpy.ndarray or None
+        ``None`` when the palette cannot be resolved, so the caller falls back
+        to its two endpoints rather than failing to colour anything.
+    """
+    cached = _SEQUENCE_GRADIENT_CACHE.get(key_for(palette, n_points))
+    if cached is not None:
+        return cached
+    try:
+        from .analysis.spectrum import palette_colors  # noqa: PLC0415
+
+        names = palette_colors(palette)
+        stops = np.asarray([_PYMOL_COLORS[n.lower()] for n in names], dtype=float)
+    except Exception:  # noqa: BLE001 - an unknown palette is not worth failing over
+        return None
+    if stops.shape[0] < 2:
+        return None
+
+    # Piecewise-linear through the stops, which is what a spectrum is.
+    position = np.linspace(0.0, 1.0, n_points, dtype=float)
+    edges = np.linspace(0.0, 1.0, stops.shape[0], dtype=float)
+    out = np.ones((n_points, 4), dtype=float)
+    for channel in range(3):
+        out[:, channel] = np.interp(position, edges, stops[:, channel])
+    return np.clip(out, 0.0, 1.0)
+
+
+#: The last sequence gradient built, keyed by what determines it.#: The last sequence gradient built, keyed by what determines it.
 #:
 #: The ramp is a pure function of its length and its two endpoint colours, and
 #: for an integrative model it is a 234,184x4 array -- 7.5 MB rebuilt from
@@ -523,6 +566,24 @@ def _build_sequence_gradient_colors(n_points: int) -> np.ndarray:
         if arr.shape[0] != 4:
             arr = fallback.copy()
         return arr
+
+    # A named palette wins over the two endpoints, and the shipped default is
+    # `rainbow`. The two-stop form is what this had, and it is why the default
+    # cartoon looked dead: interpolating orange to blue passes through a
+    # desaturated grey, so the middle of every chain -- most of it -- came out
+    # colourless, and ambient occlusion then darkened that grey towards black.
+    #
+    # Every other spectrum path in chimol already ramps through `rainbow`
+    # (blue-cyan-green-yellow-orange-red); `spectrum count` is the reason the
+    # same molecule looks right the moment anybody types a colour command. The
+    # default now agrees with it, which is also what PyMOL shows on load.
+    palette = gradient_cfg.get("palette", "rainbow")
+    if palette:
+        ramp = _palette_ramp(str(palette), n_points)
+        if ramp is not None:
+            _SEQUENCE_GRADIENT_CACHE.clear()
+            _SEQUENCE_GRADIENT_CACHE[key_for(palette, n_points)] = ramp
+            return ramp.copy()
 
     start = _gradient_color("start", default_start)
     end = _gradient_color("end", default_end)
