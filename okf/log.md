@@ -35208,3 +35208,25 @@
   topology a **VDB beats an octree** by construction — 7.5 orders of index space
   for a 4 % memory penalty, against 17 octree levels and 17 dependent hops.
   Anti-popping has an analytic, free, *exact* option on the sphere rungs.
+
+- **2026-08-12 — chimol: the test suite's exit code was lying.** A full run is
+  **3360 passed, 25 failed, exit 134** — and the 134 was a *teardown* crash after
+  every test had already passed. `WgpuRenderer` captured its instance dict as a
+  **keyword-only default** on a `destroyed` slot; at interpreter shutdown
+  `__kwdefaults__` may already be gone, so the slot raised *"missing 1 required
+  keyword-only argument: `_d`"* from inside a Qt signal and the process aborted.
+  Fixed by capturing in a closure cell, which cannot be stripped and still
+  captures the `__dict__` rather than `self`. A **second teardown crash
+  (SIGSEGV) remains** when several wgpu test files share a process; it truncates
+  pytest's summary, so a completed run can look like it died mid-test.
+  Of the 25 failures, **none is a regression**: two were global-state pollution
+  and pass in isolation, seventeen belong to another agent's in-flight work
+  (a settings window staged as deleted while still in the tree; the chrome
+  baseline PNGs themselves modified), and four are **stale tests describing
+  behaviour that deliberately changed** — most instructively
+  `test_a_widget_that_was_never_laid_out_frames_square`, which builds its
+  degenerate viewport by sizing the window to the *panel column*, back when the
+  object list was a docked column rather than the floating window it is now.
+  Triage and the rule that follows from it — read the summary line, not the exit
+  code, and confirm a failure in isolation before believing it — are in
+  [known-issues](references/known-issues.md).

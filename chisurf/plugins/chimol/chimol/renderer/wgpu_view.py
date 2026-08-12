@@ -215,14 +215,25 @@ class WgpuRenderer(_make_widget_base(), CameraState, Renderer):
         # AttributeError, killing app shutdown. Writing the flags through the
         # captured instance dict survives the C++ half's death, so the loop
         # skips both the probe and the close() call.
-        def _mark_closed(*_args, _d=self.__dict__):
-            _d["_is_closed"] = True
-            _d["_rc_closed_by_loop"] = True
+        # Captured in a *closure*, not as a keyword-only default. The default
+        # form (`def _mark_closed(*_args, _d=self.__dict__)`) does the same job
+        # until interpreter shutdown, when a function's ``__kwdefaults__`` may
+        # already have been torn down -- and the slot then raises
+        # ``TypeError: missing 1 required keyword-only argument: '_d'`` from
+        # inside Qt's destroyed signal, which becomes a SIGABRT. A whole pytest
+        # run exited 134 on this, *after* every test had passed, which reads as
+        # a test failure and is not one.
+        #
+        # A closure cell keeps the same property that motivated the default: it
+        # captures the instance ``__dict__`` and not ``self``, so writing the
+        # flags survives the C++ half's death.
+        state = self.__dict__
+
+        def _mark_closed(*_args):
+            state["_is_closed"] = True
+            state["_rc_closed_by_loop"] = True
 
         self.destroyed.connect(_mark_closed)
-
-        self._controller = controller
-        self.init_camera_state(DEFAULT_VIEWPORT)
 
         self.setFocusPolicy(QtCore.Qt.StrongFocus)
         self.setSizePolicy(

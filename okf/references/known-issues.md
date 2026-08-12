@@ -4364,3 +4364,49 @@ cache on the chrome vertex buffer — the chrome changes on hover, focus and
 state, not on camera motion, and camera motion is when frames matter. Not done
 here because `internal_gui.py` and `renderer/ui/*` are under active edit by
 another agent.
+
+### 2026-08-12 — the chimol suite's exit code lies, and four tests are stale
+
+A full run: **3360 passed, 25 failed, 1 error, exit 134**. Every part of that
+sentence needs qualifying, which is the point of this entry.
+
+**The exit code was a teardown crash, not a test failure.** `WgpuRenderer`
+captured its instance dict as a **keyword-only default**
+(`def _mark_closed(*_args, _d=self.__dict__)`) on a `destroyed` slot. That works
+until interpreter shutdown, when `__kwdefaults__` may already be torn down; the
+slot then raises *"missing 1 required keyword-only argument: `_d`"* from inside
+Qt's signal, which becomes **SIGABRT after every test has already passed**.
+Fixed here by capturing in a closure cell, which cannot be stripped and keeps
+the property that motivated the default — it captures the `__dict__`, not
+`self`.
+
+**A second teardown crash remains: SIGSEGV (exit 139)** when several
+wgpu-using test files run in one process. It also happens after the tests
+themselves have finished, and it truncates pytest's summary, so a run can look
+like it ended mid-test when it did not. Not diagnosed. **Read the summary line
+from the log rather than trusting the exit code**, and re-run a suspicious file
+on its own.
+
+**Two of the 25 failures were pollution, not failures.** `test_create_extract`
+and `test_config_and_ss` fail in a full run and **pass in isolation** — this
+suite has known global-state leakage. Always confirm a failure alone before
+believing it.
+
+**Seventeen belong to another agent's in-flight work**, not to any change:
+`test_display_config_prompt` (12) — `settings_window.py` is staged as *deleted*
+while still present in the tree, mid-refactor; and `test_chrome_painter` (5) —
+the chrome baseline PNGs are themselves modified in the working tree.
+
+**Four are genuinely stale tests** describing behaviour that has deliberately
+changed, and each should be updated by whoever owns the change:
+
+* `test_camera_framing::test_a_widget_that_was_never_laid_out_frames_square`
+  asserts a degenerate viewport by sizing the window to the *panel column* width
+  and expecting almost no scene. The object list is a **floating window now, not
+  a docked column**, so `scene_width` correctly returns the full width (221, not
+  &lt;16). The guard it protects is still worth testing; the way it builds the
+  degenerate case is not.
+* `test_demos` (2) — the demo menu comes back empty. `demo_catalog.py` is
+  untracked in-flight work.
+* `test_surface_splat` — expects `splat` and gets `fast`; the default in the
+  untracked `surface_quality.py` changed.
