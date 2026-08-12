@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import json
 import pathlib
-from typing import Optional
 
 __all__ = ["Atlas", "load_atlas", "ATLAS_DIR"]
 
@@ -97,7 +96,7 @@ class Atlas:
         """
         return self._advance * (len(string) if string else 1)
 
-    def cell_of(self, char: str, bold: bool = False) -> Optional[tuple]:
+    def cell_of(self, char: str, bold: bool = False) -> tuple | None:
         """Return ``(x, y, w, h)`` of *char*'s cell, in texels.
 
         Parameters

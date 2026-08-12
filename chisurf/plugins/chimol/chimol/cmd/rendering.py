@@ -262,6 +262,45 @@ class RenderingMixin(BaseCmd):
         """Show a representation (PyMOL ``show rep [, selection]``)."""
         self._toggle_representation(str(rep), str(sel), visible=True)
 
+    @command("toggle_rep")
+    def toggle_rep(self, rep: str, sel: Selection = "") -> None:
+        """Flip a representation on or off.
+
+        What a toolbar button needs and neither `show` nor `hide` is: a button
+        that only ever shows is a button you press once. The Qt toolbar had this
+        as a checkable widget wired to a Qt slot, which is exactly the coupling
+        the viewport toolbar exists to remove -- so the behaviour becomes a
+        command, and the button is one press of it.
+
+        Parameters
+        ----------
+        rep : str
+            The representation, as `show`/`hide` name it.
+        sel : str, optional
+            Which atoms; the whole object by default.
+        """
+        _window, viewer = self._require_window_and_viewer()
+        if viewer is None:
+            return
+        flag = {
+            "cartoon": "_show_cartoon", "ribbon": "_show_cartoon",
+            "trace": "_show_trace",
+            "lines": "_show_lines", "wire": "_show_lines",
+            "atoms": "_show_atoms", "spheres": "_show_atoms",
+            "balls": "_show_atoms", "ball": "_show_atoms",
+            "sticks": "_show_sticks", "bonds": "_show_sticks",
+            "dots": "_show_dots", "points": "_show_dots",
+            "surface": "_surface_visible", "surf": "_surface_visible",
+            "plane": "_grid_visible", "grid": "_grid_visible",
+            "nonbonded": "_show_nonbonded",
+            "metaball": "_metaballs_visible", "metaballs": "_metaballs_visible",
+        }.get(str(rep).strip().lower())
+        if flag is None:
+            self._emit_error(f"toggle_rep: unknown representation {rep!r}")
+            return
+        on = bool(getattr(viewer, flag, False))
+        self._toggle_representation(str(rep), str(sel), visible=not on)
+
     @command("hide")
     def hide(self, rep: str, sel: Selection = "") -> None:
         """Hide a representation (PyMOL ``hide rep [, selection]``)."""
@@ -372,13 +411,13 @@ class RenderingMixin(BaseCmd):
         if selection:
             # Residue-level reps: cartoon and trace are drawn per residue, so a
             # scoped show/hide flips the residues the selection names.
-            if rep_target in ("cartoon", "ribbon"):
+            if rep_target in ("cartoon",):
                 self._set_scoped_rep(
                     viewer, selection, "cartoon_mask", "show_cartoon",
                     visible=vis, residue_level=True,
                 )
                 return
-            if rep_target in ("trace", "ca_trace", "ribbon_trace"):
+            if rep_target in ("trace", "ca_trace", "ribbon_trace", "ribbon"):
                 self._set_scoped_rep(
                     viewer, selection, "trace_mask", "show_trace",
                     visible=vis, residue_level=True,
@@ -426,9 +465,9 @@ class RenderingMixin(BaseCmd):
         # is why `hide everything` left a second molecule's cartoon on screen
         # while reporting that it had hidden it.
         setter = {
-            "cartoon": "set_cartoon_visible", "ribbon": "set_cartoon_visible",
-            "trace": "set_trace_visible", "ca_trace": "set_trace_visible",
-            "ribbon_trace": "set_trace_visible",
+            "cartoon": "set_cartoon_visible",
+            "ribbon": "set_trace_visible", "trace": "set_trace_visible",
+            "ca_trace": "set_trace_visible", "ribbon_trace": "set_trace_visible",
             # PyMOL's `lines` is the per-bond wireframe, not the CA trace.
             "lines": "set_lines_visible", "wire": "set_lines_visible",
             "wireframe": "set_lines_visible",

@@ -26,6 +26,13 @@ What the wizard adds over `mutate` as a command, and it is PyMOL's own design:
 * **the source structure is not touched until Apply.** Not "restored on
   cancel" -- untouched, because the preview is a different object. That is what
   makes Clear and Done free.
+
+The measurement wizard is the second user, and it is here for the same reason:
+``distance sele1, sele2`` requires already knowing which two atoms you mean,
+which is exactly what you do not know when you want to measure something you
+are looking at. It keeps almost no state -- a mode and the atoms picked so far
+-- because each completed group is handed to the measurement machinery, which
+is what the scene actually holds.
 """
 
 from __future__ import annotations
@@ -35,7 +42,21 @@ from dataclasses import dataclass, field
 from .object_menus import MenuEntry
 from .renderer.internal_gui import WizardRow
 
-__all__ = ["Wizard", "MutagenesisWizard", "RESIDUE_CHOICES"]
+__all__ = [
+    "Wizard",
+    "MutagenesisWizard",
+    "MeasurementWizard",
+    "MEASUREMENT_MODES",
+    "RESIDUE_CHOICES",
+]
+
+#: PyMOL's measurement modes, and how many atoms each one waits for. The order
+#: is PyMOL's own pop-up order, which is also increasing arity.
+MEASUREMENT_MODES: tuple[tuple[str, str, int], ...] = (
+    ("distance", "Distances", 2),
+    ("angle", "Angles", 3),
+    ("dihedral", "Dihedrals", 4),
+)
 
 #: The residues offered, in the order PyMOL's own menu lists them: by class,
 #: not alphabetically, because that is how anyone thinks about a substitution.
@@ -168,5 +189,90 @@ class MutagenesisWizard(Wizard):
                     f"wizard rotamer, {index + 1}",
                 )
                 for index, (freq, strain) in enumerate(self.scores)
+            )
+        return ()
+
+
+@dataclass
+class MeasurementWizard(Wizard):
+    """Click atoms; every two, three or four of them become a measurement.
+
+    PyMOL's measurement wizard, and the reason it is a wizard rather than the
+    ``distance`` command: naming two atoms in a selection expression means
+    already knowing which two they are, and the whole point of measuring
+    something on screen is that you do not.
+
+    The state is deliberately small -- a mode and a list of picked atoms. Each
+    completed group is handed straight to the measurement machinery and
+    forgotten here, so the wizard owns nothing that would have to be rolled
+    back; ``Delete`` works on the measurement objects, which are what the
+    scene actually holds.
+
+    Attributes
+    ----------
+    mode : str
+        ``"distance"``, ``"angle"`` or ``"dihedral"`` -- see
+        :data:`MEASUREMENT_MODES`.
+    picks : list of tuple
+        ``(object_id, atom_index, label)`` for each atom picked since the last
+        completed measurement. Never longer than the mode's arity.
+    created : list of str
+        Names of the measurements this wizard has made, newest last, so
+        ``Delete Last`` knows what to remove.
+    """
+
+    title = "Measurement"
+
+    mode: str = "distance"
+    picks: list = field(default_factory=list)
+    created: list = field(default_factory=list)
+
+    @property
+    def wanted(self) -> int:
+        """How many atoms the current mode needs."""
+        for name, _label, count in MEASUREMENT_MODES:
+            if name == self.mode:
+                return count
+        return 2
+
+    @property
+    def mode_label(self) -> str:
+        """The current mode's name as the panel spells it."""
+        for name, label, _count in MEASUREMENT_MODES:
+            if name == self.mode:
+                return label
+        return self.mode.title()
+
+    def panel(self) -> list[WizardRow]:
+        """Return the banner, the mode pop-up, the picks so far, the buttons."""
+        rows = [WizardRow("title", self.title)]
+        rows.append(WizardRow("menu", self.mode_label, "mode"))
+        # Buttons, not pop-up rows: the panel's vocabulary is PyMOL's three
+        # kinds, and a `menu` row draws a drop-down arrow. A pick has no menu
+        # behind it, so an arrow there is a control that does nothing -- and a
+        # mis-clicked atom needs taking back anyway, which is what these do.
+        for index, (_obj_id, _atom, label) in enumerate(self.picks):
+            rows.append(WizardRow(
+                "button", f"  {index + 1}. {label}   ×", "wizard unpick"
+            ))
+        if self.created:
+            rows.append(WizardRow("button", "Delete Last", "wizard delete, last"))
+            rows.append(WizardRow("button", "Delete All", "wizard delete, all"))
+        rows.append(WizardRow("button", "Done", "wizard done"))
+        return rows
+
+    def prompt(self) -> list[str]:
+        """Return one line naming the atom being waited for."""
+        return [
+            f"{self.mode_label[:-1]}: pick atom "
+            f"{len(self.picks) + 1} of {self.wanted}"
+        ]
+
+    def menu(self, tag: str):
+        """Return the mode chooser."""
+        if tag == "mode":
+            return tuple(
+                MenuEntry(label, f"wizard mode, {name}")
+                for name, label, _count in MEASUREMENT_MODES
             )
         return ()

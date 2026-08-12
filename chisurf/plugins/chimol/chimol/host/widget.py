@@ -31,19 +31,52 @@ implementation of Qt rather than the absence of one.
 """
 from __future__ import annotations
 
+import os
 from typing import Any, Callable
 
-__all__ = ["HAS_QT", "Signal", "Timer", "WidgetBase", "is_widget"]
+__all__ = ["HAS_QT", "QT_AVAILABLE", "Signal", "Timer", "WidgetBase", "is_widget"]
 
 try:  # pragma: no cover - the branch taken depends on the host
     from qtpy import QtCore as _QtCore
     from qtpy import QtWidgets as _QtWidgets
 
-    HAS_QT = True
+    QT_AVAILABLE = True
 except Exception:  # noqa: BLE001 - a browser, or a machine with no display stack
     _QtCore = None
     _QtWidgets = None
-    HAS_QT = False
+    QT_AVAILABLE = False
+
+
+#: Whether a toolkit is *importable*. Availability, not choice -- and keeping
+#: the two apart is the whole point of this block.
+#:
+#: The two were the same thing once, and it was wrong in the one case that
+#: matters. chimol ships as a plugin **inside** a PyQt application, so within
+#: that process Qt always imports; deciding the base class from that alone made
+#: ``MolView`` a ``QWidget`` even when the caller had deliberately chosen the
+#: toolkit-free host. Running ``python -m chisurf.plugins.chimol.chimol`` then
+#: died with *"QWidget: Must construct a QApplication before a QWidget"* --
+#: a hard ``SIGABRT``, before a single frame, because a widget was built for a
+#: toolkit nobody had started.
+#:
+#: So ``CHIMOL_TOOLKIT`` selects, and importability only constrains:
+#:
+#: ``auto`` (default)
+#:     Use Qt when it imports. What an embedded plugin gets.
+#: ``none``
+#:     Never use Qt, even where it imports. What the Qt-free host sets before
+#:     anything can reach :mod:`chimol.renderer.view`.
+#: ``qt``
+#:     Demand Qt; the same as ``auto`` except that it is a stated intention.
+#:
+#: It is an environment variable rather than a function because the choice has
+#: to be made *before* ``view.py`` is imported: ``class MolView(WidgetBase)``
+#: binds its base at class-definition time, so anything settable afterwards is
+#: settable too late.
+_TOOLKIT = os.environ.get("CHIMOL_TOOLKIT", "auto").strip().lower()
+
+#: Whether Qt is actually to be used. This is what the rest of chimol reads.
+HAS_QT = QT_AVAILABLE and _TOOLKIT != "none"
 
 
 class _BoundSignal:
@@ -169,18 +202,66 @@ class _Widget:
 
 
 class _Timer:
-    """A timer that never fires.
+    """A timer for a host with no toolkit, driven by the canvas' own loop.
 
-    Playback and the settle-then-bake pass both want one. A browser drives its
-    own frames from ``requestAnimationFrame``, so the host schedules there and
-    this exists to keep the construction path from branching.
+    Playback and the settle-then-bake pass both want a clock. This used to be a
+    timer that *never fired* -- a construction stub so the code path did not
+    branch -- which meant ``mplay`` on the toolkit-free host started a movie
+    that never advanced a frame.
+
+    ``rendercanvas`` already owns an event loop with ``call_later``, and it is
+    the loop the window is being pumped by, so a callback scheduled on it runs
+    on the same thread as the drawing. Where even that is missing (a bare
+    import, a browser driving its own frames from ``requestAnimationFrame``)
+    this degrades to the old do-nothing behaviour rather than raising.
     """
 
     def __init__(self, parent: Any = None) -> None:
         self._parent = parent
         self._interval = 0
         self._single_shot = False
+        self._active = False
+        self._generation = 0
         self.timeout = _BoundSignal()
+
+    @staticmethod
+    def _loop():
+        """The canvas event loop, or ``None`` when there is not one."""
+        try:
+            from rendercanvas.asyncio import loop  # noqa: PLC0415
+
+            return loop
+        except Exception:  # noqa: BLE001 - no canvas loop here
+            return None
+
+    def _fire(self, generation: int) -> None:
+        """Emit one tick, and reschedule unless single-shot or stopped.
+
+        Parameters
+        ----------
+        generation : int
+            Which ``start`` this callback belongs to. A stop or a restart bumps
+            the counter, so a callback already queued on the loop is ignored
+            rather than delivering a tick for a timer that was stopped -- the
+            loop has no way to cancel one.
+        """
+        if not self._active or generation != self._generation:
+            return
+        if self._single_shot:
+            self._active = False
+        else:
+            self._schedule(generation)
+        self.timeout.emit()
+
+    def _schedule(self, generation: int) -> None:
+        """Queue the next tick on the canvas loop, if there is one."""
+        loop = self._loop()
+        if loop is None:
+            return
+        try:
+            loop.call_later(max(self._interval, 0) / 1000.0, self._fire, generation)
+        except Exception:  # noqa: BLE001 - a clock is not worth the frame
+            pass
 
     def setSingleShot(self, single: bool) -> None:  # noqa: N802 - Qt naming
         """Fire once rather than repeatedly."""
@@ -194,13 +275,18 @@ class _Timer:
         """Start the timer."""
         if msec is not None:
             self._interval = int(msec)
+        self._generation += 1
+        self._active = True
+        self._schedule(self._generation)
 
     def stop(self) -> None:
         """Stop the timer."""
+        self._active = False
+        self._generation += 1
 
     def isActive(self) -> bool:  # noqa: N802 - Qt naming
-        """Whether the timer is running. It never is."""
-        return False
+        """Whether the timer is running."""
+        return bool(self._active)
 
 
 #: The base class for the viewer, and the two helpers it needs.

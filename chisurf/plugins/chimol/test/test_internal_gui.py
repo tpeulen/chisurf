@@ -121,12 +121,18 @@ def test_the_panel_takes_clicks_that_land_on_it(gui):
 # --------------------------------------------------------------------------- #
 # What a click does
 # --------------------------------------------------------------------------- #
-def test_clicking_a_name_toggles_that_object(gui):
-    gui.mouse_press(gui._row_rects[1].x + 4, gui._row_rects[1].y + 4)
+def test_the_eye_toggles_and_the_name_activates(gui):
+    """Visibility moved onto the eye: clicking a name used to disable the
+    object the user was trying to make active."""
+    gui.mouse_press(*_centre(gui._eye_rects[1]))
     assert gui.commands == ["disable 148l"]
 
-    gui.mouse_press(gui._row_rects[2].x + 4, gui._row_rects[2].y + 4)
+    gui.mouse_press(*_centre(gui._eye_rects[2]))
     assert gui.commands[-1] == "enable lig"
+
+    gui.mouse_press(gui._row_rects[1].x + gui.BUTTON_W + gui.PAD + 4,
+                    gui._row_rects[1].y + 4)
+    assert gui.commands[-1] == "activate 148l"
 
 
 def test_clicking_a_button_opens_its_menu(gui):
@@ -295,15 +301,27 @@ def test_hovering_a_second_submenu_replaces_the_first(gui):
 
 
 def test_the_submenu_stays_while_the_cursor_is_inside_it(gui):
-    """Otherwise it could not be used: crossing the gap would close it."""
+    """Otherwise it could not be used: crossing the gap would close it.
+
+    Rows that *are* submenus are skipped, because opening a child is exactly
+    what hovering one is supposed to do. That distinction only started to
+    matter once **C ▸ by element** grew PyMOL's real contents -- one leaf became
+    a CNOS entry, eight carbon colours and four further sets -- so a walk down
+    the column now passes over rows that legitimately open something.
+    """
     gui.mouse_press(*_centre(gui._button_rects[1]["C"]))
     rect, _entry = _first_submenu(gui._menus[-1])
     gui.mouse_move(*_centre(rect))
     child = gui._menus[-1]
 
-    for item_rect, _e in child.item_rects:
+    walked = 0
+    for item_rect, entry in child.item_rects:
+        if entry is not None and entry.children:
+            continue
         gui.mouse_move(*_centre(item_rect))
+        walked += 1
         assert gui._menus[-1] is child
+    assert walked, "every row opened a submenu; nothing was actually tested"
 
 
 def test_leaving_the_menus_collapses_the_branch_but_keeps_the_menu(gui):
@@ -523,18 +541,28 @@ def test_the_block_swallows_clicks_that_land_on_its_text(gui):
 # --------------------------------------------------------------------------- #
 # The splitter
 # --------------------------------------------------------------------------- #
-def test_the_scene_keeps_the_width_the_column_does_not_take(gui):
-    """Docked, not overlaid.
+def _docked(gui):
+    """Opt a panel into the docked column, the pre-window layout."""
+    gui.docked = True
+    gui.layout(WIDTH, HEIGHT)
+    return gui
 
-    An overlay hides the molecule it is describing, and the part it hides is the
-    part you just moved out from under it.
+
+def test_the_scene_keeps_the_width_the_column_does_not_take(gui):
+    """Docked, not overlaid -- the column layout, now opt-in.
+
+    The default became floating windows (the object list and mouse block are
+    draggable, closable and remembered), but the docked column remains and
+    keeps its contract.
     """
+    gui = _docked(gui)
     assert gui.docked is True
     assert gui.panel_rect.x == pytest.approx(WIDTH - gui.column_width)
     assert gui.block_rect.x == pytest.approx(WIDTH - gui.column_width)
 
 
 def test_dragging_the_splitter_resizes_the_column(gui):
+    gui = _docked(gui)
     """And the column is what decides how much width the scene gets."""
     handle = gui._splitter
     gui.mouse_press(handle.x + handle.w / 2, HEIGHT / 2)
@@ -549,6 +577,7 @@ def test_dragging_the_splitter_resizes_the_column(gui):
 
 
 def test_the_column_cannot_be_dragged_away_or_over_the_scene(gui):
+    gui = _docked(gui)
     """Bounds on both ends, or the panel becomes unusable or takes the window."""
     gui.mouse_press(gui._splitter.x + 1, HEIGHT / 2)
 
@@ -592,6 +621,7 @@ def test_the_clamp_survives_a_window_narrower_than_the_floor(gui):
     below the floor, and the column snaps to the *widest* it may be -- the
     opposite of respecting a minimum.
     """
+    gui = _docked(gui)
     gui.layout(200, HEIGHT)
     gui.mouse_press(gui._splitter.x + 1, HEIGHT / 2)
     gui.drag(190, HEIGHT / 2)
@@ -600,6 +630,7 @@ def test_the_clamp_survives_a_window_narrower_than_the_floor(gui):
 
 
 def test_the_splitter_takes_its_own_press_only(gui):
+    gui = _docked(gui)
     """A press one pixel away belongs to the scene, not to the handle."""
     handle = gui._splitter
     assert gui.hit_test(handle.x + handle.w / 2, HEIGHT / 2).kind == "splitter"
@@ -632,6 +663,11 @@ def test_the_strip_takes_a_band_rather_than_covering_the_scene(sequences):
     """
     assert sequences.sequence_height() > 0
     assert sequences._seq_strip.y == 0, "the strip belongs at the top"
+    # Nothing is docked by default any more, so the strip may run the full
+    # width; docked, it still stops at the column.
+    assert sequences._seq_strip.w <= WIDTH + 1e-6
+    sequences.docked = True
+    sequences.layout(WIDTH, HEIGHT)
     assert sequences._seq_strip.w <= WIDTH - sequences.column_width + 1e-6
 
 
@@ -1141,3 +1177,244 @@ def test_the_wheel_bindings_come_from_the_table_too():
 # drag over the sequence fires one per mouse move, so the highlight lagged the
 # cursor by a full rebuild each step, for work that had nothing to do with what
 # changed.
+
+
+# --------------------------------------------------------------------------- #
+# The object list and mouse block as windows: snap, anchor, remember
+# --------------------------------------------------------------------------- #
+def test_the_panel_and_block_are_windows_snapped_to_the_right_corners(gui):
+    """The user ask: the PyMOL column becomes windows, top- and bottom-right."""
+    objects = gui.window("objects")
+    mouse = gui.window("mouse")
+    assert objects is not None and mouse is not None
+    assert objects.anchor == "top-right"
+    assert mouse.anchor == "bottom-right"
+    assert gui.panel_rect.x + gui.panel_rect.w == pytest.approx(WIDTH)
+    assert gui.block_rect.x + gui.block_rect.w == pytest.approx(WIDTH)
+    # Above the command row, not on it: the prompt band is out of bounds for
+    # windows, so the bottom anchor stops at its top edge.
+    assert gui.block_rect.y + gui.block_rect.h == pytest.approx(
+        HEIGHT - gui._bottom_chrome_height()
+    )
+
+
+def test_closing_the_object_window_removes_its_hit_targets(gui):
+    gui.window("objects").visible = False
+    gui.layout(WIDTH, HEIGHT)
+    assert gui._row_rects == [], "a closed window left clickable ghosts"
+    gui.window("objects").visible = True
+    gui.layout(WIDTH, HEIGHT)
+    assert gui._row_rects, "reopening did not bring the rows back"
+
+
+def test_a_dragged_window_snaps_to_the_edge_and_anchors_in_corners(gui):
+    win = gui.window("objects")
+    frame = gui.window_frame(win)
+    grab = (frame.x + frame.w / 2, frame.y + 6)   # the title bar
+    gui.mouse_press(*grab)
+
+    # Near the left edge: the x snaps flush and the window anchors to the
+    # side, so it follows that edge through resizes.
+    gui.drag(frame.w / 2 + 5, HEIGHT / 2)
+    assert win.x == pytest.approx(0.0)
+    assert win.anchor == "left"
+
+    # Into the bottom-left corner -- the window's *bottom* near the edge --
+    # snapped on both axes, and anchored there.
+    gui.drag(frame.w / 2 + 5, HEIGHT - frame.h + 10)
+    assert win.anchor == "bottom-left"
+    gui.release()
+
+
+def test_window_states_survive_a_restart(tmp_path, monkeypatch):
+    """The ask: chimol must remember window states between restarts."""
+    from chisurf.plugins.chimol.chimol.renderer import window_state
+
+    path = tmp_path / "chimol_windows.json"
+    monkeypatch.setattr(window_state, "state_path", lambda: path)
+
+    first = InternalGui()
+    first.enable_persistence()
+    first.layout(WIDTH, HEIGHT)
+    mouse = first.window("mouse")
+    mouse.visible = False
+    objects = first.window("objects")
+    objects.anchor = None
+    objects.x, objects.y = 111.0, 77.0
+    first.persist_windows()
+
+    second = InternalGui()
+    second.enable_persistence()
+    second.layout(WIDTH, HEIGHT)
+    assert second.window("mouse").visible is False
+    restored = second.window("objects")
+    assert restored.anchor is None
+    assert (restored.x, restored.y) == (111.0, 77.0)
+
+
+def test_a_bare_panel_never_touches_the_saved_states(tmp_path, monkeypatch):
+    """Tests and headless probes must not read or write real preferences."""
+    from chisurf.plugins.chimol.chimol.renderer import window_state
+
+    path = tmp_path / "chimol_windows.json"
+    monkeypatch.setattr(window_state, "state_path", lambda: path)
+
+    gui = InternalGui()          # persistence never enabled
+    gui.layout(WIDTH, HEIGHT)
+    gui.persist_windows()
+    assert not path.exists(), "a bare panel wrote preferences"
+
+
+def test_an_edge_hit_by_overshooting_still_sticks(gui):
+    """An edge is hit by flinging the cursor at it, and the frame overshoots.
+
+    The first snap tested ``abs(edge - frame)`` and concluded a window slammed
+    100px past the right edge was nowhere near it -- the reported "sides not
+    sticky". Past the line counts as on it.
+    """
+    win = gui.window("objects")
+    frame = gui.window_frame(win)
+    gui.mouse_press(frame.x + frame.w / 2, frame.y + 6)
+    gui.drag(WIDTH + 200, HEIGHT / 2)         # far past the right edge
+    assert win.x == pytest.approx(WIDTH - frame.w)
+    assert win.anchor == "right"
+    gui.release()
+
+
+def test_a_side_anchored_window_follows_the_edge_through_a_resize(gui):
+    win = gui.window("mouse")
+    frame = gui.window_frame(win)
+    gui.mouse_press(frame.x + frame.w / 2, frame.y + 6)
+    gui.drag(WIDTH + 100, HEIGHT / 2)         # park it on the right side
+    gui.release()
+    assert win.anchor == "right"
+    kept_y = win.y
+
+    gui.layout(WIDTH + 300, HEIGHT)
+    frame = gui.window_frame(win)
+    assert win.x == pytest.approx(WIDTH + 300 - frame.w), (
+        "the window stayed behind when its edge moved"
+    )
+    assert win.y == pytest.approx(kept_y), (
+        "a side anchor must keep the window's own position on the free axis"
+    )
+
+
+def test_the_snap_hint_lights_while_glued_and_clears_on_release(gui):
+    """The visual half of stickiness: the edge announces the glue, live."""
+    win = gui.window("objects")
+    frame = gui.window_frame(win)
+    gui.mouse_press(frame.x + frame.w / 2, frame.y + 6)
+
+    gui.drag(WIDTH / 2, HEIGHT / 2)          # the open: no hint
+    assert gui._snap_hint == ()
+
+    gui.drag(WIDTH + 100, HEIGHT / 2)        # glued to the right side
+    assert gui._snap_hint == ("right",)
+
+    gui.drag(WIDTH + 100, HEIGHT + 100)      # into the corner: both edges lit
+    assert set(gui._snap_hint) == {"bottom", "right"}
+
+    gui.release()
+    assert gui._snap_hint == (), "the hint outlived the drag"
+
+
+def test_snapping_can_be_turned_off(gui):
+    """The `window_snap` setting: off means windows go where they are dropped."""
+    gui.window_snap = False
+    win = gui.window("objects")
+    frame = gui.window_frame(win)
+    gui.mouse_press(frame.x + frame.w / 2, frame.y + 6)
+    gui.drag(WIDTH - frame.w / 2 - 4, HEIGHT / 2)   # 4px from the right edge
+    assert win.x == pytest.approx(WIDTH - frame.w - 4), (
+        "with snapping off the window must not jump to the edge"
+    )
+    assert win.anchor is None
+    assert gui._snap_hint == ()
+    gui.release()
+
+
+def test_the_snap_setting_is_declared():
+    """`set window_snap, off` must reach a real, documented setting."""
+    from chisurf.plugins.chimol.chimol.settings import SETTINGS
+
+    spec = SETTINGS.get("window_snap")
+    assert spec is not None, "window_snap is not a registered setting"
+    assert tuple(spec.path) == ("layout", "window_snap")
+    assert spec.default is True
+
+
+# --------------------------------------------------------------------------- #
+# Hover tooltips
+# --------------------------------------------------------------------------- #
+def test_hovering_explains_the_thing_under_the_cursor(gui):
+    # An object-menu button says what its letter means.
+    gui.mouse_move(*_centre(gui._button_rects[1]["S"]))
+    assert gui._tooltip is not None and "Show" in gui._tooltip[2]
+
+    # The eye says it toggles visibility.
+    gui.mouse_move(*_centre(gui._eye_rects[1]))
+    assert "show or hide" in gui._tooltip[2]
+
+    # A mouse-binding cell is spelled out, not left as an abbreviation.
+    block = gui.block_rect
+    char_w = char_width(gui.FONT_PT)
+    x = block.x + gui.PAD + 10.0 * char_w + 2  # first cell of a binding row
+    y = block.y + gui.PAD + 2.5 * gui.BLOCK_ROW_H
+    gui.mouse_move(x, y)
+    assert gui._tooltip is not None
+    assert "left" in gui._tooltip[2], gui._tooltip[2]
+
+    # Off everything, the tooltip goes away.
+    gui.mouse_move(WIDTH / 2, HEIGHT / 2)
+    assert gui._tooltip is None
+
+
+# --------------------------------------------------------------------------- #
+# Windows stick to each other and move together
+# --------------------------------------------------------------------------- #
+def _title_grab(gui, win):
+    frame = gui.window_frame(win)
+    return frame.x + frame.w / 2, frame.y + 6
+
+
+def test_a_window_dragged_near_another_snaps_flush(gui):
+    from chisurf.plugins.chimol.chimol.renderer.internal_gui import GuiWindow
+
+    a = gui.add_window(GuiWindow(key="a", title="A", x=100, y=200, w=120, h=90))
+    b = gui.add_window(GuiWindow(key="b", title="B", x=400, y=210, w=120, h=90))
+    gui.layout(WIDTH, HEIGHT)
+
+    gui.mouse_press(*_title_grab(gui, b))
+    # Bring B's left edge within stick range of A's right edge, and its top
+    # within the perpendicular-align threshold of A's.
+    gui.drag(100 + 120 + 60 + 5, 210)
+    assert b.x == pytest.approx(a.x + 120), "the windows did not snap flush"
+    assert b.y == pytest.approx(a.y), "the near-level tops did not align"
+    assert "a" in gui._snap_hint_keys, "the stuck partner is not announced"
+    gui.release()
+    assert gui._snap_hint_keys == set()
+
+
+def test_stuck_windows_move_together_and_shift_detaches(gui):
+    from chisurf.plugins.chimol.chimol.renderer.internal_gui import GuiWindow
+
+    a = gui.add_window(GuiWindow(key="a", title="A", x=100, y=200, w=120, h=90))
+    b = gui.add_window(GuiWindow(key="b", title="B", x=220, y=200, w=120, h=90))
+    gui.layout(WIDTH, HEIGHT)   # flush: b.x == a.x + a.w
+
+    # Dragging A moves B with it, offsets intact.
+    gui.mouse_press(*_title_grab(gui, a))
+    gui.drag(_title_grab(gui, a)[0] + 40, 260)
+    assert b.x == pytest.approx(a.x + 120)
+    assert b.y == pytest.approx(a.y)
+    gui.release()
+
+    # A shift-drag pulls A out alone.
+    before_b = (b.x, b.y)
+    gx, gy = _title_grab(gui, a)
+    gui.mouse_press(gx, gy, modifiers=QtCore.Qt.ShiftModifier)
+    gui.drag(gx - 60, gy + 80)
+    assert (b.x, b.y) == pytest.approx(before_b), "shift-drag must move alone"
+    assert a.x != pytest.approx(b.x - 120)
+    gui.release()

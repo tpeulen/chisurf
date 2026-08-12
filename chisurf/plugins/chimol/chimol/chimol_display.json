@@ -1,5 +1,5 @@
 {
-  "_version": 15,
+  "_version": 19,
   "renderer": {
     "backend": "wgpu"
   },
@@ -14,7 +14,27 @@
   "info_overlay": {
     "max_width": 260,
     "min_width": 180,
-    "full_height": true
+    "full_height": true,
+    "backdrop": true,
+    "backdrop_color": [
+      0.196,
+      0.196,
+      0.196,
+      0.78
+    ],
+    "text_color": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "border_color": [
+      1.0,
+      1.0,
+      1.0,
+      0.31
+    ],
+    "corner_radius": 4
   },
   "cartoon": {
     "putty_radius": 0.4,
@@ -128,7 +148,7 @@
       1.0,
       1.0
     ],
-    "px_mode": true
+    "px_mode": false
   },
   "surface": {
     "dot_solvent": false,
@@ -148,6 +168,10 @@
       0.92,
       1.0
     ],
+    "quality": "fast",
+    "splat_decay": 2.0,
+    "splat_iso": 0.7,
+    "splat_scale": 1.0,
     "grid_spacing": 0.5,
     "iso_value": 0.5,
     "padding": 3.0,
@@ -323,7 +347,8 @@
     "width_max": 16.0,
     "width_scale": 2.0,
     "width_reference_radius": 0.25,
-    "click_radius_px": 8.0
+    "click_radius_px": 8.0,
+    "mouse_selection_mode": "Residues"
   },
   "layout": {
     "root_margins": [
@@ -437,7 +462,7 @@
       1.0,
       1.0
     ],
-    "size": 14.0
+    "size": 16.0
   },
   "lighting": {
     "light_direction": [
@@ -459,7 +484,6 @@
     "clip_wheel_scale": 0.85,
     "field_of_view": 20.0,
     "orthoscopic": false,
-    "mouse_mode": "pymol",
     "recenter_on_frame": true
   },
   "ray": {
@@ -496,7 +520,7 @@
   },
   "depth_cue": {
     "enabled": true,
-    "start": 0.45,
-    "intensity": 1.0
+    "start": 0.72,
+    "intensity": 0.55
   }
 }

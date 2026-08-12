@@ -183,6 +183,10 @@ ATOM_INDEXED_FIELDS = (
     "hidden_mask",
     "resolutions",
     "representation_mask",
+    # Which rows have no size in the frame being shown. Per atom exactly like
+    # the masks above, and it arrived with per-frame radii from the simulation
+    # readers -- this guardrail is what noticed it had not been classified.
+    "absent_mask",
 )
 
 #: Array fields that are *not* atom-indexed, listed so the guardrail can tell
@@ -200,6 +204,12 @@ NON_ATOM_INDEXED_FIELDS = (
     "bond_pairs",                 # holds indices; remapped, not permuted
     "frames",                     # (T, N, 3): atom axis is the *second*
     "frames_raw",
+    # (T, N) and (T, N, 3): like `frames`, the atom axis is the second, so the
+    # atom-indexed permutation would reorder *time*. They are rebuilt from the
+    # file rather than permuted, and a `sort` on a trajectory that carries them
+    # drops them below.
+    "frame_radii",
+    "frame_colors",
     "all_atom_radii",             # atom-indexed but rebuilt from `atoms`
     "all_atom_res_ids",
     "secondary_structure",

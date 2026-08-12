@@ -672,6 +672,24 @@ class SelectionMixin(BaseCmd):
         except Exception:
             return None
 
+        # At the `Atoms` selection level the mouse picked *atoms*, and `sele`
+        # must mean exactly those atoms. The residue list still exists at that
+        # level -- it drives the sequence-strip highlight -- and resolving
+        # through it here is what silently widened `show sticks, sele` to the
+        # whole residue after a single atom was clicked.
+        try:
+            level = str(getattr(viewer, "selection_mode", "Residues"))
+            chosen = getattr(viewer, "_selected_atoms", None)
+            if level == "Atoms" and chosen:
+                count = int(all_atom_res_ids.shape[0])
+                indices = np.asarray(sorted(chosen), dtype=int)
+                indices = indices[(indices >= 0) & (indices < count)]
+                mask = np.zeros(count, dtype=bool)
+                mask[indices] = True
+                return mask if mask.size else None
+        except Exception:
+            pass
+
         try:
             sel = getattr(viewer, "_selected_residues", None) or []
             n_res = int(residue_ids.shape[0])

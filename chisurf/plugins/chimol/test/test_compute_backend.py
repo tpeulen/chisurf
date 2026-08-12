@@ -124,6 +124,24 @@ def test_distance_grid_agrees(backend, cloud):
     assert np.allclose(on_cpu, on_gpu, atol=TOLERANCE)
 
 
+def test_density_grid_agrees(backend, cloud):
+    atoms, _ = cloud
+    sigmas = np.random.default_rng(5).choice([1.2, 1.52, 1.7, 1.8], size=atoms.shape[0])
+    shape = (32, 32, 32)
+    origin = atoms.min(axis=0) - 4.0
+    spacing = float((np.ptp(atoms, axis=0).max() + 8.0) / (shape[0] - 1))
+
+    def run():
+        return compute.density_grid(
+            atoms, sigmas, shape, origin, spacing, field_function="gaussian", cutoff_factor=2.5
+        )
+
+    on_cpu = backend("cpu", run)
+    on_gpu = backend("gpu", run)
+    assert on_cpu is not None and on_gpu is not None
+    assert np.allclose(on_cpu, on_gpu, atol=2.0, rtol=1e-2)
+
+
 def test_the_horizon_cannot_reach_the_isosurface(backend, cloud):
     """Clamping the far field must not move a level near the probe radius.
 

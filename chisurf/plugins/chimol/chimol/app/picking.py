@@ -1,16 +1,26 @@
+"""Screen-space picking: which atom a click landed on, and what a box encloses.
+
+No toolkit here, and deliberately so. Picking is a projection through the
+renderer's own camera and an ``argmin`` over the result -- nothing a window
+system contributes to. It nonetheless imported Qt, for one ``isinstance`` check
+against ``QRect`` and two type annotations, which meant the Qt-free host could
+not select an atom with a mouse it plainly had.
+
+The arguments are duck-typed instead: an *event* is anything with ``pos()`` (or
+``x()``/``y()``), and a *rectangle* is anything with ``left``/``right``/``top``/
+``bottom``. A ``QMouseEvent`` and a ``QRect`` satisfy both, and so do
+:class:`chimol.host.events.PointerEvent` and
+:class:`chimol.host.events.Rect`.
+"""
 from __future__ import annotations
 
-import math
-from typing import Optional
-
 import numpy as np
-from qtpy import QtCore, QtGui
 
 
 def _project_points_to_screen(
     coords: np.ndarray,
     view,
-) -> Optional[tuple[np.ndarray, np.ndarray, np.ndarray]]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray] | None:
     """Project scene points to widget pixels, through the renderer itself.
 
     Parameters
@@ -59,11 +69,10 @@ def _project_points_to_screen(
 def pick_residue_from_click(
     coords: np.ndarray,
     view,
-    ev: QtGui.QMouseEvent,  # type: ignore[name-defined]
+    ev,
     radius_px: float,
-) -> Optional[int]:
+) -> int | None:
     """Return index of the residue closest to the click in screen space."""
-
     projected = _project_points_to_screen(coords, view)
     if projected is None:
         return None
@@ -107,17 +116,28 @@ def pick_residues_in_rect(
     view,
     rect,
 ) -> np.ndarray:
+    """Return the indices of the residues whose projection lies inside *rect*.
+
+    Parameters
+    ----------
+    coords : numpy.ndarray
+        ``(n, 3)`` positions in scene space.
+    view : object
+        The renderer to project through.
+    rect : object
+        Anything answering ``left()``, ``right()``, ``top()`` and ``bottom()``
+        -- a ``QRect`` or a :class:`chimol.host.events.Rect`.
+
+    Returns
+    -------
+    numpy.ndarray
+        Integer indices, empty when nothing is enclosed.
+    """
     try:
-        if isinstance(rect, QtCore.QRect):
-            x0 = float(rect.left())
-            x1 = float(rect.right())
-            y0 = float(rect.top())
-            y1 = float(rect.bottom())
-        else:
-            x0 = float(getattr(rect, "left", lambda: 0)())
-            x1 = float(getattr(rect, "right", lambda: 0)())
-            y0 = float(getattr(rect, "top", lambda: 0)())
-            y1 = float(getattr(rect, "bottom", lambda: 0)())
+        x0 = float(getattr(rect, "left", lambda: 0)())
+        x1 = float(getattr(rect, "right", lambda: 0)())
+        y0 = float(getattr(rect, "top", lambda: 0)())
+        y1 = float(getattr(rect, "bottom", lambda: 0)())
     except Exception:
         return np.zeros(0, dtype=int)
 
@@ -155,10 +175,10 @@ def pick_residues_in_rect(
 def pick_atom_from_click(
     coords: np.ndarray,
     view,
-    ev: QtGui.QMouseEvent,  # type: ignore[name-defined]
+    ev,
     radius_px: float,
-    unpickable: Optional[np.ndarray] = None,
-) -> Optional[int]:
+    unpickable: np.ndarray | None = None,
+) -> int | None:
     """Return index of the atom closest to the click in screen space.
 
     Parameters
@@ -167,8 +187,8 @@ def pick_atom_from_click(
         (N, 3) array of atom coordinates.
     view : WgpuRenderer
         The GL view widget.
-    ev : QtGui.QMouseEvent
-        The mouse event.
+    ev : object
+        The pointer event: anything answering ``pos()`` or ``x()``/``y()``.
     radius_px : float
         Click radius in pixels.
     unpickable : np.ndarray, optional

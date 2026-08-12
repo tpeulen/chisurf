@@ -1,10 +1,15 @@
 """Two things the chrome owes a small window: a size knob, and pages.
 
 The chrome is drawn over the molecule, so its size is a setting rather than a
-constant, and it is **smaller than the baked font by default** — every pixel it
-takes is a pixel of the picture it covers. Scaling the font alone would not do:
-seventeen-pixel rows around eleven-pixel text is not smaller chrome, only
-emptier chrome, so one knob moves both.
+constant. Scaling the font alone would not do: seventeen-pixel rows around
+eleven-pixel text is not smaller chrome, only emptier chrome, so one knob moves
+both.
+
+It draws at **1.0 by default** — the size the glyph atlas was baked at. It was
+0.85, to leave more room for the molecule, and that cost sharpness everywhere:
+the atlas is baked once, so any other scale resamples every glyph. Shrinking it
+is still one drag of the status-bar slider, which snaps to the scales that stay
+crisp.
 
 Paging is the other half. A menu taller than the viewport already scrolled, and
 scrolling is a wheel — a menu whose remainder can only be reached by a wheel is
@@ -37,10 +42,56 @@ def gui():
 # --------------------------------------------------------------------------- #
 # The size knob
 # --------------------------------------------------------------------------- #
-def test_the_chrome_is_smaller_than_the_baked_font_by_default(gui):
-    assert gui.ui_scale == InternalGui.DEFAULT_UI_SCALE < 1.0
-    assert gui.ROW_H < InternalGui.ROW_H
-    assert gui.FONT_PT < InternalGui.FONT_PT
+def test_the_chrome_draws_at_the_baked_size_by_default(gui):
+    """The default is 1.0, which is the size the glyph atlas was baked at.
+
+    It was 0.85, chosen to give the molecule more room, and it cost sharpness
+    everywhere to do it: the atlas is baked once, so any other scale resamples
+    every glyph. "The native window looks pixelated" was that, and nothing
+    else -- the sampler is already linear and the atlas is 4x supersampled.
+
+    Making a *smaller* chrome is still one drag of the status-bar slider, and
+    the ladder it snaps to keeps those sizes crisp too.
+    """
+    assert InternalGui.DEFAULT_UI_SCALE == 1.0
+    assert gui.ui_scale == 1.0
+    assert gui.ROW_H == InternalGui.ROW_H
+    assert gui.FONT_PT == InternalGui.FONT_PT
+
+
+def test_the_slider_only_stops_where_glyphs_stay_crisp():
+    """Every snap target puts a character's advance on a whole pixel.
+
+    The baked advance is 7 px, so a whole-pixel advance means the scale is a
+    multiple of 1/7. Between those the text goes soft, which is the whole
+    reason the slider snaps rather than moving freely.
+    """
+    steps = InternalGui.UI_SCALE_STEPS
+    assert steps == tuple(sorted(steps)), "the ladder must be ordered"
+    assert 1.0 in steps and 2.0 in steps
+    for step in steps:
+        assert InternalGui.UI_SCALE_MIN <= step <= InternalGui.UI_SCALE_MAX
+        assert abs(round(7.0 * step) - 7.0 * step) < 0.02, (
+            f"scale {step} draws the advance on a fractional pixel"
+        )
+    # Anything dropped between two rungs lands on the nearer one.
+    assert InternalGui.snap_ui_scale(0.85) in steps
+    assert InternalGui.snap_ui_scale(3.0) == 2.0
+    assert InternalGui.snap_ui_scale(0.0) == steps[0]
+
+
+def test_the_startup_guess_keeps_the_effective_scale_whole():
+    """On a HiDPI display the chrome is already drawn at the pixel ratio.
+
+    So what has to be a whole number is ``ratio * ui_scale``, not the scale --
+    which is why a clean 2x display wants 1.0, the same as an ordinary one, and
+    only a fractional ratio needs correcting.
+    """
+    assert InternalGui.suggest_ui_scale(1.0) == 1.0
+    assert InternalGui.suggest_ui_scale(2.0) == 1.0
+    fractional = InternalGui.suggest_ui_scale(1.5)
+    assert fractional in InternalGui.UI_SCALE_STEPS
+    assert abs(round(1.5 * fractional) - 1.5 * fractional) < 0.12
 
 
 def test_the_knob_moves_text_and_rows_together(gui):

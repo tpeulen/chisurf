@@ -19,7 +19,7 @@ could be going with no way to tell which.
 """
 from __future__ import annotations
 
-from typing import Callable, Optional
+from collections.abc import Callable
 
 __all__ = ["TextField"]
 
@@ -38,7 +38,7 @@ class TextField:
 
     def __init__(
         self,
-        on_change: Optional[Callable[[str], None]] = None,
+        on_change: Callable[[str], None] | None = None,
         placeholder: str = "",
     ) -> None:
         self.text = ""

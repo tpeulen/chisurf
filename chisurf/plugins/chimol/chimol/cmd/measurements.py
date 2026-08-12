@@ -41,6 +41,51 @@ def _dash_color():
     return rgba if len(rgba) == 4 else None
 
 
+def _scene_scale(viewer) -> float:
+    """The factor scene coordinates carry over Angstrom.
+
+    Scene coordinates are ``(xyz - raw_center) * scale``, so any *length* read
+    off them is that many times too large. Returns 1.0 rather than 0.0 for a
+    missing or degenerate factor, so a caller can divide unconditionally.
+    """
+    try:
+        scale = float(getattr(viewer, "_scale_factor", 1.0) or 1.0)
+    except Exception:
+        return 1.0
+    return scale if scale else 1.0
+
+
+def _scene_point_to_world(viewer, object_id, point) -> np.ndarray:
+    """Undo ``(xyz - raw_center) * scale`` for one point.
+
+    ``_resolve_selection_to_atom`` hands back a **scene** coordinate, because
+    that is the array it looks the atom up in. A measurement needs the world
+    one twice over: the reported length is in Angstrom, and
+    ``MolView._update_measurements`` transforms whatever it is given *into*
+    scene space unless told not to -- so a scene coordinate stored as a
+    measurement position is scaled and centred a second time and the dashes are
+    drawn nowhere near the atoms.
+
+    Returns the point unchanged when the object's centre is unknown, which is
+    the same thing the renderer's transform does in that case.
+    """
+    arr = np.asarray(point, dtype=float).reshape(3)
+    centre = None
+    getter = getattr(viewer, "object_raw_center", None)
+    if callable(getter):
+        try:
+            centre = getter(object_id)
+        except Exception:
+            centre = None
+    if centre is None:
+        return arr
+    try:
+        centre = np.asarray(centre, dtype=float).reshape(3)
+    except Exception:
+        return arr
+    return arr / _scene_scale(viewer) + centre
+
+
 def _scene_transform(viewer, object_id, rotation, translation) -> np.ndarray:
     """Express an Angstrom-space rigid transform in the renderer's scene units.
 
@@ -153,6 +198,57 @@ class MeasurementMixin(BaseCmd):
     # ------------------------------------------------------------------ #
     # Measurements
     # ------------------------------------------------------------------ #
+    @command("measurement")
+    def measurement(self, name: str = "", action: str = "toggle") -> None:
+        """Switch a measurement on or off, or delete it.
+
+        A `distance` **is an object** in PyMOL -- it has a name, a row in the
+        object list and an on/off switch. chimol drew them into the scene and
+        listed them nowhere, so one could only be removed, and only by knowing
+        its name. They are listed under `sele` now, and this is what their row
+        runs.
+
+        Parameters
+        ----------
+        name : str
+            The measurement. Omitted, the current ones are listed.
+        action : str, optional
+            ``toggle`` (the default), ``on``/``show``, ``off``/``hide`` or
+            ``delete``.
+        """
+        _window, viewer = self._require_window_and_viewer()
+        if viewer is None:
+            return
+        current = dict(viewer._measurements or {})
+        wanted = str(name).strip()
+        if not wanted:
+            if not current:
+                self._emit_message("no measurements")
+                return
+            for key in sorted(current):
+                entry = current[key] or {}
+                state = "on" if entry.get("visible", True) else "off"
+                self._emit_message(f"  {key}  {entry.get('kind', '')}  {state}")
+            return
+        if wanted not in current:
+            self._emit_error(f"measurement: no measurement called {wanted!r}")
+            return
+
+        verb = str(action).strip().lower() or "toggle"
+        if verb in ("delete", "remove"):
+            current.pop(wanted, None)
+        else:
+            entry = dict(current[wanted] or {})
+            if verb in ("on", "show", "1", "true"):
+                entry["visible"] = True
+            elif verb in ("off", "hide", "0", "false"):
+                entry["visible"] = False
+            else:
+                entry["visible"] = not bool(entry.get("visible", True))
+            current[wanted] = entry
+        viewer._measurements = current
+        viewer._update_view()
+
     @command("distance", aliases=("dist",))
     def distance(
         self,
@@ -259,8 +355,14 @@ class MeasurementMixin(BaseCmd):
             return
 
         try:
-            v1 = np.asarray(p1, dtype=float).reshape(-1)
-            v2 = np.asarray(p2, dtype=float).reshape(-1)
+            # World coordinates, not the scene ones the lookup returns -- see
+            # `_scene_point_to_world`. Both the reported length and the stored
+            # positions need them: this printed 258.450 for a 25.845 A CA-CA
+            # pair (`_scale_factor` is 10) and drew its dashes in a corner of
+            # the scene, because the renderer scales and centres the positions
+            # it is given a second time.
+            v1 = _scene_point_to_world(viewer, obj1_id, p1)
+            v2 = _scene_point_to_world(viewer, obj2_id, p2)
         except Exception:
             self._emit_error("Could not compute distance (no coordinates)")
             return
@@ -859,9 +961,14 @@ class MeasurementMixin(BaseCmd):
             return
 
         try:
-            v1 = np.asarray(p1, dtype=float).reshape(-1)
-            v2 = np.asarray(p2, dtype=float).reshape(-1)
-            v3 = np.asarray(p3, dtype=float).reshape(-1)
+            # World coordinates -- the angle itself is scale-invariant and was
+            # right either way, but the vertices are *stored* as the
+            # measurement's positions and the renderer transforms them into
+            # scene space, so scene coordinates would draw the marker in the
+            # wrong place. See `_scene_point_to_world`.
+            v1 = _scene_point_to_world(viewer, obj1_id, p1)
+            v2 = _scene_point_to_world(viewer, obj2_id, p2)
+            v3 = _scene_point_to_world(viewer, obj3_id, p3)
         except Exception:
             self._emit_error("Could not compute angle (no coordinates)")
             return
@@ -948,10 +1055,12 @@ class MeasurementMixin(BaseCmd):
             return
 
         try:
-            v1 = np.asarray(p1, dtype=float).reshape(-1)
-            v2 = np.asarray(p2, dtype=float).reshape(-1)
-            v3 = np.asarray(p3, dtype=float).reshape(-1)
-            v4 = np.asarray(p4, dtype=float).reshape(-1)
+            # World coordinates, for the same reason as `angle` above: the
+            # torsion is scale-invariant, its drawn vertices are not.
+            v1 = _scene_point_to_world(viewer, obj1_id, p1)
+            v2 = _scene_point_to_world(viewer, obj2_id, p2)
+            v3 = _scene_point_to_world(viewer, obj3_id, p3)
+            v4 = _scene_point_to_world(viewer, obj4_id, p4)
         except Exception:
             self._emit_error("Could not compute dihedral (no coordinates)")
             return

@@ -60,6 +60,11 @@ class MenuEntry:
     command: str | None = None
     note: str = ""
     prompt: tuple[str, str] | None = None
+    #: ``(mode, title, filter)`` with mode ``"save"`` or ``"open"``: the value
+    #: is asked for with the host's *file dialog* instead of a text box, so a
+    #: saved file lands where the user chose rather than wherever the process
+    #: happens to be running. Takes precedence over ``prompt``.
+    file_prompt: tuple[str, str, str] | None = None
     children: tuple["MenuEntry", ...] = field(default_factory=tuple)
     color: str | None = None
 
@@ -525,6 +530,62 @@ LABEL_MENU: tuple[MenuEntry, ...] = (
 # --------------------------------------------------------------------------- #
 # C — Color  (pymol.menu.mol_color)
 # --------------------------------------------------------------------------- #
+#: PyMOL's carbon colours for **C > by element**, in its own order and grouped
+#: into the sets its submenu uses (`by_elem`, `by_elem2` .. `by_elem5` in
+#: ``modules/pymol/menu.py``). Every entry is "colour by atom, with *this*
+#: carbon" -- `util.cba` -- which is why the carbon name is the label.
+_CARBON_SETS: tuple[tuple[str, ...], ...] = (
+    ("tv_green", "cyan", "lightmagenta", "yellow",
+     "salmon", "grey90", "slate", "orange"),
+    ("lime", "deepteal", "hotpink", "yelloworange",
+     "violetpurple", "grey70", "marine", "olive"),
+    ("smudge", "teal", "dirtyviolet", "wheat",
+     "deepsalmon", "lightpink", "aquamarine", "paleyellow"),
+    ("limegreen", "skyblue", "warmpink", "limon",
+     "violet", "bluewhite", "greencyan", "sand"),
+    ("forest", "lightteal", "darksalmon", "splitpea",
+     "raspberry", "grey50", "deepblue", "brown"),
+)
+
+#: And its hydrogen colours -- PyMOL's "set 6/H", `util.cbh`.
+_HYDROGEN_SET: tuple[str, ...] = (
+    "tv_red", "lightmagenta", "tv_blue", "orange",
+    "olive", "teal", "chocolate", "black",
+)
+
+
+def _by_element_menu() -> tuple[MenuEntry, ...]:
+    """PyMOL's **C > by element** submenu: CNOS, then the carbon sets.
+
+    Not one entry. PyMOL offers forty-nine, and the difference is the point:
+    the first is ``util.cnc`` -- colour N/O/S by element and **leave carbon
+    alone**, which is what keeps a cartoon the colour you gave it -- and the
+    rest are ``util.cba`` with a carbon of your choosing.
+
+    chimol had a single leaf wired to ``color byelement``, which is a colour
+    *mode*: a property of an object, so it repainted the whole molecule and
+    ignored the selection entirely.
+    """
+    first, *rest = _CARBON_SETS
+    entries: list[MenuEntry] = [
+        MenuEntry("H N O S (keep carbon)", "cnc {sele}",
+                  "Colour non-carbon atoms by element; carbon keeps the "
+                  "colour it has. PyMOL's util.cnc."),
+        SEP,
+    ]
+    entries.extend(
+        MenuEntry(f"C {name}", f"cba {name}, {{sele}}") for name in first
+    )
+    for index, carbons in enumerate(rest, start=2):
+        entries.append(MenuEntry(f"set {index}", None, "", children=tuple(
+            MenuEntry(f"C {name}", f"cba {name}, {{sele}}") for name in carbons
+        )))
+    entries.append(MenuEntry("set 6/H", None, "", children=tuple(
+        MenuEntry(f"H {name}", f"cbh {name}, {{sele}}") for name in _HYDROGEN_SET
+    )))
+    return tuple(entries)
+
+
 def _color_shades(name: str, colors: tuple[str, ...]) -> MenuEntry:
     """One of PyMOL's colour-family submenus."""
     return MenuEntry(name, None, "", children=tuple(
@@ -533,9 +594,7 @@ def _color_shades(name: str, colors: tuple[str, ...]) -> MenuEntry:
 
 
 COLOR_MENU: tuple[MenuEntry, ...] = (
-    MenuEntry("by element", None, "", children=(
-        MenuEntry("by element", "color byelement, {sele}"),
-    )),
+    MenuEntry("by element", None, "", children=_by_element_menu()),
     MenuEntry("by chain", None, "", children=(
         MenuEntry("by chain", "color bychain, {sele}"),
     )),
@@ -579,6 +638,7 @@ OBJECT_MENUS: tuple[tuple[str, str, tuple[MenuEntry, ...]], ...] = (
 
 
 __all__ = [
+    "quote_selection_name",
     "MenuEntry",
     "SEP",
     "ACTION_MENU",
@@ -589,3 +649,22 @@ __all__ = [
     "OBJECT_MENUS",
     "DESTRUCTIVE",
 ]
+
+def quote_selection_name(name: str) -> str:
+    """Quote an object name unless it lexes as a bare identifier.
+
+    Object names are not chosen by the selection grammar. An EMDB map arrives
+    called `EMD-3061`, and a hyphen there is the range operator `resi 1-40`
+    needs -- so the name split into three tokens and **every** menu command on
+    that object was a parse error. Quoting is unambiguous and the parser takes
+    it verbatim; a name that needs no quotes gets none, so the commands the
+    prompt echoes stay readable.
+    """
+    text = str(name)
+    if text and _BARE_NAME.fullmatch(text):
+        return text
+    return '"' + text.replace('"', '') + '"'
+
+
+#: What may be written without quotes: the shape the tokenizer's IDENT accepts.
+_BARE_NAME = __import__("re").compile(r"[A-Za-z_%*][A-Za-z0-9_*?]*|\d[A-Za-z0-9_]*[A-Za-z_][A-Za-z0-9_]*")

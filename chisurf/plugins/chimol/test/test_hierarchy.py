@@ -172,140 +172,16 @@ def _three_level_tree():
     return root
 
 
-def test_the_model_shows_one_root(qapp_hier):
-    from qtpy import QtCore
-
-    from chisurf.plugins.chimol.chimol.app.hierarchy_panel import HierarchyModel
-
-    model = HierarchyModel(_three_level_tree())
-    assert model.rowCount(QtCore.QModelIndex()) == 1
-    root_index = model.index(0, 0, QtCore.QModelIndex())
-    assert model.data(root_index).startswith("entry")
-
-
-def test_the_molecule_level_is_not_dropped(qapp_hier):
-    """The defect: 544 chains appeared flat, with the molecules nowhere."""
-    from qtpy import QtCore
-
-    from chisurf.plugins.chimol.chimol.app.hierarchy_panel import HierarchyModel
-
-    model = HierarchyModel(_three_level_tree())
-    root_index = model.index(0, 0, QtCore.QModelIndex())
-    assert model.rowCount(root_index) == 3
-    first = model.index(0, 0, root_index)
-    assert "MOLECULE" in model.data(first)
-    assert model.rowCount(first) == 4
-    assert "CHAIN" in model.data(model.index(0, 0, first))
-
-
-def test_a_parent_index_carries_its_own_row(qapp_hier):
-    """Returning row 0 for every parent is what made the view contradict itself."""
-    from qtpy import QtCore
-
-    from chisurf.plugins.chimol.chimol.app.hierarchy_panel import HierarchyModel
-
-    model = HierarchyModel(_three_level_tree())
-    root_index = model.index(0, 0, QtCore.QModelIndex())
-    third_molecule = model.index(2, 0, root_index)
-    chain = model.index(1, 0, third_molecule)
-    parent = model.parent(chain)
-    assert parent.row() == 2, "the third molecule is at row 2, not row 0"
-    assert model.parent(parent) == root_index
-    assert not model.parent(root_index).isValid()
-
-
-# --------------------------------------------------------------------------- #
-# Switching parts of it off
-# --------------------------------------------------------------------------- #
-def _tree_with_rows():
-    """Two molecules of two chains each, ten rows per chain."""
-    root = HierarchyNode(name="entry", node_type="ROOT")
-    row = 0
-    for m in range(2):
-        molecule = root.add_child(
-            HierarchyNode(name=f"mol{m}", node_type="MOLECULE")
-        )
-        for c in range(2):
-            rows = list(range(row, row + 10))
-            row += 10
-            molecule.add_child(
-                HierarchyNode(
-                    name=f"chain{m}{c}", node_type="CHAIN", atom_indices=rows
-                )
-            )
-            molecule.atom_indices.extend(rows)
-    return root
-
-
-def test_unchecking_a_molecule_hides_every_row_beneath_it(qapp_hier):
-    from qtpy import QtCore
-
-    from chisurf.plugins.chimol.chimol.app.hierarchy_panel import HierarchyModel
-
-    model = HierarchyModel(_tree_with_rows())
-    root = model.index(0, 0, QtCore.QModelIndex())
-    first_molecule = model.index(0, 0, root)
-    assert model.setData(
-        first_molecule, QtCore.Qt.Unchecked, QtCore.Qt.CheckStateRole
-    )
-    assert model.hidden_rows() == list(range(20))
-
-
-def test_a_parent_is_partially_checked_when_its_children_disagree(qapp_hier):
-    """Read from the leaves up, so the tri-state cannot drift out of step."""
-    from qtpy import QtCore
-
-    from chisurf.plugins.chimol.chimol.app.hierarchy_panel import HierarchyModel
-
-    model = HierarchyModel(_tree_with_rows())
-    root = model.index(0, 0, QtCore.QModelIndex())
-    molecule = model.index(0, 0, root)
-    chain = model.index(1, 0, molecule)
-    model.setData(chain, QtCore.Qt.Unchecked, QtCore.Qt.CheckStateRole)
-
-    assert model.data(chain, QtCore.Qt.CheckStateRole) == QtCore.Qt.Unchecked
-    assert model.data(molecule, QtCore.Qt.CheckStateRole) == (
-        QtCore.Qt.PartiallyChecked
-    )
-    assert model.data(root, QtCore.Qt.CheckStateRole) == QtCore.Qt.PartiallyChecked
-    assert model.hidden_rows() == list(range(10, 20))
-
-
-def test_re_checking_a_child_of_a_switched_off_parent(qapp_hier):
-    from qtpy import QtCore
-
-    from chisurf.plugins.chimol.chimol.app.hierarchy_panel import HierarchyModel
-
-    model = HierarchyModel(_tree_with_rows())
-    root = model.index(0, 0, QtCore.QModelIndex())
-    molecule = model.index(0, 0, root)
-    model.setData(molecule, QtCore.Qt.Unchecked, QtCore.Qt.CheckStateRole)
-    model.setData(
-        model.index(0, 0, molecule), QtCore.Qt.Checked, QtCore.Qt.CheckStateRole
-    )
-    assert model.hidden_rows() == list(range(10, 20))
-    assert model.data(molecule, QtCore.Qt.CheckStateRole) == (
-        QtCore.Qt.PartiallyChecked
-    )
-
-
-def test_the_dock_reports_the_rows_to_hide(qapp_hier):
-    from qtpy import QtCore
-
-    from chisurf.plugins.chimol.chimol.app.hierarchy_panel import HierarchyDock
-
-    dock = HierarchyDock()
-    dock.set_hierarchy(_tree_with_rows())
-    seen: list = []
-    dock.hidden_rows_changed.connect(seen.append)
-    model = dock.model
-    root = model.index(0, 0, QtCore.QModelIndex())
-    model.setData(
-        model.index(1, 0, root), QtCore.Qt.Unchecked, QtCore.Qt.CheckStateRole
-    )
-    assert seen and seen[-1] == list(range(20, 40))
-
-
+# The Qt `HierarchyModel`/`HierarchyDock` tests lived here. Both were deleted
+# with the dock when the 3-D view became the window's only widget: the tree is
+# drawn in the viewport now, and two trees over one model is two things that
+# can disagree. What they pinned is pinned in
+# `test_hierarchy_window.py` against the panel that replaced them -- the
+# molecule level is not dropped, switching a node off takes its subtree, and
+# what reaches the viewer is the rows those nodes cover.
+#
+# The tests below are **not** about either panel: they are about the viewer
+# honouring `set_rows_hidden`, whoever calls it.
 def test_hidden_rows_are_not_drawn(qapp_hier):
     """The point of the check box: fewer particles in the picture."""
     from chisurf.plugins.chimol.chimol.renderer.view import MolView

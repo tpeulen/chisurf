@@ -25,6 +25,8 @@ from __future__ import annotations
 
 import pathlib
 
+from ..host.app import ViewerHost, sync_panel
+
 __all__ = ["BrowserHost", "Viewer", "demo_pdb_path"]
 
 
@@ -38,20 +40,13 @@ def demo_pdb_path() -> str:
     """Absolute path of the bundled structure, for the opening ``load``."""
     return str(pathlib.Path(__file__).resolve().parent / DEMO_PDB)
 
-class BrowserHost:
-    """The host the command layer reaches past the viewer for.
+class BrowserHost(ViewerHost):
+    """A page, in the host role -- see :class:`chimol.host.app.ViewerHost`.
 
-    ``Cmd`` drives a *viewer* -- sixty-seven of its methods -- and reaches the
-    surrounding application for exactly thirteen things: loading a file,
-    refreshing the docked object list, full-screen, and the rock timer. On the
-    desktop that host is ``MolViewPluginWindow``, a Qt main window. Here it is
-    this, which is the same role played by a page.
-
-    It is deliberately not a stand-in that swallows everything. An earlier
-    version answered every attribute with a no-op, and ``load`` then reported
-    success while registering nothing -- the command delegates the actual read
-    to the host, and a host that silently accepts it produces a viewer with no
-    objects and no error.
+    Only the file reader differs, and it has to: a page's filesystem is
+    Pyodide's in-memory one and the core structure reader is not there, so a
+    browser reads with chimol's own PDB parser rather than trying the full
+    loader first.
 
     Parameters
     ----------
@@ -59,15 +54,8 @@ class BrowserHost:
         The viewer, built with a windowless renderer.
     """
 
-    def __init__(self, viewer) -> None:
-        self.viewer = viewer
-        #: Called after anything that changes the object list, so the page can
-        #: re-read it into the in-viewport panel.
-        self.on_objects_changed = None
-
-    # -- what the commands actually call ----------------------------------
     def _load_structure_from_path(self, path, *, name=None) -> str:
-        """Read a structure file and register it as an object.
+        """Read a PDB and register it as an object.
 
         Parameters
         ----------
@@ -81,6 +69,11 @@ class BrowserHost:
         -------
         str
             The new object's id.
+
+        Raises
+        ------
+        ValueError
+            If the file yields no coordinates.
         """
         import pathlib as _pathlib
 
@@ -102,37 +95,6 @@ class BrowserHost:
         self._refresh_objects_from_viewer()
         return entry.object_id
 
-    def _refresh_objects_from_viewer(self) -> None:
-        """Tell the page the object list changed."""
-        if self.on_objects_changed is not None:
-            self.on_objects_changed()
-
-    def _set_object_visible(self, object_id, visible: bool) -> None:
-        """Show or hide an object, then refresh the panel."""
-        self.viewer.set_object_visible(object_id, bool(visible))
-        self._refresh_objects_from_viewer()
-
-    def _select_object_in_ui(self, object_id) -> None:
-        """Make an object current in the page's panel."""
-        self._refresh_objects_from_viewer()
-
-    def _update_sequence_view(self) -> None:
-        """Rebuild the sequence strip."""
-        self._refresh_objects_from_viewer()
-
-    def isFullScreen(self) -> bool:  # noqa: N802 - the Qt name the commands use
-        """Whether the page is full screen. It has no window to maximise."""
-        return False
-
-    def showFullScreen(self) -> None:  # noqa: N802 - the Qt name
-        """Go full screen -- a page cannot, without a user gesture."""
-
-    def showNormal(self) -> None:  # noqa: N802 - the Qt name
-        """Leave full screen."""
-
-    def close(self) -> None:
-        """Close the window. A page closes itself with the tab."""
-
 
 class Viewer:
     """One interactive viewer in a page: the real viewer, on a canvas.
@@ -153,6 +115,12 @@ class Viewer:
     canvas : object
         A JavaScript ``HTMLCanvasElement``.
     """
+
+    #: What this host delivers, as :data:`chimol.testing.parity.HOST_FEATURES`
+    #: names them. Read against :class:`~..renderer.canvas_view.CanvasView`'s
+    #: set, which is the toolkit-free desktop host and therefore the like-for-
+    #: like reference.
+    supported_features = frozenset({"press", "move", "release", "wheel", "key"})
 
     def __init__(self, canvas) -> None:
         import numpy as np
@@ -237,49 +205,12 @@ class Viewer:
     def _sync_panel(self) -> None:
         """Mirror the viewer's objects and sequences into the in-viewport panel.
 
-        The same job ``molview_main_window.sync_internal_gui`` does on the
-        desktop, and for the same reason: the panel is a *view* of the object
+        The same job the Qt window's ``sync_internal_gui`` and the Qt-free
+        window's ``ChimolApp.sync_panel`` do, and literally the same code -- see
+        :func:`chimol.host.app.sync_panel`. The panel is a *view* of the object
         list, so it is fed from the list rather than kept in step by hand.
         """
-        from ..renderer.internal_gui import GuiRow, SequenceRow
-
-        rows = [GuiRow(name="all", is_header=True)]
-        sequences = []
-        for entry in self.view.list_objects():
-            name = str(entry.get("name") or entry.get("id"))
-            rows.append(GuiRow(name=name, enabled=bool(entry.get("visible", True))))
-            codes, numbers, colours = self._sequence_of(entry.get("id"))
-            if codes:
-                sequences.append(
-                    SequenceRow(name=name, codes=codes, numbers=numbers,
-                                colors=colours, object_id=str(entry.get("id")))
-                )
-        rows.append(GuiRow(name="sele", is_selection=True))
-        self.gui.set_rows(rows)
-        self.gui.set_sequences(sequences)
-
-    def _sequence_of(self, object_id):
-        """One-letter codes, residue numbers and colours for an object.
-
-        From the viewer's own accessors, which is what the desktop's
-        ``_sync_internal_sequences`` reads too -- deriving the sequence here
-        from the payload instead is how the strip ends up disagreeing with the
-        molecule about what a residue is coloured.
-        """
-        try:
-            codes, _names = self.view.get_sequence_arrays(object_id)
-            numbers = self.view.get_residue_numbers(object_id)
-            colours = self.view.get_residue_colors(object_id)
-        except Exception:  # noqa: BLE001 - an object with no sequence
-            return "", [], []
-        if codes is None or not len(codes):
-            return "", [], []
-        return (
-            "".join(str(c) for c in codes),
-            [int(n) for n in (numbers if numbers is not None else [])],
-            [tuple(float(c) for c in rgba[:3])
-             for rgba in (colours if colours is not None else [])],
-        )
+        sync_panel(self.view, self.gui)
 
     def _on_select(self, name: str, indices, additive: bool) -> None:
         """Turn a sequence-strip selection into the viewer's own selection."""

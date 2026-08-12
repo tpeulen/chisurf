@@ -215,3 +215,28 @@ def test_atoms_of_unknown_element_are_counted_not_guessed(cmd):
 def test_a_selection_too_small_for_a_tensor_is_refused(cmd):
     _said, complained = cmd("measure_inertia resi 1 and name CA")
     assert "three are needed" in complained, complained
+
+
+# --------------------------------------------------------------------------- #
+# distance -- the units it reports
+# --------------------------------------------------------------------------- #
+def test_two_atom_distance_is_in_angstrom(cmd):
+    """The one measurement with an answer that can be checked against the file.
+
+    Everything else here pins a property because there is no reference number.
+    A CA-CA distance has one: it is in the PDB, and it is the check that catches
+    a stray scale factor. This reported ``258.450`` for a 25.845 A pair --
+    exactly ``_scale_factor``, 10 -- because the coordinates the value was taken
+    from are the *scene* ones the measurement is drawn in.
+    """
+    lines = [ln for ln in PDB.read_text().splitlines()
+             if ln.startswith("ATOM") and ln[12:16].strip() == "CA"]
+    by_resi = {int(ln[22:26]): np.array(
+        [float(ln[30:38]), float(ln[38:46]), float(ln[46:54])]) for ln in lines}
+    keys = sorted(by_resi)
+    a, b = keys[0], keys[20]
+    truth = float(np.linalg.norm(by_resi[a] - by_resi[b]))
+
+    said, complained = cmd(f"distance resi {a} and name CA, resi {b} and name CA")
+    assert not complained, complained
+    assert _number(said.split(":")[-1]) == pytest.approx(truth, abs=1e-3)

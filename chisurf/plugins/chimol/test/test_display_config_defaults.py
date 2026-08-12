@@ -326,12 +326,22 @@ def test_an_untouched_default_moves_without_being_carried():
     """Nothing to preserve, so the new key keeps the package default.
 
     Carrying it would be harmless today and wrong the moment the default at the
-    new path differs from the one at the old.
+    new path differs from the one at the old -- and that moment has since
+    arrived: the fog default moved from 0.45 to 0.72, because the old one
+    washed the far side of a molecule into the background.
+
+    So this asserts the *current* package default rather than a number. Written
+    as a literal it pins the very thing the migration machinery exists to let
+    move, and fails on the next honest change of mind.
     """
+    package_default = json.loads(
+        cfg_mod.get_package_display_config_path().read_text(encoding="utf-8")
+    )["depth_cue"]["start"]
+
     config = {"ray": {"fog_start": 0.45}, "depth_cue": {"start": 0.45}}
     cfg_mod.apply_display_config_migrations(config, 8)
     assert "fog_start" not in config["ray"]
-    assert config["depth_cue"]["start"] == 0.45
+    assert config["depth_cue"]["start"] == package_default
 
 
 def test_a_move_does_not_run_twice():

@@ -291,9 +291,14 @@ class AnimationMixin(BaseCmd):
             # this module needs from the toolkit, and importing it at module
             # scope made the whole command set -- parsing, selection, colouring
             # -- require a window system.
-            from qtpy import QtCore
+            # `host.widget.Timer` -- a `QTimer` where Qt is the chosen host and
+            # a canvas-loop timer where it is not. Importing `QtCore` here made
+            # `mplay` fail outright on the toolkit-free host with
+            # "QTimer(parent): argument 1 has unexpected type 'MolView'",
+            # because the viewer is only a `QObject` when Qt is in use.
+            from ..host.widget import Timer
 
-            viewer._animation_timer = QtCore.QTimer(viewer)
+            viewer._animation_timer = Timer()
             viewer._animation_timer.timeout.connect(self._on_animation_tick)
         # Single-shot, rescheduled by the tick itself; see `_on_animation_tick`.
         viewer._animation_timer.setSingleShot(True)
@@ -485,11 +490,13 @@ class AnimationMixin(BaseCmd):
         if running:
             return
 
-        from qtpy import QtCore
+        # Same reasoning as the playback timer above: the host decides what a
+        # clock is, and `rock` must not be the one command that needs Qt.
+        from ..host.widget import Timer
 
         window._rock_phase = 0.0
         window._rock_direction = 1.0
-        timer = QtCore.QTimer(window)
+        timer = Timer()
 
         def step() -> None:
             phase = getattr(window, "_rock_phase", 0.0)

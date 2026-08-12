@@ -30,6 +30,41 @@ from .registry import command
 WATER_MODES = ("bridge", "exclude", "only")
 
 
+def _angle_between(a, b, c) -> float | None:
+    """The angle a-b-c in degrees, or ``None`` when a leg has no length."""
+    u = np.asarray(a, dtype=float) - np.asarray(b, dtype=float)
+    v = np.asarray(c, dtype=float) - np.asarray(b, dtype=float)
+    nu = float(np.linalg.norm(u))
+    nv = float(np.linalg.norm(v))
+    if nu <= 0.0 or nv <= 0.0:
+        return None
+    cosine = float(np.dot(u, v) / (nu * nv))
+    return float(np.degrees(np.arccos(min(1.0, max(-1.0, cosine)))))
+
+
+def _dihedral_between(a, b, c, d) -> float | None:
+    """The torsion a-b-c-d in degrees, signed, or ``None`` when it is undefined.
+
+    The ``atan2`` form rather than an ``arccos`` of the plane normals: the sign
+    is the whole point of a torsion, and an ``arccos`` cannot produce one.
+    """
+    p0, p1, p2, p3 = (np.asarray(p, dtype=float) for p in (a, b, c, d))
+    b0 = p0 - p1
+    b1 = p2 - p1
+    b2 = p3 - p2
+    norm = float(np.linalg.norm(b1))
+    if norm <= 0.0:
+        return None
+    b1 = b1 / norm
+    v = b0 - np.dot(b0, b1) * b1
+    w = b2 - np.dot(b2, b1) * b1
+    if float(np.linalg.norm(v)) <= 0.0 or float(np.linalg.norm(w)) <= 0.0:
+        return None
+    x = float(np.dot(v, w))
+    y = float(np.dot(np.cross(b1, v), w))
+    return float(np.degrees(np.arctan2(y, x)))
+
+
 class InteractionMixin:
     """`hbond_network`, `clashes` and the `wizard`."""
 
@@ -434,6 +469,9 @@ class InteractionMixin:
         if action in ("", "mutagenesis", "mutate"):
             self._wizard_start(viewer)
             return
+        if action in ("measurement", "measure"):
+            self._measure_start(viewer)
+            return
         if action == "done":
             self._wizard_finish(viewer, keep=False)
             return
@@ -442,6 +480,22 @@ class InteractionMixin:
         if state is None:
             self._emit_error("wizard: no wizard is running")
             return
+
+        from ..wizards import MeasurementWizard
+
+        if isinstance(state, MeasurementWizard):
+            if action == "mode":
+                self._measure_set_mode(viewer, state, argument)
+            elif action == "pick":
+                self._measure_pick(viewer, state, argument)
+            elif action == "unpick":
+                self._measure_unpick(viewer, state)
+            elif action == "delete":
+                self._measure_delete(viewer, state, argument)
+            else:
+                self._emit_error(f"wizard: unknown action {action!r}")
+            return
+
         if action == "target":
             self._wizard_set_target(viewer, state, argument)
         elif action == "rotamer":
@@ -822,9 +876,29 @@ class InteractionMixin:
         was a separate object, which is what makes Clear and Done free -- there
         is nothing to undo, only an object to delete.
         """
+        from ..wizards import MeasurementWizard
+
         state = getattr(viewer, "_wizard", None)
         if state is None:
             return
+
+        # The measurement wizard has nothing to commit and nothing to undo:
+        # every completed measurement is already a scene object, and PyMOL
+        # leaves them behind too. All that ends is the picking.
+        if isinstance(state, MeasurementWizard):
+            self._measure_stop_listening(viewer)
+            state.picks = []
+            self._measure_mark_picks(viewer, state)
+            viewer._wizard = None
+            gui = self._wizard_gui(viewer)
+            if gui is not None:
+                gui.wizard_rows = []
+                gui.wizard_prompt = []
+                gui.wizard_menu = None
+            viewer._update_view()
+            self._emit_message("wizard: done")
+            return
+
         if keep:
             self._wizard_commit(viewer, state)
         self._wizard_delete_preview(viewer, state)
@@ -882,6 +956,222 @@ class InteractionMixin:
         gui.wizard_prompt = state.prompt()
         gui.wizard_menu = state.menu
         viewer._update_view()
+
+    # ------------------------------------------------------------------ #
+    # The measurement wizard: pick atoms, get distances
+    # ------------------------------------------------------------------ #
+    #: Prefix for the measurement objects the wizard creates, so `Delete All`
+    #: can tell its own from a `distance` typed at the prompt.
+    MEASURE_OBJECT = "measure"
+
+    def _measure_start(self, viewer) -> None:
+        """Install the measurement wizard and start listening for picks."""
+        from ..wizards import MeasurementWizard
+
+        state = MeasurementWizard()
+        viewer._wizard = state
+        self._measure_listen(viewer, state)
+        self._wizard_refresh(viewer, state)
+        self._emit_message("wizard: measurement -- pick two atoms")
+
+    def _measure_listen(self, viewer, state) -> None:
+        """Route viewport picks to the wizard instead of the selection.
+
+        `MolView` knows nothing about wizards and must not: it exposes a single
+        hook and calls it with the atom it picked, and a truthy return means the
+        click was consumed -- so a measurement pick does not also toggle the
+        residue in and out of `sele`, which is what PyMOL's wizard does too.
+        """
+        def _picked(atom_index: int) -> bool:
+            current = getattr(viewer, "_wizard", None)
+            if current is not state:
+                return False
+            try:
+                self._measure_pick(viewer, state, str(int(atom_index)))
+            except Exception as exc:
+                self._emit_error(f"measurement: {exc}")
+            return True
+
+        viewer._wizard_pick = _picked
+
+    def _measure_stop_listening(self, viewer) -> None:
+        """Give clicks back to the selection."""
+        try:
+            viewer._wizard_pick = None
+        except Exception:
+            pass
+
+    def _measure_set_mode(self, viewer, state, argument: str) -> None:
+        """Switch between distances, angles and dihedrals."""
+        from ..wizards import MEASUREMENT_MODES
+
+        wanted = str(argument).strip().lower()
+        names = [name for name, _label, _count in MEASUREMENT_MODES]
+        if wanted not in names:
+            self._emit_error(
+                f"wizard: unknown measurement mode {argument!r}; "
+                f"use one of {', '.join(names)}"
+            )
+            return
+        state.mode = wanted
+        # Picks belong to the mode that was running: three atoms half-way to a
+        # dihedral are not the start of a distance.
+        state.picks = []
+        self._wizard_refresh(viewer, state)
+        self._emit_message(f"wizard: measuring {state.mode_label.lower()}")
+
+    def _measure_atom_label(self, viewer, object_id: str, atom_index: int) -> str:
+        """Name one atom the way a measurement's report should read."""
+        entry = viewer._objects.get(object_id)
+        obj_name = getattr(entry, "name", object_id)
+        atoms = getattr(getattr(entry, "state", None), "atoms", None)
+        if atoms is None or atom_index >= len(atoms):
+            return f"{obj_name}/{atom_index}"
+        names = atoms.dtype.names or ()
+        parts = [str(obj_name)]
+        if "chain" in names:
+            chain = str(atoms["chain"][atom_index]).strip()
+            if chain:
+                parts.append(chain)
+        resn = str(atoms["res_name"][atom_index]).strip() if "res_name" in names else ""
+        resi = int(atoms["res_id"][atom_index]) if "res_id" in names else atom_index
+        atom = str(atoms["atom_name"][atom_index]).strip() if "atom_name" in names else ""
+        parts.append(f"{resn}{resi}" if resn else str(resi))
+        if atom:
+            parts.append(atom)
+        return "/".join(parts)
+
+    def _measure_pick(self, viewer, state, argument: str) -> None:
+        """Take one picked atom, and measure once the mode has enough of them."""
+        text = str(argument).strip()
+        if not text:
+            return
+        object_id = viewer.get_active_object_id()
+        if ":" in text:
+            object_id, _sep, text = text.partition(":")
+        try:
+            atom_index = int(text)
+        except Exception:
+            self._emit_error(f"wizard: {argument!r} is not an atom index")
+            return
+
+        label = self._measure_atom_label(viewer, object_id, atom_index)
+        # PyMOL ignores a repeat of the atom just picked rather than measuring
+        # an atom against itself, which is always zero and always a mis-click.
+        if state.picks and state.picks[-1][:2] == (object_id, atom_index):
+            return
+        state.picks.append((object_id, atom_index, label))
+        self._measure_mark_picks(viewer, state)
+        if len(state.picks) < state.wanted:
+            self._wizard_refresh(viewer, state)
+            return
+
+        picks = list(state.picks)
+        state.picks = []
+        # The marks go with them: the group has become a measurement, which is
+        # its own drawing, and leaving the pick markers behind would double it.
+        self._measure_mark_picks(viewer, state)
+        self._measure_commit(viewer, state, picks)
+        self._wizard_refresh(viewer, state)
+
+    def _measure_mark_picks(self, viewer, state) -> None:
+        """Show the atoms picked so far with the selection marker.
+
+        Clicking an atom and getting no acknowledgement until the *second*
+        click is what makes a measurement feel like it missed -- and with
+        nothing drawn there is no way to tell a mis-click from a mis-aim. The
+        marker is the one the selection already uses, so a picked atom looks
+        picked in the way everything else in the viewer does.
+        """
+        setter = getattr(viewer, "set_pick_markers", None)
+        if not callable(setter):
+            return
+        try:
+            setter([atom for _obj, atom, _label in state.picks])
+        except Exception:
+            pass
+
+    def _measure_unpick(self, viewer, state) -> None:
+        """Take back the last picked atom.
+
+        Every pick row is this command, not one per index: the group is
+        incomplete by definition -- a complete one has already become a
+        measurement -- so there is only ever a short list, and dropping from
+        the end is what a mis-click needs.
+        """
+        if not state.picks:
+            self._emit_message("measurement: no pick to take back")
+            return
+        _obj, _atom, label = state.picks.pop()
+        self._wizard_refresh(viewer, state)
+        self._emit_message(f"measurement: dropped {label}")
+
+    def _measure_positions(self, viewer, picks) -> np.ndarray:
+        """World coordinates for the picked atoms, in pick order.
+
+        The **raw** `atoms["xyz"]`, not `all_atom_coords`: the latter is the
+        scene array, centred and scaled by `_scale_factor`, and a measurement
+        built from it reports ten times the Angstrom value and is drawn in the
+        wrong place -- the renderer transforms what it is given into scene
+        space itself.
+        """
+        out = np.empty((len(picks), 3), dtype=float)
+        for row, (object_id, atom_index, _label) in enumerate(picks):
+            entry = viewer._objects.get(object_id)
+            atoms = getattr(getattr(entry, "state", None), "atoms", None)
+            if atoms is None or atom_index >= len(atoms):
+                raise ValueError(f"atom {atom_index} is not in {object_id}")
+            out[row] = np.asarray(atoms["xyz"][atom_index], dtype=float).reshape(3)
+        return out
+
+    def _measure_commit(self, viewer, state, picks) -> None:
+        """Turn a complete group of picks into a measurement on the scene."""
+        try:
+            points = self._measure_positions(viewer, picks)
+        except ValueError as exc:
+            self._emit_error(f"measurement: {exc}")
+            return
+
+        if state.mode == "distance":
+            value = float(np.linalg.norm(points[0] - points[1]))
+            digits = 2
+        elif state.mode == "angle":
+            value = _angle_between(points[0], points[1], points[2])
+            digits = 1
+        else:
+            value = _dihedral_between(*points[:4])
+            digits = 1
+        if value is None:
+            self._emit_error("measurement: degenerate geometry, nothing measured")
+            return
+        text = f"{value:.{digits}f}"
+
+        name = f"{self.MEASURE_OBJECT}_{len(state.created):02d}"
+        self._add_measurement(viewer, name, state.mode, points, text)
+        state.created.append(name)
+        where = " - ".join(label for _o, _a, label in picks)
+        unit = "A" if state.mode == "distance" else "deg"
+        self._emit_message(f"{state.mode} {name}: {where} = {text} {unit}")
+
+    def _measure_delete(self, viewer, state, which: str) -> None:
+        """Remove the last measurement, or every one this wizard made."""
+        wanted = str(which).strip().lower() or "last"
+        if not state.created:
+            self._emit_message("measurement: nothing to delete")
+            return
+        if wanted == "all":
+            doomed = list(state.created)
+            state.created = []
+        else:
+            doomed = [state.created.pop()]
+        remaining = {
+            key: value for key, value in viewer._measurements.items()
+            if key not in set(doomed)
+        }
+        viewer._measurements = remaining
+        viewer._update_view()
+        self._wizard_refresh(viewer, state)
+        self._emit_message(f"measurement: deleted {len(doomed)}")
 
     # ------------------------------------------------------------------ #
     # Shared helpers

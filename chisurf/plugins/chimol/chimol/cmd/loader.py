@@ -70,17 +70,81 @@ def _tls_context():
 class LoaderCommands(BaseCmd):
     """Loading and remote fetch commands."""
 
+    @command("demo")
+    def demo(self, key: str = "") -> None:
+        """Run a shipped demo scene, or list them.
+
+        The demos were reachable only from a Qt menu, which on macOS lives in
+        the system bar and in a browser does not exist -- so a command was the
+        missing half: the in-viewport Demo menu issues `demo <key>`, and typing
+        it does the same thing.
+
+        Parameters
+        ----------
+        key : str, optional
+            Which demo. Omitted, the names and what each shows are listed.
+        """
+        from ..app.demo_catalog import DEMOS
+
+        wanted = str(key).strip().lower()
+        if not wanted:
+            width = max(len(name) for name, _title, _note in DEMOS)
+            for name, title, note in DEMOS:
+                self._emit_message(f"  {name:<{width}}  {title} -- {note}")
+            return
+
+        known = {name for name, _title, _note in DEMOS}
+        if wanted not in known:
+            self._emit_error(
+                f"demo: no demo called {key!r}. `demo` lists them."
+            )
+            return
+
+        window = self.window
+        runner = getattr(window, "run_demo", None)
+        if not callable(runner):
+            self._emit_error("demo: this host cannot run demo scripts")
+            return
+        runner(wanted)
+
+    @command("demo_edit")
+    def demo_edit(self, what: str = "") -> None:
+        """Open a demo script in the editor, or start a blank one.
+
+        A demo is a starting point rather than a fixed recital, which is why
+        the editor is on the menu beside them.
+
+        Parameters
+        ----------
+        what : str, optional
+            ``new`` for a blank script; anything else opens the first demo.
+        """
+        window = self.window
+        editor = getattr(window, "edit_demo_script", None)
+        if not callable(editor):
+            self._emit_error("demo_edit: this host has no script editor")
+            return
+        editor(blank=str(what).strip().lower() in ("new", "blank"))
+
     @command("load", aliases=("open",))
     def load(self, *paths: str) -> None:
         """Load one or more structure files (PyMOL ``load path[, ...]``)."""
         args = list(paths)
-        if not args:
-            self._emit_error("Usage: load <path> [more paths...]")
-            return
-
         window = self.window
         if window is None:
             self._emit_error("No viewer window is attached")
+            return
+
+        if not args:
+            # `open` with no path means "ask me" -- that is what File > Open and
+            # the toolbar's Open button send, and without this they answered
+            # with a usage line. Only when the host has a dialog to offer;
+            # a browser or a headless run still gets the usage message.
+            chooser = getattr(window, "on_open_structure", None)
+            if callable(chooser):
+                chooser()
+                return
+            self._emit_error("Usage: load <path> [more paths...]")
             return
 
         for raw in args:

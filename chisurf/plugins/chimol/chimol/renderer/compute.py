@@ -815,6 +815,98 @@ def distance_to_spheres(points, radii, shape, origin, spacing, horizon,
         return None
 
 
+def density_grid(points, sigmas, shape, origin, spacing, field_function="gaussian",
+                 cutoff_factor=2.5, resident=False):
+    """Accumulate Gaussian or Wyvill density grid on the GPU.
+
+    Parameters
+    ----------
+    points : numpy.ndarray
+        ``(n, 3)`` sphere centres.
+    sigmas : numpy.ndarray
+        ``(n,)`` per-point widths or radii.
+    shape : tuple of int
+        ``(nx, ny, nz)`` voxel counts.
+    origin : numpy.ndarray
+        World position of voxel ``(0, 0, 0)``.
+    spacing : float
+        Voxel edge length.
+    field_function : str, optional
+        ``"gaussian"`` or ``"wyvill"``.
+    cutoff_factor : float, optional
+        Cutoff factor for Gaussian reach.
+    resident : bool, optional
+        Return a :class:`GpuVolume` instead of copying the grid back.
+
+    Returns
+    -------
+    numpy.ndarray or GpuVolume or None
+        ``(nx, ny, nz)`` float32 densities, or ``None`` when GPU is unavailable.
+    """
+    p = np.ascontiguousarray(points, dtype=np.float64)
+    sig = np.ascontiguousarray(sigmas, dtype=np.float64).reshape(-1)
+    count = int(np.prod(shape))
+    field_type = 1 if str(field_function).lower() == "wyvill" else 0
+    reach_factor = 1.0 if field_type == 1 else float(cutoff_factor)
+
+    if _declines(count) or p.shape[0] == 0 or count == 0:
+        if p.shape[0] == 0 or count == 0:
+            return None
+        from ..geometry import surface as _surf
+        grid = np.zeros(shape, dtype=np.float32)
+        rf = float(reach_factor)
+        contrib = (
+            (lambda d2, s: np.exp(-d2 / (2.0 * s * s)))
+            if field_type == 0
+            else _surf._wyvill_falloff
+        )
+        _surf._splat_field(
+            p, sig, grid, np.asarray(origin, dtype=np.float64), float(spacing),
+            reach_of=lambda s: rf * s, contribution=contrib
+        )
+        return grid
+
+    max_sigma = float(np.max(sig))
+    if field_type == 0:
+        sig = np.clip(sig, spacing * 0.25, spacing * 5.0)
+    cell_edge = max(max_sigma * reach_factor, 1e-4)
+
+    grid = build_grid(p, cell_edge)
+    info = np.zeros(12, dtype=np.uint32)
+    info[0:3] = grid.origin.view(np.uint32)
+    info[3] = np.float32(grid.inv_cell).view(np.uint32)
+    info[4:7] = grid.dims.astype(np.uint32)
+    info[7] = np.uint32(count)
+
+    voxel = np.zeros(12, dtype=np.uint32)
+    voxel[0:3] = np.asarray(origin, dtype=np.float32).view(np.uint32)
+    voxel[3] = np.float32(spacing).view(np.uint32)
+    voxel[4:7] = np.asarray(shape, dtype=np.uint32)
+    voxel[7] = np.uint32(count)
+    voxel[8] = np.float32(reach_factor).view(np.uint32)
+    voxel[9] = np.uint32(field_type)
+
+    try:
+        job = (
+            _Job(load_compute_wgsl("density_grid.wgsl"), "main")
+            .add_input(_vec4(p, sig))
+            .add_input(grid.start)
+            .add_input(grid.order)
+            .add_uniform(info)
+            .add_uniform(voxel)
+        )
+        if resident:
+            out = new_volume(shape)
+            job.into(out, 5).run(count)
+            return out
+        job.output((count,), np.float32, slot=5)
+        return np.asarray(job.run(count)).reshape(shape)
+    except ShaderError:
+        raise
+    except Exception:
+        return None
+
+
 
 def directional_occlusion(points, normals, centers, radii, direction,
                           max_distance, softness, strength):

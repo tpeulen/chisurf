@@ -459,8 +459,51 @@ class VolumeGrid:
         return out
 
 
+def gaussian_filtered(grid: VolumeGrid, sdev: float) -> VolumeGrid:
+    """A Gaussian-smoothed copy of a map, as a new map.
+
+    The reference viewer's ``volume gaussian``: convolve the samples with a
+    Gaussian of standard deviation ``sdev`` (in the map's placement units, so
+    an anisotropic step smooths by the same *physical* width along every
+    axis) and hand back a **new** grid named after the operation — filtering
+    is analysis, and analysis produces a new object rather than quietly
+    rewriting the data it read (the memoised contours also rely on a grid's
+    samples never changing).
+
+    Computed in Fourier space — the transfer function of a Gaussian is a
+    Gaussian, and three separable FFT passes beat a spatial kernel at any
+    width. The implied periodic boundary is harmless on maps whose edges sit
+    at the background level, which a map with sensible padding has.
+    """
+    sdev = float(sdev)
+    if not np.isfinite(sdev) or sdev <= 0:
+        raise ValueError(f"the Gaussian width must be positive, got {sdev!r}")
+    values = np.asarray(grid.values, dtype=np.float32)
+    spectrum = np.fft.rfftn(values.astype(np.float64))
+    shape = values.shape
+    for axis in range(3):
+        sigma_vox = sdev / float(grid.step[axis])
+        freq = (
+            np.fft.rfftfreq(shape[axis]) if axis == 2
+            else np.fft.fftfreq(shape[axis])
+        )
+        damp = np.exp(-2.0 * (np.pi * freq * sigma_vox) ** 2)
+        index = [None, None, None]
+        index[axis] = slice(None)
+        spectrum *= damp[tuple(index)]
+    smoothed = np.fft.irfftn(spectrum, s=shape).astype(np.float32)
+    return VolumeGrid(
+        values=smoothed,
+        origin=grid.origin.copy(),
+        step=grid.step.copy(),
+        rotation=grid.rotation.copy(),
+        name=f"{grid.name} gaussian",
+    )
+
+
 __all__ = [
     "DEFAULT_LEVEL_VOXEL_FRACTION",
     "DEFAULT_VOXEL_LIMIT_M",
     "VolumeGrid",
+    "gaussian_filtered",
 ]

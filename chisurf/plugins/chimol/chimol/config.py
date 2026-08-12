@@ -14,7 +14,7 @@ try:
 except Exception:  # pragma: no cover - moview can run without chisurf
     _cs_settings = None
 
-DISPLAY_CONFIG_VERSION: int = 15
+DISPLAY_CONFIG_VERSION: int = 19
 """Current version of the chimol_display.json schema.
 
 Increment this when keys are added, renamed, or removed, **or when a default
@@ -37,6 +37,27 @@ existing user copy picks it up.
 #: rely on, and refreshing nothing leaves every appearance fix stranded in the
 #: package.
 DISPLAY_CONFIG_MIGRATIONS: dict[int, dict[str, dict[str, tuple]]] = {
+    19: {
+        "depth_cue": {
+            # The default fog washed the back half of a molecule to the
+            # background colour -- on a white background the far side of a
+            # 30 A protein simply disappeared. Fog is depth *cueing*: it should
+            # say which end is nearer, not hide one of them. Start it further
+            # back and at about half strength.
+            "start": (0.45, 0.72),
+            "intensity": (1.0, 0.55),
+        },
+    },
+    18: {
+        "layout": {
+            # 1.0 is the size the glyph atlas was baked at, and any other scale
+            # resamples every glyph -- which is what "the native window looks
+            # pixelated" was. 0.85 was chosen to save screen area and cost
+            # sharpness everywhere to do it. Only moved for users who never
+            # changed it; a deliberate choice is left alone.
+            "ui_scale": (0.85, 1.0),
+        },
+    },
     4: {
         "metaball": {
             # A metaball should look like a wet gel, not like clay. See the log
@@ -212,6 +233,13 @@ DISPLAY_CONFIG_KEY_REMOVALS: dict[int, tuple[tuple[str, str], ...]] = {
         # occlusion at all, so there was never anything for it to switch on.
         ("sticks", "ambient_occlusion"),
     ),
+    16: (
+        # The "chimol drag style". Same shape as the one above: the toolbar
+        # toggle wrote this key, the viewer stored it, and the two helpers that
+        # would have turned it into a sign had no caller. chimol's mouse is
+        # PyMOL's and there is nothing to switch to.
+        ("camera", "mouse_mode"),
+    ),
 }
 
 
@@ -238,17 +266,24 @@ def get_package_display_config_path() -> Path:
 
 
 def get_user_display_config_path() -> Path | None:
-    """Return the expected user ``chimol_display.json`` path, or ``None``.
+    """Return the user's ``chimol_display.json`` path.
 
-    When chisurf is available this is ``~/.chisurf/chimol_display.json``;
-    otherwise ``None`` is returned (standalone Chimol uses the package copy).
+    ``~/.chisurf`` inside a ChiSurf install, ``~/.chimol`` standalone, or
+    ``$CHIMOL_SETTINGS_DIR`` when that is set -- see :mod:`chimol.settings_dir`.
+
+    It used to answer ``None`` whenever ChiSurf was not importable, and ``None``
+    means "do not persist": a standalone chimol therefore read the *package*
+    copy every time and silently forgot every setting between runs. The return
+    type keeps its ``| None`` so existing callers still compile, but this now
+    always answers a path.
+
+    Returns
+    -------
+    pathlib.Path or None
     """
-    if _cs_settings is not None:
-        try:
-            return _cs_settings.get_path("settings") / "chimol_display.json"
-        except Exception:
-            return None
-    return None
+    from .settings_dir import settings_path  # noqa: PLC0415
+
+    return settings_path("chimol_display.json")
 
 
 def check_for_display_config_update() -> bool:
@@ -518,6 +553,32 @@ def adopt_package_values(names) -> list[str]:
     return adopted
 
 
+def save_user_display_config() -> bool:
+    """Write the live display configuration to the user's settings file.
+
+    What makes a setting *stick*. `set` changed `_DISPLAY_CONFIG` in memory and
+    nothing wrote it, so every preference -- the chrome size most visibly --
+    was forgotten between runs, and the only way to keep one was to edit the
+    JSON by hand.
+
+    Returns
+    -------
+    bool
+        Whether anything was written. False when there is nowhere to write,
+        which is not an error: a read-only home means settings stop persisting,
+        not that the session should fail.
+    """
+    path = get_user_display_config_path()
+    if path is None:
+        return False
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        return False
+    _write_user_display_config(path, _DISPLAY_CONFIG)
+    return True
+
+
 def _write_user_display_config(path, cfg: dict) -> None:
     """Write *cfg* back to the user's copy, stamped with the current version.
 
@@ -562,6 +623,16 @@ def _load_display_config() -> dict:
             "max_width": 260,
             "min_width": 180,
             "full_height": True,
+            # The panel floats over the scene, and the scene's background is
+            # itself a setting, so neither light nor dark text is safe on its
+            # own. A semi-transparent *grey* is: it darkens a white background
+            # and lightens a black one, so one fill covers both ends. The
+            # fourth component is the opacity.
+            "backdrop": True,
+            "backdrop_color": [0.196, 0.196, 0.196, 0.78],
+            "text_color": [1.0, 1.0, 1.0, 1.0],
+            "border_color": [1.0, 1.0, 1.0, 0.31],
+            "corner_radius": 4,
         },
         "cartoon": {
             # PyMOL's `cartoon_side_chain_helper`, off by default as it is
@@ -663,7 +734,7 @@ def _load_display_config() -> dict:
             "max_points": 250000,
             "alpha": 1.0,
             "base_color": [0.8, 0.8, 1.0, 1.0],
-            "px_mode": True,
+            "px_mode": False,
         },
         "surface": {
             # PyMOL's `transparency` is the complement of this; the settings
@@ -687,6 +758,16 @@ def _load_display_config() -> dict:
             "color_mode": "ao_gray",
             "base_color": [0.85, 0.85, 0.92, 1.0],
             # 0.5 A is PyMOL's `surface_normal`, i.e. `surface_quality 0`.
+            # How the surface is computed, and therefore what it costs.
+            # `splat` needs no grid at all; the rest set the grid spacing --
+            # see `SURFACE_QUALITY` for the levels and their measurements.
+            "quality": "fast",
+            # The screen-space Gaussian: decay steepness (2 is a soft envelope,
+            # 5 hugs the atoms), the iso level the resolve cuts at, and a
+            # multiplier on the atom radii.
+            "splat_decay": 2.0,
+            "splat_iso": 0.7,
+            "splat_scale": 1.0,
             "grid_spacing": 0.5,
             "iso_value": 0.5,
             "padding": 3.0,
@@ -853,6 +934,9 @@ def _load_display_config() -> dict:
             "width_scale": 2.0,
             "width_reference_radius": 0.25,
             "click_radius_px": 8.0,
+            # What a viewport click selects -- PyMOL's `mouse_selection_mode`,
+            # and the word the block's "Selecting" row shows and cycles.
+            "mouse_selection_mode": "Residues",
         },
         "layout": {
             "root_margins": [4, 4, 4, 4],
@@ -969,7 +1053,13 @@ def _load_display_config() -> dict:
         "label": {
             # PyMOL draws labels in the foreground colour, white on black.
             "color": [1.0, 1.0, 1.0, 1.0],
-            "size": 14.0,
+            # Read by `WgpuRenderer._label_size`. It was read by *nothing* for
+            # a long time -- `paint_labels` hard-coded 10 -- so the number on a
+            # measurement came out smaller than this said and no setting could
+            # change it. 16 rather than 14 because 14 was never what anyone
+            # actually saw, and the size that was on screen was reported as too
+            # small.
+            "size": 16.0,
         },
         "lighting": {
             "light_direction": [0.0, 0.0, 1.0],
@@ -990,11 +1080,6 @@ def _load_display_config() -> dict:
             # the molecule the same way here.
             "field_of_view": 20.0,
             "orthoscopic": False,
-            # Mouse interaction style: "pymol" rotates and pans the object in
-            # the camera view (intuitive, follows the cursor); "chimol"
-            # rotates and pans the camera/plane so the object moves opposite
-            # to the cursor.
-            "mouse_mode": "pymol",
             # Whether stepping a trajectory re-centres the camera on the frame
             # being shown. On for a molecule, where it keeps a structure that
             # wanders across the box in view; off for anything that grows or is
@@ -1007,10 +1092,10 @@ def _load_display_config() -> dict:
         "depth_cue": {
             "enabled": True,
             # Fraction of the fitted depth range at which the cue begins.
-            "start": 0.45,
+            "start": 0.72,
             # PyMOL's `fog`: a density, where a value in (0, 1) pushes the far
             # plane of the cue beyond the scene and 1 or more clamps it to it.
-            "intensity": 1.0,
+            "intensity": 0.55,
         },
         "ray": {
             "ambient": 0.14,

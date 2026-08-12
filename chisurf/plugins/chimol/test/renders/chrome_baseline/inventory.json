@@ -10,10 +10,14 @@
       "button:L",
       "button:S",
       "command:",
+      "eye:",
       "mode:",
       "name:",
-      "splitter:",
-      "stride:"
+      "panel:",
+      "selecting:",
+      "stride:",
+      "window:mouse",
+      "window:objects"
     ],
     "rows": [
       {
@@ -97,6 +101,7 @@
       "button:H",
       "button:L",
       "button:S",
+      "eye:",
       "menu:",
       "menu:align",
       "menu:assign sec. struc.",
@@ -124,6 +129,7 @@
       "menu:zoom",
       "mode:",
       "name:",
+      "panel:",
       "residue:0",
       "residue:1",
       "residue:10",
@@ -168,9 +174,11 @@
       "residue:8",
       "residue:9",
       "scrollbar:",
+      "selecting:",
       "sequence:",
-      "splitter:",
-      "stride:"
+      "stride:",
+      "window:mouse",
+      "window:objects"
     ],
     "rows": [
       {
@@ -222,6 +230,7 @@
       "button:H",
       "button:L",
       "button:S",
+      "eye:",
       "mode:",
       "movie:frame +1",
       "movie:frame -1",
@@ -233,6 +242,7 @@
       "movie:rock",
       "movie:set seq_view, toggle",
       "name:",
+      "panel:",
       "residue:0",
       "residue:1",
       "residue:10",
@@ -277,10 +287,12 @@
       "residue:8",
       "residue:9",
       "scrollbar:",
+      "selecting:",
       "sequence:",
-      "splitter:",
       "stride:",
-      "timeline:"
+      "timeline:",
+      "window:mouse",
+      "window:objects"
     ],
     "rows": [
       {
@@ -332,10 +344,14 @@
       "button:H",
       "button:L",
       "button:S",
+      "eye:",
       "mode:",
       "name:",
-      "splitter:",
-      "stride:"
+      "panel:",
+      "selecting:",
+      "stride:",
+      "window:mouse",
+      "window:objects"
     ],
     "rows": [
       {
@@ -382,8 +398,10 @@
       "button:H",
       "button:L",
       "button:S",
+      "eye:",
       "mode:",
       "name:",
+      "panel:",
       "residue:0",
       "residue:1",
       "residue:10",
@@ -428,9 +446,11 @@
       "residue:8",
       "residue:9",
       "scrollbar:",
+      "selecting:",
       "sequence:",
-      "splitter:",
-      "stride:"
+      "stride:",
+      "window:mouse",
+      "window:objects"
     ],
     "rows": [
       {

@@ -265,29 +265,65 @@ def test_the_info_overlay_is_off_until_it_is_asked_for(window):
     win, _ = window
     assert not win.button_info.isChecked()
     assert not win.viewer._info_visible
-    assert not win.viewer._info_overlay.isVisible()
 
 
-def test_the_info_overlay_sits_in_the_bottom_left(window):
-    """Anchored to the bottom, not the top.
+def test_the_info_panel_is_chrome_not_a_stacked_widget(window):
+    """It is drawn by the GPU with the rest of the chrome.
 
-    The top left is where the sequence strip and the object panel already put
-    text, and a framed structure sits centre-high, so an overlay anchored to the
-    top competes with both. Measured rather than eyeballed: a widget aligned to
-    the wrong edge is invisible to a test that only asks whether it exists.
+    It was a `QPlainTextEdit` stacked on the surface, and a Qt widget cannot see
+    chrome painted *into* the surface -- so it was drawn over the in-viewport
+    prompt, and the fix was a spacer row in the container's layout guessing how
+    tall the prompt was. Now one object lays out both and there is nothing to
+    guess. The guard is that no widget is stacked over the renderer at all.
     """
+    from qtpy import QtWidgets
+
     win, qapp = window
     win.button_info.setChecked(True)
     _settle(win.viewer._container, 900, 600, qapp)
 
-    overlay = win.viewer._info_overlay
-    container = win.viewer._container
-    assert overlay.isVisible()
-
-    geom = overlay.geometry()
-    assert geom.left() <= 1, f"expected the left edge, got x={geom.left()}"
-    below = container.height() - geom.bottom()
-    assert below <= 2, f"expected the bottom edge, {below}px of gap below it"
-    assert geom.top() > container.height() // 2, (
-        "the overlay should hang from the bottom, not fill the viewport"
+    assert not hasattr(win.viewer, "_info_overlay"), (
+        "the info panel is a stacked Qt widget again"
     )
+    container = win.viewer._container
+    renderer = win.viewer._renderer.widget()
+    stacked = [
+        child for child in container.children()
+        if isinstance(child, QtWidgets.QWidget) and child is not renderer
+    ]
+    assert not stacked, f"widgets stacked over the scene: {stacked}"
+
+
+def test_the_info_panel_sits_in_the_bottom_left_above_the_prompt(window):
+    """Anchored to the bottom, and clear of the prompt that shares the corner.
+
+    The top left is where the sequence strip and the object panel already put
+    text, and a framed structure sits centre-high, so a panel anchored to the
+    top competes with both. Measured rather than eyeballed.
+    """
+    win, qapp = window
+    win.button_info.setChecked(True)
+    win.viewer.set_system_info_text("System: coordinates\nAtoms: 1363")
+    _settle(win.viewer._container, 900, 600, qapp)
+
+    from chisurf.plugins.chimol.chimol.renderer.gui_overlay import (
+        refresh_gui_state,
+    )
+
+    gui = win.viewer._renderer._internal_gui
+    # The two calls the renderer makes to build its chrome: the panel's text is
+    # pulled from the viewer at paint time, like the sequence colours.
+    refresh_gui_state(gui, win.viewer)
+    gui.layout(win.viewer._renderer.width(), win.viewer._renderer.height())
+    rect = gui._info_rect
+    assert rect.w > 0 and rect.h > 0, "the panel was not laid out"
+    assert rect.x <= gui.MARGIN + 1, f"expected the left edge, got x={rect.x}"
+
+    bottom_of_panel = rect.y + rect.h
+    top_of_prompt = min(gui._cmd_log_rect.y or gui.command_rect().y,
+                        gui.command_rect().y)
+    assert bottom_of_panel <= top_of_prompt, (
+        f"the panel reaches {bottom_of_panel} and the prompt starts at "
+        f"{top_of_prompt}"
+    )
+    assert rect.y > gui.sequence_height(), "the panel is under the strip"

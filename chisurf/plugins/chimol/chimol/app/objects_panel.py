@@ -21,7 +21,7 @@ from qtpy import QtCore, QtGui, QtWidgets
 
 from ..cmd.argparse2 import split_statements
 from ..colors import _OBJECT_ID_ROLE
-from ..object_menus import OBJECT_MENUS, MenuEntry
+from ..object_menus import OBJECT_MENUS, MenuEntry, quote_selection_name
 
 #: PyMOL's panel palette, read off its internal GUI.
 _PANEL_BG = "#000000"
@@ -484,7 +484,9 @@ class ObjectsDock(QtCore.QObject):
             if text is not None:
                 line = line.replace("{text}", text)
             for target_name in self._targets_for(line, name):
-                self._run_command(line.replace("{sele}", target_name))
+                self._run_command(
+                    line.replace("{sele}", quote_selection_name(target_name))
+                )
 
     #: Commands that take a group name themselves, so must not be expanded into
     #: one call per member. `group kinases, toggle` run per member would toggle

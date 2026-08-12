@@ -173,6 +173,10 @@ class TextureSampleType:
 
     float = "float"
     depth = "depth"
+    #: A float texture that cannot be *filtered*. `r32float` is the case:
+    #: linear sampling of it is optional in WebGPU, so binding one as
+    #: ``float`` is a validation error rather than a soft fallback to nearest.
+    unfilterable_float = "unfilterable-float"
 
 
 class TextureUsage:

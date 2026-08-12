@@ -38,7 +38,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from ..colors import CHAIN_COLOR_CYCLE, _build_element_color_array
+from ..colors import CHAIN_COLOR_CYCLE, _build_element_color_array, as_rgba
 from .base import BaseCmd
 from .registry import command
 
@@ -247,6 +247,76 @@ class PresetMixin(BaseCmd):
         for chain in chains:
             self._run_preset_command(
                 f"spectrum count, rainbow, chain {chain} and ({sel})"
+            )
+
+    @command("cnc")
+    def cnc(self, sel: str = "all") -> None:
+        """Colour non-carbon atoms by element -- PyMOL's ``util.cnc``.
+
+        The first entry of PyMOL's **C > by element** menu, and the one the
+        report was about: carbon keeps whatever colour it has, so a cartoon
+        stays the colour you gave it and only N/O/S pick up CPK. The whole
+        point is that it reaches a *selection* -- the menu used to issue
+        ``color byelement``, a colour **mode**, which belongs to an object and
+        repainted the entire molecule.
+
+        Parameters
+        ----------
+        sel : str, optional
+            Atoms to colour. Defaults to everything.
+        """
+        self._color_by_element(sel or "all")
+
+    @command("cba")
+    def cba(self, carbon: str = "green", sel: str = "all") -> None:
+        """Colour by atom, with a chosen carbon -- PyMOL's ``util.cba``.
+
+        Parameters
+        ----------
+        carbon : str, optional
+            Colour for carbon; every other element takes its CPK colour.
+        sel : str, optional
+            Atoms to colour.
+        """
+        self._color_by_element(sel or "all", carbon=str(carbon).strip() or "green")
+
+    @command("cbh")
+    def cbh(self, hydrogen: str = "white", sel: str = "all") -> None:
+        """Colour hydrogens, leaving everything else -- PyMOL's ``util.cbh``.
+
+        PyMOL's "set 6/H" row. Only the hydrogens are touched, which is what
+        makes it useful on a structure that is already coloured.
+
+        Written as per-atom overrides rather than as ``color …, elem H and (…)``
+        for one reason worth keeping: **most crystal structures have no
+        hydrogens at all**, and the delegated spelling then resolved to nothing
+        and reported *"Selection did not resolve to an object"* -- so every one
+        of the eight *set 6/H* menu entries answered with an error on a normal
+        PDB. PyMOL's `util.cbh` does nothing there, quietly, which is right:
+        there was nothing to colour.
+        """
+        _, viewer = self._require_window_and_viewer()
+        if viewer is None:
+            return
+        colour = as_rgba(hydrogen)
+        if colour is None:
+            self._emit_error(f"cbh: unknown color '{hydrogen}'")
+            return
+        for obj_id, _name, mask in self._resolve_selection_to_atom_masks(
+            viewer, sel or "all"
+        ):
+            state = getattr(viewer._objects.get(obj_id), "state", None)
+            atoms = getattr(state, "atoms", None)
+            if atoms is None or "element" not in (atoms.dtype.names or ()):
+                continue
+            elements = np.char.upper(
+                np.char.strip(np.asarray(atoms["element"]).astype(str))
+            )
+            chosen = np.nonzero(np.asarray(mask, dtype=bool) & (elements == "H"))[0]
+            if not chosen.size:
+                continue
+            viewer.set_atom_color_override(
+                chosen, np.tile(colour, (chosen.size, 1)), object_id=obj_id
             )
 
     def _color_by_element(self, sel: str, carbon: str | None = None) -> None:

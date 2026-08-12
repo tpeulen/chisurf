@@ -48,10 +48,17 @@ ENGINE_MODULES = (
     "chimol.cmd",
     "chimol.mouse_modes",
     "chimol.object_menus",
+    "chimol.app.menu_bar",
+    "chimol.app.picking",
+    "chimol.host.app",
     "chimol.host.events",
     "chimol.host.keys",
+    "chimol.host.run",
     "chimol.io.structure",
     "chimol.renderer.base",
+    "chimol.renderer.canvas_base",
+    "chimol.renderer.canvas_view",
+    "chimol.renderer.gui_state",
     "chimol.renderer.camera_state",
     "chimol.renderer.compute",
     "chimol.renderer.depth_cue",
@@ -74,13 +81,22 @@ ENGINE_MODULES = (
 
 #: The host layer: the modules that are *allowed* to import Qt at module scope.
 #:
-#: A **shrinking** list, and the worklist for what is left of the port. Fifteen
-#: modules, thirteen of them ``app/`` panels that draw with Qt widgets what the
+#: A **shrinking** list, and the worklist for what is left of the port. Nine
+#: modules, seven of them ``app/`` panels that draw with Qt widgets what the
 #: in-viewport panel already draws with quads -- so most of this list is closed
 #: by moving those panels into the chrome, not by editing them. The two renderer
 #: entries are the Qt widget and what is left of the image-composited overlay;
 #: the scene builder (``renderer/view.py``) left the list when the viewer stopped
-#: needing a toolkit to exist.
+#: needing a toolkit to exist, and the whole *draw path* left it when
+#: ``renderer/canvas_base.py`` was extracted -- ``wgpu_view`` is now Qt's event
+#: translation and nothing else.
+#:
+#: Five left in the change that made the Qt-free window the default:
+#: ``app/hierarchy_panel.py`` (deleted), ``app/timeline_panel.py`` (deleted --
+#: nothing in the tree referred to it), ``app/volume_panel.py`` (already
+#: toolkit-free), ``app/menu_bar.py`` (the bar's *tables* are plain data; only
+#: installing a ``QMenuBar`` needs Qt) and ``app/picking.py`` (a projection and
+#: an ``argmin``; it imported Qt for one ``isinstance`` against ``QRect``).
 #:
 #: "Imports Qt at module scope" means an *unconditional* import. A guarded
 #: ``try: from qtpy import ... except ImportError:`` with a stand-in behind it
@@ -93,16 +109,11 @@ ENGINE_MODULES = (
 HOSTS = frozenset({
     "app/controls_panel.py",
     "app/demos.py",
-    "app/hierarchy_panel.py",
-    "app/menu_bar.py",
     "app/molview_main_window.py",
     "app/objects_panel.py",
-    "app/picking.py",
     "app/rmf_panel.py",
     "app/sequence_dock.py",
     "app/settings_table.py",
-    "app/timeline_panel.py",
-    "app/volume_panel.py",
     "renderer/gui_overlay.py",
     "renderer/wgpu_view.py",
 })
@@ -172,6 +183,183 @@ def test_the_engine_imports_without_a_gui_toolkit():
         "these engine modules need a GUI toolkit to import:\n"
         + (result.stdout + result.stderr)[-3000:]
     )
+
+
+#: The Qt-blocking preamble, shared by every subprocess below.
+#:
+#: It asserts the blocker *blocks* before anything else runs. The first version
+#: of this guard used ``find_module``/``load_module``, **removed in Python
+#: 3.12**, so it was silently skipped and every module "passed" with Qt fully
+#: available -- which is the failure mode a portability guard cannot afford,
+#: because it reports success either way.
+_BLOCK_QT = """
+import sys
+
+_BLOCKED = {"qtpy", "PyQt5", "PyQt6", "PySide2", "PySide6"}
+
+
+class _BlockQt:
+    def find_spec(self, fullname, path=None, target=None):
+        if fullname.split(".")[0] in _BLOCKED:
+            raise ImportError("Qt is blocked: " + fullname)
+        return None
+
+
+sys.meta_path.insert(0, _BlockQt())
+
+try:
+    import qtpy
+except ImportError:
+    pass
+else:
+    raise SystemExit("the Qt blocker is a no-op; this guard proves nothing")
+"""
+
+
+def _run_without_qt(script: str) -> subprocess.CompletedProcess:
+    """Run *script* in a subprocess where Qt cannot be imported.
+
+    Parameters
+    ----------
+    script : str
+        Python source, appended to :data:`_BLOCK_QT`.
+
+    Returns
+    -------
+    subprocess.CompletedProcess
+    """
+    env = dict(os.environ)
+    env["PYTHONPATH"] = os.pathsep.join(
+        [str(_ROOT / "chisurf" / "plugins" / "chimol"), env.get("PYTHONPATH", "")]
+    ).rstrip(os.pathsep)
+    # The offscreen canvas, forced: `rendercanvas.auto`'s last resort is to
+    # `import PyQt5` and pick its Qt backend if that succeeds, so "automatic"
+    # means Qt on any machine that has it. chimol never asks `auto` for exactly
+    # that reason; this pins the backend so the test does not depend on whether
+    # a windowing library happens to be installed.
+    env["CHIMOL_CANVAS"] = "offscreen"
+    return subprocess.run(
+        [sys.executable, "-c", _BLOCK_QT + textwrap.dedent(script)],
+        capture_output=True, text=True, cwd=str(_ROOT), env=env,
+    )
+
+
+def test_the_default_entry_path_runs_without_a_gui_toolkit():
+    """``chimol``'s default run mode builds a viewer and renders a frame.
+
+    Importing the modules is not the claim; *running* them is. This drives
+    :class:`chimol.host.run.ChimolApp` end to end in a process where Qt raises
+    on import -- the viewer, the command layer, the in-viewport panel and one
+    real frame through the WGSL renderer -- because every previous version of
+    "chimol without Qt" imported cleanly and then reached for a toolkit at the
+    first click, the first menu or the first frame.
+
+    Skipped where there is no WebGPU adapter, which is the one thing a build
+    machine can legitimately lack.
+    """
+    result = _run_without_qt(
+        """
+        from chimol.renderer.canvas_view import is_available
+
+        if not is_available():
+            print("SKIP: no WebGPU adapter")
+            raise SystemExit(0)
+
+        from chimol.host.run import ChimolApp
+        from chimol.web.demo import demo_pdb_path
+
+        app = ChimolApp(size=(640, 480))
+        # T4 lysozyme, the structure this project uses for every protein
+        # rendering check, and through the same command a user would type.
+        app.cmd.do("load " + demo_pdb_path())
+        app.cmd.do("as cartoon")
+
+        image = app.draw_frame()
+        assert image is not None, "the offscreen canvas rendered nothing"
+        assert image.shape[:2] == (480, 640), image.shape
+        # A frame with something in it. An all-black image is what a viewer
+        # that built a scene and drew none of it returns, and it is the exact
+        # failure a "did it run?" test otherwise passes.
+        assert float(image[..., :3].mean()) > 1.0, "the frame is empty"
+
+        # The panel is chrome the engine builds as quads; a frame without it is
+        # a viewer with no way to load anything into it.
+        quads = app.renderer._chrome_quads()
+        assert quads is not None and len(quads), "no chrome in the frame"
+
+        assert app.viewer.list_objects(), "the command layer loaded nothing"
+
+        # A click, all the way through: the press/release pair is what the
+        # window's own pointer handlers call, and picking used to be gated on
+        # there being a QWidget.
+        from chimol.host.events import LEFT_BUTTON
+
+        app.renderer.click(320.0, 240.0, LEFT_BUTTON)
+
+        assert "qtpy" not in sys.modules, "something imported Qt after all"
+        app.close()
+        print("ok")
+        """
+    )
+    assert result.returncode == 0, (
+        "the default entry path needs a GUI toolkit:\n"
+        + (result.stdout + result.stderr)[-4000:]
+    )
+    if "SKIP" in result.stdout:
+        pytest.skip(result.stdout.strip())
+    assert "ok" in result.stdout
+
+
+def test_the_real_module_entry_point_runs_without_a_gui_toolkit():
+    """``python -m chisurf.plugins.chimol`` opens chimol with no toolkit.
+
+    The **real** dotted path, through ``runpy``, and that is the whole point of
+    this test rather than the one above it. ``python -m <package>`` executes the
+    package's ``__init__`` before its ``__main__``, so a single eager
+    ``from ...app import MolViewPluginWindow`` at plugin-root scope imports Qt
+    before the Qt-free entry point is ever reached -- which is exactly what
+    happened, and which importing bare ``chimol.*`` off ``PYTHONPATH`` cannot
+    see, because that never runs the plugin-root ``__init__`` at all.
+
+    ``--check`` builds the viewer, the command layer and the panel, renders one
+    frame and exits, so what is asserted is a run and not an import.
+    """
+    result = _run_without_qt(
+        """
+        import runpy
+
+        sys.argv = ["chimol", "--check", "--size", "320x240"]
+        try:
+            runpy.run_module("chisurf.plugins.chimol", run_name="__main__")
+        except SystemExit as exc:
+            code = int(exc.code or 0)
+        else:
+            code = 0
+        assert code == 0, f"the entry point exited {code}"
+        assert "qtpy" not in sys.modules, "the default entry point imported Qt"
+        print("ok")
+        """
+    )
+    assert result.returncode == 0, (
+        "`python -m chisurf.plugins.chimol` needs a GUI toolkit:\n"
+        + (result.stdout + result.stderr)[-4000:]
+    )
+    assert "ok" in result.stdout
+
+
+def test_qt_is_opt_in_at_the_entry_point():
+    """``--qt`` is the only thing that reaches the Qt window.
+
+    A source-level check, deliberately: the Qt branch cannot be *run* in the
+    subprocess that proves the other one is toolkit-free, and what has to hold
+    is a property of the dispatch rather than of a run -- that the default
+    branch names the Qt-free host and Qt is behind a flag.
+    """
+    source = (_CHIMOL / "__main__.py").read_text(encoding="utf-8")
+    assert "from .host.run import main" in source, (
+        "the default branch no longer reaches the Qt-free host"
+    )
+    assert '"--qt" in args' in source, "Qt is no longer opt-in"
 
 
 def test_only_the_native_backend_imports_the_gpu_binding():

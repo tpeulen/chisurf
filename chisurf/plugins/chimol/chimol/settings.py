@@ -186,15 +186,29 @@ def _spacing_quality(spacing: Any) -> int:
 # is the path that was verified against the reading code.
 _SPECS: tuple[SettingSpec, ...] = (
     # -- Camera / viewport --------------------------------------------------
-    _spec("internal_gui_scale", "layout.ui_scale", "float", 0.85,
+    _spec("internal_gui_scale", "layout.ui_scale", "float", 1.0,
           "How big the in-viewport chrome draws: text and the rows around it "
           "together. 1.0 is the size the glyph atlas was baked at."),
+    _spec("window_snap", "layout.window_snap", "bool", True,
+          "Snap in-viewport windows to the viewport's sides and corners while "
+          "they are dragged, and anchor them there so they follow the edge "
+          "when the viewport resizes. Off means windows go exactly where "
+          "they are dropped."),
+    _spec("show_menubar", "layout.show_menubar", "bool", True,
+          "Draw the in-viewport menu bar. Off, with the other chrome "
+          "settings off, leaves a bare 3-D viewer -- what an embedded or "
+          "kiosk view wants."),
+    _spec("show_toolbar", "layout.show_toolbar", "bool", True,
+          "Draw the in-viewport toolbar row under the menu bar."),
+    _spec("show_command_line", "layout.show_command_line", "bool", True,
+          "Draw the in-viewport command prompt along the bottom."),
+    _spec("show_status", "layout.show_status", "bool", True,
+          "Draw the status line (object, atom and residue counts) in the "
+          "bottom-right of the viewport."),
     _spec("field_of_view", "camera.field_of_view", "float", 20.0,
           "Vertical field of view in degrees."),
     _spec("orthoscopic", "camera.orthoscopic", "bool", False,
           "Use an orthoscopic (parallel) projection instead of perspective."),
-    _spec("mouse_mode", "camera.mouse_mode", "str", "pymol",
-          "Drag behaviour: 'pymol' moves the object, 'chimol' moves the camera."),
     _spec("movie_recenter", "camera.recenter_on_frame", "bool", True,
           "Re-centre the camera on each frame as a trajectory plays. Keeps a "
           "molecule that wanders across the box in view; turn it off for a "
@@ -234,6 +248,39 @@ _SPECS: tuple[SettingSpec, ...] = (
     # -- Background ---------------------------------------------------------
     _spec("bg_rgb", "background", "color", "k",
           "Background colour, as a colour name or an RGB triplet."),
+
+    # -- Labels -------------------------------------------------------------
+    _spec("label_size", "label.size", "float", 16.0,
+          "Point size of 3-D labels, including the number on a measurement."),
+    _spec("label_color", "label.color", "color", [1.0, 1.0, 1.0, 1.0],
+          "Colour of 3-D labels. A measurement's own colour wins for its "
+          "number, which is PyMOL's behaviour."),
+
+    # -- Selection ----------------------------------------------------------
+    _spec("mouse_selection_mode", "selection.mouse_selection_mode", "str",
+          "Residues",
+          "What a click in the viewport selects: Atoms, Residues, Chains or "
+          "Objects. PyMOL's numbering (0-5) is accepted; its Segments and "
+          "Molecules fold onto Chains and Objects, which are the levels chimol "
+          "can honour."),
+
+    # -- Info overlay -------------------------------------------------------
+    # The panel floats over the scene, so it carries its own backdrop; a
+    # semi-transparent grey is the one fill that stays readable against a white
+    # background and a black one alike.
+    _spec("info_backdrop", "info_overlay.backdrop", "bool", True,
+          "Draw a backdrop behind the system-info panel. Off leaves the text "
+          "directly on the scene, which is unreadable over a pale structure."),
+    _spec("info_backdrop_color", "info_overlay.backdrop_color", "color",
+          [0.196, 0.196, 0.196, 0.78],
+          "Info-panel backdrop colour. The fourth component is its opacity, so "
+          "0.78 is a grey the scene still shows through."),
+    _spec("info_text_color", "info_overlay.text_color", "color",
+          [1.0, 1.0, 1.0, 1.0],
+          "Info-panel text colour."),
+    _spec("info_border_color", "info_overlay.border_color", "color",
+          [1.0, 1.0, 1.0, 0.31],
+          "Info-panel border colour; the fourth component is its opacity."),
 
     # -- Cartoon ------------------------------------------------------------
     _spec("cartoon_sampling", "cartoon.cartoon_sampling", "int", 7,
@@ -376,6 +423,8 @@ _SPECS: tuple[SettingSpec, ...] = (
           "Point separation at surface_quality -1 and -2."),
     _spec("surface_miserable", "surface.miserable", "float", 2.0,
           "Point separation at surface_quality -3 and below."),
+    _spec("surface_mode", "surface.quality", "str", "splat",
+          "Surface evaluation mode: splat (GPU screen-space), fast, balanced, fine."),
 
     # -- Raytracing / lighting ---------------------------------------------
     _spec("ray_shadow", "ray.shadow", "bool", True,
@@ -403,9 +452,9 @@ _SPECS: tuple[SettingSpec, ...] = (
     _spec("depth_cue", "depth_cue.enabled", "bool", True,
           "Fade distant geometry into the background colour, in the viewport "
           "and in a traced image alike."),
-    _spec("fog_start", "depth_cue.start", "float", 0.45,
+    _spec("fog_start", "depth_cue.start", "float", 0.72,
           "Fraction of the depth range at which the cue begins."),
-    _spec("fog", "depth_cue.intensity", "float", 1.0,
+    _spec("fog", "depth_cue.intensity", "float", 0.55,
           "Depth-cue density: a value in (0, 1) pushes the far end of the cue "
           "beyond the scene, 1 or more clamps it to it."),
 

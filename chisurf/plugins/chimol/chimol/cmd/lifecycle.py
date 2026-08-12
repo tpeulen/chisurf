@@ -11,6 +11,34 @@ class LifecycleMixin(BaseCmd):
     """Object and session lifecycle commands."""
 
 
+    @command("activate")
+    def activate(self, name: str = "") -> None:
+        """Make an object the active one (``activate name``).
+
+        What a click on a name in the object list does now that visibility
+        moved onto the eye: the active object is the one the density panel,
+        the hierarchy and the per-object commands act on by default.
+        """
+        _window, viewer = self._require_window_and_viewer()
+        if viewer is None:
+            return
+        wanted = self._unquote_name(name).strip()
+        if not wanted:
+            self._emit_error("Usage: activate <object>")
+            return
+        from .loader import LoaderMixin
+
+        object_id = LoaderMixin._object_id_for_name(viewer, wanted)
+        if object_id is None:
+            self._emit_error(f"activate: no object called {wanted!r}")
+            return
+        try:
+            viewer.set_active_object(str(object_id))
+        except Exception as exc:
+            self._emit_error(f"activate: {exc}")
+            return
+        self._emit_message(f"activate: {wanted} is the active object")
+
     @command("create")
     def create(self, name: str = "", sel: Selection = "") -> None:
         """Make a new object from a selection (PyMOL ``create name, selection``).

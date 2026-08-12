@@ -199,18 +199,28 @@ def test_every_demo_has_a_menu_entry(window):
     assert any("Edit" in label for label in labels)
 
 
-def test_the_demo_menu_survives_the_menu_bar_rebuild(window):
-    """`build_menu_bar` clears the bar, so order of construction matters."""
+def test_the_demo_menu_comes_from_the_menu_bar_and_appears_once(window):
+    """It used to be bolted on after `build_menu_bar`, which starts with
+    `bar.clear()` -- so the order of construction decided whether the Demo menu
+    existed at all, and this test guarded that order.
+
+    It is part of `MENU_BAR` now, generated from the same `DEMOS` table, so it
+    survives a rebuild by construction and the separate `build_demo_menu`
+    builder is gone: an unused builder that silently adds a *second* Demo menu
+    is a trap, not a spare.
+    """
     win, _shared, _errors, qapp = window
-    from chisurf.plugins.chimol.chimol.app.demos import build_demo_menu
+    from chisurf.plugins.chimol.chimol.app import demos
+
+    assert not hasattr(demos, "build_demo_menu"), (
+        "the bolted-on demo menu builder is back"
+    )
 
     win._install_menu_bar()
-
-    build_demo_menu(win, win.menuBar())
     for _ in range(5):
         qapp.processEvents()
-    titles = [action.text() for action in win.menuBar().actions()]
-    assert sum("Demo" in title for title in titles) == 1, titles
+    titles = [action.text().replace("&", "") for action in win.menuBar().actions()]
+    assert titles.count("Demo") == 1, titles
 
 
 def test_script_text_runs_line_by_line(window):

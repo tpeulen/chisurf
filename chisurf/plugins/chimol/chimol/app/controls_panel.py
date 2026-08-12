@@ -27,12 +27,6 @@ _BUTTON_DEFAULTS: dict[str, dict[str, Any]] = {
         "text": "\u2699\ufe0f Cfg",
         "tool_tip": "Open Chimol display configuration",
     },
-    "mouse_mode": {
-        "text": "\U0001f5b1\ufe0f PyMOL",
-        "tool_tip": "Toggle PyMOL/Chimol mouse interaction mode (rotate + pan)",
-        "checkable": True,
-        "checked": True,
-    },
     "color": {
         "text": "\U0001f3a8 AA",
         "tool_tip": "Color amino acids by residue type",
@@ -98,7 +92,6 @@ class ControlsToolbar(QtCore.QObject):
         self.button_plane = self._add_button("plane", _cfg("plane"))
         self.button_surface = self._add_button("surface", _cfg("surface"))
         self.button_display_cfg = self._add_button("display_cfg", _cfg("display_cfg"))
-        self.button_mouse_mode = self._add_button("mouse_mode", _cfg("mouse_mode"))
         self._toolbar.addSeparator()
 
         # ── Colour group ──────────────────────────────────────────────

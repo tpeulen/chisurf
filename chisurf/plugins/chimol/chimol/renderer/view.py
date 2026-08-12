@@ -64,7 +64,10 @@ from ..geometry import (
     shade_from_atoms,
     unbonded_mask,
 )
+from ..geometry import dust as geometry_dust
+from ..geometry import refine as geometry_refine
 from .base import Renderer
+from .surface_quality import SURFACE_QUALITY, apply_surface_quality, is_splat_quality
 from .chimol_state import (
     _MolViewObjectEntry,
     _MolViewObjectState,
@@ -414,6 +417,41 @@ def _triangle_edges(faces: np.ndarray) -> np.ndarray:
     return edges.astype(np.int32)
 
 
+def _square_mesh_edges(verts: np.ndarray, faces: np.ndarray) -> np.ndarray | None:
+    """The reference tool's *square mesh*: only edges in principal grid planes.
+
+    Drawing every triangle edge of an isosurface is a scribble — tens of
+    thousands of slivers, front and back at once, and the shape disappears
+    into the hatching (the reported "mesh is broken"). The reference viewer's
+    mesh style hides, by default (``square_mesh: True``), every edge that does
+    not lie in a grid plane, leaving the clean net of contour lines where the
+    surface crosses the x, y and z planes. Its test (``squaremesh.cpp``) is
+    exact coordinate equality: a marching-cubes vertex sits on one grid edge,
+    so two vertices share a plane precisely when one of their coordinates is
+    identical — and that identity survives the per-axis step scaling and the
+    origin shift bit-for-bit.
+
+    Returns ``None`` when nothing qualifies — a *rotated* grid breaks the
+    coordinate identity, and hiding every edge would draw no mesh at all; the
+    caller falls back to the full wireframe there.
+    """
+    verts = np.asarray(verts)
+    faces = np.asarray(faces, dtype=np.int64).reshape(-1, 3)
+    if faces.size == 0:
+        return None
+    corners = verts[faces]  # (m, 3 corners, 3 xyz)
+    kept = []
+    for a, b in ((0, 1), (1, 2), (2, 0)):
+        in_plane = (corners[:, a, :] == corners[:, b, :]).any(axis=1)
+        if in_plane.any():
+            kept.append(faces[in_plane][:, (a, b)])
+    if not kept:
+        return None
+    edges = np.sort(np.concatenate(kept), axis=1)
+    edges = np.unique(edges, axis=0)
+    return edges.astype(np.int32)
+
+
 def _dash_segments(
     pairs: np.ndarray, dash_length: float, gap: float
 ) -> np.ndarray:
@@ -531,6 +569,92 @@ def _negative_lobe_color(rgba):
     if brightest < 0.7:
         inverted = [c / brightest for c in inverted]
     return (inverted[0], inverted[1], inverted[2], rgba[3])
+
+
+#: Voxel budget (millions) for contouring **while a level is being dragged** —
+#: the reference viewer's trade: the surface follows the drag at a coarser
+#: step, and the release redraws it under the full budget. 2 M voxels strides
+#: a 180³ map by 2 and keeps the preview contour well under a frame.
+_VOLUME_PREVIEW_LIMIT_M = 2.0
+
+#: Voxel budget (millions) for the `solid` style. Tighter than the contour
+#: budget because every remaining voxel becomes blended geometry: three
+#: axis-aligned plane stacks over a 100³ grid is already ~2 M triangles before
+#: the transparency mask prunes the empty majority.
+_SOLID_VOXEL_LIMIT_M = 1.0
+
+#: The surface-quality presets, built from the reference viewer's rendering
+#: options (`subdivide_surface` / `subdivision_levels`, `surface_smoothing` /
+#: `smoothing_factor` / `smoothing_iterations`, and the display voxel limit).
+#: The reference exposes the raw options; a small panel wants named settings,
+#: so the option *values* here are exactly its defaults. ``voxel_limit_m``
+#: ``None`` means the ordinary display budget.
+_VOLUME_QUALITY_PRESETS: dict[str, dict] = {
+    # A quarter of the budget: contours stride sooner, everything is snappy.
+    "coarse": dict(voxel_limit_m=4.0, subdivisions=0,
+                   smoothing_iterations=0, smoothing_factor=0.3),
+    # The raw marching-cubes contour, as before.
+    "normal": dict(voxel_limit_m=None, subdivisions=0,
+                   smoothing_iterations=0, smoothing_factor=0.3),
+    # The reference's surface_smoothing defaults: staircase and noise-floor
+    # glitter relax, triangulation unchanged.
+    "smooth": dict(voxel_limit_m=None, subdivisions=0,
+                   smoothing_iterations=2, smoothing_factor=0.3),
+    # Its subdivide_surface on top: four times the triangles, then smoothed.
+    "fine": dict(voxel_limit_m=None, subdivisions=1,
+                 smoothing_iterations=2, smoothing_factor=0.3),
+}
+
+#: Fraction of the volume's depth over which the transfer function's opacity
+#: accumulates to its full value — the reference viewer's
+#: ``transparency_depth`` default. Smaller is denser fog.
+_SOLID_TRANSPARENCY_DEPTH = 0.5
+
+
+def _solid_transfer_points(levels, value_range, fallback_rgba, values=None):
+    """Build the `solid` style's colour map from the histogram markers.
+
+    The reference viewer's image mode reads its transfer function straight off
+    the histogram nodes — value, colour and opacity per node, linearly
+    interpolated between them, transparent below the lowest. A single marker
+    gets the reference's default *shape* (its ``initial_image_levels``): zero
+    opacity at the densest-ten-percent value, 0.8 of the marker's opacity at
+    the marker, full at the maximum. The wide foot is what makes the fog read
+    — a ramp that only starts at the densest one percent colours almost no
+    voxels and the map comes out as a barely-visible wisp, which is how the
+    first version of this looked.
+    """
+    points = []
+    for entry in levels:
+        try:
+            value = float(entry.get("level"))
+        except (TypeError, ValueError):
+            continue
+        rgba = np.asarray(
+            entry.get("color", fallback_rgba), dtype=float
+        ).reshape(-1)
+        if rgba.size < 4:
+            rgba = np.concatenate([rgba, np.ones(4 - rgba.size)])
+        points.append((value, tuple(float(v) for v in rgba[:4])))
+    points.sort(key=lambda point: point[0])
+    if len(points) == 1:
+        value, rgba = points[0]
+        low, high = value_range
+        top = high if high > value else value + 1.0
+        foot = low
+        if values is not None:
+            try:
+                foot = float(np.quantile(values, 0.90))
+            except Exception:
+                foot = low
+        if not foot < value:
+            foot = low if low < value else value - 1.0
+        points = [
+            (foot, (rgba[0], rgba[1], rgba[2], 0.0)),
+            (value, (rgba[0], rgba[1], rgba[2], 0.8 * rgba[3])),
+            (top, rgba),
+        ]
+    return points
 
 
 def _default_volume_levels(grid) -> list[dict]:
@@ -661,6 +785,10 @@ class MolView(WidgetBase):
     _atom_features = _StateField("atom_features")
     _atom_feature_meta = _StateField("atom_feature_meta")
     _residue_ids = _StateField("residue_ids")
+    #: Cached (chain, residue-id) -> residue-index map; see
+    #: `_atom_residue_indices`. Per object, because it is derived from that
+    #: object's atom table, and cleared wherever `_residue_ids` is written.
+    _atom_res_index = _StateField("atom_res_index")
     _residue_names = _StateField("residue_names")
     _residue_oneletter = _StateField("residue_oneletter")
     _residue_chain_ids = _StateField("residue_chain_ids")
@@ -1191,6 +1319,65 @@ class MolView(WidgetBase):
             return np.asarray(raw_center, dtype=float).reshape(3)
         except Exception:
             return None
+
+    def _adopt_scene_frame(
+        self, points, center: np.ndarray, radius: float
+    ) -> tuple[np.ndarray, float]:
+        """Put a newly loaded object into the frame the scene already uses.
+
+        Every object was being centred on **itself**: scene coordinates are
+        ``(xyz - raw_center) * scale``, and each `set_structure` computed its
+        own `raw_center`. Two structures loaded one after the other therefore
+        both landed on the origin, interpenetrating -- which reads as *"fetch on
+        top of another breaks the entire geometry"*, and is why a second
+        structure appeared as torn cartoons through the first.
+
+        PyMOL keeps every object in one world frame and aims the camera at all
+        of them; this is that rule. The **first** object still defines the
+        origin, so nothing changes for the single-object case. Later ones
+        borrow it and land where their own coordinates actually put them,
+        relative to what is already loaded.
+
+        The radius is re-derived about the borrowed centre rather than kept:
+        `_update_view` frames the camera from the largest object radius, and a
+        radius measured about a centre the object no longer uses would clip it.
+
+        Parameters
+        ----------
+        points : array_like
+            The object's raw coordinates, used to re-measure the radius.
+        center, radius
+            What the object computed for itself.
+
+        Returns
+        -------
+        tuple
+            The centre and radius to use.
+        """
+        shared = self._shared_raw_center()
+        if shared is None:
+            return center, radius
+        try:
+            arr = np.asarray(points, dtype=float).reshape(-1, 3)
+            radius = float(np.linalg.norm(arr - shared, axis=1).max())
+        except Exception:
+            logger.debug("chimol: could not re-measure the radius", exc_info=True)
+        return shared, radius
+
+    def _shared_raw_center(self) -> np.ndarray | None:
+        """The world origin the scene is already built around, or ``None``.
+
+        Read from the *other* objects, because the one being loaded is already
+        active and its own `raw_center` is either absent or stale.
+        """
+        active = self.get_active_object_id()
+        for object_id, entry in getattr(self, "_objects", {}).items():
+            if object_id == active:
+                continue
+            centre = getattr(getattr(entry, "state", None), "raw_center", None)
+            if centre is not None:
+                return np.asarray(centre, dtype=float).reshape(3)
+        return None
 
     def object_raw_center(self, object_id: str | None = None) -> np.ndarray | None:
         """Return the Angstrom point an object's scene coordinates are centred on.
@@ -2343,16 +2530,69 @@ class MolView(WidgetBase):
     # Info overlay API
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _info_rgba(value, fallback: tuple[int, int, int, int]) -> tuple:
+        """Return a chrome ``(r, g, b, a)`` 0-255 colour for a config value.
+
+        Accepts the config's float 0-1 RGBA -- what the ``color`` setting kind
+        stores -- as well as 0-255 integers, because a hand-edited
+        ``chimol_display.json`` carries whichever the person writing it reached
+        for. Anything else falls back rather than failing a viewer over a
+        colour.
+        """
+        try:
+            parts = [float(c) for c in value]
+        except Exception:
+            parts = []
+        if len(parts) == 3:
+            parts.append(1.0)
+        if len(parts) != 4:
+            return tuple(fallback)
+        # 0-1 floats and 0-255 integers are told apart by the only thing that
+        # separates them: a component above 1 cannot be a fraction.
+        if any(c > 1.0 for c in parts):
+            parts = [c / 255.0 for c in parts]
+        return tuple(int(round(max(0.0, min(1.0, c)) * 255)) for c in parts)
+
+    def info_overlay_colors(self) -> dict:
+        """The system-info panel's palette, for the chrome that draws it.
+
+        The panel is drawn by `InternalGui`, on the GPU, with everything else
+        in the viewport -- it was a `QPlainTextEdit` stacked on the surface,
+        and a Qt widget cannot see chrome painted *into* the surface, so it
+        covered the in-viewport prompt. What is left here is reading the
+        settings, which have not changed.
+        """
+        cfg = _DISPLAY_CONFIG.get("info_overlay", {}) or {}
+        if bool(cfg.get("backdrop", True)):
+            background = self._info_rgba(cfg.get("backdrop_color"), (50, 50, 50, 199))
+        else:
+            background = (0, 0, 0, 0)
+        return {
+            "background": background,
+            "text": self._info_rgba(cfg.get("text_color"), (255, 255, 255, 255)),
+            "border": self._info_rgba(cfg.get("border_color"), (255, 255, 255, 79)),
+        }
+
     def set_system_info_visible(self, visible: bool) -> None:
+        """Show or hide the system-info panel."""
         self._info_visible = bool(visible)
-        if self._info_overlay is not None:
-            self._info_overlay.setVisible(self._info_visible)
+        self._request_chrome_redraw()
 
     def set_system_info_text(self, text: str) -> None:
+        """Replace what the system-info panel says."""
         self._info_text = str(text)
-        if self._info_overlay is not None:
-            self._info_overlay.setPlainText(self._info_text)
-            self._info_overlay.setVisible(self._info_visible)
+        self._request_chrome_redraw()
+
+    def _request_chrome_redraw(self) -> None:
+        """Repaint the viewport without rebuilding the scene."""
+        renderer = getattr(self, "_renderer", None)
+        update = getattr(renderer, "update", None)
+        if callable(update):
+            try:
+                update()
+            except Exception:
+                pass
 
     def add_coordinates(
         self,
@@ -2393,26 +2633,6 @@ class MolView(WidgetBase):
         finally:
             self._active_object_id = prev
 
-    @staticmethod
-    def _normalize_mouse_mode(mode: Any) -> str:
-        """Return a valid mouse rotation mode string.
-
-        Parameters
-        ----------
-        mode : Any
-            Candidate mode value (typically ``"pymol"`` or ``"chimol"``).
-
-        Returns
-        -------
-        str
-            ``"pymol"`` or ``"chimol"``. Unrecognised values fall back to
-            ``"pymol"``.
-        """
-        mode_str = str(mode).lower().strip()
-        if mode_str == "chimol":
-            return "chimol"
-        return "pymol"
-
     def __init__(
         self,
         parent: QtWidgets.QWidget | None = None,
@@ -2449,7 +2669,22 @@ class MolView(WidgetBase):
         self._keyframes: dict[int, dict] = {}
         self._animation_running: bool = False
         self._animation_timer = None
-        self.selection_mode: str = "Residues"
+        from ..mouse_modes import normalize_selection_level
+
+        #: What a viewport click selects -- PyMOL's `mouse_selection_mode`.
+        #: Read at every click by `handle_mouse_click`; it was a constant for a
+        #: long time, painted in the block's "Selecting" row and consulted by
+        #: nothing, so the row said "Residues" and residues is all there was.
+        self.selection_mode: str = normalize_selection_level(
+            _DISPLAY_CONFIG.get("selection", {}).get(
+                "mouse_selection_mode", "Residues"
+            )
+        )
+        #: Atom indices selected directly, used only at the `Atoms` level. The
+        #: residue list stays the coarse truth everything downstream reads --
+        #: the sequence strip, `sele`, the object panel -- so this is the extra
+        #: precision rather than a second, competing selection.
+        self._selected_atoms: list[int] = []
 
         # No layout without a toolkit: there is nothing to lay out, and the
         # block that would fill it is already guarded on the renderer being a
@@ -2542,8 +2777,15 @@ class MolView(WidgetBase):
         self._bond_pairs = None
 
         self._info_text: str = ""
+        #: Set by the command layer while a wizard is collecting atom picks;
+        #: called with the picked atom index, and a truthy return consumes the
+        #: click. See `handle_mouse_click`.
+        self._wizard_pick = None
+        #: Atoms a wizard has picked and not yet turned into anything, drawn
+        #: with the selection marker. Not part of the selection: see
+        #: `set_pick_markers`.
+        self._pick_markers: list[int] = []
         self._info_visible: bool = False
-        self._info_overlay: QtWidgets.QPlainTextEdit | None = None
 
         # Render backend
         self._renderer: Renderer | None = None
@@ -2583,16 +2825,10 @@ class MolView(WidgetBase):
             clip_wheel_scale = 0.85
         self._camera_clip_wheel_scale = clip_wheel_scale
 
-        self._mouse_mode = self._normalize_mouse_mode(
-            camera_cfg.get("mouse_mode", "pymol")
-        )
-
         # Camera defaults
         self._default_elevation = 20
         self._default_azimuth = 45
         self._scene: Scene | None = None
-
-        info_cfg = _DISPLAY_CONFIG.get("info_overlay", {})
 
         # The backend is chosen here, not assumed. `SceneSink` builds the scene
         # and rasterises nothing, which is what lets scene assembly run without
@@ -2619,29 +2855,6 @@ class MolView(WidgetBase):
             container_layout.setRowStretch(0, 1)
             container_layout.setColumnStretch(0, 1)
 
-            self._info_overlay = QtWidgets.QPlainTextEdit(container)
-            self._info_overlay.setReadOnly(True)
-            max_width = int(info_cfg.get("max_width", 260))
-            min_width = int(info_cfg.get("min_width", 180))
-            self._info_overlay.setMaximumWidth(max_width)
-            self._info_overlay.setMinimumWidth(min_width)
-            self._info_overlay.setSizePolicy(
-                QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.MinimumExpanding
-            )
-            full_height = bool(info_cfg.get("full_height", True))
-            self._info_overlay.setPlainText(self._info_text or "(no system loaded)")
-            style = info_cfg.get(
-                "stylesheet",
-                "background-color: rgba(0, 0, 0, 180);"
-                "color: white;"
-                "border: 1px solid rgba(255, 255, 255, 80);",
-            )
-            self._info_overlay.setStyleSheet(style)
-            self._info_overlay.setFrameStyle(QtWidgets.QFrame.NoFrame)
-            self._info_overlay.setAttribute(QtCore.Qt.WA_TranslucentBackground, True)
-            self._info_overlay.viewport().setAutoFillBackground(False)
-            self._info_overlay.setVisible(self._info_visible)
-
             self._renderer = renderer
             self.view = self._renderer.widget()
             self._container = container
@@ -2663,28 +2876,17 @@ class MolView(WidgetBase):
                     max_near_clip=self._camera_max_near_clip,
                     clip_wheel_scale=self._camera_clip_wheel_scale,
                 )
-            set_mouse_mode = getattr(self._renderer, "set_mouse_mode", None)
-            if callable(set_mouse_mode):
-                set_mouse_mode(self._mouse_mode)
             renderer_widget = self._renderer.widget()
             renderer_widget.setSizePolicy(
                 QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding
             )
+            # Nothing is stacked on the surface any more: the system-info
+            # panel used to be a `QPlainTextEdit` here, and a Qt widget cannot
+            # see chrome painted *into* the surface, so it was drawn over the
+            # in-viewport prompt. It is `InternalGui`'s now -- laid out by the
+            # same object that places the prompt, and drawn by the same GPU
+            # path as the rest of the chrome.
             container_layout.addWidget(renderer_widget, 0, 0)
-            container_layout.addWidget(
-                self._info_overlay,
-                0,
-                0,
-                2 if full_height else 1,
-                1,
-                # Bottom left, not top left: the top left of the viewport is
-                # where the sequence strip and the object panel already put
-                # text, and the molecule is framed centre-high, so an info block
-                # anchored to the top competes with both. The bottom left is the
-                # emptiest corner of a framed structure.
-                alignment=QtCore.Qt.AlignLeft | QtCore.Qt.AlignBottom,
-            )
-            self._info_overlay.raise_()
             layout.addWidget(container, 1)
         else:
             # A windowless backend is still a renderer -- it just has no chrome
@@ -2726,11 +2928,8 @@ class MolView(WidgetBase):
 
     def _on_display_config_changed(self) -> None:
         """Recompute scene objects when display config is reloaded."""
-        try:
-            camera_cfg = _DISPLAY_CONFIG.get("camera", {})
-            self.set_mouse_mode(camera_cfg.get("mouse_mode", "pymol"))
-        except Exception:
-            pass
+        # The info panel's colours are re-read by the chrome each frame, so a
+        # config reload needs nothing here for them.
         if getattr(self, "_coords", None) is not None:
             try:
                 self._update_view()
@@ -2815,6 +3014,7 @@ class MolView(WidgetBase):
                 chain_ids = None
 
             self._residue_ids = res_ids
+            self._atom_res_index = None
             self._residue_names = res_names
             self._residue_oneletter = _three_to_one_array(res_names)
             self._residue_chain_ids = chain_ids
@@ -2825,8 +3025,12 @@ class MolView(WidgetBase):
             # otherwise from the CA trace, then center and scale geometry.
             if self._all_atom_coords is not None:
                 center, radius = _compute_center_radius(self._all_atom_coords)
+                center, radius = self._adopt_scene_frame(
+                    self._all_atom_coords, center, radius
+                )
             else:
                 center, radius = _compute_center_radius(coords_arr)
+                center, radius = self._adopt_scene_frame(coords_arr, center, radius)
 
             scale = float(self._scale_factor)
             coords_arr = (coords_arr - center) * scale
@@ -3015,6 +3219,7 @@ class MolView(WidgetBase):
         raw_all = arr.copy()
 
         center, radius = _compute_center_radius(arr)
+        center, radius = self._adopt_scene_frame(arr, center, radius)
         scale = float(self._scale_factor)
         arr = (arr - center) * scale
 
@@ -3090,6 +3295,7 @@ class MolView(WidgetBase):
         if trace_arr is not None:
             self._coords = (trace_arr - center) * scale
             self._residue_ids = res_ids
+            self._atom_res_index = None
             self._residue_names = res_names
             self._residue_oneletter = _three_to_one_array(res_names)
             self._residue_chain_ids = chain_ids
@@ -3275,6 +3481,7 @@ class MolView(WidgetBase):
 
         flat = arr.reshape(-1, 3)
         center, radius = _compute_center_radius(flat)
+        center, radius = self._adopt_scene_frame(flat, center, radius)
         if share_frame_with:
             borrowed = self.object_raw_center(share_frame_with)
             if borrowed is not None:
@@ -3474,30 +3681,6 @@ class MolView(WidgetBase):
         setter = getattr(renderer, "set_field_of_view", None)
         if callable(setter):
             setter(fov)
-
-    def set_mouse_mode(self, mode: str) -> None:
-        """Set the mouse interaction style.
-
-        Parameters
-        ----------
-        mode : str
-            ``"pymol"`` rotates and pans the object (protein) in the camera
-            view so it appears to follow the cursor (PyMOL-style).
-            ``"chimol"`` rotates and pans the camera / plane, so the object
-            moves opposite to the cursor (legacy Chimol style).
-        """
-        self._mouse_mode = self._normalize_mouse_mode(mode)
-        renderer = self._renderer
-        if renderer is None:
-            return
-        try:
-            renderer.set_mouse_mode(self._mouse_mode)
-        except Exception:
-            pass
-
-    def get_mouse_mode(self) -> str:
-        """Return the current left-drag rotation style."""
-        return self._mouse_mode
 
     def _framing_radius(self, complete: bool = False) -> float:
         """Radius the camera should fit, over whichever coordinates we have.
@@ -4597,6 +4780,25 @@ class MolView(WidgetBase):
         if self._coords is not None:
             self._update_view()
 
+    def _pick_surface(self):
+        """What screen-space picking projects through.
+
+        Returns
+        -------
+        object or None
+            The renderer, when it can project. This used to be ``self.view`` --
+            the *Qt widget* -- and the gate was "is there a widget?", which is
+            the wrong question twice over: a widget that cannot project is
+            useless to a picker, and a windowless backend that can project is
+            perfectly good. It also silently disabled every click in the
+            Qt-free host, which has a renderer, a camera and a mouse but no
+            ``QWidget`` anywhere.
+        """
+        renderer = self._renderer
+        if renderer is None:
+            return None
+        return renderer if callable(getattr(renderer, "project_to_screen", None)) else None
+
     def handle_key_event(self, ev: QtGui.QKeyEvent) -> bool:  # type: ignore[name-defined]
         """Handle keyboard shortcuts for basic viewer controls.
 
@@ -4659,7 +4861,7 @@ class MolView(WidgetBase):
         # top of the projection below raising. Two independent reasons the
         # viewport could not select anything. What actually has to hold is that
         # there is a widget able to project.
-        if self._coords is not None and self.view is not None:
+        if self._coords is not None and self._pick_surface() is not None:
             picking_mod = _get_picking_module()
             try:
                 sel_cfg = _DISPLAY_CONFIG.get("selection", {})
@@ -4682,7 +4884,7 @@ class MolView(WidgetBase):
                 try:
                     picked_atom_idx = picking_mod.pick_atom_from_click(
                         self._all_atom_coords,
-                        self.view,
+                        self._pick_surface(),
                         ev,
                         radius_px,
                         # PyMOL's `mask`: these atoms are not selectable, which
@@ -4692,16 +4894,29 @@ class MolView(WidgetBase):
                 except Exception:
                     picked_atom_idx = None
 
+            # A wizard that collects atoms -- the measurement one -- gets the
+            # pick before the selection does, and a truthy return means it
+            # consumed the click. The hook is a plain callable rather than a
+            # wizard reference on purpose: this class knows nothing about
+            # wizards, and clicking to measure must not also toggle the residue
+            # in and out of `sele`, which is what PyMOL's wizard does too.
+            if picked_atom_idx is not None:
+                hook = getattr(self, "_wizard_pick", None)
+                if callable(hook):
+                    try:
+                        consumed = bool(hook(int(picked_atom_idx)))
+                    except Exception:
+                        consumed = False
+                    if consumed:
+                        return
+
             if picked_atom_idx is not None:
                 atom_indices = [picked_atom_idx]
-                if self._all_atom_res_ids is not None and self._residue_ids is not None:
-                    try:
-                        residue_id = int(self._all_atom_res_ids[picked_atom_idx])
-                        matches = np.where(self._residue_ids == residue_id)[0]
-                        if len(matches) > 0:
-                            residue_indices = [int(matches[0])]
-                    except Exception:
-                        residue_indices = []
+                # The selection *level* decides how far the pick spreads --
+                # PyMOL's `mouse_selection_mode`, the word in the block's
+                # "Selecting" row. `Atoms` keeps the pick itself; the coarser
+                # levels grow it to the residue, the chain or the object.
+                residue_indices = self._residues_for_pick(picked_atom_idx)
             # No atom picked. PyMOL's default left click is `+/-`, which toggles
             # the *picked* residue -- with nothing picked there is nothing to
             # toggle, and PyMOL deactivates the selection instead ("left-clicking
@@ -4760,10 +4975,228 @@ class MolView(WidgetBase):
             "-box": "subtract",
         }.get(action, "toggle")
         try:
+            if getattr(self, "selection_mode", "Residues") == "Atoms":
+                # The click's operation applies to the *atoms*; the residue
+                # list is then **set** to whatever those atoms occupy. It
+                # cannot take the operation as well -- toggling the last
+                # selected atom out of a residue has to take the residue with
+                # it, and a toggle on the residue list would put it back.
+                self._apply_atom_selection(atom_indices, mode=mode)
+                self._apply_selection_indices(
+                    self._residues_holding_selected_atoms(residue_indices),
+                    mods,
+                    mode="set",
+                )
+                self.refresh_selection_highlight()
+                return
             # Redraws itself when the selection actually changed.
             self._apply_selection_indices(residue_indices, mods, mode=mode)
         except Exception:
             pass
+
+    def _residues_holding_selected_atoms(self, fallback) -> list[int]:
+        """Residue indices the atom-level selection currently touches.
+
+        The residue list has to be *set* to these rather than merged with the
+        click, because taking the last selected atom out of a residue has to
+        take the residue out too -- and the click's own operation, applied to
+        the residue list, would put it back.
+        """
+        chosen = getattr(self, "_selected_atoms", None)
+        if not chosen:
+            return []
+        per_atom = self._atom_residue_indices()
+        if per_atom is None:
+            return list(fallback)
+        try:
+            hit = np.unique(per_atom[np.asarray(chosen, dtype=int)])
+            return [int(i) for i in hit if i >= 0]
+        except Exception:
+            return list(fallback)
+
+    def set_selection_level(self, level: str) -> None:
+        """Set what a viewport click selects. PyMOL's ``mouse_selection_mode``.
+
+        Parameters
+        ----------
+        level : str
+            ``"Atoms"``, ``"Residues"``, ``"Chains"`` or ``"Objects"``; PyMOL's
+            numbering is accepted too. Anything else falls back to
+            ``"Residues"``.
+        """
+        from ..mouse_modes import normalize_selection_level
+
+        self.selection_mode = normalize_selection_level(level)
+        # Atom-level marks mean nothing at a coarser level, and leaving them
+        # behind would draw a selection the residue list does not agree with.
+        if self.selection_mode != "Atoms" and self._selected_atoms:
+            self._selected_atoms = []
+            try:
+                self.refresh_selection_highlight()
+            except Exception:
+                pass
+
+    def _atom_residue_indices(self) -> np.ndarray | None:
+        """Index into ``_residue_ids`` for each atom, keyed on chain *and* id.
+
+        A residue id is **not unique across chains** -- 1RTD has eight chains
+        numbering from 1 -- so matching atoms to a residue on ``res_id`` alone
+        pulls in every chain's copy. Measured on 1RTD: selecting one residue
+        marked 104 atoms rather than 13, and one picked *atom* mapped back to
+        eight residues. The chain is the missing half of the key, and
+        ``_residue_chain_ids`` carries it alongside ``_residue_ids``.
+
+        Returns ``None`` when the object has no residue table, or when an atom
+        cannot be placed -- callers keep their id-only behaviour then, which is
+        right for a single-chain object where the two agree anyway.
+        """
+        cached = self._atom_res_index
+        if cached is not None:
+            return cached
+
+        res_ids = self._all_atom_res_ids
+        residue_ids = self._residue_ids
+        if res_ids is None or residue_ids is None:
+            return None
+        try:
+            atom_res = np.asarray(res_ids, dtype=np.int64)
+            res_key = np.asarray(residue_ids, dtype=np.int64)
+        except Exception:
+            return None
+
+        atom_chains = None
+        atoms = self._atom_rows_of_object()
+        if atoms is not None and "chain" in (atoms.dtype.names or ()):
+            atom_chains = np.asarray(atoms["chain"]).astype(str)
+        res_chains = getattr(self, "_residue_chain_ids", None)
+
+        if atom_chains is not None and res_chains is not None:
+            try:
+                res_chains = np.asarray(res_chains).astype(str)
+                if len(atom_chains) == len(atom_res) and len(res_chains) == len(res_key):
+                    # One integer key per (chain, residue) pair, so the lookup
+                    # stays a searchsorted rather than a Python dict over
+                    # tens of thousands of atoms.
+                    codes, inverse = np.unique(
+                        np.concatenate([atom_chains, res_chains]),
+                        return_inverse=True,
+                    )
+                    span = int(max(atom_res.max(), res_key.max())) + 1
+                    atom_key = inverse[: len(atom_chains)] * span + atom_res
+                    res_full = inverse[len(atom_chains):] * span + res_key
+                else:
+                    atom_key, res_full = atom_res, res_key
+            except Exception:
+                atom_key, res_full = atom_res, res_key
+        else:
+            atom_key, res_full = atom_res, res_key
+
+        try:
+            order = np.argsort(res_full, kind="stable")
+            sorted_keys = res_full[order]
+            slot = np.searchsorted(sorted_keys, atom_key)
+            slot = np.clip(slot, 0, len(sorted_keys) - 1)
+            out = order[slot]
+            # An atom whose residue is not in the table -- a ligand where the
+            # trace is protein-only -- must not silently borrow its neighbour's.
+            out = np.where(sorted_keys[slot] == atom_key, out, -1)
+            # Cached: this is O(n log n) over *every* atom and was recomputed on
+            # every selection refresh and every pick. On a 234k-atom integrative
+            # model that is a per-click cost, and it cannot change without the
+            # structure changing -- which is where it is cleared.
+            result = out.astype(int)
+            self._atom_res_index = result
+            return result
+        except Exception:
+            return None
+
+    def _atom_rows_of_object(self) -> np.ndarray | None:
+        """The active object's atom table, or ``None`` when it has none."""
+        entry = self._objects.get(self.get_active_object_id())
+        atoms = getattr(getattr(entry, "state", None), "atoms", None)
+        if atoms is None or not len(atoms):
+            return None
+        return atoms
+
+    def _residues_for_pick(self, atom_index: int) -> list[int]:
+        """Residue indices a pick selects, given the current level.
+
+        ``Atoms`` still returns the picked atom's own residue: the residue list
+        is what the sequence strip, ``sele`` and the object panel read, so it
+        has to stay consistent -- the finer set lives in ``_selected_atoms``
+        beside it, and only the markers and ``sele``'s atom expression use it.
+        """
+        res_ids = self._all_atom_res_ids
+        residue_ids = self._residue_ids
+        if res_ids is None or residue_ids is None:
+            return []
+        try:
+            residue_ids = np.asarray(residue_ids, dtype=int)
+            res_ids = np.asarray(res_ids, dtype=int)
+            picked_res = int(res_ids[atom_index])
+        except Exception:
+            return []
+
+        level = getattr(self, "selection_mode", "Residues")
+        if level == "Objects":
+            return [int(i) for i in range(len(residue_ids))]
+
+        per_atom = self._atom_residue_indices()
+
+        if level == "Chains":
+            atoms = self._atom_rows_of_object()
+            if atoms is not None and "chain" in (atoms.dtype.names or ()):
+                try:
+                    chains = np.asarray(atoms["chain"]).astype(str)
+                    wanted = str(chains[atom_index])
+                    res_chains = getattr(self, "_residue_chain_ids", None)
+                    if res_chains is not None and len(res_chains) == len(residue_ids):
+                        # The residue table names its own chains, so the answer
+                        # is a straight comparison -- no going through residue
+                        # ids, which repeat across chains.
+                        chosen = np.asarray(res_chains).astype(str) == wanted
+                        return [int(i) for i in np.nonzero(chosen)[0]]
+                    if per_atom is not None:
+                        hit = np.unique(per_atom[chains == wanted])
+                        return [int(i) for i in hit if i >= 0]
+                except Exception:
+                    pass
+            # No chain column: a chain is the whole object, which is the
+            # honest answer rather than silently selecting one residue.
+            return [int(i) for i in range(len(residue_ids))]
+
+        if per_atom is not None:
+            try:
+                index = int(per_atom[atom_index])
+            except Exception:
+                index = -1
+            if index >= 0:
+                return [index]
+        matches = np.nonzero(residue_ids == picked_res)[0]
+        return [int(matches[0])] if len(matches) else []
+
+    def _apply_atom_selection(self, atom_indices, mode=None) -> None:
+        """Merge picked *atoms* into the fine-grained selection.
+
+        The same four operations as :meth:`_apply_selection_indices`, over atom
+        indices. Only the ``Atoms`` level writes here.
+        """
+        try:
+            wanted = {int(i) for i in atom_indices if int(i) >= 0}
+        except Exception:
+            wanted = set()
+        current = {int(i) for i in getattr(self, "_selected_atoms", []) or []}
+        if mode == "toggle":
+            merged = current.symmetric_difference(wanted)
+        elif mode == "add":
+            merged = current | wanted
+        elif mode == "subtract":
+            merged = current - wanted
+        elif wanted:
+            merged = set(wanted)
+        else:
+            merged = set()
+        self._selected_atoms = sorted(merged)
 
     def _apply_selection_indices(self, indices, modifiers=None, mode=None) -> None:
         """Merge ``indices`` into the selection the way PyMOL's mouse does.
@@ -4855,13 +5288,14 @@ class MolView(WidgetBase):
 
         ``action=None`` keeps the legacy behaviour: the rectangle replaces.
         """
-        if self._coords is None or self.view is None:
+        surface = self._pick_surface()
+        if self._coords is None or surface is None:
             return
 
         picking_mod = _get_picking_module()
         if picking_mod is not None:
             try:
-                idx_arr = picking_mod.pick_residues_in_rect(self._coords, self.view, rect)
+                idx_arr = picking_mod.pick_residues_in_rect(self._coords, surface, rect)
             except Exception:
                 idx_arr = np.zeros(0, dtype=int)
         else:
@@ -5037,6 +5471,17 @@ class MolView(WidgetBase):
         with self._activate_object(object_id):
             ids = _copy_array(self._residue_ids)
         return ids
+
+    def get_residue_chains(self, object_id: str | None = None) -> np.ndarray | None:
+        """Chain identifier per residue, parallel to :meth:`get_residue_numbers`.
+
+        Loaded at every ``set_structure`` and, until the sequence strip needed
+        it, read nowhere -- which is also how a residue id got treated as
+        unique when it is only unique *within* a chain.
+        """
+        with self._activate_object(object_id):
+            chains = _copy_array(getattr(self, "_residue_chain_ids", None))
+        return chains
 
     def get_residue_colors(
         self, object_id: str | None = None
@@ -8020,10 +8465,7 @@ class MolView(WidgetBase):
             segments[2 * n] = corners[i]
             segments[2 * n + 1] = corners[j]
 
-        centre = getattr(state, "raw_center", None)
-        if centre is not None:
-            segments = segments - np.asarray(centre, dtype=float)
-        segments = segments * float(self._scale_factor)
+        segments = self._transform_world_coords_to_scene(segments)
 
         colour = self._representation_color("cell")
         if colour is None:
@@ -8322,7 +8764,8 @@ class MolView(WidgetBase):
         self,
         coords: np.ndarray,
         surface_cfg: dict,
-        colors_per_ca: np.ndarray | None
+        colors_per_ca: np.ndarray | None,
+        state: Any = None,
     ) -> list[SceneObject] | None:
         if not self._surface_visible:
             return None
@@ -8336,10 +8779,13 @@ class MolView(WidgetBase):
         if surface_base_color.shape[0] != 4:
             surface_base_color = np.asarray(self._base_color_single, dtype=float)
 
-        if self._all_atom_coords is not None:
-            pts_surface = np.asarray(self._all_atom_coords, dtype=float)
-        elif coords is not None:
+        state_all_atoms = getattr(state, "all_atom_coords", None) if state is not None else None
+        if state_all_atoms is not None and getattr(state_all_atoms, "size", 0) > 0:
+            pts_surface = np.asarray(state_all_atoms, dtype=float)
+        elif coords is not None and getattr(coords, "size", 0) > 0:
             pts_surface = np.asarray(coords, dtype=float)
+        elif self._all_atom_coords is not None:
+            pts_surface = np.asarray(self._all_atom_coords, dtype=float)
         else:
             return None
 
@@ -8352,10 +8798,14 @@ class MolView(WidgetBase):
         # the masked atoms only. ``None`` means no scoping -- all atoms. The
         # per-atom colour/radius inputs are filtered to match, so the positions
         # stay aligned with their res ids and overrides downstream.
-        surface_mask = self._surface_mask
-        res_ids_surface = self._all_atom_res_ids
-        radii_surface = self._all_atom_radii
-        override_surface = getattr(self, "_colors_per_atom_override", None)
+        surface_mask = getattr(state, "surface_mask", None) if state is not None else self._surface_mask
+        res_ids_surface = getattr(state, "all_atom_res_ids", None) if state is not None else self._all_atom_res_ids
+        radii_surface = getattr(state, "all_atom_radii", None) if state is not None else self._all_atom_radii
+        override_surface = (
+            getattr(state, "colors_per_atom_override", None)
+            if state is not None and getattr(state, "colors_per_atom_override", None) is not None
+            else getattr(self, "_colors_per_atom_override", None)
+        )
         if surface_mask is not None:
             sm = np.asarray(surface_mask, dtype=bool)
             if len(sm) == n_pts:
@@ -8369,6 +8819,20 @@ class MolView(WidgetBase):
                 if pts_surface.size == 0:
                     return None
                 n_pts = pts_surface.shape[0]
+
+        # --- The quality level decides whether a mesh is built at all ---
+        quality = str(surface_cfg.get("quality", "fast")).strip().lower()
+        surface_cfg = apply_surface_quality(surface_cfg, quality)
+        if is_splat_quality(quality) or quality not in SURFACE_QUALITY:
+            splat = self._build_surface_splat(
+                pts_surface, radii_surface, surface_cfg, colors_per_ca,
+                surface_base_color, surface_alpha,
+                res_ids=res_ids_surface, override=override_surface,
+            )
+            if splat is not None:
+                return splat
+            # No splat means no atoms to splat; fall through rather than
+            # returning an empty scene, so the mesh path can say why.
 
         # --- Try mesh surface via Gaussian density + marching cubes ---
         # The spacing is an *Angstrom* quantity and `pts_surface` is in scene
@@ -8513,42 +8977,120 @@ class MolView(WidgetBase):
         threaded in by ``_update_surface`` so a scoped surface (``show surface,
         sele``) colours the filtered atom set correctly.
         """
-        surface_color_mode = str(surface_cfg.get("color_mode", "ao_gray")).lower()
+        surface_color_mode = str(surface_cfg.get("color_mode", "default")).lower()
         n_pts = pts_surface.shape[0]
-        res_ids = self._all_atom_res_ids if res_ids is None else res_ids
-        if override is None:
-            override = getattr(self, "_colors_per_atom_override", None)
+        colors = np.zeros((n_pts, 4), dtype=np.float32)
 
+        res_ids = self._all_atom_res_ids if res_ids is None else res_ids
         if (
-            surface_color_mode == "by_residue"
-            and res_ids is not None
-            and self._residue_ids is not None
+            res_ids is not None
+            and getattr(self, "_residue_ids", None) is not None
             and colors_per_ca is not None
             and len(colors_per_ca) == len(self._residue_ids)
         ):
             color_map = {rid: colors_per_ca[i_res] for i_res, rid in enumerate(self._residue_ids)}
-            colors = np.zeros((n_pts, 4), dtype=float)
             for i_atom, rid in enumerate(res_ids[:n_pts]):
-                colors[i_atom, :] = color_map.get(rid, self._base_color_single)
+                colors[i_atom, :] = color_map.get(rid, surface_base_color)
         else:
-            colors = np.tile(surface_base_color, (n_pts, 1))
+            colors[:, :] = surface_base_color
 
-        if (
-            override is not None
-            and res_ids is not None
-            and len(override) == res_ids.shape[0]
-        ):
-            ov = np.asarray(override, dtype=float)
-            for i_atom in range(min(colors.shape[0], ov.shape[0])):
-                col_ov = ov[i_atom]
-                if np.isfinite(col_ov).all():
-                    colors[i_atom, :] = col_ov
+        if override is None:
+            override = getattr(self, "_colors_per_atom_override", None)
+        if override is not None:
+            ov = np.asarray(override, dtype=np.float32)
+            n_ov = min(colors.shape[0], ov.shape[0])
+            if n_ov > 0:
+                valid = np.isfinite(ov[:n_ov]).all(axis=1)
+                colors[:n_ov][valid] = ov[:n_ov][valid]
 
         surface_override = self._representation_color("surface")
         if surface_override is not None:
             colors[:, :] = surface_override
 
         return colors
+
+    def _build_surface_splat(
+        self,
+        pts_surface: np.ndarray,
+        radii_surface: np.ndarray | None,
+        surface_cfg: dict,
+        colors_per_ca: np.ndarray | None,
+        surface_base_color: np.ndarray,
+        surface_alpha: float,
+        res_ids: np.ndarray | None = None,
+        override: np.ndarray | None = None,
+    ) -> list[SceneObject] | None:
+        """The surface as screen-space Gaussian splats: no grid, no mesh.
+
+        Parameters
+        ----------
+        pts_surface : numpy.ndarray
+            ``(n, 3)`` atom centres, in scene units.
+        radii_surface : numpy.ndarray or None
+            Per-atom radii; the configured default stands in where absent.
+        surface_cfg : dict
+            The ``surface`` section of the display configuration.
+        colors_per_ca, res_ids, override
+            Whatever the mesh path would colour the surface by, so the two
+            quality levels agree about colour.
+        surface_base_color : numpy.ndarray
+            RGBA fallback.
+        surface_alpha : float
+            Opacity of the resolved surface.
+
+        Returns
+        -------
+        list of SceneObject or None
+
+        Notes
+        -----
+        The whole quality level is this function and two shaders. There is no
+        density grid to allocate, no iso-surface to extract and no mesh to
+        rebuild when an atom moves -- the field is evaluated per *pixel*, so it
+        also stays smooth at any zoom, where a mesh at a 0.5 A spacing shows its
+        facets. What it gives up is geometry: nothing to export, nothing to
+        measure a volume from, and no depth of its own, which is why it is a
+        *view* setting and the mesh levels remain the default.
+        """
+        centres = np.ascontiguousarray(pts_surface, dtype=np.float32).reshape(-1, 3)
+        if not len(centres):
+            return None
+
+        scene_scale = float(getattr(self, "_scale_factor", 1.0) or 1.0)
+        default_sigma = (
+            float(surface_cfg.get("mesh_sigma_default", 1.8)) * scene_scale
+        )
+        if radii_surface is not None and len(radii_surface) == len(centres):
+            radii = np.asarray(radii_surface, dtype=np.float32).reshape(-1, 1)
+        else:
+            radii = np.full((len(centres), 1), default_sigma, dtype=np.float32)
+        radii = radii * float(surface_cfg.get("splat_scale", 1.0))
+
+        colours = self._build_surface_atom_colors(
+            centres, surface_cfg, colors_per_ca, surface_base_color,
+            res_ids=res_ids, override=override,
+        )
+        if colours is None:
+            colours = np.tile(
+                np.asarray(surface_base_color, dtype=float), (len(centres), 1)
+            )
+        colours = np.ascontiguousarray(colours, dtype=np.float32).reshape(-1, 4)
+
+        geom = Geometry(
+            kind="gauss",
+            positions=centres,
+            colors=colours,
+            radii=radii,
+            meta={
+                "world_radius": True,
+                "gauss": {
+                    "decay": float(surface_cfg.get("splat_decay", 2.0)),
+                    "iso": float(surface_cfg.get("splat_iso", 0.7)),
+                    "opacity": float(surface_alpha),
+                },
+            },
+        )
+        return [SceneObject(id="surface", geometry=geom, render_mode="overlay")]
 
     def _build_surface_mesh_scene(
         self,
@@ -8661,9 +9203,9 @@ class MolView(WidgetBase):
         except Exception:
             alpha = 1.0
         try:
-            px_mode = bool(dots_cfg.get("px_mode", True))
+            px_mode = bool(dots_cfg.get("px_mode", False))
         except Exception:
-            px_mode = True
+            px_mode = False
         try:
             size_scale = float(dots_cfg.get("size_scale", 0.04))
         except Exception:
@@ -8993,6 +9535,29 @@ class MolView(WidgetBase):
         cfg = _DISPLAY_CONFIG.get("dash", {}) or {}
         return float(cfg.get("width", 2.5))
 
+    def set_pick_markers(self, atom_indices) -> None:
+        """Mark atoms a wizard has picked, alongside the selection.
+
+        Separate from the selection on purpose: a measurement pick is not a
+        selection -- it must not end up in ``sele``, and it disappears the
+        moment the group it belongs to becomes a measurement. What it borrows
+        is only the *marker*, so a picked atom looks picked the way everything
+        else in the viewer does.
+
+        Parameters
+        ----------
+        atom_indices : sequence of int
+            Indices into the active object's atom table. Empty clears them.
+        """
+        try:
+            self._pick_markers = [int(i) for i in atom_indices]
+        except Exception:
+            self._pick_markers = []
+        try:
+            self.refresh_selection_highlight()
+        except Exception:
+            pass
+
     def _update_measurements(self) -> list[SceneObject]:
         measurements = getattr(self, "_measurements", None)
         if not measurements:
@@ -9001,6 +9566,11 @@ class MolView(WidgetBase):
         scene_objects = []
         for mid, mdata in measurements.items():
             kind = mdata.get("kind", "distance")
+            if not bool(mdata.get("visible", True)):
+                # Switched off from its row in the object list. Off, not gone:
+                # a measurement is an object, and turning one off is how PyMOL
+                # takes it out of the picture without losing it.
+                continue
             coords = np.asarray(mdata.get("positions", []), dtype=float)
             if coords.size == 0:
                 continue
@@ -9051,6 +9621,13 @@ class MolView(WidgetBase):
                  labels = mdata.get("labels")
                  if labels is None:
                      labels = [label] if label else []
+                 # A number with no dashes under it is a number floating over
+                 # the molecule attached to nothing, which is indistinguishable
+                 # from a label that has come adrift. `_dash_segments` returns
+                 # nothing for a zero-length segment, so the two atoms have to
+                 # be distinguishable before their distance is written down.
+                 if not dashes.size:
+                     labels = []
                  if labels:
                      mids = pairs.mean(axis=1)[: len(labels)]
                      label_geom = Geometry(
@@ -9095,6 +9672,51 @@ class MolView(WidgetBase):
         Falls back to the per-residue positions when the object carries no atom
         table (a bead model, a trajectory read as coordinates only).
         """
+        # Atoms a wizard has picked but not yet used are marked like a
+        # selection, on top of whatever is selected: the click has to be
+        # acknowledged somewhere, and a measurement's first pick otherwise
+        # draws nothing at all until the second one completes it.
+        marked = self._selected_marker_positions(coords)
+        pending = self._pick_marker_positions()
+        if pending is None:
+            return marked
+        if marked is None or not len(marked):
+            return pending
+        return np.vstack([marked, pending])
+
+    def _pick_marker_positions(self) -> np.ndarray | None:
+        """Positions of atoms a wizard has picked but not yet consumed."""
+        rows = getattr(self, "_pick_markers", None)
+        atom_xyz = getattr(self, "_all_atom_coords", None)
+        if not rows or atom_xyz is None:
+            return None
+        try:
+            atom_xyz = np.asarray(atom_xyz, dtype=float)
+            idx = np.asarray(rows, dtype=int)
+            idx = idx[(idx >= 0) & (idx < len(atom_xyz))]
+            return atom_xyz[idx] if idx.size else None
+        except Exception:
+            return None
+
+    def _selected_marker_positions(self, coords: np.ndarray) -> np.ndarray | None:
+        """Where the *selection's* markers go; see the caller for the picks."""
+        # At the `Atoms` level the marks are the picked atoms themselves, which
+        # is the whole visible difference between that level and `Residues`:
+        # marking the residue would make the two look identical and the level
+        # pointless.
+        chosen_atoms = getattr(self, "_selected_atoms", None)
+        if chosen_atoms and getattr(self, "selection_mode", "") == "Atoms":
+            atom_xyz = getattr(self, "_all_atom_coords", None)
+            if atom_xyz is not None:
+                try:
+                    rows = np.asarray(chosen_atoms, dtype=int)
+                    atom_xyz = np.asarray(atom_xyz, dtype=float)
+                    rows = rows[(rows >= 0) & (rows < len(atom_xyz))]
+                    if rows.size:
+                        return atom_xyz[rows]
+                except Exception:
+                    pass
+
         sel = getattr(self, "_selected_residues", None)
         if not sel or coords is None or not len(coords):
             return None
@@ -9108,14 +9730,16 @@ class MolView(WidgetBase):
             return None
 
         atom_xyz = getattr(self, "_all_atom_coords", None)
-        atom_res = getattr(self, "_all_atom_res_ids", None)
-        res_ids = getattr(self, "_residue_ids", None)
-        if atom_xyz is not None and atom_res is not None and res_ids is not None:
+        if atom_xyz is not None:
+            # By residue *index*, not residue id: ids repeat across chains, so
+            # matching on them marked every chain's copy of the residue -- 104
+            # atoms instead of 13 on an eight-chain structure.
+            per_atom = self._atom_residue_indices()
             try:
-                wanted = np.asarray(res_ids, dtype=int)[idx_sel]
-                mask = np.isin(np.asarray(atom_res, dtype=int), wanted)
-                if mask.any():
-                    return np.asarray(atom_xyz, dtype=float)[mask]
+                if per_atom is not None:
+                    mask = np.isin(per_atom, idx_sel)
+                    if mask.any():
+                        return np.asarray(atom_xyz, dtype=float)[mask]
             except Exception:
                 pass
         try:
@@ -9298,9 +9922,9 @@ class MolView(WidgetBase):
                     obj.id = f"{object_prefix}:{obj.id}"
             return volume_objects
 
+        state = self._get_active_state()
         coords = np.asarray(self._coords, dtype=float)
         if coords.ndim == 3:
-            state = self._get_active_state()
             idx = self._select_state_frame(state, getattr(state, "active_frame", 0))
             coords = np.asarray(state.coords, dtype=float)
             state.active_frame = idx
@@ -9330,7 +9954,7 @@ class MolView(WidgetBase):
         scene_objects += self._update_lines(self._colors_per_ca)
         scene_objects += self._update_nonbonded(self._colors_per_ca)
         scene_objects += self._update_labels()
-        scene_objects += self._update_surface(coords, surface_cfg, self._colors_per_ca) or []
+        scene_objects += self._update_surface(coords, surface_cfg, self._colors_per_ca, state=state) or []
 
         metaball_cfg = self._metaball_config(_DISPLAY_CONFIG.get("metaball", {}))
         scene_objects += self._update_metaballs(coords, metaball_cfg, self._colors_per_ca) or []
@@ -9542,19 +10166,189 @@ class MolView(WidgetBase):
         self._update_view(fit_camera=True)
         return object_id
 
-    def set_volume_levels(self, levels, object_id: str | None = None) -> bool:
+    def set_volume_levels(
+        self, levels, object_id: str | None = None, *,
+        rebuild: bool = True, preview: bool = False,
+    ) -> bool:
         """Replace the contours drawn on this object's map.
 
         Returns ``False`` when the object has no map, rather than quietly doing
         nothing -- a level set on the wrong object is otherwise invisible.
+
+        Parameters
+        ----------
+        rebuild : bool, optional
+            Re-contour now. **False stores the level and draws nothing**, which
+            is what a slider being dragged needs: a contour is marching cubes
+            over the whole grid, and running that per mouse move is what made
+            the map panel lag and stick. The caller rebuilds once, on release.
+        preview : bool, optional
+            Contour under the reduced drag budget
+            (:data:`_VOLUME_PREVIEW_LIMIT_M`) instead of the full one -- the
+            reference viewer's move: while a level is being dragged the surface
+            follows at a coarser step, and the release redraws it in full. The
+            flag is stored on the object, so the release (``preview=False``)
+            also clears it.
+
+        A rebuild here touches **only this object's map geometry**. Re-running
+        the whole scene build for a contour change re-meshed every
+        representation of every object -- cartoon, sticks, surface -- to move
+        one isosurface, which is most of why dragging a level next to a loaded
+        structure stuttered.
         """
         with self._activate_object(object_id):
             state = self._get_active_state()
             if getattr(state, "volume", None) is None:
                 return False
             state.volume_levels = list(levels)
+            state.volume_preview = bool(preview)
+            resolved = self.get_active_object_id()
+        if rebuild and not self._refresh_volume_objects(resolved):
             self._update_view()
+        return True
+
+    def _refresh_volume_objects(self, object_id: str | None) -> bool:
+        """Swap one object's ``volume_*`` scene objects into the live scene.
+
+        Returns ``False`` when there is no scene to patch (nothing drawn yet,
+        or the object is hidden) -- the caller falls back to a full rebuild.
+        Inside ``suspend_updates`` it returns ``True`` and does nothing, the
+        same contract :meth:`_update_view` honours.
+        """
+        if getattr(self, "_update_depth", 0) > 0:
             return True
+        scene = getattr(self, "_scene", None)
+        if scene is None or self._renderer is None or object_id is None:
+            return False
+        entry = self._objects.get(object_id)
+        if entry is None or not entry.visible:
+            return False
+        with self._activate_object(object_id):
+            fresh = self._update_volume(object_prefix=object_id)
+        for obj in fresh:
+            obj.id = f"{object_id}:{obj.id}"
+        marker = f"{object_id}:volume_"
+        kept = [obj for obj in scene.objects if not obj.id.startswith(marker)]
+        # The camera stays put: a level change does not move the map, so the
+        # scene keeps its centre and radius rather than being re-measured.
+        self._scene = Scene(
+            objects=kept + fresh, center=scene.center, radius=scene.radius
+        )
+        try:
+            self._renderer.set_scene(self._scene)
+        except Exception:
+            return False
+        return True
+
+    def get_volume_mode(self, object_id: str | None = None) -> str:
+        """How this object's map is drawn: ``surface``, ``mesh`` or ``voxel``.
+
+        Read off the levels rather than kept beside them. A contour already
+        carries its own ``style``, so a second field naming the same thing is
+        two values that must agree and eventually will not.
+        """
+        levels = self.get_volume_levels(object_id)
+        for entry in levels:
+            style = str(entry.get("style", "") or "").lower()
+            if style:
+                # Legacy spellings of the volume-rendering style read back as
+                # the reference tool's name, so the panel highlights one
+                # button rather than none.
+                return "solid" if style in ("voxel", "image") else style
+        return "surface"
+
+    def set_volume_mode(self, mode: str, object_id: str | None = None) -> bool:
+        """Draw the map as a filled surface, a wireframe, or translucent fog.
+
+        PyMOL's `mesh` is a **wireframe of the same isosurface** as `surface`,
+        not a second surface -- which is why the two looked identical here for
+        as long as the panel offered no way to ask for one. `solid` is the
+        reference tool's volume rendering (its Chimera name; ChimeraX calls it
+        `image`): the histogram markers become a colour/opacity transfer
+        function and the map is composited through it -- the style a map with
+        no coherent surface can still be looked at with. `voxel` and `image`
+        are accepted as spellings of it.
+        """
+        wanted = str(mode).strip().lower()
+        if wanted in ("voxel", "image"):
+            wanted = "solid"
+        if wanted not in ("surface", "mesh", "solid"):
+            return False
+        with self._activate_object(object_id):
+            state = self._get_active_state()
+            if getattr(state, "volume", None) is None:
+                return False
+            state.volume_levels = [
+                {**entry, "style": wanted}
+                for entry in (getattr(state, "volume_levels", []) or [])
+            ]
+            resolved = self.get_active_object_id()
+        if not self._refresh_volume_objects(resolved):
+            self._update_view()
+        return True
+
+    def get_volume_quality(self, object_id: str | None = None) -> str:
+        """This map's surface-quality preset: coarse, normal, smooth or fine."""
+        with self._activate_object(object_id):
+            quality = str(
+                getattr(self._get_active_state(), "volume_quality", "") or ""
+            ).lower()
+        return quality if quality in _VOLUME_QUALITY_PRESETS else "normal"
+
+    def set_volume_quality(self, quality: str, object_id: str | None = None) -> bool:
+        """Re-contour this object's map under a surface-quality preset.
+
+        The presets are the reference viewer's rendering options with names:
+        ``coarse`` trades detail for speed, ``normal`` is the raw contour,
+        ``smooth`` relaxes the marching-cubes staircase and noise glitter
+        (its ``surface_smoothing``), ``fine`` subdivides first (its
+        ``subdivide_surface``). Returns ``False`` for an unknown preset or an
+        object with no map.
+        """
+        wanted = str(quality).strip().lower()
+        if wanted not in _VOLUME_QUALITY_PRESETS:
+            return False
+        with self._activate_object(object_id):
+            state = self._get_active_state()
+            if getattr(state, "volume", None) is None:
+                return False
+            state.volume_quality = wanted
+            resolved = self.get_active_object_id()
+        if not self._refresh_volume_objects(resolved):
+            self._update_view()
+        return True
+
+    def get_volume_dust(self, object_id: str | None = None) -> float:
+        """The Hide Dust threshold on this map, 0 when everything is shown."""
+        with self._activate_object(object_id):
+            try:
+                return float(
+                    getattr(self._get_active_state(), "volume_dust_size", 0.0)
+                    or 0.0
+                )
+            except (TypeError, ValueError):
+                return 0.0
+
+    def set_volume_dust(self, size: float, object_id: str | None = None) -> bool:
+        """Hide contour pieces smaller than ``size`` (the reference's Hide Dust).
+
+        ``size`` is the largest bounding-box extent a connected piece must
+        reach to stay visible, in the map's placement units; 0 shows
+        everything again. Returns ``False`` for an object with no map.
+        """
+        try:
+            size = max(float(size), 0.0)
+        except (TypeError, ValueError):
+            return False
+        with self._activate_object(object_id):
+            state = self._get_active_state()
+            if getattr(state, "volume", None) is None:
+                return False
+            state.volume_dust_size = size
+            resolved = self.get_active_object_id()
+        if not self._refresh_volume_objects(resolved):
+            self._update_view()
+        return True
 
     def get_volume_levels(self, object_id: str | None = None) -> list:
         """The contours drawn on this object's map; empty when it has none."""
@@ -9565,6 +10359,148 @@ class MolView(WidgetBase):
         """This object's voxel map, or ``None`` when it is not a map."""
         with self._activate_object(object_id):
             return getattr(self._get_active_state(), "volume", None)
+
+    def _volume_solid_object(self, grid, levels):
+        """Build the whole map as translucent emission — the reference's *image*.
+
+        The style the ``solid`` button asks for. The first attempt drew a lit,
+        opaque box per voxel, which from any angle is a wall of cubes saying
+        nothing about the interior; what the reference viewer draws instead is
+        **direct volume rendering**: the histogram markers become a colour and
+        opacity transfer function, and the map is composited through it, so
+        density reads as fog thickening toward the cores.
+
+        Its renderer samples a 3-D texture on view-aligned planes. This engine
+        has no volume textures, so the same picture is built from what it does
+        have: **three axis-aligned stacks of per-vertex-coloured planes**, one
+        per grid axis, each carrying a third of the opacity. Whatever the
+        camera does, one stack is always roughly face-on, which is what keeps
+        the fog from striping edge-on — the trick predates 3-D textures and is
+        exactly what those textures replaced. Per-plane opacity follows the
+        reference's accumulation rule ``1-(1-a)^(1/planes)``, so the *total*
+        opacity along a ray matches the transfer function regardless of how
+        many planes sample it. Cells that the transfer function leaves
+        transparent produce no geometry at all, which is what makes the dense
+        core affordable: a typical map is overwhelmingly empty.
+
+        The slices carry ``meta["unlit"]`` — they are emission, and lighting
+        them would shade fog like a surface.
+        """
+        try:
+            g = grid.strided(_SOLID_VOXEL_LIMIT_M)
+            values = np.asarray(g.values, dtype=np.float32)
+            points = _solid_transfer_points(
+                levels, grid.value_range(), _DEFAULT_MAP_COLOR, values=values
+            )
+            if not points or min(values.shape) < 2:
+                return None
+            knots = np.array([p[0] for p in points], dtype=np.float64)
+            knot_rgba = np.array([p[1] for p in points], dtype=np.float64)
+
+            flat = values.ravel().astype(np.float64)
+            shape = values.shape
+            red = np.interp(flat, knots, knot_rgba[:, 0]).reshape(shape)
+            green = np.interp(flat, knots, knot_rgba[:, 1]).reshape(shape)
+            blue = np.interp(flat, knots, knot_rgba[:, 2]).reshape(shape)
+            # Transparent below the lowest node — the reference's rule; without
+            # it the background level would paint the whole box.
+            alpha = np.interp(flat, knots, knot_rgba[:, 3], left=0.0).reshape(shape)
+
+            verts_parts: list[np.ndarray] = []
+            color_parts: list[np.ndarray] = []
+            normal_parts: list[np.ndarray] = []
+            index_parts: list[np.ndarray] = []
+            base = 0
+            eye = np.eye(3, dtype=np.float32)
+            for axis in range(3):
+                n_planes = shape[axis]
+                # The reference's `transparency_depth`: full transfer-function
+                # opacity accumulates over this fraction of the volume. The
+                # three stacks are deliberately *not* divided out — a ray only
+                # crosses one stack face-on, and the two oblique stacks'
+                # contribution stands in for the brightness the reference gets
+                # from its denser view-aligned sampling.
+                planes = max(_SOLID_TRANSPARENCY_DEPTH * n_planes, 1.0)
+                others = [a for a in range(3) if a != axis]
+                for j in range(n_planes):
+                    a_slice = np.take(alpha, j, axis=axis)
+                    a_plane = 1.0 - np.power(
+                        1.0 - np.minimum(a_slice, 0.999), 1.0 / planes
+                    )
+                    # Per-plane opacity is a fraction of a percent by design;
+                    # an eight-bit cull here is what erased the fog entirely.
+                    visible = a_plane > (1.0 / 1024.0)
+                    if not visible.any():
+                        continue
+                    cell = (
+                        visible[:-1, :-1] | visible[1:, :-1]
+                        | visible[:-1, 1:] | visible[1:, 1:]
+                    )
+                    if not cell.any():
+                        continue
+                    vmask = np.zeros_like(visible)
+                    vmask[:-1, :-1] |= cell
+                    vmask[1:, :-1] |= cell
+                    vmask[:-1, 1:] |= cell
+                    vmask[1:, 1:] |= cell
+                    count = int(vmask.sum())
+                    vertex_id = np.full(vmask.shape, -1, dtype=np.int64)
+                    vertex_id[vmask] = np.arange(count)
+
+                    bi, ci = np.nonzero(vmask)
+                    idx3 = np.empty((count, 3), dtype=np.float64)
+                    idx3[:, axis] = j
+                    idx3[:, others[0]] = bi
+                    idx3[:, others[1]] = ci
+                    verts_parts.append(g.index_to_world(idx3))
+                    color_parts.append(np.stack(
+                        [
+                            np.take(red, j, axis=axis)[vmask],
+                            np.take(green, j, axis=axis)[vmask],
+                            np.take(blue, j, axis=axis)[vmask],
+                            a_plane[vmask],
+                        ],
+                        axis=1,
+                    ))
+                    normal_parts.append(np.tile(eye[axis], (count, 1)))
+
+                    ca, cb = np.nonzero(cell)
+                    q00 = vertex_id[ca, cb]
+                    q10 = vertex_id[ca + 1, cb]
+                    q01 = vertex_id[ca, cb + 1]
+                    q11 = vertex_id[ca + 1, cb + 1]
+                    index_parts.append(base + np.concatenate([
+                        np.stack([q00, q10, q11], axis=1),
+                        np.stack([q00, q11, q01], axis=1),
+                    ]))
+                    base += count
+
+            if not verts_parts:
+                return None
+            positions = self._transform_world_coords_to_scene(
+                np.concatenate(verts_parts)
+            ).astype(np.float32)
+            colors = np.concatenate(color_parts).astype(np.float32)
+            normals = np.concatenate(normal_parts).astype(np.float32)
+            indices = np.concatenate(index_parts).astype(np.uint32).reshape(-1)
+        except Exception:
+            logger.warning(
+                "chimol: could not build the solid rendering of %s", grid.name,
+                exc_info=True,
+            )
+            return None
+
+        geometry = Geometry(
+            kind="mesh",
+            positions=positions,
+            normals=normals,
+            colors=colors,
+            indices=indices,
+            meta={"unlit": True, "map_solid": True},
+        )
+        return SceneObject(
+            id="volume_0", geometry=geometry, render_mode="transparent"
+        )
 
     def _update_volume(self, object_prefix: str | None = None) -> list[SceneObject]:
         """Contour this object's voxel map, if it has one.
@@ -9577,9 +10513,31 @@ class MolView(WidgetBase):
             if self._objects else None
         if grid is None:
             return []
-        levels = list(getattr(self._get_active_state(), "volume_levels", []) or [])
+        state = self._get_active_state()
+        levels = list(getattr(state, "volume_levels", []) or [])
         if not levels:
             levels = _default_volume_levels(grid)
+        # While a marker is being dragged the contour runs under a reduced
+        # budget so the surface can follow the mouse; release clears the flag.
+        preview = bool(getattr(state, "volume_preview", False))
+
+        styles = {
+            str(entry.get("style", "") or "").lower() for entry in levels
+        }
+        if styles & {"solid", "voxel", "image"}:
+            # The reference tool's image mode is a property of the *map*, not
+            # of one threshold: every marker is a node of one transfer
+            # function, composited in a single pass.
+            solid = self._volume_solid_object(grid, levels)
+            return [solid] if solid is not None else []
+
+        quality = _VOLUME_QUALITY_PRESETS.get(
+            str(getattr(state, "volume_quality", "") or "").lower(),
+            _VOLUME_QUALITY_PRESETS["normal"],
+        )
+        subdivisions = 0 if preview else int(quality["subdivisions"])
+        smoothing = 0 if preview else int(quality["smoothing_iterations"])
+        smoothing_factor = float(quality["smoothing_factor"])
 
         objects: list[SceneObject] = []
         for index, entry in enumerate(levels):
@@ -9588,7 +10546,16 @@ class MolView(WidgetBase):
             except (TypeError, ValueError):
                 continue
             try:
-                surface = grid.isosurface(level)
+                if preview:
+                    surface = grid.isosurface(
+                        level, voxel_limit_m=_VOLUME_PREVIEW_LIMIT_M
+                    )
+                elif quality["voxel_limit_m"] is not None:
+                    surface = grid.isosurface(
+                        level, voxel_limit_m=float(quality["voxel_limit_m"])
+                    )
+                else:
+                    surface = grid.isosurface(level)
             except Exception:
                 logger.warning(
                     "chimol: could not contour %s at %g", grid.name, level,
@@ -9600,27 +10567,80 @@ class MolView(WidgetBase):
                 # failure, and drawing nothing is the honest result.
                 continue
             verts, faces, normals = surface
+            # Hide Dust first, on the raw contour: the pieces are the same
+            # before and after refinement, and dropping them here means the
+            # crumbs are never subdivided or smoothed at all.
+            dust_size = 0.0 if preview else float(
+                getattr(state, "volume_dust_size", 0.0) or 0.0
+            )
+            if dust_size > 0.0:
+                faces, _hidden = geometry_dust.dust_faces(verts, faces, dust_size)
+                if faces.size == 0:
+                    continue
+            # The reference tool's rendering-option order: subdivide first,
+            # mask the square mesh on the *unsmoothed* vertices (smoothing
+            # destroys the coordinate identity the mask tests), smooth last.
+            for _ in range(subdivisions):
+                verts, faces, normals = geometry_refine.subdivide_triangles(
+                    verts, faces, normals
+                )
             # Into the same scene frame the structure is drawn in. A uniform
             # scale and a translation leave the normals alone.
             verts = self._transform_world_coords_to_scene(
                 np.asarray(verts, dtype=float)
             ).astype(np.float32)
+            square_edges = None
+            style = str(entry.get("style", "surface")).lower()
+            if style == "mesh":
+                square_edges = _square_mesh_edges(verts, faces)
+            if smoothing:
+                verts = geometry_refine.smooth_vertex_positions(
+                    verts, faces, smoothing_factor, smoothing
+                )
+                normals = geometry_refine.smooth_vertex_positions(
+                    normals, faces, smoothing_factor, smoothing
+                )
+                length = np.linalg.norm(normals, axis=1, keepdims=True)
+                normals = (
+                    normals / np.where(length > 1e-12, length, 1.0)
+                ).astype(np.float32)
             color = np.asarray(entry.get("color", (0.5, 0.7, 1.0, 1.0)), dtype=float)
             if color.size < 4:
                 color = np.concatenate([color.reshape(-1), np.ones(4)])[:4]
             colors = np.tile(color.astype(np.float32), (verts.shape[0], 1))
-            style = str(entry.get("style", "surface")).lower()
             if style == "mesh":
                 # A real wireframe, drawn as lines. Setting a "wireframe" flag on
                 # a triangle mesh looked right and drew a solid surface, because
                 # nothing downstream reads such a flag -- the contour has to
                 # become line geometry to be one.
+                #
+                # Two of the reference tool's mesh defaults make it legible
+                # where a raw wireframe is a scribble that hides the shape:
+                #
+                # * ``square_mesh``: only edges lying in principal grid planes
+                #   are drawn -- the net of contour lines, not every sliver;
+                # * ``mesh_lighting``: the lines are shaded by the surface
+                #   normal, so the far side darkens and the eye can separate
+                #   front from back. The line pipeline is deliberately unlit
+                #   (a measurement dash has no meaningful normal), so the
+                #   shading is baked into the vertex colours here, where the
+                #   contour's real normals are in hand. Baked at build rather
+                #   than live per frame -- the light is fixed to the model, and
+                #   the depth cue carries the view-dependent half.
+                edges = square_edges
+                if edges is None:
+                    edges = _triangle_edges(faces)
+                light = np.array([0.35, 0.45, 0.85])
+                light /= np.linalg.norm(light)
+                lambert = np.abs(np.asarray(normals, dtype=float) @ light)
+                lit = colors.copy()
+                lit[:, :3] *= (0.30 + 0.70 * lambert)[:, None].astype(np.float32)
                 geometry = Geometry(
                     kind="line",
                     positions=verts,
-                    indices=_triangle_edges(faces),
+                    indices=edges,
                     normals=normals,
-                    colors=colors,
+                    colors=lit,
                     meta={"mode": "lines", "width": 1.0, "map_level": level},
                 )
             else:

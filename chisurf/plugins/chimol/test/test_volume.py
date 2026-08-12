@@ -520,13 +520,19 @@ def test_naming_a_map_that_does_not_exist_lists_the_ones_that_do(shell):
     assert errors and "blob" in errors[-1]
 
 
-def test_volume_rendering_reports_the_gap_rather_than_doing_nothing(shell):
-    """Registered, not missing: an unimplemented command must say so."""
-    view, grid, cmd, _messages, errors = shell
+def test_volume_switches_the_map_to_solid_rendering(shell):
+    """`volume` is PyMOL's volume-rendering command; it now delivers one.
+
+    It used to be a registered refusal ("not implemented yet") -- once the
+    `solid` style exists, a command that declines while the panel's button
+    works would be lying about the program.
+    """
+    view, grid, cmd, messages, errors = shell
     view.add_volume(grid)
     cmd.do("volume v, blob")
-    assert errors and "not implemented" in errors[-1]
-    assert "isosurface" in errors[-1], "it should say what to use instead"
+    assert not errors, errors
+    assert messages and "fog" in messages[-1]
+    assert view.get_volume_mode() == "solid"
 
 
 def test_map_info_reports_placement_and_range(shell):
@@ -582,6 +588,42 @@ def test_the_histogram_and_range_are_not_rescanned_per_paint(blob):
     assert counts_a is counts_b and edges_a is edges_b
     assert grid.value_range() == grid.value_range()
     assert grid._cache, "nothing was memoised at all"
+
+
+def test_a_level_change_does_not_rebuild_the_rest_of_the_scene(shell):
+    """Dragging a threshold beside a structure re-meshed the structure too.
+
+    The level write must swap only the map's own ``volume_*`` objects; every
+    other scene object survives identically.
+    """
+    view, grid, _cmd, _msgs, _errs = shell
+    view.add_volume(grid)
+    before = {obj.id: obj for obj in view._scene.objects}
+    assert before, "the map did not reach the scene"
+
+    calls = {"n": 0}
+    original = view._update_view
+
+    def counting(*args, **kwargs):
+        calls["n"] += 1
+        return original(*args, **kwargs)
+
+    view._update_view = counting
+    try:
+        ok = view.set_volume_levels(
+            [{"level": 0.5, "color": (1.0, 0.0, 0.0, 1.0), "style": "surface"}]
+        )
+    finally:
+        view._update_view = original
+
+    assert ok
+    assert calls["n"] == 0, "a level change fell back to a full scene rebuild"
+    after_ids = {obj.id for obj in view._scene.objects}
+    assert after_ids == set(before), (before.keys(), after_ids)
+    drawn = [obj for obj in view._scene.objects if "volume_" in obj.id]
+    assert drawn and drawn[0] is not before[drawn[0].id], (
+        "the map's geometry was not actually replaced"
+    )
 
 
 # --------------------------------------------------------------------------- #

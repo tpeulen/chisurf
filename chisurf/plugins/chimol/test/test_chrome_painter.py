@@ -115,12 +115,21 @@ def test_the_chrome_is_unchanged_by_the_painter_interface(state, qapp, tmp_path)
     )
 
 
-def test_the_control_inventory_is_unchanged(qapp, tmp_path):
+def test_no_control_the_baseline_could_reach_has_been_lost(qapp, tmp_path):
     """Every control the baseline could reach is still reachable.
 
     The inventory, not the image, is what parity is judged on once the GPU
     painter lands -- a glyph atlas moves text metrics on purpose. Pinned here
     so the two halves of the port are compared on the same list.
+
+    **A missing control fails; a new one does not.** The rule this enforces is
+    that nothing was *lost*, which is what a migration can silently do. Equality
+    was the wrong shape for it: the baseline is the before-half of the painter
+    port and cannot be re-captured once that lands -- the PNGs beside it would
+    be overwritten with after-images -- so a feature that legitimately adds a
+    control had no way past an equality check except by corrupting the record
+    it is compared against. Adding `selecting:` (the block's selection-level
+    row, which was drawn and unreachable) is what surfaced this.
     """
     expected_path = _BASELINE / "inventory.json"
     if not expected_path.exists():
@@ -131,8 +140,11 @@ def test_the_control_inventory_is_unchanged(qapp, tmp_path):
     expected = json.loads(expected_path.read_text(encoding="utf-8"))
 
     for state in sorted(expected):
-        assert got[state]["reachable"] == expected[state]["reachable"], (
-            f"{state}: the set of reachable controls changed"
+        was = set(expected[state]["reachable"])
+        now = set(got[state]["reachable"])
+        assert not (was - now), (
+            f"{state}: controls the baseline could reach are gone: "
+            f"{sorted(was - now)}"
         )
 
 

@@ -555,47 +555,57 @@ def wheel_action_of(mode: str, modifiers) -> str:
     return str(bindings.get(("w", modifier_of(modifiers)), "none")).lower()
 
 
-def normalize_mouse_mode(mode) -> str:
-    """Return a valid rotation-style name.
+#: What a click in the viewport selects, and the order the block cycles them.
+#:
+#: PyMOL's `mouse_selection_mode` has six levels -- Atoms, Residues, Chains,
+#: Segments, Objects, Molecules. Two of them are left out rather than offered
+#: and quietly behaving as something else: chimol reads no **segment**
+#: identifier from a PDB (the Label menu says so where it refuses `segi`), and
+#: it has no notion of a **molecule** separate from the object that holds it, so
+#: those two levels would either do nothing or duplicate `Objects`.
+SELECTION_LEVELS: tuple[str, ...] = ("Atoms", "Residues", "Chains", "Objects")
+
+
+def normalize_selection_level(level) -> str:
+    """Return a valid selection level, defaulting to ``"Residues"``.
 
     Parameters
     ----------
-    mode : Any
-        Candidate value, typically ``"pymol"`` or ``"chimol"``.
+    level : Any
+        Candidate level; matched case-insensitively, and PyMOL's numeric
+        spelling (``0``-``5``) is accepted for scripts that carry it.
 
     Returns
     -------
     str
-        ``"pymol"`` or ``"chimol"``; anything unrecognised falls back to
-        ``"pymol"``.
+        One of :data:`SELECTION_LEVELS`.
     """
-    return "chimol" if str(mode).lower().strip() == "chimol" else "pymol"
+    text = str(level).strip()
+    if text.isdigit():
+        # PyMOL's own numbering, with its Segments and Molecules folded onto
+        # the nearest level chimol can actually honour.
+        return {
+            "0": "Atoms", "1": "Residues", "2": "Chains",
+            "3": "Chains", "4": "Objects", "5": "Objects",
+        }.get(text, "Residues")
+    lowered = text.lower()
+    for name in SELECTION_LEVELS:
+        if lowered == name.lower():
+            return name
+    return "Residues"
 
 
-def rotation_delta_multiplier(mouse_mode: str) -> float:
-    """The sign a left drag's rotation carries, by rotation style.
-
-    In PyMOL-style rotation the *object* appears to follow the cursor; in
-    chimol-style rotation the camera does, so the object turns the other way.
-
-    Returns
-    -------
-    float
-        ``-1.0`` for PyMOL-style object rotation, ``1.0`` for chimol-style
-        camera rotation.
-    """
-    return -1.0 if mouse_mode == "pymol" else 1.0
+def next_selection_level(level) -> str:
+    """The level after *level*, wrapping -- what clicking the block's row does."""
+    current = normalize_selection_level(level)
+    index = SELECTION_LEVELS.index(current)
+    return SELECTION_LEVELS[(index + 1) % len(SELECTION_LEVELS)]
 
 
-def pan_delta_multiplier(mouse_mode: str) -> float:
-    """The sign a pan carries, by rotation style.
-
-    In PyMOL-style panning the object follows the cursor; in chimol-style
-    panning the camera does, so the object moves opposite to it.
-
-    Returns
-    -------
-    float
-        ``1.0`` for PyMOL-style object panning, ``-1.0`` for chimol-style.
-    """
-    return 1.0 if mouse_mode == "pymol" else -1.0
+# A "chimol drag style" used to live here -- `normalize_mouse_mode`,
+# `rotation_delta_multiplier`, `pan_delta_multiplier` -- selecting the sign of a
+# rotation or a pan so the camera could follow the cursor instead of the object.
+# It is gone: chimol's mouse is PyMOL's. The three helpers had *no* caller in
+# the tree by the end, so the toolbar toggle and the `mouse_mode` setting that
+# drove them were writing a string nothing read, and the middle-drag half was
+# recorded as never having worked. Do not reintroduce a second drag style.

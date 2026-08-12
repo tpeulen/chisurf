@@ -11,6 +11,7 @@ from __future__ import annotations
 import pytest
 
 from chisurf.plugins.chimol.chimol.app.menu_bar import (
+    EXTRA_MENUS,
     MENU_BAR,
     OMITTED_MENUS,
     build_menu_bar,
@@ -22,13 +23,24 @@ _PYMOL_BAR = ["File", "Edit", "Build", "Movie", "Display", "Setting", "Scene",
 
 
 def test_the_bar_keeps_pymols_names_and_order():
-    ours = [title for title, _ in MENU_BAR]
+    """PyMOL's menus keep PyMOL's order; chimol's own menus sit between them.
+
+    The extras are declared, not inferred: a menu chimol invents (Demo,
+    Tools) must be listed in EXTRA_MENUS or this fails, so the bar cannot
+    quietly drift away from the PyMOL layout users navigate by.
+    """
+    ours = [title for title, _ in MENU_BAR if title not in EXTRA_MENUS]
     assert ours == [t for t in _PYMOL_BAR if t not in OMITTED_MENUS]
+    on_bar = {title for title, _ in MENU_BAR}
+    assert EXTRA_MENUS <= on_bar, "an extra menu is declared but not built"
+    assert not (EXTRA_MENUS & set(_PYMOL_BAR)), (
+        "a menu PyMOL also has cannot be an extra"
+    )
 
 
 def test_omitted_menus_are_the_ones_chimol_cannot_fill():
     """A menu is dropped only when chimol has nothing at all to put in it."""
-    assert set(OMITTED_MENUS) == {"Build", "Movie", "Scene", "Plugin"}
+    assert set(OMITTED_MENUS) == {"Movie", "Scene", "Plugin", "Mouse"}
     for title, reason in OMITTED_MENUS.items():
         assert reason, f"{title} is omitted without a reason"
 
@@ -151,13 +163,24 @@ def test_the_bar_installs_and_acts(qapp):
 
 
 def test_a_special_entry_calls_its_handler(qapp):
+    """The ``__marker__`` dispatch works, tested on its own entry.
+
+    The bar itself no longer carries a special entry ("Edit All..." became
+    the plain `config` command), so the mechanism is exercised directly
+    rather than through an entry that happens to use it today.
+    """
     from qtpy import QtWidgets
 
+    from chisurf.plugins.chimol.chimol.app.menu_bar import _populate
+    from chisurf.plugins.chimol.chimol.object_menus import MenuEntry
+
     calls: list[str] = []
-    window = QtWidgets.QMainWindow()
-    bar = build_menu_bar(
-        window, calls.append, special={"config": lambda: calls.append("dialog")}
+    menu = QtWidgets.QMenu()
+    _populate(
+        menu,
+        (MenuEntry("Special", "__dialog__"),),
+        calls.append,
+        {"dialog": lambda: calls.append("dialog")},
     )
-    setting = next(a.menu() for a in bar.actions() if a.text() == "Setting")
-    next(a for a in setting.actions() if a.text() == "Edit All...").trigger()
+    menu.actions()[0].trigger()
     assert calls == ["dialog"]

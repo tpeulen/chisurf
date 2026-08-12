@@ -3,6 +3,7 @@ from __future__ import annotations
 import tempfile
 import time
 from collections.abc import Callable
+from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -106,6 +107,9 @@ class ExportMixin(BaseCmd):
         if path.suffix.lower() == ".png":
             self.png(str(path))
             return
+        if path.suffix.lower() in (".stl", ".wrl", ".vrml", ".glb", ".gltf"):
+            self._save_scene_mesh(path)
+            return
         # A session, not a structure: `save figure.pse` is how a PyMOL user
         # saves their work, so the extension has to route there.
         if self.names_a_session(path):
@@ -170,6 +174,52 @@ class ExportMixin(BaseCmd):
             return
 
         self._emit_message(f"Wrote {written} atoms as {fmt.upper()}: {path}")
+
+    def _save_scene_mesh(self, path: Path) -> None:
+        """Write the drawn scene as a 3-D model file, routed by extension.
+
+        ``.glb``/``.gltf`` write binary glTF -- the format PowerPoint's
+        Insert ▸ 3D Models takes; ``.stl`` writes triangles for printing and
+        CAD; ``.wrl``/``.vrml`` write VRML 2.0 with per-vertex colours.
+        Spheres and sticks -- analytic on screen -- are tessellated back into
+        triangles; lines, labels and the translucent map fog are skipped.
+        """
+        from ..io.mesh_export import (  # noqa: PLC0415
+            scene_mesh_objects,
+            write_glb,
+            write_stl,
+            write_wrl,
+        )
+
+        window, viewer = self._require_window_and_viewer()
+        if viewer is None:
+            return
+        scene = getattr(viewer, "_scene", None)
+        objects = scene_mesh_objects(scene) if scene is not None else []
+        if not objects:
+            self._emit_error(
+                "save: the scene has no triangles to export -- load and show "
+                "something first"
+            )
+            return
+        suffix = path.suffix.lower()
+        try:
+            if suffix in (".glb", ".gltf"):
+                count = write_glb(path, objects)
+                note = " (binary glTF; PowerPoint: Insert ▸ 3D Models)"
+            elif suffix == ".stl":
+                count = write_stl(path, objects)
+                note = " (no colours; STL carries geometry only)"
+            else:
+                count = write_wrl(path, objects)
+                note = ""
+        except (OSError, ValueError) as error:
+            self._emit_error(f"save: {error}")
+            return
+        self._emit_message(
+            f"save: wrote {path} -- {len(objects)} object(s), "
+            f"{count:,} triangles{note}"
+        )
 
     @command("png")
     def png(
@@ -907,10 +957,36 @@ class ExportMixin(BaseCmd):
             self._emit_message(
                 "png: width/height currently use the live viewport; offscreen sizing is not implemented"
             )
-        image = grab()
+        # A saved image is a picture of the *scene*. The in-viewport windows are
+        # tools laid over it, not part of the molecule, so they come out for the
+        # grab and go straight back -- PyMOL's own output carries no GUI either.
+        with self._windows_hidden(renderer):
+            image = grab()
         parent = path.parent
         parent.mkdir(parents=True, exist_ok=True)
         return bool(image.save(str(path), "PNG"))
+
+    @contextmanager
+    def _windows_hidden(self, renderer):
+        """Draw a frame without the in-viewport windows, then restore them."""
+        gui = getattr(renderer, "_internal_gui", None)
+        if gui is None or not getattr(gui, "draw_windows", False):
+            yield
+            return
+        gui.draw_windows = False
+        try:
+            update = getattr(renderer, "update", None)
+            repaint = getattr(renderer, "repaint", None)
+            # `repaint` rather than `update`: the grab happens inside this block
+            # and an `update` only *schedules* a paint, so the windows would
+            # still be in the buffer that gets saved.
+            (repaint or update or (lambda: None))()
+            yield
+        finally:
+            gui.draw_windows = True
+            update = getattr(renderer, "update", None)
+            if callable(update):
+                update()
 
     def _parse_optional_int(self, parts: list[str], index: int) -> int | None:
         if index >= len(parts):

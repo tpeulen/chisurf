@@ -21,12 +21,12 @@ plainly visible on screen.
 """
 from __future__ import annotations
 
-import hashlib
-
-import numpy as np
 from qtpy import QtCore, QtGui
 
+from .gui_state import DEFAULT_LABEL_SIZE, refresh_gui_state
+
 __all__ = [
+    "DEFAULT_LABEL_SIZE",
     "image_from_rgb",
     "paint_chrome",
     "paint_chrome_into",
@@ -37,72 +37,7 @@ __all__ = [
 ]
 
 
-def refresh_gui_state(gui, controller) -> None:
-    """Pull the movie position and sequence colours into the panel.
-
-    Pulled every frame rather than pushed on change, because there is no one
-    place a frame changes: playback advances it on a timer, ``frame`` and the
-    transport set it directly, and a trajectory reload resets it. A slider wired
-    to one of those and not the others sits still while the molecule moves,
-    which is worse than having no slider.
-
-    A drag in progress wins: the position under the cursor is what the user is
-    asking for, and overwriting it from the viewer each frame would drag the
-    thumb out of their hand.
-
-    Parameters
-    ----------
-    gui : InternalGui
-        The panel to update in place.
-    controller : object or None
-        The :class:`~.view.MolView` to read from.
-    """
-    if controller is None or gui is None or gui.is_dragging():
-        return
-
-    # Re-read the sequence colours as well. Colouring is a *command* --
-    # `spectrum`, `color`, `ss` -- and there is no signal for it, so a strip
-    # coloured once at load keeps showing the old scheme while the molecule in
-    # front of it shows the new one. Reading them back is a cached array copy,
-    # which costs nothing beside drawing the molecule itself.
-    for row in gui.sequences:
-        if not row.object_id:
-            continue
-        try:
-            colours = controller.get_residue_colors(row.object_id)
-        except Exception:
-            continue
-        if colours is None:
-            continue
-        # Converting the array to a list of tuples is 234k tuples and 700k
-        # `float()` calls on an integrative model -- 395 ms, on every repaint,
-        # to produce the same list as last time. The colours only change when a
-        # command replaces the array, so its address is the signal: same buffer,
-        # same list. Content is deliberately not hashed; that would cost more
-        # than the conversion it avoids.
-        # Content, not address. The colour arrays are re-derived by the colour
-        # commands rather than replaced, so identity survives a change it must
-        # not survive -- keyed on the address, a scene came back in the previous
-        # one's colours. The hash is paid once per chrome repaint, which is ten
-        # times a second, not sixty.
-        signature = hashlib.blake2b(
-            np.ascontiguousarray(colours).view(np.uint8), digest_size=16
-        ).digest()
-        if getattr(row, "_colors_from", None) == signature:
-            continue
-        row.colors = [tuple(float(c) for c in rgba[:3]) for rgba in colours]
-        row._colors_from = signature
-
-    try:
-        current = int(controller.get_current_frame()) + 1
-        total = max(int(controller.get_total_frames()), 1)
-    except Exception:
-        return
-    if (current, total) != gui.state:
-        gui.state = (current, total)
-
-
-def paint_labels(painter, labels, project) -> int:
+def paint_labels(painter, labels, project, size: float | None = None) -> int:
     """Draw 3-D labels at their projected positions.
 
     Parameters
@@ -119,6 +54,12 @@ def paint_labels(painter, labels, project) -> int:
         and the error only shows once the panel or the sequence strip takes a
         share of the widget -- which is exactly when nobody is looking at label
         placement.
+    size : float, optional
+        Point size, PyMOL's ``label_size``. Omitted means the caller had no
+        configuration to offer and the shipped default is used. This was a
+        hard-coded ``10`` while ``label.size`` sat in the display config at
+        ``14``, read by nothing -- so the setting existed, was documented, and
+        could not change anything.
 
     Returns
     -------
@@ -136,7 +77,7 @@ def paint_labels(painter, labels, project) -> int:
 
     painter.save()
     font = painter.font()
-    font.setPointSize(10)
+    font.setPointSizeF(max(float(size if size else DEFAULT_LABEL_SIZE), 1.0))
     font.setBold(True)
     painter.setFont(font)
     drawn = 0
@@ -232,7 +173,7 @@ def paint_select_rect(painter, rect) -> bool:
 
 def paint_chrome_into(painter, gui, controller, width: int, height: int, *,
                       labels=None, project=None, ray_image=None, ray_rect=None,
-                      select_rect=None) -> None:
+                      select_rect=None, label_size: float | None = None) -> None:
     """Draw every screen-space element into ``painter``, in order.
 
     The order *is* the contract: the traced frame first, so everything below is
@@ -248,7 +189,7 @@ def paint_chrome_into(painter, gui, controller, width: int, height: int, *,
     painter.setRenderHint(QtGui.QPainter.TextAntialiasing, True)
     paint_ray_image(painter, ray_image, ray_rect)
     if labels and project is not None:
-        paint_labels(painter, labels, project)
+        paint_labels(painter, labels, project, label_size)
     if gui is not None:
         from .ui.qt_painter import QtPainter
 
@@ -264,7 +205,7 @@ def paint_chrome_into(painter, gui, controller, width: int, height: int, *,
 
 def paint_chrome(gui, controller, width: int, height: int, ratio: float = 1.0,
                  labels=None, project=None, ray_image=None, ray_rect=None,
-                 select_rect=None):
+                 select_rect=None, label_size: float | None = None):
     """Paint the chrome into a transparent image, ready to composite.
 
     Returns premultiplied RGBA, which is what Qt paints into natively and what
@@ -324,7 +265,7 @@ def paint_chrome(gui, controller, width: int, height: int, ratio: float = 1.0,
         paint_chrome_into(
             painter, gui, controller,
             int(width / ratio), int(height / ratio),
-            labels=labels, project=project,
+            labels=labels, project=project, label_size=label_size,
             ray_image=ray_image, ray_rect=ray_rect, select_rect=select_rect,
         )
     finally:

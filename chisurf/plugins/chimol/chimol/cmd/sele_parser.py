@@ -103,6 +103,14 @@ TOKEN_TYPES = [
     # requires at least one letter or underscore to disambiguate.
     ("FLOAT", r"\d+\.\d+"),
     ("INT", r"\d+(?![a-zA-Z_0-9])"),
+    # A **quoted** name, lexed as one identifier whatever is inside it. Object
+    # names are not chosen by this grammar -- an EMDB map arrives called
+    # `EMD-3061`, and a hyphen is `MINUS` here because `resi 1-40` needs it, so
+    # the name split into `EMD`, `-`, `3061` and every menu command on that
+    # object was a parse error. Quoting is the unambiguous spelling, and PyMOL
+    # accepts it too; the menus now emit it for any name that is not a bare
+    # identifier. Bare `EMD-3061` stays ambiguous with a range on purpose.
+    ("QUOTED", r'"[^"]*"' + r"|'[^']*'"),
     # `.` and `;` are part of an identifier so that PyMOL's abbreviations survive
     # lexing: `c.A`, `n.CA`, `bb.`, and dotted names like `polymer.protein`. A
     # bare `%` names a selection. `*` is `all`, and resolves through the table.
@@ -134,6 +142,11 @@ def tokenize(expr: str) -> list[Token]:
         value = match.group()
         if kind == "SPACE":
             continue
+        if kind == "QUOTED":
+            # Becomes an ordinary name token with the quotes taken off, so the
+            # whole parser treats it as one identifier and nothing downstream
+            # has to learn a second spelling for a name.
+            kind, value = "IDENT", value[1:-1]
         tokens.append(Token(kind, value, match.start(), match.end()))
     return tokens
 

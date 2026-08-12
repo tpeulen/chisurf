@@ -41,6 +41,33 @@ WGSL_DIR = pathlib.Path(__file__).with_name("wgsl")
 #: shades both.
 WGSL_PRELUDE = "shading.wgsl"
 
+#: The offscreen format the Gaussian field accumulates into. Sixteen-bit float
+#: because the sum is unbounded -- a buried atom in a large structure can have a
+#: hundred neighbours contributing -- and an 8-bit target saturates at the first
+#: few, which shows up as a surface that goes flat in the crowded places and is
+#: correct at the edges.
+_GAUSS_FORMAT = "rgba16float"
+
+#: The companion target: density-weighted view depth, **normalised**.
+#:
+#: Sixteen-bit float, because `r32float` is not blendable -- wgpu refuses the
+#: pipeline outright -- and this target has to be summed like the field beside
+#: it. Sixteen bits then requires the normalisation: raw depth is hundreds of
+#: scene units and the density is tens, and their product overflows float16's
+#: 65,504 on anything bigger than a peptide. The splat therefore writes depth in
+#: units of the scene's own radius (`u.gauss.w`), which keeps the sum near the
+#: density's own magnitude, and the resolve multiplies it back.
+_GAUSS_DEPTH_FORMAT = "r16float"
+
+
+#: Sum, do not blend. Any other blend makes the accumulated field depend on the
+#: order the instances happen to be in, so the surface would change when the
+#: camera moved.
+_ADDITIVE = {
+    "color": {"src_factor": "one", "dst_factor": "one", "operation": "add"},
+    "alpha": {"src_factor": "one", "dst_factor": "one", "operation": "add"},
+}
+
 
 def load_wgsl(name: str) -> str:
     """Read a shader from the shared ``wgsl`` directory, with the prelude.
@@ -271,6 +298,15 @@ class WgpuMeshRenderer:
                 )
         self._overlay_pipeline = None
         self._overlay_layout = None
+        #: The screen-space Gaussian surface: two pipelines, a bind-group
+        #: layout, a sampler and the offscreen field it accumulates into. Built
+        #: on first use -- a scene with no surface never allocates the target.
+        self._gauss_pipelines = None
+        self._gauss_layout = None
+        self._gauss_sampler = None
+        self._gauss_target = None
+        self._gauss_depth_target = None
+        self._gauss_target_size = (0, 0)
         self._silhouette_pipeline = None
         #: The chrome-quad pipeline and the glyph atlas it samples. Built and
         #: uploaded on first use, then kept: the atlas is immutable, and
@@ -285,7 +321,7 @@ class WgpuMeshRenderer:
     #: Size of the shared uniform block, in floats: four 4x4 matrices and six
     #: vec4s. Named because the chrome pass has to bind a block it never reads,
     #: and a short buffer there is a validation error rather than a blank frame.
-    UNIFORM_FLOATS = 4 * 16 + 6 * 4
+    UNIFORM_FLOATS = 4 * 16 + 7 * 4
 
     #: Vertex layout and topology per geometry kind. ``attributes`` are
     #: ``(format, float count)`` in order; the stride follows from them, so a
@@ -531,16 +567,31 @@ class WgpuMeshRenderer:
 
     @classmethod
     def interleave_lines(cls, geometry) -> np.ndarray:
-        """Pack line geometry into the line vertex layout: position, RGBA."""
-        n = geometry.vertex_count
-        out = np.zeros((n, 7), dtype=np.float32)
-        out[:, 0:3] = geometry.positions
-        out[:, 3:7] = cls._rgba(geometry)
+        """Pack line geometry into the line vertex layout: position, RGBA.
+
+        Line geometry that carries ``indices`` is expanded here: the pipeline
+        draws a non-indexed line list, and for years every line builder
+        pre-paired its vertices so nobody noticed that an *indexed* line
+        geometry — the map's wireframe, welded vertices plus an edge list —
+        was being drawn as chords between whichever vertices happened to be
+        adjacent in the array. That scribble was the reported "mesh is
+        broken".
+        """
+        positions = geometry.positions
+        colors = cls._rgba(geometry)
+        if geometry.indices is not None:
+            pairs = np.asarray(geometry.indices).reshape(-1)
+            positions = positions[pairs]
+            colors = colors[pairs]
+        out = np.zeros((len(positions), 7), dtype=np.float32)
+        out[:, 0:3] = positions
+        out[:, 3:7] = colors
         return np.ascontiguousarray(out)
 
     def _uniforms(self, mvp, view, proj, normal_matrix, fog_end, fog_scale,
                   fog_color, two_sided, opacity, point_scale, world_radius,
-                  rig: LightRig) -> bytes:
+                  rig: LightRig, gauss: Sequence[float] = (2.0, 0.5, 1.0, 0.0),
+                  unlit: bool = False) -> bytes:
         def m(a):
             # WGSL matrices are column-major; numpy is row-major.
             return np.ascontiguousarray(np.asarray(a, np.float32).T).tobytes()
@@ -564,7 +615,141 @@ class WgpuMeshRenderer:
             ],
             np.float32,
         ).tobytes()
+        # The screen-space Gaussian surface: decay, iso level, opacity. The
+        # fourth slot is the unlit flag (volume-image slices) -- spare here,
+        # and a new uniform block for one bit would touch every pipeline.
+        gauss_vals = (list(gauss)[:4] + [0.0] * 4)[:4]
+        if unlit:
+            gauss_vals[3] = 1.0
+        b += np.array(gauss_vals, np.float32).tobytes()
         return bytes(b)
+
+    def _build_gauss_pipelines(self):
+        """Build the two Gaussian-surface pipelines, once, on first use.
+
+        Returns
+        -------
+        tuple
+            ``(splat pipeline, resolve pipeline)``.
+
+        Notes
+        -----
+        The splat blends **additively into an offscreen RGBA16F target** -- one
+        for the density-weighted colour and one for the density itself -- with
+        no depth attachment at all. Both halves of that matter: a sum that is
+        not additive depends on the order the instances happen to be in, and a
+        depth test would let the nearest atom hide the ones behind it, which is
+        the opposite of accumulating a field.
+
+        The resolve then reads that target as a texture. It cannot be the same
+        pass: a texture cannot be sampled while it is attached.
+        """
+        wgpu = self._wgpu
+        if self._gauss_pipelines is not None:
+            return self._gauss_pipelines
+
+        splat_module = self.device.create_shader_module(
+            code=load_wgsl("gauss_splat.wgsl")
+        )
+        stride = (4 + 4 + 1) * 4
+        splat = self.device.create_render_pipeline(
+            layout=self.device.create_pipeline_layout(
+                bind_group_layouts=[self._bind_layout]
+            ),
+            vertex={
+                "module": splat_module,
+                "entry_point": "vs_main",
+                "buffers": [
+                    {
+                        "array_stride": stride,
+                        # The spec string, as every other pipeline here uses: the seam
+                        # states only the constants the engine needs, and a
+                        # binding-specific enum is what it exists to avoid.
+                        "step_mode": "instance",
+                        "attributes": [
+                            {"format": "float32x4", "offset": 0, "shader_location": 0},
+                            {"format": "float32x4", "offset": 16, "shader_location": 1},
+                            {"format": "float32", "offset": 32, "shader_location": 2},
+                        ],
+                    }
+                ],
+            },
+            fragment={
+                "module": splat_module,
+                "entry_point": "fs_main",
+                "targets": [
+                    {"format": _GAUSS_FORMAT, "blend": _ADDITIVE},
+                    # The density-weighted depth, accumulated alongside. A field
+                    # alone saturates in the interior and its gradient goes to
+                    # zero, which draws a flat silhouette with a lit rim; the
+                    # depth is the height field that gives the surface shape.
+                    {"format": _GAUSS_DEPTH_FORMAT, "blend": _ADDITIVE},
+                ],
+            },
+            primitive={"topology": wgpu.PrimitiveTopology.triangle_list},
+        )
+
+        if self._gauss_layout is None:
+            self._gauss_layout = self.device.create_bind_group_layout(
+                entries=[
+                    {
+                        "binding": 0,
+                        "visibility": wgpu.ShaderStage.FRAGMENT,
+                        "texture": {"sample_type": wgpu.TextureSampleType.float},
+                    },
+                    {
+                        "binding": 1,
+                        "visibility": wgpu.ShaderStage.FRAGMENT,
+                        "sampler": {"type": wgpu.SamplerBindingType.filtering},
+                    },
+                    {
+                        "binding": 2,
+                        "visibility": wgpu.ShaderStage.FRAGMENT,
+                        "texture": {"sample_type": wgpu.TextureSampleType.float},
+                    },
+                ]
+            )
+        resolve_module = self.device.create_shader_module(
+            code=load_wgsl("gauss_resolve.wgsl")
+        )
+        resolve = self.device.create_render_pipeline(
+            layout=self.device.create_pipeline_layout(
+                bind_group_layouts=[self._bind_layout, self._gauss_layout]
+            ),
+            vertex={"module": resolve_module, "entry_point": "vs_main", "buffers": []},
+            depth_stencil={
+                "format": wgpu.TextureFormat.depth24plus,
+                "depth_write_enabled": True,
+                "depth_compare": wgpu.CompareFunction.less,
+            },
+            fragment={
+                "module": resolve_module,
+                "entry_point": "fs_main",
+                "targets": [
+                    {
+                        "format": self.format,
+                        "blend": {
+                            "color": {
+                                "src_factor": wgpu.BlendFactor.src_alpha,
+                                "dst_factor": wgpu.BlendFactor.one_minus_src_alpha,
+                                "operation": wgpu.BlendOperation.add,
+                            },
+                            "alpha": {
+                                "src_factor": wgpu.BlendFactor.one,
+                                "dst_factor": wgpu.BlendFactor.one_minus_src_alpha,
+                                "operation": wgpu.BlendOperation.add,
+                            },
+                        },
+                    }
+                ],
+            },
+            primitive={"topology": wgpu.PrimitiveTopology.triangle_list},
+        )
+        self._gauss_sampler = self.device.create_sampler(
+            mag_filter=wgpu.FilterMode.linear, min_filter=wgpu.FilterMode.linear
+        )
+        self._gauss_pipelines = (splat, resolve)
+        return self._gauss_pipelines
 
     def _build_overlay_pipeline(self):
         """Build the screen-space chrome pipeline, once, on first use.
@@ -936,6 +1121,128 @@ class WgpuMeshRenderer:
         render_pass.draw(6, 1, 0, 0)
         return [ubo, uniforms, depth]
 
+    def _gauss_field_view(self, encoder):
+        """Return a cleared view of the offscreen field, allocating as needed.
+
+        Parameters
+        ----------
+        encoder : wgpu.GPUCommandEncoder
+            Unused, but taken so the call site reads as part of the frame.
+
+        Returns
+        -------
+        wgpu.GPUTextureView
+        """
+        wgpu = self._wgpu
+        if self._gauss_target_size != (self.width, self.height):
+            usage = (
+                wgpu.TextureUsage.RENDER_ATTACHMENT
+                | wgpu.TextureUsage.TEXTURE_BINDING
+            )
+            self._gauss_target = self.device.create_texture(
+                size=(self.width, self.height, 1),
+                format=_GAUSS_FORMAT,
+                usage=usage,
+            )
+            self._gauss_depth_target = self.device.create_texture(
+                size=(self.width, self.height, 1),
+                format=_GAUSS_DEPTH_FORMAT,
+                usage=usage,
+            )
+            self._gauss_target_size = (self.width, self.height)
+        return (
+            self._gauss_target.create_view(),
+            self._gauss_depth_target.create_view(),
+        )
+
+    def _accumulate_gauss(self, encoder, field_view, objects, uniforms) -> list:
+        """Splat every Gaussian object into the offscreen field.
+
+        Parameters
+        ----------
+        encoder : wgpu.GPUCommandEncoder
+        field_view : wgpu.GPUTextureView
+            The accumulation target, cleared by this pass.
+        objects : list
+            ``(PackedObject, kind)`` pairs whose kind is ``"gauss"``.
+        uniforms : bytes
+            The shared uniform block for this frame.
+
+        Returns
+        -------
+        list
+            Resources that must outlive the pass.
+        """
+        wgpu = self._wgpu
+        splat, _resolve = self._build_gauss_pipelines()
+        ubo = self.device.create_buffer_with_data(
+            data=uniforms, usage=wgpu.BufferUsage.UNIFORM
+        )
+        group0 = self.device.create_bind_group(
+            layout=self._bind_layout,
+            entries=[
+                {"binding": 0, "resource": {"buffer": ubo, "offset": 0, "size": ubo.size}}
+            ],
+        )
+        keep = [ubo, group0]
+        colour_view, depth_view = field_view
+        rp = encoder.begin_render_pass(
+            color_attachments=[
+                {
+                    "view": colour_view,
+                    "load_op": wgpu.LoadOp.clear,
+                    "store_op": wgpu.StoreOp.store,
+                    "clear_value": (0.0, 0.0, 0.0, 0.0),
+                },
+                {
+                    "view": depth_view,
+                    "load_op": wgpu.LoadOp.clear,
+                    "store_op": wgpu.StoreOp.store,
+                    "clear_value": (0.0, 0.0, 0.0, 0.0),
+                },
+            ],
+        )
+        rp.set_pipeline(splat)
+        rp.set_bind_group(0, group0)
+        for obj, _kind in objects:
+            geom = obj.geometry
+            if not geom.vertex_count:
+                continue
+            vbo = self._vertex_buffer(geom, "impostor")
+            keep.append(vbo)
+            rp.set_vertex_buffer(0, vbo)
+            rp.draw(6, geom.vertex_count, 0, 0)
+        rp.end()
+        return keep
+
+    def _resolve_gauss(self, render_pass, field_view, uniforms) -> list:
+        """Shade the accumulated field into the frame, one fullscreen triangle."""
+        wgpu = self._wgpu
+        _splat, resolve = self._build_gauss_pipelines()
+        ubo = self.device.create_buffer_with_data(
+            data=uniforms, usage=wgpu.BufferUsage.UNIFORM
+        )
+        group0 = self.device.create_bind_group(
+            layout=self._bind_layout,
+            entries=[
+                {"binding": 0, "resource": {"buffer": ubo, "offset": 0, "size": ubo.size}}
+            ],
+        )
+        colour_view, depth_view = field_view
+        group1 = self.device.create_bind_group(
+            layout=self._gauss_layout,
+            entries=[
+                {"binding": 0, "resource": colour_view},
+                {"binding": 1, "resource": self._gauss_sampler},
+                {"binding": 2, "resource": depth_view},
+            ],
+        )
+        render_pass.set_pipeline(resolve)
+        render_pass.set_bind_group(0, group0)
+        render_pass.set_bind_group(1, group1)
+        render_pass.draw(3, 1, 0, 0)
+        return [ubo, group0, group1]
+
     def _draw_overlay(self, render_pass, overlay: np.ndarray) -> list:
         """Composite the chrome image; returns the resources to keep alive."""
         wgpu = self._wgpu
@@ -1189,6 +1496,11 @@ class WgpuMeshRenderer:
         if kind == "mesh":
             has_indices = geometry.indices is not None and geometry.indices.size
             return "mesh" if has_indices else None
+        if kind == "gauss":
+            # Screen-space Gaussian surface: no grid, no mesh, two passes of
+            # its own. Routed here so `pipeline_for` stays the one place that
+            # answers "what draws this".
+            return "gauss" if geometry.vertex_count else None
         if kind == "cylinders":
             # Two rows per bond, so an odd count is a bond with one end.
             return "cylinder" if geometry.vertex_count >= 2 else None
@@ -1432,6 +1744,10 @@ class WgpuMeshRenderer:
         # painted over by whatever came after it.
         _ORDER = {"opaque": 0, "blend": 1, "overlay": 2}
         drawable = [(o, k) for o in scene.objects if (k := self.pipeline_for(o.geometry))]
+        # The Gaussian surface is not part of this pass at all: it accumulates
+        # into its own target and is resolved over the frame afterwards.
+        gauss_objects = [pair for pair in drawable if pair[1] == "gauss"]
+        drawable = [pair for pair in drawable if pair[1] != "gauss"]
         ordered = sorted(drawable, key=lambda pair: _ORDER[_mode(pair[0])])
 
         current = None
@@ -1459,6 +1775,7 @@ class WgpuMeshRenderer:
                     two_sided or bool(geom.meta.get("two_sided", False)),
                     opacity, point_scale,
                     bool(geom.meta.get("world_radius", False)), light,
+                    unlit=bool(geom.meta.get("unlit", False)),
                 ),
             )
             slot_index += 1
@@ -1477,7 +1794,12 @@ class WgpuMeshRenderer:
                 rp.draw(6, geom.vertex_count, 0, 0)
                 continue
             if kind == "line":
-                rp.draw(geom.vertex_count, 1, 0, 0)
+                # An indexed line list was expanded to pairs when the buffer
+                # was packed; the draw count has to follow the same rule.
+                if geom.indices is not None:
+                    rp.draw(int(np.asarray(geom.indices).size), 1, 0, 0)
+                else:
+                    rp.draw(geom.vertex_count, 1, 0, 0)
                 continue
 
             ibo = self.device.create_buffer_with_data(
@@ -1489,6 +1811,52 @@ class WgpuMeshRenderer:
 
         rp.end()
 
+        # -- the Gaussian surface: accumulate, then resolve over the frame ----
+        gauss_field = None
+        gauss_uniforms = None
+        if gauss_objects:
+            first = gauss_objects[0][0]
+            settings = dict(first.geometry.meta.get("gauss", {}))
+            # Scene-level values, not the last object's: `opacity` and the
+            # rest are per-draw locals in the loop above, and reading them here
+            # is reading whatever the final object happened to set.
+            gauss_uniforms = self._uniforms(
+                mvp, view, proj, normal_matrix, fog_end, fog_scale, background,
+                two_sided, 1.0, point_scale, True, light,
+                gauss=(
+                    float(settings.get("decay", 2.0)),
+                    float(settings.get("iso", 0.5)),
+                    float(settings.get("opacity", 1.0)),
+                    # The depth normalisation: see `_GAUSS_DEPTH_FORMAT`. One
+                    # over the scene's own span, so the accumulated depth stays
+                    # in the same order of magnitude as the density.
+                    1.0 / max(float(target_radius or scene.radius or 1.0) * 4.0, 1e-6),
+                ),
+            )
+            gauss_field = self._gauss_field_view(encoder)
+            keep += self._accumulate_gauss(
+                encoder, gauss_field, gauss_objects, gauss_uniforms
+            )
+
+        # -- Gaussian surface resolve pass ------------------------------------
+        if gauss_field is not None:
+            rp_gauss = encoder.begin_render_pass(
+                color_attachments=[
+                    {
+                        "view": target_view,
+                        "load_op": wgpu.LoadOp.load,
+                        "store_op": wgpu.StoreOp.store,
+                    }
+                ],
+                depth_stencil_attachment={
+                    "view": depth_tex.create_view(),
+                    "depth_load_op": wgpu.LoadOp.load,
+                    "depth_store_op": wgpu.StoreOp.store,
+                },
+            )
+            keep += self._resolve_gauss(rp_gauss, gauss_field, gauss_uniforms)
+            rp_gauss.end()
+
         # -- second pass: the silhouette, then the chrome ---------------------
         # Separate, because the outline samples the depth buffer the first pass
         # wrote and a depth attachment cannot be sampled while attached. The
@@ -1496,7 +1864,11 @@ class WgpuMeshRenderer:
         # an outline drawn over the object panel would trace the panel.
         outline = self._silhouette_params(state, silhouette)
         has_chrome = chrome is not None and len(chrome) > 0
-        if outline is not None or (overlay is not None and overlay.size) or has_chrome:
+        if (
+            outline is not None
+            or (overlay is not None and overlay.size)
+            or has_chrome
+        ):
             rp2 = encoder.begin_render_pass(
                 color_attachments=[
                     {

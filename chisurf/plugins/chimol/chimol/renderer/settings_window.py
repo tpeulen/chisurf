@@ -254,7 +254,7 @@ class SettingsWindow:
     def window(self, **kwargs) -> GuiWindow:
         """A :class:`GuiWindow` wired to this panel."""
         options = dict(key=self.KEY, title="Settings", x=24.0, y=90.0,
-                       w=420.0, h=300.0)
+                       w=420.0, h=300.0, transient=True)
         options.update(kwargs)
         return GuiWindow(body=self.draw, on_press=self.press,
                          on_drag=self.drag, on_release=self.release, **options)

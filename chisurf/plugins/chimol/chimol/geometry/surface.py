@@ -498,28 +498,46 @@ def _build_density_grid(
     sig_arr = np.maximum(sig_arr, spacing * 0.1)
     origin = mins.astype(np.float32)
 
-    if field_function == "wyvill":
-        _splat_field(
-            pts_arr.astype(np.float32).astype(np.float64),
-            sig_arr.astype(np.float32).astype(np.float64),
-            grid,
-            origin.astype(np.float64),
+    try:
+        from ..renderer import compute
+        gpu_grid = compute.density_grid(
+            pts_arr,
+            sig_arr,
+            tuple(int(x) for x in dims),
+            origin,
             float(spacing),
-            reach_of=lambda s: s,
-            contribution=_wyvill_falloff,
+            field_function=field_function,
+            cutoff_factor=cutoff_factor,
         )
+    except Exception:
+        gpu_grid = None
+
+    if gpu_grid is not None:
+        grid = np.asarray(gpu_grid, dtype=np.float32)
     else:
-        sig_arr = np.clip(sig_arr, spacing * 0.25, spacing * 5.0)
-        factor = float(cutoff_factor)
-        _splat_field(
-            pts_arr.astype(np.float32).astype(np.float64),
-            sig_arr.astype(np.float32).astype(np.float64),
-            grid,
-            origin.astype(np.float64),
-            float(spacing),
-            reach_of=lambda s: factor * s,
-            contribution=_gaussian_falloff,
-        )
+        grid = np.zeros(tuple(int(x) for x in dims), dtype=np.float32)
+        if field_function == "wyvill":
+            _splat_field(
+                pts_arr.astype(np.float32).astype(np.float64),
+                sig_arr.astype(np.float32).astype(np.float64),
+                grid,
+                origin.astype(np.float64),
+                float(spacing),
+                reach_of=lambda s: s,
+                contribution=_wyvill_falloff,
+            )
+        else:
+            sig_arr_clipped = np.clip(sig_arr, spacing * 0.25, spacing * 5.0)
+            factor = float(cutoff_factor)
+            _splat_field(
+                pts_arr.astype(np.float32).astype(np.float64),
+                sig_arr_clipped.astype(np.float32).astype(np.float64),
+                grid,
+                origin.astype(np.float64),
+                float(spacing),
+                reach_of=lambda s: factor * s,
+                contribution=_gaussian_falloff,
+            )
 
     if not np.isfinite(grid.max()) or grid.max() <= 0.0:
         return None

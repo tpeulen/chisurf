@@ -92,12 +92,12 @@ class SettingsMixin(BaseCmd):
     def config(self) -> None:
         """Open the settings editor **in the viewport**.
 
-        PyMOL's *Setting -> Edit All...*, the toolbar's *Cfg* and a typed
-        `config` all send this. It used to raise a modal Qt dialog holding the
-        display configuration as raw JSON; two things were wrong with that and
-        only one of them was the JSON. A dialog outside the 3-D view cannot be
-        seen by the browser build at all, and it covers the very picture the
-        settings change. It is an alias for `settings_panel` now.
+        This used to raise a modal Qt dialog with the display configuration in
+        it as raw JSON. Two things were wrong with that and only one of them
+        was the JSON: a dialog outside the 3-D view cannot be seen by the
+        browser build, and it covers the very picture the settings change. It
+        is an alias for `settings_panel` now, so the toolbar's *Cfg*, the menu
+        bar's *Edit All...* and a typed `config` all land in the same panel.
         """
         self.settings_panel("on")
 
@@ -156,6 +156,27 @@ class SettingsMixin(BaseCmd):
         gui.layout(gui._width, gui._height)
         viewer._update_view()
 
+    @command("window_reset", aliases=("reset_windows",))
+    def window_reset(self) -> None:
+        """Put every in-viewport window back to its default place and size.
+
+        And forget the saved layout, so the next run starts from the defaults
+        too -- restoring only this session would let a bad layout return on the
+        next start, which is the case this exists for.
+        """
+        _window, viewer = self._require_window_and_viewer()
+        if viewer is None:
+            return
+        gui = getattr(getattr(viewer, "_renderer", None), "_internal_gui", None)
+        if gui is None:
+            self._emit_error("window_reset: this renderer draws no chrome")
+            return
+        count = gui.reset_windows()
+        viewer._update_view()
+        self._emit_message(
+            f"window_reset: {count} window(s) restored, saved layout cleared"
+        )
+
     @command("toggle")
     def toggle(self, name: str = "") -> None:
         """Flip a boolean display setting (PyMOL ``toggle <name>``)."""
@@ -171,28 +192,53 @@ class SettingsMixin(BaseCmd):
         self._apply_setting(spec, value)
         self._emit_message(f"{spec.name} set to {_format(value)}")
 
-    @command("help_setting")
+    @command("help_setting", aliases=("help_settings",))
     def help_setting(self, name: str = "") -> str:
-        """Describe a setting, or list every setting when given no name."""
+        """Describe a setting, or list every setting when given no name.
+
+        Into the **info panel**, for the same reason `help` goes there: there
+        are 85 settings and the prompt's feedback line shows one at a time, so
+        the answer scrolled straight past. The text is still returned, so a
+        script or the console sees it too.
+        """
         name = str(name).strip().rstrip(",")
         if not name:
-            return "Available settings: " + ", ".join(_settings.setting_names())
-        try:
-            spec = _settings.resolve(name)
-        except UnknownSettingError as exc:
-            return str(exc)
-        path = ".".join(spec.path)
-        return (
-            f"{spec.name} ({spec.kind}, default {_format(spec.default)})\n"
-            f"  {spec.doc}\n"
-            f"  stored at {path}"
-        )
+            names = _settings.setting_names()
+            text = f"Settings ({len(names)}):\n\n" + "\n".join(
+                "  " + line for line in self._columns(names)
+            )
+        else:
+            try:
+                spec = _settings.resolve(name)
+            except UnknownSettingError as exc:
+                text = str(exc)
+            else:
+                text = (
+                    f"{spec.name} ({spec.kind}, default {_format(spec.default)})\n"
+                    f"  {spec.doc}\n"
+                    f"  stored at {'.'.join(spec.path)}"
+                )
+        self._show_in_info_panel(text)
+        return text
 
     # ------------------------------------------------------------------ #
     # Applying a change to the live viewer
     # ------------------------------------------------------------------ #
     def _apply_setting(self, spec: SettingSpec, value: Any) -> None:
-        """Push a changed setting to the attached viewer, if there is one."""
+        """Push a changed setting to the attached viewer, and remember it.
+
+        Autosaved: a setting the user changed is a preference, and one that is
+        forgotten when the window closes is not a preference at all. The write
+        is best-effort -- a read-only home stops settings persisting rather
+        than stopping the session.
+        """
+        from ..config import save_user_display_config  # noqa: PLC0415
+
+        try:
+            save_user_display_config()
+        except Exception:  # noqa: BLE001 - never fail a `set` over a file
+            pass
+
         viewer = getattr(self.window, "viewer", None)
         if viewer is None:
             return
@@ -202,8 +248,21 @@ class SettingsMixin(BaseCmd):
         elif spec.path[0] == _CAMERA_SECTION:
             if spec.path[-1] == "field_of_view":
                 _call(viewer, "set_field_of_view", value)
-            elif spec.path[-1] == "mouse_mode":
-                _call(viewer, "set_mouse_mode", value)
+        elif spec.path == ("selection", "mouse_selection_mode"):
+            _call(viewer, "set_selection_level", value)
+            # The word is drawn in the viewport block, which reads it back from
+            # the viewer -- so the block has to be re-synced or the row keeps
+            # showing the level that was replaced.
+            sync = getattr(self.window, "sync_internal_gui", None)
+            if callable(sync):
+                try:
+                    sync()
+                except Exception:
+                    pass
+        elif spec.path[0] == "info_overlay":
+            # The panel is chrome now, and the chrome re-reads its palette every
+            # frame -- all this needs is a repaint.
+            _call(viewer, "_request_chrome_redraw")
 
         # Everything else is read out of the display config during the rebuild.
         _call(viewer, "_update_view")

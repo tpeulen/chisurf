@@ -2,6 +2,7 @@
 
 import json
 import logging
+import re
 import shutil
 from pathlib import Path
 from typing import Any, Optional, Sequence
@@ -63,12 +64,11 @@ from ..renderer.internal_gui import GuiRow as InternalGuiRow
 from ..renderer.internal_gui import SequenceRow as InternalSequenceRow
 from ..renderer.view import MolView
 from .controls_panel import ControlsToolbar
-from .hierarchy_panel import HierarchyDock
-from .menu_bar import build_menu_bar
+from .menu_bar import MENU_BAR, TOOLBAR, build_menu_bar
 from .objects_panel import ObjectsDock
 from .rmf_panel import RmfPanel
 from .sequence_dock import SequenceDock
-from .volume_panel import VolumeDock
+from .volume_panel import VolumeViewModel
 
 try:
     from chisurf.gui.misc_helpers import get_plugin_settings_path, persist_plugin_state
@@ -121,7 +121,6 @@ _DEFAULT_DOCK_AREA_STATE: dict = {
                     {
                         "type": "tab",
                         "tabs": [
-                            {"widget_key": "Objects", "tab_name": "Objects", "tab_text": "Objects"},
                             {"widget_key": "Hierarchy", "tab_name": "Hierarchy", "tab_text": "Hierarchy"},
                             {"widget_key": "RMF", "tab_name": "RMF", "tab_text": "RMF"},
                             {"widget_key": "Map", "tab_name": "Map", "tab_text": "Map"},
@@ -129,13 +128,6 @@ _DEFAULT_DOCK_AREA_STATE: dict = {
                         "current_index": 0,
                     },
                 ],
-            },
-            {
-                "type": "tab",
-                "tabs": [
-                    {"widget_key": "Command", "tab_name": "Command", "tab_text": "Command"},
-                ],
-                "current_index": 0,
             },
         ],
     },
@@ -155,7 +147,7 @@ _RETIRED_DOCKS = frozenset({"Sequence", "State", "Timeline"})
 #: ``Objects`` is permanently hidden (the list is in the viewport); the other
 #: three appear by themselves once they have something -- see
 #: :meth:`MolViewPluginWindow._reveal_panel_with_content`.
-_INITIALLY_HIDDEN_DOCKS = frozenset({"Objects", "Hierarchy", "RMF", "Map"})
+_INITIALLY_HIDDEN_DOCKS = frozenset({"Hierarchy", "RMF", "Map"})
 
 
 def _without_retired_docks(state):
@@ -186,6 +178,13 @@ def _without_retired_docks(state):
 @persist_plugin_state("chimol")
 class MolViewPluginWindow(ChisurfDockTool):
     """Chimol main window — toolbar, statusbar, DockArea panels, and 3D view."""
+
+    #: How many chains the sequence strip will draw before it stops and says
+    #: how many it left out. An integrative model is not a protein with four
+    #: chains — the NPC has hundreds, and a row each fills the viewport and
+    #: leaves no molecule. The strip is *reference material*; a structure with
+    #: 250 chains is read from the hierarchy, not from 250 rows of letters.
+    MAX_SEQUENCE_ROWS = 12
 
     def __init__(
         self,
@@ -223,10 +222,19 @@ class MolViewPluginWindow(ChisurfDockTool):
         self.viewer = MolView(self)
 
         # ── Toolbar ───────────────────────────────────────────────────
+        # Built but **not added to the window**: the toolbar is drawn in the
+        # viewport now (`menu_bar.TOOLBAR`), where every button is a command
+        # rather than a Qt slot, so the same row serves the browser. The widget
+        # survives only because a handful of call sites still read
+        # `button_info.isChecked()`; nothing puts it on screen.
         self.controls = ControlsToolbar(
             self, button_overrides=button_overrides,
         )
-        self.addToolBar(self.controls.toolbar)
+        # Off the window entirely, not merely hidden: a `QToolBar` whose parent
+        # is a `QMainWindow` is shown again by Qt's own layout the moment the
+        # window is, so `hide()` alone left it on screen. The object stays alive
+        # through `self.controls`, which is all the remaining call sites need.
+        self.controls.toolbar.setParent(None)
 
         self.button_open = self.controls.button_open
         self.button_plane = self.controls.button_plane
@@ -236,18 +244,20 @@ class MolViewPluginWindow(ChisurfDockTool):
         self.button_surface = self.controls.button_surface
         self.button_info = self.controls.button_info
         self.button_display_cfg = self.controls.button_display_cfg
-        self.button_mouse_mode = self.controls.button_mouse_mode
 
-        # ── Status bar ────────────────────────────────────────────────
+        # ── Status ────────────────────────────────────────────────────
+        # The chrome's own status line, not the toolkit's: the QStatusBar was
+        # a native strip under the viewport that the browser build cannot
+        # have, the settings cannot hide, and the window cannot theme. Kept
+        # constructed (code hands messages to it) but never shown; the text
+        # goes to the in-viewport line instead.
         self.status_bar = self.statusBar()
+        self.status_bar.hide()
         try:
-            self.viewer.statusMessage.connect(
-                lambda text: self.status_bar.showMessage(text, 6000)
-            )
+            self.viewer.statusMessage.connect(self._flash_status)
         except Exception:
             pass
         self._status_label = QtWidgets.QLabel("Ready")
-        self.status_bar.addPermanentWidget(self._status_label)
         self._status_timer = QtCore.QTimer(self)
         self._status_timer.timeout.connect(self._update_status_bar)
         self._status_timer.start(2000)
@@ -272,13 +282,9 @@ class MolViewPluginWindow(ChisurfDockTool):
             self._on_object_list_context_menu,
         )
 
-        self.hierarchy = HierarchyDock(self)
-        # Un-checking a node in the tree hides its particles. The panel knows
-        # which rows a node owns; the viewer knows how to not draw them.
-        self.hierarchy.hidden_rows_changed.connect(self._apply_hidden_rows)
-        self.volume_panel = VolumeDock(
-            self, self.viewer, margins=dock_margins, spacing=spacing
-        )
+        # The Qt volume/map dock is gone: density controls live in the
+        # viewport (`renderer/density_window.py`). The pure-Python model remains.
+        self.volume_panel = VolumeViewModel(self.viewer)
         self.rmf_panel = RmfPanel(self, self.viewer)
         self.sequence = SequenceDock(
             self,
@@ -327,59 +333,25 @@ class MolViewPluginWindow(ChisurfDockTool):
         )
         self.command_panel.set_dispatcher(ChimolDispatcher(_cmd))
 
-        # Build central widget with single DockArea
-        central = QtWidgets.QWidget(self)
-        central_layout = QtWidgets.QVBoxLayout(central)
-        central_layout.setContentsMargins(0, 0, 0, 0)
-        central_layout.setSpacing(0)
-        self.setCentralWidget(central)
-
+        # The 3-D view **is** the window. Everything that used to sit beside
+        # it -- the object list, the command prompt, the hierarchy, the density
+        # controls, the menus and the toolbar -- is drawn inside the viewport
+        # by `InternalGui`, so a second widget would be a second copy of
+        # something already on screen and one that no browser has.
+        #
+        # There is deliberately no `DockArea` any more: a dock is a promise
+        # that the thing inside it is a separate panel, and none of them are.
         self.dock_area: Optional[DockArea] = None
-        if DockArea is not None:
-            self.dock_area = DockArea(self)
-            # Right-click a tab to show or hide any dock. The DockArea has had
-            # this all along -- checkable entries for every dock, and it refuses
-            # to hide the last visible one -- but it is off by default, so the
-            # menu never appeared and the docks could only be reached from the
-            # View menu.
-            self.dock_area.setContextMenuEnabled(True)
-            self.dock_area.addTab(self.viewer, "3D View", close_mode="hide")
-            self.dock_area.addTab(self.objects.widget, "Objects", close_mode="hide")
-            self.dock_area.addTab(self.hierarchy, "Hierarchy", close_mode="hide")
-            self.dock_area.addTab(self.rmf_panel.widget, "RMF", close_mode="hide")
-            self.dock_area.addTab(self.volume_panel, "Map", close_mode="hide")
-            self.dock_area.addTab(self.command_panel, "Command", close_mode="hide")
-            try:
-                self.dock_area.set_layout_state(
-                    dict(_DEFAULT_DOCK_AREA_STATE), emit_change=False,
-                )
-            except Exception:
-                pass
-
-            # After the layout is applied, not before: `set_layout_state`
-            # restores the authored tabs and would undo it.
-            #
-            # The object list lives in the viewport now, and the other three
-            # side panels have nothing to show until a file brings it -- a
-            # hierarchy, an RMF, a map. On an ordinary PDB the side column was a
-            # third of the window holding a filter box and white space, while
-            # the molecule got the rest. They start hidden, so the viewport owns
-            # the window the way PyMOL's does; hidden, not removed, because the
-            # View menu and a right-click on a tab bring them back, and the ones
-            # that *can* fill are shown the moment they have content (see
-            # `_reveal_panel_with_content`).
-            try:
-                for index in range(self.dock_area.count()):
-                    if self.dock_area.tabText(index) in _INITIALLY_HIDDEN_DOCKS:
-                        self.dock_area.hideTab(index)
-            except Exception:
-                pass
-            central_layout.addWidget(self.dock_area)
-        else:
-            central_layout.addWidget(self.viewer)
+        self.setCentralWidget(self.viewer)
+        self._detach_orphan_widgets()
 
         # ── View menu (after DockArea creation) ───────────────────────
-        self._build_view_menu()
+        # No Qt menu bar. The menus are drawn in the viewport
+        # (`InternalGui.layout_menubar`, built from the same `MENU_BAR` table),
+        # so a Qt one is the same menu twice -- and only one of the two exists
+        # in a browser. `_build_view_menu` and `_install_menu_bar` are kept for
+        # a host that wants a native bar; nothing here calls them.
+        self.menuBar().hide()
 
         self._sequence_visible = True
         self._sequence_rows: dict[str, dict[str, Any]] = {}
@@ -409,7 +381,6 @@ class MolViewPluginWindow(ChisurfDockTool):
         self.button_surface.toggled.connect(self.viewer.set_surface_visible)
         self.button_info.toggled.connect(self.on_toggle_info_panel)
         self.button_display_cfg.clicked.connect(self.on_open_display_config)
-        self.button_mouse_mode.toggled.connect(self.on_mouse_mode_toggled)
 
         # Sync initial color-mode toggles with viewer default
         try:
@@ -430,26 +401,6 @@ class MolViewPluginWindow(ChisurfDockTool):
                 self.button_color.blockSignals(False)
                 self.button_color_ss.blockSignals(False)
                 self.button_color_sequence.blockSignals(False)
-            except Exception:
-                pass
-
-        # Sync initial mouse-rotation mode with the viewer/config default.
-        try:
-            mouse_mode = self.viewer.get_mouse_mode()
-        except Exception:
-            mouse_mode = "pymol"
-        try:
-            self.button_mouse_mode.blockSignals(True)
-            pymol_active = mouse_mode == "pymol"
-            self.button_mouse_mode.setChecked(pymol_active)
-            self.button_mouse_mode.setText(
-                "\U0001f5b1\ufe0f PyMOL" if pymol_active else "\U0001f5b1\ufe0f Chimol"
-            )
-        except Exception:
-            pass
-        finally:
-            try:
-                self.button_mouse_mode.blockSignals(False)
             except Exception:
                 pass
 
@@ -483,20 +434,13 @@ class MolViewPluginWindow(ChisurfDockTool):
             pass
 
         # After the command layer is wired: every menu entry runs through it.
-        self._install_menu_bar()
-        # After, never before: `build_menu_bar` starts with `bar.clear()`, so a
-        # menu added earlier is silently wiped. That is why the Demo menu was
-        # missing in the running app while a test that never triggered the
-        # rebuild still saw it.
-        try:
-            from .demos import build_demo_menu
-
-            build_demo_menu(self, self.menuBar())
-        except Exception:
-            logging.getLogger(__name__).warning(
-                "chimol: could not build the Demo menu", exc_info=True
-            )
-
+        # The demos are part of `MENU_BAR` now, generated from the same `DEMOS`
+        # table, so they reach the viewport bar and the Qt one from a single
+        # definition. The separate `build_demo_menu` call that used to follow
+        # this was the same list a second time -- and it had its own hazard,
+        # recorded here because it will recur for anything else bolted on after:
+        # `build_menu_bar` starts with `bar.clear()`, so a menu added *before*
+        # the rebuild is silently wiped.
         self._update_sequence_view()
         self._update_system_info()
         # PyMOL's object panel is there from startup, with `all` and `sele` in
@@ -505,6 +449,19 @@ class MolViewPluginWindow(ChisurfDockTool):
         # been handed its `run_command` yet, so the panel that did appear on the
         # first load ran nothing until something refreshed it.
         self.sync_internal_gui()
+        # The in-viewport windows come back where the last session left them.
+        # Enabled here, in the shipped app, and deliberately not in the panel's
+        # constructor: a bare panel in a test must never read -- or on its
+        # first drag rewrite -- the real preferences of whoever runs the suite.
+        try:
+            gui = getattr(getattr(self.viewer, "_renderer", None),
+                          "_internal_gui", None)
+            if gui is not None:
+                gui.enable_persistence()
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "chimol: window persistence unavailable", exc_info=True
+            )
 
     # ── View menu ─────────────────────────────────────────────────────
 
@@ -636,21 +593,8 @@ class MolViewPluginWindow(ChisurfDockTool):
             self._act_toggle_sequence.triggered.connect(self._set_sequence_visible)
             self._view_menu_actions.append(self._act_toggle_sequence)
 
-            self._act_toggle_command = view_menu.addAction(
-                "\U0001f4bb Toggle Command",
-            )
-            self._act_toggle_command.setCheckable(True)
-            self._act_toggle_command.setChecked(True)
-            self._act_toggle_command.triggered.connect(
-                lambda c: self._set_tab_visible("Command", c),
-            )
-            self._view_menu_actions.append(self._act_toggle_command)
-
             view_menu.addSeparator()
             sub = view_menu.addMenu("\U0001f4cb Panel Tabs")
-            sub.addAction("Objects").triggered.connect(
-                lambda: self._show_tab("Objects"),
-            )
             sub.addAction("Hierarchy").triggered.connect(
                 lambda: self._show_tab("Hierarchy"),
             )
@@ -854,8 +798,27 @@ class MolViewPluginWindow(ChisurfDockTool):
 
     # ── Status bar ────────────────────────────────────────────────────
 
+    def _status_gui(self):
+        """The in-viewport chrome the status line is drawn by, or ``None``."""
+        return getattr(getattr(self.viewer, "_renderer", None),
+                       "_internal_gui", None)
+
+    def _flash_status(self, text: str) -> None:
+        """Show a transient message on the in-viewport status line.
+
+        The periodic refresh overwrites it with the standing counts a few
+        seconds later, which is the old QStatusBar timeout by other means.
+        """
+        gui = self._status_gui()
+        if gui is not None:
+            gui.status_text = str(text)
+            try:
+                self.viewer.update()
+            except Exception:
+                pass
+
     def _update_status_bar(self) -> None:
-        parts = ["\U0001f9ec Chimol"]
+        parts = ["Chimol"]
         try:
             obj_count = len(self._object_store)
             parts.append(f"{obj_count} object{'s' if obj_count != 1 else ''}")
@@ -877,7 +840,15 @@ class MolViewPluginWindow(ChisurfDockTool):
                 parts.append(f"frame {frame + 1}/{total}")
         except Exception:
             pass
-        self._status_label.setText(" \u00b7 ".join(parts))
+        line = " \u00b7 ".join(parts)
+        self._status_label.setText(line)
+        gui = self._status_gui()
+        if gui is not None and gui.status_text != line:
+            gui.status_text = line
+            try:
+                self.viewer.update()
+            except Exception:
+                pass
 
     # ------------------------------------------------------------------
     # Actions
@@ -954,21 +925,6 @@ class MolViewPluginWindow(ChisurfDockTool):
                 self._update_system_info()
             except Exception:
                 pass
-
-    def on_mouse_mode_toggled(self, checked: bool) -> None:
-        """Switch between PyMOL and Chimol left-drag rotation styles."""
-        if self.viewer is None:
-            return
-        mode = "pymol" if checked else "chimol"
-        try:
-            self.viewer.set_mouse_mode(mode)
-        except Exception:
-            pass
-        try:
-            text = "\U0001f5b1\ufe0f PyMOL" if checked else "\U0001f5b1\ufe0f Chimol"
-            self.button_mouse_mode.setText(text)
-        except Exception:
-            pass
 
     def on_color_aa_toggled(self, checked: bool) -> None:
         """Toggle coloring by amino-acid type in the 3D view."""
@@ -1746,6 +1702,36 @@ class MolViewPluginWindow(ChisurfDockTool):
     # Object management helpers
     # ------------------------------------------------------------------
 
+    def _detach_orphan_widgets(self) -> None:
+        """Take every widget that is not the viewport off the window.
+
+        The panels that used to live in the dock area are still *constructed* --
+        a handful of call sites read a button's checked state or push text at
+        the console -- and a `QWidget` whose parent is the window but which no
+        layout owns is drawn **at (0, 0), 100 × 30**, on top of the viewport.
+        That is the little grey `Command line` box tpeulen photographed sitting
+        over the toolbar row: four of them stacked there (`Chinsole`,
+        `VolumeDock`, and two bare containers).
+
+        They are **hidden** rather than detached: `hide()` is the smaller
+        change and keeps the parent link, so anything that walks the window's
+        children still finds them.
+
+        The one exception is a `QToolBar`, where hiding does *not* stick: Qt's
+        main-window layout shows it again the moment the window is shown. That
+        one has its parent cut, and stays alive through `self.controls`.
+        """
+        from qtpy import QtWidgets as _QtWidgets
+
+        keep = (self.viewer, self.statusBar(), self.menuBar())
+        for child in list(self.children()):
+            if not isinstance(child, _QtWidgets.QWidget) or child in keep:
+                continue
+            if isinstance(child, _QtWidgets.QToolBar):
+                child.setParent(None)
+            else:
+                child.hide()
+
     def _install_menu_bar(self) -> None:
         """Put PyMOL's menu bar on the window, as far as chimol can honour it."""
         try:
@@ -1784,7 +1770,7 @@ class MolViewPluginWindow(ChisurfDockTool):
                 except Exception:
                     pass
 
-    def _apply_hidden_rows(self, rows) -> None:
+    def _apply_hidden_rows(self, rows, object_id=None) -> None:
         """Hide exactly the coordinate rows the hierarchy panel has switched off.
 
         The whole set is applied each time rather than the difference, so the
@@ -1796,19 +1782,25 @@ class MolViewPluginWindow(ChisurfDockTool):
         ----------
         rows : sequence of int
             Rows to leave undrawn. Everything else is shown.
+        object_id : str, optional
+            The object the panel's tree belongs to. The active object used to
+            be assumed, and that is the whole of "disabling in the hierarchy
+            does nothing": with a map active, the panel showed the structure's
+            tree while the hiding was applied to the map.
         """
         viewer = getattr(self, "viewer", None)
         if viewer is None:
             return
         try:
-            coords = viewer._all_atom_coords
-            n = 0 if coords is None else int(coords.shape[0])
+            with viewer._activate_object(object_id):
+                coords = viewer._all_atom_coords
+                n = 0 if coords is None else int(coords.shape[0])
             if n == 0:
                 return
             hidden = set(int(r) for r in rows)
-            viewer.set_rows_hidden(range(n), False)
+            viewer.set_rows_hidden(range(n), False, object_id=object_id)
             if hidden:
-                viewer.set_rows_hidden(sorted(hidden), True)
+                viewer.set_rows_hidden(sorted(hidden), True, object_id=object_id)
         except Exception:
             logger.debug("could not apply hierarchy visibility", exc_info=True)
 
@@ -1886,6 +1878,18 @@ class MolViewPluginWindow(ChisurfDockTool):
 
             grid = load_mrc_grid(path)
             grid.name = display_name or grid.name
+
+            digits = re.search(r"\d+", path.name)
+            if digits and ("emdb" in path.name.lower() or "emd" in path.name.lower()):
+                try:
+                    from ..cmd.loader import _fetch_emdb_contour_level
+
+                    rec_lvl = _fetch_emdb_contour_level(digits.group(0))
+                    if rec_lvl is not None:
+                        grid.recommended_level = rec_lvl
+                except Exception:
+                    pass
+
             object_id = self.viewer.add_volume(grid, name=display_name)
             try:
                 entry_obj = self.viewer._objects.get(object_id)
@@ -2242,12 +2246,25 @@ class MolViewPluginWindow(ChisurfDockTool):
         # molecule: its buttons address the current selection, and it has no
         # on/off state of its own.
         rows.append(InternalGuiRow(name="sele", enabled=True, is_selection=True))
+        rows.extend(self._measurement_rows())
         gui.set_rows(rows)
         gui.set_run_command(self._run_internal_gui_command)
         self._wire_internal_command_line(gui)
         gui.on_playback_change = self._apply_playback_settings
         gui.on_frame_change = self._seek_to_frame
         gui.on_prompt_command = self._prefill_command_line
+        gui.on_file_prompt = self._menu_file_prompt
+        # The menu bar, drawn in the viewport. On macOS a Qt menu bar is taken
+        # away to the *system* bar at the top of the screen, so the menus were
+        # nowhere near the 3-D view; drawn here they are in the same place on
+        # every platform, and in the browser at all.
+        gui.menubar = [
+            (title, entries) for title, entries in MENU_BAR if entries
+        ]
+        # The toolbar, migrated from the Qt row: every button is a command, so
+        # the same row works in the browser and each press is echoed at the
+        # prompt like a typed one.
+        gui.toolbar = list(TOOLBAR)
         try:
             gui.stride = int(self.viewer.get_frame_step())
             gui.average = int(self.viewer.get_trajectory_smoothing())
@@ -2258,6 +2275,14 @@ class MolViewPluginWindow(ChisurfDockTool):
                 int(self.viewer.get_current_frame()) + 1,
                 max(int(self.viewer.get_total_frames()), 1),
             )
+        except Exception:
+            pass
+        # The block's "Selecting" row reads the level back from the viewer
+        # rather than owning it, so clicking the row and typing
+        # `set mouse_selection_mode, ...` cannot disagree about what a click
+        # will select.
+        try:
+            gui.selecting = str(self.viewer.selection_mode)
         except Exception:
             pass
         self._sync_internal_sequences(gui)
@@ -2291,6 +2316,104 @@ class MolViewPluginWindow(ChisurfDockTool):
                 "Could not apply playback settings", exc_info=True
             )
 
+    @staticmethod
+    def _sequence_rows_for_object(
+        object_id, object_name, codes, numbers, colors, chains
+    ):
+        """**One row per object**, with the chain id inline — PyMOL's own shape.
+
+        Checked against `Seeker.cpp` rather than assumed: PyMOL creates one row
+        per object (`nRow++` closes the per-object loop) and shows chains
+        *within* it — `seq_view_format 3` writes the chain id as its own column
+        at each boundary. An earlier version here split the strip into a row
+        per chain, which reads fine on a four-chain protein and fills the whole
+        viewport on an integrative model with two hundred and fifty.
+
+        The chain markers are columns like any other, so they need a residue to
+        point at and have none: their ``residue_indices`` entry is **-1**, and
+        everything downstream drops negatives. Without that, clicking a chain
+        label would select whatever residue happened to share its column index.
+        """
+        import numpy as np
+
+        codes = [str(c) for c in codes]
+        total = len(codes)
+        numbers = list(numbers) if numbers is not None else []
+        colors = list(colors) if colors is not None else []
+        chain_ids = [str(c).strip() for c in chains] if chains is not None else []
+
+        letters: list[str] = []
+        row_numbers: list[int] = []
+        row_colors: list[tuple] = []
+        mapping: list[int] = []
+        last_chain = None
+
+        for index in range(total):
+            chain = chain_ids[index] if index < len(chain_ids) else ""
+            if chain and chain != last_chain:
+                last_chain = chain
+                # The boundary marker: the chain id, then a space. Columns that
+                # name no residue, which is what the -1 records.
+                for character in f"{chain} ":
+                    letters.append(character)
+                    row_numbers.append(0)
+                    row_colors.append((0.55, 0.55, 0.6))
+                    mapping.append(-1)
+            letters.append(codes[index])
+            row_numbers.append(int(numbers[index]) if index < len(numbers) else index + 1)
+            row_colors.append(
+                tuple(float(c) for c in colors[index][:3])
+                if index < len(colors) else (0.8, 0.8, 0.85)
+            )
+            mapping.append(index)
+
+        distinct = len(np.unique(np.asarray(chain_ids))) if chain_ids else 0
+        return [
+            InternalSequenceRow(
+                name=str(object_name),
+                object_id=str(object_id),
+                chain="" if distinct != 1 else (chain_ids[0] if chain_ids else ""),
+                codes="".join(letters),
+                numbers=row_numbers,
+                colors=row_colors,
+                residue_indices=mapping,
+            )
+        ]
+
+    def _measurement_rows(self) -> list:
+        """One row per measurement, under `sele`, the way PyMOL lists them.
+
+        A `distance` **is an object** in PyMOL — it gets a name, a row and an
+        on/off switch, and that is how you turn one off without deleting it.
+        Here they were drawn into the scene and listed nowhere, so a
+        measurement could only ever be removed, and only by knowing its name.
+
+        Below `sele` rather than among the molecules: they are derived from the
+        structures above them, and PyMOL keeps its own non-molecule rows at the
+        bottom for the same reason.
+        """
+        try:
+            measurements = dict(self.viewer._measurements or {})
+        except Exception:
+            return []
+
+        rows = []
+        for name in sorted(measurements):
+            data = measurements[name] or {}
+            label = str(data.get("label") or "")
+            if not label:
+                labels = data.get("labels") or []
+                label = f"{len(labels)} contacts" if labels else ""
+            rows.append(
+                InternalGuiRow(
+                    name=str(name),
+                    enabled=bool(data.get("visible", True)),
+                    is_measurement=True,
+                    detail=label,
+                )
+            )
+        return rows
+
     def _sync_internal_sequences(self, gui) -> None:
         """Give the strip one row per *shown* object.
 
@@ -2306,6 +2429,7 @@ class MolViewPluginWindow(ChisurfDockTool):
             gui.sequence_visible = True
 
         rows = []
+        total_chains = 0
         for object_id, entry in self._object_store.items():
             if not bool(entry.get("visible", True)):
                 continue
@@ -2313,23 +2437,30 @@ class MolViewPluginWindow(ChisurfDockTool):
                 codes, _names = self.viewer.get_sequence_arrays(object_id)
                 numbers = self.viewer.get_residue_numbers(object_id)
                 colors = self.viewer.get_residue_colors(object_id)
+                chains = self.viewer.get_residue_chains(object_id)
             except Exception:
                 continue
             if codes is None or len(codes) == 0:
                 continue
-            rows.append(
-                InternalSequenceRow(
-                    name=str(entry.get("name", object_id)),
-                    object_id=str(object_id),
-                    codes="".join(str(c) for c in codes),
-                    numbers=[int(n) for n in (numbers if numbers is not None else [])],
-                    colors=[
-                        tuple(float(c) for c in rgba[:3])
-                        for rgba in (colors if colors is not None else [])
-                    ],
-                )
+            built = self._sequence_rows_for_object(
+                object_id, str(entry.get("name", object_id)),
+                codes, numbers, colors, chains,
             )
+            rows.extend(built)
+            try:
+                import numpy as _np
+
+                total_chains += (
+                    len(_np.unique(_np.asarray([str(c).strip() for c in chains])))
+                    if chains is not None else len(built)
+                )
+            except Exception:
+                total_chains += len(built)
         gui.set_sequences(rows)
+        # The chrome truncates again to what fits, so it has to be told how
+        # many chains there really are or its "and N more" counts only the ones
+        # this method dropped.
+        gui.sequence_total = total_chains
         gui.on_select = self._on_internal_sequence_selection
         if not getattr(self, "_sequence_selection_connected", False):
             # The viewer's selection is the single source of truth, and the
@@ -2350,12 +2481,21 @@ class MolViewPluginWindow(ChisurfDockTool):
         gui = getattr(renderer, "_internal_gui", None)
         if gui is None:
             return
-        entry = self._object_store.get(object_id) or {}
-        name = str(entry.get("name", object_id))
         chosen = {int(i) for i in (indices or [])}
         for row in gui.sequences:
-            if row.name == name:
-                row.selected = set(chosen)
+            # By object id, and mapped back into the row's own columns: a row
+            # is one chain, so the object's residue indices are not its column
+            # numbers. Matching on the label would also miss now that the label
+            # carries the chain.
+            if row.object_id == str(object_id):
+                mapping = getattr(row, "residue_indices", None) or []
+                if mapping:
+                    row.selected = {
+                        column for column, residue in enumerate(mapping)
+                        if int(residue) in chosen
+                    }
+                else:
+                    row.selected = set(chosen)
             elif not chosen:
                 row.selected = set()
         renderer.update()
@@ -2367,11 +2507,17 @@ class MolViewPluginWindow(ChisurfDockTool):
         sequence widget uses -- so a residue picked in the strip and one picked
         in the dock end up as the same selection rather than two ideas of one.
         """
-        object_id = next(
-            (oid for oid, entry in self._object_store.items()
-             if str(entry.get("name", oid)) == name),
-            None,
-        )
+        # `name` is the row's object *id* when it has one -- the strip stopped
+        # identifying rows by their label once the label gained the chain.
+        # Falling back to the name keeps a row built without an id working.
+        if name in self._object_store:
+            object_id = name
+        else:
+            object_id = next(
+                (oid for oid, entry in self._object_store.items()
+                 if str(entry.get("name", oid)) == name),
+                None,
+            )
         try:
             self.viewer.set_selected_residues(list(indices), object_id=object_id)
             self.viewer.update()
@@ -2396,6 +2542,29 @@ class MolViewPluginWindow(ChisurfDockTool):
             logging.getLogger(__name__).debug(
                 "could not prefill the command line", exc_info=True
             )
+
+    def _menu_file_prompt(self, line: str, mode: str, title: str,
+                          name_filter: str) -> None:
+        """Open a real file dialog for a viewport-menu entry that names a file.
+
+        The viewport menu bar is the one the user sees (the Qt bar is hidden,
+        and on macOS it would live in the system bar anyway), so ``Save
+        Molecule As...`` clicked there must open the same dialog the Qt path
+        does -- a filename typed blind lands wherever the process is running.
+        The command line keeps taking paths as text.
+        """
+        if mode == "open":
+            text, _used = QtWidgets.QFileDialog.getOpenFileName(
+                self, title, "", name_filter
+            )
+        else:
+            text, _used = QtWidgets.QFileDialog.getSaveFileName(
+                self, title, "", name_filter
+            )
+        text = str(text).strip()
+        if not text:
+            return
+        self._run_internal_gui_command(line.replace("{text}", text))
 
     def _fan_out(self, sink, kind: str):
         """Return a callback that reports to the console *and* to the viewport.
@@ -2526,8 +2695,6 @@ class MolViewPluginWindow(ChisurfDockTool):
             self._active_object_id = None
             self._update_sequence_view(None)
             self._update_system_info(None)
-            if hasattr(self, "hierarchy"):
-                self.hierarchy.set_hierarchy(None)
             if hasattr(self, "rmf_panel"):
                 self.rmf_panel.set_state(None)
             return
@@ -2541,15 +2708,6 @@ class MolViewPluginWindow(ChisurfDockTool):
         self._update_sequence_view(object_id)
         self._update_system_info(object_id)
 
-        hierarchy = None
-        if hasattr(self, "hierarchy"):
-            try:
-                state = self.viewer._get_active_state()
-                hierarchy = state.rmf_hierarchy
-            except Exception:
-                hierarchy = None
-            self.hierarchy.set_hierarchy(hierarchy)
-            self._reveal_panel_with_content("Hierarchy", hierarchy is not None)
         if hasattr(self, "rmf_panel"):
             try:
                 state = self.viewer._get_active_state()

@@ -169,7 +169,6 @@ class CameraState:
         # Three floats, not two: the view tuple carries an x/y/z shift.
         self._shift = np.zeros(3, dtype=float)
         self._lighting_overrides: dict = {}
-        self._mouse_mode = "viewing"
         self.update_count = 0
 
     # -- what the viewer hands us -------------------------------------------
@@ -274,10 +273,6 @@ class CameraState:
             "depth_jump": float(silhouette.get("depth_jump", 0.03)),
         })
         return state
-
-    def set_mouse_mode(self, mode: str) -> None:
-        """Store the mouse mode."""
-        self._mouse_mode = mode
 
     def configure_camera(
         self,
@@ -498,11 +493,17 @@ class CameraState:
             ),
             5.0,
         )
+        # The slab, and it is deliberately generous at both ends. It was
+        # `radius * 0.02` to `(distance + radius) * 1.2`, which cuts close on a
+        # molecule the camera is near and leaves little room behind it -- so
+        # rotating a structure clipped its front and back before it had turned
+        # far. A slab is a tool for looking *into* something; the default should
+        # be to show the whole object and let `clip` narrow it deliberately.
         self._near_clip = self._clamp_near_clip(
-            max(self._target_radius * 0.02, self._min_near_clip)
+            max(self._target_radius * 0.01, self._min_near_clip)
         )
         max_extent = self._distance + self._target_radius
-        self._far_clip = max(float(max_extent) * 1.2, self._near_clip * 10.0)
+        self._far_clip = max(float(max_extent) * 2.2, self._near_clip * 10.0)
 
         # Framing is what *defines* "not clipped": `clip reset` comes back here,
         # and so a stray shift-scroll is undone by `zoom` on its own -- which
@@ -616,10 +617,6 @@ class CameraState:
         else:
             return
         self.update()
-
-    def get_mouse_mode(self) -> str:
-        """The mouse mode the viewer last set."""
-        return self._mouse_mode
 
     def look_at(self, target: np.ndarray) -> None:
         """Aim the camera at ``target``."""

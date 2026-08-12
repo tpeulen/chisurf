@@ -1,18 +1,21 @@
 """ChiMol plugin entry point.
 
-    python -m chisurf.plugins.chimol          # Qt GUI (default)
-    python -m chisurf.plugins.chimol cli ...  # headless ptpython REPL
+Three run modes, of which the **default needs no GUI toolkit**::
+
+    python -m chisurf.plugins.chimol             # Qt-free desktop window
+    python -m chisurf.plugins.chimol --qt        # the Qt plugin window
+    python -m chisurf.plugins.chimol cli ...     # headless ptpython REPL
+
+The default opens chimol's own window on a ``rendercanvas`` surface and drives
+the same viewer and the same command layer the Qt window does; ``--qt`` is the
+option, not the assumption.
 """
 
 from __future__ import annotations
+
 import sys
 
 if __name__ == "__main__":
-    args = sys.argv[1:]
-    if args and args[0].lower() == "cli":
-        sys.argv = [sys.argv[0] + " cli"] + args[1:]
-        from .chimol.app.cli import main as cli_main
-        cli_main()
-    else:
-        from . import main
-        main()
+    from .chimol.__main__ import _dispatch
+
+    raise SystemExit(_dispatch(sys.argv[1:]))

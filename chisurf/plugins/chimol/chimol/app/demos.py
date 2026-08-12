@@ -22,83 +22,31 @@ from __future__ import annotations
 
 import pathlib
 
-from qtpy import QtCore, QtGui, QtWidgets
+from qtpy import QtGui, QtWidgets
 
 from chisurf.gui import dialogs
 
-#: Where the shipped scripts live.
-DEMO_DIR = pathlib.Path(__file__).resolve().parent.parent / "demos"
-
-#: Search path for the structures a demo names, so the scripts can say
-#: ``load 148l.pdb`` rather than carrying an absolute path that only works on one
-#: machine. Tried in order.
-_DATA_DIRS = (
-    pathlib.Path(__file__).resolve().parents[5]
-    / "test" / "data" / "atomic_coordinates" / "pdb_files",
-    pathlib.Path(__file__).resolve().parents[5]
-    / "test" / "data" / "atomic_coordinates" / "trajectory" / "hgbp1",
+# The demo *table* and its path lookups live in `demo_catalog`, which imports
+# no toolkit: the menu bar is generated from them at import time, and this
+# module owns a `QDialog`. Re-exported here so every existing caller keeps its
+# spelling.
+from .demo_catalog import (  # noqa: E402
+    DEMO_DIR,
+    DEMOS,
+    demo_path,
+    read_demo,
+    resolve_structure,
 )
 
-#: Demo order and one-line descriptions. The order is a tour: what the viewer
-#: looks like, then how to drive it, then what it can do that PyMOL cannot.
-DEMOS: tuple[tuple[str, str, str], ...] = (
-    ("cartoon", "Cartoon and colour", "A structure, coloured N to C."),
-    ("selections", "Selections", "The PyMOL selection grammar, in colour."),
-    ("representations", "Every representation", "Including ChiMOL's own."),
-    ("lighting", "Lighting presets", "simple, soft, flat, default in turn."),
-    ("publication", "Publication figure", "Flat shading with silhouettes."),
-    ("trajectory", "Trajectory + intra_fit", "Why fitting makes a movie readable."),
-    ("measure", "Measuring", "Surface area, bonds, hydrogens."),
-    ("emdb_map", "EMDB density map", "Fetch a map and contour it."),
-    ("npc_integrative", "NPC (integrative, PDB-IHM)", "A model made of beads, not atoms."),
-    ("biofilm", "Biofilm growth (simulated)", "Cells divide, stack and change state."),
-)
-
-
-def resolve_structure(name: str) -> str:
-    """Find a structure a demo script names, or return the name unchanged.
-
-    Scripts say ``load 148l.pdb`` so they read like something a person would
-    type; this is what lets that work from any working directory.
-
-    One demo's material does not exist until it is computed -- see
-    :mod:`chimol.app.demo_data` -- and is generated here, on first use, so the
-    script that wants it still just says ``load``.
-
-    Raises
-    ------
-    chimol.app.demo_data.DemoDataUnavailable
-        When the file is one ChiMOL generates and generating it failed. Raised
-        rather than swallowed: the alternative is a path that is not there, which
-        reads as a missing download.
-    """
-    from .demo_data import generated_demo_path
-
-    candidate = pathlib.Path(name)
-    if candidate.is_absolute() and candidate.exists():
-        return str(candidate)
-    for directory in _DATA_DIRS:
-        found = directory / candidate.name
-        if found.exists():
-            return str(found)
-    generated = generated_demo_path(candidate.name)
-    if generated is not None:
-        return str(generated)
-    return name
-
-
-def demo_path(key: str) -> pathlib.Path:
-    """Path of a shipped demo script."""
-    return DEMO_DIR / f"{key}.pml"
-
-
-def read_demo(key: str) -> str:
-    """The text of a shipped demo, or an empty string when it is missing."""
-    path = demo_path(key)
-    try:
-        return path.read_text()
-    except OSError:
-        return ""
+__all__ = [
+    "DEMOS",
+    "DEMO_DIR",
+    "ScriptEditor",
+    "demo_path",
+    "open_script_editor",
+    "read_demo",
+    "resolve_structure",
+]
 
 
 class ScriptEditor(QtWidgets.QDialog):
@@ -218,48 +166,3 @@ def open_script_editor(window, text: str = "", path=None):
         return editor
 
 
-def build_demo_menu(window, menu_bar) -> QtWidgets.QMenu:
-    """Add the Demo menu to a window's menu bar.
-
-    Each entry runs a shipped script; the last two open one for editing and open
-    the folder, so a demo is a starting point rather than a fixed recital.
-    """
-    menu = menu_bar.addMenu("&Demo")
-    window._demo_actions = []
-
-    for key, title, description in DEMOS:
-        action = menu.addAction(title)
-        action.setStatusTip(description)
-        action.setToolTip(description)
-        action.triggered.connect(
-            lambda _checked=False, k=key: window.run_demo(k)
-        )
-        window._demo_actions.append(action)
-
-    menu.addSeparator()
-    edit_action = menu.addAction("Edit a demo script…")
-    edit_action.setToolTip(
-        "Open a demo in the script editor -- a demo is a starting point, not a "
-        "fixed recital."
-    )
-    edit_action.triggered.connect(lambda: window.edit_demo_script())
-    window._demo_actions.append(edit_action)
-
-    new_action = menu.addAction("New script…")
-    new_action.triggered.connect(lambda: window.edit_demo_script(blank=True))
-    window._demo_actions.append(new_action)
-
-    menu.setToolTipsVisible(True)
-    return menu
-
-
-__all__ = [
-    "DEMOS",
-    "DEMO_DIR",
-    "ScriptEditor",
-    "build_demo_menu",
-    "demo_path",
-    "open_script_editor",
-    "read_demo",
-    "resolve_structure",
-]

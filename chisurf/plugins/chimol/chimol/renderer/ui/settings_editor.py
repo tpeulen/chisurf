@@ -23,20 +23,11 @@ dict, a game's settings object) and decides what a change means.
 from __future__ import annotations
 
 import dataclasses
-from typing import Any, Callable, Iterable, Mapping, Optional, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
+from typing import Any
 
-from .painter import ALIGN_CENTER, ALIGN_LEFT, ALIGN_RIGHT, ALIGN_VCENTER, Painter
+from .painter import ALIGN_LEFT, ALIGN_RIGHT, ALIGN_VCENTER, Painter
 from .widgets import (
-    Button,
-    ColorEdit4,
-    Combo,
-    InputInt,
-    Separator,
-    ScrollBar,
-    SliderFloat,
-    TextInput,
-    Toggle,
-    fit_text,
     _BORDER,
     _DIM,
     _GOLD,
@@ -44,6 +35,16 @@ from .widgets import (
     _ROW_ODD,
     _ROW_SEL,
     _TEXT,
+    Button,
+    ColorEdit4,
+    Combo,
+    InputInt,
+    ScrollBar,
+    Separator,
+    SliderFloat,
+    TextInput,
+    Toggle,
+    fit_text,
 )
 
 __all__ = [
@@ -109,10 +110,10 @@ class Setting:
     """What the setting starts as, and what a reset puts back. Kept on the row
     rather than only in whatever built it, because "put this one back" is a
     question asked of a *row* -- the panel has no other way to answer it."""
-    v_min: Optional[float] = None
-    v_max: Optional[float] = None
-    step: Optional[float] = None
-    options: Optional[Sequence[str]] = None
+    v_min: float | None = None
+    v_max: float | None = None
+    step: float | None = None
+    options: Sequence[str] | None = None
     fmt: str = ""
     description: str = ""
     group: str = ""
@@ -174,8 +175,8 @@ class SettingsModel:
     def from_mapping(
         cls,
         mapping: Mapping[str, Any],
-        meta: Optional[Meta] = None,
-        setter: Optional[Callable[[str, Any], None]] = None,
+        meta: Meta | None = None,
+        setter: Callable[[str, Any], None] | None = None,
         skip: Sequence[str] = (),
     ) -> "SettingsModel":
         """Build a model from a nested configuration mapping.
@@ -446,7 +447,7 @@ class SettingsEditor:
         """The settings currently listed."""
         return self.model.rows(self.group, self.filter.text)
 
-    def selected(self) -> Optional[Setting]:
+    def selected(self) -> Setting | None:
         """The setting under the cursor, if any."""
         rows = self.rows()
         return rows[self.row] if 0 <= self.row < len(rows) else None
@@ -565,7 +566,7 @@ class SettingsEditor:
         return fit_text(p, note, room)
 
     # ------------------------------------------------------------------ #
-    def press(self, x: float, y: float) -> Optional[Setting]:
+    def press(self, x: float, y: float) -> Setting | None:
         """Route a press to whatever it landed on.
 
         The boxes come from the last :meth:`draw`, so the panel hit-tests

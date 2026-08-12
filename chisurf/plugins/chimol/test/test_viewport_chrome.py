@@ -213,6 +213,63 @@ def test_a_menu_entry_that_needs_a_value_reaches_the_command_line(window, qapp):
     )
 
 
+def test_a_menu_entry_naming_a_file_opens_the_host_dialog(window, qapp):
+    """``Save Molecule As...`` clicked in the viewport bar must open a dialog.
+
+    The viewport menu bar is the one the user sees -- the Qt bar is hidden --
+    and its ``{text}`` path used to feed *every* prompted entry into the
+    command line, ``file_prompt`` or not. A filename typed blind lands
+    wherever the process is running, which for a menu action is nowhere the
+    user chose.
+    """
+    window.resize(1200, 800)
+    window.show()
+    for _ in range(10):
+        qapp.processEvents()
+
+    gui = window.viewer._renderer._internal_gui
+    assert gui.on_file_prompt is not None, (
+        "the app did not wire the file-dialog hook"
+    )
+
+    asked: list[tuple[str, str, str, str]] = []
+    gui.on_file_prompt = lambda line, mode, title, filt: asked.append(
+        (line, mode, title, filt)
+    )
+    ran: list[str] = []
+    gui.set_run_command(ran.append)
+    gui._emit(
+        "save {text}", "",
+        file_prompt=("save", "Save molecule", "Structures (*.pdb)"),
+    )
+    assert asked == [("save {text}", "save", "Save molecule",
+                      "Structures (*.pdb)")]
+    assert ran == [], "the template must not run before the dialog fills it"
+
+
+def test_without_a_dialog_a_file_entry_falls_back_to_the_command_line(
+        window, qapp):
+    """In the browser there is no dialog; the CLI placeholder is the fallback."""
+    window.resize(1200, 800)
+    window.show()
+    for _ in range(10):
+        qapp.processEvents()
+
+    gui = window.viewer._renderer._internal_gui
+    gui.on_file_prompt = None
+    gui.on_prompt_command = window._prefill_command_line
+    gui._emit(
+        "save {text}", "",
+        prompt=("Save", "File name:"),
+        file_prompt=("save", "Save molecule", "Structures (*.pdb)"),
+    )
+    for _ in range(5):
+        qapp.processEvents()
+
+    line = window.command_panel.input_line
+    assert line.text() == "save <file name>", line.text()
+
+
 def test_an_ordinary_menu_entry_still_runs(window, qapp):
     """The prompt path must not swallow the commands that need no value."""
     window.resize(1200, 800)

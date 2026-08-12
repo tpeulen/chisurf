@@ -48,7 +48,6 @@ from ...host.keys import (
     KEY_LEFT,
     KEY_RETURN,
     KEY_RIGHT,
-    KEY_TAB,
     KEY_UP,
 )
 
@@ -304,6 +303,16 @@ class CommandLine:
 
     # ── keys ─────────────────────────────────────────────────────────────
     def key(self, key: int, text: str = "", modifiers: int = 0) -> bool:
+        # Tab completes. `complete()` has been here all along with nothing
+        # calling it: the key was never handled, and would not have arrived
+        # anyway -- Qt gives Tab to focus navigation before a key handler sees
+        # it, so the widget has to claim it in `event()`.
+        from ...host.keys import KEY_TAB
+
+        if key == KEY_TAB:
+            self.complete()
+            return True
+
         """Handle one key press. Returns whether it was consumed.
 
         Parameters

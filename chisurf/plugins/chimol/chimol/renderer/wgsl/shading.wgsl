@@ -38,6 +38,12 @@ struct Uniforms {
     // depth), w worldRadius (0/1 -- whether an impostor's radius is a distance
     // in the model or a count of pixels)
     flags        : vec4<f32>,
+    // The screen-space Gaussian surface: x decay steepness (alpha), y the iso
+    // level the resolve cuts at, z the field's own opacity, w unused. Part of
+    // the shared block rather than a second one because every pipeline binds
+    // this block already -- a second uniform for two shaders is a second bind
+    // group layout for all of them.
+    gauss        : vec4<f32>,
 };
 @group(0) @binding(0) var<uniform> u : Uniforms;
 
@@ -52,6 +58,21 @@ struct Surface {
 };
 
 fn shade(s: Surface, frontFacing: bool) -> vec4<f32> {
+    // Volume-image slices are emission, not a surface: no lighting, no rim, no
+    // reflection, no transparency curve -- their per-vertex alpha *is* the
+    // transfer function and reshaping it would change what the data says. Only
+    // the depth cue still applies, so a slab deep in a big scene fades like
+    // everything else. The flag rides in `u.gauss.w` because the slot was
+    // spare and every pipeline already binds this block.
+    if (u.gauss.w > 0.5) {
+        var vis_unlit = 1.0;
+        if (u.surface.w > 0.0) {
+            vis_unlit = clamp((u.fogColor.w + s.viewPos.z) * u.surface.w, 0.0, 1.0);
+        }
+        let col = mix(u.fogColor.rgb, s.colour.rgb, vis_unlit);
+        return vec4<f32>(col, s.colour.a * u.flags.y);
+    }
+
     var n = normalize(s.normal);
     // Two-sided lighting flips toward the *viewer*, not the light: flipping
     // toward the light darkens a front face lit only by the fill light, and the

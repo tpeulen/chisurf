@@ -45,7 +45,12 @@ PACKAGE_DIR = WEB_DIR.parent
 INCLUDE_SUFFIXES = (".py", ".wgsl", ".json", ".png", ".pdb")
 
 #: Directories not worth shipping to a browser.
-EXCLUDE_DIRS = ("__pycache__", "app", "testing", "test")
+#:
+#: ``testing`` **is** shipped, and that is deliberate rather than an oversight:
+#: it holds the parity report the page answers with, and a comparison whose
+#: browser half is written on the test side compares the two scripts as much as
+#: the two hosts. It is two small modules and no dependency.
+EXCLUDE_DIRS = ("__pycache__", "app", "test")
 
 
 def pack(destination: pathlib.Path | None = None) -> pathlib.Path:
