@@ -331,6 +331,8 @@ class CanvasRenderer(CameraState, Renderer):
         self._gui_grab = False
         #: A traced frame shown over the scene column, or None for the live view.
         self._ray_image = None
+        #: Last chrome build: ``(key, vertices)``. See `_chrome_quads`.
+        self._chrome_cache: tuple | None = None
         #: Recent frame intervals, for the debug frame-rate readout.
         self._frame_times: list[float] = []
         self._last_frame_time: float | None = None
@@ -780,10 +782,27 @@ class CanvasRenderer(CameraState, Renderer):
         gui.command_line.visible = _layout_flag("show_command_line")
         gui.status_visible = _layout_flag("show_status")
         gui.layout(int(self._width / ratio), int(self._height / ratio))
+
+        # Rebuilt only when something it draws from has changed. The chrome is
+        # immediate mode -- ~2,800 quads emitted from scratch -- and on a large
+        # model that was most of the frame while the molecule itself was about
+        # a millisecond. It changes on hover, focus and state; it does not
+        # change while the camera moves, which is the only time frame rate is
+        # being watched.
+        #
+        # The key is taken *after* `layout`, because layout is what turns a
+        # size or a scale change into the rectangles the paint reads.
+        key = (ratio, gui.chrome_fingerprint())
+        cached = self._chrome_cache
+        if cached is not None and cached[0] == key:
+            return cached[1]
+
         painter = QuadPainter(scale=ratio, font_scale=gui.ui_scale)
         gui.paint(painter)
         vertices = painter.vertices()
-        return vertices if len(vertices) else None
+        vertices = vertices if len(vertices) else None
+        self._chrome_cache = (key, vertices)
+        return vertices
 
     def _chrome_image(self) -> np.ndarray | None:
         """Labels, the traced frame and the selection box, as one image.

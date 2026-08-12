@@ -35328,3 +35328,27 @@
   chrome-size slider -- are hidden by default, and a mode whose only switch is
   a command nobody knows is a mode nobody finds; this is the one people want the
   moment they wonder why something feels slow. Persisted like any other setting.
+
+- **2026-08-12 — chimol: the chrome is cached, and `_draw` is 3.3x faster.**
+  14.97 -> **4.50 ms** on the 234,184-bead nuclear pore; `_chrome_quads` 13.71 ->
+  2.62 ms. The chrome is immediate mode and was rebuilding ~2,800 quads every
+  frame while the molecule itself cost about a millisecond -- but it changes on
+  hover, focus and state, not on camera motion, which is the only time anyone
+  watches the frame rate. It is now rebuilt only when a fingerprint of what it
+  draws from moves.
+  The failure mode is **silent** -- a fingerprint that omits something shows a
+  stale picture, with nothing raised and nothing logged -- so it is guarded by
+  `test_chrome_cache.py`, which compares the cached path against a fresh build
+  after twenty-two real interactions. Written first, it caught two real
+  omissions immediately: `SequenceRow.selected`, mutated *in place* in three
+  places, and the **command-line feedback log**, which every command appends to
+  and which is drawn as text. The method that found the second one is worth
+  keeping: run the same sweep with the cache **disabled** as a control. That
+  showed the two residual mismatches were the progress overlay animating, not
+  the cache -- without the control they would have read as a bug.
+  Also: `np.fromiter` with an exact count instead of `np.asarray` in
+  `QuadPainter.vertices` (4.1 -> 2.9 ms, identical output), and an `array("f")`
+  accumulator **tried and rejected** at 1.7x *slower* than a list. Next up is
+  `refresh_gui_state`, now 2.5 of the 2.6 ms, almost all of it re-deriving the
+  per-residue colours every frame. Detail in
+  [known-issues](references/known-issues.md).

@@ -4443,3 +4443,53 @@ DataCurve debug dump), `_smoke_nb_tmp.py`, a **zero-byte** `elements.py`,
 `200.png`, which is the artefact of the `ray 200, 150` filename bug fixed today.
 None of it is source; all of it is safe to delete, and that is the user's call
 rather than an agent's.
+
+### Resolved 2026-08-12 — the chrome is cached between frames
+
+The entry above left "the remaining 16.4 ms is building ~2,800 quads and ~330
+text runs from scratch every frame" as the whole of the problem, and named the
+fix: a dirty-flag cache, because the chrome changes on hover, focus and state
+and **not** on camera motion, which is the only time anyone watches the frame
+rate. Done.
+
+Measured on the same M1 Pro, same 234,184-bead nuclear pore:
+
+| | before | after |
+|---|---|---|
+| `_draw` | 14.97 ms | **4.50 ms** |
+| `_chrome_quads` | 13.71 ms | **2.62 ms** |
+| `refresh_gui_state` (inside it) | 2.40 ms | 2.50 ms |
+
+**3.3x**, and the remaining chrome cost is almost entirely `refresh_gui_state`,
+which is now the next thing worth attacking: it re-derives the per-residue
+colours every frame through `get_residue_colors`, which is 2.2 ms of the 2.5.
+
+Two smaller wins landed with it: `QuadPainter.vertices` uses `np.fromiter` with
+an exact count rather than `np.asarray` (4.1 ms to 2.9 ms on a chrome frame, for
+identical output), and an `array("f")` accumulator was **tried and rejected** --
+it is 1.7x *slower* than a list, because per-element conversion on every
+`extend` costs more than one batch conversion at the end. Worth recording so
+nobody tries it twice.
+
+**The cache's one failure mode is silent**, so it is guarded by
+`test_chrome_cache.py`, which compares the cached path against a freshly emitted
+build after each of twenty-two real interactions. Written first, it immediately
+caught two genuine omissions from the fingerprint:
+
+* `SequenceRow.selected` -- the strip highlights the selection, and the set is
+  mutated **in place** in three separate places, so neither the row's identity
+  nor the list's length notices a change;
+* the **command-line feedback log** -- every command appends a line that is
+  drawn as text. `select everything` moved exactly nine quads while the rows,
+  the sequences and the windows were all unchanged, which is what pointed at it.
+
+Method worth reusing: when the differential test failed, the control was to run
+the same sweep with the cache *disabled*. That showed 52/54 rather than 42/54,
+and the two remaining mismatches were the progress overlay, which animates and
+counts seconds and so differs between any two paints. Without that control the
+animation would have looked like a cache bug.
+
+A selection larger than `InternalGui.SELECTION_HASH_MAX` (4096) deliberately
+never compares equal, so the frame rebuilds -- hashing 234,184 selected residues
+would cost more than the paint it saves, and rebuilding is exactly the behaviour
+that was there before.

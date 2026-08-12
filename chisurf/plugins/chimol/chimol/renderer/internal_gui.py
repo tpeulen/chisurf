@@ -4023,6 +4023,175 @@ class InternalGui:
         return True
 
     # ── drawing ──────────────────────────────────────────────────────────
+    #: Above this many selected residues the chrome cache stops trying to
+    #: fingerprint the selection and simply rebuilds. Hashing a set is exact
+    #: but linear, and "select everything" on an integrative model is 234,184
+    #: residues -- more than the paint it would be saving.
+    SELECTION_HASH_MAX = 4096
+
+    def chrome_fingerprint(self) -> tuple:
+        """Everything the chrome draws from, as one comparable value.
+
+        The chrome is immediate mode: :meth:`paint` rebuilds ~2,800 quads from
+        scratch every frame, and on a large model that is most of the frame
+        while the *molecule* is about a millisecond. But the chrome changes on
+        hover, focus and state -- not on camera motion, which is exactly when
+        frames matter. So the caller compares this against the previous frame's
+        and reuses the vertices when it has not moved.
+
+        The design rule here is **conservative**: it is always safe to include
+        something that changes too often (it merely rebuilds), and never safe to
+        omit something that changes the picture (it draws a stale one). Where a
+        value is expensive to hash -- a sequence row's per-residue colours, of
+        which there are 234,184 on the nuclear pore -- the cheap signature
+        already computed for it upstream is used rather than the colours.
+
+        Two members deliberately force a rebuild every frame while they are on:
+        the progress overlay animates and counts elapsed seconds, and the
+        frame-rate readout is a number that changes by construction. Both are
+        transient, and both are wrong to freeze.
+
+        Returns
+        -------
+        tuple
+            Comparable with ``==``. Never raises: a member that cannot be read
+            contributes ``None``, which is a value like any other.
+        """
+        def rows_key(rows):
+            return tuple(
+                (
+                    getattr(r, "name", None), getattr(r, "enabled", None),
+                    getattr(r, "is_header", None), getattr(r, "is_group", None),
+                    getattr(r, "group_open", None), getattr(r, "detail", None),
+                    getattr(r, "indent", None), getattr(r, "object_id", None),
+                )
+                for r in (rows or ())
+            )
+
+        def windows_key():
+            return tuple(
+                (
+                    getattr(w, "key", None), getattr(w, "visible", None),
+                    getattr(w, "x", None), getattr(w, "y", None),
+                    getattr(w, "w", None), getattr(w, "h", None),
+                    getattr(w, "collapsed", None), getattr(w, "title", None),
+                )
+                for w in (getattr(self, "windows", None) or ())
+            )
+
+        def menus_key():
+            return tuple(
+                (
+                    getattr(m, "title", None), getattr(m, "scroll", None),
+                    getattr(m, "owner", None), getattr(m, "hover", None),
+                    len(getattr(m, "entries", ()) or ()),
+                )
+                for m in (getattr(self, "_menus", None) or ())
+            )
+
+        def selection_key(row):
+            """A token for one row's selected residues.
+
+            The selection is highlighted in the strip, so it has to be seen --
+            and it is mutated **in place** in three different places, so
+            watching the set object's identity is not enough either.
+
+            Hashing it is exact and costs O(n), which is fine for what a
+            selection normally is (a click, a dragged range) and not fine for
+            "select everything" on a 234,184-residue model. So a large
+            selection returns a value that is never equal to itself, which
+            makes the frame rebuild -- the behaviour there was before any of
+            this, and therefore never worse.
+            """
+            selected = getattr(row, "selected", None)
+            if not selected:
+                return 0
+            count = len(selected)
+            if count > self.SELECTION_HASH_MAX:
+                return object()
+            try:
+                return (count, hash(frozenset(selected)))
+            except TypeError:
+                return object()
+
+        def sequences_key():
+            # `_colors_from` is the signature `refresh_gui_state` already
+            # computes; hashing the colours again here would cost more than the
+            # paint this is trying to avoid.
+            return tuple(
+                (
+                    getattr(r, "object_id", None), getattr(r, "label", None),
+                    getattr(r, "name", None), getattr(r, "chain", None),
+                    len(getattr(r, "codes", "") or ""),
+                    len(getattr(r, "text", "") or ""),
+                    getattr(r, "_colors_from", None),
+                    getattr(r, "offset", None),
+                    selection_key(r),
+                )
+                for r in (getattr(self, "sequences", None) or ())
+            )
+
+        def cmd_log_key():
+            line = getattr(self, "command_line", None)
+            log = getattr(line, "visible_log", None)
+            if not callable(log):
+                return None
+            try:
+                return tuple(
+                    (getattr(e, "kind", None), getattr(e, "text", None))
+                    for e in (log() or ())
+                )
+            except Exception:  # noqa: BLE001
+                return object()
+
+        field = self.focused_field
+        progress = self.progress
+        try:
+            return (
+                self._width, self._height, self.ui_scale, self.docked, self.visible,
+                self.sequence_visible, self.status_visible, self.status_text,
+                # Set from the display config on every frame by the renderer,
+                # so they belong here even though nothing else changes them.
+                getattr(self, "menubar_visible", None),
+                getattr(self, "toolbar_visible", None),
+                getattr(self, "window_snap", None),
+                getattr(getattr(self, "command_line", None), "visible", None),
+                getattr(getattr(self, "command_line", None), "text", None),
+                getattr(getattr(self, "command_line", None), "cursor", None),
+                getattr(getattr(self, "command_line", None), "focused", None),
+                # The feedback log above the prompt. Every command appends to
+                # it, so it is the part of the chrome that changes most often
+                # and it is drawn as text -- which is how "select everything"
+                # was found redrawing nine quads with nothing else moving. It
+                # is a handful of lines, so reading it costs nothing.
+                cmd_log_key(),
+                self.selecting, self.state, self.mouse_mode, self.mouse_ring,
+                self._name_width, self.debug_overlays,
+                # Changes every frame while it is shown, and should.
+                self.fps if self.debug_overlays else None,
+                self.info_visible, self.info_text, self._info_scroll,
+                len(getattr(self, "_info_items", ()) or ()),
+                tuple(self.info_colors or ()) if isinstance(
+                    getattr(self, "info_colors", None), (list, tuple)
+                ) else None,
+                self._hover, self._tooltip,
+                rows_key(self.rows), rows_key(getattr(self, "wizard_rows", None)),
+                tuple(getattr(self, "wizard_prompt", None) or ()),
+                sequences_key(), windows_key(), menus_key(),
+                id(field), getattr(field, "text", None),
+                getattr(field, "cursor", None),
+                # Animates, and counts seconds.
+                (progress.active, progress.title, progress.message,
+                 progress.fraction, progress.cancellable, progress.cancelled,
+                 progress.status_text() if progress.active else None),
+                tuple(sorted(self.toolbar_checked.items()))
+                if isinstance(getattr(self, "toolbar_checked", None), dict) else None,
+            )
+        except Exception:  # noqa: BLE001 - a fingerprint must never break a frame
+            # Unique every call, so an unreadable member degrades to "always
+            # rebuild" rather than to "never rebuild".
+            return (object(),)
+
     def paint(self, p) -> None:
         """Draw the panel and any open menu.
 
