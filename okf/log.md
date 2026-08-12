@@ -1,5 +1,32 @@
 # Update Log
 
+## 2026-08-12
+* **The in-viewport control set grew ten controls, and the pause menu stopped
+  crashing on the frame it opens** ([chimol viewport UI](plugins/chimol-viewport-ui.md);
+  user report: `TypeError: Checkbox.draw() got an unexpected keyword argument 'at'`).
+  Lumis Quest's `imgui_controls` had been reduced to a *re-export* of Chimol's
+  painter-level widgets, but the menu draws onto a chigame **scene** and passes
+  a centre, not a painter and a corner — so every settings row raised on sight.
+  The seam is back and is now the module's whole job: `ScenePainterAdapter`
+  (painter → scene, honouring alignment and measuring on the real font) plus one
+  thin subclass per control carrying `draw(scene, at=…, width=…, height=…,
+  scale=…, selected=…)`. Two latent crashes fell out with it: `"%.0%"` is not a
+  printf spec (`ValueError` on both volume sliders and on `ProgressBar`'s own
+  default), now handled by `widgets._format`, and `SliderFloat.set_fraction` did
+  not exist. **New shared controls** in `renderer/ui/widgets.py`, usable by both
+  the viewport chrome and the game: `Separator`, `Toggle`, `RadioGroup`,
+  `InputInt`, `ListBox`, `Tabs`, `PlotLines`, `Histogram`, `Tooltip`,
+  `TextInput`. The menu now draws through them — the tab strip is `Tabs` (which
+  elides a caption that will not fit its pill, after a screenshot showed
+  `GAMELOGIC` printed over `OPTIONS`), the on/off rows are `Toggle`s, the
+  soundtrack is a `Combo`, controls and camera are `RadioGroup`s, and OPTIONS
+  carries a live frame-time `PlotLines`. Which row is which control is one
+  table, `OverworldGame._menu_widget`. Settings also moved from `setup` into
+  `__init__`: half of them only existed once a host had been bound, so
+  `_menu_rows` raised `AttributeError` on any game that had not been run.
+  Guarded by a recording-scene test that draws **every** control the way the
+  menu does, and screenshots re-taken for both settings tabs.
+
 ## 2026-08-11
 * **chimol: density-map contouring is 5–10× faster and the level drag is
   live** ([pymol-parity](plugins/pymol-parity.md), "0-ante-ante"; user ask

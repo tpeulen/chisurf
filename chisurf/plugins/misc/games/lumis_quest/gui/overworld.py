@@ -15,6 +15,7 @@ nobody can see.
 
 from __future__ import annotations
 
+import collections
 import math
 import random
 import time
@@ -52,7 +53,7 @@ from ..api import tutorial as tutorial_api
 from ..api import perks as perks_api
 from ..api.story import EPILOGUES, ORDERS, PROLOGUE, Story, cleared_in_lands
 from ..api.world import SCOUTED, SETTLED, WILD, WITHERED, World, build_world
-from . import pixelart
+from . import imgui_controls, pixelart
 
 #: Emission wavelengths that stand for the two lit room states.
 SCOUTED_NM = 488.0
@@ -485,6 +486,29 @@ class OverworldGame(chigame.Game):
         self._docs_root = docs_root
         # Injectable so a test never reads or writes the player's real run.
         self._save_path = save_path
+        # Every setting the OPTIONS and GAMELOGIC tabs read, defaulted here
+        # rather than in `setup`. A game that has not been bound to a host is
+        # still a game that can be asked what its settings are -- and half of
+        # these were only set in `setup`, so `_menu_rows` raised AttributeError
+        # on any game that had not been run.
+        self.scheme = "arrows"
+        self.walk_speed = WALK_SPEED
+        self.view_height = VIEW_HEIGHT
+        # Quieter than Audio's own 1.0/1.0 defaults out of the box: the synth
+        # music runs under dialogue and easily drowns it out at full volume.
+        self.music_volume = 0.1
+        self.sfx_volume = 0.5
+        self.screen_mode = False
+        self.soundtrack_theme = self.SOUNDTRACKS[0]
+        self.enemy_aggro_radius = 4.5
+        self.action_combat_enabled = True
+        self.particle_fx_enabled = True
+        self.crt_filter_enabled = False
+        self.ui_accent_tone = "Gold"
+        #: The last few frames' cost in milliseconds, oldest first, drawn as a
+        #: sparkline in OPTIONS. Bounded, so a run left open overnight does not
+        #: quietly grow a list nobody reads past the last second of it.
+        self.frame_ms: collections.deque[float] = collections.deque(maxlen=90)
 
     def setup(self, host) -> None:
         """Bind the controller and start loading.
@@ -500,16 +524,10 @@ class OverworldGame(chigame.Game):
             The host running this game.
         """
         self.host = host
-        self.scheme = "arrows"
+        # The settings themselves are the game's, and were defaulted in
+        # __init__. What happens here is only the half that needs a host:
+        # pushing them at the controller and the mixer.
         host.keys.bindings = dict(SCHEMES[self.scheme])
-        self.walk_speed = WALK_SPEED
-        #: Independent of Audio's own defaults -- kept here too so the
-        #: OPTIONS tab has something to read and cycle, the same way it owns
-        #: `walk_speed` and `scheme` rather than asking the host each frame.
-        # Quieter than Audio's own 1.0/1.0 defaults out of the box: the synth
-        # music runs under dialogue and easily drowns it out at full volume.
-        self.music_volume = 0.1
-        self.sfx_volume = 0.5
         host.audio.set_music_volume(self.music_volume)
         host.audio.set_sfx_volume(self.sfx_volume)
         self.phase = "loading"
@@ -1108,6 +1126,7 @@ class OverworldGame(chigame.Game):
         keys : chisurf.gui.chigame.input.InputMap
             Controller state.
         """
+        self.frame_ms.append(float(dt) * 1000.0)
         # Feedback ages regardless of what screen is up, so a number thrown
         # just before a fight ends still finishes rising. Empty fields cost
         # nothing, which is why this sits above every early return.
@@ -2202,7 +2221,7 @@ class OverworldGame(chigame.Game):
         return cards or (("The Dawn", "Where you worked, the lamps hold."),)
 
     #: The tabs of the pause menu, in order.
-    TABS = ("STATUS", "MAP", "RIG", "PARTY", "LAB", "CRAFT", "PERKS", "MODE", "OPTIONS")
+    TABS = ("STATUS", "MAP", "RIG", "PARTY", "LAB", "CRAFT", "PERKS", "MODE", "OPTIONS", "GAMELOGIC")
 
     def _menu_input(self, keys) -> None:
         """Drive the pause menu.
@@ -2227,13 +2246,35 @@ class OverworldGame(chigame.Game):
                 self._menu_confirm()
             return
 
-        if keys.just_pressed(Action.SHOULDER_R) or keys.just_pressed(Action.RIGHT):
+        tab = self.TABS[self.menu_tab]
+        if keys.just_pressed(Action.SHOULDER_R):
             self.menu_tab = (self.menu_tab + 1) % len(self.TABS)
             self.menu_row = 0
             return
-        if keys.just_pressed(Action.SHOULDER_L) or keys.just_pressed(Action.LEFT):
+        if keys.just_pressed(Action.SHOULDER_L):
             self.menu_tab = (self.menu_tab - 1) % len(self.TABS)
             self.menu_row = 0
+            return
+
+        if keys.just_pressed(Action.RIGHT):
+            if tab in ("OPTIONS", "GAMELOGIC"):
+                if tab == "OPTIONS":
+                    self._options_confirm(direction=1)
+                else:
+                    self._gamelogic_confirm(direction=1)
+            else:
+                self.menu_tab = (self.menu_tab + 1) % len(self.TABS)
+                self.menu_row = 0
+            return
+        if keys.just_pressed(Action.LEFT):
+            if tab in ("OPTIONS", "GAMELOGIC"):
+                if tab == "OPTIONS":
+                    self._options_confirm(direction=-1)
+                else:
+                    self._gamelogic_confirm(direction=-1)
+            else:
+                self.menu_tab = (self.menu_tab - 1) % len(self.TABS)
+                self.menu_row = 0
             return
 
         rows = self._menu_rows()
@@ -2330,24 +2371,41 @@ class OverworldGame(chigame.Game):
                 return "row", base + offset
         return None
 
-    def _options_confirm(self) -> None:
+    def _options_confirm(self, direction: int = 0) -> None:
         """Act on the selected option."""
         row = self.menu_row
         if row == 0:
             names = list(SCHEMES)
-            self.scheme = names[(names.index(self.scheme) + 1) % len(names)]
+            step_dir = direction if direction != 0 else 1
+            self.scheme = names[(names.index(self.scheme) + step_dir) % len(names)]
             self.host.keys.bindings = dict(SCHEMES[self.scheme])
         elif row == 1:
             self.screen_mode = not self.screen_mode
         elif row == 2:
-            self.walk_speed = 120.0 if self.walk_speed >= 260.0 else self.walk_speed + 35.0
+            step_val = direction * 20.0 if direction != 0 else 35.0
+            val = self.walk_speed + step_val
+            if val > 260.0:
+                val = 120.0
+            self.walk_speed = max(120.0, min(260.0, val))
         elif row == 3:
-            self.view_height = VIEW_MIN if self.view_height >= 600.0 else self.view_height + 90.0
+            step_val = direction * 45.0 if direction != 0 else 90.0
+            val = self.view_height + step_val
+            if val > 600.0:
+                val = VIEW_MIN
+            self.view_height = max(300.0, min(600.0, val))
         elif row == 4:
-            self.music_volume = round(self.music_volume + 0.1, 2) % 1.1
+            step_val = direction * 0.1 if direction != 0 else 0.1
+            val = round(self.music_volume + step_val, 2)
+            if val > 1.0:
+                val = 0.0
+            self.music_volume = max(0.0, min(1.0, val))
             self.host.audio.set_music_volume(self.music_volume)
         elif row == 5:
-            self.sfx_volume = round(self.sfx_volume + 0.1, 2) % 1.1
+            step_val = direction * 0.1 if direction != 0 else 0.1
+            val = round(self.sfx_volume + step_val, 2)
+            if val > 1.0:
+                val = 0.0
+            self.sfx_volume = max(0.0, min(1.0, val))
             self.host.audio.set_sfx_volume(self.sfx_volume)
             self._sound("confirm", frequency=600.0)
         elif row == 6:
@@ -2370,6 +2428,45 @@ class OverworldGame(chigame.Game):
             self.menu_open = False
             self.prologue_index = 0
             self.phase = "prologue"
+
+    def _gamelogic_confirm(self, direction: int = 0) -> None:
+        """Act on the selected gamelogic option."""
+        row = self.menu_row
+        if row == 0:
+            themes = list(self.SOUNDTRACKS)
+            step_dir = direction if direction != 0 else 1
+            curr = getattr(self, "soundtrack_theme", themes[0])
+            idx = (themes.index(curr) if curr in themes else 0) + step_dir
+            self.soundtrack_theme = themes[idx % len(themes)]
+        elif row == 1:
+            step_val = direction * 0.5 if direction != 0 else 1.0
+            val = getattr(self, "enemy_aggro_radius", 4.5) + step_val
+            if val > 8.0:
+                val = 2.0
+            self.enemy_aggro_radius = round(max(2.0, min(8.0, val)), 1)
+        elif row == 2:
+            self.action_combat_enabled = not getattr(self, "action_combat_enabled", True)
+        elif row == 3:
+            self.particle_fx_enabled = not getattr(self, "particle_fx_enabled", True)
+        elif row == 4:
+            self.crt_filter_enabled = not getattr(self, "crt_filter_enabled", False)
+        elif row == 5:
+            tones = ["Gold", "Cyan", "Emerald", "Ruby", "Violet"]
+            step_dir = direction if direction != 0 else 1
+            curr = getattr(self, "ui_accent_tone", "Gold")
+            idx = (tones.index(curr) if curr in tones else 0) + step_dir
+            self.ui_accent_tone = tones[idx % len(tones)]
+        elif row == 6:
+            self.save_run()
+            self.sparks.rise("Run Saved!", tuple(self.iris), color=(0.35, 0.90, 0.45, 1.0), height=9.0)
+            self._sound("confirm", frequency=750.0)
+        elif row == 7:
+            self._boot()
+            self.sparks.rise("Run Loaded!", tuple(self.iris), color=(0.40, 0.82, 0.95, 1.0), height=9.0)
+            self._sound("confirm", frequency=650.0)
+        elif row == 8:
+            self._sound("confirm", frequency=880.0)
+            self.sparks.burst(tuple(self.iris), count=8, kind="sparkle", color=(0.96, 0.88, 0.50, 1.0))
 
     def _menu_rows(self) -> list[str]:
         """The lines the current tab offers.
@@ -2465,6 +2562,18 @@ class OverworldGame(chigame.Game):
                 "regenerate the wilderness",
                 "watch the opening again",
             ]
+        if tab == "GAMELOGIC":
+            return [
+                f"soundtrack: {getattr(self, 'soundtrack_theme', 'Ninja Adventure (CC0)')}",
+                f"enemy aggro: {getattr(self, 'enemy_aggro_radius', 4.5):.1f} tiles",
+                f"action combat: {'[✓] enabled' if getattr(self, 'action_combat_enabled', True) else '[ ] disabled'}",
+                f"particle effects: {'[✓] enabled' if getattr(self, 'particle_fx_enabled', True) else '[ ] disabled'}",
+                f"crt retro shader: {'[✓] enabled' if getattr(self, 'crt_filter_enabled', False) else '[ ] disabled'}",
+                f"ui accent tone: {getattr(self, 'ui_accent_tone', 'Gold')}",
+                "quick save run",
+                "quick load run",
+                "test audio sfx",
+            ]
         if tab == "LAB":
             now = time.time()
             rows = []
@@ -2522,6 +2631,10 @@ class OverworldGame(chigame.Game):
         if tab == "MAP":
             self.show_map = not self.show_map
             self.menu_open = False
+        elif tab == "OPTIONS":
+            self._options_confirm()
+        elif tab == "GAMELOGIC":
+            self._gamelogic_confirm()
         elif tab == "MODE":
             if self.menu_row < 2:
                 self.mode = (review_bridge.TRAINING, review_bridge.EXPERT)[self.menu_row]
@@ -4860,6 +4973,89 @@ class OverworldGame(chigame.Game):
                    at=(cx, cy + half[1] * 0.62), height=9.5 * scale, align="center",
                    color=(0.46, 0.50, 0.58, 1.0))
 
+    #: What the soundtrack option cycles through. One list, read by the option
+    #: that changes it and by the control that shows it -- two lists is how a
+    #: selector ends up showing a theme the game cannot play.
+    SOUNDTRACKS = ("Ninja Adventure (CC0)", "Classic Chiptune", "Synthesiser")
+
+    def _menu_widget(self, tab: str, index: int, row: str):
+        """The control a menu row is drawn as, if it is drawn as one.
+
+        A row is a string everywhere else in the menu -- it is what the cursor
+        moves over and what a click hit-tests against -- so the widgets are a
+        *rendering* of a row rather than a replacement for it. Anything without
+        a control here falls back to plain text.
+
+        Parameters
+        ----------
+        tab : str
+            The tab being drawn.
+        index : int
+            Row index within the tab.
+        row : str
+            The row's text, used for the parts of a label the tab already
+            spells out.
+
+        Returns
+        -------
+        object or None
+            A control from :mod:`.imgui_controls`, or ``None`` for plain text.
+        """
+        if tab == "OPTIONS":
+            if index == 0:
+                schemes = list(SCHEMES)
+                return imgui_controls.RadioGroup(
+                    "controls", schemes,
+                    index=schemes.index(self.scheme) if self.scheme in schemes else 0)
+            if index == 1:
+                return imgui_controls.RadioGroup(
+                    "camera", ["scrolling", "screen"], index=1 if self.screen_mode else 0)
+            if index in (2, 3, 4, 5):
+                v_min, v_max, val, fmt = (
+                    (120.0, 260.0, self.walk_speed, "%.0f") if index == 2 else
+                    (300.0, 600.0, self.view_height, "%.0f") if index == 3 else
+                    (0.0, 1.0, self.music_volume, "%.0%") if index == 4 else
+                    (0.0, 1.0, self.sfx_volume, "%.0%")
+                )
+                return imgui_controls.SliderFloat(row.split(":")[0], v_min, v_max, val, fmt=fmt)
+            if index in (7, 8):
+                return imgui_controls.Button(
+                    "regenerate wilderness" if index == 7 else "watch opening story")
+            return None
+
+        if tab == "GAMELOGIC":
+            if index == 0:
+                themes = list(self.SOUNDTRACKS)
+                current = getattr(self, "soundtrack_theme", themes[0])
+                return imgui_controls.Combo(
+                    "soundtrack", themes,
+                    index=themes.index(current) if current in themes else 0)
+            if index == 1:
+                return imgui_controls.SliderFloat(
+                    "enemy aggro radius", 2.0, 8.0,
+                    getattr(self, "enemy_aggro_radius", 4.5), fmt="%.1f tiles")
+            if index in (2, 3, 4):
+                label, on = (
+                    ("zelda action combat", getattr(self, "action_combat_enabled", True))
+                    if index == 2 else
+                    ("particle bursts", getattr(self, "particle_fx_enabled", True))
+                    if index == 3 else
+                    ("crt retro shader", getattr(self, "crt_filter_enabled", False))
+                )
+                return imgui_controls.Toggle(label, on=on)
+            if index == 5:
+                tone = getattr(self, "ui_accent_tone", "Gold")
+                return imgui_controls.ColorEdit4(
+                    f"ui accent tone: {tone}",
+                    color=imgui_controls.ACCENT_COLORS.get(tone, (0.96, 0.88, 0.50, 1.0)))
+            if index in (6, 7, 8):
+                return imgui_controls.Button(
+                    "quick save run" if index == 6 else
+                    "quick load run" if index == 7 else "test audio sfx")
+            return None
+
+        return None
+
     def _draw_menu(self, scene, camera, half) -> None:
         """Draw the pause menu.
 
@@ -4879,24 +5075,14 @@ class OverworldGame(chigame.Game):
                      fill=(0.055, 0.065, 0.085, 0.985))
 
         # Spread across the panel rather than at a fixed pitch: a fixed one fit
-        # four tabs and clipped the fifth off the edge.
+        # four tabs and clipped the fifth off the edge. The strip's own cell
+        # width is span / len(TABS), which is what _menu_click_target hit-tests
+        # against -- the two must stay the same arithmetic.
         span = half[0] * 1.5
-        for index, label in enumerate(self.TABS):
-            selected = index == self.menu_tab
-            x = cx - span * 0.5 + (index + 0.5) * span / len(self.TABS)
-            pill_w = (span / len(self.TABS)) * 0.88
-            pill_h = 20.0 * scale
-            tab_y = cy - half[1] * 0.62
-            fill = (0.28, 0.24, 0.12, 0.92) if selected else (0.08, 0.10, 0.14, 0.70)
-            scene.window((x, tab_y), (pill_w, pill_h), scale=scale, fill=fill)
-            # window()'s frame eats FRAME_BANDS (2.0 + 1.0) * scale off each
-            # edge, so at the old pill_h=16 the fill band was only 10 units
-            # tall against 10.5-unit text -- the label was taller than the
-            # box it sat in. 9.0-tall text in an 18-unit fill band leaves
-            # real margin.
-            scene.text(label, at=(x, tab_y), height=9.0 * scale,
-                       align="center",
-                       color=(0.96, 0.88, 0.50, 1.0) if selected else (0.45, 0.49, 0.56, 1.0))
+        tab_y = cy - half[1] * 0.62
+        strip = imgui_controls.Tabs(self.TABS, index=self.menu_tab)
+        strip.draw(scene, at=(cx, tab_y), width=span, height=20.0 * scale,
+                   scale=scale, text_height=9.0 * scale)
 
         tab = self.TABS[self.menu_tab]
         top = cy - half[1] * 0.44
@@ -4923,21 +5109,43 @@ class OverworldGame(chigame.Game):
         start = top + (92.0 if tab == "RIG" else 0.0) * scale
         window = rows[max(0, self.menu_row - 6): max(0, self.menu_row - 6) + 8]
         base = max(0, self.menu_row - 6)
+        row_w, row_h = half[0] * 1.2, 10.5 * scale
         for offset, row in enumerate(window):
             selected = base + offset == self.menu_row
             y = start + offset * 13.0 * scale
             if selected:
                 scene.draw("ui", "selected", at=(cx - half[0] * 0.66, y),
                            size=(7.0 * scale, 7.0 * scale))
+
+            widget = self._menu_widget(tab, base + offset, row)
+            if widget is not None:
+                widget.draw(scene, at=(cx, y), width=row_w, height=row_h,
+                            scale=scale, selected=selected)
+                continue
+
             if "[●]" in row:
                 color = (0.35, 0.90, 0.45, 1.0) if selected else (0.28, 0.75, 0.36, 0.90)
             elif "[○]" in row:
                 color = (0.95, 0.45, 0.45, 1.0) if selected else (0.78, 0.36, 0.36, 0.90)
             else:
-                color = (0.94, 0.92, 0.86, 1.0) if selected else (0.56, 0.60, 0.68, 1.0)
+                color = (0.96, 0.88, 0.50, 1.0) if selected else (0.56, 0.60, 0.68, 1.0)
 
             scene.text(row, at=(cx - half[0] * 0.62, y), height=10.5 * scale,
                        color=color)
+
+        if tab == "OPTIONS" and len(self.frame_ms) > 1:
+            # The one number a settings screen owes the player: what the last
+            # second actually cost. A row of milliseconds would be read by
+            # nobody; the shape of them is read at a glance.
+            plot = imgui_controls.PlotLines(
+                f"frame ms  {self.frame_ms[-1]:.1f}", list(self.frame_ms), v_min=0.0)
+            plot.draw(scene, at=(cx + half[0] * 0.36, cy + half[1] * 0.40),
+                      width=half[0] * 0.56, height=26.0 * scale, scale=scale,
+                      text_height=8.0 * scale)
+
+        rule = imgui_controls.Separator()
+        rule.draw(scene, at=(cx, cy + half[1] * 0.58), width=half[0] * 1.5,
+                  height=10.0 * scale, scale=scale)
 
         footer_hint = "L/R tab   Up/Down choose   Confirm use   Cancel close"
         if 0 <= self.menu_row < len(rows):

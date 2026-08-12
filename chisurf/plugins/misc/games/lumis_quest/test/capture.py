@@ -255,6 +255,18 @@ def main(argv: list[str]) -> int:
 
     capture(out, world, "lumis_party", party)
 
+    def settings(game, tab: str, row: int):
+        """Open one settings tab with the cursor on a control."""
+        game.menu_open = True
+        game.menu_tab = game.TABS.index(tab)
+        game.menu_row = row
+        game.frame_ms.extend(16.0 + (index % 7) * 1.5 for index in range(60))
+
+    capture(out, world, "lumis_options",
+            lambda game: settings(game, "OPTIONS", 4))
+    capture(out, world, "lumis_gamelogic",
+            lambda game: settings(game, "GAMELOGIC", 2))
+
     def tavern(game):
         npc = next(one for one in game.people if one.role == "tavern")
         game.iris = [npc.x, npc.y + 12.0]
