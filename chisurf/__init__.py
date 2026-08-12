@@ -115,9 +115,6 @@ experiment: typing.Dict[str, "chisurf.core.experiments.core.experiment.Experimen
 working_path = pathlib.Path().home()
 verbose = False  # Updated lazily when settings are loaded
 
-__jupyter_process__ = None
-__jupyter_address__ = None
-
 import types
 
 _SETTINGS_MODULE = None
@@ -171,7 +168,10 @@ def _apply_logging_settings(settings_module) -> None:
     log_file = getattr(settings_module, "session_log", None)
     level = getattr(settings_module, "log_level", None)
     if not isinstance(level, int):
-        level = logging.INFO
+        # Same default as _initialize_logging: an unset level must not make
+        # an importing process chatty. A settings file that states a level
+        # is honoured above.
+        level = logging.WARNING
     root = logging.getLogger()
     root.setLevel(level)
 
@@ -202,12 +202,17 @@ def _initialize_logging() -> None:
         return
 
     env_level = os.environ.get("CHISURF_LOG_LEVEL")
-    level = logging.INFO
+    # WARNING, not INFO: the import-time default is what every embedding
+    # process inherits (ndX prints INFO on every plot update and file
+    # operation), and an import must not make the host chatty. The GUI's own
+    # logging setup and `CHISURF_LOG_LEVEL` both still say otherwise
+    # deliberately.
+    level = logging.WARNING
     if env_level:
         if env_level.isdigit():
             level = int(env_level)
         else:
-            level = getattr(logging, env_level.upper(), logging.INFO)
+            level = getattr(logging, env_level.upper(), logging.WARNING)
 
     fmt = logging.Formatter("%(asctime)s - %(levelname)s - %(name)s - %(message)s")
     root = logging.getLogger()

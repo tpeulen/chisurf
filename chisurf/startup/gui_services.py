@@ -156,38 +156,6 @@ def check_updates(context) -> None:
             pass
 
 
-def start_jupyter(context) -> None:
-    """Start the Jupyter notebook server.
-
-    The ``enabled_if`` gate in the config prevents this function from
-    being called when Jupyter is disabled in settings.
-    """
-    from chisurf.gui import setup_gui, launch_jupyter_process
-    window = _get_window(context)
-    if window is not None:
-        from qtpy import QtWidgets
-        try:
-            setup_gui(app=QtWidgets.QApplication.instance(), stage="start_jupyter", window=window)
-        except Exception:
-            pass
-
-
-def populate_notebooks(context) -> None:
-    """Populate the notebooks menu.
-
-    This service depends on ``gui.start_jupyter`` and is automatically
-    skipped when Jupyter startup is disabled.
-    """
-    from chisurf.gui import setup_gui
-    window = _get_window(context)
-    if window is not None:
-        from qtpy import QtWidgets
-        try:
-            setup_gui(app=QtWidgets.QApplication.instance(), stage="populate_notebooks", window=window)
-        except Exception:
-            pass
-
-
 def warmup_imports(context) -> None:
     """Preload modules for a snappier first interaction."""
     try:

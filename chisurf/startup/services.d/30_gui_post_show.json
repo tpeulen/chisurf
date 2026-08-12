@@ -30,29 +30,6 @@
       "depends_on": ["populate_plugins"]
     },
     {
-      "id": "gui.start_jupyter",
-      "entrypoint": "chisurf.startup.gui_services:start_jupyter",
-      "surface": "gui",
-      "phase": "post_gui_show",
-      "label": "Starting Jupyter",
-      "progress": 70,
-      "order": 40,
-      "enabled_if": {
-        "setting": "gui.start_jupyter_on_startup",
-        "equals": true
-      }
-    },
-    {
-      "id": "gui.populate_notebooks",
-      "entrypoint": "chisurf.startup.gui_services:populate_notebooks",
-      "surface": "gui",
-      "phase": "post_gui_show",
-      "label": "Populating notebooks",
-      "progress": 80,
-      "order": 50,
-      "depends_on": ["gui.start_jupyter"]
-    },
-    {
       "id": "warmup_imports",
       "entrypoint": "chisurf.startup.gui_services:warmup_imports",
       "surface": "gui",
