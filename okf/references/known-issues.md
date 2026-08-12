@@ -4410,3 +4410,36 @@ changed, and each should be updated by whoever owns the change:
   untracked in-flight work.
 * `test_surface_splat` — expects `splat` and gets `fast`; the default in the
   untracked `surface_quality.py` changed.
+
+### Open — five SQLite databases named `<sqlite3.Connection object at 0x…>`
+
+Found 2026-08-12 while clearing the repository root for a full commit. Five
+untracked files sit there with names like
+``<sqlite3.Connection object at 0x157baf790>``, and `xxd` says each really is a
+database: they begin `SQLite format 3`.
+
+So the cause is unambiguous even though the call site is not: **something passes
+a `Connection` where `sqlite3.connect()` expects a path**. `connect()` stringifies
+its argument, and the repr of a Connection is a valid filename, so instead of
+raising it silently creates a *new, empty* database named after the object's
+memory address. Nothing fails, nothing is logged, and the real database is never
+touched -- which is why five of them accumulated without anyone noticing.
+
+The shape to look for is a helper that accepts "a path **or** a connection" and
+forwards it to `connect()` on the path branch without checking which it got.
+`chisurf/plugins/spectra_downloader/download/` has two functions taking a bare
+`db` argument and two that call `sqlite3.connect(<arg>)` directly, which is the
+most likely neighbourhood, but this was **not** confirmed -- do not treat that as
+the answer.
+
+Worth fixing rather than deleting the files: a `connect()` that quietly makes an
+empty database is a data-loss shape. Any write that went to one of these went
+nowhere.
+
+**Also left in the repository root, deliberately uncommitted:** `MARK.txt` (a
+DataCurve debug dump), `_smoke_nb_tmp.py`, a **zero-byte** `elements.py`,
+`chisurf_project.csp`, `simulation_output_20260811_051840/`, `demo/` (2.8 MB of
+`.ptu`), and about 2.8 MB of loose PNGs from surface and GUI work -- including
+`200.png`, which is the artefact of the `ray 200, 150` filename bug fixed today.
+None of it is source; all of it is safe to delete, and that is the user's call
+rather than an agent's.
