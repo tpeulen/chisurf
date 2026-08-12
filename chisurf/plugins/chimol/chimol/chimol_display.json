@@ -368,6 +368,9 @@
     "show_status": true,
     "debug": false
   },
+  "movie": {
+    "average_window": "bartlett"
+  },
   "export": {
     "hollow": true,
     "hollow_min_neighbors": 18,

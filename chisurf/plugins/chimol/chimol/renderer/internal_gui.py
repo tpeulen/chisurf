@@ -779,6 +779,12 @@ class InternalGui:
         #: Called with a 1-based frame when the timeline is dragged.
         self.on_frame_change: Callable[[int], None] | None = None
         self._average_rect = Rect(0, 0, 0, 0)
+        #: Grooves under the stride and average cells, and which one a drag
+        #: is holding. Sliders, because these are values people sweep until
+        #: the picture is right rather than step one at a time.
+        self._stride_groove = Rect(0, 0, 0, 0)
+        self._average_groove = Rect(0, 0, 0, 0)
+        self._dragging_playback: str | None = None
         #: Called with ``(stride, average)`` when either is clicked.
         self.on_playback_change: Callable[[int, int], None] | None = None
         #: Called with ``(line, placeholder)`` for a menu entry that needs a
@@ -1989,6 +1995,10 @@ class InternalGui:
             return Hit("timeline")
         if self._stride_rect.contains(x, y):
             return Hit("stride")
+        if self._stride_groove.contains(x, y):
+            return Hit("playback_slider", key="stride")
+        if self._average_groove.contains(x, y):
+            return Hit("playback_slider", key="average")
         if self._average_rect.contains(x, y):
             return Hit("average")
         for rect, command in self._movie_rects:
@@ -2898,7 +2908,11 @@ class InternalGui:
         # title, the L/M/R/Wheel heading, six binding rows, selecting, state
         rows = len(rows_for(self.mouse_mode))
         movie = self.movie_panel_visible
-        block_h = self.PAD + line_h * (rows + 5) + self.PAD
+        # +6, not +5: the stride and averaging sliders take a line of their own
+        # under the cells that label them. Sized here rather than overlapped --
+        # laid on the line below without growing the block, the grooves landed
+        # on the timeline track and every press went to the scrubber instead.
+        block_h = self.PAD + line_h * (rows + 6) + self.PAD
         if movie:
             block_h += self.SEQ_BAR_H + 4 + self.ROW_H + self.PAD
 
@@ -2930,6 +2944,8 @@ class InternalGui:
             self._selecting_rect = Rect(0, 0, 0, 0)
             self._stride_rect = Rect(0, 0, 0, 0)
             self._average_rect = Rect(0, 0, 0, 0)
+            self._stride_groove = Rect(0, 0, 0, 0)
+            self._average_groove = Rect(0, 0, 0, 0)
             self._timeline_track = Rect(0, 0, 0, 0)
             self._timeline_thumb = Rect(0, 0, 0, 0)
             self._movie_rects = []
@@ -2956,6 +2972,17 @@ class InternalGui:
         self._stride_rect = Rect(self._block.x, stride_y, split, line_h)
         self._average_rect = Rect(
             self._block.x + split, stride_y, block_w - split, line_h
+        )
+        # A groove under each. Both were click-to-step only, which is fine for
+        # 1 -> 2 and useless for 1 -> 30: a smoothing window is a value people
+        # sweep until the jitter goes, not click at thirty times.
+        slider_y = stride_y + line_h
+        groove_w = (block_w - 3 * self.PAD) * 0.5
+        self._stride_groove = Rect(
+            self._block.x + self.PAD, slider_y, groove_w, line_h
+        )
+        self._average_groove = Rect(
+            self._block.x + 2 * self.PAD + groove_w, slider_y, groove_w, line_h
         )
 
         self._movie_rects = []
@@ -3138,6 +3165,10 @@ class InternalGui:
             return Hit("timeline")
         if self._stride_rect.contains(x, y):
             return Hit("stride")
+        if self._stride_groove.contains(x, y):
+            return Hit("playback_slider", key="stride")
+        if self._average_groove.contains(x, y):
+            return Hit("playback_slider", key="average")
         if self._average_rect.contains(x, y):
             return Hit("average")
         for rect, command in self._movie_rects:
@@ -3233,6 +3264,7 @@ class InternalGui:
         self._dragging_thumb = False
         self._dragging_timeline = False
         self._dragging_ui_scale = False
+        self._dragging_playback = None
         self._ui_scale_track = None
         if self._window_body_drag is not None:
             win = self.window(self._window_body_drag)
@@ -3265,6 +3297,10 @@ class InternalGui:
             or self._window_drag is not None
             or self._window_resize is not None
             or self._window_body_drag is not None
+            # The playback sliders. The host gates every drag on this, so a
+            # slider missing from the set takes a press and then ignores every
+            # movement -- which reads as an unresponsive control.
+            or self._dragging_playback is not None
         )
 
     def mouse_move(self, x: float, y: float) -> bool:
@@ -3683,6 +3719,11 @@ class InternalGui:
                     pass
             return True
 
+        if hit.kind == "playback_slider":
+            self._dragging_playback = str(hit.key)
+            self._set_playback_from(x)
+            return True
+
         if hit.kind == "movie":
             self.close_menus()
             self._emit(hit.key, "")
@@ -4029,6 +4070,41 @@ class InternalGui:
     #: residues -- more than the paint it would be saving.
     SELECTION_HASH_MAX = 4096
 
+    #: Where the stride and averaging sliders top out. A stride past this is a
+    #: different way of watching a trajectory (use `frame`), and an averaging
+    #: window past it stops being a smoother and starts being a mean structure.
+    STRIDE_MAX = 50
+    AVERAGE_MAX = 50
+
+    def _set_playback_from(self, x: float) -> None:
+        """Set whichever playback slider is being dragged from a cursor x."""
+        which = self._dragging_playback
+        if which == "stride":
+            groove, ceiling, floor = self._stride_groove, self.STRIDE_MAX, 1
+        elif which == "average":
+            groove, ceiling, floor = self._average_groove, self.AVERAGE_MAX, 0
+        else:
+            return
+        if groove.w <= 0.0:
+            return
+        fraction = (float(x) - groove.x) / groove.w
+        fraction = min(max(fraction, 0.0), 1.0)
+        value = int(round(fraction * ceiling))
+        value = max(floor, value)
+        if which == "stride":
+            if value == self.stride:
+                return
+            self.stride = value
+        else:
+            if value == self.average:
+                return
+            self.average = value
+        if self.on_playback_change is not None:
+            try:
+                self.on_playback_change(self.stride, self.average)
+            except Exception:  # noqa: BLE001 - a listener is not worth the drag
+                pass
+
     def chrome_fingerprint(self) -> tuple:
         """Everything the chrome draws from, as one comparable value.
 
@@ -4167,6 +4243,7 @@ class InternalGui:
                 cmd_log_key(),
                 self.selecting, self.state, self.mouse_mode, self.mouse_ring,
                 self._name_width, self.debug_overlays,
+                self.stride, self.average, self._dragging_playback,
                 # Changes every frame while it is shown, and should.
                 self.fps if self.debug_overlays else None,
                 self.info_visible, self.info_text, self._info_scroll,
@@ -4642,6 +4719,22 @@ class InternalGui:
         draw(left + label_w + cell_w * 2, line,
              "off" if self.average <= 1 else str(self.average),
              MODE_ACTION_FG, cell_w * 2)
+
+        for groove, value, ceiling, held in (
+            (self._stride_groove, self.stride, self.STRIDE_MAX, "stride"),
+            (self._average_groove, self.average, self.AVERAGE_MAX, "average"),
+        ):
+            if groove.w <= 0.0:
+                continue
+            fraction = min(max(float(value) / float(ceiling), 0.0), 1.0)
+            mid = groove.y + groove.h * 0.5
+            p.fill_rect(groove.x, mid - 1.0, groove.w, 2.0, WINDOW_DIM_FG)
+            p.fill_rect(groove.x, mid - 1.0, groove.w * fraction, 2.0, MODE_TITLE_FG)
+            thumb = groove.x + fraction * max(groove.w - 5.0, 0.0)
+            p.fill_rect(
+                thumb, groove.y + 2.0, 5.0, groove.h - 4.0,
+                MODE_TITLE_FG if self._dragging_playback == held else ENABLED_FG,
+            )
 
         if not self.movie_panel_visible:
             return

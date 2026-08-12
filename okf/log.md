@@ -35594,3 +35594,25 @@
   copying later: VMD **clamps** rather than shrinks the averaging window at
   trajectory ends, so smoothing strength stays constant, and its averaging is
   PBC-aware.
+
+- **2026-08-12 — chimol: Bartlett averaging, and sliders for stride and Avg.**
+  tpeulen asked for both.
+  **The averaging window is triangular now, not a box.** A box weights the frame
+  you asked for exactly as much as one seven frames away, so a wide window does
+  not show a smoother molecule so much as a *different* one -- detail washes out
+  and motion lags behind the frame number on the panel. A Bartlett window peaks
+  on the current frame and falls linearly to the edges. Measured on hgbp1 at
+  window 15, it is better on **both** axes at once: jitter 0.274 -> 0.269 and
+  distance from the true frame **0.942 -> 0.792**, a 16 % reduction in lag.
+  Configurable as `movie.average_window` (`bartlett` | `box`).
+  One detail that is easy to get wrong: the weights are built around **the
+  current frame's position inside the window, not the window's middle**. Near
+  the start or end of a trajectory the window is clipped on one side and the
+  frame being shown sits off-centre, so a triangle centred on the middle would
+  weight the wrong frame highest.
+  **Stride and Avg are sliders**, on a line of their own under the cells that
+  label them. They were click-to-step, which is fine for 1 -> 2 and useless for
+  1 -> 30. The block grew a line to hold them: laid on the existing line the
+  grooves landed on the **timeline track**, and every press went to the scrubber
+  instead -- so the sliders appeared to do nothing, which is exactly the bug
+  they were added to fix. Both were verified by driving the real hit rectangles.

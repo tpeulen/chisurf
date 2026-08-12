@@ -302,7 +302,71 @@ def _smooth_frame(
     hi = min(n_frames, index + half + 1)
     if hi - lo < 2:
         return frame
-    return np.asarray(frames[lo:hi], dtype=float).mean(axis=0)
+
+    block = np.asarray(frames[lo:hi], dtype=float)
+    weights = _window_weights(hi - lo, index - lo)
+    if weights is None:
+        return block.mean(axis=0)
+    return np.tensordot(weights, block, axes=(0, 0))
+
+
+#: How the averaging window is shaped. ``box`` weights every frame in the window
+#: equally; ``bartlett`` is a triangle peaking on the frame being shown.
+WINDOW_SHAPES = ("bartlett", "box")
+
+
+def _window_shape() -> str:
+    """The configured averaging window shape."""
+    section = _DISPLAY_CONFIG.get("movie")
+    if isinstance(section, dict):
+        name = str(section.get("average_window", "bartlett")).strip().lower()
+        if name in WINDOW_SHAPES:
+            return name
+    return "bartlett"
+
+
+def _window_weights(width: int, centre: int):
+    """Normalised weights for an averaging window of *width*.
+
+    Parameters
+    ----------
+    width : int
+        Frames actually in the window; smaller than the nominal one near the
+        ends of a trajectory, where it is clipped.
+    centre : int
+        Index *within the window* of the frame being shown. Not ``width // 2``:
+        near the start or end of a trajectory the window is clipped on one side
+        and the current frame sits off-centre, so a triangle built around the
+        middle would weight the wrong frame highest.
+
+    Returns
+    -------
+    numpy.ndarray or None
+        Weights summing to one, or ``None`` for a flat mean -- which the caller
+        computes directly, being faster than multiplying by a constant.
+
+    Notes
+    -----
+    A **box** window weights the frame you asked for exactly as much as one
+    seven frames away, so a wide window does not so much smooth the molecule as
+    show a different one -- detail disappears and motion lags. A **Bartlett**
+    (triangular) window peaks on the current frame and falls linearly to zero at
+    the edges, so it suppresses jitter while the picture still follows the frame
+    it is labelled with. That is why it is the default.
+    """
+    if width <= 1:
+        return None
+    if _window_shape() == "box":
+        return None
+    # Triangular, peaking on the frame being shown and reaching zero one step
+    # beyond each end -- so no frame in the window has zero weight.
+    offsets = np.abs(np.arange(width, dtype=float) - float(centre))
+    reach = float(max(centre, width - 1 - centre)) + 1.0
+    weights = 1.0 - offsets / reach
+    total = float(weights.sum())
+    if total <= 0.0:
+        return None
+    return weights / total
 
 
 def _frame_blend(position, n_frames: int) -> tuple[int, float, int]:

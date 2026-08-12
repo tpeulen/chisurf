@@ -1001,6 +1001,21 @@ def _load_display_config() -> dict:
             # is measuring.
             "debug": False,
         },
+        # --- movie -------------------------------------------------------- #
+        "movie": {
+            # How the trajectory averaging window is shaped.
+            #
+            # `box` weights every frame in the window equally, which is what
+            # this used to do -- and a wide box window does not show a smoother
+            # molecule so much as a *different* one, because the frame you asked
+            # for counts no more than one seven frames away: detail washes out
+            # and motion lags.
+            #
+            # `bartlett` is a triangle peaking on the frame being shown and
+            # falling linearly to the edges, so it suppresses jitter while the
+            # picture still follows the frame it is labelled with.
+            "average_window": "bartlett",
+        },
         # --- export ------------------------------------------------------ #
         "export": {
             # Drop particles that are buried inside the model before writing a
