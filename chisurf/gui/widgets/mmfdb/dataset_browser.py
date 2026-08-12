@@ -46,6 +46,7 @@ class DatasetSelection:
     label: str
     local_path: str | None = None
     metadata: dict = field(default_factory=dict)
+    member_count: int = 0
 
 
 def _get_display_name(ds: dict[str, Any]) -> str:

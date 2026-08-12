@@ -14,21 +14,23 @@ having a table of our own.
 
 from __future__ import annotations
 
+import math
 from collections.abc import Sequence
 
 import numpy as np
-import pandas as pd
 from qtpy import QtCore, QtWidgets
 
 import chisurf.core.fitting
 from chisurf.core.actions import record_action
+from chisurf.core.datastore import row_count, rows_from_table, store_from_rows
 from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.plots import plotbase
 from chisurf.gui.widgets.chitable import (
     ArraySource,
+    ChiTableDialog,
     ChiTableWidget,
     ColumnSpec,
-    edit_dataframe,
+    DataStoreSource,
 )
 from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
 from chisurf.gui import dialogs
@@ -393,8 +395,8 @@ class FitTablePlot(plotbase.Plot):
 
     # ── model-parameter editor ───────────────────────────────────────────
 
-    def _parameter_frame(self, param_dict) -> pd.DataFrame:
-        """Build the editable frame of model parameters.
+    def _parameter_frame(self, param_dict):
+        """Build the editable table of model parameters.
 
         Parameters
         ----------
@@ -403,7 +405,7 @@ class FitTablePlot(plotbase.Plot):
 
         Returns
         -------
-        pandas.DataFrame
+        tttrlib.DataStore
             Columns ``name``, ``value``, ``lb``, ``ub``, ``fixed``,
             ``bounds_on``, ``linked`` and ``link_target``.
         """
@@ -435,7 +437,7 @@ class FitTablePlot(plotbase.Plot):
                     "link_target": str(getattr(link_obj, "name", "") or ""),
                 }
             )
-        return pd.DataFrame(rows).reset_index(drop=True)
+        return store_from_rows(rows)
 
     def on_show_model(self) -> None:
         """Open the model-parameter table and apply the accepted edits."""
@@ -445,32 +447,38 @@ class FitTablePlot(plotbase.Plot):
         except Exception:
             param_dict = {p.name: p for p in getattr(model, "parameters", [])}
 
-        df = self._parameter_frame(param_dict)
-        if df.empty:
+        table = self._parameter_frame(param_dict)
+        if row_count(table) == 0:
             dialogs.information(
                 self, "No parameters", "Model exposes no editable parameters."
             )
             return
 
-        new_df = edit_dataframe(
-            df,
+        # Held by reference: DataStoreSource mutates the store it wraps in
+        # place, and ChiTableDialog only writes staged edits into the source
+        # on Accept -- so this table is untouched on Cancel and holds the
+        # accepted values afterward, with no separate "read the result" step.
+        dlg = ChiTableDialog(
+            source=DataStoreSource(
+                table,
+                editable=True,
+                readonly_columns=("name",),
+                colorize_columns=(),
+            ),
             parent=self,
             title="Model parameters",
-            readonly_columns=("name",),
-            bool_columns=("fixed", "bounds_on", "linked"),
-            colorize_columns=(),
         )
-        if new_df is None:
+        if dlg.exec_() != QtWidgets.QDialog.Accepted:
             return
-        self._apply_parameter_frame(new_df, param_dict)
+        self._apply_parameter_table(table, param_dict)
 
-    def _apply_parameter_frame(self, new_df: pd.DataFrame, param_dict) -> None:
-        """Push an edited parameter frame back through the fitting client.
+    def _apply_parameter_table(self, table, param_dict) -> None:
+        """Push an edited parameter table back through the fitting client.
 
         Parameters
         ----------
-        new_df : pandas.DataFrame
-            The accepted frame, in the layout :meth:`_parameter_frame` produces.
+        table : tttrlib.DataStore
+            The accepted table, in the layout :meth:`_parameter_frame` produces.
         param_dict : dict
             Mapping of parameter name to parameter object.
         """
@@ -480,13 +488,16 @@ class FitTablePlot(plotbase.Plot):
         fit_uid = str(getattr(self.fit, "unique_identifier", "") or "")
         fit_idx = getattr(self.fit, "fit_idx", None)
 
-        for _, row in new_df.iterrows():
+        def notna(v):
+            return v is not None and not (isinstance(v, float) and math.isnan(v))
+
+        for row in rows_from_table(table):
             name = row.get("name")
             if name not in param_dict:
                 continue
 
             try:
-                if pd.notna(row.get("value")):
+                if notna(row.get("value")):
                     fc.set_parameter_value(
                         name, float(row["value"]), fit_uid=fit_uid, fit_index=fit_idx
                     )
@@ -494,7 +505,7 @@ class FitTablePlot(plotbase.Plot):
                 pass
 
             try:
-                if pd.notna(row.get("lb")) and pd.notna(row.get("ub")):
+                if notna(row.get("lb")) and notna(row.get("ub")):
                     fc.set_parameter_bounds(
                         name,
                         (float(row["lb"]), float(row["ub"])),

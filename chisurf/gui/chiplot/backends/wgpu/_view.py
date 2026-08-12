@@ -18,6 +18,27 @@ import numpy as np
 #: meaningless and the transform would return infinities.
 _LOG_FLOOR = 1e-300
 
+#: Exponent range a log axis is allowed to reach. ``10 ** 309`` is not a float,
+#: and the exponent is *not* bounded by the data: it comes from a pixel
+#: position, which is unbounded because a drag keeps delivering mouse events
+#: after the cursor has left the panel. Unclamped, moving the mouse off a
+#: logarithmic plot raises ``OverflowError: (34, 'Result too large')`` out of
+#: the move handler.
+_LOG_MAX_EXP = 300.0
+_LOG_MIN_EXP = -300.0
+
+
+def pow10(exponent: float) -> float:
+    """Return ``10 ** exponent``, clamped to what a float can hold.
+
+    Every conversion out of log space goes through here — the transform, the
+    inverse, the tick range, and the pan/zoom arithmetic — so none of them can
+    produce a value the next one cannot represent.
+    """
+    if not math.isfinite(exponent):
+        return _LOG_FLOOR if exponent < 0 else 10.0 ** _LOG_MAX_EXP
+    return 10.0 ** min(max(exponent, _LOG_MIN_EXP), _LOG_MAX_EXP)
+
 
 class PixelView:
     """Maps data coordinates to clip space and to widget pixels.
@@ -39,25 +60,68 @@ class PixelView:
         *,
         log_x: bool = False,
         log_y: bool = False,
+        invert_x: bool = False,
         invert_y: bool = False,
     ):
         self.x_range = list(x_range)
         self.y_range = list(y_range)
         self.log_x = log_x
         self.log_y = log_y
+        self.invert_x = invert_x
         self.invert_y = invert_y
 
     # -- forward --------------------------------------------------------
-    @staticmethod
-    def _axis_bounds(rng, log: bool) -> tuple[float, float]:
-        """Return the axis bounds in the space the axis is linear in."""
+    #: Decades an empty or non-positive log axis falls back to spanning.
+    _LOG_FALLBACK_DECADES = 3.0
+
+    @classmethod
+    def _axis_bounds(cls, rng, log: bool) -> tuple[float, float]:
+        """Return the axis bounds in the space the axis is linear in.
+
+        A log axis whose low bound is non-positive cannot be taken literally.
+        Flooring it at the smallest representable number is what an empty panel
+        did — the default range is ``[0, 1]``, so a plot created with
+        ``set_log(y=True)`` before any data came up spanning **three hundred
+        decades**, with ``1e-300`` as its first tick. Falling back to a few
+        decades below the top gives an axis a reader can use, and one that the
+        first real data replaces anyway.
+        """
         lo, hi = float(rng[0]), float(rng[1])
+        if not math.isfinite(lo) or not math.isfinite(hi):
+            # A range that already overflowed: fall back rather than propagate.
+            lo, hi = (0.0, 1.0) if not log else (_LOG_FLOOR, 1.0)
         if log:
-            lo = math.log10(max(lo, _LOG_FLOOR))
-            hi = math.log10(max(hi, _LOG_FLOOR))
+            if hi <= 0:
+                hi = 1.0
+            if lo <= 0:
+                lo = hi * pow10(-cls._LOG_FALLBACK_DECADES)
+            lo = min(max(math.log10(max(lo, _LOG_FLOOR)), _LOG_MIN_EXP), _LOG_MAX_EXP)
+            hi = min(max(math.log10(max(hi, _LOG_FLOOR)), _LOG_MIN_EXP), _LOG_MAX_EXP)
         if hi - lo == 0:
             hi = lo + 1.0
         return lo, hi
+
+    def visible_range(self, axis: str = "x") -> tuple[float, float]:
+        """Return an axis's range in **data** units, sanitised for its scale.
+
+        The same numbers the transform uses, so ticks cannot be generated for a
+        span the geometry does not draw — which is how an empty log panel got
+        ticks from ``1e-300`` while its curves were mapped over three decades.
+
+        Parameters
+        ----------
+        axis : str
+            ``"x"`` or ``"y"``.
+
+        Returns
+        -------
+        tuple of float
+            ``(lo, hi)`` in data units.
+        """
+        log = self.log_x if axis == "x" else self.log_y
+        rng = self.x_range if axis == "x" else self.y_range
+        lo, hi = self._axis_bounds(rng, log)
+        return (pow10(lo), pow10(hi)) if log else (lo, hi)
 
     def _to_axis(self, values, log: bool):
         """Map data values into the axis's linear space."""
@@ -84,6 +148,8 @@ class PixelView:
         ay = self._to_axis(ys, self.log_y)
         nx = 2.0 * (ax - xlo) / (xhi - xlo) - 1.0
         ny = 2.0 * (ay - ylo) / (yhi - ylo) - 1.0
+        if self.invert_x:
+            nx = -nx
         if self.invert_y:
             ny = -ny
         return nx, ny
@@ -106,6 +172,8 @@ class PixelView:
         ix, iy, pw, ph = margins.plot_rect(w, h)
         nx = 2.0 * (px - ix) / max(pw, 1) - 1.0
         ny = 1.0 - 2.0 * (py - iy) / max(ph, 1)
+        if self.invert_x:
+            nx = -nx
         if self.invert_y:
             ny = -ny
         return (self._from_ndc(nx, self.x_range, self.log_x),
@@ -116,4 +184,4 @@ class PixelView:
         """Invert one axis's clip-space mapping."""
         lo, hi = cls._axis_bounds(rng, log)
         v = lo + (ndc + 1.0) * 0.5 * (hi - lo)
-        return 10.0 ** v if log else v
+        return pow10(v) if log else v

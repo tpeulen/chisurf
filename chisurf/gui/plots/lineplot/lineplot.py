@@ -902,10 +902,22 @@ class LinePlot(plotbase.Plot):
         # by default (settings gui.plot.hideTitle), so a plain DockSplitter is a
         # faithful replacement; the panels' x-axes are linked above.
         area = DockSplitter(QtCore.Qt.Vertical)
+        # Collapsible, so a panel can be folded away by dragging its handle
+        # onto the next one. DockSplitter turns this off for docks, where a
+        # pane that vanishes is a pane the user cannot get back; here the
+        # handle stays on screen and the drag reverses.
+        area.setChildrenCollapsible(True)
         area.addWidget(p2)  # A.corr. residuals
         area.addWidget(p1)  # Residuals
         area.addWidget(p3)  # Data
-        area.setSizes([80, 80, 250])
+        self.plot_splitter = area
+        self._apply_golden_split()
+        # Absolute sizes do not survive a resize — the splitter rescales them
+        # and the proportion drifts — so re-apply the ratio on every resize
+        # until the user drags a handle, after which their split is the answer.
+        self._split_is_users = False
+        area.splitterMoved.connect(self._on_splitter_moved)
+        area.installEventFilter(self)
         self.layout.addWidget(area)
 
         # Labels - draggable text box for the fit-quality metrics overlay. Yellow
@@ -975,6 +987,13 @@ class LinePlot(plotbase.Plot):
                 plots['top_left_plot'].grid(x=True, y=True, alpha=grid_alpha)
             if cs.core.settings.gui['plot']['show_acorr_grid']:
                 plots['top_right_plot'].grid(x=True, y=True, alpha=grid_alpha)
+        # Same story as "Label axes" below: a settings checkbox that no plot
+        # read, so a legend could be asked for and never appear — and one that
+        # never appears is one that cannot be dragged either. The curves are
+        # already named, which is all a legend needs.
+        if cs.core.settings.gui['plot'].get('show_legend', False):
+            plots['main_plot'].legend()
+
         # "Label axes" was a settings checkbox nothing read, so turning it off
         # did nothing at all. Honour it: axis names cost horizontal space that
         # a narrow docked panel may prefer to give the data.
@@ -996,6 +1015,32 @@ class LinePlot(plotbase.Plot):
         self.lines = lines
         self.plots = plots
         self.plot_controller.fill_line_widget()
+
+    #: The data panel's share of the stack. The residual strips split the rest,
+    #: so data : (a.corr + w.res) is the golden ratio.
+    GOLDEN_DATA_FRACTION = 0.6180339887498949
+
+    def _apply_golden_split(self) -> None:
+        """Size the stacked panels so the data panel takes the golden share."""
+        splitter = getattr(self, "plot_splitter", None)
+        if splitter is None or splitter.count() != 3:
+            return
+        total = max(splitter.height() - splitter.handleWidth() * 2, 3)
+        data = int(round(total * self.GOLDEN_DATA_FRACTION))
+        strip = max((total - data) // 2, 1)
+        splitter.setSizes([strip, strip, max(total - 2 * strip, 1)])
+
+    def _on_splitter_moved(self, *_) -> None:
+        """Stop re-applying the ratio once the user has chosen a split."""
+        self._split_is_users = True
+
+    def eventFilter(self, obj, event):
+        """Re-apply the golden split while the user has not overridden it."""
+        if (obj is getattr(self, "plot_splitter", None)
+                and event.type() == QtCore.QEvent.Resize
+                and not getattr(self, "_split_is_users", False)):
+            self._apply_golden_split()
+        return super().eventFilter(obj, event)
 
     def _auto_enable_display_group_if_grouped(self) -> None:
         """Enable "display group" by default for multi-fit FitGroups.

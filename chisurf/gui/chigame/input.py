@@ -64,18 +64,22 @@ class InputMap:
         self._held: set[Action] = set()
         self._pressed: set[Action] = set()
         self._released: set[Action] = set()
+        self._wheel_dy = 0.0
+        self._click: tuple[float, float] | None = None
 
     def attach(self, canvas) -> None:
-        """Route a canvas' key events into this map.
+        """Route a canvas' key, wheel and left-click events into this map.
 
         Parameters
         ----------
         canvas : object
-            A ``rendercanvas`` canvas. The offscreen canvas emits no key events,
-            which is why :meth:`press` exists.
+            A ``rendercanvas`` canvas. The offscreen canvas emits no key
+            events, which is why :meth:`press` exists.
         """
         canvas.add_event_handler(self._on_key_down, "key_down")
         canvas.add_event_handler(self._on_key_up, "key_up")
+        canvas.add_event_handler(self._on_wheel, "wheel")
+        canvas.add_event_handler(self._on_pointer_down, "pointer_down")
 
     def _on_key_down(self, event: dict) -> None:
         """Handle a canvas key-press event.
@@ -100,6 +104,67 @@ class InputMap:
         action = self.bindings.get(event.get("key", ""))
         if action is not None:
             self.release(action)
+
+    def _on_wheel(self, event: dict) -> None:
+        """Handle a canvas mouse-wheel event.
+
+        Parameters
+        ----------
+        event : dict
+            Event payload; ``event['dy']`` is the vertical scroll delta,
+            positive scrolling down/away and negative scrolling up/toward,
+            the same sign convention every ``rendercanvas`` backend already
+            agrees on.
+        """
+        self._wheel_dy += float(event.get("dy", 0.0))
+
+    def scroll(self, dy: float) -> None:
+        """Feed a synthetic wheel step, for tests and scripted tours.
+
+        Parameters
+        ----------
+        dy : float
+            Same sign convention as a real wheel event: negative scrolls up.
+        """
+        self._wheel_dy += dy
+
+    def _on_pointer_down(self, event: dict) -> None:
+        """Handle a canvas left-click.
+
+        Parameters
+        ----------
+        event : dict
+            Event payload; ``event['button']`` is 1 for the left button,
+            ``event['x']``/``event['y']`` are canvas pixels (top-left
+            origin), not world units -- a game converts through its own
+            camera, the same way it already does for drawing.
+        """
+        if event.get("button") == 1:
+            self._click = (float(event.get("x", 0.0)), float(event.get("y", 0.0)))
+
+    def click_at(self, x: float, y: float) -> None:
+        """Feed a synthetic left-click, for tests and scripted tours.
+
+        Parameters
+        ----------
+        x, y : float
+            Canvas pixels, top-left origin -- same convention as a real
+            ``pointer_down`` event.
+        """
+        self._click = (x, y)
+
+    def click(self) -> tuple[float, float] | None:
+        """Where the canvas was left-clicked during the frame being processed.
+
+        Outside the nine-action controller on purpose, the same as
+        :meth:`wheel_delta` -- a mouse is not a gamepad input.
+
+        Returns
+        -------
+        tuple of float or None
+            Canvas pixels, or ``None`` on a frame with no click.
+        """
+        return self._click
 
     def press(self, action: Action) -> None:
         """Mark an action as pressed.
@@ -198,13 +263,34 @@ class InputMap:
         y = float(self.is_held(Action.DOWN)) - float(self.is_held(Action.UP))
         return x, y
 
+    def wheel_delta(self) -> float:
+        """How far the mouse wheel moved during the frame being processed.
+
+        Outside the nine-action controller on purpose: a mouse is not a
+        gamepad input and no game may *require* one, but reading a wheel is
+        no different from reading a window resize -- an incidental fact
+        about the host a game may use if it is there, never a control it can
+        assume exists.
+
+        Returns
+        -------
+        float
+            Summed ``dy`` since the last :meth:`end_frame`; negative is
+            scrolled up/toward, positive is scrolled down/away. Zero on a
+            frame with no wheel activity, including every headless test that
+            never calls :meth:`scroll`.
+        """
+        return self._wheel_dy
+
     def end_frame(self) -> None:
-        """Clear the one-frame press and release sets.
+        """Clear the one-frame press, release, wheel and click state.
 
         Call once per frame, after the game has read its input.
         """
         self._pressed.clear()
         self._released.clear()
+        self._wheel_dy = 0.0
+        self._click = None
 
 
 def bind(mapping: dict[str, Action], **overrides: Action) -> dict[str, Action]:

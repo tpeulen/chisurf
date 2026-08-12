@@ -27,7 +27,7 @@ from chisurf.gui.widgets.chitable.model import ChiTableModel
 from chisurf.gui.widgets.chitable.proxy import ForeignTableProxy
 from chisurf.gui.widgets.chitable.source import (
     ArraySource,
-    DataFrameSource,
+    DataStoreSource,
     RecordSource,
     TableSource,
 )
@@ -275,18 +275,18 @@ class ChiTableWidget(QtWidgets.QWidget):
         if section >= 0:
             self._view.horizontalHeader().setSortIndicatorShown(True)
 
-    def set_dataframe(self, df, **kwargs: Any) -> None:
-        """Show a :class:`pandas.DataFrame`.
+    def set_store(self, store, **kwargs: Any) -> None:
+        """Show a ``tttrlib.DataStore``.
 
         Parameters
         ----------
-        df : pandas.DataFrame
-            The frame to display.
+        store : tttrlib.DataStore
+            The store to display.
         **kwargs
-            Forwarded to :class:`DataFrameSource`.
+            Forwarded to :class:`DataStoreSource`.
         """
         kwargs.setdefault("editable", bool(self._features & TableFeature.EDIT))
-        self.set_source(DataFrameSource(df, **kwargs))
+        self.set_source(DataStoreSource(store, **kwargs))
 
     def set_arrays(self, columns, **kwargs: Any) -> None:
         """Show named ``numpy`` column arrays.
@@ -611,20 +611,17 @@ class ChiTableWidget(QtWidgets.QWidget):
         """
         return self._foreign_proxy
 
-    def dataframe(self):
-        """Return the current view as a frame.
+    def to_store(self):
+        """Return the current view as a store.
 
         Returns
         -------
-        pandas.DataFrame or None
+        tttrlib.DataStore or None
             ``None`` when the table is backed by a foreign model.
         """
         if self._chi_model is None:
             return None
-        source = self._chi_model.source
-        if isinstance(source, DataFrameSource):
-            return source.dataframe
-        return self._chi_model.to_dataframe()
+        return self._chi_model.to_store()
 
     def export_csv(self, path: str | None = None) -> str | None:
         """Write the visible rows and columns to CSV.

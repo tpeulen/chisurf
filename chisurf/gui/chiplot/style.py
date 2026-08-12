@@ -123,6 +123,17 @@ def to_color(value) -> Color:
     if isinstance(value, str):
         if value in _SHORT_COLORS:
             return Color(*_SHORT_COLORS[value])
+        # Eight hex digits are #RRGGBBAA here, the CSS spelling this module
+        # documents. Qt reads the same string as #AARRGGBB, so handing it over
+        # swaps alpha into red and comes back opaque: "#ff000080" (red, half
+        # transparent) parsed as dark blue at full alpha, and a translucent
+        # region band rendered olive. Parse it before Qt sees it.
+        if len(value) == 9 and value.startswith("#"):
+            try:
+                r, g, b, a = (int(value[i:i + 2], 16) for i in (1, 3, 5, 7))
+            except ValueError:
+                raise TypeError(f"unrecognised color hex: {value!r}") from None
+            return Color(r, g, b, a)
         qc = QtGui.QColor(value)
         if not qc.isValid():
             raise TypeError(f"unrecognised color name/hex: {value!r}")

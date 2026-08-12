@@ -144,9 +144,29 @@ def create_widget(parent: Any = None, *, size: tuple[int, int] | None = None) ->
     from rendercanvas.qt import QRenderWidget
 
     canvas = QRenderWidget(parent=parent)
+    _mark_canvas_closed_on_destroy(canvas)
     if size is not None:
         canvas.set_logical_size(*size)
     return _configure(canvas)
+
+
+def _mark_canvas_closed_on_destroy(canvas) -> None:
+    """Tell rendercanvas the canvas is gone when Qt destroys it.
+
+    Qt destroys an embedded widget without a ``closeEvent``, so rendercanvas
+    keeps it registered as open; at ``aboutToQuit`` its loop probes the dead
+    wrapper and PyQt raises ``RuntimeError`` where the loop expects
+    ``AttributeError``, killing app shutdown. The flags are written through the
+    captured instance dict, which survives the C++ half's death, so the loop
+    skips both the probe and the ``close()`` call.
+    """
+    d = canvas.__dict__
+
+    def _mark(*_args, _d=d):
+        _d["_is_closed"] = True
+        _d["_rc_closed_by_loop"] = True
+
+    canvas.destroyed.connect(_mark)
 
 
 def create_offscreen(size: tuple[int, int] = (960, 540)) -> GpuContext:

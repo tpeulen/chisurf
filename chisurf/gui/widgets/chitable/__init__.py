@@ -4,21 +4,23 @@ ChiSurf's tables used to be a third-party ``DataFrameEditor`` plus a few dozen
 hand-rolled ``QTableWidget``s, none of which shared sorting, filtering, column
 hiding, colouring or export. chitable is the single model/view implementation
 those call sites now share, in the spirit of the ``chiplot`` plotting seam: one
-facade, swappable internals, no third-party GUI dependency.
+facade, swappable internals, no third-party GUI dependency — and, unlike the
+editor it replaced, no pandas dependency either: every table is a
+``tttrlib.DataStore``.
 
-Typical use — a frame with every feature switched on::
+Typical use — a store with every feature switched on::
 
     from chisurf.gui.widgets.chitable import ChiTableWidget
 
     table = ChiTableWidget()
-    table.set_dataframe(df)
+    table.set_store(store)
 
 A modal editor with staged Apply/Cancel::
 
-    from chisurf.gui.widgets.chitable import edit_dataframe
+    from chisurf.gui.widgets.chitable import edit_store
 
-    edited = edit_dataframe(df, parent=self, title="Model parameters",
-                            readonly_columns=("name",), bool_columns=("fixed",))
+    edited = edit_store(store, parent=self, title="Model parameters",
+                        readonly_columns=("name",))
     if edited is not None:
         ...
 
@@ -47,15 +49,14 @@ from chisurf.gui.widgets.chitable.delegates import (
 from chisurf.gui.widgets.chitable.dialogs import ColumnFilterDialog, ColumnPickerDialog
 from chisurf.gui.widgets.chitable.editor import (
     ChiTableDialog,
-    edit_dataframe,
-    show_dataframe,
+    edit_store,
+    show_store,
 )
 from chisurf.gui.widgets.chitable.filters import ColumnFilter, FilterSpec
 from chisurf.gui.widgets.chitable.model import ChiTableModel
 from chisurf.gui.widgets.chitable.proxy import ForeignTableProxy, ReadOnlyColumnProxy
 from chisurf.gui.widgets.chitable.source import (
     ArraySource,
-    DataFrameSource,
     DataStoreSource,
     RecordSource,
     TableSource,
@@ -81,7 +82,6 @@ __all__ = [
     "ColumnSpec",
     "DEFAULT_FEATURES",
     "DEFAULT_FORMAT",
-    "DataFrameSource",
     "DataStoreSource",
     "FilterSpec",
     "FloatEditDelegate",
@@ -94,7 +94,7 @@ __all__ = [
     "TableSource",
     "ValueColorScheme",
     "delegate_for",
-    "edit_dataframe",
+    "edit_store",
     "is_valid_format",
-    "show_dataframe",
+    "show_store",
 ]

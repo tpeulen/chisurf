@@ -596,6 +596,11 @@ class Audio:
         self._sound_cls = None
         self._suspended = False
         self._resume_context: str | None = None
+        #: Independent channel levels, 0.0 (silent) to 1.0 (full) -- a game's
+        #: options screen sets these; nothing here reads them from disk, so
+        #: persisting a player's choice between sessions is the game's job.
+        self.music_volume = 1.0
+        self.sfx_volume = 1.0
         self.enabled = False
         if not enabled:
             return
@@ -635,10 +640,36 @@ class Audio:
         path = write_wav(self._dir / f"{key}.wav", pcm, rate)
         effect = self._sound_cls()
         effect.setSource(QUrl.fromLocalFile(str(path)))
+        effect.setVolume(self.music_volume if key.startswith("music-") else self.sfx_volume)
         if loop:
             effect.setLoopCount(self._sound_cls.Infinite)
         self._effects[key] = effect
         return effect
+
+    def set_music_volume(self, volume: float) -> None:
+        """Set the music channel's level.
+
+        Parameters
+        ----------
+        volume : float
+            0.0 (silent) to 1.0 (full); out-of-range values are clamped.
+        """
+        self.music_volume = max(0.0, min(1.0, float(volume)))
+        if self._music is not None:
+            self._music.setVolume(self.music_volume)
+
+    def set_sfx_volume(self, volume: float) -> None:
+        """Set the sound-effect channel's level.
+
+        Parameters
+        ----------
+        volume : float
+            0.0 (silent) to 1.0 (full); out-of-range values are clamped.
+        """
+        self.sfx_volume = max(0.0, min(1.0, float(volume)))
+        for key, effect in self._effects.items():
+            if not key.startswith("music-"):
+                effect.setVolume(self.sfx_volume)
 
     def set_context(self, context: str) -> None:
         """Switch the music to a context.

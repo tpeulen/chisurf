@@ -1,13 +1,11 @@
 """Table sources — the adapter layer of :mod:`chisurf.gui.widgets.chitable`.
 
 A :class:`TableSource` is the only thing :class:`~chisurf.gui.widgets.chitable.model.ChiTableModel`
-knows about. Four adapters cover every tabular shape in the tree:
+knows about. Three adapters cover every tabular shape in the tree:
 
-``DataFrameSource``
-    a :class:`pandas.DataFrame` (ndX burst frames, model-parameter tables);
 ``DataStoreSource``
     a ``tttrlib.DataStore`` — the [columnar store](/subsystems/columnar-store.md)
-    the burst tables are migrating onto;
+    every table in the tree is built on;
 ``ArraySource``
     named ``numpy`` column arrays (fit curves: x / data / model / residuals);
 ``RecordSource``
@@ -20,12 +18,17 @@ without a per-row Python callback.
 
 Notes
 -----
-Numeric dtype tests go exclusively through :func:`pandas.api.types.is_numeric_dtype`.
-``numpy.issubdtype`` raises on pandas extension dtypes (the nullable ``Float64``
-a nullable-dtype reader produces), which is the root cause of a long-standing crash in
-ndX's table editor. :class:`DataStoreSource` cannot reproduce that class of bug at
-all: a store column states its type outright, so nothing has to be inferred from a
-dtype object.
+This module has no pandas dependency at all, not even an optional one. It
+used to: a fourth adapter, ``DataFrameSource``, wrapped a caller-held
+:class:`pandas.DataFrame` directly, and :func:`kind_from_dtype` fell through to
+:func:`pandas.api.types.is_numeric_dtype` for a dtype plain ``numpy.dtype()``
+could not classify (a pandas *extension* dtype such as the nullable
+``Float64``/``Int64``/``boolean`` a nullable-dtype reader produces — plain
+``numpy.issubdtype`` does not raise there, it is simply wrong, which was the
+root cause of a long-standing crash in ndX's table editor). Both are gone: the
+tree has no producer of a frame left to wrap, and :class:`DataStoreSource`
+cannot reproduce that class of bug at all — a store column states its type
+outright, so nothing has to be inferred from a dtype object.
 """
 
 from __future__ import annotations
@@ -34,7 +37,6 @@ from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
 import numpy as np
-import pandas as pd
 
 from chisurf.gui.widgets.chitable.columns import (
     KIND_AUTO,
@@ -47,12 +49,16 @@ from chisurf.gui.widgets.chitable.columns import (
 
 
 def kind_from_dtype(dtype: Any) -> str:
-    """Map a numpy/pandas dtype onto a :class:`ColumnSpec` kind.
+    """Map a numpy dtype onto a :class:`ColumnSpec` kind.
+
+    Classified from ``numpy.dtype.kind`` directly. Anything ``numpy.dtype()``
+    does not recognise (nothing in this tree produces such a value; every
+    column is a plain numpy array) is treated as text rather than raising.
 
     Parameters
     ----------
     dtype : object
-        A numpy dtype, pandas extension dtype, or anything ``pandas`` accepts.
+        A numpy dtype, or anything ``numpy.dtype()`` accepts.
 
     Returns
     -------
@@ -60,14 +66,16 @@ def kind_from_dtype(dtype: Any) -> str:
         One of ``"bool"``, ``"int"``, ``"float"`` or ``"str"``.
     """
     try:
-        if pd.api.types.is_bool_dtype(dtype):
-            return KIND_BOOL
-        if pd.api.types.is_integer_dtype(dtype):
-            return KIND_INT
-        if pd.api.types.is_numeric_dtype(dtype):
-            return KIND_FLOAT
-    except (TypeError, ValueError):
-        pass
+        np_dtype = np.dtype(dtype)
+    except TypeError:
+        return KIND_STR
+    kind = np_dtype.kind
+    if kind == "b":
+        return KIND_BOOL
+    if kind in "iu":
+        return KIND_INT
+    if kind == "f":
+        return KIND_FLOAT
     return KIND_STR
 
 
@@ -112,12 +120,33 @@ def coerce_value(raw: Any, kind: str) -> Any:
     return float(text)
 
 
-def is_na(value: Any) -> bool:
-    """Return whether a scalar is a pandas/numpy missing value.
+def _is_missing_numpy(value: Any) -> bool:
+    """numpy/stdlib-only missing check: ``NaN`` and ``NaT``, no pandas involved.
 
-    Covers ``None``, ``NaN``, ``NaT`` and ``pandas.NA`` — the last of which the
-    nullable extension dtypes produce and which renders as the literal string
-    ``"<NA>"`` if it reaches ``str()``.
+    Parameters
+    ----------
+    value : object
+        Scalar cell value.
+
+    Returns
+    -------
+    bool
+    """
+    try:
+        return bool(np.isnan(value))
+    except (TypeError, ValueError):
+        pass
+    try:
+        return bool(np.isnat(value))
+    except (TypeError, ValueError):
+        pass
+    return False
+
+
+def is_na(value: Any) -> bool:
+    """Return whether a scalar is a missing value.
+
+    Covers ``None``, ``NaN`` and ``NaT``.
 
     Parameters
     ----------
@@ -130,10 +159,7 @@ def is_na(value: Any) -> bool:
     """
     if value is None:
         return True
-    try:
-        return bool(pd.isna(value))
-    except (TypeError, ValueError):
-        return False
+    return _is_missing_numpy(value)
 
 
 def is_blank(value: Any) -> bool:
@@ -155,10 +181,7 @@ def is_blank(value: Any) -> bool:
         return True
     if isinstance(value, str):
         return value.strip() == ""
-    try:
-        return bool(pd.isna(value))
-    except (TypeError, ValueError):
-        return False
+    return is_na(value)
 
 
 class TableSource:
@@ -298,211 +321,6 @@ class TableSource:
         str or None
         """
         return None
-
-
-class DataFrameSource(TableSource):
-    """Adapter over a :class:`pandas.DataFrame`.
-
-    Parameters
-    ----------
-    df : pandas.DataFrame
-        The frame to expose. Held by reference; edits mutate it in place unless
-        the caller passes a copy.
-    editable : bool
-        Make every column editable. Per-column overrides go through ``specs``.
-    specs : sequence of ColumnSpec, optional
-        Explicit column specs. When given they must match ``df.columns`` in
-        length and order; anything omitted is synthesised from the dtype.
-    readonly_columns : sequence of str
-        Column labels to force read-only, even when ``editable`` is set.
-    bool_columns : sequence of str
-        Column labels to render with a checkbox delegate.
-    colorize_columns : sequence of str, optional
-        Column labels opted into value colouring. ``None`` colours every
-        numeric column.
-    """
-
-    def __init__(
-        self,
-        df: pd.DataFrame,
-        *,
-        editable: bool = False,
-        specs: Sequence[ColumnSpec] | None = None,
-        readonly_columns: Sequence[str] = (),
-        bool_columns: Sequence[str] = (),
-        colorize_columns: Sequence[str] | None = None,
-    ) -> None:
-        self._df = df
-        self._editable = bool(editable)
-        self._readonly = set(readonly_columns or ())
-        self._bool_columns = set(bool_columns or ())
-        self._colorize = None if colorize_columns is None else set(colorize_columns)
-        self._specs = tuple(specs) if specs else self._build_specs()
-
-    # -- construction -----------------------------------------------------
-
-    def _build_specs(self) -> tuple:
-        """Derive column specs from the frame's dtypes.
-
-        Returns
-        -------
-        tuple of ColumnSpec
-        """
-        out = []
-        for label in self._df.columns:
-            dtype = self._df[label].dtype
-            kind = KIND_BOOL if str(label) in self._bool_columns else kind_from_dtype(dtype)
-            numeric = kind in (KIND_FLOAT, KIND_INT)
-            colorize = numeric if self._colorize is None else (str(label) in self._colorize)
-            out.append(
-                ColumnSpec(
-                    key=str(label),
-                    label=str(label),
-                    kind=kind,
-                    editable=self._editable and str(label) not in self._readonly,
-                    colorize=colorize,
-                    delegate="bool" if kind == KIND_BOOL else "",
-                )
-            )
-        return tuple(out)
-
-    # -- TableSource ------------------------------------------------------
-
-    @property
-    def dataframe(self) -> pd.DataFrame:
-        """Return the wrapped frame.
-
-        Returns
-        -------
-        pandas.DataFrame
-        """
-        return self._df
-
-    def set_dataframe(self, df: pd.DataFrame) -> None:
-        """Replace the wrapped frame and rebuild the column specs.
-
-        Parameters
-        ----------
-        df : pandas.DataFrame
-            The new frame.
-        """
-        self._df = df
-        self._specs = self._build_specs()
-
-    def column_specs(self) -> Sequence[ColumnSpec]:
-        """Return the derived or supplied column specs.
-
-        Returns
-        -------
-        sequence of ColumnSpec
-        """
-        return self._specs
-
-    def row_count(self) -> int:
-        """Return the number of frame rows.
-
-        Returns
-        -------
-        int
-        """
-        return int(len(self._df.index))
-
-    def value(self, row: int, col: int) -> Any:
-        """Return one cell of the frame.
-
-        Parameters
-        ----------
-        row : int
-            Positional row index.
-        col : int
-            Positional column index.
-
-        Returns
-        -------
-        object
-            ``None`` when the position is out of range or unreadable.
-        """
-        try:
-            return self._df.iat[row, col]
-        except Exception:
-            try:
-                return self._df.iloc[row, col]
-            except Exception:
-                return None
-
-    def set_value(self, row: int, col: int, value: Any) -> bool:
-        """Write one cell of the frame.
-
-        Parameters
-        ----------
-        row : int
-            Positional row index.
-        col : int
-            Positional column index.
-        value : object
-            Already-coerced value.
-
-        Returns
-        -------
-        bool
-        """
-        try:
-            self._df.iat[row, col] = value
-        except Exception:
-            try:
-                self._df.iloc[row, col] = value
-            except Exception:
-                return False
-        return True
-
-    def column_array(self, col: int) -> np.ndarray | None:
-        """Return a column as a numpy array.
-
-        Numeric columns — including pandas extension dtypes — are returned as
-        ``float64`` with ``NaN`` for missing values, so downstream code can use
-        plain numpy comparisons.
-
-        Parameters
-        ----------
-        col : int
-            Positional column index.
-
-        Returns
-        -------
-        numpy.ndarray or None
-        """
-        try:
-            series = self._df.iloc[:, col]
-        except Exception:
-            return None
-        try:
-            if pd.api.types.is_numeric_dtype(series.dtype) and not pd.api.types.is_bool_dtype(
-                series.dtype
-            ):
-                return series.to_numpy(dtype="float64", na_value=np.nan)
-        except (TypeError, ValueError):
-            pass
-        try:
-            return series.to_numpy()
-        except Exception:
-            return None
-
-    def row_label(self, row: int) -> str:
-        """Return the frame index entry as the row header.
-
-        Parameters
-        ----------
-        row : int
-            Positional row index.
-
-        Returns
-        -------
-        str
-        """
-        try:
-            return str(self._df.index[row])
-        except Exception:
-            return str(row)
 
 
 #: Largest dictionary a text column may have before its cells stop offering a

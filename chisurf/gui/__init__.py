@@ -3,16 +3,13 @@ import chisurf as cs
 
 import collections
 import sys
-import subprocess
 import pathlib
 import os
-import signal
 import threading
 import time
 import atexit
 import ast
 import json
-import webbrowser
 import re
 
 from functools import partial
@@ -27,9 +24,6 @@ import chisurf.core.settings
 from chisurf import logging
 import chisurf.gui.decorators
 from chisurf.gui import dialogs
-
-
-plugin_menu_action: QtWidgets.QAction | None = None
 
 
 class _GuiExecutor(QtCore.QObject):
@@ -163,93 +157,6 @@ def run_on_gui_thread(func, *args, **kwargs):
             return func(*args, **kwargs)
         except Exception:
             return None
-
-def get_free_port(start_port=8888, max_attempts=50):
-    """Find a free TCP port, starting from start_port."""
-    import socket
-    port = start_port
-    while port < start_port + max_attempts:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            try:
-                s.bind(('', port))
-                return port
-            except OSError:
-                port += 1
-    # Fallback to OS-assigned port if we can't find one in the range
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(('', 0))
-        return s.getsockname()[1]
-
-
-def launch_jupyter_process(
-    notebook_executable="jupyter-notebook",
-    port=None,
-    directory: pathlib.Path = pathlib.Path().home()
-):
-    """
-    Launch Jupyter Notebook with a watchdog that kills it when this process dies.
-    Cross-platform: uses os.killpg on Unix, CREATE_NEW_PROCESS_GROUP on Windows.
-    """
-    if port is None:
-        port = get_free_port(8888)
-
-    jupyter_cmd = [
-        sys.executable, "-m", "notebook",
-        f"--port={port}",
-        "--no-browser",
-        "--NotebookApp.token=''",
-        "--NotebookApp.password=''",
-        "--NotebookApp.disable_check_xsrf=True",
-        f"--notebook-dir={directory}"
-    ]
-
-    # On Windows, put Jupyter into its own process group
-    creationflags = subprocess.CREATE_NEW_PROCESS_GROUP if sys.platform == "win32" else 0
-    start_new_session = (sys.platform != "win32")
-
-    # Capture stdout (URL) and merge stderr
-    jupyter_proc = subprocess.Popen(
-        jupyter_cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        creationflags=creationflags,
-        start_new_session=start_new_session
-    )
-
-    def terminate_jupyter():
-        """Cleanly kill the notebook process (and its group)."""
-        try:
-            if sys.platform == "win32":
-                # send CTRL_BREAK to the group, then kill if still alive
-                jupyter_proc.send_signal(signal.CTRL_BREAK_EVENT)
-                jupyter_proc.kill()
-            else:
-                os.killpg(jupyter_proc.pid, signal.SIGKILL)
-        except Exception:
-            pass
-
-    def watchdog_unix():
-        """Only on Unix: if parent vanishes, kill the notebook group."""
-        parent_pid = os.getpid()
-        while True:
-            time.sleep(2)
-            try:
-                os.kill(parent_pid, 0)
-            except OSError:
-                terminate_jupyter()
-                break
-
-    # Register for normal shutdown
-    atexit.register(terminate_jupyter)
-
-    # Start a watcher **only on Unix**, since on Windows os.kill(pid,0) will terminate PID=0
-    if sys.platform != "win32":
-        thread = threading.Thread(target=watchdog_unix, daemon=True)
-        thread.start()
-
-    return jupyter_proc
-
 
 class _LogRelay(QtCore.QObject):
     """GUI-thread relay for :class:`QTextEditLogger`.
@@ -907,11 +814,6 @@ def setup_gui(
         except RuntimeError:
             cs.logging.debug("Original menu bar deleted; skipping plugin menu addition.")
 
-
-        # Store the plugin menu in a global variable so it can be accessed by populate_notebooks
-        global plugin_menu_action
-        plugin_menu_action = plugin_menu.menuAction()
-
         # Dedicated submenu for development plugins that live under cs.plugins._dev
         dev_menu = plugin_menu.addMenu("Dev")
 
@@ -1162,101 +1064,6 @@ def setup_gui(
             f"{marked_broken} plugin(s) marked as BROKEN."
         )
 
-    def populate_notebooks():
-        # Create the Notebooks menu
-        notebook_menu = QtWidgets.QMenu('Notebooks', window)
-
-        # Get the next action after the Plugins menu
-        next_action = None
-        found_plugins = False
-        try:
-            for action in window.menuBar.actions():
-                if found_plugins:
-                    next_action = action
-                    break
-                if action == plugin_menu_action:
-                    found_plugins = True
-
-            # Insert the Notebooks menu after the Plugins menu
-            if next_action is None:
-                window.menuBar.addMenu(notebook_menu)
-            else:
-                window.menuBar.insertMenu(next_action, notebook_menu)
-        except RuntimeError:
-            cs.logging.debug("Original menu bar deleted; skipping notebook menu addition.")
-
-        home_dir = pathlib.Path.home()
-        chisurf_path = pathlib.Path(cs.__file__).parent
-
-        # Define the target directory inside the home directory
-        chisurf_notebooks_dir = home_dir / "notebooks"
-        chisurf_notebooks_dir.mkdir(parents=True, exist_ok=True)  # Ensure the directory exists
-
-        def copy_notebook(src, dest_dir):
-            """Copy a notebook file using pathlib only."""
-            dest_file = dest_dir / src.name
-            if not dest_file.exists():  # Only copy if the file doesn't exist
-                dest_file.write_bytes(src.read_bytes())  # Read and write in binary mode
-                cs.logging.info(f"Copied notebook: {src.name} to {dest_file}")
-            return dest_file
-
-        def add_notebook(notebook_file):
-            if not notebook_file.exists():
-                return
-
-            jupyter_address = getattr(cs, "__jupyter_address__", None)
-            if not jupyter_address:
-                return
-
-            try:
-                notebook_file = notebook_file.resolve()
-
-                if not notebook_file.is_relative_to(home_dir):
-                    notebook_file = copy_notebook(notebook_file, chisurf_notebooks_dir)
-
-                notebook_path_str = notebook_file.relative_to(home_dir).as_posix()
-                adr = f"{jupyter_address}/notebooks/{notebook_path_str}"
-                p = partial(webbrowser.open_new_tab, adr)
-
-                menu_text = notebook_file.stem
-                action = QtWidgets.QAction(f"{menu_text}", window)
-                action.triggered.connect(p)
-                notebook_menu.addAction(action)
-
-            except (AttributeError, ValueError) as e:
-                cs.logging.debug("Failed to add notebook menu entry for %s: %s", notebook_file, e)
-
-        # Copy all notebooks from the package to the user's home directory
-        # This ensures that all shipped notebooks are available to the user
-        notebook_source_dirs = []
-        # Note: deprecate latest on March 2026
-        legacy_dir = chisurf_path / 'notebooks'
-        if legacy_dir.is_dir():
-            notebook_source_dirs.append(legacy_dir)
-
-        repo_notebooks_dir = chisurf_path.parent / 'notebooks'
-        if repo_notebooks_dir.is_dir() and repo_notebooks_dir not in notebook_source_dirs:
-            notebook_source_dirs.append(repo_notebooks_dir)
-
-        for src_dir in notebook_source_dirs:
-            cs.logging.info(f"Checking for notebooks in: {src_dir}")
-            for notebook_file in sorted(src_dir.glob("*.ipynb")):
-                copy_notebook(notebook_file, chisurf_notebooks_dir)
-
-        # Add the Jupyter root directory with `/tree/`
-        add_notebook(home_dir)
-
-        # Load notebooks from user's home directory for the menu
-        for notebook_file in sorted(chisurf_notebooks_dir.glob("*.ipynb")):
-            add_notebook(notebook_file)
-
-        # Ensure the ribbon interface is also updated with the Notebooks category
-        try:
-            if hasattr(window, "_ribbon_integration") and window._ribbon_integration:
-                window._ribbon_integration._create_notebooks_category()
-        except Exception as e:
-            cs.logging.debug(f"Failed to update ribbon with notebooks: {e}")
-
     if stage is None:
         gui_imports()
         setup_ipython()
@@ -1356,109 +1163,8 @@ def setup_gui(
             initialize_gui_executors()
         except Exception:
             pass
-    elif stage == "start_jupyter":
-        try:
-            _gui_cfg = cs.core.settings.cs_settings.get('gui') or {}
-            _start_jupyter = bool(_gui_cfg.get('start_jupyter_on_startup', False))
-        except Exception:
-            _start_jupyter = False
-
-        if not _start_jupyter:
-            cs.logging.info("Skipping Jupyter notebook startup (disabled in settings).")
-            return None
-
-        cs.logging.info("Starting Jupyter notebook process")
-        # Start the notebook and capture the process
-        cs.__jupyter_process__ = launch_jupyter_process()
-        proc = cs.__jupyter_process__
-
-        # Read lines until we see the HTTP address (or the process exits)
-        import time
-        t_start = time.time()
-        timeout = 30.0  # seconds
-        cs.logging.info(f"Waiting up to {timeout}s for Jupyter URL...")
-
-        # To avoid the GUI hanging while waiting for the URL, we use a 
-        # separate reader thread and a shared line buffer.
-        lines_captured = []
-        def _reader(p, out_list):
-            try:
-                for l in iter(p.stdout.readline, ''):
-                    if l:
-                        out_list.append(l)
-                    # Stop if we found the address already (from another read or logic)
-                    if getattr(cs, "__jupyter_address__", None):
-                        break
-            except Exception:
-                pass
-
-        cs.__jupyter_reader_thread__ = threading.Thread(
-            target=_reader, args=(proc, lines_captured), daemon=True
-        )
-        cs.__jupyter_reader_thread__.start()
-
-        import re
-        url_pattern = re.compile(r"http://[a-zA-Z0-9\.-]+:\d+[^\s]*")
-
-        while cs.__jupyter_address__ is None:
-            if time.time() - t_start > timeout:
-                cs.logging.error("Timed out waiting for Jupyter URL.")
-                break
-
-            if proc.poll() is not None:
-                cs.logging.error("Jupyter process exited unexpectedly during startup.")
-                break
-
-            app.processEvents()
-            
-            # Check the captured lines
-            if lines_captured:
-                while lines_captured:
-                    line = lines_captured.pop(0)
-                    cs.logging.info(f"Jupyter: {line.strip()}")
-                    
-                    match = url_pattern.search(line)
-                    if match:
-                        full_url = match.group(0)
-                        # Extract only protocol, host, and port
-                        # http://localhost:8888/tree?token=... -> http://localhost:8888
-                        from urllib.parse import urlparse
-                        try:
-                            parsed = urlparse(full_url)
-                            addr = f"{parsed.scheme}://{parsed.netloc}"
-                            cs.__jupyter_address__ = addr
-                            break
-                        except Exception:
-                            # Fallback to simple split if urlparse fails
-                            cs.__jupyter_address__ = full_url.split('/tree')[0].split('?')[0].rstrip('/')
-                            break
-            
-            if cs.__jupyter_address__ is None:
-                time.sleep(0.1)
-                app.processEvents()
-
-        if cs.__jupyter_address__:
-            cs.logging.info(
-                "Server found at %s, migrating monitoring to listener thread",
-                cs.__jupyter_address__
-            )
-        else:
-            cs.logging.warning("Jupyter startup failed or timed out.")
     elif stage == "setup_logging":
         setup_logging_widgets(window)  # Attach logging to status bar
-    elif stage == "populate_notebooks":
-        try:
-            _gui_cfg = cs.core.settings.cs_settings.get('gui') or {}
-            _start_jupyter = bool(_gui_cfg.get('start_jupyter_on_startup', False))
-        except Exception:
-            _start_jupyter = False
-
-        if not _start_jupyter or getattr(cs, "__jupyter_address__", None) is None:
-            cs.logging.info("Skipping notebook menu population (Jupyter disabled or not running).")
-            return None
-
-        cs.logging.info("Looking for ipynb in home folder")
-        populate_notebooks()
     return None
 
 def get_win(app: QtWidgets.QApplication) -> cs.gui.main.Main:
@@ -2435,22 +2141,6 @@ def get_app():
     elif not updater_interrupt:
         # singleShot(0) lets the window paint before auth runs.
         QtCore.QTimer.singleShot(0, _run_startup_auth)
-
-
-    def shutdown_services():
-        """Ensure the Jupyter notebook server is terminated when the application closes."""
-        jupyter_proc = getattr(cs, '__jupyter_process__', None)
-        # Only terminate if it's still running.
-        if jupyter_proc is not None and jupyter_proc.poll() is None:
-            jupyter_proc.terminate()
-            try:
-                jupyter_proc.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                # If it doesn't stop in time, force-kill it.
-                jupyter_proc.kill()
-
-    # Connect our shutdown function to the application's aboutToQuit signal.
-    app.aboutToQuit.connect(shutdown_services)
 
     return app
 

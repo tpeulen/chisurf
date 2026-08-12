@@ -793,8 +793,8 @@ class ChiTableModel(QtCore.QAbstractTableModel):
         """
         return [i for i, spec in enumerate(self._specs) if spec.visible]
 
-    def to_dataframe(self, *, only_visible: bool = True):
-        """Export the current view (filter, sort, visibility) as a frame.
+    def to_store(self, *, only_visible: bool = True):
+        """Export the current view (filter, sort, visibility) as a store.
 
         Parameters
         ----------
@@ -803,16 +803,16 @@ class ChiTableModel(QtCore.QAbstractTableModel):
 
         Returns
         -------
-        pandas.DataFrame
+        tttrlib.DataStore
         """
-        import pandas as pd
+        from chisurf.core.datastore import store_from_arrays
 
         cols = self.visible_columns() if only_visible else list(range(len(self._specs)))
         data = {}
         for col in cols:
             key = self._specs[col].title
             data[key] = [self._raw_value(int(r), col) for r in self._visible]
-        return pd.DataFrame(data)
+        return store_from_arrays(data)
 
     def rows_as_text(
         self,

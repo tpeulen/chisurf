@@ -3,11 +3,13 @@
 :class:`ChiTableDialog` wraps a :class:`ChiTableWidget` in Apply / Reset / Cancel
 semantics: edits are staged in the model and only written to the underlying data
 when the user accepts. That contract matters — the fit's "Show model" table reads
-the accepted frame back and replays it through the fitting client, so a live-edit
+the accepted store back and replays it through the fitting client, so a live-edit
 dialog would change what "Cancel" means.
 
-:func:`edit_dataframe` is the drop-in entry point, deliberately keeping the
-signature the previous third-party editor and ndX's own dialog exposed.
+:func:`edit_store` is the drop-in entry point, deliberately keeping the calling
+convention the retired ``edit_dataframe`` (and, before it, the third-party editor
+and ndX's own dialog) exposed — only the container changed, from a
+:class:`pandas.DataFrame` to a ``tttrlib.DataStore``.
 """
 
 from __future__ import annotations
@@ -18,7 +20,7 @@ from qtpy import QtCore, QtWidgets
 
 from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.chitable.colorize import ValueColorScheme
-from chisurf.gui.widgets.chitable.source import DataFrameSource, TableSource
+from chisurf.gui.widgets.chitable.source import DataStoreSource, TableSource
 from chisurf.gui.widgets.chitable.widget import (
     DEFAULT_FEATURES,
     ChiTableWidget,
@@ -132,48 +134,47 @@ class ChiTableDialog(QtWidgets.QDialog):
         return self._table
 
     @property
-    def dataframe(self):
-        """Return the edited frame.
+    def store(self):
+        """Return the edited store.
 
         Returns
         -------
-        pandas.DataFrame or None
+        tttrlib.DataStore or None
         """
-        return self._table.dataframe()
+        return self._table.to_store()
 
     def get_value(self):
-        """Return the edited frame.
+        """Return the edited store.
 
         Kept for parity with the editor this replaces, whose callers read the
         result through ``get_value()``.
 
         Returns
         -------
-        pandas.DataFrame or None
+        tttrlib.DataStore or None
         """
-        return self._table.dataframe()
+        return self._table.to_store()
 
 
-def edit_dataframe(
-    df,
+def edit_store(
+    store,
     *,
     parent: QtWidgets.QWidget | None = None,
     title: str = "Data",
     readonly: bool = False,
     readonly_columns: Sequence[str] = (),
-    bool_columns: Sequence[str] = (),
     colorize_columns: Sequence[str] | None = None,
     color: bool = False,
     features: TableFeature | None = None,
 ):
-    """Open a modal editor on a frame and return the accepted result.
+    """Open a modal editor on a store and return the accepted result.
 
-    The frame is copied, so a cancelled dialog cannot leave partial edits behind.
+    The store is copied, so a cancelled dialog cannot leave partial edits behind.
 
     Parameters
     ----------
-    df : pandas.DataFrame
-        The frame to edit.
+    store : tttrlib.DataStore
+        The store to edit.
     parent : qtpy.QtWidgets.QWidget, optional
         Parent widget.
     title : str
@@ -182,10 +183,11 @@ def edit_dataframe(
         Open as a viewer.
     readonly_columns : sequence of str
         Column labels that must not be edited.
-    bool_columns : sequence of str
-        Column labels rendered as checkboxes.
     colorize_columns : sequence of str, optional
         Columns eligible for value shading; ``None`` means every numeric column.
+        A column renders as a checkbox automatically when its own dtype is
+        ``bool`` -- unlike the retired ``DataFrameSource``, nothing here needs
+        telling which columns are boolean.
     color : bool
         Start with value shading switched on.
     features : TableFeature, optional
@@ -193,15 +195,16 @@ def edit_dataframe(
 
     Returns
     -------
-    pandas.DataFrame or None
-        The edited frame, or ``None`` when the dialog was cancelled.
+    tttrlib.DataStore or None
+        The edited store, or ``None`` when the dialog was cancelled.
     """
-    working = df.copy()
-    source = DataFrameSource(
+    from chisurf.core.datastore import row_count, take_rows
+
+    working = take_rows(store, range(row_count(store)))
+    source = DataStoreSource(
         working,
         editable=not readonly,
         readonly_columns=readonly_columns,
-        bool_columns=bool_columns,
         colorize_columns=colorize_columns,
     )
     dlg = ChiTableDialog(
@@ -217,19 +220,19 @@ def edit_dataframe(
     return None
 
 
-def show_dataframe(
-    df,
+def show_store(
+    store,
     *,
     parent: QtWidgets.QWidget | None = None,
     title: str = "Data",
     color: bool = False,
 ) -> ChiTableDialog:
-    """Open a non-modal, read-only viewer on a frame.
+    """Open a non-modal, read-only viewer on a store.
 
     Parameters
     ----------
-    df : pandas.DataFrame
-        The frame to display.
+    store : tttrlib.DataStore
+        The store to display.
     parent : qtpy.QtWidgets.QWidget, optional
         Parent widget.
     title : str
@@ -243,7 +246,7 @@ def show_dataframe(
         The shown dialog; the caller must keep a reference to it.
     """
     dlg = ChiTableDialog(
-        source=DataFrameSource(df),
+        source=DataStoreSource(store),
         title=title,
         readonly=True,
         color_scheme=ValueColorScheme(enabled=bool(color)),

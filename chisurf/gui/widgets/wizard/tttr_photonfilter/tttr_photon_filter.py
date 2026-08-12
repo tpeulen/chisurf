@@ -594,20 +594,18 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
             min_counts = self.min_ph  # Use min_ph as min_counts
             max_run = 256  # Default max run length
 
-            # Run BOCPD burst detection with multiple channels
-            raise ValueError(
-                "the BOCPD burst search has been removed; choose another filter mode"
+            # Run BOCPD burst detection via tttrlib C++ engine
+            from chisurf.core.fluorescence.burst.bocpd import bocpd_filter
+            sel = bocpd_filter(
+                tttr,
+                min_ph=min_counts,
+                dt=1e-3,
+                prior_count=prior_count,
+                prior_duration=prior_duration,
+                changepoint_prob=changepoint_prob,
+                max_run=max_run,
+                per_channel=True,
             )
-
-            # Convert bursts to start-stop indices
-            start_stop = chisurf.core.fluorescence.burst.bocpd.convert_bursts_to_start_stop(bursts, tttr)
-
-            if len(start_stop) == 0:
-                return s.astype(dtype=np.uint8)
-
-            # Create mask
-            n = len(tttr)
-            sel = create_array_with_ones(start_stop, n)
             s = np.logical_and(s, sel)
 
         elif self.used_filter == 'kalman':

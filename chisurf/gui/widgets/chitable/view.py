@@ -354,7 +354,7 @@ class ChiTableView(QtWidgets.QTableView):
             if not path:
                 return None
         model.fetch_all()
-        write_csv_table(path, model.to_dataframe(), delimiter=",")
+        write_csv_table(path, model.to_store(), delimiter=",")
         return path
 
     # ── context menus ────────────────────────────────────────────────────
