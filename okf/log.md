@@ -1,6 +1,138 @@
 # Update Log
 
 ## 2026-08-12
+* **chimol: polish round — window bounds, own colours, the eye, tooltips
+  everywhere, and the hierarchy fix** ([pymol-parity](plugins/pymol-parity.md);
+  seven user asks). (1) Windows stop **above the prompt/status band**
+  (`_bottom_chrome_height` feeds the layout clamp, the snap and the
+  anchors), so a bottom-anchored window parks on the band's top edge.
+  (2) The mouse block wears **chimol's own palette** (accent blue / warm
+  amber / greys) instead of PyMOL's green-salmon-blue; chrome baselines
+  re-captured. (3) **Hover tooltips across the chrome**: a `_tooltip` set in
+  `mouse_move` and painted last; window bodies explain their own controls
+  via a new `GuiWindow.on_tooltip` (the density panel does); mouse-binding
+  cells spell out their abbreviation ("Ctrl + left: translate in the view
+  plane") via `MODE_ACTION_WORDS`; suppressed while menus are open.
+  (4) **Bug fixed — hierarchy disable did nothing** when the panel's tree
+  came from a different object than the active one (RMF fallback, or a map
+  active): the tree's object id is carried through `on_change` and the
+  hiding applies to *that* object; also a map-active fallback to the first
+  object with atoms. (5) **The object list has an eye** (like the density
+  panel): the eye toggles enable/disable, the *name* runs the new
+  `activate` command — clicking a name used to disable the object the user
+  was trying to make active. (6) The density window opens **smaller**
+  (h 185) and the colour palette clamps into the body — which also fixed
+  the palette-dismiss failure flagged earlier (the fixed cell height ran
+  past the histogram into the footer). (7) `load_map` looks up the
+  **EMDB deposited contour level** for EMD-named files (the window loader
+  already did) and says so in the message; `default_levels` prefers
+  `recommended_level`. 237 tests green; QA screenshot shows all of it in
+  one frame.
+* **chimol: six user asks in one sweep — file dialogs, own status bar,
+  strippable chrome, the atom-selection bug, molecule export surfaced, and
+  the Build menu** ([pymol-parity](plugins/pymol-parity.md)). (1) Menu saves
+  go through a **real file dialog** now (`MenuEntry.file_prompt` →
+  `QFileDialog`; the CLI keeps taking paths as text): Save Molecule As…,
+  Save Image As…, and the three Export entries — a filename typed into a
+  text box landed wherever the process was running. File ▸ Open already
+  asked via the host chooser. (2) The **QStatusBar is hidden**; the counts
+  and transient messages draw on the chrome's own status line, bottom-right
+  (`InternalGui.status_text`/`_paint_status`) — it exists in the browser
+  and obeys `show_status` like the rest. (3) **Every chrome piece is a live
+  display setting**: `show_menubar`, `show_toolbar`, `show_command_line`,
+  `show_status` (+ the closable windows) — all off is a **bare 3-D viewer**
+  for embedding, QA'd by screenshot. (4) **Bug fixed**: at the `Atoms`
+  selection level, `sele`'s fallback to the live viewport selection
+  resolved through the *residue* list (it exists at every level for the
+  sequence-strip highlight), so `show sticks, sele` widened two picked
+  atoms to their whole residue — `_selected_residues_atom_mask` now builds
+  the mask from `_selected_atoms` at that level; regression tests pin both
+  levels. (5) **Molecule export existed** (`save x.pdb/.cif [, sel]`) —
+  now reachable as File ▸ Save Molecule As…. (6) **Structure editing
+  existed and was hidden**: bond/unbond with orders, remove, alter,
+  pseudoatom, h_add, mutagenesis, undo/redo at PyMOL's own
+  coordinate-snapshot scope — but Edit ▸ Undo/Redo were *disabled* saying
+  "no undo stack" and Build was omitted as "no structure editing", both
+  long stale. Undo/Redo are wired, and a **Build menu** (PyMOL's position)
+  carries the tools. Structural undo *beyond* PyMOL's scope (topology
+  snapshots for remove/bond) remains open in the parity tracker. **Known,
+  not mine:** `test_density_window.py::test_a_press_outside_the_palette…`
+  started failing inside the concurrent panel-compaction session's edits
+  (their test comment, their geometry); flagged on the board.
+* **chimol: the scene exports as a 3-D model — STL, WRL and glTF, glTF being
+  the PowerPoint one** ([pymol-parity](plugins/pymol-parity.md); user ask
+  "support wrl, stl, glTF — label with for pptx; add in file menu submenu
+  export"). New `chimol/io/mesh_export.py` (numpy-only, no deps):
+  `scene_mesh_objects` collects the scene **as drawn** — indexed triangle
+  meshes directly, spheres (`kind="points"`, minus the selection glyph) and
+  bond cylinders tessellated back into triangles via the existing
+  `geometry/primitives.py` templates (12×18 spheres, 16-segment cylinders —
+  finer than the screen's, a file outlives a frame); lines, labels and the
+  `solid` fog are skipped (no surface / a renderer artefact, noted in the
+  writer's docstring and the guide). Three writers, each validated by
+  parsing its own output back in tests: binary **STL** (face normals
+  recomputed from winding; fixed 50-byte records), **WRL** VRML 2.0
+  (IndexedFaceSet, colorPerVertex), and **GLB** glTF 2.0 (single buffer;
+  POSITION/NORMAL/COLOR_0/uint32 indices; POSITION min/max, which loaders
+  require; matte double-sided material so vertex colours read as the
+  viewport showed them). `save` routes `.stl`/`.wrl`/`.vrml`/`.glb`/`.gltf`
+  (`.gltf` gets the binary container too, said in the message); the
+  PowerPoint labelling the user asked for is in the save message
+  ("PowerPoint: Insert ▸ 3D Models"), the new **File ▸ Export** submenu
+  entry name ("glTF for PowerPoint…") and the guide. 15 export+menu tests
+  green.
+* **chimol: the chrome became windows that snap, anchor and remember
+  themselves** ([pymol-parity](plugins/pymol-parity.md); user asks: object
+  ctrl → "Object List" window, mouse settings → separate window, snap to
+  corners/sides, remember states between restarts, close buttons everywhere,
+  density panel per-map eye/close). The PyMOL object column and the
+  mouse-mode block are `GuiWindow`s now (`objects`/`mouse`), auto-sized to
+  content, anchored top-right/bottom-right until dragged; **docked mode
+  remains but is off by default** (`self.docked = False`; the splitter tests
+  opt in). Their content painters and hit logic are untouched — the windows
+  *position* `_panel`/`_block`, and the window pass dispatches their
+  sub-hits (`_panel_sub_hit`/`_block_sub_hit`) so z-order wins on overlap
+  (the flat hit list let a block eat a row underneath it on small
+  viewports; that ordering bug is why body clicks route through the window
+  layer now). New `renderer/window_state.py`: JSON persistence
+  (`chimol_windows.json` via chisurf settings; **opt-in via
+  `enable_persistence()` from the shipped app only** — a bare InternalGui in
+  a test must never read or rewrite real preferences) and edge snapping
+  with corner anchors (an anchored window follows its corner on resize;
+  `_top_chrome_height` keeps top anchors below menubar+toolbar+sequence
+  strip). **User re-test "sides still not sticky" found two snap defects,
+  both fixed and pinned:** the snap tested `abs(edge − frame) ≤ 14`, so a
+  window *flung past* the edge — how an edge is actually hit — was judged
+  nowhere near it (overshoot now counts as arrival); and sides never
+  anchored, only corners, so a side-parked window did not follow its edge
+  through a resize (anchors are now corners *and* sides; a side anchor pins
+  one coordinate and keeps the window's own position on the other).
+  Verified through the real Qt event path, not only `gui.drag`. **Second
+  follow-up ("need visual hints for sticking; allow to turn sticking
+  off"):** while a drag is glued, the window's border and a band along the
+  snapped edge(s) light in the accent colour (`_snap_hint` set in
+  `_drag_window`, painted by `_paint_snap_hint` after the window pass,
+  cleared on release — a live overlay, so the chrome baselines are
+  untouched); and `window_snap` is a registered setting
+  (`layout.window_snap`, default on, fed to the gui each frame beside
+  `ui_scale`) — off means windows go exactly where they are dropped, no
+  anchor, no hint. Trap: a new setting needs its default in **both** the
+  shipped `chimol_display.json` *and* `_load_display_config`'s in-code
+  dict — the settings guardrail walks the loaded config, and a user copy
+  without the key fails it. Two glyph
+  traps: the title-bar close button was drawn as `×`,
+  which the chrome atlas does not have — **it rendered as nothing**, which
+  is the whole of "windows need a close btn"; now `x`. Density panel header
+  gained per-map `o` (show/hide via `set_object_visible`) and `x` (unload
+  via `remove_object`). Commands `object_panel`/`mouse_panel` + Display and
+  Tools ▸ Panels entries reopen closed chrome. Chrome baselines
+  re-captured (deliberate layout change; the only control lost from the
+  old inventory is `splitter:`, docked-only by definition). 235 tests green
+  across the chrome files; new tests pin anchors, snapping, persistence
+  round-trip, and the no-real-prefs guarantee. **Known, not mine:**
+  `test_mouse_selection.py::test_a_middle_drag_moves_the_molecule_with_the_cursor`
+  fails 2× (240 px for a 120 px drag) with docked forced on *or* off —
+  pre-existing in today's viewport-UI work, flagged on the board.
 * **The chrome has a size, the menus have pages, and the last Qt dialog is
   gone** (chimol viewport UI; user asks: *"need option to adj font size use
   smaller fonts by default"*, *"optimize layouts for space efficiency … density
@@ -43,6 +175,28 @@
   two, no `+2` on every control box: ~45 px of 242 given back to the histogram,
   which is the only part anybody drags. (That panel is another instance's
   uncommitted file, so the compaction is in the tree and lands with it.)
+* **chimol: Hide Dust and the Gaussian filter are ported, under a new Tools
+  menu** ([pymol-parity](plugins/pymol-parity.md); user ask "port useful map
+  tools like dust remover, fold into menu; make tools menu with submenus").
+  `chimol/geometry/dust.py`: connected components by minimum-label
+  propagation with pointer jumping (plain NumPy, no graph library), pieces
+  measured by the reference's `size` metric (largest bounding-box extent,
+  map units) — `hide_dust [map,] [size]` (default five voxels) hides the
+  crumbs as a **display setting on the map** (`volume_dust_size`, applied on
+  the raw contour before refinement, skipped in drag previews), `show_dust`
+  clears it. `volume.py::gaussian_filtered`: FFT Gaussian (physical-width
+  sdev over an anisotropic step), returned as a **new** VolumeGrid —
+  filtering never rewrites the samples the contour memo relies on;
+  `volume_gaussian` adds it beside the original. The **Tools** menu (Map /
+  Measure / Panels submenus, every entry a typeable command) is a declared
+  chimol extra: `EXTRA_MENUS` in `menu_bar.py` lets the ordering test hold
+  PyMOL's menus to PyMOL's order while allowing Demo and Tools. **Closed
+  board ticket T-20260811-12 on the way**: the menu tests now expect 'Mouse'
+  among the omitted menus, and the stale `__special__`-entry test exercises
+  the marker dispatch directly ("Edit All..." became a plain command in the
+  in-flight mouse-mode unit). QA: before/after screenshots of a noise-floor
+  contour losing its floating speckle to `hide_dust`; Tools on the bar.
+  109 tests green across menu/volume/density files.
 * **Settings became data: every one of them editable in the 3-D view, and the
   game's menu drawing the same declarations** (chimol viewport UI; Lumis Quest
   [PRD-91](prds/prd-91.md); user ask: *"in chimol edit all settings must be
@@ -81,6 +235,50 @@
   `Up Up Up Down Down …` contains the code and is how it is actually typed. The
   guide's *"open it from Tools → Miscellaneous → Games"* had been wrong since
   the manifest hid it.
+* **chimol: map surfaces have quality presets — the reference viewer's
+  rendering options, ported and named** ([pymol-parity](plugins/pymol-parity.md);
+  user report "the surface qual does not look good, chimera has different
+  quality modes"). New `chimol/geometry/refine.py`: NumPy transcriptions of
+  the reference's `smooth.cpp` (`smooth_vertex_positions` — per iteration
+  each triangle adds each corner's two partners into its neighbour sum, a
+  vertex in k triangles averages over 2k entries, then moves `factor` of the
+  way; bincount per axis per corner) and `subdivide.cpp`
+  (`subdivide_triangles` — 1→4 with welded edge midpoints via
+  `np.unique(edges, return_inverse)`). Wired as presets in view.py
+  (`_VOLUME_QUALITY_PRESETS`): `coarse` (4 M-voxel budget), `normal` (raw),
+  `smooth` (its surface_smoothing defaults: 0.3 × 2, normals smoothed too
+  then renormalised), `fine` (subdivision_levels 1, then smoothing). Applied
+  in the reference's order — subdivide, square-mesh mask, smooth — because
+  **smoothing destroys the coordinate identity the square-mesh mask tests**;
+  masking after smoothing silently degrades mesh mode to the full wireframe.
+  Preview drags skip refinement. Surface: `set/get_volume_quality` +
+  targeted volume-object refresh; panel: a quality row under the mode
+  buttons (window 240→262 px); command: `volume_quality map, preset`.
+  Measured: smooth 15 ms, fine 121 ms on a 160³ map's 32 k-triangle contour.
+  QA'd by screenshots — the gritty MC surface visibly relaxes at smooth,
+  rounds at fine. 114 tests green (subdivision weld count, smoothing
+  variance-drop with shape-hold, preset triangle counts, panel row).
+* **chimol: the map mesh was drawing random chords — the line pipeline
+  ignored indices** ([pymol-parity](plugins/pymol-parity.md); user report
+  "the mesh is broken, use chimera to fix"). Root cause was not the mesh at
+  all: `WgpuMeshRenderer.interleave_lines` packed `positions` as a
+  non-indexed line list and the draw call counted vertices, so
+  `Geometry.indices` on `kind="line"` was **silently ignored** — every other
+  line builder pre-pairs its vertices, and the map wireframe (welded
+  vertices + edge list) was the only indexed one, drawn as chords between
+  array-adjacent vertices. Fixed at the packer (indices expand to pairs;
+  draw count follows). On top, two of the reference viewer's mesh defaults
+  ported so the fixed wireframe *reads*: **square mesh** (`square_mesh:
+  True`; only edges in principal grid planes — the test is exact coordinate
+  equality between edge endpoints, `squaremesh.cpp`, which survives scaling
+  and translation but not rotation, so a rotated grid falls back to the
+  full wireframe) and **mesh lighting** (`mesh_lighting: True`; the line
+  pipeline is deliberately unlit, so the Lambert term is baked into the
+  vertex colours at build time from the contour's real normals — the depth
+  cue carries the view-dependent half). QA: a smooth map now renders as the
+  reference's clean wire globes; full-res noisy maps as a coherent shaded
+  net. Tests pin the packer expansion, the in-plane property of every drawn
+  edge, and the shading variance.
 * **The in-viewport control set grew ten controls, and the pause menu stopped
   crashing on the frame it opens** ([chimol viewport UI](plugins/chimol-viewport-ui.md);
   user report: `TypeError: Checkbox.draw() got an unexpected keyword argument 'at'`).
@@ -106,6 +304,52 @@
   `_menu_rows` raised `AttributeError` on any game that had not been run.
   Guarded by a recording-scene test that draws **every** control the way the
   menu does, and screenshots re-taken for both settings tabs.
+* **chimol: `solid` is real volume rendering now, not a wall of cubes**
+  ([pymol-parity](plugins/pymol-parity.md), "0-ante-ante"; user report with
+  screenshot: "voxel like this make no sense, do it like chimera"). The
+  `voxel` style drew a lit opaque box per sample — from any angle an
+  impenetrable cube wall. Replaced with the reference viewer's *image/solid*
+  mode: the histogram markers become a colour+opacity transfer function
+  (their `initial_image_levels` shape for a single marker — transparent at
+  the densest-10% value, 0.8 at the marker, full at max), and the map is
+  composited as **unlit translucent plane stacks** — three axis-aligned
+  stacks with per-vertex RGBA, since the engine has no 3-D textures; one
+  stack is always roughly face-on, the pre-3D-texture trick. Per-plane
+  opacity follows the reference's accumulation rule `1-(1-a)^(1/planes)`
+  with `transparency_depth=0.5`. Engine gained an `unlit` flag
+  (`geometry.meta["unlit"]` → spare `gauss.w` uniform slot →
+  early-out in `shading.wgsl` keeping only the depth cue) — fog must not be
+  shaded like a surface. Style renamed to Chimera's `solid` (`voxel`/`image`
+  accepted as spellings); the `volume` command stops refusing ("not
+  implemented yet") and switches the map to it. **Two traps found while
+  tuning, worth keeping:** an 8-bit visibility cull (1/255) erased the fog
+  entirely — per-plane alpha is a fraction of a percent *by design*, cull at
+  1/1024; and ramping opacity only from the densest-1% marker colours almost
+  no voxels — the reference's wide 10% foot is what makes fog read. QA'd by
+  screenshots face-on, oblique (mild edge-on banding, same class as the
+  reference's axis-aligned mode, noted in parity tracker), and two-node
+  transfer. Same layering caveat as below (density-window unit), except
+  `shading.wgsl` + `wgpu_backend.py` which are cleanly separable.
+* **chimol: the density controls behave like Chimera's volume panel, and the
+  colour picker works** ([pymol-parity](plugins/pymol-parity.md),
+  "0-ante-ante"; user report "the color picker still does not work"). It
+  could not work: the well cycled five presets indexed by *marker number* —
+  pressing it repeatedly picked the same colour forever — and the well and
+  alpha slider bound to "the marker being dragged, else the first", so a
+  second contour could never be recoloured after release. Reworked
+  `renderer/density_window.py` to the reference viewer's model, translated
+  to the chrome's gestures (press/drag/release, no buttons or modifiers):
+  one **selected** threshold persists (gold handle) and the well, slider and
+  level readout act on it; the well opens a **palette drawn in the panel**
+  (12 hues × tint-to-shade rows + greys, computed via HSV — a system colour
+  dialog would not exist in the browser build); picking recolours instantly
+  because the contour is memoised; a marker **dragged off the histogram is
+  deleted on release**, except the last (an empty list falls back to the
+  opening contour, so the map would *reappear*). 5 new gesture tests, panel
+  QA'd by screenshots (select → palette open → recolour → delete). Guide 44
+  documents the controls. Same shared-tree caveat as the entry below: this
+  file is the other session's untracked density-window unit, so the rework
+  rides with it (board T-20260811-22).
 
 ## 2026-08-11
 * **chimol: density-map contouring is 5–10× faster and the level drag is
@@ -131,6 +375,154 @@
   screenshots of open/mid-drag/release states. `volume.py`'s PRD mention
   ported here and struck from the shrinking allowlist. Guide 44 documents
   the drag behaviour.
+* **Lumis Quest: houses are enterable, and menus take the mouse**
+  ([PRD-91](prds/prd-91.md)). `api/interiors.py` had been built and tested in
+  an earlier session but never called from `overworld.py` -- the game's own
+  open-fronts list already named "interiors built, tested, unreachable" as a
+  gap, and "entering houses seems not possible" was that gap. Indoor mode is
+  a third, self-contained mode alongside overworld/battle (own movement,
+  collision, camera-fix, draw) rather than a generalisation of the outdoor
+  path, deliberately, so the many tests pinning exact outdoor `_solid`/`_step`
+  behaviour stay untouched. Separately, `chigame.input.InputMap` gained click
+  support (`_on_pointer_down`/`click_at()`/`click()`, same "incidental host
+  fact" footing as the wheel below) and the pause menu and title menu both
+  hit-test a click against the exact geometry their own draw calls already
+  use, so a click lands on what is actually on screen rather than a second,
+  driftable copy of the layout math. Battle menu and dialogue choices are
+  still pad-only. Full writeup in the PRD's "Where to pick this up".
+* **chimol: the density controls are in the viewport, and the threshold drag
+  stopped fighting back** ([PRD-101](prds/prd-101.md) req. 2).
+  `renderer/density_window.py` draws the map's range, three mode buttons and
+  the value histogram with a marker per contour, through the six painter
+  operations and on the **same view model** the Qt dock used. Measured: a
+  20-step drag now causes **0** isosurface rebuilds and the release causes
+  exactly **1** — the dock ran marching cubes over the whole grid on every
+  value change, which is the whole of the "slow / gets stuck" report. Two
+  recorded defects close with it: `mesh` now builds **line** geometry (it
+  looked identical to `surface` because nothing ever asked for the wireframe
+  branch that already existed) and **`voxel` exists**, sub-sampled evenly
+  through the array so the cloud keeps the shape of the density rather than its
+  corner. The mode is read off the levels' own `style` rather than kept beside
+  them. `GuiWindow` gained the input half of `body` —
+  `on_press`/`on_drag`/`on_release` — which every remaining panel needs; the
+  trap was `InternalGui.drag()`'s guard, which lists the drags in progress and
+  silently never routed the new one until it was added there too.
+* **chimol: the map panel edits the map on screen** — it preferred the active
+  object's map and otherwise searched insertion-ordered `_objects` *forwards*,
+  so a second map loaded while anything else was active left it editing the
+  **first**. Now newest-first, with an explicit choice still winning, and
+  "No map loaded" once they are gone.
+* **chimol: in-viewport windows** — the mechanism the whole
+  [viewport-UI direction](plugins/chimol-viewport-ui.md) hangs off. `GuiWindow`
+  in `InternalGui`: title bar, move, corner resize, collapse (button and
+  double-click), close, raise-on-click, clamped inside the viewport. Drawn by
+  the same quad painter as the rest of the chrome, so it is one code path for
+  PyQt and the browser. Behaviour is Dear ImGui's, read from
+  `junk/imgui` rather than from memory — 32×32 floor, 1 px border, **4 px grab
+  reach outside** the resize corner (a one-pixel edge is not a mouse target),
+  fold on title-bar double-click — and its dark palette. Its immediate-mode
+  core was deliberately **not** taken: chimol's chrome is retained, so the IM
+  protocol would mean rewriting every existing panel to gain nothing the quad
+  painter already does. Contents arrive through a `body(painter, rect)`
+  callback, so the frame knows nothing about what goes in it. `png` hides them
+  for the grab; `ray` never saw chrome. 12 tests, every decoration
+  hit-tested.
+* **chimol: C ▸ by element is PyMOL's, and the direction for the UI is set.**
+  `cnc` / `cba` / `cbh` are commands and the submenu is PyMOL's **49** entries,
+  not one. The old leaf issued `color byelement`, a colour *mode* — a property
+  of an **object** — so selecting a side chain repainted the whole protein and
+  cleared every per-atom override on the way; reported twice before it was
+  fixed. Measured: `cnc resi 20-25` changes exactly the 19 non-carbon atoms of
+  those residues. Trap for next time: `set_atom_color_override` seeds its array
+  from the object's *current* colours, so counting entries says "all of them"
+  and proves nothing — diff the colours.
+  A new concept, [chimol-viewport-ui](plugins/chimol-viewport-ui.md), holds the
+  larger direction tpeulen set the same day — **every interface in the
+  viewport, menus included, ImGui-styled, so PyQt and the browser run one code
+  path** — with the build order and the eight rendering defects reported
+  alongside it (surface and metaball torn, mesh ≡ surface, no voxel mode, a
+  volume that survives unload, dark `ray`, dead `show as ribbon`, wrong `cell`,
+  dots that ignore zoom).
+* **chimol: the system-info panel is chrome, not a stacked Qt widget** (user's
+  call, and the right one). It was a `QPlainTextEdit` on top of the surface
+  while everything else in the viewport is drawn *into* it by `InternalGui`
+  through the six-operation painter and rasterised as GPU quads — which is why
+  it covered the prompt, and why the first fix had to *guess* the prompt's
+  height with a spacer row. Now `layout_info`/`_paint_info` beside the rest:
+  one object lays out the strip, the panel and the prompt, the container is a
+  single widget again, and the panel will follow the chrome into a browser.
+  Text is wrapped by character count (the chrome's font is monospace, and a
+  file path has no spaces to break at), and a viewport too short for one line
+  drops the panel rather than overlapping — which is exactly what the widget
+  did. Settings unchanged and still honoured.
+* **chimol: the system-info panel covered the in-viewport prompt.** Both are
+  anchored bottom-left and only one is a Qt widget — the prompt is painted into
+  the surface by the chrome, so Qt could not know it was there. The container
+  grid now has an empty second row the renderer spans and the panel does not,
+  sized by `InternalGui.command_area_height()`, which returns the **maximum**
+  the prompt can take rather than its current height: the log grows as commands
+  run, and reserving the current size would overlap for as long as it took a
+  printed line to trigger a relayout. Visible only once the panel gained a
+  backdrop the same day; before that the two just overprinted on black.
+* **chimol: five chrome reports, all one shape — configured, and read by
+  nothing.** The in-viewport prompt's backdrop was black (invisible on a black
+  scene) and is now the info panel's grey; 3-D labels were drawn at a
+  hard-coded 10 while `label.size` said 14, so `label_size`/`label_color` are
+  now real settings and the default is 16 (migration 17); a measurement whose
+  segment produced no dashes still drew its number; a measurement's first pick
+  drew nothing, and picked atoms now carry the selection marker through
+  `set_pick_markers` (not the selection — they never reach `sele`); and the
+  **sequence strip is one row per chain**, labelled in PyMOL's slash syntax
+  (`1f5n/A`), because residue numbers restart per chain. The trap in the last
+  one: a per-chain row's columns are not the object's residue indices, so the
+  rows carry `residue_indices` and are matched by `object_id`, not by label.
+  **Not reproduced:** the measurement label detaching from its dashes — in the
+  current tree it sits on the midpoint and tracks the camera exactly, and the
+  likely cause is the double-transform fixed the same day. All in
+  [known-issues](references/known-issues.md).
+* **chimol: click-to-measure, selection levels, and two defects the work
+  uncovered.**
+  - **Measurement wizard** ([`wizards.py`](../chisurf/plugins/chimol/chimol/wizards.py)
+    `MeasurementWizard`, Wizard ▸ Measurement): click atoms, every 2/3/4 become
+    a distance/angle/dihedral. `MolView` gained **one** seam for it — a
+    `_wizard_pick` callable that consumes the click — rather than any knowledge
+    of wizards. Measurement picks deliberately do not touch `sele`.
+  - **Selection levels** — `mouse_selection_mode` (Atoms / Residues / Chains /
+    Objects), cycled by the block's **Selecting** row. That row and
+    `MolView.selection_mode` had both been constants: the word was painted and
+    read by nothing. PyMOL's *Segments* and *Molecules* are omitted rather than
+    faked (no segi is parsed; no molecule exists apart from its object).
+  - **`distance` reported scene units** — 258.450 for a 25.845 Å pair, the
+    `_scale_factor` of 10 — **and drew its dashes in the wrong place**, because
+    the renderer transforms measurement positions into scene space itself and
+    they were already in it. The bulk `dist mode=N` paths were right all along,
+    so the two halves of one command disagreed.
+  - **Residue ids are not unique across chains** and the selection matched on
+    them alone: on 1RTD one residue marked 104 atoms instead of 19 and one atom
+    mapped back to 8 residues. `_residue_chain_ids` was already loaded and
+    unused; `_atom_residue_indices` now keys on (chain, id).
+  - The chrome inventory guard was equality and is now **"nothing was lost"** —
+    the baseline it compares against is the painter port's before-half and
+    cannot be re-captured, so a legitimately new control had no way past it.
+  Details for all four in [known-issues](references/known-issues.md);
+  `docs/guides/44_molecular_viewer.md` documents both features.
+* **chimol: the PyMOL/Chimol drag-style toggle removed** at the user's request.
+  It was already inert — `rotation_delta_multiplier` and
+  `pan_delta_multiplier` had **no caller in the tree**, so the toolbar button
+  wrote a string into `CameraState._mouse_mode` that was stored and never read,
+  which is also why its middle-drag half never worked. Gone: the button, the
+  two Mouse-menu entries (the menu with them), the `camera.mouse_mode` setting
+  (display-config migration 16 drops it from existing user copies) and the three
+  helpers. `test_mouse_mode.py` is now a guard against it growing back; the
+  mouse-mode *matrix* is a different feature and is untouched.
+* **chimol: the system-info panel has a backdrop again.** It had a
+  `rgba(0,0,0,180)` stylesheet that `WA_TranslucentBackground` plus
+  `viewport().setAutoFillBackground(False)` cancelled two lines later, so the
+  colour was configured, stored and never drawn — the text floated on the
+  molecule. Now painted by the viewport, defaulting to a **semi-transparent
+  grey** so it reads against a white background and a black one alike, and
+  configurable (`info_backdrop`, `info_backdrop_color`, `info_text_color`,
+  `info_border_color`).
 * **Two chimol defects filed, not fixed** (reported by tpeulen), in
   [known-issues](references/known-issues.md). (1) The C menu's *by element*
   issues `color byelement, {sele}`, which is an **object-wide colour mode** —
@@ -502,6 +894,32 @@
   call at `n_tau = 60`, i.e. 29 ms of seam over 200 iterations. A
   `std::function<bool(int, double, double)>` hook on the C++ loop closes it and
   gives the GUI a cancel; requested upstream, not worked around here.
+
+* **Lumis Quest: a long playtest-feedback session — HUD/economy bugs, a HiDPI
+  mouse bug, fog of war, crafting, and levelling wired up**
+  ([PRD-91](prds/prd-91.md)). Found and fixed two real, silent bugs while
+  answering the feedback: a **duplicate `_draw_hud` method** (Python kept
+  only the second; the first's HP/energy HUD had never run, ever, and its
+  "-10 HP" popup was fake — nothing was actually being subtracted), and
+  **`GameState.load()`/`.save()` had no path override**, hardcoded to the
+  real `~/.chisurf/lumis_quest.json` — every headless test would have
+  written fake XP into the real player's standing the moment an
+  `OverworldGame` was constructed, caught before it happened by checking the
+  real file's absence before and after a full test run. Also: casting spells
+  was spending `story.unbound` (a permanent "labels ever removed" counter
+  scripts gate content on, not a wallet) — split into a real `photons`
+  currency; a HiDPI mouse-click bug (`_click_world` normalised against
+  physical pixels, Qt's own event coords are logical — halved every click's
+  position on a 2x display); fog of war redone twice, ending on "only the
+  land Iris is standing in now, fog returns the moment she leaves"; a new
+  `api/crafting.py` (real single-molecule-fluorescence reagents — Trolox,
+  ROXS, BSA, PA-GFP — combined into antifade/passivation/photoactivation
+  labels, one of which, `turn_on`, is wired into `battle.py`'s damage
+  resolution as a real "dark until struck" mechanic); and
+  `api/game_state.py`'s fully-built-but-unused XP/level system finally
+  firing on real EXPERT-mode review sign-offs. 410 tests pass; full detail,
+  file:line references and the open-fronts list are in the PRD's own
+  top-of-file handover, not duplicated here.
 
 ## 2026-08-10
 * **The maximum-entropy TCSPC engine is the photon library's, and delegating it
@@ -2186,6 +2604,18 @@
   New: [`docs/concepts/deconvolution.md`](../docs/concepts/deconvolution.md),
   `test/core/test_restoration.py` (26), tttrlib `test_deconvolution.py` (11), and four
   citations in the reference list.
+
+* **2026-08-11: Lumis Quest — Menu UI Fixes & Ninja/Samurai Beast Graphics.**
+  - **Menu UI & Tab Navigation**: Enhanced `_menu_input` to support `Action.LEFT` and `Action.RIGHT` for intuitive gamepad and keyboard tab navigation. Framed pause menu panel using retro `scene.window(...)` borders with gold trim and active tab pill highlights (`[ PARTY ]`, `[ STATUS ]`, etc.).
+  - **Ninja & Samurai Beast Graphics**: Mined character and beast assets from `junk/NinjaAdventure` and `junk/pyzelda-rpg`, adding 4 new pixel art sprite families to `pixelart.py` (`_NINJA_BEAST_A/B`, `_SAMURAI_BEAST_A/B`, `_SPIRIT_BEAST_A/B`, `_SQUID_BEAST_A/B`). Overworld beasts dynamically map to Ninja, Samurai, Spirit, and Squid sprites with colored photon halos.
+
+* **2026-08-11: Lumis Quest — Zelda Action Combat & Engine Enhancements.**
+  Integrated Zelda action combat, real-time overworld weapons, magic spells, overworld beast AI, particle FX, and action HUD mined from `junk/pyzelda-rpg` into `chisurf/plugins/misc/games/lumis_quest/gui/overworld.py`:
+  - **Real-Time Overworld Weapons**: Added 5 optical weapons (`Laser Sword`, `Photon Lance`, `Beam Axe`, `Strobe Rapier`, `Quantum Sai`) with custom reach, damage, hitboxes, sound effects, and swing arc visuals (`WEAPON_DATA`). Slashes tall grass/vegetation into leaf particles, spawning magnetic Photon Orbs (`sparks.orbs`) and floating XP popups (`sparks.rise`). Deals direct overworld damage to beasts with knockback physics and hit flash FX.
+  - **Fluorophore Magic & Spells System**: Added `Photon Flame` (5-tile laser wave burning obstacles and hitting beasts), `Fluorescence Heal` (heals team HP with expanding aura ring particles and chime SFX), and `FRET Shield` (rotating 4-dot energy barrier around Iris).
+  - **Overworld Enemy AI**: Added aggro steering chase AI for overworld beasts (`_update_overworld_enemies`). Damaging beasts applies knockback velocity, red flash effects, damage popups, and defeat nova explosions.
+  - **Zelda Action HUD Overlay**: Added top-left HUD (`_draw_hud`) displaying equipped weapon box, equipped magic box, photon energy budget readout, and control hints.
+  - **Unit Tests & Screenshot Verification**: Added `chisurf/plugins/misc/games/lumis_quest/test/test_zelda_action.py` (4 tests). All 336 `lumis_quest` tests pass 100%. Re-generated headless PNG renders via `capture.py` and visually verified.
 
 * **Lumis Quest phase 3: the documentation is now a place you can walk.**
   `lumis_quest/api/world.py` generates the overworld from the docs' **own toctrees** (the curated order a
@@ -34308,6 +34738,25 @@
   tree is a cell of the grid, so clearing its backdrop leaves a hole rather than showing what is
   beneath. The typeface stays ours. See [chigame](/subsystems/chigame.md).
 
+- **2026-08-11 — the overworld HUD stopped covering the world it describes, and two more props are CC0.**
+  Player-reported: the readout panel sat on screen **permanently**, and on a small window it
+  covered most of the town. `_draw_hud` now shows only a **land banner** (title/subtitle) that
+  fades out a few seconds after Iris crosses into a new land, plus a small `the dark manifold`
+  corner tag while true; everything else it used to draw always — settled/scouted, loadout,
+  labels/bodies, mode, seal/licence — moved to a new `STATUS` tab, first in the pause menu, read
+  on request instead of blocking the world. `rock` and `flowers` (`gui.pixelart.OVER_GROUND`) are
+  now cut from a **second CC0 pack** — ArMM1998's "Zelda-like tilesets and sprites" on
+  OpenGameArt, reached through `junk/pyzelda-rpg` (already an established reference for this
+  PRD's steering/pathing/particles work) — at native 16x16, recovered losslessly from files that
+  ship pre-upscaled 4x rather than resampled a second time. This surfaced a real bug: shipped
+  prop art was returned before the prop-composites-over-ground step, so a prop with real
+  transparency shipped that way would have been a hole with nothing behind it — caught by an
+  existing guardrail test, fixed by compositing every `OVER_GROUND` name over its ground
+  regardless of whether the prop's own art is shipped or string art. Trees stay string art: no
+  CC0 tile in either pack is a tree in one 16x16 cell, and giving props a taller, independently
+  anchored draw is real renderer work, not a swap. See [PRD-91](prds/prd-91.md) and
+  `gui/art/CREDITS.md`.
+
 - **2026-08-11 — chimol's spheres and sticks stopped being meshes.** Both are analytic
   impostors now: `show spheres` on 148L was 124,704 triangles from 94 ms of NumPy and is
   0 from none (`_build_balls_mesh` chooses, `impostor_min_atoms` 20000 → 1, migration 15);
@@ -34318,3 +34767,195 @@
   rebuilding the scene **eleven times** (hide-everything is ten setters, each triggering a
   full `_update_view`); `show`/`hide`/`as` batch through the existing `suspend_updates`,
   and `as sticks` went 81 → 9 ms cold. See [chimol-web](/plugins/chimol-web.md).
+
+- **2026-08-11 — a second CC0 pack ships buildings, a real tree canopy and player/villager sprites.**
+  Following on from the HUD/prop-swap entry above, in the same session: the atlas
+  (`gui.pixelart.build_atlas`) now packs sprites at their own native size instead of forcing
+  everything into `SIZE x SIZE`, via a new sibling of `gui.tileart` — `gui.bigart`, for anything
+  cut by `import_bigart.py` rather than `import_tileart.py`. Two houses (`house_hut`,
+  `house_barn`, both Ninja Adventure CC0) replace the four procedural lit/dark styles outright —
+  deleted, not left unused. The old one-tile tree is now a real three-lobed canopy
+  (`big_tree`), drawn as its own anchored quad from a new `_draw_trees` rather than through the
+  tile-grid's fast batch: that batch is one draw call at one uniform quad size for the whole
+  screen, and a *wider* quad inside it clips on whichever side a same-row neighbour happens to
+  be drawn after it in raster order — only "taller" is safe there, because a row below is always
+  drawn later. Iris and two villager roles are cut from Ninja Adventure's own character sheets
+  (`ninja_blue`, `samurai_green`, `samurai_blue`); which cell is which facing came from reading
+  the pack's own `sprite_character.gd`, not guessing — a hooded ninja looks much the same from
+  more than one side. Caught before shipping: `house_hut`/`house_barn`/`big_tree` had no
+  string-art fallback at all, unlike every prop shipped so far, so a missing big-art pack would
+  have crashed the render loop instead of degrading — fixed with a fallback entry in `SPRITES`
+  for each, proven by a monkeypatch test. See [PRD-91](prds/prd-91.md) and `gui/art/CREDITS.md`.
+
+- **2026-08-11 — three bugs the big-art pass caused, all from the same root: sprites bigger than one tile.**
+  Playing the pass above surfaced them. (1) A house's sprite is drawn several tiles wide, but only
+  the one grid tile a room sits on was ever marked solid, so the painted wall either side of the
+  door was walk-through — fixed with `OverworldGame._building_solid`, the extra `(col, row)` cells
+  a room's chosen sprite actually spans, computed once (it depends only on the room's address, not
+  on anything that changes at runtime) and checked alongside the tile grid in `_solid`. Deliberately
+  not extended to NPC movement, which has no access to a sprite's pixel width from the API layer.
+  (2) Dark seams at a regular interval ("V stripes"): the atlas sampler is point/nearest with no
+  mipmaps by design, but at most zoom levels a tile's 16 source pixels do not land on a whole
+  number of screen pixels, so a quad's uv interpolation can round its last column into the *next*
+  packed sprite's first texel — always true, but sorting the atlas alphabetically (to union with
+  the new big-art names) changed which sprite ended up next to `grass`/`floor`, turning an
+  always-present rounding error into a visible colour clash. Fixed with a 1px margin between
+  packed sprites, filled by extruding each sprite's own edge pixel rather than leaving it blank, so
+  a stray sample lands on more of the same sprite instead of a neighbour's colour. (3) Iris reverted
+  from the `ninja_blue` pack sprite back to string art, redrawn head-heavier: not a bug, a taste
+  call after seeing both — a generic hooded ninja read as a different character, and the ask was
+  for the *original* look with a bigger head. Her six `_IRIS_*` rows are rewritten (head 6→8 of 16
+  rows, 7→10 wide) on the same palette characters the original used, iterated by calling
+  `pixelart.sprite_image` directly rather than full capture-and-look cycles — no Qt/GPU needed for
+  hand-pixelled art, much faster. See [PRD-91](prds/prd-91.md) and `gui/art/CREDITS.md`.
+
+- **2026-08-11 — the bottom dialogue band was up almost permanently; the cause was one missing distance check.**
+  `OverworldGame.here` is `world.nearest_room` with no cutoff of its own — the nearest room
+  anywhere in the world, which across open ground can be many tiles away — and `_draw_hud`'s band
+  named that room whenever `here` was not `None`, which given no cutoff is nearly always. Every
+  other caller of `here` already added its own distance check on top for exactly this reason
+  (`_try_encounter`'s `> T.TILE * 2.2: return`); the band was the one place that had not. Fixed
+  with `_nearby_room()`, a thin wrapper with `ROOM_LABEL_RANGE = T.TILE * 2.0`. `here` itself is
+  unchanged, since `Story.observe` also reads it unconditionally and giving it a hard cutoff too
+  would change when a story beat can fire — a bigger decision than a HUD line's height. See
+  [PRD-91](prds/prd-91.md).
+
+- **2026-08-11 — settings, input and the title screen: doors, Escape, default camera, SNES framing.**
+  Four requests landed together. Doors (cave mouths, rifts) needed her exact centre inside the one
+  tile they occupy before Confirm worked at all — widened to a small ring of samples around
+  wherever she is standing (`DOOR_REACH`), the same distance-check shape as the other proximity
+  fixes in this file. Escape/Backspace now opens the pause menu — it was already dual-use in play
+  (held, it zooms the camera out), so a tap has to be told apart from a hold: `_cancel_held`
+  accumulates while the key is down, and the decision is made on release against
+  `CANCEL_TAP_MAX` (0.22s), not on press, since press has already committed to "maybe a zoom" for
+  that frame. Scrolling is now the default camera, screen-by-screen kept as an OPTIONS toggle. The
+  title screen is wrapped in `scene.window()`, the same framed console-dialogue box every piece of
+  speech and every other menu already stands in — it was the one place still a name floating over
+  a flat panel, which is what "make the main menu SNES style" was naming. See
+  [PRD-91](prds/prd-91.md).
+
+- **2026-08-11 — the title screen's background is the real world now, not a flat panel.**
+  Follow-up to the framed title menu above: the title screen now draws real ground, buildings and
+  trees behind it — the same `_draw_tiles`/`_draw_structures`/`_draw_trees`/`_draw_rooms` calls
+  normal play uses, at wherever the run's spawn point already puts the camera — under a
+  translucent wash instead of the opaque panel every other curtain screen still uses (nothing else
+  has a world drawn under it yet). Missing `_draw_rooms` on the first pass left every house in the
+  backdrop a flat black hole, since `_draw_tiles` excludes `BUILDING` cells expecting something
+  else to cover them. No new art: entirely reuse of the CC0 ground/building/tree work already
+  landed this session. See [PRD-91](prds/prd-91.md).
+
+- **2026-08-11 — Escape genuinely did nothing, and why the previous pass's own test missed it; plus autosave.**
+  Two stacked bugs: the game's default key table (`OverworldGame.setup`) built its bindings from a
+  hand-maintained module dict (`BINDINGS`) that had drifted out of sync with `SCHEMES["arrows"]`
+  (the table OPTIONS actually offers) and lacked Cancel entirely; even the `SCHEMES` entries
+  themselves only ever mapped `"Backspace"` to Cancel, never `"Escape"`. The earlier session's own
+  "Cancel opens the menu" test drove `Action.CANCEL` directly and so stayed green throughout —
+  it never touched the string-to-action lookup where the real bug lived. Fixed by adding
+  `"Escape"` to all three `SCHEMES` and deleting `BINDINGS` outright, so `setup` builds from the
+  one table `SCHEMES[self.scheme]` that OPTIONS also reads and writes. Also implemented: autosave
+  every 60s of free-roam play time, a silent safety net between the three existing ceremony saves
+  (new journey, a page's save request, a Warden's seal) — reached only where those already are,
+  so it can never fire mid-battle, mid-menu or mid-dialogue. See [PRD-91](prds/prd-91.md).
+
+- **2026-08-11 — chigame learns the mouse wheel; a wild encounter opens with a zoom and a flash.**
+  `chigame.input.InputMap` now has `wheel_delta()`, fed by a new `"wheel"` canvas event handler
+  and cleared every `end_frame()` — deliberately not one of the nine `Action`s (a mouse is not a
+  gamepad input chigame may require), exposed the way a window resize is: an incidental host fact
+  a game may read if it wants it. All six chigame games get it; Lumis Quest wires it to camera
+  zoom in `update()`, alongside the existing shoulder-button zoom. Separately: a wild encounter now
+  opens zoomed in with a fading flash rather than a flat cut. Battle construction stayed
+  synchronous in `_try_encounter` (11 existing tests assert `game.battle is not None` on the same
+  line the call happens, which a deferred-transition design would have broken) — instead
+  `_try_encounter` snaps the camera to `BATTLE_ZOOM_START` and arms a countdown
+  (`_battle_intro`/`ENCOUNTER_FLASH_SECONDS`), `update()` eases the camera back out while it
+  counts down, and `_draw_battle` fades a white overlay over the same window, drawn last over an
+  already-fully-live battle screen. See [PRD-91](prds/prd-91.md).
+
+- **2026-08-11 — chimol: the 3-D view is the window, and the hierarchy panel got its three defects fixed.**
+  `MolViewPluginWindow.setCentralWidget(self.viewer)` and no `DockArea`. Removed with it: the Qt
+  hierarchy dock (the tree is in the viewport, and two trees over one model is two things that can
+  disagree), the toolbar — `setParent(None)` rather than `hide()`, because a `QToolBar` parented to
+  a `QMainWindow` is re-shown by Qt's own layout the moment the window is — and the Qt menu bar,
+  which was drawing a *second* copy of the viewport's menus directly above them. That duplicate was
+  invisible to every assertion and obvious in the first grab of the new layout. Then the three
+  defects reported against the in-viewport hierarchy: **no scroll bar** (now a draggable track and
+  thumb whenever the tree overflows); **"filter does not work"**, which was literally true because
+  `draw` returned *"No hierarchy"* before laying the search box out, and a PDB carries no
+  `rmf_hierarchy` at all — the field is drawn first now, and a structure without an RMF tree gets
+  one synthesised from its atom table (object → chain → residue, rooted at the *display* name);
+  and **"builds slow for large NPC"** — the flatten over every node ran inside `draw`, so 327 ms was
+  paid on every repaint at 500 chains × 400 residues. Cached on
+  `(tree, needle, collapsed, expanded)` and, because caching alone still leaves a 327 ms first
+  frame, the tree now starts shut below `_OPEN_DEPTH = 1`: 327 ms → 0.17 ms first flatten,
+  0.0005 ms per repaint. See [PRD-101](prds/prd-101.md).
+
+- **2026-08-11 — chimol: one world frame for every object, the leftover Qt widgets off the window, and the info panel got a scroll bar.**
+  Three fixes from tpeulen's QA pass. **(1)** `fetch` on top of an existing structure looked like it
+  broke the geometry; it is two defects, separated by rendering the second structure *alone*.
+  Every object was centred on **itself** — scene coordinates are `(xyz - raw_center) * scale` and
+  `raw_center` is per-object state — so `148L` (centre `8.4, 45.3, 34.6`) and `2f5n` (centre
+  `-11.9, 52.6, 19.2`) were both drawn on the origin, interpenetrating. `_adopt_scene_frame` makes
+  the first object define the origin and later ones borrow it, PyMOL's rule, re-measuring the radius
+  about the borrowed centre so the camera still frames them. The *spikes* in the same screenshot are
+  a separate cartoon defect that reproduces with `2f5n` loaded alone — filed, not fixed. **(2)** A
+  grey `Command line` box sat over the viewport's toolbar row: panels that used to live in the dock
+  area are still constructed, and a `QWidget` parented to the window that no layout owns is drawn at
+  (0, 0), 100 × 30. Four were stacked there; `_detach_orphan_widgets` cuts the parent link on
+  everything but the viewport, status bar and menu bar. **(3)** `help_setting` now prints into the
+  info panel like `help` — 92 setting names do not fit a one-line feedback strip — and the panel
+  finally draws a **scroll bar**, since it has scrolled silently ever since it learned to hold
+  `help`. Also fixed on the way past: `cbh` delegated to `color …, elem H and (…)`, which resolves to
+  nothing on the majority of crystal structures that carry no hydrogens, so all eight *set 6/H* menu
+  entries answered *"Selection did not resolve to an object"*; it writes per-atom overrides now and
+  does nothing quietly when there are no hydrogens, as PyMOL's `util.cbh` does. See
+  [PRD-101](prds/prd-101.md).
+
+- **2026-08-11 — Lumis Quest leaves prototype stage: dark-ruin salvage, battle backdrops, keepers read their pages.**
+  Three changes and two defects, from the "make it a real game" pass (`T-20260811-21`, PRD-91).
+  **(1)** The working tree carried `_ruin_scene`/`_salvage_dark_ruin` call sites with no methods
+  behind them — every action-key press in free roam raised `AttributeError`. The feature they named
+  was built rather than guarded out: a dark-manifold ruin is salvageable once, ever, for a bench
+  reagent, deterministic per cell so a reload cannot reroll it; `RunState` grew a `salvaged` field
+  (additive, no VERSION bump). **(2)** The battle screen stopped being two flat rectangles:
+  `_battle_backdrop` reads Iris's land and manifold side — banded sky, silhouetted treeline, ground
+  tiled with the land's own terrain art; reading screens dim it under a panel; pads turn cold stone
+  in the ash. `capture.py` gained `lumis_battle_dark`. **(3)** Offline keepers speak from the page
+  they keep (`npcs.page_lines`, via the challenge module's prose filters): opening claim plus a
+  seeded "Did you know?", em-dashes rewritten for the glyphless text path. Also fixed: the
+  species-less-beast sprite family was picked with a salted `hash()` and changed between sessions —
+  now `zlib.crc32`. Docs updated in `docs/guides/71_lumis_quest.md`; handover and the open-fronts
+  list in [prd-91](prds/prd-91.md).
+
+- **2026-08-12 — chimol: the Dear ImGui widget stack is ported into
+  `renderer/ui/`.** User ask: *"port entire imgui (in junk) widget stack to
+  chimol"*. `renderer/ui/` went from one control module to fourteen — the
+  nineteen controls already in `widgets.py` plus `style`, `text`, `buttons`,
+  `sliders`, `drag`, `inputs`, `color`, `selection`, `menus`, `tabs`, `tables`,
+  `dragdrop` and `layout`, one module per section of the reference's
+  `imgui_widgets.cpp` (plus all of `imgui_tables.cpp`, and drag-and-drop from
+  `imgui.cpp`). ~14,100 lines and 494 painter-level tests, none of which needs
+  a GUI toolkit. The biggest single addition is the **Drag** family, which
+  chimol had no counterpart for at all: a drag has no track, its value moves by
+  the pointer's *delta*, and porting it as a slider would have been the wrong
+  control wearing the right name.
+  **The idiom did not change** — retained objects, `draw`/`press`/`drag`/
+  `release`, the six `Painter` operations — and where the reference reads its
+  per-frame global for hover, a clock, a modifier or a click count, the port
+  takes that as an explicit argument rather than growing a global. Deliberately
+  not ported, each recorded with its reason in the `junk/imgui` headers:
+  `Image`/`ImageButton` and the colour **wheel** (not expressible in six
+  axis-aligned ops, and a fake would silently draw the wrong thing), Box-Select
+  (its update differences against the previous *frame*), and nav/docking/`.ini`.
+  **Two bugs found on the way, one of them already shipped.** The Qt painter
+  draws with a font and the GPU painter draws from the baked atlas, so a glyph
+  the atlas lacks looks perfect in every screenshot and paints as nothing in
+  the app: the ported tab bar (`✕`, `◂`) and table (`▲`, `✓`) hit it, and so
+  did `widgets.Table`, whose ascending sort mark `▲` was **not** baked while
+  its descending `▼` was — ascending sort has been showing no marker at all.
+  All five now use baked glyphs and `test_chrome_atlas.py` guards every module
+  in `renderer/ui/`; that test also stopped scanning raw source, which had it
+  failing on a *comment* that named `×` in order to warn about it.
+  Also: the palette moved to `renderer/ui/style.py` (values unchanged — it
+  documents which of chimol's differ from the reference's and why), and
+  `test/widget_gallery.py` renders one sheet per family for reading by eye.
+  Concept: [chimol-viewport-ui](plugins/chimol-viewport-ui.md).

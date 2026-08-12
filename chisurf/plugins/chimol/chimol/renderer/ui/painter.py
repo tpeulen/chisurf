@@ -42,7 +42,8 @@ because that is what the chrome's palette constants already are.
 """
 from __future__ import annotations
 
-from typing import Optional, Protocol, Sequence, Union
+from collections.abc import Sequence
+from typing import Protocol, Union
 
 __all__ = [
     "ALIGN_LEFT",
@@ -89,7 +90,7 @@ class Painter(Protocol):
         w: float,
         h: float,
         edge: Colour,
-        fill: Optional[Colour] = None,
+        fill: Colour | None = None,
     ) -> None:
         """Draw a one-pixel outline, optionally over a fill."""
         ...
@@ -101,7 +102,7 @@ class Painter(Protocol):
         w: float,
         h: float,
         stops: Sequence[Colour],
-        edge: Optional[Colour] = None,
+        edge: Colour | None = None,
     ) -> None:
         """Fill a rectangle with a left-to-right gradient through *stops*.
 

@@ -14,6 +14,7 @@ this is what says it stayed measured.
 """
 from __future__ import annotations
 
+import ast
 import json
 import pathlib
 
@@ -107,20 +108,134 @@ def test_the_bold_face_is_actually_bolder():
 
 
 def test_the_charset_covers_what_the_chrome_draws():
-    """Every non-ASCII character in the panel's source is in the atlas.
+    """Every non-ASCII character in the panel's *string literals* is in the atlas.
 
     The panel's symbols are literals scattered through its paint methods --
     ``▾`` for an open group, ``▸`` for a submenu, ``▴`` for a scroll mark, the
     transport's ``◀ ■ ▶ ▼``. Adding one and forgetting the atlas is a blank box
     at runtime, so the source is the authority and this is the check.
+
+    Literals, not the raw file. This test read every character of the source
+    and so counted **comments and docstrings** as things the chrome draws. That
+    is not a hypothetical: the window close button was moved from ``×`` to
+    ``x`` precisely *because* the atlas has no multiplication sign, and the
+    comment recording why -- which names the glyph in order to warn about it --
+    then failed this test on its own. A check that fires on the note explaining
+    the fix punishes writing the note down.
+
+    Docstrings are excluded for the same reason and are not a loss: a docstring
+    is not passed to :meth:`Painter.text`.
     """
     _alpha, meta = _load()
     source = (
         pathlib.Path(__file__).resolve().parents[1]
         / "chimol" / "renderer" / "internal_gui.py"
     ).read_text(encoding="utf-8")
-    used = {c for c in source if ord(c) > 127}
+
+    tree = ast.parse(source)
+    docstrings = {
+        id(node.body[0].value)
+        for node in ast.walk(tree)
+        if isinstance(
+            node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)
+        )
+        and node.body
+        and isinstance(node.body[0], ast.Expr)
+        and isinstance(node.body[0].value, ast.Constant)
+        and isinstance(node.body[0].value.value, str)
+    }
+    used = {
+        char
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Constant)
+        and isinstance(node.value, str)
+        and id(node) not in docstrings
+        for char in node.value
+        if ord(char) > 127
+    }
     assert used <= set(meta["charset"]), (
         "these characters are drawn but not baked: "
         f"{sorted(used - set(meta['charset']))}"
     )
+
+
+#: Every module of painter-level controls. The atlas is what the **GPU**
+#: painter draws from, so this list is the set of files whose string literals
+#: can reach it.
+_CONTROL_MODULES = sorted(
+    p.name
+    for p in (
+        pathlib.Path(__file__).resolve().parents[1] / "chimol" / "renderer" / "ui"
+    ).glob("*.py")
+    if p.name != "__init__.py"
+)
+
+
+@pytest.mark.parametrize("module", _CONTROL_MODULES)
+def test_every_control_module_draws_only_baked_glyphs(module):
+    """No control draws a character the atlas has no glyph for.
+
+    The same check as above, widened from the panel to every control module --
+    and it is not a formality. The Qt painter draws with a **font**, so a
+    missing glyph looks perfect there; the GPU painter draws from **this
+    atlas**, so the same string comes out as nothing at all. A screenshot
+    taken through Qt therefore *cannot* catch this, which is exactly why it
+    needs an assertion.
+
+    Four real cases, all found by running this: the ported tab bar drew its
+    close button as ``✕`` and its scroll arrows as ``◂``, and the ported table
+    drew ``▲`` and ``✓`` -- none of the four baked. The fifth was already
+    shipped: ``widgets.Table``'s ascending sort mark was ``▲`` while its
+    descending mark was ``▼``, and only ``▼`` is in the atlas, so sorting a
+    column ascending in the GPU chrome showed no marker at all while
+    descending showed one. That asymmetry had been live and unnoticed.
+
+    The fix is to spell a symbol with a glyph that *is* baked (``▴``/``▾``,
+    ``◀``/``▶``, ``■``, or plain ASCII), not to widen the atlas casually --
+    every glyph costs texture area that the chrome uploads every repaint.
+    """
+    _alpha, meta = _load()
+    path = (
+        pathlib.Path(__file__).resolve().parents[1]
+        / "chimol" / "renderer" / "ui" / module
+    )
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    docstrings = {
+        id(node.body[0].value)
+        for node in ast.walk(tree)
+        if isinstance(
+            node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)
+        )
+        and node.body
+        and isinstance(node.body[0], ast.Expr)
+        and isinstance(node.body[0].value, ast.Constant)
+        and isinstance(node.body[0].value.value, str)
+    }
+    used = {
+        char
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Constant)
+        and isinstance(node.value, str)
+        and id(node) not in docstrings
+        for char in node.value
+        if ord(char) > 127
+    }
+    # Word-wrap and text-classification tables hold characters the module
+    # *reasons about* rather than draws -- CJK punctuation that must not start
+    # a line, for one. Those never reach `Painter.text`, so they are named
+    # here rather than being baked into the atlas for nothing.
+    used -= set(_NOT_DRAWN.get(module, ""))
+    assert used <= set(meta["charset"]), (
+        f"{module} draws these but the atlas has no glyph, so they paint as "
+        f"nothing on the GPU painter: {sorted(used - set(meta['charset']))}"
+    )
+
+
+#: Per module, characters that appear in a string literal but are classified,
+#: not drawn. Keep this as small as it can honestly be: an entry here is a
+#: promise that the character never reaches :meth:`Painter.text`.
+_NOT_DRAWN = {
+    # `_PUNCT_CHARS`, the set a line may break *after* -- the reference's
+    # word-wrap rule for CJK, which has no spaces to break on.
+    "text.py": "　、。",
+}

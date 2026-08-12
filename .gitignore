@@ -118,3 +118,8 @@ chisurf/plugins/spectra_downloader/backups/
 # Built by chimol's browser loader (`web/serve.py`); assembled on demand.
 chisurf/plugins/chimol/chimol/web/chimol.zip
 chisurf/plugins/chimol/chimol/web/pyodide/
+
+# chimol's widget gallery: regenerable sheets from test/widget_gallery.py.
+# Unlike test/renders/chrome_baseline/, these are NOT a baseline -- no test
+# reads them, they exist to be looked at -- so they are output, not source.
+chisurf/plugins/chimol/test/renders/widget_gallery/

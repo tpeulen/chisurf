@@ -32,16 +32,13 @@ that land in that box.
 
 from __future__ import annotations
 
-import re
-from typing import Optional, Sequence, Tuple, Union
+from collections.abc import Sequence
 
+from . import style as _style
 from .painter import (
     ALIGN_CENTER,
-    ALIGN_HCENTER,
     ALIGN_LEFT,
-    ALIGN_RIGHT,
     ALIGN_VCENTER,
-    Colour,
     Painter,
 )
 
@@ -68,85 +65,43 @@ __all__ = [
     "TextInput",
 ]
 
-# ImGui StyleColorsDark palette
-_TEXT = (235, 235, 240)
-_DIM = (150, 150, 160)
-_GOLD = (245, 225, 128)
-_HEADER_BG = (41, 74, 122, 235)
-_TRACK_BG = (50, 50, 56, 220)
-_THUMB_COLOR = (66, 150, 250, 240)
-_THUMB_HELD = (255, 200, 90, 240)
-_BORDER = (90, 90, 96, 200)
-_ROW_EVEN = (25, 25, 28, 220)
-_ROW_ODD = (34, 34, 38, 220)
-_ROW_SEL = (66, 150, 250, 180)
-_CHECK_ON = (90, 230, 120)
-_BTN_BG = (50, 64, 82, 230)
-_BTN_HELD = (75, 100, 135, 255)
+# The ImGui StyleColorsDark palette now lives in :mod:`.style`, so that the
+# modules ported alongside this one name the same colours rather than keeping
+# their own drifting copies. These are aliases and nothing more -- every value
+# is the one this module shipped with, and `style` records which of them
+# differ from the reference's, and why. Written as assignments rather than
+# `from .style import X as _X` because fourteen aliased imports are split into
+# fourteen statements by the import sorter, which buries the one thing this
+# block is trying to say: that these names are that module's, unchanged.
+_TEXT = _style.TEXT
+_DIM = _style.DIM
+_GOLD = _style.GOLD
+_HEADER_BG = _style.HEADER_BG
+_TRACK_BG = _style.TRACK_BG
+_THUMB_COLOR = _style.THUMB
+_THUMB_HELD = _style.THUMB_HELD
+_BORDER = _style.BORDER
+_ROW_EVEN = _style.TABLE_ROW_BG
+_ROW_ODD = _style.TABLE_ROW_BG_ALT
+_ROW_SEL = _style.ROW_SEL
+_CHECK_ON = _style.CHECK_ON
+_BTN_BG = _style.BTN_BG
+_BTN_HELD = _style.BTN_HELD
 
-#: ``%.0%`` and friends: a percentage, written the way the value reads rather
-#: than the way printf would need it (``%.0f%%`` against a value already
-#: multiplied by a hundred). ``"%.0%" % 0.5`` is a ``ValueError``, which is why
-#: this is a substitution and not a format string.
-_PERCENT_SPEC = re.compile(r"%\.(\d+)%")
+#: The percentage spec ``%.0%``, kept importable from here because callers
+#: outside this package reach for it. See :mod:`.style` for what it is.
+_PERCENT_SPEC = _style._PERCENT_SPEC
 
+#: ``label`` shortened with a trailing dot until it fits. Lives in
+#: :mod:`.style` so the ported control modules share one implementation; kept
+#: under its original name here because this module's controls and at least
+#: one plugin outside it already call it.
+fit_text = _style.fit_text
 
-def fit_text(p: Painter, label: str, room: float) -> str:
-    """``label`` shortened with a trailing dot until it fits ``room``.
-
-    The painter clips nothing by itself, so a caption wider than its column is
-    drawn straight over the neighbouring one -- which reads as a layout bug
-    rather than as a name that did not fit.
-
-    Parameters
-    ----------
-    p : Painter
-        Used to measure.
-    label : str
-        The text.
-    room : float
-        Width available.
-
-    Returns
-    -------
-    str
-        The text, or as much of it as fits.
-    """
-    if room <= 0.0 or p.text_width(label) <= room:
-        return label
-    for cut in range(len(label) - 1, 0, -1):
-        short = label[:cut] + "."
-        if p.text_width(short) <= room:
-            return short
-    return ""
-
-
-def _format(fmt: str, value: float) -> str:
-    """Render a number through a control's format string.
-
-    Parameters
-    ----------
-    fmt : str
-        Either a printf spec (``"%.1f tiles"``) or a percentage spec
-        (``"%.0%"``), which multiplies by a hundred and appends a sign.
-    value : float
-        The number.
-
-    Returns
-    -------
-    str
-        The rendered text. A format string the value does not fit falls back
-        to two decimals rather than raising: a slider that cannot draw its own
-        label takes the whole frame down with it.
-    """
-    match = _PERCENT_SPEC.search(fmt)
-    if match:
-        digits = int(match.group(1))
-        return fmt[: match.start()] + f"{value * 100.0:.{digits}f}%" + fmt[match.end():]
-    try:
-        return fmt % value
-    except (TypeError, ValueError):
-        return f"{value:.2f}"
+#: Render a number through a control's format string -- printf spec, or the
+#: percentage spec above. Also :mod:`.style`'s, for the same reason;
+#: Lumis Quest imports it from this module by this name.
+_format = _style.format_value
 
 
 class SliderFloat:
@@ -289,7 +244,7 @@ class ScrollBar:
         self.width = float(width)
         self.top = 0
         self.held = False
-        self._box: Optional[tuple[float, float, float, float]] = None
+        self._box: tuple[float, float, float, float] | None = None
         self._total = 0
         self._visible = 1
 
@@ -394,9 +349,9 @@ class Table:
         self,
         headers: Sequence[str],
         rows: Sequence[Sequence[str]],
-        col_widths: Optional[Sequence[float]] = None,
-        selected_row: Optional[int] = None,
-        sort_col: Optional[int] = None,
+        col_widths: Sequence[float] | None = None,
+        selected_row: int | None = None,
+        sort_col: int | None = None,
         sort_ascending: bool = True,
         row_scale: float = 1.15,
     ) -> None:
@@ -409,7 +364,7 @@ class Table:
         self.row_scale = float(row_scale)
         self.bar = ScrollBar()
         #: Set by :meth:`draw`: ``(x, y, w, row_h, header_h, visible)``.
-        self._geometry: Optional[tuple[float, float, float, float, float, int]] = None
+        self._geometry: tuple[float, float, float, float, float, int] | None = None
 
     @property
     def top(self) -> int:
@@ -462,7 +417,7 @@ class Table:
         col_x = x
         for idx, head in enumerate(self.headers):
             cw = widths[idx]
-            sort_mark = " ▲" if (self.sort_col == idx and self.sort_ascending) else (" ▼" if self.sort_col == idx else "")
+            sort_mark = " ▴" if (self.sort_col == idx and self.sort_ascending) else (" ▾" if self.sort_col == idx else "")
             p.text(col_x + 3.0, y, max(cw - 6.0, 1.0), header_h,
                    ALIGN_VCENTER | ALIGN_LEFT,
                    fit_text(p, f"{head}{sort_mark}", cw - 6.0), _GOLD, bold=True)
@@ -491,7 +446,7 @@ class Table:
         if self.bar.needed():
             self.bar.draw(p, x + list_w, y + header_h, h - header_h)
 
-    def press(self, x: float, y: float, box_x: float, box_y: float, box_w: float, box_h: float) -> Optional[tuple[str, int]]:
+    def press(self, x: float, y: float, box_x: float, box_y: float, box_w: float, box_h: float) -> tuple[str, int] | None:
         """Process mouse press.
 
         Returns
@@ -661,7 +616,7 @@ class TreeNode:
         self,
         label: str,
         expanded: bool = False,
-        children: Optional[Sequence[str]] = None,
+        children: Sequence[str] | None = None,
     ) -> None:
         self.label = label
         self.expanded = expanded
@@ -965,7 +920,7 @@ class ListBox:
                    _TEXT if idx == self.index else _DIM)
         p.pop_clip()
 
-    def press(self, x: float, y: float, box_x: float, box_y: float, box_w: float, box_h: float) -> Optional[int]:
+    def press(self, x: float, y: float, box_x: float, box_y: float, box_w: float, box_h: float) -> int | None:
         """Process mouse press. Returns the row index hit, or ``None``."""
         if not (box_x <= x <= box_x + box_w and box_y <= y <= box_y + box_h):
             return None
@@ -1032,7 +987,7 @@ class Tabs:
                    fit_text(p, label, pill_w - 4.0),
                    _GOLD if current else _DIM)
 
-    def press(self, x: float, y: float, box_x: float, box_y: float, box_w: float, box_h: float) -> Optional[int]:
+    def press(self, x: float, y: float, box_x: float, box_y: float, box_w: float, box_h: float) -> int | None:
         """Process mouse press. Returns the tab index hit, or ``None``."""
         if not (box_x <= x <= box_x + box_w and box_y <= y <= box_y + box_h):
             return None
@@ -1064,15 +1019,15 @@ class PlotLines:
         self,
         label: str,
         values: Sequence[float],
-        v_min: Optional[float] = None,
-        v_max: Optional[float] = None,
+        v_min: float | None = None,
+        v_max: float | None = None,
     ) -> None:
         self.label = label
         self.values = [float(v) for v in values]
         self.v_min = v_min
         self.v_max = v_max
 
-    def range(self) -> Tuple[float, float]:
+    def range(self) -> tuple[float, float]:
         """The vertical range actually used, as ``(low, high)``."""
         if not self.values:
             return (0.0, 1.0)
@@ -1126,15 +1081,15 @@ class Histogram:
         self,
         label: str,
         values: Sequence[float],
-        v_min: Optional[float] = None,
-        v_max: Optional[float] = None,
+        v_min: float | None = None,
+        v_max: float | None = None,
     ) -> None:
         self.label = label
         self.values = [float(v) for v in values]
         self.v_min = v_min
         self.v_max = v_max
 
-    def range(self) -> Tuple[float, float]:
+    def range(self) -> tuple[float, float]:
         """The vertical range actually used, as ``(low, high)``."""
         if not self.values:
             return (0.0, 1.0)
@@ -1172,10 +1127,10 @@ class Tooltip:
         Contents. A single string is one line.
     """
 
-    def __init__(self, lines: Union[str, Sequence[str]]) -> None:
+    def __init__(self, lines: str | Sequence[str]) -> None:
         self.lines = [lines] if isinstance(lines, str) else [str(one) for one in lines]
 
-    def size(self, p: Painter) -> Tuple[float, float]:
+    def size(self, p: Painter) -> tuple[float, float]:
         """Measured ``(width, height)`` the box needs for its contents."""
         line_h = p.line_height() * 1.2
         width = max((p.text_width(one) for one in self.lines), default=0.0)

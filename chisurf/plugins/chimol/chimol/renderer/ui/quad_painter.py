@@ -33,7 +33,7 @@ letter is which texels the quad samples.
 """
 from __future__ import annotations
 
-from typing import Optional, Sequence
+from collections.abc import Sequence
 
 import numpy as np
 
@@ -96,7 +96,7 @@ class QuadPainter:
         the same number or the boxes and the text they hold disagree.
     """
 
-    def __init__(self, atlas: Optional[Atlas] = None, scale: float = 1.0,
+    def __init__(self, atlas: Atlas | None = None, scale: float = 1.0,
                  font_scale: float = 1.0) -> None:
         self._atlas = atlas if atlas is not None else load_atlas()
         self._font_scale = float(font_scale)
@@ -206,7 +206,7 @@ class QuadPainter:
         w: float,
         h: float,
         edge: Colour,
-        fill: Optional[Colour] = None,
+        fill: Colour | None = None,
     ) -> None:
         """Draw a one-pixel outline, optionally over a fill."""
         if fill is not None:
@@ -224,7 +224,7 @@ class QuadPainter:
         w: float,
         h: float,
         stops: Sequence[Colour],
-        edge: Optional[Colour] = None,
+        edge: Colour | None = None,
     ) -> None:
         """Fill a rectangle with a left-to-right gradient through *stops*."""
         colours = [_rgba(stop) for stop in stops]

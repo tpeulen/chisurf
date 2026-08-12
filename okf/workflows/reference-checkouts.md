@@ -94,9 +94,28 @@ rather than skimmed ends up carrying both depths from one call.
 
 Four things make it work:
 
-1. **Header only — never the code.** A `git diff` inside the checkout must show
-   insertions and **zero deletions**. The file has to keep saying what the
-   reference does; the moment it does not, it stops being a reference.
+1. **Header only — never the code.** The file has to keep saying what the
+   reference does; the moment it does not, it stops being a reference. So a
+   header is *prepended* and nothing below it is touched.
+
+   **`git diff` no longer checks this, and must not be reached for.** Since
+   2026-08-12 `junk/clone.sh` strips `.git` after cloning, so a checkout is a
+   plain directory — there is no repository to diff against. That is
+   deliberate: a checkout that keeps its upstream remote is one `git push` in
+   the wrong terminal away from pushing to somebody else's project.
+
+   The trap it leaves behind is worth knowing, because it is silent. Stripping
+   `.git` does not make a directory inert to git, it makes it **transparent**:
+   a git command run inside `junk/foo/` finds no repo there, walks *up*, and
+   operates on **ChiSurf's**. `git -C junk/imgui push --dry-run` resolves to
+   `fluorescence-tools/chisurf` and offers to push `development`. Never run a
+   write-side git command inside `junk/`.
+
+   Verify the rule by other means instead: keep the header one contiguous block
+   at the top of the file, and diff against a fresh copy if you ever need proof
+   (`junk/clone.sh` re-clones on demand — deleting a checkout is meant to be
+   cheap). `ORIGIN.txt` in each directory records the URL and the exact commit
+   the copy was taken at, which is what makes that comparison possible at all.
 2. **`SKIPPED` matters as much as `TAKEN`.** "Read, not taken, because X" is the
    knowledge that stops the next session re-deriving X. It is also the honest
    half: a survey that records only what was taken reads as if everything else

@@ -13,7 +13,7 @@ baked from, and the thing a parity test compares against.
 """
 from __future__ import annotations
 
-from typing import Optional, Sequence
+from collections.abc import Sequence
 
 from .painter import (
     ALIGN_HCENTER,
@@ -130,7 +130,7 @@ class QtPainter:
         w: float,
         h: float,
         edge: Colour,
-        fill: Optional[Colour] = None,
+        fill: Colour | None = None,
     ) -> None:
         """Draw a one-pixel outline, optionally over a fill."""
         from qtpy import QtCore
@@ -148,7 +148,7 @@ class QtPainter:
         w: float,
         h: float,
         stops: Sequence[Colour],
-        edge: Optional[Colour] = None,
+        edge: Colour | None = None,
     ) -> None:
         """Fill a rectangle with a left-to-right gradient through *stops*."""
         from qtpy import QtCore, QtGui
