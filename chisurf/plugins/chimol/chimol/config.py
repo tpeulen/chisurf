@@ -640,7 +640,12 @@ def _load_display_config() -> dict:
         # Which backend draws the viewport. `wgpu` is the WGSL renderer that the
         # desktop and the browser share; `opengl` is the older one, and is used
         # automatically anyway wherever no WebGPU adapter can be created.
-        "renderer": {"backend": "wgpu"},
+        "renderer": {
+            # Frame-rate ceiling for a window. rendercanvas' own default is 30,
+            # and a frame that overshoots a 33 ms slot waits for the next one --
+            # which is why the native window sat at exactly 15 fps on every
+            # model. A ceiling, not a target: drawing is on demand.
+            "max_fps": 60,"backend": "wgpu"},
         "background": "k",
         "defaults": {
             "color_mode": "by_sequence",

@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import contextlib
+import time
+
 from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -12,6 +15,11 @@ if TYPE_CHECKING:
 
 
 MessageCallback = Callable[[str], None]
+
+
+#: Shortest gap between progress repaints, in seconds. Fifteen a second reads
+#: as continuous; one per item spends the operation drawing itself.
+_PROGRESS_REDRAW_INTERVAL = 1.0 / 15.0
 
 
 class BaseCmd:
@@ -41,6 +49,80 @@ class BaseCmd:
     def command_names(self) -> list[str]:
         """Return every registered command name and alias (for completion/help)."""
         return self._registry.names()
+
+    @contextlib.contextmanager
+    def progress(self, title: str, *, message: str = "", cancellable: bool = False):
+        """Show the modal progress overlay for the duration of a block.
+
+        Every command slow enough to be noticed should go through this. The
+        viewport keeps drawing the previous scene while a command runs, so a
+        slow one is indistinguishable from a hang -- and the reasonable
+        response to a hang is to click again, which starts a second one.
+
+        Reached through the *viewer*, not through the window, so it works on
+        both hosts: the Qt plugin and the toolkit-free desktop window own
+        different windows but the same renderer.
+
+        Yields
+        ------
+        callable
+            ``report(fraction=None, message=None)``. Safe to call when there is
+            no chrome, which is the headless case.
+
+        Notes
+        -----
+        The overlay is torn down in a ``finally``. A command that raises
+        half-way must not leave a scrim over a viewport with nothing left to
+        wait for -- that is a hang with no way out, which is worse than the one
+        this exists to prevent.
+        """
+        overlay = self._progress_overlay()
+        if overlay is None:
+            yield lambda *_a, **_k: None
+            return
+
+        overlay.begin(title, message=message, cancellable=cancellable)
+        self._progress_redraw()
+        last = [0.0]
+        try:
+            def report(fraction=None, message=None):
+                overlay.update(fraction, message)
+                # Throttled: a frame is tens of milliseconds on a large scene,
+                # and a caller reporting per item would spend the operation
+                # drawing the thing that says how the operation is going.
+                now = time.monotonic()
+                if now - last[0] < _PROGRESS_REDRAW_INTERVAL:
+                    return
+                last[0] = now
+                self._progress_redraw()
+
+            yield report
+        finally:
+            overlay.end()
+            self._progress_redraw()
+
+    def _progress_overlay(self):
+        """The chrome's progress overlay, or ``None`` when there is no chrome."""
+        viewer = getattr(self.window, "viewer", None)
+        if viewer is None:
+            viewer = getattr(self.window, "_viewer", None)
+        gui = getattr(getattr(viewer, "_renderer", None), "_internal_gui", None)
+        return getattr(gui, "progress", None)
+
+    def _progress_redraw(self) -> None:
+        """Paint one frame now, so the overlay is actually seen."""
+        viewer = getattr(self.window, "viewer", None) or getattr(
+            self.window, "_viewer", None
+        )
+        renderer = getattr(viewer, "_renderer", None)
+        for name in ("draw_frame", "update"):
+            method = getattr(renderer, name, None)
+            if callable(method):
+                try:
+                    method()
+                except Exception:  # noqa: BLE001 - a frame is not worth the command
+                    pass
+                return
 
     def do(self, line: str) -> None:
         """Execute *line*, which may hold several ``;``-separated statements."""

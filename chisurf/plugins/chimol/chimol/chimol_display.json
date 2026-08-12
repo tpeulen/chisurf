@@ -1,7 +1,8 @@
 {
   "_version": 19,
   "renderer": {
-    "backend": "wgpu"
+    "backend": "wgpu",
+    "max_fps": 60
   },
   "background": "k",
   "defaults": {

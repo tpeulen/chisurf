@@ -195,7 +195,24 @@ class ExportMixin(BaseCmd):
         if viewer is None:
             return
         scene = getattr(viewer, "_scene", None)
-        objects = scene_mesh_objects(scene) if scene is not None else []
+        # Through the overlay: tessellating a mesoscale scene and writing it is
+        # seconds of work with nothing on screen to say so, which is the same
+        # "is it hung?" the loader had.
+        with self.progress(f"Exporting {path.name}") as report:
+            report(0.1, "collecting triangles")
+            objects = scene_mesh_objects(scene) if scene is not None else []
+            report(0.5, f"{sum(len(o['faces']) for o in objects):,} triangles")
+            self._write_scene_mesh(path, objects, report)
+        return
+
+    def _write_scene_mesh(self, path: Path, objects: list, report) -> None:
+        """Write *objects* in the format *path*'s extension names."""
+        from ..io.mesh_export import (  # noqa: PLC0415
+            write_glb,
+            write_stl,
+            write_wrl,
+        )
+
         if not objects:
             self._emit_error(
                 "save: the scene has no triangles to export -- load and show "
@@ -203,6 +220,7 @@ class ExportMixin(BaseCmd):
             )
             return
         suffix = path.suffix.lower()
+        report(0.6, f"writing {suffix.lstrip('.') or 'the model'}")
         try:
             if suffix in (".glb", ".gltf"):
                 count = write_glb(path, objects)
@@ -693,6 +711,76 @@ class ExportMixin(BaseCmd):
             window=window,
         )
 
+    def _render_ray_in_viewport(
+        self,
+        render_func: Callable[[], np.ndarray],
+        progress: np.ndarray,
+        cancel: np.ndarray,
+        total_rows: int,
+        out_path: Path,
+        width: int,
+        height: int,
+        viewer: object,
+        window: object | None,
+    ) -> None:
+        """Trace with the **in-viewport** progress overlay, not a Qt dialog.
+
+        This is the path taken when there is no Qt window: the toolkit-free
+        desktop host, and a browser. It used to run the trace *synchronously
+        with no progress at all* -- so `ray` on the native host froze the
+        viewport for as long as the render took, showing the previous frame and
+        saying nothing, which is indistinguishable from a hang.
+
+        The render runs on a worker thread while this one owns the frame: it
+        polls the counter the tracer writes, drives the chrome's overlay and
+        repaints. That is the right way round, because drawing must happen on
+        the thread that owns the surface.
+
+        Cancelling works by writing into the same shared array the tracer polls,
+        which is how the Qt path stops a render too.
+        """
+        import threading  # noqa: PLC0415
+
+        started = time.time()
+        result: dict[str, object] = {}
+
+        def _work() -> None:
+            try:
+                result["image"] = render_func()
+            except Exception as exc:  # noqa: BLE001 - reported on the main thread
+                result["error"] = exc
+
+        thread = threading.Thread(target=_work, name="chimol-ray", daemon=True)
+        overlay = self._progress_overlay()
+        with self.progress(
+            f"Ray tracing {width}x{height}",
+            message="starting the tracer",
+            cancellable=True,
+        ) as report:
+            thread.start()
+            while thread.is_alive():
+                thread.join(timeout=1.0 / 15.0)
+                done = int(progress[0]) if len(progress) else 0
+                fraction = (done / total_rows) if total_rows > 0 else None
+                report(fraction, f"{done:,} of {total_rows:,} rows")
+                if overlay is not None and overlay.cancelled:
+                    # The tracer polls this and returns early.
+                    cancel[0] = 1
+            thread.join()
+
+        error = result.get("error")
+        if error is not None:
+            self._emit_error(f"ray: {error}")
+            return
+        if overlay is not None and overlay.cancelled:
+            self._emit_message("ray: cancelled")
+            return
+        image = result.get("image")
+        if image is None:
+            self._emit_error("ray: render returned no image")
+            return
+        self._finish_ray(image, out_path, width, height, viewer, window, started)
+
     def _render_ray_async(
         self,
         render_func: Callable[[], np.ndarray],
@@ -729,15 +817,9 @@ class ExportMixin(BaseCmd):
 
         parent = window if isinstance(window, QtWidgets.QWidget) else None
         if parent is None:
-            # Headless / test context: run synchronously without a dialog.
-            started = time.time()
-            try:
-                image = render_func()
-            except Exception as exc:
-                self._emit_error(f"ray: {exc}")
-                return
-            self._finish_ray(
-                image, out_path, width, height, viewer, window, started
+            self._render_ray_in_viewport(
+                render_func, progress, cancel, total_rows,
+                out_path, width, height, viewer, window,
             )
             return
 

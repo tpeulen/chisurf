@@ -35352,3 +35352,28 @@
   `refresh_gui_state`, now 2.5 of the 2.6 ms, almost all of it re-deriving the
   per-residue colours every frame. Detail in
   [known-issues](references/known-issues.md).
+
+- **2026-08-12 — chimol: the native window's 15 fps was a *cap*, not a cost.**
+  tpeulen reported a hard 15 fps ceiling on the native GUI for **both** the
+  nuclear pore and a small protein -- and a rate that does not move with the
+  model is the shape of a cap. It was: `rendercanvas` defaults to
+  **`max_fps=30`**, and chimol constructed every canvas without saying
+  otherwise. With a 30 fps budget a frame that overshoots its 33 ms slot by any
+  margin waits for the next one, so the rate halves to exactly 15 and sits
+  there. Both hosts now pass `max_fps` (60 by default, `renderer.max_fps` in the
+  display config) and state `update_mode="ondemand"` explicitly. Verified in
+  rendercanvas' own source rather than by inference: `BaseRenderCanvas.__init__`
+  defaults it to 30 and hands it to the `Scheduler`.
+- **2026-08-12 — chimol: `ray` reports through the in-viewport overlay.**
+  tpeulen: *every* slow action should go through the progress window. `ray` was
+  the worst case -- it drove a **Qt dialog**, so on the toolkit-free host it took
+  the branch that renders *synchronously with no progress at all*: the viewport
+  froze on the previous frame and said nothing, which is indistinguishable from
+  a hang. It now traces on a worker thread while the main thread polls the row
+  counter the tracer already writes, drives the chrome overlay and repaints --
+  that way round because drawing must happen on the thread that owns the
+  surface. Cancel works through the same shared array the Qt path uses. Mesh
+  export reports too, being seconds of work on a mesoscale scene. A reusable
+  `BaseCmd.progress()` context manager reaches the overlay through the *viewer*
+  rather than the window, so it works on both hosts; anything else slow should
+  use it.

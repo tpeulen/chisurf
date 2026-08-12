@@ -53,6 +53,13 @@ __all__ = [
 #: strip.
 DEFAULT_WINDOW_SIZE = (1280, 860)
 
+#: Frame-rate ceiling for a window, when the configuration does not say.
+#:
+#: rendercanvas' own default is 30, which showed up as a hard 15 fps in the
+#: native window on every model -- large and small alike. A ceiling that a
+#: modest overshoot halves is a ceiling set too low.
+DEFAULT_MAX_FPS = 60.0
+
 #: Backends that put a real window on a real screen without a GUI toolkit, most
 #: preferred first. Only ``glfw`` today; it needs the ``glfw`` PyPI package,
 #: which is a small ctypes wrapper over a C library and pulls in nothing else.
@@ -143,6 +150,28 @@ _SHIFT_MAP = {
 }
 
 
+def _max_fps() -> float:
+    """The frame-rate ceiling for a window, from the display configuration.
+
+    Returns
+    -------
+    float
+        ``renderer.max_fps``, defaulting to 60. It is a *ceiling*, not a
+        target: the canvas draws on demand, so a still viewport costs nothing
+        whatever this says.
+    """
+    from ..config import _DISPLAY_CONFIG  # noqa: PLC0415
+
+    section = _DISPLAY_CONFIG.get("renderer")
+    if isinstance(section, dict):
+        try:
+            value = float(section.get("max_fps", DEFAULT_MAX_FPS))
+        except (TypeError, ValueError):
+            return DEFAULT_MAX_FPS
+        return value if value > 0 else DEFAULT_MAX_FPS
+    return DEFAULT_MAX_FPS
+
+
 class CanvasView(CanvasRenderer):
     """Draw a chimol scene into a ``rendercanvas`` window, with no toolkit.
 
@@ -194,7 +223,19 @@ class CanvasView(CanvasRenderer):
         self._parent = parent
         if canvas is None:
             module = canvas_module(backend)
-            canvas = module.RenderCanvas(size=size, title=title)
+            # `max_fps` and `update_mode` are given explicitly. rendercanvas
+            # defaults to **30 fps on demand**, and that default is why the
+            # native window sat at a hard 15 fps on every model -- the nuclear
+            # pore and a small protein alike, which is the shape of a *cap*
+            # rather than of rendering cost. With a 30 fps budget a frame that
+            # overshoots its 33 ms slot by any margin waits for the next one,
+            # so the rate halves to exactly 15 and stays there.
+            canvas = module.RenderCanvas(
+                size=size,
+                title=title,
+                max_fps=_max_fps(),
+                update_mode="ondemand",
+            )
             self._loop = getattr(module, "loop", None)
             #: Which backend drew this. Recorded rather than inferred from the
             #: loop: the offscreen canvas ships a *stub* loop that runs and

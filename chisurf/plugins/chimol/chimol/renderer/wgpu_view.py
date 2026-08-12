@@ -164,7 +164,13 @@ class WgpuRenderer(_make_widget_base(), CanvasRenderer):
     """
 
     def __init__(self, controller: object = None, parent: object = None) -> None:
-        super().__init__(parent=parent)
+        # Same ceiling as the toolkit-free window, and for the same reason:
+        # rendercanvas defaults to 30 fps on demand, which halves to 15 the
+        # moment a frame overshoots its slot. `QRenderWidget` takes the same
+        # keywords as every other rendercanvas backend.
+        from .canvas_view import _max_fps  # noqa: PLC0415
+
+        super().__init__(parent=parent, max_fps=_max_fps(), update_mode="ondemand")
 
         # Qt destroys an embedded widget without a closeEvent, so rendercanvas
         # keeps it registered as open; at aboutToQuit its loop probes the dead
