@@ -358,6 +358,10 @@ HELP_MENU: tuple[MenuEntry, ...] = (
     # off-screen, or saved at a size a bug produced -- is exactly the state in
     # which the user cannot find the thing they need.
     MenuEntry("Reset GUI", "window_reset"),
+    # The frame-rate readout and the chrome-size slider. In a menu because a
+    # mode you have to know the command for is a mode nobody finds -- and this
+    # is the one people want the moment they wonder why something feels slow.
+    MenuEntry("Debug Mode", "debug_mode"),
 )
 
 

@@ -553,6 +553,33 @@ def adopt_package_values(names) -> list[str]:
     return adopted
 
 
+def restore_package_defaults() -> list[str]:
+    """Put every display setting back to the value chimol ships with.
+
+    The counterpart of :func:`adopt_package_values`, which takes a *named* few.
+    This takes everything that differs, which is what "restore the defaults"
+    means to somebody who has changed settings for an hour and wants the tool
+    back -- and it is what `reinitialize` needs, since resetting the objects
+    while leaving the fog, the lighting, the chrome scale and the window layout
+    as they were is not a reinitialised viewer.
+
+    The live configuration is reloaded afterwards, so the change is visible
+    without a restart.
+
+    Returns
+    -------
+    list of str
+        The ``"section.key"`` names that were put back.
+    """
+    changed = list(diff_against_package())
+    if not changed:
+        return []
+    restored = adopt_package_values(changed)
+    if restored:
+        reload_display_config()
+    return restored
+
+
 def save_user_display_config() -> bool:
     """Write the live display configuration to the user's settings file.
 

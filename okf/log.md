@@ -1,6 +1,31 @@
 # Update Log
 
 ## 2026-08-12
+* **chimol: the default window needs no Qt** ([chimol-web](plugins/chimol-web.md)).
+  `python -m chisurf.plugins.chimol` now opens a **GLFW** window through
+  `rendercanvas`; `--qt` is the option. The whole draw path and every gesture
+  decision moved out of the Qt widget into `renderer/canvas_base.py`
+  (`CanvasRenderer`), which reaches its surface through `_surface()` — `self`
+  for the Qt widget, the held canvas for `renderer/canvas_view.py`'s
+  `CanvasView`. `wgpu_view.py` is now Qt event translation, the `QPainter`
+  overlay and `QRect`/`QImage` conversion, nothing else; there is one `_draw`.
+  New: `host/run.py` (`ChimolApp`, `run`, `main`, `--check` renders one frame
+  and exits), `host/app.py` (`ViewerHost` + `sync_panel`, which the browser page
+  now shares), toolkit-free `Rect`/`PointerEvent`/`KeyEvent` and the
+  rendercanvas button/modifier translation in `host/events.py`,
+  `renderer/gui_state.py` and `app/demo_catalog.py` (the halves of a painter and
+  a `QDialog` module that are plain data). `MolView` picks through
+  `_pick_surface()` (the renderer) instead of `self.view` (a `QWidget`), so
+  clicks select in a window that has no widget. `HOSTS` 14 → 9: `picking.py`
+  imported Qt for one `isinstance`, `menu_bar.py` only to install a `QMenuBar`,
+  `volume_panel.py` no longer at all, `hierarchy_panel.py`/`timeline_panel.py`
+  deleted. Two package `__init__` files that eagerly imported a widget —
+  `chisurf/plugins/chimol/__init__.py` and `chimol/app/__init__.py` — resolve it
+  lazily; the first is what `python -m` executes before `__main__`, so it alone
+  made the Qt-free default import Qt. Guarded by two new subprocess tests that
+  run the real dotted entry point with a Qt-blocking meta-path finder.
+  **Never use `rendercanvas.auto`**: its last fallback imports PyQt5 and picks
+  the Qt backend, so "automatic" means Qt on any machine that has it.
 * **chimol: polish round — window bounds, own colours, the eye, tooltips
   everywhere, and the hierarchy fix** ([pymol-parity](plugins/pymol-parity.md);
   seven user asks). (1) Windows stop **above the prompt/status band**
@@ -35286,3 +35311,20 @@
   were off, which is the default**. The convention in that class is an *empty*
   `Rect`, whose `contains` is simply False. The chrome parity guard failed on it
   immediately, which is exactly what it is for.
+
+- **2026-08-12 — chimol: `reinitialize` left behind exactly the state that is
+  hardest to undo by hand.** It unloaded the objects and reset the
+  representations, and stopped -- so the fog, the lighting preset, the
+  background, the chrome scale and wherever the windows had been dragged all
+  survived it. That is not a reinitialised viewer; it is an empty one with
+  somebody's session still on it. `reinitialize everything` now also restores
+  **every display setting that differs from the shipped configuration** (a new
+  `config.restore_package_defaults`, built from the existing
+  `diff_against_package` / `adopt_package_values` pair) and resets the window
+  layout, and it reports how many settings it put back. Checked by scrambling
+  eight settings across four sections and confirming all eight returned.
+  Also: **Help ▸ Debug Mode**, and a `debug [on|off]` command that toggles with
+  no argument. The developer instruments -- the frame-rate readout and the
+  chrome-size slider -- are hidden by default, and a mode whose only switch is
+  a command nobody knows is a mode nobody finds; this is the one people want the
+  moment they wonder why something feels slow. Persisted like any other setting.

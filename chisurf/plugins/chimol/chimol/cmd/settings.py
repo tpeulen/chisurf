@@ -156,6 +156,55 @@ class SettingsMixin(BaseCmd):
         gui.layout(gui._width, gui._height)
         viewer._update_view()
 
+    @command("debug_mode", aliases=("debug",))
+    def debug_mode(self, state: str = "") -> None:
+        """Show or hide the developer instruments (``debug [on|off]``).
+
+        The instruments are the frame-rate readout and the chrome-size slider,
+        bottom-right. They are hidden by default: a permanent number and a
+        permanent slider in the corner of a figure are chrome that earns its
+        space only while somebody is measuring.
+
+        With no argument this **toggles**, which is what a menu entry needs.
+
+        Parameters
+        ----------
+        state : str, optional
+            ``on``/``1``/``true`` or ``off``/``0``/``false``. Empty toggles.
+        """
+        from ..config import _DISPLAY_CONFIG, save_user_display_config  # noqa: PLC0415
+
+        layout = _DISPLAY_CONFIG.setdefault("layout", {})
+        current = bool(layout.get("debug", False))
+        text = str(state or "").strip().lower()
+        if not text:
+            wanted = not current
+        elif text in ("on", "1", "true", "yes"):
+            wanted = True
+        elif text in ("off", "0", "false", "no"):
+            wanted = False
+        else:
+            self._emit_error("Usage: debug [on|off]")
+            return
+
+        layout["debug"] = wanted
+        # Persisted, like every other setting: a mode that has to be switched
+        # on again every launch is one nobody leaves on while working.
+        try:
+            save_user_display_config()
+        except Exception:  # noqa: BLE001 - an unwritable settings dir
+            pass
+        _window, viewer = self._require_window_and_viewer()
+        if viewer is not None:
+            try:
+                viewer._update_view()
+            except Exception:  # noqa: BLE001
+                pass
+        self._emit_message(
+            "debug: developer instruments on (frame rate, chrome-size slider)"
+            if wanted else "debug: developer instruments off"
+        )
+
     @command("window_reset", aliases=("reset_windows",))
     def window_reset(self) -> None:
         """Put every in-viewport window back to its default place and size.

@@ -502,8 +502,10 @@ class LifecycleMixin(BaseCmd):
             self._named_selections.clear()
 
         self._reset_viewer_display(viewer)
+        restored = self._reset_chrome_and_settings(viewer) if what == "everything" else 0
         self._refresh_window_objects(window)
-        self._emit_message(f"Reinitialized {what}")
+        note = f"; {restored} setting(s) back to defaults" if restored else ""
+        self._emit_message(f"Reinitialized {what}{note}")
 
     @command("copy")
     def copy(self, target: str = "", source: str = "") -> None:
@@ -602,6 +604,41 @@ class LifecycleMixin(BaseCmd):
         except Exception:
             pass
         return new_id
+
+    def _reset_chrome_and_settings(self, viewer) -> int:
+        """Put the display settings and the chrome back to the shipped state.
+
+        ``reinitialize everything`` used to unload the objects and reset the
+        representations, and stop there -- so the fog, the lighting preset, the
+        background, the chrome size and wherever the windows had been dragged
+        all survived it. That is not a reinitialised viewer; it is an empty one
+        with somebody's session still on it, which is the confusing half,
+        because the state that is hardest to undo by hand is exactly the state
+        it left alone.
+
+        Returns
+        -------
+        int
+            How many settings were put back.
+        """
+        restored = 0
+        try:
+            from ..config import restore_package_defaults  # noqa: PLC0415
+
+            restored = len(restore_package_defaults())
+        except Exception:  # noqa: BLE001 - a reset must not fail half-way
+            pass
+
+        # The window layout is not a display *setting* -- it is saved
+        # separately -- so restoring the config does not touch it.
+        gui = getattr(getattr(viewer, "_renderer", None), "_internal_gui", None)
+        reset = getattr(gui, "reset_windows", None)
+        if callable(reset):
+            try:
+                reset()
+            except Exception:  # noqa: BLE001
+                pass
+        return restored
 
     def _reset_viewer_display(self, viewer) -> None:
         for method, value in (
