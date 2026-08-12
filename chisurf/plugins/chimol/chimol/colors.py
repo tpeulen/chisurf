@@ -543,15 +543,22 @@ def _build_sequence_gradient_colors(n_points: int) -> np.ndarray:
         _SEQUENCE_GRADIENT_CACHE.clear()
         _SEQUENCE_GRADIENT_CACHE[key] = hit
 
-    # A copy, always. Several callers recolour the result in place -- `spectrum`
-    # and the per-atom sort among them -- and handing out the cached array
-    # directly would let one object's recolouring reach every later caller.
-    # Sharing it read-only instead was tried and is worse: it converts that
-    # aliasing into "assignment destination is read-only" raised from deep
-    # inside a command, at a call site that has done nothing wrong.
+    # A copy, always. This costs about 1.3 ms of every frame on an integrative
+    # model -- the array is 234,184 x 4 float64, 7.5 MB, and the sequence strip
+    # asks for the colours on every frame -- and it is still the right answer.
     #
-    # The copy is one memcpy against building the ramp from scratch, which is a
-    # linspace, a broadcast multiply-add and a clip over every residue.
+    # Sharing it read-only was tried **twice**, and the second attempt is the
+    # informative one. By then `_recompute_colors_per_ca` had been fixed to take
+    # an explicit writable copy before applying overrides, so the one known
+    # mutator was gone. It still failed, and not narrowly: fifty tests in the
+    # object-menu suite alone, plus spectrum, the per-atom sort, colour-by-element
+    # and the camera-persistence suite. `_colors_per_ca` is written in place from
+    # many places, and the number of them is the point -- this is not a defensive
+    # copy against a hypothetical caller, it is a copy the code genuinely needs.
+    #
+    # Anyone tempted a third time: the saving is 1.3 ms; the failure mode is a
+    # command raising "assignment destination is read-only" from a call site
+    # that has done nothing wrong.
     return hit.copy()
 
 

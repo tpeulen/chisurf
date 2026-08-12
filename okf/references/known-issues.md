@@ -4493,3 +4493,31 @@ A selection larger than `InternalGui.SELECTION_HASH_MAX` (4096) deliberately
 never compares equal, so the frame rebuilds -- hashing 234,184 selected residues
 would cost more than the paint it saves, and rebuilding is exactly the behaviour
 that was there before.
+
+### Rejected twice — sharing the sequence gradient read-only
+
+The next 1.3 ms after the chrome cache is a single `ndarray.copy()`:
+`_build_sequence_gradient_colors` hands out a copy of its cached ramp, which on
+an integrative model is 234,184 x 4 float64 -- 7.5 MB -- copied on every frame,
+because the sequence strip re-reads the colours every frame.
+
+Sharing it read-only instead has now been tried **twice**, and the second
+attempt is the one worth recording. By then the one known mutator had been
+fixed: `_recompute_colors_per_ca` takes an explicit writable copy before
+applying per-residue overrides in place. It still failed, and not narrowly --
+**50 failures in the object-menu suite alone**, plus `spectrum`, the per-atom
+sort, colour-by-element and camera persistence.
+
+The conclusion is not "add another copy at the next mutator". It is that
+`_colors_per_ca` is written in place from *many* places, and the copy is not
+defensive against a hypothetical caller — it is a copy the code needs. Anyone
+tempted a third time: the saving is 1.3 ms, and the failure mode is a command
+raising *"assignment destination is read-only"* from a call site that has done
+nothing wrong.
+
+The real fix, if this 2.5 ms is ever worth attacking, is upstream of the copy:
+`refresh_gui_state` calls `get_residue_colors` on every frame purely to notice
+that the colours changed, and the colours change only when a command changes
+them. A change signal on the viewer would remove the call, the copy and the
+signature together. That is a larger change than it sounds, because there is no
+one place a colour changes -- which is exactly why the per-frame re-read exists.
