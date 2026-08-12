@@ -34959,3 +34959,156 @@
   documents which of chimol's differ from the reference's and why), and
   `test/widget_gallery.py` renders one sheet per family for reading by eye.
   Concept: [chimol-viewport-ui](plugins/chimol-viewport-ui.md).
+
+- **2026-08-12 — chimol: windows stick to each other, the viewport menus open real file dialogs, and the tests stop reading the user's live preferences.**
+  Three fronts closed in one round, all in the viewport chrome. (1) **Windows
+  are sticky to each other**, not only to the viewport edges: a title-drag
+  within `WINDOW_STICK` (8 px) of another window's edge snaps flush and
+  aligns the near-perpendicular coordinate; stuck-ness is *geometric* — read
+  off the frames at the moment a drag starts (`_frames_touch` /
+  `_stuck_group`, a BFS over transitive touching) — so nothing is linked or
+  unlinked explicitly, the whole group rides along at fixed offsets, and a
+  **shift-drag takes the window alone**, which is how a pair is pulled apart.
+  Partners are hinted with the accent border while dragging
+  (`_snap_hint_keys`). QA'd by screenshot: flush 0.0 px, alignment 0.0 px,
+  offsets preserved through a group move. (2) The **viewport menu bar honours
+  `MenuEntry.file_prompt`**: `Save Molecule As…`/`Save Image As…`/Export
+  entries used to feed a `{text}` placeholder into the command line — the Qt
+  bar had the dialogs, but it is hidden, so the user never saw one. New
+  `InternalGui.on_file_prompt` hook; the app opens the QFileDialog and runs
+  the filled command; unset (the browser) it falls back to the CLI
+  placeholder. (3) **Test isolation, proven necessary in the wild**: the
+  user's live app session wrote `~/.chisurf/chimol_windows.json` with the
+  density window *closed*, and seven density-window tests promptly failed —
+  app-level fixtures enable persistence and were reading (and would rewrite)
+  real preferences. `chimol/test/conftest.py` now pins every chimol test to a
+  throwaway `CHISURF_SETTINGS_DIR`. Also: the hierarchy `on_change` carries
+  `(rows, object_id)` — the fixture's one-arg callback was swallowing a
+  TypeError inside the apply `except`, i.e. the guard test for the
+  disable-bug fix was green-by-accident until the battery ran it; the density
+  footer hint no longer clips ("click adds" ran under the frame edge) and
+  drops the `·` separators the chrome atlas cannot draw; the menubar
+  open-index test derives Display's index instead of hardcoding the
+  pre-Build-menu `2`. Tracker: [pymol-parity](plugins/pymol-parity.md).
+
+- **2026-08-12 — chimol: Qt becomes an option, and four defects the toolkit was
+  hiding.** User asks: *"make it possible to run chimol without qt … the default
+  (running of module) should work without qt"*, *"chimol uses no Qt except the
+  embedding window"*, plus reports of a dead `demo`, a dead wheel, a dead info
+  scrollbar and *"weird spaces … violate compactness"*.
+  **Availability is not choice.** `host/widget.py` picked `MolView`'s base from
+  whether Qt *imported*, and chimol ships inside a PyQt application where it
+  always does — so the toolkit-free host still built a `QWidget`, with no
+  `QApplication`, and `python -m chisurf.plugins.chimol.chimol` died on
+  `SIGABRT` before a frame. Split into `QT_AVAILABLE` (importable) and `HAS_QT`
+  (to be used), gated by `CHIMOL_TOOLKIT` = `auto`|`none`|`qt`. It must be an
+  environment variable: `class MolView(WidgetBase)` binds its base at
+  class-definition time, so anything settable later is settable too late.
+  Module start is **glfw only** — no silent offscreen fallback, because a frame
+  rendered into a buffer nobody can see is indistinguishable from a window that
+  opened and closed. `glfw` (MIT) is declared in `pixi.toml`/`pyproject.toml`.
+  **Licensing, measured rather than assumed:** glfw MIT, wgpu-py BSD-2,
+  rendercanvas BSD-2, PyQt5 **GPL-3**. The permissive stack is the one already
+  built; moving to moderngl/PyOpenGL buys no licence benefit over wgpu's BSD-2
+  and would cost the shared WGSL and the browser path.
+  **Settings never persisted standalone.** `config.py` and `window_state.py`
+  both resolved the settings directory through ChiSurf and returned `None`
+  otherwise — and `None` means *do not persist*, so a standalone run silently
+  forgot every setting and every window position. New `chimol/settings_dir.py`
+  always answers a real path: `$CHIMOL_SETTINGS_DIR`, else `~/.chisurf`, else
+  **`~/.chimol`** (hidden). Autosave was already wired to drags and resizes but
+  `enable_persistence()` was only called by the Qt window; the Qt-free host now
+  calls it too.
+  **`demo` was refused by every host but Qt.** The command asks the *host* for
+  `run_demo` and said "this host cannot run demo scripts"; only the Qt window
+  had it, so the native host and the browser listed every demo and ran none.
+  Nothing in it needs a toolkit (`demo_catalog` is Qt-free; the `QDialog` lives
+  in `app/demos.py`, which re-exports from it), so `run_demo` + `run_script_text`
+  moved to the shared `ViewerHost`.
+  **The wheel never reached the info panel.** `scroll_info` was only called from
+  inside `scroll_menu`, which only runs when a menu is open — so `help` output
+  was scrollable *only while a menu happened to be open*, and every other notch
+  fell through and zoomed the molecule behind the text. Routed directly in
+  `canvas_base`, and the panel now **keeps** the notch at either end of its
+  travel: reading "did not move" as "not mine" is what made scrolling past the
+  last line start moving the camera. **Escape** now closes the panel, layered
+  menu → prompt → info, and resets the scroll.
+  **Compactness:** the panel drew its lines at `CMD_ROW_H`, the *prompt's* row
+  height — sized for one editable line with a caret, 1.8x the font — so a
+  hundred-line listing read as a page of gaps. Its own `INFO_ROW_H` gives
+  **27 visible rows where 20 fit**, matching the density of every other listing.
+  Guards: `test_wheel_routing.py` (12 checks, run in a child process because
+  `CHIMOL_TOOLKIT` can only be set once per process — setting it inline cost
+  four failures in `test_headless_scene.py`) and the mouse-window width test in
+  `test_viewport_windows.py`. Concept:
+  [chimol-viewport-ui](plugins/chimol-viewport-ui.md).
+
+- **2026-08-12 — chimol: the performance objective gets a baseline and a PRD.**
+  tpeulen named **YASARA** as the bar chimol has to match, with a *gigastructure*
+  as the test case, and asked for **pet molecule** support and for gigastructures
+  to be **assembled in chimol through IMP** rather than only imported. Written up
+  as [PRD-102](prds/prd-102.md); nothing built yet.
+  The numbers, taken from YASARA's own pages rather than paraphrased: a
+  presynaptic bouton of **3.6 billion atoms**, visualised **interactively on one
+  GeForce RTX 2080** in over 4 GB of VRAM, reached by two *independent*
+  compressions whose factors are quoted separately — coarse-graining **~50x** and
+  GPU instancing **40-1000x**. The design consequence is the reason to write it
+  down: neither alone gets there, since 50x off 3.6e9 is still 72 million, so a
+  plan that adopts one and defers the other misses by exactly the factor it
+  deferred. Instancing goes first — larger factor, and independent of the
+  representation.
+  Two traps recorded now because both are cheap to hit later. A **pet world** is
+  a *model-building* representation: YASARA states plainly that pet-world
+  simulation is **not** a faster replacement for all-atom dynamics, and chimol has
+  to carry that where a user meets it. And pet coordinates live at **1/10 scale**,
+  which is a second factor of ten waiting to multiply with the scene's existing
+  `scale_factor` of 10 — the same double-scaling that already produced a
+  radius of gyration ten times too large this week.
+  First action is **measurement, not code**: the repo records no NPC baseline
+  (load time, frame time, peak VRAM), and every figure above is a ratio against
+  it. Concept: [chimol-viewport-ui](plugins/chimol-viewport-ui.md).
+
+- **2026-08-12 — chimol: the NPC demo loads 12x faster, and the profile named
+  causes nobody had guessed.** 113.2 s to **9.3 s** on an Apple M1 Pro (offscreen
+  WebGPU/Metal, 234,184 beads). The standing known-issue listed three suspects
+  and told the next person to *measure before changing anything*; measurement
+  cleared all three and found others, which is the entry earning its keep.
+  Three fixes, each verified equivalent rather than assumed:
+  `get_atom_sphere_data` was **quadratic** (a full `np.where` scan of the residue
+  array per atom — 5.5e10 comparisons, 88.7 s of self time), replaced by a
+  *stable* argsort plus searchsorted, the stability being what preserves the
+  loop's "first match" (380 randomised trials, incl. duplicate/absent/string ids);
+  **ambient occlusion recomputed on a pure colour change** (4.7 s — it is a
+  function of geometry alone), memoised on a coordinate hash and handed out
+  read-only so no caller can poison a later hit; and **beads built one row at a
+  time** (2.7 s) when the vectorised builder already existed for the RMF reader
+  (200 trials, all twelve `ATOM_DTYPE` fields).
+  Each was a per-item Python loop that was unremarkable at a few thousand atoms
+  and became the entire runtime at a few hundred thousand — which is the failure
+  mode to expect everywhere else on the road to [PRD-102](prds/prd-102.md).
+  Fixed in passing, because it blocked the measurement: `_show_disabled_label`
+  built a `QLabel(self)` unconditionally, so on the Qt-free host constructing
+  `MolView` raised `TypeError` from `__init__` — the viewer could not be built at
+  all on the one host that most needs the "there is no renderer" branch. 440
+  chimol tests pass. Concept: [chimol-viewport-ui](plugins/chimol-viewport-ui.md);
+  detail in [known-issues](references/known-issues.md).
+
+- **2026-08-12 — PRD-102: the Martini assessment, and it changed the plan twice.**
+  Two findings worth the round trip. **Martini cannot be the pet-molecule layer**:
+  there is no coarser-than-4:1 Martini (Dry Martini and GōMartini keep the
+  mapping; the S and T classes go *finer*), and measured against real published
+  systems it compresses 9–11 heavy atoms per bead against YASARA's ~50 — about
+  **5x weaker**, with no configuration closing the gap. The Marrink lab's own
+  route above Martini resolution leaves particles entirely for a triangulated
+  continuum surface backmapped by TS2CG, so the ecosystem's answer above Martini
+  is a *mesh*, not a smaller bead. That argues for the two-level design the
+  instancing section was already reaching toward.
+  And **the assembly tool the user remembered exists**: bentopy, which packs
+  cellular scenes and emits a `placements.json` — an instance list, which is
+  exactly what the renderer's instancing needs, so adopting it yields the packer
+  and the hierarchy in one move. Do not write a packer.
+  Martini 3 parameters are Apache-2.0 on GitHub and **unlicensed on
+  cgmartini.nl**; vendor from the grant. Defects found in imp-tricks' in-tree
+  Martini table are in [known-issues](references/known-issues.md) — as written it
+  is a different force field wearing Martini's name, so a model here is a
+  simulation candidate only through an exported GROMACS topology.

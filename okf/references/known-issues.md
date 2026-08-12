@@ -3825,3 +3825,450 @@ package is deliberately not called `platform`.
 
 The suites run when the path is clean. Find what inserted it before trusting a
 green *or* a red run — a collection error here says nothing about the tests.
+
+## chimol: C > "by element" sets an object-wide colour *mode*, so it paints the whole molecule and not the selection
+
+**Found 2026-08-11, reported by tpeulen:** "the coloring menu color by atom of
+selection just colors the entire protein by residue color not by atom". Two
+defects in one menu entry, and a missing menu.
+
+**1 — the selection is ignored.** `object_menus.py:537` issues
+`color byelement, {sele}`. In `cmd/rendering.py`, `color()` normalises
+`byelement` to the mode `by_element` (`_normalize_color_mode`, l. 1601) and
+hands it to `_apply_color_mode` (l. 1612), which is explicit about what it then
+does — l. 1626: *"The colour mode is a property of an object, not of individual
+atoms, so a selection here picks which objects it is set on"*. So the selection
+is resolved only far enough to name the objects it touches; every atom of each
+of those objects is repainted. Selecting one residue and colouring by element
+recolours the whole protein. Worse, `_apply_color_mode` calls
+`clear_color_overrides()` first, so it also **discards** whatever per-atom
+colours were already there.
+
+The correct path already exists in the same package and is unused by the menu:
+`cmd/presets.py:252` `_color_by_element(sel, carbon=None)` writes per-atom
+overrides through `viewer.set_atom_color_override` and its docstring gives the
+reason — *"because a mode belongs to a whole object and this has to reach a
+subset"*. The presets (`preset simple`, `ligands`, …) get this right; the C
+menu does not.
+
+**2 — "by residue colour, not by atom" is the cartoon path.** For a molecule
+shown as cartoon the mode is consumed at `renderer/view.py:9287`, which builds
+`_colors_per_ca` from the **CA atoms' elements** — every CA is carbon, so the
+by-element mode has nothing to vary over and the ribbon does not turn CPK. What
+the user sees instead is the previous per-residue colouring, unchanged.
+
+**3 — the CNOS menu is missing.** PyMOL's C > "by element" is not one entry, it
+is 49 (`junk/pymol-open-source/modules/pymol/menu.py:404`, `by_elem`):
+
+- the first entry, `util.cnc(sele)` — the **CNOS** case the user asked for:
+  colour H/N/O/S by element and **leave carbon alone**;
+- 8 x `util.cba(<carbon_colour>, sele)` — colour by atom with a chosen carbon
+  (tv_green, cyan, lightmagenta, yellow, salmon, grey90, slate, orange);
+- submenus "set 2" … "set 5" (8 more carbon colours each, `by_elem2`–`by_elem5`)
+  and "set 6/H" (`util.cbh`, 8 hydrogen colours).
+
+chimol's `COLOR_MENU` has a single child, `by element`. `_color_by_element`
+already takes the `carbon` argument these 40 entries need, so the menu data is
+the gap, not the machinery.
+
+**Where a fix goes:** make `COLOR_MENU`'s by-element children call the per-atom
+path (a `cnc` / `cba` command, or `util.cnc`-equivalents) instead of
+`color byelement`, and leave `color by_element` as the object-wide mode it
+documents itself to be. Do not "fix" it by teaching `_apply_color_mode` to mask
+atoms — the mode genuinely is per object, and `by_residue`/`by_ss`/`by_chain`
+share that path.
+
+**Not verified in a running viewer.** Read from the source; no screenshot taken.
+The cartoon claim in (2) in particular should be confirmed against a rendered
+frame before it is treated as settled.
+
+## chimol: the mutagenesis wizard leaves a second sequence row behind
+
+**Found 2026-08-11, reported by tpeulen with a screenshot.** After a mutation
+the Sequence strip shows two rows — `1f5n` and a second row labelled
+`mutation` — while the object panel on the right lists only `all`, `1f5n`,
+`sele`. The extra row persists after the wizard has finished.
+
+`mutation` is a real object by design: `cmd/interactions.py:621`
+`_wizard_show_states` creates it (PyMOL's `do_library` does the same, one state
+per rotamer) and `PREVIEW_OBJECT = "mutation"`. The sequence view builds one row
+per entry in `_object_store` (`app/molview_main_window.py:1178`), so while the
+preview exists a `mutation` row is expected.
+
+**The leading hypothesis is refresh ordering in `_wizard_finish`**
+(`interactions.py:838`), which runs:
+
+1. `_wizard_commit` → `_apply_mutation`, and *that* is what refreshes the UI —
+   `interactions.py:396` calls `_refresh_objects_from_viewer`,
+   `_update_sequence_view`, `sync_internal_gui`. The `mutation` object is
+   **still present** at this point, so the sequence view is rebuilt *with* its
+   row;
+2. `_wizard_delete_preview` (l. 805) → `viewer.remove_object(preview)`;
+3. `viewer._update_view()` — a 3D redraw only.
+
+Nothing re-runs `_update_sequence_view` after step 2, so the row outlives the
+object. The same hole is in `_wizard_show_states`, which refreshes the object
+list when the preview appears but never the sequence view.
+
+**What does not fit, and should be checked first.** If both refreshers ran at
+step 1 the *object panel* should be equally stale, and the screenshot shows it
+clean — so either something else re-lists objects afterwards, or
+`remove_object` reaches the panel by a route the sequence view does not.
+Establish which before writing a fix.
+
+**Also worth confirming:** the `mutation` row in the screenshot appears to span
+the full 479–555 axis, but the preview carries a *single* residue — every atom
+row is stamped with the source residue's `res_id`/`chain`
+(`interactions.py:640`). Under `build_residue_alignment` that should render as
+one letter in a row of gaps. If the row really is full-length, there is a
+second defect in how a one-residue object is aligned, independent of the
+staleness above.
+
+## RESOLVED 2026-08-11 — chimol: the viewport's "Selecting Residues" line was decorative, and only the residue level existed
+
+**Found 2026-08-11, user-reported** ("missing feature selection of CA, atoms,
+currently only residues work"). PyMOL's mouse block carries a selection *level*
+— Atoms / Residues / Chains / Segments / Objects / Molecules — and clicking the
+word cycles it. chimol paints the line and stops there:
+
+* `renderer/internal_gui.py:398` `self.selecting = "Residues"`, painted at
+  `:1835` and **never assigned again**;
+* `renderer/view.py:2461` `self.selection_mode: str = "Residues"`, which has no
+  other reader or writer in the tree.
+
+So the level is a constant, there is nothing to cycle it with, and no code
+consults it when a click lands.
+
+**The blocker is the selection model, not the click.** The pick is already
+atom-precise: `handle_mouse_click` (`view.py:4609`) resolves
+`picked_atom_idx` and emits `atomSelectionChanged([idx])`. It then throws that
+precision away — it maps the atom to its residue index and calls
+`_apply_selection_indices`, whose entire state is `self._selected_residues`, a
+list of **residue** indices (`:4734-4808`). Everything downstream is indexed the
+same way: `residueSelectionChanged`, `objectResidueSelectionChanged`,
+`refresh_selection_highlight`, the sequence strip, and the `sele` object.
+
+That splits the work in two, and they are not the same size:
+
+* **Chains / Objects / Molecules are cheap** — they are still sets of residues,
+  so the click expands the picked atom to its chain's or object's residue
+  indices before `_apply_selection_indices`. No model change.
+* **Atoms (and "CA only") need an atom-indexed selection set**, because a
+  residue-index list cannot express "one atom of this residue". That reaches
+  the highlight renderer, the `sele` object and the sequence strip, all of which
+  currently assume whole residues.
+
+Do the cheap half first only if the split is stated; shipping Chains and
+Objects while Atoms silently still selects the whole residue would make the
+line *more* misleading than a constant, not less.
+
+## RESOLVED 2026-08-11 — chimol: no mouse-driven measurement; PyMOL's Measurement wizard was missing
+
+**Found 2026-08-11, user-requested** ("add measurement feat, like in pymol, meas
+distance with mouse and clicking").
+
+Both halves already exist and are simply not joined:
+
+* the **measurements** — `cmd/measurements.py` has `distance`/`dist` (`:156`),
+  `angle` (`:828`) and the dihedral, all drawing into `viewer._measurements`,
+  which the scene already renders;
+* the **wizard framework** — `cmd/interactions.py` runs the mutagenesis wizard
+  with a viewport panel, prompt, per-step rows and a Done/Apply lifecycle
+  (`_wizard_finish`, `_wizard_refresh`, `_wizard_gui`), and `menu_bar.py:175`
+  lists wizards;
+* the **atom-precise pick** — `handle_mouse_click` already resolves
+  `picked_atom_idx` before discarding it for the residue (see the entry above),
+  which is exactly the input a measurement needs and the reason this does *not*
+  depend on the selection-level work.
+
+What is missing is a `wizard measurement` that collects picked atoms and, at
+two/three/four picks, calls the existing command. PyMOL's modes are the spec:
+distance, angle, dihedral, plus its "no wizard" reset.
+
+**Watch for:** the picked index is into `_all_atom_coords`, whereas the
+measurement commands take *selections* — a pick has to be turned into an atom
+expression (object, chain, resi, name) or the measurement API given an
+index-taking entry point. Choose one deliberately; going through a selection
+string round-trips through the parser on every click.
+
+## RESOLVED 2026-08-11 — chimol: `distance` reported scene units and drew its dashes in the wrong place
+
+**Found while building the measurement wizard, which depends on this code.**
+Two mirror-image defects in `cmd/measurements.py`, both from the same cause:
+`_resolve_selection_to_atom` returns **scene** coordinates —
+`(xyz - raw_center) * _scale_factor`, and `_scale_factor` is **10**.
+
+* the **value** was the scene length: measured against 148L's own file,
+  `distance resi 1 and name CA, resi 21 and name CA` reported **258.450** for a
+  **25.845 Å** pair. `rms`/`align` already carried the same correction
+  (`measurements.py:1100-1105`), which is why the fault was confined to
+  `distance`/`angle`/`dihedral`;
+* the **positions** were double-transformed: `MolView._update_measurements`
+  transforms whatever it is given into scene space unless
+  `transform_to_scene` is false, so a scene coordinate stored as a measurement
+  position is scaled and centred a second time. Its bbox came out at ±200 for a
+  molecule spanning −11…68.
+
+The *set* paths (`dist ... mode=2` and the rest) were **already right** —
+they work from `atoms["xyz"]` — so the two halves of the same command disagreed
+with each other, which is what made this hard to see: polar contacts drew
+correctly and a two-atom measurement did not.
+
+**Fixed** by `_scene_point_to_world`, applied in `distance`, `angle` and
+`dihedral`. Guardrail: `test_measure_suite.py::test_two_atom_distance_is_in_angstrom`,
+which checks against coordinates parsed from the PDB rather than against another
+part of the same code — the one measurement here with a reference value.
+
+## RESOLVED 2026-08-11 — chimol: a residue id is not unique across chains, and the selection matched on it alone
+
+**Found while adding the `Atoms` selection level, which made it visible.**
+`_selection_atom_positions` and the pick-to-residue lookup in
+`handle_mouse_click` both matched atoms to residues on `res_id`. Residue ids
+restart per chain, so on 1RTD (eight chains, each numbering from 1):
+
+* selecting **one residue** marked **104 atoms** instead of 19 — every chain's
+  copy of that number;
+* one picked **atom** mapped back to **eight residues**;
+* `handle_mouse_click` took `matches[0]`, i.e. the *first* chain's copy, so
+  clicking a residue in chain E could select chain A's.
+
+The missing half of the key was already in the tree: `_residue_chain_ids` is
+built alongside `_residue_ids` at load and was unused here.
+
+**Fixed** by `MolView._atom_residue_indices`, which keys on (chain, residue id)
+and returns a per-atom index into the residue table, with `-1` for an atom whose
+residue is not in it (a ligand where the trace is protein-only) rather than
+silently borrowing a neighbour's. Every count in
+`test_selection_levels.py` is cross-checked against the atom table, and the
+fixture is deliberately **1RTD, not 148L**: a single-chain structure cannot tell
+a chain-aware lookup from an id-only one, which is how this survived.
+
+## RESOLVED 2026-08-11 — chimol: five reports on the viewport's own chrome
+
+All five are the same shape of fault, which is why they are recorded together:
+**a value that was configured, loaded or drawn, and read by nothing.**
+
+* **The in-viewport prompt had a black backdrop** (`CMD_BG = (0, 0, 0, 190)`),
+  which is invisible on the default black background — the prompt read as text
+  lying on the molecule — and needlessly heavy on a white one. Now the same
+  semi-transparent grey as the system-info panel, which darkens white and
+  lightens black.
+* **3-D labels were drawn at a hard-coded 10 points** while `label.size` sat in
+  the display config at **14**, read by nothing: the setting was documented,
+  stored, and could not change anything. `paint_labels` now takes the size,
+  `WgpuRenderer._label_size` supplies it, `label_size` / `label_color` are
+  registered settings, and the default moved to **16** (migration 17) because
+  14 was never what anyone saw and 10 was reported as too small.
+* **A measurement whose segment produced no dashes still drew its number** — a
+  value floating over the molecule attached to nothing, indistinguishable from a
+  label that has come adrift. `_dash_segments` returns nothing for a zero-length
+  segment; the label is now suppressed with it.
+* **A measurement's first pick drew nothing at all**, so a mis-aim and a
+  mis-click looked identical. Picked atoms now carry the selection marker via
+  `MolView.set_pick_markers` — deliberately *not* the selection: they never
+  reach `sele` and they clear when the group becomes a measurement.
+* **The sequence strip ran every chain into one row** named after the object.
+  Residue numbers restart per chain, so the same number appeared several times
+  with nothing to say which chain it belonged to. Now one row per chain,
+  labelled in PyMOL's slash syntax (`1f5n/A`), each carrying
+  `residue_indices` — the map back to the object's residue indices.
+
+**The trap in the last one**, and the reason it needed care: a per-chain row's
+columns are **not** the object's residue indices, and everything the strip talks
+to speaks the object's. Without the map, clicking chain B's third residue
+selects the object's third, which is chain A's — silently. Rows are also matched
+by `object_id` now rather than by label, because the label carries the chain.
+Pinned by `test_sequence_chains_and_labels.py`, which checks the rows *partition*
+the object exactly and round-trips a selection through a later chain.
+
+### Not reproduced: "the measurement label jumps around when I change the view"
+
+Reported with a screenshot showing the number far from its dashes. **In the
+current tree the label sits exactly on the segment midpoint and tracks the
+camera** — `project_to_screen` agrees with the backend's own MVP to the last
+decimal at four rotations, checked against `perspective`/`view_matrix` rebuilt
+from `_scene_viewport`.
+
+The likely cause is the double-transform fixed the same day (see the entry
+above): `distance` stored **scene** coordinates and `_update_measurements`
+transformed them into scene space a second time, which puts a measurement's
+whole drawing somewhere else and moves it at a different rate from the molecule
+as the camera turns. If it recurs after a restart, the thing to capture is
+whether the *dashes* are also displaced or only the number — they are built from
+one array, so a genuine split between them would mean something new.
+
+## RESOLVED 2026-08-11 — chimol: the system-info panel covered the in-viewport prompt
+
+**Reported with a screenshot** showing `(no system loaded)` sitting over the
+`ChiMOL>` line. Both are anchored bottom-left of the same corner, and only one
+of them is a Qt widget: the panel is a `QPlainTextEdit` stacked on the surface,
+while the prompt and its feedback are painted **into** the surface by the chrome
+painter. Qt therefore knows nothing about the prompt, and the panel — laid out
+with `full_height` and `AlignBottom` — ran straight over it. It became obvious
+only once the panel gained a backdrop the same day; before that the two sets of
+text simply overprinted on black.
+
+**Fixed** by giving the container grid a second row whose only job is to be
+empty: the renderer spans both (it draws the whole surface, prompt included) and
+the panel spans the first. Its height is `InternalGui.command_area_height()`.
+
+**That method returns the maximum, not the current height**, and the reason is
+the point: the log grows and shrinks as commands run, so a panel laid out around
+the *current* height would overlap for as long as it took a printed line to
+trigger the next relayout — a bug that appears only after output, which is
+exactly when nobody is looking at the panel. `visible_log` is capped at
+`feedback`, so the ceiling is a constant and reserving it needs no upkeep.
+
+**The guard is in two halves** (`test_sequence_chains_and_labels.py`), because
+the two rectangles are laid out by different code at different moments and
+comparing them directly measures whichever ran last as often as it measures the
+bug: one half asserts the reserve is at least what the prompt uses, the other
+that the panel stays out of the reserve.
+
+## RESOLVED 2026-08-11 — chimol: the system-info panel was a Qt widget, and is now chrome
+
+The overlap fixed earlier the same day was a symptom. The panel was a
+`QPlainTextEdit` stacked on the surface while every other thing in the viewport
+-- the object list, the sequence strip, the mouse-mode block, the prompt -- is
+drawn *into* the surface by `InternalGui` through the six-operation
+`Painter` interface and rasterised as GPU quads. A Qt widget cannot see chrome
+painted into the surface, which is why it sat on top of the prompt, and the
+first fix was a spacer row in the container's grid **guessing** how tall the
+prompt would get.
+
+**The panel is now `InternalGui`'s** (`layout_info`, `_paint_info`,
+`INFO_BG`/`INFO_FG`/`INFO_EDGE`, `_wrap_lines`). Consequences worth having:
+
+* one object lays out the strip, the panel and the prompt, so "above the
+  prompt" is arithmetic rather than a guess -- there is nothing left to keep in
+  sync, and the container's layout is a single widget again;
+* it draws on the **GPU path** with the rest of the chrome, so it costs quads
+  rather than a stacked widget's compositing, and it will follow the chrome
+  into a browser, where a `QPlainTextEdit` could never have gone;
+* the text is **wrapped by character count** -- the chrome's font is monospace
+  -- which the widget used to do for free. A file path has no spaces to break
+  at, so a long run is cut rather than allowed to run off the panel;
+* a viewport too short for one line **drops the panel** rather than drawing it
+  over the strip or the prompt. Keeping its height and overlapping is precisely
+  what the widget did.
+
+`set_system_info_text` / `set_system_info_visible` now only store and request a
+repaint; the text and palette are *pulled* by `refresh_gui_state` at paint time,
+as the sequence colours and the frame position already were. `info_overlay`'s
+settings are unchanged and still honoured -- `MolView.info_overlay_colors`
+converts them for the chrome, and `max_width` / `min_width` / `full_height` are
+now the panel's own `INFO_MAX_CHARS` / `INFO_MIN_CHARS` and content height.
+
+## chimol: density maps are slow, and the NPC load has regressed (2026-08-11)
+
+Two performance reports, filed rather than fixed at the user's direction —
+*"just note as issues and continue with migration"*. Neither is measured yet;
+what follows is the starting point so the next session does not begin at zero.
+
+### Density maps are slow
+
+The instruction is explicit: **learn from ChimeraX how it does this.** That is
+the right reference — ChimeraX's volume viewer is interactive on maps chimol
+struggles with, and the techniques are documented rather than folklore. What to
+look for, in the order they usually matter:
+
+* **Multi-resolution / step.** ChimeraX draws a map at a *step* (2, 4, …) and
+  re-contours at full resolution only when asked. chimol has
+  `stride_for_limit()` for the point cloud but the **isosurface contours the
+  full grid every time** — a 180³ map is 5.8 M cells per level per rebuild.
+* **Region cropping.** ChimeraX contours a sub-box, not the whole map.
+* **Caching the surface per (level, step)** so re-showing a level is free —
+  chimol re-runs marching cubes.
+* Its `Volume`/`GridData` split is worth reading directly: the data source, the
+  region, and the rendering settings are three separate objects, which is what
+  makes "re-contour at a different step" cheap to express.
+
+The contour **drag** is already fixed (0 rebuilds while dragging, 1 on release,
+see PRD-101 req. 2); this is about the rebuilds themselves.
+
+### The NPC takes forever to load — a regression
+
+Reported as a regression, so the suspects are recent work, and the most likely
+are **mine, from 2026-08-11**:
+
+1. **Per-chain sequence rows.** `_sequence_rows_for_object` splits the strip by
+   chain in Python, walking every residue and building per-row lists. The NPC
+   is an integrative model with a very large number of chains, so this went
+   from one row to hundreds, each with its own list comprehension over residues
+   — and it runs inside `sync_internal_gui`, which is called often.
+2. **`MolView._atom_residue_indices`.** Added for the cross-chain fix. It is
+   O(n log n) over *every atom* and is recomputed on **every call** —
+   selection markers, every pick, every highlight refresh. On a bead model with
+   hundreds of thousands of particles that is a per-click cost that did not
+   exist before. It should be cached per object and invalidated on structure
+   change; the state fields are already the place for it.
+3. Less likely but cheap to rule out: the measurement rows now walk
+   `viewer._measurements` on every `sync_internal_gui`.
+
+**Measure before changing anything** — time a load of the `npc_integrative`
+demo against the commit before 2026-08-11, and profile `sync_internal_gui`
+separately from the structure read. The demo exists precisely so this is one
+command.
+
+### Resolved 2026-08-12 — and none of the three suspects above was the cause
+
+Measured, as the entry above insisted. The `npc_integrative` demo took
+**113.2 s** end to end on an Apple M1 Pro (offscreen WebGPU/Metal, 234,184
+beads). It now takes **9.3 s** — **12.1x** — and the three suspects listed above
+were not involved. They may still be worth fixing on their own merits; they were
+not what made the demo slow. This is the entry's own advice paying off, and the
+reason to leave the wrong guesses in place above rather than quietly deleting
+them.
+
+What it actually was, in order of size:
+
+1. **`MolView.get_atom_sphere_data` was quadratic** — 88.7 s of self time across
+   three calls. For each atom it ran `np.where(self._residue_ids == rid)` over
+   the *whole* residue array to find its colour: 234,184 x 234,184 comparisons,
+   5.5e10 of them. Replaced by a stable `argsort` plus `searchsorted`, which is
+   the same answer — the stable sort is what makes the leftmost slot of a run of
+   equal ids the *first* match the loop took — in N log N. Verified identical
+   over 380 randomised trials covering duplicate ids, gaps, unmatched ids,
+   unsorted input and string ids.
+2. **Ambient occlusion recomputed on a colour change** — 4.7 s. Occlusion is a
+   function of geometry alone, and `spectrum molecule` changes only colours, but
+   the neighbour search ran again with the same points and the same radius.
+   Memoised on a hash of the coordinates in the one place occlusion is already
+   gated. Results are handed out read-only: a caller shading one in place would
+   poison every later hit, and that is a bug found days later in a colour.
+3. **Beads built one row at a time** — 2.7 s of `atom_row`, once per bead, each
+   allocating its own one-element structured array. The vectorised builder
+   already existed (`make_bead_rows`, written for the RMF reader); the mmCIF
+   reader simply was not using it. Verified identical on all twelve fields of
+   `ATOM_DTYPE` over 200 randomised trials.
+
+The pattern in all three is the same and worth naming: **none was an algorithm
+anyone chose**. Each was a per-item Python loop that was correct and
+unremarkable at a few thousand atoms and became the whole runtime at a few
+hundred thousand. The remaining 9.3 s is dominated by one genuine neighbour
+search (~3.0 s) that now runs once.
+
+Reproduce with the profile harness described in
+[chimol-viewport-ui](../plugins/chimol-viewport-ui.md).
+
+### Open, in imp-tricks — the in-tree Martini table is not Martini 3
+
+Found 2026-08-12 while assessing imp-tricks' Martini support for
+[PRD-102](../prds/prd-102.md). Not fixed here because it lives in imp-tricks and
+that work is scoped as research; recorded so it is not rediscovered.
+
+* `MartiniParticle._size_nm` returns one sigma per size-class prefix. The shipped
+  Apache-2.0 `martini_v3.0.0.itp` has several per class — regular beads take
+  0.47 **and 0.50** (divalent ions), and tiny beads take **fourteen** distinct
+  values from 0.34 to 0.438. Read the matrix; do not assume one sigma per class.
+* `_well_depth` is a five-value lookup on a bead's first letter, collapsing all
+  of P1…P6 to 4.0 kJ/mol. The real matrix has thousands of distinct epsilon
+  values. As written this is a different force field wearing Martini's name.
+* Synthesised missing-residue beads hardcode mass 72.0 regardless of bead size;
+  the real masses are 72 / 54 / 36 for regular / small / tiny.
+* A vendored `Martini3-IDP-parameters` directory carries **no license**. It is
+  Martini3-IDP ([10.1038/s41467-025-58199-2](https://doi.org/10.1038/s41467-025-58199-2));
+  resolve the license before anything ships with it.
+
+Consequence for users: a Martini-shaped model here is a candidate for simulation
+only through an exported GROMACS topology, never through the in-tree scoring.

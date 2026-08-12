@@ -9,6 +9,94 @@ updated: 2026-08-12
 
 ## Where to pick this up
 
+**2026-08-12 — the performance objective now has a named baseline and a PRD:
+[PRD-102](../prds/prd-102.md).** tpeulen: **YASARA's performance is the baseline
+chimol has to match**, tested with a *gigastructure*, plus support for **pet
+molecules** and the ability to **assemble** gigastructures in chimol through
+IMP. The numbers to design against, from YASARA's own pages: a presynaptic
+bouton of **3.6 billion atoms**, interactive on a single **RTX 2080**, reached
+by two independent compressions — coarse-graining **~50x** and GPU instancing
+**40-1000x**. Neither alone is enough, which is the whole design: 50x off 3.6e9
+is still 72 million. Read PRD-102 before starting; the rest of this entry is
+the same objective stated earlier.
+
+chimol must handle systems **up to 30x the size of the NPC**. Speed is the
+objective, not a nice-to-have, and loading the NPC demo is still slow today —
+that demo is the benchmark to beat.
+
+The approach tpeulen named, and the one to try first: the NPC is **many copies
+of the same molecule type**, so exploit that rather than treating every copy as
+unique geometry — **clones/instancing plus the hierarchy**. One built mesh per
+distinct type, drawn N times with per-instance transforms, instead of N built
+meshes. That collapses build time *and* VRAM by the copy count, which is the
+only kind of factor that reaches 30x.
+
+Read **ChimeraX** (`junk/ChimeraX`) for how a molecular viewer does this at
+scale before designing anything — it is already the reference this plugin used
+for density-map contouring, and its headers there record what was taken.
+
+Do not re-derive: the NPC+RMF unified load has already gone **430 s / 11 GB →
+2 s / 0.7 GB** (see the RMF/voxel work). The open items from that round —
+interior culling, dynamic LOD, fog — are the ones that matter for the 30x
+target.
+
+
+**2026-08-12 — Qt is to be an option, not the default.** tpeulen: *"make it
+possible to run chimol without qt. qt should be just an option, the default
+(running of module) should work without qt"*, and *"chimol uses no Qt except
+the embedding window"*.
+
+The architecture already allows this and most of the work is deletion, not
+design: `host/widget.py` makes `MolView` a plain object when there is no
+toolkit, `host/events.py` is a toolkit-free event vocabulary, and the browser
+*already* runs the real `MolView` with the real `cmd` layer and no Qt at all.
+What is missing is a desktop host that is not a `QWidget`.
+
+**The audit, so it is not re-derived.** `test_engine_is_portable.py`'s `HOSTS`
+is the tracker — a shrinking list of modules allowed to import Qt at module
+scope. It stood at 14 and is **stale by two**: `app/hierarchy_panel.py` no
+longer exists and `app/volume_panel.py` no longer imports Qt, so
+`test_the_host_list_is_not_padded` is red on the tree until they are struck.
+
+Of the rest, only two are the embedding window — `app/molview_main_window.py`
+and `renderer/wgpu_view.py`. Everything else is removable, and in three
+different ways:
+
+1. **Four vestigial widgets, kept alive as state holders.** `controls_panel`,
+   `objects_panel`, `rmf_panel`, `sequence_dock` are constructed and then never
+   shown; the source says so itself — *"nothing puts it on screen"*, *"Built but
+   not docked: the strip in the viewport replaced its tab"*. About **50 call
+   sites** still read them (`self.sequence` 22, `self.controls` 12,
+   `self.objects` 12, `self.rmf_panel` 4), mostly for things like
+   `button_info.isChecked()`.
+
+   **The pattern to follow already exists and is proven**: `volume_panel` became
+   `VolumeViewModel`, a pure-Python model, and dropped out of `HOSTS` on its
+   own. Do the same four times. This is the bulk of the job and it is
+   mechanical.
+2. **Redundant copies of in-viewport panels.** `app/settings_table.py` is the
+   Qt settings table the derived settings window replaced; it is still reachable
+   from a `QAction`. `renderer/gui_overlay.py` (355 lines) is the legacy
+   `QPainter` chrome rasteriser that `QuadPainter` superseded, still called from
+   `wgpu_view` for `paint_chrome` / `refresh_gui_state` / `image_from_rgb`.
+3. **Dialogs — and "no dialog left" is not yet true.** Commit `edefb7d26` says
+   it, and the *config* dialog is indeed gone, but `demos.ScriptEditor` is a
+   live `QDialog` and there are four `QFileDialog` / `QInputDialog` call sites
+   (`app/menu_bar.py`, `app/demos.py`, `app/objects_panel.py`,
+   `io/structure.py`). A native file picker is defensible; a script editor is
+   the kind of panel the chrome now draws.
+
+`app/timeline_panel.py` has **zero** references anywhere and is simply dead.
+
+**The one thing that is genuinely missing**, rather than merely redundant: a
+desktop window that is not Qt. `rendercanvas` 2.7.2 is a dependency and ships
+`glfw`, `offscreen`, `qt`, `wx`, `jupyter` and `raw` backends — but the `glfw`
+**pip package is not installed**, so today only `offscreen` is available and a
+Qt-free run renders without a window. Declaring `glfw` in `pixi.toml` /
+`pyproject.toml` is what turns the default into a real interactive window.
+
+---
+
 **2026-08-12 — the Dear ImGui widget stack is ported.** `renderer/ui/` went
 from one control module to fourteen: the nineteen controls in `widgets.py`
 plus `text`, `buttons`, `sliders`, `drag`, `inputs`, `color`, `selection`,

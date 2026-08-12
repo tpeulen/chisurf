@@ -102,7 +102,55 @@ def _estimate_ambient_occlusion(*args, **kwargs):
     """
     if not _occlusion_enabled():
         return None
-    return _estimate_ambient_occlusion_raw(*args, **kwargs)
+    return _occlusion_memo(*args, **kwargs)
+
+
+#: The last few occlusion results, keyed by the geometry that produced them.
+#: Small because entries are one float per point and the interesting case is
+#: *repeating* one query, not accumulating many.
+_OCCLUSION_CACHE: dict[tuple, np.ndarray] = {}
+_OCCLUSION_CACHE_MAX = 4
+
+
+def _occlusion_memo(points, *args, **kwargs):
+    """:func:`_estimate_ambient_occlusion_raw`, memoised on its inputs.
+
+    Occlusion is a function of **geometry alone** -- where the spheres are and
+    how big a neighbourhood counts -- so a command that changes only *colour*
+    has no business recomputing it. ``spectrum molecule`` on the 234,184-bead
+    nuclear pore did exactly that, spending 4.7 s to arrive at the array it had
+    already computed during the load.
+
+    The key is a hash of the coordinates rather than their identity, because
+    the caller rebuilds the array each time and ``id()`` would never hit.
+    Hashing 5.6 MB costs a few milliseconds against the seconds it saves; on a
+    miss it is noise beside the search itself.
+    """
+    pts = np.ascontiguousarray(points, dtype=np.float64)
+    try:
+        key = (
+            hashlib.blake2b(pts.tobytes(), digest_size=16).digest(),
+            pts.shape,
+            args,
+            tuple(sorted(kwargs.items())),
+        )
+    except Exception:  # noqa: BLE001 - an unhashable argument is not worth failing over
+        return _estimate_ambient_occlusion_raw(points, *args, **kwargs)
+
+    hit = _OCCLUSION_CACHE.get(key)
+    if hit is not None:
+        return hit
+
+    out = _estimate_ambient_occlusion_raw(points, *args, **kwargs)
+    if out is not None:
+        if len(_OCCLUSION_CACHE) >= _OCCLUSION_CACHE_MAX:
+            _OCCLUSION_CACHE.pop(next(iter(_OCCLUSION_CACHE)))
+        # Handed out read-only: a caller that shaded it in place would poison
+        # every later hit, and that is a bug you find days later in a colour.
+        out = np.asarray(out)
+        out.flags.writeable = False
+        _OCCLUSION_CACHE[key] = out
+    return out
 
 
 def _occlusion_enabled() -> bool:
@@ -2410,6 +2458,9 @@ class MolView(WidgetBase):
 
         self.view: QtWidgets.QWidget | None = None
         self._disabled_label: QtWidgets.QLabel | None = None
+        #: Why there is no picture, in words, for hosts with no label to put
+        #: it in. ``None`` while the renderer is fine.
+        self._disabled_reason: str | None = None
         self._container: QtWidgets.QWidget | None = None
 
         # Stored geometry
@@ -4831,19 +4882,38 @@ class MolView(WidgetBase):
             pass
 
     def _show_disabled_label(self, reason: str | None = None) -> None:
+        """Report that the renderer is unavailable, by whatever means exist.
+
+        The message is kept on ``_disabled_reason`` whether or not a toolkit is
+        present, because it is the only account of *why* there is no picture and
+        the toolkit-free hosts have to be able to print it.
+
+        A ``QLabel`` is built only where there is really a Qt widget to parent
+        it to. This used to be unconditional, and it made construction of the
+        viewer itself fail on the Qt-free host: ``QLabel(self)`` with a non-Qt
+        ``MolView`` raises ``TypeError``, and it is raised from ``__init__`` --
+        so the viewer could not be built at all on the host that needs this
+        branch most, which is the host that has no renderer.
+        """
         message = (
-            "Chimol OpenGL viewer is disabled.\n"
-            "Enable OpenGL support to use this tool."
+            "Chimol viewer is disabled.\n"
+            "Enable GPU support to use this tool."
         )
         if reason:
             message = f"{message}\n\n{reason}"
+        self._disabled_reason = message
+
+        if not is_widget(self):
+            return
 
         if self._disabled_label is None:
             label = QtWidgets.QLabel(self)
             label.setAlignment(QtCore.Qt.AlignCenter)
             label.setWordWrap(True)
             self._disabled_label = label
-            self.layout().addWidget(label)
+            layout = self.layout()
+            if layout is not None:
+                layout.addWidget(label)
 
         self._disabled_label.setText(message)
         self._disabled_label.show()
@@ -6735,22 +6805,42 @@ class MolView(WidgetBase):
                         atom_res_id = np.asarray(atoms["res_id"])
                     except Exception:
                         atom_res_id = None
-                if atom_res_id is not None:
-                    for i_atom in range(n_atoms_total):
-                        rid = atom_res_id[i_atom]
-                        idx_in_res = np.where(self._residue_ids == rid)[0]
-                        if len(idx_in_res) > 0:
-                            colors_4[i_atom, :3] = self._colors_per_ca[idx_in_res[0], :3]
-                        else:
-                            colors_4[i_atom, :3] = self._base_color_single[:3]
+                if atom_res_id is not None and n_points > 0:
+                    # Each atom takes the colour of the *first* residue row whose
+                    # id it matches. Written as a per-atom `np.where` over the
+                    # whole residue array it is quadratic, and it was: for the
+                    # 234,184-bead nuclear pore that is 5.5e10 comparisons, and
+                    # this one function was 89 of the demo's 113 seconds.
+                    #
+                    # A sort plus a binary search is the same answer in N log N.
+                    # The sort must be *stable*: equal ids then keep their
+                    # original order, so the leftmost slot of a run of equal ids
+                    # carries the lowest original index -- which is exactly the
+                    # "first match" the loop took.
+                    residue_ids = np.asarray(self._residue_ids)
+                    colors_per_ca = np.asarray(self._colors_per_ca, dtype=float)
+                    atom_res_id = np.asarray(atom_res_id)
+                    order = np.argsort(residue_ids, kind="stable")
+                    sorted_ids = residue_ids[order]
+                    slot = np.searchsorted(sorted_ids, atom_res_id, side="left")
+                    # `searchsorted` returns len() for an id past the end, which
+                    # would be an out-of-bounds read; clip, then let the equality
+                    # test below reject it.
+                    safe = np.clip(slot, 0, len(sorted_ids) - 1)
+                    found = sorted_ids[safe] == atom_res_id
+                    colors_4[:, :3] = np.asarray(self._base_color_single, dtype=float)[:3]
+                    if np.any(found):
+                        colors_4[found, :3] = colors_per_ca[order[safe[found]], :3]
 
             # Per-atom overrides
             ov = getattr(self, "_colors_per_atom_override", None)
             if ov is not None and len(ov) == n_atoms_total:
                 ov_arr = np.asarray(ov, dtype=float)
-                for i_atom in range(n_atoms_total):
-                    if np.isfinite(ov_arr[i_atom]).all():
-                        colors_4[i_atom, :3] = ov_arr[i_atom, :3]
+                # An override row counts only when every one of its components is
+                # finite -- a NaN is how "no override for this atom" is spelled.
+                usable = np.isfinite(ov_arr).all(axis=1)
+                if np.any(usable):
+                    colors_4[usable, :3] = ov_arr[usable, :3]
 
         colors_rgb = np.clip(colors_4[:, :3], 0.0, 1.0)
 

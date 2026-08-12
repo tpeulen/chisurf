@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Callable, Optional, Sequence, Tuple
 import numpy as np
 
 from ..analysis.atom_classes import ATOMIC_NUMBER
-from .atoms import ATOM_DTYPE, BEAD_RES_NAME, atom_row, bead_row
+from .atoms import ATOM_DTYPE, BEAD_RES_NAME, atom_row, make_bead_rows
 
 if TYPE_CHECKING:  # pragma: no cover - annotations only
     from qtpy import QtWidgets
@@ -280,6 +280,44 @@ def _mmcif_hierarchy(system, row_asym: list) -> "HierarchyNode | None":
         return None
     return root
 
+def _stack_atom_rows(atom_rows, bead_chains, bead_res_ids, bead_xyz):
+    """Combine per-atom rows with vectorised bead rows into one array.
+
+    Atoms first, then beads -- the order the two loops appended them in, which
+    the coordinate, radius and trace lists are all aligned to. Getting it wrong
+    would not raise; it would put every bead's colour on some atom.
+
+    Parameters
+    ----------
+    atom_rows : list of tuple
+        Rows already in :data:`ATOM_DTYPE` order, one per real atom.
+    bead_chains : list of str
+    bead_res_ids : list of int
+    bead_xyz : list of tuple of float
+        The bead columns, all of the same length.
+
+    Returns
+    -------
+    numpy.ndarray or None
+        A structured array of :data:`ATOM_DTYPE`, or ``None`` when the file had
+        neither atoms nor beads.
+    """
+    parts = []
+    if atom_rows:
+        parts.append(np.array(atom_rows, dtype=ATOM_DTYPE))
+    if bead_xyz:
+        parts.append(
+            make_bead_rows(
+                np.asarray(bead_xyz, dtype=float),
+                chain_ids=bead_chains,
+                res_ids=bead_res_ids,
+            )
+        )
+    if not parts:
+        return None
+    return parts[0] if len(parts) == 1 else np.concatenate(parts)
+
+
 def _parse_mmcif_backbone(path: str) -> StructurePayload:
     """Read an mmCIF file with the format's own reference library.
 
@@ -341,6 +379,10 @@ def _parse_mmcif_backbone(path: str) -> StructurePayload:
 
     coords: list[tuple[float, float, float]] = []
     atom_rows: list[tuple] = []
+    #: Bead columns, built into rows in one vectorised call after the loop.
+    bead_chains: list[str] = []
+    bead_res_ids: list[int] = []
+    bead_xyz: list[tuple[float, float, float]] = []
     radii: list[float] = []
     trace: list[tuple[float, float, float]] = []
     res_ids: list[int] = []
@@ -404,7 +446,15 @@ def _parse_mmcif_backbone(path: str) -> StructurePayload:
         # A bead is not an atom, but every per-atom path downstream wants a row.
         # What one looks like is defined once, in `io/atoms.py`, because the RMF
         # reader has to produce exactly the same thing.
-        atom_rows.append(bead_row(chain, res_id, xyz))
+        #
+        # Collected into columns and built in one go after the loop rather than
+        # a row at a time: `bead_row` allocates a one-element structured array
+        # per call, and an integrative model has hundreds of thousands of beads
+        # -- 2.7 s of the nuclear pore's load, more than parsing the file. The
+        # vectorised builder already existed for the RMF reader.
+        bead_chains.append(chain)
+        bead_res_ids.append(res_id)
+        bead_xyz.append(xyz)
         if (chain, res_id) in seen:
             continue
         seen.add((chain, res_id))
@@ -423,7 +473,7 @@ def _parse_mmcif_backbone(path: str) -> StructurePayload:
         res_ids=np.asarray(res_ids, dtype=int) if has_trace else None,
         res_names=np.asarray(res_names, dtype=object) if has_trace else None,
         chain_ids=np.asarray(chain_ids, dtype=object) if has_trace else None,
-        atoms=np.array(atom_rows, dtype=ATOM_DTYPE) if atom_rows else None,
+        atoms=_stack_atom_rows(atom_rows, bead_chains, bead_res_ids, bead_xyz),
         reader="mmcif",
         hierarchy=_mmcif_hierarchy(system, row_asym),
     )
