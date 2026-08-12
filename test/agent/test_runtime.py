@@ -91,7 +91,7 @@ def session(context):
 
 
 TCSPC = "tcspc/EasyTau300"
-MODEL = "Lifetime (new)"
+MODEL = "Lifetime"
 
 
 # ── the headline workflow ─────────────────────────────────────────────

@@ -21,7 +21,7 @@ import pytest
 
 from chisurf.core.fluorescence.kinetics import (
     equilibrium_populations,
-    occupation_time_fractions_reference,
+    occupation_time_fractions,
     time_averaged_moments,
 )
 from chisurf.core.fluorescence.mfd.occupation import (
@@ -122,7 +122,7 @@ def test_distribution_matches_a_gillespie_sampler():
     matrix = _two_state(600.0, 400.0)
     window = 1.5e-3
     grid = occupation_time_distribution(matrix, window, n_steps=64)
-    sampled = occupation_time_fractions_reference(matrix, window, 40_000, seed=3)
+    sampled = occupation_time_fractions(matrix, window, 40_000, seed=3)
 
     edges = np.linspace(0.0, 1.0, 21)
     reference, _ = np.histogram(sampled[:, 0], bins=edges, density=False)

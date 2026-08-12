@@ -4,9 +4,9 @@ import shutil
 import tempfile
 from datetime import datetime
 
+from chisurf.gui.widgets.wizard.tttr_photonfilter import WizardTTTRPhotonFilter
 from chisurf.gui.widgets.wizard.tttr_photonfilter import (
-    WizardTTTRPhotonFilter,
-    load_detector_setups,
+    tttr_photon_filter as photon_filter_module,
 )
 
 
@@ -62,7 +62,7 @@ def test_info_json_location(qapp, qtbot):
         shutil.rmtree(temp_dir)
 
 
-def test_info_json_uppercase(qapp, qtbot):
+def test_info_json_uppercase(qapp, qtbot, monkeypatch):
     temp_dir = tempfile.mkdtemp()
 
     try:
@@ -105,9 +105,17 @@ def test_info_json_uppercase(qapp, qtbot):
             "last_used": mock_setup_name
         }
 
-        original_load_detector_setups = filter_widget.load_detector_setups
-        filter_widget.load_detector_setups = lambda: mock_setups
+        # Patch the module-level function the page actually calls. Assigning
+        # ``filter_widget.load_detector_setups`` did nothing but raise
+        # ``AttributeError`` -- the page imports the function rather than
+        # carrying it as an attribute -- so the test was reading the developer's
+        # own detector-setups file instead of this fixture.
+        monkeypatch.setattr(
+            photon_filter_module, "load_detector_setups", lambda *a, **k: mock_setups
+        )
         filter_widget.comboBox.currentText = lambda: mock_setup_name
+
+        assert photon_filter_module.load_detector_setups() is mock_setups
 
         original_dirs = filter_widget.original_directories
 
@@ -137,8 +145,6 @@ def test_info_json_uppercase(qapp, qtbot):
         assert "detectors" in saved_params["setup_info"]
         assert "windows" in saved_params["setup_info"]
         assert "tttr_reading" in saved_params["setup_info"]
-
-        filter_widget.load_detector_setups = original_load_detector_setups
 
     finally:
         shutil.rmtree(temp_dir)

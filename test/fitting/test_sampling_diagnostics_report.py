@@ -183,9 +183,16 @@ def test_posterior_summary_prefers_a_converged_chain(tmp_path, monkeypatch):
     before = fit.posterior_summary(p_value=0.68)
     assert {e['method'] for e in before} <= {'laplace', 'none'}
 
+    # 8000 rather than 4000: ``c`` and ``a`` are strongly anti-correlated in
+    # ``c + a*x**2``, so the stretch ensemble mixes slowly (ESS ~2000 out of
+    # 20x4000 draws). At 4000 steps the run lands *on* the R-hat threshold --
+    # measured 1.010, 1.011 and "converged" for global seeds 5, 7 and 11 -- and
+    # which side of 1.01 it falls on is then luck, which is exactly how this
+    # test used to fail about one run in four. At 8000 all three seeds converge
+    # with no warning, for ~15 s more.
     chisurf.core.fitting.fit.sample_fit(
         fit=fit, target_directory=str(tmp_path), method='ensemble',
-        steps=4000, thin=1, n_runs=2,
+        steps=8000, thin=1, n_runs=2,
     )
     after = fit.posterior_summary(p_value=0.68)
     assert {e['method'] for e in after} == {'mcmc'}, [e['method'] for e in after]

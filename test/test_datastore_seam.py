@@ -1,9 +1,17 @@
 """Tests for the columnar-store seam, :mod:`chisurf.core.datastore`.
 
-Covers the two conversions, the three cell-write routes, the mask semantics that
+Covers construction, the three cell-write routes, the mask semantics that
 distinguish a store from a frame, the borrowed-column trap that makes a cached
 column proxy read freed memory, and the file half -- what survives a write and
 what a foreign or older file does instead of reading as an empty table.
+
+A few tests still use ``pandas`` — never fed into a chisurf function, only as
+an independent oracle (``pd.read_csv``/``.to_csv`` computing the "expected"
+text a legacy tool would have produced) or to simulate a file an external tool
+actually wrote (a frame-written legacy HDF5, in
+``test_a_frame_written_file_is_refused_rather_than_read``). Building a fixture
+frame is interop, which is what a test file is allowed to keep pandas for; the
+module under test itself imports none.
 """
 
 from __future__ import annotations
@@ -21,16 +29,14 @@ from chisurf.core.datastore import (
     column_at,
     column_values,
     concat_stores,
-    dataframe_from_store,
     is_missing,
     new_store,
     numeric_column,
     read_csv_table,
+    read_results_table,
     read_table,
-    read_table_frame,
     set_cell,
     store_from_arrays,
-    store_from_dataframe,
     store_from_rows,
     take_rows,
     take_where,
@@ -40,14 +46,14 @@ from chisurf.core.datastore import (
 
 
 @pytest.fixture
-def frame():
-    """Return a small mixed-dtype frame.
+def store():
+    """Return a small mixed-dtype store.
 
     Returns
     -------
-    pandas.DataFrame
+    tttrlib.DataStore
     """
-    return pd.DataFrame(
+    return store_from_arrays(
         {
             "name": ["alpha", "beta", "gamma", "delta"],
             "value": [1.0, 20.0, 300.0, np.nan],
@@ -58,12 +64,11 @@ def frame():
     )
 
 
-# ── conversions ──────────────────────────────────────────────────────────
+# ── construction ─────────────────────────────────────────────────────────
 
 
-def test_store_from_dataframe_keeps_every_dtype(frame):
-    """A frame's narrow dtypes survive the conversion instead of being widened."""
-    store = store_from_dataframe(frame)
+def test_store_from_arrays_keeps_every_dtype(store):
+    """Each column's own dtype survives construction instead of being unified."""
     dtypes = {store[i].name(): store[i].dtype for i in range(store.n_columns())}
     assert dtypes == {
         "name": "str",
@@ -75,9 +80,8 @@ def test_store_from_dataframe_keeps_every_dtype(frame):
     assert store.n_rows() == 4
 
 
-def test_text_column_is_dictionary_encoded(frame):
+def test_text_column_is_dictionary_encoded(store):
     """A text column becomes labels plus codes, not one string object per row."""
-    store = store_from_dataframe(frame)
     column = store["name"]
     assert list(column.dictionary()) == ["alpha", "beta", "gamma", "delta"]
     assert list(column.codes()) == [0, 1, 2, 3]
@@ -93,46 +97,6 @@ def test_repeated_labels_cost_one_dictionary_entry_each():
     assert column.nbytes() < 1000 * 8
 
 
-def test_nullable_integer_keeps_its_dtype_and_masks_the_hole():
-    """The distinction a frame cannot make: a missing integer is still an integer.
-
-    ``pandas`` widens an integer column with one missing value to float. The
-    store keeps ``int32`` and records the hole in the validity mask.
-    """
-    series = pd.array([1, 2, None, 4], dtype="Int32")
-    store = store_from_dataframe(pd.DataFrame({"n": series}))
-    column = store["n"]
-    assert column.dtype == "int32"
-    assert column.has_mask()
-    assert [column.valid(i) for i in range(4)] == [True, True, False, True]
-
-
-def test_missing_object_entry_does_not_enter_the_dictionary():
-    """A missing text cell is masked, not stored as the literal string "nan"."""
-    store = store_from_dataframe(pd.DataFrame({"s": ["a", None, "b"]}))
-    column = store["s"]
-    assert "nan" not in list(column.dictionary())
-    assert column.valid(1) is False
-
-
-def test_dataframe_round_trip_is_value_exact(frame):
-    """Everything but a masked cell survives a trip through the store."""
-    back = dataframe_from_store(store_from_dataframe(frame))
-    assert list(back.columns) == list(frame.columns)
-    pd.testing.assert_series_equal(back["name"], frame["name"], check_dtype=False)
-    np.testing.assert_array_equal(back["count"].to_numpy(), frame["count"].to_numpy())
-    np.testing.assert_allclose(back["small"].to_numpy(), frame["small"].to_numpy())
-    np.testing.assert_array_equal(back["flag"].to_numpy(), frame["flag"].to_numpy())
-
-
-def test_round_trip_back_to_pandas_is_lossy_in_one_documented_direction():
-    """A masked integer becomes a float ``NaN`` — a frame has nowhere else to put it."""
-    store = store_from_dataframe(pd.DataFrame({"n": pd.array([1, 2, None], dtype="Int32")}))
-    back = dataframe_from_store(store)
-    assert back["n"].dtype == np.dtype("float64")
-    assert np.isnan(back["n"].to_numpy()[2])
-
-
 def test_store_from_arrays_rejects_ragged_columns():
     with pytest.raises(ValueError, match="rows"):
         store_from_arrays({"a": [1, 2, 3], "b": [1, 2]})
@@ -141,46 +105,40 @@ def test_store_from_arrays_rejects_ragged_columns():
 # ── cell writes ──────────────────────────────────────────────────────────
 
 
-def test_numeric_cell_writes_through_the_view(frame):
-    store = store_from_dataframe(frame)
+def test_numeric_cell_writes_through_the_view(store):
     assert set_cell(store, 1, 1, 42.5)
     assert store["value"].numpy()[1] == 42.5
 
 
-def test_float32_cell_write_stays_float32(frame):
+def test_float32_cell_write_stays_float32(store):
     """Writing a cell must not widen the column."""
-    store = store_from_dataframe(frame)
     assert set_cell(store, 0, 4, 9.25)
     assert store["small"].dtype == "float32"
     assert store["small"].numpy()[0] == np.float32(9.25)
 
 
-def test_boolean_cell_write_lands(frame):
+def test_boolean_cell_write_lands(store):
     """A boolean column has no writable view, so the write goes the long way round."""
-    store = store_from_dataframe(frame)
     assert set_cell(store, 0, 3, False)
     assert list(store["flag"].numpy()) == [False, False, True, False]
 
 
-def test_text_cell_write_reuses_an_existing_label(frame):
-    store = store_from_dataframe(frame)
+def test_text_cell_write_reuses_an_existing_label(store):
     assert set_cell(store, 0, 0, "gamma")
     column = store["name"]
     assert column.string_at(0) == "gamma"
     assert list(column.dictionary()) == ["alpha", "beta", "gamma", "delta"]
 
 
-def test_text_cell_write_appends_a_new_label(frame):
-    store = store_from_dataframe(frame)
+def test_text_cell_write_appends_a_new_label(store):
     assert set_cell(store, 0, 0, "omega")
     column = store["name"]
     assert column.string_at(0) == "omega"
     assert "omega" in list(column.dictionary())
 
 
-def test_blanking_a_cell_masks_it_instead_of_writing_a_sentinel(frame):
+def test_blanking_a_cell_masks_it_instead_of_writing_a_sentinel(store):
     """The point of the mask: an integer column stays integer and keeps its value."""
-    store = store_from_dataframe(frame)
     assert set_cell(store, 2, 2, None)
     column = store["count"]
     assert column.dtype == "int32"
@@ -189,8 +147,7 @@ def test_blanking_a_cell_masks_it_instead_of_writing_a_sentinel(frame):
     assert column.numpy()[2] == 3
 
 
-def test_clear_then_write_restores_validity(frame):
-    store = store_from_dataframe(frame)
+def test_clear_then_write_restores_validity(store):
     clear_cell(store, 1, 1)
     assert store["value"].valid(1) is False
     set_cell(store, 1, 1, 7.0)
@@ -198,8 +155,7 @@ def test_clear_then_write_restores_validity(frame):
     assert store["value"].numpy()[1] == 7.0
 
 
-def test_write_out_of_range_is_refused(frame):
-    store = store_from_dataframe(frame)
+def test_write_out_of_range_is_refused(store):
     assert set_cell(store, 99, 1, 1.0) is False
     assert clear_cell(store, 99, 1) is False
 
@@ -207,18 +163,16 @@ def test_write_out_of_range_is_refused(frame):
 # ── column reads ─────────────────────────────────────────────────────────
 
 
-def test_column_values_is_zero_copy_when_unmasked(frame):
+def test_column_values_is_zero_copy_when_unmasked(store):
     """An unmasked numeric column is the store's own buffer, in its own dtype."""
-    store = store_from_dataframe(frame)
     values = column_values(store, 4)
     assert values.dtype == np.dtype("float32")
     values[0] = 11.0
     assert store["small"].numpy()[0] == np.float32(11.0)
 
 
-def test_column_values_reports_a_mask_as_nan(frame):
+def test_column_values_reports_a_mask_as_nan(store):
     """Filters and colour ranges use plain numpy, so a masked cell must read NaN."""
-    store = store_from_dataframe(frame)
     clear_cell(store, 1, 2)
     values = column_values(store, 2)
     assert values.dtype == np.dtype("float64")
@@ -226,8 +180,7 @@ def test_column_values_reports_a_mask_as_nan(frame):
     assert list(values[[0, 2, 3]]) == [1.0, 3.0, 4.0]
 
 
-def test_column_values_raw_keeps_the_buffer(frame):
-    store = store_from_dataframe(frame)
+def test_column_values_raw_keeps_the_buffer(store):
     clear_cell(store, 1, 2)
     raw = column_values(store, 2, masked_as_nan=False)
     assert raw.dtype == np.dtype("int32")
@@ -302,21 +255,24 @@ def test_is_missing_does_not_treat_an_empty_string_as_missing():
 # ── tables in a file ─────────────────────────────────────────────────────
 
 
-def test_a_written_table_comes_back_column_for_column(frame, tmp_path):
+def test_a_written_table_comes_back_column_for_column(store, tmp_path):
     """The whole point of the file half: what goes in is what comes out, in the
-    dtypes it went in with. A frame's own writer widens a float32 column to
-    float64 and an integer column with a hole to floats."""
+    dtypes it went in with — a float32 column and an integer column with a
+    hole both stay exactly that, where a frame's own writer would widen them."""
     path = tmp_path / "t.h5"
-    write_table(path, frame)
+    write_table(path, store)
 
-    store = read_table(path)
-    assert store is not None
-    back = dataframe_from_store(store)
-    assert list(back.columns) == list(frame.columns)
-    assert back["small"].dtype == np.float32
-    assert back["count"].dtype == np.int32
-    np.testing.assert_array_equal(back["name"], frame["name"])
-    np.testing.assert_allclose(back["value"], frame["value"])
+    back = read_table(path)
+    assert back is not None
+    assert [back[i].name() for i in range(back.n_columns())] == [
+        store[i].name() for i in range(store.n_columns())
+    ]
+    assert back["small"].dtype == np.dtype("float32").name
+    assert back["count"].dtype == np.dtype("int32").name
+    assert list(back["name"].numpy()) == list(store["name"].numpy())
+    np.testing.assert_allclose(
+        numeric_column(back, "value"), numeric_column(store, "value"), equal_nan=True
+    )
 
 
 def test_a_masked_integer_cell_survives_the_file_as_a_mask(tmp_path):
@@ -348,16 +304,16 @@ def test_a_text_column_survives_as_a_dictionary(tmp_path):
     assert list(back["First File"].numpy()) == list(labels)
 
 
-def test_meta_is_a_child_group_and_not_a_repeated_column(frame, tmp_path):
+def test_meta_is_a_child_group_and_not_a_repeated_column(store, tmp_path):
     """A back-reference to the photon file belongs beside the results. Writing
     it as a column would repeat one string once per row, and a second write
     used to truncate the first table away entirely."""
     path = tmp_path / "t.h5"
-    write_table(path, frame, meta={"source_tttr": "/data/run.ptu"})
+    write_table(path, store, meta={"source_tttr": "/data/run.ptu"})
 
-    store = read_table(path)
-    assert store.n_rows() == len(frame)
-    assert list(store.group("meta")["source_tttr"].numpy()) == ["/data/run.ptu"]
+    back = read_table(path)
+    assert back.n_rows() == store.n_rows()
+    assert list(back.group("meta")["source_tttr"].numpy()) == ["/data/run.ptu"]
 
 
 def test_a_file_that_is_not_a_columnar_table_reads_as_none(tmp_path):
@@ -373,12 +329,14 @@ def test_a_missing_file_reads_as_none(tmp_path):
     assert read_table(tmp_path / "absent.h5") is None
 
 
-def test_the_frame_reader_prefers_the_columnar_layout(frame, tmp_path):
+def test_read_results_table_prefers_the_columnar_layout(store, tmp_path):
     path = tmp_path / "t.h5"
-    write_table(path, frame)
-    back = read_table_frame(path)
-    assert list(back.columns) == list(frame.columns)
-    assert len(back) == len(frame)
+    write_table(path, store)
+    back = read_results_table(path)
+    assert [back[i].name() for i in range(back.n_columns())] == [
+        store[i].name() for i in range(store.n_columns())
+    ]
+    assert back.n_rows() == store.n_rows()
 
 
 def test_a_file_in_neither_layout_declines_by_name(tmp_path):
@@ -388,7 +346,7 @@ def test_a_file_in_neither_layout_declines_by_name(tmp_path):
     path = tmp_path / "not.h5"
     path.write_bytes(b"not an HDF5 file at all")
     with pytest.raises(OSError):
-        read_table_frame(path)
+        read_results_table(path)
 
 
 def test_a_frame_written_file_is_refused_rather_than_read(tmp_path):
@@ -403,21 +361,23 @@ def test_a_frame_written_file_is_refused_rather_than_read(tmp_path):
 
     assert read_table(path) is None
     with pytest.raises(OSError):
-        read_table_frame(path)
+        read_results_table(path)
 
 
 # ── tables as delimited text ─────────────────────────────────────────────
 
 
-def test_csv_round_trips_values_and_column_names(frame, tmp_path):
+def test_csv_round_trips_values_and_column_names(store, tmp_path):
     path = tmp_path / "t.csv"
-    write_csv_table(path, frame)
+    write_csv_table(path, store)
 
-    store = read_csv_table(path)
-    assert store is not None
-    assert [store[i].name() for i in range(store.n_columns())] == list(frame.columns)
-    np.testing.assert_allclose(store["count"].numpy(), frame["count"])
-    assert list(store["name"].numpy()) == frame["name"].tolist()
+    back = read_csv_table(path)
+    assert back is not None
+    assert [back[i].name() for i in range(back.n_columns())] == [
+        store[i].name() for i in range(store.n_columns())
+    ]
+    np.testing.assert_allclose(back["count"].numpy(), store["count"].numpy())
+    assert list(back["name"].numpy()) == list(store["name"].numpy())
 
 
 def test_a_missing_number_is_an_empty_field_not_the_text_nan(tmp_path):
@@ -453,18 +413,27 @@ def test_a_real_bur_file_is_written_byte_for_byte_as_before(tmp_path):
     """The burst table is an interchange format, so "the numbers are the same"
     is not the bar -- the text is. Measured over every .bur in the tree at the
     time this landed: 45 of 45 byte-identical, and every numeric cell reading
-    back to within 0.0."""
+    back to within 0.0.
+
+    ``pandas`` is the independent oracle computing the expected text here, and
+    also parses the fixture -- but only to hand its own columns to
+    :func:`store_from_arrays`, never the live frame, to :func:`write_csv_table`.
+    Reading the same file through :func:`read_csv_table` instead would also
+    compare the two readers' column-naming convention for the trailing unnamed
+    column (``Unnamed: 16`` against ``""``), which is a separate, already-
+    accepted difference and not what this test is about.
+    """
     import glob
-    import io as _io
 
     paths = sorted(glob.glob("modules/ndxplorer/test/mfd/**/*.bur", recursive=True))
     if not paths:
         pytest.skip("no .bur fixtures available")
     for path in paths[:5]:
         frame = pd.read_csv(path, sep="\t")
-        buffer = _io.StringIO()
+        store = store_from_arrays({str(c): frame[c].to_numpy() for c in frame.columns})
+        buffer = io.StringIO()
         frame.to_csv(buffer, sep="\t", index=False)
-        assert write_csv_table(None, frame) == buffer.getvalue(), path
+        assert write_csv_table(None, store) == buffer.getvalue(), path
 
 
 def test_the_text_otherwise_matches_the_frame_writer(tmp_path):
@@ -478,9 +447,17 @@ def test_the_text_otherwise_matches_the_frame_writer(tmp_path):
             "label": ["a b", "c"],
         }
     )
+    store = store_from_arrays(
+        {
+            "n": np.array([1, 2], dtype=np.int64),
+            "wide": np.array([2**53 + 1, 5], dtype=np.int64),
+            "precise": np.array([123.456789012345, 1.5]),
+            "label": np.array(["a b", "c"], dtype=object),
+        }
+    )
     buffer = io.StringIO()
     frame.to_csv(buffer, sep="\t", index=False)
-    assert write_csv_table(None, frame) == buffer.getvalue()
+    assert write_csv_table(None, store) == buffer.getvalue()
 
 
 def test_a_file_this_reader_declines_is_none_not_a_wrong_answer(tmp_path):
@@ -547,8 +524,6 @@ def test_burst_tables_read_columnar_and_agree_with_the_frame_reader(monkeypatch)
     So this counts the fallbacks and asserts there were none.
     """
     import glob
-
-    import pandas as pd
 
     from chisurf.core.fluorescence.burst import table as burst_table
 
@@ -652,24 +627,6 @@ def test_column_values_is_still_a_view():
     assert column_values(store, 0)[0] == 42.0, "no longer a view; revisit the copies"
 
 
-def test_a_frame_built_from_a_store_survives_that_store():
-    """``read_table_frame`` builds a frame from a store that dies on the next
-    line, so this is load-bearing — and it holds only because the frame
-    constructor copies a dict of arrays, which is its behaviour rather than its
-    promise. If a future version stops copying, this fails here instead of
-    silently corrupting every table read through the seam.
-    """
-    import gc
-
-    def frame_from_a_local_store():
-        store = store_from_arrays({"x": np.arange(2000, dtype=float)})
-        return dataframe_from_store(store)
-
-    frame = frame_from_a_local_store()
-    gc.collect()
-    np.testing.assert_array_equal(frame["x"].to_numpy(), np.arange(2000, dtype=float))
-
-
 def test_an_integer_column_from_rows_stays_an_integer():
     """Not cosmetic: these rows are written straight out as text, so an integer
     becoming a float changes a shipped file format that other programs parse.
@@ -764,6 +721,8 @@ def test_numeric_column_finds_a_stores_columns_by_name():
 
 
 def test_numeric_column_coerces_the_same_way_for_frame_mapping_and_store():
+    """``numeric_column`` is duck-typed and never imports pandas itself — a real
+    frame still works if a caller hands it one, which is what this pins."""
     values = ["1", "x", "3"]
     expected = [1.0, np.nan, 3.0]
     frame = pd.DataFrame({"a": values})
@@ -792,7 +751,11 @@ def test_a_constant_column_is_the_same_in_every_container():
     ``__setitem__`` wants an array and dies on a 0-d one. Call sites tagging a
     burst table with its source file did exactly that, and the ones inside a
     bare ``except`` simply stopped writing the column when the table became a
-    store — a silent loss, not a crash."""
+    store — a silent loss, not a crash.
+
+    ``set_constant`` is duck-typed and never imports pandas itself — a real
+    frame still works if a caller hands it one, which is what this pins.
+    """
     from chisurf.core.datastore import row_count, set_constant
 
     for table in (

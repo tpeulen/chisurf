@@ -542,7 +542,12 @@ def test_a_corrected_estimator_does_not_inherit_the_old_exports(
         assert saved == [], "current exports are not refitted"
 
         # The estimator is corrected; the burst files and settings are untouched.
-        monkeypatch.setattr(wizard_mod, "ALGORITHM_VERSION", 2)
+        # Relative to whatever the shipped version is: pinning a literal here
+        # made this a no-op the day the estimator was bumped to that number,
+        # and the test then asserted that nothing had changed.
+        monkeypatch.setattr(
+            wizard_mod, "ALGORITHM_VERSION", wizard_mod.ALGORITHM_VERSION + 1
+        )
         assert not analysis_cache.is_current(
             wizard.batch_stamp_path(), wizard.batch_fingerprint()
         ), "results from the previous estimator are not current"

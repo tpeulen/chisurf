@@ -264,3 +264,234 @@ def test_watershed_works_in_three_dimensions():
     labels = watershed(-distance, markers, mask=binary)
     assert labels.max() == 2
     assert (labels[binary] > 0).all()
+
+
+# ---------------------------------------------------------------------------
+# The second tranche: cleaning up, enhancing, and finding at unknown scale
+# ---------------------------------------------------------------------------
+
+
+def _random_labels(seed=0, shape=(64, 64), density=0.6):
+    """A field of many small components — the shape that stresses label code."""
+    mask = np.random.default_rng(seed).random(shape) > density
+    return ndimage.label(mask)[0], mask
+
+
+@pytest.mark.parametrize("seed", range(4))
+def test_label_utilities_match_skimage(seed):
+    """remove_small_objects/holes, relabel_sequential, expand_labels, find_boundaries."""
+    pytest.importorskip("skimage")
+    import skimage.morphology as sk_morphology
+    import skimage.segmentation as sk_segmentation
+
+    from chisurf.core.roi.segmentation import (
+        expand_labels,
+        find_boundaries,
+        relabel_sequential,
+        remove_small_holes,
+        remove_small_objects,
+    )
+
+    labels, mask = _random_labels(seed)
+
+    for size in (2, 5, 20):
+        # `min_size=n` here means "strictly fewer than n", which is
+        # scikit-image's `max_size=n - 1`. Its own `min_size` is mid-deprecation
+        # and its meaning moved during it, so the stable spelling is compared
+        # against rather than the one that is going away.
+        np.testing.assert_array_equal(
+            remove_small_objects(labels.copy(), size),
+            sk_morphology.remove_small_objects(labels.copy(), max_size=size - 1),
+        )
+        np.testing.assert_array_equal(
+            remove_small_objects(mask.copy(), size),
+            sk_morphology.remove_small_objects(mask.copy(), max_size=size - 1),
+        )
+        np.testing.assert_array_equal(
+            remove_small_holes(mask.copy(), size),
+            sk_morphology.remove_small_holes(mask.copy(), max_size=size - 1),
+        )
+
+    mine, forward, _ = relabel_sequential(labels)
+    theirs, their_forward, _ = sk_segmentation.relabel_sequential(labels)
+    np.testing.assert_array_equal(mine, theirs)
+    np.testing.assert_array_equal(np.asarray(forward), np.asarray(their_forward))
+
+    for distance in (1.0, 2.5, 5.0):
+        np.testing.assert_array_equal(
+            expand_labels(labels, distance),
+            sk_segmentation.expand_labels(labels, distance),
+        )
+
+    for mode in ("thick", "inner", "outer"):
+        for connectivity in (1, 2):
+            np.testing.assert_array_equal(
+                find_boundaries(labels, connectivity=connectivity, mode=mode),
+                sk_segmentation.find_boundaries(
+                    labels, connectivity=connectivity, mode=mode
+                ),
+                err_msg=f"mode={mode} connectivity={connectivity}",
+            )
+
+
+def test_relabel_sequential_closes_the_gaps():
+    """The point of it: no consumer should see a label that owns no pixel."""
+    from chisurf.core.roi.segmentation import relabel_sequential
+
+    labels = np.array([[0, 1, 0], [0, 5, 5], [9, 0, 0]])
+    relabelled, forward, inverse = relabel_sequential(labels)
+    assert sorted(np.unique(relabelled)) == [0, 1, 2, 3]
+    assert forward[5] == 2 and inverse[2] == 5
+    np.testing.assert_array_equal(inverse[relabelled], labels)
+
+
+def test_expand_labels_does_not_merge_neighbours():
+    """Two labels growing towards each other must meet, not fuse."""
+    from chisurf.core.roi.segmentation import expand_labels
+
+    labels = np.zeros((21, 21), dtype=int)
+    labels[10, 4] = 1
+    labels[10, 16] = 2
+    grown = expand_labels(labels, distance=8)
+    assert set(np.unique(grown)) == {0, 1, 2}
+    # The midline belongs to neither exclusively, but the two never touch as
+    # one component.
+    assert ndimage.label(grown == 1)[1] == 1
+    assert ndimage.label(grown == 2)[1] == 1
+
+
+@pytest.mark.parametrize("seed", range(3))
+def test_difference_of_gaussians_matches_skimage(seed):
+    pytest.importorskip("skimage")
+    import skimage.filters as sk_filters
+
+    from chisurf.core.roi.segmentation import difference_of_gaussians
+
+    image = np.random.default_rng(seed).random((64, 64))
+    for low, high in ((1.0, None), (1.0, 3.0), (2.0, 5.0)):
+        np.testing.assert_allclose(
+            difference_of_gaussians(image, low, high),
+            sk_filters.difference_of_gaussians(image, low, high),
+            atol=1e-12,
+        )
+
+
+def test_difference_of_gaussians_refuses_an_inverted_band():
+    from chisurf.core.roi.segmentation import difference_of_gaussians
+
+    with pytest.raises(ValueError, match="inverted"):
+        difference_of_gaussians(np.zeros((8, 8)), 4.0, 1.0)
+
+
+def test_white_tophat_removes_a_gradient_and_keeps_the_spot():
+    """The property it is for: a spot survives an illumination ramp.
+
+    The ramp is suppressed rather than erased, and by a knowable amount: the
+    opening of a ramp is the ramp shifted by roughly gradient x half-footprint,
+    so a 0.02/pixel gradient under a 15-pixel footprint leaves about 0.14
+    behind. That residue is the reason `size` has to be chosen against the
+    illumination scale and not just against the spots.
+    """
+    from chisurf.core.roi.segmentation import white_tophat
+
+    y, x = np.indices((64, 64))
+    ramp = 0.02 * x + 0.01 * y
+    spot = np.exp(-((x - 32) ** 2 + (y - 32) ** 2) / 8.0)
+    raw = ramp + spot
+    corrected = white_tophat(raw, size=15)
+
+    assert corrected[32, 32] > 0.8, "the spot must survive"
+    corners = [(2, 2), (2, 61), (61, 2), (61, 61)]
+    before = max(raw[r, c] for r, c in corners)
+    after = max(corrected[r, c] for r, c in corners)
+    assert after < before / 5, "the ramp must be suppressed several-fold"
+    assert after < 0.25 * corrected[32, 32], "and left well below the spot"
+
+
+@pytest.mark.parametrize("fully_connected", ["low", "high"])
+def test_find_contours_matches_skimage(fully_connected):
+    pytest.importorskip("skimage")
+    import skimage.measure as sk_measure
+
+    from chisurf.core.roi.segmentation import find_contours
+
+    mask = two_circles((60, 60)).astype(float)
+    mine = find_contours(mask, 0.5, fully_connected=fully_connected)
+    theirs = sk_measure.find_contours(mask, 0.5, fully_connected=fully_connected)
+    assert len(mine) == len(theirs)
+    for a, b in zip(mine, theirs):
+        np.testing.assert_allclose(a, b)
+
+
+def test_find_contours_traces_a_closed_loop_around_a_disc():
+    """A contour is geometry, not a raster: it should close and enclose the area."""
+    from chisurf.core.roi.segmentation import find_contours
+
+    y, x = np.indices((60, 60))
+    disc = ((x - 30) ** 2 + (y - 30) ** 2 < 12**2).astype(float)
+    contours = find_contours(disc, 0.5)
+    assert len(contours) == 1
+    contour = contours[0]
+    np.testing.assert_allclose(contour[0], contour[-1], atol=1e-9)
+    # Shoelace area of the traced polygon against the pixel count.
+    rows, columns = contour[:, 0], contour[:, 1]
+    area = 0.5 * abs(
+        np.dot(rows[:-1], columns[1:]) - np.dot(columns[:-1], rows[1:])
+    )
+    assert abs(area - disc.sum()) / disc.sum() < 0.05
+
+
+@pytest.mark.parametrize("detector", ["blob_dog", "blob_log"])
+def test_blob_detectors_match_skimage(detector):
+    pytest.importorskip("skimage")
+    import skimage.feature as sk_feature
+
+    from chisurf.core.roi import segmentation
+
+    y, x = np.indices((80, 80))
+    image = np.zeros((80, 80))
+    for centre_y, centre_x, sigma in [(20, 20, 2.0), (50, 30, 4.0), (30, 60, 3.0)]:
+        image += np.exp(
+            -((x - centre_x) ** 2 + (y - centre_y) ** 2) / (2 * sigma * sigma)
+        )
+    keywords = (
+        {"min_sigma": 1, "max_sigma": 8, "threshold": 0.02}
+        if detector == "blob_dog"
+        else {"min_sigma": 1, "max_sigma": 8, "num_sigma": 8, "threshold": 0.05}
+    )
+    mine = getattr(segmentation, detector)(image, **keywords)
+    theirs = getattr(sk_feature, detector)(image, **keywords)
+    assert mine.shape == theirs.shape
+    np.testing.assert_allclose(mine[np.lexsort(mine.T)], theirs[np.lexsort(theirs.T)])
+
+
+def test_blob_detectors_recover_the_width_they_were_given():
+    """The capability a fixed-scale detector does not have: it reports the size."""
+    from chisurf.core.roi.segmentation import blob_log
+
+    y, x = np.indices((120, 120))
+    truth = [(30, 30, 2.0), (30, 90, 4.0), (90, 60, 6.0)]
+    image = np.zeros((120, 120))
+    for centre_y, centre_x, sigma in truth:
+        image += np.exp(
+            -((x - centre_x) ** 2 + (y - centre_y) ** 2) / (2 * sigma * sigma)
+        )
+    blobs = blob_log(image, min_sigma=1, max_sigma=9, num_sigma=17, threshold=0.05)
+    assert len(blobs) == 3
+    found = {(round(r), round(c)): s for r, c, s in blobs}
+    for centre_y, centre_x, sigma in truth:
+        matches = [
+            s for (r, c), s in found.items()
+            if abs(r - centre_y) <= 1 and abs(c - centre_x) <= 1
+        ]
+        assert matches, f"no blob near ({centre_y}, {centre_x})"
+        assert abs(matches[0] - sigma) <= 1.0, f"width {matches[0]} vs {sigma}"
+
+
+def test_blob_detectors_merge_duplicate_scales():
+    """One spot must be reported once, not once per scale it survives."""
+    from chisurf.core.roi.segmentation import blob_dog
+
+    y, x = np.indices((60, 60))
+    image = np.exp(-((x - 30) ** 2 + (y - 30) ** 2) / 8.0)
+    assert len(blob_dog(image, min_sigma=1, max_sigma=10, threshold=0.02)) == 1

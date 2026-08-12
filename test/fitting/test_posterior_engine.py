@@ -266,9 +266,13 @@ def test_stored_engine_prefers_a_converged_chain(tmp_path, monkeypatch):
               E.StoredEngine(fit).add_all_targets().run().marginals()}
     assert set(before.values()) == {'laplace'}
 
+    # Seeded explicitly rather than through np.random.seed above: anything
+    # between that call and this one that draws from the global stream shifts
+    # where the chain starts, which made this assertion land differently from
+    # run to run inside the full suite while passing in isolation.
     chisurf.core.fitting.fit.sample_fit(
         fit=fit, target_directory=str(tmp_path), method='blocked',
-        steps=4000, thin=1, n_runs=2,
+        steps=4000, thin=1, n_runs=2, seed=20260803,
     )
     after = {m.name: m.method for m in
              E.StoredEngine(fit).add_all_targets().run().marginals()}

@@ -102,7 +102,7 @@ def test_the_model_loads_and_fits_a_folder(live_session):
     """The headline request: 'fit the decays in this folder'."""
     result = live_session.ask(
         f"Load the .dat files in the folder {TCSPC} and fit the fluorescence "
-        f"decays with the model 'Lifetime (new)'. Report the reduced chi2."
+        f"decays with the model 'Lifetime'. Report the reduced chi2."
     )
 
     require_reachable(result)
@@ -191,7 +191,7 @@ def test_a_loaded_skill_reaches_the_model(live_session):
 
 def test_the_model_reports_parameters_of_a_fit(live_session):
     """A follow-up question in the same conversation reuses the state."""
-    live_session.ask(f"Load '{TCSPC}/215-268 D0.dat' and fit it with 'Lifetime (new)'.")
+    live_session.ask(f"Load '{TCSPC}/215-268 D0.dat' and fit it with 'Lifetime'.")
     result = live_session.ask("What is the fitted lifetime, in nanoseconds?")
     require_reachable(result)
     assert result.ok

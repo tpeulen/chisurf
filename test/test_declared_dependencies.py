@@ -46,7 +46,7 @@ _IMPORT_NAMES = {
 _EXTRA_ALLOWED = {
     "pytest", "mypy", "setuptools", "pkg_resources", "pip", "numpy", "matplotlib",
     "mpl_toolkits", "contourpy", "sip", "shiboken6", "PyQt5", "PySide2", "PySide6",
-    "jupyter_client", "ipykernel", "traitlets", "notebook",
+    "jupyter_client", "ipykernel", "traitlets",
 }
 
 #: Packages of the surrounding scientific stack: separate repositories or
@@ -57,15 +57,23 @@ _SIBLING_PROJECTS = {
 }
 
 
+#: pixi.toml sections that count as "available when the test suite runs" --
+#: the packaged runtime (``[dependencies]``/``[pypi-dependencies]``) plus the
+#: ``test`` feature (``pixi run -e test ...``, which every test invocation
+#: uses), since a test-only import genuinely does not need to be in the
+#: packaged app.
+_DECLARING_SECTIONS = ("[dependencies]", "[pypi-dependencies]", "[feature.test.dependencies]")
+
+
 def _declared_distributions() -> set[str]:
     """Return every distribution name declared by the packaging manifests.
 
     Returns
     -------
     set of str
-        Lower-cased distribution names from ``pixi.toml`` (dependencies and
-        PyPI dependencies) and every ``pyproject.toml`` dependency list,
-        required and optional alike.
+        Lower-cased distribution names from ``pixi.toml`` (dependencies, PyPI
+        dependencies, and the ``test`` feature) and every ``pyproject.toml``
+        dependency list, required and optional alike.
     """
     names: set[str] = set()
 
@@ -74,7 +82,7 @@ def _declared_distributions() -> set[str]:
     for line in pixi.splitlines():
         stripped = line.split("#", 1)[0].strip()
         if stripped.startswith("["):
-            in_deps = stripped in ("[dependencies]", "[pypi-dependencies]")
+            in_deps = stripped in _DECLARING_SECTIONS
             continue
         if in_deps and "=" in stripped:
             names.add(stripped.split("=", 1)[0].strip().strip('"'))

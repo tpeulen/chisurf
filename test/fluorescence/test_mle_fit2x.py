@@ -44,35 +44,8 @@ def test_settings_validates_irf_and_defaults_background():
         Fit2xSettings(dt=0.032, period=32.0, irf=np.zeros(7))
 
 
-def test_parse_detector_setup_extracts_channels_range_and_corrections():
-    from chisurf.core.fluorescence.mle import parse_detector_setup
-
-    payload = {
-        "detectors": {
-            "green": {
-                "chs": [0, 1],
-                "mtr": [(10, 4000)],
-                "g_factor": 1.15,
-                "l1": 0.02,
-                "l2": 0.04,
-            }
-        }
-    }
-    setup = parse_detector_setup(payload)
-    assert setup.channels == [0, 1]
-    assert setup.channels_parallel == [0]        # even = parallel
-    assert setup.channels_perpendicular == [1]   # odd = perpendicular
-    assert setup.micro_range == (10, 4000)
-    assert setup.g_factor == pytest.approx(1.15)
-    assert setup.l1 == pytest.approx(0.02)
-    assert setup.l2 == pytest.approx(0.04)
-
-    # Corrections absent -> None, so a caller keeps its own default instead of 0.
-    bare = parse_detector_setup({"detectors": {"g": {"chs": [0, 2]}}})
-    assert bare.g_factor is None and bare.l1 is None and bare.l2 is None
-    assert bare.channels_parallel == [0, 2]
-    assert parse_detector_setup(None).channels == []
-
+# The detector-setup parser is shared by every MLE consumer, not just the
+# deprecated fit2x harness; its tests live in test_mle_setup.py.
 
 def test_settings_area_normalises_the_background():
     # gamma is the background *fraction*, so the model needs a unit-area

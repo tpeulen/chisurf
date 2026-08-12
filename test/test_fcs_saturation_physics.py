@@ -25,6 +25,9 @@ from chisurf.core.fluorescence.fcs.saturation import (
     excitation_rate,
     excitation_rate_peak,
     fcs_numerical_g_diff,
+    fit_single_component,
+    fit_two_components,
+    relaxation_spectrum,
     gaussian_g_diff,
     photon_flux,
     saturated_curve_shape,
@@ -323,3 +326,279 @@ def test_mismatched_brightness_length_is_an_error():
     """A brightness vector that does not match the scheme must not be broadcast."""
     with pytest.raises(ValueError, match="brightness"):
         emission_profile(np.array([1e7]), DARK_R6G, EXC_R6G, np.array([0.0, 1.0]))
+
+
+def test_no_absorption_at_the_excitation_wavelength_is_the_unsaturated_limit():
+    """eps = 0 is 'the dye does not absorb here', not 'the curve is zero'.
+
+    Reading eps off a real spectrum makes this reachable: excite a dye far from
+    its maximum and eps goes to zero, at which point the scheme cannot be
+    populated and the analytical Gaussian is the exact limit.
+    """
+    tau = np.logspace(-7, -2, 30)
+    g = saturated_curve_shape(
+        tau, 5e-3, 0.0, DARK_R6G, EXC_R6G, Q_R6G, W0, Z0, D_R6G, include_bunching=True
+    )
+    np.testing.assert_allclose(g, gaussian_g_diff(tau, W0, Z0, D_R6G), rtol=1e-12)
+
+
+def test_the_axial_half_spectrum_is_the_whole_one():
+    """rfft + mirror weights must equal the full complex transform, exactly.
+
+    The speed of this module rests on two identities -- a real profile needs
+    only half its axial spectrum, and exp(-D(kr^2+kz^2)tau) factorises -- so
+    they are checked against a direct evaluation rather than trusted.
+    """
+    r, z, (R, Z) = _grid(60, 32)
+    profile = np.exp(-2.0 * R**2 / W0**2) * np.exp(-2.0 * Z**2 / Z0**2)
+    tau = np.logspace(-7, -3, 25)
+    fast = fcs_numerical_g_diff(tau, r, z, profile, D_R6G, v_ref=V_0)
+
+    # Direct: full complex FFT, full (kr, kz) grid, no factorisation.
+    from scipy.special import j0
+
+    dr, dz = float(r[1] - r[0]), float(z[1] - z[0])
+    kr = np.linspace(0.0, 30.0 / float(r[-1]), min(len(r), 64))
+    kz = np.fft.fftfreq(len(z), d=dz) * 2.0 * np.pi
+    weights = np.full(len(r), dr)
+    weights[0] *= 0.5
+    weights[-1] *= 0.5
+    matrix = 2.0 * np.pi * (r * weights)[None, :] * j0(kr[:, None] * r[None, :])
+    f_k = matrix @ (np.fft.fft(profile, axis=1) * dz)
+    psd = (np.abs(f_k) ** 2) * kr[:, None]
+    k2 = kr[:, None] ** 2 + kz[None, :] ** 2
+    direct = np.array([np.sum(psd * np.exp(-D_R6G * k2 * t)) for t in tau])
+    direct *= (V_0 * float(np.trapezoid(np.trapezoid(profile**2 * 2 * np.pi * r[:, None],
+                                                     r, axis=0), z))
+               / float(np.trapezoid(np.trapezoid(profile * 2 * np.pi * r[:, None],
+                                                 r, axis=0), z)) ** 2) / psd.sum()
+    np.testing.assert_allclose(fast, direct, rtol=1e-10)
+
+
+def test_the_hankel_matrix_is_cached_and_never_handed_out_writable():
+    """It is shared between calls, so a caller must not be able to corrupt it."""
+    from chisurf.core.fluorescence.fcs.saturation import _hankel_matrix
+
+    first = _hankel_matrix(64, 1e-6, 3e7, 32)
+    again = _hankel_matrix(64, 1e-6, 3e7, 32)
+    assert first is again, "the same grid must reuse the same matrix"
+    assert not first.flags.writeable
+    with pytest.raises(ValueError):
+        first[0, 0] = 1.0
+
+
+def test_saturation_adds_a_second_apparent_diffusion_time():
+    """A saturated curve is not one Gaussian diffusion component any more.
+
+    Widengren & Rigler's point: flattening the emission profile turns its
+    autocorrelation into a *broader mixture* of decay rates than any single 3D
+    Gaussian can produce. Fitting one component therefore returns an inflated
+    apparent diffusion time and leaves a systematic residual -- which is how the
+    distortion is recognised on real data.
+    """
+    tau = np.logspace(-7, -1, 300)
+    true_tau_d = W0**2 / (4.0 * D_R6G)
+    args = (1e5, DARK_R6G, EXC_R6G, Q_R6G, W0, Z0, D_R6G)
+
+    unsaturated = saturated_curve_shape(tau, 0.0, *args, include_bunching=False)
+    tau_d0, _, _, rms0 = fit_single_component(tau, unsaturated, W0, Z0, D_R6G)
+    assert tau_d0 == pytest.approx(true_tau_d, rel=0.05)
+
+    apparent, residuals = [], []
+    for power_W in (2e-4, 2e-3, 3.08e-2):
+        g = saturated_curve_shape(tau, power_W, *args, include_bunching=False)
+        tau_d, _, fitted, rms = fit_single_component(tau, g, W0, Z0, D_R6G)
+        apparent.append(tau_d)
+        residuals.append(rms)
+
+    # The apparent diffusion time grows with power, well past the true one ...
+    assert all(a < b for a, b in zip(apparent, apparent[1:]))
+    assert apparent[0] > true_tau_d
+    assert apparent[-1] > 3.0 * true_tau_d
+    # ... and one component describes the curve ever less well.
+    assert residuals[-1] > 2.0 * rms0
+
+    # The residual is not noise: it changes sign, the signature of a missing
+    # faster component (fit too slow early, too fast late).
+    g = saturated_curve_shape(tau, 3.08e-2, *args, include_bunching=False)
+    _, _, fitted, _ = fit_single_component(tau, g, W0, Z0, D_R6G)
+    residual = g / g[0] - fitted
+    assert residual.min() < -1e-3 and residual.max() > 1e-3
+
+
+def test_a_second_component_actually_fits_what_one_cannot():
+    """Two components describe the saturated curve where one fails."""
+    from scipy.optimize import curve_fit
+
+    tau = np.logspace(-7, -1, 300)
+    g = saturated_curve_shape(
+        tau, 3.08e-2, 1e5, DARK_R6G, EXC_R6G, Q_R6G, W0, Z0, D_R6G,
+        include_bunching=False,
+    )
+    y = g / g[0]
+    _, _, _, rms_one = fit_single_component(tau, g, W0, Z0, D_R6G)
+
+    def one(t, tau_d, s):
+        return 1.0 / (1.0 + t / tau_d) / np.sqrt(1.0 + t / (s**2 * tau_d))
+
+    def two(t, frac, tau_1, tau_2, s):
+        return frac * one(t, tau_1, s) + (1.0 - frac) * one(t, tau_2, s)
+
+    guess = [0.2, W0**2 / (4.0 * D_R6G), 4.0 * W0**2 / (4.0 * D_R6G), 5.0]
+    params, _ = curve_fit(two, tau, y, p0=guess,
+                          bounds=([0, 1e-9, 1e-9, 0.5], [1, 1e-1, 1e-1, 50]),
+                          maxfev=200000)
+    rms_two = float(np.sqrt(np.mean((two(tau, *params) - y) ** 2)))
+    assert rms_two < 0.5 * rms_one, "a second component must earn its place"
+    fast, slow = sorted(params[1:3])
+    assert slow > 2.0 * fast, "the two components must be genuinely distinct"
+
+
+def test_a_saturated_curve_is_fitted_by_a_triplet_times_two_diffusion_times():
+    """The established analysis of saturated FCS data must be expressible.
+
+    Widengren & Rigler fit optically saturated curves with a global triplet term
+    times *two* diffusion times. Diffusion terms add while bunching terms
+    multiply, so this needs a summed multi-component diffusion -- which is what
+    ``DiffusionSpecies`` provides. Here the whole chain is exercised: simulate a
+    saturated measurement including its triplet, then fit it the way the data
+    would be fitted, and require that it beats one component decisively.
+    """
+    from scipy.optimize import curve_fit
+
+    from chisurf.core.models.fcs.general import DiffusionSpecies
+
+    tau_s = np.logspace(-7, -1, 300)
+    tau_ms = tau_s * 1e3
+    g = saturated_curve_shape(
+        tau_s, 3.08e-2, 1e5, DARK_R6G, EXC_R6G, Q_R6G, W0, Z0, D_R6G, include_bunching=True
+    )
+    y = g / g[0]
+
+    species = DiffusionSpecies()
+    species._w_r.value = W0 * 1e9
+    species._w_z.value = Z0 * 1e9
+
+    def model(t_ms, x1, d1, d2, triplet, tau_t):
+        species._x_1.value, species._x_2.value = x1, 1.0 - x1
+        species._D_1.value, species._D_2.value = d1, d2
+        bunch = 1.0 + triplet / (1.0 - triplet) * np.exp(-t_ms * 1e-3 / tau_t)
+        out = species.g_diff(t_ms) * bunch
+        return out / out[0]
+
+    params, _ = curve_fit(
+        model, tau_ms, y, p0=[0.1, 900.0, 100.0, 0.5, 2e-6],
+        bounds=([0, 1, 1, 0.01, 1e-8], [1, 1e5, 1e5, 0.95, 1e-3]), maxfev=200000,
+    )
+    rms_two = float(np.sqrt(np.mean((model(tau_ms, *params) - y) ** 2)))
+
+    # Against one diffusion component with the same triplet freedom.
+    def model_one(t_ms, d, triplet, tau_t):
+        return model(t_ms, 1.0, d, d, triplet, tau_t)
+
+    params_one, _ = curve_fit(
+        model_one, tau_ms, y, p0=[300.0, 0.5, 2e-6],
+        bounds=([1, 0.01, 1e-8], [1e5, 0.95, 1e-3]), maxfev=200000,
+    )
+    rms_one = float(np.sqrt(np.mean((model_one(tau_ms, *params_one) - y) ** 2)))
+
+    # Three times better, not the ten one might expect -- and the shortfall is
+    # informative. Given a free triplet, one diffusion component partly hides the
+    # distortion in it: a shortened tau_T mimics a fast diffusion component over
+    # part of the range. The two are therefore somewhat degenerate, which is why
+    # Widengren's triplet is a *global* parameter across a power series rather
+    # than fitted per curve.
+    assert rms_two < 0.4 * rms_one, "two diffusion times must clearly beat one"
+    fast, slow = sorted(params[1:3], reverse=True)   # D, so fast D = short tau_D
+    assert fast > 3.0 * slow, "the two transit times must be genuinely distinct"
+
+    # What the bunching term measures is an *eigenvalue* of
+    # K = K_dark + k_exc K_exc, not the scheme's 1/k_T. For this three-state case
+    # the slow eigenvalue happens to sit within a digit of the familiar
+    # 1/(k_T + k_ISC f_S1), but that closed form is a limit of the eigenvalue,
+    # not a definition of it -- so the eigenvalue is what is asserted.
+    k_exc = excitation_rate_peak(3.08e-2, 1e5, W0)
+    slowest_tau, _ = relaxation_spectrum(k_exc, DARK_R6G, EXC_R6G, Q_R6G)[0]
+    assert params[4] == pytest.approx(slowest_tau, rel=0.05)
+    assert slowest_tau < 0.25 / DARK_R6G[0, 2], "excitation must shorten it well below 1/k_T"
+
+
+def test_relaxation_times_are_the_eigenvalues_of_the_generator():
+    """X(tau) is a sum over the generator's modes, so its times are eigenvalues.
+
+    Checked two ways that share no code with the implementation: against the
+    eigenvalues of K computed directly, and against the bunching factor itself,
+    whose slow decay must follow the slowest mode.
+    """
+    k_exc = excitation_rate_peak(3.08e-2, 1e5, W0)
+    modes = relaxation_spectrum(k_exc, DARK_R6G, EXC_R6G, Q_R6G)
+    assert len(modes) == 2, "a three-state scheme has two non-stationary modes"
+
+    K_d = DARK_R6G.copy()
+    np.fill_diagonal(K_d, 0.0)
+    np.fill_diagonal(K_d, -K_d.sum(axis=0))
+    K_e = EXC_R6G.copy()
+    np.fill_diagonal(K_e, 0.0)
+    np.fill_diagonal(K_e, -K_e.sum(axis=0))
+    eigenvalues = np.sort(np.linalg.eigvals(K_d + k_exc * K_e).real)
+    expected = sorted([-1.0 / v for v in eigenvalues if v < -1e-6], reverse=True)
+    np.testing.assert_allclose([t for t, _ in modes], expected, rtol=1e-9)
+
+    # The bunching factor must decay with the slowest of them.
+    slow_tau = modes[0][0]
+    tau = np.array([slow_tau, 2.0 * slow_tau])
+    x = compute_bunching_factor(k_exc, DARK_R6G, EXC_R6G, Q_R6G, tau)
+    assert (x[0] - 1.0) / (x[1] - 1.0) == pytest.approx(np.e, rel=0.05)
+
+
+def test_the_relaxation_time_moves_with_the_excitation_rate():
+    """It is an eigenvalue of K_dark + k_exc K_exc, so it depends on the power."""
+    times = [
+        relaxation_spectrum(k, DARK_R6G, EXC_R6G, Q_R6G)[0][0]
+        for k in (1e5, 1e7, 1e9, 1e11)
+    ]
+    assert all(a > b for a, b in zip(times, times[1:])), "more light, faster relaxation"
+    # At vanishing excitation it must approach the dark-state lifetime 1/k_T.
+    assert times[0] == pytest.approx(1.0 / DARK_R6G[0, 2], rel=0.02)
+
+
+def test_the_scheme_reports_its_relaxation_times_as_outputs():
+    """The eigenvalues belong in the table beside the rates that produce them."""
+    from chisurf.core.models.fcs.kinetics import KineticSaturationTerms
+
+    terms = KineticSaturationTerms()
+    terms._power.value = 30.8
+    terms._w_r.value = 200.0
+    names = [p.name for p in terms._relaxation_outputs]
+    assert names == ["tau_R1", "tau_R2"], "an N-state scheme relaxes with N-1 modes"
+    assert all(p.is_output and p.fixed for p in terms._relaxation_outputs)
+
+    modes = terms.update_relaxation_outputs()
+    expected = relaxation_spectrum(
+        excitation_rate_peak(terms.power, terms.extinction, terms.w_r_nm * 1e-9,
+                             terms.wavelength_m),
+        terms.dark_matrix_hz, terms.exc.rate_matrix(), terms.brightness.array,
+    )
+    assert [t for t, _ in modes] == [t for t, _ in expected]
+    for parameter, (time_s, _) in zip(terms._relaxation_outputs, expected):
+        assert parameter.value == pytest.approx(time_s * 1e6)
+
+    # They must follow the scheme size, not stay at three states' worth.
+    terms.n_states = 5
+    assert [p.name for p in terms._relaxation_outputs] == [
+        "tau_R1", "tau_R2", "tau_R3", "tau_R4"
+    ]
+
+
+def test_the_reported_relaxation_time_falls_as_the_power_rises():
+    """It is an eigenvalue of a generator that contains k_exc, so it must."""
+    from chisurf.core.models.fcs.kinetics import KineticSaturationTerms
+
+    terms = KineticSaturationTerms()
+    terms._w_r.value = 200.0
+    times = []
+    for power_mW in (0.01, 1.0, 100.0):
+        terms._power.value = power_mW
+        terms.update_relaxation_outputs()
+        times.append(terms._relaxation_outputs[0].value)
+    assert all(a > b for a, b in zip(times, times[1:]))

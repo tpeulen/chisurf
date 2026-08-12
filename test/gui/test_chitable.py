@@ -4,9 +4,9 @@ Covers the three sources, the model's formatting/paging/edit rules, vectorised
 filtering and sorting, the value-colour ramp, and the container widget's column
 picker / hide-empty / copy / export behaviour.
 
-Two tests are explicit regressions for defects the previous, item-based table
-editor carried: a crash on pandas extension dtypes, and edits landing on the
-wrong source row while a filter was active.
+One test is an explicit regression for a defect the previous, item-based table
+editor carried: edits landing on the wrong source row while a filter was
+active.
 """
 
 from __future__ import annotations
@@ -14,40 +14,45 @@ from __future__ import annotations
 import os
 
 import numpy as np
-import pandas as pd
 import pytest
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from qtpy import QtCore, QtWidgets  # noqa: E402
 
+from chisurf.core.datastore import (  # noqa: E402
+    column_names,
+    numeric_column,
+    read_csv_table,
+    row_count,
+    store_from_arrays,
+)
 from chisurf.gui.widgets.chitable import (  # noqa: E402
     ArraySource,
     ChiTableModel,
     ChiTableWidget,
     ColumnFilter,
     ColumnSpec,
-    DataFrameSource,
     DataStoreSource,
     FilterSpec,
     RecordSource,
     ValueColorScheme,
     delegate_for,
-    edit_dataframe,
+    edit_store,
     is_valid_format,
 )
 from chisurf.gui.widgets.chitable.model import LARGE_ROWS, ROWS_TO_LOAD  # noqa: E402
 
 
 @pytest.fixture
-def frame():
-    """Return a small mixed-dtype frame used across the tests.
+def store():
+    """Return a small mixed-dtype store used across the tests.
 
     Returns
     -------
-    pandas.DataFrame
+    tttrlib.DataStore
     """
-    return pd.DataFrame(
+    return store_from_arrays(
         {
             "name": ["alpha", "beta", "gamma", "delta"],
             "value": [1.0, 20.0, 300.0, np.nan],
@@ -61,8 +66,8 @@ def frame():
 # ── sources ──────────────────────────────────────────────────────────────
 
 
-def test_dataframe_source_infers_kinds(frame):
-    src = DataFrameSource(frame)
+def test_store_source_infers_kinds(store):
+    src = DataStoreSource(store)
     kinds = {s.key: s.kind for s in src.column_specs()}
     assert kinds == {
         "name": "str",
@@ -73,33 +78,6 @@ def test_dataframe_source_infers_kinds(frame):
     }
     assert src.row_count() == 4
     assert src.value(1, 0) == "beta"
-
-
-def test_dataframe_source_handles_extension_dtypes():
-    """Regression: nullable pandas dtypes must not raise.
-
-    The previous editor tested numeric-ness with ``np.issubdtype``, which raises
-    ``TypeError`` on ``Float64``/``Int64`` — exactly the dtypes the pyarrow
-    reader produces for burst data.
-    """
-    df = pd.DataFrame(
-        {
-            "a": pd.array([1.5, None, 3.5], dtype="Float64"),
-            "b": pd.array([1, 2, None], dtype="Int64"),
-            "c": pd.array(["x", None, "z"], dtype="string"),
-        }
-    )
-    src = DataFrameSource(df)
-    kinds = [s.kind for s in src.column_specs()]
-    assert kinds == ["float", "int", "str"]
-
-    arr = src.column_array(0)
-    assert arr.dtype == np.float64
-    assert np.isnan(arr[1])
-
-    model = ChiTableModel(src)
-    assert model.data(model.index(0, 0), QtCore.Qt.DisplayRole) == "1.5"
-    assert model.data(model.index(1, 0), QtCore.Qt.DisplayRole) == ""
 
 
 def test_array_source_pads_short_columns():
@@ -163,8 +141,8 @@ def test_record_source_reads_and_writes_through_setter():
 # ── model ────────────────────────────────────────────────────────────────
 
 
-def test_model_formats_and_aligns(frame):
-    model = ChiTableModel(DataFrameSource(frame))
+def test_model_formats_and_aligns(store):
+    model = ChiTableModel(DataStoreSource(store))
     assert model.rowCount() == 4
     assert model.columnCount() == 5
     assert model.data(model.index(2, 1), QtCore.Qt.DisplayRole) == "300"
@@ -176,8 +154,8 @@ def test_model_formats_and_aligns(frame):
     assert model.data(model.index(0, 3), QtCore.Qt.TextAlignmentRole) == int(QtCore.Qt.AlignCenter)
 
 
-def test_model_default_format_is_validated(frame):
-    model = ChiTableModel(DataFrameSource(frame))
+def test_model_default_format_is_validated(store):
+    model = ChiTableModel(DataStoreSource(store))
     assert is_valid_format("%.3f")
     assert not is_valid_format("nonsense")
     assert model.set_default_format("%.2f")
@@ -186,18 +164,18 @@ def test_model_default_format_is_validated(frame):
     assert model.data(model.index(0, 1), QtCore.Qt.DisplayRole) == "1.00"
 
 
-def test_model_edit_flags_follow_source(frame):
-    model = ChiTableModel(DataFrameSource(frame, editable=True, readonly_columns=("name",)))
+def test_model_edit_flags_follow_source(store):
+    model = ChiTableModel(DataStoreSource(store, editable=True, readonly_columns=("name",)))
     assert not (model.flags(model.index(0, 0)) & QtCore.Qt.ItemIsEditable)
     assert model.flags(model.index(0, 1)) & QtCore.Qt.ItemIsEditable
     assert model.setData(model.index(0, 1), "42", QtCore.Qt.EditRole)
-    assert frame.iat[0, 1] == 42.0
+    assert numeric_column(store, "value")[0] == 42.0
     assert not model.setData(model.index(0, 0), "nope", QtCore.Qt.EditRole)
 
 
 def test_model_pages_large_tables():
-    df = pd.DataFrame({"x": np.arange(LARGE_ROWS + 10, dtype=float)})
-    model = ChiTableModel(DataFrameSource(df))
+    big = store_from_arrays({"x": np.arange(LARGE_ROWS + 10, dtype=float)})
+    model = ChiTableModel(DataStoreSource(big))
     assert model.total_row_count() == LARGE_ROWS + 10
     assert model.rowCount() == ROWS_TO_LOAD
     assert model.can_fetch_more()
@@ -208,36 +186,36 @@ def test_model_pages_large_tables():
     assert not model.can_fetch_more()
 
 
-def test_model_empty_columns(frame):
-    model = ChiTableModel(DataFrameSource(frame))
+def test_model_empty_columns(store):
+    model = ChiTableModel(DataStoreSource(store))
     assert model.column_index("note") in model.empty_columns()
     assert model.column_index("name") not in model.empty_columns()
 
 
-def test_model_column_range_ignores_nan(frame):
-    model = ChiTableModel(DataFrameSource(frame))
+def test_model_column_range_ignores_nan(store):
+    model = ChiTableModel(DataStoreSource(store))
     assert model.column_range(model.column_index("value")) == (1.0, 300.0)
 
 
-def test_model_staged_edits_commit_and_rollback(frame):
-    src = DataFrameSource(frame, editable=True)
+def test_model_staged_edits_commit_and_rollback(store):
+    src = DataStoreSource(store, editable=True)
     model = ChiTableModel(src, staged=True)
     model.setData(model.index(0, 1), "5", QtCore.Qt.EditRole)
     assert model.data(model.index(0, 1), QtCore.Qt.DisplayRole) == "5"
-    assert frame.iat[0, 1] == 1.0  # not written through yet
+    assert numeric_column(store, "value")[0] == 1.0  # not written through yet
     model.rollback()
     assert model.data(model.index(0, 1), QtCore.Qt.DisplayRole) == "1"
 
     model.setData(model.index(0, 1), "5", QtCore.Qt.EditRole)
     assert model.commit() == 1
-    assert frame.iat[0, 1] == 5.0
+    assert numeric_column(store, "value")[0] == 5.0
 
 
 # ── filtering and sorting ────────────────────────────────────────────────
 
 
-def test_global_search_filters_rows(frame):
-    model = ChiTableModel(DataFrameSource(frame))
+def test_global_search_filters_rows(store):
+    model = ChiTableModel(DataStoreSource(store))
     model.set_filter(FilterSpec(query="a"))
     names = [model.data(model.index(r, 0), QtCore.Qt.DisplayRole) for r in range(model.rowCount())]
     assert names == ["alpha", "beta", "gamma", "delta"]
@@ -246,8 +224,8 @@ def test_global_search_filters_rows(frame):
     assert model.data(model.index(0, 0), QtCore.Qt.DisplayRole) == "gamma"
 
 
-def test_numeric_column_filter(frame):
-    model = ChiTableModel(DataFrameSource(frame))
+def test_numeric_column_filter(store):
+    model = ChiTableModel(DataStoreSource(store))
     col = model.column_index("value")
     model.set_filter(FilterSpec(columns=(ColumnFilter(column=col, op="ge", value=20),)))
     assert model.rowCount() == 2
@@ -260,8 +238,8 @@ def test_numeric_column_filter(frame):
     assert model.data(model.index(0, 0), QtCore.Qt.DisplayRole) == "delta"
 
 
-def test_text_column_filter(frame):
-    model = ChiTableModel(DataFrameSource(frame))
+def test_text_column_filter(store):
+    model = ChiTableModel(DataStoreSource(store))
     col = model.column_index("name")
     model.set_filter(FilterSpec(columns=(ColumnFilter(column=col, op="startswith", value="del"),)))
     assert model.rowCount() == 1
@@ -269,8 +247,8 @@ def test_text_column_filter(frame):
     assert model.rowCount() == 2
 
 
-def test_sort_is_stable_and_reversible(frame):
-    model = ChiTableModel(DataFrameSource(frame))
+def test_sort_is_stable_and_reversible(store):
+    model = ChiTableModel(DataStoreSource(store))
     col = model.column_index("value")
     model.sort(col, QtCore.Qt.AscendingOrder)
     shown = [model.data(model.index(r, 0), QtCore.Qt.DisplayRole) for r in range(model.rowCount())]
@@ -281,34 +259,34 @@ def test_sort_is_stable_and_reversible(frame):
     assert shown[1] == "gamma"
 
 
-def test_filter_and_sort_compose(frame):
-    model = ChiTableModel(DataFrameSource(frame))
+def test_filter_and_sort_compose(store):
+    model = ChiTableModel(DataStoreSource(store))
     model.set_filter(FilterSpec(query="a"))
     model.sort(model.column_index("value"), QtCore.Qt.DescendingOrder)
     assert model.rowCount() == 4
     assert model.data(model.index(1, 0), QtCore.Qt.DisplayRole) == "gamma"
 
 
-def test_edit_while_filtered_writes_the_right_source_row(frame):
+def test_edit_while_filtered_writes_the_right_source_row(store):
     """Regression: a filtered view must not write through the view index.
 
     The previous editor repopulated its widget from a filtered frame but wrote
     edits back with ``df.iloc[view_row, col]``, silently corrupting an unrelated
     row.
     """
-    src = DataFrameSource(frame, editable=True)
+    src = DataStoreSource(store, editable=True)
     model = ChiTableModel(src)
     model.set_filter(FilterSpec(query="gamma"))
     assert model.rowCount() == 1
     assert model.source_row(0) == 2
 
     assert model.setData(model.index(0, 1), "999", QtCore.Qt.EditRole)
-    assert frame.iat[2, 1] == 999.0
-    assert frame.iat[0, 1] == 1.0
+    assert numeric_column(store, "value")[2] == 999.0
+    assert numeric_column(store, "value")[0] == 1.0
 
 
-def test_source_and_view_row_round_trip(frame):
-    model = ChiTableModel(DataFrameSource(frame))
+def test_source_and_view_row_round_trip(store):
+    model = ChiTableModel(DataStoreSource(store))
     model.sort(model.column_index("value"), QtCore.Qt.DescendingOrder)
     for view_row in range(model.rowCount()):
         assert model.view_row(model.source_row(view_row)) == view_row
@@ -339,14 +317,14 @@ def test_color_disables_itself_on_huge_tables():
     assert scheme.affordable(10, 5)
     assert not scheme.affordable(1000, 5)
 
-    df = pd.DataFrame({"x": np.arange(50.0), "y": np.arange(50.0)})
-    model = ChiTableModel(DataFrameSource(df), color_scheme=scheme)
+    big = store_from_arrays({"x": np.arange(50.0), "y": np.arange(50.0)})
+    model = ChiTableModel(DataStoreSource(big), color_scheme=scheme)
     assert not model.color_affordable()
     assert model.data(model.index(0, 0), QtCore.Qt.BackgroundRole) is None
 
 
-def test_background_applies_to_numeric_columns_only(frame):
-    model = ChiTableModel(DataFrameSource(frame), color_scheme=ValueColorScheme(enabled=True))
+def test_background_applies_to_numeric_columns_only(store):
+    model = ChiTableModel(DataStoreSource(store), color_scheme=ValueColorScheme(enabled=True))
     assert model.data(model.index(0, 1), QtCore.Qt.BackgroundRole) is not None
     assert model.data(model.index(0, 0), QtCore.Qt.BackgroundRole) is None
 
@@ -354,9 +332,9 @@ def test_background_applies_to_numeric_columns_only(frame):
 # ── widget ───────────────────────────────────────────────────────────────
 
 
-def test_widget_shows_frame_and_reports_status(qapp, frame):
+def test_widget_shows_store_and_reports_status(qapp, store):
     widget = ChiTableWidget()
-    widget.set_dataframe(frame)
+    widget.set_store(store)
     assert widget.table_model.rowCount() == 4
     assert "4 rows" in widget._status.text()
     widget.set_search_text("gamma")
@@ -365,9 +343,9 @@ def test_widget_shows_frame_and_reports_status(qapp, frame):
     widget.deleteLater()
 
 
-def test_widget_hide_empty_columns(qapp, frame):
+def test_widget_hide_empty_columns(qapp, store):
     widget = ChiTableWidget()
-    widget.set_dataframe(frame)
+    widget.set_store(store)
     note = widget.table_model.column_index("note")
     assert not widget.table_view.isColumnHidden(note)
     widget.hide_empty_columns(True)
@@ -377,18 +355,18 @@ def test_widget_hide_empty_columns(qapp, frame):
     widget.deleteLater()
 
 
-def test_widget_select_columns(qapp, frame):
+def test_widget_select_columns(qapp, store):
     widget = ChiTableWidget()
-    widget.set_dataframe(frame)
+    widget.set_store(store)
     widget.select_columns(["name", "value"])
     hidden = [widget.table_view.isColumnHidden(c) for c in range(widget.table_model.columnCount())]
     assert hidden == [False, False, True, True, True]
     widget.deleteLater()
 
 
-def test_widget_copy_with_headers(qapp, frame):
+def test_widget_copy_with_headers(qapp, store):
     widget = ChiTableWidget()
-    widget.set_dataframe(frame)
+    widget.set_store(store)
     view = widget.table_view
     view.selectAll()
     text = view.copy_selection(include_header=True)
@@ -399,25 +377,25 @@ def test_widget_copy_with_headers(qapp, frame):
     widget.deleteLater()
 
 
-def test_widget_export_csv_honours_filter(qapp, frame, tmp_path):
+def test_widget_export_csv_honours_filter(qapp, store, tmp_path):
     widget = ChiTableWidget()
-    widget.set_dataframe(frame)
+    widget.set_store(store)
     widget.set_search_text("gamma")
     out = tmp_path / "table.csv"
     assert widget.export_csv(str(out)) == str(out)
-    written = pd.read_csv(out)
-    assert len(written) == 1
-    assert written["name"].iloc[0] == "gamma"
+    written = read_csv_table(out, delimiter=",")
+    assert row_count(written) == 1
+    assert np.asarray(written["name"])[0] == "gamma"
     widget.deleteLater()
 
 
-def test_widget_export_csv_omits_hidden_columns(qapp, frame, tmp_path):
+def test_widget_export_csv_omits_hidden_columns(qapp, store, tmp_path):
     widget = ChiTableWidget()
-    widget.set_dataframe(frame)
+    widget.set_store(store)
     widget.select_columns(["name"])
     out = tmp_path / "one.csv"
     widget.export_csv(str(out))
-    assert list(pd.read_csv(out).columns) == ["name"]
+    assert column_names(read_csv_table(out, delimiter=",")) == ["name"]
     widget.deleteLater()
 
 
@@ -485,15 +463,15 @@ def test_foreign_proxy_strips_source_backgrounds(qapp):
 # ── dialog ───────────────────────────────────────────────────────────────
 
 
-def test_edit_dataframe_cancel_leaves_original_untouched(qapp, frame, monkeypatch):
+def test_edit_store_cancel_leaves_original_untouched(qapp, store, monkeypatch):
     monkeypatch.setattr(
         QtWidgets.QDialog, "exec_", lambda self: QtWidgets.QDialog.Rejected, raising=False
     )
-    assert edit_dataframe(frame) is None
-    assert frame.iat[0, 1] == 1.0
+    assert edit_store(store) is None
+    assert numeric_column(store, "value")[0] == 1.0
 
 
-def test_edit_dataframe_accept_returns_a_copy(qapp, frame, monkeypatch):
+def test_edit_store_accept_returns_a_copy(qapp, store, monkeypatch):
     def _accept(self):
         model = self.table.table_model
         model.setData(model.index(0, 1), "77", QtCore.Qt.EditRole)
@@ -503,20 +481,20 @@ def test_edit_dataframe_accept_returns_a_copy(qapp, frame, monkeypatch):
     monkeypatch.setattr(
         "chisurf.gui.widgets.chitable.editor.ChiTableDialog.exec_", _accept, raising=False
     )
-    out = edit_dataframe(frame)
+    out = edit_store(store)
     assert out is not None
-    assert out.iat[0, 1] == 77.0
-    assert frame.iat[0, 1] == 1.0  # the caller's frame is never mutated
+    assert numeric_column(out, "value")[0] == 77.0
+    assert numeric_column(store, "value")[0] == 1.0  # the caller's store is never mutated
 
 
-def test_edit_dataframe_readonly_columns_and_bool_delegate(qapp, frame, monkeypatch):
+def test_edit_store_readonly_columns_and_bool_delegate(qapp, store, monkeypatch):
     from chisurf.gui.widgets.chitable.delegates import BooleanToggleDelegate
 
     checked = {}
 
     def _inspect(self):
         # Assert while the dialog is alive: its C++ objects go as soon as
-        # ``edit_dataframe`` returns and drops the last reference.
+        # ``edit_store`` returns and drops the last reference.
         model = self.table.table_model
         checked["name_readonly"] = not (model.flags(model.index(0, 0)) & QtCore.Qt.ItemIsEditable)
         checked["value_editable"] = bool(model.flags(model.index(0, 1)) & QtCore.Qt.ItemIsEditable)
@@ -530,7 +508,9 @@ def test_edit_dataframe_readonly_columns_and_bool_delegate(qapp, frame, monkeypa
     monkeypatch.setattr(
         "chisurf.gui.widgets.chitable.editor.ChiTableDialog.exec_", _inspect, raising=False
     )
-    edit_dataframe(frame, readonly_columns=("name",), bool_columns=("flag",))
+    # Unlike the retired DataFrameSource, nothing has to be told "flag" is
+    # boolean -- the store column already carries a bool dtype.
+    edit_store(store, readonly_columns=("name",))
     assert checked == {
         "name_readonly": True,
         "value_editable": True,
@@ -645,110 +625,7 @@ def test_rich_text_delegate_renders_entity_only_labels(qapp):
     assert _paint_ink_width(rich, "tau") == _paint_ink_width(plain, "tau")
 
 
-# ── the columnar-store source ────────────────────────────────────────────
-#
-# The contract is equivalence: a table backed by the columnar store must behave
-# exactly as the same table backed by a frame, cell for cell — and then do the
-# three things a frame cannot (keep a narrow dtype, mark a cell missing without
-# a sentinel, offer a text column's distinct values as a drop-down).
-
-
-@pytest.fixture
-def store(frame):
-    """Return the ``frame`` fixture converted into a columnar store.
-
-    Returns
-    -------
-    tttrlib.DataStore
-    """
-    from chisurf.core.datastore import store_from_dataframe
-
-    return store_from_dataframe(frame)
-
-
-@pytest.fixture(params=["frame", "store"])
-def paired_source(request, frame, store):
-    """Yield the same table as a frame source and as a store source.
-
-    Returns
-    -------
-    TableSource
-    """
-    if request.param == "frame":
-        return DataFrameSource(frame, editable=True)
-    return DataStoreSource(store, editable=True)
-
-
-def test_store_source_matches_frame_source_cell_for_cell(frame, store):
-    """Every cell, every kind, every header — identical between the two sources."""
-    from chisurf.gui.widgets.chitable.source import is_na
-
-    df_source = DataFrameSource(frame)
-    ds_source = DataStoreSource(store)
-
-    assert [s.key for s in ds_source.column_specs()] == [s.key for s in df_source.column_specs()]
-    assert [s.kind for s in ds_source.column_specs()] == [s.kind for s in df_source.column_specs()]
-    assert ds_source.row_count() == df_source.row_count()
-    assert ds_source.column_count() == df_source.column_count()
-
-    for row in range(df_source.row_count()):
-        assert ds_source.row_label(row) == df_source.row_label(row)
-        for col in range(df_source.column_count()):
-            expected, got = df_source.value(row, col), ds_source.value(row, col)
-            if is_na(expected):
-                assert is_na(got), f"cell ({row}, {col}): {got!r} is not missing"
-            else:
-                assert got == expected, f"cell ({row}, {col}): {got!r} != {expected!r}"
-
-
-def test_store_source_model_formats_identically(frame, store):
-    """The model renders the two sources into the same strings."""
-    df_model = ChiTableModel(DataFrameSource(frame))
-    ds_model = ChiTableModel(DataStoreSource(store))
-    for row in range(df_model.rowCount()):
-        for col in range(df_model.columnCount()):
-            expected = df_model.data(df_model.index(row, col), QtCore.Qt.DisplayRole)
-            got = ds_model.data(ds_model.index(row, col), QtCore.Qt.DisplayRole)
-            assert got == expected, f"cell ({row}, {col}): {got!r} != {expected!r}"
-
-
-def test_store_source_filters_like_a_frame(paired_source):
-    """Global search, numeric operators and the null test all behave the same."""
-    model = ChiTableModel(paired_source)
-    model.set_filter(FilterSpec(query="mm"))
-    assert model.rowCount() == 1
-    assert model.data(model.index(0, 0), QtCore.Qt.DisplayRole) == "gamma"
-
-    col = model.column_index("value")
-    model.set_filter(FilterSpec(columns=(ColumnFilter(column=col, op="ge", value=20),)))
-    assert model.rowCount() == 2
-    model.set_filter(FilterSpec(columns=(ColumnFilter(column=col, op="isnull"),)))
-    assert model.rowCount() == 1
-    assert model.data(model.index(0, 0), QtCore.Qt.DisplayRole) == "delta"
-
-    name = model.column_index("name")
-    model.set_filter(FilterSpec(columns=(ColumnFilter(column=name, op="regex", value="^[bg]"),)))
-    assert model.rowCount() == 2
-
-
-def test_store_source_sorts_like_a_frame(paired_source):
-    """Including where the missing values land in each direction."""
-    model = ChiTableModel(paired_source)
-    col = model.column_index("value")
-    model.sort(col, QtCore.Qt.AscendingOrder)
-    shown = [model.data(model.index(r, 0), QtCore.Qt.DisplayRole) for r in range(model.rowCount())]
-    assert shown[:3] == ["alpha", "beta", "gamma"]
-    model.sort(col, QtCore.Qt.DescendingOrder)
-    shown = [model.data(model.index(r, 0), QtCore.Qt.DisplayRole) for r in range(model.rowCount())]
-    assert shown[0] == "delta"
-    assert shown[1] == "gamma"
-
-
-def test_store_source_colour_range_matches(paired_source):
-    """The colour ramp needs a numeric range; a store column must supply one."""
-    model = ChiTableModel(paired_source)
-    lo, hi = model.column_range(model.column_index("value"))
-    assert (lo, hi) == (1.0, 300.0)
+# ── what a store offers beyond a plain array/record adapter ─────────────
 
 
 def test_store_source_hides_empty_columns(qapp, store):
@@ -762,26 +639,8 @@ def test_store_source_hides_empty_columns(qapp, store):
     widget.deleteLater()
 
 
-def test_store_source_edit_while_filtered_writes_the_right_row(store):
-    """The filtered-edit regression, re-run against the store."""
-    src = DataStoreSource(store, editable=True)
-    model = ChiTableModel(src)
-    model.set_filter(FilterSpec(query="gamma"))
-    assert model.rowCount() == 1
-    assert model.source_row(0) == 2
-
-    assert model.setData(model.index(0, 1), "999", QtCore.Qt.EditRole)
-    assert store["value"].numpy()[2] == 999.0
-    assert store["value"].numpy()[0] == 1.0
-
-
-# -- what a frame cannot do ----------------------------------------------
-
-
 def test_store_source_keeps_a_narrow_dtype_through_an_edit(qapp):
     """A float32 column edits as float32 instead of being widened to float64."""
-    from chisurf.core.datastore import store_from_arrays
-
     small = store_from_arrays({"small": np.array([0.5, 1.5, 2.5], dtype="float32")})
     model = ChiTableModel(DataStoreSource(small, editable=True))
     assert model.setData(model.index(0, 0), "9.25", QtCore.Qt.EditRole)
@@ -825,7 +684,6 @@ def test_store_source_learns_a_new_label(store):
 
 def test_store_source_declines_a_drop_down_for_a_large_dictionary():
     """A thousand distinct labels is free text, not a combo box."""
-    from chisurf.core.datastore import store_from_arrays
     from chisurf.gui.widgets.chitable.source import MAX_CHOICE_LABELS
 
     many = store_from_arrays({"id": [f"burst{i}" for i in range(MAX_CHOICE_LABELS + 1)]})

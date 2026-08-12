@@ -11,11 +11,11 @@ from __future__ import annotations
 import os
 
 import numpy as np
-import pandas as pd
 import pytest
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
+from chisurf.core.datastore import column_names, numeric_column, store_from_rows  # noqa: E402
 from chisurf.gui.plots.table_plot import (  # noqa: E402
     _BASE_COLUMNS,
     _EDITABLE_COLUMNS,
@@ -73,8 +73,8 @@ class _Param:
 def test_parameter_frame_layout():
     plot = FitTablePlot.__new__(FitTablePlot)  # no Qt construction needed
     params = {"a": _Param("a", 1.5), "b": _Param("b", 2.5, fixed=True)}
-    df = plot._parameter_frame(params)
-    assert list(df.columns) == [
+    table = plot._parameter_frame(params)
+    assert column_names(table) == [
         "name",
         "value",
         "lb",
@@ -84,10 +84,10 @@ def test_parameter_frame_layout():
         "linked",
         "link_target",
     ]
-    assert df["name"].tolist() == ["a", "b"]
-    assert df["value"].tolist() == [1.5, 2.5]
-    assert df["fixed"].tolist() == [False, True]
-    assert df["link_target"].tolist() == ["", ""]
+    assert list(np.asarray(table["name"])) == ["a", "b"]
+    assert list(numeric_column(table, "value")) == [1.5, 2.5]
+    assert list(numeric_column(table, "fixed")) == [0.0, 1.0]
+    assert list(np.asarray(table["link_target"])) == ["", ""]
 
 
 def test_parameter_frame_tolerates_unreadable_bounds():
@@ -96,9 +96,9 @@ def test_parameter_frame_tolerates_unreadable_bounds():
             super().__init__("bad", float("nan"), bounds=(None, None))
 
     plot = FitTablePlot.__new__(FitTablePlot)
-    df = plot._parameter_frame({"bad": _Bad()})
-    assert np.isnan(df["lb"].iloc[0])
-    assert np.isnan(df["ub"].iloc[0])
+    table = plot._parameter_frame({"bad": _Bad()})
+    assert np.isnan(numeric_column(table, "lb")[0])
+    assert np.isnan(numeric_column(table, "ub")[0])
 
 
 class _FakeClient:
@@ -124,7 +124,7 @@ def test_apply_parameter_frame_pushes_edits(monkeypatch):
     plot._refresh_arrays_into_model = lambda: None
 
     params = {"a": _Param("a", 1.0), "b": _Param("b", 2.0)}
-    df = pd.DataFrame(
+    table = store_from_rows(
         [
             {
                 "name": "a",
@@ -148,7 +148,7 @@ def test_apply_parameter_frame_pushes_edits(monkeypatch):
             },
         ]
     )
-    plot._apply_parameter_frame(df, params)
+    plot._apply_parameter_table(table, params)
 
     names = [c[0] for c in client.calls]
     assert names.count("set_parameter_value") == 2
@@ -168,8 +168,8 @@ def test_apply_parameter_frame_skips_unknown_parameters(monkeypatch):
     plot.fit = type("_Fit", (), {"unique_identifier": "uid", "fit_idx": 0})()
     plot._refresh_arrays_into_model = lambda: None
 
-    df = pd.DataFrame([{"name": "ghost", "value": 1.0, "lb": np.nan, "ub": np.nan}])
-    plot._apply_parameter_frame(df, {})
+    table = store_from_rows([{"name": "ghost", "value": 1.0, "lb": np.nan, "ub": np.nan}])
+    plot._apply_parameter_table(table, {})
     assert [c[0] for c in client.calls] == ["update_fit", "model_finalize"]
 
 

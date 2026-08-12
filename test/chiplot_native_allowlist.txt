@@ -33,4 +33,3 @@ chisurf/plugins/core/mmfdb_admin/test/test_optical_components.py
 chisurf/plugins/fcs/fcs_filter_calculator/test/test_widgets.py
 chisurf/plugins/fluorescence_decay/irf_estimator/gui/tool.py
 chisurf/plugins/fret_line/gui/tool.py
-chisurf/plugins/tttr/tttr_lut_tools/gui/settings_panel.py

@@ -14,7 +14,7 @@ from chisurf.core.agent.tools import decay as decay_tools
 from chisurf.core.agent.tools import fitting as fitting_tools
 
 TCSPC = "tcspc/EasyTau300"
-MODEL = "Lifetime (new)"
+MODEL = "Lifetime"
 DECAY_FILE = f"{TCSPC}/215-268 D0.dat"
 IRF_FILE = f"{TCSPC}/215-268 D0 irf.dat"
 

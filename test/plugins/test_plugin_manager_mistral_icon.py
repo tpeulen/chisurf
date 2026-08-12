@@ -1,12 +1,34 @@
-"""Tests for Mistral-backed plugin icon generation."""
+"""Tests for Mistral-backed plugin icon generation.
 
-import sys
+Icon generation talks to a provider through :mod:`chisurf.core.http`, the
+in-tree HTTP client that replaced the ``requests`` dependency. These tests used
+to stub ``sys.modules["requests"]`` instead, which the production code no longer
+imports -- so they passed a ``requests_module`` argument the helpers had
+dropped, and the ones that got past that reached the *real* api.mistral.ai.
+Everything here therefore patches :func:`chisurf.core.http.post` and
+:func:`chisurf.core.http.get`, the seam actually used.
+"""
+
 from types import SimpleNamespace
 
 import pytest
 
+from chisurf.core import http
 from chisurf.plugins.core.plugin_manager import AIIconRateLimitError
 from chisurf.plugins.core.plugin_manager import PluginManagerWidget
+
+
+def _no_network(monkeypatch, post=None, get=None):
+    """Point the HTTP client at the given doubles and forbid anything else."""
+
+    def _forbidden(kind):
+        def call(url, **kwargs):
+            raise AssertionError(f"unexpected HTTP {kind} to {url}")
+
+        return call
+
+    monkeypatch.setattr(http, "post", post or _forbidden("POST"))
+    monkeypatch.setattr(http, "get", get or _forbidden("GET"))
 
 
 class _TextField:
@@ -53,9 +75,8 @@ def _manager(endpoint="https://api.mistral.ai/v1/beta"):
     manager._mistral_endpoint_url = lambda path: PluginManagerWidget._mistral_endpoint_url(manager, path)
     manager._extract_mistral_file_id = lambda data: PluginManagerWidget._extract_mistral_file_id(manager, data)
     manager._post_mistral_json_with_retries = (
-        lambda requests_module, path, headers, payload, timeout: PluginManagerWidget._post_mistral_json_with_retries(
+        lambda path, headers, payload, timeout: PluginManagerWidget._post_mistral_json_with_retries(
             manager,
-            requests_module,
             path,
             headers,
             payload,
@@ -94,7 +115,7 @@ def test_mistral_icon_generation_uses_stable_v1_endpoints(monkeypatch):
         calls.append(("GET", url, None))
         return _Response(content=b"png-bytes")
 
-    monkeypatch.setitem(sys.modules, "requests", SimpleNamespace(post=post, get=get))
+    _no_network(monkeypatch, post=post, get=get)
 
     image_bytes = PluginManagerWidget._request_mistral_generated_icon_bytes(_manager(), {"name": "Demo"})
 
@@ -127,7 +148,7 @@ def test_openai_compatible_icon_generation_retries_without_response_format(monke
             return _Response(status_code=400, text="Unknown parameter: response_format")
         return _Response(payload={"data": [{"b64_json": "cG5nLWJ5dGVz"}]})
 
-    monkeypatch.setitem(sys.modules, "requests", SimpleNamespace(post=post))
+    _no_network(monkeypatch, post=post)
 
     image_bytes = PluginManagerWidget._request_openai_compatible_icon_bytes(manager, {"name": "Demo"})
 
@@ -152,7 +173,7 @@ def test_openai_compatible_icon_generation_passes_api_key(monkeypatch):
         captured.update(kwargs)
         return _Response(payload={"data": [{"b64_json": "cG5nLWJ5dGVz"}]})
 
-    monkeypatch.setitem(sys.modules, "requests", SimpleNamespace(post=post))
+    _no_network(monkeypatch, post=post)
 
     image_bytes = PluginManagerWidget._request_openai_compatible_icon_bytes(manager, {"name": "Demo"})
 
@@ -192,7 +213,7 @@ def test_mistral_icon_generation_falls_back_to_file_download(monkeypatch):
             return _Response(status_code=404, text="not found")
         return _Response(content=b"downloaded-png")
 
-    monkeypatch.setitem(sys.modules, "requests", SimpleNamespace(post=post, get=get))
+    _no_network(monkeypatch, post=post, get=get)
 
     image_bytes = PluginManagerWidget._request_mistral_generated_icon_bytes(
         _manager("https://api.mistral.ai/v1"),
@@ -250,10 +271,10 @@ def test_mistral_post_retries_429_with_retry_after(monkeypatch):
         return _Response(payload={"ok": True})
 
     monkeypatch.setattr("time.sleep", lambda delay: sleeps.append(delay))
+    _no_network(monkeypatch, post=post)
 
     response = PluginManagerWidget._post_mistral_json_with_retries(
         manager,
-        SimpleNamespace(post=post),
         "conversations",
         headers={},
         payload={},
@@ -278,11 +299,11 @@ def test_mistral_post_raises_clear_error_after_429_retries(monkeypatch):
         return _Response(status_code=429, text="rate limited")
 
     monkeypatch.setattr("time.sleep", lambda _delay: None)
+    _no_network(monkeypatch, post=post)
 
     with pytest.raises(AIIconRateLimitError, match="429 Too Many Requests"):
         PluginManagerWidget._post_mistral_json_with_retries(
             manager,
-            SimpleNamespace(post=post),
             "conversations",
             headers={},
             payload={},

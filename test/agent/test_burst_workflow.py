@@ -152,7 +152,7 @@ def analysis(bursts, tmp_path_factory):
     names = [str(getattr(d, "name", "")) for d in context.datasets]
     irf_index = next(i for i, n in enumerate(names) if "irf" in n.lower())
     samples = [i for i, n in enumerate(names) if i != irf_index]
-    fit_tools.create_fit(context, datasets=samples, model_name="Lifetime (new)")
+    fit_tools.create_fit(context, datasets=samples, model_name="Lifetime")
 
     results = {}
     for position, dataset in enumerate(samples):

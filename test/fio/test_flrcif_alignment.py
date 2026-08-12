@@ -217,3 +217,42 @@ def test_alignment_is_idempotent_on_the_shipped_registry(tmp_path):
     registry_copy.write_text(REGISTRY_PATH.read_text(encoding="utf-8"), encoding="utf-8")
     added = align.process(registry_copy, tmp_path / "unused.dic", dry_run=True)
     assert added == 0, f"{added} registry parameter(s) have no dictionary item"
+
+
+def test_registry_and_dictionary_descriptions_do_not_drift():
+    """Every registry description matches the dictionary's ``_item_description``.
+
+    Closes PRD-02c acceptance criterion 4 (description duplication
+    minimised). The alignment script is now the single mechanism that keeps
+    the extension dictionary in step with the registry, so a drift here means
+    someone edited a description in the JSON without re-running the alignment.
+    """
+    import re
+
+    with open(REGISTRY_PATH, "r") as fh:
+        data = json.load(fh)
+    params = data.get("parameters", {})
+    d = MmcifDictionary.load_bundled()
+    cat = d.get_category("flr_chisurf_parameter")
+    assert cat is not None
+
+    drifted = []
+    for key, entry in params.items():
+        if not isinstance(entry, dict):
+            continue
+        reg_desc = entry.get("description", "")
+        if not isinstance(reg_desc, str) or not reg_desc.strip():
+            continue
+        attr = align.sanitize_cif_attribute(key)
+        item = cat.items.get(attr)
+        if item is None:
+            continue
+        dic_desc = (item.description or "").strip()
+        if dic_desc != reg_desc.strip():
+            drifted.append(key)
+
+    assert not drifted, (
+        f"{len(drifted)} parameter(s) have descriptions that differ between "
+        f"the registry and the dictionary: {drifted[:10]}. "
+        f"Run `python -m build_tools.dev_utils.align_flrcif_parameters` to fix."
+    )

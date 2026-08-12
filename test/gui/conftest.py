@@ -39,7 +39,17 @@ def qapp():
 
 @pytest.fixture
 def chisurf_app(qtbot):
-    """Bootstrap ChiSurf's main window and register with qtbot."""
-    app = chisurf.gui.get_app()
-    qtbot.addWidget(app.cs)
-    yield app
+    """Bootstrap ChiSurf's main window and register it with qtbot.
+
+    Yields the :mod:`chisurf` module, whose ``cs`` attribute is the main
+    window. ``get_app`` returns the :class:`QApplication` and puts the window in
+    that global rather than on the application object, so the previous
+    ``app.cs`` raised ``AttributeError: 'QApplication' object has no attribute
+    'cs'`` -- at *setup*, which turns into an error for every test using this
+    fixture rather than a failure anyone would read as "the fixture is wrong".
+    """
+    chisurf.gui.get_app()
+    window = chisurf.cs
+    assert window is not None, "get_app did not build a main window"
+    qtbot.addWidget(window)
+    yield chisurf

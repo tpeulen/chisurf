@@ -46,7 +46,7 @@ class _FakeDispatcher:
 def test_load_app_startup_services_uses_prefixed_config_order():
     """Prefixed config filenames define default startup order."""
     specs = load_app_startup_services()
-    assert [spec.id for spec in specs] == ["mmfdb", "gui_imports", "setup_ipython", "startup_interface", "setup_logging", "init_setups", "restore_setup_defaults", "define_actions", "load_tools", "init_executors", "arrange_widgets", "setup_style", "deferred_gui_imports", "populate_plugins", "check_updates", "gui.start_jupyter", "gui.populate_notebooks", "warmup_imports"]
+    assert [spec.id for spec in specs] == ["mmfdb", "gui_imports", "setup_ipython", "startup_interface", "setup_logging", "init_setups", "restore_setup_defaults", "define_actions", "load_tools", "init_executors", "arrange_widgets", "setup_style", "deferred_gui_imports", "populate_plugins", "check_updates", "warmup_imports"]
     mmfdb_spec = next(s for s in specs if s.id == "mmfdb")
     assert mmfdb_spec.surface == "server"
     assert mmfdb_spec.phase == "pre_server_listen"
@@ -353,11 +353,11 @@ def test_enabled_if_from_dict_setting_source():
     spec = AppStartupServiceSpec.from_dict({
         "id": "test",
         "entrypoint": "pkg:test",
-        "enabled_if": {"setting": "gui.start_jupyter_on_startup", "equals": True},
+        "enabled_if": {"setting": "gui.some_feature", "equals": True},
     })
     assert spec.enabled_if is not None
     assert spec.enabled_if.source_type == "setting"
-    assert spec.enabled_if.source_key == "gui.start_jupyter_on_startup"
+    assert spec.enabled_if.source_key == "gui.some_feature"
     assert spec.enabled_if.equals is True
 
 
@@ -691,17 +691,6 @@ def test_resolve_enabled_returns_only_enabled():
     manager = AppStartupServiceManager.from_specs(specs)
     enabled = manager.resolve_enabled()
     assert [s.id for s in enabled] == ["a", "c"]
-
-
-def test_config_has_jupyter_enabled_if():
-    """The Jupyter service in the default config has an enabled_if setting gate."""
-    specs = load_app_startup_services()
-    jupyter = next((s for s in specs if s.id == "gui.start_jupyter"), None)
-    assert jupyter is not None, "gui.start_jupyter not found in config"
-    assert jupyter.enabled_if is not None
-    assert jupyter.enabled_if.source_type == "setting"
-    assert jupyter.enabled_if.source_key == "gui.start_jupyter_on_startup"
-    assert jupyter.enabled_if.equals is True
 
 
 def test_config_background_services_budget_a_cold_import():

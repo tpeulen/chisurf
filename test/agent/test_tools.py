@@ -16,7 +16,7 @@ from chisurf.core.agent.tools import fitting as fitting_tools
 from chisurf.core.agent.tools import scripting as scripting_tools
 
 TCSPC_RELATIVE = "tcspc/EasyTau300"
-MODEL_NAME = "Lifetime (new)"
+MODEL_NAME = "Lifetime"
 
 
 # ── registry ──────────────────────────────────────────────────────────
@@ -165,7 +165,7 @@ def test_an_ambiguous_model_name_asks_for_the_full_one(monkeypatch):
     monkeypatch.setattr(
         fitting_tools,
         "_model_names",
-        lambda: {"TCSPC": ["Lifetime (new)", "Lifetime mixer (new)"]},
+        lambda: {"TCSPC": ["Lifetime", "Lifetime mixer"]},
     )
     with pytest.raises(ToolError, match="ambiguous"):
         fitting_tools.resolve_model_name("Lifetime")

@@ -277,12 +277,21 @@ def test_asking_for_a_clip_that_is_not_there_is_not_an_error():
 # -- the wiring -----------------------------------------------------------
 
 def test_every_context_plays_a_real_recording():
-    """The synthesiser is the fallback now, not the soundtrack."""
+    """The synthesiser is the fallback now, not the soundtrack.
+
+    ``overworld`` and ``underworld`` are the deliberate exceptions: the
+    shipped CC0 pack's "Level 1" and "Level 3" are an upbeat action loop and
+    a becalmed dungeon crawl, and open ground plus the dark manifold below
+    it need to read as tense, not either of those -- so both always use the
+    sequencer.
+    """
     if not audio.clip_names("music"):
         pytest.skip("audio assets are not installed in this checkout")
+    exempt = {"overworld", "underworld"}
     for context, track in TRACKS.items():
-        assert "clip" in track, context
-        assert audio.clip(track["clip"], "music") is not None, context
+        if context not in exempt:
+            assert "clip" in track, context
+            assert audio.clip(track["clip"], "music") is not None, context
         # ...and the note data is still there, so a stripped install still
         # has music rather than silence.
         assert "melody" in track, context
@@ -310,7 +319,9 @@ def test_a_recorded_track_is_rendered_at_the_clip_rate_not_the_synth_rate():
     """A WAV that lies about its rate plays at the wrong pitch and speed."""
     if not audio.clip_names("music"):
         pytest.skip("audio assets are not installed in this checkout")
-    track = TRACKS["overworld"]
+    # Not "overworld": that context has no clip -- see
+    # test_every_context_plays_a_real_recording.
+    track = TRACKS["battle"]
     pcm = audio.render_track(track)
     expected = audio.clip(track["clip"], "music")[0]
     assert pcm == expected, "the recording should be used verbatim"

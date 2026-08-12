@@ -20,7 +20,7 @@ import pytest
 from chisurf.core.structure.selection import SelectionError, select, selection_mask
 
 DATA = pathlib.Path(__file__).resolve().parents[1] / "data/atomic_coordinates"
-PDB = DATA / "trajectory/h5-file/topol.pdb"
+PDB = DATA / "trajectory/hgbp1/topol.pdb"
 EXPRESSIONS = json.loads((DATA / "selection/expressions.json").read_text())
 EXPECTED = np.load(DATA / "selection/topol_expected.npz")
 

@@ -27,9 +27,9 @@ ALLOWED = {
     # The base itself -- something has to subclass QMainWindow.
     ("gui/widgets/tools/chisurf_dock_tool.py", "ChisurfDockTool"),
     # The games are not analysis tools and have no files, no docks and no store.
-    # Pong and Breakout were ported to the chigame engine and are plain QWidgets
-    # now, so their exceptions are struck rather than inherited. Tetris follows.
-    ("plugins/misc/games/tetris/tetris.py", "Tetris"),
+    # The games had three exceptions here. All five are on the chigame engine
+    # now and are plain QWidgets, so the whole block is struck rather than
+    # inherited -- which is what this list being a shrinking one means.
 }
 
 

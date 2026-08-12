@@ -16,7 +16,7 @@ import pytest
 from chisurf.core.structure.topology import Topology
 
 PDB = (pathlib.Path(__file__).resolve().parents[1]
-       / "data/atomic_coordinates/trajectory/h5-file/topol.pdb")
+       / "data/atomic_coordinates/trajectory/hgbp1/topol.pdb")
 
 
 @pytest.fixture(scope="module")
@@ -84,10 +84,12 @@ def test_subset_keeps_order_and_renumbers(topology):
     assert [a.index for a in subset.atoms] == [0, 1, 2]
 
 
-def test_to_dataframe_has_a_row_per_atom(topology):
-    frame = topology.to_dataframe()
-    assert len(frame) == topology.n_atoms
-    assert {"serial", "name", "element", "resSeq", "resName", "chainID"} <= set(frame.columns)
+def test_to_store_has_a_row_per_atom(topology):
+    from chisurf.core.datastore import column_names, row_count
+
+    table = topology.to_store()
+    assert row_count(table) == topology.n_atoms
+    assert {"serial", "name", "element", "resSeq", "resName", "chainID"} <= set(column_names(table))
 
 
 def test_equality_ignores_coordinates(topology):

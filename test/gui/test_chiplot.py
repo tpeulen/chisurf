@@ -71,6 +71,20 @@ def test_style_coercion():
     assert cp.int_color(0) != cp.int_color(3)
 
 
+def test_eight_digit_hex_is_rrggbbaa():
+    """``#rrggbbaa`` as documented, not Qt's ``#aarrggbb``.
+
+    Qt reads an eight-digit hex as alpha-first, so handing the string straight
+    to ``QColor`` swapped alpha into red and returned an opaque colour:
+    ``#ff000080`` — red, half transparent — came back as dark blue at full
+    alpha, and a translucent region band rendered olive.
+    """
+    assert cp.to_color("#ff000080").as_tuple() == (255, 0, 0, 128)
+    assert cp.to_color("#26a29832").as_tuple() == (38, 162, 152, 50)
+    # Six digits are unchanged, and stay opaque.
+    assert cp.to_color("#26a298").as_tuple() == (38, 162, 152, 255)
+
+
 def test_plot_draw_all_families(qapp):
     x = np.linspace(0, 10, 50)
     y = np.sin(x)
@@ -162,6 +176,24 @@ def test_handle_is_alive_tracks_the_native_item(qapp):
     assert curve.is_alive() is True
     text = plot.text("hi", (1.0, 0.5))
     assert text.is_alive() is True
+
+
+def test_set_range_takes_data_units_on_a_log_axis(qapp):
+    """``set_ylim`` is data units on every axis, exponents on none.
+
+    A pyqtgraph view in log mode holds exponents, so a call site wrote
+    ``set_ylim(log10(lo), log10(hi))`` and it looked right — on that renderer.
+    The same code on the native backend drew a decay spanning 0.1 to 4 counts.
+    The conversion belongs in the backend; the API cannot be renderer-dependent
+    or every caller has to know which one it is talking to.
+    """
+    plot = cp.Plot()
+    plot.line([1.0, 2.0, 3.0], [1.0, 100.0, 10000.0], pen="red")
+    plot.set_log(y=True)
+    plot.set_ylim(1.0, 10000.0)
+    (_, (lo, hi)) = plot.canvas.get_range()
+    assert 0.1 <= lo <= 2.0
+    assert 5e3 <= hi <= 2e5
 
 
 def test_menu_enabled_reads_back(qapp):

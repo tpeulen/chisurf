@@ -68,15 +68,17 @@ def test_nothing_reads_a_table_through_a_frame():
     assert not readers, (
         "these read HDF5 through a DataFrame:\n  "
         + "\n  ".join(sorted(readers))
-        + "\nUse chisurf.core.datastore.read_table / read_table_frame. A file in "
+        + "\nUse chisurf.core.datastore.read_table / read_results_table. A file in "
         "the older frame layout is a file to convert, not to read."
     )
 
 
 def test_the_seam_has_no_frame_reader_behind_it():
-    """read_table_frame converts a columnar table; it does not fall back."""
+    """read_results_table converts a columnar table; it does not fall back."""
     source = (_PKG / "core" / "datastore.py").read_text(encoding="utf-8")
-    body = source[source.index("def read_table_frame("):]
-    body = body[: body.index("\ndef ", 1)]
+    body = source[source.index("def read_results_table("):]
+    end = body.find("\ndef ", 1)
+    if end != -1:
+        body = body[:end]
     assert "read_hdf" not in body
     assert "read_table(" in body

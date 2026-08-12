@@ -46,13 +46,6 @@ def test_gui_post_show_services_load_from_default_config():
         assert spec.surface == "gui"
         assert spec.phase == "post_gui_show"
 
-    # Jupyter service should have enabled_if gate
-    jupyter = next((s for s in post_specs if s.id == "gui.start_jupyter"), None)
-    assert jupyter is not None
-    assert jupyter.enabled_if is not None
-    assert jupyter.enabled_if.source_type == "setting"
-    assert "gui.start_jupyter_on_startup" in jupyter.enabled_if.source_key
-
 
 def test_splash_services_execute_in_order():
     """Splash phase services execute in dependency/order sequence."""
@@ -117,54 +110,3 @@ def test_post_show_services_filtered_separately_from_splash():
     assert len(post_ordered) == 1
     assert post_ordered[0].id == "post_b"
 
-
-def test_disabled_jupyter_service_does_not_block():
-    """Jupyter service is skipped via enabled_if when setting is falsy."""
-    import chisurf.core.settings
-    if "gui" not in chisurf.core.settings.cs_settings:
-        chisurf.core.settings.cs_settings["gui"] = {}
-    chisurf.core.settings.cs_settings["gui"]["start_jupyter_on_startup"] = False
-
-    specs = load_app_startup_services()
-    post_specs = [s for s in specs if s.surface == "gui" and s.phase == "post_gui_show"]
-
-    class _FakeLoader:
-        def load(self, entrypoint):
-            def svc(ctx):
-                ctx.mark_ready()
-            return svc
-
-    manager = AppStartupServiceManager.from_specs(post_specs, loader=_FakeLoader())
-    enabled = manager.resolve_enabled()
-
-    enabled_ids = {s.id for s in enabled}
-    assert "gui.start_jupyter" not in enabled_ids
-    assert "gui.populate_notebooks" not in enabled_ids
-
-    del chisurf.core.settings.cs_settings["gui"]["start_jupyter_on_startup"]
-
-
-def test_enabled_jupyter_service_runs():
-    """Jupyter service runs via enabled_if when setting is truthy."""
-    import chisurf.core.settings
-    if "gui" not in chisurf.core.settings.cs_settings:
-        chisurf.core.settings.cs_settings["gui"] = {}
-    chisurf.core.settings.cs_settings["gui"]["start_jupyter_on_startup"] = True
-
-    specs = load_app_startup_services()
-    post_specs = [s for s in specs if s.surface == "gui" and s.phase == "post_gui_show"]
-
-    class _FakeLoader:
-        def load(self, entrypoint):
-            def svc(ctx):
-                ctx.mark_ready()
-            return svc
-
-    manager = AppStartupServiceManager.from_specs(post_specs, loader=_FakeLoader())
-    enabled = manager.resolve_enabled()
-
-    enabled_ids = {s.id for s in enabled}
-    assert "gui.start_jupyter" in enabled_ids
-    assert "gui.populate_notebooks" in enabled_ids
-
-    del chisurf.core.settings.cs_settings["gui"]["start_jupyter_on_startup"]

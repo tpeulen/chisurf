@@ -14,7 +14,7 @@ from chisurf.core.agent.tools import fitting as fitting_tools
 from chisurf.core.agent.tools import linking as linking_tools
 
 TCSPC = "tcspc/EasyTau300"
-MODEL = "Lifetime (new)"
+MODEL = "Lifetime"
 
 
 @pytest.fixture()

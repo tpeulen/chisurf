@@ -119,11 +119,11 @@ def test_a_model_is_offered_only_for_the_data_it_can_fit():
 def test_a_model_that_declares_nothing_stays_offered():
     """The filter may only remove models that would fail, never surprise ones."""
     from chisurf.core.experiments.core import Experiment
-    from chisurf.core.models.tcspc.lifetime import LifetimeNewModel
+    from chisurf.core.models.tcspc.lifetime import LifetimeModel
 
     experiment = Experiment(name="TCSPC")
-    experiment.add_model_class(LifetimeNewModel)
-    assert experiment.get_model_names(_two_colour_curve()) == [LifetimeNewModel.name]
+    experiment.add_model_class(LifetimeModel)
+    assert experiment.get_model_names(_two_colour_curve()) == [LifetimeModel.name]
 
 
 # ── the reader panel follows the setting ───────────────────────────────────

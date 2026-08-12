@@ -61,10 +61,12 @@ def read_chain(path):
         # Read through the seam rather than through a frame: the point of the
         # columnar layout is that it opens with no optional HDF5 package, and a
         # test that reaches for one would not notice if that stopped being true.
-        from chisurf.core.datastore import read_table_frame
+        from chisurf.core.datastore import column_names, numeric_column, read_results_table
 
-        frame = read_table_frame(path)
-        return list(frame.columns), frame.to_numpy()
+        store = read_results_table(path)
+        names = column_names(store)
+        rows = np.column_stack([numeric_column(store, name) for name in names])
+        return names, rows
     with open(path) as f:
         names = f.readline().lstrip("#").split()
     return names, np.loadtxt(path)

@@ -11,7 +11,7 @@ import tempfile
 
 import numpy as np
 
-from chisurf.core.datastore import column_names, row_count
+from chisurf.core.datastore import column_names, numeric_column, row_count
 import pytest
 
 _HT3 = next(
@@ -59,8 +59,6 @@ def test_nb_maps_single_frame_is_safe():
 
 def test_maps_to_table_hdf5_roundtrip_and_ndxplorer():
     """maps_to_table -> imaging HDF5 round-trips and loads via ndxplorer."""
-    import pandas as pd
-
     from chisurf.core.fluorescence.imaging import (
         maps_to_table,
         nb_maps,
@@ -77,7 +75,7 @@ def test_maps_to_table_hdf5_roundtrip_and_ndxplorer():
     path = os.path.join(tempfile.gettempdir(), "chisurf_nb_roundtrip.h5")
     write_imaging_hdf5(df, path)
     back = read_imaging_table(path)
-    assert len(back) == 64 and "B" in back.columns
+    assert row_count(back) == 64 and "B" in column_names(back)
     pytest.importorskip("ndxplorer")
     from ndxplorer.io import reader as ndx_reader
 
@@ -87,8 +85,6 @@ def test_maps_to_table_hdf5_roundtrip_and_ndxplorer():
 
 def test_add_maps_to_hdf5_enriches_existing_table_and_keeps_source():
     """N&B / phasor add columns to an existing results table, preserving source."""
-    import pandas as pd
-
     from chisurf.core.fluorescence.imaging import (
         add_maps_to_hdf5,
         intensity_maps,
@@ -112,8 +108,8 @@ def test_add_maps_to_hdf5_enriches_existing_table_and_keeps_source():
     added = add_maps_to_hdf5(path, {k: m[k] for k in ("N", "B", "epsilon")})
     assert set(added) == {"N", "B", "epsilon"}
     df = read_imaging_table(path)
-    assert {"intensity", "N", "B", "epsilon"}.issubset(df.columns)
-    assert len(df) == 25
+    assert {"intensity", "N", "B", "epsilon"}.issubset(column_names(df))
+    assert row_count(df) == 25
     assert read_imaging_source(path) == "/data/raw.ht3"
 
 
@@ -557,10 +553,10 @@ def test_add_maps_preserves_columns_of_a_columnar_file():
         from chisurf.core.fluorescence.imaging.pixel_maps import read_imaging_table
 
         back = read_imaging_table(path)
-        assert "Tau" in back.columns, "the lifetime map was discarded by the merge"
-        assert "N" in back.columns
-        np.testing.assert_allclose(back["Tau"].to_numpy(), 2.5)
-        np.testing.assert_allclose(back["N"].to_numpy(), 7.0)
+        assert "Tau" in column_names(back), "the lifetime map was discarded by the merge"
+        assert "N" in column_names(back)
+        np.testing.assert_allclose(numeric_column(back, "Tau"), 2.5)
+        np.testing.assert_allclose(numeric_column(back, "N"), 7.0)
 
 
 def test_add_maps_refuses_an_unreadable_file_rather_than_overwriting():
@@ -591,4 +587,4 @@ def test_add_maps_still_creates_a_missing_file():
     with tempfile.TemporaryDirectory() as d:
         path = os.path.join(d, "new.h5")
         assert add_maps_to_hdf5(path, {"N": np.zeros((2, 2))}) == ["N"]
-        assert "N" in read_imaging_table(path).columns
+        assert "N" in column_names(read_imaging_table(path))
