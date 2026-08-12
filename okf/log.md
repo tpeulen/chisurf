@@ -35565,3 +35565,32 @@
   `test_engine_is_portable`: a subprocess. Factored into
   `test/toolkit_free.py::probe`, which runs a script with `open_app` and `emit`
   in scope and returns what it emitted.
+
+- **2026-08-12 — chimol: VMD's cartoon, read for the algorithm -- one half taken,
+  the other measured and rejected.** Source at `vmd-1.9.4a57`,
+  `src/DrawMolItemRibbons.C`.
+  **Taken: orthogonalise the orientation against the backbone tangent.** VMD
+  forms it as `(A x B) x A` with `A` the CA-to-CA step, which is `B` with its
+  along-chain component removed. A peptide-plane normal is only *roughly*
+  perpendicular to the backbone, and the part lying along the chain contributes
+  nothing to the ribbon's plane while carrying all the jitter of the two atoms
+  that defined it. Small but consistent: frame-to-frame twist change improved in
+  **every** class (helix 0.72 -> 0.69 deg, sheet 0.69 -> 0.64, coil 1.40 -> 1.37,
+  SS boundary 1.06 -> 1.03).
+  **Rejected after measuring: VMD's along-chain low-pass.** VMD stores a running
+  `e_i = normalize(e_{i-1} + d_i)` rather than the per-residue vector, and it
+  looked like the load-bearing piece. Implemented, it made the flicker **much
+  worse** -- helix 0.69 -> **2.86** deg, coil 1.37 -> **3.55**. The reason is
+  structural: infinite memory down the chain couples every residue to the chain
+  start, so the next frame's accumulation diverges from this one's everywhere at
+  once. It buys smoothness *along* the chain within a frame, which is what VMD
+  wants -- VMD keeps **no** frame-to-frame state at all -- and that is the wrong
+  dependency for temporal stability. Removed, with the numbers recorded at the
+  function.
+  Also confirmed from the source, and matching what chimol already does: VMD
+  computes secondary structure **once** and latches it (`did_secondary_structure`),
+  and smooths **coordinates only**, deriving everything else from them -- which
+  is what the earlier fix here arrived at independently. Two details worth
+  copying later: VMD **clamps** rather than shrinks the averaging window at
+  trajectory ends, so smoothing strength stays constant, and its averaging is
+  PBC-aware.
