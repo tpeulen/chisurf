@@ -35126,3 +35126,58 @@
   including why `test_chrome_painter`'s baselines are currently red for that same
   reason and *not* from this change, are in
   [known-issues](references/known-issues.md).
+
+- **2026-08-12 — chimol: `ray` displayed nothing on the Qt-free host, and a
+  loading overlay now exists.** Three user-reported defects and one new widget.
+  **`ray` traced, wrote the PNG, reported success and showed nothing**: the
+  overlay conversion built a `QImage` unconditionally, and the toolkit-free
+  compositor answers `None` because glyphs and dashed strokes need a painter.
+  A traced frame is not in that class — it is a finished image, and putting it
+  on screen is a scale and a blit, which NumPy does. The tracer now hands on its
+  **array**, each host adapting it. **`ray 200, 150` wrote a file called
+  `200.png`** at the default size, because the first comma-field was read as a
+  filename unconditionally; a leading *number* is a width, which is the form
+  people actually type. **`spectrum` raised "assignment destination is
+  read-only"** — the occlusion cache handed out its own array marked read-only,
+  and callers shade in place; it hands out copies now, as the sequence-gradient
+  cache already did.
+  New: a general **modal progress overlay** (`renderer/ui/progress.py`) — bar,
+  percentage, elapsed, ETA, optional Cancel — drawn through the shared painter
+  seam so it works on both hosts, and blocking input so the click that would
+  start a *second* load lands on the scrim. It knows nothing about structures;
+  anything slow can drive it. The ETA is deliberately late and monotone. Its
+  first version smoothed an incremental rate and said "about 0s left" for the
+  whole load, because a caller reporting 5 % a millisecond after `begin` implies
+  fifty per second; it uses the overall average now, which cannot blow up.
+  And **frame time is 9 ms better**: `refresh_gui_state` was hashing 7.5 MB of
+  colours with blake2b every frame (9.9 ms) to notice a change a cheap reduction
+  notices in 0.29 ms. `_draw` 26.0 -> 17.0 ms. The earlier "94 % chrome" figure
+  was measured under `cProfile` and its absolute numbers were wrong; measured
+  directly the conclusion holds and is sharper — chrome is 25.2 of 26 ms and the
+  molecule is ~1 ms. Both measurement traps are recorded in
+  [known-issues](references/known-issues.md), including that hiding the chrome
+  to price it does not work because `refresh_gui_state` re-asserts the flags.
+
+- **2026-08-12 — PRD-102 rewritten against numbers measured on the target M1,
+  and its order of work was wrong.** Ray-cast impostors on this machine:
+  **7,009,000 particles — 30x the NPC — at 22.9 ms (44 fps)**, two-level
+  instanced, before any LOD or culling. The 30x target is not in doubt on the
+  GPU side. Three findings changed the plan. **The bottleneck is the CPU by
+  three orders of magnitude** (chimol's own record: 1030 ms/frame with the
+  molecule at 2 ms), so per-repaint work comes first. **Instancing does not buy
+  frame rate, it buys memory** — 7 M beads is 7 M rasterised quads either way,
+  and YASARA's 40-1000x is quoted as a *memory* factor; the frame-rate number to
+  design against is Mol*'s published ablation, **10-26x from LOD alone**. And
+  **the headline atom counts in this literature are effective, not resident** —
+  cellVIEW's 15 billion is a 60 M model repeated 250x, 40 templates, a few
+  hundred MB. So the order is now: CPU per-repaint work, then LOD, then
+  instancing.
+  Also verified on this adapter: `draw_indirect` works and a compute frustum-cull
+  over 8 M particles takes 2.81 ms bit-exact against NumPy; but there is **no
+  multi-draw-indirect on Metal** and **no conservative depth**, the latter
+  costing a measured 1.2-1.9x on impostors. Licences checked: **ChimeraX is
+  off-limits for code** (non-commercial, no redistribution), cellVIEW is
+  unlicensed or GPL-3.0, cellPACK's MIT is contaminated by GPL headers —
+  **Mol\* (MIT) is the only prior art here that can be borrowed as code**, and
+  its stride-ordered LOD buffer makes selecting a level a `drawCount`
+  truncation.

@@ -271,13 +271,27 @@ class ExportMixin(BaseCmd):
         if joined:
             if "," in joined:
                 parts = [p.strip() for p in joined.split(",")]
-                output_path = parts[0] if parts[0] else None
-                nums = []
-                for p in parts[1:]:
+
+                def _number(text: str) -> int | None:
+                    """*text* as an int, or ``None`` when it is not a number."""
                     try:
-                        nums.append(int(float(p.strip())))
+                        return int(float(text))
                     except (ValueError, TypeError):
-                        continue
+                        return None
+
+                # A leading *number* is a width, not a filename. PyMOL spells
+                # this `ray 200, 150`, and reading the first field as a name
+                # unconditionally turned that into a file called `200.png`
+                # traced at the default size -- so the one form users actually
+                # type both ignored the size it was given and littered the
+                # working directory.
+                first = _number(parts[0]) if parts[0] else None
+                if parts[0] and first is None:
+                    output_path = parts[0]
+                    rest = parts[1:]
+                else:
+                    rest = parts
+                nums = [n for n in (_number(p) for p in rest) if n is not None]
             else:
                 nums = []
                 for tok in joined.split():
@@ -790,17 +804,14 @@ class ExportMixin(BaseCmd):
             img.save(str(out_path), "PNG")
             show_overlay = getattr(viewer, "show_ray_overlay", None)
             if callable(show_overlay):
+                # The array itself, not a QImage. Building a QImage here made
+                # *displaying* a traced frame depend on a toolkit that tracing
+                # does not need: on the Qt-free host `ray` wrote the PNG,
+                # reported success and showed nothing. The renderer accepts
+                # either and converts if its own paint path wants one.
                 try:
-                    from qtpy import QtGui
-                    qimg = QtGui.QImage(
-                        image.data,
-                        image.shape[1],
-                        image.shape[0],
-                        image.strides[0],
-                        QtGui.QImage.Format_RGB888,
-                    ).copy()
-                    show_overlay(qimg)
-                except Exception:
+                    show_overlay(np.ascontiguousarray(image))
+                except Exception:  # noqa: BLE001 - the file is already written
                     pass
             took = "" if started is None else f" in {time.time() - started:.1f}s"
             self._emit_message(

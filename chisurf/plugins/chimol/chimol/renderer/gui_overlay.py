@@ -190,8 +190,19 @@ def paint_ray_image(painter, image, rect) -> bool:
     whole viewport puts the picture where the chrome goes, and the panel is what
     tells you which object you are looking at.
     """
+    import numpy as np
+
     if image is None or rect is None:
         return False
+    if isinstance(image, np.ndarray):
+        # The tracer produces an array, and it is handed on as one so that a
+        # host without a toolkit can display it too. This path has a painter,
+        # so it converts here -- which keeps the tracer's output toolkit-free
+        # rather than making every consumer of it depend on Qt.
+        try:
+            image = image_from_rgb(image)
+        except Exception:  # noqa: BLE001 - an unreadable image draws nothing
+            return False
     if hasattr(image, "isNull") and image.isNull():
         return False
     size = image.size()

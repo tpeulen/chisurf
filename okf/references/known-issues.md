@@ -4312,3 +4312,55 @@ nothing wrong. It now returns a copy, which is one memcpy against rebuilding the
 ramp. The separate defensive copy added in `_recompute_colors_per_ca` is worth
 keeping regardless: it wrote overrides in place into whatever array the colour
 mode returned.
+
+### Corrected and advanced 2026-08-12 — the chrome numbers, measured without a profiler
+
+The entry above put `_chrome_quads` at 37.8 ms of a 41 ms frame. Those figures
+came from `cProfile`, which inflates Python-heavy code badly — 33,876 `_quad`
+calls a frame is exactly the shape it mis-measures. **The conclusion survived;
+the numbers did not.** Timed directly, with no profiler:
+
+| | before | after |
+|---|---|---|
+| `_draw` (no readback) | 26.0 ms | **17.0 ms** |
+| `_chrome_quads` | 25.2 ms | 16.4 ms |
+| `refresh_gui_state` | 10.6 ms | **3.1 ms** |
+| `draw_frame` (offscreen) | 36.1 ms | 31.1 ms |
+
+So the chrome really is ~97 % of the render, and the molecule really is about
+1 ms — an independent measurement of 234,184 impostors on this M1 puts them at
+0.94 ms, which agrees.
+
+**Two measurement traps here, both of which cost time and both of which look
+like a result:**
+
+1. **`draw_frame` on the offscreen canvas includes a GPU-to-CPU readback** —
+   about 10 ms of the 36. That is an artifact of measuring headlessly and is
+   not paid by a real window. Time `_draw` for the render.
+2. **Hiding the chrome to see what it costs does not work.** Setting
+   `gui.visible = False` and `gui.sequence_visible = False` changed the frame
+   time by nothing, which reads as "the chrome is free" and is wrong:
+   `refresh_gui_state` re-asserts both flags from the viewer **every frame**.
+   That is the same per-frame clobber that has bitten `info_visible`,
+   `info_text` and `selecting`. Measure the function, not the flag.
+
+**Fixed:** `refresh_gui_state` was hashing the per-residue colour array with
+**blake2b, on every frame** -- 234,184 x 4 float64 is 7.5 MB, and it measured
+**9.9 ms**, more than building every quad in the chrome and ten times the cost
+of drawing the beads the colours describe. The cost is the algorithm, not the
+size: a cryptographic hash runs near 1 GB/s where a NumPy reduction runs at
+memory bandwidth. Nothing there needs collision resistance against an
+adversary — it needs to notice that a colour command changed the colours. It is
+now a handful of reductions (total, three strided totals, one position-weighted
+total over a subsample) at **0.29 ms, a 34x saving**, verified to detect
+**400/400** single- and triple-residue recolours and to detect a reordering.
+The honest limit is written at the function: an array permuted so that all five
+reductions are preserved would be reported unchanged. No colour command does
+that.
+
+**Still open, and now the whole of it:** the remaining 16.4 ms is building
+~2,800 quads and ~330 text runs from scratch every frame. It wants a dirty-flag
+cache on the chrome vertex buffer — the chrome changes on hover, focus and
+state, not on camera motion, and camera motion is when frames matter. Not done
+here because `internal_gui.py` and `renderer/ui/*` are under active edit by
+another agent.

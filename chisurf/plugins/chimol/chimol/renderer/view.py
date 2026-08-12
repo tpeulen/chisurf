@@ -138,19 +138,23 @@ def _occlusion_memo(points, *args, **kwargs):
         return _estimate_ambient_occlusion_raw(points, *args, **kwargs)
 
     hit = _OCCLUSION_CACHE.get(key)
-    if hit is not None:
-        return hit
-
-    out = _estimate_ambient_occlusion_raw(points, *args, **kwargs)
-    if out is not None:
+    if hit is None:
+        out = _estimate_ambient_occlusion_raw(points, *args, **kwargs)
+        if out is None:
+            return None
         if len(_OCCLUSION_CACHE) >= _OCCLUSION_CACHE_MAX:
             _OCCLUSION_CACHE.pop(next(iter(_OCCLUSION_CACHE)))
-        # Handed out read-only: a caller that shaded it in place would poison
-        # every later hit, and that is a bug you find days later in a colour.
-        out = np.asarray(out)
-        out.flags.writeable = False
-        _OCCLUSION_CACHE[key] = out
-    return out
+        hit = np.asarray(out)
+        _OCCLUSION_CACHE[key] = hit
+
+    # A copy, for the same reason the sequence gradient hands out one: callers
+    # shade this in place, and a cache that hands out its own array turns that
+    # into either a corrupted later hit or an "assignment destination is
+    # read-only" raised from a call site that has done nothing wrong. Marking it
+    # read-only was tried and produced exactly the latter, from `spectrum`
+    # during a demo load. One float per point is nothing beside the neighbour
+    # search this avoids.
+    return hit.copy()
 
 
 def _occlusion_enabled() -> bool:

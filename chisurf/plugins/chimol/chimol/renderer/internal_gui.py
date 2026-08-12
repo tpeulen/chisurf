@@ -19,12 +19,18 @@ here that could not be scripted.
 """
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
+from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 from ..mouse_modes import BUTTON_COLUMNS, DEFAULT_RING, MODE_NAMES, next_mode, rows_for
-from ..object_menus import OBJECT_MENUS, MenuEntry
+from ..object_menus import OBJECT_MENUS, MenuEntry, quote_selection_name
 from .ui.command_line import HINT, PROMPT, CommandLine
+from .ui.text_field import TextField
+from .ui.progress import ProgressOverlay
 from .ui.painter import (
     ALIGN_CENTER,
     ALIGN_LEFT,
@@ -456,9 +462,16 @@ class InternalGui:
         self._run_command = run_command
         self._row_rects: list[Rect] = []
         self._button_rects: list[dict[str, Rect]] = []
+        self._eye_rects: list[Rect] = []
+        #: The hover tooltip: ``(x, y, text)`` while something explains itself.
+        self._tooltip: tuple[float, float, str] | None = None
         self._panel = Rect(0, 0, 0, 0)
         self._hover = Hit("")
         self._menus: list[_OpenMenu] = []
+        #: Modal progress reporting. Public, because everything that takes long
+        #: enough to notice drives it -- a load, a trace, a surface -- and none
+        #: of those live in this class.
+        self.progress = ProgressOverlay()
         self._width = 0
         self._height = 0
         #: Widest name seen, so the panel does not change width every frame.
@@ -1258,6 +1271,12 @@ class InternalGui:
         double: bool = False,
     ) -> bool:
         """Handle a press. Returns whether the panel consumed it."""
+        # The progress overlay is modal and takes every press, including the
+        # ones that miss its Cancel button. Letting one through would reach the
+        # menu behind the scrim and start a second load on top of the first,
+        # which is the failure this widget exists to prevent.
+        if self.progress.active:
+            return self.progress.handle_press(x, y)
         hit = self.hit_test(x, y)
 
         try:
@@ -1702,36 +1721,128 @@ class InternalGui:
             # `internal_gui` are separate settings, and hiding the object list
             # to see the molecule is not a reason to lose the only way of typing
             # at it -- which in a browser is the *only* way.
+            if self.info_visible:
+                self._paint_info(p)
             if self.command_line.visible:
                 self._paint_command(p)
+                self._paint_windows(p)
+            self._paint_menubar(p)
+            self._paint_toolbar(p)
             return
 
+        if self.info_visible:
+            self._paint_info(p)
         if self.sequence_visible and self.sequences:
             self._paint_sequence(p)
         if self.visible and self.docked:
             # One continuous column, not two floating boxes with the scene
             # showing between them: the gap reads as a hole in the panel.
+            column = self.effective_column_width()
             p.fill_rect(
-                self._width - self.column_width, 0.0,
-                self.column_width, float(self._height), PANEL_BG,
+                self._width - column, 0.0, column, float(self._height), PANEL_BG,
             )
-        if self.visible and self.rows:
+        if self.docked and self.visible and self.rows:
+            # Docked, the panel and block are part of the column; windowed,
+            # their windows draw them in the window pass, correctly stacked
+            # under whatever floats above.
             self._paint_panel(p)
         if self.visible and self.wizard_rows:
             self._paint_wizard(p)
-        if self.visible:
+        if self.docked and self.visible:
             self._paint_block(p)
         if self.wizard_prompt:
             self._paint_prompt(p)
         if self.command_line.visible:
             self._paint_command(p)
+        self._paint_windows(p)
+        self._paint_menubar(p)
+        self._paint_toolbar(p)
         if self.visible and self.docked:
             p.fill_rect(
                 self._splitter.x + self.SPLITTER_W / 2 - 1, 0.0,
                 2.0, self._height, SPLITTER_FG,
             )
+        self._paint_status(p)
         for menu in self._menus:
             self._paint_menu(p, menu)
+        self._paint_tooltip(p)
+        # Last, and after the tooltip: it is modal, so nothing may draw over
+        # it. A tooltip surfacing above a scrim would say the chrome beneath is
+        # live, which is exactly what the scrim is there to deny.
+        self.progress.paint(p, self._width, self._height, self.ui_scale)
+
+    def _paint_tooltip(self, p) -> None:
+        """The hover tooltip, beside the cursor, above everything else."""
+        if self._tooltip is None:
+            return
+        x, y, text = self._tooltip
+        lines = _wrap_lines(str(text), 46)
+        char_w = char_width(self.FONT_PT)
+        width = max(len(line) for line in lines) * char_w + 2 * self.PAD
+        height = len(lines) * self.CMD_ROW_H + 2.0
+        # Beside the cursor, flipped to stay on screen.
+        bx = min(x + 14.0, float(self._width) - width - 2.0)
+        by = min(y + 18.0, float(self._height) - height - 2.0)
+        p.fill_rect(bx, by, width, height, MOVIE_BG)
+        p.stroke_rect(bx, by, width, height, WINDOW_BORDER)
+        for index, line in enumerate(lines):
+            p.text(bx + self.PAD, by + 1.0 + index * self.CMD_ROW_H,
+                   width - 2 * self.PAD, float(self.CMD_ROW_H),
+                   ALIGN_VCENTER | ALIGN_LEFT, line, MODE_ACTION_FG)
+
+    def _paint_status(self, p) -> None:
+        """The own status line, bottom-right of the viewport.
+
+        Replaces the toolkit's status bar: drawn by the chrome, so it exists
+        in the browser too, and it is a display setting (`show_status`) like
+        every other piece of the chrome rather than a strip the toolkit owns.
+        """
+        height = float(self.CMD_ROW_H)
+        y = float(self._height) - height - 2.0
+
+        # The chrome-size slider, always there. It had no control at all: the
+        # only way to resize the chrome was to know the setting's name and type
+        # `set internal_gui_scale, 1.0`, which is not a thing a user finds.
+        # Bottom-right, in the status band, because it is a property of the
+        # whole chrome rather than of any one panel.
+        char_w = char_width(self.FONT_PT)
+        # The number gets its own column and the groove gets the rest. Drawn on
+        # top of each other, the thumb crossed the digits and both became hard
+        # to read -- and the one thing a slider owes is a legible value.
+        label = f"{self.ui_scale:.2f}"
+        label_w = char_w * (len(label) + 1)
+        groove_w = max(char_w * 10.0, 54.0)
+        total_w = groove_w + label_w + 2 * self.PAD
+        box_x = float(self._width) - total_w - 2.0
+        self._ui_scale_rect = Rect(box_x, y, total_w, height)
+
+        p.fill_rect(box_x, y, total_w, height, PANEL_BG)
+        groove_x = box_x + self.PAD
+        low, high = self.UI_SCALE_MIN, self.UI_SCALE_MAX
+        fraction = (float(self.ui_scale) - low) / max(high - low, 1e-6)
+        fraction = min(max(fraction, 0.0), 1.0)
+        mid = y + height * 0.5
+        p.fill_rect(groove_x, mid - 1.0, groove_w, 2.0, WINDOW_DIM_FG)
+        p.fill_rect(groove_x, mid - 1.0, groove_w * fraction, 2.0, MODE_TITLE_FG)
+        thumb = groove_x + fraction * max(groove_w - 5.0, 0.0)
+        p.fill_rect(thumb, y + 3.0, 5.0, height - 6.0,
+                    MODE_TITLE_FG if self._dragging_ui_scale else ENABLED_FG)
+        editing = self.focused_field is self.ui_scale_field
+        p.text(groove_x + groove_w + self.PAD, y, label_w, height,
+               ALIGN_VCENTER | ALIGN_RIGHT,
+               (self.ui_scale_field.text + "|") if editing else label,
+               MODE_TITLE_FG if editing else WINDOW_DIM_FG)
+        #: The groove alone, which is what a drag maps onto.
+        self._ui_scale_groove = Rect(groove_x, y, groove_w, height)
+
+        if not (self.status_visible and self.status_text):
+            return
+        text = str(self.status_text)
+        width = char_width(self.FONT_PT) * len(text) + 2 * self.PAD
+        x = track_x - width - 4.0
+        p.fill_rect(x, y, width, height, PANEL_BG)
+        p.text(x + self.PAD, y, width - 2 * self.PAD, height,
+               ALIGN_VCENTER | ALIGN_RIGHT, text, WINDOW_DIM_FG)
 
     def _paint_panel(self, p) -> None:
         """Draw the object list: one row per molecule, group or selection."""
