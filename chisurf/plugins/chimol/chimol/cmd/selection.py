@@ -87,6 +87,21 @@ class SelectionMixin(BaseCmd):
 
         obj_info = self._find_object_by_name(viewer, target)
         if obj_info is None:
+            # Not an object: a **selection**, hiding the atoms it covers.
+            #
+            # The object list gives every row an eye, including `sele`, and
+            # `sele` is not an object -- so clicking that eye answered "unknown
+            # object: sele" and the one row a user reaches for most did
+            # nothing. It is not a naming slip either: hiding a selection is a
+            # different operation from hiding an object, and the row was drawn
+            # as though they were the same.
+            #
+            # Row visibility rather than representations, so it round-trips: a
+            # boolean mask restores exactly what was there, where `hide
+            # everything` followed by `show` would guess which representations
+            # to bring back.
+            if self._set_selection_hidden(viewer, target, hidden=not vis):
+                return
             self._emit_error(f"Unknown object: {target}")
             return
 
@@ -99,6 +114,51 @@ class SelectionMixin(BaseCmd):
         except Exception as exc:
             action = "enable" if vis else "disable"
             self._emit_error(f"Failed to {action} object {target}: {exc}")
+
+    def _set_selection_hidden(self, viewer, expr: str, *, hidden: bool) -> bool:
+        """Hide or show the atoms a selection covers. False if it is not one.
+
+        Parameters
+        ----------
+        viewer : MolView
+            The viewer holding the objects.
+        expr : str
+            A selection expression or a stored selection name.
+        hidden : bool
+            True to take the atoms out of the picture, False to bring them
+            back.
+
+        Returns
+        -------
+        bool
+            Whether *expr* resolved to a selection at all -- ``False`` lets the
+            caller report "unknown object", which is still the right message
+            for a word that is neither.
+        """
+        try:
+            hits = self._resolve_selection_to_atom_masks(viewer, expr)
+        except Exception:  # noqa: BLE001 - a parse error is "not a selection"
+            return False
+        if not hits:
+            return False
+
+        setter = getattr(viewer, "set_rows_hidden", None)
+        if not callable(setter):
+            return False
+
+        touched = 0
+        for object_id, _name, mask in hits:
+            rows = np.flatnonzero(np.asarray(mask, dtype=bool))
+            if rows.size == 0:
+                continue
+            setter(rows, hidden, object_id=object_id)
+            touched += int(rows.size)
+        if not touched:
+            return False
+        self._emit_message(
+            f"{'Hid' if hidden else 'Showed'} {touched} atom(s) in {expr}"
+        )
+        return True
 
     @command("select")
     def select(self, name_or_expr: str = "", expr: Selection = "") -> None:

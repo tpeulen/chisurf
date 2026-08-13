@@ -544,7 +544,14 @@ def sync_panel(viewer, gui) -> None:
             )
     # PyMOL pins the `sele` selection object to the bottom of its object list,
     # below every real object and the `all` header.
-    rows.append(GuiRow(name="sele", is_selection=True))
+    # Its eye needs a *state*, not a constant: it hides the atoms the selection
+    # covers, so a row that always reads "shown" repeats the hide on the next
+    # click instead of undoing it.
+    try:
+        sele_shown = bool(viewer.selection_is_visible())
+    except Exception:  # noqa: BLE001 - a viewer without the query
+        sele_shown = True
+    rows.append(GuiRow(name="sele", enabled=sele_shown, is_selection=True))
     # And the measurements below that. A `distance` **is an object** in PyMOL --
     # it has a name, a row and an on/off switch, and that switch is the only way
     # to put one away without deleting it. The Qt window listed them and these

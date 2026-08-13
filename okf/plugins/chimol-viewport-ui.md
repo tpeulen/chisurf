@@ -9,6 +9,42 @@ updated: 2026-08-12
 
 ## Where to pick this up
 
+**2026-08-13 — the object list's eye is drawn, and the `sele` row's eye works.**
+Two reports, one row.
+
+*The picture.* The eye was the letter `o` and a hyphen. The obvious fix is to
+type a better character, and **Unicode does not have one**: `U+1F441 EYE` is an
+emoji, so the only fonts carrying it are colour ones and the atlas rasterises
+monochrome masks — it comes out **blank**, silently. Everything else that looks
+close (`◉ ◎ ⊙ ⦿`) is a circle: a marker, not an eye. Verified by rasterising
+each candidate and counting ink, which is the check to repeat before reaching
+for a character. So the pictogram is *drawn*, from `fill_rect` runs, in
+[`renderer/ui/icons.py`](../../chisurf/plugins/chimol/chimol/renderer/ui/icons.py)
+— written as a picture in the source, scaled to **whole** pixels (a fractional
+scale turns a one-pixel outline into a grey smear that reads as blurred rather
+than small), and centred in one character cell. The density panel's eye shares
+it.
+
+*The bug.* Clicking that eye on `sele` answered **"Unknown object: sele"**. The
+row emits `disable <name>` like every other, and `disable` resolved its argument
+as an object. `enable`/`disable` now fall through to a **selection** when the
+name is not an object, hiding the atoms it covers — by *row visibility*
+(`set_rows_hidden`), not by representation, because a boolean mask round-trips
+exactly where `hide everything` then `show` has to guess which representations
+to bring back. Any expression works, not just `sele`; a word that is neither
+still says so.
+
+Two follow-on defects, each only visible once the one before it was fixed:
+
+- **The eye repeated itself.** It reads its next action from `row.enabled`, and
+  the `sele` row was built with a constant `True` — so the second click hid the
+  same atoms again. The row now reads `MolView.selection_is_visible()`, in both
+  row builders (`host/app.py` and the Qt window).
+- **The panel did not re-read.** It is rebuilt from `objects_revision`, not per
+  frame, and hiding rows did not bump it — so the row kept its old state
+  whatever the viewer knew. `set_rows_hidden` now `touch()`es the registry,
+  which is correct in its own right: it *is* a visibility change.
+
 **2026-08-13 — Help → Demo Mode is gone; Help → dbg opens a window that stays
 open.** Five tabs (`renderer/dbg_window.py`): *Frame* (nerd mode and what the
 last frame cost), *Panels* (every window, with *Open all*), *Demos*, *Widgets*

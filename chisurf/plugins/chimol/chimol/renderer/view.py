@@ -5000,6 +5000,16 @@ class MolView(WidgetBase):
                 return
             mask[idx] = bool(hidden)
             self._hidden_mask = mask
+            touched = str(getattr(self, "_active_object_id", "") or object_id or "")
+        # A visibility change, so the views of the object list have to re-read:
+        # the `sele` eye shows whether the selection's atoms are drawn, and
+        # without this the row kept its old state and the next click repeated
+        # the hide instead of undoing it. Rebuilding the scene is not enough --
+        # the panel is rebuilt from `objects_revision`, not per frame.
+        try:
+            self._objects.touch("visibility", touched, detail="rows")
+        except Exception:  # noqa: BLE001 - a viewer built from a plain dict
+            pass
         self._update_view()
 
     def _set_representations(
@@ -5517,6 +5527,45 @@ class MolView(WidgetBase):
             self._apply_selection_indices(residue_indices, mods, mode=mode)
         except Exception:
             pass
+
+    def selection_is_visible(self) -> bool:
+        """Whether the current selection's atoms are drawn, in any object.
+
+        What the object list's ``sele`` eye reads back. The row needs a state,
+        or its next click repeats the last one -- which is what happened when
+        the eye first learned to hide a selection: it hid, and clicking again
+        hid the same atoms a second time instead of bringing them back.
+
+        True when **nothing is selected**, so an empty selection shows an open
+        eye rather than a shut one: there is nothing hidden to report.
+
+        Returns
+        -------
+        bool
+            False only when every selected atom, in every object that holds
+            one, is hidden.
+        """
+        selected_any = False
+        for entry in (getattr(self, "_objects", None) or {}).values():
+            state = getattr(entry, "state", None)
+            residues = getattr(state, "selected_residues", None)
+            if not residues:
+                continue
+            selected_any = True
+            hidden = getattr(state, "hidden_mask", None)
+            if hidden is None:
+                return True
+            with self._activate_object(str(getattr(entry, "id", "") or "")):
+                per_atom = self._atom_residue_indices()
+            if per_atom is None:
+                return True
+            wanted = np.isin(per_atom, np.asarray(list(residues), dtype=int))
+            hidden_arr = np.asarray(hidden, dtype=bool)
+            if len(hidden_arr) != len(wanted):
+                return True
+            if not hidden_arr[wanted].all():
+                return True
+        return not selected_any
 
     def _residues_holding_selected_atoms(self, fallback) -> list[int]:
         """Residue indices the atom-level selection currently touches.

@@ -59,6 +59,7 @@ import time
 import numpy as np
 
 from .internal_gui import GuiWindow
+from .ui.icons import draw_eye
 from .ui.painter import ALIGN_CENTER, ALIGN_LEFT, ALIGN_RIGHT, ALIGN_VCENTER
 from .ui.widgets import ColorEdit4, SliderFloat
 
@@ -282,8 +283,7 @@ class DensityWindow:
             pass
         p.fill_rect(eye_box.x, eye_box.y, eye_box.w, eye_box.h,
                     _MODE_ON if shown else _MODE_OFF)
-        p.text(eye_box.x, eye_box.y, eye_box.w, eye_box.h, ALIGN_CENTER,
-               "o" if shown else "-", _TEXT)
+        draw_eye(p, eye_box, _TEXT, shown=shown)
         p.fill_rect(close_box.x, close_box.y, close_box.w, close_box.h,
                     _MODE_OFF)
         p.text(close_box.x, close_box.y, close_box.w, close_box.h,

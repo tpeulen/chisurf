@@ -2282,9 +2282,19 @@ class MolViewPluginWindow(ChisurfDockTool):
             )
         # PyMOL pins the `sele` selection object to the bottom of its object
         # list, below every real object and the `all` header. It is not a
-        # molecule: its buttons address the current selection, and it has no
-        # on/off state of its own.
-        rows.append(InternalGuiRow(name="sele", enabled=True, is_selection=True))
+        # molecule: its buttons address the current selection.
+        #
+        # Its eye *does* have a state, though it is not the object visibility
+        # the other rows carry: it hides the atoms the selection covers. Passing
+        # a constant `True` made the next click repeat the hide rather than undo
+        # it.
+        try:
+            sele_shown = bool(self.viewer.selection_is_visible())
+        except Exception:  # noqa: BLE001 - a viewer without the query
+            sele_shown = True
+        rows.append(
+            InternalGuiRow(name="sele", enabled=sele_shown, is_selection=True)
+        )
         rows.extend(self._measurement_rows())
         gui.set_rows(rows)
         gui.set_run_command(self._run_internal_gui_command)

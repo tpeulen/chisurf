@@ -4599,3 +4599,24 @@ failure mode that module exists to end.
 Closing it is a feature, not a fix — an orthographic projection matrix, plus
 the two places that derive a distance from the field of view. Until then the
 setting is honest only in that it changes nothing.
+
+### Open 2026-08-13 — chimol: two chrome baseline PNGs are stale after the eye change
+
+`test_chrome_painter::test_the_chrome_is_unchanged_by_the_painter_interface`
+fails for the `panel` and `panel_and_sequence` states, and **only** those two —
+the two that contain the object list. The object list's eye stopped being the
+letter `o` and a hyphen and became a drawn pictogram, so those pixels legitimately
+moved; the other three states (`command_line`, `menu_open`, `movie_transport`)
+still match byte-for-byte, which is what says the change is the eye and nothing
+else.
+
+The fix is one command:
+
+    QT_QPA_PLATFORM=offscreen python -m chisurf.plugins.chimol.test.chrome_baseline
+
+It was **not** run here because every file in
+`chimol/test/renders/chrome_baseline/` is already modified and staged in the
+working tree by another agent instance's in-flight work. Re-capturing would
+write my change into their staged files, and a PNG cannot be split into "my
+hunks" the way a source file can. Whoever owns those staged captures should
+re-run it; the images will then carry both changes, which is correct.

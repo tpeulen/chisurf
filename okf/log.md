@@ -35934,3 +35934,27 @@
   opinionated ChimeraX/PyMOL/ImGui borrower, built for a Pyodide-capable,
   compile-free, embeddable viewer that scales to integrative models, and not
   trying to replace anything.
+
+- **2026-08-13 — chimol: the object list's eye is a drawn pictogram, and the
+  `sele` row's eye hides what the selection covers.** Reported as "replace
+  open/closed eye with a nice open closed eye img (use maybe unicode, if exists)
+  and make a render, same size as normal char" and "click on eye hide of sele in
+  obj list -> unknown object: sele. action that should occur -> hide what is
+  covered in sele." Unicode has no usable eye: `U+1F441` is an emoji, so the only
+  fonts carrying it are colour ones and the atlas rasterises monochrome masks —
+  it comes out blank — and the geometric near-misses are circles. Verified by
+  rasterising each candidate and counting ink. So the eye is drawn from
+  `fill_rect` runs in the new `renderer/ui/icons.py`, written as a picture in the
+  source, scaled to whole pixels and centred in one character cell; the density
+  panel shares it. The click bug: the row emits `disable <name>` and `disable`
+  resolved its argument as an object, so `sele` — not an object — answered
+  "Unknown object". `enable`/`disable` now fall through to a selection and hide
+  the atoms it covers by row visibility rather than by representation, so it
+  round-trips exactly. Two follow-on defects surfaced behind it: the row carried
+  a constant `enabled=True`, so the eye repeated the hide instead of undoing it
+  (it now reads `MolView.selection_is_visible()`, in both row builders), and the
+  panel is rebuilt from `objects_revision`, which hiding rows did not bump — so
+  the row kept its old state whatever the viewer knew. `set_rows_hidden` now
+  touches the registry, which is right in its own terms: it is a visibility
+  change. Pinned by `chimol/test/test_selection_eye.py`. See
+  [chimol viewport UI](plugins/chimol-viewport-ui.md).
