@@ -9,6 +9,39 @@ updated: 2026-08-12
 
 ## Where to pick this up
 
+**2026-08-13 — Help → Demo Mode is gone; Help → dbg opens a window that stays
+open.** Five tabs (`renderer/dbg_window.py`): *Frame* (nerd mode and what the
+last frame cost), *Panels* (every window, with *Open all*), *Demos*, *Widgets*
+(the ported controls hosted **live**, typable, with their real state) and
+*Shaders* (every `.wgsl`, opened into the hosted code editor). Three things to
+know before extending it:
+
+* **Every row is a command.** The window issues what the user could have typed,
+  so it cannot drift from what the viewer does — and `test_dbg_window.py`
+  checks every generated row against the live command registry, which is the
+  only way a renamed command is ever noticed.
+* **A window can take keys now.** `GuiWindow.on_key` holds an object with
+  `key(key, text, modifiers)`; pressing in the body focuses it through the same
+  `focused_field` route a search box uses. That is what makes *try the widget*
+  mean anything — a text editor you cannot type into has not been tried.
+* **The readout is republished twice a second, not per frame.** It is drawn as
+  chrome, and chrome that changes every frame is rebuilt every frame; an
+  instrument that costs a rebuild per frame reports the cost of switching it
+  on. `frame_stats.REPORT_INTERVAL` is that number, and a test asserts it is
+  slower than a frame.
+
+**On the 30 fps ceiling reported for the NPC demo.** It is not the scheduler.
+`rendercanvas`'s on-demand loop sleeps `1/max_fps` *minus the time the frame
+already took*, so a frame that overshoots ticks as soon as it is done — the
+period is `max(1/max_fps, draw_time)`, not a slot. (An old comment in
+`wgpu_view.py` said it halved; it does not, and the comment has been
+corrected.) So 30 fps means either the frame genuinely costs ~33 ms or it is
+blocked on presentation. The `wait` column in nerd mode is what separates
+them: it is the frame minus the work we did. Large ⇒ presentation/vsync;
+small ⇒ our scene, and the `scene`/`chrome` split says which half. **Take that
+reading before optimising anything** — the two have opposite fixes.
+
+
 **2026-08-13 — `reinitialize` now returns the viewer to baseline, and the
 reason it did not is worth keeping.** tpeulen: *"reinitialize does not reinit to
 baseline (bg does not change back to black) … some parts reinit but not all …

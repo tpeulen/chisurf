@@ -199,7 +199,11 @@ class _Backend:
     UNIFORM_FLOATS = 4 * 16 + 7 * 4
 
     def __init__(self) -> None:
+        from chisurf.plugins.chimol.chimol.renderer.frame_stats import FrameStats
+
         self.device = _Recorder()
+        #: The real backend always has one; `_draw_ui` counts into it.
+        self.stats = FrameStats()
         self.width = 800
         self.height = 600
         self._wgpu = type("W", (), {"BufferUsage": type(

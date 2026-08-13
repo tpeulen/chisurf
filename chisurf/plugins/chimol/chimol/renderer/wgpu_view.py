@@ -165,9 +165,19 @@ class WgpuRenderer(_make_widget_base(), CanvasRenderer):
 
     def __init__(self, controller: object = None, parent: object = None) -> None:
         # Same ceiling as the toolkit-free window, and for the same reason:
-        # rendercanvas defaults to 30 fps on demand, which halves to 15 the
-        # moment a frame overshoots its slot. `QRenderWidget` takes the same
-        # keywords as every other rendercanvas backend.
+        # rendercanvas defaults to **30** fps on demand, which is a ceiling a
+        # viewer being dragged around should not have. `QRenderWidget` takes
+        # the same keywords as every other rendercanvas backend.
+        #
+        # It is a ceiling and not a slot: the scheduler sleeps `1/max_fps`
+        # *minus the time the frame already took*, so a frame that overshoots
+        # simply ticks as soon as it is done -- it is not deferred to the next
+        # multiple. (An earlier comment here said it halved. It does not, in
+        # this version; the tick period is `max(1/max_fps, draw_time)`.) So a
+        # viewport sitting at exactly 30 with this set to 60 is **not** being
+        # quantised by the scheduler: switch on nerd mode and read the `wait`
+        # figure, which separates "our frame costs 33 ms" from "we are blocked
+        # on presentation".
         from .canvas_view import _max_fps  # noqa: PLC0415
 
         super().__init__(parent=parent, max_fps=_max_fps(), update_mode="ondemand")

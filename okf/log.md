@@ -35917,3 +35917,20 @@
   setting nothing reads, recorded in
   [known issues](references/known-issues.md). See
   [chimol viewport UI](plugins/chimol-viewport-ui.md).
+- 2026-08-13 — chimol: *Help → Demo Mode* becomes **Help → dbg**, a window that
+  stays open and has five tabs — what the last frame cost, every panel with an
+  *Open all*, the demos, the ported widgets running live, and the WGSL opened
+  into the hosted code editor. The old entry silently toggled a frame-rate
+  readout: it did not run a demo and did not say what it had done. New with it:
+  `renderer/frame_stats.py` and **nerd mode**, a block drawn into the backdrop
+  with the rate, where the frame's milliseconds went (cpu / scene / chrome /
+  **wait**), draw calls and instances, chrome quads and bytes, which pipelines
+  ran, the per-representation AO strengths, the adapter and the machine. The
+  counters are off until it is on and the block is republished twice a second,
+  because it is drawn as chrome and chrome that changes every frame is rebuilt
+  every frame. `GuiWindow` gained `on_key`, so a window whose body hosts
+  something typable receives keystrokes — which is what makes the Widgets tab
+  more than a picture. The chimol README now says what the viewer is: an
+  opinionated ChimeraX/PyMOL/ImGui borrower, built for a Pyodide-capable,
+  compile-free, embeddable viewer that scales to integrative models, and not
+  trying to replace anything.

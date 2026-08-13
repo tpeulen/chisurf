@@ -1,9 +1,40 @@
-# Chimol (MolView) protein viewer
+# Chimol — a highly opinionated 3D viewer for ChiSurf
 
-Chimol is the integrated ChiSurf 3D protein viewer (class name `MolView`).
-It provides fast cartoon/backbone rendering, simple selections, and
-sequence/structure synchronization inside the ChiSurf GUI or as a
-standalone Qt application.
+Chimol is ChiSurf's molecular viewer (class name `MolView`). It is
+deliberately opinionated, and it borrows from three places on purpose:
+**ChimeraX** for how a viewer should handle volumes, surfaces and large
+assemblies; **PyMOL** for the command language, the selection algebra and the
+representation model; and **Dear ImGui** for the interface, which is drawn
+inside the viewport rather than assembled out of toolkit widgets.
+
+## Why it exists
+
+It was not written because the world needs another molecular viewer. It was
+written because the viewer this project needed did not exist:
+
+- **It has to run on the web, in Python, without compiling anything.** The
+  target is a Pyodide-capable stack: no C extension to build, no native
+  toolkit to ship, no per-platform wheel. That single constraint is the reason
+  the interface is drawn as quads through a six-operation painter rather than
+  built from Qt widgets, and the reason the renderer talks WebGPU.
+- **It has to be embeddable — in a web app and in Python.** A viewer that can
+  only be a window is not much use inside an analysis tool. Chimol is a
+  renderer with hosts around it: a Qt widget, a toolkit-free desktop window,
+  and a browser canvas, all driving the same code.
+- **It has to scale to large integrative models.** Not one protein — nuclear
+  pores, bead models, assemblies with millions of copies of a handful of
+  shapes. That is a different engineering problem from drawing a single PDB
+  entry well, and it is the one that decides the architecture.
+
+## What it is not
+
+**It is not trying to replace anything.** ChimeraX and PyMOL are mature,
+excellent and enormous; this is a personal project inside a larger one, and it
+is built by reading them rather than by competing with them. Where chimol
+does something differently it is because of the constraints above, not because
+the reference got it wrong — and where it simply has less, that is expected.
+Use PyMOL or ChimeraX for what they are good at. Chimol is here so that the
+3-D view inside ChiSurf is not a second application.
 
 ## Features
 

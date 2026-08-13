@@ -29,6 +29,7 @@ logger = logging.getLogger(__name__)
 from ..mouse_modes import BUTTON_COLUMNS, DEFAULT_RING, MODE_NAMES, next_mode, rows_for
 from ..object_menus import OBJECT_MENUS, MenuEntry, quote_selection_name
 from .ui.command_line import HINT, PROMPT, CommandLine
+from .ui.icons import draw_eye
 from .ui.text_field import TextField
 from .ui.progress import ProgressOverlay
 from .ui.painter import (
@@ -420,6 +421,9 @@ class GuiWindow:
     anchor: str | None = None
     body: Optional[Callable[[object, "Rect"], None]] = None
     on_press: Optional[Callable[[float, float, "Rect"], bool]] = None
+    #: An object with ``key(key, text, modifiers) -> bool``. Set by a window
+    #: whose body hosts something typable; pressing in the body focuses it.
+    on_key: Optional[object] = None
     on_drag: Optional[Callable[[float, float, "Rect"], bool]] = None
     on_release: Optional[Callable[[], None]] = None
     #: ``(x, y, rect) -> str | None``: what the control under the cursor does,
@@ -805,6 +809,15 @@ class InternalGui:
         #: Whether the developer instruments are drawn -- the chrome-size
         #: slider and the frame-rate readout. A figure does not want either.
         self.debug_overlays = False
+        #: Nerd mode: the block of numbers in the backdrop. A superset of
+        #: `debug_overlays` -- that shows the rate and the chrome-size slider,
+        #: this shows where the frame went and what the machine is.
+        self.nerd = False
+        #: The block's contents, published by the renderer a few times a
+        #: second rather than every frame. A readout that changes every frame
+        #: invalidates the chrome every frame, which is how switching on an
+        #: instrument destroys the thing it measures.
+        self.nerd_lines: tuple[str, ...] = ()
         #: Frames per second, pushed by the renderer. 0 means "not measured",
         #: which is what a still frame and a headless host both are.
         self.fps = 0.0
@@ -2443,6 +2456,13 @@ class InternalGui:
                     self._window_body_drag = win.key
             except Exception:
                 logger.debug("window body refused a press", exc_info=True)
+            # A window whose contents can take **keys** gets them from here on,
+            # through the same `focused_field` route a search box uses. Without
+            # it a hosted text editor can be clicked into and not typed into,
+            # which is the whole of "try the widget".
+            keyed = getattr(win, "on_key", None)
+            if keyed is not None:
+                self.focus_field(keyed)
         return True
 
     def _drag_window(self, x: float, y: float) -> bool:
@@ -4588,6 +4608,9 @@ class InternalGui:
                 self.stride, self.average, self._dragging_playback,
                 # Changes every frame while it is shown, and should.
                 self.fps if self.debug_overlays else None,
+                # Republished a few times a second by the renderer, so this
+                # rebuilds the chrome at that rate and no faster.
+                self.nerd, self.nerd_lines,
                 self.info_visible, self.info_text, self._info_scroll,
                 len(getattr(self, "_info_items", ()) or ()),
                 tuple(self.info_colors or ()) if isinstance(
@@ -4678,6 +4701,11 @@ class InternalGui:
             self._paint_prompt(p)
         if self.command_line.visible:
             self._paint_command(p)
+        # Before the windows, not after: the block is *backdrop*, and a panel
+        # dragged over it must cover it. Drawn last it covered the Demo
+        # window's own title bar, which is the window you opened to switch it
+        # on.
+        self._paint_nerd(p)
         self._paint_windows(p)
         self._paint_menubar(p)
         self._paint_toolbar(p)
@@ -4697,6 +4725,38 @@ class InternalGui:
         # it. A tooltip surfacing above a scrim would say the chrome beneath is
         # live, which is exactly what the scrim is there to deny.
         self.progress.paint(p, self._width, self._height, self.ui_scale)
+
+    #: Padding around the nerd block. Top-left: the panel is down the right and
+    #: the sequence strip across the top, so the top-left corner is the one
+    #: part of the viewport nothing else claims.
+    NERD_PAD = 8.0
+
+    def _paint_nerd(self, p) -> None:
+        """The frame's numbers, drawn into the backdrop.
+
+        Deliberately *in* the scene rather than in a window: the question this
+        answers -- "why is this frame slow" -- is asked while the scene is
+        being driven, and a window would have to be dragged out of the way of
+        the thing being measured. It is drawn over a dim plate so it stays
+        readable against a light background, and it never intercepts a press:
+        there is nothing here to click.
+        """
+        lines = self.nerd_lines
+        if not self.nerd or not lines:
+            return
+        char_w = char_width(self.FONT_PT)
+        row = float(self.CMD_ROW_H)
+        width = char_w * (max(len(one) for one in lines) + 2)
+        height = row * len(lines) + self.NERD_PAD
+        x = self.NERD_PAD
+        y = self._top_chrome_height() + self.NERD_PAD
+
+        p.fill_rect(x, y, width, height, (16, 18, 22, 190))
+        for index, line in enumerate(lines):
+            p.text(x + char_w, y + self.NERD_PAD * 0.5 + index * row,
+                   width - char_w * 2, row,
+                   ALIGN_VCENTER | ALIGN_LEFT, line,
+                   MODE_TITLE_FG if index == 0 else WINDOW_DIM_FG)
 
     def _paint_tour(self, p) -> None:
         """The guided tour: a ring around the control, and a bubble beside it.
@@ -5008,11 +5068,11 @@ class InternalGui:
             # often wants to show and hide -- `enable sele` / `disable sele` is
             # what the eye already emits, and PyMOL's own list shows it.
             if index < len(self._eye_rects):
-                eye = self._eye_rects[index]
-                p.text(
-                    eye.x, eye.y, eye.w, eye.h, ALIGN_CENTER,
-                    "o" if (row.enabled or row.is_header) else "-",
-                    ENABLED_FG if (row.enabled or row.is_header) else DISABLED_FG,
+                shown = bool(row.enabled or row.is_header)
+                draw_eye(
+                    p, self._eye_rects[index],
+                    ENABLED_FG if shown else DISABLED_FG,
+                    shown=shown,
                 )
             p.text(
                 rect.x + self.PAD + self.BUTTON_W + row.indent * 10, rect.y,

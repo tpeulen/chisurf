@@ -232,3 +232,142 @@ def _hex_dump(source, rows: int = 16, columns: int = 16) -> str:
     if source.size() > rows * columns:
         lines.append(f"  ... {_human(source.size())} total")
     return "\n".join(lines)
+
+
+class DebugMixin(BaseCmd):
+    """The dbg window, and the nerd-mode switch it carries."""
+
+    @command("dbg", aliases=("dbg_panel", "debug_window"))
+    def dbg(self, action: str = "toggle") -> None:
+        """Show, hide or toggle the dbg window (``dbg on``).
+
+        What **Help → dbg** opens: five tabs -- what the last frame cost, every
+        panel the viewer has, the shipped demos, the ported widgets running
+        live, and the WGSL the renderer is actually using. One window rather
+        than five scattered entries, and it **stays open**, because every
+        action taken in it is one you want to take again.
+
+        Parameters
+        ----------
+        action : str, optional
+            ``toggle`` (the default), ``on``/``show``, or ``off``/``hide``.
+        """
+        _window, viewer = self._require_window_and_viewer()
+        if viewer is None:
+            return
+        gui = getattr(getattr(viewer, "_renderer", None), "_internal_gui", None)
+        if gui is None:
+            self._emit_error("dbg: this renderer draws no chrome")
+            return
+
+        from ..renderer.dbg_window import DbgWindow
+
+        wanted = str(action).strip().lower() or "toggle"
+        existing = gui.window(DbgWindow.KEY)
+        if wanted in ("off", "hide", "0", "false"):
+            if existing is not None:
+                existing.visible = False
+            viewer._update_view()
+            return
+
+        if existing is None:
+            stats = getattr(getattr(viewer, "_renderer", None), "_gpu", None)
+            panel = DbgWindow(self.do, getattr(stats, "stats", None))
+            # Kept on the viewer so it outlives this call: the window holds a
+            # bound method and nothing else keeps the panel alive.
+            viewer._dbg_controls = panel
+            existing = gui.add_window(panel.window())
+        elif wanted == "toggle" and existing.visible:
+            existing.visible = False
+            viewer._update_view()
+            return
+
+        existing.visible = True
+        gui.raise_window(DbgWindow.KEY)
+        gui.layout(gui._width, gui._height)
+        viewer._update_view()
+
+    @command("nerd_mode", aliases=("nerd",))
+    def nerd_mode(self, state: str = "") -> None:
+        """Show or hide the frame instrumentation (``nerd on``).
+
+        The block in the top-left of the backdrop: frame rate and where the
+        frame's milliseconds went, how many draw calls and instances were
+        submitted, how many quads the chrome cost, which pipelines ran, the
+        ambient-occlusion strengths, and what the machine is.
+
+        It answers one question -- *why is this frame slow* -- and it answers
+        it in the place the question is asked, over the scene being driven,
+        rather than in a window that would have to be dragged out of the way of
+        the thing being measured.
+
+        With no argument this **toggles**, which is what a checkbox needs.
+
+        Parameters
+        ----------
+        state : str, optional
+            ``on``/``1``/``true`` or ``off``/``0``/``false``. Empty toggles.
+
+        Notes
+        -----
+        The counters are off until this is on, so nothing is paid for an
+        instrument nobody is reading -- and the readout is re-published a few
+        times a second rather than every frame, because it is drawn as chrome
+        and chrome that changes every frame is rebuilt every frame. An
+        instrument that costs a rebuild per frame reports the cost of switching
+        it on.
+        """
+        from ..config import _DISPLAY_CONFIG, save_user_display_config  # noqa: PLC0415
+
+        layout = _DISPLAY_CONFIG.setdefault("layout", {})
+        current = bool(layout.get("nerd", False))
+        text = str(state or "").strip().lower()
+        if not text:
+            wanted = not current
+        elif text in ("on", "1", "true", "yes"):
+            wanted = True
+        elif text in ("off", "0", "false", "no"):
+            wanted = False
+        else:
+            self._emit_error("Usage: nerd [on|off]")
+            return
+
+        layout["nerd"] = wanted
+        try:
+            save_user_display_config()
+        except Exception:  # noqa: BLE001 - an unwritable settings dir
+            pass
+        _window, viewer = self._require_window_and_viewer()
+        if viewer is not None:
+            viewer._update_view()
+        self._emit_message(f"nerd mode {'on' if wanted else 'off'}")
+
+    @command("panels_all", aliases=("open_all_panels",))
+    def panels_all(self, action: str = "on") -> None:
+        """Open every panel the viewer has, or close them again.
+
+        The *try all* button. A viewer's panels are discoverable only if you
+        know they exist, and reading a menu is not the same as seeing them --
+        so this puts all of them on screen at once, which is also the fastest
+        way to find the one that is broken.
+
+        Parameters
+        ----------
+        action : str, optional
+            ``on`` (the default) or ``off``.
+        """
+        from ..renderer.dbg_window import PANELS
+
+        wanted = str(action).strip().lower() or "on"
+        closing = wanted in ("off", "hide", "0", "false")
+        opened = 0
+        for entry in PANELS:
+            name = entry[0].split()[0]
+            try:
+                self.do(f"{name} {'off' if closing else 'on'}")
+                opened += 1
+            except Exception as problem:  # noqa: BLE001 - one dead panel is not all of them
+                self._emit_error(f"{name}: {problem}")
+        self._emit_message(
+            f"{'closed' if closing else 'opened'} {opened} panel(s)"
+        )

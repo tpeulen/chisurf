@@ -28,6 +28,7 @@ from typing import Optional, Sequence
 import numpy as np
 
 from .depth_cue import fog_planes
+from .frame_stats import FrameStats
 from .lighting import LightRig, resolve_light_rig
 from .pack import PackedScene
 from .view_state import unpack_view_state
@@ -320,6 +321,12 @@ class WgpuMeshRenderer:
         #: The chrome's per-frame GPU resources, kept while the vertices are
         #: the same object. See :meth:`_draw_ui`.
         self._ui_frame_cache = None
+        #: What the frame cost and what it submitted. Off unless nerd mode is
+        #: on, so the counters cost nothing when nobody is reading them.
+        self.stats = FrameStats()
+        #: What the frame cost and what it submitted. Off unless nerd mode is
+        #: on, so the counters cost nothing when nobody is reading them.
+        self.stats = FrameStats()
 
     #: Size of the shared uniform block, in floats: four 4x4 matrices and six
     #: vec4s. Named because the chrome pass has to bind a block it never reads,
@@ -1027,6 +1034,9 @@ class WgpuMeshRenderer:
             render_pass.set_bind_group(1, bind)
             render_pass.set_vertex_buffer(0, vbo)
             render_pass.draw(count, 1, 0, 0)
+            self.stats.draw("chrome", 1, count)
+            self.stats.count("chrome_quads", count // 6)
+            self.stats.count("chrome_bytes", int(vertices.nbytes))
             return list(keep)
 
         data = np.ascontiguousarray(vertices, dtype=np.float32)
@@ -1072,6 +1082,9 @@ class WgpuMeshRenderer:
         render_pass.set_vertex_buffer(0, vbo)
         count = int(data.shape[0])
         render_pass.draw(count, 1, 0, 0)
+        self.stats.draw("chrome", 1, count)
+        self.stats.count("chrome_quads", count // 6)
+        self.stats.count("chrome_bytes", int(data.nbytes))
         keep = [vbo, ubo_ui, ubo, bind, group0, texture]
         self._ui_frame_cache = (
             vertices, (self.width, self.height, self._ui_atlas_size), texture, keep, count
@@ -1871,7 +1884,9 @@ class WgpuMeshRenderer:
             rp.set_vertex_buffer(0, vbo)
 
             if kind == "cylinder":
-                rp.draw(6, max(geom.vertex_count // 2, 0), 0, 0)
+                instances = max(geom.vertex_count // 2, 0)
+                rp.draw(6, instances, 0, 0)
+                self.stats.draw(kind, instances, 6)
                 continue
 
             if kind in ("impostor", "marker"):
@@ -1880,14 +1895,17 @@ class WgpuMeshRenderer:
                 # costs. No index buffer and no per-corner vertex buffer -- the
                 # quad is a function of `vertex_index`.
                 rp.draw(6, geom.vertex_count, 0, 0)
+                self.stats.draw(kind, geom.vertex_count, 6)
                 continue
             if kind == "line":
                 # An indexed line list was expanded to pairs when the buffer
                 # was packed; the draw count has to follow the same rule.
                 if geom.indices is not None:
-                    rp.draw(int(np.asarray(geom.indices).size), 1, 0, 0)
+                    count = int(np.asarray(geom.indices).size)
                 else:
-                    rp.draw(geom.vertex_count, 1, 0, 0)
+                    count = geom.vertex_count
+                rp.draw(count, 1, 0, 0)
+                self.stats.draw(kind, 1, count)
                 continue
 
             ibo = self.device.create_buffer_with_data(
@@ -1896,6 +1914,7 @@ class WgpuMeshRenderer:
             keep.append(ibo)
             rp.set_index_buffer(ibo, wgpu.IndexFormat.uint32)
             rp.draw_indexed(int(geom.indices.size), 1, 0, 0, 0)
+            self.stats.draw(kind, 1, int(geom.indices.size))
 
         rp.end()
 

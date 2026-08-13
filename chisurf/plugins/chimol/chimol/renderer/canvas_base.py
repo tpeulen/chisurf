@@ -42,6 +42,7 @@ from __future__ import annotations
 
 import math
 import os
+import time
 from dataclasses import dataclass
 
 import numpy as np
@@ -332,6 +333,7 @@ class CanvasRenderer(CameraState, Renderer):
         self._chrome_cache: tuple | None = None
         #: Recent frame intervals, for the debug frame-rate readout.
         self._frame_times: list[float] = []
+        self._nerd_published_at = 0.0
         self._last_frame_time: float | None = None
         #: The frame rate as *shown*, and when it was last published.
         self._fps_published = 0.0
@@ -655,6 +657,17 @@ class CanvasRenderer(CameraState, Renderer):
 
     def _draw(self) -> None:
         """Render one frame into the canvas' current texture."""
+        stats = getattr(self._gpu, "stats", None)
+        if stats is not None:
+            stats.begin()
+        try:
+            self._draw_frame()
+        finally:
+            if stats is not None:
+                stats.end()
+
+    def _draw_frame(self) -> None:
+        """The frame itself, wrapped by :meth:`_draw` so it can be timed."""
         width, height = self._physical_size()
         if (width, height) != (self._gpu.width, self._gpu.height):
             CameraState.resize(self, width, height)
@@ -678,17 +691,77 @@ class CanvasRenderer(CameraState, Renderer):
                 chrome=self._chrome_quads(),
             )
             return
+        stats = getattr(self._gpu, "stats", None)
+        started = time.perf_counter() if stats is not None and stats.enabled else 0.0
+        scene = self._frame_scene()
+        if started:
+            stats.scene_ms = (time.perf_counter() - started) * 1000.0
+            stats.count("objects", len(getattr(scene, "objects", ()) or ()))
+            started = time.perf_counter()
+        chrome = self._chrome_quads()
+        if started:
+            stats.chrome_ms = (time.perf_counter() - started) * 1000.0
+            self._describe_frame(stats)
         self._gpu.render_into(
             texture.create_view(),
-            self._frame_scene(),
+            scene,
             self.get_view_state(),
             background=background,
             lighting=self._resolved_rig(),
             target_radius=self._target_radius,
             viewport=self._scene_viewport(),
             overlay=self._chrome_image(),
-            chrome=self._chrome_quads(),
+            chrome=chrome,
         )
+
+    def _publish_nerd(self, gui) -> None:
+        """Switch the counters on or off, and re-publish the readout.
+
+        Published on :data:`~.frame_stats.REPORT_INTERVAL` rather than every
+        frame, for the reason the frame-rate readout is: the block is drawn as
+        chrome, and chrome that changes every frame is chrome that is rebuilt
+        every frame. An instrument that costs a rebuild per frame reports the
+        cost of switching it on, which is the one number nobody wants.
+        """
+        from .frame_stats import REPORT_INTERVAL  # noqa: PLC0415
+
+        stats = getattr(self._gpu, "stats", None)
+        gui.nerd = _layout_flag("nerd", False)
+        if stats is None:
+            return
+        stats.enabled = bool(gui.nerd)
+        if not gui.nerd:
+            gui.nerd_lines = ()
+            return
+        now = time.perf_counter()
+        if now - getattr(self, "_nerd_published_at", 0.0) < REPORT_INTERVAL:
+            return
+        self._nerd_published_at = now
+        gui.nerd_lines = stats.lines(gui.fps)
+
+    def _describe_frame(self, stats) -> None:
+        """Fill in the parts of the readout that come from settings, not counters.
+
+        Ambient occlusion is **per representation** in chimol -- a cartoon, a
+        ball and a surface each carry their own strength -- so there is no
+        single "AO mode" to report. The four strengths are reported instead,
+        because that is what the setting actually is, and a single word would
+        have to lie about three of them.
+        """
+        from ..config import _DISPLAY_CONFIG  # noqa: PLC0415
+
+        parts = []
+        for name, section in (("cart", "cartoon"), ("ball", "balls"),
+                              ("surf", "surface"), ("mball", "metaball")):
+            value = float((_DISPLAY_CONFIG.get(section) or {}).get("ao_strength", 0.0))
+            if value > 0.0:
+                parts.append(f"{name} {value:.2f}".replace("0.", "."))
+        stats.ambient_occlusion = " ".join(parts) or "off"
+        if not stats.adapter:
+            info = getattr(getattr(self, "_device", None), "adapter", None)
+            details = getattr(info, "info", None) or {}
+            stats.adapter = str(details.get("device", "") or "")
+            stats.backend = str(details.get("backend_type", "") or "")
 
     def _measured_fps(self) -> float:
         """Frames per second over a short window, or ``0.0``.
@@ -795,6 +868,7 @@ class CanvasRenderer(CameraState, Renderer):
         # would be the one setting the settings panel could not change live.
         gui.debug_overlays = _layout_flag("debug", False)
         gui.fps = self._measured_fps()
+        self._publish_nerd(gui)
         gui.window_snap = _window_snap_enabled()
         # The chrome piece by piece, each a live display setting: all off is
         # a bare 3-D viewer, which is what an embedded page wants.

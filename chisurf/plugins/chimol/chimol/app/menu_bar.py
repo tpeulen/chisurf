@@ -466,10 +466,14 @@ HELP_MENU: tuple[MenuEntry, ...] = (
     # off-screen, or saved at a size a bug produced -- is exactly the state in
     # which the user cannot find the thing they need.
     MenuEntry("Reset GUI", "window_reset"),
-    # The frame-rate readout and the chrome-size slider. In a menu because a
-    # mode you have to know the command for is a mode nobody finds -- and this
-    # is the one people want the moment they wonder why something feels slow.
-    MenuEntry("Debug Mode", "debug_mode"),
+    # Not "Debug Mode". That entry silently toggled a frame-rate readout: it
+    # did not run a demo, it did not say what it had done, and the switch it
+    # flipped was one of three scattered places you had to already know about.
+    # The window is the shelf for all three -- the demos, every panel, and the
+    # instrumentation -- and it is what somebody opens when they want to be
+    # shown around, which is why it is here rather than under Demo.
+    MenuEntry("dbg", "dbg toggle",
+              "Frame cost, every panel, the demos, the widgets and the WGSL."),
 )
 
 
