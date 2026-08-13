@@ -84,7 +84,14 @@ def apply_surface_quality(config: dict, quality: str) -> dict:
     if level in SURFACE_QUALITY:
         merged.update(SURFACE_QUALITY[level])
         merged["quality"] = level
-    else:
-        merged["quality"] = "fast"
-        merged.update(SURFACE_QUALITY["fast"])
+    elif is_splat_quality(level):
+        # The splat level is a *renderer*, not a grid, so there are no numbers
+        # to merge -- but the name has to survive, because `is_splat_quality`
+        # is what routes the object to the screen-space pipeline downstream.
+        # This branch used to fall through to the one below and rewrite the
+        # name to `fast`, which meant asking for the splat surface silently
+        # produced the marching-cubes one and no caller could tell: the config
+        # it got back was a valid `fast` config, just not the one asked for.
+        # Canonicalised, so `gauss` and `interactive` reach the same test.
+        merged["quality"] = "splat"
     return merged

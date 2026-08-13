@@ -16,7 +16,7 @@ def _packed(objects):
     return pack_scene(Scene(objects=objects, center=(0.0, 0.0, 0.0), radius=6.0))
 
 
-def test_apply_surface_quality_copies_and_defaults_unknown_to_splat():
+def test_apply_surface_quality_copies_and_leaves_an_unknown_level_alone():
     base_config = {
         "quality": "balanced",
         "grid_spacing": 0.5,
@@ -29,8 +29,23 @@ def test_apply_surface_quality_copies_and_defaults_unknown_to_splat():
     assert splat_config["quality"] == "splat"
     assert base_config["quality"] == "balanced"
 
+    # A splat name survives under any of its spellings, canonicalised -- that
+    # name is what routes the object to the screen-space pipeline.
+    for spelling in ("gauss", "interactive", "fastest"):
+        assert apply_surface_quality(base_config, spelling)["quality"] == "splat"
+
+    # An unknown level leaves the configuration alone. The setting is a string
+    # a user can type, and the surface they already had is a better answer to a
+    # typo than a surface at some other resolution -- which is what
+    # `apply_surface_quality` documents.
+    #
+    # This test asserted `== "splat"` and the code wrote `"fast"`, so the three
+    # of them disagreed three ways; the bug that hid it is that the same
+    # `else` branch also swallowed the splat level. Reconciled on the
+    # docstring, which is the only one of the three that gives a reason.
     unknown_config = apply_surface_quality(base_config, "nonexistent_level")
-    assert unknown_config["quality"] == "splat"
+    assert unknown_config["quality"] == "balanced"
+    assert unknown_config["grid_spacing"] == base_config["grid_spacing"]
     assert unknown_config is not base_config
 
 

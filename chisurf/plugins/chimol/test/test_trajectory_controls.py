@@ -135,19 +135,51 @@ def test_the_window_is_clipped_at_the_ends_not_wrapped(jittery):
 
     Wrapping would average the end into the beginning and invent a motion that
     never happened -- most visible exactly where a viewer starts and stops.
+
+    Asserted as the *property* rather than as a formula. This used to compare
+    against ``stored[0:5].mean(axis=0)``, which encoded two things that have
+    since deliberately changed: the window is now **clamped rather than
+    shrunk** (the end frame repeats, so smoothing does not quietly weaken
+    exactly where it is least even) and weighted by a **Bartlett triangle**
+    rather than a boxcar. Re-deriving either here would make the test a copy of
+    the implementation -- it would agree with any future change and catch
+    nothing.
+
+    So: move the far end of the trajectory a long way, and require that the
+    near end does not notice. That is what "not wrapped" means, and it holds
+    whatever the window's shape.
     """
     view, frames = jittery
     n = frames.shape[0]
-    stored = np.asarray(view._get_active_state().frames, dtype=float)
     view.set_trajectory_smoothing(9)
 
     view.set_current_frame(0)
-    first = np.asarray(view._all_atom_coords, dtype=float)
-    np.testing.assert_allclose(first, stored[0:5].mean(axis=0), atol=1e-9)
-
+    first_before = np.asarray(view._all_atom_coords, dtype=float).copy()
     view.set_current_frame(n - 1)
-    last = np.asarray(view._all_atom_coords, dtype=float)
-    np.testing.assert_allclose(last, stored[n - 5:n].mean(axis=0), atol=1e-9)
+    last_before = np.asarray(view._all_atom_coords, dtype=float).copy()
+
+    # Displace the last frames far enough that any leakage is unmistakable.
+    state = view._get_active_state()
+    stored = np.asarray(state.frames, dtype=float).copy()
+    stored[n - 3:] += 1000.0
+    state.frames = stored
+    view.set_trajectory_smoothing(9)  # drop any cached smoothed frame
+
+    view.set_current_frame(0)
+    first_after = np.asarray(view._all_atom_coords, dtype=float)
+    np.testing.assert_allclose(
+        first_after, first_before, atol=1e-9,
+        err_msg="the first frame moved when the last frames did -- the window "
+                "wrapped around the seam",
+    )
+
+    # ... and the far end *did* see it, or the displacement proved nothing.
+    view.set_current_frame(n - 1)
+    last_after = np.asarray(view._all_atom_coords, dtype=float)
+    assert not np.allclose(last_after, last_before, atol=1e-9), (
+        "the last frame ignored a 1000-unit displacement of itself, so the "
+        "check above cannot distinguish clipping from a dead code path"
+    )
 
 
 # --------------------------------------------------------------------------- #

@@ -227,9 +227,20 @@ def test_spectrum_refreshes_the_sequence_strip(lysozyme):
         qapp.processEvents()
 
     def strip_colors():
+        # The in-viewport strip, not the deleted `seq_list` dock: one
+        # `SequenceRow` per chain, each carrying the per-residue colours the
+        # strip paints. Flattened, so the comparison is the same one as before
+        # -- "did the colouring change" -- over the same numbers.
+        win.sync_internal_gui()
+        gui = win.viewer._renderer._internal_gui
+        # Scaled to 0-255. `SequenceRow.colors` is float 0-1 where the dock's
+        # `QColor.getRgb()` was an int triple, and the green test below is
+        # written in the latter -- left in those units so the threshold still
+        # means what it says rather than becoming 0.16.
         return [
-            win.seq_list.item(i).background().color().getRgb()[:3]
-            for i in range(win.seq_list.count())
+            tuple(int(round(float(c) * 255)) for c in colour[:3])
+            for row in gui.sequences
+            for colour in row.colors
         ]
 
     before = strip_colors()

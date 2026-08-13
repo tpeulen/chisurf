@@ -36301,3 +36301,12 @@
   `set_object_group`/`set_group_open` never bumped `objects_revision`, so a
   `group` command left every view showing a flat list. Nine failures remain --
   worklist and the trap in okf/plugins/chimol-relocation.md.
+- 2026-08-13 -- chimol suite green (3909 passed, no segfault). Of the eighteen
+  failures the crash had hidden, two were real defects -- `apply_surface_quality`
+  rewrote every splat name to `fast`, making the screen-space surface
+  unreachable -- and one was worse: `test/conftest.py` isolated
+  `CHISURF_SETTINGS_DIR` while `chimol.settings_dir` reads
+  `CHIMOL_SETTINGS_DIR`, so the suite read the developer's real
+  `~/.chisurf/chimol_display.json` and two "defaults" were really that
+  developer's saved settings. Isolation moved to import time (`_DISPLAY_CONFIG`
+  loads during collection) with a guard that fails if it regresses.

@@ -325,16 +325,17 @@ def test_a_menu_entry_reaches_the_viewer(window):
     """End to end: an entry on a molecule's own row must change the display."""
     import numpy as np
 
-    dock = window.objects
-    row = next(iter(dock._rows.values()))
-    assert row._name == "1abc"
+    window.sync_internal_gui()
+    gui = window.viewer._renderer._internal_gui
+    row = next(r for r in gui.rows if r.name == "1abc")
 
-    action = next(
-        a for a in row.buttons["H"].menu().actions() if a.text() == "spheres"
+    entry = next(
+        e for e in HIDE_MENU if e.label == "spheres" and e.command
     )
     before = int(np.count_nonzero(window.viewer._ball_mask))
     assert before > 0
-    action.trigger()
+    # What a click does: the panel binds `{sele}` to the row and runs it.
+    gui._emit(entry.command, row.name)
     assert int(np.count_nonzero(window.viewer._ball_mask)) == 0
 
 
@@ -344,12 +345,15 @@ def test_every_molecule_has_its_own_buttons(window):
     A single shared row would silently retarget every action at whatever is
     selected, which is the one thing a PyMOL user would never expect.
     """
-    dock = window.objects
-    assert dock._rows, "no object rows"
-    for row in dock._rows.values():
-        assert list(row.buttons) == list("ASHLC")
-    # And the `all` row above them acts on everything.
-    assert list(dock.all_buttons) == list("ASHLC")
+    window.sync_internal_gui()
+    gui = window.viewer._renderer._internal_gui
+    gui.layout(1000, 700)
+    assert gui.rows, "no object rows"
+    # One dict of menu hit-rects per row, including the `all` header, which
+    # acts on everything and therefore needs the same five.
+    assert len(gui._button_rects) == len(gui.rows)
+    for buttons in gui._button_rects:
+        assert list(buttons) == list("ASHLC")
 
 
 def test_a_rows_menu_targets_that_row(window, monkeypatch):
@@ -357,29 +361,35 @@ def test_a_rows_menu_targets_that_row(window, monkeypatch):
     import shutil
 
     src = next(iter(window._object_store.values()))["path"]
-    second = window.objects.object_list
     other = shutil.copyfile(src, str(src).replace("1abc", "2xyz"))
     window._load_structure_from_path(pathlib.Path(other), name="2xyz")
+    window.sync_internal_gui()
+
+    gui = window.viewer._renderer._internal_gui
+    molecules = [
+        r for r in gui.rows
+        if not r.is_header and not r.is_selection and not r.is_measurement
+        and not r.is_group
+    ]
+    assert {r.name for r in molecules} >= {"1abc", "2xyz"}
 
     issued: list[str] = []
-    monkeypatch.setattr(window, "_run_object_menu_command", issued.append)
-    window.objects.set_run_command(issued.append)
-
-    for row in window.objects._rows.values():
+    gui.set_run_command(issued.append)
+    entry = next(e for e in ACTION_MENU if e.label == "zoom" and e.command)
+    for row in molecules:
         issued.clear()
-        action = next(
-            a for a in row.buttons["A"].menu().actions() if a.text() == "zoom"
-        )
-        action.trigger()
-        assert issued == [f"zoom {row._name}"], issued
-    assert second.count() == 2
+        gui._emit(entry.command, row.name)
+        assert issued == [f"zoom {row.name}"], issued
 
 
 def test_unsupported_entries_are_greyed_out_in_the_built_menu(window):
     """The disabled rows must survive into the real QMenu, with their reason."""
-    row = next(iter(window.objects._rows.values()))
-    action_menu = row.buttons["A"].menu()
-    by_label = {a.text(): a for a in action_menu.actions()}
-    assert by_label["drag matrix"].isEnabled() is False
-    assert by_label["drag matrix"].toolTip()
-    assert by_label["zoom"].isEnabled() is True
+    # "Disabled" is a property of the entry, not of a widget: an entry with no
+    # `command` is one chimol has no equivalent for, and `note` says which.
+    # Every host draws it greyed from the same two fields, so asserting them
+    # covers the painted panel and the browser alike -- where asking a QMenu
+    # covered only the one host that no longer exists.
+    by_label = {e.label: e for e in ACTION_MENU if e.label}
+    assert by_label["drag matrix"].command is None
+    assert by_label["drag matrix"].note
+    assert by_label["zoom"].command

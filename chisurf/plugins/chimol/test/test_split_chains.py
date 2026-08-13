@@ -115,8 +115,9 @@ def test_hiding_survives_a_panel_rebuild(session):
     do("split_chains")
     assert _visibility(win)[source] is False
     win._refresh_objects_from_viewer()
-    for _ in range(10):
-        win.objects.object_list.update()
+    # The rebuild that used to re-show it. `sync_internal_gui` is what rebuilds
+    # the panel now the Qt dock is gone -- same act, one list instead of two.
+    win.sync_internal_gui()
     assert _visibility(win)[source] is False, "the rebuild re-showed the source"
 
 
@@ -134,24 +135,24 @@ def test_an_explicitly_hidden_object_stays_hidden_across_a_rebuild(session):
 
 def test_the_checkbox_matches_the_stored_visibility(session):
     """What the user sees has to agree with what is drawn."""
-    from qtpy import QtCore
-
     win, do, _messages, _errors = session
     do("split_chains")
-    listing = win.objects.object_list
+    win.sync_internal_gui()
+    # The panel's own rows. `enabled` is the eye -- what the user sees switched
+    # on -- and it has to agree with the stored visibility for every object.
+    rows = [
+        r for r in win.viewer._renderer._internal_gui.rows
+        if not r.is_header and not r.is_selection and not r.is_measurement
+        and not r.is_group
+    ]
     visibility = _visibility(win)
     seen = 0
-    for index in range(listing.count()):
-        item = listing.item(index)
-        widget = listing.itemWidget(item)
-        if not hasattr(widget, "check"):
-            continue
-        name = widget.check.text()
+    for row in rows:
+        name = row.name
         if name not in visibility:
             continue
         seen += 1
-        checked = item.checkState() == QtCore.Qt.Checked
-        assert checked is visibility[name], name
+        assert bool(row.enabled) is visibility[name], name
     assert seen, "no object rows were inspected"
 
 
