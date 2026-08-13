@@ -924,7 +924,12 @@ class WgpuMeshRenderer:
 
         atlas = load_atlas()
         image = _read_atlas_rgba(atlas.image_path)
-        height, width = image.shape[:2]
+        baked_height, width = image.shape[:2]
+        # Taller than the baked image: the rows underneath are the runtime
+        # glyph cache, where anything outside the baked charset is rasterised
+        # on first use. One texture with two halves, because the shader samples
+        # one and should not learn about a second.
+        height = max(int(atlas.texture_height), baked_height)
         texture = self.device.create_texture(
             size=(width, height, 1),
             format=wgpu.TextureFormat.rgba8unorm,
@@ -933,18 +938,50 @@ class WgpuMeshRenderer:
         self.device.queue.write_texture(
             {"texture": texture, "origin": (0, 0, 0)},
             image,
-            {"bytes_per_row": width * 4, "rows_per_image": height},
-            (width, height, 1),
+            {"bytes_per_row": width * 4, "rows_per_image": baked_height},
+            (width, baked_height, 1),
         )
         self._ui_atlas_size = (width, height)
+        self._ui_atlas_baked_height = baked_height
         self._ui_atlas_texture = texture
         return texture
+
+    def _flush_glyph_cache(self, texture) -> None:
+        """Upload glyphs rasterised since this texture was last written.
+
+        Tracked **per texture**, by the cache's version rather than by a dirty
+        list: a list that is consumed can only ever feed one consumer, and
+        there are several devices in play -- a window and an offscreen grab,
+        each with its own texture. The window drew Japanese and the grab drew
+        blanks, which is exactly what a consumed list does.
+        """
+        from .ui.font import load_atlas
+
+        cache = load_atlas().cache
+        if cache is None or cache.version == getattr(self, "_ui_glyph_version", None):
+            return
+        rows = cache.image.shape[0]
+        baked = int(getattr(self, "_ui_atlas_baked_height", 0))
+        if rows <= 0 or baked <= 0:
+            return
+        patch = np.ascontiguousarray(cache.image)
+        self.device.queue.write_texture(
+            {"texture": texture, "origin": (0, baked, 0)},
+            patch,
+            {"bytes_per_row": patch.shape[1] * 4, "rows_per_image": rows},
+            (patch.shape[1], rows, 1),
+        )
+        self._ui_glyph_version = cache.version
 
     def _draw_ui(self, render_pass, vertices: np.ndarray) -> list:
         """Draw the chrome quads; returns the resources to keep alive."""
         wgpu = self._wgpu
         pipeline = self._build_ui_pipeline()
         texture = self.upload_ui_atlas()
+        # Before the draw, not after: a glyph rasterised while the quads were
+        # being built is needed by *this* frame, and uploading it next frame
+        # shows one frame of the wrong texels.
+        self._flush_glyph_cache(texture)
 
         data = np.ascontiguousarray(vertices, dtype=np.float32)
         vbo = self.device.create_buffer_with_data(

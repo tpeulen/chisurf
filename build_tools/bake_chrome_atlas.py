@@ -45,6 +45,7 @@ from __future__ import annotations
 import json
 import pathlib
 import string
+from collections import Counter
 
 __all__ = ["CHARSET", "FONT_PT", "SCALE", "OUT_DIR", "bake"]
 
@@ -65,13 +66,37 @@ AA_MARGIN = 2
 
 #: Every character the chrome can draw.
 #:
-#: Printable ASCII, then the seven symbols in use:
-#: ``▾`` menu marker, ``▸`` submenu marker, ``▴`` scroll-up mark, ``─``
-#: separator, ``…`` for an elided label, and ``◀ ■ ▶ ▼`` from
-#: ``MOVIE_BUTTONS``.
-CHARSET: str = (
-    "".join(sorted(set(string.printable[:95])))
-    + "─▴▸▾◀■▶▼…"
+#: Printable ASCII, the symbols the chrome draws with, and **the accented
+#: Latin letters**. The last of those is not decoration: the command line is a
+#: text field, people type into it in their own language, and a character with
+#: no glyph draws as *nothing at all* -- so typing "Zelldichte für Fläche"
+#: produced "Zelldichte f r Fl che" with no error anywhere. That was reported
+#: as "special chars like aou do not land visible in the cli".
+#:
+#: Latin-1 Supplement and Latin Extended-A between them cover the languages
+#: this application is used in -- German, French, Spanish, the Nordic
+#: languages, Polish, Czech, Hungarian, Turkish -- at about 250 extra cells,
+#: which is a few kilobytes of atlas.
+#:
+#: Enumerated rather than "some Unicode range", still: an atlas is a
+#: fixed-size image, and what is *not* in it has to be a decision someone made
+#: rather than a discovery someone makes. Anything outside this set now draws a
+#: visible placeholder instead of vanishing -- see `Atlas.cell`.
+_SYMBOLS = "─▴▸▾◀■▶▼…"
+
+#: The placeholder for a character with no glyph. In the set by construction,
+#: because a missing glyph that renders as another missing glyph is the bug
+#: twice.
+MISSING_GLYPH = "\u00a4"  # ¤, which no keyboard produces by accident
+
+CHARSET: str = "".join(
+    sorted(
+        set(string.printable[:95])
+        | set(_SYMBOLS)
+        | {chr(c) for c in range(0x00A0, 0x0100)}   # Latin-1 Supplement
+        | {chr(c) for c in range(0x0100, 0x0180)}   # Latin Extended-A
+        | {"\u20ac", "\u2013", "\u2014", "\u2018", "\u2019", "\u201c", "\u201d"}
+    )
 )
 
 #: Where the atlas lands, inside the package so it ships.
@@ -102,7 +127,7 @@ def _face(bold: bool, scale: int | None = None):
     return font
 
 
-def _padding(metrics: dict, advance: int) -> int:
+def _padding(metrics: dict, advance: int, charset: str) -> int:
     """Return the blank margin each cell needs, in texels.
 
     Parameters
@@ -111,6 +136,12 @@ def _padding(metrics: dict, advance: int) -> int:
         ``{face name: QFontMetrics}``.
     advance : int
         The monospaced advance every cell is sized from.
+    charset : str
+        The characters actually being baked. **Not** the module's `CHARSET`:
+        that is what was asked for, and a character the font does not cover
+        can report an ink box of any size at all. Measuring the wanted set
+        rather than the covered one sized one cell at 199978 texels, which
+        fails as a painter error three steps later.
 
     Returns
     -------
@@ -132,9 +163,21 @@ def _padding(metrics: dict, advance: int) -> int:
     """
     overhang = 0
     for face_metrics in metrics.values():
-        for char in CHARSET:
+        height = face_metrics.height()
+        ascent = face_metrics.ascent()
+        for char in charset:
             ink = face_metrics.tightBoundingRect(char)
             overhang = max(overhang, -ink.x(), ink.x() + ink.width() - advance)
+            # Vertically too. Measuring only the horizontal overhang was
+            # enough for ASCII and is not for accented capitals: `Ş` hangs
+            # its cedilla below the line box and `Ů` puts a ring above the
+            # ascent, and both landed on the cell border -- where a glyph
+            # quad samples a sliver of its neighbour.
+            overhang = max(
+                overhang,
+                -(ascent + ink.y()),
+                (ink.y() + ink.height()) - (height - ascent) - ascent,
+            )
     return int(max(overhang, 0)) + AA_MARGIN
 
 
@@ -175,27 +218,37 @@ def bake(out_dir: pathlib.Path | None = None) -> dict:
     # tallest line. Bold is a little wider than regular, so taking the max of
     # the two is what stops a bold glyph being clipped by a cell sized for the
     # regular face.
-    advances = {
+    # The charset is what we *want*; this is what the font actually has. A
+    # character the font does not cover measures zero and would bake an empty
+    # cell -- indistinguishable at runtime from the invisible-glyph bug this
+    # charset was widened to fix. So they are dropped here, and **named**: a
+    # dropped character is a decision, and one nobody is told about is how the
+    # gap gets rediscovered by a user typing their own language.
+    counted = Counter(
         m.horizontalAdvance(c) for m in metrics.values() for c in CHARSET
-    }
-    # One advance, or the runtime's `Atlas.advance` -- a multiplication rather
-    # than a sum over a glyph table -- is silently wrong. Asserted here because
-    # the panel's own layout is built on `char_w` constants that assume it, and
-    # a proportional fallback font would break those in a way no single number
-    # could express.
-    if len(advances) != 1:
+    )
+    advance = counted.most_common(1)[0][0]
+    dropped = sorted(
+        c for c in CHARSET
+        if any(m.horizontalAdvance(c) != advance for m in metrics.values())
+    )
+    charset = "".join(c for c in CHARSET if c not in set(dropped))
+    if dropped:
+        names = " ".join(f"U+{ord(c):04X}" for c in dropped)
+        print(f"  {len(dropped)} character(s) the font does not cover, dropped: {names}")
+    if len(charset) < 95:
+        # Losing ASCII means the font is wrong, not the charset.
         raise RuntimeError(
-            "the chrome font is not monospaced across the charset: advances "
-            f"{sorted(advances)}. The panel's layout assumes one width."
+            f"only {len(charset)} characters survived the advance check; "
+            "the chrome font is not monospaced at all"
         )
-    advance = advances.pop()
-    pad = _padding(metrics, advance)
+    pad = _padding(metrics, advance, charset)
     cell_w = advance + 2 * pad
     cell_h = max(m.height() for m in metrics.values()) + 2 * pad
     ascent = max(m.ascent() for m in metrics.values())
 
     columns = 16
-    rows_per_face = (len(CHARSET) + columns - 1) // columns
+    rows_per_face = (len(charset) + columns - 1) // columns
     # One extra row for the solid block; see below.
     total_rows = rows_per_face * len(faces) + 1
 
@@ -226,7 +279,7 @@ def bake(out_dir: pathlib.Path | None = None) -> dict:
             face_metrics = metrics[name]
             row_offset = face_index * rows_per_face
             table: dict[str, list] = {}
-            for index, char in enumerate(CHARSET):
+            for index, char in enumerate(charset):
                 column, row = index % columns, index // columns
                 x = column * cell_w
                 y = (row_offset + row) * cell_h
@@ -262,7 +315,7 @@ def bake(out_dir: pathlib.Path | None = None) -> dict:
         "descent": max(m.descent() for m in metrics.values()),
         "line_height": cell_h,
         "columns": columns,
-        "charset": CHARSET,
+        "charset": charset,
         "glyphs": glyphs,
         "solid": solid,
         "size": [image.width(), image.height()],
@@ -276,6 +329,6 @@ def bake(out_dir: pathlib.Path | None = None) -> dict:
 if __name__ == "__main__":  # pragma: no cover - a build step
     _record = bake()
     print(
-        f"{len(CHARSET)} glyphs x {len(_record['glyphs'])} faces, "
+        f"{len(_record['charset'])} glyphs x {len(_record['glyphs'])} faces, "
         f"cell {_record['cell'][0]}x{_record['cell'][1]} at {SCALE}x -> {OUT_DIR}"
     )

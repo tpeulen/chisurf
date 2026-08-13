@@ -35812,3 +35812,11 @@
   list from outside the viewer. Measurements joined it on every host. On top of
   the recording: undo, redo, ctrl+z, and a history panel showing what ctrl+z will
   take back next.
+- 2026-08-13 — chimol: the chrome draws all of Unicode. Accented letters typed
+  into the command line were landing and rendering as nothing, because the baked
+  glyph atlas held ASCII plus nine symbols and a missing glyph drew no quad. The
+  baked set now covers Latin-1 and Latin Extended-A, and everything else is
+  rasterised on first use into a cache below the baked rows of the same texture.
+  The font is chosen per character from its cmap — a font draws a tofu box for a
+  character it lacks, so 'did it render?' picks the wrong one every time — and an
+  uncoverable character draws a visible placeholder rather than vanishing.

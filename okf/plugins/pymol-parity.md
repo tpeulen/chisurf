@@ -107,6 +107,37 @@ what it blocks:
   read through the core reader had it. Invisible until something asks --
   `spectrum b` painted one flat colour and putty drew a constant tube -- and
   worst for a predicted model, where that column is the confidence.
+* **the chrome draws all of Unicode (2026-08-13, user: "special chars like
+  aou do not land visible in the cli... full unicode!"):** they *landed* -- the
+  command line held them and the input path was right -- and drew as
+  **nothing**. The atlas is baked at build time, which is what lets the chrome
+  run without a font engine, and it held printable ASCII plus nine symbols;
+  `cell_of` answered `None` for anything else and the painter took that as
+  "draw no quad". "Zelldichte für Fläche" rendered as "Zelldichte f r Fl che",
+  silently.
+  Two changes, and the second is the one that matters. The **baked** set grew
+  to Latin-1 + Latin Extended-A (the languages this is used in) -- cheap, and
+  it only moves the edge. The edge is *removed* by `ui/dynamic_font.py`:
+  anything not baked is rasterised **on first use** into a cache appended below
+  the baked rows of the same texture, so Greek, Cyrillic, CJK, kana, Arabic and
+  every symbol draw. Unicode has ~150,000 codepoints; the answer to "which do
+  we support" should not be a list.
+  **Three traps, each pinned by a test.** (1) A font asked for a character it
+  lacks draws its own *tofu box*, so a chain that stops at "did it render?"
+  never reaches the font that has the glyph -- CJK came out as empty boxes with
+  Menlo first in the list. The font is chosen per character from its **cmap**
+  (fontTools), not from whether it drew. (2) A *consumed* dirty list feeds
+  exactly one texture, so the window drew Japanese while the offscreen grab
+  drew blanks; each backend tracks the cache's `version` instead. (3) The
+  baker's padding was measured horizontally only, which was enough for ASCII
+  and not for `Ş` and `Ů` -- a cedilla below the line box and a ring above the
+  ascent landed on the cell border, where a quad samples its neighbour.
+  A character no font on the machine has now draws a **visible** placeholder
+  (`¤`), because the invisible failure is the entire bug and must not survive
+  one layer down. The layout stays monospaced: a glyph wider than a cell is
+  scaled to fit rather than allowed to overlap, so CJK renders narrow --
+  legible, and honest about a chrome whose arithmetic is one advance per
+  character.
 * **one object list, consumed rather than dispatched (2026-08-13, user:
   "seems like architecture issue? check!"):** it was, and the check found the
   shape twice. The viewer's `_objects` was a bare `OrderedDict` mutated by six

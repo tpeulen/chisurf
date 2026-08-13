@@ -60,11 +60,13 @@ def test_no_glyph_baked_blank():
     which at runtime is an empty box where a menu marker should be.
     """
     alpha, meta = _load()
+    # Whitespace, not just U+0020: the charset covers Latin-1, which brings the
+    # no-break space with it. A space with ink would be the bug.
     blank = [
         (face, char)
         for face, table in meta["glyphs"].items()
         for char, (x, y, w, h, _adv) in table.items()
-        if char != " " and alpha[y:y + h, x:x + w].max() == 0
+        if not char.isspace() and alpha[y:y + h, x:x + w].max() == 0
     ]
     assert not blank, f"these glyphs baked blank: {blank}"
 

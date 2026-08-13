@@ -14,7 +14,12 @@ from __future__ import annotations
 import json
 import pathlib
 
-__all__ = ["Atlas", "load_atlas", "ATLAS_DIR"]
+__all__ = ["Atlas", "load_atlas", "ATLAS_DIR", "MISSING_GLYPH"]
+
+#: Drawn in place of a character the atlas has no glyph for. Matches the
+#: baker's own constant; a placeholder that is itself missing would be the bug
+#: twice over, so it is in the charset by construction.
+MISSING_GLYPH = "\u00a4"
 
 #: Where the baked atlas lives.
 ATLAS_DIR = pathlib.Path(__file__).resolve().parent / "atlas"
@@ -43,6 +48,9 @@ class Atlas:
         self.scale = int(meta["scale"])
         self.pad = int(meta["pad"])
         self.cell = tuple(meta["cell"])
+        #: Built on first miss; see `cache`.
+        self._cache = None
+        self._cache_failed = False
         self.size = tuple(meta["size"])
         self.solid = tuple(meta["solid"])
         self.ascent = int(meta["ascent"])
@@ -109,16 +117,86 @@ class Atlas:
         Returns
         -------
         tuple or None
-            ``None`` when the character was not baked -- the caller draws
-            nothing rather than a wrong glyph. A guard test keeps the charset
-            in step with what the panel actually draws, so this should not
-            happen in shipped code.
+            The cell of *char*, or of :data:`MISSING_GLYPH` when the character
+            was not baked -- a **visible** placeholder rather than nothing.
+
+            Drawing nothing is what this used to do, and it is the worst of the
+            three options: an accented letter typed into the command line
+            simply vanished, with no error anywhere, and "Zelldichte für
+            Fläche" came back as "Zelldichte f r Fl che". A placeholder is
+            wrong on screen, which is how anyone finds out.
+
+            ``None`` only when the placeholder itself is missing, which means
+            the atlas is not the one this code was written for.
         """
         table = self._glyphs["bold" if bold else "regular"]
         entry = table.get(char)
+        if entry is not None:
+            return entry[0], entry[1], entry[2], entry[3]
+
+        # Not baked: rasterise it now, into the cache that lives below the
+        # baked rows. This is what makes the chrome *full* Unicode rather than
+        # the alphabet somebody chose at build time -- Greek, Cyrillic, CJK and
+        # every symbol are glyphs the machine already has, and the only reason
+        # they were invisible is that nobody asked for them.
+        rect = self._dynamic_cell(char)
+        if rect is not None:
+            return rect
+
+        entry = table.get(MISSING_GLYPH)
         if entry is None:
             return None
         return entry[0], entry[1], entry[2], entry[3]
+
+    @property
+    def cache(self):
+        """The runtime glyph cache, built on first use.
+
+        ``None`` when there is no rasteriser -- the chrome then draws the
+        placeholder, which is visible, rather than nothing.
+        """
+        if self._cache is None and not self._cache_failed:
+            try:
+                from .dynamic_font import GlyphCache  # noqa: PLC0415
+
+                self._cache = GlyphCache(self.cell, self.ascent)
+            except Exception:  # noqa: BLE001 - a cache is not worth a frame
+                self._cache_failed = True
+        return self._cache
+
+    def _dynamic_cell(self, char: str):
+        """A rasterised cell for *char*, in **atlas** coordinates, or ``None``.
+
+        The cache's rows sit under the baked image, so its own y is offset by
+        the baked height -- one texture, two halves, and the shader neither
+        knows nor cares which half a glyph came from.
+        """
+        cache = self.cache
+        if cache is None:
+            return None
+        rect = cache.cell_of(char)
+        if rect is None:
+            return None
+        return rect[0], rect[1] + self.baked_height, rect[2], rect[3]
+
+    @property
+    def baked_height(self) -> int:
+        """Height of the baked image, which is where the cache starts."""
+        return int(self._meta["size"][1])
+
+    @property
+    def texture_height(self) -> int:
+        """Height of the texture to allocate: the baked rows plus the cache."""
+        cache = self.cache
+        return self.baked_height + (cache.image.shape[0] if cache is not None else 0)
+
+    def covers(self, char: str) -> bool:
+        """Whether *char* has a glyph of its own.
+
+        For a caller that would rather substitute something readable than show
+        a placeholder -- a transliteration, or a shorter label.
+        """
+        return char in self._glyphs["regular"]
 
     @property
     def image_path(self) -> pathlib.Path:
