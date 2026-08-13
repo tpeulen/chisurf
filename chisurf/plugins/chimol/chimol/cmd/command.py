@@ -4,6 +4,7 @@ from .animation import AnimationMixin
 from .base import BaseCmd
 from .editing import EditingMixin
 from .exporting import ExportMixin
+from .inspect import InspectMixin
 from .lifecycle import LifecycleMixin
 from .loader import LoaderCommands
 from .measurements import MeasurementMixin
@@ -19,7 +20,7 @@ from .interactions import InteractionMixin
 MixinType = type[BaseCmd]
 
 
-class Cmd(LoaderCommands, SelectionMixin, SettingsMixin, RenderingMixin, PresetMixin, AnimationMixin, MeasurementMixin, InteractionMixin, EditingMixin, LifecycleMixin, ExportMixin, SessionMixin, SymmetryMixin, VolumeMixin, BaseCmd):
+class Cmd(LoaderCommands, SelectionMixin, SettingsMixin, RenderingMixin, PresetMixin, AnimationMixin, MeasurementMixin, InteractionMixin, EditingMixin, InspectMixin, LifecycleMixin, ExportMixin, SessionMixin, SymmetryMixin, VolumeMixin, BaseCmd):
     """Thin aggregator that wires together all command mixins."""
 
     def as_(self, rep: str) -> None:

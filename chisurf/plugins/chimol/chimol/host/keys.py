@@ -29,6 +29,8 @@ __all__ = [
     "KEY_ESCAPE",
     "KEY_HOME",
     "KEY_LEFT",
+    "KEY_PAGE_DOWN",
+    "KEY_PAGE_UP",
     "KEY_RETURN",
     "KEY_RIGHT",
     "KEY_TAB",
@@ -51,6 +53,11 @@ KEY_LEFT = 0x01000012
 KEY_UP = 0x01000013
 KEY_RIGHT = 0x01000014
 KEY_DOWN = 0x01000015
+#: The paging pair. Nothing needed them while the only editor was one line
+#: long; a document editor is the first control for which "move a screenful"
+#: is a distinct idea from "move a line".
+KEY_PAGE_UP = 0x01000016
+KEY_PAGE_DOWN = 0x01000017
 
 #: ``KeyboardEvent.key`` -> the constants above.
 #:
@@ -70,6 +77,8 @@ _DOM_KEYS: dict[str, int] = {
     "ArrowUp": KEY_UP,
     "ArrowRight": KEY_RIGHT,
     "ArrowDown": KEY_DOWN,
+    "PageUp": KEY_PAGE_UP,
+    "PageDown": KEY_PAGE_DOWN,
     "Left": KEY_LEFT,
     "Up": KEY_UP,
     "Right": KEY_RIGHT,

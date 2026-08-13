@@ -9,6 +9,14 @@ updated: 2026-08-12
 
 ## Where to pick this up
 
+**2026-08-13 — the chrome gained a code editor and a hex view, and porting is
+now tooled.** How a control family gets into `renderer/ui/`, the scaffolder that
+does the mechanical third, the shared recording painter and the Qt host that
+puts any control in an AutoForm section are all in
+[Porting a widget into chimol's chrome](../subsystems/chimol-ui-ports.md).
+Read that before adding a seventeenth family.
+
+
 **2026-08-12 — the performance objective now has a named baseline and a PRD:
 [PRD-102](../prds/prd-102.md).** tpeulen: **YASARA's performance is the baseline
 chimol has to match**, tested with a *gigastructure*, plus support for **pet

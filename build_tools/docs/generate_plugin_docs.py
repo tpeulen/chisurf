@@ -52,6 +52,7 @@ PARAM_TYPES = {"value", "choice", "toggle", "toggle_row", "table"}
 CUSTOM_PARAM_KEYS = {
     "data_source", "setup_selector", "path_list", "region_list",
     "rate_matrix", "scalar_table", "equation_editor", "level_histogram",
+    "code_editor",
 }
 
 # Curated fallback descriptions for common fit/model parameters that the

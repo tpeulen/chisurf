@@ -17,6 +17,7 @@
 * [Columnar store](columnar-store.md) - The typed, masked, dictionary-encoded table container underneath ChiSurf's tables, and the seam that converts to and from a data frame without pretending the two mean the same thing by "missing".
 * [Plotting (chiplot)](chiplot.md) - The single renderer-neutral 2-D plotting API every call site draws through, its backend contract, and the guard that keeps the rendering library behind it.
 * [Tables (chitable)](gui-tables.md) - The shared model/view table family: sources, vectorised filtering, value colouring, column hiding and export.
+* [Porting a widget into chimol's chrome](chimol-ui-ports.md) - How the in-viewport control families were transcribed from Dear ImGui, ImGuiColorTextEdit and imgui_club, the scaffolder that makes the data half of the next port mechanical, and the Qt host that puts any of them in a form.
 * [Game engine (chigame)](chigame.md) - The shared 2-D game engine on WebGPU: scene, orthographic camera, instanced sprite/SDF batcher, a nine-action abstract controller, synthesised audio, and the AssetPack seam that makes the whole look and soundtrack swappable.
 * [Toolbar action vocabulary](gui-action-vocabulary.md) - One icon, colour, tooltip and position per semantic action, including the run/restart/pause/stop transport controls.
 * [Help buttons and guided tours](gui-help-and-guides.md) - The `?` and **Guide** pair every modern plugin carries, the one mixin that attaches them to any tool, and the shrinking allow-list that enforces it.

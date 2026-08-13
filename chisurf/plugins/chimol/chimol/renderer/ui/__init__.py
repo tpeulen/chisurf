@@ -34,6 +34,22 @@ widget stack (``junk/imgui``), one module per section of its
 :mod:`.style`     the palette and the arithmetic all of them share
 ============  ========================================================
 
+Two families came from elsewhere in the same ecosystem, and are ported the same
+way against their own sources:
+
+==================== ===================================================
+:mod:`.text_editor`  a colourising, multi-cursor code editor, from
+                     ``junk/ImGuiColorTextEdit``
+:mod:`.memory_editor` a hex viewer over RAM or VRAM, from
+                     ``junk/imgui_club``'s ``imgui_memory_editor``
+==================== ===================================================
+
+Porting another one is meant to be mechanical rather than heroic: see
+:mod:`.control` for the base class that supplies the contract below, and
+``build_tools/dev_utils/port_imgui_widget.py`` for the scaffolder that lifts a
+C++ widget's enums, palettes, option struct and keyword tables into Python and
+writes the module, the test and the gallery page around them.
+
 What every control agrees on
 ----------------------------
 A control is a **retained object**: it keeps its state and its hit test in the
@@ -139,6 +155,9 @@ CONTROL_MODULES = (
     "tables",
     "dragdrop",
     "layout",
+    "text_editor",
+    "memory_editor",
+    "control",
 )
 
 

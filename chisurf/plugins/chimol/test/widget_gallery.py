@@ -489,6 +489,85 @@ def _layout_rows() -> list[tuple]:
     return [("Layout: rows, same_line, indent", _Demo, 108.0)]
 
 
+def _text_editor_rows() -> list[tuple]:
+    """The colourising code editor, in the three states worth looking at.
+
+    A sheet of one editor proves it draws; three prove the parts that are easy
+    to get wrong and invisible in a recording-painter test -- that a keyword
+    and a comment are different colours, that a selection sits *behind* the
+    glyphs rather than over them, and that the line-number gutter is wide
+    enough for the number it has to hold.
+    """
+    from chisurf.plugins.chimol.chimol.renderer.ui import text_editor as te
+
+    script = (
+        "# fetch and colour a structure\n"
+        "fetch 148L\n"
+        'select core, "resi 10-40 and chain A"\n'
+        "color skyblue, core\n"
+        "show cartoon\n"
+    )
+    code = (
+        "def kappa2(donor, acceptor):\n"
+        '    """Orientation factor for one pair."""\n'
+        "    r = acceptor.centre - donor.centre  # 3-vector\n"
+        "    return (dot(donor.mu, acceptor.mu) - 3.0 * cos_a * cos_d) ** 2\n"
+    )
+
+    def selected():
+        """An editor with a selection and a second cursor."""
+        editor = te.TextEditor(code, te.Language.python())
+        editor.select_region(te.Pos(2, 4), te.Pos(2, 34))
+        editor.cursors.add_cursor(te.Pos(3, 11), te.Pos(3, 17))
+        return editor
+
+    def whitespace():
+        """A chimol script with whitespace shown and a marker on a line."""
+        editor = te.TextEditor(script, te.Language.chimol(("fetch", "select", "color", "show")))
+        editor.config.show_spaces = True
+        editor.config.show_tabs = True
+        editor.add_marker(2, (220, 90, 80), (220, 140, 130), "unknown selection")
+        return editor
+
+    return [
+        ("TextEditor (Python)", lambda: te.TextEditor(code, te.Language.python()), 84.0),
+        ("TextEditor (selection, 2 carets)", selected, 84.0),
+        ("TextEditor (chimol + spaces)", whitespace, 92.0),
+    ]
+
+
+def _memory_editor_rows() -> list[tuple]:
+    """The hex view, plain and in HexII, over a buffer with structure in it."""
+    import struct
+
+    from chisurf.plugins.chimol.chimol.renderer.ui import memory_editor as me
+
+    blob = bytearray(256)
+    # Exactly 16 bytes: a longer literal would *grow* the bytearray past 256
+    # and the address column would widen to three digits, which is the
+    # widget being right about a fixture that was wrong.
+    blob[0:16] = b"CHIMOL\x00\x01vertexbu"
+    blob[64:72] = struct.pack("<d", 1.0)
+
+    def plain():
+        """Hex, ASCII and the decoded-value footer."""
+        editor = me.MemoryEditor(me.BufferSource(bytes(blob), "vertices"), columns=8)
+        editor.goto(64, 72)
+        return editor
+
+    def hex_ii():
+        """HexII: the compression that makes a mostly-empty buffer readable."""
+        editor = me.MemoryEditor(me.BufferSource(bytes(blob), "vertices"), columns=8)
+        editor.show_hex_ii = True
+        editor.show_data_preview = False
+        return editor
+
+    return [
+        ("MemoryEditor (hex + preview)", plain, 180.0),
+        ("MemoryEditor (HexII)", hex_ii, 120.0),
+    ]
+
+
 #: One entry per control module. A family that has not landed is simply
 #: absent from the sheet rather than an import error.
 _BUILDERS: dict[str, Callable[[], list[tuple]]] = {
@@ -506,6 +585,8 @@ _BUILDERS: dict[str, Callable[[], list[tuple]]] = {
     "tables": _tables_rows,
     "dragdrop": _dragdrop_rows,
     "layout": _layout_rows,
+    "text_editor": _text_editor_rows,
+    "memory_editor": _memory_editor_rows,
 }
 
 
