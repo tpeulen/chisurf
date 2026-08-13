@@ -34,12 +34,39 @@ from __future__ import annotations
 import os
 import platform
 import time
+from collections import deque
 
 __all__ = ["FrameStats", "REPORT_INTERVAL", "machine_info", "cpu_load"]
 
 #: How often the numbers are re-published to the chrome, in seconds. Not a
 #: cosmetic choice: see the module docstring.
 REPORT_INTERVAL = 0.5
+
+#: Whether :func:`cpu_load` has taken its first ``psutil`` sample.
+_CPU_PRIMED = False
+
+#: Frames of history the graphs keep. At a smooth 60 Hz that is two seconds,
+#: which is the window in which a stutter is still felt as one -- longer and a
+#: single bad frame is one pixel wide and invisible.
+HISTORY = 120
+
+#: The series the graphs draw, as ``(key, label, unit)``. Data, because the
+#: collector, the publisher and the painter all enumerate them and three
+#: hand-written lists is three chances for one to be forgotten.
+SERIES: tuple[tuple[str, str, str], ...] = (
+    ("fps", "frame rate", "fps"),
+    ("frame_ms", "frame time", "ms"),
+    ("cpu_load", "cpu", "%"),
+    ("instances", "gpu submitted", "inst"),
+)
+
+#: The parts a frame's time is split into, drawn stacked. Ordered as they
+#: happen, so the bar reads left-to-right in time as well as bottom-to-top.
+BREAKDOWN: tuple[tuple[str, str, tuple], ...] = (
+    ("scene_ms", "scene", (120, 170, 240)),
+    ("chrome_ms", "chrome", (245, 200, 110)),
+    ("wait_ms", "wait", (150, 150, 165)),
+)
 
 
 def cpu_load() -> tuple[float, str]:
@@ -63,6 +90,15 @@ def cpu_load() -> tuple[float, str]:
     try:
         import psutil  # noqa: PLC0415
 
+        # Primed on the first call: `cpu_percent(interval=None)` measures
+        # *since the previous call*, so the very first one has nothing to
+        # compare against and returns 0.0. Reported as-is that reads as an idle
+        # machine, which is a wrong answer rather than a missing one.
+        global _CPU_PRIMED
+        if not _CPU_PRIMED:
+            psutil.cpu_percent(interval=None)
+            _CPU_PRIMED = True
+            return 0.0, "priming"
         return psutil.cpu_percent(interval=None) / 100.0, "util"
     except Exception:  # noqa: BLE001 - psutil is optional by design
         pass
@@ -129,6 +165,17 @@ class FrameStats:
         self._frame_started = 0.0
         self._cpu_started = 0.0
         self._last_frame_at = 0.0
+        #: Per-frame history for the graphs. Appended on every frame -- which
+        #: is cheap, a deque append of a float -- and *published* to the chrome
+        #: only on :data:`REPORT_INTERVAL`, because the chrome is cached on
+        #: what it draws and a graph that advanced every frame would rebuild it
+        #: every frame. The graph still shows per-frame detail; it is the
+        #: *snapshot* that is taken twice a second, not the sampling.
+        self.history: dict[str, deque] = {
+            name: deque(maxlen=HISTORY)
+            for name in [key for key, _l, _u in SERIES]
+            + [key for key, _l, _c in BREAKDOWN]
+        }
 
     # -- collection ----------------------------------------------------- #
     def begin(self) -> None:
@@ -143,11 +190,59 @@ class FrameStats:
         self.pipelines = tuple(sorted(self._live_pipelines))
         self._live_pipelines.clear()
         self._cpu_started = now
+        if self.enabled and self.frame_ms > 0.0:
+            self._record()
 
     def end(self) -> None:
         """Finish a frame: record the CPU time spent drawing it."""
         if self._cpu_started:
             self.cpu_ms = (time.perf_counter() - self._cpu_started) * 1000.0
+
+    def _record(self) -> None:
+        """Append the frame just finished to the graph history.
+
+        The load is read here rather than in :meth:`lines`, so the graph and
+        the printed figure are the same sample rather than two readings taken
+        a moment apart -- which, on a number that moves as fast as CPU load,
+        looks like one of them being wrong.
+        """
+        history = self.history
+        history["fps"].append(1000.0 / self.frame_ms if self.frame_ms > 0 else 0.0)
+        history["frame_ms"].append(self.frame_ms)
+        history["cpu_load"].append(cpu_load()[0] * 100.0)
+        history["instances"].append(float(self.last_instances))
+        history["scene_ms"].append(self.scene_ms)
+        history["chrome_ms"].append(self.chrome_ms)
+        # What the frame spent *not* working: the presentation wait. Clamped at
+        # zero because the two clocks are read at slightly different points and
+        # a hair of negative wait is noise, not a discovery.
+        history["wait_ms"].append(max(self.frame_ms - self.cpu_ms, 0.0))
+
+    def graphs(self) -> tuple:
+        """A snapshot of the history, in the form the chrome compares and draws.
+
+        Tuples rather than the live deques: the chrome caches on a fingerprint
+        of what it draws, and a mutable sequence would compare equal to itself
+        after changing, which is the silent half of a stale-picture bug.
+
+        Returns
+        -------
+        tuple
+            ``((key, label, unit, samples), ...)`` for :data:`SERIES`, then one
+            extra entry, ``("breakdown", ...)``, carrying the stacked series.
+        """
+        rows = [
+            (key, label, unit, tuple(self.history[key]))
+            for key, label, unit in SERIES
+        ]
+        rows.append((
+            "breakdown", "frame time, in detail", "ms",
+            tuple(
+                (key, label, colour, tuple(self.history[key]))
+                for key, label, colour in BREAKDOWN
+            ),
+        ))
+        return tuple(rows)
 
     def draw(self, pipeline: str, instances: int = 1, vertices: int = 0) -> None:
         """Record one draw call.

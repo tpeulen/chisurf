@@ -373,3 +373,154 @@ def test_a_focused_field_that_declines_a_key_lets_it_through():
     gui.focus_field(_Deaf())
     assert gui.key_press(KEY_RETURN, "", 0) is True
     assert gui.command_line.focused is True
+
+
+# --------------------------------------------------------------------------
+# The graphs
+# --------------------------------------------------------------------------
+def _filled(frames: int = 30) -> FrameStats:
+    """Stats carrying *frames* of plausible history."""
+    stats = FrameStats()
+    stats.enabled = True
+    for index in range(frames):
+        stats.frame_ms = 16.0 + (12.0 if index % 7 == 0 else 0.0)
+        stats.scene_ms = 8.0
+        stats.chrome_ms = 2.0
+        stats.cpu_ms = 12.0
+        stats.last_instances = 1000 + index
+        stats._record()
+    return stats
+
+
+def test_history_is_only_kept_while_the_instrument_is_on():
+    """An instrument nobody is reading must not accumulate either."""
+    stats = FrameStats()
+    stats.frame_ms = 16.0
+    stats.begin()
+    assert not any(stats.history[key] for key in stats.history)
+
+
+def test_the_graphs_carry_one_sample_per_frame():
+    """Averaged into the publishing interval, a single stutter disappears.
+
+    That is the only reason to plot this rather than print a number, so the
+    sampling has to stay per-frame even though the *snapshot* is taken twice a
+    second.
+    """
+    stats = _filled(40)
+    series = dict((key, samples) for key, _l, _u, samples in stats.graphs()
+                  if key != "breakdown")
+    assert len(series["fps"]) == 40
+    assert len(series["frame_ms"]) == 40
+
+
+def test_the_history_is_bounded():
+    """A viewport left running for an hour must not grow a graph an hour long."""
+    from chisurf.plugins.chimol.chimol.renderer.frame_stats import HISTORY
+
+    stats = _filled(HISTORY * 2)
+    assert len(stats.graphs()[0][3]) == HISTORY
+
+
+def test_the_snapshot_is_immutable():
+    """A mutable series compares equal to itself after changing.
+
+    The chrome caches on a fingerprint of what it draws, so handing it the live
+    deques would freeze the graph at whatever it held when it was first read --
+    and nothing would say so.
+    """
+    stats = _filled(5)
+    first = stats.graphs()
+    stats._record()
+    assert stats.graphs() != first
+    assert all(isinstance(one[3], tuple) for one in first)
+
+
+def test_the_breakdown_carries_the_parts_that_add_up_to_the_frame():
+    """Scene, chrome and wait, in the order they happen."""
+    stats = _filled(5)
+    breakdown = stats.graphs()[-1]
+    assert breakdown[0] == "breakdown"
+    assert [one[1] for one in breakdown[3]] == ["scene", "chrome", "wait"]
+
+
+def test_a_stacked_graph_is_scaled_by_the_sum_not_the_tallest_part():
+    """Scaling by the tallest part draws every bar off the top of the plot."""
+    from chisurf.plugins.chimol.chimol.renderer.internal_gui import InternalGui
+
+    gui = InternalGui()
+    gui.layout(1200, 800)
+    painter = RecordingPainter()
+    graph = ("breakdown", "frame time", "ms", (
+        ("scene_ms", "scene", (1, 2, 3), (10.0,)),
+        ("chrome_ms", "chrome", (4, 5, 6), (10.0,)),
+        ("wait_ms", "wait", (7, 8, 9), (10.0,)),
+    ))
+    gui._paint_nerd_graph(painter, 0.0, 0.0, 100.0, 12.0, graph)
+    bars = [one for one in painter.fills if one[4] in ((1, 2, 3), (4, 5, 6), (7, 8, 9))]
+    assert len(bars) == 3
+    assert sum(one[3] for one in bars) <= gui.NERD_GRAPH_H + 0.5
+
+
+def test_the_reference_lines_are_drawn_over_the_bars():
+    """Underneath they are hidden by the data they exist to be read against."""
+    from chisurf.plugins.chimol.chimol.renderer.internal_gui import InternalGui
+
+    gui = InternalGui()
+    gui.layout(1200, 800)
+    painter = RecordingPainter()
+    gui._paint_nerd_graph(
+        painter, 0.0, 0.0, 100.0, 12.0,
+        ("fps", "frame rate", "fps", (120.0, 55.0, 58.0)),
+    )
+    guide_colours = {colour for _v, colour in gui.NERD_GUIDES["fps"]}
+    guides = [i for i, one in enumerate(painter.fills) if one[4] in guide_colours]
+    bars = [i for i, one in enumerate(painter.fills) if one[4] == (120, 190, 240)]
+    assert guides and bars
+    assert min(guides) > max(bars)
+
+
+def test_a_graph_with_no_samples_still_draws_its_frame():
+    """Before the first frame there is nothing to plot and something to say."""
+    from chisurf.plugins.chimol.chimol.renderer.internal_gui import InternalGui
+
+    gui = InternalGui()
+    gui.layout(1200, 800)
+    painter = RecordingPainter()
+    gui._paint_nerd_graph(painter, 0.0, 0.0, 100.0, 12.0, ("fps", "rate", "fps", ()))
+    assert "rate" in painter.strings
+
+
+def test_the_block_grows_to_hold_its_graphs():
+    """Drawn past the plate, the last graph is the one nobody sees."""
+    from chisurf.plugins.chimol.chimol.renderer.internal_gui import InternalGui
+
+    gui = InternalGui()
+    gui.nerd = True
+    gui.nerd_lines = ("one", "two")
+    gui.layout(1400, 900)
+
+    painter = RecordingPainter()
+    gui._paint_nerd(painter)
+    plain = painter.fills[0][3]
+
+    gui.nerd_graphs = _filled(20).graphs()
+    painter = RecordingPainter()
+    gui._paint_nerd(painter)
+    assert painter.fills[0][3] > plain
+
+
+def test_the_first_cpu_reading_says_it_is_priming_rather_than_idle():
+    """``cpu_percent`` measures since the previous call; the first has none.
+
+    Reported as 0 %, that reads as an idle machine -- a wrong answer rather
+    than a missing one.
+    """
+    import chisurf.plugins.chimol.chimol.renderer.frame_stats as fs
+
+    if not hasattr(fs, "_CPU_PRIMED"):
+        pytest.skip("no psutil path")
+    fs._CPU_PRIMED = False
+    value, source = fs.cpu_load()
+    assert source in ("priming", "load avg", "n/a")
+    assert value == 0.0 or source != "priming"

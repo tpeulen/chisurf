@@ -35958,3 +35958,18 @@
   touches the registry, which is right in its own terms: it is a visibility
   change. Pinned by `chimol/test/test_selection_eye.py`. See
   [chimol viewport UI](plugins/chimol-viewport-ui.md).
+- 2026-08-13 — chimol: nerd mode grows graphs. Five per-frame series drawn as
+  bar sparklines in the backdrop — frame rate, frame time, CPU load, GPU work
+  submitted, and a **stacked** frame-time breakdown (scene / chrome / wait)
+  that shows the composition over time rather than one number. Sampled every
+  frame (a stutter that is averaged away is the one thing a graph is for) and
+  *snapshotted* twice a second, because the block is chrome and chrome that
+  changes every frame is rebuilt every frame. Reference lines at 60/30 Hz and
+  16.7/33.3 ms, drawn **over** the bars — underneath they were invisible
+  against the data they exist to be read against, which the rendered sheet
+  showed and no assertion would have. No GPU timing: `timestamp-query` is
+  advertised by the adapter but the resolved timestamps come back zero through
+  this wgpu/Metal path, and a fabricated GPU figure is the one number somebody
+  would act on, so the GPU row graphs *submitted work* and says so. Also fixed:
+  `psutil.cpu_percent` measures since the previous call, so the first reading
+  was 0 % — reported as an idle machine rather than as no reading yet.

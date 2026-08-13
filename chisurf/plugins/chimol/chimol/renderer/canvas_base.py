@@ -732,12 +732,14 @@ class CanvasRenderer(CameraState, Renderer):
         stats.enabled = bool(gui.nerd)
         if not gui.nerd:
             gui.nerd_lines = ()
+            gui.nerd_graphs = ()
             return
         now = time.perf_counter()
         if now - getattr(self, "_nerd_published_at", 0.0) < REPORT_INTERVAL:
             return
         self._nerd_published_at = now
         gui.nerd_lines = stats.lines(gui.fps)
+        gui.nerd_graphs = stats.graphs()
 
     def _describe_frame(self, stats) -> None:
         """Fill in the parts of the readout that come from settings, not counters.

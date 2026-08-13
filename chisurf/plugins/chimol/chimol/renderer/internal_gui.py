@@ -818,6 +818,11 @@ class InternalGui:
         #: invalidates the chrome every frame, which is how switching on an
         #: instrument destroys the thing it measures.
         self.nerd_lines: tuple[str, ...] = ()
+        #: The graph series, published on the same cadence and for the same
+        #: reason. Tuples, not the collector's deques: the chrome caches on a
+        #: fingerprint of what it draws, and a mutable sequence compares equal
+        #: to itself after changing.
+        self.nerd_graphs: tuple = ()
         #: Frames per second, pushed by the renderer. 0 means "not measured",
         #: which is what a still frame and a headless host both are.
         self.fps = 0.0
@@ -4625,7 +4630,7 @@ class InternalGui:
                 self.fps if self.debug_overlays else None,
                 # Republished a few times a second by the renderer, so this
                 # rebuilds the chrome at that rate and no faster.
-                self.nerd, self.nerd_lines,
+                self.nerd, self.nerd_lines, self.nerd_graphs,
                 self.info_visible, self.info_text, self._info_scroll,
                 len(getattr(self, "_info_items", ()) or ()),
                 tuple(self.info_colors or ()) if isinstance(
@@ -4762,7 +4767,9 @@ class InternalGui:
         char_w = char_width(self.FONT_PT)
         row = float(self.CMD_ROW_H)
         width = char_w * (max(len(one) for one in lines) + 2)
-        height = row * len(lines) + self.NERD_PAD
+        graphs = self.nerd_graphs
+        graph_h = (self.NERD_GRAPH_H + row) * len(graphs)
+        height = row * len(lines) + graph_h + self.NERD_PAD
         x = self.NERD_PAD
         y = self._top_chrome_height() + self.NERD_PAD
 
@@ -4772,6 +4779,109 @@ class InternalGui:
                    width - char_w * 2, row,
                    ALIGN_VCENTER | ALIGN_LEFT, line,
                    MODE_TITLE_FG if index == 0 else WINDOW_DIM_FG)
+
+        top = y + self.NERD_PAD * 0.5 + row * len(lines)
+        for graph in graphs:
+            top = self._paint_nerd_graph(
+                p, x + char_w, top, width - char_w * 2, row, graph,
+            )
+
+    #: Height of one graph's plot area, in pixels. Tall enough that a doubled
+    #: frame time is visibly double; short enough that five of them fit in a
+    #: corner without becoming the picture.
+    NERD_GRAPH_H = 26.0
+
+    #: Reference lines, as ``(value, colour)`` per unit. The whole point of a
+    #: frame-rate graph is *where the line is* -- 60 and 30 for a rate, the
+    #: 16.7 ms budget for a time. A graph without them is a shape.
+    #: Opaque, not a wash: the line is drawn *over* a solid field of bars, and
+    #: at the alpha these started on it was invisible against them -- a guide
+    #: nobody can see is a guide that is not there.
+    NERD_GUIDES: dict = {
+        "fps": ((60.0, (150, 240, 175)), (30.0, (245, 185, 110))),
+        "ms": ((16.7, (150, 240, 175)), (33.3, (245, 185, 110))),
+    }
+
+    def _paint_nerd_graph(self, p, x, y, width, row, graph) -> float:
+        """Draw one graph -- a caption, a plot, and its reference lines.
+
+        Bars, not a line: the painter draws rectangles, and a polyline would
+        have to be approximated by them anyway. One bar per *frame*, so a
+        single stutter is one bar rather than being averaged away, which is the
+        only reason to plot this rather than print a number.
+
+        Returns
+        -------
+        float
+            The y to draw the next graph at.
+        """
+        key, label, unit, samples = graph
+        stacked = key == "breakdown"
+        series = samples if stacked else ((key, label, None, samples),)
+        length = max((len(one[3]) for one in series), default=0)
+        plot_y = y + row
+        plot_h = self.NERD_GRAPH_H
+
+        peak = 0.0
+        for _k, _l, _c, values in series:
+            if stacked:
+                continue
+            peak = max(peak, max(values, default=0.0))
+        if stacked:
+            # A stacked bar's height is the *sum* of its parts, so the scale
+            # has to come from the sums -- scaling by the tallest single part
+            # draws every bar off the top of the plot.
+            peak = max(
+                (sum(one[3][index] for one in series if index < len(one[3]))
+                 for index in range(length)),
+                default=0.0,
+            )
+        peak = max(peak, 1e-6)
+
+        p.text(x, y, width, row, ALIGN_VCENTER | ALIGN_LEFT, label, WINDOW_DIM_FG)
+        latest = ""
+        if length:
+            if stacked:
+                latest = "  ".join(
+                    f"{one[1]} {one[3][-1]:.1f}" for one in series if one[3]
+                )
+            else:
+                latest = f"{samples[-1]:,.0f} {unit}" if samples else ""
+        p.text(x, y, width, row, ALIGN_VCENTER | ALIGN_RIGHT, latest, WINDOW_DIM_FG)
+        p.fill_rect(x, plot_y, width, plot_h, (0, 0, 0, 60))
+
+        if not length:
+            self._paint_nerd_guides(p, x, plot_y, width, plot_h, unit, peak)
+            return plot_y + plot_h + 2.0
+
+        # Right-aligned, so the newest frame is always at the same edge: a
+        # graph that grows from the left moves under the eye while it fills.
+        bar = max(width / max(length, 1), 1.0)
+        for index in range(length):
+            left = x + width - (length - index) * bar
+            bottom = plot_y + plot_h
+            for _k, _l, colour, values in series:
+                if index >= len(values):
+                    continue
+                part = plot_h * (values[index] / peak)
+                if part <= 0.0:
+                    continue
+                bottom -= part
+                p.fill_rect(left, bottom, max(bar - 0.5, 0.5), part,
+                            colour or (120, 190, 240))
+
+        # After the bars, not before. Drawn underneath they are hidden by the
+        # very data they exist to be read against -- and "where is the 60 Hz
+        # line" is the entire question a frame-rate graph answers.
+        self._paint_nerd_guides(p, x, plot_y, width, plot_h, unit, peak)
+        return plot_y + plot_h + 2.0
+
+    def _paint_nerd_guides(self, p, x, plot_y, width, plot_h, unit, peak) -> None:
+        """Draw a graph's reference lines: 60/30 Hz, or the 16.7 ms budget."""
+        for value, colour in self.NERD_GUIDES.get(unit, ()):
+            if 0.0 < value <= peak:
+                p.fill_rect(x, plot_y + plot_h * (1.0 - value / peak),
+                            width, 1.0, colour)
 
     def _paint_tour(self, p) -> None:
         """The guided tour: a ring around the control, and a bubble beside it.
