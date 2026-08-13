@@ -892,6 +892,9 @@ class InternalGui:
         self._seq_track = Rect(0, 0, 0, 0)
         self._seq_thumb = Rect(0, 0, 0, 0)
         self._dragging_thumb = False
+        #: Where in the thumb the drag was started, so it keeps that point
+        #: under the cursor instead of snapping its edge there.
+        self._thumb_grab = 0.0
         self._dragging_timeline = False
         #: Called with ``(object name, indices, additive)`` when the strip
         #: selects. Kept separate from `run_command`: a selection is not a
@@ -2946,11 +2949,17 @@ class InternalGui:
         longest = max((len(row.codes) for row in self.sequences), default=0)
         visible = self.visible_columns()
         if longest > visible > 0:
-            span = track_w * visible / float(longest)
-            offset = track_w * self._seq_scroll / float(longest)
+            # The thumb's *width* is the visible fraction, and its *travel* is
+            # what is left of the track -- the two are not the same number and
+            # `_scroll_to` reads them back exactly this way. Placing it at
+            # `scroll / longest` instead put the thumb short of the pointer by
+            # a factor that grew across the track, which is the stutter.
+            width = max(track_w * visible / float(longest), 12.0)
+            steps = max(longest - visible, 1)
+            offset = (track_w - width) * min(self._seq_scroll / float(steps), 1.0)
             self._seq_thumb = Rect(
-                self._seq_track.x + offset, self._seq_track.y,
-                max(span, 12.0), self.SEQ_BAR_H,
+                self._seq_track.x + max(offset, 0.0), self._seq_track.y,
+                width, self.SEQ_BAR_H,
             )
         else:
             self._seq_thumb = Rect(self._seq_track.x, self._seq_track.y,
@@ -3050,12 +3059,32 @@ class InternalGui:
                     pass
 
     def _scroll_to(self, x: float) -> None:
-        """Put the thumb under the cursor and scroll to match."""
+        """Put the thumb under the cursor and scroll to match.
+
+        The thumb's **left edge** travels ``track.w - thumb.w``, not the whole
+        track: the thumb has width and its right edge has to stop at the end of
+        the track. Reading the cursor against the full width instead is what
+        made dragging the strip feel like it stuttered -- the layout placed the
+        thumb at ``scroll / longest`` of the track while the drag computed
+        ``fraction * max_scroll``, so the two disagreed by a factor of
+        ``1 - visible / longest``. The thumb crept along behind the pointer,
+        and because the scroll is a whole number of residues it did so in
+        visible jerks: the pointer moved smoothly, the thumb moved in steps,
+        and the gap between them grew across the track.
+
+        ``_thumb_grab`` is where in the thumb the drag started, so the thumb
+        keeps that point under the cursor rather than jumping its edge there.
+        """
         track = self._seq_track
-        if track.w <= 0:
+        span = self.max_scroll()
+        travel = track.w - self._seq_thumb.w
+        if track.w <= 0 or span <= 0:
             return
-        fraction = min(max((x - track.x) / track.w, 0.0), 1.0)
-        target = int(round(fraction * self.max_scroll()))
+        if travel <= 0:
+            target = 0
+        else:
+            fraction = (x - self._thumb_grab - track.x) / travel
+            target = int(round(min(max(fraction, 0.0), 1.0) * span))
         if target != self._seq_scroll:
             self._seq_scroll = target
             self.layout_sequence(self._width, self._height)
@@ -3902,6 +3931,13 @@ class InternalGui:
 
         if hit.kind == "scrollbar":
             self._dragging_thumb = True
+            # Grabbing the thumb holds the point that was grabbed; pressing the
+            # bare track centres the thumb on the cursor and drags from there,
+            # which is what a scrollbar does everywhere else.
+            if self._seq_thumb.contains(x, y):
+                self._thumb_grab = float(x) - self._seq_thumb.x
+            else:
+                self._thumb_grab = self._seq_thumb.w * 0.5
             self._scroll_to(x)
             return True
 
@@ -4498,6 +4534,16 @@ class InternalGui:
                 # from -- pointing confidently at the wrong thing.
                 (getattr(self.tour, "name", None),
                  getattr(self.tour, "index", None)) if self.tour else None,
+                # Where the sequence strip is scrolled to. Absent, the strip
+                # was drawn from a cached frame that did not know it had
+                # moved: scrolling changed `_seq_scroll`, laid the rows out
+                # again, and put not one pixel on screen. It appeared to move
+                # only when something *else* in this tuple changed -- a hover
+                # crossing a row, the status line -- so the strip advanced in
+                # bursts while the pointer moved smoothly. That is the
+                # "stuttering", and it is a repaint that never happened rather
+                # than a slow one.
+                self._seq_scroll,
                 rows_key(self.rows), rows_key(getattr(self, "wizard_rows", None)),
                 tuple(getattr(self, "wizard_prompt", None) or ()),
                 sequences_key(), windows_key(), menus_key(),

@@ -9,6 +9,66 @@ updated: 2026-08-12
 
 ## Where to pick this up
 
+**2026-08-13 — the mouse table was mostly decoration, and the sequence strip
+was not repainting. Both closed; what is left is named below.**
+
+*The mouse.* The report was "shift+middle does not move objects". It did not,
+and neither did most of the block: the press resolved the action from the mode
+table and **threw it away**, so `on_pointer_move` re-derived it from the button
+alone — pan if it had been told to pan, dolly for right, and **orbit for
+everything else**. Eight of the twelve cells per mode silently orbited the
+camera whatever the panel promised. Right-drag was worse: the right *press*
+opened the context menu and took the pointer grab, so the same row's `MovZ`
+never ran at all — the row promised two things and delivered one.
+
+The fix is one idea: **the press records the action, and the move dispatches on
+it** (`_gesture_action` / `_apply_drag` in `renderer/canvas_base.py`), with the
+menu deferred to release so a click can be told from a drag. Object motions go
+through `apply_transform_to_object`, and pixels become scene units from the
+camera's own geometry (`_scene_units_per_pixel`) so an object keeps up with the
+pointer at any zoom.
+
+Two traps, both of which cost an hour:
+
+- **A camera cell and an object cell look identical if you only ask "did
+  something change?"** Rotating the view is visible feedback, which is exactly
+  why nobody noticed the object was not moving. The audit had to measure *what
+  kind* of state moved, and the test does the same — that is why the assertion
+  is on `camera` vs `object` and not on "not equal".
+- **Measuring this needs a fresh viewer per cell.** The info panel is shown
+  unpinned after a load and the first press anywhere is eaten dismissing it, so
+  a batch loop scores the first cell as dead. `info_panel off` first; the audit
+  gave three false negatives before that.
+
+`clip` was also a **false negative in the audit, not a bug**: the snapshot read
+`_slab_near`/`_slab_far`, which do not exist. The slab state is `_slab_moved`.
+
+*The sequence strip.* "Scrolling with the scrollbar is stuttering." Two
+independent defects, and the **second is the one that mattered**:
+
+1. Two mappings disagreed. The layout drew the thumb at `scroll / longest` of
+   the track; the drag read the cursor as `fraction * max_scroll` over the
+   *full* width, ignoring that the thumb's left edge only travels
+   `track.w - thumb.w`. The thumb trailed the pointer by `1 - visible/longest`
+   and closed the gap in whole-residue jumps. Measured: **87.8 px of drift**
+   across the track, now under 6.
+2. **The strip was not repainting at all.** The chrome is cached against a
+   fingerprint of its own state and `_seq_scroll` was **not in it** — so
+   scrolling moved the rows, laid them out again, and changed **zero pixels**.
+   It appeared to move only when something *else* in the fingerprint changed (a
+   hover crossing a row, the status line), which is what "stuttering" actually
+   was. Every piece of state was correct while the screen showed the previous
+   frame, so only a pixel measurement finds this; `test_sequence_scrollbar.py`
+   asserts in pixels for that reason.
+
+*Still open here.* `PkTB` and `TorF` are PyMOL **bond editing**, which chimol
+has no subsystem for. They now say so in the status line rather than doing
+nothing — an unimplemented cell indistinguishable from a broken one costs the
+same afternoon twice — but if bond editing ever lands, they are the two cells
+waiting for it. `pk1` survives as a single-atom highlight (`pkat`'s "pick, but
+the selection is not yours").
+
+
 **2026-08-13 — the chrome gained a code editor and a hex view, and porting is
 now tooled.** How a control family gets into `renderer/ui/`, the scaffolder that
 does the mechanical third, the shared recording painter and the Qt host that

@@ -5488,6 +5488,11 @@ class MolView(WidgetBase):
             "sele": "set",
             "+/-": "toggle",
             "pkat": "pick",
+            # PyMOL's `pk1` names one atom for an editing command to act on.
+            # There is no bond editing here, so what survives of it is the
+            # highlight -- the same "pick, but the selection is not yours"
+            # that `pkat` gets.
+            "pk1": "pick",
             # A box action that was clicked rather than dragged is the same
             # operation on one atom -- see the release handler in `wgpu_view`.
             "+box": "add",

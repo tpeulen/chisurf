@@ -270,8 +270,23 @@ class CanvasRenderer(CameraState, Renderer):
     #: on screen draws `Box` and the drag rotates the camera instead.
     _BOX_ACTIONS = ("+box", "-box", "sele", "box")
 
-    #: Click actions the viewer knows how to act on.
-    _CLICK_ACTIONS = ("+/-", "sele", "pkat", "+box", "-box", "orig")
+    #: Click actions the viewer knows how to act on. `pk1` is PyMOL's
+    #: single-atom pick and lands here as `pkat` does -- it highlights the atom
+    #: under the cursor without the selection changing hands.
+    _CLICK_ACTIONS = ("+/-", "sele", "pkat", "pk1", "+box", "-box", "orig")
+
+    #: Cells the block draws that this viewer has no subsystem for: they are
+    #: PyMOL's *bond editing* -- picking a torsion bond and dragging a fragment
+    #: about it -- and chimol does not edit bonds.
+    #:
+    #: They say so rather than doing nothing. Silence is what made the whole
+    #: table look wired up while most of it quietly orbited the camera, and an
+    #: unimplemented cell that is indistinguishable from a broken one costs the
+    #: same afternoon twice.
+    _UNIMPLEMENTED_ACTIONS = {
+        "pktb": "PkTB (pick torsion bond) needs bond editing, which chimol has not.",
+        "torf": "TorF (torsion fragment) needs bond editing, which chimol has not.",
+    }
 
     #: Manhattan pixels a press may wander and still count as a click.
     CLICK_SLOP = 4
@@ -332,6 +347,11 @@ class CanvasRenderer(CameraState, Renderer):
         self._drag_start: tuple[float, float] | None = None
         self._drag_button = NO_BUTTON
         self._drag_action: str | None = None
+        #: What the *mouse-mode table* said the current press does, kept so the
+        #: move handler dispatches on the action rather than guessing from the
+        #: button. Distinct from `_drag_action` above, which belongs to the
+        #: box-selection machinery.
+        self._gesture_action: str = ""
         self._drag_modifiers = NO_MODIFIER
         self._press_mods = NO_MODIFIER
         self._press_button = NO_BUTTON
@@ -1360,16 +1380,22 @@ class CanvasRenderer(CameraState, Renderer):
             self.update()
             return True
 
-        # A right-click on the scene itself opens the object menus at the
-        # cursor. The mouse-mode block has always promised this -- its
-        # `SnglClk` row reads `R  Menu` -- while the five menus were reachable
-        # only from the object list's buttons.
-        if gui is not None and button == RIGHT_BUTTON:
-            target = self._context_menu_target(x, y)
-            if gui.open_context_menu(float(x), float(y), target):
-                self._gui_grab = True
-                self.update()
-                return True
+        # A right-click on the scene opens the object menus at the cursor --
+        # the block's `SnglClk` row reads `R  Menu`. On **release**, not here:
+        # opening it on the press grabbed the pointer, so the same row's drag
+        # cell (`MovZ`) never ran and right-dragging did nothing at all. The
+        # block promised both and delivered one.
+        #
+        # Only when the cell names no click of its own: the block's `SnglClk`
+        # row is per-modifier, and ctrl-right is `Pk1` there, not the menu. A
+        # menu pending on *every* right press swallows those cells at release,
+        # which is the same "one row, one cell delivered" bug one level down.
+        if (
+            gui is not None
+            and button == RIGHT_BUTTON
+            and not self._names_a_click(button, modifiers)
+        ):
+            self._right_menu_pending = (float(x), float(y))
 
         if button == RIGHT_BUTTON:
             # The right button carries a box too -- `-Box` is shift-right in the
@@ -1377,11 +1403,12 @@ class CanvasRenderer(CameraState, Renderer):
             # deferred, or that cell of the block names a gesture nothing starts.
             if self._start_box_drag(x, y, button, modifiers):
                 return True
-            # Defer: a right *drag* dollies; a right *click* is a click.
+            # Defer: a right *drag* moves in z, a right *click* is a click.
             self._last_pos = (x, y)
             self._press_pos = (x, y)
             self._press_mods = modifiers
             self._press_button = button
+            self._gesture_action = self._action_for(button, modifiers)
             return True
 
         if button in (LEFT_BUTTON, MIDDLE_BUTTON):
@@ -1400,6 +1427,14 @@ class CanvasRenderer(CameraState, Renderer):
             self._press_mods = modifiers
             self._press_button = button
             self._last_pos = (x, y)
+            # What the *table* says this gesture does. Without it the move
+            # handler had only the button to go on and guessed: pan if it had
+            # been told to pan, dolly for the right button, and **orbit for
+            # everything else** -- so every cell that was not `move` silently
+            # rotated the camera. `movo` (move object, shift+middle) was
+            # reported as "moving of objects does not work"; it was rotating
+            # the view instead.
+            self._gesture_action = action
             return True
 
         self._last_pos = (x, y)
@@ -1453,18 +1488,155 @@ class CanvasRenderer(CameraState, Renderer):
         if self._last_pos is None or not buttons:
             return False
         last_x, last_y = self._last_pos
-        if self._panning:
-            ratio = self._ratio()
-            self.pan((x - last_x) * ratio, (y - last_y) * ratio)
-        elif buttons & RIGHT_BUTTON:
-            # Right drag dollies, as PyMOL's `cButModeTransZ` does.
-            self._right_dragged = True
-            self.dolly(WHEEL_STEP ** ((y - last_y) / 40.0))
-        else:
-            self.orbit((last_x, last_y), (x, y))
+        if not self._apply_drag(last_x, last_y, x, y, buttons):
+            return False
         self._last_pos = (x, y)
         self.update()
         return True
+
+    #: Drag actions and what each does to the scene. Written out because the
+    #: mouse-mode block *promises* every one of these, and a promise nothing
+    #: implements is worse than a cell left blank -- the previous handler had
+    #: three outcomes and fell through to `orbit`, so eight of the twelve cells
+    #: in each mode rotated the camera whatever they claimed.
+    _CAMERA_DRAGS = frozenset({"rota", "rotl", "rotv"})
+    _PAN_DRAGS = frozenset({"move", "movl", "movv"})
+    _ZOOM_DRAGS = frozenset({"movz", "mvzl", "mvvz"})
+    _OBJECT_ROTATE = frozenset({"roto"})
+    _OBJECT_MOVE = frozenset({"movo", "mova"})
+    _OBJECT_ZOOM = frozenset({"mvoz"})
+    _CLIP_DRAGS = frozenset({"clip"})
+
+    def _apply_drag(self, last_x, last_y, x, y, buttons) -> bool:
+        """Apply one step of the gesture the press resolved. Returns whether it acted.
+
+        Dispatched on the **action**, not the button, which is what the mouse
+        block already tells the user it does.
+        """
+        action = str(getattr(self, "_gesture_action", "") or "")
+        dx, dy = x - last_x, y - last_y
+
+        if self._panning or action in self._PAN_DRAGS:
+            ratio = self._ratio()
+            self.pan(dx * ratio, dy * ratio)
+            return True
+        if action in self._ZOOM_DRAGS or (not action and buttons & RIGHT_BUTTON):
+            self._right_dragged = True
+            self.dolly(WHEEL_STEP ** (dy / 40.0))
+            return True
+        if action in self._OBJECT_MOVE:
+            return self._drag_object_in_plane(dx, dy)
+        if action in self._OBJECT_ZOOM:
+            return self._drag_object_in_depth(dy)
+        if action in self._OBJECT_ROTATE:
+            return self._drag_object_rotation(dx, dy)
+        if action in self._CLIP_DRAGS:
+            # PyMOL's `cButModeClipNF`: the near plane follows the pointer's
+            # vertical motion and the far plane its horizontal one.
+            moved = False
+            if hasattr(self, "move_slab"):
+                moved = bool(self.move_slab(-dy / 20.0, dolly=False))
+            return moved
+        if action in self._CAMERA_DRAGS or not action:
+            self.orbit((last_x, last_y), (x, y))
+            return True
+        # A cell this viewer has no subsystem for says so, once, rather than
+        # doing nothing indistinguishable from being broken.
+        note = self._UNIMPLEMENTED_ACTIONS.get(action)
+        if note is not None:
+            if self._internal_gui is not None and self._internal_gui.status_text != note:
+                self._internal_gui.status_text = note
+            return False
+        # The rest are picks and clicks rather than drags -- `pkat`, `pk1`,
+        # `orig`, `+/-` -- and doing *nothing* on a drag is right: silently
+        # orbiting instead is what made them look implemented. They fire on
+        # release, through `_handle_click`.
+        return False
+
+    def _active_entry(self):
+        """The object a manipulation gesture acts on, or ``None``."""
+        viewer = self._controller
+        objects = getattr(viewer, "_objects", None)
+        if not objects:
+            return None
+        try:
+            return objects.get(viewer.get_active_object_id())
+        except Exception:  # noqa: BLE001
+            return None
+
+    def _drag_object_in_plane(self, dx: float, dy: float) -> bool:
+        """Move the active object across the screen, in scene units."""
+        entry = self._active_entry()
+        if entry is None:
+            return False
+        scale = self._scene_units_per_pixel()
+        # Screen right and up, expressed in the scene: the camera's own axes,
+        # so a drag moves the object the way the pointer went whatever the
+        # view is.
+        rotation = np.asarray(getattr(self, "_rotation", np.eye(3)), dtype=float)
+        right, up = rotation[0], rotation[1]
+        shift = right * (dx * scale) - up * (-dy * scale)
+        try:
+            self._controller.apply_transform_to_object(
+                np.eye(3), shift, object_id=entry.object_id
+            )
+        except Exception:  # noqa: BLE001 - a viewer that cannot move objects
+            return False
+        return True
+
+    def _drag_object_in_depth(self, dy: float) -> bool:
+        """Move the active object toward or away from the camera."""
+        entry = self._active_entry()
+        if entry is None:
+            return False
+        rotation = np.asarray(getattr(self, "_rotation", np.eye(3)), dtype=float)
+        forward = rotation[2]
+        shift = forward * (dy * self._scene_units_per_pixel())
+        try:
+            self._controller.apply_transform_to_object(
+                np.eye(3), shift, object_id=entry.object_id
+            )
+        except Exception:  # noqa: BLE001
+            return False
+        return True
+
+    def _drag_object_rotation(self, dx: float, dy: float) -> bool:
+        """Rotate the active object about its own centre, screen-wise."""
+        entry = self._active_entry()
+        if entry is None:
+            return False
+        rotation = np.asarray(getattr(self, "_rotation", np.eye(3)), dtype=float)
+        axis = rotation[1] * dx + rotation[0] * dy
+        norm = float(np.linalg.norm(axis))
+        if norm <= 1e-9:
+            return False
+        axis = axis / norm
+        angle = np.radians(float(np.hypot(dx, dy)) * 0.5)
+        cross = np.array([[0.0, -axis[2], axis[1]],
+                          [axis[2], 0.0, -axis[0]],
+                          [-axis[1], axis[0], 0.0]])
+        matrix = (np.eye(3) + np.sin(angle) * cross
+                  + (1.0 - np.cos(angle)) * (cross @ cross))
+        centre = np.asarray(getattr(entry.state, "center", np.zeros(3)), dtype=float)
+        try:
+            self._controller.apply_transform_to_object(
+                matrix, centre - matrix @ centre, object_id=entry.object_id
+            )
+        except Exception:  # noqa: BLE001
+            return False
+        return True
+
+    def _scene_units_per_pixel(self) -> float:
+        """How far a pixel of pointer motion is, in scene units, at the target.
+
+        From the camera's own geometry rather than a constant, so an object
+        keeps up with the pointer at any zoom -- a fixed step drifts behind
+        when zoomed out and races ahead when zoomed in.
+        """
+        height = max(float(self.scene_height() or 1), 1.0)
+        distance = float(getattr(self, "_distance", 1.0) or 1.0)
+        fov = float(getattr(self, "_fov", 20.0) or 20.0)
+        return 2.0 * distance * float(np.tan(np.radians(fov) * 0.5)) / height
 
     def on_pointer_release(
         self, x: float, y: float, button: int, modifiers: int = NO_MODIFIER
@@ -1489,6 +1661,7 @@ class CanvasRenderer(CameraState, Renderer):
             self._panning = False
             self._last_pos = None
             self._press_pos = None
+            self._gesture_action = ""
             return True
 
         if self._gui_grab:
@@ -1504,14 +1677,57 @@ class CanvasRenderer(CameraState, Renderer):
 
         press, self._press_pos = self._press_pos, None
         self._last_pos = None
-        if press is not None and self._controller is not None:
-            if (
-                abs(x - press[0]) <= self.CLICK_SLOP
-                and abs(y - press[1]) <= self.CLICK_SLOP
-            ):
-                self._handle_click(x, y, button, modifiers)
+        self._gesture_action = ""
+        clicked = press is not None and (
+            abs(x - press[0]) <= self.CLICK_SLOP
+            and abs(y - press[1]) <= self.CLICK_SLOP
+        )
+
+        # The right button's menu, held since the press. A *click* opens it; a
+        # drag was a motion and must not end in a menu appearing where the
+        # pointer stopped.
+        pending, self._right_menu_pending = (
+            getattr(self, "_right_menu_pending", None), None
+        )
+        if pending is not None and button == RIGHT_BUTTON:
+            if clicked and self._internal_gui is not None:
+                target = self._context_menu_target(*pending)
+                if self._internal_gui.open_context_menu(*pending, target):
+                    self._gui_grab = True
+                    self.update()
+                    self._right_dragged = False
+                    return True
+            self._right_dragged = False
+            return True
+
+        if clicked and self._controller is not None:
+            self._handle_click(x, y, button, modifiers)
         self._right_dragged = False
         return True
+
+    def _resolved_click(self, button: int, modifiers: int) -> str:
+        """The mode table's click action for *button* and *modifiers*.
+
+        PyMOL keeps a separate row for clicks, so a press that never dragged
+        can mean something other than the drag it would have been. Where that
+        row says nothing, the drag cell the press resolved still applies:
+        ctrl-middle is ``PkAt`` whether or not it moved.
+        """
+        from ..mouse_modes import click_action_of
+
+        mode = self._internal_gui.mouse_mode if self._internal_gui else "viewing"
+        try:
+            click = click_action_of(mode, button, modifiers)
+        except Exception:  # noqa: BLE001 - an unknown mode is not a crash
+            click = "none"
+        if click in ("none", "", None):
+            click = self._action_for(button, modifiers)
+        return str(click or "")
+
+    def _names_a_click(self, button: int, modifiers: int) -> bool:
+        """Whether this cell does something on a click of its own."""
+        click = self._resolved_click(button, modifiers)
+        return click in self._CLICK_ACTIONS or click in self._UNIMPLEMENTED_ACTIONS
 
     def _handle_click(
         self, x: float, y: float, button: int, modifiers: int
@@ -1533,15 +1749,13 @@ class CanvasRenderer(CameraState, Renderer):
         modifiers : int
             The modifiers held at release.
         """
-        from ..mouse_modes import click_action_of
-
-        mode = self._internal_gui.mouse_mode if self._internal_gui else "viewing"
-        try:
-            click = click_action_of(mode, self._press_button, self._press_mods)
-        except Exception:
-            click = "none"
-        if click in ("none", "", None):
-            click = self._action_for(self._press_button, self._press_mods)
+        click = self._resolved_click(self._press_button, self._press_mods)
+        note = self._UNIMPLEMENTED_ACTIONS.get(click)
+        if note is not None:
+            if self._internal_gui is not None:
+                self._internal_gui.status_text = note
+                self.update()
+            return
         if click not in self._CLICK_ACTIONS:
             return
         try:
