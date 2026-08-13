@@ -2460,8 +2460,15 @@ class InternalGui:
             # through the same `focused_field` route a search box uses. Without
             # it a hosted text editor can be clicked into and not typed into,
             # which is the whole of "try the widget".
+            #
+            # Asked, not assumed: a panel is only focused while it actually has
+            # somewhere for a keystroke to go. Focusing it unconditionally made
+            # clicking anywhere in the window take the keyboard away from the
+            # command line, which is the one thing in the viewport that must
+            # never stop accepting typing.
             keyed = getattr(win, "on_key", None)
-            if keyed is not None:
+            wants = getattr(keyed, "wants_keys", None)
+            if keyed is not None and (wants is None or wants()):
                 self.focus_field(keyed)
         return True
 
@@ -2759,6 +2766,14 @@ class InternalGui:
         # A focused text field takes everything, exactly as the prompt does --
         # a search box with a caret in it must get the `r` that was typed
         # rather than the representation switching underneath.
+        #
+        # **Everything it consumes.** A field that declines a key must not
+        # swallow it: this used to `return` the field's answer either way, so a
+        # focused object that handled nothing was a black hole -- Return
+        # stopped reaching the prompt and the command line could not be typed
+        # into at all until something cleared the focus. Falling through is the
+        # difference between "this field is not interested" and "nobody gets
+        # this key", and only the first is ever what was meant.
         field = self.focused_field
         if field is not None:
             if key == KEY_ESCAPE:
@@ -2768,10 +2783,10 @@ class InternalGui:
                 self._commit_ui_scale_field()
                 return True
             try:
-                return bool(field.key(key, text, modifiers))
+                if field.key(key, text, modifiers):
+                    return True
             except Exception:
                 logger.debug("text field refused a key", exc_info=True)
-                return False
         if self.command_line.focused:
             return self.command_line.key(key, text, modifiers)
         if key in (KEY_RETURN, KEY_ENTER) and self.command_line.visible:

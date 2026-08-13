@@ -326,3 +326,50 @@ def test_a_missing_shader_says_so_in_the_editor_rather_than_raising():
     panel, _issued, _painter = _drawn("Shaders")
     panel.open_shader("there_is_no_such.wgsl")
     assert "there_is_no_such.wgsl" in panel._widget("text_editor").text
+
+
+# --------------------------------------------------------------------------
+# The keyboard: a window must never be able to take it away from the prompt
+# --------------------------------------------------------------------------
+def test_a_press_on_a_row_does_not_take_the_keyboard():
+    """The regression this file exists to prevent.
+
+    Focusing the panel on *any* press meant that clicking a row -- opening a
+    panel, running a demo -- silently redirected every subsequent keystroke to
+    an object that had nowhere to put it. The prompt stopped accepting text and
+    nothing said why.
+    """
+    panel, _issued, _painter = _drawn("Panels")
+    assert panel.wants_keys() is False
+
+
+def test_the_panel_asks_for_keys_only_where_they_can_land():
+    """Which is the Widgets tab, and only while a control is hosted."""
+    panel, _issued, _painter = _drawn("Widgets")
+    assert panel.wants_keys() is True
+    panel.tab = dw.TABS.index("Frame")
+    assert panel.wants_keys() is False
+
+
+def test_a_focused_field_that_declines_a_key_lets_it_through():
+    """"Not interested" and "nobody gets this" are different answers.
+
+    The chrome used to return the field's answer either way, so a focused
+    object that handled nothing was a black hole: Return never reached the
+    command line and the viewport could not be typed into at all.
+    """
+    from chisurf.plugins.chimol.chimol.host.keys import KEY_RETURN
+    from chisurf.plugins.chimol.chimol.renderer.internal_gui import InternalGui
+
+    class _Deaf:
+        """A focusable object that consumes nothing."""
+
+        def key(self, key, text="", modifiers=0) -> bool:
+            """Decline every key."""
+            return False
+
+    gui = InternalGui()
+    gui.command_line.visible = True
+    gui.focus_field(_Deaf())
+    assert gui.key_press(KEY_RETURN, "", 0) is True
+    assert gui.command_line.focused is True

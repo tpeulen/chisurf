@@ -400,6 +400,16 @@ class DbgWindow:
             return True
         return bool(rect.contains(x, y))
 
+    def wants_keys(self) -> bool:
+        """Whether a keystroke has anywhere to go in this window right now.
+
+        Only the Widgets tab hosts something typable. Answering *yes* on the
+        other four took the keyboard away from the command line the moment
+        anybody clicked a row -- and the prompt is the one thing in the
+        viewport that must never stop accepting typing.
+        """
+        return TABS[self.tab] == "Widgets" and self._widget(self._active_widget) is not None
+
     def key(self, key: int, text: str = "", modifiers: int = 0) -> bool:
         """Hand a keystroke to the hosted control, if one is showing.
 
