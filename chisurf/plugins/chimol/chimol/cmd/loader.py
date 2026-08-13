@@ -107,6 +107,70 @@ class LoaderCommands(BaseCmd):
             return
         runner(wanted)
 
+    @command("tour")
+    def tour(self, name: str = "") -> None:
+        """Start a guided tour, or list them.
+
+        A demo runs itself and shows a finished result; a tour points at the
+        real controls, one at a time, and **waits for you to use them**. Nothing
+        is pressed on your behalf -- watching a button being pressed does not
+        teach anyone where it is.
+
+        ``tour stop`` ends the running one, and so does Close in the bubble.
+
+        Parameters
+        ----------
+        name : str, optional
+            Which tour. Omitted, the names and what each covers are listed.
+        """
+        from ..tour import available_tours, load_tour
+
+        gui = self._internal_gui()
+        wanted = str(name).strip().lower()
+
+        if wanted in ("stop", "off", "done", "end"):
+            if gui is not None:
+                gui.end_tour()
+            self._emit_message("tour: stopped")
+            return
+
+        tours = available_tours()
+        if not wanted:
+            if not tours:
+                self._emit_message("tour: none are installed")
+                return
+            width = max(len(key) for key, _title in tours)
+            for key, title in tours:
+                self._emit_message(f"  {key:<{width}}  {title}")
+            self._emit_message("  Start one with: tour <name>")
+            return
+
+        if gui is None:
+            self._emit_error("tour: this host has no viewport chrome to draw in")
+            return
+        try:
+            running = load_tour(wanted)
+        except FileNotFoundError:
+            self._emit_error(f"tour: no tour called {name!r}. `tour` lists them.")
+            return
+        except ValueError as exc:
+            self._emit_error(f"tour: {exc}")
+            return
+
+        gui.start_tour(running)
+        # The tour watches the commands rather than the chrome, so it advances
+        # whether a step is done from the menu, the toolbar or the prompt.
+        self.add_command_observer(gui.observe_command)
+        self._emit_message(f"tour: {running.title} -- {len(running.steps)} steps")
+
+    def _internal_gui(self):
+        """The viewport chrome, or ``None`` on a host that has none."""
+        _window, viewer = self._require_window_and_viewer()
+        if viewer is None:
+            return None
+        renderer = getattr(viewer, "_renderer", None) or viewer
+        return getattr(renderer, "_internal_gui", None)
+
     @command("demo_edit")
     def demo_edit(self, what: str = "") -> None:
         """Open a demo script in the editor, or start a blank one.

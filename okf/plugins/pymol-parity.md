@@ -72,6 +72,28 @@ script; the trap in measuring is that the *second* ask is served from the
 memo, so time a **fresh** grid for the cold number. Left open, in order of
 what it blocks:
 
+* **guided tours in the viewport (2026-08-13):** a demo runs itself and shows
+  a finished result, which teaches nothing about *where the controls are*.
+  `chimol/tour.py` + `_paint_tour` ring one real control at a time and **wait
+  for the user to use it** -- the same contract as ChiSurf's `guide.json`
+  tours, transposed onto a painted chrome. The transposition is the
+  interesting part: a ChiSurf step locates a `QWidget` and waits for its
+  signal; there are no widgets here, so a step locates a **painted rectangle**
+  by name and waits for the **command** it asks for, observed at the one funnel
+  every route ends in (`BaseCmd._do_one` -> `_notify_command`). A step is then
+  satisfied whether the user typed it, used the menu or pressed the toolbar.
+  Two ship, both on real data with right answers to check against:
+  `fit_in_map` (EMD-3061 + PDB 5A63, one experiment) and `superpose`
+  (1DG3/1F5N, one protein in two states). **Real-data measurement worth
+  keeping:** `fitmap` at 5A63's *deposited* position moves it 0.03 A and 0.1
+  deg -- it agrees the deposit is the answer -- and from 10.31 A out returns to
+  0.044 A of it. Map correlation is **0.49**, not 1.0, because an experimental
+  map carries solvent and noise a model does not account for; the tour says so,
+  since a user expecting 1.0 reads a good fit as a failure. The walkthrough
+  test caught a real defect in the tour's own text (`hide_dust dens, 30` names
+  the contour object where the command wants the map), which is the failure
+  mode a tour has: the instruction on screen tells the user to do something
+  that does not work, and nothing raises.
 * **`molmap` and `fitmap` (2026-08-12, ChimeraX round):** the biggest
   scientific gap in the earlier census is closed. `analysis/molmap.py`
   simulates a density from atoms -- one Gaussian each, width

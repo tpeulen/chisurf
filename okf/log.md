@@ -35747,3 +35747,9 @@
   away -- so fit quality is reported as a map-to-map correlation against the
   model's own simulated density instead. The optimiser recovers 45 degrees but
   traps at 90. See [plugins/pymol-parity](plugins/pymol-parity.md).
+- 2026-08-13 — chimol: guided tours drawn in the viewport. A step rings a real
+  painted control and waits for the command it asks for, observed at the single
+  funnel every menu entry, toolbar button and typed line passes through — so it
+  advances whichever route the user takes, and nothing is pressed on their
+  behalf. Two tours ship on paired real data: EMD-3061 with PDB 5A63, and
+  1DG3/1F5N. See [plugins/pymol-parity](plugins/pymol-parity.md).

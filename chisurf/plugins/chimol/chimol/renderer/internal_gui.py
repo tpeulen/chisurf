@@ -161,6 +161,16 @@ WINDOW_DIM_FG = (160, 160, 160)
 # a setting -- a semi-transparent grey darkens white and lightens black, so one
 # fill is readable at both ends. Overridable from the display config's
 # `info_overlay` section, which is where these were already written.
+#: The guided tour's ring and bubble. Deliberately the one warm accent in a
+#: cool chrome: the ring has to be findable at a glance in a viewport that is
+#: already full of blue selection highlights.
+TOUR_RING = (255, 176, 32, 255)
+TOUR_BG = (26, 26, 30, 244)
+TOUR_TITLE_FG = (255, 208, 96)
+TOUR_FG = (235, 235, 240)
+TOUR_DIM_FG = (150, 150, 160)
+TOUR_BUTTON_BG = (41, 74, 122, 255)
+
 INFO_BG = (50, 50, 50, 199)
 INFO_FG = (255, 255, 255)
 INFO_EDGE = (255, 255, 255, 79)
@@ -742,6 +752,18 @@ class InternalGui:
         self._eye_rects: list[Rect] = []
         #: The hover tooltip: ``(x, y, text)`` while something explains itself.
         self._tooltip: tuple[float, float, str] | None = None
+
+        #: The running guided tour (`chimol.tour.Tour`), or None. A tour points
+        #: at one real control at a time and waits for the user to use it; see
+        #: :mod:`chimol.tour` for why it waits on *commands* rather than on the
+        #: painted control it rings.
+        self.tour = None
+        self._tour_rect = Rect(0, 0, 0, 0)
+        self._tour_next_rect = Rect(0, 0, 0, 0)
+        self._tour_close_rect = Rect(0, 0, 0, 0)
+        #: The control the current step points at, resolved during paint so the
+        #: ring follows a chrome that has since been resized or scrolled.
+        self._tour_target = Rect(0, 0, 0, 0)
         self._panel = Rect(0, 0, 0, 0)
         self._hover = Hit("")
         self._menus: list[_OpenMenu] = []
@@ -1010,6 +1032,112 @@ class InternalGui:
         """
         self._run_command = run_command
         self.command_line.set_run(run_command)
+
+    # ------------------------------------------------------------------ #
+    # Guided tours
+    # ------------------------------------------------------------------ #
+    def start_tour(self, tour) -> None:
+        """Begin a guided tour (see :mod:`chimol.tour`)."""
+        self.tour = tour
+
+    def end_tour(self) -> None:
+        """Stop the running tour and clear its rectangles.
+
+        The rectangles matter as much as the tour: they are hit-tested, and a
+        bubble that is no longer drawn but still claims its area would swallow
+        clicks on the chrome underneath it.
+        """
+        self.tour = None
+        self._tour_rect = Rect(0, 0, 0, 0)
+        self._tour_next_rect = Rect(0, 0, 0, 0)
+        self._tour_close_rect = Rect(0, 0, 0, 0)
+        self._tour_target = Rect(0, 0, 0, 0)
+
+    def advance_tour(self) -> None:
+        """Move to the next step, ending the tour after the last one."""
+        if self.tour is None:
+            return
+        self.tour.advance()
+        if self.tour.finished:
+            self.end_tour()
+
+    def observe_command(self, line: str) -> bool:
+        """Tell the running tour that *line* was executed.
+
+        Returns
+        -------
+        bool
+            Whether it advanced the tour, so a caller can redraw.
+        """
+        if self.tour is None:
+            return False
+        moved = self.tour.observe(line)
+        if moved and self.tour.finished:
+            self.end_tour()
+        return moved
+
+    def tour_target_rect(self, target: dict) -> "Rect":
+        """The painted control a tour step points at.
+
+        The vocabulary, and it is deliberately small -- a tour that can point
+        anywhere is a tour nobody can read:
+
+        ``{}``
+            nothing in particular; the bubble is centred.
+        ``{"menu": "File"}``
+            a menu-bar title.
+        ``{"toolbar": "Ray"}``
+            a toolbar button, matched on its label.
+        ``{"command": true}``
+            the command prompt, which is where most steps point because most
+            of this viewer is reached by typing.
+        ``{"object": "148l"}``
+            a row of the object list, matched on its name.
+        ``{"movie": true}``
+            the playback transport.
+        ``{"sequence": true}``
+            the sequence strip.
+
+        An unresolvable target returns an empty rectangle rather than raising:
+        a chrome piece may simply be switched off (`show_toolbar`), and a tour
+        that died because a panel was hidden would be worse than one that
+        points at nothing for a step.
+        """
+        empty = Rect(0, 0, 0, 0)
+        if not target:
+            return empty
+        try:
+            name = str(target.get("menu", "")).strip().lower()
+            if name:
+                for rect, title, *_rest in self._menubar_rects:
+                    if str(title).strip().lower() == name:
+                        return rect
+                return empty
+
+            label = str(target.get("toolbar", "")).strip().lower()
+            if label:
+                for rect, button, *_rest in self._toolbar_rects:
+                    if label in str(button).strip().lower():
+                        return rect
+                return empty
+
+            if target.get("command"):
+                return self._cmd_rect
+            if target.get("movie"):
+                return self._timeline_track
+            if target.get("sequence"):
+                return self._seq_strip
+
+            wanted = str(target.get("object", "")).strip().lower()
+            if wanted:
+                for index, row in enumerate(self.rows):
+                    if str(getattr(row, "name", "")).strip().lower() == wanted:
+                        if index < len(self._row_rects):
+                            return self._row_rects[index]
+                return empty
+        except Exception:  # noqa: BLE001 - a tour must never break a frame
+            return empty
+        return empty
 
     def set_rows(self, rows: Sequence[GuiRow]) -> None:
         """Replace the panel's contents."""
@@ -3096,8 +3224,18 @@ class InternalGui:
         is simply front-to-back: an open menu is drawn over everything, so it
         must also receive the click that lands on it.
         """
+        # The tour bubble is drawn over the chrome and takes its own clicks, so
+        # it is tested before everything except an open menu -- the tour points
+        # *at* menus, and a bubble that swallowed the click it just asked for
+        # would be a trap.
         depth, entry = self._menu_at(x, y)
         if depth is None:
+            if self._tour_next_rect.contains(x, y):
+                return Hit("tour", key="next")
+            if self._tour_close_rect.contains(x, y):
+                return Hit("tour", key="close")
+            if self._tour_rect.contains(x, y):
+                return Hit("tour")
             bar = self._menubar_hit(x, y)
             if bar is not None:
                 return Hit("menubar", row=bar)
@@ -3540,6 +3678,16 @@ class InternalGui:
         except Exception:
             ctrl = False
             shift = False
+
+        if hit.kind == "tour":
+            if hit.key == "close":
+                self.end_tour()
+            elif hit.key == "next":
+                self.advance_tour()
+            # Any other press inside the bubble is consumed and does nothing:
+            # the bubble sits over the chrome, and a click that fell through it
+            # would act on whatever it happens to cover.
+            return True
 
         if hit.kind == "uiscale":
             if double:
@@ -4252,6 +4400,11 @@ class InternalGui:
                     getattr(self, "info_colors", None), (list, tuple)
                 ) else None,
                 self._hover, self._tooltip,
+                # The tour's bubble and ring. Cheap to read, and stale chrome
+                # here means a ring left around a control the tour has moved on
+                # from -- pointing confidently at the wrong thing.
+                (getattr(self.tour, "name", None),
+                 getattr(self.tour, "index", None)) if self.tour else None,
                 rows_key(self.rows), rows_key(getattr(self, "wizard_rows", None)),
                 tuple(getattr(self, "wizard_prompt", None) or ()),
                 sequences_key(), windows_key(), menus_key(),
@@ -4328,11 +4481,114 @@ class InternalGui:
         self._paint_status(p)
         for menu in self._menus:
             self._paint_menu(p, menu)
+        # Over the chrome, under an open menu's tooltip: a tour points *at*
+        # menus, so it must not cover the one it just told the user to open.
+        self._paint_tour(p)
         self._paint_tooltip(p)
         # Last, and after the tooltip: it is modal, so nothing may draw over
         # it. A tooltip surfacing above a scrim would say the chrome beneath is
         # live, which is exactly what the scrim is there to deny.
         self.progress.paint(p, self._width, self._height, self.ui_scale)
+
+    def _paint_tour(self, p) -> None:
+        """The guided tour: a ring around the control, and a bubble beside it.
+
+        The ring is the whole point. A bubble alone is a slideshow -- it can be
+        read from top to bottom without ever finding the control it describes,
+        which is the thing someone actually needs to learn. So the target is
+        resolved *here*, at paint time, against rectangles that were laid out
+        this frame: the chrome may have been resized, the panel scrolled, or a
+        window dragged since the step began.
+        """
+        tour = self.tour
+        step = None if tour is None else tour.current
+        if step is None:
+            self._tour_rect = Rect(0, 0, 0, 0)
+            self._tour_next_rect = Rect(0, 0, 0, 0)
+            self._tour_close_rect = Rect(0, 0, 0, 0)
+            self._tour_target = Rect(0, 0, 0, 0)
+            return
+
+        target = self.tour_target_rect(step.target)
+        self._tour_target = target
+        if target.w > 0.0 and target.h > 0.0:
+            # Two rings rather than one: at this line width a single rectangle
+            # against the chrome's own borders reads as a border. Two, with a
+            # gap, reads as a marker.
+            for inset in (-3.0, -1.0):
+                p.stroke_rect(
+                    target.x + inset, target.y + inset,
+                    target.w - 2 * inset, target.h - 2 * inset,
+                    TOUR_RING,
+                )
+
+        char_w = char_width(self.FONT_PT)
+        row = float(self.CMD_ROW_H)
+        columns = 46
+        lines: list[tuple[str, tuple]] = [(step.title, TOUR_TITLE_FG)]
+        for line in _wrap_lines(step.text, columns):
+            lines.append((line, TOUR_FG))
+        if step.waits:
+            lines.append(("", TOUR_FG))
+            for line in _wrap_lines(step.prompt(), columns):
+                lines.append((line, TOUR_RING))
+
+        counter = f"{tour.index + 1} / {len(tour.steps)}"
+        width = max(
+            max((len(text) for text, _c in lines), default=0) * char_w,
+            char_w * (len(counter) + 18),
+        ) + 2 * self.PAD
+        height = (len(lines) + 2) * row + 2 * self.PAD
+
+        # Beside the ring where there is room, and clamped into the viewport --
+        # a bubble half off the edge is the one thing worse than a centred one.
+        if target.w > 0.0:
+            bx = target.x + target.w + 12.0
+            if bx + width > float(self._width) - 4.0:
+                bx = target.x - width - 12.0
+            by = target.y - row
+        else:
+            bx = 0.5 * (float(self._width) - width)
+            by = 0.5 * (float(self._height) - height)
+        bx = min(max(bx, 4.0), max(float(self._width) - width - 4.0, 4.0))
+        by = min(max(by, 4.0), max(float(self._height) - height - 4.0, 4.0))
+        self._tour_rect = Rect(bx, by, width, height)
+
+        p.fill_rect(bx, by, width, height, TOUR_BG)
+        p.stroke_rect(bx, by, width, height, TOUR_RING)
+        for index, (text, colour) in enumerate(lines):
+            if not text:
+                continue
+            p.text(
+                bx + self.PAD, by + self.PAD + index * row,
+                width - 2 * self.PAD, row,
+                ALIGN_VCENTER | ALIGN_LEFT, text, colour,
+            )
+
+        # The controls. `Next` is absent while a step waits: offering it would
+        # be offering to skip the one action the step exists to teach, and
+        # `Close` is always there so waiting is never a trap.
+        button_y = by + height - row - self.PAD
+        p.text(
+            bx + self.PAD, button_y, width - 2 * self.PAD, row,
+            ALIGN_VCENTER | ALIGN_LEFT, counter, TOUR_DIM_FG,
+        )
+        close_w = char_w * 7 + 2 * self.MENU_PAD
+        close_x = bx + width - close_w - self.PAD
+        self._tour_close_rect = Rect(close_x, button_y, close_w, row)
+        p.fill_rect(close_x, button_y, close_w, row, TOUR_BUTTON_BG)
+        p.text(close_x, button_y, close_w, row,
+               ALIGN_VCENTER | ALIGN_CENTER, "Close", TOUR_FG)
+
+        if step.waits:
+            self._tour_next_rect = Rect(0, 0, 0, 0)
+        else:
+            next_w = char_w * 6 + 2 * self.MENU_PAD
+            next_x = close_x - next_w - 4.0
+            self._tour_next_rect = Rect(next_x, button_y, next_w, row)
+            p.fill_rect(next_x, button_y, next_w, row, TOUR_BUTTON_BG)
+            p.text(next_x, button_y, next_w, row,
+                   ALIGN_VCENTER | ALIGN_CENTER, "Next", TOUR_FG)
 
     def _paint_tooltip(self, p) -> None:
         """The hover tooltip, beside the cursor, above everything else."""

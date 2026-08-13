@@ -263,6 +263,23 @@ def _demo_menu() -> tuple[MenuEntry, ...]:
     entries = [
         MenuEntry(title, f"demo {key}", note) for key, title, note in DEMOS
     ]
+
+    # The guided tours, above the demos' own housekeeping. A demo runs itself
+    # and shows a finished result; a tour points at the controls and waits for
+    # the user to press them, which is the half a finished result cannot teach.
+    # Generated from the shipped files for the same reason the demos are: one
+    # added and not listed here would be unreachable.
+    from ..tour import available_tours
+
+    tours = available_tours()
+    if tours:
+        entries.append(SEP)
+        for key, title in tours:
+            entries.append(
+                MenuEntry(f"Tour: {title}", f"tour {key}",
+                          "Step by step, pointing at the real controls.")
+            )
+
     entries.append(SEP)
     entries.append(
         MenuEntry("List them at the prompt", "demo",

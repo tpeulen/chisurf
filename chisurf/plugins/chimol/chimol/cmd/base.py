@@ -228,6 +228,45 @@ class BaseCmd:
         if result is not None:
             self._emit_message(_summarise_result(result))
 
+        # Every route through this viewer ends here -- a menu entry, a toolbar
+        # button and a typed line all arrive as one command -- which is what
+        # makes this the place a guided tour watches. A tour step waiting for
+        # `fetch EMD-3061` is then satisfied whichever way the user got there.
+        self._notify_command(line)
+
+    def add_command_observer(self, callback) -> None:
+        """Call *callback* with every command line that ran without erroring.
+
+        Used by the guided tour. Kept as a list rather than a single slot so a
+        second observer -- a macro recorder, say -- does not silently displace
+        the first.
+        """
+        observers = getattr(self, "_command_observers", None)
+        if observers is None:
+            observers = []
+            self._command_observers = observers
+        if callback not in observers:
+            observers.append(callback)
+
+    def remove_command_observer(self, callback) -> None:
+        """Stop calling *callback*. Unknown callbacks are ignored."""
+        observers = getattr(self, "_command_observers", None) or []
+        if callback in observers:
+            observers.remove(callback)
+
+    def _notify_command(self, line: str) -> None:
+        """Tell the observers that *line* ran.
+
+        An observer that raises is dropped rather than allowed to break the
+        command that triggered it: watching commands is a convenience, and a
+        broken watcher must not make the viewer unusable.
+        """
+        for callback in list(getattr(self, "_command_observers", None) or []):
+            try:
+                callback(line)
+            except Exception:  # noqa: BLE001
+                self.remove_command_observer(callback)
+
     def _run_script_file(self, path: str) -> None:
         """Execute a simple cmd script file, one command per non-empty line.
 
