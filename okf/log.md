@@ -35891,3 +35891,29 @@
   3-D view became the window, and had been failing rather than protecting
   anything. New: `test/benchmarks/benchmark_chimol_chrome.py`, and the
   benchmarks page's chrome section, which claimed the cache had been removed.
+
+- **2026-08-13 — chimol: `reinitialize` returns the viewer to baseline; display
+  state has one owner again.** Reported as "the background does not change back
+  to black … some parts reinit but not all … the state control in the
+  architecture seems not very well", and that reading was right. Four defects
+  stacked: `bg_color` wrote the renderer and not the `bg_rgb` setting that names
+  the same value (so the screen and the settings panel disagreed and a
+  settings-level reset had nothing to reset); `diff_against_package` walked
+  exactly two levels and so could not see `background`, the shipped config's one
+  top-level scalar; `restore_package_defaults` diffed the *saved file* rather
+  than the live session; and restoring the config never reached the renderer,
+  which holds a few of those values rather than re-reading them. New
+  `chimol/apply.py` owns the single push path (`apply_config_path`), used by
+  `set`, `bg_color` and `reinitialize` alike. Three stores the config does not
+  own — the renderer's lighting overrides, the camera, and the chrome — now
+  capture a baseline and restore it (`capture_camera_baseline`,
+  `InternalGui.capture_baseline`), each with an explicit field list. Also fixed,
+  as the same disease: the loader back-filled missing keys from a hard-coded
+  Python literal that had drifted from the shipped JSON, so any setting added to
+  the JSON alone was absent at runtime for existing users. Measured in pixels
+  against a freshly started viewer — 331,784 differing before, 0 after — by
+  `chimol/test/test_reinitialize_returns_to_baseline.py`, which is the only kind
+  of assertion that catches the next store somebody forgets. `orthoscopic` is a
+  setting nothing reads, recorded in
+  [known issues](references/known-issues.md). See
+  [chimol viewport UI](plugins/chimol-viewport-ui.md).

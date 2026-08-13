@@ -170,6 +170,45 @@ class CameraState:
         self._shift = np.zeros(3, dtype=float)
         self._lighting_overrides: dict = {}
         self.update_count = 0
+        #: How the camera stood before anything was loaded. `reinitialize` puts
+        #: it back from here rather than re-framing: with every object deleted
+        #: there is nothing to frame *on*, and the framing radius falls back to
+        #: the one the deleted molecule left behind -- so an emptied viewer
+        #: stayed zoomed for a 150-angstrom protein that is no longer there.
+        self._camera_baseline: dict = self.capture_camera_baseline()
+
+    #: Camera attributes that make up the baseline. Named rather than derived
+    #: from ``__dict__`` so that adding a field is a decision: a new camera
+    #: attribute does not silently start or stop being reset.
+    CAMERA_BASELINE_FIELDS = (
+        "_fov", "_distance", "_target_radius", "_near_clip", "_far_clip",
+        "_framed_near_clip", "_framed_far_clip", "_framed_aspect",
+        "_slab_moved", "_orthoscopic",
+    )
+
+    #: Baseline fields holding a numpy array, which needs copying rather than
+    #: binding -- a bound array is mutated in place by the next drag and the
+    #: "baseline" follows the camera around.
+    CAMERA_BASELINE_ARRAYS = ("_origin", "_target", "_rotation", "_shift")
+
+    def capture_camera_baseline(self) -> dict:
+        """Snapshot the camera as it stands, for :meth:`restore_camera_baseline`."""
+        state = {name: getattr(self, name) for name in self.CAMERA_BASELINE_FIELDS}
+        state.update(
+            {name: np.array(getattr(self, name), dtype=float, copy=True)
+             for name in self.CAMERA_BASELINE_ARRAYS}
+        )
+        return state
+
+    def restore_camera_baseline(self) -> None:
+        """Put the camera back where :meth:`capture_camera_baseline` found it."""
+        for name, value in (self._camera_baseline or {}).items():
+            setattr(
+                self, name,
+                np.array(value, dtype=float, copy=True)
+                if isinstance(value, np.ndarray) else value,
+            )
+        self.update()
 
     # -- what the viewer hands us -------------------------------------------
 

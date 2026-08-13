@@ -9,6 +9,74 @@ updated: 2026-08-12
 
 ## Where to pick this up
 
+**2026-08-13 — `reinitialize` now returns the viewer to baseline, and the
+reason it did not is worth keeping.** tpeulen: *"reinitialize does not reinit to
+baseline (bg does not change back to black) … some parts reinit but not all …
+the state control in the architecture seems not very well."* That reading was
+right. There was no single owner for display state, and four defects stacked on
+top of each other, each invisible behind the one in front:
+
+1. **`bg_color` wrote the renderer, not the setting.** The two name the same
+   value. The screen went red while `get bg_rgb` answered `k` and the settings
+   panel drew black — so a reset that puts *settings* back had nothing to put
+   back. The background was the one thing that never returned because it was
+   the one thing the config did not really hold.
+2. **`diff_against_package` walked exactly two levels**, section then key, and
+   skipped anything else. `background` is the shipped config's one top-level
+   scalar, so it was invisible to the comparison — and therefore could not be
+   restored even in principle, nor mentioned by the start-up "your settings
+   differ" prompt.
+3. **The reset compared the file, not the session.** `restore_package_defaults`
+   diffed the *saved* copy, so anything changed in memory and not yet written
+   was not restored — while the command still reported a count.
+4. **Restoring the config did not reach the renderer**, which *holds* a few of
+   those values rather than re-reading them each frame. Putting `k` back in the
+   config left the screen exactly as red as it was.
+
+The fix is one idea: **one authority, one push path**. `chimol/apply.py` owns
+`apply_config_path`, and `set`, `bg_color` and `reinitialize` all go through it;
+nothing writes renderer state that the config also names. `PUSHED_PATHS` is
+deliberately short — a path there is a value with two homes.
+
+Three stores the config does **not** own had no baseline at all, and each was
+surviving on its own: the renderer's `_lighting_overrides` (so a lighting preset
+outlived a reset that put every lighting setting back), the camera (an emptied
+viewer still framed at distance 1733 for a deleted protein, because `reset_view`
+frames on what is loaded and by then nothing is), and the chrome. Each now
+**captures a baseline and restores it** — `CameraState.capture_camera_baseline`
+and `InternalGui.capture_baseline`, both with an explicit field list so that
+what resets is a decision rather than a shape that happens to match.
+
+Traps, all of which cost time:
+
+- **The chrome baseline must be taken on the first *paint*, not in the
+  constructor.** Several fields are settled by the first frame's sync with the
+  viewer; restoring `info_text` to the `""` it holds for the length of one
+  constructor reads to that sync as a change and **opens the info panel**, so
+  the reset ended with a panel a fresh viewer does not show.
+- **`info_visible` is a mirror.** `refresh_gui_state` re-asserts it from the
+  viewer's flag every frame, so assigning it closes the panel for exactly one
+  frame. The owner has to be told, through the `on_info_close` hook — the code
+  already carried a comment recording this being found once before.
+- **Order matters:** the chrome restore has to run *after* the panels are
+  refreshed, because refreshing writes to the chrome.
+
+Found on the way, and fixed here because it is the same disease: the loader
+back-filled missing keys from a **hard-coded Python literal** that is a second
+copy of the shipped JSON, and the two had drifted — `defaults.auto_rename_
+duplicate_objects` was in the JSON and not the literal, so for any user whose
+config predated it the key was simply absent at runtime. Backfill now reads the
+shipped file, recursively. Any setting added to the JSON alone had been
+silently missing for existing users.
+
+Measured in **pixels against a freshly started viewer**, which is the only
+assertion that catches the *next* store somebody forgets: 331,784 differing
+pixels before, 0 after (the command log excluded — "Reinitialized everything"
+is output, not drift). `test_reinitialize_returns_to_baseline.py`.
+
+Still open: `camera.orthoscopic` is a registered setting that **nothing reads**
+— see [known issues](../references/known-issues.md).
+
 **2026-08-13 — the chrome rebuild is 1.9× cheaper and a repeated frame now
 allocates nothing.** Numbers, and the script that reproduces them, are in
 [benchmarks](../../docs/development/benchmarks.md#building-one-frame-of-quads).

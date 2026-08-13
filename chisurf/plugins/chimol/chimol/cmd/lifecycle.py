@@ -546,6 +546,11 @@ class LifecycleMixin(BaseCmd):
         self._reset_viewer_display(viewer)
         restored = self._reset_chrome_and_settings(viewer) if what == "everything" else 0
         self._refresh_window_objects(window)
+        # Last, because refreshing the panels writes to the chrome: it fills the
+        # info panel in with a description of the now-empty viewer. Restoring
+        # before that ran left the reset undone by the very next line.
+        if what == "everything":
+            self._restore_chrome_baseline(viewer)
         note = f"; {restored} setting(s) back to defaults" if restored else ""
         self._emit_message(f"Reinitialized {what}{note}")
 
@@ -677,11 +682,34 @@ class LifecycleMixin(BaseCmd):
         """
         restored = 0
         try:
-            from ..config import restore_package_defaults  # noqa: PLC0415
+            from ..apply import apply_config_path  # noqa: PLC0415
+            from ..config import _DISPLAY_CONFIG, restore_package_defaults  # noqa: PLC0415
 
-            restored = len(restore_package_defaults())
+            names = restore_package_defaults()
+            restored = len(names)
+            # Restoring the config is not the same as restoring the *viewer*.
+            # A handful of values are held by the renderer rather than re-read
+            # -- the background above all -- so putting `k` back in the config
+            # left the screen exactly as red as it was, and the reset reported
+            # a number while changing nothing anyone could see.
+            for name in names:
+                path = tuple(p for p in str(name).split(".") if p)
+                node, found = _DISPLAY_CONFIG, True
+                for part in path:
+                    if not isinstance(node, dict) or part not in node:
+                        found = False
+                        break
+                    node = node[part]
+                if found:
+                    apply_config_path(viewer, path, node, rebuild=False)
         except Exception:  # noqa: BLE001 - a reset must not fail half-way
             pass
+
+        # State the display config does not own, and therefore that restoring
+        # it cannot reach. Each of these was surviving `reinitialize` on its
+        # own: a lighting preset, the camera framed on a molecule that has just
+        # been deleted, and an info panel still describing it.
+        self._reset_unowned_state(viewer)
 
         # The window layout is not a display *setting* -- it is saved
         # separately -- so restoring the config does not touch it.
@@ -693,6 +721,62 @@ class LifecycleMixin(BaseCmd):
             except Exception:  # noqa: BLE001
                 pass
         return restored
+
+    def _reset_unowned_state(self, viewer) -> None:
+        """Put back the state that lives outside the display config.
+
+        The config is the authority for anything it names, and restoring it
+        reaches those. Three stores are **not** named by it, and each was
+        surviving `reinitialize` on its own:
+
+        * the renderer's lighting *overrides* -- `lighting soft` writes a layer
+          that shadows the config-derived rig, so the preset outlived a reset
+          that put every lighting setting back;
+        * the camera, which stays framed on the molecule that has just been
+          deleted -- an empty viewer zoomed to a 150-angstrom radius;
+        * the chrome's info panel, still listing the atom count and file path
+          of an object that no longer exists.
+
+        A store that does not appear here does not reset. That is the whole
+        list, and it is short on purpose: the fix for a fourth one is to let
+        the config own it, not to add a line.
+        """
+        renderer = getattr(viewer, "_renderer", None)
+
+        overrides = getattr(renderer, "_lighting_overrides", None)
+        if isinstance(overrides, dict):
+            overrides.clear()
+
+        # Restored, not re-framed. `reset_view` frames on what is loaded, and
+        # by here nothing is: the framing radius falls back to the one the
+        # deleted molecule left behind, so an emptied viewer kept a distance of
+        # 1733 for a protein that is gone.
+        restore = getattr(renderer, "restore_camera_baseline", None)
+        if callable(restore):
+            try:
+                restore()
+            except Exception:  # noqa: BLE001
+                pass
+
+    def _restore_chrome_baseline(self, viewer) -> None:
+        """Put the chrome flags back to how the panel was built.
+
+        Separate from :meth:`_reset_unowned_state` because it has to run
+        *after* the panels are refreshed -- see the caller.
+        """
+        gui = getattr(getattr(viewer, "_renderer", None), "_internal_gui", None)
+        restore = getattr(gui, "restore_baseline", None)
+        if callable(restore):
+            try:
+                restore()
+            except Exception:  # noqa: BLE001
+                pass
+        redraw = getattr(viewer, "_request_chrome_redraw", None)
+        if callable(redraw):
+            try:
+                redraw()
+            except Exception:  # noqa: BLE001
+                pass
 
     def _reset_viewer_display(self, viewer) -> None:
         for method, value in (

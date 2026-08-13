@@ -74,11 +74,16 @@ def test_display_config_prefers_settings_dir(tmp_path, monkeypatch):
 
 
 def test_display_config_falls_back_to_defaults(tmp_path, monkeypatch):
-    """When no config files exist, defaults should be loaded."""
+    """When no config files exist, defaults should be loaded.
 
-    fake_settings = SimpleNamespace(get_path=lambda name: tmp_path)
-    monkeypatch.setattr(config, "_cs_settings", fake_settings)
-    monkeypatch.delenv("CHIMOL_DISPLAY_CONFIG", raising=False)
+    Pointed at a path that does not exist, through the **environment**. This
+    used to monkeypatch ``config._cs_settings`` and then reload the module --
+    which re-runs the import and throws the patch away, so the load read the
+    machine's own settings file and the test passed only while that file
+    happened to agree with the package. Any earlier test that autosaved a
+    setting made it fail, and made it look like the loader had broken.
+    """
+    monkeypatch.setenv("CHIMOL_DISPLAY_CONFIG", str(tmp_path / "absent.json"))
 
     importlib.reload(config)
 

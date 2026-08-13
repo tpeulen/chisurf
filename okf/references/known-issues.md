@@ -4581,3 +4581,21 @@ comment records two *earlier* shutdown crashes at the same seam) is where to
 start. Until then, run chimol tests **per file or per directory**, which is what
 the project asks for anyway on cost grounds.
 
+
+### Open 2026-08-13 — chimol: `orthoscopic` is a setting nothing reads
+
+Found while giving `reinitialize` a single push path for the display config.
+`camera.orthoscopic` is a registered setting with a default, it appears in the
+settings panel, `set orthoscopic, on` reports success and writes it — and
+**nothing in the renderer ever reads it**. `CameraState._orthoscopic` is set
+only from a restored view tuple, and no projection consults either. So the
+control is fully wired at the settings end and connected to nothing at the
+other.
+
+It is deliberately **not** in `chimol/apply.py`'s `PUSHED_PATHS`: adding it
+there would make a setting that does nothing look wired up, which is the
+failure mode that module exists to end.
+
+Closing it is a feature, not a fix — an orthographic projection matrix, plus
+the two places that derive a distance from the field of view. Until then the
+setting is honest only in that it changes nothing.

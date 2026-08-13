@@ -91,7 +91,15 @@ class RenderingMixin(BaseCmd):
 
     @command("bg_color", aliases=("bg_colour",))
     def bg_color(self, color: str) -> None:
-        """Set the background color (PyMOL ``bg_color <color>``)."""
+        """Set the background color (PyMOL ``bg_color <color>``).
+
+        Through the ``bg_rgb`` **setting**, not straight at the renderer. The
+        two name the same thing, and writing only the renderer left them
+        disagreeing: the screen went red while `get bg_rgb` still answered
+        ``k``, the settings panel drew black, and `reinitialize` -- which resets
+        settings -- had nothing to reset, so the background was the one thing
+        that never came back.
+        """
         window, viewer = self._require_window_and_viewer()
         if viewer is None:
             return
@@ -100,9 +108,16 @@ class RenderingMixin(BaseCmd):
         except Exception as exc:
             self._emit_error(f"bg_color: {exc}")
             return
-        if viewer.set_background_color(rgba) is False:
-            self._emit_error(f"bg_color: could not apply '{color}'")
+
+        from .. import settings as _settings  # noqa: PLC0415
+        from ..apply import apply_config_path  # noqa: PLC0415
+
+        try:
+            spec, coerced = _settings.set_setting("bg_rgb", list(rgba))
+        except Exception as exc:  # noqa: BLE001 - report, never half-apply
+            self._emit_error(f"bg_color: {exc}")
             return
+        apply_config_path(viewer, spec.path, spec.to_config(coerced))
         self._emit_message(f"bg_color: background set to {color}")
 
     #: ChimeraX's lighting presets, transcribed from

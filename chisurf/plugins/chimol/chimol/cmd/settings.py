@@ -16,11 +16,6 @@ from ..settings import SettingSpec, SettingValueError, UnknownSettingError
 from .base import BaseCmd
 from .registry import command
 
-# Setting paths whose section tells us which part of the viewer has to be
-# poked after a change. Anything not listed here is picked up by the generic
-# scene rebuild.
-_CAMERA_SECTION = "camera"
-
 
 class SettingsMixin(BaseCmd):
     """PyMOL-compatible access to the display settings."""
@@ -408,29 +403,13 @@ class SettingsMixin(BaseCmd):
         if viewer is None:
             return
 
-        if spec.path == ("background",):
-            _call(viewer, "set_background_color", value)
-        elif spec.path[0] == _CAMERA_SECTION:
-            if spec.path[-1] == "field_of_view":
-                _call(viewer, "set_field_of_view", value)
-        elif spec.path == ("selection", "mouse_selection_mode"):
-            _call(viewer, "set_selection_level", value)
-            # The word is drawn in the viewport block, which reads it back from
-            # the viewer -- so the block has to be re-synced or the row keeps
-            # showing the level that was replaced.
-            sync = getattr(self.window, "sync_internal_gui", None)
-            if callable(sync):
-                try:
-                    sync()
-                except Exception:
-                    pass
-        elif spec.path[0] == "info_overlay":
-            # The panel is chrome now, and the chrome re-reads its palette every
-            # frame -- all this needs is a repaint.
-            _call(viewer, "_request_chrome_redraw")
+        # One push path, shared with `bg_color` and with `reinitialize`. It
+        # lived here, which made it reachable from `set` alone -- so every other
+        # route either wrote the renderer and left the config disagreeing, or
+        # wrote the config and left the screen unchanged.
+        from ..apply import apply_config_path  # noqa: PLC0415
 
-        # Everything else is read out of the display config during the rebuild.
-        _call(viewer, "_update_view")
+        apply_config_path(viewer, spec.path, spec.to_config(value))
 
     def _apply_representation_toggle(self, name: str, value: str) -> bool:
         """Handle the legacy ``set <representation>, on|off`` spelling.
@@ -458,17 +437,6 @@ class SettingsMixin(BaseCmd):
             return True
         (self.show if visible else self.hide)(key)
         return True
-
-
-def _call(target: object, method: str, *args: Any) -> None:
-    """Best-effort call of an optional viewer method."""
-    fn = getattr(target, method, None)
-    if not callable(fn):
-        return
-    try:
-        fn(*args)
-    except Exception:
-        pass
 
 
 def _format(value: Any) -> str:

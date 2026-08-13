@@ -1056,6 +1056,16 @@ class InternalGui:
             body=lambda p, rect: self._paint_panel(p),
         ))
 
+        #: How the chrome stood before anything was loaded, for
+        #: :meth:`restore_baseline`. Filled on the **first paint**, not here:
+        #: several fields are settled by the first frame's sync with the
+        #: viewer, and a baseline taken mid-construction restores values the
+        #: panel never actually had. Restoring `info_text` to the `""` it holds
+        #: for the length of one constructor reads to that sync as a change,
+        #: which opens the info panel -- so the reset ended with a panel on
+        #: screen that a fresh viewer does not show.
+        self._baseline: dict | None = None
+
     # ── model ────────────────────────────────────────────────────────────
     def set_run_command(self, run_command: Callable[[str], None] | None) -> None:
         """Set the sink every click is turned into a command for.
@@ -1617,6 +1627,61 @@ class InternalGui:
             except Exception:  # noqa: BLE001 - a light is not worth a frame
                 logger.debug("toolbar state lookup failed", exc_info=True)
         return None
+
+    #: Chrome state `reinitialize` puts back, captured once when the panel is
+    #: built. Named rather than swept out of ``__dict__``, so that a new flag
+    #: does not silently start or stop being reset -- the same rule as the
+    #: camera's baseline, and for the same reason: what resets has to be a
+    #: decision somebody made, not a shape that happens to match.
+    #:
+    #: The layout (window positions, sizes) is **not** here; it has its own
+    #: saved file and its own reset, :meth:`reset_windows`.
+    BASELINE_FIELDS = (
+        "info_visible", "info_pinned", "info_text", "info_title",
+        "sequence_visible", "status_visible", "status_text",
+        "mouse_mode", "selecting", "stride", "average", "debug_overlays",
+        "_seq_scroll", "_info_scroll",
+    )
+
+    def capture_baseline(self) -> dict:
+        """Snapshot the chrome flags, for :meth:`restore_baseline`.
+
+        The toolbar's lights are **not** captured: they are derived, each one
+        read back from the thing it toggles (``info_panel`` from
+        ``info_visible``, a window button from that window's visibility). So
+        restoring the flags restores the lights, and capturing them separately
+        would be a second copy able to disagree with the first.
+        """
+        return {
+            name: getattr(self, name)
+            for name in self.BASELINE_FIELDS
+            if hasattr(self, name)
+        }
+
+    def restore_baseline(self) -> None:
+        """Put the chrome flags back to how the panel was built.
+
+        What `reinitialize` needs from the chrome. Deleting the objects leaves
+        the panel describing them: the info panel stayed open on an atom count
+        for a structure that is gone, its toolbar light stayed lit, and the
+        sequence strip kept the rows and the scroll position of a chain nobody
+        can select any more.
+        """
+        for name, value in (self._baseline or {}).items():
+            setattr(self, name, value)
+        self.sequences = []
+        self.clear_info_listing()
+
+        # `info_visible` is a **mirror**: `refresh_gui_state` re-asserts it from
+        # the viewer's own flag on every frame, so assigning it above closes the
+        # panel for exactly one frame and the next one puts it back. The owner
+        # has to be told, through the same hook `close_info` uses -- see the
+        # comment there, which records this being found the first time.
+        if not self.info_visible and self.on_info_close is not None:
+            try:
+                self.on_info_close()
+            except Exception:  # noqa: BLE001 - a reset must not raise
+                logger.debug("info close callback failed", exc_info=True)
 
     def reset_windows(self) -> int:
         """Put every window back where it was authored, and forget the saved layout.
@@ -4571,6 +4636,10 @@ class InternalGui:
             colour -- see :mod:`chimol.renderer.ui.painter` for why this is not
             a ``QPainter`` with the names changed.
         """
+        if self._baseline is None:
+            # The first frame is the baseline: by here the panel has been
+            # synced with the viewer once, so this is a state it really held.
+            self._baseline = self.capture_baseline()
         if not self.visible and not self._menus:
             # The prompt is not part of the panel: PyMOL's `internal_prompt` and
             # `internal_gui` are separate settings, and hiding the object list

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import json
 import logging
 import os
@@ -446,18 +447,37 @@ def diff_against_package(cfg: dict | None = None) -> dict[str, tuple]:
         return {}
 
     differences: dict[str, tuple] = {}
-    for section, block in shipped.items():
-        if section.startswith("_") or not isinstance(block, dict):
-            continue
-        mine = cfg.get(section)
-        if not isinstance(mine, dict):
-            continue
-        for key, shipped_value in block.items():
-            if key.startswith("_") or key not in mine:
-                continue
-            if not _same_value(mine[key], shipped_value):
-                differences[f"{section}.{key}"] = (mine[key], shipped_value)
+    _collect_differences(cfg, shipped, (), differences)
     return differences
+
+
+def _collect_differences(mine, shipped, path: tuple, out: dict) -> None:
+    """Walk *shipped* against *mine*, recording every leaf that differs.
+
+    Every leaf, at **any** depth. This used to walk exactly two levels --
+    section, then key -- and skip anything that was not a dict of scalars. The
+    shipped config has one top-level scalar, ``background``, so the background
+    was invisible to the comparison and therefore to every caller of it: the
+    start-up "your settings differ" prompt never mentioned it, and
+    `reinitialize` could not put it back. "The background does not go back to
+    black" was one key falling through a shape assumption, and the shape
+    assumption is the bug -- a reset that can only see part of the tree is one
+    nobody can tell has stopped working.
+    """
+    if isinstance(shipped, dict):
+        if not isinstance(mine, dict):
+            return
+        for key, value in shipped.items():
+            if str(key).startswith("_"):
+                continue
+            # A key absent from *mine* is not a difference: the user's copy
+            # simply does not carry it, and the shipped value is what is in
+            # force already.
+            if key in mine:
+                _collect_differences(mine[key], value, path + (str(key),), out)
+        return
+    if not _same_value(mine, shipped):
+        out[".".join(path)] = (mine, shipped)
 
 
 def _read_user_display_config() -> dict | None:
@@ -506,50 +526,84 @@ def set_update_prompt_enabled(enabled: bool) -> bool:
     return True
 
 
+def _dig(node, path: tuple):
+    """Follow a dotted *path* into nested dicts. ``(value, True)`` when found."""
+    for part in path:
+        if not isinstance(node, dict) or part not in node:
+            return None, False
+        node = node[part]
+    return node, True
+
+
+def _plant(node: dict, path: tuple, value) -> bool:
+    """Write *value* at *path*, creating dicts on the way. False if it cannot."""
+    for part in path[:-1]:
+        child = node.get(part)
+        if not isinstance(child, dict):
+            child = {}
+            node[part] = child
+        node = child
+    if not isinstance(node, dict):
+        return False
+    node[path[-1]] = value
+    return True
+
+
 def adopt_package_values(names) -> list[str]:
-    """Copy the shipped values for *names* into the user's config, and save.
+    """Put the shipped values for *names* back, in memory and on disk.
 
     Parameters
     ----------
     names : iterable of str
-        ``"section.key"`` entries, as reported by :func:`diff_against_package`.
+        Dotted paths, as reported by :func:`diff_against_package`. Any depth,
+        including a bare top-level key.
 
     Returns
     -------
     list of str
         The names actually written.
+
+    Notes
+    -----
+    Writes the **live** configuration first and the file second. It used to do
+    only the file and then reload, which made a reset depend on the session
+    having autosaved -- and made it silently do nothing when there was no user
+    file at all, since a missing file returned early before anything was
+    restored. The live dict is what draws the screen; the file is where the
+    change is remembered.
     """
-    path = get_user_display_config_path()
-    cfg = _read_user_display_config()
-    if path is None or cfg is None:
-        return []
     try:
         shipped = json.loads(
             get_package_display_config_path().read_text(encoding="utf-8")
         )
-    except Exception:  # pragma: no cover
+    except Exception:  # pragma: no cover - a package without its own config
         return []
+
+    path = get_user_display_config_path()
+    on_disk = _read_user_display_config()
 
     adopted: list[str] = []
     for name in names:
-        section, _, key = str(name).partition(".")
-        source = shipped.get(section)
-        target = cfg.get(section)
-        if not isinstance(source, dict) or not isinstance(target, dict):
+        parts = tuple(p for p in str(name).split(".") if p)
+        if not parts:
             continue
-        if key in source:
-            target[key] = source[key]
-            adopted.append(name)
+        value, found = _dig(shipped, parts)
+        if not found:
+            continue
+        if not _plant(_DISPLAY_CONFIG, parts, copy.deepcopy(value)):
+            continue
+        if isinstance(on_disk, dict):
+            _plant(on_disk, parts, copy.deepcopy(value))
+        adopted.append(name)
 
-    if adopted:
-        cfg["_version"] = DISPLAY_CONFIG_VERSION
+    if adopted and path is not None and isinstance(on_disk, dict):
+        on_disk["_version"] = DISPLAY_CONFIG_VERSION
         try:
-            path.write_text(json.dumps(cfg, indent=2) + "\n", encoding="utf-8")
+            path.write_text(json.dumps(on_disk, indent=2) + "\n", encoding="utf-8")
         except Exception:  # pragma: no cover - unwritable settings directory
             logging.getLogger(__name__).debug(
                 "Could not write the adopted display defaults", exc_info=True
             )
-            return []
     return adopted
 
 
@@ -571,12 +625,21 @@ def restore_package_defaults() -> list[str]:
     list of str
         The ``"section.key"`` names that were put back.
     """
-    changed = list(diff_against_package())
+    # The **live** config, not the file. Resetting what was last saved is not
+    # what "put it back" means to someone who has been changing settings for an
+    # hour: `set` writes memory and autosaves best-effort, so a read-only home,
+    # a setting changed by a panel that does not autosave, or simply a value
+    # that has not been written yet all left `reinitialize` with nothing to do
+    # -- and it reported "Reinitialized everything" while changing none of it.
+    changed = list(diff_against_package(_DISPLAY_CONFIG))
     if not changed:
         return []
     restored = adopt_package_values(changed)
     if restored:
-        reload_display_config()
+        # Not `reload_display_config`: that re-reads the file over the values
+        # just restored, which is only correct while the file is the authority.
+        # The listeners are the point of the call, so fire them directly.
+        notify_config_updated()
     return restored
 
 
@@ -1245,17 +1308,43 @@ def _load_display_config() -> dict:
     if migrated and path != package_path:
         _write_user_display_config(path, cfg)
 
-    # Shallow-merge user config with defaults to ensure all keys exist.
-    for key, sub in default.items():
-        if key == "_version":
-            continue
-        if isinstance(sub, dict):
-            section = cfg.setdefault(key, {})
-            for sk, sv in sub.items():
-                section.setdefault(sk, sv)
-        else:
-            cfg.setdefault(key, sub)
+    # Fill in every key the user's copy does not carry, so a setting shipped
+    # after that file was written is still there.
+    #
+    # From the **shipped JSON** first, and the literal above only as a fallback.
+    # The two are copies of the same thing and they had already drifted: the
+    # JSON gained `defaults.auto_rename_duplicate_objects` and the literal did
+    # not, so for anyone whose file predated it the key was absent from the
+    # live config -- `get` fell back to the spec's default and every reader
+    # that goes through the config saw nothing at all. Any setting added to the
+    # JSON alone had the same fate, silently.
+    #
+    # Recursive, for the reason the comparison is: a two-level merge leaves
+    # anything nested deeper unfilled.
+    if path != package_path:
+        try:
+            with package_path.open("r", encoding="utf-8") as fh:
+                shipped = json.load(fh)
+        except Exception:  # noqa: BLE001 - a package without its own config
+            shipped = {}
+        _fill_missing(cfg, shipped)
+    _fill_missing(cfg, default)
     return cfg
+
+
+def _fill_missing(target: dict, source: dict) -> None:
+    """Copy keys of *source* that *target* lacks, at every depth."""
+    for key, value in source.items():
+        if str(key).startswith("_"):
+            continue
+        if isinstance(value, dict):
+            child = target.get(key)
+            if not isinstance(child, dict):
+                child = {}
+                target[key] = child
+            _fill_missing(child, value)
+        elif key not in target:
+            target[key] = copy.deepcopy(value)
 
 
 _DISPLAY_CONFIG_USER_VERSION: int = 0
@@ -1280,6 +1369,16 @@ def reload_display_config() -> None:
     """
 
     _merge_in_place(_DISPLAY_CONFIG, _load_display_config())
+    notify_config_updated()
+
+
+def notify_config_updated() -> None:
+    """Tell every registered listener the configuration has changed.
+
+    Separate from :func:`reload_display_config` because the two are not the
+    same event: a caller that has just written the live config wants the
+    listeners, not a re-read of the file over what it wrote.
+    """
     for listener in list(_update_listeners):
         try:
             listener()
