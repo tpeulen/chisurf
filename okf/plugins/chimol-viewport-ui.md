@@ -9,6 +9,36 @@ updated: 2026-08-12
 
 ## Where to pick this up
 
+**2026-08-13 — the chrome rebuild is 1.9× cheaper and a repeated frame now
+allocates nothing.** Numbers, and the script that reproduces them, are in
+[benchmarks](../../docs/development/benchmarks.md#building-one-frame-of-quads).
+The three things worth knowing before touching this again:
+
+* **The cost is floats, not quads.** Each one is a `PyFloat` built into a tuple,
+  appended and converted. `QuadPainter` now emits **16 per quad instead of 72**
+  and NumPy expands them to the six vertices; the expansion computes nothing, so
+  the stream handed to the GPU is bit-identical. If a future change needs a new
+  per-vertex attribute, add it to the *record* and expand it — adding it to the
+  emitted vertices costs six times as much.
+* **The two numbers people confuse.** A frame where the panel *changes* costs
+  ~3.5 ms; one where only the camera moves costs ~0.28 ms. Quote the wrong one
+  and the panel looks either ruinous or free. The split exists because
+  `_chrome_quads` reuses the vertices while `chrome_fingerprint` has not moved,
+  and that fingerprint is conservative by design — see `test_chrome_cache.py`.
+* **The GPU half is invisible to a Python profile.** `_draw_ui` used to allocate
+  a 588 KB vertex buffer, two uniform buffers, two bind groups and a texture
+  view *every frame*, including frames it had been handed the cached array. It
+  now keeps them while that array is the same object. Nothing in a timing table
+  shows this; `test_chrome_frame_cost.py` counts the allocations instead, which
+  is the honest measurement.
+
+Left undone: `layout()` still runs every frame (0.25 ms) even when nothing
+changed, and cannot simply be skipped — the fingerprint is taken *after* it,
+because layout is what turns a size or scale change into the rectangles the
+paint reads. Breaking that circle needs a cheap pre-layout key, and it is worth
+about 0.25 ms of a 16.7 ms budget, so it is not urgent.
+
+
 **2026-08-13 — the mouse table was mostly decoration, and the sequence strip
 was not repainting. Both closed; what is left is named below.**
 

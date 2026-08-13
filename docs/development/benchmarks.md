@@ -570,14 +570,59 @@ cost 9.6 ms of a 21 ms frame on a quarter-million beads, so the panel was
 repainted on a **timer** and allowed to lag rather than redrawn when it changed
 — and the timer was bypassed entirely for any scene carrying labels, because
 labels move with the camera and forced a repaint every frame. Once a frame of
-chrome is ~1.4 ms and 107 KB, deciding whether to rebuild costs more than
-rebuilding, so the cache, the staleness and the invalidation calls are gone and
-the panel is simply always current.
+chrome is a couple of milliseconds and ~588 KB, the *timer* is gone and the
+panel is never allowed to lag: it is rebuilt when it changes and reused when it
+does not, keyed on a fingerprint of everything the paint reads rather than on a
+clock. (An earlier revision of this page said the cache had gone entirely. It
+came back, deliberately, once the fingerprint could be taken cheaply enough --
+see the rebuild-versus-unchanged split below.)
 
-A whole frame of chrome is 313–608 quads, measured across the four captured
-states. The remaining ~1.4 ms is Python building them; it is flat in the
-viewport and would fall again if it ever mattered, since the geometry for a
-panel that has not changed is the same geometry.
+A whole frame of chrome is 313–608 quads across the four captured states, and
+~2,100 for a forty-object integrative model with three sequence strips. What
+that costs to build is the table below.
+
+### Building one frame of quads
+
+**Work unit:** the forty-object panel above, laid out and emitted, ready for
+upload. Script: `test/benchmarks/benchmark_chimol_chrome.py`. Median of 200,
+measured 2026-08-13.
+
+| Viewport | Quads | Emit | Convert | Layout | **Rebuild** | Unchanged |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1280×860 | 2092 | 1.44 ms | 1.25 ms | 0.25 ms | **3.41 ms** | 0.28 ms |
+| 1920×1080 | 2092 | 1.57 ms | 1.05 ms | 0.25 ms | **4.35 ms** | 0.27 ms |
+| 2560×1720 | 2092 | 1.61 ms | 1.10 ms | 0.25 ms | **3.45 ms** | 0.27 ms |
+| 3840×2160 | 2092 | 1.49 ms | 1.09 ms | 0.25 ms | **4.04 ms** | 0.27 ms |
+
+**Read the last two columns together.** *Rebuild* is what a frame costs when
+the panel changes — a hover crossing a row, a keystroke, a menu moving — and
+*Unchanged* is what it costs when only the camera is moving, which is the only
+time anybody is watching the frame rate. They differ by more than ten to one,
+because `canvas_base._chrome_quads` reuses the previous frame's vertices while
+`InternalGui.chrome_fingerprint` has not moved. Quoting either number alone
+describes a different panel from the one that exists.
+
+The rebuild was **7.8 ms** before 2026-08-13: 4.84 ms to emit and 2.73 ms to
+convert, on the same fixture and machine. Both halves came down for the same
+reason — the cost is *floats*, each one a `PyFloat` that has to be built into a
+tuple, appended to a list and converted one at a time, and two thirds of them
+were redundant. Four of a quad's six vertices are copies of the other two, the
+colour and the clip box are identical at all four corners, and each axis has
+two values; so Python now emits **16 floats per quad instead of 72** and NumPy
+does the copying. The expansion computes nothing, so the vertex stream handed
+to the GPU is bit-identical — asserted over a whole frame at two device scales.
+
+Everything in the table is flat in the viewport, which is the property to
+watch: the old chrome rasterised itself into a viewport-sized image and so
+tracked *area*, while this tracks *content*. A row that starts growing with the
+window means something has begun scaling with pixels again.
+
+Not in the table, because a Python clock cannot see it: a repeated frame used
+to allocate a 588 KB vertex buffer, two uniform buffers, two bind groups and a
+texture view — and re-upload the same floats — even when handed the cached
+vertex array. `wgpu_backend._draw_ui` now keeps them while the array is the
+same object. That is driver work below the binding, so it is measured by
+counting the allocations in `test_chrome_frame_cost.py` rather than by timing.
 
 ## ChiMOL density-map contouring
 

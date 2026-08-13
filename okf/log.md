@@ -35873,3 +35873,21 @@
   `chimol/test/test_sequence_scrollbar.py` (in pixels, because every piece of
   state was already correct while the screen showed the previous frame). See
   [chimol viewport UI](plugins/chimol-viewport-ui.md).
+- 2026-08-13 — chimol: the chrome's rebuild is 1.9× cheaper, and a frame that
+  changes nothing now allocates nothing. The cost was never the quad count, it
+  was the *floats*: `QuadPainter` emitted six vertices per quad, of which four
+  were copies and in which the colour and clip box repeated four times, so
+  Python built 72 `PyFloat`s per quad and converted them one at a time. It now
+  emits one 16-float record and NumPy expands it — bit-identical output,
+  asserted over a whole frame at two device scales — and the per-quad path lost
+  its property call, its scaled-clip arithmetic and its isinstance pair, while
+  the glyph loop lost its per-call atlas metrics. Measured on a 2,100-quad
+  panel: 7.8 ms → 3.4 ms. Separately, `wgpu_backend._draw_ui` was allocating a
+  588 KB vertex buffer, two uniform buffers, two bind groups and a texture view
+  on *every* frame even when handed the cached vertex array; it now keeps them
+  while that array is the same object, which is driver work no Python profile
+  could see, so a test counts the allocations. Also fixed: a stale
+  `test_render_appearance` case that drove `win.dock_area`, removed when the
+  3-D view became the window, and had been failing rather than protecting
+  anything. New: `test/benchmarks/benchmark_chimol_chrome.py`, and the
+  benchmarks page's chrome section, which claimed the cache had been removed.

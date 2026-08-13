@@ -17,7 +17,11 @@ Vertex format
 -------------
 Six vertices per quad -- two triangles, no index buffer, because the chrome is
 rebuilt every frame and an index buffer would be another allocation to keep in
-step for no reuse. Each vertex is 12 floats::
+step for no reuse. Those six vertices are **made in NumPy**, from one
+:data:`FLOATS_PER_QUAD` record per quad that Python emits; see
+:meth:`QuadPainter.vertices` for why, and for the property that makes it safe
+(the expansion computes nothing). What the GPU receives is unchanged: each
+vertex is 12 floats::
 
     position  x, y            pixels, y-down from the top left
     uv        u, v            atlas texels
@@ -52,6 +56,22 @@ FLOATS_PER_VERTEX = 12
 
 #: Two triangles.
 VERTICES_PER_QUAD = 6
+
+#: Corners a quad expands to before :data:`_TRIANGLES` turns them into the
+#: six vertices the GPU is given.
+CORNERS_PER_QUAD = 4
+
+#: Floats Python emits per quad: ``x0, y0, x1, y1``, ``u0, v0, u1, v1``,
+#: ``r, g, b, a`` and the clip box. Every one of them is a *final* value --
+#: the scale is already applied -- so :meth:`QuadPainter.vertices` moves them
+#: into place and computes nothing, which is what makes the expansion
+#: bit-identical to emitting the vertices one at a time.
+FLOATS_PER_QUAD = 16
+
+#: Which corner each of the six vertices is: top-left, top-right,
+#: bottom-right, then top-left, bottom-right, bottom-left. The winding is the
+#: one the pipeline was built for, so this must not be reordered casually.
+_TRIANGLES = np.array([0, 1, 2, 0, 2, 3], dtype=np.intp)
 
 #: The clip rectangle used when nothing is clipping. Large enough to pass any
 #: on-screen fragment, and finite so the comparison in the shader stays a
@@ -101,6 +121,9 @@ class QuadPainter:
         self._atlas = atlas if atlas is not None else load_atlas()
         self._font_scale = float(font_scale)
         self._data: list[float] = []
+        #: ``(quad index, four RGBA tuples)`` for the handful of quads whose
+        #: corners differ. See :meth:`vertices`.
+        self._gradients: list[tuple[int, tuple]] = []
         self._clips: list[tuple[float, float, float, float]] = []
         #: Device pixels per logical pixel.
         #:
@@ -115,13 +138,38 @@ class QuadPainter:
         #: ``hit_test`` still answers for where it *should* be, so every click
         #: misses by the ratio and the panel looks inert rather than misplaced.
         self._scale = float(scale)
+        #: The clip rectangle in force, in logical and in device pixels. Plain
+        #: attributes rather than a property: the quad loop reads the scaled
+        #: one once per quad, and a property is a Python call.
+        self._clip: tuple[float, float, float, float] = _NO_CLIP
+        self._scaled_clip = self._scale_clip(_NO_CLIP)
+
+        # The atlas metrics, resolved once. Every one of them is fixed for a
+        # given atlas and font scale, and `text` was recomputing the lot on
+        # each call -- two property evaluations, a method call and four
+        # multiplications -- of which there are ~340 a frame carrying under
+        # three characters each. The setup, not the glyph loop, was the cost.
+        atlas = self._atlas
+        sx, sy, sw, sh = atlas.solid
+        #: A texel well inside the opaque block, so filtering cannot reach its
+        #: edge. Every rectangle in the chrome samples this one point.
+        self._solid_uv = (sx + sw * 0.5, sy + sh * 0.5)
+        #: Advance width of one character, in logical pixels.
+        self._advance = atlas.advance() * self._font_scale
+        #: Logical pixels per baked texel, for the glyph quad.
+        self._shrink = atlas.render_scale * self._font_scale
+        self._glyph_w = atlas.cell[0] * self._shrink
+        self._glyph_h = atlas.cell[1] * self._shrink
+        self._ascent = atlas.ascent
+        self._half_cell_h = atlas.cell[1] * 0.5
+        self._pad = atlas.pad
 
     # -- output ------------------------------------------------------------
 
     @property
     def vertex_count(self) -> int:
-        """Number of vertices accumulated so far."""
-        return len(self._data) // FLOATS_PER_VERTEX
+        """Number of vertices the emitted quads expand to."""
+        return (len(self._data) // FLOATS_PER_QUAD) * VERTICES_PER_QUAD
 
     def vertices(self) -> np.ndarray:
         """Return the interleaved array, ready for upload.
@@ -133,32 +181,88 @@ class QuadPainter:
             :mod:`chimol.renderer.pack` makes of geometry, for the same reason:
             a view onto the interpreter's heap can only be handed to a GPU if
             it is already in the layout the GPU expects.
+
+        Notes
+        -----
+        **Python emits one record per quad; the six vertices are made here.**
+        Floats are what this costs: each one is a ``PyFloat`` that has to be
+        built into a tuple, appended to a list, and then converted one at a
+        time. Emitting the six vertices directly was 72 floats a quad --
+        150,696 on a chrome frame, 0.94 ms to emit and 2.7 ms to convert -- and
+        two thirds of them were redundant. Four of the six vertices are copies
+        of the other two; the colour and the clip box are the same at all four
+        corners; and a corner's position and uv are one of two values on each
+        axis. So :data:`FLOATS_PER_QUAD` carries each distinct number **once**
+        and NumPy does the copying, which is a handful of C-level assignments
+        over the whole frame rather than 150,000 interpreter operations.
+
+        The expansion computes **nothing**. Every value in the record is final
+        -- the device scale is applied where the quad is emitted, in Python
+        float64, exactly as it was before -- so this is data movement and the
+        output is bit-identical to emitting the vertices one at a time. That is
+        asserted, over a whole chrome frame at two device scales, by
+        ``test_chrome_frame_cost``.
+
+        ``fromiter`` with an exact ``count``, not ``asarray``: both walk the
+        same list of Python floats, but ``asarray`` has to discover the length
+        and the type first. Measured at 2.7 ms against 3.2 ms on the old,
+        three-times-larger buffer.
         """
         if not self._data:
             return np.zeros((0, FLOATS_PER_VERTEX), dtype=np.float32)
-        # `fromiter` with an exact `count`, not `asarray`. Both walk the same
-        # list of Python floats, but `asarray` has to discover the length and
-        # the type first; told both up front, `fromiter` allocates once and
-        # fills. Measured on a chrome frame -- 202,680 floats -- at 2.9 ms
-        # against 4.1 ms, for identical output.
-        #
-        # The result is contiguous by construction, so the reshape is a view
-        # and no copy is made.
-        return np.fromiter(
+        quads = np.fromiter(
             self._data, dtype=np.float32, count=len(self._data)
-        ).reshape(-1, FLOATS_PER_VERTEX)
+        ).reshape(-1, FLOATS_PER_QUAD)
+
+        corners = np.empty(
+            (len(quads), CORNERS_PER_QUAD, FLOATS_PER_VERTEX), dtype=np.float32
+        )
+        left, top, right, bottom = quads[:, 0], quads[:, 1], quads[:, 2], quads[:, 3]
+        u0, v0, u1, v1 = quads[:, 4], quads[:, 5], quads[:, 6], quads[:, 7]
+        # Top-left, top-right, bottom-right, bottom-left -- the order
+        # :data:`_TRIANGLES` indexes.
+        corners[:, 0, 0] = corners[:, 3, 0] = left
+        corners[:, 1, 0] = corners[:, 2, 0] = right
+        corners[:, 0, 1] = corners[:, 1, 1] = top
+        corners[:, 2, 1] = corners[:, 3, 1] = bottom
+        corners[:, 0, 2] = corners[:, 3, 2] = u0
+        corners[:, 1, 2] = corners[:, 2, 2] = u1
+        corners[:, 0, 3] = corners[:, 1, 3] = v0
+        corners[:, 2, 3] = corners[:, 3, 3] = v1
+        # Colour and clip are per *quad*, so they broadcast across the corners.
+        corners[:, :, 4:8] = quads[:, None, 8:12]
+        corners[:, :, 8:12] = quads[:, None, 12:16]
+
+        # The one thing a record cannot hold: a gradient's four corner colours.
+        # Patched afterwards rather than widening every record by twelve floats
+        # for the ~40 quads a frame that need them -- and patched *in place*, so
+        # a gradient keeps its position in the draw order, which is what decides
+        # what is drawn over what.
+        for index, quad_colours in self._gradients:
+            corners[index, :, 4:8] = quad_colours
+
+        return corners[:, _TRIANGLES, :].reshape(-1, FLOATS_PER_VERTEX)
 
     def clear(self) -> None:
         """Drop everything accumulated, keeping the loaded atlas."""
         self._data.clear()
-        self._clips.clear()
+        self._gradients.clear()
+        del self._clips[:]
+        self._clip = _NO_CLIP
+        self._scaled_clip = self._scale_clip(_NO_CLIP)
 
     # -- internals ---------------------------------------------------------
 
-    @property
-    def _clip(self) -> tuple[float, float, float, float]:
-        """The clip rectangle currently in force."""
-        return self._clips[-1] if self._clips else _NO_CLIP
+    def _scale_clip(self, box) -> tuple[float, float, float, float]:
+        """The clip rectangle in device pixels.
+
+        Computed when the clip *changes* rather than per quad. It was four
+        multiplications and a property call inside the hot loop, ~2,100 times a
+        frame, to produce the same four numbers each time -- clips change a
+        handful of times per frame.
+        """
+        scale = self._scale
+        return (box[0] * scale, box[1] * scale, box[2] * scale, box[3] * scale)
 
     def _quad(
         self,
@@ -181,54 +285,66 @@ class QuadPainter:
         """
         if w <= 0.0 or h <= 0.0:
             return
-        scale = self._scale
-        # Indexed, not a generator expression. This runs once per quad and the
-        # chrome emits ~2,800 a frame, so the generator's setup and six
-        # `next()` calls were pure overhead at 2,800x.
-        clip = self._clip
-        cx0 = clip[0] * scale
-        cy0 = clip[1] * scale
-        cx1 = clip[2] * scale
-        cy1 = clip[3] * scale
         if isinstance(corners, tuple) and corners and isinstance(corners[0], float):
-            corners = (corners,) * 4
+            self._corner_quad(x, y, w, h, u, v, uw, vh, corners)
+            return
 
+        # The record carries corner 0's colour like any other quad; the four
+        # are handed to :meth:`vertices` separately and patched into place
+        # there, so a gradient costs twelve extra floats rather than every quad
+        # in the frame costing them.
+        self._gradients.append((len(self._data) // FLOATS_PER_QUAD, tuple(corners)))
+        self._corner_quad(x, y, w, h, u, v, uw, vh, corners[0])
+
+    def _corner_quad(
+        self,
+        x: float, y: float, w: float, h: float,
+        u: float, v: float, uw: float, vh: float,
+        rgba,
+    ) -> None:
+        """Append one quad, as one :data:`FLOATS_PER_QUAD` record.
+
+        This is the hot path -- every quad the chrome draws reaches it, ~2,100
+        a frame -- so it does the minimum: one multiplication per coordinate,
+        one tuple, one ``extend``. The clip box arrives already scaled, the
+        colour is unpacked once rather than four times, and the corner geometry
+        is left to :meth:`vertices`.
+        """
+        if w <= 0.0 or h <= 0.0:
+            return
+        scale = self._scale
+        cx0, cy0, cx1, cy1 = self._scaled_clip
+        r, g, b, a = rgba
         x = x * scale
         y = y * scale
-        x1 = x + w * scale
-        y1 = y + h * scale
-        u1 = u + uw
-        v1 = v + vh
-        r0, g0, b0, a0 = corners[0]
-        r1, g1, b1, a1 = corners[1]
-        r2, g2, b2, a2 = corners[2]
-        r3, g3, b3, a3 = corners[3]
-
-        # One `extend` of one flat tuple, rather than twelve extends of small
-        # ones. Six vertices were each appended as a position-and-colour tuple
-        # followed by a clip tuple, which is 12 list operations and 12 tuple
-        # constructions per quad -- about 34,000 of each per frame. Emitting the
-        # whole quad at once is the same 72 floats in the same order.
         self._data.extend((
-            x, y, u, v, r0, g0, b0, a0, cx0, cy0, cx1, cy1,
-            x1, y, u1, v, r1, g1, b1, a1, cx0, cy0, cx1, cy1,
-            x1, y1, u1, v1, r2, g2, b2, a2, cx0, cy0, cx1, cy1,
-            x, y, u, v, r0, g0, b0, a0, cx0, cy0, cx1, cy1,
-            x1, y1, u1, v1, r2, g2, b2, a2, cx0, cy0, cx1, cy1,
-            x, y1, u, v1, r3, g3, b3, a3, cx0, cy0, cx1, cy1,
+            x, y, x + w * scale, y + h * scale,
+            u, v, u + uw, v + vh,
+            r, g, b, a,
+            cx0, cy0, cx1, cy1,
         ))
 
     def _solid(self, x: float, y: float, w: float, h: float, corners) -> None:
-        """Append a quad that samples the atlas's opaque block."""
-        sx, sy, sw, sh = self._atlas.solid
-        # A texel well inside the block, so filtering cannot reach its edge.
-        self._quad(x, y, w, h, sx + sw * 0.5, sy + sh * 0.5, 0.0, 0.0, corners)
+        """Append a quad that samples the atlas's opaque block.
+
+        The generic entry: it accepts either one colour or four. Callers that
+        know which they have -- which is all of them inside this file -- go
+        straight to :meth:`_corner_quad` or :meth:`_quad` instead, because at
+        ~1,200 solid quads a frame the ``isinstance`` pair and the extra call
+        are not free.
+        """
+        u, v = self._solid_uv
+        if isinstance(corners, tuple) and corners and isinstance(corners[0], float):
+            self._corner_quad(x, y, w, h, u, v, 0.0, 0.0, corners)
+        else:
+            self._quad(x, y, w, h, u, v, 0.0, 0.0, corners)
 
     # -- the interface -----------------------------------------------------
 
     def fill_rect(self, x: float, y: float, w: float, h: float, colour: Colour) -> None:
         """Fill a rectangle. No outline."""
-        self._solid(x, y, w, h, _rgba(colour))
+        u, v = self._solid_uv
+        self._corner_quad(x, y, w, h, u, v, 0.0, 0.0, _rgba(colour))
 
     def stroke_rect(
         self,
@@ -240,13 +356,15 @@ class QuadPainter:
         fill: Colour | None = None,
     ) -> None:
         """Draw a one-pixel outline, optionally over a fill."""
+        u, v = self._solid_uv
+        quad = self._corner_quad
         if fill is not None:
-            self._solid(x, y, w, h, _rgba(fill))
+            quad(x, y, w, h, u, v, 0.0, 0.0, _rgba(fill))
         line = _rgba(edge)
-        self._solid(x, y, w, 1.0, line)
-        self._solid(x, y + h - 1.0, w, 1.0, line)
-        self._solid(x, y, 1.0, h, line)
-        self._solid(x + w - 1.0, y, 1.0, h, line)
+        quad(x, y, w, 1.0, u, v, 0.0, 0.0, line)
+        quad(x, y + h - 1.0, w, 1.0, u, v, 0.0, 0.0, line)
+        quad(x, y, 1.0, h, u, v, 0.0, 0.0, line)
+        quad(x + w - 1.0, y, 1.0, h, u, v, 0.0, 0.0, line)
 
     def gradient_rect(
         self,
@@ -290,43 +408,59 @@ class QuadPainter:
         """Draw *string* aligned inside the box, one quad per glyph."""
         if not string:
             return
-        atlas = self._atlas
-        advance = atlas.advance() * self._font_scale
-        width = advance * len(string)
+        advance = self._advance
+        shrink = self._shrink
+        ascent = self._ascent
+        quad_w, quad_h = self._glyph_w, self._glyph_h
+        if quad_w <= 0.0 or quad_h <= 0.0:
+            return
 
+        span = advance * len(string)
         if align & ALIGN_RIGHT:
-            pen_x = x + w - width
+            pen_x = x + w - span
         elif align & ALIGN_HCENTER:
-            pen_x = x + (w - width) * 0.5
+            pen_x = x + (w - span) * 0.5
         else:
             pen_x = x
 
-        scale = atlas.scale
-        shrink = atlas.render_scale * self._font_scale
-        cell_w, cell_h = atlas.cell
         # The pen sits a fixed (pad, pad + ascent) inside every cell, so a
         # glyph's quad is the cell placed relative to the baseline. No
         # per-glyph bearing is needed; see the baker.
         baseline = (
-            y + h * 0.5 + (atlas.ascent - atlas.cell[1] * 0.5) * shrink
+            y + h * 0.5 + (ascent - self._half_cell_h) * shrink
             if align & ALIGN_VCENTER
-            else y + atlas.ascent * shrink
+            else y + ascent * shrink
         )
-        top = baseline - (atlas.ascent + atlas.pad) * shrink
-        quad_w, quad_h = cell_w * shrink, cell_h * shrink
+        top = baseline - (ascent + self._pad) * shrink
 
-        rgba = _rgba(colour)
+        # The glyph loop is the other half of the chrome's quads -- ~900 of the
+        # ~2,100 in a frame -- and everything it needs except the cell and the
+        # pen position is the same for every character in the string. So it is
+        # emitted here rather than through `_corner_quad`: the per-glyph work
+        # becomes a dict lookup, two multiplications and one `extend`.
+        r, g, b, a = _rgba(colour)
+        cx0, cy0, cx1, cy1 = self._scaled_clip
+        scale = self._scale
+        left = (pen_x - self._pad * shrink) * scale
+        step = advance * scale
+        y0 = top * scale
+        y1 = y0 + quad_h * scale
+        width = quad_w * scale
+        cell_of = self._atlas.cell_of
+        data = self._data
+
         for index, char in enumerate(string):
-            cell = atlas.cell_of(char, bold=bold)
+            cell = cell_of(char, bold=bold)
             if cell is None:
                 continue
             cx, cy, cw, ch = cell
-            self._quad(
-                pen_x + index * advance - atlas.pad * shrink, top,
-                quad_w, quad_h,
-                cx, cy, cw, ch,
-                rgba,
-            )
+            x0 = left + index * step
+            data.extend((
+                x0, y0, x0 + width, y1,
+                cx, cy, cx + cw, cy + ch,
+                r, g, b, a,
+                cx0, cy0, cx1, cy1,
+            ))
 
     def push_clip(self, x: float, y: float, w: float, h: float) -> None:
         """Restrict drawing to a rectangle until :meth:`pop_clip`."""
@@ -338,11 +472,18 @@ class QuadPainter:
                 min(box[2], px1), min(box[3], py1),
             )
         self._clips.append(box)
+        # Kept scaled as well, because the quad loop reads it and only the
+        # clip *stack* knows when it changes -- a handful of times a frame
+        # against a couple of thousand quads.
+        self._clip = box
+        self._scaled_clip = self._scale_clip(box)
 
     def pop_clip(self) -> None:
         """Undo the most recent :meth:`push_clip`."""
         if self._clips:
             self._clips.pop()
+        self._clip = self._clips[-1] if self._clips else _NO_CLIP
+        self._scaled_clip = self._scale_clip(self._clip)
 
     def text_width(self, string: str) -> float:
         """Advance width of *string*, in pixels."""

@@ -317,6 +317,9 @@ class WgpuMeshRenderer:
         self._ui_sampler = None
         self._ui_atlas_texture = None
         self._ui_atlas_size = (1, 1)
+        #: The chrome's per-frame GPU resources, kept while the vertices are
+        #: the same object. See :meth:`_draw_ui`.
+        self._ui_frame_cache = None
 
     #: Size of the shared uniform block, in floats: four 4x4 matrices and six
     #: vec4s. Named because the chrome pass has to bind a block it never reads,
@@ -946,7 +949,7 @@ class WgpuMeshRenderer:
         self._ui_atlas_texture = texture
         return texture
 
-    def _flush_glyph_cache(self, texture) -> None:
+    def _flush_glyph_cache(self, texture) -> bool:
         """Upload glyphs rasterised since this texture was last written.
 
         Tracked **per texture**, by the cache's version rather than by a dirty
@@ -954,16 +957,25 @@ class WgpuMeshRenderer:
         there are several devices in play -- a window and an offscreen grab,
         each with its own texture. The window drew Japanese and the grab drew
         blanks, which is exactly what a consumed list does.
+
+        Returns
+        -------
+        bool
+            Whether anything was written. The chrome's frame cache treats a
+            write as a reason to rebuild: the texels behind an unchanged bind
+            group did move, and while that cannot in practice happen without
+            the quads changing too, "in practice" is the wrong standard for a
+            cache that would otherwise show a stale glyph.
         """
         from .ui.font import load_atlas
 
         cache = load_atlas().cache
         if cache is None or cache.version == getattr(self, "_ui_glyph_version", None):
-            return
+            return False
         rows = cache.image.shape[0]
         baked = int(getattr(self, "_ui_atlas_baked_height", 0))
         if rows <= 0 or baked <= 0:
-            return
+            return False
         patch = np.ascontiguousarray(cache.image)
         self.device.queue.write_texture(
             {"texture": texture, "origin": (0, baked, 0)},
@@ -972,16 +984,50 @@ class WgpuMeshRenderer:
             (patch.shape[1], rows, 1),
         )
         self._ui_glyph_version = cache.version
+        return True
 
     def _draw_ui(self, render_pass, vertices: np.ndarray) -> list:
-        """Draw the chrome quads; returns the resources to keep alive."""
+        """Draw the chrome quads; returns the resources to keep alive.
+
+        Notes
+        -----
+        The buffers and bind groups are **kept while the chrome does not
+        change**, which is most frames: ``canvas_base._chrome_quads`` already
+        returns the *same array object* until its fingerprint moves, so the
+        cache key is that object's identity -- held, so the identity cannot be
+        recycled by a freed array landing at the same address.
+
+        Without it, a frame in which nothing about the panel changed still
+        allocated a 600 kB vertex buffer, two uniform buffers, two bind groups
+        and a texture view, and uploaded the same 150,000 floats again. That is
+        driver work in the frame's critical path to reproduce a byte-identical
+        result, and it is invisible in a Python profile because almost all of
+        it happens below the binding.
+        """
         wgpu = self._wgpu
         pipeline = self._build_ui_pipeline()
         texture = self.upload_ui_atlas()
         # Before the draw, not after: a glyph rasterised while the quads were
         # being built is needed by *this* frame, and uploading it next frame
         # shows one frame of the wrong texels.
-        self._flush_glyph_cache(texture)
+        changed = self._flush_glyph_cache(texture)
+
+        cached = self._ui_frame_cache
+        if (
+            cached is not None
+            and cached[0] is vertices
+            and cached[1] == (self.width, self.height, self._ui_atlas_size)
+            and cached[2] is texture
+            and not changed
+        ):
+            keep = cached[3]
+            vbo, bind, group0, count = keep[0], keep[3], keep[4], cached[4]
+            render_pass.set_pipeline(pipeline)
+            render_pass.set_bind_group(0, group0)
+            render_pass.set_bind_group(1, bind)
+            render_pass.set_vertex_buffer(0, vbo)
+            render_pass.draw(count, 1, 0, 0)
+            return list(keep)
 
         data = np.ascontiguousarray(vertices, dtype=np.float32)
         vbo = self.device.create_buffer_with_data(
@@ -1024,8 +1070,13 @@ class WgpuMeshRenderer:
         render_pass.set_bind_group(0, group0)
         render_pass.set_bind_group(1, bind)
         render_pass.set_vertex_buffer(0, vbo)
-        render_pass.draw(int(data.shape[0]), 1, 0, 0)
-        return [vbo, ubo_ui, ubo, bind, group0, texture]
+        count = int(data.shape[0])
+        render_pass.draw(count, 1, 0, 0)
+        keep = [vbo, ubo_ui, ubo, bind, group0, texture]
+        self._ui_frame_cache = (
+            vertices, (self.width, self.height, self._ui_atlas_size), texture, keep, count
+        )
+        return list(keep)
 
     def _build_silhouette_pipeline(self):
         """Build the depth-outline pipeline, once, on first use."""

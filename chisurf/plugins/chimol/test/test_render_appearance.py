@@ -356,25 +356,28 @@ def test_the_unbonded_mask_is_none_without_bonds(lysozyme):
 # the default layout
 # --------------------------------------------------------------------------- #
 def test_the_viewport_gets_most_of_the_window(qapp):
-    """``sizes: [3, 1]`` is pixels, not a ratio, and gave the view 40%."""
+    """``sizes: [3, 1]`` is pixels, not a ratio, and gave the view 40%.
+
+    The mechanism this guarded is gone: the 3-D view **is** the window now, as
+    the central widget, and everything that used to sit beside it is drawn
+    inside the viewport by ``InternalGui``. So ``win.dock_area`` is ``None``
+    and driving it was an ``AttributeError`` -- the test had been red on the
+    tree rather than protecting anything.
+
+    The property is still worth asserting, and is now stronger than "the
+    larger half": there is nothing to take a share. Written against the
+    central widget so it keeps meaning if a second widget is ever put back.
+    """
     from chisurf.plugins.chimol.chimol.app import molview_main_window as mw
 
     win = mw.MolViewPluginWindow()
     win.resize(1600, 950)
     win.show()
-    for _ in range(10):
+    for _ in range(15):
         qapp.processEvents()
     try:
-        win.dock_area.set_layout_state(
-            dict(mw._DEFAULT_DOCK_AREA_STATE), emit_change=False,
-        )
-        for _ in range(15):
-            qapp.processEvents()
+        assert win.centralWidget() is win.viewer
         share = win.viewer.width() / win.width()
-        # The offscreen platform does not propagate size hints, so the side
-        # panel keeps a wider minimum there and the viewport settles around
-        # 57% where a real window gives it 75%. Either way it must be the
-        # larger half; the bug had it at 40%.
         assert share > 0.5, f"the 3D view got only {share:.0%} of the window"
     finally:
         win.close()
