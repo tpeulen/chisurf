@@ -215,6 +215,26 @@ _SPECS: tuple[SettingSpec, ...] = (
           "structure that grows, where following the centroid slides the scene "
           "out from under it."),
 
+    # -- Rendering cadence ---------------------------------------------------
+    # How often, not how much: neither of these touches what is drawn.
+    _spec("max_fps", "renderer.max_fps", "int", 60,
+          "Frame-rate ceiling for the window. A ceiling, not a target: the "
+          "canvas draws on demand, so a still viewport costs nothing whatever "
+          "this says. Live -- changing it re-throttles an already-open "
+          "window rather than only the next one."),
+    _spec("nerd_tick", "nerd.tick_interval", "float", 0.1,
+          "How often nerd mode's frame-instrumentation readout re-publishes "
+          "to the chrome, in seconds. Too small and the readout starts "
+          "costing what it measures; too large and its line plots read as "
+          "choppy rather than continuous."),
+    _spec("nerd_idle_tick", "nerd.idle_tick_interval", "float", 0.25,
+          "How often a still viewport is redrawn just to keep the frame-rate "
+          "readout live, in seconds. Costs a whole frame each time -- unlike "
+          "nerd_tick, which only re-reads numbers -- so it is slower on "
+          "purpose. 0 switches it off: the rate then settles to zero on an "
+          "idle viewport and stays there, which is what to use while "
+          "measuring. Nothing is paid unless a readout is on screen."),
+
     # -- Per-representation colour overrides --------------------------------
     # PyMOL's rule, one line in each of its representations:
     # `c != cColorDefault ? c : ai->color`. `default` (or PyMOL's own -1) clears

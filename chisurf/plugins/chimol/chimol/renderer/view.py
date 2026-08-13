@@ -1683,7 +1683,10 @@ class MolView(WidgetBase):
             "touch", str(object_id), "shown" if visible else "hidden",
             label=f"{'show' if visible else 'hide'} {getattr(entry, 'name', object_id)}",
         )
-        self._update_view()
+        # Nothing about this object's geometry changed -- only whether it is
+        # drawn -- so this asks `_update_view` for the visibility-only path
+        # rather than the unconditional rebuild every other mutation needs.
+        self._update_view(visibility_only=True)
 
     def get_residue_positions(self, indices, *, object_id: str | None = None) -> np.ndarray:
         with self._activate_object(object_id):
@@ -3109,6 +3112,13 @@ class MolView(WidgetBase):
         self._objects: ObjectRegistry = ObjectRegistry()
         self._active_object_id: str | None = None
         self._object_counter: int = 0
+        #: Bumped by every *general* rebuild in :meth:`_update_view` -- never
+        #: by a visibility-only one. Each entry remembers which generation its
+        #: cached scene was built at (`_MolViewObjectEntry.built_generation`),
+        #: so a pure ``enable``/``disable`` can tell "still current" from
+        #: "something changed while this was disabled" with one integer
+        #: comparison, without tracking what changed.
+        self._scene_build_generation: int = 0
         # Groups hold only what is *not* derivable from their members: whether
         # the row is expanded. Membership lives on the member entry, so a group
         # cannot disagree with its objects about who belongs to it.
@@ -4141,6 +4151,20 @@ class MolView(WidgetBase):
         setter = getattr(renderer, "set_field_of_view", None)
         if callable(setter):
             setter(fov)
+
+    def set_max_fps(self, max_fps: float) -> None:
+        """Re-throttle the window's frame-rate ceiling without reopening it.
+
+        Delegates to :meth:`~.canvas_base.CanvasRenderer.set_max_fps`, which
+        is where the actual ``rendercanvas`` call lives -- see its docstring
+        for why this can be live rather than construction-only.
+        """
+        renderer = self._renderer
+        if renderer is None:
+            return
+        setter = getattr(renderer, "set_max_fps", None)
+        if callable(setter):
+            setter(max_fps)
 
     def _framing_radius(self, complete: bool = False) -> float:
         """Radius the camera should fit, over whichever coordinates we have.
@@ -5328,44 +5352,61 @@ class MolView(WidgetBase):
             return None
         return renderer if callable(getattr(renderer, "project_to_screen", None)) else None
 
-    def handle_key_event(self, ev) -> bool:
-        """Handle keyboard shortcuts for basic viewer controls.
+    def _close_window(self) -> None:
+        """Close the containing window, if there is one to close."""
+        w = self.window()
+        if w is not None:
+            try:
+                w.close()
+            except Exception:
+                pass
 
-        r - cartoon/ribbon mode
-        c - CA trace mode
-        b - atoms/ball mode
-        s - toggle sidechains on/off (atoms view)
-        q - close the containing window
+    def handle_key_event(self, ev) -> bool:
+        """Run whatever single-key shortcut ``ev`` is bound to.
+
+        The bindings are **not** written here. ``chimol.keybindings`` holds the
+        table of actions and what each one is for, and the key on each is a
+        display setting like any other (``keys.*``), so the same information
+        reaches the ``keys`` overlay and the settings panel without being
+        typed out three times. This method is only the half that knows how to
+        *perform* an action.
+
+        Returns
+        -------
+        bool
+            Whether the key was consumed.
         """
+        from ..keybindings import action_for_key  # noqa: PLC0415
+
         try:
-            ch = ev.text().lower()
+            ch = ev.text()
         except Exception:
             return False
 
-        if ch == "r":
-            self.set_representation("cartoon")
-            return True
-        if ch == "c":
-            self.set_representation("ca_trace")
-            return True
-        if ch == "b":
-            self.set_representation("atoms")
-            return True
-        if ch == "d":
-            self.toggle_dots()
-            return True
-        if ch == "s":
-            self.toggle_sidechains()
-            return True
-        if ch == "q":
-            w = self.window()
-            if w is not None:
-                try:
-                    w.close()
-                except Exception:
-                    pass
-            return True
-        return False
+        action = action_for_key(ch)
+        if action is None:
+            return False
+
+        # Kept beside the table rather than inside it: `keybindings` is
+        # deliberately free of any viewer, so it can be read by the overlay and
+        # the settings panel in hosts that have no `MolView` at all.
+        runners = {
+            "cartoon": lambda: self.set_representation("cartoon"),
+            "ca_trace": lambda: self.set_representation("ca_trace"),
+            "atoms": lambda: self.set_representation("atoms"),
+            "dots": self.toggle_dots,
+            "sidechains": self.toggle_sidechains,
+            "close": self._close_window,
+        }
+        runner = runners.get(action)
+        if runner is None:
+            # A bound action with nothing to run is a table that has grown a
+            # row this method has not caught up with -- say so rather than
+            # swallowing the key, or the shortcut looks broken from outside.
+            logger.warning("chimol: no handler for key action %r", action)
+            return False
+        runner()
+        return True
 
     # ------------------------------------------------------------------
     # Picking / mouse interaction
@@ -10477,7 +10518,7 @@ class MolView(WidgetBase):
             sel_cfg.get("color"),
         ) or None
 
-    def _update_view(self, fit_camera: bool = False) -> None:
+    def _update_view(self, fit_camera: bool = False, *, visibility_only: bool = False) -> None:
         """Rebuild the scene, leaving the camera where the user put it.
 
         A rebuild is what colouring, a representation change, a label, a bond
@@ -10507,12 +10548,36 @@ class MolView(WidgetBase):
         fit_camera : bool, optional
             Refit the camera distance to the scene radius afterwards. Only a
             load path or a camera command should ask for this.
+        visibility_only : bool, optional
+            Only an object's ``visible`` flag changed -- :meth:`set_object_visible`
+            is the one caller. Every representation, colour, edit and `set`
+            path still asks for the unconditional rebuild (the default), and
+            that is what makes this safe: a *general* rebuild bumps
+            :attr:`_scene_build_generation` and always rebuilds every visible
+            entry for real, so nothing this flag skips can go stale. Skipping
+            here means: for an entry whose cached scene was built at the
+            *current* generation, hand that list back instead of re-deriving
+            it -- the marching-cubes surface, the cartoon spline, the impostor
+            buffers, all of it, unchanged by a boolean. An entry with no
+            current-generation cache (never built, or a general rebuild
+            happened since -- including one that skipped it *because* it was
+            disabled) is built for real, same as always; the flag only ever
+            skips work it can prove is still correct.
         """
         if self._renderer is None:
             return
         if getattr(self, "_update_depth", 0) > 0:
             # Inside `suspend_updates`: the caller will ask once at the end.
             return
+
+        if not visibility_only:
+            # The one and only place this counter moves. Every entry rebuilt
+            # below is stamped with the new value, so "built at the current
+            # generation" means, transitively, "built by the most recent
+            # general rebuild" -- which is the only kind of rebuild that can
+            # happen for a reason other than this object's own visibility.
+            self._scene_build_generation += 1
+        generation = self._scene_build_generation
 
         self._occlusion_vertices_this_build = 0
         visible_entries = [
@@ -10543,7 +10608,19 @@ class MolView(WidgetBase):
 
         for entry in visible_entries:
             with self._activate_object(entry.object_id):
-                objects = self._build_scene_for_current_object(object_prefix=entry.object_id)
+                if (
+                    visibility_only
+                    and entry.built_generation == generation
+                    and entry.built_scene_objects is not None
+                ):
+                    # Only reachable when a general rebuild already built this
+                    # exact entry at this exact generation -- see the
+                    # docstring. Nothing to recompute; hand the list back.
+                    objects = entry.built_scene_objects
+                else:
+                    objects = self._build_scene_for_current_object(object_prefix=entry.object_id)
+                    entry.built_scene_objects = objects
+                    entry.built_generation = generation
                 if objects:
                     scene_objects.extend(objects)
                 center = (

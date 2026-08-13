@@ -255,6 +255,31 @@ class _MolViewObjectEntry:
     first time an object was deleted -- which is the failure this codebase keeps
     finding in its own colour, keyword and representation state.
     """
+    built_scene_objects: Optional[list] = field(default=None, repr=False, compare=False)
+    """The :class:`SceneObject` list this object last built, for
+    :meth:`~chimol.renderer.view.MolView._update_view`'s visibility-only path.
+
+    Rebuilding a cartoon, a surface mesh and every other representation is
+    real work -- a marching-cubes surface on 148L alone was measured in the
+    tens of milliseconds -- and none of it depends on whether the object is
+    *drawn*. Disabling one object used to pay that cost for *every visible
+    object in the scene*, because ``_update_view`` rebuilt everything on every
+    call with no way to tell "only a boolean changed" from "the geometry
+    moved". This is that memory: what got built, so a pure visibility flip can
+    hand the same list back rather than re-deriving it.
+    """
+    built_generation: int = field(default=-1, repr=False, compare=False)
+    """The :attr:`MolView._scene_build_generation` this entry was built at.
+
+    A full rebuild (the only kind that can happen for a reason *other* than
+    this object's own ``visible`` flag -- colouring, editing, a representation
+    change, `set`, all of it) bumps the generation and always rebuilds
+    unconditionally, so it can never read stale. The visibility-only path
+    trusts :attr:`built_scene_objects` exactly when this still matches the
+    current generation; anything older is rebuilt for real. An object that has
+    never been visible carries the default ``-1``, which matches no
+    generation and so is never mistaken for a cache hit.
+    """
 
 
 class _StateField:

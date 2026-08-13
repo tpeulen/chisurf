@@ -389,6 +389,43 @@ class BaseCmd:
         self._show_in_info_panel(text)
         return text
 
+    @command("keys", aliases=("keybindings",))
+    def keys(self) -> str:
+        """Show the single-key viewport shortcuts, in the info overlay.
+
+        The same overlay ``help`` uses, and for the same reason: this is a
+        table to read, not a line of feedback. Every row comes from
+        ``chimol.keybindings``, so it lists what the viewer will actually do
+        rather than what a docstring once said -- rebind a key in the settings
+        panel (or ``set keys.<action>, <key>``) and this reflects it.
+        """
+        from ..keybindings import bindings, conflicts  # noqa: PLC0415
+
+        rows = bindings()
+        width = max((len(one.action) for one in rows), default=0)
+        # Prose, not `_show_listing_in_info_panel`. A listing lays its entries
+        # out in columns and shows only their first element, which is right
+        # for the hundred-odd command names it was built for and wrong here:
+        # it dropped every description, and "what does this key do" is the
+        # entire question this overlay answers. Six rows also do not need the
+        # filter a listing brings. Caught by rendering it and looking.
+        lines = [
+            f"  {(one.key or '-'):>3}   {one.action.ljust(width)}   {one.label}"
+            for one in rows
+        ]
+        for key, actions in sorted(conflicts().items()):
+            lines.append(
+                f"  {key:>3}   {'(conflict)'.ljust(width)}   bound to "
+                + ", ".join(sorted(actions))
+                + " -- the first wins; change one in Settings"
+            )
+        lines.append("")
+        lines.append("  Rebind under Settings (keys.*), or: set keys.<action>, <key>")
+        lines.append("  An empty value unbinds.")
+        text = "Keyboard bindings:\n" + "-" * 20 + "\n" + "\n".join(lines)
+        self._show_in_info_panel(text)
+        return text
+
     @staticmethod
     def _columns(names, per_row: int = 3) -> list[str]:
         """Lay names out in even columns, so a long list stays readable."""

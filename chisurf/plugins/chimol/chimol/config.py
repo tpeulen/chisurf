@@ -710,6 +710,57 @@ def _load_display_config() -> dict:
             # model. A ceiling, not a target: drawing is on demand.
             "max_fps": 60,"backend": "wgpu"},
         "background": "k",
+        "nerd": {
+            # How often nerd mode's frame-instrumentation readout re-publishes
+            # to the chrome, in seconds -- see frame_stats.REPORT_INTERVAL for
+            # why this is a fixed tick rather than every frame. Below about
+            # 0.02 the readout starts costing close to what it measures
+            # (frame_stats' own module docstring); above about 1.0 the cmtk
+            # line plots read as a value that jumps rather than continuous
+            # motion.
+            "tick_interval": 0.1,
+            # How often an **idle** viewport is redrawn purely to keep the
+            # frame-rate readout live, in seconds. Deliberately slower than
+            # `tick_interval` above, and a separate knob, because the two cost
+            # completely different things: `tick_interval` only re-publishes
+            # numbers the renderer already had, while this forces a whole
+            # extra frame -- geometry and all -- out of a viewport that had
+            # nothing to redraw. On a large model that frame is not cheap, and
+            # an instrument that redraws the scene to report the rate is an
+            # instrument that changes the rate (frame_stats' own module
+            # docstring). Four times a second reads as live to a human eye at
+            # a fraction of the cost of the publish tick.
+            #
+            # **0 disables it**: the readout then settles to zero when the
+            # viewport goes still and stays there, which is the cheapest
+            # honest thing it can do -- and what to set while measuring.
+            #
+            # Costs nothing at all unless a readout is actually on screen
+            # (nerd mode, or the status band's rate); see
+            # `canvas_base.CanvasRenderer._readout_is_live`.
+            "idle_tick_interval": 0.25,
+        },
+        # Single-key viewport shortcuts, as `action -> key`. The action is the
+        # stable name and the key is the part that moves, so a rebind does not
+        # rewrite the entry's identity -- see `chimol/keybindings.py`, which
+        # owns the table of what each action *does* and is what the `keys`
+        # overlay prints. Editing these here (or in the settings panel, where
+        # they render as text fields like any other string setting) is what
+        # "adjust the keyboard bindings" means; an empty value unbinds.
+        #
+        # Spelled out rather than called from `keybindings`: this whole dict is
+        # `eval`d as a *literal* by `test_display_config_defaults`, which is
+        # what keeps it and the shipped JSON from drifting, and a function call
+        # inside it breaks that guard. `test_keybindings` holds the other half
+        # -- that this literal and `keybindings.ACTIONS` still agree.
+        "keys": {
+            "cartoon": "r",
+            "ca_trace": "c",
+            "atoms": "b",
+            "dots": "d",
+            "sidechains": "s",
+            "close": "q",
+        },
         "defaults": {
             "color_mode": "by_sequence",
         },

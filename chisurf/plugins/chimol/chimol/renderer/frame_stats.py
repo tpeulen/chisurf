@@ -27,7 +27,12 @@ The one measurement that *is* subtle: the readout is drawn as chrome, and the
 chrome is cached on a fingerprint of what it draws. A block of numbers that
 changes every frame therefore invalidates the chrome every frame -- which is
 how switching on a frame-rate counter can destroy the frame rate it reports.
-:data:`REPORT_INTERVAL` is why this is published a few times a second instead.
+:data:`REPORT_INTERVAL` is why this is published on a fixed tick instead of
+every frame -- ten times a second, which is fast enough that
+:mod:`chimol.cmtk`'s line plots read as continuous motion rather than
+a value that jumps by however many frames rendered since the last publish
+(at 60 fps, the old 0.5 s interval let the line jump by up to 30 samples in
+one visible step), and still nowhere near "every frame".
 """
 from __future__ import annotations
 
@@ -36,11 +41,86 @@ import platform
 import time
 from collections import deque
 
-__all__ = ["FrameStats", "REPORT_INTERVAL", "machine_info", "cpu_load"]
+__all__ = [
+    "FrameStats", "REPORT_INTERVAL", "MIN_REPORT_INTERVAL", "IDLE_TICK_INTERVAL",
+    "nerd_report_interval", "nerd_idle_tick_interval", "machine_info", "cpu_load",
+]
 
 #: How often the numbers are re-published to the chrome, in seconds. Not a
-#: cosmetic choice: see the module docstring.
-REPORT_INTERVAL = 0.5
+#: cosmetic choice: see the module docstring. The base tick the cmtk plots
+#: animate on. This is the module's own default, used when the display
+#: configuration has no opinion; the live value a running session actually
+#: uses -- editable from the settings panel or ``set nerd_tick, ...`` -- comes
+#: from :func:`nerd_report_interval`.
+REPORT_INTERVAL = 0.1
+
+#: Floor on the *live* interval, in seconds. Below this the instrument starts
+#: costing close to what it measures (see the module docstring), so a value
+#: typed too small in the settings panel or via ``set nerd_tick`` is clamped
+#: rather than honoured. 1/30 s matches the historical contract this module
+#: has always kept: publishing must stay slower than a frame at 30 fps.
+MIN_REPORT_INTERVAL = 1.0 / 30.0
+
+
+def nerd_report_interval() -> float:
+    """How often nerd mode re-publishes, right now.
+
+    Reads ``nerd.tick_interval`` from the live display configuration -- the
+    knob the settings panel and ``set nerd_tick, ...`` both write -- and falls
+    back to :data:`REPORT_INTERVAL` when the section, key or value is absent
+    or malformed.
+
+    Returns
+    -------
+    float
+        The configured interval, clamped to be no smaller than
+        :data:`MIN_REPORT_INTERVAL`.
+    """
+    from ..config import _DISPLAY_CONFIG  # noqa: PLC0415
+
+    section = _DISPLAY_CONFIG.get("nerd")
+    value = REPORT_INTERVAL
+    if isinstance(section, dict):
+        try:
+            value = float(section.get("tick_interval", REPORT_INTERVAL))
+        except (TypeError, ValueError):
+            value = REPORT_INTERVAL
+    return max(value, MIN_REPORT_INTERVAL)
+
+
+#: How often an idle viewport is redrawn just to keep the rate readout live.
+#: Slower than :data:`REPORT_INTERVAL` on purpose, and a different quantity:
+#: publishing re-reads numbers the renderer already had, while this forces a
+#: whole extra frame out of a viewport that had nothing to draw.
+IDLE_TICK_INTERVAL = 0.25
+
+
+def nerd_idle_tick_interval() -> float:
+    """How often to redraw a still viewport to keep the rate live, right now.
+
+    Reads ``nerd.idle_tick_interval`` from the live display configuration.
+
+    Returns
+    -------
+    float
+        The configured interval, or ``0.0`` to disable the tick entirely --
+        the readout then settles to zero and stays there, costing nothing,
+        which is what to use while measuring. Any other value is clamped to
+        :data:`MIN_REPORT_INTERVAL` so this cannot be turned into a
+        redraw-as-fast-as-possible loop by typing a small number.
+    """
+    from ..config import _DISPLAY_CONFIG  # noqa: PLC0415
+
+    section = _DISPLAY_CONFIG.get("nerd")
+    value = IDLE_TICK_INTERVAL
+    if isinstance(section, dict):
+        try:
+            value = float(section.get("idle_tick_interval", IDLE_TICK_INTERVAL))
+        except (TypeError, ValueError):
+            value = IDLE_TICK_INTERVAL
+    if value <= 0.0:
+        return 0.0
+    return max(value, MIN_REPORT_INTERVAL)
 
 #: Whether :func:`cpu_load` has taken its first ``psutil`` sample.
 _CPU_PRIMED = False

@@ -458,6 +458,9 @@ def _tour_entries() -> tuple[MenuEntry, ...]:
 HELP_MENU: tuple[MenuEntry, ...] = (
     MenuEntry("Commands", "help"),
     MenuEntry("Settings", "help_setting"),
+    MenuEntry("Keyboard bindings", "keys",
+              "The single-key viewport shortcuts, and what each one does. "
+              "Rebind them under Settings."),
     SEP,
     *_tour_entries(),
     SEP,

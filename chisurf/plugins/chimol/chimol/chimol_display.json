@@ -5,6 +5,18 @@
     "max_fps": 60
   },
   "background": "k",
+  "nerd": {
+    "tick_interval": 0.1,
+    "idle_tick_interval": 0.25
+  },
+  "keys": {
+    "cartoon": "r",
+    "ca_trace": "c",
+    "atoms": "b",
+    "dots": "d",
+    "sidechains": "s",
+    "close": "q"
+  },
   "defaults": {
     "color_mode": "by_sequence",
     "auto_rename_duplicate_objects": true
