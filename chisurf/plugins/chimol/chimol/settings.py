@@ -516,6 +516,19 @@ def iter_settings() -> Iterator[SettingSpec]:
         yield SETTINGS[name]
 
 
+#: Names people type that are not prefixes of the setting they mean.
+#:
+#: `resolve` already accepts any unambiguous **prefix**, which covers most
+#: abbreviations. It cannot cover a different word: ``fov`` is what the other
+#: two viewers call ``field_of_view`` and shares no prefix with it, so
+#: ``set fov, 60`` answered "Unknown setting: fov" while the value was sitting
+#: there under a longer name. Kept small and explicit -- an alias table that
+#: grows by guesswork becomes a second vocabulary to learn.
+ALIASES: dict[str, str] = {
+    "fov": "field_of_view",
+}
+
+
 def resolve(name: str) -> SettingSpec:
     """Resolve ``name`` to a :class:`SettingSpec`.
 
@@ -544,7 +557,7 @@ def resolve(name: str) -> SettingSpec:
     if not key:
         raise UnknownSettingError("no setting name given")
 
-    spec = SETTINGS.get(key)
+    spec = SETTINGS.get(ALIASES.get(key, key))
     if spec is not None:
         return spec
 

@@ -27,10 +27,20 @@ def test_the_bar_keeps_pymols_names_and_order():
 
     The extras are declared, not inferred: a menu chimol invents (Demo,
     Tools) must be listed in EXTRA_MENUS or this fails, so the bar cannot
-    quietly drift away from the PyMOL layout users navigate by.
+    quietly drift away from the PyMOL layout users navigate by. The same goes
+    for one that leaves the bar: it is either OMITTED (chimol cannot fill it)
+    or FOLDED (it is complete, one level down), and both are declared.
     """
+    from chisurf.plugins.chimol.chimol.app.menu_bar import FOLDED_MENUS
+
     ours = [title for title, _ in MENU_BAR if title not in EXTRA_MENUS]
-    assert ours == [t for t in _PYMOL_BAR if t not in OMITTED_MENUS]
+    assert ours == [
+        t for t in _PYMOL_BAR
+        if t not in OMITTED_MENUS and t not in FOLDED_MENUS
+    ]
+    assert not (set(FOLDED_MENUS) & set(OMITTED_MENUS)), (
+        "a menu is either folded or omitted, not both"
+    )
     on_bar = {title for title, _ in MENU_BAR}
     assert EXTRA_MENUS <= on_bar, "an extra menu is declared but not built"
     assert not (EXTRA_MENUS & set(_PYMOL_BAR)), (

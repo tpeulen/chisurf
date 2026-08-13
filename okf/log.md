@@ -35780,3 +35780,10 @@
   real commands, having existed only as methods; and the display-config prompt
   tests were failing because their fixture patched a seam the code stopped using,
   so they read the developer's own configuration.
+- 2026-08-13 — chimol: the menu bar went from ten menus to eight — Build and
+  Wizard are submenus of Tools, declared in FOLDED_MENUS with a test that the
+  fold lost no command, and the guided tours moved from Demo to Help, where a
+  thing that waits for you to press real controls belongs. And `fov`: the lens
+  worked, its name did not — only `set field_of_view` was accepted, so `fov 60`
+  and `set fov, 60` both failed and read as a missing feature. There is now an
+  alias table and a `fov` command.

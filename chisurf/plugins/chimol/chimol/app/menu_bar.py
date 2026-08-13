@@ -264,22 +264,9 @@ def _demo_menu() -> tuple[MenuEntry, ...]:
         MenuEntry(title, f"demo {key}", note) for key, title, note in DEMOS
     ]
 
-    # The guided tours, above the demos' own housekeeping. A demo runs itself
-    # and shows a finished result; a tour points at the controls and waits for
-    # the user to press them, which is the half a finished result cannot teach.
-    # Generated from the shipped files for the same reason the demos are: one
-    # added and not listed here would be unreachable.
-    from ..tour import available_tours
-
-    tours = available_tours()
-    if tours:
-        entries.append(SEP)
-        for key, title in tours:
-            entries.append(
-                MenuEntry(f"Tour: {title}", f"tour {key}",
-                          "Step by step, pointing at the real controls.")
-            )
-
+    # The tours are **not** here. They live under Help: a demo runs itself and
+    # shows a finished result, and a tour points at the controls and waits for
+    # you to press them, which is the same kind of thing as the command list.
     entries.append(SEP)
     entries.append(
         MenuEntry("List them at the prompt", "demo",
@@ -351,7 +338,18 @@ WIZARD_MENU: tuple[MenuEntry, ...] = (
 #: tools have no natural PyMOL home, and burying Hide Dust under Display would
 #: hide the tool the way the dust hides the map. Every entry is a command, so
 #: everything here is reproducible at the prompt.
+#:
+#: **Build and Wizard were folded in here.** Both were top-level menus of two
+#: and four entries, and a bar of ten menus costs every one of them: the wider
+#: the bar, the further from "what can this do" any single menu is. They are
+#: tools -- editing a structure and stepping a rotamer are the same kind of
+#: act as filtering a map -- so they are submenus, in the same shape as Map
+#: and Measure. Nothing was dropped and every entry keeps its command, which
+#: is what makes the move safe to make: a menu here is a way to find a
+#: command, never the only way to reach one.
 TOOLS_MENU: tuple[MenuEntry, ...] = (
+    MenuEntry("Build", None, "", children=BUILD_MENU),
+    MenuEntry("Wizard", None, "", children=WIZARD_MENU),
     MenuEntry("Map", None, "", children=(
         MenuEntry("Density Controls", "density_panel toggle",
                   "Contour levels, style, quality and colours, in a window "
@@ -400,9 +398,30 @@ TOOLS_MENU: tuple[MenuEntry, ...] = (
 )
 
 
+def _tour_entries() -> tuple[MenuEntry, ...]:
+    """The guided tours, for the Help menu.
+
+    They were under Demo, beside the scripts, and that is the wrong shelf. A
+    demo runs itself and shows a finished result; a tour points at the real
+    controls and waits for the user to press them, which is *help* -- it is
+    what someone opens for the same reason they open the command list. Under
+    Demo it read as another thing to watch.
+    """
+    from ..tour import available_tours
+
+    return tuple(
+        MenuEntry(f"Tour: {title}", f"tour {key}",
+                  "Step by step, pointing at the real controls and waiting "
+                  "for you to press them.")
+        for key, title in available_tours()
+    )
+
+
 HELP_MENU: tuple[MenuEntry, ...] = (
     MenuEntry("Commands", "help"),
     MenuEntry("Settings", "help_setting"),
+    SEP,
+    *_tour_entries(),
     SEP,
     # The way out of a layout that has gone wrong. It belongs in a menu rather
     # than only as a command because the state it repairs -- a window dragged
@@ -420,17 +439,31 @@ HELP_MENU: tuple[MenuEntry, ...] = (
 #: ordering test can hold PyMOL's menus to PyMOL's order while allowing these.
 EXTRA_MENUS: frozenset[str] = frozenset({"Demo", "Tools", "Preset"})
 
+#: PyMOL menus chimol keeps but does not give a place on the bar, and where
+#: they went. Different from :data:`OMITTED_MENUS`, which is what chimol cannot
+#: fill: everything here is still built, still complete, and reachable one
+#: level down.
+#:
+#: Both were small -- two entries and four -- and a bar of ten menus costs
+#: every menu on it. They are tools, in the sense Tools already collects, so
+#: they are submenus of it. A test asserts that no command was lost in the
+#: fold, which is what makes the move safe: a menu is a way to *find* a
+#: command, never the only way to reach one.
+FOLDED_MENUS: dict[str, str] = {
+    "Build": "a submenu of Tools",
+    "Wizard": "a submenu of Tools",
+}
+
 #: The bar, in PyMOL's order, minus the menus listed in OMITTED_MENUS, plus
 #: the chimol-specific EXTRA_MENUS slotted where they read best.
 MENU_BAR: tuple[tuple[str, tuple[MenuEntry, ...]], ...] = (
     ("File", FILE_MENU),
     ("Edit", EDIT_MENU),
-    ("Build", BUILD_MENU),
     ("Display", DISPLAY_MENU),
     ("Setting", SETTING_MENU),
     ("Preset", PRESET_MENU),
     ("Demo", DEMO_MENU),
-    ("Wizard", WIZARD_MENU),
+    # Build and Wizard are submenus of Tools, and the tours are under Help.
     ("Tools", TOOLS_MENU),
     ("Help", HELP_MENU),
 )

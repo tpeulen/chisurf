@@ -107,6 +107,27 @@ what it blocks:
   read through the core reader had it. Invisible until something asks --
   `spectrum b` painted one flat colour and putty drew a constant tube -- and
   worst for a predicted model, where that column is the confidence.
+* **the bar is eight menus, and `fov` answers to its own name (2026-08-13):**
+  Build (two entries) and Wizard (four) are submenus of **Tools** -- a bar of
+  ten menus costs every menu on it, and editing a structure or stepping a
+  rotamer is the same kind of act as filtering a map. The guided tours moved
+  the other way, from Demo to **Help**: a demo runs itself and shows a
+  finished result, a tour points at real controls and waits, which is what
+  someone opens the command list for. `FOLDED_MENUS` declares the move beside
+  `OMITTED_MENUS`, and the difference matters -- omitted is what chimol cannot
+  fill, folded is complete and one level down -- with a test that no command
+  was lost in the fold.
+  **`fov` was reported as not working and the lens was fine; its name was
+  not.** `set field_of_view, 60` was the only spelling that did anything:
+  `fov 60` answered "not implemented" and `set fov, 60` "unknown setting",
+  which between them read as a missing feature. Two causes, both fixed --
+  `settings.resolve` accepts any unambiguous *prefix* and `fov` is not a
+  prefix of `field_of_view` but a different word (the one the other two
+  viewers use), so there is now a small explicit `ALIASES` table; and there
+  was no `fov` command, so the first spelling anyone reaches for never got as
+  far as a setting. Pinned with the property underneath: changing the angle
+  must change the *picture*, since a stored number nothing reads would pass
+  every other test.
 * **the reference viewer's presets, declared in JSON (2026-08-13):** ten,
   under their own **Preset** menu and `preset_cx` command, kept separate from
   PyMOL's fifteen because they answer a different question -- PyMOL's choose

@@ -250,13 +250,20 @@ def test_every_target_is_a_control_the_chrome_knows(name):
             )
 
 
-def test_the_tours_are_on_the_demo_menu():
-    """Shipped and unreachable is the failure the generated menu exists to avoid."""
-    from chisurf.plugins.chimol.chimol.app.menu_bar import DEMO_MENU
+def test_the_tours_are_on_the_help_menu():
+    """Shipped and unreachable is the failure the generated menu exists to avoid.
 
-    commands = [str(getattr(entry, "command", "") or "") for entry in DEMO_MENU]
+    Under **Help**, not Demo. A demo runs itself and shows a finished result; a
+    tour points at real controls and waits for you to press them, which is what
+    someone opens the command list for.
+    """
+    from chisurf.plugins.chimol.chimol.app.menu_bar import DEMO_MENU, HELP_MENU
+
+    commands = [str(getattr(entry, "command", "") or "") for entry in HELP_MENU]
+    demo = [str(getattr(entry, "command", "") or "") for entry in DEMO_MENU]
     for name in TOURS:
-        assert f"tour {name}" in commands, f"{name} is not on the Demo menu"
+        assert f"tour {name}" in commands, f"{name} is not on the Help menu"
+        assert f"tour {name}" not in demo, f"{name} is still on the Demo menu"
 
 
 @pytest.mark.parametrize("name", TOURS)

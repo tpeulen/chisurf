@@ -81,11 +81,11 @@ def test_sliding_along_the_bar_switches_menus(gui):
     gui.mouse_press(first.x + first.w / 2, first.h / 2)
     opened = gui._menus[-1].title
 
-    second = _title(gui, "Wizard")
+    second = _title(gui, "Tools")
     gui.mouse_move(second.x + second.w / 2, second.h / 2)
     assert len(gui._menus) == 1, "sliding stacked a second menu"
     assert gui._menus[-1].title != opened
-    assert gui._menus[-1].title.startswith("Wizard")
+    assert gui._menus[-1].title.startswith("Tools")
 
 
 def test_the_bar_takes_a_band_off_the_top_of_the_scene(gui):

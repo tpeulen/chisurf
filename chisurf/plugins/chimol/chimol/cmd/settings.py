@@ -158,6 +158,47 @@ class SettingsMixin(BaseCmd):
         gui.layout(gui._width, gui._height)
         viewer._update_view()
 
+    @command("fov", aliases=("field_of_view",))
+    def fov(self, angle: str = "") -> None:
+        """Read or set the vertical field of view, in degrees.
+
+        The lens, not the zoom: the camera moves to keep the molecule the same
+        size on screen, so a wider angle exaggerates perspective and a narrower
+        one flattens it towards an orthographic view.
+
+        A command as well as a setting because ``fov`` is what it is called
+        everywhere else, and ``set field_of_view, 60`` is the only spelling
+        that worked -- ``fov 60`` was "not implemented" and ``set fov, 60``
+        "unknown setting", which between them read as the feature being
+        missing.
+
+        Parameters
+        ----------
+        angle : str, optional
+            Degrees. Omitted, the current value is reported.
+        """
+        _window, viewer = self._require_window_and_viewer()
+        if viewer is None:
+            return
+        text = str(angle).strip()
+        if not text:
+            self._emit_message(
+                f"field_of_view = {_settings.get_setting('field_of_view'):g} deg"
+            )
+            return
+        try:
+            value = float(text)
+        except ValueError:
+            self._emit_error(f"fov: '{angle}' is not an angle in degrees")
+            return
+        if not 1.0 <= value <= 175.0:
+            self._emit_error(
+                f"fov: {value:g} is outside 1-175 degrees; a lens outside that "
+                "shows nothing"
+            )
+            return
+        self.do(f"set field_of_view, {value:g}")
+
     @command("form")
     def form(self, path: str = "", title: str = "") -> None:
         """Open a ChiSurf ``view.json`` as a painted form in the viewport.
