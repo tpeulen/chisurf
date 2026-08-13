@@ -308,6 +308,22 @@ class MolViewPluginWindow(ChisurfDockTool):
         # The Qt volume/map dock is gone: density controls live in the
         # viewport (`renderer/density_window.py`). The pure-Python model remains.
         self.volume_panel = VolumeViewModel(self.viewer)
+
+        # The object list is a view of the viewer's registry, and this window
+        # used to keep it in step by calling `sync_internal_gui` from four
+        # places it happened to remember -- so every command that creates an
+        # object without loading a file (`load_map`, `molmap`, `create`,
+        # `delete`) left the list stale. It consumes the registry's revision
+        # now, like the other two hosts; see
+        # `chimol.host.app.consume_object_changes`.
+        try:
+            from ..host.app import consume_object_changes
+
+            consume_object_changes(_cmd, self.viewer, self.sync_internal_gui)
+        except Exception:  # noqa: BLE001 - a stale panel beats a dead window
+            logging.getLogger(__name__).debug(
+                "could not subscribe to object changes", exc_info=True
+            )
         self.rmf_panel = RmfPanel(self, self.viewer)
         self.sequence = SequenceDock(
             self,

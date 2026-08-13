@@ -139,7 +139,7 @@ class MeasurementMixin(BaseCmd):
 
         cur = dict(viewer._measurements)
         cur[name] = mdata
-        viewer._measurements = cur
+        viewer.measurements = cur
         viewer._update_view()
 
     # ------------------------------------------------------------------ #
@@ -246,7 +246,7 @@ class MeasurementMixin(BaseCmd):
             else:
                 entry["visible"] = not bool(entry.get("visible", True))
             current[wanted] = entry
-        viewer._measurements = current
+        viewer.measurements = current
         viewer._update_view()
 
     @command("distance", aliases=("dist",))
@@ -734,7 +734,7 @@ class MeasurementMixin(BaseCmd):
         cur = dict(viewer._measurements)
         if positions.shape[0] == 0:
             if cur.pop(name, None) is not None:
-                viewer._measurements = cur
+                viewer.measurements = cur
                 viewer._update_view()
             if not quiet:
                 self._emit_message(f"distance {name}: {summary}")
@@ -748,7 +748,7 @@ class MeasurementMixin(BaseCmd):
             "labels": list(labels) if label else [],
             "color": list(colour),
         }
-        viewer._measurements = cur
+        viewer.measurements = cur
         viewer._update_view()
         if not quiet:
             self._emit_message(f"distance {name}: {summary}")

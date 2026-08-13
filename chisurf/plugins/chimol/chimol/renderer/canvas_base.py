@@ -1647,7 +1647,7 @@ class CanvasRenderer(CameraState, Renderer):
         bool
             Whether the key was consumed.
         """
-        from ..host.events import KeyEvent
+        from ..host.events import CONTROL_MODIFIER, SHIFT_MODIFIER, KeyEvent
 
         gui = self._internal_gui
         if gui is not None:
@@ -1657,6 +1657,17 @@ class CanvasRenderer(CameraState, Renderer):
                     return True
             except Exception:  # pragma: no cover - a chrome that refuses the key
                 pass
+
+        # Ctrl+Z and Ctrl+Shift+Z, *after* the chrome has had the key: while the
+        # prompt has focus they are its own (a command being typed is text, and
+        # taking Z out of it would be worse than having no shortcut at all).
+        letter = str(text or "").lower()
+        if letter == "z" and (int(modifiers) & CONTROL_MODIFIER):
+            run = getattr(gui, "_run_command", None) if gui is not None else None
+            if callable(run):
+                run("redo" if int(modifiers) & SHIFT_MODIFIER else "undo")
+                self.update()
+                return True
 
         handler = getattr(self._controller, "handle_key_event", None)
         if callable(handler):

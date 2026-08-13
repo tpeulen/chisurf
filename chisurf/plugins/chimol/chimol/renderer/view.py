@@ -38,6 +38,7 @@ from ..colors import (
 )
 from ..config import _DISPLAY_CONFIG, register_update_listener, unregister_update_listener
 from ..io.atoms import bead_mask
+from .object_registry import ObjectRegistry
 from ..io.structure import parse_pdb_secondary_structure
 from ..geometry import (
     bond_line_segments,
@@ -1594,6 +1595,15 @@ class MolView(WidgetBase):
         if entry is None:
             return
         entry.visible = bool(visible)
+        # Visibility is a property of the *entry*, so the mapping never sees
+        # the change; the registry has to be told, and told *what* changed --
+        # a history of "something happened" is a history nobody can replay.
+        # Named, not numbered: `touch obj3` in the action list tells a reader
+        # nothing, and the id is not what the object list shows them.
+        self._objects.touch(
+            "touch", str(object_id), "shown" if visible else "hidden",
+            label=f"{'show' if visible else 'hide'} {getattr(entry, 'name', object_id)}",
+        )
         self._update_view()
 
     def get_residue_positions(self, indices, *, object_id: str | None = None) -> np.ndarray:
@@ -2171,7 +2181,7 @@ class MolView(WidgetBase):
         # an index into the remaining ones.
         before = [oid for oid in current[:anchor] if oid not in wanted]
         new_order = before + wanted + rest[len(before):]
-        self._objects = OrderedDict((oid, self._objects[oid]) for oid in new_order)
+        self._objects.reorder(new_order)
 
     def move_objects_to_edge(self, object_ids: list[str], *, top: bool) -> None:
         """Move the named objects to the top or bottom of the panel."""
@@ -2180,7 +2190,7 @@ class MolView(WidgetBase):
             return
         rest = [oid for oid in self._objects if oid not in wanted]
         new_order = wanted + rest if top else rest + wanted
-        self._objects = OrderedDict((oid, self._objects[oid]) for oid in new_order)
+        self._objects.reorder(new_order)
 
     def copy_object(self, object_id: str, *, name: str | None = None) -> str | None:
         """Create a deep copy of an existing loaded object."""
@@ -3010,7 +3020,14 @@ class MolView(WidgetBase):
     ) -> None:
         super().__init__(parent)
 
-        self._objects: OrderedDict[str, _MolViewObjectEntry] = OrderedDict()
+        #: **The** object list. Everything on screen is a view of it -- the
+        #: object panel, the sequence strip, the density controls, the
+        #: hierarchy, the Qt window's list, the browser's -- and it is an
+        #: `ObjectRegistry` rather than a dict so that it counts its own
+        #: changes. Views compare `objects_revision()` and re-read; nothing is
+        #: dispatched to them. See `renderer/object_registry.py` for why pull
+        #: rather than push.
+        self._objects: ObjectRegistry = ObjectRegistry()
         self._active_object_id: str | None = None
         self._object_counter: int = 0
         # Groups hold only what is *not* derivable from their members: whether
@@ -5905,6 +5922,100 @@ class MolView(WidgetBase):
         with self._activate_object(object_id):
             chains = _copy_array(getattr(self, "_residue_chain_ids", None))
         return chains
+
+    @property
+    def measurements(self) -> dict:
+        """The named measurements, which the object list shows as rows.
+
+        A property with a setter because this was a plain attribute that the
+        *command layer* rebound from outside -- ``viewer._measurements = cur``
+        in four places -- so nothing could notice a measurement appearing or
+        going. That is the same defect the object registry was built to end,
+        one list along: a measurement **is** an object in PyMOL's sense, with a
+        name, a row and an on/off switch.
+
+        Assigning bumps the object list's revision, because the panel draws
+        both and a consumer should have one thing to watch, not two.
+        """
+        return self._measurements
+
+    @measurements.setter
+    def measurements(self, value: dict) -> None:
+        self._measurements = dict(value or {})
+        try:
+            self._objects.touch("touch", "", "measurements",
+                                label="measurements changed")
+        except AttributeError:  # pragma: no cover - a viewer built from a dict
+            pass
+
+    def objects_revision(self) -> int:
+        """How many times the object list has changed.
+
+        The signal every view of the list reads: the object panel, the
+        sequence strip, the density controls, the hierarchy. Compare it against
+        the last value acted on and re-read only when they differ -- rebuilding
+        a panel per frame is what this exists to avoid, and polling the list
+        itself means building a comparable copy of it per frame instead.
+
+        Bumped by an addition, a removal, a reorder, a rename and a visibility
+        change; see :mod:`~chimol.renderer.object_registry`.
+        """
+        try:
+            return int(self._objects.revision)
+        except AttributeError:  # pragma: no cover - a viewer built from a dict
+            return 0
+
+    def undo_objects(self):
+        """Take back the last change to the object *list*, and say what it was.
+
+        Deliberately separate from the coordinate ring in
+        :mod:`~chimol.renderer.undo`, which is PyMOL's ``undo`` and walks
+        snapshots of an object's *atoms*. "Put that object back" and "put those
+        atoms back" are not the same act, and answering both from one stack
+        would mean guessing which the user meant.
+
+        Returns
+        -------
+        Change or None
+            ``None`` when there is nothing to undo.
+        """
+        change = self._objects.undo() if hasattr(self._objects, "undo") else None
+        if change is not None:
+            self._update_view()
+        return change
+
+    def redo_objects(self):
+        """Re-apply the last undone change to the object list."""
+        change = self._objects.redo() if hasattr(self._objects, "redo") else None
+        if change is not None:
+            self._update_view()
+        return change
+
+    def object_history(self) -> tuple:
+        """Every remembered change to the object list, oldest first."""
+        try:
+            return self._objects.history()
+        except AttributeError:  # pragma: no cover - a viewer built from a dict
+            return ()
+
+    def object_changes_since(self, revision: int) -> tuple:
+        """What happened to the object list after *revision*.
+
+        The richer half of :meth:`objects_revision`, for a consumer that would
+        rather update two rows than rebuild forty -- and the seam anything
+        wanting a *history* of the scene hangs off: an undo stack, a provenance
+        record, a log in the debug overlay. Every mutation of the list passes
+        through one place, so there is one place recording them.
+
+        A consumer that has fallen further behind than the ring remembers can
+        tell: compare its own revision against
+        :meth:`~chimol.renderer.object_registry.ObjectRegistry.forgot_before`,
+        and rebuild rather than replaying a history with holes in it.
+        """
+        try:
+            return self._objects.changes_since(int(revision))
+        except AttributeError:  # pragma: no cover - a viewer built from a dict
+            return ()
 
     def field_revision(self, name: str, object_id: str | None = None) -> int:
         """How many times a state field has been assigned, for *object_id*.

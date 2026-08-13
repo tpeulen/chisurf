@@ -73,6 +73,9 @@ FILE_MENU: tuple[MenuEntry, ...] = (
 
 
 EDIT_MENU: tuple[MenuEntry, ...] = (
+    MenuEntry("History…", "history_panel toggle",
+              "What has changed in this scene, and what ctrl+z takes back next."),
+    SEP,
     MenuEntry("Undo", "undo",
               "Coordinate undo, PyMOL's scope: sixteen snapshots per object; "
               "colours, representations and deletions are outside it."),
@@ -415,6 +418,7 @@ TOOLS_MENU: tuple[MenuEntry, ...] = (
         MenuEntry("Mouse Settings", "mouse_panel toggle"),
         MenuEntry("Settings", "settings_panel toggle"),
         MenuEntry("System Info", "info_panel toggle"),
+        MenuEntry("History", "history_panel toggle"),
     )),
 )
 

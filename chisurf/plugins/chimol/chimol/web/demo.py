@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import pathlib
 
-from ..host.app import ViewerHost, sync_panel
+from ..host.app import ViewerHost, consume_object_changes, sync_panel
 
 __all__ = ["BrowserHost", "Viewer", "demo_pdb_path"]
 
@@ -166,6 +166,11 @@ class Viewer:
         self.host = BrowserHost(self.view)
         self.cmd = Cmd(self.host)
         self.host.on_objects_changed = self._sync_panel
+        # And every *other* route to a new object -- `load_map`, `molmap`,
+        # `create`, `delete` -- which the host's own callback never saw. The
+        # browser consumes the object list's revision, exactly as the two
+        # desktop hosts do; see `chimol.host.app.consume_object_changes`.
+        consume_object_changes(self.cmd, self.view, self._sync_panel)
 
         self.gui = InternalGui()
         self.gui.visible = True

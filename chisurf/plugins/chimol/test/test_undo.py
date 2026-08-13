@@ -223,20 +223,40 @@ def test_redo_reapplies_it(session):
     assert _x(view) == pytest.approx(moved)
 
 
-def test_undo_with_no_history_is_reported(session):
-    cmd, _, _, errors = session
+def test_an_empty_coordinate_ring_falls_through_to_the_object_list(session):
+    """`undo` walks two stacks, and an empty ring is not an error.
+
+    The coordinate ring is asked first -- it is the finer-grained of the two,
+    and what a user who just dragged something means. With nothing on it the
+    **object list** is undone instead, which is why an exhausted ring is no
+    longer reported at all: it is what "nothing has been dragged" looks like,
+    and the answer the user gets is about the object that goes away.
+    """
+    cmd, _, messages, errors = session
     cmd.do("undo")
-    assert errors and "nothing to undo" in errors[-1]
+    assert not errors, errors
+    assert messages and "148l" in messages[-1], messages[-1:]
+
+
+def test_nothing_to_undo_is_said_once_both_stacks_are_empty(session):
+    """Said out loud, and not as a failure -- it is an ordinary answer."""
+    cmd, _, messages, errors = session
+    for _ in range(6):          # more than either stack holds
+        cmd.do("undo")
+    assert not errors, errors
+    assert messages and "nothing to undo" in messages[-1]
 
 
 def test_redo_with_no_history_is_reported(session):
-    cmd, _, _, errors = session
+    """Same for redo; see the note above."""
+    cmd, _, messages, errors = session
     cmd.do("redo")
-    assert errors and "nothing to redo" in errors[-1]
+    assert not errors, errors
+    assert messages and "nothing to redo" in messages[-1]
 
 
 def test_several_translations_undo_one_at_a_time(session):
-    cmd, view, _, errors = session
+    cmd, view, messages, errors = session
     start = _x(view)
     for _ in range(3):
         cmd.do("translate [10, 0, 0]")
@@ -247,9 +267,14 @@ def test_several_translations_undo_one_at_a_time(session):
         assert errors == []
     assert _x(view) == pytest.approx(start)
 
+    # A fourth `undo` does *not* report an exhausted ring any more: it moves on
+    # to the object list, and takes back the load itself. That the two stacks
+    # are walked in that order is the contract; see
+    # `test_an_empty_coordinate_ring_falls_through_to_the_object_list`.
     errors.clear()
     cmd.do("undo")
-    assert errors and "nothing to undo" in errors[-1]
+    assert not errors, errors
+    assert messages and "148l" in messages[-1], messages[-1:]
 
 
 def test_push_undo_stores_a_snapshot(session):

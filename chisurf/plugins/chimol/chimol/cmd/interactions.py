@@ -153,7 +153,7 @@ class InteractionMixin:
                 "labels": [],
                 "color": list(self._colour_rgba(colour)),
             }
-        viewer._measurements = measurements
+        viewer.measurements = measurements
         viewer._update_view()
 
         self._emit_message(
@@ -812,7 +812,7 @@ class InteractionMixin:
             key: value for key, value in viewer._measurements.items()
             if key not in (self.BUMP_OBJECT, f"{self.BUMP_OBJECT}_ok")
         }
-        viewer._measurements = measurements
+        viewer.measurements = measurements
         if not state.bump_check or state.site is None:
             viewer._update_view()
             return
@@ -904,7 +904,7 @@ class InteractionMixin:
         self._wizard_delete_preview(viewer, state)
         for group in (self.BUMP_OBJECT, "clashes"):
             self._clear_measurement_group(viewer, group)
-        viewer._measurements = {
+        viewer.measurements = {
             k: v for k, v in viewer._measurements.items()
             if k not in (
                 "clashes", "clashes_ok", self.BUMP_OBJECT, f"{self.BUMP_OBJECT}_ok",
@@ -1168,7 +1168,7 @@ class InteractionMixin:
             key: value for key, value in viewer._measurements.items()
             if key not in set(doomed)
         }
-        viewer._measurements = remaining
+        viewer.measurements = remaining
         viewer._update_view()
         self._wizard_refresh(viewer, state)
         self._emit_message(f"measurement: deleted {len(doomed)}")
@@ -1272,7 +1272,7 @@ class InteractionMixin:
                 "labels": [],
                 "color": [1.0, 0.2, 0.2, 1.0],
             }
-        viewer._measurements = measurements
+        viewer.measurements = measurements
         viewer._update_view()
 
     @staticmethod
@@ -1299,7 +1299,7 @@ class InteractionMixin:
             key: value for key, value in viewer._measurements.items()
             if not (key.startswith(f"{prefix}_") and key[len(prefix) + 1:].isdigit())
         }
-        viewer._measurements = keep
+        viewer.measurements = keep
 
     def _colour_rgba(self, colour: str) -> tuple[float, float, float, float]:
         """Resolve a colour name through the shared reader."""

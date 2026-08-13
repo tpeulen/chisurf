@@ -918,20 +918,42 @@ class RenderingMixin(BaseCmd):
 
     @command("undo")
     def undo(self) -> None:
-        """Restore the previous coordinates of an object (PyMOL ``undo``).
+        """Take back the last change -- coordinates, or the object list.
 
-        Narrower than the word suggests, and deliberately so: PyMOL's ``undo``
-        walks a ring of *coordinate* snapshots per object. It does not undo a
-        colour, a representation, a deletion or a load. ``translate`` and
-        ``rotate`` push a snapshot before they move anything, so those are what
-        there is to undo.
+        Two stacks, tried in that order, and the order is the whole design.
+        PyMOL's ``undo`` walks a ring of *coordinate* snapshots per object:
+        ``translate`` and ``rotate`` push one before they move anything. That
+        is asked first because it is the finer-grained of the two and the one a
+        user who just dragged something means.
+
+        With nothing on that ring, the **object list** is undone instead --
+        a deletion comes back where it was, a load goes away again. Keeping
+        them apart rather than interleaving them is deliberate: "put those
+        atoms back" and "put that object back" are different acts, and one
+        stack answering both would have to guess which was meant.
         """
-        self._step_undo(-1, "undo")
+        if self._step_undo(-1, "undo"):
+            return
+        self._undo_object_list("undo")
 
     @command("redo")
     def redo(self) -> None:
-        """Reapply a coordinate change that ``undo`` reverted (PyMOL ``redo``)."""
-        self._step_undo(1, "redo")
+        """Re-apply what ``undo`` took back, in the same order."""
+        if self._step_undo(1, "redo"):
+            return
+        self._undo_object_list("redo")
+
+    def _undo_object_list(self, direction: str) -> None:
+        """Undo or redo one change to the object list, reporting what moved."""
+        _window, viewer = self._require_window_and_viewer()
+        if viewer is None:
+            return
+        method = getattr(viewer, "undo_objects" if direction == "undo" else "redo_objects", None)
+        change = method() if callable(method) else None
+        if change is None:
+            self._emit_message(f"{direction}: nothing to {direction}")
+            return
+        self._emit_message(f"{direction}: {change.label}")
 
     @command("push_undo")
     def push_undo(self, sel: Selection = "") -> None:
@@ -954,32 +976,36 @@ class RenderingMixin(BaseCmd):
             f"push_undo: {viewer.undo_depth(object_id=object_id)} snapshots stored"
         )
 
-    def _step_undo(self, direction: int, label: str) -> None:
-        """Walk the undo ring one step, reporting why when nothing happens."""
+    def _step_undo(self, direction: int, label: str) -> bool:
+        """Walk the coordinate ring one step. Returns whether it did anything.
+
+        The return value is what lets the caller fall through to the object
+        list: an exhausted ring is *ordinary* -- it is what "nothing has been
+        dragged" looks like -- so it is no longer reported as an error. The two
+        outcomes that are genuinely wrong still are.
+        """
         _, viewer = self._require_window_and_viewer()
         if viewer is None:
-            return
+            return True
         if not hasattr(viewer, "undo"):
-            self._emit_error(f"{label}: this viewer keeps no coordinate history")
-            return
+            return False
 
         object_id = self._resolve_object_id(viewer, None)
         outcome = viewer.undo(direction=direction, object_id=object_id)
         if outcome == "restored":
             self._emit_message(f"{label}: coordinates restored")
-            return
+            return True
 
-        # The ways this fails mean different things to a user, so they are reported
-        # separately: an exhausted history is ordinary, a refused restore is not.
+        # The ways this fails mean different things to a user, so they are
+        # reported separately: a refused restore is worth saying out loud, and
+        # an empty ring is not -- the object list is asked next.
         if outcome == "resized":
             self._emit_error(
                 f"{label}: the atom count has changed since that snapshot, "
                 "so it cannot be restored"
             )
-        elif outcome == "no object":
-            self._emit_error(f"{label}: no object to {label}")
-        else:
-            self._emit_error(f"{label}: nothing to {label}")
+            return True
+        return False
 
     @command("origin")
     def origin(self, sel: Selection = "", position: str = "") -> None:

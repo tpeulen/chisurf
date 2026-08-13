@@ -161,6 +161,13 @@ class LifecycleMixin(BaseCmd):
                     if target.lower() in self._named_selections:
                         del self._named_selections[target.lower()]
                         removed.append(target)
+                    elif self._delete_measurement(viewer, target):
+                        # A measurement is an object in PyMOL's sense -- it has
+                        # a name, a row in the object list and an on/off switch
+                        # -- and `delete` is how you get rid of one. It was not
+                        # in `_objects`, so this reported "Not found" for a name
+                        # sitting in the list the user was reading it from.
+                        removed.append(target)
                     else:
                         failed.append(target)
                     continue
@@ -187,6 +194,28 @@ class LifecycleMixin(BaseCmd):
             self._emit_message("Deleted: " + ", ".join(removed))
         if failed:
             self._emit_error("Not found or failed: " + ", ".join(failed))
+
+    @staticmethod
+    def _delete_measurement(viewer, name: str) -> bool:
+        """Remove a named measurement, if that is what *name* is.
+
+        Assigned through the viewer's ``measurements`` property so the object
+        list notices -- which is the whole point of that property existing.
+        """
+        try:
+            current = dict(viewer.measurements or {})
+        except Exception:  # noqa: BLE001
+            return False
+        key = next((k for k in current if str(k) == str(name)), None)
+        if key is None:
+            return False
+        current.pop(key, None)
+        viewer.measurements = current
+        try:
+            viewer._update_view()
+        except Exception:  # noqa: BLE001 - the row is gone either way
+            pass
+        return True
 
     #: PyMOL's group actions, from ``creating.py::group_action_dict``. ``auto``
     #: is resolved before dispatch, and ``ungroup`` is deprecated there in favour

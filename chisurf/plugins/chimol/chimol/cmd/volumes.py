@@ -485,6 +485,53 @@ class VolumeMixin(BaseCmd):
         shown = getattr(grid, "name", object_id)
         self._emit_message(f"volume_quality: {shown} re-contoured at {wanted}")
 
+    @command("history_panel", aliases=("history",))
+    def history_panel(self, action: str = "toggle") -> None:
+        """Show, hide or toggle the action list.
+
+        What has happened to the scene, newest last, with what ``undo`` would
+        take back next spelled out at the foot. An undo stack you cannot see is
+        one you have to keep in your head.
+
+        Parameters
+        ----------
+        action : str, optional
+            ``toggle`` (the default), ``on``/``show``, or ``off``/``hide``.
+        """
+        _window, viewer = self._require_window_and_viewer()
+        if viewer is None:
+            return
+        gui = getattr(getattr(viewer, "_renderer", None), "_internal_gui", None)
+        if gui is None:
+            self._emit_error("history_panel: this renderer draws no chrome")
+            return
+
+        from ..renderer.history_window import HistoryWindow
+
+        wanted = str(action).strip().lower() or "toggle"
+        existing = gui.window(HistoryWindow.KEY)
+        if wanted in ("off", "hide", "0", "false"):
+            if existing is not None:
+                existing.visible = False
+            viewer._update_view()
+            return
+
+        if existing is None:
+            panel = HistoryWindow(viewer)
+            # Kept on the viewer so it outlives this call: the window holds a
+            # bound method and nothing else keeps the panel alive.
+            viewer._history_controls = panel
+            existing = gui.add_window(panel.window())
+        elif wanted == "toggle" and existing.visible:
+            existing.visible = False
+            viewer._update_view()
+            return
+
+        existing.visible = True
+        gui.raise_window(HistoryWindow.KEY)
+        gui.layout(gui._width, gui._height)
+        viewer._update_view()
+
     @command("object_panel")
     def object_panel(self, action: str = "toggle") -> None:
         """Show, hide or toggle the object list window (``object_panel on``).

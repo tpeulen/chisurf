@@ -35804,3 +35804,11 @@
   run since a class rename (`LoaderMixin` → `LoaderCommands`) that left the stale
   name in `__all__`. Also fixed: the panel named the file rather than the object,
   and two headers overran their width because the painter does not clip text.
+- 2026-08-13 — chimol: the object list became one thing.
+  `renderer/object_registry.py` owns it, counts its own changes and records them;
+  the three hosts consume that revision through one shared rule instead of each
+  remembering to refresh. Pull, not push, and a MutableMapping so the choke point
+  is the mapping protocol — which is what catches the two modules that mutate the
+  list from outside the viewer. Measurements joined it on every host. On top of
+  the recording: undo, redo, ctrl+z, and a history panel showing what ctrl+z will
+  take back next.

@@ -107,6 +107,34 @@ what it blocks:
   read through the core reader had it. Invisible until something asks --
   `spectrum b` painted one flat colour and putty drew a constant tube -- and
   worst for a predicted model, where that column is the confidence.
+* **one object list, consumed rather than dispatched (2026-08-13, user:
+  "seems like architecture issue? check!"):** it was, and the check found the
+  shape twice. The viewer's `_objects` was a bare `OrderedDict` mutated by six
+  of its own methods and by two other modules reaching in, announcing nothing;
+  `_measurements` was worse -- rebound **from the command layer** in ten
+  places. Now `renderer/object_registry.py` owns the list and counts its own
+  changes, and the three hosts **consume** `objects_revision()` through one
+  shared rule (`host.app.consume_object_changes`) instead of each remembering
+  to refresh. Pull, not push, deliberately: it is the same shape
+  `field_revision` already uses, every view here repaints on a clock, and a
+  subscription is a thing to forget. The registry is a **`MutableMapping`** so
+  that the choke point is the mapping protocol -- which is what makes the two
+  outside mutators correct without having to find them.
+  Measurements are objects too now: listed in the object list on *every* host
+  (only Qt had them), assigned through a `measurements` property that bumps the
+  same revision, and `delete d1` works -- it used to answer "Not found" for a
+  name the user was reading out of the list.
+* **undo, redo and an action list (2026-08-13):** because one place records
+  every mutation, a history could be *added* rather than threaded through.
+  `Change` carries what is needed to invert itself, the registry keeps undo and
+  redo stacks (suppressing recording while applying an inverse -- otherwise the
+  undo is itself undoable, forever), and `undo`/`redo` walk **two stacks in
+  order**: the coordinate ring first, then the object list. An exhausted ring
+  stopped being an error, because it is now ordinary. **ctrl+z** / **ctrl+shift+z**
+  are bound after the chrome has had the key, so the prompt keeps its Z while
+  typing. `history_panel` lists it: what happened, what has been undone
+  (dimmed), and what ctrl+z takes back next -- an undo stack you cannot see is
+  one you have to keep in your head.
 * **a density map is an object (2026-08-13, user report):** maps were missing
   from the object list, and a second map could not be shown in the density
   panel. One root, and a third defect underneath. The object list is refreshed

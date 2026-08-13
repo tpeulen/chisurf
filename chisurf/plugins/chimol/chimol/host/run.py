@@ -149,38 +149,13 @@ class ChimolApp:
         self._apply_display_scale(gui)
         gui.enable_persistence()
         self.sync_panel()
-        # The object list is a *view* of the objects, and only the loader told
-        # it anything: `load` and `fetch` refresh it through the host, and
-        # everything else -- `load_map`, `molmap`, `create`, `delete`, an
-        # isosurface -- did not. The visible half of that was a **density map
-        # missing from the object list entirely**, which also made it
-        # unselectable, which in turn made the density panel unable to switch
-        # to it: a map is an object, and it was the only kind of object the
-        # panel never listed.
-        #
-        # So the list is re-read after any command that changed it. Compared by
-        # a cheap signature rather than re-synced unconditionally, because
-        # `sync_panel` rebuilds the sequence strip and that is real work on a
-        # large structure.
-        self.cmd.add_command_observer(self._resync_if_objects_changed)
+        # The object list is a *view* of the objects, and the viewer now says
+        # when they change. Consumed, not dispatched -- see
+        # `renderer/object_registry.py` -- through the rule the three hosts
+        # share.
+        from .app import consume_object_changes
 
-    def _object_signature(self) -> tuple:
-        """What the object list looks like, cheaply enough to compare per command."""
-        try:
-            return tuple(
-                (str(entry.get("id")), str(entry.get("name") or ""),
-                 bool(entry.get("visible", True)))
-                for entry in self.viewer.list_objects()
-            )
-        except Exception:  # noqa: BLE001 - a signature must never break a command
-            return ()
-
-    def _resync_if_objects_changed(self, _line: str) -> None:
-        """Re-read the object list when a command added, removed or renamed one."""
-        signature = self._object_signature()
-        if signature != getattr(self, "_objects_seen", None):
-            self._objects_seen = signature
-            self.sync_panel()
+        consume_object_changes(self.cmd, self.viewer, self.sync_panel)
 
     def _apply_display_scale(self, gui) -> None:
         """Pick a chrome scale for this display, unless the user set one.

@@ -26,7 +26,7 @@ import time
 import pathlib
 from collections.abc import Callable
 
-__all__ = ["ViewerHost", "sync_panel"]
+__all__ = ["ViewerHost", "consume_object_changes", "sync_panel"]
 
 
 logger = logging.getLogger(__name__)
@@ -467,6 +467,49 @@ class ViewerHost:
         """Close the window."""
 
 
+def consume_object_changes(cmd, viewer, resync) -> object:
+    """Call *resync* after any command that changed the object list.
+
+    The rule, written once, for the three hosts that each have their own view
+    of the list: the toolkit-free window, the Qt window and the browser. Each
+    consumes; none is dispatched to. See
+    :mod:`~chimol.renderer.object_registry` for why that direction.
+
+    Before this, the list was refreshed by whoever remembered -- the loader
+    called the host, the Qt window called itself from four places, and the
+    commands that create objects without loading a file (``load_map``,
+    ``molmap``, ``create``, ``delete``) called nobody. A density map therefore
+    never appeared in the object list on any host.
+
+    Parameters
+    ----------
+    cmd : chimol.cmd.command.Cmd
+        The command layer; every route through the viewer ends there.
+    viewer : chimol.renderer.view.MolView
+        Read for :meth:`~chimol.renderer.view.MolView.objects_revision`.
+    resync : callable
+        Called with no arguments when the revision moved.
+
+    Returns
+    -------
+    object
+        The observer, so a caller can remove it again.
+    """
+    seen: dict[str, int | None] = {"revision": None}
+
+    def observer(_line: str) -> None:
+        try:
+            revision = int(viewer.objects_revision())
+        except Exception:  # noqa: BLE001 - a stale view beats a broken command
+            return
+        if revision != seen["revision"]:
+            seen["revision"] = revision
+            resync()
+
+    cmd.add_command_observer(observer)
+    return observer
+
+
 def sync_panel(viewer, gui) -> None:
     """Mirror the viewer's objects and sequences into the in-viewport panel.
 
@@ -502,8 +545,43 @@ def sync_panel(viewer, gui) -> None:
     # PyMOL pins the `sele` selection object to the bottom of its object list,
     # below every real object and the `all` header.
     rows.append(GuiRow(name="sele", is_selection=True))
+    # And the measurements below that. A `distance` **is an object** in PyMOL --
+    # it has a name, a row and an on/off switch, and that switch is the only way
+    # to put one away without deleting it. The Qt window listed them and these
+    # two hosts did not, so on the toolkit-free window and in the browser a
+    # measurement could be made and never seen again.
+    rows.extend(_measurement_rows(viewer, GuiRow))
     gui.set_rows(rows)
     gui.set_sequences(sequences)
+
+
+def _measurement_rows(viewer, GuiRow) -> list:
+    """One row per measurement, for the object list.
+
+    Kept beside :func:`sync_panel` rather than in each host, which is how the
+    Qt window came to be the only one that had them.
+    """
+    try:
+        measurements = dict(viewer.measurements or {})
+    except Exception:  # noqa: BLE001 - a viewer without measurements is fine
+        return []
+
+    rows = []
+    for name in sorted(measurements):
+        data = measurements[name] or {}
+        label = str(data.get("label") or "")
+        if not label:
+            labels = data.get("labels") or []
+            label = f"{len(labels)} contacts" if labels else ""
+        rows.append(
+            GuiRow(
+                name=str(name),
+                enabled=bool(data.get("visible", True)),
+                is_measurement=True,
+                detail=label,
+            )
+        )
+    return rows
 
 
 def _sequence_of(viewer, object_id):
