@@ -40,7 +40,25 @@ def _restore_display_config():
 
 @pytest.fixture
 def settings(tmp_path, monkeypatch):
-    """Point the config helpers at a scratch settings directory."""
+    """Point the config helpers at a scratch settings directory.
+
+    Through ``CHIMOL_SETTINGS_DIR``, which is the documented override and the
+    seam that actually exists. Patching ``cfg_mod._cs_settings`` used to work
+    and stopped: :func:`~chimol.config.get_user_display_config_path` now
+    delegates to :mod:`chimol.settings_dir`, which never consults it. The
+    patch then had **no effect at all**, so every test in this file read the
+    developer's own configuration -- which matches the shipped file, so nine
+    tests failed on "nothing differs" and the file looked broken rather than
+    mis-pointed.
+
+    A stale test seam fails loudly here only because these tests assert on a
+    *difference*. One asserting on agreement would have passed against the real
+    configuration and proved nothing.
+    """
+    monkeypatch.setenv("CHIMOL_SETTINGS_DIR", str(tmp_path))
+    # `_cs_settings` is the older seam and still decides where
+    # `_load_display_config` looks, so both are pointed at the same place --
+    # otherwise a reload inside a test reaches past the override.
     class _Settings:
         @staticmethod
         def get_path(_what):

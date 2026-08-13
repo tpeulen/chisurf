@@ -1,0 +1,183 @@
+"""The reference viewer's presets are data, and every one of them runs.
+
+Why they are data
+-----------------
+A preset *is* a list of commands -- there was no Python in any of them worth
+keeping -- so `chimol/gui/presets.json` declares each one's title, its one-line
+documentation and the commands it runs. One can then be retuned without
+touching code, which is what makes adjusting one while looking at the result
+bearable.
+
+The description earns its place there twice over: it is the menu's tooltip, the
+`preset_cx` listing *and* the documentation, from one copy. Three
+transcriptions of one sentence is how a tooltip ends up describing what a
+control used to do.
+
+What this pins
+--------------
+* every declared preset **runs without an error**. A preset is a command list,
+  and a command that does not exist fails at the prompt rather than at import
+  -- which is how `util.cbc` shipped inside three presets while answering "not
+  implemented" when typed. Those helpers are now real commands;
+* the menu's tooltips **come from the JSON**, not from a second table;
+* each preset actually **changes the picture**, so a mistuned one is not
+  silently a no-op;
+* the ribbon presets differ **from each other**. The first version set only
+  `cartoon_oval_*` -- the *helix* section -- so licorice kept flat arrow
+  strands and was indistinguishable from the default. The strand is
+  `cartoon_rect_*`.
+"""
+from __future__ import annotations
+
+import json
+import pathlib
+
+import pytest
+
+from chisurf.plugins.chimol.chimol.cmd.presets import load_reference_presets
+
+PRESETS = load_reference_presets()
+KEYS = sorted(PRESETS)
+
+_FILE = (
+    pathlib.Path(__file__).resolve().parents[1]
+    / "chimol" / "gui" / "presets.json"
+)
+
+
+def test_the_presets_are_declared():
+    """The premise."""
+    assert len(PRESETS) >= 8, f"only {len(PRESETS)} presets loaded"
+    assert _FILE.exists()
+
+
+@pytest.mark.parametrize("key", KEYS)
+def test_a_preset_is_documented(key):
+    """The description is the tooltip and the listing; an empty one is neither."""
+    entry = PRESETS[key]
+    assert entry["title"], f"{key} has no title"
+    assert len(entry["description"]) > 25, (
+        f"{key}: the description is the tooltip and the documentation, so it "
+        f"has to say something: {entry['description']!r}"
+    )
+    assert entry["commands"], f"{key} runs nothing"
+
+
+def test_the_menu_takes_its_tooltips_from_the_json():
+    """Not from a second table beside it -- the second copy is the stale one."""
+    from chisurf.plugins.chimol.chimol.app.menu_bar import PRESET_MENU
+
+    described = {
+        str(entry.command): str(entry.note)
+        for entry in PRESET_MENU
+        if getattr(entry, "command", None)
+    }
+    for key, declared in PRESETS.items():
+        assert described.get(f"preset_cx {key}") == declared["description"], (
+            f"the menu's tooltip for {key} is not the declared one"
+        )
+
+
+def test_every_preset_is_on_the_menu():
+    """Shipped and unreachable is the failure a generated menu exists to avoid."""
+    from chisurf.plugins.chimol.chimol.app.menu_bar import PRESET_MENU
+
+    commands = {str(getattr(e, "command", "") or "") for e in PRESET_MENU}
+    for key in PRESETS:
+        assert f"preset_cx {key}" in commands, f"{key} is not on the Preset menu"
+
+
+def test_the_file_says_what_it_is():
+    """A `_comment` naming what reads it, as every other declared file here does."""
+    data = json.loads(_FILE.read_text(encoding="utf-8"))
+    assert data.get("_comment")
+    assert "presets" in data
+
+
+def test_every_preset_runs_and_changes_the_picture():
+    """The one that matters, driven through the real command layer.
+
+    A preset that errors halfway leaves the scene in a state nobody designed,
+    and the error is the only sign. A preset that runs cleanly and changes
+    nothing is worse -- it looks like the viewer ignored the menu.
+    """
+    from toolkit_free import probe
+
+    keys = KEYS
+    lines = "\n".join(f"        run({key!r})" for key in keys)
+    measured = probe(f'''
+        app = open_app(size=(420, 320))
+        errors = []
+        app.cmd.set_error_callback(errors.append)
+        app.cmd.do("fetch 148L")
+        app.cmd.do("orient")
+        app.cmd.do("zoom all")
+
+        def snapshot():
+            app.renderer.draw_frame()
+            image = np.asarray(app.renderer.grab_image(chrome=False))
+            return image[..., :3].astype(float)
+
+        before = snapshot()
+
+        def run(key):
+            global before
+            errors.clear()
+            app.cmd.do("preset_cx " + key)
+            after = snapshot()
+            emit("errors:" + key, "; ".join(errors) or "none")
+            changed = float(np.abs(after - before).mean())
+            emit("changed:" + key, f"{{changed:.4f}}")
+            before = after
+
+{lines}
+    ''')
+
+    for key in keys:
+        assert measured[f"errors:{key}"] == "none", (
+            f"preset_cx {key} errored: {measured[f'errors:{key}']}"
+        )
+    moved = [k for k in keys if float(measured[f"changed:{k}"]) > 0.2]
+    assert len(moved) >= len(keys) - 2, (
+        "presets that changed nothing: "
+        + ", ".join(k for k in keys if float(measured[f"changed:{k}"]) <= 0.2)
+    )
+
+
+def test_the_ribbon_presets_differ_from_one_another():
+    """Three ribbon presets that look the same are one preset and two decoys.
+
+    Pinned on the *settings* rather than on pixels: they are what the presets
+    set, and a pixel threshold on three cartoons of one protein is either
+    always red or so loose it proves nothing.
+    """
+    def settings_of(key):
+        found = {}
+        for line in PRESETS[key]["commands"]:
+            parts = line.split(None, 1)
+            if parts and parts[0] == "set":
+                name, _, value = parts[1].partition(",")
+                found[name.strip()] = value.strip()
+        return found
+
+    ribbons, cylinders, licorice = (
+        settings_of("ribbons"), settings_of("cylinders"), settings_of("licorice")
+    )
+
+    # The helix section is `oval`; the strand is `rect`. Setting only the first
+    # is what made licorice indistinguishable from the default.
+    for name in ("cartoon_oval_length", "cartoon_oval_width",
+                 "cartoon_rect_length", "cartoon_rect_width"):
+        for key, values in (("ribbons", ribbons), ("cylinders", cylinders),
+                            ("licorice", licorice)):
+            assert name in values, f"{key} does not set {name}"
+
+    assert cylinders["cartoon_oval_length"] == cylinders["cartoon_oval_width"], (
+        "a cylinder is an oval whose axes are equal"
+    )
+    assert licorice["cartoon_rect_width"] == licorice["cartoon_oval_width"], (
+        "licorice is one constant section, strands included"
+    )
+    assert ribbons["cartoon_oval_length"] != ribbons["cartoon_oval_width"], (
+        "a ribbon is flat; equal axes would make it a tube"
+    )

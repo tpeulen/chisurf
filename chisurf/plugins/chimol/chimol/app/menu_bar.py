@@ -297,21 +297,28 @@ DEMO_MENU: tuple[MenuEntry, ...] = _demo_menu()
 
 
 def _preset_menu() -> tuple[MenuEntry, ...]:
-    """The reference viewer's presets, generated from the one table.
+    """The reference viewer's presets, generated from the JSON that declares them.
+
+    Title *and* tooltip come from `gui/presets.json`, which is also what
+    `preset_cx` lists and what the documentation quotes. A menu label written
+    here would be a second copy of a sentence that already exists, and the
+    second copy is the one that goes stale -- a tooltip describing what a
+    control used to do is worse than none.
 
     Its own menu rather than more rows under the object menu's `preset`
     sub-menu, because it is a different question: PyMOL's presets choose *what
     to show* -- ligands, sites, interfaces -- and these choose *how what is
-    already shown should look*. Mixing them gives one list of twenty-five
+    already shown should look*. Mixed, they make one list of twenty-five
     entries in which neither is findable.
     """
-    from ..cmd.presets import PresetMixin
+    from ..cmd.presets import load_reference_presets
 
     entries = [
-        MenuEntry(title, f"preset_cx {key}", note)
-        for key, (title, note) in _PRESET_TITLES.items()
-        if key in PresetMixin.CHIMERAX_PRESETS
+        MenuEntry(entry["title"], f"preset_cx {key}", entry["description"])
+        for key, entry in load_reference_presets().items()
     ]
+    if not entries:
+        return ()
     entries.append(SEP)
     entries.append(
         MenuEntry("List them at the prompt", "preset_cx",
@@ -319,21 +326,6 @@ def _preset_menu() -> tuple[MenuEntry, ...]:
     )
     return tuple(entries)
 
-
-#: Menu label and tooltip per preset. Separate from the command table because a
-#: menu wants title case and a sentence, and the command wants a key.
-_PRESET_TITLES: dict[str, tuple[str, str]] = {
-    "ribbons": ("Ribbons", "Cartoon with flat arrows on strands."),
-    "cylinders": ("Cylinders", "Helices as plain tubes -- shows packing."),
-    "licorice": ("Licorice", "One round section throughout, no arrows."),
-    "ghostly_white": ("Ghostly white surface", "A white surface you can see through."),
-    "atomic_transparent": ("Surface, atom colours", "Transparent, coloured from the atoms."),
-    "chain_opaque": ("Surface, by chain", "Opaque, one colour per chain."),
-    "publication_silhouettes": ("Publication: silhouettes", "White background and outlines."),
-    "publication_depth": ("Publication: depth-cued", "White background, depth instead of outlines."),
-    "interactive": ("Interactive", "Back to the working view."),
-    "alphafold": ("AlphaFold confidence", "Colour a prediction by pLDDT."),
-}
 
 PRESET_MENU: tuple[MenuEntry, ...] = _preset_menu()
 

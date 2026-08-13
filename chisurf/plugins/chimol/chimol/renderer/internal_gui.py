@@ -3224,18 +3224,18 @@ class InternalGui:
         is simply front-to-back: an open menu is drawn over everything, so it
         must also receive the click that lands on it.
         """
-        # The tour bubble is drawn over the chrome and takes its own clicks, so
-        # it is tested before everything except an open menu -- the tour points
-        # *at* menus, and a bubble that swallowed the click it just asked for
-        # would be a trap.
+        # The tour's **buttons** are tested before everything except an open
+        # menu. The bubble's body deliberately is not: a tour exists to make
+        # someone press the real controls, so a panel of text that swallowed
+        # every click over the area it happens to cover is the one thing it
+        # must not be. Only Next and Close belong to the tour; the rest of the
+        # press goes wherever it would have gone.
         depth, entry = self._menu_at(x, y)
         if depth is None:
             if self._tour_next_rect.contains(x, y):
                 return Hit("tour", key="next")
             if self._tour_close_rect.contains(x, y):
                 return Hit("tour", key="close")
-            if self._tour_rect.contains(x, y):
-                return Hit("tour")
             bar = self._menubar_hit(x, y)
             if bar is not None:
                 return Hit("menubar", row=bar)
@@ -3684,9 +3684,6 @@ class InternalGui:
                 self.end_tour()
             elif hit.key == "next":
                 self.advance_tour()
-            # Any other press inside the bubble is consumed and does nothing:
-            # the bubble sits over the chrome, and a click that fell through it
-            # would act on whatever it happens to cover.
             return True
 
         if hit.kind == "uiscale":

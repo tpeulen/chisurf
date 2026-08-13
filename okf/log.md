@@ -35770,3 +35770,13 @@
   US-layout-only because glfw's key event is a physical keycode and its `char`
   event was unread; the tour bubble covered the control it pointed at; and the
   reference viewer's ten presets landed under their own menu.
+- 2026-08-13 — chimol, second user round: the tour bubble no longer swallows
+  clicks over the area it covers (only its own Next and Close), which is what
+  "left click does not land" was; the reference presets moved into
+  `gui/presets.json` so the menu tooltip, the listing and the documentation are
+  one sentence, and were retuned until the three ribbon styles actually differ
+  (`cartoon_oval_*` is the helix, `cartoon_rect_*` the strand — setting only the
+  first is why licorice looked like the default); `util.cbc` and friends became
+  real commands, having existed only as methods; and the display-config prompt
+  tests were failing because their fixture patched a seam the code stopped using,
+  so they read the developer's own configuration.

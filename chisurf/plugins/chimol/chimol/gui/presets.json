@@ -1,0 +1,153 @@
+{
+  "_comment": "The reference viewer's presets, declared rather than written in Python. Each entry is a title, the one line that is both its menu tooltip and its `preset_cx` listing, and the commands it runs -- so a preset can be added or retuned without touching code, and the documentation cannot drift from the thing it documents because there is one copy of it. `{sel}` is the selection the preset was applied to. Read by chimol.cmd.presets (the command) and chimol.app.menu_bar (the menu). Transcribed from the reference viewer's documented behaviour, never from its source.",
+  "presets": [
+    {
+      "key": "ribbons",
+      "title": "Ribbons",
+      "description": "Cartoon with flat arrows on strands and rounded loops -- the default reading view.",
+      "commands": [
+        "hide everything, {sel}",
+        "show cartoon, {sel}",
+        "set cartoon_flat_sheets, on",
+        "set cartoon_oval_length, 1.35",
+        "set cartoon_oval_width, 0.25",
+        "set cartoon_rect_length, 1.4",
+        "set cartoon_rect_width, 0.4",
+        "set cartoon_loop_radius, 0.2",
+        "set cartoon_round_helices, on",
+        "spectrum count, rainbow, {sel} and name ca"
+      ]
+    },
+    {
+      "key": "cylinders",
+      "title": "Cylinders",
+      "description": "Helices as plain tubes: says a helix is here and nothing about its face, which is what shows packing.",
+      "commands": [
+        "hide everything, {sel}",
+        "show cartoon, {sel}",
+        "set cartoon_flat_sheets, on",
+        "set cartoon_oval_length, 0.8",
+        "set cartoon_oval_width, 0.8",
+        "set cartoon_rect_length, 1.4",
+        "set cartoon_rect_width, 0.4",
+        "set cartoon_loop_radius, 0.25",
+        "set cartoon_round_helices, on",
+        "util.chainbow {sel}"
+      ]
+    },
+    {
+      "key": "licorice",
+      "title": "Licorice",
+      "description": "One constant round section throughout, no arrows -- for a model whose secondary structure is not the point.",
+      "commands": [
+        "hide everything, {sel}",
+        "show cartoon, {sel}",
+        "set cartoon_flat_sheets, off",
+        "set cartoon_oval_length, 0.55",
+        "set cartoon_oval_width, 0.55",
+        "set cartoon_rect_length, 0.55",
+        "set cartoon_rect_width, 0.55",
+        "set cartoon_loop_radius, 0.55",
+        "set cartoon_round_helices, on",
+        "spectrum count, rainbow, {sel} and name ca"
+      ]
+    },
+    {
+      "key": "ghostly_white",
+      "title": "Ghostly white surface",
+      "description": "A white surface you can see the model through -- shape outside, fold inside, in one picture.",
+      "commands": [
+        "hide everything, {sel}",
+        "show cartoon, {sel}",
+        "set cartoon_flat_sheets, on",
+        "spectrum count, rainbow, {sel} and name ca",
+        "show surface, {sel}",
+        "set surface_color, white",
+        "set transparency, 0.8",
+        "set surface_quality, 1"
+      ]
+    },
+    {
+      "key": "atomic_transparent",
+      "title": "Surface, atom colours",
+      "description": "A transparent surface taking its colour from the atoms beneath it.",
+      "commands": [
+        "hide everything, {sel}",
+        "show cartoon, {sel}",
+        "color grey80, {sel}",
+        "show surface, {sel}",
+        "util.cbag {sel}",
+        "set surface_color, -1",
+        "set transparency, 0.6",
+        "set surface_quality, 1"
+      ]
+    },
+    {
+      "key": "chain_opaque",
+      "title": "Surface, by chain",
+      "description": "An opaque surface, one colour per chain -- the shape of an assembly and who contributes what.",
+      "commands": [
+        "hide everything, {sel}",
+        "show surface, {sel}",
+        "util.cbc {sel}",
+        "set surface_color, -1",
+        "set transparency, 0.0",
+        "set surface_quality, 1"
+      ]
+    },
+    {
+      "key": "publication_silhouettes",
+      "title": "Publication: silhouettes",
+      "description": "White background and outlines. The flat, printable look; global, not per selection.",
+      "commands": [
+        "bg_color white",
+        "set silhouette, on",
+        "set silhouette_thickness, 1.5",
+        "set depth_cue, off",
+        "set fog, 0.0",
+        "set specular, 0.15",
+        "set ambient, 0.35",
+        "set antialias, 2"
+      ]
+    },
+    {
+      "key": "publication_depth",
+      "title": "Publication: depth-cued",
+      "description": "White background with depth instead of outlines -- for an assembly whose every strand would otherwise be outlined.",
+      "commands": [
+        "bg_color white",
+        "set silhouette, off",
+        "set depth_cue, on",
+        "set fog, 0.6",
+        "set specular, 0.25",
+        "set ambient, 0.25",
+        "set antialias, 2"
+      ]
+    },
+    {
+      "key": "interactive",
+      "title": "Interactive",
+      "description": "Back to the working view after a figure preset: dark background, depth cue, no outlines.",
+      "commands": [
+        "bg_color black",
+        "set silhouette, off",
+        "set depth_cue, on",
+        "set fog, 0.55",
+        "set specular, 0.25",
+        "set ambient, 0.14",
+        "set antialias, 1"
+      ]
+    },
+    {
+      "key": "alphafold",
+      "title": "AlphaFold confidence",
+      "description": "Colour a prediction by pLDDT -- low warm, high cool. Reading a prediction without its confidence is the mistake that database invites.",
+      "commands": [
+        "hide everything, {sel}",
+        "show cartoon, {sel}",
+        "set cartoon_flat_sheets, on",
+        "spectrum b, orange_white_blue, {sel}, 50, 90"
+      ]
+    }
+  ]
+}

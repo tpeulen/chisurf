@@ -41,6 +41,7 @@ import numpy as np
 from ..colors import CHAIN_COLOR_CYCLE, _build_element_color_array, as_rgba
 from .base import BaseCmd
 from .registry import command
+from .selection_types import Selection
 
 # --------------------------------------------------------------------------- #
 # The selections preset.py builds its recipes from, transcribed verbatim.
@@ -62,6 +63,41 @@ LIG_SELE = (
     f"(({SOLV_SELE}) or ({ION_SELE}) or ({LIG_EXCL})))"
 )
 LIG_AND_SOLV = f"(({LIG_SELE}) or ({SOLV_SELE}))"
+
+
+def load_reference_presets() -> dict[str, dict]:
+    """The declared presets, keyed by name, in file order.
+
+    Read on demand rather than at import, so a retuned preset takes effect on
+    the next invocation -- which is the point of having them as data while
+    someone is adjusting one and looking at the result.
+
+    Returns
+    -------
+    dict
+        ``{key: {"title", "description", "commands"}}``. Empty rather than
+        raising when the file is missing or malformed: a broken preset table
+        must not stop the viewer starting.
+    """
+    import json  # noqa: PLC0415
+    import pathlib  # noqa: PLC0415
+
+    path = pathlib.Path(__file__).resolve().parent.parent / "gui" / "presets.json"
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001
+        return {}
+    presets: dict[str, dict] = {}
+    for entry in data.get("presets") or ():
+        key = str(entry.get("key") or "").strip()
+        if not key:
+            continue
+        presets[key] = {
+            "title": str(entry.get("title") or key),
+            "description": str(entry.get("description") or ""),
+            "commands": [str(line) for line in entry.get("commands") or ()],
+        }
+    return presets
 
 
 class PresetMixin(BaseCmd):
@@ -87,57 +123,59 @@ class PresetMixin(BaseCmd):
         "default": "lines and nonbonded, coloured by element",
     }
 
-    #: The reference viewer's own preset set, which is a *different* set from
-    #: PyMOL's rather than a rival spelling of it. PyMOL's presets are about
-    #: what to *show* (ligands, sites, interfaces); these are about how the
-    #: thing already shown should *look* -- ribbon geometry, surface
-    #: transparency, and the three lighting states a figure goes through.
-    #: Keeping both, under separate names and separate menus, is the point: an
-    #: analyst wants "ligand sites" and a figure wants "publication 1".
+    #: The reference viewer's own preset set, **declared in JSON** rather than
+    #: written here: `chimol/gui/presets.json` carries each one's title, its
+    #: one-line documentation and the commands it runs. Two reasons, and the
+    #: second is the one that matters.
     #:
-    #: Transcribed from the documented behaviour, not from the source: the
-    #: reference implementation is under a non-commercial licence and is read
-    #: here for what each preset *does*, never copied.
-    CHIMERAX_PRESETS: dict[str, str] = {
-        "ribbons": "cartoon with flat arrows on strands, rounded loops",
-        "cylinders": "helices as plain tubes rather than ribbons",
-        "licorice": "cartoon of constant round section, no arrows",
-        "ghostly_white": "a white surface at 80% transparency over the model",
-        "atomic_transparent": "a surface coloured from the atoms, 70% transparent",
-        "chain_opaque": "an opaque surface coloured by chain",
-        "publication_silhouettes": "white background, silhouettes, no depth cue",
-        "publication_depth": "white background, depth cue, no silhouettes",
-        "interactive": "back to the working view: dark background, depth cue",
-        "alphafold": "colour by pLDDT, the way a predicted model must be read",
-    }
+    #: A preset *is* a list of commands -- there was no Python in any of them
+    #: worth keeping -- so as data one can be added or retuned without touching
+    #: code, which is what makes adjusting one while looking at the result
+    #: bearable.
+    #:
+    #: And the description is the menu's tooltip, the `preset_cx` listing and
+    #: the documentation, from **one copy**. Three transcriptions of one
+    #: sentence is how a tooltip ends up describing what a control used to do.
+    #:
+    #: A *different* set from PyMOL's rather than a rival spelling of it:
+    #: PyMOL's presets choose what to **show** (ligands, sites, interfaces),
+    #: these choose how what is shown should **look**.
+    @property
+    def CHIMERAX_PRESETS(self) -> dict[str, str]:  # noqa: N802 - it is a table
+        """``key -> description`` for the declared presets."""
+        return {
+            key: entry["description"]
+            for key, entry in load_reference_presets().items()
+        }
 
     @command("preset_cx", aliases=("cxpreset",))
     def preset_cx(self, name: str = "", selection: str = "all") -> None:
         """Apply one of the reference viewer's presets.
 
         A separate command from :meth:`preset` because it is a separate set --
-        see :attr:`CHIMERAX_PRESETS`. Both are listed by running either with no
-        name.
+        see :attr:`CHIMERAX_PRESETS`. Run with no name to list them.
 
         Parameters
         ----------
         name : str
-            One of :attr:`CHIMERAX_PRESETS`.
+            One of the keys in ``gui/presets.json``.
         selection : str, optional
             What to apply it to; everything by default. The lighting presets
             are global whatever is passed, and say so.
         """
+        declared = load_reference_presets()
         key = str(name).strip().lower().replace(" ", "_").replace("-", "_")
         if not key:
-            self._emit_message(
-                "preset_cx: "
-                + ", ".join(f"{n} ({d})" for n, d in self.CHIMERAX_PRESETS.items())
-            )
+            if not declared:
+                self._emit_error("preset_cx: gui/presets.json could not be read")
+                return
+            width = max(len(k) for k in declared)
+            for entry_key, entry in declared.items():
+                self._emit_message(f"  {entry_key:<{width}}  {entry['description']}")
             return
-        if key not in self.CHIMERAX_PRESETS:
+        if key not in declared:
             self._emit_error(
-                f"Unknown preset '{name}'. Use one of: "
-                + ", ".join(self.CHIMERAX_PRESETS)
+                f"Unknown preset '{name}'. Use one of: " + ", ".join(declared)
             )
             return
 
@@ -147,121 +185,18 @@ class PresetMixin(BaseCmd):
 
         sel = str(selection).strip() or "all"
         self._preset_skipped = []
-        try:
-            getattr(self, f"_cx_{key}")(sel)
-        except Exception as exc:  # noqa: BLE001
-            self._emit_error(f"preset_cx {key}: {exc}")
-            return
-        message = f"preset_cx {key}: applied to ({sel})"
+        for line in declared[key]["commands"]:
+            step = str(line).replace("{sel}", sel)
+            try:
+                self._run_preset_command(step)
+            except Exception as exc:  # noqa: BLE001
+                self._emit_error(f"preset_cx {key}: '{step}': {exc}")
+                return
+        message = f"preset_cx {key}: {declared[key]['title']}, applied to ({sel})"
         if self._preset_skipped:
             message += "; " + "; ".join(self._preset_skipped)
         self._emit_message(message)
 
-    # ------------------------------------------------------------------ #
-    # The reference viewer's presets
-    # ------------------------------------------------------------------ #
-    def _cx_cartoon_base(self, sel: str) -> None:
-        """What all three ribbon presets start from.
-
-        Cartoon only, nothing else drawn: the ribbon presets are about the
-        ribbon, and leaving sticks or spheres underneath makes every one of
-        them look the same.
-        """
-        self._run_preset_command(f"hide everything, {sel}")
-        self._run_preset_command(f"show cartoon, {sel}")
-
-    def _cx_ribbons(self, sel: str) -> None:
-        """The default: flat arrows on strands, rounded loops."""
-        self._cx_cartoon_base(sel)
-        self._set_global("cartoon_flat_sheets", "on")
-        self._set_global("cartoon_oval_length", 1.2)
-        self._set_global("cartoon_oval_width", 0.25)
-
-    def _cx_cylinders(self, sel: str) -> None:
-        """Helices as plain tubes -- the schematic that shows packing.
-
-        A tube says "a helix is here" and nothing about its face, which is the
-        whole point when the question is how helices pack rather than where the
-        side chains point.
-        """
-        self._cx_cartoon_base(sel)
-        self._set_global("cartoon_flat_sheets", "off")
-        self._set_global("cartoon_oval_length", 0.6)
-        self._set_global("cartoon_oval_width", 0.6)
-        self._set_global("cartoon_loop_radius", 0.3)
-
-    def _cx_licorice(self, sel: str) -> None:
-        """One constant round section throughout, no arrows.
-
-        Deliberately says nothing about secondary structure -- for a model
-        where the assignment is unreliable, or where it is not the point.
-        """
-        self._cx_cartoon_base(sel)
-        self._set_global("cartoon_flat_sheets", "off")
-        self._set_global("cartoon_oval_length", 0.5)
-        self._set_global("cartoon_oval_width", 0.5)
-        self._set_global("cartoon_loop_radius", 0.5)
-
-    def _cx_ghostly_white(self, sel: str) -> None:
-        """A white surface you can see the model through."""
-        self._run_preset_command(f"show cartoon, {sel}")
-        self._run_preset_command(f"show surface, {sel}")
-        self._run_preset_command(f"set surface_color, white")
-        self._set_global("transparency", 0.8)
-
-    def _cx_atomic_transparent(self, sel: str) -> None:
-        """A surface taking its colour from the atoms beneath it."""
-        self._run_preset_command(f"show surface, {sel}")
-        self._color_by_element(sel)
-        self._run_preset_command("set surface_color, -1")
-        self._set_global("transparency", 0.7)
-
-    def _cx_chain_opaque(self, sel: str) -> None:
-        """An opaque surface, one colour per chain."""
-        self._run_preset_command(f"show surface, {sel}")
-        self._cbc(sel)
-        self._run_preset_command("set surface_color, -1")
-        self._set_global("transparency", 0.0)
-
-    def _cx_publication_silhouettes(self, _sel: str) -> None:
-        """White background and outlines; the flat, printable look."""
-        self._run_preset_command("bg_color white")
-        self._set_global("silhouette", 1, note=False)
-        self._set_global("depth_cue", 0, note=False)
-        self._set_global("fog", 0.0, note=False)
-        self._preset_note("lighting is global, so it was not scoped to the selection")
-
-    def _cx_publication_depth(self, _sel: str) -> None:
-        """White background with depth cue instead of outlines.
-
-        The alternative when silhouettes fight with fine detail -- a large
-        assembly outlines every strand and the figure fills with black lines.
-        """
-        self._run_preset_command("bg_color white")
-        self._set_global("silhouette", 0, note=False)
-        self._set_global("depth_cue", 1, note=False)
-        self._set_global("fog", 0.55, note=False)
-        self._preset_note("lighting is global, so it was not scoped to the selection")
-
-    def _cx_interactive(self, _sel: str) -> None:
-        """Back to the working view after a figure preset."""
-        self._run_preset_command("bg_color black")
-        self._set_global("silhouette", 0, note=False)
-        self._set_global("depth_cue", 1, note=False)
-        self._preset_note("lighting is global, so it was not scoped to the selection")
-
-    def _cx_alphafold(self, sel: str) -> None:
-        """Colour a predicted model by its confidence.
-
-        AlphaFold writes pLDDT into the B-factor column, so this is
-        ``spectrum b`` -- but it is worth a preset of its own because reading a
-        prediction *without* looking at the confidence is the mistake the
-        database invites, and because the ramp has to run the right way: low
-        confidence warm, high confidence cool, as the AlphaFold viewer does.
-        """
-        self._run_preset_command(f"hide everything, {sel}")
-        self._run_preset_command(f"show cartoon, {sel}")
-        self._run_preset_command(f"spectrum b, orange_white_blue, {sel}, 50, 90")
 
     @command("preset")
     def preset(self, name: str = "", selection: str = "all") -> None:
@@ -407,6 +342,47 @@ class PresetMixin(BaseCmd):
             chains = np.asarray(atoms["chain"])[np.asarray(mask, dtype=bool)]
             found.update(str(c).strip() for c in chains.tolist() if str(c).strip())
         return sorted(found)
+
+    # ------------------------------------------------------------------ #
+    # The `util` colour helpers, as commands
+    # ------------------------------------------------------------------ #
+    # PyMOL's are Python functions called as `util.cbc`, and a PyMOL user types
+    # exactly that. Here they existed only as *methods*, reachable from the
+    # presets and from nothing else -- so `util.cbc` at the prompt answered
+    # "not implemented" while the preset that used it worked. Registering them
+    # closes that, and is what let the reference viewer's presets be declared
+    # as command lists in `gui/presets.json`: a preset that needs a helper no
+    # command exposes cannot be written as data at all.
+
+    @command("util.cbc", aliases=("cbc",))
+    def util_cbc(self, sel: Selection = "all") -> None:
+        """One colour per chain, from the shared cycle (PyMOL ``util.cbc``)."""
+        self._cbc(str(sel) or "all")
+
+    @command("util.chainbow", aliases=("chainbow",))
+    def util_chainbow(self, sel: Selection = "all") -> None:
+        """A rainbow along each chain separately (PyMOL ``util.chainbow``)."""
+        self._chainbow(str(sel) or "all")
+
+    @command("util.cnc", aliases=("cnc",))
+    def util_cnc(self, sel: Selection = "all") -> None:
+        """Colour non-carbon atoms by element, leaving carbon (PyMOL ``util.cnc``)."""
+        self._color_by_element(str(sel) or "all")
+
+    @command("util.cbag", aliases=("cbag",))
+    def util_cbag(self, sel: Selection = "all") -> None:
+        """Colour by element with green carbon (PyMOL ``util.cbag``)."""
+        self._color_by_element(str(sel) or "all", carbon="green")
+
+    @command("util.cbac", aliases=("cbac",))
+    def util_cbac(self, sel: Selection = "all") -> None:
+        """Colour by element with cyan carbon (PyMOL ``util.cbac``)."""
+        self._color_by_element(str(sel) or "all", carbon="cyan")
+
+    @command("util.cbay", aliases=("cbay",))
+    def util_cbay(self, sel: Selection = "all") -> None:
+        """Colour by element with yellow carbon (PyMOL ``util.cbay``)."""
+        self._color_by_element(str(sel) or "all", carbon="yellow")
 
     def _cbc(self, sel: str) -> None:
         """PyMOL ``util.cbc``: one colour per chain, from the shared cycle."""

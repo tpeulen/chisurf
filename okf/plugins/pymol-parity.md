@@ -107,13 +107,23 @@ what it blocks:
   read through the core reader had it. Invisible until something asks --
   `spectrum b` painted one flat colour and putty drew a constant tube -- and
   worst for a predicted model, where that column is the confidence.
-* **the reference viewer's presets (2026-08-13):** ten, under their own
-  **Preset** menu and `preset_cx` command, kept separate from PyMOL's fifteen
-  because they answer a different question -- PyMOL's choose *what to show*
-  (ligands, sites, interfaces), these choose *how what is shown should look*
-  (ribbon geometry, surface transparency, the three lighting states a figure
-  passes through). Transcribed from documented behaviour, never from the
-  source. The tenth is `alphafold`: colour by pLDDT, low warm and high cool,
+* **the reference viewer's presets, declared in JSON (2026-08-13):** ten,
+  under their own **Preset** menu and `preset_cx` command, kept separate from
+  PyMOL's fifteen because they answer a different question -- PyMOL's choose
+  *what to show* (ligands, sites, interfaces), these choose *how what is shown
+  should look*. Transcribed from documented behaviour, never from the source.
+  They live in `chimol/gui/presets.json`: a preset **is** a list of commands,
+  so as data one can be retuned without touching code, and the description is
+  the menu tooltip, the `preset_cx` listing and the documentation **from one
+  copy** -- three transcriptions of one sentence is how a tooltip ends up
+  describing what a control used to do. Writing them as data forced a real
+  gap closed: `util.cbc`/`cbag`/`cnc`/`chainbow` existed only as *methods*, so
+  they worked inside a preset and answered "not implemented" at the prompt;
+  they are commands now. Two tuning traps, both pinned: `cartoon_oval_*` is
+  the **helix** section and `cartoon_rect_*` the **strand**, so setting only
+  the first left licorice with flat arrow strands and indistinguishable from
+  the default; and a cylinder is an oval whose two axes are equal.
+  The tenth preset is `alphafold`: colour by pLDDT, low warm and high cool,
   because reading a prediction without its confidence is the mistake that
   database invites.
 * **guided tours in the viewport (2026-08-13):** a demo runs itself and shows
