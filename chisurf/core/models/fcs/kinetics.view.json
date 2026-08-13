@@ -36,7 +36,6 @@
           "kind": "int",
           "minimum": 2,
           "maximum": 6,
-          "rebuild_on_change": true,
           "description": "Number of states in the photochemical scheme. Two is the minimum (ground + excited); add a state for every dark, isomeric or transferred state the dye has."
         },
         {

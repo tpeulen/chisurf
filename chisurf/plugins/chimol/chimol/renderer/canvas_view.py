@@ -142,6 +142,40 @@ def is_available() -> bool:
 #: and guessing at others would be worse than a known, documented assumption.
 #: A user on another layout still gets letters (handled separately) and every
 #: unshifted key.
+#: rendercanvas backends that emit a layout-aware ``char`` event beside the key
+#: event. Both desktop ones do -- glfw through ``set_char_callback`` and Qt
+#: through ``_char_input_event(event.text())`` -- and the rule for adding to
+#: this list is exactly that: the backend module calls one of those.
+#:
+#: A list rather than introspection because this version of rendercanvas
+#: publishes no event inventory, and guessing from the *first* char event would
+#: mis-handle exactly one character and be impossible to reproduce.
+#:
+#: The Qt shims (`pyqt5`, `pyside6`, ...) are deliberately absent: they
+#: re-export the class defined in `rendercanvas.qt`, and it is the *defining*
+#: module that is matched. A test asserts this list against what the installed
+#: backends actually call, so it cannot quietly fall behind.
+_CHAR_BACKENDS = ("glfw", "qt", "wx")
+
+
+def _event_types(canvas) -> frozenset:
+    """The event names a canvas backend can emit.
+
+    Asked rather than assumed: whether a backend has a layout-aware ``char``
+    event decides where typed text comes from, and getting that wrong types US
+    characters on every other keyboard layout.
+    """
+    for attr in ("_events", "events"):
+        events = getattr(canvas, attr, None)
+        known = getattr(events, "_known_event_types", None) or getattr(
+            type(events), "_known_event_types", None
+        )
+        if known:
+            return frozenset(str(name) for name in known)
+    module = str(type(canvas).__module__ or "").rsplit(".", 1)[-1]
+    return frozenset({"char"}) if module in _CHAR_BACKENDS else frozenset()
+
+
 _SHIFT_MAP = {
     "`": "~", "1": "!", "2": "@", "3": "#", "4": "$", "5": "%",
     "6": "^", "7": "&", "8": "*", "9": "(", "0": ")",
@@ -355,6 +389,14 @@ class CanvasView(CanvasRenderer):
         add(self._on_pointer_up, "pointer_up")
         add(self._on_wheel, "wheel")
         add(self._on_key_down, "key_down")
+        # Text input comes from the `char` event where the backend has one, and
+        # only from there -- see `_on_char`. Registering it is what decides
+        # which of the two paths `_on_key_down` takes, so the flag is set here
+        # rather than on the first keystroke, which would mis-handle exactly one
+        # character and be impossible to reproduce.
+        self._typed_via_char = "char" in _event_types(self._canvas)
+        if self._typed_via_char:
+            add(self._on_char, "char")
         add(self._on_key_up, "key_up")
         add(self._on_resize, "resize")
 
@@ -507,9 +549,18 @@ class CanvasView(CanvasRenderer):
         """
         name = str(event.get("key", "") or "")
         text = name if len(name) == 1 else ""
-        # Apply shift ourselves; the backend hands us the unshifted key. Letters
-        # upper-case, symbols through the US map -- see :data:`_SHIFT_MAP`.
-        if text and "Shift" in (event.get("modifiers") or ()):
+        if self._typed_via_char:
+            # This backend reports the key the OS *produced* separately, so the
+            # name here is a physical key and not a character. Taking text from
+            # it types US letters on every other layout: glfw hands back
+            # `chr(<its own keycode>)`, which is a US-QWERTY position -- German
+            # z/y swap, and every shifted symbol wrong. `_on_char` has the real
+            # character, including dead keys and anything composed.
+            text = ""
+        elif text and "Shift" in (event.get("modifiers") or ()):
+            # A browser reports a layout-aware `KeyboardEvent.key`, but an
+            # unshifted one; shift is applied here. Letters upper-case, symbols
+            # through the US map -- see :data:`_SHIFT_MAP`.
             text = text.upper() if text.isalpha() else _SHIFT_MAP.get(text, text)
         key = key_from_dom(name)
         modifiers = modifiers_from_canvas(event.get("modifiers"))
@@ -520,6 +571,28 @@ class CanvasView(CanvasRenderer):
 
         if key not in (KEY_ESCAPE, KEY_ENTER, KEY_RETURN) and (text or key):
             self._start_key_repeat(key, text, modifiers)
+
+    def _on_char(self, event: dict) -> None:
+        """Text the operating system produced, whatever the keyboard layout.
+
+        The counterpart of :meth:`_on_key_down`, and the only source of typed
+        characters where it exists. glfw's key event carries *its own keycode*
+        -- a US-QWERTY position -- and says so in its own source: holding shift
+        and pressing 5 reports "5", not "%". Deriving text from it types the US
+        character on a German, French or Nordic keyboard, and no shift table
+        fixes that, because the mapping is per layout and per locale.
+
+        Repeats are the operating system's here, so no repeat is synthesised:
+        glfw calls this again while a key is held, and adding our own would
+        double every repeated character.
+        """
+        text = str(event.get("data") or event.get("char_str") or "")
+        if not text or not text.isprintable():
+            return
+        modifiers = modifiers_from_canvas(event.get("modifiers"))
+        # `0` means "no key that acts, just this text" -- the editors test the
+        # key first and fall through to inserting the text.
+        self.on_key_press(0, text, modifiers)
 
     def _on_resize(self, event: dict) -> None:
         """Track the framebuffer size the projection is built from."""

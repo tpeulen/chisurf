@@ -35753,3 +35753,20 @@
   advances whichever route the user takes, and nothing is pressed on their
   behalf. Two tours ship on paired real data: EMD-3061 with PDB 5A63, and
   1DG3/1F5N. See [plugins/pymol-parity](plugins/pymol-parity.md).
+- 2026-08-13 — chisurf: the AutoForm view spec and the guided tour have a
+  declared scheme, generated from the loaders' own dataclasses, and every shipped
+  file is asserted against it (128 specs, 38 tours). Both loaders silently drop
+  what they do not understand, so the scheme found nine defects that had shipped
+  — including nine tour steps pointing at nothing because they used
+  `target.widget` where the loader reads `target.name`. New:
+  [PRD-103](prds/prd-103.md),
+  [development/ui_data_scheme](../docs/development/ui_data_scheme.md).
+- 2026-08-13 — chimol: builds painted UI from the same `view.json` files, as an
+  adapter over the settings editor rather than a second renderer, and is asserted
+  against the shared scheme from its own side — because a second reader is what
+  grows a second dialect. Also: fetch learned AlphaFold (version resolved from
+  the API, not pinned) and fixed `emdb-`/`ihm-` spellings; the mmCIF reader was
+  dropping B-factors, so every `.cif` had zero pLDDT; typing on the desktop was
+  US-layout-only because glfw's key event is a physical keycode and its `char`
+  event was unread; the tour bubble covered the control it pointed at; and the
+  reference viewer's ten presets landed under their own menu.

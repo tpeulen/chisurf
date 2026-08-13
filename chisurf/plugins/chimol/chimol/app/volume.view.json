@@ -3,7 +3,6 @@
   "sections": [
     {
       "type": "info",
-      "key": "map_summary",
       "source": "summary",
       "title": "Map",
       "description": "Which map these contours belong to, how big it is, and the stride it is drawn at.",

@@ -67,6 +67,65 @@ def _tls_context():
         return None
 
 
+#: Used when the API cannot be reached. The version here will go stale -- that
+#: is the point of asking the API first -- but a stale URL that 404s with a
+#: clear message beats no attempt at all when someone is offline.
+_ALPHAFOLD_FALLBACK_URL = "https://alphafold.ebi.ac.uk/files/AF-{id}-F1-model_v6.cif"
+
+
+def _alphafold_url(accession: str) -> str | None:
+    """The current mmCIF URL for a UniProt accession, from AlphaFold's own API.
+
+    Returns
+    -------
+    str or None
+        ``None`` when the API cannot be reached or does not know the
+        accession, so the caller falls back to the template rather than
+        failing on a network hiccup.
+    """
+    import json as _json  # noqa: PLC0415
+    import urllib.request  # noqa: PLC0415
+
+    url = f"https://alphafold.ebi.ac.uk/api/prediction/{accession}"
+    try:
+        with urllib.request.urlopen(url, timeout=15) as response:
+            entries = _json.loads(response.read().decode("utf-8"))
+    except Exception:  # noqa: BLE001 - offline is not an error worth raising
+        return None
+    if not entries:
+        return None
+    return str(entries[0].get("cifUrl") or "") or None
+
+
+def _ihm_accession(code: str) -> str:
+    """The canonical PDB-IHM accession for whatever spelling was typed.
+
+    ``ihm-12``, ``IHM_12`` and ``PDBDEV_00000012`` all mean one entry, and only
+    the last is a name the server answers to: the number is zero-padded to
+    eight digits behind ``pdbdev_``.
+    """
+    import re as _re  # noqa: PLC0415
+
+    digits = _re.search(r"\d+", str(code))
+    if digits is None:
+        return str(code).lower()
+    return f"pdbdev_{int(digits.group(0)):08d}"
+
+
+def _uniprot_accession(code: str) -> str:
+    """The UniProt accession inside an AlphaFold identifier.
+
+    ``AF-P69905-F1-model_v4``, ``AF-P69905-F1``, ``af_p69905`` -> ``P69905``.
+    Upper-cased, because that is how UniProt writes an accession and the file
+    server is case-sensitive.
+    """
+    import re as _re  # noqa: PLC0415
+
+    body = _re.sub(r"^af[-_]", "", str(code).strip(), flags=_re.IGNORECASE)
+    body = _re.split(r"[-_]", body)[0]
+    return body.upper()
+
+
 class LoaderCommands(BaseCmd):
     """Loading and remote fetch commands."""
 
@@ -344,19 +403,56 @@ class LoaderCommands(BaseCmd):
             ),
             "suffix": ".map.gz",
             "normalise": str.upper,
-            "pattern": r"^emd[-_]?\d{4,5}$",
+            #: ``emdb-3061`` as well as ``EMD-3061``. The accession is written
+            #: ``EMD-3061`` and the database is called EMDB, so both spellings
+            #: are what people type -- and the one that did not match fell
+            #: through to the PDB and came back as "RCSB PDB has no entry
+            #: emdb-3061", which names the wrong database and offers no way to
+            #: guess the right spelling.
+            "pattern": r"^emdb?[-_]?\d{4,5}$",
         },
         "pdb-ihm": {
             "label": "PDB-IHM",
             "url": "https://pdb-ihm.org/cif/{id}.cif",
             "suffix": ".cif",
-            "normalise": str.lower,
+            #: The short ``ihm-12`` spelling routed here correctly and then
+            #: asked for `ihm-12.cif`, which is a 404: the server only knows the
+            #: canonical `PDBDEV_00000012`. Routing an identifier to the right
+            #: repository and then requesting a name it does not use is the
+            #: worst of both -- the error blames the database.
+            "normalise": _ihm_accession,
             #: ``PDBDEV_00000012`` is the canonical form -- it is what the entry
             #: is called on the site, in our own demo and in the guide -- and it
             #: matched nothing here, so `fetch PDBDEV_00000012` asked RCSB for a
             #: PDB entry and reported a PDB failure. The short ``ihm-12`` spelling
             #: is kept because it was already accepted.
             "pattern": r"^pdbdev[-_]?\d+$|^ihm[-_]?\d+$",
+        },
+        "alphafold": {
+            "label": "AlphaFold DB",
+            #: The predicted model, as mmCIF so the per-residue confidence
+            #: comes with it: AlphaFold writes pLDDT into the B-factor column,
+            #: which is what `spectrum b` then colours by -- and reading a
+            #: prediction without looking at its confidence is the one mistake
+            #: this database invites.
+            #:
+            #: The **version is asked for, not assumed**. This template is the
+            #: fallback; `_alphafold_url` reads the entry's own API and uses the
+            #: URL it reports. Pinning a version is how this breaks: v4 was
+            #: current when it was written down and is a 404 today, because the
+            #: database is on v6 -- and every prediction moves together, so a
+            #: pinned version fails for every accession at once.
+            "url": _ALPHAFOLD_FALLBACK_URL,
+            "resolve": lambda accession: _alphafold_url(accession),
+            "suffix": ".cif",
+            "normalise": _uniprot_accession,
+            #: ``AF-P69905-F1``, ``AF-P69905``, ``AF_P69905`` and the full
+            #: ``AF-P69905-F1-model_v4`` all name one entry, and all four are
+            #: what people paste. A **bare** UniProt accession is deliberately
+            #: not matched: it would be a guess about which database was meant,
+            #: and the six-character ones are unreachable behind the PDB
+            #: catch-all anyway.
+            "pattern": r"^af[-_][a-z0-9]{6,10}(?:[-_]f\d+)?(?:[-_]model[-_]v\d+)?$",
         },
         "pdb": {
             "label": "RCSB PDB",
@@ -501,6 +597,14 @@ class LoaderCommands(BaseCmd):
             display = f"EMD-{digits.group(0)}"
         else:
             url = spec["url"].format(id=identifier, num=digits.group(0) if digits else "")
+            # A repository that knows its own current URL is asked for it. Only
+            # AlphaFold does, and only because its files carry a version number
+            # that moves.
+            resolver = spec.get("resolve")
+            if resolver is not None:
+                resolved = resolver(identifier)
+                if resolved:
+                    url = resolved
             display = identifier
 
         destination = (

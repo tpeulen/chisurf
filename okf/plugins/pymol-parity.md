@@ -72,6 +72,50 @@ script; the trap in measuring is that the *second* ask is served from the
 memo, so time a **fresh** grid for the cold number. Left open, in order of
 what it blocks:
 
+* **the format is one format, and chimol reads it (2026-08-13, user round):**
+  chimol builds painted forms from ChiSurf `view.json` specs
+  (`renderer/ui/view_spec.py` + `renderer/form_window.py`, opened with `form`).
+  It is an **adapter, not a second renderer**: a spec becomes `Setting` rows
+  over the settings editor that already existed. The trap it walked into first
+  is the one worth carrying -- the draft invented `{"type": "float", "min": 0}`
+  where the dialect is `{"type": "value", "kind": "float", "minimum": 0}`, read
+  fine here and was valid nowhere else. The scheme
+  ([PRD-103](/prds/prd-103.md)) now asserts chimol's own specs alongside every
+  other plugin's, and `SettingsProxy` exposes the registered settings as
+  attributes so a spec can be written against them.
+* **four user-reported defects, 2026-08-13.** (1) The tour bubble covered the
+  control it was pointing at -- fatally for the command prompt, which spans the
+  width, so the step saying *type this at the prompt* hid the prompt.
+  `_tour_bubble_at` now tries all four sides and only accepts a placement that
+  clears the target. (2) `fetch emdb-3061` fell through to RCSB and reported
+  "no entry emdb-3061", naming the wrong database: the pattern matched `emd`
+  and not `emdb`. (3) **Typing was US-only on the desktop** -- glfw's key event
+  carries *its own keycode*, a US-QWERTY position, and chimol used it as the
+  character with a US shift table on top; the layout-aware `char` event was
+  going unread. Text now comes from `char` where a backend has one (glfw, qt,
+  wx -- asserted against those backends' own source), and `key_down` supplies
+  only the keys that act. The Qt and browser hosts were already correct and are
+  now pinned too. (4) `ihm-12` routed to PDB-IHM and then asked for
+  `ihm-12.cif`, which is a 404 -- the accession is zero-padded behind
+  `pdbdev_`.
+* **AlphaFold, and the pLDDT that was being thrown away (2026-08-13):**
+  `fetch AF-P69905-F1` works, with the **version asked for rather than
+  assumed** -- the entry's own API reports the current `cifUrl`, and the v4 URL
+  that would have been hard-coded is already a 404 because the database is on
+  v6. It exposed a real defect one level down: the mmCIF reader never passed
+  `biso`, so **every `.cif` loaded with a column of zeros** while the same file
+  read through the core reader had it. Invisible until something asks --
+  `spectrum b` painted one flat colour and putty drew a constant tube -- and
+  worst for a predicted model, where that column is the confidence.
+* **the reference viewer's presets (2026-08-13):** ten, under their own
+  **Preset** menu and `preset_cx` command, kept separate from PyMOL's fifteen
+  because they answer a different question -- PyMOL's choose *what to show*
+  (ligands, sites, interfaces), these choose *how what is shown should look*
+  (ribbon geometry, surface transparency, the three lighting states a figure
+  passes through). Transcribed from documented behaviour, never from the
+  source. The tenth is `alphafold`: colour by pLDDT, low warm and high cool,
+  because reading a prediction without its confidence is the mistake that
+  database invites.
 * **guided tours in the viewport (2026-08-13):** a demo runs itself and shows
   a finished result, which teaches nothing about *where the controls are*.
   `chimol/tour.py` + `_paint_tour` ring one real control at a time and **wait

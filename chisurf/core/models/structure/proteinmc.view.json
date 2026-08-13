@@ -22,7 +22,6 @@
           "kind": "file",
           "label": "Labelling",
           "call": "on_labeling_file_changed",
-          "rebuild_on_change": true,
           "description": "FPS JSON holding the labelling positions, the inter-dye distances and the χ² score sets. It supplies the FRET restraints the Dye potential scores against."
         },
         {

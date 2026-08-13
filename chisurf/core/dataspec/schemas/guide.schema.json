@@ -1,0 +1,435 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://chisurf.org/schemas/guide.schema.json",
+  "title": "ChiSurf guided tour",
+  "description": "A tour points at one real control at a time and waits for the user to use it. Read by chisurf.gui.widgets.tools.guided_tour and, for painted chrome, by chimol.tour.",
+  "type": [
+    "array",
+    "object"
+  ],
+  "allOf": [
+    {
+      "if": {
+        "type": "array"
+      },
+      "then": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "_comment": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            },
+            "text": {
+              "type": "string",
+              "description": "Rich text; <b> and <i> are honoured by the Qt tour."
+            },
+            "target": {
+              "type": "object",
+              "description": "Which control the step points at. An empty object centres the bubble.",
+              "properties": {
+                "panel": {
+                  "type": "string",
+                  "description": "A navigation-panel row, by substring."
+                },
+                "tab": {
+                  "type": "string",
+                  "description": "A dock or tab label, by substring."
+                },
+                "name": {
+                  "type": "string",
+                  "description": "A widget objectName, exact or by suffix."
+                },
+                "action": {
+                  "type": "string",
+                  "description": "A toolbar action's text, or a button's text or tooltip."
+                },
+                "attr": {
+                  "type": "string",
+                  "description": "The model attribute a view-spec field is bound to."
+                },
+                "key": {
+                  "type": "string",
+                  "description": "A custom section's key."
+                },
+                "title": {
+                  "type": "string",
+                  "description": "A section title, exactly."
+                },
+                "command": {
+                  "type": "boolean",
+                  "description": "The command prompt (chimol's painted tours)."
+                },
+                "menu": {
+                  "type": "string",
+                  "description": "A menu-bar title (chimol's painted tours)."
+                },
+                "toolbar": {
+                  "type": "string",
+                  "description": "A toolbar button's label (chimol)."
+                },
+                "object": {
+                  "type": "string",
+                  "description": "An object-list row, by name (chimol)."
+                },
+                "movie": {
+                  "type": "boolean",
+                  "description": "The playback transport (chimol)."
+                },
+                "sequence": {
+                  "type": "boolean",
+                  "description": "The sequence strip (chimol)."
+                }
+              },
+              "additionalProperties": false
+            },
+            "await": {
+              "description": "Wait for the user to use the highlighted control. true auto-detects the signal; an object names it and the hint.",
+              "oneOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "signal": {
+                      "type": "string"
+                    },
+                    "hint": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ]
+            },
+            "expect": {
+              "type": "string",
+              "description": "The command a step waits for, in chimol's painted tours, where there are no widget signals to wait on."
+            },
+            "hint": {
+              "type": "string",
+              "description": "What to do, shown while waiting (chimol)."
+            },
+            "links": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "text": {
+                    "type": "string"
+                  },
+                  "url": {
+                    "type": "string"
+                  },
+                  "cite": {
+                    "type": "string"
+                  },
+                  "doc": {
+                    "type": "string"
+                  },
+                  "src": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "if": {
+        "type": "object"
+      },
+      "then": {
+        "type": "object",
+        "properties": {
+          "_comment": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "_comment": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "text": {
+                  "type": "string",
+                  "description": "Rich text; <b> and <i> are honoured by the Qt tour."
+                },
+                "target": {
+                  "type": "object",
+                  "description": "Which control the step points at. An empty object centres the bubble.",
+                  "properties": {
+                    "panel": {
+                      "type": "string",
+                      "description": "A navigation-panel row, by substring."
+                    },
+                    "tab": {
+                      "type": "string",
+                      "description": "A dock or tab label, by substring."
+                    },
+                    "name": {
+                      "type": "string",
+                      "description": "A widget objectName, exact or by suffix."
+                    },
+                    "action": {
+                      "type": "string",
+                      "description": "A toolbar action's text, or a button's text or tooltip."
+                    },
+                    "attr": {
+                      "type": "string",
+                      "description": "The model attribute a view-spec field is bound to."
+                    },
+                    "key": {
+                      "type": "string",
+                      "description": "A custom section's key."
+                    },
+                    "title": {
+                      "type": "string",
+                      "description": "A section title, exactly."
+                    },
+                    "command": {
+                      "type": "boolean",
+                      "description": "The command prompt (chimol's painted tours)."
+                    },
+                    "menu": {
+                      "type": "string",
+                      "description": "A menu-bar title (chimol's painted tours)."
+                    },
+                    "toolbar": {
+                      "type": "string",
+                      "description": "A toolbar button's label (chimol)."
+                    },
+                    "object": {
+                      "type": "string",
+                      "description": "An object-list row, by name (chimol)."
+                    },
+                    "movie": {
+                      "type": "boolean",
+                      "description": "The playback transport (chimol)."
+                    },
+                    "sequence": {
+                      "type": "boolean",
+                      "description": "The sequence strip (chimol)."
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "await": {
+                  "description": "Wait for the user to use the highlighted control. true auto-detects the signal; an object names it and the hint.",
+                  "oneOf": [
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "signal": {
+                          "type": "string"
+                        },
+                        "hint": {
+                          "type": "string"
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  ]
+                },
+                "expect": {
+                  "type": "string",
+                  "description": "The command a step waits for, in chimol's painted tours, where there are no widget signals to wait on."
+                },
+                "hint": {
+                  "type": "string",
+                  "description": "What to do, shown while waiting (chimol)."
+                },
+                "links": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "text": {
+                        "type": "string"
+                      },
+                      "url": {
+                        "type": "string"
+                      },
+                      "cite": {
+                        "type": "string"
+                      },
+                      "doc": {
+                        "type": "string"
+                      },
+                      "src": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "steps"
+        ],
+        "additionalProperties": false
+      }
+    }
+  ],
+  "$defs": {
+    "step": {
+      "type": "object",
+      "properties": {
+        "_comment": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string",
+          "description": "Rich text; <b> and <i> are honoured by the Qt tour."
+        },
+        "target": {
+          "type": "object",
+          "description": "Which control the step points at. An empty object centres the bubble.",
+          "properties": {
+            "panel": {
+              "type": "string",
+              "description": "A navigation-panel row, by substring."
+            },
+            "tab": {
+              "type": "string",
+              "description": "A dock or tab label, by substring."
+            },
+            "name": {
+              "type": "string",
+              "description": "A widget objectName, exact or by suffix."
+            },
+            "action": {
+              "type": "string",
+              "description": "A toolbar action's text, or a button's text or tooltip."
+            },
+            "attr": {
+              "type": "string",
+              "description": "The model attribute a view-spec field is bound to."
+            },
+            "key": {
+              "type": "string",
+              "description": "A custom section's key."
+            },
+            "title": {
+              "type": "string",
+              "description": "A section title, exactly."
+            },
+            "command": {
+              "type": "boolean",
+              "description": "The command prompt (chimol's painted tours)."
+            },
+            "menu": {
+              "type": "string",
+              "description": "A menu-bar title (chimol's painted tours)."
+            },
+            "toolbar": {
+              "type": "string",
+              "description": "A toolbar button's label (chimol)."
+            },
+            "object": {
+              "type": "string",
+              "description": "An object-list row, by name (chimol)."
+            },
+            "movie": {
+              "type": "boolean",
+              "description": "The playback transport (chimol)."
+            },
+            "sequence": {
+              "type": "boolean",
+              "description": "The sequence strip (chimol)."
+            }
+          },
+          "additionalProperties": false
+        },
+        "await": {
+          "description": "Wait for the user to use the highlighted control. true auto-detects the signal; an object names it and the hint.",
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "signal": {
+                  "type": "string"
+                },
+                "hint": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
+        },
+        "expect": {
+          "type": "string",
+          "description": "The command a step waits for, in chimol's painted tours, where there are no widget signals to wait on."
+        },
+        "hint": {
+          "type": "string",
+          "description": "What to do, shown while waiting (chimol)."
+        },
+        "links": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              },
+              "cite": {
+                "type": "string"
+              },
+              "doc": {
+                "type": "string"
+              },
+              "src": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

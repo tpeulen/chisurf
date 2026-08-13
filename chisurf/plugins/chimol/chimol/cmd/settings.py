@@ -7,6 +7,8 @@ themselves only parse, apply, and push the change to the live viewer.
 
 from __future__ import annotations
 
+import pathlib
+
 from typing import Any
 
 from .. import settings as _settings
@@ -155,6 +157,79 @@ class SettingsMixin(BaseCmd):
         gui.raise_window(SettingsWindow.KEY)
         gui.layout(gui._width, gui._height)
         viewer._update_view()
+
+    @command("form")
+    def form(self, path: str = "", title: str = "") -> None:
+        """Open a ChiSurf ``view.json`` as a painted form in the viewport.
+
+        ChiSurf tools declare their interface as data -- nested sections, each
+        naming the model attribute it edits, its label, its range and its
+        one-line description -- and AutoForm builds Qt widgets from it. Chimol
+        has no Qt, so the same file is read here and drawn with the chrome's own
+        controls, which means it also works in the browser.
+
+        The model is the viewer, so a spec written against it edits the scene
+        live. Anything the spec asks for that a painted panel cannot draw -- a
+        plot, a parameter table, an attribute the model does not have -- is
+        **reported** rather than dropped in silence.
+
+        Parameters
+        ----------
+        path : str
+            The ``*.view.json`` to read.
+        title : str, optional
+            Window title; the spec's own, or the model's class, by default.
+        """
+        _window, viewer = self._require_window_and_viewer()
+        if viewer is None:
+            return
+        gui = getattr(getattr(viewer, "_renderer", None), "_internal_gui", None)
+        if gui is None:
+            self._emit_error("form: this renderer draws no chrome")
+            return
+        if not str(path).strip():
+            self._emit_error("Usage: form <file.view.json> [, title]")
+            return
+
+        from ..renderer.form_window import FormWindow, model_for
+        from ..renderer.ui.view_spec import load_view_spec
+
+        redraw = lambda _key, _value: viewer._update_view()  # noqa: E731
+        try:
+            spec = load_view_spec(self._unquote_name(path))
+            panel = FormWindow(
+                spec, model_for(spec, viewer, redraw),
+                title=self._unquote_name(title),
+                key=f"form:{pathlib.Path(str(path)).stem}",
+                on_change=redraw,
+            )
+        except (FileNotFoundError, ValueError) as exc:
+            self._emit_error(f"form: {exc}")
+            return
+
+        panel.attach(gui)
+        # Kept on the viewer so it outlives this call: the window holds bound
+        # methods and nothing else keeps the panel alive.
+        forms = getattr(viewer, "_form_controls", None)
+        if forms is None:
+            forms = {}
+            viewer._form_controls = forms
+        forms[panel.key] = panel
+
+        existing = gui.window(panel.key)
+        if existing is None:
+            existing = gui.add_window(panel.window())
+        existing.visible = True
+        gui.raise_window(panel.key)
+        gui.layout(gui._width, gui._height)
+        viewer._update_view()
+
+        rows = len(panel.model.settings)
+        message = f"form: {panel.title} -- {rows} control(s)"
+        if panel.missing:
+            message += f"; {len(panel.missing)} section(s) not drawn: " + \
+                "; ".join(panel.missing[:3])
+        self._emit_message(message)
 
     @command("debug_mode", aliases=("debug",))
     def debug_mode(self, state: str = "") -> None:

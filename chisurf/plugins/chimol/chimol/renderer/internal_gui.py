@@ -4540,18 +4540,7 @@ class InternalGui:
         ) + 2 * self.PAD
         height = (len(lines) + 2) * row + 2 * self.PAD
 
-        # Beside the ring where there is room, and clamped into the viewport --
-        # a bubble half off the edge is the one thing worse than a centred one.
-        if target.w > 0.0:
-            bx = target.x + target.w + 12.0
-            if bx + width > float(self._width) - 4.0:
-                bx = target.x - width - 12.0
-            by = target.y - row
-        else:
-            bx = 0.5 * (float(self._width) - width)
-            by = 0.5 * (float(self._height) - height)
-        bx = min(max(bx, 4.0), max(float(self._width) - width - 4.0, 4.0))
-        by = min(max(by, 4.0), max(float(self._height) - height - 4.0, 4.0))
+        bx, by = self._tour_bubble_at(target, width, height)
         self._tour_rect = Rect(bx, by, width, height)
 
         p.fill_rect(bx, by, width, height, TOUR_BG)
@@ -4589,6 +4578,75 @@ class InternalGui:
             p.fill_rect(next_x, button_y, next_w, row, TOUR_BUTTON_BG)
             p.text(next_x, button_y, next_w, row,
                    ALIGN_VCENTER | ALIGN_CENTER, "Next", TOUR_FG)
+
+    def _tour_bubble_at(self, target, width: float, height: float):
+        """Where to put the tour's bubble so it never covers its own target.
+
+        The first version put the bubble to the right of the ring, or to the
+        left when there was no room, and clamped it into the viewport. That is
+        right for a small control and wrong for a wide one: the command prompt
+        spans the whole width, so neither side fits, the clamp put the bubble
+        back over the prompt -- and the step it was covering said *type this at
+        the prompt*. A tour that hides the control it is talking about is worse
+        than no tour, because the user cannot even see what they are being
+        asked to do.
+
+        So all four sides are tried, and a placement is only accepted if it
+        clears the target completely. Above and below are what save the wide
+        controls; right and left are preferred for the narrow ones because a
+        bubble beside a button reads as attached to it.
+
+        Returns
+        -------
+        tuple of float
+            The bubble's top-left corner.
+        """
+        pad = 12.0
+        edge = 4.0
+        right = float(self._width) - width - edge
+        bottom = float(self._height) - height - edge
+
+        if target.w <= 0.0 or target.h <= 0.0:
+            return (0.5 * (float(self._width) - width),
+                    0.5 * (float(self._height) - height))
+
+        def clamp(x, y):
+            return (min(max(x, edge), max(right, edge)),
+                    min(max(y, edge), max(bottom, edge)))
+
+        def clears(x, y):
+            """Whether the bubble at (x, y) misses the target entirely."""
+            return (
+                x + width <= target.x
+                or x >= target.x + target.w
+                or y + height <= target.y
+                or y >= target.y + target.h
+            )
+
+        # Beside first, then above or below. A press on the ringed control has
+        # to stay reachable, so overlapping is never traded for tidiness.
+        beside_y = min(max(target.y - self.CMD_ROW_H, edge), max(bottom, edge))
+        candidates = [
+            (target.x + target.w + pad, beside_y),
+            (target.x - width - pad, beside_y),
+            (min(max(target.x, edge), max(right, edge)),
+             target.y + target.h + pad),
+            (min(max(target.x, edge), max(right, edge)),
+             target.y - height - pad),
+        ]
+        for x, y in candidates:
+            if edge <= x <= right and edge <= y <= bottom and clears(x, y):
+                return (x, y)
+
+        # Nothing fits cleanly -- a target as large as the viewport. Take the
+        # placement that overlaps least, still clamped on screen.
+        def overlap(x, y):
+            x, y = clamp(x, y)
+            wide = max(0.0, min(x + width, target.x + target.w) - max(x, target.x))
+            tall = max(0.0, min(y + height, target.y + target.h) - max(y, target.y))
+            return wide * tall
+
+        return clamp(*min(candidates, key=lambda c: overlap(*c)))
 
     def _paint_tooltip(self, p) -> None:
         """The hover tooltip, beside the cursor, above everything else."""

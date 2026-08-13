@@ -296,6 +296,48 @@ def _demo_menu() -> tuple[MenuEntry, ...]:
 DEMO_MENU: tuple[MenuEntry, ...] = _demo_menu()
 
 
+def _preset_menu() -> tuple[MenuEntry, ...]:
+    """The reference viewer's presets, generated from the one table.
+
+    Its own menu rather than more rows under the object menu's `preset`
+    sub-menu, because it is a different question: PyMOL's presets choose *what
+    to show* -- ligands, sites, interfaces -- and these choose *how what is
+    already shown should look*. Mixing them gives one list of twenty-five
+    entries in which neither is findable.
+    """
+    from ..cmd.presets import PresetMixin
+
+    entries = [
+        MenuEntry(title, f"preset_cx {key}", note)
+        for key, (title, note) in _PRESET_TITLES.items()
+        if key in PresetMixin.CHIMERAX_PRESETS
+    ]
+    entries.append(SEP)
+    entries.append(
+        MenuEntry("List them at the prompt", "preset_cx",
+                  "Print every preset and what it does.")
+    )
+    return tuple(entries)
+
+
+#: Menu label and tooltip per preset. Separate from the command table because a
+#: menu wants title case and a sentence, and the command wants a key.
+_PRESET_TITLES: dict[str, tuple[str, str]] = {
+    "ribbons": ("Ribbons", "Cartoon with flat arrows on strands."),
+    "cylinders": ("Cylinders", "Helices as plain tubes -- shows packing."),
+    "licorice": ("Licorice", "One round section throughout, no arrows."),
+    "ghostly_white": ("Ghostly white surface", "A white surface you can see through."),
+    "atomic_transparent": ("Surface, atom colours", "Transparent, coloured from the atoms."),
+    "chain_opaque": ("Surface, by chain", "Opaque, one colour per chain."),
+    "publication_silhouettes": ("Publication: silhouettes", "White background and outlines."),
+    "publication_depth": ("Publication: depth-cued", "White background, depth instead of outlines."),
+    "interactive": ("Interactive", "Back to the working view."),
+    "alphafold": ("AlphaFold confidence", "Colour a prediction by pLDDT."),
+}
+
+PRESET_MENU: tuple[MenuEntry, ...] = _preset_menu()
+
+
 #: PyMOL's Wizard menu, with the one wizard chimol has. The rest of PyMOL's
 #: -- measurement, appearance, density, sculpting -- are listed nowhere rather
 #: than listed and disabled: a wizard is a *mode*, and offering to enter one
@@ -384,7 +426,7 @@ HELP_MENU: tuple[MenuEntry, ...] = (
 
 #: Menus chimol adds that PyMOL's bar does not have. Kept in one place so the
 #: ordering test can hold PyMOL's menus to PyMOL's order while allowing these.
-EXTRA_MENUS: frozenset[str] = frozenset({"Demo", "Tools"})
+EXTRA_MENUS: frozenset[str] = frozenset({"Demo", "Tools", "Preset"})
 
 #: The bar, in PyMOL's order, minus the menus listed in OMITTED_MENUS, plus
 #: the chimol-specific EXTRA_MENUS slotted where they read best.
@@ -394,6 +436,7 @@ MENU_BAR: tuple[tuple[str, tuple[MenuEntry, ...]], ...] = (
     ("Build", BUILD_MENU),
     ("Display", DISPLAY_MENU),
     ("Setting", SETTING_MENU),
+    ("Preset", PRESET_MENU),
     ("Demo", DEMO_MENU),
     ("Wizard", WIZARD_MENU),
     ("Tools", TOOLS_MENU),

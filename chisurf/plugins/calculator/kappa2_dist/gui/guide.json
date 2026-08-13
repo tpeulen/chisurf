@@ -10,7 +10,7 @@
       "title": "Start with the worst case",
       "text": "Pick <b>Isotropic</b> first. It means the dipoles are randomly oriented and completely frozen — no reorientation at all during the donor lifetime.<br/><br/>It is not a model of a real sample. It is the reference to compare against, and it needs no anisotropy inputs.",
       "target": {
-        "widget": "radioButton_iso"
+        "name": "radioButton_iso"
       },
       "await": {
         "hint": "Select <b>Isotropic</b>."
@@ -20,7 +20,7 @@
       "title": "Compute, and read the mean",
       "text": "Press <b>Compute</b>. The mean κ² comes back at 2/3 — exactly the value everyone assumes.<br/><br/>Now look at the plot. The distribution is broad and piles up near zero. <b>A correct mean is not a safe assumption</b>: it is the spread that moves distances, and this is the shape that does the damage.",
       "target": {
-        "widget": "pushButton"
+        "name": "pushButton"
       },
       "await": {
         "hint": "Press <b>Compute</b> and look at SD κ² and the plot."
@@ -30,7 +30,7 @@
       "title": "Now use your own dyes",
       "text": "Switch to <b>WIC (Cone)</b>. Each dye now reorients freely inside a cone whose half-angle comes from its residual anisotropy — the realistic picture for a dye on a flexible linker.<br/><br/>This is the model you will use on real data.",
       "target": {
-        "widget": "radioButton_2"
+        "name": "radioButton_2"
       },
       "await": {
         "hint": "Select <b>WIC (Cone)</b>."
@@ -40,7 +40,7 @@
       "title": "The inputs are anisotropy fits, not guesses",
       "text": "<b>r₀</b> is the fundamental anisotropy of your dye. <b>r_D∞</b> and <b>r_A∞</b> are the residual anisotropies of the donor and of the directly excited acceptor — both come from ordinary time-resolved anisotropy fits.<br/><br/>Try raising <b>r_D∞</b> toward r₀ and recomputing: a more restricted donor widens the κ² range, and with it the distance range. That is the whole point of the tool.",
       "target": {
-        "widget": "AutoForm"
+        "name": "AutoForm"
       },
       "await": {
         "hint": "Change <b>r_D∞</b>, press <b>Compute</b>, and watch SD R_app/R_DA."
@@ -50,7 +50,7 @@
       "title": "The number to quote",
       "text": "<b>SD R_app/R_DA</b> is the answer — the relative systematic uncertainty κ² puts on your distance. Under about 0.10 is the usual result for long flexible linkers, and it is why 2/3 has survived as a convention.<br/><br/>The fourth input, <b>r_AD∞</b> (the FRET-sensitized acceptor), tightens the bound further by fixing the angle δ between the dyes — but only tick <b>r_AD known</b> if you actually measured it. Without it, the wider bound is the honest one.<br/><br/>Press <b>?</b> for the models and the theory.",
       "target": {
-        "widget": "saveButton"
+        "name": "saveButton"
       }
     }
   ]

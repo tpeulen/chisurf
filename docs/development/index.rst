@@ -23,6 +23,7 @@ Architecture & API
    architecture_client_server
    architecture_mvc_actions
    dialogs_and_progress
+   ui_data_scheme
    chimol_widget_toolkit
    plugin_architecture
    proxy_rpc_design

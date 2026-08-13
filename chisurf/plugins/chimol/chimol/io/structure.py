@@ -416,6 +416,18 @@ def _parse_mmcif_backbone(path: str) -> StructurePayload:
         except Exception:
             pass
         element = str(atom.type_symbol or atom.atom_id[:1] or "C").upper()
+        # The isotropic B, which this reader dropped -- every `.cif` loaded with
+        # a column of zeros while the same file read through the core reader had
+        # it. That is invisible until something asks: `spectrum b` painted one
+        # flat colour, and putty drew a tube of constant radius. It matters most
+        # for a *predicted* structure, where the column is not a B-factor at all
+        # but the per-residue confidence: an AlphaFold model coloured by "b" is
+        # coloured by pLDDT, which is the one thing to look at before believing
+        # any of it.
+        try:
+            biso = float(getattr(atom, "biso", None) or 0.0)
+        except (TypeError, ValueError):
+            biso = 0.0
         coords.append(xyz)
         radii.append(0.0)
         atom_rows.append(
@@ -426,6 +438,7 @@ def _parse_mmcif_backbone(path: str) -> StructurePayload:
                 res_id=res_id,
                 element=element,
                 xyz=xyz,
+                bfactor=biso,
             )
         )
         if atom.atom_id != "CA" or getattr(atom, "het", False) or res_id < 0:

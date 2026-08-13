@@ -87,6 +87,182 @@ class PresetMixin(BaseCmd):
         "default": "lines and nonbonded, coloured by element",
     }
 
+    #: The reference viewer's own preset set, which is a *different* set from
+    #: PyMOL's rather than a rival spelling of it. PyMOL's presets are about
+    #: what to *show* (ligands, sites, interfaces); these are about how the
+    #: thing already shown should *look* -- ribbon geometry, surface
+    #: transparency, and the three lighting states a figure goes through.
+    #: Keeping both, under separate names and separate menus, is the point: an
+    #: analyst wants "ligand sites" and a figure wants "publication 1".
+    #:
+    #: Transcribed from the documented behaviour, not from the source: the
+    #: reference implementation is under a non-commercial licence and is read
+    #: here for what each preset *does*, never copied.
+    CHIMERAX_PRESETS: dict[str, str] = {
+        "ribbons": "cartoon with flat arrows on strands, rounded loops",
+        "cylinders": "helices as plain tubes rather than ribbons",
+        "licorice": "cartoon of constant round section, no arrows",
+        "ghostly_white": "a white surface at 80% transparency over the model",
+        "atomic_transparent": "a surface coloured from the atoms, 70% transparent",
+        "chain_opaque": "an opaque surface coloured by chain",
+        "publication_silhouettes": "white background, silhouettes, no depth cue",
+        "publication_depth": "white background, depth cue, no silhouettes",
+        "interactive": "back to the working view: dark background, depth cue",
+        "alphafold": "colour by pLDDT, the way a predicted model must be read",
+    }
+
+    @command("preset_cx", aliases=("cxpreset",))
+    def preset_cx(self, name: str = "", selection: str = "all") -> None:
+        """Apply one of the reference viewer's presets.
+
+        A separate command from :meth:`preset` because it is a separate set --
+        see :attr:`CHIMERAX_PRESETS`. Both are listed by running either with no
+        name.
+
+        Parameters
+        ----------
+        name : str
+            One of :attr:`CHIMERAX_PRESETS`.
+        selection : str, optional
+            What to apply it to; everything by default. The lighting presets
+            are global whatever is passed, and say so.
+        """
+        key = str(name).strip().lower().replace(" ", "_").replace("-", "_")
+        if not key:
+            self._emit_message(
+                "preset_cx: "
+                + ", ".join(f"{n} ({d})" for n, d in self.CHIMERAX_PRESETS.items())
+            )
+            return
+        if key not in self.CHIMERAX_PRESETS:
+            self._emit_error(
+                f"Unknown preset '{name}'. Use one of: "
+                + ", ".join(self.CHIMERAX_PRESETS)
+            )
+            return
+
+        _window, viewer = self._require_window_and_viewer()
+        if viewer is None:
+            return
+
+        sel = str(selection).strip() or "all"
+        self._preset_skipped = []
+        try:
+            getattr(self, f"_cx_{key}")(sel)
+        except Exception as exc:  # noqa: BLE001
+            self._emit_error(f"preset_cx {key}: {exc}")
+            return
+        message = f"preset_cx {key}: applied to ({sel})"
+        if self._preset_skipped:
+            message += "; " + "; ".join(self._preset_skipped)
+        self._emit_message(message)
+
+    # ------------------------------------------------------------------ #
+    # The reference viewer's presets
+    # ------------------------------------------------------------------ #
+    def _cx_cartoon_base(self, sel: str) -> None:
+        """What all three ribbon presets start from.
+
+        Cartoon only, nothing else drawn: the ribbon presets are about the
+        ribbon, and leaving sticks or spheres underneath makes every one of
+        them look the same.
+        """
+        self._run_preset_command(f"hide everything, {sel}")
+        self._run_preset_command(f"show cartoon, {sel}")
+
+    def _cx_ribbons(self, sel: str) -> None:
+        """The default: flat arrows on strands, rounded loops."""
+        self._cx_cartoon_base(sel)
+        self._set_global("cartoon_flat_sheets", "on")
+        self._set_global("cartoon_oval_length", 1.2)
+        self._set_global("cartoon_oval_width", 0.25)
+
+    def _cx_cylinders(self, sel: str) -> None:
+        """Helices as plain tubes -- the schematic that shows packing.
+
+        A tube says "a helix is here" and nothing about its face, which is the
+        whole point when the question is how helices pack rather than where the
+        side chains point.
+        """
+        self._cx_cartoon_base(sel)
+        self._set_global("cartoon_flat_sheets", "off")
+        self._set_global("cartoon_oval_length", 0.6)
+        self._set_global("cartoon_oval_width", 0.6)
+        self._set_global("cartoon_loop_radius", 0.3)
+
+    def _cx_licorice(self, sel: str) -> None:
+        """One constant round section throughout, no arrows.
+
+        Deliberately says nothing about secondary structure -- for a model
+        where the assignment is unreliable, or where it is not the point.
+        """
+        self._cx_cartoon_base(sel)
+        self._set_global("cartoon_flat_sheets", "off")
+        self._set_global("cartoon_oval_length", 0.5)
+        self._set_global("cartoon_oval_width", 0.5)
+        self._set_global("cartoon_loop_radius", 0.5)
+
+    def _cx_ghostly_white(self, sel: str) -> None:
+        """A white surface you can see the model through."""
+        self._run_preset_command(f"show cartoon, {sel}")
+        self._run_preset_command(f"show surface, {sel}")
+        self._run_preset_command(f"set surface_color, white")
+        self._set_global("transparency", 0.8)
+
+    def _cx_atomic_transparent(self, sel: str) -> None:
+        """A surface taking its colour from the atoms beneath it."""
+        self._run_preset_command(f"show surface, {sel}")
+        self._color_by_element(sel)
+        self._run_preset_command("set surface_color, -1")
+        self._set_global("transparency", 0.7)
+
+    def _cx_chain_opaque(self, sel: str) -> None:
+        """An opaque surface, one colour per chain."""
+        self._run_preset_command(f"show surface, {sel}")
+        self._cbc(sel)
+        self._run_preset_command("set surface_color, -1")
+        self._set_global("transparency", 0.0)
+
+    def _cx_publication_silhouettes(self, _sel: str) -> None:
+        """White background and outlines; the flat, printable look."""
+        self._run_preset_command("bg_color white")
+        self._set_global("silhouette", 1, note=False)
+        self._set_global("depth_cue", 0, note=False)
+        self._set_global("fog", 0.0, note=False)
+        self._preset_note("lighting is global, so it was not scoped to the selection")
+
+    def _cx_publication_depth(self, _sel: str) -> None:
+        """White background with depth cue instead of outlines.
+
+        The alternative when silhouettes fight with fine detail -- a large
+        assembly outlines every strand and the figure fills with black lines.
+        """
+        self._run_preset_command("bg_color white")
+        self._set_global("silhouette", 0, note=False)
+        self._set_global("depth_cue", 1, note=False)
+        self._set_global("fog", 0.55, note=False)
+        self._preset_note("lighting is global, so it was not scoped to the selection")
+
+    def _cx_interactive(self, _sel: str) -> None:
+        """Back to the working view after a figure preset."""
+        self._run_preset_command("bg_color black")
+        self._set_global("silhouette", 0, note=False)
+        self._set_global("depth_cue", 1, note=False)
+        self._preset_note("lighting is global, so it was not scoped to the selection")
+
+    def _cx_alphafold(self, sel: str) -> None:
+        """Colour a predicted model by its confidence.
+
+        AlphaFold writes pLDDT into the B-factor column, so this is
+        ``spectrum b`` -- but it is worth a preset of its own because reading a
+        prediction *without* looking at the confidence is the mistake the
+        database invites, and because the ramp has to run the right way: low
+        confidence warm, high confidence cool, as the AlphaFold viewer does.
+        """
+        self._run_preset_command(f"hide everything, {sel}")
+        self._run_preset_command(f"show cartoon, {sel}")
+        self._run_preset_command(f"spectrum b, orange_white_blue, {sel}, 50, 90")
+
     @command("preset")
     def preset(self, name: str = "", selection: str = "all") -> None:
         """Apply one of PyMOL's presets (PyMOL ``preset.<name>``).

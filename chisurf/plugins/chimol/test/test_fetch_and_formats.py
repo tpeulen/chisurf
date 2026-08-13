@@ -83,6 +83,7 @@ def test_every_repository_is_reachable_by_some_identifier():
         "pdb": "148l",
         "emdb": "EMD-3061",
         "pdb-ihm": "PDBDEV_00000012",
+        "alphafold": "AF-P69905-F1",
     }
     assert set(samples) == set(LoaderCommands.REPOSITORIES), (
         "a repository was added or renamed; give it a sample identifier here"

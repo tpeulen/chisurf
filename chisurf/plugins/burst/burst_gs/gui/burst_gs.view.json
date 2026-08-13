@@ -34,7 +34,7 @@
                   "type": "value",
                   "attr": "data_dir",
                   "label": "TTTR folder",
-                  "kind": "path",
+                  "kind": "directory",
                   "description": "Folder the raw TTTR files named in the burst table resolve against. Left empty, the burst table's own folder is used."
                 },
                 {

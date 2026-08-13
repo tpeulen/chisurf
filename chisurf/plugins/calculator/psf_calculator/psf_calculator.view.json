@@ -238,7 +238,6 @@
               "source": "summary_text",
               "title": "Result",
               "description": "Peak position, axial and lateral extent of the computed PSF.",
-              "n_col": 1,
               "is_markdown": true,
               "height": 120,
               "max_height": 140

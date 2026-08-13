@@ -42,7 +42,7 @@
           "type": "choice",
           "attr": "dataset_index",
           "label": "Dataset",
-          "kind": "combo",
+          "style": "combo",
           "options_source": "dataset_options",
           "description": "Which fit of this window the controls act on."
         },
