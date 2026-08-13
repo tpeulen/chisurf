@@ -799,10 +799,10 @@ def test_an_identifier_names_its_repository():
     assert cmd._repository_for("pdb_00001abc") == "pdb"
 
 
-def test_all_three_repositories_are_reachable():
+def test_every_repository_is_reachable():
     from chisurf.plugins.chimol.chimol.cmd.command import Cmd
 
-    assert set(Cmd.REPOSITORIES) == {"pdb", "emdb", "pdb-ihm"}
+    assert set(Cmd.REPOSITORIES) == {"pdb", "emdb", "pdb-ihm", "alphafold"}
     for spec in Cmd.REPOSITORIES.values():
         assert spec["url"].startswith("http")
         assert spec["suffix"].startswith(".")

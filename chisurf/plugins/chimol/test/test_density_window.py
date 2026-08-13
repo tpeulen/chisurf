@@ -67,7 +67,19 @@ def loaded(qapp):
 
 
 class _Recorder:
-    """A painter that draws nothing; layout is what the tests need."""
+    """A painter that draws nothing; layout is what the tests need.
+
+    It implements the whole :class:`~chimol.renderer.ui.painter.Painter`
+    interface, measurement included. A double that answers only the calls a
+    panel happened to make when it was written fails the moment the panel makes
+    another -- which is what happened when the header started measuring its
+    text so it could stop overrunning the value range beside it.
+    """
+
+    #: Wide enough to be a plausible glyph and narrow enough that a header
+    #: fits, so a layout test measures something rather than everything or
+    #: nothing.
+    CHAR_W = 7.0
 
     def fill_rect(self, *a, **k):
         pass
@@ -83,6 +95,12 @@ class _Recorder:
 
     def pop_clip(self, *a, **k):
         pass
+
+    def text_width(self, string: str) -> float:
+        return len(str(string)) * self.CHAR_W
+
+    def line_height(self) -> float:
+        return 16.0
 
 
 def _marker_x(panel, model) -> float:

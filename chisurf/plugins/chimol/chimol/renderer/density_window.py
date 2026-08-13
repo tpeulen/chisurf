@@ -168,7 +168,11 @@ class DensityWindow:
         self._mode_rects: list[tuple[object, str]] = []
         self._quality_rects: list[tuple[object, str]] = []
         self._alpha_slider = SliderFloat("Alpha", 0.0, 1.0, value=1.0, fmt="%.2f")
-        self._color_swatch = ColorEdit4("Color")
+        # No label. The painter does not clip text, and "Color" in a 48 px box
+        # ran straight into the alpha slider beside it -- the header read
+        # "ColorAlpha: 1.00". A swatch next to a slider called Alpha needs no
+        # word, and the tooltip says what it does for anyone unsure.
+        self._color_swatch = ColorEdit4("")
         self._alpha_box: _Box | None = None
         self._color_box: _Box | None = None
         #: The threshold the colour well, alpha slider and level readout act
@@ -287,17 +291,45 @@ class DensityWindow:
         self._eye_box, self._close_box = eye_box, close_box
 
         # One line, not two: the name, the shape and the range are one fact
-        # about the map, and they fit.
-        p.text(rect.x + _PAD, y, rect.w - 2 * _PAD, _ROW,
-               ALIGN_VCENTER | ALIGN_LEFT,
-               # `x`, not `×`: the baked chrome atlas has no multiplication
-               # sign, and a glyph it does not have draws as nothing -- the
-               # dimensions read as "28 28 28".
-               f"{grid.name}  {shape[0]}x{shape[1]}x{shape[2]}", _TEXT)
+        # about the map. But the painter does **not** clip text to the width it
+        # is given, so "fits" has to be arranged rather than assumed -- drawn
+        # full-width the name ran under the range and the two read as one
+        # string of nonsense ("EMD-3061.map 27 180x180x180o" in a screenshot).
+        #
+        # `x`, not `×`: the baked chrome atlas has no multiplication sign, and
+        # a glyph it does not have draws as nothing -- the dimensions read as
+        # "28 28 28".
+        try:
+            title = str(self.model.map_title() or grid.name)
+        except AttributeError:
+            title = str(grid.name)
+        size = f"{shape[0]}x{shape[1]}x{shape[2]}"
+        right = f"{low:.3g} … {high:.3g}"
+        right_w = p.text_width(right) + _PAD
+        left_w = max(rect.w - 3 * _PAD - 2 * button_w - right_w, 40.0)
+
+        # Shed the least useful part first: the file name in brackets, which
+        # `map_title` adds only when it differs from the object's name. Then
+        # elide the name itself, and only then the size.
+        candidates = [f"{title}  {size}"]
+        if "  (" in title:
+            candidates.append(f"{title.split('  (')[0]}  {size}")
+        left = candidates[-1]
+        for candidate in candidates:
+            if p.text_width(candidate) <= left_w:
+                left = candidate
+                break
+        else:
+            stem = left[: -len(size) - 2] if left.endswith(size) else left
+            while len(stem) > 4 and p.text_width(f"{stem[:-1]}…  {size}") > left_w:
+                stem = stem[:-1]
+            left = f"{stem[:-1]}…  {size}" if len(stem) > 4 else size
+
+        p.text(rect.x + _PAD, y, left_w, _ROW,
+               ALIGN_VCENTER | ALIGN_LEFT, left, _TEXT)
         p.text(rect.x + _PAD, y,
                rect.w - 3 * _PAD - 2 * button_w - 2.0, _ROW,
-               ALIGN_VCENTER | ALIGN_RIGHT,
-               f"{low:.3g} … {high:.3g}", _DIM)
+               ALIGN_VCENTER | ALIGN_RIGHT, right, _DIM)
         y += _ROW + _GAP
 
         # The levels can change under the panel (a command, a new map), so the
@@ -366,8 +398,10 @@ class DensityWindow:
                 alpha_val = 1.0
             self._alpha_slider.value = alpha_val
 
-        # Swatch on left, slider on right
-        swatch_w = 48.0
+        # Swatch on left, slider on right. The swatch is square and needs no
+        # more than its own height plus a little air; the rest is the slider's,
+        # which is the control anyone actually drags.
+        swatch_w = _ROW + 8.0
         slider_w = rect.w - 3 * _PAD - swatch_w
         swatch_x = rect.x + _PAD
         slider_x = swatch_x + swatch_w + _PAD

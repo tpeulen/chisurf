@@ -35796,3 +35796,11 @@
   pipeline (scale-space band-limiting, Morton-ordered virtual pages, a 12–16 byte
   packed primitive quantised relative to its page box, a WGSL page-request queue)
   with the four questions that block writing any of it.
+- 2026-08-13 — chimol: density maps are objects and are listed as such. The
+  object list was refreshed only by the structure loader, so every map, every
+  `create` and every `delete` changed it silently; with no row a map could not be
+  made active, which is why the density panel could not be switched back to the
+  first of two. Underneath both, `activate` had been raising ImportError on every
+  run since a class rename (`LoaderMixin` → `LoaderCommands`) that left the stale
+  name in `__all__`. Also fixed: the panel named the file rather than the object,
+  and two headers overran their width because the painter does not clip text.

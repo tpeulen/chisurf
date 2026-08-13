@@ -180,6 +180,34 @@ class VolumeViewModel:
         except Exception:
             logger.warning("map panel: could not set the display mode", exc_info=True)
 
+    def map_title(self) -> str:
+        """What to call the map in the panel header.
+
+        The **object's** name, which is what the object list shows and what a
+        command addresses -- not the grid's, which is the file it came from.
+        Two maps loaded from one file carry one grid name between them, so a
+        header naming the file makes the panel look stuck on the first of them:
+        the report was "loaded a second density, only the first shows".
+
+        The file name follows in brackets when it says something the object
+        name does not.
+        """
+        grid = self._grid()
+        if grid is None:
+            return ""
+        file_name = str(getattr(grid, "name", "") or "")
+        entry = None
+        try:
+            entry = self._viewer._objects.get(self._object_id)
+        except Exception:  # noqa: BLE001
+            entry = None
+        object_name = str(getattr(entry, "name", "") or "") if entry else ""
+        if not object_name:
+            return file_name
+        if not file_name or file_name == object_name or object_name in file_name:
+            return object_name
+        return f"{object_name}  ({file_name})"
+
     def map_visible(self) -> bool:
         """Whether the map object is currently shown in the scene."""
         if self._object_id is None:

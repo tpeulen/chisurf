@@ -107,6 +107,25 @@ what it blocks:
   read through the core reader had it. Invisible until something asks --
   `spectrum b` painted one flat colour and putty drew a constant tube -- and
   worst for a predicted model, where that column is the confidence.
+* **a density map is an object (2026-08-13, user report):** maps were missing
+  from the object list, and a second map could not be shown in the density
+  panel. One root, and a third defect underneath. The object list is refreshed
+  by the **host**, which the loader calls after a *structure* arrives and
+  nothing else did -- so `load_map`, `fetch EMD-xxxx`, `molmap`, `create` and
+  `delete` all changed the list silently. With no row, a map could not be made
+  active; the density panel edits "the active object's map, else the newest",
+  so the first map was not stuck but **unreachable**. And `activate` raised
+  `ImportError` on every run: it imported `LoaderMixin` from a module whose
+  class is `LoaderCommands`, a rename that moved in one direction only and left
+  the stale name in `__all__`, where nothing imports it and nothing checked.
+  The list is now re-read after any command that changes it, compared by a
+  cheap signature because `sync_panel` rebuilds the sequence strip. Two display
+  faults came with it, both from the painter **not clipping text to the width
+  it is given**: the panel named the *file* rather than the object (two maps
+  from one file share one header, which is what "only the first shows" looks
+  like from outside) and the header ran under the value range. The panel is
+  `map_title()` now, elided to fit, and the colour swatch lost its label --
+  "Color" in a 48 px box read as `ColorAlpha: 1.00`.
 * **the bar is eight menus, and `fov` answers to its own name (2026-08-13):**
   Build (two entries) and Wizard (four) are submenus of **Tools** -- a bar of
   ten menus costs every menu on it, and editing a structure or stepping a

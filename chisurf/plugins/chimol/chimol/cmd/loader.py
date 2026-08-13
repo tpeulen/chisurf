@@ -106,10 +106,15 @@ def _ihm_accession(code: str) -> str:
     """
     import re as _re  # noqa: PLC0415
 
-    digits = _re.search(r"\d+", str(code))
-    if digits is None:
-        return str(code).lower()
-    return f"pdbdev_{int(digits.group(0)):08d}"
+    text = str(code).strip()
+    # Only the short spellings are expanded. Anything else is passed through
+    # as typed: `fetch 8zzz, pdb-ihm` names an entry directly, and rewriting a
+    # code that merely *contains* a digit would ask the server for something
+    # nobody typed.
+    match = _re.fullmatch(r"(?:ihm|pdbdev)[-_]?(\d+)", text, flags=_re.IGNORECASE)
+    if match is None:
+        return text.lower()
+    return f"pdbdev_{int(match.group(1)):08d}"
 
 
 def _uniprot_accession(code: str) -> str:
@@ -709,4 +714,4 @@ def _fetch_emdb_contour_level(num: str) -> float | None:
     return None
 
 
-__all__ = ["LoaderMixin", "_fetch_emdb_contour_level"]
+__all__ = ["LoaderCommands", "_fetch_emdb_contour_level"]

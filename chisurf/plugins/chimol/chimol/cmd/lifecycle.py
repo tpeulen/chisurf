@@ -26,9 +26,15 @@ class LifecycleMixin(BaseCmd):
         if not wanted:
             self._emit_error("Usage: activate <object>")
             return
-        from .loader import LoaderMixin
+        # `LoaderCommands`, not `LoaderMixin`: the class was renamed and this
+        # call site was not, so `activate` raised ImportError on every run --
+        # including from the object list, which is how a density map could not
+        # be made the active one and the density panel could not be switched to
+        # it. The stale name survived in `loader.__all__` too, where nothing
+        # imports it and nothing checked.
+        from .loader import LoaderCommands
 
-        object_id = LoaderMixin._object_id_for_name(viewer, wanted)
+        object_id = LoaderCommands._object_id_for_name(viewer, wanted)
         if object_id is None:
             self._emit_error(f"activate: no object called {wanted!r}")
             return
