@@ -107,7 +107,26 @@ BUILD_MENU: tuple[MenuEntry, ...] = (
 )
 
 
-DISPLAY_MENU: tuple[MenuEntry, ...] = (
+def _display_menu() -> tuple[MenuEntry, ...]:
+    """The Display menu, with the presets as its first submenu.
+
+    A preset *is* a display choice -- it sets a representation, a colouring and
+    a lighting state -- so a top-level Preset menu was a second place to look
+    for what Display already answers. Built by a function rather than written
+    as a literal because `PRESET_MENU` is generated from
+    `gui/presets.json` further down this file, and a literal here would freeze
+    whatever the table happened to hold at import.
+    """
+    return (
+        MenuEntry("Preset", None,
+                  "Representation, colour and lighting, in one step.",
+                  children=PRESET_MENU),
+        SEP,
+        *_DISPLAY_ENTRIES,
+    )
+
+
+_DISPLAY_ENTRIES: tuple[MenuEntry, ...] = (
     MenuEntry("Sequence", None, "", children=(
         MenuEntry("Show", "set seq_view, on"),
         MenuEntry("Hide", "set seq_view, off"),
@@ -316,6 +335,8 @@ def _preset_menu() -> tuple[MenuEntry, ...]:
 
 PRESET_MENU: tuple[MenuEntry, ...] = _preset_menu()
 
+DISPLAY_MENU: tuple[MenuEntry, ...] = _display_menu()
+
 
 #: PyMOL's Wizard menu, with the one wizard chimol has. The rest of PyMOL's
 #: -- measurement, appearance, density, sculpting -- are listed nowhere rather
@@ -399,21 +420,34 @@ TOOLS_MENU: tuple[MenuEntry, ...] = (
 
 
 def _tour_entries() -> tuple[MenuEntry, ...]:
-    """The guided tours, for the Help menu.
+    """The guided tours, as one submenu of Help.
 
     They were under Demo, beside the scripts, and that is the wrong shelf. A
     demo runs itself and shows a finished result; a tour points at the real
-    controls and waits for the user to press them, which is *help* -- it is
-    what someone opens for the same reason they open the command list. Under
-    Demo it read as another thing to watch.
+    controls and waits for the user to press them, which is *help* -- what
+    someone opens for the same reason they open the command list. Under Demo it
+    read as another thing to watch.
+
+    In a **submenu** rather than as rows, because there will be more of them:
+    one per workflow worth teaching, each with a sentence of a title. Loose in
+    Help they would push Reset GUI and Debug Mode off the bottom of the list
+    within a handful of additions, and those two are what someone opens Help
+    for when something has gone wrong.
     """
     from ..tour import available_tours
 
-    return tuple(
-        MenuEntry(f"Tour: {title}", f"tour {key}",
-                  "Step by step, pointing at the real controls and waiting "
-                  "for you to press them.")
-        for key, title in available_tours()
+    tours = available_tours()
+    if not tours:
+        return ()
+    return (
+        MenuEntry("Tours", None,
+                  "Step by step through a workflow, pointing at the real "
+                  "controls and waiting for you to press them.",
+                  children=tuple(
+                      MenuEntry(title, f"tour {key}",
+                                "Points at each control and waits for you.")
+                      for key, title in tours
+                  )),
     )
 
 
@@ -437,7 +471,7 @@ HELP_MENU: tuple[MenuEntry, ...] = (
 
 #: Menus chimol adds that PyMOL's bar does not have. Kept in one place so the
 #: ordering test can hold PyMOL's menus to PyMOL's order while allowing these.
-EXTRA_MENUS: frozenset[str] = frozenset({"Demo", "Tools", "Preset"})
+EXTRA_MENUS: frozenset[str] = frozenset({"Demo", "Tools"})
 
 #: PyMOL menus chimol keeps but does not give a place on the bar, and where
 #: they went. Different from :data:`OMITTED_MENUS`, which is what chimol cannot
@@ -454,14 +488,22 @@ FOLDED_MENUS: dict[str, str] = {
     "Wizard": "a submenu of Tools",
 }
 
+#: chimol's own menus that are submenus rather than bar entries. Preset was a
+#: bar entry for a day and reads better here: a preset is a *display* choice --
+#: representation, colour, lighting -- so on the bar it was a second place to
+#: look for what Display already answers.
+NESTED_MENUS: dict[str, str] = {
+    "Preset": "the first submenu of Display",
+}
+
 #: The bar, in PyMOL's order, minus the menus listed in OMITTED_MENUS, plus
 #: the chimol-specific EXTRA_MENUS slotted where they read best.
 MENU_BAR: tuple[tuple[str, tuple[MenuEntry, ...]], ...] = (
     ("File", FILE_MENU),
     ("Edit", EDIT_MENU),
+    # Preset is Display's first submenu -- see `_display_menu`.
     ("Display", DISPLAY_MENU),
     ("Setting", SETTING_MENU),
-    ("Preset", PRESET_MENU),
     ("Demo", DEMO_MENU),
     # Build and Wizard are submenus of Tools, and the tours are under Help.
     ("Tools", TOOLS_MENU),

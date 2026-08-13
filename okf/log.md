@@ -35787,3 +35787,12 @@
   worked, its name did not — only `set field_of_view` was accepted, so `fov 60`
   and `set fov, 60` both failed and read as a missing feature. There is now an
   alias table and a `fov` command.
+- 2026-08-13 — chimol: Preset became Display's first submenu (a preset is a
+  display choice, so on the bar it was a second place to look for what Display
+  answers) and the tours became one Tours submenu under Help, since more are
+  coming and loose rows would push Reset GUI and Debug Mode — what Help is opened
+  for when something is wrong — off the bottom. The bar is seven menus.
+  [PRD-102](prds/prd-102.md) gained a fourth part: the splat rung as an actual
+  pipeline (scale-space band-limiting, Morton-ordered virtual pages, a 12–16 byte
+  packed primitive quantised relative to its page box, a WGSL page-request queue)
+  with the four questions that block writing any of it.

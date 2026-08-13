@@ -259,11 +259,26 @@ def test_the_tours_are_on_the_help_menu():
     """
     from chisurf.plugins.chimol.chimol.app.menu_bar import DEMO_MENU, HELP_MENU
 
-    commands = [str(getattr(entry, "command", "") or "") for entry in HELP_MENU]
-    demo = [str(getattr(entry, "command", "") or "") for entry in DEMO_MENU]
+    def commands_of(entries):
+        found = set()
+        for entry in entries or ():
+            command = getattr(entry, "command", None)
+            if command:
+                found.add(str(command))
+            found |= commands_of(getattr(entry, "children", None))
+        return found
+
+    # In a submenu, not loose in Help: more tours are coming, and loose they
+    # would push Reset GUI and Debug Mode off the bottom -- which are what Help
+    # is opened for when something has gone wrong.
+    under_help = commands_of(HELP_MENU)
+    top_level = {str(getattr(e, "command", "") or "") for e in HELP_MENU}
     for name in TOURS:
-        assert f"tour {name}" in commands, f"{name} is not on the Help menu"
-        assert f"tour {name}" not in demo, f"{name} is still on the Demo menu"
+        assert f"tour {name}" in under_help, f"{name} is not under Help"
+        assert f"tour {name}" not in top_level, f"{name} is a loose Help row"
+        assert f"tour {name}" not in commands_of(DEMO_MENU), (
+            f"{name} is still on the Demo menu"
+        )
 
 
 @pytest.mark.parametrize("name", TOURS)

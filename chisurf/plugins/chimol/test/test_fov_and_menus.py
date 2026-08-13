@@ -1,4 +1,4 @@
-"""The field of view answers to its own name, and the bar is eight menus.
+"""The field of view answers to its own name, and the bar is seven menus.
 
 fov
 ---
@@ -22,9 +22,11 @@ The bar
 Build and Wizard were top-level menus of two and four entries. A bar of ten
 costs every menu on it -- the wider it is, the further any one of them is from
 "what can this do" -- so both are submenus of Tools, which is where a tool
-belongs. The tours moved the other way, from Demo to Help: a demo runs itself
-and shows a finished result, and a tour points at real controls and waits for
-you to press them, which is what someone opens the command list for.
+belongs. Preset went under Display for a plainer reason: a preset *is* a
+display choice, so on the bar it was a second place to look for what Display
+already answers. The tours moved from Demo to Help: a demo runs itself and
+shows a finished result, and a tour points at real controls and waits for you
+to press them, which is what someone opens the command list for.
 
 Nothing was dropped in either move, and that is what the tests check. A menu is
 a way to *find* a command, never the only way to reach one.
@@ -124,15 +126,35 @@ def test_changing_the_angle_changes_the_picture(measured):
 # ------------------------------------------------------------------- menus
 
 
-def test_the_bar_is_eight_menus():
-    """Build and Wizard folded into Tools; nothing else moved."""
+def test_the_bar_is_seven_menus():
+    """Build and Wizard folded into Tools, Preset nested under Display.
+
+    Every one of the three is still complete and one level down, which is what
+    `FOLDED_MENUS` and `NESTED_MENUS` declare and what the tests below check.
+    """
     from chisurf.plugins.chimol.chimol.app.menu_bar import MENU_BAR
 
     titles = [title for title, _entries in MENU_BAR]
-    assert "Build" not in titles and "Wizard" not in titles
+    for gone in ("Build", "Wizard", "Preset"):
+        assert gone not in titles, f"{gone} is back on the bar"
     assert titles == [
-        "File", "Edit", "Display", "Setting", "Preset", "Demo", "Tools", "Help"
+        "File", "Edit", "Display", "Setting", "Demo", "Tools", "Help"
     ], titles
+
+
+def test_the_presets_are_the_first_thing_under_display():
+    """A preset is a display choice, so Display is where it is looked for."""
+    from chisurf.plugins.chimol.chimol.app.menu_bar import DISPLAY_MENU
+    from chisurf.plugins.chimol.chimol.cmd.presets import load_reference_presets
+
+    first = DISPLAY_MENU[0]
+    assert str(getattr(first, "label", "")) == "Preset"
+    children = {
+        str(getattr(child, "command", "") or "")
+        for child in (getattr(first, "children", None) or ())
+    }
+    for key in load_reference_presets():
+        assert f"preset_cx {key}" in children, f"{key} is not under Display"
 
 
 def test_nothing_was_lost_in_the_fold():
@@ -167,8 +189,17 @@ def test_the_tours_are_under_help_and_not_under_demo():
     from chisurf.plugins.chimol.chimol.app.menu_bar import DEMO_MENU, HELP_MENU
     from chisurf.plugins.chimol.chimol.tour import available_tours
 
-    help_commands = {str(getattr(e, "command", "") or "") for e in HELP_MENU}
-    demo_commands = {str(getattr(e, "command", "") or "") for e in DEMO_MENU}
+    def commands(entries):
+        found = set()
+        for entry in entries or ():
+            command = getattr(entry, "command", None)
+            if command:
+                found.add(str(command))
+            found |= commands(getattr(entry, "children", None))
+        return found
+
+    help_commands = commands(HELP_MENU)
+    demo_commands = commands(DEMO_MENU)
     for key, _title in available_tours():
         assert f"tour {key}" in help_commands, f"{key} is not under Help"
         assert f"tour {key}" not in demo_commands, f"{key} is still under Demo"
