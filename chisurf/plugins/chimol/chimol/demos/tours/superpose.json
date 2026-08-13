@@ -10,51 +10,67 @@
     {
       "title": "Load the first",
       "text": "The nucleotide-free form. It will be the <b>target</b>: the structure that stays put, with the other moved onto it.",
-      "target": {"command": true},
+      "target": {
+        "command": true
+      },
       "expect": "fetch 1DG3",
-      "hint": "Type <b>fetch 1DG3</b>."
+      "hint": "Type <code>fetch 1DG3</code>."
     },
     {
       "title": "And the second",
       "text": "The GTP-analogue complex. Both arrive in their own deposited frames, which have nothing to do with each other -- so at this point the two are somewhere in space together and the picture means nothing yet.",
-      "target": {"command": true},
+      "target": {
+        "command": true
+      },
       "expect": "fetch 1F5N",
-      "hint": "Type <b>fetch 1F5N</b>, then <b>zoom all</b> to see both."
+      "hint": "Type <code>fetch 1F5N</code>, then <code>zoom all</code> to see both."
     },
     {
       "title": "Tell them apart first",
       "text": "Two structures in one colour cannot be compared. Colour them separately before superposing anything, or the result is a single tangle that always looks like it worked.",
-      "target": {"object": "1f5n"},
+      "target": {
+        "object": "1f5n"
+      },
       "expect": "color",
-      "hint": "Type <b>color skyblue, 1dg3</b>, then <b>color salmon, 1f5n</b>."
+      "hint": "Type <code>color skyblue, 1dg3</code>, then <code>color salmon, 1f5n</code>.",
+      "run": "color skyblue, 1dg3"
     },
     {
       "title": "align: match the sequences, then superpose",
       "text": "<b>align</b> pairs residues by identity -- chain and residue number where they agree, and a sequence alignment where they do not -- and then finds the rotation that minimises the distance between the pairs.\n\nPairing by <i>position in the selection</i> instead is a classic silent error: a structure missing one loop pairs every later residue against its neighbour and returns a confident, meaningless number. Watch the report: it says how many residues were paired out of how many.",
-      "target": {"command": true},
+      "target": {
+        "command": true
+      },
       "expect": "align 1f5n, 1dg3",
-      "hint": "Type <b>align 1f5n, 1dg3</b>. Note the RMSD and the residue count."
+      "hint": "Type <code>align 1f5n, 1dg3</code>. Note the RMSD and the residue count."
     },
     {
       "title": "super: when the sequences do not help",
       "text": "<b>super</b> does the same job without trusting the sequence, refining the set of matched pairs by rejecting outliers over several cycles. It is what you use for two structures that fold the same way but do not share a sequence -- and, here, for a second opinion.\n\nIf the two RMSDs disagree a lot, the pairing is what differs, not the geometry.",
-      "target": {"command": true},
+      "target": {
+        "command": true
+      },
       "expect": "super 1f5n, 1dg3",
-      "hint": "Type <b>super 1f5n, 1dg3</b> and compare the number with align's."
+      "hint": "Type <code>super 1f5n, 1dg3</code> and compare the number with align's."
     },
     {
       "title": "rms: measure without moving anything",
       "text": "<b>rms</b> reports the deviation where the structures already are. Run after a superposition it is the fit's own residual; run before one it tells you how far apart the deposited frames were.\n\nIt pairs residues by identity too, and then matches the atoms <i>by name inside each paired residue</i> -- two structures need not carry the same atoms per residue, and lining up two flat atom lists by position is the same mistake one level down.",
-      "target": {"command": true},
+      "target": {
+        "command": true
+      },
       "expect": "rms 1f5n, 1dg3",
-      "hint": "Type <b>rms 1f5n, 1dg3</b>."
+      "hint": "Type <code>rms 1f5n, 1dg3</code>."
     },
     {
       "title": "Now look at what moved",
       "text": "With the two superposed, the differences are the point. Colour by the deviation, or simply look: the domain that closes around the nucleotide is what this pair is famous for.\n\n<b>align</b> also leaves the pairing behind it, so the sequence strip shows which residues were matched and which had no partner.",
-      "target": {"sequence": true},
+      "target": {
+        "sequence": true
+      },
       "expect": "zoom",
-      "hint": "Type <b>zoom 1f5n</b> and compare the two chains where they diverge."
+      "hint": "Type <code>zoom 1f5n</code> and compare the two chains where they diverge.",
+      "run": "zoom 1f5n"
     }
   ]
 }

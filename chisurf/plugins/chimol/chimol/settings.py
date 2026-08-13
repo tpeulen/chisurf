@@ -427,6 +427,10 @@ _SPECS: tuple[SettingSpec, ...] = (
           "Surface evaluation mode: splat (GPU screen-space), fast, balanced, fine."),
 
     # -- Raytracing / lighting ---------------------------------------------
+    _spec("auto_rename_duplicate_objects", "defaults.auto_rename_duplicate_objects",
+          "bool", True,
+          "Give a second object of the same name a _2 suffix, rather than "
+          "letting two objects share one name."),
     _spec("ray_shadow", "ray.shadow", "bool", True,
           "Cast shadows when raytracing."),
     _spec("antialias", "ray.antialias", "int", 2,

@@ -71,6 +71,22 @@ class TourStep:
     hint : str
         What to do, shown while waiting. Falls back to a sentence built from
         *expect*, so a step is never mute about what it is waiting for.
+    setup : str
+        A command run when the step is **shown**, to put on screen the thing
+        it is about. A step that describes the Density panel and rings it must
+        open it first, or it points at nothing and the panel it is describing
+        is not there -- which is what "some windows do not seem to appear"
+        was.
+
+        Distinct from *run*, and the distinction is the tour's rule: *setup*
+        reveals the subject, *run* performs the action the step is teaching,
+        and only the second is something the user could have done themselves.
+    run : str
+        What the step's **Run** button executes. Defaults to *expect*, which is
+        right when that is a whole command -- and is not when it is a prefix: a
+        step matching any ``translate`` cannot run the word on its own, and
+        pressing Run answered "missing required argument". A step whose
+        ``expect`` is a prefix gives the command to run here.
     """
 
     title: str
@@ -78,6 +94,13 @@ class TourStep:
     target: dict = field(default_factory=dict)
     expect: str = ""
     hint: str = ""
+    run: str = ""
+    setup: str = ""
+
+    @property
+    def command(self) -> str:
+        """The command Run issues: *run* when given, else *expect*."""
+        return self.run or self.expect
 
     @property
     def waits(self) -> bool:
@@ -145,15 +168,28 @@ class Tour:
 
 
 def _strip_markup(text: str) -> str:
-    """Drop the inline HTML a ChiSurf tour would render.
+    """Drop the inline HTML a ChiSurf tour would render, keeping code marked.
 
     The tours are written in the same dialect as the widget-based ones so the
-    two can be read side by side, but this chrome paints one font: emphasis has
-    nowhere to go, and showing the tags themselves would be worse than losing
-    them.
+    two can be read side by side, but this chrome paints one font: bold and
+    italic have nowhere to go.
+
+    **A command does, and it needs one.** A step that says *type translate
+    [6, -4, 3], 5a63* runs the command into the prose around it, and the
+    reader has to work out where the sentence stops and the thing they must
+    type starts. So ``<code>`` spans become ```backticks```, which the painter
+    draws in its own colour -- see :meth:`InternalGui._paint_tour`.
+
+    ``<b>`` is **not** code. It is emphasis, and the tours use it on ordinary
+    words -- "a map-to-map correlation", "0.49" -- so treating it as code put
+    half the prose in a command's colour on its own line, which is worse than
+    no styling at all.
     """
+    text = str(text)
+    for opening, closing in (("<code>", "</code>"), ("<tt>", "</tt>")):
+        text = text.replace(opening, "`").replace(closing, "`")
     out, depth = [], 0
-    for character in str(text):
+    for character in text:
         if character == "<":
             depth += 1
         elif character == ">":
@@ -170,6 +206,8 @@ def _step_from(data: dict) -> TourStep:
         target=dict(data.get("target") or {}),
         expect=str(data.get("expect", "")),
         hint=_strip_markup(data.get("hint", "")),
+        run=str(data.get("run", "")),
+        setup=str(data.get("setup", "")),
     )
 
 

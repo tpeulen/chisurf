@@ -550,6 +550,24 @@ class LoaderCommands(BaseCmd):
             return
         window._load_structure_from_path(destination, name=display)
 
+    def _loaded_name(self, requested: str) -> str:
+        """The name the object ended up with, which may carry a ``_2`` suffix.
+
+        Reported rather than the requested name because they differ exactly
+        when it matters: a second copy of one entry is addressed as ``148l_2``,
+        and a message saying ``148l`` sends the user to the first one.
+        """
+        _window, viewer = self._require_window_and_viewer()
+        if viewer is None:
+            return requested
+        try:
+            active = viewer.get_active_object_id()
+            entry = viewer._objects.get(active)
+            name = str(getattr(entry, "name", "") or "")
+        except Exception:  # noqa: BLE001
+            return requested
+        return name or requested
+
     def _repository_for(self, code: str) -> str:
         """Which repository an identifier looks like it belongs to.
 
@@ -629,7 +647,7 @@ class LoaderCommands(BaseCmd):
                     "delete it and try again."
                 )
                 return
-            self._emit_message(f"fetch: loaded {display} (cached)")
+            self._emit_message(f"fetch: loaded {self._loaded_name(display)} (cached)")
             return
 
         # Downloaded beside the destination and moved into place only once it is
@@ -687,7 +705,9 @@ class LoaderCommands(BaseCmd):
         except Exception as exc:
             self._emit_error(f"fetch: {display} downloaded but would not load: {exc}")
             return
-        self._emit_message(f"fetch: loaded {display} from {spec['label']}")
+        self._emit_message(
+            f"fetch: loaded {self._loaded_name(display)} from {spec['label']}"
+        )
 
 
 def _fetch_emdb_contour_level(num: str) -> float | None:

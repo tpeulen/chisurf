@@ -170,12 +170,43 @@ TOUR_TITLE_FG = (255, 208, 96)
 TOUR_FG = (235, 235, 240)
 TOUR_DIM_FG = (150, 150, 160)
 TOUR_BUTTON_BG = (41, 74, 122, 255)
+#: A command inside a step's prose. Its own colour and its own strip of
+#: background, because "type translate [6, -4, 3], 5a63" runs the thing the
+#: reader must type into the sentence telling them to type it.
+TOUR_CODE_FG = (150, 226, 160)
+TOUR_CODE_BG = (18, 30, 20, 255)
+TOUR_RUN_BG = (48, 104, 60, 255)
 
 INFO_BG = (50, 50, 50, 199)
 INFO_FG = (255, 255, 255)
 INFO_EDGE = (255, 255, 255, 79)
 INFO_BAR_TRACK = (255, 255, 255, 26)
 INFO_BAR_THUMB = (150, 150, 160, 190)
+
+
+def _tour_lines(text: str, columns: int, colour) -> list:
+    """Wrap *text* into ``(line, colour, is_code)``, keeping code spans whole.
+
+    A command marked with backticks gets its own line rather than being wrapped
+    into the prose: split across a line break it is no longer something anyone
+    can read off and type, which is the one thing a tour's instruction is for.
+    """
+    out: list = []
+    for paragraph in str(text).split("\n"):
+        for chunk in _split_code(paragraph):
+            body, is_code = chunk
+            if not body.strip():
+                continue
+            wrapped = [body] if is_code else _wrap_lines(body, columns)
+            for line in wrapped:
+                out.append((line, colour, is_code))
+    return out
+
+
+def _split_code(text: str) -> list:
+    """Split on backticks into ``(text, is_code)`` runs."""
+    parts = str(text).split("`")
+    return [(part, index % 2 == 1) for index, part in enumerate(parts)]
 
 
 def _wrap_lines(text: str, width: int) -> list[str]:
@@ -1039,6 +1070,26 @@ class InternalGui:
     def start_tour(self, tour) -> None:
         """Begin a guided tour (see :mod:`chimol.tour`)."""
         self.tour = tour
+        self._run_tour_setup()
+
+    def _run_tour_setup(self) -> None:
+        """Put on screen what the current step is about.
+
+        A step's `setup` is not the action it teaches -- that is `run`, and the
+        user presses it. This is the panel or window the step *describes*, and
+        without it the step rings nothing and talks about something that is not
+        there.
+        """
+        if self.tour is None or self._run_command is None:
+            return
+        step = self.tour.current
+        setup = getattr(step, "setup", "") if step is not None else ""
+        if not setup:
+            return
+        try:
+            self._run_command(setup)
+        except Exception:  # noqa: BLE001 - a step that cannot set up still reads
+            logger.debug("tour setup %r failed", setup, exc_info=True)
 
     def end_tour(self) -> None:
         """Stop the running tour and clear its rectangles.
@@ -1054,12 +1105,38 @@ class InternalGui:
         self._tour_target = Rect(0, 0, 0, 0)
 
     def advance_tour(self) -> None:
-        """Move to the next step, ending the tour after the last one."""
+        """Move on: run the step's command if it has one, else just step.
+
+        A waiting step's button **runs the command** rather than skipping it.
+        The tour's rule -- never press the control on the user's behalf --
+        is about the *ringed control*, which still has to be found and pressed.
+        It was never about making someone retype a line of text they can read
+        on screen, and treating those the same made the tour tedious in exactly
+        the place it should have been easy.
+
+        What is run goes through the ordinary command path, so it is echoed at
+        the prompt like anything else, and the step advances because the
+        command ran -- not because a button was pressed. One rule, whichever
+        route was taken.
+        """
         if self.tour is None:
             return
+        step = self.tour.current
+        if step is not None and step.waits and self._run_command is not None:
+            try:
+                self._run_command(step.command)
+            except Exception:  # noqa: BLE001 - a failed step must not kill the tour
+                logger.debug("tour step %r failed", step.command, exc_info=True)
+            # `observe` moves the tour when the command runs, so a successful
+            # one has already advanced by here. Falling through would skip the
+            # step after it.
+            if self.tour is None or self.tour.current is not step:
+                return
         self.tour.advance()
-        if self.tour.finished:
+        if self.tour is not None and self.tour.finished:
             self.end_tour()
+        else:
+            self._run_tour_setup()
 
     def observe_command(self, line: str) -> bool:
         """Tell the running tour that *line* was executed.
@@ -1072,8 +1149,11 @@ class InternalGui:
         if self.tour is None:
             return False
         moved = self.tour.observe(line)
-        if moved and self.tour.finished:
-            self.end_tour()
+        if moved:
+            if self.tour.finished:
+                self.end_tour()
+            else:
+                self._run_tour_setup()
         return moved
 
     def tour_target_rect(self, target: dict) -> "Rect":
@@ -1093,6 +1173,11 @@ class InternalGui:
             of this viewer is reached by typing.
         ``{"object": "148l"}``
             a row of the object list, matched on its name.
+        ``{"window": "density"}``
+            a window drawn in the viewport, by key -- ``density``, ``objects``,
+            ``mouse``, ``history``, ``settings``. Only when it is **open**: a
+            step that rings a window nobody opened points at nothing, so the
+            step should open it (through ``run``) before pointing at it.
         ``{"movie": true}``
             the playback transport.
         ``{"sequence": true}``
@@ -1119,6 +1204,17 @@ class InternalGui:
                 for rect, button, *_rest in self._toolbar_rects:
                     if label in str(button).strip().lower():
                         return rect
+                return empty
+
+            key = str(target.get("window", "")).strip().lower()
+            if key:
+                for win in self.windows:
+                    if str(getattr(win, "key", "")).strip().lower() == key:
+                        return (
+                            Rect(win.x, win.y, win.w, win.h)
+                            if getattr(win, "visible", False)
+                            else empty
+                        )
                 return empty
 
             if target.get("command"):
@@ -4522,18 +4618,19 @@ class InternalGui:
         char_w = char_width(self.FONT_PT)
         row = float(self.CMD_ROW_H)
         columns = 46
-        lines: list[tuple[str, tuple]] = [(step.title, TOUR_TITLE_FG)]
-        for line in _wrap_lines(step.text, columns):
-            lines.append((line, TOUR_FG))
+        # `(text, colour, is_code)`. A command is wrapped on its own so it is
+        # never split across a line break -- half a command is not a command,
+        # and the reader has to be able to copy it in one go.
+        lines: list[tuple[str, tuple, bool]] = [(step.title, TOUR_TITLE_FG, False)]
+        lines.extend(_tour_lines(step.text, columns, TOUR_FG))
         if step.waits:
-            lines.append(("", TOUR_FG))
-            for line in _wrap_lines(step.prompt(), columns):
-                lines.append((line, TOUR_RING))
+            lines.append(("", TOUR_FG, False))
+            lines.extend(_tour_lines(step.prompt(), columns, TOUR_RING))
 
         counter = f"{tour.index + 1} / {len(tour.steps)}"
         width = max(
-            max((len(text) for text, _c in lines), default=0) * char_w,
-            char_w * (len(counter) + 18),
+            max((len(text) for text, _c, _k in lines), default=0) * char_w,
+            char_w * (len(counter) + 22),
         ) + 2 * self.PAD
         height = (len(lines) + 2) * row + 2 * self.PAD
 
@@ -4542,13 +4639,20 @@ class InternalGui:
 
         p.fill_rect(bx, by, width, height, TOUR_BG)
         p.stroke_rect(bx, by, width, height, TOUR_RING)
-        for index, (text, colour) in enumerate(lines):
+        for index, (text, colour, is_code) in enumerate(lines):
             if not text:
                 continue
+            line_y = by + self.PAD + index * row
+            if is_code:
+                # A strip behind it, the width of the command rather than of
+                # the bubble: the eye finds a short block faster than a colour.
+                p.fill_rect(bx + self.PAD - 2.0, line_y,
+                            len(text) * char_w + 4.0, row, TOUR_CODE_BG)
             p.text(
-                bx + self.PAD, by + self.PAD + index * row,
+                bx + self.PAD, line_y,
                 width - 2 * self.PAD, row,
-                ALIGN_VCENTER | ALIGN_LEFT, text, colour,
+                ALIGN_VCENTER | ALIGN_LEFT, text,
+                TOUR_CODE_FG if is_code else colour,
             )
 
         # The controls. `Next` is absent while a step waits: offering it would
@@ -4566,15 +4670,22 @@ class InternalGui:
         p.text(close_x, button_y, close_w, row,
                ALIGN_VCENTER | ALIGN_CENTER, "Close", TOUR_FG)
 
-        if step.waits:
-            self._tour_next_rect = Rect(0, 0, 0, 0)
-        else:
-            next_w = char_w * 6 + 2 * self.MENU_PAD
-            next_x = close_x - next_w - 4.0
-            self._tour_next_rect = Rect(next_x, button_y, next_w, row)
-            p.fill_rect(next_x, button_y, next_w, row, TOUR_BUTTON_BG)
-            p.text(next_x, button_y, next_w, row,
-                   ALIGN_VCENTER | ALIGN_CENTER, "Next", TOUR_FG)
+        # A waiting step gets a button too, and it **runs the command**. The
+        # first design refused to: someone who watched a button being pressed
+        # has not learned where it is. That holds for a *control* the step is
+        # pointing at, and not for a line of text somebody would otherwise
+        # retype from a screenshot -- so the ringed control still has to be
+        # pressed by hand, and a step whose instruction is "type this" offers
+        # to type it. What it runs is echoed at the prompt like any command,
+        # which is where the reading happens.
+        label = "Run" if step.waits else "Next"
+        next_w = char_w * (len(label) + 2) + 2 * self.MENU_PAD
+        next_x = close_x - next_w - 4.0
+        self._tour_next_rect = Rect(next_x, button_y, next_w, row)
+        p.fill_rect(next_x, button_y, next_w, row,
+                    TOUR_RUN_BG if step.waits else TOUR_BUTTON_BG)
+        p.text(next_x, button_y, next_w, row,
+               ALIGN_VCENTER | ALIGN_CENTER, label, TOUR_FG)
 
     def _tour_bubble_at(self, target, width: float, height: float):
         """Where to put the tour's bubble so it never covers its own target.

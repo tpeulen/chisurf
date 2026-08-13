@@ -107,6 +107,38 @@ what it blocks:
   read through the core reader had it. Invisible until something asks --
   `spectrum b` painted one flat colour and putty drew a constant tube -- and
   worst for a predicted model, where that column is the confidence.
+* **object names are unique (2026-08-13, user report):** two objects could
+  share a name, and every command that takes one resolves the **first** match
+  -- so the second was unreachable: `color red, twin` painted one silently,
+  `activate twin` could never select the other, `delete twin` left a `twin`.
+  PyMOL's own rule, verbatim where it counts: `ExecutiveProcessObjectName`
+  appends `_%d` starting at **2**, gated on `auto_rename_duplicate_objects`.
+  Same suffix, same setting name; the **default differs on purpose** -- PyMOL
+  ships it off because loading over a name there stacks states inside that
+  object, and chimol has no state stacking, so off would mean losing the first.
+  Uniqueness is the viewer's (`unique_object_name`, `rename_object`), because
+  it is a property of the list; renaming was the other way in and is now the
+  same rule. Every load message reports the name that **exists** rather than
+  the one asked for -- saying `148l` when it made `148l_2` sends the user to
+  the wrong object, which is the original bug wearing a hat.
+* **the tour can be clicked through, and commands look like commands
+  (2026-08-13, user):** a waiting step now offers **Run**, which issues the
+  step's command. The original rule -- never press on the user's behalf --
+  was about the *ringed control*, which still has to be found and pressed; it
+  was never about making someone retype a line they can read on screen, and
+  treating both alike made the tour tedious exactly where it should be easy.
+  What Run issues is echoed at the prompt, and the step advances **because the
+  command ran**, so one rule covers both routes. Three things fell out of it:
+  `expect` is a *prefix* for matching and cannot always be run (a step matching
+  any `translate` answered "missing required argument"), so a step carries a
+  `run`; a step that describes a panel must **open** it or it rings nothing and
+  talks about something absent -- reported as "some menus/windows do not seem
+  to appear" -- so a step carries a `setup`, run when the step is shown, and
+  targets can name a `window`; and commands inside prose are drawn in their own
+  colour on their own line, since `<b>` in these files is *emphasis* and
+  treating it as code put half the prose in a command's colour. The whole tour
+  is walked by pressing Run in the suite, asserting no step errors, every ring
+  lands on something, and it reaches the end.
 * **the chrome draws all of Unicode (2026-08-13, user: "special chars like
   aou do not land visible in the cli... full unicode!"):** they *landed* -- the
   command line held them and the input path was right -- and drew as

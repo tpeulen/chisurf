@@ -220,12 +220,15 @@ class VolumeMixin(BaseCmd):
                     pass
 
         object_id = viewer.add_volume(grid, name=name or grid.name)
+        # What it is *called* now: a second map under one name is `twin_2`, and
+        # naming the first in the message sends the user to the wrong one.
+        loaded = str(getattr(viewer._objects.get(object_id), "name", "") or grid.name)
         low, high = grid.value_range()
         recommended = ""
         if grid.recommended_level is not None:
             recommended = f", opened at the deposited level {grid.recommended_level:.4g}"
         self._emit_message(
-            f"load_map: {grid.name} {grid.shape[0]}x{grid.shape[1]}x{grid.shape[2]}, "
+            f"load_map: {loaded} {grid.shape[0]}x{grid.shape[1]}x{grid.shape[2]}, "
             f"step {grid.step[0]:.3g}/{grid.step[1]:.3g}/{grid.step[2]:.3g}, "
             f"values {low:.4g} to {high:.4g}{recommended}  [{object_id}]"
         )
@@ -737,6 +740,7 @@ class VolumeMixin(BaseCmd):
             return
 
         new_id = viewer.add_volume(grid, name=label)
+        label = str(getattr(viewer._objects.get(new_id), "name", "") or label)
         low, high = grid.value_range()
         self._emit_message(
             f"molmap: {label} from {len(points)} atoms at {res:g} A, "

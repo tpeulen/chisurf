@@ -35820,3 +35820,12 @@
   The font is chosen per character from its cmap — a font draws a tofu box for a
   character it lacks, so 'did it render?' picks the wrong one every time — and an
   uncoverable character draws a visible placeholder rather than vanishing.
+- 2026-08-13 — chimol: object names are unique, with PyMOL's own `_2` suffix and
+  its `auto_rename_duplicate_objects` setting (default flipped, since chimol has
+  no state stacking to fall back on); two objects sharing a name made the second
+  unreachable by every command that takes one. And the guided tours can be
+  clicked through: a waiting step offers Run, which issues its command — with a
+  `run` for steps whose `expect` is only a prefix, a `setup` that opens the panel
+  a step describes, `window` targets, and commands drawn apart from the prose.
+  The suite walks every tour by pressing Run and asserts no step errors and every
+  ring lands on a control.

@@ -1352,7 +1352,15 @@ class MolView(WidgetBase):
         object_id = f"obj{self._object_counter}"
         entry = _MolViewObjectEntry(
             object_id=object_id,
-            name=name or f"Object {self._object_counter}",
+            # Unique, always. Every command that names an object resolves the
+            # *first* match, so two objects called `twin` meant the second was
+            # unreachable by name: `color red, twin` painted one of them
+            # silently, `activate twin` could never reach the other, and
+            # `delete twin` left a `twin` behind. PyMOL and the reference
+            # viewer both keep names unique for the same reason -- a name is
+            # an address here, and an address that resolves to two things is
+            # not one.
+            name=self.unique_object_name(name or f"Object {self._object_counter}"),
             source_path=source_path,
             placeholder=placeholder,
         )
@@ -1365,6 +1373,77 @@ class MolView(WidgetBase):
         self._active_object_id = object_id
         self._auto_create_enabled = True
         return entry
+
+    def unique_object_name(self, name: str, *, exclude: str | None = None) -> str:
+        """*name*, or the first free ``name_2``, ``name_3`` after it.
+
+        Parameters
+        ----------
+        name : str
+            What the caller asked for.
+        exclude : str, optional
+            An object id whose own name does not count as a clash -- for a
+            rename that keeps the name it already has.
+
+        Returns
+        -------
+        str
+            A name no other object holds -- ``name``, then ``name_2``,
+            ``name_3``. That is PyMOL's own scheme, from
+            ``ExecutiveProcessObjectName``: pattern ``_%d``, starting at 2.
+
+        Notes
+        -----
+        PyMOL gates this on ``auto_rename_duplicate_objects``, which it ships
+        **off**: a second `load` under an existing name replaces that object
+        rather than making a second one. chimol registers the same setting and
+        ships it **on**, and the difference is deliberate -- PyMOL stacks
+        states inside one object, chimol does not, so "replace" there means
+        "keep both, addressed by state" and here would mean "lose the first".
+        Turn it off for PyMOL's behaviour; duplicates are then allowed and a
+        name addresses whichever came first.
+        """
+        if not self._auto_rename_duplicates():
+            return str(name or "").strip() or "object"
+        wanted = str(name or "").strip() or "object"
+        taken = {
+            str(getattr(entry, "name", ""))
+            for object_id, entry in self._objects.items()
+            if object_id != exclude
+        }
+        if wanted not in taken:
+            return wanted
+        index = 2
+        while f"{wanted}_{index}" in taken:
+            index += 1
+        return f"{wanted}_{index}"
+
+    @staticmethod
+    def _auto_rename_duplicates() -> bool:
+        """Whether a duplicate name gets a suffix; PyMOL's setting, our default."""
+        try:
+            from .. import settings as settings_api  # noqa: PLC0415
+
+            return bool(settings_api.get_setting("auto_rename_duplicate_objects"))
+        except Exception:  # noqa: BLE001 - a viewer without the settings module
+            return True
+
+    def rename_object(self, object_id: str, name: str) -> str:
+        """Rename an object, keeping names unique, and return the name used.
+
+        On the viewer rather than in the command, because uniqueness is a
+        property of the object list and the list is what owns it -- a second
+        caller renaming through `entry.name` directly would reintroduce exactly
+        the duplicate this prevents.
+        """
+        entry = self._objects.get(str(object_id))
+        if entry is None:
+            raise KeyError(object_id)
+        chosen = self.unique_object_name(name, exclude=str(object_id))
+        entry.name = chosen
+        self._objects.touch("touch", str(object_id), "name",
+                            label=f"rename to {chosen}")
+        return chosen
 
     def _ensure_active_entry(self, create_if_missing: bool = True) -> _MolViewObjectEntry | None:
         if self._active_object_id in self._objects:

@@ -239,6 +239,14 @@ def build_guide_schema() -> dict:
             "menu": {"type": "string", "description": "A menu-bar title (chimol's painted tours)."},
             "toolbar": {"type": "string", "description": "A toolbar button's label (chimol)."},
             "object": {"type": "string", "description": "An object-list row, by name (chimol)."},
+            "window": {
+                "type": "string",
+                "description": (
+                    "A window drawn in the viewport, by key -- density, "
+                    "objects, mouse, history (chimol). Resolves only while it "
+                    "is open, so the step should open it first."
+                ),
+            },
             "movie": {"type": "boolean", "description": "The playback transport (chimol)."},
             "sequence": {"type": "boolean", "description": "The sequence strip (chimol)."},
         },
@@ -277,6 +285,22 @@ def build_guide_schema() -> dict:
                 ),
             },
             "hint": {"type": "string", "description": "What to do, shown while waiting (chimol)."},
+            "setup": {
+                "type": "string",
+                "description": (
+                    "A command run when the step is shown, to put on screen "
+                    "the panel or window it describes (chimol). Distinct from "
+                    "`run`: setup reveals the subject, run performs the action."
+                ),
+            },
+            "run": {
+                "type": "string",
+                "description": (
+                    "What the step's Run button issues, when `expect` is a "
+                    "prefix rather than a whole command (chimol). A step "
+                    "matching any `translate` cannot run the word on its own."
+                ),
+            },
             "links": {
                 "type": "array",
                 "items": {

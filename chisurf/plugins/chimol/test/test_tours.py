@@ -60,6 +60,7 @@ WALKTHROUGH = {
         "fetch EMD-3061",
         "map_info",
         "isosurface dens, EMD-3061",
+        "volume_level EMD-3061, 0.06",
         "hide_dust EMD-3061, 30",
         "fetch 5A63",
         "translate [6, -4, 3], 5a63",
@@ -239,9 +240,107 @@ def test_the_tour_walks_to_the_end_through_real_commands(name):
 
 
 @pytest.mark.parametrize("name", TOURS)
+def test_the_tour_walks_by_pressing_run(name):
+    """The whole tour, driven the way most people will drive it.
+
+    `Run` issues the step's command rather than skipping it, so this walks the
+    workflow end to end -- and it is the path a user takes when they would
+    rather click than type. Three things are asserted at every step, and each
+    was broken when this was written:
+
+    * **no command errors.** `Run` used to issue `expect`, which is a *prefix*
+      for matching: a step matching any `translate` answered "missing required
+      argument" when pressed. A step whose expect is a prefix now carries the
+      command to run;
+    * **the ring lands on something.** A step that points at a window nobody
+      opened rings nothing and describes something that is not on screen --
+      reported as "some menus/windows do not seem to appear". A step's `setup`
+      opens its subject when the step is shown;
+    * **it reaches the end.** A step that neither advances nor errors is a
+      tour that has stopped, silently.
+    """
+    from toolkit_free import probe
+
+    measured = probe(f'''
+        app = open_app(size=(1100, 700))
+        gui = app.renderer._internal_gui
+        errors = []
+        app.cmd.set_error_callback(errors.append)
+
+        app.cmd.do("tour {name}")
+        emit("started", "yes" if gui.tour is not None else "no")
+
+        problems, missing, walked = [], [], 0
+        for _ in range(40):
+            if gui.tour is None:
+                break
+            step = gui.tour.current
+            if step is None:
+                break
+            walked += 1
+            app.renderer.draw_frame()
+            rect = gui.tour_target_rect(step.target)
+            if step.target and not (rect.w > 0 and rect.h > 0):
+                missing.append(step.title)
+            errors.clear()
+            before = gui.tour.index
+            gui.advance_tour()
+            if errors:
+                problems.append(step.title + ": " + errors[0])
+            after = gui.tour.index if gui.tour is not None else -1
+            if after == before:
+                problems.append(step.title + ": the tour did not move on")
+                break
+
+        emit("walked", walked)
+        emit("finished", "yes" if gui.tour is None else "no")
+        emit("errors", " | ".join(problems) or "none")
+        emit("missing", " | ".join(missing) or "none")
+    ''')
+
+    assert measured["started"] == "yes"
+    assert measured["errors"] == "none", measured["errors"]
+    assert measured["missing"] == "none", (
+        f"these steps point at nothing: {measured['missing']}"
+    )
+    assert measured["finished"] == "yes", (
+        f"the tour stopped after {measured['walked']} steps"
+    )
+    assert int(measured["walked"]) == len(load_tour(name).steps)
+
+
+@pytest.mark.parametrize("name", TOURS)
+def test_what_run_issues_is_a_command(name):
+    """Every step has something to run, and it names a real command.
+
+    Deliberately *not* "does it look complete": `map_info` takes no arguments
+    and is a whole command, while `translate` on its own is a prefix that fails
+    when issued. Whether a command is complete is a question only running it
+    can answer, which is what the walk above does -- this checks the cheaper
+    property, that the verb exists at all, so a typo is named here rather than
+    surfacing as a failed step.
+    """
+    from toolkit_free import probe
+
+    verbs = sorted({
+        step.command.split()[0].lower()
+        for step in load_tour(name).steps
+        if step.waits and step.command.strip()
+    })
+    assert verbs, f"{name} has no runnable step"
+    measured = probe(f'''
+        app = open_app(size=(400, 300))
+        for verb in {verbs!r}:
+            emit(verb, "yes" if app.cmd._registry.resolve(verb) else "no")
+    ''')
+    for verb in verbs:
+        assert measured[verb] == "yes", f"{name} would run {verb!r}, which is not a command"
+
+
+@pytest.mark.parametrize("name", TOURS)
 def test_every_target_is_a_control_the_chrome_knows(name):
     """A target spelled wrong resolves to nothing and centres the bubble."""
-    known = {"menu", "toolbar", "command", "object", "movie", "sequence"}
+    known = {"menu", "toolbar", "command", "object", "movie", "sequence", "window"}
     for index, step in enumerate(load_tour(name).steps):
         for key in step.target:
             assert key in known, (

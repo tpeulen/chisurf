@@ -113,7 +113,14 @@ class LifecycleMixin(BaseCmd):
                 pass
 
         moved = "moved" if extract else "copied"
-        self._emit_message(f"{verb}: {moved} {n} atoms into '{target}'")
+        # The name it *got*, which carries a `_2` when the one asked for was
+        # taken. Reporting the requested name sends the user to the object that
+        # was already there.
+        try:
+            made = str(getattr(viewer._objects.get(new_id), "name", "") or target)
+        except Exception:  # noqa: BLE001
+            made = target
+        self._emit_message(f"{verb}: {moved} {n} atoms into '{made}'")
 
     @command("delete", aliases=("del",))
     def delete(self, *targets_in: str) -> None:
@@ -614,9 +621,21 @@ class LifecycleMixin(BaseCmd):
             self._emit_error(f"Unknown object: {old_name}")
             return
 
-        entry.name = new_name
+        # Through the viewer, which keeps names unique: renaming one object
+        # onto another's name is the same defect as loading two with one name,
+        # and this was the other way in.
+        try:
+            chosen = viewer.rename_object(oid, new_name)
+        except Exception:  # noqa: BLE001 - a viewer without the method
+            entry.name = new_name
+            chosen = new_name
         self._refresh_window_objects(window)
-        self._emit_message(f"Renamed {old_name} to {new_name}")
+        if chosen != new_name:
+            self._emit_message(
+                f"Renamed {old_name} to {chosen} ({new_name} was taken)"
+            )
+        else:
+            self._emit_message(f"Renamed {old_name} to {chosen}")
 
     def _copy_object_fallback(self, viewer, source_id: str, target: str):
         entry = getattr(viewer, "_objects", {}).get(source_id)

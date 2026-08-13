@@ -6,7 +6,8 @@
   },
   "background": "k",
   "defaults": {
-    "color_mode": "by_sequence"
+    "color_mode": "by_sequence",
+    "auto_rename_duplicate_objects": true
   },
   "grid": {
     "size": 20.0,
